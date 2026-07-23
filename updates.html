@@ -30,7 +30,12 @@
 
     .wrap { max-width: 640px; margin: 0 auto; padding: 2.2rem 1.25rem 4rem; }
 
-    nav { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; color: var(--dim); margin-bottom: 2.5rem; letter-spacing: 0.08em; }
+    .masthead { display: block; margin-bottom: 2.5rem; }
+    .masthead .brand { color: var(--text); text-decoration: none; font-family: ui-monospace, Menlo, monospace; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.28em; }
+    .masthead .brand:hover { color: var(--accent); }
+    .masthead .wing { font-family: ui-monospace, Menlo, monospace; color: var(--dim); font-size: 0.82rem; letter-spacing: 0.28em; }
+    .masthead .welcome { color: var(--dim); font-size: 0.9rem; margin: 0.4rem 0 0.9rem; }
+    nav { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; color: var(--dim); letter-spacing: 0.08em; display: flex; flex-wrap: wrap; gap: 0.3rem 1.1rem; }
     nav a { color: var(--dim); text-decoration: none; }
     nav a:hover { color: var(--accent); }
     nav .here { color: var(--text); }
@@ -99,16 +104,21 @@
 </head>
 <body>
   <div class="wrap">
-    <nav>
-      <a href="index.html">~/relay</a> / <span class="here">updates</span>
-      &nbsp;·&nbsp; <a href="systems.html">/systems</a>
-      &nbsp;·&nbsp; <a href="velocity.html">/velocity</a>
-      &nbsp;·&nbsp; <a href="exploration.html">/exploration</a>
-      &nbsp;·&nbsp; <a href="workbench.html">/workbench</a>
-      &nbsp;·&nbsp; <a href="shipped.html">/shipped</a>
-      &nbsp;·&nbsp; <a href="captures.html">/captures</a>
-      &nbsp;·&nbsp; <a href="log.html">/log</a>
-    </nav>
+    <header class="masthead">
+      <a class="brand" href="index.html">RIC'S RELAY</a><span class="wing"> · BROADCAST</span>
+      <p class="welcome">Everything that's changed on the relay, newest first.</p>
+      <nav>
+        <a href="index.html">← the relay</a>
+        <a href="systems.html">orrin's mind</a>
+        <a href="climbing.html">climbing</a>
+        <a href="training.html">training</a>
+        <a href="exploration.html">event horizon</a>
+        <a href="workbench.html">workbench</a>
+        <a href="captures.html">darkroom</a>
+        <a href="log.html">the log</a>
+        <span class="here">bulletins</span>
+      </nav>
+    </header>
 
     <header>
       <span class="bell">🔔<span class="ping"></span></span>
@@ -125,7 +135,7 @@
     <div class="note">
       <span class="dot"></span>
       <div class="body">
-        <div class="what">The relay is live. Poke around — start with /systems to meet Orrin.</div>
+        <div class="what">The relay is live. Poke around — start with Orrin's Mind.</div>
         <div class="meta"><span class="kind">ANNOUNCEMENT</span> · July 2026</div>
       </div>
     </div>

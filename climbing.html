@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Climbing — Ric's Relay</title>
+  <meta name="description" content="Ric's climbing & mountaineering ledger — projects, ticks, and objectives.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%233a5a40'/><text y='.85em' font-size='68' x='16'>🧗</text></svg>">
+  <style>
+    :root {
+      --bar: #3a5a40;
+      --bar-dark: #2d4632;
+      --bg: #f4f1e9;
+      --card: #ffffff;
+      --ink: #26241f;
+      --soft: #6f6a5f;
+      --line: #e2ddd0;
+      --clay: #b5502a;
+      --star: #e0a021;
+      --sent: #2f8f4e;
+      --proj: #c77d1a;
+      --scope: #7a7568;
+    }
+
+    * { box-sizing: border-box; margin: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.55;
+      font-size: 15px;
+    }
+
+    a { color: var(--clay); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* top bar */
+    .topbar { background: var(--bar); color: #eef3ee; }
+    .topbar .inner {
+      max-width: 940px; margin: 0 auto; padding: 0.7rem 1.25rem;
+      display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
+    }
+    .topbar .brand { color: #fff; font-weight: 800; letter-spacing: 0.16em; font-size: 0.85rem; text-decoration: none; }
+    .topbar .brand:hover { text-decoration: none; color: #d7e6d7; }
+    .topbar .wing { color: #b8ccbb; font-size: 0.85rem; letter-spacing: 0.16em; }
+    .topbar .roomnav { margin-left: auto; display: flex; gap: 0.1rem 1rem; flex-wrap: wrap; }
+    .topbar .roomnav a { color: #cfe0d1; font-size: 0.82rem; }
+    .topbar .roomnav a:hover { color: #fff; text-decoration: none; }
+    .topbar .roomnav .here { color: #fff; font-weight: 700; }
+
+    .wrap { max-width: 940px; margin: 0 auto; padding: 1.6rem 1.25rem 4rem; }
+
+    .breadcrumb { color: var(--soft); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .breadcrumb a { color: var(--soft); }
+
+    .welcome { color: var(--soft); margin-bottom: 1.4rem; }
+
+    h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.01em; }
+
+    /* stat strip */
+    .ledger { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin: 1.2rem 0 2rem; background: var(--card); flex-wrap: wrap; }
+    .ledger .cell { flex: 1; min-width: 120px; padding: 0.7rem 1rem; border-right: 1px solid var(--line); }
+    .ledger .cell:last-child { border-right: none; }
+    .ledger .n { font-size: 1.4rem; font-weight: 700; }
+    .ledger .l { color: var(--soft); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    h2 {
+      font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--bar); border-bottom: 2px solid var(--bar); padding-bottom: 0.35rem;
+      margin: 2rem 0 0.2rem;
+    }
+
+    /* route table */
+    .routes { background: var(--card); border: 1px solid var(--line); border-top: none; border-radius: 0 0 8px 8px; }
+    .route {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 0.6rem 1rem;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .route:last-child { border-bottom: none; }
+    .route .name { font-weight: 600; }
+    .route .loc { color: var(--soft); font-size: 0.83rem; }
+    .route .stars { color: var(--star); font-size: 0.85rem; white-space: nowrap; letter-spacing: 0.05em; }
+    .route .grade {
+      font-weight: 700; font-size: 0.9rem; background: var(--bg);
+      border: 1px solid var(--line); border-radius: 5px; padding: 0.1rem 0.5rem; white-space: nowrap;
+    }
+
+    /* status tag (finished shows a different tag) */
+    .tag {
+      display: inline-block; font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 0.12rem 0.5rem; border-radius: 999px; margin-left: 0.5rem; vertical-align: middle;
+    }
+    .tag.sent { background: #e3f4e8; color: var(--sent); border: 1px solid #bde3c8; }
+    .tag.projecting { background: #fbefd8; color: var(--proj); border: 1px solid #f0d9a8; }
+    .tag.scoping { background: #efece4; color: var(--scope); border: 1px solid #ddd7c8; }
+
+    .empty { padding: 1.1rem 1rem; color: var(--soft); font-style: italic; }
+
+    footer { margin-top: 3rem; color: var(--soft); font-size: 0.82rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+
+    @media (max-width: 620px) {
+      .route { grid-template-columns: 1fr auto; }
+      .route .stars { grid-column: 1 / -1; }
+      .topbar .roomnav { width: 100%; margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="inner">
+      <a class="brand" href="index.html">RIC'S RELAY</a>
+      <span class="wing">· CLIMBING LEDGER</span>
+      <nav class="roomnav">
+        <a href="index.html">the relay</a>
+        <a href="systems.html">orrin</a>
+        <span class="here">climbing</span>
+        <a href="training.html">training</a>
+        <a href="exploration.html">exploration</a>
+        <a href="workbench.html">workbench</a>
+        <a href="captures.html">photos</a>
+        <a href="log.html">log</a>
+        <a href="updates.html">updates</a>
+      </nav>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="breadcrumb"><a href="index.html">All Areas</a> &rsaquo; Ric's Ticks &amp; Projects</div>
+    <h1>Climbing &amp; Mountaineering</h1>
+    <p class="welcome">The route ledger — what I'm projecting, what I've sent, and the objectives still on the list.</p>
+
+    <div class="ledger">
+      <div class="cell"><div class="n" id="n-sent">0</div><div class="l">Sends logged</div></div>
+      <div class="cell"><div class="n" id="n-proj">0</div><div class="l">Active projects</div></div>
+      <div class="cell"><div class="n" id="n-obj">0</div><div class="l">Objectives</div></div>
+      <div class="cell"><div class="n">—</div><div class="l">Hardest send</div></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         TO UPDATE: each <div class="route"> is one climb.
+         Status tag classes: projecting · sent · scoping.
+         When you finish a project, change its tag to "sent".
+         Stars: use ★ / ☆. Newest at the top of each block.
+         ═══════════════════════════════════════════════════ -->
+
+    <h2>Current Projects</h2>
+    <div class="routes" id="projects">
+      <div class="route">
+        <div>
+          <span class="name">First project goes here</span><span class="tag projecting">projecting</span>
+          <div class="loc">Crag · area · notes on the send</div>
+        </div>
+        <span class="stars">★★★☆☆</span>
+        <span class="grade">5.—</span>
+      </div>
+    </div>
+
+    <h2>Objectives — On The List</h2>
+    <div class="routes" id="objectives">
+      <div class="route">
+        <div>
+          <span class="name">First objective goes here</span><span class="tag scoping">scoping</span>
+          <div class="loc">Where it is and why it's on the list</div>
+        </div>
+        <span class="stars">★★★★☆</span>
+        <span class="grade">—</span>
+      </div>
+    </div>
+
+    <h2>Recent Ticks</h2>
+    <div class="routes" id="ticks">
+      <div class="empty">No sends logged yet. The first one goes here with a “sent” tag.</div>
+    </div>
+
+    <footer>Ric's personal climbing ledger · grades are opinions · stars are bribes</footer>
+  </div>
+</body>
+</html>

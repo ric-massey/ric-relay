@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Training — Ric's Relay</title>
+  <meta name="description" content="Ric's training feed — runs, workouts, and health telemetry.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fc4c02'/><text y='.85em' font-size='64' x='18'>🏃</text></svg>">
+  <style>
+    :root {
+      --brand: #fc4c02;
+      --brand-dark: #e34500;
+      --bg: #f7f7fa;
+      --card: #ffffff;
+      --ink: #242428;
+      --soft: #6d6d78;
+      --line: #e6e6ec;
+      --heat: #fc4c02;
+      --good: #2f9e57;
+    }
+
+    * { box-sizing: border-box; margin: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.5;
+      font-size: 15px;
+    }
+    a { color: var(--brand); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .topbar { background: var(--brand); }
+    .topbar .inner {
+      max-width: 900px; margin: 0 auto; padding: 0.7rem 1.25rem;
+      display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
+    }
+    .topbar .brand { color: #fff; font-weight: 800; letter-spacing: 0.16em; font-size: 0.85rem; }
+    .topbar .brand:hover { text-decoration: none; color: #ffe3d6; }
+    .topbar .wing { color: #ffd2be; font-size: 0.85rem; letter-spacing: 0.16em; }
+    .topbar .roomnav { margin-left: auto; display: flex; gap: 0.1rem 1rem; flex-wrap: wrap; }
+    .topbar .roomnav a { color: #ffe0d2; font-size: 0.82rem; }
+    .topbar .roomnav a:hover { color: #fff; text-decoration: none; }
+    .topbar .roomnav .here { color: #fff; font-weight: 700; }
+
+    .wrap { max-width: 900px; margin: 0 auto; padding: 1.4rem 1.25rem 4rem; display: grid; grid-template-columns: 1fr; gap: 1.2rem; }
+
+    /* athlete header */
+    .athlete {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 1.2rem 1.4rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    }
+    .athlete .avatar {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand), #ff8a4c);
+      display: grid; place-items: center; font-size: 1.6rem; flex-shrink: 0;
+    }
+    .athlete .who .name { font-weight: 700; font-size: 1.2rem; }
+    .athlete .who .sub { color: var(--soft); font-size: 0.9rem; }
+    .athlete .welcome { color: var(--soft); font-size: 0.85rem; flex-basis: 100%; margin-top: 0.2rem; }
+
+    /* weekly stats */
+    .week {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.2rem;
+    }
+    .week h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--soft); margin-bottom: 0.7rem; }
+    .week .stats { display: flex; gap: 1.4rem; flex-wrap: wrap; }
+    .week .stat .n { font-size: 1.5rem; font-weight: 700; }
+    .week .stat .n small { font-size: 0.8rem; font-weight: 600; color: var(--soft); }
+    .week .stat .l { color: var(--soft); font-size: 0.78rem; }
+
+    .section-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--soft); margin: 0.4rem 0 -0.3rem; }
+
+    /* activity card */
+    .activity { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .activity .head { padding: 0.9rem 1.2rem 0.5rem; display: flex; align-items: center; gap: 0.7rem; }
+    .activity .icon {
+      width: 38px; height: 38px; border-radius: 50%; background: #fff2ec; color: var(--brand);
+      display: grid; place-items: center; font-size: 1.1rem; flex-shrink: 0; border: 1px solid #ffd9c9;
+    }
+    .activity .meta .title { font-weight: 700; }
+    .activity .meta .when { color: var(--soft); font-size: 0.82rem; }
+    .activity .kind {
+      margin-left: auto; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--brand); background: #fff2ec; border: 1px solid #ffd9c9; border-radius: 999px; padding: 0.12rem 0.6rem;
+    }
+    .activity .body { padding: 0.3rem 1.2rem 1rem; }
+    .activity .figures { display: flex; gap: 2rem; flex-wrap: wrap; margin-top: 0.3rem; }
+    .activity .fig .n { font-size: 1.25rem; font-weight: 700; }
+    .activity .fig .l { color: var(--soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .activity .map {
+      height: 120px; margin: 0.6rem -1.2rem -1rem; background:
+        linear-gradient(90deg, #ffe7dc 1px, transparent 1px) 0 0 / 22px 22px,
+        linear-gradient(#ffe7dc 1px, transparent 1px) 0 0 / 22px 22px,
+        #fff6f1;
+      position: relative;
+    }
+    .activity .map::after {
+      content: ""; position: absolute; inset: 0;
+      background: no-repeat center/85%
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 90'%3E%3Cpath d='M8 70 C 40 20, 70 80, 100 45 S 160 10, 200 55 S 260 75, 292 30' fill='none' stroke='%23fc4c02' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E");
+    }
+
+    .placeholder {
+      background: var(--card); border: 1px dashed #f0b39c; border-radius: 12px;
+      padding: 1.4rem 1.4rem; color: var(--soft);
+    }
+    .placeholder strong { color: var(--ink); }
+
+    footer { color: var(--soft); font-size: 0.82rem; text-align: center; margin-top: 0.5rem; }
+
+    @media (max-width: 620px) { .topbar .roomnav { width: 100%; margin-left: 0; } }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="inner">
+      <a class="brand" href="index.html">RIC'S RELAY</a>
+      <span class="wing">· TRAINING LOG</span>
+      <nav class="roomnav">
+        <a href="index.html">the relay</a>
+        <a href="systems.html">orrin</a>
+        <a href="climbing.html">climbing</a>
+        <span class="here">training</span>
+        <a href="exploration.html">exploration</a>
+        <a href="workbench.html">workbench</a>
+        <a href="captures.html">photos</a>
+        <a href="log.html">log</a>
+        <a href="updates.html">updates</a>
+      </nav>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="athlete">
+      <div class="avatar">🏃</div>
+      <div class="who">
+        <div class="name">Ric Massey</div>
+        <div class="sub">Runner · climber · perpetually in Zone 4</div>
+      </div>
+      <div class="welcome">Welcome to the training log — my runs, workouts, and health, all in one place. No app required.</div>
+    </div>
+
+    <div class="week">
+      <h2>This Week</h2>
+      <div class="stats">
+        <div class="stat"><div class="n" id="w-dist">0 <small>mi</small></div><div class="l">Distance</div></div>
+        <div class="stat"><div class="n" id="w-time">0<small>h</small> 0<small>m</small></div><div class="l">Time</div></div>
+        <div class="stat"><div class="n" id="w-elev">0 <small>ft</small></div><div class="l">Elevation</div></div>
+        <div class="stat"><div class="n" id="w-acts">0</div><div class="l">Activities</div></div>
+      </div>
+    </div>
+
+    <div class="placeholder">
+      <strong>Live feed coming soon.</strong> This page will pull my real activities in-house so
+      family can follow along without a Strava account. Two ways to wire it up when you're ready:
+      the quick <em>Strava embed widget</em>, or a small serverless function hitting the Strava API
+      (Garmin syncs into Strava automatically). Until then, the cards below show the format.
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         TO ADD AN ACTIVITY: copy a <div class="activity">
+         block, newest at the top. .icon emoji = sport,
+         .kind = RUN / RIDE / HIKE / STRENGTH, etc.
+         Delete the .map div for activities with no route.
+         ═══════════════════════════════════════════════════ -->
+
+    <div class="section-label">Recent Activity</div>
+
+    <div class="activity">
+      <div class="head">
+        <div class="icon">🏃</div>
+        <div class="meta">
+          <div class="title">Example morning run</div>
+          <div class="when">Replace me · someday, 7:12 AM</div>
+        </div>
+        <div class="kind">Run</div>
+      </div>
+      <div class="body">
+        <div class="figures">
+          <div class="fig"><div class="n">5.2 mi</div><div class="l">Distance</div></div>
+          <div class="fig"><div class="n">7:48 /mi</div><div class="l">Pace</div></div>
+          <div class="fig"><div class="n">410 ft</div><div class="l">Elevation</div></div>
+        </div>
+        <div class="map"></div>
+      </div>
+    </div>
+
+    <div class="activity">
+      <div class="head">
+        <div class="icon">💪</div>
+        <div class="meta">
+          <div class="title">Example strength session</div>
+          <div class="when">Replace me · someday, 6:00 PM</div>
+        </div>
+        <div class="kind">Strength</div>
+      </div>
+      <div class="body">
+        <div class="figures">
+          <div class="fig"><div class="n">48 min</div><div class="l">Duration</div></div>
+          <div class="fig"><div class="n">Pull day</div><div class="l">Focus</div></div>
+          <div class="fig"><div class="n">Solid</div><div class="l">Felt like</div></div>
+        </div>
+      </div>
+    </div>
+
+    <footer>Ric's personal training log · powered by stubbornness</footer>
+  </div>
+</body>
+</html>

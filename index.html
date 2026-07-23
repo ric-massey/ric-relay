@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RIC-MASSEY // PERSONAL RELAY</title>
-  <meta name="description" content="Ric Massey's personal relay — cognition, velocity, exploration.">
+  <meta name="description" content="Ric Massey's personal relay — Orrin, climbing, training, and exploration.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230a0a0a'/><text y='.9em' font-size='70' x='15' fill='%23ffb000'>▮</text></svg>">
   <style>
     :root {
@@ -13,14 +13,14 @@
       --phosphor-dim: #8a6200;
       --phosphor-faint: #3d2c00;
       --flash-systems: #38ff9c;
-      --flash-velocity: #ff4d3d;
       --flash-exploration: #7a5cff;
       --flash-captures: #4dc9ff;
       --flash-log: #ff8ae0;
       --flash-workbench: #ffe14d;
       --flash-map: #ff3b30;
-      --flash-shipped: #cfa14d;
       --flash-updates: #f2f2f2;
+      --flash-climbing: #79c46b;
+      --flash-training: #ff6a3d;
     }
 
     * { box-sizing: border-box; margin: 0; }
@@ -62,10 +62,25 @@
       color: var(--phosphor-dim);
       font-size: 0.75rem;
       letter-spacing: 0.25em;
-      margin-bottom: 1.4rem;
+      margin-bottom: 1.2rem;
     }
 
-    #boot { white-space: pre-wrap; min-height: 9.5em; }
+    .wordmark {
+      font-size: clamp(1.6rem, 5vw, 2.3rem);
+      font-weight: 700;
+      letter-spacing: 0.42em;
+      color: var(--phosphor);
+      text-shadow: 0 0 18px rgba(255, 176, 0, 0.55), 0 0 50px rgba(255, 176, 0, 0.2);
+    }
+
+    .welcome-tag {
+      color: var(--phosphor-dim);
+      margin: 0.3rem 0 1.6rem;
+      font-size: 0.9rem;
+    }
+    .welcome-tag .lit { color: var(--phosphor); }
+
+    #boot { white-space: pre-wrap; min-height: 6.8em; }
     #boot .ok { color: var(--flash-systems); }
     #boot .dim { color: var(--phosphor-dim); }
 
@@ -163,7 +178,11 @@
 <body>
   <div class="wrap">
     <div class="frame">
-      <div class="frame-label">RIC-MASSEY PERSONAL RELAY // NODE 01 // FOR FAMILY &amp; FRIENDS</div>
+      <div class="frame-label">RIC-MASSEY PERSONAL RELAY // NODE 01</div>
+
+      <div class="wordmark">THE RELAY</div>
+      <p class="welcome-tag"><span class="lit">welcome in.</span> this is ric's corner of the internet —
+        built so family &amp; friends can see what he's up to without asking.</p>
 
       <div id="boot" aria-live="polite"></div>
 
@@ -174,9 +193,14 @@
           <span class="desc">— cognition · code · ORRIN runtime</span>
           <span class="go">[ ENTER ]</span>
         </a>
-        <a class="entry" href="velocity.html" style="--hue: var(--flash-velocity)">
-          <span class="perm">drwx r-x</span><span class="dirname">/velocity</span>
-          <span class="desc">— climbing · running · garage</span>
+        <a class="entry" href="climbing.html" style="--hue: var(--flash-climbing)">
+          <span class="perm">drwx r-x</span><span class="dirname">/climbing</span>
+          <span class="desc">— routes · projects · mountaineering</span>
+          <span class="go">[ ENTER ]</span>
+        </a>
+        <a class="entry" href="training.html" style="--hue: var(--flash-training)">
+          <span class="perm">drwx r-x</span><span class="dirname">/training</span>
+          <span class="desc">— runs · workouts · health</span>
           <span class="go">[ ENTER ]</span>
         </a>
         <a class="entry" href="exploration.html" style="--hue: var(--flash-exploration)">
@@ -187,11 +211,6 @@
         <a class="entry" href="workbench.html" style="--hue: var(--flash-workbench)">
           <span class="perm">drwx r-x</span><span class="dirname">/workbench</span>
           <span class="desc">— random projects · half-finished ideas</span>
-          <span class="go">[ ENTER ]</span>
-        </a>
-        <a class="entry" href="shipped.html" style="--hue: var(--flash-shipped)">
-          <span class="perm">drwx r-x</span><span class="dirname">/shipped</span>
-          <span class="desc">— finished projects · the trophy hall</span>
           <span class="go">[ ENTER ]</span>
         </a>
         <a class="entry" href="captures.html" style="--hue: var(--flash-captures)">
@@ -241,12 +260,9 @@
   <script>
     // ─── boot sequence ───────────────────────────────────
     const BOOT_LINES = [
-      ["RIC-MASSEY PERSONAL RELAY v1.0", ""],
       ["initializing uplink .......... ", "ok", "[OK]"],
       ["verifying visitor clearance .. ", "ok", "[FAMILY/FRIEND — GRANTED]"],
       ["locating subject ............. ", "ok", "[ACTIVE — LAST SEEN: BUILDING SOMETHING]"],
-      ["", ""],
-      ["you have reached ric's corner of the network.", ""],
       ["everything below is real and current.", "dim"],
     ];
 
@@ -308,9 +324,9 @@
 
     // ─── command line ────────────────────────────────────
     const PAGES = {
-      systems: "systems.html", velocity: "velocity.html",
-      exploration: "exploration.html", workbench: "workbench.html",
-      shipped: "shipped.html", captures: "captures.html",
+      systems: "systems.html", climbing: "climbing.html",
+      training: "training.html", exploration: "exploration.html",
+      workbench: "workbench.html", captures: "captures.html",
       log: "log.html", updates: "updates.html", map: "map.html",
     };
 

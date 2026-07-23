@@ -28,7 +28,12 @@
 
     .wrap { max-width: 880px; margin: 0 auto; padding: 2.2rem 1.25rem 4rem; }
 
-    nav { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; color: var(--faint); margin-bottom: 2.5rem; letter-spacing: 0.08em; }
+    .masthead { margin-bottom: 2.5rem; }
+    .masthead .brand { color: var(--silver); text-decoration: none; font-family: ui-monospace, Menlo, monospace; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.28em; }
+    .masthead .brand:hover { color: var(--amber-safe); }
+    .masthead .wing { font-family: ui-monospace, Menlo, monospace; color: var(--faint); font-size: 0.82rem; letter-spacing: 0.28em; }
+    .masthead .welcome { color: var(--faint); font-size: 0.9rem; margin: 0.4rem 0 0.9rem; }
+    nav { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; color: var(--faint); letter-spacing: 0.08em; display: flex; flex-wrap: wrap; gap: 0.3rem 1.1rem; }
     nav a { color: var(--faint); text-decoration: none; }
     nav a:hover { color: var(--amber-safe); }
     nav .here { color: var(--silver); }
@@ -76,16 +81,21 @@
 </head>
 <body>
   <div class="wrap">
-    <nav>
-      <a href="index.html">~/relay</a> / <span class="here">captures</span>
-      &nbsp;·&nbsp; <a href="systems.html">/systems</a>
-      &nbsp;·&nbsp; <a href="velocity.html">/velocity</a>
-      &nbsp;·&nbsp; <a href="exploration.html">/exploration</a>
-      &nbsp;·&nbsp; <a href="workbench.html">/workbench</a>
-      &nbsp;·&nbsp; <a href="shipped.html">/shipped</a>
-      &nbsp;·&nbsp; <a href="log.html">/log</a>
-      &nbsp;·&nbsp; <a href="updates.html">/updates</a>
-    </nav>
+    <header class="masthead">
+      <a class="brand" href="index.html">RIC'S RELAY</a><span class="wing"> · DARKROOM</span>
+      <p class="welcome">Come in — mind the red light, prints are developing.</p>
+      <nav>
+        <a href="index.html">← the relay</a>
+        <a href="systems.html">orrin's mind</a>
+        <a href="climbing.html">climbing</a>
+        <a href="training.html">training</a>
+        <a href="exploration.html">event horizon</a>
+        <a href="workbench.html">workbench</a>
+        <span class="here">darkroom</span>
+        <a href="log.html">the log</a>
+        <a href="updates.html">bulletins</a>
+      </nav>
+    </header>
 
     <h1>Captures</h1>
     <p class="subtitle">The contact sheet. Frames from trips, walls, machines, and dogs.</p>

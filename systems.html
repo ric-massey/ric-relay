@@ -36,7 +36,21 @@
 
     .wrap { position: relative; z-index: 1; max-width: 800px; margin: 0 auto; padding: 2.2rem 1.25rem 5rem; }
 
-    nav { font-size: 0.8rem; color: var(--whisper); margin-bottom: 2.2rem; letter-spacing: 0.08em; }
+    .masthead { margin-bottom: 2.4rem; }
+    .masthead .brand {
+      color: var(--axon);
+      text-decoration: none;
+      font-size: 0.85rem;
+      letter-spacing: 0.3em;
+      font-weight: 700;
+      text-shadow: 0 0 12px rgba(77, 232, 255, 0.4);
+    }
+    .masthead .brand:hover { text-shadow: 0 0 16px var(--axon); }
+    .masthead .wing { color: var(--whisper); font-size: 0.85rem; letter-spacing: 0.3em; }
+    .masthead .welcome { color: var(--whisper); font-size: 0.85rem; margin: 0.4rem 0 0.9rem; }
+    .masthead .welcome .lit { color: var(--dendrite); }
+
+    nav { font-size: 0.8rem; color: var(--whisper); letter-spacing: 0.08em; display: flex; flex-wrap: wrap; gap: 0.3rem 1.1rem; }
     nav a { color: var(--whisper); text-decoration: none; }
     nav a:hover { color: var(--axon); text-shadow: 0 0 10px var(--axon); }
     nav .here { color: var(--axon); }
@@ -143,16 +157,21 @@
   <canvas id="synapses" aria-hidden="true"></canvas>
 
   <div class="wrap">
-    <nav>
-      <a href="index.html">~/relay</a> / <span class="here">systems</span>
-      &nbsp;·&nbsp; <a href="velocity.html">/velocity</a>
-      &nbsp;·&nbsp; <a href="exploration.html">/exploration</a>
-      &nbsp;·&nbsp; <a href="workbench.html">/workbench</a>
-      &nbsp;·&nbsp; <a href="shipped.html">/shipped</a>
-      &nbsp;·&nbsp; <a href="captures.html">/captures</a>
-      &nbsp;·&nbsp; <a href="log.html">/log</a>
-      &nbsp;·&nbsp; <a href="updates.html">/updates</a>
-    </nav>
+    <header class="masthead">
+      <a class="brand" href="index.html">RIC'S RELAY</a><span class="wing"> · NEURAL WING</span>
+      <p class="welcome"><span class="lit">welcome, visitor.</span> you're inside the patient — please don't touch the memories.</p>
+      <nav>
+        <a href="index.html">← the relay</a>
+        <span class="here">orrin's mind</span>
+        <a href="climbing.html">climbing</a>
+        <a href="training.html">training</a>
+        <a href="exploration.html">event horizon</a>
+        <a href="workbench.html">workbench</a>
+        <a href="captures.html">darkroom</a>
+        <a href="log.html">the log</a>
+        <a href="updates.html">bulletins</a>
+      </nav>
+    </header>
 
     <div class="entering">CRANIAL ACCESS GRANTED — YOU ARE NOW INSIDE:</div>
     <h1>ORRIN</h1>

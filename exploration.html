@@ -34,7 +34,12 @@
 
     .wrap { position: relative; z-index: 1; max-width: 820px; margin: 0 auto; padding: 2.2rem 1.25rem 5rem; }
 
-    nav { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; color: var(--faint); margin-bottom: 3.5rem; letter-spacing: 0.08em; }
+    .masthead { margin-bottom: 3rem; }
+    .masthead .brand { color: var(--star); text-decoration: none; font-family: ui-monospace, Menlo, monospace; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.3em; }
+    .masthead .brand:hover { color: var(--nebula); }
+    .masthead .wing { font-family: ui-monospace, Menlo, monospace; color: var(--faint); font-size: 0.82rem; letter-spacing: 0.3em; }
+    .masthead .welcome { color: var(--faint); font-size: 0.88rem; margin: 0.4rem 0 0.9rem; font-weight: 300; }
+    nav { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; color: var(--faint); letter-spacing: 0.08em; display: flex; flex-wrap: wrap; gap: 0.3rem 1.1rem; }
     nav a { color: var(--faint); text-decoration: none; }
     nav a:hover { color: var(--nebula); }
     nav .here { color: var(--star); }
@@ -103,16 +108,21 @@
   <canvas id="dust" aria-hidden="true"></canvas>
 
   <div class="wrap">
-    <nav>
-      <a href="index.html">~/relay</a> / <span class="here">exploration</span>
-      &nbsp;·&nbsp; <a href="systems.html">/systems</a>
-      &nbsp;·&nbsp; <a href="velocity.html">/velocity</a>
-      &nbsp;·&nbsp; <a href="workbench.html">/workbench</a>
-      &nbsp;·&nbsp; <a href="shipped.html">/shipped</a>
-      &nbsp;·&nbsp; <a href="captures.html">/captures</a>
-      &nbsp;·&nbsp; <a href="log.html">/log</a>
-      &nbsp;·&nbsp; <a href="updates.html">/updates</a>
-    </nav>
+    <header class="masthead">
+      <a class="brand" href="index.html">RIC'S RELAY</a><span class="wing"> · DEEP SPACE</span>
+      <p class="welcome">Welcome aboard. Mind the airlock.</p>
+      <nav>
+        <a href="index.html">← the relay</a>
+        <a href="systems.html">orrin's mind</a>
+        <a href="climbing.html">climbing</a>
+        <a href="training.html">training</a>
+        <span class="here">event horizon</span>
+        <a href="workbench.html">workbench</a>
+        <a href="captures.html">darkroom</a>
+        <a href="log.html">the log</a>
+        <a href="updates.html">bulletins</a>
+      </nav>
+    </header>
 
     <header>
       <h1>Exploration</h1>
