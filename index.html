@@ -19,6 +19,8 @@
       --flash-log: #ff8ae0;
       --flash-workbench: #ffe14d;
       --flash-map: #ff3b30;
+      --flash-shipped: #cfa14d;
+      --flash-updates: #f2f2f2;
     }
 
     * { box-sizing: border-box; margin: 0; }
@@ -187,6 +189,11 @@
           <span class="desc">— random projects · half-finished ideas</span>
           <span class="go">[ ENTER ]</span>
         </a>
+        <a class="entry" href="shipped.html" style="--hue: var(--flash-shipped)">
+          <span class="perm">drwx r-x</span><span class="dirname">/shipped</span>
+          <span class="desc">— finished projects · the trophy hall</span>
+          <span class="go">[ ENTER ]</span>
+        </a>
         <a class="entry" href="captures.html" style="--hue: var(--flash-captures)">
           <span class="perm">drwx r-x</span><span class="dirname">/captures</span>
           <span class="desc">— photographic records</span>
@@ -195,6 +202,11 @@
         <a class="entry" href="log.html" style="--hue: var(--flash-log)">
           <span class="perm">drwx r-x</span><span class="dirname">/log</span>
           <span class="desc">— transmissions · write-ups · VOD reviews</span>
+          <span class="go">[ ENTER ]</span>
+        </a>
+        <a class="entry" href="updates.html" style="--hue: var(--flash-updates)">
+          <span class="perm">drwx r-x</span><span class="dirname">/updates</span>
+          <span class="desc">— what's new on this site · auto-generated</span>
           <span class="go">[ ENTER ]</span>
         </a>
         <a class="entry" href="map.html" style="--hue: var(--flash-map)">
@@ -298,7 +310,8 @@
     const PAGES = {
       systems: "systems.html", velocity: "velocity.html",
       exploration: "exploration.html", workbench: "workbench.html",
-      captures: "captures.html", log: "log.html", map: "map.html",
+      shipped: "shipped.html", captures: "captures.html",
+      log: "log.html", updates: "updates.html", map: "map.html",
     };
 
     const COMMANDS = {
