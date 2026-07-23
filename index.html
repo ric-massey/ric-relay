@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RIC-MASSEY // PERSONAL RELAY</title>
+  <meta name="description" content="Ric Massey's personal relay — cognition, velocity, exploration.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230a0a0a'/><text y='.9em' font-size='70' x='15' fill='%23ffb000'>▮</text></svg>">
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --phosphor: #ffb000;
+      --phosphor-dim: #8a6200;
+      --phosphor-faint: #3d2c00;
+      --flash-systems: #38ff9c;
+      --flash-velocity: #ff4d3d;
+      --flash-exploration: #7a5cff;
+      --flash-captures: #4dc9ff;
+      --flash-log: #ff8ae0;
+      --flash-workbench: #ffe14d;
+      --flash-map: #ff3b30;
+    }
+
+    * { box-sizing: border-box; margin: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--phosphor);
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 15px;
+      line-height: 1.7;
+      min-height: 100vh;
+      /* concrete grain */
+      background-image:
+        radial-gradient(ellipse at 20% 10%, rgba(255, 176, 0, 0.04), transparent 50%),
+        repeating-linear-gradient(0deg, transparent 0 2px, rgba(255,255,255,0.012) 2px 4px),
+        repeating-linear-gradient(90deg, transparent 0 3px, rgba(255,255,255,0.008) 3px 6px);
+    }
+
+    /* scanlines + vignette over everything */
+    body::before {
+      content: "";
+      position: fixed; inset: 0;
+      pointer-events: none;
+      background:
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.22) 0 1px, transparent 1px 3px),
+        radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
+      z-index: 10;
+    }
+
+    .wrap { max-width: 780px; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
+
+    .frame {
+      border: 1px solid var(--phosphor-faint);
+      padding: 1.5rem 1.6rem;
+      box-shadow: 0 0 40px rgba(255, 176, 0, 0.05) inset;
+    }
+
+    .frame-label {
+      color: var(--phosphor-dim);
+      font-size: 0.75rem;
+      letter-spacing: 0.25em;
+      margin-bottom: 1.4rem;
+    }
+
+    #boot { white-space: pre-wrap; min-height: 9.5em; }
+    #boot .ok { color: var(--flash-systems); }
+    #boot .dim { color: var(--phosphor-dim); }
+
+    .cursor { animation: blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* directory */
+    #dir { margin-top: 1.8rem; }
+    #dir.hidden, #tx-section.hidden, #cmdline.hidden { visibility: hidden; }
+
+    .dir-head { color: var(--phosphor-dim); font-size: 0.8rem; margin-bottom: 0.7rem; letter-spacing: 0.15em; }
+
+    a.entry {
+      display: flex;
+      align-items: baseline;
+      gap: 0.9rem;
+      color: var(--phosphor);
+      text-decoration: none;
+      padding: 0.55rem 0.8rem;
+      margin-bottom: 0.45rem;
+      border: 1px solid var(--phosphor-faint);
+      border-left: 3px solid var(--phosphor-dim);
+      cursor: pointer;
+    }
+
+    a.entry .perm { color: var(--phosphor-dim); flex-shrink: 0; }
+    a.entry .desc { color: var(--phosphor-dim); }
+    a.entry .dirname { font-weight: 700; flex-shrink: 0; }
+    a.entry .go {
+      margin-left: auto;
+      color: var(--phosphor-dim);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    a.entry:hover, a.entry:focus-visible {
+      color: var(--hue);
+      border-color: var(--hue);
+      background: color-mix(in srgb, var(--hue) 9%, transparent);
+      text-shadow: 0 0 12px var(--hue);
+      outline: none;
+    }
+    a.entry:hover .perm, a.entry:hover .desc, a.entry:hover .go,
+    a.entry:focus-visible .perm, a.entry:focus-visible .desc, a.entry:focus-visible .go { color: var(--hue); }
+    a.entry:hover .go::after, a.entry:focus-visible .go::after { content: " →"; }
+
+    /* transmissions */
+    #tx-section { margin-top: 2.2rem; }
+    .tx { padding: 0.3rem 0; }
+    .tx .stamp { color: var(--phosphor-dim); }
+
+    /* command line */
+    #cmdline {
+      margin-top: 2.2rem;
+      border-top: 1px dashed var(--phosphor-faint);
+      padding-top: 1.2rem;
+    }
+
+    #output { white-space: pre-wrap; color: var(--phosphor-dim); max-height: 14em; overflow-y: auto; }
+    #output .bright { color: var(--phosphor); }
+
+    .prompt-row { display: flex; gap: 0.5rem; align-items: baseline; }
+    .prompt { color: var(--flash-systems); white-space: nowrap; }
+
+    #cmd {
+      background: transparent;
+      border: none;
+      color: var(--phosphor);
+      font: inherit;
+      flex: 1;
+      caret-color: var(--phosphor);
+      outline: none;
+    }
+
+    footer {
+      margin-top: 3rem;
+      color: var(--phosphor-faint);
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      display: flex;
+      justify-content: space-between;
+    }
+    footer .glyph { cursor: help; color: var(--phosphor-dim); }
+
+    @media (max-width: 600px) {
+      body { font-size: 13.5px; }
+      a.entry { flex-wrap: wrap; row-gap: 0.1rem; }
+      a.entry .desc { flex-basis: 100%; order: 3; }
+      a.entry .go { margin-left: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="frame">
+      <div class="frame-label">RIC-MASSEY PERSONAL RELAY // NODE 01 // FOR FAMILY &amp; FRIENDS</div>
+
+      <div id="boot" aria-live="polite"></div>
+
+      <nav id="dir" class="hidden" aria-label="Site directory">
+        <div class="dir-head">MOUNTED DIRECTORIES — CLICK ANY TO ENTER:</div>
+        <a class="entry" href="systems.html" style="--hue: var(--flash-systems)">
+          <span class="perm">drwx r-x</span><span class="dirname">/systems</span>
+          <span class="desc">— cognition · code · ORRIN runtime</span>
+          <span class="go">[ ENTER ]</span>
+        </a>
+        <a class="entry" href="velocity.html" style="--hue: var(--flash-velocity)">
+          <span class="perm">drwx r-x</span><span class="dirname">/velocity</span>
+          <span class="desc">— climbing · running · garage</span>
+          <span class="go">[ ENTER ]</span>
+        </a>
+        <a class="entry" href="exploration.html" style="--hue: var(--flash-exploration)">
+          <span class="perm">drwx r-x</span><span class="dirname">/exploration</span>
+          <span class="desc">— space · experiments · the game</span>
+          <span class="go">[ ENTER ]</span>
+        </a>
+        <a class="entry" href="workbench.html" style="--hue: var(--flash-workbench)">
+          <span class="perm">drwx r-x</span><span class="dirname">/workbench</span>
+          <span class="desc">— random projects · half-finished ideas</span>
+          <span class="go">[ ENTER ]</span>
+        </a>
+        <a class="entry" href="captures.html" style="--hue: var(--flash-captures)">
+          <span class="perm">drwx r-x</span><span class="dirname">/captures</span>
+          <span class="desc">— photographic records</span>
+          <span class="go">[ ENTER ]</span>
+        </a>
+        <a class="entry" href="log.html" style="--hue: var(--flash-log)">
+          <span class="perm">drwx r-x</span><span class="dirname">/log</span>
+          <span class="desc">— transmissions · write-ups · VOD reviews</span>
+          <span class="go">[ ENTER ]</span>
+        </a>
+        <a class="entry" href="map.html" style="--hue: var(--flash-map)">
+          <span class="perm">drwx ---</span><span class="dirname">/map</span>
+          <span class="desc">— crew access only</span>
+          <span class="go">[ LOCKED ]</span>
+        </a>
+      </nav>
+
+      <section id="tx-section" class="hidden">
+        <div class="dir-head">LATEST TRANSMISSIONS:</div>
+        <div id="transmissions"></div>
+      </section>
+
+      <div id="cmdline" class="hidden">
+        <div id="output">type `help` for available commands. or just click a directory above.</div>
+        <div class="prompt-row">
+          <label class="prompt" for="cmd">guest@ric-relay:~$</label>
+          <input id="cmd" autocomplete="off" spellcheck="false" aria-label="terminal command input">
+          <span class="cursor">▮</span>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <span>EST. 2026 · SIGNAL NOMINAL</span>
+      <span class="glyph" title="cognition is not in the model. it's in what surrounds it.">▮▮▮</span>
+    </footer>
+  </div>
+
+  <script src="notes.js"></script>
+  <script>
+    // ─── boot sequence ───────────────────────────────────
+    const BOOT_LINES = [
+      ["RIC-MASSEY PERSONAL RELAY v1.0", ""],
+      ["initializing uplink .......... ", "ok", "[OK]"],
+      ["verifying visitor clearance .. ", "ok", "[FAMILY/FRIEND — GRANTED]"],
+      ["locating subject ............. ", "ok", "[ACTIVE — LAST SEEN: BUILDING SOMETHING]"],
+      ["", ""],
+      ["you have reached ric's corner of the network.", ""],
+      ["everything below is real and current.", "dim"],
+    ];
+
+    const boot = document.getElementById("boot");
+    let li = 0;
+    function nextLine() {
+      if (li >= BOOT_LINES.length) return reveal();
+      const [text, cls, suffix] = BOOT_LINES[li++];
+      const div = document.createElement("div");
+      div.textContent = text;
+      if (cls === "dim") div.className = "dim";
+      if (suffix) {
+        const s = document.createElement("span");
+        s.className = cls;
+        s.textContent = suffix;
+        div.appendChild(s);
+      }
+      boot.appendChild(div);
+      setTimeout(nextLine, li <= 1 ? 350 : 170);
+    }
+
+    function reveal() {
+      for (const id of ["dir", "tx-section", "cmdline"]) {
+        document.getElementById(id).classList.remove("hidden");
+      }
+    }
+
+    // let impatient people skip
+    addEventListener("keydown", skipBoot, { once: true });
+    addEventListener("click", skipBoot, { once: true });
+    function skipBoot() {
+      if (li < BOOT_LINES.length) {
+        boot.innerHTML = "";
+        for (const [text, cls, suffix] of BOOT_LINES) {
+          const div = document.createElement("div");
+          div.textContent = text + (suffix || "");
+          if (cls === "dim") div.className = "dim";
+          boot.appendChild(div);
+        }
+        li = BOOT_LINES.length;
+        reveal();
+      }
+    }
+    nextLine();
+
+    // ─── transmissions (from notes.js) ───────────────────
+    const txBox = document.getElementById("transmissions");
+    (typeof RIC_NOTES !== "undefined" ? RIC_NOTES : []).slice(0, 4).forEach((n) => {
+      const div = document.createElement("div");
+      div.className = "tx";
+      const stamp = document.createElement("span");
+      stamp.className = "stamp";
+      stamp.textContent = `[${n.date}] `;
+      const body = document.createElement("span");
+      body.textContent = n.text;
+      div.append(stamp, body);
+      txBox.appendChild(div);
+    });
+
+    // ─── command line ────────────────────────────────────
+    const PAGES = {
+      systems: "systems.html", velocity: "velocity.html",
+      exploration: "exploration.html", workbench: "workbench.html",
+      captures: "captures.html", log: "log.html", map: "map.html",
+    };
+
+    const COMMANDS = {
+      help: () =>
+        "available commands:\n" +
+        "  ls              list directories\n" +
+        "  open <dir>      jump to a section (e.g. `open systems`)\n" +
+        "  whoami          visitor identity\n" +
+        "  status          what ric is up to\n" +
+        "  clear           wipe the screen\n" +
+        "…there may be undocumented commands.",
+      ls: () => Object.keys(PAGES).map((p) => `/${p}`).join("   "),
+      whoami: () => "guest — but if you're reading this, you're probably family. hi.",
+      status: () => "subject is alive, caffeinated, and pushing commits to ORRIN.\nsee /systems for live telemetry.",
+      clear: () => { out.textContent = ""; return null; },
+      // ─── undocumented ───
+      orrin: () =>
+        "SUBJECT: ORRIN\nstate: persistent. goal-driven. still running.\n" +
+        "note: do not power down. it remembers.\n→ full diagnostics in /systems",
+      apex: () => "pulling VOD archive...\naim rating: CLASSIFIED\nrotation IQ: improving\n→ reviews land in /log",
+      sudo: () => "nice try. this relay answers to ric only.",
+      unlock: () => "crew authentication required.\nif you are the brother or the friend: you know who to ask.",
+      coffee: () => "brewing... ☕ dispensed. carry on.",
+      exit: () => "there is no exit. there is only the relay.",
+    };
+
+    const out = document.getElementById("output");
+    const cmd = document.getElementById("cmd");
+
+    cmd.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      const raw = cmd.value.trim();
+      cmd.value = "";
+      if (!raw) return;
+      print(`$ ${raw}`, true);
+
+      const [verb, ...rest] = raw.toLowerCase().split(/\s+/);
+      const arg = rest.join(" ").replace(/^\//, "");
+
+      if ((verb === "open" || verb === "cd") && PAGES[arg]) {
+        print(`entering /${arg} ...`);
+        setTimeout(() => (location.href = PAGES[arg]), 400);
+      } else if (PAGES[verb] && !arg) {
+        print(`entering /${verb} ...`);
+        setTimeout(() => (location.href = PAGES[verb]), 400);
+      } else if (COMMANDS[verb]) {
+        const result = COMMANDS[verb]();
+        if (result) print(result);
+      } else {
+        print(`command not recognized: ${verb}\ntype \`help\` for options.`);
+      }
+      out.scrollTop = out.scrollHeight;
+    });
+
+    function print(text, bright) {
+      const div = document.createElement("div");
+      if (bright) div.className = "bright";
+      div.textContent = text;
+      out.appendChild(div);
+    }
+
+    // clicking anywhere in the cmdline area focuses the input
+    document.getElementById("cmdline").addEventListener("click", () => cmd.focus());
+  </script>
+</body>
+</html>

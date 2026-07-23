@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>/captures — photographic records</title>
+  <meta name="description" content="Ric Massey's photographic records.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23141210'/><text y='.85em' font-size='70' x='15'>📷</text></svg>">
+  <style>
+    :root {
+      --darkroom: #141210;
+      --paper: #1e1b18;
+      --amber-safe: #c9502c; /* safelight */
+      --silver: #d8d3ca;
+      --faint: #7d766c;
+      --edge: #2c2823;
+    }
+
+    * { box-sizing: border-box; margin: 0; }
+
+    body {
+      background: var(--darkroom);
+      color: var(--silver);
+      font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.65;
+      background-image: radial-gradient(ellipse at 50% -20%, rgba(201, 80, 44, 0.09), transparent 60%);
+    }
+
+    .wrap { max-width: 880px; margin: 0 auto; padding: 2.2rem 1.25rem 4rem; }
+
+    nav { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; color: var(--faint); margin-bottom: 2.5rem; letter-spacing: 0.08em; }
+    nav a { color: var(--faint); text-decoration: none; }
+    nav a:hover { color: var(--amber-safe); }
+    nav .here { color: var(--silver); }
+
+    h1 {
+      font-weight: 300;
+      font-size: 1.9rem;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--amber-safe);
+    }
+
+    .subtitle { color: var(--faint); margin-top: 0.4rem; margin-bottom: 2.5rem; font-weight: 300; }
+
+    .sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1.1rem; }
+
+    figure {
+      margin: 0;
+      background: var(--paper);
+      border: 1px solid var(--edge);
+      padding: 0.55rem 0.55rem 0.4rem;
+    }
+
+    figure img { width: 100%; height: 200px; object-fit: cover; display: block; filter: contrast(1.03); }
+
+    figcaption {
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.7rem;
+      color: var(--faint);
+      letter-spacing: 0.08em;
+      padding-top: 0.45rem;
+    }
+
+    .empty {
+      border: 1px dashed var(--edge);
+      background: var(--paper);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.8rem;
+      letter-spacing: 0.18em;
+      color: var(--faint);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a href="index.html">~/relay</a> / <span class="here">captures</span>
+      &nbsp;·&nbsp; <a href="systems.html">/systems</a>
+      &nbsp;·&nbsp; <a href="velocity.html">/velocity</a>
+      &nbsp;·&nbsp; <a href="exploration.html">/exploration</a>
+      &nbsp;·&nbsp; <a href="workbench.html">/workbench</a>
+      &nbsp;·&nbsp; <a href="log.html">/log</a>
+    </nav>
+
+    <h1>Captures</h1>
+    <p class="subtitle">The contact sheet. Frames from trips, walls, machines, and dogs.</p>
+
+    <div id="empty" class="empty" hidden>NO EXPOSURES DEVELOPED YET — FILM STILL IN THE CAMERA</div>
+    <div id="sheet" class="sheet"></div>
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════
+    //  TO ADD PHOTOS:
+    //  1. Drop image files into the photos/ folder
+    //  2. Add an entry for each at the TOP of this list
+    // ═══════════════════════════════════════════════════════
+
+    const FRAMES = [
+      // { src: "photos/example.jpg", caption: "FRAME 001 — what this is" },
+    ];
+
+    const sheet = document.getElementById("sheet");
+    if (FRAMES.length === 0) document.getElementById("empty").hidden = false;
+    for (const f of FRAMES) {
+      const fig = document.createElement("figure");
+      const img = document.createElement("img");
+      img.src = f.src;
+      img.alt = f.caption || "";
+      img.loading = "lazy";
+      fig.appendChild(img);
+      const cap = document.createElement("figcaption");
+      cap.textContent = f.caption || "";
+      fig.appendChild(cap);
+      sheet.appendChild(fig);
+    }
+  </script>
+</body>
+</html>
