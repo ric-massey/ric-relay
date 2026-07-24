@@ -72,8 +72,8 @@ and this file. Keep the label set in sync everywhere.
 ## Projects and photos
 
 - **Sub-projects** live in `projects/<name>/` (or a single `.html`) and are **linked
-  from the room that fits them** — not given their own room. Current: `spacetime` →
-  Exploration; `the-shape-of-harm`, `autism-reflection.html`, and
+  from the room that fits them** — not given their own room. Current: `spacetime` and
+  `farlight` → Exploration; `the-shape-of-harm`, `autism-reflection.html`, and
   `state-of-mind-line` → Psyche; `siege-conductor` → Workbench. Each is
   self-contained and may carry its own assets/fonts; the "no dependencies" rule is for
   the relay's own room pages, not embedded projects. Keep their internal links relative.

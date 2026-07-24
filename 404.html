@@ -58,11 +58,17 @@
     <div class="label">RIC-MASSEY PERSONAL RELAY // ERR 404</div>
     <h1>404</h1>
     <p class="tag">signal lost.</p>
-    <p>the directory you tried to reach isn't mounted on this relay — bad address,
+    <p id="lost-reason">the directory you tried to reach isn't mounted on this relay — bad address,
       moved, or never existed. <span class="cursor">▮</span></p>
     <p>no coordinates were harmed. head back to the hub and pick a room.</p>
     <a class="home" href="index.html">return to the relay</a>
   </div>
   <script src="effects.js"></script>
+  <script>
+    if (new URLSearchParams(location.search).get("from") === "relay") {
+      document.getElementById("lost-reason").innerHTML =
+        "requested failure received. the relay has successfully lost itself. <span class=\"cursor\">▮</span>";
+    }
+  </script>
 </body>
 </html>

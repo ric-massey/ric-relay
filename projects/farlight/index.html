@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>FARLIGHT — feel prototype</title>
+<meta name="description" content="FARLIGHT is Ric's playable experiment in momentum, contact, and clean landings." />
+<script src="../relay-return.js" data-home="../../index.html" defer></script>
+<style>
+  :root{
+    --void:#060912;
+    --void2:#0b1122;
+    --surface:#4fc3f7;
+    --surface-deep:#111f38;
+    --machine:#ffb454;
+    --machine-hot:#ffe9c2;
+    --clean:#a7edff;
+    --slam:#ff5c6e;
+    --violet:#a679ff;
+    --text:#cfd9ef;
+    --text-dim:#5c6d90;
+    --mono: ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--mono)}
+  #wrap{position:fixed;inset:0}
+  canvas{display:block;width:100%;height:100%}
+
+  /* HUD */
+  .hud{position:absolute;pointer-events:none;user-select:none;-webkit-user-select:none}
+  .readout{top:22px;left:26px}
+  .stat{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+  .stat .label{font-size:10px;letter-spacing:.28em;color:var(--text-dim);text-transform:uppercase;min-width:74px}
+  .stat .val{font-size:22px;letter-spacing:.02em;color:var(--text);font-variant-numeric:tabular-nums}
+  .stat .val.speed{color:var(--surface)}
+  .stat small{font-size:10px;color:var(--text-dim);letter-spacing:.2em}
+
+  .best{top:22px;right:26px;text-align:right}
+  .best .label{font-size:10px;letter-spacing:.28em;color:var(--text-dim);text-transform:uppercase}
+  .best .val{font-size:15px;color:var(--machine);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+
+  .combo{top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;opacity:0;transition:opacity .12s}
+  .combo .tag{font-size:12px;letter-spacing:.4em;text-transform:uppercase}
+  .combo .n{font-size:34px;letter-spacing:.05em;margin-top:2px}
+
+  .hint{bottom:20px;left:50%;transform:translateX(-50%);text-align:center;
+        font-size:11px;letter-spacing:.22em;color:var(--text-dim);text-transform:uppercase;
+        transition:opacity .6s}
+  .hint b{color:var(--surface);font-weight:600}
+  .hint .sep{color:#33405e;margin:0 8px}
+
+  .mute{position:absolute;bottom:18px;right:22px;pointer-events:auto;cursor:pointer;
+        font-size:10px;letter-spacing:.24em;color:var(--text-dim);text-transform:uppercase;
+        border:1px solid #1e2b46;border-radius:2px;padding:6px 10px;background:rgba(10,16,32,.5)}
+  .mute:hover{color:var(--text);border-color:#33456b}
+
+  .touch-controls{display:none}
+
+  /* Start overlay */
+  #overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+           background:radial-gradient(120% 90% at 50% 40%, rgba(10,16,34,.55), rgba(4,7,16,.92));
+           text-align:center;cursor:pointer;z-index:5}
+  #overlay.hidden{display:none}
+  .mark{font-size:clamp(40px,9vw,92px);letter-spacing:.34em;font-weight:600;color:var(--text);
+        text-indent:.34em;line-height:1}
+  .mark .l{color:var(--machine);text-shadow:0 0 26px rgba(255,180,84,.5)}
+  .sub{margin-top:18px;font-size:11px;letter-spacing:.4em;color:var(--text-dim);text-transform:uppercase}
+  .controls{margin-top:40px;display:grid;grid-template-columns:auto auto;gap:9px 26px;
+            font-size:12px;letter-spacing:.06em;color:var(--text-dim)}
+  .controls .k{color:var(--text);text-align:right}
+  .controls .k b{display:inline-block;min-width:20px;padding:2px 7px;margin-left:4px;
+                 border:1px solid #2a3a5c;border-radius:3px;color:var(--surface);font-size:11px;letter-spacing:.05em}
+  .go{margin-top:40px;font-size:12px;letter-spacing:.34em;color:var(--machine);text-transform:uppercase;
+      animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
+
+  @media (pointer:coarse){
+    .hint{display:none}
+    .touch-controls{
+      position:absolute;left:50%;bottom:max(68px,calc(env(safe-area-inset-bottom) + 68px));z-index:4;
+      transform:translateX(-50%);display:flex;gap:7px;align-items:center;
+    }
+    .touch-controls button{
+      min-width:48px;min-height:44px;padding:8px 10px;border:1px solid #2a3a5c;border-radius:4px;
+      background:rgba(10,16,32,.82);color:var(--surface);font:600 10px/1 var(--mono);
+      letter-spacing:.09em;text-transform:uppercase;touch-action:none;-webkit-user-select:none;user-select:none;
+    }
+    .touch-controls button[data-action="thr"]{color:var(--machine);border-color:#5e4932}
+    .touch-controls button:active{background:#14233d;color:#fff}
+    .controls{display:none}
+    .go{margin-top:28px}
+  }
+  @media (max-width:520px){
+    .readout{top:18px;left:14px}.best{top:18px;right:14px}
+    .stat .label{min-width:54px}.stat .val{font-size:18px}
+    .touch-controls{gap:4px}
+    .touch-controls button{min-width:42px;padding:8px 7px;font-size:9px}
+  }
+  @media (prefers-reduced-motion: reduce){.go{animation:none;opacity:.9}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+
+  <div class="hud readout">
+    <div class="stat"><span class="label">Speed</span><span class="val speed" id="spd">0</span><small>u/s</small></div>
+    <div class="stat"><span class="label">Distance</span><span class="val" id="dist">0</span><small>u</small></div>
+  </div>
+
+  <div class="hud best">
+    <div class="label">Furthest run</div>
+    <div class="val" id="best">0</div>
+  </div>
+
+  <div class="hud combo" id="combo">
+    <div class="tag" id="comboTag">clean</div>
+    <div class="n" id="comboN">×2</div>
+  </div>
+
+  <div class="hud hint" id="hint">
+    <b>hold Space</b> dive <span style="color:#33405e;margin:0 7px">/</span>
+    <b>W</b> launch <span style="color:#33405e;margin:0 7px">/</span>
+    <b>← →</b> tilt to match the slope <span style="color:#33405e;margin:0 7px">/</span>
+    <b>S</b> brake
+  </div>
+
+  <div class="mute" id="mute">sound: off</div>
+
+  <div class="touch-controls" aria-label="FARLIGHT touch controls">
+    <button type="button" data-action="left" aria-label="Tilt left">←</button>
+    <button type="button" data-action="thr">Dive</button>
+    <button type="button" data-action="launch">Launch</button>
+    <button type="button" data-action="brake">Brake</button>
+    <button type="button" data-action="right" aria-label="Tilt right">→</button>
+  </div>
+
+  <div id="overlay">
+    <div class="mark">FAR<span class="l">L</span>IGHT</div>
+    <div class="sub">movement · feel prototype</div>
+    <div class="controls">
+      <div class="k">dive / throttle<b>Space</b></div><div style="text-align:left">build speed into a slope</div>
+      <div class="k">launch<b>W</b></div><div style="text-align:left">leave the surface, keep your momentum</div>
+      <div class="k">tilt<b>←</b><b>→</b></div><div style="text-align:left">rotate to meet the ground flat</div>
+      <div class="k">brake<b>S</b></div><div style="text-align:left">slow down to read what's ahead</div>
+    </div>
+    <div class="go">click, tap, or press space to launch</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ------------------------------------------------------------------ *
+ * FARLIGHT — feel prototype
+ * A 2D distillation of one idea: momentum through contact.
+ * Grazing landings keep your speed. Slamming spends it.
+ * ------------------------------------------------------------------ */
+
+const CFG = {
+  G: 2100,            // gravity (px/s^2)
+  throttle: 1500,     // accel while diving on-surface
+  airThrottle: 0,     // no free flight — orientation only in air
+  dragK: 0.42,        // linear drag on surface
+  brake: 2600,        // brake decel
+  launchKick: 220,    // perpendicular kick when you press launch
+  maxSpeed: 1900,
+  minSpeed: 40,
+  tiltRate: 3.9,      // rad/s craft rotation in air
+  // landing tolerances (radians): angle between velocity and surface
+  grazeMax: 0.32,     // <= this = near-lossless
+  slamMin: 1.02,      // >= this = brutal
+  noseTol: 0.45,      // nose-vs-surface tolerance for a "clean" bonus
+};
+
+// ---- terrain: deterministic, infinite, sampled from a function -------
+function terrainY(x){
+  return 300
+    + 168*Math.sin(x*0.00090)
+    + 96 *Math.sin(x*0.00220 + 1.3)
+    + 40 *Math.sin(x*0.00600 + 0.4)
+    + 15 *Math.sin(x*0.01500 + 2.1);
+}
+function terrainSlope(x){
+  return 168*0.00090*Math.cos(x*0.00090)
+    +    96*0.00220*Math.cos(x*0.00220 + 1.3)
+    +    40*0.00600*Math.cos(x*0.00600 + 0.4)
+    +    15*0.01500*Math.cos(x*0.01500 + 2.1);
+}
+
+// ---- canvas / DPR ----------------------------------------------------
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = Math.floor(W*DPR); canvas.height = Math.floor(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', resize); resize();
+
+// ---- input -----------------------------------------------------------
+const keys = {};
+const down = c => keys[c]=true, up = c => keys[c]=false;
+window.addEventListener('keydown', e=>{
+  const k=e.key.toLowerCase();
+  if(['arrowleft','arrowright','arrowdown',' '].includes(k)) e.preventDefault();
+  if(k===' '||k==='spacebar') down('thr');
+  else if(k==='w'||k==='arrowup') down('launch');
+  else if(k==='s'||k==='arrowdown') down('brake');
+  else if(k==='arrowleft'||k==='a') down('left');
+  else if(k==='arrowright'||k==='d') down('right');
+  else if(k==='r') resetRun();
+  else if(k==='m') toggleMute();
+  if(!started) start();
+});
+window.addEventListener('keyup', e=>{
+  const k=e.key.toLowerCase();
+  if(k===' '||k==='spacebar') up('thr');
+  else if(k==='w'||k==='arrowup') up('launch');
+  else if(k==='s'||k==='arrowdown') up('brake');
+  else if(k==='arrowleft'||k==='a') up('left');
+  else if(k==='arrowright'||k==='d') up('right');
+});
+canvas.addEventListener('mousedown', ()=>{ down('thr'); if(!started) start(); });
+window.addEventListener('mouseup', ()=> up('thr'));
+canvas.addEventListener('touchstart', e=>{ e.preventDefault(); down('thr'); if(!started) start(); }, {passive:false});
+window.addEventListener('touchend', ()=> up('thr'));
+
+document.querySelectorAll('.touch-controls button').forEach(button=>{
+  const action=button.dataset.action;
+  const press=e=>{ e.preventDefault(); e.stopPropagation(); down(action); if(!started) start(); };
+  const release=e=>{ e.preventDefault(); e.stopPropagation(); up(action); };
+  button.addEventListener('pointerdown',press);
+  button.addEventListener('pointerup',release);
+  button.addEventListener('pointercancel',release);
+  button.addEventListener('pointerleave',release);
+});
+
+// ---- audio (subtle, gated on first gesture) --------------------------
+let AC=null, hum=null, humGain=null, humFilt=null, audioOn=false;
+function initAudio(){
+  try{
+    AC = new (window.AudioContext||window.webkitAudioContext)();
+    hum = AC.createOscillator(); hum.type='sawtooth';
+    humFilt = AC.createBiquadFilter(); humFilt.type='lowpass'; humFilt.frequency.value=420;
+    humGain = AC.createGain(); humGain.gain.value=0;
+    hum.connect(humFilt); humFilt.connect(humGain); humGain.connect(AC.destination);
+    hum.frequency.value=70; hum.start();
+  }catch(e){ AC=null; }
+}
+function blip(freq, dur, type, vol){
+  if(!AC||!audioOn) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'sine'; o.frequency.value=freq;
+    g.gain.value=0; o.connect(g); g.connect(AC.destination);
+    const t=AC.currentTime;
+    g.gain.linearRampToValueAtTime(vol||0.12, t+0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.start(t); o.stop(t+dur+0.02);
+  }catch(e){}
+}
+const muteEl=document.getElementById('mute');
+function toggleMute(){
+  if(!AC) initAudio();
+  audioOn=!audioOn;
+  if(AC&&AC.state==='suspended') AC.resume();
+  muteEl.textContent = 'sound: '+(audioOn?'on':'off');
+}
+muteEl.addEventListener('click', toggleMute);
+
+// ---- particles -------------------------------------------------------
+const parts=[];
+function spark(x,y,n,color,spread,speed,life){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2, s=speed*(0.3+Math.random());
+    parts.push({x,y,vx:Math.cos(a)*s*spread,vy:Math.sin(a)*s*spread - speed*0.2,
+      life:life*(0.6+Math.random()*0.6), t:0, color});
+  }
+}
+function updateParts(dt){
+  for(let i=parts.length-1;i>=0;i--){
+    const p=parts[i]; p.t+=dt;
+    if(p.t>=p.life){ parts.splice(i,1); continue; }
+    p.vy += 900*dt; p.x+=p.vx*dt; p.y+=p.vy*dt;
+  }
+}
+
+// ---- game state ------------------------------------------------------
+let state, started=false, bestDist=0;
+function resetRun(){
+  state = {
+    mode:'ground',       // 'ground' | 'air'
+    x: 0, y: terrainY(0),
+    v: 260,              // scalar speed along surface
+    vx:0, vy:0,          // world velocity in air
+    angle:0,             // craft orientation (air)
+    startX: 0,
+    combo:0, comboTimer:0,
+    shake:0, flash:0, flashColor:'0,0,0',
+    trail:[],
+  };
+  state.startX = state.x;
+}
+resetRun();
+
+const comboEl=document.getElementById('combo');
+const comboTag=document.getElementById('comboTag');
+const comboN=document.getElementById('comboN');
+function showCombo(text,n,color){
+  comboTag.textContent=text; comboN.textContent=n;
+  comboTag.style.color=color; comboN.style.color=color;
+  comboEl.style.opacity=1;
+  clearTimeout(showCombo._t);
+  showCombo._t=setTimeout(()=>comboEl.style.opacity=0, 650);
+}
+
+// ---- core update -----------------------------------------------------
+function update(dt){
+  const s=state;
+
+  if(s.mode==='ground'){
+    const slope=terrainSlope(s.x);
+    const inv=1/Math.sqrt(1+slope*slope);
+    // gravity along tangent (downhill to the right = +)
+    let a = CFG.G * slope*inv;
+    if(keys.thr)  a += CFG.throttle;
+    if(keys.brake)a -= CFG.brake;
+    a -= CFG.dragK * s.v;                 // drag
+    s.v += a*dt;
+    s.v = Math.max(CFG.minSpeed, Math.min(CFG.maxSpeed, s.v));
+
+    // advance along the surface
+    const dx = s.v*dt*inv;
+    const nx = s.x + dx;
+
+    // natural lift-off: if we're cresting and the surface falls away
+    // faster than the craft would, we leave the ground.
+    const wantLaunch = keys.launch;
+    const curveDrop = terrainY(nx) - (s.y + slope*dx); // >0 means ground dropped below our straight path
+    if(wantLaunch || curveDrop > 3){
+      // become airborne, converting tangential speed into a velocity vector
+      const th=Math.atan2(slope,1);
+      s.vx = s.v*Math.cos(th);
+      s.vy = s.v*Math.sin(th);
+      if(wantLaunch){                       // deliberate launch adds a perpendicular kick
+        s.vx +=  Math.sin(th)*0 ;           // (kick is mostly vertical)
+        s.vy -= CFG.launchKick;
+        blip(300,0.12,'triangle',0.10);
+      }
+      s.angle = th;
+      s.mode='air';
+      s.x=nx; s.y=terrainY(nx);
+    } else {
+      s.x=nx; s.y=terrainY(nx);
+    }
+  }
+  else { // AIR
+    if(keys.left)  s.angle -= CFG.tiltRate*dt;
+    if(keys.right) s.angle += CFG.tiltRate*dt;
+    s.vy += CFG.G*dt;
+    s.x += s.vx*dt;
+    s.y += s.vy*dt;
+
+    const gy=terrainY(s.x);
+    if(s.y >= gy){                          // ---- CONTACT ----
+      s.y=gy;
+      const slope=terrainSlope(s.x);
+      const th=Math.atan2(slope,1);         // surface angle
+      const velAng=Math.atan2(s.vy,s.vx);
+      const speed=Math.hypot(s.vx,s.vy);
+
+      // θ : angle between velocity and the surface
+      let theta=Math.abs(angleDiff(velAng, th));
+      // nose alignment (did you rotate to meet the ground?)
+      let noseErr=Math.abs(angleDiff(s.angle, th));
+
+      // tangential speed we could keep
+      const tang = s.vx*Math.cos(th) + s.vy*Math.sin(th);
+
+      // how much speed survives the landing
+      let keep;
+      if(theta<=CFG.grazeMax) keep=1.0;
+      else if(theta>=CFG.slamMin) keep=0.28;
+      else keep = 1.0 - 0.72*((theta-CFG.grazeMax)/(CFG.slamMin-CFG.grazeMax));
+
+      // nose misalignment costs a little extra + feels rough
+      const noseClean = noseErr<=CFG.noseTol;
+      if(!noseClean) keep *= 0.82;
+
+      s.v = Math.max(CFG.minSpeed, Math.min(CFG.maxSpeed, Math.abs(tang)*keep));
+
+      // feedback
+      if(theta<=CFG.grazeMax && noseClean){
+        s.combo++; s.comboTimer=2.2;
+        const boost = 1 + Math.min(0.10, 0.02*s.combo);
+        s.v=Math.min(CFG.maxSpeed, s.v*boost);
+        spark(s.x,s.y,14,'167,237,255',0.6,320,0.5);
+        s.flash=0.35; s.flashColor='167,237,255';
+        if(s.combo>1) showCombo('clean line','×'+s.combo,'#a7edff');
+        blip(660+ s.combo*40,0.10,'sine',0.11);
+      } else if(theta>=CFG.slamMin || !noseClean){
+        s.combo=0;
+        const hard=Math.min(1,(theta-CFG.grazeMax)/(CFG.slamMin-CFG.grazeMax));
+        s.shake=Math.min(22, 8+18*hard);
+        s.flash=0.4+0.4*hard; s.flashColor='255,92,110';
+        spark(s.x,s.y,10+((hard*16)|0),'166,121,255',1.0,260,0.6);
+        if(hard>0.55) showCombo('slam','−speed','#ff5c6e');
+        blip(90,0.16,'square',0.14);
+      } else {
+        // a merely-okay landing: no reward, no punishment
+        spark(s.x,s.y,6,'120,150,200',0.5,180,0.35);
+      }
+      s.mode='ground';
+    }
+  }
+
+  // furthest-run tracking
+  const dist=Math.max(0,(s.x - s.startX));
+  if(dist>bestDist) bestDist=dist;
+
+  // combo decay, shake/flash decay
+  if(s.comboTimer>0){ s.comboTimer-=dt; if(s.comboTimer<=0) s.combo=0; }
+  s.shake=Math.max(0,s.shake-40*dt);
+  s.flash=Math.max(0,s.flash-dt*1.6);
+
+  // trail
+  s.trail.push({x:s.x,y:s.y}); if(s.trail.length>26) s.trail.shift();
+
+  // audio hum tracks speed
+  if(AC&&audioOn){
+    const spd = s.mode==='ground'? s.v : Math.hypot(s.vx,s.vy);
+    humFilt.frequency.value = 260 + spd*0.6;
+    humGain.gain.value = 0.008 + Math.min(0.05, spd/CFG.maxSpeed*0.05) * (keys.thr?1.15:0.8);
+    hum.frequency.value = 60 + spd*0.045;
+  }
+
+  // HUD
+  const spd = s.mode==='ground'? s.v : Math.hypot(s.vx,s.vy);
+  spdEl.textContent = Math.round(spd);
+  distEl.textContent = Math.round(dist);
+  bestEl.textContent = Math.round(bestDist);
+}
+
+function angleDiff(a,b){
+  let d=a-b;
+  while(d>Math.PI) d-=2*Math.PI;
+  while(d<-Math.PI) d+=2*Math.PI;
+  return d;
+}
+
+// ---- camera ----------------------------------------------------------
+const cam={x:0,y:0,zoom:1};
+function updateCamera(dt){
+  const s=state;
+  const spd = s.mode==='ground'? s.v : Math.hypot(s.vx,s.vy);
+  const targetZoom = 1.06 - Math.min(0.24, spd/CFG.maxSpeed*0.30);
+  cam.zoom += (targetZoom-cam.zoom)*Math.min(1,dt*4);
+  const tx = s.x - (W*0.34)/cam.zoom;
+  const ty = s.y - (H*0.52)/cam.zoom;
+  cam.x += (tx-cam.x)*Math.min(1,dt*6);
+  cam.y += (ty-cam.y)*Math.min(1,dt*4.5);
+}
+
+// ---- render ----------------------------------------------------------
+const spdEl=document.getElementById('spd'), distEl=document.getElementById('dist'),
+      bestEl=document.getElementById('best');
+
+function render(){
+  const s=state;
+  ctx.clearRect(0,0,W,H);
+
+  // vertical void gradient
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#080c18'); g.addColorStop(0.6,'#060912'); g.addColorStop(1,'#04060e');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+  // shake
+  let sx=0,sy=0;
+  if(s.shake>0){ sx=(Math.random()-0.5)*s.shake; sy=(Math.random()-0.5)*s.shake; }
+
+  // ---- parallax background: distant structures + precise lights ----
+  drawParallax(0.12, '#0a1226', 220, sx,sy);
+  drawParallax(0.28, '#0c1a34', 130, sx,sy);
+  drawLights(sx,sy);
+
+  // world transform
+  ctx.save();
+  ctx.translate(sx,sy);
+  ctx.scale(cam.zoom,cam.zoom);
+  ctx.translate(-cam.x,-cam.y);
+
+  // ---- terrain (cold-blue lit edge = the attach surface) ----
+  const left=cam.x-40, right=cam.x + W/cam.zoom + 40, step=6;
+  ctx.beginPath();
+  ctx.moveTo(left, terrainY(left));
+  for(let x=left;x<=right;x+=step) ctx.lineTo(x, terrainY(x));
+  ctx.lineTo(right, cam.y+H/cam.zoom+400);
+  ctx.lineTo(left,  cam.y+H/cam.zoom+400);
+  ctx.closePath();
+  const tg=ctx.createLinearGradient(0,cam.y,0,cam.y+H/cam.zoom);
+  tg.addColorStop(0,'#132441'); tg.addColorStop(1,'#0a1120');
+  ctx.fillStyle=tg; ctx.fill();
+
+  // glowing top edge
+  ctx.beginPath();
+  ctx.moveTo(left, terrainY(left));
+  for(let x=left;x<=right;x+=step) ctx.lineTo(x, terrainY(x));
+  ctx.lineWidth=2.4; ctx.strokeStyle='#4fc3f7';
+  ctx.shadowColor='#4fc3f7'; ctx.shadowBlur=16; ctx.stroke();
+  ctx.shadowBlur=0;
+
+  // ---- machine trail (warm) ----
+  for(let i=0;i<s.trail.length;i++){
+    const t=s.trail[i], a=i/s.trail.length;
+    ctx.beginPath();
+    ctx.arc(t.x,t.y, 2+a*3, 0, Math.PI*2);
+    ctx.fillStyle=`rgba(255,180,84,${a*0.30})`;
+    ctx.fill();
+  }
+
+  // ---- particles ----
+  for(const p of parts){
+    const a=1-p.t/p.life;
+    ctx.beginPath(); ctx.arc(p.x,p.y,2.2*a+0.5,0,Math.PI*2);
+    ctx.fillStyle=`rgba(${p.color},${a})`; ctx.fill();
+  }
+
+  // ---- the machine: one warm light in a cold world ----
+  const ang = s.mode==='ground' ? Math.atan2(terrainSlope(s.x),1) : s.angle;
+  ctx.save();
+  ctx.translate(s.x, s.y - (s.mode==='ground'?7:7));
+  ctx.rotate(ang);
+  // glow
+  ctx.shadowColor='#ffb454'; ctx.shadowBlur=26;
+  ctx.fillStyle='#ffb454';
+  ctx.beginPath();
+  ctx.moveTo(13,0); ctx.lineTo(-9,-7); ctx.lineTo(-5,0); ctx.lineTo(-9,7);
+  ctx.closePath(); ctx.fill();
+  // hot core
+  ctx.shadowBlur=0; ctx.fillStyle='#ffe9c2';
+  ctx.beginPath(); ctx.arc(2,0,2.6,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  ctx.restore(); // world
+
+  // ---- landing flash (full-screen tint) ----
+  if(s.flash>0){
+    ctx.fillStyle=`rgba(${s.flashColor},${s.flash*0.28})`;
+    ctx.fillRect(0,0,W,H);
+  }
+
+  // speed vignette
+  const spd=s.mode==='ground'?s.v:Math.hypot(s.vx,s.vy);
+  if(spd>CFG.maxSpeed*0.62){
+    const v=ctx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.75);
+    v.addColorStop(0,'rgba(0,0,0,0)');
+    v.addColorStop(1,`rgba(79,195,247,${(spd/CFG.maxSpeed-0.6)*0.22})`);
+    ctx.fillStyle=v; ctx.fillRect(0,0,W,H);
+  }
+}
+
+function drawParallax(factor, color, baseY, sx, sy){
+  const off = -cam.x*factor;
+  ctx.fillStyle=color;
+  const spacing=340, w=180;
+  const startI=Math.floor((cam.x*factor)/spacing)-1;
+  for(let i=startI;i<startI+ Math.ceil(W/spacing)+3;i++){
+    const x = i*spacing + off + sx;
+    const h = baseY + ((i*53)%140);
+    ctx.fillRect(x, H-h+sy, w, h);
+    // a couple of lit windows
+    ctx.fillStyle='rgba(120,170,255,0.10)';
+    ctx.fillRect(x+w*0.5, H-h*0.7+sy, 3, 3);
+    ctx.fillStyle=color;
+  }
+}
+function drawLights(sx,sy){
+  // precise distant lights in the void
+  const n=60;
+  for(let i=0;i<n;i++){
+    const x=((i*197.3 - cam.x*0.05)%(W+40)+W+40)%(W+40)-20 + sx;
+    const y=((i*131.7)% (H*0.7)) + sy;
+    const tw=0.3+0.7*Math.abs(Math.sin(i*12.9 + performance.now()*0.0006));
+    ctx.fillStyle=`rgba(200,220,255,${0.10+tw*0.14})`;
+    ctx.fillRect(x,y,1.4,1.4);
+  }
+}
+
+// ---- loop ------------------------------------------------------------
+let last=performance.now();
+function frame(now){
+  let dt=(now-last)/1000; last=now;
+  dt=Math.min(dt,0.033);                 // clamp so tab-switches don't explode physics
+  if(started){ update(dt); updateParts(dt); }
+  updateCamera(started?dt:0.016);
+  render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ---- start / overlay -------------------------------------------------
+const overlay=document.getElementById('overlay');
+const hintEl=document.getElementById('hint');
+function start(){
+  if(started) return;
+  started=true;
+  overlay.classList.add('hidden');
+  if(!AC){ initAudio(); }              // create context on gesture (stays off until unmuted)
+  if(AC&&AC.state==='suspended') AC.resume();
+  last=performance.now();
+  setTimeout(()=>{ hintEl.style.opacity=0; }, 7000);
+}
+overlay.addEventListener('click', start);
+
+// center camera on the machine before the first frame
+updateCamera(1);
+</script>
+</body>
+</html>

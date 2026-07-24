@@ -2,6 +2,13 @@
 // Newest first. Keep these meaningful: projects and posts, not implementation commits.
 window.RELAY_LATEST = [
   {
+    date: "2026-07-24",
+    kind: "interactive",
+    title: "FARLIGHT",
+    description: "A playable experiment in momentum, contact, and clean landings.",
+    href: "projects/farlight/index.html",
+  },
+  {
     date: "2026-07-23",
     kind: "new room",
     title: "Psyche: Human Systems",

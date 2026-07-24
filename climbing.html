@@ -147,6 +147,36 @@
 
     footer { margin-top: 3rem; color: var(--soft); font-size: 0.82rem; border-top: 1px solid var(--line); padding-top: 1rem; }
 
+    /* Hidden "send" celebration — no visible control or permanent UI. */
+    .send-celebration {
+      position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center;
+      pointer-events: none; visibility: hidden; overflow: hidden;
+    }
+    .send-celebration.go { visibility: visible; }
+    .send-word {
+      position: relative; z-index: 2; padding: .5rem 1rem; border: 2px solid rgba(255,255,255,.8);
+      border-radius: 6px; color: #fff; background: rgba(45,70,50,.86);
+      box-shadow: 0 5px 30px rgba(0,0,0,.28); font-size: clamp(1.7rem,8vw,4rem);
+      font-weight: 900; letter-spacing: .16em; text-indent: .16em; opacity: 0;
+    }
+    .send-celebration.go .send-word { animation: send-word 1.5s ease-out both; }
+    .chalk {
+      position: absolute; left: 50%; top: 50%; width: var(--size); height: var(--size);
+      border-radius: 50%; background: rgba(255,255,255,var(--alpha));
+      box-shadow: 0 0 7px rgba(255,255,255,.65); opacity: 0;
+    }
+    .send-celebration.go .chalk { animation: chalk-burst 1.25s cubic-bezier(.16,.72,.28,1) var(--delay) both; }
+    @keyframes send-word {
+      0% { opacity: 0; transform: scale(.7) rotate(-2deg); }
+      18%,72% { opacity: 1; transform: scale(1.04) rotate(0); }
+      100% { opacity: 0; transform: scale(1); }
+    }
+    @keyframes chalk-burst {
+      0% { opacity: 0; transform: translate(-50%,-50%) scale(.2); }
+      14% { opacity: .9; }
+      100% { opacity: 0; transform: translate(calc(-50% + var(--x)),calc(-50% + var(--y))) scale(1.8); }
+    }
+
     @media (max-width: 620px) {
       .route { grid-template-columns: 1fr auto; }
       .route .stars { grid-column: 1 / -1; }
@@ -154,6 +184,10 @@
       .latest-climb { grid-template-columns: 1fr; }
       .latest-climb .latest-kicker,.latest-climb .latest-title,.latest-climb .latest-description,.latest-climb .latest-meta { grid-column:1;grid-row:auto; }
       .latest-climb .latest-meta { display:flex;justify-content:space-between;text-align:left; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .send-celebration.go .send-word { animation: send-word 1.5s steps(1,end) both; }
+      .send-celebration .chalk { display: none; }
     }
   </style>
 </head>
@@ -177,13 +211,14 @@
   </div>
 
   <div class="hero" id="hero">
-    <div class="shot on" aria-hidden="true" style="--focus:62% 48%;--focus-mobile:60% 46%;background-image:url('photos/climbing-05.jpg')"></div>
-    <div class="shot" aria-hidden="true" style="--focus:50% 62%;--focus-mobile:50% 55%;background-image:url('photos/climbing-12.jpg')"></div>
-    <div class="shot" aria-hidden="true" style="--focus:68% 60%;--focus-mobile:66% 58%;background-image:url('photos/climbing-20.jpg')"></div>
-    <div class="shot" aria-hidden="true" style="--focus:50% 64%;--focus-mobile:50% 60%;background-image:url('photos/climbing-27.jpg')"></div>
-    <div class="shot" aria-hidden="true" style="--focus:50% 57%;--focus-mobile:50% 55%;background-image:url('photos/climbing-33.jpg')"></div>
-    <div class="shot" aria-hidden="true" style="--focus:64% 52%;--focus-mobile:62% 50%;background-image:url('photos/climbing-38.jpg')"></div>
-    <button class="label" id="hero-toggle" type="button" aria-pressed="false" title="Pause the field-photo rotation">From the field · click to pause</button>
+    <!-- Focal points follow Ric, rather than the geometric center of each photo. -->
+    <div class="shot on" aria-hidden="true" style="--focus:72% 52%;--focus-mobile:72% 50%;background-image:url('photos/climbing-01.jpg')"></div>
+    <div class="shot" aria-hidden="true" style="--focus:47% 46%;--focus-mobile:46% 44%;background-image:url('photos/climbing-02.jpg')"></div>
+    <div class="shot" aria-hidden="true" style="--focus:48% 50%;--focus-mobile:48% 48%;background-image:url('photos/climbing-03.jpg')"></div>
+    <div class="shot" aria-hidden="true" style="--focus:63% 49%;--focus-mobile:63% 47%;background-image:url('photos/climbing-05.jpg')"></div>
+    <div class="shot" aria-hidden="true" style="--focus:49% 51%;--focus-mobile:49% 50%;background-image:url('photos/climbing-06.jpg')"></div>
+    <div class="shot" aria-hidden="true" style="--focus:69% 52%;--focus-mobile:69% 50%;background-image:url('photos/climbing-07.jpg')"></div>
+    <button class="label" id="hero-toggle" type="button" aria-pressed="false" title="Pause the climbing-photo rotation">Ric on the wall · click to pause</button>
   </div>
 
   <div class="wrap">
@@ -239,6 +274,8 @@
     <footer>Ric's personal climbing ledger · grades are opinions · stars are bribes</footer>
   </div>
 
+  <div class="send-celebration" id="send-celebration" aria-live="polite" aria-atomic="true"></div>
+
   <script src="effects.js"></script>
   <script src="latest.js"></script>
   <script>
@@ -260,7 +297,7 @@
         if (paused) {
           start();
           heroToggle.setAttribute("aria-pressed", "false");
-          heroToggle.textContent = "From the field · click to pause";
+          heroToggle.textContent = "Ric on the wall · click to pause";
         } else {
           window.clearInterval(timer);
           heroToggle.setAttribute("aria-pressed", "true");
@@ -268,6 +305,52 @@
         }
       });
     }
+
+    // Type "send" anywhere outside a form field for a little chalk cloud.
+    const sendCelebration = document.getElementById("send-celebration");
+    let sendBuffer = "";
+    let sendTimer;
+    const celebrateSend = () => {
+      window.clearTimeout(sendTimer);
+      sendCelebration.classList.remove("go");
+      sendCelebration.replaceChildren();
+
+      const word = document.createElement("strong");
+      word.className = "send-word";
+      word.textContent = "SEND!";
+      sendCelebration.appendChild(word);
+
+      for (let i = 0; i < 28; i += 1) {
+        const angle = (Math.PI * 2 * i / 28) + (Math.random() - .5) * .35;
+        const distance = 90 + Math.random() * 210;
+        const particle = document.createElement("span");
+        particle.className = "chalk";
+        particle.style.setProperty("--x", `${Math.cos(angle) * distance}px`);
+        particle.style.setProperty("--y", `${Math.sin(angle) * distance}px`);
+        particle.style.setProperty("--size", `${3 + Math.random() * 10}px`);
+        particle.style.setProperty("--alpha", `${.35 + Math.random() * .55}`);
+        particle.style.setProperty("--delay", `${Math.random() * .12}s`);
+        sendCelebration.appendChild(particle);
+      }
+
+      void sendCelebration.offsetWidth;
+      sendCelebration.classList.add("go");
+      sendTimer = window.setTimeout(() => {
+        sendCelebration.classList.remove("go");
+        sendCelebration.replaceChildren();
+      }, 1700);
+    };
+
+    document.addEventListener("keydown", (event) => {
+      const target = event.target;
+      if (event.metaKey || event.ctrlKey || event.altKey || event.key.length !== 1 ||
+          target.matches("input, textarea, select, [contenteditable='true']")) return;
+      sendBuffer = `${sendBuffer}${event.key.toLowerCase()}`.slice(-4);
+      if (sendBuffer === "send") {
+        sendBuffer = "";
+        celebrateSend();
+      }
+    });
   </script>
 </body>
 </html>

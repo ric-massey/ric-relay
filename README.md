@@ -51,6 +51,7 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | Project | Linked from | What it is |
 |---|---|---|
 | `projects/spacetime/` | Exploration | "The Geometry of Spacetime" — interactive special-relativity explainer |
+| `projects/farlight/` | Exploration | "FARLIGHT" — playable momentum and landing-feel prototype |
 | `projects/the-shape-of-harm/` | Psyche | Evidence-informed interactive research framework for comparing psychoactive-substance harms |
 | `projects/siege-conductor/` | Workbench | Star Wars viewing-companion PWA (add-to-home-screen app) |
 | `projects/autism-reflection.html` | Psyche | Long-form personal reflection on the DSM-5 autism criteria |
@@ -70,6 +71,13 @@ rename a room, update the menu on **every** page (see `AGENTS.md`).
 When served on the web, Relay home links normalize to the clean site root instead of
 leaving `/index.html` in the address. Their `index.html` markup remains as a fallback so
 the pages still work when opened directly from disk.
+
+## Relay terminal
+
+Type `help` for the current command list. Useful shortcuts include `/clear`, `tree`,
+`projects`, `find <word>`, `open <target>`, `latest`, `random`, `uptime`, and `reboot`.
+Commands accept a leading slash, project shortcuts are searchable, and `↑`/`↓` plus
+`Tab` provide history and completion.
 
 ## Updating content
 

@@ -10,12 +10,13 @@ completion.
 
 | Type | What happens |
 |---|---|
-| `orrin` | Prints a classified-looking Orrin status record. |
+| `diagnose orrin` | Prints a classified-looking Orrin status record. |
 | `apex` | Pretends to retrieve the Apex VOD archive. |
 | `sudo` | Politely denies administrative access. |
 | `unlock` | Asks for crew authentication without revealing the private map. |
 | `coffee` | Dispenses one terminal-grade coffee. |
 | `exit` | Explains the architectural problem with leaving the Relay. |
+| `404` | Deliberately loses the signal and opens a special version of the Relay's 404 page. |
 | `lsd` | Turns on the fast, prismatic sitewide visual mode. It follows you into every room and project. |
 | `shrooms` | Turns on the slower, breathing sitewide visual mode. It follows you too. |
 | `sober` | Clears either visual mode and returns the site to normal. |
@@ -34,6 +35,11 @@ the Relay to read its title text.
   interpretations.
 - Type `normal` anywhere on the page to reveal: **NORMAL IS A STATISTICAL
   NEIGHBORHOOD, NOT AN ADDRESS.**
+
+## Climbing (`climbing.html`)
+
+- Type `send` anywhere outside a form field for a brief **SEND!** and chalk-cloud
+  celebration. Reduced-motion visitors get the message without flying particles.
 
 ## Project typing codes
 

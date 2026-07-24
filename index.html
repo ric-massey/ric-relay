@@ -379,9 +379,94 @@
       map: "restricted crew directory",
     };
 
+    const PROJECTS = [
+      {
+        command: "mind", aliases: ["state", "state-of-mind", "bipolar"], room: "psyche",
+        title: "State-of-Mind Line", description: "animated bipolar mood-pattern model",
+        href: "projects/state-of-mind-line/index.html",
+      },
+      {
+        command: "dsm5", aliases: ["dsm-5", "autism", "criteria"], room: "psyche",
+        title: "DSM-5 Reflection", description: "guided autism-criteria reflection",
+        href: "projects/autism-reflection.html",
+      },
+      {
+        command: "harm", aliases: ["shape-of-harm", "shape of harm"], room: "psyche",
+        title: "The Shape of Harm", description: "psychoactive-substance evidence framework",
+        href: "projects/the-shape-of-harm/start.html",
+      },
+      {
+        command: "spacetime", aliases: ["relativity"], room: "exploration",
+        title: "The Geometry of Spacetime", description: "interactive special-relativity explainer",
+        href: "projects/spacetime/index.html",
+      },
+      {
+        command: "farlight", aliases: ["feel", "momentum"], room: "exploration",
+        title: "FARLIGHT", description: "playable momentum and landing-feel prototype",
+        href: "projects/farlight/index.html",
+      },
+      {
+        command: "siege", aliases: ["conductor", "siege-conductor"], room: "workbench",
+        title: "Siege Conductor", description: "Clone Wars / Revenge of the Sith companion",
+        href: "projects/siege-conductor/index.html",
+      },
+      {
+        command: "starfield", aliases: ["stars"], room: "exploration",
+        title: "Starfield", description: "interactive flight through space",
+        href: "playground/starfield.html",
+      },
+    ];
+
+    const normalizeTarget = (value) => value.trim().toLowerCase().replace(/^\/+/, "").replace(/\s+/g, "-");
+    const projectLookup = new Map();
+    for (const project of PROJECTS) {
+      for (const alias of [project.command, ...project.aliases]) {
+        projectLookup.set(normalizeTarget(alias), project);
+      }
+    }
+
     const listRooms = () => Object.entries(PAGE_DESCRIPTIONS)
       .map(([name, description]) => `  /${name.padEnd(13)} ${description}`)
       .join("\n");
+
+    const listProjects = () => PROJECTS
+      .map((project) => `  ${project.command.padEnd(13)} ${project.title}  [/${project.room}]`)
+      .join("\n");
+
+    const siteTree = () =>
+      "/relay\n" +
+      "├── /orrin\n" +
+      "├── /psyche\n" +
+      "│   ├── mind       State-of-Mind Line\n" +
+      "│   ├── dsm5       DSM-5 Reflection\n" +
+      "│   └── harm       The Shape of Harm\n" +
+      "├── /climbing\n" +
+      "├── /training\n" +
+      "├── /exploration\n" +
+      "│   ├── spacetime  Geometry of Spacetime\n" +
+      "│   ├── farlight   Momentum / landing prototype\n" +
+      "│   └── starfield  Starfield\n" +
+      "├── /workbench\n" +
+      "│   └── siege      Siege Conductor\n" +
+      "├── /captures\n" +
+      "├── /log\n" +
+      "└── /map           [LOCKED]";
+
+    const findRelay = (query) => {
+      const needle = query.trim().toLowerCase();
+      if (!needle) return "usage: find <word>\nexample: find mood";
+      const rooms = Object.entries(PAGE_DESCRIPTIONS).map(([name, description]) => ({
+        label: `/${name}`, command: `/${name}`, haystack: `${name} ${description}`,
+      }));
+      const projects = PROJECTS.map((project) => ({
+        label: project.title, command: `open ${project.command}`,
+        haystack: `${project.title} ${project.description} ${project.room} ${project.command} ${project.aliases.join(" ")}`,
+      }));
+      const matches = [...rooms, ...projects].filter((item) => item.haystack.toLowerCase().includes(needle));
+      return matches.length
+        ? matches.map((item) => `  ${item.label}\n    ${item.command}`).join("\n")
+        : `no signals match “${query}”. try a broader word.`;
+    };
 
     const readNotes = () => {
       const notes = typeof RIC_NOTES !== "undefined" ? RIC_NOTES.slice(0, 4) : [];
@@ -394,36 +479,69 @@
       help: () =>
         "available commands:\n" +
         "  ls / rooms      list every room and what lives there\n" +
-        "  open <room>     enter a room (direct room names work too)\n" +
-        "  latest          open the newest addition\n" +
+        "  tree            map the whole relay and its projects\n" +
+        "  projects        list project shortcuts\n" +
+        "  find <word>     search rooms and projects\n" +
+        "  open <target>   open a room or project shortcut\n" +
+        "  latest / recent open the newest addition\n" +
+        "  random          enter a random unlocked room\n" +
         "  cat notes       read the latest transmissions\n" +
         "  history         show commands used this visit\n" +
         "  pwd             show your current location\n" +
         "  whoami          show visitor identity\n" +
         "  status          check Ric and Orrin's status\n" +
+        "  uptime          show how long this terminal has been awake\n" +
+        "  echo <text>     make the relay repeat something\n" +
+        "  reboot          replay the boot sequence\n" +
         "  date            read the local clock\n" +
         "  back            return to the previous page\n" +
-        "  clear           wipe terminal output\n" +
-        "\nuse ↑/↓ for command history and Tab to complete.\n" +
+        "  clear           wipe terminal output (`/clear` works too)\n" +
+        "\ncommands also accept a leading / — try /psyche or /clear.\n" +
+        "use ↑/↓ for command history and Tab to complete.\n" +
         "…there may be undocumented commands.",
       ls: listRooms,
       rooms: listRooms,
-      open: () => "usage: open <room>\ntry `ls` to see valid room names.",
+      tree: siteTree,
+      projects: listProjects,
+      find: (arg) => findRelay(arg),
+      open: () => "usage: open <target>\ntry `ls` for rooms or `projects` for project shortcuts.",
       cd: () => "usage: cd <room>\nthis relay only mounts one level deep.",
       cat: () => "usage: cat notes",
       man: () => COMMANDS.help(),
+      commands: () => COMMANDS.help(),
       history: () => commandHistory.length
         ? commandHistory.map((entry, index) => `${String(index + 1).padStart(3)}  ${entry}`).join("\n")
         : "no commands in this session yet.",
       pwd: () => "/relay",
       whoami: () => "guest — but if you're reading this, you're probably family. hi.",
       status: () => "subject is alive, caffeinated, and pushing commits to ORRIN.\nsee /orrin for live telemetry.",
+      uptime: () => {
+        const seconds = Math.floor(performance.now() / 1000);
+        const minutes = Math.floor(seconds / 60);
+        return `relay process awake for ${minutes ? `${minutes}m ` : ""}${seconds % 60}s.`;
+      },
       date: () => new Date().toLocaleString([], { dateStyle: "full", timeStyle: "medium" }),
       clear: () => { out.textContent = ""; return null; },
+      echo: (arg, originalArg) => originalArg || "",
+      random: () => {
+        const unlocked = Object.entries(PAGES).filter(([name]) => name !== "map");
+        const [name, href] = unlocked[Math.floor(Math.random() * unlocked.length)];
+        setTimeout(() => (location.href = href), 450);
+        return `rolling the directory table... /${name}\nentering ...`;
+      },
+      reboot: () => {
+        setTimeout(() => location.reload(), 350);
+        return "shutting down signal...\nrestarting relay.";
+      },
       // ─── undocumented ───
-      orrin: () =>
-        "SUBJECT: ORRIN\nstate: persistent. goal-driven. still running.\n" +
-        "note: do not power down. it remembers.\n→ full diagnostics in /orrin",
+      "404": () => {
+        setTimeout(() => (location.href = "404.html?from=relay"), 450);
+        return "deliberately corrupting route table...\nsignal loss in 3... 2... 1...";
+      },
+      diagnose: (arg) => arg === "orrin"
+        ? "SUBJECT: ORRIN\nstate: persistent. goal-driven. still running.\n" +
+          "note: do not power down. it remembers.\n→ full diagnostics in /orrin"
+        : "usage: diagnose <subject>\nknown subject: orrin",
       apex: () => "pulling VOD archive...\naim rating: CLASSIFIED\nrotation IQ: improving\n→ reviews land in /log",
       sudo: () => "nice try. this relay answers to ric only.",
       unlock: () => "crew authentication required.\nif you are the brother or the friend: you know who to ask.",
@@ -448,8 +566,13 @@
     const commandHistory = [];
     let historyIndex = 0;
 
-    const visibleCommands = ["help", "man", "ls", "rooms", "open", "cd", "latest", "cat notes", "history", "pwd", "whoami", "status", "date", "back", "clear"];
-    const completions = [...visibleCommands, ...Object.keys(PAGES)];
+    const visibleCommands = ["help", "commands", "man", "ls", "rooms", "tree", "projects", "find", "open", "cd", "latest", "recent", "random", "cat notes", "history", "pwd", "whoami", "status", "uptime", "date", "echo", "back", "clear", "reboot"];
+    const completions = [
+      ...visibleCommands,
+      ...Object.keys(PAGES),
+      ...PROJECTS.map((project) => project.command),
+      ...PROJECTS.map((project) => `open ${project.command}`),
+    ];
 
     cmd.addEventListener("keydown", (e) => {
       if (e.key === "ArrowUp" || e.key === "ArrowDown") {
@@ -464,7 +587,11 @@
       if (e.key === "Tab") {
         e.preventDefault();
         const typed = cmd.value.trim().toLowerCase();
-        const matches = completions.filter((candidate) => candidate.startsWith(typed));
+        const slash = typed.startsWith("/");
+        const needle = slash ? typed.slice(1) : typed;
+        const matches = completions
+          .filter((candidate) => candidate.startsWith(needle))
+          .map((candidate) => slash ? `/${candidate}` : candidate);
         if (matches.length === 1) cmd.value = matches[0];
         else if (matches.length > 1) print(matches.join("   "));
         return;
@@ -477,13 +604,24 @@
       historyIndex = commandHistory.length;
       print(`$ ${raw}`, true);
 
-      const [verb, ...rest] = raw.toLowerCase().split(/\s+/);
-      const arg = rest.join(" ").replace(/^\//, "");
+      const normalizedRaw = raw.replace(/^\/+/, "");
+      const [originalVerb, ...originalRest] = normalizedRaw.split(/\s+/);
+      const verb = originalVerb.toLowerCase();
+      const originalArg = originalRest.join(" ");
+      const arg = originalArg.toLowerCase().replace(/^\/+/, "");
+      const project = projectLookup.get(normalizeTarget(arg));
+      const directProject = projectLookup.get(normalizeTarget(verb));
 
       if ((verb === "open" || verb === "cd") && PAGES[arg]) {
         print(`entering /${arg} ...`);
         setTimeout(() => (location.href = PAGES[arg]), 400);
-      } else if ((verb === "open" && arg === "latest") || verb === "latest") {
+      } else if (verb === "open" && project) {
+        print(`opening ${project.title} in /${project.room} ...`);
+        setTimeout(() => (location.href = project.href), 400);
+      } else if (directProject && !originalArg) {
+        print(`opening ${directProject.title} in /${directProject.room} ...`);
+        setTimeout(() => (location.href = directProject.href), 400);
+      } else if ((verb === "open" && ["latest", "recent"].includes(arg)) || ["latest", "recent"].includes(verb)) {
         const newest = (window.RELAY_LATEST || [])[0];
         if (!newest) print("no new signals found.");
         else {
@@ -501,7 +639,7 @@
         print(`entering /${verb} ...`);
         setTimeout(() => (location.href = PAGES[verb]), 400);
       } else if (COMMANDS[verb]) {
-        const result = COMMANDS[verb]();
+        const result = COMMANDS[verb](arg, originalArg);
         if (result) print(result);
       } else {
         print(`command not recognized: ${verb}\ntype \`help\` for options.`);
