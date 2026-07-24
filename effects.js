@@ -1419,15 +1419,24 @@
     }));
     catActionTimer = setTimeout(() => {
       if (catResident !== resident || !resident.isConnected) return;
-      resident.classList.remove("walking", "pose-top", "from-bottom");
-      resident.classList.add("walking");
       const home = catSpot(width, true);
       if (!home) {
-        resident.remove();
-        if (catResident === resident) catResident = null;
-        retryCatEntry();
+        // Dense pages can have no collision-free full-body landing. Keep the
+        // overhead pose and visibly retreat instead of popping out of existence.
+        const retreatDuration = reducedMotion ? 80 : 900;
+        resident.style.setProperty("--cat-move", `${retreatDuration}ms`);
+        resident.style.top = `${startTop}px`;
+        catActionTimer = setTimeout(() => {
+          if (catResident === resident) {
+            resident.remove();
+            catResident = null;
+          }
+          retryCatEntry(700);
+        }, retreatDuration + 100);
         return;
       }
+      resident.classList.remove("walking", "pose-top", "from-bottom");
+      resident.classList.add("walking");
       const currentLeft = Number.parseFloat(resident.style.left) || left;
       const currentTop = Number.parseFloat(resident.style.top) || endTop;
       setWalkingPose(currentLeft, currentTop, home.left, home.top);
