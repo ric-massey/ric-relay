@@ -3,25 +3,32 @@
   if (window.RELAY_EFFECTS) return;
 
   const STORAGE_KEY = "ric-relay-effect";
+  const CAT_STORAGE_KEY = "ric-relay-cats";
+  const CAT_NEXT_KEY = "ric-relay-cat-next";
+  const CAT_IMAGE_URL = new URL("assets/relay-cat.png", document.currentScript?.src || location.href).href;
   const MODES = new Set(["lsd", "shrooms"]);
   let active = null;
   let layer;
   let filterBank;
+  let catsEnabled = false;
+  let catLayer;
+  let catTimer;
+  let catRemovalTimer;
 
   const style = document.createElement("style");
   style.id = "relay-effect-styles";
   style.textContent = `
     html.relay-effect-lsd, html.relay-effect-shrooms { overflow-x: hidden; }
-    html.relay-effect-lsd body > :not(script):not(.relay-trip-layer):not(.relay-filter-bank) {
+    html.relay-effect-lsd body > :not(script):not(.relay-trip-layer):not(.relay-filter-bank):not(.relay-cat-layer) {
       transform-origin: 50% 18%;
       animation: relay-lsd-wave 4.8s ease-in-out infinite alternate, relay-lsd-color 8s linear infinite;
       will-change: transform, filter;
     }
-    html.relay-effect-lsd body > :nth-child(2n):not(script):not(.relay-trip-layer):not(.relay-filter-bank) {
+    html.relay-effect-lsd body > :nth-child(2n):not(script):not(.relay-trip-layer):not(.relay-filter-bank):not(.relay-cat-layer) {
       animation-direction: alternate-reverse, normal;
       animation-duration: 6.2s, 8s;
     }
-    html.relay-effect-shrooms body > :not(script):not(.relay-trip-layer):not(.relay-filter-bank) {
+    html.relay-effect-shrooms body > :not(script):not(.relay-trip-layer):not(.relay-filter-bank):not(.relay-cat-layer) {
       transform-origin: 50% 30%;
       animation: relay-shroom-breathe 14s ease-in-out infinite, relay-shroom-color 19s ease-in-out infinite alternate;
       will-change: transform, filter;
@@ -33,6 +40,35 @@
     }
     .relay-trip-layer::before, .relay-trip-layer::after {
       content: ""; position: absolute; inset: 0;
+    }
+    .relay-cat-layer {
+      position: fixed; inset: 0; z-index: 2147482550; overflow: hidden;
+      pointer-events: none; contain: strict;
+    }
+    .relay-cat-visit {
+      position: absolute; display: block; pointer-events: none;
+    }
+    .relay-cat-image {
+      display: block; width: 100%; height: auto;
+      filter: drop-shadow(0 5px 8px rgba(0,0,0,.38));
+      transform-origin: 50% 88%; user-select: none;
+      animation: relay-cat-gait .72s ease-in-out infinite;
+    }
+    .relay-cat-walk {
+      left: 0;
+      animation: relay-cat-walk-right var(--cat-stay) linear both;
+    }
+    .relay-cat-walk.from-right { animation-name: relay-cat-walk-left; }
+    .relay-cat-peek { overflow: hidden; }
+    .relay-cat-peek .relay-cat-slider { width: 100%; }
+    .relay-cat-peek.to-right .relay-cat-slider {
+      animation: relay-cat-peek-right var(--cat-stay) ease-in-out both;
+    }
+    .relay-cat-peek.to-left .relay-cat-slider {
+      animation: relay-cat-peek-left var(--cat-stay) ease-in-out both;
+    }
+    .relay-cat-peek .relay-cat-image {
+      animation: relay-cat-idle 2.8s ease-in-out infinite;
     }
     html.relay-effect-lsd .relay-trip-layer {
       background:
@@ -95,11 +131,42 @@
     @keyframes relay-pattern-turn { to{transform:rotate(360deg) scale(1.08)} }
     @keyframes relay-sweep { from{transform:translateX(-15%) rotate(-3deg)}to{transform:translateX(15%) rotate(3deg)} }
     @keyframes relay-mycelium { from{transform:scale(.9) rotate(-3deg)}to{transform:scale(1.16) rotate(6deg)} }
+    @keyframes relay-cat-walk-right {
+      0%{opacity:0;transform:translateX(-110%)}
+      4%,94%{opacity:.98}
+      100%{opacity:0;transform:translateX(calc(100vw + 10%))}
+    }
+    @keyframes relay-cat-walk-left {
+      0%{opacity:0;transform:translateX(calc(100vw + 10%))}
+      4%,94%{opacity:.98}
+      100%{opacity:0;transform:translateX(-110%)}
+    }
+    @keyframes relay-cat-gait {
+      0%,100%{transform:scaleX(var(--cat-facing)) translateY(0) rotate(-.7deg)}
+      50%{transform:scaleX(var(--cat-facing)) translateY(-5px) rotate(.7deg)}
+    }
+    @keyframes relay-cat-idle {
+      0%,100%{transform:scaleX(var(--cat-facing)) translateY(0) rotate(-.35deg)}
+      50%{transform:scaleX(var(--cat-facing)) translateY(-2px) rotate(.35deg)}
+    }
+    @keyframes relay-cat-peek-right {
+      0%,100%{opacity:0;transform:translateX(-98%)}
+      12%{opacity:.98}
+      28%,72%{opacity:.98;transform:translateX(-61%)}
+      86%{opacity:.98;transform:translateX(-72%)}
+    }
+    @keyframes relay-cat-peek-left {
+      0%,100%{opacity:0;transform:translateX(98%)}
+      12%{opacity:.98}
+      28%,72%{opacity:.98;transform:translateX(61%)}
+      86%{opacity:.98;transform:translateX(72%)}
+    }
     @media (prefers-reduced-motion: reduce) {
       html.relay-effect-lsd body > *, html.relay-effect-shrooms body > *,
       .relay-trip-layer, .relay-trip-layer::before, .relay-trip-layer::after { animation: none !important; }
-      html.relay-effect-lsd body > :not(script):not(.relay-trip-layer):not(.relay-filter-bank) { filter: url(#relay-lsd-distortion) hue-rotate(20deg) saturate(1.35); }
-      html.relay-effect-shrooms body > :not(script):not(.relay-trip-layer):not(.relay-filter-bank) { filter: url(#relay-shroom-distortion) saturate(1.25) sepia(.08); }
+      html.relay-effect-lsd body > :not(script):not(.relay-trip-layer):not(.relay-filter-bank):not(.relay-cat-layer) { filter: url(#relay-lsd-distortion) hue-rotate(20deg) saturate(1.35); }
+      html.relay-effect-shrooms body > :not(script):not(.relay-trip-layer):not(.relay-filter-bank):not(.relay-cat-layer) { filter: url(#relay-shroom-distortion) saturate(1.25) sepia(.08); }
+      .relay-cat-image { animation: none; }
     }
   `;
   document.head.appendChild(style);
@@ -150,6 +217,141 @@
     }
   }
 
+  function rememberCats(enabled) {
+    try {
+      if (enabled) sessionStorage.setItem(CAT_STORAGE_KEY, "awake");
+      else sessionStorage.removeItem(CAT_STORAGE_KEY);
+    } catch (_) {}
+  }
+
+  function recallCats() {
+    try {
+      return sessionStorage.getItem(CAT_STORAGE_KEY) === "awake";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function ensureCatLayer() {
+    if (catLayer?.isConnected) return catLayer;
+    catLayer = document.createElement("div");
+    catLayer.className = "relay-cat-layer";
+    catLayer.setAttribute("aria-hidden", "true");
+    document.body.appendChild(catLayer);
+    return catLayer;
+  }
+
+  function scheduleCat(firstVisit = false) {
+    clearTimeout(catTimer);
+    if (!catsEnabled) return;
+    let savedNext = 0;
+    try { savedNext = Number(sessionStorage.getItem(CAT_NEXT_KEY)) || 0; } catch (_) {}
+    const wait = firstVisit
+      ? 3500 + Math.random() * 5500
+      : savedNext > Date.now()
+        ? savedNext - Date.now()
+        : 45000 + Math.random() * 65000;
+    try { sessionStorage.setItem(CAT_NEXT_KEY, String(Date.now() + wait)); } catch (_) {}
+    catTimer = setTimeout(showCat, wait);
+  }
+
+  function makeCat(width, facing) {
+    const image = document.createElement("img");
+    image.className = "relay-cat-image";
+    image.src = CAT_IMAGE_URL;
+    image.alt = "";
+    image.draggable = false;
+    image.style.width = `${width}px`;
+    image.style.setProperty("--cat-facing", facing);
+    return image;
+  }
+
+  function visibleFeatures() {
+    const selector = "main, article, section, nav, header, .frame, .card, .module, .topbar";
+    return [...document.querySelectorAll(selector)].filter((feature) => {
+      const rect = feature.getBoundingClientRect();
+      return rect.width > 130 && rect.height > 55 && rect.bottom > 50 &&
+        rect.top < innerHeight - 50 && (rect.left > 70 || rect.right < innerWidth - 70);
+    });
+  }
+
+  function walkingCat(width) {
+    const fromRight = Math.random() < .5;
+    const visitor = document.createElement("div");
+    const height = width * 2 / 3;
+    visitor.className = `relay-cat-visit relay-cat-walk${fromRight ? " from-right" : ""}`;
+    visitor.style.width = `${width}px`;
+    visitor.style.top = `${Math.max(45, 55 + Math.random() * Math.max(40, innerHeight - height - 130))}px`;
+    const stay = 13000 + Math.random() * 7000;
+    visitor.style.setProperty("--cat-stay", `${stay}ms`);
+    visitor.appendChild(makeCat(width, fromRight ? -1 : 1));
+    return { visitor, stay };
+  }
+
+  function peekingCat(width, features) {
+    const feature = features[Math.floor(Math.random() * features.length)];
+    const rect = feature.getBoundingClientRect();
+    const roomLeft = rect.left > 70;
+    const roomRight = rect.right < innerWidth - 70;
+    const toRight = roomRight && (!roomLeft || Math.random() < .5);
+    const height = width * 2 / 3;
+    const visitor = document.createElement("div");
+    const slider = document.createElement("div");
+    const stay = 9000 + Math.random() * 5000;
+    visitor.className = `relay-cat-visit relay-cat-peek ${toRight ? "to-right" : "to-left"}`;
+    visitor.style.width = `${width}px`;
+    visitor.style.height = `${height}px`;
+    visitor.style.left = `${toRight ? rect.right - 2 : rect.left - width + 2}px`;
+    visitor.style.top = `${Math.min(innerHeight - height - 12, Math.max(12, rect.top + Math.random() * Math.max(1, rect.height - height)))}px`;
+    visitor.style.setProperty("--cat-stay", `${stay}ms`);
+    slider.className = "relay-cat-slider";
+    slider.appendChild(makeCat(width, toRight ? 1 : -1));
+    visitor.appendChild(slider);
+    return { visitor, stay };
+  }
+
+  function showCat() {
+    if (!catsEnabled) return;
+    if (document.hidden) {
+      scheduleCat();
+      return;
+    }
+
+    const width = Math.min(270, Math.max(165, innerWidth * .22));
+    const features = visibleFeatures();
+    const visit = features.length && Math.random() < .68
+      ? peekingCat(width, features)
+      : walkingCat(width);
+    const { visitor, stay } = visit;
+    ensureCatLayer().appendChild(visitor);
+
+    clearTimeout(catRemovalTimer);
+    catRemovalTimer = setTimeout(() => {
+      visitor.remove();
+      scheduleCat();
+    }, stay + 100);
+  }
+
+  function setCats(enabled, persist = true) {
+    const next = Boolean(enabled);
+    const changed = catsEnabled !== next;
+    catsEnabled = next;
+    if (persist) rememberCats(next);
+    if (!changed) return false;
+    clearTimeout(catTimer);
+    clearTimeout(catRemovalTimer);
+
+    if (next) {
+      ensureCatLayer();
+      scheduleCat(persist);
+    } else {
+      catLayer?.remove();
+      catLayer = null;
+      try { sessionStorage.removeItem(CAT_NEXT_KEY); } catch (_) {}
+    }
+    return changed;
+  }
+
   function removeArtifacts() {
     layer?.remove();
     layer = null;
@@ -197,6 +399,11 @@
     current: () => active,
   };
 
+  window.RELAY_CATS = {
+    enable: () => setCats(true),
+    active: () => catsEnabled,
+  };
+
   function start() {
     installFilters();
     cleanIndexRoutes();
@@ -204,6 +411,7 @@
     const wasReloaded = navigation?.type === "reload" || performance.navigation?.type === 1;
     if (wasReloaded) remember(null);
     apply(wasReloaded ? null : recall(), false);
+    if (recallCats()) setCats(true, false);
   }
 
   if (document.readyState === "loading") {

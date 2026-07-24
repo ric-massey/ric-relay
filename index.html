@@ -507,7 +507,12 @@
       find: (arg) => findRelay(arg),
       open: () => "usage: open <target>\ntry `ls` for rooms or `projects` for project shortcuts.",
       cd: () => "usage: cd <room>\nthis relay only mounts one level deep.",
-      cat: () => "usage: cat notes",
+      cat: () => {
+        const awakened = window.RELAY_CATS?.enable();
+        return awakened
+          ? "CAT DAEMON: AWAKE\nwatch the page edges and behind things. it wanders when it feels like it."
+          : "CAT DAEMON: ALREADY AWAKE\nit is ignoring you professionally.";
+      },
       man: () => COMMANDS.help(),
       commands: () => COMMANDS.help(),
       history: () => commandHistory.length
