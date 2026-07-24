@@ -539,11 +539,11 @@
       find: (arg) => findRelay(arg),
       open: () => "usage: open <target>\ntry `ls` for rooms or `projects` for project shortcuts.",
       cd: () => "usage: cd <room>\nthis relay only mounts one level deep.",
-      cat: () => {
+      mochi: () => {
         const awakened = window.RELAY_CATS?.enable();
         return awakened
-          ? "CAT DAEMON: RESIDENT MODE\nit lives in the page, changes poses, catches up after you scroll, and bolts if clicked."
-          : "CAT DAEMON: ALREADY AWAKE\nit is ignoring you professionally.";
+          ? "MOCHI: RESIDENT MODE\nshe lives in the page, changes poses, catches up after you scroll, and bolts if clicked."
+          : "MOCHI: ALREADY AWAKE\nshe is ignoring you professionally.";
       },
       man: () => COMMANDS.help(),
       commands: () => COMMANDS.help(),

@@ -41,7 +41,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `photos/` | — | Web-optimized images (originals stay out of git in `_photo-originals/`) |
 | `notes.js` | — | Homepage "transmissions" — the one file you edit by hand to post a note |
 | `latest.js` | — | Curated newest additions shown in each room's native latest-signal banner |
-| `effects.js` | — | Persistent visual modes and the reduced-motion-aware, 24-frame resident cat shared by rooms and projects |
+| `effects.js` | — | Persistent visual modes and Mochi, the reduced-motion-aware resident cat with multi-angle movement, feature hiding, and page-aware interactions shared by rooms and projects |
 | `EASTER_EGGS.md` | — | Complete field guide to every hidden command and typed surprise |
 
 ## Projects
