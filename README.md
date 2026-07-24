@@ -36,7 +36,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `systems.html` | — | Legacy redirect from the former Orrin URL to `orrin.html` |
 | `map.html` | Map | Locked placeholder — the real private map app lives elsewhere, with real auth |
 | `404.html` | — | On-brand "signal lost" page for mistyped URLs |
-| `playground/` | — | Standalone HTML experiments (e.g. `starfield.html`) |
+| `playground/` | — | Standalone HTML experiments, including the Starfield interstellar flight game |
 | `projects/` | — | Self-contained sub-projects, each linked from a room (see below) |
 | `photos/` | — | Web-optimized images (originals stay out of git in `_photo-originals/`) |
 | `notes.js` | — | Homepage "transmissions" — the one file you edit by hand to post a note |
@@ -59,6 +59,16 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 
 These are self-contained and may carry their own assets/fonts — that's fine; the
 "no dependencies" rule applies to the relay's own room pages, not embedded projects.
+
+## Playground
+
+`playground/starfield.html` is a collision-and-distance flight game linked from
+Exploration. Normal cruise is shown as `1 c`; holding click, touch, or Space engages
+the fictional `10,000,000 c` warp drive. The distance display moves from light-seconds
+through light-years, and new systems are separated by several light-years. Stars are
+much larger than their planets, planets use reflected directional light instead of a
+self-glow, comets stay small, and a black hole replaces roughly one in 500 generated
+stars. Object sizes remain compressed enough to keep the game playable.
 
 ## Navigation
 

@@ -3,6 +3,13 @@
 window.RELAY_LATEST = [
   {
     date: "2026-07-24",
+    kind: "game update",
+    title: "Starfield: Interstellar Flight",
+    description: "Dodge scaled star systems at 1 c or engage 10,000,000 c warp and see how many light-years you survive.",
+    href: "playground/starfield.html",
+  },
+  {
+    date: "2026-07-24",
     kind: "interactive",
     title: "FARLIGHT",
     description: "A playable experiment in momentum, contact, and clean landings.",

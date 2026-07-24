@@ -21,13 +21,16 @@
       margin: 0; pointer-events: none;
     }
     .distance {
-      position: fixed; top: 1rem; right: 1rem; z-index: 10; min-width: 9rem;
+      position: fixed; top: 1rem; right: 1rem; z-index: 10; min-width: 12rem;
       color: #d9e2ff; background: rgba(5,6,15,.7); border: 1px solid #2a3163;
-      border-radius: 6px; padding: .5rem .7rem; text-align: right;
+      border-radius: 6px; padding: .5rem .7rem;
       font: 700 .78rem/1.25 ui-monospace, "SF Mono", Menlo, monospace;
       letter-spacing: .1em; text-transform: uppercase; pointer-events: none;
     }
-    .distance span { display: block; margin-top: .16rem; color: #8faeff; font-size: 1rem; letter-spacing: .08em; }
+    .distance .metric { display:flex;justify-content:space-between;gap:1rem;align-items:baseline; }
+    .distance .metric + .metric { margin-top:.35rem;padding-top:.35rem;border-top:1px solid rgba(42,49,99,.65); }
+    .distance span { color: #8faeff; font-size: .92rem; letter-spacing: .05em; text-transform:none; }
+    .distance small { display:block;margin-top:.45rem;color:#4d577f;font-size:.55rem;letter-spacing:.08em; }
     .game-over {
       position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
       padding: 1.2rem; background: rgba(3,4,12,.78); backdrop-filter: blur(5px);
@@ -48,7 +51,7 @@
     }
     .loss-card button:hover,.loss-card button:focus-visible { background:#33468d;outline:2px solid #9fb4ff;outline-offset:3px; }
     @media (max-width: 560px) {
-      .distance { top: 3.7rem; left: 1rem; right: auto; min-width: 7.5rem; text-align: left; }
+      .distance { top: 3.7rem; left: 1rem; right: auto; min-width: 11rem; }
       p.hint { padding: 0 1rem; font-size: .75rem; }
     }
   </style>
@@ -56,8 +59,12 @@
 <body>
   <a class="back" href="../exploration.html">← back to /exploration</a>
   <canvas id="sky" aria-label="Starfield flight game"></canvas>
-  <div class="distance" aria-live="off">Distance<span id="distance">000000 u</span></div>
-  <p class="hint">steer to dodge · hold click, touch, or space for warp</p>
+  <div class="distance" aria-live="off">
+    <div class="metric">Speed <span id="speed">1.00 c</span></div>
+    <div class="metric">Distance <span id="distance">0.0 light-sec</span></div>
+    <small>interstellar gaps modeled · sizes compressed for play</small>
+  </div>
+  <p class="hint">cruise: light speed · hold click, touch, or space: 10,000,000 c</p>
 
   <div class="game-over" id="game-over" role="dialog" aria-modal="true" aria-labelledby="loss-title" hidden>
     <div class="loss-card">
@@ -71,11 +78,15 @@
   <script>
     const canvas = document.getElementById("sky");
     const ctx = canvas.getContext("2d");
+    const speedEl = document.getElementById("speed");
     const distanceEl = document.getElementById("distance");
     const gameOverEl = document.getElementById("game-over");
     const lossDetail = document.getElementById("loss-detail");
     const restartButton = document.getElementById("restart");
     const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const LIGHT_YEAR_SECONDS = 31557600;
+    const CRUISE_C = 1;
+    const WARP_C = 10000000;
     let W, H, cx, cy;
 
     function resize() {
@@ -87,6 +98,7 @@
     addEventListener("resize", resize);
 
     const DUST_COUNT = reducedMotion ? 180 : 360;
+    let cameraX = 0, cameraY = 0;
     const dust = Array.from({ length: DUST_COUNT }, () => spawnDust(true));
     const hazards = [];
 
@@ -94,68 +106,99 @@
 
     function spawnDust(anywhere) {
       return {
-        x: (Math.random() - 0.5) * W,
-        y: (Math.random() - 0.5) * H,
+        x: cameraX + (Math.random() - 0.5) * W,
+        y: cameraY + (Math.random() - 0.5) * H,
         z: anywhere ? Math.random() * depth() : depth(),
       };
     }
 
     let speed = 4, targetSpeed = 4;
+    let speedC = CRUISE_C, targetSpeedC = CRUISE_C;
     let steerX = 0, steerY = 0;
-    let distance = 0;
-    let spawnTravel = 0;
-    let nextSpawn = 190;
+    let distanceLightSeconds = 0;
+    let nextSystemAt = systemGap() * LIGHT_YEAR_SECONDS;
     let running = true;
     let last = performance.now();
 
-    const TYPES = {
-      star: { min: 18, max: 31 },
-      planet: { min: 24, max: 42 },
-      comet: { min: 10, max: 16 },
-      "black hole": { min: 32, max: 42 },
-    };
-
-    function chooseType() {
-      const roll = Math.random();
-      if (roll < 0.006) return "black hole";
-      if (roll < 0.19) return "comet";
-      if (roll < 0.58) return "planet";
-      return "star";
+    function systemGap() {
+      // Nearby stars are generally separated by several light-years.
+      return 2.8 + Math.random() * 5.8;
     }
 
-    function spawnHazard(z = depth()) {
-      const type = chooseType();
-      const config = TYPES[type];
+    function addHazard(type, x, y, z, radius, extras = {}) {
       hazards.push({
-        type,
-        x: (Math.random() - .5) * W * .78,
-        y: (Math.random() - .5) * H * .78,
-        z,
-        radius: config.min + Math.random() * (config.max - config.min),
+        type, x, y, z, radius,
         hue: Math.floor(Math.random() * 360),
-        ring: Math.random() > .58,
+        ring: Math.random() > .75,
         phase: Math.random() * Math.PI * 2,
+        ...extras,
       });
     }
 
-    function seedHazards() {
-      hazards.length = 0;
-      spawnHazard(depth() * .48);
-      spawnHazard(depth() * .72);
-      spawnHazard(depth() * .96);
+    function spawnSystem(z = depth(), allowBlackHole = true) {
+      const centerX = cameraX + (Math.random() - .5) * W * .5;
+      const centerY = cameraY + (Math.random() - .5) * H * .5;
+      // One in 500 systems replaces its star with a black hole.
+      const centralType = allowBlackHole && Math.random() < .002 ? "black hole" : "star";
+      const starColors = ["#b9d7ff", "#e7eeff", "#fff4ea", "#fff0b0", "#ffc07a", "#ff9270"];
+      addHazard(
+        centralType,
+        centerX,
+        centerY,
+        z,
+        centralType === "star" ? 75 + Math.random() * 45 : 22 + Math.random() * 22,
+        { color: starColors[Math.floor(Math.random() * starColors.length)] },
+      );
+
+      const planetCount = centralType === "star" ? 1 + Math.floor(Math.random() * 4) : Math.floor(Math.random() * 2);
+      for (let i = 0; i < planetCount; i += 1) {
+        const angle = Math.random() * Math.PI * 2;
+        const orbit = 55 + i * 42 + Math.random() * 35;
+        const planetX = centerX + Math.cos(angle) * orbit;
+        const planetY = centerY + Math.sin(angle) * orbit * .62;
+        addHazard("planet", planetX, planetY, z + (Math.random() - .5) * 95, 3 + Math.random() * 5, {
+          lightAngle: Math.atan2(centerY - planetY, centerX - planetX),
+        });
+      }
+
+      if (Math.random() < .58) {
+        const cometCount = 1 + (Math.random() < .2 ? 1 : 0);
+        for (let i = 0; i < cometCount; i += 1) {
+          addHazard(
+            "comet",
+            centerX + (Math.random() - .5) * 280,
+            centerY + (Math.random() - .5) * 190,
+            z + (Math.random() - .5) * 130,
+            1.2 + Math.random() * 1.8,
+          );
+        }
+      }
     }
-    seedHazards();
+
+    function seedLocalSystem() {
+      hazards.length = 0;
+      // Begin near one system so cruise mode has something to navigate before
+      // the realistically enormous interstellar gap begins.
+      spawnSystem(depth() * .9, false);
+    }
+    seedLocalSystem();
+
+    function setWarp(on) {
+      if (!running) return;
+      targetSpeed = on ? 34 : 4;
+      targetSpeedC = on ? WARP_C : CRUISE_C;
+    }
 
     addEventListener("mousemove", (e) => {
       steerX = (e.clientX - cx) / cx;
       steerY = (e.clientY - cy) / cy;
     });
-    canvas.addEventListener("mousedown", () => { if (running) targetSpeed = 40; });
-    addEventListener("mouseup", () => { if (running) targetSpeed = 4; });
+    canvas.addEventListener("mousedown", () => setWarp(true));
+    addEventListener("mouseup", () => setWarp(false));
     canvas.addEventListener("touchstart", (event) => {
       if (!running) return;
       event.preventDefault();
-      targetSpeed = 40;
+      setWarp(true);
       const touch = event.touches[0];
       steerX = (touch.clientX - cx) / cx;
       steerY = (touch.clientY - cy) / cy;
@@ -166,22 +209,26 @@
       steerX = (touch.clientX - cx) / cx;
       steerY = (touch.clientY - cy) / cy;
     }, { passive: false });
-    addEventListener("touchend", () => { if (running) targetSpeed = 4; });
+    addEventListener("touchend", () => setWarp(false));
     addEventListener("keydown", (event) => {
       if (event.code === "Space") {
         event.preventDefault();
-        if (running) targetSpeed = 40;
+        if (running) setWarp(true);
         else restart();
       } else if (!running && event.key.toLowerCase() === "r") restart();
     });
     addEventListener("keyup", (event) => {
-      if (event.code === "Space" && running) targetSpeed = 4;
+      if (event.code === "Space") setWarp(false);
     });
-    addEventListener("blur", () => { if (running) targetSpeed = 4; });
+    addEventListener("blur", () => setWarp(false));
 
     function project(object) {
       const scale = Math.min(W, H) * .82 / object.z;
-      return { x: cx + object.x * scale, y: cy + object.y * scale, r: object.radius * scale };
+      return {
+        x: cx + (object.x - cameraX) * scale,
+        y: cy + (object.y - cameraY) * scale,
+        r: object.radius * scale,
+      };
     }
 
     function glowCircle(x, y, radius, inner, outer) {
@@ -201,23 +248,23 @@
       ctx.save();
 
       if (object.type === "star") {
-        glowCircle(x, y, r, "#fff", `hsla(${35 + object.hue % 30},100%,65%,.62)`);
-        ctx.fillStyle = "#fff8d6";
-        ctx.beginPath(); ctx.arc(x, y, Math.max(1.2, r * .42), 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = "rgba(255,239,177,.75)";
-        ctx.lineWidth = Math.max(1, r * .08);
-        ctx.beginPath(); ctx.moveTo(x-r*1.2,y);ctx.lineTo(x+r*1.2,y);ctx.moveTo(x,y-r*1.2);ctx.lineTo(x,y+r*1.2);ctx.stroke();
+        glowCircle(x, y, r, "#fff", object.color || "rgba(255,220,150,.7)");
+        ctx.fillStyle = object.color || "#fff4cf";
+        ctx.beginPath(); ctx.arc(x, y, Math.max(1.2, r * .72), 0, Math.PI * 2); ctx.fill();
       } else if (object.type === "planet") {
-        const gradient = ctx.createRadialGradient(x-r*.35,y-r*.35,r*.08,x,y,r);
-        gradient.addColorStop(0, `hsl(${object.hue},75%,72%)`);
-        gradient.addColorStop(.55, `hsl(${object.hue},58%,43%)`);
-        gradient.addColorStop(1, `hsl(${object.hue},52%,13%)`);
-        ctx.fillStyle = gradient;
-        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
         if (object.ring) {
-          ctx.strokeStyle = `hsla(${object.hue + 35},65%,72%,.7)`;
+          ctx.strokeStyle = `hsla(${object.hue + 35},45%,62%,.65)`;
           ctx.lineWidth = Math.max(1,r*.15);ctx.beginPath();ctx.ellipse(x,y,r*1.55,r*.38,-.24,0,Math.PI*2);ctx.stroke();
         }
+        // Planets reflect a nearby star: one lit side, one dark side, no glow.
+        const lightX = x + Math.cos(object.lightAngle || 0) * r * .48;
+        const lightY = y + Math.sin(object.lightAngle || 0) * r * .48;
+        const gradient = ctx.createRadialGradient(lightX,lightY,r*.05,x,y,r*1.12);
+        gradient.addColorStop(0, `hsl(${object.hue},58%,72%)`);
+        gradient.addColorStop(.48, `hsl(${object.hue},48%,40%)`);
+        gradient.addColorStop(1, `hsl(${object.hue},35%,5%)`);
+        ctx.fillStyle = gradient;
+        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
       } else if (object.type === "comet") {
         const tail = ctx.createLinearGradient(x,y,x+r*7,y-r*3);
         tail.addColorStop(0,"rgba(190,231,255,.92)");tail.addColorStop(1,"transparent");
@@ -237,24 +284,43 @@
     function crash(type) {
       running = false;
       targetSpeed = 0;
-      lossDetail.textContent = `Collision with ${type === "star" ? "a star" : type === "comet" ? "a comet" : type === "planet" ? "a planet" : "a black hole"}. Distance survived: ${Math.floor(distance).toLocaleString()} u.`;
+      targetSpeedC = 0;
+      lossDetail.textContent = `Collision with ${type === "star" ? "a star" : type === "comet" ? "a comet" : type === "planet" ? "a planet" : "a black hole"}. Distance survived: ${formatDistance(distanceLightSeconds)}.`;
       gameOverEl.hidden = false;
       restartButton.focus();
     }
 
+    function formatDistance(lightSeconds) {
+      if (lightSeconds < 60) return `${lightSeconds.toFixed(1)} light-sec`;
+      if (lightSeconds < 3600) return `${(lightSeconds / 60).toFixed(1)} light-min`;
+      if (lightSeconds < 86400) return `${(lightSeconds / 3600).toFixed(1)} light-hours`;
+      if (lightSeconds < LIGHT_YEAR_SECONDS) return `${(lightSeconds / 86400).toFixed(1)} light-days`;
+      return `${(lightSeconds / LIGHT_YEAR_SECONDS).toFixed(3)} ly`;
+    }
+
+    function formatSpeed(value) {
+      if (value < 10) return `${value.toFixed(2)} c`;
+      return `${Math.round(value).toLocaleString()} c`;
+    }
+
     function restart() {
-      distance = 0;
-      spawnTravel = 0;
-      nextSpawn = 190;
+      distanceLightSeconds = 0;
+      nextSystemAt = systemGap() * LIGHT_YEAR_SECONDS;
       speed = 4;
       targetSpeed = 4;
+      speedC = CRUISE_C;
+      targetSpeedC = CRUISE_C;
       steerX = 0;
       steerY = 0;
+      cameraX = 0;
+      cameraY = 0;
+      for (const particle of dust) Object.assign(particle, spawnDust(true));
       running = true;
-      seedHazards();
+      seedLocalSystem();
       gameOverEl.hidden = true;
       last = performance.now();
-      distanceEl.textContent = "000000 u";
+      speedEl.textContent = "1.00 c";
+      distanceEl.textContent = "0.0 light-sec";
     }
     restartButton.addEventListener("click", restart);
 
@@ -275,30 +341,31 @@
       last = now;
       const step = dt * 60;
       speed += (targetSpeed - speed) * Math.min(1, .05 * step);
+      speedC += (targetSpeedC - speedC) * Math.min(1, .055 * step);
       ctx.fillStyle = `rgba(5, 6, 15, ${speed > 15 ? 0.25 : 0.6})`;
       ctx.fillRect(0, 0, W, H);
 
       const travel = running ? speed * step : Math.max(0, speed) * step;
       if (running) {
-        distance += travel / 10;
-        spawnTravel += travel;
-        if (spawnTravel >= nextSpawn) {
-          spawnTravel = 0;
-          nextSpawn = 170 + Math.random() * 170;
-          spawnHazard();
+        distanceLightSeconds += speedC * dt;
+        if (distanceLightSeconds >= nextSystemAt) {
+          spawnSystem();
+          nextSystemAt += systemGap() * LIGHT_YEAR_SECONDS;
         }
-        distanceEl.textContent = `${String(Math.floor(distance)).padStart(6,"0")} u`;
+        speedEl.textContent = formatSpeed(speedC);
+        distanceEl.textContent = formatDistance(distanceLightSeconds);
       }
+
+      cameraX += steerX * travel * .62;
+      cameraY += steerY * travel * .62;
 
       for (const s of dust) {
         s.z -= travel;
-        s.x -= steerX * travel * .62;
-        s.y -= steerY * travel * .62;
         if (s.z <= 1) Object.assign(s, spawnDust(false));
 
         const k = Math.min(W,H) * .82 / s.z;
-        const px = cx + s.x * k;
-        const py = cy + s.y * k;
+        const px = cx + (s.x - cameraX) * k;
+        const py = cy + (s.y - cameraY) * k;
         if (px < 0 || px > W || py < 0 || py > H) { Object.assign(s, spawnDust(false)); continue; }
 
         const near = 1 - s.z / depth();
@@ -312,8 +379,6 @@
       for (let i = hazards.length - 1; i >= 0; i -= 1) {
         const object = hazards[i];
         object.z -= travel;
-        object.x -= steerX * travel * .62;
-        object.y -= steerY * travel * .62;
         if (object.z <= 4) { hazards.splice(i,1); continue; }
         const point = project(object);
         if (point.x > -point.r*8 && point.x < W+point.r*8 && point.y > -point.r*8 && point.y < H+point.r*8) drawHazard(object,point);
