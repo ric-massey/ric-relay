@@ -81,8 +81,15 @@
       opacity: .98; pointer-events: auto; cursor: pointer; touch-action: manipulation;
       transition: left var(--cat-move, 5s) ease-in-out,
         top var(--cat-move, 5s) ease-in-out, opacity .25s ease;
-      will-change: left, top;
+      will-change: left, top; isolation: isolate;
     }
+    .relay-cat-resident::after {
+      content: ""; position: absolute; z-index: -1; left: 17%; right: 12%; bottom: 5%;
+      height: 9%; border-radius: 50%; pointer-events: none;
+      background: radial-gradient(ellipse, rgba(0,0,0,.38), rgba(0,0,0,0) 72%);
+      filter: blur(3px); opacity: .72;
+    }
+    .relay-cat-resident.pose-top::after { opacity: 0; }
     .relay-cat-resident:focus-visible { outline: 2px dashed currentColor; outline-offset: 4px; }
     .relay-cat-resident.entering { animation: relay-cat-enter 3.2s cubic-bezier(.2,.7,.25,1) both; }
     .relay-cat-resident.out { opacity: 0; pointer-events: none; }
@@ -407,8 +414,33 @@
     });
   }
 
+  function pagePerches(width, height) {
+    const selectors = "main, article, section, header, .frame, .card, .module, .panel, .topbar";
+    const scrollTop = window.scrollY || 0;
+    const scrollLeft = window.scrollX || 0;
+    const perches = [];
+    document.querySelectorAll(selectors).forEach((feature) => {
+      if (catLayer?.contains(feature)) return;
+      const rect = feature.getBoundingClientRect();
+      if (rect.width < width * .75 || rect.top < 90 || rect.top > innerHeight - 40) return;
+      const top = scrollTop + rect.top - height * .84;
+      if (top < scrollTop + 12 || top + height > scrollTop + innerHeight - 8) return;
+      const leftEdge = Math.max(18, scrollLeft + rect.left + 14);
+      const rightEdge = Math.min(innerWidth - width - 18, scrollLeft + rect.right - width - 14);
+      [leftEdge, rightEdge].forEach((left) => {
+        if (left < 18 || left > innerWidth - width - 18) return;
+        if (!spotCoversControl(left, top, width, height)) perches.push({ left, top, perched: true });
+      });
+    });
+    return perches;
+  }
+
   function catSpot(width, nearViewport = true) {
     const estimatedHeight = width * .72;
+    const perches = pagePerches(width, estimatedHeight);
+    if (perches.length && Math.random() < .78) {
+      return perches[Math.floor(Math.random() * perches.length)];
+    }
     let fallback;
     for (let attempt = 0; attempt < 14; attempt += 1) {
       const rawTop = nearViewport
@@ -574,9 +606,22 @@
     catActionTimer = setTimeout(() => {
       if (catResident !== resident || !resident.isConnected) return;
       resident.classList.remove("walking", "pose-top", "from-bottom");
-      resident.classList.add("idle");
-      setResidentPose(randomIdlePose());
-      scheduleCatAction();
+      resident.classList.add("walking");
+      const home = catSpot(width, true);
+      const currentLeft = Number.parseFloat(resident.style.left) || left;
+      const currentTop = Number.parseFloat(resident.style.top) || endTop;
+      setResidentPose("walk", home.left >= currentLeft ? 1 : -1);
+      const settleDuration = catTravelDuration(currentLeft, currentTop, home.left, home.top, 88);
+      resident.style.setProperty("--cat-move", `${settleDuration}ms`);
+      resident.style.left = `${home.left}px`;
+      resident.style.top = `${home.top}px`;
+      catActionTimer = setTimeout(() => {
+        if (catResident !== resident || !resident.isConnected) return;
+        resident.classList.remove("walking");
+        resident.classList.add("idle");
+        setResidentPose(randomIdlePose());
+        scheduleCatAction();
+      }, settleDuration + 100);
     }, duration + 120);
   }
 
