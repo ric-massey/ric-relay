@@ -17,7 +17,7 @@ completion.
 | `coffee` | Dispenses one terminal-grade coffee. |
 | `exit` | Explains the architectural problem with leaving the Relay. |
 | `404` | Deliberately loses the signal and opens a special version of the Relay's 404 page. |
-| `cat` | Wakes a fluffy long-haired site cat that follows you around the Relay for the rest of that browser tab's session. It stays in view, wanders, hides behind page features, and walks back in if a fast scroll leaves it behind. Type `clear` or `/clear` at the Relay to send it home. (`cat notes` still reads transmissions.) |
+| `cat` | Wakes a fluffy long-haired site cat for the rest of that browser tab's session. It lives at a real spot in each page instead of sticking to the screen and animates through 24 matched frames across eight poses (walking, sitting, loafing, grooming, looking back, peeking, stretching, and an overhead return). It wanders and hides behind page features. If scrolling leaves it behind, it walks back onto the current part of the page after you stop. Click it and it bolts off the nearest edge before cautiously returning. Type `clear` or `/clear` at the Relay to send it home. (`cat notes` still reads transmissions.) |
 | `lsd` | Turns on the fast, prismatic sitewide visual mode. It follows you into every room and project. |
 | `shrooms` | Turns on the slower, breathing sitewide visual mode. It follows you too. |
 | `sober` | Clears either visual mode and returns the site to normal. |
