@@ -4,7 +4,7 @@ Ric Massey's personal website — a terminal-styled "relay" for family and frien
 follow what he's up to (Orrin, climbing, training, photos, write-ups) without having
 to ask.
 
-**Live:** https://ric-massey.github.io/ric-relay/
+**Live:** https://ricmassey.com/
 **Stack:** hand-written HTML/CSS/JS. No build step, no framework, no dependencies.
 **Deploy:** edit a file, `git push` to `main`, GitHub Pages redeploys automatically.
 

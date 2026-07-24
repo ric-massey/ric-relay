@@ -43,6 +43,7 @@
     p { color: var(--phosphor-dim); margin-bottom: 0.9rem; }
     .cursor { animation: blink 1s steps(1) infinite; }
     @keyframes blink { 50% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .cursor { animation: none; opacity: 1; } }
     a.home {
       display: inline-block; margin-top: 0.8rem;
       color: var(--phosphor); text-decoration: none;

@@ -9,8 +9,9 @@
   <meta property="og:site_name" content="Ric's Relay">
   <meta property="og:title" content="Orrin — Ric's Relay">
   <meta property="og:description" content="A plain-language tour of Ric's long-running computer experiment with memory, goals, and an optional language-model tool.">
-  <meta property="og:url" content="https://ric-massey.github.io/ric-relay/orrin.html">
+  <meta property="og:url" content="https://ricmassey.com/orrin.html">
   <meta name="twitter:card" content="summary">
+  <link rel="canonical" href="https://ricmassey.com/orrin.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%2306050e'/><circle cx='50' cy='50' r='10' fill='%234de8ff'/><circle cx='25' cy='30' r='6' fill='%23b48aff'/><circle cx='75' cy='68' r='6' fill='%23b48aff'/><line x1='50' y1='50' x2='25' y2='30' stroke='%234de8ff' stroke-width='2'/><line x1='50' y1='50' x2='75' y2='68' stroke='%234de8ff' stroke-width='2'/></svg>">
   <style>
     :root {
@@ -149,6 +150,10 @@
     .region-head .live { color: var(--spark); }
     .region-head .live::before { content: "◉ "; animation: pulse 1.6s infinite; display: inline-block; }
     @keyframes pulse { 50% { opacity: 0.25; } }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; }
+    }
 
     .region-body { padding: 1.1rem 1.3rem 1.3rem; }
 
@@ -328,7 +333,8 @@
       const flip = Math.random() < 0.5;
       signals.push({ e, t: 0, from: flip ? e.a : e.b, to: flip ? e.b : e.a, speed: 0.006 + Math.random() * 0.01 });
     }
-    setInterval(() => { if (signals.length < 22) fire(); }, 260);
+    const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!reduceMotion) setInterval(() => { if (signals.length < 22) fire(); }, 260);
 
     function frame() {
       ctx.clearRect(0, 0, W, H);
@@ -382,7 +388,7 @@
         ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2); ctx.fill();
       }
 
-      requestAnimationFrame(frame);
+      if (!reduceMotion) requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
 
