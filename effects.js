@@ -155,6 +155,22 @@
     layer = null;
   }
 
+  function cleanIndexRoutes() {
+    if (!/^https?:$/.test(location.protocol)) return;
+
+    document.querySelectorAll("a[href]").forEach((link) => {
+      const target = link.getAttribute("href");
+      const indexRoute = target.match(/^((?:\.\.?\/)*)index\.html(#.*)?$/);
+      if (!indexRoute) return;
+      link.setAttribute("href", `${indexRoute[1] || "./"}${indexRoute[2] || ""}`);
+    });
+
+    if (/\/index\.html$/.test(location.pathname)) {
+      const cleanPath = location.pathname.replace(/index\.html$/, "");
+      history.replaceState(history.state, "", `${cleanPath}${location.search}${location.hash}`);
+    }
+  }
+
   function apply(mode, persist = true) {
     const next = MODES.has(mode) ? mode : null;
     active = next;
@@ -183,6 +199,7 @@
 
   function start() {
     installFilters();
+    cleanIndexRoutes();
     const navigation = performance.getEntriesByType?.("navigation")?.[0];
     const wasReloaded = navigation?.type === "reload" || performance.navigation?.type === 1;
     if (wasReloaded) remember(null);

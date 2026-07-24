@@ -304,9 +304,7 @@
 
     const boot = document.getElementById("boot");
     let li = 0;
-    function nextLine() {
-      if (li >= BOOT_LINES.length) return setTimeout(reveal, 330);
-      const [text, cls, suffix] = BOOT_LINES[li++];
+    function renderBootLine([text, cls, suffix]) {
       const div = document.createElement("div");
       div.textContent = text;
       if (cls === "dim") div.className = "dim";
@@ -316,7 +314,12 @@
         s.textContent = suffix;
         div.appendChild(s);
       }
-      boot.appendChild(div);
+      return div;
+    }
+
+    function nextLine() {
+      if (li >= BOOT_LINES.length) return setTimeout(reveal, 330);
+      boot.appendChild(renderBootLine(BOOT_LINES[li++]));
       setTimeout(nextLine, li <= 1 ? 350 : 170);
     }
 
@@ -335,12 +338,7 @@
     function skipBoot() {
       if (li < BOOT_LINES.length) {
         boot.innerHTML = "";
-        for (const [text, cls, suffix] of BOOT_LINES) {
-          const div = document.createElement("div");
-          div.textContent = text + (suffix || "");
-          if (cls === "dim") div.className = "dim";
-          boot.appendChild(div);
-        }
+        for (const line of BOOT_LINES) boot.appendChild(renderBootLine(line));
         li = BOOT_LINES.length;
         reveal();
       }

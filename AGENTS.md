@@ -41,6 +41,10 @@ relay · orrin · psyche · climbing · training · exploration · workbench · 
 ```
 
 - `href` targets and link text are **identical on every page** — only the CSS differs.
+- Keep Relay home links as `index.html` in room markup for direct-file compatibility.
+  `effects.js` normalizes those links to the clean directory root when served over HTTP;
+  `projects/relay-return.js` does the same for project return controls. Do not hardcode
+  a deployment subdirectory or domain.
 - The current room is rendered as a `<span class="here" aria-current="page">` (not a
   link), positioned in the same spot in the list as its `<a>` on other pages.
 - Each `<nav>` carries `aria-label="Relay rooms"`.

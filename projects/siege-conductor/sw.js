@@ -1,6 +1,6 @@
 /* Siege Conductor service worker — offline-first.
    Once the app has been opened on the web, it keeps working with no internet. */
-const CACHE = "siege-v2";
+const CACHE = "siege-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -8,7 +8,9 @@ const ASSETS = [
   "./apple-touch-icon.png",
   "./icon-192.png",
   "./icon-512.png",
-  "./favicon-32.png"
+  "./favicon-32.png",
+  "../relay-return.js",
+  "../../effects.js"
 ];
 
 self.addEventListener("install", (e) => {
@@ -39,7 +41,9 @@ self.addEventListener("fetch", (e) => {
           }
         } catch (_) {}
         return resp;
-      }).catch(() => caches.match("./index.html"));
+      }).catch(() => e.request.mode === "navigate"
+        ? caches.match("./index.html")
+        : Response.error());
     })
   );
 });

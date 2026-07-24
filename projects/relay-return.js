@@ -1,6 +1,9 @@
 (() => {
   const loader = document.currentScript;
-  const home = loader?.dataset.home || "../index.html";
+  const staticHome = loader?.dataset.home || "../index.html";
+  const home = /^https?:$/.test(location.protocol)
+    ? staticHome.replace(/index\.html(?=#|$)/, "")
+    : staticHome;
   const egg = loader?.dataset.egg || "";
 
   if (loader && !window.RELAY_EFFECTS && !document.querySelector("script[data-relay-effects]")) {

@@ -67,6 +67,10 @@ pill switcher in Orrin, case-file tabs in Psyche, a film strip on captures, and 
 **same set of rooms with the same labels** — only the styling differs. If you add or
 rename a room, update the menu on **every** page (see `AGENTS.md`).
 
+When served on the web, Relay home links normalize to the clean site root instead of
+leaving `/index.html` in the address. Their `index.html` markup remains as a fallback so
+the pages still work when opened directly from disk.
+
 ## Updating content
 
 Each page keeps its editable content in a loudly-commented block near the top of the
