@@ -245,6 +245,7 @@
       .relay-cat-resident { transition: none; }
       .relay-cat-resident.entering { animation: none; }
       .relay-cat-feather { animation: none; display: none; }
+      .relay-cat-peek .relay-cat-slider { animation: none !important; }
     }
   `;
   document.head.appendChild(style);
@@ -347,6 +348,7 @@
     image.dataset.pose = nextPose;
     image.classList.toggle("sprite-top", nextPose === "top");
     const layers = [...image.querySelectorAll(".relay-cat-frame")];
+    layers.forEach((frame) => clearTimeout(frame._relayHideTimer));
     let activeLayer = layers.findIndex((frame) => frame.classList.contains("active"));
     const sequence = options.once ? [0, 1, 2] : CAT_FRAME_SEQUENCE;
     let cursor = 0;
@@ -354,12 +356,21 @@
 
     const showFrame = async (frameIndex) => {
       const incomingLayer = activeLayer === 0 ? 1 : 0;
-      await loadCatFrame(layers[incomingLayer], frames[frameIndex]);
+      const incoming = layers[incomingLayer];
+      const outgoing = activeLayer >= 0 ? layers[activeLayer] : null;
+      await loadCatFrame(incoming, frames[frameIndex]);
       if (!isCurrent()) return false;
       await new Promise((resolve) => requestAnimationFrame(() => {
         if (!isCurrent()) return resolve();
-        if (activeLayer >= 0) layers[activeLayer].classList.remove("active");
-        layers[incomingLayer].classList.add("active");
+        // Fade the incoming frame in ON TOP of the outgoing one, which stays
+        // fully opaque underneath until the new frame is shown. This keeps the
+        // composite at full opacity throughout, so the cat never goes translucent.
+        incoming.style.zIndex = "2";
+        incoming.classList.add("active");
+        if (outgoing) {
+          outgoing.style.zIndex = "1";
+          outgoing._relayHideTimer = setTimeout(() => outgoing.classList.remove("active"), 180);
+        }
         activeLayer = incomingLayer;
         resolve();
       }));
@@ -429,7 +440,12 @@
       runAwayCat(event);
     });
     resident.addEventListener("pointerenter", () => {
-      if (catResident === resident && resident.classList.contains("idle")) setResidentPose("look");
+      if (catResident !== resident || !resident.classList.contains("idle")) return;
+      // Don't interrupt a transient one-shot pose (e.g. "settle"): its completion
+      // callback is what schedules her next move, so interrupting it strands her.
+      const pose = resident.querySelector(".relay-cat-image")?.dataset.pose;
+      if (pose === "settle" || pose === "swat") return;
+      setResidentPose("look");
     });
   }
 
