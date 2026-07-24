@@ -115,12 +115,12 @@
       font-size: 0.72rem;
       letter-spacing: 0.25em;
     }
-    .latest-space{display:grid;grid-template-columns:auto 1fr auto;gap:.2rem 1rem;align-items:center;margin:1.4rem 0 2rem;padding:1rem 1.1rem;color:var(--star);text-decoration:none;border:1px solid rgba(122,92,255,.42);background:linear-gradient(90deg,rgba(122,92,255,.12),rgba(122,92,255,.025));box-shadow:0 0 35px rgba(122,92,255,.08) inset}
+    .latest-space{display:grid;grid-template-columns:auto 1fr auto;gap:.2rem 1rem;align-items:center;width:min(100%,760px);margin:1.4rem 0 2rem;padding:1rem 1.1rem;color:var(--star);text-decoration:none;border:1px solid rgba(122,92,255,.42);background:linear-gradient(90deg,rgba(122,92,255,.12),rgba(122,92,255,.025));box-shadow:0 0 35px rgba(122,92,255,.08) inset}
     .latest-space .latest-kicker{grid-row:1/3;color:var(--nebula);font:700 .65rem/1.2 ui-monospace,Menlo,monospace;letter-spacing:.13em;text-transform:uppercase}
     .latest-space .latest-title{font-size:1rem}.latest-space .latest-description{color:var(--faint);font-size:.78rem}
     .latest-space .latest-meta{grid-column:3;grid-row:1/3;display:grid;gap:.25rem;color:var(--nebula);font:700 .63rem/1.2 ui-monospace,Menlo,monospace;text-align:right;text-transform:uppercase}
     .latest-space:hover,.latest-space:focus-visible{border-color:#b5a6ff;outline:none;box-shadow:0 0 35px rgba(122,92,255,.17) inset}
-    @media(max-width:620px){.latest-space{grid-template-columns:1fr}.latest-space .latest-kicker,.latest-space .latest-title,.latest-space .latest-description,.latest-space .latest-meta{grid-column:1;grid-row:auto}.latest-space .latest-meta{display:flex;justify-content:space-between;text-align:left}}
+    @media(max-width:620px){.latest-space{grid-template-columns:minmax(0,1fr) auto;padding:.65rem .75rem}.latest-space .latest-kicker,.latest-space .latest-title{grid-column:1;grid-row:auto}.latest-space .latest-description{display:none}.latest-space .latest-meta{grid-column:2;grid-row:1/3;display:grid;text-align:right}}
   </style>
 </head>
 <body>
@@ -160,7 +160,8 @@
       <a class="module" href="playground/starfield.html">
         <span class="designation">MODULE 001 — ONLINE</span>
         <h2>Starfield</h2>
-        <p>Fly through space. Steer with your cursor; hold click for warp speed.</p>
+        <p>Fly through space and build distance while dodging stars, planets, comets,
+          and the very unlikely black hole. Hold click, touch, or space for warp.</p>
       </a>
 
       <a class="module" href="projects/spacetime/index.html">

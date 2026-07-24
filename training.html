@@ -119,7 +119,7 @@
     .placeholder strong { color: var(--ink); }
     .latest-training {
       display:grid;grid-template-columns:auto 1fr auto;gap:.15rem .9rem;align-items:center;
-      margin:0 0 1.25rem;padding:.9rem 1rem;color:var(--ink);text-decoration:none;
+      width:min(100%,760px);margin:0 0 1.25rem;padding:.9rem 1rem;color:var(--ink);text-decoration:none;
       background:var(--card);border:1px solid var(--line);border-left:5px solid var(--brand);border-radius:10px;
       box-shadow:0 3px 12px rgba(35,35,35,.06);
     }
@@ -132,7 +132,7 @@
 
     @media (max-width: 620px) {
       .topbar .roomnav { width: 100%; margin-left: 0; }
-      .latest-training{grid-template-columns:1fr}.latest-training .latest-kicker,.latest-training .latest-title,.latest-training .latest-description,.latest-training .latest-meta{grid-column:1;grid-row:auto}.latest-training .latest-meta{display:flex;justify-content:space-between;text-align:left}
+      .latest-training{grid-template-columns:minmax(0,1fr) auto;padding:.65rem .75rem}.latest-training .latest-kicker,.latest-training .latest-title{grid-column:1;grid-row:auto}.latest-training .latest-description{display:none}.latest-training .latest-meta{grid-column:2;grid-row:1/3;display:grid;text-align:right}
     }
   </style>
 </head>

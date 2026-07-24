@@ -4,31 +4,78 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Starfield — Ric's Playground</title>
+  <meta name="description" content="Fly through Ric's starfield, dodge celestial hazards, and see how far you survive.">
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #05060f; }
-    canvas { display: block; }
+    canvas { display: block; touch-action: none; }
     a.back {
-      position: fixed; top: 1rem; left: 1rem;
+      position: fixed; top: 1rem; left: 1rem; z-index: 10;
       color: #9fb4ff; font-family: system-ui, sans-serif; font-size: 0.9rem;
       text-decoration: none; background: rgba(5, 6, 15, 0.6);
       padding: 0.35rem 0.7rem; border-radius: 999px; border: 1px solid #2a3163;
     }
     a.back:hover { color: #fff; }
     p.hint {
-      position: fixed; bottom: 1rem; left: 0; right: 0; text-align: center;
+      position: fixed; bottom: 1rem; left: 0; right: 0; z-index: 10; text-align: center;
       color: #5a6497; font-family: system-ui, sans-serif; font-size: 0.85rem;
       margin: 0; pointer-events: none;
+    }
+    .distance {
+      position: fixed; top: 1rem; right: 1rem; z-index: 10; min-width: 9rem;
+      color: #d9e2ff; background: rgba(5,6,15,.7); border: 1px solid #2a3163;
+      border-radius: 6px; padding: .5rem .7rem; text-align: right;
+      font: 700 .78rem/1.25 ui-monospace, "SF Mono", Menlo, monospace;
+      letter-spacing: .1em; text-transform: uppercase; pointer-events: none;
+    }
+    .distance span { display: block; margin-top: .16rem; color: #8faeff; font-size: 1rem; letter-spacing: .08em; }
+    .game-over {
+      position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
+      padding: 1.2rem; background: rgba(3,4,12,.78); backdrop-filter: blur(5px);
+    }
+    .game-over[hidden] { display: none; }
+    .loss-card {
+      width: min(92vw, 30rem); padding: 1.6rem; color: #cfd9ff; text-align: center;
+      background: rgba(8,11,27,.96); border: 1px solid #48558d; box-shadow: 0 0 50px rgba(75,91,180,.2);
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    }
+    .loss-card .code { color: #ff6e86; font-size: .7rem; letter-spacing: .2em; text-transform: uppercase; }
+    .loss-card h1 { margin: .75rem 0 .5rem; color: #fff; font-size: clamp(1.7rem,8vw,3rem); letter-spacing: .12em; }
+    .loss-card p { margin: .45rem 0 1.2rem; color: #8995bd; line-height: 1.55; }
+    .loss-card button {
+      border: 1px solid #6074c1; border-radius: 5px; padding: .65rem 1rem;
+      color: #fff; background: #202c5b; cursor: pointer; font: 700 .75rem/1 ui-monospace,monospace;
+      letter-spacing: .11em; text-transform: uppercase;
+    }
+    .loss-card button:hover,.loss-card button:focus-visible { background:#33468d;outline:2px solid #9fb4ff;outline-offset:3px; }
+    @media (max-width: 560px) {
+      .distance { top: 3.7rem; left: 1rem; right: auto; min-width: 7.5rem; text-align: left; }
+      p.hint { padding: 0 1rem; font-size: .75rem; }
     }
   </style>
 </head>
 <body>
   <a class="back" href="../exploration.html">← back to /exploration</a>
-  <canvas id="sky"></canvas>
-  <p class="hint">move your mouse to steer · click to hit warp speed</p>
+  <canvas id="sky" aria-label="Starfield flight game"></canvas>
+  <div class="distance" aria-live="off">Distance<span id="distance">000000 u</span></div>
+  <p class="hint">steer to dodge · hold click, touch, or space for warp</p>
+
+  <div class="game-over" id="game-over" role="dialog" aria-modal="true" aria-labelledby="loss-title" hidden>
+    <div class="loss-card">
+      <div class="code">Navigation failure</div>
+      <h1 id="loss-title">SIGNAL LOST</h1>
+      <p id="loss-detail">Collision detected.</p>
+      <button id="restart" type="button">Relaunch</button>
+    </div>
+  </div>
 
   <script>
     const canvas = document.getElementById("sky");
     const ctx = canvas.getContext("2d");
+    const distanceEl = document.getElementById("distance");
+    const gameOverEl = document.getElementById("game-over");
+    const lossDetail = document.getElementById("loss-detail");
+    const restartButton = document.getElementById("restart");
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
     let W, H, cx, cy;
 
     function resize() {
@@ -39,55 +86,247 @@
     resize();
     addEventListener("resize", resize);
 
-    const STARS = 400;
-    const stars = Array.from({ length: STARS }, () => spawn(true));
+    const DUST_COUNT = reducedMotion ? 180 : 360;
+    const dust = Array.from({ length: DUST_COUNT }, () => spawnDust(true));
+    const hazards = [];
 
-    function spawn(anywhere) {
+    function depth() { return Math.max(900, W); }
+
+    function spawnDust(anywhere) {
       return {
         x: (Math.random() - 0.5) * W,
         y: (Math.random() - 0.5) * H,
-        z: anywhere ? Math.random() * W : W,
+        z: anywhere ? Math.random() * depth() : depth(),
       };
     }
 
     let speed = 4, targetSpeed = 4;
     let steerX = 0, steerY = 0;
+    let distance = 0;
+    let spawnTravel = 0;
+    let nextSpawn = 190;
+    let running = true;
+    let last = performance.now();
+
+    const TYPES = {
+      star: { min: 18, max: 31 },
+      planet: { min: 24, max: 42 },
+      comet: { min: 10, max: 16 },
+      "black hole": { min: 32, max: 42 },
+    };
+
+    function chooseType() {
+      const roll = Math.random();
+      if (roll < 0.006) return "black hole";
+      if (roll < 0.19) return "comet";
+      if (roll < 0.58) return "planet";
+      return "star";
+    }
+
+    function spawnHazard(z = depth()) {
+      const type = chooseType();
+      const config = TYPES[type];
+      hazards.push({
+        type,
+        x: (Math.random() - .5) * W * .78,
+        y: (Math.random() - .5) * H * .78,
+        z,
+        radius: config.min + Math.random() * (config.max - config.min),
+        hue: Math.floor(Math.random() * 360),
+        ring: Math.random() > .58,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+
+    function seedHazards() {
+      hazards.length = 0;
+      spawnHazard(depth() * .48);
+      spawnHazard(depth() * .72);
+      spawnHazard(depth() * .96);
+    }
+    seedHazards();
 
     addEventListener("mousemove", (e) => {
       steerX = (e.clientX - cx) / cx;
       steerY = (e.clientY - cy) / cy;
     });
-    addEventListener("mousedown", () => (targetSpeed = 40));
-    addEventListener("mouseup", () => (targetSpeed = 4));
-    addEventListener("touchstart", () => (targetSpeed = 40));
-    addEventListener("touchend", () => (targetSpeed = 4));
+    canvas.addEventListener("mousedown", () => { if (running) targetSpeed = 40; });
+    addEventListener("mouseup", () => { if (running) targetSpeed = 4; });
+    canvas.addEventListener("touchstart", (event) => {
+      if (!running) return;
+      event.preventDefault();
+      targetSpeed = 40;
+      const touch = event.touches[0];
+      steerX = (touch.clientX - cx) / cx;
+      steerY = (touch.clientY - cy) / cy;
+    }, { passive: false });
+    canvas.addEventListener("touchmove", (event) => {
+      event.preventDefault();
+      const touch = event.touches[0];
+      steerX = (touch.clientX - cx) / cx;
+      steerY = (touch.clientY - cy) / cy;
+    }, { passive: false });
+    addEventListener("touchend", () => { if (running) targetSpeed = 4; });
+    addEventListener("keydown", (event) => {
+      if (event.code === "Space") {
+        event.preventDefault();
+        if (running) targetSpeed = 40;
+        else restart();
+      } else if (!running && event.key.toLowerCase() === "r") restart();
+    });
+    addEventListener("keyup", (event) => {
+      if (event.code === "Space" && running) targetSpeed = 4;
+    });
+    addEventListener("blur", () => { if (running) targetSpeed = 4; });
 
-    function frame() {
-      speed += (targetSpeed - speed) * 0.05;
+    function project(object) {
+      const scale = Math.min(W, H) * .82 / object.z;
+      return { x: cx + object.x * scale, y: cy + object.y * scale, r: object.radius * scale };
+    }
+
+    function glowCircle(x, y, radius, inner, outer) {
+      const gradient = ctx.createRadialGradient(x, y, 0, x, y, Math.max(1, radius * 2.4));
+      gradient.addColorStop(0, inner);
+      gradient.addColorStop(.38, outer);
+      gradient.addColorStop(1, "transparent");
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(1, radius * 2.4), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawHazard(object, point) {
+      const { x, y } = point;
+      const r = Math.max(1.3, point.r);
+      ctx.save();
+
+      if (object.type === "star") {
+        glowCircle(x, y, r, "#fff", `hsla(${35 + object.hue % 30},100%,65%,.62)`);
+        ctx.fillStyle = "#fff8d6";
+        ctx.beginPath(); ctx.arc(x, y, Math.max(1.2, r * .42), 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(255,239,177,.75)";
+        ctx.lineWidth = Math.max(1, r * .08);
+        ctx.beginPath(); ctx.moveTo(x-r*1.2,y);ctx.lineTo(x+r*1.2,y);ctx.moveTo(x,y-r*1.2);ctx.lineTo(x,y+r*1.2);ctx.stroke();
+      } else if (object.type === "planet") {
+        const gradient = ctx.createRadialGradient(x-r*.35,y-r*.35,r*.08,x,y,r);
+        gradient.addColorStop(0, `hsl(${object.hue},75%,72%)`);
+        gradient.addColorStop(.55, `hsl(${object.hue},58%,43%)`);
+        gradient.addColorStop(1, `hsl(${object.hue},52%,13%)`);
+        ctx.fillStyle = gradient;
+        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+        if (object.ring) {
+          ctx.strokeStyle = `hsla(${object.hue + 35},65%,72%,.7)`;
+          ctx.lineWidth = Math.max(1,r*.15);ctx.beginPath();ctx.ellipse(x,y,r*1.55,r*.38,-.24,0,Math.PI*2);ctx.stroke();
+        }
+      } else if (object.type === "comet") {
+        const tail = ctx.createLinearGradient(x,y,x+r*7,y-r*3);
+        tail.addColorStop(0,"rgba(190,231,255,.92)");tail.addColorStop(1,"transparent");
+        ctx.strokeStyle=tail;ctx.lineWidth=Math.max(1.5,r*.55);ctx.lineCap="round";
+        ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+r*7,y-r*3);ctx.stroke();
+        glowCircle(x,y,r,"#fff","rgba(101,190,255,.7)");
+        ctx.fillStyle="#eaf9ff";ctx.beginPath();ctx.arc(x,y,Math.max(1.2,r*.48),0,Math.PI*2);ctx.fill();
+      } else {
+        glowCircle(x,y,r*1.3,"rgba(170,110,255,.7)","rgba(255,130,65,.36)");
+        ctx.strokeStyle="rgba(255,151,83,.9)";ctx.lineWidth=Math.max(2,r*.2);
+        ctx.beginPath();ctx.ellipse(x,y,r*1.35,r*.55,object.phase,0,Math.PI*2);ctx.stroke();
+        ctx.fillStyle="#000";ctx.beginPath();ctx.arc(x,y,r*.72,0,Math.PI*2);ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function crash(type) {
+      running = false;
+      targetSpeed = 0;
+      lossDetail.textContent = `Collision with ${type === "star" ? "a star" : type === "comet" ? "a comet" : type === "planet" ? "a planet" : "a black hole"}. Distance survived: ${Math.floor(distance).toLocaleString()} u.`;
+      gameOverEl.hidden = false;
+      restartButton.focus();
+    }
+
+    function restart() {
+      distance = 0;
+      spawnTravel = 0;
+      nextSpawn = 190;
+      speed = 4;
+      targetSpeed = 4;
+      steerX = 0;
+      steerY = 0;
+      running = true;
+      seedHazards();
+      gameOverEl.hidden = true;
+      last = performance.now();
+      distanceEl.textContent = "000000 u";
+    }
+    restartButton.addEventListener("click", restart);
+
+    function drawReticle() {
+      ctx.strokeStyle = "rgba(143,174,255,.35)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx,cy,10,0,Math.PI*2);
+      ctx.moveTo(cx-18,cy);ctx.lineTo(cx-7,cy);
+      ctx.moveTo(cx+7,cy);ctx.lineTo(cx+18,cy);
+      ctx.moveTo(cx,cy-18);ctx.lineTo(cx,cy-7);
+      ctx.moveTo(cx,cy+7);ctx.lineTo(cx,cy+18);
+      ctx.stroke();
+    }
+
+    function frame(now) {
+      const dt = Math.min(.04, (now - last) / 1000 || .016);
+      last = now;
+      const step = dt * 60;
+      speed += (targetSpeed - speed) * Math.min(1, .05 * step);
       ctx.fillStyle = `rgba(5, 6, 15, ${speed > 15 ? 0.25 : 0.6})`;
       ctx.fillRect(0, 0, W, H);
 
-      for (const s of stars) {
-        s.z -= speed;
-        s.x -= steerX * speed * 2;
-        s.y -= steerY * speed * 2;
-        if (s.z <= 1) Object.assign(s, spawn(false));
+      const travel = running ? speed * step : Math.max(0, speed) * step;
+      if (running) {
+        distance += travel / 10;
+        spawnTravel += travel;
+        if (spawnTravel >= nextSpawn) {
+          spawnTravel = 0;
+          nextSpawn = 170 + Math.random() * 170;
+          spawnHazard();
+        }
+        distanceEl.textContent = `${String(Math.floor(distance)).padStart(6,"0")} u`;
+      }
 
-        const k = 200 / s.z;
+      for (const s of dust) {
+        s.z -= travel;
+        s.x -= steerX * travel * .62;
+        s.y -= steerY * travel * .62;
+        if (s.z <= 1) Object.assign(s, spawnDust(false));
+
+        const k = Math.min(W,H) * .82 / s.z;
         const px = cx + s.x * k;
         const py = cy + s.y * k;
-        if (px < 0 || px > W || py < 0 || py > H) { Object.assign(s, spawn(false)); continue; }
+        if (px < 0 || px > W || py < 0 || py > H) { Object.assign(s, spawnDust(false)); continue; }
 
-        const size = Math.max(0.3, 2.2 * (1 - s.z / W));
-        const hue = 220 - (1 - s.z / W) * 40;
-        ctx.fillStyle = `hsl(${hue}, 80%, ${60 + (1 - s.z / W) * 40}%)`;
+        const near = 1 - s.z / depth();
+        const size = Math.max(.25, 2 * near);
+        ctx.fillStyle = `hsla(${220-near*35},80%,${60+near*35}%,.86)`;
         ctx.beginPath();
         ctx.arc(px, py, size, 0, Math.PI * 2);
         ctx.fill();
       }
+
+      for (let i = hazards.length - 1; i >= 0; i -= 1) {
+        const object = hazards[i];
+        object.z -= travel;
+        object.x -= steerX * travel * .62;
+        object.y -= steerY * travel * .62;
+        if (object.z <= 4) { hazards.splice(i,1); continue; }
+        const point = project(object);
+        if (point.x > -point.r*8 && point.x < W+point.r*8 && point.y > -point.r*8 && point.y < H+point.r*8) drawHazard(object,point);
+        if (running && object.z < 105 && Math.hypot(point.x-cx,point.y-cy) < point.r + 10) {
+          crash(object.type);
+          hazards.splice(i,1);
+        }
+      }
+
+      drawReticle();
       requestAnimationFrame(frame);
     }
-    frame();
+    requestAnimationFrame(frame);
   </script>
   <script src="../projects/relay-return.js" data-home="../index.html" data-egg="starfield" defer></script>
 </body>

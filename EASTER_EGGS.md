@@ -60,6 +60,8 @@ No prompt is required.
 These are visible, but they belong in the same field guide:
 
 - The Climbing banner label pauses and resumes the rotating field-photo reel.
-- Starfield enters warp speed while the pointer is held down.
+- Starfield enters warp speed while click, touch, or Space is held. Stars, planets,
+  comets, and very rare black holes are collision hazards; the distance counter
+  records how far each flight survives.
 - The Relay terminal supports command history with `↑`/`↓` and completion with
   `Tab`.

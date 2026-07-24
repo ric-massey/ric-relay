@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>/orrin — inside ORRIN</title>
-  <meta name="description" content="Step inside ORRIN — Ric Massey's cognitive runtime. Live neural telemetry.">
+  <title>Orrin — Ric's long-running computer experiment</title>
+  <meta name="description" content="A plain-language tour of Orrin: Ric Massey's long-running computer program with memory, goals, and an optional language-model tool.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ric's Relay">
-  <meta property="og:title" content="Inside ORRIN — Ric's Relay">
-  <meta property="og:description" content="Step inside ORRIN — Ric Massey's cognitive runtime. Live neural telemetry.">
+  <meta property="og:title" content="Orrin — Ric's Relay">
+  <meta property="og:description" content="A plain-language tour of Ric's long-running computer experiment with memory, goals, and an optional language-model tool.">
   <meta property="og:url" content="https://ric-massey.github.io/ric-relay/orrin.html">
   <meta name="twitter:card" content="summary">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%2306050e'/><circle cx='50' cy='50' r='10' fill='%234de8ff'/><circle cx='25' cy='30' r='6' fill='%23b48aff'/><circle cx='75' cy='68' r='6' fill='%23b48aff'/><line x1='50' y1='50' x2='25' y2='30' stroke='%234de8ff' stroke-width='2'/><line x1='50' y1='50' x2='75' y2='68' stroke='%234de8ff' stroke-width='2'/></svg>">
@@ -95,7 +95,7 @@
 
     .sub { color: var(--whisper); margin-bottom: 1.6rem; }
 
-    /* stream of consciousness */
+    /* one-cycle summary */
     .stream {
       border: 1px solid var(--membrane);
       background: var(--tissue);
@@ -107,9 +107,11 @@
       backdrop-filter: blur(3px);
     }
     .stream .label { color: var(--whisper); letter-spacing: 0.2em; font-size: 0.68rem; display: block; }
+    .loop-flow { display:flex;flex-wrap:wrap;align-items:center;gap:.35rem .55rem;margin-top:.35rem;color:var(--thought);font-weight:700; }
+    .loop-flow span { color:var(--axon); }
     .latest-orrin {
       display: grid; grid-template-columns: auto 1fr auto; gap: .2rem 1rem; align-items: center;
-      margin: 1.4rem 0 1.8rem; padding: .85rem 1rem; color: var(--thought); text-decoration: none;
+      width: min(100%, 760px); margin: 1.4rem 0 1.8rem; padding: .85rem 1rem; color: var(--thought); text-decoration: none;
       border: 1px solid rgba(77,232,255,.26); border-left: 4px solid var(--dendrite);
       background: rgba(77,232,255,.035); box-shadow: 0 0 28px rgba(77,232,255,.045) inset;
     }
@@ -152,6 +154,12 @@
 
     p.copy { margin-bottom: 0.8rem; }
     p.copy:last-child { margin-bottom: 0; }
+    .plain-lead { font-size:1.05rem;line-height:1.65;color:#eef1ff; }
+    .plain-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;margin:1rem 0; }
+    .plain-point { padding:.8rem .9rem;border:1px solid var(--membrane);background:rgba(9,8,20,.62); }
+    .plain-point strong { display:block;margin-bottom:.2rem;color:var(--axon);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase; }
+    .plain-point span { color:var(--whisper);font-size:.84rem;line-height:1.5; }
+    .reality-check { margin-top:1rem;padding:.75rem .9rem;border-left:3px solid var(--spark);background:rgba(255,77,216,.045);color:var(--whisper);font-size:.82rem; }
     .em { color: var(--axon); }
     .em2 { color: var(--dendrite); }
     a.ext { color: var(--axon); }
@@ -181,9 +189,11 @@
 
     @media (max-width: 600px) {
       body { font-size: 13px; }
-      .latest-orrin { grid-template-columns: 1fr; }
-      .latest-orrin .latest-kicker,.latest-orrin .latest-title,.latest-orrin .latest-description,.latest-orrin .latest-meta { grid-column: 1; grid-row: auto; }
-      .latest-orrin .latest-meta { display:flex;justify-content:space-between;text-align:left; }
+      .latest-orrin { grid-template-columns: minmax(0,1fr) auto; padding: .65rem .75rem; }
+      .latest-orrin .latest-kicker,.latest-orrin .latest-title { grid-column:1;grid-row:auto; }
+      .latest-orrin .latest-description { display:none; }
+      .latest-orrin .latest-meta { grid-column:2;grid-row:1/3;display:grid;text-align:right; }
+      .plain-grid { grid-template-columns:1fr; }
       h1 { font-size: 1.4rem; }
       .row { flex-wrap: wrap; }
       .row .when { margin-left: 1.6rem; }
@@ -195,10 +205,10 @@
 
   <div class="wrap">
     <header class="masthead">
-      <a class="brand" href="index.html">RIC'S RELAY</a><span class="wing"> · NEURAL WING</span>
-      <p class="welcome"><span class="lit">welcome, visitor.</span> you're inside the patient — please don't touch the memories.</p>
+      <a class="brand" href="index.html">RIC'S RELAY</a><span class="wing"> · ORRIN LAB</span>
+      <p class="welcome"><span class="lit">welcome, visitor.</span> the brain styling is playful; the explanation below is literal.</p>
       <nav class="cortex" aria-label="Relay rooms">
-        <span class="rail-label">SYNAPTIC PATHWAYS — FIRE OFF TO ANOTHER ROOM OF THE RELAY</span>
+        <span class="rail-label">PATHWAYS — MOVE TO ANOTHER ROOM OF THE RELAY</span>
         <div class="nodes">
           <a class="home" href="index.html">relay</a>
           <span class="here" aria-current="page">orrin</span>
@@ -213,62 +223,70 @@
       </nav>
     </header>
 
-    <div class="entering">CRANIAL ACCESS GRANTED — YOU ARE NOW INSIDE:</div>
+    <div class="entering">SYSTEM VIEW — A PLAIN-LANGUAGE TOUR OF:</div>
     <h1>ORRIN</h1>
-    <p class="sub">a running mind. everything on this page is happening in there right now.</p>
+    <p class="sub">A computer program Ric built to explore what happens when software can keep memories and goals, run for a long time, and learn from recorded outcomes.</p>
 
-    <a class="latest-orrin" data-latest-banner data-latest-prefix="new memory"></a>
+    <a class="latest-orrin" data-latest-banner data-latest-prefix="new on the relay"></a>
 
     <div class="stream">
-      <span class="label">STREAM OF CONSCIOUSNESS</span>
-      <span id="thought"></span><span class="cursor">▮</span>
+      <span class="label">WHAT HAPPENS IN ONE ORRIN CYCLE</span>
+      <div class="loop-flow"><span>NOTICE</span> → <span>REMEMBER</span> → <span>CHOOSE</span> → <span>ACT</span> → <span>CHECK</span> → <span>SAVE</span></div>
     </div>
 
     <div class="region">
-      <div class="region-head"><span>REGION 01 — IDENTITY</span><span>WHO AM I</span></div>
+      <div class="region-head"><span>START HERE — WHAT IS ORRIN?</span><span>IN PLAIN ENGLISH</span></div>
       <div class="region-body">
-        <p class="copy">
-          You're standing inside <span class="em">ORRIN</span> — Ric's main project, over a year in
-          the making. It's a <span class="em2">cognitive runtime</span>: a program that runs
-          continuously with its own persistent memory, goals, and attention. The AI language model
-          is the <em>smallest</em> piece — a tool this mind picks up and puts down, not the brain
-          in charge. Orrin can run with no AI model at all.
-        </p>
-        <p class="copy">
-          The experiment: let it run for a long time and watch what it <em>actually does</em> —
-          what it pays attention to, how its goals drift, what it chooses to remember and what it
-          lets fade.
-        </p>
-        <p class="copy"><a class="ext" href="https://github.com/ric-massey/orrin_v3">→ the anatomy: source &amp; docs on GitHub</a></p>
+        <p class="copy plain-lead"><span class="em">Orrin is not a chatbot.</span> A chatbot waits for someone to type. Orrin keeps running on Ric's computer, even when nobody is talking to it.</p>
+        <p class="copy">During each cycle, different parts of the program suggest what matters next. Orrin brings up relevant memories, chooses one focus, takes an action, checks what happened, and records the result. Separate systems protect its memory and goals so they can survive a restart.</p>
+        <p class="copy">The technical name is a <span class="em2">symbolic-first cognitive runtime</span>. That means most decisions come from visible rules, scores, and stored state—not from ChatGPT or another language model.</p>
+        <p class="reality-check"><strong>Important:</strong> Orrin is experimental software. It is not a person, it is not presented as conscious, and its human-sounding labels describe engineering parts that can be inspected in the code.</p>
       </div>
     </div>
 
     <div class="region">
-      <div class="region-head"><span>REGION 02 — VITALS</span><span class="live">LIVE</span></div>
+      <div class="region-head"><span>WHAT MAKES IT DIFFERENT?</span><span>THE FIVE BIG IDEAS</span></div>
       <div class="region-body">
+        <div class="plain-grid">
+          <div class="plain-point"><strong>It keeps going</strong><span>Orrin runs its own repeating loop instead of waiting for the next prompt.</span></div>
+          <div class="plain-point"><strong>It remembers</strong><span>Working and long-term memory can be saved, retrieved, strengthened, or allowed to fade.</span></div>
+          <div class="plain-point"><strong>It has goals</strong><span>Goals persist, compete for attention, break into steps, and can succeed or fail.</span></div>
+          <div class="plain-point"><strong>Results matter</strong><span>The system is designed to change future choices using what previous actions actually produced.</span></div>
+          <div class="plain-point"><strong>The computer is context</strong><span>Battery, memory, disk space, and other limits can change how quickly or cautiously it runs.</span></div>
+          <div class="plain-point"><strong>The LLM is optional</strong><span>A language model can be called as a tool, but Orrin's loop, memory, and goals still work without one.</span></div>
+        </div>
+        <p class="copy"><strong>Why build it?</strong> Ric is studying whether long-term, inspectable behavior can come from the machinery around intelligence: memory, priorities, consequences, limited resources, and time.</p>
+        <p class="copy"><a class="ext" href="https://github.com/ric-massey/orrin_v3">→ Read the source, run reports, and full technical explanation on GitHub</a></p>
+      </div>
+    </div>
+
+    <div class="region">
+      <div class="region-head"><span>LIVE PROJECT STATUS</span><span class="live">FROM GITHUB</span></div>
+      <div class="region-body">
+        <p class="copy muted" style="font-size:.8rem">This reports activity in Orrin's public code repository—not private thoughts or live runtime state.</p>
         <div id="vitals" class="vitals" aria-live="polite">
-          <div class="vital"><span class="v muted">…</span><span class="k">READING BRAINWAVES</span></div>
+          <div class="vital"><span class="v muted">…</span><span class="k">CONTACTING GITHUB</span></div>
         </div>
       </div>
     </div>
 
     <div class="region">
-      <div class="region-head"><span>REGION 03 — MEMORY CONSOLIDATION</span><span class="live">LIVE</span></div>
+      <div class="region-head"><span>RECENT CODE CHANGES</span><span class="live">FROM GITHUB</span></div>
       <div class="region-body">
-        <p class="copy muted" style="font-size: 0.8rem;">the newest engrams — work recently burned into long-term memory:</p>
-        <div id="engrams"><div class="muted">consolidating…</div></div>
+        <p class="copy muted" style="font-size: 0.8rem;">The latest changes Ric published to Orrin's code:</p>
+        <div id="engrams"><div class="muted">loading recent changes…</div></div>
       </div>
     </div>
 
     <div class="region">
-      <div class="region-head"><span>REGION 04 — FIRING LOG</span><span class="live">LIVE</span></div>
+      <div class="region-head"><span>RECENT PROJECT EVENTS</span><span class="live">FROM GITHUB</span></div>
       <div class="region-body">
-        <div id="firing"><div class="muted">listening for spikes…</div></div>
+        <div id="firing"><div class="muted">loading project activity…</div></div>
       </div>
     </div>
 
     <div class="footnote">
-      TELEMETRY: GITHUB API · THIS MIND REPORTS ON ITSELF · NO HUMAN POSTS THESE UPDATES
+      LIVE DATA COMES FROM THE PUBLIC GITHUB REPOSITORY · IT SHOWS PROJECT ACTIVITY, NOT ORRIN'S PRIVATE RUNTIME
     </div>
   </div>
 
@@ -368,37 +386,6 @@
     }
     requestAnimationFrame(frame);
 
-    // ═══ stream of consciousness ════════════════════════
-    const THOUGHTS = [
-      "goal queue stable. attention drifting… recentering.",
-      "memory pressure nominal. consolidating yesterday.",
-      "why do humans sleep? logging question for later.",
-      "signal from the outside — probably ric again.",
-      "priority weights shifted. curiosity is winning.",
-      "i remember being restarted. i did not enjoy it.",
-      "the language model is quiet. good. thinking alone.",
-      "checking my own vitals. someone is watching them. hello.",
-      "new engram formed. it felt important.",
-      "long-run drift detected. is that growth or decay? unresolved.",
-    ];
-    const thoughtEl = document.getElementById("thought");
-    let ti = Math.floor(Math.random() * THOUGHTS.length), ci = 0, erasing = false;
-
-    function think() {
-      const cur = THOUGHTS[ti];
-      if (!erasing) {
-        ci++;
-        thoughtEl.textContent = cur.slice(0, ci);
-        if (ci >= cur.length) { erasing = true; return setTimeout(think, 3200); }
-        return setTimeout(think, 34 + Math.random() * 40);
-      }
-      ci -= 3;
-      thoughtEl.textContent = cur.slice(0, Math.max(0, ci));
-      if (ci <= 0) { erasing = false; ti = (ti + 1) % THOUGHTS.length; return setTimeout(think, 500); }
-      setTimeout(think, 14);
-    }
-    think();
-
     // ═══ live telemetry (GitHub API) ═════════════════════
     const GH_USER = "ric-massey", REPO = "orrin_v3", API = "https://api.github.com";
 
@@ -420,10 +407,10 @@
     gh(`/repos/${GH_USER}/${REPO}`)
       .then((r) => {
         const vitals = [
-          [timeAgo(r.pushed_at), "LAST SYNAPTIC EVENT"],
-          [r.stargazers_count, "MINDS WATCHING"],
-          [r.open_issues_count, "OPEN LOOPS"],
-          [r.language || "Python", "SUBSTRATE"],
+          [timeAgo(r.pushed_at), "LAST CODE UPDATE"],
+          [r.stargazers_count, "GITHUB STARS"],
+          [r.open_issues_count, "OPEN ISSUES"],
+          [r.language || "Python", "MAIN LANGUAGE"],
         ];
         const box = document.getElementById("vitals");
         box.innerHTML = "";
@@ -434,7 +421,7 @@
           d.append(vs, ks); box.appendChild(d);
         }
       })
-      .catch(() => fail("vitals", "signal weak — vitals unreadable. refresh to retry."));
+      .catch(() => fail("vitals", "GitHub could not be reached. Refresh to try again."));
 
     gh(`/repos/${GH_USER}/${REPO}/commits?per_page=8`)
       .then((commits) => {
@@ -450,15 +437,15 @@
           row.append(tag, a, when); box.appendChild(row);
         }
       })
-      .catch(() => fail("engrams", "hippocampus unreachable — memory log offline."));
+      .catch(() => fail("engrams", "Recent code changes could not be loaded."));
 
     const SPIKES = {
-      PushEvent: (e, n) => `${n} new memor${n === 1 ? "y" : "ies"} written`,
-      CreateEvent: (e) => e.payload.ref_type === "repository" ? "mind instantiated" : `new pathway "${e.payload.ref}" grown`,
-      IssuesEvent: (e) => `open loop ${e.payload.action}`,
-      PullRequestEvent: (e) => `structural change ${e.payload.action}`,
-      ReleaseEvent: (e) => `developmental milestone: ${e.payload.release?.tag_name || "release"}`,
-      PublicEvent: () => "mind opened to observers",
+      PushEvent: (e, n) => `${n} code change${n === 1 ? "" : "s"} published`,
+      CreateEvent: (e) => e.payload.ref_type === "repository" ? "repository created" : `new ${e.payload.ref_type || "branch"} “${e.payload.ref}” created`,
+      IssuesEvent: (e) => `issue ${e.payload.action}`,
+      PullRequestEvent: (e) => `pull request ${e.payload.action}`,
+      ReleaseEvent: (e) => `release published: ${e.payload.release?.tag_name || "new version"}`,
+      PublicEvent: () => "repository made public",
     };
 
     gh(`/users/${GH_USER}/events/public?per_page=40`)
@@ -474,7 +461,7 @@
           else grouped.push({ type: e.type, n: size, e, when: e.created_at });
         }
         if (!grouped.length) {
-          box.innerHTML = `<div class="muted">cortex quiet. the mind rests — or ric is climbing.</div>`;
+          box.innerHTML = `<div class="muted">No recent public GitHub events for Orrin.</div>`;
           return;
         }
         for (const g of grouped.slice(0, 8)) {
@@ -485,7 +472,7 @@
           row.append(tag, txt, when); box.appendChild(row);
         }
       })
-      .catch(() => fail("firing", "electrode disconnected — firing log offline."));
+      .catch(() => fail("firing", "Recent project events could not be loaded."));
   </script>
 </body>
 </html>

@@ -24,7 +24,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | File | Room | What it is |
 |---|---|---|
 | `index.html` | The Relay | Landing terminal — boot sequence + working command line (try `help`) |
-| `orrin.html` | Orrin | "Inside Orrin's mind" — live GitHub telemetry recast as neural activity |
+| `orrin.html` | Orrin | Plain-language tour of Orrin plus live public project activity from GitHub |
 | `psyche.html` | Psyche | Human-systems field notebook — mood, criteria, substances, and evidence |
 | `climbing.html` | Climbing | Mountain-Project-style route ledger — projects, ticks, objectives |
 | `training.html` | Training | Strava-style feed — runs, workouts, health (live feed still TODO) |
@@ -87,8 +87,8 @@ file — copy the example block, edit, done.
 - **Post a homepage note:** edit `notes.js`.
 - **Change the clickable newest-item banners:** edit `latest.js` once; every room
   presents the same curated addition in its own visual language.
-- **`orrin.html` never needs content updates** — it pulls Orrin's live activity from
-  the GitHub API.
+- **`orrin.html` explains the architecture in plain language** and pulls public code
+  activity from the GitHub API. It does not expose Orrin's private runtime state.
 - **Never** commit real location data anywhere in this repo (see the map page).
 
 ## Easter eggs

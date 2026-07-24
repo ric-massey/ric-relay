@@ -23,7 +23,7 @@
     }
     html.relay-effect-shrooms body > :not(script):not(.relay-trip-layer):not(.relay-filter-bank) {
       transform-origin: 50% 30%;
-      animation: relay-shroom-breathe 7.5s ease-in-out infinite, relay-shroom-color 10s ease-in-out infinite alternate;
+      animation: relay-shroom-breathe 14s ease-in-out infinite, relay-shroom-color 19s ease-in-out infinite alternate;
       will-change: transform, filter;
     }
     .relay-filter-bank { position:fixed;width:0;height:0;overflow:hidden;pointer-events:none; }
@@ -59,16 +59,16 @@
         radial-gradient(circle at 72% 27%, rgba(196,90,255,.55), transparent 25%),
         radial-gradient(circle at 58% 76%, rgba(255,128,59,.52), transparent 29%),
         radial-gradient(circle at 12% 82%, rgba(0,201,156,.52), transparent 23%);
-      animation: relay-shroom-drift 12s ease-in-out infinite alternate, relay-overlay-hue 24s linear infinite;
+      animation: relay-shroom-drift 23s ease-in-out infinite alternate, relay-overlay-hue 42s linear infinite;
     }
     html.relay-effect-shrooms .relay-trip-layer::before {
       inset: 7%; opacity: .48;
       background: repeating-radial-gradient(circle at 42% 48%, transparent 0 38px, rgba(232,255,210,.2) 41px, transparent 48px 88px);
-      animation: relay-mycelium 13s ease-in-out infinite alternate;
+      animation: relay-mycelium 25s ease-in-out infinite alternate;
     }
     html.relay-effect-shrooms .relay-trip-layer::after {
       background: radial-gradient(ellipse at center, transparent 25%, rgba(76,18,89,.28) 72%, transparent);
-      animation: relay-shroom-breathe 8s ease-in-out infinite;
+      animation: relay-shroom-breathe 16s ease-in-out infinite;
     }
     @keyframes relay-lsd-color {
       0%{filter:url(#relay-lsd-distortion) hue-rotate(0deg) saturate(1.25) contrast(1.04)}
@@ -123,11 +123,11 @@
         </filter>
         <filter id="relay-shroom-distortion" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">
           <feTurbulence type="turbulence" baseFrequency=".004 .009" numOctaves="2" seed="31" result="noise">
-            <animate attributeName="baseFrequency" dur="13s" repeatCount="indefinite"
+            <animate attributeName="baseFrequency" dur="24s" repeatCount="indefinite"
               values=".004 .009;.007 .005;.003 .011;.004 .009" />
           </feTurbulence>
           <feDisplacementMap in="SourceGraphic" in2="noise" scale="7" xChannelSelector="G" yChannelSelector="B">
-            <animate attributeName="scale" dur="9s" repeatCount="indefinite" values="4;11;7;13;4" />
+            <animate attributeName="scale" dur="18s" repeatCount="indefinite" values="4;11;7;13;4" />
           </feDisplacementMap>
         </filter>
       </defs>`;
