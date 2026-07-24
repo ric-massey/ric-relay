@@ -5,7 +5,7 @@ window.RELAY_LATEST = [
     date: "2026-07-24",
     kind: "game update",
     title: "Starfield: Interstellar Flight",
-    description: "Dodge scaled star systems at 1 c or engage 10,000,000 c warp and see how many light-years you survive.",
+    description: "Fly through a richer deep field of stars, planets, moons, comets, nebulae, and galaxies at 1 c or 10,000,000 c warp.",
     href: "playground/starfield.html",
   },
   {

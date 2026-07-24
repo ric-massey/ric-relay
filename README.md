@@ -67,8 +67,10 @@ Exploration. Normal cruise is shown as `1 c`; holding click, touch, or Space eng
 the fictional `10,000,000 c` warp drive. The distance display moves from light-seconds
 through light-years, and new systems are separated by several light-years. Stars are
 much larger than their planets, planets use reflected directional light instead of a
-self-glow, comets stay small, and a black hole replaces roughly one in 500 generated
-stars. Object sizes remain compressed enough to keep the game playable.
+self-glow, moons and comets stay small, and a black hole replaces roughly one in 500
+generated stars. A sparse particle layer shows motion while colored stars, nebulae,
+and procedural galaxies form the deep field and grow as you fly toward them. Object
+sizes remain compressed enough to keep the game playable.
 
 ## Navigation
 

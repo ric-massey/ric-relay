@@ -4,16 +4,20 @@
 
   const STORAGE_KEY = "ric-relay-effect";
   const CAT_STORAGE_KEY = "ric-relay-cats";
-  const CAT_NEXT_KEY = "ric-relay-cat-next";
   const CAT_IMAGE_URL = new URL("assets/relay-cat.png", document.currentScript?.src || location.href).href;
   const MODES = new Set(["lsd", "shrooms"]);
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let active = null;
   let layer;
   let filterBank;
   let catsEnabled = false;
   let catLayer;
-  let catTimer;
-  let catRemovalTimer;
+  let catResident;
+  let catPeek;
+  let catActionTimer;
+  let catScrollTimer;
+  let lastScrollY = window.scrollY || 0;
+  let lastScrollAt = performance.now();
 
   const style = document.createElement("style");
   style.id = "relay-effect-styles";
@@ -54,11 +58,15 @@
       transform-origin: 50% 88%; user-select: none;
       animation: relay-cat-gait .72s ease-in-out infinite;
     }
-    .relay-cat-walk {
-      left: 0;
-      animation: relay-cat-walk-right var(--cat-stay) linear both;
+    .relay-cat-resident {
+      opacity: .98;
+      transition: left var(--cat-move, 5s) ease-in-out,
+        bottom var(--cat-move, 5s) ease-in-out, opacity .25s ease;
     }
-    .relay-cat-walk.from-right { animation-name: relay-cat-walk-left; }
+    .relay-cat-resident.entering { animation: relay-cat-enter 4.2s cubic-bezier(.2,.7,.25,1) both; }
+    .relay-cat-resident.out { opacity: 0; }
+    .relay-cat-resident.idle .relay-cat-image { animation-name: relay-cat-idle; animation-duration: 2.8s; }
+    .relay-cat-resident.walking .relay-cat-image { animation-name: relay-cat-gait; }
     .relay-cat-peek { overflow: hidden; }
     .relay-cat-peek .relay-cat-slider { width: 100%; }
     .relay-cat-peek.to-right .relay-cat-slider {
@@ -131,16 +139,7 @@
     @keyframes relay-pattern-turn { to{transform:rotate(360deg) scale(1.08)} }
     @keyframes relay-sweep { from{transform:translateX(-15%) rotate(-3deg)}to{transform:translateX(15%) rotate(3deg)} }
     @keyframes relay-mycelium { from{transform:scale(.9) rotate(-3deg)}to{transform:scale(1.16) rotate(6deg)} }
-    @keyframes relay-cat-walk-right {
-      0%{opacity:0;transform:translateX(-110%)}
-      4%,94%{opacity:.98}
-      100%{opacity:0;transform:translateX(calc(100vw + 10%))}
-    }
-    @keyframes relay-cat-walk-left {
-      0%{opacity:0;transform:translateX(calc(100vw + 10%))}
-      4%,94%{opacity:.98}
-      100%{opacity:0;transform:translateX(-110%)}
-    }
+    @keyframes relay-cat-enter { from{opacity:0;transform:translateX(var(--cat-enter-x))} to{opacity:.98;transform:translateX(0)} }
     @keyframes relay-cat-gait {
       0%,100%{transform:scaleX(var(--cat-facing)) translateY(0) rotate(-.7deg)}
       50%{transform:scaleX(var(--cat-facing)) translateY(-5px) rotate(.7deg)}
@@ -167,6 +166,8 @@
       html.relay-effect-lsd body > :not(script):not(.relay-trip-layer):not(.relay-filter-bank):not(.relay-cat-layer) { filter: url(#relay-lsd-distortion) hue-rotate(20deg) saturate(1.35); }
       html.relay-effect-shrooms body > :not(script):not(.relay-trip-layer):not(.relay-filter-bank):not(.relay-cat-layer) { filter: url(#relay-shroom-distortion) saturate(1.25) sepia(.08); }
       .relay-cat-image { animation: none; }
+      .relay-cat-resident { transition: none; }
+      .relay-cat-resident.entering { animation: none; }
     }
   `;
   document.head.appendChild(style);
@@ -241,20 +242,6 @@
     return catLayer;
   }
 
-  function scheduleCat(firstVisit = false) {
-    clearTimeout(catTimer);
-    if (!catsEnabled) return;
-    let savedNext = 0;
-    try { savedNext = Number(sessionStorage.getItem(CAT_NEXT_KEY)) || 0; } catch (_) {}
-    const wait = firstVisit
-      ? 3500 + Math.random() * 5500
-      : savedNext > Date.now()
-        ? savedNext - Date.now()
-        : 45000 + Math.random() * 65000;
-    try { sessionStorage.setItem(CAT_NEXT_KEY, String(Date.now() + wait)); } catch (_) {}
-    catTimer = setTimeout(showCat, wait);
-  }
-
   function makeCat(width, facing) {
     const image = document.createElement("img");
     image.className = "relay-cat-image";
@@ -273,19 +260,6 @@
       return rect.width > 130 && rect.height > 55 && rect.bottom > 50 &&
         rect.top < innerHeight - 50 && (rect.left > 70 || rect.right < innerWidth - 70);
     });
-  }
-
-  function walkingCat(width) {
-    const fromRight = Math.random() < .5;
-    const visitor = document.createElement("div");
-    const height = width * 2 / 3;
-    visitor.className = `relay-cat-visit relay-cat-walk${fromRight ? " from-right" : ""}`;
-    visitor.style.width = `${width}px`;
-    visitor.style.top = `${Math.max(45, 55 + Math.random() * Math.max(40, innerHeight - height - 130))}px`;
-    const stay = 13000 + Math.random() * 7000;
-    visitor.style.setProperty("--cat-stay", `${stay}ms`);
-    visitor.appendChild(makeCat(width, fromRight ? -1 : 1));
-    return { visitor, stay };
   }
 
   function peekingCat(width, features) {
@@ -310,26 +284,112 @@
     return { visitor, stay };
   }
 
-  function showCat() {
+  function catWidth() {
+    return Math.min(250, Math.max(155, innerWidth * .2));
+  }
+
+  function catSpot(width) {
+    return {
+      left: 18 + Math.random() * Math.max(1, innerWidth - width - 36),
+      bottom: 10 + Math.random() * Math.min(86, innerHeight * .16),
+    };
+  }
+
+  function clearCatAction() {
+    clearTimeout(catActionTimer);
+    catPeek?.remove();
+    catPeek = null;
+  }
+
+  function scheduleCatAction() {
+    clearTimeout(catActionTimer);
+    if (!catsEnabled || !catResident?.isConnected) return;
+    catActionTimer = setTimeout(() => {
+      const features = visibleFeatures();
+      if (features.length && Math.random() < .38) hideResidentCat(features);
+      else roamResidentCat();
+    }, 8000 + Math.random() * 10000);
+  }
+
+  function summonResidentCat(entering = true) {
     if (!catsEnabled) return;
-    if (document.hidden) {
-      scheduleCat();
+    clearCatAction();
+    catResident?.remove();
+
+    const width = catWidth();
+    const spot = catSpot(width);
+    const fromRight = Math.random() < .5;
+    const resident = document.createElement("div");
+    resident.className = `relay-cat-visit relay-cat-resident ${entering ? "entering walking" : "idle"}`;
+    resident.style.width = `${width}px`;
+    resident.style.left = `${spot.left}px`;
+    resident.style.bottom = `${spot.bottom}px`;
+    resident.style.setProperty("--cat-enter-x", `${fromRight ? innerWidth - spot.left : -(spot.left + width)}px`);
+    resident.appendChild(makeCat(width, fromRight ? -1 : 1));
+    ensureCatLayer().appendChild(resident);
+    catResident = resident;
+
+    const settle = reducedMotion || !entering ? 80 : 4300;
+    catActionTimer = setTimeout(() => {
+      if (!catResident?.isConnected) return;
+      catResident.classList.remove("entering", "walking");
+      catResident.classList.add("idle");
+      scheduleCatAction();
+    }, settle);
+  }
+
+  function roamResidentCat() {
+    if (!catResident?.isConnected) {
+      summonResidentCat(true);
       return;
     }
+    const width = catWidth();
+    const spot = catSpot(width);
+    const currentLeft = Number.parseFloat(catResident.style.left) || 0;
+    const duration = reducedMotion ? 80 : 3800 + Math.random() * 3200;
+    const image = catResident.querySelector(".relay-cat-image");
+    image?.style.setProperty("--cat-facing", spot.left >= currentLeft ? 1 : -1);
+    catResident.classList.remove("idle");
+    catResident.classList.add("walking");
+    catResident.style.setProperty("--cat-move", `${duration}ms`);
+    catResident.style.width = `${width}px`;
+    catResident.style.left = `${spot.left}px`;
+    catResident.style.bottom = `${spot.bottom}px`;
 
-    const width = Math.min(270, Math.max(165, innerWidth * .22));
-    const features = visibleFeatures();
-    const visit = features.length && Math.random() < .68
-      ? peekingCat(width, features)
-      : walkingCat(width);
-    const { visitor, stay } = visit;
-    ensureCatLayer().appendChild(visitor);
+    catActionTimer = setTimeout(() => {
+      if (!catResident?.isConnected) return;
+      catResident.classList.remove("walking");
+      catResident.classList.add("idle");
+      scheduleCatAction();
+    }, duration + 100);
+  }
 
-    clearTimeout(catRemovalTimer);
-    catRemovalTimer = setTimeout(() => {
-      visitor.remove();
-      scheduleCat();
-    }, stay + 100);
+  function hideResidentCat(features) {
+    if (!catResident?.isConnected) return;
+    const visit = peekingCat(catWidth(), features);
+    catResident.classList.add("out");
+    catPeek = visit.visitor;
+    ensureCatLayer().appendChild(catPeek);
+    catActionTimer = setTimeout(() => {
+      catPeek?.remove();
+      catPeek = null;
+      summonResidentCat(true);
+    }, visit.stay + 100);
+  }
+
+  function handleCatScroll() {
+    const now = performance.now();
+    const y = window.scrollY || 0;
+    const elapsed = Math.max(16, now - lastScrollAt);
+    const distance = Math.abs(y - lastScrollY);
+    lastScrollY = y;
+    lastScrollAt = now;
+    if (!catsEnabled || (distance < 135 && distance / elapsed < 1.25)) return;
+
+    clearCatAction();
+    catResident?.classList.add("out");
+    clearTimeout(catScrollTimer);
+    catScrollTimer = setTimeout(() => summonResidentCat(true), 520);
   }
 
   function setCats(enabled, persist = true) {
@@ -338,19 +398,27 @@
     catsEnabled = next;
     if (persist) rememberCats(next);
     if (!changed) return false;
-    clearTimeout(catTimer);
-    clearTimeout(catRemovalTimer);
+    clearCatAction();
+    clearTimeout(catScrollTimer);
 
     if (next) {
       ensureCatLayer();
-      scheduleCat(persist);
+      summonResidentCat(true);
     } else {
       catLayer?.remove();
       catLayer = null;
-      try { sessionStorage.removeItem(CAT_NEXT_KEY); } catch (_) {}
+      catResident = null;
+      catPeek = null;
     }
     return changed;
   }
+
+  addEventListener("scroll", handleCatScroll, { passive: true });
+  addEventListener("resize", () => {
+    if (!catsEnabled) return;
+    clearTimeout(catScrollTimer);
+    catScrollTimer = setTimeout(() => summonResidentCat(false), 120);
+  });
 
   function removeArtifacts() {
     layer?.remove();

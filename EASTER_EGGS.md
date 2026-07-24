@@ -17,7 +17,7 @@ completion.
 | `coffee` | Dispenses one terminal-grade coffee. |
 | `exit` | Explains the architectural problem with leaving the Relay. |
 | `404` | Deliberately loses the signal and opens a special version of the Relay's 404 page. |
-| `cat` | Wakes a fluffy long-haired site cat. It occasionally walks across a room or peeks out from behind page features for the rest of that browser tab's session. (`cat notes` still reads transmissions.) |
+| `cat` | Wakes a fluffy long-haired site cat that follows you around the Relay for the rest of that browser tab's session. It stays in view, wanders, hides behind page features, and walks back in if a fast scroll leaves it behind. (`cat notes` still reads transmissions.) |
 | `lsd` | Turns on the fast, prismatic sitewide visual mode. It follows you into every room and project. |
 | `shrooms` | Turns on the slower, breathing sitewide visual mode. It follows you too. |
 | `sober` | Clears either visual mode and returns the site to normal. |
@@ -62,7 +62,7 @@ These are visible, but they belong in the same field guide:
 
 - The Climbing banner label pauses and resumes the rotating field-photo reel.
 - Starfield cruises at `1 c` and enters `10,000,000 c` warp while click, touch, or
-  Space is held. Scaled stars, planets, comets, and very rare black holes are collision
-  hazards; the adaptive distance counter records how far each flight survives.
+  Space is held. Scaled stars, planets, moons, comets, and very rare black holes are
+  collision hazards; distant galaxies and nebulae are scenic targets to fly toward.
 - The Relay terminal supports command history with `↑`/`↓` and completion with
   `Tab`.

@@ -6,8 +6,8 @@
   <title>Starfield — Ric's Playground</title>
   <meta name="description" content="Fly through Ric's starfield, dodge celestial hazards, and see how far you survive.">
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #05060f; }
-    canvas { display: block; touch-action: none; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #05091a; }
+    canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
     a.back {
       position: fixed; top: 1rem; left: 1rem; z-index: 10;
       color: #9fb4ff; font-family: system-ui, sans-serif; font-size: 0.9rem;
@@ -62,9 +62,9 @@
   <div class="distance" aria-live="off">
     <div class="metric">Speed <span id="speed">1.00 c</span></div>
     <div class="metric">Distance <span id="distance">0.0 light-sec</span></div>
-    <small>interstellar gaps modeled · sizes compressed for play</small>
+    <small>galaxies are scenic · star systems collide</small>
   </div>
-  <p class="hint">cruise: light speed · hold click, touch, or space: 10,000,000 c</p>
+  <p class="hint">aim with your pointer · cruise: light speed · hold click, touch, or space: 10,000,000 c</p>
 
   <div class="game-over" id="game-over" role="dialog" aria-modal="true" aria-labelledby="loss-title" hidden>
     <div class="loss-card">
@@ -97,9 +97,15 @@
     resize();
     addEventListener("resize", resize);
 
-    const DUST_COUNT = reducedMotion ? 180 : 360;
+    // Flight particles are intentionally sparse; the colored points behind them
+    // are the actual distant stars.
+    const DUST_COUNT = reducedMotion ? 28 : 52;
+    const STAR_COUNT = reducedMotion ? 85 : 155;
+    const GALAXY_COUNT = reducedMotion ? 4 : 7;
     let cameraX = 0, cameraY = 0;
     const dust = Array.from({ length: DUST_COUNT }, () => spawnDust(true));
+    const skyStars = Array.from({ length: STAR_COUNT }, () => spawnSkyStar());
+    const galaxies = [];
     const hazards = [];
 
     function depth() { return Math.max(900, W); }
@@ -109,8 +115,49 @@
         x: cameraX + (Math.random() - 0.5) * W,
         y: cameraY + (Math.random() - 0.5) * H,
         z: anywhere ? Math.random() * depth() : depth(),
+        hue: 195 + Math.random() * 55,
       };
     }
+
+    function spawnSkyStar() {
+      const colors = ["#8ebdff", "#b7d5ff", "#e6efff", "#fff4d6", "#ffd39a", "#ff9e85"];
+      return {
+        x: Math.random() * W,
+        y: Math.random() * H,
+        size: .45 + Math.random() * 1.7,
+        alpha: .35 + Math.random() * .55,
+        phase: Math.random() * Math.PI * 2,
+        color: colors[Math.floor(Math.random() * colors.length)],
+      };
+    }
+
+    function spawnGalaxy(z = depth() * (3.5 + Math.random() * 7), screenX, screenY, kind) {
+      const targetX = screenX ?? W * (.1 + Math.random() * .8);
+      const targetY = screenY ?? H * (.08 + Math.random() * .76);
+      const scale = Math.min(W, H) * .82 / z;
+      const kinds = ["spiral", "spiral", "elliptical", "nebula"];
+      return {
+        type: "galaxy",
+        kind: kind || kinds[Math.floor(Math.random() * kinds.length)],
+        x: cameraX + (targetX - cx) / scale,
+        y: cameraY + (targetY - cy) / scale,
+        z,
+        radius: 95 + Math.random() * 95,
+        hue: 185 + Math.random() * 145,
+        phase: Math.random() * Math.PI * 2,
+      };
+    }
+
+    function seedDeepField() {
+      galaxies.length = 0;
+      galaxies.push(
+        spawnGalaxy(depth() * 2.7, W * .22, H * .17, "spiral"),
+        spawnGalaxy(depth() * 4.1, W * .76, H * .31, "elliptical"),
+        spawnGalaxy(depth() * 5.6, W * .48, H * .73, "nebula"),
+      );
+      while (galaxies.length < GALAXY_COUNT) galaxies.push(spawnGalaxy());
+    }
+    seedDeepField();
 
     let speed = 4, targetSpeed = 4;
     let speedC = CRUISE_C, targetSpeedC = CRUISE_C;
@@ -135,9 +182,12 @@
       });
     }
 
-    function spawnSystem(z = depth(), allowBlackHole = true) {
-      const centerX = cameraX + (Math.random() - .5) * W * .5;
-      const centerY = cameraY + (Math.random() - .5) * H * .5;
+    function spawnSystem(z = depth(), allowBlackHole = true, screenX, screenY) {
+      const scale = Math.min(W, H) * .82 / z;
+      const targetX = screenX ?? W * (.16 + Math.random() * .68);
+      const targetY = screenY ?? H * (.14 + Math.random() * .68);
+      const centerX = cameraX + (targetX - cx) / scale;
+      const centerY = cameraY + (targetY - cy) / scale;
       // One in 500 systems replaces its star with a black hole.
       const centralType = allowBlackHole && Math.random() < .002 ? "black hole" : "star";
       const starColors = ["#b9d7ff", "#e7eeff", "#fff4ea", "#fff0b0", "#ffc07a", "#ff9270"];
@@ -159,6 +209,17 @@
         addHazard("planet", planetX, planetY, z + (Math.random() - .5) * 95, 3 + Math.random() * 5, {
           lightAngle: Math.atan2(centerY - planetY, centerX - planetX),
         });
+        if (Math.random() < .34) {
+          const moonAngle = angle + .7 + Math.random() * 1.8;
+          addHazard(
+            "moon",
+            planetX + Math.cos(moonAngle) * (9 + Math.random() * 8),
+            planetY + Math.sin(moonAngle) * (6 + Math.random() * 5),
+            z + (Math.random() - .5) * 95,
+            .65 + Math.random() * .75,
+            { lightAngle: Math.atan2(centerY - planetY, centerX - planetX), hue: 215 },
+          );
+        }
       }
 
       if (Math.random() < .58) {
@@ -177,9 +238,11 @@
 
     function seedLocalSystem() {
       hazards.length = 0;
-      // Begin near one system so cruise mode has something to navigate before
-      // the realistically enormous interstellar gap begins.
-      spawnSystem(depth() * .9, false);
+      // A few nearby systems make the opening immediately readable. Later
+      // systems still honor the several-light-year physical spacing counter.
+      spawnSystem(depth() * 1.15, false, W * .34, H * .42);
+      spawnSystem(depth() * 2.05, false, W * .72, H * .24);
+      spawnSystem(depth() * 3.15, false, W * .55, H * .68);
     }
     seedLocalSystem();
 
@@ -231,6 +294,105 @@
       };
     }
 
+    function drawBackdrop() {
+      const sky = ctx.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, "#111a3a");
+      sky.addColorStop(.42, "#080d25");
+      sky.addColorStop(1, "#030713");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+
+      const clouds = [
+        [W * .17, H * .02, Math.max(W, H) * .58, "rgba(56,74,176,.20)"],
+        [W * .93, H * .28, Math.max(W, H) * .48, "rgba(121,43,142,.13)"],
+        [W * .48, H * .92, Math.max(W, H) * .56, "rgba(20,116,139,.12)"],
+      ];
+      for (const [x, y, radius, color] of clouds) {
+        const glow = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        glow.addColorStop(0, color);
+        glow.addColorStop(1, "transparent");
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, W, H);
+      }
+    }
+
+    function drawSkyStars(now, step) {
+      for (const star of skyStars) {
+        star.x -= steerX * .16 * step;
+        star.y -= steerY * .16 * step;
+        if (star.x < -8) star.x = W + 8;
+        if (star.x > W + 8) star.x = -8;
+        if (star.y < -8) star.y = H + 8;
+        if (star.y > H + 8) star.y = -8;
+
+        const twinkle = star.alpha * (.78 + Math.sin(now * .0014 + star.phase) * .22);
+        ctx.globalAlpha = Math.max(.16, twinkle);
+        ctx.fillStyle = star.color;
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fill();
+        if (star.size > 1.55) {
+          ctx.strokeStyle = star.color;
+          ctx.lineWidth = .55;
+          ctx.beginPath();
+          ctx.moveTo(star.x - star.size * 3.2, star.y);
+          ctx.lineTo(star.x + star.size * 3.2, star.y);
+          ctx.moveTo(star.x, star.y - star.size * 2.5);
+          ctx.lineTo(star.x, star.y + star.size * 2.5);
+          ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawGalaxy(galaxy, point) {
+      const r = Math.max(5, point.r);
+      ctx.save();
+      ctx.translate(point.x, point.y);
+      ctx.rotate(galaxy.phase);
+      ctx.scale(1, galaxy.kind === "nebula" ? .7 : .48);
+      ctx.globalCompositeOperation = "screen";
+
+      if (galaxy.kind === "nebula") {
+        for (let i = 0; i < 4; i += 1) {
+          const x = Math.cos(galaxy.phase + i * 1.7) * r * .28;
+          const y = Math.sin(galaxy.phase + i * 1.2) * r * .18;
+          const cloud = ctx.createRadialGradient(x, y, 0, x, y, r * (.55 + i * .08));
+          cloud.addColorStop(0, `hsla(${galaxy.hue + i * 24},72%,70%,.26)`);
+          cloud.addColorStop(.45, `hsla(${galaxy.hue + i * 18},70%,48%,.13)`);
+          cloud.addColorStop(1, "transparent");
+          ctx.fillStyle = cloud;
+          ctx.beginPath();ctx.arc(x,y,r*(.58+i*.06),0,Math.PI*2);ctx.fill();
+        }
+      } else {
+        const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.25);
+        glow.addColorStop(0, "rgba(255,249,226,.92)");
+        glow.addColorStop(.08, `hsla(${galaxy.hue},80%,78%,.72)`);
+        glow.addColorStop(.38, `hsla(${galaxy.hue + 32},72%,54%,.26)`);
+        glow.addColorStop(1, "transparent");
+        ctx.fillStyle = glow;
+        ctx.beginPath();ctx.arc(0,0,r*1.25,0,Math.PI*2);ctx.fill();
+
+        if (galaxy.kind === "spiral" && r > 7) {
+          for (let arm = 0; arm < 3; arm += 1) {
+            ctx.beginPath();
+            for (let i = 0; i <= 34; i += 1) {
+              const t = i / 34 * Math.PI * 2.25;
+              const reach = r * .08 + r * .88 * (i / 34);
+              const angle = t + arm * Math.PI * 2 / 3;
+              const x = Math.cos(angle) * reach;
+              const y = Math.sin(angle) * reach;
+              if (i === 0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+            }
+            ctx.strokeStyle = `hsla(${galaxy.hue + arm * 18},90%,78%,.34)`;
+            ctx.lineWidth = Math.max(.55, r * .045);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.restore();
+    }
+
     function glowCircle(x, y, radius, inner, outer) {
       const gradient = ctx.createRadialGradient(x, y, 0, x, y, Math.max(1, radius * 2.4));
       gradient.addColorStop(0, inner);
@@ -251,8 +413,8 @@
         glowCircle(x, y, r, "#fff", object.color || "rgba(255,220,150,.7)");
         ctx.fillStyle = object.color || "#fff4cf";
         ctx.beginPath(); ctx.arc(x, y, Math.max(1.2, r * .72), 0, Math.PI * 2); ctx.fill();
-      } else if (object.type === "planet") {
-        if (object.ring) {
+      } else if (object.type === "planet" || object.type === "moon") {
+        if (object.type === "planet" && object.ring) {
           ctx.strokeStyle = `hsla(${object.hue + 35},45%,62%,.65)`;
           ctx.lineWidth = Math.max(1,r*.15);ctx.beginPath();ctx.ellipse(x,y,r*1.55,r*.38,-.24,0,Math.PI*2);ctx.stroke();
         }
@@ -260,9 +422,10 @@
         const lightX = x + Math.cos(object.lightAngle || 0) * r * .48;
         const lightY = y + Math.sin(object.lightAngle || 0) * r * .48;
         const gradient = ctx.createRadialGradient(lightX,lightY,r*.05,x,y,r*1.12);
-        gradient.addColorStop(0, `hsl(${object.hue},58%,72%)`);
-        gradient.addColorStop(.48, `hsl(${object.hue},48%,40%)`);
-        gradient.addColorStop(1, `hsl(${object.hue},35%,5%)`);
+        const saturation = object.type === "moon" ? 18 : 58;
+        gradient.addColorStop(0, `hsl(${object.hue},${saturation}%,72%)`);
+        gradient.addColorStop(.48, `hsl(${object.hue},${Math.max(12,saturation-10)}%,40%)`);
+        gradient.addColorStop(1, `hsl(${object.hue},${Math.max(8,saturation-23)}%,5%)`);
         ctx.fillStyle = gradient;
         ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
       } else if (object.type === "comet") {
@@ -273,10 +436,12 @@
         glowCircle(x,y,r,"#fff","rgba(101,190,255,.7)");
         ctx.fillStyle="#eaf9ff";ctx.beginPath();ctx.arc(x,y,Math.max(1.2,r*.48),0,Math.PI*2);ctx.fill();
       } else {
-        glowCircle(x,y,r*1.3,"rgba(170,110,255,.7)","rgba(255,130,65,.36)");
-        ctx.strokeStyle="rgba(255,151,83,.9)";ctx.lineWidth=Math.max(2,r*.2);
-        ctx.beginPath();ctx.ellipse(x,y,r*1.35,r*.55,object.phase,0,Math.PI*2);ctx.stroke();
-        ctx.fillStyle="#000";ctx.beginPath();ctx.arc(x,y,r*.72,0,Math.PI*2);ctx.fill();
+        glowCircle(x,y,r*1.55,"rgba(176,128,255,.64)","rgba(65,112,255,.18)");
+        ctx.strokeStyle="rgba(255,171,93,.92)";ctx.lineWidth=Math.max(2,r*.18);
+        ctx.beginPath();ctx.ellipse(x,y,r*1.58,r*.48,object.phase,0,Math.PI*2);ctx.stroke();
+        ctx.strokeStyle="rgba(112,180,255,.72)";ctx.lineWidth=Math.max(1,r*.08);
+        ctx.beginPath();ctx.arc(x,y,r*.88,0,Math.PI*2);ctx.stroke();
+        ctx.fillStyle="#000107";ctx.beginPath();ctx.arc(x,y,r*.71,0,Math.PI*2);ctx.fill();
       }
       ctx.restore();
     }
@@ -285,7 +450,9 @@
       running = false;
       targetSpeed = 0;
       targetSpeedC = 0;
-      lossDetail.textContent = `Collision with ${type === "star" ? "a star" : type === "comet" ? "a comet" : type === "planet" ? "a planet" : "a black hole"}. Distance survived: ${formatDistance(distanceLightSeconds)}.`;
+      const objectName = type === "star" ? "a star" : type === "comet" ? "a comet" :
+        type === "planet" ? "a planet" : type === "moon" ? "a moon" : "a black hole";
+      lossDetail.textContent = `Collision with ${objectName}. Distance survived: ${formatDistance(distanceLightSeconds)}.`;
       gameOverEl.hidden = false;
       restartButton.focus();
     }
@@ -315,6 +482,8 @@
       cameraX = 0;
       cameraY = 0;
       for (const particle of dust) Object.assign(particle, spawnDust(true));
+      for (const star of skyStars) Object.assign(star, spawnSkyStar());
+      seedDeepField();
       running = true;
       seedLocalSystem();
       gameOverEl.hidden = true;
@@ -342,8 +511,8 @@
       const step = dt * 60;
       speed += (targetSpeed - speed) * Math.min(1, .05 * step);
       speedC += (targetSpeedC - speedC) * Math.min(1, .055 * step);
-      ctx.fillStyle = `rgba(5, 6, 15, ${speed > 15 ? 0.25 : 0.6})`;
-      ctx.fillRect(0, 0, W, H);
+      drawBackdrop();
+      drawSkyStars(now, step);
 
       const travel = running ? speed * step : Math.max(0, speed) * step;
       if (running) {
@@ -359,6 +528,28 @@
       cameraX += steerX * travel * .62;
       cameraY += steerY * travel * .62;
 
+      let visibleGalaxies = 0;
+      for (let i = 0; i < galaxies.length; i += 1) {
+        const galaxy = galaxies[i];
+        galaxy.z -= travel * .2;
+        if (galaxy.z <= 65) {
+          galaxies[i] = spawnGalaxy(depth() * (5 + Math.random() * 7));
+          continue;
+        }
+        const point = project(galaxy);
+        if (point.x > -point.r*2 && point.x < W+point.r*2 && point.y > -point.r*2 && point.y < H+point.r*2) {
+          drawGalaxy(galaxy, point);
+          visibleGalaxies += 1;
+        }
+      }
+      if (visibleGalaxies < 3 && Math.floor(now / 1800) !== Math.floor((now - dt * 1000) / 1800)) {
+        const lost = galaxies.findIndex((galaxy) => {
+          const point = project(galaxy);
+          return point.x < -W || point.x > W * 2 || point.y < -H || point.y > H * 2;
+        });
+        if (lost >= 0) galaxies[lost] = spawnGalaxy(depth() * (4 + Math.random() * 5));
+      }
+
       for (const s of dust) {
         s.z -= travel;
         if (s.z <= 1) Object.assign(s, spawnDust(false));
@@ -369,11 +560,13 @@
         if (px < 0 || px > W || py < 0 || py > H) { Object.assign(s, spawnDust(false)); continue; }
 
         const near = 1 - s.z / depth();
-        const size = Math.max(.25, 2 * near);
-        ctx.fillStyle = `hsla(${220-near*35},80%,${60+near*35}%,.86)`;
+        const size = Math.max(.3, 1.35 * near);
+        ctx.strokeStyle = `hsla(${s.hue},72%,78%,${.2 + near * .48})`;
+        ctx.lineWidth = Math.max(.45, size);
         ctx.beginPath();
-        ctx.arc(px, py, size, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px - (px - cx) * Math.min(.045, speed * .0012), py - (py - cy) * Math.min(.045, speed * .0012));
+        ctx.stroke();
       }
 
       for (let i = hazards.length - 1; i >= 0; i -= 1) {
