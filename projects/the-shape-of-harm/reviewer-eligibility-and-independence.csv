@@ -1,0 +1,5 @@
+reviewer_id,role,required_experience,has_seen_author_pilot_results,financial_or_professional_conflict,same_lab_or_reporting_line_as_author,can_access_assigned_databases,independence_eligible,signed_date,notes
+REV-A,independent_reviewer,Systematic-review screening and clinical harms extraction,,,,,,,
+REV-B,independent_reviewer,Systematic-review screening and clinical harms extraction,,,,,,,
+ADJ-1,adjudicator,Senior systematic-review methods and psychiatric adverse-event interpretation,,,,,,,
+IS-1,information_specialist,Biomedical database search design and PRESS-style review,,,,,,,

@@ -1,0 +1,6 @@
+upper_bound_target_per_1000,zero_event_total_n_required,current_n,additional_zero_event_participants_required,method
+50,72,67,5,two-sided 95% Clopper-Pearson upper limit with zero observed events
+25,146,67,79,two-sided 95% Clopper-Pearson upper limit with zero observed events
+10,368,67,301,two-sided 95% Clopper-Pearson upper limit with zero observed events
+5,736,67,669,two-sided 95% Clopper-Pearson upper limit with zero observed events
+1,3688,67,3621,two-sided 95% Clopper-Pearson upper limit with zero observed events

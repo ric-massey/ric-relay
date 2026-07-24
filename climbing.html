@@ -62,7 +62,8 @@
     /* rotating photo hero (area-photo banner) */
     .hero { height: 300px; position: relative; overflow: hidden; background: #26241f; }
     .hero .shot {
-      position: absolute; inset: 0; background-size: cover; background-position: center;
+      position: absolute; inset: 0; background-size: cover;
+      background-position: var(--focus, center);
       opacity: 0; transition: opacity 1.4s ease;
     }
     .hero .shot.on { opacity: 1; }
@@ -72,8 +73,14 @@
       padding: 0.4rem 0.8rem; margin: 0.9rem;
       background: rgba(38, 36, 31, 0.55); border-radius: 5px; backdrop-filter: blur(2px);
       text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255,255,255,.24); font-family: inherit; cursor: pointer;
     }
-    @media (max-width: 620px) { .hero { height: 190px; } }
+    .hero .label:hover, .hero .label:focus-visible { background: rgba(38,36,31,.82); }
+    .hero .label:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    @media (max-width: 620px) {
+      .hero { height: 190px; }
+      .hero .shot { background-position: var(--focus-mobile, var(--focus, center)); }
+    }
 
     .wrap { max-width: 940px; margin: 0 auto; padding: 1.6rem 1.25rem 4rem; }
 
@@ -156,14 +163,14 @@
     </div>
   </div>
 
-  <div class="hero" id="hero" aria-hidden="true">
-    <div class="shot on" style="background-image:url('photos/climbing-05.jpg')"></div>
-    <div class="shot" style="background-image:url('photos/climbing-12.jpg')"></div>
-    <div class="shot" style="background-image:url('photos/climbing-20.jpg')"></div>
-    <div class="shot" style="background-image:url('photos/climbing-27.jpg')"></div>
-    <div class="shot" style="background-image:url('photos/climbing-33.jpg')"></div>
-    <div class="shot" style="background-image:url('photos/climbing-38.jpg')"></div>
-    <span class="label">From the field · see all in /captures</span>
+  <div class="hero" id="hero">
+    <div class="shot on" aria-hidden="true" style="--focus:62% 48%;--focus-mobile:60% 46%;background-image:url('photos/climbing-05.jpg')"></div>
+    <div class="shot" aria-hidden="true" style="--focus:50% 62%;--focus-mobile:50% 55%;background-image:url('photos/climbing-12.jpg')"></div>
+    <div class="shot" aria-hidden="true" style="--focus:68% 60%;--focus-mobile:66% 58%;background-image:url('photos/climbing-20.jpg')"></div>
+    <div class="shot" aria-hidden="true" style="--focus:50% 64%;--focus-mobile:50% 60%;background-image:url('photos/climbing-27.jpg')"></div>
+    <div class="shot" aria-hidden="true" style="--focus:50% 57%;--focus-mobile:50% 55%;background-image:url('photos/climbing-33.jpg')"></div>
+    <div class="shot" aria-hidden="true" style="--focus:64% 52%;--focus-mobile:62% 50%;background-image:url('photos/climbing-38.jpg')"></div>
+    <button class="label" id="hero-toggle" type="button" aria-pressed="false" title="Pause the field-photo rotation">From the field · click to pause</button>
   </div>
 
   <div class="wrap">
@@ -220,13 +227,29 @@
   <script>
     // rotate the hero photos
     const shots = document.querySelectorAll("#hero .shot");
+    const heroToggle = document.getElementById("hero-toggle");
     if (shots.length > 1) {
       let i = 0;
-      setInterval(() => {
+      let timer;
+      const advance = () => {
         shots[i].classList.remove("on");
         i = (i + 1) % shots.length;
         shots[i].classList.add("on");
-      }, 5000);
+      };
+      const start = () => { timer = window.setInterval(advance, 5000); };
+      start();
+      heroToggle.addEventListener("click", () => {
+        const paused = heroToggle.getAttribute("aria-pressed") === "true";
+        if (paused) {
+          start();
+          heroToggle.setAttribute("aria-pressed", "false");
+          heroToggle.textContent = "From the field · click to pause";
+        } else {
+          window.clearInterval(timer);
+          heroToggle.setAttribute("aria-pressed", "true");
+          heroToggle.textContent = "Gallery paused · click to resume";
+        }
+      });
     }
   </script>
 </body>

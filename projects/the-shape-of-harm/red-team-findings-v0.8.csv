@@ -1,0 +1,21 @@
+finding_id,severity,domain,finding,correction,status
+RT-001,critical,evidence architecture,One review question mixed causal comparative effects with absolute rare-event incidence.,Split Product A randomized comparative effects from Product B monitored-exposure safety inventory.,implemented
+RT-002,critical,outcome definition,Investigator-attributed drug-related SAE was treated as the leading serious outcome.,Make all-cause SAE primary and attribution-based SAE secondary.,implemented
+RT-003,critical,missing data,"Blank, unreported, and confirmed zero could be conflated.",Add reporting-status and zero-confirmation fields; blank never means zero.,implemented
+RT-004,major,harms taxonomy,Severity and regulatory seriousness were not explicitly separated.,Define and extract seriousness and severity independently.,implemented
+RT-005,major,denominator,Per administration and per participant could diverge in repeated-dose studies.,Use dosed participants with >=1 event for direct single-dose risk; repeated regimens separate.,implemented
+RT-006,major,ascertainment,Event-collection intensity was not a structured compatibility variable.,"Extract solicitation, coding, assessor, schedule, and source; stratify by ascertainment.",implemented
+RT-007,major,search,A depression-focused search alone could miss safety reports and mixed-population records.,Add a broad psilocybin-only safety-capture search without a harms filter.,protocol_implemented_execution_pending
+RT-008,major,study design,Open-label monitored cohorts were excluded even from descriptive rare-harm surveillance.,Include prospective monitored cohorts only in a separate descriptive inventory.,implemented
+RT-009,major,risk of bias,RoB 2 could be misapplied to nonrandomized descriptive incidence.,Reserve RoB 2 for randomized comparative results; require explicit design-limitations appraisal for Product B.,implemented
+RT-010,major,missing evidence,Study-level RoB 2 did not address missing outcomes or missing studies at synthesis level.,Add ROB-ME-compatible missing-evidence assessment.,implemented
+RT-011,major,review independence,The package sometimes called decision concealment “blinding.”,Use decision concealment and acknowledge reviewers may know public trial results.,implemented
+RT-012,major,statistics,Model choice was not explicitly locked by an independent statistician before unmasking.,Add a statistical analysis plan shell and hard sign-off gate.,implemented
+RT-013,major,transportability,Internal validity and applicability to other diagnoses/settings could blur.,"Keep population, support model, supply, and regimen as explicit transportability dimensions.",implemented
+RT-014,major,content validity,Outcome selection did not formally include participant/public contributors.,Add a participant/public content-review stage before registration.,implemented
+RT-015,major,AI governance,Substantial AI assistance was not disclosed in the scientific governance package.,Add an AI assistance and human oversight statement and activity log requirement.,implemented
+RT-016,moderate,comparators,"Niacin, inactive placebo, minimal-dose psilocybin, and active treatment could be treated as interchangeable.",Create comparator classes and prohibit automatic pooling.,implemented
+RT-017,moderate,time windows,"Onset, resolution, and ascertainment times could be confused.",Extract each separately and prevent double-counting across 24h and 7d windows.,implemented
+RT-018,moderate,multiplicity,Many harm outcomes could invite selective emphasis after results are seen.,Freeze primary/secondary hierarchy and require SAP multiplicity language.,implemented
+RT-019,moderate,study families,The existing linkage tracked one seed record per family but not future companion reports.,Retain family-first linkage and require report-level provenance during the registered search.,existing_control_retained
+RT-020,moderate,corpus scope,The 13-record horizon corpus was built for randomized depression studies and is not complete for Product B.,Do not expand it ad hoc; rebuild the corpus after registered focused and broad searches.,blocked_until_registered_search

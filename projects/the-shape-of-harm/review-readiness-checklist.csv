@@ -1,0 +1,13 @@
+item_id,domain,requirement,status,note
+RR-001,Protocol,Estimand and outcomes frozen before synthesis,complete_author_stage,Independent approval still pending.
+RR-002,Search,Peer-reviewed database strategy (PRESS or equivalent),pending,Current search is an author pilot and not information-specialist reviewed.
+RR-003,Search,"MEDLINE, Embase, PsycINFO, CENTRAL, ClinicalTrials.gov, WHO ICTRP completed",pending,Only web-accessible pilot searching is complete.
+RR-004,Selection,Two independent reviewers screen every record,pending,Single-author pilot only.
+RR-005,Extraction,Two independent reviewers extract all critical outcomes,pending,Single-author pilot only.
+RR-006,Harms,"PRISMA-Harms-compatible event definitions, collection methods, windows, and denominators recorded",partial,Schema exists; reports remain incompatible for several outcomes.
+RR-007,Bias,Outcome-level RoB 2 completed independently and adjudicated,pending,Author pilot judgments exist.
+RR-008,Missing evidence,"Registry, protocol, supplement, publication, and sponsor-report discrepancies assessed",partial,Two direct registries and reports linked; systematic discrepancy audit pending.
+RR-009,Analysis,Rare-event methods and non-pooling rules frozen,complete_author_stage,Exact intervals and blocked-outcome rules are implemented.
+RR-010,Certainty,Outcome-level GRADE assessment independently adjudicated,pending,Provisional author GRADE profile is included in v0.5.
+RR-011,Reporting,PRISMA 2020 flow diagram and checklist completed,pending,Cannot complete until full search and duplicate screening.
+RR-012,Transparency,"Data, code, amendments, and excluded-study reasons publicly archived",partial,Pilot files and code are public; full review record does not yet exist.

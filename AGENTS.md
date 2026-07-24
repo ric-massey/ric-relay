@@ -68,10 +68,15 @@ and this file. Keep the label set in sync everywhere.
 ## Projects and photos
 
 - **Sub-projects** live in `projects/<name>/` (or a single `.html`) and are **linked
-  from the room that fits them** — not given their own room. Current: `spacetime` →
-  Exploration, `siege-conductor` → Workbench, `autism-reflection.html` → Log. Each is
+  from the room that fits them** — not given their own room. Current: `spacetime` and
+  `the-shape-of-harm` → Exploration, `siege-conductor` → Workbench,
+  `autism-reflection.html` and `state-of-mind-line` → Log. Each is
   self-contained and may carry its own assets/fonts; the "no dependencies" rule is for
   the relay's own room pages, not embedded projects. Keep their internal links relative.
+- **Every standalone project HTML page needs a visible route back to the relay.** Use
+  `projects/relay-return.js` with the correct relative `src` and `data-home` paths so the
+  fixed “← Ric's Relay” control works from desktop and mobile. The optional `data-egg`
+  value may add a project-themed typed easter egg.
 - **Photos** go in `photos/`, web-optimized (resize to ~1600px, convert HEIC→JPG). Do
   **not** commit full-res originals — they belong in `_photo-originals/`, which is
   gitignored. `captures.html` reads a `FRAMES` array; `climbing.html` rotates a few as

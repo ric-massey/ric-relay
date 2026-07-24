@@ -1,0 +1,18 @@
+THE SHAPE OF HARM - v0.9
+
+PUBLIC ENTRY POINT:  start.html
+CURRENT RESEARCH GATE: hardening.html
+
+1. start.html is the plain-language front door: what the numbers mean, what they don't,
+   and where to go next. It is generated from scores.csv by build_start_page.py.
+2. index.html is the interactive ranking. Set your own weights; the order changes.
+3. The message is: every substance here carries real harm, and they differ enormously
+   in kind and degree. It is NOT "all drugs are equally dangerous" - the data refutes that.
+4. Equal weighting is used only to order rows on start.html, and is labelled as one
+   choice among many. The model itself refuses to privilege any weighting.
+5. A blank score is never a zero. Withheld values are shown as withheld.
+6. The only released estimate (0/67, upper limit 53.6 per 1,000) is a SECONDARY
+   attribution-based outcome. The primary outcome, all-cause SAE, is not estimable.
+7. Check document-status-register.csv before using any file.
+8. Run: python3 validate_site.py && python3 validate_launch.py && python3 validate_hardening.py
+9. Not independently reviewed. Not prospectively registered. No completed search.

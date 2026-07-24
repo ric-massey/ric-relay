@@ -1,0 +1,11 @@
+search_id,source,access,method_review_status,independent_execution_status,retrieved_count,notes
+SRCH-PUBMED-01,MEDLINE/PubMed,public,PRESS review pending,independent execution pending,,Author horizon scan is not the registered search.
+SRCH-EMBASE-01,Embase/Ovid,licensed,PRESS review pending,blocked until licensed access and reviewer assigned,,Run full Ovid history and retain RIS/CSV export.
+SRCH-PSYCINFO-01,APA PsycINFO/Ovid,licensed,PRESS review pending,blocked until licensed access and reviewer assigned,,Verify subject-heading syntax on platform.
+SRCH-CENTRAL-01,Cochrane CENTRAL,subscription or institutional,PRESS review pending,independent execution pending,,No RCT filter because CENTRAL is trial-focused.
+SRCH-CTGOV-01,ClinicalTrials.gov,public,second-reviewer verification pending,independent execution pending,,Search all statuses and preserve record histories.
+SRCH-ICTRP-01,WHO ICTRP,public/availability varies,second-reviewer verification pending,independent execution pending,,Log availability and export method on execution day.
+SRCH-SCOPUS-01,Scopus,licensed,PRESS review pending,blocked until licensed access,,Citation mapping and conference records.
+SRCH-WOS-01,Web of Science,licensed,PRESS review pending,blocked until licensed access,,Citation mapping and potentially missed records.
+SRCH-CITATION-01,Backward/forward citation search,mixed,dual verification pending,independent execution pending,,Each discovered record needs a source chain.
+SRCH-GREY-01,Sponsor/regulatory/author search,mixed,adjudicator oversight pending,independent execution pending,,Top-line press releases cannot supply synthesis data without adequate methods and arm-level results.

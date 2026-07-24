@@ -1,0 +1,9 @@
+search_id,reviewer,date,translation_of_question,boolean_and_proximity,subject_headings,text_words,spelling_and_variants,syntax_and_line_numbers,limits_and_filters,other_comments,recommended_revision,final_disposition
+SRCH-PUBMED-01,,,pending,pending,pending,pending,pending,pending,pending,,,not_reviewed
+SRCH-EMBASE-01,,,pending,pending,pending,pending,pending,pending,pending,,,not_reviewed
+SRCH-PSYCINFO-01,,,pending,pending,pending,pending,pending,pending,pending,,,not_reviewed
+SRCH-CENTRAL-01,,,pending,pending,pending,pending,pending,pending,pending,,,not_reviewed
+SRCH-CTGOV-01,,,pending,pending,pending,pending,pending,pending,pending,,,not_reviewed
+SRCH-ICTRP-01,,,pending,pending,pending,pending,pending,pending,pending,,,not_reviewed
+SRCH-SCOPUS-01,,,pending,pending,pending,pending,pending,pending,pending,,,not_reviewed
+SRCH-WOS-01,,,pending,pending,pending,pending,pending,pending,pending,,,not_reviewed

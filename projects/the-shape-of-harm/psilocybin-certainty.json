@@ -1,0 +1,81 @@
+{
+  "framework_version": "0.5",
+  "date": "2026-07-23",
+  "estimand_id": "EST-AE-PSI-001",
+  "outcome_id": "PSI-OUT-001",
+  "status": "single_author_provisional_certainty_assessment",
+  "observed": {
+    "events": 0,
+    "n": 67,
+    "risk_per_1000": 0.0,
+    "ci_95_exact_per_1000": [
+      0.0,
+      53.6
+    ]
+  },
+  "certainty": {
+    "grade": "very_low_provisional",
+    "downgrades": {
+      "risk_of_bias": 1,
+      "imprecision": 2
+    },
+    "not_downgraded": {
+      "inconsistency": "zero events in both studies; heterogeneity unassessable",
+      "indirectness": "direct for narrow supported-MDD scenario"
+    },
+    "publication_bias": "not assessable until complete search"
+  },
+  "claim_boundary": [
+    "report observed count and interval",
+    "do not state risk is zero",
+    "do not claim equivalence to comparator",
+    "do not generalize to recreational use",
+    "do not transform this estimate into a 0-100 harm score"
+  ],
+  "information_targets": [
+    {
+      "upper_bound_target_per_1000": 50,
+      "zero_event_total_n_required": 72,
+      "current_n": 67,
+      "additional_zero_event_participants_required": 5,
+      "method": "two-sided 95% Clopper-Pearson upper limit with zero observed events"
+    },
+    {
+      "upper_bound_target_per_1000": 25,
+      "zero_event_total_n_required": 146,
+      "current_n": 67,
+      "additional_zero_event_participants_required": 79,
+      "method": "two-sided 95% Clopper-Pearson upper limit with zero observed events"
+    },
+    {
+      "upper_bound_target_per_1000": 10,
+      "zero_event_total_n_required": 368,
+      "current_n": 67,
+      "additional_zero_event_participants_required": 301,
+      "method": "two-sided 95% Clopper-Pearson upper limit with zero observed events"
+    },
+    {
+      "upper_bound_target_per_1000": 5,
+      "zero_event_total_n_required": 736,
+      "current_n": 67,
+      "additional_zero_event_participants_required": 669,
+      "method": "two-sided 95% Clopper-Pearson upper limit with zero observed events"
+    },
+    {
+      "upper_bound_target_per_1000": 1,
+      "zero_event_total_n_required": 3688,
+      "current_n": 67,
+      "additional_zero_event_participants_required": 3621,
+      "method": "two-sided 95% Clopper-Pearson upper limit with zero observed events"
+    }
+  ],
+  "files": {
+    "profile": "grade-evidence-profile.csv",
+    "sensitivity": "rare-event-sensitivity.csv",
+    "targets": "information-size-targets.csv",
+    "analysis": "analyze_certainty.py",
+    "page": "certainty.html"
+  },
+  "outcome_role_under_v0_8": "secondary_attribution_based",
+  "primary_outcome_under_v0_8": "all_cause_sae_not_estimable"
+}

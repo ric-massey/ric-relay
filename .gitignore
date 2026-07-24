@@ -3,3 +3,6 @@
 
 # Full-resolution photo originals — optimized web copies live in photos/
 _photo-originals/
+
+# Source archives are preserved locally; expanded web projects live in projects/
+_project-originals/

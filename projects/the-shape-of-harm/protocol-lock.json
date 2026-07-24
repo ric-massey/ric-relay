@@ -1,0 +1,104 @@
+{
+  "lock_version": "0.6",
+  "created_utc": "2026-07-23T22:30:00Z",
+  "scope": "independent replication phase only",
+  "pilot_already_existed": true,
+  "status": "frozen_pending_external_team_and_registration",
+  "files": [
+    {
+      "path": "PSILOCYBIN_INDEPENDENT_REPLICATION_PROTOCOL_V0.2.md",
+      "sha256": "24841bb4e74154cfc800202b8ace1abffa77dd7a88a350c2e423ac94c750358f",
+      "bytes": 8098
+    },
+    {
+      "path": "REGISTRATION_SUBMISSION_DRAFT_V0.6.md",
+      "sha256": "56b506629237efd4496838983e87c52796d6cb6e95fc75d43f6ce0e5dfc703fc",
+      "bytes": 3471
+    },
+    {
+      "path": "search-strategies-v0.6.csv",
+      "sha256": "9331994d96772fb28569368b4875f2c51c424611bc4e04c532771b026e8f5d4b",
+      "bytes": 4833
+    },
+    {
+      "path": "review-team-roles.csv",
+      "sha256": "3eb65c3827165c2e476048beb73776b92bce912edf6b8f538625753b492bdeac",
+      "bytes": 1750
+    },
+    {
+      "path": "screening-assignments.csv",
+      "sha256": "b07c0c9567d58498215da9806bb49fc18970351b56cbca117f0facfe3d68fe38",
+      "bytes": 2236
+    },
+    {
+      "path": "dual-screening-form.csv",
+      "sha256": "b83f2e10bbd65de94d4b7654f19d72f8f1436621ac6decc7524ac6467af5f2c0",
+      "bytes": 217
+    },
+    {
+      "path": "full-text-exclusion-codes.csv",
+      "sha256": "11621846aa4162743a3322359168e01f80d78eaa4280d333b69789de29b8b22c",
+      "bytes": 689
+    },
+    {
+      "path": "independent-data-extraction-form.csv",
+      "sha256": "bcaa7c9e982ea09f55df8c1b4abd6fff3a9e715300903f93472e3f7e33551e0d",
+      "bytes": 697
+    },
+    {
+      "path": "adjudication-log.csv",
+      "sha256": "f978450627b03af33719e8de62586795ef8fefdede79a64789923831cf553fcd",
+      "bytes": 147
+    },
+    {
+      "path": "rob2-result-level-form.csv",
+      "sha256": "7eaefe9f33bdecc5df8b3d774f9415a12e866a735ade96d48a1ae870bae17792",
+      "bytes": 241
+    },
+    {
+      "path": "grade-independent-adjudication-form.csv",
+      "sha256": "45063cb4dc58a2d547c0020727aaf8bfba6f55783001411afb88b4f0da5e1bf3",
+      "bytes": 223
+    },
+    {
+      "path": "press-search-peer-review-form.csv",
+      "sha256": "a4251cc45e9baaf1890950742bc02250d5ce763064b348a47ef99b2bb90478ea",
+      "bytes": 928
+    },
+    {
+      "path": "author-contact-log.csv",
+      "sha256": "a9574209e78f0e717b002df2ce89fc5b3a5495d3550de6736902204e2a6a51c7",
+      "bytes": 159
+    },
+    {
+      "path": "prisma-flow-live.csv",
+      "sha256": "444a92eb9baa933d7c3af00f81e238b4e272d7495ab0409efacd3457934092dc",
+      "bytes": 1066
+    },
+    {
+      "path": "protocol-deviations.csv",
+      "sha256": "d40474e435d82bc4df0267890a193357ed0a8ed854c35bd4b31769895fa47da4",
+      "bytes": 854
+    },
+    {
+      "path": "estimand-registry.csv",
+      "sha256": "d7d8d0478f3a76f6ab8aa5862d6b0696bde4f10e025c7c47a1cf687772d7458c",
+      "bytes": 9579
+    },
+    {
+      "path": "outcome-dictionary.csv",
+      "sha256": "8307a90a2d32649fb1992b94bc032c7f28f2f073b3178b0d27b8fab5fcab2f90",
+      "bytes": 3174
+    },
+    {
+      "path": "analyze_psilocybin.py",
+      "sha256": "a02f965d14a840f7d234c6e1609c1f855e88a4cfd3100eec1726132733e90496",
+      "bytes": 958
+    },
+    {
+      "path": "analyze_certainty.py",
+      "sha256": "6f9309a60a6fbf3b2077c6c4e7dcb7ab2507986ec6935146ee4c29495f1d2b1b",
+      "bytes": 993
+    }
+  ]
+}

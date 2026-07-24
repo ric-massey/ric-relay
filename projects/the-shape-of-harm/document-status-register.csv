@@ -1,0 +1,15 @@
+file,status,superseded_by,role
+PSILOCYBIN_INDEPENDENT_REPLICATION_PROTOCOL_V0.2.md,superseded,PSILOCYBIN_INDEPENDENT_REPLICATION_PROTOCOL_V0.3.md,"hash-locked: status recorded here only, file must not be edited"
+PSILOCYBIN_SAFETY_REVIEW_PROTOCOL_V0.1.md,superseded,PSILOCYBIN_INDEPENDENT_REPLICATION_PROTOCOL_V0.3.md,historical record; still linked from earlier pages
+RESEARCH_PROTOCOL_V0.1.md,superseded,RESEARCH_PROTOCOL_V0.2.md,historical record; still linked from earlier pages
+independent-data-extraction-form.csv,superseded,independent-data-extraction-form-v0.8.csv,"hash-locked: status recorded here only, file must not be edited"
+instrument-v6.json,superseded,instrument-v7.json,historical record; still linked from earlier pages
+METHODOLOGICAL_RED_TEAM_V0.8.md,current,,current red-team register
+PSILOCYBIN_INDEPENDENT_REPLICATION_PROTOCOL_V0.3.md,current,,current psilocybin review protocol
+RESEARCH_PROTOCOL_V0.2.md,current,,current research protocol
+hardening-manifest-v0.8.json,current,,current v0.8 file hash manifest
+hardening-readiness-v0.8.json,current,,current research gate
+independent-data-extraction-form-v0.8.csv,current,,current extraction form
+instrument-v7.json,current,,current instrument definition
+protocol-lock-v0.8.json,current,,current protocol integrity lock
+protocol-lock.json,current,,historical lock for the v0.2 protocol generation; still enforced

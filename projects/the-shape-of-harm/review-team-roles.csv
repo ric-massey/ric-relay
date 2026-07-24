@@ -1,0 +1,8 @@
+role_id,role,minimum_qualification,independence_requirement,assigned_person,status,may_view_author_pilot_results_before_task,responsibilities
+ROLE-IS,Information specialist,Librarian/information specialist experienced in health-systematic-review searching,Must not have authored the pilot search,,unassigned,yes,Peer review and translate search strategies; verify executed histories and exports.
+ROLE-R1,Reviewer 1,Training in systematic-review screening and harms extraction,Must make decisions without seeing Reviewer 2 decisions,,unassigned,no,Title/abstract and full-text screening; extraction; result-level RoB 2.
+ROLE-R2,Reviewer 2,Training in systematic-review screening and harms extraction,Must make decisions without seeing Reviewer 1 decisions,,unassigned,no,Title/abstract and full-text screening; extraction; result-level RoB 2.
+ROLE-ADJ,Adjudicator,Senior evidence-synthesis or clinical-methods experience,Must not replace independent first-pass decisions,,unassigned,yes_after_conflict,Resolve screening/extraction/RoB conflicts using prespecified rules.
+ROLE-CLIN,Clinical content adviser,Psychiatry/clinical pharmacology and psychedelic-trial safety expertise,Disclose all financial/intellectual conflicts,,unassigned,yes,Clarify clinical meaning; cannot insert unsupported event counts.
+ROLE-STAT,Statistician,Rare-event meta-analysis and prediction/uncertainty expertise,Independent check of frozen code and assumptions,,unassigned,yes_after_data_lock,Audit analyses and sensitivity models.
+ROLE-PAT,Lived-experience/public reviewer,Relevant patient/public perspective with safeguarding support,No requirement to agree with investigators,,unassigned,yes,"Review outcome relevance, language, and interpretation boundaries."

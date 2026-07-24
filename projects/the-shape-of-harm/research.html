@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Shape of Harm — Research Framework</title>
+<meta name="description" content="Protocol draft for a scenario-based comparative risk and decision model for psychoactive-substance harms.">
+<link rel="canonical" href="https://shape-of-harm.netlify.app/research.html">
+<style>
+:root{
+  --paper:#f3eee4;--paper2:#e9e0d0;--ink:#1d2020;--muted:#63645f;--line:#cfc4b2;
+  --red:#9f392d;--red2:#6f2119;--green:#345d4d;--gold:#9b6a23;--blue:#345675;
+  --shadow:0 12px 40px rgba(39,30,20,.08)
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.62 Georgia,"Times New Roman",serif}
+a{color:var(--red2);text-decoration-thickness:1px;text-underline-offset:3px}
+a:hover{color:var(--red)}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.skip{position:absolute;left:-9999px;top:8px;background:#fff;padding:10px;z-index:100}
+.skip:focus{left:8px}
+.top{position:sticky;top:0;z-index:20;background:rgba(243,238,228,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topin{max-width:1180px;margin:auto;padding:11px 24px;display:flex;gap:22px;align-items:center}
+.brand{font:700 14px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;color:var(--ink);white-space:nowrap}
+.links{display:flex;gap:4px;overflow:auto;scrollbar-width:none}
+.navsep{flex:0 0 1px;align-self:center;height:15px;background:var(--line);margin:0 5px}
+.links a{font:12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-decoration:none;color:var(--muted);padding:9px 10px;border-radius:999px;white-space:nowrap}
+.links a:hover{background:var(--paper2);color:var(--ink)}
+.wrap{max-width:1180px;margin:auto;padding:0 24px 80px}
+.hero{padding:82px 0 48px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.55fr);gap:54px;align-items:end}
+.kicker{font:700 12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--red)}
+h1{font-size:clamp(45px,7vw,88px);line-height:.95;letter-spacing:-.055em;margin:12px 0 22px;max-width:850px}
+.dek{font-size:clamp(20px,2.2vw,29px);line-height:1.35;margin:0;max-width:800px;color:#393a37}
+.status{background:#fff8ed;border:1px solid #d7b98a;border-left:5px solid var(--gold);padding:18px 20px;box-shadow:var(--shadow)}
+.status b{display:block;font:700 12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;color:#6d4511}
+.status p{margin:0;font-size:15px}
+.lead-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:28px 0 0}
+.lead-card{border-top:4px solid var(--ink);background:rgba(255,255,255,.38);padding:18px 17px;min-height:165px}
+.lead-card:nth-child(2){border-color:var(--green)}.lead-card:nth-child(3){border-color:var(--blue)}.lead-card:nth-child(4){border-color:var(--red)}
+.lead-card b{display:block;font-size:16px;margin-bottom:8px}.lead-card span{font-size:14px;color:var(--muted)}
+section{padding:66px 0;border-bottom:1px solid var(--line)}
+.sec-head{display:grid;grid-template-columns:220px 1fr;gap:30px;margin-bottom:30px}
+.num{font:700 13px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;color:var(--red);text-transform:uppercase;padding-top:9px}
+h2{font-size:clamp(31px,4vw,52px);line-height:1.05;letter-spacing:-.035em;margin:0 0 12px}
+.sec-head p{font-size:19px;line-height:1.5;color:#454642;margin:0;max-width:780px}
+.callout{background:var(--ink);color:var(--paper);padding:28px 30px;margin:30px 0;box-shadow:var(--shadow)}
+.callout strong{color:#fff}.callout p{margin:0;font-size:20px}
+.threecol{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.panel{border:1px solid var(--line);background:rgba(255,255,255,.35);padding:24px}
+.panel h3{font-size:22px;line-height:1.15;margin:0 0 10px}.panel p{margin:0;color:#4e504b;font-size:15.5px}
+.formula{background:#171a1b;color:#f6efe3;border-radius:2px;padding:24px 26px;margin:24px 0;font:15px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;overflow:auto}
+.formula .fhead{color:#e6b96a;text-transform:uppercase;letter-spacing:.08em;font-size:12px;margin-bottom:8px}
+.tablewrap{overflow:auto;border:1px solid var(--line);background:rgba(255,255,255,.28)}
+table{width:100%;border-collapse:collapse;min-width:860px}
+th,td{text-align:left;vertical-align:top;border-bottom:1px solid var(--line);padding:14px 15px}
+th{font:700 11px/1.25 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.08em;background:var(--paper2)}
+td{font-size:14.5px}tr:last-child td{border-bottom:0}
+.tag{display:inline-block;font:700 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;text-transform:uppercase;padding:5px 7px;border:1px solid currentColor;border-radius:999px}
+.tag.proposed{color:var(--gold)}.tag.required{color:var(--red)}.tag.separate{color:var(--blue)}
+.steps{counter-reset:step;display:grid;gap:12px}
+.step{counter-increment:step;display:grid;grid-template-columns:64px 1fr;border:1px solid var(--line);background:rgba(255,255,255,.3)}
+.step:before{content:counter(step,decimal-leading-zero);display:grid;place-items:center;background:var(--ink);color:var(--paper);font:700 15px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+.stepin{padding:20px 22px}.step h3{margin:0 0 5px;font-size:19px}.step p{margin:0;color:#51534e;font-size:15px}
+.gates{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.gate{padding:20px;border-left:5px solid var(--green);background:rgba(255,255,255,.35)}
+.gate.fail{border-color:var(--red)}.gate b{display:block;margin-bottom:6px}.gate p{margin:0;font-size:14.5px;color:#50524e}
+.downloads{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.download{display:block;border:1px solid var(--line);background:#fffaf0;padding:17px;text-decoration:none;color:var(--ink)}
+.download b{display:block;font-size:15px}.download span{font-size:12px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.refs{font-size:14px}.refs li{margin:0 0 10px}.refs a{word-break:break-word}
+footer{padding:34px 0;color:var(--muted);font-size:13px;display:flex;justify-content:space-between;gap:20px}
+@media(max-width:900px){.hero{grid-template-columns:1fr}.lead-grid,.threecol{grid-template-columns:1fr 1fr}.sec-head{grid-template-columns:1fr;gap:6px}.downloads{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){body{font-size:16px}.wrap{padding:0 16px 55px}.topin{padding:9px 13px}.brand{font-size:12px}.hero{padding:52px 0 34px}.lead-grid,.threecol,.gates,.downloads{grid-template-columns:1fr}.lead-card{min-height:0}section{padding:48px 0}.step{grid-template-columns:50px 1fr}.callout{padding:22px}.callout p{font-size:18px}footer{display:block}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<nav class="top" aria-label="Research page navigation"><div class="topin">
+<a class="brand" href="index.html">← Public explorer</a>
+<div class="links"><a href="#identity">Identity</a><a href="#estimand">Estimand</a><a href="#outcomes">Outcomes</a><a href="#evidence">Evidence</a><a href="#model">Model</a><a href="#validation">Validation</a><a href="#pilot">Pilot</a><a href="#files">Files</a><span class="navsep" aria-hidden="true"></span><a href="start.html">Start here</a><a href="index.html">Ranking</a><a href="estimands.html">Estimands</a><a href="feasibility.html">Feasibility</a><a href="evidence.html">Evidence</a><a href="certainty.html">Certainty</a><a href="replication.html">Replication</a><a href="launch.html">Launch</a><a href="hardening.html">Hardening v0.8</a></div></div></nav>
+<main id="main" class="wrap">
+<header class="hero">
+<div>
+<div class="kicker">The scientific development track</div>
+<h1>The Shape of Harm Research Framework</h1>
+<p class="dek">A protocol draft for comparing psychoactive-substance harms as <b>defined outcomes under defined exposure scenarios</b>—with the evidence model kept separate from the value judgments used to combine outcomes.</p>
+</div>
+<aside class="status"><b>Status · methodological hardening v0.8</b><p>No v7 scores exist and no ranking is claimed. The psilocybin protocol now separates randomized comparative effects from a descriptive monitored-exposure safety inventory, makes all-cause serious events primary, and distinguishes confirmed zero from unreported outcomes. No new safety estimate is claimed; independent review has not begun. <a href="hardening.html">Read the current gate →</a></p></aside>
+</header>
+<div class="lead-grid" aria-label="Core design principles">
+<div class="lead-card"><b>No universal “drug badness” variable</b><span>Harm changes with dose, route, frequency, setting, co-use, supply, population, place and time.</span></div>
+<div class="lead-card"><b>Natural units before 0–100</b><span>Estimate events, deaths, cases or health loss per episode, user-year or population-year first.</span></div>
+<div class="lead-card"><b>Evidence and values stay separate</b><span>Outcome estimates come from data. Optional weights describe a decision-maker’s priorities.</span></div>
+<div class="lead-card"><b>Uncertainty comes from the model</b><span>No fixed ±8/±15/±20 intervals. Sampling error, heterogeneity, bias, indirectness and structural uncertainty are explicit.</span></div>
+</div>
+
+<section id="identity">
+<div class="sec-head"><div class="num">01 · Identity</div><div><h2>Call it the right kind of scientific object</h2><p>The project is better framed as a <b>scenario-based comparative risk model with an optional multi-criteria decision layer</b>, not as a psychometric scale that measures a single latent trait.</p></div></div>
+<div class="callout"><p><strong>Scientific title:</strong> “The Shape of Harm: a scenario-based comparative risk and decision-analysis framework for psychoactive substances.”</p></div>
+<div class="threecol">
+<div class="panel"><h3>Evidence engine</h3><p>Systematically identifies, appraises and synthesizes outcome evidence in natural units for each defined scenario.</p></div>
+<div class="panel"><h3>Risk model</h3><p>Maps substance, exposure and context to outcome distributions. Dependence, route, co-use and supply are causal modifiers, not extra points.</p></div>
+<div class="panel"><h3>Decision layer</h3><p>Optionally converts non-overlapping outcomes through declared value functions and swing weights. It never presents those preferences as empirical facts.</p></div>
+</div>
+<p>Because the domains form a composite rather than interchangeable symptoms of one hidden trait, internal-consistency statistics such as Cronbach’s alpha are not an appropriate validation target. The relevant questions are whether the components are well defined, non-overlapping, estimated reliably, externally calibrated and fit for the stated use.</p>
+</section>
+
+<section id="estimand">
+<div class="sec-head"><div class="num">02 · Estimand</div><div><h2>Every result begins with a fully specified question</h2><p>A row is not simply “cocaine” or “benzodiazepines.” It is a scenario with a formulation, dose, route, exposure pattern, context and target population.</p></div></div>
+<div class="formula"><div class="fhead">Target quantity</div>
+θ(d, x, r, f, u, c, s, q, p, g, t, o)
+
+where:
+d = substance/formulation     x = dose or exposure intensity
+r = route                     f = frequency/duration
+u = user history/vulnerability c = co-use
+s = setting/supervision       q = supply quality/adulteration
+a = target population         g = geography
+t = calendar period           o = outcome and time window
+</div>
+<div class="tablewrap"><table>
+<thead><tr><th>View</th><th>Unit of analysis</th><th>Primary denominator</th><th>What it may answer</th><th>What it must not claim</th></tr></thead>
+<tbody>
+<tr><td><b>One episode</b></td><td>A defined administration episode</td><td>Per 100,000 episodes</td><td>Absolute acute medical and behavioral/psychiatric risk</td><td>Long-term harm or population burden</td></tr>
+<tr><td><b>Regular use</b></td><td>A defined pattern over time</td><td>Per 1,000 user-years</td><td>Chronic health loss, dependence and withdrawal outcomes</td><td>Risk from one night or total national harm</td></tr>
+<tr><td><b>Population burden</b></td><td>A named population in a named year</td><td>Per 100,000 residents and total burden</td><td>Deaths, DALYs, victim harm and cost with prevalence included</td><td>Intrinsic per-user or per-episode danger</td></tr>
+</tbody></table></div>
+<div class="callout"><p><strong>Four author phases completed:</strong> four pilot estimands are explicit, and an author data-feasibility screen has produced go/hold/block decisions. Controlled psilocybin now has a single-author pilot extraction: one narrow rare-event estimate is releasable and three outcomes remain blocked by reporting incompatibility. The psilocybin serious-event estimate is now paired with a provisional very-low-certainty rating and explicit information-size targets. Tobacco requires redesign; alcohol and opioid absolute episode-risk estimates remain blocked. <a href="certainty.html" style="color:#f4cb82">Inspect the certainty gate →</a></p></div>
+<p><b>No default overall ranking crosses these views.</b> A population-burden result can put a common drug above a rarer but more dangerous one; that is not a contradiction. It is a different estimand. The current four pilot estimands also occupy different comparability classes and therefore may not be ranked against one another.</p>
+</section>
+
+<section id="outcomes">
+<div class="sec-head"><div class="num">03 · Outcomes</div><div><h2>A proposed core outcome set with overlap guards</h2><p>These are candidates for expert and lived-experience review. They are deliberately separated by denominator, time horizon and causal role.</p></div></div>
+<div class="tablewrap"><table>
+<thead><tr><th>ID</th><th>Outcome</th><th>Operational form</th><th>Unit</th><th>Overlap rule</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>AE-MED</td><td>Acute medical severity</td><td>Mutually exclusive states: death; ICU/organ failure survived; hospital/ED severe event survived</td><td>Events per 100,000 episodes and expected health loss</td><td>Each episode occupies one highest-severity state</td><td><span class="tag proposed">Proposed</span></td></tr>
+<tr><td>AE-BEH</td><td>Acute behavioral/psychiatric severity</td><td>Severe injury, self-harm, violence, psychosis or dangerous disorientation attributable to the episode</td><td>Events per 100,000 episodes</td><td>Separate user and victim outcomes; do not re-add medical consequences</td><td><span class="tag proposed">Proposed</span></td></tr>
+<tr><td>CH-PHY</td><td>Chronic physical health loss</td><td>Attributable mortality and morbidity under the stated use pattern</td><td>DALYs or cases per 1,000 user-years</td><td>Exclude acute events already modeled unless annual burden is the declared endpoint</td><td><span class="tag proposed">Proposed</span></td></tr>
+<tr><td>CH-PSY</td><td>Chronic psychiatric/cognitive health loss</td><td>Persistent disorder or impairment beyond the acute window</td><td>DALYs or cases per 1,000 user-years</td><td>Do not count transient intoxication effects</td><td><span class="tag proposed">Proposed</span></td></tr>
+<tr><td>SUD</td><td>Substance-use-disorder incidence</td><td>New DSM/ICD disorder during a fixed follow-up among initiators</td><td>Cases per 1,000 initiators</td><td>Separate from physical dependence</td><td><span class="tag separate">Separate</span></td></tr>
+<tr><td>PHY-DEP</td><td>Physical dependence</td><td>Physiologic adaptation under a fixed exposure pattern</td><td>Cases per 1,000 exposed people</td><td>Separate from compulsive use and withdrawal hazard</td><td><span class="tag separate">Separate</span></td></tr>
+<tr><td>WD-SEV</td><td>Severe withdrawal outcome</td><td>Seizure, delirium, medically serious deterioration or death after cessation</td><td>Events per 1,000 cessation attempts among dependent users</td><td>Conditional denominator must be explicit</td><td><span class="tag separate">Separate</span></td></tr>
+<tr><td>EXT-USER</td><td>External harm attributable to use</td><td>Victim injury/health loss, family harm and other external outcomes</td><td>Victim DALYs or events per 1,000 user-years</td><td>Keep public cost separate from health outcomes</td><td><span class="tag proposed">Proposed</span></td></tr>
+<tr><td>POP</td><td>Population burden</td><td>Total attributable deaths, DALYs, victim harms and costs</td><td>Total and per 100,000 residents/year</td><td>Never mix with per-user outcomes in the same score</td><td><span class="tag required">Separate view</span></td></tr>
+</tbody></table></div>
+</section>
+
+<section id="evidence">
+<div class="sec-head"><div class="num">04 · Evidence</div><div><h2>The evidence pipeline has to be reproducible before it is persuasive</h2><p>The current project shows its sources. The research version must also show how every source was found, included, extracted, appraised and synthesized.</p></div></div>
+<div class="steps">
+<div class="step"><div class="stepin"><h3>Preregister the protocol before looking for a preferred answer</h3><p>Lock scope, scenarios, outcomes, eligibility rules, synthesis methods, subgroup plans and deviations. Publish amendments with timestamps.</p></div></div>
+<div class="step"><div class="stepin"><h3>Run systematic searches designed with an information specialist</h3><p>Use reproducible database strategies, citation searching, grey-literature rules and a PRISMA flow diagram. Update searches on a declared schedule.</p></div></div>
+<div class="step"><div class="stepin"><h3>Use at least two independent reviewers</h3><p>Duplicate screening, extraction and key risk-of-bias judgments. Resolve disagreements through a recorded process rather than silent consensus.</p></div></div>
+<div class="step"><div class="stepin"><h3>Assess each study with a design-appropriate risk-of-bias tool</h3><p>Do not turn “peer reviewed” into “high quality.” Record confounding, selection, exposure misclassification, outcome measurement, missingness and reporting bias.</p></div></div>
+<div class="step"><div class="stepin"><h3>Grade certainty by outcome, not by drug</h3><p>Summarize risk of bias, inconsistency, indirectness, imprecision and publication bias. A drug may have high-certainty mortality evidence and very-low-certainty psychiatric evidence.</p></div></div>
+<div class="step"><div class="stepin"><h3>Use structured expert elicitation only where data remain genuinely absent</h3><p>Experts receive identical evidence dossiers, state distributions rather than single digits, disclose conflicts, score independently first, and never overwrite empirical estimates without a documented model.</p></div></div>
+</div>
+</section>
+
+<section id="model">
+<div class="sec-head"><div class="num">05 · Model</div><div><h2>Estimate harm first; aggregate only when the question requires it</h2><p>The model should preserve the original units and uncertainty as long as possible. A 0–100 display is a communication transform, not the evidence itself.</p></div></div>
+<div class="formula"><div class="fhead">Outcome synthesis</div>
+For mutually exclusive outcome states k:
+
+Expected health loss(scenario) = Σₖ P(state k | scenario) × severityₖ
+
+Primary output:
+median estimate + 95% interval + certainty rating + evidence provenance
+</div>
+<div class="formula"><div class="fhead">Optional decision layer</div>
+V(scenario; w) = Σⱼ wⱼ · vⱼ(xⱼ)
+
+Requirements:
+• xⱼ are non-overlapping outcome estimates
+• vⱼ are declared value functions with meaningful anchors
+• wⱼ are elicited as swing weights over those anchors
+• results are repeated across plausible weight and structural choices
+</div>
+<div class="threecol">
+<div class="panel"><h3>Parameter uncertainty</h3><p>Sampling error, study heterogeneity and expert-elicited uncertainty become distributions, not evidence-grade widths.</p></div>
+<div class="panel"><h3>Structural uncertainty</h3><p>Alternative causal structures, outcome definitions, pooling assumptions and value functions are compared explicitly.</p></div>
+<div class="panel"><h3>Decision uncertainty</h3><p>Report rank probabilities, dominance and value-of-information—not a brittle one-to-thirteen order.</p></div>
+</div>
+<p><b>Missing is not zero.</b> Sparse cells remain missing or are estimated through a preregistered hierarchical model with visible partial pooling. The interface must distinguish a directly estimated value from a model-based prediction.</p>
+</section>
+
+<section id="validation">
+<div class="sec-head"><div class="num">06 · Validation</div><div><h2>Validation is a program of tests, not one coefficient</h2><p>The relevant evidence is different for the framework, the evidence process, the statistical model and the optional decision layer.</p></div></div>
+<div class="tablewrap"><table>
+<thead><tr><th>Target</th><th>Question</th><th>Proposed test</th><th>Release gate</th></tr></thead>
+<tbody>
+<tr><td>Content</td><td>Are the scenarios and outcomes relevant, comprehensive and understandable?</td><td>Multidisciplinary panel plus people with lived experience; predefined relevance/completeness ratings and qualitative review</td><td>No major omitted domain and no unresolved construct overlap</td></tr>
+<tr><td>Review process</td><td>Can independent reviewers reproduce inclusion, extraction and bias judgments?</td><td>Agreement statistics appropriate to the data plus transparent disagreement logs</td><td>Thresholds declared before pilot; retrain/revise if missed</td></tr>
+<tr><td>Construct behavior</td><td>Does the model change in predicted directions?</td><td>Preregistered hypotheses for route, dose, co-use, setting and supply changes</td><td>Most directional hypotheses supported; failures investigated</td></tr>
+<tr><td>External validity</td><td>Does it reproduce data not used to build it?</td><td>Hold out surveillance years, jurisdictions or datasets; assess calibration and error</td><td>Performance bounds fixed before unblinding</td></tr>
+<tr><td>Transportability</td><td>Do estimates remain usable across place and time?</td><td>US/Canada and period comparisons; update supply-sensitive scenarios separately</td><td>No universal label where meaningful interactions are present</td></tr>
+<tr><td>Decision robustness</td><td>Does a conclusion survive plausible values and model choices?</td><td>Global sensitivity analysis, alternative value functions, probabilistic weights</td><td>Claim only conclusions robust across declared ranges</td></tr>
+<tr><td>Replication</td><td>Can an independent group reproduce the result?</td><td>Second team receives protocol and raw evidence but not final scores</td><td>No “validated” label before independent replication</td></tr>
+</tbody></table></div>
+<div class="callout"><p><strong>Important:</strong> do not use Cronbach’s alpha to prove these domains “hang together.” Acute death, dependence and chronic organ disease are intentionally different outcomes. High internal consistency would more likely signal redundancy than validity.</p></div>
+</section>
+
+<section id="pilot">
+<div class="sec-head"><div class="num">07 · Pilot</div><div><h2>A small credible pilot beats another complete-looking table</h2><p>The first publishable study should prove the method on a deliberately narrow subset before expanding to thirteen substances and many contexts.</p></div></div>
+<div class="steps">
+<div class="step"><div class="stepin"><h3>Phase A — author-draft estimands completed</h3><p>Four exact questions are provisionally frozen in <a href="estimands.html">the pilot estimand registry</a>. Any change now requires a versioned amendment.</p></div></div><div class="step"><div class="stepin"><h3>Phase B — author feasibility screen completed</h3><p>The <a href="feasibility.html">data-feasibility review</a> maps candidate sources to every required data element. One evidence review can proceed, one estimand requires redesign, and two remain blocked by denominator failure. This is not independent validation.</p></div></div>
+<div class="step"><div class="stepin"><h3>Phase B — independent content-validity review is next</h3><p>Domain experts and lived-experience contributors independently judge population relevance, exposure/comparator precision, outcome completeness and overlap, time windows, intercurrent-event handling, interpretability, and whether each quantity is actually estimable. The supplied review form records ratings, conflicts, and required revisions.</p></div></div>
+<div class="step"><div class="stepin"><h3>Phase C — author pilot extraction completed; independent review pending</h3><p>The <a href="evidence.html">psilocybin evidence pilot</a> tested the extraction and synthesis rules. It found one narrow estimate and multiple non-estimable outcomes. Two independent reviewers must now repeat the work before any scientific release.</p></div></div>
+<div class="step"><div class="stepin"><h3>Phase D — provisional certainty and information analysis completed</h3><p>The <a href="certainty.html">certainty gate</a> separates the observed zero from confidence in the true risk. The outcome is provisionally very low certainty, and the page shows the sample sizes needed to exclude specific rare-event bounds.</p></div></div>
+<div class="step"><div class="stepin"><h3>Phase D — held-out validation</h3><p>Freeze the model, reveal a reserved dataset or later year, assess calibration and directional hypotheses, and publish failures alongside successes.</p></div></div>
+<div class="step"><div class="stepin"><h3>Phase E — only then build the interactive comparison</h3><p>The public page reads the validated scenario estimates and lets users explore perspectives. It does not generate scientific legitimacy through visual polish.</p></div></div>
+</div>
+<div class="gates" style="margin-top:24px">
+<div class="gate"><b>Minimum credible release</b><p>Protocol registered; all scenario fields locked; systematic searches reproducible; duplicate extraction complete; outcome-level certainty rated; code and data public; held-out test reported.</p></div>
+<div class="gate fail"><b>Automatic “not ready” conditions</b><p>Single-author scores; undefined denominators; mixed time horizons; judgment inserted as data; fixed uncertainty widths; missing treated as zero; ranking published before validation.</p></div>
+</div>
+</section>
+
+<section id="files">
+<div class="sec-head"><div class="num">08 · Working files</div><div><h2>A research project someone else can actually inspect</h2><p>These files are intentionally drafts. Their purpose is to make critique specific and make collaboration possible.</p></div></div>
+<div class="downloads">
+<a class="download" href="RESEARCH_PROTOCOL_V0.2.md"><b>Research protocol</b><span>RESEARCH_PROTOCOL_V0.2.md</span></a>
+<a class="download" href="PILOT_ESTIMANDS_V0.2.md"><b>Locked pilot questions</b><span>PILOT_ESTIMANDS_V0.2.md</span></a>
+<a class="download" href="estimand-registry.csv"><b>Estimand registry</b><span>estimand-registry.csv</span></a>
+<a class="download" href="scenario-registry.csv"><b>Scenario registry</b><span>scenario-registry.csv</span></a>
+<a class="download" href="outcome-dictionary.csv"><b>Outcome dictionary</b><span>outcome-dictionary.csv</span></a>
+<a class="download" href="evidence-extraction-template.csv"><b>Evidence extraction form</b><span>evidence-extraction-template.csv</span></a>
+<a class="download" href="VALIDATION_PLAN.md"><b>Validation plan</b><span>VALIDATION_PLAN.md</span></a>
+<a class="download" href="estimands-v0.2.json"><b>Machine-readable estimands</b><span>estimands-v0.2.json</span></a>
+<a class="download" href="estimand-content-validity-form.csv"><b>Content-validity form</b><span>estimand-content-validity-form.csv</span></a>
+<a class="download" href="estimand-feasibility-register.csv"><b>Feasibility register</b><span>estimand-feasibility-register.csv</span></a>
+<a class="download" href="instrument-v7.json"><b>Machine-readable specification</b><span>instrument-v7.json</span></a>
+<a class="download" href="ESTIMAND_IMPLEMENTATION_AUDIT.md"><b>Implementation audit</b><span>ESTIMAND_IMPLEMENTATION_AUDIT.md</span></a>
+</div>
+</section>
+
+<section id="references">
+<div class="sec-head"><div class="num">09 · Methods basis</div><div><h2>Methodological foundations</h2><p>These are starting points for the protocol, not badges of automatic validity.</p></div></div>
+<ol class="refs">
+<li>International Council for Harmonisation. <a href="https://www.fda.gov/regulatory-information/search-fda-guidance-documents/e9r1-statistical-principles-clinical-trials-addendum-estimands-and-sensitivity-analysis-clinical">E9(R1): Estimands and Sensitivity Analysis in Clinical Trials</a>. FDA final guidance. 2021.</li>
+<li>Hernán MA, Robins JM. <a href="https://www.ncbi.nlm.nih.gov/books/NBK547516/">Specifying the target trial</a>. In: Causal Inference: What If. 2020.</li>
+<li>Thokala P, et al. <a href="https://www.ispor.org/heor-resources/good-practices/article/multiple-criteria-decision-analysis-for-health-care-decision-making---an-introduction">Multiple Criteria Decision Analysis for Health Care Decision Making—An Introduction</a>. Value in Health. 2016.</li>
+<li>Marsh K, et al. <a href="https://pubmed.ncbi.nlm.nih.gov/27021745/">Multiple Criteria Decision Analysis for Health Care Decision Making—Emerging Good Practices</a>. Value in Health. 2016.</li>
+<li>Page MJ, et al. <a href="https://www.bmj.com/content/372/bmj.n71">PRISMA 2020 statement</a>. BMJ. 2021.</li>
+<li>Cochrane. <a href="https://www.cochrane.org/authors/handbooks-and-manuals/mecir-manual/standards-conduct-new-cochrane-intervention-reviews-c1-c75/performing-review-c24-c75/collecting-data-included-studies-c43-c51">Standards for independent duplicate data extraction</a>.</li>
+<li>Cochrane. <a href="https://www.cochrane.org/authors/handbooks-and-manuals/handbook/current/chapter-14">GRADE certainty of evidence by outcome</a>.</li>
+<li>Bollen KA, et al. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6670294/">In Defense of Causal-Formative Indicators</a>. Psychological Methods. 2015.</li>
+<li>Eddy DM, et al. <a href="https://pubmed.ncbi.nlm.nih.gov/22999134/">Model Transparency and Validation</a>. Medical Decision Making. 2012.</li>
+<li>Briggs AH, et al. <a href="https://pubmed.ncbi.nlm.nih.gov/22999133/">Model Parameter Estimation and Uncertainty Analysis</a>. Medical Decision Making. 2012.</li>
+<li>Jünger S, et al. <a href="https://pubmed.ncbi.nlm.nih.gov/28190381/">CREDES guidance for Delphi studies</a>. Palliative Medicine. 2017.</li>
+<li>Crépault JF, et al. <a href="https://pubmed.ncbi.nlm.nih.gov/41589327/">Drug harms in Canada: a multi-criteria decision analysis</a>. Journal of Psychopharmacology. 2026.</li>
+</ol>
+</section>
+<footer><span>Research framework draft v0.2 · 23 July 2026</span><span><a href="index.html">Return to the public explorer</a></span></footer>
+</main>
+<script src="../relay-return.js" data-home="../../index.html" data-egg="shape" defer></script>
+</body>
+</html>

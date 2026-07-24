@@ -1,0 +1,34 @@
+{
+  "framework_version": "v0.7",
+  "date": "2026-07-23",
+  "gate": "external_review_launch",
+  "candidate_corpus": {
+    "status": "reconciled_author_horizon_scan",
+    "records": 13,
+    "csv_ris_count_match": true
+  },
+  "protocol": {
+    "status": "frozen",
+    "version": "v0.2",
+    "registration_status": "not_submitted"
+  },
+  "information_specialist": {
+    "assigned": false,
+    "press_review_complete": false
+  },
+  "review_team": {
+    "reviewer_a_assigned": false,
+    "reviewer_b_assigned": false,
+    "adjudicator_assigned": false
+  },
+  "independent_search": {
+    "sources_specified": 10,
+    "sources_executed": 0,
+    "deduplicated_corpus_available": false
+  },
+  "packet_generation": {
+    "status": "blocked",
+    "reason": "Requires registered protocol, completed search exports, deduplication, and signed reviewer independence forms."
+  },
+  "scientific_result_change": "none; v0.7 is an execution and integrity release, not a new safety estimate."
+}

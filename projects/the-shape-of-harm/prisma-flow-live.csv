@@ -1,0 +1,13 @@
+stage,count,status,source,notes
+records_identified_databases,,pending_independent_search,,Populate from exported databases before deduplication.
+records_identified_registers,,pending_independent_search,,Include all statuses and record histories.
+records_identified_other_methods,13,author_horizon_scan,candidate-study-registry.csv,"These are seed records, not a systematic count."
+duplicates_removed,,pending_deduplication,,Preserve linked reports under one study family.
+records_screened,,not_started,,Two independent reviewers.
+records_excluded_title_abstract,,not_started,,Retain reviewer-level decisions.
+full_texts_sought,,not_started,,Document inaccessible reports.
+full_texts_not_retrieved,,not_started,,Author/sponsor contact where relevant.
+full_texts_assessed,,not_started,,Use one primary reason per excluded report.
+full_texts_excluded,,not_started,,Publish citation plus reason.
+studies_included_direct,,not_started,,Do not copy the author-pilot count into independent results.
+studies_included_indirect,,not_started,,Keep strata separate.

@@ -1,0 +1,32 @@
+{
+  "framework_version": "v0.8",
+  "date": "2026-07-23",
+  "gate": "method_hardening_before_registration",
+  "scientific_result_change": "none",
+  "critical_corrections": {
+    "comparative_and_incidence_split": true,
+    "all_cause_sae_primary": true,
+    "zero_vs_unreported_separated": true,
+    "ai_disclosure_added": true,
+    "participant_public_review_added": true
+  },
+  "protocol": {
+    "current_author_draft": "v0.3",
+    "registration_status": "not_submitted",
+    "statistician_signoff": false,
+    "information_specialist_press_review": false,
+    "participant_public_review_complete": false
+  },
+  "review_team": {
+    "reviewer_a_assigned": false,
+    "reviewer_b_assigned": false,
+    "adjudicator_assigned": false
+  },
+  "search": {
+    "focused_strategy_specified": true,
+    "broad_safety_capture_strategy_requires_press_review": true,
+    "registered_searches_executed": 0,
+    "current_13_record_corpus_complete_for_product_b": false
+  },
+  "next_gate": "Human method review, team assignment, prospective registration, then registered search execution."
+}

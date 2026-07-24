@@ -1,0 +1,19 @@
+rule_id,domain,rule,strength
+AR-001,Zero handling,"Blank values are missing, never zero.",hard
+AR-002,Zero handling,A zero requires explicit outcome assessment and a source-supported denominator.,hard
+AR-003,Unit,Primary risk unit is participants with >=1 event; event counts are supplementary.,hard
+AR-004,Denominator,"Randomized, dosed, safety, and observed-at-window denominators are stored separately.",hard
+AR-005,Products,Product A and Product B are never pooled together.,hard
+AR-006,Population,MDD and TRD are never silently pooled.,hard
+AR-007,Regimen,Single and repeated administrations are separate strata.,hard
+AR-008,Comparator,"Niacin, inactive placebo, minimal-dose psilocybin, and active treatment are distinct comparator classes.",hard
+AR-009,Window,Exact and overlapping windows are separate; onset and resolution prevent double-counting.,hard
+AR-010,Ascertainment,"Solicited, structured, spontaneous, and unclear harm collection are compatibility variables.",hard
+AR-011,Sparse data,No arbitrary continuity correction is permitted.,hard
+AR-012,Sparse data,"If all compatible studies have zero events, report numerator/denominator and exact bound; do not estimate heterogeneity.",hard
+AR-013,Model lock,A statistician freezes model choice before independent extraction results are unmasked.,hard
+AR-014,Sensitivity,Reclassify one and two possible missed events; leave one study out; vary attribution and ascertainment assumptions.,required
+AR-015,Claims,"No inference to recreational use, natural mushrooms, unscreened populations, or unmonitored settings.",hard
+AR-016,Certainty,"GRADE is outcome-, comparator-, window-, and stratum-specific.",hard
+AR-017,Missing evidence,Not reported and assessed-zero are displayed separately in every table.,hard
+AR-018,Reproducibility,Every published estimate must resolve to machine-readable source rows and executable code.,hard

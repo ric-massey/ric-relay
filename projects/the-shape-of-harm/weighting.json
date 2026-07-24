@@ -1,0 +1,78 @@
+{
+  "model_version": "v5",
+  "substance_count": 13,
+  "criterion_count": 5,
+  "cell_count": 65,
+  "suspended_cells": 1,
+  "criteria": [
+    {
+      "key": "add",
+      "label": "Getting hooked"
+    },
+    {
+      "key": "wd",
+      "label": "Danger in quitting"
+    },
+    {
+      "key": "org",
+      "label": "Damage to your body"
+    },
+    {
+      "key": "oth",
+      "label": "Damage to others"
+    },
+    {
+      "key": "ac",
+      "label": "One bad night"
+    }
+  ],
+  "grade_half_widths": {
+    "M": 8,
+    "P": 15,
+    "J": 20,
+    "S": null
+  },
+  "grade_sd": {
+    "M": 4,
+    "P": 7.5,
+    "J": 10
+  },
+  "shared_bias_sd": 5,
+  "implied_cell_correlation_range": [
+    0.2,
+    0.61
+  ],
+  "iterations": 20000,
+  "seed": 7,
+  "tier_threshold": 0.9,
+  "weight_presets": {
+    "equal": {
+      "add": 5,
+      "wd": 5,
+      "org": 5,
+      "oth": 5,
+      "ac": 5
+    },
+    "self": {
+      "add": 8,
+      "wd": 6,
+      "org": 8,
+      "oth": 1,
+      "ac": 7
+    },
+    "society": {
+      "add": 4,
+      "wd": 4,
+      "org": 4,
+      "oth": 10,
+      "ac": 5
+    },
+    "acute": {
+      "add": 2,
+      "wd": 4,
+      "org": 1,
+      "oth": 1,
+      "ac": 10
+    }
+  }
+}

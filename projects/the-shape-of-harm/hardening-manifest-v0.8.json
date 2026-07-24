@@ -1,0 +1,43 @@
+{
+  "release": "v0.8",
+  "date": "2026-07-23",
+  "status": "author-side method hardening; not preregistration",
+  "files": {
+    "PSILOCYBIN_INDEPENDENT_REPLICATION_PROTOCOL_V0.3.md": {
+      "sha256": "0f0a2563f66cf93c9294dba1c9362aef5ed57bc22c708f84deae0109caaea81b",
+      "bytes": 13138
+    },
+    "METHODOLOGICAL_RED_TEAM_V0.8.md": {
+      "sha256": "a3c952404af2f473f8b4849f1546f415d2a03badd7c0125907abfd44b4edab4d",
+      "bytes": 6025
+    },
+    "harms-outcome-taxonomy-v0.8.csv": {
+      "sha256": "25072ef51fe4607d08a24a15cf1283c5bac17e5b6f22b5b7f8f3d9c2bf61240f",
+      "bytes": 4269
+    },
+    "evidence-strata-v0.8.csv": {
+      "sha256": "43bec8b98be69e84727fb85b41ed3fd7ff0b289cfe111aa7a2836a1826f1df74",
+      "bytes": 1452
+    },
+    "analysis-decision-rules-v0.8.csv": {
+      "sha256": "3bfd3abeb60ff8db0661eac08ea6e6803c89480613d4254049e958e42e745399",
+      "bytes": 1907
+    },
+    "STATISTICAL_ANALYSIS_PLAN_SHELL_V0.8.md": {
+      "sha256": "f17d7eb4c0638e592ee0d4362f15175ec4df92af5d443edcabc281895704dcb4",
+      "bytes": 2113
+    },
+    "AI_ASSISTANCE_AND_HUMAN_OVERSIGHT_V0.8.md": {
+      "sha256": "4e06f8ca7e85c17820aff7ff0ed8de855de4186c8d0a98d00012916ba6b74cb3",
+      "bytes": 1588
+    },
+    "PATIENT_AND_PUBLIC_INVOLVEMENT_PLAN_V0.8.md": {
+      "sha256": "f0ba3c97a07928ced2709f9eaeceb5e3be5365bd7a885ea2ce8c8791971beb96",
+      "bytes": 1490
+    },
+    "hardening-readiness-v0.8.json": {
+      "sha256": "666499139e70bafa657e0fa91c8b170f2dd09fb0aacab0ca49adb3f3215a8d51",
+      "bytes": 1078
+    }
+  }
+}

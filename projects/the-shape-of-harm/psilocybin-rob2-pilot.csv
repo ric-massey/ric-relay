@@ -1,0 +1,13 @@
+record_id,study,domain,judgment,support,status
+PSI-DIR-001,Raison 2023,randomization process,low,Central randomized multicenter design; baseline groups broadly comparable.,author_pilot_not_duplicate
+PSI-DIR-001,Raison 2023,deviations from intended interventions,some_concerns,Functional unblinding was likely and not formally assessed; this matters less for objective SAEs but can affect reporting and rescue decisions.,author_pilot_not_duplicate
+PSI-DIR-001,Raison 2023,missing outcome data,low,Safety population and follow-up were substantially complete; denominators are stated.,author_pilot_not_duplicate
+PSI-DIR-001,Raison 2023,measurement of outcome,some_concerns,Investigator attribution of relatedness is subjective and severe-event categories do not fully map to the prespecified estimand.,author_pilot_not_duplicate
+PSI-DIR-001,Raison 2023,selection of reported result,some_concerns,Safety is reported through day 9/day 43 rather than exact 24-hour and 7-day windows; rescue/observation counts are incomplete.,author_pilot_not_duplicate
+PSI-DIR-001,Raison 2023,overall,some_concerns,"Strong direct trial, but functional unblinding and incompatible safety windows prevent a low-risk judgment for this exact result.",author_pilot_not_duplicate
+PSI-DIR-002,Yngwe 2026,randomization process,low,Randomized double-blind active-placebo design; allocation methods require duplicate full protocol review.,author_pilot_not_duplicate
+PSI-DIR-002,Yngwe 2026,deviations from intended interventions,some_concerns,"Allocation guesses were correct in nearly all participants, showing major functional unblinding.",author_pilot_not_duplicate
+PSI-DIR-002,Yngwe 2026,missing outcome data,low,Short-term follow-up appears complete; long-term attrition is less relevant to the 7-day estimand.,author_pilot_not_duplicate
+PSI-DIR-002,Yngwe 2026,measurement of outcome,some_concerns,Some tables report event counts rather than participants; severe anxiety onset and exact window are not provided.,author_pilot_not_duplicate
+PSI-DIR-002,Yngwe 2026,selection of reported result,some_concerns,Safety summaries use dosing/day15/day42/day365 checkpoints rather than the exact estimand windows.,author_pilot_not_duplicate
+PSI-DIR-002,Yngwe 2026,overall,some_concerns,"Direct and informative but small, functionally unblinded, and not reported in estimand-compatible participant-level windows.",author_pilot_not_duplicate

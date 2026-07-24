@@ -1,0 +1,96 @@
+{
+  "_status": "superseded",
+  "_superseded_by": "instrument-v7.json",
+  "_note": "Historical record only. Do not use for review or registration.",
+  "model_version": "v6-design-2026-07-23",
+  "status": "specification_not_scored_or_validated",
+  "legacy_model": "v5",
+  "principle": "Separate outcome estimands from causal and contextual risk modifiers; do not aggregate unlike denominators by default.",
+  "required_context": [
+    "region_and_year",
+    "substance_or_formulation",
+    "pharmaceutical_or_illicit_supply",
+    "dose_or_potency_range",
+    "route",
+    "frequency",
+    "duration",
+    "co_use",
+    "target_population",
+    "setting_and_supervision"
+  ],
+  "views": [
+    {
+      "id": "episode",
+      "question": "What is the expected serious harm from one defined episode?",
+      "denominator": "100000 episodes",
+      "outcomes": [
+        "acute_medical",
+        "acute_behavioral_psychiatric"
+      ]
+    },
+    {
+      "id": "regular_use",
+      "question": "What is the expected health loss from a defined pattern of regular use?",
+      "denominator": "1000 user_years",
+      "outcomes": [
+        "chronic_physical",
+        "chronic_psychiatric_cognitive",
+        "external_harm_per_user_year"
+      ],
+      "modifiers": [
+        "use_disorder_probability",
+        "physical_dependence_probability",
+        "withdrawal_hazard_conditional_on_dependence"
+      ]
+    },
+    {
+      "id": "population_burden",
+      "question": "What total burden does this scenario cause in a named population and year?",
+      "denominator": "region_year",
+      "outcomes": [
+        "deaths",
+        "dalys",
+        "victim_harm",
+        "economic_cost"
+      ],
+      "prevalence_included": true
+    }
+  ],
+  "outcome_domains": {
+    "acute_medical": "Serious medical event per episode, including poisoning, overdose, cardiovascular event, hyperthermia, seizure, or other emergency.",
+    "acute_behavioral_psychiatric": "Serious accident, violence, self-harm, dangerous disorientation, or psychiatric event requiring care per episode.",
+    "chronic_physical": "Physical morbidity and mortality attributable to the defined use pattern per user-year.",
+    "chronic_psychiatric_cognitive": "Persistent psychiatric or cognitive morbidity attributable to the defined use pattern per user-year.",
+    "external_harm_per_user_year": "Harm experienced by other people per user-year, using a consistent denominator across scenarios."
+  },
+  "modifiers": {
+    "use_disorder_probability": "Probability of DSM/ICD substance use disorder within a stated exposure window.",
+    "physical_dependence_probability": "Probability of physiological dependence at the defined dose, frequency, and duration.",
+    "withdrawal_hazard_conditional_on_dependence": "Ordinal medical hazard of abrupt cessation among people who are physically dependent.",
+    "supply_uncertainty": "Probability and consequence of adulteration, substitution, or potency variance.",
+    "route": "Route-specific bioavailability, onset, reinforcement, and complication profile.",
+    "co_use": "Interaction effects with specified co-used substances.",
+    "setting": "Supervision, environment, equipment, and access to emergency care."
+  },
+  "scoring_rules": [
+    "Use natural units before any value transformation.",
+    "Define value-function anchors before converting to 0-100.",
+    "Record missing evidence as missing, never as zero.",
+    "Use ordinal bands when evidence supports rank but not interval distance.",
+    "Estimate uncertainty from empirical intervals, model uncertainty, and independent expert disagreement.",
+    "Check criteria for non-overlap and preferential independence before additive aggregation.",
+    "Use swing weights, not equal slider positions interpreted as neutral.",
+    "Do not publish a universal overall rank by default."
+  ],
+  "validation_requirements": [
+    "preregistered_protocol",
+    "systematic_evidence_review",
+    "multidisciplinary_independent_scoring",
+    "inter_rater_reliability",
+    "content_validity_review",
+    "construct_validity_hypotheses",
+    "external_holdout_validation",
+    "second_panel_replication",
+    "temporal_and_geographic_transportability_tests"
+  ]
+}

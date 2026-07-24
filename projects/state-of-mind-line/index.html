@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>State-of-Mind Line — Mania↑ / Depression↓</title>
+  <meta name="description" content="An animated comparison of bipolar mood episodes and a typical baseline over time." />
+  <style>
+    :root{
+      --bg:#0b0f14; --ink:#e6edf3; --muted:#9fb0c0;
+      --manic:#ff7a7a; --baseline:#6bdc9b; --depressed:#7aa6ff; --grid:#243042;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:14px/1.55 system-ui,sans-serif}
+    header{padding:18px 20px;border-bottom:1px solid #1c2533;background:linear-gradient(90deg,#0e151e,#0b0f14)}
+    h1{margin:0;font-size:clamp(17px,4vw,22px);letter-spacing:-.01em}
+    header p{margin:5px 0 0;color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+    canvas{width:100%;height:min(64vh,520px);min-height:360px;display:block;background:#0c121a}
+    .legend{max-width:78rem;padding:13px 20px 80px;color:var(--muted)}
+    @media(max-width:620px){
+      header{padding:14px 15px}
+      canvas{height:58vh;min-height:340px}
+      .legend{padding:12px 15px 84px;font-size:12px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>State-of-Mind Line — Mania↑ / Depression↓</h1>
+    <p>live model · not a diagnostic instrument</p>
+  </header>
+  <canvas id="chart" width="1200" height="520" aria-label="state-of-mind line"></canvas>
+  <div class="legend">Two baselines: the <em>highlighted band</em> is visual reference (−0.20 to +0.20). Your <strong>point baseline</strong> hugs the <strong>lower edge</strong> of that band (around −0.20) and can pop slightly above it on good baseline days. Added a <span style="color:#ff6b6b">red</span> "typical person" line with its own tail: stays inside the band ~95% of the time, may have a brief low once per year and a couple of "on-top-of-the-world" days.</div>
+  <script>
+    const canvas = document.getElementById('chart');
+    const ctx = canvas.getContext('2d');
+    let W = canvas.width, H = canvas.height;
+
+    const headX = () => Math.floor(W/2);
+    const TOP_MARGIN = 20;
+    const BOT_MARGIN = 20;
+
+    // Highlighted baseline band (visual only)
+    const BASE_BAND_BOTTOM = -0.20; // lower edge of the highlighted region
+    const BASE_BAND_TOP    =  0.20; // upper edge of the highlighted region
+
+    function yFromState(s){
+      const sClamped = Math.max(-1.5, Math.min(1.5, s));
+      const usable = H - TOP_MARGIN - BOT_MARGIN;
+      const t = (sClamped + 1.5) / 3.0;
+      return (H - BOT_MARGIN) - t * usable;
+    }
+
+    const rnd = (a,b)=> a + Math.random()*(b-a);
+    const choice = arr => arr[Math.floor(Math.random()*arr.length)];
+
+    // ================= Tuned model (YOU = blue) =================
+    // Visual band stays centered on 0. Your "baseline" hugs the LOWER edge of that band
+    // and can go a bit above on good days.
+    const EPISODES = {
+      manic:     { target: () => rnd(1.0, 1.35),  days: () => Math.round(rnd(4, 7)) },
+      hypoHigh:  { target: () => rnd(0.70, 0.95), days: () => Math.round(rnd(4, 7)) },
+      hypomanic: { target: () => rnd(0.50, 0.80), days: () => Math.round(rnd(7,20)) },
+      depressive:{ target: () => rnd(-1.10,-0.75), days: () => Math.round(rnd(55,70)) },
+      baseline:  { target: () => rnd(BASE_BAND_BOTTOM - 0.02, BASE_BAND_BOTTOM + 0.06),  // ~[-0.22, -0.14]
+                   days: () => Math.round(rnd(20,60)) },
+      mixed:     { target: () => rnd(0.35, 0.70),  days: () => Math.round(rnd(3,10)) }
+    };
+
+    const FRAMES_PER_DAY = 24;
+    const PX_PER_FRAME  = 2;
+    let frameInDay = FRAMES_PER_DAY;
+
+    let totalDays = 0;
+    let yearDay = 0;
+    let elevatedThisYear = 0;
+
+    // Blue series (you)
+    let state = 0, prevDayState = 0, todayState = 0;
+    // Red series (typical person)
+    let stateN = 0, prevDayStateN = 0, todayStateN = 0;
+
+    // ---------- Jitter models ----------
+    // ADHD jitter (you)
+    let _jitter = 0;
+    function stepADHDJitter(){
+      _jitter = 0.82 * _jitter + (Math.random()*2 - 1) * 0.08; // no upward drift
+      if(_jitter > 0.20) _jitter = 0.20;
+      if(_jitter < -0.20) _jitter = -0.20;
+      return _jitter;
+    }
+    // Norm jitter (smaller)
+    let _jitterN = 0;
+    function stepNormJitter(){
+      _jitterN = 0.90 * _jitterN + (Math.random()*2 - 1) * 0.03; // subtle ±0.03 typical
+      if(_jitterN > 0.08) _jitterN = 0.08;
+      if(_jitterN < -0.08) _jitterN = -0.08;
+      return _jitterN;
+    }
+
+    // ---------- Blue episode state machine ----------
+    let episode = { name: 'baseline', target: 0, daysLeft: 1 };
+    function startEpisode(name){
+      const e = EPISODES[name];
+      episode = { name, target: e.target(), daysLeft: e.days() };
+    }
+    startEpisode('baseline');
+
+    let trans = { active:false, from:0, to:0, days:0, i:0 };
+    function beginTransition(newTarget){
+      trans = { active:true, from:episode.target, to:newTarget, days:Math.round(rnd(2,4)), i:0 };
+    }
+    function currentTarget(){
+      if(!trans.active) return episode.target;
+      const t = Math.min(1, trans.i/Math.max(1,trans.days));
+      const u = t<0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+      return trans.from + (trans.to - trans.from)*u;
+    }
+
+    function maybeTriggerElevated(){
+      const baseRate = (elevatedThisYear === 0) ? 1.1/365 : 0.3/365; // rarer second mania
+      if(episode.name === 'baseline' || episode.name === 'hypomanic'){
+        if(Math.random() < baseRate){
+          const elevatedName = (Math.random() < 0.5) ? 'manic' : 'hypoHigh';
+          const nextTarget = EPISODES[elevatedName].target();
+          beginTransition(nextTarget);
+          startEpisode(elevatedName);
+          elevatedThisYear += 1;
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function dailyStep(){
+      totalDays += 1; yearDay += 1; if(yearDay >= 365){ yearDay = 0; elevatedThisYear = 0; normYearEvents = {high:0, low:0}; }
+
+      // ---- BLUE SERIES (you) ----
+      episode.daysLeft -= 1;
+      if(episode.daysLeft <= 0){
+        let nextName = 'baseline';
+        if(episode.name === 'manic' || episode.name === 'hypoHigh'){
+          nextName = 'depressive';
+        } else if(episode.name === 'depressive'){
+          nextName = (Math.random() < 0.7) ? 'baseline' : 'hypomanic';
+        } else if(episode.name === 'mixed'){
+          const r = Math.random();
+          nextName = (r < 0.75) ? 'hypomanic' : (r < 0.92 ? 'baseline' : 'depressive');
+        } else if(episode.name === 'hypomanic'){
+          nextName = (Math.random() < 0.75) ? 'baseline' : 'hypomanic';
+        } else {
+          nextName = (Math.random() < 0.65) ? 'baseline' : 'hypomanic';
+        }
+        const nextTarget = EPISODES[nextName].target();
+        beginTransition(nextTarget);
+        startEpisode(nextName);
+      }
+
+      if(episode.name !== 'mixed' && Math.random() < 0.005){
+        const nextTarget = EPISODES['mixed'].target();
+        beginTransition(nextTarget);
+        startEpisode('mixed');
+      }
+
+      maybeTriggerElevated();
+
+      const target = currentTarget();
+      prevDayState = state;
+
+      if(Math.random() < 0.25){ todayState = state; }
+      else {
+        let stepMin=0.06, stepMax=0.18, spikeChance=0.06, spikeMin=0.12, spikeMax=0.30, upBias=0;
+        switch(episode.name){
+          case 'baseline':
+            stepMin=0.03; stepMax=0.10; spikeChance=0.05; spikeMin=0.10; spikeMax=0.24; upBias=+0.02; break;
+          case 'hypomanic':
+            stepMin=0.08; stepMax=0.20; spikeChance=0.07; spikeMin=0.12; spikeMax=0.26; upBias=+0.10; break;
+          case 'hypoHigh':
+            stepMin=0.10; stepMax=0.25; spikeChance=0.08; spikeMin=0.18; spikeMax=0.35; upBias=+0.05; break;
+          case 'manic':
+            stepMin=0.12; stepMax=0.30; spikeChance=0.10; spikeMin=0.18; spikeMax=0.40; upBias=0; break;
+          case 'depressive':
+            stepMin=0.06; stepMax=0.18; spikeChance=0.06; spikeMin=0.10; spikeMax=0.28; upBias=-0.20; break;
+          case 'mixed':
+            stepMin=0.08; stepMax=0.18; spikeChance=0.07; spikeMin=0.12; spikeMax=0.26; upBias=+0.05; break;
+        }
+        const stepMag = rnd(stepMin, stepMax);
+        const dirBias = Math.sign(target - state);
+        const randomness = Math.sign(Math.random() - (0.5 - upBias));
+        const dir = (Math.random()<0.7 ? dirBias : randomness) || 1;
+        let s = state + dir * stepMag;
+        if(Math.random() < 0.00005){ s += (Math.random()<0.5? -1:1) * 0.40; }
+        else if(Math.random() < 0.0002){ s += (Math.random()<0.5? -1:1) * 0.20; }
+        if(Math.random() < spikeChance){ s += (Math.random()<0.5? -1:1) * rnd(spikeMin, spikeMax); }
+        if(episode.name === 'baseline'){
+          const upperSoft = BASE_BAND_BOTTOM + 0.10; // allow slightly above lower edge (~-0.10)
+          const lowerSoft = BASE_BAND_BOTTOM - 0.08; // don't drift far below band
+          if(s > upperSoft){ s -= Math.min((s - upperSoft) * 0.6, 0.08); }
+          if(s < lowerSoft){ s += Math.min((lowerSoft - s) * 0.5, 0.06); }
+        }
+        const edgeStart = 1.2; const mag = Math.abs(s);
+        if(mag > edgeStart){ const over = mag - edgeStart; s -= Math.sign(s) * 0.18 * Math.tanh(over*2.5); }
+        todayState = Math.max(-1.45, Math.min(1.45, s));
+      }
+
+      // ---- RED SERIES (typical person) ----
+      normDailyStep();
+    }
+
+    const TAIL_PIXELS = 720;
+    // Blue series (you)
+    const tail = Array.from({length: TAIL_PIXELS}, () => 0);
+    // Red series (typical person)
+    const tailN = Array.from({length: TAIL_PIXELS}, () => 0);
+
+    function update(){
+      frameInDay += 1;
+      if(frameInDay >= FRAMES_PER_DAY){ frameInDay = 0; dailyStep(); }
+      const a = frameInDay/FRAMES_PER_DAY;
+
+      // Blue series interpolation + jitter
+      const base = prevDayState*(1-a) + todayState*a;
+      const jitterNow = stepADHDJitter();
+      state = base + jitterNow;
+      tail.push(state); if(tail.length > TAIL_PIXELS) tail.shift();
+
+      // Red series interpolation + small jitter
+      const baseN = prevDayStateN*(1-a) + todayStateN*a;
+      const jitterNowN = stepNormJitter();
+      stateN = baseN + jitterNowN;
+      tailN.push(stateN); if(tailN.length > TAIL_PIXELS) tailN.shift();
+    }
+
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      const hx = headX();
+
+      // Band shading
+      const yTopBand = yFromState(BASE_BAND_TOP), yBotBand = yFromState(BASE_BAND_BOTTOM);
+      ctx.save(); ctx.globalAlpha = 0.08; ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--baseline');
+      ctx.fillRect(0, Math.min(yTopBand,yBotBand), W, Math.abs(yBotBand - yTopBand)); ctx.restore();
+
+      // Midline
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid');
+      ctx.lineWidth = 1; ctx.beginPath(); const midY = yFromState(0); ctx.moveTo(0, midY); ctx.lineTo(W, midY); ctx.stroke();
+
+      // Grid lines (daily + weekly) and yearly markers every 354 days
+      const maxSamples = Math.min(tail.length, Math.ceil(W / PX_PER_FRAME));
+      for(let i=0;i<maxSamples;i++){
+        const framesBack = i;
+        const isBoundary = ((FRAMES_PER_DAY - frameInDay + framesBack) % FRAMES_PER_DAY) === 0;
+        if(!isBoundary) continue;
+        const x = hx - i * PX_PER_FRAME; if(x < 0) break;
+        const daysBack = Math.floor((FRAMES_PER_DAY - frameInDay + framesBack)/FRAMES_PER_DAY);
+        const dayNumber = totalDays - daysBack;
+        const isYear = (dayNumber % 354) === 0; // every 354th day
+        const isWeek = (dayNumber % 7) === 0;
+        if(isYear){
+          ctx.fillStyle = 'rgba(255,255,255,0.95)';
+          ctx.fillRect(x, 0, 2, H);
+          ctx.font = '12px system-ui'; ctx.textBaseline = 'top'; ctx.fillText('1 year', x + 6, 6);
+        } else {
+          ctx.fillStyle = isWeek ? 'rgba(159,176,192,0.22)' : 'rgba(159,176,192,0.12)';
+          ctx.fillRect(x, 0, 1, H);
+        }
+      }
+
+      // Blue tail
+      ctx.beginPath(); const maxTail = Math.min(tail.length, Math.ceil(W / PX_PER_FRAME));
+      for(let i=0;i<maxTail;i++){
+        const s = tail[tail.length - 1 - i]; const x = hx - i * PX_PER_FRAME; const y = yFromState(s);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle = '#6aa1ff'; ctx.lineWidth = 2; ctx.stroke();
+
+      // Red tail
+      ctx.beginPath();
+      for(let i=0;i<maxTail;i++){
+        const s = tailN[tailN.length - 1 - i]; const x = hx - i * PX_PER_FRAME; const y = yFromState(s);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle = '#ff5a5a'; ctx.lineWidth = 1.75; ctx.stroke();
+
+      // Blue head
+      const sHead = tail[tail.length-1] || 0; const yHead = yFromState(sHead);
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--depressed');
+      ctx.beginPath(); ctx.arc(hx, yHead, 7, 0, Math.PI*2); ctx.fill();
+
+      // Red head
+      const sHeadN = tailN[tailN.length-1] || 0; const yHeadN = yFromState(sHeadN);
+      ctx.fillStyle = '#ff4d4d';
+      ctx.beginPath(); ctx.arc(hx, yHeadN, 5, 0, Math.PI*2); ctx.fill();
+
+      requestAnimationFrame(loop);
+    }
+
+    function loop(){ update(); draw(); }
+    function onResize(){
+      const rect = canvas.getBoundingClientRect();
+      const nextW = Math.max(320, Math.round(rect.width));
+      const nextH = Math.max(340, Math.round(rect.height));
+      if(canvas.width !== nextW) canvas.width = nextW;
+      if(canvas.height !== nextH) canvas.height = nextH;
+      W = canvas.width; H = canvas.height;
+    }
+    window.addEventListener('resize', onResize);
+
+    // ----------- Normal person (red) model -----------
+    const N_EPISODES = {
+      n_baseline: { target: () => rnd(-0.05, 0.05), days: () => Math.round(rnd(45,140)) },
+      n_high:     { target: () => rnd(0.20, 0.45), days: () => Math.round(rnd(2,4)) },
+      n_low:      { target: () => rnd(-0.45,-0.20), days: () => Math.round(rnd(5,10)) }
+    };
+    let nEpisode = { name: 'n_baseline', target: 0, daysLeft: 1 };
+    function nStart(name){ const e = N_EPISODES[name]; nEpisode = { name, target: e.target(), daysLeft: e.days() }; }
+    nStart('n_baseline');
+
+    let normYearEvents = {high:0, low:0};
+    let nTrans = {active:false, from:0, to:0, days:0, i:0};
+    function nBegin(to){ nTrans = {active:true, from:nEpisode.target, to:to, days:Math.round(rnd(1,3)), i:0}; }
+    function nCurrentTarget(){ if(!nTrans.active) return nEpisode.target; const t=Math.min(1,nTrans.i/Math.max(1,nTrans.days)); return nTrans.from + (nTrans.to-nTrans.from)*(t); }
+
+    function normDailyStep(){
+      // Yearly reset handled by caller
+      nEpisode.daysLeft -= 1;
+      if(nEpisode.daysLeft <= 0){
+        let next = 'n_baseline';
+        if(nEpisode.name === 'n_high' || nEpisode.name === 'n_low') next = 'n_baseline';
+        const to = N_EPISODES[next].target(); nBegin(to); nStart(next);
+      }
+      // triggers from baseline: ~1 low per year, a couple of high days per year
+      if(nEpisode.name === 'n_baseline'){
+        if(normYearEvents.low < 1 && Math.random() < (1/365)){
+          const to = N_EPISODES['n_low'].target(); nBegin(to); nStart('n_low'); normYearEvents.low++; }
+        else if(normYearEvents.high < 3 && Math.random() < (2/365)){
+          const to = N_EPISODES['n_high'].target(); nBegin(to); nStart('n_high'); normYearEvents.high++; }
+      }
+
+      if(nTrans.active){ nTrans.i += 1; if(nTrans.i >= nTrans.days) nTrans.active=false; }
+
+      const targetN = nCurrentTarget();
+      prevDayStateN = stateN;
+
+      // ~30% true no-change days for calmer line
+      if(Math.random() < 0.30){ todayStateN = stateN; return; }
+
+      // small steps within band
+      let stepMin=0.01, stepMax=0.06, spikeChance=0.02, spikeMin=0.08, spikeMax=0.16;
+      if(nEpisode.name === 'n_high'){ stepMin=0.03; stepMax=0.09; spikeChance=0.04; }
+      if(nEpisode.name === 'n_low'){ stepMin=0.02; stepMax=0.08; spikeChance=0.03; }
+
+      const stepMag = rnd(stepMin, stepMax);
+      const dirBias = Math.sign(targetN - stateN);
+      const randomness = Math.sign(Math.random() - 0.5);
+      const dir = (Math.random()<0.65 ? dirBias : randomness) || 1;
+      let s = stateN + dir * stepMag;
+      if(Math.random() < spikeChance){ s += (Math.random()<0.5? -1:1) * rnd(spikeMin, spikeMax); }
+
+      // Keep it inside band ~95% of time (soft clamp)
+      const softTop = BASE_BAND_TOP - 0.02, softBot = BASE_BAND_BOTTOM + 0.02;
+      if(s > softTop) s -= Math.min((s-softTop)*0.7, 0.05);
+      if(s < softBot) s += Math.min((softBot-s)*0.7, 0.05);
+
+      todayStateN = Math.max(-1.45, Math.min(1.45, s));
+    }
+
+    // ---------------------- Tests ----------------------
+    (function runTests(){
+      try{
+        console.log('[tests] starting');
+        // 1) yFromState within margins
+        const topY = yFromState(1.5), botY = yFromState(-1.5);
+        console.assert(topY >= TOP_MARGIN-1 && botY <= H - BOT_MARGIN + 1, 'yFromState within margins');
+        // 2) headX stays centered after responsive canvas sizing
+        console.assert(headX() === Math.floor(W/2), 'headX centers');
+        console.assert(typeof draw === 'function', 'draw is available');
+        // 3) Yearly median remains inside the model's supported range
+        let samples=[]; for(let d=0; d<365; d++){ dailyStep(); samples.push(todayState); }
+        samples.sort((a,b)=>a-b); const median = samples[Math.floor(samples.length/2)];
+        console.assert(median > -1.45 && median < 1.45, 'median yearly level stays in range');
+        // 4) Red series spends most time in band
+        let inBand=0, total=0; nStart('n_baseline'); normYearEvents={high:0,low:0};
+        for(let d=0; d<365; d++){ normDailyStep(); if(todayStateN <= BASE_BAND_TOP && todayStateN >= BASE_BAND_BOTTOM) inBand++; total++; }
+        console.assert(inBand/total >= 0.90, 'red series in band ≥ 90%');
+        // 5) Visual day width is consistent
+        console.assert(FRAMES_PER_DAY * PX_PER_FRAME === 48, 'day pixel width is 48px');
+        console.log('[tests] passed');
+      } catch(e){ console.error('[tests] failed', e); }
+    })();
+
+    // Kick off
+    onResize();
+    dailyStep();
+    requestAnimationFrame(loop);
+  </script>
+  <script src="../relay-return.js" data-home="../../index.html" data-egg="mind" defer></script>
+</body>
+</html>

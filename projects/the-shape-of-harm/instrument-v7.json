@@ -1,0 +1,170 @@
+{
+  "name": "The Shape of Harm Research Framework",
+  "scientific_title": "A scenario-based comparative risk and decision-analysis framework for psychoactive substances",
+  "version": "0.7",
+  "date": "2026-07-23",
+  "status": "external_review_launch_package_prepared_pending_team_registration_and_search",
+  "identity": {
+    "primary": "scenario_based_comparative_risk_model",
+    "optional": "multi_criteria_decision_analysis_layer",
+    "not": [
+      "psychometric_reflective_scale",
+      "context_free_drug_badness_measure",
+      "individual_clinical_prediction_tool"
+    ]
+  },
+  "views": [
+    {
+      "id": "one_episode",
+      "denominator": "100000 defined episodes",
+      "default_aggregate": false
+    },
+    {
+      "id": "regular_use",
+      "denominator": "1000 user-years or outcome-specific conditional denominator",
+      "default_aggregate": false
+    },
+    {
+      "id": "population_burden",
+      "denominator": "100000 residents per year and total burden",
+      "default_aggregate": false
+    }
+  ],
+  "required_scenario_fields": [
+    "substance",
+    "formulation",
+    "supply_source",
+    "dose_or_intensity",
+    "route",
+    "frequency",
+    "duration",
+    "co_use",
+    "setting",
+    "supervision",
+    "user_history_or_vulnerability",
+    "population",
+    "geography",
+    "calendar_period",
+    "comparator",
+    "outcome_window"
+  ],
+  "analysis_principles": [
+    "natural_units_before_0_to_100_transformation",
+    "non_overlapping_outcomes",
+    "missing_is_not_zero",
+    "direct_estimates_distinguished_from_model_predictions",
+    "evidence_estimates_separate_from_value_weights",
+    "swing_weights_only_after_value_functions_and_scale_anchors",
+    "parameter_heterogeneity_bias_indirectness_and_structural_uncertainty_explicit",
+    "no_universal_overall_rank_by_default"
+  ],
+  "validation_targets": [
+    "content_validity",
+    "review_process_reliability",
+    "construct_behavior_hypotheses",
+    "external_holdout_validation",
+    "uncertainty_calibration",
+    "temporal_and_geographic_transportability",
+    "decision_robustness",
+    "independent_replication"
+  ],
+  "prohibited_shortcuts": [
+    "single_author_unblinded_scoring_as_primary_evidence",
+    "cronbach_alpha_as_validation_of_distinct_harm_domains",
+    "fixed_uncertainty_width_by_evidence_grade",
+    "mixing_per_user_and_population_burden_in_one_axis",
+    "combining_use_disorder_physical_dependence_and_withdrawal_as_one_construct",
+    "publishing_rank_before_estimand_and_denominator_are_locked"
+  ],
+  "files": {
+    "protocol": "RESEARCH_PROTOCOL_V0.2.md",
+    "validation": "VALIDATION_PLAN.md",
+    "scenarios": "scenario-registry.csv",
+    "outcomes": "outcome-dictionary.csv",
+    "extraction": "evidence-extraction-template.csv",
+    "research_page": "research.html",
+    "estimand_protocol": "PILOT_ESTIMANDS_V0.2.md",
+    "estimand_registry": "estimand-registry.csv",
+    "estimand_json": "estimands-v0.2.json",
+    "content_validity_form": "estimand-content-validity-form.csv",
+    "estimand_page": "estimands.html",
+    "feasibility_register": "estimand-feasibility-register.csv",
+    "estimand_implementation_audit": "ESTIMAND_IMPLEMENTATION_AUDIT.md",
+    "certainty_page": "certainty.html",
+    "certainty_analysis": "CERTAINTY_AND_INFORMATION_ANALYSIS_V0.1.md",
+    "grade_profile": "grade-evidence-profile.csv",
+    "sensitivity_analysis": "rare-event-sensitivity.csv",
+    "information_targets": "information-size-targets.csv",
+    "review_readiness": "review-readiness-checklist.csv",
+    "replication_page": "replication.html",
+    "independent_replication_protocol": "PSILOCYBIN_INDEPENDENT_REPLICATION_PROTOCOL_V0.2.md",
+    "protocol_lock": "protocol-lock.json",
+    "launch": "launch.html",
+    "launch_plan": "EXTERNAL_REVIEW_LAUNCH_PLAN_V0.7.md"
+  },
+  "estimand_framework": {
+    "basis": "ICH E9(R1) adapted for observational and public-health risk estimation",
+    "required_attributes": [
+      "target_population",
+      "exposure_strategy",
+      "comparator_strategy",
+      "outcome_set",
+      "intercurrent_events_strategy",
+      "summary_measure",
+      "time_horizon",
+      "geography",
+      "calendar_period",
+      "comparability_class",
+      "identification_assumptions"
+    ],
+    "change_control": "material changes create a new estimand version and dated amendment",
+    "cross_scenario_rule": "no ranking across incompatible comparability classes"
+  },
+  "pilot_estimands": [
+    {
+      "id": "EST-AE-ALC-001",
+      "scenario_id": "PILOT_A_ALC_60G_COMMUNITY",
+      "status": "provisional_frozen_pending_content_review",
+      "feasibility": "medium-low"
+    },
+    {
+      "id": "EST-RU-TOB-001",
+      "scenario_id": "PILOT_B_TOB_CONTINUE_VS_CEASE",
+      "status": "provisional_frozen_pending_content_review",
+      "feasibility": "medium-high"
+    },
+    {
+      "id": "EST-AE-OPI-001",
+      "scenario_id": "PILOT_C_OPIOID_UNVERIFIED_INTRNASAL",
+      "status": "provisional_frozen_pending_content_review",
+      "feasibility": "low"
+    },
+    {
+      "id": "EST-AE-PSI-001",
+      "scenario_id": "PILOT_D_PSI_25MG_CLINICAL",
+      "status": "provisional_frozen_pending_content_review",
+      "feasibility": "high within controlled setting"
+    }
+  ],
+  "feasibility_stage": {
+    "status": "author_screen_complete_not_independent_validation",
+    "page": "feasibility.html",
+    "decisions": {
+      "EST-AE-ALC-001": "blocked_pending_denominator_study",
+      "EST-RU-TOB-001": "revise_or_data_fusion_before_estimation",
+      "EST-AE-OPI-001": "blocked_pending_episode_denominator_and_linkage",
+      "EST-AE-PSI-001": "proceed_to_systematic_evidence_map"
+    },
+    "first_review_protocol": "PSILOCYBIN_SAFETY_REVIEW_PROTOCOL_V0.1.md"
+  },
+  "evidence_stage": {
+    "estimand_id": "EST-AE-PSI-001",
+    "direct_studies": 2,
+    "releasable_outcomes": 1,
+    "blocked_outcomes": 3,
+    "independent_review_complete": false,
+    "certainty_assessment": "very_low_provisional",
+    "certainty_independently_adjudicated": false,
+    "information_target_n_upper_10_per_1000": 368
+  }
+}

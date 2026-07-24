@@ -1,0 +1,66 @@
+drug,us_federal_status,criterion,criterion_key,score,evidence_grade,interval_low,interval_high,evidence_basis
+Caffeine,unrestricted,Getting hooked,add,15,P,0,30,Caffeine use disorder prevalence estimates of roughly 8–20%
+Caffeine,unrestricted,Danger in quitting,wd,5,M,0,13,"Juliano & Griffiths: 50% headache, 13% clinically significant impairment"
+Caffeine,unrestricted,Damage to your body,org,5,J,0,25,No comparable organ-harm dataset; judged near the floor
+Caffeine,unrestricted,Damage to others,oth,0,J,0,20,Judged near zero
+Caffeine,unrestricted,One bad night,ac,5,M,0,13,Gable safety ratio ~100
+Psilocybin,varies by state,Getting hooked,add,2,P,0,17,NCS psychedelic class 5%; not reliably self-administered
+Psilocybin,varies by state,Danger in quitting,wd,0,J,0,20,No withdrawal syndrome; scored zero
+Psilocybin,varies by state,Damage to your body,org,5,J,0,25,No established organ toxicity
+Psilocybin,varies by state,Damage to others,oth,2,J,0,22,Judged
+Psilocybin,varies by state,One bad night,ac,35,M,27,43,"Carbonaro's 1,993 difficult experiences: 11% risked physical harm"
+LSD,illicit,Getting hooked,add,2,P,0,17,NCS psychedelic class 5%
+LSD,illicit,Danger in quitting,wd,0,J,0,20,No withdrawal syndrome; scored zero
+LSD,illicit,Damage to your body,org,5,J,0,25,No established organ toxicity
+LSD,illicit,Damage to others,oth,3,P,0,18,Nutt's part-score of 1 rescales to 2.2; this cell says 3
+LSD,illicit,One bad night,ac,45,P,30,60,"Gable ~1000, extrapolated; long duration extends the exposure window"
+Cannabis,varies by state,Getting hooked,add,30,M,22,38,NESARC 8.9% and NCS 9% — the two surveys agree closely here
+Cannabis,varies by state,Danger in quitting,wd,20,M,12,28,Bahji meta-analysis: 17% of population-based users (95% CI 13–21)
+Cannabis,varies by state,Damage to your body,org,30,P,15,45,"Danish register SMR 4.9×, confounded by co-use"
+Cannabis,varies by state,Damage to others,oth,20,P,5,35,Nutt's part-score of 8 rescales to 17; this cell says 20
+Cannabis,varies by state,One bad night,ac,15,P,0,30,"Gable >1000, extrapolated — no human lethal dose is established"
+MDMA,illicit,Getting hooked,add,30,P,15,45,NCS psychedelic class 5% — not MDMA-specific
+MDMA,illicit,Danger in quitting,wd,15,J,0,35,No data; judged minimal
+MDMA,illicit,Damage to your body,org,35,J,15,55,"Contested serotonergic findings, no settled per-user figure"
+MDMA,illicit,Damage to others,oth,10,J,0,30,Judged
+MDMA,illicit,One bad night,ac,45,M,37,53,"Gable ~16, though the real risk is heat and water balance, not dose"
+Ketamine,prescription,Getting hooked,add,40,J,20,60,No population dependence estimate exists
+Ketamine,prescription,Danger in quitting,wd,20,J,0,40,No data; judged mild
+Ketamine,prescription,Damage to your body,org,40,P,25,55,"Clinical case literature on uropathy, with no rate per user"
+Ketamine,prescription,Damage to others,oth,20,J,0,40,Judged
+Ketamine,prescription,One bad night,ac,35,M,27,43,Gable safety ratio ~25
+Benzodiazepines,prescription,Getting hooked,add,55,J,35,75,No comparable transition probability has been published
+Benzodiazepines,prescription,Danger in quitting,wd,90,P,75,100,Clinical consensus that unsupervised withdrawal can kill
+Benzodiazepines,prescription,Damage to your body,org,20,J,0,40,"Judged — fracture and cognitive findings are age-specific, not per-user rates"
+Benzodiazepines,prescription,Damage to others,oth,25,J,5,45,Judged
+Benzodiazepines,prescription,One bad night,ac,30,P,15,45,"Gable's figure is flunitrazepam specifically, not the class"
+Tobacco (smoked),legal 21+,Getting hooked,add,90,M,82,98,NESARC 67.5% — the highest measured for any drug
+Tobacco (smoked),legal 21+,Danger in quitting,wd,40,P,25,55,"Clinically characterised, and not physically dangerous to stop"
+Tobacco (smoked),legal 21+,Damage to your body,org,75,M,67,83,Doll's 50-year cohort: half to two-thirds of persistent smokers killed by it
+Tobacco (smoked),legal 21+,Damage to others,oth,40,M,32,48,"CDC: 41,000 US deaths a year among non-smokers, plus ~400 infants"
+Tobacco (smoked),legal 21+,One bad night,ac,2,J,0,22,No agreed acute lethal dose; judged near zero
+Nicotine (no smoke),legal 21+,Getting hooked,add,85,P,70,100,Inferred from tobacco dependence plus slower delivery kinetics
+Nicotine (no smoke),legal 21+,Danger in quitting,wd,35,P,20,50,Same withdrawal syndrome as smoking; not physically dangerous
+Nicotine (no smoke),legal 21+,Damage to your body,org,25,M,17,33,Swedish snus pooled cohorts: all-cause mortality aHR 1.28 (95% CI 1.20–1.35)
+Nicotine (no smoke),legal 21+,Damage to others,oth,5,J,0,25,Judged near zero — no combustion means no secondhand smoke
+Nicotine (no smoke),legal 21+,One bad night,ac,3,J,0,23,Judged — nicotine poisoning is possible but rare outside concentrated liquid
+Cocaine,illicit,Getting hooked,add,70,M,62,78,NESARC 20.9% lifetime dependence among users
+Cocaine,illicit,Danger in quitting,wd,45,J,25,65,No measured data; judged severe but not physically dangerous
+Cocaine,illicit,Damage to your body,org,70,M,62,78,Mittleman 1999: 23.7-fold MI risk in first hour, 95% CI 8.5-66.3, n=9 exposed
+Cocaine,illicit,Damage to others,oth,65,J,45,85,Not derived — Nutt's crack figure 17 would give 37; this cell says 65
+Cocaine,illicit,One bad night,ac,75,M,67,83,Gable intranasal ratio ~15
+Opioids (illicit),illicit,Getting hooked,add,95,P,80,100,"NCS heroin 23% — a 1994 figure, from before fentanyl"
+Opioids (illicit),illicit,Danger in quitting,wd,50,M,42,58,"Clinical consensus: severe, rarely fatal without complications"
+Opioids (illicit),illicit,Damage to your body,org,55,J,35,75,No comparable per-user organ dataset; judged relative to alcohol
+Opioids (illicit),illicit,Damage to others,oth,65,J,45,85,Not derived — Nutt's heroin 21 would give 46; this cell says 65
+Opioids (illicit),illicit,One bad night,ac,95,M,87,100,Gable ~6 for intravenous heroin; fentanyl makes the real dose unknowable
+Methamphetamine,illicit,Getting hooked,add,95,P,80,100,NCS stimulant class 11% — not methamphetamine-specific
+Methamphetamine,illicit,Danger in quitting,wd,55,J,35,75,No measured withdrawal severity data
+Methamphetamine,illicit,Damage to your body,org,90,P,75,100,"Animal, imaging and clinical evidence of dopaminergic and serotonergic injury"
+Methamphetamine,illicit,Damage to others,oth,,S,0,100,Suspended — the only available value came from a formula its neighbours escape
+Methamphetamine,illicit,One bad night,ac,70,M,62,78,Gable oral safety ratio ~10
+Alcohol,legal 21+,Getting hooked,add,55,M,47,63,"NESARC lifetime dependence 22.7% among users, n=28,907"
+Alcohol,legal 21+,Danger in quitting,wd,95,M,87,100,Delirium tremens mortality range from clinical references
+Alcohol,legal 21+,Damage to your body,org,90,M,82,98,"Wood 2018 pooled analysis, 599,912 drinkers across 83 studies"
+Alcohol,legal 21+,Damage to others,oth,95,P,80,100,Nutt's harm-to-others part-score of 46 anchors this whole column at 100
+Alcohol,legal 21+,One bad night,ac,60,M,52,68,"Gable safety ratio ~10, from human fatality data"

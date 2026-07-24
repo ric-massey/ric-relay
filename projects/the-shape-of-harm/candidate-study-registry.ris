@@ -1,0 +1,103 @@
+TY  - JOUR
+ID  - PSI-CAND-001
+TI  - Raison CL et al. Single-Dose Psilocybin Treatment for Major Depressive Disorder: A Randomized Clinical Trial. JAMA.
+PY  - 2023
+UR  - https://pubmed.ncbi.nlm.nih.gov/37651119/
+N1  - Registry: NCT03866174; directness: direct_primary_candidate; current status: included_in_author_pilot
+ER  - 
+
+TY  - JOUR
+ID  - PSI-CAND-002
+TI  - Yngwe H et al. Short-Term and Late-Term Effects of Psilocybin on Symptoms in Major Depression: A Randomized Clinical Trial. JAMA Network Open.
+PY  - 2026
+UR  - https://pubmed.ncbi.nlm.nih.gov/42138922/
+N1  - Registry: NCT04630964; directness: direct_primary_candidate; current status: included_in_author_pilot
+ER  - 
+
+TY  - JOUR
+ID  - PSI-CAND-003
+TI  - Goodwin GM et al. Single-Dose Psilocybin for a Treatment-Resistant Episode of Major Depression. New England Journal of Medicine.
+PY  - 2022
+UR  - https://pubmed.ncbi.nlm.nih.gov/36322843/
+N1  - Registry: NCT03775200; directness: indirect_population_and_comparator; current status: included_secondary_author_pilot
+ER  - 
+
+TY  - JOUR
+ID  - PSI-CAND-004
+TI  - Mertens LJ et al. Efficacy and Safety of Psilocybin in Treatment-Resistant Major Depression: the EPIsoDE Randomized Clinical Trial. JAMA Psychiatry.
+PY  - 2026
+UR  - https://pubmed.ncbi.nlm.nih.gov/41848690/
+N1  - Registry: NCT04670081; directness: indirect_population; current status: candidate_full_extraction
+ER  - 
+
+TY  - CLIN
+ID  - PSI-CAND-005
+TI  - Psilocybin for Major Depressive Disorder (uAspire).
+PY  - ongoing
+UR  - https://clinicaltrials.gov/study/NCT06308653
+N1  - Registry: NCT06308653; directness: potentially_direct; current status: await_results
+ER  - 
+
+TY  - JOUR
+ID  - PSI-CAND-006
+TI  - von Rotz R et al. Single-dose psilocybin-assisted therapy in major depressive disorder: a placebo-controlled, double-blind, randomised clinical trial.
+PY  - 2023
+UR  - https://pubmed.ncbi.nlm.nih.gov/36636296/
+N1  - Registry: NCT03715127; directness: indirect_dose; current status: candidate_indirect_safety_stratum
+ER  - 
+
+TY  - JOUR
+ID  - PSI-CAND-007
+TI  - Davis AK et al. Effects of Psilocybin-Assisted Therapy on Major Depressive Disorder: A Randomized Clinical Trial.
+PY  - 2021
+UR  - https://pubmed.ncbi.nlm.nih.gov/33146667/
+N1  - Registry: NCT03181529; directness: indirect_regimen_and_comparator; current status: candidate_contextual_safety_stratum
+ER  - 
+
+TY  - JOUR
+ID  - PSI-CAND-008
+TI  - Sloshower J et al. Psilocybin-assisted therapy for major depressive disorder: an exploratory placebo-controlled, fixed-order trial.
+PY  - 2023
+UR  - https://pubmed.ncbi.nlm.nih.gov/36938991/
+N1  - Registry: ; directness: indirect_dose_and_design; current status: candidate_contextual_safety_stratum
+ER  - 
+
+TY  - JOUR
+ID  - PSI-CAND-009
+TI  - Carhart-Harris R et al. Trial of Psilocybin versus Escitalopram for Depression. New England Journal of Medicine.
+PY  - 2021
+UR  - https://www.nejm.org/doi/full/10.1056/NEJMoa2032994
+N1  - Registry: ; directness: indirect_repeated_dose_and_comparator; current status: candidate_contextual_safety_stratum
+ER  - 
+
+TY  - CLIN
+ID  - PSI-CAND-010
+TI  - Phase II recurrent MDD study of single COMP360 administration.
+PY  - ongoing_or_unreported
+UR  - https://clinicaltrials.gov/study/NCT05733546
+N1  - Registry: NCT05733546; directness: potentially_direct_or_indirect; current status: full_registry_review_required
+ER  - 
+
+TY  - CLIN
+ID  - PSI-CAND-011
+TI  - Psilocybin Treatment of Major Depressive Disorder.
+PY  - registered
+UR  - https://clinicaltrials.gov/study/NCT04620759
+N1  - Registry: NCT04620759; directness: potentially_direct; current status: full_registry_review_required
+ER  - 
+
+TY  - CLIN
+ID  - PSI-CAND-012
+TI  - COMP005: single-dose COMP360 25 mg versus placebo in treatment-resistant depression.
+PY  - phase_3_results_announced
+UR  - https://clinicaltrials.gov/study/NCT05624268
+N1  - Registry: NCT05624268; directness: indirect_population; current status: await_full_public_report
+ER  - 
+
+TY  - CLIN
+ID  - PSI-CAND-013
+TI  - COMP006: two administrations of COMP360 in treatment-resistant depression.
+PY  - phase_3_results_announced
+UR  - https://clinicaltrials.gov/study/NCT05711940
+N1  - Registry: NCT05711940; directness: indirect_population_and_regimen; current status: await_full_public_report
+ER  - 

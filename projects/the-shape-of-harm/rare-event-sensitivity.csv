@@ -1,0 +1,6 @@
+analysis,events,n,risk_per_1000,ci_low_per_1000,ci_high_per_1000,interpretation
+Primary pooled direct stratum,0,67,0.0,0.0,53.6,Both direct MDD trials; prespecified primary calculation.
+Leave out Yngwe 2026,0,50,0.0,0.0,71.1,Shows dependence on the larger Raison trial.
+Yngwe 2026 alone,0,17,0.0,0.0,195.1,Small-study bound; cannot establish rarity.
+One event was missed or reclassified,1,67,14.9,0.4,80.4,"Fragility analysis; one event changes the point estimate to 14.9 per 1,000."
+Two events were missed or reclassified,2,67,29.9,3.6,103.7,Fragility analysis; illustrates sensitivity to event ascertainment and attribution.

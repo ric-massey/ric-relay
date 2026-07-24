@@ -1,0 +1,9 @@
+code,label,definition,priority_order
+FT01,Wrong population,No MDD group and no separable MDD data,1
+FT02,Wrong exposure,No single 25 mg oral synthetic-psilocybin arm,2
+FT03,Wrong design,No eligible controlled design for primary/indirect strata,3
+FT04,Wrong setting,Unsupervised exposure or insufficiently described monitored setting,4
+FT05,Wrong outcome availability,No arm-level safety data covering at least 24 hours,5
+FT06,Duplicate/secondary report,No unique eligible data beyond linked primary report,6
+FT07,Not a study report,"Editorial, narrative review, news, or commentary",7
+FT08,Awaiting classification,Insufficient public information; author/sponsor contact pending,8

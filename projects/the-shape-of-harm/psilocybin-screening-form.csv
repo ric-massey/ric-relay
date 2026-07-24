@@ -1,0 +1,1 @@
+record_id,reviewer_id,stage,decision,population_match,dose_match,formulation_match,setting_support_match,comparator_match,outcome_window_available,randomized_controlled,exclusion_reason,notes,date

@@ -46,8 +46,10 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | Project | Linked from | What it is |
 |---|---|---|
 | `projects/spacetime/` | Exploration | "The Geometry of Spacetime" — interactive special-relativity explainer |
+| `projects/the-shape-of-harm/` | Exploration | Evidence-informed interactive research framework for comparing psychoactive-substance harms |
 | `projects/siege-conductor/` | Workbench | Star Wars viewing-companion PWA (add-to-home-screen app) |
 | `projects/autism-reflection.html` | Log | Long-form personal reflection on the DSM-5 autism criteria |
+| `projects/state-of-mind-line/` | Log | Animated bipolar mood-pattern visualization |
 
 These are self-contained and may carry their own assets/fonts — that's fine; the
 "no dependencies" rule applies to the relay's own room pages, not embedded projects.

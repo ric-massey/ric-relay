@@ -1,0 +1,9 @@
+amendment_id,domain,previous_rule,new_rule,rationale,timing
+PA-001,review question,Single mixed question,Two linked products: randomized comparative effect and descriptive monitored-exposure inventory,Separates causal and incidence inference,pre_registration
+PA-002,primary outcome,Drug-related SAE led the hierarchy,All-cause SAE leads; attribution-based SAE becomes secondary,Reduces dependence on subjective attribution,pre_registration
+PA-003,eligible designs,Controlled studies only,Prospective nonrandomized cohorts enter Product B only,Improves rare-event detection without contaminating Product A,pre_registration
+PA-004,search,Focused depression search,Focused plus broad psilocybin safety-capture search; no harms filter,Harms and companion reports may be poorly indexed,pre_registration
+PA-005,reviewer masking,Blinding language,Decision-concealment language,True blinding to public trial results is impossible,pre_registration
+PA-006,missing evidence,Registry/publication comparison,Add synthesis-level missing-evidence assessment,Whole outcomes and studies may be absent,pre_registration
+PA-007,content validity,Expert review only,Add participant/public review,Captures distressing and functional harms not defined by seriousness,pre_registration
+PA-008,AI disclosure,No formal scientific disclosure,Add AI assistance and human accountability statement,Required for transparency and role integrity,pre_registration
