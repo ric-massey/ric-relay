@@ -41,7 +41,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `photos/` | — | Web-optimized images (originals stay out of git in `_photo-originals/`) |
 | `notes.js` | — | Homepage "transmissions" — the one file you edit by hand to post a note |
 | `latest.js` | — | Curated newest additions shown in each room's native latest-signal banner |
-| `effects.js` | — | Persistent visual modes and Mochi, the reduced-motion-aware resident cat with decoded crossfades, multi-angle four-frame-per-second movement, feature hiding, element interactions, occasional walk-offs, and page-aware returns shared by rooms and projects |
+| `effects.js` | — | Persistent visual modes and Mochi, the reduced-motion-aware resident cat with decoded instant frame swaps, relaxed multi-angle movement, feature entrances and stretching, element interactions, occasional walk-offs, page-aware returns, and a helmeted zero-gravity mode used only by compatible games |
 | `EASTER_EGGS.md` | — | Complete field guide to every hidden command and typed surprise |
 
 ## Projects
@@ -71,6 +71,13 @@ self-glow, moons and comets stay small, and a black hole replaces roughly one in
 generated stars. A sparse particle layer shows motion while colored stars, nebulae,
 and procedural galaxies form the deep field and grow as you fly toward them. Object
 sizes remain compressed enough to keep the game playable.
+If Mochi is awake when Starfield opens, he swaps his walking behavior for a dedicated
+helmeted zero-gravity set: four floating poses with three aligned animation frames
+each. He drifts slowly around the viewport and tumbles away when clicked. Starfield
+is currently the only game that opts into this space-specific mode. His motion is
+deliberately loose: he coasts in shallow arcs, slowly rolls, and sometimes faces
+backward because he has very little control in zero gravity. Some drift segments keep
+the same pose while rotating through a full turn, including upside down.
 
 ## Navigation
 
