@@ -66,19 +66,26 @@
       position: absolute; display: block; pointer-events: none;
     }
     .relay-cat-image {
-      display: block; width: 100%; height: auto;
+      position: relative; display: block; width: 100%; aspect-ratio: 3 / 2;
       filter: drop-shadow(0 5px 8px rgba(0,0,0,.38));
       transform-origin: 50% 88%; user-select: none;
       animation: relay-cat-gait .72s ease-in-out infinite;
     }
+    .relay-cat-image.sprite-top { aspect-ratio: 2 / 3; }
+    .relay-cat-frame {
+      position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+      opacity: 0; transition: opacity .14s linear; user-select: none; pointer-events: none;
+    }
+    .relay-cat-frame.active { opacity: 1; }
     .relay-cat-resident {
       opacity: .98; pointer-events: auto; cursor: pointer; touch-action: manipulation;
       transition: left var(--cat-move, 5s) ease-in-out,
         top var(--cat-move, 5s) ease-in-out, opacity .25s ease;
+      will-change: left, top;
     }
     .relay-cat-resident:focus-visible { outline: 2px dashed currentColor; outline-offset: 4px; }
-    .relay-cat-resident.entering { animation: relay-cat-enter 4.2s cubic-bezier(.2,.7,.25,1) both; }
-    .relay-cat-resident.out { opacity: 0; }
+    .relay-cat-resident.entering { animation: relay-cat-enter 3.2s cubic-bezier(.2,.7,.25,1) both; }
+    .relay-cat-resident.out { opacity: 0; pointer-events: none; }
     .relay-cat-resident.running { transition-timing-function: cubic-bezier(.55,.02,.9,.35); }
     .relay-cat-resident.idle .relay-cat-image { animation-name: relay-cat-idle; animation-duration: 2.8s; }
     .relay-cat-resident.walking .relay-cat-image { animation-name: relay-cat-gait; }
@@ -158,12 +165,12 @@
     @keyframes relay-mycelium { from{transform:scale(.9) rotate(-3deg)}to{transform:scale(1.16) rotate(6deg)} }
     @keyframes relay-cat-enter { from{opacity:0;transform:translateX(var(--cat-enter-x))} to{opacity:.98;transform:translateX(0)} }
     @keyframes relay-cat-gait {
-      0%,100%{transform:scaleX(var(--cat-facing)) translateY(0) rotate(-.7deg)}
-      50%{transform:scaleX(var(--cat-facing)) translateY(-5px) rotate(.7deg)}
+      0%,100%{transform:scaleX(var(--cat-facing)) translateY(0)}
+      50%{transform:scaleX(var(--cat-facing)) translateY(-2px)}
     }
     @keyframes relay-cat-idle {
-      0%,100%{transform:scaleX(var(--cat-facing)) translateY(0) rotate(-.35deg)}
-      50%{transform:scaleX(var(--cat-facing)) translateY(-2px) rotate(.35deg)}
+      0%,100%{transform:scaleX(var(--cat-facing)) translateY(0)}
+      50%{transform:scaleX(var(--cat-facing)) translateY(-1px)}
     }
     @keyframes relay-cat-peek-right {
       0%,100%{opacity:0;transform:translateX(-98%)}
@@ -183,6 +190,7 @@
       html.relay-effect-lsd body > :not(script):not(.relay-trip-layer):not(.relay-filter-bank):not(.relay-cat-layer) { filter: url(#relay-lsd-distortion) hue-rotate(20deg) saturate(1.35); }
       html.relay-effect-shrooms body > :not(script):not(.relay-trip-layer):not(.relay-filter-bank):not(.relay-cat-layer) { filter: url(#relay-shroom-distortion) saturate(1.25) sepia(.08); }
       .relay-cat-image { animation: none; }
+      .relay-cat-frame { transition: none; }
       .relay-cat-resident { transition: none; }
       .relay-cat-resident.entering { animation: none; }
     }
@@ -270,24 +278,42 @@
     const frames = CAT_FRAMES[nextPose];
     clearTimeout(image._relayCatFrameTimer);
     image.dataset.pose = nextPose;
-    image.src = frames[0];
+    image.classList.toggle("sprite-top", nextPose === "top");
+    const layers = [...image.querySelectorAll(".relay-cat-frame")];
+    layers.forEach((layer, index) => {
+      layer.classList.toggle("active", index === 0);
+      layer.src = frames[0];
+    });
     if (reducedMotion) return;
 
     let cursor = 0;
+    let activeLayer = 0;
     const advance = () => {
       if (!image.isConnected || image.dataset.pose !== nextPose) return;
       cursor = (cursor + 1) % CAT_FRAME_SEQUENCE.length;
-      image.src = frames[CAT_FRAME_SEQUENCE[cursor]];
+      const incomingLayer = activeLayer === 0 ? 1 : 0;
+      layers[incomingLayer].src = frames[CAT_FRAME_SEQUENCE[cursor]];
+      requestAnimationFrame(() => {
+        if (!image.isConnected || image.dataset.pose !== nextPose) return;
+        layers[activeLayer].classList.remove("active");
+        layers[incomingLayer].classList.add("active");
+        activeLayer = incomingLayer;
+      });
       image._relayCatFrameTimer = setTimeout(advance, CAT_FRAME_DELAYS[nextPose]);
     };
     image._relayCatFrameTimer = setTimeout(advance, CAT_FRAME_DELAYS[nextPose]);
   }
 
   function makeCat(width, facing, pose = "walk") {
-    const image = document.createElement("img");
+    const image = document.createElement("div");
     image.className = "relay-cat-image";
-    image.alt = "";
-    image.draggable = false;
+    for (let index = 0; index < 2; index += 1) {
+      const frame = document.createElement("img");
+      frame.className = "relay-cat-frame";
+      frame.alt = "";
+      frame.draggable = false;
+      image.appendChild(frame);
+    }
     image.style.width = `${width}px`;
     image.style.setProperty("--cat-facing", facing);
     setCatImagePose(image, pose);
@@ -305,6 +331,22 @@
 
   function randomIdlePose() {
     return CAT_IDLE_POSES[Math.floor(Math.random() * CAT_IDLE_POSES.length)];
+  }
+
+  function wireResident(resident, title) {
+    resident.setAttribute("role", "button");
+    resident.setAttribute("tabindex", "0");
+    resident.setAttribute("aria-label", "Fluffy Relay cat. Click to make it run away.");
+    resident.title = title;
+    resident.addEventListener("click", runAwayCat);
+    resident.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      runAwayCat(event);
+    });
+    resident.addEventListener("pointerenter", () => {
+      if (catResident === resident && resident.classList.contains("idle")) setResidentPose("look");
+    });
   }
 
   function visibleFeatures() {
@@ -335,7 +377,13 @@
     slider.className = "relay-cat-slider";
     slider.appendChild(makeCat(width, toRight ? 1 : -1, "peek"));
     visitor.appendChild(slider);
-    return { visitor, stay };
+    return {
+      visitor,
+      stay,
+      left: Number.parseFloat(visitor.style.left),
+      top: Number.parseFloat(visitor.style.top),
+      facing: toRight ? 1 : -1,
+    };
   }
 
   function catWidth() {
@@ -346,15 +394,40 @@
     return Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight || 0, innerHeight);
   }
 
+  function spotCoversControl(left, top, width, height) {
+    const viewportTop = top - (window.scrollY || 0);
+    const candidate = { left, right: left + width, top: viewportTop, bottom: viewportTop + height };
+    const controls = document.querySelectorAll("a, button, input, textarea, select, summary, [role='button']");
+    return [...controls].some((control) => {
+      if (control === catResident || catLayer?.contains(control)) return false;
+      const rect = control.getBoundingClientRect();
+      if (rect.width < 1 || rect.height < 1 || rect.bottom < 0 || rect.top > innerHeight) return false;
+      return candidate.left < rect.right + 14 && candidate.right > rect.left - 14 &&
+        candidate.top < rect.bottom + 14 && candidate.bottom > rect.top - 14;
+    });
+  }
+
   function catSpot(width, nearViewport = true) {
     const estimatedHeight = width * .72;
-    const top = nearViewport
-      ? (window.scrollY || 0) + innerHeight * (.56 + Math.random() * .2)
-      : (Number.parseFloat(catResident?.style.top) || window.scrollY || 0) + (Math.random() - .5) * Math.min(260, innerHeight * .42);
-    return {
-      left: 18 + Math.random() * Math.max(1, innerWidth - width - 36),
-      top: Math.max(10, Math.min(pageHeight() - estimatedHeight - 10, top)),
-    };
+    let fallback;
+    for (let attempt = 0; attempt < 14; attempt += 1) {
+      const rawTop = nearViewport
+        ? (window.scrollY || 0) + innerHeight * (.54 + Math.random() * .24)
+        : (Number.parseFloat(catResident?.style.top) || window.scrollY || 0) + (Math.random() - .5) * Math.min(260, innerHeight * .42);
+      const spot = {
+        left: 18 + Math.random() * Math.max(1, innerWidth - width - 36),
+        top: Math.max(10, Math.min(pageHeight() - estimatedHeight - 10, rawTop)),
+      };
+      fallback = spot;
+      if (!spotCoversControl(spot.left, spot.top, width, estimatedHeight)) return spot;
+    }
+    return fallback;
+  }
+
+  function catTravelDuration(fromLeft, fromTop, toLeft, toTop, speed = 72) {
+    if (reducedMotion) return 80;
+    const distance = Math.hypot(toLeft - fromLeft, toTop - fromTop);
+    return Math.max(1400, Math.min(5600, distance / speed * 1000));
   }
 
   function catIsInViewport() {
@@ -398,21 +471,12 @@
     resident.style.left = `${spot.left}px`;
     resident.style.top = `${spot.top}px`;
     resident.style.setProperty("--cat-enter-x", `${fromRight ? innerWidth - spot.left : -(spot.left + width)}px`);
-    resident.setAttribute("role", "button");
-    resident.setAttribute("tabindex", "0");
-    resident.setAttribute("aria-label", "Fluffy Relay cat. Click to make it run away.");
-    resident.title = "pspsps — click me";
+    wireResident(resident, "pspsps — click me");
     resident.appendChild(makeCat(width, fromRight ? -1 : 1, entering ? "walk" : randomIdlePose()));
-    resident.addEventListener("click", runAwayCat);
-    resident.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      event.preventDefault();
-      runAwayCat(event);
-    });
     ensureCatLayer().appendChild(resident);
     catResident = resident;
 
-    const settle = reducedMotion || !entering ? 80 : 4300;
+    const settle = reducedMotion || !entering ? 80 : 3300;
     catActionTimer = setTimeout(() => {
       if (!catResident?.isConnected) return;
       catResident.classList.remove("entering", "walking");
@@ -430,7 +494,8 @@
     const width = catWidth();
     const spot = catSpot(width, false);
     const currentLeft = Number.parseFloat(catResident.style.left) || 0;
-    const duration = reducedMotion ? 80 : 3800 + Math.random() * 3200;
+    const currentTop = Number.parseFloat(catResident.style.top) || 0;
+    const duration = catTravelDuration(currentLeft, currentTop, spot.left, spot.top);
     const image = catResident.querySelector(".relay-cat-image");
     image?.style.setProperty("--cat-facing", spot.left >= currentLeft ? 1 : -1);
     catResident.classList.remove("idle");
@@ -453,14 +518,26 @@
   function hideResidentCat(features) {
     if (!catResident?.isConnected) return;
     const visit = peekingCat(catWidth(), features);
-    catResident.classList.add("out");
-    catPeek = visit.visitor;
-    ensureCatLayer().appendChild(catPeek);
+    const currentLeft = Number.parseFloat(catResident.style.left) || 0;
+    const currentTop = Number.parseFloat(catResident.style.top) || 0;
+    const duration = catTravelDuration(currentLeft, currentTop, visit.left, visit.top, 105);
+    catResident.classList.remove("idle");
+    catResident.classList.add("walking");
+    catResident.style.setProperty("--cat-move", `${duration}ms`);
+    setResidentPose("walk", visit.facing);
+    catResident.style.left = `${visit.left}px`;
+    catResident.style.top = `${visit.top}px`;
     catActionTimer = setTimeout(() => {
-      catPeek?.remove();
-      catPeek = null;
-      summonResidentCat(true);
-    }, visit.stay + 100);
+      if (!catResident?.isConnected) return;
+      catResident.classList.add("out");
+      catPeek = visit.visitor;
+      ensureCatLayer().appendChild(catPeek);
+      catActionTimer = setTimeout(() => {
+        catPeek?.remove();
+        catPeek = null;
+        summonResidentCat(true);
+      }, visit.stay + 100);
+    }, duration + 80);
   }
 
   function catchUpResidentCat(direction = lastScrollDirection) {
@@ -486,17 +563,8 @@
     resident.style.left = `${left}px`;
     resident.style.top = `${startTop}px`;
     resident.style.setProperty("--cat-move", `${duration}ms`);
-    resident.setAttribute("role", "button");
-    resident.setAttribute("tabindex", "0");
-    resident.setAttribute("aria-label", "Fluffy Relay cat. Click to make it run away.");
-    resident.title = "caught up — click me";
+    wireResident(resident, "caught up — click me");
     resident.appendChild(makeCat(width, 1, "top"));
-    resident.addEventListener("click", runAwayCat);
-    resident.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      event.preventDefault();
-      runAwayCat(event);
-    });
     ensureCatLayer().appendChild(resident);
     catResident = resident;
 
