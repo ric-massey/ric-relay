@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Psyche — Human Systems</title>
+  <meta name="description" content="Ric's field notebook for mood, diagnostic criteria, psychoactive substances, and the evidence used to understand human minds.">
+  <meta property="og:title" content="Psyche — Human Systems">
+  <meta property="og:description" content="Patterns, criteria, chemistry, and the evidence we use to understand ourselves.">
+  <meta property="og:url" content="https://ric-massey.github.io/ric-relay/psyche.html">
+  <style>
+    :root{
+      --desk:#17131a;--paper:#eee8dc;--paper-deep:#ded3c1;--ink:#231d29;
+      --violet:#60436f;--violet-dark:#382640;--red:#a6404d;--blue:#315a70;
+      --pencil:#6f675f;--line:rgba(65,49,70,.22);--white:#fffdf7;
+    }
+    *{box-sizing:border-box}
+    html{background:var(--desk);scroll-behavior:smooth}
+    body{margin:0;color:var(--ink);font:17px/1.55 Georgia,"Times New Roman",serif;background:
+      radial-gradient(circle at 13% 8%,rgba(96,67,111,.22),transparent 24rem),
+      radial-gradient(circle at 87% 92%,rgba(166,64,77,.14),transparent 28rem),var(--desk)}
+    a{color:inherit}
+    .folder{width:min(1180px,calc(100% - 28px));margin:34px auto 60px;position:relative}
+    .folder::before{content:"CASE FILE 09 / HUMAN SYSTEMS";display:block;width:max-content;max-width:75%;padding:10px 18px 7px;border-radius:9px 9px 0 0;background:var(--paper-deep);color:var(--violet-dark);font:700 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em}
+    .sheet{position:relative;overflow:hidden;background:
+      linear-gradient(90deg,transparent 72px,rgba(166,64,77,.17) 72px,rgba(166,64,77,.17) 73px,transparent 73px),
+      repeating-linear-gradient(0deg,transparent 0,transparent 31px,rgba(49,90,112,.09) 31px,rgba(49,90,112,.09) 32px),var(--paper);
+      border-radius:0 10px 10px 10px;box-shadow:0 30px 90px rgba(0,0,0,.45)}
+    .sheet::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.2;background:radial-gradient(circle at 20% 30%,#fff 0 1px,transparent 2px);background-size:13px 17px;mix-blend-mode:multiply}
+    .masthead{position:relative;z-index:2;padding:20px 34px 0 92px;border-bottom:1px solid var(--line);background:rgba(238,232,220,.94)}
+    .brandline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:13px;font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--pencil)}
+    .brandline a{text-decoration:none;color:var(--violet-dark)}
+    nav.case-tabs{display:flex;gap:2px;align-items:end;flex-wrap:wrap}
+    nav.case-tabs a,nav.case-tabs .here{flex:0 0 auto;padding:9px 11px 8px;text-decoration:none;color:var(--pencil);font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.04em;border:1px solid transparent;border-bottom:0;border-radius:6px 6px 0 0}
+    nav.case-tabs a:hover{color:var(--violet-dark);background:rgba(96,67,111,.08)}
+    nav.case-tabs .here{color:var(--white);background:var(--violet);border-color:var(--violet)}
+    main{position:relative;z-index:1;padding:54px 54px 70px 112px}
+    .latest-psyche{display:grid;grid-template-columns:auto 1fr auto;gap:5px 18px;align-items:center;margin:0 0 42px;padding:13px 16px;border:1px solid rgba(96,67,111,.32);border-left:6px solid var(--red);background:rgba(255,253,247,.63);text-decoration:none;box-shadow:4px 5px 0 rgba(96,67,111,.10);transform:rotate(-.25deg)}
+    .latest-psyche .latest-kicker{grid-row:1/3;color:var(--red);font:700 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.1em;writing-mode:vertical-rl;transform:rotate(180deg)}
+    .latest-psyche .latest-title{font-size:18px;line-height:1.2}
+    .latest-psyche .latest-description{color:var(--pencil);font-size:13px}
+    .latest-psyche .latest-meta{grid-column:3;grid-row:1/3;display:grid;gap:6px;text-align:right;color:var(--violet);font:700 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase}
+    .latest-psyche:hover{background:var(--white);transform:rotate(0)}
+    .hero{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(230px,.7fr);gap:52px;align-items:center;padding-bottom:48px;border-bottom:2px solid var(--ink)}
+    .case-no{color:var(--red);font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;text-transform:uppercase}
+    h1{margin:10px 0 16px;font-size:clamp(58px,10vw,124px);line-height:.78;letter-spacing:-.075em;font-weight:400;text-transform:uppercase}
+    h1 span{display:block;margin:22px 0 0 5px;color:var(--violet);font:italic 400 clamp(22px,4vw,45px)/1 Georgia,serif;letter-spacing:-.03em;text-transform:none}
+    .lede{max-width:650px;margin:28px 0 0;font-size:clamp(18px,2.2vw,24px);line-height:1.45}
+    .boundary{margin-top:22px;padding-left:15px;border-left:3px solid var(--red);color:var(--pencil);font-size:14px;max-width:65ch}
+    .blot-button{appearance:none;width:100%;aspect-ratio:1;background:none;border:0;cursor:pointer;position:relative;filter:drop-shadow(0 12px 12px rgba(35,29,41,.16))}
+    .blot{position:absolute;inset:14%;display:flex;justify-content:center;gap:0;transition:transform .35s ease}
+    .blot::before,.blot::after{content:"";width:50%;height:100%;background:var(--violet-dark);border-radius:62% 38% 54% 46% / 38% 58% 42% 62%;clip-path:polygon(5% 6%,70% 0,100% 22%,82% 43%,100% 62%,64% 73%,91% 100%,22% 88%,0 62%,19% 43%,0 19%)}
+    .blot::after{transform:scaleX(-1)}
+    .blot-button:hover .blot,.blot-button:focus-visible .blot{transform:scale(1.04) rotate(1deg)}
+    .blot-button:focus-visible{outline:2px solid var(--violet);outline-offset:4px}
+    .blot-caption{position:absolute;inset:auto 8% 2%;color:var(--pencil);font:italic 14px/1.3 Georgia,serif;text-align:center}
+    .section-head{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;margin:48px 0 20px}
+    .section-head span{color:var(--red);font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase}
+    .section-head::after{content:"";height:1px;background:var(--line)}
+    .cases{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .case{position:relative;display:flex;flex-direction:column;min-height:370px;padding:24px 22px 22px;background:rgba(255,253,247,.70);border:1px solid var(--line);box-shadow:5px 6px 0 rgba(56,38,64,.10);transition:transform .2s,box-shadow .2s}
+    .case:nth-child(2){transform:rotate(.45deg)}.case:nth-child(3){transform:rotate(-.35deg)}
+    .case:hover{transform:translateY(-4px) rotate(0);box-shadow:8px 11px 0 rgba(56,38,64,.14)}
+    .case .tab{position:absolute;right:13px;top:-9px;padding:5px 9px;background:var(--paper-deep);color:var(--violet);font:700 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.1em}
+    .case .index{font:700 10px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--red)}
+    .case h2{font-size:31px;line-height:1.02;margin:22px 0 14px;font-weight:400}
+    .case p{color:#554e56;font-size:15px;margin:0 0 18px}
+    .case .question{margin-top:auto;padding-top:18px;border-top:1px solid var(--line);color:var(--violet);font-style:italic}
+    .case a{display:inline-flex;justify-content:space-between;gap:12px;margin-top:18px;padding:11px 12px;background:var(--ink);color:var(--white);text-decoration:none;font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.08em}
+    .case a:hover{background:var(--violet)}
+    .thread{margin-top:42px;padding:24px 26px;border:1px dashed var(--violet);background:rgba(96,67,111,.06);font-size:18px}
+    .thread strong{color:var(--red)}
+    footer{margin-top:54px;padding-top:18px;border-top:2px solid var(--ink);display:flex;justify-content:space-between;gap:20px;color:var(--pencil);font:700 10px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.08em}
+    .egg{position:fixed;left:50%;bottom:24px;z-index:20;transform:translate(-50%,12px);padding:10px 14px;background:var(--ink);color:var(--white);opacity:0;pointer-events:none;font:700 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;transition:.2s}
+    .egg.on{opacity:1;transform:translate(-50%,0)}
+    @media(max-width:850px){
+      .masthead{padding-left:28px}.hero{grid-template-columns:1fr}.blot-button{max-width:330px;margin:auto}.cases{grid-template-columns:1fr}.case{min-height:0}main{padding-left:58px;padding-right:28px}
+    }
+    @media(max-width:560px){
+      .folder{width:100%;margin:0}.folder::before{margin-left:10px}.sheet{border-radius:0}.masthead{padding:15px 13px 0}.brandline{font-size:9px}nav.case-tabs a,nav.case-tabs .here{padding:8px 9px;font-size:10px}main{padding:34px 16px 55px 28px}.sheet{background:linear-gradient(90deg,transparent 16px,rgba(166,64,77,.17) 16px,rgba(166,64,77,.17) 17px,transparent 17px),repeating-linear-gradient(0deg,transparent 0,transparent 31px,rgba(49,90,112,.09) 31px,rgba(49,90,112,.09) 32px),var(--paper)}
+      .latest-psyche{grid-template-columns:auto 1fr}.latest-psyche .latest-meta{grid-column:2;grid-row:auto;display:flex;justify-content:space-between;text-align:left}.hero{gap:20px}.blot-button{max-width:240px}h1{font-size:58px}.case h2{font-size:27px}footer{display:block}
+    }
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.blot,.case,.latest-psyche,.egg{transition:none}}
+  </style>
+</head>
+<body>
+  <div class="folder">
+    <div class="sheet">
+      <header class="masthead">
+        <div class="brandline"><a href="index.html">Ric's Relay</a><span>/</span><span>Field notebook for an unreliable observer</span></div>
+        <nav class="case-tabs" aria-label="Relay rooms">
+          <a href="index.html">relay</a>
+          <a href="orrin.html">orrin</a>
+          <span class="here" aria-current="page">psyche</span>
+          <a href="climbing.html">climbing</a>
+          <a href="training.html">training</a>
+          <a href="exploration.html">exploration</a>
+          <a href="workbench.html">workbench</a>
+          <a href="captures.html">captures</a>
+          <a href="log.html">log</a>
+        </nav>
+      </header>
+
+      <main>
+        <a class="latest-psyche" data-latest-banner data-latest-prefix="new finding"></a>
+
+        <section class="hero">
+          <div>
+            <div class="case-no">Archive P-09 · Subject: everybody</div>
+            <h1>Psyche <span>Human systems, observed from inside</span></h1>
+            <p class="lede">Patterns, criteria, chemistry, and the evidence we use to understand ourselves—assembled by one of the systems being studied.</p>
+            <p class="boundary"><strong>Boundary note:</strong> these are personal models, published criteria, and evidence frameworks. They are invitations to think, not diagnoses or medical advice.</p>
+          </div>
+          <button class="blot-button" id="blot" type="button" aria-label="Interpret the inkblot again">
+            <span class="blot" aria-hidden="true"></span>
+            <span class="blot-caption" id="blot-caption">What do you see? Click—the answer is allowed to change.</span>
+          </button>
+        </section>
+
+        <div class="section-head"><span>Three instruments</span></div>
+        <section class="cases" aria-label="Psyche projects">
+          <article class="case">
+            <span class="tab">State</span>
+            <div class="index">Instrument 01 / signal over time</div>
+            <h2>State-of-Mind Line</h2>
+            <p>An animated comparison of bipolar mood episodes and a typical baseline. It turns a calendar of changing internal weather into a moving signal.</p>
+            <p class="question">What gets lost when a long pattern is judged by a single day?</p>
+            <a href="projects/state-of-mind-line/index.html"><span>Watch the signal</span><span aria-hidden="true">→</span></a>
+          </article>
+
+          <article class="case">
+            <span class="tab">Criteria</span>
+            <div class="index">Instrument 02 / naming patterns</div>
+            <h2>The Shape of the Criteria</h2>
+            <p>A guided reflection on how the DSM-5 describes Autism Spectrum Disorder—its domains, supporting conditions, and levels of support.</p>
+            <p class="question">When does a description clarify a life, and when does it flatten one?</p>
+            <a href="projects/autism-reflection.html"><span>Open the reflection</span><span aria-hidden="true">→</span></a>
+          </article>
+
+          <article class="case">
+            <span class="tab">Evidence</span>
+            <div class="index">Instrument 03 / measuring harm</div>
+            <h2>The Shape of Harm</h2>
+            <p>An evidence-informed framework for comparing psychoactive-substance harms while keeping uncertainty, source quality, and methodological limits visible.</p>
+            <p class="question">What can a model honestly claim when the evidence underneath it is uneven?</p>
+            <a href="projects/the-shape-of-harm/start.html"><span>Enter the framework</span><span aria-hidden="true">→</span></a>
+          </article>
+        </section>
+
+        <aside class="thread"><strong>The connecting thread:</strong> these projects do not claim that autism, bipolar disorder, and substance harm are the same subject. They examine the same difficult act from different angles: translating complex human experience into signals, categories, and evidence without confusing the model for the person.</aside>
+
+        <footer><span>Filed under: minds trying to understand minds</span><span>Certainty level: appropriately unfinished</span></footer>
+      </main>
+    </div>
+  </div>
+  <div class="egg" id="egg" role="status">NORMAL IS A STATISTICAL NEIGHBORHOOD, NOT AN ADDRESS.</div>
+  <script src="effects.js"></script>
+  <script src="latest.js"></script>
+  <script>
+    const interpretations = [
+      "Two lungs arguing about the weather.",
+      "A moth carrying a very small secret.",
+      "A brain pretending it is symmetrical.",
+      "Nothing diagnostic. Probably.",
+    ];
+    let interpretation = 0;
+    const blot = document.getElementById("blot");
+    const caption = document.getElementById("blot-caption");
+    blot.addEventListener("click", () => {
+      caption.textContent = interpretations[interpretation++ % interpretations.length];
+    });
+
+    let typed = "";
+    let eggTimer;
+    const egg = document.getElementById("egg");
+    document.addEventListener("keydown", (event) => {
+      if (event.key.length !== 1) return;
+      typed = (typed + event.key.toLowerCase()).slice(-12);
+      if (!typed.endsWith("normal")) return;
+      egg.classList.add("on");
+      clearTimeout(eggTimer);
+      eggTimer = setTimeout(() => egg.classList.remove("on"), 3500);
+      typed = "";
+    });
+  </script>
+</body>
+</html>

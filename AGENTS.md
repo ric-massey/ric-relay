@@ -9,7 +9,7 @@ without breaking the concept or Ric's rules.**
 Ric Massey's personal website for friends and family. The concept: **"it's literally
 my own internet."** The home page (`index.html`) is a terminal hub; every other page is
 a **room** dressed up to look like the real app for that world (climbing → Mountain
-Project, training → Strava, systems → a brain, etc.). Plain HTML/CSS/JS, **no build
+Project, training → Strava, Orrin → a brain, etc.). Plain HTML/CSS/JS, **no build
 step and no dependencies** — each page is a single self-contained `.html` file with its
 CSS in a `<style>` tag and its JS in a `<script>` tag. Keep it that way unless Ric
 explicitly asks to add tooling.
@@ -23,8 +23,8 @@ unless Ric asks.
    purpose. Real coordinates/places live in a separate, authenticated app — never in
    this public repo. Don't add a real map, addresses, or GPS data here.
 2. **Only one coding project is featured: Orrin.** Ric does not want his other GitHub
-   repos listed or auto-pulled. `systems.html` and `updates.html` hit the GitHub API
-   for `ric-massey/orrin_v3` and `ric-massey/ric-relay` only — don't broaden that.
+   repos listed or auto-pulled. `orrin.html` hits the GitHub API for
+   `ric-massey/orrin_v3` only — don't broaden that.
 3. **Every room is its own themed world.** Don't flatten the site into one shared
    template, shared stylesheet, or one generic nav bar. The visual variety is the point.
 4. **Keep it dependency-free.** No frameworks, bundlers, CDNs, or external fonts/scripts
@@ -37,7 +37,7 @@ There is intentionally **no shared nav component**. Each page has its own `<nav>
 labels** so navigation stays predictable:
 
 ```
-relay · orrin · climbing · training · exploration · workbench · captures · log · updates
+relay · orrin · psyche · climbing · training · exploration · workbench · captures · log
 ```
 
 - `href` targets and link text are **identical on every page** — only the CSS differs.
@@ -51,14 +51,14 @@ Per-room nav treatments (class on the `<nav>`):
 
 | Page | nav style | class |
 |---|---|---|
-| systems | synaptic pill switcher | `nav.cortex` |
+| orrin | synaptic pill switcher | `nav.cortex` |
+| psyche | psychological case-file tabs | `nav.case-tabs` |
 | climbing | Mountain-Project tab bar (white active pill) | `.topbar .roomnav` |
 | training | Strava underline tabs | `.topbar .roomnav` |
 | exploration | star-chart waypoints | `nav.starchart` |
 | workbench | blueprint sheet-index chips | `nav.sheets` |
 | captures | darkroom film strip | `nav.filmstrip` |
 | log | newspaper section bar | `nav.sections` |
-| updates | notification segmented control | `nav.segmented` |
 | index | terminal directory listing + `ls`/`open` commands | `#dir` |
 
 **If you add, remove, or rename a room:** update the menu on **every** page, the
@@ -68,9 +68,9 @@ and this file. Keep the label set in sync everywhere.
 ## Projects and photos
 
 - **Sub-projects** live in `projects/<name>/` (or a single `.html`) and are **linked
-  from the room that fits them** — not given their own room. Current: `spacetime` and
-  `the-shape-of-harm` → Exploration, `siege-conductor` → Workbench,
-  `autism-reflection.html` and `state-of-mind-line` → Log. Each is
+  from the room that fits them** — not given their own room. Current: `spacetime` →
+  Exploration; `the-shape-of-harm`, `autism-reflection.html`, and
+  `state-of-mind-line` → Psyche; `siege-conductor` → Workbench. Each is
   self-contained and may carry its own assets/fonts; the "no dependencies" rule is for
   the relay's own room pages, not embedded projects. Keep their internal links relative.
 - **Every standalone project HTML page needs a visible route back to the relay.** Use
@@ -86,14 +86,20 @@ and this file. Keep the label set in sync everywhere.
 
 Each page has a loudly-commented editable block near its content. To add a climb, a
 photo, an activity, a project, a log entry — copy the example block in that page and
-edit it. Homepage "transmissions" live in `notes.js` (the only file meant to be edited
-by hand routinely). `systems.html` and `updates.html` are self-updating — leave their
-data logic alone unless fixing a bug.
+edit it. Homepage "transmissions" live in `notes.js`. Curated newest additions live
+in `latest.js`; every room renders
+that data as a banner in its own native style. `orrin.html` is self-updating — leave
+its GitHub data logic alone unless fixing a bug. `systems.html` and `updates.html` are
+legacy redirects, not rooms.
 
 ## House style
 
 - Match the existing voice: playful, terminal/hacker flavor, easter eggs welcome
   (e.g. hidden `index.html` commands: `orrin`, `apex`, `sudo`, `coffee`, `exit`).
+- Keep every easter egg discoverable in `EASTER_EGGS.md`. Sitewide visual modes belong
+  in `effects.js`; preserve the reduced-motion fallback, room-to-room persistence,
+  refresh-to-reset behavior, and the `sober` terminal command. Do not add a visible
+  reset button or Escape-key exit unless Ric asks for one.
 - Keep pages responsive — test at ~375px wide; nav bars must wrap, not overflow.
 - Keep the palette and font already defined in each page's `:root` / `body`.
 - Preserve `aria-current`, `aria-label`, `alt`, and `<title>`/`<meta name=description>`

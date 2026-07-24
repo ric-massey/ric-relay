@@ -81,6 +81,12 @@
     .meta .cat { color: var(--signal); }
     article p { margin-bottom: 0.8rem; }
     article p:last-child { margin-bottom: 0; }
+    .latest-log{display:grid;grid-template-columns:auto 1fr auto;gap:.2rem 1rem;align-items:center;margin:1.2rem 0 2rem;padding:.9rem 1rem;color:var(--ink);text-decoration:none;border-top:3px double var(--ink);border-bottom:1px solid var(--ink);background:rgba(255,138,224,.035)}
+    .latest-log .latest-kicker{grid-row:1/3;color:var(--signal);font:700 .65rem/1.2 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase}
+    .latest-log .latest-title{font-size:1rem}.latest-log .latest-description{color:var(--faint);font-size:.78rem}
+    .latest-log .latest-meta{grid-column:3;grid-row:1/3;display:grid;gap:.2rem;color:var(--signal);font:700 .63rem/1.2 ui-monospace,Menlo,monospace;text-align:right;text-transform:uppercase}
+    .latest-log:hover,.latest-log:focus-visible{outline:none;background:rgba(255,138,224,.08)}
+    @media(max-width:620px){.latest-log{grid-template-columns:1fr}.latest-log .latest-kicker,.latest-log .latest-title,.latest-log .latest-description,.latest-log .latest-meta{grid-column:1;grid-row:auto}.latest-log .latest-meta{display:flex;justify-content:space-between;text-align:left}}
   </style>
 </head>
 <body>
@@ -90,19 +96,21 @@
       <p class="welcome">Pull up a chair. This is the long-form corner.</p>
       <nav class="sections" aria-label="Relay rooms">
         <a href="index.html">relay</a>
-        <a href="systems.html">orrin</a>
+        <a href="orrin.html">orrin</a>
+        <a href="psyche.html">psyche</a>
         <a href="climbing.html">climbing</a>
         <a href="training.html">training</a>
         <a href="exploration.html">exploration</a>
         <a href="workbench.html">workbench</a>
         <a href="captures.html">captures</a>
         <span class="here" aria-current="page">log</span>
-        <a href="updates.html">updates</a>
       </nav>
     </header>
 
     <h1>The <span class="accent">Log</span></h1>
     <p class="subtitle">Longer transmissions: write-ups, trip reports, and Apex VOD reviews.</p>
+
+    <a class="latest-log" data-latest-banner data-latest-prefix="late edition"></a>
 
     <!-- ═══════════════════════════════════════════════════
          TO POST: copy the <article> block, paste it ABOVE
@@ -138,5 +146,7 @@
       <p>First real entry soon.</p>
     </article>
   </div>
+  <script src="effects.js"></script>
+  <script src="latest.js"></script>
 </body>
 </html>

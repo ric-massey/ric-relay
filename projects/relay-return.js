@@ -3,6 +3,13 @@
   const home = loader?.dataset.home || "../index.html";
   const egg = loader?.dataset.egg || "";
 
+  if (loader && !window.RELAY_EFFECTS && !document.querySelector("script[data-relay-effects]")) {
+    const effects = document.createElement("script");
+    effects.src = new URL("../effects.js", loader.src).href;
+    effects.dataset.relayEffects = "";
+    document.head.appendChild(effects);
+  }
+
   const eggs = {
     shape: ["harm", "UNCERTAINTY DETECTED // MODEL BEHAVING NORMALLY"],
     spacetime: ["now", "NOW LOST // TRY ANOTHER REFERENCE FRAME"],

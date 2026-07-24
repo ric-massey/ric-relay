@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RIC-MASSEY // PERSONAL RELAY</title>
-  <meta name="description" content="Ric Massey's personal relay — Orrin, climbing, training, and exploration.">
+  <meta name="description" content="Ric Massey's personal relay — Orrin, psyche, climbing, training, and exploration.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ric's Relay">
   <meta property="og:title" content="Ric's Relay — Ric Massey's corner of the internet">
@@ -18,13 +18,13 @@
       --phosphor: #ffb000;
       --phosphor-dim: #8a6200;
       --phosphor-faint: #3d2c00;
-      --flash-systems: #38ff9c;
+      --flash-orrin: #38ff9c;
+      --flash-psyche: #b889c8;
       --flash-exploration: #7a5cff;
       --flash-captures: #4dc9ff;
       --flash-log: #ff8ae0;
       --flash-workbench: #ffe14d;
       --flash-map: #ff3b30;
-      --flash-updates: #f2f2f2;
       --flash-climbing: #79c46b;
       --flash-training: #ff6a3d;
     }
@@ -87,7 +87,7 @@
     .welcome-tag .lit { color: var(--phosphor); }
 
     #boot { white-space: pre-wrap; min-height: 6.8em; }
-    #boot .ok { color: var(--flash-systems); }
+    #boot .ok { color: var(--flash-orrin); }
     #boot .dim { color: var(--phosphor-dim); }
 
     .cursor { animation: blink 1s steps(1) infinite; }
@@ -95,7 +95,7 @@
 
     /* directory */
     #dir { margin-top: 1.8rem; }
-    #dir.hidden, #tx-section.hidden, #cmdline.hidden { visibility: hidden; }
+    #latest.hidden, #dir.hidden, #tx-section.hidden, #cmdline.hidden { visibility: hidden; }
 
     .dir-head { color: var(--phosphor-dim); font-size: 0.8rem; margin-bottom: 0.7rem; letter-spacing: 0.15em; }
 
@@ -135,6 +135,21 @@
     a.entry:focus-visible .perm, a.entry:focus-visible .desc, a.entry:focus-visible .go { color: var(--hue); }
     a.entry:hover .go::after, a.entry:focus-visible .go::after { content: " →"; }
 
+    /* latest signal — the update feed, compressed into one useful destination */
+    #latest { margin-top: 1.5rem; }
+    .latest-relay {
+      display: grid; grid-template-columns: auto 1fr auto; gap: 0.18rem 0.9rem;
+      align-items: center; padding: 0.85rem 1rem; color: var(--phosphor);
+      border: 1px solid var(--phosphor-dim); border-left: 4px solid var(--flash-psyche);
+      background: rgba(184,137,200,.055); text-decoration: none;
+      box-shadow: 0 0 24px rgba(184,137,200,.05) inset;
+    }
+    .latest-relay .latest-kicker { grid-row: 1 / 3; color: var(--flash-psyche); font-size: .67rem; letter-spacing: .12em; text-transform: uppercase; }
+    .latest-relay .latest-title { font-size: .95rem; }
+    .latest-relay .latest-description { color: var(--phosphor-dim); font-size: .78rem; }
+    .latest-relay .latest-meta { grid-column: 3; grid-row: 1 / 3; display: grid; gap: .25rem; color: var(--phosphor-dim); font-size: .67rem; text-align: right; text-transform: uppercase; }
+    .latest-relay:hover,.latest-relay:focus-visible { border-color: var(--flash-psyche); color: var(--flash-psyche); outline: none; text-shadow: 0 0 12px rgba(184,137,200,.65); }
+
     /* transmissions */
     #tx-section { margin-top: 2.2rem; }
     .tx { padding: 0.3rem 0; }
@@ -142,16 +157,17 @@
 
     /* command line */
     #cmdline {
-      margin-top: 2.2rem;
+      margin-top: 1.35rem;
+      padding: 0.9rem 0 1.1rem;
       border-top: 1px dashed var(--phosphor-faint);
-      padding-top: 1.2rem;
+      border-bottom: 1px dashed var(--phosphor-faint);
     }
 
-    #output { white-space: pre-wrap; color: var(--phosphor-dim); max-height: 14em; overflow-y: auto; }
+    #output { margin-top: .75rem; white-space: pre-wrap; color: var(--phosphor-dim); max-height: 14em; overflow-y: auto; }
     #output .bright { color: var(--phosphor); }
 
     .prompt-row { display: flex; gap: 0.5rem; align-items: baseline; }
-    .prompt { color: var(--flash-systems); white-space: nowrap; }
+    .prompt { color: var(--flash-orrin); white-space: nowrap; }
 
     #cmd {
       background: transparent;
@@ -159,9 +175,12 @@
       color: var(--phosphor);
       font: inherit;
       flex: 1;
+      min-width: 0;
+      width: 100%;
       caret-color: var(--phosphor);
       outline: none;
     }
+    .prompt-row .cursor { flex-shrink: 0; }
 
     footer {
       margin-top: 3rem;
@@ -175,6 +194,9 @@
 
     @media (max-width: 600px) {
       body { font-size: 13.5px; }
+      .latest-relay { grid-template-columns: 1fr; }
+      .latest-relay .latest-kicker,.latest-relay .latest-title,.latest-relay .latest-description,.latest-relay .latest-meta { grid-column: 1; grid-row: auto; }
+      .latest-relay .latest-meta { display: flex; justify-content: space-between; text-align: left; }
       a.entry { flex-wrap: wrap; row-gap: 0.1rem; }
       a.entry .desc { flex-basis: 100%; order: 3; }
       a.entry .go { margin-left: auto; }
@@ -192,11 +214,29 @@
 
       <div id="boot" aria-live="polite"></div>
 
+      <div id="cmdline" class="hidden">
+        <div class="prompt-row">
+          <label class="prompt" for="cmd">guest@ric-relay:~$</label>
+          <input id="cmd" autocomplete="off" spellcheck="false" aria-label="terminal command input">
+          <span class="cursor">▮</span>
+        </div>
+        <div id="output">type `help` for commands, `ls` for rooms, or a room name to enter.</div>
+      </div>
+
+      <section id="latest" class="hidden" aria-label="Latest addition">
+        <a class="latest-relay" data-latest-banner data-latest-prefix="new signal"></a>
+      </section>
+
       <nav id="dir" class="hidden" aria-label="Site directory">
         <div class="dir-head">MOUNTED DIRECTORIES — CLICK ANY TO ENTER:</div>
-        <a class="entry" href="systems.html" style="--hue: var(--flash-systems)">
-          <span class="perm">drwx r-x</span><span class="dirname">/systems</span>
+        <a class="entry" href="orrin.html" style="--hue: var(--flash-orrin)">
+          <span class="perm">drwx r-x</span><span class="dirname">/orrin</span>
           <span class="desc">— cognition · code · ORRIN runtime</span>
+          <span class="go">[ ENTER ]</span>
+        </a>
+        <a class="entry" href="psyche.html" style="--hue: var(--flash-psyche)">
+          <span class="perm">drwx r-x</span><span class="dirname">/psyche</span>
+          <span class="desc">— human systems · patterns · evidence</span>
           <span class="go">[ ENTER ]</span>
         </a>
         <a class="entry" href="climbing.html" style="--hue: var(--flash-climbing)">
@@ -229,11 +269,6 @@
           <span class="desc">— transmissions · write-ups · VOD reviews</span>
           <span class="go">[ ENTER ]</span>
         </a>
-        <a class="entry" href="updates.html" style="--hue: var(--flash-updates)">
-          <span class="perm">drwx r-x</span><span class="dirname">/updates</span>
-          <span class="desc">— what's new on this site · auto-generated</span>
-          <span class="go">[ ENTER ]</span>
-        </a>
         <a class="entry" href="map.html" style="--hue: var(--flash-map)">
           <span class="perm">drwx ---</span><span class="dirname">/map</span>
           <span class="desc">— crew access only</span>
@@ -246,14 +281,6 @@
         <div id="transmissions"></div>
       </section>
 
-      <div id="cmdline" class="hidden">
-        <div id="output">type `help` for available commands. or just click a directory above.</div>
-        <div class="prompt-row">
-          <label class="prompt" for="cmd">guest@ric-relay:~$</label>
-          <input id="cmd" autocomplete="off" spellcheck="false" aria-label="terminal command input">
-          <span class="cursor">▮</span>
-        </div>
-      </div>
     </div>
 
     <footer>
@@ -263,6 +290,8 @@
   </div>
 
   <script src="notes.js"></script>
+  <script src="effects.js"></script>
+  <script src="latest.js"></script>
   <script>
     // ─── boot sequence ───────────────────────────────────
     const BOOT_LINES = [
@@ -270,12 +299,13 @@
       ["verifying visitor clearance .. ", "ok", "[FAMILY/FRIEND — GRANTED]"],
       ["locating subject ............. ", "ok", "[ACTIVE — LAST SEEN: BUILDING SOMETHING]"],
       ["everything below is real and current.", "dim"],
+      ["mounting command shell ....... ", "ok", "[READY]"],
     ];
 
     const boot = document.getElementById("boot");
     let li = 0;
     function nextLine() {
-      if (li >= BOOT_LINES.length) return reveal();
+      if (li >= BOOT_LINES.length) return setTimeout(reveal, 330);
       const [text, cls, suffix] = BOOT_LINES[li++];
       const div = document.createElement("div");
       div.textContent = text;
@@ -291,8 +321,11 @@
     }
 
     function reveal() {
-      for (const id of ["dir", "tx-section", "cmdline"]) {
+      for (const id of ["latest", "dir", "tx-section", "cmdline"]) {
         document.getElementById(id).classList.remove("hidden");
+      }
+      if (matchMedia("(pointer: fine)").matches) {
+        document.getElementById("cmd").focus({ preventScroll: true });
       }
     }
 
@@ -330,44 +363,120 @@
 
     // ─── command line ────────────────────────────────────
     const PAGES = {
-      systems: "systems.html", climbing: "climbing.html",
+      orrin: "orrin.html", psyche: "psyche.html", climbing: "climbing.html",
       training: "training.html", exploration: "exploration.html",
       workbench: "workbench.html", captures: "captures.html",
-      log: "log.html", updates: "updates.html", map: "map.html",
+      log: "log.html", map: "map.html",
+    };
+
+    const PAGE_DESCRIPTIONS = {
+      orrin: "live ORRIN telemetry",
+      psyche: "human systems and evidence",
+      climbing: "routes and objectives",
+      training: "runs, workouts, and health",
+      exploration: "space and interactive experiments",
+      workbench: "projects and unfinished ideas",
+      captures: "photographic records",
+      log: "long-form transmissions",
+      map: "restricted crew directory",
+    };
+
+    const listRooms = () => Object.entries(PAGE_DESCRIPTIONS)
+      .map(([name, description]) => `  /${name.padEnd(13)} ${description}`)
+      .join("\n");
+
+    const readNotes = () => {
+      const notes = typeof RIC_NOTES !== "undefined" ? RIC_NOTES.slice(0, 4) : [];
+      return notes.length
+        ? notes.map((note) => `[${note.date}] ${note.text}`).join("\n\n")
+        : "no transmissions found.";
     };
 
     const COMMANDS = {
       help: () =>
         "available commands:\n" +
-        "  ls              list directories\n" +
-        "  open <dir>      jump to a section (e.g. `open systems`)\n" +
-        "  whoami          visitor identity\n" +
-        "  status          what ric is up to\n" +
-        "  clear           wipe the screen\n" +
+        "  ls / rooms      list every room and what lives there\n" +
+        "  open <room>     enter a room (direct room names work too)\n" +
+        "  latest          open the newest addition\n" +
+        "  cat notes       read the latest transmissions\n" +
+        "  history         show commands used this visit\n" +
+        "  pwd             show your current location\n" +
+        "  whoami          show visitor identity\n" +
+        "  status          check Ric and Orrin's status\n" +
+        "  date            read the local clock\n" +
+        "  back            return to the previous page\n" +
+        "  clear           wipe terminal output\n" +
+        "\nuse ↑/↓ for command history and Tab to complete.\n" +
         "…there may be undocumented commands.",
-      ls: () => Object.keys(PAGES).map((p) => `/${p}`).join("   "),
+      ls: listRooms,
+      rooms: listRooms,
+      open: () => "usage: open <room>\ntry `ls` to see valid room names.",
+      cd: () => "usage: cd <room>\nthis relay only mounts one level deep.",
+      cat: () => "usage: cat notes",
+      man: () => COMMANDS.help(),
+      history: () => commandHistory.length
+        ? commandHistory.map((entry, index) => `${String(index + 1).padStart(3)}  ${entry}`).join("\n")
+        : "no commands in this session yet.",
+      pwd: () => "/relay",
       whoami: () => "guest — but if you're reading this, you're probably family. hi.",
-      status: () => "subject is alive, caffeinated, and pushing commits to ORRIN.\nsee /systems for live telemetry.",
+      status: () => "subject is alive, caffeinated, and pushing commits to ORRIN.\nsee /orrin for live telemetry.",
+      date: () => new Date().toLocaleString([], { dateStyle: "full", timeStyle: "medium" }),
       clear: () => { out.textContent = ""; return null; },
       // ─── undocumented ───
       orrin: () =>
         "SUBJECT: ORRIN\nstate: persistent. goal-driven. still running.\n" +
-        "note: do not power down. it remembers.\n→ full diagnostics in /systems",
+        "note: do not power down. it remembers.\n→ full diagnostics in /orrin",
       apex: () => "pulling VOD archive...\naim rating: CLASSIFIED\nrotation IQ: improving\n→ reviews land in /log",
       sudo: () => "nice try. this relay answers to ric only.",
       unlock: () => "crew authentication required.\nif you are the brother or the friend: you know who to ask.",
       coffee: () => "brewing... ☕ dispensed. carry on.",
       exit: () => "there is no exit. there is only the relay.",
+      lsd: () => {
+        window.RELAY_EFFECTS?.set("lsd");
+        return "VISUAL CORTEX: PRISMATIC\nmode follows you between rooms. refresh any page or type `sober` here to come back.";
+      },
+      shrooms: () => {
+        window.RELAY_EFFECTS?.set("shrooms");
+        return "MYCELIAL NETWORK: ONLINE\nthe whole relay is breathing. refresh any page or type `sober` here to come back.";
+      },
+      sober: () => {
+        window.RELAY_EFFECTS?.clear();
+        return "REALITY CHECK: PASSED\nall visual systems nominal.";
+      },
     };
 
     const out = document.getElementById("output");
     const cmd = document.getElementById("cmd");
+    const commandHistory = [];
+    let historyIndex = 0;
+
+    const visibleCommands = ["help", "man", "ls", "rooms", "open", "cd", "latest", "cat notes", "history", "pwd", "whoami", "status", "date", "back", "clear"];
+    const completions = [...visibleCommands, ...Object.keys(PAGES)];
 
     cmd.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        if (!commandHistory.length) return;
+        e.preventDefault();
+        historyIndex = e.key === "ArrowUp"
+          ? Math.max(0, historyIndex - 1)
+          : Math.min(commandHistory.length, historyIndex + 1);
+        cmd.value = historyIndex < commandHistory.length ? commandHistory[historyIndex] : "";
+        return;
+      }
+      if (e.key === "Tab") {
+        e.preventDefault();
+        const typed = cmd.value.trim().toLowerCase();
+        const matches = completions.filter((candidate) => candidate.startsWith(typed));
+        if (matches.length === 1) cmd.value = matches[0];
+        else if (matches.length > 1) print(matches.join("   "));
+        return;
+      }
       if (e.key !== "Enter") return;
       const raw = cmd.value.trim();
       cmd.value = "";
       if (!raw) return;
+      commandHistory.push(raw);
+      historyIndex = commandHistory.length;
       print(`$ ${raw}`, true);
 
       const [verb, ...rest] = raw.toLowerCase().split(/\s+/);
@@ -376,6 +485,20 @@
       if ((verb === "open" || verb === "cd") && PAGES[arg]) {
         print(`entering /${arg} ...`);
         setTimeout(() => (location.href = PAGES[arg]), 400);
+      } else if ((verb === "open" && arg === "latest") || verb === "latest") {
+        const newest = (window.RELAY_LATEST || [])[0];
+        if (!newest) print("no new signals found.");
+        else {
+          print(`opening ${newest.title} ...`);
+          setTimeout(() => (location.href = newest.href), 400);
+        }
+      } else if (verb === "cat" && ["notes", "transmissions"].includes(arg)) {
+        print(readNotes());
+      } else if (verb === "cd" && ["..", "/", "~"].includes(arg)) {
+        print("already at /relay — this is the root of Ric's internet.");
+      } else if (verb === "back") {
+        print("returning to previous signal ...");
+        setTimeout(() => history.back(), 250);
       } else if (PAGES[verb] && !arg) {
         print(`entering /${verb} ...`);
         setTimeout(() => (location.href = PAGES[verb]), 400);

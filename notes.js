@@ -9,7 +9,7 @@
 const RIC_NOTES = [
   {
     date: "2026-07-23",
-    text: "Welcome! I set up this site so you can see what I'm working on without me having to send updates around. The /systems page tracks my work on Orrin automatically — if it looks busy in there, that's real."
+    text: "Welcome! I set up this site so you can see what I'm working on without me having to send updates around. The /orrin page tracks my work on Orrin automatically — if it looks busy in there, that's real."
   },
   // {
   //   date: "2026-08-01",
