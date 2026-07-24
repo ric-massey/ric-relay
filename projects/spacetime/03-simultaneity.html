@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>03 / Simultaneity</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0d12;
+    --bg-2: #11151c;
+    --ink: #e8e4d8;
+    --ink-dim: #8a8578;
+    --accent: #d4a574;
+    --light: #ffd982;
+    --you: #6db5a3;
+    --them: #b56d8a;
+    --line: #1f242d;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Cormorant Garamond', serif;
+    min-height: 100vh;
+  }
+  .nav {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+  }
+  .nav a { color: var(--ink-dim); text-decoration: none; }
+  .nav a:hover { color: var(--accent); }
+  .nav .num { color: var(--accent); }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 4rem 2rem 6rem;
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.4em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  h1 {
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-weight: 300;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    font-style: italic;
+    margin-bottom: 1.5rem;
+  }
+  .lede {
+    font-size: 1.25rem;
+    color: var(--ink-dim);
+    max-width: 38rem;
+    line-height: 1.6;
+    margin-bottom: 4rem;
+  }
+
+  .stage {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .train {
+    position: relative;
+    height: 200px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+  .platform {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background: linear-gradient(180deg, transparent, rgba(138, 133, 120, 0.1));
+    border-top: 1px solid var(--line);
+  }
+  .train-car {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 360px;
+    height: 80px;
+    border: 2px solid var(--them);
+    background: rgba(181, 109, 138, 0.05);
+  }
+  .train-source {
+    position: absolute;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    background: var(--accent);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .train-end {
+    position: absolute;
+    top: 50%;
+    width: 16px;
+    height: 60px;
+    transform: translate(-50%, -50%);
+    border-left: 2px solid var(--ink-dim);
+    border-right: 2px solid var(--ink-dim);
+  }
+  .train-end.left { border-left-color: var(--light); }
+  .train-end.right { border-right-color: var(--light); }
+  .train-end.hit { background: var(--light); border-color: var(--light); }
+
+  .photon {
+    position: absolute;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    background: var(--light);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 12px var(--light);
+  }
+
+  .frame-label {
+    position: absolute;
+    top: 12px;
+    left: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--ink-dim);
+  }
+
+  .observer {
+    position: absolute;
+    bottom: 30px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    transform: translate(-50%, 50%);
+  }
+  .observer.you { background: var(--you); }
+  .observer.them { background: var(--them); top: 50%; bottom: auto; transform: translate(-50%, -50%); }
+  .observer-label {
+    position: absolute;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--ink-dim);
+  }
+
+  .controls {
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .ctrl {
+    margin-bottom: 1rem;
+  }
+  .ctrl label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+  .ctrl .val {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+    font-size: 0.9rem;
+  }
+  input[type=range] {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 2px;
+    background: var(--line);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 14px;
+    width: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin-top: -6px;
+  }
+  input[type=range]::-moz-range-track {
+    height: 2px;
+    background: var(--line);
+  }
+  input[type=range]::-moz-range-thumb {
+    height: 14px;
+    width: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    border: none;
+  }
+
+  .buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+  button {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 0.75rem 1.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  button:hover { background: var(--accent); color: var(--bg); }
+  button.active { background: var(--accent); color: var(--bg); }
+
+  .verdict {
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    background: var(--bg);
+    border-left: 2px solid var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.7;
+    color: var(--ink);
+  }
+  .verdict .order {
+    color: var(--accent);
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .essay {
+    margin-top: 4rem;
+    max-width: 36rem;
+  }
+  .essay h2 {
+    font-size: 1.75rem;
+    font-weight: 400;
+    font-style: italic;
+    margin: 3rem 0 1rem;
+    color: var(--accent);
+  }
+  .essay p {
+    font-size: 1.125rem;
+    line-height: 1.7;
+    margin-bottom: 1.25rem;
+    color: var(--ink);
+  }
+  .essay em { color: var(--accent); font-style: italic; }
+  .essay .pullout {
+    border-left: 2px solid var(--accent);
+    padding-left: 1.5rem;
+    margin: 2rem 0;
+    font-size: 1.25rem;
+    font-style: italic;
+    color: var(--ink-dim);
+  }
+
+  .next {
+    margin-top: 5rem;
+    padding-top: 3rem;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+  }
+  .next a { color: var(--accent); text-decoration: none; }
+  .next a:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html">← THE GEOMETRY OF SPACETIME</a>
+    <span class="num">03 / 04</span>
+  </nav>
+
+  <main class="container">
+    <div class="eyebrow">— Two events. Two observers. Two different orderings. Both correct. —</div>
+    <h1>The Loss of Now</h1>
+    <p class="lede">A flashbulb in the middle of a moving train. Light hits both ends. Did it hit them at the same time, or one before the other? The answer depends on who's asking.</p>
+
+    <div class="stage">
+      <div class="train" id="trainStage">
+        <div class="frame-label" id="frameLabel">FROM THE PLATFORM (you, stationary)</div>
+        <div class="train-car" id="trainCar">
+          <div class="train-source" id="source"></div>
+          <div class="train-end left" id="leftEnd"></div>
+          <div class="train-end right" id="rightEnd"></div>
+        </div>
+        <div class="photon" id="photonLeft" style="display:none"></div>
+        <div class="photon" id="photonRight" style="display:none"></div>
+        <div class="platform"></div>
+        <div class="observer you" id="youObs"></div>
+        <div class="observer-label" id="youLabel">YOU</div>
+        <div class="observer them" id="themObs"></div>
+        <div class="observer-label" id="themLabel">THEM</div>
+      </div>
+
+      <div class="buttons">
+        <button id="frameYou" class="active">YOUR FRAME (PLATFORM)</button>
+        <button id="frameThem">THEIR FRAME (TRAIN)</button>
+        <button id="play">▶ PLAY</button>
+        <button id="reset">RESET</button>
+      </div>
+
+      <div class="controls">
+        <div class="ctrl">
+          <label>Train velocity (fraction of c) <span class="val" id="vVal">0.50 c</span></label>
+          <input type="range" id="v" min="0" max="90" value="50">
+        </div>
+      </div>
+
+      <div class="verdict" id="verdict">
+        <div class="order">From the platform: light hits both ends simultaneously.</div>
+        From the moving train, the rear end is moving toward the source while the front end is moving away. So light reaches the rear end first, then the front. The two observers genuinely disagree about which event happened first — and both are right.
+      </div>
+    </div>
+
+    <div class="essay">
+      <h2>What just happened</h2>
+      <p>A flashbulb fires from the center of a train car. Two pulses of light travel outward, one toward each end. From the platform, the train is moving — so during the time the light travels, the rear of the train moves toward where the flash happened, and the front moves away.</p>
+
+      <p>From <em>your</em> frame on the platform: light moves at c equally in both directions. Both pulses cover the same distance. They arrive at the two ends at the same instant. The events are <em>simultaneous</em>.</p>
+
+      <p>From <em>their</em> frame on the train: the train isn't moving, the platform is. The flashbulb is at the center of their car. Light moves at c equally in both directions. Both pulses cover the same distance. They arrive at the two ends at the same instant.</p>
+
+      <p>But here's the trap: both observers see the light moving at c. Both see the flash happen at the center. Yet from your view, the rear end gets hit first. From their view, both ends get hit together. The orderings are different. Neither is wrong.</p>
+
+      <h2>Why this breaks "now"</h2>
+      <p>If two observers can disagree about which of two events happened first, then there is no universal <em>now</em> connecting events at different locations. Your "this moment, everywhere" is a slice through spacetime that depends on your motion. Move differently, and your slice tilts differently — events you called simultaneous, they call sequential.</p>
+
+      <p class="pullout">"There is no master clock. There is no shared present. Each observer has their own slicing of spacetime, and all slicings are equally valid."</p>
+
+      <p>This is the deepest break with intuition in special relativity. Time dilation feels weird but acceptable — moving clocks tick slower, fine. The loss of simultaneity is harder. It says that the very concept of "what's happening right now over there" doesn't have a single answer. Reality doesn't come with a privileged ordering.</p>
+
+      <h2>Why this is consistent</h2>
+      <p>The two observers can never use this disagreement to send signals faster than light, or to violate cause-and-effect. Events that are causally connected (one inside the other's light cone) have a definite ordering everyone agrees on. Only events that are <em>causally disconnected</em> — too far apart for light to travel between them in the relevant time — can be ordered differently by different observers.</p>
+
+      <p>So the universe protects itself. You can disagree about simultaneity, but you can never disagree about causality. The loss of now is real, but it doesn't break the world. It just means the world is a 4D structure rather than a 3D thing evolving through a universal time.</p>
+    </div>
+
+    <div class="next">
+      <a href="02-time-dilation.html">← 02 / TIME DILATION</a>
+      <a href="04-expansion.html">04 / EXPANSION →</a>
+    </div>
+  </main>
+
+<script>
+const trainCar = document.getElementById('trainCar');
+const source = document.getElementById('source');
+const leftEnd = document.getElementById('leftEnd');
+const rightEnd = document.getElementById('rightEnd');
+const photonLeft = document.getElementById('photonLeft');
+const photonRight = document.getElementById('photonRight');
+const youObs = document.getElementById('youObs');
+const youLabel = document.getElementById('youLabel');
+const themObs = document.getElementById('themObs');
+const themLabel = document.getElementById('themLabel');
+const frameLabel = document.getElementById('frameLabel');
+const verdict = document.getElementById('verdict');
+const vSlider = document.getElementById('v');
+const vVal = document.getElementById('vVal');
+const stage = document.getElementById('trainStage');
+
+const frameYouBtn = document.getElementById('frameYou');
+const frameThemBtn = document.getElementById('frameThem');
+const playBtn = document.getElementById('play');
+const resetBtn = document.getElementById('reset');
+
+let frame = 'you';
+let playing = false;
+let t = 0;
+let animId = null;
+
+function reset() {
+  playing = false;
+  cancelAnimationFrame(animId);
+  t = 0;
+  draw();
+  playBtn.textContent = '▶ PLAY';
+}
+
+function draw() {
+  const stageW = stage.clientWidth;
+  const stageH = stage.clientHeight;
+  const carW = 360;
+  const v = parseFloat(vSlider.value) / 100;
+
+  let carX, sourceX, leftX, rightX, youX, themX;
+
+  if (frame === 'you') {
+    // train moves rightward
+    const startX = -100;
+    const endX = stageW + 100;
+    carX = startX + (endX - startX) * (t * 0.5 + 0.3);
+    sourceX = carX + carW/2;
+    leftX = carX;
+    rightX = carX + carW;
+    youX = stageW / 2;
+    themX = sourceX;
+
+    // photons travel at c. From platform, both move at c regardless of train motion.
+    // Light starts at sourceX0 (when t=0 in this frame's "flash event").
+    // For visualization, flash happens at t=0 from this frame.
+    const flashTime = 0;
+    const cSpeed = 200; // pixels per "second" of t
+    const sourceAtFlash = (startX + (endX - startX) * (flashTime * 0.5 + 0.3)) + carW/2;
+    const photonLeftX = sourceAtFlash - cSpeed * t;
+    const photonRightX = sourceAtFlash + cSpeed * t;
+
+    // train ends at time t
+    const leftEndAtT = carX;
+    const rightEndAtT = carX + carW;
+
+    // hit detection - left end is moving toward photonLeft at velocity v, photonLeft moves left at c
+    // so photonLeft hits left end faster than photonRight hits right end (which is moving away)
+    const leftHit = photonLeftX <= leftEndAtT;
+    const rightHit = photonRightX >= rightEndAtT;
+
+    photonLeft.style.display = (t > 0 && !leftHit) ? 'block' : 'none';
+    photonRight.style.display = (t > 0 && !rightHit) ? 'block' : 'none';
+    photonLeft.style.left = photonLeftX + 'px';
+    photonRight.style.left = photonRightX + 'px';
+
+    leftEnd.classList.toggle('hit', leftHit);
+    rightEnd.classList.toggle('hit', rightHit);
+
+  } else {
+    // their frame - train is stationary, you (platform) moves leftward
+    carX = stageW/2 - carW/2;
+    sourceX = carX + carW/2;
+    leftX = carX;
+    rightX = carX + carW;
+
+    const platformStart = stageW + 100;
+    const platformEnd = -100;
+    youX = platformStart + (platformEnd - platformStart) * (t * 0.5 + 0.3);
+    themX = sourceX;
+
+    // photons - both travel at c, train is stationary so both ends hit at same time
+    const cSpeed = 200;
+    const photonLeftX = sourceX - cSpeed * t;
+    const photonRightX = sourceX + cSpeed * t;
+
+    const leftHit = photonLeftX <= leftX;
+    const rightHit = photonRightX >= rightX;
+
+    photonLeft.style.display = (t > 0 && !leftHit) ? 'block' : 'none';
+    photonRight.style.display = (t > 0 && !rightHit) ? 'block' : 'none';
+    photonLeft.style.left = photonLeftX + 'px';
+    photonRight.style.left = photonRightX + 'px';
+
+    leftEnd.classList.toggle('hit', leftHit);
+    rightEnd.classList.toggle('hit', rightHit);
+  }
+
+  trainCar.style.left = carX + 'px';
+  source.style.left = (sourceX - carX) + 'px';
+  leftEnd.style.left = '0px';
+  rightEnd.style.left = carW + 'px';
+
+  youObs.style.left = youX + 'px';
+  youLabel.style.left = (youX - 14) + 'px';
+  youLabel.style.bottom = '4px';
+  themObs.style.left = themX + 'px';
+  themLabel.style.left = (themX - 16) + 'px';
+  themLabel.style.top = (stageH/2 + 18) + 'px';
+
+  vVal.textContent = `${v.toFixed(2)} c`;
+
+  // verdict update
+  if (frame === 'you') {
+    frameLabel.textContent = 'FROM THE PLATFORM (you, stationary)';
+    verdict.innerHTML = `<div class="order">From the platform: light reaches the REAR of the train BEFORE the front.</div>The train is moving rightward. While light travels outward equally fast in both directions, the rear of the train moves toward the flash point and the front moves away. Light catches the rear first, then the front. Two events. One before the other.`;
+  } else {
+    frameLabel.textContent = 'FROM THE TRAIN (them, stationary in their frame)';
+    verdict.innerHTML = `<div class="order">From the train: light reaches BOTH ends at the EXACT same moment.</div>In their frame, the train isn't moving and the platform is. The flash happens at the exact center of the car. Light moves at c equally in both directions, covering the same distance to both ends. The two events are simultaneous. Both observers are correct.`;
+  }
+}
+
+function tick() {
+  if (!playing) return;
+  t += 0.012;
+  if (t > 1.2) t = 1.2;
+  draw();
+  if (t < 1.2) animId = requestAnimationFrame(tick);
+  else { playing = false; playBtn.textContent = '▶ REPLAY'; }
+}
+
+frameYouBtn.addEventListener('click', () => {
+  frame = 'you';
+  frameYouBtn.classList.add('active');
+  frameThemBtn.classList.remove('active');
+  reset();
+});
+frameThemBtn.addEventListener('click', () => {
+  frame = 'them';
+  frameThemBtn.classList.add('active');
+  frameYouBtn.classList.remove('active');
+  reset();
+});
+playBtn.addEventListener('click', () => {
+  if (t >= 1.2) t = 0;
+  playing = !playing;
+  playBtn.textContent = playing ? '❚❚ PAUSE' : '▶ PLAY';
+  if (playing) animId = requestAnimationFrame(tick);
+});
+resetBtn.addEventListener('click', reset);
+vSlider.addEventListener('input', () => { reset(); });
+
+draw();
+window.addEventListener('resize', draw);
+</script>
+</body>
+</html>

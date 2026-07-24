@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Siege Conductor</title>
+<meta name="description" content="Watch the Siege of Mandalore interwoven with Revenge of the Sith as one continuous story." />
+<meta name="theme-color" content="#000000" />
+<!-- Installable-app (PWA) wiring -->
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Siege" />
+<meta name="mobile-web-app-capable" content="yes" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000000;
+    --bg2:#0A0A0C;
+    --panel:#111114;
+    --line:rgba(255,255,255,.09);
+    --ink:#F2F5FA;
+    --muted:#7E8696;
+    --holo:#4FDCEE;       /* Clone Wars (the show) */
+    --holo-dim:rgba(79,220,238,.14);
+    --ember:#F7A93B;      /* Revenge of the Sith (the movie) */
+    --ember-dim:rgba(247,169,59,.14);
+    --acc:var(--holo);
+    --acc-dim:var(--holo-dim);
+    --nextacc:var(--holo);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:
+      radial-gradient(60% 40% at 50% 0%, rgba(79,220,238,.05), transparent 70%),
+      radial-gradient(60% 40% at 50% 100%, rgba(247,169,59,.045), transparent 70%),
+      var(--bg);
+    color:var(--ink);
+    font-family:"Chakra Petch",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    width:100%;height:100dvh;max-width:460px;margin:0 auto;
+    padding:14px 16px max(14px,env(safe-area-inset-bottom));
+    display:flex;flex-direction:column;
+    overflow-y:auto;
+  }
+  /* On a wide screen, frame the column so it reads as an intentional card */
+  @media (min-width:760px){
+    body{display:flex;align-items:center;justify-content:center}
+    .wrap{
+      height:min(760px,94dvh);border-radius:22px;
+      border:1px solid var(--line);
+      background:linear-gradient(180deg,rgba(255,255,255,.02),transparent 40%);
+      box-shadow:0 40px 120px -40px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.02);
+    }
+  }
+
+  .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex:0 0 auto}
+  .brand{font-weight:700;letter-spacing:.16em;font-size:10px;color:var(--muted);text-transform:uppercase}
+  .brand b{color:var(--ink)}
+  .topright{display:flex;align-items:center;gap:12px}
+  .count{font-family:"Space Mono",monospace;font-size:11px;color:var(--muted)}
+  .count b{color:var(--acc);font-weight:700}
+  .reset{
+    background:transparent;border:none;color:var(--muted);font-size:15px;line-height:1;
+    cursor:pointer;padding:4px;border-radius:8px;transition:color .2s,transform .3s;
+  }
+  .reset:hover{color:var(--ink)}
+  .reset:active{transform:rotate(-90deg)}
+  .reset[hidden]{display:none}
+  .bar{height:2px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden;margin-bottom:14px;flex:0 0 auto}
+  .bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--holo),var(--ember));transition:width .45s cubic-bezier(.4,0,.2,1)}
+
+  .stage{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;min-height:0}
+  .card{animation:rise .36s cubic-bezier(.2,.7,.2,1)}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  .badge{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:7px 13px;border-radius:999px;
+    background:var(--acc-dim);border:1px solid color-mix(in srgb,var(--acc) 45%, transparent);
+    color:var(--acc);font-weight:700;letter-spacing:.16em;font-size:11.5px;text-transform:uppercase;
+    box-shadow:0 0 24px -8px color-mix(in srgb,var(--acc) 70%, transparent);
+  }
+  .badge .dot{width:8px;height:8px;border-radius:50%;background:var(--acc);box-shadow:0 0 10px var(--acc);animation:pulse 2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .badge .glyph{font-size:14px}
+
+  .media{margin:12px 0 2px;font-size:clamp(22px,7.5vw,32px);line-height:1.04;font-weight:700;letter-spacing:-.01em}
+  .ep{font-size:12px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;font-weight:600}
+
+  .range{display:inline-flex;align-items:center;gap:9px;margin:14px 0 12px;font-family:"Space Mono",monospace}
+  .t{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:6px 11px;font-size:clamp(15px,4.5vw,20px);font-weight:700}
+  .arrow{color:var(--acc);font-size:17px}
+
+  .scene{font-family:system-ui,sans-serif;font-size:13.5px;line-height:1.45;color:#B8C1D1;max-width:42ch}
+
+  .cue{
+    margin-top:13px;padding:10px 12px;border-radius:10px;
+    background:var(--bg2);border:1px solid var(--line);border-left:3px solid var(--acc);
+    font-family:system-ui,sans-serif;font-size:13px;line-height:1.4;
+  }
+  .cue b{color:var(--acc)}
+
+  .next-up{font-family:system-ui,sans-serif;font-size:11.5px;color:var(--muted);text-align:center;margin:14px 0 9px;min-height:16px;flex:0 0 auto}
+  .next-up b{color:var(--ink)}
+  .controls{display:flex;gap:10px;flex:0 0 auto}
+  button{font-family:"Chakra Petch",sans-serif;cursor:pointer;border:none;border-radius:12px;font-weight:700;letter-spacing:.04em;transition:transform .12s ease,filter .2s ease,opacity .2s}
+  button:active{transform:scale(.97)}
+  .back{flex:0 0 auto;padding:0 16px;height:52px;font-size:15px;background:transparent;border:1px solid var(--line);color:var(--muted)}
+  .back:hover{color:var(--ink);border-color:rgba(255,255,255,.22)}
+  .back:disabled{opacity:.3;cursor:default}
+  .go{
+    flex:1;height:52px;font-size:15.5px;color:#040405;
+    background:linear-gradient(180deg, color-mix(in srgb,var(--nextacc) 100%, white 8%), var(--nextacc));
+    box-shadow:0 6px 24px -10px color-mix(in srgb,var(--nextacc) 80%, transparent);
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .go:hover{filter:brightness(1.07)}
+  .go .sub{font-size:10px;letter-spacing:.1em;opacity:.72;text-transform:uppercase}
+
+  .lead{font-size:clamp(23px,7.5vw,34px);font-weight:700;line-height:1.05;letter-spacing:-.01em;margin-bottom:13px}
+  .lead .a{color:var(--holo)} .lead .b{color:var(--ember)}
+  .notes{font-family:system-ui,sans-serif;display:flex;flex-direction:column;gap:10px;margin:4px 0}
+  .note{display:flex;gap:10px;font-size:13px;line-height:1.4;color:#B8C1D1}
+  .note .k{flex:0 0 24px;height:24px;border-radius:7px;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line);font-size:13px}
+  .note b{color:var(--ink)}
+  .legend{display:flex;gap:8px;margin:14px 0 4px;font-family:system-ui,sans-serif;font-size:12px}
+  .chip{flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg2)}
+  .chip .h{font-weight:700;display:flex;align-items:center;gap:6px;margin-bottom:3px}
+  .chip.p .h{color:var(--holo)} .chip.l .h{color:var(--ember)}
+  .chip .d{color:var(--muted);font-size:11px}
+  .done-emoji{font-size:40px;margin-bottom:6px}
+
+  /* ---- Setup screen ---- */
+  .setup-h{font-size:clamp(22px,7vw,30px);font-weight:700;line-height:1.08;letter-spacing:-.01em;margin-bottom:6px}
+  .setup-h .a{color:var(--holo)} .setup-h .b{color:var(--ember)}
+  .setup-sub{font-family:system-ui,sans-serif;font-size:13px;line-height:1.45;color:#B8C1D1;max-width:40ch;margin-bottom:16px}
+  .opts{display:flex;flex-direction:column;gap:9px}
+  .opt{
+    display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+    padding:13px 14px;border-radius:13px;background:var(--bg2);
+    border:1px solid var(--line);color:var(--ink);font-weight:600;
+    transition:border-color .18s,background .18s,transform .12s;
+  }
+  .opt:hover{border-color:rgba(255,255,255,.22);background:#141417}
+  .opt .ico{font-size:20px;flex:0 0 auto;letter-spacing:2px}
+  .opt .txt{flex:1;min-width:0}
+  .opt .txt .n{font-size:15px}
+  .opt .txt .s{font-family:system-ui,sans-serif;font-size:11.5px;color:var(--muted);font-weight:400;margin-top:1px}
+  .opt .go-arrow{color:var(--muted);font-size:16px;flex:0 0 auto}
+  .opt:hover .go-arrow{color:var(--ink)}
+  .custom-row{display:flex;gap:8px;margin-top:10px}
+  .custom-row input{
+    flex:1;min-width:0;font-family:"Chakra Petch",sans-serif;font-size:14px;font-weight:600;
+    color:var(--ink);background:var(--bg2);border:1px solid var(--line);border-radius:11px;padding:11px 12px;
+  }
+  .custom-row input:focus{outline:none;border-color:rgba(255,255,255,.28)}
+  .custom-row input.a:focus{border-color:color-mix(in srgb,var(--holo) 55%,transparent)}
+  .custom-row input.b:focus{border-color:color-mix(in srgb,var(--ember) 55%,transparent)}
+  .custom-go{margin-top:9px;width:100%;height:48px;font-size:15px;color:#040405;
+    background:linear-gradient(180deg,color-mix(in srgb,var(--holo) 100%,white 8%),var(--holo));}
+  .back-link{background:transparent;border:none;color:var(--muted);font-family:system-ui,sans-serif;
+    font-size:12.5px;cursor:pointer;margin-top:14px;padding:4px}
+  .back-link:hover{color:var(--ink)}
+  .hide{display:none}
+
+  @media (prefers-reduced-motion: reduce){
+    .card{animation:none}.badge .dot{animation:none}.bar > i{transition:none}button:active{transform:none}.reset:active{transform:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><b>Siege</b> Conductor</div>
+    <div class="topright">
+      <div class="count" id="count"></div>
+      <button class="reset" id="reset" title="Start over" aria-label="Start over" hidden>&#x21BA;</button>
+    </div>
+  </div>
+  <div class="bar"><i id="prog"></i></div>
+  <div class="stage"><div id="card" class="card"></div></div>
+  <div class="next-up" id="nextup"></div>
+  <div class="controls">
+    <button class="back" id="back" aria-label="Previous step">&larr;</button>
+    <button class="go" id="go"></button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ---------------------------------------------------------------
+   SIEGE CONDUCTOR
+   Watch the Siege of Mandalore (Clone Wars S7) interwoven with
+   Revenge of the Sith as one continuous story.
+
+   Two "lanes":  Clone Wars (cyan)  +  Revenge of the Sith (amber).
+   Colour follows the SHOW. You pick HOW you're watching at setup —
+   two tabs, phone + laptop, laptop + TV, or your own labels.
+--------------------------------------------------------------- */
+const CW="cw", ROTS="rots";
+
+const steps = [
+  {show:CW,   media:"Clone Wars", ep:"S7E9",          from:"0:00",      to:"16:27",     scene:"Anakin, Obi-Wan & Ahsoka reunite. The boys leave to save Palpatine."},
+  {show:ROTS, media:"Revenge of the Sith", ep:"",     from:"0:00",      to:"27:36",     scene:"The Battle of Coruscant, Count Dooku's death, and the crash landing."},
+  {show:CW,   media:"Clone Wars", ep:"S7E9",          from:"16:27",     to:"End",       scene:"Ahsoka & Bo-Katan land on Mandalore to hunt Maul."},
+  {show:CW,   media:"Clone Wars", ep:"S7E10",         from:"0:00",      to:"3:00",      scene:"The opening of “The Phantom Apprentice” — the Siege begins."},
+  {show:ROTS, media:"Revenge of the Sith", ep:"",     from:"27:36",     to:"51:35",     scene:"Anakin learns Padmé is pregnant and is appointed to the Jedi Council."},
+  {show:CW,   media:"Clone Wars", ep:"S7E10",         from:"3:00",      to:"6:00",      scene:"Ahsoka's holo-briefing with Obi-Wan, who mentions Anakin's new assignment."},
+  {show:ROTS, media:"Revenge of the Sith", ep:"",     from:"51:35",     to:"1:01:55",   scene:"Anakin is told to spy on Palpatine; Obi-Wan leaves for Utapau to fight Grievous."},
+  {show:CW,   media:"Clone Wars", ep:"S7E10",         from:"6:00",      to:"End",       scene:"The rest of “The Phantom Apprentice” — Ahsoka vs. Maul, the throne-room duel."},
+  {show:ROTS, media:"Revenge of the Sith", ep:"",     from:"1:01:55",   to:"1:23:55",   scene:"Obi-Wan defeats Grievous; Anakin betrays Mace Windu; Order 66 is declared."},
+  {show:CW,   media:"Clone Wars", ep:"S7E11",         from:"0:00",      to:"8:00",      scene:"Maul is captured; Ahsoka senses Anakin's turn to the dark side."},
+  {show:CW,   media:"Clone Wars", ep:"S7E11 → S7E12", from:"E11 8:00", to:"E12 17:08", scene:"Captain Rex receives Order 66; Ahsoka fights to save him. Finish E11, roll straight into E12, stop at 17:08."},
+  {show:ROTS, media:"Revenge of the Sith", ep:"",     from:"1:23:55",   to:"End",       scene:"The Mustafar & Coruscant duels, the births of Luke & Leia, and the birth of Darth Vader."},
+  {show:CW,   media:"Clone Wars", ep:"S7E12",         from:"17:08",     to:"End",       scene:"The final, haunting epilogue of the series."},
+];
+
+const showMeta = {
+  [CW]:   {short:"Clone Wars S7",        acc:"var(--holo)",  dim:"var(--holo-dim)"},
+  [ROTS]: {short:"Revenge of the Sith",  acc:"var(--ember)", dim:"var(--ember-dim)"},
+};
+
+/* Each preset describes how the two shows are physically arranged.
+   The colour never moves — only the label/glyph and the action verb. */
+const PRESETS = {
+  tabs:        {name:"Two browser tabs",  hint:"One screen · a tab for each",   verb:"Switch to",  lanes:{[CW]:{label:"Clone Wars tab", glyph:"📺"}, [ROTS]:{label:"Sith tab", glyph:"🎬"}}},
+  phoneLaptop: {name:"Phone + Laptop",     hint:"Clone Wars on phone, film on laptop", verb:"Grab your", lanes:{[CW]:{label:"phone",          glyph:"📱"}, [ROTS]:{label:"laptop",   glyph:"💻"}}},
+  laptopTv:    {name:"Laptop + TV",        hint:"Clone Wars on laptop, film on the TV", verb:"Switch to", lanes:{[CW]:{label:"laptop",        glyph:"💻"}, [ROTS]:{label:"TV",       glyph:"📺"}}},
+};
+
+/* ---- persistent state ---- */
+const STORE_SETUP="siege.setup.v2", STORE_IDX="siege.idx.v2";
+function loadSetup(){ try{ const r=localStorage.getItem(STORE_SETUP); return r?JSON.parse(r):null; }catch(e){ return null; } }
+function saveSetup(s){ try{ localStorage.setItem(STORE_SETUP, JSON.stringify(s)); }catch(e){} }
+function saveIdx(i){ try{ localStorage.setItem(STORE_IDX, String(i)); }catch(e){} }
+function loadIdx(){ try{ const r=localStorage.getItem(STORE_IDX); return r===null?-1:parseInt(r,10); }catch(e){ return -1; } }
+function clearAll(){ try{ localStorage.removeItem(STORE_SETUP); localStorage.removeItem(STORE_IDX); }catch(e){} }
+
+/* setup = {verb, lanes:{cw:{label,glyph}, rots:{label,glyph}}}  */
+let setup = loadSetup();
+let idx = setup ? loadIdx() : -1;
+
+const card=document.getElementById("card"),goBtn=document.getElementById("go"),backBtn=document.getElementById("back");
+const countEl=document.getElementById("count"),progEl=document.getElementById("prog"),nextupEl=document.getElementById("nextup");
+const resetBtn=document.getElementById("reset"),controls=document.querySelector(".controls"),bar=document.querySelector(".bar");
+const root=document.documentElement;
+function setAcc(a,d){root.style.setProperty("--acc",a);root.style.setProperty("--acc-dim",d);}
+function laneOf(show){ return setup.lanes[show]; }
+
+/* ---- main render ---- */
+function render(){
+  if(!setup){ renderSetup(); return; }
+  resetBtn.hidden=false; controls.style.display=""; bar.style.visibility="visible";
+  if(idx===-1){ renderIntro(); return; }
+  if(idx>=steps.length){ renderDone(); return; }
+
+  const s=steps[idx], sm=showMeta[s.show], lane=laneOf(s.show);
+  setAcc(sm.acc,sm.dim);
+  saveIdx(idx);
+
+  const prev=idx>0?steps[idx-1]:null;
+  const switched=!prev||prev.show!==s.show;
+  const pausedHint = (s.from!=="0:00" && !s.from.startsWith("E")) ? ` (paused at <b>${s.from}</b>)` : "";
+  const cueText = switched
+    ? `<b>${setup.verb} your ${lane.label}.</b> Press play${pausedHint}, watch to <b>${s.to}</b>, then pause.`
+    : `<b>Stay on your ${lane.label}.</b> Keep rolling to <b>${s.to}</b>, then pause.`;
+
+  card.innerHTML=`
+    <span class="badge"><span class="dot"></span><span class="glyph">${lane.glyph}</span>${lane.label}</span>
+    <div class="media">${s.media}</div>
+    ${s.ep?`<div class="ep">${s.ep}</div>`:``}
+    <div class="range"><span class="t">${s.from}</span><span class="arrow">→</span><span class="t">${s.to}</span></div>
+    <div class="scene">${s.scene}</div>
+    <div class="cue">${cueText}</div>`;
+
+  countEl.innerHTML=`STEP <b>${idx+1}</b> / ${steps.length}`;
+  progEl.style.width=((idx+1)/(steps.length+1))*100+"%";
+
+  const next=idx+1<steps.length?steps[idx+1]:null;
+  if(next){
+    const nl=laneOf(next.show);
+    const move = next.show===s.show ? "Continue" : `Switch → ${nl.label}`;
+    root.style.setProperty("--nextacc",showMeta[next.show].acc);
+    goBtn.innerHTML=`<span>Done ✓</span><span class="sub">${move}</span>`;
+    nextupEl.innerHTML=`Next: <b>${nl.glyph} ${next.media}${next.ep?` ${next.ep}`:""}</b> &nbsp;·&nbsp; ${next.from} → ${next.to}`;
+  }else{
+    root.style.setProperty("--nextacc",sm.acc);
+    goBtn.innerHTML=`<span>Finish</span>`;
+    nextupEl.innerHTML=`Last clip — the epilogue.`;
+  }
+  backBtn.disabled=false;
+}
+
+function renderIntro(){
+  setAcc("var(--holo)","var(--holo-dim)");root.style.setProperty("--nextacc","var(--holo)");
+  saveIdx(-1);
+  const cw=laneOf(CW), rt=laneOf(ROTS);
+  card.innerHTML=`
+    <div class="lead">The <span class="a">Siege</span> +<br><span class="b">Revenge of the Sith</span></div>
+    <div class="notes">
+      <div class="note"><span class="k">⏸</span><div><b>Pause, never stop.</b> Each screen holds its spot so you resume right where you left off.</div></div>
+      <div class="note"><span class="k">🎬</span><div><b>Trust the scene, not the second.</b> If a movie cut runs slightly off, stop on the moment described.</div></div>
+      <div class="note"><span class="k">→</span><div><b>One tap per step.</b> The button tells you which screen to grab next.</div></div>
+    </div>
+    <div class="legend">
+      <div class="chip p"><div class="h">${cw.glyph} ${cap(cw.label)}</div><div class="d">Clone Wars S7</div></div>
+      <div class="chip l"><div class="h">${rt.glyph} ${cap(rt.label)}</div><div class="d">Revenge of the Sith</div></div>
+    </div>`;
+  countEl.innerHTML=`SETUP`;progEl.style.width="0%";
+  goBtn.innerHTML=`<span>Start the watch</span>`;
+  nextupEl.innerHTML=`13 clips · ~3.5 hours · one continuous story`;
+  backBtn.disabled=true;
+}
+
+function renderDone(){
+  setAcc("var(--ember)","var(--ember-dim)");root.style.setProperty("--nextacc","var(--ember)");
+  saveIdx(steps.length);
+  card.innerHTML=`
+    <div class="done-emoji">🕊️</div>
+    <div class="lead" style="font-size:clamp(22px,7vw,30px)">That's the whole<br>fall of the Republic.</div>
+    <div class="scene" style="margin-top:6px">Siege of Mandalore and Revenge of the Sith, watched as one interwoven story — Ahsoka and Anakin's paths splitting in real time.</div>`;
+  countEl.innerHTML=`COMPLETE`;progEl.style.width="100%";
+  goBtn.innerHTML=`<span>Watch again</span>`;nextupEl.innerHTML=``;backBtn.disabled=false;
+}
+
+/* ---- setup screen ---- */
+function renderSetup(){
+  setAcc("var(--holo)","var(--holo-dim)");root.style.setProperty("--nextacc","var(--holo)");
+  resetBtn.hidden=true; controls.style.display="none"; bar.style.visibility="hidden";
+  countEl.innerHTML="";
+  card.innerHTML=`
+    <div class="setup-h">How are you <span class="a">watching</span>?</div>
+    <div class="setup-sub">Pick where each show plays. <b style="color:var(--holo)">Clone Wars</b> goes on the first, <b style="color:var(--ember)">Revenge of the Sith</b> on the second.</div>
+    <div class="opts" id="opts"></div>
+    <div id="customBox" class="hide">
+      <div class="custom-row">
+        <input class="a" id="cName" maxlength="22" placeholder="Clone Wars screen" />
+        <input class="b" id="rName" maxlength="22" placeholder="Sith screen" />
+      </div>
+      <button class="custom-go" id="customGo">Use these labels</button>
+      <button class="back-link" id="customBack">← back to presets</button>
+    </div>`;
+
+  const opts=document.getElementById("opts");
+  Object.keys(PRESETS).forEach(key=>{
+    const p=PRESETS[key];
+    const b=document.createElement("button");
+    b.className="opt";
+    b.innerHTML=`<span class="ico">${p.lanes[CW].glyph}${p.lanes[ROTS].glyph}</span>
+      <span class="txt"><span class="n">${p.name}</span><span class="s">${p.hint}</span></span>
+      <span class="go-arrow">→</span>`;
+    b.addEventListener("click",()=>choosePreset(key));
+    opts.appendChild(b);
+  });
+  const cust=document.createElement("button");
+  cust.className="opt";
+  cust.innerHTML=`<span class="ico">✎</span>
+    <span class="txt"><span class="n">Custom labels</span><span class="s">Name the two screens yourself</span></span>
+    <span class="go-arrow">→</span>`;
+  cust.addEventListener("click",showCustom);
+  opts.appendChild(cust);
+}
+function showCustom(){
+  document.getElementById("opts").classList.add("hide");
+  document.getElementById("customBox").classList.remove("hide");
+  document.getElementById("cName").focus();
+}
+function hideCustom(){
+  document.getElementById("customBox").classList.add("hide");
+  document.getElementById("opts").classList.remove("hide");
+}
+function choosePreset(key){
+  const p=PRESETS[key];
+  setup={verb:p.verb, lanes:{[CW]:{...p.lanes[CW]}, [ROTS]:{...p.lanes[ROTS]}}};
+  saveSetup(setup); idx=-1; saveIdx(-1); render();
+}
+function chooseCustom(){
+  const a=(document.getElementById("cName").value||"Clone Wars screen").trim();
+  const b=(document.getElementById("rName").value||"Sith screen").trim();
+  setup={verb:"Switch to", lanes:{[CW]:{label:a, glyph:"🔵"}, [ROTS]:{label:b, glyph:"🔶"}}};
+  saveSetup(setup); idx=-1; saveIdx(-1); render();
+}
+
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+/* ---- events ---- */
+goBtn.addEventListener("click",()=>{ idx=(idx>=steps.length)?-1:idx+1; render(); });
+backBtn.addEventListener("click",()=>{ if(idx>-1){idx--;render();} });
+resetBtn.addEventListener("click",()=>{
+  if(confirm("Start over? This clears your setup and progress.")){ clearAll(); setup=null; idx=-1; render(); }
+});
+document.addEventListener("click",(e)=>{
+  if(e.target&&e.target.id==="customGo") chooseCustom();
+  if(e.target&&e.target.id==="customBack") hideCustom();
+});
+document.addEventListener("keydown",(e)=>{
+  if(!setup) return;                 // let inputs behave normally on setup screen
+  if(e.key==="ArrowRight"||e.key===" "){e.preventDefault();goBtn.click();}
+  if(e.key==="ArrowLeft"){e.preventDefault();if(!backBtn.disabled)backBtn.click();}
+});
+document.addEventListener("keydown",(e)=>{
+  if(setup) return;
+  if(e.key==="Enter"&&!document.getElementById("customBox").classList.contains("hide")) chooseCustom();
+});
+
+render();
+
+/* register the service worker so the app installs to the home screen
+   and keeps working with no internet after the first open */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js").catch(()=>{}); });
+}
+</script>
+</body>
+</html>

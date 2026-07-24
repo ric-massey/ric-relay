@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>/systems — inside ORRIN</title>
   <meta name="description" content="Step inside ORRIN — Ric Massey's cognitive runtime. Live neural telemetry.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Ric's Relay">
+  <meta property="og:title" content="Inside ORRIN — Ric's Relay">
+  <meta property="og:description" content="Step inside ORRIN — Ric Massey's cognitive runtime. Live neural telemetry.">
+  <meta property="og:url" content="https://ric-massey.github.io/ric-relay/systems.html">
+  <meta name="twitter:card" content="summary">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%2306050e'/><circle cx='50' cy='50' r='10' fill='%234de8ff'/><circle cx='25' cy='30' r='6' fill='%23b48aff'/><circle cx='75' cy='68' r='6' fill='%23b48aff'/><line x1='50' y1='50' x2='25' y2='30' stroke='%234de8ff' stroke-width='2'/><line x1='50' y1='50' x2='75' y2='68' stroke='%234de8ff' stroke-width='2'/></svg>">
   <style>
     :root {
@@ -50,10 +56,27 @@
     .masthead .welcome { color: var(--whisper); font-size: 0.85rem; margin: 0.4rem 0 0.9rem; }
     .masthead .welcome .lit { color: var(--dendrite); }
 
-    nav { font-size: 0.8rem; color: var(--whisper); letter-spacing: 0.08em; display: flex; flex-wrap: wrap; gap: 0.3rem 1.1rem; }
-    nav a { color: var(--whisper); text-decoration: none; }
-    nav a:hover { color: var(--axon); text-shadow: 0 0 10px var(--axon); }
-    nav .here { color: var(--axon); }
+    /* synaptic pathway switcher — the menu is a cortical map */
+    nav.cortex { margin-top: 0.2rem; }
+    nav.cortex .rail-label { color: var(--whisper); font-size: 0.62rem; letter-spacing: 0.26em; display: block; margin-bottom: 0.55rem; }
+    nav.cortex .nodes { display: flex; flex-wrap: wrap; gap: 0.45rem; font-size: 0.72rem; letter-spacing: 0.08em; }
+    nav.cortex a, nav.cortex .here {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.26rem 0.7rem; border: 1px solid var(--membrane); border-radius: 999px;
+      color: var(--whisper); text-decoration: none; background: rgba(16, 14, 34, 0.6);
+      transition: color 0.25s, border-color 0.25s, box-shadow 0.25s;
+    }
+    nav.cortex a::before, nav.cortex .here::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--whisper); flex-shrink: 0;
+    }
+    nav.cortex a:hover { color: var(--axon); border-color: var(--axon); box-shadow: 0 0 12px rgba(77, 232, 255, 0.25); }
+    nav.cortex a:hover::before { background: var(--axon); box-shadow: 0 0 8px var(--axon); }
+    nav.cortex .here {
+      color: #06131b; background: var(--axon); border-color: var(--axon);
+      font-weight: 700; box-shadow: 0 0 16px rgba(77, 232, 255, 0.45);
+    }
+    nav.cortex .here::before { background: #06131b; animation: pulse 1.6s infinite; }
+    nav.cortex a.home { border-style: dashed; }
 
     .entering {
       color: var(--whisper);
@@ -160,16 +183,19 @@
     <header class="masthead">
       <a class="brand" href="index.html">RIC'S RELAY</a><span class="wing"> · NEURAL WING</span>
       <p class="welcome"><span class="lit">welcome, visitor.</span> you're inside the patient — please don't touch the memories.</p>
-      <nav>
-        <a href="index.html">← the relay</a>
-        <span class="here">orrin's mind</span>
-        <a href="climbing.html">climbing</a>
-        <a href="training.html">training</a>
-        <a href="exploration.html">event horizon</a>
-        <a href="workbench.html">workbench</a>
-        <a href="captures.html">darkroom</a>
-        <a href="log.html">the log</a>
-        <a href="updates.html">bulletins</a>
+      <nav class="cortex" aria-label="Relay rooms">
+        <span class="rail-label">SYNAPTIC PATHWAYS — FIRE OFF TO ANOTHER ROOM OF THE RELAY</span>
+        <div class="nodes">
+          <a class="home" href="index.html">relay</a>
+          <span class="here" aria-current="page">orrin</span>
+          <a href="climbing.html">climbing</a>
+          <a href="training.html">training</a>
+          <a href="exploration.html">exploration</a>
+          <a href="workbench.html">workbench</a>
+          <a href="captures.html">captures</a>
+          <a href="log.html">log</a>
+          <a href="updates.html">updates</a>
+        </div>
       </nav>
     </header>
 

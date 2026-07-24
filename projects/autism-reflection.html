@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Reflection on the DSM-5 Autism Criteria</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,800&family=Newsreader:ital,opsz@0,6..72;1,6..72&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4efe6;
+    --paper-2:#ece4d6;
+    --ink:#221c16;
+    --ink-soft:#5c5247;
+    --line:#cabfa d;
+    --line:#c9bda9;
+    --accent:#9a4a2f;
+    --accent-soft:#c47a52;
+    --sage:#5e6b54;
+    --gold:#b08642;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Newsreader',Georgia,serif;
+    font-size:18px;
+    line-height:1.55;
+    background-image:
+      radial-gradient(circle at 12% 18%, rgba(176,134,66,.07), transparent 30%),
+      radial-gradient(circle at 88% 82%, rgba(154,74,47,.06), transparent 35%);
+    min-height:100vh;
+  }
+  .wrap{max-width:680px;margin:0 auto;padding:32px 22px 80px}
+
+  /* header */
+  .kicker{
+    font-family:'Fraunces',serif;font-weight:600;
+    letter-spacing:.22em;text-transform:uppercase;font-size:11px;
+    color:var(--accent);margin-bottom:14px;
+  }
+  h1{
+    font-family:'Fraunces',serif;font-weight:800;
+    font-size:clamp(30px,8vw,46px);line-height:1.02;
+    letter-spacing:-.02em;margin-bottom:18px;
+  }
+  h1 em{font-style:italic;color:var(--accent)}
+  .lede{font-size:18px;color:var(--ink-soft);max-width:56ch}
+  .rule{height:1px;background:var(--line);margin:26px 0}
+  .rule.thick{height:2px;background:var(--ink)}
+
+  .note{
+    background:var(--paper-2);
+    border-left:3px solid var(--gold);
+    padding:14px 16px;font-size:15px;color:var(--ink-soft);
+    margin:22px 0;border-radius:0 6px 6px 0;
+  }
+  .note b{color:var(--ink)}
+
+  /* progress */
+  #progwrap{position:sticky;top:0;z-index:5;background:linear-gradient(var(--paper),var(--paper) 70%,transparent);padding:10px 0 12px;margin-bottom:6px}
+  .progmeta{display:flex;justify-content:space-between;font-family:'Fraunces',serif;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:7px}
+  .track{height:6px;background:var(--paper-2);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+  .fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--gold));transition:width .4s cubic-bezier(.4,0,.2,1)}
+
+  /* domain heading */
+  .domain-tag{
+    font-family:'Fraunces',serif;font-weight:600;font-size:12px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--sage);
+    display:flex;align-items:center;gap:10px;margin:34px 0 4px;
+  }
+  .domain-tag .dot{width:7px;height:7px;border-radius:50%;background:var(--sage)}
+  .domain-title{font-family:'Fraunces',serif;font-weight:600;font-size:21px;letter-spacing:-.01em;margin-bottom:6px}
+  .domain-sub{font-size:14.5px;color:var(--ink-soft);font-style:italic;margin-bottom:8px}
+
+  /* question card */
+  .q{
+    border-top:1px solid var(--line);
+    padding:22px 0 6px;
+    animation:fade .5s ease both;
+  }
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .q .qnum{font-family:'Fraunces',serif;font-weight:600;font-size:12px;color:var(--accent-soft);letter-spacing:.1em}
+  .q .qtext{font-size:19px;line-height:1.4;margin:6px 0 16px;font-family:'Newsreader',serif}
+  .opts{display:grid;gap:9px}
+  .opt{
+    display:flex;align-items:center;gap:13px;
+    background:transparent;border:1px solid var(--line);
+    border-radius:10px;padding:12px 15px;cursor:pointer;
+    font-family:'Fraunces',serif;font-size:15px;color:var(--ink);
+    text-align:left;transition:all .15s ease;width:100%;
+  }
+  .opt:hover{border-color:var(--accent-soft);background:rgba(196,122,82,.06)}
+  .opt .bub{
+    width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line);
+    flex-shrink:0;transition:all .15s ease;position:relative;
+  }
+  .opt.sel{border-color:var(--accent);background:rgba(154,74,47,.09)}
+  .opt.sel .bub{border-color:var(--accent);background:var(--accent)}
+  .opt.sel .bub::after{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--paper)}
+
+  .btn{
+    font-family:'Fraunces',serif;font-weight:600;font-size:16px;
+    background:var(--ink);color:var(--paper);border:none;
+    padding:15px 26px;border-radius:30px;cursor:pointer;
+    letter-spacing:.02em;transition:all .2s ease;margin-top:28px;
+    display:inline-flex;align-items:center;gap:10px;
+  }
+  .btn:hover{background:var(--accent);transform:translateY(-1px)}
+  .btn:disabled{opacity:.35;cursor:not-allowed;transform:none;background:var(--ink)}
+  .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink);margin-top:14px}
+  .btn.ghost:hover{background:var(--ink);color:var(--paper)}
+
+  /* results */
+  #results{display:none}
+  .res-band{
+    border:2px solid var(--ink);border-radius:14px;padding:22px;margin:18px 0;
+    background:var(--paper-2);
+  }
+  .res-band .label{font-family:'Fraunces',serif;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft)}
+  .res-band .level{font-family:'Fraunces',serif;font-weight:800;font-size:24px;margin:4px 0 8px;letter-spacing:-.01em}
+  .meter{height:10px;background:var(--paper);border:1px solid var(--line);border-radius:20px;overflow:hidden;margin:14px 0 6px}
+  .meter .m{height:100%;border-radius:20px;transition:width 1s cubic-bezier(.2,.8,.2,1)}
+  .scorerow{display:flex;justify-content:space-between;font-family:'Fraunces',serif;font-size:12px;color:var(--ink-soft);letter-spacing:.05em}
+
+  .levels{display:grid;gap:0;margin:14px 0}
+  .lvl{border-left:3px solid var(--line);padding:10px 0 10px 16px;margin-bottom:4px;opacity:.5;transition:opacity .3s}
+  .lvl.on{opacity:1;border-left-color:var(--accent)}
+  .lvl h4{font-family:'Fraunces',serif;font-weight:600;font-size:15px}
+  .lvl p{font-size:14.5px;color:var(--ink-soft)}
+
+  .crit{font-family:'Fraunces',serif;font-size:14px;display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px dotted var(--line)}
+  .crit .mark{font-weight:800;flex-shrink:0}
+  .crit .yes{color:var(--sage)}
+  .crit .no{color:var(--accent-soft)}
+
+  .hide{display:none !important}
+  a{color:var(--accent)}
+  .foot{font-size:13px;color:var(--ink-soft);margin-top:30px;font-style:italic;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ====== INTRO ====== -->
+  <div id="intro">
+    <div class="kicker">A curiosity exercise · based on DSM-5</div>
+    <h1>The shape of the <em>criteria</em></h1>
+    <p class="lede">A walk through how the <i>Diagnostic and Statistical Manual of Mental Disorders, 5th edition</i> describes Autism Spectrum Disorder — its two core domains, its supporting conditions, and its three levels of support.</p>
+
+    <div class="note">
+      <b>This is not a diagnostic test.</b> Autism can only be assessed by a qualified clinician through interviews, history, and observation — never a questionnaire. This is a guided reflection to show you how the manual is actually built. Answer for yourself, or just read along.
+    </div>
+
+    <div class="rule"></div>
+    <p style="color:var(--ink-soft);font-size:15.5px">You'll answer short statements on a 4-point scale. At the end you'll see how your answers map onto the manual's structure, and which <b>support level</b> the pattern most resembles in each domain.</p>
+    <button class="btn" id="startBtn">Begin the reflection →</button>
+  </div>
+
+  <!-- ====== QUIZ ====== -->
+  <div id="quiz" class="hide">
+    <div id="progwrap">
+      <div class="progmeta"><span id="pLabel">Domain A</span><span id="pCount">0 / 0</span></div>
+      <div class="track"><div class="fill" id="fill"></div></div>
+    </div>
+    <div id="qhost"></div>
+    <button class="btn" id="nextBtn" disabled>Continue →</button>
+  </div>
+
+  <!-- ====== RESULTS ====== -->
+  <div id="results">
+    <div class="kicker">Your reflection, mapped</div>
+    <h1>How it lines <em>up</em></h1>
+    <p class="lede" id="resIntro"></p>
+    <div id="resBody"></div>
+    <button class="btn ghost" id="restartBtn">↺ Start over</button>
+    <p class="foot">
+      DSM-5 (and its 2022 text revision, DSM-5-TR) require that traits appear in the <b>early developmental period</b>, cause <b>clinically significant impairment</b>, and aren't better explained by intellectual disability — and crucially, that they be evaluated by a professional. A self-reflection can't establish any of that. If this resonates and you want real answers, a clinician (psychologist, psychiatrist, or specialist GP referral) is the path.
+    </p>
+  </div>
+
+</div>
+
+<script>
+/* ---------- DSM-5 structured content ---------- */
+const scale = [
+  {t:"Rarely or never", v:0},
+  {t:"Sometimes", v:1},
+  {t:"Often", v:2},
+  {t:"Almost always", v:3},
+];
+
+// Domain A = Criterion A: social communication & interaction (3 sub-areas, all required)
+// Domain B = Criterion B: restricted/repetitive behaviors (4 sub-areas, 2+ required)
+const sections = [
+  {
+    key:"A",
+    tag:"Criterion A · Domain One",
+    title:"Social communication & interaction",
+    sub:"Persistent differences across multiple contexts — the manual lists three sub-areas, all of which must be present.",
+    color:"#9a4a2f",
+    questions:[
+      {sa:"A1", t:"I find back-and-forth conversation effortful — knowing when to speak, share, or respond in the expected rhythm."},
+      {sa:"A1", t:"Sharing my interests, emotions, or reactions with others doesn't come naturally to me."},
+      {sa:"A1", t:"Small talk and approaching people socially feels unintuitive or draining."},
+      {sa:"A2", t:"Reading or using eye contact, gestures, and facial expression feels harder for me than it seems to be for others."},
+      {sa:"A2", t:"My body language or tone doesn't always match what I'm trying to express."},
+      {sa:"A3", t:"Making, keeping, or understanding friendships has been a recurring challenge."},
+      {sa:"A3", t:"I struggle to adjust how I act to fit different social settings."},
+    ]
+  },
+  {
+    key:"B",
+    tag:"Criterion B · Domain Two",
+    title:"Restricted & repetitive patterns",
+    sub:"Restricted, repetitive behaviors, interests, or activities — four sub-areas, of which at least two must be present.",
+    color:"#5e6b54",
+    questions:[
+      {sa:"B1", t:"I repeat movements, phrases, or actions (rocking, hand movements, echoing words, lining things up)."},
+      {sa:"B2", t:"Changes to my routine or plans are genuinely distressing, even small ones."},
+      {sa:"B2", t:"I rely heavily on rituals or doing things in a fixed, particular way."},
+      {sa:"B3", t:"I have intense, highly focused interests that absorb a lot of my time and attention."},
+      {sa:"B3", t:"My interests are unusually narrow or pursued with unusual intensity compared to peers."},
+      {sa:"B4", t:"I'm strongly over- or under-sensitive to sounds, lights, textures, smells, or temperature."},
+      {sa:"B4", t:"I seek out or am fascinated by particular sensory experiences (spinning objects, certain textures)."},
+    ]
+  },
+  {
+    key:"C",
+    tag:"Criteria C · D · E · Supporting conditions",
+    title:"The supporting conditions",
+    sub:"For a diagnosis the manual also requires these — they are why a clinician, not a quiz, is needed.",
+    color:"#b08642",
+    questions:[
+      {sa:"C", t:"These traits have been present since early childhood (even if they became clearer later)."},
+      {sa:"D", t:"These traits meaningfully affect my daily life — social, work, school, or other areas."},
+    ]
+  }
+];
+
+/* ---------- build flat question list ---------- */
+let flat=[];
+sections.forEach((s,si)=>s.questions.forEach((q,qi)=>flat.push({...q,sec:si,first:qi===0})));
+const answers={};
+
+let idx=0;
+const el=id=>document.getElementById(id);
+
+el('startBtn').onclick=()=>{el('intro').classList.add('hide');el('quiz').classList.remove('hide');render();window.scrollTo(0,0);};
+el('restartBtn').onclick=()=>{Object.keys(answers).forEach(k=>delete answers[k]);idx=0;el('results').style.display='none';el('intro').classList.remove('hide');el('quiz').classList.add('hide');window.scrollTo(0,0);};
+
+function render(){
+  const q=flat[idx], sec=sections[q.sec];
+  const host=el('qhost'); host.innerHTML='';
+
+  if(q.first){
+    const h=document.createElement('div');
+    h.innerHTML=`<div class="domain-tag"><span class="dot" style="background:${sec.color}"></span>${sec.tag}</div>
+      <div class="domain-title">${sec.title}</div>
+      <div class="domain-sub">${sec.sub}</div>`;
+    host.appendChild(h);
+  }
+
+  const card=document.createElement('div');
+  card.className='q';
+  card.innerHTML=`<div class="qnum">QUESTION ${idx+1}</div><div class="qtext">${q.t}</div>`;
+  const opts=document.createElement('div');opts.className='opts';
+  scale.forEach(o=>{
+    const b=document.createElement('button');
+    b.className='opt'+(answers[idx]===o.v?' sel':'');
+    b.innerHTML=`<span class="bub"></span>${o.t}`;
+    b.onclick=()=>{answers[idx]=o.v;render();};
+    opts.appendChild(b);
+  });
+  card.appendChild(opts);
+  host.appendChild(card);
+
+  // progress
+  el('pLabel').textContent=sec.title;
+  el('pCount').textContent=`${idx+1} / ${flat.length}`;
+  el('fill').style.width=((idx+(answers[idx]!=null?1:0))/flat.length*100)+'%';
+
+  const nb=el('nextBtn');
+  nb.disabled=answers[idx]==null;
+  nb.textContent=idx===flat.length-1?'See how it maps →':'Continue →';
+}
+
+el('nextBtn').onclick=()=>{
+  if(idx<flat.length-1){idx++;render();window.scrollTo({top:0,behavior:'smooth'});}
+  else showResults();
+};
+
+/* ---------- scoring ---------- */
+function showResults(){
+  el('quiz').classList.add('hide');
+  const R=el('results');R.style.display='block';window.scrollTo(0,0);
+
+  // sub-area sums
+  const sa={};
+  flat.forEach((q,i)=>{sa[q.sa]=(sa[q.sa]||0)+(answers[i]||0);});
+  const saMax={A1:9,A2:6,A3:6,B1:3,B2:6,B3:6,B4:6,C:3,D:3};
+
+  // domain A: needs presence in all 3 sub-areas (we treat sub-area "present" if avg>=1.5 per item)
+  const present=(code,nItems)=> (sa[code]/nItems)>=1.5;
+  const aPresent={A1:present('A1',3),A2:present('A2',2),A3:present('A3',2)};
+  const aMet=Object.values(aPresent).every(Boolean);
+  const bFlags={B1:present('B1',1),B2:present('B2',2),B3:present('B3',2),B4:present('B4',2)};
+  const bCount=Object.values(bFlags).filter(Boolean).length;
+  const bMet=bCount>=2;
+
+  // domain scores as % of max, for severity feel
+  const aScore=(sa.A1+sa.A2+sa.A3)/(9+6+6);
+  const bScore=(sa.B1+sa.B2+sa.B3+sa.B4)/(3+6+6+6);
+
+  const level=p=> p>=0.7?3 : p>=0.4?2 : p>=0.2?1 : 0;
+  const aLvl=level(aScore), bLvl=level(bScore);
+
+  const lvlText={
+    0:{n:"Below threshold",d:"Few of these traits were endorsed strongly."},
+    1:{n:"Level 1 — Requiring support",d:"Without support, differences cause noticeable problems; difficulty initiating interactions, some inflexibility."},
+    2:{n:"Level 2 — Requiring substantial support",d:"Marked differences apparent even with support; restricted behaviors obvious to a casual observer."},
+    3:{n:"Level 3 — Requiring very substantial support",d:"Severe differences cause major impairment; very limited initiation, extreme difficulty with change."},
+  };
+  const palette={0:"#9a9183",1:"#b08642",2:"#c47a52",3:"#9a4a2f"};
+
+  el('resIntro').textContent = (aMet||bMet)
+    ? "Here's how your answers sit against the manual's structure. Remember this is a mirror of the criteria, not a verdict."
+    : "Your answers endorsed relatively few of the traits strongly. Here's the structure anyway, so you can see how it all fits.";
+
+  function domainBlock(name,desc,score,lvl){
+    return `<div class="res-band">
+      <div class="label">${name}</div>
+      <div class="level" style="color:${palette[lvl]}">${lvlText[lvl].n}</div>
+      <p style="font-size:15px;color:var(--ink-soft)">${desc}</p>
+      <div class="meter"><div class="m" style="width:0%;background:${palette[lvl]}" data-w="${Math.round(score*100)}"></div></div>
+      <div class="scorerow"><span>endorsement</span><span>${Math.round(score*100)}%</span></div>
+      <div class="levels">
+        ${[1,2,3].map(L=>`<div class="lvl ${L===lvl?'on':''}"><h4>${lvlText[L].n}</h4><p>${lvlText[L].d}</p></div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  let html='';
+  html+=domainBlock("Domain A — Social communication","The manual requires noticeable differences in all three sub-areas of this domain.",aScore,aLvl);
+  html+=`<div class="rule"></div>`;
+  html+=domainBlock("Domain B — Restricted & repetitive","The manual requires at least two of the four sub-areas of this domain.",bScore,bLvl);
+
+  // criteria checklist
+  html+=`<div class="rule thick"></div><div class="domain-title" style="margin-top:18px">The manual's logic, applied</div>
+    <p class="domain-sub">DSM-5 needs <b>all</b> of A, <b>2 of 4</b> in B, plus the supporting criteria. Here's what your answers triggered:</p>`;
+  const checks=[
+    [`Domain A present in all 3 sub-areas`, aMet, `${Object.values(aPresent).filter(Boolean).length} of 3 strongly endorsed`],
+    [`Domain B present in ≥2 of 4 sub-areas`, bMet, `${bCount} of 4 strongly endorsed`],
+    [`Criterion C — early developmental period`, (sa.C/3)>=0.5, `your answer`],
+    [`Criterion D — significant life impact`, (sa.D/3)>=0.5, `your answer`],
+  ];
+  checks.forEach(([t,ok,note])=>{
+    html+=`<div class="crit"><span class="mark ${ok?'yes':'no'}">${ok?'✓':'○'}</span><span><b>${t}</b><br><span style="color:var(--ink-soft);font-size:13px">${note}</span></span></div>`;
+  });
+
+  const all = aMet&&bMet&&(sa.C/3)>=0.5&&(sa.D/3)>=0.5;
+  html+=`<div class="note" style="margin-top:22px"><b>Reading this honestly:</b> ${
+    all
+    ? "Your answers happened to line up with the overall shape of the criteria. That is genuinely interesting and worth being curious about — but it is not a diagnosis. The same answers could reflect anxiety, ADHD, introversion, a hard season of life, or simply being human. Only a clinician can sort that out."
+    : "Your answers matched some of the structure but not the full pattern the manual describes. The criteria are designed to be met as a whole, consistently, since early life — which is exactly why they're applied by a professional rather than a self-test."
+  }</div>`;
+
+  el('resBody').innerHTML=html;
+  // animate meters
+  requestAnimationFrame(()=>setTimeout(()=>document.querySelectorAll('.m').forEach(m=>m.style.width=m.dataset.w+'%'),120));
+}
+</script>
+</body>
+</html>

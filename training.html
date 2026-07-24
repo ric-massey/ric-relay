@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Training — Ric's Relay</title>
   <meta name="description" content="Ric's training feed — runs, workouts, and health telemetry.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Ric's Relay">
+  <meta property="og:title" content="Training — Ric's Relay">
+  <meta property="og:description" content="Ric's training feed — runs, workouts, and health telemetry.">
+  <meta property="og:url" content="https://ric-massey.github.io/ric-relay/training.html">
+  <meta name="twitter:card" content="summary">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fc4c02'/><text y='.85em' font-size='64' x='18'>🏃</text></svg>">
   <style>
     :root {
@@ -39,10 +45,14 @@
     .topbar .brand { color: #fff; font-weight: 800; letter-spacing: 0.16em; font-size: 0.85rem; }
     .topbar .brand:hover { text-decoration: none; color: #ffe3d6; }
     .topbar .wing { color: #ffd2be; font-size: 0.85rem; letter-spacing: 0.16em; }
-    .topbar .roomnav { margin-left: auto; display: flex; gap: 0.1rem 1rem; flex-wrap: wrap; }
-    .topbar .roomnav a { color: #ffe0d2; font-size: 0.82rem; }
+    /* Strava-style nav tabs — active gets a white underline */
+    .topbar .roomnav { margin-left: auto; display: flex; gap: 0.15rem 0.25rem; flex-wrap: wrap; align-items: center; }
+    .topbar .roomnav a, .topbar .roomnav .here {
+      color: #ffe0d2; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;
+      padding: 0.3rem 0.5rem; text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap;
+    }
     .topbar .roomnav a:hover { color: #fff; text-decoration: none; }
-    .topbar .roomnav .here { color: #fff; font-weight: 700; }
+    .topbar .roomnav .here { color: #fff; border-bottom-color: #fff; }
 
     .wrap { max-width: 900px; margin: 0 auto; padding: 1.4rem 1.25rem 4rem; display: grid; grid-template-columns: 1fr; gap: 1.2rem; }
 
@@ -118,14 +128,14 @@
     <div class="inner">
       <a class="brand" href="index.html">RIC'S RELAY</a>
       <span class="wing">· TRAINING LOG</span>
-      <nav class="roomnav">
-        <a href="index.html">the relay</a>
+      <nav class="roomnav" aria-label="Relay rooms">
+        <a href="index.html">relay</a>
         <a href="systems.html">orrin</a>
         <a href="climbing.html">climbing</a>
-        <span class="here">training</span>
+        <span class="here" aria-current="page">training</span>
         <a href="exploration.html">exploration</a>
         <a href="workbench.html">workbench</a>
-        <a href="captures.html">photos</a>
+        <a href="captures.html">captures</a>
         <a href="log.html">log</a>
         <a href="updates.html">updates</a>
       </nav>

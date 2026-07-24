@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>04 / Space Expanding</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0d12;
+    --bg-2: #11151c;
+    --ink: #e8e4d8;
+    --ink-dim: #8a8578;
+    --accent: #d4a574;
+    --light: #ffd982;
+    --bound: #6db5a3;
+    --unbound: #b56d8a;
+    --line: #1f242d;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Cormorant Garamond', serif;
+    min-height: 100vh;
+  }
+  .nav {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+  }
+  .nav a { color: var(--ink-dim); text-decoration: none; }
+  .nav a:hover { color: var(--accent); }
+  .nav .num { color: var(--accent); }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 4rem 2rem 6rem;
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.4em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  h1 {
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-weight: 300;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    font-style: italic;
+    margin-bottom: 1.5rem;
+  }
+  .lede {
+    font-size: 1.25rem;
+    color: var(--ink-dim);
+    max-width: 38rem;
+    line-height: 1.6;
+    margin-bottom: 4rem;
+  }
+
+  .stage {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  canvas { width: 100%; height: auto; display: block; background: var(--bg); }
+
+  .controls {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .ctrl {
+    margin-bottom: 1.25rem;
+  }
+  .ctrl label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+  .ctrl .val {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+    font-size: 0.9rem;
+  }
+  input[type=range] {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 2px;
+    background: var(--line);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 14px;
+    width: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin-top: -6px;
+  }
+  input[type=range]::-moz-range-track {
+    height: 2px;
+    background: var(--line);
+  }
+  input[type=range]::-moz-range-thumb {
+    height: 14px;
+    width: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    border: none;
+  }
+
+  .buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+  button {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 0.75rem 1.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  button:hover { background: var(--accent); color: var(--bg); }
+  button.active { background: var(--accent); color: var(--bg); }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin-top: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-dim);
+  }
+  .legend span {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .essay {
+    margin-top: 4rem;
+    max-width: 36rem;
+  }
+  .essay h2 {
+    font-size: 1.75rem;
+    font-weight: 400;
+    font-style: italic;
+    margin: 3rem 0 1rem;
+    color: var(--accent);
+  }
+  .essay p {
+    font-size: 1.125rem;
+    line-height: 1.7;
+    margin-bottom: 1.25rem;
+    color: var(--ink);
+  }
+  .essay em { color: var(--accent); font-style: italic; }
+  .essay .pullout {
+    border-left: 2px solid var(--accent);
+    padding-left: 1.5rem;
+    margin: 2rem 0;
+    font-size: 1.25rem;
+    font-style: italic;
+    color: var(--ink-dim);
+  }
+
+  .next {
+    margin-top: 5rem;
+    padding-top: 3rem;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+  }
+  .next a { color: var(--accent); text-decoration: none; }
+  .next a:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html">← THE GEOMETRY OF SPACETIME</a>
+    <span class="num">04 / 04</span>
+  </nav>
+
+  <main class="container">
+    <div class="eyebrow">— Space itself stretches. Bound things hold together. Unbound things drift away. —</div>
+    <h1>Space Expanding</h1>
+    <p class="lede">Every galaxy not bound to ours by gravity is receding from us, faster the farther it is. From any other galaxy, the same pattern. There is no center because expansion happens everywhere at once.</p>
+
+    <div class="stage">
+      <canvas id="universe" width="1000" height="600"></canvas>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>OBSERVER (CHOOSE ANY POINT)</span>
+        <span><span class="swatch" style="background:var(--bound)"></span>BOUND (ATOMS / GALAXIES)</span>
+        <span><span class="swatch" style="background:var(--unbound)"></span>UNBOUND (DRIFTS WITH SPACE)</span>
+      </div>
+
+      <div class="buttons">
+        <button id="play">▶ PLAY EXPANSION</button>
+        <button id="reset">RESET</button>
+        <button id="toggleView" class="active">SHOW BOUND OBJECTS</button>
+      </div>
+
+      <div class="controls">
+        <div class="ctrl">
+          <label>Time elapsed <span class="val" id="tVal">0%</span></label>
+          <input type="range" id="t" min="0" max="100" value="0">
+        </div>
+        <div class="ctrl">
+          <label>Choose observer (perspective shift) <span class="val" id="obsVal">center</span></label>
+          <input type="range" id="obs" min="0" max="6" value="3">
+        </div>
+      </div>
+    </div>
+
+    <div class="essay">
+      <h2>What you're seeing</h2>
+      <p>A grid of galaxies. As time advances, the space between them stretches. Every galaxy moves away from every other galaxy — no privileged center, no edge. Slide the observer slider to put yourself at a different galaxy, and the same pattern holds: everything moves away from <em>you</em>, faster the farther out.</p>
+
+      <p>This is the actual structure of cosmic expansion. The galaxies aren't flying through space — <em>space itself is expanding</em> between them. The distance grows because the metric is changing, not because anything is moving in the conventional sense.</p>
+
+      <h2>Why atoms don't fall apart</h2>
+      <p>Toggle "show bound objects" to see clusters of dots holding together while the larger grid stretches. These are atoms, planets, solar systems, galaxies, galaxy clusters — anything bound by a force stronger than expansion locally is. Within them, expansion is overwhelmed by gravity or electromagnetism by factors of 10³⁰ or more. Expansion still happens — it just doesn't win.</p>
+
+      <p class="pullout">"Expansion only matters where nothing is holding things together. Inside an atom, the electromagnetic force wins by 39 orders of magnitude. Inside a galaxy, gravity wins. Between unbound galaxies, expansion wins."</p>
+
+      <p>This is why your body doesn't tear apart even though space is expanding through it. Every chemical bond, every gravitational pull within Earth, every binding force is overwhelmingly stronger than the local stretch. You are a knot of bound systems sitting in a stretching universe, and the knots stay tied.</p>
+
+      <h2>No center, no edge</h2>
+      <p>Move the observer slider. Every position sees the same pattern — galaxies receding, faster the farther they are. This isn't a bug; it's the central feature of homogeneous expansion. There's no "real" center because expansion isn't happening <em>around</em> a point, it's happening <em>everywhere</em>. A 2D analog: dots painted on a balloon as it inflates. Every dot sees every other dot moving away. No dot is special. The "center" of inflation exists in a higher dimension that no dot can reach.</p>
+
+      <p>Our universe might be like the balloon (finite but unbounded) or genuinely infinite. We can't tell from inside. What we can verify is that the math of expansion is symmetric: every observer is the center of their own observable universe. All of them are correct.</p>
+
+      <h2>The receding horizon</h2>
+      <p>One more thing the math forces: galaxies far enough away are receding faster than light. This doesn't violate relativity because they aren't moving <em>through</em> space faster than light — the space <em>between</em> us is stretching faster than light. Their light will never reach us. They are permanently outside our reachable universe.</p>
+
+      <p>And because expansion is accelerating, more galaxies cross this horizon every second. The observable universe is shrinking relative to the total. In ~100 billion years, observers in the Milky Way will see only a few gravitationally-bound galaxies. Everything else will have receded into the dark.</p>
+
+      <p>Future astronomers will have no evidence of the Big Bang. No evidence of expansion. No evidence other galaxies ever existed. The information will have left their light cone forever. We're living in a privileged epoch where the expansion is still visible.</p>
+    </div>
+
+    <div class="next">
+      <a href="03-simultaneity.html">← 03 / SIMULTANEITY</a>
+      <a href="index.html">INDEX →</a>
+    </div>
+  </main>
+
+<script>
+const canvas = document.getElementById('universe');
+const ctx = canvas.getContext('2d');
+const tSlider = document.getElementById('t');
+const obsSlider = document.getElementById('obs');
+const tVal = document.getElementById('tVal');
+const obsVal = document.getElementById('obsVal');
+const playBtn = document.getElementById('play');
+const resetBtn = document.getElementById('reset');
+const toggleBtn = document.getElementById('toggleView');
+
+let playing = false;
+let showBound = true;
+let animId = null;
+
+const GRID = 7;
+const baseSpacing = 90;
+
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * 2;
+  canvas.height = rect.width * 1.2;
+  draw();
+}
+window.addEventListener('resize', resize);
+
+function draw() {
+  const w = canvas.width;
+  const h = canvas.height;
+  const t = parseFloat(tSlider.value) / 100;
+  const obsIdx = parseInt(obsSlider.value);
+
+  ctx.fillStyle = '#0a0d12';
+  ctx.fillRect(0, 0, w, h);
+
+  // expansion factor: starts at 0.5, grows to 1.5
+  const scale = 0.5 + t * 1.5;
+
+  const cx = w/2;
+  const cy = h/2;
+  const spacing = baseSpacing * scale * (w / 1400);
+
+  // grid of galaxies
+  const galaxies = [];
+  for (let i = 0; i < GRID; i++) {
+    for (let j = 0; j < GRID; j++) {
+      galaxies.push({
+        gx: i,
+        gy: j,
+        x: cx + (i - 3) * spacing,
+        y: cy + (j - 3) * spacing,
+      });
+    }
+  }
+
+  // observer galaxy index along middle row
+  const obsRow = 3;
+  const obsGalaxy = galaxies[obsIdx * GRID + obsRow];
+  const offsetX = cx - obsGalaxy.x;
+  const offsetY = cy - obsGalaxy.y;
+
+  // shift everything so observer is centered
+  galaxies.forEach(g => { g.x += offsetX; g.y += offsetY; });
+
+  // draw expansion lines from observer
+  ctx.strokeStyle = 'rgba(212, 165, 116, 0.08)';
+  ctx.lineWidth = 1;
+  galaxies.forEach(g => {
+    if (g === obsGalaxy) return;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(g.x, g.y);
+    ctx.stroke();
+  });
+
+  // draw galaxies
+  galaxies.forEach(g => {
+    if (g === obsGalaxy) return;
+
+    const dx = g.x - cx;
+    const dy = g.y - cy;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const maxDist = Math.sqrt(w*w + h*h) / 2;
+    const recessionRate = dist / maxDist; // 0 to 1
+
+    // unbound galaxies - drift with expansion
+    ctx.fillStyle = '#b56d8a';
+    ctx.shadowColor = '#b56d8a';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(g.x, g.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // velocity arrow proportional to distance (Hubble's law)
+    if (dist > 30) {
+      const arrowLen = recessionRate * 30;
+      const ux = dx/dist;
+      const uy = dy/dist;
+      ctx.strokeStyle = `rgba(181, 109, 138, ${0.3 + recessionRate * 0.5})`;
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.moveTo(g.x, g.y);
+      ctx.lineTo(g.x + ux * arrowLen, g.y + uy * arrowLen);
+      ctx.stroke();
+      // arrowhead
+      const ah = 6;
+      const ang = Math.atan2(uy, ux);
+      ctx.beginPath();
+      ctx.moveTo(g.x + ux * arrowLen, g.y + uy * arrowLen);
+      ctx.lineTo(g.x + ux * arrowLen - ah * Math.cos(ang - 0.4), g.y + uy * arrowLen - ah * Math.sin(ang - 0.4));
+      ctx.moveTo(g.x + ux * arrowLen, g.y + uy * arrowLen);
+      ctx.lineTo(g.x + ux * arrowLen - ah * Math.cos(ang + 0.4), g.y + uy * arrowLen - ah * Math.sin(ang + 0.4));
+      ctx.stroke();
+    }
+  });
+
+  ctx.shadowBlur = 0;
+
+  // bound objects (clusters that don't expand)
+  if (showBound) {
+    galaxies.forEach(g => {
+      if (g === obsGalaxy) return;
+      // small cluster of "bound" dots that DON'T grow
+      const cluster = [
+        { dx: -8, dy: -4 }, { dx: 8, dy: -4 },
+        { dx: -4, dy: 6 }, { dx: 5, dy: 5 },
+      ];
+      ctx.fillStyle = '#6db5a3';
+      cluster.forEach(c => {
+        ctx.beginPath();
+        ctx.arc(g.x + c.dx, g.y + c.dy, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    });
+  }
+
+  // observer (always center)
+  ctx.fillStyle = '#d4a574';
+  ctx.shadowColor = '#d4a574';
+  ctx.shadowBlur = 16;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = '#d4a574';
+  ctx.font = '14px "JetBrains Mono", monospace';
+  ctx.fillText('YOU', cx + 14, cy + 5);
+
+  // info text
+  ctx.fillStyle = '#8a8578';
+  ctx.font = '14px "JetBrains Mono", monospace';
+  ctx.fillText(`SCALE FACTOR: ${scale.toFixed(2)}×`, 24, 36);
+  ctx.fillText(`HUBBLE'S LAW: v ∝ d`, 24, 60);
+
+  ctx.fillStyle = '#d4a574';
+  ctx.font = 'italic 16px "Cormorant Garamond", serif';
+  ctx.fillText('Farther galaxies recede faster — proportional to distance.', 24, h - 40);
+  ctx.fillText('Move the observer. The same pattern holds from every point.', 24, h - 18);
+
+  tVal.textContent = `${tSlider.value}%`;
+  const labels = ['far left','left','near left','center','near right','right','far right'];
+  obsVal.textContent = labels[obsIdx];
+}
+
+function tick() {
+  if (!playing) return;
+  let v = parseFloat(tSlider.value);
+  v += 0.4;
+  if (v > 100) v = 100;
+  tSlider.value = v;
+  draw();
+  if (v < 100) animId = requestAnimationFrame(tick);
+  else { playing = false; playBtn.textContent = '▶ REPLAY EXPANSION'; }
+}
+
+playBtn.addEventListener('click', () => {
+  if (parseFloat(tSlider.value) >= 100) tSlider.value = 0;
+  playing = !playing;
+  playBtn.textContent = playing ? '❚❚ PAUSE' : '▶ PLAY EXPANSION';
+  if (playing) animId = requestAnimationFrame(tick);
+});
+resetBtn.addEventListener('click', () => {
+  playing = false;
+  cancelAnimationFrame(animId);
+  tSlider.value = 0;
+  playBtn.textContent = '▶ PLAY EXPANSION';
+  draw();
+});
+toggleBtn.addEventListener('click', () => {
+  showBound = !showBound;
+  toggleBtn.textContent = showBound ? 'HIDE BOUND OBJECTS' : 'SHOW BOUND OBJECTS';
+  toggleBtn.classList.toggle('active');
+  draw();
+});
+tSlider.addEventListener('input', draw);
+obsSlider.addEventListener('input', draw);
+
+resize();
+</script>
+</body>
+</html>

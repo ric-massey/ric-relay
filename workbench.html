@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>/workbench — random projects</title>
   <meta name="description" content="Ric Massey's workbench — random projects, half-finished ideas, things that might become something.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Ric's Relay">
+  <meta property="og:title" content="Workbench — Ric's Relay">
+  <meta property="og:description" content="Random projects, half-finished ideas, and things that might become something.">
+  <meta property="og:url" content="https://ric-massey.github.io/ric-relay/workbench.html">
+  <meta name="twitter:card" content="summary">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23122a52'/><text y='.85em' font-size='70' x='15'>📐</text></svg>">
   <style>
     :root {
@@ -40,10 +46,15 @@
     .masthead .brand:hover { color: var(--tape); }
     .masthead .wing { font-family: ui-monospace, Menlo, monospace; color: var(--chalk-dim); font-size: 0.82rem; letter-spacing: 0.28em; }
     .masthead .welcome { color: var(--chalk-dim); font-size: 0.9rem; margin: 0.4rem 0 0.9rem; }
-    nav { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; color: var(--chalk-dim); letter-spacing: 0.08em; display: flex; flex-wrap: wrap; gap: 0.3rem 1.1rem; }
-    nav a { color: var(--chalk-dim); text-decoration: none; }
-    nav a:hover { color: var(--tape); }
-    nav .here { color: var(--chalk); }
+    /* blueprint sheet-index nav */
+    nav.sheets { font-family: ui-monospace, Menlo, monospace; display: flex; flex-wrap: wrap; gap: 0.4rem; font-size: 0.72rem; letter-spacing: 0.08em; }
+    nav.sheets a, nav.sheets .here {
+      color: var(--chalk-dim); text-decoration: none;
+      padding: 0.22rem 0.6rem; border: 1px solid rgba(232, 238, 252, 0.25);
+      background: rgba(13, 31, 61, 0.5);
+    }
+    nav.sheets a:hover { color: var(--tape); border-color: var(--tape); box-shadow: 2px 2px 0 rgba(255, 210, 77, 0.3); }
+    nav.sheets .here { color: var(--blueprint); background: var(--tape); border-color: var(--tape); font-weight: 700; }
 
     .titleblock {
       border: 2px solid var(--chalk);
@@ -120,16 +131,16 @@
     <header class="masthead">
       <a class="brand" href="index.html">RIC'S RELAY</a><span class="wing"> · FABRICATION</span>
       <p class="welcome">Mind the sawdust. Nothing here is finished.</p>
-      <nav>
-        <a href="index.html">← the relay</a>
-        <a href="systems.html">orrin's mind</a>
+      <nav class="sheets" aria-label="Relay rooms">
+        <a href="index.html">relay</a>
+        <a href="systems.html">orrin</a>
         <a href="climbing.html">climbing</a>
         <a href="training.html">training</a>
-        <a href="exploration.html">event horizon</a>
-        <span class="here">workbench</span>
-        <a href="captures.html">darkroom</a>
-        <a href="log.html">the log</a>
-        <a href="updates.html">bulletins</a>
+        <a href="exploration.html">exploration</a>
+        <span class="here" aria-current="page">workbench</span>
+        <a href="captures.html">captures</a>
+        <a href="log.html">log</a>
+        <a href="updates.html">updates</a>
       </nav>
     </header>
 
@@ -153,9 +164,18 @@
          ═══════════════════════════════════════════════════ -->
 
     <div class="bench">
-      <div class="item">
+      <a class="item" href="projects/siege-conductor/index.html">
         <span class="no">ITEM 001</span>
-        <h2>Your first random project</h2>
+        <h2>Siege Conductor</h2>
+        <p>A viewing companion that interweaves the Siege of Mandalore with Revenge of
+          the Sith into one continuous story. Add it to your phone's home screen like an
+          app — no install, no store.</p>
+        <span class="tag shipped">shipped</span>
+      </a>
+
+      <div class="item">
+        <span class="no">ITEM 002</span>
+        <h2>Your next random project</h2>
         <p>Replace me. Anything goes here — hardware, code, ideas, one-day builds.
           When it's done, flip the tag to “shipped.”</p>
         <span class="tag bench">on the bench</span>

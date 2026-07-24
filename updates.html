@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>/updates — relay bulletins</title>
   <meta name="description" content="What's new on Ric's site — a feed that writes itself.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Ric's Relay">
+  <meta property="og:title" content="Updates — Ric's Relay">
+  <meta property="og:description" content="What's new on Ric's site — a feed that writes itself.">
+  <meta property="og:url" content="https://ric-massey.github.io/ric-relay/updates.html">
+  <meta name="twitter:card" content="summary">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230d0d10'/><circle cx='72' cy='28' r='16' fill='%23ff4d3d'/><text y='.85em' font-size='58' x='10' fill='%23e8e8e8'>🔔</text></svg>">
   <style>
     :root {
@@ -35,10 +41,18 @@
     .masthead .brand:hover { color: var(--accent); }
     .masthead .wing { font-family: ui-monospace, Menlo, monospace; color: var(--dim); font-size: 0.82rem; letter-spacing: 0.28em; }
     .masthead .welcome { color: var(--dim); font-size: 0.9rem; margin: 0.4rem 0 0.9rem; }
-    nav { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; color: var(--dim); letter-spacing: 0.08em; display: flex; flex-wrap: wrap; gap: 0.3rem 1.1rem; }
-    nav a { color: var(--dim); text-decoration: none; }
-    nav a:hover { color: var(--accent); }
-    nav .here { color: var(--text); }
+    /* notification-app segmented nav */
+    nav.segmented {
+      display: inline-flex; flex-wrap: wrap; gap: 0.2rem;
+      background: var(--card); border: 1px solid var(--edge);
+      border-radius: 12px; padding: 0.3rem; font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+      font-size: 0.76rem;
+    }
+    nav.segmented a, nav.segmented .here {
+      color: var(--dim); text-decoration: none; padding: 0.3rem 0.7rem; border-radius: 8px;
+    }
+    nav.segmented a:hover { color: var(--text); background: rgba(255, 255, 255, 0.05); }
+    nav.segmented .here { color: var(--bg); background: var(--accent); font-weight: 700; }
 
     header { display: flex; align-items: center; gap: 0.9rem; margin-bottom: 0.4rem; }
 
@@ -107,16 +121,16 @@
     <header class="masthead">
       <a class="brand" href="index.html">RIC'S RELAY</a><span class="wing"> · BROADCAST</span>
       <p class="welcome">Everything that's changed on the relay, newest first.</p>
-      <nav>
-        <a href="index.html">← the relay</a>
-        <a href="systems.html">orrin's mind</a>
+      <nav class="segmented" aria-label="Relay rooms">
+        <a href="index.html">relay</a>
+        <a href="systems.html">orrin</a>
         <a href="climbing.html">climbing</a>
         <a href="training.html">training</a>
-        <a href="exploration.html">event horizon</a>
+        <a href="exploration.html">exploration</a>
         <a href="workbench.html">workbench</a>
-        <a href="captures.html">darkroom</a>
-        <a href="log.html">the log</a>
-        <span class="here">bulletins</span>
+        <a href="captures.html">captures</a>
+        <a href="log.html">log</a>
+        <span class="here" aria-current="page">updates</span>
       </nav>
     </header>
 

@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>/exploration — event horizon</title>
   <meta name="description" content="Ric Massey's exploration deck — space, experiments, and the game.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Ric's Relay">
+  <meta property="og:title" content="Exploration — Ric's Relay">
+  <meta property="og:description" content="Ric Massey's exploration deck — space, experiments, and the game.">
+  <meta property="og:url" content="https://ric-massey.github.io/ric-relay/exploration.html">
+  <meta name="twitter:card" content="summary">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23050508'/><circle cx='50' cy='50' r='28' fill='none' stroke='%237a5cff' stroke-width='6'/></svg>">
   <style>
     :root {
@@ -39,10 +45,17 @@
     .masthead .brand:hover { color: var(--nebula); }
     .masthead .wing { font-family: ui-monospace, Menlo, monospace; color: var(--faint); font-size: 0.82rem; letter-spacing: 0.3em; }
     .masthead .welcome { color: var(--faint); font-size: 0.88rem; margin: 0.4rem 0 0.9rem; font-weight: 300; }
-    nav { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; color: var(--faint); letter-spacing: 0.08em; display: flex; flex-wrap: wrap; gap: 0.3rem 1.1rem; }
-    nav a { color: var(--faint); text-decoration: none; }
-    nav a:hover { color: var(--nebula); }
-    nav .here { color: var(--star); }
+    /* star-chart waypoint nav */
+    nav.starchart { font-family: ui-monospace, Menlo, monospace; display: flex; flex-wrap: wrap; gap: 0.4rem 0.55rem; align-items: center; font-size: 0.74rem; letter-spacing: 0.06em; }
+    nav.starchart a, nav.starchart .here {
+      color: var(--faint); text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.2rem 0.5rem; border-radius: 999px; border: 1px solid transparent;
+    }
+    nav.starchart a::before, nav.starchart .here::before { content: "✦"; font-size: 0.6rem; color: var(--nebula-dim); }
+    nav.starchart a:hover { color: var(--star); border-color: var(--ring); }
+    nav.starchart a:hover::before { color: var(--nebula); }
+    nav.starchart .here { color: var(--star); border-color: var(--nebula); box-shadow: 0 0 16px rgba(122, 92, 255, 0.3); }
+    nav.starchart .here::before { color: var(--nebula); text-shadow: 0 0 8px var(--nebula); }
 
     header { margin-bottom: 3.5rem; }
 
@@ -111,16 +124,16 @@
     <header class="masthead">
       <a class="brand" href="index.html">RIC'S RELAY</a><span class="wing"> · DEEP SPACE</span>
       <p class="welcome">Welcome aboard. Mind the airlock.</p>
-      <nav>
-        <a href="index.html">← the relay</a>
-        <a href="systems.html">orrin's mind</a>
+      <nav class="starchart" aria-label="Relay rooms">
+        <a href="index.html">relay</a>
+        <a href="systems.html">orrin</a>
         <a href="climbing.html">climbing</a>
         <a href="training.html">training</a>
-        <span class="here">event horizon</span>
+        <span class="here" aria-current="page">exploration</span>
         <a href="workbench.html">workbench</a>
-        <a href="captures.html">darkroom</a>
-        <a href="log.html">the log</a>
-        <a href="updates.html">bulletins</a>
+        <a href="captures.html">captures</a>
+        <a href="log.html">log</a>
+        <a href="updates.html">updates</a>
       </nav>
     </header>
 
@@ -142,14 +155,21 @@
         <p>Fly through space. Steer with your cursor; hold click for warp speed.</p>
       </a>
 
+      <a class="module" href="projects/spacetime/index.html">
+        <span class="designation">MODULE 002 — ONLINE</span>
+        <h2>The Geometry of Spacetime</h2>
+        <p>An interactive walk through special relativity — light cones, time dilation,
+          the loss of "now," and a universe that expands. Four visual chapters.</p>
+      </a>
+
       <div class="module offline">
-        <span class="designation">MODULE 002 — DOCKING</span>
+        <span class="designation">MODULE 003 — DOCKING</span>
         <h2>The Game</h2>
         <p>In development. Details classified until it's fun.</p>
       </div>
 
       <div class="module offline">
-        <span class="designation">MODULE 003 — SILENT</span>
+        <span class="designation">MODULE 004 — SILENT</span>
         <h2>Experiments</h2>
         <p>Weird HTML toys and one-night builds will dock here.</p>
       </div>

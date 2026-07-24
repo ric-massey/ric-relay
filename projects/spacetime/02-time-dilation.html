@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>02 / Time Dilation</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0d12;
+    --bg-2: #11151c;
+    --ink: #e8e4d8;
+    --ink-dim: #8a8578;
+    --accent: #d4a574;
+    --you: #6db5a3;
+    --them: #b56d8a;
+    --line: #1f242d;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Cormorant Garamond', serif;
+    min-height: 100vh;
+  }
+  .nav {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+  }
+  .nav a { color: var(--ink-dim); text-decoration: none; }
+  .nav a:hover { color: var(--accent); }
+  .nav .num { color: var(--accent); }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 4rem 2rem 6rem;
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.4em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  h1 {
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-weight: 300;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    font-style: italic;
+    margin-bottom: 1.5rem;
+  }
+  .lede {
+    font-size: 1.25rem;
+    color: var(--ink-dim);
+    max-width: 38rem;
+    line-height: 1.6;
+    margin-bottom: 4rem;
+  }
+
+  .stage {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .clocks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+  }
+  @media (max-width: 700px) {
+    .clocks { grid-template-columns: 1fr; }
+  }
+  .clock {
+    background: var(--bg);
+    padding: 2rem;
+    border: 1px solid var(--line);
+    text-align: center;
+    position: relative;
+  }
+  .clock h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+  .clock.you h3 { color: var(--you); }
+  .clock.them h3 { color: var(--them); }
+
+  .clock-face {
+    width: 180px;
+    height: 180px;
+    margin: 0 auto 1.5rem;
+    position: relative;
+  }
+
+  .digital {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2rem;
+    letter-spacing: 0.05em;
+    color: var(--ink);
+    margin-bottom: 0.5rem;
+  }
+  .clock.you .digital { color: var(--you); }
+  .clock.them .digital { color: var(--them); }
+
+  .rate {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--ink-dim);
+    letter-spacing: 0.15em;
+  }
+
+  canvas { width: 100%; height: auto; display: block; margin: 1.5rem 0; }
+
+  .controls {
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .ctrl label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+  .ctrl .val {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+    font-size: 0.9rem;
+  }
+  input[type=range] {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 2px;
+    background: var(--line);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 14px;
+    width: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin-top: -6px;
+  }
+  input[type=range]::-moz-range-track {
+    height: 2px;
+    background: var(--line);
+  }
+  input[type=range]::-moz-range-thumb {
+    height: 14px;
+    width: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    border: none;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .stat {
+    border-left: 2px solid var(--accent);
+    padding-left: 1rem;
+  }
+  .stat .label {
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .stat .num {
+    font-size: 1.4rem;
+    color: var(--accent);
+  }
+
+  .essay {
+    margin-top: 4rem;
+    max-width: 36rem;
+  }
+  .essay h2 {
+    font-size: 1.75rem;
+    font-weight: 400;
+    font-style: italic;
+    margin: 3rem 0 1rem;
+    color: var(--accent);
+  }
+  .essay p {
+    font-size: 1.125rem;
+    line-height: 1.7;
+    margin-bottom: 1.25rem;
+    color: var(--ink);
+  }
+  .essay em { color: var(--accent); font-style: italic; }
+  .essay .pullout {
+    border-left: 2px solid var(--accent);
+    padding-left: 1.5rem;
+    margin: 2rem 0;
+    font-size: 1.25rem;
+    font-style: italic;
+    color: var(--ink-dim);
+  }
+
+  .next {
+    margin-top: 5rem;
+    padding-top: 3rem;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+  }
+  .next a { color: var(--accent); text-decoration: none; }
+  .next a:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html">← THE GEOMETRY OF SPACETIME</a>
+    <span class="num">02 / 04</span>
+  </nav>
+
+  <main class="container">
+    <div class="eyebrow">— Motion through time, traded for motion through space —</div>
+    <h1>Time Dilation</h1>
+    <p class="lede">Every object moves through spacetime at the speed of light. If you spend more of that motion on space, you spend less on time. Aging slows. The math forces it.</p>
+
+    <div class="stage">
+      <div class="clocks">
+        <div class="clock you">
+          <h3>YOUR CLOCK</h3>
+          <canvas id="clockA" width="200" height="200"></canvas>
+          <div class="digital" id="timeA">00:00.00</div>
+          <div class="rate">RATE: 1.000×</div>
+        </div>
+        <div class="clock them">
+          <h3>THEIR CLOCK (MOVING)</h3>
+          <canvas id="clockB" width="200" height="200"></canvas>
+          <div class="digital" id="timeB">00:00.00</div>
+          <div class="rate" id="rateB">RATE: 1.000×</div>
+        </div>
+      </div>
+
+      <canvas id="spaceTime" width="1000" height="280"></canvas>
+
+      <div class="controls">
+        <div class="ctrl">
+          <label>Their velocity (fraction of c) <span class="val" id="vVal">0.00 c</span></label>
+          <input type="range" id="v" min="0" max="99" value="50">
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <div class="label">Lorentz factor γ</div>
+            <div class="num" id="gamma">1.155</div>
+          </div>
+          <div class="stat">
+            <div class="label">Their 1 sec</div>
+            <div class="num" id="theirSec">0.866 sec</div>
+          </div>
+          <div class="stat">
+            <div class="label">Per Earth year</div>
+            <div class="num" id="earthYear">0.866 yr</div>
+          </div>
+          <div class="stat">
+            <div class="label">100 yr trip</div>
+            <div class="num" id="hundred">86.6 yr</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="essay">
+      <h2>What you're seeing</h2>
+      <p>Two clocks. Yours stays still. Theirs moves at some fraction of the speed of light. As their velocity climbs, their clock ticks slower from your perspective. Not because the clock is broken — because <em>time itself runs slower</em> along their path through spacetime.</p>
+
+      <p>The diagram below the clocks shows what's happening geometrically. Every object moves through spacetime at exactly c. Your "motion" is entirely in the time direction, since you're sitting still. Their motion is split — some space, some time. The faster they go through space, the less of their motion remains for traveling through time.</p>
+
+      <h2>The geometry</h2>
+      <p>This is captured by a single equation, the <em>Lorentz factor</em>:</p>
+      <p style="font-family: 'JetBrains Mono', monospace; text-align: center; font-size: 1.3rem; color: var(--accent); margin: 2rem 0;">γ = 1 / √(1 − v²/c²)</p>
+
+      <p>At v = 0, γ = 1 — no dilation. At v = 0.5c, γ ≈ 1.15 — their clock runs about 13% slower from your perspective. At v = 0.99c, γ ≈ 7 — one of their seconds is seven of yours. As v approaches c, γ approaches infinity — their time approaches a stop.</p>
+
+      <p class="pullout">"Move the slider all the way up. That's what happens to a photon. From light's perspective, no time passes between emission and absorption — even across billions of light-years."</p>
+
+      <h2>Why this is real</h2>
+      <p>This isn't an illusion or a measurement artifact. It applies to <em>every physical process</em> — atomic vibrations, chemical reactions, neuron firings, cellular aging. All of it slows down together along a fast-moving worldline. The astronaut who spends a year on the ISS comes back about 10 milliseconds younger than their twin on Earth. NASA tracked it with Scott and Mark Kelly. Genuine, measurable, real.</p>
+
+      <p>The slider above represents the same effect, just at speeds we can't physically achieve yet. The math doesn't change. Only the magnitude does.</p>
+    </div>
+
+    <div class="next">
+      <a href="01-light-cones.html">← 01 / LIGHT CONES</a>
+      <a href="03-simultaneity.html">03 / SIMULTANEITY →</a>
+    </div>
+  </main>
+
+<script>
+const clockA = document.getElementById('clockA').getContext('2d');
+const clockB = document.getElementById('clockB').getContext('2d');
+const spaceCtx = document.getElementById('spaceTime');
+const sCtx = spaceCtx.getContext('2d');
+const vSlider = document.getElementById('v');
+const vVal = document.getElementById('vVal');
+const timeA = document.getElementById('timeA');
+const timeB = document.getElementById('timeB');
+const rateB = document.getElementById('rateB');
+const gammaEl = document.getElementById('gamma');
+const theirSec = document.getElementById('theirSec');
+const earthYear = document.getElementById('earthYear');
+const hundred = document.getElementById('hundred');
+
+let elapsed = 0;
+let lastTime = performance.now();
+
+function drawClock(ctx, time, color) {
+  const w = ctx.canvas.width;
+  const cx = w/2;
+  const cy = w/2;
+  const r = w/2 - 16;
+
+  ctx.clearRect(0, 0, w, w);
+
+  // outer ring
+  ctx.strokeStyle = '#1f242d';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // tick marks
+  ctx.strokeStyle = '#8a8578';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2 - Math.PI/2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(angle) * (r - 8), cy + Math.sin(angle) * (r - 8));
+    ctx.lineTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
+    ctx.stroke();
+  }
+
+  // second hand
+  const sec = (time / 1000) % 60;
+  const angle = (sec / 60) * Math.PI * 2 - Math.PI/2;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(angle) * (r - 12), cy + Math.sin(angle) * (r - 12));
+  ctx.stroke();
+
+  // minute hand
+  const min = (time / 60000) % 60;
+  const mAngle = (min / 60) * Math.PI * 2 - Math.PI/2;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(mAngle) * (r - 30), cy + Math.sin(mAngle) * (r - 30));
+  ctx.stroke();
+
+  // center dot
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function formatTime(ms) {
+  const totalSec = ms / 1000;
+  const min = Math.floor(totalSec / 60) % 60;
+  const sec = Math.floor(totalSec) % 60;
+  const cs = Math.floor((totalSec * 100) % 100);
+  return `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
+}
+
+function drawSpaceTime(v, gamma) {
+  const w = spaceCtx.width;
+  const h = spaceCtx.height;
+
+  sCtx.fillStyle = '#0a0d12';
+  sCtx.fillRect(0, 0, w, h);
+
+  // grid
+  sCtx.strokeStyle = '#1f242d';
+  sCtx.lineWidth = 1;
+  for (let i = 0; i < w; i += 40) {
+    sCtx.beginPath(); sCtx.moveTo(i, 0); sCtx.lineTo(i, h); sCtx.stroke();
+  }
+  for (let i = 0; i < h; i += 40) {
+    sCtx.beginPath(); sCtx.moveTo(0, i); sCtx.lineTo(w, i); sCtx.stroke();
+  }
+
+  // labels
+  sCtx.fillStyle = '#8a8578';
+  sCtx.font = '12px "JetBrains Mono", monospace';
+  sCtx.fillText('SPACE →', 16, h - 14);
+  sCtx.save();
+  sCtx.translate(16, 24);
+  sCtx.rotate(0);
+  sCtx.fillText('TIME ↑', 0, 0);
+  sCtx.restore();
+
+  const startX = 80;
+  const startY = h - 40;
+  const length = 200;
+
+  // your worldline (straight up)
+  sCtx.strokeStyle = '#6db5a3';
+  sCtx.lineWidth = 3;
+  sCtx.beginPath();
+  sCtx.moveTo(startX, startY);
+  sCtx.lineTo(startX, startY - length);
+  sCtx.stroke();
+
+  sCtx.fillStyle = '#6db5a3';
+  sCtx.font = '14px "JetBrains Mono", monospace';
+  sCtx.fillText('YOU', startX - 12, startY + 22);
+
+  // their worldline (tilted)
+  const tiltedLength = length;
+  const dx = tiltedLength * v;
+  const dy = -tiltedLength * Math.sqrt(1 - v*v);
+  const themStartX = startX + 200;
+  sCtx.strokeStyle = '#b56d8a';
+  sCtx.lineWidth = 3;
+  sCtx.beginPath();
+  sCtx.moveTo(themStartX, startY);
+  sCtx.lineTo(themStartX + dx, startY + dy);
+  sCtx.stroke();
+
+  sCtx.fillStyle = '#b56d8a';
+  sCtx.fillText('THEM', themStartX - 16, startY + 22);
+
+  // arrows showing direction split
+  sCtx.strokeStyle = '#8a8578';
+  sCtx.setLineDash([3, 3]);
+  sCtx.lineWidth = 1;
+  sCtx.beginPath();
+  sCtx.moveTo(themStartX, startY);
+  sCtx.lineTo(themStartX, startY + dy);
+  sCtx.stroke();
+  sCtx.beginPath();
+  sCtx.moveTo(themStartX, startY + dy);
+  sCtx.lineTo(themStartX + dx, startY + dy);
+  sCtx.stroke();
+  sCtx.setLineDash([]);
+
+  sCtx.fillStyle = '#8a8578';
+  sCtx.font = '11px "JetBrains Mono", monospace';
+  sCtx.fillText('time component', themStartX - 80, startY + dy/2);
+  sCtx.fillText('space component', themStartX + dx/2 - 50, startY + dy - 8);
+
+  // explanation
+  sCtx.fillStyle = '#e8e4d8';
+  sCtx.font = '14px "Cormorant Garamond", serif';
+  sCtx.fillText('Both worldlines are the same length —', 540, 60);
+  sCtx.fillText('every object moves through spacetime at c.', 540, 84);
+  sCtx.fillStyle = '#d4a574';
+  sCtx.fillText('The faster you move through space,', 540, 120);
+  sCtx.fillText('the less of your motion goes into time.', 540, 144);
+
+  sCtx.fillStyle = '#8a8578';
+  sCtx.font = '12px "JetBrains Mono", monospace';
+  sCtx.fillText(`γ = ${gamma.toFixed(3)}`, 540, 180);
+  sCtx.fillText(`v/c = ${v.toFixed(2)}`, 540, 200);
+}
+
+function update(now) {
+  const dt = now - lastTime;
+  lastTime = now;
+  elapsed += dt;
+
+  const v = parseFloat(vSlider.value) / 100;
+  const gamma = 1 / Math.sqrt(1 - v*v);
+  const theirElapsed = elapsed / gamma;
+
+  drawClock(clockA, elapsed, '#6db5a3');
+  drawClock(clockB, theirElapsed, '#b56d8a');
+  timeA.textContent = formatTime(elapsed);
+  timeB.textContent = formatTime(theirElapsed);
+  rateB.textContent = `RATE: ${(1/gamma).toFixed(3)}×`;
+  vVal.textContent = `${v.toFixed(2)} c`;
+  gammaEl.textContent = gamma.toFixed(3);
+  theirSec.textContent = `${(1/gamma).toFixed(3)} sec`;
+  earthYear.textContent = `${(1/gamma).toFixed(3)} yr`;
+  hundred.textContent = `${(100/gamma).toFixed(1)} yr`;
+
+  drawSpaceTime(v, gamma);
+
+  requestAnimationFrame(update);
+}
+
+requestAnimationFrame(update);
+</script>
+</body>
+</html>

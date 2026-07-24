@@ -1,0 +1,60 @@
+SIEGE CONDUCTOR — how to put it online and send it to friends
+==============================================================
+
+You can't text the app itself — you put it online once (free, ~2 min),
+get a LINK, and text the link. Friends tap the link and add it to their
+home screen as an app. No App Store, no warnings, nothing gets blocked.
+
+
+STEP 1 — Put it online (do this once)
+-------------------------------------
+Easiest option: Netlify Drop (free, no setup)
+
+  1. Go to:  https://app.netlify.com/drop
+  2. Drag the WHOLE "siege-conductor" folder onto the page.
+     (the folder this file is in — not just one file)
+  3. Wait a few seconds. It gives you a link like:
+        https://something-random-1234.netlify.app
+  4. (Optional) Make a free account when it asks, so the link stays
+     forever and you can rename it to something nicer.
+
+That link IS the app. Open it on any phone or computer.
+
+Other free drag-and-drop hosts that work the same way:
+  - https://tiiny.host
+  - https://surge.sh  (a bit more technical)
+
+
+STEP 2 — Send it
+----------------
+Paste the link into Messages / WhatsApp / email — anything.
+It's just a normal web link, so nothing blocks it.
+
+
+STEP 3 — What your friend does (tell them this)
+-----------------------------------------------
+On iPhone:
+  1. Tap the link (it opens in Safari).
+  2. Tap the Share button (square with an arrow).
+  3. Tap "Add to Home Screen."
+  4. Tap "Add." Done — it's now an app icon (the crossed sabers).
+
+On Android:
+  1. Tap the link (opens in Chrome).
+  2. Tap the ⋮ menu, then "Add to Home screen" / "Install app."
+
+On Mac/Windows:
+  - Just open the link in any browser. (Chrome/Edge also show an
+    "install" icon in the address bar if they want an app window.)
+
+After the first open it works even with no internet, and it remembers
+which step you're on.
+
+
+Notes
+-----
+- iPhone uses the "apple-touch-icon.png" for the home-screen icon.
+- The "icon-1024.png" file isn't required for the web app; it's just a
+  big master copy in case you ever want it.
+- To update the app later: change the files, then re-drag the folder to
+  the same host (Netlify lets you redeploy over the same site).

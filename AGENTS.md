@@ -1,0 +1,104 @@
+# Notes for AI assistants working on ric-relay
+
+This file is for any LLM/agent asked to change this site. Read it before you touch
+anything. `README.md` covers what the site is; this file covers **how to work on it
+without breaking the concept or Ric's rules.**
+
+## What this project is
+
+Ric Massey's personal website for friends and family. The concept: **"it's literally
+my own internet."** The home page (`index.html`) is a terminal hub; every other page is
+a **room** dressed up to look like the real app for that world (climbing → Mountain
+Project, training → Strava, systems → a brain, etc.). Plain HTML/CSS/JS, **no build
+step and no dependencies** — each page is a single self-contained `.html` file with its
+CSS in a `<style>` tag and its JS in a `<script>` tag. Keep it that way unless Ric
+explicitly asks to add tooling.
+
+Deploy = `git push` to `main` → GitHub Pages. So **a push is a publish.** Don't push
+unless Ric asks.
+
+## Hard rules — do not break these
+
+1. **No location data, ever.** The private map (`map.html`) is a locked placeholder on
+   purpose. Real coordinates/places live in a separate, authenticated app — never in
+   this public repo. Don't add a real map, addresses, or GPS data here.
+2. **Only one coding project is featured: Orrin.** Ric does not want his other GitHub
+   repos listed or auto-pulled. `systems.html` and `updates.html` hit the GitHub API
+   for `ric-massey/orrin_v3` and `ric-massey/ric-relay` only — don't broaden that.
+3. **Every room is its own themed world.** Don't flatten the site into one shared
+   template, shared stylesheet, or one generic nav bar. The visual variety is the point.
+4. **Keep it dependency-free.** No frameworks, bundlers, CDNs, or external fonts/scripts
+   unless asked. Everything must work as static files opened directly.
+
+## The menu system (read this before editing any nav)
+
+There is intentionally **no shared nav component**. Each page has its own `<nav>` whose
+*styling* is native to that room, but they all expose the **same rooms with the same
+labels** so navigation stays predictable:
+
+```
+relay · orrin · climbing · training · exploration · workbench · captures · log · updates
+```
+
+- `href` targets and link text are **identical on every page** — only the CSS differs.
+- The current room is rendered as a `<span class="here" aria-current="page">` (not a
+  link), positioned in the same spot in the list as its `<a>` on other pages.
+- Each `<nav>` carries `aria-label="Relay rooms"`.
+- `map.html` is reachable from the home directory only (shown as locked); it is
+  deliberately left out of the room menus.
+
+Per-room nav treatments (class on the `<nav>`):
+
+| Page | nav style | class |
+|---|---|---|
+| systems | synaptic pill switcher | `nav.cortex` |
+| climbing | Mountain-Project tab bar (white active pill) | `.topbar .roomnav` |
+| training | Strava underline tabs | `.topbar .roomnav` |
+| exploration | star-chart waypoints | `nav.starchart` |
+| workbench | blueprint sheet-index chips | `nav.sheets` |
+| captures | darkroom film strip | `nav.filmstrip` |
+| log | newspaper section bar | `nav.sections` |
+| updates | notification segmented control | `nav.segmented` |
+| index | terminal directory listing + `ls`/`open` commands | `#dir` |
+
+**If you add, remove, or rename a room:** update the menu on **every** page, the
+`PAGES`/`COMMANDS` maps and `#dir` listing in `index.html`, the table in `README.md`,
+and this file. Keep the label set in sync everywhere.
+
+## Projects and photos
+
+- **Sub-projects** live in `projects/<name>/` (or a single `.html`) and are **linked
+  from the room that fits them** — not given their own room. Current: `spacetime` →
+  Exploration, `siege-conductor` → Workbench, `autism-reflection.html` → Log. Each is
+  self-contained and may carry its own assets/fonts; the "no dependencies" rule is for
+  the relay's own room pages, not embedded projects. Keep their internal links relative.
+- **Photos** go in `photos/`, web-optimized (resize to ~1600px, convert HEIC→JPG). Do
+  **not** commit full-res originals — they belong in `_photo-originals/`, which is
+  gitignored. `captures.html` reads a `FRAMES` array; `climbing.html` rotates a few as
+  a hero banner. If you add photos, optimize first (`sips -Z 1600 -s format jpeg …`).
+
+## Editing content
+
+Each page has a loudly-commented editable block near its content. To add a climb, a
+photo, an activity, a project, a log entry — copy the example block in that page and
+edit it. Homepage "transmissions" live in `notes.js` (the only file meant to be edited
+by hand routinely). `systems.html` and `updates.html` are self-updating — leave their
+data logic alone unless fixing a bug.
+
+## House style
+
+- Match the existing voice: playful, terminal/hacker flavor, easter eggs welcome
+  (e.g. hidden `index.html` commands: `orrin`, `apex`, `sudo`, `coffee`, `exit`).
+- Keep pages responsive — test at ~375px wide; nav bars must wrap, not overflow.
+- Keep the palette and font already defined in each page's `:root` / `body`.
+- Preserve `aria-current`, `aria-label`, `alt`, and `<title>`/`<meta name=description>`
+  when you touch a page.
+
+## Quick verification checklist before you finish
+
+- [ ] All internal links resolve (files exist; current page marked `here`).
+- [ ] The menu label set is identical across all room pages.
+- [ ] Page still opens as a static file — no console errors, no external requests
+      beyond the GitHub API calls that already exist.
+- [ ] Looks right at mobile width.
+- [ ] Didn't add location data, extra repos, or a build step.

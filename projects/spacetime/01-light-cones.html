@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>01 / Light Cones</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0d12;
+    --bg-2: #11151c;
+    --ink: #e8e4d8;
+    --ink-dim: #8a8578;
+    --accent: #d4a574;
+    --light: #ffd982;
+    --reachable: #6db5a3;
+    --unreachable: #b56d8a;
+    --line: #1f242d;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Cormorant Garamond', serif;
+    min-height: 100vh;
+  }
+  .nav {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+  }
+  .nav a { color: var(--ink-dim); text-decoration: none; }
+  .nav a:hover { color: var(--accent); }
+  .nav .num { color: var(--accent); }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 4rem 2rem 6rem;
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.4em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  h1 {
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-weight: 300;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    font-style: italic;
+    margin-bottom: 1.5rem;
+  }
+  .lede {
+    font-size: 1.25rem;
+    color: var(--ink-dim);
+    max-width: 38rem;
+    line-height: 1.6;
+    margin-bottom: 4rem;
+  }
+
+  .stage {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+  canvas { width: 100%; height: auto; display: block; }
+
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .ctrl label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+  .ctrl .val {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+    font-size: 0.9rem;
+  }
+  input[type=range] {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 2px;
+    background: var(--line);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 14px;
+    width: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin-top: -6px;
+  }
+  input[type=range]::-moz-range-track {
+    height: 2px;
+    background: var(--line);
+  }
+  input[type=range]::-moz-range-thumb {
+    height: 14px;
+    width: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    border: none;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin-top: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-dim);
+  }
+  .legend span {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .essay {
+    margin-top: 4rem;
+    max-width: 36rem;
+  }
+  .essay h2 {
+    font-size: 1.75rem;
+    font-weight: 400;
+    font-style: italic;
+    margin: 3rem 0 1rem;
+    color: var(--accent);
+  }
+  .essay p {
+    font-size: 1.125rem;
+    line-height: 1.7;
+    margin-bottom: 1.25rem;
+    color: var(--ink);
+  }
+  .essay em { color: var(--accent); font-style: italic; }
+  .essay .pullout {
+    border-left: 2px solid var(--accent);
+    padding-left: 1.5rem;
+    margin: 2rem 0;
+    font-size: 1.25rem;
+    font-style: italic;
+    color: var(--ink-dim);
+  }
+
+  .next {
+    margin-top: 5rem;
+    padding-top: 3rem;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+  }
+  .next a { color: var(--accent); text-decoration: none; }
+  .next a:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html">← THE GEOMETRY OF SPACETIME</a>
+    <span class="num">01 / 04</span>
+  </nav>
+
+  <main class="container">
+    <div class="eyebrow">— Causality has a shape —</div>
+    <h1>Light Cones</h1>
+    <p class="lede">Every event in the universe has a region of past events that could have caused it, and a region of future events it could affect. Outside that region: forever unreachable.</p>
+
+    <div class="stage">
+      <canvas id="cone" width="1000" height="600"></canvas>
+      <div class="controls">
+        <div class="ctrl">
+          <label>Event location <span class="val" id="xVal">x = 0</span></label>
+          <input type="range" id="x" min="-200" max="200" value="0">
+        </div>
+        <div class="ctrl">
+          <label>Event time <span class="val" id="tVal">t = 0</span></label>
+          <input type="range" id="t" min="-200" max="200" value="0">
+        </div>
+        <div class="ctrl">
+          <label>Show signal at <span class="val" id="dVal">distance = 100</span></label>
+          <input type="range" id="d" min="0" max="250" value="100">
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--light)"></span>LIGHT — TRAVELS AT C</span>
+        <span><span class="swatch" style="background:var(--reachable)"></span>REACHABLE / CAUSAL</span>
+        <span><span class="swatch" style="background:var(--unreachable)"></span>UNREACHABLE / ELSEWHERE</span>
+      </div>
+    </div>
+
+    <div class="essay">
+      <h2>What you're looking at</h2>
+      <p>This is a <em>spacetime diagram</em>. The horizontal axis is space (one dimension of it). The vertical axis is time, going up. A single point on this diagram is an <em>event</em> — a specific place at a specific moment.</p>
+
+      <p>The two diagonal lines drawn through the event represent the speed of light. Anything moving slower than light traces a path steeper than these lines. Anything moving at light speed traces a path along them.</p>
+
+      <p>The yellow region above is your <em>future light cone</em> — every event you could possibly affect. The yellow region below is your <em>past light cone</em> — every event that could have affected you. Drag the orange dot to move the event.</p>
+
+      <h2>The unreachable region</h2>
+      <p>Move the third slider. The point that appears outside the cone is in what physicists call <em>elsewhere</em> — it's neither in your past nor your future. It exists, but you cannot causally interact with it. Light signals haven't had time to travel between you. No information can pass either direction.</p>
+
+      <p class="pullout">"All that matters is how long the information takes to get to you."</p>
+
+      <p>For an event 100 light-years away, anything happening there <em>now</em> sits in your "elsewhere." It's not in your past — its light hasn't reached you. It's not in your future — you can't affect it. It's a region of reality that's real but causally disconnected from you.</p>
+
+      <p>Every observer in the universe has their own light cone, centered on themselves. The universe is a network of overlapping cones. Reality is local. There is no master view.</p>
+    </div>
+
+    <div class="next">
+      <a href="index.html">← INDEX</a>
+      <a href="02-time-dilation.html">02 / TIME DILATION →</a>
+    </div>
+  </main>
+
+<script>
+const canvas = document.getElementById('cone');
+const ctx = canvas.getContext('2d');
+const xSlider = document.getElementById('x');
+const tSlider = document.getElementById('t');
+const dSlider = document.getElementById('d');
+const xVal = document.getElementById('xVal');
+const tVal = document.getElementById('tVal');
+const dVal = document.getElementById('dVal');
+
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * 2;
+  canvas.height = rect.width * 1.2;
+  draw();
+}
+window.addEventListener('resize', resize);
+
+function draw() {
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w/2;
+  const cy = h/2;
+  const ex = parseFloat(xSlider.value) * (w/600);
+  const et = -parseFloat(tSlider.value) * (h/600);
+  const eventX = cx + ex;
+  const eventY = cy + et;
+  const d = parseFloat(dSlider.value);
+
+  ctx.fillStyle = '#0a0d12';
+  ctx.fillRect(0, 0, w, h);
+
+  // grid
+  ctx.strokeStyle = '#1f242d';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < w; i += w/20) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, h); ctx.stroke();
+  }
+  for (let i = 0; i < h; i += h/15) {
+    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke();
+  }
+
+  // axes
+  ctx.strokeStyle = '#8a8578';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.stroke();
+
+  // labels
+  ctx.fillStyle = '#8a8578';
+  ctx.font = '20px "JetBrains Mono", monospace';
+  ctx.fillText('time →', cx + 12, 30);
+  ctx.fillText('space →', w - 100, cy - 12);
+  ctx.fillText('FUTURE', cx + 12, 60);
+  ctx.fillText('PAST', cx + 12, h - 30);
+
+  // future cone
+  const coneSize = Math.max(w, h);
+  ctx.fillStyle = 'rgba(255, 217, 130, 0.08)';
+  ctx.beginPath();
+  ctx.moveTo(eventX, eventY);
+  ctx.lineTo(eventX - coneSize, eventY - coneSize);
+  ctx.lineTo(eventX + coneSize, eventY - coneSize);
+  ctx.closePath();
+  ctx.fill();
+
+  // past cone
+  ctx.fillStyle = 'rgba(109, 181, 163, 0.08)';
+  ctx.beginPath();
+  ctx.moveTo(eventX, eventY);
+  ctx.lineTo(eventX - coneSize, eventY + coneSize);
+  ctx.lineTo(eventX + coneSize, eventY + coneSize);
+  ctx.closePath();
+  ctx.fill();
+
+  // light cone lines
+  ctx.strokeStyle = '#ffd982';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(eventX, eventY);
+  ctx.lineTo(eventX - coneSize, eventY - coneSize);
+  ctx.moveTo(eventX, eventY);
+  ctx.lineTo(eventX + coneSize, eventY - coneSize);
+  ctx.moveTo(eventX, eventY);
+  ctx.lineTo(eventX - coneSize, eventY + coneSize);
+  ctx.moveTo(eventX, eventY);
+  ctx.lineTo(eventX + coneSize, eventY + coneSize);
+  ctx.stroke();
+
+  // signal point
+  const signalX = eventX + d * (w/600);
+  const signalY = eventY;
+  const inFuture = signalY < eventY - Math.abs(signalX - eventX);
+  const inPast = signalY > eventY + Math.abs(signalX - eventX);
+  const inCone = inFuture || inPast;
+  const isReachable = Math.abs(signalY - eventY) > Math.abs(signalX - eventX);
+
+  ctx.fillStyle = isReachable ? '#6db5a3' : '#b56d8a';
+  ctx.beginPath();
+  ctx.arc(signalX, signalY, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = isReachable ? '#6db5a3' : '#b56d8a';
+  ctx.font = '18px "JetBrains Mono", monospace';
+  ctx.fillText(isReachable ? 'REACHABLE' : 'ELSEWHERE', signalX + 18, signalY + 6);
+
+  // event point
+  ctx.fillStyle = '#d4a574';
+  ctx.beginPath();
+  ctx.arc(eventX, eventY, 12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#0a0d12';
+  ctx.beginPath();
+  ctx.arc(eventX, eventY, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#d4a574';
+  ctx.font = '20px "Cormorant Garamond", serif';
+  ctx.fillText('event', eventX + 18, eventY - 14);
+
+  xVal.textContent = `x = ${xSlider.value}`;
+  tVal.textContent = `t = ${tSlider.value}`;
+  dVal.textContent = `distance = ${dSlider.value}`;
+}
+
+[xSlider, tSlider, dSlider].forEach(s => s.addEventListener('input', draw));
+resize();
+</script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Geometry of Spacetime</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0d12;
+    --bg-2: #11151c;
+    --ink: #e8e4d8;
+    --ink-dim: #8a8578;
+    --accent: #d4a574;
+    --line: #1f242d;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Cormorant Garamond', serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body {
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(232,228,216,0.4), transparent),
+      radial-gradient(1px 1px at 60% 70%, rgba(232,228,216,0.3), transparent),
+      radial-gradient(1px 1px at 80% 20%, rgba(232,228,216,0.3), transparent),
+      radial-gradient(1.5px 1.5px at 30% 80%, rgba(232,228,216,0.2), transparent),
+      radial-gradient(1px 1px at 90% 50%, rgba(232,228,216,0.4), transparent),
+      radial-gradient(1px 1px at 15% 60%, rgba(212,165,116,0.3), transparent),
+      radial-gradient(1px 1px at 75% 90%, rgba(232,228,216,0.3), transparent);
+    background-size: 100% 100%;
+  }
+
+  .header {
+    padding: 6rem 2rem 2rem;
+    text-align: center;
+    border-bottom: 1px solid var(--line);
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.4em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+  h1 {
+    font-size: clamp(2.5rem, 7vw, 5rem);
+    font-weight: 300;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    font-style: italic;
+  }
+  h1 .reg { font-style: normal; }
+  .subtitle {
+    margin-top: 1.5rem;
+    color: var(--ink-dim);
+    font-size: 1.15rem;
+    max-width: 38rem;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 0;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .card {
+    padding: 3.5rem 2.5rem;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: background 0.3s ease;
+    position: relative;
+    min-height: 360px;
+  }
+  .card:hover { background: var(--bg-2); }
+  .card:hover .num { color: var(--accent); }
+  .card:hover .arrow { transform: translateX(4px); color: var(--accent); }
+
+  .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--ink-dim);
+    letter-spacing: 0.2em;
+    transition: color 0.3s;
+  }
+  .card h2 {
+    font-size: 2rem;
+    font-weight: 400;
+    margin: 1rem 0 0.5rem;
+    line-height: 1.1;
+    font-style: italic;
+  }
+  .card .lede {
+    color: var(--ink-dim);
+    font-size: 1rem;
+    line-height: 1.5;
+    margin-bottom: 2rem;
+  }
+  .card .question {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    line-height: 1.6;
+  }
+  .arrow {
+    display: inline-block;
+    margin-left: 0.5rem;
+    transition: transform 0.3s, color 0.3s;
+    color: var(--ink-dim);
+  }
+
+  .footer {
+    text-align: center;
+    padding: 4rem 2rem 3rem;
+    color: var(--ink-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+  }
+  .footer em {
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--ink);
+    font-size: 1rem;
+    display: block;
+    margin-top: 1rem;
+    letter-spacing: normal;
+  }
+</style>
+</head>
+<body>
+  <header class="header">
+    <div class="eyebrow">— Four interactive notes —</div>
+    <h1>The Geometry of <span class="reg">Spacetime</span></h1>
+    <p class="subtitle">Relativity, expansion, and information — visualized so the math becomes something you can feel rather than just accept.</p>
+  </header>
+
+  <main class="grid">
+    <a class="card" href="01-light-cones.html">
+      <div class="num">01 / Causality</div>
+      <h2>Light Cones</h2>
+      <p class="lede">Every event sits at the apex of a cone of past and future. Outside the cone, nothing is reachable.</p>
+      <div class="question">"How fast can cause-and-effect travel?" <span class="arrow">→</span></div>
+    </a>
+
+    <a class="card" href="02-time-dilation.html">
+      <div class="num">02 / Time</div>
+      <h2>Time Dilation</h2>
+      <p class="lede">Move through space and you spend less of your motion on time. Both observers see the other's clock running slow — both are right.</p>
+      <div class="question">"Why does fast travel age you slower?" <span class="arrow">→</span></div>
+    </a>
+
+    <a class="card" href="03-simultaneity.html">
+      <h2 style="margin-top:0;"><span class="num">03 / Simultaneity</span></h2>
+      <h2>The Loss of Now</h2>
+      <p class="lede">Two events that happen "at the same time" for one observer happen in sequence for another. There is no shared present.</p>
+      <div class="question">"What is happening on Mars right now?" <span class="arrow">→</span></div>
+    </a>
+
+    <a class="card" href="04-expansion.html">
+      <div class="num">04 / Cosmology</div>
+      <h2>Space Expanding</h2>
+      <p class="lede">Atoms hold themselves together. Galaxies don't. Every observer sees themselves as the center, and none of them are wrong.</p>
+      <div class="question">"Why doesn't expansion tear you apart?" <span class="arrow">→</span></div>
+    </a>
+  </main>
+
+  <footer class="footer">
+    BUILT FOR RIC · APRIL 2026
+    <em>"All that matters is how long the information takes to get to you."</em>
+  </footer>
+</body>
+</html>

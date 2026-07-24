@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>/log — transmissions</title>
   <meta name="description" content="Ric Massey's log — transmissions, write-ups, and VOD reviews.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Ric's Relay">
+  <meta property="og:title" content="The Log — Ric's Relay">
+  <meta property="og:description" content="Longer transmissions: write-ups, trip reports, and Apex VOD reviews.">
+  <meta property="og:url" content="https://ric-massey.github.io/ric-relay/log.html">
+  <meta name="twitter:card" content="summary">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23101014'/><text y='.9em' font-size='70' x='15' fill='%23ff8ae0'>▮</text></svg>">
   <style>
     :root {
@@ -33,10 +39,18 @@
     .masthead .brand:hover { color: var(--signal); }
     .masthead .wing { font-family: ui-monospace, Menlo, monospace; color: var(--faint); font-size: 0.82rem; letter-spacing: 0.28em; }
     .masthead .welcome { color: var(--faint); font-size: 0.92rem; margin: 0.4rem 0 0.9rem; font-style: italic; }
-    nav { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; color: var(--faint); letter-spacing: 0.08em; display: flex; flex-wrap: wrap; gap: 0.3rem 1.1rem; }
-    nav a { color: var(--faint); text-decoration: none; }
-    nav a:hover { color: var(--signal); }
-    nav .here { color: var(--ink); }
+    /* newspaper section-bar nav */
+    nav.sections {
+      display: flex; flex-wrap: wrap; align-items: center;
+      border-top: 1px solid var(--edge); border-bottom: 1px solid var(--edge);
+      padding: 0.5rem 0; font-family: Georgia, "Times New Roman", serif;
+      font-size: 0.82rem; font-variant: small-caps; letter-spacing: 0.06em;
+    }
+    nav.sections a, nav.sections .here { color: var(--faint); text-decoration: none; padding: 0.1rem 0.85rem; border-right: 1px solid var(--edge); }
+    nav.sections a:first-child { padding-left: 0; }
+    nav.sections a:last-child, nav.sections .here:last-child { border-right: none; }
+    nav.sections a:hover { color: var(--signal); }
+    nav.sections .here { color: var(--signal); font-weight: 700; }
 
     h1 { font-weight: 400; font-size: 2rem; letter-spacing: 0.02em; }
     h1 .accent { color: var(--signal); }
@@ -51,6 +65,10 @@
     }
 
     article h2 { font-weight: 400; font-size: 1.3rem; margin-bottom: 0.2rem; }
+    article a { color: var(--signal); text-decoration: none; }
+    article a:hover { text-decoration: underline; }
+    article h2 a { color: inherit; }
+    article h2 a:hover { color: var(--signal); text-decoration: none; }
 
     .meta {
       font-family: ui-monospace, Menlo, monospace;
@@ -70,16 +88,16 @@
     <header class="masthead">
       <a class="brand" href="index.html">RIC'S RELAY</a><span class="wing"> · DISPATCHES</span>
       <p class="welcome">Pull up a chair. This is the long-form corner.</p>
-      <nav>
-        <a href="index.html">← the relay</a>
-        <a href="systems.html">orrin's mind</a>
+      <nav class="sections" aria-label="Relay rooms">
+        <a href="index.html">relay</a>
+        <a href="systems.html">orrin</a>
         <a href="climbing.html">climbing</a>
         <a href="training.html">training</a>
-        <a href="exploration.html">event horizon</a>
+        <a href="exploration.html">exploration</a>
         <a href="workbench.html">workbench</a>
-        <a href="captures.html">darkroom</a>
-        <span class="here">the log</span>
-        <a href="updates.html">bulletins</a>
+        <a href="captures.html">captures</a>
+        <span class="here" aria-current="page">log</span>
+        <a href="updates.html">updates</a>
       </nav>
     </header>
 
@@ -91,6 +109,16 @@
          the newest one, edit. Categories are free-form:
          TRANSMISSION, VOD REVIEW, TRIP REPORT, ORRIN…
          ═══════════════════════════════════════════════════ -->
+
+    <article>
+      <h2><a href="projects/autism-reflection.html">A Reflection on the DSM-5 Autism Criteria</a></h2>
+      <p class="meta">2026-05-23 · <span class="cat">REFLECTION</span></p>
+      <p>An interactive walk through how the DSM-5 actually describes Autism Spectrum
+        Disorder — its two core domains, supporting conditions, and levels of support.
+        You answer short statements and see how they map onto the manual's structure.
+        Not a diagnostic test — a guided way to understand how the criteria are built.</p>
+      <p><a href="projects/autism-reflection.html">Open the reflection →</a></p>
+    </article>
 
     <article>
       <h2>Signal acquired</h2>
