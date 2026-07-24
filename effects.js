@@ -27,26 +27,37 @@
     spaceReach: ["relay-cat-space-reach-1.png", "relay-cat-space-reach-2.png", "relay-cat-space-reach-3.png"],
   }).map(([pose, files]) => [pose, files.map((file) => new URL(`assets/${file}`, document.currentScript?.src || location.href).href)]));
   const CAT_FRAME_Y = {
-    "relay-cat-walk-2.png": -.2,
+    "relay-cat-walk-2.png": -.172,
     "relay-cat-walk-3.png": -1.04,
-    "relay-cat-sit-2.png": .42,
-    "relay-cat-sit-3.png": -1.04,
-    "relay-cat-peek-2.png": .625,
-    "relay-cat-peek-3.png": 1.875,
-    "relay-cat-stretch.png": -1.46,
-    "relay-cat-stretch-2.png": .625,
+    "relay-cat-sit-2.png": .717,
+    "relay-cat-sit-3.png": -1.018,
+    "relay-cat-groom-2.png": -.125,
+    "relay-cat-groom-3.png": .36,
+    "relay-cat-peek-2.png": .675,
+    "relay-cat-peek-3.png": 2.14,
+    "relay-cat-stretch.png": .864,
+    "relay-cat-stretch-2.png": 5.213,
+    "relay-cat-stretch-3.png": 2.75,
     "relay-cat-top.png": .42,
     "relay-cat-top-2.png": -1.39,
-    "relay-cat-diagonal-near-2.png": -.625,
-    "relay-cat-diagonal-near-3.png": 1.46,
-    "relay-cat-diagonal-away-pass.png": 4.8,
-    "relay-cat-diagonal-away-stride.png": -.2,
+    "relay-cat-diagonal-near-1.png": .979,
+    "relay-cat-diagonal-near-2.png": .313,
+    "relay-cat-diagonal-near-3.png": 2.606,
+    "relay-cat-diagonal-away-1.png": 1.869,
+    "relay-cat-diagonal-away-pass.png": 7.265,
+    "relay-cat-diagonal-away-stride.png": 1.615,
+    "relay-cat-turn-near-1.png": 1.017,
+    "relay-cat-turn-near-2.png": .917,
+    "relay-cat-turn-away-1.png": 1.275,
+    "relay-cat-turn-away-2.png": 1.842,
     "relay-cat-feather-anticipate-1.png": -.625,
     "relay-cat-feather-anticipate-2.png": -5.2,
     "relay-cat-feather-swat-1.png": -8.54,
     "relay-cat-feather-swat-2.png": -7.5,
     "relay-cat-swat-recover-1.png": -6.875,
     "relay-cat-swat-recover-2.png": 4.79,
+    "relay-cat-emerge.png": 2.55,
+    "relay-cat-run.png": 3.825,
     "relay-cat-space-float-1.png": .31,
     "relay-cat-space-float-2.png": -.625,
     "relay-cat-space-float-3.png": -.52,
@@ -60,24 +71,37 @@
     "relay-cat-space-reach-3.png": -.1,
   };
   const CAT_FRAME_X = {
-    "relay-cat-walk-2.png": 1.18,
+    "relay-cat-walk-2.png": 1.188,
     "relay-cat-walk-3.png": .69,
     "relay-cat-look-3.png": -.69,
-    "relay-cat-peek-3.png": -.42,
+    "relay-cat-sit-2.png": .07,
+    "relay-cat-sit-3.png": .007,
+    "relay-cat-groom-2.png": -.029,
+    "relay-cat-groom-3.png": .07,
+    "relay-cat-peek-2.png": .008,
+    "relay-cat-peek-3.png": -.38,
+    "relay-cat-stretch.png": -.479,
+    "relay-cat-stretch-2.png": -.604,
+    "relay-cat-stretch-3.png": -.583,
     "relay-cat-top-2.png": .21,
     "relay-cat-top-3.png": .625,
-    "relay-cat-turn-near-2.png": 2.08,
-    "relay-cat-turn-away-1.png": 3.54,
-    "relay-cat-turn-away-2.png": -2.08,
-    "relay-cat-diagonal-away-pass.png": -1.67,
-    "relay-cat-diagonal-away-stride.png": -1.67,
+    "relay-cat-diagonal-near-1.png": .194,
+    "relay-cat-diagonal-near-2.png": .188,
+    "relay-cat-diagonal-near-3.png": .188,
+    "relay-cat-diagonal-away-1.png": .424,
+    "relay-cat-diagonal-away-pass.png": -1.444,
+    "relay-cat-diagonal-away-stride.png": -1.453,
+    "relay-cat-turn-near-1.png": .178,
+    "relay-cat-turn-near-2.png": 2.424,
+    "relay-cat-turn-away-1.png": 4.09,
+    "relay-cat-turn-away-2.png": -1.981,
     "relay-cat-feather-anticipate-1.png": 2.78,
     "relay-cat-feather-anticipate-2.png": .49,
     "relay-cat-feather-swat-1.png": 5.83,
     "relay-cat-feather-swat-2.png": 1.18,
     "relay-cat-swat-recover-1.png": 2.92,
-    "relay-cat-emerge.png": 2.22,
-    "relay-cat-run.png": -1.88,
+    "relay-cat-emerge.png": 3.032,
+    "relay-cat-run.png": -1.786,
     "relay-cat-space-float-1.png": .56,
     "relay-cat-space-float-2.png": .97,
     "relay-cat-space-float-3.png": 1.18,
@@ -91,6 +115,34 @@
     "relay-cat-space-reach-2.png": -1.11,
     "relay-cat-space-reach-3.png": .28,
   };
+  // The sprites share a canvas, but several generated poses do not share the
+  // same *body* scale. These corrections are based on matched fur/head features,
+  // not the PNG dimensions, so Mochi does not visibly grow or shrink mid-action.
+  const CAT_FRAME_SCALE = {
+    "relay-cat-walk-2.png": 1.002,
+    "relay-cat-sit-2.png": 1.021,
+    "relay-cat-sit-3.png": 1.002,
+    "relay-cat-groom-2.png": .99,
+    "relay-cat-groom-3.png": 1.024,
+    "relay-cat-peek-2.png": 1.002,
+    "relay-cat-peek-3.png": 1.01,
+    "relay-cat-stretch.png": 1.23,
+    "relay-cat-stretch-2.png": 1.3,
+    "relay-cat-stretch-3.png": 1.24,
+    "relay-cat-diagonal-near-1.png": 1.1,
+    "relay-cat-diagonal-near-2.png": 1.1,
+    "relay-cat-diagonal-near-3.png": 1.1,
+    "relay-cat-diagonal-away-1.png": 1.13,
+    "relay-cat-diagonal-away-pass.png": 1.13,
+    "relay-cat-diagonal-away-stride.png": 1.13,
+    "relay-cat-turn-near-1.png": 1.08,
+    "relay-cat-turn-near-2.png": 1.08,
+    "relay-cat-turn-away-1.png": 1.09,
+    "relay-cat-turn-away-2.png": 1.13,
+    "relay-cat-emerge.png": 1.18,
+    "relay-cat-run.png": 1.27,
+  };
+  const CAT_MAX_VISUAL_SCALE = Math.max(1, ...Object.values(CAT_FRAME_SCALE));
   const CAT_IDLE_POSES = ["sit", "loaf", "groom", "look", "stretch"];
   const CAT_SPACE_POSES = ["spaceFloat", "spaceDrift", "spaceCurl", "spaceReach"];
   const CAT_FRAME_DELAYS = {
@@ -113,6 +165,7 @@
   let catActionTimer;
   let catScrollTimer;
   let catRunningAway = false;
+  const catPreloadedFrames = new Set();
   let lastScrollY = window.scrollY || 0;
   let lastScrollDirection = 1;
 
@@ -144,7 +197,7 @@
     }
     .relay-cat-layer {
       position: absolute; top: 0; left: 0; width: 100%; height: 0;
-      z-index: 2147482550; overflow: visible; pointer-events: none;
+      z-index: 2147482550; overflow: hidden; pointer-events: none;
     }
     .relay-cat-visit {
       position: absolute; display: block; pointer-events: none;
@@ -158,7 +211,9 @@
     .relay-cat-image.sprite-top { aspect-ratio: 2 / 3; }
     .relay-cat-frame {
       position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
-      opacity: 0; transform: translate(var(--cat-frame-x, 0%), var(--cat-frame-y, 0%));
+      opacity: 0; transform-origin: 50% 100%;
+      transform: translate(var(--cat-frame-x, 0%), var(--cat-frame-y, 0%)) scale(var(--cat-frame-scale, 1));
+      filter: sepia(.85) saturate(1.9) hue-rotate(345deg) brightness(.98) contrast(1.03);
       user-select: none; pointer-events: none;
     }
     .relay-cat-frame.active { opacity: 1; }
@@ -206,6 +261,10 @@
     }
     .relay-cat-peek .relay-cat-image {
       animation: relay-cat-idle 2.8s ease-in-out infinite;
+    }
+    .relay-cat-peek.edge-peek {
+      --cat-peek-right: -72%; --cat-peek-right-rest: -80%;
+      --cat-peek-left: 72%; --cat-peek-left-rest: 80%;
     }
     .relay-cat-peek.arriving.to-right .relay-cat-slider {
       animation: relay-cat-arrive-right 1.45s cubic-bezier(.18,.74,.28,1) both;
@@ -305,24 +364,24 @@
     @keyframes relay-cat-peek-right {
       0%,100%{opacity:0;transform:translateX(-98%)}
       12%{opacity:.98}
-      28%,72%{opacity:.98;transform:translateX(-61%)}
-      86%{opacity:.98;transform:translateX(-72%)}
+      28%,72%{opacity:.98;transform:translateX(var(--cat-peek-right, -61%))}
+      86%{opacity:.98;transform:translateX(var(--cat-peek-right-rest, -72%))}
     }
     @keyframes relay-cat-peek-left {
       0%,100%{opacity:0;transform:translateX(98%)}
       12%{opacity:.98}
-      28%,72%{opacity:.98;transform:translateX(61%)}
-      86%{opacity:.98;transform:translateX(72%)}
+      28%,72%{opacity:.98;transform:translateX(var(--cat-peek-left, 61%))}
+      86%{opacity:.98;transform:translateX(var(--cat-peek-left-rest, 72%))}
     }
     @keyframes relay-cat-arrive-right {
       0%{opacity:0;transform:translateX(-99%)}
       22%{opacity:.98}
-      62%,100%{opacity:.98;transform:translateX(-62%)}
+      62%,100%{opacity:.98;transform:translateX(var(--cat-peek-right, -62%))}
     }
     @keyframes relay-cat-arrive-left {
       0%{opacity:0;transform:translateX(99%)}
       22%{opacity:.98}
-      62%,100%{opacity:.98;transform:translateX(62%)}
+      62%,100%{opacity:.98;transform:translateX(var(--cat-peek-left, 62%))}
     }
     @keyframes relay-feather-fall {
       0%{opacity:0;transform:translate3d(-14px,-10px,0) rotate(-24deg)}
@@ -409,27 +468,33 @@
   }
 
   function ensureCatLayer() {
-    if (catLayer?.isConnected) return catLayer;
-    catLayer = document.createElement("div");
-    catLayer.className = "relay-cat-layer";
-    document.body.appendChild(catLayer);
+    if (!catLayer?.isConnected) {
+      catLayer = document.createElement("div");
+      catLayer.className = "relay-cat-layer";
+      document.body.appendChild(catLayer);
+    }
+    // A real clipping boundary keeps off-page entrances from increasing
+    // document.scrollWidth while still letting Mochi occupy document positions.
+    catLayer.style.height = "0px";
+    catLayer.style.height = `${pageHeight()}px`;
     return catLayer;
   }
 
-  function preloadCatFrames() {
-    Object.entries(CAT_FRAMES)
-      .filter(([pose]) => catWorld === "space" ? pose.startsWith("space") : !pose.startsWith("space"))
-      .flatMap(([, frames]) => frames)
-      .forEach((src) => {
-        const image = new Image();
-        image.src = src;
-      });
+  function preloadCatPose(pose) {
+    (CAT_FRAMES[pose] || []).forEach((src) => {
+      if (catPreloadedFrames.has(src)) return;
+      catPreloadedFrames.add(src);
+      const image = new Image();
+      image.decoding = "async";
+      image.src = src;
+    });
   }
 
   function loadCatFrame(frame, src) {
     const filename = decodeURIComponent(src.split("/").pop().split("?")[0]);
     frame.style.setProperty("--cat-frame-x", `${CAT_FRAME_X[filename] || 0}%`);
     frame.style.setProperty("--cat-frame-y", `${CAT_FRAME_Y[filename] || 0}%`);
+    frame.style.setProperty("--cat-frame-scale", CAT_FRAME_SCALE[filename] || 1);
     if (frame.dataset.frameSrc === src && frame.complete && frame.naturalWidth) return Promise.resolve();
     frame.dataset.frameSrc = src;
     frame.src = src;
@@ -445,6 +510,7 @@
     const nextPose = CAT_FRAMES[pose] ? pose : "walk";
     const frames = CAT_FRAMES[nextPose];
     if (image.dataset.pose === nextPose && !options.force && !options.once) return;
+    preloadCatPose(nextPose);
     clearTimeout(image._relayCatFrameTimer);
     const token = (image._relayCatFrameToken || 0) + 1;
     image._relayCatFrameToken = token;
@@ -563,7 +629,7 @@
     return [...document.querySelectorAll(selector)].filter((feature) => {
       const rect = feature.getBoundingClientRect();
       return rect.width > 130 && rect.height > 55 && rect.bottom > 50 &&
-        rect.top < innerHeight - 50 && (rect.left > 70 || rect.right < innerWidth - 70);
+        rect.top < innerHeight - 50 && rect.right > 0 && rect.left < innerWidth;
     });
   }
 
@@ -578,20 +644,54 @@
   }
 
   function peekingCat(width, features) {
-    const feature = features[Math.floor(Math.random() * features.length)];
-    const rect = feature.getBoundingClientRect();
-    const roomLeft = rect.left > 70;
-    const roomRight = rect.right < innerWidth - 70;
-    const toRight = roomRight && (!roomLeft || Math.random() < .5);
     const height = width * 2 / 3;
+    const protectedRects = protectedContentRects();
+    const shuffled = [...features].sort(() => Math.random() - .5);
+    const edgeReveal = width * .28;
+    let placement;
+
+    for (const feature of shuffled) {
+      const rect = feature.getBoundingClientRect();
+      for (let attempt = 0; attempt < 5 && !placement; attempt += 1) {
+        const top = Math.min(innerHeight - height - 12,
+          Math.max(12, rect.top + Math.random() * Math.max(1, rect.height - height)));
+        const candidates = [];
+        if (rect.right < innerWidth - 70) {
+          candidates.push({ left: rect.right - 2, top, toRight: true, visibleLeft: rect.right - 2, visibleWidth: width });
+        }
+        if (rect.left > 70) {
+          candidates.push({ left: rect.left - width + 2, top, toRight: false, visibleLeft: rect.left - width + 2, visibleWidth: width });
+        }
+        candidates.push(
+          { left: 0, top, toRight: true, visibleLeft: 0, visibleWidth: edgeReveal, edge: true },
+          { left: innerWidth - width, top, toRight: false, visibleLeft: innerWidth - edgeReveal, visibleWidth: edgeReveal, edge: true }
+        );
+        placement = candidates.sort(() => Math.random() - .5).find((candidate) => {
+          const peekRect = {
+            left: candidate.visibleLeft,
+            right: candidate.visibleLeft + candidate.visibleWidth,
+            top: candidate.top,
+            bottom: candidate.top + height,
+          };
+          return !protectedRects.some((content) =>
+            peekRect.left < content.right + 8 && peekRect.right > content.left - 8 &&
+            peekRect.top < content.bottom + 8 && peekRect.bottom > content.top - 8
+          );
+        });
+      }
+      if (placement) break;
+    }
+    if (!placement) return null;
+
+    const { toRight } = placement;
     const visitor = document.createElement("div");
     const slider = document.createElement("div");
     const stay = 9000 + Math.random() * 5000;
-    visitor.className = `relay-cat-visit relay-cat-peek ${toRight ? "to-right" : "to-left"}`;
+    visitor.className = `relay-cat-visit relay-cat-peek ${toRight ? "to-right" : "to-left"}${placement.edge ? " edge-peek" : ""}`;
     visitor.style.width = `${width}px`;
     visitor.style.height = `${height}px`;
-    visitor.style.left = `${(window.scrollX || 0) + (toRight ? rect.right - 2 : rect.left - width + 2)}px`;
-    visitor.style.top = `${(window.scrollY || 0) + Math.min(innerHeight - height - 12, Math.max(12, rect.top + Math.random() * Math.max(1, rect.height - height)))}px`;
+    visitor.style.left = `${(window.scrollX || 0) + placement.left}px`;
+    visitor.style.top = `${(window.scrollY || 0) + placement.top}px`;
     visitor.style.setProperty("--cat-stay", `${stay}ms`);
     slider.className = "relay-cat-slider";
     slider.appendChild(makeCat(width, toRight ? 1 : -1, "peek"));
@@ -652,15 +752,38 @@
     return Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight || 0, innerHeight);
   }
 
-  function spotCoversControl(left, top, width, height) {
+  function protectedContentRects() {
+    const protectedElements = new Set(document.querySelectorAll(
+      "a, button, input, textarea, select, summary, [role='button'], " +
+      "h1, h2, h3, h4, h5, h6, p, li, dt, dd, pre, blockquote, code, time, strong, em, [data-mochi-no-cover]"
+    ));
+    document.querySelectorAll("body *").forEach((element) => {
+      if (catLayer?.contains(element) || element.matches("script, style, svg, path")) return;
+      const hasDirectText = [...element.childNodes].some((node) =>
+        node.nodeType === 3 && node.textContent.trim()
+      );
+      if (hasDirectText) protectedElements.add(element);
+    });
+    return [...protectedElements].flatMap((element) => {
+      if (element === catResident || catLayer?.contains(element) || element.closest("[aria-hidden='true']")) return [];
+      const rect = element.getBoundingClientRect();
+      if (rect.width < 1 || rect.height < 1 || rect.bottom < 0 || rect.top > innerHeight) return [];
+      return [rect];
+    });
+  }
+
+  function spotCoversContent(left, top, width, height, protectedRects = protectedContentRects()) {
     const viewportLeft = left - (window.scrollX || 0);
     const viewportTop = top - (window.scrollY || 0);
-    const candidate = { left: viewportLeft, right: viewportLeft + width, top: viewportTop, bottom: viewportTop + height };
-    const controls = document.querySelectorAll("a, button, input, textarea, select, summary, [role='button']");
-    return [...controls].some((control) => {
-      if (control === catResident || catLayer?.contains(control)) return false;
-      const rect = control.getBoundingClientRect();
-      if (rect.width < 1 || rect.height < 1 || rect.bottom < 0 || rect.top > innerHeight) return false;
+    const visualWidth = width * CAT_MAX_VISUAL_SCALE;
+    const visualHeight = height * CAT_MAX_VISUAL_SCALE;
+    const candidate = {
+      left: viewportLeft - (visualWidth - width) / 2,
+      right: viewportLeft + width + (visualWidth - width) / 2,
+      top: viewportTop - (visualHeight - height),
+      bottom: viewportTop + height,
+    };
+    return protectedRects.some((rect) => {
       return candidate.left < rect.right + 14 && candidate.right > rect.left - 14 &&
         candidate.top < rect.bottom + 14 && candidate.bottom > rect.top - 14;
     });
@@ -671,6 +794,7 @@
     const scrollTop = window.scrollY || 0;
     const scrollLeft = window.scrollX || 0;
     const perches = [];
+    const protectedRects = protectedContentRects();
     document.querySelectorAll(selectors).forEach((feature) => {
       if (catLayer?.contains(feature)) return;
       const rect = feature.getBoundingClientRect();
@@ -681,7 +805,7 @@
       const rightEdge = Math.min(scrollLeft + innerWidth - width - 18, scrollLeft + rect.right - width - 14);
       [leftEdge, rightEdge].forEach((left) => {
         if (left < scrollLeft + 18 || left > scrollLeft + innerWidth - width - 18) return;
-        if (!spotCoversControl(left, top, width, height)) perches.push({ left, top, perched: true });
+        if (!spotCoversContent(left, top, width, height, protectedRects)) perches.push({ left, top, perched: true });
       });
     });
     return perches;
@@ -692,15 +816,16 @@
     const height = width * .72;
     const scrollTop = window.scrollY || 0;
     const scrollLeft = window.scrollX || 0;
+    const gap = Math.max(22, width * (CAT_MAX_VISUAL_SCALE - 1) / 2 + 16);
     const top = scrollTop + Math.max(12, Math.min(innerHeight - height - 12,
       rect.top + rect.height * .5 - height * .58));
     const candidates = [
-      { left: scrollLeft + rect.right + 12, top, facing: -1 },
-      { left: scrollLeft + rect.left - width - 12, top, facing: 1 },
+      { left: scrollLeft + rect.right + gap, top, facing: -1 },
+      { left: scrollLeft + rect.left - width - gap, top, facing: 1 },
     ].filter((spot) => spot.left >= scrollLeft + 12 && spot.left + width <= scrollLeft + innerWidth - 12);
-    const clear = candidates.filter((spot) => !spotCoversControl(spot.left, spot.top, width, height));
-    const choices = clear.length ? clear : candidates;
-    return choices.length ? choices[Math.floor(Math.random() * choices.length)] : null;
+    const protectedRects = protectedContentRects();
+    const clear = candidates.filter((spot) => !spotCoversContent(spot.left, spot.top, width, height, protectedRects));
+    return clear.length ? clear[Math.floor(Math.random() * clear.length)] : null;
   }
 
   function catSpot(width, nearViewport = true) {
@@ -715,7 +840,7 @@
     const viewportMaxTop = scrollTop + innerHeight - estimatedHeight - 12;
     const maxTop = Math.max(10, Math.min(pageMaxTop, viewportMaxTop));
     const minTop = Math.min(maxTop, Math.max(10, scrollTop + 12));
-    let fallback;
+    const protectedRects = protectedContentRects();
     for (let attempt = 0; attempt < 14; attempt += 1) {
       const rawTop = nearViewport
         ? scrollTop + innerHeight * (.5 + Math.random() * .24)
@@ -724,10 +849,9 @@
         left: scrollLeft + 18 + Math.random() * Math.max(1, innerWidth - width - 36),
         top: Math.max(minTop, Math.min(maxTop, rawTop)),
       };
-      fallback = spot;
-      if (!spotCoversControl(spot.left, spot.top, width, estimatedHeight)) return spot;
+      if (!spotCoversContent(spot.left, spot.top, width, estimatedHeight, protectedRects)) return spot;
     }
-    return fallback;
+    return null;
   }
 
   function catTravelDuration(fromLeft, fromTop, toLeft, toTop, speed = 72) {
@@ -891,6 +1015,11 @@
 
     const width = catWidth();
     const spot = catSpot(width);
+    if (!spot) {
+      catResident = null;
+      retryCatEntry();
+      return;
+    }
     const fromRight = Math.random() < .5;
     const scrollLeft = window.scrollX || 0;
     const startLeft = fromRight
@@ -978,6 +1107,13 @@
     else summonResidentCat(true);
   }
 
+  function retryCatEntry(delay = 1400 + Math.random() * 1800) {
+    clearTimeout(catActionTimer);
+    catActionTimer = setTimeout(() => {
+      if (catsEnabled && !catResident?.isConnected) enterResidentCat();
+    }, delay);
+  }
+
   function emergeFromFeature() {
     if (!catsEnabled) return;
     const features = visibleFeatures();
@@ -987,6 +1123,10 @@
 
     const width = catWidth();
     const visit = peekingCat(width, features);
+    if (!visit) {
+      retryCatEntry();
+      return;
+    }
     visit.visitor.classList.add("arriving");
     visit.visitor.style.setProperty("--cat-stay", "1450ms");
     catPeek = visit.visitor;
@@ -994,6 +1134,19 @@
 
     catActionTimer = setTimeout(() => {
       if (!catsEnabled) return;
+      const spot = catSpot(width, true);
+      if (!spot) {
+        if (catPeek) {
+          catPeek.classList.remove("arriving");
+          catPeek.style.setProperty("--cat-stay", `${visit.stay}ms`);
+        }
+        catActionTimer = setTimeout(() => {
+          catPeek?.remove();
+          catPeek = null;
+          retryCatEntry(600);
+        }, visit.stay);
+        return;
+      }
       catPeek?.remove();
       catPeek = null;
       const resident = document.createElement("div");
@@ -1006,7 +1159,6 @@
       ensureCatLayer().appendChild(resident);
       catResident = resident;
 
-      const spot = catSpot(width, true);
       const duration = catTravelDuration(visit.left, visit.top, spot.left, spot.top, 86);
       resident.style.setProperty("--cat-move", `${duration}ms`);
       setResidentPose("emerge", visit.facing, {
@@ -1036,6 +1188,13 @@
     }
     const width = catWidth();
     const spot = catSpot(width, true);
+    if (!spot) {
+      catResident.classList.remove("walking", "running");
+      catResident.classList.add("idle");
+      setResidentPose(randomIdlePose());
+      scheduleCatAction();
+      return;
+    }
     const currentLeft = Number.parseFloat(catResident.style.left) || 0;
     const currentTop = Number.parseFloat(catResident.style.top) || 0;
     const duration = catTravelDuration(currentLeft, currentTop, spot.left, spot.top);
@@ -1202,6 +1361,7 @@
   function hideResidentCat(features) {
     if (!catResident?.isConnected) return;
     const visit = peekingCat(catWidth(), features);
+    if (!visit) return scheduleCatAction();
     const currentLeft = Number.parseFloat(catResident.style.left) || 0;
     const currentTop = Number.parseFloat(catResident.style.top) || 0;
     const duration = catTravelDuration(currentLeft, currentTop, visit.left, visit.top, 105);
@@ -1262,6 +1422,12 @@
       resident.classList.remove("walking", "pose-top", "from-bottom");
       resident.classList.add("walking");
       const home = catSpot(width, true);
+      if (!home) {
+        resident.remove();
+        if (catResident === resident) catResident = null;
+        retryCatEntry();
+        return;
+      }
       const currentLeft = Number.parseFloat(resident.style.left) || left;
       const currentTop = Number.parseFloat(resident.style.top) || endTop;
       setWalkingPose(currentLeft, currentTop, home.left, home.top);
@@ -1365,7 +1531,6 @@
     catRunningAway = false;
 
     if (next) {
-      preloadCatFrames();
       ensureCatLayer();
       if (catWorld === "space") summonSpaceCat();
       else enterResidentCat();
@@ -1383,6 +1548,7 @@
     if (!catsEnabled) return;
     clearTimeout(catScrollTimer);
     catScrollTimer = setTimeout(() => {
+      ensureCatLayer();
       if (!catIsInViewport()) catchUpResidentCat(lastScrollDirection);
     }, 180);
   });
