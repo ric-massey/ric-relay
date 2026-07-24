@@ -469,6 +469,7 @@
 
   window.RELAY_CATS = {
     enable: () => setCats(true),
+    clear: () => setCats(false),
     active: () => catsEnabled,
   };
 

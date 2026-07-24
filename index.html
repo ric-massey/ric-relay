@@ -527,7 +527,11 @@
         return `relay process awake for ${minutes ? `${minutes}m ` : ""}${seconds % 60}s.`;
       },
       date: () => new Date().toLocaleString([], { dateStyle: "full", timeStyle: "medium" }),
-      clear: () => { out.textContent = ""; return null; },
+      clear: () => {
+        window.RELAY_CATS?.clear();
+        out.textContent = "";
+        return null;
+      },
       echo: (arg, originalArg) => originalArg || "",
       random: () => {
         const unlocked = Object.entries(PAGES).filter(([name]) => name !== "map");
