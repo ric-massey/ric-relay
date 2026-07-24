@@ -11,6 +11,7 @@
   <meta property="og:description" content="A terminal-styled relay for family & friends — Orrin, climbing, training, photos, and write-ups.">
   <meta property="og:url" content="https://ricmassey.com">
   <meta name="twitter:card" content="summary">
+  <link rel="canonical" href="https://ricmassey.com/">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230a0a0a'/><text y='.9em' font-size='70' x='15' fill='%23ffb000'>▮</text></svg>">
   <style>
     :root {
@@ -92,6 +93,16 @@
 
     .cursor { animation: blink 1s steps(1) infinite; }
     @keyframes blink { 50% { opacity: 0; } }
+
+    /* respect visitors who ask their OS to reduce motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+      }
+      .cursor { animation: none; opacity: 1; }
+    }
 
     /* directory */
     #dir { margin-top: 1.8rem; }
@@ -209,11 +220,26 @@
     <div class="frame">
       <div class="frame-label">RIC-MASSEY PERSONAL RELAY // NODE 01</div>
 
-      <div class="wordmark">THE RELAY</div>
+      <h1 class="wordmark">THE RELAY</h1>
       <p class="welcome-tag"><span class="lit">welcome in.</span> this is ric's corner of the internet —
         built so family &amp; friends can see what he's up to without asking.</p>
 
       <div id="boot" aria-live="polite"></div>
+
+      <noscript>
+        <div class="dir-head" style="margin-top:1.8rem">DIRECTORY (JavaScript disabled):</div>
+        <ul style="list-style:none;padding:0;margin:0;line-height:2">
+          <li><a href="orrin.html" style="color:var(--phosphor)">/orrin</a> — cognition · code · ORRIN runtime</li>
+          <li><a href="psyche.html" style="color:var(--phosphor)">/psyche</a> — human systems · patterns · evidence</li>
+          <li><a href="climbing.html" style="color:var(--phosphor)">/climbing</a> — routes · projects · mountaineering</li>
+          <li><a href="training.html" style="color:var(--phosphor)">/training</a> — runs · workouts · health</li>
+          <li><a href="exploration.html" style="color:var(--phosphor)">/exploration</a> — space · experiments · the game</li>
+          <li><a href="workbench.html" style="color:var(--phosphor)">/workbench</a> — random projects · half-finished ideas</li>
+          <li><a href="captures.html" style="color:var(--phosphor)">/captures</a> — photographic records</li>
+          <li><a href="log.html" style="color:var(--phosphor)">/log</a> — transmissions · write-ups · VOD reviews</li>
+          <li><a href="map.html" style="color:var(--phosphor)">/map</a> — crew access only</li>
+        </ul>
+      </noscript>
 
       <div id="cmdline" class="hidden">
         <div class="prompt-row">
@@ -344,7 +370,13 @@
         reveal();
       }
     }
-    nextLine();
+    // visitors who ask their OS to reduce motion get the shell instantly,
+    // skipping the typed-boot animation.
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      skipBoot();
+    } else {
+      nextLine();
+    }
 
     // ─── transmissions (from notes.js) ───────────────────
     const txBox = document.getElementById("transmissions");
