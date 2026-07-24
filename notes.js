@@ -3,7 +3,7 @@
 //  This is the ONLY file you ever need to touch by hand.
 //  To post an update: copy one of the blocks below, paste it
 //  at the TOP of the list, and change the date + text.
-//  Then redeploy (or just git push if Netlify is connected).
+//  Then `git push` — GitHub Pages redeploys ricmassey.com automatically.
 // ═══════════════════════════════════════════════════════════
 
 const RIC_NOTES = [

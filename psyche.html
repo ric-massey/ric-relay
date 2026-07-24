@@ -176,6 +176,7 @@
     const egg = document.getElementById("egg");
     document.addEventListener("keydown", (event) => {
       if (event.key.length !== 1) return;
+      if (event.target.matches("input, textarea, select, [contenteditable='true']")) return;
       typed = (typed + event.key.toLowerCase()).slice(-12);
       if (!typed.endsWith("normal")) return;
       egg.classList.add("on");
