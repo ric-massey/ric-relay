@@ -74,6 +74,10 @@
         hull: el("hull"),
         hullBar: el("hull-bar"),
         cmb: el("cmb"),
+        gravity: el("gravity"),
+        relLabel: el("rel-label"),
+        relSpeed: el("rel-speed"),
+        assist: el("assist"),
         milestone: el("milestone"),
         milestoneTitle: el("milestone-title"),
         milestoneNote: el("milestone-note"),
@@ -149,17 +153,60 @@
       return `${digits}% of light`;
     },
 
+    /**
+     * A speed in units you can act on: m/s crawling alongside a planet, km/s
+     * across a system, then a fraction of light once that stops being useful.
+     */
+    formatSpeed(betaLike) {
+      const ms = Math.abs(betaLike) * K.c;
+      if (ms < 1) return `${ms.toFixed(2)} m/s`;
+      if (ms < 1000) return `${ms.toFixed(1)} m/s`;
+      if (ms < 1e6) return `${(ms / 1000).toFixed(1)} km/s`;
+      if (Math.abs(betaLike) < 0.01) return `${(ms / 1000).toFixed(0)} km/s`;
+      return `${(Math.abs(betaLike) * 100).toFixed(2)}% of light`;
+    },
+
     update(state) {
       const e = HUD.els;
       if (!e.shipTime) return;
       e.shipTime.textContent = HUD.formatYears(state.shipYears);
       e.homeTime.textContent = HUD.formatYears(state.homeYears);
       e.gamma.textContent = HUD.formatTimeFactor(state.gamma);
-      e.beta.textContent = HUD.formatBeta(state.beta);
+      // Speed, in a physical unit first and a fraction of light beside it.
+      // Sub-light reads in m/s (rolled up to km/s, then Mm/s); once the drive
+      // is faster-than-light, metres per second stop being legible, so it
+      // switches to light-years per second with the multiple of c alongside.
+      // Speed is signed now, so the readout is a magnitude plus a direction:
+      // "astern" is the only word a pilot needs for a negative number here,
+      // and it beats printing a minus sign in front of a percentage of light.
+      {
+        const signed = state.warpLySec || 0;
+        const speed = Math.abs(signed);
+        const vms = speed * K.lyM;                     // ship speed, m/s
+        const pctC = K.c > 0 ? (vms / K.c) * 100 : 0;
+        let main, side;
+        if (state.bubble) {                            // faster than light
+          main = `${significant(speed)} ly/s`;
+          side = `${significant(vms / K.c)}× c`;
+        } else {
+          main = vms < 1 ? `${vms.toFixed(2)} m/s`
+            : vms < 1e3 ? `${vms.toFixed(0)} m/s`
+            : vms < 1e6 ? `${(vms / 1e3).toFixed(1)} km/s`
+            : `${(vms / 1e6).toFixed(1)} Mm/s`;
+          side = pctC < 1 ? `${pctC.toFixed(3)}% of light`
+            : `${pctC.toFixed(1)}% of light`;
+        }
+        const way = signed < 0 ? " astern" : "";
+        e.beta.textContent = `${main}${way}  ·  ${side}`;
+        e.beta.dataset.astern = signed < 0 ? "true" : "false";
+      }
       e.distance.textContent = HUD.formatDistance(state.distanceLy);
-      e.throttle.textContent = state.bubble
-        ? "FTL JUMP"
-        : `${state.throttle >= 0 ? "" : "−"}${Math.abs(state.throttle).toFixed(2)} g`;
+      // Felt g-force: honest proper acceleration, however large.
+      const fg = state.feltG || 0;
+      e.throttle.textContent = fg < 0.005 ? "0 g"
+        : fg < 10 ? `${fg.toFixed(2)} g`
+        : `${significant(fg)} g`;
+      e.throttle.dataset.hot = fg > 20 ? "true" : "false";
 
       const ism = state.ismWattsPerM2;
       e.ism.textContent = ism < 1 ? `${ism.toFixed(2)} W/m²`
@@ -171,6 +218,39 @@
       e.hull.textContent = `${Math.round(hull * 100)}%`;
       e.hullBar.style.width = `${Math.max(0, Math.min(100, hull * 100))}%`;
       e.hullBar.dataset.level = hull > 0.55 ? "ok" : hull > 0.25 ? "warn" : "bad";
+
+      // Speed against the nearest world, in units a pilot can act on. Below
+      // a percent of light this is km/s, because "0.0003% of light" tells you
+      // nothing about whether you are about to hit a planet.
+      if (e.relSpeed) {
+        if (!state.relName) {
+          if (e.relLabel) e.relLabel.textContent = "Speed vs nearest";
+          e.relSpeed.textContent = "— nothing near";
+        } else {
+          if (e.relLabel) e.relLabel.textContent = `Speed vs ${state.relName}`;
+          const v = state.relSpeedC || 0;
+          const closing = state.relClosingC || 0;
+          // "·" for matched: below a metre per second nobody cares about the sign.
+          const arrow = Math.abs(closing) * K.c < 1 ? "·"
+            : closing > 0 ? "\u2193" : "\u2191";
+          e.relSpeed.textContent = `${HUD.formatSpeed(v)} ${arrow}`;
+          e.relSpeed.dataset.matched = v * K.c < 1 ? "true" : "false";
+        }
+      }
+
+      // The gearbox: which gear is engaged, and that gear's top speed. (These
+      // two cells were Gravity and Assist; the arcade drive has neither.)
+      const gi = Math.max(0, Math.min(F.gears.length - 1, (state.gear | 0) - 1));
+      const gear = F.gears[gi];
+      if (e.gravity && gear) {
+        e.gravity.textContent = `${gi + 1} · ${gear.name}`;
+        // Hot from the first faster-than-light gear up: gear 1 is the only one
+        // that stays inside the speed of light.
+        e.gravity.dataset.hot = gi >= 1 ? "true" : "false";
+      }
+      if (e.assist && gear) {
+        e.assist.textContent = `${significant(gear.topLySec)} ly/s`;
+      }
 
       const cmbK = state.cmbForwardK;
       e.cmb.textContent = cmbK < 1000 ? `${cmbK.toFixed(1)} K` : `${significant(cmbK)} K`;
@@ -264,8 +344,8 @@
       if (!target) return;
       const sigma = Math.PI * K.rSunLy * K.rSunLy;
       const rows = [
-        ["Time", `up to 1 second of play = ${F.shipYearsPerSecond} years of ship time`,
-          `Parked, the sim runs near real-time so you can watch a planet orbit; it ramps to the full ${F.shipYearsPerSecond} yr/s only once you pass about 0.1c, so interstellar cruising stays quick. A 1 g burn to the edge of the observable universe takes 24.5 years — at full compression, about a minute. Peak compression ≈ ${significant(F.shipYearsPerSecond * K.year)}×.`],
+        ["Time", "nothing — one second of play is one second of ship time",
+          `This used to be the largest lie in the game: a second of play was 0.4 years of the pilot's life, a hidden ${significant(0.4 * K.year)}× speedup on the one clock the whole thing is about. It is gone. Ship time advances at ${F.shipYearsPerSecond} years per second, which is exactly one second per second, and the gap you watch open between the two clocks is therefore real arithmetic on real elapsed time. Planets orbit at their true Kepler rate for the same reason.`],
         ["Star size", `a Sun-sized star is drawn ${significant(F.starRadiusLy / K.rSunLy)}× too big`,
           `Real solar radius: ${significant(K.rSunLy)} ly. Drawn at ${F.starRadiusLy} ly. Radii are also compressed by a power of ${F.starRadiusExp}, so the real 9,000× spread between an M6 dwarf and Betelgeuse renders as about 24×.`],
         ["Planet size", `Earth is drawn ${significant(F.planetRadiusLy / (K.rEarthM / K.lyM))}× too big`, "Otherwise no planet in the game would ever cover a single pixel."],
@@ -277,8 +357,10 @@
           `The gap between them is real — Poisson, exponentially distributed, mean ${(1 / (K.nStarsPerLy3 * Math.PI * F.encounterRadiusLy * F.encounterRadiusLy)).toFixed(1)} ly, which matches the true nearest-neighbour spacing of ${K.meanNeighbourLy.toFixed(1)} ly. Where they sit across the flight path is not: real ones would be scattered through a ${F.encounterRadiusLy} ly disk and you would never meet any of them.`],
         ["Mean free path", `we shortened it by about ${significant(F.trueMeanFreePathLy / 40)}×`,
           `σ = πR☉² = ${significant(sigma)} ly², n = ${K.nStarsPerLy3}/ly³, so ℓ = 1/(nσ) ≈ ${significant(F.trueMeanFreePathLy)} ly. Flying in a straight line through the real galaxy you would cover about 24 quadrillion light-years before hitting a star — roughly a million times the width of the observable universe. Space is so empty that the honest version of this game is unlosable.`],
-        ["Steering", "the ship flies where its nose points",
-          `A real ship keeps its old velocity when it turns. This one bleeds velocity toward the nose at a rate of a/(γβ), which is the real transverse-acceleration suppression — so you genuinely cannot turn at high speed — but the two vectors are more tightly coupled than physics requires. The green heading dot shows the difference: the crosshair is where the nose points, the dot is where you are actually going.`],
+        ["The drive", `gears 2–${F.gears.length} are faster than light, by up to ${significant(F.gears[F.gears.length - 1].topLySec / (K.c / K.lyM))}× c`,
+          `This is the headline cheat and the only one you engage on purpose. Space here is drawn at light-year scale — a planet is ${F.planetRadiusLy} ly across and its neighbours are light-years off — so at honest lightspeed crossing one system is a two-year trip. Gear 1 is the real thing: it tops out at 99% of light, and every relativistic effect in the game lives there. ${F.gears.length - 1} gears above it break c outright, from ${significant(F.gears[1].topLySec)} ly/s up to ${significant(F.gears[F.gears.length - 1].topLySec)} ly/s. Inside those the ship is treated as locally at rest in an Alcubierre-style bubble: nothing aberrates, the clocks agree and you cannot hit anything, which is the only reason a jump is survivable. What stays honest is the price tag — the felt g-force readout shows the proper acceleration an accelerometer would really register, openly in the millions of g while a high gear is spooling.`],
+        ["Steering", "nothing — the ship goes where it is pointed",
+          `Speed and heading are separate: the drive carries a signed speed along the nose, so turning the ship turns the trip. Hold ${SF.controls ? SF.controls.labelFor("thrustFwd") : "W"} to accelerate toward the gear's ceiling, LET GO AND IT HOLDS — the drive coasts rather than bleeding away, which is why there is no speed lock. ${SF.controls ? SF.controls.labelFor("thrustBack") : "S"} walks the speed back down, through zero and on into reverse at up to ${Math.round(F.reverseFraction * 100)}% of the gear's ceiling. ${SF.controls ? SF.controls.labelFor("killVel") : "B"} is the one autopilot: a full stop from either direction. In gear 1 this is a real Newtonian burn and near c it is properly suppressed — that is what the lag between the crosshair and the green heading dot is showing you.`],
         ["Orbital rates", `scaled by ${F.orbitRate}× and capped at 0.35 rad/frame`,
           `Planets keep their real relative rates (P = √(a³/M), inner worlds fast) and still speed up when you fly fast — time dilation from outside — but the whole thing is slowed by ${F.orbitRate}× so a parked system is watchable, and the cap stops it strobing backwards through the frame rate at extreme γ.`],
         ["Encounter count", `at most ${F.maxSystems} systems at once`,

@@ -180,7 +180,10 @@
      * inflation is ~7×10⁵ and is declared in the ledger.
      */
     visualRadiusLy(radiusSolar) {
-      return F.starRadiusLy * Math.pow(Math.max(1e-3, radiusSolar), F.starRadiusExp);
+      // Real now: a solar-radius star is 7.35×10⁻⁸ ly across. Far below a pixel
+      // until you fly right up to it — but stars carry their own glow, so they
+      // still read as bright points at any distance (exactly like the real sky).
+      return Math.max(1e-3, radiusSolar) * K.rSunLy;
     },
 
     /**

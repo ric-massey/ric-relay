@@ -233,7 +233,7 @@
           style,
           label: style.label,
           radiusEarth,
-          radiusLy: F.planetRadiusLy * Math.pow(radiusEarth, F.planetRadiusExp),
+          radiusLy: radiusEarth * K.rEarthM / K.lyM,   // real: Earth = 6.7×10⁻¹⁰ ly
           orbitAU: aAU,
           orbitLy: Systems.orbitToLy(aAU, star),
           // P = √(a³/M) in years; ω = 2π/P.
@@ -257,7 +257,7 @@
             kind: "moon",
             system,
             parent: planet,
-            radiusLy: F.moonRadiusLy * randIn(0.6, 1.6, rng),
+            radiusLy: randIn(0.15, 0.5, rng) * K.rEarthM / K.lyM,   // real moon
             orbitLy: planet.radiusLy * randIn(3.2, 8.5, rng) * (1 + mIndex * 0.7),
             periodYears: randIn(0.004, 0.05, rng) * (1 + mIndex),
             phase: rng() * TWO_PI,
@@ -278,7 +278,7 @@
         const comet = {
           kind: "comet",
           system,
-          radiusLy: F.cometRadiusLy * randIn(0.7, 1.7, rng),
+          radiusLy: randIn(2, 20, rng) * 1e3 / K.lyM,   // real: a few-km nucleus
           orbitAU: aOuter,
           orbitLy: Systems.orbitToLy(aOuter, star),
           eccentricity: randIn(0.55, 0.92, rng),
@@ -299,17 +299,13 @@
     },
 
     /**
-     * Semi-major axis in AU → rendered orbit radius in light-years.
-     * Expressed as a power of the orbit measured in *stellar radii*, so the
-     * shape of a system is preserved even though the scale is not: an M
-     * dwarf's habitable zone is 48 stellar radii out and the Sun's is 215,
-     * and that ratio is what makes red systems look huddled.
+     * Semi-major axis in AU → orbit radius in light-years. REAL now: an AU is
+     * an AU. A system is a few ×10⁻⁴ ly across — a point until you fly up to
+     * it, exactly as a real star system is. Playability is the ship's job, not
+     * the map's.
      */
-    orbitToLy(aAU, star) {
-      const starAU = Math.max(1e-5, star.radiusSolar * AU_PER_SOLAR_RADIUS);
-      const inStellarRadii = Math.max(1.6, aAU / starAU);
-      const ly = star.radiusLy * Math.pow(inStellarRadii, F.orbitExp);
-      return Math.min(F.orbitMaxLy, ly);
+    orbitToLy(aAU, _star) {
+      return aAU * K.auLy;
     },
 
     /**

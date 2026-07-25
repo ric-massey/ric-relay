@@ -48,7 +48,11 @@ a.back:hover, a.back:focus-visible { color: #fff; border-color: #4d5aa0; }
   margin-top: .55rem; padding-top: .5rem; border-top: 1px solid rgba(42, 49, 99, .7);
 }
 .cell.wide { grid-column: span 2; }
-#cmb[data-hot="true"], #ism[data-hot="true"] { color: var(--hot); }
+#cmb[data-hot="true"], #ism[data-hot="true"], #gravity[data-hot="true"] { color: var(--hot); }
+#assist[data-off="true"] { color: var(--hot); }
+/* Matched with the body you are next to — the one readout worth celebrating. */
+#rel-speed[data-matched="true"] { color: var(--good); }
+#rel-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .hull-row {
   display: grid; grid-template-columns: auto 1fr auto; align-items: center;
@@ -163,29 +167,35 @@ p.hint .legend .dot-target { background: rgb(255, 190, 92); }
 }
 
 /* ── light-speed alert ───────────────────────────────────────────────── */
+/* A caution light on the dash, not a billboard. It used to be a 27rem card
+   parked over the middle of the viewport at 34% height — right where you are
+   looking when you are going fast enough to trigger it, covering the one
+   thing it is warning you about. Now it sits low and small, the way an
+   annunciator panel does, and the long explanation is gone: if you are near
+   c you can see it, and you already know what B does. */
 .lightspeed {
-  position: fixed; left: 50%; top: 34%; z-index: 13;
-  max-width: min(90vw, 27rem); padding: .7rem 1.1rem;
+  position: fixed; left: 50%; bottom: 7.2rem; z-index: 13;
+  max-width: min(80vw, 16rem); padding: .3rem .6rem;
   transform: translate(-50%, 0);
-  background: rgba(30, 6, 10, .92); border: 1px solid var(--bad);
-  border-radius: 6px; text-align: center;
-  box-shadow: 0 0 40px rgba(255, 110, 134, .28);
-  animation: lightspeed-pulse 1.4s ease-in-out infinite;
+  background: rgba(30, 6, 10, .85); border: 1px solid var(--bad);
+  border-radius: 4px; text-align: center;
+  box-shadow: 0 0 16px rgba(255, 110, 134, .22);
+  animation: lightspeed-pulse 1.8s ease-in-out infinite;
   pointer-events: none;
 }
 .lightspeed[hidden] { display: none; }
 .lightspeed strong {
-  display: block; color: var(--bad); font-size: .92rem;
-  letter-spacing: .16em; text-transform: uppercase;
+  display: block; color: var(--bad); font-size: .6rem;
+  letter-spacing: .14em; text-transform: uppercase;
 }
-.lightspeed span { display: block; margin-top: .3rem; color: #e6b8c2; font-size: .72rem; line-height: 1.5; }
+.lightspeed span { display: block; margin-top: .1rem; color: #e6b8c2; font-size: .58rem; line-height: 1.35; }
 .lightspeed kbd {
   display: inline-block; padding: 0 .25em;
   border: 1px solid var(--bad); border-radius: 3px; color: #ffd2da; font: inherit;
 }
 @keyframes lightspeed-pulse {
-  0%, 100% { box-shadow: 0 0 26px rgba(255, 110, 134, .22); }
-  50% { box-shadow: 0 0 46px rgba(255, 110, 134, .5); }
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 110, 134, .18); }
+  50% { box-shadow: 0 0 20px rgba(255, 110, 134, .38); }
 }
 /* The FTL jump is a different animal from the near-c warning: cyan, not red,
    because it is a chosen fiction rather than a hazard closing in. */
@@ -249,6 +259,45 @@ p.hint .legend .dot-target { background: rgb(255, 190, 92); }
 .map-row:hover, .map-row:focus-visible {
   background: rgba(52, 76, 168, .28); border-color: #4d5aa0; outline: none;
 }
+/* ── control bindings panel ──────────────────────────────────────────── */
+.bind-group {
+  margin: 1rem 0 .4rem; color: var(--dim); font-size: .62rem;
+  letter-spacing: .16em; text-transform: uppercase; font-weight: 600;
+}
+.bind-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .3rem .9rem; }
+.bind-row {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: .6rem;
+  padding: .3rem .5rem; border: 1px solid transparent; border-radius: 5px;
+}
+.bind-row:hover { background: rgba(52, 76, 168, .16); }
+.bind-label {
+  color: #cfe0ff; font-size: .76rem; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bind-keys { display: flex; gap: .3rem; }
+/* Specificity has to beat the generic `.card button` rule two hundred lines
+   up, which otherwise wins and turns every key into a 1rem-padded slab that
+   overflows the grid column. */
+.card .bind-key {
+  min-width: 3.4rem; padding: .24rem .4rem; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: rgba(12, 18, 44, .85); color: var(--ink);
+  font: 500 .66rem/1.5 var(--mono); letter-spacing: .04em; text-transform: none;
+  text-align: center;
+}
+.card .bind-key:hover, .card .bind-key:focus-visible {
+  background: rgba(52, 76, 168, .5); border-color: #6074c1; color: #fff;
+  outline: none;
+}
+.card .bind-key[data-state="empty"] { color: var(--faint); border-style: dashed; }
+/* The listening state has to be unmissable — the next key you press is
+   about to be swallowed, and you should never wonder whether it was. */
+.card .bind-key[data-state="listening"] {
+  border-color: var(--good); color: var(--good);
+  background: rgba(24, 78, 56, .55); min-width: 6.5rem;
+  animation: lightspeed-pulse 1.2s ease-in-out infinite;
+}
+
 .map-row .m-meta { display: flex; align-items: baseline; gap: .5rem; min-width: 0; }
 .map-row .m-name { color: #cfe0ff; font-size: .82rem; letter-spacing: .02em; }
 .map-row .m-kind { color: var(--faint); font-size: .62rem; text-transform: uppercase; letter-spacing: .1em; }

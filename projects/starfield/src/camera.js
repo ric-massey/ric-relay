@@ -3,16 +3,28 @@
 
    The original starfield had no orientation at all: steering translated the
    camera sideways, so aiming right *slid* you right, like a security camera
-   on a rail. Here the ship has a basis, steering drives angular rate, and
-   the universe swings around you.
+   on a rail. Then it grew yaw and pitch as Euler angles, which was fine
+   while those were the only two axes.
 
-     yaw ψ, pitch θ  →  f = (sin ψ cos θ, −sin θ, cos ψ cos θ)
+   THE BASIS IS NOW INTEGRATED DIRECTLY, because roll is a player axis.
+   Euler angles cannot survive that: yaw/pitch/roll gimbal-lock, and the old
+   code had to clamp pitch to ±0.49π to stop the basis degenerating at the
+   poles — a ceiling and a floor bolted onto a spaceship. Instead the ship
+   carries an orthonormal body basis
+
+     right r, up u, forward f        with  r × u = f
+
+   and steering drives *body angular rates* that rotate the whole basis
+   about a single combined axis (Rodrigues), re-orthonormalised each frame
+   to stop numerical drift accumulating. There is no pole, no clamp, and no
+   preferred "up" in the universe — you can loop, roll inverted, and keep
+   going, which is the entire point of flying in space rather than in air.
+
      p_cam = Rᵀ · p_world
      screen = (F·p_cam.x / p_cam.z, −F·p_cam.y / p_cam.z)
 
    World axes are x right, y up, z forward-at-rest; screen y is flipped at
-   the last step. Roll banks the basis about f — bank into the turn is a
-   small thing that does most of the work of making flight feel airborne.
+   the last step.
 
    Projection takes a *direction*, not a position, because by the time a
    point reaches here it has been through relativistic aberration and only
@@ -47,11 +59,29 @@
     },
   };
 
-  const Camera = SF.camera = {
-    yaw: 0, pitch: 0, roll: 0,
-    yawRate: 0, pitchRate: 0,
+  /** Rodrigues: rotate `v` about a unit `axis` by `angle` radians. */
+  function rotateAbout(v, axis, angle) {
+    const c = Math.cos(angle), s = Math.sin(angle);
+    const d = axis.x * v.x + axis.y * v.y + axis.z * v.z;
+    return {
+      x: v.x * c + (axis.y * v.z - axis.z * v.y) * s + axis.x * d * (1 - c),
+      y: v.y * c + (axis.z * v.x - axis.x * v.z) * s + axis.y * d * (1 - c),
+      z: v.z * c + (axis.x * v.y - axis.y * v.x) * s + axis.z * d * (1 - c),
+    };
+  }
 
-    // Basis, rebuilt once per frame.
+  // The true body basis, before shake. Camera.forward/right/up are the
+  // *rendered* basis and may carry a transient kick on top of these.
+  let tF = { x: 0, y: 0, z: 1 };
+  let tR = { x: 1, y: 0, z: 0 };
+  let tU = { x: 0, y: 1, z: 0 };
+
+  const Camera = SF.camera = {
+    // Body angular rates, radians/sec. Positive: yaw right, pitch nose-down,
+    // roll right-wing-down.
+    yawRate: 0, pitchRate: 0, rollRate: 0,
+
+    // Rendered basis, rebuilt once per frame.
     forward: { x: 0, y: 0, z: 1 },
     right: { x: 1, y: 0, z: 0 },
     up: { x: 0, y: 1, z: 0 },
@@ -59,14 +89,21 @@
     // Screen geometry, in CSS pixels. `focal` is min(W,H)·0.82.
     W: 1, H: 1, cx: 0, cy: 0, focal: 1,
 
-    // A transient kick, in radians, used for near-misses and crashes. It
-    // shifts the basis without touching where the ship is actually pointing.
-    shakeYaw: 0, shakePitch: 0, shakeRoll: 0,
+    // A transient kick, as a rotation vector in world coordinates, used for
+    // near-misses and crashes. It shakes the view without touching where the
+    // ship is actually pointing.
+    shake: { x: 0, y: 0, z: 0 },
+
+    get trueForward() { return tF; },
+    get trueRight() { return tR; },
+    get trueUp() { return tU; },
 
     reset() {
-      Camera.yaw = 0; Camera.pitch = 0; Camera.roll = 0;
-      Camera.yawRate = 0; Camera.pitchRate = 0;
-      Camera.shakeYaw = 0; Camera.shakePitch = 0; Camera.shakeRoll = 0;
+      tF = { x: 0, y: 0, z: 1 };
+      tR = { x: 1, y: 0, z: 0 };
+      tU = { x: 0, y: 1, z: 0 };
+      Camera.yawRate = 0; Camera.pitchRate = 0; Camera.rollRate = 0;
+      Camera.shake = { x: 0, y: 0, z: 0 };
       Camera.rebuild();
     },
 
@@ -77,60 +114,90 @@
     },
 
     /**
-     * Steering drives angular *rate*, not position. `sx`/`sy` are the
-     * normalised stick in [-1, 1]; `dt` is real seconds.
+     * Point the nose at a direction, levelling the wings against world up.
+     * Used at launch, and by anything that wants to snap onto a bearing.
      */
-    steer(sx, sy, dt, agility = 1) {
+    lookAt(dir) {
+      const f = v3.normalize(dir);
+      // Any world axis not parallel to f will do as the levelling reference.
+      const ref = Math.abs(f.y) > 0.999 ? { x: 0, y: 0, z: 1 } : { x: 0, y: 1, z: 0 };
+      tF = f;
+      tR = v3.normalize(v3.cross(ref, f));
+      tU = v3.cross(f, tR);
+      Camera.rebuild();
+    },
+
+    /**
+     * Steering drives angular *rate*, not position. `sx`/`sy`/`sr` are the
+     * normalised stick in [-1, 1] for yaw, pitch and roll; `dt` is real
+     * seconds. The rates chase the stick rather than snapping to it, which
+     * is what gives the ship mass.
+     */
+    steer(sx, sy, sr, dt, agility = 1) {
       const MAX_RATE = 1.15;        // radians per second at full deflection
+      const MAX_ROLL = 1.9;         // roll is the fast axis on any real ship
       const RESPONSE = 5.0;         // how fast the rate chases the stick
-      const targetYaw = sx * MAX_RATE * agility;
-      const targetPitch = sy * MAX_RATE * agility;
       const k = 1 - Math.exp(-RESPONSE * dt);
-      Camera.yawRate += (targetYaw - Camera.yawRate) * k;
-      Camera.pitchRate += (targetPitch - Camera.pitchRate) * k;
+      Camera.yawRate += (sx * MAX_RATE * agility - Camera.yawRate) * k;
+      Camera.pitchRate += (sy * MAX_RATE * agility - Camera.pitchRate) * k;
+      Camera.rollRate += (sr * MAX_ROLL * agility - Camera.rollRate) * k;
+      Camera.integrate(dt);
+    },
 
-      Camera.yaw += Camera.yawRate * dt;
-      Camera.pitch += Camera.pitchRate * dt;
-      // Keep the nose out of the poles so the basis never degenerates.
-      const LIMIT = Math.PI * 0.49;
-      if (Camera.pitch > LIMIT) { Camera.pitch = LIMIT; Camera.pitchRate = 0; }
-      if (Camera.pitch < -LIMIT) { Camera.pitch = -LIMIT; Camera.pitchRate = 0; }
-      if (Camera.yaw > Math.PI) Camera.yaw -= Math.PI * 2;
-      if (Camera.yaw < -Math.PI) Camera.yaw += Math.PI * 2;
-
-      // Bank into the turn: ~18° at full rate, eased.
-      const targetRoll = -Camera.yawRate / MAX_RATE * 0.32;
-      Camera.roll += (targetRoll - Camera.roll) * (1 - Math.exp(-4 * dt));
+    /**
+     * Rotate the basis by the current body rates. All three axes are folded
+     * into one world-frame angular velocity and applied as a single rotation,
+     * so combined inputs compose correctly instead of fighting each other the
+     * way sequential Euler updates do.
+     *
+     * Sign conventions, checked against the old Euler basis so steering feels
+     * identical on the two axes that already existed: yaw is a rotation about
+     * +up (positive = nose right), pitch about +right (positive = nose down),
+     * roll about −forward (positive = right wing down).
+     */
+    integrate(dt) {
+      const wx = tR.x * Camera.pitchRate + tU.x * Camera.yawRate - tF.x * Camera.rollRate;
+      const wy = tR.y * Camera.pitchRate + tU.y * Camera.yawRate - tF.y * Camera.rollRate;
+      const wz = tR.z * Camera.pitchRate + tU.z * Camera.yawRate - tF.z * Camera.rollRate;
+      const mag = Math.hypot(wx, wy, wz);
+      if (mag > 1e-9) {
+        const axis = { x: wx / mag, y: wy / mag, z: wz / mag };
+        const angle = mag * dt;
+        tF = rotateAbout(tF, axis, angle);
+        tR = rotateAbout(tR, axis, angle);
+        tU = rotateAbout(tU, axis, angle);
+      }
+      // Gram-Schmidt, with the nose authoritative. Rotating three vectors
+      // independently lets rounding error creep the basis out of square over
+      // a long flight; this puts it back every frame for a few flops.
+      tF = v3.normalize(tF);
+      const dot = v3.dot(tR, tF);
+      tR = v3.normalize({ x: tR.x - tF.x * dot, y: tR.y - tF.y * dot, z: tR.z - tF.z * dot });
+      tU = v3.cross(tF, tR);
     },
 
     kick(yaw, pitch, roll) {
-      Camera.shakeYaw += yaw;
-      Camera.shakePitch += pitch;
-      Camera.shakeRoll += roll;
+      Camera.shake.x += tR.x * pitch + tU.x * yaw - tF.x * roll;
+      Camera.shake.y += tR.y * pitch + tU.y * yaw - tF.y * roll;
+      Camera.shake.z += tR.z * pitch + tU.z * yaw - tF.z * roll;
     },
 
     decayKick(dt) {
       const k = Math.exp(-7 * dt);
-      Camera.shakeYaw *= k;
-      Camera.shakePitch *= k;
-      Camera.shakeRoll *= k;
+      Camera.shake.x *= k; Camera.shake.y *= k; Camera.shake.z *= k;
     },
 
     rebuild() {
-      const yaw = Camera.yaw + Camera.shakeYaw;
-      const pitch = Camera.pitch + Camera.shakePitch;
-      const roll = Camera.roll + Camera.shakeRoll;
-      const sy = Math.sin(yaw), cy = Math.cos(yaw);
-      const sp = Math.sin(pitch), cp = Math.cos(pitch);
-      const sr = Math.sin(roll), cr = Math.cos(roll);
-
-      const f = { x: sy * cp, y: -sp, z: cy * cp };
-      const r0 = { x: cy, y: 0, z: -sy };
-      const u0 = { x: sp * sy, y: cp, z: sp * cy };   // = f × r0
-
-      Camera.forward = f;
-      Camera.right = { x: r0.x * cr + u0.x * sr, y: r0.y * cr + u0.y * sr, z: r0.z * cr + u0.z * sr };
-      Camera.up = { x: u0.x * cr - r0.x * sr, y: u0.y * cr - r0.y * sr, z: u0.z * cr - r0.z * sr };
+      const s = Camera.shake;
+      const mag = Math.hypot(s.x, s.y, s.z);
+      if (mag < 1e-9) {
+        Camera.forward = tF; Camera.right = tR; Camera.up = tU;
+        return;
+      }
+      const axis = { x: s.x / mag, y: s.y / mag, z: s.z / mag };
+      Camera.forward = rotateAbout(tF, axis, mag);
+      Camera.right = rotateAbout(tR, axis, mag);
+      Camera.up = rotateAbout(tU, axis, mag);
     },
 
     /**

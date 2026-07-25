@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<!-- ══════════════════════════════════════════════════════════════════════
+     data-mochi-world="space" is load-bearing. It is the only thing in the
+     whole repo that puts Mochi into his helmeted zero-gravity pose set —
+     effects.js reads document.documentElement.dataset.mochiWorld and
+     nothing else sets it. Delete it and the cat quietly goes back to
+     walking normally in deep space, and nobody notices for weeks.
+     ═══════════════════════════════════════════════════════════════════ -->
+<html lang="en" data-mochi-world="space">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Starfield — a relativistic rocket</title>
+  <meta name="description" content="Fly a real relativistic rocket through the real solar neighbourhood. Watch the sky crush into a cone ahead of you, the microwave background catch fire, and your clock come apart from everybody else's.">
+  <link rel="stylesheet" href="starfield.css">
+</head>
+<body>
+  <a class="back" href="index.html">← how to fly</a>
+
+  <canvas id="sky" aria-label="Starfield: a relativistic flight simulator">
+    Starfield is an interactive flight through the real solar neighbourhood,
+    drawn on a canvas. You fly a rocket whose throttle is measured in gravities,
+    and the game computes the actual consequences: aberration crushes the stars
+    into a cone ahead of you, the Doppler effect paints them into a coloured
+    ring, the cosmic microwave background heats up until it is as bright as the
+    Sun, and the clock aboard your ship falls behind the clock at home. Playing
+    it needs a canvas-capable browser, but the physics it is built on is written
+    up in <a href="../spacetime/index.html">The Geometry of Spacetime</a>.
+  </canvas>
+
+  <!-- ── telemetry ─────────────────────────────────────────────────── -->
+  <div class="readout" id="readout" aria-live="off">
+    <div class="clocks">
+      <div class="clock">
+        <span class="label">Ship time</span>
+        <span class="value" id="ship-time">0.00 yr</span>
+      </div>
+      <div class="clock home">
+        <span class="label">Home time</span>
+        <span class="value" id="home-time">0.00 yr</span>
+      </div>
+    </div>
+    <div class="grid">
+      <!-- Every label here used to be a Greek letter or an acronym (γ, β, CMB,
+           ISM). They are the correct names and they taught nobody anything:
+           you cannot fly a ship by a symbol you have to look up. Same numbers,
+           said out loud, with a title= for the physics underneath. -->
+      <div class="cell wide" title="Your speed. Below lightspeed it reads as a percentage of light through the Sun's rest frame; above it, in light-years per real second — the drive is faster-than-light by design, because space here is inflated to light-year scale. It holds whatever speed you leave it at, and reads &quot;astern&quot; when you are backing up."><span class="label">Speed</span><span class="value" id="beta">0% of light</span></div>
+      <!-- "Speed" against the Sun is the physics answer and a useless one when
+           you are trying to park next to a planet. This is the pilot's answer. -->
+      <div class="cell wide" title="Your speed relative to the nearest large body, and whether you are closing on it or falling away. Reads zero when you are matched with it."><span class="label" id="rel-label">Speed vs nearest</span><span class="value" id="rel-speed">—</span></div>
+      <div class="cell" title="The proper acceleration an accelerometer bolted to the ship would read right now — honest, even when the drive is cheating. In the high gears it is openly millions of g."><span class="label">Felt g-force</span><span class="value" id="throttle">0 g</span></div>
+      <div class="cell" title="Time dilation (γ): clocks back home run this much faster than yours."><span class="label">Home clock</span><span class="value" id="gamma">1.00×</span></div>
+      <div class="cell wide"><span class="label">Travelled</span><span class="value" id="distance">0.0 light-sec</span></div>
+      <div class="cell wide" title="The cosmic microwave background, blue-shifted by your speed. It fills all of space at 2.7 K; dead ahead it heats up as you burn, and past about 5,800 K it is as hot as the surface of the Sun."><span class="label">Heat ahead</span><span class="value" id="cmb">2.7 K</span></div>
+      <div class="cell wide" title="Interstellar hydrogen hitting the hull. At speed those loose atoms arrive as a hard particle beam."><span class="label">Hull radiation</span><span class="value" id="ism">0.00 W/m²</span></div>
+      <!-- The gearbox. Gear sets the drive's ceiling and how hard it spools;
+           gear top is that ceiling, the fastest this gear will take you. -->
+      <div class="cell" title="Six gears, each one a speed range: 1 Sub-light (the only honest one — 99% of light, where relativity lives), 2 Docking, 3 Orbital, 4 Interstellar, 5 Galactic, 6 Intergalactic. Keys 1–6, or [ and ] to shift. Shifting down brakes you to the new gear's ceiling."><span class="label">Gear</span><span class="value" id="gravity">1 · Sub-light</span></div>
+      <div class="cell" title="Top speed of the current gear, in light-years per real second."><span class="label">Gear top</span><span class="value" id="assist">0.05 ly/s</span></div>
+    </div>
+    <div class="hull-row">
+      <span class="label">Hull</span>
+      <span class="hull-track"><span class="hull-bar" id="hull-bar" data-level="ok"></span></span>
+      <span class="value" id="hull">100%</span>
+    </div>
+  </div>
+
+  <!-- ── milestone toast ───────────────────────────────────────────── -->
+  <div class="milestone" id="milestone" role="status">
+    <strong id="milestone-title"></strong>
+    <span id="milestone-note"></span>
+  </div>
+
+  <!-- No speed banner: how fast you are going is read off the sky itself —
+       stars crushing into a forward cone, Doppler colour, the two clocks
+       pulling apart — not off a text overlay. -->
+
+  <!-- ── controls ──────────────────────────────────────────────────── -->
+  <!-- Two pedals, and they behave like pedals: hold to change speed, let go and
+       the drive holds whatever it reached. Held past a standstill, the lower one
+       backs the ship up. -->
+  <div class="controls">
+    <button type="button" class="thrust" data-thrust="1" title="Faster — hold to accelerate, release to hold this speed">faster</button>
+    <button type="button" class="thrust retro" data-thrust="-1" title="Slower — hold to decelerate, keep holding to reverse">slower</button>
+  </div>
+
+  <!-- ── mobile steering joystick ──────────────────────────────────────
+       On touch devices dragging the whole canvas to aim is imprecise. This
+       is a proper virtual stick: drag the thumb, the offset from centre
+       becomes the steering vector, release and it recentres. Hidden on
+       pointer-fine devices, where the mouse already aims. -->
+  <div class="joystick" id="joystick" aria-hidden="true">
+    <div class="joystick-thumb" id="joystick-thumb"></div>
+  </div>
+
+  <!-- Filled in by controls-ui.js from the live keymap, so rebinding a key
+       updates the hint line instead of leaving it lying to the player. -->
+  <p class="hint" id="hint"></p>
+
+  <div class="corner">
+    <button type="button" id="map-open" class="link">star chart</button>
+    <button type="button" id="controls-open" class="link">controls</button>
+    <button type="button" id="sound" class="link">sound: off</button>
+    <button type="button" id="ledger-open" class="link">where we cheat</button>
+  </div>
+
+  <!-- ── pause ─────────────────────────────────────────────────────── -->
+  <div class="overlay" id="pause" hidden>
+    <div class="card">
+      <div class="code">Engines idle</div>
+      <h1>PAUSED</h1>
+      <p>The rocket equations are waiting. So is everybody back home — they've
+        been waiting longer.</p>
+      <button type="button" id="resume">Resume</button>
+    </div>
+  </div>
+
+  <!-- ── the honesty ledger ────────────────────────────────────────── -->
+  <div class="overlay ledger" id="ledger" hidden>
+    <div class="card wide">
+      <div class="code">Honesty ledger</div>
+      <h1>WHERE WE CHEAT</h1>
+      <p class="lede">Everything else in this game is real physics. These are the
+        places it is not, with the arithmetic — because the honest version of
+        this game is unlosable. Flying in a straight line through the real
+        galaxy you would cover about 24 quadrillion light-years before hitting
+        a star, roughly a million times the width of the observable universe.</p>
+      <div id="ledger-body"></div>
+      <button type="button" id="ledger-close">Back to the ship</button>
+    </div>
+  </div>
+
+  <!-- ── control bindings ──────────────────────────────────────────────
+       Rows are generated from SF.controls.actions so the panel cannot drift
+       out of sync with the actions the game actually reads. -->
+  <div class="overlay bindings" id="bindings" hidden>
+    <div class="card wide">
+      <div class="code">Controls</div>
+      <h1>FLIGHT CONTROLS</h1>
+      <p class="lede">Click any key to rebind it, then press the key you want.
+        Rotating the ship and moving it are separate — pointing the nose
+        somewhere is not the same as going there, and the gap between the
+        crosshair and the green heading dot is the whole flight model.</p>
+      <div class="map-toolbar">
+        <button type="button" id="bindings-reset" class="link">reset to defaults</button>
+        <button type="button" id="bindings-close" class="link">back to the ship</button>
+      </div>
+      <div id="bindings-body"></div>
+    </div>
+  </div>
+
+  <!-- ── star chart / destination map ──────────────────────────────── -->
+  <div class="overlay map" id="map" hidden>
+    <div class="card wide">
+      <div class="code">Star chart</div>
+      <h1>WHERE TO?</h1>
+      <p class="lede">Pick a destination and an amber marker guides you to it. Real
+        catalogued stars, galaxies and black holes, nearest first. Fly sub-light
+        to a nearby star to park and look; jump (<kbd>J</kbd>) for the far ones.</p>
+      <div class="map-toolbar">
+        <button type="button" id="map-clear" class="link">clear waypoint</button>
+        <button type="button" id="map-close" class="link">back to the ship</button>
+      </div>
+      <div id="map-list" class="map-list"></div>
+    </div>
+  </div>
+
+  <!-- ── game over ─────────────────────────────────────────────────── -->
+  <div class="overlay" id="game-over" role="dialog" aria-modal="true" aria-labelledby="loss-title" hidden>
+    <div class="card">
+      <div class="code" id="loss-code">Navigation failure</div>
+      <h1 id="loss-title">SIGNAL LOST</h1>
+      <p id="loss-detail">Collision detected.</p>
+      <button id="restart" type="button">Relaunch</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       Plain classic scripts, deliberately. <script type="module"> is
+       CORS-blocked on file:// and AGENTS.md rule 4 requires this page to
+       work opened directly from disk. Deferred classic scripts run in
+       document order, so dependency order is just tag order — no bundler,
+       no build step, nothing fetched at runtime.
+
+       data/ before src/: the catalogues are inert literals the modules read.
+       ══════════════════════════════════════════════════════════════════ -->
+  <script defer src="data/stars-near.js"></script>
+  <script defer src="data/stars-bright.js"></script>
+  <script defer src="data/deep-sky.js"></script>
+  <script defer src="data/milestones.js"></script>
+
+  <script defer src="src/constants.js?v=4"></script>
+  <script defer src="src/controls.js?v=4"></script>
+  <script defer src="src/color.js?v=4"></script>
+  <script defer src="src/relativity.js?v=4"></script>
+  <script defer src="src/camera.js?v=4"></script>
+  <script defer src="src/view.js?v=4"></script>
+  <script defer src="src/stars.js?v=4"></script>
+  <script defer src="src/blackhole.js?v=4"></script>
+  <script defer src="src/systems.js?v=4"></script>
+  <script defer src="src/galaxy.js?v=4"></script>
+  <script defer src="src/render.js?v=4"></script>
+  <script defer src="src/audio.js?v=4"></script>
+  <script defer src="src/hud.js?v=4"></script>
+  <script defer src="src/controls-ui.js?v=4"></script>
+  <script defer src="src/game.js?v=4"></script>
+
+  <!-- relay-return.js pulls in effects.js from the repo root by resolving
+       "../effects.js" against its own src, so Mochi arrives without a
+       second tag. Same call shape as farlight and the other project pages. -->
+  <script src="../relay-return.js" data-home="../../index.html" data-egg="starfield" defer></script>
+</body>
+</html>

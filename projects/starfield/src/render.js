@@ -39,6 +39,9 @@
   let canvas, ctx;
   let W = 1, H = 1, dpr = 1;
   const TAU = Math.PI * 2;
+  // The keyboard-hint block at the foot of the screen. Edge arrows stop short
+  // of it so they never land on top of the text.
+  const HUD_SAFE_BOTTOM = 74;
 
   // Reference brightness for the CMB: the Sun's surface temperature, which is
   // the threshold the plan cares about (γ = 1,059, τ = 7.4 ship-years).
@@ -157,43 +160,148 @@
     },
 
     /* ── the distant star field ────────────────────────────────────────
-       Directions on a unit sphere, not 2D points slid around and wrapped at
-       the screen edge. With a real camera basis they simply rotate past —
-       no teleporting — and aberration can crush them forward the way it
-       crushes the real sky. */
+       THESE STARS HAVE POSITIONS NOW, and that is the difference between
+       flying and watching a screensaver. They used to be stored as bare
+       directions on a unit sphere — pinned at infinity, forever. You could
+       cross a thousand light-years and not one of them would shift by a
+       pixel. The only thing they ever did was crush together when you went
+       fast, so the sky read as *stagnant and bunching up* rather than as
+       something you were moving through. Nothing ever went past you.
+
+       With real positions they parallax: near stars stream by, brighten as
+       you close on them by a plain inverse square, and slide behind. The
+       distant bright ones barely move, which is also correct — that is what
+       "distant" means. Aberration still crushes the whole lot forward at
+       speed, on top of the motion rather than instead of it.
+
+       Population is importance-sampled: draw the star first (76% of them are
+       M dwarfs) then place it uniformly out to the distance where it would
+       fade past naked-eye. A red dwarf is only visible within about eight
+       light-years, a B star from thousands, so the sky fills with the rare
+       bright ones even though the population is overwhelmingly red. That is
+       why the real night sky looks nothing like the real galaxy.          */
+    LIMIT_MAG: 8.5,             // past the naked-eye limit, so faint stars fill in
+    SKY_MAX_LY: 3000,
+
+    /* ── the visibility window, and why both edges are ramps ────────────
+       Giving these stars positions introduced two ways to make the sky
+       flash, and both were hard edges.
+
+       AT THE FAR END, a star was recycled the moment it fell behind you and
+       passed its own visibility distance. But "its own visibility distance"
+       is where it hits magnitude 7 and the draw threshold is 6.9, so a star
+       could be plainly visible on one frame and swapped out on the next —
+       about seventy times a second at cruise.
+
+       AT THE NEAR END, brightness now comes from live distance with nothing
+       stopping it. Background stars sailed within 0.024 ly and flared to
+       magnitude −2.6, brighter than Sirius, jumping 9.6 magnitudes in a
+       single frame — a factor of six thousand.
+
+       So visibility ramps to zero at both ends and a star is only ever
+       recycled where the ramp has already reached zero. The near cutoff also
+       says something true about the design: these are the background sky, not
+       destinations. The stars you can actually arrive at are the catalogued
+       systems, which have planets and collide with you.                    */
+    skyStep: 0,                 // last frame's travel, set by stepSkyField
+    NEAR_GONE_LY: 0.4,          // closer than this, a background star is gone
+    NEAR_FULL_LY: 1.2,          // fully present from here outward
+    FAR_FADE: 1.7,              // × maxLy, where it has faded away behind you
+
+    /**
+     * 0…1 visibility for a sky star at `dist`. Zero means safe to recycle.
+     *
+     * Both ramps widen with how far the ship covers per frame. A fixed band is
+     * useless at speed: crossing 2 ly in a frame steps clean over a 0.8 ly
+     * fade and the star blinks anyway. Holding the ramp at least a few frames
+     * wide means it always fades over several frames, however fast you go.
+     */
+    skyWindow(star, dist) {
+      const step = Render.skyStep || 0;
+      const nearGone = Render.NEAR_GONE_LY;
+      if (dist <= nearGone) return 0;
+      const nearFull = Math.max(Render.NEAR_FULL_LY, nearGone + 4 * step);
+      const far = star.maxLy * Render.FAR_FADE + 4 * step;
+      if (dist >= far) return 0;
+      let w = 1;
+      if (dist < nearFull) w = (dist - nearGone) / (nearFull - nearGone);
+      if (dist > star.maxLy) w = Math.min(w, (far - dist) / (far - star.maxLy));
+      return w < 0 ? 0 : w > 1 ? 1 : w;
+    },
+
+    /**
+     * One sky star. With `ahead` supplied it is placed in the forward
+     * hemisphere at the far edge of its own visibility, so a recycled star
+     * fades in from the distance instead of popping into being nearby.
+     */
+    makeSkyStar(rng, ahead) {
+      const star = SF.stars.sample(rng);
+      const absMag = 4.83 - 2.5 * Math.log10(Math.max(1e-9, star.lum));
+      const maxPc = Math.pow(10, (Render.LIMIT_MAG - absMag + 5) / 5);
+      const maxLy = Math.min(Render.SKY_MAX_LY, Math.max(2, maxPc * K.pcLy));
+
+      const cosI = -1 + 2 * rng();
+      const sinI = Math.sqrt(Math.max(0, 1 - cosI * cosI));
+      const phi = rng() * TAU;
+      let dx = sinI * Math.cos(phi), dy = cosI, dz = sinI * Math.sin(phi);
+      if (ahead) {
+        // Uniform over the forward hemisphere: mirror any draw that came out
+        // pointing backwards.
+        if (dx * ahead.x + dy * ahead.y + dz * ahead.z < 0) { dx = -dx; dy = -dy; dz = -dz; }
+      }
+      // Fresh stars enter at the edge of their range; the initial field is
+      // spread through the whole volume so the sky starts full.
+      const distanceLy = ahead ? maxLy * (0.82 + 0.18 * rng()) : maxLy * Math.cbrt(rng());
+
+      return {
+        pos: { x: dx * distanceLy, y: dy * distanceLy, z: dz * distanceLy },
+        maxLy,
+        lum: star.lum,
+        teff: star.teff,
+        entry: SF.color.at(star.teff),
+        twinkle: rng() * TAU,
+        jitter: 0.85 + rng() * 0.3,
+      };
+    },
+
     makeSkyField(count, rng = Math.random) {
       const field = [];
-      const LIMIT_MAG = 7;        // roughly the naked-eye limit
-      const MAX_LY = 3000;
-      for (let i = 0; i < count; i += 1) {
-        const cosI = -1 + 2 * rng();
-        const sinI = Math.sqrt(Math.max(0, 1 - cosI * cosI));
-        const phi = rng() * TAU;
-        const star = SF.stars.sample(rng);
-
-        // Importance sampling, so the field ends up with the mix a real sky
-        // has. Draw the star first — 76% of them are M dwarfs — then place it
-        // uniformly in the volume out to the distance where it would fade
-        // past naked-eye. A red dwarf is only visible within about eight
-        // light-years, a B star from thousands, so the sky fills with the
-        // rare bright ones even though the population is overwhelmingly red.
-        // That is why the real night sky looks nothing like the real galaxy.
-        const absMag = 4.83 - 2.5 * Math.log10(Math.max(1e-9, star.lum));
-        const maxPc = Math.pow(10, (LIMIT_MAG - absMag + 5) / 5);
-        const maxLy = Math.min(MAX_LY, Math.max(2, maxPc * K.pcLy));
-        const distanceLy = maxLy * Math.cbrt(rng());
-
-        field.push({
-          dir: { x: sinI * Math.cos(phi), y: cosI, z: sinI * Math.sin(phi) },
-          teff: star.teff,
-          entry: SF.color.at(star.teff),
-          mag: SF.stars.apparentMagnitude(star.lum, distanceLy),
-          distanceLy,
-          twinkle: rng() * TAU,
-          jitter: 0.85 + rng() * 0.3,
-        });
-      }
+      for (let i = 0; i < count; i += 1) field.push(Render.makeSkyStar(rng, null));
       return field;
+    },
+
+    /**
+     * Translate the field by this frame's travel and recycle whatever has
+     * fallen behind. A star is recycled only once it is *both* behind you and
+     * further away than it could ever be seen from — so the swap always
+     * happens off-screen, and near space keeps being repopulated at the rate
+     * you empty it. Without the recycle the nearby red dwarfs would be passed
+     * once and never replaced, and the sky would slowly go bare.
+     */
+    stepSkyField(field, vdir, dHome, rng = Math.random) {
+      // dHome is signed: negative is the ship in reverse. "Ahead" for the
+      // purposes of fading, recycling and spawning is the direction of TRAVEL,
+      // so backing up refills the sky behind the nose rather than freezing it.
+      if (!field || !dHome) return;
+      const s = dHome < 0 ? -1 : 1;
+      const travel = { x: vdir.x * s, y: vdir.y * s, z: vdir.z * s };
+      // Remembered so the draw pass sizes its fade ramps to the same speed.
+      Render.skyStep = Math.abs(dHome);
+      for (let i = 0; i < field.length; i += 1) {
+        const star = field[i];
+        star.pos.x -= vdir.x * dHome;
+        star.pos.y -= vdir.y * dHome;
+        star.pos.z -= vdir.z * dHome;
+        // Recycle only where the visibility ramp has already reached zero, so
+        // the swap is always invisible. Two ways to get there: fallen far
+        // enough behind, or come close enough that it has faded out in front.
+        const dist = Math.hypot(star.pos.x, star.pos.y, star.pos.z);
+        if (Render.skyWindow(star, dist) > 0) continue;
+        const along = star.pos.x * travel.x + star.pos.y * travel.y + star.pos.z * travel.z;
+        if (along < 0 || dist <= Render.NEAR_GONE_LY) {
+          field[i] = Render.makeSkyStar(rng, travel);
+        }
+      }
     },
 
     drawSkyField(field, state, now, lenses) {
@@ -203,8 +311,18 @@
       const marginX = W * 0.06, marginY = H * 0.06;
 
       for (const star of field) {
-        const app = relativistic ? SF.view.apparent(star.dir)
-          : { dir: star.dir, cos: v3.dot(star.dir, SF.view.forward), D: 1, mag: 1 };
+        // Direction and brightness both come from the live position, so a
+        // star you are closing on genuinely gets brighter as you approach.
+        const p0 = star.pos;
+        const dist = Math.hypot(p0.x, p0.y, p0.z);
+        if (dist < 1e-6) continue;
+        const window = Render.skyWindow(star, dist);
+        if (window <= 0) continue;
+        const dir = { x: p0.x / dist, y: p0.y / dist, z: p0.z / dist };
+        const baseMag = SF.stars.apparentMagnitude(star.lum, dist);
+
+        const app = relativistic ? SF.view.apparent(dir)
+          : { dir, cos: v3.dot(dir, SF.view.forward), D: 1, mag: 1 };
         const p = SF.camera.project(app.dir, 0);
         if (!p) continue;
         if (p.x < -marginX || p.x > W + marginX || p.y < -marginY || p.y > H + marginY) continue;
@@ -226,17 +344,27 @@
         if (gain <= 0) continue;
 
         // Everything is a magnitude from here: −2.5·log₁₀ of the flux change.
-        const mag = star.mag - 2.5 * Math.log10(gain);
+        const mag = baseMag - 2.5 * Math.log10(gain);
         // Thinning star fields raise the effective limit rather than dimming
         // every star equally, which is what leaving the disk actually does.
         const limit = 6.9 + 2.5 * Math.log10(Math.max(1e-4, density));
         const above = limit - mag;
         if (above <= 0) continue;
-        const alpha = Math.min(1, above / 7.4 + 0.06);
+        // THE FLASHING LIVED HERE. This used to be `above / 7.4 + 0.06`, which
+        // still reads 0.06 at the exact threshold and is then cut to nothing by
+        // the line above — a hard step off a floor. That was invisible while
+        // every star's magnitude was fixed at spawn, because none of them ever
+        // crossed the threshold. The moment brightness started coming from live
+        // distance, stars crossed it constantly and each crossing was a blink.
+        // Ramping the last half-magnitude to zero removes the step.
+        const alpha = Math.min(1, above / 7.4 + 0.06) * Math.min(1, above / 0.6);
 
         const twinkle = 0.86 + Math.sin(now * 0.0014 + star.twinkle) * 0.14;
-        const size = Math.max(0.5, Math.min(3.4, 0.55 + above * 0.28)) * star.jitter;
-        ctx.globalAlpha = Math.min(1, alpha * twinkle);
+        // The window scales size as well as alpha, so a star shrinks away
+        // rather than dimming in place — a fading point that keeps its full
+        // width still reads as a blink.
+        const size = Math.max(0.5, Math.min(3.4, 0.55 + above * 0.28)) * star.jitter * (0.35 + 0.65 * window);
+        ctx.globalAlpha = Math.min(1, alpha * twinkle * window);
         ctx.fillStyle = entry.css;
         if (size < 1.1) {
           ctx.fillRect(x - size * 0.5, y - size * 0.5, size, size);
@@ -245,7 +373,9 @@
           ctx.arc(x, y, size * 0.62, 0, TAU);
           ctx.fill();
           if (size > 2.1) {
-            ctx.globalAlpha = Math.min(1, alpha * 0.45);
+            // Windowed too, or the spikes on a fading star snap out on their
+            // own while the disc is still going.
+            ctx.globalAlpha = Math.min(1, alpha * 0.45 * window);
             ctx.strokeStyle = entry.css;
             ctx.lineWidth = 0.6;
             ctx.beginPath();
@@ -289,11 +419,24 @@
       const inside = stage === "inside";
       const R = galaxy.radiusLy;
 
+      // WHERE IT IS ON SCREEN IS THIS FRAME'S ANSWER OR NOTHING. Every bail-out
+      // below used to leave the last frame's `screen` in place, and game.js
+      // draws galaxy labels off it — so turning away from Andromeda left its
+      // name pinned to the sky at the spot it used to be, sometimes for the rest
+      // of the flight. Clearing it up front means a label can only ever be drawn
+      // for a galaxy that actually got projected this frame.
+      galaxy.screen = null;
+
       // Stage three first, because once you are inside a galaxy its centre
       // can be behind you while its stars are all around — the sprite work
       // below would bail out and take them with it.
-      if (grain > 0.02) Render.drawGalaxyStars(galaxy, grain);
-      if (inside) { galaxy.screen = null; return; }
+      if (grain > 0.02) {
+        // Estimated screen radius, for the level-of-detail budget below.
+        // Inside one, the "radius" is the whole viewport.
+        const px = inside ? Math.max(W, H) : SF.camera.focal * measure.angular;
+        Render.drawGalaxyStars(galaxy, grain, px);
+      }
+      if (inside) return;
 
       const centre = SF.view.project(galaxy.pos, 0);
       if (!centre) return;
@@ -391,17 +534,37 @@
      * are flying into resolves into exactly the kind of star field you would
      * be flying through if you got there.
      */
-    drawGalaxyStars(galaxy, grain) {
+    drawGalaxyStars(galaxy, grain, screenRadiusPx = 0) {
       const points = SF.galaxy.buildPoints(galaxy);
+
+      // LEVEL OF DETAIL, KEYED TO APPARENT SIZE. Whether a thing has grained
+      // apart into stars is decided by its DISTANCE (galaxy.js), which is right
+      // for a galaxy and badly wrong for the small objects sharing this code
+      // path: the Ring Nebula is 2.6 ly across at 2,570 ly, so it is "resolved"
+      // while covering less than one pixel — and it was projecting, Doppler-
+      // shifting and drawing 1,500 individual stars into that pixel, every
+      // frame. Fourteen such objects cost 10 ms a frame, and near c it was
+      // unavoidable because aberration puts the entire sky on screen at once.
+      //
+      // So the count follows the area it actually covers, about a third of a
+      // point per pixel, and the alpha is scaled up to conserve the total light
+      // (the clamp at 1 stops a sub-pixel object from over-brightening). The
+      // points are an unbiased sample of the profile, so a prefix of them is
+      // the same object drawn with fewer stars.
+      const area = Math.PI * screenRadiusPx * screenRadiusPx;
+      const budget = Math.max(8, Math.min(points.length, Math.ceil(area * 0.35)));
+      const boost = points.length / budget;
+
       ctx.globalCompositeOperation = "lighter";
-      for (const point of points) {
+      for (let i = 0; i < budget; i += 1) {
+        const point = points[i];
         const world = SF.galaxy.toWorld(galaxy, point.x, point.y, point.z);
         const p = SF.view.project(world, 0);
         if (!p) continue;
         if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) continue;
         const s = SF.color.shifted(point.teff, p.D);
         const flux = SF.stars.fluxAt(point.lum, p.dist) * s.gain;
-        const alpha = grain * Math.min(1, Math.pow(flux * 26, 0.34));
+        const alpha = Math.min(1, grain * Math.min(1, Math.pow(flux * 26, 0.34)) * boost);
         if (alpha < 0.04) continue;
         ctx.globalAlpha = alpha;
         ctx.fillStyle = s.entry.css;
@@ -453,34 +616,86 @@
      * light now comes from the real direction of the real star, and the hue
      * comes from what the planet is made of rather than Math.random()*360.
      */
-    drawPlanet(body, p, litScreen) {
+    drawPlanet(body, p, litScreen, starWorld) {
       const r = Math.max(0.7, p.r);
-      if (r < 0.55) return;
       const style = body.style;
-      let lx = p.x, ly = p.y;
+
+      // Planets make no light of their own — a star lights them, and only the
+      // half facing that star is visible. The PHASE comes from real geometry:
+      // the angle between "planet → its star" and "planet → the camera". Full
+      // when the star is behind you, a thin crescent when it is off to the
+      // side, and nothing at all when the planet is between you and the star.
+      let litFraction = 1;
+      if (starWorld && body.p) {
+        const pp = body.p;
+        const toStar = v3.normalize({ x: starWorld.x - pp.x, y: starWorld.y - pp.y, z: starWorld.z - pp.z });
+        const toCam = v3.normalize({ x: -pp.x, y: -pp.y, z: -pp.z });
+        const cosA = Math.max(-1, Math.min(1, v3.dot(toStar, toCam)));
+        litFraction = (1 + cosA) / 2;
+      }
+      if (litFraction < 0.015) return;   // backlit — its dark side, invisible
+
+      // At real scale a planet is sub-pixel until you are almost on top of it,
+      // so most of the time draw it as a findable POINT of reflected light that
+      // resolves into the real lit disc as you close in. This is a visibility
+      // aid, not a size cheat — the collidable body keeps its true radius.
+      if (p.r < 1.6) {
+        const pr = 1.7 + (body.kind === "moon" ? -0.4 : 0);
+        ctx.globalAlpha = Math.min(0.92, 0.22 + 0.7 * litFraction);
+        ctx.fillStyle = `hsl(${style.hue},${Math.max(14, style.sat - 8)}%,${Math.min(82, style.light + 20)}%)`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.max(1.1, pr), 0, TAU);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        return;
+      }
+
+      // Lit direction on screen (toward the star), for the terminator.
+      let lx = 0, ly = -1;
       if (litScreen) {
         const dx = litScreen.x - p.x, dy = litScreen.y - p.y;
         const len = Math.hypot(dx, dy) || 1;
-        lx = p.x + (dx / len) * r * 0.5;
-        ly = p.y + (dy / len) * r * 0.5;
+        lx = dx / len; ly = dy / len;
       }
 
-      if (body.ring && r > 2) {
+      if (body.ring && r > 2 && litFraction > 0.25) {
+        ctx.globalAlpha = Math.min(1, (litFraction - 0.25) / 0.5);
         ctx.strokeStyle = `hsla(${style.hue + 30},${style.sat}%,${style.light + 12}%,.5)`;
         ctx.lineWidth = Math.max(0.8, r * 0.14);
         ctx.beginPath();
         ctx.ellipse(p.x, p.y, r * 1.7, r * 0.42, body.tilt || -0.24, 0, TAU);
         ctx.stroke();
+        ctx.globalAlpha = 1;
       }
 
-      const gradient = ctx.createRadialGradient(lx, ly, r * 0.05, p.x, p.y, r * 1.1);
-      gradient.addColorStop(0, `hsl(${style.hue},${style.sat}%,${Math.min(88, style.light + 24)}%)`);
-      gradient.addColorStop(0.48, `hsl(${style.hue},${Math.max(10, style.sat - 10)}%,${Math.max(14, style.light - 12)}%)`);
-      gradient.addColorStop(1, `hsl(${style.hue},${Math.max(6, style.sat - 22)}%,4%)`);
-      ctx.fillStyle = gradient;
+      ctx.save();
       ctx.beginPath();
       ctx.arc(p.x, p.y, r, 0, TAU);
-      ctx.fill();
+      ctx.clip();
+
+      // Day-side shading: brightest at the sub-stellar point, falling off round
+      // the sphere. No self-glow — this is reflected light only.
+      const sx = p.x + lx * r * 0.6, sy = p.y + ly * r * 0.6;
+      const day = ctx.createRadialGradient(sx, sy, r * 0.05, p.x, p.y, r * 1.15);
+      day.addColorStop(0, `hsl(${style.hue},${style.sat}%,${Math.min(88, style.light + 24)}%)`);
+      day.addColorStop(0.5, `hsl(${style.hue},${Math.max(10, style.sat - 8)}%,${Math.max(16, style.light - 6)}%)`);
+      day.addColorStop(1, `hsl(${style.hue},${Math.max(8, style.sat - 16)}%,${Math.max(8, style.light - 20)}%)`);
+      ctx.fillStyle = day;
+      ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+
+      // Terminator mask: keep the lit portion, fade the night side to fully
+      // transparent so empty space (or whatever is behind) shows through it.
+      ctx.globalCompositeOperation = "destination-in";
+      const tPos = Math.max(0.02, Math.min(0.98, litFraction));
+      const mask = ctx.createLinearGradient(
+        p.x + lx * r, p.y + ly * r, p.x - lx * r, p.y - ly * r);
+      mask.addColorStop(0, "rgba(0,0,0,1)");
+      mask.addColorStop(Math.max(0, tPos - 0.18), "rgba(0,0,0,1)");
+      mask.addColorStop(Math.min(1, tPos + 0.06), "rgba(0,0,0,0)");
+      mask.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = mask;
+      ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+      ctx.restore();
     },
 
     drawComet(body, p, litScreen) {
@@ -644,6 +859,91 @@
     },
 
     /**
+     * Where to put a marker for a world direction: on the target if it sits
+     * comfortably on screen, otherwise pinned to the screen edge pointing at
+     * it. Shared by the heading, retrograde and waypoint markers, so all
+     * three behave identically instead of each rolling their own arithmetic.
+     */
+    placeMarker(dir, inset) {
+      const cx = SF.camera.cx, cy = SF.camera.cy;
+      const cam = SF.camera.toCamera(dir);
+      // The keyboard-hint block owns the bottom strip of the screen. An edge
+      // arrow pinned there lands on top of the text and both become unreadable.
+      const bottom = Math.max(inset, HUD_SAFE_BOTTOM);
+      let vx, vy;
+      if (cam.z > 0.02) {
+        const p = SF.camera.project(dir, 0);
+        if (p && p.x >= inset && p.x <= W - inset && p.y >= inset && p.y <= H - bottom) {
+          return { onScreen: true, x: p.x, y: p.y, vx: 0, vy: 0 };
+        }
+        vx = p.x - cx; vy = p.y - cy;
+      } else {
+        vx = cam.x; vy = -cam.y;      // behind: camera-space dir, screen y flipped
+      }
+      const len = Math.hypot(vx, vy) || 1;
+      vx /= len; vy /= len;
+      const maxX = W / 2 - inset;
+      const maxY = (vy > 0 ? H / 2 - bottom : H / 2 - inset);
+      const reach = Math.min(maxX / (Math.abs(vx) || 1e-6), maxY / (Math.abs(vy) || 1e-6));
+      return { onScreen: false, x: cx + vx * reach, y: cy + vy * reach, vx, vy };
+    },
+
+    /**
+     * A flight marker: a glyph and a label where the direction points, or an
+     * arrow at the screen edge when it is off-view. `edgeArrow: false` keeps
+     * a marker from pinning itself to the edge — retrograde is behind you
+     * almost all the time, and an arrow that is always on screen tells you
+     * nothing while adding permanent clutter.
+     */
+    marker(dir, colour, label, glyph, edgeArrow = true) {
+      const at = Render.placeMarker(dir, 34);
+      if (at.onScreen) {
+        const apart = Math.hypot(at.x - SF.camera.cx, at.y - SF.camera.cy);
+        if (glyph === "dot") {
+          ctx.fillStyle = `rgba(${colour},.92)`;
+          ctx.beginPath();
+          ctx.arc(at.x, at.y, 3.5, 0, TAU);
+          ctx.fill();
+        }
+        if (apart > 14) {
+          ctx.strokeStyle = `rgba(${colour},${glyph === "dot" ? ".62" : ".45"})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(at.x, at.y, glyph === "dot" ? 9 : 7, 0, TAU);
+          if (glyph === "cross") {
+            // The nav-ball retrograde glyph: a ringed X you burn toward.
+            ctx.moveTo(at.x - 4.4, at.y - 4.4); ctx.lineTo(at.x + 4.4, at.y + 4.4);
+            ctx.moveTo(at.x + 4.4, at.y - 4.4); ctx.lineTo(at.x - 4.4, at.y + 4.4);
+          }
+          ctx.stroke();
+          Render.markerLabel(label, at.x, at.y + 20, colour);
+        }
+        return at;
+      }
+      if (!edgeArrow) return at;
+      ctx.save();
+      ctx.translate(at.x, at.y);
+      ctx.rotate(Math.atan2(at.vy, at.vx));
+      ctx.fillStyle = `rgba(${colour},.9)`;
+      ctx.beginPath();
+      ctx.moveTo(9, 0); ctx.lineTo(-6, -6); ctx.lineTo(-6, 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      Render.markerLabel(label, at.x - at.vx * 17, at.y - at.vy * 17, colour);
+      return at;
+    },
+
+    markerLabel(text, x, y, colour) {
+      ctx.font = "600 9px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = `rgba(${colour},.75)`;
+      ctx.fillText(text, x, y);
+      ctx.textAlign = "left";
+    },
+
+    /**
      * The nose reticle, plus the green heading dot.
      *
      * TWO MARKERS, AND THE DIFFERENCE BETWEEN THEM IS THE PHYSICS. The faint
@@ -670,40 +970,41 @@
       ctx.moveTo(cx, cy + 7); ctx.lineTo(cx, cy + 18);
       ctx.stroke();
 
-      const vel = SF.camera.project(SF.view.forward, 0);
-      if (vel) {
-        const apart = Math.hypot(vel.x - cx, vel.y - cy);
-        // A solid dot, always drawn — it used to appear only once it had
-        // drifted 14px off the nose, so at low speed there was no green dot
-        // at all and the one place it showed up was the one place it was
-        // least explicable.
+      // Heading and retrograde. Now that thrust is not locked to the nose,
+      // the heading can sit anywhere on the sphere — including straight
+      // behind you — so both markers get the same on-screen-or-edge-arrow
+      // treatment the waypoint has. Losing track of your own velocity vector
+      // is the single most disorienting thing that can happen in a ship that
+      // drifts, and before this it simply vanished off the edge.
+      // A hundredth of a percent of light. Below that "where you are going" is
+      // numerical noise pointing in an arbitrary direction, and drawing an
+      // arrow for it is worse than drawing nothing — the ship reads as
+      // stationary, so the marker belongs under the crosshair.
+      // In reverse the heading is behind the nose whatever the speed, and in a
+      // faster-than-light gear β is zero — so the test cannot be β alone, or
+      // backing away from a star would draw the heading dot dead ahead.
+      const moving = state.beta > 1e-4 || (state.warpLySec || 0) < 0;
+      let vel = null;
+      if (moving) {
+        const fwd = SF.view.forward;
+        vel = Render.marker(fwd, "120,255,196", "HEADING", "dot", true);
+        Render.marker({ x: -fwd.x, y: -fwd.y, z: -fwd.z }, "120,255,196", "RETRO", "cross", false);
+      } else {
+        // At rest there is no heading, so the dot parks under the crosshair
+        // rather than disappearing or pointing somewhere meaningless.
         ctx.fillStyle = "rgba(120,255,196,.92)";
         ctx.beginPath();
-        ctx.arc(vel.x, vel.y, 3.5, 0, TAU);
+        ctx.arc(cx, cy, 3.5, 0, TAU);
         ctx.fill();
-
-        // Once it separates from the nose it gets a ring and a word, because
-        // that is the moment it stops being decoration and starts being the
-        // thing you steer by.
-        if (apart > 14) {
-          ctx.strokeStyle = "rgba(120,255,196,.62)";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.arc(vel.x, vel.y, 9, 0, TAU);
-          ctx.stroke();
-          ctx.font = "600 9px ui-monospace, SFMono-Regular, Menlo, monospace";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillStyle = "rgba(120,255,196,.75)";
-          ctx.fillText("HEADING", vel.x, vel.y + 20);
-          ctx.textAlign = "left";
-        }
       }
 
-      // The starbow ring: where D = 1 and the sky keeps its true colour.
+      // The starbow ring: where D = 1 and the sky keeps its true colour. It
+      // is centred on the velocity vector, so it is only meaningful while
+      // that vector is actually in view — an edge-arrow placement would put
+      // the ring somewhere the physics never said it was.
       if (state.relativistic && state.beta > 0.55) {
         const angle = SF.rel.starbowAngle(state.beta, state.gamma);
-        if (angle && vel) {
+        if (angle && vel && vel.onScreen) {
           const radius = SF.camera.focal * Math.tan(Math.min(1.45, angle));
           if (radius < Math.hypot(W, H)) {
             ctx.strokeStyle = "rgba(255,255,255,.08)";
@@ -728,44 +1029,27 @@
       if (dist < 1e-6) return;
       const dir = { x: pos.x / dist, y: pos.y / dist, z: pos.z / dist };
       const app = SF.view.relativistic ? SF.view.apparent(dir) : { dir };
-      const cam = SF.camera.toCamera(app.dir);
-      const cx = SF.camera.cx, cy = SF.camera.cy;
-      const inset = 48;
       // Amber, not green: green is the heading dot and only the heading dot.
       const colour = "255,190,92";
       const distText = SF.hud ? SF.hud.formatDistance(dist) : `${dist.toFixed(1)} ly`;
+      const at = Render.placeMarker(app.dir, 48);
 
       // On screen: a diamond right on the target.
-      if (cam.z > 0.02) {
-        const p = SF.camera.project(app.dir, 0);
-        if (p && p.x >= inset && p.x <= W - inset && p.y >= inset && p.y <= H - inset) {
-          ctx.strokeStyle = `rgba(${colour},.9)`;
-          ctx.lineWidth = 1.4;
-          const s = 11;
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y - s); ctx.lineTo(p.x + s, p.y);
-          ctx.lineTo(p.x, p.y + s); ctx.lineTo(p.x - s, p.y);
-          ctx.closePath();
-          ctx.stroke();
-          Render.waypointLabel(name, distText, p.x + s + 7, p.y, colour, "left");
-          return;
-        }
+      if (at.onScreen) {
+        ctx.strokeStyle = `rgba(${colour},.9)`;
+        ctx.lineWidth = 1.4;
+        const s = 11;
+        ctx.beginPath();
+        ctx.moveTo(at.x, at.y - s); ctx.lineTo(at.x + s, at.y);
+        ctx.lineTo(at.x, at.y + s); ctx.lineTo(at.x - s, at.y);
+        ctx.closePath();
+        ctx.stroke();
+        Render.waypointLabel(name, distText, at.x + s + 7, at.y, colour, "left");
+        return;
       }
 
       // Off screen or behind: an arrow pinned to the edge, pointing at it.
-      let vx, vy;
-      if (cam.z > 0.02) {
-        const p = SF.camera.project(app.dir, 0);
-        vx = p.x - cx; vy = p.y - cy;
-      } else {
-        vx = cam.x; vy = -cam.y;      // behind: camera-space dir, screen y flipped
-      }
-      const len = Math.hypot(vx, vy) || 1;
-      vx /= len; vy /= len;
-      const maxX = W / 2 - inset, maxY = H / 2 - inset;
-      const reach = Math.min(maxX / (Math.abs(vx) || 1e-6), maxY / (Math.abs(vy) || 1e-6));
-      const ex = cx + vx * reach, ey = cy + vy * reach;
-
+      const vx = at.vx, vy = at.vy, ex = at.x, ey = at.y;
       ctx.save();
       ctx.translate(ex, ey);
       ctx.rotate(Math.atan2(vy, vx));

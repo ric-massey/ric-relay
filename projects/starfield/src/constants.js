@@ -78,10 +78,27 @@
      Read by hud.js to build the in-game honesty ledger. Each entry states
      what we changed and by how much, in the same units as the real thing.  */
   SF.FUDGE = {
-    // Time compression. One second of play is this many years of ship time,
-    // so a 1 g burn reaches the galactic edge in about a minute instead of
-    // twelve years. This is the single largest lie in the game.
-    shipYearsPerSecond: 0.4,
+    // TIME IS NOT COMPRESSED ANY MORE. This used to read 0.4 — one second of
+    // play was 0.4 years of the pilot's life, a hidden 12,600,000× speedup on
+    // the one clock the whole game is about. It was described here as the
+    // single largest lie in the game, and it was.
+    //
+    // It is gone. One second is one second. A 1 g burn covers 18 km in the
+    // first minute, 0.24 AU in a day, and reaches 77% of light after a year,
+    // which is exactly what a relativistic rocket does. The two clocks in the
+    // HUD only mean something if the pilot's own clock is honest.
+    //
+    // What makes the game playable instead is the faster-than-light drive:
+    // sub-light flight is for manoeuvring inside a system, and crossing real
+    // distance is what the jump is for. That is a declared, visible cheat the
+    // player engages on purpose, rather than a silent one applied to them.
+    shipYearsPerSecond: 1 / year,
+
+    // Orbits run at their true Kepler rate now. With the clock honest there is
+    // nothing left to compensate for: Earth takes a year because it takes a
+    // year. Kept as a dial rather than deleted, in case a system needs to be
+    // watchable for a screenshot.
+    orbitRate: 1,
 
     // Visual radii. A Sun-sized star is 7.35e-8 ly across; at any distance
     // you could survive it is far smaller than one pixel. Radii below are the
@@ -89,21 +106,108 @@
     // toward a believable scale — a star now dwarfs its planets (~13×), and
     // both are small enough that flying into one is a rare accident rather
     // than the point of the game.
-    starRadiusLy: 0.05,                // ×6.8e5 for a solar-radius star
+    // Bodies are drawn big on purpose now: this is a game about flying up to a
+    // star and feeling it fill the sky, not spotting a pixel. A star spans ~0.2
+    // ly rendered — a few seconds across in gear 1 — and dwarfs its planets by
+    // ~10×. Orbits are quoted in stellar radii (see orbitToLy), so scaling the
+    // star scales its whole system and the planets always sit clear of it.
+    starRadiusLy: 0.20,                // was 0.05 — stars now loom
     starRadiusExp: 0.40,               // compresses the real 9,000× range to ~24×
-    planetRadiusLy: 0.004,             // Earth: ×6.0e6
+    planetRadiusLy: 0.020,             // was 0.004 — planets read as worlds
     planetRadiusExp: 0.40,
-    moonRadiusLy: 0.0015,
-    cometRadiusLy: 0.0010,
-    blackHoleRadiusLy: 0.010,          // for a 10 M☉ hole: r_s is 30 km = 3e-12 ly
+    moonRadiusLy: 0.007,
+    cometRadiusLy: 0.004,
+    blackHoleRadiusLy: 0.035,          // for a 10 M☉ hole: r_s is 30 km = 3e-12 ly
     blackHoleRadiusExp: 0.33,
 
-    // Orbital-motion slowdown. Orbits keep their real relative rates (inner
-    // worlds fast, outer slow) and still speed up when you fly fast — time
-    // dilation seen from outside — but the whole thing is scaled down by this
-    // factor so a parked system drifts at a pace you can watch instead of
-    // whirling round every few seconds.
-    orbitRate: 0.22,
+    // Gravity. The drawn geometry is enormously inflated — a Sun-mass star is
+    // rendered 6.8×10⁵ times too wide — so its *true* surface gravity applied
+    // at the drawn radius would give an escape velocity of about 1.2c and
+    // silently turn every star in the game into a black hole. Instead the
+    // pull is defined by what it should feel like at the drawn surface, and
+    // falls off as an honest inverse square from there.
+    //
+    //   GM_eff = surfaceG × R_drawn²      g(r) = GM_eff / r²
+    //
+    // At 0.06 g a Sun-mass star leans on a 1 g ship without ever trapping it:
+    // 0.06 g at the surface, 0.007 g three radii out. Masses scale linearly,
+    // so a four-million-solar-mass black hole is still absolutely lethal.
+    gravitySurfaceG: 0.06,             // gravities at a 1 R☉ star's drawn edge
+    gravityMaxG: 5000,                 // clamp, so nothing returns Infinity
+
+    // The faster-than-light drive, which is the *only* way to cross real
+    // distance and therefore the game's headline cheat. Real physics forbids
+    // it outright; the banner says so while it is running.
+    //
+    // Space here is inflated to light-year scale — even the nearest body in a
+    // system sits a couple of ly away — so at honest lightspeed (3.2e-8 ly/s)
+    // it is a two-year trip. Every playable speed, even "flying around the
+    // planets", is therefore already faster than light. That is the arcade
+    // bargain: the DRIVE cheats, and the g-force readout stays honest about
+    // what the cheat would cost the pilot.
+    //
+    // Speed is in light-years per REAL second, and it is SIGNED: positive is
+    // along the nose, negative is astern.
+    warpMaxLySec: 4e9,                 // absolute ceiling any gear may name
+
+    // ── the gearbox ──────────────────────────────────────────────────────
+    // IT IS A CAR, NOT A SPRING. The drive holds whatever speed it has: hold
+    // the accelerator and speed climbs toward this gear's ceiling, LET GO AND
+    // IT STAYS THERE. The brake takes it back down, through zero, and on into
+    // reverse — there is no throttle to keep pressed and no speed lock to arm,
+    // because coasting is simply what the drive does when you are not asking
+    // it for anything.
+    //
+    // Each gear is a SPEED RANGE, and that is the whole reason there are six
+    // of them: acceleration is a fixed fraction of the gear's ceiling per
+    // second, so the gear you pick is the resolution you get. Gear 2 gives you
+    // metres of control next to a planet; gear 6 crosses to Andromeda. Ask for
+    // fine control in a high gear and you will overshoot — that is the gearbox
+    // doing its job, not fighting you.
+    //
+    //   ramp   seconds from a standstill to this gear's top speed
+    //   top    the ceiling it governs to, in ly per real second
+    //
+    // Gear 1 is the only honest one: it tops out just below c, so all the real
+    // relativity — aberration, Doppler, the two clocks — lives there, and with
+    // coast-hold you can now park at any β you like and look at the sky. It
+    // takes six seconds to build, so you can watch the crush arrive. Gears 2–6
+    // are the declared faster-than-light cheat, sized to the distances the game
+    // actually contains: a planet is 0.02 ly across, a system spans ~2 ly, its
+    // neighbours are ~4 ly off, the galactic core is 26,670 ly away and
+    // Andromeda is 2.5 Mly.  c ≈ 3.17×10⁻⁸ ly/s. Tuning these by feel is
+    // expected.
+    gears: [
+      { id: 1, name: "Sub-light", topLySec: 3.13e-8, ramp: 6,
+        note: "Honest physics. Tops out at 99% of light — this is where aberration, Doppler and the two clocks live." },
+      { id: 2, name: "Docking", topLySec: 1e-3, ramp: 2,
+        note: "Faster-than-light, but barely: a planet is 20 seconds wide. The gear for a final approach." },
+      { id: 3, name: "Orbital", topLySec: 0.05, ramp: 2.5,
+        note: "Faster-than-light. Crosses one system — star to outer planets — in under a minute." },
+      { id: 4, name: "Interstellar", topLySec: 1, ramp: 3,
+        note: "Faster-than-light. One light-year per second: the nearest star is a four-second run." },
+      { id: 5, name: "Galactic", topLySec: 1e3, ramp: 4,
+        note: "Faster-than-light. 1,000 ly/s — the black hole at the galactic core is half a minute out." },
+      { id: 6, name: "Intergalactic", topLySec: 5e5, ramp: 5,
+        note: "Faster-than-light. 500,000 ly/s. Andromeda in five seconds, and the home clock notices." },
+    ],
+    // Reverse is capped below the forward ceiling, the way a car's is. Hold the
+    // brake past a standstill and you back away from whatever you were flying at.
+    reverseFraction: 0.4,
+    // Kill velocity brakes at this multiple of the pedal's rate and lands ON
+    // zero rather than easing toward it — "full stop" has to mean stopped, not
+    // 300 km/s and falling. From a gear's top speed it takes ramp/3 seconds.
+    brakeBoost: 3,
+    // Downshifting sheds overspeed in about this long — measured in log-space,
+    // so dropping from gear 6 to gear 1 takes the same couple of seconds as
+    // dropping from 3 to 2 rather than the forty e-folds a linear decay needs.
+    downshiftSeconds: 0.55,
+
+    // Flight-assist authority, in gravities: the thrusters that swing your
+    // velocity round to match the nose so the ship goes where you point it.
+    // Barely a cheat — a real pilot would fire exactly these, just by hand.
+    // The burn is integrated honestly and is suppressed near c like any other.
+    assistG: 1.4,
 
     // Orbits, expressed as a power law in units of the star's own radius so
     // that the *shape* of a system survives: M-dwarf systems stay compact,
