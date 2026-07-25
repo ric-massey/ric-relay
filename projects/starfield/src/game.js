@@ -55,6 +55,7 @@
     shipYears: 0, homeYears: 0, distanceLy: 0,
     hull: 1,
     bubble: false,
+    bubbleFade: 0,  // 0…1, the bubble wall crossfading in and out with it
     // Drive speed, ly per REAL second. SIGNED: positive along the nose,
     // negative astern. It persists — releasing the pedal holds it.
     warpLySec: 0,
@@ -235,6 +236,7 @@
     state.shipYears = 0; state.homeYears = 0; state.distanceLy = 0;
     state.hull = 1;
     state.bubble = false;
+    state.bubbleFade = 0;
     state.warpLySec = 0;
     state.gear = 1;
     state.feltG = 0;
@@ -251,6 +253,8 @@
     systems.length = 0;
     galaxies.length = 0;
     SF.camera.reset();
+    // No crossfade out of a dead ship's last frame — a relaunch starts flat.
+    SF.view.reset();
 
     seedCatalogue();
     seedDeepSky();
@@ -1060,7 +1064,7 @@
 
     drawLabels(drawable);
 
-    if (state.bubble) SF.render.drawBubble(now);
+    if (state.bubbleFade > 0.01) SF.render.drawBubble(now, state.bubbleFade);
     SF.render.drawReticle(state);
     if (state.waypoint && state.running) {
       SF.render.drawWaypoint(state.waypoint.name, state.waypoint.obj.pos);
@@ -1149,7 +1153,13 @@
       state.beta, state.gamma,
       { x: vdir.x * vsign, y: vdir.y * vsign, z: vdir.z * vsign },
       state.relativistic,
+      dt,     // the view eases across the lightspeed boundary; see view.js
     );
+    // The bubble wall crossfades on the same clock as the aberration, so
+    // crossing c is one continuous transition rather than three simultaneous
+    // switches (sky, heat glow, wall) all thrown in the same frame.
+    state.bubbleFade += ((state.bubble ? 1 : 0) - state.bubbleFade)
+      * (1 - Math.exp(-dt / SF.view.easeSeconds));
 
     if (state.running) {
       applyEnvironment(dt);

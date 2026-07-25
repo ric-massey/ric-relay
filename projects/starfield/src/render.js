@@ -91,8 +91,12 @@
        blinding white as you burn, and that is the game's difficulty curve —
        organic, and chosen by the player every time they hold the throttle. */
     drawCMB(state) {
-      const { beta, gamma } = state;
-      if (!state.relativistic || gamma < 1.02) return 0;
+      // The EASED speed, not the true one: this glow is the forward sky
+      // heating up, and it has to fade in and out with the aberration it
+      // belongs to rather than switching off the frame you pass c.
+      const beta = SF.view.beta, gamma = SF.view.gamma;
+      if (!SF.view.relativistic || gamma < 1.02) return 0;
+      void state;
 
       const velScreen = SF.camera.project(SF.view.forward, 0);
       const focal = SF.camera.focal;
@@ -207,6 +211,7 @@
     NEAR_GONE_LY: 0.4,          // closer than this, a background star is gone
     NEAR_FULL_LY: 1.2,          // fully present from here outward
     FAR_FADE: 1.7,              // × maxLy, where it has faded away behind you
+    WIDEN_MAX_FRAC: 0.25,       // cap on the speed-widened fade ramps, × maxLy
 
     /**
      * 0…1 visibility for a sky star at `dist`. Zero means safe to recycle.
@@ -220,8 +225,19 @@
       const step = Render.skyStep || 0;
       const nearGone = Render.NEAR_GONE_LY;
       if (dist <= nearGone) return 0;
-      const nearFull = Math.max(Render.NEAR_FULL_LY, nearGone + 4 * step);
-      const far = star.maxLy * Render.FAR_FADE + 4 * step;
+      // WIDENED, BUT BOUNDED. The ramps grow with how far the ship covers per
+      // frame so a star always fades over several frames instead of blinking.
+      // Unbounded, that is a disaster in the high gears: at 8,000 ly a frame
+      // the fade-in ramp was 33,000 ly deep, so every star in the field sat
+      // inside it and the whole sky dimmed to a fifth of its brightness —
+      // shifting up a gear visibly turned the stars down. Past the point where
+      // the ship crosses a star's entire visibility range in one frame the
+      // widening buys nothing anyway (the field recycles wholesale however
+      // gentle the ramp is), so it is capped as a fraction of the star's own
+      // range and the sky now looks the same at every speed.
+      const widen = Math.min(4 * step, star.maxLy * Render.WIDEN_MAX_FRAC);
+      const nearFull = Math.max(Render.NEAR_FULL_LY, nearGone + widen);
+      const far = star.maxLy * Render.FAR_FADE + widen;
       if (dist >= far) return 0;
       let w = 1;
       if (dist < nearFull) w = (dist - nearGone) / (nearFull - nearGone);
@@ -305,8 +321,11 @@
     },
 
     drawSkyField(field, state, now, lenses) {
-      const { beta, gamma, density } = state;
-      const relativistic = state.relativistic;
+      // β and γ come from the view, which eases them across the lightspeed
+      // boundary; density is a property of where you are, not how fast.
+      const beta = SF.view.beta, gamma = SF.view.gamma;
+      const relativistic = SF.view.relativistic;
+      const { density } = state;
       const focal = SF.camera.focal;
       const marginX = W * 0.06, marginY = H * 0.06;
 
@@ -1002,8 +1021,8 @@
       // is centred on the velocity vector, so it is only meaningful while
       // that vector is actually in view — an edge-arrow placement would put
       // the ring somewhere the physics never said it was.
-      if (state.relativistic && state.beta > 0.55) {
-        const angle = SF.rel.starbowAngle(state.beta, state.gamma);
+      if (SF.view.relativistic && SF.view.beta > 0.55) {
+        const angle = SF.rel.starbowAngle(SF.view.beta, SF.view.gamma);
         if (angle && vel && vel.onScreen) {
           const radius = SF.camera.focal * Math.tan(Math.min(1.45, angle));
           if (radius < Math.hypot(W, H)) {
@@ -1085,16 +1104,25 @@
       ctx.globalAlpha = 1;
     },
 
-    /** The Alcubierre bubble wall, when the fictional drive is engaged. */
-    drawBubble(now) {
+    /**
+     * The Alcubierre bubble wall, when the fictional drive is engaged.
+     * `fade` is 0…1 so the wall comes up and drops away over the same half
+     * second the aberration takes; it used to be painted at full strength the
+     * instant the drive passed c, which put a screen-wide blue vignette on and
+     * off like a light switch every time a gear change crossed lightspeed.
+     */
+    drawBubble(now, fade = 1) {
+      if (fade <= 0.01) return;
       const cx = SF.camera.cx, cy = SF.camera.cy;
       const r = Math.min(W, H) * 0.46;
       const ring = ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r * 1.25);
       ring.addColorStop(0, "transparent");
       ring.addColorStop(0.62, `rgba(126,214,255,${(0.10 + Math.sin(now * 0.004) * 0.03).toFixed(3)})`);
       ring.addColorStop(1, "rgba(48,90,190,.28)");
+      ctx.globalAlpha = Math.min(1, fade);
       ctx.fillStyle = ring;
       ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
     },
   };
 })();
