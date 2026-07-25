@@ -197,8 +197,9 @@ preserving this global script architecture.
 
 - HUD hierarchy is dominated by relativistic readouts even during local flight;
 - one canvas/render path cannot directly provide target terrain/atmosphere needs;
-- “game over/relaunch” now aligns with the resolved permadeath rule (death restarts the
-  universe), but its exact restart flow still needs to match the spec;
+- “game over/relaunch” is broadly compatible with the resolved death rule, but it
+  predates the selectable death modes and the two-clock reset, so its restart flow still
+  needs to match the spec;
 - mobile controls do not yet represent the target two-thumb/contextual design;
 - static script order is the module system.
 

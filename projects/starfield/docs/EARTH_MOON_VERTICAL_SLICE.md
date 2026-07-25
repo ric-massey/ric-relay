@@ -223,8 +223,11 @@ For the first slice:
   while a menu is open (decision §19.3); the same applies to accessibility pauses;
 - large time acceleration is not required;
 - relativistic clock divergence is not required at ordinary Earth–Moon velocities;
-- traveler and reference clocks may remain visible if they are explained and do not
-  dominate the local-flight HUD.
+- the **two-clock rule** applies from the start (Design Bible §7.3): the traveler clock
+  equals real elapsed play time and is never scaled, while the home/Earth clock is free
+  to diverge later at relativistic speed. Both are visible and clearly distinguished,
+  without dominating the local-flight HUD;
+- on restart after death, both clocks reset to matching (§13).
 
 ### 5.4 Gravity
 
@@ -390,9 +393,11 @@ The station exists to teach relative motion and precision flight.
 
 ### 8.1 Representation
 
-The station is a model of the **real ISS** (decision §19.1) — not a fictional station.
-The model need not be perfect. The simulation must label whether its orbit is live,
-cached, or representative. A detailed visual model must have a compatible license and a
+The station is the **real ISS** (decision §19.1) — not a fictional station — but it only
+needs to be **recognizably the ISS**, not an exact replica. Ric's guidance: it should
+resemble the ISS; this is a web page, so perfection is not the bar. Get the silhouette
+right — truss, solar arrays, module layout — and stop there. The simulation must label
+whether its orbit is live, cached, or representative. A detailed visual model must have a compatible license and a
 recorded source. A simplified model is acceptable if silhouettes, scale, docking
 structure, and collision geometry are honest enough for the intended distance. Note
 that modeling the ISS's real docking ports as *structure* is expected; the game itself
@@ -444,15 +449,20 @@ Required qualities:
 
 ### 9.2 Atmospheric boundary
 
-The atmosphere has no hard shell. Density, drag, heating, scattering, and visibility
-change continuously with altitude under the chosen atmospheric model.
+The atmosphere has no hard shell. Density, scattering, and visibility change
+continuously with altitude under the chosen atmospheric model.
+
+**Drag and re-entry heating do not act on the ship** (decision §19.7). The ship's future
+technology bypasses them, so the atmosphere is never an aerodynamic force, a braking
+effect, or a burn-up hazard. This is declared fiction and requires an honesty-ledger
+entry; the atmosphere itself is still modeled and reported honestly.
 
 The first slice needs enough behavior to:
 
 - show the atmospheric limb from orbit;
-- warn when a trajectory intersects meaningful atmosphere;
-- predict heating and braking qualitatively and numerically within the model;
-- prevent the vacuum flight model from continuing unchanged into dense air.
+- report density, pressure, temperature, and composition truthfully with altitude;
+- render scattering, limb colour, and visibility changes;
+- describe, as education rather than damage, what entry would do to a *real* spacecraft.
 
 Full Earth descent and landing are Phase 2, but the architecture must not make them
 impossible.
@@ -573,13 +583,23 @@ attention.
 
 ### 12.0 Presentation philosophy
 
-The cockpit is a **minimal, movie-glass HUD** (decision §19.2). No modeled interior
-sits between the player and the view. Information is projected onto the canopy the way
-heads-up features "pop up on the glass" in film — appearing when relevant and clearing
-when not. The controls are the keyboard and equivalent physical inputs, not on-screen
-panels the player must hunt through. The overriding rule: **the cockpit must never get
-in the way of the beauty.** Selectable presentation modes (e.g. a denser instrument
-view) are acceptable, but the default leans hard toward minimal.
+Information is projected onto the canopy the way heads-up features "pop up on the glass"
+in film — **holograms** that appear when relevant and clear when not, and that the
+player can **select directly** (planets and other objects are picked on the glass). The
+controls are the keyboard and equivalent physical inputs, not on-screen panels to hunt
+through. The overriding rule: **the cockpit must never get in the way of the beauty.**
+
+The slice ships **three presets** (decision §19.2, Design Bible §14.1):
+
+| Preset | Look |
+|---|---|
+| **Clean** | No frame — only the view and what the player summons. |
+| **Frame** | Bars/struts across the view, TIE-fighter style. |
+| **Cockpit** | A jet-style cockpit interior. |
+
+The holographic information layer is common to all three; only the physical framing
+changes. All remain first-person and inside the ship. The default preset is still to be
+chosen (see §19).
 
 ### 12.1 Always-important state
 
@@ -649,19 +669,32 @@ Required hazards:
 - station collision;
 - terrain collision;
 - excessive lunar landing velocity;
-- unsafe atmosphere-intersection trajectory;
-- excessive acceleration or thermal/structural load if the chosen ship envelope
-  includes those limits.
+- excessive acceleration or structural load if the chosen ship envelope includes those
+  limits;
+- impact damage from debris where the slice includes any.
 
+Atmospheric drag and re-entry heating are **not** hazards (§9.2, decision §19.7).
 Routine fuel depletion, oxygen depletion, and hunger are forbidden — **fuel is never a
-concern** (decision §19.6). Routine radiation damage to an *intact* hull is also
-forbidden; radiation only matters once the hull is damaged (see below).
+concern**. Routine radiation never damages the ship (Design Bible Law 5).
 
-**Death is permanent (decision §19.6).** When the ship is destroyed the run ends and
-the universe restarts. There is no shipped checkpoint reset, no destruction-recovery
-mechanic, and no progress-preserving respawn — death is final, and the player must fly
-carefully. A clearly-labeled temporary reset MAY exist as a development testing aid,
-but it is scaffolding, not the rule.
+**Danger is chosen, and it must be legible before it is fatal (decision §19.8).** Normal
+flight around Earth, to the Moon, and down to a landing should be *safe*; the player
+learns what is dangerous and avoids it. Warnings, environmental readouts, and stopping
+distance must give the player a real chance to react. Death should be hard to reach by
+accident and entirely reachable by recklessness.
+
+**There are no checkpoints (decision §19.6).** Destruction ends the run; it is never
+undone. What it *costs* is a mode the player selects:
+
+| Mode | On death |
+|---|---|
+| **Hardcore** | Lose everything — discoveries, photos, records. |
+| **Standard** | Restart at the ISS keeping all achievements and discoveries. |
+| **Expedition (default)** | As Standard, plus a permanent record of every past run. |
+
+Restarting returns the player to the ISS with **both clocks reset to matching** (§5.3).
+The universe is real and catalogued — it does not reseed. A clearly-labeled temporary
+reset MAY exist as a development testing aid, but it is scaffolding, not the rule.
 
 **Hull damage is persistent and repaired only at a habitable planet (decision §19.6).**
 Damage accumulates on the hull and does not self-heal in flight; the player must return
@@ -709,13 +742,19 @@ Minimum examples:
 The vertical slice SHOULD save locally:
 
 - settings and bindings;
-- quality selection;
+- quality selection and cockpit preset (§12.0);
 - accessibility settings;
+- selected death mode (§13);
 - completed first-flight prompts;
-- visited/observed milestones;
+- visited/observed milestones and **places seen**;
+- **photographs taken**, if photography lands in this slice;
 - saved map targets or routes;
-- latest safe scenario checkpoint;
+- the expedition record (per-run results) when in Expedition mode;
 - source-data version associated with a session when relevant.
+
+**No flight-state checkpoint is saved.** Persistence records what the player has
+learned, seen, and photographed — never a restorable position that could undo a death
+(§13). What survives a death is governed by the selected mode.
 
 The player must be able to reset settings and expedition progress separately.
 Account creation and cloud synchronization are not required.
@@ -872,16 +911,16 @@ These were reviewed with Ric on 2026-07-25. They are now design intent for the s
 Where a decision has game-wide consequences (death, docking, repair), the
 [Design Bible](DESIGN_BIBLE.md) is updated to match.
 
-1. **Station — a model of the real ISS.** The start is the actual ISS, not a fictional
-   station. The model need not be perfect; scale, silhouette, and collision geometry
-   must be honest enough for the intended viewing distance, and its orbit state must be
-   labeled live, cached, or representative per §8.1.
-2. **Cockpit — minimal, movie-glass HUD.** Nothing physical should sit between the
-   player and the view. The controls are the keyboard (and equivalent physical inputs);
-   information is projected onto the canopy the way heads-up features "pop up on the
-   glass" in film. The cockpit must never get in the way of the beauty. Selectable
-   presentation modes are acceptable, but the default leans hard toward minimal. See
-   §12.
+1. **Station — recognizably the real ISS.** The start is the actual ISS, not a fictional
+   station, but it only needs to *resemble* the ISS: get the silhouette right and stop
+   there. This is a web page; exact replica fidelity is not the bar. Its orbit state
+   must be labeled live, cached, or representative per §8.1.
+2. **Cockpit — three presets over a holographic glass layer.** Information is projected
+   onto the canopy as holograms the player can select directly (planets and objects are
+   picked on the glass). Three presets ship: **Clean** (no frame), **Frame**
+   (TIE-fighter-style bars), and **Cockpit** (jet-style interior). The controls are the
+   keyboard and equivalent physical inputs. The cockpit must never get in the way of the
+   beauty. See §12.0.
 3. **Menus pause the simulation.** Opening a normal menu pauses local simulation; the
    ship does not keep moving while a menu is open. See §5.3.
 4. **Default start location is Earth and the ISS** — the one place every expedition
@@ -891,20 +930,29 @@ Where a decision has game-wide consequences (death, docking, repair), the
 5. **No docking.** The game has no docking mechanic. The player may approach, station-
    keep, observe, and later *land on planetary and lunar surfaces*, but never docks and
    never leaves the spacecraft on foot. See §8.2.
-6. **Death is permanent; there is no destruction recovery.** When the ship is
-   destroyed, the run is over and the universe restarts — death is final, as in real
-   life, and the player must fly carefully. There is no checkpoint reset as a shipped
-   mechanic. Hull damage is persistent: it can only be repaired at a **habitable
-   planet** (within this slice that means Earth, the only habitable body), so the loop
-   is "venture out as far as you can until you die." **Fuel is never a concern.** See
-   §13 and the [Design Bible](DESIGN_BIBLE.md) §11.2–§11.3.
+6. **No checkpoints; death ends the run, and its cost is a selectable mode.** Death is
+   never undone. The player chooses **Hardcore** (lose everything), **Standard**
+   (restart at the ISS keeping achievements), or **Expedition** (Standard plus a
+   permanent record of every run) — **Expedition is the default**. Restart returns the
+   player to the ISS with both clocks reset to matching. Hull damage is persistent and
+   repaired only at a **habitable planet** (within this slice, Earth). **Fuel is never a
+   concern.** See §13 and the [Design Bible](DESIGN_BIBLE.md) §11.2–§11.3.
+7. **Atmospheric drag and re-entry heating are removed.** The ship's future technology
+   bypasses them, so air is never a force or a burn-up hazard. Declared fiction;
+   honesty-ledger entry required. The atmosphere is still modeled and reported honestly.
+   See §9.2.
+8. **Risk is chosen, not ambient.** Normal travel is safe and death should be hard to
+   reach by accident; deliberate hazards (rings, debris, reckless approach) carry real
+   consequences, and every danger must be legible before it is fatal. Routine radiation
+   never damages the ship. See §13 and Design Bible Law 5.
+9. **Two clocks.** Traveler time equals real play time and never scales; home/Earth time
+   diverges through real relativity. See §5.3 and Design Bible §7.3.
+10. **Free and open source.** Nobody is ever charged for the game. Asset licences must
+    still be compatible and attributed. See Design Bible §17.6.
 
-**One point still needs Ric's clarification** (recorded honestly rather than guessed):
-the exact hull/radiation interaction. Ric's words were that hull damage "makes it so
-radiation can fix it, but you have to go back to Earth to get the hull fixed." Read
-literally this is contradictory — most likely a damaged hull lets *radiation become a
-threat* and Earth is the only place to repair it. The precise mechanic is left
-`OPEN` until confirmed; see §13.
+**Still to decide for this slice:** which cockpit preset is the default (§12.0), the
+default lunar landing region (§10.2), whether the ISS orbit is live or cached (§8.1),
+and whether photography (Design Bible §12.4) ships inside this slice.
 
 During development, a clearly-labeled temporary reset MAY still be used as a testing
 aid, but it is not the shipped rule and must be marked as scaffolding.

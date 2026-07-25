@@ -694,10 +694,15 @@ Separate stores for:
 
 - settings and control bindings;
 - accessibility and quality preferences;
-- expedition/discovery history;
-- safe scenario checkpoint;
+- selected death mode and cockpit preset;
+- expedition/discovery history, places seen, and photographs;
+- the per-run expedition record (Expedition mode);
 - content/data version metadata;
 - cached optional network responses.
+
+There is **no restorable flight-state checkpoint** (Design Bible §11.3): the persistence
+layer must not be able to undo a death. Storage is limited to what the player has
+learned, seen, configured, and recorded.
 
 Each store needs schema versioning and migration. Corrupt or unavailable storage must
 fall back safely without preventing play. Export/import should serialize player-owned

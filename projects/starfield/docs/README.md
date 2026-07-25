@@ -88,6 +88,12 @@ The following are not open to casual reinterpretation:
 - Fuel and routine life-support management are not gameplay.
 - Extraordinary shielding handles routine radiation exposure.
 - Extreme environments and collisions remain meaningful dangers.
+- Risk is chosen, not ambient: normal travel is safe, deliberate hazards have real
+  consequences, and danger is legible before it is fatal.
+- Atmospheric drag and re-entry heating do not act on the ship (declared fiction).
+- There are no checkpoints; death ends the run, and its cost is a selectable mode.
+- Traveler time equals real play time and never scales; home time may diverge.
+- The project is free and open source.
 - Information deepens through exploration.
 - The sky aims for believable human perception.
 - Scientific compromise and fictional technology are labeled honestly.
@@ -101,16 +107,18 @@ These decisions are intentionally not buried inside implementation documents:
 | ID | Decision | Needed by | Status |
 |---|---|---|---|
 | `OPEN-001` | Exact fictional FTL model and treatment of elapsed time | Interstellar/galactic phase | Open |
-| `OPEN-002` | Meaningful consequence of ship destruction | Persistent damage phase | **Resolved 2026-07-25** — permadeath; destruction ends the run and restarts the universe. |
-| `OPEN-003` | Non-crafting repair behavior | Persistent damage phase | **Resolved 2026-07-25** — persistent hull damage, repaired only at a habitable planet; no crafting/currency/timer; fuel is never a concern. |
+| `OPEN-002` | Meaningful consequence of ship destruction | Persistent damage phase | **Resolved 2026-07-25** — no checkpoints ever; death ends the run. Cost is a selectable mode: Hardcore / Standard / Expedition (default). |
+| `OPEN-003` | Non-crafting repair behavior | Persistent damage phase | **Resolved 2026-07-25** — persistent hull damage from chosen physical hazards, repaired only at a habitable planet; routine radiation never damages the ship; fuel is never a concern. |
 | `OPEN-004` | Guided expedition structure versus purely free exploration | Discovery-log design | Open |
-| `OPEN-005` | Live ISS data versus cached/representative station by default | Earth–Moon slice | **Partly resolved 2026-07-25** — station is a model of the *real ISS* (not fictional); live-vs-cached data source still open, fallback specified. |
-| `OPEN-006` | Pausing, time acceleration, and selectable historical epochs | Time-system design | **Partly resolved 2026-07-25** — menus pause local simulation; time acceleration and selectable epochs still open. |
+| `OPEN-005` | Live ISS data versus cached/representative station by default | Earth–Moon slice | **Partly resolved 2026-07-25** — station is the real ISS, needing only recognizable resemblance; live-vs-cached data source still open, fallback specified. |
+| `OPEN-006` | Pausing, time acceleration, and selectable historical epochs | Time-system design | **Mostly resolved 2026-07-25** — menus pause; two-clock rule adopted (traveler time never scales). Selectable historical epochs still open. |
 | `OPEN-007` | Amount of visible procedural completion for unknown exoplanets | Nearby-star phase | Open |
-| `OPEN-008` | Fully modeled cockpit versus minimal instrument view | Earth–Moon visual design | **Resolved 2026-07-25** — minimal movie-glass HUD projected on the canopy; first-person; denser mode selectable but default minimal. |
+| `OPEN-008` | Fully modeled cockpit versus minimal instrument view | Earth–Moon visual design | **Resolved 2026-07-25** — three presets (Clean / Frame / Cockpit) over a shared holographic on-glass layer with direct object selection. Default preset still to pick. |
 | `OPEN-009` | Multiplayer, shared routes, or shared observations | Post-core exploration | Open |
 | `OPEN-010` | Permanent engine, renderer, and build toolchain | Architecture prototype | Open; selection process is specified |
 | `OPEN-011` | Permanent public name | Before broad public release | Open |
+| `OPEN-012` | Open-source licence for the repository itself | Before public release | Open — project is confirmed free/open source (Bible §17.6) |
+| `OPEN-013` | Default cockpit preset, and whether photography ships in the Earth–Moon slice | Earth–Moon slice | Open |
 
 An open decision should receive a short decision record when resolved: date,
 options considered, chosen answer, reason, and documents affected. Resolved-decision

@@ -167,6 +167,19 @@ Shielding load: 18%
 Routine exploration MUST NOT become repeated radiation damage management. Only
 deliberate exposure to truly extreme environments may overwhelm the ship.
 
+**Clarified (Ric, 2026-07-25) — risk is chosen, not ambient.** Space travel is
+*mostly safe*. The player should be able to learn what is dangerous and then avoid it.
+Consequence attaches to **deliberate risk-taking**, not to existing:
+
+- flying a normal route, orbiting, transiting, or cruising costs the ship nothing;
+- flying through Saturn's rings, debris fields, or other hazardous environments MUST
+  have consequences, because the player chose to go there;
+- danger MUST be legible *before* it is fatal — warnings, visible environment readouts,
+  and stopping-distance guidance come first, so death is earned rather than ambushing.
+
+This law is not weakened by the hull model (§11.2): hull damage comes from **physical
+hazards the player flew into**, not from ambient background radiation.
+
 ### Law 6 — Scientific truth and declared fiction are kept separate
 
 Known positions, scales, motion, light, and physical relationships SHOULD be as
@@ -363,6 +376,28 @@ The ISS SHOULD use current orbital elements when a network connection and reliab
 source are available. The game MUST still work without a network. When exact live
 data is unavailable, it must present a cached or representative station state with
 an honesty label rather than pretending it is live.
+
+#### The two clocks (decided Ric, 2026-07-25)
+
+The game keeps **two clocks, and they are allowed to disagree — that disagreement is
+the point.**
+
+- **Your clock (traveler / proper time)** is exactly how long you have played. It only
+  ever counts *forward at one second per second*. It is never accelerated, slowed,
+  rewound, or skipped, because it is your own worldline: your time is by definition
+  accurate to how long you have been flying.
+- **Home clock (Earth)** is the elapsed time back home, and it **runs ahead** whenever
+  you travel relativistically. Come back from a fast trip and home may read 2032 while
+  you have aged an afternoon.
+
+Rules that follow:
+
+- the traveler clock MUST NOT be a resource, a budget, or something the player spends;
+- home time divergence is a *result* of real relativity, never a scripted number;
+- both clocks are always inspectable, and the HUD must make clear which is which;
+- on restart after death, both clocks reset to matching (§11.3);
+- this is the sublight, physically-real behavior. What the fictional FTL drive does to
+  home time is a separate, still-open question (§8.2D).
 
 ### 7.4 Known, inferred, and generated worlds
 
@@ -570,15 +605,22 @@ honesty entry.
 ### 10.2 Atmospheres
 
 Atmospheric behavior should depend on composition, pressure, density, gravity,
-altitude, entry velocity, and star light. At minimum it must communicate:
+altitude, and star light. At minimum it must communicate:
 
-- drag and aerodynamic heating;
 - changing visibility and scattering;
 - temperature and pressure;
 - safe or unsafe descent conditions;
 - wind only when supported by data or explicitly modeled.
 
-The ship may be extraordinarily capable, but high-speed entry remains dangerous.
+**Decided (Ric, 2026-07-25): atmospheric drag is not a gameplay force.** The ship is
+future technology that "found a way around it," so aerodynamic drag and re-entry
+heating do NOT resist, slow, buffet, or burn the ship. Descent and ascent are flown
+with thrust against gravity, not against air.
+
+This is a **declared fiction (`F`)** and MUST be recorded in the honesty ledger — the
+atmosphere is still modeled and measured honestly for what it *is* (density, pressure,
+composition, scattering); the ship simply does not interact with it aerodynamically.
+Atmosphere therefore remains an educational and visual system, not a hazard system.
 
 ### 10.3 Gas and ice giants
 
@@ -670,23 +712,49 @@ expedition — you venture out as far as you can before damage or a lethal event
 run. There is no material gathering, repair currency, or repair timer. **Fuel is never
 a concern.**
 
-> **`OPEN` — hull/radiation interaction.** Ric's phrasing ("hull damage makes it so
-> radiation can fix it, but you have to go back to Earth to get the hull fixed") is
-> ambiguous; the most likely reading is that a *damaged* hull lets radiation become a
-> threat (an intact hull shields normally), with Earth the only repair point. Confirm
-> before implementing exact numbers.
+**Resolved (Ric, 2026-07-25) — hull damage is physical, and it must not violate Law 5.**
+Ric reviewed the earlier ambiguity and ruled that the hull model **reads against Law 5**:
+routine radiation still does not damage the ship, and radiation MUST NOT become a
+recurring maintenance chore.
+
+Therefore:
+
+- hull damage comes from **impacts and hazardous environments the player chose to enter**
+  — ring debris, dust and particle fields, collisions, extreme proximity — not from
+  ambient exposure;
+- an intact hull shields normally, exactly as Law 5 describes;
+- a damaged hull MAY degrade protection so that a *subsequent* extreme environment
+  becomes more dangerous, but a damaged hull alone MUST NOT produce a ticking radiation
+  drain during ordinary flight;
+- consequences exist so that reckless flight means something, not to tax normal travel.
 
 ### 11.3 Consequence of death
 
-**Decided (Ric, 2026-07-25): death is permanent.** When the ship is destroyed the run
-ends and the universe restarts — death is final, as in real life, and the player must
-fly carefully. There is no progress-preserving respawn, durable-checkpoint recovery, or
-casual instant restart as a shipped mechanic.
+**Decided (Ric, 2026-07-25): death ends the run; the player chooses what it costs.**
+
+There are **no checkpoints, ever**. Death is never undone, and no save-scumming or
+mid-run restore mechanic exists in any mode. Death should be *difficult to reach* in
+normal flight — the player should be able to learn the risks and avoid them (Law 5) —
+but it is always final for that run.
+
+What death *costs* is a player-selected mode, chosen at the start:
+
+| Mode | On death | Notes |
+|---|---|---|
+| **1 · Hardcore** | Lose everything — discoveries, photos, records. | The purest reading; for players who want total stakes. |
+| **2 · Standard** | Restart at the ISS keeping all achievements and discoveries. | Loses the expedition, not the knowledge. |
+| **3 · Expedition (default)** | As Standard, plus a permanent record of every past run. | **The normal mode.** Turns "how far did I get?" into the meta-game. |
+
+All three MUST be offered. Mode 3 is the default. The mode is chosen deliberately and
+should not be silently switchable mid-run to dodge a death.
+
+**Restarting means:** the player begins again at the ISS, and **the clocks reset so the
+traveler's time matches Earth's** again (§7.3). The universe itself is real and
+catalogued — it does not regenerate or reseed. "Restart the universe" means a fresh
+expedition from the ISS, not a different cosmos.
 
 A clearly-labeled temporary reset MAY exist during development as a testing aid, but it
-is scaffolding and not the rule. The earlier "OPEN" alternatives (return to last safe
-arrival, durable checkpoint, optional consequence setting) are superseded by this
-decision.
+is scaffolding and not a shipped mechanic.
 
 ---
 
@@ -722,6 +790,14 @@ Progression is primarily:
 - routes and perspectives saved;
 - personal expedition history.
 
+**Headline counters (decided Ric, 2026-07-25).** Two numbers represent the player's
+progress and MUST be surfaced — on the expedition summary, at death, and in the record:
+
+- **how many places you have seen**;
+- **how many pictures you have taken** (§12.4).
+
+What survives death depends on the selected mode (§11.3).
+
 It is not an economy. Destinations, basic flight capability, and fuel MUST NOT be
 locked behind grinding. Optional guided journeys MAY provide structure without
 restricting free exploration.
@@ -737,6 +813,24 @@ Educational content should be layered so it never blocks flight:
 
 The game should distinguish observation from interpretation and established result
 from active scientific uncertainty.
+
+### 12.4 Photography (new feature, Ric 2026-07-25)
+
+The player can **take pictures**, and the count of pictures taken is one of the two
+headline progress counters (§12.2). Photography fits the project's purpose exactly: the
+reward for crossing real distance is *seeing something real*, and a photo is the proof.
+
+Minimum intent:
+
+- capture the current view from inside the ship;
+- store the image locally with what was photographed, where the ship was, and both
+  clock readings (§7.3);
+- browse past photographs as an expedition record;
+- photographs persist or are lost according to the selected death mode (§11.3).
+
+It MUST NOT become a scored objective, a checklist, or a currency — it is a record of
+having been somewhere, not a task. Whether photography ships inside the Earth–Moon
+slice or immediately after is a scope decision still to be made.
 
 ---
 
@@ -767,6 +861,27 @@ It must not manufacture nearby encounters to prevent boredom.
 ## 14. Interface and controls
 
 ### 14.1 Cockpit information priorities
+
+#### Presentation presets (decided Ric, 2026-07-25)
+
+The cockpit ships as **selectable presets**, refining the earlier "minimal by default"
+decision:
+
+| Preset | Look | Purpose |
+|---|---|---|
+| **Clean** | No frame at all — nothing but the view and what you summon. | Maximum beauty; screenshots and pure observation. |
+| **Frame** | Bars/struts across the screen, TIE-fighter style. | Structure and presence without a full interior. |
+| **Cockpit** | A jet-style cockpit interior. | The most embodied, instrument-rich view. |
+
+Common to **all** presets: information lives **on the glass as holograms**. Readouts,
+labels, and target markers are projected onto the canopy — the player can **select
+planets and other objects directly on the glass**. The physical frame changes between
+presets; the holographic information layer is the constant.
+
+All presets remain first-person and inside the ship (Law 10). The frame must never
+grow so heavy that it defeats the view — the beauty outranks the instrumentation.
+
+#### Information priority
 
 The default HUD should answer, in this order:
 
@@ -959,8 +1074,17 @@ Simulation state must not be inferred from screen-space rendering shortcuts.
 ### 17.4 Persistence and privacy
 
 The first persistence layer SHOULD be local to the browser and include settings,
-visited destinations, unlocked observations, and expedition history. Export/import
-SHOULD be supported before any account system is considered.
+visited destinations, unlocked observations, photographs (§12.4), and expedition
+history. Export/import SHOULD be supported before any account system is considered.
+
+**No life checkpoints (§11.3).** Persistence stores *what you have learned, seen, and
+photographed* — never a restorable flight state that could undo a death. The selected
+death mode determines what survives:
+
+- **Hardcore** — cleared on death;
+- **Standard** — achievements and discoveries persist;
+- **Expedition (default)** — the above plus a permanent per-run record (places seen,
+  pictures taken, how far the run got, and how it ended).
 
 Cloud saves and cross-device synchronization are **OPEN**. They must not become a
 prerequisite for play.
@@ -980,6 +1104,25 @@ Each milestone must define and test explicit budgets for:
 
 No universal numeric targets are yet settled. They should be chosen against actual
 reference devices rather than guessed once and treated as timeless.
+
+### 17.6 Licensing and distribution (decided Ric, 2026-07-25)
+
+**Starfield is open source and free. Nobody will ever be charged money for it.**
+
+Consequences for the project:
+
+- there is no store, no monetization, no premium tier, and no design pressure from any
+  of them — which is why progression can stay non-economic (§12.2);
+- asset selection is easier, but **not unconstrained**: "free and open source" is not
+  the same as "unlicensed." Every third-party asset and dataset still needs a
+  compatible licence and correct attribution recorded in its provenance entry (§18).
+  Non-commercial-only or no-derivatives assets remain a poor fit for an open-source
+  repository even though nothing is sold;
+- public-domain and permissively licensed sources (notably NASA/ESA imagery and data)
+  are strongly preferred because they are safe to redistribute in the repo.
+
+The specific licence for the repository itself is **not yet chosen** — see the open
+decisions registry.
 
 ---
 
@@ -1193,7 +1336,8 @@ A feature-complete design must eventually satisfy these experience tests:
 
 ### Environment
 
-- Atmospheric entry communicates heat, drag, and changing visibility.
+- Atmospheric entry communicates density, pressure, temperature, and changing
+  visibility — as measurement and scenery, not as drag or heating on the ship (§10.2).
 - The player can hover, skim terrain, fly in a canyon, and land inside the ship.
 - Descending into a gas giant produces pressure and temperature escalation, not a
   collision with an invisible surface.
@@ -1223,10 +1367,12 @@ Items struck through were resolved on 2026-07-25 and are kept for continuity.
 
 1. **FTL model:** What does the fictional drive do to traveler time, external time,
    causality, steering, and interruption?
-2. ~~**Death consequence**~~ — **Resolved:** death is permanent (§11.3); destruction
-   ends the run and restarts the universe. No gentler mode ships.
-3. ~~**Damage and repair**~~ — **Resolved:** persistent hull damage repaired only at a
-   habitable planet (§11.2); no crafting, currency, or timer.
+2. ~~**Death consequence**~~ — **Resolved:** no checkpoints ever; death ends the run
+   (§11.3). The *cost* is a selectable mode — Hardcore / Standard / Expedition — with
+   Expedition as the default.
+3. ~~**Damage and repair**~~ — **Resolved:** persistent hull damage from chosen physical
+   hazards, repaired only at a habitable planet (§11.2); routine radiation never damages
+   the ship (Law 5); no crafting, currency, or timer.
 4. **Progression structure:** Is free exploration sufficient, or should curated
    expeditions form an optional guided path?
 5. **Starting station (partly resolved):** the station is a model of the *real ISS*
@@ -1235,9 +1381,9 @@ Items struck through were resolved on 2026-07-25 and are kept for continuity.
    allows time acceleration or selectable historical/future epochs is still open.
 7. **Unknown worlds:** How much procedural completion should be visible for poorly
    measured exoplanets?
-8. ~~**Cockpit embodiment**~~ — **Resolved:** minimal movie-glass HUD on the canopy,
-   first-person; a denser mode may be selectable but the default is minimal (§12 of the
-   Earth–Moon slice).
+8. ~~**Cockpit embodiment**~~ — **Resolved:** three first-person presets — Clean /
+   Frame (TIE-style bars) / Cockpit (jet interior) — sharing one holographic on-glass
+   information layer with direct object selection (§14.1).
 9. **Multiplayer and sharing:** Is this permanently solitary, or may players share
    routes, observations, or sessions later?
 10. **Technology stack:** How long should the dependency-free canvas prototype remain
@@ -1311,10 +1457,20 @@ superseded so the project's reasoning remains understandable.
 | 2026-07-25 | Cockpit is a minimal movie-glass HUD on the canopy; first-person; denser mode optional; default minimal. | Adopted |
 | 2026-07-25 | Menus pause local simulation. | Adopted |
 | 2026-07-25 | No docking and no on-foot play; the game supports approach, station-keeping, and surface landing only. | Adopted |
-| 2026-07-25 | Death is permanent: destruction ends the run and restarts the universe. | Adopted |
+| 2026-07-25 | ~~Death is permanent: destruction ends the run and restarts the universe.~~ | Refined — see below |
 | 2026-07-25 | Hull damage is persistent and repaired only at a habitable planet; no crafting, currency, or timer; fuel is never a concern. | Adopted |
 | 2026-07-25 | Fictional "galaxy far away" region outside the observable universe is a parked future idea, always labeled fictional (§8.5). | Parked |
-| 2026-07-25 | Hull/radiation interaction (how a damaged hull exposes the player to radiation) needs one clarification before implementation. | Open |
+| 2026-07-25 | ~~Hull/radiation interaction needs clarification.~~ | Resolved — see below |
+| 2026-07-25 | No checkpoints ever; death ends the run. Cost is a selectable mode: Hardcore / Standard / Expedition (default). | Adopted |
+| 2026-07-25 | Restart puts the player back at the ISS with both clocks reset to matching; the universe does not reseed. | Adopted |
+| 2026-07-25 | Two clocks: traveler time equals real play time and never scales; home/Earth time diverges via real relativity. | Adopted |
+| 2026-07-25 | Hull damage comes from chosen physical hazards (rings, debris, impacts), never from ambient radiation; Law 5 is upheld. | Adopted |
+| 2026-07-25 | Risk is chosen, not ambient: normal travel is safe, deliberate hazards have consequences, and danger is legible before it is fatal. | Adopted |
+| 2026-07-25 | Atmospheric drag and re-entry heating are removed as forces — declared fiction, ledger entry required. | Adopted |
+| 2026-07-25 | Three cockpit presets (Clean / Frame / Cockpit) sharing a holographic on-glass information layer with direct object selection. | Adopted |
+| 2026-07-25 | Photography is a feature; places seen and pictures taken are the two headline progress counters. | Adopted |
+| 2026-07-25 | The station resembles the ISS recognizably; exact replica fidelity is not required. | Adopted |
+| 2026-07-25 | The project is free and open source; nobody is ever charged. Asset licences still must be compatible and attributed. | Adopted |
 
 ---
 

@@ -494,7 +494,12 @@ Review trigger
 - cached/representative data presented in a current-time session;
 - fictional drive, shielding, energy, acceleration, and structural capability;
 - simulation caps or clamps that affect visible outcomes;
-- lower-quality behavior that meaningfully changes presentation.
+- lower-quality behavior that meaningfully changes presentation;
+- **removed physical forces** — notably that atmospheric drag and re-entry heating do
+  not act on the ship (Design Bible §10.2). The atmosphere is modeled and reported
+  honestly; the ship's non-interaction with it is declared fiction (`F`);
+- **recognizable-but-inexact object models**, such as the ISS resembling the real
+  station without being a precise replica.
 
 Routine numeric implementation details do not each need a player-facing entry, but
 developer notes must cover stability choices with scientific impact.
