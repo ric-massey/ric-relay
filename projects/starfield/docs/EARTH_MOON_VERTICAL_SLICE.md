@@ -589,6 +589,12 @@ player can **select directly** (planets and other objects are picked on the glas
 controls are the keyboard and equivalent physical inputs, not on-screen panels to hunt
 through. The overriding rule: **the cockpit must never get in the way of the beauty.**
 
+These "holograms" are **flat 2D overlays that look as though they interact with the
+world** — a ring around a star showing its name and distance, a route drawn to a
+destination entered on the map, the existing speed and clock readouts. They are drawn as
+a DOM layer over the 3D canvas, anchored by projecting world positions to the screen; no
+volumetric rendering is involved (Technical Architecture §22.2).
+
 The slice ships **three presets** (decision §19.2, Design Bible §14.1):
 
 | Preset | Look |
@@ -913,8 +919,10 @@ Where a decision has game-wide consequences (death, docking, repair), the
 
 1. **Station — recognizably the real ISS.** The start is the actual ISS, not a fictional
    station, but it only needs to *resemble* the ISS: get the silhouette right and stop
-   there. This is a web page; exact replica fidelity is not the bar. Its orbit state
-   must be labeled live, cached, or representative per §8.1.
+   there — though within that, get as close as is realistically achievable. This is a web
+   page; exact replica fidelity is not the bar. **Its orbit defaults to cached elements**
+   shipped with the game, so it works offline; live refresh is optional. State is always
+   labeled live, cached, or representative per §8.1.
 2. **Cockpit — three presets over a holographic glass layer.** Information is projected
    onto the canopy as holograms the player can select directly (planets and objects are
    picked on the glass). Three presets ship: **Clean** (no frame), **Frame**
@@ -950,9 +958,15 @@ Where a decision has game-wide consequences (death, docking, repair), the
 10. **Free and open source.** Nobody is ever charged for the game. Asset licences must
     still be compatible and attributed. See Design Bible §17.6.
 
-**Still to decide for this slice:** which cockpit preset is the default (§12.0), the
-default lunar landing region (§10.2), whether the ISS orbit is live or cached (§8.1),
-and whether photography (Design Bible §12.4) ships inside this slice.
+11. **Rendering stack: Three.js on WebGL 2**, with the HUD and all overlays as a DOM
+    layer above the canvas. Chosen for "works and looks good" per Ric; subject to the
+    architecture spike. See [Technical Architecture §22.1–§22.2](TECHNICAL_ARCHITECTURE.md).
+12. **Photography ships in this slice.** It is just a control: zoom, press the capture
+    button, optionally attach a note. See Design Bible §12.4.
+13. **Repository licence is MIT.**
+
+**Still to decide for this slice:** which cockpit preset is the default (§12.0) and the
+default lunar landing region (§10.2) — both flagged by Ric for further discussion.
 
 During development, a clearly-labeled temporary reset MAY still be used as a testing
 aid, but it is not the shipped rule and must be marked as scaffolding.

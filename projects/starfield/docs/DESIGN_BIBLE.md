@@ -372,10 +372,12 @@ time. Earth, the Moon, planets, and major natural bodies SHOULD be positioned fr
 real ephemeris data or a documented approximation appropriate to the requested
 accuracy.
 
-The ISS SHOULD use current orbital elements when a network connection and reliable
-source are available. The game MUST still work without a network. When exact live
-data is unavailable, it must present a cached or representative station state with
-an honesty label rather than pretending it is live.
+**The ISS defaults to cached orbital elements** (decided Ric, 2026-07-25), shipped with
+the game so it works offline and identically for everyone. It "doesn't need to be
+perfect, but as close as we can realistically get" — so cached elements MUST be recent,
+versioned, and refreshed as part of maintenance. A live fetch MAY refresh them when a
+network and reliable source are available, but the game never depends on one. The state
+is always labeled live, cached, or representative rather than pretending to be live.
 
 #### The two clocks (decided Ric, 2026-07-25)
 
@@ -820,17 +822,21 @@ The player can **take pictures**, and the count of pictures taken is one of the 
 headline progress counters (§12.2). Photography fits the project's purpose exactly: the
 reward for crossing real distance is *seeing something real*, and a photo is the proof.
 
-Minimum intent:
+**Mechanic (Ric, 2026-07-25): it is just a button.** The player zooms and presses a
+capture control — nothing more elaborate. Specifically:
 
-- capture the current view from inside the ship;
+- **zoom**, then **capture**, both bound in the normal control scheme (§14.2/§14.3);
+- the player MAY attach a **note** to a photograph;
 - store the image locally with what was photographed, where the ship was, and both
   clock readings (§7.3);
 - browse past photographs as an expedition record;
-- photographs persist or are lost according to the selected death mode (§11.3).
+- photographs persist or are lost according to the selected death mode (§11.3);
+- the count of pictures taken is a headline progress counter (§12.2).
 
-It MUST NOT become a scored objective, a checklist, or a currency — it is a record of
-having been somewhere, not a task. Whether photography ships inside the Earth–Moon
-slice or immediately after is a scope decision still to be made.
+There is no photo-scoring, no framing rubric, no assignment list. It MUST NOT become a
+scored objective, a checklist, or a currency — it is a record of having been somewhere,
+not a task. Because the mechanic is this small, it SHOULD ship inside the Earth–Moon
+slice rather than waiting.
 
 ---
 
@@ -877,6 +883,17 @@ Common to **all** presets: information lives **on the glass as holograms**. Read
 labels, and target markers are projected onto the canopy — the player can **select
 planets and other objects directly on the glass**. The physical frame changes between
 presets; the holographic information layer is the constant.
+
+**What "holographic" means here (clarified Ric, 2026-07-25):** these are **2D overlays
+drawn on the screen that look as though they interact with the world** — not volumetric
+3D projections. Canonical examples:
+
+- a **ring around a star** carrying its name and distance;
+- a **route drawn to a destination** after the player punches it into the map;
+- speed, clocks, and similar readouts, which already work this way.
+
+The marker is anchored by projecting the object's world position to screen space; the
+drawing itself is flat. See [Technical Architecture §22.2](TECHNICAL_ARCHITECTURE.md).
 
 All presets remain first-person and inside the ship (Law 10). The frame must never
 grow so heavy that it defeats the view — the beauty outranks the instrumentation.
@@ -1046,9 +1063,16 @@ A staged renderer should:
 - keep catalog objects lightweight until resolution is required;
 - use deterministic level-of-detail transitions without changing physical scale.
 
-The exact library or custom-engine choice is **OPEN**. Do not adopt a framework,
-bundler, CDN, or external runtime solely because an earlier conversation mentioned
-one.
+**Decided (Ric, 2026-07-25): Three.js on WebGL 2, with the HUD as a DOM overlay.**
+Ric's direction was "a rendering stack that will work… it works and looks good," so the
+stack is chosen for quality-per-risk: universal support including mobile Safari, an MIT
+licence matching the repo, static-hosting friendliness, and a `WebGPURenderer` migration
+path that keeps the WebGPU preference above achievable. Full decision record, rejected
+alternatives, and honest costs: [Technical Architecture §22.1](TECHNICAL_ARCHITECTURE.md).
+
+This remains **subject to the measured architecture spike** — if real-scale precision,
+mobile memory, or thermals fail, the decision reopens. Do not adopt any *further*
+framework, bundler, CDN, or external runtime merely because a conversation mentioned one.
 
 ### 17.3 System boundaries
 
@@ -1121,8 +1145,8 @@ Consequences for the project:
 - public-domain and permissively licensed sources (notably NASA/ESA imagery and data)
   are strongly preferred because they are safe to redistribute in the repo.
 
-The specific licence for the repository itself is **not yet chosen** — see the open
-decisions registry.
+**The repository licence is MIT** (decided Ric, 2026-07-25) — permissive, simple, and
+compatible with the chosen rendering stack, which is MIT itself (§17.2).
 
 ---
 
@@ -1386,8 +1410,9 @@ Items struck through were resolved on 2026-07-25 and are kept for continuity.
    information layer with direct object selection (§14.1).
 9. **Multiplayer and sharing:** Is this permanently solitary, or may players share
    routes, observations, or sessions later?
-10. **Technology stack:** How long should the dependency-free canvas prototype remain
-    the base, and what evidence would justify an engine/build transition?
+10. ~~**Technology stack**~~ — **Resolved:** Three.js on WebGL 2 with a DOM overlay HUD
+    (§17.2, Tech Arch §22.1). The canvas prototype is no longer the base. Conditional on
+    the architecture spike; reopens if precision, mobile memory, or thermals fail.
 11. **Project name:** Is “Starfield” the permanent public name or a working title?
 
 **Parked future idea (not a pending decision):** a fictional region outside our
@@ -1471,6 +1496,11 @@ superseded so the project's reasoning remains understandable.
 | 2026-07-25 | Photography is a feature; places seen and pictures taken are the two headline progress counters. | Adopted |
 | 2026-07-25 | The station resembles the ISS recognizably; exact replica fidelity is not required. | Adopted |
 | 2026-07-25 | The project is free and open source; nobody is ever charged. Asset licences still must be compatible and attributed. | Adopted |
+| 2026-07-25 | Repository licence is MIT. | Adopted |
+| 2026-07-25 | Rendering stack is Three.js on WebGL 2, WebGPU path preserved behind the backend abstraction. | Adopted, conditional on the architecture spike |
+| 2026-07-25 | "Holographic" overlays are flat 2D screen-space annotations drawn as a DOM layer, not volumetric 3D. | Adopted |
+| 2026-07-25 | Photography is a simple zoom-and-capture control with optional notes, shipping in the Earth–Moon slice. | Adopted |
+| 2026-07-25 | ISS orbit uses cached elements by default, kept current, with optional live refresh. | Adopted |
 
 ---
 

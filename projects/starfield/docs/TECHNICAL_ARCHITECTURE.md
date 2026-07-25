@@ -859,6 +859,79 @@ The selection process should build one measured architecture spike: real-scale E
 Moon, floating-origin camera movement, atmosphere limb, target picking, and a representative
 mobile load. Do not choose based only on a feature list or a prior assistant's suggestion.
 
+### 22.1 Decision (Ric, 2026-07-25): Three.js on WebGL 2, DOM overlay for the HUD
+
+Ric's direction was explicit: *"I need a rendering stack that will work. I just care that
+it works and looks good."* The choice below optimizes for exactly that — proven output
+quality and low risk — rather than for novelty.
+
+**Selected: [Three.js](https://threejs.org) (MIT) targeting WebGL 2, with the HUD and
+all holographic overlays as a DOM/CSS layer composited over the canvas.**
+
+**Options considered**
+
+| Option | Verdict |
+|---|---|
+| Keep the 2D canvas prototype | **Rejected.** Cannot deliver terrain, atmosphere, real lighting, or 3D picking. The slice requires all four. |
+| Raw WebGL 2 / custom renderer | **Rejected.** Maximum control, but months rebuilding what a library provides free. Directly contradicts "I just care that it works." |
+| Babylon.js | **Viable, not chosen.** Capable and well-engineered, but a larger, more opinionated engine; Three's astronomy/space ecosystem and example base are materially richer. |
+| WebGPU-only | **Rejected as a baseline.** Support is good by 2026 but not universal, and mobile behavior is the least predictable part. Shipping WebGPU-only would put the mobile mandate at risk. |
+| **Three.js on WebGL 2** | **Selected.** Best quality-per-risk; universal target support including mobile Safari; migration path to WebGPU without rewriting scene code. |
+
+**Why it satisfies the evaluation criteria**
+
+- **Works everywhere that matters** — WebGL 2 is available across current desktop and
+  mobile browsers, so the mobile mandate is met by the baseline rather than a fallback.
+- **WebGPU path preserved** — Three's `WebGPURenderer` lets the backend change later
+  behind the §12.1 interface without rewriting scene, camera, or material logic. Bible
+  §17.2's "prefer WebGPU when stable" therefore stays achievable.
+- **Licensing** — MIT, matching the repository's own licence, with no supply-chain or
+  redistribution complication for an open-source project.
+- **Static hosting** — ships as ES modules; no server, no build step required to run.
+- **DOM integration and accessibility** — an explicit criterion, and the overlay
+  decision below depends on it.
+- **Migration** — the preserved prototype modules (`relativity.js`, `view.js`,
+  `color.js`, catalogs) are pure math and data; they attach to any renderer.
+
+**Honest costs, recorded rather than hidden**
+
+- Three.js is a *library*, not an engine: terrain LOD, streaming, and the quality
+  manager remain ours to build.
+- It does **not** solve precision. Floating origin and the double-precision simulation
+  layer (§6.3, §6.4) are still our responsibility — Three renders in `float32`.
+- It adds a dependency and bundle weight where the prototype had none.
+
+**Reversibility.** The choice sits behind the §12.1 backend abstraction. Simulation truth
+stays renderer-independent (§2.1), so a future backend change is a presentation change.
+
+**Still required before this is final.** Per the process above, the measured architecture
+spike must still be built and must show: real-scale Earth and Moon, stable floating-origin
+camera motion, a credible atmosphere limb, reliable target picking, and an acceptable
+mobile load. **If the spike fails on mobile memory, thermals, or precision, this decision
+is reopened** — selecting a presumptive stack does not waive the measurement.
+
+### 22.2 Overlays and HUD are 2D DOM, not 3D geometry
+
+Ric clarified (2026-07-25) that the "holographic" presentation is **2D screen-space
+overlay that merely looks like it interacts with the world** — for example a ring drawn
+around a star carrying its name and distance, or a route drawn to a destination punched
+into the map. Speed, clocks, and similar readouts are already overlays of this kind.
+
+There is no volumetric or true-3D holography. This is a significant simplification and
+is adopted deliberately:
+
+- markers/labels are positioned by **projecting world coordinates to screen space**, then
+  drawn as ordinary DOM/CSS elements (or a 2D canvas) composited above the WebGL canvas;
+- text stays crisp at any DPI, is selectable and screen-reader reachable, and is styled
+  with normal CSS — all of which in-canvas text sacrifices;
+- overlay cost scales with the number of *visible annotations*, not scene complexity;
+- the three cockpit presets (Bible §14.1) become overlay/CSS variations rather than three
+  different 3D interiors — only the **Cockpit** preset needs modeled geometry, and even
+  that may be a framing image rather than a scene.
+
+Picking still resolves against real object identity (§12.4), and hit areas may exceed the
+drawn pixel size of a real-scale object.
+
 ---
 
 ## 23. Proposed target repository shape

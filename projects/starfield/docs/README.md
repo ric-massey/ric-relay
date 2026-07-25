@@ -110,15 +110,16 @@ These decisions are intentionally not buried inside implementation documents:
 | `OPEN-002` | Meaningful consequence of ship destruction | Persistent damage phase | **Resolved 2026-07-25** — no checkpoints ever; death ends the run. Cost is a selectable mode: Hardcore / Standard / Expedition (default). |
 | `OPEN-003` | Non-crafting repair behavior | Persistent damage phase | **Resolved 2026-07-25** — persistent hull damage from chosen physical hazards, repaired only at a habitable planet; routine radiation never damages the ship; fuel is never a concern. |
 | `OPEN-004` | Guided expedition structure versus purely free exploration | Discovery-log design | Open |
-| `OPEN-005` | Live ISS data versus cached/representative station by default | Earth–Moon slice | **Partly resolved 2026-07-25** — station is the real ISS, needing only recognizable resemblance; live-vs-cached data source still open, fallback specified. |
+| `OPEN-005` | Live ISS data versus cached/representative station by default | Earth–Moon slice | **Resolved 2026-07-25** — cached elements by default (offline-safe, kept current); optional live refresh; recognizable resemblance, as close as realistic. |
 | `OPEN-006` | Pausing, time acceleration, and selectable historical epochs | Time-system design | **Mostly resolved 2026-07-25** — menus pause; two-clock rule adopted (traveler time never scales). Selectable historical epochs still open. |
 | `OPEN-007` | Amount of visible procedural completion for unknown exoplanets | Nearby-star phase | Open |
 | `OPEN-008` | Fully modeled cockpit versus minimal instrument view | Earth–Moon visual design | **Resolved 2026-07-25** — three presets (Clean / Frame / Cockpit) over a shared holographic on-glass layer with direct object selection. Default preset still to pick. |
 | `OPEN-009` | Multiplayer, shared routes, or shared observations | Post-core exploration | Open |
-| `OPEN-010` | Permanent engine, renderer, and build toolchain | Architecture prototype | Open; selection process is specified |
+| `OPEN-010` | Permanent engine, renderer, and build toolchain | Architecture prototype | **Resolved 2026-07-25** — Three.js on WebGL 2, HUD/overlays as a DOM layer; WebGPU path preserved. **Conditional on the architecture spike** (Tech Arch §22.1). |
 | `OPEN-011` | Permanent public name | Before broad public release | Open |
-| `OPEN-012` | Open-source licence for the repository itself | Before public release | Open — project is confirmed free/open source (Bible §17.6) |
-| `OPEN-013` | Default cockpit preset, and whether photography ships in the Earth–Moon slice | Earth–Moon slice | Open |
+| `OPEN-012` | Open-source licence for the repository itself | Before public release | **Resolved 2026-07-25** — MIT. |
+| `OPEN-013` | Default cockpit preset | Earth–Moon slice | Open — Ric wants to discuss the HUD further |
+| `OPEN-014` | Default lunar landing region | Earth–Moon slice (Slice D) | Open — Ric wants to discuss; needs a sourced elevation dataset |
 
 An open decision should receive a short decision record when resolved: date,
 options considered, chosen answer, reason, and documents affected. Resolved-decision
