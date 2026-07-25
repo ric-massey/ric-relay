@@ -753,40 +753,64 @@
   }
 
   function protectedContentRects() {
-    const protectedElements = new Set(document.querySelectorAll(
-      "a, button, input, textarea, select, summary, [role='button'], " +
-      "h1, h2, h3, h4, h5, h6, p, li, dt, dd, pre, blockquote, code, time, strong, em, [data-mochi-no-cover]"
-    ));
-    document.querySelectorAll("body *").forEach((element) => {
-      if (catLayer?.contains(element) || element.matches("script, style, svg, path")) return;
-      const hasDirectText = [...element.childNodes].some((node) =>
-        node.nodeType === 3 && node.textContent.trim()
-      );
-      if (hasDirectText) protectedElements.add(element);
-    });
-    return [...protectedElements].flatMap((element) => {
+    const controlSelector = "a, button, input, textarea, select, summary, [role='button'], [data-mochi-no-cover]";
+    const rects = [...document.querySelectorAll(controlSelector)].flatMap((element) => {
       if (element === catResident || catLayer?.contains(element) || element.closest("[aria-hidden='true']")) return [];
       const rect = element.getBoundingClientRect();
       if (rect.width < 1 || rect.height < 1 || rect.bottom < 0 || rect.top > innerHeight) return [];
-      return [rect];
+      return [{ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, weight: 12 }];
     });
+
+    // Protect the actual rendered lines, not the full block box around them.
+    // Blank space still wins, but text is a soft preference: when a room is
+    // packed, Mochi may sit over words rather than leave the page.
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (!node.textContent.trim()) continue;
+      const parent = node.parentElement;
+      if (!parent || catLayer?.contains(parent) ||
+        parent.closest(`script, style, [aria-hidden='true'], ${controlSelector}`)) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      [...range.getClientRects()].forEach((rect) => {
+        if (rect.width >= 1 && rect.height >= 1 && rect.bottom >= 0 && rect.top <= innerHeight) {
+          rects.push({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, weight: 1 });
+        }
+      });
+      range.detach?.();
+    }
+    return rects;
   }
 
   function spotCoversContent(left, top, width, height, protectedRects = protectedContentRects()) {
+    const candidate = catVisualRect(left, top, width, height);
+    return protectedRects.some((rect) => {
+      return candidate.left < rect.right + 14 && candidate.right > rect.left - 14 &&
+        candidate.top < rect.bottom + 14 && candidate.bottom > rect.top - 14;
+    });
+  }
+
+  function catVisualRect(left, top, width, height) {
     const viewportLeft = left - (window.scrollX || 0);
     const viewportTop = top - (window.scrollY || 0);
     const visualWidth = width * CAT_MAX_VISUAL_SCALE;
     const visualHeight = height * CAT_MAX_VISUAL_SCALE;
-    const candidate = {
+    return {
       left: viewportLeft - (visualWidth - width) / 2,
       right: viewportLeft + width + (visualWidth - width) / 2,
       top: viewportTop - (visualHeight - height),
       bottom: viewportTop + height,
     };
-    return protectedRects.some((rect) => {
-      return candidate.left < rect.right + 14 && candidate.right > rect.left - 14 &&
-        candidate.top < rect.bottom + 14 && candidate.bottom > rect.top - 14;
-    });
+  }
+
+  function spotOverlapScore(left, top, width, height, protectedRects) {
+    const candidate = catVisualRect(left, top, width, height);
+    return protectedRects.reduce((score, rect) => {
+      const overlapWidth = Math.max(0, Math.min(candidate.right, rect.right + 8) - Math.max(candidate.left, rect.left - 8));
+      const overlapHeight = Math.max(0, Math.min(candidate.bottom, rect.bottom + 8) - Math.max(candidate.top, rect.top - 8));
+      return score + overlapWidth * overlapHeight * (rect.weight || 1);
+    }, 0);
   }
 
   function pagePerches(width, height) {
@@ -851,7 +875,29 @@
       };
       if (!spotCoversContent(spot.left, spot.top, width, estimatedHeight, protectedRects)) return spot;
     }
-    return null;
+
+    // Random wandering should not decide whether Mochi gets a home. Scan the
+    // remaining viewport on a grid so every genuine cat-sized gap is found.
+    const openSpots = [];
+    let leastBlockedSpot;
+    let leastBlockedScore = Infinity;
+    const columns = Math.max(2, Math.ceil(Math.max(1, innerWidth - width - 36) / 34));
+    const rows = 8;
+    for (let row = 0; row <= rows; row += 1) {
+      const top = minTop + (maxTop - minTop) * row / rows;
+      for (let column = 0; column <= columns; column += 1) {
+        const left = scrollLeft + 18 + Math.max(0, innerWidth - width - 36) * column / columns;
+        const spot = { left, top };
+        const score = spotOverlapScore(left, top, width, estimatedHeight, protectedRects);
+        if (score === 0) openSpots.push(spot);
+        else if (score < leastBlockedScore) {
+          leastBlockedSpot = spot;
+          leastBlockedScore = score;
+        }
+      }
+    }
+    if (openSpots.length) return openSpots[Math.floor(Math.random() * openSpots.length)];
+    return leastBlockedSpot;
   }
 
   function catTravelDuration(fromLeft, fromTop, toLeft, toTop, speed = 72) {
@@ -907,6 +953,12 @@
     if (!catResident?.isConnected) return false;
     const rect = catResident.getBoundingClientRect();
     return rect.bottom > 32 && rect.top < innerHeight - 32 && rect.right > 0 && rect.left < innerWidth;
+  }
+
+  function settledCatNeedsCatchUp() {
+    if (!catResident?.isConnected || catResident.classList.contains("walking") ||
+      catResident.classList.contains("relay-cat-space")) return false;
+    return !catIsInViewport();
   }
 
   function clearCatAction() {
@@ -1124,7 +1176,7 @@
     const width = catWidth();
     const visit = peekingCat(width, features);
     if (!visit) {
-      retryCatEntry();
+      summonResidentCat(true);
       return;
     }
     visit.visitor.classList.add("arriving");
@@ -1398,7 +1450,7 @@
     const left = (window.scrollX || 0) + 18 + Math.random() * Math.max(1, innerWidth - width - 36);
     const startTop = fromBottom
       ? (window.scrollY || 0) + innerHeight + 12
-      : Math.max(0, (window.scrollY || 0) - topHeight - 12);
+      : (window.scrollY || 0) - topHeight - 12;
     const endTop = fromBottom
       ? Math.max(10, (window.scrollY || 0) + innerHeight - topHeight - 14)
       : (window.scrollY || 0) + 14;
@@ -1524,7 +1576,7 @@
     if (!catsEnabled || catRunningAway) return;
     clearTimeout(catScrollTimer);
     catScrollTimer = setTimeout(() => {
-      if (!catIsInViewport()) catchUpResidentCat(lastScrollDirection);
+      if (settledCatNeedsCatchUp()) catchUpResidentCat(lastScrollDirection);
     }, 650);
   }
 
@@ -1558,7 +1610,7 @@
     clearTimeout(catScrollTimer);
     catScrollTimer = setTimeout(() => {
       ensureCatLayer();
-      if (!catIsInViewport()) catchUpResidentCat(lastScrollDirection);
+      if (settledCatNeedsCatchUp()) catchUpResidentCat(lastScrollDirection);
     }, 180);
   });
 
