@@ -1,0 +1,305 @@
+/* Starfield — instrument panel. Dark, monospaced, deliberately plain:
+   the canvas is doing the talking and the HUD should never compete with it. */
+
+:root {
+  --ink: #d9e2ff;
+  --dim: #7f8cba;
+  --faint: #4d577f;
+  --line: #2a3163;
+  --panel: rgba(5, 7, 18, .74);
+  --hot: #ffb469;
+  --bad: #ff6e86;
+  --good: #7dffc4;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+html, body { margin: 0; height: 100%; overflow: hidden; background: #02040c; }
+body { font-family: var(--mono); color: var(--ink); }
+canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
+
+a.back {
+  position: fixed; top: max(1rem, env(safe-area-inset-top)); left: 1rem; z-index: 10;
+  color: #9fb4ff; font-size: .82rem; text-decoration: none;
+  background: var(--panel); padding: .35rem .7rem; border-radius: 999px;
+  border: 1px solid var(--line); backdrop-filter: blur(6px);
+}
+a.back:hover, a.back:focus-visible { color: #fff; border-color: #4d5aa0; }
+
+/* ── telemetry panel ─────────────────────────────────────────────────── */
+.readout {
+  position: fixed; top: max(1rem, env(safe-area-inset-top)); right: 1rem; z-index: 10;
+  width: 15.5rem; padding: .6rem .7rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 7px;
+  backdrop-filter: blur(6px); pointer-events: none;
+  font-size: .7rem; line-height: 1.25;
+}
+.readout .label {
+  display: block; color: var(--faint); font-size: .55rem;
+  letter-spacing: .13em; text-transform: uppercase;
+}
+/* γ and β must stay lowercase — uppercasing turns them into Γ and Β, which
+   are different letters that mean nothing here. */
+.readout .label.sym { text-transform: none; font-size: .72rem; letter-spacing: 0; }
+.readout .value { display: block; color: #b9c9ff; font-size: .82rem; }
+.readout .value.dim { color: var(--dim); }
+
+.clocks { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.clock .value { color: var(--good); font-size: .88rem; }
+.clock.home .value { color: var(--hot); }
+
+.grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: .35rem .5rem;
+  margin-top: .55rem; padding-top: .5rem; border-top: 1px solid rgba(42, 49, 99, .7);
+}
+.cell.wide { grid-column: span 2; }
+.readout .value.small { font-size: .74rem; }
+#cmb[data-hot="true"], #ism[data-hot="true"] { color: var(--hot); }
+
+.hull-row {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center;
+  gap: .45rem; margin-top: .55rem; padding-top: .5rem;
+  border-top: 1px solid rgba(42, 49, 99, .7);
+}
+.hull-row .label { margin: 0; }
+.hull-row .value { font-size: .72rem; }
+.hull-track {
+  display: block; height: 4px; border-radius: 2px;
+  background: rgba(120, 140, 210, .18); overflow: hidden;
+}
+.hull-bar { display: block; height: 100%; width: 100%; background: var(--good); transition: width .18s linear; }
+.hull-bar[data-level="warn"] { background: var(--hot); }
+.hull-bar[data-level="bad"] { background: var(--bad); }
+
+/* ── milestone toast ─────────────────────────────────────────────────── */
+.milestone {
+  position: fixed; left: 50%; top: 18%; z-index: 12;
+  max-width: min(88vw, 30rem); padding: .7rem 1.1rem;
+  transform: translate(-50%, -8px); opacity: 0; pointer-events: none;
+  background: rgba(6, 9, 22, .9); border: 1px solid #3d4a8c; border-radius: 6px;
+  text-align: center; transition: opacity .35s ease, transform .35s ease;
+}
+.milestone.on { opacity: 1; transform: translate(-50%, 0); }
+.milestone strong {
+  display: block; color: #fff; font-size: .95rem;
+  letter-spacing: .1em; text-transform: uppercase;
+}
+.milestone span { display: block; margin-top: .3rem; color: var(--dim); font-size: .72rem; line-height: 1.5; }
+
+/* ── hints and corner links ──────────────────────────────────────────── */
+p.hint {
+  position: fixed; bottom: max(1rem, env(safe-area-inset-bottom)); left: 0; right: 0;
+  z-index: 10; margin: 0; padding: 0 5.5rem; text-align: center;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: .25rem 1.1rem;
+  color: var(--faint); font-size: .68rem; pointer-events: none;
+}
+p.hint kbd {
+  display: inline-block; margin: 0 .1em; padding: 0 .25em;
+  border: 1px solid var(--line); border-radius: 3px; color: var(--dim); font: inherit;
+}
+
+.corner {
+  position: fixed; right: 1rem; bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 11; display: flex; flex-direction: column; align-items: flex-end; gap: .3rem;
+}
+.link {
+  border: 1px solid var(--line); border-radius: 999px; padding: .3rem .65rem;
+  background: var(--panel); color: var(--dim); cursor: pointer;
+  font: inherit; font-size: .64rem; letter-spacing: .08em;
+}
+.link:hover, .link:focus-visible { color: #fff; border-color: #4d5aa0; outline: none; }
+
+/* ── touch throttle ──────────────────────────────────────────────────── */
+.controls {
+  position: fixed; left: 1rem; bottom: max(4.2rem, calc(env(safe-area-inset-bottom) + 4.2rem));
+  z-index: 11; display: none; flex-direction: column; gap: .5rem;
+}
+.thrust {
+  width: 4.4rem; height: 4.4rem; border-radius: 50%;
+  border: 1px solid #4d5aa0; background: rgba(24, 34, 78, .8); color: #cfe0ff;
+  font: 700 .62rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none;
+}
+.thrust:active { background: rgba(52, 76, 168, .9); }
+.thrust.retro { width: 3.4rem; height: 3.4rem; border-color: var(--line); font-size: .55rem; }
+/* Touch devices need these, and so does any window narrow enough that the
+   keyboard hint line is hidden — otherwise that viewport has no throttle at
+   all, which is the bug the original had on mobile: touchstart went straight
+   to full warp and there was no way to cruise. */
+@media (hover: none) and (pointer: coarse), (max-width: 700px) {
+  .controls { display: flex; }
+}
+
+/* ── mobile steering joystick ────────────────────────────────────────── */
+.joystick {
+  position: fixed; z-index: 11;
+  left: max(1rem, env(safe-area-inset-left));
+  bottom: max(4.4rem, calc(env(safe-area-inset-bottom) + 4.4rem));
+  width: 7.2rem; height: 7.2rem; border-radius: 50%;
+  background: rgba(12, 18, 44, .55); border: 1px solid var(--line);
+  backdrop-filter: blur(4px); touch-action: none;
+  -webkit-user-select: none; user-select: none;
+  display: none; place-items: center;
+}
+.joystick-thumb {
+  width: 3rem; height: 3rem; border-radius: 50%;
+  background: rgba(52, 76, 168, .85); border: 1px solid #6074c1;
+  box-shadow: 0 0 14px rgba(75, 91, 180, .4);
+  transform: translate(0, 0); transition: transform .12s ease-out;
+  pointer-events: none;
+}
+.joystick.active .joystick-thumb { transition: none; }
+/* Same trigger the throttle buttons use: coarse pointers, or any viewport
+   narrow enough that the keyboard hints are hidden. */
+@media (hover: none) and (pointer: coarse), (max-width: 700px) {
+  .joystick { display: grid; }
+}
+
+/* ── light-speed alert ───────────────────────────────────────────────── */
+.lightspeed {
+  position: fixed; left: 50%; top: 34%; z-index: 13;
+  max-width: min(90vw, 27rem); padding: .7rem 1.1rem;
+  transform: translate(-50%, 0);
+  background: rgba(30, 6, 10, .92); border: 1px solid var(--bad);
+  border-radius: 6px; text-align: center;
+  box-shadow: 0 0 40px rgba(255, 110, 134, .28);
+  animation: lightspeed-pulse 1.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.lightspeed[hidden] { display: none; }
+.lightspeed strong {
+  display: block; color: var(--bad); font-size: .92rem;
+  letter-spacing: .16em; text-transform: uppercase;
+}
+.lightspeed span { display: block; margin-top: .3rem; color: #e6b8c2; font-size: .72rem; line-height: 1.5; }
+.lightspeed kbd {
+  display: inline-block; padding: 0 .25em;
+  border: 1px solid var(--bad); border-radius: 3px; color: #ffd2da; font: inherit;
+}
+@keyframes lightspeed-pulse {
+  0%, 100% { box-shadow: 0 0 26px rgba(255, 110, 134, .22); }
+  50% { box-shadow: 0 0 46px rgba(255, 110, 134, .5); }
+}
+/* The FTL jump is a different animal from the near-c warning: cyan, not red,
+   because it is a chosen fiction rather than a hazard closing in. */
+.lightspeed[data-mode="ftl"] {
+  background: rgba(6, 22, 36, .92); border-color: #4fd0ff;
+  box-shadow: 0 0 40px rgba(79, 208, 255, .3);
+  animation: ftl-pulse 1.4s ease-in-out infinite;
+}
+.lightspeed[data-mode="ftl"] strong { color: #7fe0ff; }
+.lightspeed[data-mode="ftl"] span { color: #bfe8ff; }
+.lightspeed[data-mode="ftl"] kbd { border-color: #4fd0ff; color: #cdefff; }
+@keyframes ftl-pulse {
+  0%, 100% { box-shadow: 0 0 26px rgba(79, 208, 255, .22); }
+  50% { box-shadow: 0 0 48px rgba(79, 208, 255, .55); }
+}
+
+/* ── overlays ────────────────────────────────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
+  padding: 1.2rem; background: rgba(2, 3, 10, .82); backdrop-filter: blur(5px);
+  overflow-y: auto;
+}
+.overlay[hidden] { display: none; }
+.card {
+  width: min(92vw, 30rem); padding: 1.6rem; color: #cfd9ff; text-align: center;
+  background: rgba(8, 11, 27, .97); border: 1px solid #48558d;
+  box-shadow: 0 0 50px rgba(75, 91, 180, .2);
+}
+.card.wide { width: min(94vw, 46rem); text-align: left; margin: auto; }
+.card .code { color: var(--bad); font-size: .68rem; letter-spacing: .2em; text-transform: uppercase; }
+.card.wide .code { color: var(--good); }
+.card h1 {
+  margin: .75rem 0 .5rem; color: #fff;
+  font-size: clamp(1.5rem, 6vw, 2.6rem); letter-spacing: .12em;
+}
+.card p { margin: .45rem 0 1.2rem; color: #8995bd; line-height: 1.6; font-size: .82rem; }
+.card .lede { color: #a4b1d8; }
+.card button {
+  border: 1px solid #6074c1; border-radius: 5px; padding: .65rem 1rem;
+  color: #fff; background: #202c5b; cursor: pointer;
+  font: 700 .72rem/1 var(--mono); letter-spacing: .11em; text-transform: uppercase;
+}
+.card button:hover, .card button:focus-visible {
+  background: #33468d; outline: 2px solid #9fb4ff; outline-offset: 3px;
+}
+
+/* ── star chart / map ────────────────────────────────────────────────── */
+.map .card { max-height: 88vh; display: flex; flex-direction: column; }
+.map-toolbar {
+  display: flex; gap: .5rem; margin: 0 0 .8rem;
+  padding-bottom: .8rem; border-bottom: 1px solid rgba(72, 85, 141, .4);
+}
+.map-list { overflow-y: auto; display: flex; flex-direction: column; gap: .25rem; }
+.map-row {
+  display: grid; grid-template-columns: 1fr auto; align-items: center;
+  gap: .3rem 1rem; width: 100%; text-align: left;
+  padding: .5rem .7rem; border: 1px solid transparent; border-radius: 5px;
+  background: rgba(120, 140, 210, .06); color: var(--ink);
+  font: inherit; cursor: pointer;
+}
+.map-row:hover, .map-row:focus-visible {
+  background: rgba(52, 76, 168, .28); border-color: #4d5aa0; outline: none;
+}
+.map-row .m-name { color: #cfe0ff; font-size: .82rem; letter-spacing: .02em; }
+.map-row .m-kind { color: var(--faint); font-size: .62rem; text-transform: uppercase; letter-spacing: .1em; }
+.map-row .m-dist { color: var(--good); font-size: .74rem; justify-self: end; white-space: nowrap; }
+.map-row.current { border-color: var(--good); background: rgba(120, 255, 196, .12); }
+.map-empty { color: var(--dim); font-size: .78rem; padding: 1rem 0; }
+
+/* ── ledger rows ─────────────────────────────────────────────────────── */
+.ledger .card { max-height: 88vh; overflow-y: auto; }
+.ledger-row { padding: .8rem 0; border-top: 1px solid rgba(72, 85, 141, .4); }
+.ledger-row h3 {
+  margin: 0 0 .3rem; color: var(--faint);
+  font-size: .6rem; letter-spacing: .16em; text-transform: uppercase;
+}
+.ledger-row .claim { margin: 0 0 .35rem; color: var(--hot); font-size: .8rem; line-height: 1.5; }
+.ledger-row .detail { margin: 0; color: #7c88b2; font-size: .74rem; line-height: 1.65; }
+
+/* ── narrow screens ──────────────────────────────────────────────────────
+   Four fixed things compete for the edges at 375px: the back link (top
+   left), relay-return's own pill (bottom left, injected by the shared
+   script), the telemetry panel and the throttle. Panel top right, throttle
+   bottom right, the two text links stacked above the relay pill. */
+@media (max-width: 700px) {
+  a.back { font-size: .72rem; padding: .3rem .6rem; }
+  .readout {
+    top: 3.1rem; right: .5rem; left: auto; bottom: auto;
+    width: 10.9rem; padding: .45rem .55rem; font-size: .62rem;
+  }
+  .readout .value { font-size: .72rem; }
+  .clock .value, .clock.home .value { font-size: .74rem; }
+  .readout .value.small { font-size: .62rem; }
+  .clocks { gap: .35rem; }
+  .grid { margin-top: .45rem; padding-top: .4rem; gap: .3rem .4rem; }
+  .hull-row { margin-top: .45rem; padding-top: .4rem; }
+
+  .controls {
+    left: auto; right: .8rem; flex-direction: row; align-items: flex-end;
+    gap: .55rem; bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  .corner {
+    right: auto; left: .6rem; flex-direction: row; align-items: center;
+    bottom: max(4.3rem, calc(env(safe-area-inset-bottom) + 4.3rem));
+  }
+  /* Lifted clear of the corner links and the relay pill, which both live in
+     the bottom-left on a phone. Steer with the left thumb, throttle right. */
+  .joystick {
+    left: .6rem; width: 6.4rem; height: 6.4rem;
+    bottom: max(8.6rem, calc(env(safe-area-inset-bottom) + 8.6rem));
+  }
+  p.hint { display: none; }
+  .milestone { top: 9%; max-width: 92vw; }
+  .card { padding: 1.1rem; }
+}
+
+/* Very short viewports: the panel is the first thing to lose rows. */
+@media (max-height: 620px) and (max-width: 700px) {
+  .readout .cell.wide:nth-of-type(4) { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .milestone, .hull-bar { transition: none; }
+  .lightspeed, .lightspeed[data-mode="ftl"] { animation: none; }
+}

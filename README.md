@@ -23,7 +23,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 
 | File | Room | What it is |
 |---|---|---|
-| `index.html` | The Terminal | Landing terminal — boot sequence + working command line (try `help`) |
+| `index.html` | Terminal | Landing terminal — boot sequence + working command line (try `help`) |
 | `orrin.html` | Orrin | Plain-language tour of Orrin plus live public project activity from GitHub |
 | `psyche.html` | Psyche | Human-systems field notebook — mood, criteria, substances, and evidence |
 | `climbing.html` | Climbing | Mountain-Project-style route ledger — projects, ticks, objectives |
@@ -36,12 +36,12 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `systems.html` | — | Legacy redirect from the former Orrin URL to `orrin.html` |
 | `map.html` | Map | Locked placeholder — the real private map app lives elsewhere, with real auth |
 | `404.html` | — | On-brand "signal lost" page for mistyped URLs |
-| `playground/` | — | Standalone HTML experiments, including the Starfield interstellar flight game |
+| `playground/` | — | Scratch space for experiments and working design docs |
 | `projects/` | — | Self-contained sub-projects, each linked from a room (see below) |
 | `photos/` | — | Web-optimized images (originals stay out of git in `_photo-originals/`) |
 | `notes.js` | — | Homepage "transmissions" — the one file you edit by hand to post a note |
 | `latest.js` | — | Curated newest additions shown in each room's native latest-signal banner |
-| `effects.js` | — | Persistent visual modes and Mochi, the reduced-motion-aware resident cat with decoded instant frame swaps, relaxed multi-angle movement, feature entrances and stretching, element interactions, occasional walk-offs, page-aware returns, and a helmeted zero-gravity mode used only by compatible games |
+| `effects.js` | — | Persistent visual modes and Mochi, the reduced-motion-aware resident cat with progressively loaded, decoded instant frame swaps; calibrated visible-body scale; collision-safe placements; relaxed multi-angle movement; feature entrances and stretching; element interactions; occasional walk-offs; page-aware returns; and a helmeted zero-gravity mode used only by compatible games |
 | `EASTER_EGGS.md` | — | Complete field guide to every hidden command and typed surprise |
 
 ## Projects
@@ -52,6 +52,7 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 |---|---|---|
 | `projects/spacetime/` | Exploration | "The Geometry of Spacetime" — interactive special-relativity explainer |
 | `projects/farlight/` | Exploration | "FARLIGHT" — playable momentum and landing-feel prototype |
+| `projects/starfield/` | Exploration | "Starfield" — relativistic rocket flight through the real solar neighbourhood |
 | `projects/the-shape-of-harm/` | Psyche | Evidence-informed interactive research framework for comparing psychoactive-substance harms |
 | `projects/siege-conductor/` | Workbench | Star Wars viewing-companion PWA (add-to-home-screen app) |
 | `projects/autism-reflection.html` | Psyche | Long-form personal reflection on the DSM-5 autism criteria |
@@ -60,17 +61,47 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 These are self-contained and may carry their own assets/fonts — that's fine; the
 "no dependencies" rule applies to the terminal's own room pages, not embedded projects.
 
-## Playground
+## Starfield
 
-`playground/starfield.html` is a collision-and-distance flight game linked from
-Exploration. Normal cruise is shown as `1 c`; holding click, touch, or Space engages
-the fictional `10,000,000 c` warp drive. The distance display moves from light-seconds
-through light-years, and new systems are separated by several light-years. Stars are
-much larger than their planets, planets use reflected directional light instead of a
-self-glow, moons and comets stay small, and a black hole replaces roughly one in 500
-generated stars. A sparse particle layer shows motion while colored stars, nebulae,
-and procedural galaxies form the deep field and grow as you fly toward them. Object
-sizes remain compressed enough to keep the game playable.
+`projects/starfield/` is a flight game built on real physics rather than space-looking
+effects. The throttle is **proper acceleration in gravities**, and the relativistic
+rocket equations (β = tanh aτ/c, γ = cosh aτ/c) drive everything else. Two clocks run
+side by side — ship time and home time — and the gap between them is the point of the
+game. Hold one gravity and you cross the Milky Way in about twelve years of your own
+life, which is the real published result, not a game balance decision.
+
+The consequences are computed, not drawn:
+
+- **Star colour** comes from Planck's law integrated against the CIE colour-matching
+  functions, in a lookup table built at load. **Which** stars appear comes from the real
+  main-sequence distribution, so 76% of them are dim red M dwarfs and a blue-white star
+  is a genuine event.
+- **Aberration** crushes the sky forward — at β = 0.999 half of it fits in a 2.6° cone —
+  and **Doppler** shifts each star's blackbody temperature through the same table, so the
+  starbow emerges from the colour maths rather than being painted on.
+- **The microwave background** is a 2.72548 K blackbody that heats to T′ = 2γ·T ahead of
+  you. At γ = 1,059 the forward sky is as hot as the surface of the Sun; that arrives at
+  7.4 ship-years of burn and is the game's difficulty curve.
+- **The interstellar medium** is the other wall, and the Local Bubble — a real 300 ly
+  cavity around the Sun, twenty times thinner than the galactic average — makes the first
+  stretch genuinely safer.
+- **Systems** orbit by Kepler's third law and are built around the frost line, so M-dwarf
+  systems come out compact the way TRAPPIST-1 really is. **Galaxies** use Sérsic profiles
+  and logarithmic spiral arms, and resolve into individual stars at ~4,000 ly. **Black
+  holes** lens the background stars and beam their disks by D⁴.
+- The opening of every run is seeded with the **actual solar neighbourhood** from
+  `data/stars-near.js` — real RA, Dec, parallax and spectral types you can check against
+  a star chart.
+
+Where it cheats — inflated object sizes, compressed time, systems dropped near the flight
+path — is listed in-game under `L` (**where we cheat**), generated from the same constants
+the simulation uses so the two cannot drift apart. Space is empty enough that the honest
+version is unlosable: you would fly about 24 quadrillion light-years before hitting a star.
+
+Structure is `index.html` + `starfield.css` + `data/` (hand-editable catalogues) + `src/`
+(one module per concern). No build step, no dependencies, plain deferred classic scripts
+so it still works opened straight off disk.
+
 If Mochi is awake when Starfield opens, he swaps his walking behavior for a dedicated
 helmeted zero-gravity set: four floating poses with three aligned animation frames
 each. He drifts slowly around the viewport and tumbles away when clicked. Starfield
@@ -112,7 +143,7 @@ file — copy the example block, edit, done.
 
 ## Easter eggs
 
-The Terminal has hidden terminal commands, typed project codes, and a few strange visual
+The Terminal has hidden commands, typed project codes, and a few strange visual
 interactions. The complete, intentionally spoiler-filled registry lives in
 [`EASTER_EGGS.md`](EASTER_EGGS.md).
 

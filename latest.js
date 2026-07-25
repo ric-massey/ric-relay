@@ -4,9 +4,9 @@ window.RELAY_LATEST = [
   {
     date: "2026-07-24",
     kind: "game update",
-    title: "Starfield: Interstellar Flight",
-    description: "Fly through a richer deep field of stars, planets, moons, comets, nebulae, and galaxies at 1 c or 10,000,000 c warp.",
-    href: "playground/starfield.html",
+    title: "Starfield: A Relativistic Rocket",
+    description: "Rebuilt on real physics. Burn at one gravity through the actual solar neighbourhood and watch twelve years of your life cross the galaxy.",
+    href: "projects/starfield/index.html",
   },
   {
     date: "2026-07-24",

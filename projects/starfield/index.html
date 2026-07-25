@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<!-- ══════════════════════════════════════════════════════════════════════
+     data-mochi-world="space" is load-bearing. It is the only thing in the
+     whole repo that puts Mochi into his helmeted zero-gravity pose set —
+     effects.js reads document.documentElement.dataset.mochiWorld and
+     nothing else sets it. Delete it and the cat quietly goes back to
+     walking normally in deep space, and nobody notices for weeks.
+     ═══════════════════════════════════════════════════════════════════ -->
+<html lang="en" data-mochi-world="space">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Starfield — a relativistic rocket</title>
+  <meta name="description" content="Fly a real relativistic rocket through the real solar neighbourhood. Watch the sky crush into a cone ahead of you, the microwave background catch fire, and your clock come apart from everybody else's.">
+  <link rel="stylesheet" href="starfield.css">
+</head>
+<body>
+  <a class="back" href="../../exploration.html">← back to /exploration</a>
+
+  <canvas id="sky" aria-label="Starfield: a relativistic flight simulator">
+    Starfield is an interactive flight through the real solar neighbourhood,
+    drawn on a canvas. You fly a rocket whose throttle is measured in gravities,
+    and the game computes the actual consequences: aberration crushes the stars
+    into a cone ahead of you, the Doppler effect paints them into a coloured
+    ring, the cosmic microwave background heats up until it is as bright as the
+    Sun, and the clock aboard your ship falls behind the clock at home. Playing
+    it needs a canvas-capable browser, but the physics it is built on is written
+    up in <a href="../spacetime/index.html">The Geometry of Spacetime</a>.
+  </canvas>
+
+  <!-- ── telemetry ─────────────────────────────────────────────────── -->
+  <div class="readout" id="readout" aria-live="off">
+    <div class="clocks">
+      <div class="clock">
+        <span class="label">Ship time</span>
+        <span class="value" id="ship-time">0.00 yr</span>
+      </div>
+      <div class="clock home">
+        <span class="label">Home time</span>
+        <span class="value" id="home-time">0.00 yr</span>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="cell"><span class="label sym">γ</span><span class="value" id="gamma">1.000</span></div>
+      <div class="cell"><span class="label">Burn</span><span class="value" id="throttle">0.00 g</span></div>
+      <!-- β needs the full width: past 0.9 the interesting digits are all
+           nines, and clipping them hides the whole point. -->
+      <div class="cell wide"><span class="label sym">β</span><span class="value small" id="beta">0.0000</span></div>
+      <div class="cell wide"><span class="label">Travelled</span><span class="value" id="distance">0.0 light-sec</span></div>
+      <div class="cell wide"><span class="label">In your frame</span><span class="value dim" id="contracted">0.0 light-sec</span></div>
+      <div class="cell wide"><span class="label">CMB ahead</span><span class="value" id="cmb">2.7 K</span></div>
+      <div class="cell wide"><span class="label">ISM on hull</span><span class="value" id="ism">0.00 W/m²</span></div>
+    </div>
+    <div class="hull-row">
+      <span class="label">Hull</span>
+      <span class="hull-track"><span class="hull-bar" id="hull-bar" data-level="ok"></span></span>
+      <span class="value" id="hull">100%</span>
+    </div>
+  </div>
+
+  <!-- ── milestone toast ───────────────────────────────────────────── -->
+  <div class="milestone" id="milestone" role="status">
+    <strong id="milestone-title"></strong>
+    <span id="milestone-note"></span>
+  </div>
+
+  <!-- ── light-speed / FTL banner ──────────────────────────────────────
+       Two messages share one banner. Under thrust β only ever asymptotes to
+       1 (nothing with mass crosses c), so a near-c warning appears past the
+       threshold. The lightspeed jump then steps outside real physics, and the
+       banner switches to say so. game.js sets the text and data-mode. -->
+  <div class="lightspeed" id="lightspeed" role="alert" hidden>
+    <strong id="lightspeed-title">⚠ NEAR LIGHT SPEED</strong>
+    <span id="lightspeed-text"></span>
+  </div>
+
+  <!-- ── controls ──────────────────────────────────────────────────── -->
+  <div class="controls">
+    <button type="button" class="thrust" data-thrust="1">accel</button>
+    <button type="button" class="thrust retro" data-thrust="-1">brake</button>
+  </div>
+
+  <!-- ── mobile steering joystick ──────────────────────────────────────
+       On touch devices dragging the whole canvas to aim is imprecise. This
+       is a proper virtual stick: drag the thumb, the offset from centre
+       becomes the steering vector, release and it recentres. Hidden on
+       pointer-fine devices, where the mouse already aims. -->
+  <div class="joystick" id="joystick" aria-hidden="true">
+    <div class="joystick-thumb" id="joystick-thumb"></div>
+  </div>
+
+  <p class="hint">
+    <span>steer: <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd></span>
+    <span>accelerate: <kbd>Space</kbd> · <kbd>Shift</kbd> for 3 g</span>
+    <span>brake / stop: <kbd>B</kbd></span>
+    <span>jump: <kbd>J</kbd> · chart: <kbd>Tab</kbd> · <kbd>M</kbd> sound · <kbd>P</kbd> pause · <kbd>L</kbd> ledger</span>
+  </p>
+
+  <div class="corner">
+    <button type="button" id="map-open" class="link">star chart</button>
+    <button type="button" id="sound" class="link">sound: off</button>
+    <button type="button" id="ledger-open" class="link">where we cheat</button>
+  </div>
+
+  <!-- ── pause ─────────────────────────────────────────────────────── -->
+  <div class="overlay" id="pause" hidden>
+    <div class="card">
+      <div class="code">Engines idle</div>
+      <h1>PAUSED</h1>
+      <p>The rocket equations are waiting. So is everybody back home — they've
+        been waiting longer.</p>
+      <button type="button" id="resume">Resume</button>
+    </div>
+  </div>
+
+  <!-- ── the honesty ledger ────────────────────────────────────────── -->
+  <div class="overlay ledger" id="ledger" hidden>
+    <div class="card wide">
+      <div class="code">Honesty ledger</div>
+      <h1>WHERE WE CHEAT</h1>
+      <p class="lede">Everything else in this game is real physics. These are the
+        places it is not, with the arithmetic — because the honest version of
+        this game is unlosable. Flying in a straight line through the real
+        galaxy you would cover about 24 quadrillion light-years before hitting
+        a star, roughly a million times the width of the observable universe.</p>
+      <div id="ledger-body"></div>
+      <button type="button" id="ledger-close">Back to the ship</button>
+    </div>
+  </div>
+
+  <!-- ── star chart / destination map ──────────────────────────────── -->
+  <div class="overlay map" id="map" hidden>
+    <div class="card wide">
+      <div class="code">Star chart</div>
+      <h1>WHERE TO?</h1>
+      <p class="lede">Pick a destination and a marker guides you to it. Real
+        catalogued stars, galaxies and black holes, nearest first. Fly sub-light
+        to a nearby star to park and look; jump (<kbd>J</kbd>) for the far ones.</p>
+      <div class="map-toolbar">
+        <button type="button" id="map-clear" class="link">clear waypoint</button>
+        <button type="button" id="map-close" class="link">back to the ship</button>
+      </div>
+      <div id="map-list" class="map-list"></div>
+    </div>
+  </div>
+
+  <!-- ── game over ─────────────────────────────────────────────────── -->
+  <div class="overlay" id="game-over" role="dialog" aria-modal="true" aria-labelledby="loss-title" hidden>
+    <div class="card">
+      <div class="code" id="loss-code">Navigation failure</div>
+      <h1 id="loss-title">SIGNAL LOST</h1>
+      <p id="loss-detail">Collision detected.</p>
+      <button id="restart" type="button">Relaunch</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       Plain classic scripts, deliberately. <script type="module"> is
+       CORS-blocked on file:// and AGENTS.md rule 4 requires this page to
+       work opened directly from disk. Deferred classic scripts run in
+       document order, so dependency order is just tag order — no bundler,
+       no build step, nothing fetched at runtime.
+
+       data/ before src/: the catalogues are inert literals the modules read.
+       ══════════════════════════════════════════════════════════════════ -->
+  <script defer src="data/stars-near.js"></script>
+  <script defer src="data/stars-bright.js"></script>
+  <script defer src="data/deep-sky.js"></script>
+  <script defer src="data/milestones.js"></script>
+
+  <script defer src="src/constants.js"></script>
+  <script defer src="src/color.js"></script>
+  <script defer src="src/relativity.js"></script>
+  <script defer src="src/camera.js"></script>
+  <script defer src="src/view.js"></script>
+  <script defer src="src/stars.js"></script>
+  <script defer src="src/blackhole.js"></script>
+  <script defer src="src/systems.js"></script>
+  <script defer src="src/galaxy.js"></script>
+  <script defer src="src/render.js"></script>
+  <script defer src="src/audio.js"></script>
+  <script defer src="src/hud.js"></script>
+  <script defer src="src/game.js"></script>
+
+  <!-- relay-return.js pulls in effects.js from the repo root by resolving
+       "../effects.js" against its own src, so Mochi arrives without a
+       second tag. Same call shape as farlight and the other project pages. -->
+  <script src="../relay-return.js" data-home="../../index.html" data-egg="starfield" defer></script>
+</body>
+</html>
