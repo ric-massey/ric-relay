@@ -11,9 +11,15 @@
    rather than a pair of throttle keys:
 
      rotate     ← → ↑ ↓ yaw/pitch          Q E   roll
-     drive      W accelerate  S brake/reverse   B full stop  Shift boost
+     drive      W thrust forward  S thrust back  B full stop  Shift boost
      translate  A D strafe                R F   up/down
      gears      1…6 select     [ ] shift        J punch it   Tab chart
+
+   THE SHIP HAS MOMENTUM, so rotating and thrusting are genuinely different
+   actions: the arrows turn the NOSE, W pushes your velocity toward wherever
+   the nose is pointing, and nothing you do with the arrows changes where you
+   are already going. Turn round mid-flight and you are still travelling the
+   old way, looking the new way.
 
    Rotation and translation are deliberately separate. Pointing the nose
    somewhere is not the same as going there — that gap is the whole feel of
@@ -49,8 +55,8 @@
     { id: "rollLeft",    label: "Roll left",       group: "Rotate",    keys: ["KeyQ"] },
     { id: "rollRight",   label: "Roll right",      group: "Rotate",    keys: ["KeyE"] },
 
-    { id: "thrustFwd",   label: "Accelerate",      group: "Translate", keys: ["KeyW", "Space"] },
-    { id: "thrustBack",  label: "Brake / reverse", group: "Translate", keys: ["KeyS"] },
+    { id: "thrustFwd",   label: "Thrust forward",  group: "Translate", keys: ["KeyW", "Space"] },
+    { id: "thrustBack",  label: "Thrust back",     group: "Translate", keys: ["KeyS"] },
     { id: "strafeLeft",  label: "Strafe left",     group: "Translate", keys: ["KeyA"] },
     { id: "strafeRight", label: "Strafe right",    group: "Translate", keys: ["KeyD"] },
     { id: "thrustUp",    label: "Thrust up",       group: "Translate", keys: ["KeyR"] },

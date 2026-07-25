@@ -71,7 +71,7 @@ a.back:hover, a.back:focus-visible { color: #fff; border-color: #4d5aa0; }
 
 /* ── milestone toast ─────────────────────────────────────────────────── */
 .milestone {
-  position: fixed; left: 50%; top: 18%; z-index: 12;
+  position: fixed; left: 50%; top: 34%; z-index: 12;
   max-width: min(88vw, 30rem); padding: .7rem 1.1rem;
   transform: translate(-50%, -8px); opacity: 0; pointer-events: none;
   background: rgba(6, 9, 22, .9); border: 1px solid #3d4a8c; border-radius: 6px;
@@ -83,6 +83,60 @@ a.back:hover, a.back:focus-visible { color: #fff; border-color: #4d5aa0; }
   letter-spacing: .1em; text-transform: uppercase;
 }
 .milestone span { display: block; margin-top: .3rem; color: var(--dim); font-size: .72rem; line-height: 1.5; }
+
+/* ── the explainer card, and the warning lamp ─────────────────────────
+   Both live on the LEFT, because the readout owns the right. The card is
+   shown once per session when the sky does something that looks broken and
+   is really relativity; the lamp stays lit while it is happening.        */
+.notice {
+  position: fixed; left: max(1rem, env(safe-area-inset-left)); z-index: 13;
+  top: calc(max(1rem, env(safe-area-inset-top)) + 5.6rem);
+  width: min(20rem, 78vw); padding: .8rem .9rem .85rem;
+  background: rgba(6, 9, 22, .93); border: 1px solid #3d4a8c;
+  border-left: 3px solid #7ea2ff; border-radius: 6px;
+  opacity: 0; transform: translateX(-10px);
+  transition: opacity .35s ease, transform .35s ease;
+}
+.notice.on { opacity: 1; transform: translateX(0); }
+.notice strong {
+  display: block; padding-right: 1.2rem; color: #fff;
+  font-size: .8rem; letter-spacing: .07em; text-transform: uppercase;
+}
+.notice p {
+  margin: .45rem 0 0; color: var(--dim); font-size: .72rem; line-height: 1.55;
+}
+.notice-close {
+  position: absolute; top: .3rem; right: .35rem;
+  width: 1.4rem; height: 1.4rem; padding: 0; line-height: 1;
+  background: none; border: 0; border-radius: 4px;
+  color: var(--faint); font-size: .95rem; cursor: pointer;
+}
+.notice-close:hover { color: #fff; background: rgba(255, 255, 255, .07); }
+
+/* A class selector beats the UA's [hidden] rule, so display must be reset
+   explicitly or `hidden` stops hiding anything. */
+.notice[hidden], .lamp[hidden] { display: none; }
+
+.lamp {
+  position: fixed; left: max(1rem, env(safe-area-inset-left)); z-index: 13;
+  top: calc(max(1rem, env(safe-area-inset-top)) + 2.6rem);
+  display: flex; align-items: center; gap: .45rem;
+  padding: .3rem .6rem .3rem .45rem;
+  background: rgba(6, 9, 22, .9); border: 1px solid currentColor; border-radius: 999px;
+  font-size: .62rem; letter-spacing: .12em; text-transform: uppercase;
+}
+.lamp .lamp-dot {
+  width: .5rem; height: .5rem; border-radius: 50%;
+  background: currentColor; box-shadow: 0 0 .5rem currentColor;
+  animation: lamp-pulse 1.6s ease-in-out infinite;
+}
+.lamp[data-level="fast"] { color: #7ea2ff; }
+.lamp[data-level="light"] { color: #ffbe5c; }
+.lamp[data-level="ftl"] { color: #7ed6ff; }
+@keyframes lamp-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) {
+  .lamp .lamp-dot { animation: none; }
+}
 
 /* ── hints and corner links ──────────────────────────────────────────── */
 p.hint {

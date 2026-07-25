@@ -12,7 +12,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Starfield — a relativistic rocket</title>
   <meta name="description" content="Fly a real relativistic rocket through the real solar neighbourhood. Watch the sky crush into a cone ahead of you, the microwave background catch fire, and your clock come apart from everybody else's.">
-  <link rel="stylesheet" href="starfield.css">
+  <link rel="stylesheet" href="starfield.css?v=6">
 </head>
 <body>
   <a class="back" href="index.html">← how to fly</a>
@@ -45,25 +45,40 @@
            ISM). They are the correct names and they taught nobody anything:
            you cannot fly a ship by a symbol you have to look up. Same numbers,
            said out loud, with a title= for the physics underneath. -->
-      <div class="cell wide" title="Your speed. Below lightspeed it reads as a percentage of light through the Sun's rest frame; above it, in light-years per real second — the drive is faster-than-light by design, because space here is inflated to light-year scale. It holds whatever speed you leave it at, and reads &quot;astern&quot; when you are backing up."><span class="label">Speed</span><span class="value" id="beta">0% of light</span></div>
-      <!-- "Speed" against the Sun is the physics answer and a useless one when
-           you are trying to park next to a planet. This is the pilot's answer. -->
-      <div class="cell wide" title="Your speed relative to the nearest large body, and whether you are closing on it or falling away. Reads zero when you are matched with it."><span class="label" id="rel-label">Speed vs nearest</span><span class="value" id="rel-speed">—</span></div>
+      <div class="cell wide" title="Your speed through space, and what fraction of light that is. In gears 1 and 2 it is honest — you can never reach c, however hard you push — but at high γ the road ahead is contracted, so you cover far more distance per second of your life than the percentage suggests. In gears 3–6 the drive is openly faster-than-light and it reads in light-years per second instead."><span class="label">Speed</span><span class="value" id="beta">0% of light</span></div>
+      <!-- Your own velocity along the line of sight, so it is zero when you are
+           parked. It used to include the planet's orbital motion, which meant a
+           motionless ship reported 88 km/s and told you nothing useful. -->
+      <div class="cell wide" title="How fast YOU are travelling toward the nearest world — your own velocity along the line of sight. Zero when you are parked, ↓ when closing, ↑ when pulling away."><span class="label" id="rel-label">Closing on</span><span class="value" id="rel-speed">—</span></div>
       <div class="cell" title="The proper acceleration an accelerometer bolted to the ship would read right now — honest, even when the drive is cheating. In the high gears it is openly millions of g."><span class="label">Felt g-force</span><span class="value" id="throttle">0 g</span></div>
       <div class="cell" title="Time dilation (γ): clocks back home run this much faster than yours."><span class="label">Home clock</span><span class="value" id="gamma">1.00×</span></div>
       <div class="cell wide"><span class="label">Travelled</span><span class="value" id="distance">0.0 light-sec</span></div>
       <div class="cell wide" title="The cosmic microwave background, blue-shifted by your speed. It fills all of space at 2.7 K; dead ahead it heats up as you burn, and past about 5,800 K it is as hot as the surface of the Sun."><span class="label">Heat ahead</span><span class="value" id="cmb">2.7 K</span></div>
       <div class="cell wide" title="Interstellar hydrogen hitting the hull. At speed those loose atoms arrive as a hard particle beam."><span class="label">Hull radiation</span><span class="value" id="ism">0.00 W/m²</span></div>
-      <!-- The gearbox. Gear sets the drive's ceiling and how hard it spools;
-           gear top is that ceiling, the fastest this gear will take you. -->
-      <div class="cell" title="Six gears, each one a speed range: 1 Sub-light (the only honest one — 99% of light, where relativity lives), 2 Docking, 3 Orbital, 4 Interstellar, 5 Galactic, 6 Intergalactic. Keys 1–6, or [ and ] to shift. Shifting down brakes you to the new gear's ceiling."><span class="label">Gear</span><span class="value" id="gravity">1 · Sub-light</span></div>
-      <div class="cell" title="Top speed of the current gear, in light-years per real second."><span class="label">Gear top</span><span class="value" id="assist">0.05 ly/s</span></div>
+      <!-- A GEAR IS AN ACCELERATION, NOT A SPEED. Shifting never changes how
+           fast you are going, only how hard the engine can push. -->
+      <div class="cell" title="A gear is an acceleration, not a speed — shifting never changes how fast you are going, only how hard the engine pushes and how fast it may push you to. 1 Thrusters (real spacecraft speed, for working near a planet), 2 Relativistic (honest, up to 99% of light), 3–6 faster-than-light. Keys 1–6, or [ and ] to shift."><span class="label">Gear</span><span class="value" id="gravity">1 · Thrusters</span></div>
+      <div class="cell" title="The fastest this gear's engine can push you to. It is a ceiling on thrust, not a speed forced on you: shift down while going faster and you simply keep coasting."><span class="label">Gear top</span><span class="value" id="assist">900 km/s</span></div>
     </div>
     <div class="hull-row">
       <span class="label">Hull</span>
       <span class="hull-track"><span class="hull-bar" id="hull-bar" data-level="ok"></span></span>
       <span class="value" id="hull">100%</span>
     </div>
+  </div>
+
+  <!-- ── the explainer card, and the warning lamp ──────────────────────
+       Left-hand side, opposite the readout. The card appears once per session
+       the first time the sky does something that looks like a fault and is in
+       fact physics; the lamp stays lit while the condition holds. -->
+  <div class="notice" id="notice" role="status" hidden>
+    <button type="button" id="notice-close" class="notice-close" aria-label="Dismiss">×</button>
+    <strong id="notice-title"></strong>
+    <p id="notice-body"></p>
+  </div>
+
+  <div class="lamp" id="lamp" data-level="fast" hidden>
+    <span class="lamp-dot"></span><span id="lamp-text">RELATIVISTIC</span>
   </div>
 
   <!-- ── milestone toast ───────────────────────────────────────────── -->
@@ -77,12 +92,11 @@
        pulling apart — not off a text overlay. -->
 
   <!-- ── controls ──────────────────────────────────────────────────── -->
-  <!-- Two pedals, and they behave like pedals: hold to change speed, let go and
-       the drive holds whatever it reached. Held past a standstill, the lower one
-       backs the ship up. -->
+  <!-- Thrusters, not pedals: the top one pushes your momentum the way the nose
+       is pointing, the bottom one pushes it back. Let go of both and you coast. -->
   <div class="controls">
-    <button type="button" class="thrust" data-thrust="1" title="Faster — hold to accelerate, release to hold this speed">faster</button>
-    <button type="button" class="thrust retro" data-thrust="-1" title="Slower — hold to decelerate, keep holding to reverse">slower</button>
+    <button type="button" class="thrust" data-thrust="1" title="Thrust forward — pushes your velocity toward where the nose points">thrust</button>
+    <button type="button" class="thrust retro" data-thrust="-1" title="Thrust back — pushes your velocity the other way">retro</button>
   </div>
 
   <!-- ── mobile steering joystick ──────────────────────────────────────
@@ -190,21 +204,21 @@
   <script defer src="data/deep-sky.js"></script>
   <script defer src="data/milestones.js"></script>
 
-  <script defer src="src/constants.js?v=5"></script>
-  <script defer src="src/controls.js?v=5"></script>
-  <script defer src="src/color.js?v=5"></script>
-  <script defer src="src/relativity.js?v=5"></script>
-  <script defer src="src/camera.js?v=5"></script>
-  <script defer src="src/view.js?v=5"></script>
-  <script defer src="src/stars.js?v=5"></script>
-  <script defer src="src/blackhole.js?v=5"></script>
-  <script defer src="src/systems.js?v=5"></script>
-  <script defer src="src/galaxy.js?v=5"></script>
-  <script defer src="src/render.js?v=5"></script>
-  <script defer src="src/audio.js?v=5"></script>
-  <script defer src="src/hud.js?v=5"></script>
-  <script defer src="src/controls-ui.js?v=5"></script>
-  <script defer src="src/game.js?v=5"></script>
+  <script defer src="src/constants.js?v=6"></script>
+  <script defer src="src/controls.js?v=6"></script>
+  <script defer src="src/color.js?v=6"></script>
+  <script defer src="src/relativity.js?v=6"></script>
+  <script defer src="src/camera.js?v=6"></script>
+  <script defer src="src/view.js?v=6"></script>
+  <script defer src="src/stars.js?v=6"></script>
+  <script defer src="src/blackhole.js?v=6"></script>
+  <script defer src="src/systems.js?v=6"></script>
+  <script defer src="src/galaxy.js?v=6"></script>
+  <script defer src="src/render.js?v=6"></script>
+  <script defer src="src/audio.js?v=6"></script>
+  <script defer src="src/hud.js?v=6"></script>
+  <script defer src="src/controls-ui.js?v=6"></script>
+  <script defer src="src/game.js?v=6"></script>
 
   <!-- relay-return.js pulls in effects.js from the repo root by resolving
        "../effects.js" against its own src, so Mochi arrives without a

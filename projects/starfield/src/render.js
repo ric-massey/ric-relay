@@ -366,7 +366,17 @@
         const mag = baseMag - 2.5 * Math.log10(gain);
         // Thinning star fields raise the effective limit rather than dimming
         // every star equally, which is what leaving the disk actually does.
-        const limit = 6.9 + 2.5 * Math.log10(Math.max(1e-4, density));
+        // THE FAINT END IS THE SKY. This is a drawing threshold, not a claim
+        // about eyes: alpha below already ramps with how far above the limit a
+        // star is, so raising it does not make anything falsely bright — it
+        // lets the faint majority of the field render at the low alpha they
+        // deserve instead of being cut to nothing. At 7.8 only a third of the
+        // field passed and barely a dozen were above 10% opacity, so a ship
+        // sitting still in space looked out at an almost empty blackness. The
+        // real answer is thousands of faint points, which is what you would
+        // see. `density` is 1 at the launch point and collapses as you leave
+        // the disk, so deep space still thins out honestly.
+        const limit = 9.5 + 2.5 * Math.log10(Math.max(1e-4, density));
         const above = limit - mag;
         if (above <= 0) continue;
         // THE FLASHING LIVED HERE. This used to be `above / 7.4 + 0.06`, which

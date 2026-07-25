@@ -75,18 +75,21 @@
     // Speed measured against something you can see, rather than against the
     // Sun's rest frame. Zero when you are station-keeping with a world.
     relBody: null, relName: null, relDistLy: Infinity,
-    relSpeedC: 0, relClosingC: 0,
+    // How fast YOU are moving toward it, and what share of your speed that is.
+    relClosingLySec: 0, relClosingFrac: 0,
   };
   SF.state = state;
 
   const CTRL = SF.controls;
 
-  // THE SHIP'S ACTUAL STATE OF MOTION is the proper-velocity vector u = γβ,
-  // in the home frame. β, γ and the heading are all read off it; nothing
-  // else is authoritative. `vdir` is the unit heading, kept as a separate
-  // variable because a dozen places want a direction and because it has to
-  // hold its last value when u falls to exactly zero.
-  let u = { x: 0, y: 0, z: 0 };
+  // THE SHIP'S ACTUAL STATE OF MOTION is this velocity vector, in the home
+  // frame, in light-years per second of ship time (celerity — see the drive).
+  // β, γ and the heading are all read off it; nothing else is authoritative,
+  // and NOTHING outside the drive is allowed to rotate it, because that is
+  // what momentum means. `vdir` is the unit heading, kept separately because a
+  // dozen places want a direction and it has to hold its last value when the
+  // ship comes to a complete stop.
+  let vel = { x: 0, y: 0, z: 0 };
   let vdir = { x: 0, y: 0, z: 1 };
   // Thruster command in body axes, smoothed toward the stick so the engines
   // spool rather than snap. x = right, y = up, z = forward, in gravities.
@@ -96,10 +99,14 @@
   const galaxies = [];
   // Exposed so the scene can be inspected from a console — handy when the
   // thing you want to look at is a black hole 1,560 light-years away.
-  SF.world = { systems, galaxies, heading: () => vdir, velocity: () => u };
+  SF.world = { systems, galaxies, heading: () => vdir, velocity: () => vel };
   let skyField = null;
   let milkyWay = null;
   let nextSystemAt = 0;
+  // The raw disk density at the launch point, so state.density can be quoted
+  // as a multiple of the sky you started under rather than of the galactic
+  // centre. Set once the world exists and the ship is still at the Sun.
+  let skyDensityNorm = 1;
   let last = performance.now();
   let joyX = 0, joyY = 0, joyActive = false;
   let pointerThrust = 0;
@@ -243,7 +250,7 @@
     state.relativistic = true;
     state.milestoneIndex = 0;
     state.flash = 0;
-    u = { x: 0, y: 0, z: 0 };
+    vel = { x: 0, y: 0, z: 0 };
     thrustCmd = { x: 0, y: 0, z: 0 };
     joyX = 0; joyY = 0; joyActive = false;
     pointerThrust = 0;
@@ -258,6 +265,9 @@
 
     seedCatalogue();
     seedDeepSky();
+    skyDensityNorm = milkyWay
+      ? 1 / Math.max(1e-6, SF.galaxy.localDensity(milkyWay))
+      : 1;
 
     // Launch on a course for the nearest star. It is 4.246 light-years away
     // and, at one gravity, about three years of your life.
@@ -608,22 +618,21 @@
     return { x: gx, y: gy, z: gz };
   }
 
-  /* ── speed relative to something real ────────────────────────────────
-     "Speed" on its own is meaningless and the panel was quietly lying by
-     omission: it quotes β, which is measured against the Sun's rest frame,
-     so parking perfectly alongside a planet still read as a large number
-     and matching orbits looked like nothing had happened.
+  /* ── are you closing on it? ──────────────────────────────────────────
+     "Speed" on its own is meaningless, and the panel used to answer the
+     wrong question. It quoted your speed relative to the nearest body
+     INCLUDING that body's own orbital motion, so a ship sitting perfectly
+     still read 88 km/s just because the planet it was watching was going
+     round its star. At a standstill every speed on the panel should be zero,
+     because you are not moving.
 
-     This measures the only speed a pilot actually wants: yours relative to
-     the nearest large body. It comes from differencing that body's stored
-     position, which is already relative to the ship, so it picks up both
-     your motion and the body's own orbital motion for free — and it reads
-     exactly zero when you are station-keeping with a world.               */
+     So this reports the one number a pilot can act on: how fast YOU are
+     travelling toward the nearest body, which is your own velocity projected
+     onto the line of sight. Zero when you are parked, positive when you are
+     closing, negative when you are pulling away, and it does not pretend to
+     know what the planet is doing.                                        */
 
-  let relRef = null;                 // the body we are quoting against
-  const relPrev = { x: 0, y: 0, z: 0 };
-
-  function updateRelativeSpeed(dHomeYears) {
+  function updateRelativeSpeed() {
     let best = null, bestD = Infinity;
     for (const system of systems) {
       // Cheap reject: nothing in a distant system can be the nearest body.
@@ -640,56 +649,20 @@
     state.relName = best ? (best.name || best.label || best.system?.name || "nearest body") : null;
     state.relDistLy = best ? bestD : Infinity;
 
-    if (!best) { state.relSpeedC = 0; state.relClosingC = 0; return; }
-    // A different body, or no elapsed time: seed and wait for the next frame
-    // rather than reporting a difference against something else's position.
-    if (relRef !== best || !(dHomeYears > 0)) {
-      relRef = best;
-      relPrev.x = best.p.x; relPrev.y = best.p.y; relPrev.z = best.p.z;
-      state.relSpeedC = 0; state.relClosingC = 0;
+    const speed = v3.length(vel);
+    if (!best || bestD < 1e-12 || speed < 1e-30) {
+      state.relClosingLySec = 0;
+      state.relClosingFrac = 0;
       return;
     }
-    const dx = best.p.x - relPrev.x, dy = best.p.y - relPrev.y, dz = best.p.z - relPrev.z;
-    const prevDist = Math.hypot(relPrev.x, relPrev.y, relPrev.z);
-    relPrev.x = best.p.x; relPrev.y = best.p.y; relPrev.z = best.p.z;
-
-    // Closing rate is a *coordinate* rate — how fast the gap shrinks in the
-    // home frame — and those are allowed to exceed c. Two ships approaching
-    // head-on at 0.9c close at 1.8c and no physics is harmed.
-    state.relClosingC = (prevDist - bestD) / dHomeYears;
-
-    // RELATIVE SPEED IS NOT THAT. Differencing the position gave the
-    // coordinate rate and printed "1877% of light", which is not a speed
-    // anybody can have. What a pilot means by "my speed relative to that
-    // planet" is the speed measured in the planet's own rest frame, and that
-    // needs the relativistic composition:
-    //
-    //   v_rel = √( |u − v|² − |u × v|² ) / (1 − u·v)
-    //
-    // which is < c whenever both are, and reduces to |u − v| at low speed.
-    const w = { x: dx / dHomeYears, y: dy / dHomeYears, z: dz / dHomeYears };
-    const vs = { x: vdir.x * state.beta, y: vdir.y * state.beta, z: vdir.z * state.beta };
-    // p is stored relative to the ship, so ẇ = v_body − v_ship.
-    let vb = { x: w.x + vs.x, y: w.y + vs.y, z: w.z + vs.z };
-    // The inflated orbital geometry can hand us a body moving faster than
-    // light; clamp it rather than let it poison the formula. Flagged so the
-    // HUD can admit the number is the geometry's fault, not the pilot's.
-    const vbMag = Math.hypot(vb.x, vb.y, vb.z);
-    state.relBodySuperluminal = vbMag >= 1;
-    if (vbMag >= 0.999999) {
-      const k = 0.999999 / vbMag;
-      vb = { x: vb.x * k, y: vb.y * k, z: vb.z * k };
-    }
-
-    const diff = { x: vs.x - vb.x, y: vs.y - vb.y, z: vs.z - vb.z };
-    const cross = {
-      x: vs.y * vb.z - vs.z * vb.y,
-      y: vs.z * vb.x - vs.x * vb.z,
-      z: vs.x * vb.y - vs.y * vb.x,
-    };
-    const dot = vs.x * vb.x + vs.y * vb.y + vs.z * vb.z;
-    const num = Math.max(0, v3.dot(diff, diff) - v3.dot(cross, cross));
-    state.relSpeedC = Math.min(0.999999999, Math.sqrt(num) / Math.max(1e-9, 1 - dot));
+    // Body positions are already stored relative to the ship, so the unit
+    // vector to it is the line of sight and the dot product is the closing
+    // component of the ship's own velocity.
+    const closing = (vel.x * best.p.x + vel.y * best.p.y + vel.z * best.p.z) / bestD;
+    state.relClosingLySec = closing;
+    // What fraction of the ship's speed is aimed at it — lets the HUD quote
+    // the closing rate in the same honest units as the main speed readout.
+    state.relClosingFrac = closing / speed;
   }
 
   /* ── physics ────────────────────────────────────────────────────────── */
@@ -708,97 +681,109 @@
     const dTau = F.shipYearsPerSecond * dt;
     state.shipYears += dTau;
 
-    // ── the gearbox ────────────────────────────────────────────────────
-    // Space here is inflated to light-year scale — even the nearest body in a
-    // system sits a couple of ly off — so at honest lightspeed it is a two-year
-    // trip and every playable speed above gear 1 is faster than light. The
-    // drive is that declared cheat, measured in ly per REAL second.
+    // ── the drive ──────────────────────────────────────────────────────
+    // THE SHIP HAS MOMENTUM. `vel` is a real velocity VECTOR in the home frame
+    // and it is the only thing that moves the world. Thrust adds to it along
+    // the nose; nothing bleeds it away; turning the ship turns the NOSE and
+    // nothing else. So you can point the camera anywhere while coasting at
+    // speed, and the gap between the crosshair and the green heading marker is
+    // the difference between where you are aimed and where you are going.
     //
-    // IT BEHAVES LIKE A CAR. Speed is signed and it PERSISTS: the accelerator
-    // climbs toward the gear's ceiling, the brake walks it back down through
-    // zero and on into reverse, and letting go of both holds whatever speed you
-    // have. Acceleration is the gear's ceiling divided by its ramp time, so the
-    // gear you are in is the resolution you have. Travel always follows the
-    // nose, so turning steers — including in reverse, where you back away from
-    // wherever the crosshair is pointing.
+    // A GEAR IS AN ACCELERATION, NOT A SPEED. Shifting never changes how fast
+    // you are moving — it changes how hard the engine pushes (top ÷ ramp) and
+    // how fast it is allowed to push you to. Drop into a low gear at speed and
+    // you keep every bit of that speed; the engine simply stops being able to
+    // add more. Kill velocity is the way out of that, and it works from any
+    // speed at all.
+    //
+    // THE UNIT IS CELERITY: home light-years per second of YOUR life, not per
+    // second of home time. That is the honest quantity for a rocket and it is
+    // the one that matters to a pilot — at γ = 7 the distance ahead is
+    // contracted sevenfold, so you cover seven light-years of home distance per
+    // year you actually live through. It is why gear 2, capped at 99% of light,
+    // crosses a solar system in about a minute instead of eight hours, and no
+    // part of that is a cheat:
+    //
+    //     u = |vel| / c   (proper velocity, γβ)     β = u/√(1+u²)     γ = √(1+u²)
+    //
+    // β from that is always below 1, however hard you push — which is exactly
+    // the point. Gears 3–6 abandon it and declare themselves faster-than-light.
     const gi = Math.max(0, Math.min(F.gears.length - 1, (state.gear | 0) - 1));
     const gear = F.gears[gi];
     const top = Math.min(F.warpMaxLySec, gear.topLySec);
-    const floor = -top * F.reverseFraction;
     const pedal = Math.max(-1, Math.min(1, thrustCmd.z));
     const braking = state.running && CTRL.down("killVel");
     const boost = CTRL.down("boost") ? 2 : 1;
     state.throttle = pedal;
     state.throttleTarget = pedal;
 
-    const prevLySec = state.warpLySec;
+    const before = { x: vel.x, y: vel.y, z: vel.z };
+    const speedBefore = v3.length(vel);
+
     if (braking) {
-      // Kill velocity is the one autopilot: it brings you to a dead stop from
-      // either direction and holds there. It does not run on into reverse, and
-      // it lands exactly on zero — an exponential decay never quite does.
-      const rate = (top / gear.ramp) * F.brakeBoost * dt;
-      state.warpLySec = state.warpLySec > 0
-        ? Math.max(0, state.warpLySec - rate)
-        : Math.min(0, state.warpLySec + rate);
+      // The one autopilot, and the only thing that can rescue you from a speed
+      // your current gear could never have produced. Geometric, so it works
+      // from a thousand light-years a second as readily as from walking pace.
+      const k = Math.exp(-dt / F.brakeSeconds);
+      vel.x *= k; vel.y *= k; vel.z *= k;
+      if (v3.length(vel) < top * 1e-6) { vel.x = 0; vel.y = 0; vel.z = 0; }
     } else if (Math.abs(pedal) > 0.02) {
-      const rate = (top / gear.ramp) * pedal * boost;
-      state.warpLySec = Math.max(floor, Math.min(top, state.warpLySec + rate * dt));
-    }
-    // Otherwise: coast. Nothing bleeds the speed away — releasing the pedal is
-    // how you hold a speed, which is why the old speed lock is gone.
+      // W pushes your momentum the way the nose is pointing; S pushes it back
+      // the other way. Fly forwards, spin round, and S is now an accelerator —
+      // that is not a bug, it is what a thruster does.
+      const nose = SF.camera.forward;
+      const a = (top / gear.ramp) * pedal * boost * dt;
+      vel.x += nose.x * a; vel.y += nose.y * a; vel.z += nose.z * a;
 
-    // A downshift while running faster than the new gear brakes you back to its
-    // ceiling rather than snapping. The ease is geometric, because the gears
-    // span twelve orders of magnitude: shedding a factor of 10¹² per second
-    // means gear 6 → gear 1 settles in the same couple of seconds as 3 → 2.
-    const over = Math.abs(state.warpLySec);
-    const ceiling = state.warpLySec < 0 ? -floor : top;
-    if (over > ceiling && ceiling > 0) {
-      const k = Math.exp(-dt / F.downshiftSeconds);
-      const eased = ceiling * Math.pow(over / ceiling, k);
-      state.warpLySec = Math.sign(state.warpLySec) * Math.max(ceiling, eased);
+      // The ceiling caps what the ENGINE can add, never what you already have.
+      // Turning at speed keeps |vel| unchanged and is always allowed.
+      const speedAfter = v3.length(vel);
+      const allowed = Math.max(top, speedBefore);
+      if (speedAfter > allowed && speedAfter > 0) {
+        const k = allowed / speedAfter;
+        vel.x *= k; vel.y *= k; vel.z *= k;
+      }
     }
+    // Otherwise: coast. Momentum is conserved because nothing is acting on you.
 
-    // Steer with the nose: no velocity vector to swing, so the whole sky wheels
-    // to stream past wherever you point.
-    const nose = SF.camera.forward;
-    vdir = { x: nose.x, y: nose.y, z: nose.z };
+    const speed = v3.length(vel);
+    if (speed > 1e-30) vdir = { x: vel.x / speed, y: vel.y / speed, z: vel.z / speed };
+    // At a dead stop vdir keeps its last value: there is no heading, but the
+    // renderer still needs an axis and the last one you travelled is the honest
+    // answer to "which way were you going".
 
     // Honest felt g-force: the proper acceleration an accelerometer bolted to
-    // the ship would read for this frame's change of speed — Δv in m/s over dt,
-    // in gravities. In the high gears it is openly millions of g. That is the
-    // whole bargain: the drive cheats, the readout does not.
-    const dvMS = Math.abs(state.warpLySec - prevLySec) * K.lyM;
+    // the ship would read for this frame's change of velocity — the magnitude
+    // of the VECTOR change, so turning your velocity costs g just as speeding
+    // up does. In the faster-than-light gears it is openly millions of g. That
+    // is the whole bargain: the drive cheats, the readout does not.
+    const dvMS = Math.hypot(vel.x - before.x, vel.y - before.y, vel.z - before.z) * K.lyM;
     state.feltG = dt > 1e-6 ? dvMS / (dt * K.g0) : 0;
 
-    // The two clocks stay honest. Below lightspeed the ship reads a real β and
-    // γ, its clock falls behind home, and the sky aberrates — the signature
-    // relativistic show. At and above c it is an openly faster-than-light
-    // bubble: nothing aberrates and the clocks agree, exactly as an Alcubierre
-    // warp (locally at rest) would behave. Given the scale you cross c almost
-    // at once, so the honest regime is a bright sliver at the very bottom of
-    // the throttle rather than a place you live.
     const cLySec = F.shipYearsPerSecond;              // c expressed in ly/s
-    const dHome = state.warpLySec * dt;               // ly this frame, real secs
-    // Direction is carried by vdir and by the sign of dHome; β is a magnitude,
-    // so everything relativistic reads the speed, not the signed velocity.
-    const speed = Math.abs(state.warpLySec);
-    if (speed > 1e-30 && speed < cLySec) {
-      const beta = speed / cLySec;
+    const dHome = speed * dt;                         // home ly this frame
+    state.warpLySec = speed;                          // what the HUD quotes
+
+    if (gear.honest) {
+      // Real relativity. |vel| is celerity, so β stays under 1 no matter how
+      // hard you push, γ climbs without limit, and the clocks split honestly.
+      const u = speed / cLySec;
+      const gamma = Math.sqrt(1 + u * u);
       state.relativistic = true;
       state.bubble = false;
-      state.beta = beta;
-      state.gamma = 1 / Math.sqrt(1 - beta * beta);
-      state.eta = Math.atanh(Math.min(0.999999999, beta));
-      state.homeYears += state.gamma * dTau;
+      state.beta = u / gamma;
+      state.gamma = gamma;
+      state.eta = Math.asinh(u);                      // rapidity, exactly
+      state.homeYears += gamma * dTau;
     } else {
+      // The declared cheat: locally at rest in a bubble, so nothing aberrates
+      // and the two clocks agree.
       state.relativistic = false;
       state.bubble = speed > 0;
       state.beta = 0; state.gamma = 1; state.eta = 0;
       state.homeYears += dTau;
     }
-    // The odometer is path length, so backing up does not un-travel the trip.
-    state.distanceLy += Math.abs(dHome);
+    state.distanceLy += dHome;
     return dHome;
   }
 
@@ -810,7 +795,9 @@
     // The first three hundred light-years are genuinely, physically safer.
     state.ismDensity = state.distanceLy < K.localBubbleLy
       ? K.ismLocalBubble
-      : K.ismGalactic * (milkyWay ? Math.max(0.05, Math.min(2.2, SF.galaxy.localDensity(milkyWay))) : 1);
+      : K.ismGalactic * (milkyWay
+        ? Math.max(0.05, Math.min(2.2, SF.galaxy.localDensity(milkyWay) * skyDensityNorm))
+        : 1);
 
     if (state.bubble) {
       state.ismWattsPerM2 = 0;
@@ -854,20 +841,64 @@
     }
   }
 
+  /* ── telling the pilot what is happening to them ──────────────────────
+     Two moments in this game look exactly like a rendering fault unless
+     somebody explains them, and both of them are real physics:
+
+       the sky drains away   at 0.6c aberration has swept the stars forward
+                             and Doppler has pushed most of what is left out
+                             of the visible band. The sky really does go dark.
+       the clocks split      at 0.99c your clock runs seven times slower than
+                             home, and the distance ahead is contracted by the
+                             same seven, which is why you are suddenly eating
+                             a solar system in a minute.
+
+     Each gets one card, once per session, on the left where the readout is
+     not. The lamp then stays lit for as long as the condition holds, so the
+     state is legible after the card is gone.                              */
+
+  function checkSignals() {
+    const beta = state.beta;
+    if (state.bubble) {
+      SF.hud.setLamp("ftl", "FASTER THAN LIGHT");
+      SF.hud.notice("ftl",
+        "You are past lightspeed",
+        "Nothing with mass can do this, and the game says so: gears 3 and up are the one "
+        + "declared cheat. Inside the bubble the ship counts as standing still, so the sky "
+        + "stops aberrating, the clocks agree again, and nothing can hit you. Drop to gear 2 "
+        + "to get the real physics back.");
+    } else if (beta >= 0.99) {
+      SF.hud.setLamp("light", "99% OF LIGHT");
+      SF.hud.notice("lightspeed",
+        "99% of light",
+        "Your clock is now running about seven times slower than everyone at home — look at "
+        + "the two times at the top. The road ahead is contracted by the same factor, which "
+        + "is why you are crossing a solar system in a minute rather than eight hours. Push "
+        + "harder and both effects grow without limit; you still never reach c.");
+    } else if (beta >= 0.6) {
+      SF.hud.setLamp("fast", "RELATIVISTIC");
+      SF.hud.notice("darksky",
+        "The sky is going dark",
+        "Nothing has broken. At this speed aberration is sweeping the starlight into the cone "
+        + "ahead of you, and the Doppler shift is dragging everything behind you into the "
+        + "infrared, where your eyes cannot follow it. Slow down and the sky fills back in.");
+    } else {
+      SF.hud.setLamp("", "");
+    }
+  }
+
   /* ── world update ───────────────────────────────────────────────────── */
 
   function advanceWorld(dHome, dHomeYears) {
-    // WHICH WAY IS "AHEAD" IS THE SIGN OF dHome, not the nose. In reverse the
-    // ship is travelling backwards along the nose, so the space that needs
-    // populating — and the space it is safe to recycle out of — swap over. Get
-    // this wrong and backing up empties the sky you are reversing into.
-    const s = dHome < 0 ? -1 : 1;
-    const travel = { x: vdir.x * s, y: vdir.y * s, z: vdir.z * s };
+    // "Ahead" is the direction of TRAVEL, not the nose. Now that the ship has
+    // momentum those are routinely different: fly one way, look another, and
+    // the world still has to be born in front of where you are actually going.
+    const travel = vdir;
 
     // The background sky moves too. It is the layer that carries the sense of
     // motion — the catalogued systems are sparse, and between them there was
     // previously nothing on screen that changed at all.
-    SF.render.stepSkyField(skyField, vdir, dHome);
+    SF.render.stepSkyField(skyField, travel, dHome);
 
     for (let i = systems.length - 1; i >= 0; i -= 1) {
       const system = systems[i];
@@ -902,7 +933,7 @@
 
     // Every position for this frame has settled, so the relative-speed
     // readout can be differenced against last frame's snapshot.
-    updateRelativeSpeed(dHomeYears);
+    updateRelativeSpeed();
 
     // Spawning. The gap is real and Poisson; where it lands is the cheat.
     const spawnAhead = Math.max(
@@ -924,9 +955,21 @@
       }));
     }
 
-    // How thick the star field is here. Leaving the disk empties the sky.
+    // How thick the star field is here, as a MULTIPLE OF THE SKY YOU LAUNCHED
+    // UNDER. The raw disk profile is normalised at the Sun's galactic radius
+    // but not at its height above the plane, so sitting at the launch point it
+    // returned 0.17 and the renderer quietly threw away two magnitudes of
+    // stars — an empty black sky at a standstill, when what you should see
+    // parked in space is the real naked-eye sky. Dividing by the value at the
+    // launch point makes "1" mean "the sky from Earth's neighbourhood", and
+    // leaving the disk still empties it exactly as it did.
+    // The floor is not zero on purpose. Out beyond the disk the local star
+    // density really does collapse, but the sky does not go black: the galaxy
+    // is still behind you, its halo is all around you, and the rest of the
+    // universe is still out there. A floor of 0.08 leaves a thin, real-looking
+    // scatter of stars out there instead of an empty screen.
     state.density = milkyWay
-      ? Math.max(0.015, Math.min(1.8, SF.galaxy.localDensity(milkyWay)))
+      ? Math.max(0.08, Math.min(1.8, SF.galaxy.localDensity(milkyWay) * skyDensityNorm))
       : 1;
   }
 
@@ -1138,21 +1181,20 @@
       dHomeYears = state.homeYears - before;
     } else {
       // Drift to a halt after a crash, so the wreck still carries a little of
-      // whatever it was doing. Off the drive's own speed, not off β, because in
-      // a faster-than-light gear β is zero and the wreck used to stop dead.
-      state.warpLySec *= Math.max(0, 1 - dt * 1.6);
+      // whatever it was doing. The wreck keeps its momentum and sheds it, which
+      // is also why it keeps drifting in a faster-than-light gear where β is 0.
+      const k = Math.max(0, 1 - dt * 1.6);
+      vel.x *= k; vel.y *= k; vel.z *= k;
+      state.warpLySec = v3.length(vel);
       dHome = state.warpLySec * dt * 0.2;
-      state.beta *= Math.max(0, 1 - dt * 1.6);
+      state.beta *= k;
     }
 
-    // Aberration is centred on the direction of TRAVEL, not on the nose, so in
-    // reverse the sky crushes toward the place you are backing into — and the
-    // heading marker, which reads view.forward, follows it there.
-    const vsign = state.warpLySec < 0 ? -1 : 1;
+    // Aberration is centred on the direction of TRAVEL, which is now the
+    // velocity vector rather than the nose — that is exactly what lets you look
+    // around at speed while the sky stays crushed toward where you are going.
     SF.view.setState(
-      state.beta, state.gamma,
-      { x: vdir.x * vsign, y: vdir.y * vsign, z: vdir.z * vsign },
-      state.relativistic,
+      state.beta, state.gamma, vdir, state.relativistic,
       dt,     // the view eases across the lightspeed boundary; see view.js
     );
     // The bubble wall crossfades on the same clock as the aberration, so
@@ -1164,6 +1206,7 @@
     if (state.running) {
       applyEnvironment(dt);
       checkMilestones();
+      checkSignals();
     }
     advanceWorld(dHome, dHomeYears);
     // No collisions inside the lightspeed bubble — you pass through normal

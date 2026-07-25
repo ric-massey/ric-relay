@@ -151,9 +151,9 @@
       // worth the words on the hint line.
       const drive = line();
       keys(drive, "thrustFwd", 1);
-      text(drive, " faster ");
+      text(drive, " thrust where you are pointing ");
       keys(drive, "thrustBack", 1);
-      text(drive, " slower / reverse · release to hold speed");
+      text(drive, " thrust back · you keep your momentum");
 
       const move = line();
       text(move, "thrusters: ");

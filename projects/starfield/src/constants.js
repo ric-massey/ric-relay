@@ -151,57 +151,55 @@
     warpMaxLySec: 4e9,                 // absolute ceiling any gear may name
 
     // ── the gearbox ──────────────────────────────────────────────────────
-    // IT IS A CAR, NOT A SPRING. The drive holds whatever speed it has: hold
-    // the accelerator and speed climbs toward this gear's ceiling, LET GO AND
-    // IT STAYS THERE. The brake takes it back down, through zero, and on into
-    // reverse — there is no throttle to keep pressed and no speed lock to arm,
-    // because coasting is simply what the drive does when you are not asking
-    // it for anything.
+    // A GEAR IS AN ACCELERATION, NOT A SPEED. Changing gear never changes how
+    // fast you are going — it changes how hard the engine can push. The ship
+    // carries a real velocity VECTOR: thrust adds to it along the nose, nothing
+    // bleeds it away, and turning the ship only turns where the next push goes.
+    // That is what lets you look around while travelling, and it is why the
+    // green heading marker and the crosshair come apart.
     //
-    // Each gear is a SPEED RANGE, and that is the whole reason there are six
-    // of them: acceleration is a fixed fraction of the gear's ceiling per
-    // second, so the gear you pick is the resolution you get. Gear 2 gives you
-    // metres of control next to a planet; gear 6 crosses to Andromeda. Ask for
-    // fine control in a high gear and you will overshoot — that is the gearbox
-    // doing its job, not fighting you.
+    //   top    the fastest this gear can push you to — a ceiling on thrust,
+    //          NOT a speed it forces on you. Shift down while going faster
+    //          than it and you simply keep coasting: the engine will no longer
+    //          add speed, only take it away.
+    //   ramp   seconds of full thrust from a standstill to that ceiling, so
+    //          acceleration = top / ramp. This is the number the gear is
+    //          really selecting.
     //
-    //   ramp   seconds from a standstill to this gear's top speed
-    //   top    the ceiling it governs to, in ly per real second
+    // Speeds below are in HOME LIGHT-YEARS PER SECOND OF YOUR OWN LIFE, which
+    // is the only speed a pilot can act on — see the note on celerity in
+    // game.js. Below c that is γβc, so gear 2's ceiling of "99% of light" moves
+    // you seven times further per second than its β suggests, and that is real
+    // relativity doing you a favour rather than a cheat.
     //
-    // Gear 1 is the only honest one: it tops out just below c, so all the real
-    // relativity — aberration, Doppler, the two clocks — lives there, and with
-    // coast-hold you can now park at any β you like and look at the sky. It
-    // takes six seconds to build, so you can watch the crush arrive. Gears 2–6
-    // are the declared faster-than-light cheat, sized to the distances the game
-    // actually contains: a planet is 0.02 ly across, a system spans ~2 ly, its
-    // neighbours are ~4 ly off, the galactic core is 26,670 ly away and
-    // Andromeda is 2.5 Mly.  c ≈ 3.17×10⁻⁸ ly/s. Tuning these by feel is
-    // expected.
+    // GEARS 1 AND 2 ARE HONEST. Gear 1 is realistic spacecraft speed — metres
+    // and kilometres per second, the gear you dock in. Gear 2 climbs to 99% of
+    // light, so all the relativity lives there: aberration, the starbow, the
+    // clocks splitting, and the length contraction that makes crossing a solar
+    // system in it take about a minute. Gears 3–6 are the declared cheat, and
+    // the ladder is sized to the distances the game contains: neighbouring
+    // stars ~4 ly, the galactic core 26,670 ly, Andromeda 2.5 Mly.
+    //   c ≈ 3.1688×10⁻⁸ ly/s. Tuning these by feel is expected.
     gears: [
-      { id: 1, name: "Sub-light", topLySec: 3.13e-8, ramp: 6,
-        note: "Honest physics. Tops out at 99% of light — this is where aberration, Doppler and the two clocks live." },
-      { id: 2, name: "Docking", topLySec: 1e-3, ramp: 2,
-        note: "Faster-than-light, but barely: a planet is 20 seconds wide. The gear for a final approach." },
-      { id: 3, name: "Orbital", topLySec: 0.05, ramp: 2.5,
-        note: "Faster-than-light. Crosses one system — star to outer planets — in under a minute." },
-      { id: 4, name: "Interstellar", topLySec: 1, ramp: 3,
-        note: "Faster-than-light. One light-year per second: the nearest star is a four-second run." },
-      { id: 5, name: "Galactic", topLySec: 1e3, ramp: 4,
-        note: "Faster-than-light. 1,000 ly/s — the black hole at the galactic core is half a minute out." },
+      { id: 1, name: "Thrusters", topLySec: 9.5e-11, ramp: 4, honest: true,
+        note: "Real spacecraft speed — up to about 900 km/s. Slow, precise, and the only gear fine enough to work close to a planet." },
+      { id: 2, name: "Relativistic", topLySec: 2.224e-7, ramp: 8, honest: true,
+        note: "Honest physics all the way to 99% of light. Space contracts ahead of you, so this crosses a solar system — and the sky pays for it." },
+      { id: 3, name: "Interstellar", topLySec: 0.1, ramp: 3,
+        note: "The first faster-than-light gear, and the start of real travel: the nearest star is about forty seconds out." },
+      { id: 4, name: "Fast transit", topLySec: 2, ramp: 3.5,
+        note: "Faster-than-light. Two light-years a second — neighbouring stars in a couple of seconds." },
+      { id: 5, name: "Galactic", topLySec: 2e3, ramp: 4,
+        note: "Faster-than-light. The black hole at the centre of the galaxy is about thirteen seconds away." },
       { id: 6, name: "Intergalactic", topLySec: 5e5, ramp: 5,
-        note: "Faster-than-light. 500,000 ly/s. Andromeda in five seconds, and the home clock notices." },
+        note: "Faster-than-light. 500,000 ly/s — Andromeda in five seconds, and the home clock notices." },
     ],
-    // Reverse is capped below the forward ceiling, the way a car's is. Hold the
-    // brake past a standstill and you back away from whatever you were flying at.
-    reverseFraction: 0.4,
-    // Kill velocity brakes at this multiple of the pedal's rate and lands ON
-    // zero rather than easing toward it — "full stop" has to mean stopped, not
-    // 300 km/s and falling. From a gear's top speed it takes ramp/3 seconds.
-    brakeBoost: 3,
-    // Downshifting sheds overspeed in about this long — measured in log-space,
-    // so dropping from gear 6 to gear 1 takes the same couple of seconds as
-    // dropping from 3 to 2 rather than the forty e-folds a linear decay needs.
-    downshiftSeconds: 0.55,
+    // Kill velocity is the one autopilot and it has to work from ANY speed,
+    // including speeds the current gear could never have reached — otherwise
+    // dropping into gear 1 at a thousand light-years a second would strand you.
+    // It kills the velocity vector geometrically, so a full stop is about two
+    // seconds from anywhere.
+    brakeSeconds: 0.45,
 
     // Flight-assist authority, in gravities: the thrusters that swing your
     // velocity round to match the nose so the ship goes where you point it.

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Starfield — how to fly</title>
   <meta name="description" content="How to fly Starfield: a faster-than-light explorer built on honest relativity. Gears, controls, and what every readout means, before you launch.">
-  <link rel="stylesheet" href="starfield.css">
+  <link rel="stylesheet" href="starfield.css?v=6">
   <style>
     /* The game hides overflow; the manual needs to scroll and breathe. */
     html, body { overflow: auto; height: auto; min-height: 100%; }
@@ -96,67 +96,79 @@
       <p class="eyebrow">Starfield · a faster-than-light explorer</p>
       <h1>You are flying a real relativistic rocket — then cheating past lightspeed on purpose.</h1>
       <p class="lede">
-        Space here is drawn at light-year scale: even the nearest planet in a
-        system is a couple of light-years off, so at honest lightspeed it is a
-        two-year trip. That is why your drive is faster-than-light by design.
-        The physics it is built on stays honest — the drive cheats, and every
-        readout tells you exactly how much.
+        The ship has real momentum and a six-gear drive, and the first two gears
+        are honest relativity — gear 2 takes you to 99% of light, where your
+        clock slows and the road ahead contracts. Only gears 3 and up break the
+        speed limit, they say so while they do it, and every readout tells you
+        exactly what the cheat costs.
       </p>
       <a class="cta" href="fly.html"><span class="arrow">▸</span> Launch flight</a>
     </header>
 
     <section>
-      <h2>The drive works like a car</h2>
+      <h2>The ship has momentum</h2>
       <p>
-        Hold <kbd>W</kbd> and you accelerate toward the current gear's top speed.
-        <strong>Let go and you keep that speed</strong> — the drive coasts, so you
-        set a speed once and fly. <kbd>S</kbd> slows you back down, and if you keep
-        holding it past a standstill you reverse and back away from whatever you
-        were flying at. <kbd>B</kbd> is a full stop from either direction.
-        Turning the ship steers where you go — point the nose and the whole sky
-        wheels to follow, in reverse too.
+        Nothing here is on rails. You carry a real velocity, and thrust adds to
+        it: <kbd>W</kbd> pushes your momentum <strong>the way the nose is
+        pointing</strong>, <kbd>S</kbd> pushes it the other way, and letting go
+        of both leaves you coasting forever. The arrow keys turn the
+        <em>nose</em> and nothing else — so you can look wherever you like at
+        full speed while still travelling the way you were. The green marker is
+        where you are actually going; the crosshair is where you are aimed. When
+        they come apart, that is momentum, and closing the gap costs thrust.
+        <kbd>B</kbd> is a full stop, and it works from any speed at all.
       </p>
-      <h2>Six gears</h2>
+      <h2>A gear is an acceleration, not a speed</h2>
       <p>
-        Each gear is a <em>speed range</em>, and that is the point of having six:
-        acceleration is a fixed share of the gear's ceiling, so the gear you pick
-        is the precision you get. Gear 2 parks you next to a planet; gear 6 gets
-        you to Andromeda. Shift down and the drive brakes you to the new gear's
-        ceiling. Only gear 1 stays inside the speed of light.
+        Changing gear <strong>never changes how fast you are going</strong>. It
+        changes how hard the engine can push, and how fast it is allowed to push
+        you to. Drop into a low gear at speed and you keep every bit of that
+        speed — the engine simply stops being able to add more. That is what
+        makes gear 1 usable for creeping up on a planet and gear 6 usable for
+        crossing to another galaxy.
+      </p>
+      <p>
+        <strong>Gears 1 and 2 are real physics.</strong> Gear 2 climbs to 99% of
+        light, and that is where relativity earns its keep: at that speed your
+        clock runs seven times slower than home and the road ahead is contracted
+        by the same seven, so you cross a solar system in about a minute without
+        ever breaking the speed limit. Gears 3–6 are the declared cheat, and the
+        game says so on screen while they are running.
       </p>
       <div class="cards">
         <div class="card2">
           <span class="n">1</span>
-          <h3>Sub-light</h3>
-          <p>The honest one. Real relativity: aberration crushing the stars ahead,
-             Doppler colour, the two clocks pulling apart. Coast at any fraction of
-             light you like and just look.</p>
-          <span class="top">top = 99% of c</span>
+          <h3>Thrusters</h3>
+          <p>Real spacecraft speed — metres and kilometres per second. Slow,
+             precise, and the only gear fine enough to work close to a planet.</p>
+          <span class="top">up to ~900 km/s</span>
         </div>
         <div class="card2">
           <span class="n">2</span>
-          <h3>Docking</h3>
-          <p>Faster-than-light, but barely — a planet is twenty seconds wide. The
-             gear for a final approach.</p>
-          <span class="top">top ≈ 30,000 × c</span>
+          <h3>Relativistic</h3>
+          <p>Honest physics all the way to 99% of light. The sky crushes into a
+             cone, the clocks come apart, and space contracts ahead of you —
+             which is what crosses a solar system in a minute.</p>
+          <span class="top">up to 99% of light</span>
         </div>
         <div class="card2">
           <span class="n">3</span>
-          <h3>Orbital</h3>
-          <p>Crosses one system, star to outer planets, in under a minute.</p>
-          <span class="top">top = 0.05 ly/s</span>
+          <h3>Interstellar</h3>
+          <p>The first faster-than-light gear, and the start of real travel: the
+             nearest star is about forty seconds out.</p>
+          <span class="top">top = 0.1 ly/s</span>
         </div>
         <div class="card2">
           <span class="n">4</span>
-          <h3>Interstellar</h3>
-          <p>A light-year a second. The nearest star is a four-second run.</p>
-          <span class="top">top = 1 ly/s</span>
+          <h3>Fast transit</h3>
+          <p>Two light-years a second. Neighbouring stars in a couple of seconds.</p>
+          <span class="top">top = 2 ly/s</span>
         </div>
         <div class="card2">
           <span class="n">5</span>
           <h3>Galactic</h3>
-          <p>The black hole at the centre of the galaxy is half a minute away.</p>
-          <span class="top">top = 1,000 ly/s</span>
+          <p>The black hole at the centre of the galaxy is thirteen seconds away.</p>
+          <span class="top">top = 2,000 ly/s</span>
         </div>
         <div class="card2">
           <span class="n">6</span>
@@ -170,14 +182,14 @@
     <section>
       <h2>Controls</h2>
       <table class="keys">
-        <tr><td><kbd>W</kbd></td><td class="desc">Faster — hold to accelerate. <strong>Release and the drive holds that speed.</strong></td></tr>
-        <tr><td><kbd>S</kbd></td><td class="desc">Slower — hold to decelerate. Keep holding past a standstill and you reverse.</td></tr>
-        <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td class="desc">Turn the ship. You go where the nose points.</td></tr>
+        <tr><td><kbd>W</kbd></td><td class="desc">Thrust — pushes your momentum the way the nose points. <strong>Release and you coast.</strong></td></tr>
+        <tr><td><kbd>S</kbd></td><td class="desc">Retro-thrust — pushes your momentum the other way. Hold it past a standstill and you back up.</td></tr>
+        <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td class="desc">Turn the <em>nose</em>. Your velocity does not turn with it — that is the whole flight model.</td></tr>
         <tr><td><kbd>Q</kbd> <kbd>E</kbd></td><td class="desc">Roll left / right.</td></tr>
         <tr><td><kbd>1</kbd>…<kbd>6</kbd></td><td class="desc">Select a gear directly.</td></tr>
         <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td class="desc">Shift down / up a gear.</td></tr>
         <tr><td><kbd>J</kbd></td><td class="desc">Punch it — jump straight to top gear.</td></tr>
-        <tr><td><kbd>B</kbd></td><td class="desc">Full stop — brake to a dead standstill from either direction.</td></tr>
+        <tr><td><kbd>B</kbd></td><td class="desc">Full stop — kills your velocity from any speed, including one the current gear could never reach.</td></tr>
         <tr><td><kbd>Shift</kbd></td><td class="desc">Boost — accelerate and brake twice as hard.</td></tr>
         <tr><td><kbd>A</kbd> <kbd>D</kbd> <kbd>R</kbd> <kbd>F</kbd></td><td class="desc">Strafe sideways / up / down for fine aiming.</td></tr>
         <tr><td><kbd>Tab</kbd></td><td class="desc">Star chart — pick a destination to be guided to.</td></tr>
@@ -195,8 +207,12 @@
         <li><strong>Felt g-force.</strong> The real acceleration a pilot would feel right now —
             honest even when the drive is cheating. In the high gears it reads openly in the
             <span class="accent">millions of g</span>. Nothing is hidden; the cost is just shown.</li>
-        <li><strong>Speed.</strong> A percentage of light while sub-light; light-years per real
-            second once the drive goes faster-than-light.</li>
+        <li><strong>Speed.</strong> A percentage of light in the honest gears — you can never reach
+            <em>c</em>, however hard you push — and light-years per second once the drive cheats.
+            At high γ you cover far more ground per second of your life than the percentage suggests,
+            because the distance ahead of you is genuinely contracted.</li>
+        <li><strong>Closing on.</strong> How fast <em>you</em> are travelling toward the nearest world.
+            Zero when you are parked, which is the number that tells you whether you are about to hit it.</li>
         <li><strong>Hull.</strong> Fly too close to a star and its heat burns you. Watch the bar.</li>
       </ul>
       <p>

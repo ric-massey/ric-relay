@@ -83,7 +83,13 @@
         milestoneNote: el("milestone-note"),
         readout: el("readout"),
         sound: el("sound"),
+        notice: el("notice"),
+        noticeTitle: el("notice-title"),
+        noticeBody: el("notice-body"),
+        lamp: el("lamp"),
+        lampText: el("lamp-text"),
       };
+      el("notice-close")?.addEventListener("click", () => HUD.dismissNotice());
       HUD.buildLedger();
     },
 
@@ -176,29 +182,31 @@
       // Sub-light reads in m/s (rolled up to km/s, then Mm/s); once the drive
       // is faster-than-light, metres per second stop being legible, so it
       // switches to light-years per second with the multiple of c alongside.
-      // Speed is signed now, so the readout is a magnitude plus a direction:
-      // "astern" is the only word a pilot needs for a negative number here,
-      // and it beats printing a minus sign in front of a percentage of light.
+      // SPEED, IN THE TWO UNITS THAT MEAN SOMETHING. In the honest gears the
+      // ship's velocity is stored as celerity — home light-years per second of
+      // the pilot's own life — so the physical speed is βc (never above light,
+      // however hard you push) while the distance you actually eat per second
+      // is the celerity, and at high γ the second is far larger than the first.
+      // Both get shown, because the gap between them IS relativity. In the
+      // faster-than-light gears there is no β to quote, so it reads in ly/s.
       {
-        const signed = state.warpLySec || 0;
-        const speed = Math.abs(signed);
-        const vms = speed * K.lyM;                     // ship speed, m/s
-        const pctC = K.c > 0 ? (vms / K.c) * 100 : 0;
+        const speed = Math.abs(state.warpLySec || 0);   // celerity, ly/ship-s
         let main, side;
-        if (state.bubble) {                            // faster than light
+        if (state.bubble) {                             // declared cheat
           main = `${significant(speed)} ly/s`;
-          side = `${significant(vms / K.c)}× c`;
+          side = `${significant(speed / (K.c / K.lyM))}× c`;
         } else {
+          const vms = state.beta * K.c;                 // honest speed, m/s
+          const pctC = state.beta * 100;
           main = vms < 1 ? `${vms.toFixed(2)} m/s`
             : vms < 1e3 ? `${vms.toFixed(0)} m/s`
             : vms < 1e6 ? `${(vms / 1e3).toFixed(1)} km/s`
             : `${(vms / 1e6).toFixed(1)} Mm/s`;
-          side = pctC < 1 ? `${pctC.toFixed(3)}% of light`
-            : `${pctC.toFixed(1)}% of light`;
+          side = pctC < 0.001 ? "0% of light"
+            : pctC < 1 ? `${pctC.toFixed(3)}% of light`
+            : HUD.formatBeta(state.beta);
         }
-        const way = signed < 0 ? " astern" : "";
-        e.beta.textContent = `${main}${way}  ·  ${side}`;
-        e.beta.dataset.astern = signed < 0 ? "true" : "false";
+        e.beta.textContent = `${main}  ·  ${side}`;
       }
       e.distance.textContent = HUD.formatDistance(state.distanceLy);
       // Felt g-force: honest proper acceleration, however large.
@@ -219,22 +227,30 @@
       e.hullBar.style.width = `${Math.max(0, Math.min(100, hull * 100))}%`;
       e.hullBar.dataset.level = hull > 0.55 ? "ok" : hull > 0.25 ? "warn" : "bad";
 
-      // Speed against the nearest world, in units a pilot can act on. Below
-      // a percent of light this is km/s, because "0.0003% of light" tells you
-      // nothing about whether you are about to hit a planet.
+      // CLOSING RATE: how fast YOU are travelling toward the nearest world.
+      // Your own velocity along the line of sight, so it is exactly zero when
+      // you are parked. It used to quote your speed relative to the body with
+      // the body's own orbital motion folded in, which meant a ship sitting
+      // perfectly still reported 88 km/s because the planet it was watching was
+      // going round its star — a number that told you nothing about whether you
+      // were about to hit it.
       if (e.relSpeed) {
         if (!state.relName) {
-          if (e.relLabel) e.relLabel.textContent = "Speed vs nearest";
-          e.relSpeed.textContent = "— nothing near";
+          if (e.relLabel) e.relLabel.textContent = "Closing on";
+          e.relSpeed.textContent = "\u2014 nothing near";
         } else {
-          if (e.relLabel) e.relLabel.textContent = `Speed vs ${state.relName}`;
-          const v = state.relSpeedC || 0;
-          const closing = state.relClosingC || 0;
-          // "·" for matched: below a metre per second nobody cares about the sign.
-          const arrow = Math.abs(closing) * K.c < 1 ? "·"
-            : closing > 0 ? "\u2193" : "\u2191";
-          e.relSpeed.textContent = `${HUD.formatSpeed(v)} ${arrow}`;
-          e.relSpeed.dataset.matched = v * K.c < 1 ? "true" : "false";
+          if (e.relLabel) e.relLabel.textContent = `Closing on ${state.relName}`;
+          const frac = state.relClosingFrac || 0;
+          const closing = state.relClosingLySec || 0;
+          const still = Math.abs(closing) < 1e-30;
+          const text = state.bubble
+            ? (still ? "0 ly/s" : `${significant(Math.abs(closing))} ly/s`)
+            : HUD.formatSpeed(state.beta * frac);
+          // "\u00b7" for matched: below a metre per second nobody cares about the sign.
+          const slow = !state.bubble && Math.abs(state.beta * frac) * K.c < 1;
+          const arrow = still || slow ? "\u00b7" : closing > 0 ? "\u2193" : "\u2191";
+          e.relSpeed.textContent = `${text} ${arrow}`;
+          e.relSpeed.dataset.matched = still || slow ? "true" : "false";
         }
       }
 
@@ -244,18 +260,75 @@
       const gear = F.gears[gi];
       if (e.gravity && gear) {
         e.gravity.textContent = `${gi + 1} · ${gear.name}`;
-        // Hot from the first faster-than-light gear up: gear 1 is the only one
-        // that stays inside the speed of light.
-        e.gravity.dataset.hot = gi >= 1 ? "true" : "false";
+        // Hot once the gear stops obeying physics, not merely once it is fast.
+        e.gravity.dataset.hot = gear.honest ? "false" : "true";
       }
+      // The gear's ceiling, quoted the way that gear is meant to be read: the
+      // honest ones in the speed they actually reach, the cheating ones in the
+      // distance they eat. "9.5e-11 ly/s" means nothing; "900 km/s" is a speed.
       if (e.assist && gear) {
-        e.assist.textContent = `${significant(gear.topLySec)} ly/s`;
+        if (gear.honest) {
+          const u = gear.topLySec / F.shipYearsPerSecond;    // proper velocity
+          const betaTop = u / Math.sqrt(1 + u * u);
+          e.assist.textContent = betaTop > 0.01
+            ? `${(betaTop * 100).toFixed(betaTop > 0.98 ? 0 : 1)}% of light`
+            : `${((betaTop * K.c) / 1000).toFixed(0)} km/s`;
+        } else {
+          e.assist.textContent = `${significant(gear.topLySec)} ly/s`;
+        }
       }
 
       const cmbK = state.cmbForwardK;
       e.cmb.textContent = cmbK < 1000 ? `${cmbK.toFixed(1)} K` : `${significant(cmbK)} K`;
       e.cmb.dataset.hot = cmbK > 1500 ? "true" : "false";
     },
+
+    /**
+     * The left-hand explainer card. Shown ONCE per session, the first time the
+     * player does something the sky reacts to in a way that looks like a bug
+     * unless somebody tells you it is physics — the stars draining out of the
+     * sky, or the clocks coming apart at lightspeed. It says what is happening
+     * and why, then gets out of the way.
+     */
+    notice(id, title, body) {
+      const e = HUD.els;
+      if (!e.notice || HUD._noticed.has(id)) return false;
+      HUD._noticed.add(id);
+      e.noticeTitle.textContent = title;
+      e.noticeBody.textContent = body;
+      e.notice.hidden = false;
+      e.notice.classList.add("on");
+      clearTimeout(HUD._noticeTimer);
+      HUD._noticeTimer = setTimeout(() => HUD.dismissNotice(), 14000);
+      return true;
+    },
+
+    dismissNotice() {
+      const e = HUD.els;
+      if (!e.notice) return;
+      e.notice.classList.remove("on");
+      clearTimeout(HUD._noticeTimer);
+      HUD._noticeTimer = setTimeout(() => { e.notice.hidden = true; }, 400);
+    },
+
+    _noticed: new Set(),
+
+    /**
+     * The warning lamp. `level` is "" (dark), "fast" (relativistic), "light"
+     * (at lightspeed) or "ftl" (past it, physics off).
+     */
+    setLamp(level, label) {
+      const e = HUD.els;
+      if (!e.lamp) return;
+      if (HUD._lampLevel === level) return;
+      HUD._lampLevel = level;
+      e.lamp.hidden = !level;
+      if (!level) return;
+      e.lamp.dataset.level = level;
+      e.lampText.textContent = label;
+    },
+
+    _lampLevel: null,
 
     announce(milestone) {
       const e = HUD.els;
@@ -357,10 +430,10 @@
           `The gap between them is real — Poisson, exponentially distributed, mean ${(1 / (K.nStarsPerLy3 * Math.PI * F.encounterRadiusLy * F.encounterRadiusLy)).toFixed(1)} ly, which matches the true nearest-neighbour spacing of ${K.meanNeighbourLy.toFixed(1)} ly. Where they sit across the flight path is not: real ones would be scattered through a ${F.encounterRadiusLy} ly disk and you would never meet any of them.`],
         ["Mean free path", `we shortened it by about ${significant(F.trueMeanFreePathLy / 40)}×`,
           `σ = πR☉² = ${significant(sigma)} ly², n = ${K.nStarsPerLy3}/ly³, so ℓ = 1/(nσ) ≈ ${significant(F.trueMeanFreePathLy)} ly. Flying in a straight line through the real galaxy you would cover about 24 quadrillion light-years before hitting a star — roughly a million times the width of the observable universe. Space is so empty that the honest version of this game is unlosable.`],
-        ["The drive", `gears 2–${F.gears.length} are faster than light, by up to ${significant(F.gears[F.gears.length - 1].topLySec / (K.c / K.lyM))}× c`,
-          `This is the headline cheat and the only one you engage on purpose. Space here is drawn at light-year scale — a planet is ${F.planetRadiusLy} ly across and its neighbours are light-years off — so at honest lightspeed crossing one system is a two-year trip. Gear 1 is the real thing: it tops out at 99% of light, and every relativistic effect in the game lives there. ${F.gears.length - 1} gears above it break c outright, from ${significant(F.gears[1].topLySec)} ly/s up to ${significant(F.gears[F.gears.length - 1].topLySec)} ly/s. Inside those the ship is treated as locally at rest in an Alcubierre-style bubble: nothing aberrates, the clocks agree and you cannot hit anything, which is the only reason a jump is survivable. What stays honest is the price tag — the felt g-force readout shows the proper acceleration an accelerometer would really register, openly in the millions of g while a high gear is spooling.`],
-        ["Steering", "nothing — the ship goes where it is pointed",
-          `Speed and heading are separate: the drive carries a signed speed along the nose, so turning the ship turns the trip. Hold ${SF.controls ? SF.controls.labelFor("thrustFwd") : "W"} to accelerate toward the gear's ceiling, LET GO AND IT HOLDS — the drive coasts rather than bleeding away, which is why there is no speed lock. ${SF.controls ? SF.controls.labelFor("thrustBack") : "S"} walks the speed back down, through zero and on into reverse at up to ${Math.round(F.reverseFraction * 100)}% of the gear's ceiling. ${SF.controls ? SF.controls.labelFor("killVel") : "B"} is the one autopilot: a full stop from either direction. In gear 1 this is a real Newtonian burn and near c it is properly suppressed — that is what the lag between the crosshair and the green heading dot is showing you.`],
+        ["The drive", `gears 3\u2013${F.gears.length} are faster than light; gears 1 and 2 are not`,
+          `Gears 1 and 2 are the honest ones, and they run on the real rocket equations. The ship carries a velocity VECTOR with momentum \u2014 thrust adds to it along the nose, nothing bleeds it away, and turning the ship does not turn your travel. It is stored as CELERITY, home light-years per second of your own life, which is the honest quantity for a rocket: \u03b2 = u/\u221a(1+u\u00b2) stays below 1 however hard you push, while \u03b3 = \u221a(1+u\u00b2) grows without limit. That is why gear 2, capped at 99% of light, crosses a solar system in about a minute rather than eight hours \u2014 the road ahead is genuinely contracted by \u03b3, and none of that is a cheat. Gears 3\u2013${F.gears.length} are, and they say so: from ${significant(F.gears[2].topLySec)} up to ${significant(F.gears[F.gears.length - 1].topLySec)} ly/s, with the ship treated as locally at rest in an Alcubierre-style bubble, so nothing aberrates, the clocks agree and nothing can hit you. What stays honest throughout is the price tag \u2014 the felt g-force readout is the proper acceleration an accelerometer would really register, openly in the millions of g in a high gear.`],
+        ["Steering", "nothing \u2014 the ship has real momentum",
+          `Rotating and thrusting are separate, as they are in vacuum. The arrows turn the NOSE; ${SF.controls ? SF.controls.labelFor("thrustFwd") : "W"} pushes your velocity toward wherever the nose points; ${SF.controls ? SF.controls.labelFor("thrustBack") : "S"} pushes it the other way. Let go of both and you coast forever, which is why you can look around at speed and why there is no speed lock. A GEAR IS AN ACCELERATION, NOT A SPEED: shifting never changes how fast you are going, only how hard the engine can push (its ceiling divided by its ramp time) and how fast it may push you to. Drop into a low gear at speed and you keep every bit of that speed \u2014 the engine simply stops being able to add more. ${SF.controls ? SF.controls.labelFor("killVel") : "B"} is the one autopilot, and the only thing that will stop you from a speed the current gear could never have reached.`],
         ["Orbital rates", `scaled by ${F.orbitRate}× and capped at 0.35 rad/frame`,
           `Planets keep their real relative rates (P = √(a³/M), inner worlds fast) and still speed up when you fly fast — time dilation from outside — but the whole thing is slowed by ${F.orbitRate}× so a parked system is watchable, and the cap stops it strobing backwards through the frame rate at extreme γ.`],
         ["Encounter count", `at most ${F.maxSystems} systems at once`,

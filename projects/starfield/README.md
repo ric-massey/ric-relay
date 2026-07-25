@@ -3,8 +3,9 @@
 Fly through the **real** solar neighbourhood and out into the galaxy. The stars
 around you are the actual stars around the Sun, at their catalogued distances and
 directions; the Milky Way's band across your sky is its real disk, seen from
-26,670 ly out along the real galactic plane. You fly a ship with a six-gear drive
-that holds whatever speed you leave it at — and the physics does the rest.
+26,670 ly out along the real galactic plane. You fly a ship with real momentum
+and a six-gear drive whose first two gears are honest relativity — and the
+physics does the rest.
 
 It is the playable companion to
 [The Geometry of Spacetime](../spacetime/index.html): that project *explains*
@@ -47,14 +48,14 @@ No network, no accounts, no data leaves the page.
 
 | Input | Action |
 |-------|--------|
-| **← → ↑ ↓** | turn the ship — you go where the nose points |
+| **← → ↑ ↓** | turn the **nose**. Your velocity does not turn with it — that is the flight model |
 | **Q E** | roll left / right |
-| **W** | faster — hold to accelerate toward the gear's top speed. **Release and it holds that speed** |
-| **S** | slower — hold to decelerate; keep holding past a standstill and you **reverse** |
+| **W** | thrust — pushes your momentum the way the nose points. **Release and you coast** |
+| **S** | retro-thrust — pushes it the other way; hold past a standstill and you back up |
 | **1 … 6** | select a gear directly |
-| **[ ]** | shift down / up a gear (shifting down brakes you to the new ceiling) |
+| **[ ]** | shift down / up a gear (shifting never changes your speed) |
 | **J** | "punch it" — jump straight to top gear |
-| **B** | full stop — brake to a dead standstill from either direction |
+| **B** | full stop — kills your velocity from any speed, including one this gear could never reach |
 | **Shift** | boost — accelerate and brake twice as hard |
 | **A D R F** | strafe sideways / up / down for fine aiming |
 | **Tab** | star chart · **K** rebind controls · **P** pause · **M** sound · **L** ledger |
@@ -71,37 +72,42 @@ sits a couple of light-years off — so at honest lightspeed (3.2×10⁻⁸ ly/s
 a two-year trip. That is why the drive is faster-than-light *by design*: it is the
 one declared cheat, and every readout stays honest about it.
 
-**It behaves like a car, not like a spring.** Speed is *signed* and it
-*persists*: **W** climbs toward the gear's ceiling, **release and it stays
-there**, **S** walks it back down through zero and on into reverse, **B** is a
-full stop. There is no speed lock, because coasting is simply what the drive does
-when you are not asking it for anything.
+**The ship has momentum, and a gear is an acceleration.** You carry a real
+velocity vector: **W** pushes it the way the nose is pointing, **S** pushes it
+back, and letting go of both leaves you coasting forever. The arrow keys turn
+the *nose only* — your velocity does not turn with it, which is why you can look
+around at full speed and why the green heading marker and the crosshair come
+apart. Changing gear **never changes how fast you are going**; it changes how
+hard the engine can push (`top / ramp`) and how fast it may push you to. Drop
+into a low gear at speed and you keep all of it — the engine just stops adding.
+**B** is the one autopilot and works from any speed.
 
-Six gears, each with a **hard top speed it governs to, like a car**. Each one is
-a *speed range*: acceleration is the ceiling divided by the ramp time, so **the
-gear you are in is the resolution you have** — ask for fine control in a high
-gear and you will overshoot. Shifting down brakes you to the new gear's ceiling,
-geometrically, so gear 6 → gear 1 settles in the same couple of seconds as 3 → 2.
+**Gears 1 and 2 are honest.** Velocity is stored as **celerity** — home
+light-years per second of *your own* life — which is the correct quantity for a
+relativistic rocket:
 
-| Gear | Rôle | Top speed | 0 → top |
-|------|------|-----------|---------|
-| **1 · Sub-light** | the honest one: real relativity lives here | 3.13×10⁻⁸ ly/s = **99 % of c** | 6 s |
-| **2 · Docking** | final approach — a planet is 20 s wide | 10⁻³ ly/s ≈ 30,000 c | 2 s |
-| **3 · Orbital** | one system, star to outer planets | 0.05 ly/s | 2.5 s |
-| **4 · Interstellar** | **1 ly/s** — the nearest star in 4 s | 1 ly/s | 3 s |
-| **5 · Galactic** | the galactic core in half a minute | 10³ ly/s | 4 s |
-| **6 · Intergalactic** | Andromeda in five seconds | 5×10⁵ ly/s | 5 s |
+```
+u = |v| / c          β = u / √(1+u²)  <  1  always          γ = √(1+u²)
+```
 
-Reverse is capped at **40 %** of the gear's forward ceiling, the way a car's is.
-Only **gear 1 is inside the speed of light** — and because the drive now coasts,
-it is the first version where you can hold any β you like and watch the sky
-crush at your leisure.
+so β can never reach *c* however hard you push, while γ grows without limit. It
+is also what makes gear 2 playable: at 99% of light γ = 7.09, the road ahead is
+contracted sevenfold, and you cross **4.3 light-minutes in 1.1 minutes of ship
+time** — measured in-game. None of that is a cheat. Gears 3–6 are.
 
-**Felt g-force** is shown honestly — the proper acceleration an accelerometer
-would read, openly in the millions of g when a high gear is spooling. The cheat
-is *shown*, not hidden. There is **no speed banner**: how fast you are going is
-meant to be read off the sky — the stars crushing forward, the Doppler colour,
-the two clocks pulling apart.
+| Gear | Rôle | Ceiling | 0 → ceiling |
+|------|------|---------|-------------|
+| **1 · Thrusters** | real spacecraft speed; the only gear fine enough to work near a planet | ~900 km/s | 4 s |
+| **2 · Relativistic** | honest relativity — crosses a solar system via length contraction | **99% of light** | 8 s |
+| **3 · Interstellar** | first FTL gear; nearest star ~40 s | 0.1 ly/s | 3 s |
+| **4 · Fast transit** | neighbouring stars in seconds | 2 ly/s | 3.5 s |
+| **5 · Galactic** | the galactic core in ~13 s | 10³ ly/s | 4 s |
+| **6 · Intergalactic** | Andromeda in ~5 s | 5×10⁵ ly/s | 5 s |
+
+Two things the sky does at speed look like faults and are not, so each gets a
+one-per-session explainer card on the left plus a warning lamp: **the sky
+draining away** (aberration sweeps starlight forward, Doppler drags the rest into
+the infrared) at 0.6*c*, and **the clocks splitting** at 99% of light.
 
 ---
 
@@ -216,10 +222,11 @@ src/
 
 ## Roadmap
 
-Landed: the six-gear FTL drive — accelerate, **coast**, decelerate, **reverse**,
-with governed top speeds and geometric engine-braking on a downshift —
-nose-steered flight, the 1:1 honest clock, massive body scale, physical
-star-lighting of planets, and the how-to-fly menu.
+Landed: **real momentum** (a velocity vector you can fly away from and look
+around inside), the six-gear drive where **a gear is an acceleration rather than
+a speed**, **honest celerity** so gears 1–2 stay inside *c* and still get you
+somewhere, the 1:1 clock, physical star-lighting of planets, the first-flight
+explainer cards and speed lamp, and the how-to-fly menu.
 
 Next, in dependency order:
 
@@ -231,10 +238,13 @@ Next, in dependency order:
    gears 2–3 come back inside *c* as well.
 3. **Star heat burns the hull** — proximity to a star cooks you.
 4. **Main menu & settings** on the how-to-fly page — set home time, tune gears.
-5. **Real star-chart map + safe routing** — pan/zoom a real map, pick a
+5. **Click a star to inspect it** — click anything in the sky and get its name,
+   how far away it is, and how long getting there would take at your current
+   gear (in both ship time and home time, because those are different answers).
+6. **Real star-chart map + safe routing** — pan/zoom a real map, pick a
    destination (Earth included), and get a course that threads *between* stars.
    Show a **time-to-location / ETA** for the selected destination at current speed.
-6. **Galaxies resolve** into fly-through star fields; real inter-system spacing
+7. **Galaxies resolve** into fly-through star fields; real inter-system spacing
    and real positions, so *everything you see is something actually in space.*
-7. **Real imagery on close approach** — as you near a real catalogued object
+8. **Real imagery on close approach** — as you near a real catalogued object
    (star, nebula, galaxy), fade in an actual photograph of it.
