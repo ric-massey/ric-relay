@@ -41,15 +41,16 @@
       </div>
     </div>
     <div class="grid">
-      <div class="cell"><span class="label sym">γ</span><span class="value" id="gamma">1.000</span></div>
-      <div class="cell"><span class="label">Burn</span><span class="value" id="throttle">0.00 g</span></div>
-      <!-- β needs the full width: past 0.9 the interesting digits are all
-           nines, and clipping them hides the whole point. -->
-      <div class="cell wide"><span class="label sym">β</span><span class="value small" id="beta">0.0000</span></div>
+      <!-- Every label here used to be a Greek letter or an acronym (γ, β, CMB,
+           ISM). They are the correct names and they taught nobody anything:
+           you cannot fly a ship by a symbol you have to look up. Same numbers,
+           said out loud, with a title= for the physics underneath. -->
+      <div class="cell wide"><span class="label">Speed</span><span class="value" id="beta">0% of light</span></div>
+      <div class="cell"><span class="label">Thrust</span><span class="value" id="throttle">0.00 g</span></div>
+      <div class="cell" title="Time dilation (γ): clocks back home run this much faster than yours."><span class="label">Home clock</span><span class="value" id="gamma">1.00×</span></div>
       <div class="cell wide"><span class="label">Travelled</span><span class="value" id="distance">0.0 light-sec</span></div>
-      <div class="cell wide"><span class="label">In your frame</span><span class="value dim" id="contracted">0.0 light-sec</span></div>
-      <div class="cell wide"><span class="label">CMB ahead</span><span class="value" id="cmb">2.7 K</span></div>
-      <div class="cell wide"><span class="label">ISM on hull</span><span class="value" id="ism">0.00 W/m²</span></div>
+      <div class="cell wide" title="The cosmic microwave background, blue-shifted by your speed. It fills all of space at 2.7 K; dead ahead it heats up as you burn, and past about 5,800 K it is as hot as the surface of the Sun."><span class="label">Heat ahead</span><span class="value" id="cmb">2.7 K</span></div>
+      <div class="cell wide" title="Interstellar hydrogen hitting the hull. At speed those loose atoms arrive as a hard particle beam."><span class="label">Hull radiation</span><span class="value" id="ism">0.00 W/m²</span></div>
     </div>
     <div class="hull-row">
       <span class="label">Hull</span>
@@ -94,6 +95,7 @@
     <span>accelerate: <kbd>Space</kbd> · <kbd>Shift</kbd> for 3 g</span>
     <span>brake / stop: <kbd>B</kbd></span>
     <span>jump: <kbd>J</kbd> · chart: <kbd>Tab</kbd> · <kbd>M</kbd> sound · <kbd>P</kbd> pause · <kbd>L</kbd> ledger</span>
+    <span class="legend"><b class="dot-heading"></b> heading &nbsp;<b class="dot-target"></b> destination</span>
   </p>
 
   <div class="corner">
@@ -133,7 +135,7 @@
     <div class="card wide">
       <div class="code">Star chart</div>
       <h1>WHERE TO?</h1>
-      <p class="lede">Pick a destination and a marker guides you to it. Real
+      <p class="lede">Pick a destination and an amber marker guides you to it. Real
         catalogued stars, galaxies and black holes, nearest first. Fly sub-light
         to a nearby star to park and look; jump (<kbd>J</kbd>) for the far ones.</p>
       <div class="map-toolbar">

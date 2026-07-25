@@ -93,7 +93,6 @@
   let vdir = { x: 0, y: 0, z: 1 };
   const systems = [];
   const galaxies = [];
-  const dust = [];
   // Exposed so the scene can be inspected from a console — handy when the
   // thing you want to look at is a black hole 1,560 light-years away.
   SF.world = { systems, galaxies, heading: () => vdir };
@@ -217,27 +216,6 @@
     return { r: Math.round((r + m) * 255), g: Math.round((g + m) * 255), b: Math.round((b + m) * 255) };
   }
 
-  function seedDust() {
-    dust.length = 0;
-    const count = reducedMotion ? 26 : 52;
-    for (let i = 0; i < count; i += 1) dust.push(spawnDust(true));
-  }
-
-  function spawnDust(anywhere) {
-    const spread = 0.55;
-    const ahead = anywhere ? Math.random() * spread * 2 - spread * 0.4 : spread;
-    const side = SF.systems.corridorOffset(vdir, Math.random);
-    const scale = 0.35 / Math.max(0.05, F.corridorRadiusLy);
-    return {
-      p: {
-        x: vdir.x * ahead + side.x * scale,
-        y: vdir.y * ahead + side.y * scale,
-        z: vdir.z * ahead + side.z * scale,
-      },
-      spawnDist: spread,
-    };
-  }
-
   /* ── setup ──────────────────────────────────────────────────────────── */
 
   function restart() {
@@ -287,7 +265,6 @@
       vdir = { x: 0, y: 0, z: 1 };
     }
 
-    seedDust();
     nextSystemAt = SF.systems.nextGapLy();
     gameOverEl.hidden = true;
     pauseEl.hidden = true;
@@ -482,6 +459,7 @@
       dist.className = "m-dist";
       dist.textContent = SF.hud.formatDistance(item.dist);
       const meta = document.createElement("span");
+      meta.className = "m-meta";
       meta.append(name, kind);
       row.append(meta, dist);
       row.addEventListener("click", () => {
@@ -702,13 +680,6 @@
       }
     }
 
-    for (const particle of dust) {
-      particle.p.x -= vdir.x * dHome;
-      particle.p.y -= vdir.y * dHome;
-      particle.p.z -= vdir.z * dHome;
-      if (v3.dot(particle.p, vdir) < -0.05) Object.assign(particle, spawnDust(false));
-    }
-
     // Spawning. The gap is real and Poisson; where it lands is the cheat.
     const spawnAhead = Math.max(
       F.spawnAheadLy,
@@ -861,7 +832,6 @@
       if (body.kind === "star" || body.kind === "blackhole") system.starScreen = p;
     }
 
-    SF.render.drawDust(dust, state);
     drawLabels(drawable);
 
     if (state.bubble) SF.render.drawBubble(now);

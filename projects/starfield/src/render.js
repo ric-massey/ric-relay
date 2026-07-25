@@ -11,14 +11,24 @@
 
    2. THE BACKDROP. It used to rebuild one linear and three radial gradients
       every frame and fill the viewport four times before anything else was
-      painted, despite depending only on W and H. It is now rendered once on
-      resize and blitted.
+      painted, despite depending only on W and H. It was then cached to an
+      offscreen canvas and blitted — and is now gone entirely. The blue
+      gradient and the painted "galactic cirrus" were the brightest thing on
+      an empty screen, and they were not real: nothing catalogued put them
+      there. Space is black. Every photon in this game now comes from
+      something the simulation actually models.
 
    3. DEPTH ORDER. Hazards were drawn in array order while z varied freely
       inside a system, so a distant moon could paint over a near planet.
       Everything is sorted far-to-near now.
 
-   Draw order: backdrop → CMB → sky stars → galaxies → bodies → dust → HUD.
+   Draw order: backdrop → CMB → sky stars → galaxies → bodies → HUD.
+
+   There used to be a fourth layer: pale blue dust streaks that smeared
+   across the view as you accelerated. It read as speed-lines in a cartoon,
+   not as space, and it was the brightest thing on screen at exactly the
+   moment the real starfield was doing its most interesting work. Gone. The
+   only things that light this sky now are stars.
    ══════════════════════════════════════════════════════════════════════ */
 (() => {
   "use strict";
@@ -26,7 +36,7 @@
   const K = SF.K;
   const v3 = SF.v3;
 
-  let canvas, ctx, backdrop, backdropCtx;
+  let canvas, ctx;
   let W = 1, H = 1, dpr = 1;
   const TAU = Math.PI * 2;
 
@@ -42,8 +52,6 @@
     init(target) {
       canvas = target;
       ctx = canvas.getContext("2d", { alpha: false });
-      backdrop = document.createElement("canvas");
-      backdropCtx = backdrop.getContext("2d");
       Render.resize();
     },
 
@@ -58,43 +66,17 @@
       canvas.style.height = `${H}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       SF.camera.setViewport(W, H);
-      Render.buildBackdrop();
     },
 
-    /** Rendered once per resize, then blitted. */
-    buildBackdrop() {
-      backdrop.width = Math.round(W * dpr);
-      backdrop.height = Math.round(H * dpr);
-      const b = backdropCtx;
-      b.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      const sky = b.createLinearGradient(0, 0, 0, H);
-      sky.addColorStop(0, "#0a1230");
-      sky.addColorStop(0.42, "#060b1e");
-      sky.addColorStop(1, "#02040c");
-      b.fillStyle = sky;
-      b.fillRect(0, 0, W, H);
-
-      // Faint galactic cirrus. Static, because it is the far background.
-      const clouds = [
-        [W * 0.17, H * 0.02, Math.max(W, H) * 0.58, "rgba(46,62,150,.16)"],
-        [W * 0.93, H * 0.28, Math.max(W, H) * 0.48, "rgba(98,36,116,.10)"],
-        [W * 0.48, H * 0.92, Math.max(W, H) * 0.56, "rgba(16,94,113,.09)"],
-      ];
-      for (const [x, y, radius, color] of clouds) {
-        const glow = b.createRadialGradient(x, y, 0, x, y, radius);
-        glow.addColorStop(0, color);
-        glow.addColorStop(1, "transparent");
-        b.fillStyle = glow;
-        b.fillRect(0, 0, W, H);
-      }
-    },
-
+    // Not quite #000: a few counts of blue keep the darkest stars from
+    // clipping to pure black on cheap panels, and it matches the page
+    // background so the canvas edge never shows a seam.
     beginFrame() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
-      ctx.drawImage(backdrop, 0, 0, W, H);
+      ctx.fillStyle = "#01020a";
+      ctx.fillRect(0, 0, W, H);
     },
 
     /* ── the cosmic microwave background ───────────────────────────────
@@ -638,27 +620,6 @@
       ctx.restore();
     },
 
-    /* ── the interstellar medium, as streaks ───────────────────────────  */
-    drawDust(dust, state) {
-      const streak = Math.min(0.4, state.beta * 0.34);
-      const cx = SF.camera.cx, cy = SF.camera.cy;
-      const velScreen = SF.camera.project(SF.view.forward, 0);
-      const ox = velScreen ? velScreen.x : cx;
-      const oy = velScreen ? velScreen.y : cy;
-      for (const particle of dust) {
-        const p = SF.view.project(particle.p, 0);
-        if (!p) continue;
-        if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) continue;
-        const near = Math.max(0, 1 - p.dist / particle.spawnDist);
-        ctx.strokeStyle = `rgba(178,214,255,${(0.10 + near * 0.4).toFixed(3)})`;
-        ctx.lineWidth = Math.max(0.4, 1.2 * near);
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x - (p.x - ox) * streak, p.y - (p.y - oy) * streak);
-        ctx.stroke();
-      }
-    },
-
     /* ── overlays ──────────────────────────────────────────────────────  */
     drawLabel(text, sub, x, y, alpha, colour = "rgba(190,214,255,") {
       if (alpha < 0.03) return;
@@ -682,7 +643,21 @@
       ctx.globalAlpha = 1;
     },
 
-    /** Nose reticle, plus a prograde marker for where you are actually going. */
+    /**
+     * The nose reticle, plus the green heading dot.
+     *
+     * TWO MARKERS, AND THE DIFFERENCE BETWEEN THEM IS THE PHYSICS. The faint
+     * blue crosshair is where the nose points. The green dot is where the
+     * ship is actually going. Turn at walking pace and they sit on top of
+     * each other; turn at 0.99c and the green dot lags behind the nose and
+     * refuses to catch up, because transverse acceleration is suppressed by
+     * a/(γβ). That lag is not a bug to be papered over — it is the reason
+     * you cannot swerve at relativistic speed, and showing it is the only
+     * way the player ever finds out.
+     *
+     * Green is reserved for this and nothing else on the canvas; the
+     * waypoint guide is amber so the two can never be confused.
+     */
     drawReticle(state) {
       const cx = SF.camera.cx, cy = SF.camera.cy;
       ctx.strokeStyle = "rgba(143,174,255,.34)";
@@ -695,18 +670,34 @@
       ctx.moveTo(cx, cy + 7); ctx.lineTo(cx, cy + 18);
       ctx.stroke();
 
-      // Prograde. At low speed it sits under the reticle; at high γ the
-      // velocity vector stops following the nose and it drifts away, which
-      // is the honest reason you cannot turn at relativistic speed.
       const vel = SF.camera.project(SF.view.forward, 0);
-      if (vel && Math.hypot(vel.x - cx, vel.y - cy) > 14) {
-        ctx.strokeStyle = "rgba(120,255,196,.62)";
+      if (vel) {
+        const apart = Math.hypot(vel.x - cx, vel.y - cy);
+        // A solid dot, always drawn — it used to appear only once it had
+        // drifted 14px off the nose, so at low speed there was no green dot
+        // at all and the one place it showed up was the one place it was
+        // least explicable.
+        ctx.fillStyle = "rgba(120,255,196,.92)";
         ctx.beginPath();
-        ctx.arc(vel.x, vel.y, 7, 0, TAU);
-        ctx.moveTo(vel.x - 12, vel.y); ctx.lineTo(vel.x - 7, vel.y);
-        ctx.moveTo(vel.x + 7, vel.y); ctx.lineTo(vel.x + 12, vel.y);
-        ctx.moveTo(vel.x, vel.y - 12); ctx.lineTo(vel.x, vel.y - 7);
-        ctx.stroke();
+        ctx.arc(vel.x, vel.y, 3.5, 0, TAU);
+        ctx.fill();
+
+        // Once it separates from the nose it gets a ring and a word, because
+        // that is the moment it stops being decoration and starts being the
+        // thing you steer by.
+        if (apart > 14) {
+          ctx.strokeStyle = "rgba(120,255,196,.62)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(vel.x, vel.y, 9, 0, TAU);
+          ctx.stroke();
+          ctx.font = "600 9px ui-monospace, SFMono-Regular, Menlo, monospace";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "rgba(120,255,196,.75)";
+          ctx.fillText("HEADING", vel.x, vel.y + 20);
+          ctx.textAlign = "left";
+        }
       }
 
       // The starbow ring: where D = 1 and the sky keeps its true colour.
@@ -730,7 +721,7 @@
      * marker on it if it is on screen, or an arrow pinned to the screen edge
      * pointing toward it if it is off screen or behind you — plus its name and
      * current distance. This is what turns "pick a place on the map" into
-     * "steer until the diamond is under your nose."
+     * "steer until the amber diamond sits on the green heading dot."
      */
     drawWaypoint(name, pos) {
       const dist = Math.hypot(pos.x, pos.y, pos.z);
@@ -740,7 +731,8 @@
       const cam = SF.camera.toCamera(app.dir);
       const cx = SF.camera.cx, cy = SF.camera.cy;
       const inset = 48;
-      const colour = "120,255,196";
+      // Amber, not green: green is the heading dot and only the heading dot.
+      const colour = "255,190,92";
       const distText = SF.hud ? SF.hud.formatDistance(dist) : `${dist.toFixed(1)} ly`;
 
       // On screen: a diamond right on the target.

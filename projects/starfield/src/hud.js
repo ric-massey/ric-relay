@@ -10,9 +10,11 @@
    lands as hard as watching those numbers come apart. Fly to Andromeda and
    it reads fifteen years against two and a half million.
 
-   Length contraction is the mirror image, so it is shown too: the road
-   ahead physically shortens by 1/γ in your frame, which is why the trip is
-   survivable at all.
+   The panel names things the way a pilot would, not the way a textbook
+   does: Speed reads as a percentage of light rather than β, and γ reads as
+   "Home clock 87×" rather than a bare Greek letter. The symbols are still
+   what the code computes — they are just not what the player is asked to
+   read mid-flight. Same for the death notices below.
 
    THE LEDGER (§14) states exactly where the game cheats, with the
    arithmetic, because the honest version of this game is unlosable:
@@ -38,12 +40,18 @@
     if (!Number.isFinite(value)) return "—";
     if (value === 0) return "0";
     const abs = Math.abs(value);
-    if (abs >= 1e6 || abs < 1e-3) {
-      const exp = Math.floor(Math.log10(abs));
+    const exp = Math.floor(Math.log10(abs));
+    // toPrecision() switches to "7.07e+5" notation as soon as the exponent
+    // reaches `digits`, which is well below the 1e6 this used to test for —
+    // so γ = 707,106 rendered as raw JS exponential in the middle of an
+    // otherwise typeset HUD. Hand every such case to the superscript branch.
+    if (exp >= digits || exp < -4) {
       const mantissa = value / Math.pow(10, exp);
       return `${mantissa.toFixed(2)}×10${superscript(exp)}`;
     }
-    return value.toPrecision(digits).replace(/\.?0+$/, "");
+    // Strip trailing zeros only *after* a decimal point. The old pattern was
+    // /\.?0+$/, which happily turned "100" into "1".
+    return value.toPrecision(digits).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
   }
 
   function superscript(n) {
@@ -61,7 +69,6 @@
         gamma: el("gamma"),
         beta: el("beta"),
         distance: el("distance"),
-        contracted: el("contracted"),
         throttle: el("throttle"),
         ism: el("ism"),
         hull: el("hull"),
@@ -111,11 +118,35 @@
       return significant(gamma);
     },
 
+    /** γ for the panel: a multiplier, because that is what it does to clocks. */
+    formatTimeFactor(gamma) {
+      if (!Number.isFinite(gamma)) return "—";
+      if (gamma < 10) return `${gamma.toFixed(2)}×`;
+      if (gamma < 1e5) return `${Math.round(gamma).toLocaleString()}×`;
+      return `${significant(gamma)}×`;
+    },
+
+    /**
+     * Speed as a plain percentage of light, because "0.9994" means nothing at
+     * a glance and "99.94% of light" means everything. Past 99% the trailing
+     * nines are the whole story — each one is another factor in γ — so they
+     * are kept rather than rounded away.
+     */
     formatBeta(beta) {
-      if (beta < 0.9) return beta.toFixed(4);
-      // Past 0.9 the interesting digits are all nines, so show them.
-      const nines = beta.toFixed(12).replace(/0+$/, "");
-      return nines.length > 13 ? beta.toFixed(11) : nines;
+      const pct = beta * 100;
+      if (pct < 0.01) return "0% of light";
+      if (pct < 1) return `${pct.toFixed(3)}% of light`;
+      if (pct < 99) return `${pct.toFixed(1)}% of light`;
+
+      // Past 99% show one digit more than the gap to c, so each new nine
+      // appears as it is earned. Clamped to the same ceiling rapidity uses
+      // (β ≤ 0.999999999999) because rounding must never be allowed to print
+      // the one speed this game exists to say you cannot reach.
+      const gap = Math.max(1 - beta, 1e-12);
+      const decimals = Math.min(12, Math.ceil(-Math.log10(gap)) + 1);
+      const shown = Math.min(pct, 99.9999999999);
+      const digits = shown.toFixed(decimals).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+      return `${digits}% of light`;
     },
 
     update(state) {
@@ -123,11 +154,9 @@
       if (!e.shipTime) return;
       e.shipTime.textContent = HUD.formatYears(state.shipYears);
       e.homeTime.textContent = HUD.formatYears(state.homeYears);
-      e.gamma.textContent = HUD.formatGamma(state.gamma);
+      e.gamma.textContent = HUD.formatTimeFactor(state.gamma);
       e.beta.textContent = HUD.formatBeta(state.beta);
       e.distance.textContent = HUD.formatDistance(state.distanceLy);
-      // The road ahead, as *you* measure it: shortened by 1/γ.
-      e.contracted.textContent = HUD.formatDistance(state.distanceLy / state.gamma);
       e.throttle.textContent = state.bubble
         ? "FTL JUMP"
         : `${state.throttle >= 0 ? "" : "−"}${Math.abs(state.throttle).toFixed(2)} g`;
@@ -164,12 +193,12 @@
 
     /**
      * A death notice with the real numbers in it. "Collision with a planet"
-     * tells you nothing; "impact with a 1.4 R⊕ temperate world at γ = 87,
-     * 4.2 seconds of ship time, six minutes back home" tells you what
+     * tells you nothing; "impact with a 1.4 R⊕ temperate world at 99.99% of
+     * light, 4.2 seconds of ship time, six minutes back home" tells you what
      * happened and what it cost.
      */
     describeDeath(cause, state) {
-      const at = `γ = ${HUD.formatGamma(state.gamma)}`;
+      const at = `${HUD.formatBeta(state.beta)}, home clocks running ${HUD.formatTimeFactor(state.gamma)}`;
       const clocks = `Ship time ${HUD.formatYears(state.shipYears)} · home time ${HUD.formatYears(state.homeYears)}.`;
       const travelled = `Distance covered ${HUD.formatDistance(state.distanceLy)}.`;
 
@@ -249,7 +278,7 @@
         ["Mean free path", `we shortened it by about ${significant(F.trueMeanFreePathLy / 40)}×`,
           `σ = πR☉² = ${significant(sigma)} ly², n = ${K.nStarsPerLy3}/ly³, so ℓ = 1/(nσ) ≈ ${significant(F.trueMeanFreePathLy)} ly. Flying in a straight line through the real galaxy you would cover about 24 quadrillion light-years before hitting a star — roughly a million times the width of the observable universe. Space is so empty that the honest version of this game is unlosable.`],
         ["Steering", "the ship flies where its nose points",
-          `A real ship keeps its old velocity when it turns. This one bleeds velocity toward the nose at a rate of a/(γβ), which is the real transverse-acceleration suppression — so you genuinely cannot turn at high γ — but the two vectors are more tightly coupled than physics requires. The prograde marker shows the difference.`],
+          `A real ship keeps its old velocity when it turns. This one bleeds velocity toward the nose at a rate of a/(γβ), which is the real transverse-acceleration suppression — so you genuinely cannot turn at high speed — but the two vectors are more tightly coupled than physics requires. The green heading dot shows the difference: the crosshair is where the nose points, the dot is where you are actually going.`],
         ["Orbital rates", `scaled by ${F.orbitRate}× and capped at 0.35 rad/frame`,
           `Planets keep their real relative rates (P = √(a³/M), inner worlds fast) and still speed up when you fly fast — time dilation from outside — but the whole thing is slowed by ${F.orbitRate}× so a parked system is watchable, and the cap stops it strobing backwards through the frame rate at extreme γ.`],
         ["Encounter count", `at most ${F.maxSystems} systems at once`,

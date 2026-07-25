@@ -13,7 +13,7 @@
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
-html, body { margin: 0; height: 100%; overflow: hidden; background: #02040c; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #01020a; }
 body { font-family: var(--mono); color: var(--ink); }
 canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
 
@@ -37,11 +37,7 @@ a.back:hover, a.back:focus-visible { color: #fff; border-color: #4d5aa0; }
   display: block; color: var(--faint); font-size: .55rem;
   letter-spacing: .13em; text-transform: uppercase;
 }
-/* γ and β must stay lowercase — uppercasing turns them into Γ and Β, which
-   are different letters that mean nothing here. */
-.readout .label.sym { text-transform: none; font-size: .72rem; letter-spacing: 0; }
 .readout .value { display: block; color: #b9c9ff; font-size: .82rem; }
-.readout .value.dim { color: var(--dim); }
 
 .clocks { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
 .clock .value { color: var(--good); font-size: .88rem; }
@@ -52,7 +48,6 @@ a.back:hover, a.back:focus-visible { color: #fff; border-color: #4d5aa0; }
   margin-top: .55rem; padding-top: .5rem; border-top: 1px solid rgba(42, 49, 99, .7);
 }
 .cell.wide { grid-column: span 2; }
-.readout .value.small { font-size: .74rem; }
 #cmb[data-hot="true"], #ism[data-hot="true"] { color: var(--hot); }
 
 .hull-row {
@@ -96,6 +91,19 @@ p.hint kbd {
   display: inline-block; margin: 0 .1em; padding: 0 .25em;
   border: 1px solid var(--line); border-radius: 3px; color: var(--dim); font: inherit;
 }
+/* Two coloured pips naming the only two markers on the canvas, so nobody has
+   to guess what the green dot is. Colours are hard-coded to match the canvas
+   literals in render.js drawReticle/drawWaypoint.
+
+   flex-basis gives it its own row: as the last item on a shared line it ran
+   straight under the "where we cheat" button in the bottom-right corner. */
+p.hint .legend { flex-basis: 100%; }
+p.hint .legend b {
+  display: inline-block; width: .42rem; height: .42rem; border-radius: 50%;
+  vertical-align: baseline; margin-right: .15rem;
+}
+p.hint .legend .dot-heading { background: rgb(120, 255, 196); }
+p.hint .legend .dot-target { background: rgb(255, 190, 92); }
 
 .corner {
   position: fixed; right: 1rem; bottom: max(1rem, env(safe-area-inset-bottom));
@@ -241,9 +249,12 @@ p.hint kbd {
 .map-row:hover, .map-row:focus-visible {
   background: rgba(52, 76, 168, .28); border-color: #4d5aa0; outline: none;
 }
+.map-row .m-meta { display: flex; align-items: baseline; gap: .5rem; min-width: 0; }
 .map-row .m-name { color: #cfe0ff; font-size: .82rem; letter-spacing: .02em; }
 .map-row .m-kind { color: var(--faint); font-size: .62rem; text-transform: uppercase; letter-spacing: .1em; }
-.map-row .m-dist { color: var(--good); font-size: .74rem; justify-self: end; white-space: nowrap; }
+/* Amber, matching the waypoint marker these rows set — green on the chart
+   would point at the one colour that means "your heading" everywhere else. */
+.map-row .m-dist { color: #ffbe5c; font-size: .74rem; justify-self: end; white-space: nowrap; }
 .map-row.current { border-color: var(--good); background: rgba(120, 255, 196, .12); }
 .map-empty { color: var(--dim); font-size: .78rem; padding: 1rem 0; }
 
