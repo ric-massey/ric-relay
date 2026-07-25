@@ -26,19 +26,17 @@
   const v3 = SF.v3;
 
   const View = SF.view = {
-    // WHAT YOU SEE, WHICH IS NOT QUITE WHAT IS TRUE. `state.beta` is the
-    // ship's honest speed and the HUD reads that. These are the values the
-    // renderer aberrates by, and they EASE toward the honest ones.
+    // WHAT YOU SEE. These are the values the renderer aberrates by, and they
+    // ease toward the ship's honest β so that an abrupt change of speed is a
+    // short crossfade rather than a cut.
     //
-    // The reason is the lightspeed boundary. Below c the ship is a real
-    // relativistic rocket and the sky is crushed into a cone; inside a
-    // faster-than-light bubble it is locally at rest and nothing aberrates at
-    // all. Both are honest, and crossing between them takes a single frame —
-    // so the entire sky used to snap from "fully crushed at γ = 7" to "flat"
-    // in 16 ms, every time a downshift dropped you back under c. Easing β
-    // across the boundary makes that a half-second transition instead of a
-    // cut. Nothing about the physics changes: it is the same two states, with
-    // the crossfade the frame rate cannot otherwise give you.
+    // THERE IS ONLY ONE REGIME. Every gear aberrates, from a standstill to the
+    // top of the ladder, because β is continuous the whole way up: celerity has
+    // no ceiling but β = u/√(1+u²) never reaches 1. The high gears used to
+    // switch all of this off and paint a blue bubble wall instead, which is why
+    // shifting into one rewrote the entire screen. Now they simply have a
+    // larger γ, and the sky does what an enormous γ does — tightens the cone
+    // toward a point and puts everything else in the dark.
     beta: 0,
     gamma: 1,
     forward: { x: 0, y: 0, z: 1 },
@@ -47,7 +45,9 @@
 
     setState(beta, gamma, forward, relativistic = true, dt = 0) {
       View.forward = forward;
-      // Inside the bubble the target is zero — no aberration, no Doppler.
+      // There is no second regime to cross any more: β is continuous from a
+      // standstill to the top gear, so the easing is only here to smooth a
+      // sudden change (a full stop, a relaunch) rather than to hide a switch.
       const target = relativistic ? beta : 0;
       if (dt > 0) {
         const k = 1 - Math.exp(-dt / View.easeSeconds);
@@ -103,12 +103,14 @@
       }
 
       const denom = 1 + beta * cosT;
-      return {
-        dir: out,
-        cos: cosA,
-        D: 1 / (View.gamma * (1 - beta * cosA)),
-        mag: Math.sqrt((1 - beta * beta)) / denom,
-      };
+      // (1 − β cos θ′) via the stable split in relativity.js: past γ ≈ 10⁸ the
+      // direct form cancels to exactly zero and every Doppler factor in the
+      // sky comes back Infinity.
+      const gam = View.gamma;
+      const D = 1 / (gam * SF.rel.oneMinusBetaCos(cosA, beta, gam));
+      // √(1−β²) is 1/γ exactly, and unlike the square root it does not
+      // underflow to zero when β rounds to 1.
+      return { dir: out, cos: cosA, D, mag: (1 / gam) / denom };
     },
 
     /**

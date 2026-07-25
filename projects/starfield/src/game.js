@@ -36,6 +36,14 @@
   // below a millionth of a g and costs more to compute than it changes.
   const GRAVITY_REACH_LY = 40;
 
+  // The fastest an honest gear can push you to. Above this the hull is openly
+  // fiction no matter which gear is selected, so that shifting down out of a
+  // high gear coasts you back into the real physics instead of killing you the
+  // instant the lever moves.
+  const HONEST_MAX_LYSEC = F.gears
+    .filter((g) => g.honest)
+    .reduce((m, g) => Math.max(m, g.topLySec), 0);
+
   const canvas = document.getElementById("sky");
   const gameOverEl = document.getElementById("game-over");
   const lossCode = document.getElementById("loss-code");
@@ -54,12 +62,13 @@
     throttle: 0, throttleTarget: 0,
     shipYears: 0, homeYears: 0, distanceLy: 0,
     hull: 1,
+    // "This gear's hull is fiction" — damage and collisions off. It is no
+    // longer a separate physics regime; the sky aberrates in every gear.
     bubble: false,
-    bubbleFade: 0,  // 0…1, the bubble wall crossfading in and out with it
-    // Drive speed, ly per REAL second. SIGNED: positive along the nose,
-    // negative astern. It persists — releasing the pedal holds it.
+    // Speed as CELERITY: home light-years per second of ship time. Always
+    // positive; direction lives in the velocity vector.
     warpLySec: 0,
-    gear: 1,        // 1 Sub-light … 6 Intergalactic, see F.gears
+    gear: 1,        // 1 Thrusters … 6 Intergalactic, see F.gears
     feltG: 0,       // honest proper acceleration this frame, in gravities
     relativistic: true,
     ismDensity: K.ismLocalBubble,
@@ -243,7 +252,6 @@
     state.shipYears = 0; state.homeYears = 0; state.distanceLy = 0;
     state.hull = 1;
     state.bubble = false;
-    state.bubbleFade = 0;
     state.warpLySec = 0;
     state.gear = 1;
     state.feltG = 0;
@@ -673,9 +681,16 @@
     // +1 is the accelerator, −1 the brake. The other axes only aim.
     const stick = state.running ? translationStick() : { x: 0, y: 0, z: 0 };
     const ease = Math.min(1, dt * 6);
-    thrustCmd.x += (Math.max(-1, Math.min(1, stick.x)) - thrustCmd.x) * ease;
-    thrustCmd.y += (Math.max(-1, Math.min(1, stick.y)) - thrustCmd.y) * ease;
-    thrustCmd.z += (Math.max(-1, Math.min(1, stick.z)) - thrustCmd.z) * ease;
+    // ASYMMETRIC ON PURPOSE. Spooling up is eased so a tap is a nudge and the
+    // engine feels like it has mass — but LETTING GO CUTS THE ENGINE DEAD. The
+    // symmetric ease left thrust decaying for a third of a second after the key
+    // came up, which reads as the ship still creeping toward some target speed
+    // when what you asked for was "stop pushing". Release means release; the
+    // speed you had at that instant is the speed you keep.
+    const push = (cur, want) => (want === 0 ? 0 : cur + (want - cur) * ease);
+    thrustCmd.x = push(thrustCmd.x, Math.max(-1, Math.min(1, stick.x)));
+    thrustCmd.y = push(thrustCmd.y, Math.max(-1, Math.min(1, stick.y)));
+    thrustCmd.z = push(thrustCmd.z, Math.max(-1, Math.min(1, stick.z)));
 
     // The pilot's clock is honest: one real second is one ship second.
     const dTau = F.shipYearsPerSecond * dt;
@@ -764,25 +779,38 @@
     const dHome = speed * dt;                         // home ly this frame
     state.warpLySec = speed;                          // what the HUD quotes
 
-    if (gear.honest) {
-      // Real relativity. |vel| is celerity, so β stays under 1 no matter how
-      // hard you push, γ climbs without limit, and the clocks split honestly.
-      const u = speed / cLySec;
-      const gamma = Math.sqrt(1 + u * u);
-      state.relativistic = true;
-      state.bubble = false;
-      state.beta = u / gamma;
-      state.gamma = gamma;
-      state.eta = Math.asinh(u);                      // rapidity, exactly
-      state.homeYears += gamma * dTau;
-    } else {
-      // The declared cheat: locally at rest in a bubble, so nothing aberrates
-      // and the two clocks agree.
-      state.relativistic = false;
-      state.bubble = speed > 0;
-      state.beta = 0; state.gamma = 1; state.eta = 0;
-      state.homeYears += dTau;
-    }
+    // EVERY GEAR IS RELATIVISTIC. There is no second regime and no bubble the
+    // physics switches off inside — the same three lines run from a standstill
+    // to five hundred thousand light-years a second, because celerity has no
+    // ceiling and β never reaches 1 whatever you do with it. That is what the
+    // sky is showing you: keep pushing and γ keeps climbing, the aberration
+    // cone keeps tightening, and the starlight keeps blueshifting out of the
+    // visible band until all that is left is a point of light dead ahead and
+    // darkness everywhere else. The high gears do not look different because
+    // they are a different mode; they look different because γ is 10¹³.
+    //
+    // The clocks follow the same equation throughout, which is how a five
+    // second run to Andromeda still costs two and a half million years back
+    // home. What the high gears DO get is a hull that does not care — see
+    // applyEnvironment. That, and the acceleration, are the whole cheat now.
+    const u = speed / cLySec;
+    const gamma = Math.sqrt(1 + u * u);
+    state.relativistic = true;
+    state.beta = u / gamma;
+    state.gamma = gamma;
+    state.eta = Math.asinh(u);                        // rapidity, exactly
+    state.homeYears += gamma * dTau;
+    // WHETHER THE HULL IS FICTION IS A PROPERTY OF YOUR SPEED, NOT YOUR GEAR
+    // LEVER. This used to be `!gear.honest`, which meant downshifting out of a
+    // high gear switched the hull back on while you were still coasting at
+    // γ = 10⁶ — and the interstellar medium killed you inside one frame, for
+    // the crime of moving the gear lever. Changing gear must never kill you.
+    //
+    // So: above anything an honest gear could have got you to, the hull is
+    // openly fiction whatever gear is selected, and it comes back on by itself
+    // as you brake down through that speed. Inside the honest range the walls
+    // are real and the stakes are back.
+    state.bubble = speed > HONEST_MAX_LYSEC;
     state.distanceLy += dHome;
     return dHome;
   }
@@ -799,15 +827,20 @@
         ? Math.max(0.05, Math.min(2.2, SF.galaxy.localDensity(milkyWay) * skyDensityNorm))
         : 1);
 
+    // THE READOUTS ARE ALWAYS HONEST, even in the gears that cannot hurt you.
+    // They used to be blanked to 0 W/m² and 2.7 K inside the bubble, which had
+    // the panel calmly reporting deep-space calm while the screen showed a
+    // searing point ahead. The numbers are what a real hull would be taking.
+    state.ismWattsPerM2 = SF.rel.ismPowerPerM2(state.ismDensity, state.beta, state.gamma);
+    state.cmbForwardK = SF.rel.cmbTemperature(1, state.beta, state.gamma);
+
+    // ...and THIS is the cheat: in the high gears the hull simply does not
+    // care. Everything else about them — the aberration, the Doppler, the two
+    // clocks, the numbers above — is the real thing.
     if (state.bubble) {
-      state.ismWattsPerM2 = 0;
-      state.cmbForwardK = K.tCMB;
       state.hull = Math.min(1, state.hull + dt * 0.05);
       return;
     }
-
-    state.ismWattsPerM2 = SF.rel.ismPowerPerM2(state.ismDensity, state.beta, state.gamma);
-    state.cmbForwardK = SF.rel.cmbTemperature(1, state.beta, state.gamma);
 
     const ismDamage = state.ismWattsPerM2 / HULL_ISM_CAPACITY;
     const cmbFlux = K.sigmaSB * Math.pow(state.cmbForwardK, 4);
@@ -860,13 +893,14 @@
   function checkSignals() {
     const beta = state.beta;
     if (state.bubble) {
-      SF.hud.setLamp("ftl", "FASTER THAN LIGHT");
+      SF.hud.setLamp("ftl", "HULL OFFLINE");
       SF.hud.notice("ftl",
-        "You are past lightspeed",
-        "Nothing with mass can do this, and the game says so: gears 3 and up are the one "
-        + "declared cheat. Inside the bubble the ship counts as standing still, so the sky "
-        + "stops aberrating, the clocks agree again, and nothing can hit you. Drop to gear 2 "
-        + "to get the real physics back.");
+        "Past what a hull could survive",
+        "The sky is still real: \u03b3 keeps climbing, the starlight ahead is blueshifted clean "
+        + "out of the visible band, and what is left is the microwave background burning as a "
+        + "point in front of you. Look at Heat ahead and Hull radiation \u2014 those numbers are "
+        + "honest, and they would have killed you. In these gears the hull simply does not care. "
+        + "That, and the acceleration, is the whole cheat.");
     } else if (beta >= 0.99) {
       SF.hud.setLamp("light", "99% OF LIGHT");
       SF.hud.notice("lightspeed",
@@ -975,7 +1009,17 @@
 
   /* ── collision ──────────────────────────────────────────────────────── */
 
-  function collide() {
+  /**
+   * `testing` false means "keep the bookkeeping up to date but do not hit
+   * anything" — which is not the same as not calling this at all, and the
+   * difference used to kill people. Collisions are detected by watching
+   * `prevAlong` change sign; skipping the function entirely left that value
+   * frozen from before a million-light-year sprint, so the first frame after
+   * the hull came back online compared against ancient history, saw a sign
+   * change, and reported an impact with whatever happened to be nearby. You
+   * braked out of the top gear and died on a planet you never approached.
+   */
+  function collide(testing) {
     if (!state.running) return;
     for (const system of systems) {
       for (const body of system.bodies) {
@@ -983,6 +1027,7 @@
         const along = p.x * vdir.x + p.y * vdir.y + p.z * vdir.z;
         const previous = body.prevAlong;
         body.prevAlong = along;
+        if (!testing) continue;
         // Closest approach is where `along` crosses zero — IN EITHER
         // DIRECTION. Testing only for front-to-back meant that in reverse the
         // bodies crossed the other way and you could back straight through a
@@ -1107,7 +1152,10 @@
 
     drawLabels(drawable);
 
-    if (state.bubbleFade > 0.01) SF.render.drawBubble(now, state.bubbleFade);
+    // No bubble wall any more. It was a screen-wide blue vignette that snapped
+    // on the instant you passed c, and it was drawing a boundary that the
+    // physics no longer has: the sky just keeps crushing. The lamp says you are
+    // in a cheat gear; the canvas does not need to shout it.
     SF.render.drawReticle(state);
     if (state.waypoint && state.running) {
       SF.render.drawWaypoint(state.waypoint.name, state.waypoint.obj.pos);
@@ -1197,11 +1245,6 @@
       state.beta, state.gamma, vdir, state.relativistic,
       dt,     // the view eases across the lightspeed boundary; see view.js
     );
-    // The bubble wall crossfades on the same clock as the aberration, so
-    // crossing c is one continuous transition rather than three simultaneous
-    // switches (sky, heat glow, wall) all thrown in the same frame.
-    state.bubbleFade += ((state.bubble ? 1 : 0) - state.bubbleFade)
-      * (1 - Math.exp(-dt / SF.view.easeSeconds));
 
     if (state.running) {
       applyEnvironment(dt);
@@ -1209,9 +1252,10 @@
       checkSignals();
     }
     advanceWorld(dHome, dHomeYears);
-    // No collisions inside the lightspeed bubble — you pass through normal
-    // space, which is the only thing that makes a jump survivable.
-    if (state.running && !state.bubble) collide();
+    // Nothing can hit you while the hull is fiction — that is what makes a
+    // high-gear run survivable — but the crossing bookkeeping still has to run
+    // every frame, or coming back down turns into a phantom impact.
+    if (state.running) collide(!state.bubble);
 
     // No speed banner. How fast you are going is meant to be read off the sky
     // itself — the stars crushing forward into a cone, the Doppler colours, the

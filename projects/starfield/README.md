@@ -82,27 +82,37 @@ hard the engine can push (`top / ramp`) and how fast it may push you to. Drop
 into a low gear at speed and you keep all of it — the engine just stops adding.
 **B** is the one autopilot and works from any speed.
 
-**Gears 1 and 2 are honest.** Velocity is stored as **celerity** — home
-light-years per second of *your own* life — which is the correct quantity for a
-relativistic rocket:
+**Nothing in this game is faster than light — not even gear 6.** There is no
+bubble and no second regime: the same equations run from a standstill to the top
+gear. Velocity is stored as **celerity**, home light-years per second of *your
+own* life:
 
 ```
 u = |v| / c          β = u / √(1+u²)  <  1  always          γ = √(1+u²)
 ```
 
-so β can never reach *c* however hard you push, while γ grows without limit. It
-is also what makes gear 2 playable: at 99% of light γ = 7.09, the road ahead is
-contracted sevenfold, and you cross **4.3 light-minutes in 1.1 minutes of ship
-time** — measured in-game. None of that is a cheat. Gears 3–6 are.
+β never reaches 1 however hard you push, while γ grows without limit — gear 6 is
+γ ≈ 1.6×10¹³ at 99.9999999999% of *c*, not one metre per second past it. Every
+consequence is real: gear 2 crosses **4.3 light-minutes in 1.1 minutes of ship
+time** (measured), and by the top gear the aberration cone has tightened to a
+point, the starlight has blueshifted clean out of the visible band, and **the sky
+is black except for one point of light dead ahead**. Andromeda in five seconds
+costs two and a half million years at home.
+
+The cheat is now two things, both shown on the panel: **the acceleration** (felt
+g-force is honest, and openly in the millions) and **the hull**, which above 99%
+of light stops caring about the numbers the readouts are still honestly
+reporting. That threshold is a property of your *speed*, not your gear lever —
+shifting down out of a high gear must never kill you.
 
 | Gear | Rôle | Ceiling | 0 → ceiling |
 |------|------|---------|-------------|
 | **1 · Thrusters** | real spacecraft speed; the only gear fine enough to work near a planet | ~900 km/s | 4 s |
 | **2 · Relativistic** | honest relativity — crosses a solar system via length contraction | **99% of light** | 8 s |
-| **3 · Interstellar** | first FTL gear; nearest star ~40 s | 0.1 ly/s | 3 s |
+| **3 · Interstellar** | where travel starts and the hull stops being real; nearest star ~40 s | 0.1 ly/s · γ≈3×10⁶ | 3 s |
 | **4 · Fast transit** | neighbouring stars in seconds | 2 ly/s | 3.5 s |
 | **5 · Galactic** | the galactic core in ~13 s | 10³ ly/s | 4 s |
-| **6 · Intergalactic** | Andromeda in ~5 s | 5×10⁵ ly/s | 5 s |
+| **6 · Intergalactic** | Andromeda in ~5 s, 2.5 Myr at home | 5×10⁵ ly/s · γ≈1.6×10¹³ | 5 s |
 
 Two things the sky does at speed look like faults and are not, so each gets a
 one-per-session explainer card on the left plus a warning lamp: **the sky

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Starfield — how to fly</title>
   <meta name="description" content="How to fly Starfield: a faster-than-light explorer built on honest relativity. Gears, controls, and what every readout means, before you launch.">
-  <link rel="stylesheet" href="starfield.css?v=6">
+  <link rel="stylesheet" href="starfield.css?v=10">
   <style>
     /* The game hides overflow; the manual needs to scroll and breathe. */
     html, body { overflow: auto; height: auto; min-height: 100%; }
@@ -96,11 +96,11 @@
       <p class="eyebrow">Starfield · a faster-than-light explorer</p>
       <h1>You are flying a real relativistic rocket — then cheating past lightspeed on purpose.</h1>
       <p class="lede">
-        The ship has real momentum and a six-gear drive, and the first two gears
-        are honest relativity — gear 2 takes you to 99% of light, where your
-        clock slows and the road ahead contracts. Only gears 3 and up break the
-        speed limit, they say so while they do it, and every readout tells you
-        exactly what the cheat costs.
+        The ship has real momentum and a six-gear drive, and <em>none</em> of the
+        gears break the speed of light — they just push γ higher, until the sky
+        is black except for one point of light dead ahead. What the game cheats
+        on is the acceleration and the hull, and it shows you both numbers while
+        it does it.
       </p>
       <a class="cta" href="fly.html"><span class="arrow">▸</span> Launch flight</a>
     </header>
@@ -128,12 +128,24 @@
         crossing to another galaxy.
       </p>
       <p>
-        <strong>Gears 1 and 2 are real physics.</strong> Gear 2 climbs to 99% of
-        light, and that is where relativity earns its keep: at that speed your
-        clock runs seven times slower than home and the road ahead is contracted
-        by the same seven, so you cross a solar system in about a minute without
-        ever breaking the speed limit. Gears 3–6 are the declared cheat, and the
-        game says so on screen while they are running.
+        <strong>Nothing here is faster than light — not even gear 6.</strong>
+        The same equations run all the way up: your speed climbs toward
+        <em>c</em> and never reaches it, while γ grows without limit. Gear 2 sits
+        at 99% of light, where your clock runs seven times slower than home and
+        the road ahead is contracted by the same seven — which is what crosses a
+        solar system in a minute. Keep pushing and the cone of sky ahead keeps
+        tightening, the starlight blueshifts out of the visible band, and by the
+        top gear the sky is black except for <strong>one point of light dead
+        ahead</strong>. That is not an effect; it is what those speeds look like.
+      </p>
+      <p>
+        So where is the cheat? Two places, and the panel shows you both.
+        <strong>The acceleration</strong> — the felt g-force readout is honest,
+        and it is openly in the millions. And <strong>the hull</strong>: above
+        99% of light the readouts still report the microwave background burning
+        ahead of you and the interstellar medium arriving as a particle beam,
+        numbers that would end you instantly, and the hull simply does not care.
+        Below that threshold they bite, and the walls are real.
       </p>
       <div class="cards">
         <div class="card2">
@@ -154,27 +166,27 @@
         <div class="card2">
           <span class="n">3</span>
           <h3>Interstellar</h3>
-          <p>The first faster-than-light gear, and the start of real travel: the
-             nearest star is about forty seconds out.</p>
-          <span class="top">top = 0.1 ly/s</span>
+          <p>Where real travel starts and the hull stops being real: the nearest
+             star is about forty seconds out, at γ ≈ 3×10⁶.</p>
+          <span class="top">0.1 ly per second of your life</span>
         </div>
         <div class="card2">
           <span class="n">4</span>
           <h3>Fast transit</h3>
           <p>Two light-years a second. Neighbouring stars in a couple of seconds.</p>
-          <span class="top">top = 2 ly/s</span>
+          <span class="top">2 ly per second of your life</span>
         </div>
         <div class="card2">
           <span class="n">5</span>
           <h3>Galactic</h3>
           <p>The black hole at the centre of the galaxy is thirteen seconds away.</p>
-          <span class="top">top = 2,000 ly/s</span>
+          <span class="top">2,000 ly per second of your life</span>
         </div>
         <div class="card2">
           <span class="n">6</span>
           <h3>Intergalactic</h3>
           <p>Andromeda in five seconds — and the home clock notices.</p>
-          <span class="top">top = 500,000 ly/s</span>
+          <span class="top">500,000 ly/s · γ ≈ 1.6×10¹³</span>
         </div>
       </div>
     </section>

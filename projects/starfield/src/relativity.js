@@ -275,7 +275,30 @@
      * Ahead: D = γ(1+β) ≈ 2γ. Behind: D = γ(1−β) ≈ 1/2γ.
      */
     doppler(cosThetaApparent, beta, gamma) {
-      return 1 / (gamma * (1 - beta * cosThetaApparent));
+      return 1 / (gamma * R.oneMinusBetaCos(cosThetaApparent, beta, gamma));
+    },
+
+    /**
+     * (1 − β cos θ′), COMPUTED SO IT SURVIVES β = 1 IN DOUBLE PRECISION.
+     *
+     * Written directly it is the classic catastrophic cancellation: past
+     * γ ≈ 10⁸, β rounds to exactly 1.0, so (1 − β·1) evaluates to 0 and the
+     * Doppler factor comes back Infinity — which is how "Heat ahead" managed
+     * to print an em-dash in the top gear. Split it instead:
+     *
+     *   1 − β cos = (1 − β) + β(1 − cos)
+     *   1 − β     = 1 / (γ²(1 + β))        exactly, from γ²(1−β²) = 1
+     *   1 − cos   = sin²/(1 + cos)          no cancellation near cos = 1
+     *
+     * Every term on the right stays well away from zero, so the result is
+     * accurate at any γ the drive can produce.
+     */
+    oneMinusBetaCos(cosThetaApparent, beta, gamma) {
+      const cos = Math.max(-1, Math.min(1, cosThetaApparent));
+      const oneMinusBeta = 1 / (gamma * gamma * (1 + beta));
+      const sin2 = Math.max(0, 1 - cos * cos);
+      const oneMinusCos = cos > 0 ? sin2 / (1 + cos) : 1 - cos;
+      return oneMinusBeta + beta * oneMinusCos;
     },
 
     /**

@@ -191,10 +191,15 @@
       // faster-than-light gears there is no β to quote, so it reads in ly/s.
       {
         const speed = Math.abs(state.warpLySec || 0);   // celerity, ly/ship-s
+        const cLySec = F.shipYearsPerSecond;
         let main, side;
-        if (state.bubble) {                             // declared cheat
+        // Once you are covering more than a light-year per year of your own
+        // life, "% of light" stops being the informative half of the readout —
+        // every gear above this reads 99.99…% — so the distance you actually
+        // eat per second leads instead, with β beside it.
+        if (speed > cLySec) {
           main = `${significant(speed)} ly/s`;
-          side = `${significant(speed / (K.c / K.lyM))}× c`;
+          side = HUD.formatBeta(state.beta);
         } else {
           const vms = state.beta * K.c;                 // honest speed, m/s
           const pctC = state.beta * 100;
@@ -430,8 +435,12 @@
           `The gap between them is real — Poisson, exponentially distributed, mean ${(1 / (K.nStarsPerLy3 * Math.PI * F.encounterRadiusLy * F.encounterRadiusLy)).toFixed(1)} ly, which matches the true nearest-neighbour spacing of ${K.meanNeighbourLy.toFixed(1)} ly. Where they sit across the flight path is not: real ones would be scattered through a ${F.encounterRadiusLy} ly disk and you would never meet any of them.`],
         ["Mean free path", `we shortened it by about ${significant(F.trueMeanFreePathLy / 40)}×`,
           `σ = πR☉² = ${significant(sigma)} ly², n = ${K.nStarsPerLy3}/ly³, so ℓ = 1/(nσ) ≈ ${significant(F.trueMeanFreePathLy)} ly. Flying in a straight line through the real galaxy you would cover about 24 quadrillion light-years before hitting a star — roughly a million times the width of the observable universe. Space is so empty that the honest version of this game is unlosable.`],
-        ["The drive", `gears 3\u2013${F.gears.length} are faster than light; gears 1 and 2 are not`,
-          `Gears 1 and 2 are the honest ones, and they run on the real rocket equations. The ship carries a velocity VECTOR with momentum \u2014 thrust adds to it along the nose, nothing bleeds it away, and turning the ship does not turn your travel. It is stored as CELERITY, home light-years per second of your own life, which is the honest quantity for a rocket: \u03b2 = u/\u221a(1+u\u00b2) stays below 1 however hard you push, while \u03b3 = \u221a(1+u\u00b2) grows without limit. That is why gear 2, capped at 99% of light, crosses a solar system in about a minute rather than eight hours \u2014 the road ahead is genuinely contracted by \u03b3, and none of that is a cheat. Gears 3\u2013${F.gears.length} are, and they say so: from ${significant(F.gears[2].topLySec)} up to ${significant(F.gears[F.gears.length - 1].topLySec)} ly/s, with the ship treated as locally at rest in an Alcubierre-style bubble, so nothing aberrates, the clocks agree and nothing can hit you. What stays honest throughout is the price tag \u2014 the felt g-force readout is the proper acceleration an accelerometer would really register, openly in the millions of g in a high gear.`],
+        ["The drive", `gears 3\u2013${F.gears.length} accelerate harder than anything could; NOTHING here is faster than light`,
+          `This is the one that changed. There is no faster-than-light bubble any more and no second physics regime: the same equations run from a standstill to the top gear. Velocity is stored as CELERITY \u2014 home light-years per second of your own life \u2014 so \u03b2 = u/\u221a(1+u\u00b2) never reaches 1 however hard you push, while \u03b3 = \u221a(1+u\u00b2) grows without limit. The top gear is \u03b3 \u2248 1.6\u00d710\u00b9\u00b3 at 99.9999999999% of light, not one metre per second past it. Everything you see follows from that and is real: the aberration cone tightening toward a point, the starlight blueshifting clean out of the visible band so the sky goes black, the microwave background burning ahead of you, and a five-second run to Andromeda costing two and a half million years at home. What is fiction is that ANY of it is survivable \u2014 see the next two rows.`],
+        ["The hull", `above ${significant(F.gears.filter((g) => g.honest).reduce((m, g) => Math.max(m, g.topLySec), 0))} ly/s the hull simply does not care`,
+          `The readouts stay honest: at \u03b3 = 10\u2076 the panel really does report 10\u2077 K ahead and 10\u2079 W/m\u00b2 on the skin, and that would end you instantly. Below about 99% of light those numbers bite and the walls are real. Above it the hull is openly fiction, whichever gear the lever is in \u2014 that last clause matters, because tying it to the gear meant shifting down out of a high gear switched the hull back on at \u03b3 = 10\u2076 and killed you for moving a lever. Changing gear must never kill you, so the protection is a property of your SPEED and it comes back by itself as you brake down through that threshold.`],
+        ["Acceleration", `up to ${significant(F.gears[F.gears.length - 1].topLySec / F.gears[F.gears.length - 1].ramp * K.lyM / K.g0)} g`,
+          `The other half of the cheat, and the half the panel never hides. A gear is an acceleration \u2014 its ceiling over its ramp time \u2014 and the felt g-force readout shows the proper acceleration an accelerometer bolted to the ship would really register while it is spooling. Nothing biological survives the high gears for a moment. The number is right there while you do it.`],
         ["Steering", "nothing \u2014 the ship has real momentum",
           `Rotating and thrusting are separate, as they are in vacuum. The arrows turn the NOSE; ${SF.controls ? SF.controls.labelFor("thrustFwd") : "W"} pushes your velocity toward wherever the nose points; ${SF.controls ? SF.controls.labelFor("thrustBack") : "S"} pushes it the other way. Let go of both and you coast forever, which is why you can look around at speed and why there is no speed lock. A GEAR IS AN ACCELERATION, NOT A SPEED: shifting never changes how fast you are going, only how hard the engine can push (its ceiling divided by its ramp time) and how fast it may push you to. Drop into a low gear at speed and you keep every bit of that speed \u2014 the engine simply stops being able to add more. ${SF.controls ? SF.controls.labelFor("killVel") : "B"} is the one autopilot, and the only thing that will stop you from a speed the current gear could never have reached.`],
         ["Orbital rates", `scaled by ${F.orbitRate}× and capped at 0.35 rad/frame`,
