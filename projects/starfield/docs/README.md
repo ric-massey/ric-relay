@@ -21,9 +21,11 @@ Read the documents in this order:
 4. [Scientific Standard](SCIENTIFIC_STANDARD.md) — how facts, calculations,
    approximations, procedural completion, and fictional technology are classified
    and communicated.
-5. [Implementation Audit](IMPLEMENTATION_AUDIT.md) — a file-by-file map of the
+5. [HUD and Cockpit](HUD_AND_COCKPIT.md) — the presets, the octagonal canopy, the
+   on-glass information layer, labelling, warnings, damage, and photo mode.
+6. [Implementation Audit](IMPLEMENTATION_AUDIT.md) — a file-by-file map of the
    current prototype: preserve, refactor, replace, or retire.
-6. [Prototype README](../README.md) — what the existing prototype does and how to
+7. [Prototype README](../README.md) — what the existing prototype does and how to
    run it today.
 
 ## Authority
@@ -48,6 +50,7 @@ does something.
 | `EARTH_MOON_VERTICAL_SLICE.md` | What must the first complete experience do? | Galaxy-scale implementation details |
 | `TECHNICAL_ARCHITECTURE.md` | How should the simulation be structured? | Final library choice without an architecture decision |
 | `SCIENTIFIC_STANDARD.md` | What counts as honest, sourced, or fictional? | Art direction unrelated to scientific truth |
+| `HUD_AND_COCKPIT.md` | What does the player see, and where does information sit? | Simulation behavior behind the readouts |
 | `IMPLEMENTATION_AUDIT.md` | What happens to each current file/system? | Permission to start a broad rewrite |
 | Parent `README.md` | What runs today and how? | The final product vision |
 
@@ -118,7 +121,7 @@ These decisions are intentionally not buried inside implementation documents:
 | `OPEN-010` | Permanent engine, renderer, and build toolchain | Architecture prototype | **Resolved 2026-07-25** — Three.js on WebGL 2, HUD/overlays as a DOM layer; WebGPU path preserved. **Conditional on the architecture spike** (Tech Arch §22.1). |
 | `OPEN-011` | Permanent public name | Before broad public release | Open |
 | `OPEN-012` | Open-source licence for the repository itself | Before public release | **Resolved 2026-07-25** — MIT. |
-| `OPEN-013` | Default cockpit preset | Earth–Moon slice | Open — Ric wants to discuss the HUD further |
+| `OPEN-013` | Default cockpit preset | Earth–Moon slice | **Resolved 2026-07-25** — Frame (octagonal canopy, no console). Full spec in [HUD and Cockpit](HUD_AND_COCKPIT.md). |
 | `OPEN-014` | Default lunar landing region | Earth–Moon slice (Slice D) | Open — Ric wants to discuss; needs a sourced elevation dataset |
 
 An open decision should receive a short decision record when resolved: date,

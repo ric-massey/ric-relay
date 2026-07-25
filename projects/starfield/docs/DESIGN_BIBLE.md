@@ -876,8 +876,12 @@ decision:
 | Preset | Look | Purpose |
 |---|---|---|
 | **Clean** | No frame at all — nothing but the view and what you summon. | Maximum beauty; screenshots and pure observation. |
-| **Frame** | Bars/struts across the screen, TIE-fighter style. | Structure and presence without a full interior. |
-| **Cockpit** | A jet-style cockpit interior. | The most embodied, instrument-rich view. |
+| **Frame** ← default | An **octagonal canopy** with struts along its edges wrapping around the player; Millennium Falcon window as reference. **No console or desk.** | The default flying experience. |
+| **Cockpit** | A jet-style cockpit interior. | The most embodied view. |
+
+**Frame is the default.** The full specification — canopy geometry, look behaviour,
+information layout, labelling density, warnings, damage, photo mode, mobile, and
+accessibility — lives in [HUD and Cockpit](HUD_AND_COCKPIT.md).
 
 Common to **all** presets: information lives **on the glass as holograms**. Readouts,
 labels, and target markers are projected onto the canopy — the player can **select
@@ -1501,6 +1505,13 @@ superseded so the project's reasoning remains understandable.
 | 2026-07-25 | "Holographic" overlays are flat 2D screen-space annotations drawn as a DOM layer, not volumetric 3D. | Adopted |
 | 2026-07-25 | Photography is a simple zoom-and-capture control with optional notes, shipping in the Earth–Moon slice. | Adopted |
 | 2026-07-25 | ISS orbit uses cached elements by default, kept current, with optional live refresh. | Adopted |
+| 2026-07-25 | Frame is the default cockpit preset: an octagonal canopy with edge struts, no console or desk, maximizing visible space. | Adopted |
+| 2026-07-25 | Frame's canopy is fixed to the screen; only the Cockpit preset's canopy moves with look. | Adopted |
+| 2026-07-25 | Vitals anchor to the frame; object labels float on the glass. Default labelling is the target plus a few notable objects. | Adopted |
+| 2026-07-25 | Warning language is a triangle with an exclamation mark beside the affected readout — yellow damaged, red critical. | Adopted |
+| 2026-07-25 | Hull damage shows on the canopy subtly and must never obscure the view. | Adopted |
+| 2026-07-25 | Photo mode lets the player choose per shot whether frame and overlays appear. | Adopted |
+| 2026-07-25 | Overlay base style is pale cyan/white thin lines; colour never carries meaning alone. | Adopted |
 
 ---
 

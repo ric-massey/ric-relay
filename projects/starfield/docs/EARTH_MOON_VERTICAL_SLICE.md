@@ -604,8 +604,16 @@ The slice ships **three presets** (decision §19.2, Design Bible §14.1):
 | **Cockpit** | A jet-style cockpit interior. |
 
 The holographic information layer is common to all three; only the physical framing
-changes. All remain first-person and inside the ship. The default preset is still to be
-chosen (see §19).
+changes. All remain first-person and inside the ship.
+
+**Frame is the default**: an octagonal canopy with struts along its edges wrapping around
+the player (Millennium Falcon window as reference), with **no console or desk** — the
+glass area is maximized so the player sees as much space as possible. Vitals anchor to
+the frame; object labels float on the glass.
+
+The complete specification — canopy geometry, look behaviour, labelling density,
+warnings, damage, photo mode, mobile, and accessibility — is in
+[HUD and Cockpit](HUD_AND_COCKPIT.md), which governs this section.
 
 ### 12.1 Always-important state
 
@@ -965,8 +973,11 @@ Where a decision has game-wide consequences (death, docking, repair), the
     button, optionally attach a note. See Design Bible §12.4.
 13. **Repository licence is MIT.**
 
-**Still to decide for this slice:** which cockpit preset is the default (§12.0) and the
-default lunar landing region (§10.2) — both flagged by Ric for further discussion.
+14. **Frame is the default cockpit preset** — octagonal canopy, edge struts, no console
+    or desk, maximizing visible space. Full spec: [HUD and Cockpit](HUD_AND_COCKPIT.md).
+
+**Still to decide for this slice:** the default lunar landing region (§10.2), flagged by
+Ric for further discussion.
 
 During development, a clearly-labeled temporary reset MAY still be used as a testing
 aid, but it is not the shipped rule and must be marked as scaffolding.
