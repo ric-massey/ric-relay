@@ -663,10 +663,13 @@ mechanic, and no progress-preserving respawn — death is final, and the player 
 carefully. A clearly-labeled temporary reset MAY exist as a development testing aid,
 but it is scaffolding, not the rule.
 
-**Hull damage is persistent and repaired only at Earth (decision §19.6).** Damage
-accumulates on the hull and does not self-heal in flight; the player must return to
-Earth to get the hull fixed. This is what bounds an expedition: you venture out as far
-as you can before damage or a lethal event ends the run.
+**Hull damage is persistent and repaired only at a habitable planet (decision §19.6).**
+Damage accumulates on the hull and does not self-heal in flight; the player must return
+to a habitable world to get the hull fixed. Within this slice Earth is the only
+habitable body, so in practice the slice's single repair point is Earth — but the rule
+is written for habitable *planets* generally, not Earth specifically. This is what
+bounds an expedition: you venture out as far as you can before damage or a lethal event
+ends the run.
 
 > **`OPEN` — hull/radiation interaction.** Ric's phrasing ("hull damage makes it so
 > radiation can fix it, but you have to go back to Earth to get the hull fixed") is
@@ -891,9 +894,10 @@ Where a decision has game-wide consequences (death, docking, repair), the
 6. **Death is permanent; there is no destruction recovery.** When the ship is
    destroyed, the run is over and the universe restarts — death is final, as in real
    life, and the player must fly carefully. There is no checkpoint reset as a shipped
-   mechanic. Hull damage is persistent: it can only be repaired by returning to Earth,
-   so the loop is "venture out as far as you can until you die." **Fuel is never a
-   concern.** See §13 and the [Design Bible](DESIGN_BIBLE.md) §11.2–§11.3.
+   mechanic. Hull damage is persistent: it can only be repaired at a **habitable
+   planet** (within this slice that means Earth, the only habitable body), so the loop
+   is "venture out as far as you can until you die." **Fuel is never a concern.** See
+   §13 and the [Design Bible](DESIGN_BIBLE.md) §11.2–§11.3.
 
 **One point still needs Ric's clarification** (recorded honestly rather than guessed):
 the exact hull/radiation interaction. Ric's words were that hull damage "makes it so

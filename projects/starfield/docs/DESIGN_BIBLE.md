@@ -483,6 +483,24 @@ most relevant to the current task and allow inspection of others:
 The existing Sun-rest-frame model may remain as one scientific frame, but it MUST
 NOT be the only frame or the default answer in every situation.
 
+### 8.5 Fictional destinations beyond the real universe (parked idea)
+
+Ric has floated (2026-07-25) eventually adding a **fictional region "outside our
+observable universe"** — e.g. a *Star Wars*–style galaxy far away — reached only
+through the fictional FTL drive (§8.2D). This is a **parked future idea**, well outside
+the Earth–Moon slice and the real-catalogue core, recorded so it is not lost:
+
+- It MUST be reached and framed as explicitly fictional, never presented as observed or
+  catalogued space (see the [Scientific Standard](SCIENTIFIC_STANDARD.md)).
+- The real, catalogued universe and its honest scale/geography remain the default and
+  the authority; any fictional region is a labeled, opt-in expansion layered on top.
+- It affects nothing that must be built first. It is noted here only to reserve a home
+  for it when the interstellar/FTL phase is designed.
+
+Because habitable planets are repair points (§11.2), a habitable world in such a region
+could later act as a forward repair base — but only once the region itself is designed
+and its fiction is explicitly labeled.
+
 ---
 
 ## 9. Autopilot and navigation computer
@@ -643,11 +661,14 @@ checkbox. Minor impacts may produce localized damage and degraded capability;
 larger impacts may be catastrophic. Routine maintenance MUST NOT become a crafting
 loop.
 
-**Decided (Ric, 2026-07-25): hull damage is persistent and repaired only at Earth.**
-Damage does not self-heal in flight; the player must return to Earth to get the hull
-fixed. This is what bounds an expedition — you venture out as far as you can before
-damage or a lethal event ends the run. There is no material gathering, repair currency,
-or repair timer. **Fuel is never a concern.**
+**Decided (Ric, 2026-07-25): hull damage is persistent and repaired only at a habitable
+planet.** Damage does not self-heal in flight; the player must return to a habitable
+world to get the hull fixed. Any habitable planet qualifies as a repair point, not
+Earth alone — so a future far-flung habitable world (including a possible fictional
+"galaxy far away" region, see §8.5) can serve as a forward base. This is what bounds an
+expedition — you venture out as far as you can before damage or a lethal event ends the
+run. There is no material gathering, repair currency, or repair timer. **Fuel is never
+a concern.**
 
 > **`OPEN` — hull/radiation interaction.** Ric's phrasing ("hull damage makes it so
 > radiation can fix it, but you have to go back to Earth to get the hull fixed") is
@@ -1198,28 +1219,34 @@ A feature-complete design must eventually satisfy these experience tests:
 
 These questions are intentionally unresolved. Future LLMs must ask Ric or propose
 options with tradeoffs; they must not quietly decide them through implementation.
+Items struck through were resolved on 2026-07-25 and are kept for continuity.
 
 1. **FTL model:** What does the fictional drive do to traveler time, external time,
    causality, steering, and interruption?
-2. **Death consequence:** What meaningful cost follows destruction, and can the
-   player choose a gentler mode?
-3. **Damage and repair:** Can damaged systems be repaired automatically, only at a
-   safe location, or through another non-crafting mechanism?
+2. ~~**Death consequence**~~ — **Resolved:** death is permanent (§11.3); destruction
+   ends the run and restarts the universe. No gentler mode ships.
+3. ~~**Damage and repair**~~ — **Resolved:** persistent hull damage repaired only at a
+   habitable planet (§11.2); no crafting, currency, or timer.
 4. **Progression structure:** Is free exploration sufficient, or should curated
    expeditions form an optional guided path?
-5. **Starting station:** Must the ISS be live and exact, or is a clearly labeled
-   representative/cached state preferable for reliable offline play?
-6. **Time controls:** Does the simulator ever allow pausing, accelerating, or choosing
-   a historical/future epoch outside travel effects?
+5. **Starting station (partly resolved):** the station is a model of the *real ISS*
+   (not fictional); whether its orbit is live, cached, or representative is still open.
+6. **Time controls (partly resolved):** menus pause local simulation; whether the sim
+   allows time acceleration or selectable historical/future epochs is still open.
 7. **Unknown worlds:** How much procedural completion should be visible for poorly
    measured exoplanets?
-8. **Cockpit embodiment:** Is the interior a visible modeled cockpit, a minimal
-   instrument view, or selectable presentation modes?
+8. ~~**Cockpit embodiment**~~ — **Resolved:** minimal movie-glass HUD on the canopy,
+   first-person; a denser mode may be selectable but the default is minimal (§12 of the
+   Earth–Moon slice).
 9. **Multiplayer and sharing:** Is this permanently solitary, or may players share
    routes, observations, or sessions later?
 10. **Technology stack:** How long should the dependency-free canvas prototype remain
     the base, and what evidence would justify an engine/build transition?
 11. **Project name:** Is “Starfield” the permanent public name or a working title?
+
+**Parked future idea (not a pending decision):** a fictional region outside our
+observable universe (a *Star Wars*–style galaxy far away), reached only via the
+fictional FTL drive and always labeled fictional — see §8.5.
 
 ---
 
@@ -1279,7 +1306,15 @@ superseded so the project's reasoning remains understandable.
 | 2026-07-25 | Information is progressively revealed, with enough distant context to motivate travel. | Adopted |
 | 2026-07-25 | The sky aims for believable human perception rather than exaggerated star brightness. | Adopted |
 | 2026-07-25 | Existing relativity, catalog, lighting, collision, mobile, and honesty-ledger work should be preserved as modules where compatible. | Adopted |
-| 2026-07-25 | The exact death consequence, repair model, and FTL time model remain unresolved. | Open |
+| 2026-07-25 | ~~The exact death consequence, repair model, and FTL time model remain unresolved.~~ | Superseded (death & repair now decided; FTL time still open) |
+| 2026-07-25 | Starting station is a model of the real ISS (not a fictional station). | Adopted |
+| 2026-07-25 | Cockpit is a minimal movie-glass HUD on the canopy; first-person; denser mode optional; default minimal. | Adopted |
+| 2026-07-25 | Menus pause local simulation. | Adopted |
+| 2026-07-25 | No docking and no on-foot play; the game supports approach, station-keeping, and surface landing only. | Adopted |
+| 2026-07-25 | Death is permanent: destruction ends the run and restarts the universe. | Adopted |
+| 2026-07-25 | Hull damage is persistent and repaired only at a habitable planet; no crafting, currency, or timer; fuel is never a concern. | Adopted |
+| 2026-07-25 | Fictional "galaxy far away" region outside the observable universe is a parked future idea, always labeled fictional (§8.5). | Parked |
+| 2026-07-25 | Hull/radiation interaction (how a damaged hull exposes the player to radiation) needs one clarification before implementation. | Open |
 
 ---
 

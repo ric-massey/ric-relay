@@ -101,19 +101,26 @@ These decisions are intentionally not buried inside implementation documents:
 | ID | Decision | Needed by | Status |
 |---|---|---|---|
 | `OPEN-001` | Exact fictional FTL model and treatment of elapsed time | Interstellar/galactic phase | Open |
-| `OPEN-002` | Meaningful consequence of ship destruction | Persistent damage phase | Open |
-| `OPEN-003` | Non-crafting repair behavior | Persistent damage phase | Open |
+| `OPEN-002` | Meaningful consequence of ship destruction | Persistent damage phase | **Resolved 2026-07-25** — permadeath; destruction ends the run and restarts the universe. |
+| `OPEN-003` | Non-crafting repair behavior | Persistent damage phase | **Resolved 2026-07-25** — persistent hull damage, repaired only at a habitable planet; no crafting/currency/timer; fuel is never a concern. |
 | `OPEN-004` | Guided expedition structure versus purely free exploration | Discovery-log design | Open |
-| `OPEN-005` | Live ISS data versus cached/representative station by default | Earth–Moon slice | Open; fallback is specified |
-| `OPEN-006` | Pausing, time acceleration, and selectable historical epochs | Time-system design | Open |
+| `OPEN-005` | Live ISS data versus cached/representative station by default | Earth–Moon slice | **Partly resolved 2026-07-25** — station is a model of the *real ISS* (not fictional); live-vs-cached data source still open, fallback specified. |
+| `OPEN-006` | Pausing, time acceleration, and selectable historical epochs | Time-system design | **Partly resolved 2026-07-25** — menus pause local simulation; time acceleration and selectable epochs still open. |
 | `OPEN-007` | Amount of visible procedural completion for unknown exoplanets | Nearby-star phase | Open |
-| `OPEN-008` | Fully modeled cockpit versus minimal instrument view | Earth–Moon visual design | Open; either must remain first-person |
+| `OPEN-008` | Fully modeled cockpit versus minimal instrument view | Earth–Moon visual design | **Resolved 2026-07-25** — minimal movie-glass HUD projected on the canopy; first-person; denser mode selectable but default minimal. |
 | `OPEN-009` | Multiplayer, shared routes, or shared observations | Post-core exploration | Open |
 | `OPEN-010` | Permanent engine, renderer, and build toolchain | Architecture prototype | Open; selection process is specified |
 | `OPEN-011` | Permanent public name | Before broad public release | Open |
 
 An open decision should receive a short decision record when resolved: date,
-options considered, chosen answer, reason, and documents affected.
+options considered, chosen answer, reason, and documents affected. Resolved-decision
+prose lives in the responsible spec; the [Design Bible change record](DESIGN_BIBLE.md)
+holds the append-only log.
+
+**Parked future idea (not an OPEN decision):** a fictional region *outside our
+observable universe* (e.g. a *Star Wars*–style galaxy far away), reached only via the
+fictional FTL drive and always labeled fictional — see Design Bible §8.5. Out of scope
+for the Earth–Moon slice.
 
 ## Change discipline
 
