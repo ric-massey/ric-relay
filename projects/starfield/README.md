@@ -1,6 +1,17 @@
-# Starfield — a faster-than-light explorer built on real relativity
+# Starfield — current relativistic-flight prototype
 
-Fly through the **real** solar neighbourhood and out into the galaxy. The stars
+> **Project status:** This directory contains a working legacy prototype and the
+> documentation for a broader redesign. The prototype is playable today, but its
+> scale, travel model, procedural encounters, hazards, and start state do not yet
+> match the target game.
+
+For the future design, begin with the [documentation index](docs/README.md) and
+the [Starfield Design Bible](docs/DESIGN_BIBLE.md). The first implementation target
+is the [Earth–Moon vertical slice](docs/EARTH_MOON_VERTICAL_SLICE.md). This README
+describes **what the existing prototype currently does**, not the final specification.
+
+The current prototype lets you fly through the **real catalogued** solar
+neighbourhood and out into a partly modeled galaxy. The catalogued stars
 around you are the actual stars around the Sun, at their catalogued distances and
 directions; the Milky Way's band across your sky is its real disk, seen from
 26,670 ly out along the real galactic plane. You fly a ship with real momentum
@@ -11,12 +22,13 @@ It is the playable companion to
 [The Geometry of Spacetime](../spacetime/index.html): that project *explains*
 light cones, time dilation and aberration; this one lets you fly them.
 
-> **The one commitment:** use the actual mathematics. Not "space-looking,"
-> *space*. Every number in `SF.K` (`src/constants.js`) is a measured or defined
-> physical constant. **The only thing allowed to break real physics is the
-> ship's top speed** — and everything we bend lives in `SF.FUDGE` in the same
-> file, with its magnitude written down, so the in-game **honesty ledger**
-> ("where we cheat") can never drift from the truth.
+> **The prototype's scientific commitment:** use real mathematics where the
+> experiment claims to model it, and identify the compromises. `SF.K`
+> (`src/constants.js`) contains measured or defined constants; `SF.FUDGE`
+> contains many of the prototype's scale, drive, protection, and encounter
+> adjustments. The in-game **honesty ledger** ("where we cheat") explains the
+> largest of them. The redesign expands that idea into a project-wide
+> [Scientific Standard](docs/SCIENTIFIC_STANDARD.md).
 
 ---
 
@@ -67,10 +79,12 @@ desktop and the joystick on touch.
 
 ## The gearbox
 
-Space here is drawn at **light-year scale** — even the nearest planet in a system
-sits a couple of light-years off — so at honest lightspeed (3.2×10⁻⁸ ly/s) it is
-a two-year trip. That is why the drive is faster-than-light *by design*: it is the
-one declared cheat, and every readout stays honest about it.
+The prototype's world and drive were designed around rapid travel through
+light-year coordinates. Several body radii are inflated, generated encounters are
+biased toward the flight corridor, and the six-gear ladder is tuned to cross the
+resulting distances in playable time. Some later code moved orbital radii and
+planet radii toward real scale, so the current model contains known scale conflicts.
+The redesign replaces this with hierarchical real-scale coordinate spaces.
 
 **The ship has momentum, and a gear is an acceleration.** You carry a real
 velocity vector: **W** pushes it the way the nose is pointing, **S** pushes it
@@ -82,10 +96,9 @@ hard the engine can push (`top / ramp`) and how fast it may push you to. Drop
 into a low gear at speed and you keep all of it — the engine just stops adding.
 **B** is the one autopilot and works from any speed.
 
-**Nothing in this game is faster than light — not even gear 6.** There is no
-bubble and no second regime: the same equations run from a standstill to the top
-gear. Velocity is stored as **celerity**, home light-years per second of *your
-own* life:
+The implementation does **not** currently contain a distinct FTL regime. Velocity
+is stored as **celerity**, home light-years per second of *your own* life, and the
+same sublight relationship is applied from gear 1 through gear 6:
 
 ```
 u = |v| / c          β = u / √(1+u²)  <  1  always          γ = √(1+u²)
@@ -99,13 +112,18 @@ point, the starlight has blueshifted clean out of the visible band, and **the sk
 is black except for one point of light dead ahead**. Andromeda in five seconds
 costs two and a half million years at home.
 
+The interface and comments also call gears 3–6 “faster-than-light.” That label
+conflicts with the celerity model above and is a known prototype design problem.
+The target design separates validated sublight relativity from an explicitly
+fictional FTL system whose time behavior has not yet been chosen.
+
 The cheat is now two things, both shown on the panel: **the acceleration** (felt
 g-force is honest, and openly in the millions) and **the hull**, which above 99%
 of light stops caring about the numbers the readouts are still honestly
 reporting. That threshold is a property of your *speed*, not your gear lever —
 shifting down out of a high gear must never kill you.
 
-| Gear | Rôle | Ceiling | 0 → ceiling |
+| Current gear label | Prototype rôle | Ceiling | 0 → ceiling |
 |------|------|---------|-------------|
 | **1 · Thrusters** | real spacecraft speed; the only gear fine enough to work near a planet | ~900 km/s | 4 s |
 | **2 · Relativistic** | honest relativity — crosses a solar system via length contraction | **99% of light** | 8 s |
@@ -191,8 +209,9 @@ the real galaxy you would cover ~24 quadrillion light-years before hitting a sta
 Every bend is listed in `SF.FUDGE` (`src/constants.js`) and rendered into the
 in-game **honesty ledger**. The big ones now:
 
-- **Faster-than-light top speed** — the headline cheat, and the *only* thing
-  allowed to break physics. Sub-light everything is honest.
+- **Extreme drive acceleration and high-speed protection** — the high gears cross
+  enormous proper distances quickly and the hull ignores an otherwise lethal
+  environment. The current FTL label is not a separate physical model.
 - **Sizes** (stars, planets, black holes) are drawn far larger than real so you
   can fly up to a star and feel it loom, instead of hunting for a pixel.
 - **Encounter geometry**: today systems are dropped near your flight path rather
@@ -210,6 +229,7 @@ index.html          the how-to-fly menu / opening page
 fly.html            the game: markup, HUD, overlays, script order
 starfield.css       the instrument-panel styling
 data/               inert catalogues (real stars, deep sky, milestones)
+docs/               target design, architecture, science, and migration specifications
 src/
   constants.js      SF.K (real physics) + SF.FUDGE (the cheats, incl. gears)
   controls.js       the keymap and action list
@@ -230,31 +250,24 @@ src/
 
 ---
 
-## Roadmap
+## Target direction
 
-Landed: **real momentum** (a velocity vector you can fly away from and look
-around inside), the six-gear drive where **a gear is an acceleration rather than
-a speed**, **honest celerity** so gears 1–2 stay inside *c* and still get you
-somewhere, the 1:1 clock, physical star-lighting of planets, the first-flight
-explainer cards and speed lamp, and the how-to-fly menu.
+The old prototype roadmap has been superseded. The new roadmap begins with a
+real-scale Earth–Moon vertical slice rather than extending the current light-year
+game loop.
 
-Next, in dependency order:
+The documentation set defines that work:
 
-1. **Two-scale systems** — a system is a point far off that expands into real,
-   light-minute-scale space as you approach. This is the foundation that lets more
-   than one honest sub-light gear exist.
-2. **More honest sub-light gears** — gear 1 already tops out at 99 % of *c* and
-   coasts, so you can hold any β and watch the sky; two-scale systems would let
-   gears 2–3 come back inside *c* as well.
-3. **Star heat burns the hull** — proximity to a star cooks you.
-4. **Main menu & settings** on the how-to-fly page — set home time, tune gears.
-5. **Click a star to inspect it** — click anything in the sky and get its name,
-   how far away it is, and how long getting there would take at your current
-   gear (in both ship time and home time, because those are different answers).
-6. **Real star-chart map + safe routing** — pan/zoom a real map, pick a
-   destination (Earth included), and get a course that threads *between* stars.
-   Show a **time-to-location / ETA** for the selected destination at current speed.
-7. **Galaxies resolve** into fly-through star fields; real inter-system spacing
-   and real positions, so *everything you see is something actually in space.*
-8. **Real imagery on close approach** — as you near a real catalogued object
-   (star, nebula, galaxy), fade in an actual photograph of it.
+- [Design Bible](docs/DESIGN_BIBLE.md) — product vision and design laws
+- [Earth–Moon Vertical Slice](docs/EARTH_MOON_VERTICAL_SLICE.md) — first complete
+  playable target
+- [Technical Architecture](docs/TECHNICAL_ARCHITECTURE.md) — frames, time,
+  simulation, rendering, data, and migration structure
+- [Scientific Standard](docs/SCIENTIFIC_STANDARD.md) — provenance, accuracy,
+  procedural content, fiction, and the honesty ledger
+- [Implementation Audit](docs/IMPLEMENTATION_AUDIT.md) — file-by-file preservation
+  and replacement plan
+
+The prototype should remain runnable while its strongest systems are characterized
+and migrated. Future code work should follow those documents rather than adding
+more features directly to the legacy `game.js` architecture.
