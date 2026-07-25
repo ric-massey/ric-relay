@@ -1,4 +1,4 @@
-// Site-wide visual modes. Activated from the Relay terminal and persisted between rooms.
+// Site-wide visual modes. Activated from the Terminal home page and persisted between rooms.
 (() => {
   if (window.RELAY_EFFECTS) return;
 
@@ -606,8 +606,8 @@
     resident.setAttribute("role", "button");
     resident.setAttribute("tabindex", "0");
     resident.setAttribute("aria-label", catWorld === "space"
-      ? "Mochi, the helmeted Relay cat. Click to send him tumbling through space."
-      : "Mochi, the fluffy Relay cat. Click to make him run away.");
+      ? "Mochi, the helmeted Terminal cat. Click to send him tumbling through space."
+      : "Mochi, the fluffy Terminal cat. Click to make him run away.");
     resident.addEventListener("click", runAwayCat);
     resident.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") return;

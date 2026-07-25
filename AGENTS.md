@@ -1,4 +1,4 @@
-# Notes for AI assistants working on ric-relay
+# Notes for AI assistants working on Terminal
 
 This file is for any LLM/agent asked to change this site. Read it before you touch
 anything. `README.md` covers what the site is; this file covers **how to work on it
@@ -37,17 +37,17 @@ There is intentionally **no shared nav component**. Each page has its own `<nav>
 labels** so navigation stays predictable:
 
 ```
-relay · orrin · psyche · climbing · training · exploration · workbench · captures · log
+terminal · orrin · psyche · climbing · training · exploration · workbench · captures · log
 ```
 
 - `href` targets and link text are **identical on every page** — only the CSS differs.
-- Keep Relay home links as `index.html` in room markup for direct-file compatibility.
+- Keep Terminal home links as `index.html` in room markup for direct-file compatibility.
   `effects.js` normalizes those links to the clean directory root when served over HTTP;
   `projects/relay-return.js` does the same for project return controls. Do not hardcode
   a deployment subdirectory or domain.
 - The current room is rendered as a `<span class="here" aria-current="page">` (not a
   link), positioned in the same spot in the list as its `<a>` on other pages.
-- Each `<nav>` carries `aria-label="Relay rooms"`.
+- Each `<nav>` carries `aria-label="Terminal rooms"`.
 - `map.html` is reachable from the home directory only (shown as locked); it is
   deliberately left out of the room menus.
 
@@ -76,10 +76,10 @@ and this file. Keep the label set in sync everywhere.
   `farlight` → Exploration; `the-shape-of-harm`, `autism-reflection.html`, and
   `state-of-mind-line` → Psyche; `siege-conductor` → Workbench. Each is
   self-contained and may carry its own assets/fonts; the "no dependencies" rule is for
-  the relay's own room pages, not embedded projects. Keep their internal links relative.
-- **Every standalone project HTML page needs a visible route back to the relay.** Use
+  the terminal's own room pages, not embedded projects. Keep their internal links relative.
+- **Every standalone project HTML page needs a visible route back to the terminal.** Use
   `projects/relay-return.js` with the correct relative `src` and `data-home` paths so the
-  fixed “← Ric's Relay” control works from desktop and mobile. The optional `data-egg`
+  fixed “← Ric's Terminal” control works from desktop and mobile. The optional `data-egg`
   value may add a project-themed typed easter egg.
 - **Photos** go in `photos/`, web-optimized (resize to ~1600px, convert HEIC→JPG). Do
   **not** commit full-res originals — they belong in `_photo-originals/`, which is

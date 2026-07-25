@@ -60,8 +60,8 @@
     const link = document.createElement("a");
     link.className = "relay-return";
     link.href = home;
-    link.setAttribute("aria-label", "Back to Ric's Relay");
-    link.innerHTML = "<span aria-hidden=\"true\">←</span> Ric's Relay";
+    link.setAttribute("aria-label", "Back to Ric's Terminal");
+    link.innerHTML = "<span aria-hidden=\"true\">←</span> Ric's Terminal";
     document.body.appendChild(link);
 
     const config = eggs[egg];

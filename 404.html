@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>404 — SIGNAL LOST // RIC'S RELAY</title>
-  <meta name="description" content="That page isn't on the relay. Signal lost.">
+  <title>404 — SIGNAL LOST // RIC'S TERMINAL</title>
+  <meta name="description" content="That page isn't on the terminal. Signal lost.">
   <meta name="robots" content="noindex">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230a0a0a'/><text y='.9em' font-size='70' x='15' fill='%23ffb000'>▮</text></svg>">
   <style>
@@ -56,19 +56,19 @@
 </head>
 <body>
   <div class="plate">
-    <div class="label">RIC-MASSEY PERSONAL RELAY // ERR 404</div>
+    <div class="label">RIC-MASSEY PERSONAL TERMINAL // ERR 404</div>
     <h1>404</h1>
     <p class="tag">signal lost.</p>
-    <p id="lost-reason">the directory you tried to reach isn't mounted on this relay — bad address,
+    <p id="lost-reason">the directory you tried to reach isn't mounted on this terminal — bad address,
       moved, or never existed. <span class="cursor">▮</span></p>
     <p>no coordinates were harmed. head back to the hub and pick a room.</p>
-    <a class="home" href="index.html">return to the relay</a>
+    <a class="home" href="index.html">return to the terminal</a>
   </div>
   <script src="effects.js"></script>
   <script>
-    if (new URLSearchParams(location.search).get("from") === "relay") {
+    if (["terminal", "relay"].includes(new URLSearchParams(location.search).get("from"))) {
       document.getElementById("lost-reason").innerHTML =
-        "requested failure received. the relay has successfully lost itself. <span class=\"cursor\">▮</span>";
+        "requested failure received. the terminal has successfully lost itself. <span class=\"cursor\">▮</span>";
     }
   </script>
 </body>

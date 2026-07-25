@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RIC-MASSEY // PERSONAL RELAY</title>
-  <meta name="description" content="Ric Massey's personal relay — Orrin, psyche, climbing, training, and exploration.">
+  <title>Terminal</title>
+  <meta name="description" content="Ric Massey's personal terminal — Orrin, psyche, climbing, training, and exploration.">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Ric's Relay">
-  <meta property="og:title" content="Ric's Relay — Ric Massey's corner of the internet">
-  <meta property="og:description" content="A terminal-styled relay for family & friends — Orrin, climbing, training, photos, and write-ups.">
+  <meta property="og:site_name" content="Ric's Terminal">
+  <meta property="og:title" content="Terminal — Ric Massey's corner of the internet">
+  <meta property="og:description" content="A personal terminal for family & friends — Orrin, climbing, training, photos, and write-ups.">
   <meta property="og:url" content="https://ricmassey.com">
   <meta name="twitter:card" content="summary">
   <link rel="canonical" href="https://ricmassey.com/">
@@ -85,6 +85,7 @@
       margin: 0.3rem 0 1.6rem;
       font-size: 0.9rem;
     }
+    .welcome-tag p { margin: 0.55rem 0; white-space: pre-wrap; }
     .welcome-tag .lit { color: var(--phosphor); }
 
     #boot { white-space: pre-wrap; min-height: 6.8em; }
@@ -218,11 +219,17 @@
 <body>
   <div class="wrap">
     <div class="frame">
-      <div class="frame-label">RIC-MASSEY PERSONAL RELAY // NODE 01</div>
+      <div class="frame-label">RIC-MASSEY PERSONAL TERMINAL // NODE 01</div>
 
-      <h1 class="wordmark">THE RELAY</h1>
-      <p class="welcome-tag"><span class="lit">welcome in.</span> this is ric's corner of the internet —
-        built so family &amp; friends can see what he's up to without asking.</p>
+      <h1 class="wordmark">Terminal</h1>
+      <div class="welcome-tag">
+        <p class="lit">Welcome to Ric’s Internet!</p>
+        <p>I made this for me.  So I can see my projects and stay organized and be able to easily show my family what I’m doing on my computer sometimes.</p>
+        <p>This is the terminal!<br>You start here!</p>
+        <p>You can type /help and there will be a list of prompts you can do to make your experience easier!</p>
+        <p>Scroll down to see the main different places you can visit!</p>
+        <p>I made these places based on things that I enjoy if you like them too you may like the information in those areas!</p>
+      </div>
 
       <div id="boot" aria-live="polite"></div>
 
@@ -243,7 +250,7 @@
 
       <div id="cmdline" class="hidden">
         <div class="prompt-row">
-          <label class="prompt" for="cmd">guest@ric-relay:~$</label>
+          <label class="prompt" for="cmd">guest@ric-terminal:~$</label>
           <input id="cmd" autocomplete="off" spellcheck="false" aria-label="terminal command input">
           <span class="cursor">▮</span>
         </div>
@@ -467,7 +474,7 @@
       .join("\n");
 
     const siteTree = () =>
-      "/relay\n" +
+      "/terminal\n" +
       "├── /orrin\n" +
       "├── /psyche\n" +
       "│   ├── mind       State-of-Mind Line\n" +
@@ -485,7 +492,7 @@
       "├── /log\n" +
       "└── /map           [LOCKED]";
 
-    const findRelay = (query) => {
+    const findTerminal = (query) => {
       const needle = query.trim().toLowerCase();
       if (!needle) return "usage: find <word>\nexample: find mood";
       const rooms = Object.entries(PAGE_DESCRIPTIONS).map(([name, description]) => ({
@@ -512,7 +519,7 @@
       help: () =>
         "available commands:\n" +
         "  ls / rooms      list every room and what lives there\n" +
-        "  tree            map the whole relay and its projects\n" +
+        "  tree            map the whole terminal and its projects\n" +
         "  projects        list project shortcuts\n" +
         "  find <word>     search rooms and projects\n" +
         "  open <target>   open a room or project shortcut\n" +
@@ -524,7 +531,7 @@
         "  whoami          show visitor identity\n" +
         "  status          check Ric and Orrin's status\n" +
         "  uptime          show how long this terminal has been awake\n" +
-        "  echo <text>     make the relay repeat something\n" +
+        "  echo <text>     make the terminal repeat something\n" +
         "  reboot          replay the boot sequence\n" +
         "  date            read the local clock\n" +
         "  back            return to the previous page\n" +
@@ -536,9 +543,9 @@
       rooms: listRooms,
       tree: siteTree,
       projects: listProjects,
-      find: (arg) => findRelay(arg),
+      find: (arg) => findTerminal(arg),
       open: () => "usage: open <target>\ntry `ls` for rooms or `projects` for project shortcuts.",
-      cd: () => "usage: cd <room>\nthis relay only mounts one level deep.",
+      cd: () => "usage: cd <room>\nthis terminal only mounts one level deep.",
       mochi: () => {
         const awakened = window.RELAY_CATS?.enable();
         return awakened
@@ -550,13 +557,13 @@
       history: () => commandHistory.length
         ? commandHistory.map((entry, index) => `${String(index + 1).padStart(3)}  ${entry}`).join("\n")
         : "no commands in this session yet.",
-      pwd: () => "/relay",
+      pwd: () => "/terminal",
       whoami: () => "guest — but if you're reading this, you're probably family. hi.",
       status: () => "subject is alive, caffeinated, and pushing commits to ORRIN.\nsee /orrin for a plain-language tour and public project activity.",
       uptime: () => {
         const seconds = Math.floor(performance.now() / 1000);
         const minutes = Math.floor(seconds / 60);
-        return `relay process awake for ${minutes ? `${minutes}m ` : ""}${seconds % 60}s.`;
+        return `terminal process awake for ${minutes ? `${minutes}m ` : ""}${seconds % 60}s.`;
       },
       date: () => new Date().toLocaleString([], { dateStyle: "full", timeStyle: "medium" }),
       clear: () => {
@@ -573,11 +580,11 @@
       },
       reboot: () => {
         setTimeout(() => location.reload(), 350);
-        return "shutting down signal...\nrestarting relay.";
+        return "shutting down signal...\nrestarting terminal.";
       },
       // ─── undocumented ───
       "404": () => {
-        setTimeout(() => (location.href = "404.html?from=relay"), 450);
+        setTimeout(() => (location.href = "404.html?from=terminal"), 450);
         return "deliberately corrupting route table...\nsignal loss in 3... 2... 1...";
       },
       diagnose: (arg) => arg === "orrin"
@@ -585,17 +592,17 @@
           "note: do not power down. it remembers.\n→ full diagnostics in /orrin"
         : "usage: diagnose <subject>\nknown subject: orrin",
       apex: () => "pulling VOD archive...\naim rating: CLASSIFIED\nrotation IQ: improving\n→ reviews land in /log",
-      sudo: () => "nice try. this relay answers to ric only.",
+      sudo: () => "nice try. this terminal answers to ric only.",
       unlock: () => "crew authentication required.\nif you are the brother or the friend: you know who to ask.",
       coffee: () => "brewing... ☕ dispensed. carry on.",
-      exit: () => "there is no exit. there is only the relay.",
+      exit: () => "there is no exit. there is only the terminal.",
       lsd: () => {
         window.RELAY_EFFECTS?.set("lsd");
         return "VISUAL CORTEX: PRISMATIC\nmode follows you between rooms. refresh any page or type `sober` here to come back.";
       },
       shrooms: () => {
         window.RELAY_EFFECTS?.set("shrooms");
-        return "MYCELIAL NETWORK: ONLINE\nthe whole relay is breathing. refresh any page or type `sober` here to come back.";
+        return "MYCELIAL NETWORK: ONLINE\nthe whole terminal is breathing. refresh any page or type `sober` here to come back.";
       },
       sober: () => {
         window.RELAY_EFFECTS?.clear();
@@ -673,7 +680,7 @@
       } else if (verb === "cat" && ["notes", "transmissions"].includes(arg)) {
         print(readNotes());
       } else if (verb === "cd" && ["..", "/", "~"].includes(arg)) {
-        print("already at /relay — this is the root of Ric's internet.");
+        print("already at /terminal — this is the root of Ric's internet.");
       } else if (verb === "back") {
         print("returning to previous signal ...");
         setTimeout(() => history.back(), 250);

@@ -1,6 +1,6 @@
-# ric-relay
+# Terminal
 
-Ric Massey's personal website — a terminal-styled "relay" for family and friends to
+Ric Massey's personal website — a terminal for family and friends to
 follow what he's up to (Orrin, climbing, training, photos, write-ups) without having
 to ask.
 
@@ -23,7 +23,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 
 | File | Room | What it is |
 |---|---|---|
-| `index.html` | The Relay | Landing terminal — boot sequence + working command line (try `help`) |
+| `index.html` | The Terminal | Landing terminal — boot sequence + working command line (try `help`) |
 | `orrin.html` | Orrin | Plain-language tour of Orrin plus live public project activity from GitHub |
 | `psyche.html` | Psyche | Human-systems field notebook — mood, criteria, substances, and evidence |
 | `climbing.html` | Climbing | Mountain-Project-style route ledger — projects, ticks, objectives |
@@ -58,7 +58,7 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | `projects/state-of-mind-line/` | Psyche | Animated bipolar mood-pattern visualization |
 
 These are self-contained and may carry their own assets/fonts — that's fine; the
-"no dependencies" rule applies to the relay's own room pages, not embedded projects.
+"no dependencies" rule applies to the terminal's own room pages, not embedded projects.
 
 ## Playground
 
@@ -87,11 +87,11 @@ pill switcher in Orrin, case-file tabs in Psyche, a film strip on captures, and 
 **same set of rooms with the same labels** — only the styling differs. If you add or
 rename a room, update the menu on **every** page (see `AGENTS.md`).
 
-When served on the web, Relay home links normalize to the clean site root instead of
+When served on the web, Terminal home links normalize to the clean site root instead of
 leaving `/index.html` in the address. Their `index.html` markup remains as a fallback so
 the pages still work when opened directly from disk.
 
-## Relay terminal
+## Terminal
 
 Type `help` for the current command list. Useful shortcuts include `/clear`, `tree`,
 `projects`, `find <word>`, `open <target>`, `latest`, `random`, `uptime`, and `reboot`.
@@ -112,11 +112,11 @@ file — copy the example block, edit, done.
 
 ## Easter eggs
 
-The Relay has hidden terminal commands, typed project codes, and a few strange visual
+The Terminal has hidden terminal commands, typed project codes, and a few strange visual
 interactions. The complete, intentionally spoiler-filled registry lives in
 [`EASTER_EGGS.md`](EASTER_EGGS.md).
 
 For the biggest ones, type `lsd` or `shrooms` into the homepage terminal. The chosen
 visual mode persists as you move through rooms and projects. Refresh any page or return
-to the Relay and type `sober` to turn it off. Motion is automatically disabled when the
+to the Terminal and type `sober` to turn it off. Motion is automatically disabled when the
 visitor has requested reduced motion.
