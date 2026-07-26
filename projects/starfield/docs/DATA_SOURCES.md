@@ -26,10 +26,35 @@ code depending on it is written.
 
 ## 2. Rules
 
+### 2.0 Keep this in proportion
+
+**Most of what this project needs is US Government work — NASA, USGS, NOAA — which is
+public domain.** There is no copyright to clear and no permission to seek. Crediting the
+source is scientific good practice (and NASA asks for it), but it is not a legal hurdle.
+For the Earth–Moon slice specifically, **"say where we got it from" genuinely is the
+whole obligation.**
+
+The rules below exist for the minority of cases where that is not true: a few convenience
+datasets under share-alike terms, and third-party 3D models. Both are avoidable, and the
+project avoids both. Do not let §2.1 create the impression that sourcing real data is
+fraught — it mostly is not.
+
+**Two things to remember and then stop worrying:**
+
+1. Public domain still gets a credit line — always.
+2. **The NASA logo/insignia is restricted** even though NASA's imagery is not. Do not use
+   the logo.
+
 ### 2.1 Licence compatibility
 
 The repository is **MIT** (Design Bible §17.6). The project is free and nobody is ever
-charged, but that does **not** make any asset usable:
+charged, but that does **not** by itself make any third-party asset usable:
+
+> **The repository's licence and an asset's licence are independent questions.** Your
+> licence governs what *others* may do with *your* work; it never changes what *you* may
+> use. Changing the project's licence would not unlock a single restricted asset, so
+> licence choice should be made on its own merits (Design Bible §17.6) and never as a
+> workaround.
 
 - **Preferred:** public domain / US Government works (NASA, USGS, NOAA) and permissive
   licences (CC0, CC BY, MIT, BSD).
@@ -44,6 +69,22 @@ charged, but that does **not** make any asset usable:
   established.
 
 ### 2.2 Attribution
+
+**Where to find a licence, in practice.** The pattern is the same on almost every site:
+scroll to the **page footer** and look for *Image Use Policy*, *Terms of Use*,
+*Copyright*, or *Data Use Policy*. If that fails, search `<site name> image use policy`.
+
+| Source | Where it lives |
+|---|---|
+| NASA | Footer → "Media Usage Guidelines" / "Images and Media". Each image page also carries a `Credit:` line — copy it verbatim. |
+| USGS | Footer → "Copyrights and Credits". |
+| ESA / Gaia | Footer → "Terms and Conditions". Gaia specifies exact acknowledgement text to reproduce. |
+| ESO | Footer → "Copyright Notice". |
+| GitHub-hosted data | `LICENSE` file in the repository root. |
+| Any dataset | Its `README` or "Acknowledgements" section usually supplies the citation string to use. |
+
+Capture four things and move on: **the licence text, the credit line, the URL, and the
+date retrieved.**
 
 - A repository-level `CREDITS` / `NOTICE` file lists every source and its required
   attribution.
@@ -127,7 +168,7 @@ this is exactly the measured-global / generated-local split in Bible §7.4 and s
 |---|---|---|
 | Orbit elements | **CelesTrak** or **Space-Track** TLEs; NASA ISS trajectory data | **VERIFY** — Space-Track requires an account and has redistribution terms; CelesTrak has its own usage terms. Cached-by-default is the decided behaviour (Bible §7.3), so redistribution of a shipped snapshot is the thing to check. |
 | Propagator | **SGP4** | The standard TLE propagator; well-documented, freely implementable. |
-| 3D model | **NASA 3D Resources** ISS model | **VERIFY** — NASA 3D Resources are generally usable, but individual models vary and some are third-party. Only a *recognizable* ISS is required (slice §8.1), so a purpose-built low-poly model is a legitimate fallback that sidesteps the issue entirely. |
+| 3D model | **Built in-house** — decided Ric, 2026-07-25 | **No licence question.** The station is modelled for this project rather than sourced: truss, solar arrays, modules, correct proportions, recognizable silhouette. Ric: "it just has to resemble it, it doesn't have to be super high detailed, it's on a website" — and since docking does not exist, there is breathing room on close-approach detail. Owned outright, MIT-compatible by definition, smaller and faster than a detailed third-party model. |
 
 ### 3.5 Stars — LATER (Phase 4), foundational
 
@@ -212,7 +253,7 @@ near-public-domain candidate.
 | # | Decision |
 |---|---|
 | 1 | Analytic ephemeris vs. sampled DE440 tables for the shipped runtime (§3.1) |
-| 2 | Real ISS model vs. purpose-built recognizable model — the licence-free path (§3.4) |
+| ~~2~~ | ~~ISS model sourcing~~ — **resolved 2026-07-25: built in-house** (§3.4) |
 | 3 | Star-catalogue depth and the cutoff where generation takes over (§3.5) |
 | 4 | Which occurrence-rate study/studies are canonical, and how uncertainty is shown (§3.6) |
 | 5 | Whether share-alike data (HYG, OpenNGC) is accepted with the §2.1 handling, or avoided |

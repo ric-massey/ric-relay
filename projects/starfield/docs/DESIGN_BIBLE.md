@@ -1413,7 +1413,19 @@ Consequences for the project:
   are strongly preferred because they are safe to redistribute in the repo.
 
 **The repository licence is MIT** (decided Ric, 2026-07-25) — permissive, simple, and
-compatible with the chosen rendering stack, which is MIT itself (§17.2).
+compatible with the chosen rendering stack, which is MIT itself (§17.2). Original assets
+made for the project (models, art, written content) MAY carry **CC BY 4.0**, the usual
+code-MIT / assets-CC split for open-source games.
+
+Why MIT and not a copyleft licence: the goal is for people to see, enjoy, and learn from
+this. MIT has the least friction of any option. GPL's benefit is preventing closed-source
+forks — real, but worth little for a project being given away, and it costs contributor
+clarity. **The licence choice changes nothing a player experiences**; its entire practical
+footprint is a credits file and a credits screen.
+
+Note that the repository's licence has **no bearing on which third-party assets may be
+used** — that is governed solely by each asset's own licence. See
+[Data Sources §2.0–2.1](DATA_SOURCES.md).
 
 ---
 
