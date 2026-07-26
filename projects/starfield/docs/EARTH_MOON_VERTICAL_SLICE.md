@@ -676,7 +676,10 @@ The slice must test a default scheme supporting:
 - information/help;
 - rebinding and reset.
 
-The exact mapping is a usability decision, not a design law.
+The mapping is **no longer deferred**. [Controls](CONTROLS.md) specifies the default
+desktop, gamepad, and touch schemes, the feel requirements, and the rebinding model, and
+governs this section. Ric's direction — "I want the controls to work well" — makes this
+a design law rather than a usability afterthought.
 
 ### 12.4 Mobile input baseline
 

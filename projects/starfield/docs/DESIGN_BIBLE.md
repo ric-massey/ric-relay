@@ -939,8 +939,8 @@ state.
 
 ### 14.2 Desktop controls
 
-Desktop should support keyboard and mouse and SHOULD support common gamepads. The
-final mapping is not yet fixed, but it needs:
+Desktop supports keyboard and mouse and SHOULD support common gamepads. Every scheme
+must cover:
 
 - look and orientation;
 - translation and thrust;
@@ -950,11 +950,18 @@ final mapping is not yet fixed, but it needs:
 - map;
 - autopilot action and disengage;
 - information panel;
-- optional roll;
+- roll;
 - accessible rebinding.
 
-The current “mouse does nothing on purpose” rule is not a project law and should be
-reconsidered through usability testing.
+**Decided (Ric, 2026-07-25): the mouse aims the ship and the keyboard moves it.** The
+prototype's "mouse does nothing on purpose" rule is **repealed** — binding rotation to
+arrow keys is the identified cause of Ric's verdict that "the controls suck," because
+digital keys cannot give both fine and fast aiming. Clicking also selects objects
+directly on the glass, matching the holographic HUD model.
+
+Controls are a **design law in this project, not a late usability detail.** The complete
+scheme — desktop, gamepad, touch, feel requirements, rebinding, and accessibility — is
+specified in [Controls](CONTROLS.md), which governs this section.
 
 ### 14.3 Mobile controls
 
@@ -998,19 +1005,35 @@ Reality is the art direction. The game should be beautiful because the universe 
 beautiful, not because every scene receives artificial nebula fog, oversized stars,
 or impossible ambient light.
 
+> **Movies make space black. It isn't — it is blazing with stars.** (Ric, 2026-07-25)
+>
+> This is the project's governing visual statement. The prototype's visuals were
+> "lackluster" because they inherited the cinematic convention of a dark void with a few
+> dots. A dark-adapted human eye sees thousands of hard, steady, brilliant points and a
+> Milky Way bright enough to cast a shadow. **Delivering that is the goal.**
+
 ### 15.2 Exposure and human vision
 
-Rendering should model the practical consequences of human perception:
+Rendering must model the practical consequences of human perception. The governing fact
+is that **the eye's enormous dynamic range is sequential, not simultaneous**: about 14
+orders of magnitude across adaptation states, but only 3–4 at any one of them. You never
+see a sunlit hull and faint stars at the same moment.
 
-- dark adaptation;
+- dark adaptation, as a time-varying state driven by scene luminance;
 - exposure changes near bright bodies;
 - atmospheric extinction and scattering;
-- loss of dim stars when a bright surface or cockpit display dominates vision;
+- loss of dim stars when a bright surface or cockpit display dominates vision — this
+  includes the game's own HUD;
 - real angular size wherever possible;
 - optical zoom or instrument views when the naked eye would see only a point.
 
 Labels and sensor overlays may make small targets usable without physically
 enlarging them.
+
+The full model — adaptation timing, star appearance and colour, limiting magnitude,
+the Milky Way's real desaturated appearance, the Earth limb, cosmic-ray light flashes,
+and an explicit list of forbidden renderer behaviours — is specified in
+[Visual Perception](VISUAL_PERCEPTION.md), which governs this section.
 
 ### 15.3 Lighting
 
@@ -1149,8 +1172,21 @@ Each milestone must define and test explicit budgets for:
 - cache size;
 - network-free fallback behavior.
 
-No universal numeric targets are yet settled. They should be chosen against actual
-reference devices rather than guessed once and treated as timeless.
+**Provisional starting targets**, to be confirmed or replaced by measurement against
+real reference devices during the architecture spike. They exist so that "acceptable
+performance" is falsifiable rather than a matter of opinion:
+
+| Budget | Desktop | Mid-range phone |
+|---|---|---|
+| Steady frame rate | 60 fps | 30 fps sustained |
+| Time to first interactive cockpit | < 5 s | < 8 s |
+| Initial transfer (before optional assets) | < 5 MB | < 5 MB |
+| Long frames (> 50 ms) | none in steady flight | none in steady flight |
+| Sustained session without thermal collapse | — | 15 min |
+
+These are **targets, not measurements.** They must be chosen against actual reference
+devices rather than guessed once and treated as timeless, and each milestone re-tests
+them. A named mid-range reference phone must be picked before the spike concludes.
 
 ### 17.6 Licensing and distribution (decided Ric, 2026-07-25)
 
@@ -1535,6 +1571,9 @@ superseded so the project's reasoning remains understandable.
 | 2026-07-25 | The warning triangle is the general warning language, not hull-only. | Adopted |
 | 2026-07-25 | The player may land anywhere; there are no designated landing sites. Terrain must resemble the real body — measured global shape, deterministic generated local detail. | Adopted |
 | 2026-07-25 | Landing is a low hover of roughly 6–15 feet above the surface, not a physical touchdown; no landing gear or contact solver. | Adopted |
+| 2026-07-25 | Space is not black — it blazes with stars. The eye's adaptation is modeled; the sky is never a fixed brightness. | Adopted |
+| 2026-07-25 | The mouse aims and the keyboard moves; the "mouse does nothing on purpose" rule is repealed. Controls are a design law. | Adopted |
+| 2026-07-25 | Discrete speed gears are replaced by a continuous throttle with displayed, auto-selected regimes — pending feel validation in the spike. | Adopted, provisional |
 
 ---
 

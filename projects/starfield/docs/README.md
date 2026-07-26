@@ -21,11 +21,15 @@ Read the documents in this order:
 4. [Scientific Standard](SCIENTIFIC_STANDARD.md) — how facts, calculations,
    approximations, procedural completion, and fictional technology are classified
    and communicated.
-5. [HUD and Cockpit](HUD_AND_COCKPIT.md) — the presets, the octagonal canopy, the
+5. [Visual Perception](VISUAL_PERCEPTION.md) — what space actually looks like to a human
+   eye, the adaptation model, stars, colour, the Earth limb, and what is forbidden.
+6. [HUD and Cockpit](HUD_AND_COCKPIT.md) — the presets, the octagonal canopy, the
    on-glass information layer, labelling, warnings, damage, and photo mode.
-6. [Implementation Audit](IMPLEMENTATION_AUDIT.md) — a file-by-file map of the
+7. [Controls](CONTROLS.md) — the flight-control model, default schemes for desktop,
+   gamepad and touch, input feel, rebinding, and accessibility.
+8. [Implementation Audit](IMPLEMENTATION_AUDIT.md) — a file-by-file map of the
    current prototype: preserve, refactor, replace, or retire.
-7. [Prototype README](../README.md) — what the existing prototype does and how to
+9. [Prototype README](../README.md) — what the existing prototype does and how to
    run it today.
 
 ## Authority
@@ -50,7 +54,9 @@ does something.
 | `EARTH_MOON_VERTICAL_SLICE.md` | What must the first complete experience do? | Galaxy-scale implementation details |
 | `TECHNICAL_ARCHITECTURE.md` | How should the simulation be structured? | Final library choice without an architecture decision |
 | `SCIENTIFIC_STANDARD.md` | What counts as honest, sourced, or fictional? | Art direction unrelated to scientific truth |
+| `VISUAL_PERCEPTION.md` | What does space look like to a human eye? | Renderer implementation and asset pipeline |
 | `HUD_AND_COCKPIT.md` | What does the player see, and where does information sit? | Simulation behavior behind the readouts |
+| `CONTROLS.md` | How does the player fly, and how should it feel? | The physics being controlled |
 | `IMPLEMENTATION_AUDIT.md` | What happens to each current file/system? | Permission to start a broad rewrite |
 | Parent `README.md` | What runs today and how? | The final product vision |
 
@@ -98,7 +104,10 @@ The following are not open to casual reinterpretation:
 - Traveler time equals real play time and never scales; home time may diverge.
 - The project is free and open source.
 - Information deepens through exploration.
-- The sky aims for believable human perception.
+- The sky aims for believable human perception: space is not black, it blazes with
+  stars, and the eye's adaptation is modeled rather than a fixed brightness chosen.
+- Controls are a design law, not a late usability detail: the mouse aims, the keyboard
+  moves, and nothing routine needs a chord.
 - Scientific compromise and fictional technology are labeled honestly.
 - The game runs in modern desktop and mobile browsers.
 - Rendering quality may scale; scientific rules and destinations may not.
