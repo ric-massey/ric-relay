@@ -414,8 +414,9 @@ This is a **foundational law**, not a feature. It means:
   planets **landed on** (as a low hover, §10.1);
 - the same applies to every other phenomenon: black holes, dust clouds, nebulae,
   clusters. **You can fly up to it and experience it** (§10.7);
-- **every star has a name and at least one planet** — a real designation where one
-  exists, a generated one where it does not, "even if it's kinda gibberish";
+- **every star has a name** — a real designation where one exists, a generated one where
+  it does not, "even if it's kinda gibberish". Planets follow real occurrence rates, so
+  **some stars genuinely have none**;
 - the player can **save any world** or add it to their map (§13).
 
 It is the most demanding law in this document, and it is the reason the universe must be
@@ -437,11 +438,59 @@ astronomy actually measures:
 - habitable-zone terrestrial worlds occur at rates consistent with current (and genuinely
   uncertain) estimates. The uncertainty itself is worth surfacing to the player.
 
-> **Declared simplification.** Requiring *every* star to have at least one planet is
-> slightly more generous than observation strictly supports — current understanding is
-> that planets are the norm and likely outnumber stars, but not that every single star
-> hosts one. This is Ric's decision, it is close to reality, and it MUST carry an honesty
-> ledger entry saying so.
+**Some stars have no planets** (corrected by Ric, 2026-07-25). An earlier draft required
+every star to host at least one world; Ric revised this to follow reality instead. Planets
+are the norm and likely outnumber stars, but planetless stars exist and the generator must
+produce them at a realistic rate. **Where reality is known, match it — do not round it off
+in the game's favour.**
+
+#### Why generating abundantly is the *accurate* choice, not a compromise
+
+> **"We can just make it up if we aren't sure — there is no harm in adding tons of
+> stuff."** — Ric, 2026-07-25
+
+This deserves a full explanation, because at first glance it sounds like the opposite of
+a project built on scientific honesty. It isn't. It is the more accurate option, for four
+reasons.
+
+**1. An empty universe is a *wrong* answer, not a neutral one.**
+Where we have not looked, the honest expectation is not "nothing is there" — it is
+"something is almost certainly there, and here is what it probably looks like." The
+galaxy contains on the order of a hundred billion stars and, by current understanding,
+*more planets than stars*. A game that showed bare stars wherever astronomy has not yet
+surveyed would be **misrepresenting reality far more severely** than one that generates a
+plausible system. Emptiness is a claim, and it is a false one.
+
+**2. Our catalogue is a sample, not the population.**
+The confirmed exoplanet catalogue is shaped overwhelmingly by **detection bias**. Transit
+and radial-velocity methods find large planets on short orbits around bright, nearby,
+quiet stars — because those are the easiest to detect, not because they are the most
+common. Small planets on long orbits are the hardest to find and are believed to be
+*more* numerous. Reproducing only the catalogue would reproduce **our instruments'
+limitations** and present them as the universe's contents. Generating from
+occurrence-rate statistics *corrects* for that bias rather than inheriting it.
+
+**3. "Made up" is not the same as "arbitrary."**
+Nothing here is invented freely. A generated system is a **statement of what is likely at
+that location**, drawn from measured distributions, conditioned on the real host star, and
+constrained by real physics. It is closer to an informed scientific expectation than to
+fiction. That is why §7.5 classes it as **Procedural**, distinct from **Fictional** — the
+ship's drive is invented; a generated planet is *inferred*.
+
+**4. The harm would come from mislabelling, not from generating.**
+The only real danger is a player believing that a generated world has been observed. That
+danger is addressed completely by **labelling**, which the project already requires
+everywhere. Once the player can always tell measured from generated, abundance costs
+nothing and buys a universe that is as full as the real one.
+
+**So the rule is: generate abundantly, label rigorously.** The two halves are inseparable
+— abundance is only defensible because the labelling is strict, and the labelling is only
+interesting because the abundance makes the universe worth exploring.
+
+There is also a genuine educational win here. Teaching a player that *the catalogue is a
+sample, that absence of detection is not absence, and that the universe is far fuller than
+our list of confirmed discoveries* is one of the more valuable things this project can
+convey. The generated universe is the lesson, not a shortcut around it.
 
 #### Naming
 
@@ -767,8 +816,30 @@ should not automatically receive a bright movie-style accretion disk.
 
 ### 10.7 Diffuse and deep-sky phenomena (decided Ric, 2026-07-25)
 
-Ric's requirement: **"all the actual stuff that is in the universe, and you need to be
-able to fly up to it and experience that phenomenon."**
+> **"If a human could see it in space, I want it in there — and backed up by the science
+> of how much we know about them."** — Ric, 2026-07-25
+
+**This is the inclusion test for all content in the game.** It has two halves and both
+are binding:
+
+1. **If a human eye could perceive it from space, it belongs in the game.** Not a
+   curated highlights reel — the actual contents of the universe. The player should be
+   able to witness each of these things at some point.
+2. **Its depiction is bounded by what we actually know about it.** Fidelity follows
+   evidence: well-studied objects are depicted in detail, poorly-understood ones are
+   depicted with appropriate uncertainty, and the difference is visible to the player
+   rather than smoothed over.
+
+The second half prevents the first from becoming licence. "Include everything" does not
+mean "invent freely" — it means **the universe's real inventory, rendered to the limit of
+real knowledge and no further.**
+
+The corollary matters too: things a human eye could *not* see — false-colour structure,
+radio and infrared features, long-exposure detail — are legitimate as clearly labelled
+**instrument views** (Visual Perception §8), never as the naked-eye scene.
+
+Ric's original requirement, which this generalises: **"all the actual stuff that is in the
+universe, and you need to be able to fly up to it and experience that phenomenon."**
 
 The universe is not stars and planets with nothing between them. The following are
 **required content**, each reachable and each experienced from inside the ship:
@@ -1712,7 +1783,10 @@ superseded so the project's reasoning remains understandable.
 | 2026-07-25 | The mouse aims and the keyboard moves; the "mouse does nothing on purpose" rule is repealed. Controls are a design law. | Adopted |
 | 2026-07-25 | Discrete speed gears are replaced by a continuous throttle with displayed, auto-selected regimes — pending feel validation in the spike. | Adopted, provisional |
 | 2026-07-25 | Everything visible is reachable: no skybox, every star visitable, its planets landable. | Adopted (Phases 4–6) |
-| 2026-07-25 | Every star has a name and at least one planet; planet populations follow real occurrence statistics; measured exoplanets are never overwritten. | Adopted |
+| 2026-07-25 | ~~Every star has a name and at least one planet.~~ | Superseded same day |
+| 2026-07-25 | Every star has a name; planet populations follow real occurrence statistics, so some stars have none. Measured exoplanets are never overwritten. | Adopted |
+| 2026-07-25 | Generate abundantly where knowledge stops, label rigorously: an empty universe where nobody has looked is less accurate than a generated one, and generation corrects detection bias rather than inheriting it. | Adopted |
+| 2026-07-25 | Inclusion test: if a human could see it in space it belongs in the game, depicted only to the limit of what we actually know about it. | Adopted |
 | 2026-07-25 | Stars beyond the real catalogue are generated against real galactic structure, deterministic and permanent, with the catalogued/generated boundary visible. | Adopted |
 | 2026-07-25 | "The entire game is between your map and the universe" — the map is a primary surface with effort equal to the cockpit. | Adopted |
 | 2026-07-25 | The player can save any world to their map, with notes; saved worlds are core, not a bookmark utility. | Adopted |

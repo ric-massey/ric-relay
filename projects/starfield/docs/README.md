@@ -92,7 +92,11 @@ The following are not open to casual reinterpretation:
 
 - The universe retains real scale and stable geography.
 - Everything you can see, you can go to. There is no skybox — every point of light is a
-  real destination with a name, worlds, and a way to land on them.
+  real destination with a name, and worlds where real statistics say worlds should be.
+- If a human could see it in space, it belongs in the game — depicted only to the limit
+  of what we actually know about it.
+- Generate abundantly where knowledge stops; label rigorously. An empty universe where
+  nobody has looked yet would be less accurate than a generated one.
 - The entire game is between the map and the universe; the map is a primary surface.
 - The ship provides the capability needed to cross that scale.
 - The player may fly manually with high precision.
@@ -127,7 +131,7 @@ These decisions are intentionally not buried inside implementation documents:
 | `OPEN-004` | Guided expedition structure versus purely free exploration | Discovery-log design | Open |
 | `OPEN-005` | Live ISS data versus cached/representative station by default | Earth–Moon slice | **Resolved 2026-07-25** — cached elements by default (offline-safe, kept current); optional live refresh; recognizable resemblance, as close as realistic. |
 | `OPEN-006` | Pausing, time acceleration, and selectable historical epochs | Time-system design | **Mostly resolved 2026-07-25** — menus pause; two-clock rule adopted (traveler time never scales). Selectable historical epochs still open. |
-| `OPEN-007` | Amount of visible procedural completion for unknown exoplanets | Nearby-star phase | **Resolved 2026-07-25** — full completion: every star gets a name and at least one planet, generated from real occurrence statistics, deterministic and labelled as generated. Measured exoplanets are never overwritten. (Bible §7.4) |
+| `OPEN-007` | Amount of visible procedural completion for unknown exoplanets | Nearby-star phase | **Resolved 2026-07-25** — generate abundantly, label rigorously. Every star gets a name; planets follow real occurrence rates (so some stars have none), deterministic and labelled as generated. Measured exoplanets are never overwritten. (Bible §7.4) |
 | `OPEN-008` | Fully modeled cockpit versus minimal instrument view | Earth–Moon visual design | **Resolved 2026-07-25** — three presets (Clean / Frame / Cockpit) over a shared holographic on-glass layer with direct object selection. Default preset still to pick. |
 | `OPEN-009` | Multiplayer, shared routes, or shared observations | Post-core exploration | Open |
 | `OPEN-010` | Permanent engine, renderer, and build toolchain | Architecture prototype | **Resolved 2026-07-25** — Three.js on WebGL 2, HUD/overlays as a DOM layer; WebGPU path preserved. **Conditional on the architecture spike** (Tech Arch §22.1). |

@@ -458,12 +458,19 @@ the change.
 
 ### 9.1 Population statistics must be real (Ric, 2026-07-25)
 
-Because every star is reachable and every star receives worlds (Design Bible §7.4), the
-project generates vastly more planetary systems than astronomy has measured. The
-generator is therefore held to a **statistical** standard rather than a per-object one:
+Because every star is reachable (Design Bible §7.4), the project generates vastly more
+planetary systems than astronomy has measured. The generator is therefore held to a
+**statistical** standard rather than a per-object one:
 
 - **measured planets are authoritative** and are never overwritten, adjusted, or
   "improved" by generation;
+- **planetless stars must occur** at a realistic rate. Planets are the norm, but "every
+  star has one" is not what observation supports, and the generator must not round the
+  universe off in the game's favour;
+- generation **corrects for detection bias rather than inheriting it**: the confirmed
+  catalogue over-represents large planets on short orbits around bright, quiet, nearby
+  stars because those are easiest to detect. Sampling the catalogue directly would
+  reproduce our instruments' limits and present them as the universe's contents;
 - generated planet **types, radii, masses, and orbital periods** are drawn from published
   occurrence-rate distributions, conditioned on the host star's spectral class;
 - **rare things stay rare** — hot Jupiters must not become common because they are
@@ -479,9 +486,16 @@ generator is therefore held to a **statistical** standard rather than a per-obje
   terrestrial worlds. The chosen values, their source, and their uncertainty are recorded,
   and the uncertainty is worth showing the player rather than hiding.
 
-Required ledger entries: the occurrence-rate source and version, the requirement that
-every star host at least one planet (slightly more generous than observation supports),
-and the boundary between the real catalogue and generated stars.
+Required ledger entries: the occurrence-rate source and version, the boundary between the
+real catalogue and generated stars, and a plain-language explanation that generated
+systems are **statistical expectations rather than observations** — including the reason
+they exist at all, which is that an empty universe where nobody has looked yet would be
+less accurate than a generated one (Design Bible §7.4).
+
+**Prefer real sources wherever they reach.** Occurrence rates, the luminosity function,
+galactic structure, and the exoplanet catalogue are all published data; the generator
+should consume them rather than approximate them from memory. Generation begins only
+where the sources stop.
 
 ---
 
