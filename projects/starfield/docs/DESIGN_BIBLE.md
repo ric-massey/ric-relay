@@ -601,6 +601,25 @@ Rocky planets and moons should support:
 - scientifically constrained procedural terrain where detailed measurements do
   not exist.
 
+#### You may land anywhere (decided Ric, 2026-07-25)
+
+**There are no designated landing sites.** In Ric's words, *"you get to land like in Star
+Wars — not go to specific spots."* The player picks a place and sets down there.
+
+The standard the terrain must meet follows from that: **the ground has to resemble the
+ground of that body.** Character, not coordinates.
+
+- the **global shape is measured** — real radius, real large-scale topography, real
+  named features where data allows;
+- **local surface detail is generated** to match the body's actual character (regolith,
+  crater density, slope statistics, rock distribution, albedo);
+- generated detail is classified `P` and must be labeled as generated, never presented
+  as a survey of that exact patch of ground (Scientific Standard §2.4, §8.7);
+- generated detail is **deterministic** — the same place looks the same every visit.
+
+This is what makes an entire real-scale world landable without needing a
+high-resolution survey of every square kilometre of it.
+
 Terrain is not allowed to be scaled vertically merely to create drama without an
 honesty entry.
 
@@ -1512,6 +1531,10 @@ superseded so the project's reasoning remains understandable.
 | 2026-07-25 | Hull damage shows on the canopy subtly and must never obscure the view. | Adopted |
 | 2026-07-25 | Photo mode lets the player choose per shot whether frame and overlays appear. | Adopted |
 | 2026-07-25 | Overlay base style is pale cyan/white thin lines; colour never carries meaning alone. | Adopted |
+| 2026-07-25 | The Cockpit preset includes a jet-style console; the no-desk rule applies to Frame only. | Adopted |
+| 2026-07-25 | The warning triangle is the general warning language, not hull-only. | Adopted |
+| 2026-07-25 | The player may land anywhere; there are no designated landing sites. Terrain must resemble the real body — measured global shape, deterministic generated local detail. | Adopted |
+| 2026-07-25 | Landing is a low hover of roughly 6–15 feet above the surface, not a physical touchdown; no landing gear or contact solver. | Adopted |
 
 ---
 

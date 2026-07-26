@@ -43,7 +43,7 @@ the framing changes.
 |---|---|---|
 | **Clean** | None — only the view and what the player summons. | Pure observation and photography. |
 | **Frame** ← **default** | Octagonal canopy with struts wrapping around the player. | The default flying experience. |
-| **Cockpit** | Jet-style modeled interior. | Maximum embodiment. |
+| **Cockpit** | Jet-style modeled interior, **including a console** — it is meant to feel like a jet. | Maximum embodiment. |
 
 **Frame is the default preset** (resolves `OPEN-013`). Clean is the better screenshot
 mode, but a new player facing a black sky with no framing may not register that they are
@@ -95,6 +95,18 @@ almost entirely a styling problem.
 
 This split is deliberate: Frame optimizes for legibility and is the default; Cockpit pays
 screen space and occlusion for physical realism, and players opt into that.
+
+### 2.3 The Cockpit preset has a console
+
+Decided Ric, 2026-07-25: **Cockpit includes a console, "because it's like a jet."** The
+no-desk rule (§2.1) governs the **Frame** preset only.
+
+Cockpit is the opt-in embodied mode, so the instrument surface belongs there: a jet-style
+dashboard below the canopy, with the moving canopy of §2.2. It is the one preset allowed
+to trade view area for presence — which is precisely why it is not the default.
+
+Warnings, vitals, and object labels behave identically across presets; the console is
+physical framing, not a second information system.
 
 ---
 
@@ -164,11 +176,10 @@ Rules:
 - warnings never rely on colour alone: the triangle's presence, and its text, carry the
   meaning for colour-blind players (§8).
 
-**Generalization, flagged for Ric's confirmation.** Ric specified this for hull state.
-The natural reading is that the triangle is the project's *general* warning language —
-the same yellow/red triangle appearing next to whichever readout is in trouble
-(closing speed, terrain clearance, structural load). This spec adopts that generalization
-so warnings stay consistent; say the word if hull was meant to be the only one.
+**Confirmed by Ric (2026-07-25):** the triangle is the project's **general** warning
+language, not a hull-only indicator. The same yellow/red triangle appears next to
+whichever readout is in trouble — closing speed, terrain clearance, structural load —
+so a warning always reads the same way wherever it occurs.
 
 This satisfies the Design Bible law that **danger must be legible before it is fatal**:
 the caution state exists precisely so the critical state is never the first notice.
@@ -250,6 +261,5 @@ The preset is never silently switched on the player's behalf.
 - Exact strut thickness, panel proportions, and the octagon's aspect at different
   viewports — a visual-tuning matter, best settled against a real prototype. The
   governing constraint is fixed: maximize glass.
-- Whether the **Cockpit** preset may include the console that Frame forbids, since it is
-  the opt-in "most embodied" mode. This spec currently assumes it stays minimal too.
-- Whether the warning triangle generalizes beyond hull state (§5).
+- Console layout and density for the **Cockpit** preset (§2.3) — it exists, but how
+  much of the lower view it occupies is untuned.

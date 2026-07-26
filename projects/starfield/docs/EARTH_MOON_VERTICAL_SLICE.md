@@ -163,7 +163,7 @@ Near-Earth station keeping
 → perform or supervise the braking phase
 → match the Moon's motion
 → enter orbit
-→ select a landing region
+→ pick anywhere on the surface to set down
 → descend through local terrain LOD
 → hover or fly over the surface
 → land
@@ -337,7 +337,7 @@ The vertical-slice autopilot MUST support:
 - leave the station safety envelope;
 - route from near Earth to lunar arrival;
 - enter and maintain lunar orbit;
-- descend toward a selected landing region;
+- descend toward any player-chosen point on the surface;
 - hover;
 - land;
 - take off from the Moon;
@@ -482,33 +482,50 @@ The Moon must have:
 - named feature metadata where licensing and size allow;
 - no atmosphere.
 
-### 10.2 Landing region
+### 10.2 Landing anywhere
 
-At least one lunar region must support:
+**The player may land anywhere on the Moon** (decision §19.15). There is no designated
+landing region, no approved zone, and no invisible boundary — Ric's direction was *"you
+get to land like in Star Wars, not go to specific spots."*
+
+The whole lunar surface must therefore support:
 
 - progressive terrain refinement;
 - collision at the visible surface;
 - meaningful slopes and local relief;
 - hover and lateral terrain flight;
-- stable touchdown detection;
-- a clearly sourced elevation model or clearly labeled procedural refinement;
+- reliable landing detection (§10.3);
 - return to orbit without reloading the whole game.
 
-The default region SHOULD be visually interesting and operationally forgiving. The
-specific region is not yet canon: asked which lunar region should be default, Ric fixed
-only the *start* — Earth and the ISS (decision §19.4) — and left the default lunar
-landing region to the author for now.
+**The standard is resemblance, not survey.** The ground must *resemble the ground of the
+Moon*: real global topography from measured elevation data, with local detail generated
+to match genuine lunar character — crater density, regolith, slope statistics, boulder
+distribution, albedo. Generated detail is classified `P`, labeled as generated rather
+than measured, and is deterministic so a place looks the same every time you return.
+
+This replaces the earlier "pick a hero region" approach. It removes the need for a
+high-resolution survey of one site and instead requires one terrain system that is
+plausible everywhere — which is also what every later body will need.
 
 ### 10.3 Landing behavior
 
+**Landing is a low hover, not a touchdown** (decision §19.15). Ric's specification: the
+ship settles to roughly **6–15 feet (about 2–4.5 m) above the ground** and that counts as
+landed — the Star Wars image of a ship resting just above the surface on its drive rather
+than parking on struts.
+
 A safe landing requires:
 
-- landing gear or an equivalent supported contact state;
+- descending into the hover band above the local surface;
 - speed below configured vertical and lateral limits;
 - slope and terrain clearance within ship limits;
-- stable contact for a short confirmation interval;
+- stable hold for a short confirmation interval;
 - no invisible snap from high altitude;
-- a clear transition to “landed” surface-relative state.
+- a clear transition to a “landed” surface-relative state that tracks the terrain below.
+
+This removes landing-gear deployment, strut contact physics, and exact touchdown
+detection from the slice. The ship never physically rests on the ground, so what must be
+solid is the **hover-height hold over real terrain**, not a contact solver.
 
 Hard contact may damage or destroy the ship according to impact energy. Destruction is
 permanent (§13, decision §19.6): a lethal impact ends the run and restarts the universe
@@ -940,9 +957,8 @@ Where a decision has game-wide consequences (death, docking, repair), the
 3. **Menus pause the simulation.** Opening a normal menu pauses local simulation; the
    ship does not keep moving while a menu is open. See §5.3.
 4. **Default start location is Earth and the ISS** — the one place every expedition
-   begins. Ric did not fix a specific default *lunar* landing region; the slice must
-   support at least one lunar landing region (§10.2), but which one is default remains
-   the author's choice for now and is still not canon.
+   begins. There is no default *lunar* landing region, because there are no designated
+   landing sites at all — see decision 15 below and §10.2.
 5. **No docking.** The game has no docking mechanic. The player may approach, station-
    keep, observe, and later *land on planetary and lunar surfaces*, but never docks and
    never leaves the spacecraft on foot. See §8.2.
@@ -976,8 +992,18 @@ Where a decision has game-wide consequences (death, docking, repair), the
 14. **Frame is the default cockpit preset** — octagonal canopy, edge struts, no console
     or desk, maximizing visible space. Full spec: [HUD and Cockpit](HUD_AND_COCKPIT.md).
 
-**Still to decide for this slice:** the default lunar landing region (§10.2), flagged by
-Ric for further discussion.
+15. **Land anywhere, Star Wars style.** There are no designated landing sites — the
+    player sets down wherever they like. The ground only has to **resemble** the real
+    ground of that body: measured global topography plus deterministic generated local
+    detail, labeled as generated. Landing is a **low hover of roughly 6–15 feet
+    (2–4.5 m)** above the surface rather than a physical touchdown. See §10.2–§10.3.
+
+**No slice-level design questions remain open.** Remaining work is specification detail
+and the architecture spike, not decisions.
+
+> **Note for confirmation.** "6–15 feet for a landing" is recorded above as the *hover
+> height at which the ship counts as landed*. If it was instead meant as a tolerance on
+> terrain accuracy, this section needs revising.
 
 During development, a clearly-labeled temporary reset MAY still be used as a testing
 aid, but it is not the shipped rule and must be marked as scaffolding.

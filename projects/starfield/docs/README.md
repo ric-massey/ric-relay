@@ -122,7 +122,7 @@ These decisions are intentionally not buried inside implementation documents:
 | `OPEN-011` | Permanent public name | Before broad public release | Open |
 | `OPEN-012` | Open-source licence for the repository itself | Before public release | **Resolved 2026-07-25** — MIT. |
 | `OPEN-013` | Default cockpit preset | Earth–Moon slice | **Resolved 2026-07-25** — Frame (octagonal canopy, no console). Full spec in [HUD and Cockpit](HUD_AND_COCKPIT.md). |
-| `OPEN-014` | Default lunar landing region | Earth–Moon slice (Slice D) | Open — Ric wants to discuss; needs a sourced elevation dataset |
+| `OPEN-014` | Default lunar landing region | Earth–Moon slice (Slice D) | **Dissolved 2026-07-25** — the question no longer applies: the player lands anywhere. Measured global topography + generated local detail; landing is a low hover. |
 
 An open decision should receive a short decision record when resolved: date,
 options considered, chosen answer, reason, and documents affected. Resolved-decision
