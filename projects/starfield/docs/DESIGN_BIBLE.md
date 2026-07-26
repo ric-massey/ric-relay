@@ -401,7 +401,76 @@ Rules that follow:
 - this is the sublight, physically-real behavior. What the fictional FTL drive does to
   home time is a separate, still-open question (§8.2D).
 
-### 7.4 Known, inferred, and generated worlds
+### 7.4 Everything you can see, you can go to (decided Ric, 2026-07-25)
+
+> **"Every star in the sky you should be able to go to and see if there are planets there
+> and go onto those planets too."** — Ric
+
+This is a **foundational law**, not a feature. It means:
+
+- **there is no skybox.** The background is not a painted image of a sky — it *is* the
+  world, and every point of light in it is a real, reachable destination;
+- any star the player can see can be **flown to**, **inspected for planets**, and those
+  planets **landed on** (as a low hover, §10.1);
+- the same applies to every other phenomenon: black holes, dust clouds, nebulae,
+  clusters. **You can fly up to it and experience it** (§10.7);
+- **every star has a name and at least one planet** — a real designation where one
+  exists, a generated one where it does not, "even if it's kinda gibberish";
+- the player can **save any world** or add it to their map (§13).
+
+It is the most demanding law in this document, and it is the reason the universe must be
+real-scale and stable rather than staged.
+
+#### Planet populations must match reality
+
+Generated systems are **not free invention**. Planet occurrence must resemble what
+astronomy actually measures:
+
+- **measured exoplanets are used wherever they exist** — the confirmed catalogue is
+  real data and is never overwritten by generation;
+- beyond it, systems are generated from **published occurrence-rate statistics**: the
+  relative frequency of planet sizes and types, orbital-period distributions, and how all
+  of these vary with the host star's spectral class;
+- small planets and mini-Neptunes are common; hot Jupiters are rare, and must stay rare;
+- **multiplicity matters** — a large fraction of stars are binary or multiple, and
+  generated systems must reflect that rather than defaulting to lone suns;
+- habitable-zone terrestrial worlds occur at rates consistent with current (and genuinely
+  uncertain) estimates. The uncertainty itself is worth surfacing to the player.
+
+> **Declared simplification.** Requiring *every* star to have at least one planet is
+> slightly more generous than observation strictly supports — current understanding is
+> that planets are the norm and likely outnumber stars, but not that every single star
+> hosts one. This is Ric's decision, it is close to reality, and it MUST carry an honesty
+> ledger entry saying so.
+
+#### Naming
+
+- catalogued stars keep their **real designations** (proper names, Bayer/Flamsteed, HD,
+  HIP, Gaia) — never renamed;
+- generated stars receive **systematic generated designations**, clearly flagged as
+  generated;
+- planets follow the **real IAU convention** — host name plus lowercase letter in order
+  of discovery (`b`, `c`, `d`, …), which makes generated systems read authentically;
+- generated names are **deterministic**: the same star carries the same name forever.
+
+#### Honest scale limits
+
+The galaxy holds on the order of **hundreds of billions of stars**; the largest real
+catalogues contain around **two billion**. Neither ships to a browser. Therefore:
+
+- a **real catalogue** supplies the nearby and bright stellar population;
+- beyond it, stars are **generated against real galactic structure** — disc, bulge, halo,
+  spiral-arm density, and the real luminosity function — so the sky and the galaxy's shape
+  stay honest even where individual stars are invented;
+- generated stars are **deterministic and permanent**: a star seen once is in the same
+  place, with the same name and worlds, forever;
+- the boundary between catalogued and generated is **visible to the player**, never
+  disguised.
+
+This law belongs to **Phases 4–6** (§20). The Earth–Moon slice does not deliver it; the
+architecture must simply never make it impossible.
+
+### 7.5 Known, inferred, and generated worlds
 
 Each fact about an object should carry an internal provenance class:
 
@@ -696,6 +765,40 @@ Compact objects should retain the existing project's scientific ambition:
 Visual spectacle must be tied to an explained physical cause. A dormant black hole
 should not automatically receive a bright movie-style accretion disk.
 
+### 10.7 Diffuse and deep-sky phenomena (decided Ric, 2026-07-25)
+
+Ric's requirement: **"all the actual stuff that is in the universe, and you need to be
+able to fly up to it and experience that phenomenon."**
+
+The universe is not stars and planets with nothing between them. The following are
+**required content**, each reachable and each experienced from inside the ship:
+
+- **dust clouds and molecular clouds** — including dark nebulae seen in silhouette
+  against the galactic band;
+- **emission, reflection, and planetary nebulae**;
+- **supernova remnants**;
+- **open and globular star clusters**, where stellar density genuinely transforms the sky;
+- **neutron stars and pulsars**;
+- **binary and multiple systems**, which are the common case, not the exception;
+- **protoplanetary and debris discs**;
+- **the galactic centre**, including the supermassive black hole;
+- **other galaxies**, resolving into star fields on approach.
+
+Rules that apply to all of them:
+
+- **real catalogued objects use real data and real positions** (Messier, NGC, and
+  similar); generated ones follow real galactic structure and statistics;
+- **appearance follows the perception model** ([Visual Perception](VISUAL_PERCEPTION.md))
+  — to the naked eye these are desaturated greys and silvers, not Hubble palettes, and a
+  long-exposure photo is the honest way to see their colour;
+- **being inside a nebula is mostly unspectacular**, and that truth is more interesting
+  than the lie: real nebulae are thinner than laboratory vacuum, so the drama is in the
+  view across light-years, not in flying through fog. The game must not turn them into
+  coloured smoke to be more exciting;
+- **density-driven hazards are real where the physics says so** — debris and ring
+  particles can damage the hull (§11.2), diffuse gas cannot;
+- each carries provenance and an explanation of what the player is looking at.
+
 ---
 
 ## 11. Damage, danger, and death
@@ -861,6 +964,22 @@ slice rather than waiting.
 
 ## 13. Map and destination discovery
 
+> **"The entire game is between your map and the universe."** — Ric, 2026-07-25
+
+This elevates the map from an instrument to **one of the game's two primary surfaces.**
+There is the universe seen through the canopy, and there is the map used to choose where
+to go in it — and the whole loop lives in the movement between them.
+
+Consequences:
+
+- the map gets **design and engineering effort equal to the cockpit**, not leftover
+  attention;
+- the transition between map and view must be **fast, frequent, and never disorienting**
+  — this is the single most-used interaction in the game;
+- the map is where curiosity turns into intent: it must make the player *want* to go
+  somewhere, then get them pointed at it;
+- **saving and organising worlds is core**, not a convenience feature (§13.1).
+
 The cosmic map is an essential instrument, not a separate abstract minigame. It
 must remain understandable across planetary, stellar, galactic, and intergalactic
 scales without implying that the universe itself changes scale.
@@ -880,6 +999,24 @@ The map should support:
 
 The map should offer curated points of interest and short reasons to visit them.
 It must not manufacture nearby encounters to prevent boredom.
+
+### 13.1 Saving worlds (decided Ric, 2026-07-25)
+
+**The player can save any planet, star, or phenomenon to their map.** This is the
+player's own record of the universe and a core system, not a bookmark utility.
+
+- save any object from the cockpit or the map, in one action;
+- saved objects persist, subject to the selected death mode (§11.3);
+- annotate a saved object with the player's own notes — the same mechanism as photograph
+  notes (§12.4);
+- organise, filter, and search saved objects;
+- a saved object always retains **how to get back there** and what was recorded on the
+  last visit;
+- saved worlds feed the "places you have seen" counter (§12.2).
+
+Because everything visible is reachable (§7.4), the saved list is how a player imposes
+their own shape on an otherwise unbounded universe. That makes it the closest thing the
+game has to progression.
 
 ---
 
@@ -1574,6 +1711,12 @@ superseded so the project's reasoning remains understandable.
 | 2026-07-25 | Space is not black — it blazes with stars. The eye's adaptation is modeled; the sky is never a fixed brightness. | Adopted |
 | 2026-07-25 | The mouse aims and the keyboard moves; the "mouse does nothing on purpose" rule is repealed. Controls are a design law. | Adopted |
 | 2026-07-25 | Discrete speed gears are replaced by a continuous throttle with displayed, auto-selected regimes — pending feel validation in the spike. | Adopted, provisional |
+| 2026-07-25 | Everything visible is reachable: no skybox, every star visitable, its planets landable. | Adopted (Phases 4–6) |
+| 2026-07-25 | Every star has a name and at least one planet; planet populations follow real occurrence statistics; measured exoplanets are never overwritten. | Adopted |
+| 2026-07-25 | Stars beyond the real catalogue are generated against real galactic structure, deterministic and permanent, with the catalogued/generated boundary visible. | Adopted |
+| 2026-07-25 | "The entire game is between your map and the universe" — the map is a primary surface with effort equal to the cockpit. | Adopted |
+| 2026-07-25 | The player can save any world to their map, with notes; saved worlds are core, not a bookmark utility. | Adopted |
+| 2026-07-25 | Dust clouds, nebulae, clusters, pulsars, remnants, discs and other real phenomena are required content, each reachable. | Adopted |
 
 ---
 

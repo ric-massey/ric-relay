@@ -456,6 +456,33 @@ When a later observation supersedes generated detail, the project should preserv
 old expedition record while updating the world's current scientific state and explaining
 the change.
 
+### 9.1 Population statistics must be real (Ric, 2026-07-25)
+
+Because every star is reachable and every star receives worlds (Design Bible §7.4), the
+project generates vastly more planetary systems than astronomy has measured. The
+generator is therefore held to a **statistical** standard rather than a per-object one:
+
+- **measured planets are authoritative** and are never overwritten, adjusted, or
+  "improved" by generation;
+- generated planet **types, radii, masses, and orbital periods** are drawn from published
+  occurrence-rate distributions, conditioned on the host star's spectral class;
+- **rare things stay rare** — hot Jupiters must not become common because they are
+  visually interesting;
+- **multiplicity** (binary and multiple stars) follows real frequencies;
+- generated **stellar** populations follow the real luminosity function and real galactic
+  structure — density by disc/bulge/halo and spiral arms — so the sky's *shape* stays
+  honest even where individual stars are invented;
+- the generator's statistical output SHOULD be **testable**: sampling many generated
+  systems and comparing the resulting distributions against the source occurrence rates
+  is a scientific regression test (§7.4), not an optional nicety;
+- occurrence rates carry **genuine scientific uncertainty**, especially for habitable-zone
+  terrestrial worlds. The chosen values, their source, and their uncertainty are recorded,
+  and the uncertainty is worth showing the player rather than hiding.
+
+Required ledger entries: the occurrence-rate source and version, the requirement that
+every star host at least one planet (slightly more generous than observation supports),
+and the boundary between the real catalogue and generated stars.
+
 ---
 
 ## 10. Honesty ledger
