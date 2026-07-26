@@ -119,6 +119,9 @@ The following are not open to casual reinterpretation:
 - Controls are a design law, not a late usability detail: the mouse aims, the keyboard
   moves, and nothing routine needs a chord.
 - Scientific compromise and fictional technology are labeled honestly.
+- Two honesty surfaces ship together: **Sources** ("what is real, and who measured it")
+  and the **honesty ledger** ("what is not real, and why"). Credits are content, not a
+  legal footer.
 - The game runs in modern desktop and mobile browsers.
 - Rendering quality may scale; scientific rules and destinations may not.
 

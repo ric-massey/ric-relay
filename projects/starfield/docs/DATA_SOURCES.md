@@ -90,6 +90,11 @@ date retrieved.**
   attribution.
 - Attribution is **also reachable in-game**, from the provenance panels and the honesty
   ledger — not buried in a file only developers read.
+- **Write the in-game version as content, not compliance** (Design Bible §18.1). Each
+  source gets one interesting sentence about *what it gave us* and *which instrument
+  measured it* — "the Moon's shape, from a laser altimeter in lunar orbit" — with the
+  formal citation underneath for anyone who wants it. The obligation is satisfied as a
+  by-product of writing something worth reading.
 - NASA material is generally free to use, but **the NASA logo/insignia is restricted**
   and must not be used. NASA also hosts third-party copyrighted material; check per asset.
 

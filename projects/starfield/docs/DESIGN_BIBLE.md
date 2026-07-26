@@ -1465,6 +1465,47 @@ Generated output file(s)
 The game should expose concise source notes to interested players without requiring
 them to read the developer documentation.
 
+### 18.1 Credits are a feature, not a footer (decided Ric, 2026-07-25)
+
+> Telling people the Moon's terrain came from a **laser altimeter in lunar orbit** is
+> interesting. It is the same honesty principle the whole project runs on.
+
+The sources screen is **content**, not compliance. It happens to satisfy every attribution
+obligation the project has ([Data Sources §2.2](DATA_SOURCES.md)) — but that is a
+by-product. Its real job is to tell the player something worth knowing: **that everything
+they just flew through was measured by somebody, with real instruments, and here is who
+and how.**
+
+This is where the project's premise becomes visible. A player who has just hovered over a
+crater and then reads that the ground beneath them was mapped by a spacecraft firing laser
+pulses at the surface has learned something true, and the game has proved it was not
+inventing the view.
+
+Requirements:
+
+- written for a **curious person, not a lawyer** — plain language, one interesting
+  sentence per source before any formal citation;
+- each entry says **what it gave us**, not merely who owns it: "the Moon's shape," "the
+  night side's city lights," "where the stars are";
+- **reachable in context** — from a body's information panel, so the player can ask "where
+  did this come from?" about the thing in front of them, not only from a menu;
+- the formal citation, licence, version, and retrieval date remain available underneath
+  for anyone who wants them;
+- it names the **instruments and missions**, because those are the interesting part.
+
+#### The two honesty surfaces
+
+The project has a matched pair, and they should be presented as such:
+
+| Surface | Answers |
+|---|---|
+| **Sources** (§18.1) | *"What here is real, and who measured it?"* |
+| **Honesty ledger** (Scientific Standard §10) | *"What here is not real, and why?"* |
+
+Together they make the complete claim: **this is what we know, this is what we made up,
+and we will always tell you which is which.** Neither is complete alone, and shipping one
+without the other would undercut the project's central promise.
+
 ---
 
 ## 19. Current prototype audit
@@ -1800,6 +1841,7 @@ superseded so the project's reasoning remains understandable.
 | 2026-07-25 | Generate abundantly where knowledge stops, label rigorously: an empty universe where nobody has looked is less accurate than a generated one, and generation corrects detection bias rather than inheriting it. | Adopted |
 | 2026-07-25 | Inclusion test: if a human could see it in space it belongs in the game, depicted only to the limit of what we actually know about it. | Adopted |
 | 2026-07-25 | Selectable instrument filters (IR, UV, X-ray, radio, narrowband, long exposure) overlay the glass, off by default and always labelled; they must use real band data or calculated physics, never a tint of the visible image. | Adopted |
+| 2026-07-25 | Credits/sources are a feature rather than a footer: written for a curious person, naming the instruments, reachable from an object's own panel. Paired with the honesty ledger as the project's two honesty surfaces. | Adopted |
 | 2026-07-25 | Stars beyond the real catalogue are generated against real galactic structure, deterministic and permanent, with the catalogued/generated boundary visible. | Adopted |
 | 2026-07-25 | "The entire game is between your map and the universe" — the map is a primary surface with effort equal to the cockpit. | Adopted |
 | 2026-07-25 | The player can save any world to their map, with notes; saved worlds are core, not a bookmark utility. | Adopted |
