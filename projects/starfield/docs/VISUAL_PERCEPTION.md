@@ -211,6 +211,50 @@ science education, and the project already has the feature to carry it.
 - Optical zoom and instrument views are legitimate for objects the eye cannot resolve,
   and are always identified as instruments.
 
+### 8.1 Instrument filters (decided Ric, 2026-07-25)
+
+> **"In the settings you should be able to turn on some of the instruments that they
+> would have that would create those visuals — that could just be a smart filter over
+> the top of the glass."** — Ric
+
+The ship carries **selectable instrument filters** that overlay the canopy, each
+corresponding to a real observing band or technique:
+
+- infrared, ultraviolet, X-ray, radio;
+- narrowband (e.g. hydrogen-alpha);
+- long-exposure accumulation;
+- false-colour composites.
+
+This is an elegant fit for the project. It resolves the tension between "the naked eye
+sees grey smudges" and "the universe is full of astonishing structure" **without lying
+about either** — the eye view stays honest, and the spectacular views become what they
+actually are: *instruments*. It is also, straightforwardly, how humanity knows what it
+knows about these objects, which makes it the most educational feature in the game.
+
+Rules:
+
+- filters are **off by default**; the naked-eye view is always the baseline;
+- a filter is **always visibly labelled** while active — the player can never mistake an
+  instrument view for what their eyes see;
+- each filter states **which band or technique it represents** and what it reveals;
+- filters are toggled in settings and SHOULD have a quick in-flight control;
+- filters apply to the view **and** work with photography (§8), so a captured image
+  records which filter produced it.
+
+#### The honest technical constraint
+
+A filter **cannot be a colour transform of the visible-light image.** Infrared is not
+"visible light tinted red" — it is different data entirely. Faking it would be exactly
+the kind of dishonesty this project exists to avoid. Therefore:
+
+- for **catalogued objects with real multi-wavelength survey coverage**, filters use
+  **real survey data** for that band (see the [Data Sources](DATA_SOURCES.md) manifest);
+- for **generated objects**, band appearance is **calculated** from physical properties —
+  temperature, composition, emission mechanism — and classed `C` (calculated), never `M`;
+- where neither is possible, the filter reports that it has **no data for this object**
+  rather than inventing a plausible image. An honest blank is required;
+- every filter carries an honesty-ledger entry describing its data basis.
+
 ---
 
 ## 9. Forbidden

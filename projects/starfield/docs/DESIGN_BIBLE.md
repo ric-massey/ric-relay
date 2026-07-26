@@ -1787,6 +1787,7 @@ superseded so the project's reasoning remains understandable.
 | 2026-07-25 | Every star has a name; planet populations follow real occurrence statistics, so some stars have none. Measured exoplanets are never overwritten. | Adopted |
 | 2026-07-25 | Generate abundantly where knowledge stops, label rigorously: an empty universe where nobody has looked is less accurate than a generated one, and generation corrects detection bias rather than inheriting it. | Adopted |
 | 2026-07-25 | Inclusion test: if a human could see it in space it belongs in the game, depicted only to the limit of what we actually know about it. | Adopted |
+| 2026-07-25 | Selectable instrument filters (IR, UV, X-ray, radio, narrowband, long exposure) overlay the glass, off by default and always labelled; they must use real band data or calculated physics, never a tint of the visible image. | Adopted |
 | 2026-07-25 | Stars beyond the real catalogue are generated against real galactic structure, deterministic and permanent, with the catalogued/generated boundary visible. | Adopted |
 | 2026-07-25 | "The entire game is between your map and the universe" — the map is a primary surface with effort equal to the cockpit. | Adopted |
 | 2026-07-25 | The player can save any world to their map, with notes; saved worlds are core, not a bookmark utility. | Adopted |

@@ -27,10 +27,12 @@ Read the documents in this order:
    on-glass information layer, labelling, warnings, damage, and photo mode.
 7. [Controls](CONTROLS.md) — the flight-control model, default schemes for desktop,
    gamepad and touch, input feel, rebinding, and accessibility.
-8. [Implementation Audit](IMPLEMENTATION_AUDIT.md) — a file-by-file map of the
+8. [Data Sources](DATA_SOURCES.md) — the manifest of every external dataset, catalogue,
+   texture and model, with licence rules and a verification checklist.
+9. [Implementation Audit](IMPLEMENTATION_AUDIT.md) — a file-by-file map of the
    current prototype: preserve, refactor, replace, or retire.
-9. [Prototype README](../README.md) — what the existing prototype does and how to
-   run it today.
+10. [Prototype README](../README.md) — what the existing prototype does and how to
+    run it today.
 
 ## Authority
 
@@ -57,6 +59,7 @@ does something.
 | `VISUAL_PERCEPTION.md` | What does space look like to a human eye? | Renderer implementation and asset pipeline |
 | `HUD_AND_COCKPIT.md` | What does the player see, and where does information sit? | Simulation behavior behind the readouts |
 | `CONTROLS.md` | How does the player fly, and how should it feel? | The physics being controlled |
+| `DATA_SOURCES.md` | Where does every dataset come from, and may we use it? | How the data is rendered or simulated |
 | `IMPLEMENTATION_AUDIT.md` | What happens to each current file/system? | Permission to start a broad rewrite |
 | Parent `README.md` | What runs today and how? | The final product vision |
 

@@ -198,6 +198,28 @@ away their vision. Damage that would block sight is expressed in readouts instea
 
 ---
 
+## 6.1 Instrument filters
+
+The canopy supports **selectable instrument filters** — infrared, ultraviolet, X-ray,
+radio, narrowband, long exposure — applied as a "smart filter over the top of the glass"
+(Ric, 2026-07-25). They are off by default, always visibly labelled while active, and
+never presented as naked-eye appearance.
+
+Presentation requirements:
+
+- the active filter is named persistently on the glass, in a place the player cannot
+  miss;
+- the warning and vitals layer (§3.1, §5) stays legible through any filter — safety
+  information is never filtered away;
+- switching filters is a single quick control, not a menu dive;
+- a photograph records which filter produced it (§7).
+
+The full specification, including the constraint that filters must use real band data or
+calculated physics rather than tinting the visible image, is in
+[Visual Perception §8.1](VISUAL_PERCEPTION.md).
+
+---
+
 ## 7. Photo mode
 
 **The player chooses per shot** whether the frame and overlays appear.
