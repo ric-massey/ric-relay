@@ -17,12 +17,17 @@
       hint of temperature. The saturated red and blue of space art is what
       a long exposure sees, not an eye.
 
-   The stars are drawn with the camera's rotation only and no translation,
-   so they have no parallax. Across the entire Earth–Moon volume the
-   largest parallax any star has is about 0.002 arcseconds; the eye
-   resolves 60. Ledger entry SF-L-007 records this, and it is the one piece
-   of this file that goes away in Phase 4, when the stars get their real
-   distances and become places you can fly to.
+   The stars are drawn on a shell, and **that is no longer a claim about
+   where they are.** `setObserver` recomputes each star's apparent direction
+   and apparent magnitude from its true range whenever the ship moves, so
+   flying at one approaches it — the Phase 4 this header used to promise,
+   landed 2026-07-28 for the 3 157 stars with a measured parallax.
+
+   Inside the Earth–Moon volume nothing moves, and that is correct rather
+   than lazy: the largest parallax any star has across that whole box is
+   about 0.002 arcseconds, and the eye resolves 60. Ledger entry SF-L-007
+   carries the rest, including why the 5 989 stars with no measured distance
+   stay put.
    ══════════════════════════════════════════════════════════════════════ */
 
 import * as THREE from "../../../vendor/three/three.module.min.js";
