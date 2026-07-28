@@ -1,0 +1,1226 @@
+/* ══════════════════════════════════════════════════════════════════════
+   slice.css — the canopy and the information on it.
+
+   HUD and Cockpit §8: pale cyan and white, thin lines. The overlay should
+   read as light on glass, never as an opaque panel, and it must stay
+   legible against a bright Earth limb as well as a black sky — so
+   everything carries its own contrast rather than assuming a dark
+   background.
+
+   §8 again, and it governs every choice below: **real astronomical colour
+   outranks interface colour.** The HUD is not allowed to compete with the
+   view.
+   ══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --sf-ink: rgba(226, 246, 255, 0.94);
+  --sf-dim: rgba(190, 216, 228, 0.62);
+  --sf-line: rgba(178, 226, 244, 0.34);
+  --sf-glow: rgba(140, 220, 250, 0.9);
+  --sf-caution: #ffcf4a;
+  --sf-critical: #ff5f52;
+  --sf-panel: rgba(6, 12, 18, 0.88);
+  --sf-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  color: var(--sf-ink);
+  font: 400 14px/1.5 var(--sf-mono);
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#sky {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+#sky:active { cursor: grabbing; }
+
+/* ── the overlay root ─────────────────────────────────────────────── */
+
+#overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  /* Anything that must be clickable turns pointer events back on itself.
+     The default is off so the canopy never steals a drag from the sky. */
+}
+#overlay > * { pointer-events: auto; }
+#overlay .sf-canopy-host,
+#overlay .sf-labels { pointer-events: none; }
+
+/* ── canopy ───────────────────────────────────────────────────────── */
+
+.sf-canopy-host { position: absolute; inset: 0; }
+
+.sf-canopy {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── the photographic canopy ──────────────────────────────────────────
+   Ric's reference images with the glass cut out, so the real sky shows
+   through the panes. `cover` crops rather than stretches: a canopy is a
+   physical object and a stretched one reads as wrong immediately, where a
+   cropped one just reads as sitting closer to the glass.
+
+   It is a fixed 1.83:1, so below roughly that shape the drawn canopy takes
+   over — there is no honest way to fit this photograph to an upright
+   phone, and HUD §9 already wanted mobile to reduce to thin edge struts. */
+
+.sf-canopy-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+  pointer-events: none;
+  display: none;
+}
+
+@media (min-aspect-ratio: 3 / 2) {
+  .sf-canopy-photo { display: block; }
+  .sf-canopy--luxury, .sf-canopy--console { display: none; }
+
+  /* The mullions converge on the bottom centre in both photographs, which
+     is exactly where the flight block sits. Lift it onto the glass —
+     §3.1's rule is that vitals do not move *during play*, not that they
+     ignore the shape of the canopy they are drawn on. */
+  #overlay[data-preset="luxury"] .sf-vitals--bc { bottom: 17vh; }
+}
+
+/* The frame is drawn as filled quads rather than strokes (canopy.js), so
+   almost everything below is about the *edges* of those quads — the
+   hairlines that keep the structure readable against a bright limb, which
+   a gradient alone cannot do. §8: the overlay must carry its own contrast
+   rather than assuming a dark background. */
+
+.sf-surround {
+  filter: drop-shadow(0 0 26px rgba(0, 0, 0, 0.7));
+}
+
+.sf-glass-edge {
+  stroke: rgba(198, 232, 248, 0.34);
+  vector-effect: non-scaling-stroke;
+  stroke-width: 1;
+}
+
+.sf-beam { filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.6)); }
+
+.sf-beam-edge {
+  stroke: rgba(186, 224, 244, 0.22);
+  vector-effect: non-scaling-stroke;
+  stroke-width: 1;
+}
+
+/* The rim light — luxury only. One warm line along the underside of the
+   transom and the inboard edge of each mullion. It is the whole
+   difference between "dark" and "expensive" in the reference image. */
+.sf-rim {
+  stroke: rgba(255, 214, 160, 0.5);
+  vector-effect: non-scaling-stroke;
+  stroke-width: 1.4;
+  filter: drop-shadow(0 0 4px rgba(255, 190, 120, 0.5));
+}
+
+.sf-canopy--luxury .sf-glass-edge { stroke: rgba(210, 240, 255, 0.42); }
+
+/* ── the console finish ───────────────────────────────────────────────
+   §2.3: the console exists because this preset is meant to feel like a
+   jet. Everything here is hardware — bezels, switches, a wiring loom,
+   stencilled labels — and none of it displays a number, because the
+   simulation does not have hull or power to display and inventing one
+   would put a fabricated readout on the glass. */
+
+.sf-canopy--console .sf-glass-edge { stroke: rgba(196, 214, 224, 0.4); }
+.sf-canopy--console .sf-beam-edge { stroke: rgba(210, 224, 232, 0.3); }
+
+.sf-rivet { fill: rgba(206, 220, 228, 0.34); }
+
+/* Stencils are SVG text inside a viewBox drawn with
+   `preserveAspectRatio="none"`, so a glyph comes out as wide as the
+   viewport is wide relative to its height. That is why this is set so
+   small, and why the letter-spacing is nearly nothing: the stretch adds
+   its own. Real stencilling is wide anyway, so the distortion works for
+   us here rather than against us. */
+.sf-stencil {
+  fill: rgba(198, 216, 226, 0.34);
+  font: 700 1.05px var(--sf-mono);
+  letter-spacing: 0.02em;
+}
+
+.sf-console { filter: drop-shadow(0 -6px 22px rgba(0, 0, 0, 0.8)); }
+
+.sf-coaming {
+  stroke: rgba(226, 244, 255, 0.44);
+  vector-effect: non-scaling-stroke;
+  stroke-width: 1.4;
+}
+
+.sf-bezel {
+  fill: rgba(10, 16, 21, 0.94);
+  stroke: rgba(184, 206, 218, 0.34);
+  vector-effect: non-scaling-stroke;
+  stroke-width: 1;
+}
+.sf-bezel--main { fill: rgba(12, 22, 28, 0.96); stroke: rgba(150, 220, 245, 0.4); }
+
+.sf-switch { fill: rgba(196, 156, 92, 0.72); }
+
+.sf-loom {
+  stroke: rgba(150, 120, 80, 0.5);
+  vector-effect: non-scaling-stroke;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+/* ── the crosshair ────────────────────────────────────────────────────
+   Four ticks and a hole. The hole is the point: a solid reticle covers
+   the object you are aiming at, and on a map of real things that is
+   usually what you were trying to look at. */
+
+.sf-crosshair {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 0; height: 0;
+  pointer-events: none;
+}
+.sf-crosshair i {
+  position: absolute;
+  background: rgba(196, 238, 252, 0.72);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+}
+.sf-crosshair-t, .sf-crosshair-b { width: 1px; height: 9px; left: 0; }
+.sf-crosshair-l, .sf-crosshair-r { height: 1px; width: 9px; top: 0; }
+.sf-crosshair-t { top: -19px; }
+.sf-crosshair-b { top: 10px; }
+.sf-crosshair-l { left: -19px; }
+.sf-crosshair-r { left: 10px; }
+
+/* ── the speed tape ───────────────────────────────────────────────────
+   One tick per decade of speed, so the ladder's position is the order of
+   magnitude and the ticks visibly slide under acceleration. A linear tape
+   would be useless across the eleven decades this game spans. */
+
+.sf-tape {
+  position: absolute;
+  /* Inboard of the speed block, which is anchored to the top-right — so
+     the ladder sits between the numbers and the middle of the screen,
+     where the eye already is, rather than off in the corner. */
+  left: -22px;
+  top: 4px;
+  width: 12px;
+  height: 76px;
+  pointer-events: none;
+}
+.sf-tape-ticks {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(178, 226, 244, 0.55) 0 1px,
+    transparent 1px 13px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 22%, #000 78%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 22%, #000 78%, transparent);
+  transform: translateY(calc(var(--tape, 0px) * -1));
+  transition: transform 0.18s linear;
+}
+.sf-tape-needle {
+  position: absolute;
+  left: -3px;
+  top: 50%;
+  width: 15px;
+  height: 1.5px;
+  background: var(--sf-glow);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+}
+
+/* ── the corner cluster ───────────────────────────────────────────────
+   "MENU ⚙  MAP ⊘" from the reference images. The map is a primary
+   surface, so it gets a permanent way in rather than living only on a key
+   nobody discovers. */
+
+.sf-corner {
+  position: absolute;
+  right: 3.6vw;
+  bottom: max(12px, calc(env(safe-area-inset-bottom) + 8px));
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.sf-corner-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: 0;
+  padding: 4px 2px;
+  cursor: pointer;
+  color: var(--sf-ink);
+  font: 600 11px/1 var(--sf-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.95);
+  opacity: 0.82;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+.sf-corner-btn:hover, .sf-corner-btn:focus-visible { opacity: 1; color: var(--sf-glow); }
+
+.sf-corner-glyph {
+  width: 13px; height: 13px;
+  border: 1.2px solid currentColor;
+  border-radius: 50%;
+  position: relative;
+}
+.sf-corner-glyph--map::after {
+  content: "";
+  position: absolute;
+  left: 1px; top: 5px;
+  width: 9px;
+  border-top: 1.2px solid currentColor;
+  transform: rotate(-38deg);
+}
+.sf-corner-glyph--menu {
+  border-style: dashed;
+}
+
+/* ── anchored vitals ──────────────────────────────────────────────── */
+
+.sf-vitals {
+  position: absolute;
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  /* §8: the overlay carries its own contrast rather than assuming a dark
+     background. That was already true against a bright limb; with the
+     photographic canopy it is true against polished metal as well, which
+     is brighter still and sits directly under the corner readouts. A tight
+     dark halo plus a wider soft one keeps the glyph edges crisp without
+     painting a visible box on the glass. */
+  text-shadow:
+    0 0 2px rgba(0, 0, 0, 0.95),
+    0 1px 3px rgba(0, 0, 0, 0.9),
+    0 1px 10px rgba(0, 0, 0, 0.75);
+  max-width: 46vw;
+}
+
+.sf-vitals--tl { top: max(10px, env(safe-area-inset-top)); left: 3.6vw; }
+.sf-vitals--tr { top: max(10px, env(safe-area-inset-top)); right: 3.6vw; text-align: right; }
+.sf-vitals--bl { bottom: 8.5vh; left: 3.6vw; }
+.sf-vitals--br { bottom: 8.5vh; right: 3.6vw; text-align: right; }
+/* Flight state sits centre-bottom, under the nose, because it is the one
+   readout the player checks without wanting to look away from where they
+   are going. */
+.sf-vitals--bc {
+  bottom: 8.5vh;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  min-width: 200px;
+}
+.sf-vitals--bc .sf-row { justify-content: space-between; }
+
+/* The console preset gives up the bottom fifth of the view to hardware,
+   so everything anchored low moves above the coaming rather than sitting
+   on it. §3.1 wants vitals in a fixed place; "fixed" is per preset, and a
+   readout printed on a console face is not legible at any preset. */
+#overlay[data-preset="console"] .sf-vitals--bl,
+#overlay[data-preset="console"] .sf-vitals--br { bottom: 25vh; }
+#overlay[data-preset="console"] .sf-vitals--bc { bottom: 29vh; }
+#overlay[data-preset="console"] .sf-corner { bottom: 23.5vh; }
+#overlay[data-preset="console"] .sf-hint { bottom: 23vh; }
+
+.sf-vitals--tr .sf-row, .sf-vitals--br .sf-row { justify-content: flex-end; }
+.sf-vitals--tr .sf-row span, .sf-vitals--br .sf-row span { order: 0; }
+
+.sf-row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: flex-start;
+}
+.sf-row span { color: var(--sf-dim); text-transform: lowercase; }
+.sf-row b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.sf-row--head b { color: var(--sf-glow); }
+
+.sf-note { color: var(--sf-dim); font-size: 10px; line-height: 1.35; }
+
+/* Warning language — HUD §5. A triangle with an exclamation mark sits
+   beside the readout it describes; colour never carries the meaning
+   alone, so the shape and its text do the work for colour-blind players. */
+.sf-warn::before {
+  content: "⚠";
+  margin-right: 5px;
+}
+.sf-warn--caution { color: var(--sf-caution); }
+.sf-warn--critical { color: var(--sf-critical); }
+
+/* ── the warning banner ───────────────────────────────────────────
+   One banner, high on the glass where it cannot be missed and low enough
+   that it never covers what you are flying at. The severity is a written
+   word as well as a colour (HUD §8) — and it is written first, so a screen
+   reader announces "critical" before the sentence rather than after it. */
+
+.sf-warning {
+  position: absolute;
+  top: max(18vh, 120px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  max-width: min(560px, 84vw);
+  padding: 8px 14px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  background: rgba(6, 12, 18, 0.72);
+  font-size: 12px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+}
+.sf-warning[hidden] { display: none; }
+.sf-warning::before { content: "⚠"; }
+.sf-warn-rank {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 10px;
+  font-weight: 700;
+}
+.sf-warn-text { color: var(--sf-ink); }
+
+.sf-warning[data-severity="info"] { color: var(--sf-line); }
+.sf-warning[data-severity="caution"] { color: var(--sf-caution); }
+.sf-warning[data-severity="warning"] { color: var(--sf-caution); }
+.sf-warning[data-severity="critical"] {
+  color: var(--sf-critical);
+  border-width: 2px;
+}
+
+/* ── touch controls — Controls §5 ─────────────────────────────────
+   Full stop and precision are fixed and always reachable, on the right so
+   the left thumb never has to leave the virtual stick. They are big
+   because §12.4 says they must be usable at 375 px, and separated because
+   hitting "stop" when you meant "fine" during a close approach is exactly
+   the accident the layout has to prevent. */
+
+.sf-touch-layer { position: absolute; inset: 0; pointer-events: none; }
+.sf-touch-layer[hidden] { display: none; }
+
+.sf-touch {
+  position: absolute;
+  pointer-events: auto;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 1.5px solid var(--sf-line);
+  background: rgba(6, 14, 20, 0.55);
+  color: var(--sf-ink);
+  font: 700 11px/1 var(--sf-mono);
+  letter-spacing: 0.08em;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+.sf-touch--stop {
+  right: max(14px, env(safe-area-inset-right));
+  bottom: calc(22vh + env(safe-area-inset-bottom));
+  border-color: var(--sf-critical);
+  color: var(--sf-critical);
+}
+.sf-touch--precision {
+  right: max(14px, env(safe-area-inset-right));
+  bottom: calc(22vh + 78px + env(safe-area-inset-bottom));
+}
+.sf-touch--precision.is-on {
+  border-color: var(--sf-glow);
+  background: rgba(120, 210, 240, 0.22);
+}
+
+/* ── floating labels ──────────────────────────────────────────────── */
+
+.sf-labels { position: absolute; inset: 0; }
+
+.sf-label {
+  position: absolute;
+  top: 0; left: 0;
+  pointer-events: auto;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  will-change: transform;
+}
+
+.sf-label-ring {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: var(--ring, 24px);
+  height: var(--ring, 24px);
+  margin-left: calc(var(--ring, 24px) / -2);
+  margin-top: calc(var(--ring, 24px) / -2);
+  border: 1px solid rgba(170, 225, 245, 0.42);
+  border-radius: 50%;
+}
+
+.sf-label-text {
+  position: absolute;
+  left: calc(var(--ring, 24px) / 2 + 10px);
+  top: -8px;
+  display: grid;
+  white-space: nowrap;
+  text-align: left;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.95);
+}
+.sf-label-text b { font-size: 12px; font-weight: 600; }
+.sf-label-text i { font-size: 10px; font-style: normal; color: var(--sf-dim); }
+
+/* A body that fills the view needs no ring around it — it is the view. */
+.sf-label.is-overflowing .sf-label-ring { display: none; }
+.sf-label.is-overflowing .sf-label-text { left: 14px; }
+
+.sf-label.is-target .sf-label-ring {
+  border-color: var(--sf-glow);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4) inset;
+}
+.sf-label.is-target .sf-label-text b { color: var(--sf-glow); }
+
+/* ── prograde / retrograde ────────────────────────────────────────
+   Slice spec §6.3. The conventional shapes, because anyone who has flown
+   anything in orbit can already read them: a circle with three ticks for
+   the way you are going, the same circle crossed for the way you came. */
+
+.sf-vector {
+  position: absolute;
+  top: 0; left: 0;
+  width: 0; height: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.sf-vector-mark {
+  position: absolute;
+  left: -11px; top: -11px;
+  width: 22px; height: 22px;
+  border: 1.5px solid var(--sf-glow);
+  border-radius: 50%;
+}
+
+/* The three ticks: two horizontal, one up. */
+.sf-vector--pro .sf-vector-mark::before,
+.sf-vector--pro .sf-vector-mark::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  border-top: 1.5px solid var(--sf-glow);
+}
+.sf-vector--pro .sf-vector-mark::before { left: -9px; }
+.sf-vector--pro .sf-vector-mark::after { right: -9px; }
+
+.sf-vector--pro .sf-vector-label {
+  position: absolute;
+  left: 16px; top: -6px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sf-glow);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.95);
+  white-space: nowrap;
+}
+
+/* Retrograde: the same circle, crossed through, and dimmer — it is
+   reference, not intent. */
+.sf-vector--retro .sf-vector-mark {
+  border-color: rgba(178, 226, 244, 0.5);
+  width: 16px; height: 16px;
+  left: -8px; top: -8px;
+}
+.sf-vector--retro .sf-vector-mark::before,
+.sf-vector--retro .sf-vector-mark::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: -4px;
+  height: 22px;
+  border-left: 1.5px solid rgba(178, 226, 244, 0.5);
+}
+.sf-vector--retro .sf-vector-mark::before { transform: rotate(45deg); }
+.sf-vector--retro .sf-vector-mark::after { transform: rotate(-45deg); }
+
+/* ── controls ─────────────────────────────────────────────────────── */
+
+.sf-controls {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.sf-btn, .sf-tab, .sf-link, .sf-close {
+  font: 600 10px/1 var(--sf-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--sf-ink);
+  background: rgba(8, 16, 22, 0.62);
+  border: 1px solid var(--sf-line);
+  border-radius: 999px;
+  padding: 7px 11px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.sf-btn:hover, .sf-tab:hover, .sf-btn:focus-visible, .sf-tab:focus-visible {
+  background: rgba(20, 38, 50, 0.9);
+  border-color: var(--sf-glow);
+}
+
+.sf-tabs { display: flex; gap: 4px; }
+.sf-tab.is-on { background: rgba(120, 210, 240, 0.2); border-color: var(--sf-glow); }
+
+.sf-link {
+  border-radius: 6px;
+  padding: 5px 8px;
+  margin-top: 4px;
+  justify-self: end;
+}
+
+.sf-hint {
+  position: absolute;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: 10px;
+  color: var(--sf-dim);
+  text-align: center;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.95), 0 1px 8px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  max-width: 90vw;
+}
+
+/* ── the panel ────────────────────────────────────────────────────── */
+
+.sf-panel {
+  position: absolute;
+  top: 0; right: 0;
+  width: min(430px, 92vw);
+  height: 100%;
+  background: var(--sf-panel);
+  border-left: 1px solid var(--sf-line);
+  backdrop-filter: blur(14px);
+  transform: translateX(101%);
+  transition: transform 0.28s cubic-bezier(0.22, 0.75, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sf-panel.is-open { transform: none; }
+
+.sf-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 10px;
+  border-bottom: 1px solid var(--sf-line);
+}
+.sf-panel-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--sf-glow);
+}
+.sf-close { padding: 3px 9px; font-size: 15px; line-height: 1; }
+
+.sf-panel-body {
+  padding: 14px 18px 40px;
+  overflow-y: auto;
+  font-size: 12.5px;
+  line-height: 1.62;
+  -webkit-overflow-scrolling: touch;
+}
+.sf-panel-body p { margin: 0 0 0.85em; }
+.sf-panel-body h3 {
+  margin: 1.4em 0 0.5em;
+  font-size: 11px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--sf-dim);
+}
+.sf-panel-body h4 { margin: 0 0 0.25em; font-size: 12.5px; color: var(--sf-glow); }
+.sf-panel-body a { color: var(--sf-glow); }
+
+.sf-hook {
+  color: var(--sf-glow);
+  font-size: 13.5px;
+}
+
+.sf-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 14px;
+  margin: 0 0 1em;
+  padding: 10px 0;
+  border-top: 1px solid var(--sf-line);
+  border-bottom: 1px solid var(--sf-line);
+}
+.sf-facts dt { color: var(--sf-dim); font-size: 11px; }
+.sf-facts dd {
+  margin: 0;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Provenance chips — Scientific Standard §2. Every value carries its
+   class, so measured and generated are never confusable. */
+.sf-chip {
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  opacity: 0.85;
+  cursor: help;
+}
+.sf-chip--M { color: #8be0a8; }
+.sf-chip--C { color: #8fd3f0; }
+.sf-chip--K { color: #d6c48a; }
+.sf-chip--P { color: #d3a0e6; }
+.sf-chip--F { color: #ff9a7a; }
+.sf-chip--A { color: #b8c4cc; }
+
+.sf-layer { border-bottom: 1px solid rgba(178, 226, 244, 0.14); }
+.sf-layer summary {
+  cursor: pointer;
+  padding: 9px 0;
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--sf-dim);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.sf-layer summary:hover { color: var(--sf-ink); }
+.sf-layer[open] summary { color: var(--sf-ink); }
+.sf-layer > p { padding-left: 2px; }
+
+.sf-tag {
+  margin-left: auto;
+  font-size: 9px;
+  padding: 2px 6px;
+  border: 1px solid var(--sf-line);
+  border-radius: 999px;
+  text-transform: none;
+  letter-spacing: 0.03em;
+}
+
+.sf-source { margin: 0 0 1.2em; }
+.sf-cite { color: var(--sf-dim); font-size: 10.5px; line-height: 1.45; }
+
+.sf-keys { display: grid; gap: 4px; margin-bottom: 1em; }
+.sf-keys .sf-row span { min-width: 150px; }
+
+/* ── loading ──────────────────────────────────────────────────────── */
+
+#loading {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  text-align: center;
+  background: #000;
+  z-index: 50;
+  transition: opacity 0.5s ease;
+}
+#loading.is-done { opacity: 0; pointer-events: none; }
+#loading h1 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--sf-glow);
+}
+#loading p { margin: 0; font-size: 11px; color: var(--sf-dim); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   the star map — Design Bible §13
+
+   > "The entire game is between your map and the universe."
+
+   One of the game's two primary surfaces, with effort equal to the
+   cockpit's. Laid out from the reference image: the plot, the scale tabs
+   at bottom-left, the nearby-locations rail down the right, two scale
+   insets, and a status strip naming where you are and what it costs to
+   get where you are going.
+   ══════════════════════════════════════════════════════════════════════ */
+
+.sf-map {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(240px, 22vw, 320px);
+  gap: 14px;
+  padding: 16px;
+  /* Opaque, deliberately. The map is a primary surface (Design Bible
+     §13), not a scrim over the cockpit — and a translucent one leaves the
+     HUD's bright text legible straight through the plot, which makes both
+     harder to read than either would be alone. */
+  background:
+    radial-gradient(120% 90% at 50% 0%, #0a1017 0%, #04070b 60%, #020406 100%);
+}
+/* No fade. Design Bible §13 wants the trip between map and view "fast,
+   frequent, and never disorienting", and this is the single most-used
+   interaction in the game — an eighth of a second of cross-fade on every
+   press is a tax on it. It is also a correctness matter: a throttled tab
+   stalls the transition part-way and leaves the cockpit legible straight
+   through the plot, which is exactly what the opaque background is for. */
+.sf-map[hidden] { display: none; }
+
+.sf-map-stage {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(150, 210, 235, 0.28);
+  border-radius: 8px;
+  background: #04070b;
+}
+
+.sf-map-plot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* ── the title chip ───────────────────────────────────────────────── */
+
+.sf-map-title {
+  position: absolute;
+  top: 12px; right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid rgba(150, 210, 235, 0.22);
+  border-radius: 999px;
+  background: rgba(8, 14, 20, 0.8);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sf-dim);
+  pointer-events: none;
+}
+.sf-map-title-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--sf-glow);
+  box-shadow: 0 0 8px var(--sf-glow);
+}
+
+/* ── the insets ───────────────────────────────────────────────────────
+   They show the two scales you are *not* on, which is the only
+   arrangement in which they earn the view they cost. */
+
+.sf-map-inset {
+  position: absolute;
+  width: clamp(150px, 17vw, 220px);
+  height: clamp(96px, 11vw, 138px);
+  border: 1px solid rgba(150, 210, 235, 0.2);
+  border-radius: 5px;
+  overflow: hidden;
+  background: #04070b;
+  pointer-events: none;
+}
+.sf-map-inset--tl { top: 12px; left: 14px; }
+.sf-map-inset--br { right: 14px; bottom: 116px; }
+
+.sf-map-inset-plot { width: 100%; height: 100%; display: block; }
+
+.sf-map-inset-label {
+  position: absolute;
+  left: 6px; bottom: 4px;
+  font-size: 8.5px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--sf-dim);
+  text-shadow: 0 1px 4px #000;
+}
+
+/* ── scale tabs ───────────────────────────────────────────────────────
+   Three named scales, on a rail, in the order the reference image uses:
+   the widest on the left, tightening as you move right. */
+
+.sf-map-scales {
+  position: absolute;
+  left: 16px; bottom: 16px;
+  display: flex;
+  align-items: flex-end;
+  gap: 26px;
+}
+.sf-map-scale-rail {
+  position: absolute;
+  left: 12px; right: 12px; bottom: 9px;
+  height: 1px;
+  background: rgba(150, 210, 235, 0.25);
+}
+
+.sf-map-scale {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: var(--sf-dim);
+  font: 600 9.5px/1 var(--sf-mono);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  transition: color 0.15s ease;
+}
+.sf-map-scale-mark {
+  width: 15px; height: 15px;
+  border: 1.2px solid currentColor;
+  border-radius: 50%;
+  background: #04070b;
+}
+.sf-map-scale-name { order: -1; }
+.sf-map-scale:hover { color: var(--sf-ink); }
+.sf-map-scale.is-on { color: var(--sf-glow); }
+.sf-map-scale.is-on .sf-map-scale-mark {
+  background: rgba(120, 210, 240, 0.28);
+  box-shadow: 0 0 10px rgba(120, 210, 240, 0.6);
+}
+
+/* ── the status strip ─────────────────────────────────────────────── */
+
+.sf-map-status {
+  position: absolute;
+  right: 14px; bottom: 16px;
+  /* Wide enough that "the station" does not wrap out of its cell on a
+     laptop-width stage; the hint on the left is sized to match. */
+  width: min(430px, 60%);
+  padding: 9px 13px;
+  border: 1px solid rgba(150, 210, 235, 0.24);
+  border-radius: 5px;
+  background: rgba(6, 12, 18, 0.9);
+}
+.sf-map-status-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px 18px;
+}
+.sf-map-stat { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
+.sf-map-stat span {
+  color: var(--sf-dim);
+  font-size: 9.5px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.sf-map-stat b {
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--sf-glow);
+  text-align: right;
+}
+
+.sf-map-status-note {
+  margin: 7px 0 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--sf-dim);
+}
+.sf-map-status-note:empty { display: none; }
+.sf-map-status-note[data-severity="warning"] { color: var(--sf-caution); }
+
+/* ── the scale bar ────────────────────────────────────────────────────
+   The one element that turns the plot from a diagram into a measurement.
+   §13 asks for real distances and scale indicators; this is that. */
+
+.sf-map-scalebar {
+  position: absolute;
+  left: 16px; bottom: 62px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--sf-dim);
+}
+.sf-map-scalebar-line {
+  display: block;
+  height: 6px;
+  border: 1px solid rgba(178, 226, 244, 0.55);
+  border-top: 0;
+  min-width: 12px;
+}
+.sf-map-scalebar b { color: var(--sf-ink); font-variant-numeric: tabular-nums; }
+
+.sf-map-hint {
+  position: absolute;
+  left: 16px; bottom: 88px;
+  margin: 0;
+  /* Clear of the status strip, which claims the right half of this row. */
+  max-width: min(36%, 280px);
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: rgba(190, 216, 228, 0.45);
+  pointer-events: none;
+}
+
+/* ── the rail ─────────────────────────────────────────────────────────
+   The accessible surface. The plot is a canvas because at interstellar
+   scale it draws hundreds of stars and DOM cannot, so everything on it
+   also appears here as a real focusable button carrying its name, its
+   distance and its provenance class (HUD §10). */
+
+.sf-map-rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid rgba(150, 210, 235, 0.28);
+  border-radius: 8px;
+  background: rgba(5, 9, 14, 0.9);
+  overflow: hidden;
+}
+.sf-map-rail h2 {
+  margin: 0;
+  /* Room on the right for the close button, which sits in this row. */
+  padding: 15px 52px 11px 15px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sf-glow);
+  border-bottom: 1px solid rgba(150, 210, 235, 0.2);
+}
+.sf-map-rail-body {
+  padding: 10px 10px 22px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sf-map-group-block { margin-bottom: 14px; }
+
+.sf-map-group {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+  padding: 6px 9px;
+  border: 1px solid rgba(150, 210, 235, 0.2);
+  border-radius: 3px;
+  background: rgba(16, 30, 40, 0.6);
+  cursor: pointer;
+  color: var(--sf-dim);
+  font: 600 9.5px/1 var(--sf-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.sf-map-group.is-on { color: var(--sf-glow); border-color: rgba(150, 210, 235, 0.4); }
+.sf-map-group i { font-style: normal; opacity: 0.6; }
+.sf-map-group:not(.is-on) { opacity: 0.5; }
+
+.sf-map-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  cursor: pointer;
+  color: var(--sf-ink);
+  font: 400 11px/1.3 var(--sf-mono);
+  text-align: left;
+}
+.sf-map-row:hover, .sf-map-row:focus-visible { background: rgba(30, 56, 72, 0.7); }
+.sf-map-row.is-target { background: rgba(120, 210, 240, 0.16); }
+.sf-map-row.is-target .sf-map-row-name { color: var(--sf-glow); }
+/* A star that is catalogued but not yet somewhere you can fly. It is
+   still listed and still inspectable — ledger SF-L-007 — and the dimming
+   is the honest signal that selecting it will not plot a route. */
+.sf-map-row.is-unreachable .sf-map-row-name { color: var(--sf-dim); }
+
+.sf-map-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sf-map-row-range {
+  font-size: 9.5px;
+  color: var(--sf-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.sf-map-dot {
+  width: 7px; height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+.sf-map-dot--world { background: #7fc9e8; }
+.sf-map-dot--star { background: #ffd79a; }
+.sf-map-dot--structure { background: #9ad8c4; }
+
+.sf-map-more {
+  margin: 6px 9px 2px;
+  font-size: 9.5px;
+  line-height: 1.4;
+  color: rgba(190, 216, 228, 0.45);
+}
+
+.sf-map-empty {
+  margin: 8px 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--sf-dim);
+}
+
+.sf-map-close {
+  position: absolute;
+  top: 24px; right: 26px;
+  z-index: 2;
+  width: 28px; height: 28px;
+  padding: 0;
+  border: 1px solid var(--sf-line);
+  border-radius: 50%;
+  background: rgba(8, 16, 22, 0.8);
+  color: var(--sf-ink);
+  font: 400 17px/1 var(--sf-mono);
+  cursor: pointer;
+}
+.sf-map-close:hover { border-color: var(--sf-glow); color: var(--sf-glow); }
+
+/* ── the middle widths ────────────────────────────────────────────────
+   Between a phone and a wide desktop there was no breakpoint at all, and
+   the layout does not survive the gap: three blocks cannot sit across the
+   bottom once the corners are 46vw each, and the top-corner vitals reach
+   into the centred button cluster.
+
+   Measured at 800×980 after Ric reported the UI broken, 2026-07-28. Three
+   real collisions: the flight block over the target readout by 80 px, the
+   clocks over the buttons by 197 px, and the speed block over them by 54.
+
+   Part of this is mine. The flight block's label now reads the travel mode
+   — "Intergalactic" — where it used to read "assisted", and that is a much
+   wider word in the one block that is centred, so it started colliding at
+   a width where it previously just fit. The rest was waiting to happen to
+   anyone who did not have a wide window.
+
+   So: lift the flight block clear of the bottom corners, and drop the
+   button cluster below the top ones. Both are the same fix the 620 px
+   breakpoint already makes; it simply started far too late. */
+@media (max-width: 1180px) {
+  .sf-vitals--bc { bottom: 27vh; }
+  /* Clears the clocks, which run to 113 px with the note wrapped to two
+     lines, and still sits above the warning banner at max(18vh, 120px). */
+  .sf-controls { top: 124px; }
+
+  /* The console preset gives the bottom fifth to hardware, so the hint and
+     the corner cluster move up — and the bottom-corner vitals then have to
+     move up further still, and the flight block further again. Three
+     shelves rather than three corners. */
+  #overlay[data-preset="console"] .sf-vitals--bl,
+  #overlay[data-preset="console"] .sf-vitals--br { bottom: 31vh; }
+  #overlay[data-preset="console"] .sf-vitals--bc { bottom: 50vh; }
+}
+
+/* ── mobile — HUD §9 ──────────────────────────────────────────────
+   The octagon shrinks to thin edge struts: the shape's identity survives,
+   its screen cost does not. Vitals reduce to the essential set. */
+
+@media (max-width: 620px) {
+  .sf-vitals { font-size: 10px; padding: 7px 8px; max-width: 52vw; }
+  .sf-vitals--tl { left: 2vw; }
+  .sf-vitals--tr { right: 2vw; }
+  /* Measured at 390×844, 2026-07-28. These were 12vh and 26vh, which put
+     the corner blocks under the hint line and the flight block over the
+     target readout — three overlaps that had been there the whole time and
+     one ("Intergalactic" is wider than "assisted") that I added. The
+     bottom of a phone is a stack, not three corners: hint, then the
+     corners, then flight state. */
+  .sf-vitals--bl { left: 2vw; bottom: 15vh; }
+  .sf-vitals--br { right: 2vw; bottom: 15vh; }
+  .sf-vitals--tr .sf-row:nth-child(2) { display: none; }
+  /* Flight state moves out of the way of the two bottom-corner blocks and
+     of the touch controls, and drops the rows a phone cannot fit. */
+  .sf-vitals--bc { bottom: 34vh; min-width: 0; max-width: 60vw; }
+  .sf-vitals--bc .sf-row:nth-child(4) { display: none; }
+  .sf-warning { top: max(14vh, 84px); font-size: 11px; padding: 6px 10px; }
+  .sf-strut { opacity: 0.55; }
+  /* Below the clocks rather than on top of them — 116 px with the note
+     wrapped, measured on a 390-wide phone. */
+  .sf-controls { gap: 4px; top: 124px; }
+  .sf-btn, .sf-tab { padding: 6px 8px; font-size: 9px; }
+  .sf-hint { bottom: max(58px, calc(env(safe-area-inset-bottom) + 52px)); font-size: 9px; }
+  .sf-label-text b { font-size: 11px; }
+  .sf-corner { right: 2vw; bottom: max(10px, env(safe-area-inset-bottom)); gap: 10px; }
+  .sf-corner-btn { font-size: 9.5px; }
+  .sf-tape { height: 52px; right: -15px; }
+
+  /* The map stacks: plot above, rail below, both scrollable. The rail is
+     the half that survives a phone — it carries every name, distance and
+     provenance class the plot does, in a list a thumb can use. */
+  .sf-map {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(180px, 1fr) minmax(140px, 40%);
+    padding: 10px;
+    gap: 8px;
+  }
+  .sf-map-inset { display: none; }
+  .sf-map-hint { display: none; }
+  /* The status strip is four rows and a paragraph, and on a phone that is
+     most of the plot. Two columns and smaller type keep it to a band. */
+  .sf-map-status { width: auto; left: 12px; right: 12px; bottom: 12px; padding: 7px 10px; }
+  .sf-map-status-grid { grid-template-columns: 1fr 1fr; gap: 1px 12px; }
+  .sf-map-stat span { font-size: 8.5px; letter-spacing: 0.08em; }
+  .sf-map-stat b { font-size: 10.5px; }
+  .sf-map-status-note { margin-top: 5px; font-size: 9px; }
+  .sf-map-scales { left: 12px; bottom: auto; top: 12px; gap: 16px; }
+  .sf-map-scale-rail { display: none; }
+  .sf-map-scalebar { left: 12px; bottom: auto; top: 58px; }
+  .sf-map-title { display: none; }
+  .sf-map-close { top: 14px; right: 16px; }
+}
+
+/* ── accessibility ────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-panel { transition: none; }
+  #loading { transition: none; }
+}
+
+:focus-visible { outline: 2px solid var(--sf-glow); outline-offset: 2px; }
