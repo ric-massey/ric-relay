@@ -310,6 +310,15 @@ export class SceneRenderer {
     this.exposure = exposure;
     this.sky.update(this.adaptation.adapted, this.dpr, exposure);
 
+    /* Where the stars are seen *from*. This is what ends Phase 4's wallpaper
+       problem: the sky pass draws with the camera's rotation only, so
+       without this the view a million light-years out is pixel-identical to
+       the view from low orbit. `setObserver` recomputes apparent direction
+       and apparent magnitude from each star's true range, and ignores the
+       call until the ship has actually gone somewhere — so the entire
+       Earth–Moon slice costs nothing. Same `cameraEci` the planets use. */
+    this.sky.setObserver(cameraEci);
+
     /* The planets, every frame, because they are the only things in the sky
        pass that move. Their range is measured from the *camera*, not from
        Earth's centre: at 400 km that changes nothing, and the moment the

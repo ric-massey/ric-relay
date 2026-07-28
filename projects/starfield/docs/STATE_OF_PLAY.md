@@ -64,9 +64,9 @@ every line here is closed.**
 
 | # | Capability | Where it lives now | Blocked on |
 |---|---|---|---|
-| P1 | **Stars as places you can fly to** | — | Distances. See §5.1. |
-| P2 | **The galaxy as a structure** — arms, bulge, and galaxies that resolve into stars as you approach | `galaxy.js` (280 lines) | P1 |
-| P3 | **Planetary systems at other stars**, moving on Kepler's third law | `systems.js` (406 lines) | P1 |
+| ~~P1~~ | ~~**Stars as places you can fly to**~~ | **Done 2026-07-28** | — |
+| P2 | **The galaxy as a structure** — arms, bulge, and galaxies that resolve into stars as you approach | `galaxy.js` (280 lines) | nothing |
+| P3 | **Planetary systems at other stars**, moving on Kepler's third law | `systems.js` (406 lines) | nothing |
 | P4 | **Black holes** — Schwarzschild radius, photon sphere, ISCO, the EHT shadow | `blackhole.js` (192 lines) | P2 |
 | P5 | **Relativistic visuals** — aberration, Doppler, beaming | `relativity.js` (368 lines) | §5.2 |
 | P6 | **A reachable relativistic regime** | gear 2, to 0.99 c | §5.2 |
@@ -92,10 +92,23 @@ get their real distances and become places you can fly to."*
 Ric's framing, and the reason this is first: *"you can fly to the stars that you see so
 they don't feel like they were just put on a wallpaper and you can never reach them."*
 
-**Status: partly unblocked.** The catalogue was rebuilt on 2026-07-28 and now carries
-parallax — **3 157 of 9 146 stars have real distances**, up from 100. The remaining 65%
-have none, because the BSC is a 1991 catalogue that predates Hipparcos. **Gaia DR3 is the
-upgrade path** and has not yet been chosen.
+**Closed 2026-07-28.** Two changes. The catalogue was rebuilt and now carries parallax —
+**3 157 of 9 146 stars have real distances**, up from 100. Then `SkyView.setObserver` was
+added: it recomputes apparent direction and apparent magnitude from each star's true range
+whenever the ship moves, so flying at a star approaches it. Sirius brightens from
+magnitude −1.46 to −6.46 across 90% of its 8.6 ly, and a light-year of sideways travel
+shifts it 6.4° — thirteen Moon-widths of real parallax.
+
+The shell stays as a *rendering* device rather than a claim: real ranges span 10¹⁶ to
+10²⁰ m against a ship at 10⁷, which no float32 depth buffer holds. But a star is an
+unresolved point, so direction and brightness are all an eye can extract — and both are
+computed exactly from the true range. Measured cost: 0.66 ms/frame while recomputing, and
+zero inside the Earth–Moon volume.
+
+**What is still a backdrop:** the 5 989 stars with no measured parallax do not move, and
+must not — inventing a distance to make them slide would fabricate an observation. The BSC
+is a 1991 catalogue that predates Hipparcos. **Gaia DR3 is the upgrade path** and has not
+yet been chosen.
 
 ### 5.2 There is no relativity, in a game whose prototype was about relativity
 
@@ -129,9 +142,7 @@ it.**
 
 ## 6. What to do next, in order
 
-1. **Stars become places** (§5.1 → P1). Real 3D positions and parallax for the 3 157 stars
-   that now have distances; the rest stay on the shell and are *labelled* as unmeasured
-   rather than quietly placed. Everything in §4 stands on this.
+1. ~~**Stars become places**~~ — done 2026-07-28.
 2. **Decide the Gaia question.** Whether to lift the remaining 65% from Gaia DR3 changes
    how much of the sky becomes real. Ric's call; not yet asked.
 3. **A relativistic regime you can fly** (P6), then the visuals (P5). In that order — the

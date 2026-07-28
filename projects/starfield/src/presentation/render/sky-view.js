@@ -30,6 +30,10 @@ import {
   blackbodyRgb, spectralTypeToTemp, colourIndexToTemp, desaturate,
 } from "./blackbody.js";
 import { DEG, wrapDeg } from "../../simulation/core/linalg.js";
+import { K } from "../../simulation/core/units.js";
+
+/** Metres in a light-year. Exact — see K.LIGHT_YEAR. */
+const LIGHT_YEAR_M = K.LIGHT_YEAR.value;
 
 /**
  * Precession of the equinox from J2000 to the equinox of date — Meeus
@@ -481,14 +485,35 @@ export class SkyView {
     // any sane far plane. It is a shell, not a distance claim — see SF-L-007.
     const SHELL = 1e9;
 
+    /* ── what `setObserver` needs to make these places ──────────────────
+       The shell above is a *rendering* convenience and always was. What
+       made the sky a backdrop was not the shell, it was that nothing ever
+       recomputed which way a star lies once the ship moved.
+
+       So keep the unit direction and the true range for every star that has
+       one, and the magnitude the catalogue quotes at that range. Given the
+       ship's position, the apparent direction and the apparent brightness
+       both fall out — which is the whole of what an eye can tell. */
+    this._dirs = new Float32Array(n * 3);
+    this._distM = new Float64Array(n);         // 0 = no measured parallax
+    this._baseMag = new Float32Array(n);
+    this._measured = 0;
+
     this.catalogue.forEach((s, i) => {
       const { raDeg, decDeg } = precess(s.ra, s.dec, centuriesTt);
-      const v = radecToVector(raDeg, decDeg).multiplyScalar(SHELL);
+      const u = radecToVector(raDeg, decDeg);
+      this._dirs[i * 3] = u.x;
+      this._dirs[i * 3 + 1] = u.y;
+      this._dirs[i * 3 + 2] = u.z;
+      if (s.distanceLy > 0) { this._distM[i] = s.distanceLy * LIGHT_YEAR_M; this._measured++; }
+
+      const v = u.clone().multiplyScalar(SHELL);
       positions[i * 3] = v.x;
       positions[i * 3 + 1] = v.y;
       positions[i * 3 + 2] = v.z;
 
       magnitudes[i] = s.v ?? 6;
+      this._baseMag[i] = magnitudes[i];
 
       // B−V is a measurement of the star's colour through two standard
       // filters; a spectral class is a human judgement binned into
@@ -521,8 +546,99 @@ export class SkyView {
     this.points.frustumCulled = false;
     this.scene.add(this.points);
     this._builtForT = centuriesTt;
+    this._observer = null;
     return this;
   }
+
+  /**
+   * Move the observer, and let the stars respond.
+   *
+   * ── Phase 4: the stars stop being wallpaper ─────────────────────────
+   *
+   * Ric's requirement, and the reason the project exists at all: *"you can
+   * fly to the stars that you see so they don't feel like they were just
+   * put on a wallpaper and you can never reach them."*
+   *
+   * Until now this file drew the sky with the camera's **rotation only and
+   * no translation**, so flying 1.69 million light-years from Earth left
+   * the view pixel-identical to the one from low orbit. Its own header
+   * admitted the shell "goes away in Phase 4, when the stars get their real
+   * distances and become places you can fly to". This is Phase 4 for the
+   * 3 157 stars that now have a measured parallax.
+   *
+   * ── Why the shell stays anyway ───────────────────────────────────────
+   *
+   * Not laziness, and worth being clear about because it looks like a
+   * shortcut. Real distances span 10¹⁶ to 10²⁰ m while the ship sits at
+   * 10⁷; putting those in a float32 depth buffer produces a sky that
+   * z-fights itself into confetti. But a star is an unresolved point, so
+   * the *only* things an eye can extract from it are **which way it is**
+   * and **how bright it is**. Both are computed here from the true range,
+   * exactly, and the shell then carries the answer at a depth the GPU can
+   * hold. Nothing perceivable is approximated: fly toward Sirius and it
+   * moves against the background and brightens, because it really is
+   * closer.
+   *
+   * Apparent magnitude follows the distance modulus, m = m₀ + 5·log₁₀(d/d₀),
+   * which is the same Pogson relation the shader already uses — so a star
+   * you approach brightens by exactly what it would.
+   *
+   * Stars with no measured parallax do not move. That is honest: their
+   * distance is unknown, so inventing one to make them slide would be
+   * fabricating an observation. They stay on the shell and the catalogue
+   * records why.
+   *
+   * @param {{x:number,y:number,z:number}} position  observer, ECI metres
+   */
+  setObserver(position) {
+    if (!this.points || !this._distM) return this;
+
+    /* Recompute only when the ship has actually gone somewhere. The
+       threshold is 10⁹ m — about 1/10 000 of a light-year — so the whole
+       Earth–Moon slice never touches this loop (the largest parallax any
+       star has across that volume is 0.002″ against a 60″ eye), and
+       interstellar flight updates every frame. */
+    const prev = this._observer;
+    if (prev) {
+      const moved = Math.hypot(position.x - prev.x, position.y - prev.y, position.z - prev.z);
+      if (moved < 1e9) return this;
+    }
+    this._observer = { x: position.x, y: position.y, z: position.z };
+
+    const SHELL = 1e9;
+    const pos = this.points.geometry.attributes.position;
+    const mag = this.points.geometry.attributes.magnitude;
+    const dirs = this._dirs, distM = this._distM, baseMag = this._baseMag;
+
+    for (let i = 0; i < distM.length; i++) {
+      const d0 = distM[i];
+      if (d0 === 0) continue;                    // unmeasured: it does not move
+
+      // True position, then the vector from the observer to it.
+      const rx = dirs[i * 3] * d0 - position.x;
+      const ry = dirs[i * 3 + 1] * d0 - position.y;
+      const rz = dirs[i * 3 + 2] * d0 - position.z;
+      const d = Math.hypot(rx, ry, rz);
+      if (!(d > 0)) continue;
+
+      pos.setXYZ(i, (rx / d) * SHELL, (ry / d) * SHELL, (rz / d) * SHELL);
+
+      /* The distance modulus. Clamped at the bright end because this
+         renderer draws stars as points: approach one closely enough and it
+         stops being a point and starts being a sun, which is a body with a
+         disc and a light source, not a brighter pixel. Until that exists,
+         −9 (about Venus at its best, and the brightest thing in this sky
+         after the Sun and Moon) is where the honest model runs out. */
+      const m = baseMag[i] + 5 * Math.log10(d / d0);
+      mag.setX(i, Math.max(-9, m));
+    }
+    pos.needsUpdate = true;
+    mag.needsUpdate = true;
+    return this;
+  }
+
+  /** How many stars in this sky are places rather than directions. */
+  get measuredCount() { return this._measured || 0; }
 
   /**
    * @param {number} adapted   the eye's adapted luminance

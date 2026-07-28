@@ -139,19 +139,26 @@ export const LEDGER = [
   },
   {
     id: "SF-L-007",
-    title: "The star field is drawn at infinity",
+    title: "Stars are drawn on a shell, but they are no longer at infinity",
     system: "Sky rendering",
     classification: "presentation aid",
     reality:
       "Every star is at a real, finite distance, and Design Bible §7.4 says every one of them " +
       "is somewhere you can go. There is no skybox in the finished game.",
     implemented:
-      "For this slice the catalogued stars are *rendered* on a distant shell using their real " +
-      "directions and magnitudes, with no parallax. Amended 2026-07-28: the shell is now only " +
-      "a rendering choice. In the simulation, every star with a measured parallax has a real " +
-      "three-dimensional position, can be selected, and can be routed to — 100 of the 9 146 " +
-      "in the shipped sky. The other 9 046 have a direction and no distance, because the 1991 " +
-      "catalogue this sky is built from did not carry one for them.",
+      "**Superseded 2026-07-28 — the stars now move.** `SkyView.setObserver` recomputes " +
+      "apparent direction and apparent magnitude from each star's true range every time the " +
+      "ship moves more than 10\u2079 m, so flying toward a star approaches it: Sirius brightens " +
+      "from magnitude \u22121.46 to \u22126.46 over 90% of the 8.6 ly, and a light-year of sideways " +
+      "travel shifts it 6.4\u00b0. That holds for the 3 157 stars with a measured parallax.\n\n" +
+      "The shell survives as a *rendering* device and is no longer a claim. Real ranges span " +
+      "10\u00b9\u2076 to 10\u00b2\u2070 m while the ship sits at 10\u2077, which a float32 depth buffer cannot hold " +
+      "without z-fighting into confetti. But a star is an unresolved point, so the only things " +
+      "an eye can extract are its direction and its brightness \u2014 both computed here from the " +
+      "true range, exactly. Nothing perceivable is approximated.\n\n" +
+      "The remaining 5 989 stars have a direction and no distance and do **not** move, because " +
+      "the 1991 catalogue never measured one. Inventing a distance to make them slide would be " +
+      "fabricating an observation, which is the one thing this ledger exists to prevent.",
     reason:
       "The whole Earth–Moon slice fits inside a 400 000 km box. The nearest star is 100 " +
       "million times further away, so drawing the sky with parallax would cost exactly as " +
@@ -161,18 +168,21 @@ export const LEDGER = [
       "Proxima Centauri. Human visual acuity is 60″. So the rendering error is zero to any " +
       "observer, and stays zero until the ship leaves the solar system.",
     consequence:
-      "The sky you look at and the sky you navigate by are now two representations of the " +
-      "same catalogue, and they agree about direction while only one of them knows distance. " +
-      "That is safe at this scale and stops being safe the moment the ship can actually cross " +
-      "a light year — at which point the shell has to go rather than be stretched. The seam " +
-      "is `SkyView.build()`; nothing else assumes it.",
+      "The sky you look at and the sky you navigate by are now the same sky for every star " +
+      "that has a distance. The remaining gap is a gap in the 1991 catalogue rather than in " +
+      "the renderer, and it is visible rather than hidden: two thirds of the sky is still a " +
+      "backdrop, and the honest fix is Gaia DR3, not a better guess.\n\n" +
+      "Cost, measured: 0.66 ms per frame while actively recomputing, and exactly zero inside " +
+      "the Earth\u2013Moon volume \u2014 the 10\u2079 m threshold means the slice never enters the loop, " +
+      "which is correct, since the largest parallax there is 0.002\u2033 against a 60\u2033 eye.",
     sourceIds: ["bsc", "hipparcos"],
     introduced: "2026-07-25",
     status: "accepted",
     review:
-      "When interstellar flight arrives, or sooner if the catalogue is rebuilt with the " +
-      "parallax column — that would move most of the 9 046 into the first group and make the " +
-      "gap between the two representations much more visible.",
+      "Done, both of them. The next review is Gaia DR3, which would move most of the " +
+      "remaining 5 989 from backdrop to place. Also open: a star approached closely enough " +
+      "stops being a point and should become a sun with a disc; until that exists the " +
+      "apparent magnitude is clamped at \u22129 and this entry is where that is recorded.",
   },
   {
     id: "SF-L-008",
