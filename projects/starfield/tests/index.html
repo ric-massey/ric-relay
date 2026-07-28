@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Starfield — tests</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; padding: 2rem 1.25rem 4rem; background: #06090d; color: #dcecf4;
+      font: 400 13px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    main { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 15px; letter-spacing: .28em; text-transform: uppercase; color: #8cdcfa; }
+    p.lede { color: #93a8b4; max-width: 62ch; }
+    h2 { margin: 1.8rem 0 .4rem; font-size: 11px; letter-spacing: .12em;
+         text-transform: uppercase; color: #7d94a2; }
+    .case { padding: 2px 0 2px 1.4rem; text-indent: -1.4rem; }
+    .pass::before { content: "✓ "; color: #6fdc9a; }
+    .fail::before { content: "✗ "; color: #ff6a5c; }
+    .fail { color: #ff9a90; }
+    .why { display: block; padding-left: 1.4rem; color: #ffb3a8; text-indent: 0; }
+    #summary { margin-top: 2rem; padding: .8rem 1rem; border: 1px solid #23333f;
+               border-radius: 8px; font-weight: 700; }
+    #summary.ok { color: #6fdc9a; border-color: #245a3c; }
+    #summary.bad { color: #ff6a5c; border-color: #5a2424; }
+    a { color: #8cdcfa; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Starfield tests</h1>
+  <p class="lede">
+    The same suites that <code>node tests/run.mjs</code> runs, in a browser. Reference
+    cases come from Meeus's published worked examples and from the architecture
+    completion criteria in <a href="../docs/TECHNICAL_ARCHITECTURE.md">§25</a>.
+    <a href="../slice.html">← back to the slice</a>
+  </p>
+  <div id="out"></div>
+  <div id="summary">running…</div>
+</main>
+
+<script type="module">
+  import { run } from "./harness.js";
+  import "./scientific.test.js";
+  import "./frames.test.js";
+  import "./flight.test.js";
+  import "./shadow.test.js";
+  import "./navigation.test.js";
+  import "./modes.test.js";
+  import "./interface.test.js";
+
+  const out = document.getElementById("out");
+  const summary = document.getElementById("summary");
+
+  run((e) => {
+    if (e.type === "suite") {
+      const h = document.createElement("h2"); h.textContent = e.name; out.append(h);
+    }
+    if (e.type === "pass" || e.type === "fail") {
+      const d = document.createElement("div");
+      d.className = "case " + (e.type === "pass" ? "pass" : "fail");
+      d.textContent = e.name;
+      if (e.error) {
+        const w = document.createElement("span");
+        w.className = "why"; w.textContent = e.error; d.append(w);
+      }
+      out.append(d);
+    }
+    if (e.type === "done") {
+      summary.textContent = `${e.passed} passed, ${e.failed} failed`;
+      summary.className = e.failed ? "bad" : "ok";
+    }
+  });
+</script>
+</body>
+</html>
