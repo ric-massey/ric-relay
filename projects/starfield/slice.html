@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Starfield — the Earth–Moon slice</title>
+  <meta name="description" content="Earth and the Moon at real scale, at the real date and time, from a low orbit. Every position computed from published ephemerides; every approximation written down.">
+  <link rel="stylesheet" href="slice.css">
+</head>
+<body>
+
+<!--
+  ══════════════════════════════════════════════════════════════════════
+  Starfield — Earth–Moon vertical slice, Slice A: the correct still
+  universe (EARTH_MOON_VERTICAL_SLICE.md §17).
+
+  This is the new architecture. The legacy relativistic prototype still
+  runs at fly.html and is untouched; see docs/IMPLEMENTATION_AUDIT.md for
+  what happens to each of its modules.
+
+  Note this page uses ES modules, so unlike fly.html it needs to be served
+  over http rather than opened from the filesystem:
+
+      python3 -m http.server        →  /projects/starfield/slice.html
+
+  Nothing is fetched at runtime. Three.js is vendored in vendor/three/ and
+  every texture is in assets/textures/.
+  ══════════════════════════════════════════════════════════════════════
+-->
+
+<canvas id="sky"></canvas>
+<div id="overlay" data-preset="frame"></div>
+
+<div id="loading">
+  <h1>Starfield</h1>
+  <p id="stage">starting</p>
+</div>
+
+<noscript>
+  <p style="padding:2rem;color:#cfe">Starfield needs JavaScript: the universe is computed
+  in your browser, not fetched from anywhere.</p>
+</noscript>
+
+<!-- The sky. stars-bsc.js is the Bright Star Catalogue — every star a
+     dark-adapted eye can see. The other two are the prototype's own
+     catalogues, kept because they carry proper names and measured
+     distances that the BSC does not; src/data/star-catalogue.js merges
+     them by position. All three are classic scripts publishing onto
+     window, which is how the prototype's data files already worked. -->
+<script src="data/stars-bsc.js"></script>
+<script src="data/stars-bright.js"></script>
+<script src="data/stars-near.js"></script>
+
+<script type="module">
+  import { SliceApp } from "./src/application/slice-app.js";
+  import { buildCatalogue, summarise } from "./src/data/star-catalogue.js";
+
+  const stageText = document.getElementById("stage");
+  const loading = document.getElementById("loading");
+
+  const stars = buildCatalogue(window.SF_STARS_BSC, [
+    ...(window.SF_STARS_BRIGHT || []),
+    ...(window.SF_STARS_NEAR || []),
+  ]);
+  window.SF_SKY = summarise(stars);
+
+  try {
+    const app = new SliceApp({
+      canvas: document.getElementById("sky"),
+      overlayRoot: document.getElementById("overlay"),
+      stars,
+      // §16.1: show useful progress with named stages, never an
+      // indeterminate blank screen. A null stage means "ready".
+      onStage: (name) => {
+        if (name) { stageText.textContent = name; return; }
+        loading.classList.add("is-done");
+        // Removed on the app's own ready signal rather than on a timer or a
+        // transitionend: a backgrounded tab throttles both, and either can
+        // leave the loading veil sitting over the finished view.
+        loading.addEventListener("transitionend", () => loading.remove(), { once: true });
+        setTimeout(() => loading.remove(), 1200);
+      },
+    });
+    app.start();
+    window.SF_SLICE = app;   // for the test page and for poking at in the console
+  } catch (err) {
+    stageText.textContent = "could not start: " + err.message;
+    console.error(err);
+  }
+</script>
+
+<!-- Every standalone project page keeps a visible route back to the
+     terminal (AGENTS.md). -->
+<script src="../relay-return.js" data-home="../../index.html" data-egg="starfield" defer></script>
+
+</body>
+</html>

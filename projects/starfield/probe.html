@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Starfield — render probe</title>
+  <style>
+    body { margin: 0; background: #000; color: #9ad; font: 13px/1.5 ui-monospace, monospace; }
+    #sky { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    #overlay { position: fixed; inset: 0; pointer-events: none; }
+    pre { position: fixed; left: 8px; bottom: 8px; margin: 0; z-index: 9; }
+  </style>
+</head>
+<body>
+
+<!--
+  ══════════════════════════════════════════════════════════════════════
+  A development harness, not part of the game.
+
+  Two things make the slice hard to check from an automation client:
+
+    · a backgrounded tab freezes requestAnimationFrame, so the loop never
+      runs and every measurement reads whatever the first frame left;
+    · a pane that is not composited reports a zero-size canvas, so the
+      WebGL drawing buffer collapses to 1×1 and every pixel probe comes
+      back black — which looks exactly like a rendering bug and is not one.
+
+  So this page boots the same SliceApp against a fixed-size drawing buffer
+  and steps the loop by hand from a monotonic clock. Everything it exposes
+  reads the real app: there is no second renderer and no mock.
+
+  It lives beside slice.html rather than in tools/ for one dull reason that
+  cost an hour: every texture and data path in this project is relative to
+  the document, so a harness one directory down 404s all of them, renders a
+  black Earth, and looks exactly like the lighting bug it was built to
+  investigate.
+
+      python3 -m http.server  →  /projects/starfield/probe.html
+  ══════════════════════════════════════════════════════════════════════
+-->
+
+<canvas id="sky"></canvas>
+<div id="overlay" data-preset="clean"></div>
+<pre id="log">probe: loading</pre>
+
+<script src="data/stars-bsc.js"></script>
+<script src="data/stars-bright.js"></script>
+<script src="data/stars-near.js"></script>
+
+<script type="module">
+  import { SliceApp } from "./src/application/slice-app.js";
+  import { buildCatalogue } from "./src/data/star-catalogue.js";
+
+  const log = document.getElementById("log");
+
+  const stars = buildCatalogue(window.SF_STARS_BSC, [
+    ...(window.SF_STARS_BRIGHT || []),
+    ...(window.SF_STARS_NEAR || []),
+  ]);
+
+  const app = new SliceApp({
+    canvas: document.getElementById("sky"),
+    overlayRoot: document.getElementById("overlay"),
+    stars,
+    onStage: (name) => { log.textContent = "probe: " + (name || "ready"); },
+  });
+  window.SF_SLICE = app;
+  // Deliberately not app.start(): the probe owns the clock.
+
+  const P = {};
+  window.SF_PROBE = P;
+
+  /** Pin the drawing buffer, so a hidden pane cannot collapse it to 1×1. */
+  P.size = (w = 960, h = 540) => {
+    const r = app.renderer;
+    r.renderer.setPixelRatio(1);
+    r.renderer.setSize(w, h, false);
+    for (const cam of [r.camera, r.skyCamera]) {
+      cam.aspect = w / h;
+      cam.updateProjectionMatrix();
+    }
+    r.width = w; r.height = h; r.dpr = 1;
+    r.resize = () => {};          // and keep the app from undoing it
+    return [w, h];
+  };
+
+  /**
+   * Step the loop `frames` times at a fixed `dt`.
+   *
+   * Simulation time comes from the wall clock, so the only way to get a
+   * deterministic step out of a frozen tab is to hand both the app and the
+   * time service a clock reading that is exactly `dt` in the past.
+   */
+  P.step = (frames = 1, dt = 1 / 60) => {
+    for (let i = 0; i < frames; i++) {
+      const now = performance.now() / 1000 - dt;
+      app._lastWall = now;
+      app.time._lastWall = now;
+      app._frame();
+    }
+    return { t: app.time.tt, exposure: app.renderer.exposure };
+  };
+
+  /** Skip `seconds` of simulation time without rendering the frames between. */
+  P.skip = (seconds) => {
+    app.time.advance(seconds);
+    app.world.update();
+    return app.world.groundTrack(app.world.state.observation.position);
+  };
+
+  /**
+   * Point the ship's nose along an Earth-centred direction.
+   *
+   * The camera *is* the ship now, so this snaps the attitude rather than
+   * flying to it — a measurement harness has no business waiting out a
+   * critically-damped turn.
+   */
+  P.aim = (d) => {
+    const p = app.ship.position;
+    app._aimShipAt({ x: p.x + d.x, y: p.y + d.y, z: p.z + d.z });
+    app.ship.angularVelocity = { x: 0, y: 0, z: 0 };
+    return app.ship.attitude;
+  };
+
+  P.aimNadir = () => {
+    const p = app.ship.position;
+    return P.aim({ x: -p.x, y: -p.y, z: -p.z });
+  };
+
+  P.aimStation = () => {
+    const s = app.world.state.station.position, p = app.ship.position;
+    return P.aim({ x: s.x - p.x, y: s.y - p.y, z: s.z - p.z });
+  };
+
+  /** Hold a control down for `seconds`, stepping the loop as it goes. */
+  P.hold = (actionIds, seconds, dt = 1 / 60) => {
+    const codes = [].concat(actionIds).flatMap((id) => app.input.bindings[id] || []).filter(Boolean);
+    for (const c of codes) app.input.down.add(c);
+    P.step(Math.round(seconds / dt), dt);
+    for (const c of codes) app.input.down.delete(c);
+    return P.flight();
+  };
+
+  /** Everything the flight HUD would be showing, as numbers. */
+  P.flight = () => {
+    const s = app.situation;
+    return {
+      mode: app.flight.label,
+      precision: app.flight.precision,
+      assist: app.flight.assist,
+      assistResult: app.flight.assistResult,
+      speedEci: +app.ship.speed.toFixed(4),
+      relativeSpeed: s ? +s.relativeSpeed.toFixed(5) : null,
+      reference: s ? s.referenceLabel : null,
+      range: s?.proximity ? +s.proximity.range.toFixed(2) : null,
+      surfaceRange: s?.proximity ? +s.proximity.surfaceRange.toFixed(2) : null,
+      closingRate: s?.proximity ? +s.proximity.closingRate.toFixed(4) : null,
+      stoppingDistance: s ? +s.stoppingDistance.toFixed(2) : null,
+      warnings: s ? s.warnings.map((w) => `${w.severity}: ${w.text}`) : [],
+      elements: (e => ({ aKm: +(e.semiMajorAxis / 1000).toFixed(3), e: +e.eccentricity.toFixed(7) }))(app.ship.elements),
+    };
+  };
+
+  /**
+   * Is this context still producing pixels?
+   *
+   * A tab that has been in the background for a while stops being scheduled
+   * for GPU work, and from inside the page that is indistinguishable from a
+   * correct render of a black scene: no error, no lost context, the right
+   * drawing-buffer size, and readPixels dutifully returning zeros. Every
+   * measurement taken after that point is a lie, and it is a lie that looks
+   * exactly like the lighting bug you are usually hunting.
+   *
+   * So: clear to a known colour, read it back, and refuse to report
+   * anything if it does not come back. Re-navigate and measure again.
+   */
+  P.live = () => {
+    const gl = app.renderer.renderer.getContext();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.disable(gl.SCISSOR_TEST);
+    gl.clearColor(0, 1, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    const px = new Uint8Array(4);
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    return px[1] > 200;
+  };
+
+  /** Throws rather than returning a black frame the caller would believe. */
+  P.require = () => {
+    if (!P.live()) throw new Error(
+      "probe: GPU context is suspended (background tab). Re-navigate to this " +
+      "page and take every measurement inside one call. The frame is not black."
+    );
+  };
+
+  P.pixels = () => {
+    const gl = app.renderer.renderer.getContext();
+    const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
+    const buf = new Uint8Array(W * H * 4);
+    gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+    return { W, H, buf };
+  };
+
+  /** Framebuffer summary: peak, mean, and how much of the frame is lit. */
+  P.stats = () => {
+    const { W, H, buf } = P.pixels();
+    if (W < 2 || H < 2) throw new Error("probe: drawing buffer collapsed — call P.size() first");
+    let max = 0, sum = 0, peak = null;
+    const n = W * H;
+    const bands = new Array(8).fill(0);
+    for (let i = 0; i < n; i++) {
+      const v = Math.max(buf[i * 4], buf[i * 4 + 1], buf[i * 4 + 2]);
+      if (v > max) { max = v; peak = [i % W, (i / W) | 0, buf[i * 4], buf[i * 4 + 1], buf[i * 4 + 2]]; }
+      sum += v;
+      bands[Math.min(7, v >> 5)]++;
+    }
+    return {
+      max, mean: +(sum / n).toFixed(2), peak,
+      bandsPct: bands.map((b) => +(100 * b / n).toFixed(2)),
+    };
+  };
+
+  /** The frame as a character ramp — structure, cheaply, over a text channel. */
+  P.map = (cols = 48, rows = 20) => {
+    const { W, H, buf } = P.pixels();
+    const ramp = " .:-=+*#%@";
+    const lines = [];
+    for (let ry = 0; ry < rows; ry++) {
+      let line = "";
+      for (let cx = 0; cx < cols; cx++) {
+        let m = 0;
+        const x1 = ((cx + 1) * W / cols) | 0, y1 = ((rows - ry) * H / rows) | 0;
+        for (let y = ((rows - 1 - ry) * H / rows) | 0; y < y1; y += 2) {
+          for (let x = (cx * W / cols) | 0; x < x1; x += 2) {
+            const i = (y * W + x) * 4;
+            const v = Math.max(buf[i], buf[i + 1], buf[i + 2]);
+            if (v > m) m = v;
+          }
+        }
+        line += ramp[Math.min(9, Math.round(Math.sqrt(m / 255) * 9))];
+      }
+      lines.push(line);
+    }
+    return lines;
+  };
+
+  P.size();
+  P.step(1);
+  log.textContent = "probe: ready — SF_PROBE.{size,step,skip,aim,aimNadir,stats,map}";
+</script>
+
+</body>
+</html>
