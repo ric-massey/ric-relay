@@ -1,14 +1,105 @@
-# Starfield — current relativistic-flight prototype
+# Starfield
 
-> **Project status:** This directory contains a working legacy prototype and the
-> documentation for a broader redesign. The prototype is playable today, but its
-> scale, travel model, procedural encounters, hazards, and start state do not yet
-> match the target game.
+> **Project status:** two things live here. **[`slice.html`](slice.html)** is the new
+> architecture — Slices A and B of the Earth–Moon vertical slice, built to the design
+> documents. **[`fly.html`](fly.html)** is the original relativistic-flight prototype,
+> still playable and untouched. The prototype is research; the slice is the game.
 
-For the future design, begin with the [documentation index](docs/README.md) and
-the [Starfield Design Bible](docs/DESIGN_BIBLE.md). The first implementation target
-is the [Earth–Moon vertical slice](docs/EARTH_MOON_VERTICAL_SLICE.md). This README
-describes **what the existing prototype currently does**, not the final specification.
+For the design, begin with the [documentation index](docs/README.md) and the
+[Starfield Design Bible](docs/DESIGN_BIBLE.md).
+
+---
+
+## The Earth–Moon slice — `slice.html`
+
+**Slices A and B** ([spec §17](docs/EARTH_MOON_VERTICAL_SLICE.md)). Earth, the Moon
+and the Sun at real scale, at the real current date and time — and a ship you fly,
+station-keeping 260 m behind a recognisable ISS on a real low orbit.
+
+Slice A proved the frames, the scale and the honesty surfaces before anything was
+built on them. Slice B puts a ship in that world: six-degree-of-freedom thrust against
+real gravity, assisted flight that closes a loop on velocity in whichever frame you
+are actually in, direct inertial flight for anyone who wants it, and a precision mode
+that makes centimetres per second reachable. Nothing about the world was softened to
+make the flying work.
+
+**Fly it:** `W` and `S` set the speed you want and the ship holds it — let go and it keeps
+going, which is the whole point. `A` `D` `Space` `Ctrl` nudge sideways and vertically,
+`X` stops dead, `Z` is fine control, `B` matches velocity with your target, `N` swaps
+assisted for direct. `1`–`5` pick the travel mode, from Local to Intergalactic. The mouse
+or the arrow keys aim; `Tab` opens the map, and `H` lists the rest, generated from the
+live key mapping so it cannot go stale.
+
+```bash
+node tools/dev-server.mjs . 8642     # then open /projects/starfield/slice.html
+```
+
+It needs a server rather than `file://` because it uses ES modules. Nothing is fetched
+at runtime: Three.js is vendored in `vendor/`, every texture is in `assets/`, and the
+ephemerides are computed in the browser.
+
+**Use that server rather than `python3 -m http.server`, and it matters.** Python's sends
+`Last-Modified` and no `Cache-Control`, so the browser applies heuristic freshness — and
+for ES modules a stale hit means the page runs *old code* through reloads, through hard
+reloads, and through a changed query string on the HTML, because the imports inside it
+resolve to the same unchanged URLs either way. It does not present as a caching problem.
+It presents as your change not working, with a passing test suite and a browser calmly
+demonstrating the old behaviour. `tools/dev-server.mjs` sends `no-store`.
+
+One thing it cannot fix: the browser keeps its cache **per origin**, so a port that was
+previously served by the Python server keeps serving poisoned modules until those entries
+age out. Move to a fresh port if a change stubbornly refuses to appear.
+
+### What is real in it
+
+| | |
+|---|---|
+| **Positions** | Sun and Moon from the Meeus analytic series (ELP-2000/82 truncation), matching the published worked examples to the last printed digit. The Moon lands within ~20 km of truth. The eight planets from JPL's approximate Keplerian elements, good to about an arcminute — which is roughly what an eye resolves, and they are unresolved points from here anyway. |
+| **Scale** | Earth 6 378 137 m, Moon 1 737 400 m, separation whatever the ephemeris says. Nothing is enlarged; markers are what make small things clickable. |
+| **Frames** | Earth-centred inertial, Earth-fixed, Moon-centred, Moon-fixed, Sun-centred, the observation point and the station's local orbital frame, with full position **and velocity** transforms. The ω × r term matters: without it a ship holding station perfectly reads as drifting. |
+| **Precision** | A floating render origin, because Three renders in float32 and that resolves to 30 m at the Moon's distance. |
+| **Sky** | The Yale Bright Star Catalogue — 9 096 stars, complete to about magnitude 6.5, which is very nearly the exact set a dark-adapted eye can see, plus the planets, which are the brightest things in it after the Sun and Moon. Colour comes from measured B−V, not from a spectral-class guess. The Milky Way is ESO's all-sky panorama, desaturated to the silver-grey an eye actually sees. Brightness is compressed to fit a display's range (ledger SF-L-021) — ordering is exact, spacing is not. |
+| **The eye** | Adaptation is a state with memory, driven by what is in view: how much of it, how bright, and *where* — light at the edge of vision counts for less than light you are looking at, and a bright source just outside the frame still scatters inside the eye. Look at a sunlit Earth and the stars go, because that is what happens. The clock is compressed about 4 000× (SF-L-011); the shape and the asymmetry are real. |
+| **Light** | Rayleigh single scattering with the real 1/λ⁴ coefficients; Lommel-Seeliger regolith on the Moon; earthshine; a dark-adaptation model with the eye's real asymmetric time constants. |
+| **Gravity** | Earth as a point mass plus J₂ oblateness, plus the Moon and the Sun as third bodies with their indirect terms, integrated by RK4. Over a full revolution the semi-major axis holds to two metres, and halving the step changes the answer by under two millimetres. |
+| **Flight** | Assisted mode closes a loop on velocity in the frame you are actually in, so holding position next to something in orbit costs real, continuously varying thrust — and the HUD shows it. The throttle is a speed the ship *holds*, and the commanded velocity points where the nose points; direct mode closes no loop at all and is inertial. "Stop" always names what it is stopping relative to, because next to the station that means the station and further out it means Earth's centre, and you will still be doing 7.66 km/s when it finishes. |
+| **Honesty** | Every approximation is in the in-game ledger ("where we cheat"), and every source says what it gave us and which instrument measured it. |
+
+### What is not there yet
+
+The ISS itself (a representative orbit stands in — see ledger SF-L-008), clouds on Earth,
+terrain streaming, and lunar landing. Routes to the planets and the stars can be planned
+and previewed but not yet *completed* — nothing flies you all the way to Jupiter and stops.
+
+The sky and the eye model are calibrated so that everything emits *physical radiance* and
+adaptation is applied exactly once, by the tone mapper, per render pass. Star brightness,
+the Sun's disc and its glare all derive from the same numbers the adaptation model uses —
+so none of them can disagree about how bright something is.
+
+Of the 9 146 stars in the sky, **100 have a measured distance** and can therefore be flown
+to; the rest have a direction and no distance, because the 1991 catalogue this sky is built
+from did not carry a parallax for them. That is a gap in the data, and the sky says so
+rather than inventing distances to fill it. [Data Sources §3.5](docs/DATA_SOURCES.md)
+describes what closing it would take.
+
+### Tests
+
+```bash
+node projects/starfield/tests/run.mjs
+```
+
+131 assertions: Meeus reference cases, frame round-trips, floating-origin invariance,
+orbital mechanics, and the provenance schema. The same suites run in a browser at
+[`tests/index.html`](tests/index.html).
+
+---
+
+## The original prototype — `fly.html`
+
+The rest of this README describes **what the legacy prototype currently does**, not the
+final specification. It remains the reference implementation for relativistic flight
+until that work is migrated; see the
+[implementation audit](docs/IMPLEMENTATION_AUDIT.md) for the disposition of each file.
 
 The current prototype lets you fly through the **real catalogued** solar
 neighbourhood and out into a partly modeled galaxy. The catalogued stars
@@ -46,8 +137,10 @@ light cones, time dilation and aberration; this one lets you fly them.
 Plain, dependency-free, deferred classic scripts — no build step, no bundler,
 nothing fetched at runtime. Two ways to open it:
 
-- **From a server** (recommended): from the repo root, `python3 -m http.server`
-  and browse to `/projects/starfield/index.html`.
+- **From a server** (recommended): from the repo root, `node tools/dev-server.mjs . 8642`
+  and browse to `/projects/starfield/index.html`. The prototype's scripts are classic
+  rather than modules, so stale caching is less vicious here than it is for the slice —
+  but it is the same server and the same reason.
 - **From disk**: opening `index.html` directly over `file://` works too; the
   scripts are deliberately classic (not ES modules) so the browser does not
   CORS-block them off the filesystem.

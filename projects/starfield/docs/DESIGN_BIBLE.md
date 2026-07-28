@@ -615,6 +615,13 @@ The player needs usable control from tiny local velocities to galaxy-scale trans
 A regime or gear system MAY provide this, but it must not imply that selecting a
 gear erases momentum or silently changes the laws of physics.
 
+**Decided 2026-07-26:** it is a regime system, and the regimes are the four in §8.2,
+selected by the player and named for where they are flying, plus a fifth (Intergalactic)
+above them. Each carries its own speed range and its own control authority; the throttle flies the speed inside the selected
+mode. Mode is never chosen automatically — a regime that changes underneath the player
+is what made close flight hard when this was a bare continuous throttle. Full control
+scheme in [Controls](CONTROLS.md) §2.4.
+
 The final control model SHOULD provide:
 
 - direct access to precision speed;
@@ -1088,6 +1095,46 @@ player's own record of the universe and a core system, not a bookmark utility.
 Because everything visible is reachable (§7.4), the saved list is how a player imposes
 their own shape on an otherwise unbounded universe. That makes it the closest thing the
 game has to progression.
+
+### 13.2 The map as built (2026-07-26)
+
+First implementation, laid out from Ric's reference image: the plot, three scale tabs at
+bottom-left, a nearby-locations rail down the right, two scale insets, and a status strip
+naming where you are, what you have targeted, how far it is and how long it takes.
+
+Two decisions in it are worth keeping written down, because both were tempting to get
+wrong:
+
+**The projection is linear at every scale, and zooms.** The obvious way to fit Earth, the
+Moon and the Sun onto one plot is a logarithmic radial scale, and it is a lie of exactly
+the kind [the Scientific Standard](SCIENTIFIC_STANDARD.md) exists to prevent — it would
+draw the Moon a third of the way to the Sun. So distances are linear, the scale bar
+states what a screen distance *is*, and anything that does not fit is off the plot until
+you zoom out. The emptiness is the subject; compressing it away would be vandalism.
+
+Corollary, learned the hard way: **the span is measured across the plot's shorter
+dimension**, not its width. Measured across the width, anything at nearly full span in a
+mostly-vertical direction falls off the top or bottom — which at system scale is the
+Moon, most of the time. A default view of the system that loses the system is not a
+default.
+
+**The rail is the accessible surface.** The plot is a canvas, because at interstellar
+scale it draws hundreds of stars and DOM cannot. Everything on it therefore also appears
+in the rail as a real focusable button carrying its name, its distance and its provenance
+class, so nothing on the map is reachable only by pixel
+([HUD and Cockpit §10](HUD_AND_COCKPIT.md)). The rail says when it has truncated a list,
+because a truncated list that does not admit it is lying about how much is out there.
+
+The three scales are **local** (kilometres, the space you are manoeuvring in), **system**
+(Earth, the Moon, and the Sun beyond them) and **interstellar** (the solar neighbourhood
+in light years, from the catalogued stars that carry measured distances). The two insets
+always show the two scales you are *not* on, which is the only arrangement in which they
+earn the view they cost.
+
+Still to build, from the list above: search by name and identifier, saved destinations
+and expedition history (§13.1), rotation and 3D orientation, hazard display beyond the
+route planner's own refusal, and traveler-versus-external time comparison. The map opens
+on **Tab** and pauses the simulation, as menus do (§5.3).
 
 ---
 
@@ -1834,7 +1881,7 @@ superseded so the project's reasoning remains understandable.
 | 2026-07-25 | Landing is a low hover of roughly 6–15 feet above the surface, not a physical touchdown; no landing gear or contact solver. | Adopted |
 | 2026-07-25 | Space is not black — it blazes with stars. The eye's adaptation is modeled; the sky is never a fixed brightness. | Adopted |
 | 2026-07-25 | The mouse aims and the keyboard moves; the "mouse does nothing on purpose" rule is repealed. Controls are a design law. | Adopted |
-| 2026-07-25 | Discrete speed gears are replaced by a continuous throttle with displayed, auto-selected regimes — pending feel validation in the spike. | Adopted, provisional |
+| 2026-07-25 | ~~Discrete speed gears are replaced by a continuous throttle with displayed, auto-selected regimes — pending feel validation in the spike.~~ | Superseded 2026-07-26 |
 | 2026-07-25 | Everything visible is reachable: no skybox, every star visitable, its planets landable. | Adopted (Phases 4–6) |
 | 2026-07-25 | ~~Every star has a name and at least one planet.~~ | Superseded same day |
 | 2026-07-25 | Every star has a name; planet populations follow real occurrence statistics, so some stars have none. Measured exoplanets are never overwritten. | Adopted |
@@ -1846,6 +1893,22 @@ superseded so the project's reasoning remains understandable.
 | 2026-07-25 | "The entire game is between your map and the universe" — the map is a primary surface with effort equal to the cockpit. | Adopted |
 | 2026-07-25 | The player can save any world to their map, with notes; saved worlds are core, not a bookmark utility. | Adopted |
 | 2026-07-25 | Dust clouds, nebulae, clusters, pulsars, remnants, discs and other real phenomena are required content, each reachable. | Adopted |
+| 2026-07-26 | The naked-eye sky comes from the Yale Bright Star Catalogue — 9 096 stars to magnitude ~6.5, with B−V colour so star colour is measured rather than inferred from spectral class. | Adopted |
+| 2026-07-26 | The representative start orbit is placed at a typical beta angle for the session date and opens on the daylight side, rather than at an arbitrary node. An arbitrary node had produced a terminator-hugging orbit that was dark for the whole session. | Adopted |
+| 2026-07-26 | Drag inverts the view by default (the sky follows the hand) and both axes are toggleable; arrow keys give a continuous, eased, frame-rate-independent look rather than a fixed step per keypress. | Adopted |
+| 2026-07-26 | Speed is selected as one of **five flight modes named for where you are flying** — Local, Orbital, System, Interstellar, Intergalactic — each carrying its own speed range and control authority, with the throttle flying inside the selected mode. Mode is always the player's choice and is never selected automatically. This is the §8.2 travel regimes promoted from a description into the control the player holds. Ric, after flying the continuous throttle: *"it became very difficult to fly close to planets moons and asteroids… I don't want to have to think too hard about flying the ships."* | Adopted |
+| 2026-07-26 | A **proximity governor** holds the ship to a speed it could still stop from — √(2·a·d) over the clearance to the nearest body, the same arithmetic the autopilot flies and the HUD prints. It is what makes a five-decade speed ladder safe: selecting the largest drive beside the station is absurd rather than lethal, so Ric's rule that changing mode never kills you survives contact with an interstellar engine. Ric: *"if you get close to it it needs to slow you down intentionally."* | Adopted |
+| 2026-07-26 | **Full stop is instant in modes 2 and above** — it cancels the ship's momentum outright rather than flying a braking burn, relative to the frame it names. Mode 1 (Local) is excluded and still brakes honestly, because it is the mode delicate work happens in and the one where an honest stop is quick anyway. Declared fiction, ledger SF-L-019. Ric: *"you should be able to stop instantly if you want"*, then *"instant stop should only be a thing on 2-6"*. | Adopted |
+| 2026-07-26 | The fictional FTL drive is a flight mode inside the one game, not a separate mode of travel and not a feature of the retired prototype. There is to be exactly one game: the prototype at `fly.html` is retired once the new architecture reaches parity. | Adopted (direction) |
+| 2026-07-28 | **The throttle is a speed the ship holds, not a stick position.** W and S move it, releasing changes nothing, X zeroes it, and in assisted mode the commanded velocity points where the nose points. Ric: *"when you release W it needs to keep going that speed and only slow down with S. and instantly stop with X."* The previous model read stick deflection directly, so letting go commanded zero and the ship braked itself to a halt — right for a docking thruster, wrong for going anywhere. | Adopted |
+| 2026-07-28 | **Releasing a rotation control stops the rotation in every flight mode**, including direct. Direct keeps the torque build-up and keeps having no attitude hold — the nose stops where it ended up and is never rewound — but a ship that tumbles on after the player stopped asking is the honest physics and the wrong game. Ric: *"in manual when I release the up arrow I need it to stop rotating as well."* | Adopted |
+| 2026-07-28 | **There is one ship: the assisted/direct flight-mode split is deleted.** Direct mode closed no loop, so it had no cruise speed, no drive spool and no proximity governor — a second and quietly worse ship wearing the same hull. Ric was stuck in it via a saved setting the clean HUD does not display, and reported that Intergalactic was *"taking forever to even reach light speed"*: at direct mode's flat 10⁶ m/s² its top speed is 150 million years away. With the same settings after the change it arrives in 2.5 s. The cost is stated rather than hidden — hand-flown ballistic coasting is gone, while every honest readout survives. This closes Controls §10's open question about whether assisted should be the permanent default. Ric: the ship must be *"extremely easy to fly"* and one you *"barely think about"*. | Adopted |
+| 2026-07-28 | **Dark adaptation is near-instant** — the full four decades in about a third of a second, a compression of roughly 4 000× (`SF-L-011`). A six-second curve is not experienced as an eye adjusting but as the renderer being slow, and an effect nobody attributes to the eye buys no realism at any price. The curve's shape and its asymmetry, which are the parts that read as vision, are kept. Ric: *"I need it to adjust almost instantly."* | Adopted |
+| 2026-07-28 | **A bright source only reaches the eye if it is close enough to it.** Off-frame glare follows the Stiles–Holladay relation, which is fitted for 1°–30° and must not be extrapolated far beyond it; adaptation is additionally weighted toward the fovea rather than averaged flat across the field. Extrapolating the relation to 86° had held the eye above the starlight floor everywhere in the Earth–Moon volume, which is why the sky was empty. Looking *at* a sunlit world still removes the stars — that part is real, and Ric confirmed it should stay. | Adopted |
+| 2026-07-28 | **Star brightness is deliberately compressed** (flux^0.48, `SF-L-021`), because eight magnitudes of catalogue cannot be shown linearly on a display with thirty to one of usable range. Ordering is exact; spacing is not. Rendering it linearly did not give a faithful sky, it gave no sky — everything above magnitude 5 saturating to the same white and the measured colours bleaching away with it. | Adopted |
+| 2026-07-28 | **The eight planets are in the sky and are destinations.** Their absence was the single largest reason the sky looked lacklustre: after the Sun and Moon, the brightest things a human eye ever sees are planets, and there were none. Positions from JPL's approximate Keplerian elements (`SF-L-022`). | Adopted |
+| 2026-07-28 | **Stars with a measured parallax are places, not scenery.** They can be selected, routed to, and picked off the map; the rendered shell remains a rendering choice only (`SF-L-007`). This is §7.4's "everything you can see, you can go to" arriving ahead of the roadmap. It is deliberately destinations *without* arrivals — routes are planned and previewed honestly, nothing flies one to completion yet, and the approximations that only bite on arrival are recorded with arrival as their review condition. Ric: the other planets and stars *"need to be a destination you can go to."* | Adopted (direction, `OPEN-019`) |
+| 2026-07-28 | Routes are planned **in the selected travel mode**, so the preview answers "how long in the mode I am in" rather than "how long at infinity". Previously uncapped, which returned a route to Sirius at 5.2 times the speed of light while the ship sat in Local — a navigation computer quietly flying past the physics it is drawn with. | Adopted |
 
 ---
 

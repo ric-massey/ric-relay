@@ -159,7 +159,7 @@ The ship also owns:
 - physical pose and velocity;
 - current reference-frame context;
 - commanded versus actual acceleration;
-- assisted/direct flight mode;
+- travel mode (Local…Intergalactic);
 - autopilot state and route phase;
 - contact/landed state;
 - structural, thermal, pressure, and shielding state;
@@ -1012,7 +1012,7 @@ These can initially drive a non-game test scene.
 ### Stage 4 — Attach ship and local flight
 
 - migrate camera orientation and useful dynamics behind new interfaces;
-- implement assisted/direct modes;
+- implement the assisted flight model (direct mode removed 2026-07-28, Controls §2.3);
 - add station-local state and collision;
 - migrate control rebinding through normalized actions.
 

@@ -280,15 +280,24 @@ Assisted flight converts control intent into safe thrust. It SHOULD provide:
 Assistance is not autopilot. The player still chooses the direction and operates the
 ship continuously.
 
-### 6.3 Direct inertial flight — optional
+### 6.3 Direct inertial flight — **removed 2026-07-28**
 
-Direct mode exposes the underlying velocity-vector behavior:
+Direct mode was a second flight model on a toggle. It is gone; see Controls §2.3 for the
+full reasoning and what it cost. In short: it closed no loop, so it had no cruise speed,
+no drive spool and no proximity governor, and Ric spent a session stuck in it without
+knowing — reporting that Intergalactic was "taking forever to even reach light speed",
+which at a flat 10⁶ m/s² it was.
 
-- rotating the ship does not rotate its current velocity;
-- thrust changes velocity along the commanded body axis;
-- releasing thrust preserves inertial motion except for gravity and environment;
-- match-velocity and safe-stop commands remain available as emergency assistance;
-- the prograde/retrograde markers and reference frame remain visible.
+What it exposed is still true of the one ship and still visible:
+
+- rotating the ship does not rotate the velocity it already has;
+- match-velocity and safe-stop remain available as emergency assistance;
+- the prograde/retrograde markers and reference frame remain visible;
+- the honest readouts — felt g, relative velocity and its frame, stopping distance — are
+  unchanged.
+
+What is genuinely gone is hand-flown ballistic coasting: winding the throttle to zero
+closes on rest in the current frame rather than preserving inertial motion.
 
 This mode preserves the strongest part of the current prototype without making it a
 barrier to first-time players.
@@ -641,7 +650,7 @@ The default HUD should make these immediately readable:
 - closing or receding speed;
 - current speed and named reference frame;
 - stopping distance or impact warning when relevant;
-- assisted/direct flight mode;
+- travel mode (Local…Intergalactic);
 - autopilot state and next action;
 - environmental warning severity;
 - precision mode;

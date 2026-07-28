@@ -51,6 +51,42 @@ Consequences the renderer MUST honour:
   is required and is a declared presentation aid (`A`) that MUST appear in the honesty
   ledger with its compression factor stated.
 
+**How compressed, decided 2026-07-28.** Ric: *"I need it to adjust almost instantly."* The
+curve now crosses the full four decades in about **a third of a second** — a compression of
+roughly 4 000×, recorded in `SF-L-011`. The first implementation took six seconds, and six
+seconds turns out to be the worst of both worlds: long enough to be annoying, and long
+enough that the player does not attribute it to their own eye. They attribute it to the
+renderer being slow. **An effect nobody attributes to the eye buys no realism at any
+price**, so the honest thing is to keep the curve's shape and asymmetry, which are the
+parts that read as vision, and stop defending its clock.
+
+What is lost is real and should be stated: the slow tail of rod adaptation — the twenty
+minutes that is why observers sit in the dark before observing — is not represented at all.
+
+#### Light outside the frame still counts, and light beside the fovea counts less
+
+Two refinements from the same date, both of which began as bugs where the sky was
+inexplicably empty:
+
+- **Off-frame glare is real, and follows an inverse square in *angle*.** A bright source
+  just outside the rendered view still scatters inside the eye and raises the adaptation
+  level. The governing relation is Stiles–Holladay, adopted by the CIE: veiling luminance
+  ∝ E/θ². It is validated for roughly **1°–30°** and MUST NOT be extrapolated far beyond
+  that — doing so gave a Sun 86° off-axis a third of a stop of influence and held the eye
+  permanently above the starlight floor everywhere in the Earth–Moon volume. Ric's framing:
+  the star *"should only affect the eyes if it's close enough."* A pupil-aperture cosine
+  additionally takes it to zero at 90°, because light from behind your shoulder does not
+  enter the eye at all.
+- **Adaptation is dominated by the fovea, not by the frame average.** A flat area-weighted
+  average treats a planet at the edge of vision exactly like one you are looking at, which
+  is why a five-percent sliver of Earth limb in the corner was emptying the whole sky. The
+  weighting now falls off with the angle between the view axis and the source's **nearest
+  edge** — the nearest edge, because a world filling half the sky has its centre 70° away
+  while its limb is right in front of you, and it is the limb you are looking at.
+
+Neither of these weakens the first bullet above. Look *at* a sunlit Earth and the stars
+still go, because that is what happens.
+
 ### 2.2 The HUD is a light source
 
 Because the cockpit overlay sits in the player's field of view, a bright HUD legitimately
@@ -84,6 +120,25 @@ behaviour falls out of it automatically.
   steady — "hard, motionless pinpricks." Any twinkle is a bug.
 - **Brilliant, not dim.** Without extinction or airglow, stars are sharper and brighter
   than from any site on Earth.
+- **The brightness range is compressed, and this is unavoidable.** The catalogue spans
+  eight magnitudes — a factor of 1 600 between the naked-eye limit and Sirius. A display
+  has roughly 30:1 between the threshold of visibility and white. Rendering the ratio
+  linearly does not produce a faithful sky, it produces **no sky at all**: the tone curve
+  saturates everything above about magnitude 5 to identical white, eight magnitudes of
+  hierarchy arrive as under one and a half, §3.2's colour work is bleached away with them,
+  and the result reads as confetti. The response is therefore proportional to flux^0.48,
+  which preserves *ordering* exactly while compressing *spacing* — declared as `SF-L-021`
+  with its exponent stated. **If one star looks brighter than another, it is brighter**;
+  never read a magnitude off the render.
+- **Calibrate against the tone curve, not ahead of it.** The two anchor points — magnitude
+  6.5 at the threshold, Sirius at white — are meaningless unless measured *after* ACES.
+  Anchoring ahead of it put the naked-eye limit at a twentieth of display white and sank
+  the faint two-thirds of the catalogue below anything a screen resolves.
+- **Do not let a point sprite fall below about 1.8 px.** The point-spread is evaluated per
+  fragment, not integrated over the pixel, so a one-pixel star is shaded at wherever its
+  single fragment lands on the curve rather than at its peak. The faint end of the sky
+  simply fails to arrive. For the same reason the spread must be wide enough that a bright
+  star has an actual *core* rather than one white fragment.
 
 ### 3.2 Colour — the nuance that matters
 
@@ -307,12 +362,18 @@ The renderer MUST NOT:
 
 ## 12. Honesty-ledger entries required
 
-- compressed dark-adaptation timing, with the factor stated;
+- compressed dark-adaptation timing, with the factor stated — **`SF-L-011`**, 4 000×;
 - chosen limiting magnitude and star-count target (§3.3);
-- tone-mapping and display-range compromises;
+- tone-mapping and display-range compromises — **`SF-L-021`**, the flux^0.48 star
+  response, with its exponent and its error profile;
 - any minimum-brightness floor;
 - point-spread/glare rendering as a presentation aid;
 - long-exposure photo mode as a camera simulation rather than eye response.
+
+The sky is now also a set of *places* and not only a picture: `SF-L-007` records that the
+star field is rendered on a shell while the simulation gives every star with a measured
+parallax a real position, and `SF-L-023` records that stellar radii are assumed solar
+because the catalogue carries none.
 
 ---
 
