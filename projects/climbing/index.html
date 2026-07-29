@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Climbing Log — Ric's Terminal</title>
+  <meta name="description" content="Every climb Ric has recorded outside — searchable by route, crag, date and partner.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Ric's Terminal">
+  <meta property="og:title" content="The Climbing Log — Ric's Terminal">
+  <meta property="og:description" content="Every climb Ric has recorded outside — searchable by route, crag, date and partner.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%233a5a40'/><text y='.85em' font-size='68' x='16'>🧗</text></svg>">
+  <style>
+    :root {
+      --bar: #3a5a40;
+      --bar-dark: #2d4632;
+      --bg: #f4f1e9;
+      --card: #ffffff;
+      --ink: #26241f;
+      --soft: #6f6a5f;
+      --line: #e2ddd0;
+      --clay: #b5502a;
+      --star: #e0a021;
+      --sent: #2f8f4e;
+      --proj: #c77d1a;
+    }
+
+    * { box-sizing: border-box; margin: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.55;
+      font-size: 15px;
+      padding-bottom: 5rem;
+    }
+
+    a { color: var(--clay); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── top bar ─────────────────────────────────────────── */
+    .topbar { background: var(--bar); color: #eef3ee; }
+    .topbar .inner {
+      max-width: 1000px; margin: 0 auto; padding: .7rem 1.25rem;
+      display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
+    }
+    .topbar .brand { color: #fff; font-weight: 800; letter-spacing: .16em; font-size: .85rem; }
+    .topbar .brand:hover { text-decoration: none; color: #d7e6d7; }
+    .topbar .wing { color: #b8ccbb; font-size: .85rem; letter-spacing: .16em; }
+    .topbar .up { margin-left: auto; color: #cfe0d1; font-size: .78rem; padding: .28rem .7rem; border-radius: 5px; }
+    .topbar .up:hover { color: #fff; background: rgba(255,255,255,.12); text-decoration: none; }
+
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 1.6rem 1.25rem 3rem; }
+
+    .breadcrumb { color: var(--soft); font-size: .85rem; margin-bottom: .5rem; }
+    .breadcrumb a { color: var(--soft); }
+    h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: -.01em; }
+    .lede { color: var(--soft); margin: .3rem 0 1.4rem; }
+
+    /* ── the most recent trip, front and centre ──────────── */
+    .recent {
+      background: var(--card); border: 1px solid #c8d8c7; border-left: 5px solid var(--bar);
+      border-radius: 8px; padding: 1.1rem 1.2rem; margin-bottom: 1.6rem;
+    }
+    .recent .kicker {
+      color: var(--bar); font-size: .68rem; font-weight: 800;
+      letter-spacing: .1em; text-transform: uppercase;
+    }
+    .recent h2 { font-size: 1.25rem; margin: .15rem 0 .1rem; border: none; padding: 0; color: var(--ink); text-transform: none; letter-spacing: -.01em; }
+    .recent .when { color: var(--soft); font-size: .85rem; }
+    .recent .walls { margin-top: .8rem; display: grid; gap: .7rem; }
+    .recent .note { margin-top: .8rem; color: var(--soft); font-size: .88rem; white-space: pre-wrap; }
+
+    /* ── stat strip ──────────────────────────────────────── */
+    .ledger {
+      display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+      margin-bottom: 1.6rem; background: var(--card); flex-wrap: wrap;
+    }
+    .ledger .cell { flex: 1; min-width: 110px; padding: .7rem 1rem; border-right: 1px solid var(--line); }
+    .ledger .cell:last-child { border-right: none; }
+    .ledger .n { font-size: 1.4rem; font-weight: 700; }
+    .ledger .l { color: var(--soft); font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; }
+
+    /* ── controls ────────────────────────────────────────── */
+    .controls { position: sticky; top: 0; z-index: 20; background: var(--bg); padding: .7rem 0; border-bottom: 1px solid var(--line); }
+    .search {
+      width: 100%; padding: .65rem .85rem; font-size: 1rem; font-family: inherit; color: var(--ink);
+      background: var(--card); border: 1px solid var(--line); border-radius: 7px;
+    }
+    .search:focus { outline: 2px solid var(--bar); outline-offset: 1px; border-color: var(--bar); }
+
+    .tabs { display: flex; gap: .3rem; flex-wrap: wrap; margin-top: .6rem; }
+    .tab {
+      font: inherit; font-size: .8rem; cursor: pointer; padding: .32rem .8rem;
+      border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--soft);
+    }
+    .tab:hover { border-color: var(--bar); color: var(--bar); }
+    .tab[aria-selected="true"] { background: var(--bar); border-color: var(--bar); color: #fff; font-weight: 700; }
+
+    .chips { display: flex; gap: .3rem; flex-wrap: wrap; margin-top: .45rem; }
+    .chip {
+      font: inherit; font-size: .74rem; cursor: pointer; padding: .22rem .65rem;
+      border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--soft);
+    }
+    .chip:hover { border-color: var(--clay); color: var(--clay); }
+    .chip[aria-pressed="true"] { background: var(--clay); border-color: var(--clay); color: #fff; }
+    .chip.clear { border-style: dashed; }
+
+    .count { color: var(--soft); font-size: .78rem; margin: .9rem 0 .5rem; }
+
+    /* ── trips ───────────────────────────────────────────── */
+    .trip {
+      background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+      padding: .95rem 1.1rem; margin-bottom: .8rem;
+    }
+    .trip > header { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+    .trip .date { font-weight: 700; font-size: 1rem; color: var(--ink); }
+    .trip .date:hover { color: var(--clay); }
+    .trip.opened { border-color: var(--bar); box-shadow: 0 0 0 3px rgba(58,90,64,.12); }
+    .hidden-note {
+      margin-top: .5rem; padding: .35rem .6rem; border-radius: 5px;
+      background: var(--bg); color: var(--soft); font-size: .78rem; font-style: italic;
+    }
+    .trip .area { color: var(--clay); font-size: .9rem; }
+    .trip .tally { margin-left: auto; color: var(--soft); font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; }
+    .trip .note { margin-top: .7rem; color: var(--soft); font-size: .86rem; white-space: pre-wrap; }
+    .trip .people { margin-top: .55rem; display: flex; gap: .3rem; flex-wrap: wrap; }
+
+    .who {
+      font: inherit; font-size: .72rem; cursor: pointer; padding: .1rem .55rem;
+      border: 1px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--soft);
+    }
+    .who:hover { border-color: var(--bar); color: var(--bar); }
+
+    .walls { margin-top: .7rem; display: grid; gap: .6rem; }
+    .wall .wname {
+      color: var(--soft); font-size: .7rem; text-transform: uppercase;
+      letter-spacing: .08em; border-bottom: 1px solid var(--line); padding-bottom: .2rem; margin-bottom: .3rem;
+    }
+    .route { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; padding: .16rem 0; }
+    .route .rname { font-weight: 600; }
+    .route .rname mark { background: #fdf0c8; color: inherit; border-radius: 2px; }
+    .grade {
+      font-weight: 700; font-size: .8rem; background: var(--bg);
+      border: 1px solid var(--line); border-radius: 5px; padding: .02rem .4rem; white-space: nowrap;
+    }
+    .grade.boulder { background: #efe9f6; border-color: #ded2ec; }
+    .fav { color: var(--star); }
+    .rep { color: var(--soft); font-size: .76rem; }
+    .style { color: var(--sent); font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+    .style.attempt { color: var(--proj); }
+    .rnote { color: var(--soft); font-size: .78rem; }
+
+    /* ── ranked tables (routes / people) ─────────────────── */
+    .rank { background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .rank .row {
+      display: grid; grid-template-columns: 2.2rem 1fr auto auto; gap: .5rem .8rem;
+      align-items: center; padding: .55rem .9rem; border-bottom: 1px solid var(--line);
+    }
+    .rank .row:last-child { border-bottom: none; }
+    .rank .row:hover { background: #faf8f3; }
+    .rank .pos { color: var(--soft); font-size: .8rem; font-weight: 700; text-align: right; }
+    .rank .sub { color: var(--soft); font-size: .77rem; }
+    .rank .big { font-weight: 700; white-space: nowrap; }
+    .rank .bar { grid-column: 2 / -1; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+    .rank .bar i { display: block; height: 100%; background: var(--bar); }
+
+    .empty { padding: 1.4rem 1rem; color: var(--soft); font-style: italic; text-align: center; }
+    footer { margin-top: 2.5rem; color: var(--soft); font-size: .8rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+
+    @media (max-width: 620px) {
+      .trip .tally { margin-left: 0; width: 100%; }
+      .rank .row { grid-template-columns: 1.8rem 1fr auto; }
+      .topbar .up { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="inner">
+      <a class="brand" href="../../index.html">RIC'S TERMINAL</a>
+      <span class="wing">· THE LOG</span>
+      <a class="up" href="../../climbing.html">↑ climbing</a>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="breadcrumb"><a href="../../climbing.html">Climbing</a> &rsaquo; The Log</div>
+    <h1>The Climbing Log</h1>
+    <p class="lede">Everything I've recorded outside — every trip, every route, everyone I climbed with.</p>
+
+    <section class="recent" id="recent" aria-label="Most recent trip"></section>
+
+    <div class="ledger" id="ledger"></div>
+
+    <div class="controls">
+      <input type="search" class="search" id="search" autocomplete="off"
+             placeholder="Search a route, crag, partner, date or grade — try “Cavers”, “Lane”, “V5”, “2023”">
+      <div class="tabs" role="tablist" aria-label="Views">
+        <button class="tab" role="tab" id="tab-trips" aria-selected="true">Trips</button>
+        <button class="tab" role="tab" id="tab-routes" aria-selected="false">Most climbed</button>
+        <button class="tab" role="tab" id="tab-people" aria-selected="false">People</button>
+        <button class="tab" role="tab" id="tab-todo" aria-selected="false">Dream routes</button>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <p class="count" id="count"></p>
+    <div id="view"></div>
+
+    <footer>
+      Built from <code>climbs.md</code> — grades are opinions, memory is worse.
+      <span id="stamp"></span>
+    </footer>
+  </div>
+
+  <script src="climbs-data.js"></script>
+  <script src="../relay-return.js" data-home="../../index.html"></script>
+  <script>
+  (() => {
+    const DATA = window.CLIMBING_DATA;
+    const view = document.getElementById("view");
+    const countEl = document.getElementById("count");
+    const searchEl = document.getElementById("search");
+    const chipsEl = document.getElementById("chips");
+
+    if (!DATA) {
+      view.innerHTML = '<p class="empty">climbs-data.js is missing — run <code>python3 build-data.py</code>.</p>';
+      return;
+    }
+
+    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const fmtDate = (iso) => {
+      if (!iso) return "Undated";
+      const [y, m, d] = iso.split("-").map(Number);
+      return `${MONTHS[m - 1]} ${d}, ${y}`;
+    };
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => (
+      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]
+    ));
+
+    // Precompute one lowercase haystack per trip so search stays instant.
+    DATA.trips.forEach((trip) => {
+      trip._hay = [
+        trip.date, trip.dateRaw, trip.area, trip.notes, trip.people.join(" "),
+        trip.routes.map((r) => [r.name, r.grade, r.region, r.wall, r.styles.join(" ")].join(" ")).join(" "),
+      ].join(" ").toLowerCase();
+    });
+
+    let state = { tab: "trips", q: "", filter: null, person: null };
+
+    /* ── filter chips ─────────────────────────────────── */
+    const FILTERS = [
+      { id: "fav",     label: "★ Favourites & projects", test: (r) => r.star },
+      { id: "sent",    label: "Sends",                   test: (r) => r.outcome === "sent" },
+      { id: "attempt", label: "Projects / attempts",     test: (r) => r.outcome === "attempt" },
+      { id: "rope",    label: "Ropes",                   test: (r) => r.gradeKind === "rope" },
+      { id: "boulder", label: "Boulders",                test: (r) => r.gradeKind === "boulder" },
+    ];
+
+    function renderChips() {
+      const parts = FILTERS.map((f) => (
+        `<button class="chip" data-filter="${f.id}" aria-pressed="${state.filter === f.id}">${esc(f.label)}</button>`
+      ));
+      if (state.person) {
+        parts.push(`<button class="chip clear" data-clear-person aria-pressed="true">with ${esc(state.person)} ✕</button>`);
+      }
+      chipsEl.innerHTML = parts.join("");
+    }
+
+    const activeFilter = () => FILTERS.find((f) => f.id === state.filter) || null;
+
+    /* ── route rendering ──────────────────────────────── */
+    function routeHTML(r, q) {
+      let name = esc(r.name);
+      if (q) {
+        const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "ig");
+        name = name.replace(re, "<mark>$1</mark>");
+      }
+      const bits = [];
+      if (r.star) bits.push('<span class="fav" title="Favourite or project">★</span>');
+      bits.push(`<span class="rname">${name}</span>`);
+      if (r.grade) bits.push(`<span class="grade ${r.gradeKind === "boulder" ? "boulder" : ""}">${esc(r.grade)}</span>`);
+      if (r.repeats > 1) bits.push(`<span class="rep">×${r.repeats}</span>`);
+      if (r.outcome === "attempt") bits.push('<span class="style attempt">project</span>');
+      else if (r.styles.length) bits.push(`<span class="style">${esc(r.styles[0])}</span>`);
+      if (r.note) bits.push(`<span class="rnote">${esc(r.note)}</span>`);
+      return `<div class="route">${bits.join(" ")}</div>`;
+    }
+
+    function wallsHTML(routes, q) {
+      // Group consecutive routes by the wall they were climbed on.
+      const groups = [];
+      routes.forEach((r) => {
+        const key = [r.region, r.wall].filter(Boolean).join(" › ");
+        const last = groups[groups.length - 1];
+        if (last && last.key === key) last.routes.push(r);
+        else groups.push({ key, routes: [r] });
+      });
+      return groups.map((g) => `
+        <div class="wall">
+          ${g.key ? `<div class="wname">${esc(g.key)}</div>` : ""}
+          ${g.routes.map((r) => routeHTML(r, q)).join("")}
+        </div>`).join("");
+    }
+
+    function tripHTML(trip, q, opened, hidden) {
+      const tally = [];
+      if (trip.pitches) tally.push(`${trip.pitches} pitches`);
+      if (trip.boulders) tally.push(`${trip.boulders} boulders`);
+      return `
+        <article class="trip${opened ? " opened" : ""}" id="trip-${esc(trip.date || trip.dateRaw)}">
+          <header>
+            <a class="date" href="#trip-${esc(trip.date || trip.dateRaw)}">${esc(fmtDate(trip.date))}</a>
+            <span class="area">${esc(trip.area || "")}</span>
+            ${tally.length ? `<span class="tally">${esc(tally.join(" · "))}</span>` : ""}
+          </header>
+          ${hidden && !opened ? `<div class="hidden-note">${hidden} climb${
+            hidden === 1 ? "" : "s"} I couldn't name — <a href="#trip-${esc(trip.date || trip.dateRaw)}">open this day</a> to see ${
+            hidden === 1 ? "it" : "them"}.</div>` : ""}
+          <div class="walls">${wallsHTML(trip.routes, q)}</div>
+          ${trip.people.length ? `<div class="people">${
+            trip.people.map((p) => `<button class="who" data-person="${esc(p)}">${esc(p)}</button>`).join("")
+          }</div>` : ""}
+          ${trip.notes ? `<div class="note">${esc(trip.notes)}</div>` : ""}
+        </article>`;
+    }
+
+    /* ── views ────────────────────────────────────────── */
+    function tripsView() {
+      const q = state.q.trim().toLowerCase();
+      const f = activeFilter();
+      const opened = (location.hash.match(/^#trip-(.+)$/) || [])[1];
+      let shown = 0, routeCount = 0;
+
+      const html = DATA.trips.map((trip) => {
+        if (q && !trip._hay.includes(q)) return "";
+        if (state.person && !trip.people.some((p) => p.toLowerCase() === state.person.toLowerCase())) return "";
+        const isOpen = opened === (trip.date || trip.dateRaw);
+        // "did climb, not sure what i got on" is a real memory but not a route —
+        // it stays out of the lists until you open that particular day.
+        const hidden = isOpen ? 0 : trip.routes.filter((r) => r.unknown).length;
+        let routes = isOpen ? trip.routes : trip.routes.filter((r) => !r.unknown);
+        if (f) routes = routes.filter(f.test);
+        // A search that matches routes should narrow to those routes; one that only
+        // matches the crag, the notes or a partner leaves the whole day intact.
+        const hits = (r) => [r.name, r.grade].filter(Boolean).join(" ").toLowerCase().includes(q);
+        if (q && routes.some(hits)) routes = routes.filter(hits);
+        if (!routes.length && (f || q)) return "";
+        shown += 1;
+        routeCount += routes.length;
+        return tripHTML({ ...trip, routes }, q, isOpen, hidden);
+      }).join("");
+
+      countEl.textContent = `${shown} trip${shown === 1 ? "" : "s"} · ${routeCount} routes`;
+      view.innerHTML = html || '<p class="empty">Nothing matches that. Try a route, a crag, a name or a year.</p>';
+    }
+
+    function routesView() {
+      const q = state.q.trim().toLowerCase();
+      const f = activeFilter();
+      let rows = DATA.index.mostClimbed;
+      if (q) rows = rows.filter((r) => [r.name, r.grade, r.area, r.wall].join(" ").toLowerCase().includes(q));
+      if (f && f.id === "fav") rows = rows.filter((r) => r.star);
+      if (f && f.id === "sent") rows = rows.filter((r) => r.sends > 0);
+      if (f && f.id === "attempt") rows = rows.filter((r) => r.attempts > 0);
+      if (f && f.id === "rope") rows = rows.filter((r) => r.gradeKind === "rope");
+      if (f && f.id === "boulder") rows = rows.filter((r) => r.gradeKind === "boulder");
+
+      const top = rows.length ? rows[0].ascents : 1;
+      countEl.textContent = `${rows.length} route${rows.length === 1 ? "" : "s"}, ranked by how often I've got on them`;
+      view.innerHTML = rows.length ? `<div class="rank">${rows.map((r, i) => `
+        <div class="row">
+          <span class="pos">${i + 1}</span>
+          <span>
+            ${r.star ? '<span class="fav">★</span> ' : ""}<strong>${esc(r.name)}</strong>
+            ${r.grade ? `<span class="grade ${r.gradeKind === "boulder" ? "boulder" : ""}">${esc(r.grade)}</span>` : ""}
+            <div class="sub">${esc([r.wall, r.area].filter(Boolean).join(" · "))}${
+              r.lastDate ? ` · last on ${esc(fmtDate(r.lastDate))}` : ""
+            }</div>
+          </span>
+          <span class="big">${r.ascents}×</span>
+          <span class="sub">${r.days} day${r.days === 1 ? "" : "s"}${r.attempts ? ` · ${r.attempts} as project` : ""}</span>
+          <span class="bar"><i style="width:${Math.round((r.ascents / top) * 100)}%"></i></span>
+        </div>`).join("")}</div>` : '<p class="empty">No routes match that.</p>';
+    }
+
+    function peopleView() {
+      const q = state.q.trim().toLowerCase();
+      const tally = new Map();
+      DATA.trips.forEach((trip) => {
+        trip.people.forEach((p) => {
+          const e = tally.get(p) || { name: p, trips: 0, routes: 0, first: null, last: null, areas: new Set() };
+          e.trips += 1;
+          e.routes += trip.routes.length;
+          if (trip.area) e.areas.add(trip.area);
+          if (trip.date) {
+            if (!e.first || trip.date < e.first) e.first = trip.date;
+            if (!e.last || trip.date > e.last) e.last = trip.date;
+          }
+          tally.set(p, e);
+        });
+      });
+      let rows = [...tally.values()].sort((a, b) => b.trips - a.trips || a.name.localeCompare(b.name));
+      if (q) rows = rows.filter((r) => r.name.toLowerCase().includes(q));
+
+      const top = rows.length ? rows[0].trips : 1;
+      countEl.textContent = `${rows.length} people I've climbed with`;
+      view.innerHTML = rows.length ? `<div class="rank">${rows.map((r, i) => `
+        <div class="row">
+          <span class="pos">${i + 1}</span>
+          <span>
+            <strong>${esc(r.name)}</strong>
+            <div class="sub">${esc([...r.areas].join(" · "))}${
+              r.last ? ` · last out ${esc(fmtDate(r.last))}` : ""
+            }</div>
+          </span>
+          <span class="big">${r.trips} trip${r.trips === 1 ? "" : "s"}</span>
+          <button class="who" data-person="${esc(r.name)}">see trips</button>
+          <span class="bar"><i style="width:${Math.round((r.trips / top) * 100)}%"></i></span>
+        </div>`).join("")}</div>` : '<p class="empty">Nobody by that name in the log.</p>';
+    }
+
+    function todoView() {
+      const q = state.q.trim().toLowerCase();
+      let rows = DATA.todo;
+      if (q) rows = rows.filter((t) => [t.name, t.grade, t.location, t.style].join(" ").toLowerCase().includes(q));
+      const done = rows.filter((t) => t.done);
+      const open = rows.filter((t) => !t.done);
+
+      const block = (list, title) => !list.length ? "" : `
+        <p class="count">${title}</p>
+        <div class="rank">${list.map((t) => `
+          <div class="row">
+            <span class="pos">${t.done ? '<span class="fav">★</span>' : "○"}</span>
+            <span>
+              <strong>${esc(t.name)}</strong>
+              ${t.grade ? `<span class="grade ${t.gradeKind === "boulder" ? "boulder" : ""}">${esc(t.grade)}</span>` : ""}
+              <div class="sub">${esc([t.style, t.location].filter(Boolean).join(" · "))}</div>
+            </span>
+            <span class="sub">${t.pitches ? `${t.pitches}p` : ""}${t.lengthFt ? ` · ${t.lengthFt}ft` : ""}</span>
+            <span class="style${t.done ? "" : " attempt"}">${t.done ? esc(t.result || "done") : ""}</span>
+          </div>`).join("")}</div>`;
+
+      countEl.textContent = `${open.length} still on the list · ${done.length} done`;
+      view.innerHTML = (block(open, "Still dreaming") + block(done, "Done")) ||
+        '<p class="empty">Nothing on the list matches that.</p>';
+    }
+
+    const VIEWS = { trips: tripsView, routes: routesView, people: peopleView, todo: todoView };
+
+    function render() {
+      renderChips();
+      (VIEWS[state.tab] || tripsView)();
+    }
+
+    /* ── stats + most recent trip ─────────────────────── */
+    function renderHeader() {
+      const s = DATA.stats;
+      document.getElementById("ledger").innerHTML = [
+        [s.trips, "Days out"],
+        [s.routes, "Routes logged"],
+        [s.uniqueRoutes, "Unique routes"],
+        [s.people, "Partners"],
+        [s.areas, "Areas"],
+      ].map(([n, l]) => `<div class="cell"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+
+      const latest = DATA.trips.find((t) => t.date);
+      if (!latest) return;
+      document.getElementById("recent").innerHTML = `
+        <div class="kicker">Most recent day out</div>
+        <h2>${esc(latest.area || "")}</h2>
+        <div class="when">${esc(fmtDate(latest.date))}${
+          latest.people.length ? ` · with ${esc(latest.people.join(", "))}` : ""
+        }</div>
+        <div class="walls">${wallsHTML(latest.routes, "")}</div>
+        ${latest.notes ? `<div class="note">${esc(latest.notes)}</div>` : ""}`;
+    }
+
+    /* ── events ───────────────────────────────────────── */
+    searchEl.addEventListener("input", () => { state.q = searchEl.value; render(); });
+
+    chipsEl.addEventListener("click", (e) => {
+      const chip = e.target.closest("[data-filter]");
+      if (chip) {
+        state.filter = state.filter === chip.dataset.filter ? null : chip.dataset.filter;
+        render();
+        return;
+      }
+      if (e.target.closest("[data-clear-person]")) {
+        state.person = null;
+        render();
+      }
+    });
+
+    view.addEventListener("click", (e) => {
+      const who = e.target.closest("[data-person]");
+      if (!who) return;
+      state.person = who.dataset.person;
+      state.tab = "trips";
+      syncTabs();
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    const tabButtons = [...document.querySelectorAll(".tab")];
+    const tabId = (btn) => btn.id.replace("tab-", "");
+    function syncTabs() {
+      tabButtons.forEach((b) => b.setAttribute("aria-selected", String(tabId(b) === state.tab)));
+    }
+    tabButtons.forEach((btn) => btn.addEventListener("click", () => {
+      state.tab = tabId(btn);
+      syncTabs();
+      render();
+    }));
+
+    // Deep links (#trip-2026-07-27) come in from the sitewide "newest day out"
+    // banner, and from clicking a date here.
+    function openFromHash(scroll) {
+      if (!/^#trip-/.test(location.hash)) return;
+      state.tab = "trips";
+      syncTabs();
+      render();
+      const target = document.getElementById(location.hash.slice(1));
+      if (target && scroll) target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    window.addEventListener("hashchange", () => openFromHash(true));
+
+    renderHeader();
+    render();
+    openFromHash(true);
+  })();
+  </script>
+</body>
+</html>

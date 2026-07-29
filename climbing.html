@@ -106,7 +106,9 @@
     .ledger { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin: 1.2rem 0 2rem; background: var(--card); flex-wrap: wrap; }
     .ledger .cell { flex: 1; min-width: 120px; padding: 0.7rem 1rem; border-right: 1px solid var(--line); }
     .ledger .cell:last-child { border-right: none; }
-    .ledger .n { font-size: 1.4rem; font-weight: 700; }
+    .ledger .n { font-size: 1.4rem; font-weight: 700; line-height: 1.2; }
+    .ledger .sub { color: var(--ink); font-size: 0.78rem; line-height: 1.3; }
+    .ledger .sub:empty { display: none; }
     .ledger .l { color: var(--soft); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
 
     h2 {
@@ -119,7 +121,7 @@
     .routes { background: var(--card); border: 1px solid var(--line); border-top: none; border-radius: 0 0 8px 8px; }
     .route {
       display: grid;
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: 1fr auto;
       gap: 0.6rem 1rem;
       align-items: center;
       padding: 0.75rem 1rem;
@@ -145,6 +147,65 @@
     .tag.scoping { background: #efece4; color: var(--scope); border: 1px solid #ddd7c8; }
 
     .empty { padding: 1.1rem 1rem; color: var(--soft); font-style: italic; }
+
+    /* links down into the full log */
+    .jump { display: flex; gap: .5rem; flex-wrap: wrap; margin: 1.4rem 0 .2rem; }
+    .jump a {
+      font-size: .82rem; font-weight: 700; padding: .42rem .85rem;
+      border: 1px solid var(--line); border-radius: 999px; background: var(--card);
+    }
+    .jump a:hover { border-color: var(--bar); color: var(--bar); text-decoration: none; }
+
+    /* the day's routes, grouped under the wall they were on */
+    .route .wallname {
+      color: var(--soft); font-size: .68rem; text-transform: uppercase;
+      letter-spacing: .08em; margin-bottom: .15rem;
+    }
+    .route .fav { color: var(--star); }
+    .route .when { color: var(--soft); font-size: .78rem; white-space: nowrap; }
+    .daynote { padding: 0 1rem 0.85rem; color: var(--soft); font-size: .84rem; white-space: pre-wrap; }
+    .daynote:empty { display: none; }
+
+    /* the most recent day: where, then how it went, then the climbs */
+    .dayhead { padding: 0.9rem 1rem 0.85rem; border-bottom: 1px solid var(--line); background: #f8fbf7; }
+    .dayplace { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
+    .daymeta { color: var(--soft); font-size: 0.84rem; margin-top: 0.1rem; }
+    .daystory { margin-top: 0.55rem; font-size: 0.88rem; white-space: pre-wrap; }
+    .daylink { display: inline-block; margin-top: 0.6rem; font-size: 0.8rem; font-weight: 700; }
+
+    /* Compact rows — projects and objectives are lists you scan, not read.
+       One line per route, and it has to stay one line on a phone. */
+    .routes.compact .route {
+      grid-template-columns: 1fr auto; gap: .1rem .6rem; padding: .45rem .8rem;
+    }
+    .routes.compact .route .line1 {
+      display: flex; align-items: baseline; gap: .4rem; flex-wrap: wrap; min-width: 0;
+    }
+    .routes.compact .route .name { font-size: .92rem; }
+    /* the crag sits on its own line above the route, not beside it */
+    .routes.compact .route .wallname { flex: 0 0 100%; margin: 0; }
+    .routes.compact .route .grade { font-size: .8rem; padding: .02rem .4rem; }
+    .routes.compact .route .tag { margin-left: 0; }
+    .routes.compact .route .when { font-size: .72rem; }
+
+    /* star first, and let it sit outside the name so the column stays aligned */
+    .routes.compact .route.starred { background: #fdfaf1; }
+    .routes.compact .route.starred .fav { font-size: .9rem; }
+
+    @media (max-width: 620px) {
+      /* On a phone this is a list you thumb through, so each route gets one
+         tight line for the name and one small line for where it is. */
+      .routes.compact .route { padding: .34rem .6rem; gap: 0; }
+      .routes.compact .route .line1 { gap: .32rem; line-height: 1.25; }
+      .routes.compact .route .name { font-size: .86rem; }
+      .routes.compact .route .grade { font-size: .72rem; }
+      .routes.compact .route .wallname {
+        font-size: .6rem; max-width: 100%;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .routes.compact .route .tag { font-size: .58rem; padding: .04rem .34rem; letter-spacing: .05em; }
+      .routes.compact .route .when { display: none; }
+    }
 
     footer { margin-top: 3rem; color: var(--soft); font-size: 0.82rem; border-top: 1px solid var(--line); padding-top: 1rem; }
 
@@ -226,61 +287,213 @@
   <div class="wrap">
     <div class="breadcrumb"><a href="index.html">All Areas</a> &rsaquo; Ric's Ticks &amp; Projects</div>
     <h1>Climbing &amp; Mountaineering</h1>
-    <p class="welcome">The route ledger — what I'm projecting, what I've sent, and the objectives still on the list.</p>
+    <p class="welcome">a record of my experiences outside!</p>
 
     <a class="latest-climb" data-latest-banner data-latest-prefix="new route"></a>
 
     <div class="ledger">
-      <div class="cell"><div class="n" id="n-sent">0</div><div class="l">Sends logged</div></div>
-      <div class="cell"><div class="n" id="n-proj">0</div><div class="l">Active projects</div></div>
-      <div class="cell"><div class="n" id="n-obj">0</div><div class="l">Objectives</div></div>
-      <div class="cell"><div class="n">—</div><div class="l">Hardest send</div></div>
+      <div class="cell"><div class="n" id="n-sent">—</div><div class="l">Sends logged</div></div>
+      <div class="cell"><div class="n" id="n-proj">—</div><div class="l">Active projects</div></div>
+      <div class="cell"><div class="n" id="n-obj">—</div><div class="l">Dream routes</div></div>
+      <div class="cell">
+        <div class="n" id="n-hard">—</div>
+        <div class="sub" id="n-hard-name"></div>
+        <div class="l">Hardest send</div>
+      </div>
+      <div class="cell">
+        <div class="n" id="n-days">—</div>
+        <div class="sub" id="n-days-span"></div>
+        <div class="l">Days logged outside</div>
+      </div>
     </div>
 
     <!-- ═══════════════════════════════════════════════════
-         TO UPDATE: each <div class="route"> is one climb.
-         Status tag classes: projecting · sent · scoping.
-         When you finish a project, change its tag to "sent".
-         Stars: use ★ / ☆. Newest at the top of each block.
+         This page is filled from projects/climbing/climbs-data.js,
+         which build-data.py generates from climbs.md and todo.md.
+         To add a climb, edit projects/climbing/climbs.md and run:
+             python3 projects/climbing/build-data.py
+         Don't hand-edit the route lists below — they're replaced on load.
          ═══════════════════════════════════════════════════ -->
 
-    <h2>Current Projects</h2>
-    <div class="routes" id="projects">
-      <div class="route">
-        <div>
-          <span class="name">First project goes here</span><span class="tag projecting">projecting</span>
-          <div class="loc">Crag · area · notes on the send</div>
-        </div>
-        <span class="stars">★★★☆☆</span>
-        <span class="grade">5.—</span>
-      </div>
+    <div class="jump">
+      <a href="projects/climbing/index.html">Browse the full log →</a>
+      <a href="projects/climbing/gallery.html">Photos &amp; video →</a>
     </div>
 
-    <h2>Objectives — On The List</h2>
-    <div class="routes" id="objectives">
-      <div class="route">
-        <div>
-          <span class="name">First objective goes here</span><span class="tag scoping">scoping</span>
-          <div class="loc">Where it is and why it's on the list</div>
-        </div>
-        <span class="stars">★★★★☆</span>
-        <span class="grade">—</span>
-      </div>
-    </div>
+    <h2>Most Recent Day Out</h2>
+    <div class="routes" id="recent"><div class="empty">Loading the ledger…</div></div>
+
+    <h2>Current Projects</h2>
+    <div class="routes compact" id="projects"></div>
+
+    <h2>Dream Routes</h2>
+    <div class="routes compact" id="objectives"></div>
 
     <h2>Recent Ticks</h2>
-    <div class="routes" id="ticks">
-      <div class="empty">No sends logged yet. The first one goes here with a “sent” tag.</div>
-    </div>
+    <div class="routes" id="ticks"></div>
 
-    <footer>Ric's personal climbing ledger · grades are opinions · stars are bribes</footer>
+    <footer>Ric's personal climbing ledger · grades are opinions · stars are the ones that mattered</footer>
   </div>
 
   <div class="send-celebration" id="send-celebration" aria-live="polite" aria-atomic="true"></div>
 
   <script src="effects.js"></script>
+  <script src="projects/climbing/latest-climb.js"></script>
   <script src="latest.js"></script>
+  <script src="projects/climbing/climbs-data.js"></script>
   <script>
+    // ── fill the ledger from climbs.md ──────────────────────────────
+    // Everything below reads projects/climbing/climbs-data.js. The deep log
+    // lives at projects/climbing/ — this page is the front of it.
+    (() => {
+      const DATA = window.CLIMBING_DATA;
+      const el = (id) => document.getElementById(id);
+      if (!DATA) {
+        el("recent").innerHTML =
+          '<div class="empty">Ledger data missing — run <code>python3 projects/climbing/build-data.py</code>.</div>';
+        return;
+      }
+
+      const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const fmtDate = (iso) => {
+        if (!iso) return "Undated";
+        const [y, m, d] = iso.split("-").map(Number);
+        return `${MONTHS[m - 1]} ${d}, ${y}`;
+      };
+      const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]
+      ));
+
+      // A route row in this page's Mountain-Project styling.
+      const row = ({ star, name, loc, tag, tagClass, when, grade }) => `
+        <div class="route${star ? " starred" : ""}">
+          <div class="line1">
+            ${loc ? `<div class="wallname">${esc(loc)}</div>` : ""}
+            ${star ? '<span class="fav" title="A favourite or a project">★</span>' : ""}
+            <span class="name">${esc(name)}</span>
+            ${grade ? `<span class="grade">${esc(grade)}</span>` : ""}
+            ${tag ? `<span class="tag ${tagClass}">${esc(tag)}</span>` : ""}
+          </div>
+          <span class="when">${esc(when || "")}</span>
+        </div>`;
+
+      const ranked = DATA.index.mostClimbed;
+      const sentRoutes = ranked.filter((r) => r.sends > 0);
+
+      // A project is a route he's got on but hasn't sent. Starred ones — the
+      // climbs that actually matter to him — sort to the top.
+      const projects = ranked
+        .filter((r) => r.attempts > 0 && r.sends === 0)
+        .sort((a, b) =>
+          Number(b.star) - Number(a.star) ||
+          b.gradeRank - a.gradeRank ||
+          b.ascents - a.ascents);
+
+      const hardestOf = (kind) => sentRoutes
+        .filter((r) => r.gradeKind === kind)
+        .reduce((best, r) => (!best || r.gradeRank > best.gradeRank ? r : best), null);
+      const hardest = hardestOf("rope");
+      const hardestBoulder = hardestOf("boulder");
+
+      el("n-sent").textContent = DATA.stats.sends;
+      el("n-proj").textContent = projects.length;
+      el("n-obj").textContent = DATA.stats.todoOpen;
+      el("n-days").textContent = DATA.stats.trips;
+
+      el("n-hard").textContent = [hardest && hardest.grade, hardestBoulder && hardestBoulder.grade]
+        .filter(Boolean).join(" · ") || "—";
+      el("n-hard-name").textContent = [hardest && hardest.name, hardestBoulder && hardestBoulder.name]
+        .filter(Boolean).join(" · ");
+
+      const dates = DATA.trips.filter((t) => t.date).map((t) => t.date).sort();
+      el("n-days-span").textContent = dates.length
+        ? `${dates[0].slice(0, 4)}–${dates[dates.length - 1].slice(0, 4)}`
+        : "";
+
+      // ── most recent day out ──
+      const latest = DATA.trips.find((t) => t.date);
+      if (latest) {
+        const routes = latest.routes.filter((r) => !r.unknown).map((r) => row({
+          star: r.star,
+          name: r.name,
+          loc: [r.region, r.wall].filter(Boolean).join(" › "),
+          tag: r.outcome === "attempt" ? "projecting" : (r.styles[0] || "sent"),
+          tagClass: r.outcome === "attempt" ? "projecting" : "sent",
+          when: r.repeats > 1 ? `×${r.repeats}` : "",
+          grade: r.grade,
+        })).join("");
+        const sent = latest.routes.filter((r) => !r.unknown && r.outcome === "sent").length;
+        const worked = latest.routes.filter((r) => !r.unknown && r.outcome === "attempt").length;
+        const summary = [
+          sent ? `${sent} sent` : "",
+          worked ? `${worked} worked` : "",
+          latest.pitches ? `${latest.pitches} pitches` : "",
+          latest.boulders ? `${latest.boulders} boulders` : "",
+        ].filter(Boolean).join(" · ");
+
+        // Where he went and how it went, then the climbs themselves.
+        el("recent").innerHTML = `
+          <div class="dayhead">
+            <div class="dayplace">${esc(latest.area || "")}</div>
+            <div class="daymeta">${esc(fmtDate(latest.date))}${
+              latest.people.length ? ` · with ${esc(latest.people.join(", "))}` : ""
+            }${summary ? ` · ${esc(summary)}` : ""}</div>
+            ${latest.notes ? `<div class="daystory">${esc(latest.notes)}</div>` : ""}
+            <a class="daylink" href="projects/climbing/index.html#trip-${esc(latest.date)}">See this day in the log →</a>
+          </div>` + routes;
+      }
+
+      // ── current projects ──
+      el("projects").innerHTML = projects.slice(0, 8).map((r) => row({
+        star: r.star,
+        name: r.name,
+        loc: [r.wall, r.area].filter(Boolean).join(" · "),
+        tag: "projecting",
+        tagClass: "projecting",
+        when: `${r.attempts} ${r.attempts === 1 ? "go" : "goes"} over ${r.days} ${r.days === 1 ? "day" : "days"}`,
+        grade: r.grade,
+      })).join("") || '<div class="empty">Nothing open right now.</div>';
+
+      // ── objectives, straight off the to-do list ──
+      // The ones he's already touched come first — those are the live ones.
+      const open = DATA.todo.filter((t) => !t.done)
+        .sort((a, b) =>
+          Number(Boolean(b.tried)) - Number(Boolean(a.tried)) ||
+          b.gradeRank - a.gradeRank);
+      el("objectives").innerHTML = open.slice(0, 10).map((t) => row({
+        star: Boolean(t.tried),
+        name: t.name,
+        loc: [t.style, t.location].filter(Boolean).join(" · "),
+        tag: t.tried ? "been on it" : "not yet",
+        tagClass: t.tried ? "projecting" : "scoping",
+        when: t.tried
+          ? `${t.tried.ascents} ${t.tried.ascents === 1 ? "go" : "goes"}`
+          : (t.pitches ? `${t.pitches}p` : ""),
+        grade: t.grade,
+      })).join("") + `<div class="daynote">${open.length > 10
+        ? `…and ${open.length - 10} more in <a href="projects/climbing/index.html">the dream list</a>.` : ""}</div>`;
+
+      // ── recent ticks ──
+      const ticks = [];
+      for (const trip of DATA.trips) {
+        if (!trip.date) continue;
+        for (const r of trip.routes) {
+          if (r.outcome !== "sent" || r.unknown) continue;
+          ticks.push({ ...r, date: trip.date });
+        }
+        if (ticks.length >= 12) break;
+      }
+      el("ticks").innerHTML = ticks.slice(0, 12).map((r) => row({
+        star: r.star,
+        name: r.name,
+        loc: [r.wall, r.area].filter(Boolean).join(" · "),
+        tag: r.styles[0] || "sent",
+        tagClass: "sent",
+        when: fmtDate(r.date),
+        grade: r.grade,
+      })).join("") || '<div class="empty">No sends logged yet.</div>';
+    })();
+
     // rotate the hero photos
     const shots = document.querySelectorAll("#hero .shot");
     const heroToggle = document.getElementById("hero-toggle");

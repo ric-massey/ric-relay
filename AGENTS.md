@@ -74,7 +74,7 @@ and this file. Keep the label set in sync everywhere.
 - **Sub-projects** live in `projects/<name>/` (or a single `.html`) and are **linked
   from the room that fits them** — not given their own room. Current: `spacetime` and
   `farlight` → Exploration; `the-shape-of-harm`, `autism-reflection.html`, and
-  `state-of-mind-line` → Psyche; `siege-conductor` → Workbench. Each is
+  `state-of-mind-line` → Psyche; `siege-conductor` → Workbench; `climbing` → Climbing. Each is
   self-contained and may carry its own assets/fonts; the "no dependencies" rule is for
   the terminal's own room pages, not embedded projects. Keep their internal links relative.
 - **Every standalone project HTML page needs a visible route back to the terminal.** Use
@@ -88,9 +88,18 @@ and this file. Keep the label set in sync everywhere.
 
 ## Editing content
 
-Each page has a loudly-commented editable block near its content. To add a climb, a
+Each page has a loudly-commented editable block near its content. To add a
 photo, an activity, a project, a log entry — copy the example block in that page and
-edit it. Homepage "transmissions" live in `notes.js`. Curated newest additions live
+edit it.
+
+**Climbing is the exception: it is data-driven, not hand-edited.** `climbing.html`,
+`projects/climbing/index.html` and `projects/climbing/gallery.html` all read
+generated files. To add a climb, edit `projects/climbing/climbs.md` and run
+`python3 projects/climbing/build-data.py`. See `projects/climbing/readme.md`.
+That script also writes `projects/climbing/latest-climb.js`, which every room loads
+so the newest day out leads the "latest" banner without anyone editing a list.
+
+Homepage "transmissions" live in `notes.js`. Curated newest additions live
 in `latest.js`; every room renders
 that data as a banner in its own native style. `orrin.html` is self-updating — leave
 its GitHub data logic alone unless fixing a bug. `systems.html` and `updates.html` are

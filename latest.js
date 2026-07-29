@@ -40,7 +40,13 @@ window.RELAY_LATEST = [
 
 (() => {
   function installLatestBanners() {
-    const items = Array.isArray(window.RELAY_LATEST) ? window.RELAY_LATEST : [];
+    const curated = Array.isArray(window.RELAY_LATEST) ? window.RELAY_LATEST : [];
+    // projects/climbing/latest-climb.js is regenerated from climbs.md, so the
+    // newest day out announces itself without anyone editing this list.
+    const climb = window.RELAY_LATEST_CLIMB;
+    const items = (climb ? [climb, ...curated] : curated)
+      .slice()
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
     const here = new URL(location.href);
 
     document.querySelectorAll("[data-latest-banner]").forEach((banner) => {
@@ -58,7 +64,11 @@ window.RELAY_LATEST = [
 
       const kicker = document.createElement("span");
       kicker.className = "latest-kicker";
-      kicker.textContent = `${banner.dataset.latestPrefix || "latest"} // ${item.kind}`;
+      // The climbing entry already reads as an announcement ("new routes sent"),
+      // so it speaks for itself instead of taking the room's prefix.
+      kicker.textContent = item === climb
+        ? item.kind
+        : `${banner.dataset.latestPrefix || "latest"} // ${item.kind}`;
 
       const title = document.createElement("strong");
       title.className = "latest-title";
