@@ -322,13 +322,10 @@ Scroll down to see the main different places you can visit!</div>
 type /ls to list out all the directories you can go to!
 type Sydney's cats name for a suprise!</div>
 
-      <section id="latest" class="hidden" aria-label="NOTIFICATION // game update">
-        <a class="latest-relay" href="projects/starfield/index.html">
-          <span class="latest-kicker">NOTIFICATION // game update</span>
-          <strong class="latest-title">Starfield: Interstellar Flight</strong>
-          <span class="latest-description">Fly through a richer deep field of stars, planets, moons, comets, nebulae, and galaxies at 1 c or 10,000,000 c warp.</span>
-          <span class="latest-meta"><time datetime="2026-07-24">2026-07-24</time><span aria-hidden="true">open →</span></span>
-        </a>
+      <!-- Filled by latest.js from latest-climb.js + RELAY_LATEST. Don't hardcode
+           an entry here — it goes stale the moment anything newer lands. -->
+      <section id="latest" class="hidden" aria-label="Newest addition">
+        <a class="latest-relay" data-latest-banner data-latest-prefix="NOTIFICATION"></a>
       </section>
 
       <p id="places-intro" class="places-intro hidden">I made these places based on things that I enjoy if you like them too you may like the information in those areas!</p>
@@ -391,8 +388,8 @@ type Sydney's cats name for a suprise!</div>
 
   <script src="notes.js"></script>
   <script src="effects.js"></script>
-  <script src="projects/climbing/latest-climb.js"></script>
-  <script src="latest.js"></script>
+  <script src="projects/climbing/latest-climb.js?v=2"></script>
+  <script src="latest.js?v=2"></script>
   <script>
     // ─── boot sequence ───────────────────────────────────
     const BOOT_LINES = [
@@ -727,7 +724,7 @@ type Sydney's cats name for a suprise!</div>
         print(`opening ${directProject.title} in /${directProject.room} ...`);
         setTimeout(() => (location.href = directProject.href), 400);
       } else if ((verb === "open" && ["latest", "recent"].includes(arg)) || ["latest", "recent"].includes(verb)) {
-        const newest = (window.RELAY_LATEST || [])[0];
+        const newest = (window.RELAY_LATEST_ALL || window.RELAY_LATEST || [])[0];
         if (!newest) print("no new signals found.");
         else {
           print(`opening ${newest.title} ...`);

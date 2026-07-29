@@ -47,6 +47,8 @@ window.RELAY_LATEST = [
     const items = (climb ? [climb, ...curated] : curated)
       .slice()
       .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    // The terminal's `latest` command reads this too, so both agree on what's newest.
+    window.RELAY_LATEST_ALL = items;
     const here = new URL(location.href);
 
     document.querySelectorAll("[data-latest-banner]").forEach((banner) => {

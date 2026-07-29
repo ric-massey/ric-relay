@@ -258,11 +258,14 @@ def parse_route(line, report, context):
     clean = re.search(r"\bsent\b|\bsend\b", blob) or any(
         s in styles for s in ("onsight", "flash", "redpoint")
     )
-    worked = re.search(r"\bfalls?\b|\btakes?\b|\brapp?ed\b|\bclips?\b", blob)
-    if "attempt" in styles:
-        outcome = "attempt"
-    elif clean:
+    # A deliberate practice whipper isn't a failed go — don't let it read as one.
+    outcome_blob = re.sub(r"\b(?:fake|practice|training)\s+falls?\b", " ", blob)
+    worked = re.search(r"\bfalls?\b|\btakes?\b|\brapp?ed\b|\bclips?\b", outcome_blob)
+    # An explicit send wins outright — "couple attempts then a send" is a send.
+    if clean:
         outcome = "sent"
+    elif "attempt" in styles:
+        outcome = "attempt"
     elif worked:
         outcome = "attempt"
     else:

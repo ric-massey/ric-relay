@@ -305,6 +305,16 @@
         <div class="sub" id="n-days-span"></div>
         <div class="l">Days logged outside</div>
       </div>
+      <div class="cell">
+        <div class="n" id="n-top-route">—</div>
+        <div class="sub" id="n-top-route-name"></div>
+        <div class="l">Most climbed route</div>
+      </div>
+      <div class="cell">
+        <div class="n" id="n-top-boulder">—</div>
+        <div class="sub" id="n-top-boulder-name"></div>
+        <div class="l">Most climbed boulder</div>
+      </div>
     </div>
 
     <!-- ═══════════════════════════════════════════════════
@@ -338,8 +348,8 @@
   <div class="send-celebration" id="send-celebration" aria-live="polite" aria-atomic="true"></div>
 
   <script src="effects.js"></script>
-  <script src="projects/climbing/latest-climb.js"></script>
-  <script src="latest.js"></script>
+  <script src="projects/climbing/latest-climb.js?v=2"></script>
+  <script src="latest.js?v=2"></script>
   <script src="projects/climbing/climbs-data.js"></script>
   <script>
     // ── fill the ledger from climbs.md ──────────────────────────────
@@ -409,6 +419,20 @@
       el("n-days-span").textContent = dates.length
         ? `${dates[0].slice(0, 4)}–${dates[dates.length - 1].slice(0, 4)}`
         : "";
+
+      // The route and the boulder he keeps coming back to. mostClimbed is already
+      // ranked by ascents, so the first of each kind is the answer.
+      const topOf = (kind) => ranked.find((r) => r.gradeKind === kind) || null;
+      const topRoute = topOf("rope");
+      const topBoulder = topOf("boulder");
+      const fillTop = (numId, nameId, entry) => {
+        el(numId).textContent = entry ? `${entry.ascents}×` : "—";
+        el(nameId).textContent = entry
+          ? `${entry.name}${entry.grade ? ` · ${entry.grade}` : ""}`
+          : "";
+      };
+      fillTop("n-top-route", "n-top-route-name", topRoute);
+      fillTop("n-top-boulder", "n-top-boulder-name", topBoulder);
 
       // ── most recent day out ──
       const latest = DATA.trips.find((t) => t.date);
