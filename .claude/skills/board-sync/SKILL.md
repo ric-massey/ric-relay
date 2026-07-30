@@ -183,14 +183,11 @@ which Kilter no longer has; its catalogue would have to come from the REST searc
 instead. And the geometry carries no **benchmark or mirror** flags, so those chips
 never show on Kilter entries. Neither is a bug to chase.
 
-A normal `--catalogue` run already skips Kilter. `--catalogue-only` does **not** —
-and a stale 198 MB `.board-cache/kilter.db` from the Aurora era is still on disk,
-so it would happily run and write a nonsense library. Name the board when
-rebuilding:
-
-```bash
-projects/climbing/.board-venv/bin/python projects/climbing/pull-boards.py tension --catalogue-only
-```
+Both catalogue paths skip Kilter, from one `NO_CATALOGUE` set in
+`pull-boards.py` so they can't drift apart. Asking for Kilter's library by name
+fails with a reason rather than quietly building one out of the stale
+`.board-cache/kilter.db` left over from the Aurora era. That file is 198 MB of
+nothing useful now — unlike `tension.db`, deleting it costs no re-download.
 
 ## Rules
 
@@ -198,7 +195,8 @@ projects/climbing/.board-venv/bin/python projects/climbing/pull-boards.py tensio
   macOS Keychain only. Both files stay out of git; that's already in `.gitignore`.
 - `board-data.js` **is** committed — it's what the live site reads.
 - The `.board-cache/` databases are ~260 MB and gitignored. Don't commit them,
-  don't delete them either: the next sync only downloads the delta.
+  don't delete them either: the next sync only downloads the delta. The one
+  exception is `kilter.db` — Kilter's sync never reads it (see above).
 - Don't hand-edit `board-data.js` or `board.html`'s data assumptions. If the shape
   of the data needs to change, change `pull-boards.py`.
 

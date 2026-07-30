@@ -44,10 +44,17 @@ FOOT_ROLES = {"foot"}
 # Where each board lives on the web. There is no public profile page — every
 # /users/<id> route wants a session — so these links land on the app itself, and
 # open the native app instead of the browser wherever the phone knows to.
+#
+# Aurora boards only. Kilter never comes through here, and its host lives in
+# kilter_v2.py next to the rest of its stack rather than being repeated here.
 WEB_HOSTS = {
-    "kilter": "https://kilterboardapp.com",
     "tension": "https://tensionboardapp2.com",
 }
+
+# Boards with no Aurora database behind them, so no browsable "All climbs"
+# library — theirs would have to be built from the new REST search instead.
+# Both catalogue paths read this, so they can't drift apart.
+NO_CATALOGUE = {"kilter"}
 
 
 class Failed(Exception):
@@ -698,6 +705,17 @@ def main(argv):
         # Rebuilding the library needs no login — the climb database is public,
         # and it's already on disk from the last sync.
         if catalogue_only:
+            # Refuse by name rather than trusting the cache. There is still a
+            # kilter.db down there from before Kilter left Aurora, and it would
+            # sail past the exists() check below and build a library for a board
+            # that no longer exists. If Ric asked for Kilter by name, that's a
+            # failure; if he asked for everything, it's just not part of it.
+            if board in NO_CATALOGUE:
+                print("  ! no library for this board — it has no Aurora database "
+                      "(any .board-cache file is a leftover)")
+                if wanted:
+                    failures.append(board)
+                continue
             db_path = CACHE / f"{board}.db"
             if not db_path.exists():
                 print(f"  ! no {db_path.name} yet — run a normal sync first")
@@ -762,7 +780,7 @@ def main(argv):
         # The browsable library is built from the Aurora SQLite database. Kilter
         # doesn't have one — its catalogue would come from the REST search — so it
         # skips this step and simply has no "All climbs" view for now.
-        if with_catalogue and board != "kilter":
+        if with_catalogue and board not in NO_CATALOGUE:
             geometry = catalogue_geometry(boards[board])
             if geometry:
                 layout_id, frame = geometry
@@ -772,7 +790,11 @@ def main(argv):
         print("\nnothing written — every board failed", file=sys.stderr)
         return 2 if only_misconfigured else 1
 
-    write_data(boards, report)
+    # A catalogue-only run never touched the logbook, so rewriting board-data.js
+    # would change nothing but its timestamp — a diff on a committed file saying
+    # only that the file was written again.
+    if not catalogue_only:
+        write_data(boards, report)
 
     for label, items in report.items():
         if items:
