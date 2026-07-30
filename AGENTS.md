@@ -74,7 +74,8 @@ and this file. Keep the label set in sync everywhere.
 - **Sub-projects** live in `projects/<name>/` (or a single `.html`) and are **linked
   from the room that fits them** — not given their own room. Current: `spacetime` and
   `farlight` → Exploration; `the-shape-of-harm`, `autism-reflection.html`, and
-  `state-of-mind-line` → Psyche; `siege-conductor` → Workbench; `climbing` → Climbing. Each is
+  `state-of-mind-line` → Psyche; `siege-conductor` → Workbench; `climbing` → Climbing
+  (including the unlisted `climbing/board.html`). Each is
   self-contained and may carry its own assets/fonts; the "no dependencies" rule is for
   the terminal's own room pages, not embedded projects. Keep their internal links relative.
 - **Every standalone project HTML page needs a visible route back to the terminal.** Use
@@ -98,6 +99,23 @@ generated files. To add a climb, edit `projects/climbing/climbs.md` and run
 `python3 projects/climbing/build-data.py`. See `projects/climbing/readme.md`.
 That script also writes `projects/climbing/latest-climb.js`, which every room loads
 so the newest day out leads the "latest" banner without anyone editing a list.
+
+**The board log is pulled, not written.** `projects/climbing/board.html` — the
+woodshed — reads `board-data.js`, which `pull-boards.py` generates from the Kilter
+and Tension apps. Rules for it:
+
+- Credentials are never in this repo. Usernames live in `board-accounts.json`
+  (gitignored); passwords live in the macOS Keychain. Never ask Ric to paste a
+  password into a chat, a file, or a command, and never write one anywhere.
+- `board-data.js` and `board-catalogue-*.js` are committed; `.board-venv/` and
+  `.board-cache/` are not. The catalogues are megabytes and rebuild only on
+  `--catalogue`, deliberately — don't wire them into the weekly sync.
+- It is **deliberately hidden**: no room menu entry, no `.jump` link. The way in
+  is the "the woodshed" button under the Climbing footer, or typing `board` on
+  `climbing.html`. Don't "fix" this by promoting it into the nav.
+- Board sessions stay out of the sitewide "latest" banner for the same reason.
+- Board grades are their own scale. Never merge them into the outdoor stats,
+  pyramid or ledger — a board V6 and a Red River V6 are unrelated numbers.
 
 Homepage "transmissions" live in `notes.js`. Curated newest additions live
 in `latest.js`; every room renders

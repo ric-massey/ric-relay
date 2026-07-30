@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Weekly board sync. Install with:
+
+      cp projects/climbing/board-sync.plist ~/Library/LaunchAgents/com.ricmassey.board-sync.plist
+      launchctl bootstrap gui/$UID ~/Library/LaunchAgents/com.ricmassey.board-sync.plist
+
+  Remove with:
+
+      launchctl bootout gui/$UID/com.ricmassey.board-sync
+      rm ~/Library/LaunchAgents/com.ricmassey.board-sync.plist
+
+  Run it right now without waiting for Sunday:
+
+      launchctl kickstart -p gui/$UID/com.ricmassey.board-sync
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ricmassey.board-sync</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/ricmassey/RicsWebsite/projects/climbing/board-sync-weekly.sh</string>
+  </array>
+
+  <!-- Sunday morning. If the Mac is asleep, launchd runs it on the next wake. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>0</integer>
+    <key>Hour</key><integer>9</integer>
+    <key>Minute</key><integer>15</integer>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>

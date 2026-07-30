@@ -634,6 +634,19 @@ type Sydney's cats name for a suprise!</div>
         return "shutting down signal...\nrestarting terminal.";
       },
       // ─── undocumented ───
+      // The woodshed isn't in the menus, but the boards answer to their names.
+      tension: () => {
+        setTimeout(() => (location.href = "projects/climbing/board.html#tension"), 400);
+        return "opening the woodshed · Tension Board ...";
+      },
+      kilter: () => {
+        setTimeout(() => (location.href = "projects/climbing/board.html#kilter"), 400);
+        return "opening the woodshed · Kilter Board ...";
+      },
+      woodshed: () => {
+        setTimeout(() => (location.href = "projects/climbing/board.html"), 400);
+        return "opening the woodshed ...";
+      },
       "404": () => {
         setTimeout(() => (location.href = "404.html?from=terminal"), 450);
         return "deliberately corrupting route table...\nsignal loss in 3... 2... 1...";

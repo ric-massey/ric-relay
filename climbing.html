@@ -209,6 +209,22 @@
 
     footer { margin-top: 3rem; color: var(--soft); font-size: 0.82rem; border-top: 1px solid var(--line); padding-top: 1rem; }
 
+    /* The board log is off the menus, but the door should be easy to find. */
+    .woodshed { margin: 1.4rem 0 0; text-align: center; }
+    .woodshed a {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .6rem 1.15rem; border: 1px solid var(--line); border-radius: 12px;
+      background: var(--card); color: var(--bar);
+      font-size: .82rem; font-weight: 600; letter-spacing: .08em; text-transform: lowercase;
+      text-decoration: none;
+      transition: border-color .2s ease, background .2s ease, color .2s ease;
+    }
+    .woodshed a::after { content: "↗"; font-size: .9em; opacity: .7; }
+    .woodshed a:hover, .woodshed a:focus-visible {
+      border-color: var(--bar); background: var(--bar); color: var(--bg);
+    }
+    .woodshed a:hover::after, .woodshed a:focus-visible::after { opacity: 1; }
+
     /* Hidden "send" celebration — no visible control or permanent UI. */
     .send-celebration {
       position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center;
@@ -343,6 +359,7 @@
     <div class="routes" id="ticks"></div>
 
     <footer>Ric's personal climbing ledger · grades are opinions · stars are the ones that mattered</footer>
+    <p class="woodshed"><a href="projects/climbing/board.html">the woodshed</a></p>
   </div>
 
   <div class="send-celebration" id="send-celebration" aria-live="polite" aria-atomic="true"></div>
@@ -580,6 +597,9 @@
       }, 1700);
     };
 
+    // Type "board" to slip into the woodshed — the board log isn't in the menus.
+    let boardBuffer = "";
+
     document.addEventListener("keydown", (event) => {
       const target = event.target;
       if (event.metaKey || event.ctrlKey || event.altKey || event.key.length !== 1 ||
@@ -588,6 +608,11 @@
       if (sendBuffer === "send") {
         sendBuffer = "";
         celebrateSend();
+      }
+      boardBuffer = `${boardBuffer}${event.key.toLowerCase()}`.slice(-5);
+      if (boardBuffer === "board") {
+        boardBuffer = "";
+        window.location.href = "projects/climbing/board.html";
       }
     });
   </script>

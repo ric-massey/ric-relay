@@ -1,0 +1,16 @@
+{
+  "_comment": [
+    "Copy this to board-accounts.json (gitignored) and put your real board usernames in.",
+    "Passwords do NOT go here. Store each one in the macOS Keychain instead:",
+    "    security add-generic-password -s board-sync-kilter -a <username> -w",
+    "    security add-generic-password -s board-sync-tension -a <username> -w",
+    "'username' is the display handle. 'login' is optional — set it when the board",
+    "signs you in with an email rather than the handle (the new Kilter does). If a",
+    "board's Keychain entry is stored under a different account label than the",
+    "handle, add 'keychain' too. Drop a board and pull-boards.py stops syncing it."
+  ],
+  "boards": [
+    { "board": "kilter", "username": "", "login": "you@example.com", "label": "Kilter Board" },
+    { "board": "tension", "username": "", "label": "Tension Board" }
+  ]
+}

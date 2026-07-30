@@ -1,8 +1,18 @@
 .DS_Store
-.claude/
+
+# Local Claude config stays private, but the sync skills are worth versioning.
+.claude/*
+!.claude/skills/
 
 # Full-resolution photo originals — optimized web copies live in photos/
 _photo-originals/
 
 # Source archives are preserved locally; expanded web projects live in projects/
 _project-originals/
+
+# Board sync: the tooling and credentials are local, the generated data is not.
+# board-data.js IS committed — it's what the site reads.
+projects/climbing/.board-venv/
+projects/climbing/.board-cache/
+projects/climbing/board-accounts.json
+projects/climbing/__pycache__/

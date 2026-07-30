@@ -20,6 +20,7 @@
     mind: ["mood", "SIGNAL RECEIVED // WEATHER IS NOT CLIMATE"],
     reflection: ["spectrum", "HUMANS: STILL MORE COMPLICATED THAN CHECKBOXES"],
     starfield: ["warp", "NAV COMPUTER: THE SCENIC ROUTE IS FASTER"],
+    board: ["beta", "BETA RECEIVED // PULL HARDER"],
   };
 
   function install() {
