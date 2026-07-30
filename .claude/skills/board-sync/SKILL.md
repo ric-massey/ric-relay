@@ -5,9 +5,10 @@ description: Pull Ric's Kilter and Tension board logbooks into the website. Use 
 
 # Sync the boards
 
-Pulls the Kilter and Tension logbooks out of the Aurora apps and regenerates
+Pulls the Kilter and Tension logbooks out of the board apps and regenerates
 `projects/climbing/board-data.js`, which `projects/climbing/board.html` (the
-woodshed) reads.
+woodshed) reads. Tension comes through boardlib and Aurora; Kilter has its own
+path (see below). Both land in the same file.
 
 ## Run it
 
@@ -113,19 +114,83 @@ this repo a push is a publish. The sync itself is safe and local.
   `.board-venv/bin/pip install "pandas>=2.2,<3"`. The venv is pinned below 3 for
   this reason; don't "helpfully" upgrade it.
 
-## Kilter is not currently syncable
+## Kilter runs on its own stack
 
-Kilter left the Aurora platform. `kilterboardapp.com` is a dead domain (no TLS
-cert, IONOS placeholder on port 80) and the new app uses Keycloak at
-`idp.kiltergrips.com` with an API at `portal.kiltergrips.com` — which has **no
-user logbook endpoints** (`/api/ascents`, `/api/logbook`, `/api/users/me` all
-404, and the published `openapi.json` is an empty stub). Ric's Kilter history
-did not survive the migration; his app shows only climbs logged since.
+Kilter left Aurora in 2026 and boardlib still can't speak the new API
+([BoardLib #78](https://github.com/lemeryfertitta/BoardLib/issues/78) is open),
+so `projects/climbing/kilter_v2.py` does it instead and `pull-boards.py` routes
+the `kilter` board there. It works — Kilter entries are live in `board-data.js`
+and on the page. Sync it like any other board; nothing needs fixing.
 
-Tracked as [BoardLib issue #78](https://github.com/lemeryfertitta/BoardLib/issues/78).
-Don't try to "fix" the Kilter sync — it isn't broken code, the data isn't there.
-Leave `kilter` in board-accounts.json; the page renders whatever boards have
-data, so it stays hidden until it works. Re-check when that issue closes.
+Three services, all spoken in `kilter_v2.py`:
+
+- **Keycloak** `idp.kiltergrips.com` — password grant on the public `kilter`
+  client. The token stays in memory and never reaches `board-data.js`.
+- **PowerSync** `sync1.kiltergrips.com` — one-shot drain of every bucket for the
+  board geometry (hold coordinates, placement colours, layouts, grade table),
+  replayed into in-memory tables. No local database, unlike the Aurora path.
+- **REST** `portal.kiltergrips.com/api` — `/logs` for the logbook,
+  `/climbs?name=…` for a climb's holds and community stats, `/users/<uuid>` for
+  the profile.
+
+Only Ric's own history is there: what didn't survive the migration is gone from
+the source, not missing from the sync.
+
+### Credentials
+
+Same rules as Tension, with one wrinkle: the new Kilter signs in with an
+**email**, so kilter's entry in `board-accounts.json` carries a `login` (the
+email) next to `username` (the display handle). The Keychain entry is still keyed
+on the handle:
+
+```bash
+security add-generic-password -s board-sync-kilter -a <username> -w
+```
+
+So `Kilter login failed for <email>` is the `login` field or the stored password
+being wrong, while `no Keychain password for kilter (<handle>)` names the handle.
+Don't swap one for the other. As always: never ask Ric to paste a password into
+the chat, and never put one in a file or a command you run.
+
+### When Kilter fails
+
+Upgrading boardlib fixes none of this — Kilter never touches boardlib. A Kilter
+failure exits 1 like any other, so the weekly job still runs its
+upgrade-and-retry; that part of the log is noise here.
+
+- **`Kilter login failed …`** — Keycloak rejected the grant. Check the `login`
+  email first, then the Keychain password.
+- **`PowerSync refused the stream: HTTP …`** — 401 is the token not being
+  accepted (PowerSync wants `Authorization: Token`, the REST API wants `Bearer`;
+  they differ on purpose). Anything else means the sync protocol moved.
+- **`Kilter API /logs → HTTP …`** or **`/logs did not return a list`** — the REST
+  shape changed. Report it honestly; don't hand-edit `board-data.js` around it.
+- **`no usable Kilter layout in the geometry`** — PowerSync returned no
+  `product_layouts` with a positive width, i.e. the drain came back empty.
+- **Blank grades or a board with no holds, and no error at all** — the table
+  names in the PowerSync payload changed. `kilter_v2.py` reads `mounting_holes`,
+  `difficulty_grades`, `placement_types`, `product_layouts` and `hold_placements`
+  out of a defaultdict, so a renamed table gives empty rather than raising. Same
+  symptom if the drain ever hits its 120-round cap.
+- **A single climb with no holds, setter or crowd stats** — `/climbs` is a *name*
+  search matched back by UUID, so a climb renamed since Ric logged it drops out
+  of the search. The entry still appears, just bare. Not a broken sync.
+
+### What Kilter doesn't have
+
+No **"All climbs" library** — that view is built from the Aurora SQLite database,
+which Kilter no longer has; its catalogue would have to come from the REST search
+instead. And the geometry carries no **benchmark or mirror** flags, so those chips
+never show on Kilter entries. Neither is a bug to chase.
+
+A normal `--catalogue` run already skips Kilter. `--catalogue-only` does **not** —
+and a stale 198 MB `.board-cache/kilter.db` from the Aurora era is still on disk,
+so it would happily run and write a nonsense library. Name the board when
+rebuilding:
+
+```bash
+projects/climbing/.board-venv/bin/python projects/climbing/pull-boards.py tension --catalogue-only
+```
 
 ## Rules
 
