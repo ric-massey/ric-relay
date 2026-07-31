@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Speed Affects Time</title>
+<meta name="description" content="An interactive special-relativity exhibit. Your own clock stays perfectly normal while Earth's runs away from you.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ric's Terminal">
+<meta property="og:title" content="How Speed Affects Time">
+<meta property="og:description" content="Watch your own clock stay perfectly normal while Earth's runs away from you. Real star catalogue, real physics, no fudge.">
+<link rel="preload" as="image" href="assets/milky-way-rest.jpg">
+<link rel="preload" as="image" href="assets/milky-way-panorama.jpg">
+<link rel="preload" as="image" href="assets/milky-way-return.jpg">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23000'/><circle cx='50' cy='50' r='7' fill='%23fff'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23555' stroke-width='2'/></svg>">
+<style>
+/* ══════════════════════════════════════════════════════════════════════
+   The interface is achromatic on purpose. Greys, white, black, no accent
+   colour anywhere.
+
+   That is a design rule in service of an accuracy rule: the only saturated
+   colour on this page should be coming out of the physics. Give a blue
+   button to the UI and the visitor can no longer tell that the blue in the
+   star field means something.
+   ══════════════════════════════════════════════════════════════════════ */
+:root {
+  --bg: #08080a;
+  --panel: #101012;
+  --panel-solid: #0c0c0e;
+  --line: #26262b;
+  --ink: #f2f2f4;
+  --dim: #9a9aa2;
+  --dimmer: #6a6a72;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body { background: var(--bg); color: var(--ink); font-family: var(--sans); }
+body { line-height: 1.6; -webkit-font-smoothing: antialiased; padding-bottom: 5rem; }
+.num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+/* ── the view ─────────────────────────────────────────────────────── */
+.stage { position: relative; width: 100%; background: #000; overflow: hidden; }
+#view {
+  position: relative; z-index: 2; display: block; width: 100%; height: 100%;
+  mix-blend-mode: screen;
+}
+.photo-sky, .rest-sky {
+  position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%;
+  pointer-events: none;
+}
+.rest-sky { object-fit: cover; object-position: center; }
+.stage-inner { position: relative; width: 100%; aspect-ratio: 16 / 9; }
+@media (max-width: 720px) { .stage-inner { aspect-ratio: 4 / 5; } }
+.earth-target {
+  /* Dead centre, because that is where it physically is: Earth sits on the
+     direction of travel, and aberration is a purely radial squeeze about that
+     axis — a point on the axis stays on the axis at any speed. Parking it at
+     44% was close enough to unnoticeable while the globe was large and the
+     sky was undistorted, and wrong the moment the star field started
+     collapsing onto the true centre without it. */
+  position: absolute; z-index: 5; left: 50%; top: 50%; width: 6px; height: 6px;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  pointer-events: none; overflow: hidden;
+  /* Until the photograph loads this is the point of light it replaces. */
+  background: radial-gradient(circle at 38% 34%, #cfe4ff, #4d7fb8 46%, #16334f 78%, #000 100%);
+  box-shadow: 0 0 14px rgba(120,170,230,.42);
+}
+.earth-target img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
+.earth-target img[data-failed] { display: none; }
+
+/* Panels sit on an opaque scrim, never directly on the star field. At high
+   speed the forward cone gets very bright, and contrast has to be guaranteed
+   regardless of what the physics puts behind it. */
+.scrim {
+  background: rgba(8,8,10,.9);
+  border: 1px solid var(--line); border-radius: 3px;
+  backdrop-filter: blur(2px);
+}
+.clocks { position: absolute; z-index: 4; top: 1rem; left: 1rem; right: 1rem; display: flex; justify-content: space-between; gap: .75rem; pointer-events: none; }
+.clock { padding: .6rem .85rem; min-width: 9.5rem; pointer-events: auto; }
+.clock .who { font: 600 .62rem/1.2 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
+.clock .time { font: 300 1.5rem/1.25 var(--mono); margin-top: .25rem; }
+.clock .sub { font-size: .72rem; color: var(--dim); }
+@media (max-width: 520px) {
+  .clocks { top: .6rem; left: .6rem; right: .6rem; gap: .4rem; }
+  .clock { min-width: 0; padding: .42rem .5rem; }
+  .clock .time { font-size: .92rem; }
+  .clock .sub { display: none; }
+}
+
+.gap { position: absolute; z-index: 4; left: 50%; transform: translateX(-50%); bottom: 1rem; text-align: center; padding: .55rem 1.2rem; pointer-events: auto; max-width: calc(100% - 2rem); }
+.gap .who { font: 600 .6rem/1.2 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
+.gap .big { font: 300 clamp(1.4rem, 4.4vw, 2.4rem)/1.15 var(--mono); }
+.gap .hint { font-size: .68rem; color: var(--dimmer); }
+.gap .distance { margin-top: .28rem; font: .68rem/1.3 var(--mono); color: var(--dim); }
+
+/* The magnified inset. Mandatory rather than decorative: at the top of the
+   ladder the entire visible sky is 0.16° across — about two pixels — and
+   the payoff would otherwise be literally invisible. The zoom factor is
+   printed on it, because the moment a visitor suspects the view has been
+   exaggerated for effect, the exhibit is dead. */
+/* The circular mask goes on the lens, not on the whole widget. Clipping the
+   widget meant the caption bar — the one thing that has to be legible,
+   because it declares the magnification — had both its ends cut off by the
+   circle, so "×2,400" arrived on screen reading "2,400". */
+.inset { position: absolute; z-index: 3; right: 1rem; top: 6.2rem; width: 33%; max-width: 250px; }
+.inset-lens { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 50%; border: 1px solid var(--line); }
+.inset canvas { display: block; width: 100%; aspect-ratio: 1; }
+#inset-canvas { position: relative; z-index: 2; mix-blend-mode: screen; }
+.photo-inset { position: absolute; z-index: 1; inset: 0; height: 100%; }
+.inset .tag { margin-top: .35rem; padding: .12rem .3rem; border-radius: 3px; font: 600 .6rem/1.7 var(--mono); letter-spacing: .08em; text-align: center; background: rgba(8,8,10,.86); color: var(--dim); white-space: nowrap; }
+.reticle { position: absolute; z-index: 2; border: 1px solid rgba(255,255,255,.5); border-radius: 50%; pointer-events: none; }
+.reticle::after { content: ""; position: absolute; inset: -5px; border: 1px solid rgba(255,255,255,.16); }
+[hidden] { display: none !important; }
+
+.stage-note { position: absolute; z-index: 2; left: 1rem; bottom: 1rem; font: .66rem/1.5 var(--mono); color: var(--dimmer); max-width: 46%; }
+
+/* ── the air, and the ground you leave ────────────────────────────────
+   Layered veils over the star field, each fading on its own schedule
+   because each physically stops at a different height. None of it touches
+   the star field's own physics — it is only ever what is in the way. */
+.sky-ground { position: absolute; z-index: 3; inset: 0; pointer-events: none; overflow: hidden; }
+.sky-ground > * { position: absolute; inset: 0; }
+/* Airglow: a faint band hugging the horizon, the last thing to go. */
+.sky-glow { background: linear-gradient(to top,
+    rgba(120,190,170,.20) 0%, rgba(90,150,150,.07) 9%, transparent 22%); }
+/* Haze, and the glow of a town somewhere off to one side. */
+.sky-haze { background:
+    radial-gradient(120% 42% at 22% 104%, rgba(255,190,120,.30), transparent 62%),
+    linear-gradient(to top, rgba(28,32,44,.92) 0%, rgba(20,24,34,.55) 14%, rgba(14,16,24,.22) 34%, transparent 62%); }
+/* Re-entry. Only ever visible on the way down. */
+.sky-heat { opacity: 0; background:
+    radial-gradient(72% 58% at 50% 118%, rgba(255,150,50,.85), rgba(255,80,20,.34) 42%, transparent 74%),
+    linear-gradient(to top, rgba(255,110,30,.5), transparent 52%); mix-blend-mode: screen; }
+/* The canopy fills the whole frame, not a strip along the bottom: you are on
+   your back looking at the zenith, and the trees are all around you. */
+/* Scaled about the middle of the view, so climbing pushes the trees outward
+   past the edges rather than sliding them off the bottom. */
+.sky-trees { position: absolute; inset: 0; width: 100%; height: 100%;
+  display: block; object-fit: cover; object-position: 50% 100%;
+  transform-origin: 50% 58%; will-change: transform, opacity; }
+
+/* Atmospheric seeing used to blur the whole plate while you were in air.
+   It was true to life and it was the wrong call: it softened the one frame
+   that has to be flawless, and a softened photograph reads as a bad
+   photograph rather than as air. The sky is dead sharp at every altitude
+   now, and the air shows itself through haze, glow and rumble instead. */
+/* The rumble. Air on the hull going up, and rather more of it coming down.
+   Nothing in space shakes — that is the point of switching it off the moment
+   the air runs out. */
+.stage-inner { --shake-x: 0px; --shake-y: 0px;
+  transform: translate3d(var(--shake-x), var(--shake-y), 0); }
+@media (prefers-reduced-motion: reduce) { .stage-inner { transform: none; } }
+
+.altimeter { position: absolute; z-index: 4; left: 1rem; bottom: 1rem;
+  padding: .42rem .7rem .48rem; border-radius: 4px; background: rgba(8,8,10,.88);
+  border: 1px solid var(--line); max-width: 15rem; }
+.altimeter .k { display: block; color: var(--dim); font: 600 .58rem/1.4 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+.altimeter b { display: block; margin: .06rem 0 .1rem; color: var(--ink); font: 400 .88rem/1.25 var(--mono); }
+.altimeter .n { display: block; color: var(--dimmer); font: .66rem/1.35 var(--sans); }
+
+/* Hold to look astern. Bottom right, opposite the altimeter, on the stage
+   rather than down in the controls — it is a thing you do to the view, and
+   the view is where your eye already is. */
+.lookback { position: absolute; z-index: 5; right: 1rem; bottom: 1rem;
+  padding: .46rem .8rem .5rem; border-radius: 4px; cursor: pointer;
+  background: rgba(8,8,10,.88); border: 1px solid var(--line); color: var(--ink);
+  text-align: center; touch-action: none; -webkit-user-select: none; user-select: none;
+  transition: border-color .12s, background .12s; }
+.lookback .a { display: block; font: 500 .72rem/1.2 var(--mono); letter-spacing: .04em; }
+.lookback .h { display: block; margin-top: .1rem; color: var(--dimmer);
+  font: 600 .54rem/1.3 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+.lookback:hover { border-color: var(--dim); }
+.lookback:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.lookback.on { background: rgba(60,20,20,.92); border-color: rgba(255,120,90,.6); }
+.lookback.on .a { color: #ffb9a3; }
+@media (max-width: 520px) {
+  .lookback { right: .6rem; bottom: .6rem; padding: .36rem .6rem .4rem; }
+  .lookback .h { display: none; }
+}
+
+/* The landing warning. Amber, centred at the top, and the only element on
+   the stage that is allowed to be loud — everything else here whispers. */
+.landing-warn { position: absolute; z-index: 5; left: 50%; top: 1rem;
+  transform: translateX(-50%); text-align: center; padding: .4rem .85rem .46rem;
+  border-radius: 4px; background: rgba(28,14,4,.9); border: 1px solid rgba(255,150,50,.55);
+  box-shadow: 0 0 22px rgba(255,120,30,.18); max-width: min(22rem, 82%); }
+.landing-warn b { display: block; color: #ffb057;
+  font: 600 .68rem/1.3 var(--mono); letter-spacing: .18em; text-transform: uppercase; }
+.landing-warn .dot { display: inline-block; width: .42rem; height: .42rem; margin-right: .45rem;
+  border-radius: 50%; background: #ff8c2b; vertical-align: middle;
+  animation: warnpulse 1s steps(1, end) infinite; }
+.landing-warn .n { display: block; margin-top: .12rem;
+  color: rgba(255,205,165,.82); font: .66rem/1.35 var(--sans); }
+@keyframes warnpulse { 0%, 55% { opacity: 1; } 56%, 100% { opacity: .18; } }
+@media (prefers-reduced-motion: reduce) { .landing-warn .dot { animation: none; } }
+
+/* ── controls ─────────────────────────────────────────────────────── */
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 1.25rem; }
+.stage { border-radius: 10px; }
+.controls { padding: 1.5rem 0 0; }
+
+/* One card holds the speed control and the journey, so the eye reads the
+   whole cockpit as a single object rather than three stacked strips. */
+.deck { border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
+  padding: 1.15rem 1.25rem 1.25rem; }
+.railrow { display: flex; align-items: center; gap: 1.4rem; }
+input[type=range] {
+  -webkit-appearance: none; appearance: none; flex: 1;
+  height: 30px; background: transparent; cursor: pointer;
+}
+input[type=range]::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: #2e2e35; }
+input[type=range]::-moz-range-track { height: 3px; border-radius: 2px; background: #2e2e35; }
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--ink); margin-top: -7.5px; border: none;
+  box-shadow: 0 1px 6px rgba(0,0,0,.6), 0 0 0 5px rgba(242,242,244,.08);
+}
+input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--ink); border: none; }
+input[type=range]:disabled { opacity: .4; cursor: default; }
+input[type=range]:focus-visible { outline: 2px solid var(--ink); outline-offset: 6px; }
+
+.speedout { min-width: 9.5rem; text-align: right; }
+.speedout .b { font: 300 1.5rem/1.1 var(--mono); letter-spacing: -.01em; }
+.speedout .g { font-size: .72rem; color: var(--dim); margin-top: .12rem; }
+
+.detents { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: 1rem; }
+.detents button {
+  font: 500 .68rem/1 var(--mono); letter-spacing: .02em;
+  color: var(--dim); background: rgba(255,255,255,.03);
+  border: 1px solid transparent; border-radius: 7px; padding: .42rem .68rem;
+  cursor: pointer; transition: color .15s, background .15s, border-color .15s;
+}
+.detents button:hover { color: var(--ink); background: rgba(255,255,255,.08); }
+.detents button[aria-pressed=true] { color: #08080a; background: var(--ink); border-color: var(--ink); }
+.detent-note { font-size: .76rem; color: var(--dim); margin-top: .8rem; min-height: 1.3em; }
+
+.journey { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem 1.1rem;
+  margin-top: 1.15rem; padding-top: 1.15rem; border-top: 1px solid var(--line); }
+button.act {
+  font: 600 .68rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+  background: var(--ink); color: #08080a; border: 1px solid var(--ink);
+  padding: .78rem 1.2rem; border-radius: 7px; cursor: pointer;
+  transition: opacity .15s, background .15s;
+}
+button.act.ghost { background: transparent; color: var(--ink); border-color: #34343c; }
+button.act:hover:not(:disabled) { opacity: .82; }
+button.act.ghost:hover:not(:disabled) { background: rgba(255,255,255,.06); opacity: 1; }
+button.act:disabled { opacity: .32; cursor: default; }
+.journey .status { font-size: .82rem; color: var(--dim); flex: 1 1 15rem; }
+.preview { flex: 1 1 100%; font: .78rem/1.6 var(--mono); color: var(--dim);
+  padding: .6rem .75rem; border-radius: 7px; background: rgba(255,255,255,.035); }
+.preview b { color: var(--ink); font-weight: 400; }
+
+/* ── prose, which is opt-in ───────────────────────────────────────── */
+.tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: .9rem 0 0; border-bottom: 1px solid var(--line); }
+.tabs .tab {
+  font: 500 .68rem/1.25 var(--mono); letter-spacing: .02em; color: var(--dimmer);
+  background: transparent; border: 0; border-bottom: 2px solid transparent;
+  padding: .72rem .55rem; cursor: pointer;
+}
+.tabs .tab em { font-style: italic; }
+.tabs .tab:hover { color: var(--ink); }
+.tabs .tab[aria-expanded=true] { color: var(--ink); border-bottom-color: var(--ink); background: var(--panel); }
+.panel { padding: 1.1rem; max-width: 68ch; background: var(--panel); border: 1px solid var(--line); border-top: 0; }
+h2 { font: 600 .66rem/1.3 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--dim); margin-bottom: .6rem; }
+.panel p { font-size: .92rem; color: #d2d2d8; margin-bottom: .7rem; }
+.panel p.tight { font-size: .84rem; color: var(--dim); }
+.callout { border-left: 2px solid var(--line); padding: .5rem 0 .5rem .85rem; font-size: .92rem; color: #d2d2d8; min-height: 3.2rem; }
+.callout .when { display: block; font: 600 .6rem/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dimmer); }
+
+#p-scope p { font-size: .78rem; color: var(--dimmer); margin-bottom: .5rem; }
+#p-scope strong { color: var(--dim); font-weight: 600; }
+
+/* ── the definition system ────────────────────────────────────────── */
+button.term {
+  font: inherit; color: inherit; background: none; border: none; padding: 0;
+  border-bottom: 1px dotted var(--dimmer); cursor: pointer; line-height: inherit;
+}
+button.term:hover { border-bottom-color: var(--ink); }
+button.term:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.term-popover {
+  position: fixed; z-index: 50; background: var(--panel-solid);
+  border: 1px solid var(--line); border-radius: 3px; padding: .9rem 1rem 1rem;
+  box-shadow: 0 18px 50px rgba(0,0,0,.7); width: 340px;
+}
+.term-popover h3 { font: 600 .78rem/1.3 var(--sans); margin-bottom: .35rem; }
+.term-popover p { font-size: .82rem; color: #cfcfd6; }
+.term-popover .term-live { margin-top: .5rem; font: .78rem/1.4 var(--mono); color: var(--ink); }
+.term-popover .term-formula { margin-top: .45rem; font: .76rem/1.4 var(--mono); color: var(--dim); }
+.term-close { position: absolute; top: .3rem; right: .45rem; background: none; border: none; color: var(--dim); font-size: 1.1rem; cursor: pointer; line-height: 1; }
+@media (max-width: 720px) {
+  .tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .panel { padding: .9rem; }
+  /* A popover anchored to an inline word is unusable at phone width, and it
+     would cover the view. Bottom sheet, lower half only. */
+  .term-popover { left: 0 !important; right: 0; top: auto !important; bottom: 0; width: 100% !important;
+    border-radius: 12px 12px 0 0; padding: 1.1rem 1.1rem 2rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="stage">
+    <div class="stage-inner">
+      <canvas id="view" aria-label="The view from the ship, looking along the direction of travel"></canvas>
+      <canvas class="photo-sky" id="photo-view" aria-hidden="true"></canvas>
+      <img class="rest-sky" id="rest-sky" src="assets/milky-way-rest.jpg" alt="" aria-hidden="true" fetchpriority="high" decoding="async">
+      <!-- Earth on the way home. A photograph, sized to its real angular
+           diameter at whatever range you are at, so it starts as a point you
+           could miss and ends up filling the frame. -->
+      <div class="earth-target" id="earth-target" hidden aria-label="Earth ahead">
+        <img id="earth-photo" src="assets/earth.jpg" alt="" aria-hidden="true" decoding="async">
+      </div>
+
+      <!-- The air, and the hillside you are standing on. Everything in here
+           is scenery: the star field behind it never changes its physics,
+           only how much atmosphere is sitting in front of it. -->
+      <div class="sky-ground" aria-hidden="true">
+        <div class="sky-glow"></div>
+        <div class="sky-haze"></div>
+        <div class="sky-heat" id="sky-heat"></div>
+        <!-- The canopy is a photograph with a transparent sky, laid over the
+             star field. Drawing trees procedurally was a bad idea executed
+             badly; a silhouette is one file and it looks like a forest. -->
+        <img class="sky-trees" id="sky-trees" src="assets/forest-silhouette.png" alt="" aria-hidden="true" decoding="async">
+      </div>
+
+      <div class="altimeter num" id="altimeter" hidden aria-live="off"></div>
+
+      <!-- Hold to look astern. The ship keeps going the way it was going;
+           only the camera turns, which is the entire point — what is behind
+           you is red, dim and emptying out at exactly the speed that makes
+           the view ahead spectacular. -->
+      <button type="button" class="lookback num" id="look-back" aria-pressed="false">
+        <span class="a">Look behind</span>
+        <span class="h">hold</span>
+      </button>
+
+      <!-- The landing warning. It starts the moment a descent does, whether
+           that is a re-entry from the top of the climb or a short drop back
+           down out of the air you never left. -->
+      <div class="landing-warn num" id="landing-warn" hidden role="status">
+        <b><span class="dot"></span>Landing</b>
+        <span class="n" id="landing-warn-note"></span>
+      </div>
+
+      <div class="clocks">
+        <div class="clock scrim">
+          <span class="who">Traveler — you</span>
+          <div class="time num" id="tau-clock">--:--:--</div>
+          <div class="sub num" id="tau-elapsed">elapsed 0 sec</div>
+        </div>
+        <div class="clock earth scrim" style="text-align:right">
+          <span class="who">Earth</span>
+          <div class="time num" id="earth-clock">--:--:--</div>
+          <div class="sub num" id="earth-elapsed">elapsed 0 sec</div>
+        </div>
+      </div>
+
+      <div class="inset" id="inset" hidden>
+        <div class="inset-lens">
+          <canvas id="inset-canvas"></canvas>
+          <canvas class="photo-inset" id="photo-inset-canvas" aria-hidden="true"></canvas>
+        </div>
+        <div class="tag num" id="inset-tag">×1</div>
+      </div>
+      <div class="reticle" id="reticle" hidden></div>
+
+      <div class="gap scrim">
+        <span class="who">Earth is ahead by</span>
+        <div class="big num" id="gap">0 sec</div>
+        <div class="distance num" id="distance-out">0.00 miles from Earth</div>
+        <div class="hint" id="gap-hint">counting, always</div>
+      </div>
+
+      <p class="stage-note" id="stage-note"></p>
+    </div>
+  </div>
+
+  <div class="controls">
+   <div class="deck">
+    <div class="railrow">
+      <input type="range" id="speed" min="0" max="1000" value="0" step="1"
+             aria-label="Speed" aria-describedby="speed-readout">
+      <div class="speedout" id="speed-readout">
+        <div class="b num" id="beta-out">at rest</div>
+        <div class="g num" id="gamma-out">γ = 1</div>
+      </div>
+    </div>
+    <div class="detents" id="detents"></div>
+    <p class="detent-note num" id="detent-note"></p>
+
+    <div class="journey">
+      <button class="act" id="act-primary">Return to Earth</button>
+      <button class="act ghost" id="act-secondary" hidden>Skip to arrival</button>
+      <p class="status" id="journey-status">Outbound. Set any speed, then return when you're ready.</p>
+      <p class="preview" id="journey-preview" hidden></p>
+    </div>
+   </div>
+  </div>
+
+  <!-- Everything past this point is opt-in. The first screen is the view, two
+       clocks, one growing number and one slider, and it has to work for
+       someone who never scrolls, never clicks and never reads a word. -->
+  <nav class="tabs" aria-label="More about this exhibit">
+    <button type="button" class="tab" data-panel="p-view" aria-expanded="false">what you're seeing</button>
+    <button type="button" class="tab" data-panel="p-why" aria-expanded="false">doesn't Earth see <em>my</em> clock as slow?</button>
+    <button type="button" class="tab" data-panel="p-home" aria-expanded="false">what just happened at home</button>
+    <button type="button" class="tab" data-panel="p-scope" aria-expanded="false">scope &amp; sources</button>
+  </nav>
+
+  <section class="panel" id="p-view" hidden>
+      <h2>What you're seeing</h2>
+      <p id="view-prose">The sky as it is, from a ship at rest.</p>
+      <p class="tight" id="view-detail"></p>
+      <p class="tight">At ordinary speeds, the opening sky is a photographic plate: dense,
+        steady, and built to feel like the Milky Way does to a dark-adapted person rather than like
+        a sparse plotting of catalogue points. That same photographic sky surrounds you at every
+        speed: aberration crowds it forward, Doppler shift changes its colour, and beaming changes
+        its brightness. Bright catalogue stars are laid over it at their real positions. Their
+        colour is not a choice: the catalogue gives a
+        <dfn data-term="colour-index">colour index</dfn>, that gives a temperature,
+        and a <dfn data-term="blackbody">blackbody</dfn> at that temperature has exactly one
+        colour. Your motion multiplies that temperature by the
+        <dfn data-term="doppler-factor">Doppler factor</dfn>, and the same number cubed once
+        more sets how much brighter it gets — <dfn data-term="beaming">beaming</dfn>.
+        Colour and brightness can never disagree here, because they are the same number.</p>
+      <p class="tight">Movies get this wrong. There is no blue tunnel and there are no streaks:
+        <dfn data-term="aberration">aberration</dfn> moves stars, it does not smear them. And
+        nothing twinkles — <dfn data-term="scintillation">scintillation</dfn> is something the
+        atmosphere does, not something stars do.</p>
+      <p class="tight">The band across the sky is the Milky Way — not a picture behind the stars,
+        but the light of the hundred billion of them you cannot pick out, going through the same
+        transform. The dark shapes torn out of it are dust: the Great Rift, the Coalsack, the Pipe.
+        It is nearly colourless to the eye, and every photograph you have seen of it in purple and
+        gold got that from a long exposure, not from anyone's eyes.</p>
+  </section>
+
+  <section class="panel" id="p-home" hidden>
+      <h2>What just happened at home</h2>
+      <div class="callout" id="callout">
+        <span class="when" id="callout-when">Nothing yet</span>
+        <span id="callout-text">Get moving and Earth will start pulling ahead.</span>
+      </div>
+  </section>
+
+  <section class="panel" id="p-why" hidden>
+      <h2>Wait — doesn't Earth see <em>my</em> clock as slow?</h2>
+      <p class="tight">Yes. And Earth is not wrong. While you are coasting,
+        <dfn data-term="time-dilation">time dilation</dfn> is completely symmetric — you each
+        see the other running slow, and both of you are right. That is
+        <dfn data-term="reciprocity">reciprocity</dfn>, and it is real physics, not an illusion.</p>
+      <p class="tight">The panel above is showing Earth's clock <em>in Earth's frame of reference</em>,
+        which is unambiguous. The comparison only becomes a physical fact when the two clocks
+        are back in the same place — which is what happens when you press
+        <em>Return to Earth</em>. The difference comes from the fact that you changed
+        <dfn data-term="reference-frame">reference frames</dfn> and Earth never did.</p>
+  </section>
+
+  <section class="panel" id="p-scope" hidden>
+    <h2>Scope, and where the edges are</h2>
+    <p><strong>Your clock is not simulated.</strong> The traveler's elapsed time is your own device's
+      clock, ticking normally, because that is the entire point: nothing about travelling fast feels
+      like anything. Earth's clock is the calculated one.</p>
+    <p><strong>Earth's elapsed time is ∫γ dτ</strong> along your path, accumulated every frame. That
+      integral is exact for any speed history, including the ramps where the ship speeds up and slows
+      down — so the numbers stay honest even while you are dragging the slider around.</p>
+    <p><strong>This is special relativity only.</strong> Flat spacetime, no gravity, no gravitational
+      time dilation. Accelerations are drawn as short ramps and their g-forces are ignored; the
+      turnaround brings the ship to a full stop before it reverses, which is what makes each leg a
+      plain constant-velocity problem.</p>
+    <p><strong>The photographic sky stays.</strong> The high-resolution opening plate is set into a
+      complete 360-degree panorama of the same sky. Every displayed ray is traced backward through
+      the aberration equation before that panorama is sampled, so motion distorts the photograph
+      itself rather than replacing it. It never twinkles.</p>
+    <p><strong>The transformed stars.</strong> 9,096 of them, from the Yale Bright Star Catalogue
+      (Hoffleit &amp; Warren 1991), J2000, down to about magnitude 8. Real positions, real magnitudes,
+      real colour indices. Positions are frozen at J2000: proper motion and precession are not
+      modelled.</p>
+    <p><strong>The Milky Way texture is photographic, not a catalogue.</strong> It supplies the visual
+      depth of unresolved stars and dust. Its relativistic direction change is exact; its displayed
+      Doppler colour and beaming are compressed into the range a monitor can show.</p>
+    <p><strong>The opening view is fully dark-adapted.</strong> You begin with the sensitivity an
+      observer would have after sitting in darkness, rather than waiting through that adaptation on
+      the page. At this luminance the Milky Way is nearly colourless because rod vision dominates;
+      Doppler colour appears as beaming makes the light bright enough for cone vision.</p>
+    <p><strong>Colour.</strong> Planck's law integrated against the CIE 1931 colour-matching functions,
+      converted to sRGB, gamut-mapped by desaturating toward white rather than clipping a channel.
+      Tone-mapped once at the end. A monitor cannot reproduce a retina's absolute response, so the
+      transformations and relative brightness are physical while the final display exposure is a
+      calibrated representation. Assumes a reasonably dark room and an sRGB display.</p>
+    <p><strong>The way home.</strong> Earth is held straight ahead as a black silhouette against the
+      star field. Its apparent size grows with your distance from home; the Sun is intentionally kept
+      out of this view so you can watch Earth approach.</p>
+    <p style="margin-top:1rem">Blueprint and sources: Einstein (1905); Ballesteros (2012) for B−V →
+      temperature; Wyman, Sloan &amp; Shirley (2013) for the colour-matching fits; Fixsen (2009) for
+      the microwave background; Okun (2009) on why the words "relativistic mass" appear nowhere here;
+      Bland-Hawthorn &amp; Gerhard (2016) and Dwek et al. (1995) for the shape of the Galaxy.</p>
+    <p><button class="term" id="reset">Reset the trip</button> ·
+      <span id="persist-note">This session is remembered while the tab is open.</span></p>
+  </section>
+</div>
+
+<p class="sr" id="live-region" aria-live="polite" aria-atomic="true"></p>
+
+<script src="data/stars.js?v=2"></script>
+<script src="src/colour.js?v=2"></script>
+<script src="src/physics.js?v=3"></script>
+<script src="src/galaxy.js?v=3"></script>
+<script src="src/sky.js?v=4"></script>
+<script src="src/ground.js?v=10"></script>
+<script src="src/photo-sky.js?v=13"></script>
+<script src="src/glossary.js?v=2"></script>
+<script src="src/exhibit.js?v=25"></script>
+<script src="../relay-return.js" data-home="../../index.html" data-egg="spacetime" defer></script>
+</body>
+</html>

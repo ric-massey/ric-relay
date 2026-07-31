@@ -37,7 +37,7 @@ There is intentionally **no shared nav component**. Each page has its own `<nav>
 labels** so navigation stays predictable:
 
 ```
-terminal · orrin · psyche · climbing · training · exploration · workbench · captures · log
+terminal · orrin · psyche · climbing · training · apex · exploration · workbench · captures · log
 ```
 
 - `href` targets and link text are **identical on every page** — only the CSS differs.
@@ -59,6 +59,7 @@ Per-room nav treatments (class on the `<nav>`):
 | psyche | psychological case-file tabs | `nav.case-tabs` |
 | climbing | Mountain-Project tab bar (white active pill) | `.topbar .roomnav` |
 | training | Strava underline tabs | `.topbar .roomnav` |
+| apex | Apex lobby tab strip (scrolls sideways, red underline on the current room) | `nav.lobbytabs` |
 | exploration | star-chart waypoints | `nav.starchart` |
 | workbench | blueprint sheet-index chips | `nav.sheets` |
 | captures | darkroom film strip | `nav.filmstrip` |
@@ -116,6 +117,20 @@ and Tension apps. Rules for it:
 - Board sessions stay out of the sitewide "latest" banner for the same reason.
 - Board grades are their own scale. Never merge them into the outdoor stats,
   pyramid or ledger — a board V6 and a Red River V6 are unrelated numbers.
+
+**Apex is pulled, not written.** `apex.html` reads `projects/apex/apex-data.js`, which
+`projects/apex/pull-apex.py` generates from the Apex Legends Status API. Rules:
+
+- The gamertag lives in `projects/apex/apex-account.json` (gitignored); the API key lives
+  in the macOS Keychain (`apex-als`). Never put either in the repo.
+- `apex-data.js` **is** committed — it's what the page reads.
+- Apex exposes only the three trackers on the banner of the legend being played, so the
+  script is an **accumulator**: it keeps the highest value ever seen per tracker and one
+  history point per day. Don't "fix" a number that looks low by hand-editing the data —
+  either the tracker isn't equipped or the upstream cache is stale.
+- Career kills/wins are account-wide but no API returns them. They are typed into the
+  `career` block by hand and the script preserves them. The page labels them as hand-read;
+  keep that honesty intact.
 
 Homepage "transmissions" live in `notes.js`. Curated newest additions live
 in `latest.js`; every room renders

@@ -2,6 +2,13 @@
 // Newest first. Keep these meaningful: projects and posts, not implementation commits.
 window.RELAY_LATEST = [
   {
+    date: "2026-07-31",
+    kind: "interactive",
+    title: "How Speed Affects Time",
+    description: "One slider, two clocks, and the real night sky. Fly out at any speed, watch the sky fold into the view ahead, then come home and read what the trip cost you.",
+    href: "projects/how-speed-affects-time/index.html",
+  },
+  {
     date: "2026-07-24",
     kind: "game update",
     title: "Starfield: A Relativistic Rocket",

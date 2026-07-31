@@ -28,7 +28,8 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `psyche.html` | Psyche | Human-systems field notebook — mood, criteria, substances, and evidence |
 | `climbing.html` | Climbing | Mountain-Project-style route ledger — projects, ticks, objectives |
 | `training.html` | Training | Strava-style feed — runs, workouts, health (live feed still TODO) |
-| `exploration.html` | Exploration | Space deck — experiments and the game dock here |
+| `apex.html` | Apex | Apex Legends lobby — rank ladder, career kills, and every legend carrying a tracker (data pulled by `projects/apex/pull-apex.py`) |
+| `exploration.html` | Exploration | Space deck — experiments dock here |
 | `workbench.html` | Workbench | Blueprint board of random / half-finished projects |
 | `captures.html` | Captures | Darkroom contact sheet for photos |
 | `log.html` | Log | Long-form write-ups, trip reports, Apex VOD reviews |
@@ -53,6 +54,8 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | `projects/spacetime/` | Exploration | "The Geometry of Spacetime" — interactive special-relativity explainer |
 | `projects/farlight/` | Exploration | "FARLIGHT" — playable momentum and landing-feel prototype |
 | `projects/starfield/` | Exploration | "Starfield" — relativistic rocket flight through the real solar neighbourhood |
+| `projects/how-speed-affects-time/` | Exploration | "How Speed Affects Time" — two clocks and a real-sky special-relativity exhibit |
+| `projects/apex/` | Apex (room data) | Not a page — the sync tooling and generated `apex-data.js` that `apex.html` reads |
 | `projects/the-shape-of-harm/` | Psyche | Evidence-informed interactive research framework for comparing psychoactive-substance harms |
 | `projects/siege-conductor/` | Workbench | Star Wars viewing-companion PWA (add-to-home-screen app) |
 | `projects/autism-reflection.html` | Psyche | Long-form personal reflection on the DSM-5 autism criteria |

@@ -11,7 +11,7 @@ completion.
 | Type | What happens |
 |---|---|
 | `diagnose orrin` | Prints a classified-looking Orrin status record. |
-| `apex` | Pretends to retrieve the Apex VOD archive. |
+| `vod` | Pretends to retrieve the Apex VOD archive, then points at the real numbers. (`apex` itself is a listed project shortcut now — it opens the Apex banner.) |
 | `sudo` | Politely denies administrative access. |
 | `unlock` | Asks for crew authentication without revealing the private map. |
 | `coffee` | Dispenses one terminal-grade coffee. |
@@ -53,7 +53,7 @@ No prompt is required.
 | State of Mind Line | `mood` | `SIGNAL RECEIVED // WEATHER IS NOT CLIMATE` |
 | DSM-5 autism reflection | `spectrum` | `HUMANS: STILL MORE COMPLICATED THAN CHECKBOXES` |
 | The Shape of Harm | `harm` | `UNCERTAINTY DETECTED // MODEL BEHAVING NORMALLY` |
-| Geometry of Spacetime | `now` | `NOW LOST // TRY ANOTHER REFERENCE FRAME` |
+| Geometry of Spacetime / How Speed Affects Time | `now` | `NOW LOST // TRY ANOTHER REFERENCE FRAME` |
 | Siege Conductor | `66` | `COMMAND REJECTED // NICE TRY, PALPATINE` |
 | Starfield | `warp` | `NAV COMPUTER: THE SCENIC ROUTE IS FASTER` |
 | The Woodshed (board log) | `beta` | `BETA RECEIVED // PULL HARDER` |

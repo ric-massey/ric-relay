@@ -16,3 +16,8 @@ projects/climbing/.board-venv/
 projects/climbing/.board-cache/
 projects/climbing/board-accounts.json
 projects/climbing/__pycache__/
+
+# Apex sync: the gamertag is local, the API key lives in the Keychain.
+# apex-data.js IS committed — it's what the page reads.
+projects/apex/apex-account.json
+projects/apex/__pycache__/

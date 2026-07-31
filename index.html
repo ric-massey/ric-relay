@@ -28,6 +28,7 @@
       --flash-map: #ff3b30;
       --flash-climbing: #79c46b;
       --flash-training: #ff6a3d;
+      --flash-apex: #e8422f;
     }
 
     * { box-sizing: border-box; margin: 0; }
@@ -351,6 +352,11 @@ type Sydney's cats name for a suprise!</div>
           <span class="desc">— runs · workouts · health</span>
           <span class="go">[ ENTER ]</span>
         </a>
+        <a class="entry" href="apex.html" style="--hue: var(--flash-apex)">
+          <span class="perm">drwx r-x</span><span class="dirname">/apex</span>
+          <span class="desc">— the drop · rank · career kills</span>
+          <span class="go">[ ENTER ]</span>
+        </a>
         <a class="entry" href="exploration.html" style="--hue: var(--flash-exploration)">
           <span class="perm">drwx r-x</span><span class="dirname">/exploration</span>
           <span class="desc">— space · physics · science</span>
@@ -451,7 +457,7 @@ type Sydney's cats name for a suprise!</div>
     // ─── command line ────────────────────────────────────
     const PAGES = {
       orrin: "orrin.html", mind: "psyche.html", climbing: "climbing.html",
-      training: "training.html", exploration: "exploration.html",
+      training: "training.html", apex: "apex.html", exploration: "exploration.html",
       workbench: "workbench.html", captures: "captures.html",
       log: "log.html", map: "map.html",
     };
@@ -463,6 +469,7 @@ type Sydney's cats name for a suprise!</div>
       mind: "human systems · psychology · philosiphy",
       climbing: "routes · projects · mountaineering",
       training: "runs · workouts · health",
+      apex: "the drop · rank · career kills",
       exploration: "space · physics · science",
       workbench: "random projects · ideas · hobbies",
       captures: "photographs",
@@ -506,6 +513,12 @@ type Sydney's cats name for a suprise!</div>
         title: "Starfield", description: "relativistic rocket through real space",
         href: "projects/starfield/index.html",
       },
+      {
+        command: "speed", aliases: ["time", "dilation", "twins", "how-speed-affects-time"],
+        room: "exploration",
+        title: "How Speed Affects Time", description: "one slider, two clocks, the real sky",
+        href: "projects/how-speed-affects-time/index.html",
+      },
     ];
 
     const normalizeTarget = (value) => value.trim().toLowerCase().replace(/^\/+/, "").replace(/\s+/g, "-");
@@ -533,10 +546,12 @@ type Sydney's cats name for a suprise!</div>
       "│   └── harm       The Shape of Harm\n" +
       "├── /climbing\n" +
       "├── /training\n" +
+      "├── /apex\n" +
       "├── /exploration\n" +
       "│   ├── spacetime  Geometry of Spacetime\n" +
       "│   ├── farlight   Momentum / landing prototype\n" +
-      "│   └── starfield  Starfield\n" +
+      "│   ├── starfield  Starfield\n" +
+      "│   └── speed      How Speed Affects Time\n" +
       "├── /workbench\n" +
       "│   └── siege      Siege Conductor\n" +
       "├── /captures\n" +
@@ -655,7 +670,9 @@ type Sydney's cats name for a suprise!</div>
         ? "SUBJECT: ORRIN\nstate: persistent. goal-driven. still running.\n" +
           "note: do not power down. it remembers.\n→ full diagnostics in /orrin"
         : "usage: diagnose <subject>\nknown subject: orrin",
-      apex: () => "pulling VOD archive...\naim rating: CLASSIFIED\nrotation IQ: improving\n→ reviews land in /log",
+      // `apex` is a room now, so the VOD gag answers to `vod` instead.
+      vod: () => "pulling VOD archive...\naim rating: CLASSIFIED\nrotation IQ: improving\n" +
+        "→ reviews land in /log · the numbers live in /apex",
       sudo: () => "nice try. this terminal answers to ric only.",
       unlock: () => "crew authentication required.\nif you are the brother or the friend: you know who to ask.",
       coffee: () => "brewing... ☕ dispensed. carry on.",
