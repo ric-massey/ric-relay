@@ -611,9 +611,20 @@
   /* A sentence describing what is on screen, for anyone who cannot see it —
      and, it turns out, useful to everyone else too. */
   Sky.prototype.describe = function (beta, altKm) {
-    // The frame's own half-angle across, which is what decides how much of
-    // the sky has been pushed into it.
-    const halfH = Math.atan((this.W / this.H) * TAN_HALF_V);
+    /* The frame's own half-angle across, which is what decides how much of
+       the sky has been pushed into it.
+
+       Guarded, because this can be asked before the canvas has been laid
+       out — and an unsized canvas is 0×0, which makes the aspect ratio 0/0
+       rather than something merely wrong. That NaN went straight through
+       `skyFractionInFrame` and out into the prose as "NaN% of everything
+       there is to see" and "about NaN catalogue stars in frame". It is a
+       narrow window, one frame on a cold load, but it is a window a real
+       visitor on a slow connection can land in, and the one thing this
+       sentence exists to do is be readable by someone who cannot see the
+       screen. Falls back to the 16:9 the layout is built around. */
+    const aspect = this.H > 0 && this.W > 0 ? this.W / this.H : 16 / 9;
+    const halfH = Math.atan(aspect * TAN_HALF_V);
 
     /* Altitude first, because for the opening minute of a visit it is the
        only thing that is true. This used to answer "about 9,000 stars on
