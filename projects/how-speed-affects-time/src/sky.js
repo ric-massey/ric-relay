@@ -56,27 +56,61 @@
      size (Spencer et al. 1995 in spirit; a simple falloff in practice). */
   const GLARE_FRACTION = 0.16;
   const GLARE_A = 0.55;            // sets how tight the halo's core is
-  const GLARE_PIXEL_BUDGET = 1.6e6;
+  /* How much halo the frame may contain, as a multiple of its own area.
 
-  // Sub-pixel core. The naked-eye point spread function is about an arcminute
-  // across, which at this field of view is well under one pixel — so the
-  // core is drawn at the smallest size that will not alias as the sky moves.
+     It was a flat 1.6 million pixels, which was a fraction of the frame only
+     for the one canvas size it was tuned against. Everywhere else it was the
+     wrong fraction — and it made the glare pass cost the same on a small
+     frame as on a large one, which is the opposite of what a budget is for:
+     the magnified inset paid the full price of the main view for a frame a
+     fraction of its size. */
+  const GLARE_FRAME_BUDGET = 1.39;   // 1.6e6 px on the 1.15e6 px frame it was tuned on
+
+  /* Sub-pixel core. The naked-eye point spread function is about an arcminute
+     across, which at this field of view is well under one pixel — so the core
+     is drawn at the smallest size that will not alias as the sky moves.
+
+     "Sub-pixel" has to mean it, though. This used to be a single kernel
+     stamped at Math.round(x), Math.round(y), which put every star's centre on
+     a whole pixel: raise the speed and the whole catalogue crept inward one
+     pixel at a time, in unison, each star sitting still and then hopping.
+     Nine thousand of those hopping at once is not a smooth sky, and it was
+     worst exactly where it matters — near the top of the ladder, where the
+     field is collapsing fastest.
+
+     So the kernel is precomputed on a grid of sub-pixel phases instead, and
+     the splat picks the one matching where the star actually fell between
+     pixels. A sixteenth of a pixel is finer than the eye can follow at any
+     speed the rail reaches, and it costs one table offset per star — the
+     whole bank is 50 KB, built once. */
   const PSF_SIGMA = 0.82;
   const PSF_R = 3;
+  const PSF_PHASES = 16;
+  const PSF_SIZE = PSF_R * 2 + 1;
+  const PSF_TAPS = PSF_SIZE * PSF_SIZE;
 
   const psf = (() => {
-    const size = PSF_R * 2 + 1;
-    const k = new Float32Array(size * size);
-    let sum = 0;
-    for (let j = -PSF_R; j <= PSF_R; j++) {
-      for (let i = -PSF_R; i <= PSF_R; i++) {
-        const w = Math.exp(-(i * i + j * j) / (2 * PSF_SIGMA * PSF_SIGMA));
-        k[(j + PSF_R) * size + (i + PSF_R)] = w;
-        sum += w;
+    const bank = new Float32Array(PSF_PHASES * PSF_PHASES * PSF_TAPS);
+    for (let phy = 0; phy < PSF_PHASES; phy++) {
+      for (let phx = 0; phx < PSF_PHASES; phx++) {
+        // Where the true centre sits relative to the anchor pixel.
+        const ox = phx / PSF_PHASES, oy = phy / PSF_PHASES;
+        const base = (phy * PSF_PHASES + phx) * PSF_TAPS;
+        let sum = 0;
+        for (let j = -PSF_R; j <= PSF_R; j++) {
+          for (let i = -PSF_R; i <= PSF_R; i++) {
+            const dx = i - ox, dy = j - oy;
+            const w = Math.exp(-(dx * dx + dy * dy) / (2 * PSF_SIGMA * PSF_SIGMA));
+            bank[base + (j + PSF_R) * PSF_SIZE + (i + PSF_R)] = w;
+            sum += w;
+          }
+        }
+        // Flux-preserving, per phase — so a star does not change total
+        // brightness as it drifts across a pixel boundary.
+        for (let t = 0; t < PSF_TAPS; t++) bank[base + t] /= sum;
       }
     }
-    for (let i = 0; i < k.length; i++) k[i] /= sum;  // flux-preserving
-    return k;
+    return bank;
   })();
 
   /* Tone curve and sRGB encode, collapsed into one table.
@@ -152,6 +186,7 @@
   };
 
   Sky.prototype.resize = function (cssW, cssH) {
+    this._cssW = cssW; this._cssH = cssH;
     const maxPixels = 1.15e6;
     let dpr = Math.min(window.devicePixelRatio || 1, 2);
     let w = Math.max(2, Math.round(cssW * dpr));
@@ -170,6 +205,23 @@
     this._words = null;
     return true;
   };
+
+  /* This renderer always draws at one resolution: the real one.
+
+     It used to drop to 62% while the speed was changing and come back a fifth
+     of a second after it settled, on the theory that the frames you sweep
+     through are not the ones anybody studies. The theory was fine and the
+     consequence was not. Cost is per pixel here — clear the accumulation
+     buffer, splat every star, tone-map, hand over an ImageData — and that
+     tone map is non-linear, so the same starlight packed into 38% of the
+     pixels sits higher on the curve and comes out brighter. The sky visibly
+     lit up while the rail moved and dimmed again once it stopped, which put
+     a rendering artefact directly on top of the exhibit's one calibrated
+     quantity. Nothing here is allowed to decide brightness except the physics.
+
+     Measured, it was not even buying speed: the reallocation of a W·H·3
+     Float32Array on every flip made the worst frame of a drag worse than
+     simply rendering at full size the whole way through. */
 
   /* Build an orthonormal basis with +z along the direction of travel. This
      is what keeps the high-γ view from falling apart: at γ = 707 the entire
@@ -314,15 +366,22 @@
     }
 
     // ── cores ──
-    const size = PSF_R * 2 + 1;
     for (let i = 0; i < live; i++) {
-      const cxi = Math.round(px[i]), cyi = Math.round(py[i]);
+      // Anchor on the pixel the star falls in, and pick the kernel phase from
+      // where inside that pixel it landed. Rounding here instead is what made
+      // the sky move in whole-pixel hops.
+      const cxi = Math.floor(px[i]), cyi = Math.floor(py[i]);
+      let phx = ((px[i] - cxi) * PSF_PHASES) | 0;
+      let phy = ((py[i] - cyi) * PSF_PHASES) | 0;
+      if (phx > PSF_PHASES - 1) phx = PSF_PHASES - 1;
+      if (phy > PSF_PHASES - 1) phy = PSF_PHASES - 1;
+      const kbase = (phy * PSF_PHASES + phx) * PSF_TAPS;
       const r0 = col[i * 3], g0 = col[i * 3 + 1], b0 = col[i * 3 + 2];
       for (let jy = -PSF_R; jy <= PSF_R; jy++) {
         const y = cyi + jy;
         if (y < 0 || y >= H) continue;
         const row = y * W;
-        const krow = (jy + PSF_R) * size;
+        const krow = kbase + (jy + PSF_R) * PSF_SIZE;
         for (let jx = -PSF_R; jx <= PSF_R; jx++) {
           const x = cxi + jx;
           if (x < 0 || x >= W) continue;
@@ -341,7 +400,7 @@
     if (live > 0) {
       const order = Array.prototype.slice.call(liveIdx, 0, live);
       order.sort((a, b) => lum[b] - lum[a]);
-      let budget = GLARE_PIXEL_BUDGET;
+      let budget = GLARE_FRAME_BUDGET * W * H;
       const floor = brightest * 1e-4;
       /* Halo sizes are angular, not absolute.
 

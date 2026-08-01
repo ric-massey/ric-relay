@@ -109,14 +109,27 @@
 
      This rail has three continuous pieces:
 
-       0 → 56%    logarithmic speed, from 0.03 m/s to 0.1 c
-      56 → 74%    the readable middle, 0.1 c to 0.9 c
-      74 → 100%   logarithmic distance remaining to c
+       0 → 30%    logarithmic speed, from 0.03 m/s to 0.1 c
+      30 → 46%    the readable middle, 0.1 c to 0.9 c
+      46 → 100%   logarithmic distance remaining to c
 
      It is one curve to the visitor, but each physical scale gets enough
-     room to use. s = 0 is exactly rest; s = 1 is β = 0.999999. */
-  const S_LOW_END = 0.56;
-  const S_MID_END = 0.74;
+     room to use. s = 0 is exactly rest; s = 1 is β = 0.999999.
+
+     The split used to be 56/74, which gave the whole relativistic end — every
+     bit of this exhibit anybody came to see — the last quarter of the rail.
+     Five decades of (1 − β) in a couple of hundred pixels meant a millimetre
+     of mouse doubled γ, and there was no way to settle on a speed up there;
+     the thumb went where it liked.
+
+     The room came from the bottom. Nine decades from walking pace to a tenth
+     of light speed used to take more than half the rail, and across all of it
+     the sky is *identical* — aberration at Parker Solar Probe speed is a
+     ten-thousandth of a degree. That half-rail was buying nothing you could
+     see. The labelled rungs down there are still exactly reachable, because
+     reaching them was always the chips' job rather than the thumb's. */
+  const S_LOW_END = 0.30;
+  const S_MID_END = 0.46;
   const BETA_LOG_MIN = 1e-10;
   const BETA_LOW_END = 0.1;
   const BETA_MID_END = 0.9;

@@ -76,10 +76,20 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
 
 /* ── the view, which is the whole page ────────────────────────────── */
 .stage { position: fixed; inset: 0; background: #000; overflow: hidden; }
+/* The rumble's two custom properties are declared here, at the top of the
+   stage, and inherit down to the one layer that consumes them. Nothing on
+   .stage-inner itself moves.
+
+   It used to: the transform was on this element, which meant the buffet
+   shook the star field, the instrument cluster, the dock and the rail your
+   finger was on. Two things were wrong with that. A control that moves
+   while you are dragging it is simply broken. And a star is one or two
+   pixels of light — jitter the whole field a pixel or two every frame and
+   the eye integrates the smear as a brighter, softer sky, so the exhibit's
+   one calibrated quantity changed depending on whether you were in the air.
+   The stars are outside the atmosphere. They do not care about the hull. */
 .stage-inner { position: absolute; inset: 0;
-  --shake-x: 0px; --shake-y: 0px;
-  transform: translate3d(var(--shake-x), var(--shake-y), 0); }
-@media (prefers-reduced-motion: reduce) { .stage-inner { transform: none; } }
+  --shake-x: 0px; --shake-y: 0px; }
 #view {
   position: relative; z-index: 2; display: block; width: 100%; height: 100%;
   mix-blend-mode: screen;
@@ -107,7 +117,13 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
    Layered veils over the star field, each fading on its own schedule
    because each physically stops at a different height. None of it touches
    the star field's own physics — it is only ever what is in the way. */
-.sky-ground { position: absolute; z-index: 3; inset: 0; pointer-events: none; overflow: hidden; }
+/* The only thing the rumble is allowed to move. This layer *is* the
+   atmosphere — airglow, haze, the canopy overhead — so it is the only thing
+   air on the hull has any business shaking, and it is the layer that fades
+   out as you climb, which is exactly when the shake stops anyway. */
+.sky-ground { position: absolute; z-index: 3; inset: 0; pointer-events: none; overflow: hidden;
+  transform: translate3d(var(--shake-x), var(--shake-y), 0); will-change: transform; }
+@media (prefers-reduced-motion: reduce) { .sky-ground { transform: none; } }
 .sky-ground > * { position: absolute; inset: 0; }
 /* Airglow: a faint band hugging the horizon, the last thing to go. */
 .sky-glow { background: linear-gradient(to top,
@@ -179,9 +195,11 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
 /* Both of these are sized to fit on one line by setFitted() in exhibit.js —
    they must never wrap, or the cluster changes height every time a unit
    rolls over. */
-.gap .big { font: 300 clamp(1.5rem, 2.4vw, 1.95rem)/1.15 var(--mono); letter-spacing: -.02em;
+.gap .big { font-family: var(--mono); font-weight: 300; letter-spacing: -.02em;
+  font-size: clamp(1.5rem, 2.4vw, 1.95rem);
+  line-height: clamp(1.73rem, 2.76vw, 2.25rem);   /* 1.15×, but absolute */
   margin-top: .1rem; white-space: nowrap; }
-.gap .distance { font: .7rem/1.45 var(--mono); color: var(--dim); white-space: nowrap; }
+.gap .distance { font: .7rem/1.02rem var(--mono); color: var(--dim); white-space: nowrap; }
 .gap .hint { font: .74rem/1.4 var(--serif); color: var(--dimmer); }
 
 .altimeter { padding: .5rem .8rem .58rem; width: 15.5rem; max-width: 100%; }
@@ -322,11 +340,37 @@ input[type=range]::-moz-range-thumb {
   box-shadow: 0 2px 8px rgba(0,0,0,.7);
 }
 input[type=range]:disabled { opacity: .4; cursor: default; }
+/* The keyboard focus ring. A range input is one of the few controls browsers
+   count as focus-visible after a plain mouse click, so this used to fire the
+   moment anyone touched the rail: a solid white ring the full width of the
+   dock, lighting up on grab and going out on release. On a page whose one
+   design rule is that the only bright thing should be the physics, that made
+   the loudest object on screen a focus indicator.
+   .by-pointer is set by wireRail() only when the focus came from a pointer,
+   and is dropped again the instant a key is pressed — so a keyboard visitor
+   never loses the ring, and a mouse visitor never sees it. */
 input[type=range]:focus-visible { outline: 2px solid var(--ink); outline-offset: 6px; border-radius: 999px; }
+input[type=range].by-pointer:focus-visible { outline: none; }
 
-.speedout { min-width: 8.5rem; text-align: right; }
-.speedout .b { font: 300 clamp(1.15rem, 2.2vw, 1.5rem)/1.1 var(--mono); letter-spacing: -.01em; }
-.speedout .g { font: .72rem/1.3 var(--mono); color: var(--dim); margin-top: .1rem; }
+/* Fixed width, not a minimum, and flex: none so it can never negotiate.
+
+   This box used to be `min-width` only. The speed it prints changes length
+   as you drag — "0.9058 c" is eight characters and "0.99004255 c" is twelve
+   — so past about half the rail, where formatBeta starts changing its digit
+   count on every step, the box grew and shrank several times a second. It is
+   a flex sibling of the rail, and the rail is flex: 1, so every one of those
+   changes came straight out of the rail's width: measured, a 31.5 px swing,
+   357.89 px to 389.42 px. The thumb sits at a *fraction* of the track, so a
+   track that keeps changing length slides the thumb sideways under a mouse
+   that is holding perfectly still. That was the bouncing.
+
+   7.45 × the type size holds the longest string formatBeta can produce
+   ("0.99004255 c", measured at 7.23 em) with headroom. Sizing it against the
+   type rather than in rem is what keeps it correct while the font itself is
+   still a clamp() tracking the viewport. */
+.speedout { --sz: clamp(1.15rem, 2.2vw, 1.5rem);
+  flex: none; width: calc(var(--sz) * 7.45); text-align: right; }
+.speedout .b { font: 300 var(--sz)/1.1 var(--mono); letter-spacing: -.01em; }
 /* Always occupies its line, empty or not, so the dock does not twitch a row
    taller and shorter as you drag past a rung. */
 .speedout .near { font: .72rem/1.3 var(--mono); color: var(--dimmer); min-height: 1.3em; }
@@ -341,7 +385,16 @@ input[type=range]:focus-visible { outline: 2px solid var(--ink); outline-offset:
 .detents button:hover { color: var(--ink); background: rgba(255,255,255,.11); }
 .detents button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .detents button[aria-pressed=true] { color: #08080a; background: var(--ink); border-color: var(--ink); }
-.detent-note { font: .82rem/1.5 var(--serif); color: var(--dim); margin-top: .55rem; min-height: 1.4em; }
+/* One line, always — it is rewritten on every step of a drag, and a sentence
+   that rewraps as it changes length grows and shrinks the whole dock while
+   you are using it. setFitted() in exhibit.js shrinks the type instead. */
+/* Absolute line-height, not a multiplier, and min-height equal to it. When
+   setFitted() shrinks the type to keep a long sentence on one line, a relative
+   line-height would shrink the line box with it and step the dock anyway —
+   which is the whole thing this is here to prevent. Same reason the empty line
+   at rest reserves exactly one filled line's worth. */
+.detent-note { font: .82rem/1.23rem var(--serif); color: var(--dim); margin-top: .55rem;
+  min-height: 1.23rem; white-space: nowrap; overflow: hidden; }
 
 /* Sized to sit shoulder to shoulder with the Info pill. */
 button.act {
@@ -376,6 +429,78 @@ button.act:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 .lookback:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 .lookback.on { background: rgba(70,22,18,.86); border-color: rgba(255,120,90,.55); }
 .lookback.on .a { color: #ffb9a3; }
+
+/* ── the welcome card ─────────────────────────────────────────────────
+   The one screen on this page that is not written for someone leaning into
+   a monitor. It may be read from the back of a room, out loud, by a
+   presenter, to people who have never met any of this — so every value
+   here departs from the house style in the same direction: larger type,
+   full-strength ink, one wide target instead of a small one.
+
+   The greys elsewhere (--dim, --dimmer) are tuned for a dark-adapted eye in
+   a dark room, and they are correct there. This card has to survive a lounge
+   with the lights on, so nothing on it is dimmer than --ink except the line
+   of instructions, which is one step down and no further.
+
+   Centred with grid + margin:auto rather than flex + align-items:center:
+   a tall card in a short window has to be able to scroll off the top, and
+   centred flex items clip instead of scrolling. */
+.welcome {
+  position: fixed; inset: 0; z-index: 45; display: grid; overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgba(4,4,6,.72);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  padding: clamp(1rem, 4vh, 3rem)
+           calc(1rem + env(safe-area-inset-right))
+           calc(1rem + env(safe-area-inset-bottom))
+           calc(1rem + env(safe-area-inset-left));
+  animation: sheetin .18s ease-out;
+}
+.welcome-card { position: relative; margin: auto; width: min(38rem, 100%);
+  padding: clamp(1.5rem, 4vw, 2.5rem); border-radius: 18px; }
+/* The title clears the close button rather than running under it. */
+.welcome-title { padding-right: 2.8rem; margin-bottom: 1.15rem; color: var(--ink);
+  font: 400 clamp(1.55rem, 4.4vw, 2.25rem)/1.15 var(--serif); letter-spacing: -.015em; }
+.welcome p { margin-bottom: .85rem; color: var(--ink); text-wrap: pretty;
+  font: 400 clamp(1.12rem, 2.2vw, 1.35rem)/1.55 var(--serif); }
+.welcome p:last-of-type { margin-bottom: 0; }
+/* What to do, ruled off from why you would want to. */
+.welcome .how { margin-top: 1.3rem; padding-top: 1.15rem;
+  border-top: 1px solid rgba(255,255,255,.16); color: #dcdce2;
+  font-size: clamp(1rem, 1.9vw, 1.15rem); }
+.welcome .how b { color: var(--ink); font-weight: 600; }
+
+/* The way in. Full width and 3.4rem tall on purpose: this is the control
+   that has to be usable by someone who is not going to aim, and the ✕ in
+   the corner is a second way out, never the only one. */
+.welcome-go {
+  display: block; width: 100%; margin-top: 1.5rem; padding: 1.05rem 1rem;
+  border-radius: 14px; cursor: pointer;
+  background: var(--ink); color: #08080a; border: 1px solid var(--ink);
+  font: 600 clamp(.88rem, 2vw, 1.02rem)/1.2 var(--mono);
+  letter-spacing: .17em; text-transform: uppercase;
+  transition: opacity .15s, transform .15s;
+}
+.welcome-go:hover { opacity: .86; transform: translateY(-1px); }
+.welcome-go:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+.welcome-x {
+  position: absolute; top: .7rem; right: .7rem; width: 2.6rem; height: 2.6rem;
+  border-radius: 50%; cursor: pointer; color: var(--ink);
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.16);
+  font: 300 1.3rem/1 var(--sans);
+}
+.welcome-x:hover { background: rgba(255,255,255,.15); }
+.welcome-x:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+/* A landscape phone, or a projector running 1024×768 with the browser
+   chrome on. The card still has to fit without scrolling. */
+@media (max-height: 560px) {
+  .welcome-card { padding: 1.15rem 1.3rem 1.3rem; }
+  .welcome-title { font-size: 1.4rem; margin-bottom: .7rem; }
+  .welcome p { font-size: 1.02rem; line-height: 1.45; margin-bottom: .5rem; }
+  .welcome .how { margin-top: .8rem; padding-top: .7rem; }
+  .welcome-go { margin-top: .9rem; padding: .8rem 1rem; }
+}
 
 /* ── the info sheet ───────────────────────────────────────────────────
    Everything that is prose lives behind one button. The first screen is the
@@ -420,6 +545,68 @@ button.act:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 .sheet .foot { margin-top: 1.6rem; padding-top: 1.2rem; border-top: 1px solid rgba(255,255,255,.1);
   font: .86rem/1.6 var(--serif); color: var(--dim); }
 
+/* ── the equation reference ───────────────────────────────────────────
+   The depth half of the sheet. Someone reading this has asked to see the
+   working, so the working gets the room: the formula is the loudest thing
+   in each block, the plain-English gloss sits under it, and the live value
+   sits under that.
+
+   Every formula is set in the monospace and allowed to scroll sideways on
+   its own rather than wrap. A wrapped equation is a misread equation —
+   `tan(θ′/2) = k · tan(θ/2)` broken across two lines stops being one
+   statement — and the alternative, shrinking the type until it fits a
+   phone, makes the one thing this section exists for unreadable. */
+.sheet-nav { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: 1.6rem; }
+.sheet-nav a {
+  padding: .42rem .72rem; border-radius: 999px; text-decoration: none;
+  color: var(--dim); background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
+  font: 600 .58rem/1 var(--mono); letter-spacing: .13em; text-transform: uppercase;
+  transition: color .15s, background .15s;
+}
+.sheet-nav a:hover { color: var(--ink); background: rgba(255,255,255,.13); }
+.sheet-nav a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+/* The sheet is the scroll container, so an anchor jump has to leave its own
+   headroom here rather than at the document level. */
+.sheet section { scroll-margin-top: 1rem; }
+
+.eqgroup { margin-top: 1.6rem; }
+.eqgroup > h3 {
+  margin-bottom: .2rem; padding-bottom: .5rem;
+  border-bottom: 1px solid rgba(255,255,255,.14); color: var(--ink);
+  font: 500 .95rem/1.4 var(--serif); letter-spacing: .01em;
+}
+.eq { padding: .95rem 0 .85rem; border-bottom: 1px solid rgba(255,255,255,.07); }
+.eq:last-child { border-bottom: 0; padding-bottom: .2rem; }
+.eq .n { display: block; color: var(--ink); font: 500 .95rem/1.4 var(--serif); }
+.eq .f {
+  display: block; margin: .45rem 0 .5rem; padding: .6rem .75rem;
+  border-radius: 9px; background: rgba(255,255,255,.055);
+  border: 1px solid rgba(255,255,255,.08);
+  color: #eaeaf0; font: 400 .92rem/1.65 var(--mono);
+  white-space: nowrap; overflow-x: auto; overscroll-behavior-x: contain;
+}
+.eq .d { display: block; color: var(--dim); font: .88rem/1.6 var(--serif); text-wrap: pretty; }
+.eq .d em { color: #cfcfd8; font-style: italic; }
+/* The live column. Empty until the sheet is open and painted, and it must
+   not leave a stray label behind when it is. */
+.eq .v { display: block; margin-top: .5rem; color: var(--ink); font: .8rem/1.5 var(--mono); }
+.eq .v:empty { display: none; }
+.eq .v::before { content: "now  "; color: var(--dimmer); letter-spacing: .12em; }
+
+.consts { width: 100%; margin-top: .8rem; border-collapse: collapse; }
+.consts th, .consts td { padding: .42rem .5rem .42rem 0; text-align: left; vertical-align: baseline;
+  border-bottom: 1px solid rgba(255,255,255,.07); }
+.consts th { width: 3.5rem; color: var(--ink); font: 400 .88rem/1.4 var(--mono); }
+.consts td { color: #d0d0d8; font: .84rem/1.45 var(--mono); }
+.consts td:last-child { color: var(--dimmer); font-family: var(--serif); font-size: .82rem; }
+@media (max-width: 620px) {
+  /* The third column is commentary, and it is the first thing to go when the
+     table has to share a phone with a 30-character constant. */
+  .consts td:last-child { display: none; }
+  .eq .f { font-size: .82rem; }
+}
+
 /* ── the definition system ────────────────────────────────────────── */
 button.term {
   font: inherit; color: inherit; background: none; border: none; padding: 0;
@@ -450,7 +637,8 @@ body .relay-return { top: max(12px, env(safe-area-inset-top)); bottom: auto; }
 body .relay-egg { bottom: max(96px, calc(env(safe-area-inset-bottom) + 96px)); }
 /* It outranks every z-index on the page by design, which means it also
    outranks the info sheet. Out of the way while the sheet is open. */
-body.sheet-open .relay-return { opacity: 0; pointer-events: none; }
+body.sheet-open .relay-return,
+body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
 /* ── narrow ───────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
@@ -477,7 +665,8 @@ body.sheet-open .relay-return { opacity: 0; pointer-events: none; }
   .clock .time { font-size: 1.05rem; }
   .clock .sub { display: none; }
   .cluster .gap { margin-top: .5rem; padding-top: .5rem; }
-  .gap .big { font: 300 clamp(1.15rem, 5.2vw, 1.6rem)/1.2 var(--mono); }
+  .gap .big { font-size: clamp(1.15rem, 5.2vw, 1.6rem);
+    line-height: clamp(1.38rem, 6.24vw, 1.92rem); }
   .gap .hint { display: none; }
   /* The action pills shrink and stack. Stacked rather than wrapped so the
      corner's width is exactly its widest button and nothing more — a wrapping
@@ -499,7 +688,11 @@ body.sheet-open .relay-return { opacity: 0; pointer-events: none; }
   .altimeter { width: auto; }
   .altimeter .n { display: none; }
   .inset { width: 28vw; }
-  .speedout { min-width: 6.2rem; }
+  /* No narrower override here any more. It used to drop the minimum to
+     6.2rem, which is less than the widest speed the readout can print — so on
+     a phone the box was guaranteed to grow past its own minimum and take the
+     difference out of the rail. The width is set by the type size above, and
+     at this breakpoint the type is already at the bottom of its clamp. */
   .railrow { gap: .7rem; }
   .dock .status { font-size: .82rem; }
 }
@@ -618,7 +811,13 @@ body.sheet-open .relay-return { opacity: 0; pointer-events: none; }
                    aria-label="Speed" aria-describedby="speed-readout">
             <div class="speedout" id="speed-readout">
               <div class="b num" id="beta-out">at rest</div>
-              <div class="g num" id="gamma-out">γ = 1</div>
+              <!-- γ used to be printed here. It is the number the whole exhibit
+                   runs on, but as notation it means nothing to a visitor who
+                   has not been told what a Greek letter is doing on a dashboard
+                   — and the sentence under the rail already says the same thing
+                   in words ("Earth gains 19 days 22 hours per year of yours").
+                   It is defined, derived and shown live in the Info sheet, which
+                   is where the vocabulary belongs. -->
               <!-- Which rung of the ladder you are near. On a phone the chips
                    are gone and this is the only thing telling you that the
                    number you are looking at is roughly the ISS. -->
@@ -644,6 +843,26 @@ body.sheet-open .relay-return { opacity: 0; pointer-events: none; }
   </div>
 </div>
 
+<!-- The front door. Shown once a session, before anything else, and the only
+     thing on this page written for someone who has never heard of any of it.
+     It says one thing and names the two controls, because a visitor who
+     reads nothing else still has to know why the sky is worth watching. -->
+<div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="welcome-title" hidden>
+  <div class="welcome-card glass">
+    <button type="button" class="welcome-x" id="welcome-x" aria-label="Close">✕</button>
+    <h1 class="welcome-title" id="welcome-title">A trip at the speed of light</h1>
+    <p>The speed of light is 186,000 miles a second — seven times around the
+       Earth, in one second. Nothing can go faster.</p>
+    <p>Your watch always ticks the same. One second, then the next.</p>
+    <p>But travel fast enough, and come home, and less time will have passed
+       for you than for everyone you left behind.</p>
+    <p>That is not science fiction. It really happens.</p>
+    <p class="how">Move the slider to go faster. Press <b>Return to Earth</b>
+       to come home.</p>
+    <button type="button" class="welcome-go" id="welcome-go">Begin</button>
+  </div>
+</div>
+
 <!-- Everything past this point is opt-in, and behind the Info button. -->
 <div class="sheet" id="info-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
   <div class="sheet-inner glass">
@@ -654,6 +873,18 @@ body.sheet-open .relay-return { opacity: 0; pointer-events: none; }
       </div>
       <button type="button" class="sheet-close" id="info-close" aria-label="Close">✕</button>
     </div>
+
+    <!-- The sheet is long on purpose — it is the depth half of the exhibit,
+         and someone who opens it has asked for depth. What length costs is
+         orientation, which is what this buys back. -->
+    <nav class="sheet-nav" aria-label="Sections of this page">
+      <a href="#p-view">What you're seeing</a>
+      <a href="#p-math">The equations</a>
+      <a href="#p-why">Reciprocity</a>
+      <a href="#p-home">At home</a>
+      <a href="#p-scope">Scope</a>
+      <a href="#p-sources">Sources</a>
+    </nav>
 
     <section id="p-view">
       <h2>What you're seeing</h2>
@@ -680,6 +911,227 @@ body.sheet-open .relay-return { opacity: 0; pointer-events: none; }
         transform. The dark shapes torn out of it are dust: the Great Rift, the Coalsack, the Pipe.
         It is nearly colourless to the eye, and every photograph you have seen of it in purple and
         gold got that from a long exposure, not from anyone's eyes.</p>
+    </section>
+
+    <!-- ══ the equations ══════════════════════════════════════════════
+         Every formula here is one the code actually evaluates, and each
+         carries the value it is producing right now, at whatever speed the
+         rail is set to. Move the rail with this open and the whole column
+         moves with it.
+
+         Ordered the way the pipeline runs, not the way a textbook is
+         organised: how fast you are going, where that puts the light, what
+         colour and brightness it arrives with. ═══════════════════════ -->
+    <section id="p-math">
+      <h2>The equations</h2>
+      <p class="tight">Everything below is live. The right-hand value under each
+        formula is what that expression evaluates to at your current speed — leave
+        this open, drag the rail, and watch them move. Nothing here is fitted or
+        tuned; there is not a single free parameter in this exhibit.</p>
+
+      <div class="eqgroup">
+        <h3>Motion and time</h3>
+
+        <div class="eq">
+          <span class="n">Speed, as a fraction of light speed</span>
+          <code class="f">β = v / c</code>
+          <span class="d">The one input. Everything else on this page is a
+            function of it.</span>
+          <span class="v num" data-eq="beta"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n"><dfn data-term="lorentz-factor">Lorentz factor</dfn></span>
+          <code class="f">γ = 1 / √(1 − β²)</code>
+          <span class="d">The stretch factor, and the number the whole exhibit
+            runs on. γ = 2 means two seconds pass at home for every one of yours.
+            It is 1 at rest and climbs without limit as β approaches 1.</span>
+          <span class="v num" data-eq="gamma"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n">Your clock — <dfn data-term="proper-time">proper time</dfn></span>
+          <code class="f">τ — measured, not computed</code>
+          <span class="d">This one is not simulated. It is your own device's
+            clock, ticking normally, because that is the entire point: travelling
+            fast does not feel like anything.</span>
+          <span class="v num" data-eq="tau"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n">Earth's clock — <dfn data-term="coordinate-time">coordinate time</dfn></span>
+          <code class="f">t = ∫ γ dτ</code>
+          <span class="d">Accumulated every frame along your path. The integral
+            is exact for <em>any</em> speed history, including the ramps where the
+            ship speeds up and slows down — so the numbers stay honest even while
+            you are dragging the rail around.</span>
+          <span class="v num" data-eq="t_earth"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n"><dfn data-term="length-contraction">Length contraction</dfn></span>
+          <code class="f">L = L₀ / γ</code>
+          <span class="d">The other half of the same coin. From where you are
+            sitting the journey is genuinely shorter, which is how you cross four
+            light-years in under a year of your own time without ever passing c.</span>
+          <span class="v num" data-eq="length"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n"><dfn data-term="kinetic-energy">Kinetic energy</dfn></span>
+          <code class="f">KE = (γ − 1) m c²</code>
+          <span class="d">Why the speed limit is a limit. Reaching c would cost
+            infinite energy, so a thing with mass never gets there — it only ever
+            adds nines.</span>
+          <span class="v num" data-eq="ke"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n"><dfn data-term="momentum">Momentum</dfn></span>
+          <code class="f">p = γ m v</code>
+          <span class="d">The modern formulation. The phrase "relativistic mass"
+            appears nowhere in this exhibit, for the reasons Okun sets out —
+            mass is invariant, and γ belongs to the motion.</span>
+          <span class="v num" data-eq="p"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n">Rest energy</span>
+          <code class="f">E₀ = m c²</code>
+          <span class="d">Included for scale: the energy you would have to
+            find is measured against this.</span>
+          <span class="v num" data-eq="e0"></span>
+        </div>
+      </div>
+
+      <div class="eqgroup">
+        <h3>Direction — where the light appears to come from</h3>
+
+        <div class="eq">
+          <span class="n"><dfn data-term="aberration">Aberration</dfn>, half-angle form</span>
+          <code class="f">tan(θ′/2) = k · tan(θ/2),   k = √((1−β)/(1+β))</code>
+          <span class="d">Light that reaches you from angle θ appears to arrive
+            from the smaller angle θ′, so the sky crowds forward. Same reason you
+            tilt an umbrella into vertical rain when you run.</span>
+          <span class="v num" data-eq="k"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n">Aberration, cosine form</span>
+          <code class="f">cos θ′ = (cos θ − β) / (1 − β cos θ)</code>
+          <span class="d">Algebraically identical, and the form you will find in
+            most textbooks. This build does not use it: it loses precision near
+            θ = 0, which at high γ is exactly where every star in the sky has
+            ended up. The half-angle form is stable across the whole range.</span>
+        </div>
+
+        <div class="eq">
+          <span class="n">The forward cone</span>
+          <code class="f">θ′ = 2 arctan k     (≈ 1/γ radians at high speed)</code>
+          <span class="d">The angle the entire forward hemisphere collapses into.
+            This is the exact figure, not the small-angle approximation.</span>
+          <span class="v num" data-eq="cone"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n">How much sky is in the frame</span>
+          <code class="f">Ω / 4π = (1 − cos θ) / 2,   θ = 2 arctan[ tan(θ′/2) / k ]</code>
+          <span class="d">Aberration run backwards, to find where the light in
+            front of you started out. At β = 0.7771 this returns exactly half —
+            half the universe in one 78° frame — which is why that odd number is
+            one of the marked speeds. Nearly all of it started out behind you.</span>
+          <span class="v num" data-eq="frame"></span>
+        </div>
+      </div>
+
+      <div class="eqgroup">
+        <h3>Colour and brightness</h3>
+
+        <div class="eq">
+          <span class="n"><dfn data-term="doppler-factor">Doppler factor</dfn></span>
+          <code class="f">D = 1 / [ γ (1 − β cos θ) ]</code>
+          <span class="d">How much your motion squeezes or stretches the light
+            arriving from angle θ′. One number governs colour <em>and</em>
+            brightness, which is why the two can never disagree here.</span>
+          <span class="v num" data-eq="d_general"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n">Dead ahead, and dead astern</span>
+          <code class="f">D = √((1+β)/(1−β))    ·    D = √((1−β)/(1+β))</code>
+          <span class="d">The two extremes, where cos θ is +1 and −1. Note that
+            the astern factor is exactly the aberration constant k — the same
+            square root doing two jobs.</span>
+          <span class="v num" data-eq="d_axis"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n">A <dfn data-term="blackbody">blackbody</dfn> stays a blackbody</span>
+          <code class="f">T′ = D · T</code>
+          <span class="d">The fact that makes the whole relativistic transform a
+            one-line change to a temperature. A Doppler-shifted thermal spectrum
+            is still a thermal spectrum, just hotter — so a star's new colour is
+            found by looking up the same curve at a new temperature.</span>
+          <span class="v num" data-eq="blackbody"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n"><dfn data-term="beaming">Relativistic beaming</dfn></span>
+          <code class="f">brightness ∝ D⁴</code>
+          <span class="d">The light ahead is not only bluer, it is enormously
+            brighter — and the light behind has been robbed to pay for it. Three
+            powers of D from solid angle, one from photon arrival rate.</span>
+          <span class="v num" data-eq="beaming"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n">Planck's law</span>
+          <code class="f">B(λ,T) = (2hc² / λ⁵) · 1 / (e^(hc / λk<sub>B</sub>T) − 1)</code>
+          <span class="d">Integrated against the CIE 1931 colour-matching
+            functions from 360 to 830 nm, converted to sRGB, and built once at
+            load into a table indexed by log T. There is no RGB anywhere in the
+            star data — a star is a direction, a flux and a temperature.</span>
+        </div>
+
+        <div class="eq">
+          <span class="n"><dfn data-term="colour-index">Colour index</dfn> → temperature (Ballesteros 2012)</span>
+          <code class="f">T = 4600 K × [ 1/(0.92(B−V) + 1.7) + 1/(0.92(B−V) + 0.62) ]</code>
+          <span class="d">How the catalogue's measured colour index becomes a
+            temperature, and from there a colour. Checks out at B−V = 0.65 →
+            5778 K, the Sun, to four figures.</span>
+        </div>
+
+        <div class="eq">
+          <span class="n"><dfn data-term="apparent-magnitude">Magnitude</dfn> → illuminance</span>
+          <code class="f">E = 2.54 × 10⁻⁶ × 10^(−0.4 V)   lux</code>
+          <span class="d">Real physical units, so the tone map at the end has
+            something to be anchored to rather than a number that only means
+            something internally.</span>
+        </div>
+
+        <div class="eq">
+          <span class="n">The <dfn data-term="cmb">microwave background</dfn>, ahead</span>
+          <code class="f">T = D × 2.7255 K</code>
+          <span class="d">The leftover glow of the Big Bang, normally invisible.
+            Squeeze it hard enough and the sky ahead begins to glow on its own —
+            which is what happens at the 0.99998 c rung, and why that rung exists.</span>
+          <span class="v num" data-eq="cmb"></span>
+        </div>
+      </div>
+
+      <div class="eqgroup">
+        <h3>Constants</h3>
+        <table class="consts num">
+          <tbody>
+            <tr><th scope="row">c</th><td>299,792,458 m/s</td><td>exact, by definition of the metre</td></tr>
+            <tr><th scope="row">h</th><td>6.62607015 × 10⁻³⁴ J·s</td><td>exact, SI 2019</td></tr>
+            <tr><th scope="row">k<sub>B</sub></th><td>1.380649 × 10⁻²³ J/K</td><td>exact, SI 2019</td></tr>
+            <tr><th scope="row">σ</th><td>5.670374419 × 10⁻⁸ W·m⁻²·K⁻⁴</td><td>Stefan–Boltzmann</td></tr>
+            <tr><th scope="row">T<sub>☉</sub></th><td>5,778 K</td><td>the Sun's effective temperature</td></tr>
+            <tr><th scope="row">T<sub>CMB</sub></th><td>2.7255 K</td><td>Fixsen (2009)</td></tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <section id="p-why">
@@ -738,10 +1190,16 @@ body.sheet-open .relay-return { opacity: 0; pointer-events: none; }
       <p><strong>The way home.</strong> Earth is held straight ahead as a black silhouette against the
         star field. Its apparent size grows with your distance from home; the Sun is intentionally kept
         out of this view so you can watch Earth approach.</p>
-      <p class="sources">Blueprint and sources: Einstein (1905); Ballesteros (2012) for B−V →
-        temperature; Wyman, Sloan &amp; Shirley (2013) for the colour-matching fits; Fixsen (2009) for
-        the microwave background; Okun (2009) on why the words "relativistic mass" appear nowhere here;
-        Bland-Hawthorn &amp; Gerhard (2016) and Dwek et al. (1995) for the shape of the Galaxy.</p>
+    </section>
+
+    <section id="p-sources">
+      <h2>Sources</h2>
+      <p class="sources">Einstein (1905), <em>Zur Elektrodynamik bewegter Körper</em>, for all of
+        the above. Ballesteros (2012) for B−V → temperature. Wyman, Sloan &amp; Shirley (2013) for the
+        colour-matching function fits. Hoffleit &amp; Warren (1991) for the Yale Bright Star Catalogue.
+        Fixsen (2009) for the microwave background temperature. Okun (2009) on why the words
+        "relativistic mass" appear nowhere here. Bland-Hawthorn &amp; Gerhard (2016) and Dwek et al.
+        (1995) for the shape of the Galaxy.</p>
     </section>
 
     <p class="foot"><button class="term" id="reset">Reset the trip</button> ·
@@ -753,13 +1211,13 @@ body.sheet-open .relay-return { opacity: 0; pointer-events: none; }
 
 <script src="data/stars.js?v=2"></script>
 <script src="src/colour.js?v=2"></script>
-<script src="src/physics.js?v=3"></script>
+<script src="src/physics.js?v=4"></script>
 <script src="src/galaxy.js?v=3"></script>
-<script src="src/sky.js?v=4"></script>
+<script src="src/sky.js?v=9"></script>
 <script src="src/ground.js?v=10"></script>
 <script src="src/photo-sky.js?v=13"></script>
 <script src="src/glossary.js?v=2"></script>
-<script src="src/exhibit.js?v=32"></script>
+<script src="src/exhibit.js?v=45"></script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="spacetime" defer></script>
 </body>
 </html>

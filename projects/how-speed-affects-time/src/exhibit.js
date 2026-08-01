@@ -26,6 +26,18 @@
 
   const YEAR = 365.25 * 86400;
 
+  /* The sessionStorage key, up here rather than beside the code that uses it,
+     and it has to stay up here.
+
+     restore() is called from the setup run at the top of this IIFE, which is
+     above the persistence section. A `const` declared down there is in its
+     temporal dead zone at that point, so reading it throws — and the call site
+     reads it inside a `try { … } catch {}` that exists to tolerate private mode
+     and file:// origins, which swallowed the ReferenceError without a sound.
+     The symptom was one-way persistence: every save wrote (save() runs later,
+     once the declaration has been reached) and no load ever read. */
+  const KEY = "hsat-trip";
+
   /* Direction of travel: the galactic centre (RA 17h45m40s, Dec −28°56′10″).
      Chosen because the Milky Way is a *shape*, and shapes show distortion far
      better than scattered points do — the band hinges and narrows long before
@@ -221,6 +233,7 @@
   restore();
   buildDetents();
   wire();
+  setWelcome(true);
   G.install(document);
   G.setValueSource(liveValues);
   resize();
@@ -353,7 +366,13 @@
       : S.beta * P.C;
     const q = Math.min(1, Math.pow(speed / 120, 2));
     const push = S.phase === "landing" ? q * 1.3 : q;
-    const want = reduceMotion ? 0 : air * push * 3.4;
+    /* 1.2 px, not the 3.4 it was. The amplitude came down when the rumble
+       stopped being applied to the whole stage: at 3.4 px it had to be big
+       enough to read through a frame that was moving as one piece, and now
+       that it is only the haze and the canopy — soft, low-contrast, edge-of-
+       frame things — a third of that is plenty to feel and small enough that
+       nothing crosses a pixel boundary hard enough to sparkle. */
+    const want = reduceMotion ? 0 : air * push * 1.2;
     shake += (want - shake) * Math.min(1, dt * 9);
 
     /* Re-entry glow, scaled by how far up the fall started. Coming down from
@@ -366,6 +385,9 @@
       ? Math.max(0, Math.min(1, (1 - S.altKm / 70) * 1.15)) * 0.9 * reentry
       : Math.max(0, landingHeat - dt * 1.6);
 
+    /* Still written to .stage-inner, and still read by .sky-ground, which is
+       the only element with a transform on it. Custom properties inherit, so
+       the writer does not need to know which layer is currently listening. */
     const stage = document.querySelector(".stage-inner");
     if (shake > 0.02) {
       stage.style.setProperty("--shake-x", ((Math.random() - 0.5) * shake).toFixed(2) + "px");
@@ -524,7 +546,14 @@
     // forward cone, and there is nothing behind you that is too small to see.
     // Quite the opposite — the rear view is the emptiest the sky ever gets.
     const coneDeg = P.forwardHemisphereRadius(S.beta) * 360 / Math.PI;
-    if (S.beta > 0 && coneDeg < 20 && !lookBack) {
+    /* Hysteresis on the threshold: 20° to bring the panel in, 21° to send it
+       away again. A single figure meant the rail had one position — β just
+       either side of 0.98481 — where a jostled thumb could switch a 230 px
+       panel in and out of the right rail frame after frame. The band is wider
+       than any drag can chatter across, and the panel is only ever entering
+       or leaving once. */
+    const insetOn = !inset.hidden;
+    if (S.beta > 0 && !lookBack && coneDeg < (insetOn ? 21 : 20)) {
       // Frame the cone at roughly a fifth of the inset's width. Half was too
       // tight: the glare around a sky's worth of stacked starlight bled the
       // disc out to the rim and the panel read as a plain white circle. The
@@ -602,10 +631,31 @@
     }
   }
 
+  /* "144.65 million miles from Earth" does not fit a phone's cluster even at
+     the 11px floor — it wants about twelve pixels more than there are. Rather
+     than clip it mid-word, which reads as broken software, the suffix comes
+     off and the number keeps its full size. The label two lines up already
+     says what it is measured from.
+
+     Decided once per (width, length) pair rather than per frame: the trial fit
+     costs a layout read, and the distance's last digit changes ten times a
+     second. */
+  let distLong = true;
+  let distKey = "";
+  function paintDistance() {
+    const el = $("distance-out");
+    const miles = P.formatMiles(S.distLs);
+    const key = el.clientWidth + ":" + miles.length;
+    if (key !== distKey) {
+      distKey = key;
+      setFitted(el, miles + " from Earth", 11);
+      distLong = el.scrollWidth <= el.clientWidth + 1;
+    }
+    setFitted(el, distLong ? miles + " from Earth" : miles, 11);
+  }
+
   /* ── readouts ────────────────────────────────────────────────────── */
   function paintReadouts() {
-    const g = P.gamma(S.beta);
-
     // The traveler's clock is the device clock. Never modified, never
     // lagged, never animated specially. If it stutters, the premise dies.
     const nowDate = new Date();
@@ -628,10 +678,10 @@
     $("earth-elapsed").textContent = "elapsed " + P.formatDuration(S.earth);
 
     setFitted($("gap"), P.formatDuration(S.earth - S.tau), 12);
-    setFitted($("distance-out"), P.formatMiles(S.distLs) + " from Earth", 11);
+    paintDistance();
     $("beta-out").textContent = P.formatBeta(S.beta);
-    $("gamma-out").textContent = "γ = " + P.formatGamma(g);
     paintEarthTarget();
+    paintEquations();
 
     if (S.phase === "choose" || S.phase === "home") paintReturnPreview();
   }
@@ -679,7 +729,11 @@
         primary.textContent = "On the way home";
         secondary.hidden = false;
         preview.hidden = false;
-        status.textContent = "Inbound. Earth is straight ahead. Adjust speed any time.";
+        // Blanked, not deleted: paintPhase does not clear the status line
+        // between phases, so dropping the assignment would leave the previous
+        // phase's message stranded here. Empty, .dock .status collapses to
+        // nothing — and the button underneath already says "On the way home".
+        status.textContent = "";
         gapHint.textContent = "";
         break;
       case "landing":
@@ -774,7 +828,105 @@
     $("view-detail").textContent = bits.join(" ");
   }
 
+  /* ── the equation reference, live ────────────────────────────────────
+     Every formula printed on the Info sheet is one this build actually runs,
+     and each carries the value it is producing at this instant. That pairing
+     is the whole point of the section: a page of algebra nobody can check
+     against the thing it describes is decoration, and this exhibit's entire
+     claim is that it is not doing that.
+
+     Painted from P and COL directly rather than from liveValues(), which
+     formats for the glossary's popovers and speaks in sentences. Both read
+     the same functions, so they can differ in wording and never in physics.
+
+     Nothing is computed while the sheet is shut. */
+  let eqNodes = null;
+  function setEq(name, text) {
+    const el = eqNodes && eqNodes[name];
+    if (el) el.textContent = text;
+  }
+
+  function paintEquations() {
+    if ($("info-sheet").hidden) return;
+    if (!eqNodes) {
+      eqNodes = {};
+      document.querySelectorAll("[data-eq]").forEach((el) => {
+        eqNodes[el.getAttribute("data-eq")] = el;
+      });
+    }
+
+    const b = S.beta;
+    const g = P.gamma(b);
+    const D = P.dopplerAhead(b);
+    const Db = P.dopplerBehind(b);
+    const k = P.aberrationK(b);
+    const cone = P.forwardHemisphereRadius(b) * 180 / Math.PI;
+    const frame = P.skyFractionInFrame(b, 39 * Math.PI / 180) * 100;
+    const sig = (x, n) => Number(x.toPrecision(n)).toString();
+    /* Beaming spans about twenty orders of magnitude across this rail, so no
+       single format survives it: "10,220,186,170×" is ten digits nobody reads
+       and "0.00×" at the other end is a rounding error pretending to be a
+       value. Grouped digits in the middle, exponents at both ends. */
+    const factor = (x) => {
+      if (!(x > 0)) return "0";
+      if (x >= 1e6 || x < 1e-3) return x.toExponential(2);
+      if (x >= 100) return Math.round(x).toLocaleString();
+      return Number(x.toPrecision(4)).toString();
+    };
+
+    setEq("beta", b === 0 ? "β = 0 — at rest" : "β = " + sig(b, 7));
+    setEq("gamma", "γ = " + P.formatGamma(g));
+    setEq("tau", P.formatDuration(S.tau) + " on your watch");
+    setEq("t_earth", P.formatDuration(S.earth) + " at home");
+    setEq("length", b === 0
+      ? "no contraction — L = L₀"
+      : "L = L₀ × " + sig(1 / g, 6) + " — the trip is " +
+        (100 - 100 / g).toFixed(g > 1.01 ? 1 : 8) + "% shorter");
+    setEq("ke", P.kineticEnergy(b, 1).toExponential(3) + " J per kilogram");
+    setEq("p", P.momentum(b, 1).toExponential(3) + " kg·m/s per kilogram");
+    setEq("e0", P.restEnergy(1).toExponential(3) + " J per kilogram — always");
+
+    setEq("k", "k = " + sig(k, 7));
+    setEq("cone", b === 0
+      ? "180° — the forward half of the sky is still a hemisphere"
+      : "the forward hemisphere fits inside " +
+        (cone * 2 < 1 ? (cone * 2).toPrecision(3) : (cone * 2).toFixed(2)) + "° ahead");
+    setEq("frame", frame.toFixed(2) + "% of the entire sky is inside the 78° frame");
+
+    setEq("d_general", b === 0 ? "D = 1 in every direction" :
+      "D runs from " + sig(Db, 5) + " dead astern to " + sig(D, 6) + " dead ahead");
+    setEq("d_axis", "ahead D = " + sig(D, 6) + " · astern D = " + sig(Db, 5));
+    setEq("blackbody", "the Sun's 5,778 K reads as " +
+      Math.round(D * COL.T_SUN).toLocaleString() + " K ahead, " +
+      Math.round(Db * COL.T_SUN).toLocaleString() + " K astern");
+    setEq("beaming", b === 0 ? "no change — D = 1 everywhere" :
+      factor(D * D * D * D) + "× brighter ahead, " +
+      factor(Db * Db * Db * Db) + "× astern");
+    setEq("cmb", (D * COL.CMB).toFixed(D * COL.CMB < 100 ? 4 : 0) + " K ahead" +
+      (D * COL.CMB > 800 ? " — hot enough to glow" : " — still invisible"));
+  }
+
   /* ── the speed control ───────────────────────────────────────────── */
+
+  /* There used to be a resolution drop here: while the speed was changing the
+     star layer rendered at 62% and came back to full a fifth of a second after
+     it settled, on the theory that the frames you sweep through are not the
+     ones anybody studies.
+
+     It had to go, because it was not only changing sharpness. The renderer
+     splats each star's light into an accumulation buffer and tone-maps per
+     pixel, and that tone map is non-linear — so packing the same starlight
+     into 38% of the pixels lands each star higher on the curve. The field
+     genuinely got brighter while you moved the rail and dimmed 200 ms after
+     you let go, which is a rendering artefact sitting on top of the one
+     quantity this whole exhibit is calibrated to.
+
+     It was also making the drag worse, not better. Every flip reallocated a
+     Float32Array of W·H·3 — about 14 MB at full size — and re-rendered from
+     scratch. Measured over a drag at 0.9861 c: 62% gave a 16.7 ms median
+     frame and a 66.6 ms worst frame; full resolution gives 17.7 ms median and
+     a 50 ms worst. One millisecond of median, in exchange for the buffer
+     churn that was hitching the rail under the pointer. */
   function setBeta(b) {
     b = Math.min(0.999999, Math.max(0, b));
     if (b === S.beta) return;
@@ -838,20 +990,26 @@
       ? (on ? "" : "≈ ") + label
       : "";
 
-    $("detent-note").textContent = on && P.LADDER[nearest].note
+    setFitted($("detent-note"), on && P.LADDER[nearest].note
       ? P.LADDER[nearest].note
-      : (S.targetBeta > 0 ? gainSentence(S.targetBeta) : "");
+      : (S.targetBeta > 0 ? gainSentence(S.targetBeta) : ""), 11);
   }
 
   /* The consequence, not the number. "0.99 c" means nothing to most people;
-     "six years pass at home for every one of yours" does. */
+     "six years pass at home for every one of yours" does.
+
+     Kept short deliberately. It sits on one line under the rail and it is
+     rewritten on every step of a drag — at the old length it crossed the
+     wrapping point somewhere around a day of gain, so the dock grew and shrank
+     a row while you were dragging. Same meaning, eighteen fewer characters,
+     and setFitted() holds it to the single line it now fits on. */
   function gainSentence(beta) {
     const g = P.gamma(beta);
     const gain = (g - 1) * YEAR;
-    if (gain < 1e-6) return "Earth gains about " + (gain * 1e9).toFixed(1) + " nanoseconds per year you experience.";
-    if (gain < 1e-3) return "Earth gains about " + (gain * 1e6).toFixed(1) + " microseconds per year you experience.";
-    if (gain < 60) return "Earth gains about " + gain.toFixed(2) + " seconds per year you experience.";
-    return "Earth gains about " + P.formatDuration(gain) + " for every year you experience.";
+    if (gain < 1e-6) return "Earth gains " + (gain * 1e9).toFixed(1) + " nanoseconds per year of yours.";
+    if (gain < 1e-3) return "Earth gains " + (gain * 1e6).toFixed(1) + " microseconds per year of yours.";
+    if (gain < 60) return "Earth gains " + gain.toFixed(2) + " seconds per year of yours.";
+    return "Earth gains " + P.formatDuration(gain) + " per year of yours.";
   }
 
   /* One argument, and it is the reason the rail no longer catches.
@@ -891,6 +1049,46 @@
     // Wrapped, not passed by reference: a listener is handed an Event, and
     // onSlider's one parameter is an exact speed.
     $("speed").addEventListener("input", () => { paintRailFill(); onSlider(); });
+
+    /* Which ring the rail gets, if any.
+
+       Browsers count a range input as focus-visible after an ordinary mouse
+       click — unlike a button — so the white keyboard ring fired every time
+       anyone grabbed the rail, and it is the widest object on the page. The
+       ring itself has to stay: it is the only thing telling a keyboard visitor
+       where they are. So the two cases get told apart by hand.
+
+       Pointer focus is marked at pointerdown, before focus lands. Any key
+       pressed on the rail afterwards clears the mark, because someone who
+       grabbed it with a mouse and then reached for the arrow keys has become
+       a keyboard visitor mid-interaction and needs the ring back. */
+    $("speed").addEventListener("pointerdown", () => {
+      $("speed").classList.add("by-pointer");
+    });
+    $("speed").addEventListener("keydown", () => {
+      $("speed").classList.remove("by-pointer");
+    });
+    $("speed").addEventListener("blur", () => {
+      $("speed").classList.remove("by-pointer");
+    });
+    /* Fine control, for settling on a speed rather than finding one.
+
+       Even with the relativistic end given half the rail, ten orders of
+       magnitude do not fit on a control you can reach across, and one pixel
+       up at the top is still a real change in γ. The wheel moves the rail by
+       a fraction of a pixel's worth at a time. Nothing is being stolen from
+       the page — it does not scroll. */
+    $("speed").addEventListener("wheel", (e) => {
+      const el = $("speed");
+      if (el.disabled) return;
+      e.preventDefault();
+      // deltaMode: 0 pixels, 1 lines, 2 pages.
+      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
+      const next = Number(el.value) - e.deltaY * unit * 0.25;
+      setRail(Math.max(0, Math.min(1, next / RAIL_MAX)));
+      onSlider();
+    }, { passive: false });
+
     $("speed").addEventListener("keydown", (e) => {
       // Page Up / Page Down step between detents rather than by a raw amount.
       if (e.key !== "PageUp" && e.key !== "PageDown") return;
@@ -918,6 +1116,47 @@
     $("reset").addEventListener("click", reset);
     wireLookBack();
     wireInfo();
+    wireWelcome();
+  }
+
+  /* ── the front door ──────────────────────────────────────────────────
+     One card, in front of everything, every single time this page opens. It
+     is not a second Info sheet and must never grow into one: the sheet is
+     for the visitor who wants to know how this is done, and this is for the
+     visitor who does not yet know why they would want to look.
+
+     Deliberately not remembered, which is the opposite of how the trip
+     behind it works. This gets shown to a room — a queue of people taking a
+     turn at the same tab, one after another, none of whom watched the last
+     person read it. The second person through the door needs the opening
+     sentence exactly as much as the first did. Someone visiting alone pays
+     one press of a very large button for that; someone arriving cold and
+     not getting it loses the entire point of the exhibit. */
+  function setWelcome(open) {
+    const card = $("welcome");
+    if (card.hidden !== open) return;   // already in the requested state
+    card.hidden = !open;
+    document.querySelector(".stage").inert = open;
+    document.body.classList.toggle("welcome-open", open);
+    if (open) { $("welcome-go").focus(); return; }
+    // Focus lands on the rail, not back on a button that no longer exists on
+    // screen — the card's last line just said to move it, and for anyone on a
+    // keyboard the arrow keys now do exactly that.
+    $("speed").focus();
+  }
+
+  function wireWelcome() {
+    $("welcome-go").addEventListener("click", () => setWelcome(false));
+    $("welcome-x").addEventListener("click", () => setWelcome(false));
+    // Same rule as the sheet: the backdrop is part of the dialog, so a click
+    // that lands on it rather than on the card is a click outside.
+    $("welcome").addEventListener("click", (e) => {
+      if (e.target === $("welcome")) setWelcome(false);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape" || $("welcome").hidden) return;
+      setWelcome(false);
+    });
   }
 
   /* ── the info sheet ──────────────────────────────────────────────────
@@ -941,6 +1180,9 @@
     document.body.classList.toggle("sheet-open", open);
     if (open) {
       sheet.scrollTop = 0;
+      // Fill the equation column before the sheet is on screen rather than on
+      // the next frame, so it never opens showing a page of blank values.
+      paintEquations();
       $("info-close").focus();
     } else {
       G.close();
@@ -1322,8 +1564,10 @@
   /* ── persistence ─────────────────────────────────────────────────
      Not a gimmick, and not an approximation: Earth's elapsed time along your
      worldline is ∫γ dτ, so a running total accumulated across a whole
-     session with the slider moving around is the real integral. */
-  const KEY = "hsat-trip";
+     session with the slider moving around is the real integral.
+
+     KEY is declared at the top of this file, not here — see the note on it
+     there. */
   function save() {
     try {
       sessionStorage.setItem(KEY, JSON.stringify({
