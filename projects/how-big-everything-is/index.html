@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>How Big Everything Is</title>
+<meta name="description" content="A scale ladder you zoom out through, drawn to scale end to end — from an electron to the observable universe, with a measurement next to everything.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ric's Terminal">
+<meta property="og:title" content="How Big Everything Is">
+<meta property="og:description" content="Twenty-one rungs from an electron to the edge of what can be seen, all drawn to the same scale. Zoom out and watch each thing collapse to a speck next to the next one.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23000'/><circle cx='50' cy='50' r='2.5' fill='%23fff'/><circle cx='50' cy='50' r='14' fill='none' stroke='%23888' stroke-width='2'/><circle cx='50' cy='50' r='38' fill='none' stroke='%23444' stroke-width='2'/></svg>">
+<style>
+/* ══════════════════════════════════════════════════════════════════════
+   Sibling to "How Speed Affects Time", and deliberately the same room:
+   black field, frosted instruments floating on it, a serif for sentences,
+   a grotesque for controls, a monospace for anything that is a number.
+
+   And the same colour rule, which matters more here than it did there.
+   The interface is greys, white and black — no accent colour anywhere —
+   because the only saturated thing on this page should be an object. The
+   Earth is blue because there is water on it. Give the buttons a blue and
+   that sentence stops being legible.
+   ══════════════════════════════════════════════════════════════════════ */
+:root {
+  --bg: #08080a;
+  --ink: #f2f2f4;
+  --dim: #9a9aa2;
+  /* The floor for anything carrying words: measures 4.6:1 on the panels. */
+  --dimmer: #85858e;
+
+  --serif: ui-serif, "New York", "Iowan Old Style", "Palatino Linotype", Palatino, "Hoefler Text", Georgia, serif;
+  --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  --pad: clamp(.6rem, 1.6vw, 1rem);
+  --rail-w: 15.4rem;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body {
+  height: 100%; background: var(--bg); color: var(--ink);
+  font-family: var(--sans); overflow: hidden; overscroll-behavior: none;
+}
+body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+[hidden] { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.glass {
+  background: linear-gradient(180deg, rgba(30,32,42,.70), rgba(8,8,12,.80));
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.13),
+    inset 0 -1px 0 rgba(0,0,0,.5),
+    0 14px 40px rgba(0,0,0,.5);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass { background: rgba(10,10,14,.95); }
+}
+
+/* ── the field ─────────────────────────────────────────────────────────
+   The whole page is one canvas. Everything is drawn into it in metres and
+   divided by the width of the current frame — there is no DOM element
+   anywhere whose size means anything, which is the only way to hold 45
+   decades without a browser quietly clamping a transform on you. */
+.stage { position: fixed; inset: 0; background: #000; overflow: hidden; }
+.stage-inner { position: absolute; inset: 0; cursor: grab; touch-action: none; }
+.stage-inner.dragging { cursor: grabbing; }
+#view { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+
+/* ── the HUD frame ────────────────────────────────────────────────────
+   One flex column over the field: instruments along the top, the control
+   dock along the bottom, and the middle left alone because the middle is
+   where the objects are.
+
+   The bottom-left corner belongs to the sitewide return pill on every
+   other page, so as on the speed exhibit it moves to the very top-left
+   here and the left rail starts below it. */
+.hud {
+  position: absolute; z-index: 6; inset: 0; display: flex; flex-direction: column;
+  justify-content: space-between; gap: var(--pad); pointer-events: none;
+  padding:
+    calc(var(--pad) + env(safe-area-inset-top))
+    calc(var(--pad) + env(safe-area-inset-right))
+    calc(var(--pad) + env(safe-area-inset-bottom))
+    calc(var(--pad) + env(safe-area-inset-left));
+}
+.hud > * { min-height: 0; }
+.hud .cluster, .hud .scalebar, .hud .fact, .hud .compare,
+.hud .dock, .hud .iconbtn { pointer-events: auto; }
+
+/* flex: 1 so the top row owns the height left over above the dock. Without
+   that the row sizes to its own content, the fact card grows past the
+   bottom of the window, and the longest ones get their last paragraph cut
+   off by the dock instead of scrolling inside their own panel. */
+.hud-top { display: flex; flex: 1 1 auto; align-items: flex-start; gap: var(--pad); min-height: 0; }
+.hud-mid { flex: 1 1 auto; }
+.rail { display: flex; flex-direction: column; gap: .5rem; min-width: 0; max-height: 100%; }
+.rail-left { align-items: flex-start; padding-top: 2.55rem; flex: 0 1 auto;
+  min-height: 0; overflow: hidden; }
+.rail-right { align-items: flex-end; }
+
+/* ── the cluster ──────────────────────────────────────────────────────
+   What you are looking at, how big it is, and how wide the frame around
+   it is. Those three things are one object because the comparison between
+   them is the entire exhibit — an object's size means nothing without the
+   window it is sitting in. */
+.cluster { padding: .55rem .78rem .6rem; width: var(--rail-w); max-width: 100%; }
+.who { display: block; font: 600 .58rem/1.3 var(--mono); letter-spacing: .17em;
+  text-transform: uppercase; color: var(--dim); }
+.cluster .name { font: 400 1.14rem/1.2 var(--serif); letter-spacing: -.01em;
+  margin-top: .06rem; transition: opacity .2s; }
+/* Never wrapped. The measurement changes length as the unit rolls over
+   ("865,000 km" to "20 AU" to "100 thousand light-years"), and a box that
+   grows a line taller and shorter moves the scale bar and the fact card
+   under it every time. setFitted() shrinks the type instead, down to the
+   house floor of 11px. */
+.cluster .measure { font: 300 .94rem/1.22rem var(--mono); letter-spacing: -.01em;
+  margin-top: .12rem; white-space: nowrap; overflow: hidden;
+  transition: opacity .2s; }
+.cluster .dimline { font: .68rem/1.3 var(--mono); color: var(--dim);
+  transition: opacity .2s; }
+.cluster .alt { font: .72rem/1.36 var(--serif); color: var(--dimmer);
+  transition: opacity .2s; text-wrap: pretty; }
+.cluster .gap { margin-top: .5rem; padding-top: .5rem;
+  border-top: 1px solid rgba(255,255,255,.12); }
+.gap .big { font: 300 clamp(1.05rem, 1.8vw, 1.32rem)/1.62rem var(--mono);
+  letter-spacing: -.02em; margin-top: .04rem;
+  white-space: nowrap; overflow: hidden; min-height: 1.62rem; }
+
+/* ── the scale bar ────────────────────────────────────────────────────
+   A map's scale bar, and it does the same job: it is the only thing on
+   screen that tells you how much of the picture a given number of pixels
+   is worth. It picks a round 1, 2 or 5 × 10ⁿ and changes its own length,
+   the way a paper map does, rather than holding a fixed length and
+   printing an ugly number. */
+.scalebar { display: flex; align-items: center; gap: .55rem;
+  padding: .42rem .7rem .46rem; width: var(--rail-w); max-width: 100%; }
+.scalebar .bar { position: relative; height: 9px; flex: none;
+  border-left: 1px solid var(--ink); border-right: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink); }
+.scalebar .l { flex: 0 1 auto; min-width: 0; font: 600 .64rem/1 var(--mono);
+  color: var(--ink); white-space: nowrap; }
+
+/* ── the fact card ────────────────────────────────────────────────────
+   Held back until the rail stops moving. The rungs are close enough
+   together that a card firing on each one you pass through is a strobe
+   rather than a caption — same reasoning as the checkpoints on the speed
+   exhibit, and the same fix. */
+.fact { width: var(--rail-w); max-width: 100%; padding: .7rem .9rem .8rem;
+  flex: 0 1 auto; overflow-y: auto; overscroll-behavior: contain; min-height: 3.5rem; }
+.fact.in { animation: factin .34s ease-out both; }
+@keyframes factin { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.fact .lede { margin-top: .25rem; color: var(--ink);
+  font: 400 .92rem/1.55 var(--serif); text-wrap: pretty; }
+.fact .body { margin-top: .55rem; color: #c8c8d0;
+  font: 400 .84rem/1.6 var(--serif); text-wrap: pretty; }
+.fact .body em { color: #e4e4ea; font-style: italic; }
+.fact .caveat { margin-top: .6rem; padding-top: .55rem;
+  border-top: 1px solid rgba(255,255,255,.12); color: var(--dimmer);
+  font: italic 400 .78rem/1.5 var(--serif); text-wrap: pretty; }
+.fact-more { display: none; margin-top: .5rem; padding: .4rem 0; cursor: pointer;
+  background: none; border: 0; color: var(--ink);
+  font: 600 .6rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+.fact-more:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+/* ── the corner ───────────────────────────────────────────────────── */
+.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .35rem; }
+.iconbtn {
+  display: inline-flex; align-items: center; gap: .4rem; cursor: pointer;
+  padding: .48rem .8rem; border-radius: 999px; color: var(--ink);
+  font: 600 .66rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase;
+  transition: background .15s, border-color .15s, transform .15s;
+}
+.iconbtn:hover { transform: translateY(-1px); border-color: rgba(255,255,255,.3); }
+.iconbtn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+/* The rung list only hides behind a button where the chips will not fit. */
+#menu-open { display: none; }
+.burger { display: inline-block; width: .8rem; height: .1rem; background: currentColor;
+  box-shadow: 0 -.26rem 0 currentColor, 0 .26rem 0 currentColor; }
+
+/* ── how many of these fit ────────────────────────────────────────────
+   Numbers are what this page is trying to get past, so the two on this
+   panel are chosen to be the two a body can hold: how many of *you* the
+   frame is worth, and how many of the largest rung small enough to be
+   worth counting. Both are recomputed every frame, so they roll as you
+   drag — which is the part that lands. */
+.compare { padding: .5rem .8rem .58rem; max-width: 100%; text-align: right; }
+.compare .row { display: block; color: var(--dim); font: .72rem/1.6 var(--serif); }
+.compare .row b { color: var(--ink); font: 400 .86rem/1.5 var(--mono); font-weight: 400; }
+
+/* ── the dock ─────────────────────────────────────────────────────── */
+.hud-bottom { display: flex; align-items: flex-end; justify-content: center; gap: var(--pad); }
+.dock { flex: 0 1 62rem; min-width: 0; padding: .85rem 1rem .9rem; }
+.railrow { display: flex; align-items: center; gap: 1.2rem; }
+
+input[type=range] {
+  -webkit-appearance: none; appearance: none; flex: 1; min-width: 0;
+  height: 34px; background: transparent; cursor: pointer;
+  --fill: calc(10px + var(--p, 0) * (100% - 20px));
+}
+input[type=range]::-webkit-slider-runnable-track {
+  height: 6px; border-radius: 999px;
+  background: linear-gradient(90deg,
+    rgba(242,242,244,.9) var(--fill), rgba(255,255,255,.14) var(--fill));
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.06);
+}
+input[type=range]::-moz-range-track {
+  height: 6px; border-radius: 999px; background: rgba(255,255,255,.14);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.06);
+}
+input[type=range]::-moz-range-progress { height: 6px; border-radius: 999px; background: rgba(242,242,244,.9); }
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+  margin-top: -7px; border: none;
+  background: radial-gradient(circle at 34% 30%, #ffffff, #e2e2e8 52%, #a8a8b2 100%);
+  box-shadow: 0 2px 8px rgba(0,0,0,.7), 0 0 0 6px rgba(242,242,244,.10);
+}
+input[type=range]::-moz-range-thumb {
+  width: 20px; height: 20px; border-radius: 50%; border: none;
+  background: radial-gradient(circle at 34% 30%, #ffffff, #e2e2e8 52%, #a8a8b2 100%);
+  box-shadow: 0 2px 8px rgba(0,0,0,.7);
+}
+/* Browsers count a plain mouse click on a range as focus-visible, so an
+   untreated ring lights up the full width of the dock the moment anyone
+   grabs the rail. .by-pointer is set only when the focus came from a
+   pointer and dropped the instant a key is pressed — keyboard visitors
+   keep the ring, mouse visitors never see it. */
+input[type=range]:focus-visible { outline: 2px solid var(--ink); outline-offset: 6px; border-radius: 999px; }
+input[type=range].by-pointer:focus-visible { outline: none; }
+
+/* Fixed width, not a minimum. The readout changes length as you drag
+   ("10⁻¹⁸ m" to "10⁻⁷ m"), it is a flex sibling of a flex:1 rail, and any
+   width it gives back comes straight out of the track — which slides the
+   thumb sideways under a mouse that is holding still. */
+.scaleout { --sz: clamp(1rem, 1.9vw, 1.3rem); flex: none; width: calc(var(--sz) * 6.2); text-align: right; }
+.scaleout .b { font: 300 var(--sz)/1.15 var(--mono); letter-spacing: -.01em; }
+.scaleout .near { font: .7rem/1.3 var(--mono); color: var(--dimmer); min-height: 1.3em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── the rungs ────────────────────────────────────────────────────────
+   One row, scrolling sideways, in ladder order. Not wrapped into three
+   rows of chips: this list *is* the scale, and a list that reads left to
+   right in one line is the same gesture as the exhibit itself. The active
+   chip is scrolled into view whenever it changes, so the strip tracks
+   where you are rather than needing to be steered separately. */
+.rungs { display: flex; gap: .3rem; margin-top: .7rem; overflow-x: auto;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent;
+  padding-bottom: .3rem;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 14px), transparent); }
+.rungs::-webkit-scrollbar { height: 5px; }
+.rungs::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 999px; }
+.rungs button {
+  flex: none; font: 500 .68rem/1 var(--mono); letter-spacing: .02em; white-space: nowrap;
+  color: var(--dim); background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.07); border-radius: 999px; padding: .4rem .66rem;
+  cursor: pointer; transition: color .15s, background .15s, border-color .15s;
+}
+.rungs button:hover { color: var(--ink); background: rgba(255,255,255,.11); }
+.rungs button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.rungs button[aria-pressed=true] { color: #08080a; background: var(--ink); border-color: var(--ink); }
+/* One line, always. This sentence is rewritten on every step of a drag,
+   and a sentence that rewraps as it changes length grows and shrinks the
+   whole dock while your hand is on it. */
+.rung-note { font: .82rem/1.23rem var(--serif); color: var(--dim); margin-top: .5rem;
+  min-height: 1.23rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── the rung sheet ───────────────────────────────────────────────────
+   The same list as the chips, for the widths where twenty-one chips in a
+   sideways strip is a row of tiny targets nobody is going to hit with a
+   thumb. Rows are 46px tall, over the 44px minimum. */
+.menu { position: fixed; inset: 0; z-index: 44; display: flex; justify-content: flex-end;
+  background: rgba(4,4,6,.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  animation: sheetin .18s ease-out; }
+.menu-panel { width: min(21rem, 100%); height: 100%; overflow-y: auto; overscroll-behavior: contain;
+  border-radius: 0; border-right: 0; border-top: 0; border-bottom: 0;
+  padding: calc(.9rem + env(safe-area-inset-top)) .9rem calc(1.5rem + env(safe-area-inset-bottom)); }
+.menu-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  margin-bottom: .8rem; }
+.menu-head h2 { font: 400 1.15rem/1.2 var(--serif); }
+.menu-row { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem;
+  width: 100%; min-height: 46px; padding: .5rem .7rem; text-align: left; cursor: pointer;
+  background: none; border: 0; border-bottom: 1px solid rgba(255,255,255,.08); color: var(--ink);
+  border-radius: 8px; }
+.menu-row:hover { background: rgba(255,255,255,.08); }
+.menu-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.menu-row .t { font: 400 .95rem/1.35 var(--serif); }
+.menu-row .m { flex: none; color: var(--dim); font: .74rem/1.35 var(--mono); }
+.menu-row[aria-current=true] { background: rgba(255,255,255,.13); }
+.menu-row[aria-current=true] .t { color: var(--ink); font-weight: 600; }
+.sheet-close { flex: none; width: 2.2rem; height: 2.2rem; border-radius: 50%; cursor: pointer;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); color: var(--ink);
+  font: 300 1.2rem/1 var(--sans); }
+.sheet-close:hover { background: rgba(255,255,255,.14); }
+.sheet-close:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+/* ── the welcome card ─────────────────────────────────────────────────
+   The one screen here not written for someone leaning into a monitor. It
+   may be read out loud, from the back of a room, to people who have never
+   met any of this — so every value departs from the house style in the
+   same direction: larger type, full-strength ink, one wide target. */
+.welcome {
+  position: fixed; inset: 0; z-index: 45; display: grid; overflow-y: auto;
+  overscroll-behavior: contain; background: rgba(4,4,6,.72);
+  backdrop-filter: blur(10px) saturate(120%); -webkit-backdrop-filter: blur(10px) saturate(120%);
+  padding: clamp(1rem, 4vh, 3rem)
+           calc(1rem + env(safe-area-inset-right))
+           calc(1rem + env(safe-area-inset-bottom))
+           calc(1rem + env(safe-area-inset-left));
+  animation: sheetin .18s ease-out;
+}
+.welcome-card { position: relative; margin: auto; width: min(38rem, 100%);
+  padding: clamp(1.5rem, 4vw, 2.5rem); border-radius: 18px; }
+.welcome-title { padding-right: 2.8rem; margin-bottom: 1.15rem; color: var(--ink);
+  font: 400 clamp(1.55rem, 4.4vw, 2.25rem)/1.15 var(--serif); letter-spacing: -.015em; }
+.welcome p { margin-bottom: .85rem; color: var(--ink); text-wrap: pretty;
+  font: 400 clamp(1.12rem, 2.2vw, 1.35rem)/1.55 var(--serif); }
+.welcome p:last-of-type { margin-bottom: 0; }
+.welcome .how { margin-top: 1.3rem; padding-top: 1.15rem;
+  border-top: 1px solid rgba(255,255,255,.16); color: #dcdce2;
+  font-size: clamp(1rem, 1.9vw, 1.15rem); }
+.welcome .how b { color: var(--ink); font-weight: 600; }
+.welcome-go {
+  display: block; width: 100%; margin-top: 1.5rem; padding: 1.05rem 1rem;
+  border-radius: 14px; cursor: pointer;
+  background: var(--ink); color: #08080a; border: 1px solid var(--ink);
+  font: 600 clamp(.88rem, 2vw, 1.02rem)/1.2 var(--mono);
+  letter-spacing: .17em; text-transform: uppercase;
+  transition: opacity .15s, transform .15s;
+}
+.welcome-go:hover { opacity: .86; transform: translateY(-1px); }
+.welcome-go:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+.welcome-x {
+  position: absolute; top: .7rem; right: .7rem; width: 2.6rem; height: 2.6rem;
+  border-radius: 50%; cursor: pointer; color: var(--ink);
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.16);
+  font: 300 1.3rem/1 var(--sans);
+}
+.welcome-x:hover { background: rgba(255,255,255,.15); }
+.welcome-x:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+@media (max-height: 560px) {
+  .welcome-card { padding: 1.15rem 1.3rem 1.3rem; }
+  .welcome-title { font-size: 1.4rem; margin-bottom: .7rem; }
+  .welcome p { font-size: 1.02rem; line-height: 1.45; margin-bottom: .5rem; }
+  .welcome .how { margin-top: .8rem; padding-top: .7rem; }
+  .welcome-go { margin-top: .9rem; padding: .8rem 1rem; }
+}
+
+/* ── the info sheet ───────────────────────────────────────────────────
+   Everything that is prose lives behind one button. The first screen is
+   the field, one rail and one caption, and it has to work for somebody
+   who never opens this. */
+.sheet {
+  position: fixed; inset: 0; z-index: 40; overflow-y: auto; overscroll-behavior: contain;
+  background: rgba(4,4,6,.55);
+  backdrop-filter: blur(8px) saturate(120%); -webkit-backdrop-filter: blur(8px) saturate(120%);
+  padding: clamp(.75rem, 4vh, 3rem) 1rem calc(4rem + env(safe-area-inset-bottom));
+  animation: sheetin .18s ease-out;
+}
+@keyframes sheetin { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sheet, .menu { animation: none; } }
+.sheet-inner { width: min(70ch, 100%); margin: 0 auto; padding: clamp(1.1rem, 3vw, 2rem);
+  border-radius: 18px; }
+.sheet-head { display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 1rem; margin-bottom: 1.4rem; }
+.sheet-head h1 { font: 400 clamp(1.4rem, 3.4vw, 1.9rem)/1.2 var(--serif); letter-spacing: -.01em; }
+.sheet-head .lede { margin-top: .3rem; font: italic 400 .92rem/1.5 var(--serif); color: var(--dim); }
+.sheet-nav { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: 1.6rem; }
+.sheet-nav a {
+  padding: .42rem .72rem; border-radius: 999px; text-decoration: none;
+  color: var(--dim); background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
+  font: 600 .58rem/1 var(--mono); letter-spacing: .13em; text-transform: uppercase;
+  transition: color .15s, background .15s;
+}
+.sheet-nav a:hover { color: var(--ink); background: rgba(255,255,255,.13); }
+.sheet-nav a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.sheet section { padding-top: 1.5rem; margin-top: 1.5rem;
+  border-top: 1px solid rgba(255,255,255,.1); scroll-margin-top: 1rem; }
+.sheet section:first-of-type { padding-top: 0; margin-top: 0; border-top: 0; }
+.sheet h2 { font: 600 .62rem/1.3 var(--mono); letter-spacing: .2em; text-transform: uppercase;
+  color: var(--dim); margin-bottom: .7rem; }
+.sheet p { font: 400 1rem/1.7 var(--serif); color: #dcdce2; margin-bottom: .8rem; text-wrap: pretty; }
+.sheet p.tight { font-size: .94rem; color: #c2c2ca; }
+.sheet strong { color: var(--ink); font-weight: 600; }
+.sheet .sources { font-size: .84rem; color: var(--dimmer); }
+.sheet .foot { margin-top: 1.6rem; padding-top: 1.2rem; border-top: 1px solid rgba(255,255,255,.1);
+  font: .86rem/1.6 var(--serif); color: var(--dim); }
+button.term {
+  font: inherit; color: inherit; background: none; border: none; padding: 0;
+  border-bottom: 1px dotted var(--dim); cursor: pointer; line-height: inherit;
+}
+button.term:hover { border-bottom-color: var(--ink); color: var(--ink); }
+button.term:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* The ladder, printed out. Scrolls on its own rather than pushing the
+   sheet sideways — a table is the one thing on a page like this that is
+   allowed to be wider than a phone. */
+.tablewrap { overflow-x: auto; overscroll-behavior-x: contain; margin-top: .8rem; }
+.ladder { width: 100%; min-width: 30rem; border-collapse: collapse; }
+.ladder th, .ladder td { padding: .42rem .7rem .42rem 0; text-align: left; vertical-align: baseline;
+  border-bottom: 1px solid rgba(255,255,255,.07); }
+.ladder thead th { color: var(--dim); font: 600 .56rem/1.5 var(--mono);
+  letter-spacing: .17em; text-transform: uppercase; }
+.ladder tbody th { width: 2rem; color: var(--dimmer); font: 400 .8rem/1.45 var(--mono); }
+.ladder td { color: #d0d0d8; font: .84rem/1.5 var(--serif); }
+.ladder td.num { font-family: var(--mono); font-size: .8rem; color: var(--ink); white-space: nowrap; }
+
+/* ── the sitewide return pill, relocated ─────────────────────────────
+   Fixed bottom-left everywhere else. Here the bottom belongs to the dock
+   and the field runs to all four edges, so it moves to the head of the
+   left rail. Same control, same look, one corner up. */
+body .relay-return { top: max(12px, env(safe-area-inset-top)); bottom: auto; }
+body .relay-egg { bottom: max(96px, calc(env(safe-area-inset-bottom) + 96px)); }
+body.sheet-open .relay-return,
+body.menu-open .relay-return,
+body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
+
+/* ── narrow ───────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  /* Twenty-one chips in a sideways strip is a row of tiny targets nobody
+     will hit with a thumb. The same list moves behind the button, where
+     each rung gets a 46px row and its measurement next to it. */
+  .rungs { display: none; }
+  #menu-open { display: inline-flex; }
+  .hud-bottom { flex-direction: column; align-items: stretch; gap: .5rem; }
+  .dock { flex: none; }
+  .compare { display: none; }
+  /* The rail is the full width of the window here, so the fact card sits
+     squarely on top of the object it is describing. Collapsed to its lede
+     instead — one sentence, which is the sentence that matters — with the
+     rest a tap away. The canvas then centres objects in whatever height is
+     left below the rail rather than in the middle of the window. */
+  .fact { max-height: 42vh; }
+  .fact .body, .fact .caveat { display: none; }
+  .fact.open .body { display: block; }
+  .fact.open .caveat:not([hidden]) { display: block; }
+  .fact-more { display: block; }
+}
+@media (max-width: 620px) {
+  :root { --rail-w: auto; }
+  /* stretch, not flex-start: in a column rail the children's width comes
+     from align-items, and a cluster sized to its own text wraps its
+     numbers long before it runs out of rail. */
+  .rail-left { align-items: stretch; flex: 1 1 auto; }
+  .cluster { padding: .55rem .7rem .6rem; }
+  .cluster .name { font-size: 1.12rem; }
+  .cluster .measure { font-size: .92rem; line-height: 1.2rem; }
+  .cluster .alt { display: none; }
+  .cluster .gap { margin-top: .5rem; padding-top: .5rem; }
+  .fact .body { font-size: .8rem; }
+  .iconbtn { font-size: .6rem; letter-spacing: .1em; padding: .46rem .7rem; }
+  .actions { flex-direction: column; align-items: flex-end; }
+  .railrow { gap: .7rem; }
+  .rung-note { font-size: .78rem; }
+}
+/* A short landscape phone has no room for a three-row dock, and the fact
+   card would cover the objects it is describing. */
+@media (max-height: 520px) {
+  .rung-note { display: none; }
+  .fact { display: none; }
+  .cluster .alt { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="stage-inner">
+    <canvas id="view" aria-label="A scale ladder from an electron to the observable universe, drawn to scale"></canvas>
+
+    <div class="hud">
+      <div class="hud-top">
+        <div class="rail rail-left">
+          <div class="cluster glass">
+            <span class="who" id="obj-kicker">As small as it gets</span>
+            <div class="name" id="obj-name">An electron</div>
+            <div class="measure num" id="obj-measure">—</div>
+            <div class="dimline" id="obj-dim"></div>
+            <div class="alt" id="obj-alt"></div>
+            <div class="gap">
+              <span class="who">Across this frame</span>
+              <div class="big num" id="frame-width">—</div>
+            </div>
+          </div>
+
+          <!-- The scale bar. Its length changes, its number stays round. -->
+          <div class="scalebar glass" aria-hidden="true">
+            <div class="bar" id="scalebar-fill" style="width:120px"></div>
+            <span class="l num" id="scalebar-label">—</span>
+          </div>
+
+          <!-- Appears when the rail stops. Never while you are dragging. -->
+          <div class="fact glass" id="fact" hidden>
+            <span class="who">What that means</span>
+            <p class="lede" id="fact-lede"></p>
+            <p class="body" id="fact-body"></p>
+            <p class="caveat" id="fact-caveat" hidden></p>
+            <!-- Only ever shown where the card would otherwise cover the
+                 object it is describing. See the 900px block. -->
+            <button type="button" class="fact-more" id="fact-more"
+                    aria-expanded="false" aria-controls="fact-body">Read more</button>
+          </div>
+        </div>
+
+        <div class="hud-mid"></div>
+
+        <div class="rail rail-right">
+          <div class="actions">
+            <button type="button" class="iconbtn glass" id="menu-open"
+                    aria-expanded="false" aria-controls="menu">
+              <span class="burger" aria-hidden="true"></span> Rungs
+            </button>
+            <button type="button" class="iconbtn glass" id="info-open"
+                    aria-expanded="false" aria-controls="info-sheet">Info</button>
+          </div>
+          <div class="compare glass num" id="compare" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <div class="hud-bottom">
+        <div class="dock glass">
+          <div class="railrow">
+            <input type="range" id="zoom" min="0" max="10000" value="0" step="1"
+                   aria-label="Zoom out along the scale" aria-describedby="scale-readout">
+            <div class="scaleout" id="scale-readout">
+              <div class="b num" id="power-out">—</div>
+              <div class="near num" id="power-near"></div>
+            </div>
+          </div>
+          <div class="rungs" id="rungs" role="group" aria-label="Jump to a rung"></div>
+          <p class="rung-note" id="rung-note"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- The same list as the chips, for thumbs. -->
+<div class="menu" id="menu" role="dialog" aria-modal="true" aria-labelledby="menu-title" hidden>
+  <div class="menu-panel glass">
+    <div class="menu-head">
+      <h2 id="menu-title">The ladder</h2>
+      <button type="button" class="sheet-close" id="menu-close" aria-label="Close">✕</button>
+    </div>
+    <div id="menu-list"></div>
+  </div>
+</div>
+
+<!-- The front door. Shown once a session, and the only thing on this page
+     written for someone who has never heard of any of it. -->
+<div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="welcome-title" hidden>
+  <div class="welcome-card glass">
+    <button type="button" class="welcome-x" id="welcome-x" aria-label="Close">✕</button>
+    <h1 class="welcome-title" id="welcome-title">Everything, to scale</h1>
+    <p>You are about halfway.</p>
+    <p>Between you and the smallest thing anyone has measured there are
+       eighteen zeroes. Between you and the far edge of what anyone can see,
+       twenty-seven.</p>
+    <p>Those numbers do not mean anything. That is the problem with them.</p>
+    <p>So this page does not tell you how big things are. It shows you, at
+       one scale, all the way out — and lets you watch each thing you just
+       looked at shrink to nothing next to the next one.</p>
+    <p class="how">Drag the picture sideways, or pull the slider, to
+       <b>zoom out</b>. Stop anywhere to read about what you have landed on.</p>
+    <button type="button" class="welcome-go" id="welcome-go">Start at an electron</button>
+  </div>
+</div>
+
+<!-- Everything past this point is opt-in, and behind the Info button. -->
+<div class="sheet" id="info-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
+  <div class="sheet-inner glass">
+    <div class="sheet-head">
+      <div>
+        <h1 id="sheet-title">How big everything is</h1>
+        <p class="lede">Twenty-one rungs, one scale, and no fudging in between.</p>
+      </div>
+      <button type="button" class="sheet-close" id="info-close" aria-label="Close">✕</button>
+    </div>
+
+    <nav class="sheet-nav" aria-label="Sections of this page">
+      <a href="#p-read">How to read it</a>
+      <a href="#p-order">The order</a>
+      <a href="#p-scope">Where the edges are</a>
+      <a href="#p-ladder">The ladder</a>
+      <a href="#p-sources">Sources</a>
+    </nav>
+
+    <section id="p-read">
+      <h2>How to read it</h2>
+      <p>It is a zoom, not a scroll. The view never moves sideways — the frame
+        stays over the same point and only ever gets wider, so everything grows
+        or shrinks about the middle of the window. Which means the thing you
+        were just looking at does not leave: it collapses toward the centre and
+        turns into a speck while the next thing opens up around it. That
+        collapse is the exhibit.</p>
+      <p class="tight"><strong>Rungs fade in as you reach them.</strong> Two pairs on this
+        ladder are very close — the Sun is only 1.8 times the width of the Moon's whole
+        orbit — and drawn at full strength the bigger one is a wall of light behind the
+        rung you are actually on. So the next rung up stays dark until you travel toward
+        it, and everything you have already passed stays at full strength.</p>
+      <p class="tight"><strong>Things overlap, and that is the geometry.</strong> In a zoom that
+        converges on one point, everything smaller ends up inside everything bigger. Some of
+        those are literally true — the Earth is inside the Moon's orbit, the Sun is inside
+        the planets' orbits — and some are just a size comparison sitting on top of itself.
+        The Moon's entire orbit fits inside the Sun with room to spare, and on this page it
+        does exactly that.</p>
+      <p class="tight"><strong>The calipers</strong> bracket exactly the dimension the caption
+        is quoting — the width of the lakes, the height of the tree, the diameter of a
+        sphere, the gap for a distance. When an object is wider than the window the
+        bracket runs off both sides and its ends become arrows, because a caliper that
+        quietly stops at the edge of the screen is measuring the screen.</p>
+      <p class="tight"><strong>The grid</strong> is powers of ten, in real metres. As you zoom
+        out the lines slide together, fade, and are replaced by the next decade up, which
+        springs back to full spacing. It is there for the long empty stretches: between the
+        Oort Cloud and the Milky Way there is nothing at all to look at for four and a half
+        decades, and without the grid that reads as the page having frozen instead of as an
+        enormous amount of empty space.</p>
+      <p class="tight"><strong>The background belongs to the scale.</strong> There is no one
+        star wallpaper following you from the electron to the edge of everything. Below a
+        millimetre the backdrop is suspended matter, because a virus and a blood cell are in
+        water; from the Great Lakes to the Moon's orbit the landscape falls away and stars
+        come up in three layers at different depths; from the nearest star the space between
+        things stops being empty and becomes gas and the band of our own galaxy; by the Local
+        Group there are no stars left in the sky at all, only galaxies; and past Laniakea
+        those resolve into filaments. The star layers converge on the middle of the frame at
+        different rates, which is parallax — pointed along the axis this exhibit actually
+        travels on, since the camera only ever zooms.</p>
+      <p class="tight"><strong>Every rung has an idle loop, and each one is a motion the
+        thing really makes.</strong> The atom's cloud shifts and does not orbit. The elephant
+        fans an ear, which is what an elephant standing still is mostly doing. The comets in
+        the Oort Cloud are on real Kepler orbits and crawl at aphelion. The Sun throws an
+        eruption every seventeen seconds, at a new bearing each time. Arrive at a rung and it
+        reacts once, then settles into something slow enough to sit and watch.</p>
+    </section>
+
+    <section id="p-order">
+      <h2>Why the order looks wrong</h2>
+      <p>The ladder is sorted strictly by size, with no exceptions, and that
+        produces one result people argue with: <strong>the largest star anyone has
+        measured is smaller than the planets' orbits.</strong> So Stephenson 2-18
+        lands between the Sun and Neptune's orbit rather than out past the Oort Cloud
+        where a story about "the biggest star" would want to put it.</p>
+      <p class="tight">It is not a bug and it is the most useful thing on the page. A star
+        is a small object in an enormous amount of empty space, and the empty space wins
+        every time you zoom out. The same thing happens at the other end: the Oort Cloud
+        very nearly reaches the nearest star, because a star's territory is not a tidy
+        sphere with a gap after it.</p>
+      <p class="tight">Some rungs are objects and some are distances — the Moon's orbit, the
+        gap to Proxima Centauri. Those say so in the caption, because a distance quietly
+        presented as an object is a lie told by layout.</p>
+    </section>
+
+    <section id="p-scope">
+      <h2>Where the edges are</h2>
+      <p><strong>The geometry is the data.</strong> Every position, every size, every gap and
+        every caliper on the field comes from the metre value in the table below, divided by
+        the width of the current frame. There is no "about this big" anywhere in the layout.</p>
+      <p><strong>The pictures are illustrations.</strong> The <em>sizes</em> are measurements;
+        the drawings inside them are drawn by hand and their colours are chosen. An elephant
+        is grey because elephants are grey, not because anything was sampled. Treat the shapes
+        as labels on correctly-sized boxes.</p>
+      <p><strong>Nothing is drawn inside a thing that has no measured inside.</strong> This
+        rules out three pictures you have seen a hundred times, and all three are wrong the
+        same way — they draw trajectories for things that do not have positions. The electron
+        has no rings, no shells and no axis, because it is a point particle with no known
+        parts. The hydrogen atom has no ball going round it; what shifts there is a
+        probability of being somewhere, which is the only thing an electron in an atom
+        actually has. And the proton has no three coloured dots: it has three quarks, but a
+        quark is confined, has never been seen alone, and cannot be put anywhere in
+        particular. What is drawn instead is the thing that <em>was</em> measured — the
+        proton's charge density, falling off exponentially the way its dipole form factor
+        says it must, with the quoted radius marked as the moment of that curve it really is
+        rather than as the wall it is usually mistaken for.</p>
+      <p><strong>The rail is not perfectly logarithmic.</strong> It is mostly divided by decades
+        — the three empty decades between the electron and the proton genuinely cost you three
+        decades of dragging, and you feel them. But two pairs on this ladder are very close
+        together (you and an elephant; the Oort Cloud and the nearest star), and a strictly
+        logarithmic rail gives those a slice about two pixels wide, which is a rung you cannot
+        stop on. So every gap gets a flat extra 0.45 decades. Across the whole rail that is
+        9 decades of padding against 45 real ones.</p>
+      <p><strong>The electron has no measured size.</strong> It is drawn at the experimental
+        upper bound with a dashed edge, and the dashes mean <em>we do not know where this
+        stops</em>. Every other rung is a measurement.</p>
+      <p><strong>Things drawn at true scale that you therefore cannot see.</strong> The nucleus
+        inside the hydrogen atom is a hundredth of a pixel. The planets on their orbits are
+        thinner than the lines of the orbits themselves. The Sun disappears entirely at
+        Stephenson 2-18's frame. All three are correct, and all three are the reason the
+        diagrams you have seen elsewhere are wrong.</p>
+      <p><strong>The Great Lakes are traced from longitude and latitude</strong> and projected
+        the way a map is, so the shape you recognize is a shape the numbers produced. It is a
+        coarse trace — about sixty points for five lakes — not a coastline dataset.</p>
+      <p><strong>Three figures, everywhere.</strong> No number here is quoted more precisely
+        than that, because the fourth figure is noise on most of these and completely
+        meaningless on some of them.</p>
+    </section>
+
+    <section id="p-ladder">
+      <h2>The ladder</h2>
+      <p class="tight">Every rung, and the number the drawing was built from.</p>
+      <div class="tablewrap">
+        <table class="ladder">
+          <thead>
+            <tr><th scope="col">#</th><th scope="col">Rung</th><th scope="col">Metres</th><th scope="col">In words</th></tr>
+          </thead>
+          <tbody id="ladder-table"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="p-sources">
+      <h2>Sources</h2>
+      <p class="sources">CODATA 2018 for the proton charge radius and the Bohr radius.
+        IAU 2012 for the astronomical unit; IAU 2015 for the nominal solar radius.
+        Fok et al. (2012) for the radius of Stephenson 2-18, whose cluster membership —
+        and therefore its size — is disputed. Hipparcos and later parallaxes for Proxima
+        Centauri. Bland-Hawthorn &amp; Gerhard (2016) for the shape of the Galaxy.
+        Tully et al. (2014), <em>Nature</em>, for the Laniakea supercluster and its
+        definition by velocity flow. Planck 2018 for the age of the universe and the
+        comoving distance to the particle horizon. <strong>The shell at the observable
+        universe's rim is real data</strong>: the WMAP nine-year all-sky map of the cosmic
+        microwave background, NASA / WMAP Science Team, taken from the nine-year basic
+        results paper and unwrapped from its Mollweide ellipse back onto the sphere it
+        was flattened from. The colours in it are the temperature scale those maps
+        conventionally use — ±200 microkelvin against a 2.7 kelvin background — and not
+        anything the eye could see, since 2.7 kelvin is microwave. The tallest-tree measurement is the
+        2019 remeasurement of Hyperion. Great Lakes volumes from the EPA and Environment
+        and Climate Change Canada.</p>
+    </section>
+
+    <p class="foot"><button class="term" id="reset">Start over at the electron</button> ·
+      Where you are is remembered while the tab is open.</p>
+  </div>
+</div>
+
+<p class="sr" id="live-region" aria-live="polite" aria-atomic="true"></p>
+
+<script src="src/ladder.js?v=1"></script>
+<script src="src/units.js?v=1"></script>
+<script src="src/sky.js?v=1"></script>
+<script src="src/paint.js?v=1"></script>
+<script src="src/exhibit.js?v=1"></script>
+<script src="../relay-return.js" data-home="../../index.html" data-egg="scale" defer></script>
+</body>
+</html>

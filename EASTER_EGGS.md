@@ -56,6 +56,7 @@ No prompt is required.
 | Geometry of Spacetime / How Speed Affects Time | `now` | `NOW LOST // TRY ANOTHER REFERENCE FRAME` |
 | Siege Conductor | `66` | `COMMAND REJECTED // NICE TRY, PALPATINE` |
 | Starfield | `warp` | `NAV COMPUTER: THE SCENIC ROUTE IS FASTER` |
+| How Big Everything Is | `googol` | `THAT IS A 1 WITH A HUNDRED ZEROES // STILL NOT ON THE LADDER` |
 | The Woodshed (board log) | `beta` | `BETA RECEIVED // PULL HARDER` |
 
 ## Playful controls that are not hidden

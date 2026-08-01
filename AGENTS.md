@@ -113,7 +113,8 @@ everywhere — the navs must agree with each other *and* with the front door.
 
 - **Sub-projects** live in `projects/<name>/` (or a single `.html`) and are **linked
   from the room that fits them** — not given their own room. Current: `spacetime`,
-  `starfield` and `how-speed-affects-time` → Exploration; `the-shape-of-harm`,
+  `starfield`, `how-speed-affects-time` and `how-big-everything-is` → Exploration;
+  `the-shape-of-harm`,
   `autism-reflection.html`, and `state-of-mind-line` → Psyche; `siege-conductor` and
   `farlight` → Workbench; `climbing` → Climbing
   (including the unlisted `climbing/board.html`). Each is
@@ -177,7 +178,11 @@ and Tension apps. Rules for it:
 
 Homepage "transmissions" live in `notes.js`. Curated newest additions live
 in `latest.js`; every room renders
-that data as a banner in its own native style. `orrin.html` is self-updating — leave
+that data as a banner in its own native style. A banner may opt into
+`data-latest-skip-linked`, which passes over any item the page already links to
+outside its `<nav>` — `exploration.html` sets it because it plots all of its own
+projects on the page, so the banner was announcing the newest one directly above
+its own card. Rooms happy to repeat one of their own entries just leave it off. `orrin.html` is self-updating — leave
 its GitHub data logic alone unless fixing a bug. `systems.html` and `updates.html` are
 legacy redirects, not rooms.
 

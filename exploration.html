@@ -19,6 +19,13 @@
       --star: #e8e6f5;
       --nebula: #7a5cff;
       --nebula-dim: #4a3aa0;
+      /* --nebula is the room's accent, but as *type* on the card
+         background it measures ~4.5:1 — sitting exactly on the AA line
+         with nothing in hand. Anything made of words uses this lighter
+         mix instead (~7:1) and leaves --nebula for borders and glow.
+         Don't darken this one to match the accent; that's the trade
+         it exists to avoid. */
+      --nebula-text: #a08cff;
       --faint: #8a87a3;
       --ring: #23213a;
     }
@@ -101,12 +108,49 @@
 
     .subtitle { color: var(--faint); letter-spacing: 0.08em; margin-top: 0.8rem; font-weight: 300; }
 
-    .modules { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.4rem; }
+    /* ── The route ─────────────────────────────────────────────
+       The modules are plotted as waypoints down a chart rail rather
+       than dealt out as a card grid. The rail is the star chart the
+       nav has always promised and the body never delivered; a single
+       column can't stretch one card to a taller neighbour's height;
+       and the running order is itself the recommendation — shortest
+       first, so the top of the rail is where a visitor starts. */
+    .manifest {
+      display: flex; flex-wrap: wrap; gap: 0.3rem 1.1rem; align-items: baseline;
+      font-family: ui-monospace, Menlo, monospace; font-size: 0.69rem;
+      letter-spacing: 0.22em; text-transform: uppercase; color: var(--faint);
+      padding-bottom: 0.85rem; margin-bottom: 1.7rem;
+      border-bottom: 1px solid var(--ring);
+    }
+    .manifest .plotted { color: var(--nebula-text); }
+
+    /* --rail is where the course line sits; --inset is how far the
+       cards clear it. The marker maths is written against both, so
+       the two only have to be re-stated once for narrow screens. */
+    .route { --rail: 0.8rem; --inset: 2.15rem; list-style: none; margin: 0; padding: 0 0 0 var(--inset); position: relative; }
+    .route::before {
+      content: ""; position: absolute; left: var(--rail); top: 1.6rem; bottom: 1.6rem; width: 1px;
+      background: linear-gradient(180deg, transparent, var(--ring) 10%, var(--ring) 90%, transparent);
+    }
+
+    .waypoint { position: relative; margin-bottom: 1.3rem; }
+    .waypoint:last-child { margin-bottom: 0; }
+    /* The ✦ is the nav's waypoint glyph. Its --void background punches
+       the rail out from behind the mark instead of letting the line
+       run through it. */
+    .waypoint::before {
+      content: "✦"; position: absolute; top: 1.4rem;
+      left: calc(var(--rail) - var(--inset) - 0.6rem); width: 1.2rem; text-align: center;
+      font-size: 0.8rem; line-height: 1; color: var(--nebula-dim);
+      background: var(--void); padding: 0.3rem 0;
+    }
+    .waypoint:first-child::before { color: var(--nebula); text-shadow: 0 0 10px var(--nebula); }
+    .waypoint.berth::before { content: "○"; color: var(--faint); }
 
     .module {
       border: 1px solid var(--ring);
       border-radius: 14px;
-      padding: 1.5rem 1.5rem 1.3rem;
+      padding: 1.35rem 1.4rem 1.2rem;
       background: rgba(12, 11, 22, 0.72);
       backdrop-filter: blur(4px);
       text-decoration: none;
@@ -115,26 +159,50 @@
       transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.5s, box-shadow 0.5s;
     }
 
-    a.module:hover {
-      transform: translateY(-6px);
+    a.module:hover, a.module:focus-visible {
+      transform: translateY(-4px);
       border-color: var(--nebula);
+      outline: none;
       box-shadow: 0 12px 40px rgba(122, 92, 255, 0.25);
     }
 
     .module .designation {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem 0.7rem;
       font-family: ui-monospace, Menlo, monospace;
       font-size: 0.69rem;
-      letter-spacing: 0.3em;
-      color: var(--nebula);
-      display: block;
-      margin-bottom: 0.8rem;
+      letter-spacing: 0.22em;
+      color: var(--nebula-text);
+      margin-bottom: 0.75rem;
     }
+    .status { letter-spacing: 0.14em; padding: 0.1rem 0.5rem; border: 1px solid currentColor; border-radius: 999px; }
+    .status.open { color: var(--faint); }
+    .flag { letter-spacing: 0.14em; padding: 0.1rem 0.5rem; border-radius: 999px; color: var(--void); background: var(--nebula-text); }
 
-    .module h2 { font-weight: 400; font-size: 1.25rem; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+    .module h2 { font-weight: 400; font-size: 1.25rem; letter-spacing: 0.04em; margin-bottom: 0.45rem; }
     .module p { color: var(--faint); font-size: 0.9rem; font-weight: 300; }
 
-    .module.offline { opacity: 0.55; }
+    /* The spec line answers the question the room kept ducking: three
+       doors onto the same physics, and nothing said which was a game,
+       which was a read, or how long any of it took. */
+    .spec {
+      display: block; margin-top: 0.9rem; padding-top: 0.75rem;
+      border-top: 1px solid var(--ring);
+      font-family: ui-monospace, Menlo, monospace; font-size: 0.69rem;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint);
+    }
+
+    /* An open berth reads dimmer than a docked module, but the dimming
+       is done with its own border and background — never opacity.
+       Opacity fades the words too: at the 0.55 this used to carry, the
+       body copy measured ~2.5:1 on the card, well under the 4.5:1 the
+       house style asks of anything made of type. */
+    .module.offline { border-style: dashed; background: rgba(12, 11, 22, 0.4); }
     .module.offline .designation { color: var(--faint); }
+
+    @media (max-width: 620px) {
+      .route { --rail: 0.5rem; --inset: 1.6rem; }
+      .waypoint::before { top: 1.25rem; }
+    }
 
     .orbit-note {
       margin-top: 4rem;
@@ -175,46 +243,87 @@
       <p class="subtitle">Space, experiments, altered perspectives. Modules dock here as they come online.</p>
     </header>
 
-    <a class="latest-space" data-latest-banner data-latest-prefix="incoming transmission"></a>
+    <!-- data-latest-skip-linked: every exploration project is plotted on
+         the rail below, so without it this banner announced the newest
+         one directly above its own card. See latest.js. -->
+    <a class="latest-space" data-latest-banner data-latest-skip-linked
+       data-latest-prefix="new on the terminal"
+       data-latest-room="exploration" data-latest-prefix-own="incoming transmission"></a>
+
+    <p class="manifest">
+      <span class="plotted">Route plotted · shortest first</span>
+      <span id="manifest-count"></span>
+    </p>
 
     <!-- ═══════════════════════════════════════════════════
-         TO ADD A MODULE: copy an <a class="module"> block.
+         TO ADD A MODULE: copy a <li class="waypoint"> block.
          Experiments live as HTML files in playground/ or projects/.
-         Use div.module.offline for not-ready-yet modules.
+
+         ORDER IS THE RECOMMENDATION. The rail runs shortest-first, so
+         a new module goes where its size puts it, not on the end — and
+         whatever ends up first carries the <b class="flag">.
+         Renumber the designations to match; nothing else reads them.
+
+         The <span class="spec"> is the honest label: what kind of thing
+         it is, then roughly how long. Three of these are the same
+         physics, and the spec line is the only thing telling them apart.
+
+         An open berth is li.waypoint.berth wrapping div.module.offline.
          ═══════════════════════════════════════════════════ -->
 
-    <div class="modules">
-      <a class="module" href="projects/starfield/index.html">
-        <span class="designation">MODULE 001 — ONLINE</span>
-        <h2>Starfield</h2>
-        <p>Fly a real relativistic rocket out of the real solar neighborhood. The
-          throttle is proper acceleration in gravities, and physics does the rest:
-          the sky crushes into a cone ahead of you, star colors come from Planck's
-          law, the microwave background heats to 5,772 K, and your clock and
-          everybody else's come apart.</p>
-      </a>
+    <ol class="route">
+      <li class="waypoint">
+        <a class="module" href="projects/how-speed-affects-time/index.html">
+          <span class="designation">MODULE 001 <b class="status">ONLINE</b> <b class="flag">START HERE</b></span>
+          <h2>How Speed Affects Time</h2>
+          <p>One slider, two clocks, and the real night sky. Push toward light speed,
+            watch the Milky Way fold into the view ahead, then turn around and bring
+            the two clocks back together.</p>
+          <span class="spec">Exhibit · one slider · ~5 min</span>
+        </a>
+      </li>
 
-      <a class="module" href="projects/spacetime/index.html">
-        <span class="designation">MODULE 002 — ONLINE</span>
-        <h2>The Geometry of Spacetime</h2>
-        <p>An interactive walk through special relativity — light cones, time dilation,
-          the loss of "now," and a universe that expands. Four visual chapters.</p>
-      </a>
+      <li class="waypoint">
+        <a class="module" href="projects/how-big-everything-is/index.html">
+          <span class="designation">MODULE 002 <b class="status">ONLINE</b></span>
+          <h2>How Big Everything Is</h2>
+          <p>One rail from an electron to the observable universe, everything on it
+            drawn to the same scale. Zoom out and watch each thing you were just
+            looking at collapse into a speck next to the next one.</p>
+          <span class="spec">Exhibit · one rail · 21 rungs · ~5 min</span>
+        </a>
+      </li>
 
-      <a class="module" href="projects/how-speed-affects-time/index.html">
-        <span class="designation">MODULE 003 — ONLINE</span>
-        <h2>How Speed Affects Time</h2>
-        <p>One slider, two clocks, and the real night sky. Push toward light speed,
-          watch the Milky Way fold into the view ahead, then turn around and bring
-          the two clocks back together.</p>
-      </a>
+      <li class="waypoint">
+        <a class="module" href="projects/spacetime/index.html">
+          <span class="designation">MODULE 003 <b class="status">ONLINE</b></span>
+          <h2>The Geometry of Spacetime</h2>
+          <p>An interactive walk through special relativity — light cones, time dilation,
+            the loss of "now," and a universe that expands.</p>
+          <span class="spec">Exhibit · four chapters · ~15 min</span>
+        </a>
+      </li>
 
-      <div class="module offline">
-        <span class="designation">MODULE 004 — SILENT</span>
-        <h2>Experiments</h2>
-        <p>Weird HTML toys and one-night builds will dock here.</p>
-      </div>
-    </div>
+      <li class="waypoint">
+        <a class="module" href="projects/starfield/index.html">
+          <span class="designation">MODULE 004 <b class="status">ONLINE</b></span>
+          <h2>Starfield</h2>
+          <p>Fly a real relativistic rocket out of the real solar neighborhood. The
+            throttle is proper acceleration in gravities, and physics does the rest:
+            the sky crushes into a cone ahead of you, and your clock and everybody
+            else's come apart.</p>
+          <span class="spec">Game · real star catalogue</span>
+        </a>
+      </li>
+
+      <li class="waypoint berth">
+        <div class="module offline">
+          <span class="designation">BERTH 005 <b class="status open">OPEN</b></span>
+          <h2>Experiments</h2>
+          <p>Weird HTML toys and one-night builds dock here.</p>
+        </div>
+      </li>
+    </ol>
 
     <p class="orbit-note">THE UNIVERSE IS UNDER NO OBLIGATION TO MAKE SENSE — BUT THE NAV BAR IS</p>
   </div>
@@ -223,6 +332,17 @@
   <script src="projects/climbing/latest-climb.js?v=2"></script>
   <script src="latest.js?v=2"></script>
   <script>
+    // The manifest counts what is actually on the rail, so docking a
+    // module updates the strip instead of leaving two numbers to drift.
+    {
+      const route = document.querySelector(".route");
+      const online = route.querySelectorAll(".module:not(.offline)").length;
+      const berths = route.querySelectorAll(".module.offline").length;
+      const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+      document.getElementById("manifest-count").textContent =
+        `${plural(online, "module")} online · ${plural(berths, "berth")} open`;
+    }
+
     // slow-drifting dust — subtle, cheap, organic
     const canvas = document.getElementById("dust");
     const ctx = canvas.getContext("2d");
@@ -243,18 +363,43 @@
       canvas.style.height = `${H}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
-    resize();
-    addEventListener("resize", resize);
+    // Positions are fractions of the viewport, not pixels, so a resize
+    // just remaps them: no regenerating the field mid-drift, and none
+    // of it stranded off-screen after the window narrows.
+    const dust = [];
+    function mote() {
+      const bright = Math.random() < 0.12;
+      return {
+        x: Math.random(),
+        y: Math.random(),
+        r: bright ? 1.1 + Math.random() * 1.0 : 0.35 + Math.random() * 0.8,
+        a: bright ? 0.55 : 0.3,
+        vx: (Math.random() - 0.5) * 0.00008,
+        vy: (Math.random() - 0.5) * 0.00006,
+        tw: Math.random() * Math.PI * 2,
+      };
+    }
 
-    const N = Math.min(90, Math.floor(W / 12));
-    const dust = Array.from({ length: N }, () => ({
-      x: Math.random() * W,
-      y: Math.random() * H,
-      r: 0.4 + Math.random() * 1.4,
-      vx: (Math.random() - 0.5) * 0.12,
-      vy: (Math.random() - 0.5) * 0.08,
-      tw: Math.random() * Math.PI * 2,
-    }));
+    // Density, not a flat count. The old ceiling of 90 motes spread
+    // across a desktop viewport came out at roughly one speck per
+    // 14,000 px² — technically a starfield, visibly nothing, in the one
+    // room whose entire subject is space. Tie it to area instead and
+    // the same code fills a phone and a monitor alike; the cap keeps a
+    // 4K window from asking for two thousand of them.
+    //
+    // This has to run on every resize, not once at parse time. A page
+    // that loads in a background tab can be handed a zero-size viewport
+    // — and a count taken at that moment is zero forever, because the
+    // field was only ever built once. Topping up here means the dust
+    // arrives when the tab does.
+    function syncDensity() {
+      const target = Math.min(320, Math.round((W * H) / 5000));
+      while (dust.length < target) dust.push(mote());
+      dust.length = Math.min(dust.length, target);
+    }
+    function measure() { resize(); syncDensity(); }
+    measure();
+    addEventListener("resize", measure);
 
     let scrollDrift = 0;
     addEventListener("scroll", () => { scrollDrift = scrollY * 0.03; }, { passive: true });
@@ -264,12 +409,12 @@
     function frame(t) {
       ctx.clearRect(0, 0, W, H);
       for (const d of dust) {
-        d.x = (d.x + d.vx + W) % W;
-        d.y = (d.y + d.vy + H) % H;
-        const twinkle = 0.35 + 0.3 * Math.sin(t / 1400 + d.tw);
+        d.x = (d.x + d.vx + 1) % 1;
+        d.y = (d.y + d.vy + 1) % 1;
+        const twinkle = d.a * (0.72 + 0.48 * Math.sin(t / 1400 + d.tw));
         ctx.fillStyle = `rgba(200, 190, 255, ${twinkle})`;
         ctx.beginPath();
-        ctx.arc(d.x, (d.y + scrollDrift) % H, d.r, 0, Math.PI * 2);
+        ctx.arc(d.x * W, (d.y * H + scrollDrift) % H, d.r, 0, Math.PI * 2);
         ctx.fill();
       }
       if (!reduceMotion) requestAnimationFrame(frame);

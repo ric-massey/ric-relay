@@ -21,6 +21,7 @@
     reflection: ["spectrum", "HUMANS: STILL MORE COMPLICATED THAN CHECKBOXES"],
     starfield: ["warp", "NAV COMPUTER: THE SCENIC ROUTE IS FASTER"],
     board: ["beta", "BETA RECEIVED // PULL HARDER"],
+    scale: ["googol", "THAT IS A 1 WITH A HUNDRED ZEROES // STILL NOT ON THE LADDER"],
   };
 
   function install() {

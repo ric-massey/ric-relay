@@ -55,6 +55,7 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | `projects/farlight/` | Workbench | "FARLIGHT" — playable momentum and landing-feel prototype |
 | `projects/starfield/` | Exploration | "Starfield" — relativistic rocket flight through the real solar neighbourhood |
 | `projects/how-speed-affects-time/` | Exploration | "How Speed Affects Time" — two clocks and a real-sky special-relativity exhibit |
+| `projects/how-big-everything-is/` | Exploration | "How Big Everything Is" — a 45-decade scale ladder you zoom out through, from an electron to the observable universe |
 | `projects/apex/` | Apex (room data) | Not a page — the sync tooling and generated `apex-data.js` that `apex.html` reads |
 | `projects/the-shape-of-harm/` | Psyche | Evidence-informed interactive research framework for comparing psychoactive-substance harms |
 | `projects/siege-conductor/` | Workbench | Star Wars viewing-companion PWA (add-to-home-screen app) |

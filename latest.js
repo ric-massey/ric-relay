@@ -4,6 +4,18 @@
 // `room` is which room the item belongs to. There is one global newest item and
 // every room shows it, so a room only gets to use its own flavoured wording when
 // the item is actually its own — see data-latest-prefix-own below. Set it.
+// Held back on purpose, not forgotten — "How Big Everything Is" is live at
+// projects/how-big-everything-is/ and linked from Exploration, but it is not
+// being announced yet. Every room's banner shows the newest entry in this
+// list, so putting it back at the top is the whole of "announce it".
+//   {
+//     date: "2026-08-01",
+//     kind: "interactive",
+//     room: "exploration",
+//     title: "How Big Everything Is",
+//     description: "One rail from an electron to the observable universe, everything on it drawn to the same scale. Zoom out and watch each thing you were just looking at collapse into a speck next to the next one.",
+//     href: "projects/how-big-everything-is/index.html",
+//   },
 window.RELAY_LATEST = [
   {
     date: "2026-07-31",
@@ -69,9 +81,25 @@ window.RELAY_LATEST = [
     const here = new URL(location.href);
 
     document.querySelectorAll("[data-latest-banner]").forEach((banner) => {
+      // data-latest-skip-linked (opt-in): don't announce something the
+      // page already puts in front of the reader. /exploration lists all
+      // three of its own projects, so the newest one was printed twice —
+      // once as the banner, once as the card immediately beneath it.
+      // Nav links don't count: being able to walk to a room is not the
+      // same as being told it changed. Rooms that want the banner to
+      // repeat one of their own entries simply don't set the attribute.
+      const linked = banner.hasAttribute("data-latest-skip-linked")
+        ? new Set(
+            Array.from(document.querySelectorAll("a[href]"))
+              .filter((link) => link !== banner && !link.closest("nav"))
+              .map((link) => new URL(link.getAttribute("href"), here).pathname)
+          )
+        : null;
+
       const item = items.find((candidate) => {
         const destination = new URL(candidate.href, here);
-        return destination.pathname !== here.pathname;
+        if (destination.pathname === here.pathname) return false;
+        return !linked || !linked.has(destination.pathname);
       });
       if (!item) {
         banner.hidden = true;
