@@ -17,9 +17,10 @@
     :root {
       --darkroom: #141210;
       --paper: #1e1b18;
-      --amber-safe: #c9502c; /* safelight */
+      --amber-safe: #e2673f; /* safelight — lifted from #c9502c to clear AA */
       --silver: #d8d3ca;
-      --faint: #7d766c;
+      /* was #7d766c — 3.8:1, and it sets every frame caption and the nav */
+      --faint: #9a9287;
       --edge: #2c2823;
     }
 
@@ -59,6 +60,35 @@
     nav.filmstrip a:hover { color: var(--amber-safe); border-color: var(--amber-safe); }
     nav.filmstrip .here { color: #141210; background: var(--amber-safe); border-color: var(--amber-safe); font-weight: 700; }
 
+    /* Room menu — the film strip folds behind one frame on a phone. effects.js
+       injects the button; the darkroom keeps its own look. */
+    .roomnav-toggle { display: none; }
+    @media (max-width: 620px) {
+      .roomnav-toggle {
+        display: inline-flex; align-items: center; gap: 0.55rem;
+        min-height: 44px; padding: 0 0.9rem; margin-top: 0.5rem;
+        font-family: ui-monospace, Menlo, monospace; font-size: 0.72rem; letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--silver); background: var(--paper);
+        border: 1px solid var(--edge); cursor: pointer;
+      }
+      .roomnav-toggle[aria-expanded="true"] { color: #141210; background: var(--amber-safe); border-color: var(--amber-safe); font-weight: 700; }
+      .roomnav-toggle-bars {
+        position: relative; width: 15px; height: 11px;
+        border-top: 2px solid currentColor; border-bottom: 2px solid currentColor;
+      }
+      .roomnav-toggle-bars::after { content: ""; position: absolute; inset: calc(50% - 1px) 0 auto; border-top: 2px solid currentColor; }
+      nav.filmstrip[data-roomnav] { display: none; }
+      nav.filmstrip[data-roomnav].roomnav-open {
+        display: flex; flex-direction: column; align-items: stretch;
+        gap: 0.25rem; margin-top: 0.5rem;
+      }
+      nav.filmstrip[data-roomnav].roomnav-open a,
+      nav.filmstrip[data-roomnav].roomnav-open .here {
+        display: flex; align-items: center; min-height: 44px; padding: 0 0.7rem; font-size: 0.8rem;
+      }
+    }
+
     h1 {
       font-weight: 300;
       font-size: 1.9rem;
@@ -67,7 +97,38 @@
       color: var(--amber-safe);
     }
 
-    .subtitle { color: var(--faint); margin-top: 0.4rem; margin-bottom: 2.5rem; font-weight: 300; }
+    .subtitle { color: var(--faint); margin-top: 0.4rem; margin-bottom: 1.5rem; font-weight: 300; }
+
+    .gallery-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-bottom: 1.25rem;
+      font-family: ui-monospace, Menlo, monospace;
+    }
+    .gallery-tab {
+      min-height: 44px;
+      padding: 0.55rem 0.85rem;
+      color: var(--faint);
+      background: var(--paper);
+      border: 1px solid var(--edge);
+      font: inherit;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .gallery-tab:hover,
+    .gallery-tab:focus-visible { color: var(--amber-safe); border-color: var(--amber-safe); outline: 0; }
+    .gallery-tab[aria-selected="true"] {
+      color: var(--darkroom);
+      background: var(--amber-safe);
+      border-color: var(--amber-safe);
+      font-weight: 700;
+    }
+    .gallery-tab-count { opacity: 0.72; }
+
+    [role="tabpanel"][hidden] { display: none; }
 
     .sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1.1rem; }
 
@@ -78,7 +139,23 @@
       padding: 0.55rem 0.55rem 0.4rem;
     }
 
+    /* The box is fully determined before any image loads — 100% wide, a fixed
+       200px tall, cover-cropped — so the grid does not reflow as frames arrive
+       (measured: cumulative layout shift 0). That's why there are no width/
+       height attributes on the <img>: the photos are every shape and size, and
+       attributes carrying the wrong ratio would be worse than none. If this
+       height ever becomes `auto`, they become necessary. */
     figure img { width: 100%; height: 200px; object-fit: cover; display: block; filter: contrast(1.03); }
+
+    .frame-open {
+      display: block;
+      width: 100%;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      cursor: zoom-in;
+    }
+    .frame-open:focus-visible { outline: 2px solid var(--amber-safe); outline-offset: 3px; }
 
     figcaption {
       font-family: ui-monospace, Menlo, monospace;
@@ -86,6 +163,91 @@
       color: var(--faint);
       letter-spacing: 0.08em;
       padding-top: 0.45rem;
+    }
+
+    body.lightbox-open { overflow: hidden; }
+    .lightbox {
+      width: min(96vw, 1200px);
+      height: min(94vh, 900px);
+      max-width: none;
+      max-height: none;
+      padding: 0;
+      color: var(--silver);
+      background: #0f0d0b;
+      border: 1px solid var(--edge);
+      box-shadow: 0 25px 90px rgba(0, 0, 0, 0.75);
+    }
+    .lightbox::backdrop { background: rgba(8, 7, 6, 0.92); }
+    .lightbox-shell {
+      display: grid;
+      grid-template-columns: 58px minmax(0, 1fr) 58px;
+      align-items: center;
+      width: 100%;
+      height: 100%;
+    }
+    .lightbox-figure {
+      grid-column: 2;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+      align-items: center;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      padding: 1rem 0 0.75rem;
+      margin: 0;
+      background: transparent;
+      border: 0;
+    }
+    .lightbox-image {
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: calc(94vh - 5rem);
+      margin: auto;
+      object-fit: contain;
+      filter: none;
+    }
+    .lightbox-caption {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.65rem 0 0;
+      color: var(--faint);
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+    }
+    .lightbox-count { white-space: nowrap; }
+    .lightbox-control {
+      min-width: 44px;
+      min-height: 44px;
+      padding: 0;
+      color: var(--silver);
+      background: transparent;
+      border: 1px solid transparent;
+      font: 300 2rem/1 ui-monospace, Menlo, monospace;
+      cursor: pointer;
+    }
+    .lightbox-control:hover,
+    .lightbox-control:focus-visible { color: var(--amber-safe); border-color: var(--amber-safe); outline: 0; }
+    .lightbox-prev { grid-column: 1; }
+    .lightbox-next { grid-column: 3; }
+    .lightbox-close {
+      position: absolute;
+      top: 0.65rem;
+      right: 0.65rem;
+      z-index: 1;
+      background: rgba(15, 13, 11, 0.84);
+      font-size: 1.3rem;
+    }
+
+    @media (max-width: 620px) {
+      .lightbox { width: 100vw; height: 100dvh; border: 0; }
+      .lightbox-shell { grid-template-columns: 48px minmax(0, 1fr) 48px; }
+      .lightbox-figure { padding: 3.5rem 0 0.75rem; }
+      .lightbox-image { max-height: calc(100dvh - 8rem); }
+      .lightbox-caption { flex-direction: column; gap: 0.15rem; }
+      .lightbox-control { min-width: 44px; }
     }
 
     .empty {
@@ -99,9 +261,9 @@
       color: var(--faint);
     }
     .latest-capture{display:grid;grid-template-columns:auto 1fr auto;gap:.2rem 1rem;align-items:center;width:min(100%,760px);margin:1.3rem 0 1.8rem;padding:.9rem 1rem;color:var(--silver);text-decoration:none;background:var(--paper);border:1px solid var(--edge);border-left:6px solid var(--amber-safe);box-shadow:0 8px 25px rgba(0,0,0,.22)}
-    .latest-capture .latest-kicker{grid-row:1/3;color:var(--amber-safe);font:700 .63rem/1.2 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase}
+    .latest-capture .latest-kicker{grid-row:1/3;color:var(--amber-safe);font:700 0.69rem/1.2 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase}
     .latest-capture .latest-title{font-size:.96rem}.latest-capture .latest-description{color:var(--faint);font-size:.78rem}
-    .latest-capture .latest-meta{grid-column:3;grid-row:1/3;display:grid;gap:.2rem;color:var(--amber-safe);font:700 .62rem/1.2 ui-monospace,Menlo,monospace;text-align:right;text-transform:uppercase}
+    .latest-capture .latest-meta{grid-column:3;grid-row:1/3;display:grid;gap:.2rem;color:var(--amber-safe);font:700 0.69rem/1.2 ui-monospace,Menlo,monospace;text-align:right;text-transform:uppercase}
     .latest-capture:hover,.latest-capture:focus-visible{outline:2px solid var(--amber-safe);outline-offset:2px}
     @media(max-width:620px){.latest-capture{grid-template-columns:minmax(0,1fr) auto;padding:.65rem .75rem}.latest-capture .latest-kicker,.latest-capture .latest-title{grid-column:1;grid-row:auto}.latest-capture .latest-description{display:none}.latest-capture .latest-meta{grid-column:2;grid-row:1/3;display:grid;text-align:right}}
   </style>
@@ -116,89 +278,301 @@
         <a href="orrin.html">orrin</a>
         <a href="psyche.html">psyche</a>
         <a href="climbing.html">climbing</a>
-        <a href="training.html">training</a>
-        <a href="apex.html">apex</a>
         <a href="exploration.html">exploration</a>
         <a href="workbench.html">workbench</a>
         <span class="here" aria-current="page">captures</span>
-        <a href="log.html">log</a>
       </nav>
     </header>
 
     <h1>Captures</h1>
-    <p class="subtitle">The contact sheet. Frames from trips, walls, machines, and dogs.</p>
+    <p class="subtitle">The contact sheet. Newest first — frames from trips, walls, machines, and dogs.</p>
 
-    <a class="latest-capture" data-latest-banner data-latest-prefix="fresh frame"></a>
+    <a class="latest-capture" data-latest-banner data-latest-prefix="new on the terminal"
+       data-latest-room="captures" data-latest-prefix-own="fresh frame"></a>
+
+    <div class="gallery-tabs" role="tablist" aria-label="Capture collections">
+      <button id="dated-tab" class="gallery-tab" type="button" role="tab"
+              aria-selected="true" aria-controls="dated-panel">
+        Newest first <span id="dated-count" class="gallery-tab-count"></span>
+      </button>
+      <button id="unassorted-tab" class="gallery-tab" type="button" role="tab"
+              aria-selected="false" aria-controls="unassorted-panel" tabindex="-1">
+        Unassorted <span id="unassorted-count" class="gallery-tab-count"></span>
+      </button>
+    </div>
 
     <div id="empty" class="empty" hidden>NO EXPOSURES DEVELOPED YET — FILM STILL IN THE CAMERA</div>
-    <div id="sheet" class="sheet"></div>
+    <section id="dated-panel" role="tabpanel" aria-labelledby="dated-tab">
+      <div id="dated-sheet" class="sheet" aria-label="Dated contact sheet"></div>
+    </section>
+    <section id="unassorted-panel" role="tabpanel" aria-labelledby="unassorted-tab" hidden>
+      <div id="unassorted-sheet" class="sheet" aria-label="Unassorted contact sheet"></div>
+    </section>
   </div>
+
+  <dialog id="lightbox" class="lightbox" aria-label="Photo viewer">
+    <div class="lightbox-shell">
+      <button class="lightbox-control lightbox-close" type="button" aria-label="Close photo viewer">×</button>
+      <button class="lightbox-control lightbox-prev" type="button" aria-label="Previous photo">‹</button>
+      <figure class="lightbox-figure">
+        <img id="lightbox-image" class="lightbox-image" alt="">
+        <figcaption class="lightbox-caption">
+          <span id="lightbox-label"></span>
+          <span id="lightbox-count" class="lightbox-count"></span>
+        </figcaption>
+      </figure>
+      <button class="lightbox-control lightbox-next" type="button" aria-label="Next photo">›</button>
+    </div>
+  </dialog>
 
   <script src="effects.js"></script>
   <script src="projects/climbing/latest-climb.js?v=2"></script>
   <script src="latest.js?v=2"></script>
+  <script src="captures-data.js"></script>
   <script>
     // ═══════════════════════════════════════════════════════
     //  TO ADD PHOTOS:
     //  1. Drop image files into the photos/ folder
     //  2. Add an entry for each at the TOP of this list
+    //  The Google Photos "Website" album is generated as website-0001.jpg…
+    //
+    //  `alt` is what someone hears if they can't see the photo — one plain
+    //  sentence about what's in it ("a climber cut loose under an orange
+    //  roof"), not the frame number. The number is already on screen in the
+    //  caption; repeating it as alt text turns the gallery into a list of
+    //  numbers. An entry with no `alt` renders alt="" and the caption
+    //  carries it, which is correct — but a real sentence is better.
     // ═══════════════════════════════════════════════════════
 
-    const FRAMES = [
-      { src: "photos/climbing-01.jpg", caption: "FRAME 001" },
-      { src: "photos/climbing-02.jpg", caption: "FRAME 002" },
-      { src: "photos/climbing-03.jpg", caption: "FRAME 003" },
-      { src: "photos/climbing-04.jpg", caption: "FRAME 004" },
-      { src: "photos/climbing-05.jpg", caption: "FRAME 005" },
-      { src: "photos/climbing-06.jpg", caption: "FRAME 006" },
-      { src: "photos/climbing-07.jpg", caption: "FRAME 007" },
-      { src: "photos/climbing-08.jpg", caption: "FRAME 008" },
-      { src: "photos/climbing-09.jpg", caption: "FRAME 009" },
-      { src: "photos/climbing-10.jpg", caption: "FRAME 010" },
-      { src: "photos/climbing-11.jpg", caption: "FRAME 011" },
-      { src: "photos/climbing-12.jpg", caption: "FRAME 012" },
-      { src: "photos/climbing-13.jpg", caption: "FRAME 013" },
-      { src: "photos/climbing-14.jpg", caption: "FRAME 014" },
-      { src: "photos/climbing-15.jpg", caption: "FRAME 015" },
-      { src: "photos/climbing-16.jpg", caption: "FRAME 016" },
-      { src: "photos/climbing-17.jpg", caption: "FRAME 017" },
-      { src: "photos/climbing-18.jpg", caption: "FRAME 018" },
-      { src: "photos/climbing-19.jpg", caption: "FRAME 019" },
-      { src: "photos/climbing-20.jpg", caption: "FRAME 020" },
-      { src: "photos/climbing-21.jpg", caption: "FRAME 021" },
-      { src: "photos/climbing-22.jpg", caption: "FRAME 022" },
-      { src: "photos/climbing-23.jpg", caption: "FRAME 023" },
-      { src: "photos/climbing-24.jpg", caption: "FRAME 024" },
-      { src: "photos/climbing-25.jpg", caption: "FRAME 025" },
-      { src: "photos/climbing-26.jpg", caption: "FRAME 026" },
-      { src: "photos/climbing-27.jpg", caption: "FRAME 027" },
-      { src: "photos/climbing-28.jpg", caption: "FRAME 028" },
-      { src: "photos/climbing-29.jpg", caption: "FRAME 029" },
-      { src: "photos/climbing-30.jpg", caption: "FRAME 030" },
-      { src: "photos/climbing-31.jpg", caption: "FRAME 031" },
-      { src: "photos/climbing-32.jpg", caption: "FRAME 032" },
-      { src: "photos/climbing-33.jpg", caption: "FRAME 033" },
-      { src: "photos/climbing-34.jpg", caption: "FRAME 034" },
-      { src: "photos/climbing-35.jpg", caption: "FRAME 035" },
-      { src: "photos/climbing-36.jpg", caption: "FRAME 036" },
-      { src: "photos/climbing-37.jpg", caption: "FRAME 037" },
-      { src: "photos/climbing-38.jpg", caption: "FRAME 038" },
+    const WEBSITE_FRAME_COUNT = 1287;
+    const WEBSITE_FRAMES = Array.from({ length: WEBSITE_FRAME_COUNT }, (_, index) => {
+      const photoNumber = index + 1;
+      const frameNumber = photoNumber + 38;
+      return {
+        src: `photos/website-${String(photoNumber).padStart(4, "0")}.jpg`,
+        caption: `FRAME ${String(frameNumber).padStart(3, "0")}`,
+      };
+    });
+
+    const FRAME_DETAILS = [
+      ...WEBSITE_FRAMES,
+      { src: "photos/climbing-01.jpg", caption: "FRAME 001",
+        alt: "A climber roped up and moving left across a low-angle gray face." },
+      { src: "photos/climbing-02.jpg", caption: "FRAME 002",
+        alt: "A climber resting on a crash pad beneath a huge orange sandstone roof." },
+      { src: "photos/climbing-03.jpg", caption: "FRAME 003",
+        alt: "A climber cut loose upside down under an overhanging orange roof." },
+      { src: "photos/climbing-04.jpg", caption: "FRAME 004",
+        alt: "A climber high on a red sandstone sport route with a belayer below." },
+      { src: "photos/climbing-05.jpg", caption: "FRAME 005",
+        alt: "A climber deep in a dark, mossy chimney." },
+      { src: "photos/climbing-06.jpg", caption: "FRAME 006",
+        alt: "A climber pulling through steep rock in the shade." },
+      { src: "photos/climbing-07.jpg", caption: "FRAME 007",
+        alt: "A climber small on a long gray slab surrounded by trees." },
+      { src: "photos/climbing-08.jpg", caption: "FRAME 008",
+        alt: "Friends sitting on boulders above a river running through a gorge." },
+      { src: "photos/climbing-09.jpg", caption: "FRAME 009",
+        alt: "A mountain ridge in silhouette at blue hour." },
+      { src: "photos/climbing-10.jpg", caption: "FRAME 010",
+        alt: "Someone watching the sun come up over a mountain range." },
+      { src: "photos/climbing-11.jpg", caption: "FRAME 011",
+        alt: "A person silhouetted on a ridge as the sun clears the horizon." },
+      { src: "photos/climbing-12.jpg", caption: "FRAME 012",
+        alt: "Jagged, snow-streaked peaks under a pale sky." },
+      { src: "photos/climbing-13.jpg", caption: "FRAME 013",
+        alt: "A rocky summit in the foreground with a range stretching out behind it." },
+      { src: "photos/climbing-14.jpg", caption: "FRAME 014",
+        alt: "Someone in a blue jacket on a lake shore, mountains across the water." },
+      { src: "photos/climbing-15.jpg", caption: "FRAME 015",
+        alt: "A hiker with a pack looking up at jagged peaks above the pines." },
+      { src: "photos/climbing-16.jpg", caption: "FRAME 016",
+        alt: "A wide-angle look up a forest trail through tall pines." },
+      { src: "photos/climbing-17.jpg", caption: "FRAME 017",
+        alt: "A creek running over granite slabs in an alpine basin." },
+      { src: "photos/climbing-18.jpg", caption: "FRAME 018",
+        alt: "A hiker with a pack facing golden cliffs above autumn aspens." },
+      { src: "photos/climbing-19.jpg", caption: "FRAME 019",
+        alt: "A mountain rising behind a stand of aspens turning yellow." },
+      { src: "photos/climbing-20.jpg", caption: "FRAME 020",
+        alt: "A single mushroom backlit on the forest floor." },
+      { src: "photos/climbing-21.jpg", caption: "FRAME 021",
+        alt: "A big mushroom shot from ground level in the leaf litter." },
+      { src: "photos/climbing-22.jpg", caption: "FRAME 022",
+        alt: "Sun breaking over a snowy landscape under heavy clouds." },
+      { src: "photos/climbing-23.jpg", caption: "FRAME 023",
+        alt: "The moon, just past half, against a black sky." },
+      { src: "photos/climbing-24.jpg", caption: "FRAME 024",
+        alt: "A carved jack-o'-lantern lit from inside." },
+      { src: "photos/climbing-25.jpg", caption: "FRAME 025",
+        alt: "An open book on a rock ledge above a forested valley." },
+      { src: "photos/climbing-26.jpg", caption: "FRAME 026",
+        alt: "A motorcycle pulling a wheelie down a road through the woods." },
+      { src: "photos/climbing-27.jpg", caption: "FRAME 027",
+        alt: "Big clouds over green plains with mountains along the horizon." },
+      { src: "photos/climbing-28.jpg", caption: "FRAME 028",
+        alt: "A boulderer sitting under a low roof with pads spread out." },
+      { src: "photos/climbing-29.jpg", caption: "FRAME 029",
+        alt: "A climbing gym wall seen from above, holds scattered across it." },
+      { src: "photos/climbing-30.jpg", caption: "FRAME 030",
+        alt: "Two motorcycles leaned over through a tree-lined corner." },
+      { src: "photos/climbing-31.jpg", caption: "FRAME 031",
+        alt: "Someone hanging on a rope high in the trees against a blue sky." },
+      { src: "photos/climbing-32.jpg", caption: "FRAME 032",
+        alt: "Sunset over a lake under a dark bank of cloud." },
+      { src: "photos/climbing-33.jpg", caption: "FRAME 033",
+        alt: "Wind turbines along a ridge under towering cumulus." },
+      { src: "photos/climbing-34.jpg", caption: "FRAME 034",
+        alt: "A s'more sitting on a rock in the grass." },
+      { src: "photos/climbing-35.jpg", caption: "FRAME 035",
+        alt: "Two motorcycles parked at the side of a country road." },
+      { src: "photos/climbing-36.jpg", caption: "FRAME 036",
+        alt: "People on a rocky summit at dawn above a sea of cloud." },
+      { src: "photos/climbing-37.jpg", caption: "FRAME 037",
+        alt: "Someone sitting on slabs below granite domes and pines." },
+      { src: "photos/climbing-38.jpg", caption: "FRAME 038",
+        alt: "A motorcycle up on one wheel on a green, tree-lined road." },
     ];
 
-    const sheet = document.getElementById("sheet");
-    if (FRAMES.length === 0) document.getElementById("empty").hidden = false;
-    for (const f of FRAMES) {
-      const fig = document.createElement("figure");
-      const img = document.createElement("img");
-      img.src = f.src;
-      img.alt = f.caption || "";
-      img.loading = "lazy";
-      fig.appendChild(img);
-      const cap = document.createElement("figcaption");
-      cap.textContent = f.caption || "";
-      fig.appendChild(cap);
-      sheet.appendChild(fig);
+    const FRAME_DETAILS_BY_FILE = new Map(
+      FRAME_DETAILS.map(frame => [frame.src.replace("photos/", ""), frame])
+    );
+    const FRAMES = CAPTURE_DATA.map(([file, date]) => ({
+      ...FRAME_DETAILS_BY_FILE.get(file),
+      date,
+    }));
+    const DATED_FRAMES = FRAMES.filter(frame => frame.date);
+    const UNASSORTED_FRAMES = FRAMES.filter(frame => !frame.date);
+    const captureDateFormatter = new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+
+    function formatCaptureDate(date) {
+      if (!date) return "DATE UNKNOWN";
+      return captureDateFormatter.format(new Date(`${date}T00:00:00`)).toUpperCase();
     }
+
+    function formatFrameLabel(frame) {
+      return `${frame.caption} · ${formatCaptureDate(frame.date)}`;
+    }
+
+    const datedTab = document.getElementById("dated-tab");
+    const unassortedTab = document.getElementById("unassorted-tab");
+    const galleryTabs = [datedTab, unassortedTab];
+    const datedPanel = document.getElementById("dated-panel");
+    const unassortedPanel = document.getElementById("unassorted-panel");
+    const datedSheet = document.getElementById("dated-sheet");
+    const unassortedSheet = document.getElementById("unassorted-sheet");
+    const lightbox = document.getElementById("lightbox");
+    const lightboxImage = document.getElementById("lightbox-image");
+    const lightboxLabel = document.getElementById("lightbox-label");
+    const lightboxCount = document.getElementById("lightbox-count");
+    const closeLightboxButton = lightbox.querySelector(".lightbox-close");
+    const previousPhotoButton = lightbox.querySelector(".lightbox-prev");
+    const nextPhotoButton = lightbox.querySelector(".lightbox-next");
+    let currentFrameIndex = 0;
+    let lightboxFrames = DATED_FRAMES;
+    let lightboxTrigger = null;
+
+    function showFrame(index) {
+      currentFrameIndex = (index + lightboxFrames.length) % lightboxFrames.length;
+      const frame = lightboxFrames[currentFrameIndex];
+      lightboxImage.src = frame.src;
+      lightboxImage.alt = frame.alt || "";
+      lightboxLabel.textContent = formatFrameLabel(frame);
+      lightboxCount.textContent = `${currentFrameIndex + 1} / ${lightboxFrames.length}`;
+    }
+
+    function openLightbox(index, trigger, frames) {
+      lightboxTrigger = trigger;
+      lightboxFrames = frames;
+      showFrame(index);
+      lightbox.showModal();
+      document.body.classList.add("lightbox-open");
+      closeLightboxButton.focus();
+    }
+
+    function closeLightbox() { lightbox.close(); }
+    function showPreviousPhoto() { showFrame(currentFrameIndex - 1); }
+    function showNextPhoto() { showFrame(currentFrameIndex + 1); }
+
+    closeLightboxButton.addEventListener("click", closeLightbox);
+    previousPhotoButton.addEventListener("click", showPreviousPhoto);
+    nextPhotoButton.addEventListener("click", showNextPhoto);
+    lightbox.addEventListener("click", event => {
+      if (event.target === lightbox) closeLightbox();
+    });
+    lightbox.addEventListener("close", () => {
+      document.body.classList.remove("lightbox-open");
+      lightboxImage.removeAttribute("src");
+      lightboxTrigger?.focus();
+    });
+    document.addEventListener("keydown", event => {
+      if (!lightbox.open) return;
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        showPreviousPhoto();
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        showNextPhoto();
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        closeLightbox();
+      }
+    });
+
+    function renderFrames(sheet, frames) {
+      frames.forEach((frame, index) => {
+        const fig = document.createElement("figure");
+        const openButton = document.createElement("button");
+        openButton.type = "button";
+        openButton.className = "frame-open";
+        openButton.setAttribute("aria-label", `Open ${formatFrameLabel(frame)}`);
+        openButton.addEventListener("click", () => openLightbox(index, openButton, frames));
+        const img = document.createElement("img");
+        img.src = frame.src;
+        // No description written yet → decorative, and the figcaption speaks.
+        // Never fall back to the frame number: it reads as a wall of serials.
+        img.alt = frame.alt || "";
+        img.loading = "lazy";
+        openButton.appendChild(img);
+        fig.appendChild(openButton);
+        const cap = document.createElement("figcaption");
+        cap.textContent = formatFrameLabel(frame);
+        fig.appendChild(cap);
+        sheet.appendChild(fig);
+      });
+    }
+
+    function selectGallery(tab, { focus = false } = {}) {
+      const showUnassorted = tab === unassortedTab;
+      datedTab.setAttribute("aria-selected", String(!showUnassorted));
+      datedTab.tabIndex = showUnassorted ? -1 : 0;
+      unassortedTab.setAttribute("aria-selected", String(showUnassorted));
+      unassortedTab.tabIndex = showUnassorted ? 0 : -1;
+      datedPanel.hidden = showUnassorted;
+      unassortedPanel.hidden = !showUnassorted;
+      if (focus) tab.focus();
+    }
+
+    datedTab.addEventListener("click", () => selectGallery(datedTab));
+    unassortedTab.addEventListener("click", () => selectGallery(unassortedTab));
+    galleryTabs.forEach((tab, index) => {
+      tab.addEventListener("keydown", event => {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        event.preventDefault();
+        const direction = event.key === "ArrowRight" ? 1 : -1;
+        selectGallery(galleryTabs[(index + direction + galleryTabs.length) % galleryTabs.length], { focus: true });
+      });
+    });
+
+    document.getElementById("dated-count").textContent = `(${DATED_FRAMES.length})`;
+    document.getElementById("unassorted-count").textContent = `(${UNASSORTED_FRAMES.length})`;
+    if (FRAMES.length === 0) document.getElementById("empty").hidden = false;
+    renderFrames(datedSheet, DATED_FRAMES);
+    renderFrames(unassortedSheet, UNASSORTED_FRAMES);
   </script>
 </body>
 </html>
