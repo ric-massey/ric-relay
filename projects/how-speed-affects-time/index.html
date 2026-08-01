@@ -156,7 +156,7 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
    something dropped on top of the cockpit. */
 .hud {
   position: absolute; z-index: 6; inset: 0; display: flex; flex-direction: column;
-  justify-content: space-between; gap: var(--pad); pointer-events: none;
+  gap: var(--pad); pointer-events: none; overflow: hidden;
   padding:
     calc(var(--pad) + env(safe-area-inset-top))
     calc(var(--pad) + env(safe-area-inset-right))
@@ -169,12 +169,16 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
 .hud .cluster, .hud .altimeter, .hud .dock, .hud .lookback, .hud .mark,
 .hud .iconbtn, .hud .act, .hud .inset, .hud .landing-warn { pointer-events: auto; }
 
-.hud-top { display: flex; align-items: flex-start; gap: var(--pad); }
+/* The top row takes everything the dock does not, so the checkpoint feed in
+   the right rail has a real height to be bounded by rather than a guess at
+   one in vh. The dock keeps its natural height and stays at the bottom. */
+.hud-top { display: flex; align-items: flex-start; gap: var(--pad); flex: 1 1 auto; min-height: 0; }
 /* The centre slot of the top row. Empty except during a landing. */
 .hud-mid { flex: 1 1 auto; display: flex; justify-content: center; align-items: flex-start; }
 .rail { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
 .rail-left { align-items: flex-start; }
-.rail-right { align-items: flex-end; }
+/* Stretched, so the feed inside it can flex into the space that is left. */
+.rail-right { align-items: flex-end; align-self: stretch; min-height: 0; }
 /* The left rail starts below the return pill, which is fixed at the very
    top-left of the viewport (see the .relay-return override at the end). */
 .rail-left { padding-top: 2.55rem; }
@@ -265,41 +269,114 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
    meaning something again: the Moon, the Sun, the outer planets' orbits,
    where Voyager 1 actually is.
 
-   One line, in the rail with the other instruments, never over the sky. The
-   sentence explaining it is behind a tap — at the top of the rail you cross
-   five of these in ten seconds, and five paragraphs arriving over the view
-   in ten seconds is not a notification, it is a strobe. */
-.marks { display: flex; flex-direction: column; align-items: stretch; gap: .4rem; }
-.mark {
-  display: block; width: 15.5rem; max-width: 100%; text-align: left; cursor: pointer;
-  position: relative; padding: .4rem 1.5rem .46rem .7rem; border-radius: 11px;
-  background: linear-gradient(180deg, rgba(32,34,44,.72), rgba(8,8,12,.82));
-  border: 1px solid rgba(255,255,255,.15);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 10px 30px rgba(0,0,0,.45);
+   A small feed down the right-hand side, newest at the top, under its own
+   collapsible header. They stay — passing Neptune is a thing that happened,
+   and something you have to catch inside eleven seconds or lose is not a log,
+   it is a distraction. The sentence explaining each one is behind a tap,
+   because at the top of the rail you cross five of these in ten seconds, and
+   five paragraphs arriving over the view in ten seconds is not a
+   notification, it is a strobe.
+
+   It is one panel rather than a stack of cards. Nine separate glass tiles,
+   each with its own border, its own drop shadow and a gap between them, is
+   nine times the chrome for the same nine words — the checkpoints were
+   competing with the sky for the right-hand third of the screen while saying
+   almost nothing. Collapsed, a checkpoint is now a single line of type on a
+   hairline rule: the title, and nothing else. The sentence is behind the
+   chevron.
+
+   It is capped at a sixth of the screen and it shrinks below that if the
+   window is short: the list is a flex child with min-height 0 inside a rail
+   stretched to the row, so the cap is a ceiling rather than a reservation.
+   Anything past it scrolls, and the whole thing folds into its header.
+   Wide windows have room to spare, so past 1000px the panel and its type
+   step up a size and the cap loosens. */
+.marks {
+  display: flex; flex-direction: column; align-items: stretch;
+  width: 10.5rem; max-width: 100%; flex: 0 1 auto; min-height: 0;
+  border-radius: 12px; overflow: hidden;
+  background: rgba(16,17,24,.72); border: 1px solid rgba(255,255,255,.13);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 10px 28px rgba(0,0,0,.42);
   backdrop-filter: blur(16px) saturate(150%); -webkit-backdrop-filter: blur(16px) saturate(150%);
-  animation: markin .3s ease-out both;
-  transition: opacity .3s, background .15s;
 }
-.mark:hover { background: linear-gradient(180deg, rgba(44,46,58,.78), rgba(12,12,18,.86)); }
-.mark:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
-.mark.out { opacity: 0; }
-.mark .k { display: block; color: var(--dimmer); font: 600 .52rem/1.5 var(--mono);
-  letter-spacing: .19em; text-transform: uppercase; }
-.mark .t { display: block; color: var(--ink); font: 400 .8rem/1.3 var(--mono); }
-.mark .n { display: none; margin-top: .35rem; color: #c8c8d0;
-  font: .8rem/1.5 var(--serif); text-wrap: pretty; }
+.marks-head {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  flex: none; cursor: pointer; padding: .34rem .52rem .36rem .55rem;
+  font: 600 .52rem/1.6 var(--mono); letter-spacing: .16em; text-transform: uppercase;
+  color: var(--dim); text-align: left; background: none; border: none;
+  transition: color .15s;
+}
+.marks-head:hover { color: var(--ink); }
+.marks-head:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.marks-head .c { color: var(--dimmer); font-variant-numeric: tabular-nums; }
+/* The fold. A chevron on the header, pointing down when the list is open. */
+.marks-head .v { flex: none; width: 6px; height: 6px; margin-right: .15rem;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translate(-1px, -1px); transition: transform .18s; }
+.marks[data-open="false"] .marks-head .v { transform: rotate(-135deg) translate(-1px, -1px); }
+.marks[data-open="false"] .marks-list { display: none; }
+
+.marks-list {
+  display: flex; flex-direction: column;
+  flex: 1 1 auto; min-height: 0; max-height: min(16vh, 8rem);
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
+}
+.marks-list::-webkit-scrollbar { display: none; }
+
+.mark {
+  display: flex; flex-direction: column; justify-content: center;
+  width: 100%; text-align: left; cursor: pointer; flex: none;
+  position: relative; padding: .3rem 1.25rem .32rem .55rem;
+  background: none; border: none; border-top: 1px solid rgba(255,255,255,.09);
+  animation: markin .3s ease-out both;
+  transition: background .15s;
+}
+.mark:hover { background: rgba(255,255,255,.06); }
+.mark:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+/* A thumb is 40px across whatever the type is doing. A mouse is not, and on a
+   pointer that can hit a hairline the rows close up to the height of their
+   own text. */
+@media (pointer: coarse) { .mark { min-height: 40px; } }
+/* Only the one that is not a plain checkpoint carries a kicker. Repeating the
+   word "checkpoint" down a column of checkpoints is just noise with a
+   line-height. */
+.mark .k { display: block; color: var(--dimmer); font: 600 .46rem/1.5 var(--mono);
+  letter-spacing: .18em; text-transform: uppercase; }
+/* Two lines at most while it is shut — long enough for "A thousand
+   astronomical units", short enough that a run of five checkpoints cannot
+   push the panel down the screen. Opening it lets the title have as many
+   lines as it wants. */
+.mark .t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; color: var(--ink); font: 400 .66rem/1.35 var(--mono); }
+.mark[aria-expanded=true] .t { display: block; }
+.mark .n { display: none; margin-top: .28rem; color: #c8c8d0;
+  font: .72rem/1.45 var(--serif); text-wrap: pretty; }
 .mark[aria-expanded=true] .n { display: block; }
-/* The affordance. A chevron that turns over, so the panel reads as a thing
-   with more inside it rather than as a label. */
-.mark::after { content: ""; position: absolute; right: .62rem; top: .78rem;
+/* The affordance. A chevron that turns over, so the row reads as a thing with
+   more inside it rather than as a label. */
+.mark::after { content: ""; position: absolute; right: .55rem; top: .62rem;
   width: 5px; height: 5px; border-right: 1.5px solid var(--dim);
   border-bottom: 1.5px solid var(--dim); transform: rotate(45deg);
   transition: transform .18s; }
 .mark[aria-expanded=true]::after { transform: rotate(-135deg); }
 @keyframes markin { from { opacity: 0; } to { opacity: 1; } }
 
+@media (min-width: 1000px) {
+  .marks { width: 13rem; }
+  .marks-list { max-height: min(24vh, 12rem); }
+  .marks-head { font-size: .54rem; padding: .4rem .6rem .42rem .62rem; }
+  .mark { padding: .38rem 1.4rem .4rem .62rem; }
+  .mark .t { font-size: .74rem; }
+  .mark .n { font-size: .76rem; }
+  .mark::after { right: .66rem; top: .72rem; }
+}
+
 /* ── the bottom row: the dock, and the mirror ─────────────────────── */
-.hud-bottom { display: flex; align-items: flex-end; justify-content: center; gap: var(--pad); }
+/* flex: none, because the top row now grows. Without it the dock is a
+   shrinkable flex item competing with a growing sibling, and it gets squashed
+   below its own content — the controls spilling out of the bottom of it. */
+.hud-bottom { display: flex; align-items: flex-end; justify-content: center;
+  gap: var(--pad); flex: none; }
 .dock { flex: 0 1 62rem; min-width: 0; padding: .85rem 1rem 1rem; }
 
 .railrow { display: flex; align-items: center; gap: 1.2rem; }
@@ -684,7 +761,9 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
   .hud-mid { flex: 0 0 0; }
   .landing-warn { position: absolute; z-index: 7; left: 50%; top: 30%;
     transform: translateX(-50%); width: max-content; max-width: min(20rem, 88vw); }
-  .mark { width: auto; }
+  /* A phone's right rail is already carrying the lens and two action pills;
+     the checkpoints take the narrowest width their longest word will sit in. */
+  .marks { width: 9.25rem; }
   .altimeter { width: auto; }
   .altimeter .n { display: none; }
   .inset { width: 28vw; }
@@ -766,11 +845,6 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
           </div>
 
           <div class="altimeter glass num" id="altimeter" hidden aria-live="off"></div>
-
-          <!-- Checkpoints. The distance readout is a number that goes up; these
-               are the moments where the number means something. They live in
-               the rail with the rest of the instruments, not over the view. -->
-          <div class="marks" id="marks" role="status" aria-live="polite"></div>
         </div>
 
         <div class="hud-mid">
@@ -800,6 +874,20 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
               <canvas class="photo-inset" id="photo-inset-canvas" aria-hidden="true"></canvas>
             </div>
             <div class="tag glass num" id="inset-tag">×1</div>
+          </div>
+
+          <!-- Checkpoints. The distance readout is a number that goes up; these
+               are the moments where the number means something. A small feed
+               down the side, newest first, each one tappable for the sentence
+               that explains it. They stay for the trip, and the header folds
+               the whole thing away. -->
+          <div class="marks" id="marks" data-open="true" hidden>
+            <button type="button" class="marks-head" id="marks-toggle"
+                    aria-expanded="true" aria-controls="marks-list">
+              <span><span class="v" aria-hidden="true"></span> Checkpoints</span>
+              <span class="c num" id="marks-count">0</span>
+            </button>
+            <div class="marks-list" id="marks-list" role="log" aria-live="polite"></div>
           </div>
         </div>
       </div>
@@ -1284,7 +1372,7 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 <script src="src/ground.js?v=10"></script>
 <script src="src/photo-sky.js?v=13"></script>
 <script src="src/glossary.js?v=3"></script>
-<script src="src/exhibit.js?v=47"></script>
+<script src="src/exhibit.js?v=52"></script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="spacetime" defer></script>
 </body>
 </html>

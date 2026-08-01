@@ -1127,6 +1127,7 @@
     $("reset").addEventListener("click", reset);
     wireLookBack();
     wireInfo();
+    wireMarks();
     wireWelcome();
   }
 
@@ -1441,29 +1442,64 @@
     // speed *for*?
     if (S.beta >= 0.999999 && !S.seen.includes("alpha")) {
       S.seen.push("alpha");
-      const g = P.gamma(S.beta);
-      const yours = ALPHA_LY * YEAR / (S.beta * g);   // your own clock, one way
-      const theirs = ALPHA_LY * YEAR / S.beta;        // Earth's clock, one way
-      showMark("Top of the rail",
-        "Alpha Centauri: " + P.formatDuration(yours),
-        "The closest star to the Sun, 4.25 light-years out. At this speed the " +
-        "crossing costs you that much — and Earth " + P.formatDuration(theirs) + ".");
+      const m = alphaMark();
+      showMark(m.kicker, m.title, m.note);
     }
   }
 
-  /* Queued, and only ever one on screen.
+  /* Length contraction, from the ship's side of it: the gap ahead is
+     4.25 light-years in Earth's frame and 4.25/γ in yours, which is what you
+     actually have to cross. Six thousandths of a light-year at the top of the
+     rail.
+
+     The headline says both numbers on purpose. "Alpha Centauri: 2 days" on its
+     own reads as a claim that the nearest star is two days away, which is the
+     exact opposite of what this page is about — the two days are yours, the
+     four years are Earth's, and the whole exhibit is the gap between them. */
+  function alphaMark() {
+    const beta = 0.999999;
+    const g = P.gamma(beta);
+    const near = ALPHA_LY / g;                      // the gap, in your frame
+    const yours = near * YEAR / beta;               // your own clock, one way
+    const theirs = ALPHA_LY * YEAR / beta;          // Earth's clock, one way
+    const ly = ALPHA_LY.toFixed(2);
+    const lightDays = (near * 365.25).toFixed(1);
+    return {
+      kicker: "Top of the rail",
+      title: ly + " light-years in " + P.formatDuration(yours),
+      note: "Why it's " + Math.floor(yours / 86400) + " days: at the top of the rail " +
+        "\u03b3 is " + g.toFixed(0) + ", so the " + ly + "-light-year gap to Alpha " +
+        "Centauri is length-contracted in your frame to " + ly + " / " + g.toFixed(0) +
+        " \u2248 " + lightDays + " light-days. You cross " + lightDays + " light-days at " +
+        "essentially light speed in " + (yours / 86400).toFixed(2) + " days. Meanwhile " +
+        "Earth, where the gap is still " + ly + " light-years, waits " +
+        P.formatDuration(theirs) + ". Both are correct \u2014 that difference is the exhibit.",
+    };
+  }
+
+  /* Coming back to the tab should not come back to an empty log. The seen list
+     survives in sessionStorage, so the rows it stands for are rebuilt from it
+     — in the order they happened, straight into the feed rather than through
+     the queue, because there is nothing to pace when it is all already true. */
+  function restoreMarks() {
+    for (const key of S.seen) {
+      if (key === "alpha") { paintMark(alphaMark()); continue; }
+      const m = MARKS.find((x) => x.t === key);
+      if (m) paintMark({ kicker: m.k, title: m.t, note: m.n });
+    }
+  }
+
+  /* Queued, then kept.
 
      At the top of the rail you cross the Moon, Mercury, Earth's own orbit,
      Jupiter and Saturn inside about ten seconds — Earth's clock runs seven
      hundred times yours up there, and the distance goes with Earth's clock.
-     They come through one at a time, three seconds apart, in a single line
-     that changes rather than a stack that grows. The sentence for each one
-     is behind a tap. */
-  const MARK_GAP = 3000;
-  const MARK_LIFE = 11000;
+     They still arrive one at a time so each one is legible as it lands, but
+     they land in a feed and they stay there. Nothing counts down and nothing
+     has to be caught: passing Neptune happened, and it goes on the list. */
+  const MARK_GAP = 800;
   let markQueue = [];
   let markTimer = 0;
-  let markLife = 0;
   let markLast = 0;
 
   function showMark(kicker, title, note) {
@@ -1483,41 +1519,45 @@
   }
 
   function paintMark(m) {
-    const host = $("marks");
     const el = document.createElement("button");
     el.type = "button";
     el.className = "mark";
     el.setAttribute("aria-expanded", "false");
-    const k = document.createElement("span"); k.className = "k"; k.textContent = m.kicker;
+    // Only the odd one out gets a kicker; a column of rows each labelled
+    // "checkpoint" is a column of noise with a line-height.
+    if (m.kicker && m.kicker !== "Checkpoint") {
+      const k = document.createElement("span");
+      k.className = "k"; k.textContent = m.kicker;
+      el.append(k);
+    }
     const t = document.createElement("span"); t.className = "t num"; t.textContent = m.title;
     const n = document.createElement("span"); n.className = "n"; n.textContent = m.note;
-    el.append(k, t, n);
+    el.append(t, n);
 
-    /* Opened, it stops counting down. Someone who has just tapped it to read
-       the sentence should not have it fade out from under them. */
     el.addEventListener("click", () => {
       const open = el.getAttribute("aria-expanded") === "true";
       el.setAttribute("aria-expanded", open ? "false" : "true");
-      clearTimeout(markLife);
-      if (open) markLife = setTimeout(() => retireMark(el), MARK_LIFE);
     });
 
-    // Replaced, not stacked. Removed outright rather than through retireMark,
-    // which only starts a fade — the old one has to be gone before the new one
-    // lands or the rail jumps a row taller for the length of the crossfade.
-    host.replaceChildren(el);
-    clearTimeout(markLife);
-    markLife = setTimeout(() => retireMark(el), MARK_LIFE);
+    // Newest at the top, so the one that just happened is the one you can see
+    // without scrolling the feed.
+    const list = $("marks-list");
+    list.prepend(el);
+    list.scrollTop = 0;
+    $("marks").hidden = false;
+    $("marks-count").textContent = list.children.length;
   }
 
-  function retireMark(el) {
-    if (!el || !el.isConnected || el.classList.contains("out")) return;
-    el.classList.add("out");
-    // The class drives a fade; remove on its end, and on a timer as well so a
-    // reduced-motion visitor — who gets no transition and therefore no
-    // transitionend — does not leave a dead panel sitting in the rail.
-    el.addEventListener("transitionend", () => el.remove(), { once: true });
-    setTimeout(() => el.remove(), 500);
+  /* The fold. The feed is small and capped, but it is still something sitting
+     over the sky, and anyone who wants the sky back should be able to have it
+     in one tap. */
+  function wireMarks() {
+    const host = $("marks");
+    $("marks-toggle").addEventListener("click", () => {
+      const open = host.dataset.open !== "false";
+      host.dataset.open = open ? "false" : "true";
+      $("marks-toggle").setAttribute("aria-expanded", open ? "false" : "true");
+    });
   }
 
   /* ── callouts ────────────────────────────────────────────────────── */
@@ -1628,6 +1668,7 @@
     const b = parseFloat(url.get("b"));
     if (isFinite(b) && b >= 0 && b < 1 && S.phase === "out") { S.beta = S.targetBeta = b; }
     setRail(P.betaToSlider(S.targetBeta || S.beta));
+    restoreMarks();
     markDetent();
     checkCallouts();
     updateHomeView();
@@ -1650,7 +1691,9 @@
     });
     markQueue = [];
     clearTimeout(markTimer); markTimer = 0;
-    $("marks").replaceChildren();
+    $("marks-list").replaceChildren();
+    $("marks-count").textContent = "0";
+    $("marks").hidden = true;
     shake = 0;
     landingHeat = 0;
     // Start the clock from now, not from whenever the loop last ran. Without
