@@ -84,6 +84,13 @@ window.PAINT = (() => {
     if (!v) { v = build(); cache.set(key, v); }
     return v;
   }
+  /* Almost everything cached here is fixed for the life of the page. One
+     thing is not: "earthaim" is derived from where the Lakes are parked
+     relative to the Earth, and the parking moves when the window does —
+     the layout flattens the offsets on a wide screen so the subject can
+     fill more of it. Without this the globe would keep the orientation it
+     was built with and Superior would drift into the Atlantic. */
+  function forget(key) { cache.delete(key); }
 
   function ball(ctx, r, inner, mid, outer, lx, ly) {
     const g = ctx.createRadialGradient(lx * r, ly * r, 0, 0, 0, r);
@@ -1756,5 +1763,6 @@ window.PAINT = (() => {
     // and no line at the edge, because there is no edge
   };
 
+  P.forget = forget;
   return P;
 })();

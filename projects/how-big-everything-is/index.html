@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>How Big Everything Is</title>
-<meta name="description" content="A scale ladder you zoom out through, drawn to scale end to end — from an electron to the observable universe, with a measurement next to everything.">
+<meta name="description" content="A scale ladder you zoom out through, drawn to scale end to end — from a quark to the observable universe, with a measurement next to everything.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Ric's Terminal">
 <meta property="og:title" content="How Big Everything Is">
@@ -68,8 +68,16 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
    anywhere whose size means anything, which is the only way to hold 45
    decades without a browser quietly clamping a transform on you. */
 .stage { position: fixed; inset: 0; background: #000; overflow: hidden; }
-.stage-inner { position: absolute; inset: 0; cursor: grab; touch-action: none; }
-.stage-inner.dragging { cursor: grabbing; }
+/* No grab cursor, and no touch-action override. The field is not an input:
+   you move with the arrows, the chips and the rail, and nothing you do to
+   the picture itself does anything. A grab cursor here would be the
+   interface telling a lie about what it accepts.
+
+   Dropping `touch-action: none` also gives the panels their touch back —
+   it applied to every descendant of this element, which included the fact
+   card, so on a phone the one panel with more text than fits could not be
+   scrolled with a finger. */
+.stage-inner { position: absolute; inset: 0; }
 #view { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 
 /* ── the HUD frame ────────────────────────────────────────────────────
@@ -550,14 +558,14 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
 <div class="stage">
   <div class="stage-inner">
-    <canvas id="view" aria-label="A scale ladder from an electron to the observable universe, drawn to scale"></canvas>
+    <canvas id="view" aria-label="A scale ladder from a quark to the observable universe, drawn to scale"></canvas>
 
     <div class="hud">
       <div class="hud-top">
         <div class="rail rail-left">
           <div class="cluster glass">
             <span class="who" id="obj-kicker">As small as it gets</span>
-            <div class="name" id="obj-name">An electron</div>
+            <div class="name" id="obj-name">A quark</div>
             <div class="measure num" id="obj-measure">—</div>
             <div class="dimline" id="obj-dim"></div>
             <div class="alt" id="obj-alt"></div>
@@ -692,9 +700,11 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
     <p>So this page does not tell you how big things are. It shows you, at
        one scale, all the way out — and lets you watch each thing you just
        looked at shrink to nothing next to the next one.</p>
-    <p class="how">Drag the picture sideways, or pull the slider, to
-       <b>zoom out</b>. Stop anywhere to read about what you have landed on.</p>
-    <button type="button" class="welcome-go" id="welcome-go">Start at an electron</button>
+    <p class="how">The <b>arrows</b> at the bottom step you outward one rung
+       at a time, and everything you have already seen shrinks toward the middle
+       of the screen. Stop anywhere to read about what you have landed on, or
+       press <b>Tour</b> and let it walk the whole ladder for you.</p>
+    <button type="button" class="welcome-go" id="welcome-go">Start at a quark</button>
   </div>
 </div>
 
@@ -866,11 +876,11 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
 <p class="sr" id="live-region" aria-live="polite" aria-atomic="true"></p>
 
-<script src="src/ladder.js?v=4"></script>
-<script src="src/units.js?v=4"></script>
-<script src="src/sky.js?v=4"></script>
-<script src="src/paint.js?v=4"></script>
-<script src="src/exhibit.js?v=4"></script>
+<script src="src/ladder.js?v=6"></script>
+<script src="src/units.js?v=6"></script>
+<script src="src/sky.js?v=6"></script>
+<script src="src/paint.js?v=6"></script>
+<script src="src/exhibit.js?v=6"></script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="scale" defer></script>
 </body>
 </html>

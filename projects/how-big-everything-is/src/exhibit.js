@@ -2,12 +2,13 @@
    The exhibit.
 
    One number runs this whole page: `t`, a position along the ladder from
-   0 to 1. The rail sets it, the arrows set it, a drag sets it, a chip
-   sets it, the arrow keys set it, the tour sets it — and everything else
-   on screen is derived. There is no second source of truth about where
-   you are.
+   0 to 1. The arrows set it, a chip sets it, the arrow keys set it, the
+   rail sets it, the tour sets it — and everything else on screen is
+   derived. There is no second source of truth about where you are.
 
-   The wheel does not set it, deliberately: see wireCanvas().
+   Neither the wheel nor a drag sets it, deliberately: see the input
+   section. Nothing you do *to the picture* moves you. You move with
+   controls, and the picture only ever answers.
 
    From `t` comes exactly one quantity:
 
@@ -70,10 +71,12 @@
      one of the better facts on the ladder, and it draws itself. */
   const GOLDEN = 2.399963229728653;
   const extent = L.map((o) => o.size * Math.max(o.box[0], o.box[1]));
-  const OFF = L.map((o, k) => [
-    0.38 * extent[k] * Math.cos(k * GOLDEN),
-    0.22 * extent[k] * Math.sin(k * GOLDEN),
-  ]);
+  /* Bearings are fixed; the two magnitudes are not — computeFrames()
+     rewrites them on every resize, because how far off-centre a rung
+     should be parked depends on how much room there is to park it in.
+     Mutated in place, never reassigned, since window.LAYOUT hands this
+     same array to the painters. */
+  const OFF = L.map(() => [0, 0]);
   /* Published because one painter needs to know where another rung is
      parked. The Great Lakes sit at a fixed offset from the Earth, and
      the Earth has to be turned so that the spot under that offset is
@@ -167,18 +170,45 @@
      and it is the only camera quantity that depends on the shape of the
      window. */
   function computeFrames() {
+    const bandH = Math.max(60, bandBot - bandTop);
+
+    /* How much room this window has to spend, 0 on a phone and 1 on a
+       large desktop. Everything below is a straight interpolation on it.
+
+       A fixed frame of three times the object meant the subject was the
+       same *fraction* of the glass on a 27-inch monitor as on a phone —
+       a third of the width, a little over half the clear band — so all a
+       bigger screen bought you was more empty black around the same
+       picture. A big screen should buy a bigger object.
+
+       The vertical offset is the one that pays for most of it. It was
+       costing a fifth of the frame's height in headroom on every rung,
+       and on a wide window that headroom is the least useful space
+       there is: flattening the offsets spends it on the subject and
+       leans the scatter sideways, which is the direction a wide window
+       has room in anyway. The bearings do not change, so neighbouring
+       rungs stay as separated as they were. */
+    const roomy = clamp01((Math.min(cw, bandH * 1.7) - 480) / 900);
+    const offV = 0.22 - 0.12 * roomy;   // 0.22 → 0.10
+    const fillX = 0.86 + 0.08 * roomy;  // 0.86 → 0.94
+    const fillY = 0.80 + 0.14 * roomy;  // 0.80 → 0.94
+    const mult = 3.0 - 0.8 * roomy;     // 3.0  → 2.2
+
     for (let k = 0; k < N; k++) {
       const o = L[k];
+      OFF[k][0] = 0.38 * extent[k] * Math.cos(k * GOLDEN);
+      OFF[k][1] = offV * extent[k] * Math.sin(k * GOLDEN);
       const reachX = Math.abs(OFF[k][0]) + (o.size * o.box[0]) / 2;
       const reachY = Math.abs(OFF[k][1]) + (o.size * o.box[1]) / 2;
-      const bandH = Math.max(60, bandBot - bandTop);
       W[k] = Math.max(
-        3.0 * extent[k],
-        (2 * reachX) / 0.86,                     // fits across
-        ((2 * reachY) / 0.80) * (cw / bandH)     // and fits down the clear band
+        mult * extent[k],
+        (2 * reachX) / fillX,                    // fits across
+        ((2 * reachY) / fillY) * (cw / bandH)    // and fits down the clear band
       );
     }
     LOGW = W.map(Math.log10);
+    // The globe is aimed from these offsets, so it has to be re-derived.
+    if (PAINT.forget) PAINT.forget("earthaim");
   }
 
   function segment(t) {
@@ -649,8 +679,8 @@
 
   /* ── setting t ─────────────────────────────────────────────────────── */
   /* Every manual control writes `t` through here, which is why the tour
-     is cancelled here rather than in each of them — the rail, the wheel,
-     a drag and the arrow keys all mean "I am steering now". */
+     is cancelled here rather than in each of them — the arrows, a chip,
+     the rail and the arrow keys all mean "I am steering now". */
   function setT(t, why) {
     stopTour();
     S.t = clamp01(t);
@@ -677,10 +707,26 @@
   }
 
   /* ── input ─────────────────────────────────────────────────────────
-     Four ways in, all of them writing the same `t`. The rail is the one
-     the page advertises; the wheel and the drag are there because the
-     first thing anyone does to a wide picture is push it sideways, and it
-     would be strange if that did nothing. */
+     Every way in writes the same `t`, and all of them are controls: the
+     arrows, the chip strip, the rungs sheet, the arrow keys, the tour,
+     and the rail along the bottom edge.
+
+     THE PICTURE ITSELF IS NOT AN INPUT. Neither the wheel nor a drag
+     moves you, and both were removed rather than never built, so it is
+     worth writing down why.
+
+     A scroll gesture over a picture means "I am reading this page" far
+     more often than it means "take me forty decades outward", and a drag
+     is worse: the natural thing to do with a wide-looking image is push
+     it sideways, and this exhibit does not pan — so the gesture that
+     feels like it should slide the view instead walked you off the rung
+     you were reading about, with the fact card vanishing mid-sentence
+     because it only shows once the rail has stopped. Two-finger drift on
+     a trackpad was enough to do it with nobody meaning anything at all.
+
+     So the field is inert on purpose, and the cursor over it stays a
+     plain arrow: a grab cursor on a surface that cannot be grabbed is
+     the interface telling a lie about itself. */
   function wireRail() {
     const rail = $("zoom");
     rail.addEventListener("input", () => {
@@ -690,43 +736,6 @@
     rail.addEventListener("pointerdown", () => rail.classList.add("by-pointer"));
     rail.addEventListener("keydown", () => rail.classList.remove("by-pointer"));
     rail.addEventListener("blur", () => rail.classList.remove("by-pointer"));
-  }
-
-  function wireCanvas() {
-    const stage = canvas.parentElement;
-
-    /* The wheel used to drive the rail, and it is gone on purpose.
-       A scroll gesture over a picture means "I am reading this page" far
-       more often than it means "take me forty decades outward", and the
-       cost of guessing wrong is that the exhibit slides out from under a
-       hand that was only resting on a trackpad. Two-finger drift on a
-       Mac is enough to walk you off a rung you were reading about.
-
-       So the picture is not a scroll surface. Moving is done with the
-       arrows, the chips, a drag, the arrow keys, or the rail — all of
-       which are things you have to mean. */
-
-    let dragging = false, lastX = 0;
-    stage.addEventListener("pointerdown", (e) => {
-      if (e.target.closest(".hud .glass, .hud button, .hud input, .relay-return")) return;
-      dragging = true; lastX = e.clientX;
-      stage.setPointerCapture(e.pointerId);
-      stage.classList.add("dragging");
-    });
-    stage.addEventListener("pointermove", (e) => {
-      if (!dragging) return;
-      const dx = e.clientX - lastX;
-      lastX = e.clientX;
-      setT(S.t - dx / (cw * 2.4));
-    });
-    const stop = (e) => {
-      if (!dragging) return;
-      dragging = false;
-      stage.classList.remove("dragging");
-      try { stage.releasePointerCapture(e.pointerId); } catch (err) {}
-    };
-    stage.addEventListener("pointerup", stop);
-    stage.addEventListener("pointercancel", stop);
   }
 
   function wireKeys() {
@@ -948,7 +957,6 @@
     wireRail();
     wireSteps();
     wireTour();
-    wireCanvas();
     wireKeys();
     wireMenu();
     wireFact();
