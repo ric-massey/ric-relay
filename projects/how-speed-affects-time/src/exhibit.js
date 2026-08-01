@@ -54,6 +54,60 @@
     [10000 * YEAR, "Ten thousand years", "Written history is shorter than the time you have been away."],
   ];
 
+  /* ── checkpoints ─────────────────────────────────────────────────────
+     Distances out from Earth, in light-seconds, and what each one is.
+
+     The comparison is deliberately "further from Earth than X is from the
+     Sun" rather than "you passed Jupiter". The ship is flying at the galactic
+     centre, not around the ecliptic, so it never goes near a planet — and an
+     exhibit that spends its whole length refusing to fudge anything cannot
+     start staging flybys at the end.
+
+     One AU is 499.005 light-seconds. Orbital radii are semi-major axes. */
+  const AU = 499.005;
+  const MARKS = [
+    { at: 1.282, k: "Checkpoint", t: "Past the Moon",
+      n: "239,000 miles. Three days each way for Apollo; you did it just now." },
+    { at: 0.387 * AU, k: "Checkpoint", t: "Mercury's orbit",
+      n: "You are further from Earth than Mercury ever gets from the Sun." },
+    { at: 1 * AU, k: "Checkpoint", t: "One astronomical unit",
+      n: "As far from Earth as Earth is from the Sun. Light takes eight minutes to cross it." },
+    { at: 5.203 * AU, k: "Checkpoint", t: "Jupiter's orbit",
+      n: "Further out than Jupiter. Sunlight here is a twenty-seventh of what falls on Earth." },
+    { at: 9.537 * AU, k: "Checkpoint", t: "Saturn's orbit",
+      n: "Cassini took just under seven years to cover this." },
+    { at: 30.07 * AU, k: "Checkpoint", t: "Neptune's orbit",
+      n: "The edge of the planets. From here the Sun is the brightest star and nothing more." },
+    { at: 120 * AU, k: "Checkpoint", t: "Through the heliopause",
+      n: "Out of the Sun's wind and into interstellar space. Voyager 1 crossed this line in 2012." },
+    { at: 170 * AU, k: "Checkpoint", t: "Past Voyager 1",
+      n: "The furthest thing we have ever thrown. Forty-nine years to get this far." },
+    { at: 1000 * AU, k: "Checkpoint", t: "A thousand astronomical units",
+      n: "Nothing we have built has ever been here. Voyager is a sixth of the way out." },
+  ];
+
+  /* The one checkpoint that is about speed rather than distance. Alpha
+     Centauri is 4.2465 light-years away; at the top of the rail the trip
+     costs you a couple of days and costs Earth four years. */
+  const ALPHA_LY = 4.2465;
+
+  /* The rail's integer resolution. Ten thousand steps rather than a
+     thousand: at a typical width that is more than one step per pixel, so
+     the thumb tracks the pointer exactly instead of walking in visible
+     quantised jumps at the fast end of the ladder. */
+  const RAIL_MAX = 10000;
+  function setRail(sliderPos) {
+    const el = $("speed");
+    el.value = Math.round(sliderPos * RAIL_MAX);
+    paintRailFill();
+  }
+  /* The white part of the track is drawn by CSS from --p, and CSS cannot
+     read an input's value. Anything that moves the thumb has to say so. */
+  function paintRailFill() {
+    const el = $("speed");
+    el.style.setProperty("--p", Number(el.value) / RAIL_MAX);
+  }
+
   /* ── state ───────────────────────────────────────────────────────── */
   const S = {
     phase: "out",
@@ -77,6 +131,7 @@
     skipped: false,
     startWall: Date.now(),
     callout: -1,
+    seen: [],             // checkpoints already shown, by key — one per trip
   };
 
   let sky, inset, insetSky, photoSky, photoInsetSky, ground;
@@ -200,7 +255,7 @@
     // The rail represents the ship's actual current speed. Keep its thumb
     // attached to beta while automatic slowing and acceleration are drawn;
     // previously only the number moved and the bar looked frozen.
-    $("speed").value = Math.round(P.betaToSlider(S.beta) * 1000);
+    setRail(P.betaToSlider(S.beta));
     if (p >= 1) {
       S.rampMs = 0;
       if (S.phase === "stopping") beginTurn(now);
@@ -225,6 +280,7 @@
       S.distLs += dDist;
     }
     checkCallouts();
+    checkMarks();
     save();
   }
 
@@ -420,7 +476,7 @@
       S.outboundTau = S.tau;
       S.outboundEarth = S.earth;
       S.targetBeta = S.returnBeta;
-      $("speed").value = Math.round(P.betaToSlider(S.targetBeta) * 1000);
+      setRail(P.betaToSlider(S.targetBeta));
       markDetent();
       updateHomeView();
       // The turnaround is the start of the return leg, not a second parked
@@ -517,6 +573,35 @@
     photoInsetSky.resize(Math.max(80, ib.width), Math.max(80, ib.width));
   }
 
+  /* One line, always.
+
+     "44 min 43.2 sec" becomes "2 hours 44.2 sec" becomes "706 years 39 days",
+     and the string is long enough that the box wrapped it onto a second line
+     for some of those and not others. Every rollover therefore grew and shrank
+     the whole cluster by a row — which from any distance reads as flashing,
+     and it is the number the exhibit is *for*.
+
+     So: never wrap, and shrink the type instead when a string turns out to be
+     too long for the box it is in. The refit only runs when the string changes
+     length, because the face is monospaced with tabular figures — same number
+     of characters is the same number of pixels, exactly — and the seconds digit
+     changes ten times a second, which is not something to be measuring in.
+
+     The floor is the house minimum of 11px. Below it the text would be
+     unreadable, which is worse than the clip. */
+  function setFitted(el, text, floor) {
+    const key = text.length + ":" + el.clientWidth;
+    if (el.dataset.fit === key) { el.textContent = text; return; }
+    el.dataset.fit = key;
+    el.textContent = text;
+    el.style.fontSize = "";
+    let size = parseFloat(getComputedStyle(el).fontSize);
+    while (size > floor && el.scrollWidth > el.clientWidth + 1) {
+      size = Math.max(floor, size - 1);
+      el.style.fontSize = size + "px";
+    }
+  }
+
   /* ── readouts ────────────────────────────────────────────────────── */
   function paintReadouts() {
     const g = P.gamma(S.beta);
@@ -542,8 +627,8 @@
     // broken software, and the number underneath is doing that job already.
     $("earth-elapsed").textContent = "elapsed " + P.formatDuration(S.earth);
 
-    $("gap").textContent = P.formatDuration(S.earth - S.tau);
-    $("distance-out").textContent = P.formatMiles(S.distLs) + " from Earth";
+    setFitted($("gap"), P.formatDuration(S.earth - S.tau), 12);
+    setFitted($("distance-out"), P.formatMiles(S.distLs) + " from Earth", 11);
     $("beta-out").textContent = P.formatBeta(S.beta);
     $("gamma-out").textContent = "γ = " + P.formatGamma(g);
     paintEarthTarget();
@@ -566,8 +651,8 @@
     switch (S.phase) {
       case "out":
         primary.textContent = "Return to Earth";
-        status.textContent = "Outbound. Set any speed, then return when you're ready.";
-        gapHint.textContent = "counting, always";
+        status.textContent = "";
+        gapHint.textContent = "";
         break;
       case "stopping":
         primary.disabled = true; slider.disabled = true;
@@ -595,7 +680,7 @@
         secondary.hidden = false;
         preview.hidden = false;
         status.textContent = "Inbound. Earth is straight ahead. Adjust speed any time.";
-        gapHint.textContent = "counting, always";
+        gapHint.textContent = "";
         break;
       case "landing":
         primary.disabled = true; slider.disabled = true;
@@ -715,8 +800,8 @@
       b.dataset.i = i;
       b.addEventListener("click", () => {
         if ($("speed").disabled) return;
-        $("speed").value = Math.round(P.betaToSlider(d.beta) * 1000);
-        onSlider();
+        setRail(P.betaToSlider(d.beta));
+        onSlider(d.beta);
       });
       host.appendChild(b);
     });
@@ -729,10 +814,30 @@
       const d = Math.abs(P.betaToSlider(P.LADDER[i].beta) - P.betaToSlider(S.targetBeta));
       if (d < best) { best = d; nearest = i; }
     }
-    const on = S.targetBeta > 0 && best < 0.004;
+    /* Tight, because the rail no longer snaps. The old window was 0.004 of
+       the rail, which was fine while landing inside it rewrote your speed to
+       the rung — the chip lit and the chip was telling the truth. Without the
+       snap, that same window would light "0.9 c" while the readout said
+       0.9018 c. A chip is lit now only when you are on the rung. */
+    const on = S.targetBeta > 0 && best < 0.0005;
     for (let i = 0; i < buttons.length; i++) {
       buttons[i].setAttribute("aria-pressed", on && i === nearest ? "true" : "false");
     }
+
+    /* "≈ ISS" under the readout. On a phone the chips are gone entirely and
+       this is the whole ladder: it says what the number in front of you is
+       roughly equivalent to without asking you to hit a target with a thumb.
+       Wider than the chip's window on purpose — the point is recognition, not
+       precision, and the ≈ is doing the honest work. */
+    const near = $("speed-near");
+    const label = nearest >= 0 ? P.LADDER[nearest].label : "";
+    // The upper rungs are labelled with the speed itself, and the readout two
+    // lines above already says it. Only the named ones are worth repeating.
+    const named = label && !/^[0-9.]+ c$/.test(label);
+    near.textContent = named && S.targetBeta > 0 && best < 0.02
+      ? (on ? "" : "≈ ") + label
+      : "";
+
     $("detent-note").textContent = on && P.LADDER[nearest].note
       ? P.LADDER[nearest].note
       : (S.targetBeta > 0 ? gainSentence(S.targetBeta) : "");
@@ -749,14 +854,21 @@
     return "Earth gains about " + P.formatDuration(gain) + " for every year you experience.";
   }
 
-  function onSlider() {
-    const s = Number($("speed").value) / 1000;
-    let b = P.sliderToBeta(s);
-    // Snap onto a detent when the thumb is essentially on it, so the labelled
-    // speeds are actually reachable with a mouse rather than nearly reachable.
-    for (const d of P.LADDER) {
-      if (Math.abs(P.betaToSlider(d.beta) - s) < 0.004) { b = d.beta; break; }
-    }
+  /* One argument, and it is the reason the rail no longer catches.
+
+     The old control snapped: any thumb position within 0.4% of a labelled
+     speed was rewritten to that speed. Sixteen rungs meant sixteen dead
+     patches about seven pixels wide where the thumb moved and the number
+     did not — which is exactly what "it sticks" describes. Dragging is
+     continuous now, with no quantisation of any kind.
+
+     The labelled speeds are still exactly reachable, because the things that
+     want an exact speed — the chips, Page Up, Page Down — pass it in here
+     directly instead of setting the rail and reading a rounded value back
+     off it. */
+  function onSlider(exactBeta) {
+    const s = Number($("speed").value) / RAIL_MAX;
+    const b = exactBeta === undefined ? P.sliderToBeta(s) : exactBeta;
     S.targetBeta = b;
     if (S.phase === "out") {
       setBeta(b);
@@ -776,19 +888,25 @@
 
   /* ── the journey ─────────────────────────────────────────────────── */
   function wire() {
-    $("speed").addEventListener("input", onSlider);
+    // Wrapped, not passed by reference: a listener is handed an Event, and
+    // onSlider's one parameter is an exact speed.
+    $("speed").addEventListener("input", () => { paintRailFill(); onSlider(); });
     $("speed").addEventListener("keydown", (e) => {
       // Page Up / Page Down step between detents rather than by a raw amount.
       if (e.key !== "PageUp" && e.key !== "PageDown") return;
       e.preventDefault();
       const dir = e.key === "PageUp" ? 1 : -1;
       const here = P.betaToSlider(S.targetBeta);
-      const rungs = P.LADDER.map((d) => P.betaToSlider(d.beta)).sort((a, b) => a - b);
+      const rungs = P.LADDER
+        .map((d) => ({ pos: P.betaToSlider(d.beta), beta: d.beta }))
+        .sort((a, b) => a.pos - b.pos);
       const next = dir > 0
-        ? rungs.find((r) => r > here + 1e-4)
-        : rungs.slice().reverse().find((r) => r < here - 1e-4);
-      $("speed").value = Math.round((next === undefined ? (dir > 0 ? 1 : 0) : next) * 1000);
-      onSlider();
+        ? rungs.find((r) => r.pos > here + 1e-4)
+        : rungs.slice().reverse().find((r) => r.pos < here - 1e-4);
+      const end = dir > 0 ? { pos: 1, beta: P.sliderToBeta(1) } : { pos: 0, beta: 0 };
+      const rung = next === undefined ? end : next;
+      setRail(rung.pos);
+      onSlider(rung.beta);
     });
 
     $("act-primary").addEventListener("click", () => {
@@ -799,19 +917,48 @@
     $("act-secondary").addEventListener("click", skipToArrival);
     $("reset").addEventListener("click", reset);
     wireLookBack();
+    wireInfo();
+  }
 
-    // One panel at a time, all shut to begin with. The first screen is the
-    // view, the clocks and the slider; nothing there needs reading.
-    document.querySelectorAll(".tabs .tab").forEach((tab) => {
-      tab.addEventListener("click", () => {
-        const open = tab.getAttribute("aria-expanded") === "true";
-        document.querySelectorAll(".tabs .tab").forEach((t) => {
-          t.setAttribute("aria-expanded", "false");
-          $(t.dataset.panel).hidden = true;
-        });
-        tab.setAttribute("aria-expanded", open ? "false" : "true");
-        $(tab.dataset.panel).hidden = open;
-      });
+  /* ── the info sheet ──────────────────────────────────────────────────
+     Every word on this page lives behind one button in the corner. The four
+     essays used to be a tab strip under the frame, which only worked because
+     the frame was letterboxed; with the sky running to all four edges there
+     is no "under", and prose parked over the view would be competing with
+     the thing it is describing.
+
+     The simulation keeps running behind it. It has to: Earth's clock is an
+     integral over your elapsed time, and pausing it to read would put a hole
+     in the one number the exhibit is for. */
+  function setInfo(open) {
+    const sheet = $("info-sheet");
+    if (sheet.hidden !== open) return;   // already in the requested state
+    sheet.hidden = !open;
+    $("info-open").setAttribute("aria-expanded", open ? "true" : "false");
+    // Nothing behind the sheet takes focus or a click while it is up — which
+    // includes the return-to-terminal pill, whose z-index outranks everything.
+    document.querySelector(".stage").inert = open;
+    document.body.classList.toggle("sheet-open", open);
+    if (open) {
+      sheet.scrollTop = 0;
+      $("info-close").focus();
+    } else {
+      G.close();
+      $("info-open").focus();
+    }
+  }
+
+  function wireInfo() {
+    $("info-open").addEventListener("click", () => setInfo($("info-sheet").hidden));
+    $("info-close").addEventListener("click", () => setInfo(false));
+    // The backdrop is part of the sheet, so a click that lands on the sheet
+    // itself rather than on the card is a click outside the card.
+    $("info-sheet").addEventListener("click", (e) => {
+      if (e.target === $("info-sheet")) setInfo(false);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape" || $("info-sheet").hidden) return;
+      setInfo(false);
     });
   }
 
@@ -929,7 +1076,7 @@
     S.targetBeta = 0;
     S.rampMs = 0;
     S.distLs = 0;
-    $("speed").value = 0;
+    setRail(0);
     markDetent();
     updateHomeView();
     dirty = true;
@@ -1023,6 +1170,103 @@
     earth.setAttribute("aria-label", "Earth ahead, " + P.formatMiles(S.distLs) + " away");
   }
 
+  /* ── checkpoints ─────────────────────────────────────────────────────
+     Two kinds, both fired at most once per trip: a distance you have just
+     put behind you, and — at the top of the rail — what that speed is
+     actually good for. */
+  function checkMarks() {
+    if (S.phase !== "out" && S.phase !== "home") return;
+
+    for (const m of MARKS) {
+      if (S.distLs < m.at || S.seen.includes(m.t)) continue;
+      S.seen.push(m.t);
+      showMark(m.k, m.t, m.n);
+    }
+
+    // The top of the ladder. β = 0.999999 is where the rail stops, and the
+    // question it invites is the one nobody has a feel for: what is this
+    // speed *for*?
+    if (S.beta >= 0.999999 && !S.seen.includes("alpha")) {
+      S.seen.push("alpha");
+      const g = P.gamma(S.beta);
+      const yours = ALPHA_LY * YEAR / (S.beta * g);   // your own clock, one way
+      const theirs = ALPHA_LY * YEAR / S.beta;        // Earth's clock, one way
+      showMark("Top of the rail",
+        "Alpha Centauri: " + P.formatDuration(yours),
+        "The closest star to the Sun, 4.25 light-years out. At this speed the " +
+        "crossing costs you that much — and Earth " + P.formatDuration(theirs) + ".");
+    }
+  }
+
+  /* Queued, and only ever one on screen.
+
+     At the top of the rail you cross the Moon, Mercury, Earth's own orbit,
+     Jupiter and Saturn inside about ten seconds — Earth's clock runs seven
+     hundred times yours up there, and the distance goes with Earth's clock.
+     They come through one at a time, three seconds apart, in a single line
+     that changes rather than a stack that grows. The sentence for each one
+     is behind a tap. */
+  const MARK_GAP = 3000;
+  const MARK_LIFE = 11000;
+  let markQueue = [];
+  let markTimer = 0;
+  let markLife = 0;
+  let markLast = 0;
+
+  function showMark(kicker, title, note) {
+    markQueue.push({ kicker, title, note });
+    drainMarks();
+  }
+
+  function drainMarks() {
+    if (markTimer || !markQueue.length) return;
+    const wait = Math.max(0, MARK_GAP - (performance.now() - markLast));
+    markTimer = setTimeout(() => {
+      markTimer = 0;
+      const m = markQueue.shift();
+      if (m) { paintMark(m); markLast = performance.now(); }
+      drainMarks();
+    }, wait);
+  }
+
+  function paintMark(m) {
+    const host = $("marks");
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "mark";
+    el.setAttribute("aria-expanded", "false");
+    const k = document.createElement("span"); k.className = "k"; k.textContent = m.kicker;
+    const t = document.createElement("span"); t.className = "t num"; t.textContent = m.title;
+    const n = document.createElement("span"); n.className = "n"; n.textContent = m.note;
+    el.append(k, t, n);
+
+    /* Opened, it stops counting down. Someone who has just tapped it to read
+       the sentence should not have it fade out from under them. */
+    el.addEventListener("click", () => {
+      const open = el.getAttribute("aria-expanded") === "true";
+      el.setAttribute("aria-expanded", open ? "false" : "true");
+      clearTimeout(markLife);
+      if (open) markLife = setTimeout(() => retireMark(el), MARK_LIFE);
+    });
+
+    // Replaced, not stacked. Removed outright rather than through retireMark,
+    // which only starts a fade — the old one has to be gone before the new one
+    // lands or the rail jumps a row taller for the length of the crossfade.
+    host.replaceChildren(el);
+    clearTimeout(markLife);
+    markLife = setTimeout(() => retireMark(el), MARK_LIFE);
+  }
+
+  function retireMark(el) {
+    if (!el || !el.isConnected || el.classList.contains("out")) return;
+    el.classList.add("out");
+    // The class drives a fade; remove on its end, and on a timer as well so a
+    // reduced-motion visitor — who gets no transition and therefore no
+    // transitionend — does not leave a dead panel sitting in the rail.
+    el.addEventListener("transitionend", () => el.remove(), { once: true });
+    setTimeout(() => el.remove(), 500);
+  }
+
   /* ── callouts ────────────────────────────────────────────────────── */
   function checkCallouts() {
     let hit = -1;
@@ -1087,6 +1331,7 @@
         beta: S.beta, targetBeta: S.targetBeta, startWall: S.startWall,
         outboundTau: S.outboundTau, outboundEarth: S.outboundEarth,
         returnBeta: S.returnBeta, skipped: S.skipped, altKm: S.altKm,
+        seen: S.seen,
       }));
     } catch (e) { /* private mode, or a file:// origin that refuses storage */ }
   }
@@ -1098,6 +1343,7 @@
       Object.assign(S, stored);
       if (!(S.returnBeta >= 0)) S.returnBeta = S.targetBeta || S.beta || 0;
       if (!(S.altKm >= 0)) S.altKm = 0;
+      if (!Array.isArray(S.seen)) S.seen = [];
       // A re-entry is a few seconds of noise, not a state worth resuming
       // into. Come back to a tab that was mid-landing and you are simply
       // home, in the forest, with the numbers intact.
@@ -1126,7 +1372,7 @@
     const url = new URLSearchParams(location.search);
     const b = parseFloat(url.get("b"));
     if (isFinite(b) && b >= 0 && b < 1 && S.phase === "out") { S.beta = S.targetBeta = b; }
-    $("speed").value = Math.round(P.betaToSlider(S.targetBeta || S.beta) * 1000);
+    setRail(P.betaToSlider(S.targetBeta || S.beta));
     markDetent();
     checkCallouts();
     updateHomeView();
@@ -1145,8 +1391,11 @@
       phase: "out", beta: 0, targetBeta: 0, tau: 0, earth: 0, distLs: 0,
       rampMs: 0, skipped: false, startWall: Date.now(), callout: -1,
       outboundTau: 0, outboundEarth: 0,
-      returnBeta: 0, altKm: 0, landFromKm: 0, skipTurn: false,
+      returnBeta: 0, altKm: 0, landFromKm: 0, skipTurn: false, seen: [],
     });
+    markQueue = [];
+    clearTimeout(markTimer); markTimer = 0;
+    $("marks").replaceChildren();
     shake = 0;
     landingHeat = 0;
     // Start the clock from now, not from whenever the loop last ran. Without
@@ -1155,16 +1404,13 @@
     lastFrame = performance.now();
     forward = OUTBOUND.slice();
     sky.extras = []; insetSky.extras = [];
-    $("speed").value = 0;
+    setRail(0);
     $("persist-note").textContent = "This session is remembered while the tab is open.";
-    document.querySelectorAll(".tabs .tab").forEach((tab) => {
-      tab.setAttribute("aria-expanded", "false");
-      $(tab.dataset.panel).hidden = true;
-    });
     sky.exposureScale = insetSky.exposureScale = 1;
     markDetent(); checkCallouts(); paintPhase();
     syncUrl();
-    scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+    // Reset is a button on the sheet, and what it resets is behind the sheet.
+    setInfo(false);
     dirty = true;
   }
 
