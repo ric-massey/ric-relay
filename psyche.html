@@ -5,10 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Psyche — Human Systems</title>
   <meta name="description" content="Ric's field notebook for mood, diagnostic criteria, psychoactive substances, and the evidence used to understand human minds.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Ric's Terminal">
   <meta property="og:title" content="Psyche — Human Systems">
   <meta property="og:description" content="Patterns, criteria, chemistry, and the evidence we use to understand ourselves.">
   <meta property="og:url" content="https://ricmassey.com/psyche.html">
+  <meta name="twitter:card" content="summary">
   <link rel="canonical" href="https://ricmassey.com/psyche.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%2360436f'/><text y='.85em' font-size='66' x='17'>🧠</text></svg>">
   <style>
     :root{
       --desk:#17131a;--paper:#eee8dc;--paper-deep:#ded3c1;--ink:#231d29;
@@ -22,7 +26,7 @@
       radial-gradient(circle at 87% 92%,rgba(166,64,77,.14),transparent 28rem),var(--desk)}
     a{color:inherit}
     .folder{width:min(1180px,calc(100% - 28px));margin:34px auto 60px;position:relative}
-    .folder::before{content:"CASE FILE 09 / HUMAN SYSTEMS";display:block;width:max-content;max-width:75%;padding:10px 18px 7px;border-radius:9px 9px 0 0;background:var(--paper-deep);color:var(--violet-dark);font:700 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em}
+    .folder::before{content:"CASE FILE 09 / HUMAN SYSTEMS";display:block;width:max-content;max-width:75%;padding:10px 18px 7px;border-radius:9px 9px 0 0;background:var(--paper-deep);color:var(--violet-dark);font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em}
     .sheet{position:relative;overflow:hidden;background:
       linear-gradient(90deg,transparent 72px,rgba(166,64,77,.17) 72px,rgba(166,64,77,.17) 73px,transparent 73px),
       repeating-linear-gradient(0deg,transparent 0,transparent 31px,rgba(49,90,112,.09) 31px,rgba(49,90,112,.09) 32px),var(--paper);
@@ -35,12 +39,29 @@
     nav.case-tabs a,nav.case-tabs .here{flex:0 0 auto;padding:9px 11px 8px;text-decoration:none;color:var(--pencil);font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.04em;border:1px solid transparent;border-bottom:0;border-radius:6px 6px 0 0}
     nav.case-tabs a:hover{color:var(--violet-dark);background:rgba(96,67,111,.08)}
     nav.case-tabs .here{color:var(--white);background:var(--violet);border-color:var(--violet)}
+
+    /* Room menu — the case-file tabs fold into one tab on a phone. effects.js
+       injects the button; this is what it looks like in the notebook. */
+    .roomnav-toggle{display:none}
+    @media(max-width:560px){
+      .roomnav-toggle{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 13px;
+        font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.06em;
+        color:var(--white);background:var(--violet);border:1px solid var(--violet);border-radius:6px 6px 0 0;cursor:pointer}
+      .roomnav-toggle-bars{position:relative;width:14px;height:10px;border-top:2px solid currentColor;border-bottom:2px solid currentColor}
+      .roomnav-toggle-bars::after{content:"";position:absolute;inset:calc(50% - 1px) 0 auto;border-top:2px solid currentColor}
+      nav.case-tabs[data-roomnav]{display:none}
+      nav.case-tabs[data-roomnav].roomnav-open{display:flex;flex-direction:column;align-items:stretch;gap:2px;width:100%;padding-bottom:8px}
+      nav.case-tabs[data-roomnav].roomnav-open a,nav.case-tabs[data-roomnav].roomnav-open .here{
+        display:flex;align-items:center;min-height:44px;padding:0 13px;font-size:12px;
+        border:1px solid var(--line);border-radius:4px;background:rgba(255,253,247,.6)}
+      nav.case-tabs[data-roomnav].roomnav-open .here{background:var(--violet);border-color:var(--violet)}
+    }
     main{position:relative;z-index:1;padding:54px 54px 70px 112px}
     .latest-psyche{display:grid;grid-template-columns:auto 1fr auto;gap:4px 14px;align-items:center;width:min(100%,640px);margin:0 0 30px;padding:10px 13px;border:1px solid rgba(96,67,111,.32);border-left:5px solid var(--red);background:rgba(255,253,247,.63);text-decoration:none;box-shadow:3px 4px 0 rgba(96,67,111,.10);transform:rotate(-.25deg)}
-    .latest-psyche .latest-kicker{grid-row:1/3;color:var(--red);font:700 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.1em;writing-mode:vertical-rl;transform:rotate(180deg)}
+    .latest-psyche .latest-kicker{grid-row:1/3;color:var(--red);font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.1em;writing-mode:vertical-rl;transform:rotate(180deg)}
     .latest-psyche .latest-title{font-size:16px;line-height:1.2}
     .latest-psyche .latest-description{color:var(--pencil);font-size:12px}
-    .latest-psyche .latest-meta{grid-column:3;grid-row:1/3;display:grid;gap:6px;text-align:right;color:var(--violet);font:700 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase}
+    .latest-psyche .latest-meta{grid-column:3;grid-row:1/3;display:grid;gap:6px;text-align:right;color:var(--violet);font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase}
     .latest-psyche:hover{background:var(--white);transform:rotate(0)}
     .hero{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(230px,.7fr);gap:52px;align-items:center;padding-bottom:48px;border-bottom:2px solid var(--ink)}
     .case-no{color:var(--red);font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;text-transform:uppercase}
@@ -62,8 +83,8 @@
     .case{position:relative;display:flex;flex-direction:column;min-height:370px;padding:24px 22px 22px;background:rgba(255,253,247,.70);border:1px solid var(--line);box-shadow:5px 6px 0 rgba(56,38,64,.10);transition:transform .2s,box-shadow .2s}
     .case:nth-child(2){transform:rotate(.45deg)}.case:nth-child(3){transform:rotate(-.35deg)}
     .case:hover{transform:translateY(-4px) rotate(0);box-shadow:8px 11px 0 rgba(56,38,64,.14)}
-    .case .tab{position:absolute;right:13px;top:-9px;padding:5px 9px;background:var(--paper-deep);color:var(--violet);font:700 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.1em}
-    .case .index{font:700 10px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--red)}
+    .case .tab{position:absolute;right:13px;top:-9px;padding:5px 9px;background:var(--paper-deep);color:var(--violet);font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.1em}
+    .case .index{font:700 11px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--red)}
     .case h2{font-size:31px;line-height:1.02;margin:22px 0 14px;font-weight:400}
     .case p{color:#554e56;font-size:15px;margin:0 0 18px}
     .case .question{margin-top:auto;padding-top:18px;border-top:1px solid var(--line);color:var(--violet);font-style:italic}
@@ -71,14 +92,14 @@
     .case a:hover{background:var(--violet)}
     .thread{margin-top:42px;padding:24px 26px;border:1px dashed var(--violet);background:rgba(96,67,111,.06);font-size:18px}
     .thread strong{color:var(--red)}
-    footer{margin-top:54px;padding-top:18px;border-top:2px solid var(--ink);display:flex;justify-content:space-between;gap:20px;color:var(--pencil);font:700 10px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.08em}
+    footer{margin-top:54px;padding-top:18px;border-top:2px solid var(--ink);display:flex;justify-content:space-between;gap:20px;color:var(--pencil);font:700 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.08em}
     .egg{position:fixed;left:50%;bottom:24px;z-index:20;transform:translate(-50%,12px);padding:10px 14px;background:var(--ink);color:var(--white);opacity:0;pointer-events:none;font:700 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;transition:.2s}
     .egg.on{opacity:1;transform:translate(-50%,0)}
     @media(max-width:850px){
       .masthead{padding-left:28px}.hero{grid-template-columns:1fr}.blot-button{max-width:330px;margin:auto}.cases{grid-template-columns:1fr}.case{min-height:0}main{padding-left:58px;padding-right:28px}
     }
     @media(max-width:560px){
-      .folder{width:100%;margin:0}.folder::before{margin-left:10px}.sheet{border-radius:0}.masthead{padding:15px 13px 0}.brandline{font-size:9px}nav.case-tabs a,nav.case-tabs .here{padding:8px 9px;font-size:10px}main{padding:34px 16px 55px 28px}.sheet{background:linear-gradient(90deg,transparent 16px,rgba(166,64,77,.17) 16px,rgba(166,64,77,.17) 17px,transparent 17px),repeating-linear-gradient(0deg,transparent 0,transparent 31px,rgba(49,90,112,.09) 31px,rgba(49,90,112,.09) 32px),var(--paper)}
+      .folder{width:100%;margin:0}.folder::before{margin-left:10px}.sheet{border-radius:0}.masthead{padding:15px 13px 0}.brandline{font-size:11px}nav.case-tabs a,nav.case-tabs .here{padding:8px 9px;font-size:11px}main{padding:34px 16px 55px 28px}.sheet{background:linear-gradient(90deg,transparent 16px,rgba(166,64,77,.17) 16px,rgba(166,64,77,.17) 17px,transparent 17px),repeating-linear-gradient(0deg,transparent 0,transparent 31px,rgba(49,90,112,.09) 31px,rgba(49,90,112,.09) 32px),var(--paper)}
       .latest-psyche{grid-template-columns:auto minmax(0,1fr) auto;gap:2px 9px;margin-bottom:24px;padding:8px 10px}.latest-psyche .latest-kicker{grid-row:1/3}.latest-psyche .latest-description{display:none}.latest-psyche .latest-meta{grid-column:3;grid-row:1/3;display:grid;justify-content:initial;text-align:right}.hero{gap:20px}.blot-button{max-width:240px}h1{font-size:58px}.case h2{font-size:27px}footer{display:block}
     }
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.blot,.case,.latest-psyche,.egg{transition:none}}
@@ -94,12 +115,9 @@
           <a href="orrin.html">orrin</a>
           <span class="here" aria-current="page">psyche</span>
           <a href="climbing.html">climbing</a>
-          <a href="training.html">training</a>
-          <a href="apex.html">apex</a>
           <a href="exploration.html">exploration</a>
           <a href="workbench.html">workbench</a>
           <a href="captures.html">captures</a>
-          <a href="log.html">log</a>
         </nav>
       </header>
 

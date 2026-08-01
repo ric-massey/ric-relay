@@ -81,4 +81,9 @@ These are visible, but they belong in the same field guide:
   rolls all the way upside down, drifts backward as often as forward, and does not
   steer with the player.
 - The Terminal supports command history with `↑`/`↓` and completion with
-  `Tab`.
+  `Tab`. `Tab` fills in as far as every match agrees before listing them, the
+  way a real shell does. `map` is the one room it won't complete — it answers
+  `[LOCKED]`, so completing to it is a dead end; `open map` still gets there.
+- Typing a room name works even with a trailing word (`mind whatever` still
+  enters `/mind`), and typing the first character during the boot animation
+  skips the boot *and* lands that character in the prompt.

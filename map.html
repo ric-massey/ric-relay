@@ -18,7 +18,9 @@
     :root {
       --bg: #0a0a0a;
       --red: #ff3b30;
-      --red-dim: #8a2620;
+      /* was #8a2620 — 2.2:1 on this near-black ground, which is below AA and
+         carried every paragraph on the page. This reads 5.0:1 and is still red. */
+      --red-dim: #d4584e;
       --red-faint: #33100d;
       --amber: #ffb000;
     }
@@ -56,7 +58,7 @@
     }
 
     .stripe {
-      font-size: 0.72rem;
+      font-size: 0.76rem;
       letter-spacing: 0.35em;
       color: var(--bg);
       background: repeating-linear-gradient(45deg, var(--red) 0 14px, var(--amber) 14px 28px);

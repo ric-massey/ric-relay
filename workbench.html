@@ -57,6 +57,35 @@
     nav.sheets a:hover { color: var(--tape); border-color: var(--tape); box-shadow: 2px 2px 0 rgba(255, 210, 77, 0.3); }
     nav.sheets .here { color: var(--blueprint); background: var(--tape); border-color: var(--tape); font-weight: 700; }
 
+    /* Room menu — the sheet index folds behind one chip on a phone. effects.js
+       injects the button; the blueprint keeps its own look. */
+    .roomnav-toggle { display: none; }
+    @media (max-width: 620px) {
+      .roomnav-toggle {
+        display: inline-flex; align-items: center; gap: 0.55rem;
+        min-height: 44px; padding: 0 0.9rem; margin-top: 0.5rem;
+        font-family: ui-monospace, Menlo, monospace; font-size: 0.72rem; letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--chalk); background: rgba(13, 31, 61, 0.6);
+        border: 1px solid rgba(232, 238, 252, 0.25); border-radius: 0; cursor: pointer;
+      }
+      .roomnav-toggle[aria-expanded="true"] { color: var(--blueprint); background: var(--tape); border-color: var(--tape); font-weight: 700; }
+      .roomnav-toggle-bars {
+        position: relative; width: 15px; height: 11px;
+        border-top: 2px solid currentColor; border-bottom: 2px solid currentColor;
+      }
+      .roomnav-toggle-bars::after { content: ""; position: absolute; inset: calc(50% - 1px) 0 auto; border-top: 2px solid currentColor; }
+      nav.sheets[data-roomnav] { display: none; }
+      nav.sheets[data-roomnav].roomnav-open {
+        display: flex; flex-direction: column; align-items: stretch;
+        gap: 0.25rem; margin-top: 0.5rem; font-size: 0.8rem;
+      }
+      nav.sheets[data-roomnav].roomnav-open a,
+      nav.sheets[data-roomnav].roomnav-open .here {
+        display: flex; align-items: center; min-height: 44px; padding: 0 0.9rem;
+      }
+    }
+
     .titleblock {
       border: 2px solid var(--chalk);
       display: inline-block;
@@ -79,7 +108,7 @@
 
     .drawing-no {
       font-family: ui-monospace, Menlo, monospace;
-      font-size: 0.65rem;
+      font-size: 0.69rem;
       letter-spacing: 0.2em;
       color: var(--chalk-dim);
       display: block;
@@ -100,11 +129,14 @@
     }
 
     a.item { border-style: solid; }
+    /* an unclaimed slot on the blueprint, drawn fainter than a real sheet */
+    .item.empty { background: rgba(13, 31, 61, 0.35); border-color: rgba(143, 165, 207, 0.45); }
+    .item.empty h2 { color: var(--chalk-dim); font-weight: 400; }
     a.item:hover { border-color: var(--tape); box-shadow: 4px 4px 0 rgba(255, 210, 77, 0.35); }
 
     .item .no {
       font-family: ui-monospace, Menlo, monospace;
-      font-size: 0.65rem;
+      font-size: 0.69rem;
       letter-spacing: 0.22em;
       color: var(--tape);
       display: block;
@@ -117,20 +149,20 @@
     /* status tag — finished projects get the "shipped" tag */
     .tag {
       display: inline-block; font-family: ui-monospace, Menlo, monospace;
-      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+      font-size: 0.69rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
       padding: 0.18rem 0.5rem; border-radius: 3px; margin-top: 0.7rem;
     }
     .tag.bench { background: rgba(255, 210, 77, 0.15); color: var(--tape); border: 1px solid rgba(255, 210, 77, 0.5); }
     .tag.building { background: rgba(120, 180, 255, 0.15); color: #9fc2ff; border: 1px solid rgba(120, 180, 255, 0.45); }
     .tag.shipped { background: rgba(90, 220, 140, 0.15); color: #6ee6a0; border: 1px solid rgba(90, 220, 140, 0.5); }
     .latest-bench{display:grid;grid-template-columns:auto 1fr auto;gap:.2rem 1rem;align-items:center;width:min(100%,760px);margin:1.3rem 0 1.8rem;padding:.9rem 1rem;color:var(--chalk);text-decoration:none;border:1px solid rgba(255,255,255,.25);border-left:5px solid var(--tape);background:rgba(255,255,255,.035);box-shadow:inset 0 0 0 1px rgba(18,42,82,.5)}
-    .latest-bench .latest-kicker{grid-row:1/3;color:var(--tape);font:700 .65rem/1.2 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase}
+    .latest-bench .latest-kicker{grid-row:1/3;color:var(--tape);font:700 0.69rem/1.2 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase}
     .latest-bench .latest-title{font-size:.96rem}.latest-bench .latest-description{color:var(--chalk-dim);font-size:.78rem}
-    .latest-bench .latest-meta{grid-column:3;grid-row:1/3;display:grid;gap:.2rem;color:var(--tape);font:700 .63rem/1.2 ui-monospace,Menlo,monospace;text-align:right;text-transform:uppercase}
+    .latest-bench .latest-meta{grid-column:3;grid-row:1/3;display:grid;gap:.2rem;color:var(--tape);font:700 0.69rem/1.2 ui-monospace,Menlo,monospace;text-align:right;text-transform:uppercase}
     .latest-bench:hover,.latest-bench:focus-visible{border-color:var(--tape);outline:none;background:rgba(255,210,77,.07)}
     @media(max-width:620px){.latest-bench{grid-template-columns:minmax(0,1fr) auto;padding:.65rem .75rem}.latest-bench .latest-kicker,.latest-bench .latest-title{grid-column:1;grid-row:auto}.latest-bench .latest-description{display:none}.latest-bench .latest-meta{grid-column:2;grid-row:1/3;display:grid;text-align:right}}
 
-    footer { margin-top: 3.5rem; font-family: ui-monospace, Menlo, monospace; font-size: 0.68rem; letter-spacing: 0.2em; color: var(--chalk-dim); }
+    footer { margin-top: 3.5rem; font-family: ui-monospace, Menlo, monospace; font-size: 0.69rem; letter-spacing: 0.2em; color: var(--chalk-dim); }
   </style>
 </head>
 <body>
@@ -143,12 +175,9 @@
         <a href="orrin.html">orrin</a>
         <a href="psyche.html">psyche</a>
         <a href="climbing.html">climbing</a>
-        <a href="training.html">training</a>
-        <a href="apex.html">apex</a>
         <a href="exploration.html">exploration</a>
         <span class="here" aria-current="page">workbench</span>
         <a href="captures.html">captures</a>
-        <a href="log.html">log</a>
       </nav>
     </header>
 
@@ -183,12 +212,25 @@
         <span class="tag shipped">shipped</span>
       </a>
 
-      <div class="item">
+      <a class="item" href="projects/farlight/index.html">
         <span class="no">ITEM 002</span>
-        <h2>Your next random project</h2>
-        <p>Replace me. Anything goes here — hardware, code, ideas, one-day builds.
-          When it's done, flip the tag to “shipped.”</p>
+        <h2>FARLIGHT</h2>
+        <p>A playable experiment in momentum and contact. Dive into the hills, launch
+          off a crest, rotate in the air, and meet the ground clean enough to keep
+          your speed. Hold space to dive, or just hold a thumb on the screen.</p>
         <span class="tag bench">on the bench</span>
+      </a>
+
+      <!-- The empty slot is deliberate — this room's whole point is that the bench
+           is never finished. To add a real project, copy the ITEM 001 block above
+           and put it before this one. Don't leave "replace me" copy on the page:
+           this room is linked from the front door and family read it. -->
+      <div class="item empty">
+        <span class="no">ITEM 003</span>
+        <h2>Empty slot</h2>
+        <p>Whatever gets clamped down next — hardware, code, or an idea that survives
+          the week. The bench is not supposed to be full.</p>
+        <span class="tag bench">nothing on it yet</span>
       </div>
     </div>
 

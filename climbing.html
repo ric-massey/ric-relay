@@ -23,9 +23,13 @@
       --soft: #6f6a5f;
       --line: #e2ddd0;
       --clay: #b5502a;
-      --star: #e0a021;
-      --sent: #2f8f4e;
-      --proj: #c77d1a;
+      /* These three set the smallest, most meaningful text on the page — the
+         star ratings and the sent/projecting tags are how you read the ledger.
+         All three were between 2.2:1 and 3.6:1 on their own backgrounds; these
+         clear AA while staying gold / green / orange. */
+      --star: #966400;
+      --sent: #217a40;
+      --proj: #9c5c00;
       --scope: #7a7568;
     }
 
@@ -60,6 +64,34 @@
     .topbar .roomnav a:hover { color: #fff; background: rgba(255, 255, 255, 0.12); text-decoration: none; }
     .topbar .roomnav .here { color: var(--bar); background: #fff; font-weight: 700; }
 
+    /* Room menu — the tab bar wrapped to three rows on a phone, eating the top
+       of the screen. effects.js injects the button; the bar keeps its own look. */
+    .roomnav-toggle { display: none; }
+    @media (max-width: 620px) {
+      .roomnav-toggle {
+        display: inline-flex; align-items: center; gap: 0.55rem;
+        min-height: 44px; padding: 0 0.8rem; margin-left: auto;
+        font: inherit; font-size: 0.78rem; letter-spacing: 0.03em;
+        color: #fff; background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 5px; cursor: pointer;
+      }
+      .roomnav-toggle[aria-expanded="true"] { color: var(--bar); background: #fff; border-color: #fff; font-weight: 700; }
+      .roomnav-toggle-bars {
+        position: relative; width: 15px; height: 11px;
+        border-top: 2px solid currentColor; border-bottom: 2px solid currentColor;
+      }
+      .roomnav-toggle-bars::after { content: ""; position: absolute; inset: calc(50% - 1px) 0 auto; border-top: 2px solid currentColor; }
+      .topbar .roomnav[data-roomnav] { display: none; }
+      .topbar .roomnav[data-roomnav].roomnav-open {
+        display: flex; flex-direction: column; align-items: stretch;
+        width: 100%; margin-left: 0; gap: 0.2rem; padding: 0.4rem 0 0.2rem;
+      }
+      .topbar .roomnav[data-roomnav].roomnav-open a,
+      .topbar .roomnav[data-roomnav].roomnav-open .here {
+        display: flex; align-items: center; min-height: 44px; padding: 0 0.8rem; font-size: 0.85rem;
+      }
+    }
+
     /* rotating photo hero (area-photo banner) */
     .hero { height: 300px; position: relative; overflow: hidden; background: #26241f; }
     .hero .shot {
@@ -92,10 +124,10 @@
       width: min(100%, 760px); margin: 1.15rem 0; padding: .8rem .9rem; color: var(--ink); text-decoration: none;
       background: #f4f8f2; border: 1px solid #c8d8c7; border-left: 5px solid var(--bar); border-radius: 6px;
     }
-    .latest-climb .latest-kicker { grid-row: 1/3; color: var(--bar); font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .latest-climb .latest-kicker { grid-row: 1/3; color: var(--bar); font-size: 0.69rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
     .latest-climb .latest-title { font-size: .96rem; }
     .latest-climb .latest-description { color: var(--soft); font-size: .78rem; }
-    .latest-climb .latest-meta { grid-column: 3; grid-row: 1/3; display: grid; gap: .2rem; color: var(--bar); font-size: .66rem; font-weight: 700; text-align: right; text-transform: uppercase; }
+    .latest-climb .latest-meta { grid-column: 3; grid-row: 1/3; display: grid; gap: .2rem; color: var(--bar); font-size: 0.69rem; font-weight: 700; text-align: right; text-transform: uppercase; }
     .latest-climb:hover,.latest-climb:focus-visible { background:#e8f2e7; border-color:var(--bar); outline:none; }
 
     .welcome { color: var(--soft); margin-bottom: 1.4rem; }
@@ -138,7 +170,7 @@
 
     /* status tag (finished shows a different tag) */
     .tag {
-      display: inline-block; font-size: 0.68rem; font-weight: 700;
+      display: inline-block; font-size: 0.69rem; font-weight: 700;
       letter-spacing: 0.08em; text-transform: uppercase;
       padding: 0.12rem 0.5rem; border-radius: 999px; margin-left: 0.5rem; vertical-align: middle;
     }
@@ -158,7 +190,7 @@
 
     /* the day's routes, grouped under the wall they were on */
     .route .wallname {
-      color: var(--soft); font-size: .68rem; text-transform: uppercase;
+      color: var(--soft); font-size: 0.69rem; text-transform: uppercase;
       letter-spacing: .08em; margin-bottom: .15rem;
     }
     .route .fav { color: var(--star); }
@@ -200,10 +232,10 @@
       .routes.compact .route .name { font-size: .86rem; }
       .routes.compact .route .grade { font-size: .72rem; }
       .routes.compact .route .wallname {
-        font-size: .6rem; max-width: 100%;
+        font-size: 0.69rem; max-width: 100%;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       }
-      .routes.compact .route .tag { font-size: .58rem; padding: .04rem .34rem; letter-spacing: .05em; }
+      .routes.compact .route .tag { font-size: 0.69rem; padding: .04rem .34rem; letter-spacing: .05em; }
       .routes.compact .route .when { display: none; }
     }
 
@@ -280,24 +312,26 @@
         <a href="orrin.html">orrin</a>
         <a href="psyche.html">psyche</a>
         <span class="here" aria-current="page">climbing</span>
-        <a href="training.html">training</a>
-        <a href="apex.html">apex</a>
         <a href="exploration.html">exploration</a>
         <a href="workbench.html">workbench</a>
         <a href="captures.html">captures</a>
-        <a href="log.html">log</a>
       </nav>
     </div>
   </div>
 
   <div class="hero" id="hero">
     <!-- Focal points follow Ric, rather than the geometric center of each photo. -->
+    <!-- Only the first shot carries a background-image. The other five are
+         `data-shot` and get fetched on an idle callback after the page is
+         usable — inline background-images on always-present divs made the
+         browser pull all six (2.7 MB) before anything rendered, even though
+         only one is ever visible. To swap a photo, edit the path in place. -->
     <div class="shot on" aria-hidden="true" style="--focus:72% 52%;--focus-mobile:72% 50%;background-image:url('photos/climbing-01.jpg')"></div>
-    <div class="shot" aria-hidden="true" style="--focus:47% 46%;--focus-mobile:46% 44%;background-image:url('photos/climbing-02.jpg')"></div>
-    <div class="shot" aria-hidden="true" style="--focus:48% 50%;--focus-mobile:48% 48%;background-image:url('photos/climbing-03.jpg')"></div>
-    <div class="shot" aria-hidden="true" style="--focus:63% 49%;--focus-mobile:63% 47%;background-image:url('photos/climbing-05.jpg')"></div>
-    <div class="shot" aria-hidden="true" style="--focus:49% 51%;--focus-mobile:49% 50%;background-image:url('photos/climbing-06.jpg')"></div>
-    <div class="shot" aria-hidden="true" style="--focus:69% 52%;--focus-mobile:69% 50%;background-image:url('photos/climbing-07.jpg')"></div>
+    <div class="shot" aria-hidden="true" data-shot="photos/climbing-02.jpg" style="--focus:47% 46%;--focus-mobile:46% 44%"></div>
+    <div class="shot" aria-hidden="true" data-shot="photos/climbing-03.jpg" style="--focus:48% 50%;--focus-mobile:48% 48%"></div>
+    <div class="shot" aria-hidden="true" data-shot="photos/climbing-05.jpg" style="--focus:63% 49%;--focus-mobile:63% 47%"></div>
+    <div class="shot" aria-hidden="true" data-shot="photos/climbing-06.jpg" style="--focus:49% 51%;--focus-mobile:49% 50%"></div>
+    <div class="shot" aria-hidden="true" data-shot="photos/climbing-07.jpg" style="--focus:69% 52%;--focus-mobile:69% 50%"></div>
     <button class="label" id="hero-toggle" type="button" aria-pressed="false" title="Pause the climbing-photo rotation">Ric on the wall · click to pause</button>
   </div>
 
@@ -306,7 +340,8 @@
     <h1>Climbing &amp; Mountaineering</h1>
     <p class="welcome">a record of my experiences outside!</p>
 
-    <a class="latest-climb" data-latest-banner data-latest-prefix="new route"></a>
+    <a class="latest-climb" data-latest-banner data-latest-prefix="new on the terminal"
+       data-latest-room="climbing" data-latest-prefix-own="new route"></a>
 
     <div class="ledger">
       <div class="cell"><div class="n" id="n-sent">—</div><div class="l">Sends logged</div></div>
@@ -397,7 +432,7 @@
         <div class="route${star ? " starred" : ""}">
           <div class="line1">
             ${loc ? `<div class="wallname">${esc(loc)}</div>` : ""}
-            ${star ? '<span class="fav" title="A favourite or a project">★</span>' : ""}
+            ${star ? '<span class="fav" title="A favorite or a project">★</span>' : ""}
             <span class="name">${esc(name)}</span>
             ${grade ? `<span class="grade">${esc(grade)}</span>` : ""}
             ${tag ? `<span class="tag ${tagClass}">${esc(tag)}</span>` : ""}
@@ -539,6 +574,20 @@
     // rotate the hero photos
     const shots = document.querySelectorAll("#hero .shot");
     const heroToggle = document.getElementById("hero-toggle");
+
+    // Pull the rest of the deck once the page is idle. The first rotation is
+    // 5s away, so they're all decoded long before anything needs them — and
+    // the initial load drops by ~2.3 MB.
+    const loadRestOfDeck = () => {
+      for (const shot of shots) {
+        if (!shot.dataset.shot) continue;
+        shot.style.backgroundImage = `url('${shot.dataset.shot}')`;
+        delete shot.dataset.shot;
+      }
+    };
+    if ("requestIdleCallback" in window) requestIdleCallback(loadRestOfDeck, { timeout: 2500 });
+    else setTimeout(loadRestOfDeck, 1200);
+
     if (shots.length > 1) {
       let i = 0;
       let timer;

@@ -18,7 +18,9 @@
       --bg: #101014;
       --paper: #17171d;
       --ink: #dcd9e8;
-      --faint: #797487;
+      /* was #797487 — 4.0:1, under AA, and it sets the section bar, the
+         datelines and both intro paragraphs */
+      --faint: #918ca1;
       --signal: #ff8ae0;
       --edge: #26242f;
     }
@@ -53,6 +55,38 @@
     nav.sections a:hover { color: var(--signal); }
     nav.sections .here { color: var(--signal); font-weight: 700; }
 
+    /* Room menu — the section bar folds behind one heading on a phone.
+       effects.js injects the button; the masthead keeps its own look. */
+    .roomnav-toggle { display: none; }
+    @media (max-width: 620px) {
+      .roomnav-toggle {
+        display: inline-flex; align-items: center; gap: 0.6rem;
+        min-height: 44px; padding: 0 0.4rem; margin-top: 0.3rem;
+        font-family: Georgia, "Times New Roman", serif; font-size: 0.9rem;
+        font-variant: small-caps; letter-spacing: 0.06em;
+        color: var(--ink); background: none; cursor: pointer;
+        border: 0; border-top: 1px solid var(--edge); border-bottom: 1px solid var(--edge);
+        width: 100%; justify-content: flex-start;
+      }
+      .roomnav-toggle[aria-expanded="true"] { color: var(--signal); border-bottom-color: transparent; }
+      .roomnav-toggle-bars {
+        position: relative; width: 15px; height: 11px;
+        border-top: 1px solid currentColor; border-bottom: 1px solid currentColor;
+      }
+      .roomnav-toggle-bars::after { content: ""; position: absolute; inset: calc(50% - 1px) 0 auto; border-top: 1px solid currentColor; }
+      nav.sections[data-roomnav] { display: none; }
+      nav.sections[data-roomnav].roomnav-open {
+        display: flex; flex-direction: column; align-items: stretch;
+        border-top: 0; padding: 0 0 0.5rem;
+      }
+      nav.sections[data-roomnav].roomnav-open a,
+      nav.sections[data-roomnav].roomnav-open .here {
+        display: flex; align-items: center; min-height: 44px;
+        padding: 0 0.4rem; font-size: 1rem;
+        border-right: 0; border-bottom: 1px solid var(--edge);
+      }
+    }
+
     h1 { font-weight: 400; font-size: 2rem; letter-spacing: 0.02em; }
     h1 .accent { color: var(--signal); }
     .subtitle { color: var(--faint); margin: 0.4rem 0 2.5rem; font-style: italic; }
@@ -83,9 +117,9 @@
     article p { margin-bottom: 0.8rem; }
     article p:last-child { margin-bottom: 0; }
     .latest-log{display:grid;grid-template-columns:auto 1fr auto;gap:.2rem 1rem;align-items:center;width:min(100%,760px);margin:1.2rem 0 2rem;padding:.9rem 1rem;color:var(--ink);text-decoration:none;border-top:3px double var(--ink);border-bottom:1px solid var(--ink);background:rgba(255,138,224,.035)}
-    .latest-log .latest-kicker{grid-row:1/3;color:var(--signal);font:700 .65rem/1.2 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase}
+    .latest-log .latest-kicker{grid-row:1/3;color:var(--signal);font:700 0.69rem/1.2 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase}
     .latest-log .latest-title{font-size:1rem}.latest-log .latest-description{color:var(--faint);font-size:.78rem}
-    .latest-log .latest-meta{grid-column:3;grid-row:1/3;display:grid;gap:.2rem;color:var(--signal);font:700 .63rem/1.2 ui-monospace,Menlo,monospace;text-align:right;text-transform:uppercase}
+    .latest-log .latest-meta{grid-column:3;grid-row:1/3;display:grid;gap:.2rem;color:var(--signal);font:700 0.69rem/1.2 ui-monospace,Menlo,monospace;text-align:right;text-transform:uppercase}
     .latest-log:hover,.latest-log:focus-visible{outline:none;background:rgba(255,138,224,.08)}
     @media(max-width:620px){.latest-log{grid-template-columns:minmax(0,1fr) auto;padding:.65rem .75rem}.latest-log .latest-kicker,.latest-log .latest-title{grid-column:1;grid-row:auto}.latest-log .latest-description{display:none}.latest-log .latest-meta{grid-column:2;grid-row:1/3;display:grid;text-align:right}}
   </style>
@@ -100,12 +134,9 @@
         <a href="orrin.html">orrin</a>
         <a href="psyche.html">psyche</a>
         <a href="climbing.html">climbing</a>
-        <a href="training.html">training</a>
-        <a href="apex.html">apex</a>
         <a href="exploration.html">exploration</a>
         <a href="workbench.html">workbench</a>
         <a href="captures.html">captures</a>
-        <span class="here" aria-current="page">log</span>
       </nav>
     </header>
 

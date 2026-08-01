@@ -15,8 +15,15 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fc4c02'/><text y='.85em' font-size='64' x='18'>🏃</text></svg>">
   <style>
     :root {
+      /* Strava orange is the room's identity, but as *text* on white it's only
+         3.4:1 and as a *bar* under white text it's 3.4:1 too — both under AA.
+         So: --brand stays the fill color (bars of it, big blocks, borders),
+         --brand-bar is the header, and --brand-ink is orange type on a light
+         card. Use the ink one whenever the orange is carrying words. */
       --brand: #fc4c02;
-      --brand-dark: #e34500;
+      --brand-bar: #d64000;
+      --brand-ink: #c94000;
+      --brand-dark: #b83a00;
       --bg: #f7f7fa;
       --card: #ffffff;
       --ink: #242428;
@@ -35,25 +42,59 @@
       line-height: 1.5;
       font-size: 15px;
     }
-    a { color: var(--brand); text-decoration: none; }
+    a { color: var(--brand-ink); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
-    .topbar { background: var(--brand); }
+    .topbar { background: var(--brand-bar); }
     .topbar .inner {
       max-width: 900px; margin: 0 auto; padding: 0.7rem 1.25rem;
       display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
     }
     .topbar .brand { color: #fff; font-weight: 800; letter-spacing: 0.16em; font-size: 0.85rem; }
     .topbar .brand:hover { text-decoration: none; color: #ffe3d6; }
-    .topbar .wing { color: #ffd2be; font-size: 0.85rem; letter-spacing: 0.16em; }
+    /* White, not a tinted off-white. Even on the deepened bar, #ffd2be only
+       reached 3.3:1 — the hierarchy here comes from weight and the underline
+       on the current room, not from dimming the text below legibility. */
+    .topbar .wing { color: #fff; font-size: 0.85rem; letter-spacing: 0.16em; opacity: 0.92; }
     /* Strava-style nav tabs — active gets a white underline */
     .topbar .roomnav { margin-left: auto; display: flex; gap: 0.15rem 0.25rem; flex-wrap: wrap; align-items: center; }
     .topbar .roomnav a, .topbar .roomnav .here {
-      color: #ffe0d2; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;
+      color: #fff; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;
       padding: 0.3rem 0.5rem; text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap;
     }
     .topbar .roomnav a:hover { color: #fff; text-decoration: none; }
     .topbar .roomnav .here { color: #fff; border-bottom-color: #fff; }
+
+    /* Room menu — the underline tabs fold behind one button on a phone.
+       effects.js injects it; the styling stays Strava-orange. */
+    .roomnav-toggle { display: none; }
+    @media (max-width: 620px) {
+      .roomnav-toggle {
+        display: inline-flex; align-items: center; gap: 0.55rem;
+        min-height: 44px; padding: 0 0.7rem; margin-left: auto;
+        font: inherit; font-size: 0.72rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        color: #fff; background: rgba(255, 255, 255, 0.14);
+        border: 0; border-bottom: 2px solid transparent; cursor: pointer;
+      }
+      .roomnav-toggle[aria-expanded="true"] { border-bottom-color: #fff; }
+      .roomnav-toggle-bars {
+        position: relative; width: 15px; height: 11px;
+        border-top: 2px solid currentColor; border-bottom: 2px solid currentColor;
+      }
+      .roomnav-toggle-bars::after { content: ""; position: absolute; inset: calc(50% - 1px) 0 auto; border-top: 2px solid currentColor; }
+      .topbar .roomnav[data-roomnav] { display: none; }
+      .topbar .roomnav[data-roomnav].roomnav-open {
+        display: flex; flex-direction: column; align-items: stretch;
+        width: 100%; margin-left: 0; gap: 0; padding-top: 0.3rem;
+      }
+      .topbar .roomnav[data-roomnav].roomnav-open a,
+      .topbar .roomnav[data-roomnav].roomnav-open .here {
+        display: flex; align-items: center; min-height: 44px; padding: 0 0.5rem; font-size: 0.8rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+      }
+      .topbar .roomnav[data-roomnav].roomnav-open .here { border-bottom: 2px solid #fff; }
+    }
 
     .wrap { max-width: 900px; margin: 0 auto; padding: 1.4rem 1.25rem 4rem; display: grid; grid-template-columns: 1fr; gap: 1.2rem; }
 
@@ -87,14 +128,14 @@
     .activity { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
     .activity .head { padding: 0.9rem 1.2rem 0.5rem; display: flex; align-items: center; gap: 0.7rem; }
     .activity .icon {
-      width: 38px; height: 38px; border-radius: 50%; background: #fff2ec; color: var(--brand);
+      width: 38px; height: 38px; border-radius: 50%; background: #fff2ec; color: var(--brand-ink);
       display: grid; place-items: center; font-size: 1.1rem; flex-shrink: 0; border: 1px solid #ffd9c9;
     }
     .activity .meta .title { font-weight: 700; }
     .activity .meta .when { color: var(--soft); font-size: 0.82rem; }
     .activity .kind {
-      margin-left: auto; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-      color: var(--brand); background: #fff2ec; border: 1px solid #ffd9c9; border-radius: 999px; padding: 0.12rem 0.6rem;
+      margin-left: auto; font-size: 0.69rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--brand-ink); background: #fff2ec; border: 1px solid #ffd9c9; border-radius: 999px; padding: 0.12rem 0.6rem;
     }
     .activity .body { padding: 0.3rem 1.2rem 1rem; }
     .activity .figures { display: flex; gap: 2rem; flex-wrap: wrap; margin-top: 0.3rem; }
@@ -118,15 +159,25 @@
       padding: 1.4rem 1.4rem; color: var(--soft);
     }
     .placeholder strong { color: var(--ink); }
+
+    /* the two format-preview cards say so on their face, so nobody reads them
+       as real sessions Ric logged */
+    .week .week-note { color: var(--soft); font-size: 0.82rem; margin-top: 0.7rem; }
+    .activity.is-example { border-style: dashed; }
+    .example-tag {
+      display: inline-block; margin-left: 0.45rem; vertical-align: 0.1em;
+      font-size: 0.69rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--brand-dark); background: #ffe8de; border-radius: 999px; padding: 0.1rem 0.5rem;
+    }
     .latest-training {
       display:grid;grid-template-columns:auto 1fr auto;gap:.15rem .9rem;align-items:center;
       width:min(100%,760px);margin:0 0 1.25rem;padding:.9rem 1rem;color:var(--ink);text-decoration:none;
       background:var(--card);border:1px solid var(--line);border-left:5px solid var(--brand);border-radius:10px;
       box-shadow:0 3px 12px rgba(35,35,35,.06);
     }
-    .latest-training .latest-kicker{grid-row:1/3;color:var(--brand);font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+    .latest-training .latest-kicker{grid-row:1/3;color:var(--brand-ink);font-size:0.69rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
     .latest-training .latest-title{font-size:.96rem}.latest-training .latest-description{color:var(--soft);font-size:.78rem}
-    .latest-training .latest-meta{grid-column:3;grid-row:1/3;display:grid;gap:.2rem;color:var(--brand);font-size:.65rem;font-weight:700;text-align:right;text-transform:uppercase}
+    .latest-training .latest-meta{grid-column:3;grid-row:1/3;display:grid;gap:.2rem;color:var(--brand-ink);font-size:0.69rem;font-weight:700;text-align:right;text-transform:uppercase}
     .latest-training:hover,.latest-training:focus-visible{border-color:var(--brand);outline:none;background:#fff8f5}
 
     footer { color: var(--soft); font-size: 0.82rem; text-align: center; margin-top: 0.5rem; }
@@ -147,12 +198,9 @@
         <a href="orrin.html">orrin</a>
         <a href="psyche.html">psyche</a>
         <a href="climbing.html">climbing</a>
-        <span class="here" aria-current="page">training</span>
-        <a href="apex.html">apex</a>
         <a href="exploration.html">exploration</a>
         <a href="workbench.html">workbench</a>
         <a href="captures.html">captures</a>
-        <a href="log.html">log</a>
       </nav>
     </div>
   </div>
@@ -167,23 +215,29 @@
       <div class="welcome">Welcome to the training log — my runs, workouts, and health, all in one place. No app required.</div>
     </div>
 
-    <a class="latest-training" data-latest-banner data-latest-prefix="new activity"></a>
+    <a class="latest-training" data-latest-banner data-latest-prefix="new on the terminal"
+       data-latest-room="training" data-latest-prefix-own="new activity"></a>
 
+    <!-- Dashes, not zeros. "0 mi / 0h 0m / 0 ft / 0 Activities" reads as a week
+         where Ric did nothing; a dash reads as a week nothing was recorded for,
+         which is the true statement until the feed is connected. -->
     <div class="week">
       <h2>This Week</h2>
       <div class="stats">
-        <div class="stat"><div class="n" id="w-dist">0 <small>mi</small></div><div class="l">Distance</div></div>
-        <div class="stat"><div class="n" id="w-time">0<small>h</small> 0<small>m</small></div><div class="l">Time</div></div>
-        <div class="stat"><div class="n" id="w-elev">0 <small>ft</small></div><div class="l">Elevation</div></div>
-        <div class="stat"><div class="n" id="w-acts">0</div><div class="l">Activities</div></div>
+        <div class="stat"><div class="n" id="w-dist">— <small>mi</small></div><div class="l">Distance</div></div>
+        <div class="stat"><div class="n" id="w-time">—<small>h</small> —<small>m</small></div><div class="l">Time</div></div>
+        <div class="stat"><div class="n" id="w-elev">— <small>ft</small></div><div class="l">Elevation</div></div>
+        <div class="stat"><div class="n" id="w-acts">—</div><div class="l">Activities</div></div>
       </div>
+      <p class="week-note">Nothing recorded yet — the feed below isn't connected.</p>
     </div>
 
+    <!-- Visitor-facing. How the feed actually gets wired up is in README.md;
+         it is not a note a family member should be reading off the page. -->
     <div class="placeholder">
-      <strong>Live feed coming soon.</strong> This page will pull my real activities in-house so
-      family can follow along without a Strava account. Two ways to wire it up when you're ready:
-      the quick <em>Strava embed widget</em>, or a small serverless function hitting the Strava API
-      (Garmin syncs into Strava automatically). Until then, the cards below show the format.
+      <strong>Live feed coming soon.</strong> This page will pull my real runs and workouts
+      in so family can follow along without needing a Strava account. Until it's connected,
+      the two cards below are examples showing what an entry will look like.
     </div>
 
     <!-- ═══════════════════════════════════════════════════
@@ -193,14 +247,14 @@
          Delete the .map div for activities with no route.
          ═══════════════════════════════════════════════════ -->
 
-    <div class="section-label">Recent Activity</div>
+    <div class="section-label">Recent Activity — examples</div>
 
-    <div class="activity">
+    <div class="activity is-example">
       <div class="head">
         <div class="icon">🏃</div>
         <div class="meta">
-          <div class="title">Example morning run</div>
-          <div class="when">Replace me · someday, 7:12 AM</div>
+          <div class="title">Morning run <span class="example-tag">example</span></div>
+          <div class="when">what a run will look like here</div>
         </div>
         <div class="kind">Run</div>
       </div>
@@ -214,12 +268,12 @@
       </div>
     </div>
 
-    <div class="activity">
+    <div class="activity is-example">
       <div class="head">
         <div class="icon">💪</div>
         <div class="meta">
-          <div class="title">Example strength session</div>
-          <div class="when">Replace me · someday, 6:00 PM</div>
+          <div class="title">Strength session <span class="example-tag">example</span></div>
+          <div class="when">what a gym day will look like here</div>
         </div>
         <div class="kind">Strength</div>
       </div>

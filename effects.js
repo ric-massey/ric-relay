@@ -1635,6 +1635,54 @@
     }
   }
 
+  // ─── room menu (mobile) ──────────────────────────────────────────────
+  // Every room's nav lists the same rooms, and on a phone that list either
+  // wrapped to three rows or scrolled a screen-width off-side with nothing to
+  // say more existed. This injects the toggle button — the *behaviour* is
+  // shared here so there aren't nine copies of it; the *styling* stays in each
+  // room's own <style>, which is the whole point of the site.
+  //
+  // Each page styles:
+  //   .roomnav-toggle              the button (hidden above the room's own breakpoint)
+  //   nav[data-roomnav]            the collapsed nav
+  //   nav[data-roomnav].roomnav-open   the open nav
+  // With JS off nothing is injected and the nav renders exactly as before.
+  function installRoomMenu() {
+    const nav = document.querySelector('nav[aria-label="Terminal rooms"]');
+    if (!nav || nav.dataset.roomnav) return;
+
+    nav.dataset.roomnav = "collapsible";
+    if (!nav.id) nav.id = "room-nav";
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "roomnav-toggle";
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute("aria-controls", nav.id);
+    // the room you're in, so the collapsed header still says where you are
+    const here = nav.querySelector(".here")?.textContent.trim();
+    toggle.innerHTML = `<span class="roomnav-toggle-bars" aria-hidden="true"></span><span class="roomnav-toggle-label">${here || "rooms"}</span>`;
+    nav.parentNode.insertBefore(toggle, nav);
+
+    const setOpen = (open) => {
+      nav.classList.toggle("roomnav-open", open);
+      toggle.setAttribute("aria-expanded", String(open));
+    };
+
+    toggle.addEventListener("click", () => setOpen(!nav.classList.contains("roomnav-open")));
+    nav.addEventListener("click", (event) => { if (event.target.closest("a")) setOpen(false); });
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !nav.classList.contains("roomnav-open")) return;
+      setOpen(false);
+      toggle.focus();
+    });
+    document.addEventListener("click", (event) => {
+      if (!nav.classList.contains("roomnav-open")) return;
+      if (nav.contains(event.target) || toggle.contains(event.target)) return;
+      setOpen(false);
+    });
+  }
+
   function apply(mode, persist = true) {
     const next = MODES.has(mode) ? mode : null;
     active = next;
@@ -1670,6 +1718,7 @@
   function start() {
     installFilters();
     cleanIndexRoutes();
+    installRoomMenu();
     const navigation = performance.getEntriesByType?.("navigation")?.[0];
     const wasReloaded = navigation?.type === "reload" || performance.navigation?.type === 1;
     if (wasReloaded) remember(null);

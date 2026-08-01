@@ -3,30 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Terminal</title>
+  <title>Terminal — Ric Massey's corner of the internet</title>
   <meta name="description" content="Ric Massey's personal terminal — Orrin, psyche, climbing, training, and exploration.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ric's Terminal">
   <meta property="og:title" content="Terminal — Ric Massey's corner of the internet">
   <meta property="og:description" content="A personal terminal for family & friends — Orrin, climbing, training, photos, and write-ups.">
-  <meta property="og:url" content="https://ricmassey.com">
-  <meta name="twitter:card" content="summary">
+  <meta property="og:url" content="https://ricmassey.com/">
+  <meta property="og:image" content="https://ricmassey.com/assets/og-terminal.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Ric's Terminal — amber text on a black CRT screen">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="canonical" href="https://ricmassey.com/">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230a0a0a'/><text y='.9em' font-size='70' x='15' fill='%23ffb000'>▮</text></svg>">
   <style>
     :root {
       --bg: #0a0a0a;
       --phosphor: #ffb000;
-      --phosphor-dim: #8a6200;
-      --phosphor-faint: #3d2c00;
+      /* Dim carries nearly all the prose on this page, so it has to clear AA
+         (4.5:1) against --bg on its own — it reads 5.4:1. Faint is now strictly
+         a border/rule color; nothing sets text in it. Don't darken either one
+         back down without checking what it's painting. */
+      --phosphor-dim: #b07d00;
+      --phosphor-faint: #6b4d00;
       --flash-orrin: #38ff9c;
       --flash-psyche: #b889c8;
       --flash-exploration: #7a5cff;
       --flash-captures: #4dc9ff;
       --flash-log: #ff8ae0;
       --flash-workbench: #ffe14d;
-      --flash-map: #ff3b30;
       --flash-climbing: #79c46b;
+      /* Kept for the rooms currently unlisted in #dir — see the note above the
+         directory. Restore the entry and its hue together. */
+      --flash-map: #ff3b30;
       --flash-training: #ff6a3d;
       --flash-apex: #e8422f;
     }
@@ -94,7 +104,7 @@
     #boot .dim { color: var(--phosphor-dim); }
 
     .terminal-divider {
-      color: var(--phosphor-faint);
+      color: var(--phosphor-dim);
       margin: 0.4rem 0 1rem;
       letter-spacing: 0.18em;
     }
@@ -126,7 +136,15 @@
 
     /* directory */
     #dir { margin-top: 1.8rem; }
-    .hidden { visibility: hidden; }
+
+    /* Hidden during the boot animation. This is `display: none`, not
+       `visibility: hidden` — reserving the layout left ~900px of empty page
+       under the boot lines for over a second, which read as a broken page.
+       The frame grows as the shell mounts instead, and `.revealed` fades the
+       new block in so the growth looks deliberate. */
+    .hidden { display: none; }
+    .revealed { animation: reveal-in 240ms ease both; }
+    @keyframes reveal-in { from { opacity: 0; transform: translateY(-4px); } }
 
     .dir-head { color: var(--phosphor-dim); font-size: 0.8rem; margin-bottom: 0.7rem; letter-spacing: 0.15em; }
 
@@ -165,6 +183,10 @@
     a.entry:hover .perm, a.entry:hover .desc, a.entry:hover .go,
     a.entry:focus-visible .perm, a.entry:focus-visible .desc, a.entry:focus-visible .go { color: var(--hue); }
     a.entry:hover .go::after, a.entry:focus-visible .go::after { content: " →"; }
+
+    /* the unlisted rooms are still reachable — say so, quietly */
+    .dir-more { color: var(--phosphor-dim); font-size: 0.82rem; margin-top: 0.9rem; }
+    .dir-more .cmd-hint { color: var(--phosphor); }
 
     /* latest signal — the update feed, compressed into one useful destination */
     #latest { margin-top: 1.5rem; }
@@ -264,7 +286,7 @@
 
     footer {
       margin-top: 3rem;
-      color: var(--phosphor-faint);
+      color: var(--phosphor-dim);
       font-size: 0.75rem;
       letter-spacing: 0.2em;
       display: flex;
@@ -292,7 +314,7 @@
       <h1 class="wordmark">Terminal</h1>
       <div class="welcome-tag">
         <p class="lit">Welcome to Ric’s Internet!</p>
-        <p>I made this for me.  So I can see my projects and stay organized and be able to easily show my family what I’m doing on my computer sometimes.</p>
+        <p>I made this for me. So I can see my projects and stay organized and be able to easily show my family what I’m doing on my computer sometimes.</p>
       </div>
 
       <div id="boot" aria-live="polite"></div>
@@ -319,9 +341,9 @@ Scroll down to see the main different places you can visit!</div>
         </div>
       </div>
 
-      <div id="terminal-help" class="terminal-help hidden">type /help and there will be a list of prompts you can do to make your experience easier!
+      <div id="terminal-help" class="terminal-help hidden">type /help for a list of commands that make getting around easier!
 type /ls to list out all the directories you can go to!
-type Sydney's cats name for a suprise!</div>
+type Sydney's cat's name for a surprise!</div>
 
       <!-- Filled by latest.js from latest-climb.js + RELAY_LATEST. Don't hardcode
            an entry here — it goes stale the moment anything newer lands. -->
@@ -329,60 +351,22 @@ type Sydney's cats name for a suprise!</div>
         <a class="latest-relay" data-latest-banner data-latest-prefix="NOTIFICATION"></a>
       </section>
 
-      <p id="places-intro" class="places-intro hidden">I made these places based on things that I enjoy if you like them too you may like the information in those areas!</p>
+      <p id="places-intro" class="places-intro hidden">I made these places based on things that I enjoy. If you like them too, you may like the information in those areas!</p>
 
-      <nav id="dir" class="hidden" aria-label="Site directory">
-        <a class="entry" href="orrin.html" style="--hue: var(--flash-orrin)">
-          <span class="perm">drwx r-x</span><span class="dirname">/orrin</span>
-          <span class="desc">— cognition · code · ORRIN runtime</span>
-          <span class="go">[ ENTER ]</span>
-        </a>
-        <a class="entry" href="psyche.html" style="--hue: var(--flash-psyche)">
-          <span class="perm">drwx r-x</span><span class="dirname">/mind</span>
-          <span class="desc">— human systems · psychology · philosiphy</span>
-          <span class="go">[ ENTER ]</span>
-        </a>
-        <a class="entry" href="climbing.html" style="--hue: var(--flash-climbing)">
-          <span class="perm">drwx r-x</span><span class="dirname">/climbing</span>
-          <span class="desc">— routes · projects · mountaineering</span>
-          <span class="go">[ ENTER ]</span>
-        </a>
-        <a class="entry" href="training.html" style="--hue: var(--flash-training)">
-          <span class="perm">drwx r-x</span><span class="dirname">/training</span>
-          <span class="desc">— runs · workouts · health</span>
-          <span class="go">[ ENTER ]</span>
-        </a>
-        <a class="entry" href="apex.html" style="--hue: var(--flash-apex)">
-          <span class="perm">drwx r-x</span><span class="dirname">/apex</span>
-          <span class="desc">— the drop · rank · career kills</span>
-          <span class="go">[ ENTER ]</span>
-        </a>
-        <a class="entry" href="exploration.html" style="--hue: var(--flash-exploration)">
-          <span class="perm">drwx r-x</span><span class="dirname">/exploration</span>
-          <span class="desc">— space · physics · science</span>
-          <span class="go">[ ENTER ]</span>
-        </a>
-        <a class="entry" href="workbench.html" style="--hue: var(--flash-workbench)">
-          <span class="perm">drwx r-x</span><span class="dirname">/workbench</span>
-          <span class="desc">— random projects · ideas · hobbies</span>
-          <span class="go">[ ENTER ]</span>
-        </a>
-        <a class="entry" href="captures.html" style="--hue: var(--flash-captures)">
-          <span class="perm">drwx r-x</span><span class="dirname">/captures</span>
-          <span class="desc">— photographs</span>
-          <span class="go">[ ENTER ]</span>
-        </a>
-        <a class="entry" href="log.html" style="--hue: var(--flash-log)">
-          <span class="perm">drwx r-x</span><span class="dirname">/log</span>
-          <span class="desc">— notes · theories · writen</span>
-          <span class="go">[ ENTER ]</span>
-        </a>
-        <a class="entry" href="map.html" style="--hue: var(--flash-map)">
-          <span class="perm">drwx ---</span><span class="dirname">/map</span>
-          <span class="desc">— crew access only (being built)</span>
-          <span class="go">[ LOCKED ]</span>
-        </a>
-      </nav>
+      <!-- Deliberately empty: the entries are rendered from the ROOMS array at the
+           top of the script below, which is also what `ls`, `tree`, `find` and Tab
+           completion read. To add or rename a room, edit ROOMS — not this markup.
+
+           Only the rooms with real depth appear here (`listed: true`). /training,
+           /apex, /log and /map are left off the front door on purpose — they're the
+           thin ones, and the home page shouldn't advertise work that isn't done.
+           They are NOT gone: `ls`, `tree`, `find`, `open <room>`, typing the room
+           name, and the URL all still reach them. The room navs show the same six
+           this list does, so the site says one thing about what it contains.
+           Re-list one by flipping `listed` when it's actually built out. -->
+      <nav id="dir" class="hidden" aria-label="Site directory"></nav>
+
+      <p id="dir-more" class="dir-more hidden">more rooms? type <span class="cmd-hint">/ls</span></p>
 
     </div>
 
@@ -420,15 +404,21 @@ type Sydney's cats name for a suprise!</div>
       return div;
     }
 
+    let bootTimer = null;
     function nextLine() {
-      if (li >= BOOT_LINES.length) return setTimeout(reveal, 330);
+      if (li >= BOOT_LINES.length) return (bootTimer = setTimeout(reveal, 330));
       boot.appendChild(renderBootLine(BOOT_LINES[li++]));
-      setTimeout(nextLine, li <= 1 ? 350 : 170);
+      bootTimer = setTimeout(nextLine, li <= 1 ? 350 : 170);
     }
 
+    let revealed = false;
     function reveal() {
-      for (const id of ["terminal-divider", "terminal-intro", "shell-status", "cmdline", "terminal-help", "latest", "places-intro", "dir"]) {
-        document.getElementById(id).classList.remove("hidden");
+      if (revealed) return;
+      revealed = true;
+      for (const id of ["terminal-divider", "terminal-intro", "shell-status", "cmdline", "terminal-help", "latest", "places-intro", "dir", "dir-more"]) {
+        const el = document.getElementById(id);
+        el.classList.remove("hidden");
+        el.classList.add("revealed");
       }
       if (matchMedia("(pointer: fine)").matches) {
         document.getElementById("cmd").focus({ preventScroll: true });
@@ -438,12 +428,27 @@ type Sydney's cats name for a suprise!</div>
     // let impatient people skip
     addEventListener("keydown", skipBoot, { once: true });
     addEventListener("click", skipBoot, { once: true });
-    function skipBoot() {
+    function skipBoot(event) {
+      // Cancel the queued line/reveal first, or it fires later and re-runs
+      // reveal() — which would steal focus back out from under the visitor.
+      clearTimeout(bootTimer);
       if (li < BOOT_LINES.length) {
         boot.innerHTML = "";
         for (const line of BOOT_LINES) boot.appendChild(renderBootLine(line));
         li = BOOT_LINES.length;
-        reveal();
+      }
+      // If they skipped by *typing*, that first character was aimed at the
+      // prompt — the input just wasn't focused yet. Put it where they meant it.
+      // Checked before reveal(), which focuses the input itself on desktop.
+      const input = document.getElementById("cmd");
+      const wasTypedAtNothing = event?.type === "keydown" && event.key?.length === 1
+        && !event.metaKey && !event.ctrlKey && !event.altKey
+        && document.activeElement !== input;
+      reveal();
+      if (wasTypedAtNothing) {
+        event.preventDefault();
+        input.focus({ preventScroll: true });
+        input.value += event.key;
       }
     }
     // visitors who ask their OS to reduce motion get the shell instantly,
@@ -454,28 +459,52 @@ type Sydney's cats name for a suprise!</div>
       nextLine();
     }
 
-    // ─── command line ────────────────────────────────────
-    const PAGES = {
-      orrin: "orrin.html", mind: "psyche.html", climbing: "climbing.html",
-      training: "training.html", apex: "apex.html", exploration: "exploration.html",
-      workbench: "workbench.html", captures: "captures.html",
-      log: "log.html", map: "map.html",
-    };
+    // ─── the rooms ───────────────────────────────────────
+    // ONE list. The #dir markup, `ls`, `tree`, `find`, `open`, `random` and Tab
+    // completion all render from this — they used to keep five separate copies
+    // and drifted apart. Add, rename or unlist a room here and nowhere else.
+    //   listed — appears in the #dir directory on the front door
+    //   locked — reachable but answers [LOCKED]; kept out of `random` and Tab
+    const ROOMS = [
+      { name: "orrin",       href: "orrin.html",       hue: "--flash-orrin",       desc: "cognition · code · ORRIN runtime",  listed: true },
+      { name: "mind",        href: "psyche.html",      hue: "--flash-psyche",      desc: "human systems · psychology · philosophy", listed: true },
+      { name: "climbing",    href: "climbing.html",    hue: "--flash-climbing",    desc: "routes · projects · mountaineering", listed: true },
+      { name: "training",    href: "training.html",    hue: "--flash-training",    desc: "runs · workouts · health",          listed: false },
+      { name: "apex",        href: "apex.html",        hue: "--flash-apex",        desc: "the drop · rank · career kills",    listed: false },
+      { name: "exploration", href: "exploration.html", hue: "--flash-exploration", desc: "space · physics · science",         listed: true },
+      { name: "workbench",   href: "workbench.html",   hue: "--flash-workbench",   desc: "random projects · ideas · hobbies", listed: true },
+      { name: "captures",    href: "captures.html",    hue: "--flash-captures",    desc: "photographs",                       listed: true },
+      { name: "log",         href: "log.html",         hue: "--flash-log",         desc: "notes · theories · written",        listed: false },
+      { name: "map",         href: "map.html",         hue: "--flash-map",         desc: "crew access only (being built)",    listed: false, locked: true },
+    ];
 
+    const PAGES = Object.fromEntries(ROOMS.map((room) => [room.name, room.href]));
     const PAGE_ALIASES = { psyche: "mind" };
 
-    const PAGE_DESCRIPTIONS = {
-      orrin: "cognition · code · ORRIN runtime",
-      mind: "human systems · psychology · philosiphy",
-      climbing: "routes · projects · mountaineering",
-      training: "runs · workouts · health",
-      apex: "the drop · rank · career kills",
-      exploration: "space · physics · science",
-      workbench: "random projects · ideas · hobbies",
-      captures: "photographs",
-      log: "notes · theories · writen",
-      map: "crew access only (being built)",
-    };
+    // render the front-door directory from the same list
+    (() => {
+      const dir = document.getElementById("dir");
+      for (const room of ROOMS.filter((room) => room.listed)) {
+        const entry = document.createElement("a");
+        entry.className = "entry";
+        entry.href = room.href;
+        entry.style.setProperty("--hue", `var(${room.hue})`);
+        for (const [cls, text] of [
+          ["perm", room.locked ? "drwx ---" : "drwx r-x"],
+          ["dirname", `/${room.name}`],
+          ["desc", `— ${room.desc}`],
+          ["go", room.locked ? "[ LOCKED ]" : "[ ENTER ]"],
+        ]) {
+          const span = document.createElement("span");
+          span.className = cls;
+          span.textContent = text;
+          entry.appendChild(span);
+        }
+        dir.appendChild(entry);
+      }
+    })();
+
+    // ─── command line ────────────────────────────────────
 
     const PROJECTS = [
       {
@@ -499,7 +528,7 @@ type Sydney's cats name for a suprise!</div>
         href: "projects/spacetime/index.html",
       },
       {
-        command: "farlight", aliases: ["feel", "momentum"], room: "exploration",
+        command: "farlight", aliases: ["feel", "momentum", "hill", "hills"], room: "workbench",
         title: "FARLIGHT", description: "playable momentum and landing-feel prototype",
         href: "projects/farlight/index.html",
       },
@@ -529,40 +558,35 @@ type Sydney's cats name for a suprise!</div>
       }
     }
 
-    const listRooms = () => Object.entries(PAGE_DESCRIPTIONS)
-      .map(([name, description]) => `  /${name.padEnd(13)} ${description}`)
+    const listRooms = () => ROOMS
+      .map((room) => `  /${room.name.padEnd(13)} ${room.desc}`)
       .join("\n");
 
     const listProjects = () => PROJECTS
       .map((project) => `  ${project.command.padEnd(13)} ${project.title}  [/${project.room}]`)
       .join("\n");
 
-    const siteTree = () =>
-      "/terminal\n" +
-      "├── /orrin\n" +
-      "├── /mind\n" +
-      "│   ├── state      State-of-Mind Line\n" +
-      "│   ├── dsm5       DSM-5 Reflection\n" +
-      "│   └── harm       The Shape of Harm\n" +
-      "├── /climbing\n" +
-      "├── /training\n" +
-      "├── /apex\n" +
-      "├── /exploration\n" +
-      "│   ├── spacetime  Geometry of Spacetime\n" +
-      "│   ├── farlight   Momentum / landing prototype\n" +
-      "│   ├── starfield  Starfield\n" +
-      "│   └── speed      How Speed Affects Time\n" +
-      "├── /workbench\n" +
-      "│   └── siege      Siege Conductor\n" +
-      "├── /captures\n" +
-      "├── /log\n" +
-      "└── /map           [LOCKED]";
+    // drawn from ROOMS + PROJECTS, so a new room shows up here for free
+    const siteTree = () => {
+      const lines = ["/terminal"];
+      ROOMS.forEach((room, index) => {
+        const last = index === ROOMS.length - 1;
+        const label = room.locked ? `/${room.name}`.padEnd(15) + "[LOCKED]" : `/${room.name}`;
+        lines.push(`${last ? "└──" : "├──"} ${label}`);
+        const nested = PROJECTS.filter((p) => (PAGE_ALIASES[p.room] || p.room) === room.name);
+        nested.forEach((project, projectIndex) => {
+          const branch = projectIndex === nested.length - 1 ? "└──" : "├──";
+          lines.push(`${last ? "    " : "│   "}${branch} ${project.command.padEnd(11)}${project.title}`);
+        });
+      });
+      return lines.join("\n");
+    };
 
     const findTerminal = (query) => {
       const needle = query.trim().toLowerCase();
       if (!needle) return "usage: find <word>\nexample: find mood";
-      const rooms = Object.entries(PAGE_DESCRIPTIONS).map(([name, description]) => ({
-        label: `/${name}`, command: `/${name}`, haystack: `${name} ${description}`,
+      const rooms = ROOMS.map((room) => ({
+        label: `/${room.name}`, command: `/${room.name}`, haystack: `${room.name} ${room.desc}`,
       }));
       const projects = PROJECTS.map((project) => ({
         label: project.title, command: `open ${project.command}`,
@@ -610,8 +634,17 @@ type Sydney's cats name for a suprise!</div>
       tree: siteTree,
       projects: listProjects,
       find: (arg) => findTerminal(arg),
-      open: () => "usage: open <target>\ntry `ls` for rooms or `projects` for project shortcuts.",
-      cd: () => "usage: cd <room>\nthis terminal only mounts one level deep.",
+      // Only reached when the target didn't resolve — say which target, or the
+      // visitor reads it as "you typed the command wrong".
+      open: (arg, originalArg) => originalArg
+        ? `open: nothing here called “${originalArg}”.\ntry \`ls\` for rooms or \`projects\` for project shortcuts.`
+        : "usage: open <target>\ntry `ls` for rooms or `projects` for project shortcuts.",
+      cd: (arg, originalArg) => originalArg
+        ? `cd: no room called “${originalArg}”.\ntry \`ls\` to see the rooms.`
+        : "usage: cd <room>\nthis terminal only mounts one level deep.",
+      cat: (arg, originalArg) => originalArg
+        ? `cat: no file called “${originalArg}”.\nthe only file here is \`notes\` — try \`cat notes\`.`
+        : "usage: cat <file>\nthe only file here is `notes` — try `cat notes`.",
       mochi: () => {
         const awakened = window.RELAY_CATS?.enable();
         return awakened
@@ -637,12 +670,14 @@ type Sydney's cats name for a suprise!</div>
         out.textContent = "";
         return null;
       },
-      echo: (arg, originalArg) => originalArg || "",
+      // "" is falsy and print() would swallow the command silently — answer with
+      // a usage line like every other verb does.
+      echo: (arg, originalArg) => originalArg || "usage: echo <text>\nexample: echo hello",
       random: () => {
-        const unlocked = Object.entries(PAGES).filter(([name]) => name !== "map");
-        const [name, href] = unlocked[Math.floor(Math.random() * unlocked.length)];
-        setTimeout(() => (location.href = href), 450);
-        return `rolling the directory table... /${name}\nentering ...`;
+        const unlocked = ROOMS.filter((room) => !room.locked);
+        const room = unlocked[Math.floor(Math.random() * unlocked.length)];
+        setTimeout(() => (location.href = room.href), 450);
+        return `rolling the directory table... /${room.name}\nentering ...`;
       },
       reboot: () => {
         setTimeout(() => location.reload(), 350);
@@ -699,10 +734,19 @@ type Sydney's cats name for a suprise!</div>
     const visibleCommands = ["help", "commands", "man", "ls", "rooms", "tree", "projects", "find", "open", "cd", "latest", "recent", "random", "cat notes", "history", "pwd", "whoami", "status", "uptime", "date", "echo", "back", "clear", "reboot"];
     const completions = [
       ...visibleCommands,
-      ...Object.keys(PAGES),
+      // locked rooms stay out — completing to something that answers [LOCKED]
+      // is a dead end. `ls`, `tree`, `find` and `open map` still reach it.
+      ...ROOMS.filter((room) => !room.locked).map((room) => room.name),
       ...PROJECTS.map((project) => project.command),
       ...PROJECTS.map((project) => `open ${project.command}`),
     ];
+
+    // longest string every match starts with — what a real shell fills in for you
+    const commonPrefix = (values) => values.reduce((prefix, value) => {
+      let i = 0;
+      while (i < prefix.length && i < value.length && prefix[i] === value[i]) i++;
+      return prefix.slice(0, i);
+    });
 
     cmd.addEventListener("keydown", (e) => {
       if (e.key === "ArrowUp" || e.key === "ArrowDown") {
@@ -719,11 +763,25 @@ type Sydney's cats name for a suprise!</div>
         const typed = cmd.value.trim().toLowerCase();
         const slash = typed.startsWith("/");
         const needle = slash ? typed.slice(1) : typed;
-        const matches = completions
-          .filter((candidate) => candidate.startsWith(needle))
-          .map((candidate) => slash ? `/${candidate}` : candidate);
-        if (matches.length === 1) cmd.value = matches[0];
-        else if (matches.length > 1) print(matches.join("   "));
+        // Everything startsWith(""), so a bare Tab used to dump ~40 commands
+        // into the output box. Point at `help` instead.
+        if (!needle) {
+          print("nothing typed yet — try `help` for commands or `ls` for rooms.");
+          scrollNewestIntoView(out.childElementCount - 1);
+          return;
+        }
+        const matches = completions.filter((candidate) => candidate.startsWith(needle));
+        if (!matches.length) return;
+        const decorate = (value) => slash ? `/${value}` : value;
+        if (matches.length === 1) { cmd.value = decorate(matches[0]); return; }
+        // fill in as far as every match agrees, then show what's left
+        const shared = commonPrefix(matches);
+        if (shared.length > needle.length) cmd.value = decorate(shared);
+        else {
+          const mark = out.childElementCount;
+          print(matches.map(decorate).join("   "));
+          scrollNewestIntoView(mark);
+        }
         return;
       }
       if (e.key !== "Enter") return;
@@ -732,6 +790,7 @@ type Sydney's cats name for a suprise!</div>
       if (!raw) return;
       commandHistory.push(raw);
       historyIndex = commandHistory.length;
+      const mark = out.childElementCount;
       print(`$ ${raw}`, true);
 
       const normalizedRaw = raw.replace(/^\/+/, "");
@@ -750,7 +809,7 @@ type Sydney's cats name for a suprise!</div>
       } else if (verb === "open" && project) {
         print(`opening ${project.title} in /${project.room} ...`);
         setTimeout(() => (location.href = project.href), 400);
-      } else if (directProject && !originalArg) {
+      } else if (directProject) {
         print(`opening ${directProject.title} in /${directProject.room} ...`);
         setTimeout(() => (location.href = directProject.href), 400);
       } else if ((verb === "open" && ["latest", "recent"].includes(arg)) || ["latest", "recent"].includes(verb)) {
@@ -767,7 +826,10 @@ type Sydney's cats name for a suprise!</div>
       } else if (verb === "back") {
         print("returning to previous signal ...");
         setTimeout(() => history.back(), 250);
-      } else if (PAGES[pageVerb] && !arg) {
+      } else if (PAGES[pageVerb]) {
+        // A trailing word used to make this fall through to "command not
+        // recognized: mind" — telling someone a room doesn't exist while it sits
+        // in the directory right above. The room name wins; the rest is noise.
         print(`entering /${pageVerb} ...`);
         setTimeout(() => (location.href = PAGES[pageVerb]), 400);
       } else if (COMMANDS[verb]) {
@@ -776,7 +838,7 @@ type Sydney's cats name for a suprise!</div>
       } else {
         print(`command not recognized: ${verb}\ntype \`help\` for options.`);
       }
-      out.scrollTop = out.scrollHeight;
+      scrollNewestIntoView(mark);
     });
 
     function print(text, bright) {
@@ -784,6 +846,16 @@ type Sydney's cats name for a suprise!</div>
       if (bright) div.className = "bright";
       div.textContent = text;
       out.appendChild(div);
+    }
+
+    // #output is capped at 14em, so scrolling to the bottom left long answers
+    // (`help` is ~20 lines) showing only their last few lines. Put the TOP of
+    // what just got printed at the top of the box instead; short answers still
+    // land at the bottom because the scroll clamps.
+    function scrollNewestIntoView(startIndex) {
+      const first = out.children[startIndex];
+      if (!first) return;
+      out.scrollTop += first.getBoundingClientRect().top - out.getBoundingClientRect().top;
     }
 
     // clicking anywhere in the cmdline area focuses the input

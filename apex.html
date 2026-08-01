@@ -30,7 +30,9 @@
       --magenta:#ff3ea5;
       --text:#f2f5f8;
       --dim:#8ea3b8;
-      --dimmer:#566b80;
+      /* was #566b80 — 3.3:1 on the plate, and it labels every counter, tier
+         reward and card note on the page. 5.9:1. */
+      --dimmer:#7f97ad;
 
       --display:"Arial Narrow","Helvetica Neue Condensed Bold","Roboto Condensed",
                 "Liberation Sans Narrow",Impact,system-ui,sans-serif;
@@ -81,7 +83,7 @@
 
     .brandbox{display:flex;align-items:center;gap:10px;flex:0 0 auto;text-decoration:none}
     .brandbox svg{flex:0 0 auto}
-    .brandbox .t{font-family:var(--mono);font-weight:700;font-size:9.5px;
+    .brandbox .t{font-family:var(--mono);font-weight:700;font-size:11px;
       letter-spacing:.24em;color:var(--dim);line-height:1.4;white-space:nowrap}
     .brandbox .t b{display:block;font-family:var(--display);font-size:13px;
       letter-spacing:.16em;color:var(--text);text-transform:uppercase}
@@ -105,10 +107,36 @@
     .navwrap::after{content:"";position:absolute;top:0;bottom:0;right:0;width:34px;
       pointer-events:none;background:linear-gradient(90deg,transparent,rgba(4,8,15,.95))}
 
+    /* Room menu — the lobby strip scrolled a full screen-width off-side on a
+       phone with nothing saying more rooms existed. effects.js injects the
+       button; the lobby keeps its own chrome. */
+    .roomnav-toggle{display:none}
+    @media (max-width:620px){
+      .navwrap{flex-wrap:wrap}
+      .navwrap::after{display:none}
+      .roomnav-toggle{display:inline-flex;align-items:center;gap:9px;min-height:44px;padding:0 14px;
+        font-family:var(--display);font-weight:700;text-transform:uppercase;
+        font-size:13px;letter-spacing:.13em;color:var(--text);
+        background:linear-gradient(180deg,rgba(255,255,255,.1),transparent);
+        border:0;border-bottom:3px solid transparent;cursor:pointer}
+      .roomnav-toggle[aria-expanded="true"]{border-bottom-color:var(--red);
+        box-shadow:0 0 12px rgba(232,66,47,.55)}
+      .roomnav-toggle-bars{position:relative;width:15px;height:11px;
+        border-top:2px solid currentColor;border-bottom:2px solid currentColor}
+      .roomnav-toggle-bars::after{content:"";position:absolute;inset:calc(50% - 1px) 0 auto;border-top:2px solid currentColor}
+      nav.lobbytabs[data-roomnav]{display:none}
+      nav.lobbytabs[data-roomnav].roomnav-open{display:flex;flex-direction:column;align-items:stretch;
+        flex-basis:100%;overflow-x:visible;gap:0;padding-bottom:6px}
+      nav.lobbytabs[data-roomnav].roomnav-open a,
+      nav.lobbytabs[data-roomnav].roomnav-open .here{min-height:44px;padding:0 14px;font-size:14px;
+        border-bottom:1px solid rgba(30,50,71,.7)}
+      nav.lobbytabs[data-roomnav].roomnav-open .here::after{display:none}
+    }
+
     .counters{display:flex;align-items:center;gap:clamp(9px,1.8vw,18px);flex:0 0 auto}
     .counter{display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
     .counter .n{font-family:var(--display);font-weight:700;font-size:17px;line-height:1}
-    .counter .lb{font-size:8px;letter-spacing:.19em;color:var(--dimmer);text-transform:uppercase}
+    .counter .lb{font-size:11px;letter-spacing:.19em;color:var(--dimmer);text-transform:uppercase}
     .counter.kills .n{color:var(--red-hot)}
     .counter.level .n{color:var(--amber)}
 
@@ -117,13 +145,13 @@
       gap:clamp(10px,2vw,22px);padding:0 var(--gut);min-height:42px;
       background:rgba(4,9,16,.6);border-bottom:1px solid rgba(30,50,71,.7)}
     .seasonrow .season{display:flex;align-items:center;gap:9px;flex:0 0 auto}
-    .seasonrow .season .cap{font-size:8.5px;letter-spacing:.2em;color:var(--holo);
+    .seasonrow .season .cap{font-size:11px;letter-spacing:.2em;color:var(--holo);
       text-transform:uppercase;line-height:1.3}
-    .seasonrow .season .cap b{display:block;color:var(--text);font-size:10.5px;letter-spacing:.13em}
+    .seasonrow .season .cap b{display:block;color:var(--text);font-size:11px;letter-spacing:.13em}
     nav.subtabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
     nav.subtabs::-webkit-scrollbar{display:none}
     nav.subtabs a{display:flex;align-items:center;padding:0 clamp(8px,1.4vw,14px);
-      white-space:nowrap;text-decoration:none;font-size:10px;letter-spacing:.19em;
+      white-space:nowrap;text-decoration:none;font-size:11px;letter-spacing:.19em;
       text-transform:uppercase;color:var(--dimmer);transition:color .15s}
     nav.subtabs a:hover{color:var(--text)}
     nav.subtabs a.on{color:var(--amber)}
@@ -137,11 +165,11 @@
       clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
     .latest-apex:hover{border-color:var(--red-hot);background:linear-gradient(90deg,rgba(232,66,47,.3),rgba(232,66,47,.05))}
     .latest-apex .latest-kicker{grid-row:1/3;font-family:var(--display);font-weight:700;
-      font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--red-hot)}
+      font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--red-hot)}
     .latest-apex .latest-title{font-size:14px;line-height:1.35}
     .latest-apex .latest-description{color:var(--dim);font-size:11.5px;line-height:1.4}
     .latest-apex .latest-meta{grid-column:3;grid-row:1/3;display:grid;gap:2px;text-align:right;
-      font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--dimmer)}
+      font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--dimmer)}
     @media (max-width:620px){
       .latest-apex{grid-template-columns:minmax(0,1fr) auto}
       .latest-apex .latest-kicker,.latest-apex .latest-title{grid-column:1;grid-row:auto}
@@ -154,10 +182,10 @@
       padding:clamp(22px,4.4vw,46px) var(--gut) 0}
     .idplate{text-align:center;margin-bottom:clamp(14px,2.6vw,26px)}
     .idplate .levelhex{display:block;margin:0 auto 7px}
-    .idplate .tag{font-family:var(--display);font-weight:700;text-transform:uppercase;
+    .idplate .tag{margin:0;font-family:var(--display);font-weight:700;text-transform:uppercase;
       font-size:clamp(19px,3.4vw,32px);letter-spacing:.16em;color:#fff;
       text-shadow:0 2px 18px rgba(0,0,0,.9)}
-    .idplate .meta{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;
+    .idplate .meta{font-size:11px;letter-spacing:.22em;text-transform:uppercase;
       color:var(--dim);margin-top:3px}
     .idplate .meta .live{color:var(--red-hot)}
 
@@ -168,7 +196,7 @@
     .card .who{font-family:var(--display);font-weight:700;text-transform:uppercase;
       font-size:clamp(11.5px,1.5vw,16px);letter-spacing:.15em;color:#fff;
       text-shadow:0 2px 10px rgba(0,0,0,.9)}
-    .card .role{font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+    .card .role{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
 
     .plate{position:relative;overflow:hidden;height:clamp(158px,25vw,250px);
       border:1px solid rgba(255,255,255,.16);
@@ -195,11 +223,11 @@
       color:#fff;text-shadow:0 3px 24px rgba(0,0,0,.9)}
     .card.hero .plate .figure .n{font-size:clamp(42px,8vw,84px)}
     .plate .figure .n .tilde{font-size:.38em;vertical-align:.5em;color:rgba(255,255,255,.55)}
-    .plate .figure .lb{font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;
+    .plate .figure .lb{font-size:11px;letter-spacing:.24em;text-transform:uppercase;
       color:rgba(255,255,255,.74);margin-top:2px}
     .plate .extra{position:absolute;top:11px;left:0;right:0;padding:0 13px;display:grid;gap:5px}
     .plate .extra li{list-style:none;display:flex;justify-content:space-between;gap:9px;
-      font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.8)}
+      font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.8)}
     .plate .extra li b{font-family:var(--display);font-size:13px;font-variant-numeric:tabular-nums}
 
     .card.empty .plate{border-style:dashed;border-color:rgba(255,255,255,.17);box-shadow:none;
@@ -207,7 +235,7 @@
     .card.empty .plate:hover{transform:none}
     .card.empty .slot{position:absolute;inset:0 0 34px;display:grid;place-items:center}
     .card.empty .slotnote{position:absolute;inset:auto 0 0;padding:0 13px 12px;text-align:center;
-      font-size:8.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--dimmer);line-height:1.7}
+      font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--dimmer);line-height:1.7}
 
     /* ══ sync box + READY ═════════════════════════════════════════ */
     .lower{position:relative;z-index:4;max-width:1240px;margin:0 auto;
@@ -216,13 +244,13 @@
     .syncbox{border:1px solid var(--line-hot);background:rgba(7,14,24,.86);
       clip-path:polygon(0 0,calc(100% - 13px) 0,100% 13px,100% 100%,0 100%)}
     .syncbox .hd{display:flex;align-items:center;gap:8px;padding:7px 12px;
-      border-bottom:1px solid var(--line);font-size:9px;letter-spacing:.2em;
+      border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.2em;
       text-transform:uppercase;color:var(--dim)}
     .syncbox .hd .dot{width:7px;height:7px;border-radius:50%;background:var(--dimmer);flex:0 0 auto}
     .syncbox.on .hd .dot{background:var(--holo);box-shadow:0 0 9px var(--holo)}
     .syncbox .bd{padding:10px 12px;font-size:11.5px;color:var(--dim);line-height:1.65}
     .syncbox .bd b{color:var(--text)}
-    .syncbox .bd code{font-size:10.5px;color:var(--holo)}
+    .syncbox .bd code{font-size:11px;color:var(--holo)}
     .ready{display:block;text-align:center;font-family:var(--display);font-weight:700;
       text-transform:uppercase;font-size:clamp(18px,3.2vw,29px);letter-spacing:.22em;
       padding:13px 20px;color:#0b0a06;
@@ -238,11 +266,11 @@
     .sechead h2{font-size:clamp(17px,2.6vw,25px);letter-spacing:.22em}
     .sechead::after{content:"";flex:1;height:1px;
       background:linear-gradient(90deg,var(--line-hot),transparent);transform:translateY(-4px)}
-    .sechead .n{font-size:9.5px;letter-spacing:.19em;text-transform:uppercase;color:var(--dimmer)}
+    .sechead .n{font-size:11px;letter-spacing:.19em;text-transform:uppercase;color:var(--dimmer)}
 
     /* ── ranked ────────────────────────────────────────────────── */
     .rankline{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;margin-bottom:16px}
-    .rankline .cur{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+    .rankline .cur{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
     .rankline .val{font-family:var(--display);font-weight:700;text-transform:uppercase;
       font-size:clamp(21px,3.6vw,34px);letter-spacing:.1em;line-height:1.05}
     .rankline .rp{font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums}
@@ -260,15 +288,15 @@
     .tier .em{display:block;margin:0 auto 7px}
     .tier .nm{font-family:var(--display);font-weight:700;text-transform:uppercase;
       font-size:12px;letter-spacing:.12em;color:#fff;line-height:1.2}
-    .tier .rw{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--dimmer);
+    .tier .rw{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dimmer);
       margin-top:5px;line-height:1.75}
     .tier.here{opacity:1;border-color:var(--tint-b);
       box-shadow:0 0 0 1px var(--tint-b),0 0 32px var(--tint-glow)}
     .tier .flag{position:absolute;top:-1px;left:-1px;right:-1px;background:var(--tint-b);
-      color:#08101a;font-family:var(--display);font-weight:700;font-size:8.5px;
+      color:#08101a;font-family:var(--display);font-weight:700;font-size:11px;
       letter-spacing:.17em;text-transform:uppercase;padding:3px 0}
     .tier .flagpad{height:15px}
-    .ladderhint{font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+    .ladderhint{font-size:11px;letter-spacing:.16em;text-transform:uppercase;
       color:var(--dimmer);margin-top:4px}
 
     /* ── legends ───────────────────────────────────────────────── */
@@ -280,19 +308,19 @@
       background:linear-gradient(90deg,rgba(232,66,47,.17),transparent 74%)}
     .lg .nm{font-family:var(--display);font-weight:700;text-transform:uppercase;
       font-size:16px;letter-spacing:.12em;line-height:1.2}
-    .lg .sb{font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer)}
+    .lg .sb{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer)}
     .lg ul{list-style:none;padding:11px 14px;display:grid;gap:8px}
     .lg li{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-    .lg .t{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+    .lg .t{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
     .lg .v{font-family:var(--display);font-weight:700;font-size:21px;
       font-variant-numeric:tabular-nums;line-height:1}
-    .lg .free{padding:0 14px 11px;font-size:9.5px;letter-spacing:.06em;color:var(--dimmer)}
+    .lg .free{padding:0 14px 11px;font-size:11px;letter-spacing:.06em;color:var(--dimmer)}
 
     /* ── tiles + slope ─────────────────────────────────────────── */
     .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
     .tile{border:1px solid var(--line);background:var(--plate);padding:12px 15px;
       clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
-    .tile .k{font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dimmer)}
+    .tile .k{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dimmer)}
     .tile .v{font-family:var(--display);font-weight:700;font-size:27px;line-height:1.2;
       font-variant-numeric:tabular-nums;margin-top:2px}
     .tile .v.none{color:var(--dimmer);font-size:19px}
@@ -317,7 +345,7 @@
 
     footer{max-width:1240px;margin:0 auto;padding:26px var(--gut) 64px;
       display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;
-      font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dimmer)}
+      font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dimmer)}
     footer .warn{color:var(--amber)}
     footer a{color:var(--dim);text-decoration:none;border-bottom:1px solid var(--line-hot)}
     footer a:hover{color:var(--text)}
@@ -379,12 +407,9 @@
           <a href="orrin.html">orrin</a>
           <a href="psyche.html">psyche</a>
           <a href="climbing.html">climbing</a>
-          <a href="training.html">training</a>
-          <span class="here" aria-current="page">apex</span>
           <a href="exploration.html">exploration</a>
           <a href="workbench.html">workbench</a>
           <a href="captures.html">captures</a>
-          <a href="log.html">log</a>
         </nav>
       </div>
 
@@ -412,7 +437,14 @@
   <a class="latest-apex" data-latest-banner data-latest-prefix="new signal"></a>
 
   <main class="stage" id="lobby">
-    <div class="idplate" id="idplate"></div>
+    <!-- The gamertag is this page's title, so it's the <h1> — and it's in the
+         markup, not built by JS, so the document has a heading even if the data
+         file never loads. -->
+    <div class="idplate" id="idplate">
+      <span id="idhex"></span>
+      <h1 class="tag" id="idtag">Apex Legends</h1>
+      <div class="meta" id="idmeta"></div>
+    </div>
     <div class="cards" id="cards"></div>
   </main>
 
@@ -558,11 +590,12 @@
   const stateText = !D.live ? "Not connected"
     : status.inGame ? "In match" : status.online ? (status.text || "In lobby") : "Offline";
   // No level yet means no badge — an empty hex reads as a broken asset.
-  el("idplate").innerHTML =
-    (typeof acct.level === "number" ? levelHex(acct.level, "#ffc228", false) : "") +
-    `<div class="tag">${acct.name || "Gamertag pending"}</div>
-     <div class="meta">${PLATFORMS[acct.platform] || "Apex Legends"} ·
-       <span class="${D.live && (status.online || status.inGame) ? "live" : ""}">${stateText}</span></div>`;
+  el("idhex").innerHTML =
+    typeof acct.level === "number" ? levelHex(acct.level, "#ffc228", false) : "";
+  el("idtag").textContent = acct.name || "Gamertag pending";
+  el("idmeta").innerHTML =
+    `${PLATFORMS[acct.platform] || "Apex Legends"} ·
+     <span class="${D.live && (status.online || status.inGame) ? "live" : ""}">${stateText}</span>`;
 
   /* ══ the three banner cards ═════════════════════════════════ */
   const bannerCard = (name, info, isHero) => {
@@ -608,11 +641,11 @@
     </div>
   </div>`;
 
-  // Apex puts the featured legend centre stage, squadmates either side.
+  // Apex puts the featured legend center stage, squadmates either side.
   el("cards").innerHTML = [ordered[1], ordered[0], ordered[2]].map((name, i) => {
     if (name) return bannerCard(name, legends[name], i === 1);
     return emptyCard(i === 1
-      ? "Equip a kills tracker and the legend takes centre stage"
+      ? "Equip a kills tracker and the legend takes center stage"
       : "A legend without a tracker is invisible to the API");
   }).join("");
 
@@ -626,8 +659,11 @@
     el("ready").textContent = "Ready";
     el("ready").classList.remove("waiting");
   } else {
-    el("syncbody").innerHTML = `Showing hand-read seed data. The daily pull needs a free API
-      key from apexlegendsapi.com in the Keychain and a gamertag in <code>apex-account.json</code>.`;
+    // Visitor-facing: says what they're looking at, not how Ric wires it up.
+    // The setup steps live in README.md — filenames and credential stores are
+    // not something a family member should be reading off the page.
+    el("syncbody").innerHTML = `Showing hand-read numbers. The daily automatic pull
+      isn't connected yet, so these are read off the in-game banner.`;
   }
 
   /* ══ ranked ladder ══════════════════════════════════════════ */
@@ -672,8 +708,7 @@
   } else {
     el("rankline").innerHTML = `<span class="cur">Your current rank is</span>
       <span class="val" style="color:var(--dimmer)">Awaiting sync</span>
-      <span class="rp">rank and RP arrive with the API key — or type <code>rank</code> into
-        apex-data.js to light up the ladder now</span>`;
+      <span class="rp">rank and RP arrive once the daily pull is connected</span>`;
     el("ladderlabel").textContent = "no rank on record";
   }
 
@@ -742,13 +777,15 @@
   }
 
   /* ══ what's outstanding ═════════════════════════════════════ */
+  // Reads to a visitor as "what this page doesn't know yet" — deliberately not
+  // a setup checklist. How to actually connect it is in README.md.
   const todo = [];
-  if (!D.live) todo.push(`<b>Free API key</b> from apexlegendsapi.com in the Keychain, plus the
-    gamertag in <code>apex-account.json</code>. Until then this page is the hand-read seed.`);
-  if (!rank.name) todo.push(`<b>Rank</b> — arrives with the key, or type it into the
-    <code>rank</code> block to light up the ladder now.`);
-  if (typeof career.kills !== "number") todo.push(`<b>Career kills</b> — click the gamertag in
-    the Apex lobby and type the number into the <code>career</code> block. No API returns it.`);
+  if (!D.live) todo.push(`<b>The daily pull</b> — not connected yet, so every number
+    here is read off the in-game banner by hand.`);
+  if (!rank.name) todo.push(`<b>Rank</b> — nothing on record, so the ladder below is
+    unmarked.`);
+  if (typeof career.kills !== "number") todo.push(`<b>Career kills</b> — account-wide and
+    no API returns it, so it only appears once it's been read off the lobby.`);
   if (names.length && names.length < 3) todo.push(`<b>More trackers</b> — one Kills tracker per
     legend played, and the total climbs toward the real career figure.`);
   if (!todo.length) todo.push(`Nothing outstanding. The daily poll carries it from here.`);

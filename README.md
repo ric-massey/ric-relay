@@ -27,15 +27,15 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `orrin.html` | Orrin | Plain-language tour of Orrin plus live public project activity from GitHub |
 | `psyche.html` | Psyche | Human-systems field notebook — mood, criteria, substances, and evidence |
 | `climbing.html` | Climbing | Mountain-Project-style route ledger — projects, ticks, objectives |
-| `training.html` | Training | Strava-style feed — runs, workouts, health (live feed still TODO) |
-| `apex.html` | Apex | Apex Legends lobby — rank ladder, career kills, and every legend carrying a tracker (data pulled by `projects/apex/pull-apex.py`) |
+| `training.html` | Training | Strava-style feed — runs, workouts, health (live feed still TODO) · *unlisted on the home directory* |
+| `apex.html` | Apex | Apex Legends lobby — rank ladder, career kills, and every legend carrying a tracker (data pulled by `projects/apex/pull-apex.py`) · *unlisted on the home directory* |
 | `exploration.html` | Exploration | Space deck — experiments dock here |
 | `workbench.html` | Workbench | Blueprint board of random / half-finished projects |
 | `captures.html` | Captures | Darkroom contact sheet for photos |
-| `log.html` | Log | Long-form write-ups, trip reports, Apex VOD reviews |
+| `log.html` | Log | Long-form write-ups, trip reports, Apex VOD reviews · *unlisted on the home directory* |
 | `updates.html` | — | Legacy redirect to the homepage's latest-signal banner |
 | `systems.html` | — | Legacy redirect from the former Orrin URL to `orrin.html` |
-| `map.html` | Map | Locked placeholder — the real private map app lives elsewhere, with real auth |
+| `map.html` | Map | Locked placeholder — the real private map app lives elsewhere, with real auth · *unlisted everywhere; reachable by typing `map`* |
 | `404.html` | — | On-brand "signal lost" page for mistyped URLs |
 | `playground/` | — | Scratch space for experiments and working design docs |
 | `projects/` | — | Self-contained sub-projects, each linked from a room (see below) |
@@ -52,7 +52,7 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | Project | Linked from | What it is |
 |---|---|---|
 | `projects/spacetime/` | Exploration | "The Geometry of Spacetime" — interactive special-relativity explainer |
-| `projects/farlight/` | Exploration | "FARLIGHT" — playable momentum and landing-feel prototype |
+| `projects/farlight/` | Workbench | "FARLIGHT" — playable momentum and landing-feel prototype |
 | `projects/starfield/` | Exploration | "Starfield" — relativistic rocket flight through the real solar neighbourhood |
 | `projects/how-speed-affects-time/` | Exploration | "How Speed Affects Time" — two clocks and a real-sky special-relativity exhibit |
 | `projects/apex/` | Apex (room data) | Not a page — the sync tooling and generated `apex-data.js` that `apex.html` reads |
@@ -122,6 +122,15 @@ pill switcher in Orrin, case-file tabs in Psyche, a film strip on captures, and 
 **same set of rooms with the same labels** — only the styling differs. If you add or
 rename a room, update the menu on **every** page (see `AGENTS.md`).
 
+That set is `terminal · orrin · psyche · climbing · exploration · workbench · captures`
+— the same six rooms the home directory lists, so the site says one thing about what it
+contains. The unlisted rooms (`training`, `apex`, `log`, `map`) are still reachable by
+URL and from the terminal's `ls` / `tree` / `find` / `open`.
+
+On a phone the menu collapses behind a single button with full-size tap targets. The
+behaviour is shared (`installRoomMenu()` in `effects.js`, so there aren't nine copies of
+it); the button's appearance is styled per room, like everything else in the nav.
+
 When served on the web, Terminal home links normalize to the clean site root instead of
 leaving `/index.html` in the address. Their `index.html` markup remains as a fallback so
 the pages still work when opened directly from disk.
@@ -139,11 +148,32 @@ Each page keeps its editable content in a loudly-commented block near the top of
 file — copy the example block, edit, done.
 
 - **Post a homepage note:** edit `notes.js`.
+- **Add or rename a room:** edit the `ROOMS` array in `index.html` — it is the one list
+  the directory, `ls`, `tree`, `find` and Tab completion all render from — then update
+  the `<nav>` on every room page.
 - **Change the clickable newest-item banners:** edit `latest.js` once; every room
-  presents the same curated addition in its own visual language.
+  presents the same curated addition in its own visual language. Give each entry a
+  `room`, so a room only uses its own flavoured wording ("new route") when the newest
+  item actually belongs to it.
 - **`orrin.html` explains the architecture in plain language** and pulls public code
   activity from the GitHub API. It does not expose Orrin's private runtime state.
 - **Never** commit real location data anywhere in this repo (see the map page).
+
+### Wiring up the two rooms that aren't connected yet
+
+These notes used to be printed on the live pages, where family could read them. They
+belong here.
+
+- **Apex** (`apex.html`) shows hand-read seed numbers until the daily pull is connected.
+  It needs a free API key from apexlegendsapi.com stored in the macOS Keychain under
+  `apex-als`, plus a gamertag in `projects/apex/apex-account.json` (gitignored). Rank and
+  RP arrive with the key; the ladder can also be lit up early by typing a `rank` block
+  into `projects/apex/apex-data.js`. Career kills are account-wide and no API returns
+  them — they're typed into the `career` block by hand and `pull-apex.py` preserves them.
+- **Training** (`training.html`) has no live feed. Two ways to wire it up: the quick
+  Strava embed widget, or a small serverless function hitting the Strava API (Garmin
+  syncs into Strava automatically). The two activity cards on the page are marked
+  `example` and exist only to show the format — replace them, don't leave them.
 
 ## Easter eggs
 

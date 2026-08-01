@@ -1,9 +1,14 @@
 // Curated additions shown by each room's native "latest" banner.
 // Newest first. Keep these meaningful: projects and posts, not implementation commits.
+//
+// `room` is which room the item belongs to. There is one global newest item and
+// every room shows it, so a room only gets to use its own flavoured wording when
+// the item is actually its own — see data-latest-prefix-own below. Set it.
 window.RELAY_LATEST = [
   {
     date: "2026-07-31",
     kind: "interactive",
+    room: "exploration",
     title: "How Speed Affects Time",
     description: "One slider, two clocks, and the real night sky. Fly out at any speed, watch the sky fold into the view ahead, then come home and read what the trip cost you.",
     href: "projects/how-speed-affects-time/index.html",
@@ -11,13 +16,15 @@ window.RELAY_LATEST = [
   {
     date: "2026-07-24",
     kind: "game update",
+    room: "exploration",
     title: "Starfield: A Relativistic Rocket",
-    description: "Rebuilt on real physics. Burn at one gravity through the actual solar neighbourhood and watch twelve years of your life cross the galaxy.",
+    description: "Rebuilt on real physics. Burn at one gravity through the actual solar neighborhood and watch twelve years of your life cross the galaxy.",
     href: "projects/starfield/index.html",
   },
   {
     date: "2026-07-24",
     kind: "interactive",
+    room: "workbench",
     title: "FARLIGHT",
     description: "A playable experiment in momentum, contact, and clean landings.",
     href: "projects/farlight/index.html",
@@ -25,6 +32,7 @@ window.RELAY_LATEST = [
   {
     date: "2026-07-23",
     kind: "new room",
+    room: "psyche",
     title: "Psyche: Human Systems",
     description: "Mood, criteria, substances, and the imperfect tools we use to understand them.",
     href: "psyche.html",
@@ -32,6 +40,7 @@ window.RELAY_LATEST = [
   {
     date: "2026-07-23",
     kind: "research",
+    room: "psyche",
     title: "The Shape of Harm",
     description: "An evidence framework for comparing psychoactive-substance harms without hiding the uncertainty.",
     href: "projects/the-shape-of-harm/start.html",
@@ -39,6 +48,7 @@ window.RELAY_LATEST = [
   {
     date: "2026-07-23",
     kind: "visualization",
+    room: "psyche",
     title: "State-of-Mind Line",
     description: "An animated model of bipolar mood patterns moving through time.",
     href: "projects/state-of-mind-line/index.html",
@@ -73,11 +83,21 @@ window.RELAY_LATEST = [
 
       const kicker = document.createElement("span");
       kicker.className = "latest-kicker";
+      // Two prefixes per banner:
+      //   data-latest-prefix      always safe — used for anything from anywhere
+      //   data-latest-prefix-own  the room's own wording, ONLY for its own items
+      //                           (pair it with data-latest-room)
+      // The banner shows the newest thing on the whole site, not this room's
+      // newest, so an unguarded flavoured prefix lies: /climbing announced a
+      // relativity explainer as a "new route", /captures called it a "fresh
+      // frame". If it isn't this room's item, fall back to the plain prefix.
+      const ownsItem = banner.dataset.latestRoom && item.room === banner.dataset.latestRoom;
+      const prefix = (ownsItem && banner.dataset.latestPrefixOwn)
+        || banner.dataset.latestPrefix
+        || "latest";
       // The climbing entry already reads as an announcement ("new routes sent"),
       // so it speaks for itself instead of taking the room's prefix.
-      kicker.textContent = item === climb
-        ? item.kind
-        : `${banner.dataset.latestPrefix || "latest"} // ${item.kind}`;
+      kicker.textContent = item === climb ? item.kind : `${prefix} // ${item.kind}`;
 
       const title = document.createElement("strong");
       title.className = "latest-title";
