@@ -1,7 +1,7 @@
 /* ══════════════════════════════════════════════════════════════════════
    The ladder.
 
-   Twenty-one rungs from the smallest thing anyone has measured to the
+   Twenty-two rungs from the smallest thing anyone has put a bound on to the
    edge of what anyone can see. Every one of them carries a real number in
    metres, and the whole exhibit is built out of those numbers and nothing
    else: the rail, the camera, the spacing on screen, the calipers, the
@@ -33,9 +33,22 @@
    ══════════════════════════════════════════════════════════════════════ */
 window.LADDER = [
   {
+    id: "quark",
+    name: "A quark",
+    kicker: "The one thing here that cannot be alone",
+    size: 8.6e-19,
+    dim: "at most, across",
+    alt: "and nobody has ever held one",
+    box: [1, 1],
+    tint: "#c9a6ff",
+    lede: "Three of these make a proton, and not one of them has ever been seen on its own — not once, not by anybody.",
+    fact: "That is not a gap in the equipment. The force between quarks does not weaken with distance the way every other force does; it stays roughly constant, so pulling two apart costs more and more energy until there is enough of it to make a new pair, and you end up with two ordinary particles instead of one lonely quark. This is called confinement, and it means the thing this frame is about can only ever be inferred. Its size is an upper bound like the electron's: scattering electrons off protons at HERA put the quark's radius below 0.43 × 10⁻¹⁶ cm, and dijet measurements at the LHC have since probed structure down near 10⁻²⁰ m without finding any.",
+    caveat: "This sits below the electron only because the experiments that bound it happen to reach further, not because a quark is known to be smaller. Neither particle has a measured size at all; both numbers are limits on what the apparatus could have detected. Reading this rung as \"smaller than an electron\" is reading a fact about colliders as a fact about nature.",
+  },
+  {
     id: "electron",
     name: "An electron",
-    kicker: "As small as it gets",
+    kicker: "No parts, no edge, no size",
     size: 1e-18,
     dim: "at most, across",
     alt: "and every experiment says smaller",

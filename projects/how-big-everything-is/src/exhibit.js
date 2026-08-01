@@ -2,9 +2,12 @@
    The exhibit.
 
    One number runs this whole page: `t`, a position along the ladder from
-   0 to 1. The rail sets it, the wheel sets it, a drag sets it, a chip
-   sets it, the arrow keys set it — and everything else on screen is
-   derived. There is no second source of truth about where you are.
+   0 to 1. The rail sets it, the arrows set it, a drag sets it, a chip
+   sets it, the arrow keys set it, the tour sets it — and everything else
+   on screen is derived. There is no second source of truth about where
+   you are.
+
+   The wheel does not set it, deliberately: see wireCanvas().
 
    From `t` comes exactly one quantity:
 
@@ -86,10 +89,13 @@
      decades between the electron and the proton genuinely cost you three
      decades of dragging, and you feel them.
 
-     Not *purely* by decades, because two pairs on this ladder are close
-     together — you and an elephant, the Oort Cloud and the nearest star —
-     and a strictly logarithmic rail gives those pairs a slice about two
-     pixels wide, which is a rung you cannot stop on. So every gap gets a
+     Not *purely* by decades, because three pairs on this ladder are close
+     together — a quark and an electron, you and an elephant, the Oort
+     Cloud and the nearest star — and a strictly logarithmic rail gives
+     those pairs a slice about two pixels wide, which is a rung you cannot
+     stop on. The quark pair is the tightest of the three: seven
+     hundredths of a decade, which without the padding below would be a
+     rung a third of a pixel wide. So every gap gets a
      flat 0.45-decade allowance on top of its real width. Across the whole
      rail that is 9 decades of padding against 45 real ones: the shape is
      still overwhelmingly the true shape, and every rung is reachable. */
@@ -132,6 +138,8 @@
     settledOn: -1,
     wokeAt: -1e9,          // clock seconds at which the current rung settled
     started: 0,
+    touring: false,
+    tourTimer: 0,
   };
 
   /* ── the arrival beat ──────────────────────────────────────────────
@@ -249,7 +257,9 @@
      visit. */
   function measureBand() {
     const bottom = document.querySelector(".hud-bottom");
-    safeBottom = bottom ? bottom.getBoundingClientRect().height + 14 : 0;
+    const scrub = document.querySelector(".scrub");
+    safeBottom = (bottom ? bottom.getBoundingClientRect().height + 14 : 0) +
+                 (scrub ? scrub.getBoundingClientRect().height : 0);
     bandBot = Math.max(80, ch - safeBottom - 10);
     if (cw > 900) {
       bandTop = 8;
@@ -517,7 +527,7 @@
   }
 
   /* Which chip is lit, and — since the chip strip is a single sideways row
-     of twenty-one — keeping the lit one in view. Guarded on the value, not
+     of twenty-two — keeping the lit one in view. Guarded on the value, not
      run every frame: this touches 42 elements and forces a scroll, and the
      answer changes a few times a minute. */
   let markedRung = -2;
@@ -549,34 +559,45 @@
     $("obj-name").style.opacity = $("obj-measure").style.opacity =
       $("obj-dim").style.opacity = $("obj-alt").style.opacity = (0.4 + 0.6 * foc).toFixed(2);
 
-    setFitted($("frame-width"), U.length(cam.w), 11);
     $("power-out").textContent = U.decade(cam.w);
     $("power-near").textContent = foc > 0.3 ? "≈ " + o.name.toLowerCase() : "";
 
     paintScaleBar(cam);
     paintCompare(cam);
     markRung(foc > 0.5 ? k : -1);
+    markSteps(k);
 
     if (foc > 0.5) {
-      $("rung-note").textContent = o.lede;
+      $("rung-lede").textContent = o.lede;
     } else {
       const seg = segment(S.t);
-      $("rung-note").textContent = "Between " + L[seg - 1].name.toLowerCase() + " and " + L[seg].name.toLowerCase() + ".";
+      $("rung-lede").textContent = "Between " + L[seg - 1].name.toLowerCase() + " and " + L[seg].name.toLowerCase() + ".";
     }
   }
 
-  /* The fact card. Held back until the rail actually stops: the rungs are
-     close enough together that a card firing on every one you pass through
-     is a strobe, not a caption. Same reasoning as the checkpoints on the
-     speed exhibit. */
+  function collapseFact() {
+    if ($("fact").hidden) return;
+    $("fact").hidden = true;
+    $("rung-note").setAttribute("aria-expanded", "false");
+    measureBand();
+  }
+
+  /* The rest of the caption. Loaded when the rail actually stops — the
+     rungs are close enough together that rewriting it on every one you
+     pass through is a strobe rather than a caption, the same reasoning as
+     the checkpoints on the speed exhibit.
+
+     It loads but does not open. Arriving somewhere new should not shove a
+     paragraph in front of the thing you just arrived at; the sentence
+     under the arrows says where you are, and the paragraph is there for
+     whoever wants it. */
   function paintFact(now) {
     const k = nearestRung(S.t);
     const foc = focusOf(k, S.t);
     const still = now - S.lastInput > 400;
-    const card = $("fact");
 
     if (S.settledOn === k) {
-      if (foc < 0.3) { S.settledOn = -1; card.hidden = true; measureBand(); }
+      if (foc < 0.3) { S.settledOn = -1; collapseFact(); }
       return;
     }
     if (!(still && foc > 0.55)) return;
@@ -584,30 +605,20 @@
     const o = L[k];
     S.settledOn = k;
     S.wokeAt = (now - S.started) / 1000;
-    $("fact-lede").innerHTML = o.lede;
     $("fact-body").innerHTML = o.fact;
     const cav = $("fact-caveat");
     cav.hidden = !o.caveat;
     if (o.caveat) cav.textContent = o.caveat;
-    card.hidden = false;
-    // A new rung is a new card, so it opens closed. The toggle only does
-    // anything at the widths where the card is collapsed to its lede.
-    card.classList.remove("open");
-    $("fact-more").setAttribute("aria-expanded", "false");
-    $("fact-more").textContent = "Read more";
-    card.classList.remove("in");
-    void card.offsetWidth;
-    card.classList.add("in");
-    measureBand();
+    // A new rung is a new caption, so it closes.
+    collapseFact();
     $("live-region").textContent = o.name + ". " + U.length(o.size) + " " + o.dim + ". " + o.lede;
   }
 
   function wireFact() {
-    $("fact-more").addEventListener("click", () => {
-      const card = $("fact");
-      const open = card.classList.toggle("open");
-      $("fact-more").setAttribute("aria-expanded", String(open));
-      $("fact-more").textContent = open ? "Show less" : "Read more";
+    $("rung-note").addEventListener("click", () => {
+      const open = $("fact").hidden;
+      $("fact").hidden = !open;
+      $("rung-note").setAttribute("aria-expanded", String(open));
       measureBand();
     });
   }
@@ -637,7 +648,11 @@
   }
 
   /* ── setting t ─────────────────────────────────────────────────────── */
+  /* Every manual control writes `t` through here, which is why the tour
+     is cancelled here rather than in each of them — the rail, the wheel,
+     a drag and the arrow keys all mean "I am steering now". */
   function setT(t, why) {
+    stopTour();
     S.t = clamp01(t);
     S.target = null;
     S.lastInput = performance.now();
@@ -680,15 +695,16 @@
   function wireCanvas() {
     const stage = canvas.parentElement;
 
-    stage.addEventListener("wheel", (e) => {
-      if (e.ctrlKey) return;                       // leave browser zoom alone
-      // The two things on the HUD that scroll on their own keep their wheel.
-      if (e.target.closest && e.target.closest("#fact, #rungs")) return;
-      e.preventDefault();
-      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? ch : 1;
-      const d = (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * unit;
-      setT(S.t + d / 11000);
-    }, { passive: false });
+    /* The wheel used to drive the rail, and it is gone on purpose.
+       A scroll gesture over a picture means "I am reading this page" far
+       more often than it means "take me forty decades outward", and the
+       cost of guessing wrong is that the exhibit slides out from under a
+       hand that was only resting on a trackpad. Two-finger drift on a
+       Mac is enough to walk you off a rung you were reading about.
+
+       So the picture is not a scroll surface. Moving is done with the
+       arrows, the chips, a drag, the arrow keys, or the rail — all of
+       which are things you have to mean. */
 
     let dragging = false, lastX = 0;
     stage.addEventListener("pointerdown", (e) => {
@@ -734,7 +750,7 @@
 
   /* ── the rung pickers ──────────────────────────────────────────────
      Two of them, and they are the same list twice: chips under the rail
-     where there is room for twenty-one of them, and a sheet behind a
+     where there is room for twenty-two of them, and a sheet behind a
      button where there is not. Both call glideTo(), so picking a rung
      flies you there rather than cutting — the journey between two rungs
      is most of what this exhibit has to say. */
@@ -747,7 +763,7 @@
       b.dataset.k = k;
       b.textContent = o.name.replace(/^(The|An|A) /, "");
       b.setAttribute("aria-pressed", "false");
-      b.addEventListener("click", () => glideTo(k));
+      b.addEventListener("click", () => { stopTour(); glideTo(k); });
       chips.appendChild(b);
 
       const r = document.createElement("button");
@@ -756,9 +772,81 @@
       r.className = "menu-row";
       r.innerHTML = '<span class="t">' + o.name + '</span><span class="m num">' +
         U.length(o.size) + "</span>";
-      r.addEventListener("click", () => { glideTo(k); setMenu(false); });
+      r.addEventListener("click", () => { stopTour(); glideTo(k); setMenu(false); });
       list.appendChild(r);
     });
+  }
+
+  /* ── stepping ──────────────────────────────────────────────────────
+     One rung at a time, and always to a rung you are not already on.
+     Sitting a hair past a rung's centre and pressing "next" should go to
+     the next one, not snap backwards onto the one you can already see —
+     hence the epsilon rather than a bare comparison. */
+  function stepRung(dir) {
+    const k = nearestRung(S.t);
+    let next = k;
+    if (dir > 0) next = (T[k] <= S.t + 1e-6) ? k + 1 : k;
+    else next = (T[k] >= S.t - 1e-6) ? k - 1 : k;
+    next = Math.max(0, Math.min(N - 1, next));
+    if (next !== k || Math.abs(S.t - T[k]) > 1e-6) glideTo(next);
+  }
+
+  /* The arrows' own readout, on the widths where the chip strip is gone.
+     Guarded on the value: this runs every frame and writes two text nodes,
+     and the answer changes a few times a minute. */
+  let steppedTo = -2;
+  function markSteps(k) {
+    $("step-prev").disabled = k <= 0 && S.t <= 1e-6;
+    $("step-next").disabled = k >= N - 1 && S.t >= 1 - 1e-6;
+    if (k === steppedTo) return;
+    steppedTo = k;
+    $("step-count").textContent = (k + 1) + " / " + N;
+    $("step-name").textContent = L[k].name;
+  }
+
+  function wireSteps() {
+    $("step-prev").addEventListener("click", () => { stopTour(); stepRung(-1); });
+    $("step-next").addEventListener("click", () => { stopTour(); stepRung(1); });
+  }
+
+  /* ── the tour ──────────────────────────────────────────────────────
+     Walks the ladder and waits at each rung. The wait is the point: the
+     fact card only appears once the rail has actually stopped, and the
+     arrival beat needs somewhere to happen, so a tour that slid
+     continuously would show you none of what it came to show.
+
+     Any manual input cancels it. A tour you have to fight is worse than
+     no tour, and every other control on this page writes `t` directly —
+     so rather than have each of them remember to stop, `setT` does it. */
+  const TOUR_HOLD = 5200;
+  function tourTick() {
+    if (!S.touring) return;
+    const k = nearestRung(S.t);
+    if (k >= N - 1) { stopTour(); return; }
+    glideTo(k + 1);
+    S.tourTimer = setTimeout(tourTick, TOUR_HOLD + S.glideMs);
+  }
+
+  function startTour() {
+    if (S.touring) return;
+    S.touring = true;
+    $("play").setAttribute("aria-pressed", "true");
+    $("play").setAttribute("aria-label", "Pause the tour");
+    // From the far end, a tour has nowhere to go but back to the start.
+    if (nearestRung(S.t) >= N - 1) { glideTo(0); S.tourTimer = setTimeout(tourTick, TOUR_HOLD + S.glideMs); }
+    else tourTick();
+  }
+
+  function stopTour() {
+    if (!S.touring) return;
+    S.touring = false;
+    clearTimeout(S.tourTimer);
+    $("play").setAttribute("aria-pressed", "false");
+    $("play").setAttribute("aria-label", "Play the tour");
+  }
+
+  function wireTour() {
+    $("play").addEventListener("click", () => (S.touring ? stopTour() : startTour()));
   }
 
   function setMenu(open) {
@@ -858,6 +946,8 @@
     restore();
     syncRail();
     wireRail();
+    wireSteps();
+    wireTour();
     wireCanvas();
     wireKeys();
     wireMenu();

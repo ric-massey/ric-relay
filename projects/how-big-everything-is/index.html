@@ -8,7 +8,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Ric's Terminal">
 <meta property="og:title" content="How Big Everything Is">
-<meta property="og:description" content="Twenty-one rungs from an electron to the edge of what can be seen, all drawn to the same scale. Zoom out and watch each thing collapse to a speck next to the next one.">
+<meta property="og:description" content="Twenty-two rungs from a quark to the edge of what can be seen, all drawn to the same scale. Zoom out and watch each thing collapse to a speck next to the next one.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23000'/><circle cx='50' cy='50' r='2.5' fill='%23fff'/><circle cx='50' cy='50' r='14' fill='none' stroke='%23888' stroke-width='2'/><circle cx='50' cy='50' r='38' fill='none' stroke='%23444' stroke-width='2'/></svg>">
 <style>
 /* ══════════════════════════════════════════════════════════════════════
@@ -126,11 +126,6 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
   transition: opacity .2s; }
 .cluster .alt { font: .72rem/1.36 var(--serif); color: var(--dimmer);
   transition: opacity .2s; text-wrap: pretty; }
-.cluster .gap { margin-top: .5rem; padding-top: .5rem;
-  border-top: 1px solid rgba(255,255,255,.12); }
-.gap .big { font: 300 clamp(1.05rem, 1.8vw, 1.32rem)/1.62rem var(--mono);
-  letter-spacing: -.02em; margin-top: .04rem;
-  white-space: nowrap; overflow: hidden; min-height: 1.62rem; }
 
 /* ── the scale bar ────────────────────────────────────────────────────
    A map's scale bar, and it does the same job: it is the only thing on
@@ -146,27 +141,41 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
 .scalebar .l { flex: 0 1 auto; min-width: 0; font: 600 .64rem/1 var(--mono);
   color: var(--ink); white-space: nowrap; }
 
-/* ── the fact card ────────────────────────────────────────────────────
-   Held back until the rail stops moving. The rungs are close enough
-   together that a card firing on each one you pass through is a strobe
-   rather than a caption — same reasoning as the checkpoints on the speed
-   exhibit, and the same fix. */
-.fact { width: var(--rail-w); max-width: 100%; padding: .7rem .9rem .8rem;
-  flex: 0 1 auto; overflow-y: auto; overscroll-behavior: contain; min-height: 3.5rem; }
-.fact.in { animation: factin .34s ease-out both; }
-@keyframes factin { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.fact .lede { margin-top: .25rem; color: var(--ink);
-  font: 400 .92rem/1.55 var(--serif); text-wrap: pretty; }
-.fact .body { margin-top: .55rem; color: #c8c8d0;
-  font: 400 .84rem/1.6 var(--serif); text-wrap: pretty; }
+/* ── the caption ──────────────────────────────────────────────────────
+   One line under the arrows, always, and the rest folded behind it. The
+   line never wraps while it is closed: it is rewritten on every step of
+   a drag, and a sentence that rewraps as it changes length grows and
+   shrinks the whole dock while your hand is on it. Open, it is allowed
+   to wrap, because then nothing is moving. */
+.rung-note {
+  display: flex; align-items: flex-start; gap: .6rem; width: 100%;
+  margin-top: .5rem; padding: .18rem 0; text-align: left; cursor: pointer;
+  background: none; border: 0; color: var(--dim);
+  font: .82rem/1.3rem var(--serif);
+}
+.rung-note .t { flex: 1; min-width: 0; min-height: 1.3rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rung-note .more { flex: none; display: grid; place-items: center;
+  width: 1.3rem; height: 1.3rem; border-radius: 50%;
+  background: rgba(255,255,255,.07); transition: background .15s, transform .2s; }
+.rung-note .more svg { width: 15px; height: 15px; fill: none; stroke: var(--ink);
+  stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.rung-note:hover { color: var(--ink); }
+.rung-note:hover .more { background: rgba(255,255,255,.16); }
+.rung-note:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 6px; }
+.rung-note[aria-expanded=true] { color: var(--ink); }
+.rung-note[aria-expanded=true] .t { white-space: normal; }
+.rung-note[aria-expanded=true] .more { transform: rotate(180deg); }
+
+.fact { margin-top: .5rem; padding-top: .6rem; max-height: 34vh; overflow-y: auto;
+  overscroll-behavior: contain; border-top: 1px solid rgba(255,255,255,.12);
+  animation: factin .26s ease-out both; }
+@keyframes factin { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.fact .body { color: #c8c8d0; font: 400 .84rem/1.6 var(--serif); text-wrap: pretty; }
 .fact .body em { color: #e4e4ea; font-style: italic; }
 .fact .caveat { margin-top: .6rem; padding-top: .55rem;
   border-top: 1px solid rgba(255,255,255,.12); color: var(--dimmer);
   font: italic 400 .78rem/1.5 var(--serif); text-wrap: pretty; }
-.fact-more { display: none; margin-top: .5rem; padding: .4rem 0; cursor: pointer;
-  background: none; border: 0; color: var(--ink);
-  font: 600 .6rem/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
-.fact-more:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 
 /* ── the corner ───────────────────────────────────────────────────── */
 .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .35rem; }
@@ -194,37 +203,103 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
 .compare .row b { color: var(--ink); font: 400 .86rem/1.5 var(--mono); font-weight: 400; }
 
 /* ── the dock ─────────────────────────────────────────────────────── */
-.hud-bottom { display: flex; align-items: flex-end; justify-content: center; gap: var(--pad); }
-.dock { flex: 0 1 62rem; min-width: 0; padding: .85rem 1rem .9rem; }
-.railrow { display: flex; align-items: center; gap: 1.2rem; }
+.hud-bottom { display: flex; align-items: flex-end; justify-content: center; gap: var(--pad);
+  padding-bottom: .55rem; }
+.dock { flex: 0 1 62rem; min-width: 0; padding: .7rem .8rem .75rem; }
+.steprow { display: flex; align-items: center; gap: .45rem; }
+
+/* ── the scrub ────────────────────────────────────────────────────────
+   Pinned to the bottom edge of the window, full width, and almost no
+   height — a video scrubber, because that is exactly the job: one
+   control that means "the whole thing" and shows how far through it you
+   are without asking for any of the screen. It used to be a fat rail
+   inside the dock, competing with the chips for the same row.
+
+   The track is 3px at rest and thickens under the pointer, and the
+   handle is invisible until you are near it. Both are the scrubber
+   idiom, and both exist here for the same reason they do there: at rest
+   this is a progress readout, and it only needs to look like a control
+   at the moment you reach for it. */
+.scrub { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41;
+  pointer-events: auto; padding-bottom: env(safe-area-inset-bottom);
+  background: linear-gradient(180deg, rgba(6,6,9,0), rgba(6,6,9,.72) 62%); }
+.scrub::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 2.2rem;
+  pointer-events: none; background: linear-gradient(180deg, rgba(6,6,9,0), rgba(6,6,9,.5)); }
 
 input[type=range] {
-  -webkit-appearance: none; appearance: none; flex: 1; min-width: 0;
-  height: 34px; background: transparent; cursor: pointer;
-  --fill: calc(10px + var(--p, 0) * (100% - 20px));
+  -webkit-appearance: none; appearance: none; display: block; width: 100%;
+  height: 15px; background: transparent; cursor: pointer;
+  --fill: calc(var(--p, 0) * 100%);
+  --trk: 3px; --thumb: 0px;
 }
+.scrub:hover input[type=range],
+input[type=range]:focus-visible,
+input[type=range]:active { --trk: 5px; --thumb: 13px; }
+
 input[type=range]::-webkit-slider-runnable-track {
-  height: 6px; border-radius: 999px;
+  height: var(--trk); border-radius: 999px; transition: height .12s ease;
   background: linear-gradient(90deg,
-    rgba(242,242,244,.9) var(--fill), rgba(255,255,255,.14) var(--fill));
-  box-shadow: inset 0 1px 2px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.06);
+    rgba(242,242,244,.92) var(--fill), rgba(255,255,255,.17) var(--fill));
 }
 input[type=range]::-moz-range-track {
-  height: 6px; border-radius: 999px; background: rgba(255,255,255,.14);
-  box-shadow: inset 0 1px 2px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.06);
-}
-input[type=range]::-moz-range-progress { height: 6px; border-radius: 999px; background: rgba(242,242,244,.9); }
+  height: var(--trk); border-radius: 999px; background: rgba(255,255,255,.17); }
+input[type=range]::-moz-range-progress {
+  height: var(--trk); border-radius: 999px; background: rgba(242,242,244,.92); }
 input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
-  margin-top: -7px; border: none;
-  background: radial-gradient(circle at 34% 30%, #ffffff, #e2e2e8 52%, #a8a8b2 100%);
-  box-shadow: 0 2px 8px rgba(0,0,0,.7), 0 0 0 6px rgba(242,242,244,.10);
+  -webkit-appearance: none; width: var(--thumb); height: var(--thumb); border-radius: 50%;
+  border: none; background: #fff; transition: width .12s ease, height .12s ease, margin .12s ease;
+  margin-top: calc((var(--trk) - var(--thumb)) / 2);
+  box-shadow: 0 1px 6px rgba(0,0,0,.8);
 }
 input[type=range]::-moz-range-thumb {
-  width: 20px; height: 20px; border-radius: 50%; border: none;
-  background: radial-gradient(circle at 34% 30%, #ffffff, #e2e2e8 52%, #a8a8b2 100%);
-  box-shadow: 0 2px 8px rgba(0,0,0,.7);
+  width: var(--thumb); height: var(--thumb); border-radius: 50%; border: none;
+  background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.8);
 }
+
+/* ── stepping one rung ────────────────────────────────────────────────
+   Left is smaller, right is larger, the same direction as the strip
+   between them and as the exhibit. 44px targets: these are the primary
+   control on a phone. */
+.stepbtn {
+  flex: none; display: grid; place-items: center; width: 44px; height: 44px;
+  border-radius: 50%; border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.05); color: var(--dim); cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.stepbtn svg { width: 21px; height: 21px; fill: none; stroke: currentColor;
+  stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
+.stepbtn:hover:not(:disabled) { color: var(--ink); background: rgba(255,255,255,.12);
+  border-color: rgba(255,255,255,.2); }
+.stepbtn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.stepbtn:disabled { opacity: .3; cursor: default; }
+
+/* Only where the chip strip cannot fit — see the 900px block. */
+.steplabel { display: none; flex: 1; min-width: 0; text-align: center; }
+.steplabel .n { display: block; font: 600 .58rem/1.3 var(--mono); letter-spacing: .16em;
+  color: var(--dimmer); }
+.steplabel .t { display: block; font: 400 .98rem/1.25 var(--serif); color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── the tour button ──────────────────────────────────────────────────
+   The one round control on a page of pills and rectangles, because it
+   is the only one that starts something rather than going somewhere. */
+.playbtn {
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .34rem .82rem .34rem .38rem; border-radius: 999px; cursor: pointer;
+  color: var(--ink); font: 600 .68rem/1 var(--mono); letter-spacing: .14em;
+  text-transform: uppercase; transition: background .15s, border-color .15s;
+}
+.playbtn svg { width: 26px; height: 26px; flex: none; fill: currentColor;
+  background: rgba(255,255,255,.10); border-radius: 50%; padding: 1px;
+  transition: background .15s; }
+.playbtn:hover svg { background: rgba(255,255,255,.2); }
+.playbtn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.playbtn .i-pause { display: none; }
+.playbtn[aria-pressed=true] { background: rgba(242,242,244,.92); color: #08080a;
+  border-color: transparent; }
+.playbtn[aria-pressed=true] svg { background: rgba(0,0,0,.12); }
+.playbtn[aria-pressed=true] .i-play { display: none; }
+.playbtn[aria-pressed=true] .i-pause { display: inline; }
 /* Browsers count a plain mouse click on a range as focus-visible, so an
    untreated ring lights up the full width of the dock the moment anyone
    grabs the rail. .by-pointer is set only when the focus came from a
@@ -248,7 +323,7 @@ input[type=range].by-pointer:focus-visible { outline: none; }
    right in one line is the same gesture as the exhibit itself. The active
    chip is scrolled into view whenever it changes, so the strip tracks
    where you are rather than needing to be steered separately. */
-.rungs { display: flex; gap: .3rem; margin-top: .7rem; overflow-x: auto;
+.rungs { display: flex; gap: .3rem; flex: 1; min-width: 0; overflow-x: auto;
   scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent;
   padding-bottom: .3rem;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 14px), transparent);
@@ -264,14 +339,9 @@ input[type=range].by-pointer:focus-visible { outline: none; }
 .rungs button:hover { color: var(--ink); background: rgba(255,255,255,.11); }
 .rungs button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .rungs button[aria-pressed=true] { color: #08080a; background: var(--ink); border-color: var(--ink); }
-/* One line, always. This sentence is rewritten on every step of a drag,
-   and a sentence that rewraps as it changes length grows and shrinks the
-   whole dock while your hand is on it. */
-.rung-note { font: .82rem/1.23rem var(--serif); color: var(--dim); margin-top: .5rem;
-  min-height: 1.23rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── the rung sheet ───────────────────────────────────────────────────
-   The same list as the chips, for the widths where twenty-one chips in a
+   The same list as the chips, for the widths where twenty-two chips in a
    sideways strip is a row of tiny targets nobody is going to hit with a
    thumb. Rows are 46px tall, over the 44px minimum. */
 .menu { position: fixed; inset: 0; z-index: 44; display: flex; justify-content: flex-end;
@@ -423,24 +493,15 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
 /* ── narrow ───────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
-  /* Twenty-one chips in a sideways strip is a row of tiny targets nobody
+  /* Twenty-two chips in a sideways strip is a row of tiny targets nobody
      will hit with a thumb. The same list moves behind the button, where
      each rung gets a 46px row and its measurement next to it. */
   .rungs { display: none; }
+  .steplabel { display: block; }
   #menu-open { display: inline-flex; }
   .hud-bottom { flex-direction: column; align-items: stretch; gap: .5rem; }
   .dock { flex: none; }
   .compare { display: none; }
-  /* The rail is the full width of the window here, so the fact card sits
-     squarely on top of the object it is describing. Collapsed to its lede
-     instead — one sentence, which is the sentence that matters — with the
-     rest a tap away. The canvas then centres objects in whatever height is
-     left below the rail rather than in the middle of the window. */
-  .fact { max-height: 42vh; }
-  .fact .body, .fact .caveat { display: none; }
-  .fact.open .body { display: block; }
-  .fact.open .caveat:not([hidden]) { display: block; }
-  .fact-more { display: block; }
 }
 @media (max-width: 620px) {
   :root { --rail-w: auto; }
@@ -452,12 +513,28 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
   .cluster .name { font-size: 1.12rem; }
   .cluster .measure { font-size: .92rem; line-height: 1.2rem; }
   .cluster .alt { display: none; }
-  .cluster .gap { margin-top: .5rem; padding-top: .5rem; }
   .fact .body { font-size: .8rem; }
   .iconbtn { font-size: .6rem; letter-spacing: .1em; padding: .46rem .7rem; }
   .actions { flex-direction: column; align-items: flex-end; }
-  .railrow { gap: .7rem; }
   .rung-note { font-size: .78rem; }
+  .playbtn .lbl { display: none; }
+  .playbtn { padding: .3rem; }
+
+  /* The arrows become the control here, so they get the width and the
+     chips get whatever is left. The strip stays — it is still the fastest
+     way to jump five rungs — but it stops being the thing you are
+     expected to aim at. */
+  .steprow { gap: .3rem; }
+  .stepbtn { width: 46px; height: 46px; background: rgba(255,255,255,.09);
+    border-color: rgba(255,255,255,.16); color: var(--ink); }
+  .scaleout { display: none; }
+
+  /* And the rail stops being a control. It is a readout of how far along
+     the ladder you are — a 3px target at the very bottom edge of a phone
+     is the definition of a mis-tap, and it sits exactly where the home
+     gesture lives. */
+  .scrub input[type=range] { pointer-events: none; height: 9px; }
+  .scrub:hover input[type=range] { --trk: 3px; --thumb: 0px; }
 }
 /* A short landscape phone has no room for a three-row dock, and the fact
    card would cover the objects it is describing. */
@@ -484,10 +561,6 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
             <div class="measure num" id="obj-measure">—</div>
             <div class="dimline" id="obj-dim"></div>
             <div class="alt" id="obj-alt"></div>
-            <div class="gap">
-              <span class="who">Across this frame</span>
-              <div class="big num" id="frame-width">—</div>
-            </div>
           </div>
 
           <!-- The scale bar. Its length changes, its number stays round. -->
@@ -496,23 +569,23 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
             <span class="l num" id="scalebar-label">—</span>
           </div>
 
-          <!-- Appears when the rail stops. Never while you are dragging. -->
-          <div class="fact glass" id="fact" hidden>
-            <span class="who">What that means</span>
-            <p class="lede" id="fact-lede"></p>
-            <p class="body" id="fact-body"></p>
-            <p class="caveat" id="fact-caveat" hidden></p>
-            <!-- Only ever shown where the card would otherwise cover the
-                 object it is describing. See the 900px block. -->
-            <button type="button" class="fact-more" id="fact-more"
-                    aria-expanded="false" aria-controls="fact-body">Read more</button>
-          </div>
         </div>
 
         <div class="hud-mid"></div>
 
         <div class="rail rail-right">
           <div class="actions">
+            <!-- The tour. Walks the ladder a rung at a time and waits at each
+                 one long enough for the fact card and the arrival beat to
+                 land, which is the whole reason to sit still here. -->
+            <button type="button" class="playbtn glass" id="play"
+                    aria-pressed="false" aria-label="Play the tour">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path class="i-play" d="M9 6.5v11l9-5.5z"/>
+                <path class="i-pause" d="M9 6h2.6v12H9zm5.4 0H17v12h-2.6z"/>
+              </svg>
+              <span class="lbl">Tour</span>
+            </button>
             <button type="button" class="iconbtn glass" id="menu-open"
                     aria-expanded="false" aria-controls="menu">
               <span class="burger" aria-hidden="true"></span> Rungs
@@ -526,17 +599,69 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
       <div class="hud-bottom">
         <div class="dock glass">
-          <div class="railrow">
-            <input type="range" id="zoom" min="0" max="10000" value="0" step="1"
-                   aria-label="Zoom out along the scale" aria-describedby="scale-readout">
+          <!-- Smaller first, larger last, left to right — the same direction
+               the exhibit itself travels. The arrows step one rung; the strip
+               between them is the whole ladder, scrollable, and it tracks
+               where you are without needing to be steered.
+
+               On a phone the arrows are the way you move: twenty-two chips in
+               a sideways strip is a row of targets nobody hits with a thumb,
+               and the rail at the bottom stops taking touches entirely. -->
+          <div class="steprow">
+            <button type="button" class="stepbtn" id="step-prev"
+                    aria-label="Previous rung, smaller">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M15.2 4.8 8 12l7.2 7.2"/>
+              </svg>
+            </button>
+            <div class="rungs" id="rungs" role="group" aria-label="Jump to a rung"></div>
+            <!-- What the strip says on a screen too narrow to hold it: which
+                 rung you are on and how far along the twenty-two you are.
+                 The arrows are useless without it — a step control with
+                 nothing named between the arrows is a pair of arrows. -->
+            <div class="steplabel" id="steplabel" aria-hidden="true">
+              <span class="n num" id="step-count"></span>
+              <span class="t" id="step-name"></span>
+            </div>
+            <button type="button" class="stepbtn" id="step-next"
+                    aria-label="Next rung, larger">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M8.8 4.8 16 12l-7.2 7.2"/>
+              </svg>
+            </button>
             <div class="scaleout" id="scale-readout">
               <div class="b num" id="power-out">—</div>
               <div class="near num" id="power-near"></div>
             </div>
           </div>
-          <div class="rungs" id="rungs" role="group" aria-label="Jump to a rung"></div>
-          <p class="rung-note" id="rung-note"></p>
+          <!-- The caption, and the way into the rest of it. This used to be
+               a floating card off to the left, which on a narrow window sat
+               squarely on top of the object it was describing — the one
+               thing a caption must never do. It is a line of words under
+               the arrows now: always the sentence, and the rest a tap away
+               for anyone who wants it. -->
+          <button type="button" class="rung-note" id="rung-note"
+                  aria-expanded="false" aria-controls="fact">
+            <span class="t" id="rung-lede"></span>
+            <span class="more" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false"><path d="M6 9.5 12 15.5 18 9.5"/></svg>
+            </span>
+          </button>
+          <div class="fact" id="fact" hidden>
+            <p class="body" id="fact-body"></p>
+            <p class="caveat" id="fact-caveat" hidden></p>
+          </div>
         </div>
+      </div>
+
+      <!-- The rail, pinned to the very bottom edge and thin, the way a scrub
+           bar is. It is the one control that maps to the whole 45 decades at
+           once, so it gets the full width of the window and none of the
+           height. On a phone it is a readout and not a control — see the
+           620px block. -->
+      <div class="scrub" id="scrub">
+        <input type="range" id="zoom" min="0" max="10000" value="0" step="1"
+               aria-label="Zoom out along the scale" aria-describedby="scale-readout">
       </div>
     </div>
   </div>
@@ -579,7 +704,7 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
     <div class="sheet-head">
       <div>
         <h1 id="sheet-title">How big everything is</h1>
-        <p class="lede">Twenty-one rungs, one scale, and no fudging in between.</p>
+        <p class="lede">Twenty-two rungs, one scale, and no fudging in between.</p>
       </div>
       <button type="button" class="sheet-close" id="info-close" aria-label="Close">✕</button>
     </div>
@@ -741,11 +866,11 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
 <p class="sr" id="live-region" aria-live="polite" aria-atomic="true"></p>
 
-<script src="src/ladder.js?v=1"></script>
-<script src="src/units.js?v=1"></script>
-<script src="src/sky.js?v=1"></script>
-<script src="src/paint.js?v=1"></script>
-<script src="src/exhibit.js?v=1"></script>
+<script src="src/ladder.js?v=4"></script>
+<script src="src/units.js?v=4"></script>
+<script src="src/sky.js?v=4"></script>
+<script src="src/paint.js?v=4"></script>
+<script src="src/exhibit.js?v=4"></script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="scale" defer></script>
 </body>
 </html>

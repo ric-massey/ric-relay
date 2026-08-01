@@ -10,7 +10,7 @@
 
    That is the whole reason for the transform. If painters worked in
    pixels, every one of them would need its own "and this is roughly how
-   big it should be" fudge, and twenty-one fudges is a diagram, not a
+   big it should be" fudge, and twenty-two fudges is a diagram, not a
    measurement.
 
    Consequences worth stating, because they look like bugs and are not:
@@ -123,6 +123,61 @@ window.PAINT = (() => {
   }
 
   const P = {};
+
+  /* ── 10⁻¹⁹ · a quark ─────────────────────────────────────────────────
+     Same problem as the electron, and the same answer: no measured size,
+     no known parts, so nothing inside. Drawn at its experimental bound
+     with a dashed edge that means *we do not know where this stops*.
+
+     What is different is the one thing worth drawing about a quark, and
+     it is not the quark. Colour charge does not let go: pull on one and
+     the field between it and whatever it was bound to stays taut, and
+     keeps costing energy, until the energy is enough to make a fresh
+     pair and you are left holding two ordinary particles instead of one
+     free quark. So the tether is the picture — a flux tube running off
+     the frame, always under tension, never slack, and never ending in a
+     second quark you could point at. Nobody has ever seen the far end.
+
+     The three-balls-in-a-bag version of this lives two rungs up and is
+     exactly the thing that picture gets wrong. */
+  P.quark = (ctx, t, focus, wake) => {
+    const w = wake || 0;
+    const soft = 0.5 + 0.5 * (0.6 * Math.sin(t * 0.73) + 0.4 * Math.sin(t * 1.19 + 1.7));
+
+    // The tube: taut, textured, and running out of the frame at both ends.
+    ctx.save();
+    ctx.rotate(0.55 + 0.06 * Math.sin(t * 0.21));
+    const g = ctx.createLinearGradient(-2.6, 0, 2.6, 0);
+    g.addColorStop(0.00, "rgba(190,140,255,0)");
+    g.addColorStop(0.22, "rgba(190,140,255," + (0.16 + 0.07 * soft) + ")");
+    g.addColorStop(0.50, "rgba(214,178,255," + (0.30 + 0.12 * soft + 0.2 * w) + ")");
+    g.addColorStop(0.78, "rgba(190,140,255," + (0.16 + 0.07 * soft) + ")");
+    g.addColorStop(1.00, "rgba(190,140,255,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(-2.6, -0.035, 5.2, 0.07);
+    // Tension, travelling along it. A string under load, not a beam.
+    ctx.strokeStyle = "rgba(236,216,255," + (0.20 + 0.16 * soft) + ")";
+    ctx.lineWidth = 0.012;
+    ctx.beginPath();
+    for (let i = 0; i <= 90; i++) {
+      const x = -2.6 + (5.2 * i) / 90;
+      const y = 0.016 * Math.sin(x * 5.5 - t * 1.6) * Math.exp(-Math.abs(x) * 0.34);
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    glow(ctx, 0.5 * (0.94 + 0.09 * soft) * (1 + 0.5 * w), "rgba(198,150,255,$)",
+      [[0, (0.66 + 0.16 * soft) * (1 + 0.4 * w)], [0.35, 0.36], [0.75, 0.10], [1, 0]]);
+    const edge = 0.5 * (1 + 0.035 * Math.sin(t * 0.47 + 1.1) + 0.07 * w);
+    ctx.setLineDash([0.035, 0.035]);
+    ctx.lineDashOffset = -t * 0.02;
+    ctx.strokeStyle = "rgba(214,186,255," + (0.40 + 0.10 * soft + 0.3 * w) + ")";
+    ctx.lineWidth = 0.008;
+    ctx.beginPath(); ctx.arc(0, 0, edge, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
+  };
 
   /* ── 10⁻¹⁸ · the electron ────────────────────────────────────────────
      **There is nothing inside an electron, so there is nothing inside
