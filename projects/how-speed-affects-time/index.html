@@ -878,7 +878,7 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
          and someone who opens it has asked for depth. What length costs is
          orientation, which is what this buys back. -->
     <nav class="sheet-nav" aria-label="Sections of this page">
-      <a href="#p-view">What you're seeing</a>
+      <a href="#p-view">What this is</a>
       <a href="#p-math">The equations</a>
       <a href="#p-why">Reciprocity</a>
       <a href="#p-home">At home</a>
@@ -887,30 +887,57 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
     </nav>
 
     <section id="p-view">
-      <h2>What you're seeing</h2>
-      <p id="view-prose">The sky as it is, from a ship at rest.</p>
-      <p class="tight" id="view-detail"></p>
-      <p class="tight">At ordinary speeds, the opening sky is a photographic plate: dense,
-        steady, and built to feel like the Milky Way does to a dark-adapted person rather than like
-        a sparse plotting of catalogue points. That same photographic sky surrounds you at every
-        speed: aberration crowds it forward, Doppler shift changes its colour, and beaming changes
-        its brightness. Bright catalogue stars are laid over it at their real positions. Their
-        colour is not a choice: the catalogue gives a
-        <dfn data-term="colour-index">colour index</dfn>, that gives a temperature,
-        and a <dfn data-term="blackbody">blackbody</dfn> at that temperature has exactly one
-        colour. Your motion multiplies that temperature by the
-        <dfn data-term="doppler-factor">Doppler factor</dfn>, and the same number cubed once
-        more sets how much brighter it gets — <dfn data-term="beaming">beaming</dfn>.
-        Colour and brightness can never disagree here, because they are the same number.</p>
-      <p class="tight">Movies get this wrong. There is no blue tunnel and there are no streaks:
+      <h2>What this is</h2>
+      <p>A one-slider exhibit in special relativity, built on the real sky. You start on a hillside
+        at night, climb out of the air, pick a speed, and — when you have seen enough — turn around
+        and come home. Everything on the dashboard follows from the single number that slider sets.</p>
+
+      <p class="tight"><strong>The two clocks are the point.</strong> Yours is not simulated: it is
+        your own device's clock, ticking at its ordinary rate, because going fast has never felt
+        like anything from the inside. Earth's is the calculated one, and the growing gap between
+        them is what the trip costs you. That gap only hardens into a single fact when the two
+        clocks are back in the same place, which is what <em>Return to Earth</em> is for.</p>
+
+      <p class="tight"><strong>The sky is three real things, stacked.</strong> Underneath is a
+        photograph — a full 360-degree panorama of the actual Milky Way, built to feel the way it
+        does to a dark-adapted person rather than like a sparse plotting of catalogue points. Over
+        that sit 9,096 catalogue stars at their real positions and real brightnesses. Filling
+        everything, invisibly, is the microwave background. All three go through the same
+        transform; nothing is swapped out for a different picture as you speed up.</p>
+
+      <p class="tight"><strong>Your motion does three things to all of it at once.</strong>
+        <dfn data-term="aberration">Aberration</dfn> changes the direction light seems to come from,
+        so the sky crowds into the view ahead. <dfn data-term="doppler-factor">Doppler shift</dfn>
+        changes its colour. <dfn data-term="beaming">Beaming</dfn> changes its brightness. The last
+        two are the same number — which is why colour and brightness can never drift apart here.</p>
+
+      <p class="tight">Star colour is not a free choice either. The catalogue gives a
+        <dfn data-term="colour-index">colour index</dfn>, that gives a temperature, and a
+        <dfn data-term="blackbody">blackbody</dfn> at that temperature has exactly one colour.
+        A real star is not quite a blackbody — absorption lines and molecular bands pull its
+        spectrum off the ideal curve, and interstellar dust reddens what reaches us before the
+        catalogue ever measures it — so take this as a good approximation of a star's colour
+        rather than a measurement of it.</p>
+      <p class="tight">Most movies get this wrong. There is no blue tunnel and there are no streaks:
         <dfn data-term="aberration">aberration</dfn> moves stars, it does not smear them. And
         nothing twinkles — <dfn data-term="scintillation">scintillation</dfn> is something the
         atmosphere does, not something stars do.</p>
       <p class="tight">The band across the sky is the Milky Way — not a picture behind the stars,
-        but the light of the hundred billion of them you cannot pick out, going through the same
-        transform. The dark shapes torn out of it are dust: the Great Rift, the Coalsack, the Pipe.
-        It is nearly colourless to the eye, and every photograph you have seen of it in purple and
-        gold got that from a long exposure, not from anyone's eyes.</p>
+        but the combined light of the hundred billion or more of them you cannot pick out, going
+        through the same transform. The dark shapes torn out of it are dust: the Great Rift, the
+        Coalsack, the Pipe. It is nearly colourless to the eye, and the photographs of it you have
+        seen in purple and gold almost always got that from a long exposure, not from anyone's
+        eyes.</p>
+
+      <!-- The live readout. This used to be the top of the section and the section
+           was named after it, which put a running commentary on "what you're
+           seeing" inside a dialog that covers the view. It works far better as a
+           footnote to the explanation than as its premise. -->
+      <div class="callout">
+        <span class="when">Where you are right now</span>
+        <span id="view-prose">Still on the ground, under the trees.</span>
+        <span class="tight" id="view-detail"></span>
+      </div>
     </section>
 
     <!-- ══ the equations ══════════════════════════════════════════════
@@ -926,8 +953,12 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
       <h2>The equations</h2>
       <p class="tight">Everything below is live. The right-hand value under each
         formula is what that expression evaluates to at your current speed — leave
-        this open, drag the rail, and watch them move. Nothing here is fitted or
-        tuned; there is not a single free parameter in this exhibit.</p>
+        this open, drag the rail, and watch them move. Nothing in the physics is
+        fitted or tuned — no free parameters anywhere between β and the light
+        arriving at your eye. The free choices all sit at the display end, where
+        they have to: an overall exposure, a separate scale for the Milky Way's
+        brightness, and the tone curve that lands the result inside what a monitor
+        can actually show. Those three are listed under Scope.</p>
 
       <div class="eqgroup">
         <h3>Motion and time</h3>
@@ -1038,7 +1069,7 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
           <code class="f">Ω / 4π = (1 − cos θ) / 2,   θ = 2 arctan[ tan(θ′/2) / k ]</code>
           <span class="d">Aberration run backwards, to find where the light in
             front of you started out. At β = 0.7771 this returns exactly half —
-            half the universe in one 78° frame — which is why that odd number is
+            half the sky in one 78° frame — which is why that odd number is
             one of the marked speeds. Nearly all of it started out behind you.</span>
           <span class="v num" data-eq="frame"></span>
         </div>
@@ -1049,17 +1080,19 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
         <div class="eq">
           <span class="n"><dfn data-term="doppler-factor">Doppler factor</dfn></span>
-          <code class="f">D = 1 / [ γ (1 − β cos θ) ]</code>
+          <code class="f">D = 1 / [ γ (1 − β cos θ′) ]</code>
           <span class="d">How much your motion squeezes or stretches the light
-            arriving from angle θ′. One number governs colour <em>and</em>
-            brightness, which is why the two can never disagree here.</span>
+            arriving from angle θ′ — the angle you actually see it at, in your
+            own frame, after aberration has already moved it. One number governs
+            colour <em>and</em> brightness, which is why the two can never
+            disagree here.</span>
           <span class="v num" data-eq="d_general"></span>
         </div>
 
         <div class="eq">
           <span class="n">Dead ahead, and dead astern</span>
           <code class="f">D = √((1+β)/(1−β))    ·    D = √((1−β)/(1+β))</code>
-          <span class="d">The two extremes, where cos θ is +1 and −1. Note that
+          <span class="d">The two extremes, where cos θ′ is +1 and −1. Note that
             the astern factor is exactly the aberration constant k — the same
             square root doing two jobs.</span>
           <span class="v num" data-eq="d_axis"></span>
@@ -1079,18 +1112,24 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
           <span class="n"><dfn data-term="beaming">Relativistic beaming</dfn></span>
           <code class="f">brightness ∝ D⁴</code>
           <span class="d">The light ahead is not only bluer, it is enormously
-            brighter — and the light behind has been robbed to pay for it. Three
-            powers of D from solid angle, one from photon arrival rate.</span>
+            brighter — and the light behind has been robbed to pay for it. Two
+            powers of D from solid angle, one from the energy of each photon, one
+            from the rate they arrive at. Equivalently: I<sub>ν</sub>/ν³ is a
+            Lorentz invariant, so the specific intensity goes as D³ and the
+            bolometric integral picks up the fourth.</span>
           <span class="v num" data-eq="beaming"></span>
         </div>
 
         <div class="eq">
           <span class="n">Planck's law</span>
           <code class="f">B(λ,T) = (2hc² / λ⁵) · 1 / (e^(hc / λk<sub>B</sub>T) − 1)</code>
-          <span class="d">Integrated against the CIE 1931 colour-matching
-            functions from 360 to 830 nm, converted to sRGB, and built once at
-            load into a table indexed by log T. There is no RGB anywhere in the
-            star data — a star is a direction, a flux and a temperature.</span>
+          <span class="d">Integrated from 360 to 830 nm against the CIE 1931
+            colour-matching functions — specifically the multi-lobe Gaussian fits
+            of Wyman, Sloan &amp; Shirley (2013), which track the published tables
+            closely enough for this and save shipping a data file, rather than the
+            tables themselves. Converted to sRGB and built once at load into a
+            table indexed by log T. There is no RGB anywhere in the star data — a
+            star is a direction, a flux and a temperature.</span>
         </div>
 
         <div class="eq">
@@ -1098,7 +1137,9 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
           <code class="f">T = 4600 K × [ 1/(0.92(B−V) + 1.7) + 1/(0.92(B−V) + 0.62) ]</code>
           <span class="d">How the catalogue's measured colour index becomes a
             temperature, and from there a colour. Checks out at B−V = 0.65 →
-            5778 K, the Sun, to four figures.</span>
+            5778 K, to four figures. Ballesteros derives it by treating a star
+            as a blackbody seen through the B and V filters, so it inherits that
+            assumption — it is a good relation for ordinary stars, not a law.</span>
         </div>
 
         <div class="eq">
@@ -1127,7 +1168,7 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
             <tr><th scope="row">h</th><td>6.62607015 × 10⁻³⁴ J·s</td><td>exact, SI 2019</td></tr>
             <tr><th scope="row">k<sub>B</sub></th><td>1.380649 × 10⁻²³ J/K</td><td>exact, SI 2019</td></tr>
             <tr><th scope="row">σ</th><td>5.670374419 × 10⁻⁸ W·m⁻²·K⁻⁴</td><td>Stefan–Boltzmann</td></tr>
-            <tr><th scope="row">T<sub>☉</sub></th><td>5,778 K</td><td>the Sun's effective temperature</td></tr>
+            <tr><th scope="row">T<sub>☉</sub></th><td>5,778 K</td><td>the Sun's effective temperature — the traditional L/R figure. IAU 2015 Resolution B3 sets the nominal value at 5,772 K; the difference is far below anything you can see here</td></tr>
             <tr><th scope="row">T<sub>CMB</sub></th><td>2.7255 K</td><td>Fixsen (2009)</td></tr>
           </tbody>
         </table>
@@ -1136,15 +1177,29 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
     <section id="p-why">
       <h2>Wait — doesn't Earth see <em>my</em> clock as slow?</h2>
-      <p class="tight">Yes. And Earth is not wrong. While you are coasting,
-        <dfn data-term="time-dilation">time dilation</dfn> is completely symmetric — you each
-        see the other running slow, and both of you are right. That is
-        <dfn data-term="reciprocity">reciprocity</dfn>, and it is real physics, not an illusion.</p>
+      <p class="tight">Yes. And Earth is not wrong. One word needs pinning down first, though:
+        <em>see</em>. What you would literally see through a telescope is mostly about how long
+        the light took to get to you — on the way out you would watch Earth's clock crawl, and on
+        the way back you would watch it race, and neither of those is time dilation.
+        <dfn data-term="time-dilation">Time dilation</dfn> is what is left once you subtract the
+        travel time of the light: not what a frame watches, but what it
+        <em>measures</em>, after correcting for where the light started and how far it came.</p>
+      <p class="tight">Measured that way, while you are coasting, time dilation is completely
+        symmetric — each of you measures the other's clock to be running slow, and both of you
+        are right. That is <dfn data-term="reciprocity">reciprocity</dfn>, and it is real physics,
+        not an illusion.</p>
       <p class="tight">The cluster on the left is showing Earth's clock <em>in Earth's frame of
-        reference</em>, which is unambiguous. The comparison only becomes a physical fact when the
-        two clocks are back in the same place — which is what happens when you press
-        <em>Return to Earth</em>. The difference comes from the fact that you changed
-        <dfn data-term="reference-frame">reference frames</dfn> and Earth never did.</p>
+        reference</em>, which is unambiguous. The comparison only becomes a single physical fact
+        when the two clocks are back in the same place — which is what happens when you press
+        <em>Return to Earth</em>.</p>
+      <p class="tight">What breaks the tie is that you changed
+        <dfn data-term="reference-frame">reference frames</dfn> and Earth never did, so there is
+        no matching argument to run from your side. But the acceleration is only the tiebreaker;
+        it is not what does the ageing. The size of the gap comes from the shape of your path:
+        between the same two meetings, the straight, unaccelerated worldline is the one that
+        accumulates the most <dfn data-term="proper-time">proper time</dfn>, and any detour
+        accumulates less. Make the turnaround as brief and as violent as you like and the answer
+        barely moves; make the trip longer or faster and it moves a great deal.</p>
     </section>
 
     <section id="p-home">
@@ -1172,9 +1227,13 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         the aberration equation before that panorama is sampled, so motion distorts the photograph
         itself rather than replacing it. It never twinkles.</p>
       <p><strong>The transformed stars.</strong> 9,096 of them, from the Yale Bright Star Catalogue
-        (Hoffleit &amp; Warren 1991), J2000, down to about magnitude 8. Real positions, real magnitudes,
-        real colour indices. Positions are frozen at J2000: proper motion and precession are not
-        modelled.</p>
+        (Hoffleit &amp; Warren 1991), J2000 — every star in it. The catalogue holds 9,110 entries, of
+        which 9,096 are stars; the other 14 are novae and extragalactic objects kept only to preserve
+        the numbering. It is drawn up to be complete to about magnitude 6.5 and its faintest entry here
+        is 7.96, so the handful past 6.5 are a bonus rather than a survey. Real positions and real
+        magnitudes throughout. Colour indices are real for all but 310 of them, which carry no measured
+        B−V in the catalogue and are given its median (0.51, an early-G star) rather than an invented
+        one. Positions are frozen at J2000: proper motion and precession are not modelled.</p>
       <p><strong>The Milky Way texture is photographic, not a catalogue.</strong> It supplies the visual
         depth of unresolved stars and dust. Its relativistic direction change is exact; its displayed
         Doppler colour and beaming are compressed into the range a monitor can show.</p>
@@ -1182,14 +1241,20 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         observer would have after sitting in darkness, rather than waiting through that adaptation on
         the page. At this luminance the Milky Way is nearly colourless because rod vision dominates;
         Doppler colour appears as beaming makes the light bright enough for cone vision.</p>
-      <p><strong>Colour.</strong> Planck's law integrated against the CIE 1931 colour-matching functions,
+      <p><strong>Colour.</strong> Planck's law integrated against analytic fits to the CIE 1931
+        colour-matching functions (Wyman, Sloan &amp; Shirley 2013, not the published tables),
         converted to sRGB, gamut-mapped by desaturating toward white rather than clipping a channel.
         Tone-mapped once at the end. A monitor cannot reproduce a retina's absolute response, so the
         transformations and relative brightness are physical while the final display exposure is a
         calibrated representation. Assumes a reasonably dark room and an sRGB display.</p>
       <p><strong>The way home.</strong> Earth is held straight ahead as a black silhouette against the
-        star field. Its apparent size grows with your distance from home; the Sun is intentionally kept
-        out of this view so you can watch Earth approach.</p>
+        star field. Its apparent size grows as the range closes — it starts as a point you could miss
+        and swells as you arrive — and it goes through the same aberration as everything else, so at
+        high speed it is squeezed toward the middle of the frame along with the stars. Two deliberate
+        departures: the disc is floored at a few pixels, because a light-minute out Earth really is
+        smaller than one and a target you cannot see is not a target, and it is capped well short of
+        the frame instead of swelling to fill the sky in the last moments. The Sun is intentionally
+        kept out of this view so you can watch Earth approach.</p>
     </section>
 
     <section id="p-sources">
@@ -1199,7 +1264,9 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         colour-matching function fits. Hoffleit &amp; Warren (1991) for the Yale Bright Star Catalogue.
         Fixsen (2009) for the microwave background temperature. Okun (2009) on why the words
         "relativistic mass" appear nowhere here. Bland-Hawthorn &amp; Gerhard (2016) and Dwek et al.
-        (1995) for the shape of the Galaxy.</p>
+        (1995) for the shape of the Galaxy, and the GRAVITY Collaboration (2019) for the Sun's
+        8.178 kpc distance from its centre. The magnitude-to-lux zero point (2.54 × 10⁻⁶ lux at
+        V = 0) is the standard photometric conversion rather than a result from any of these.</p>
     </section>
 
     <p class="foot"><button class="term" id="reset">Reset the trip</button> ·
@@ -1213,11 +1280,11 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 <script src="src/colour.js?v=2"></script>
 <script src="src/physics.js?v=4"></script>
 <script src="src/galaxy.js?v=3"></script>
-<script src="src/sky.js?v=9"></script>
+<script src="src/sky.js?v=10"></script>
 <script src="src/ground.js?v=10"></script>
 <script src="src/photo-sky.js?v=13"></script>
-<script src="src/glossary.js?v=2"></script>
-<script src="src/exhibit.js?v=45"></script>
+<script src="src/glossary.js?v=3"></script>
+<script src="src/exhibit.js?v=47"></script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="spacetime" defer></script>
 </body>
 </html>

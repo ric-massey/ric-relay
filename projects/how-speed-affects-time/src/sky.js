@@ -610,15 +610,41 @@
 
   /* A sentence describing what is on screen, for anyone who cannot see it —
      and, it turns out, useful to everyone else too. */
-  Sky.prototype.describe = function (beta) {
-    if (beta <= 0) {
-      return "The sky at rest: about " + (this.lastStats ? this.lastStats.visible.toLocaleString() : "9,000") +
-        " stars in frame, nearly all of them white, on absolute black. Nothing is moving.";
-    }
-    const cone = P.forwardHemisphereRadius(beta) * 360 / Math.PI;
+  Sky.prototype.describe = function (beta, altKm) {
     // The frame's own half-angle across, which is what decides how much of
     // the sky has been pushed into it.
     const halfH = Math.atan((this.W / this.H) * TAN_HALF_V);
+
+    /* Altitude first, because for the opening minute of a visit it is the
+       only thing that is true. This used to answer "about 9,000 stars on
+       absolute black, nothing is moving" while the visitor was standing on
+       the forest floor with the whole atmosphere and a treeline in front of
+       them — three claims, none of them right. */
+    const up = typeof altKm === "number" ? altKm : Infinity;
+    // ground.js owns the altitude the airglow finally gives out at, and it
+    // loads after this file — so read it when asked, not at definition time.
+    const spaceKm = (window.HSAT_Ground && window.HSAT_Ground.SPACE_KM) || 100;
+    if (up < 0.2) {
+      return "You are still on the ground, under the trees, with the whole depth of the " +
+        "atmosphere between you and the stars. Climb out of it and the sky goes black.";
+    }
+    if (up < spaceKm) {
+      return Math.round(up).toLocaleString() + " km up and still inside the air, which is " +
+        "thinning and taking its glow with it. Above about " + spaceKm + " km the sky is " +
+        "properly black and nothing is left in front of the stars.";
+    }
+
+    if (beta <= 0) {
+      // Never a hardcoded count: at rest the frame holds about a ninth of the
+      // sky, so the whole catalogue was the wrong number by roughly 9×.
+      const inFrame = this.lastStats
+        ? this.lastStats.visible
+        : Math.round((this.count || 9096) * P.skyFractionInFrame(0, halfH));
+      return "At rest, out of the air: about " + inFrame.toLocaleString() +
+        " catalogue stars in frame, nearly all of them white, on absolute black. " +
+        "Nothing is moving.";
+    }
+    const cone = P.forwardHemisphereRadius(beta) * 360 / Math.PI;
     const frac = Math.round(P.skyFractionInFrame(beta, halfH) * 100);
     const D = P.dopplerAhead(beta);
     const bits = [];

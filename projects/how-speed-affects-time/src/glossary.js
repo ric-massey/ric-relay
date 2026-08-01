@@ -59,11 +59,11 @@
     },
     "reciprocity": {
       label: "Reciprocity",
-      short: "Earth sees your clock running slow, and you see Earth's running slow. Both are right. The paradox only resolves if someone turns around.",
+      short: "Earth measures your clock as running slow, and you measure Earth's the same way. Both are right, and it stays that way until someone turns around.",
     },
     "twin-paradox": {
       label: "Twin paradox",
-      short: "One twin travels and comes back younger than the one who stayed. Not a paradox — the traveler changed reference frames and the stay-at-home never did.",
+      short: "One twin travels and comes back younger than the one who stayed. Not a paradox — only the traveler changed reference frames, and of two paths between the same meetings the unaccelerated one always ages more.",
     },
     "length-contraction": {
       label: "Length contraction",
@@ -122,7 +122,7 @@
     },
     "effective-temperature": {
       label: "Effective temperature",
-      short: "The surface temperature of a star, which sets its colour. Cool stars are red and hot ones are blue — the opposite of the kitchen-tap convention.",
+      short: "The temperature a plain hot object would need to glow as fiercely as the star does — near enough its surface temperature, and what sets its colour. Cool stars are red and hot ones blue, the opposite of the kitchen-tap convention.",
     },
     "colour-index": {
       label: "Colour index (B−V)",

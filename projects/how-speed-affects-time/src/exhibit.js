@@ -793,7 +793,9 @@
   }
 
   function paintProse() {
-    $("view-prose").textContent = sky.describe(S.beta);
+    // Altitude too: while you are still in the air, where you are is the only
+    // honest answer to what is in front of the stars.
+    $("view-prose").textContent = sky.describe(S.beta, S.altKm);
     const g = P.gamma(S.beta);
     const D = P.dopplerAhead(S.beta);
     const bits = [];
@@ -805,7 +807,7 @@
        band altogether. The numbers say so in the same sentence. */
     if (lookBack) {
       const Db = P.dopplerBehind(S.beta);
-      if (S.beta > 0) {
+      if (Db <= 0.995) {
         bits.push("Astern. Light from dead behind you arrives with its temperature multiplied by " +
           Db.toFixed(Db < 0.01 ? 5 : 3) + " — everything back there is redder, dimmer, and past " +
           "a certain speed it stops being light you can see at all.");
@@ -814,7 +816,12 @@
       }
     }
 
-    if (S.beta > 0) {
+    /* Below roughly half a percent of light speed every sentence in here comes
+       out as "multiplied by 1.00" and "0.000000% shorter" — true, and useless.
+       The ship never sits at exactly zero, so the old `beta > 0` guard printed
+       exactly that on the opening screen, before the visitor had touched
+       anything. Gate on the number being worth reading instead. */
+    if (D >= 1.005) {
       bits.push("Light from dead ahead reaches you with its temperature multiplied by " +
         (D < 10 ? D.toFixed(2) : Math.round(D).toLocaleString()) + ".");
       const cmb = D * COL.CMB;
@@ -824,6 +831,10 @@
       }
       bits.push("The journey is also " + (100 - 100 / g).toFixed(g > 1.01 ? 1 : 6) +
         "% shorter from where you are sitting, because space itself is contracted along the way you are going.");
+    } else if (S.beta > 0) {
+      bits.push("You are moving, but nowhere near fast enough for any of this to show yet: " +
+        "the light ahead is blued by well under a percent, and the journey has barely shortened " +
+        "at all. Push the rail up.");
     }
     $("view-detail").textContent = bits.join(" ");
   }
