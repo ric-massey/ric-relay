@@ -381,8 +381,16 @@
        wrapping a fireball round a short hop out of the treetops made the
        gentlest version of the trip look like the most violent one. */
     const reentry = Math.min(1, S.landFromKm / window.HSAT_Ground.SPACE_KM);
+    /* Timed against how much of the descent is behind you rather than against
+       the altimeter, because the altitude is logarithmic now: read straight
+       off S.altKm, (1 - alt/70) would hit its ceiling a third of the way down
+       and sit there, and the fall would end in two and a half seconds of
+       unchanging orange. This is the height the old straight-line descent
+       would have been at, which keeps the glow's timing exactly as it was
+       while the ship underneath it lands the new way. */
+    const heatKm = S.landFromKm * (1 - landFell);
     landingHeat = S.phase === "landing"
-      ? Math.max(0, Math.min(1, (1 - S.altKm / 70) * 1.15)) * 0.9 * reentry
+      ? Math.max(0, Math.min(1, (1 - heatKm / 70) * 1.15)) * 0.9 * reentry
       : Math.max(0, landingHeat - dt * 1.6);
 
     /* Still written to .stage-inner, and still read by .sky-ground, which is
@@ -414,11 +422,35 @@
      ship touches down facing exactly the way it was facing at the start and
      the two ends of the trip are the same frame. That identity is the whole
      point of the bookend: a changed sky in a changed view is just another
-     picture, but a changed sky in the *same* view is what the trip cost you. */
+     picture, but a changed sky in the *same* view is what the trip cost you.
+
+     Altitude comes off that timeline by orders of magnitude rather than by
+     kilometres, and the difference is the whole landing. The trees live in
+     the bottom 170 metres — eight tree-heights, and the only part of the fall
+     where there is anything to look at. Straight-line altitude spends 0.17%
+     of a hundred-kilometre drop in there, which even on a decelerating curve
+     is about eighty milliseconds: the canopy did not close over you, it
+     appeared. Falling by a fixed *fraction* per unit of clock instead gives
+     the last decade of height the same slice of the descent as the first, so
+     the trees have most of a second to rise around the frame, and a short hop
+     out of the treetops gets the same shape scaled down rather than a
+     different landing entirely.
+
+     8 is the exponent, which puts the top of the canopy at about three
+     quarters of the way through and lands the ship — from any height — at a
+     speed you can watch. */
+  const LAND_FALLOFF = 8;
+  const LAND_TAIL = Math.exp(-LAND_FALLOFF);
+  // How much of the descent is behind you, eased. The glow is timed off this
+  // rather than off the altitude — see stepAltitude.
+  let landFell = 0;
+
   function stepDescent() {
     const p = Math.min(1, (performance.now() - S.landStart) / (reduceMotion ? 1 : LAND_MS));
     const e = p * p * (3 - 2 * p);
-    S.altKm = S.landFromKm * (1 - e);
+    landFell = e;
+    S.altKm = S.landFromKm *
+      (Math.exp(-LAND_FALLOFF * e) - LAND_TAIL) / (1 - LAND_TAIL);
 
     if (!S.skipTurn) {
       const a = Math.PI * (1 - e);
