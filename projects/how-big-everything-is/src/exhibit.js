@@ -896,6 +896,35 @@
     $("step-next").addEventListener("click", () => { stopTour(); stepRung(1); });
   }
 
+  /* ── scrolling the strip ───────────────────────────────────────────
+     The chip strip is a horizontal scroller holding all twenty-two names,
+     and browsing it is the one thing it could not do. A vertical wheel
+     over a horizontally-overflowing box scrolls nothing in any browser,
+     and a trackpad's sideways swipe is the only gesture that ever worked
+     — so with a mouse the names past the edge of the strip were simply
+     unreachable except by stepping the whole exhibit through them.
+
+     Whichever axis the gesture is mostly on now moves the strip. This is
+     not the wheel-to-zoom that was deliberately removed from the field:
+     it never touches `t`, it never cancels the tour, and it only acts on
+     a box that was already a scroll container. Scrolling a list is what
+     the gesture means when it is over a list.
+
+     preventDefault only when the strip actually moved, so a gesture at
+     either end is left alone rather than swallowed. */
+  function wireStrip() {
+    const strip = $("rungs");
+    strip.addEventListener("wheel", (e) => {
+      if (e.ctrlKey) return;                       // leave browser zoom alone
+      const raw = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (!raw) return;
+      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? strip.clientWidth : 1;
+      const before = strip.scrollLeft;
+      strip.scrollLeft = before + raw * unit;
+      if (strip.scrollLeft !== before) e.preventDefault();
+    }, { passive: false });
+  }
+
   /* ── the tour ──────────────────────────────────────────────────────
      Walks the ladder and waits at each rung. The wait is the point: the
      fact card only appears once the rail has actually stopped, and the
@@ -1034,6 +1063,7 @@
     syncRail();
     wireRail();
     wireSteps();
+    wireStrip();
     wireTour();
     wireKeys();
     wireMenu();
