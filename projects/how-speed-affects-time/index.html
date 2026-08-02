@@ -361,14 +361,31 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
 .mark[aria-expanded=true]::after { transform: rotate(-135deg); }
 @keyframes markin { from { opacity: 0; } to { opacity: 1; } }
 
+/* Two steps up, because a laptop and a 27-inch monitor are not the same
+   room. The width the panel is fighting for is the sky's, and on a wide
+   screen the sky has plenty — the cone of starlight that is the whole point
+   of the view sits in the middle third and never reaches the corner the
+   checkpoints are in. So the panel takes the space it is worth: more rows
+   visible without scrolling, and titles that mostly fit on one line. */
 @media (min-width: 1000px) {
   .marks { width: 13rem; }
-  .marks-list { max-height: min(24vh, 12rem); }
+  .marks-list { max-height: min(26vh, 13rem); }
   .marks-head { font-size: .54rem; padding: .4rem .6rem .42rem .62rem; }
   .mark { padding: .38rem 1.4rem .4rem .62rem; }
   .mark .t { font-size: .74rem; }
   .mark .n { font-size: .76rem; }
   .mark::after { right: .66rem; top: .72rem; }
+}
+@media (min-width: 1400px) {
+  .marks { width: 16.5rem; border-radius: 14px; }
+  .marks-list { max-height: min(34vh, 18rem); }
+  .marks-head { font-size: .58rem; padding: .48rem .75rem .5rem .78rem; }
+  .mark { padding: .48rem 1.7rem .5rem .78rem; }
+  /* At this width nearly every title is one line anyway, and the two that
+     are not have the room to be two. */
+  .mark .t { font-size: .82rem; }
+  .mark .n { font-size: .84rem; margin-top: .34rem; }
+  .mark::after { right: .8rem; top: .88rem; width: 6px; height: 6px; }
 }
 
 /* ── the bottom row: the dock, and the mirror ─────────────────────── */
