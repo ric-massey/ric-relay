@@ -80,6 +80,43 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
 .stage-inner { position: absolute; inset: 0; }
 #view { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 
+/* ── the names under the calipers ─────────────────────────────────────
+   Every rung the canvas has labelled is also a way to get to that rung:
+   click "THE SUN" hanging under the Sun's bracket and you fly to it. The
+   ones nearest the middle are the rungs you have already passed, so this
+   is mostly how you go back — which the arrows make you walk.
+
+   They are real buttons in the DOM rather than text painted into the
+   canvas and hit-tested. Painted text would need its own hover state,
+   its own cursor, its own rectangle arithmetic, and would still be
+   invisible to a keyboard and to a screen reader. A button is all of
+   that for free, and the canvas keeps only the bracket, which is
+   geometry. Positioned by transform every frame — no layout is read, and
+   there are never more than a handful on screen.
+
+   The hit area is much larger than the 9px type inside it — 44px square
+   at minimum, the house floor for a thumb — and the type is centred in
+   that box, so the glyphs land exactly where the canvas used to paint
+   them however big the target around them grows. */
+.hits { position: absolute; z-index: 5; inset: 0; pointer-events: none; }
+.hit {
+  position: absolute; left: 0; top: 0; pointer-events: auto; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px; padding: 0 16px;
+  margin: 0; border: 0; background: none; border-radius: 8px;
+  color: #e2e4ec; white-space: nowrap; text-transform: uppercase;
+  font: 600 9px/1 var(--mono);
+  transition: color .12s, text-shadow .12s;
+}
+.hit:hover, .hit:focus-visible {
+  color: #fff; text-shadow: 0 0 10px rgba(0,0,0,.9);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.hit:focus-visible { outline: 2px solid var(--ink); outline-offset: -3px; }
+/* Nothing on the field is reachable while a sheet is over it — otherwise
+   Tab walks off the dialog and into buttons nobody can see. */
+body.sheet-open .hits, body.menu-open .hits, body.welcome-open .hits { display: none; }
+
 /* ── the HUD frame ────────────────────────────────────────────────────
    One flex column over the field: instruments along the top, the control
    dock along the bottom, and the middle left alone because the middle is
@@ -560,6 +597,11 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
   <div class="stage-inner">
     <canvas id="view" aria-label="A scale ladder from a quark to the observable universe, drawn to scale"></canvas>
 
+    <!-- The names under the calipers. Real buttons, positioned each frame
+         over the bracket the canvas draws, rather than text painted into
+         the canvas — see syncHits() in exhibit.js for why. -->
+    <div class="hits" id="hits"></div>
+
     <div class="hud">
       <div class="hud-top">
         <div class="rail rail-left">
@@ -876,11 +918,11 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
 <p class="sr" id="live-region" aria-live="polite" aria-atomic="true"></p>
 
-<script src="src/ladder.js?v=6"></script>
-<script src="src/units.js?v=6"></script>
-<script src="src/sky.js?v=6"></script>
-<script src="src/paint.js?v=6"></script>
-<script src="src/exhibit.js?v=6"></script>
+<script src="src/ladder.js?v=10"></script>
+<script src="src/units.js?v=10"></script>
+<script src="src/sky.js?v=10"></script>
+<script src="src/paint.js?v=10"></script>
+<script src="src/exhibit.js?v=10"></script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="scale" defer></script>
 </body>
 </html>

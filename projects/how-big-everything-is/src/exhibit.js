@@ -351,7 +351,31 @@
      When the object is wider than the window the bracket runs off both
      sides and the ends become arrows, because a caliper that quietly
      stops at the edge of the screen is measuring the screen. */
-  function caliper(o, sx, sy, wpx, hpx, alpha, row) {
+  /* Where a horizontal caliper's line can go without landing on one that
+     is already down.
+
+     This used to be `row * 30` — the first caliper at its natural height,
+     the second thirty pixels lower, and so on. That assumed every caliper
+     starts from the same place, and they do not: each one hangs off the
+     bottom edge of its own object, and a smaller object's edge is already
+     higher up. At the Sun the Moon's orbit came out thirty-one pixels
+     above the Sun, so adding thirty to it put it one pixel away — two
+     names and two measurements printed on top of each other, and, now
+     that the names are buttons, two tap targets in the same place.
+
+     So: take the natural height, and step down until nothing is within
+     `gap` of it. If that runs out of room before the dock, step up from
+     the natural height instead. */
+  function placeCaliper(base, taken, floor) {
+    const gap = 40;
+    const clear = (y) => !taken.some((t) => Math.abs(t - y) < gap);
+    base = Math.min(base, floor);
+    for (let y = base; y <= floor; y += gap) if (clear(y)) return y;
+    for (let y = base - gap; y >= bandTop + 24; y -= gap) if (clear(y)) return y;
+    return base;
+  }
+
+  function caliper(o, sx, sy, wpx, hpx, alpha, taken) {
     const vertical = o.box[1] === 1 && o.box[0] !== 1;
     const ink = (a) => "rgba(226,228,236," + a * alpha + ")";
     ctx.lineWidth = 1;
@@ -359,13 +383,13 @@
     ctx.textBaseline = "alphabetic";
 
     if (!vertical) {
-      let y = sy + hpx / 2 + 18 + row * 30;
-      // Never under the dock. A measurement you cannot read is decoration.
-      y = Math.min(y, bandBot - 20);
+      // Never under the dock: a measurement you cannot read is decoration.
+      const y = placeCaliper(sy + hpx / 2 + 18, taken, bandBot - 20);
+      taken.push(y);
       let a = sx - wpx / 2, b = sx + wpx / 2;
       const clipA = a < 8, clipB = b > cw - 8;
       a = Math.max(a, 8); b = Math.min(b, cw - 8);
-      if (b - a < 3) return;
+      if (b - a < 3) return null;
       ctx.strokeStyle = ink(0.55);
       ctx.beginPath();
       ctx.moveTo(a, y); ctx.lineTo(b, y);
@@ -378,10 +402,8 @@
       ctx.textAlign = "center";
       ctx.fillStyle = ink(0.95);
       ctx.fillText(U.length(o.size) + "  " + o.dim, mx, y + 15);
-      ctx.font = "600 9px " + MONO;
-      ctx.fillStyle = ink(0.6);
-      ctx.fillText(o.name.toUpperCase(), mx, y - 11);
-      return;
+      // The name is not painted. It is a button, placed here by syncHits().
+      return [mx, y - 14, "center"];
     }
 
     let x = sx + wpx / 2 + 18;
@@ -389,7 +411,7 @@
     let a = sy - hpx / 2, b = sy + hpx / 2;
     const clipA = a < bandTop, clipB = b > bandBot;
     a = Math.max(a, bandTop); b = Math.min(b, bandBot);
-    if (b - a < 3) return;
+    if (b - a < 3) return null;
     ctx.strokeStyle = ink(0.55);
     ctx.beginPath();
     ctx.moveTo(x, a); ctx.lineTo(x, b);
@@ -402,9 +424,63 @@
     ctx.textAlign = "left";
     ctx.fillStyle = ink(0.95);
     ctx.fillText(U.length(o.size) + "  " + o.dim, x + 10, my + 4);
-    ctx.font = "600 9px " + MONO;
-    ctx.fillStyle = ink(0.6);
-    ctx.fillText(o.name.toUpperCase(), x + 10, my - 11);
+    return [x + 10, my - 14, "left"];
+  }
+
+  /* ── the names, which are also the way back ────────────────────────
+     Every caliper the canvas draws gets a real <button> sitting on its
+     name, so clicking "THE SUN" under the Sun's bracket flies you to the
+     Sun. Most of the time the labels near the middle of the frame are
+     rungs you have already passed, which makes this the fast way back —
+     the arrows only walk.
+
+     A pool, reused in place. The set of labelled rungs changes a few
+     times a minute but their positions change every frame, so the text
+     is only rewritten when the button changes which rung it stands for,
+     and the per-frame work is one transform and one opacity each. No
+     layout is read, and there are rarely more than three on screen.
+
+     Painting the name into the canvas and hit-testing it would have been
+     less code and worse: it would need its own hover state, its own
+     cursor, its own rectangle arithmetic, and it would still be invisible
+     to a keyboard and to a screen reader. */
+  const hitPool = [];
+  function syncHits(list) {
+    for (let i = 0; i < list.length; i++) {
+      let b = hitPool[i];
+      if (!b) {
+        b = document.createElement("button");
+        b.type = "button";
+        b.className = "hit";
+        // stopTour() alongside glideTo(), the same pairing the chips, the
+        // menu rows and the step arrows use: glideTo does not cancel the
+        // tour on its own, and a tour you have to fight is worse than none.
+        b.addEventListener("click", () => {
+          const k = Number(b.dataset.k);
+          if (k >= 0 && k < N) { stopTour(); glideTo(k); }
+        });
+        $("hits").appendChild(b);
+        hitPool.push(b);
+      }
+      const [k, x, y, align, alpha] = list[i];
+      if (b.dataset.k !== String(k)) {
+        b.dataset.k = String(k);
+        // Proper case in the DOM, uppercased in CSS: a screen reader
+        // handed "THE SUN" is entitled to read it out as three letters.
+        b.textContent = L[k].name;
+        b.setAttribute("aria-label", "Zoom to " + L[k].name);
+      }
+      // The left-aligned anchor is where the glyphs start, and the button
+      // carries 16px of padding in front of them.
+      const ox = align === "center" ? x : x - 16;
+      b.style.transform = "translate(" + Math.round(ox) + "px," + Math.round(y) + "px) " +
+        (align === "center" ? "translate(-50%,-50%)" : "translate(0,-50%)");
+      // Never fully faint: the label is a control, and a control you can
+      // barely see is one nobody will try.
+      b.style.opacity = Math.max(0.45, alpha).toFixed(2);
+      b.hidden = false;
+    }
+    for (let i = list.length; i < hitPool.length; i++) hitPool[i].hidden = true;
   }
 
   /* ── the frame ─────────────────────────────────────────────────────── */
@@ -469,16 +545,18 @@
       // A caliper on a rung that has not arrived yet is a measurement of
       // something the visitor cannot see.
       const worth = arrive > 0.3 && (dpx >= 16 || (foc > 0.3 && dpx >= 5));
-      if (worth) labels.push([o, sx, sy, wpx, hpx, Math.min(1, 0.3 + 0.7 * foc) * arrive]);
+      if (worth) labels.push([o, sx, sy, wpx, hpx, Math.min(1, 0.3 + 0.7 * foc) * arrive, k]);
     }
     // Stacked rather than overlapped when two calipers land on the same
     // line, and the rung you are actually on gets the top row.
     labels.sort((a, b) => b[5] - a[5]);
-    let row = 0;
-    for (const [o, sx, sy, wpx, hpx, alpha] of labels) {
-      const vertical = o.box[1] === 1 && o.box[0] !== 1;
-      caliper(o, sx, sy, wpx, hpx, alpha, vertical ? 0 : row++);
+    const taken = [];
+    const hits = [];
+    for (const [o, sx, sy, wpx, hpx, alpha, k] of labels) {
+      const at = caliper(o, sx, sy, wpx, hpx, alpha, taken);
+      if (at) hits.push([k, at[0], at[1], at[2], alpha]);
     }
+    syncHits(hits);
 
     // A vignette, so the instruments have something to sit on at the edges.
     const my = (bandTop + bandBot) / 2;
