@@ -10,7 +10,7 @@
 
    That is the whole reason for the transform. If painters worked in
    pixels, every one of them would need its own "and this is roughly how
-   big it should be" fudge, and twenty-two fudges is a diagram, not a
+   big it should be" fudge, and twenty-three fudges is a diagram, not a
    measurement.
 
    Consequences worth stating, because they look like bugs and are not:
@@ -217,6 +217,90 @@ window.PAINT = (() => {
     ctx.setLineDash([0.035, 0.035]);
     ctx.lineDashOffset = t * 0.02;
     ctx.strokeStyle = "rgba(188,216,255," + (0.40 + 0.10 * soft + 0.3 * w) + ")";
+    ctx.lineWidth = 0.008;
+    ctx.beginPath(); ctx.arc(0, 0, edge, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
+  };
+
+  /* ── 10⁻¹⁸ · a neutrino ──────────────────────────────────────────────
+     The third and last of the bounds, so it gets the same grammar as the
+     two beside it: a smudge at the experimental limit, a dashed edge that
+     means *we do not know where this stops*, and nothing inside.
+
+     But size is not the interesting thing about a neutrino, and drawing it
+     the way the electron is drawn would say that it was. The interesting
+     thing is that matter is not in its way — and the way to show that here
+     is *not* to draw the matter. There is no atom that could be in this
+     picture: an atom is eight decades wider than this frame, and a ring of
+     them scattered round a neutrino would be the same lie as three little
+     balls inside a proton. What can be drawn is the trajectory, because a
+     trajectory has no size to get wrong.
+
+     So the picture is tracks. Dead straight, all on one bearing, passing
+     clean over the quark and the electron that really are in this frame at
+     their real sizes, and not bending at either of them. Nothing here
+     deflects, nothing collides, nothing gets absorbed. It is the only
+     painter on this page that makes its point by leaving something out.
+
+     The idle loop is the stream: a hundred trillion of these go through a
+     person every second, so the frame is never down to one. Fresh tracks
+     cross at odd intervals, and on arrival a whole sheet of them lights at
+     once and thins back out. They are parallel because the ones going
+     through you came from the Sun, and at this range the Sun is a bearing
+     and not a place. */
+  const NUBEAM = once("nubeam", () => {
+    const r = rng(0x7a12), out = [];
+    for (let i = 0; i < 16; i++) {
+      out.push([(r() - 0.5) * 3.0, 0.55 + r() * 0.9, r(), 0.5 + r() * 0.7]);
+    }
+    return out;
+  });
+  P.neutrino = (ctx, t, focus, wake) => {
+    const w = wake || 0;
+    const soft = 0.5 + 0.5 * (0.6 * Math.sin(t * 0.53) + 0.4 * Math.sin(t * 0.89 + 2.1));
+    const AIM = 0.348;                       // the bearing they all travel on
+
+    ctx.save();
+    ctx.rotate(AIM);
+    ctx.lineCap = "round";
+
+    // The stream. Each track is a short streak running the width of the
+    // frame at its own rate and wrapping on its own phase, so no two ever
+    // fall into step and it never reads as a marching pattern.
+    for (const [off, rate, ph, len] of NUBEAM) {
+      const cyc = (t * rate * 0.06 + ph) % 1;
+      const x = -2.4 + cyc * 4.8;
+      const fade = Math.min(1, Math.min(cyc, 1 - cyc) * 6);
+      const a = (0.06 + 0.16 * w) * fade;
+      if (a < 0.004) continue;
+      const g = ctx.createLinearGradient(x - len, 0, x, 0);
+      g.addColorStop(0, "rgba(143,224,176,0)");
+      g.addColorStop(1, "rgba(198,246,218," + a + ")");
+      ctx.strokeStyle = g;
+      ctx.lineWidth = 0.004;
+      ctx.beginPath(); ctx.moveTo(x - len, off); ctx.lineTo(x, off); ctx.stroke();
+    }
+
+    // The one this frame is about. Brightest where the particle is, and
+    // exactly as bright on the far side as on the near one.
+    const gt = ctx.createLinearGradient(-1.9, 0, 1.9, 0);
+    gt.addColorStop(0.00, "rgba(143,224,176,0)");
+    gt.addColorStop(0.34, "rgba(143,224,176," + (0.13 + 0.05 * soft + 0.12 * w) + ")");
+    gt.addColorStop(0.50, "rgba(206,250,224," + (0.30 + 0.10 * soft + 0.22 * w) + ")");
+    gt.addColorStop(0.66, "rgba(143,224,176," + (0.13 + 0.05 * soft + 0.12 * w) + ")");
+    gt.addColorStop(1.00, "rgba(143,224,176,0)");
+    ctx.strokeStyle = gt;
+    ctx.lineWidth = 0.007;
+    ctx.beginPath(); ctx.moveTo(-1.9, 0); ctx.lineTo(1.9, 0); ctx.stroke();
+    ctx.restore();
+
+    glow(ctx, 0.5 * (0.94 + 0.09 * soft) * (1 + 0.5 * w), "rgba(143,224,176,$)",
+      [[0, (0.52 + 0.16 * soft) * (1 + 0.4 * w)], [0.35, 0.30], [0.75, 0.08], [1, 0]]);
+    const edge = 0.5 * (1 + 0.035 * Math.sin(t * 0.37 + 2.2) + 0.07 * w);
+    ctx.setLineDash([0.035, 0.035]);
+    ctx.lineDashOffset = -t * 0.02;
+    ctx.strokeStyle = "rgba(186,238,208," + (0.36 + 0.10 * soft + 0.3 * w) + ")";
     ctx.lineWidth = 0.008;
     ctx.beginPath(); ctx.arc(0, 0, edge, 0, TAU); ctx.stroke();
     ctx.setLineDash([]);

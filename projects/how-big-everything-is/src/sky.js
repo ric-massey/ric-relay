@@ -38,7 +38,7 @@
    six hundred stored numbers.
 
    ── cost ────────────────────────────────────────────────────────────
-   This draws under an exhibit that is already painting twenty-two
+   This draws under an exhibit that is already painting twenty-three
    objects a frame, so: no per-item `fillStyle` strings. Items are
    pre-sorted into colour buckets at build time and the per-item alpha
    goes through `globalAlpha`, which is a number and not a parse. Stars

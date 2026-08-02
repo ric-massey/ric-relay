@@ -8,7 +8,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Ric's Terminal">
 <meta property="og:title" content="How Big Everything Is">
-<meta property="og:description" content="Twenty-two rungs from a quark to the edge of what can be seen, all drawn to the same scale. Zoom out and watch each thing collapse to a speck next to the next one.">
+<meta property="og:description" content="Twenty-three rungs from a quark to the edge of what can be seen, all drawn to the same scale. Zoom out and watch each thing collapse to a speck next to the next one.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23000'/><circle cx='50' cy='50' r='2.5' fill='%23fff'/><circle cx='50' cy='50' r='14' fill='none' stroke='%23888' stroke-width='2'/><circle cx='50' cy='50' r='38' fill='none' stroke='%23444' stroke-width='2'/></svg>">
 <style>
 /* ══════════════════════════════════════════════════════════════════════
@@ -232,6 +232,12 @@ body.sheet-open .hits, body.menu-open .hits, body.welcome-open .hits { display: 
 }
 .iconbtn:hover { transform: translateY(-1px); border-color: rgba(255,255,255,.3); }
 .iconbtn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+/* Unit symbols, so no uppercasing: "M" is mega and "m" is metres. */
+.units { padding: .48rem .62rem; gap: .3rem; text-transform: none;
+  letter-spacing: .04em; font-size: .72rem; }
+.units span { transition: opacity .15s; opacity: .35; }
+.units span.on { opacity: 1; }
+.units .sep { opacity: .22; }
 /* The rung list only hides behind a button where the chips will not fit. */
 #menu-open { display: none; }
 .burger { display: inline-block; width: .8rem; height: .1rem; background: currentColor;
@@ -386,7 +392,7 @@ input[type=range].by-pointer:focus-visible { outline: none; }
 .rungs button[aria-pressed=true] { color: #08080a; background: var(--ink); border-color: var(--ink); }
 
 /* ── the rung sheet ───────────────────────────────────────────────────
-   The same list as the chips, for the widths where twenty-two chips in a
+   The same list as the chips, for the widths where twenty-three chips in a
    sideways strip is a row of tiny targets nobody is going to hit with a
    thumb. Rows are 46px tall, over the 44px minimum. */
 .menu { position: fixed; inset: 0; z-index: 44; display: flex; justify-content: flex-end;
@@ -642,6 +648,12 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
             </button>
             <button type="button" class="iconbtn glass" id="info-open"
                     aria-expanded="false" aria-controls="info-sheet">Info</button>
+            <!-- Metres or feet. Both are shown at once and the live one is
+                 lit, because a toggle labelled with only the state you are
+                 not in is a coin flip every time you look at it. -->
+            <button type="button" class="iconbtn glass units" id="units">
+              <span class="u-m on">m</span><span class="sep" aria-hidden="true">/</span><span class="u-ft">ft</span>
+            </button>
           </div>
           <div class="compare glass num" id="compare" aria-hidden="true"></div>
         </div>
@@ -654,7 +666,7 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
                between them is the whole ladder, scrollable, and it tracks
                where you are without needing to be steered.
 
-               On a phone the arrows are the way you move: twenty-two chips in
+               On a phone the arrows are the way you move: twenty-three chips in
                a sideways strip is a row of targets nobody hits with a thumb,
                and the rail at the bottom stops taking touches entirely. -->
           <div class="steprow">
@@ -666,7 +678,7 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
             </button>
             <div class="rungs" id="rungs" role="group" aria-label="Jump to a rung"></div>
             <!-- What the strip says on a screen too narrow to hold it: which
-                 rung you are on and how far along the twenty-two you are.
+                 rung you are on and how far along the twenty-three you are.
                  The arrows are useless without it — a step control with
                  nothing named between the arrows is a pair of arrows. -->
             <div class="steplabel" id="steplabel" aria-hidden="true">
@@ -856,15 +868,27 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         says it must, with the quoted radius marked as the moment of that curve it really is
         rather than as the wall it is usually mistaken for.</p>
       <p><strong>The rail is not perfectly logarithmic.</strong> It is mostly divided by decades
-        — the three empty decades between the electron and the proton genuinely cost you three
+        — the three empty decades between the neutrino and the proton genuinely cost you three
         decades of dragging, and you feel them. But two pairs on this ladder are very close
         together (you and an elephant; the Oort Cloud and the nearest star), and a strictly
         logarithmic rail gives those a slice about two pixels wide, which is a rung you cannot
         stop on. So every gap gets a flat extra 0.45 decades. Across the whole rail that is
         9 decades of padding against 45 real ones.</p>
-      <p><strong>The electron has no measured size.</strong> It is drawn at the experimental
-        upper bound with a dashed edge, and the dashes mean <em>we do not know where this
-        stops</em>. Every other rung is a measurement.</p>
+      <p><strong>The first three rungs are not measurements.</strong> A quark, an electron and
+        a neutrino have never shown a size to anybody. They are point-like in every theory in
+        use, and the numbers this page draws them at are upper limits — the width below which
+        an experiment would have seen no structure anyway, which is a statement about the
+        apparatus and not about the particle. All three are drawn with a dashed edge, and the
+        dashes mean <em>we do not know where this stops</em>.</p>
+      <p class="tight">Which means <strong>the order of those three is a fact about experiments,
+        not about particles.</strong> The quark's bound is the tightest because the machines that
+        set it reach the furthest — HERA and then the LHC, probing for structure down near
+        10⁻²⁰ m. The neutrino's is the loosest, because the only size-like quantity anybody has
+        ever bounded for a neutrino is its charge radius, and that comes from watching reactor
+        antineutrinos scatter off electrons, which is a far blunter instrument. So the neutrino
+        sits above the electron here. Nobody thinks it is bigger. Read the three of them as one
+        rung with three names and a note about how hard each was to corner. Every rung from the
+        proton onward is a measurement.</p>
       <p><strong>Things drawn at true scale that you therefore cannot see.</strong> The nucleus
         inside the hydrogen atom is a hundredth of a pixel. The planets on their orbits are
         thinner than the lines of the orbits themselves. The Sun disappears entirely at
@@ -893,7 +917,13 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
     <section id="p-sources">
       <h2>Sources</h2>
-      <p class="sources">CODATA 2018 for the proton charge radius and the Bohr radius.
+      <p class="sources">The three bounds at the bottom are limits, not measurements, and each
+        comes from a different kind of machine: HERA's electron–proton scattering and later LHC
+        dijet searches for the quark, Penning-trap and scattering limits for the electron, and
+        reactor antineutrino–electron scattering — TEXONO at Kuo-Sheng, and the accelerator
+        experiments before it — for the neutrino's charge radius, which is bounded at order
+        10⁻³² cm² in ⟨r²⟩ and is quoted here as the round number that is, about 2 × 10⁻¹⁸ m.
+        CODATA 2018 for the proton charge radius and the Bohr radius.
         IAU 2012 for the astronomical unit; IAU 2015 for the nominal solar radius.
         Fok et al. (2012) for the radius of Stephenson 2-18, whose cluster membership —
         and therefore its size — is disputed. Hipparcos and later parallaxes for Proxima

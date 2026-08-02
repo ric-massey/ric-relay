@@ -1,8 +1,8 @@
 /* ══════════════════════════════════════════════════════════════════════
    The ladder.
 
-   Twenty-two rungs from the smallest thing anyone has put a bound on to the
-   edge of what anyone can see. Every one of them carries a real number in
+   Twenty-three rungs from the smallest thing anyone has put a bound on to
+   the edge of what anyone can see. Every one of them carries a real number in
    metres, and the whole exhibit is built out of those numbers and nothing
    else: the rail, the camera, the spacing on screen, the calipers, the
    light-crossing times. There is no artistic "about this big" anywhere in
@@ -12,6 +12,13 @@
    produces one result people argue with: the largest star we have measured
    is *smaller* than the planets' orbits, so Stephenson 2-18 lands between
    the Sun and Neptune. It is not a mistake. It is the point.
+
+   The bottom three rungs are the other thing people argue with. A quark,
+   an electron and a neutrino have no measured size at all; every number
+   there is an upper limit on what the apparatus could have detected, so
+   their order is a fact about colliders and reactors rather than about the
+   particles. Each of the three says so in its own caveat, and the sheet
+   says so once for all of them.
 
    Some rungs are objects and some are distances — the Moon's orbit, the
    gap to the nearest star. Those are labelled `dim: "across"` and the
@@ -56,7 +63,20 @@ window.LADDER = [
     tint: "#bcd8ff",
     lede: "Nobody has ever measured how big an electron is, because as far as anyone can tell it does not have a size.",
     fact: "It is not small the way a grain of sand is small. Every experiment built to find an edge has come back empty, and the best of them can only say it is narrower than a millionth of a billionth of a billionth of a metre. Draw it any bigger than a smudge and you have made something up. So this is a smudge, drawn at that upper limit, with a dashed edge that means <em>we do not know where this stops</em>. There is nothing drawn inside it either, and that is not an omission: an electron has charge, spin and mass and no known parts. It is the one thing on this ladder with no interior to get wrong.",
-    caveat: "The three empty decades to the right of this are real. There is nothing known between an electron and a proton.",
+    caveat: "The neutrino on the next rung is not bigger than this in any sense anybody can defend — its bound is simply the weakest of the three. Past it, the gap to the proton is real: nearly three empty decades with nothing known in them.",
+  },
+  {
+    id: "neutrino",
+    name: "A neutrino",
+    kicker: "It does not stop for anything",
+    size: 2e-18,
+    dim: "at most, across",
+    alt: "and a hundred trillion just went through you",
+    box: [1, 1],
+    tint: "#8fe0b0",
+    lede: "About a hundred trillion of these pass through your body every second, and essentially none of them touch you on the way.",
+    fact: "It is not that a neutrino is small — the two rungs before this one are smaller still. It is that a neutrino barely participates. It has no electric charge and feels nothing but gravity and the weak force, so ordinary matter is not in its way: to stop half the neutrinos coming off the Sun you would need about a light-year of lead. The ones going through you right now were made in the Sun's core, and they left it in two and a half seconds, straight out through the whole star. The light made alongside them is still in there — it random-walks out over tens of thousands of years. Neutrinos are the only way anybody has ever looked directly at the middle of a star, because they are the only thing that comes out of it.",
+    caveat: "This number is not a measurement. Like the quark and the electron beside it, a neutrino is point-like in every theory anybody uses and has never shown a size to any experiment. What is bounded here is its charge radius — how far its electric influence could reach given that its net charge is zero — from reactor antineutrino scattering, and that bound is the loosest of the three, which is the only reason this rung sits above the electron rather than below it. The order of these three is a fact about the experiments, not about the particles.",
   },
   {
     id: "proton",

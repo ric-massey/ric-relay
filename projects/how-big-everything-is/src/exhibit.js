@@ -593,14 +593,15 @@
 
   /* The round number is chosen from a target *pixel* length, not from a
      fraction of the frame. Both give a round number; only this one bounds
-     how long the bar can come out. Aiming at 96 px, the 1-2-5-10 rounding
-     can never land outside 55–137 px, which is what keeps the bar and its
-     label inside the panel at every one of the forty-five decades. */
+     how long the bar can come out. Aiming at 84 px, the 1-2-5-10 rounding
+     can never land outside 48–120 px, which is what keeps the bar and its
+     label inside the panel at every one of the forty-five decades.
+
+     The rounding is done in the unit the label will be written in, not in
+     metres — otherwise a bar reading "3.28 ft" would be sitting under a
+     number that is round only in a system the visitor just switched off. */
   function paintScaleBar(cam) {
-    const want = (84 / cw) * cam.w;
-    const e = Math.pow(10, Math.floor(Math.log10(want)));
-    const m = want / e;
-    const nice = (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * e;
+    const nice = U.niceLength((84 / cw) * cam.w);
     $("scalebar-fill").style.width = Math.round((nice / cam.w) * cw) + "px";
     $("scalebar-label").textContent = U.length(nice);
   }
@@ -635,7 +636,7 @@
   }
 
   /* Which chip is lit, and — since the chip strip is a single sideways row
-     of twenty-two — keeping the lit one in view. Guarded on the value, not
+     of twenty-three — keeping the lit one in view. Guarded on the value, not
      run every frame: this touches 42 elements and forces a scroll, and the
      answer changes a few times a minute. */
   let markedRung = -2;
@@ -837,7 +838,7 @@
 
   /* ── the rung pickers ──────────────────────────────────────────────
      Two of them, and they are the same list twice: chips under the rail
-     where there is room for twenty-two of them, and a sheet behind a
+     where there is room for twenty-three of them, and a sheet behind a
      button where there is not. Both call glideTo(), so picking a rung
      flies you there rather than cutting — the journey between two rungs
      is most of what this exhibit has to say. */
@@ -861,6 +862,54 @@
         U.length(o.size) + "</span>";
       r.addEventListener("click", () => { stopTour(); glideTo(k); setMenu(false); });
       list.appendChild(r);
+    });
+  }
+
+  /* ── metres or feet ────────────────────────────────────────────────
+     Nearly every number on this page is written fresh sixty times a
+     second, so the switch has almost nothing to do: it moves the unit
+     table under U and the next frame comes out in the other system. What
+     it does have to repair are the two lists that are built once and then
+     left alone — the rung menu and the table in the sheet.
+
+     The choice is kept in localStorage rather than the session storage
+     that holds your place on the ladder, because where you are is about
+     this visit and which units you read in is about you. */
+  const UKEY = "ric-scale-units";
+
+  function relabel() {
+    const rows = $("menu-list").children;
+    for (let k = 0; k < rows.length; k++) {
+      rows[k].querySelector(".m").textContent = U.length(L[k].size);
+    }
+    buildTable();
+    // setFitted caches on the length of the string, and "1.7 m" and
+    // "5.58 ft" are not the same width at the same number of characters.
+    delete $("obj-measure").dataset.fit;
+    S.lastInput = performance.now();
+  }
+
+  function setUnits(sys) {
+    U.setSystem(sys);
+    const on = U.system();
+    const b = $("units");
+    b.querySelector(".u-m").classList.toggle("on", on === "m");
+    b.querySelector(".u-ft").classList.toggle("on", on === "ft");
+    b.setAttribute("aria-label", on === "m"
+      ? "Units: metres. Switch to feet and miles."
+      : "Units: feet and miles. Switch to metres.");
+    relabel();
+  }
+
+  function wireUnits() {
+    let saved = null;
+    try { saved = localStorage.getItem(UKEY); } catch (e) {}
+    setUnits(saved === "ft" ? "ft" : "m");
+    $("units").addEventListener("click", () => {
+      const next = U.system() === "m" ? "ft" : "m";
+      setUnits(next);
+      $("live-region").textContent = next === "m" ? "Metres." : "Feet and miles.";
+      try { localStorage.setItem(UKEY, next); } catch (e) {}
     });
   }
 
@@ -897,7 +946,7 @@
   }
 
   /* ── scrolling the strip ───────────────────────────────────────────
-     The chip strip is a horizontal scroller holding all twenty-two names,
+     The chip strip is a horizontal scroller holding all twenty-three names,
      and browsing it is the one thing it could not do. A vertical wheel
      over a horizontally-overflowing box scrolls nothing in any browser,
      and a trackpad's sideways swipe is the only gesture that ever worked
@@ -1058,6 +1107,7 @@
     // in it yet measures short.
     buildPickers();
     buildTable();
+    wireUnits();
     resize();
     restore();
     syncRail();
