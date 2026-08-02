@@ -21,9 +21,17 @@
    says so once for all of them.
 
    Some rungs are objects and some are distances — the Moon's orbit, the
-   gap to the nearest star. Those are labelled `dim: "across"` and the
-   prose says what is being measured, because a distance quietly presented
-   as an object is a lie by layout.
+   gap to the nearest star — and `dim` says which, "across" for a width and
+   "away" for a one-way trip, because a distance quietly presented as an
+   object is a lie by layout.
+
+   That distinction is not decoration. Two rungs can sit almost on top of
+   each other here and still not mean comparable things: the Oort Cloud's
+   frame is three-quarters the width of Proxima Centauri's, which reads as
+   the Sun's comets nearly touching another star, and is wrong — one of
+   those numbers is a diameter and the other is a radius-length journey,
+   and the comets in fact get a bit over a third of the way. Anything that
+   compares two rungs has to check `dim` first.
 
    `size`  the labelled measurement, in metres. This is the number.
    `dim`   what that number measures, in words.
@@ -62,7 +70,7 @@ window.LADDER = [
     box: [1, 1],
     tint: "#bcd8ff",
     lede: "Nobody has ever measured how big an electron is, because as far as anyone can tell it does not have a size.",
-    fact: "It is not small the way a grain of sand is small. Every experiment built to find an edge has come back empty, and the best of them can only say it is narrower than a millionth of a billionth of a billionth of a metre. Draw it any bigger than a smudge and you have made something up. So this is a smudge, drawn at that upper limit, with a dashed edge that means <em>we do not know where this stops</em>. There is nothing drawn inside it either, and that is not an omission: an electron has charge, spin and mass and no known parts. It is the one thing on this ladder with no interior to get wrong.",
+    fact: "It is not small the way a grain of sand is small. Every experiment built to find an edge has come back empty, and the best of them can only say it is narrower than a billionth of a billionth of a metre. Draw it any bigger than a smudge and you have made something up. So this is a smudge, drawn at that upper limit, with a dashed edge that means <em>we do not know where this stops</em>. There is nothing drawn inside it either, and that is not an omission: an electron has charge, spin and mass and no known parts. It is the one thing on this ladder with no interior to get wrong.",
     caveat: "The neutrino on the next rung is not bigger than this in any sense anybody can defend — its bound is simply the weakest of the three. Past it, the gap to the proton is real: nearly three empty decades with nothing known in them.",
   },
   {
@@ -124,8 +132,8 @@ window.LADDER = [
     alt: "smaller than the wavelength of light",
     box: [1, 1],
     tint: "#9fb08a",
-    lede: "A hundred nanometres of protein shell with instructions inside — too small to see with any light microscope.",
-    fact: "Visible light has a wavelength of four hundred to seven hundred nanometres, which is several times wider than this. That is not a limitation of the microscope; it is a limitation of light. You cannot see a thing with a ruler coarser than the thing. Every image you have ever seen of a virus came from an electron beam, and the colours in it were chosen by a person.",
+    lede: "A hundred nanometres of protein shell with instructions inside — narrower than the light you would have to look at it with.",
+    fact: "Visible light has a wavelength of four hundred to seven hundred nanometres, several times wider than this, so an ordinary microscope cannot make out any of its structure. That is a limit of the light and not of the lens. For most of a century it meant every picture of a virus came off an electron beam, and the colours in those were chosen by a person. It is no longer the whole story: tag a virion with something fluorescent and it shows up as a blur in about the right place, and the super-resolution methods that took the 2014 chemistry Nobel get real detail out of visible light by lighting a few molecules at a time rather than trying to out-resolve the wave. What none of them give you is what your eye would have seen.",
   },
   {
     id: "cell",
@@ -148,7 +156,7 @@ window.LADDER = [
     alt: "five foot seven",
     box: [0.3, 1],
     tint: "#e8dcc8",
-    lede: "You are about as many times bigger than a blood cell as the Sun is bigger than you.",
+    lede: "You are about as many times bigger than a strand of DNA is wide as the Sun is bigger than you.",
     fact: "This rung is not quite the middle of the ladder, but it is close, and the near-symmetry is real: there are eighteen decades of size below you and twenty-seven above. A human being is one of the few things in the universe positioned to notice both ends. Everything smaller than a blood cell you have only ever seen a picture of; everything bigger than the Moon's orbit, the same.",
   },
   {
@@ -209,7 +217,7 @@ window.LADDER = [
     box: [1, 1],
     tint: "#8b8f9a",
     lede: "A distance, not an object: the full width of the Moon's path around the Earth.",
-    fact: "Every other planet in the solar system fits inside the gap between the Earth and the Moon, side by side, with room left over — Mercury, Venus, Mars, Jupiter, Saturn, Uranus and Neptune add up to about 380,000 kilometres, and the gap is 384,400. Twenty-four people have crossed it. Nobody has been past this line since December 1972.",
+    fact: "Every other planet in the solar system very nearly fits in the space between the Earth and the Moon, side by side. Mercury, Venus, Mars, Jupiter, Saturn, Uranus and Neptune come to about 380,000 kilometres laid end to end, and the Moon's average distance is 384,400 — but that figure is measured centre to centre, and the two bodies' own radii eat 8,000 kilometres of it. The real gap averages about 376,000, so at an average Moon the planets are a few thousand kilometres short of fitting. They fit comfortably when the Moon is out near the far end of its orbit. Twenty-four people have crossed it. Nobody has been past this line since December 1972.",
   },
   {
     id: "sun",
@@ -254,23 +262,24 @@ window.LADDER = [
     kicker: "Where the comets come from",
     size: 2.99e16,
     dim: "across",
-    alt: "a hundred thousand times the Earth's distance from the Sun",
+    alt: "a hundred thousand times the Earth's distance, in every direction",
     box: [1, 1],
     tint: "#7e8ba6",
     lede: "A shell of frozen debris wrapped around the Sun, reaching out to something like 100,000 times the Earth's distance from it.",
     fact: "Nobody has ever seen it. It is inferred from the long-period comets that fall in from every direction with orbits that all seem to turn around at about the same enormous distance, which is what a shell would look like from the inside. It is three thousand times wider than the frame you were just looking at, and it is still, technically, the Sun's.",
+    caveat: "This rung is an inference and not an observation. No object has ever been detected out there; the size comes from where the long-period comets' orbits turn around, and the 100,000-AU reach drawn here is the middle of a range that runs from something like 50,000 to 200,000 depending on whose model you take. It is the least directly measured number on the ladder above the proton.",
   },
   {
     id: "proxima",
     name: "The nearest star",
-    kicker: "And the Oort Cloud nearly touches it",
+    kicker: "Even the comets get only a third of the way",
     size: 4.018e16,
     dim: "away",
     alt: "forty trillion kilometres",
     box: [1, 0.14],
     tint: "#e05a4a",
-    lede: "Proxima Centauri, 4.25 light-years off — and look how little bigger that is than the frame before it.",
-    fact: "This is the closest another star ever gets, and the Sun's own cloud of comets reaches most of the way there. There is no real gap between one star's territory and the next; they overlap. Voyager 1, the furthest thing we have ever thrown, has been going for forty-eight years and has covered about a five-hundredth of this line.",
+    lede: "Proxima Centauri, 4.25 light-years off — and the Sun's whole cloud of comets, the frame you were just in, is three-quarters as wide as this line is long.",
+    fact: "That last sentence is a trap worth walking into slowly, because the cloud is a sphere and this is a one-way trip. The Oort Cloud's <em>width</em> is three-quarters of the distance to Proxima; its <em>reach</em> — the Sun's centre out to its far edge — is half of that, about 100,000 times the Earth's distance from the Sun against Proxima's 268,000. So the comets get a bit over a third of the way and no further, and there is a clear gap between one star's territory and the next after all. The frame is drawn at the honest ratio: the cloud's radius really is 0.37 of this line. Voyager 1, the furthest thing we have ever thrown, has been going for nearly half a century and has covered about a fifteen-hundredth of it.",
   },
   {
     id: "galaxy",
@@ -281,8 +290,9 @@ window.LADDER = [
     alt: "588 quadrillion miles, which is why nobody uses miles",
     box: [1, 0.45],
     tint: "#cbb489",
-    lede: "A hundred thousand light-years of stars, and the last frame — the whole distance to the nearest one — is a two-thousandth of it.",
-    fact: "There are somewhere between one and four hundred billion stars in it, and the Sun is thirty thousand light-years out from the middle, in a minor spur off one of the arms. It takes about 230 million years to go around once. The last time the Sun was where it is now, the dinosaurs had not started yet.",
+    lede: "A hundred thousand light-years of stars, and the last frame — the whole distance to the nearest one — is a twenty-thousandth of it.",
+    fact: "There are somewhere between one and four hundred billion stars in it, and the Sun is about twenty-seven thousand light-years out from the middle, in a minor spur off one of the arms. It takes about 230 million years to go around once. The last time the Sun was where it is now, the first dinosaurs were only just appearing.",
+    caveat: "A hundred thousand light-years is where the disc's stars thin out, not an edge — the Milky Way does not have one. The bright disc fades, a sparse stellar halo carries on well past it, and the dark matter goes further still. Choose a different place to stop counting and this rung is anything from 100,000 to nearly 200,000 light-years wide.",
   },
   {
     id: "localgroup",
@@ -294,7 +304,8 @@ window.LADDER = [
     box: [1, 0.75],
     tint: "#9aa6c4",
     lede: "About eighty galaxies, held together by their own gravity — but really just two big ones and a crowd of dwarfs.",
-    fact: "The Milky Way and Andromeda are most of the mass here, and they are falling toward each other at 110 kilometres a second. They will collide in about four and a half billion years. Almost nothing will hit anything — the stars are so far apart that the two galaxies will pass through each other like two clouds of gnats — but the shapes will not survive it.",
+    fact: "The Milky Way and Andromeda are most of the mass here, and they are falling toward each other at about 110 kilometres a second. Whether they actually hit is no longer the settled story it was for twenty years. It turns on Andromeda's <em>sideways</em> motion, which is small, brutally hard to measure at two and a half million light-years, and the whole difference between a collision and a near miss — and a 2025 analysis using the best Gaia and Hubble numbers put the odds of a merger in the next ten billion years at not much better than a coin toss. Later work leans higher. If it does happen, almost nothing will hit anything: the stars are so far apart that the two galaxies would pass through each other like two clouds of gnats. The shapes would not survive it.",
+    caveat: "The four-and-a-half-billion-year collision date you have probably seen — including on this page until recently — came from assuming Andromeda's sideways motion is near zero. Measuring it is the open problem, and until that settles, both the date and the collision itself are estimates rather than predictions.",
   },
   {
     id: "laniakea",
@@ -307,6 +318,7 @@ window.LADDER = [
     tint: "#7f6fa8",
     lede: "A hundred thousand galaxies, defined in 2014 not by where they are but by which way they are moving.",
     fact: "The boundary is drawn where the flow changes direction: everything inside is drifting toward the same place, a gravitational low called the Great Attractor, and everything outside is drifting somewhere else. It is less a structure than a watershed. The name is Hawaiian for immeasurable heaven.",
+    caveat: "Laniakea is not an object, and this is not the width of one. It is the region whose galaxies are all drifting the same way, drawn in 2014 out of a velocity field, and its boundary moves if you change the survey or the flow model behind it. It is also not held together: dark energy will pull this apart long before it could collapse into anything. A supercluster is a description of motion, not a thing you could arrive at the edge of.",
   },
   {
     id: "universe",
@@ -318,7 +330,7 @@ window.LADDER = [
     box: [1, 1],
     tint: "#6d7fb0",
     lede: "Ninety-three billion light-years across — not because the universe is that old, but because space has been stretching the whole time the light was in flight.",
-    fact: "The universe is 13.8 billion years old, so the natural guess is that we can see 27.6 billion light-years across. But the space those photons crossed kept expanding while they crossed it, and the things that emitted them are now much further away than they were. This is the whole of it: everything anyone will ever be able to look at. Whether there is more beyond it is not a question anybody can answer by looking. <em>There is no photograph of this frame and there cannot be one</em> — nobody has ever been outside it, and it has no outside. What is drawn is a composite of the kind the real visualizations are: galaxies reddening with distance because distance here is lookback time, filaments in the proportions the redshift surveys find, and at the rim <em>the actual thing</em> — WMAP's nine-year map of the cosmic microwave background, the oldest light there is, unwrapped from the ellipse it is usually printed as and laid back onto the shell it came off. Every other rung on this ladder grew out of the lumps in it.",
-    caveat: "This is not the size of the universe. It is the size of the part close enough for light to have reached us. The universe itself may be far larger, and may be infinite. The frame is a visualization assembled from observations, not an image of the thing — there is no vantage outside this to photograph it from. The shell is real measured data (NASA / WMAP Science Team); the galaxies and filaments inside it are drawn from a seed rather than from a catalogue, and their reddening with distance is the only other physics in the picture.",
+    fact: "The universe is 13.8 billion years old, so the natural guess is that we can see 27.6 billion light-years across. But the space those photons crossed kept expanding while they crossed it, and the things that emitted them are now much further away than they were. This is the whole of what can be seen from here, today. It is not a fixed wall — the horizon creeps outward as more ancient light finishes its journey — and it is not a promise either, because the expansion is accelerating, and light setting out now from far enough away will never arrive at all. Whether there is more beyond it is not a question anybody can answer by looking. <em>There is no photograph of this frame and there cannot be one</em> — nobody has ever been outside it, and it has no outside. What is drawn is a composite of the kind the real visualizations are: galaxies reddening with distance because distance here is lookback time, filaments in the proportions the redshift surveys find, and at the rim <em>the actual thing</em> — WMAP's nine-year map of the cosmic microwave background, the oldest light there is, unwrapped from the ellipse it is usually printed as and laid back onto the shell it came off. Every other rung on this ladder grew out of the lumps in it.",
+    caveat: "This is not the size of the universe. It is the size of the part close enough for light to have reached us, and the number itself comes out of a cosmological model rather than off a ruler. The universe itself may be far larger, and may be infinite. The shell is drawn at the rim for legibility, but the surface that light left sits a little inside the horizon, not on it — there were 380,000 years of opaque universe before anything could travel freely, and that is the gap. The frame is a visualization assembled from observations, not an image of the thing; there is no vantage outside this to photograph it from. The shell is real measured data (NASA / WMAP Science Team); the galaxies and filaments inside it are drawn from a seed rather than from a catalogue, and their reddening with distance is the only other physics in the picture.",
   },
 ];

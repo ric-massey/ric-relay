@@ -143,6 +143,7 @@
     started: 0,
     touring: false,
     tourTimer: 0,
+    tourDir: 1,            // +1 outward, −1 back down; flips at either end
   };
 
   /* ── the arrival beat ──────────────────────────────────────────────
@@ -769,12 +770,31 @@
     save();
   }
 
-  function glideTo(k) {
+  /* How long the trip takes is set by how far it is in decades, not by how
+     far it is along the rail, so a jump from the quark to the universe is
+     a long ride and a step to the next rung is barely a beat.
+
+     The ceiling is the number that matters. A twenty-decade jump finished
+     in the same 1.7 seconds a five-decade one did, which made the long
+     ones read as a cut rather than a journey — and the distance between
+     two rungs is the entire subject of this page, so a jump that arrives
+     before you have registered leaving has thrown away the fact it was
+     carrying. Everything is a little slower now and the far ones are
+     noticeably so, which is where the extra time is worth spending.
+
+     The ceiling stays, though, because clicking a name is not the same
+     act as watching. Clicking "the Milky Way" means *take me there*, and
+     an eight-second commute in answer to that is not immersion, it is a
+     loading screen. The tour means *show me*, so it passes its own
+     duration in and gets no ceiling at all — see tourGlideMs. */
+  function glideTo(k, ms) {
     const decades = Math.abs(Math.log10(L[k].size) - Math.log10(camera(S.t).w / 3));
     S.from = S.t;
     S.target = T[k];
     S.glideStart = performance.now();
-    S.glideMs = reduced.matches ? 1 : Math.max(480, Math.min(1700, 190 * decades + 320));
+    S.glideMs = reduced.matches ? 1
+      : ms != null ? ms
+      : Math.max(560, Math.min(2300, 230 * decades + 380));
     S.lastInput = performance.now();
     save();
   }
@@ -982,13 +1002,62 @@
 
      Any manual input cancels it. A tour you have to fight is worse than
      no tour, and every other control on this page writes `t` directly —
-     so rather than have each of them remember to stop, `setT` does it. */
-  const TOUR_HOLD = 5200;
+     so rather than have each of them remember to stop, `setT` does it.
+
+     At the top it turns round and walks back down, and at the bottom it
+     turns round again. It used to stop dead at the observable universe,
+     and starting it from there threw you back to the quark in one jump —
+     forty-five decades in under two seconds, which is the one move this
+     whole exhibit exists to argue against. Coming back down a rung at a
+     time is the same walk in the other direction, and it is worth having:
+     the collapse reads differently when the enormous thing is the one
+     shrinking into the middle. It never stops on its own now. Pressing
+     pause is how it stops.
+
+     ── the pace ──
+     The tour does not travel at one speed. It travels at one *rate*: a
+     fixed number of seconds per decade, so the time a crossing takes is
+     the size of the crossing, and there is no ceiling on it.
+
+     This is the whole reason to sit and watch rather than press the
+     arrow twenty-two times. The gaps on this ladder are not remotely
+     alike — a quark to an electron is 0.07 of a decade and a blood cell
+     to a person is 5.4, eighty times further — and a tour that gave both
+     the same two seconds was quietly flattening the one quantity the
+     exhibit is about. Now the three particles at the bottom go by almost
+     as fast as you can read their names, because there is genuinely
+     almost nothing between them, and the climb out of a blood cell to a
+     human being takes the best part of five seconds with nothing to look
+     at on the way. That emptiness is not dead time. It is the measurement.
+
+     It is the same rule the rail already obeys under a finger — constant
+     decades per second, never accelerating — so watching and dragging
+     now agree about how far apart things are.
+
+     The wait at each rung stays the same everywhere, and deliberately:
+     it is reading time, the captions are all about one breath long, and
+     a rung that hurried you because the gap before it was short would be
+     punishing you for the ladder's shape. Range lives in the travel.
+
+     Two point one seconds is a little shorter than the arrival flourish
+     each painter throws, which means the tour leaves while the rung is
+     still reacting rather than after it has gone quiet. That is the right
+     way round: a tour that waited for stillness at twenty-three stops
+     would be five minutes long and mostly nothing happening. */
+  const TOUR_HOLD = 2100;
+  const TOUR_MS_PER_DECADE = 900;
+  const TOUR_MIN_MS = 380;
+  function tourGlideMs(from, to) {
+    const d = Math.abs(Math.log10(L[to].size) - Math.log10(L[from].size));
+    return Math.max(TOUR_MIN_MS, d * TOUR_MS_PER_DECADE);
+  }
   function tourTick() {
     if (!S.touring) return;
     const k = nearestRung(S.t);
-    if (k >= N - 1) { stopTour(); return; }
-    glideTo(k + 1);
+    if (k >= N - 1) S.tourDir = -1;
+    else if (k <= 0) S.tourDir = 1;
+    const next = k + S.tourDir;
+    glideTo(next, tourGlideMs(k, next));
     S.tourTimer = setTimeout(tourTick, TOUR_HOLD + S.glideMs);
   }
 
@@ -997,9 +1066,8 @@
     S.touring = true;
     $("play").setAttribute("aria-pressed", "true");
     $("play").setAttribute("aria-label", "Pause the tour");
-    // From the far end, a tour has nowhere to go but back to the start.
-    if (nearestRung(S.t) >= N - 1) { glideTo(0); S.tourTimer = setTimeout(tourTick, TOUR_HOLD + S.glideMs); }
-    else tourTick();
+    S.tourDir = nearestRung(S.t) >= N - 1 ? -1 : 1;
+    tourTick();
   }
 
   function stopTour() {

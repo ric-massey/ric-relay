@@ -135,8 +135,13 @@ body.sheet-open .hits, body.menu-open .hits, body.welcome-open .hits { display: 
     calc(var(--pad) + env(safe-area-inset-left));
 }
 .hud > * { min-height: 0; }
+/* Everything in here is click-through unless it is named, and anything
+   that takes a click has to be on this line. The tour button spent a while
+   not being on it, which is a very quiet way for a button to be broken:
+   it looked right, it hovered, and the press went through it into the
+   canvas. If a control ever stops responding, look here first. */
 .hud .cluster, .hud .scalebar, .hud .fact, .hud .compare,
-.hud .dock, .hud .iconbtn { pointer-events: auto; }
+.hud .dock, .hud .iconbtn, .hud .playbtn { pointer-events: auto; }
 
 /* flex: 1 so the top row owns the height left over above the dock. Without
    that the row sizes to its own content, the fact card grows past the
@@ -838,9 +843,12 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         where a story about "the biggest star" would want to put it.</p>
       <p class="tight">It is not a bug and it is the most useful thing on the page. A star
         is a small object in an enormous amount of empty space, and the empty space wins
-        every time you zoom out. The same thing happens at the other end: the Oort Cloud
-        very nearly reaches the nearest star, because a star's territory is not a tidy
-        sphere with a gap after it.</p>
+        every time you zoom out. The Oort Cloud and the nearest star are the same trap read
+        the other way round: the cloud's frame is nearly as wide as the frame holding the
+        whole distance to Proxima, which looks like the Sun's comets almost touching another
+        star. They do not. One of those numbers is a width and the other is a one-way trip,
+        and halving the first to get the cloud's reach puts the comets a bit over a third of
+        the way. Two frames the same size are not two things the same shape.</p>
       <p class="tight">Some rungs are objects and some are distances — the Moon's orbit, the
         gap to Proxima Centauri. Those say so in the caption, because a distance quietly
         presented as an object is a lie told by layout.</p>
@@ -851,8 +859,8 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
       <p><strong>The geometry is the data.</strong> Every position, every size, every gap and
         every caliper on the field comes from the metre value in the table below, divided by
         the width of the current frame. There is no "about this big" anywhere in the layout.</p>
-      <p><strong>The pictures are illustrations.</strong> The <em>sizes</em> are measurements;
-        the drawings inside them are drawn by hand and their colours are chosen. An elephant
+      <p><strong>The pictures are illustrations.</strong> The <em>sizes</em> come from the numbers
+        in the table; the drawings inside them are drawn by hand and their colours are chosen. An elephant
         is grey because elephants are grey, not because anything was sampled. Treat the shapes
         as labels on correctly-sized boxes.</p>
       <p><strong>Nothing is drawn inside a thing that has no measured inside.</strong> This
@@ -887,8 +895,17 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         ever bounded for a neutrino is its charge radius, and that comes from watching reactor
         antineutrinos scatter off electrons, which is a far blunter instrument. So the neutrino
         sits above the electron here. Nobody thinks it is bigger. Read the three of them as one
-        rung with three names and a note about how hard each was to corner. Every rung from the
-        proton onward is a measurement.</p>
+        rung with three names and a note about how hard each was to corner.</p>
+      <p><strong>And "measured" is not one thing either.</strong> Some rungs above the proton are
+        measurements in the plainest sense — the proton's charge radius, the Earth's diameter,
+        Hyperion's height, the distance to Proxima. Others are estimates that depend on a model,
+        or on somebody deciding where a thing stops. Nobody has ever detected an object in the
+        Oort Cloud. Stephenson 2-18's size hangs on a cluster membership that is disputed. The
+        Milky Way has no edge, only a place where the stars run out. Laniakea is defined by which
+        way galaxies are moving rather than by a boundary you could cross. The observable
+        universe's width comes out of a cosmology, not off a ruler. Every one of those rungs
+        carries a caveat saying so, and this page would rather you read them than take the
+        drawing's confidence at face value.</p>
       <p><strong>Things drawn at true scale that you therefore cannot see.</strong> The nucleus
         inside the hydrogen atom is a hundredth of a pixel. The planets on their orbits are
         thinner than the lines of the orbits themselves. The Sun disappears entirely at
@@ -927,7 +944,13 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         IAU 2012 for the astronomical unit; IAU 2015 for the nominal solar radius.
         Fok et al. (2012) for the radius of Stephenson 2-18, whose cluster membership —
         and therefore its size — is disputed. Hipparcos and later parallaxes for Proxima
-        Centauri. Bland-Hawthorn &amp; Gerhard (2016) for the shape of the Galaxy.
+        Centauri, and NASA's mission status page for how far Voyager 1 has got along that line.
+        Bland-Hawthorn &amp; Gerhard (2016) for the shape of the Galaxy. Sawala et al. (2025),
+        <em>Nature Astronomy</em>, for the Milky Way–Andromeda merger being roughly a coin toss
+        over the next ten billion years rather than the settled four-and-a-half-billion-year
+        collision the older simulations gave — the uncertainty is in Andromeda's transverse
+        velocity, and later work using newer Gaia proper motions leans toward a merger without
+        closing the question.
         Tully et al. (2014), <em>Nature</em>, for the Laniakea supercluster and its
         definition by velocity flow. Planck 2018 for the age of the universe and the
         comoving distance to the particle horizon. <strong>The shell at the observable
@@ -948,11 +971,11 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
 <p class="sr" id="live-region" aria-live="polite" aria-atomic="true"></p>
 
-<script src="src/ladder.js?v=11"></script>
-<script src="src/units.js?v=11"></script>
-<script src="src/sky.js?v=11"></script>
-<script src="src/paint.js?v=11"></script>
-<script src="src/exhibit.js?v=11"></script>
+<script src="src/ladder.js?v=12"></script>
+<script src="src/units.js?v=12"></script>
+<script src="src/sky.js?v=12"></script>
+<script src="src/paint.js?v=12"></script>
+<script src="src/exhibit.js?v=12"></script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="scale" defer></script>
 </body>
 </html>
