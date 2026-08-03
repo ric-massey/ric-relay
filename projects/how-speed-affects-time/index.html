@@ -1599,6 +1599,10 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         time dilation. Accelerations are drawn as short ramps and their g-forces are ignored; the
         turnaround brings the ship to a full stop before it reverses, which is what makes each leg a
         plain constant-velocity problem.</p>
+      <p><strong>What moves, and what does not.</strong> The simulation models the effects of velocity on
+        the sky and clocks, while holding the underlying celestial sky fixed. Positional changes from
+        travelling through the galaxy are omitted because they occur too slowly to matter during normal
+        use.</p>
       <p><strong>The photographic sky stays, and it is one photograph.</strong> Every displayed ray is
         traced backward through the aberration equation, converted to galactic longitude and latitude,
         and used to sample ESO's all-sky panorama — so motion distorts the photograph itself rather
