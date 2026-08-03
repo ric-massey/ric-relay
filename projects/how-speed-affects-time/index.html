@@ -202,7 +202,11 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
 /* The centre slot of the top row. Empty except during a landing. */
 .hud-mid { flex: 1 1 auto; display: flex; justify-content: center; align-items: flex-start; }
 .rail { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
-.rail-left { align-items: flex-start; }
+.rail-left { align-items: flex-start; align-self: stretch; min-height: 0; }
+/* Pushed to the foot of the left column, and allowed to be the thing that
+   shrinks: margin-top auto takes the slack so the clocks stay put at the top
+   and the feed grows downward from the bottom edge instead of pushing them. */
+.rail-left .marks { margin-top: auto; }
 /* Stretched, so the feed inside it can flex into the space that is left. */
 .rail-right { align-items: flex-end; align-self: stretch; min-height: 0; }
 /* The left rail starts below the return pill, which is fixed at the very
@@ -429,38 +433,61 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
 .preset:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .preset[aria-pressed="true"] { color: #0b0b10; background: var(--ink); border-color: var(--ink); }
 
-/* A row is the band and its colour. The swatch only exists while the band is
-   in the mix — an empty picker next to an unselected band reads as a colour
-   that is doing something. */
-.band-row {
-  display: flex; align-items: stretch; gap: 0;
-  border-top: 1px solid rgba(255,255,255,.09);
-  transition: background .15s;
+/* The group heading. The list used to repeat "Near infrared" four times with
+   nothing saying those four were one thing; now the name is said once and the
+   rows under it carry only what tells them apart. */
+.band-group {
+  padding: .42rem .55rem .18rem;
+  font: 600 .5rem/1.5 var(--mono); letter-spacing: .17em; text-transform: uppercase;
+  color: var(--dimmer); border-top: 1px solid rgba(255,255,255,.09);
 }
-.band-row[data-on="true"] { background: rgba(255,255,255,.08); box-shadow: inset 2px 0 0 var(--ink); }
-.band-row:hover { background: rgba(255,255,255,.06); }
+.band-group:first-child { border-top: none; }
+
+.band-row { display: flex; flex-direction: column; transition: background .15s; }
+.band-row[data-on="true"] { background: rgba(255,255,255,.07); box-shadow: inset 2px 0 0 var(--ink); }
+.band-row:hover { background: rgba(255,255,255,.05); }
 .band {
-  display: flex; flex-direction: column; gap: .05rem;
-  flex: 1 1 auto; min-width: 0; text-align: left; cursor: pointer;
-  padding: .3rem .4rem .32rem .55rem;
+  width: 100%; text-align: left; cursor: pointer;
+  padding: .26rem .5rem .28rem .55rem;
   background: none; border: none;
+  color: var(--dim); font: 400 .62rem/1.4 var(--mono);
 }
 .band:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
-.band .t { color: var(--ink); font: 400 .66rem/1.35 var(--mono); }
-.band .s { color: var(--dimmer); font: 400 .54rem/1.4 var(--mono); }
-.band-row[data-on="true"] .t { color: #fff; }
-/* The swatch. A native colour input, stripped of its chrome so it reads as a
-   chip of the colour it holds rather than as a form control. */
-.band-tint {
-  flex: none; align-self: center; width: 20px; height: 20px;
-  margin-right: .5rem; padding: 0; cursor: pointer;
-  background: none; border: 1px solid rgba(255,255,255,.35); border-radius: 5px;
-  -webkit-appearance: none; appearance: none;
+.band-row[data-on="true"] .band { color: #fff; }
+
+/* The colour and the amount. Only while the band is in the mix — controls
+   sitting under an unselected band read as settings that are doing something.
+   Six fixed hues rather than a wheel: a picker offers sixteen million colours
+   of which about fifteen look like anything, and gives you no clue which. */
+/* Stacked, not side by side. Sharing a line, the slider was squeezed to about
+   its own thumb — a white circle sitting at the end of a row of coloured
+   circles, which reads as a seventh colour rather than as a control. On its
+   own row it has the width to look like the slider it is. */
+.band-ctl { display: flex; flex-direction: column; gap: .22rem; padding: .1rem .55rem .36rem; }
+.band-swatches { display: flex; gap: .2rem; flex: none; }
+.swatch {
+  width: 13px; height: 13px; padding: 0; cursor: pointer;
+  border-radius: 50%; border: 1px solid rgba(0,0,0,.5);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.18);
+  transition: transform .12s, box-shadow .12s;
 }
-.band-tint::-webkit-color-swatch-wrapper { padding: 0; }
-.band-tint::-webkit-color-swatch { border: none; border-radius: 4px; }
-.band-tint::-moz-color-swatch { border: none; border-radius: 4px; }
-.band-tint:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.swatch:hover { transform: scale(1.15); }
+.swatch:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink); transform: scale(1.15); }
+.band-gain {
+  width: 100%; height: 14px; cursor: pointer;
+  -webkit-appearance: none; appearance: none; background: none;
+}
+.band-gain::-webkit-slider-runnable-track {
+  height: 3px; border-radius: 999px; background: rgba(255,255,255,.22);
+}
+.band-gain::-moz-range-track { height: 3px; border-radius: 999px; background: rgba(255,255,255,.22); }
+.band-gain::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 10px; height: 10px; margin-top: -3.5px;
+  border-radius: 50%; border: none; background: var(--ink);
+}
+.band-gain::-moz-range-thumb { width: 10px; height: 10px; border: none; border-radius: 50%; background: var(--ink); }
+.band-gain:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .bands-note {
   padding: .4rem .6rem .1rem; color: #c2c2ca;
   font: .68rem/1.45 var(--serif); text-wrap: pretty;
@@ -998,6 +1025,21 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
           </div>
 
           <div class="altimeter glass num" id="altimeter" hidden aria-live="off"></div>
+
+          <!-- Checkpoints, at the foot of the left rail. They used to sit top
+               right, opposite the clocks, which put the two things that arrive
+               unbidden — a checkpoint and a wavelength you chose — in the same
+               corner competing for the same glance. Down here the left column
+               reads top to bottom as the trip: what time it is, how high you
+               are, and what you have already passed. -->
+          <div class="marks" id="marks" data-open="true" hidden>
+            <button type="button" class="marks-head" id="marks-toggle"
+                    aria-expanded="true" aria-controls="marks-list">
+              <span><span class="v" aria-hidden="true"></span> Checkpoints</span>
+              <span class="c num" id="marks-count">0</span>
+            </button>
+            <div class="marks-list" id="marks-list" role="log" aria-live="polite"></div>
+          </div>
         </div>
 
         <div class="hud-mid">
@@ -1054,14 +1096,6 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
             </div>
           </div>
 
-          <div class="marks" id="marks" data-open="true" hidden>
-            <button type="button" class="marks-head" id="marks-toggle"
-                    aria-expanded="true" aria-controls="marks-list">
-              <span><span class="v" aria-hidden="true"></span> Checkpoints</span>
-              <span class="c num" id="marks-count">0</span>
-            </button>
-            <div class="marks-list" id="marks-list" role="log" aria-live="polite"></div>
-          </div>
         </div>
       </div>
 
@@ -1693,7 +1727,7 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 <script src="src/ground.js?v=10"></script>
 <script src="src/photo-sky.js?v=18"></script>
 <script src="src/glossary.js?v=4"></script>
-<script src="src/exhibit.js?v=62"></script>
+<script src="src/exhibit.js?v=63"></script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="spacetime" defer></script>
 </body>
 </html>

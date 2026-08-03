@@ -114,7 +114,23 @@
      something genuinely bluer in the data comes out bluer on screen — while
      the absolute colours are admitted to be invented. */
   const MIX_MAX = 3;
-  const DEFAULT_TINTS = ["#4d7fff", "#4dff8a", "#ff5a3c"];
+
+  /* Six colours, not a wheel.
+     A freeform picker lets you choose 16 million colours, of which about
+     fifteen look like anything — the rest are mud, and the control gives you
+     no clue which is which. Six saturated hues spaced round the circle can be
+     mixed wrong but not muddy, and each one is a channel you can name. What
+     you actually want to adjust once the hue is chosen is how much of that
+     band is in the picture, so that is the second control: brightness. */
+  const PALETTE = [
+    { hex: "#ff4a3d", name: "red" },
+    { hex: "#ff9c2b", name: "orange" },
+    { hex: "#5ddc5d", name: "green" },
+    { hex: "#39d6d6", name: "cyan" },
+    { hex: "#4d7fff", name: "blue" },
+    { hex: "#c46bff", name: "violet" },
+  ];
+  const DEFAULT_TINTS = ["#4d7fff", "#5ddc5d", "#ff4a3d"];
 
   /* Presets. Each is a set of bands in wavelength order with the channel
      assignment the convention would give it, so a visitor who never touches a
@@ -123,15 +139,15 @@
     { id: "visible", label: "Visible", note: "The sky as it is, in the light you have.",
       mix: [["visible", "#ffffff"]] },
     { id: "chromatic", label: "Chromatic", note: "Three infrared bands in wavelength order, shortest to blue — the method JWST uses.",
-      mix: [["nir1250", "#3f6cff"], ["nir3500", "#46e07a"], ["mir12", "#ff5f34"]] },
+      mix: [["nir1250", "#4d7fff", 1], ["nir3500", "#5ddc5d", 1], ["mir12", "#ff4a3d", 1]] },
     { id: "starsdust", label: "Stars & dust", note: "Starlight in blue, warm dust in green, cold dust in red. The Galaxy's two populations, separated.",
-      mix: [["nir2200", "#5b8cff"], ["mir25", "#57dd6a"], ["fir100", "#ff4f2e"]] },
+      mix: [["nir2200", "#4d7fff", 1], ["mir25", "#5ddc5d", 0.9], ["fir100", "#ff4a3d", 1]] },
     { id: "multi", label: "Whole spectrum", note: "X-ray, far infrared and radio together — three completely different skies at once.",
-      mix: [["xray", "#7ad0ff"], ["fir100", "#8cff6a"], ["radio408", "#ff4a6a"]] },
+      mix: [["xray", "#39d6d6", 1.2], ["fir100", "#5ddc5d", 0.8], ["radio408", "#c46bff", 1]] },
   ];
 
   // Slot list: [{ id, tint }]. One entry with white is the plain single band.
-  let mix = [{ id: "visible", tint: "#ffffff" }];
+  let mix = [{ id: "visible", tint: "#ffffff", gain: 1 }];
   let presetId = "visible";
 
   /* What has happened at home, as Earth's clock crosses each threshold.
@@ -1802,8 +1818,21 @@
       presets.append(el);
     }
 
+    /* Grouped by label. The labels were already the groups — "Near infrared"
+       appeared four times running — so the list was showing the grouping and
+       naming none of it. A heading per group and the rows carry only what
+       distinguishes them, which is the wavelength. */
     const list = $("bands-list");
+    let lastGroup = null;
     for (const b of BANDS) {
+      if (b.label !== lastGroup) {
+        lastGroup = b.label;
+        const h = document.createElement("div");
+        h.className = "band-group";
+        h.textContent = b.label;
+        list.append(h);
+      }
+
       const row = document.createElement("div");
       row.className = "band-row";
       row.dataset.band = b.id;
@@ -1812,23 +1841,44 @@
       el.type = "button";
       el.className = "band";
       el.dataset.band = b.id;
-      const t = document.createElement("span");
-      t.className = "t"; t.textContent = b.label;
-      const s = document.createElement("span");
-      s.className = "s num"; s.textContent = b.sub;
-      el.append(t, s);
+      el.textContent = b.sub;
       el.addEventListener("click", () => toggleBand(b.id));
+      row.append(el);
 
-      /* A native colour input, because it is a real colour wheel on every
-         platform, it is keyboard and screen-reader accessible for free, and
-         this exhibit does not take dependencies. */
-      const pick = document.createElement("input");
-      pick.type = "color";
-      pick.className = "band-tint";
-      pick.setAttribute("aria-label", "Colour for " + b.label + " " + b.sub);
-      pick.addEventListener("input", () => setTint(b.id, pick.value));
+      /* Visible is not a channel you tint. It is the one band on the list
+         that already has its own colours, measured, and painting over them
+         would be inventing a sky on top of the only real one here. */
+      if (b.id !== "visible") {
+        const ctl = document.createElement("div");
+        ctl.className = "band-ctl";
 
-      row.append(el, pick);
+        const swatches = document.createElement("div");
+        swatches.className = "band-swatches";
+        swatches.setAttribute("role", "group");
+        swatches.setAttribute("aria-label", "Colour for " + b.sub);
+        for (const p of PALETTE) {
+          const sw = document.createElement("button");
+          sw.type = "button";
+          sw.className = "swatch";
+          sw.dataset.hex = p.hex;
+          sw.style.background = p.hex;
+          sw.title = p.name;
+          sw.setAttribute("aria-label", p.name);
+          sw.addEventListener("click", () => setTint(b.id, p.hex));
+          swatches.append(sw);
+        }
+
+        const gain = document.createElement("input");
+        gain.type = "range";
+        gain.className = "band-gain";
+        gain.min = "0"; gain.max = "150"; gain.step = "1";
+        gain.setAttribute("aria-label", "Brightness of " + b.sub);
+        gain.addEventListener("input", () => setGain(b.id, gain.value / 100));
+
+        ctl.append(swatches, gain);
+        row.append(ctl);
+      }
+
       list.append(row);
     }
 
@@ -1846,7 +1896,7 @@
     const p = PRESETS.find((x) => x.id === id);
     if (!p) return;
     presetId = id;
-    mix = p.mix.map(([band, tint]) => ({ id: band, tint }));
+    mix = p.mix.map(([band, tint, gain]) => ({ id: band, tint, gain: gain == null ? 1 : gain }));
     paintBand();
     pushMix();
   }
@@ -1856,14 +1906,25 @@
      control that silently does nothing is worse than one that does something
      you can undo. */
   function toggleBand(id) {
+    /* Visible is exclusive both ways. It is the sky as it is, so it cannot be
+       one ingredient of a false-colour mix — choosing it means choosing to
+       look at what is actually there, and choosing anything else means
+       leaving that behind. */
+    if (id === "visible") {
+      mix = [{ id: "visible", tint: "#ffffff", gain: 1 }];
+      presetId = "visible";
+      paintBand(); pushMix();
+      return;
+    }
+    if (mix.length === 1 && mix[0].id === "visible") mix = [];
+
     const at = mix.findIndex((m) => m.id === id);
     if (at >= 0) {
-      if (mix.length > 1) mix.splice(at, 1);
+      mix.splice(at, 1);
+      if (!mix.length) mix = [{ id: "visible", tint: "#ffffff", gain: 1 }];
     } else {
-      const tint = mix.length === 0 && id === "visible"
-        ? "#ffffff" : DEFAULT_TINTS[mix.length % DEFAULT_TINTS.length];
       if (mix.length >= MIX_MAX) mix.shift();
-      mix.push({ id, tint });
+      mix.push({ id, tint: DEFAULT_TINTS[mix.length % DEFAULT_TINTS.length], gain: 1 });
     }
     presetId = matchPreset();
     paintBand();
@@ -1879,11 +1940,21 @@
     pushMix();
   }
 
+  function setGain(id, gain) {
+    const slot = mix.find((m) => m.id === id);
+    if (!slot) return;
+    slot.gain = gain;
+    presetId = matchPreset();
+    paintBand();
+    pushMix();
+  }
+
   function matchPreset() {
     for (const p of PRESETS) {
       if (p.mix.length !== mix.length) continue;
-      if (p.mix.every(([b, t], i) =>
-        mix[i].id === b && mix[i].tint.toLowerCase() === t.toLowerCase())) return p.id;
+      if (p.mix.every(([b, t, g], i) =>
+        mix[i].id === b && mix[i].tint.toLowerCase() === t.toLowerCase()
+        && Math.abs(mix[i].gain - (g == null ? 1 : g)) < 0.005)) return p.id;
     }
     return null;
   }
@@ -1901,7 +1972,8 @@
   function pushMix() {
     const layers = mix.map((m) => {
       const b = BANDS.find((x) => x.id === m.id) || BANDS[0];
-      return { url: b.url, tint: hexToRgb(m.tint) };
+      const g = m.gain == null ? 1 : m.gain;
+      return { url: b.url, tint: hexToRgb(m.tint).map((v) => v * g) };
     });
 
     /* Normalise per output channel, not per layer.
@@ -1931,9 +2003,15 @@
       const slot = mix.find((m) => m.id === row.dataset.band);
       row.dataset.on = slot ? "true" : "false";
       row.querySelector(".band").setAttribute("aria-pressed", slot ? "true" : "false");
-      const pick = row.querySelector(".band-tint");
-      pick.hidden = !slot;
-      if (slot) pick.value = slot.tint;
+      const ctl = row.querySelector(".band-ctl");
+      if (!ctl) continue;
+      ctl.hidden = !slot;
+      if (!slot) continue;
+      for (const sw of ctl.querySelectorAll(".swatch")) {
+        sw.setAttribute("aria-pressed",
+          sw.dataset.hex.toLowerCase() === slot.tint.toLowerCase() ? "true" : "false");
+      }
+      ctl.querySelector(".band-gain").value = Math.round((slot.gain == null ? 1 : slot.gain) * 100);
     }
     for (const el of document.querySelectorAll(".preset")) {
       el.setAttribute("aria-pressed", el.dataset.preset === presetId ? "true" : "false");
