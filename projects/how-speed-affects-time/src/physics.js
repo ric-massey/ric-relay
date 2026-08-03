@@ -33,11 +33,18 @@
 
   /* Relativistic aberration, in the half-angle form.
 
-     The cosine form, cos θ′ = (cos θ − β)/(1 − β cos θ), is algebraically
+     The cosine form, cos θ′ = (cos θ + β)/(1 + β cos θ), is algebraically
      identical and numerically useless here: it loses precision near θ = 0,
      which at high γ is where every star in the sky has ended up. The
      half-angle form is stable across the whole range, and it hands back
-     tan(θ′/2) — exactly the quantity the tangent-plane projection wants. */
+     tan(θ′/2) — exactly the quantity the tangent-plane projection wants.
+
+     The sign is worth a sentence, because most textbooks print the minus.
+     They measure θ along the photon's direction of travel; this exhibit
+     measures it toward the source — "light reaching you from angle θ" — and
+     the two conventions are supplements of each other. Under the minus form
+     θ = 90° at β = 0.7771 comes out at 141°, not 39°, which is the same
+     answer pointed the wrong way down the sky. */
   const aberrationK = (beta) => Math.sqrt((1 - beta) / (1 + beta));
 
   /* Angular radius of the cone the forward hemisphere collapses into.
@@ -52,18 +59,73 @@
      it — see below. */
   const skyFractionInside = (a) => (1 - Math.cos(a)) / 2;
 
-  /* How much of the whole sky has been squeezed inside a cone of apparent
+  /* How much of the whole sky has been squeezed inside a *cone* of apparent
      half-angle a′. Aberration is run backwards to find where that light
      started out, and it is the starting solid angle that answers "how much
      of the universe can I see from here."
 
-     At β = 0.7771 and a′ = 39° this returns exactly 0.5: half the universe,
-     one frame. At 0.99 c it is 96%, and almost all of it started behind you. */
+     At β = 0.7771 and a′ = 39° this returns exactly 0.5. That is a true
+     statement about a 78°-wide circle and it is not the statement this
+     exhibit needs, because the frame is a rectangle — see below. */
   function skyFractionInFrame(beta, aPrime) {
     const t = Math.tan(aPrime / 2) / aberrationK(beta);
     const theta = 2 * Math.atan(t);
     return (1 - Math.cos(theta)) / 2;
   }
+
+  /* The same question asked about the shape the visitor is actually looking
+     through: a rectangle, 49° tall and as wide as the window is.
+
+     This used to be answered with the cone above, at a hardcoded 39°, and it
+     was wrong twice over. A 78° × 49° rectangle is a good deal smaller than
+     the 78°-wide circle that would contain it, so the figure was too generous
+     — 50% where the truth is 40.9%. And because 39° was a constant while the
+     prose elsewhere derived its own half-width from the live aspect ratio, the
+     two readouts disagreed with each other on the same page: on a phone held
+     upright the frame is barely 29° wide and holds 20.7% of the sky, while the
+     equation sheet went on insisting it was half.
+
+     There is no closed form for a rectangle, so it is integrated. In the
+     tangent plane about the view axis a direction (a, b) has
+
+         cos θ′ = 1 / √(1 + a² + b²),   dΩ′ = da db / (1 + a² + b²)^(3/2)
+
+     and aberration compresses solid angle by exactly D², so the rest-frame
+     solid angle behind the frame is ∫∫ D² dΩ′. Quarter-symmetric midpoint
+     rule; the integrand is smooth and bounded, and 96 steps per axis is
+     converged to well past the two decimals anything prints.
+
+     One consequence worth stating out loud: 0.7771 c stops being a special
+     speed. On a 16:9 window half the sky arrives at 0.8428 c instead, and on
+     any other window shape at some other speed entirely. The old number was
+     only ever the answer to the circle. */
+  const RECT_N = 96;
+
+  function skyFractionInRect(beta, halfW, halfV) {
+    const g = gamma(beta);
+    const A = Math.tan(halfW), B = Math.tan(halfV);
+    const da = A / RECT_N, db = B / RECT_N;
+    let sum = 0;
+    for (let i = 0; i < RECT_N; i++) {
+      const a = (i + 0.5) * da;
+      const a2 = a * a;
+      for (let j = 0; j < RECT_N; j++) {
+        const b = (j + 0.5) * db;
+        const r2 = 1 + a2 + b * b;
+        const invR = 1 / Math.sqrt(r2);
+        const D = 1 / (g * (1 - beta * invR));
+        sum += D * D * invR / r2;
+      }
+    }
+    // ×4 for the three quadrants the loop skipped, ÷4π to make it a fraction.
+    return sum * da * db / Math.PI;
+  }
+
+  /* The frame's own half-width, given how wide the window turned out to be.
+     The vertical is locked at 49° by the renderer and the horizontal follows
+     from it, so this is the one place the window's shape enters the physics. */
+  const HALF_V = 49 * Math.PI / 360;
+  const frameHalfWidth = (aspect) => Math.atan(aspect * Math.tan(HALF_V));
 
   /* Kinetic energy of a mass m at β, in joules. Modern formulation —
      no "relativistic mass" anywhere in this exhibit (Okun 2009). */
@@ -75,13 +137,20 @@
      §5 of the blueprint. Two of these detents are not round numbers and
      are not there for the number:
 
-       0.7771  the speed at which the entire forward hemisphere first fits
-               inside the exhibit's 78° frame
+       0.7771  the speed at which the forward hemisphere collapses into a
+               cone 78° across — the width of the frame on a 16:9 window
        0.99998 the speed at which the microwave background reaches ~862 K
                and the sky ahead starts to glow
 
      Both are computed, not chosen. The label is the point; the number is
-     just where the thing happens. */
+     just where the thing happens.
+
+     The first one used to be labelled "half the universe, one frame", and it
+     was not. 78° across is the *cone's* width, and a cone of that width holds
+     half the sky; the frame is a rectangle only 49° tall, so it catches 40.9%
+     of it and not 50%. Half the sky arrives at 0.8428 c on a 16:9 window —
+     and at some other speed on any other window, which is exactly why that is
+     a live readout in the equation sheet and not a rung here. */
   const LADDER = [
     { beta: 1.4 / C,        label: "walking",   note: "3.1 mph" },
     { beta: 44.7 / C,       label: "highway",   note: "100 mph" },
@@ -91,7 +160,7 @@
     { beta: 192000 / C,     label: "Parker",    note: "429,500 mph — the fastest object we have built" },
     { beta: 0.1,            label: "0.1 c",     note: "" },
     { beta: 0.5,            label: "0.5 c",     note: "" },
-    { beta: 0.7771,         label: "0.7771 c",  note: "half the universe, one frame" },
+    { beta: 0.7771,         label: "0.7771 c",  note: "everything ahead now spans the width of the view" },
     { beta: 0.9,            label: "0.9 c",     note: "" },
     { beta: 0.99,           label: "0.99 c",    note: "" },
     { beta: 0.999,          label: "0.999 c",   note: "" },
@@ -269,6 +338,7 @@
   window.HSAT_PHYSICS = {
     C, gamma, doppler, dopplerAhead, dopplerBehind,
     aberrationK, forwardHemisphereRadius, skyFractionInside, skyFractionInFrame,
+    skyFractionInRect, frameHalfWidth,
     kineticEnergy, restEnergy, momentum,
     LADDER, sliderToBeta, betaToSlider,
     formatBeta, formatGamma, formatDuration, formatDistance, formatMiles,

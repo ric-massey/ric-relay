@@ -98,8 +98,8 @@
     },
     "beaming": {
       label: "Relativistic beaming",
-      short: "The light ahead of you does not only look bluer, it looks brighter — enormously so. At 0.99 c the sky ahead is about forty thousand times brighter.",
-      formula: "brightness ∝ D⁴",
+      short: "The light ahead of you does not only look bluer, it looks brighter — enormously so. At 0.99 c each star ahead is about two hundred times brighter, and the Milky Way's surface about forty thousand times, per patch of sky. The two differ because a star is a point and the band is not: a point has no disc left to shrink.",
+      formula: "star ∝ D²   ·   surface ∝ D⁴",
       live: "D4",
     },
     "point-spread-function": {

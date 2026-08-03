@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-mochi-world="space">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -10,8 +10,7 @@
 <meta property="og:title" content="How Speed Affects Time">
 <meta property="og:description" content="Watch your own clock stay perfectly normal while Earth's runs away from you. Real star catalogue, real physics, no fudge.">
 <link rel="preload" as="image" href="assets/milky-way-rest.jpg">
-<link rel="preload" as="image" href="assets/milky-way-panorama.jpg">
-<link rel="preload" as="image" href="assets/milky-way-return.jpg">
+<link rel="preload" as="image" href="assets/milky-way-eso.jpg">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23000'/><circle cx='50' cy='50' r='7' fill='%23fff'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23555' stroke-width='2'/></svg>">
 <style>
 /* ══════════════════════════════════════════════════════════════════════
@@ -112,6 +111,26 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
 }
 .earth-target img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
 .earth-target img[data-failed] { display: none; }
+/* The range caption, under the dot in the rear view. Offset from the centre
+   by a fixed amount rather than by the disc's own height: astern the disc is
+   usually two pixels across, so anchoring to it would put the text on top of
+   the planet. */
+.earth-mark {
+  position: absolute; z-index: 5; left: 50%; top: 50%;
+  width: 26px; height: 26px; margin: -13px 0 0 -13px;
+  border-radius: 50%; border: 1px solid rgba(196,216,248,.34);
+  pointer-events: none;
+}
+.earth-mark::after {
+  content: ""; position: absolute; inset: -5px;
+  border-radius: 50%; border: 1px solid rgba(196,216,248,.13);
+}
+.earth-range {
+  position: absolute; z-index: 5; left: 50%; top: 50%;
+  transform: translate(-50%, 26px); white-space: nowrap; pointer-events: none;
+  font: .68rem/1.5 var(--mono); color: rgba(226,214,208,.82);
+  text-shadow: 0 1px 6px rgba(0,0,0,.9);
+}
 
 /* ── the air, and the ground you leave ────────────────────────────────
    Layered veils over the star field, each fading on its own schedule
@@ -360,6 +379,66 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
   transition: transform .18s; }
 .mark[aria-expanded=true]::after { transform: rotate(-135deg); }
 @keyframes markin { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── wavelength ───────────────────────────────────────────────────────
+   Same panel as the checkpoints, so the right rail reads as one column of
+   things that fold rather than two competing widgets. It reuses .marks-head
+   outright — the header is identical in job and in look, and a second copy of
+   those rules would only be a second place to forget to change something. */
+.bands {
+  display: flex; flex-direction: column; align-items: stretch;
+  width: 10.5rem; max-width: 100%; flex: none;
+  border-radius: 12px; overflow: hidden;
+  background: rgba(16,17,24,.72); border: 1px solid rgba(255,255,255,.13);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 10px 28px rgba(0,0,0,.42);
+  backdrop-filter: blur(16px) saturate(150%); -webkit-backdrop-filter: blur(16px) saturate(150%);
+}
+.bands[data-open="false"] .marks-head .v { transform: rotate(-135deg) translate(-1px, -1px); }
+.bands[data-open="false"] .bands-body { display: none; }
+.bands-list {
+  display: flex; flex-direction: column;
+  max-height: min(30vh, 15rem); overflow-y: auto;
+  overscroll-behavior: contain; scrollbar-width: none;
+}
+.bands-list::-webkit-scrollbar { display: none; }
+.band {
+  display: flex; flex-direction: column; gap: .05rem;
+  width: 100%; text-align: left; cursor: pointer; flex: none;
+  padding: .3rem 1.25rem .32rem .55rem;
+  background: none; border: none; border-top: 1px solid rgba(255,255,255,.09);
+  transition: background .15s;
+}
+.band:hover { background: rgba(255,255,255,.06); }
+.band:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.band .t { color: var(--ink); font: 400 .66rem/1.35 var(--mono); }
+.band .s { color: var(--dimmer); font: 400 .54rem/1.4 var(--mono); }
+/* The chosen one keeps a rail down its left edge — a tick would need a column
+   the panel does not have at this width. */
+.band[aria-pressed="true"] { background: rgba(255,255,255,.08); box-shadow: inset 2px 0 0 var(--ink); }
+.band[aria-pressed="true"] .t { color: #fff; }
+.bands-note {
+  padding: .4rem .6rem .1rem; color: #c2c2ca;
+  font: .68rem/1.45 var(--serif); text-wrap: pretty;
+  border-top: 1px solid rgba(255,255,255,.09);
+}
+.bands-false {
+  padding: .3rem .6rem .5rem; color: var(--dimmer);
+  font: .58rem/1.4 var(--mono);
+}
+@media (min-width: 1000px) {
+  .bands { width: 13rem; }
+  .bands-list { max-height: min(34vh, 17rem); }
+  .band { padding: .38rem 1.4rem .4rem .62rem; }
+  .band .t { font-size: .74rem; }
+  .band .s { font-size: .58rem; }
+  .bands-note { font-size: .74rem; }
+}
+@media (min-width: 1400px) {
+  .bands { width: 16.5rem; }
+  .band { padding: .46rem 1.6rem .48rem .78rem; }
+  .band .t { font-size: .8rem; }
+  .bands-note { font-size: .78rem; padding: .5rem .75rem .15rem; }
+}
 
 /* Two steps up, because a laptop and a 27-inch monitor are not the same
    room. The width the panel is fighting for is the sky's, and on a wide
@@ -821,6 +900,18 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
     <div class="earth-target" id="earth-target" hidden aria-label="Earth ahead">
       <img id="earth-photo" src="assets/earth.jpg" alt="" aria-hidden="true" decoding="async">
     </div>
+    <!-- Only in the rear view. Ahead, Earth is the thing you are steering at
+         and the range is already the headline in the left cluster. Behind, it
+         is a dot in an empty wake, and a dot with no number on it is not
+         telling you anything — the caption is what makes it the planet you
+         left rather than another faint star. -->
+    <div class="earth-range num" id="earth-range" hidden aria-hidden="true"></div>
+    <!-- A reticle, not a bigger planet. Astern, Earth is genuinely smaller than
+         a pixel almost immediately, and the forward view's trick of flooring
+         the disc at seven pixels would be drawing a world four times the size
+         it is. So the disc stays true and a ring says where to look. The ring
+         is obviously an instrument; a fattened globe would be a lie. -->
+    <div class="earth-mark" id="earth-mark" hidden aria-hidden="true"></div>
 
     <!-- The air, and the hillside you are standing on. Everything in here
          is scenery: the star field behind it never changes its physics,
@@ -898,6 +989,25 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
                down the side, newest first, each one tappable for the sentence
                that explains it. They stay for the trip, and the header folds
                the whole thing away. -->
+          <!-- Wavelength. Every other control on this page changes what you
+               are doing; this one changes what you are looking with. It sits
+               with the checkpoints because both are things you open, read and
+               fold away again — and it starts folded, because the exhibit's
+               first frame should be the sky you actually have. -->
+          <div class="bands" id="bands" data-open="false">
+            <button type="button" class="marks-head" id="bands-toggle"
+                    aria-expanded="false" aria-controls="bands-body">
+              <span><span class="v" aria-hidden="true"></span> Wavelength</span>
+              <span class="c num" id="bands-now">360–830 nm · ESO</span>
+            </button>
+            <div class="bands-body" id="bands-body">
+              <div class="bands-list" id="bands-list"></div>
+              <p class="bands-note" id="bands-note"></p>
+              <p class="bands-false" id="bands-false" hidden>False colour — a
+                one-channel measurement drawn as brightness.</p>
+            </div>
+          </div>
+
           <div class="marks" id="marks" data-open="true" hidden>
             <button type="button" class="marks-head" id="marks-toggle"
                     aria-expanded="true" aria-controls="marks-list">
@@ -1004,11 +1114,12 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         clocks are back in the same place, which is what <em>Return to Earth</em> is for.</p>
 
       <p class="tight"><strong>The sky is three real things, stacked.</strong> Underneath is a
-        photograph — a full 360-degree panorama of the actual Milky Way, built to feel the way it
-        does to a dark-adapted person rather than like a sparse plotting of catalogue points. Over
-        that sit 9,096 catalogue stars at their real positions and real brightnesses. Filling
-        everything, invisibly, is the microwave background. All three go through the same
-        transform; nothing is swapped out for a different picture as you speed up.</p>
+        photograph — ESO's 360-degree panorama of the actual Milky Way, 120 hours of shutter time from
+        the Chilean desert, sampled by galactic longitude and latitude so it sits exactly where the
+        real sky does. Over that sit 9,096 catalogue stars at their real positions and real
+        brightnesses. Filling everything, and invisible until you are going very fast indeed, is the
+        microwave background. All three go through the same transform; nothing is swapped out for a
+        different picture as you speed up.</p>
 
       <p class="tight"><strong>Your motion does three things to all of it at once.</strong>
         <dfn data-term="aberration">Aberration</dfn> changes the direction light seems to come from,
@@ -1062,8 +1173,12 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         fitted or tuned — no free parameters anywhere between β and the light
         arriving at your eye. The free choices all sit at the display end, where
         they have to: an overall exposure, a separate scale for the Milky Way's
-        brightness, and the tone curve that lands the result inside what a monitor
-        can actually show. Those three are listed under Scope.</p>
+        brightness, the tone curve that lands the result inside what a monitor
+        can actually show, and — for the photographic layer only — a compressed
+        stand-in for beaming, because no screen can carry the real thing over
+        this range. That last one is a genuine departure rather than a scaling,
+        and it is the reason the modelled star field and the photograph behind
+        it are described separately under Scope, where all four are listed.</p>
 
       <div class="eqgroup">
         <h3>Motion and time</h3>
@@ -1154,11 +1269,17 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
         <div class="eq">
           <span class="n">Aberration, cosine form</span>
-          <code class="f">cos θ′ = (cos θ − β) / (1 − β cos θ)</code>
-          <span class="d">Algebraically identical, and the form you will find in
-            most textbooks. This build does not use it: it loses precision near
-            θ = 0, which at high γ is exactly where every star in the sky has
-            ended up. The half-angle form is stable across the whole range.</span>
+          <code class="f">cos θ′ = (cos θ + β) / (1 + β cos θ)</code>
+          <span class="d">Algebraically identical, and close to the form you will
+            find in most textbooks. This build does not use it: it loses precision
+            near θ = 0, which at high γ is exactly where every star in the sky has
+            ended up. The half-angle form is stable across the whole range.
+            <em>On the sign:</em> textbooks usually print a minus, because they
+            measure θ along the direction the photon is travelling. Here θ is
+            measured toward the source — the angle light reaches you
+            <em>from</em> — and the two conventions are supplements. Under the
+            minus, θ = 90° at β = 0.7771 would come out at 141° rather than 39°:
+            the right answer pointed down the wrong half of the sky.</span>
         </div>
 
         <div class="eq">
@@ -1171,12 +1292,66 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
         <div class="eq">
           <span class="n">How much sky is in the frame</span>
-          <code class="f">Ω / 4π = (1 − cos θ) / 2,   θ = 2 arctan[ tan(θ′/2) / k ]</code>
+          <code class="f">Ω / 4π = (1/4π) ∫∫<sub>frame</sub> D² dΩ′</code>
           <span class="d">Aberration run backwards, to find where the light in
-            front of you started out. At β = 0.7771 this returns exactly half —
-            half the sky in one 78° frame — which is why that odd number is
-            one of the marked speeds. Nearly all of it started out behind you.</span>
+            front of you started out. Aberration compresses solid angle by
+            exactly D², so this integral over the frame is the patch of sky it
+            came from. It is integrated rather than solved because the frame is
+            a <em>rectangle</em> — 49° tall and as wide as your window is — and
+            a rectangle has no closed form. It is also why this figure moves
+            when you resize: a phone held upright sees a good deal less sky than
+            a laptop does, and says so. On a 16:9 window half the sky arrives at
+            0.8428 c. Nearly all of it started out behind you.</span>
           <span class="v num" data-eq="frame"></span>
+        </div>
+      </div>
+
+      <div class="eqgroup">
+        <h3>Earth, from out here</h3>
+
+        <div class="eq">
+          <span class="n">How big it really is</span>
+          <code class="f">α = arcsin(R<sub>⊕</sub> / d),   R<sub>⊕</sub> = 6,371 km</code>
+          <span class="d">A plain triangle, no relativity in it at all. This is
+            the angle Earth subtends at your present range — and it is the
+            number that collapses fastest on the whole trip, because d is
+            climbing at nearly light speed.</span>
+          <span class="v num" data-eq="earth_true"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n">How big it looks, astern</span>
+          <code class="f">α′ = 2 arctan[ tan(α/2) / k ]</code>
+          <span class="d">The same half-angle map as every star, run the other
+            way round. Put Earth at θ = π − ε and the cotangents cancel, leaving
+            tan(ε′/2) = tan(ε/2) / k — so the planet behind you is
+            <em>magnified</em> by exactly the factor that shrinks the sky ahead.
+            The forward cone's light has to come from somewhere, and where it
+            comes from is the rear of the sky being stretched thin. Hold
+            <strong>Look behind</strong> and this is the disc you are looking
+            at.</span>
+          <span class="v num" data-eq="earth_astern"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n">How big it looks, ahead</span>
+          <code class="f">α′ = 2 arctan[ k · tan(α/2) ]</code>
+          <span class="d">And on the way home, the same map the usual way round:
+            the planet you are flying at is squeezed toward the middle of the
+            frame along with everything else. At 0.999 c it is forty-five times
+            smaller than the triangle says.</span>
+          <span class="v num" data-eq="earth_ahead"></span>
+        </div>
+
+        <div class="eq">
+          <span class="n">What it arrives with</span>
+          <code class="f">D<sub>astern</sub> = k,   surface brightness ∝ D⁴</code>
+          <span class="d">Earth is a surface, not a point, so its light follows
+            the D⁴ the Milky Way gets rather than the D² the stars do. Astern
+            that is k⁴, which at 0.9 c is 0.003 — the planet is not dim, it is
+            <em>gone</em>. What the exhibit draws is a compressed stand-in, and
+            it is listed with the other display choices under Scope.</span>
+          <span class="v num" data-eq="earth_beam"></span>
         </div>
       </div>
 
@@ -1215,13 +1390,21 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
         <div class="eq">
           <span class="n"><dfn data-term="beaming">Relativistic beaming</dfn></span>
-          <code class="f">brightness ∝ D⁴</code>
+          <code class="f">star ∝ D²        surface ∝ D⁴</code>
           <span class="d">The light ahead is not only bluer, it is enormously
-            brighter — and the light behind has been robbed to pay for it. Two
-            powers of D from solid angle, one from the energy of each photon, one
-            from the rate they arrive at. Equivalently: I<sub>ν</sub>/ν³ is a
-            Lorentz invariant, so the specific intensity goes as D³ and the
-            bolometric integral picks up the fourth.</span>
+            brighter — and the light behind has been robbed to pay for it. But
+            there are two exponents here, and which one applies depends on
+            whether you can resolve the thing. I<sub>ν</sub>/ν³ is a Lorentz
+            invariant, so <em>brightness per unit of sky</em> always goes as
+            D⁴ — that is the Milky Way, and every pixel of it. A star is a
+            point: you get that D⁴ multiplied by the solid angle its disc
+            subtends, and aberration has shrunk that disc by D², leaving D².
+            The photon accounting says the same thing more plainly — each
+            photon carries D times the energy and they arrive D times as
+            often, so the power is D × D and there is nowhere for two more
+            powers to come from. The band's total light goes as D² too; it
+            only looks like D⁴ because it is being crushed into 1/D² of the
+            sky at the same time.</span>
           <span class="v num" data-eq="beaming"></span>
         </div>
 
@@ -1327,10 +1510,22 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         time dilation. Accelerations are drawn as short ramps and their g-forces are ignored; the
         turnaround brings the ship to a full stop before it reverses, which is what makes each leg a
         plain constant-velocity problem.</p>
-      <p><strong>The photographic sky stays.</strong> The high-resolution opening plate is set into a
-        complete 360-degree panorama of the same sky. Every displayed ray is traced backward through
-        the aberration equation before that panorama is sampled, so motion distorts the photograph
-        itself rather than replacing it. It never twinkles.</p>
+      <p><strong>The photographic sky stays, and it is one photograph.</strong> Every displayed ray is
+        traced backward through the aberration equation, converted to galactic longitude and latitude,
+        and used to sample ESO's all-sky panorama — so motion distorts the photograph itself rather
+        than replacing it. It never twinkles. There is no rotation, crop or blend applied to it
+        anywhere: the sky is pinned to the galactic frame and to nothing else, which means the
+        photographed Milky Way and the catalogue stars drawn over it agree about where the band is.</p>
+      <p><strong>What this replaced, since it matters.</strong> Until this revision the background was
+        three images composited together — a front plate, a back plate and a soft filler panorama —
+        joined by fitted per-channel gains and a speed-dependent feather, with the whole panorama
+        rotated by a hand-picked angle so its band would line up with the front plate's diagonal. That
+        rotation was a composition decision and it left the photographed Milky Way 38.6° from where the
+        star catalogue put it. The filler panorama was also not a photograph: measured against a real
+        all-sky plate its fine structure correlated at r = 0.06, below the floor set by comparing a real
+        plate with a <em>misaligned copy of itself</em>, and it contained no Magellanic Clouds and no
+        star bright enough to show a diffraction spike. It was almost certainly generated. The page
+        claimed it was a photograph of the actual Milky Way. It was not, and that is why it is gone.</p>
       <p><strong>The transformed stars.</strong> 9,096 of them, from the Yale Bright Star Catalogue
         (Hoffleit &amp; Warren 1991), J2000 — every star in it. The catalogue holds 9,110 entries, of
         which 9,096 are stars; the other 14 are novae and extragalactic objects kept only to preserve
@@ -1342,6 +1537,27 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
       <p><strong>The Milky Way texture is photographic, not a catalogue.</strong> It supplies the visual
         depth of unresolved stars and dust. Its relativistic direction change is exact; its displayed
         Doppler colour and beaming are compressed into the range a monitor can show.</p>
+      <p><strong>The four display parameters, named.</strong> Everything between β and the light arriving
+        at your eye is computed. Four numbers past that point are chosen, and this is all of them: one
+        overall exposure, set once so a first-magnitude star saturates its core and left alone at every
+        speed; one separate scale for surface brightness, because a star's light lands in a sub-pixel
+        point spread function and the Milky Way's is spread across degrees; one tone curve, 1 − e<sup>−x</sup>,
+        which rolls off highlights without ever clipping a channel. The fourth is the odd one out and the
+        least defensible: the photographic layer raises brightness as D<sup>1.28</sup> rather than D⁴,
+        capped at 60×, with a fitted colour balance. That is not an exposure — it changes the
+        <em>rate</em> at which brightness grows with speed, so the photograph's response to beaming is
+        qualitatively softened rather than merely rescaled. The modelled star field over it is not
+        treated this way and carries the true exponent.</p>
+      <p><strong>The microwave background is drawn.</strong> It fills the sky at 2.7255 K, which is far
+        too cold to see, and for nearly the whole rail it contributes exactly zero — not a negligible
+        amount, zero, because no visible photons survive the Wien tail at that temperature. Beaming
+        raises it as D⁴ like any other surface brightness, and once the forward temperature passes about
+        700 K it appears as a dull red wash ahead and then climbs almost vertically: invisible at
+        0.9999 c, and roughly 200 times the Milky Way's peak surface brightness at 0.99998 c. That cliff
+        is why the rung is there. Its brightness and colour come from the same Planck integral as
+        everything else; the shader samples that result rather than recomputing it, so the two skies
+        cannot disagree. At the top of the rail it saturates the view ahead to white, which is the
+        honest answer — at that speed the blueshifted background is a genuine hazard, not a backdrop.</p>
       <p><strong>The opening view is fully dark-adapted.</strong> You begin with the sensitivity an
         observer would have after sitting in darkness, rather than waiting through that adaptation on
         the page. At this luminance the Milky Way is nearly colourless because rod vision dominates;
@@ -1364,6 +1580,17 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
     <section id="p-sources">
       <h2>Sources</h2>
+      <p class="sources"><strong>The sky itself is a photograph by someone, and here is who.</strong>
+        The all-sky panorama is <em>The Milky Way panorama</em>, credit
+        <strong>ESO/S. Brunier</strong> — <a href="https://www.eso.org/public/images/eso0932a/"
+        rel="noopener">eso0932a</a>, released by the European Southern Observatory under
+        <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>. Serge
+        Brunier shot it from La Silla and Paranal between August 2008 and February 2009: about 300
+        fields, four exposures each, six minutes apiece, roughly 1,200 photographs and 120 hours of
+        shutter time, assembled by Frédéric Tapissier. It is used here at 4096 × 2048 in galactic
+        coordinates, and it is the only picture the exhibit shows you by default — everything else
+        on screen at rest is computed. The thirteen plates behind the wavelength control are
+        photographs too, and they are credited below.</p>
       <p class="sources">Einstein (1905), <em>Zur Elektrodynamik bewegter Körper</em>, for all of
         the above. Ballesteros (2012) for B−V → temperature. Wyman, Sloan &amp; Shirley (2013) for the
         colour-matching function fits. Hoffleit &amp; Warren (1991) for the Yale Bright Star Catalogue.
@@ -1372,6 +1599,37 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         (1995) for the shape of the Galaxy, and the GRAVITY Collaboration (2019) for the Sun's
         8.178 kpc distance from its centre. The magnitude-to-lux zero point (2.54 × 10⁻⁶ lux at
         V = 0) is the standard photometric conversion rather than a result from any of these.</p>
+
+      <p class="sources"><strong>The other thirteen skies.</strong> The plates behind the wavelength
+        control are all-sky surveys served by NASA's SkyView
+        (McGlynn, Scollick &amp; White 1998), reprojected to galactic plate carrée: COBE/DIRBE
+        zodi-subtracted mission average at 1.25, 2.2, 3.5, 4.9 and 240 µm (COBE Team); IRAS/IRIS at
+        12, 25 and 60 µm (Miville-Deschênes &amp; Lagache 2005); the 100 µm dust map of Schlegel,
+        Finkbeiner &amp; Davis (1998); Planck 857 and 353 GHz (ESA/Planck Collaboration); the 408 MHz
+        all-sky map of Haslam et al. (1982); and the ROSAT all-sky survey diffuse background
+        (Snowden et al. 1997). All are public-domain or openly licensed.</p>
+
+      <p class="sources"><strong>What has been done to those plates, and why.</strong> Three things,
+        none of them physics. <em>The catalogue's stars are notched out of them.</em> The exhibit
+        draws the Bright Star Catalogue as a separate layer over the plate, and the star canvas is
+        composited additively — so any star present in both was being drawn twice. Each catalogue
+        star is found in the plate and its disc replaced with the local background, which removes
+        about three quarters of the doubled light from the brightest stars; the photographic
+        diffraction spikes of the very brightest survive, because taking those out would mean
+        scrubbing a wide patch of real sky around each one. <em>The IRAS plates have their gaps
+        filled.</em> IRAS surveyed about 96% of the sky, and the missing 3% is filled with the
+        gap-free 100 µm dust map scaled to match — real structure, but from the wrong wavelength,
+        and not a measurement at that wavelength. <em>They are display-stretched, not linear.</em>
+        Each plate is an arcsinh stretch of the survey's intensity, chosen to keep faint structure
+        visible without blowing out the Galactic plane, so these are pictures of the sky rather than
+        calibrated intensity — the same standing as the visible photograph. Every band but the
+        visible one is false colour: a single-channel measurement drawn as brightness.</p>
+
+      <p class="sources"><strong>The bands are not what you would see.</strong> They are what an
+        instrument sees. Aberration and the Doppler factor are applied to them exactly as they are to
+        the visible sky — that part is the same physics on the same code — but no speed on this rail
+        turns an X-ray sky into something a human eye could receive. The wavelength control is the
+        one place this exhibit shows you a sky you could not have.</p>
     </section>
 
     <p class="foot"><button class="term" id="reset">Reset the trip</button> ·
@@ -1382,14 +1640,14 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 <p class="sr" id="live-region" aria-live="polite" aria-atomic="true"></p>
 
 <script src="data/stars.js?v=2"></script>
-<script src="src/colour.js?v=2"></script>
-<script src="src/physics.js?v=4"></script>
+<script src="src/colour.js?v=3"></script>
+<script src="src/physics.js?v=5"></script>
 <script src="src/galaxy.js?v=3"></script>
-<script src="src/sky.js?v=10"></script>
+<script src="src/sky.js?v=11"></script>
 <script src="src/ground.js?v=10"></script>
-<script src="src/photo-sky.js?v=13"></script>
-<script src="src/glossary.js?v=3"></script>
-<script src="src/exhibit.js?v=53"></script>
+<script src="src/photo-sky.js?v=17"></script>
+<script src="src/glossary.js?v=4"></script>
+<script src="src/exhibit.js?v=59"></script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="spacetime" defer></script>
 </body>
 </html>

@@ -49,6 +49,60 @@
   }
   const OUTBOUND = fromRaDec(266.41684, -28.99361);
 
+  /* ESO's all-sky panorama (ESO/S. Brunier), 4096 × 2048 equirectangular in
+     galactic coordinates. It replaced three plates — a front window, a back
+     window and a soft low-resolution filler — which between them needed
+     fitted colour gains and a speed-dependent feather to hide the joins, and
+     still disagreed with the star catalogue about where the Milky Way was. */
+  const PANORAMA = "assets/milky-way-eso.jpg";
+
+  /* ── the bands ───────────────────────────────────────────────────────
+     Thirteen all-sky surveys, every one of them a real instrument's real
+     measurement of the same sky in the same galactic coordinates, so the
+     renderer samples them with the code it already had. Longest wavelength
+     last, because that is the order the sky changes character in: stars, then
+     dust, then the things that are not light you could ever have seen.
+
+     Visible is the default and stays the default. The rest are bands no human
+     eye can reach at any speed, which is what makes them worth a control —
+     everything else on this page is what you *would* see, and these are the
+     one place the exhibit shows you what you could not.
+
+     Every plate is 2048 × 1024: a power of two, so the l = 180° seam still
+     wraps and mipmaps still work, and small enough that a phone GPU takes it.
+     They are fetched on selection, never on load. */
+  const BANDS = [
+    { id: "visible", url: PANORAMA, label: "Visible",
+      sub: "360–830 nm · ESO", note: "What your eyes are for. The only band on this list you could ever see unaided." },
+    { id: "nir1250", url: "assets/bands/nir-1250nm.jpg", label: "Near infrared",
+      sub: "1.25 µm · DIRBE", note: "The dust lane is gone. Near infrared goes straight through the dust that splits the visible Milky Way, so what is left is the bare shape of the Galaxy — bulge and disc." },
+    { id: "nir2200", url: "assets/bands/nir-2200nm.jpg", label: "Near infrared",
+      sub: "2.2 µm · DIRBE", note: "Cool stars, mostly red giants. This is the band the Galaxy's stellar mass shows up in." },
+    { id: "nir3500", url: "assets/bands/nir-3500nm.jpg", label: "Near infrared",
+      sub: "3.5 µm · DIRBE", note: "Still starlight, fading. The last band before dust takes over the sky." },
+    { id: "nir4900", url: "assets/bands/nir-4900nm.jpg", label: "Near infrared",
+      sub: "4.9 µm · DIRBE", note: "The changeover. Stars are dimming and the first warm dust is arriving." },
+    { id: "mir12", url: "assets/bands/mir-12um.jpg", label: "Mid infrared",
+      sub: "12 µm · IRAS", note: "Dust now, not stars. The arcs are zodiacal bands — dust in our own solar system, between you and the Galaxy." },
+    { id: "mir25", url: "assets/bands/mir-25um.jpg", label: "Mid infrared",
+      sub: "25 µm · IRAS", note: "Warm dust around star-forming regions." },
+    { id: "fir60", url: "assets/bands/fir-60um.jpg", label: "Far infrared",
+      sub: "60 µm · IRAS", note: "Cold cirrus — the filamentary dust that fills the space between the stars." },
+    { id: "fir100", url: "assets/bands/fir-100um.jpg", label: "Far infrared",
+      sub: "100 µm · SFD", note: "The inversion. The Great Rift that cuts the visible Milky Way in half is dust, and here that same dust is the brightest thing in the sky." },
+    { id: "fir240", url: "assets/bands/fir-240um.jpg", label: "Far infrared",
+      sub: "240 µm · DIRBE", note: "The coldest dust, around 20 K." },
+    { id: "submm350", url: "assets/bands/submm-350um.jpg", label: "Submillimetre",
+      sub: "350 µm · Planck", note: "Where the Galaxy's dust emission peaks." },
+    { id: "mw850", url: "assets/bands/mw-850um.jpg", label: "Microwave",
+      sub: "850 µm · Planck", note: "Dust and the microwave background together. Fly fast enough and this is the light that arrives in your eyes as visible." },
+    { id: "radio408", url: "assets/bands/radio-408mhz.jpg", label: "Radio",
+      sub: "408 MHz · Haslam", note: "Not thermal at all — this is synchrotron, electrons spiralling in the Galaxy's magnetic field. A completely different sky." },
+    { id: "xray", url: "assets/bands/xray-rosat.jpg", label: "X-ray",
+      sub: "0.1–2.4 keV · ROSAT", note: "The diffuse X-ray background, point sources removed. Noisy because X-ray photons are scarce; the tracks are the survey's own scan pattern." },
+  ];
+  let bandId = "visible";
+
   /* What has happened at home, as Earth's clock crosses each threshold.
      These should land a little sad. The emotional core of the exhibit is
      that speed buys you the future at the cost of everyone in your past,
@@ -195,22 +249,14 @@
     dirty = true;
   };
 
+  /* One photograph, and it is pinned to the galactic frame rather than to
+     the direction of travel — so it no longer needs telling where the ship
+     is pointing, and there is no roll left to choose. */
   photoSky = new window.HSAT_PhotoSky(
-    $("photo-view"),
-    "assets/milky-way-rest.jpg",
-    "assets/milky-way-panorama.jpg",
-    "assets/milky-way-return.jpg",
-    OUTBOUND,
-    photoReady,
-    photoFailed
+    $("photo-view"), PANORAMA, photoReady, photoFailed
   );
   photoInsetSky = new window.HSAT_PhotoSky(
-    $("photo-inset-canvas"),
-    "assets/milky-way-rest.jpg",
-    "assets/milky-way-panorama.jpg",
-    "assets/milky-way-return.jpg",
-    OUTBOUND,
-    photoReady
+    $("photo-inset-canvas"), PANORAMA, photoReady
   );
 
   // The opening view is what a fully dark-adapted observer sees. Beginning
@@ -904,7 +950,18 @@
     const Db = P.dopplerBehind(b);
     const k = P.aberrationK(b);
     const cone = P.forwardHemisphereRadius(b) * 180 / Math.PI;
-    const frame = P.skyFractionInFrame(b, 39 * Math.PI / 180) * 100;
+    /* The frame's real shape, not a hardcoded 39° circle.
+       That constant was wrong twice: a circle is not the rectangle anyone is
+       looking through, and a fixed number cannot describe a window whose
+       width changes. It printed "half the sky" on a phone where the true
+       figure is a fifth, while the prose two panels away — which did read the
+       live aspect ratio — printed the fifth. Both numbers came off the same
+       page at the same speed. */
+    const aspect = sky && sky.W > 0 && sky.H > 0 ? sky.W / sky.H : 16 / 9;
+    const halfW = P.frameHalfWidth(aspect);
+    const halfV = 49 * Math.PI / 360;
+    const frame = P.skyFractionInRect(b, halfW, halfV) * 100;
+    const frameWide = Math.round(halfW * 360 / Math.PI);
     const sig = (x, n) => Number(x.toPrecision(n)).toString();
     /* Beaming spans about twenty orders of magnitude across this rail, so no
        single format survives it: "10,220,186,170×" is ten digits nobody reads
@@ -934,7 +991,26 @@
       ? "180° — the forward half of the sky is still a hemisphere"
       : "the forward hemisphere fits inside " +
         (cone * 2 < 1 ? (cone * 2).toPrecision(3) : (cone * 2).toFixed(2)) + "° ahead");
-    setEq("frame", frame.toFixed(2) + "% of the entire sky is inside the 78° frame");
+    setEq("frame", frame.toFixed(2) + "% of the entire sky is inside this " +
+      frameWide + "° × 49° frame");
+
+    /* Earth's disc, in whichever direction it is. All four of these read from
+       the same geometry the rear view draws with, so the sheet and the picture
+       cannot disagree — if one is wrong they are both wrong, which is the only
+       arrangement worth having. */
+    const geo = earthGeometry();
+    const home = S.distLs <= 1e-4;
+    const facing = earthIsAstern() ? "astern" : "ahead";
+    const youSee = " — this is the view you have";
+    setEq("earth_true", home ? "you are standing on it"
+      : angleText(geo.alpha * 2) + " across, at " + P.formatMiles(S.distLs));
+    setEq("earth_astern", home ? "—" : angleText(geo.astern * 2) + " across" +
+      (facing === "astern" ? youSee : ""));
+    setEq("earth_ahead", home ? "—" : angleText(geo.ahead * 2) + " across" +
+      (facing === "ahead" ? youSee : ""));
+    setEq("earth_beam", b === 0 ? "no change — D = 1 in both directions"
+      : "astern k⁴ = " + sig(Math.pow(k, 4), 3) +
+        " · ahead D⁴ = " + factor(Math.pow(D, 4)));
 
     setEq("d_general", b === 0 ? "D = 1 in every direction" :
       "D runs from " + sig(Db, 5) + " dead astern to " + sig(D, 6) + " dead ahead");
@@ -942,9 +1018,15 @@
     setEq("blackbody", "the Sun's 5,778 K reads as " +
       Math.round(D * COL.T_SUN).toLocaleString() + " K ahead, " +
       Math.round(Db * COL.T_SUN).toLocaleString() + " K astern");
+    // Two exponents, because there are two kinds of source in the frame and
+    // they do not share an answer. A star is a point and takes D²; the Milky
+    // Way is a surface and takes D⁴ per unit of sky, while being squeezed
+    // into 1/D² of it — so the light you get from the band as a whole is D²
+    // as well. The band looks brighter because it is in a smaller place.
     setEq("beaming", b === 0 ? "no change — D = 1 everywhere" :
-      factor(D * D * D * D) + "× brighter ahead, " +
-      factor(Db * Db * Db * Db) + "× astern");
+      "each star ahead " + factor(D * D) + "× brighter, " +
+      factor(Db * Db) + "× astern · the Milky Way's surface " +
+      factor(D * D * D * D) + "× ahead");
     setEq("cmb", (D * COL.CMB).toFixed(D * COL.CMB < 100 ? 4 : 0) + " K ahead" +
       (D * COL.CMB > 800 ? " — hot enough to glow" : " — still invisible"));
   }
@@ -1160,6 +1242,7 @@
     wireLookBack();
     wireInfo();
     wireMarks();
+    wireBands();
     wireWelcome();
   }
 
@@ -1395,23 +1478,111 @@
     dirty = true;
   }
 
+  /* ── where Earth is, and how big it looks from there ─────────────────
+     One geometry for both directions, because it is one planet.
+
+     The true angular radius is the plain triangle, α = arcsin(R⊕ / d). What
+     your motion does to it is the same half-angle map every star goes
+     through, run in whichever direction Earth actually lies:
+
+         ahead    α′ = 2 arctan( k · tan(α/2) )        k < 1, so it shrinks
+         astern   α′ = 2 arctan( tan(α/2) / k )        so it grows
+
+     The astern form is the exact inverse and it is worth saying why. Put the
+     planet at θ = π − ε and push it through tan(θ′/2) = k·tan(θ/2): the
+     cotangents fall out and leave tan(ε′/2) = tan(ε/2)/k. So an object dead
+     astern is *magnified* by the same factor that shrinks the sky ahead —
+     the forward cone's light has to come from somewhere, and where it comes
+     from is the rear of the sky being stretched thin. Earth receding at
+     0.99 c looks fourteen times wider than the triangle says, and is dimmer
+     by a great deal more than that. */
+  const EARTH_RADIUS_KM = 6371;
+
+  /* An angle, in whatever unit stops it reading as zero. Earth's disc crosses
+     six orders of magnitude on this trip — degrees at the start, arcseconds
+     before the first minute is out — and "0.00°" is not a measurement. */
+  function angleText(rad) {
+    const arcsec = rad * 206264.806;
+    if (arcsec < 0.1) return arcsec.toPrecision(2) + "″";
+    if (arcsec < 60) return arcsec.toFixed(arcsec < 10 ? 2 : 1) + "″";
+    if (arcsec < 3600) return (arcsec / 60).toFixed(1) + "′";
+    return (arcsec / 3600).toFixed(2) + "°";
+  }
+
+  function earthGeometry() {
+    const k = P.aberrationK(S.beta);
+    const rangeKm = Math.max(EARTH_RADIUS_KM, S.distLs * P.C / 1000);
+    const alpha = Math.asin(Math.min(0.999, EARTH_RADIUS_KM / rangeKm));
+    const t = Math.tan(alpha / 2);
+    return {
+      k, rangeKm, alpha,
+      ahead: 2 * Math.atan(k * t),
+      astern: 2 * Math.atan(t / k),
+    };
+  }
+
+  /* Which way Earth is. Outbound it is behind you, so it belongs to the rear
+     view and nowhere else; once the ship has turned it is ahead and belongs
+     to the forward view. There is no phase in which it is in both. */
+  function earthIsAstern() {
+    return S.phase === "out" || S.phase === "stopping";
+  }
+
   function paintEarthTarget() {
     const earth = $("earth-target");
-    // Only while you are still flying toward it. Once you are in the air
-    // above the trees it is underneath you, not ahead, and once you have
+    const range = $("earth-range");
+    const mark = $("earth-mark");
+    // Ahead: only while you are still flying toward it. Once you are in the
+    // air above the trees it is underneath you, not ahead, and once you have
     // landed you are standing on it — leaving the globe hanging in the sky
     // covered the one number the whole exhibit is for.
-    // And not while you are looking the other way, or Earth hangs in the
-    // middle of your own wake.
-    const visible = (S.phase === "choose" || S.phase === "home") && !lookBack;
+    const ahead = (S.phase === "choose" || S.phase === "home") && !lookBack;
+    // Astern: the whole point of holding Look behind on the way out. What is
+    // back there is the place you left, and it is the only object in the wake
+    // with a known size — so it is the one thing that makes the emptiness
+    // legible instead of just dark.
+    const astern = lookBack && earthIsAstern() && S.distLs > 1e-4;
+    const visible = ahead || astern;
     earth.hidden = !visible;
+    range.hidden = !astern;
+    mark.hidden = true;
     if (!visible) return;
 
     const stageHeight = canvas.getBoundingClientRect().height;
     const pxPerTan = (stageHeight / 2) / Math.tan(49 * Math.PI / 360);
-    const earthRadiusKm = 6371;
-    const rangeKm = Math.max(earthRadiusKm, S.distLs * P.C / 1000);
-    const angularRadius = Math.asin(Math.min(0.999, earthRadiusKm / rangeKm));
+    const geo = earthGeometry();
+    const angularRadius = geo.alpha;
+
+    if (astern) {
+      /* No floor at seven pixels here. Ahead, that floor exists because a
+         target you cannot see is not a target and you are steering at it.
+         Behind you are steering at nothing, and the honest answer to "how big
+         is Earth from a million miles out" is *smaller than one pixel* — so
+         it is drawn at its true size and becomes an unresolved point, which
+         is exactly what it is. Two pixels is where a point stops being
+         renderable, not where the planet stops shrinking. */
+      const d = Math.max(2, Math.min(stageHeight * 0.42,
+        2 * pxPerTan * Math.tan(geo.astern)));
+      earth.style.width = d + "px";
+      earth.style.height = d + "px";
+      // The ring only while the planet is too small to find on its own. Once
+      // the disc is big enough to read as a disc, an instrument drawn round it
+      // is just clutter.
+      mark.hidden = d > 14;
+      /* Dimmed by the astern Doppler factor, which is k. Earth is a surface,
+         so the physical exponent is k⁴ — at 0.9 c that is 0.003 and the
+         planet is simply gone. This is the same compressed stand-in the
+         forward view uses in the other direction, listed under Scope with the
+         rest of the display choices. */
+      const dim = Math.pow(geo.k, 0.55);
+      earth.style.filter = "brightness(" + dim.toFixed(3) + ")";
+      earth.style.boxShadow = "none";
+      range.textContent = P.formatMiles(S.distLs) + " · " +
+        angleText(geo.astern * 2) + " across";
+      earth.setAttribute("aria-label",
+        "Earth astern, " + P.formatMiles(S.distLs) + " away");
+      return;
+    }
 
     /* Earth is in the same sky as everything else, and it gets the same two
        transforms — which it did not before, and at 0.99 c it showed.
@@ -1440,7 +1611,11 @@
        front of you white. Leaving the photograph at its daylight exposure
        meant that at 0.999 c the one thing you were flying at was a dark speck
        against a blazing cone: the only unlit object in a frame where the
-       physics had brightened everything else by D⁴. */
+       physics had brightened everything else. Earth is a surface rather than a
+       point, so the honest exponent for it is the D⁴ the Milky Way gets, not
+       the D² the stars do — but this is a CSS brightness filter on a
+       photograph and it is compressed to D^0.55 regardless, which is a display
+       choice and is listed with the others under Scope. */
     const D = P.dopplerAhead(S.beta);
     const beam = Math.min(5, Math.pow(D, 0.55));
     earth.style.filter = beam > 1.01 ? "brightness(" + beam.toFixed(2) + ")" : "";
@@ -1580,6 +1755,59 @@
     $("marks-count").textContent = list.children.length;
   }
 
+  /* ── the band control ────────────────────────────────────────────────
+     Builds itself from BANDS, folds like the checkpoints panel, and swaps the
+     plate under both the main view and the magnified inset so the two never
+     disagree about what sky they are showing. */
+  function wireBands() {
+    const list = $("bands-list");
+    for (const b of BANDS) {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "band";
+      el.dataset.band = b.id;
+      el.setAttribute("aria-pressed", b.id === bandId ? "true" : "false");
+      const t = document.createElement("span");
+      t.className = "t"; t.textContent = b.label;
+      const s = document.createElement("span");
+      s.className = "s num"; s.textContent = b.sub;
+      el.append(t, s);
+      el.addEventListener("click", () => setBand(b.id));
+      list.append(el);
+    }
+    $("bands-toggle").addEventListener("click", () => {
+      const host = $("bands");
+      const open = host.dataset.open !== "false";
+      host.dataset.open = open ? "false" : "true";
+      $("bands-toggle").setAttribute("aria-expanded", open ? "false" : "true");
+    });
+    paintBand();
+  }
+
+  function setBand(id) {
+    const b = BANDS.find((x) => x.id === id);
+    if (!b || id === bandId) return;
+    bandId = id;
+    paintBand();
+    for (const ps of [photoSky, photoInsetSky]) {
+      if (ps) ps.setPlate(b.url, () => { dirty = true; });
+    }
+    dirty = true;
+  }
+
+  function paintBand() {
+    const b = BANDS.find((x) => x.id === bandId) || BANDS[0];
+    for (const el of document.querySelectorAll(".band")) {
+      el.setAttribute("aria-pressed", el.dataset.band === bandId ? "true" : "false");
+    }
+    $("bands-now").textContent = b.sub;
+    $("bands-note").textContent = b.note;
+    /* The one honesty flag the control needs. Every band but the first is
+       false colour — the plate is a single-channel measurement rendered as
+       brightness, not a photograph of a colour nobody has. */
+    $("bands-false").hidden = b.id === "visible";
+  }
+
   /* The fold. The feed is small and capped, but it is still something sitting
      over the sky, and anyone who wants the sky back should be able to have it
      in one tap. */
@@ -1620,7 +1848,10 @@
       t_earth: P.formatDuration(S.earth),
       D_ahead: S.beta > 0 ? D.toFixed(D < 100 ? 3 : 0) + " looking ahead, " +
         P.dopplerBehind(S.beta).toFixed(4) + " looking back" : "1 — you are not moving",
-      D4: S.beta > 0 ? Math.round(D * D * D * D).toLocaleString() + "× brighter ahead" : "no change",
+      D4: S.beta > 0
+        ? Math.round(D * D).toLocaleString() + "× brighter per star ahead, " +
+          Math.round(D * D * D * D).toLocaleString() + "× per patch of Milky Way"
+        : "no change",
       cone_angle: S.beta > 0
         ? "the forward half of the sky fits inside " + (cone * 2 < 1 ? (cone * 2).toFixed(3) : (cone * 2).toFixed(1)) + "° ahead of you"
         : "180° — the sky is where it has always been",
@@ -1759,12 +1990,36 @@
     check("D ahead at β = 0.9", +P.dopplerAhead(0.9).toFixed(3), 4.359, 0.001);
     check("forward hemisphere fits 78° at β = 0.7771",
       +(P.forwardHemisphereRadius(0.7771) * 360 / Math.PI).toFixed(1), 78.0, 0.3);
-    check("half the whole sky inside a 78° frame at β = 0.7771",
-      +(P.skyFractionInFrame(0.7771, 39 * Math.PI / 180) * 100).toFixed(1), 50.0, 0.3);
-    check("96% of the sky inside a 78° frame at β = 0.99",
-      +(P.skyFractionInFrame(0.99, 39 * Math.PI / 180) * 100).toFixed(0), 96, 1);
-    check("70% of the sky inside a 78° frame at β = 0.9",
-      +(P.skyFractionInFrame(0.9, 39 * Math.PI / 180) * 100).toFixed(0), 70, 1);
+    /* The frame is a rectangle, and these used to be checked against a 78°
+       circle — so they agreed with the code and all three were wrong together.
+       A self-check that shares its mistake with the thing it is checking is
+       worse than no self-check, because it reads as confirmation. */
+    const rectV = 49 * Math.PI / 360;
+    const rectW = P.frameHalfWidth(16 / 9);
+    check("40.9% of the sky inside a 78° × 49° frame at β = 0.7771",
+      +(P.skyFractionInRect(0.7771, rectW, rectV) * 100).toFixed(1), 40.9, 0.15);
+    check("94% of the sky inside a 78° × 49° frame at β = 0.99",
+      +(P.skyFractionInRect(0.99, rectW, rectV) * 100).toFixed(0), 94, 1);
+    check("61% of the sky inside a 78° × 49° frame at β = 0.9",
+      +(P.skyFractionInRect(0.9, rectW, rectV) * 100).toFixed(0), 61, 1);
+    check("half the sky in the 16:9 frame at β = 0.8428",
+      +(P.skyFractionInRect(0.8428, rectW, rectV) * 100).toFixed(1), 50.0, 0.15);
+    check("a portrait phone sees far less of it at the same speed",
+      P.skyFractionInRect(0.7771, P.frameHalfWidth(9 / 19.5), rectV) < 0.25, true);
+    /* Aberration, both ways round. The half-angle form is what the renderer
+       uses; the cosine form is what the equation sheet prints, and the sheet
+       printed it with the textbook's minus sign under this exhibit's opposite
+       angle convention — which is the supplement, 141° where the answer is
+       39°. Checking them against each other is the only way that stays caught. */
+    check("cosine and half-angle forms of aberration agree at β = 0.7771",
+      +(Math.acos((Math.cos(Math.PI / 2) + 0.7771) /
+        (1 + 0.7771 * Math.cos(Math.PI / 2))) * 180 / Math.PI).toFixed(2),
+      +(2 * Math.atan(P.aberrationK(0.7771) * Math.tan(Math.PI / 4)) * 180 / Math.PI).toFixed(2),
+      0.01);
+    /* Beaming has two exponents and the renderer used to use the wrong one on
+       stars — D⁴, which at 0.99 c overstated every star ahead by 199×. */
+    check("a star ahead at β = 0.99 gains D², not D⁴",
+      Math.round(Math.pow(P.dopplerAhead(0.99), 2)), 199, 1);
     check("LUT: 5778 K", COL.hexAt(5778), "#FFF1EA");
     check("LUT: 10,000 K", COL.hexAt(10000), "#CDD9FF");
     check("LUT: 20,000 K", COL.hexAt(20000), "#ABC1FF");
@@ -1775,6 +2030,16 @@
       Math.round(P.dopplerAhead(0.99998) * COL.CMB), 862, 3);
     check("CMB ahead at β = 0.9999 (K)",
       Math.round(P.dopplerAhead(0.9999) * COL.CMB), 385, 2);
+    /* And that something is actually drawn with it. The temperature above was
+       computed and printed for a long time while no renderer put a single
+       photon of it on screen, so these check the luminance rather than the
+       temperature: dark where it should be dark, and brighter than the Milky
+       Way's peak surface brightness at the rung that is named for it. */
+    check("the CMB contributes no light at β = 0.99",
+      COL.cmbLuxPerSr(P.dopplerAhead(0.99)), 0, 0);
+    check("the CMB outshines the Milky Way at β = 0.99998",
+      COL.cmbLuxPerSr(P.dopplerAhead(0.99998)) >
+        2.54e-6 * Math.pow(10, -0.4 * 21.4) / 2.3504e-11, true);
     check("KE of 1 kg at β = 0.999999 (J)",
       +P.kineticEnergy(0.999999, 1).toPrecision(3), 6.35e19, 1e17);
     check("flux range Sirius → V = 8",

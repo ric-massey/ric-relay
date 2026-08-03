@@ -175,7 +175,7 @@
       temp[i] = T;
       // The catalogue's V is light that made it through the visible window.
       // Dividing by that window's share recovers the star's total output,
-      // which is the quantity that actually scales as D⁴.
+      // which is the quantity the Doppler factor actually acts on.
       const vis = Math.max(1e-6, COL.visAt(T));
       flux[i] = COL.fluxFromMagnitude(flat[o + 3]);
       visRest[i] = vis;
@@ -334,10 +334,26 @@
       const D = 1 / (g * (1 - beta * cosTp));
       const Tp = D * restT;
       const visNow = COL.visAt(Tp);
-      // Total power scales as D⁴; what your eye gets is that, times however
-      // much of it now falls inside the visible band. The second factor is
-      // why stars behind you redden and then simply go out.
-      const seen = restFlux * D * D * D * D * (visNow / restVis);
+      /* Flux from an unresolved source goes as D², not D⁴, and the difference
+         is the star's own disc.
+
+         D⁴ is the transform for *radiance* — brightness per unit solid angle
+         — and it is what the Milky Way below gets, correctly. A star is not
+         resolved, so what arrives is radiance times the solid angle the disc
+         subtends, and aberration shrinks that disc by exactly D². The two
+         powers cancel and what is left is D².
+
+         The same answer falls out of counting photons, which is the version
+         worth keeping in your head: each one is blueshifted, so it carries D
+         times the energy, and they arrive D times as often. Energy per second
+         is therefore D × D, and there is nowhere for another two powers to
+         come from.
+
+         This file used to claim the opposite in as many words — that "nothing
+         here knows the difference between the two" — and then multiply by D⁴.
+         At 0.99 c that overstated every star ahead of you by a factor of 199
+         and buried the wake by the same factor. */
+      const seen = restFlux * D * D * (visNow / restVis);
       if (!(seen > 1e-13)) return;
 
       const sx = cx + a * scale;
@@ -464,10 +480,20 @@
 
      Working backwards is what makes this correct. Each pixel is a direction
      in the traveler's frame; aberration is run *in reverse* to find where
-     that light actually started, the Galaxy is sampled there, and then the
-     same D⁴ that brightens a star brightens this. Surface brightness is a
-     D⁴ quantity for exactly the same reason a star's flux is: I_ν/ν³ is a
-     Lorentz invariant, and nothing here knows the difference between the two.
+     that light actually started, the Galaxy is sampled there, and then it is
+     beamed.
+
+     This is the one place D⁴ belongs. I_ν/ν³ is a Lorentz invariant, so the
+     bolometric radiance of a resolved source goes as D⁴, and a pixel of the
+     band is exactly that: a fixed patch of the visitor's sky, filled. The
+     stars above are not — they are points, their discs shrink as D², and
+     they take D² instead. Both come from the same invariant; they differ by
+     whether there is a solid angle left to shrink.
+
+     Which is also why the band does not simply outrun the stars at speed.
+     Per pixel it climbs faster, but it is being crushed into fewer pixels at
+     the same rate, and the *total* light from the band goes as D² like
+     everything else. What you see is the same light in a smaller place.
 
      Sampled on a coarse grid and interpolated, because the band is smooth
      at a fraction of a degree and the sharp detail is carried by the noise
@@ -488,7 +514,8 @@
 
   Sky.prototype._renderDiffuse = function (beta, f, view, r, u, gam, scale, cx, cy) {
     const GX = window.HSAT_GALAXY;
-    if (!GX) return;
+    // The Galaxy model is optional; the microwave background is not, so this
+    // pass no longer bails out when the model is missing.
     const W = this.W, H = this.H, buf = this.buf;
     const k = P.aberrationK(beta);
 
@@ -499,7 +526,8 @@
       this._gw = gw; this._gh = gh;
     }
     const grid = this._grid;
-    const restVis = Math.max(1e-9, COL.visAt(GX.T_DIFFUSE));
+    const T_DIFFUSE = GX ? GX.T_DIFFUSE : 4500;
+    const restVis = Math.max(1e-9, COL.visAt(T_DIFFUSE));
     for (let gj = 0; gj < gh; gj++) {
       const py = gj * DIFFUSE_STEP;
       const Y = -(py - cy) / scale;
@@ -531,33 +559,56 @@
         const dy = f[1] * cosT + py0 * sinT;
         const dz = f[2] * cosT + pz0 * sinT;
 
-        const B = GX.sampleEquatorial(dx, dy, dz);     // lux per steradian, at rest
         const o = (gj * gw + gi) * 3;
-        if (B <= 0) { grid[o] = grid[o + 1] = grid[o + 2] = 0; continue; }
-
         const D = 1 / (gam * (1 - beta * cosTp));
-        const Tp = D * GX.T_DIFFUSE;
-        const seen = B * D * D * D * D * (COL.visAt(Tp) / restVis)
-                   * DIFFUSE_DISPLAY_SCALE;
-        if (!(seen > 0)) { grid[o] = grid[o + 1] = grid[o + 2] = 0; continue; }
+        let outR = 0, outG = 0, outB = 0;
 
-        const c = COL.chromaAt(Tp);
-        const Y709 = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-        const s = Y709 > 0 ? seen / Y709 : 0;
+        // ── the Galaxy ──
+        const B = GX ? GX.sampleEquatorial(dx, dy, dz) : 0;   // lux/sr, at rest
+        if (B > 0) {
+          const Tp = D * T_DIFFUSE;
+          const seen = B * D * D * D * D * (COL.visAt(Tp) / restVis)
+                     * DIFFUSE_DISPLAY_SCALE;
+          if (seen > 0) {
+            const c = COL.chromaAt(Tp);
+            const Y709 = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+            const s = Y709 > 0 ? seen / Y709 : 0;
 
-        // At the luminance of the naked-eye Milky Way, rod vision dominates:
-        // the band is silver-white, not the orange-brown produced by showing
-        // a 4,500 K spectrum at full monitor saturation. As relativistic
-        // beaming makes the light genuinely bright, cone vision takes over
-        // and the physical Doppler colour becomes visible. Blending around
-        // Y preserves luminance; only perceptual saturation changes.
-        const displayLuminance = seen * EXPOSURE * this.exposureScale;
-        const saturation = Math.min(1,
-          0.08 + 0.92 * (1 - Math.exp(-displayLuminance * 1.4)));
-        const cr = Y709 + (c[0] - Y709) * saturation;
-        const cg = Y709 + (c[1] - Y709) * saturation;
-        const cb = Y709 + (c[2] - Y709) * saturation;
-        grid[o] = cr * s; grid[o + 1] = cg * s; grid[o + 2] = cb * s;
+            // At the luminance of the naked-eye Milky Way, rod vision dominates:
+            // the band is silver-white, not the orange-brown produced by showing
+            // a 4,500 K spectrum at full monitor saturation. As relativistic
+            // beaming makes the light genuinely bright, cone vision takes over
+            // and the physical Doppler colour becomes visible. Blending around
+            // Y preserves luminance; only perceptual saturation changes.
+            const displayLuminance = seen * EXPOSURE * this.exposureScale;
+            const saturation = Math.min(1,
+              0.08 + 0.92 * (1 - Math.exp(-displayLuminance * 1.4)));
+            outR = (Y709 + (c[0] - Y709) * saturation) * s;
+            outG = (Y709 + (c[1] - Y709) * saturation) * s;
+            outB = (Y709 + (c[2] - Y709) * saturation) * s;
+          }
+        }
+
+        /* ── the microwave background ──
+           Filling everything, at 2.7255 K, and for almost the whole rail
+           contributing exactly zero — which is the correct answer, not a
+           shortcut. Once D pushes it past about 700 K it appears as a dull
+           red wash ahead and then climbs almost vertically.
+
+           No rod-vision blending here. By the time this term is non-zero it
+           is hundreds of times the surface brightness of the Milky Way, which
+           is well inside cone vision, so its colour is simply its colour. */
+        const cmb = COL.cmbLuxPerSr(D) * DIFFUSE_DISPLAY_SCALE;
+        if (cmb > 0) {
+          const cc = COL.chromaAt(D * COL.CMB);
+          const Yc = 0.2126 * cc[0] + 0.7152 * cc[1] + 0.0722 * cc[2];
+          if (Yc > 0) {
+            const sc = cmb / Yc;
+            outR += cc[0] * sc; outG += cc[1] * sc; outB += cc[2] * sc;
+          }
+        }
+
+        grid[o] = outR; grid[o + 1] = outG; grid[o + 2] = outB;
       }
     }
 
@@ -650,24 +701,35 @@
       // sky, so the whole catalogue was the wrong number by roughly 9×.
       const inFrame = this.lastStats
         ? this.lastStats.visible
-        : Math.round((this.count || 9096) * P.skyFractionInFrame(0, halfH));
+        : Math.round((this.count || 9096) * P.skyFractionInRect(0, halfH, HALF_V));
       return "At rest, out of the air: about " + inFrame.toLocaleString() +
         " catalogue stars in frame, nearly all of them white, on absolute black. " +
         "Nothing is moving.";
     }
     const cone = P.forwardHemisphereRadius(beta) * 360 / Math.PI;
-    const frac = Math.round(P.skyFractionInFrame(beta, halfH) * 100);
+    // The frame is a rectangle and this is the rectangle's own answer, worked
+    // out for the shape this window actually is — so it stays true on a phone
+    // held upright, where the frame is barely a third of the width it has on
+    // a laptop and holds proportionally less sky.
+    const frac = Math.round(P.skyFractionInRect(beta, halfH, HALF_V) * 100);
     const D = P.dopplerAhead(beta);
     const bits = [];
     bits.push("The whole forward half of the sky has crowded into a cone about " +
       (cone < 1 ? cone.toFixed(2) : cone.toFixed(0)) + "° across");
     bits.push("and " + frac + "% of everything there is to see is now inside this frame");
-    if (D > 1.4) bits.push("the light in it shifted blue and about " +
-      Math.round(D * D * D * D).toLocaleString() + " times brighter");
+    if (D > 1.4) bits.push("the light in it shifted blue and each star ahead about " +
+      Math.round(D * D).toLocaleString() + " times brighter");
     else if (D > 1.02) bits.push("the light in it slightly blued and brightened");
     bits.push("the sky outside the cone is dark and reddening, and behind you there is nothing left to see");
     return bits.join(", ") + ".";
   };
+
+  /* The one number that lets the photographic sky agree with this one about
+     how bright a surface is. Both skies have to place the microwave
+     background at the same luminance or the glow would jump when the WebGL
+     path falls back to the modelled one — so the conversion from lux per
+     steradian to display-linear is published here rather than copied there. */
+  Sky.DIFFUSE_TO_DISPLAY = DIFFUSE_DISPLAY_SCALE * EXPOSURE;
 
   window.HSAT_Sky = Sky;
 })();

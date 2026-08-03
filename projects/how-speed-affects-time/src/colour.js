@@ -210,6 +210,44 @@
     return 2.54e-6 * Math.pow(10, -0.4 * v);
   }
 
+  /* ── the microwave background, as something you can actually see ───────
+     The CMB was the one part of "the sky is three real things, stacked" that
+     nothing on screen ever drew. It was computed, printed in the equation
+     sheet, named as the reason the 0.99998 c rung exists — and then not
+     rendered, so the glow at the top of the rail was the boosted photograph
+     and nothing else.
+
+     It is a 2.7255 K blackbody filling the sky, so its rest-frame radiance is
+     σT⁴/π, and beaming takes that to D⁴ like any other surface brightness.
+     Two conversions turn it into the units everything else here is carried in:
+
+       × 93.3 lm/W   the Sun's luminous efficacy over its whole spectrum
+                     (1361 W/m² ↔ 127,000 lux), which is the same anchor
+                     `visAt` is normalised against — so a bolometric watt
+                     becomes "lux, if it had the Sun's visible share"
+       × visAt(T′)   and then the share this temperature actually has
+
+     The result switches on hard, because visAt runs off the Wien tail: at
+     0.9999 c the CMB is 4 × 10⁻¹² of the Milky Way's peak surface brightness
+     and utterly invisible; at 0.99998 c it is 219 times brighter than it.
+     That cliff is real, it is exponential, and it lands within a whisker of
+     the rung that was named for it before anything drew it. */
+  const K_SUN = 93.3;             // lumens per watt, solar spectrum
+  const T_CMB = 2.7255;           // Fixsen 2009
+  const CMB_BOLOMETRIC = SIGMA * Math.pow(T_CMB, 4) / Math.PI;   // W m⁻² sr⁻¹
+
+  /** Luminous radiance of the microwave background, in lux per steradian,
+      seen with Doppler factor D. Zero everywhere below about 700 K, which is
+      everywhere on this rail except the last two rungs, looking forward. */
+  function cmbLuxPerSr(D) {
+    if (!(D > 0)) return 0;
+    const T = T_CMB * D;
+    if (!(T > 1)) return 0;
+    const v = visAt(T);
+    if (!(v > 0)) return 0;
+    return CMB_BOLOMETRIC * Math.pow(D, 4) * K_SUN * v;
+  }
+
   /* ── sRGB encode ───────────────────────────────────────────────────────── */
   function encode(c) {
     if (c <= 0) return 0;
@@ -226,8 +264,8 @@
   window.HSAT_COLOUR = {
     chromaAt, visAt, hexAt, encode,
     temperatureFromBV, fluxFromMagnitude,
-    planck, spectrumToXYZ,
+    planck, spectrumToXYZ, cmbLuxPerSr,
     T_SUN,
-    CMB: 2.7255,  // Fixsen 2009
+    CMB: T_CMB,  // Fixsen 2009
   };
 })();
