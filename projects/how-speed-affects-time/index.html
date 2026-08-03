@@ -413,21 +413,54 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
   overscroll-behavior: contain; scrollbar-width: none;
 }
 .bands-list::-webkit-scrollbar { display: none; }
-.band {
-  display: flex; flex-direction: column; gap: .05rem;
-  width: 100%; text-align: left; cursor: pointer; flex: none;
-  padding: .3rem 1.25rem .32rem .55rem;
-  background: none; border: none; border-top: 1px solid rgba(255,255,255,.09);
+/* The presets. A row of chips rather than a list, because they are shortcuts
+   into the list below rather than a parallel set of choices. */
+.bands-presets {
+  display: flex; flex-wrap: wrap; gap: .25rem;
+  padding: .4rem .5rem .45rem;
+}
+.preset {
+  cursor: pointer; padding: .2rem .45rem .24rem; border-radius: 999px;
+  font: 400 .56rem/1.5 var(--mono); color: var(--dim);
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
+  transition: color .15s, border-color .15s, background .15s;
+}
+.preset:hover { color: var(--ink); border-color: rgba(255,255,255,.3); }
+.preset:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.preset[aria-pressed="true"] { color: #0b0b10; background: var(--ink); border-color: var(--ink); }
+
+/* A row is the band and its colour. The swatch only exists while the band is
+   in the mix — an empty picker next to an unselected band reads as a colour
+   that is doing something. */
+.band-row {
+  display: flex; align-items: stretch; gap: 0;
+  border-top: 1px solid rgba(255,255,255,.09);
   transition: background .15s;
 }
-.band:hover { background: rgba(255,255,255,.06); }
+.band-row[data-on="true"] { background: rgba(255,255,255,.08); box-shadow: inset 2px 0 0 var(--ink); }
+.band-row:hover { background: rgba(255,255,255,.06); }
+.band {
+  display: flex; flex-direction: column; gap: .05rem;
+  flex: 1 1 auto; min-width: 0; text-align: left; cursor: pointer;
+  padding: .3rem .4rem .32rem .55rem;
+  background: none; border: none;
+}
 .band:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 .band .t { color: var(--ink); font: 400 .66rem/1.35 var(--mono); }
 .band .s { color: var(--dimmer); font: 400 .54rem/1.4 var(--mono); }
-/* The chosen one keeps a rail down its left edge — a tick would need a column
-   the panel does not have at this width. */
-.band[aria-pressed="true"] { background: rgba(255,255,255,.08); box-shadow: inset 2px 0 0 var(--ink); }
-.band[aria-pressed="true"] .t { color: #fff; }
+.band-row[data-on="true"] .t { color: #fff; }
+/* The swatch. A native colour input, stripped of its chrome so it reads as a
+   chip of the colour it holds rather than as a form control. */
+.band-tint {
+  flex: none; align-self: center; width: 20px; height: 20px;
+  margin-right: .5rem; padding: 0; cursor: pointer;
+  background: none; border: 1px solid rgba(255,255,255,.35); border-radius: 5px;
+  -webkit-appearance: none; appearance: none;
+}
+.band-tint::-webkit-color-swatch-wrapper { padding: 0; }
+.band-tint::-webkit-color-swatch { border: none; border-radius: 4px; }
+.band-tint::-moz-color-swatch { border: none; border-radius: 4px; }
+.band-tint:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .bands-note {
   padding: .4rem .6rem .1rem; color: #c2c2ca;
   font: .68rem/1.45 var(--serif); text-wrap: pretty;
@@ -1013,6 +1046,7 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
               <span class="c num" id="bands-now">360–830 nm · ESO</span>
             </button>
             <div class="bands-body" id="bands-body">
+              <div class="bands-presets" id="bands-presets"></div>
               <div class="bands-list" id="bands-list"></div>
               <p class="bands-note" id="bands-note"></p>
               <p class="bands-false" id="bands-false" hidden>False colour — a
@@ -1657,9 +1691,9 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 <script src="src/galaxy.js?v=3"></script>
 <script src="src/sky.js?v=11"></script>
 <script src="src/ground.js?v=10"></script>
-<script src="src/photo-sky.js?v=17"></script>
+<script src="src/photo-sky.js?v=18"></script>
 <script src="src/glossary.js?v=4"></script>
-<script src="src/exhibit.js?v=59"></script>
+<script src="src/exhibit.js?v=62"></script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="spacetime" defer></script>
 </body>
 </html>

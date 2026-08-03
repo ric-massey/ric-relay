@@ -101,7 +101,38 @@
     { id: "xray", url: "assets/bands/xray-rosat.jpg", label: "X-ray",
       sub: "0.1–2.4 keV · ROSAT", note: "The diffuse X-ray background, point sources removed. Noisy because X-ray photons are scarce; the tracks are the survey's own scan pattern." },
   ];
-  let bandId = "visible";
+  /* ── the mixer ───────────────────────────────────────────────────────
+     Up to three bands at once, each with a colour, added together. That is
+     not a toy version of how these pictures are made — it is how they are
+     made. A detector counts photons and has no idea what colour they were,
+     so every exposure is grey, and every colour astronomy image you have ever
+     seen is somebody deciding which band goes to which channel.
+
+     Three because a screen has three channels, and because the convention the
+     observatories use is chromatic order: sort the bands by wavelength and
+     run shortest to blue, longest to red. That keeps relative colour honest —
+     something genuinely bluer in the data comes out bluer on screen — while
+     the absolute colours are admitted to be invented. */
+  const MIX_MAX = 3;
+  const DEFAULT_TINTS = ["#4d7fff", "#4dff8a", "#ff5a3c"];
+
+  /* Presets. Each is a set of bands in wavelength order with the channel
+     assignment the convention would give it, so a visitor who never touches a
+     colour still sees the method rather than a random palette. */
+  const PRESETS = [
+    { id: "visible", label: "Visible", note: "The sky as it is, in the light you have.",
+      mix: [["visible", "#ffffff"]] },
+    { id: "chromatic", label: "Chromatic", note: "Three infrared bands in wavelength order, shortest to blue — the method JWST uses.",
+      mix: [["nir1250", "#3f6cff"], ["nir3500", "#46e07a"], ["mir12", "#ff5f34"]] },
+    { id: "starsdust", label: "Stars & dust", note: "Starlight in blue, warm dust in green, cold dust in red. The Galaxy's two populations, separated.",
+      mix: [["nir2200", "#5b8cff"], ["mir25", "#57dd6a"], ["fir100", "#ff4f2e"]] },
+    { id: "multi", label: "Whole spectrum", note: "X-ray, far infrared and radio together — three completely different skies at once.",
+      mix: [["xray", "#7ad0ff"], ["fir100", "#8cff6a"], ["radio408", "#ff4a6a"]] },
+  ];
+
+  // Slot list: [{ id, tint }]. One entry with white is the plain single band.
+  let mix = [{ id: "visible", tint: "#ffffff" }];
+  let presetId = "visible";
 
   /* What has happened at home, as Earth's clock crosses each threshold.
      These should land a little sad. The emotional core of the exhibit is
@@ -1760,21 +1791,47 @@
      plate under both the main view and the magnified inset so the two never
      disagree about what sky they are showing. */
   function wireBands() {
+    const presets = $("bands-presets");
+    for (const p of PRESETS) {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "preset";
+      el.dataset.preset = p.id;
+      el.textContent = p.label;
+      el.addEventListener("click", () => applyPreset(p.id));
+      presets.append(el);
+    }
+
     const list = $("bands-list");
     for (const b of BANDS) {
+      const row = document.createElement("div");
+      row.className = "band-row";
+      row.dataset.band = b.id;
+
       const el = document.createElement("button");
       el.type = "button";
       el.className = "band";
       el.dataset.band = b.id;
-      el.setAttribute("aria-pressed", b.id === bandId ? "true" : "false");
       const t = document.createElement("span");
       t.className = "t"; t.textContent = b.label;
       const s = document.createElement("span");
       s.className = "s num"; s.textContent = b.sub;
       el.append(t, s);
-      el.addEventListener("click", () => setBand(b.id));
-      list.append(el);
+      el.addEventListener("click", () => toggleBand(b.id));
+
+      /* A native colour input, because it is a real colour wheel on every
+         platform, it is keyboard and screen-reader accessible for free, and
+         this exhibit does not take dependencies. */
+      const pick = document.createElement("input");
+      pick.type = "color";
+      pick.className = "band-tint";
+      pick.setAttribute("aria-label", "Colour for " + b.label + " " + b.sub);
+      pick.addEventListener("input", () => setTint(b.id, pick.value));
+
+      row.append(el, pick);
+      list.append(row);
     }
+
     $("bands-toggle").addEventListener("click", () => {
       const host = $("bands");
       const open = host.dataset.open !== "false";
@@ -1782,30 +1839,121 @@
       $("bands-toggle").setAttribute("aria-expanded", open ? "false" : "true");
     });
     paintBand();
+    pushMix();
   }
 
-  function setBand(id) {
-    const b = BANDS.find((x) => x.id === id);
-    if (!b || id === bandId) return;
-    bandId = id;
+  function applyPreset(id) {
+    const p = PRESETS.find((x) => x.id === id);
+    if (!p) return;
+    presetId = id;
+    mix = p.mix.map(([band, tint]) => ({ id: band, tint }));
     paintBand();
+    pushMix();
+  }
+
+  /* Selecting is a toggle, and the third band is the last one: past that a
+     new choice replaces the oldest rather than being refused, because a
+     control that silently does nothing is worse than one that does something
+     you can undo. */
+  function toggleBand(id) {
+    const at = mix.findIndex((m) => m.id === id);
+    if (at >= 0) {
+      if (mix.length > 1) mix.splice(at, 1);
+    } else {
+      const tint = mix.length === 0 && id === "visible"
+        ? "#ffffff" : DEFAULT_TINTS[mix.length % DEFAULT_TINTS.length];
+      if (mix.length >= MIX_MAX) mix.shift();
+      mix.push({ id, tint });
+    }
+    presetId = matchPreset();
+    paintBand();
+    pushMix();
+  }
+
+  function setTint(id, tint) {
+    const slot = mix.find((m) => m.id === id);
+    if (!slot) return;
+    slot.tint = tint;
+    presetId = matchPreset();
+    paintBand();
+    pushMix();
+  }
+
+  function matchPreset() {
+    for (const p of PRESETS) {
+      if (p.mix.length !== mix.length) continue;
+      if (p.mix.every(([b, t], i) =>
+        mix[i].id === b && mix[i].tint.toLowerCase() === t.toLowerCase())) return p.id;
+    }
+    return null;
+  }
+
+  /* A declaration, not a const arrow. wire() runs near the top of this module
+     and pushMix() calls this on the way through, which is a long way above the
+     point the module body reaches this line — a const would still be in its
+     temporal dead zone and the whole init would throw from here, silently, so
+     the canvas would never get sized and the loop would never start. */
+  function hexToRgb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255];
+  }
+
+  function pushMix() {
+    const layers = mix.map((m) => {
+      const b = BANDS.find((x) => x.id === m.id) || BANDS[0];
+      return { url: b.url, tint: hexToRgb(m.tint) };
+    });
+
+    /* Normalise per output channel, not per layer.
+       Three plates added at full weight overrun the exposure the tone curve
+       was calibrated against for one, and the shoulder turns the result into
+       pale cyan mush — the first mix I rendered was exactly that. Dividing
+       every layer by the number of layers is the obvious fix and the wrong
+       one: a clean blue/green/red split barely overlaps, so it would come out
+       three times too dark.
+       So sum the tints channel by channel, take the worst, and scale only if
+       something would exceed what a single plate is allowed. Orthogonal mixes
+       keep their brightness; muddy ones give some back. */
+    const sum = [0, 0, 0];
+    for (const l of layers) for (let c = 0; c < 3; c++) sum[c] += l.tint[c];
+    const peak = Math.max(sum[0], sum[1], sum[2]);
+    if (peak > 1) {
+      for (const l of layers) l.tint = l.tint.map((v) => v / peak);
+    }
     for (const ps of [photoSky, photoInsetSky]) {
-      if (ps) ps.setPlate(b.url, () => { dirty = true; });
+      if (ps) ps.setLayers(layers, () => { dirty = true; });
     }
     dirty = true;
   }
 
   function paintBand() {
-    const b = BANDS.find((x) => x.id === bandId) || BANDS[0];
-    for (const el of document.querySelectorAll(".band")) {
-      el.setAttribute("aria-pressed", el.dataset.band === bandId ? "true" : "false");
+    for (const row of document.querySelectorAll(".band-row")) {
+      const slot = mix.find((m) => m.id === row.dataset.band);
+      row.dataset.on = slot ? "true" : "false";
+      row.querySelector(".band").setAttribute("aria-pressed", slot ? "true" : "false");
+      const pick = row.querySelector(".band-tint");
+      pick.hidden = !slot;
+      if (slot) pick.value = slot.tint;
     }
-    $("bands-now").textContent = b.sub;
-    $("bands-note").textContent = b.note;
-    /* The one honesty flag the control needs. Every band but the first is
-       false colour — the plate is a single-channel measurement rendered as
-       brightness, not a photograph of a colour nobody has. */
-    $("bands-false").hidden = b.id === "visible";
+    for (const el of document.querySelectorAll(".preset")) {
+      el.setAttribute("aria-pressed", el.dataset.preset === presetId ? "true" : "false");
+    }
+
+    const named = mix.map((m) => (BANDS.find((x) => x.id === m.id) || {}).sub);
+    $("bands-now").textContent = mix.length === 1 ? named[0] : mix.length + " bands";
+    const p = PRESETS.find((x) => x.id === presetId);
+    const single = mix.length === 1
+      ? (BANDS.find((x) => x.id === mix[0].id) || {}).note : null;
+    $("bands-note").textContent = p ? p.note : (single || "Your own mix.");
+    /* The honesty flag. One band in its own colour is false colour; three
+       bands mixed is false colour you chose — which is worth saying
+       differently, because at that point the visitor is the one doing it. */
+    const plain = mix.length === 1 && mix[0].id === "visible";
+    const f = $("bands-false");
+    f.hidden = plain;
+    f.textContent = mix.length > 1
+      ? "False colour, and yours. Every colour astronomy picture is made exactly this way."
+      : "False colour — a one-channel measurement drawn as brightness.";
   }
 
   /* The fold. The feed is small and capped, but it is still something sitting

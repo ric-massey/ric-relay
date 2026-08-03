@@ -120,7 +120,25 @@
   const FRAGMENT = `
     precision highp float;
 
+    /* Three plates, tinted and added. This is how every colour picture of the
+       sky has ever been made: a detector counts photons and has no idea what
+       colour they were, so each exposure is grey, and the colour comes from
+       deciding which band to send to which channel. JWST does exactly this —
+       sort the filters by wavelength, shortest to blue, longest to red.
+
+       Always three, never a count and a branch. An unused slot gets a tint of
+       zero and contributes nothing, which costs two texture fetches and buys a
+       shader with no divergence in it.
+
+       A grey plate times a tint is that band in that colour. The visible plate
+       is real RGB, and times a white tint it is itself, so the ordinary view
+       falls out of the same expression as the composites. */
     uniform sampler2D uPanorama;
+    uniform sampler2D uPlateB;
+    uniform sampler2D uPlateC;
+    uniform vec3 uTintA;
+    uniform vec3 uTintB;
+    uniform vec3 uTintC;
     /* The microwave background, as a 256-texel strip indexed by cos θ′.
 
        It is here as a lookup rather than as shader arithmetic because its
@@ -204,7 +222,9 @@
         0.5 - atan(gy, gx) / TAU,
         clamp(0.5 - asin(clamp(gz, -1.0, 1.0)) / PI, 0.0005, 0.9995)
       );
-      vec3 color = texture2D(uPanorama, panoUV).rgb;
+      vec3 color = texture2D(uPanorama, panoUV).rgb * uTintA
+                 + texture2D(uPlateB, panoUV).rgb * uTintB
+                 + texture2D(uPlateC, panoUV).rgb * uTintC;
 
       // D is the same Doppler factor used by the catalogue renderer. A
       // monitor cannot carry D^4 over this range, so its effect is rolled
@@ -285,7 +305,8 @@
 
       this.u = {};
       for (const name of [
-        "uPanorama", "uCmb", "uCmbRange", "uCmbD",
+        "uPanorama", "uPlateB", "uPlateC", "uTintA", "uTintB", "uTintC",
+        "uCmb", "uCmbRange", "uCmbD",
         "uResolution", "uForward", "uVelocity",
         "uRight", "uUp",
         "uGalX", "uGalY", "uGalZ", "uBeta", "uZoom",
@@ -294,6 +315,11 @@
 
       this._loadTexture(panoramaUrl, 1).then((panorama) => {
         this.panorama = panorama;
+        // Slot 0, at full white — the single-band view is the one-layer case
+        // of the composite, not a separate path through the shader.
+        this.slots = [panorama, null, null];
+        this._layerUrls = [panoramaUrl, null, null];
+        this._tints = [[1, 1, 1], [0, 0, 0], [0, 0, 0]];
         this.ready = true;
         if (onReady) onReady(this);
       }).catch(() => {
@@ -363,17 +389,44 @@
      megabytes and nobody looks at all thirteen. Until it arrives the old one
      stays on screen rather than blanking, which is why `ready` is not cleared
      — a half-second of the previous band beats a half-second of black. */
-  PhotoSky.prototype.setPlate = function (url, done) {
-    if (!this.gl || this.failed || url === this._plateUrl) return;
-    this._plateUrl = url;
-    this._loadTexture(url, 1).then((tex) => {
-      // Another band may have been chosen while this one was in flight; the
-      // last request wins, and an out-of-date texture is dropped on the floor.
-      if (this._plateUrl !== url) { this.gl.deleteTexture(tex); return; }
-      if (this.panorama) this.gl.deleteTexture(this.panorama);
-      this.panorama = tex;
-      if (done) done(null);
-    }).catch((e) => { if (done) done(e || new Error("plate failed")); });
+  /* Up to three layers, each {url, tint}. One layer with a white tint is the
+     ordinary single-band view; two or three is a composite the visitor mixed.
+
+     Slots are addressed by index rather than diffed, because the interesting
+     case is a preset changing all three at once and any cleverness about
+     "which of these did not move" would be cleverness about the rare case.
+     Textures already loaded for the same url are kept, though — retinting a
+     layer must not re-fetch a megabyte. */
+  const SLOT_UNIT = [1, 4, 5];
+
+  PhotoSky.prototype.setLayers = function (layers, done) {
+    if (!this.gl || this.failed) return;
+    const gl = this.gl;
+    this._layerUrls = this._layerUrls || [];
+    this._tints = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    const token = (this._layerToken = (this._layerToken || 0) + 1);
+    let pending = 0;
+
+    for (let i = 0; i < 3; i++) {
+      const layer = layers[i];
+      this._tints[i] = layer ? layer.tint : [0, 0, 0];
+      if (!layer) continue;
+      if (this._layerUrls[i] === layer.url && this.slots && this.slots[i]) continue;
+      pending++;
+      const slot = i;
+      const url = layer.url;
+      this._loadTexture(url, SLOT_UNIT[slot]).then((tex) => {
+        // A later selection may have landed while this was in flight.
+        if (this._layerToken !== token) { gl.deleteTexture(tex); return; }
+        this.slots = this.slots || [];
+        if (this.slots[slot]) gl.deleteTexture(this.slots[slot]);
+        this.slots[slot] = tex;
+        this._layerUrls[slot] = url;
+        if (slot === 0) this.panorama = tex;
+        if (--pending === 0 && done) done(null);
+      }).catch((e) => { if (done) done(e || new Error("plate failed")); });
+    }
+    if (pending === 0 && done) done(null);
   };
 
   /* ── the microwave background strip ──────────────────────────────────
@@ -494,11 +547,28 @@
     gl.useProgram(this.program);
     this._updateCmb(beta);
     gl.uniform1i(this.u.uPanorama, 1);
+    gl.uniform1i(this.u.uPlateB, 4);
+    gl.uniform1i(this.u.uPlateC, 5);
     gl.uniform1i(this.u.uCmb, 3);
     gl.uniform2f(this.u.uCmbRange, this._cmbRange[0], this._cmbRange[1]);
     gl.uniform2f(this.u.uCmbD, this._cmbD[0], this._cmbD[1]);
+
+    /* Every slot gets a live texture bound whether it is in use or not — a
+       sampler left pointing at nothing reads as black on some drivers and
+       throws an incomplete-texture warning on others. Unused slots point at
+       slot 0 and are multiplied by a zero tint. */
+    const slots = this.slots || [];
+    const base = slots[0] || this.panorama;
+    const tints = this._tints || [[1, 1, 1], [0, 0, 0], [0, 0, 0]];
     gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, this.panorama);
+    gl.bindTexture(gl.TEXTURE_2D, base);
+    gl.activeTexture(gl.TEXTURE4);
+    gl.bindTexture(gl.TEXTURE_2D, slots[1] || base);
+    gl.activeTexture(gl.TEXTURE5);
+    gl.bindTexture(gl.TEXTURE_2D, slots[2] || base);
+    gl.uniform3fv(this.u.uTintA, tints[0]);
+    gl.uniform3fv(this.u.uTintB, tints[1]);
+    gl.uniform3fv(this.u.uTintC, tints[2]);
     gl.activeTexture(gl.TEXTURE3);
     gl.bindTexture(gl.TEXTURE_2D, this.cmbTex);
     gl.uniform2f(this.u.uResolution, this.W, this.H);
