@@ -184,8 +184,15 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
 }
 .hud > * { min-height: 0; }
 /* The frame itself is a hole you look through; only the instruments in it
-   catch the pointer. */
-.hud .cluster, .hud .altimeter, .hud .dock, .hud .lookback, .hud .mark,
+   catch the pointer.
+
+   The two rail panels are listed whole rather than by their rows. It used to
+   be `.mark` alone, which meant the checkpoint rows took a click but the
+   header that folds them away did not — the fold has never worked by pointer.
+   Both panels are solid glass blocks now, so anything drawn as part of one
+   should behave like part of one. */
+.hud .cluster, .hud .altimeter, .hud .dock, .hud .lookback,
+.hud .marks, .hud .bands,
 .hud .iconbtn, .hud .act, .hud .inset, .hud .landing-warn { pointer-events: auto; }
 
 /* The top row takes everything the dock does not, so the checkpoint feed in
@@ -393,6 +400,11 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
   box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 10px 28px rgba(0,0,0,.42);
   backdrop-filter: blur(16px) saturate(150%); -webkit-backdrop-filter: blur(16px) saturate(150%);
 }
+/* The header is uppercased, and the checkpoints' readout is a count so it
+   never minded. A wavelength does: uppercasing "1.25 µm" gives "1.25 MM",
+   which is not a shouted version of the same thing, it is a different unit
+   and a factor of a thousand. */
+.bands .marks-head .c { text-transform: none; letter-spacing: .06em; }
 .bands[data-open="false"] .marks-head .v { transform: rotate(-135deg) translate(-1px, -1px); }
 .bands[data-open="false"] .bands-body { display: none; }
 .bands-list {
