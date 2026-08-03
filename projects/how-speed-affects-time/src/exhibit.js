@@ -123,6 +123,14 @@
      you actually want to adjust once the hue is chosen is how much of that
      band is in the picture, so that is the second control: brightness. */
   const PALETTE = [
+    /* Grey first, because grey is what the telescope actually recorded. Every
+       plate on this list arrived as one number per pixel and nothing else, and
+       the six hues below are all decisions somebody made afterwards. Leaving
+       it off the row meant the one honest rendering of a band was the only one
+       you could not ask for — you could paint 2.2 µm any of six colours, but
+       not look at it as it came. It is not a hue and it is not on the wheel;
+       it is the absence of the choice the other six are. */
+    { hex: "#ffffff", name: "grey — as measured" },
     { hex: "#ff4a3d", name: "red" },
     { hex: "#ff9c2b", name: "orange" },
     { hex: "#5ddc5d", name: "green" },
@@ -342,6 +350,7 @@
     stepClocks(dt);
     stepTurn(now);
     stepAltitude(dt);
+    stepLook();
 
     if (dirty) { draw(); dirty = false; }
     paintReadouts();
@@ -655,14 +664,175 @@
   /* Where the camera points. The ship keeps going the way it was going —
      that is the whole point of the rear view, and why this is a separate
      vector from `forward` rather than a negated one. */
-  function viewDir() {
-    return lookBack ? [-forward[0], -forward[1], -forward[2]] : forward;
+  /* ── looking around ──────────────────────────────────────────────────
+     Drag to turn your head. Nothing about the physics moves: aberration and
+     the Doppler factor are functions of your *velocity*, and the ship cannot
+     steer — the heading is fixed the moment you pick a speed. So the whole
+     transformed sky is already decided, and the camera is only choosing which
+     part of it is in frame. That is why the renderers have taken the gaze and
+     the velocity as two separate vectors all along.
+
+     Yaw wraps; pitch stops just short of the poles, because a camera looking
+     exactly along its own up vector has no defined roll and the frame spins
+     on the spot trying to find one. */
+  let lookYaw = 0, lookPitch = 0;
+  const PITCH_LIMIT = 85 * Math.PI / 180;
+
+  /* Turning your head is something you can only do on the ground.
+     Standing in the forest you are a person looking up, and where you look is
+     yours to choose. The moment you leave you are a passenger on a ship that
+     cannot steer, pointed the way the trip points, and the exhibit's whole
+     claim is about what that fixed heading does to the sky — a viewer who can
+     swing the camera away mid-flight can miss the aberration piling up dead
+     ahead entirely, which is the thing they came to see.
+
+     "On the ground" is the altimeter's own 3 m threshold rather than a second
+     opinion about the same question. The rest is what "still here" means: no
+     speed, no speed asked for, no distance run. Nudging the slider is the act
+     of leaving, so the look locks on the first frame of the ramp, not when
+     the ship finally clears the trees. */
+  function onEarth() {
+    return S.beta === 0 && S.targetBeta === 0 &&
+           S.distLs <= 1e-4 && S.altKm < 0.003;
+  }
+
+  /* Leaving takes the angles with it. Locking alone would strand anyone who
+     pushed the slider mid-glance in a view they can no longer correct, facing
+     some arbitrary patch of sky for the whole trip — so the heading returns to
+     dead ahead as you go, which is where the trip is anyway. */
+  let lookWasFree = true;
+  function stepLook() {
+    const free = onEarth();
+    if (free === lookWasFree) return;
+    lookWasFree = free;
+    if (!free && (lookYaw || lookPitch)) { lookYaw = lookPitch = 0; dirty = true; }
+    document.querySelector(".stage").classList.toggle("look-locked", !free);
+  }
+
+  /* The camera's frame: where it points, and which way is up the screen.
+
+     The up vector is the fix for the seam. Every renderer used to build its
+     own screen frame out of the view direction alone, choosing a reference
+     pole by a hard switch — straight up normally, sideways once |z| passed
+     0.9. Aimed permanently down one fixed axis that switch could never fire.
+     Drag the view about and it does, and the entire sky rolls on the spot at
+     the moment of crossing.
+
+     Nor is it fixable in place: you cannot comb a sphere, so no function of
+     the direction alone is continuous everywhere, and moving the switch only
+     moves where it shows. So the frame stops being a function of the
+     direction. The camera already knows its own roll — it is a yaw and a
+     pitch about a base that holds still — and it hands that to the renderers
+     rather than letting each one guess. `up` here is the pitch derivative of
+     `dir`, which is precisely "up the screen", and is smooth all the way to
+     the pitch limit.
+
+     With both angles at zero this reproduces the old basis exactly, so the
+     view you get without touching anything is unchanged. */
+  function lookFrame() {
+    const base = lookBack ? [-forward[0], -forward[1], -forward[2]] : forward;
+    const r = perpendicular(base);
+    const u = [
+      base[1] * r[2] - base[2] * r[1],
+      base[2] * r[0] - base[0] * r[2],
+      base[0] * r[1] - base[1] * r[0],
+    ];
+    if (!lookYaw && !lookPitch) return { dir: base, up: u };
+    const cp = Math.cos(lookPitch), sp = Math.sin(lookPitch);
+    const cy = Math.cos(lookYaw), sy = Math.sin(lookYaw);
+    const norm = (v) => {
+      const l = Math.hypot(v[0], v[1], v[2]) || 1;
+      return [v[0] / l, v[1] / l, v[2] / l];
+    };
+    return {
+      dir: norm([0, 1, 2].map((i) =>
+        base[i] * cp * cy + r[i] * cp * sy + u[i] * sp)),
+      up: norm([0, 1, 2].map((i) =>
+        -base[i] * sp * cy - r[i] * sp * sy + u[i] * cp)),
+    };
+  }
+
+  /* One pointer drag to turn your head. A drag that starts on the sky keeps
+     turning even if the pointer wanders over a panel, which is why the move
+     and release listen on the window. */
+  function wireLook() {
+    const stage = document.querySelector(".stage");
+    let dragging = false, lastX = 0, lastY = 0;
+
+    /* Bound to the document, not to the stage, and filtered by what the press
+       landed on instead. The stage is behind a full-screen HUD and a canvas,
+       so "did this start on the sky" is better asked as "did this start on
+       nothing that wants the press for itself".
+
+       That list used to be all of `.hud`, and the effect was a view you could
+       only turn from the gaps between the instruments. The clocks and the
+       altitude card are read-outs — they display, they do not take input —
+       but they are opaque to the pointer, so a press that began on one did
+       nothing at all. Looking up suffered worst of any direction: you look up
+       by pulling the sky down, so the stroke wants to start high in the
+       frame, which is exactly where the clocks are. The drag now begins on
+       anything that is not genuinely interactive, and the seam between an
+       instrument and open sky stops being a place where the gesture dies.
+
+       Still excluded, and each for a reason: real controls consume the press,
+       the Info sheet scrolls and its prose is meant to be selectable, and the
+       overlays sit above everything by design.
+
+       No preventDefault. It looked like the tidy way to stop a drag selecting
+       text and it silently killed the drag itself — the pointer stream never
+       continued. CSS handles the selection, where it costs nothing. */
+    const CONTROLS = ".sheet, .welcome, .relay-return, .dock, .marks-list," +
+                     "input, button, a, [role='button']";
+    document.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || !onEarth()) return;
+      const t = e.target;
+      if (t && t.closest && t.closest(CONTROLS)) return;
+      dragging = true;
+      lastX = e.clientX; lastY = e.clientY;
+      stage.classList.add("dragging");
+    });
+
+    addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      // Launching mid-drag ends the drag rather than letting the held pointer
+      // keep writing angles that stepLook is zeroing behind it.
+      if (!onEarth()) { dragging = false; stage.classList.remove("dragging"); return; }
+      const dx = e.clientX - lastX, dy = e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY;
+      /* Twice frame rate. A pixel of drag moving the sky exactly one pixel is
+         the tidy answer and it made looking up a chore: the frame is 49° tall,
+         so horizon to straight up is 90° — nearly two full screen heights of
+         dragging, which is two strokes and a re-grab for the single most
+         obvious thing anyone standing in a forest wants to do. At double, the
+         zenith is one comfortable pull and the whole sky is inside a couple of
+         them, which is worth more here than the sky tracking the cursor. */
+      const perPx = 2 * (49 * Math.PI / 180) / Math.max(1, canvas.clientHeight);
+      lookYaw -= dx * perPx;
+      lookPitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, lookPitch + dy * perPx));
+      dirty = true;
+    });
+
+    for (const ev of ["pointerup", "pointercancel"]) {
+      addEventListener(ev, () => {
+        if (!dragging) return;
+        dragging = false;
+        stage.classList.remove("dragging");
+      });
+    }
+
+    // Double-click puts you back on the axis. Getting lost is easy and
+    // hunting for dead ahead by dragging is not a puzzle worth setting.
+    stage.addEventListener("dblclick", () => {
+      if (!onEarth()) return;
+      lookYaw = lookPitch = 0;
+      dirty = true;
+    });
   }
 
   function draw() {
-    const view = viewDir();
-    photoSky.render(S.beta, forward, 1, view);
-    sky.render(S.beta, forward, view);
+    const { dir: view, up } = lookFrame();
+    photoSky.render(S.beta, forward, 1, view, up);
+    sky.render(S.beta, forward, view, up);
 
     // The inset appears when the payoff stops being visible at true scale.
     // At the top of the ladder the entire sky is 0.16° across — about two
@@ -688,8 +858,8 @@
       const zoom = Math.min(3000, Math.max(2, 11 / coneDeg));
       insetSky.zoom = zoom;
       insetSky.extras = sky.extras;
-      photoInsetSky.render(S.beta, forward, zoom, view);
-      insetSky.render(S.beta, forward, view);
+      photoInsetSky.render(S.beta, forward, zoom, view, up);
+      insetSky.render(S.beta, forward, view, up);
       $("inset-tag").textContent = "×" + Math.round(zoom).toLocaleString() +
         "  ·  " + (coneDeg < 1 ? coneDeg.toFixed(2) : coneDeg.toFixed(1)) + "° of sky";
       inset.hidden = false;
@@ -1290,6 +1460,7 @@
     wireInfo();
     wireMarks();
     wireBands();
+    wireLook();
     wireWelcome();
   }
 
@@ -1556,6 +1727,40 @@
     return (arcsec / 3600).toFixed(2) + "°";
   }
 
+  /* Where a direction lands in the frame.
+     Earth used to be pinned to left/top 50% and that was right, because the
+     camera always pointed straight down the axis Earth sits on, so dead
+     centre was where it genuinely was. Once you can turn your head it is the
+     last thing on screen positioned by assumption instead of by projection —
+     and a planet glued to the middle while the sky slides past behind it is
+     the one object visibly exempt from the geometry.
+
+     No aberration needed on the way in: Earth is at θ = 0 or π from the
+     velocity, and the axis maps to itself at any speed. */
+  function projectToScreen(d) {
+    const { dir: view, up: u } = lookFrame();
+    const z = d[0] * view[0] + d[1] * view[1] + d[2] * view[2];
+    if (z <= 1e-6) return null;                 // behind the camera
+    // Same frame the renderers are given, so the marker sits where the sky
+    // behind it does — deriving a second one here is how the disc and the
+    // stars under it end up disagreeing about which way is up.
+    const r = [
+      u[1] * view[2] - u[2] * view[1],
+      u[2] * view[0] - u[0] * view[2],
+      u[0] * view[1] - u[1] * view[0],
+    ];
+    const box = canvas.getBoundingClientRect();
+    const scale = (box.height / 2) / Math.tan(49 * Math.PI / 360);
+    const a = (d[0] * r[0] + d[1] * r[1] + d[2] * r[2]) / z;
+    const b = (d[0] * u[0] + d[1] * u[1] + d[2] * u[2]) / z;
+    const x = box.width / 2 + a * scale;
+    const y = box.height / 2 - b * scale;
+    // A little slack past the edge so the disc slides off rather than
+    // vanishing the instant its centre crosses.
+    if (x < -160 || y < -160 || x > box.width + 160 || y > box.height + 160) return null;
+    return { x, y, height: box.height };
+  }
+
   function earthGeometry() {
     const k = P.aberrationK(S.beta);
     const rangeKm = Math.max(EARTH_RADIUS_KM, S.distLs * P.C / 1000);
@@ -1588,14 +1793,29 @@
     // back there is the place you left, and it is the only object in the wake
     // with a known size — so it is the one thing that makes the emptiness
     // legible instead of just dark.
-    const astern = lookBack && earthIsAstern() && S.distLs > 1e-4;
+    const astern = earthIsAstern() && S.distLs > 1e-4;
     const visible = ahead || astern;
     earth.hidden = !visible;
     range.hidden = !astern;
     mark.hidden = true;
     if (!visible) return;
 
-    const stageHeight = canvas.getBoundingClientRect().height;
+    /* Which way Earth is, and where that falls in the frame. Astern it is
+       behind the ship, which the camera may or may not be pointing at — with
+       free look that is now a question rather than a mode, so it is answered
+       by projection instead of by the Look behind button's state. */
+    const dir = astern ? [-forward[0], -forward[1], -forward[2]] : forward;
+    const at = projectToScreen(dir);
+    if (!at) {
+      earth.hidden = range.hidden = mark.hidden = true;
+      return;
+    }
+    for (const el of [earth, range, mark]) {
+      el.style.left = at.x.toFixed(1) + "px";
+      el.style.top = at.y.toFixed(1) + "px";
+    }
+
+    const stageHeight = at.height;
     const pxPerTan = (stageHeight / 2) / Math.tan(49 * Math.PI / 360);
     const geo = earthGeometry();
     const angularRadius = geo.alpha;
@@ -1896,7 +2116,11 @@
     const p = PRESETS.find((x) => x.id === id);
     if (!p) return;
     presetId = id;
-    mix = p.mix.map(([band, tint, gain]) => ({ id: band, tint, gain: gain == null ? 1 : gain }));
+    /* A preset's colours are the whole point of it — the chromatic ordering is
+       what it is demonstrating — so they count as chosen and nothing rewrites
+       them underneath. */
+    mix = p.mix.map(([band, tint, gain]) =>
+      ({ id: band, tint, gain: gain == null ? 1 : gain, chosen: true }));
     paintBand();
     pushMix();
   }
@@ -1918,13 +2142,32 @@
     }
     if (mix.length === 1 && mix[0].id === "visible") mix = [];
 
+    /* A band on its own is grey — the exposure as it was taken, which is what
+       the note under the list has always claimed a single band is. It used to
+       arrive blue, because the default tints exist to put three bands in
+       wavelength order and the first of them is blue; with only one band
+       there is no order to keep, so the colour was asserting something the
+       data does not say.
+
+       So grey is the resting state of a lone band, and a colour is what a mix
+       needs: adding a second band colours the first, and dropping back to one
+       returns it to grey. Both only ever move a tint the exhibit assigned —
+       `chosen` marks the ones a visitor picked, and those are never touched
+       in either direction. Without that the promotion had no matching
+       demotion and a band could keep a colour nobody asked for. */
     const at = mix.findIndex((m) => m.id === id);
     if (at >= 0) {
       mix.splice(at, 1);
       if (!mix.length) mix = [{ id: "visible", tint: "#ffffff", gain: 1 }];
+      else if (mix.length === 1 && !mix[0].chosen) mix[0].tint = "#ffffff";
     } else {
       if (mix.length >= MIX_MAX) mix.shift();
-      mix.push({ id, tint: DEFAULT_TINTS[mix.length % DEFAULT_TINTS.length], gain: 1 });
+      if (mix.length === 1 && !mix[0].chosen) mix[0].tint = DEFAULT_TINTS[0];
+      mix.push({
+        id,
+        tint: mix.length ? DEFAULT_TINTS[mix.length % DEFAULT_TINTS.length] : "#ffffff",
+        gain: 1,
+      });
     }
     presetId = matchPreset();
     paintBand();
@@ -1935,6 +2178,9 @@
     const slot = mix.find((m) => m.id === id);
     if (!slot) return;
     slot.tint = tint;
+    // Picked on purpose, including picking grey on purpose. From here the
+    // automatic promotion and demotion leave this band alone.
+    slot.chosen = true;
     presetId = matchPreset();
     paintBand();
     pushMix();
@@ -2023,15 +2269,19 @@
     const single = mix.length === 1
       ? (BANDS.find((x) => x.id === mix[0].id) || {}).note : null;
     $("bands-note").textContent = p ? p.note : (single || "Your own mix.");
-    /* The honesty flag. One band in its own colour is false colour; three
-       bands mixed is false colour you chose — which is worth saying
-       differently, because at that point the visitor is the one doing it. */
+    /* The honesty flag, and it has to count grey as honest. A single band
+       left grey is not false colour at all — it is the measurement, drawn as
+       the one thing it actually is. Calling that false colour was the label
+       contradicting the picture, and it did so while the picture was blue. */
     const plain = mix.length === 1 && mix[0].id === "visible";
+    const grey = mix.length === 1 && mix[0].tint.toLowerCase() === "#ffffff";
     const f = $("bands-false");
     f.hidden = plain;
     f.textContent = mix.length > 1
       ? "False colour, and yours. Every colour astronomy picture is made exactly this way."
-      : "False colour — a one-channel measurement drawn as brightness.";
+      : grey
+        ? "No colour invented — one detector's measurement, drawn as brightness."
+        : "False colour — a one-channel measurement painted in a colour you picked.";
   }
 
   /* The fold. The feed is small and capped, but it is still something sitting

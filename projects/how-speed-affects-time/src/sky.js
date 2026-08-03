@@ -229,8 +229,13 @@
      precision simply run out of digits at that scale. Working in the
      tangent plane about the velocity axis means the small numbers stay
      small instead of being differences between numbers near 1. */
-  function basis(f) {
-    const up = Math.abs(f[2]) > 0.9 ? [0, 1, 0] : [0, 0, 1];
+  /* `hint` is the camera's own up vector, and when it is supplied it is used
+     verbatim as the reference. The fallback below picks one from the
+     direction alone by a hard switch, which is fine for a camera locked to an
+     axis and rolls the whole frame on the spot for one that can turn — see
+     lookFrame() in exhibit.js. */
+  function basis(f, hint) {
+    const up = hint || (Math.abs(f[2]) > 0.9 ? [0, 1, 0] : [0, 0, 1]);
     let rx = up[1] * f[2] - up[2] * f[1];
     let ry = up[2] * f[0] - up[0] * f[2];
     let rz = up[0] * f[1] - up[1] * f[0];
@@ -256,7 +261,7 @@
    * transform backwards instead would have drawn a blueshift behind you,
    * which is the exact lie the rear view exists to disprove.
    */
-  Sky.prototype.render = function (beta, forward, view) {
+  Sky.prototype.render = function (beta, forward, view, up) {
     const W = this.W, H = this.H;
     if (!W || !this.stars) return;
 
@@ -266,7 +271,7 @@
     view = view || forward;
     const g = P.gamma(beta);
     const k = P.aberrationK(beta);
-    const { r, u } = basis(view);
+    const { r, u } = basis(view, up);
     // The main view's field of view is locked and this.zoom is 1. The only
     // thing that ever sets it otherwise is the inset, which prints its own
     // magnification on itself.

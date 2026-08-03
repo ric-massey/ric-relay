@@ -74,8 +74,10 @@
     return { x, y: cross(z, x), z };
   })();
 
-  function basis(f) {
-    const pole = Math.abs(f[2]) > 0.9 ? [0, 1, 0] : [0, 0, 1];
+  /* `hint` is the camera's own up vector — see lookFrame() in exhibit.js. The
+     switched fallback is only continuous for a camera that cannot turn. */
+  function basis(f, hint) {
+    const pole = hint || (Math.abs(f[2]) > 0.9 ? [0, 1, 0] : [0, 0, 1]);
     let rx = pole[1] * f[2] - pole[2] * f[1];
     let ry = pole[2] * f[0] - pole[0] * f[2];
     let rz = pole[0] * f[1] - pole[1] * f[0];
@@ -539,11 +541,11 @@
     return true;
   };
 
-  PhotoSky.prototype.render = function (beta, forward, zoom = 1, view) {
+  PhotoSky.prototype.render = function (beta, forward, zoom = 1, view, up) {
     if (!this.ready || !this.gl || !this.W) return false;
     const gl = this.gl;
     view = view || forward;
-    const b = basis(view);
+    const b = basis(view, up);
     gl.useProgram(this.program);
     this._updateCmb(beta);
     gl.uniform1i(this.u.uPanorama, 1);

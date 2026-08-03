@@ -74,7 +74,22 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
 }
 
 /* ── the view, which is the whole page ────────────────────────────── */
-.stage { position: fixed; inset: 0; background: #000; overflow: hidden; }
+/* Grab to look around. The cursor is the only thing telling you the sky is
+   draggable at all, so it is not optional decoration — and once you leave the
+   ground and the drag is gone, it has to stop saying otherwise, which is what
+   look-locked is for. touch-action: none stops a phone treating the same
+   gesture as a page scroll and swallowing it before the pointer handlers ever
+   see it; it stays on in flight, since there is still nothing to scroll. */
+.stage { position: fixed; inset: 0; background: #000; overflow: hidden;
+  cursor: grab; touch-action: none; }
+.stage.dragging { cursor: grabbing; }
+.stage.look-locked { cursor: default; }
+/* No text selection on the instruments. A drag across the sky is a drag
+   across everything sitting over it, and without this the first turn of the
+   head highlights every clock and chip on the page in selection blue. The
+   Info sheet is not in here and stays selectable, which is where the prose
+   anyone might want to copy actually lives. */
+.stage, .hud { -webkit-user-select: none; user-select: none; }
 /* The rumble's two custom properties are declared here, at the top of the
    stage, and inherit down to the one layer that consumes them. Nothing on
    .stage-inner itself moves.
@@ -202,11 +217,7 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
 /* The centre slot of the top row. Empty except during a landing. */
 .hud-mid { flex: 1 1 auto; display: flex; justify-content: center; align-items: flex-start; }
 .rail { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
-.rail-left { align-items: flex-start; align-self: stretch; min-height: 0; }
-/* Pushed to the foot of the left column, and allowed to be the thing that
-   shrinks: margin-top auto takes the slack so the clocks stay put at the top
-   and the feed grows downward from the bottom edge instead of pushing them. */
-.rail-left .marks { margin-top: auto; }
+.rail-left { align-items: flex-start; }
 /* Stretched, so the feed inside it can flex into the space that is left. */
 .rail-right { align-items: flex-end; align-self: stretch; min-height: 0; }
 /* The left rail starts below the return pill, which is fixed at the very
@@ -1026,20 +1037,6 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
           <div class="altimeter glass num" id="altimeter" hidden aria-live="off"></div>
 
-          <!-- Checkpoints, at the foot of the left rail. They used to sit top
-               right, opposite the clocks, which put the two things that arrive
-               unbidden — a checkpoint and a wavelength you chose — in the same
-               corner competing for the same glance. Down here the left column
-               reads top to bottom as the trip: what time it is, how high you
-               are, and what you have already passed. -->
-          <div class="marks" id="marks" data-open="true" hidden>
-            <button type="button" class="marks-head" id="marks-toggle"
-                    aria-expanded="true" aria-controls="marks-list">
-              <span><span class="v" aria-hidden="true"></span> Checkpoints</span>
-              <span class="c num" id="marks-count">0</span>
-            </button>
-            <div class="marks-list" id="marks-list" role="log" aria-live="polite"></div>
-          </div>
         </div>
 
         <div class="hud-mid">
@@ -1096,6 +1093,18 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
             </div>
           </div>
 
+          <!-- Checkpoints. Top right under the wavelength panel, and closed to
+               begin with: the first frame of the exhibit should be the sky, not
+               two open drawers over it. The header carries the count, so a
+               folded feed still tells you something has happened. -->
+          <div class="marks" id="marks" data-open="false" hidden>
+            <button type="button" class="marks-head" id="marks-toggle"
+                    aria-expanded="false" aria-controls="marks-list">
+              <span><span class="v" aria-hidden="true"></span> Checkpoints</span>
+              <span class="c num" id="marks-count">0</span>
+            </button>
+            <div class="marks-list" id="marks-list" role="log" aria-live="polite"></div>
+          </div>
         </div>
       </div>
 
@@ -1723,11 +1732,11 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 <script src="src/colour.js?v=3"></script>
 <script src="src/physics.js?v=5"></script>
 <script src="src/galaxy.js?v=3"></script>
-<script src="src/sky.js?v=11"></script>
+<script src="src/sky.js?v=12"></script>
 <script src="src/ground.js?v=10"></script>
-<script src="src/photo-sky.js?v=18"></script>
+<script src="src/photo-sky.js?v=19"></script>
 <script src="src/glossary.js?v=4"></script>
-<script src="src/exhibit.js?v=63"></script>
+<script src="src/exhibit.js?v=71"></script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="spacetime" defer></script>
 </body>
 </html>
