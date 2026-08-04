@@ -1,0 +1,3777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CROSSFIRE — survival, or last ship flying</title>
+<meta name="description" content="Asteroids. Survive together against the rocks in an open field that wraps at the edges — with or without friendly fire — or fight it out in a walled battle royale arena that closes in around you.">
+<meta property="og:title" content="CROSSFIRE">
+<meta property="og:description" content="Three modes. Survive the rocks together in open space, or be the last ship flying inside a closing wall.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230a0a0a'/><path d='M76 50 L34 72 L44 50 L34 28 Z' fill='none' stroke='%23ffc233' stroke-width='6' stroke-linejoin='round'/></svg>">
+<script src="../relay-return.js" data-home="../../index.html" defer></script>
+<script src="net.js"></script>
+<style>
+  :root {
+    /* Same phosphor as the terminal front door. The player hues are all lifted
+       from the site's own --flash-* set, so five ships can be on screen without
+       anything looking imported from another palette. */
+    --bg: #0a0a0a;
+    --phosphor: #ffc233;
+    --phosphor-dim: #c79000;
+    --phosphor-faint: #6b4d00;
+    --p2: #38ff9c;
+    --alarm: #ff6a4d;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--phosphor);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 15px;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background-image:
+      radial-gradient(ellipse at 50% 0%, rgba(255, 176, 0, 0.05), transparent 60%);
+  }
+
+  /* scanlines + vignette, same trick as the terminal — never eats a click */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 40;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.22) 0 1px, transparent 1px 3px),
+      radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.75) 100%);
+  }
+
+  #stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.6rem;
+  }
+
+  canvas {
+    display: block;
+    border: 1px solid var(--phosphor-faint);
+    background: #000;
+    box-shadow: 0 0 60px rgba(255, 176, 0, 0.07) inset;
+    touch-action: none;
+  }
+
+  .legend {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.6rem;
+    justify-content: center;
+    align-items: baseline;
+    padding: 0.5rem 1rem 0.9rem;
+    font-size: 0.76rem;
+    letter-spacing: 0.06em;
+    color: var(--phosphor-dim);
+  }
+
+  .legend b { font-weight: 400; color: var(--phosphor); }
+  .legend .two b { color: var(--p2); }
+  .legend .more { color: var(--phosphor-dim); }
+  .legend kbd {
+    font: inherit;
+    color: var(--phosphor);
+    border: 1px solid var(--phosphor-faint);
+    border-radius: 2px;
+    padding: 0 0.28em;
+  }
+  .legend .two kbd { color: var(--p2); }
+
+  /* The whole game is people at one keyboard. Say so rather than shipping
+     thumb controls that can't work for a second player on a 375px screen. */
+  .keyboard-note {
+    display: none;
+    padding: 0.9rem 1.1rem 1.2rem;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--phosphor-dim);
+  }
+
+  /* The return control is fixed to the bottom-left. Once the legend wraps onto
+     three rows it slides underneath it, so give it room to clear. */
+  @media (max-width: 720px) {
+    .legend { padding-bottom: 3.4rem; }
+  }
+
+  /* ── on-screen controls ────────────────────────────────────────────────
+     Four big targets rather than a clever gesture: this is a game about
+     holding thrust while turning, and a thumb needs somewhere fixed to rest.
+     Hidden until a touch actually happens, so a laptop with a touchscreen
+     doesn't get a phone's controls. */
+  #pad { display: none; }
+  body.touch #pad {
+    display: flex;
+    position: fixed;
+    left: 0; right: 0;
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    z-index: 30;
+    justify-content: space-between;
+    padding: 0 0.6rem;
+    pointer-events: none;
+  }
+  #pad .side { display: flex; gap: 0.55rem; pointer-events: auto; }
+  #pad button {
+    width: 4.4rem; height: 4.4rem;
+    font: inherit;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    color: var(--phosphor);
+    background: rgba(10, 10, 10, 0.72);
+    border: 1px solid var(--phosphor-dim);
+    border-radius: 50%;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #pad button.down {
+    background: rgba(255, 194, 51, 0.26);
+    border-color: var(--phosphor);
+  }
+  #pad button .g { font-size: 1.35rem; display: block; line-height: 1.1; }
+
+  /* Once the thumb controls are up they own the bottom of the screen: the
+     keyboard legend is no use to a finger, and the way home has to move out
+     from under the turn buttons rather than sit beneath them. */
+  body.touch .legend { display: none; }
+  body.touch .relay-return { bottom: 6.4rem; }
+
+  @media (hover: none) and (pointer: coarse) {
+    .legend { display: none; }
+    .keyboard-note { display: block; padding-bottom: 3.4rem; }
+    body.touch .keyboard-note { display: none; }
+  }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; overflow: hidden; clip: rect(0 0 0 0);
+    white-space: nowrap; border: 0;
+  }
+
+  /* ── the online panel ──────────────────────────────────────────────────
+     Real HTML rather than canvas, because this screen is all copying and
+     pasting and the browser already does that properly. */
+  #lobby {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.86);
+    overflow-y: auto;
+  }
+  #lobby[hidden] { display: none; }
+
+  #lobby .panel {
+    /* A column, so the two connection steps can be put in the order that side
+       actually does them: the host makes a code first, the guest pastes one. */
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 680px);
+    border: 1px solid var(--phosphor-faint);
+    background: #000;
+    padding: 1.2rem 1.3rem 1.4rem;
+    max-height: 100%;
+  }
+
+  #lobby h2 {
+    font-size: 1.35rem;
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    color: var(--phosphor);
+    margin-bottom: 0.3rem;
+  }
+
+  #lobby p { color: var(--phosphor-dim); font-size: 0.82rem; margin-bottom: 0.9rem; }
+  #lobby .step { color: var(--phosphor); font-size: 0.8rem; letter-spacing: 0.08em;
+                 display: block; margin: 1rem 0 0.35rem; }
+
+  #lobby textarea {
+    width: 100%;
+    background: #060606;
+    color: var(--phosphor-dim);
+    border: 1px solid var(--phosphor-faint);
+    font: inherit;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    padding: 0.55rem 0.6rem;
+    resize: vertical;
+    word-break: break-all;
+  }
+  #lobby textarea:focus { outline: 2px solid var(--phosphor-dim); outline-offset: 1px; }
+
+  #lobby button {
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--phosphor);
+    background: transparent;
+    border: 1px solid var(--phosphor-dim);
+    padding: 0.5rem 0.9rem;
+    margin: 0.5rem 0.4rem 0 0;
+    cursor: pointer;
+    min-height: 44px;
+  }
+  #lobby button:hover, #lobby button:focus-visible {
+    background: rgba(255, 176, 0, 0.12);
+    outline: none;
+  }
+  #lobby button[disabled] { opacity: 0.4; cursor: default; }
+
+  #lobby .you { border-bottom: 1px solid var(--phosphor-faint); padding-bottom: 0.9rem; }
+  #lobby .note { color: var(--phosphor-dim); font-size: 0.76rem; margin: 0.5rem 0 0; }
+  #lobby button.quiet {
+    border-color: var(--phosphor-faint);
+    color: var(--phosphor-dim);
+    font-size: 0.74rem;
+    min-height: 0;
+    padding: 0.4rem 0.7rem;
+  }
+  #lobby input[type="text"] {
+    width: min(100%, 15rem);
+    background: #060606;
+    color: var(--phosphor);
+    border: 1px solid var(--phosphor-dim);
+    font: inherit;
+    font-size: 0.9rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.5rem 0.6rem;
+    margin-bottom: 0.6rem;
+  }
+  #lobby input[type="text"]:focus { outline: 2px solid var(--phosphor-dim); outline-offset: 1px; }
+  #lobby input::placeholder { color: var(--phosphor-faint); letter-spacing: 0.06em; }
+
+  #lobby .seats { font-size: 0.82rem; }
+  #lobby .seats .row {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.28rem 0; color: var(--phosphor-dim);
+  }
+  #lobby .seats .dot {
+    width: 0.6rem; height: 0.6rem; border-radius: 50%;
+    background: currentColor; flex: 0 0 auto;
+  }
+  #lobby .seats .who { color: inherit; letter-spacing: 0.08em; }
+  #lobby .seats .what { color: var(--phosphor-dim); font-size: 0.72rem; opacity: 0.8; }
+  #lobby .seats .empty { color: var(--phosphor-faint); font-size: 0.75rem; padding: 0.3rem 0; }
+
+  /* The ship you'll fly. Each button carries its own colour, so the choice is
+     the thing you're choosing rather than a word describing it. */
+  #lobby .swatches { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  #lobby .swatches button {
+    margin: 0;
+    border-color: currentColor;
+    opacity: 0.55;
+    letter-spacing: 0.06em;
+    min-width: 5.5rem;
+  }
+  #lobby .swatches button:hover:not([disabled]) { opacity: 0.85; }
+  #lobby .swatches button.mine {
+    opacity: 1;
+    box-shadow: inset 0 0 0 1px currentColor;
+    background: rgba(255, 176, 0, 0.1);
+  }
+  #lobby .swatches button[disabled] { opacity: 0.22; }
+  #lobby .status { color: var(--phosphor); font-size: 0.8rem; min-height: 1.3em; }
+  #lobby .status.bad { color: var(--alarm); }
+  #lobby .modes { margin-top: 1rem; border-top: 1px solid var(--phosphor-faint);
+                  padding-top: 0.7rem; }
+</style>
+</head>
+<body>
+
+<h1 class="sr-only">CROSSFIRE — Asteroids in three modes</h1>
+<p class="sr-only">
+  A local multiplayer game for one keyboard. Survival puts every ship on the same side
+  against a field of drifting rocks, sharing one pool of lives, with friendly fire on —
+  a shot that hits your partner destroys them and costs the team a life. Survival Safe is
+  the same game with shots passing harmlessly through your partner. Battle Royale is a
+  larger arena where every ship is an enemy, each has three lives, and the arena wall
+  closes inward until only one ship is left flying, around stationary stars and black
+  holes that pull ships, rocks and shots towards them. In the survival modes the field
+  wraps: fly off one edge and you arrive at the opposite one, and so do the rocks and the
+  shots. Battle royale has solid walls instead — ships and rocks bounce off them, bullets
+  are destroyed by them — and those walls close inward as the match runs on.
+
+  One or two people play at the same keyboard, one player per phone, and up to five play
+  online with a screen each. Each player is named for the colour of their ship. Amber
+  steers with A and D, thrusts with W and fires with the space bar. Green, the second
+  player at a keyboard, steers with the left and right arrow keys, thrusts with the up
+  arrow and fires with Enter. Cyan, pink and violet are flown by bots or by other people
+  online. Those are the keys it starts with: press C at the
+  title screen to open the controls, where every key can be reassigned by choosing it
+  and pressing the key you want, and the browser remembers your choices.
+  Press P to pause, and Tab in battle royale to follow a different ship. This game
+  requires a keyboard.
+</p>
+
+<div id="stage">
+  <canvas id="game" aria-label="CROSSFIRE game screen"></canvas>
+</div>
+
+<div class="legend">
+  <span class="one"><b>amber</b> <kbd>A</kbd><kbd>D</kbd> turn · <kbd>W</kbd> thrust · <kbd>space</kbd> fire</span>
+  <span class="two"><b>green</b> <kbd>←</kbd><kbd>→</kbd> turn · <kbd>↑</kbd> thrust · <kbd>enter</kbd> fire</span>
+  <span><kbd>P</kbd> pause</span>
+  <span class="more">up to five play — the rest are listed when you pick a mode</span>
+</div>
+
+<div id="pad" aria-hidden="true">
+  <div class="side">
+    <button type="button" data-hold="l"><span class="g">◀</span>turn</button>
+    <button type="button" data-hold="r"><span class="g">▶</span>turn</button>
+  </div>
+  <div class="side">
+    <button type="button" data-hold="th"><span class="g">▲</span>thrust</button>
+    <button type="button" data-hold="f"><span class="g">◉</span>fire</button>
+  </div>
+</div>
+
+<div id="lobby" hidden role="dialog" aria-modal="true" aria-labelledby="lobbyTitle">
+  <div class="panel">
+    <h2 id="lobbyTitle">PLAY ONLINE</h2>
+    <p id="lobbyHint"></p>
+
+    <div class="you" id="youBlock">
+      <span class="step">you</span>
+      <input id="playerName" type="text" maxlength="12" spellcheck="false"
+             autocomplete="off" placeholder="your name" aria-label="your name">
+      <div id="colourPick" hidden>
+        <div class="swatches" id="swatches"></div>
+      </div>
+    </div>
+
+    <div id="roomRoute" hidden>
+      <span class="step" id="roomLabel">room name</span>
+      <input id="roomWord" type="text" maxlength="24" spellcheck="false"
+             autocomplete="off" placeholder="a word you both know"
+             aria-label="room name">
+      <div><button id="btnRoom" type="button">open the room</button></div>
+      <p class="note" id="roomNote"></p>
+    </div>
+
+    <div id="rowMake">
+      <span class="step" id="makeLabel">1 · make a code</span>
+      <button id="btnInvite" type="button">create an invite code</button>
+    </div>
+
+    <label id="labOut" hidden>
+      <span class="step" id="outLabel">send this to your friend</span>
+      <textarea id="outCode" readonly rows="3" spellcheck="false"></textarea>
+    </label>
+    <div id="rowCopy" hidden><button id="btnCopy" type="button">copy code</button></div>
+
+    <label id="labIn" hidden>
+      <span class="step" id="inLabel">paste the code they send back</span>
+      <textarea id="inCode" rows="3" spellcheck="false"
+                placeholder="paste the CROSSFIRE code here"></textarea>
+    </label>
+    <div id="rowUse" hidden><button id="btnUse" type="button">connect</button></div>
+
+    <div id="codeSwitch" hidden>
+      <button id="btnCodeRoute" type="button" class="quiet">connect by code instead</button>
+    </div>
+
+    <p class="status" id="lobbyStatus" role="status"></p>
+
+    <div id="seatWrap" hidden>
+      <span class="step" id="seatTitle">who's here</span>
+      <div class="seats" id="seatList"></div>
+    </div>
+
+    <div class="modes" id="rowStart" hidden>
+      <span class="step">everyone connected? pick a mode to begin</span>
+      <button type="button" data-mode="survival">survival</button>
+      <button type="button" data-mode="safe">survival — safe</button>
+      <button type="button" data-mode="royale">battle royale</button>
+    </div>
+
+    <div class="modes" id="rowClose"><button id="btnLobbyClose" type="button">back to the menu</button></div>
+  </div>
+</div>
+
+<p class="keyboard-note">
+  One ship per phone — tap the menus, then fly with the four buttons.
+  For two on one screen, open it on a laptop and bring someone with you.
+</p>
+
+<script>
+(() => {
+  "use strict";
+
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  const stage = document.getElementById("stage");
+
+  /* ── Two coordinate spaces ────────────────────────────────────────────────
+     SCREEN is a fixed 1000×700 box that the HUD and menus are laid out in, so
+     text is the same size whatever arena you're in. WORLD is the arena, which
+     is a different size per mode. Both are 10:7, so the arena always fits the
+     screen exactly and the whole map is visible at once — with up to five
+     people at one keyboard, nobody can have their own camera. A bigger arena
+     therefore means smaller ships, not a scrolling view. */
+  const SCREEN_W = 1000, SCREEN_H = 700;
+  let viewScale = 1;   // SCREEN units → device pixels
+  let wScale = 1;      // WORLD units → SCREEN units (1 while drawing the HUD)
+
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const availW = stage.clientWidth - 2;
+    const availH = stage.clientHeight - 2;
+    const s = Math.max(0.2, Math.min(availW / SCREEN_W, availH / SCREEN_H));
+    canvas.style.width = Math.round(SCREEN_W * s) + "px";
+    canvas.style.height = Math.round(SCREEN_H * s) + "px";
+    canvas.width = Math.round(SCREEN_W * s * dpr);
+    canvas.height = Math.round(SCREEN_H * s * dpr);
+    viewScale = s * dpr;
+  }
+  window.addEventListener("resize", resize);
+
+  /* ── modes ───────────────────────────────────────────────────────────────
+     `unit` scales ship size, rock size and every speed with the arena. Without
+     it a bigger map just means smaller, slower-feeling ships; with it the map
+     grows faster than the ships shrink, which is what "bigger" should feel
+     like. It's sqrt of the area factor — grown, not doubled. */
+  const MODES = {
+    survival: {
+      name: "SURVIVAL",
+      blurb: "one side · one pile of lives · friendly fire ON",
+      arena: { w: 1300, h: 910 },
+      pvp: false, friendlyFire: true, closing: false, wrap: true,
+      camera: false, hazards: 0, minPlayers: 1
+    },
+    safe: {
+      name: "SURVIVAL — SAFE",
+      blurb: "one side · one pile of lives · shots pass through your own",
+      arena: { w: 1300, h: 910 },
+      pvp: false, friendlyFire: false, closing: false, wrap: true,
+      camera: false, hazards: 0, minPlayers: 1
+    },
+    royale: {
+      name: "BATTLE ROYALE",
+      blurb: "a map far bigger than the screen · three minutes · the wall closes in",
+      // Sixteen screenfuls of world. You fly through it rather than seeing it
+      // all at once, which is what the camera and the minimap are both for.
+      arena: { w: 4000, h: 2800 },
+      pvp: true, friendlyFire: true, closing: true, wrap: false,
+      camera: true, hazards: 5, minPlayers: 2
+    }
+  };
+
+  /* ── base tuning, in a 1000-wide arena ───────────────────────────────── */
+  const TURN         = 3.7;    // rad/s — not scaled; turning rate is ergonomic
+  const THRUST       = 430;
+  const DRAG         = 0.42;
+  const MAX_SPEED    = 520;
+  const SHIP_R       = 12;
+  const BULLET_SPD   = 620;
+  const BULLET_LIFE  = 1.05;
+  const FIRE_GAP     = 0.21;
+  const MAX_SHOTS    = 4;
+  const RESPAWN_WAIT = 1.4;
+  const INVULN       = 2.6;
+  const FF_PENALTY   = 100;
+  const ROYALE_STOCKS = 3;
+  // Tuned to give roughly the same rocks-per-screen as the survival modes,
+  // across a map sixteen screens across. Culling means most are never drawn.
+  const ROYALE_ROCKS = 84;
+
+  const WALL_BOUNCE  = 0.72;   // ships keep most of their speed off a wall
+  const ROCK_BOUNCE  = 1.0;    // rocks lose nothing, or the field goes still
+
+  /* `hp` is what makes a rock cover rather than confetti. A big one soaks a
+     full magazine before it breaks, so you can put it between you and someone
+     shooting at you and trust it for a few seconds. Every hit that doesn't
+     break it leaves a crack, so the rock visibly wears out and you can see when
+     your cover is about to fail. */
+  const ROCK = {
+    big:   { r: 54, spd: [40, 85],   score: 20,  next: "mid",   verts: 13, hp: 4 },
+    mid:   { r: 30, spd: [70, 135],  score: 50,  next: "small", verts: 11, hp: 2 },
+    small: { r: 16, spd: [110, 195], score: 100, next: null,    verts: 9,  hp: 1 }
+  };
+
+  /* Battle royale match, in seconds. The wall is what turns a map this big into
+     a three-minute game: it finishes closing with ten seconds left, by which
+     point the whole fight is inside a single screen. */
+  const MATCH_TIME  = 180;
+  const CLOSE_DELAY = 20;   // grace period before it starts moving
+  const CLOSE_TIME  = 150;  // how long it takes to reach its final size
+  const CLOSE_TO    = 0.2;  // final size as a fraction of the arena
+
+  /* ── stationary hazards ──────────────────────────────────────────────────
+     Stars and black holes never move. Both pull on everything with mass —
+     ships, rocks and bullets alike — which is the point of them: a shot fired
+     past a black hole doesn't go where you aimed it.
+
+     `mass` is in the softened form a = mass / (d² + soft²), so the pull is
+     finite at the centre instead of blowing up to infinity. `kill` is the
+     radius that destroys what touches it; `reach` is where the pull stops.
+
+     Reach is deliberately short. An early version used 760 and 1000, which
+     sounds reasonable until you add it up: five wells that size cover more
+     circle area than the whole map, so everything loose fell in and the field
+     emptied — 84 rocks down to 10 inside twenty-five seconds. They're meant to
+     be places on the map you steer around, not a fate the whole map shares.
+
+     Both kill you in the middle. The difference is the grip: a black hole pulls
+     hard, a star is gentle enough that you can loiter near it and still leave.
+     `soft` is set so the pull peaks below what an engine can beat — at full
+     burn, pointed out, you climb out of either of them. Getting careless deep
+     inside one is still how you die, but it's never a sentence passed on you
+     the moment you cross the edge. Thrust is 430, so compare against that:
+
+       black hole   a(60px) ≈ 530   a(130px) ≈ 300   a(300px) ≈ 90
+       star         a(60px) ≈ 250   a(130px) ≈ 145   a(300px) ≈ 43           */
+  const HAZARD = {
+    star: { kill: 46, reach: 380, mass: 4.5e6, soft: 120 },
+    hole: { kill: 26, reach: 560, mass: 9.5e6, soft: 120 }
+  };
+
+  const MOTES_PER_HAZARD = 28;   // debris falling in, marking where the pull starts
+
+  /* ── players ─────────────────────────────────────────────────────────────
+     Everything downstream of this table is written for N players: spawns are
+     placed round a circle, collisions are all-pairs, lives and win conditions
+     count the array. Adding a third player is adding a row here and raising
+     MAX_PLAYERS — no other code needs to know. Sets 3–5 are laid out and ready
+     but not offered in the menu yet: five people at one keyboard is a physical
+     question, not a code one, and it wants testing with five real hands.
+
+     The keys on each row are what it comes with, not what it is stuck with:
+     the controls screen writes over them and the browser remembers. Every
+     action holds a list rather than one code, because some of these want
+     alternatives — a laptop with no numpad, a keyboard where Enter is a
+     stretch — and because rebinding has to be able to leave one empty. */
+  const PLAYERS = [
+    { label: "AMBER", colour: "#ffc233",
+      left: ["KeyA"], right: ["KeyD"], thrust: ["KeyW"], fire: ["Space"] },
+    { label: "GREEN", colour: "#38ff9c",
+      left: ["ArrowLeft"], right: ["ArrowRight"], thrust: ["ArrowUp"],
+      fire: ["Enter", "NumpadEnter", "ShiftRight", "Numpad0"] },
+    { label: "CYAN", colour: "#4dc9ff",
+      left: ["KeyJ"], right: ["KeyL"], thrust: ["KeyI"], fire: ["KeyU"] },
+    { label: "PINK", colour: "#ff8ae0",
+      left: ["Numpad4"], right: ["Numpad6"], thrust: ["Numpad8"], fire: ["Numpad5"] },
+    { label: "VIOLET", colour: "#b889c8",
+      left: ["KeyF"], right: ["KeyH"], thrust: ["KeyT"], fire: ["KeyG"] }
+  ];
+  const MAX_PLAYERS = PLAYERS.length;
+
+  /* Five ships, but not five pairs of hands at one keyboard. Two is the most
+     that can share a board without elbowing each other, and it's the most that
+     has two comfortable key groups. The other three colours are what bots and
+     online players wear — they exist as ships, not as seats at this desk.
+
+     A phone has one set of thumb buttons, so a phone has one player. `any-hover:
+     none` is the honest test for that: a touchscreen laptop still has a mouse
+     and a keyboard, and two people can still use it. */
+  const KEYBOARD_MAX = 2;
+  const touchOnly =
+    matchMedia("(any-pointer: coarse) and (any-hover: none)").matches;
+  const humanMax = () => (touchOnly ? 1 : KEYBOARD_MAX);
+
+  // The colour rows that a keyboard can actually reach, and therefore the only
+  // ones worth binding keys for. Online you always fly with the first row.
+  const keyRows = () => PLAYERS.slice(0, KEYBOARD_MAX);
+
+  const ACTIONS = [
+    { field: "left",   name: "TURN LEFT",  short: "turn left" },
+    { field: "right",  name: "TURN RIGHT", short: "turn right" },
+    { field: "thrust", name: "THRUST",     short: "thrust" },
+    { field: "fire",   name: "FIRE",       short: "fire" }
+  ];
+
+  // Taken before anything can be rebound, so [R] always has somewhere to go.
+  const DEFAULT_KEYS = PLAYERS.map(p => ACTIONS.map(a => p[a.field].slice()));
+
+  /* ── key names ────────────────────────────────────────────────────────────
+     `event.code` is a position on the keyboard, not a letter, which is what a
+     game wants — WASD stays in the same square on a French layout. It reads
+     terribly though, so everything shown to a player goes through here. */
+  const KEY_LABEL = {
+    Space: "SPACE", Enter: "ENTER", NumpadEnter: "NUM ENTER", Escape: "ESC",
+    ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓",
+    ShiftLeft: "L SHIFT", ShiftRight: "R SHIFT",
+    ControlLeft: "L CTRL", ControlRight: "R CTRL",
+    AltLeft: "L ALT", AltRight: "R ALT", MetaLeft: "L CMD", MetaRight: "R CMD",
+    Backspace: "BKSP", Tab: "TAB", CapsLock: "CAPS",
+    Minus: "−", Equal: "=", BracketLeft: "[", BracketRight: "]",
+    Backslash: "\\", Semicolon: ";", Quote: "'", Backquote: "`",
+    Comma: ",", Period: ".", Slash: "/", IntlBackslash: "\\",
+    NumpadAdd: "NUM +", NumpadSubtract: "NUM −", NumpadMultiply: "NUM ×",
+    NumpadDivide: "NUM ÷", NumpadDecimal: "NUM .", NumLock: "NUM LOCK",
+    Insert: "INS", Delete: "DEL", Home: "HOME", End: "END",
+    PageUp: "PG UP", PageDown: "PG DN"
+  };
+
+  function keyLabel(code) {
+    if (KEY_LABEL[code]) return KEY_LABEL[code];
+    let m = /^Key([A-Z])$/.exec(code); if (m) return m[1];
+    m = /^Digit(\d)$/.exec(code);      if (m) return m[1];
+    m = /^Numpad(\d)$/.exec(code);     if (m) return "NUM " + m[1];
+    if (/^F\d{1,2}$/.test(code)) return code;
+    return String(code).toUpperCase();
+  }
+
+  // An empty action is a real state — you can take a key away and not replace
+  // it — so it needs something to print.
+  const keysOf = (p, field) => p[field].length ? p[field].map(keyLabel) : ["—"];
+  const firstKey = (p, field) => keysOf(p, field)[0];
+
+  const hintOf = p =>
+    firstKey(p, "left") + " " + firstKey(p, "right") + " turn · " +
+    firstKey(p, "thrust") + " thrust · " + firstKey(p, "fire") + " fire";
+
+  /* Every code any player is bound to. Rebuilt on every change, and used to
+     decide what the browser is not allowed to do with a keypress — bind fire
+     to "/" and it must not open the page's find bar. */
+  const boundKeys = new Set();
+
+  const KEY_STORE = "crossfire.keys.v1";
+
+  // What has to be true whenever the table changes, or is first read in.
+  function refreshKeys() {
+    boundKeys.clear();
+    // Only the rows a keyboard can reach: a key sitting in an unreachable row
+    // must not go on taking keypresses away from the browser.
+    for (const p of keyRows()) {
+      for (const a of ACTIONS) for (const c of p[a.field]) boundKeys.add(c);
+    }
+    writeLegend();
+  }
+
+  function keysChanged() {
+    refreshKeys();
+    // Private browsing, a full disk, a locked-down profile: none of those are
+    // worth losing the rebind you just made over.
+    try {
+      localStorage.setItem(KEY_STORE,
+        JSON.stringify(PLAYERS.map(p => ACTIONS.map(a => p[a.field]))));
+    } catch (_) {}
+  }
+
+  /* The strip under the canvas says the same thing as the top two rows of the
+     grid, so it has to say whatever they now say. Built as elements rather
+     than markup: a key name is never allowed to be read as HTML. */
+  function writeLegend() {
+    const kbd = codes => {
+      const k = document.createElement("kbd");
+      k.textContent = (codes.length ? keyLabel(codes[0]) : "—").toLowerCase();
+      return k;
+    };
+    // Online you are the only one at this keyboard, so only one row is true —
+    // the first one, whatever colour you ended up flying.
+    const solo = net.on;
+    [".legend .one", ".legend .two"].forEach((sel, i) => {
+      const el = document.querySelector(sel), p = PLAYERS[i];
+      if (!el || !p) return;
+      if (solo && i === 1) { el.replaceChildren(); return; }
+      const name = document.createElement("b");
+      name.textContent = solo ? "you" : p.label.toLowerCase();
+      el.replaceChildren(name, " ", kbd(p.left), kbd(p.right), " turn · ",
+                         kbd(p.thrust), " thrust · ", kbd(p.fire), " fire");
+    });
+    const more = document.querySelector(".legend .more");
+    if (more) {
+      more.textContent = solo
+        ? "one player per screen online — your keys, whichever ship you picked"
+        : "two at this keyboard — five can play online, a screen each";
+    }
+  }
+
+  function loadKeys() {
+    let raw = null;
+    try { raw = localStorage.getItem(KEY_STORE); } catch (_) { return; }
+    if (!raw) return;
+    let saved;
+    try { saved = JSON.parse(raw); } catch (_) { return; }
+    if (!Array.isArray(saved)) return;
+    // Anything unrecognisable in storage leaves that row on its defaults,
+    // rather than handing the game a control that can never be pressed.
+    PLAYERS.forEach((p, i) => {
+      const row = saved[i];
+      if (!Array.isArray(row)) return;
+      ACTIONS.forEach((a, k) => {
+        const codes = row[k];
+        if (!Array.isArray(codes)) return;
+        p[a.field] = codes
+          .filter(c => typeof c === "string" && /^[A-Za-z0-9]{1,24}$/.test(c))
+          .slice(0, 4);
+      });
+    });
+  }
+
+  function resetKeys() {
+    PLAYERS.forEach((p, i) => {
+      ACTIONS.forEach((a, k) => { p[a.field] = DEFAULT_KEYS[i][k].slice(); });
+    });
+    keysChanged();
+  }
+
+  /* A key can only mean one thing. Taking one that belonged to somebody else
+     takes it off them and says so — quietly leaving two ships on one button
+     would be a bug you'd only find mid-match. */
+  function bindTo(pi, ai, code) {
+    const taken = [];
+    keyRows().forEach((p, j) => ACTIONS.forEach((a, k) => {
+      if (j === pi && k === ai) return;
+      if (!p[a.field].includes(code)) return;
+      p[a.field] = p[a.field].filter(c => c !== code);
+      taken.push(p.label + " " + a.short);
+    }));
+    PLAYERS[pi][ACTIONS[ai].field] = [code];
+    keysChanged();
+    return taken;
+  }
+
+  /* The game already means something by these three wherever you are, so they
+     can't also be somebody's thrust. */
+  const RESERVED = { Escape: "ESC", KeyP: "P", Tab: "TAB" };
+
+  /* ── the controls screen ──────────────────────────────────────────────────
+     A key is chosen by pressing it, not by picking its name out of a list:
+     what you press is what you get, and a key nobody can reach is a key you
+     can't accidentally choose.
+
+     The grid is five rows of four cells laid out in SCREEN units, and both the
+     pointer and the drawing read the same boxes out of `cellBox`, so what you
+     click is exactly what you can see. */
+  const GRID = { x0: 372, colW: 150, cellW: 128, cellH: 34, y0: 212, rowH: 52 };
+
+  function cellBox(pi, ai) {
+    const cx = GRID.x0 + ai * GRID.colW, cy = GRID.y0 + pi * GRID.rowH;
+    return { cx, cy, x: cx - GRID.cellW / 2, y: cy - GRID.cellH / 2,
+             w: GRID.cellW, h: GRID.cellH };
+  }
+
+  function cellAt(sx, sy) {
+    for (let pi = 0; pi < KEYBOARD_MAX; pi++) {
+      for (let ai = 0; ai < ACTIONS.length; ai++) {
+        const b = cellBox(pi, ai);
+        if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) {
+          return { p: pi, a: ai };
+        }
+      }
+    }
+    return null;
+  }
+
+  const binder = { p: 0, a: 0, listening: false, hover: null,
+                   note: "", bad: false, noteUntil: 0 };
+
+  function note(msg, bad) {
+    binder.note = msg;
+    binder.bad = !!bad;
+    binder.noteUntil = performance.now() + 4000;
+  }
+
+  // A code is a physical position, and not everything that reaches a keydown
+  // has one — some on-screen keyboards and input methods send nothing at all.
+  // Binding that would leave a cell holding a key nobody can ever press.
+  const bindable = code => /^[A-Za-z0-9]{1,24}$/.test(code || "");
+
+  function takeKey(code) {
+    if (!bindable(code)) {
+      note("the browser didn't say which key that was — try another", true);
+      return;
+    }
+    if (RESERVED[code]) {
+      note(RESERVED[code] + " belongs to the game — pick another key", true);
+      return;
+    }
+    const taken = bindTo(binder.p, binder.a, code);
+    binder.listening = false;
+    const who = PLAYERS[binder.p].label + " " + ACTIONS[binder.a].short;
+    note(taken.length
+      ? keyLabel(code) + " is now " + who + ", taken off " + taken.join(" and ")
+      : who + " is now " + keyLabel(code));
+  }
+
+  function controlsKey(code) {
+    if (binder.listening) {
+      if (code === "Escape") { binder.listening = false; note("left as it was"); }
+      else takeKey(code);
+      return;
+    }
+    if (code === "Escape" || code === "KeyC") { state = backFrom || "title"; return; }
+    if (code === "Enter" || code === "NumpadEnter" || code === "Space") {
+      binder.listening = true;
+      return;
+    }
+    if (code === "KeyR") { resetKeys(); note("back to the keys it came with"); return; }
+    if (code === "Backspace" || code === "Delete") {
+      // Emptying an action is allowed: two people at one keyboard may want
+      // fewer keys in play, not more.
+      PLAYERS[binder.p][ACTIONS[binder.a].field] = [];
+      keysChanged();
+      note(PLAYERS[binder.p].label + " " + ACTIONS[binder.a].short + " has no key now");
+      return;
+    }
+    const move = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1],
+                   ArrowRight: [0, 1], KeyW: [-1, 0], KeyS: [1, 0],
+                   KeyA: [0, -1], KeyD: [0, 1] }[code];
+    if (move) {
+      binder.p = (binder.p + move[0] + KEYBOARD_MAX) % KEYBOARD_MAX;
+      binder.a = (binder.a + move[1] + ACTIONS.length) % ACTIONS.length;
+    }
+  }
+
+  /* ── input ───────────────────────────────────────────────────────────── */
+  const keys = new Set();
+  // The menus need these whatever anyone has bound; `boundKeys` covers the
+  // rest, so a fire key rebound to "/" doesn't open the browser's find bar.
+  const SWALLOW = new Set([
+    "Space", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter", "Slash",
+    "Tab"   // or switching the camera tabs the browser's focus out of the game
+  ]);
+
+  addEventListener("keydown", e => {
+    // While the online panel is up the keyboard belongs to it — you're pasting
+    // a code, and a stray space shouldn't fire a gun or start a match.
+    const lob = document.getElementById("lobby");
+    if (lob && !lob.hidden) return;
+    // While a key is being listened for, the whole keyboard is ours: the point
+    // is to catch the key itself, not what the browser would rather do with it.
+    if (binder.listening || SWALLOW.has(e.code) || boundKeys.has(e.code)) {
+      e.preventDefault();
+    }
+    if (e.repeat) return;
+    keys.add(e.code);
+    // Touch a turn key and the mouse stops steering, until you move it again.
+    // Nobody has to choose a scheme; whichever you last used is the one.
+    if (PLAYERS.some(p => p.left.includes(e.code) || p.right.includes(e.code))) {
+      aim.on = false;
+    }
+    menuKey(e.code);
+  });
+  addEventListener("keyup", e => keys.delete(e.code));
+
+  // Alt-tab away mid-thrust and the keyup never arrives, so the key stays
+  // "held" and you come back to a ship burning into a wall. Drop everything
+  // held whenever the page stops being the thing in front of you.
+  //
+  // Pausing, though, is only right for a game nobody else is in. The host runs
+  // the one simulation everybody is playing inside, and a guest that stops
+  // sending input leaves the host flying its ship on whatever it last heard —
+  // so online, looking away means letting go of the controls, not stopping the
+  // world. `bgTicker` keeps the match stepping once the browser stops handing
+  // out animation frames.
+  function standDown() {
+    keys.clear();
+    aim.thrust = aim.fire = false;
+    touch.l = touch.r = touch.th = touch.f = false;
+    if (!inMatch()) return;
+    if (net.on) { if (document.hidden) bgTicker.start(); }
+    else if (state === "playing") { state = "paused"; localPause = true; }
+  }
+  addEventListener("blur", standDown);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) standDown(); else bgTicker.stop();
+  });
+
+  const held = k => Array.isArray(k) ? k.some(c => keys.has(c)) : keys.has(k);
+  const digit = code => {
+    const m = /^(?:Digit|Numpad)([1-9])$/.exec(code);
+    return m ? +m[1] : 0;
+  };
+
+  /* ── world ───────────────────────────────────────────────────────────── */
+  let state = "title";        // title | count | playing | paused | over
+  let localPause = false;     // true only when this machine did the pausing
+  let mode = MODES.survival;
+  let arena = mode.arena;
+  let U = 1;                  // unit scale for the current arena
+  let bounds = { x0: 0, y0: 0, x1: 0, y1: 0 };
+  let pendingMode = null;
+
+  let ships = [], rocks = [], bullets = [], bits = [], hazards = [], motes = [];
+  let score = 0, lives = 0, wave = 0, ffCount = 0, players = 2;
+  let clock = 0, topUp = 0;
+  let banner = null;
+  let outcome = null;         // set when a match ends
+
+  /* The camera is the one view of the world. In the survival modes it sits
+     still and frames the whole arena — exactly what the game did before there
+     was a camera at all. In battle royale it follows one ship through a map far
+     bigger than the screen.
+
+     `watching` is the ship it follows. Splitting the screen later means calling
+     the render path once per player with a different camera; going networked
+     means calling it once, for whoever is at this machine. Both are the same
+     change to this one variable, which is why it exists. */
+  let cam = { x: 0, y: 0, scale: 1 };
+  let watching = 0;
+  let botPick = 0;        // bots to add on the setup screen
+  let backFrom = "title"; // which screen the controls page returns to
+
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const dist2 = (x1, y1, x2, y2) => (x1 - x2) ** 2 + (y1 - y2) ** 2;
+
+  function spawnPoint(i, n) {
+    const cx = arena.w / 2, cy = arena.h / 2;
+    if (n === 1) return { x: cx, y: cy, a: -Math.PI / 2 };
+    const R = Math.min(arena.w, arena.h) * 0.3;
+    const t = -Math.PI / 2 + (i / n) * Math.PI * 2;
+    // Facing inward: in battle royale everyone starts looking at everyone else.
+    return { x: cx + Math.cos(t) * R, y: cy + Math.sin(t) * R, a: t + Math.PI };
+  }
+
+  /* Which colour each seat is wearing. Locally the seat IS the colour and this
+     is the identity mapping — the second player at the keyboard is green
+     because green's keys are the second set. Online nobody is sharing a
+     keyboard, so a seat can wear any colour it likes as long as no two seats
+     wear the same one. The host owns this table and sends it to everyone. */
+  let skins = PLAYERS.map((_, i) => i);
+  const skinOf = seat => PLAYERS[skins[seat]] || PLAYERS[seat] || PLAYERS[0];
+
+  /* What each seat is called. Online you are a person, not a colour — you
+     pick the colour, but "TOM WINS" is the sentence anybody actually wants to
+     read. Empty falls back to the colour, which is what local play uses:
+     two people at one keyboard already know which of them is green. */
+  let names = [];
+  const nameOf = seat => names[seat] || skinOf(seat).label;
+
+  /* Names come off other people's keyboards, so they are cut to size here and
+     nowhere else. Drawn to a canvas and written with textContent, never as
+     markup — there is no path from a name to anything that runs. */
+  const NAME_MAX = 12;
+  function tidyName(raw) {
+    return String(raw == null ? "" : raw)
+      .replace(/[^\p{L}\p{N} '\-]/gu, "")   // letters, digits, space, apostrophe, dash
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, NAME_MAX)
+      .toUpperCase();
+  }
+
+  const NAME_STORE = "crossfire.name.v1";
+  let myName = "";
+
+  function loadName() {
+    try { myName = tidyName(localStorage.getItem(NAME_STORE) || ""); } catch (_) {}
+  }
+
+  function saveName() {
+    try { localStorage.setItem(NAME_STORE, myName); } catch (_) {}
+  }
+
+  function makeShip(i, n, look) {
+    const def = look || skinOf(i);
+    const p = spawnPoint(i, n);
+    return {
+      id: i,
+      colour: def.colour,
+      label: def.label,
+      name: nameOf(i),
+      keys: def,
+      // Whose fingers drive this ship. Locally every ship reads the keyboard;
+      // over a network only one of them does and the rest arrive as messages.
+      // Everything downstream reads `input` and doesn't care which it was.
+      localKeys: def,
+      input: { l: false, r: false, th: false, f: false },
+      x: p.x, y: p.y, a: p.a,
+      vx: 0, vy: 0,
+      alive: true,
+      dead: false,           // out of the match for good
+      stocks: ROYALE_STOCKS, // battle royale only; co-op uses the shared pile
+      kills: 0,
+      respawn: 0,
+      invuln: INVULN,
+      cool: 0,
+      thrusting: false
+    };
+  }
+
+  /* A rock's silhouette is derived from its id rather than rolled at random.
+     Over a network that matters: the host sends an id and the guest builds a
+     rock with exactly the same outline and the same cracks, so nobody has to
+     transmit thirteen vertices per rock, twenty times a second. */
+  function seeded(n) {
+    let s = (n * 1831565813 + 0x9e3779b9) >>> 0;
+    return () => {
+      s = (s + 0x6d2b79f5) >>> 0;
+      let t = s;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  let rockSeq = 0;
+
+  function rockLooks(id, size) {
+    const spec = ROCK[size];
+    const rnd = seeded(id * 977 + spec.verts);
+    const pick = (a, b) => a + rnd() * (b - a);
+    const shape = [];
+    for (let i = 0; i < spec.verts; i++) shape.push(pick(0.72, 1.24));
+    // One crack per hit it can take, drawn as it wears down.
+    const cracks = [];
+    for (let i = 0; i < spec.hp; i++) {
+      const t = pick(0, Math.PI * 2), span = pick(0.7, 1.6);
+      cracks.push({
+        x1: Math.cos(t) * pick(0.25, 0.95), y1: Math.sin(t) * pick(0.25, 0.95),
+        x2: Math.cos(t + span) * pick(0.3, 0.95), y2: Math.sin(t + span) * pick(0.3, 0.95)
+      });
+    }
+    return { shape, cracks };
+  }
+
+  function makeRock(size, x, y, id) {
+    const spec = ROCK[size];
+    const dir = rand(0, Math.PI * 2);
+    const spd = rand(spec.spd[0], spec.spd[1]) * U * waveSpeed();
+    if (id === undefined) id = ++rockSeq;
+    const looks = rockLooks(id, size);
+    return {
+      id, size, x, y,
+      vx: Math.cos(dir) * spd,
+      vy: Math.sin(dir) * spd,
+      r: spec.r * U,
+      a: rand(0, Math.PI * 2),
+      spin: rand(-0.9, 0.9),
+      hp: spec.hp, maxHp: spec.hp, flash: 0,
+      shape: looks.shape, cracks: looks.cracks
+    };
+  }
+
+  // Somewhere inside the current wall, not on top of anybody.
+  function openSpot(clearance) {
+    for (let tries = 0; tries < 60; tries++) {
+      const x = rand(bounds.x0 + clearance, bounds.x1 - clearance);
+      const y = rand(bounds.y0 + clearance, bounds.y1 - clearance);
+      if (ships.some(s => s.alive && gap2(x, y, s.x, s.y) < (190 * U) ** 2)) continue;
+      // Don't drop a rock straight down a well — it's eaten before it's drawn.
+      if (hazards.some(h => dist2(x, y, h.x, h.y) < (h.kill + clearance + 60) ** 2)) continue;
+      return { x, y };
+    }
+    return { x: rand(bounds.x0, bounds.x1), y: rand(bounds.y0, bounds.y1) };
+  }
+
+  /* ── the ramp ─────────────────────────────────────────────────────────────
+     Rocks get faster every wave, but only up to a point: at WAVE_RAMP the
+     quickest of them are moving exactly as fast as your engine can, and past
+     that speed would stop being a challenge and start being a coin toss — you
+     cannot dodge what you cannot see coming. So the ramp stops there and the
+     field grows instead. There is always another rock.
+
+     The step isn't a chosen number: it's whatever it takes for a small rock's
+     top speed to meet MAX_SPEED on the last wave of the ramp. Retune the ship
+     or the rocks and this stays true on its own. */
+  const WAVE_RAMP = 15;
+  const ROCK_TOP = MAX_SPEED / ROCK.small.spd[1];
+
+  function waveSpeed() {
+    // Royale has no waves, so it flies at the plain speeds in the table.
+    const w = Math.max(1, Math.min(wave, WAVE_RAMP));
+    return 1 + (w - 1) * (ROCK_TOP - 1) / (WAVE_RAMP - 1);
+  }
+
+  function spawnWave() {
+    wave++;
+    // No ceiling. Once they can't get faster, there are simply more of them.
+    const n = 3 + wave;
+    for (let i = 0; i < n; i++) {
+      const p = openSpot(ROCK.big.r * U);
+      rocks.push(makeRock("big", p.x, p.y));
+    }
+    banner = {
+      text: "WAVE " + wave,
+      // The wave the ramp tops out is worth announcing: it's the moment the
+      // small ones stop being outrunnable.
+      sub: wave === WAVE_RAMP ? "the small ones are as fast as you now" : null,
+      t: wave === WAVE_RAMP ? 2.4 : 1.6,
+      colour: wave === WAVE_RAMP ? "#ff6a4d" : "#ffc233"
+    };
+  }
+
+  function placeHazards(count) {
+    hazards = [];
+    // Roughly one black hole for every two stars, none of them close enough to
+    // a spawn point that a player is in a well before they've touched anything.
+    for (let i = 0; i < count; i++) {
+      const kind = i % 2 === 1 ? "hole" : "star";
+      const spec = HAZARD[kind];
+      let best = null, bestGap = -1;
+      for (let tries = 0; tries < 80; tries++) {
+        const x = rand(arena.w * 0.12, arena.w * 0.88);
+        const y = rand(arena.h * 0.12, arena.h * 0.88);
+        // Keep clear of every spawn point and of the other hazards.
+        let gap = Infinity;
+        for (let p = 0; p < players; p++) {
+          const sp = spawnPoint(p, players);
+          gap = Math.min(gap, Math.hypot(x - sp.x, y - sp.y));
+        }
+        for (const h of hazards) gap = Math.min(gap, Math.hypot(x - h.x, y - h.y) * 0.8);
+        if (gap > bestGap) { bestGap = gap; best = { x, y }; }
+        if (gap > spec.reach) break;
+      }
+      hazards.push({
+        kind, x: best.x, y: best.y,
+        kill: spec.kill, reach: spec.reach, mass: spec.mass, soft: spec.soft,
+        phase: rand(0, Math.PI * 2)
+      });
+    }
+  }
+
+  function startGame(modeKey, n, botCount) {
+    mode = MODES[modeKey];
+    arena = mode.arena;
+    // With a camera the world is simply big, so ships stay their natural size.
+    // Without one the whole arena is squeezed onto the screen, so everything
+    // grows a little to survive the squeeze.
+    U = mode.camera ? 1 : Math.sqrt(arena.w / 1000);
+    bounds = { x0: 0, y0: 0, x1: arena.w, y1: arena.h };
+
+    // Humans first, then bots fill the remaining ships. Five in total, always.
+    const humans = Math.max(1, Math.min(MAX_PLAYERS, n));
+    const bots = Math.max(0, Math.min(MAX_PLAYERS - humans, botCount || 0));
+    players = Math.max(mode.minPlayers, humans + bots);
+    ships = [];
+    for (let i = 0; i < players; i++) {
+      const s = makeShip(i, players);
+      if (i >= humans) { s.bot = true; s.localKeys = null; }
+      ships.push(s);
+    }
+
+    rocks = []; bullets = []; bits = []; hazards = [];
+    score = 0; wave = 0; ffCount = 0; clock = 0; topUp = 0;
+    lives = 2 + 2 * players;   // co-op only
+    banner = null; outcome = null;
+    watching = 0;
+    state = "playing";
+
+    if (mode.hazards) { placeHazards(mode.hazards); seedMotes(); }
+    else motes = [];
+
+    // Frame the camera before the first frame is drawn, or it visibly slides
+    // in from the corner of the map.
+    cam.scale = mode.camera ? 1 : SCREEN_W / arena.w;
+    if (mode.camera) { cam.x = ships[0].x; cam.y = ships[0].y; clampCam(); }
+    else { cam.x = arena.w / 2; cam.y = arena.h / 2; }
+
+    if (mode.closing) {
+      // Battle royale keeps a standing rock population instead of waves — the
+      // clock that ends the match is the wall and the timer, not the field
+      // being cleared. Sixteen screens of map needs sixteen screens' worth of
+      // rocks, or you fly through empty space for a minute at a time.
+      for (let i = 0; i < ROYALE_ROCKS; i++) {
+        const p = openSpot(ROCK.big.r * U);
+        rocks.push(makeRock("big", p.x, p.y));
+      }
+      banner = { text: "LAST SHIP FLYING", sub: "three minutes · watch the minimap",
+                 t: 2.6, colour: "#ffc233" };
+    } else {
+      spawnWave();
+    }
+
+    matchStarted();
+  }
+
+  /* A match can begin while the page is already in the background: a guest
+     that pasted its codes and went to do something else gets its init packet
+     wherever it is. `standDown` only ever fired on the way out of the
+     foreground, so starting from there has to be said out loud — otherwise
+     there are no animation frames and nothing has asked the ticker to run. */
+  function matchStarted() {
+    localPause = false;              // no match begins already paused
+    writeLegend();                   // online, only your own row is true
+    if (document.hidden) standDown();
+    checkControls();
+  }
+
+  /* Taking a key off another colour is allowed, and announced when it happens
+     — but the colour it was taken from can be left with nothing to fly with,
+     and online you don't get to choose which colour you are. Rebind AMBER to
+     the arrow keys and GREEN is silently unflyable. Say so at the start of the
+     match, rather than leaving someone pressing keys that do nothing. */
+  function checkControls() {
+    const s = ships[localSeat()];
+    if (!s || !s.localKeys) return;
+    const missing = ACTIONS.filter(a => !s.localKeys[a.field].length);
+    if (!missing.length) return;
+    banner = {
+      text: (net.on ? "YOUR CONTROLS" : s.name) +
+            ": NO " + missing.map(a => a.name).join(", NO "),
+      sub: "press C at the title screen to give it a key",
+      t: 4.5, colour: "#ff6a4d"
+    };
+  }
+
+  function menuKey(code) {
+    if (state === "title") {
+      const d = digit(code);
+      if (d === 1) { pendingMode = "survival"; state = "count"; }
+      if (d === 2) { pendingMode = "safe";     state = "count"; }
+      if (d === 3) { pendingMode = "royale";   state = "count"; }
+      if (code === "KeyH") openLobby("host");
+      if (code === "KeyJ") openLobby("guest");
+      if (code === "KeyC") { backFrom = "title"; state = "controls"; }
+    } else if (state === "controls") {
+      controlsKey(code);
+    } else if (state === "count") {
+      if (code === "KeyC") { backFrom = "count"; state = "controls"; return; }
+      const d = digit(code);
+      if (code === "KeyB") {
+        botPick = (botPick + 1) % MAX_PLAYERS;   // 0…4 bots
+      }
+      // Battle royale needs someone to fight — but a bot counts as someone.
+      if (d >= 1 && d <= humanMax() &&
+          d + Math.min(botPick, MAX_PLAYERS - d) >= MODES[pendingMode].minPlayers) {
+        startGame(pendingMode, d, botPick);
+      }
+      if (code === "Escape" || code === "Backspace") state = "title";
+    } else if (state === "over") {
+      if (code === "Space" || code === "Enter") state = "title";
+    } else if (state === "playing" || state === "paused") {
+      if (code === "KeyP" || code === "Escape") {
+        state = state === "playing" ? "paused" : "playing";
+        // Whose pause this is decides whether the host's word can end it.
+        localPause = state === "paused";
+        if (localPause) {
+          // Pausing mid-thrust would otherwise leave the host flying this ship
+          // on a key that is no longer being held.
+          const me = ships[localSeat()];
+          if (me) me.input.l = me.input.r = me.input.th = me.input.f = false;
+        }
+      }
+      if (state === "paused") {
+        if (code === "KeyC") { backFrom = "paused"; state = "controls"; return; }
+        if (code === "KeyQ") { leaveMatch(); return; }
+      }
+      // One camera and two people at one keyboard means somebody is off-screen.
+      // Tab hands the view to the next ship still in the match. This goes away
+      // the moment each player has their own screen.
+      if (code === "Tab" && mode.camera) {
+        for (let i = 1; i <= ships.length; i++) {
+          const next = (watching + i) % ships.length;
+          if (!ships[next].dead) { watching = next; break; }
+        }
+      }
+    }
+  }
+
+  /* ── camera ──────────────────────────────────────────────────────────────
+     Never show anything outside the world: on a map this size the edge is a
+     long way off, but the clamp is what stops the view drifting into blank
+     space when a ship flies into a corner. */
+  function clampCam() {
+    const halfW = SCREEN_W / (2 * cam.scale);
+    const halfH = SCREEN_H / (2 * cam.scale);
+    cam.x = arena.w <= halfW * 2 ? arena.w / 2
+          : Math.min(Math.max(cam.x, halfW), arena.w - halfW);
+    cam.y = arena.h <= halfH * 2 ? arena.h / 2
+          : Math.min(Math.max(cam.y, halfH), arena.h - halfH);
+  }
+
+  function updateCamera(dt) {
+    if (!mode.camera) return;
+    const s = ships[watching];
+    if (!s) return;
+    // Lead the ship slightly in the direction it's travelling, so you see where
+    // you're going rather than where you've been.
+    const tx = s.x + s.vx * 0.28;
+    const ty = s.y + s.vy * 0.28;
+    const k = 1 - Math.exp(-6 * dt);   // frame-rate independent easing
+    cam.x += (tx - cam.x) * k;
+    cam.y += (ty - cam.y) * k;
+    clampCam();
+  }
+
+  const onScreen = (x, y, pad) =>
+    Math.abs(x - cam.x) < SCREEN_W / (2 * cam.scale) + pad &&
+    Math.abs(y - cam.y) < SCREEN_H / (2 * cam.scale) + pad;
+
+  /* ── walls ───────────────────────────────────────────────────────────────
+     The arena is solid. Ships and rocks bounce; bullets are destroyed. Killing
+     bullets at the wall is what stops a big map turning into a shooting
+     gallery — every shot now has a real, finite range. */
+  function bounceInBounds(o, r, restitution) {
+    let hit = false;
+    if (o.x - r < bounds.x0) { o.x = bounds.x0 + r; o.vx = Math.abs(o.vx) * restitution; hit = true; }
+    else if (o.x + r > bounds.x1) { o.x = bounds.x1 - r; o.vx = -Math.abs(o.vx) * restitution; hit = true; }
+    if (o.y - r < bounds.y0) { o.y = bounds.y0 + r; o.vy = Math.abs(o.vy) * restitution; hit = true; }
+    else if (o.y + r > bounds.y1) { o.y = bounds.y1 - r; o.vy = -Math.abs(o.vy) * restitution; hit = true; }
+    return hit;
+  }
+
+  /* ── the edge of the world ────────────────────────────────────────────────
+     Off one side and on at the other: the survival modes are the open field
+     the original game had, where nothing can corner you and a rock you flee
+     from arrives behind you. Battle royale keeps its walls, because a wall
+     that closes in is the whole shape of that mode and there is nothing to
+     close in on if the edges lead back round.
+
+     Wrapping happens when the centre crosses, not the rim, so the copy drawn
+     at the far edge is what covers the moment of crossing. */
+  function wrapInBounds(o) {
+    const w = bounds.x1 - bounds.x0, h = bounds.y1 - bounds.y0;
+    if (o.x < bounds.x0) o.x += w; else if (o.x > bounds.x1) o.x -= w;
+    if (o.y < bounds.y0) o.y += h; else if (o.y > bounds.y1) o.y -= h;
+  }
+
+  function edgeOf(o, r, restitution) {
+    if (mode.wrap) { wrapInBounds(o); return false; }
+    return bounceInBounds(o, r, restitution);
+  }
+
+  /* Distance, the short way round. Without this a ship sitting on the seam is
+     drawn touching a rock it is nowhere near in the arithmetic, and shots pass
+     straight through the thing you can see them hitting. */
+  function sepX(ax, bx) {
+    const d = ax - bx;
+    if (!mode.wrap) return d;
+    const w = bounds.x1 - bounds.x0;
+    return d > w / 2 ? d - w : d < -w / 2 ? d + w : d;
+  }
+
+  function sepY(ay, by) {
+    const d = ay - by;
+    if (!mode.wrap) return d;
+    const h = bounds.y1 - bounds.y0;
+    return d > h / 2 ? d - h : d < -h / 2 ? d + h : d;
+  }
+
+  const gap2 = (ax, ay, bx, by) => sepX(ax, bx) ** 2 + sepY(ay, by) ** 2;
+
+  function updateWall(dt) {
+    if (!mode.closing) return;
+    const t = Math.max(0, clock - CLOSE_DELAY);
+    const k = Math.min(1, t / CLOSE_TIME);
+    const f = 1 - (1 - CLOSE_TO) * k;          // 1 → CLOSE_TO
+    const w = arena.w * f, h = arena.h * f;
+    bounds = {
+      x0: (arena.w - w) / 2, y0: (arena.h - h) / 2,
+      x1: (arena.w + w) / 2, y1: (arena.h + h) / 2
+    };
+    // Rocks caught outside the wall are crushed rather than left stranded.
+    for (let i = rocks.length - 1; i >= 0; i--) {
+      const r = rocks[i];
+      if (r.x < bounds.x0 - r.r || r.x > bounds.x1 + r.r ||
+          r.y < bounds.y0 - r.r || r.y > bounds.y1 + r.r) {
+        burst(r.x, r.y, "#c79000", 8, 130 * U);
+        rocks.splice(i, 1);
+      }
+    }
+  }
+
+  /* ── gravity ─────────────────────────────────────────────────────────────
+     Applied to anything with a velocity: ships, rocks and bullets. Bullets
+     matter most — a shot fired past a black hole curves, so the hazards change
+     where you can shoot from, not just where you can fly. */
+  // Returns the total pull applied, so a caller can tell whether this body is
+  // currently in a well.
+  function applyGravity(o, dt) {
+    let pull = 0;
+    for (const h of hazards) {
+      const dx = h.x - o.x, dy = h.y - o.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > h.reach * h.reach) continue;
+      const d = Math.sqrt(d2) || 0.001;
+      const a = h.mass / (d2 + h.soft * h.soft);
+      o.vx += (dx / d) * a * dt;
+      o.vy += (dy / d) * a * dt;
+      pull += a;
+    }
+    return pull;
+  }
+
+  /* ── debris ──────────────────────────────────────────────────────────────
+     A hazard's pull is invisible, which makes it a trap rather than a place.
+     So each one is permanently shedding debris: motes appear out at the edge of
+     its reach and fall in, accelerated by the same gravity that moves
+     everything else. The stream *is* the boundary marker — where you first see
+     specks turning inward is exactly where the pull begins to matter, and how
+     fast they move tells you how hard it grips. Purely cosmetic; nothing
+     collides with them. */
+  function newMote(h) {
+    const t = rand(0, Math.PI * 2);
+    const r = h.reach * rand(0.88, 1);
+    const tang = rand(-1, 1) * (h.kind === "hole" ? 55 : 35);
+    return {
+      h,
+      x: h.x + Math.cos(t) * r,
+      y: h.y + Math.sin(t) * r,
+      // A little sideways drift so they spiral in instead of falling dead straight.
+      vx: -Math.sin(t) * tang,
+      vy: Math.cos(t) * tang
+    };
+  }
+
+  function seedMotes() {
+    motes = [];
+    for (const h of hazards) {
+      for (let i = 0; i < MOTES_PER_HAZARD; i++) {
+        const m = newMote(h);
+        // Stagger the first batch along the way in, or they all arrive together.
+        const k = rand(0.15, 1);
+        m.x = h.x + (m.x - h.x) * k;
+        m.y = h.y + (m.y - h.y) * k;
+        motes.push(m);
+      }
+    }
+  }
+
+  function updateMotes(dt) {
+    for (let i = 0; i < motes.length; i++) {
+      const m = motes[i], h = m.h;
+      const dx = h.x - m.x, dy = h.y - m.y;
+      const d2 = dx * dx + dy * dy;
+      const d = Math.sqrt(d2) || 0.001;
+      const a = h.mass / (d2 + h.soft * h.soft);
+      m.vx += (dx / d) * a * dt;
+      m.vy += (dy / d) * a * dt;
+      m.x += m.vx * dt;
+      m.y += m.vy * dt;
+      // Swallowed, or flung back out past the edge — either way, start again.
+      if (d < h.kill || d > h.reach * 1.15) motes[i] = newMote(h);
+    }
+  }
+
+  // Returns the hazard that just swallowed this point, if any.
+  function hazardAt(x, y, r) {
+    for (const h of hazards) {
+      if (dist2(x, y, h.x, h.y) < (h.kill + r) ** 2) return h;
+    }
+    return null;
+  }
+
+  function burst(x, y, colour, n, speed) {
+    if (reduceMotion) n = Math.min(n, 6);
+    for (let i = 0; i < n; i++) {
+      const d = rand(0, Math.PI * 2), s = rand(speed * 0.3, speed);
+      bits.push({
+        x, y, vx: Math.cos(d) * s, vy: Math.sin(d) * s,
+        life: rand(0.35, 0.95), max: 0.95, colour, len: rand(4, 11)
+      });
+    }
+  }
+
+  /* ── deaths ──────────────────────────────────────────────────────────── */
+  function killShip(ship, cause, shooter) {
+    ship.alive = false;
+    burst(ship.x, ship.y, ship.colour, 22, 240 * U);
+
+    if (mode.pvp) {
+      if (shooter && shooter !== ship) shooter.kills++;
+      ship.stocks--;
+      if (ship.stocks > 0) {
+        ship.respawn = RESPAWN_WAIT;
+      } else {
+        ship.dead = true;
+        banner = { text: ship.name + " ELIMINATED", sub: null, t: 1.8, colour: ship.colour };
+      }
+      checkRoyaleEnd();
+      return;
+    }
+
+    if (cause === "ff") {
+      ffCount++;
+      score = Math.max(0, score - FF_PENALTY);
+      banner = {
+        text: "FRIENDLY FIRE",
+        sub: "−" + FF_PENALTY + " and a life off the pile",
+        t: 2.0,
+        colour: "#ff6a4d"
+      };
+    }
+
+    if (lives > 0) {
+      lives--;
+      ship.respawn = RESPAWN_WAIT;
+    } else {
+      ship.dead = true;
+      if (ships.every(s => s.dead)) endMatch({ kind: "lost" });
+    }
+  }
+
+  function endMatch(result) {
+    outcome = result;
+    // The elimination banner would otherwise still be mid-fade and print
+    // straight through the result screen.
+    banner = null;
+    state = "over";
+  }
+
+  function checkRoyaleEnd() {
+    const standing = ships.filter(s => !s.dead);
+    if (standing.length === 1) endMatch({ kind: "winner", ship: standing[0] });
+    else if (standing.length === 0) endMatch({ kind: "draw" });
+  }
+
+  function fire(ship) {
+    const mine = bullets.reduce((n, b) => n + (b.owner === ship.id ? 1 : 0), 0);
+    if (mine >= MAX_SHOTS) return;
+    ship.cool = FIRE_GAP;
+    const r = SHIP_R * U;
+    bullets.push({
+      owner: ship.id,
+      colour: ship.colour,
+      x: ship.x + Math.cos(ship.a) * (r + 2),
+      y: ship.y + Math.sin(ship.a) * (r + 2),
+      // Inheriting ship velocity is what makes a fast pass dangerous — your
+      // shots stay ahead of you, and ahead of anyone flying beside you.
+      vx: Math.cos(ship.a) * BULLET_SPD * U + ship.vx,
+      vy: Math.sin(ship.a) * BULLET_SPD * U + ship.vy,
+      life: BULLET_LIFE * U
+    });
+  }
+
+  /* A hit that doesn't break the rock chips it: a crack opens, it flashes, and
+     it takes a nudge from the impact. The bullet is spent either way, so cover
+     still costs the shooter ammunition. */
+  function hitRock(rock, b) {
+    rock.hp--;
+    rock.flash = 0.13;
+    if (rock.hp > 0) {
+      burst(b.x, b.y, "#c79000", 4, 120 * U);
+      const sp = Math.hypot(b.vx, b.vy) || 1;
+      const knock = 26 * U / Math.max(1, rock.r / 30);
+      rock.vx += (b.vx / sp) * knock;
+      rock.vy += (b.vy / sp) * knock;
+      return;
+    }
+    splitRock(rock);
+  }
+
+  function splitRock(rock) {
+    const next = ROCK[rock.size].next;
+    score += ROCK[rock.size].score;
+    burst(rock.x, rock.y, "#c79000", rock.size === "big" ? 16 : 10, 170 * U);
+    const i = rocks.indexOf(rock);
+    if (i >= 0) rocks.splice(i, 1);
+    if (next) {
+      for (let k = 0; k < 2; k++) {
+        const r = makeRock(next, rock.x, rock.y);
+        // Keep the parent's drift so a split reads as a break-up, not a respawn.
+        r.vx += rock.vx * 0.4;
+        r.vy += rock.vy * 0.4;
+        rocks.push(r);
+      }
+    }
+  }
+
+  // Whose shots can hurt whom. The one line the three modes really differ on.
+  const canHit = (shooter, target) =>
+    shooter !== target.id && (mode.pvp || mode.friendlyFire);
+
+  function spotIsClear(x, y) {
+    const r = SHIP_R * U;
+    if (rocks.some(k => gap2(x, y, k.x, k.y) < (k.r + 95 * U) ** 2)) return false;
+    if (ships.some(s => s.alive && gap2(x, y, s.x, s.y) < (r * 3) ** 2)) return false;
+    // Respawning inside a gravity well is a death sentence you didn't earn.
+    if (hazards.some(h => dist2(x, y, h.x, h.y) < (h.kill + 220) ** 2)) return false;
+    return x > bounds.x0 + r && x < bounds.x1 - r &&
+           y > bounds.y0 + r && y < bounds.y1 - r;
+  }
+
+  /* ── networking ──────────────────────────────────────────────────────────
+     Host-authoritative. Somebody has to own the truth or two players disagree
+     about who died, so the host simulates everything and the guests are drawing
+     what they're told plus a guess about their own ship.
+
+     A guest predicts only its own ship — it runs the same flight physics on its
+     own input immediately, so steering feels instant rather than lagged by a
+     round trip, and eases toward the host's version as corrections arrive.
+     Everything else (rocks, other ships, bullets, who died) is the host's word,
+     smoothed between updates.
+
+     Known and accepted for a first version: the host has a latency advantage
+     when shooting, because its shots are resolved the moment it fires and a
+     guest's are resolved when they arrive. Fixing that properly means rewinding
+     the world to the shooter's view of it, which is a much bigger job. */
+  const net = {
+    role: null,          // null (local) | 'host' | 'guest'
+    seat: 0,             // which ship index this machine drives
+    inputs: {},          // host: latest input per guest seat
+    lastSnap: null,
+    prevSnap: null,
+    snapAt: 0,
+    prevAt: 0,
+    sendAcc: 0,
+    rockAcc: 0,
+    inAcc: 0,
+    status: "",
+    get on() { return this.role !== null; }
+  };
+
+  const SNAP_HZ = 20, ROCK_HZ = 5, INPUT_HZ = 30;
+
+  function netReset() {
+    net.role = null; net.seat = 0; net.inputs = {};
+    net.lastSnap = net.prevSnap = null;
+    net.status = "";
+    // Back to seat-is-colour and nameless, which is what the keyboard players
+    // expect: two people at one keyboard know which of them is green.
+    skins = PLAYERS.map((_, i) => i);
+    names = [];
+    if (window.CrossfireNet) window.CrossfireNet.reset();
+    writeLegend();
+  }
+
+  // What a guest needs once, to build a world that matches the host's.
+  function initPacket(seat) {
+    return {
+      t: "init", seat, skins, names,
+      mode: modeKeyOf(mode), players,
+      arena, u: U,
+      hazards: hazards.map(h => ({ k: h.kind, x: h.x, y: h.y, kill: h.kill,
+                                   reach: h.reach, mass: h.mass, soft: h.soft,
+                                   p: h.phase }))
+    };
+  }
+
+  const modeKeyOf = m => Object.keys(MODES).find(k => MODES[k] === m);
+
+  function snapshot() {
+    return {
+      // A guest is told about the match, not about whatever screen the host
+      // has open over it — the controls page is nobody else's business.
+      t: "s", c: clock, st: state === "controls" ? "paused" : state,
+      b: [bounds.x0, bounds.y0, bounds.x1, bounds.y1],
+      lv: lives, sc: score, wv: wave, ff: ffCount,
+      sh: ships.map(s => [
+        Math.round(s.x), Math.round(s.y), +s.a.toFixed(3),
+        s.alive ? 1 : 0, s.dead ? 1 : 0, s.stocks, s.kills,
+        s.thrusting ? 1 : 0, s.invuln > 0 ? 1 : 0,
+        Math.round(s.vx), Math.round(s.vy)
+      ]),
+      bu: bullets.map(b => [Math.round(b.x), Math.round(b.y),
+                            Math.round(b.vx), Math.round(b.vy), b.owner]),
+      o: outcome ? { k: outcome.kind, s: outcome.ship ? outcome.ship.id : -1,
+                     ot: !!outcome.onTime } : null,
+      bn: banner ? { x: banner.text, s: banner.sub, t: banner.t, c: banner.colour } : null
+    };
+  }
+
+  function rockPacket() {
+    return {
+      t: "r",
+      rk: rocks.map(r => [r.id, r.size === "big" ? 0 : r.size === "mid" ? 1 : 2,
+                          Math.round(r.x), Math.round(r.y),
+                          Math.round(r.vx), Math.round(r.vy),
+                          +r.a.toFixed(2), +r.spin.toFixed(2), r.hp])
+    };
+  }
+
+  const SIZES = ["big", "mid", "small"];
+
+  function applyRocks(msg) {
+    const seen = new Set();
+    for (const a of msg.rk) {
+      const [id, sz, x, y, vx, vy, ang, spin, hp] = a;
+      seen.add(id);
+      let r = rocks.find(k => k.id === id);
+      if (!r) {
+        r = makeRock(SIZES[sz], x, y, id);
+        rocks.push(r);
+      }
+      r.x = x; r.y = y; r.vx = vx; r.vy = vy; r.a = ang; r.spin = spin;
+      if (hp < r.hp) r.flash = 0.13;
+      r.hp = hp;
+    }
+    // Anything the host no longer has, we no longer have.
+    for (let i = rocks.length - 1; i >= 0; i--) {
+      if (!seen.has(rocks[i].id)) rocks.splice(i, 1);
+    }
+  }
+
+  function applySnapshot(msg) {
+    net.prevSnap = net.lastSnap;
+    net.prevAt = net.snapAt;
+    net.lastSnap = msg;
+    net.snapAt = performance.now();
+
+    clock = msg.c;
+    // A pause this machine chose is its own business and the host can't lift
+    // it. A pause the host chose has to be liftable by the host, or the guest
+    // sits in a pause it never asked for and can't get out of.
+    if (!localPause) state = msg.st;
+    bounds = { x0: msg.b[0], y0: msg.b[1], x1: msg.b[2], y1: msg.b[3] };
+    lives = msg.lv; score = msg.sc; wave = msg.wv; ffCount = msg.ff;
+
+    msg.sh.forEach((a, i) => {
+      const s = ships[i];
+      if (!s) return;
+      const [x, y, ang, alive, dead, stocks, kills, thrust, inv, vx, vy] = a;
+      s.alive = !!alive; s.dead = !!dead;
+      s.stocks = stocks; s.kills = kills;
+      s.thrusting = !!thrust; s.invuln = inv ? 1 : 0;
+      if (i === net.seat) {
+        // Our own ship is predicted locally. Take the host's word only when we
+        // have drifted far enough that the difference would be visible.
+        const err = Math.hypot(s.x - x, s.y - y);
+        if (err > 140 || !s.alive) { s.x = x; s.y = y; s.vx = vx; s.vy = vy; s.a = ang; }
+        else if (err > 8) { s.x += (x - s.x) * 0.25; s.y += (y - s.y) * 0.25; }
+      } else {
+        s.netPrev = { x: s.netTo ? s.netTo.x : x, y: s.netTo ? s.netTo.y : y,
+                      a: s.netTo ? s.netTo.a : ang };
+        s.netTo = { x, y, a: ang };
+        s.vx = vx; s.vy = vy;
+      }
+    });
+
+    bullets = msg.bu.map(a => ({
+      x: a[0], y: a[1], vx: a[2], vy: a[3], owner: a[4],
+      // A shot is its shooter's colour, which is no longer the same thing as
+      // its seat number now that seats choose what to wear.
+      colour: (ships[a[4]] || ships[0] || PLAYERS[0]).colour, life: 1
+    }));
+
+    outcome = msg.o
+      ? { kind: msg.o.k, ship: msg.o.s >= 0 ? ships[msg.o.s] : null, onTime: msg.o.ot }
+      : null;
+    banner = msg.bn ? { text: msg.bn.x, sub: msg.bn.s, t: msg.bn.t, colour: msg.bn.c } : null;
+  }
+
+  function applyInit(msg) {
+    // Without this the guest happily runs its own full simulation alongside the
+    // host's and the two worlds quietly drift apart.
+    net.role = "guest";
+    net.seat = msg.seat;
+    if (Array.isArray(msg.skins)) skins = msg.skins.slice();
+    if (Array.isArray(msg.names)) names = msg.names.map(tidyName);
+    mode = MODES[msg.mode];
+    arena = msg.arena;
+    U = msg.u;
+    players = msg.players;
+    bounds = { x0: 0, y0: 0, x1: arena.w, y1: arena.h };
+    ships = [];
+    for (let i = 0; i < players; i++) {
+      const s = makeShip(i, players);
+      // Only our own seat reads this keyboard — and it reads YOUR keys, the
+      // first row, whatever colour you chose. Nobody is sharing a keyboard
+      // online, so there is no reason to be handed somebody else's row.
+      s.localKeys = i === net.seat ? PLAYERS[0] : null;
+      ships.push(s);
+    }
+    hazards = msg.hazards.map(h => ({
+      kind: h.k, x: h.x, y: h.y, kill: h.kill, reach: h.reach,
+      mass: h.mass, soft: h.soft, phase: h.p
+    }));
+    seedMotes();
+    rocks = []; bullets = []; bits = [];
+    watching = net.seat;
+    cam.scale = mode.camera ? 1 : SCREEN_W / arena.w;
+    cam.x = ships[net.seat].x; cam.y = ships[net.seat].y;
+    clampCam();
+    state = "playing";
+    net.status = "";
+    matchStarted();
+  }
+
+  // A guest keeps the world moving between the host's updates, or everything
+  // outside its own ship would advance in 20-per-second steps.
+  function guestCoast(dt) {
+    updateMotes(dt);
+    for (const r of rocks) {
+      r.flash = Math.max(0, r.flash - dt);
+      applyGravity(r, dt);
+      r.x += r.vx * dt; r.y += r.vy * dt;
+      r.a += r.spin * dt;
+      edgeOf(r, r.r, ROCK_BOUNCE);
+    }
+    for (const b of bullets) { b.x += b.vx * dt; b.y += b.vy * dt; }
+
+    // Other players slide toward where the host last put them.
+    const k = 1 - Math.exp(-14 * dt);
+    for (const s of ships) {
+      if (s.id === net.seat || !s.netTo) continue;
+      s.x += (s.netTo.x - s.x) * k;
+      s.y += (s.netTo.y - s.y) * k;
+      let da = s.netTo.a - s.a;
+      while (da > Math.PI) da -= Math.PI * 2;
+      while (da < -Math.PI) da += Math.PI * 2;
+      s.a += da * k;
+      if (s.thrusting && s.alive && Math.random() < 0.5) {
+        burst(s.x - Math.cos(s.a) * SHIP_R * U,
+              s.y - Math.sin(s.a) * SHIP_R * U, "#c79000", 1, 60 * U);
+      }
+    }
+
+    // Our own ship flies for real, on our own input, right now.
+    const me = ships[net.seat];
+    if (me && me.alive) {
+      const i = me.input;
+      if (i.l) me.a -= TURN * dt;
+      if (i.r) me.a += TURN * dt;
+      me.thrusting = i.th;
+      if (i.th) {
+        me.vx += Math.cos(me.a) * THRUST * U * dt;
+        me.vy += Math.sin(me.a) * THRUST * U * dt;
+        if (Math.random() < 0.7) {
+          burst(me.x - Math.cos(me.a) * SHIP_R * U,
+                me.y - Math.sin(me.a) * SHIP_R * U, "#c79000", 1, 60 * U);
+        }
+      }
+      const pull = applyGravity(me, dt);
+      const damp = Math.exp(-DRAG * dt);
+      me.vx *= damp; me.vy *= damp;
+      const sp = Math.hypot(me.vx, me.vy), max = MAX_SPEED * U * (pull > 1 ? 1.9 : 1);
+      if (sp > max) { me.vx *= max / sp; me.vy *= max / sp; }
+      me.x += me.vx * dt; me.y += me.vy * dt;
+      edgeOf(me, SHIP_R * U, WALL_BOUNCE);
+    }
+
+    for (let i = bits.length - 1; i >= 0; i--) {
+      const p = bits[i];
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vx *= Math.exp(-1.6 * dt); p.vy *= Math.exp(-1.6 * dt);
+      p.life -= dt;
+      if (p.life <= 0) bits.splice(i, 1);
+    }
+
+    if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
+    updateCamera(dt);
+  }
+
+  /* ── bots ────────────────────────────────────────────────────────────────
+     A bot is not a special kind of ship — it fills the same `input` the
+     keyboard fills, so every rule about firing, dying and friendly fire applies
+     to it unchanged. It only ever runs on the host: guests receive bot ships as
+     ordinary remote ships and never know the difference.
+
+     The priorities are in order of how quickly they'll kill you: falling into a
+     well, hitting the wall, hitting a rock, then actually fighting. */
+  function driveBot(s, dt) {
+    const i = s.input;
+    i.l = i.r = i.th = i.f = false;
+    if (!s.alive) return;
+
+    s.think = (s.think || 0) - dt;
+    const R = SHIP_R * U;
+    let wantX = null, wantY = null, urgent = false;
+
+    // 1. Climb out of any well it has drifted into.
+    for (const h of hazards) {
+      const d = Math.hypot(h.x - s.x, h.y - s.y);
+      if (d < h.reach * 0.75) {
+        wantX = s.x + (s.x - h.x) / (d || 1) * 400;
+        wantY = s.y + (s.y - h.y) / (d || 1) * 400;
+        urgent = true;
+        break;
+      }
+    }
+
+    // 2. Stay off the wall — where there is one. Nothing to hug in a field
+    //    whose edges lead back round.
+    if (!urgent && !mode.wrap) {
+      const margin = 130 * U;
+      const cx = (bounds.x0 + bounds.x1) / 2, cy = (bounds.y0 + bounds.y1) / 2;
+      if (s.x < bounds.x0 + margin || s.x > bounds.x1 - margin ||
+          s.y < bounds.y0 + margin || s.y > bounds.y1 - margin) {
+        wantX = cx; wantY = cy; urgent = true;
+      }
+    }
+
+    // 3. Dodge a rock it is about to fly into.
+    if (!urgent) {
+      for (const r of rocks) {
+        const dx = r.x - s.x, dy = r.y - s.y;
+        const d = Math.hypot(dx, dy);
+        if (d > r.r + 190 * U) continue;
+        const ahead = Math.cos(s.a) * dx + Math.sin(s.a) * dy;
+        if (ahead <= 0) continue;             // already behind us
+        wantX = s.x - dy; wantY = s.y + dx;   // slip sideways past it
+        urgent = true;
+        break;
+      }
+    }
+
+    // 4. Otherwise pick a fight, or clear rocks if there's nobody to fight.
+    let target = null, targetDist = Infinity;
+    if (!urgent || true) {
+      if (mode.pvp) {
+        for (const o of ships) {
+          if (o === s || !o.alive || o.dead) continue;
+          const d = Math.hypot(o.x - s.x, o.y - s.y);
+          if (d < targetDist) { targetDist = d; target = o; }
+        }
+      } else {
+        for (const r of rocks) {
+          const d = Math.hypot(r.x - s.x, r.y - s.y);
+          if (d < targetDist) { targetDist = d; target = r; }
+        }
+      }
+    }
+
+    if (!urgent && target) {
+      // Lead the shot: aim where the target will be, not where it is.
+      const tof = Math.min(1.2, targetDist / (BULLET_SPD * U));
+      wantX = target.x + (target.vx || 0) * tof;
+      wantY = target.y + (target.vy || 0) * tof;
+    }
+    if (wantX === null) return;
+
+    let diff = Math.atan2(wantY - s.y, wantX - s.x) - s.a;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+
+    // A dead zone stops it juddering left-right around the perfect heading.
+    if (diff > 0.06) i.r = true;
+    else if (diff < -0.06) i.l = true;
+
+    const aimed = Math.abs(diff) < 0.5;
+    const speed = Math.hypot(s.vx, s.vy);
+    if (aimed && (urgent || targetDist > 240 * U) && speed < MAX_SPEED * U * 0.85) {
+      i.th = true;
+    }
+
+    const range = BULLET_SPD * U * BULLET_LIFE * U * 0.9;
+    if (!urgent && target && Math.abs(diff) < 0.14 && targetDist < range) {
+      // Don't shoot a team-mate in the back in the co-op modes.
+      const blocked = !mode.pvp && mode.friendlyFire && ships.some(o =>
+        o !== s && o.alive && Math.abs(
+          Math.atan2(o.y - s.y, o.x - s.x) - s.a) < 0.2 &&
+        Math.hypot(o.x - s.x, o.y - s.y) < targetDist);
+      i.f = !blocked;
+    }
+  }
+
+  /* ── pointer and touch ───────────────────────────────────────────────────
+     Both schemes feed the same four booleans the keyboard does. Nothing
+     downstream — physics, bots, the network — can tell which was used.
+
+     Aiming does NOT snap the ship to the cursor. It works out which way to
+     turn and holds the turn key for you, so a mouse player obeys exactly the
+     same turn rate as a keyboard player and has no advantage. */
+  const aim = { on: false, wx: 0, wy: 0, thrust: false, fire: false };
+  const touch = { l: false, r: false, th: false, f: false, any: false };
+
+  const localSeat = () => (net.role === "guest" ? net.seat : 0);
+
+  // Where the pointer is in the 1000×700 layout the menus are drawn in.
+  function screenPoint(clientX, clientY) {
+    const r = canvas.getBoundingClientRect();
+    return { x: (clientX - r.left) / r.width * SCREEN_W,
+             y: (clientY - r.top) / r.height * SCREEN_H };
+  }
+
+  function screenToWorld(clientX, clientY) {
+    const s = screenPoint(clientX, clientY);
+    return { x: cam.x + (s.x - SCREEN_W / 2) / cam.scale,
+             y: cam.y + (s.y - SCREEN_H / 2) / cam.scale };
+  }
+
+  canvas.addEventListener("mousemove", e => {
+    if (state === "controls") {
+      const s = screenPoint(e.clientX, e.clientY);
+      binder.hover = cellAt(s.x, s.y);
+      return;
+    }
+    const p = screenToWorld(e.clientX, e.clientY);
+    aim.wx = p.x; aim.wy = p.y; aim.on = true;
+  });
+
+  /* A tap on a cell is the same thing as walking to it and pressing ENTER, so
+     a rebind is one touch and one key on a laptop or a tablet alike. Pointer
+     rather than mouse, or the touchscreen would have to use the keyboard grid
+     it may not have. */
+  canvas.addEventListener("pointerdown", e => {
+    const p = screenPoint(e.clientX, e.clientY);
+
+    if (state === "controls") {
+      const cell = cellAt(p.x, p.y);
+      if (cell) {
+        binder.p = cell.p; binder.a = cell.a; binder.listening = true;
+        e.preventDefault();
+        return;
+      }
+    }
+
+    // Everything else on a menu screen registered itself while being drawn.
+    const hit = tapAt(p.x, p.y);
+    if (hit) { hit.act(); e.preventDefault(); return; }
+
+    if (state === "controls") binder.listening = false;   // tapping off backs out
+  });
+
+  canvas.addEventListener("mousedown", e => {
+    if (state === "controls") return;
+    const p = screenToWorld(e.clientX, e.clientY);
+    aim.wx = p.x; aim.wy = p.y; aim.on = true;
+    if (e.button === 0) aim.thrust = true;
+    if (e.button === 2) aim.fire = true;
+    e.preventDefault();
+  });
+  addEventListener("mouseup", e => {
+    if (e.button === 0) aim.thrust = false;
+    if (e.button === 2) aim.fire = false;
+  });
+  // Right-click is the fire button, so the menu can't have it.
+  canvas.addEventListener("contextmenu", e => e.preventDefault());
+  canvas.addEventListener("mouseleave", () => { aim.thrust = aim.fire = false; });
+
+  function aimInput(s) {
+    let diff = Math.atan2(aim.wy - s.y, aim.wx - s.x) - s.a;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    // Dead zone, or the ship shivers either side of the cursor.
+    return { l: diff < -0.05, r: diff > 0.05 };
+  }
+
+  function readLocalInput() {
+    for (const s of ships) {
+      if (!s.localKeys) continue;
+      const k = s.localKeys;
+      s.input.l = held(k.left);
+      s.input.r = held(k.right);
+      s.input.th = held(k.thrust);
+      s.input.f = held(k.fire);
+    }
+
+    // The mouse and the on-screen buttons drive whichever ship belongs to this
+    // machine, on top of whatever the keyboard is doing.
+    const me = ships[localSeat()];
+    if (me && me.localKeys) {
+      if (aim.on && me.alive) {
+        const a = aimInput(me);
+        me.input.l = me.input.l || a.l;
+        me.input.r = me.input.r || a.r;
+      }
+      me.input.th = me.input.th || aim.thrust || touch.th;
+      me.input.f = me.input.f || aim.fire || touch.f;
+      me.input.l = me.input.l || touch.l;
+      me.input.r = me.input.r || touch.r;
+    }
+    // The host drives remote seats from whatever arrived last.
+    if (net.role === "host") {
+      for (const s of ships) {
+        if (s.localKeys || s.bot) continue;
+        const i = net.inputs[s.id];
+        if (i) { s.input.l = i.l; s.input.r = i.r; s.input.th = i.th; s.input.f = i.f; }
+      }
+    }
+    // Bots think wherever the simulation runs, which is never on a guest.
+    if (net.role !== "guest") {
+      for (const s of ships) if (s.bot) driveBot(s, lastDt);
+    }
+  }
+
+  let lastDt = 1 / 60;
+
+  function netPump(dt) {
+    const N = window.CrossfireNet;
+    if (!N) return;
+    if (net.role === "host") {
+      net.sendAcc += dt;
+      if (net.sendAcc >= 1 / SNAP_HZ) { net.sendAcc = 0; N.host.broadcast(snapshot(), false); }
+      net.rockAcc += dt;
+      if (net.rockAcc >= 1 / ROCK_HZ) { net.rockAcc = 0; N.host.broadcast(rockPacket(), false); }
+    } else if (net.role === "guest") {
+      net.inAcc += dt;
+      if (net.inAcc >= 1 / INPUT_HZ) {
+        net.inAcc = 0;
+        const i = ships[net.seat] ? ships[net.seat].input : null;
+        if (i) N.guest.send({ t: "in", l: !!i.l, r: !!i.r, th: !!i.th, f: !!i.f }, false);
+      }
+    }
+  }
+
+  /* ── update ──────────────────────────────────────────────────────────── */
+  function update(dt) {
+    clock += dt;
+    if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
+    updateWall(dt);
+    updateMotes(dt);
+
+    const shipR = SHIP_R * U;
+
+    for (const ship of ships) {
+      if (ship.dead) continue;
+
+      if (!ship.alive) {
+        ship.respawn -= dt;
+        const p = spawnPoint(ship.id, players);
+        // Waiting for a clear spot can't wait forever — a rock parked on the
+        // spawn point would bench a player for the whole match.
+        if (ship.respawn <= 0 && (spotIsClear(p.x, p.y) || ship.respawn < -3)) {
+          ship.x = Math.min(Math.max(p.x, bounds.x0 + shipR), bounds.x1 - shipR);
+          ship.y = Math.min(Math.max(p.y, bounds.y0 + shipR), bounds.y1 - shipR);
+          ship.vx = ship.vy = 0;
+          ship.a = p.a;
+          ship.alive = true;
+          ship.invuln = INVULN;
+        }
+        continue;
+      }
+
+      ship.invuln = Math.max(0, ship.invuln - dt);
+      ship.cool = Math.max(0, ship.cool - dt);
+
+      const k = ship.input;
+      if (k.l) ship.a -= TURN * dt;
+      if (k.r) ship.a += TURN * dt;
+
+      ship.thrusting = k.th;
+      if (ship.thrusting) {
+        ship.vx += Math.cos(ship.a) * THRUST * U * dt;
+        ship.vy += Math.sin(ship.a) * THRUST * U * dt;
+        if (Math.random() < 0.7) {
+          burst(ship.x - Math.cos(ship.a) * shipR,
+                ship.y - Math.sin(ship.a) * shipR, "#c79000", 1, 60 * U);
+        }
+      }
+
+      const pull = applyGravity(ship, dt);
+
+      const damp = Math.exp(-DRAG * dt);
+      ship.vx *= damp; ship.vy *= damp;
+
+      const sp = Math.hypot(ship.vx, ship.vy);
+      // Gravity is allowed to throw you past your own engine's top speed —
+      // being unable to pull out of a well is the whole threat of one. Clear of
+      // any well, the ordinary limit applies again, so the survival modes fly
+      // exactly as they did before hazards existed.
+      const max = MAX_SPEED * U * (pull > 1 ? 1.9 : 1);
+      if (sp > max) { ship.vx *= max / sp; ship.vy *= max / sp; }
+
+      ship.x += ship.vx * dt; ship.y += ship.vy * dt;
+      edgeOf(ship, shipR, WALL_BOUNCE);
+
+      const swallowed = hazardAt(ship.x, ship.y, shipR * 0.6);
+      if (swallowed && ship.invuln <= 0) {
+        killShip(ship, swallowed.kind === "hole" ? "hole" : "star", null);
+        continue;
+      }
+
+      if (k.f && ship.cool <= 0) fire(ship);
+    }
+
+    // Ships bounce off each other rather than dying — even in battle royale,
+    // ramming is a nuisance, not a weapon. All pairs, so this works for five.
+    for (let i = 0; i < ships.length; i++) {
+      for (let j = i + 1; j < ships.length; j++) {
+        const a = ships[i], b = ships[j];
+        if (!a.alive || !b.alive) continue;
+        if (gap2(a.x, a.y, b.x, b.y) >= (shipR * 2) ** 2) continue;
+        let dx = sepX(a.x, b.x), dy = sepY(a.y, b.y);
+        let d = Math.hypot(dx, dy);
+        if (d < 0.001) {
+          // Exactly superimposed: there's no direction to push along, so pick
+          // one. Without this they'd sit locked inside each other for good.
+          const t = rand(0, Math.PI * 2);
+          dx = Math.cos(t); dy = Math.sin(t); d = 1;
+        }
+        const nx = dx / d, ny = dy / d, push = 90 * U;
+        a.vx += nx * push; a.vy += ny * push;
+        b.vx -= nx * push; b.vy -= ny * push;
+      }
+    }
+
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i];
+      applyGravity(b, dt);
+      b.x += b.vx * dt; b.y += b.vy * dt;
+      b.life -= dt;
+
+      // Walls eat bullets, so behind a wall is cover. Where the edges lead
+      // back round there is no cover and no safe angle: a shot goes round and
+      // is still yours when it comes back, until it simply runs out of life.
+      if (mode.wrap) {
+        if (b.life <= 0) { bullets.splice(i, 1); continue; }
+        wrapInBounds(b);
+      } else if (b.life <= 0 ||
+                 b.x < bounds.x0 || b.x > bounds.x1 ||
+                 b.y < bounds.y0 || b.y > bounds.y1) {
+        if (b.life > 0) burst(b.x, b.y, b.colour, 2, 70 * U);
+        bullets.splice(i, 1);
+        continue;
+      }
+
+      // So do stars and black holes.
+      if (hazardAt(b.x, b.y, 0)) {
+        burst(b.x, b.y, b.colour, 3, 90 * U);
+        bullets.splice(i, 1);
+        continue;
+      }
+
+      let spent = false;
+
+      for (const r of rocks) {
+        if (gap2(b.x, b.y, r.x, r.y) < r.r * r.r) { hitRock(r, b); spent = true; break; }
+      }
+
+      if (!spent) {
+        for (const s of ships) {
+          if (!s.alive || s.invuln > 0 || !canHit(b.owner, s)) continue;
+          if (gap2(b.x, b.y, s.x, s.y) < (shipR + 2) ** 2) {
+            killShip(s, mode.pvp ? "shot" : "ff", ships[b.owner]);
+            spent = true;
+            break;
+          }
+        }
+      }
+
+      if (spent) bullets.splice(i, 1);
+    }
+
+    for (let i = rocks.length - 1; i >= 0; i--) {
+      const r = rocks[i];
+      r.flash = Math.max(0, r.flash - dt);
+      applyGravity(r, dt);
+      r.x += r.vx * dt; r.y += r.vy * dt;
+      r.a += r.spin * dt;
+      edgeOf(r, r.r, ROCK_BOUNCE);
+      // A rock that falls in is gone — which is how the wells slowly sweep the
+      // map clean around themselves.
+      if (hazardAt(r.x, r.y, r.r * 0.5)) {
+        burst(r.x, r.y, "#c79000", 10, 150 * U);
+        rocks.splice(i, 1);
+      }
+    }
+
+    for (const s of ships) {
+      if (!s.alive || s.invuln > 0) continue;
+      for (const r of rocks) {
+        if (gap2(s.x, s.y, r.x, r.y) < (r.r + shipR * 0.75) ** 2) {
+          killShip(s, "rock", null);
+          break;
+        }
+      }
+    }
+
+    for (let i = bits.length - 1; i >= 0; i--) {
+      const p = bits[i];
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vx *= Math.exp(-1.6 * dt); p.vy *= Math.exp(-1.6 * dt);
+      p.life -= dt;
+      if (p.life <= 0) bits.splice(i, 1);
+    }
+
+    if (state !== "playing") return;
+
+    updateCamera(dt);
+
+    if (mode.closing) {
+      // Keep a standing rock population so the shrinking arena stays hostile.
+      // The target falls as the wall closes, or the endgame turns into soup.
+      const room = (bounds.x1 - bounds.x0) * (bounds.y1 - bounds.y0) /
+                   (arena.w * arena.h);
+      const want = Math.max(7, Math.round(ROYALE_ROCKS * room));
+      topUp -= dt;
+      if (topUp <= 0 && rocks.length < want) {
+        topUp = 1.5;
+        const p = openSpot(ROCK.big.r * U);
+        rocks.push(makeRock("big", p.x, p.y));
+      }
+
+      if (clock >= MATCH_TIME) timeUp();
+    } else if (rocks.length === 0) {
+      spawnWave();
+    }
+  }
+
+  /* Three minutes gone with more than one ship still flying: the match is
+     decided on kills, then on lives left, and it's honestly a draw if those
+     are level too. */
+  function timeUp() {
+    const standing = ships.filter(s => !s.dead);
+    if (standing.length === 0) return endMatch({ kind: "draw" });
+
+    const rank = [...standing].sort((a, b) => b.kills - a.kills || b.stocks - a.stocks);
+    const tied = rank.length > 1 &&
+                 rank[0].kills === rank[1].kills &&
+                 rank[0].stocks === rank[1].stocks;
+    endMatch(tied ? { kind: "draw", onTime: true }
+                  : { kind: "winner", ship: rank[0], onTime: true });
+  }
+
+  /* ── drawing ─────────────────────────────────────────────────────────────
+     Everything is hairline vector. The "glow" is a fat low-alpha pass under a
+     thin bright one — cheaper than shadowBlur and it survives the letterbox
+     scaling without smearing. Widths are divided by wScale so a line is the
+     same thickness on screen whichever arena you're in. */
+  function glow(colour, width, alpha, path) {
+    ctx.strokeStyle = colour;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.globalAlpha = alpha * 0.2;
+    ctx.lineWidth = (width * 3.2) / wScale;
+    path();
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = width / wScale;
+    path();
+    ctx.globalAlpha = 1;
+  }
+
+  /* Anything near an edge is drawn at the opposite one too, or crossing the
+     seam would be a ship cut in half followed by a ship appearing from
+     nowhere. This is what makes a wrapping field readable: you see what's
+     about to arrive before it arrives. */
+  function drawWrapped(x, y, r, fn) {
+    fn();
+    if (!mode.wrap) return;
+    const w = bounds.x1 - bounds.x0, h = bounds.y1 - bounds.y0;
+    const dx = x - bounds.x0 < r ? w : bounds.x1 - x < r ? -w : 0;
+    const dy = y - bounds.y0 < r ? h : bounds.y1 - y < r ? -h : 0;
+    if (dx) { ctx.save(); ctx.translate(dx, 0); fn(); ctx.restore(); }
+    if (dy) { ctx.save(); ctx.translate(0, dy); fn(); ctx.restore(); }
+    if (dx && dy) { ctx.save(); ctx.translate(dx, dy); fn(); ctx.restore(); }
+  }
+
+  function drawArena() {
+    // Nothing solid to draw when the edges lead back round. A dotted frame
+    // says where the field is without claiming you can hit it.
+    if (mode.wrap) {
+      ctx.strokeStyle = "#6b4d00";
+      ctx.globalAlpha = 0.75;
+      ctx.lineWidth = 1 / wScale;
+      ctx.setLineDash([4 / wScale, 9 / wScale]);
+      ctx.strokeRect(bounds.x0, bounds.y0,
+                     bounds.x1 - bounds.x0, bounds.y1 - bounds.y0);
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+      return;
+    }
+
+    // The full arena, faint — so when the wall closes you can see how much
+    // room you've lost.
+    if (mode.closing) {
+      ctx.strokeStyle = "#6b4d00";
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth = 1 / wScale;
+      ctx.setLineDash([10 / wScale, 10 / wScale]);
+      ctx.strokeRect(0, 0, arena.w, arena.h);
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
+
+    const closing = mode.closing && clock > CLOSE_DELAY;
+    const pulse = closing ? 0.75 + 0.25 * Math.sin(clock * 5) : 1;
+    glow(closing ? "#ff6a4d" : "#c79000", 1.8, pulse, () => {
+      ctx.beginPath();
+      ctx.rect(bounds.x0, bounds.y0, bounds.x1 - bounds.x0, bounds.y1 - bounds.y0);
+      ctx.stroke();
+    });
+  }
+
+  function drawShip(s) {
+    if (!s.alive) return;
+    // Blink while the respawn shield is up so nobody wastes shots on a ghost.
+    const blink = s.invuln > 0 && Math.floor(s.invuln * 10) % 2 === 0;
+    const alpha = s.invuln > 0 ? (blink ? 0.35 : 0.9) : 1;
+    const r = SHIP_R * U;
+
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.a);
+    ctx.scale(r / 12, r / 12);
+    glow(s.colour, 1.7 * (12 / r), alpha, () => {
+      ctx.beginPath();
+      ctx.moveTo(14, 0);
+      ctx.lineTo(-10, 8);
+      ctx.lineTo(-6, 0);
+      ctx.lineTo(-10, -8);
+      ctx.closePath();
+      ctx.stroke();
+    });
+    if (s.thrusting && Math.random() > 0.25) {
+      glow(s.colour, 1.4 * (12 / r), alpha * 0.85, () => {
+        ctx.beginPath();
+        ctx.moveTo(-7, 4);
+        ctx.lineTo(-10 - Math.random() * 9, 0);
+        ctx.lineTo(-7, -4);
+        ctx.stroke();
+      });
+    }
+    ctx.restore();
+  }
+
+  function drawRock(r) {
+    ctx.save();
+    ctx.translate(r.x, r.y);
+    ctx.rotate(r.a);
+
+    const hit = r.flash > 0;
+    glow(hit ? "#ffd98a" : "#c79000", hit ? 2 : 1.5, 1, () => {
+      ctx.beginPath();
+      for (let i = 0; i < r.shape.length; i++) {
+        const t = (i / r.shape.length) * Math.PI * 2;
+        const rr = r.r * r.shape[i];
+        const x = Math.cos(t) * rr, y = Math.sin(t) * rr;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    });
+
+    // One crack per hit taken — cover you can see wearing out.
+    const shown = r.maxHp - r.hp;
+    if (shown > 0) {
+      ctx.strokeStyle = hit ? "#ffd98a" : "#c79000";
+      ctx.globalAlpha = 0.75;
+      ctx.lineWidth = 1.1 / wScale;
+      ctx.beginPath();
+      for (let i = 0; i < shown && i < r.cracks.length; i++) {
+        const c = r.cracks[i];
+        ctx.moveTo(c.x1 * r.r, c.y1 * r.r);
+        ctx.lineTo(c.x2 * r.r, c.y2 * r.r);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+
+  /* Stars and black holes, drawn in the same hairline vector language as
+     everything else — no fills anywhere except the black hole's own disc,
+     which has to be solid or it isn't a hole. */
+  function drawHazard(h) {
+    ctx.save();
+    ctx.translate(h.x, h.y);
+
+    if (h.kind === "star") {
+      const spin = clock * 0.25 + h.phase;
+      glow("#ffc233", 1.6, 1, () => {
+        ctx.beginPath();
+        ctx.arc(0, 0, h.kill, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      glow("#ffc233", 1.2, 0.55, () => {
+        ctx.beginPath();
+        ctx.arc(0, 0, h.kill * 0.6, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      // Corona: spokes of two lengths, turning slowly.
+      glow("#ffc233", 1.3, 0.7, () => {
+        ctx.beginPath();
+        for (let i = 0; i < 12; i++) {
+          const t = spin + (i / 12) * Math.PI * 2;
+          const len = h.kill * (i % 2 ? 1.5 : 1.28);
+          ctx.moveTo(Math.cos(t) * h.kill * 1.08, Math.sin(t) * h.kill * 1.08);
+          ctx.lineTo(Math.cos(t) * len, Math.sin(t) * len);
+        }
+        ctx.stroke();
+      });
+    } else {
+      const spin = clock * 0.6 + h.phase;
+      // The hole itself: solid black, so anything behind it is genuinely gone.
+      ctx.fillStyle = "#000";
+      ctx.beginPath();
+      ctx.arc(0, 0, h.kill, 0, Math.PI * 2);
+      ctx.fill();
+      // Accretion ring, squashed and turning.
+      ctx.save();
+      ctx.rotate(spin * 0.35);
+      ctx.scale(1, 0.42);
+      glow("#ff6a4d", 1.7, 1, () => {
+        ctx.beginPath();
+        ctx.arc(0, 0, h.kill * 1.85, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      ctx.restore();
+      glow("#ff6a4d", 1.4, 0.85, () => {
+        ctx.beginPath();
+        ctx.arc(0, 0, h.kill, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+    }
+    ctx.restore();
+  }
+
+  /* Debris streaks. Drawn under everything else, and brightening as they fall,
+     so the eye reads the inward flow before it reads any one speck. */
+  function drawMotes() {
+    ctx.lineCap = "round";
+    for (const m of motes) {
+      const h = m.h;
+      if (!onScreen(m.x, m.y, 30)) continue;
+      const d = Math.hypot(h.x - m.x, h.y - m.y);
+      const k = 1 - Math.min(1, d / h.reach);        // 0 at the edge, 1 at the centre
+      ctx.globalAlpha = 0.18 + k * 0.7;
+      ctx.strokeStyle = h.kind === "hole" ? "#ff6a4d" : "#ffc233";
+      ctx.lineWidth = (0.8 + k * 1.4) / wScale;
+      // Out at the edge a mote barely moves, so a pure velocity streak would be
+      // invisible exactly where the boundary needs to be legible. Give it a
+      // floor length and let it stretch as it accelerates inward.
+      const sp = Math.hypot(m.vx, m.vy) || 1;
+      const len = Math.max(7, sp * 0.05);
+      ctx.beginPath();
+      ctx.moveTo(m.x, m.y);
+      ctx.lineTo(m.x - (m.vx / sp) * len, m.y - (m.vy / sp) * len);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ── minimap ─────────────────────────────────────────────────────────────
+     Top-right, showing the whole world at once: the wall, the hazards, every
+     ship, and the rectangle of it you can actually see. On a map sixteen
+     screens across this is the only way to know where anyone is. */
+  function drawMinimap() {
+    const w = 210, h = 210 * (arena.h / arena.w);
+    const x0 = SCREEN_W - w - 18, y0 = 18;
+    const sx = w / arena.w, sy = h / arena.h;
+    const mx = wx => x0 + wx * sx;
+    const my = wy => y0 + wy * sy;
+
+    ctx.fillStyle = "rgba(0,0,0,0.62)";
+    ctx.fillRect(x0, y0, w, h);
+    ctx.strokeStyle = "#6b4d00";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x0, y0, w, h);
+
+    // The wall's current extent.
+    const closing = clock > CLOSE_DELAY;
+    ctx.strokeStyle = closing ? "#ff6a4d" : "#c79000";
+    ctx.globalAlpha = 0.9;
+    ctx.strokeRect(mx(bounds.x0), my(bounds.y0),
+                   (bounds.x1 - bounds.x0) * sx, (bounds.y1 - bounds.y0) * sy);
+    ctx.globalAlpha = 1;
+
+    for (const hz of hazards) {
+      ctx.beginPath();
+      ctx.arc(mx(hz.x), my(hz.y), hz.kind === "hole" ? 3 : 4, 0, Math.PI * 2);
+      if (hz.kind === "hole") {
+        ctx.fillStyle = "#000"; ctx.fill();
+        ctx.strokeStyle = "#ff6a4d"; ctx.lineWidth = 1; ctx.stroke();
+      } else {
+        ctx.fillStyle = "#ffc233"; ctx.fill();
+      }
+    }
+
+    // What the camera can see.
+    const vw = SCREEN_W / cam.scale * sx, vh = SCREEN_H / cam.scale * sy;
+    ctx.strokeStyle = "#c79000";
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(mx(cam.x) - vw / 2, my(cam.y) - vh / 2, vw, vh);
+    ctx.globalAlpha = 1;
+
+    for (const s of ships) {
+      if (s.dead) continue;
+      ctx.globalAlpha = s.alive ? 1 : 0.35;
+      ctx.fillStyle = s.colour;
+      ctx.beginPath();
+      ctx.arc(mx(s.x), my(s.y), s.id === watching ? 4 : 3, 0, Math.PI * 2);
+      ctx.fill();
+      if (s.id === watching) {
+        ctx.strokeStyle = s.colour;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath();
+        ctx.arc(mx(s.x), my(s.y), 7, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawBullet(b) {
+    glow(b.colour, 2.6, 1, () => {
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y);
+      ctx.lineTo(b.x - b.vx * 0.008, b.y - b.vy * 0.008);
+      ctx.stroke();
+    });
+  }
+
+  function drawBits() {
+    ctx.lineWidth = 1.4 / wScale;
+    for (const p of bits) {
+      ctx.globalAlpha = Math.max(0, p.life / p.max);
+      ctx.strokeStyle = p.colour;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x - p.vx * 0.012, p.y - p.vy * 0.012);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function text(str, x, y, size, colour, align = "center", alpha = 1) {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = colour;
+    ctx.font = size + 'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+    ctx.textAlign = align;
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(str, x, y);
+    ctx.globalAlpha = 1;
+  }
+
+  /* ── tapping the menus ────────────────────────────────────────────────────
+     Every menu here is a keypress, which is no use to a thumb. Rather than
+     keep a second list of rectangles in step with the drawing, a menu line
+     registers its own box as it is drawn: what you can tap is exactly what you
+     can see, and a line that stops being drawn stops being tappable.
+
+     Boxes are collected fresh each frame, and a tap runs the same code the key
+     runs — there is one menu, not a keyboard one and a touch one. */
+  let taps = [];
+
+  function tapText(str, x, y, size, colour, act, align = "center", alpha = 1) {
+    text(str, x, y, size, colour, align, alpha);
+    const w = ctx.measureText(str).width;      // text() left the font set
+    const left = align === "center" ? x - w / 2 : align === "right" ? x - w : x;
+    // Generous vertically: a fingertip is wider than a line of 13px type.
+    taps.push({ x: left - 14, y: y - size, w: w + 28, h: size + 20, act });
+  }
+
+  function tapAt(sx, sy) {
+    // Last drawn wins, so a line drawn over another is the one you get.
+    for (let i = taps.length - 1; i >= 0; i--) {
+      const t = taps[i];
+      if (sx >= t.x && sx <= t.x + t.w && sy >= t.y && sy <= t.y + t.h) return t;
+    }
+    return null;
+  }
+
+  function shipPip(x, y, colour, alpha) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-Math.PI / 2);
+    ctx.scale(0.62, 0.62);
+    glow(colour, 2.2, alpha, () => {
+      ctx.beginPath();
+      ctx.moveTo(14, 0); ctx.lineTo(-10, 8); ctx.lineTo(-6, 0); ctx.lineTo(-10, -8);
+      ctx.closePath();
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  const clockText = s => {
+    const t = Math.max(0, Math.ceil(s));
+    return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0");
+  };
+
+  function drawHUD() {
+    if (mode.pvp) {
+      // Stocks down the left, so the minimap owns the top-right corner.
+      ships.forEach((s, i) => {
+        const y = 34 + i * 34;
+        text(s.name, 24, y, 15, s.dead ? "#c79000" : s.colour, "left", 1);
+        // Names are wider than colour words, so the pips start further in.
+        if (s.dead) {
+          text("OUT", 168, y, 13, "#c79000", "left", 1);
+        } else {
+          for (let k = 0; k < s.stocks; k++) {
+            shipPip(172 + k * 17, y - 5, s.colour, 0.85);
+          }
+        }
+        if (s.kills > 0) {
+          text("×" + s.kills, 172 + 3 * 17 + 10, y, 13, s.colour, "left", 0.8);
+        }
+        if (i === watching) {
+          text("▸", 12, y, 14, s.colour, "left", 0.9);   // whose eyes you're using
+        }
+      });
+
+      const left = MATCH_TIME - clock;
+      const urgent = left <= 30;
+      text(clockText(left), SCREEN_W / 2, 40, 30,
+           urgent ? "#ff6a4d" : "#ffc233", "center",
+           urgent && Math.floor(clock * 2) % 2 === 0 ? 0.65 : 1);
+
+      const t = Math.max(0, CLOSE_DELAY - clock);
+      if (t > 0) {
+        text("WALL CLOSES IN " + Math.ceil(t), SCREEN_W / 2, SCREEN_H - 18, 14,
+             "#c79000", "center", 0.85);
+      } else if (clock < CLOSE_DELAY + CLOSE_TIME) {
+        text("WALL CLOSING", SCREEN_W / 2, SCREEN_H - 18, 14, "#ff6a4d", "center", 0.85);
+      } else {
+        text("NO MORE ROOM", SCREEN_W / 2, SCREEN_H - 18, 14, "#ff6a4d", "center", 0.9);
+      }
+      if (ships.length > 1) {
+        text("TAB — follow next ship", 22, SCREEN_H - 18, 12, "#c79000", "left", 1);
+      }
+      drawMinimap();
+      touchPause();
+      return;
+    }
+
+    text("SCORE " + String(score).padStart(6, "0"), 22, 36, 20, "#ffc233", "left");
+    text("WAVE " + wave, SCREEN_W / 2, 36, 20, "#c79000");
+
+    // Lives are one shared pile — drawn as a single row, not per-player,
+    // because that's the whole point of the co-op modes.
+    for (let i = 0; i < lives; i++) shipPip(SCREEN_W - 24 - i * 20, 30, "#ffc233", 0.85);
+    text("SHARED", SCREEN_W - 24, 52, 12, "#c79000", "right");
+
+    if (ffCount > 0) {
+      text("FRIENDLY FIRE ×" + ffCount, 22, 56, 13, "#ff6a4d", "left", 0.85);
+    }
+
+    touchPause();
+  }
+
+  /* A phone has no P key, and the pause screen is now where the controls and
+     the way out live — so a thumb needs a way in. Only once a thumb has
+     actually been used: a mouse player keeps the whole canvas for aiming. */
+  function touchPause() {
+    if (!document.body.classList.contains("touch")) return;
+    tapText("PAUSE", SCREEN_W - 24, SCREEN_H - 16, 15, "#c79000",
+            pauseHere, "right", 0.9);
+  }
+
+  function drawBanner() {
+    if (!banner) return;
+    const a = Math.min(1, banner.t * 1.8);
+    text(banner.text, SCREEN_W / 2, SCREEN_H / 2 - 6, 42, banner.colour, "center", a);
+    if (banner.sub) {
+      text(banner.sub, SCREEN_W / 2, SCREEN_H / 2 + 26, 16, banner.colour, "center", a * 0.8);
+    }
+  }
+
+  function drawTitle() {
+    text("CROSSFIRE", SCREEN_W / 2, 150, 70, "#ffc233");
+    text("asteroids — open space, or a closing wall", SCREEN_W / 2, 186, 16, "#c79000");
+
+    const rows = [
+      ["[1]", "survival", MODES.survival.name, MODES.survival.blurb, "#ffc233"],
+      ["[2]", "safe",     MODES.safe.name,     MODES.safe.blurb,     "#38ff9c"],
+      ["[3]", "royale",   MODES.royale.name,   MODES.royale.blurb,   "#ff6a4d"]
+    ];
+    rows.forEach(([k, key, name, blurb, colour], i) => {
+      const y = 290 + i * 92;
+      tapText(k + "  " + name, SCREEN_W / 2, y, 28, colour,
+              () => { pendingMode = key; state = "count"; });
+      text(blurb, SCREEN_W / 2, y + 26, 14, "#c79000");
+    });
+
+    text(touchOnly
+           ? "one player per phone · up to five online, a screen each"
+           : "two at this keyboard · up to five online · every key is yours to change",
+         SCREEN_W / 2, 596, 13, "#c79000");
+    tapText("[H]  HOST ONLINE", 250, 640, 18, "#ffc233", () => openLobby("host"));
+    tapText("[J]  JOIN ONLINE", SCREEN_W / 2, 640, 18, "#ffc233", () => openLobby("guest"));
+    tapText("[C]  CONTROLS", 760, 640, 18, "#ffc233",
+            () => { backFrom = "title"; state = "controls"; });
+    text("online has no server — you pass the invite to each other yourselves",
+         SCREEN_W / 2, 668, 12, "#c79000");
+  }
+
+  function drawCount() {
+    const m = MODES[pendingMode];
+    text(m.name, SCREEN_W / 2, 96, 40, "#ffc233");
+    text(m.blurb, SCREEN_W / 2, 126, 14, "#c79000");
+    text(m.wrap
+           ? "open space — fly off one edge and you arrive at the other"
+           : "solid walls — you bounce, your shots don't",
+         SCREEN_W / 2, 150, 13, "#c79000", "center", 0.8);
+
+    const most = humanMax();
+    text(touchOnly ? "ONE PLAYER ON A PHONE" : "HOW MANY AT THE KEYBOARD?",
+         SCREEN_W / 2, 196, 19, "#c79000");
+
+    // The options in a row, each in the colour of the player it adds.
+    const step = 200;
+    const x0 = SCREEN_W / 2 - step * (most - 1) / 2;
+    for (let i = 1; i <= most; i++) {
+      const allowed = i >= m.minPlayers ||
+                      i + Math.min(botPick, MAX_PLAYERS - i) >= m.minPlayers;
+      const n = i;
+      tapText("[" + i + "]", x0 + (i - 1) * step, 246, 30,
+              allowed ? PLAYERS[i - 1].colour : "#c79000",
+              () => { if (allowed) startGame(pendingMode, n, botPick); },
+              "center", allowed ? 1 : 0.5);
+    }
+    // Bots fill the seats nobody is sitting in — which, with two hands to a
+    // keyboard, is how a five-ship match gets its other ships.
+    tapText("[B]  BOTS: " + (botPick === 0 ? "none" : botPick),
+            SCREEN_W / 2, 290, 20, botPick ? "#ffc233" : "#c79000",
+            () => { botPick = (botPick + 1) % MAX_PLAYERS; });
+    text(m.minPlayers > 1
+           ? "battle royale needs two ships — a bot counts"
+           : "bots take the seats nobody is sitting in",
+         SCREEN_W / 2, 312, 13, "#c79000");
+
+    // Who is who, and which keys are theirs.
+    text("CONTROLS", SCREEN_W / 2, 366, 15, "#c79000");
+    keyRows().slice(0, most).forEach((p, i) => {
+      const y = 398 + i * 32;
+      text(p.label, SCREEN_W / 2 - 150, y, 17, p.colour, "right");
+      text(hintOf(p), SCREEN_W / 2 - 130, y, 15, "#c79000", "left");
+    });
+    text(touchOnly
+           ? "four buttons appear the first time you touch the screen"
+           : "more than two? play online — one screen each",
+         SCREEN_W / 2, 398 + most * 32 + 14, 13, "#c79000");
+
+    tapText("ESC to go back", 340, 596, 14, "#c79000", () => { state = "title"; });
+    tapText("[C] change any of these keys", 660, 596, 14, "#c79000",
+            () => { backFrom = "count"; state = "controls"; });
+  }
+
+  /* The controls screen is the settings screen: every key on it is a control
+     you can change, and the grid is the same one `cellBox` hands the pointer. */
+  function drawControls() {
+    text("CONTROLS", SCREEN_W / 2, 70, 38, "#ffc233");
+    text("every key here can be changed — pick one and press the key you want",
+         SCREEN_W / 2, 96, 14, "#c79000");
+
+    ACTIONS.forEach((a, ai) => {
+      text(a.name, cellBox(0, ai).cx, 176, 12, "#c79000", "center", 0.85);
+    });
+
+    const now = performance.now();
+
+    keyRows().forEach((p, pi) => {
+      const home = cellBox(pi, 0);
+      text(p.label, home.x - 18, home.cy + 6, 17, p.colour, "right");
+
+      ACTIONS.forEach((a, ai) => {
+        const b = cellBox(pi, ai);
+        const picked = binder.p === pi && binder.a === ai;
+        const live = picked && binder.listening;
+        const hot = picked ||
+          (binder.hover && binder.hover.p === pi && binder.hover.a === ai);
+
+        ctx.strokeStyle = hot ? p.colour : "#c79000";
+        ctx.globalAlpha = live ? 1 : hot ? 0.9 : 0.35;
+        ctx.lineWidth = picked ? 2 : 1;
+        ctx.strokeRect(b.x, b.y, b.w, b.h);
+        ctx.globalAlpha = 1;
+        ctx.lineWidth = 1;
+
+        const codes = p[a.field];
+        if (live) {
+          // Blinking, because at this moment the game is waiting on you and
+          // nothing else on the screen is.
+          const on = Math.floor(now / 400) % 2 === 0;
+          text("PRESS A KEY", b.cx, b.cy + 5, 13, p.colour, "center", on ? 1 : 0.3);
+        } else {
+          text(keysOf(p, a.field)[0], b.cx, b.cy + 6, 16,
+               codes.length ? "#ffc233" : "#ff6a4d");
+          // Spares for the same action are a count here and a list below, or
+          // four fire keys would need four cells.
+          if (codes.length > 1) {
+            text("+" + (codes.length - 1), b.x + b.w - 7, b.y + 13, 10,
+                 "#c79000", "right", 0.8);
+          }
+        }
+      });
+    });
+
+    // One line under the grid, saying whatever matters most at this moment.
+    // Placed halfway between the last row and the notes at the foot, so the
+    // screen stays balanced whatever number of rows a keyboard can reach.
+    const gridBottom =
+      GRID.y0 + (keyRows().length - 1) * GRID.rowH + GRID.cellH / 2;
+    const sayY = Math.round((gridBottom + 566) / 2);
+
+    const sel = PLAYERS[binder.p][ACTIONS[binder.a].field];
+    const fresh = binder.note && now < binder.noteUntil;
+    // A refused key has to say so while it is still listening, or pressing
+    // ESC looks like the only thing that ever happens.
+    if (binder.listening && fresh && binder.bad) {
+      text(binder.note, SCREEN_W / 2, sayY, 15, "#ff6a4d");
+    } else if (binder.listening) {
+      text("press the key you want · ESC to leave it as it was",
+           SCREEN_W / 2, sayY, 15, "#ffc233");
+    } else if (fresh) {
+      text(binder.note, SCREEN_W / 2, sayY, 15, binder.bad ? "#ff6a4d" : "#38ff9c");
+    } else if (sel.length > 1) {
+      text("also " + sel.slice(1).map(keyLabel).join(", ") +
+           " — a new key replaces the lot", SCREEN_W / 2, sayY, 14, "#c79000");
+    } else {
+      text("click a key, or move with the arrows and press ENTER",
+           SCREEN_W / 2, sayY, 14, "#c79000");
+    }
+
+    tapText("[R] put them all back", 300, sayY + 36, 14, "#ffc233",
+            () => { resetKeys(); note("back to the keys it came with"); });
+    text("BACKSPACE clears one", SCREEN_W / 2 + 40, sayY + 36, 14, "#c79000");
+    tapText("ESC to go back", 830, sayY + 36, 14, "#ffc233",
+            () => { binder.listening = false; state = backFrom || "title"; });
+
+    text("GREEN is the second player at this keyboard. Online you always fly " +
+         "with AMBER's keys,", SCREEN_W / 2, 566, 13, "#c79000", "center", 0.8);
+    text("whichever ship you pick — nobody is sharing a keyboard over a network.",
+         SCREEN_W / 2, 586, 13, "#c79000", "center", 0.8);
+
+    text("MOUSE   the ship turns to follow the pointer · left button thrusts · " +
+         "right button fires", SCREEN_W / 2, 624, 13, "#c79000");
+    text("PHONE   four thumb buttons · one player per device",
+         SCREEN_W / 2, 652, 13, "#c79000");
+  }
+
+
+  function drawOver() {
+    if (outcome && outcome.kind === "winner") {
+      const s = outcome.ship;
+      text(s.name + " WINS", SCREEN_W / 2, 270, 60, s.colour);
+      text(s.kills === 1 ? "one kill" : s.kills + " kills", SCREEN_W / 2, 320, 20, "#c79000");
+      text(outcome.onTime ? "ahead when the three minutes ran out"
+                          : "last ship flying",
+           SCREEN_W / 2, 352, 16, "#c79000");
+      text("the map closed to " + Math.round((bounds.x1 - bounds.x0) / arena.w * 100) +
+           "%", SCREEN_W / 2, 380, 15, "#c79000");
+    } else if (outcome && outcome.kind === "draw") {
+      text("NOBODY WINS", SCREEN_W / 2, 280, 54, "#ff6a4d");
+      text(outcome.onTime ? "three minutes, nothing between you"
+                          : "you went out together",
+           SCREEN_W / 2, 330, 18, "#c79000");
+    } else {
+      text("ALL HANDS LOST", SCREEN_W / 2, 260, 54, "#ff6a4d");
+      text("SCORE " + score, SCREEN_W / 2, 330, 30, "#ffc233");
+      text("REACHED WAVE " + wave, SCREEN_W / 2, 368, 18, "#c79000");
+      if (ffCount > 0) {
+        text(ffCount === 1 ? "one of those was you" : ffCount + " of those were you",
+             SCREEN_W / 2, 410, 17, "#ff6a4d", "center", 0.9);
+      }
+    }
+    tapText("SPACE to return", SCREEN_W / 2, 520, 18, "#c79000",
+            () => { state = "title"; });
+  }
+
+  /* Paused is where you end up when something needs sorting out, so it is
+     where the things you might need to sort out live: the keys, and the way
+     out. Both are a tap as well as a key, because a phone has neither. */
+  function drawPaused() {
+    ctx.fillStyle = "rgba(0,0,0,0.62)";
+    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    const mid = SCREEN_H / 2;
+    text("PAUSED", SCREEN_W / 2, mid - 40, 46, "#ffc233");
+
+    tapText("[P]  RESUME", SCREEN_W / 2, mid + 20, 22, "#ffc233", () => {
+      state = "playing";
+      localPause = false;
+    });
+    tapText("[C]  CONTROLS", SCREEN_W / 2, mid + 66, 22, "#ffc233", () => {
+      backFrom = "paused";
+      state = "controls";
+    });
+    tapText("[Q]  QUIT TO MENU", SCREEN_W / 2, mid + 112, 22, "#c79000", leaveMatch);
+    if (net.on) {
+      text("quitting drops the others too", SCREEN_W / 2, mid + 140, 13,
+           "#c79000", "center", 0.75);
+    }
+  }
+
+  function pauseHere() {
+    if (state !== "playing") return;
+    state = "paused";
+    localPause = true;
+    // Pausing mid-thrust must not leave the host flying this ship on a key
+    // nobody is holding any more.
+    const me = ships[localSeat()];
+    if (me) me.input.l = me.input.r = me.input.th = me.input.f = false;
+  }
+
+  /* Leaving for real: the online connection goes with it, or a host that has
+     wandered back to the menu is still holding four people in a match. */
+  function leaveMatch() {
+    if (net.on) netReset();
+    localPause = false;
+    banner = null;
+    outcome = null;
+    state = "title";
+  }
+
+  function render() {
+    // Collected fresh: a menu line that isn't drawn this frame isn't tappable
+    // this frame either, which is what keeps the two from drifting apart.
+    taps = [];
+    ctx.setTransform(viewScale, 0, 0, viewScale, 0, 0);
+    ctx.clearRect(0, 0, SCREEN_W, SCREEN_H);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+
+    if (state === "title") { drawTitle(); return; }
+    if (state === "count") { drawCount(); return; }
+    if (state === "controls") { drawControls(); return; }
+
+    /* World space. The camera puts its centre in the middle of the screen; in
+       the survival modes that centre is the middle of the arena at a scale that
+       fits it exactly, which is the old whole-map view falling out of the same
+       maths. Anything off screen is skipped — on a sixteen-screen map most of
+       the world is. */
+    ctx.save();
+    wScale = cam.scale;
+    ctx.translate(SCREEN_W / 2, SCREEN_H / 2);
+    ctx.scale(cam.scale, cam.scale);
+    ctx.translate(-cam.x, -cam.y);
+
+    drawArena();
+    drawMotes();
+    for (const h of hazards) if (onScreen(h.x, h.y, h.reach)) drawHazard(h);
+    for (const r of rocks) {
+      if (onScreen(r.x, r.y, r.r + 20)) drawWrapped(r.x, r.y, r.r, () => drawRock(r));
+    }
+    for (const b of bullets) {
+      if (onScreen(b.x, b.y, 40)) drawWrapped(b.x, b.y, 12 * U, () => drawBullet(b));
+    }
+    for (const s of ships) {
+      if (onScreen(s.x, s.y, 60)) drawWrapped(s.x, s.y, SHIP_R * U, () => drawShip(s));
+    }
+    drawBits();
+    ctx.restore();
+    wScale = 1;
+
+    drawHUD();
+    // A banner's fade is driven by the clock, and the clock is what pausing
+    // stops — so a banner caught mid-fade would sit under the pause menu for
+    // as long as the pause lasts.
+    if (state !== "over" && state !== "paused") drawBanner();
+
+    if (state === "paused") drawPaused();
+    if (state === "over") {
+      ctx.fillStyle = "rgba(0,0,0,0.7)";
+      ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+      drawOver();
+    }
+  }
+
+  /* ── loop ────────────────────────────────────────────────────────────── */
+  const STEP = 1 / 60;      // longest slice of world time simulated in one go
+  const CATCHUP = 1.0;      // longest backlog worth replaying, in seconds
+
+  // The three states a match can be in. Only the first one moves, but a guest
+  // has to be told about all three.
+  const inMatch = () =>
+    state === "playing" || state === "paused" || state === "over" ||
+    // The controls screen reached from a pause is still a paused match: the
+    // host has to keep talking while somebody is fiddling with their keys.
+    (state === "controls" && backFrom === "paused");
+
+  let last = performance.now();
+
+  /* One turn of the world. Everything is simulated in slices no longer than
+     STEP: a gap of a whole second stepped in one lump would fling ships
+     straight through rocks, and clamping it to a single small step instead
+     would run the match in slow motion while everyone else's clock ran on. So
+     the gap is replayed at ordinary speed. At a normal frame rate this is one
+     slice of about 16ms, exactly as it was before. */
+  function tick(now, painting) {
+    const elapsed = Math.max(0, (now - last) / 1000);
+    last = now;
+    // Beyond CATCHUP the world simply skips. A laptop that was asleep for
+    // ten minutes should not spend ten minutes catching up.
+    const span = Math.min(elapsed, CATCHUP);
+
+    if (state === "playing") {
+      readLocalInput();
+      const slices = Math.max(1, Math.ceil(span / STEP)), dt = span / slices;
+      for (let i = 0; i < slices; i++) {
+        // A guest never simulates the world — it coasts what the host last
+        // said and flies its own ship. The host runs the one real simulation.
+        if (net.role === "guest") guestCoast(dt); else update(dt);
+      }
+    }
+
+    // The network keeps talking after the world stops. A snapshot carries the
+    // state and the result, so a paused or finished match reaches the guests —
+    // stopping the moment the host stopped playing left them flying around a
+    // match that had already been won. Once per turn, not once per slice: a
+    // replayed second must not fire off a second's worth of snapshots at once.
+    if (net.on && inMatch()) netPump(span);
+
+    if (painting) render();
+  }
+
+  function frame(now) {
+    tick(now, true);
+    requestAnimationFrame(frame);
+  }
+
+  /* ── keeping the host alive in the background ─────────────────────────────
+     A hidden tab gets no animation frames at all, and its timers are throttled
+     to about one a second. For a solo game that just paused, that's fine. For
+     the host it isn't: the host IS the match, and everyone else freezes with
+     it. A timer inside a worker keeps its own clock, so the loop carries on
+     while the host reads their email.
+
+     The worker is a few lines of inline script, built the first time it's
+     needed and never before — nothing is fetched, and a page that is only ever
+     played locally never makes one. If the browser won't allow it, an ordinary
+     throttled interval takes over; the match then advances in one-second
+     catch-up bursts rather than smoothly, which is worse but still alive. */
+  const bgTicker = (() => {
+    const SRC = "let h=0;onmessage=e=>{clearInterval(h);" +
+                "if(e.data)h=setInterval(()=>postMessage(0),e.data)}";
+    let worker, tried = false, timer = 0, running = false;
+
+    function beat() {
+      // Runs until the match is properly over and everyone has been told —
+      // which is why this waits for the match to be left, not merely stopped.
+      if (!net.on || !inMatch()) { stop(); return; }
+      tick(performance.now(), false);
+    }
+
+    function stop() {
+      if (!running) return;
+      running = false;
+      if (worker) worker.postMessage(0);
+      if (timer) { clearInterval(timer); timer = 0; }
+    }
+
+    return {
+      start() {
+        if (running || !net.on) return;
+        running = true;
+        if (!tried) {
+          tried = true;
+          try {
+            worker = new Worker(URL.createObjectURL(
+              new Blob([SRC], { type: "text/javascript" })));
+            worker.onmessage = beat;
+          } catch (_) { worker = null; }
+        }
+        if (worker) worker.postMessage(16);
+        else timer = setInterval(beat, 16);
+      },
+      stop
+    };
+  })();
+
+  /* On-screen buttons. Pointer events rather than touch events, so a stylus or
+     a touchscreen laptop works the same, and pointer capture means sliding your
+     thumb off a button still releases it. */
+  addEventListener("pointerdown", e => {
+    if (e.pointerType === "touch") document.body.classList.add("touch");
+  }, { once: false });
+
+  document.getElementById("pad").addEventListener("pointerdown", e => {
+    const b = e.target.closest("button[data-hold]");
+    if (!b) return;
+    touch[b.dataset.hold] = true;
+    b.classList.add("down");
+    b.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  document.getElementById("pad").addEventListener("pointerup", e => {
+    const b = e.target.closest("button[data-hold]");
+    if (!b) return;
+    touch[b.dataset.hold] = false;
+    b.classList.remove("down");
+  });
+  document.getElementById("pad").addEventListener("pointercancel", e => {
+    const b = e.target.closest("button[data-hold]");
+    if (!b) return;
+    touch[b.dataset.hold] = false;
+    b.classList.remove("down");
+  });
+
+  /* ── lobby ───────────────────────────────────────────────────────────────
+     The whole online flow is two codes changing hands. Host makes one, guest
+     turns it into a reply, host pastes the reply back. Repeat per guest. */
+  const el = id => document.getElementById(id);
+  const lobby = el("lobby");
+  let lobbyRole = null;
+
+  function say(msg, bad) {
+    el("lobbyStatus").textContent = msg || "";
+    el("lobbyStatus").classList.toggle("bad", !!bad);
+  }
+
+  function show(id, on) { el(id).hidden = !on; }
+
+  function seatsUI() {
+    const N = window.CrossfireNet;
+    const list = el("seatList");
+    list.replaceChildren();
+
+    const rows = [];
+    if (lobbyRole === "host") {
+      rows.push([0, "you · hosting"]);
+      if (N) for (const l of N.host.links) {
+        if (l.seat != null) rows.push([l.seat, l.open ? "connected" : "connecting…"]);
+      }
+    } else if (N && N.guest.link && N.guest.link.open) {
+      // A guest knows the room only through the last table the host sent.
+      for (const seat of [...guestTaken].sort((a, b) => a - b)) {
+        rows.push([seat, seat === 0 ? "hosting"
+                       : seat === net.seat ? "you" : "connected"]);
+      }
+    }
+
+    show("seatWrap", rows.length > 0);
+
+    for (const [seat, what] of rows) {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.style.color = skinOf(seat).colour;
+
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      const who = document.createElement("span");
+      who.className = "who";
+      who.textContent = nameOf(seat);
+      const note = document.createElement("span");
+      note.className = "what";
+      note.textContent = skinOf(seat).label.toLowerCase() + " · " + what;
+
+      row.append(dot, who, note);
+      list.appendChild(row);
+    }
+
+    if (lobbyRole === "host") {
+      const waiting = !N || !N.host.links.some(l => l.open);
+      if (waiting) {
+        const p = document.createElement("div");
+        p.className = "empty";
+        p.textContent = "nobody else yet — send someone your code";
+        list.appendChild(p);
+      }
+      show("rowStart", !waiting);
+    }
+  }
+
+  /* The colours you may take. The host reads the truth straight out of its own
+     seating plan; a guest paints the last table the host sent it, which is why
+     losing a race for a colour looks like the button simply going out. */
+  let guestTaken = [0];
+
+  function paintColours() {
+    const box = el("swatches");
+    if (!box) return;
+    const host = lobbyRole === "host";
+    const seat = host ? 0 : net.seat;
+    const occupied = host ? [...seatsTaken()] : guestTaken;
+    box.replaceChildren();
+    PLAYERS.forEach((p, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.skin = String(i);
+      b.textContent = p.label.toLowerCase();
+      b.style.color = p.colour;
+      const mine = skins[seat] === i;
+      const held = !mine && occupied.some(s => s !== seat && skins[s] === i);
+      if (mine) b.className = "mine";
+      b.disabled = held;
+      b.setAttribute("aria-pressed", mine ? "true" : "false");
+      box.appendChild(b);
+    });
+    show("colourPick", true);
+  }
+
+  const nameInput = el("playerName");
+
+  // Deliberately not written back into the field while typing: correcting the
+  // box under someone's fingers is how you lose the space between two words.
+  nameInput.addEventListener("input", () => {
+    const N = window.CrossfireNet;
+    myName = tidyName(nameInput.value);
+    saveName();
+    if (lobbyRole === "host") {
+      names[0] = myName;
+      seatsUI();
+      tellSeats();
+    } else {
+      names[net.seat] = myName;
+      seatsUI();
+      if (N && N.guest.link && N.guest.link.open) {
+        N.guest.send({ t: "me", name: myName }, true);
+      }
+    }
+  });
+
+  el("swatches").addEventListener("click", e => {
+    const b = e.target.closest && e.target.closest("button[data-skin]");
+    if (!b) return;
+    const skin = +b.dataset.skin;
+    if (lobbyRole === "host") {
+      if (claimSkin(0, skin)) tellSeats();
+    } else {
+      // Ask. The host's next seating plan is the answer, and it repaints this.
+      const N = window.CrossfireNet;
+      if (N) N.guest.send({ t: "pick", skin }, true);
+    }
+  });
+
+  /* ── who is sitting where ─────────────────────────────────────────────────
+     The host owns the seating plan and is the only one allowed to change it.
+     A guest asks for a colour; the host says what the answer was by sending
+     the whole table back to everybody. Two people clicking violet at the same
+     moment is then not a race — the second one simply sees the table say
+     violet is taken, and picks again. */
+  const seatsTaken = () => {
+    const set = new Set([0]);                    // the host is always seat 0
+    const N = window.CrossfireNet;
+    if (N) for (const l of N.host.links) if (l.seat != null) set.add(l.seat);
+    return set;
+  };
+
+  const skinTaken = (skin, exceptSeat) => {
+    for (const seat of seatsTaken()) {
+      if (seat !== exceptSeat && skins[seat] === skin) return true;
+    }
+    return false;
+  };
+
+  // Lowest seat number nobody holds. Counting the links instead would hand a
+  // seat that is still in use to a newcomer, once anybody has dropped out.
+  function freeSeat() {
+    const taken = seatsTaken();
+    let seat = 1;
+    while (taken.has(seat)) seat++;
+    return seat;
+  }
+
+  function tellSeats() {
+    const N = window.CrossfireNet;
+    if (!N) return;
+    for (const l of N.host.links) {
+      if (l.open && l.seat != null) {
+        l.send({ t: "seats", seat: l.seat, skins, names,
+                 taken: [...seatsTaken()] }, true);
+      }
+    }
+    seatsUI();
+    if (lobbyRole === "host") paintColours();
+  }
+
+  // Returns whether it happened, so the asker can be told when it didn't.
+  function claimSkin(seat, skin) {
+    if (!Number.isInteger(skin) || skin < 0 || skin >= MAX_PLAYERS) return false;
+    if (skinTaken(skin, seat)) return false;
+    skins[seat] = skin;
+    return true;
+  }
+
+  function hostHandlers(link) {
+    return {
+      onOpen: () => {
+        // A newcomer wears the first colour nobody has claimed.
+        if (link.seat != null && skinTaken(skins[link.seat], link.seat)) {
+          for (let i = 0; i < MAX_PLAYERS; i++) {
+            if (!skinTaken(i, link.seat)) { skins[link.seat] = i; break; }
+          }
+        }
+        say("A player connected.");
+        tellSeats();
+      },
+      onClose: () => {
+        const N = window.CrossfireNet;
+        const i = N.host.links.indexOf(link);
+        if (i >= 0) N.host.links.splice(i, 1);
+        say("A player dropped out.", true);
+        tellSeats();
+      },
+      onMessage: msg => {
+        if (msg.t === "in" && link.seat != null) net.inputs[link.seat] = msg;
+        else if (msg.t === "pick" && link.seat != null) {
+          claimSkin(link.seat, msg.skin);
+          tellSeats();          // the table is the answer, accepted or not
+        }
+        else if (msg.t === "me" && link.seat != null) {
+          names[link.seat] = tidyName(msg.name);
+          tellSeats();
+        }
+      }
+    };
+  }
+
+  const guestHandlers = {
+    onOpen: () => {
+      say("Connected. Telling the host who you are…");
+      window.CrossfireNet.guest.send({ t: "me", name: myName }, true);
+    },
+    onClose: () => { say("Disconnected from the host.", true); netReset(); state = "title"; },
+    onMessage: msg => {
+      if (msg.t === "init") { applyInit(msg); closeLobby(); }
+      else if (msg.t === "seats") {
+        net.seat = msg.seat;
+        if (Array.isArray(msg.skins)) skins = msg.skins.slice();
+        if (Array.isArray(msg.names)) names = msg.names.map(tidyName);
+        guestTaken = Array.isArray(msg.taken) ? msg.taken : [0];
+        say("You're in as " + nameOf(net.seat).toLowerCase() +
+            ", flying " + skinOf(net.seat).label.toLowerCase() +
+            ". Waiting for the host to start.");
+        paintColours();
+        seatsUI();
+      }
+      else if (msg.t === "s") applySnapshot(msg);
+      else if (msg.t === "r") applyRocks(msg);
+    }
+  };
+
+  /* ── the room service ─────────────────────────────────────────────────────
+     Optional, and deliberately so. Everything below is a shortcut past the
+     pasting: a host claims a word, a guest types the same word, and the two
+     connection descriptions travel through a small service instead of through
+     a chat window. The game itself is untouched by it — once two browsers are
+     connected they talk directly, and the service could be switched off
+     mid-match without anybody noticing.
+
+     Left empty there is no service, and the lobby never makes a request at
+     all. ?rooms=… overrides it for testing. */
+  const ROOM_HOST = "";   // ← your Funnel hostname, e.g. "https://mac.tailnet.ts.net"
+
+  const ROOM_SERVICE =
+    (new URLSearchParams(location.search).get("rooms") || ROOM_HOST)
+      .trim().replace(/\/+$/, "");
+
+  const tidyWord = w =>
+    String(w || "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 24);
+
+  let roomsAlive = null, roomsAskedAt = 0;
+
+  /* Asked once when the lobby opens, then trusted for a while. It has a short
+     fuse: a lobby that sits there spinning because a laptop is asleep is worse
+     than one that just shows you the codes. */
+  async function roomsUp() {
+    if (!ROOM_SERVICE) return false;
+    if (roomsAlive !== null && Date.now() - roomsAskedAt < 15_000) return roomsAlive;
+    roomsAskedAt = Date.now();
+    try {
+      const r = await fetch(ROOM_SERVICE + "/health",
+                            { signal: AbortSignal.timeout(2500), cache: "no-store" });
+      roomsAlive = r.ok;
+    } catch (_) {
+      roomsAlive = false;
+    }
+    return roomsAlive;
+  }
+
+  const roomFetch = (path, opts) => fetch(ROOM_SERVICE + path, Object.assign(
+    { signal: AbortSignal.timeout(6000), cache: "no-store" }, opts));
+
+  const roomPost = (path, body) => roomFetch(path, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  /* Proves to the service that later calls about a room come from whoever
+     opened it. Kept across reloads on purpose: a fresh key every time would
+     mean that reloading the page locks you out of your own room name until it
+     expires. Never leaves this machine except to the service. */
+  const hostKey = (() => {
+    const KEY = "crossfire.hostkey.v1";
+    const make = () => Math.random().toString(36).slice(2) +
+                       Math.random().toString(36).slice(2);
+    try {
+      let k = localStorage.getItem(KEY);
+      if (!k) { k = make(); localStorage.setItem(KEY, k); }
+      return k;
+    } catch (_) { return make(); }
+  })();
+
+  let roomWord = "", roomTimer = 0;
+
+  function stopRoom() {
+    if (roomTimer) { clearInterval(roomTimer); roomTimer = 0; }
+    roomWord = "";
+  }
+
+  /* The host's whole loop: say "still here" and collect anybody who knocked
+     since last time. One request does both. */
+  async function hostBeat() {
+    if (!roomWord) return;
+    let data;
+    try {
+      const r = await roomPost("/room/" + roomWord + "/host",
+                               { key: hostKey, name: myName });
+      data = await r.json();
+      if (!r.ok) {
+        stopRoom();
+        show("roomRoute", true);
+        el("btnRoom").disabled = false;
+        return say(data.error || "The room service turned that down.", true);
+      }
+    } catch (_) {
+      return say("Can't reach the room service — your friends can still join by code.", true);
+    }
+    for (const join of data.joins || []) await admit(join);
+  }
+
+  async function admit(join) {
+    const N = window.CrossfireNet;
+    if (N.host.links.length >= MAX_PLAYERS - 1) return;
+    try {
+      const made = await N.host.answer(join.offer, hostHandlers(null));
+      Object.assign(made.link.h, hostHandlers(made.link));
+      made.link.seat = freeSeat();
+      if (join.name) names[made.link.seat] = tidyName(join.name);
+      await roomPost("/room/" + roomWord + "/answer",
+                     { key: hostKey, id: join.id, answer: made.code });
+      seatsUI();
+    } catch (_) {
+      say("Somebody tried to join and it didn't take. They can try again.", true);
+    }
+  }
+
+  async function openRoom() {
+    const word = tidyWord(el("roomWord").value);
+    if (word.length < 2) return say("Pick a room name — a word you can say out loud.", true);
+    el("btnRoom").disabled = true;
+    say("Opening the room…");
+    roomWord = word;
+    await hostBeat();
+    if (!roomWord) return;                       // hostBeat gave up and said why
+    el("roomNote").textContent =
+      "room open · tell your friends the word: " + roomWord;
+    show("roomRoute", false);
+    show("codeSwitch", false);
+    say("Room open. Anyone who types " + roomWord + " lands here.");
+    roomTimer = setInterval(hostBeat, 2000);
+    seatsUI();
+  }
+
+  async function joinRoom() {
+    const N = window.CrossfireNet;
+    const word = tidyWord(el("roomWord").value);
+    if (word.length < 2) return say("Type the room name the host gave you.", true);
+    el("btnRoom").disabled = true;
+    say("Knocking…");
+    try {
+      const offer = await N.guest.offer(guestHandlers);
+      const r = await roomPost("/room/" + word + "/join", { offer, name: myName });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "That room didn't answer.");
+
+      // The host answers on its next heartbeat, so this is a couple of seconds
+      // at worst. Twenty tries at half a second is a generous ceiling.
+      for (let i = 0; i < 20; i++) {
+        await new Promise(done => setTimeout(done, 500));
+        const p = await roomFetch("/room/" + word + "/join/" + data.id);
+        const got = await p.json();
+        if (got.answer) {
+          await N.guest.take(got.answer);
+          say("Found them. Connecting…");
+          show("roomRoute", false);
+          show("codeSwitch", false);
+          return;
+        }
+        if (!p.ok) throw new Error(got.error || "The room went away.");
+      }
+      throw new Error("Nobody answered. Is the host still there?");
+    } catch (e) {
+      window.CrossfireNet.guest.close();
+      say(e.message || "That didn't work.", true);
+      el("btnRoom").disabled = false;
+    }
+  }
+
+  el("btnRoom").addEventListener("click", () => {
+    if (lobbyRole === "host") openRoom(); else joinRoom();
+  });
+
+  el("roomWord").addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); el("btnRoom").click(); }
+  });
+
+  // Always available: the codes work whether or not anything else does.
+  el("btnCodeRoute").addEventListener("click", () => {
+    stopRoom();
+    showRoute("code");
+    say("");
+  });
+
+  /* Which of the two ways in the panel is offering. The code route is the one
+     that always works, so it is what everything falls back to. */
+  function showRoute(which) {
+    const room = which === "room";
+    show("roomRoute", room);
+    show("codeSwitch", room);
+    show("rowMake", !room && lobbyRole === "host");
+    show("labIn", !room && lobbyRole === "guest");
+    show("rowUse", !room && lobbyRole === "guest");
+    if (!room) { show("labOut", false); show("rowCopy", false); }
+    el("roomNote").textContent = "";
+  }
+
+  function openLobby(role) {
+    const N = window.CrossfireNet;
+    lobbyRole = role;
+    lobby.hidden = false;
+    el("lobbyTitle").textContent = role === "host" ? "HOST A GAME" : "JOIN A GAME";
+    el("lobbyHint").textContent = role === "host"
+      ? "There is no server, so the invite travels by you: make a code, send it to a friend however you like, and paste their reply back here. One code per player."
+      : "The host sends you a code. Paste it in, send the reply back, and you're in.";
+
+    // Your name and ship first — it's the only part that's about you, and the
+    // rest of the panel is a sequence you work down.
+    nameInput.value = myName;
+    if (role === "host") names[0] = myName;
+
+    show("rowMake", role === "host");
+    show("labOut", false); show("rowCopy", false);
+    show("labIn", role === "guest"); show("rowUse", role === "guest");
+
+    // Host: make a code, then take their reply. Guest: take their code, then
+    // hand back a reply. Same two boxes, opposite way round.
+    const order = { lobbyTitle: 1, lobbyHint: 2, youBlock: 3, roomRoute: 4,
+                    rowMake: 5, codeSwitch: 10, lobbyStatus: 11, seatWrap: 12,
+                    rowStart: 13, rowClose: 14 };
+    Object.assign(order, role === "host"
+      ? { labOut: 6, rowCopy: 7, labIn: 8, rowUse: 9 }
+      : { labIn: 6, rowUse: 7, labOut: 8, rowCopy: 9 });
+    for (const id in order) { const n = el(id); if (n) n.style.order = order[id]; }
+
+    /* Ask whether there's a room service, and lay the panel out for whichever
+       answer comes back. Codes are shown meanwhile, so a slow or absent
+       service never leaves anybody looking at a spinner. */
+    showRoute("code");
+    if (ROOM_SERVICE) {
+      roomsUp().then(up => {
+        if (lobby.hidden || lobbyRole !== role) return;   // they moved on
+        showRoute(up ? "room" : "code");
+        if (!up) {
+          say("The room service is offline — passing codes still works.", true);
+        }
+      });
+    }
+    el("roomLabel").textContent = role === "host"
+      ? "name your room" : "the room name you were given";
+    el("roomWord").value = "";
+    el("btnRoom").textContent = role === "host" ? "open the room" : "join";
+    el("btnRoom").disabled = false;
+    el("roomNote").textContent = "";
+    stopRoom();
+
+    // Two steps each way, and the numbers stay put when a box is hidden:
+    // making the code and sending it are one step, not two.
+    el("makeLabel").textContent = "1 · make a code and send it";
+    el("outLabel").textContent = role === "host"
+      ? "send this to your friend — any way you like"
+      : "2 · send this reply back to the host";
+    el("inLabel").textContent = role === "host"
+      ? "2 · paste their reply here" : "1 · paste the code the host sent you";
+    el("inCode").value = "";
+    show("rowStart", false);
+    say(N && N.supported ? "" : "This browser has no WebRTC, so online play won't work here.",
+        !(N && N.supported));
+    // The host can choose a ship before anyone arrives; a guest has nothing to
+    // choose from until the host has told it what the seating plan is.
+    if (role === "host") paintColours(); else show("colourPick", false);
+    seatsUI();
+    el(role === "host" ? "btnInvite" : "inCode").focus();
+  }
+
+  function closeLobby() {
+    // A room is only worth holding while somebody is sitting in the lobby.
+    stopRoom();
+    lobby.hidden = true;
+  }
+
+  el("btnInvite").addEventListener("click", async () => {
+    const N = window.CrossfireNet;
+    if (N.host.links.length >= MAX_PLAYERS - 1) {
+      return say("That's as many players as there are ships.", true);
+    }
+    say("Working out how to reach you…");
+    el("btnInvite").disabled = true;
+    try {
+      const code = await N.host.invite(hostHandlers(null));
+      // The handlers close over the link, so rebind now that it exists.
+      const link = N.host.pending;
+      Object.assign(link.h, hostHandlers(link));
+      el("outCode").value = code;
+      show("labOut", true); show("rowCopy", true);
+      show("labIn", true); show("rowUse", true);
+      say("Send that code to your friend, then paste their reply below.");
+    } catch (e) {
+      say("Couldn't create an invite: " + e.message, true);
+    }
+    el("btnInvite").disabled = false;
+  });
+
+  el("btnCopy").addEventListener("click", async () => {
+    const ta = el("outCode");
+    try {
+      await navigator.clipboard.writeText(ta.value);
+      say("Copied. Send it however you like — it's just text.");
+    } catch (_) {
+      ta.select();   // clipboard blocked (or no permission); selecting still helps
+      say("Press ⌘C / Ctrl+C to copy the selected code.");
+    }
+  });
+
+  el("btnUse").addEventListener("click", async () => {
+    const N = window.CrossfireNet;
+    const code = el("inCode").value.trim();
+    if (!code) return say("Nothing pasted yet.", true);
+    el("btnUse").disabled = true;
+    try {
+      if (lobbyRole === "host") {
+        await N.host.accept(code);
+        const link = N.host.links[N.host.links.length - 1];
+        link.seat = freeSeat();               // host is seat 0
+        el("inCode").value = "";
+        show("labOut", false); show("rowCopy", false);
+        say("Connecting…");
+        seatsUI();
+      } else {
+        const reply = await N.guest.join(code, guestHandlers);
+        el("outCode").value = reply;
+        el("outLabel").textContent = "send this reply back to the host";
+        show("labOut", true); show("rowCopy", true);
+        say("Send that reply to the host. The game starts when they do.");
+      }
+    } catch (e) {
+      say(e.message || "That code didn't work.", true);
+    }
+    el("btnUse").disabled = false;
+  });
+
+  el("rowStart").addEventListener("click", e => {
+    const key = e.target.getAttribute && e.target.getAttribute("data-mode");
+    if (!key) return;
+    const N = window.CrossfireNet;
+    const seated = N.host.links.filter(l => l.open);
+    const n = Math.min(MAX_PLAYERS, 1 + seated.length);
+    if (n < MODES[key].minPlayers) {
+      return say("Battle royale needs at least two connected.", true);
+    }
+    net.role = "host";
+    net.seat = 0;
+    net.inputs = {};
+
+    /* Seat numbers have to be 0…n-1 from here on, because a seat number is the
+       index of a ship. Until now they were only handles for the lobby, and a
+       player dropping out could leave a gap. Renumber, keeping each player
+       with the colour they chose, and give whatever is left to the bots so
+       nobody ends up flying against their own colour. */
+    const chosen = [skins[0], ...seated.map(l => skins[l.seat])];
+    skins = chosen.concat(PLAYERS.map((_, i) => i).filter(i => !chosen.includes(i)));
+    seated.forEach((l, i) => { l.seat = i + 1; });
+
+    startGame(key, n);
+    // Only this keyboard drives seat 0; the rest arrive over the wire. Your
+    // own keys fly your ship whatever colour you picked.
+    ships.forEach((s, i) => { s.localKeys = i === 0 ? PLAYERS[0] : null; });
+    seated.forEach(l => l.send(initPacket(l.seat), true));
+    closeLobby();
+  });
+
+  el("btnLobbyClose").addEventListener("click", () => {
+    netReset();
+    closeLobby();
+    state = "title";
+  });
+
+  window.__cf = {
+    peek: () => ({ state, mode: mode.name, lives, clock: +clock.toFixed(1),
+                   rocks: rocks.length,
+                   ships: ships.map(s => ({ id: s.id, label: s.label, alive: s.alive,
+                                            stocks: s.stocks, bot: !!s.bot,
+                                            x: Math.round(s.x), y: Math.round(s.y),
+                                            invuln: +s.invuln.toFixed(2) })) }),
+    live: () => ({ ships, rocks, hazards, net, binder, players: PLAYERS, taps }),
+    // A hidden tab gets no animation frames, so a test harness needs a way to
+    // ask for one — including the redraw that decides what is tappable.
+    step: () => tick(performance.now(), true)
+  };
+
+  loadKeys();
+  loadName();
+  refreshKeys();   // reading them in is not a change worth writing back
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

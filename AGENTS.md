@@ -115,8 +115,8 @@ everywhere — the navs must agree with each other *and* with the front door.
   from the room that fits them** — not given their own room. Current: `spacetime`,
   `starfield`, `how-speed-affects-time` and `how-big-everything-is` → Exploration;
   `the-shape-of-harm`,
-  `autism-reflection.html`, and `state-of-mind-line` → Psyche; `siege-conductor` and
-  `farlight` → Workbench; `climbing` → Climbing
+  `autism-reflection.html`, and `state-of-mind-line` → Psyche; `siege-conductor`,
+  `farlight` and `crossfire` → Workbench; `climbing` → Climbing
   (including the unlisted `climbing/board.html`). Each is
   self-contained and may carry its own assets/fonts; the "no dependencies" rule is for
   the terminal's own room pages, not embedded projects. Keep their internal links relative.

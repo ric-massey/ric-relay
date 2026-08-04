@@ -59,12 +59,33 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | `projects/apex/` | Apex (room data) | Not a page — the sync tooling and generated `apex-data.js` that `apex.html` reads |
 | `projects/the-shape-of-harm/` | Psyche | Evidence-informed interactive research framework for comparing psychoactive-substance harms |
 | `projects/siege-conductor/` | Workbench | Star Wars viewing-companion PWA (add-to-home-screen app) |
+| `projects/crossfire/` | Workbench | "CROSSFIRE" — Asteroids with walls, 1–5 players, in three modes: co-op survival with friendly fire, co-op survival without it, and a 3-minute battle royale on a 4000×2800 map with a following camera, minimap, gravity wells and a closing wall. Players are named for their ship colour; the `PLAYERS` table is the single source for names, colours and key maps. Empty seats can be filled with bots. Keyboard, mouse (ship follows the pointer) or on-screen thumb controls. One camera today — split screen is a second call to the same render path (see the `cam` comment). See the online-play note below |
 | `projects/autism-reflection.html` | Psyche | Long-form personal reflection on the DSM-5 autism criteria |
 | `projects/state-of-mind-line/` | Psyche | Animated bipolar mood-pattern visualization |
 | `projects/climbing/board.html` | Climbing (unlisted) | "The Woodshed" — Kilter and Tension board logbook, pulled from the apps and drawn on the board itself |
 
 These are self-contained and may carry their own assets/fonts — that's fine; the
 "no dependencies" rule applies to the terminal's own room pages, not embedded projects.
+
+### CROSSFIRE online play — the one external request on the site
+
+Online play is **peer-to-peer WebRTC with no server**, because GitHub Pages can't host
+one. Players connect directly: the host generates an invite code (~220 characters),
+sends it to a friend by any means, and pastes their reply back. One exchange per guest.
+`projects/crossfire/net.js` handles this and knows nothing about the game.
+
+The one caveat worth knowing: `net.js` lists a **public STUN server**. It isn't a script
+and nothing is downloaded from it — the browser asks it what your address looks like from
+outside, so two peers behind home routers can find each other. Without it, online play
+only works between machines on the same wifi. **It is contacted only when someone opens
+the multiplayer panel**; loading the page or playing locally makes no external request at
+all. Point `ICE_SERVERS` at your own coturn, or set it to `[]` for same-wifi-only play.
+
+Two other things about the netcode: it is **host-authoritative**, so the host has a small
+latency advantage when shooting (fixing that means rewinding the world to the shooter's
+view — a much bigger job). And because browsers freeze `requestAnimationFrame` in
+background tabs, **the host has to keep the game window in front** or the match stalls for
+everyone.
 
 ## Starfield
 
