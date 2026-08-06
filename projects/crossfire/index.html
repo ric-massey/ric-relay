@@ -348,6 +348,9 @@
   <div class="panel">
     <h2 id="lobbyTitle">PLAY ONLINE</h2>
     <p id="lobbyHint"></p>
+    <p class="note" id="hostNote" hidden>The match runs on your machine, so keep
+      this window in front of you. Browsers stop drawing a tab you have switched
+      away from, and the game stops with it — for everyone, not just you.</p>
 
     <div class="you" id="youBlock">
       <span class="step">you</span>
@@ -3597,13 +3600,17 @@
     nameInput.value = myName;
     if (role === "host") names[0] = myName;
 
+    // Only the host can stall the match by looking away, so only the host is
+    // told about it.
+    show("hostNote", role === "host");
+
     show("rowMake", role === "host");
     show("labOut", false); show("rowCopy", false);
     show("labIn", role === "guest"); show("rowUse", role === "guest");
 
     // Host: make a code, then take their reply. Guest: take their code, then
     // hand back a reply. Same two boxes, opposite way round.
-    const order = { lobbyTitle: 1, lobbyHint: 2, youBlock: 3, roomRoute: 4,
+    const order = { lobbyTitle: 1, lobbyHint: 2, hostNote: 2, youBlock: 3, roomRoute: 4,
                     rowMake: 5, codeSwitch: 10, lobbyStatus: 11, seatWrap: 12,
                     rowStart: 13, rowClose: 14 };
     Object.assign(order, role === "host"
