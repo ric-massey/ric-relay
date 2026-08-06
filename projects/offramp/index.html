@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OFFRAMP — one leads to the next</title>
+<meta name="description" content="An arcade cabinet for one road. Drive Interstate 40 from above, east or west, in pixel-accurate lane and shoulder proportions — every exit puts you back on the freeway.">
+<meta property="og:title" content="OFFRAMP">
+<meta property="og:description" content="Pick a direction and drive. A top-down pixel Interstate where every ramp, rest area and truck stop returns you to the road.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'><rect width='16' height='16' fill='%233a3a44'/><rect x='7' y='0' width='2' height='16' fill='%239aa0aa'/><rect x='2' y='5' width='4' height='7' fill='%23d94b3a'/><rect x='3' y='7' width='2' height='3' fill='%231d2430'/><rect x='11' y='0' width='1' height='16' fill='%23e8e2cc'/></svg>">
+<script src="../relay-return.js" data-home="../../index.html" data-egg="offramp" defer></script>
+<style>
+  /* ══════════════════════════════════════════════════════════════════
+     THE CABINET
+
+     Every other page on this site is a room in a terminal, and both
+     games were dressed to match it — amber phosphor on black, wide
+     monospace, a comment in each file saying the HUD "borrows the
+     terminal's phosphor so the cabinet belongs to this site". That is
+     precisely why this did not read as its own game. It looked like a
+     page about a game.
+
+     So this cabinet is dressed as the only thing this game is actually
+     about: US highway signage. Guide-sign green, retroreflective white,
+     the shield, condensed sign lettering instead of terminal monospace.
+     Nothing else on the site looks remotely like it, which is the
+     entire point — you walk up to it, and it is a machine for one road.
+     ══════════════════════════════════════════════════════════════════ */
+  :root {
+    /* ── the cabinet IS the sign ──────────────────────────────────────
+       This was a dark arcade case with green signage set into it, and
+       dark is what made it recede into the page. A guide sign is not a
+       dark object — it is a bright green panel with a white border, lit
+       up, and it is the loudest thing on the roadside for that exact
+       reason. So the whole surround is now the sign face and the screen
+       is the panel set into it. */
+    --case: #0f7a45;          /* guide-sign green, lit */
+    --case-lit: #149053;      /* the top of the sheeting, catching light */
+    --case-deep: #0a5c34;     /* the shaded lower half */
+    --case-edge: #f2f0e6;     /* signs are bordered in white, not black */
+    --bezel: #07070a;
+
+    /* signage — these are the road's own colours, not the terminal's */
+    --sign: #0d5c33;          /* guide-sign green */
+    --white: #f2f0e6;         /* retroreflective white */
+    --white-dim: #b9b6a8;
+    --shield-red: #ad1f2d;
+    --shield-blue: #14306e;
+    --amber: #ffb020;         /* the signal, and the only thing that blinks */
+    --alarm: #ff5a3c;
+    --go: #2fe07a;
+
+    --sign-face: linear-gradient(178deg, #0f6a3a 0%, #0b5730 58%, #094a29 100%);
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+
+  body {
+    background: #06180f;
+    color: var(--white);
+    /* Condensed sign lettering. The single biggest reason this used to
+       read as "part of the website" was the wide-tracked monospace on
+       every label; highway signs are narrow, tight and upright. */
+    font-family: "Helvetica Neue Condensed", "HelveticaNeue-CondensedBold",
+                 "Arial Narrow", "Roboto Condensed", "Liberation Sans Narrow",
+                 system-ui, sans-serif;
+    font-stretch: condensed;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* the room the cabinet stands in */
+  body::before {
+    content: "";
+    position: fixed; inset: 0; z-index: -1;
+    background:
+      radial-gradient(ellipse 80% 55% at 50% 12%, rgba(20,144,83,.30), transparent 72%),
+      radial-gradient(ellipse 90% 60% at 50% 108%, rgba(6,24,15,.9), transparent 70%),
+      #06180f;
+  }
+
+  /* ── the cabinet shell ────────────────────────────────────────────── */
+  #cab {
+    width: 100%;
+    max-width: 640px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(178deg, var(--case-lit) 0%, var(--case) 26%, var(--case) 70%, var(--case-deep) 100%);
+    border-left: 3px solid var(--case-edge);
+    border-right: 3px solid var(--case-edge);
+    box-shadow: 0 0 90px rgba(0,0,0,.75), inset 0 0 90px rgba(255,255,255,.05);
+    position: relative;
+  }
+  /* the retroreflective grain of sign sheeting, very faint */
+  #cab::before {
+    content: "";
+    position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      repeating-linear-gradient(72deg, rgba(255,255,255,.028) 0 2px, transparent 2px 5px);
+  }
+  #cab > * { position: relative; z-index: 1; }
+
+  /* ── marquee ──────────────────────────────────────────────────────── */
+  .marquee {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .6rem;
+    padding: .55rem .8rem .6rem;
+    border-bottom: 3px solid var(--white);
+    position: relative;
+  }
+  /* the backlight across the top of the banner */
+  .marquee::after {
+    content: "";
+    position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 62% 140% at 50% 40%, rgba(255,255,255,.14), transparent 72%);
+  }
+  .shield { width: 34px; height: 30px; display: block; flex: 0 0 auto; }
+  .wordmark {
+    font-size: clamp(21px, 6vw, 33px);
+    font-weight: 800;
+    letter-spacing: .10em;
+    line-height: 1;
+    color: var(--white);
+    text-shadow: 0 0 18px rgba(255,255,255,.3), 0 2px 3px rgba(0,0,0,.45);
+  }
+  .tagline {
+    font-size: 9.5px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: rgba(242,240,230,.78);
+    align-self: flex-end;
+    padding-bottom: .3rem;
+    white-space: nowrap;
+  }
+
+  /* ── the sign gantry: readouts, as guide-sign panels ──────────────── */
+  .gantry {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    align-items: stretch;
+    padding: .45rem .5rem .5rem;
+    background: rgba(0,0,0,.16);
+    border-bottom: 1px solid rgba(242,240,230,.28);
+  }
+  /* on a green banner the guide-sign readouts need to read as INSET
+     panels rather than more of the same green, so they are darkened
+     rather than lightened — the same trick a real sign uses for a
+     separate destination panel */
+  .panelsign {
+    background: linear-gradient(178deg, #0a5230, #073d24);
+    border: 2px solid var(--white);
+    border-radius: 3px;
+    padding: .1rem .42rem .16rem;
+    min-width: 4.6rem;
+    text-align: center;
+    box-shadow: 0 1px 0 rgba(0,0,0,.7), inset 0 0 12px rgba(255,255,255,.06);
+  }
+  .panelsign .k {
+    display: block;
+    font-size: 8.5px;
+    letter-spacing: .16em;
+    color: rgba(242,240,230,.72);
+    text-transform: uppercase;
+  }
+  .panelsign .v {
+    display: block;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    color: var(--white);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+  }
+  .panelsign .v small { font-size: 9px; font-weight: 400; color: rgba(242,240,230,.7); }
+  .panelsign.hot .v { color: var(--amber); }
+
+  /* speed is a regulatory sign, not a guide sign — black on white */
+  .panelsign.speed {
+    background: #f2f0e6;
+    border-color: #1a1a1a;
+  }
+  .panelsign.speed .k { color: #4a4a4a; }
+  .panelsign.speed .v { color: #101014; }
+  .panelsign.speed .v small { color: #5a5a5a; }
+  .panelsign.speed.hot .v { color: #ad1f2d; }
+
+  /* cabinet buttons: metal, not phosphor */
+  .cabbtn {
+    font: inherit;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: rgba(242,240,230,.82);
+    background: linear-gradient(180deg, #0a4e2f, #073821);
+    border: 1px solid rgba(242,240,230,.5);
+    border-radius: 3px;
+    padding: .3rem .5rem;
+    cursor: pointer;
+    min-width: 2.4rem;
+  }
+  .cabbtn:hover, .cabbtn:focus-visible { color: var(--white); border-color: var(--white); }
+  .cabbtn[aria-pressed="true"] { color: var(--amber); border-color: var(--amber); }
+  #mute[aria-pressed="true"] { color: var(--alarm); border-color: var(--alarm); }
+
+  /* ── the screen, in its bezel ─────────────────────────────────────── */
+  #stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    /* the screen is the one dark thing on the banner, so it has to look
+       genuinely set INTO the sign rather than printed on it */
+    background: radial-gradient(ellipse at 50% 42%, #101015 0%, var(--bezel) 74%);
+    box-shadow: inset 0 6px 16px rgba(0,0,0,.75), inset 0 -4px 12px rgba(0,0,0,.6);
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #frame {
+    position: relative;
+    touch-action: none;
+    /* a real bezel: recessed, with the tube's own glow leaking onto it */
+    box-shadow:
+      0 0 0 2px #000,
+      0 0 0 8px #17171c,
+      0 0 0 9px #2a2a33,
+      0 0 46px rgba(120,160,255,.07),
+      0 18px 48px rgba(0,0,0,.9);
+    border-radius: 3px;
+  }
+  canvas#road {
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: #2c5a34;
+    border-radius: 2px;
+  }
+  /* CRT: scanlines and a slot mask over the tube only, not the whole page */
+  #frame::after {
+    content: "";
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 6;
+    border-radius: 2px;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,.26) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px),
+      radial-gradient(ellipse at center, transparent 54%, rgba(0,0,0,.55) 100%);
+  }
+
+  /* the one thing the game says to you mid-run */
+  #banner {
+    position: absolute;
+    left: 0; right: 0;
+    top: 13%;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .3em;
+    color: var(--go);
+    text-shadow: 0 0 10px rgba(47,224,122,.55), 1px 1px 0 #06180f;
+    opacity: 0;
+    transition: opacity .18s;
+    pointer-events: none;
+    z-index: 7;
+  }
+  #banner.on { opacity: 1; }
+
+  /* ── overview map ─────────────────────────────────────────────────── */
+  #map-panel {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    display: flex;
+    flex-direction: column;
+    background: #060b08;
+    border-radius: 2px;
+  }
+  #map-panel[hidden] { display: none; }
+  .map-head {
+    flex: 0 0 auto;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    padding: .3rem .4rem;
+    background: var(--sign-face);
+    border-bottom: 2px solid var(--white);
+  }
+  .map-head strong {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    color: var(--white);
+  }
+  #map-close { min-height: 30px; }
+  #map-canvas {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #060b08;
+  }
+  #map-status {
+    flex: 0 0 auto;
+    padding: .3rem .45rem .38rem;
+    border-top: 1px solid #1d3226;
+    font-size: 10px;
+    letter-spacing: .08em;
+    color: var(--white-dim);
+    background: #070d09;
+  }
+  #map-status b { color: var(--amber); }
+
+  /* ── panels over the tube ─────────────────────────────────────────── */
+  .panel {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    text-align: center;
+    padding: .9rem .8rem;
+    background: rgba(4, 6, 5, .82);
+    z-index: 5;
+    border-radius: 2px;
+  }
+  .panel.on { display: flex; }
+
+  /* the title screen IS a guide sign — the same one that would stand
+     over the road at the interchange you are about to drive into */
+  .bgs {
+    width: min(94%, 22rem);
+    background: var(--sign-face);
+    border: 3px solid var(--white);
+    border-radius: 5px;
+    padding: .7rem .7rem .8rem;
+    box-shadow: 0 8px 26px rgba(0,0,0,.7), inset 0 0 24px rgba(255,255,255,.05);
+  }
+  .bgs .route {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    margin-bottom: .5rem;
+  }
+  .bgs .route .shield { width: 44px; height: 39px; }
+  .bgs .route .name {
+    font-size: 25px;
+    font-weight: 800;
+    letter-spacing: .05em;
+    color: var(--white);
+    line-height: 1;
+  }
+
+  /* WEST / EAST, as the directional banner on a real sign */
+  .dirs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .45rem;
+  }
+  .dir {
+    font: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .1rem;
+    padding: .42rem .3rem .48rem;
+    background: rgba(0,0,0,.16);
+    border: 2px solid rgba(242,240,230,.42);
+    border-radius: 3px;
+    color: var(--white);
+    cursor: pointer;
+    transition: background .12s, border-color .12s, transform .12s;
+  }
+  .dir .arrow { font-size: 19px; line-height: 1; color: rgba(242,240,230,.8); }
+  .dir .word { font-size: 18px; font-weight: 800; letter-spacing: .09em; }
+  .dir[aria-checked="true"] {
+    background: rgba(242,240,230,.16);
+    border-color: var(--white);
+    transform: translateY(-1px);
+  }
+  .dir[aria-checked="true"] .arrow { color: var(--white); }
+  .dir:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+  .panel h2 {
+    font-size: clamp(20px, 6vw, 32px);
+    font-weight: 800;
+    letter-spacing: .16em;
+    line-height: 1.05;
+  }
+  .panel h2.wreck { color: var(--alarm); }
+  .panel p {
+    font-size: 11.5px;
+    letter-spacing: .04em;
+    color: var(--white-dim);
+    max-width: 22rem;
+    line-height: 1.45;
+  }
+  .panel p.tag {
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    font-size: 9.5px;
+    color: rgba(242,240,230,.55);
+  }
+  .panel .keys {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: .12rem .55rem;
+    font-size: 10px;
+    letter-spacing: .08em;
+    color: var(--white-dim);
+    text-align: left;
+  }
+  .panel .keys b { color: var(--white); font-weight: 700; }
+
+  /* INSERT COIN, in the amber every arcade cabinet blinked at you */
+  .panel .go {
+    margin-top: .15rem;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .24em;
+    color: var(--amber);
+    text-transform: uppercase;
+    text-shadow: 0 0 12px rgba(255,176,32,.45);
+    animation: blink 1.05s steps(2, end) infinite;
+  }
+  @keyframes blink { 50% { opacity: .2; } }
+
+  .panel .score-lines {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: .08rem .7rem;
+    font-size: 11.5px;
+    letter-spacing: .06em;
+    font-variant-numeric: tabular-nums;
+  }
+  .panel .score-lines span:nth-child(odd) { color: rgba(242,240,230,.55); text-align: right; }
+  .panel .best-new { color: var(--go); font-size: 10px; letter-spacing: .2em; font-weight: 700; }
+
+  /* ── control panel ────────────────────────────────────────────────── */
+  .controls {
+    flex: 0 0 auto;
+    padding: .5rem .8rem .6rem;
+    text-align: center;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: rgba(242,240,230,.72);
+    background: rgba(0,0,0,.18);
+    border-top: 3px solid var(--white);
+  }
+  .controls b { color: var(--white); }
+  .controls .sep { color: rgba(242,240,230,.4); padding: 0 .2rem; }
+
+  #pedals { display: none; }
+  body.touch #pedals {
+    display: block;
+    position: fixed;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 50;
+  }
+  #brake {
+    font: inherit;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .16em;
+    width: 5.4rem;
+    height: 5.4rem;
+    border-radius: 50%;
+    color: #fff;
+    background: radial-gradient(circle at 38% 32%, #d8443a, #8c1d17);
+    border: 3px solid #f2f0e6;
+    box-shadow: 0 6px 0 #4d0f0c, 0 10px 20px rgba(0,0,0,.6);
+    touch-action: none;
+    user-select: none;
+  }
+  #brake.on { transform: translateY(4px); box-shadow: 0 2px 0 #4d0f0c; }
+  body.touch .controls .kb { display: none; }
+  .controls .tp { display: none; }
+  body.touch .controls .tp { display: inline; }
+
+  /* the way back to the site, dressed as a small exit tab so it stops
+     announcing that this is a page on somebody's website */
+  .relay-return {
+    /* clear of the control panel, which is a real strip at the bottom of
+       the cabinet rather than empty page as it is on every other room */
+    bottom: max(44px, calc(env(safe-area-inset-bottom) + 44px)) !important;
+    border-radius: 2px !important;
+    background: var(--sign-face) !important;
+    border: 1px solid rgba(242,240,230,.75) !important;
+    color: rgba(242,240,230,.9) !important;
+    font-family: inherit !important;
+    font-size: 8.5px !important;
+    font-weight: 700 !important;
+    letter-spacing: .12em !important;
+    padding: .3rem .5rem !important;
+    gap: .28rem !important;
+    box-shadow: 0 3px 10px rgba(0,0,0,.5) !important;
+    backdrop-filter: none !important;
+    opacity: .68;
+    transition: opacity .18s ease !important;
+  }
+  .relay-return:hover, .relay-return:focus-visible {
+    opacity: 1;
+    transform: none !important;
+    color: var(--white) !important;
+  }
+
+  @media (max-width: 430px) {
+    .marquee { padding: .4rem .5rem .45rem; gap: .4rem; }
+    .tagline { display: none; }
+    .gantry { gap: 3px; padding: .35rem .3rem .4rem; flex-wrap: nowrap; }
+    .panelsign { min-width: 0; flex: 1 1 auto; padding: .08rem .18rem .12rem; }
+    .panelsign .k { font-size: 8px; letter-spacing: .06em; }
+    .panelsign .v { font-size: 13px; }
+    .panelsign .v small { font-size: 8px; }
+    .cabbtn { padding: .26rem .28rem; letter-spacing: .04em; min-width: 0; }
+    .cabbtn .word { display: none; }
+    #stage { padding: 5px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .panel .go { animation: none; }
+    .dir { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="cab">
+
+  <div class="marquee">
+    <svg class="shield" viewBox="0 0 34 30" aria-hidden="true">
+      <path d="M17 0.6c4 2.4 9.2 3.2 15.6 3.2 0 12.4-4.6 21-15.6 25.6C6 24.8 1.4 16.2 1.4 3.8 7.8 3.8 13 3 17 0.6z" fill="#f2f0e6"/>
+      <path d="M17 2.6c3.7 2.2 8.5 3 14 3 0 11.3-4.2 19.2-14 23.4C7.2 24.8 3 16.9 3 5.6c5.5 0 10.3-.8 14-3z" fill="#14306e"/>
+      <path d="M17 2.6c3.7 2.2 8.5 3 14 3 0 1.5-.1 2.9-.2 4.3H3.2C3.1 8.5 3 7.1 3 5.6c5.5 0 10.3-.8 14-3z" fill="#ad1f2d"/>
+      <text x="17" y="23.5" text-anchor="middle" fill="#f2f0e6"
+            font-family="Helvetica Neue, Arial Narrow, sans-serif" font-size="13" font-weight="700">40</text>
+    </svg>
+    <span class="wordmark">OFFRAMP</span>
+    <span class="tagline">one leads to the next</span>
+  </div>
+
+  <div class="gantry">
+    <div class="panelsign speed" id="cell-speed"><span class="k">Speed</span><span class="v" id="hud-speed">0<small> km/h</small></span></div>
+    <div class="panelsign" id="cell-marker"><span class="k">Mile</span><span class="v" id="hud-mile">—</span></div>
+    <div class="panelsign"><span class="k">Distance</span><span class="v" id="hud-dist">0.00<small> km</small></span></div>
+    <div class="panelsign" id="cell-score"><span class="k">Score</span><span class="v" id="hud-score">0</span></div>
+    <div class="panelsign"><span class="k">Best</span><span class="v" id="hud-best">0</span></div>
+    <button id="mute" class="cabbtn" type="button" aria-pressed="false" aria-label="Mute sound">♪<span class="word"> Snd</span></button>
+    <button id="map-toggle" class="cabbtn" type="button" aria-pressed="false" aria-controls="map-panel" aria-label="Open freeway map">▦<span class="word"> Map</span></button>
+  </div>
+
+  <div id="stage">
+    <div id="frame">
+      <canvas id="road" width="256" height="416" aria-label="A pixel freeway seen from above. Your car drives alone through broad curves, full-width shoulders, barriers and branching exits."></canvas>
+
+      <div id="banner"></div>
+
+      <section id="map-panel" role="dialog" aria-modal="true" aria-labelledby="map-title" hidden>
+        <div class="map-head">
+          <strong id="map-title">ROUTE OVERVIEW</strong>
+          <button id="map-close" class="cabbtn" type="button" aria-label="Close freeway map">× Close</button>
+        </div>
+        <canvas id="map-canvas" width="256" height="132" aria-label="Overview of the complete fixed highway network"></canvas>
+        <p id="map-status"><b>■ YOU</b> · loading route</p>
+      </section>
+
+      <!-- title: a guide sign, and you pick a direction off it -->
+      <div class="panel on" id="panel-title">
+        <div class="bgs">
+          <div class="route">
+            <svg class="shield" viewBox="0 0 34 30" aria-hidden="true">
+              <path d="M17 0.6c4 2.4 9.2 3.2 15.6 3.2 0 12.4-4.6 21-15.6 25.6C6 24.8 1.4 16.2 1.4 3.8 7.8 3.8 13 3 17 0.6z" fill="#f2f0e6"/>
+              <path d="M17 2.6c3.7 2.2 8.5 3 14 3 0 11.3-4.2 19.2-14 23.4C7.2 24.8 3 16.9 3 5.6c5.5 0 10.3-.8 14-3z" fill="#14306e"/>
+              <path d="M17 2.6c3.7 2.2 8.5 3 14 3 0 1.5-.1 2.9-.2 4.3H3.2C3.1 8.5 3 7.1 3 5.6c5.5 0 10.3-.8 14-3z" fill="#ad1f2d"/>
+              <text x="17" y="23.5" text-anchor="middle" fill="#f2f0e6"
+                    font-family="Helvetica Neue, Arial Narrow, sans-serif" font-size="13" font-weight="700">40</text>
+            </svg>
+            <span class="name">INTERSTATE 40</span>
+          </div>
+          <div class="dirs" id="dirs" role="radiogroup" aria-label="Choose a direction">
+            <button class="dir" id="dir-west" type="button" role="radio" aria-checked="false" data-dir="W">
+              <span class="word">WEST</span><span class="arrow">◀</span>
+            </button>
+            <button class="dir" id="dir-east" type="button" role="radio" aria-checked="true" data-dir="E">
+              <span class="word">EAST</span><span class="arrow">▶</span>
+            </button>
+          </div>
+        </div>
+        <p class="tag" id="map-note">loading route</p>
+        <div class="keys kb">
+          <b>← →</b><span>choose · then steer</span>
+          <b>↑ ↓</b><span>throttle · brake</span>
+          <b>P</b><span>pause</span>
+        </div>
+        <div class="keys tp" style="display:none">
+          <b>tap</b><span>choose a direction</span>
+          <b>drag</b><span>steer</span>
+        </div>
+        <p class="go" id="title-go">press start to drive</p>
+      </div>
+
+      <!-- paused -->
+      <div class="panel" id="panel-pause">
+        <h2>HELD</h2>
+        <p class="tag">the road is still there</p>
+        <p class="go">press P to keep driving</p>
+      </div>
+
+      <!-- wreck -->
+      <div class="panel" id="panel-wreck">
+        <h2 class="wreck">WRECKED</h2>
+        <p class="tag" id="wreck-why">you left the road</p>
+        <div class="score-lines">
+          <span>DISTANCE</span><span id="w-dist">0.00 km</span>
+          <span>SCORE</span><span id="w-score">0</span>
+          <span>TOP SPEED</span><span id="w-top">0 km/h</span>
+        </div>
+        <p class="best-new" id="w-best" hidden>NEW BEST</p>
+        <p class="go">press R to get back in</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="controls">
+    <span class="kb"><b>← →</b> steer <span class="sep">·</span> <b>↑ ↓</b> throttle / brake <span class="sep">·</span> <b>G</b> map <span class="sep">·</span> <b>P</b> pause <span class="sep">·</span> <b>R</b> restart</span>
+    <span class="tp"><b>drag anywhere</b> to steer <span class="sep">·</span> hold <b>BRAKE</b></span>
+  </p>
+
+</div>
+
+<div id="pedals"><button id="brake" type="button">BRAKE</button></div>
+
+<script src="src/raster.js?v=77"></script>
+<script src="data/i40.js?v=77"></script>
+<script src="src/road.js?v=77"></script>
+<script src="src/world.js?v=77"></script>
+<script src="src/draw.js?v=77"></script>
+<script src="src/offramp.js?v=77"></script>
+</body>
+</html>

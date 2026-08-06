@@ -21,3 +21,12 @@ projects/climbing/__pycache__/
 # apex-data.js IS committed — it's what the page reads.
 projects/apex/apex-account.json
 projects/apex/__pycache__/
+
+# OFFRAMP: the raw OpenStreetMap extracts are build input and re-fetchable
+# (data/osm/fetch2.sh, fetch_ramps.sh). 33 MB of them does not belong in a
+# Pages repo. The extractor scripts ARE committed, and so is the generated
+# corridor the site actually reads: projects/offramp/data/i40.js
+projects/offramp/data/osm/*.json
+projects/offramp/data/osm/v2/
+projects/offramp/data/osm/ramps/
+projects/offramp/data/osm/__pycache__/
