@@ -171,7 +171,7 @@ def emit(d, name="I-40"):
     return {'id': name, 'lengthMi': round(cum[-1] / MI, 2),
             'lengthPx': round(cum[-1] / M_PER_PX, 1),
             'waypoints': pts, 'exits': exits, 'lanes': lanes, 'speed': speed,
-            'map': mapline, 'mapStepMi': MAP_STEP}
+            'map': mapline, 'mapStepMi': MAP_STEP, 'stops': []}
 
 def states(c):
     """Every mile marker on the corridor, as eight state runs.

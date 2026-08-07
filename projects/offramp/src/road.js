@@ -82,6 +82,8 @@ const Road = (() => {
   const setRandom = (fn) => { random = typeof fn === "function" ? fn : Math.random; };
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
+  /* shortest signed way round from b to a */
+  const angleDiff = (a, b) => ((a - b + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
 
   /* ── construction ───────────────────────────────────────────────────
      A road always starts as a single station and is grown on demand.
@@ -277,12 +279,26 @@ const Road = (() => {
 
     const s0 = clamp(o.fromPx > 0 ? o.fromPx : 0, 0, Math.max(0, total - STEP));
     const s1 = clamp(o.toPx > 0 ? o.toPx : total, s0 + STEP, total);
-    const count = Math.max(1, Math.floor((s1 - s0) / STEP));
+
+    /* ── the window is sampled WIDER than it is kept ───────────────────
+       Smoothing needs real road on both sides of every station it
+       touches. Without the margin the stations near an edge get a
+       lopsided average, so the same piece of I-40 comes out slightly
+       different depending on which window happens to hold it — and the
+       car jumps by that difference every time the window slides. With
+       it, geometry is a pure function of position on the corridor and
+       two overlapping windows agree exactly. */
+    const MARGIN = 160;                       // stations, > SMOOTH_SPAN + HEAD_SPAN
+    const g0 = Math.max(0, Math.floor(s0 / STEP) - MARGIN) * STEP;
+    const keep0 = Math.round((s0 - g0) / STEP);
+    const total0 = Math.floor((Math.min(total, s1 + MARGIN * STEP) - g0) / STEP);
+    const count = total0;
+    const wantCount = Math.max(1, Math.floor((s1 - s0) / STEP));
 
     const st = new Array(count + 1);
     let j = 1;
     for (let k = 0; k <= count; k++) {
-      const target = s0 + k * STEP;
+      const target = g0 + k * STEP;
       while (j < n - 1 && cum[j] < target) j++;
       const a = pts[j - 1], b = pts[j];
       const span = Math.max(1e-9, cum[j] - cum[j - 1]);
@@ -320,15 +336,87 @@ const Road = (() => {
       st[i].h = Math.atan2(dx, dy);
     }
 
-    const r = make("freeway", st[0].x, st[0].y, st[0].h, o);
-    r.st = st;
-    const L = st.length;
+    /* ── and then the corners are taken out of the road itself ────────
+       Smoothing the heading alone fixes the camera and leaves the road
+       cornered, because the stations still sit on the raw polyline. The
+       survey is straight between its vertices and turns all at once at
+       them, and those vertices average 840 px apart — about one per
+       screen — so a curve arrives as a straight, a kink, a straight.
+
+       The first attempt integrated positions forward along the smoothed
+       heading. Arc length came out exact, which is the property that
+       matters, but absolute position drifted 534 m over a twenty-mile
+       window — and the windows have to line up with each other, so the
+       car would have jumped half a kilometre every time one slid.
+
+       A SYMMETRIC filter cannot drift: every station is the average of
+       real positions either side of it. It does cut corners, so the
+       chain comes out a shade shorter, and that is why it is re-spaced
+       afterwards — stations must be exactly STEP apart or `s / STEP`
+       stops finding them. */
+    const SMOOTH_SPAN = 40;
+    if (count > SMOOTH_SPAN * 2) {
+      const sx = new Float64Array(count + 1), sy = new Float64Array(count + 1);
+      let ax = 0, ay = 0;
+      // seed with [0, SPAN): the loop's first pass adds index SPAN itself
+      for (let i = 0; i < SMOOTH_SPAN; i++) { ax += st[i].x; ay += st[i].y; }
+      for (let i = 0; i <= count; i++) {
+        const lo = i - SMOOTH_SPAN - 1, hi = i + SMOOTH_SPAN;
+        if (hi <= count) { ax += st[hi].x; ay += st[hi].y; }
+        if (lo >= 0) { ax -= st[lo].x; ay -= st[lo].y; }
+        const n2 = Math.min(count, i + SMOOTH_SPAN) - Math.max(0, i - SMOOTH_SPAN) + 1;
+        sx[i] = ax / n2; sy[i] = ay / n2;
+      }
+      for (let i = 0; i <= count; i++) { st[i].x = sx[i]; st[i].y = sy[i]; }
+      // re-space: corner-cutting shortened the chain, so walk it again
+      const cum2 = new Float64Array(count + 1);
+      for (let i = 1; i <= count; i++)
+        cum2[i] = cum2[i - 1] + Math.hypot(st[i].x - st[i - 1].x, st[i].y - st[i - 1].y);
+      /* NOT re-spaced, deliberately.
+
+         Re-spacing walks the smoothed chain from its own first station,
+         so where that station happens to be changes every position
+         downstream — two overlapping windows came out 9.9 px apart and
+         the car jumped that far each time one slid.
+
+         Left alone, every station's position depends only on the
+         surveyed points within the smoothing window around it, which
+         makes geometry a pure function of distance along the corridor:
+         any window containing a given point puts it in exactly the same
+         place. The price is that corner-cutting leaves stations a
+         hair under STEP apart on curves — 0.0035% measured, which is
+         nine centimetres in a mile — and everything here finds a station
+         by dividing by STEP. That error is uniform, tiny, and buys an
+         exact seam. */
+      const fit = count;
+      for (let i = 0; i <= fit; i++) {
+        const A = st[Math.max(0, i - HEAD_SPAN)], B = st[Math.min(fit, i + HEAD_SPAN)];
+        let dx2 = B.x - A.x, dy2 = B.y - A.y;
+        if (dx2 === 0 && dy2 === 0) {
+          const C = st[Math.max(0, i - 1)], D = st[Math.min(fit, i + 1)];
+          dx2 = D.x - C.x; dy2 = D.y - C.y;
+        }
+        st[i].h = Math.atan2(dx2, dy2);
+      }
+    }
+
+    /* Drop the margins now the smoothing has used them. */
+    const kept = st.slice(keep0, Math.min(st.length, keep0 + wantCount + 1));
+    const r = make(o.kind === "ramp" ? "ramp" : "freeway", kept[0].x, kept[0].y, kept[0].h, o);
+    r.st = kept;
+    const L = kept.length;
     r.aux = new Array(L).fill(0);
     r.lanes = new Array(L).fill(o.fwd != null ? o.fwd : 3);
     r.inner = new Array(L).fill(0);
     r.deck = new Array(L).fill(0);
     r.wrap = closed;
-    r.baseS = s0;                 // where this window starts on the full route
+    /* Where station ZERO actually is, not where the window was asked to
+       start. Sampling is quantised to the STEP grid, so those differ by
+       up to 8 px — and since the quantisation depends on the requested
+       start, two overlapping windows disagreed by that much about where
+       a given piece of road was, which the car felt as a jump each time
+       one slid. */
+    r.baseS = g0 + keep0 * STEP;
     r.routePx = total;            // how long the whole route is
     rebound(r);
     return r;
@@ -864,6 +952,7 @@ const Road = (() => {
     suppressed,
     make, makeRoute, makeStreet, grow, growBack, len, nearBounds,
     frame, at, edges, laneU, laneCount, auxAt, auxLaneU, lanesAt, innerAt, deckAt,
+    rebound,
     project, makeRamp, makeLink, openAux, closeAux, changeLanes, dropLeft, setRandom,
   };
 })();

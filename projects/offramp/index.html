@@ -371,6 +371,46 @@
   }
 
   /* WEST / EAST, as the directional banner on a real sign */
+  /* The exit you start from, as another line on the sign. A real guide
+     sign lists the exits it is warning you about; this one lets you
+     pick. */
+  .startpick {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-bottom: .45rem;
+    padding: .26rem .34rem;
+    background: rgba(0,0,0,.18);
+    border: 2px solid rgba(242,240,230,.42);
+    border-radius: 3px;
+  }
+  .startpick .lbl {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: rgba(242,240,230,.7);
+    white-space: nowrap;
+  }
+  .startpick select {
+    flex: 1 1 auto;
+    min-width: 0;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--white);
+    background: rgba(0,0,0,.34);
+    border: 1px solid rgba(242,240,230,.34);
+    border-radius: 2px;
+    padding: .18rem .24rem;
+    -webkit-appearance: none;
+    appearance: none;
+    text-align: center;
+  }
+  .startpick select:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+  .startpick option { background: #0b5730; color: var(--white); }
+
   .dirs {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -566,6 +606,7 @@
     <div class="panelsign"><span class="k">Distance</span><span class="v" id="hud-dist">0.00<small> km</small></span></div>
     <div class="panelsign" id="cell-score"><span class="k">Score</span><span class="v" id="hud-score">0</span></div>
     <div class="panelsign"><span class="k">Best</span><span class="v" id="hud-best">0</span></div>
+    <button id="units" class="cabbtn" type="button" aria-label="Switch between mph and km/h">MPH</button>
     <button id="mute" class="cabbtn" type="button" aria-pressed="false" aria-label="Mute sound">♪<span class="word"> Snd</span></button>
     <button id="map-toggle" class="cabbtn" type="button" aria-pressed="false" aria-controls="map-panel" aria-label="Open freeway map">▦<span class="word"> Map</span></button>
   </div>
@@ -598,6 +639,10 @@
             </svg>
             <span class="name">INTERSTATE 40</span>
           </div>
+          <label class="startpick">
+            <span class="lbl">Start at</span>
+            <select id="start-exit" aria-label="Choose the exit to start from"></select>
+          </label>
           <div class="dirs" id="dirs" role="radiogroup" aria-label="Choose a direction">
             <button class="dir" id="dir-west" type="button" role="radio" aria-checked="false" data-dir="W">
               <span class="word">WEST</span><span class="arrow">◀</span>
@@ -637,6 +682,10 @@
           <span>TOP SPEED</span><span id="w-top">0 km/h</span>
         </div>
         <p class="best-new" id="w-best" hidden>NEW BEST</p>
+        <label class="startpick" style="width:min(94%,20rem)">
+          <span class="lbl">Restart at</span>
+          <select id="wreck-exit" aria-label="Choose the exit to restart from"></select>
+        </label>
         <p class="go">press R to get back in</p>
       </div>
     </div>
@@ -651,11 +700,11 @@
 
 <div id="pedals"><button id="brake" type="button">BRAKE</button></div>
 
-<script src="src/raster.js?v=77"></script>
-<script src="data/i40.js?v=77"></script>
-<script src="src/road.js?v=77"></script>
-<script src="src/world.js?v=77"></script>
-<script src="src/draw.js?v=77"></script>
-<script src="src/offramp.js?v=77"></script>
+<script src="src/raster.js?v=93"></script>
+<script src="data/i40.js?v=93"></script>
+<script src="src/road.js?v=93"></script>
+<script src="src/world.js?v=93"></script>
+<script src="src/draw.js?v=93"></script>
+<script src="src/offramp.js?v=93"></script>
 </body>
 </html>

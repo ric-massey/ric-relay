@@ -485,7 +485,19 @@ const Draw = (() => {
        the near side of the wedge a full lane to the right of where the
        ramp actually begins and paint the first chevron inside out. The
        split happens where the lanes end, and the aux lane is the ramp. */
+    /* ── which way is "out", on a road that may run either way ────────
+       Two independent facts, and conflating them drew the gore inside
+       out on half the exits. `right` is which SIDE of the corridor the
+       ramp sits on. `mirror` is whether the ramp's own distance grows
+       with the corridor's or against it — a westbound ramp is built
+       running westbound, so its d increases as the parent's s falls.
+
+       The edge of the ramp facing the mainline is therefore uL when
+       those two agree and uR when they do not. */
     const right = j.side > 0;
+    const mir = !!j.mirror;
+    const dir = mir ? -1 : 1;
+    const nearIsL = right !== mir;
     const base = right
       ? j.startU - R.LANE / 2
       : j.startU + (j.lanes - 0.5) * R.LANE;
@@ -501,15 +513,19 @@ const Draw = (() => {
        Real gore only exists where the two roads have actually parted, so
        it is measured between the parent's outer SEALED edge and the
        ramp's, and nothing is drawn at all until that gap opens. */
-    const sealPar = (s) => R.edges(par, s).uR + R.SH_OUT;
-    const sealRamp = (d) => R.edges(ramp, d).uL - R.RAMP_SH;
+    const sealPar = (s) => right ? R.edges(par, s).uR + R.SH_OUT
+                                 : R.edges(par, s).uL - R.SH_OUT;
+    const sealRamp = (d) => nearIsL ? R.edges(ramp, d).uL - R.RAMP_SH
+                                    : R.edges(ramp, d).uR + R.RAMP_SH;
     for (let d = 0; d < LEN; d += 10) {
-      const a = R.at(ramp, d, right ? sealRamp(d) : R.edges(ramp, d).uR + R.RAMP_SH);
-      const b = R.at(ramp, d + 10, right ? sealRamp(d + 10) : R.edges(ramp, d + 10).uR + R.RAMP_SH);
-      const pu = right ? Math.max(base, sealPar(j.s + d)) : base;
-      const pu2 = right ? Math.max(base, sealPar(j.s + d + 10)) : base;
-      const pa = R.at(par, j.s + d, pu);
-      const pb = R.at(par, j.s + d + 10, pu2);
+      const a = R.at(ramp, d, sealRamp(d));
+      const b = R.at(ramp, d + 10, sealRamp(d + 10));
+      const pu = right ? Math.max(base, sealPar(j.s + dir * d))
+                       : Math.min(base, sealPar(j.s + dir * d));
+      const pu2 = right ? Math.max(base, sealPar(j.s + dir * (d + 10)))
+                        : Math.min(base, sealPar(j.s + dir * (d + 10)));
+      const pa = R.at(par, j.s + dir * d, pu);
+      const pb = R.at(par, j.s + dir * (d + 10), pu2);
       /* Nothing until the two sealed surfaces have parted — and nothing
          once they are properly apart either. A gore is the narrow
          triangle immediately after a split; sixty pixels out the two
@@ -517,7 +533,7 @@ const Draw = (() => {
          field, which is green. Painting the full 360 px regardless meant
          a long brown slab thrown across open ground and, where the
          entrance ramp cuts back through, across its tarmac too. */
-      if (right) {
+      {
         const gapA = Math.hypot(a.x - pa.x, a.y - pa.y);
         const gapB = Math.hypot(b.x - pb.x, b.y - pb.y);
         if (gapA < 2 && gapB < 2) continue;
@@ -543,7 +559,7 @@ const Draw = (() => {
        read at a glance rather than scaled to how much space it takes
        up in real life. */
     if (!marks) return;
-    const n0 = R.at(par, j.s + 2, base + (right ? 4 : -4));
+    const n0 = R.at(par, j.s + dir * 2, base + (right ? 4 : -4));
     const nx = sx(n0.x, n0.y), ny = sy(n0.x, n0.y);
     if (nx > -14 && ny > -14 && nx < VW + 14 && ny < VH + 14) {
       X.sprite(noseBmp(), nx, ny, n0.h - camH);
@@ -570,44 +586,139 @@ const Draw = (() => {
      Seen from above a sign is an edge, which tells you nothing, so both
      of these cheat and show their faces. Every top-down game that has
      ever had a road sign in it cheats in exactly this way. */
-  function exitSign(j) {
-    const par = j.from;
-    for (const back of [700, 320]) {
-      const s = j.s - back;
-      if (s < 0) continue;
-      const e = R.edges(par, s);
-      const u = j.side > 0 ? e.uR + R.SH_OUT + 6 : par.med + R.SH_IN - 8;
-      const p = R.at(par, s, u);
+  /* ── guide signs ────────────────────────────────────────────────────
+     A real one carries three things: the exit number, the route you are
+     joining, and the place it goes. All three are surveyed — OSM puts
+     the number on the junction node and the other two on the ramp's own
+     `destination` tags — so these signs say what the signs say.
+
+     Drawn face-on rather than edge-on, which is a cheat every top-down
+     game with a road sign in it makes: from above a sign is a line.
+
+     Two of them, a mile out and a quarter mile out, on the side the exit
+     leaves from. */
+  function exitSigns(ramp, parent) {
+    if (!ramp.exitRef && !ramp.signTo) return;
+    const side = ramp.mirror ? -1 : 1;
+    const gore = ramp.mirror ? ramp.merge.s + R.len(ramp) : ramp.merge.s - R.len(ramp);
+    for (const back of [5400, 1900]) {
+      const s = gore - side * back;
+      if (s < 4 || s > R.len(parent) - 4) continue;
+      const e = R.edges(parent, s);
+      const u = side > 0 ? e.uR + R.SH_OUT + 14 : e.uL - R.SH_OUT - 14;
+      const p = R.at(parent, s, u);
       const px = sx(p.x, p.y), py = sy(p.x, p.y);
-      if (px < -20 || py < -20 || px > VW + 20 || py > VH + 20) continue;
-      const a = p.h - camH;
-      X.sprite(signBmp(j.no, back === 320, j.side, j.lanes, j.type), px, py, a);
+      if (px < -34 || py < -34 || px > VW + 34 || py > VH + 34) continue;
+      X.sprite(guideBmp(ramp, back < 3000), px, py, p.h - camH + (side < 0 ? Math.PI : 0));
     }
   }
 
-  const signCache = new Map();
-  function signBmp(no, near, side, lanes, type) {
-    const key = no + (near ? "n" : "f") + side + lanes + type;
-    let b = signCache.get(key);
-    if (b) return b;
-    b = X.bitmap(20, 13);
-    b.fill(0, 0, 20, 13, C.signWhite);
-    b.fill(1, 1, 18, 11, C.signGreen);
-    // mirrored turn arrow; left exits also carry the conspicuous plaque
-    const left = side < 0;
-    for (let i = 0; i < 6; i++) b.set(left ? 15 - i : 4 + i, 4, C.signWhite);
-    for (let i = 0; i < 3; i++) b.set(left ? 8 - i : 9 + i, 5 + i, C.signWhite);
-    b.fill(left ? 5 : 11, 7, 3, 1, C.signWhite);
-    if (left) b.fill(1, 1, 5, 2, C.yellow);
-    if (type === "signal") {
-      b.fill(15, 2, 2, 2, C.red); b.fill(15, 5, 2, 2, C.green);
-    } else if (type === "loop") {
-      b.fill(14, 2, 3, 1, C.signWhite); b.set(16, 3, C.signWhite);
+  /* ── the sign itself ────────────────────────────────────────────────
+     Built once per exit and cached. Green panel, white border, exit
+     number on its own tab above it — where it goes on a real one.
+
+     The first version was 44 px wide and chopped the destination at
+     nine characters, so "A-1 Mountain Road" came out as "A-1 MOUNT"
+     and Kingston Pike as "KINGSTON ". A sign you cannot read is not a
+     sign. It is wider now, the name WRAPS onto a second line rather
+     than being cut, and the words that appear on almost every American
+     guide sign are abbreviated the way the real ones abbreviate them —
+     ROAD to RD, MOUNTAIN to MTN — which is not a space-saving trick so
+     much as what the signs actually say. */
+  const SIGN_ABBR = [
+    [/\bROAD\b/g, "RD"], [/\bSTREET\b/g, "ST"], [/\bAVENUE\b/g, "AVE"],
+    [/\bDRIVE\b/g, "DR"], [/\bBOULEVARD\b/g, "BLVD"], [/\bPARKWAY\b/g, "PKWY"],
+    [/\bHIGHWAY\b/g, "HWY"], [/\bMOUNTAIN\b/g, "MTN"], [/\bJUNCTION\b/g, "JCT"],
+    [/\bCOUNTY\b/g, "CO"], [/\bNORTH\b/g, "N"], [/\bSOUTH\b/g, "S"],
+    [/\bEAST\b/g, "E"], [/\bWEST\b/g, "W"], [/\bSAINT\b/g, "ST"],
+    [/\bSECONDARY\b/g, ""], [/\bPRIMARY\b/g, ""],
+  ];
+  function signWords(str) {
+    let t = String(str).toUpperCase();
+    for (const [re, to] of SIGN_ABBR) t = t.replace(re, to);
+    return t.replace(/\s+/g, " ").trim();
+  }
+
+  /* Break a name across lines that fit, on word boundaries. */
+  function wrapSign(str, cols, maxLines) {
+    const words = signWords(str).split(" ").filter(Boolean);
+    const lines = [];
+    let cur = "";
+    for (const w of words) {
+      const t = cur ? cur + " " + w : w;
+      if (t.length <= cols) { cur = t; continue; }
+      if (cur) lines.push(cur);
+      cur = w.length <= cols ? w : w.slice(0, cols);
+      if (lines.length >= maxLines) break;
     }
-    for (let i = 0; i < lanes; i++) b.fill(4 + i * 5, 9, near ? 3 : 2, 1, C.signWhite);
-    b.fill(0, 12, 20, 1, C.post);
-    signCache.set(key, b);
+    if (cur && lines.length < maxLines) lines.push(cur);
+    return lines.slice(0, maxLines);
+  }
+
+  const guideCache = new Map();
+  const CH = 4;                       // px per character, 3 wide + 1 gap
+  function guideBmp(ramp, near) {
+    const key = (ramp.exitRef || "") + "|" + (ramp.signVia || []).join(",")
+              + "|" + (ramp.signTo || []).join(",") + "|" + (near ? "n" : "f");
+    let b = guideCache.get(key);
+    if (b) return b;
+
+    const cols = 13;                                  // characters per line
+    const W2 = cols * CH + 6;                         // 58 px
+    const via = (ramp.signVia || []).slice(0, 1)
+      .flatMap((v) => wrapSign(v, cols, 1));
+    const to = (ramp.signTo || []).slice(0, near ? 2 : 1)
+      .flatMap((t) => wrapSign(t, cols, near ? 2 : 1));
+    const rows = via.concat(to).slice(0, near ? 3 : 2);
+    const tabH = 9;
+    const H2 = tabH + 3 + rows.length * 6 + 4;
+
+    b = X.bitmap(W2, H2);
+    // the exit tab, top right, reading EXIT <n>
+    const tabTxt = "EXIT " + (ramp.exitRef || "");
+    const tabW = Math.min(W2, tabTxt.length * CH + 5);
+    b.fill(W2 - tabW, 0, tabW, tabH, C.signWhite);
+    b.fill(W2 - tabW + 1, 1, tabW - 2, tabH - 2, C.signGreen);
+    tinyText(b, tabTxt, W2 - tabW + 3, 2, C.signWhite);
+    // the panel
+    b.fill(0, tabH - 1, W2, H2 - tabH - 1, C.signWhite);
+    b.fill(1, tabH, W2 - 2, H2 - tabH - 3, C.signGreen);
+    let y = tabH + 2;
+    for (let i = 0; i < rows.length; i++) {
+      const wpx = rows[i].length * CH;
+      tinyText(b, rows[i], Math.max(2, ((W2 - wpx) / 2) | 0), y, C.signWhite);
+      y += 6;
+    }
+    b.fill(0, H2 - 2, W2, 2, C.post);          // the gantry legs
+    guideCache.set(key, b);
     return b;
+  }
+
+  /* ── a 3x5 alphabet ─────────────────────────────────────────────────
+     Small enough that a place name fits on a sign forty-four pixels
+     wide, which is what a sign is at this scale. Only the glyphs a road
+     sign actually uses. */
+  const GLYPHS = {
+    A: "25752", B: "65652", C: "34443", D: "65556", E: "74741", F: "74744",
+    G: "34564", H: "55755", I: "72227", J: "11152", K: "56655", L: "44447",
+    M: "57555", N: "57755", O: "25552", P: "65744", Q: "25553", R: "65655",
+    S: "34216", T: "72222", U: "55553", V: "55522", W: "55575", X: "55255",
+    Y: "55222", Z: "71247",
+    0: "25552", 1: "22227", 2: "61247", 3: "61232", 4: "55710", 5: "74216",
+    6: "34652", 7: "71222", 8: "25252", 9: "25316",
+    " ": "00000", "-": "00700", ".": "00002", "/": "11244",
+  };
+  function tinyText(b, str, x0, y0, col) {
+    let x = x0;
+    for (const ch of String(str)) {
+      const g = GLYPHS[ch] || GLYPHS[" "];
+      for (let r = 0; r < 5; r++) {
+        const bits = +g[r];
+        for (let c = 0; c < 3; c++) if (bits & (4 >> c)) b.set(x + c, y0 + r, col);
+      }
+      x += 4;
+    }
+    return x;
   }
 
   function meter(r) {
@@ -892,14 +1003,15 @@ const Draw = (() => {
     const above = near.filter(({ r, pr }) => Math.round(R.deckAt(r, pr.s)) > playerLevel);
     if (above.some(({ r, pr }) => deckCoversPlayer(r, S, pr.i)))
       playerGhost(S, S.mode === "wreck");
-    /* Signs for the exits on roads that are actually on screen. Looping
-       every junction on the map to draw two sprites was affordable at
-       thirty-four exits and is not at two thousand. */
+    /* Signs for the exits on the road under the car. Only the corridor
+       carries them, and only the ones serving your direction — a sign
+       for the other carriageway is not yours to read. */
     for (const { r } of near) {
-      if (r.kind !== "freeway" || !r.exits.length) continue;
+      if (!r.corridor || !r.exits.length) continue;
       for (const e of r.exits) {
-        if (e.ramp.dead || !e.ramp.junction) continue;
-        exitSign(e.ramp.junction);
+        if (e.ramp.dead) continue;
+        if ((e.side > 0) !== S.fwd) continue;
+        exitSigns(e.ramp, r);
       }
     }
 

@@ -77,11 +77,22 @@
   const R = Road, X = Raster;
   const VW = Draw.VW, VH = Draw.VH;
 
-  const PX_PER_KMH = 1.55;               // 1 world px = 0.179 m
-  const M_PER_PX = 1 / (3.6 * PX_PER_KMH);
+  /* ── the speed scale, which is not a feel setting ───────────────────
+     One world pixel is 0.179 m, so one km/h is (1000/3600)/0.179 =
+     1.55183 px/s. It was 1.55, which is 0.118% slow — 220 mph read as
+     219.74. Nobody would ever notice, and it costs nothing to be right:
+     the whole point of this corridor is that a distance in the game is
+     the distance on the road. */
+  const M_PER_PX = 0.179;
+  const PX_PER_KMH = (1000 / 3600) / M_PER_PX;   // 1.55183
+  const KMH_PER_MPH = 1.609344;
   const pxs = (kmh) => kmh * PX_PER_KMH;
 
-  const V_MAX = 292, V_GRAVEL = 118;
+  /* Top speed, in km/h because everything internal is. 292 was 181.4
+     mph, so the speedometer could never show 220 however long you held
+     it — not a scale error, a ceiling. The scale itself is exact: held
+     at 70 mph the car covers 70.000 miles in a simulated hour. */
+  const V_MAX = 220 * 1.609344, V_GRAVEL = 118;
   const LAT_MAX = 124;                   // px/s across the road, at low speed
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -351,23 +362,45 @@
     const road = S.road;
 
     if (road.kind === "freeway") {
+      /* ── an exit you can only take going one way ────────────────────
+         This used to test `prevS < ex.s && S.s >= ex.s`, which fires
+         only while `s` is INCREASING — so a car driving the corridor
+         westbound could never take any exit at all, whatever it did with
+         the wheel. It was invisible while every run went one way and
+         became half the game the moment the sign offered WEST.
+
+         An exit serves the direction whose right-hand side it sits on,
+         so `(ex.side > 0) === S.fwd`. And a westbound ramp lives in the
+         mirrored frame: its `s` grows the way the driver is going, which
+         is the way the corridor's shrinks, and its right is the
+         corridor's left. Both conversions are below and both are exact
+         inversions — drive in and straight back out and you land on the
+         same pixel. */
       for (const ex of road.exits) {
         if (ex.ramp.dead) continue;
-        if (!(prevS < ex.s && S.s >= ex.s)) continue;
+        if ((ex.side > 0) !== S.fwd) continue;        // serves the other direction
+        const crossed = S.fwd ? (prevS < ex.s && S.s >= ex.s)
+                              : (prevS > ex.s && S.s <= ex.s);
+        if (!crossed) continue;
         const split = ex.side > 0
           ? ex.startU - R.LANE / 2
-          : ex.startU + (ex.lanes - 0.5) * R.LANE;
-        const committed = ex.side > 0
-          ? S.u > split + 4
-          : S.u < split - 4 && S.u > ex.startU - R.LANE / 2 - 2;
+          : ex.startU + R.LANE / 2;
+        const committed = ex.side > 0 ? S.u > split + 4 : S.u < split - 4;
         if (committed) {
           // committed: you were in the deceleration lane when it ran out.
           // camU shifts by the same amount so the picture does not jump;
           // it then pans across to the ramp under its own steam.
-          S.u -= ex.startU;
-          S.camU -= ex.startU;
-          S.s -= ex.s;
+          if (ex.mirror) {
+            S.u = ex.startU - S.u;
+            S.camU = ex.startU - S.camU;
+            S.s = ex.s - S.s;
+          } else {
+            S.u -= ex.startU;
+            S.camU -= ex.startU;
+            S.s -= ex.s;
+          }
           S.road = ex.ramp;
+          S.fwd = true;                 // a ramp always runs the way you drive it
           S.onRamp = true;
         } else if (Math.abs(S.u - split) <= 4) {
           crash("gore");                              // straddling the nose
@@ -397,10 +430,20 @@
       const m = road.merge;
       const routeType = road.routeType;
       const over = S.s - R.len(road);
-      const shift = m.u;
-      S.u += shift;
-      S.camU += shift;
-      S.s = m.s + over;
+      /* The exact inverse of the entry above. A mirrored ramp hands you
+         back onto a corridor whose stations run the other way, so the
+         overshoot is subtracted and the offset reflected. */
+      if (m.mirror) {
+        S.u = m.u - S.u;
+        S.camU = m.u - S.camU;
+        S.s = m.s - over;
+        S.fwd = false;
+      } else {
+        S.u += m.u;
+        S.camU += m.u;
+        S.s = m.s + over;
+        S.fwd = true;
+      }
       S.road = m.into;
       S.onRamp = false;
       takeExit(routeType);
@@ -618,14 +661,42 @@
   const panels = { title: el("panel-title"), pause: el("panel-pause"), wreck: el("panel-wreck") };
   const fmt = (n) => Math.floor(n).toLocaleString("en-US");
   const km = () => S.distPx * M_PER_PX / 1000;
-
+  /* Declared here rather than beside drawHud() because the units
+     block below resets it at load, and `let` in a temporal dead zone
+     throws — which killed the whole module silently. */
   let hudTick = -1;
+
+  /* ── units ──────────────────────────────────────────────────────────
+     This is a road in Tennessee, so miles per hour is the default and
+     km/h is the option, not the other way round. The choice sticks,
+     because nobody wants to set it twice. */
+  const UNIT_KEY = "offramp.units";
+  let units = "mph";
+  try { units = localStorage.getItem(UNIT_KEY) === "kmh" ? "kmh" : "mph"; } catch (e) {}
+  const unitBtn = el("units");
+  function paintUnits() {
+    if (unitBtn) unitBtn.textContent = units === "mph" ? "MPH" : "KM/H";
+    hudTick = -1;                       // force the readouts to redraw
+  }
+  function setUnits(u) {
+    units = u === "kmh" ? "kmh" : "mph";
+    try { localStorage.setItem(UNIT_KEY, units); } catch (e) {}
+    paintUnits();
+  }
+  if (unitBtn) unitBtn.addEventListener("click", () => setUnits(units === "mph" ? "kmh" : "mph"));
+  paintUnits();
+
   function drawHud() {
     const tick = Math.floor(S.t * 10);
     if (tick === hudTick) return;
     hudTick = tick;
-    hudSpeed.innerHTML = Math.round(S.speed) + "<small> km/h</small>";
-    hudDist.innerHTML = km().toFixed(2) + "<small> km</small>";
+    if (units === "mph") {
+      hudSpeed.innerHTML = Math.round(S.speed / KMH_PER_MPH) + "<small> mph</small>";
+      hudDist.innerHTML = (km() / KMH_PER_MPH).toFixed(2) + "<small> mi</small>";
+    } else {
+      hudSpeed.innerHTML = Math.round(S.speed) + "<small> km/h</small>";
+      hudDist.innerHTML = km().toFixed(2) + "<small> km</small>";
+    }
     hudScore.textContent = fmt(S.score) + (S.mult > 1.01 ? "  ×" + S.mult.toFixed(1) : "");
     hudBest.textContent = fmt(best);
     cellScore.classList.toggle("hot", S.mult > 1.5);
@@ -633,8 +704,13 @@
        machine that a driver would recognise: mile marker and state, the
        same pair painted on the little green posts. */
     if (hudMile) {
-      const mk = S.road && S.road.corridor
-        ? World.marker(S.road.baseS + S.s) : null;
+      /* On the mainline this is exact; on a ramp or a truck stop it is
+         the corridor position that structure hangs off, which is right
+         to within its own half mile and never blank. */
+      const px = S.road
+        ? (S.road.corridor ? S.road.baseS + S.s : S.road.corridorPx)
+        : null;
+      const mk = px != null ? World.marker(px) : null;
       hudMile.textContent = mk
         ? `${Math.floor(mk.mile)}` + `<small> ${mk.state}</small>` : "—";
       if (mk) hudMile.innerHTML = `${Math.floor(mk.mile)}<small> ${mk.state}</small>`;
@@ -823,7 +899,7 @@
     S.mode = mode;
     const p = World.reset();
     const map = World.state.mapStats;
-    if (map) el("map-note").textContent = `${map.freewayMiles} MI · ${map.junctions} EXITS · ${map.exitsPerMile}/MILE`;
+    if (map) el("map-note").textContent = `${map.route} · ${map.corridorMiles} MI · ${map.exits} EXITS · ${map.stops} STOPS`;
     /* Which way you are pointing is chosen on the sign, not assumed.
        `fwd` has always existed — traffic has carried a direction since
        the day it was written, and the surface rescue can already flip
@@ -856,6 +932,77 @@
      turning you round. */
   let heading = "E";
   const dirBtns = [el("dir-west"), el("dir-east")].filter(Boolean);
+
+  /* ── the exit you start from ────────────────────────────────────────
+     Twelve hundred of them across eight states, so the list is grouped
+     by state and labelled with the real exit number — which is also the
+     mile marker, so "TN 383" reads as both "Papermill" and "three
+     hundred and eighty-three miles into Tennessee".
+
+     Populated once, from the corridor, because the corridor is the only
+     thing that knows where the exits are. */
+  const startSel = el("start-exit"), wreckSel = el("wreck-exit");
+  function fillStarts() {
+    /* `typeof`, not `window.I40`: the corridor is declared with `const`
+       at the top level of a classic script, which creates a script-scope
+       binding and NOT a property of window. Guarding on window.I40 was
+       always false, so the picker silently stayed empty. */
+    if (!startSel || typeof I40 === "undefined") return;
+    const byState = new Map();
+    for (const st of I40.states) byState.set(st.name, []);
+    for (const e of I40.exits) {
+      let name = null;
+      for (const st of I40.states)
+        if (e.px >= st.startPx - 4 * World.MILE && e.px <= st.endPx + 4 * World.MILE) name = st.name;
+      if (!name) continue;
+      byState.get(name).push(e);
+    }
+    const frag = document.createDocumentFragment();
+    for (const [state, list] of byState) {
+      if (!list.length) continue;
+      const g = document.createElement("optgroup");
+      g.label = state;
+      for (const e of list) {
+        const o = document.createElement("option");
+        o.value = e.px;
+        o.textContent = `${state} · Exit ${e.ref}`;
+        g.appendChild(o);
+      }
+      frag.appendChild(g);
+    }
+    /* Clone BEFORE appending: appending a DocumentFragment empties it,
+       so cloning afterwards copied nothing and the wreck panel's picker
+       came up with no options in it at all. */
+    const copy = wreckSel ? frag.cloneNode(true) : null;
+    startSel.appendChild(frag);
+    if (wreckSel) wreckSel.appendChild(copy);
+    // default to Knoxville, which is the stretch this was built against
+    let best = null, want = 2050 * World.MILE;
+    for (const o of startSel.options)
+      if (!best || Math.abs(+o.value - want) < Math.abs(+best.value - want)) best = o;
+    if (best) {
+      startSel.value = best.value;
+      if (wreckSel) wreckSel.value = best.value;
+      World.setStart(+best.value);
+    }
+  }
+  fillStarts();
+
+  /* Both pickers set the same thing and mirror each other, so the exit
+     you chose on the sign is the one already selected when you wreck —
+     and changing it there changes where R puts you back. */
+  function wirePicker(sel, other) {
+    if (!sel) return;
+    sel.addEventListener("change", () => {
+      World.setStart(+sel.value);
+      if (other) other.value = sel.value;
+    });
+    // the panels swallow clicks to start or restart; the picker must not
+    for (const ev of ["pointerdown", "click", "keydown"])
+      sel.addEventListener(ev, (e) => e.stopPropagation());
+  }
+  wirePicker(startSel, wreckSel);
+  wirePicker(wreckSel, startSel);
 
   function setHeading(d) {
     heading = d === "W" ? "W" : "E";
@@ -1046,6 +1193,7 @@
       S, R, roads: World.roads, junctions: World.junctions,
       reset, startDriving,
       surface: () => World.surface(S.x, S.y, S.hints),
+      drawHud,
       /* Drive the real update by hand. requestAnimationFrame is frozen
          whenever the page is not the foreground tab, so a test that sets
          the car down and waits is a test that measures nothing. */

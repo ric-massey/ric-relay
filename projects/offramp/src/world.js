@@ -79,6 +79,7 @@ const World = (() => {
      against a real map. */
   const MILE = 1609.34 / 0.179;            // 8,990 world px
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
   const K = 1000;                          // the unit the city plan is drawn in
 
   function seeded(seed) {
@@ -231,11 +232,17 @@ const World = (() => {
      west of Watt with the city ahead of you. */
   const START_MI = 2050;
 
+  /* Where a run begins, in corridor px. Set from the sign before the
+     first frame; falls back to Knoxville. */
+  let startPx = START_MI * MILE;
+  function setStart(px) {
+    startPx = clamp(+px || 0, 2 * MILE, I40.lengthPx - 2 * MILE);
+  }
+
   function reset() {
     W.taken = 0;
     W.junctions.length = 0;
     W.metered.length = 0;
-    const startPx = START_MI * MILE;
     const road = buildWindow(startPx);
     W.root = W.main = road;
     W.rootStart = startPx - road.baseS;
@@ -338,6 +345,286 @@ const World = (() => {
     return { state: s.name, mile: px / MILE + s.residual };
   }
 
+  /* ══════════════════════════════════════════════════════════════════
+     REST AREAS AND TRUCK STOPS
+
+     The simplest thing on an Interstate you can drive into and out of
+     without ever turning: leave right, run beside the road past the
+     parking, rejoin. Two hundred and thirty-four of them on I-40, with
+     their real names on, and they are the first structure built because
+     they are one shape repeated — if the leave-and-return loop works
+     here it works for every ramp that follows.
+
+     The centreline is sampled along the MAINLINE'S OWN FRAME, offset
+     sideways by a bump that opens and closes. That is not a shortcut, it
+     is the property that makes it correct: at both ends the offset is
+     zero and its rate of change is zero, so the stop road leaves and
+     rejoins exactly tangent to the road it came off, with no join to
+     fudge. The bump plateaus in the middle, which is the bit you park
+     on.
+
+     What is surveyed is where it is, which side it serves and what it is
+     called. The shape is not — OSM maps these as parking-lot outlines,
+     which is not a drivable centreline. */
+  const STOP_LEN = 0.62 * MILE;     // 1 km: decel, the frontage, accel
+  const STOP_OFF = 74;              // px clear of the verge — 13 m
+  const STOP_TAPER = 0.28;          // fraction of the length spent turning
+
+  function stopBump(t) {
+    if (t <= 0 || t >= 1) return 0;
+    if (t < STOP_TAPER) return smooth(t / STOP_TAPER);
+    if (t > 1 - STOP_TAPER) return smooth((1 - t) / STOP_TAPER);
+    return 1;
+  }
+
+  /* ── an exit ────────────────────────────────────────────────────────
+     Structurally identical to a truck stop, and that is the design
+     rather than a shortcut. Every ramp on this corridor puts you back on
+     the corridor — that is the rule the whole game is built on — so an
+     exit IS a loop-back: leave right, run past whatever is out there,
+     rejoin. What separates the two is length, how far out they swing,
+     and what the sign says.
+
+     A real interchange has a cross road at the far end with its own
+     traffic on it. That is the next thing, and it hangs off this: the
+     frontage road built here is where a cross street would attach. */
+  const EXIT_LEN = 1.05 * MILE;
+  const EXIT_OFF = 132;             // px clear of the verge — 24 m
+
+  /* ── a real ramp ────────────────────────────────────────────────────
+     Where the survey gives us the actual interchange, we drive the
+     actual interchange. `I40.ramps` holds the walked geometry in the
+     corridor's own plane, anchored at the node it leaves from, so both
+     ends already sit on the road — nothing has to be stitched.
+
+     This is the difference between an exit that looks like an exit and
+     1,201 copies of the same bump. Exit 386 in Knoxville is not exit 407
+     in the Smokies, and now it is not drawn as though it were. */
+  function buildRealRamp(parent, spec) {
+    const lo = parent.baseS, hi = lo + R.len(parent);
+    if (spec.startPx < lo + 400 || spec.endPx > hi - 400) return null;
+    const pts = spec.pts.map((p) => ({ x: p[0], y: p[1] }));
+    if (pts.length < 3) return null;
+
+
+
+    const road = R.makeRoute(pts, {
+      polyline: true, kind: "ramp", fwd: 1, back: 0, lanes: 1,
+      layer: ++W.nextLayer,
+    });
+    /* ── pin the ends to the deceleration lane ─────────────────────────
+       Two corrections, and they have to happen AFTER the road is built,
+       not before: makeRoute resamples and smooths, and the smoothing has
+       no road beyond a ramp's ends to average against, so it pulls them
+       inward. Warping the input and then letting it be smoothed put the
+       ends back out by up to 64 px.
+
+       The first correction is the big one. OSM splits a ramp off the
+       CENTRELINE of the eastbound carriageway, and this game builds both
+       carriageways from ONE centreline — so that same point is the
+       middle of the road here, beside the barrier. Dropped in as
+       surveyed, every real ramp began in the median and crossed four
+       lanes to get out. The second is a couple of metres between the
+       corridor as surveyed and as smoothed.
+
+       Both are fixed by warping the built stations so each end lands on
+       the centre of the aux lane, blending along the length so the
+       middle keeps its surveyed shape. */
+    {
+      const sA = spec.startPx - lo, sB = spec.endPx - lo;
+      const wantA = R.at(parent, sA, R.auxLaneU(parent, sA));
+      const wantB = R.at(parent, sB, R.auxLaneU(parent, sB));
+      const st = road.st, n = st.length - 1;
+      const dxA = wantA.x - st[0].x, dyA = wantA.y - st[0].y;
+      const dxB = wantB.x - st[n].x, dyB = wantB.y - st[n].y;
+      for (let i = 0; i <= n; i++) {
+        const t = i / n;
+        st[i].x += dxA + (dxB - dxA) * t;
+        st[i].y += dyA + (dyB - dyA) * t;
+      }
+      for (let i = 0; i <= n; i++) {
+        const a = st[Math.max(0, i - 1)], b = st[Math.min(n, i + 1)];
+        st[i].h = Math.atan2(b.x - a.x, b.y - a.y);
+      }
+      R.rebound ? R.rebound(road) : null;
+    }
+    road.kind = "ramp"; road.rampLanes = 1; road.med = 0; road.back = 0;
+    road.parent = parent;
+    road.routeType = "exit";
+    road.real = true;
+    road.exitRef = spec.ref || null;
+    road.signTo = spec.to || null;
+    road.signVia = spec.via || null;
+    road.corridorPx = (spec.startPx + spec.endPx) / 2;
+    road.baseS = 0;
+    road.mirror = false;
+
+    const s0 = spec.startPx - lo, s1 = spec.endPx - lo;
+    const iOut = Math.round(s0 / R.STEP), iIn = Math.round(s1 / R.STEP);
+    R.openAux(parent, iOut, 1, 150);
+    R.closeAux(parent, Math.max(0, iIn - 26), 1, 150);
+
+    road.merge = { into: parent, s: s1, i: iIn, u: R.auxLaneU(parent, s1),
+                   lanes: 1, baseLane: 0, laneAdd: false, accel: true, mirror: false };
+    const entry = { i: iOut, ramp: road, s: s0, side: 1, lanes: 1,
+                    startU: R.auxLaneU(parent, s0), mirror: false, from: parent };
+    parent.exits.push(entry);
+    road.junction = entry;
+
+    /* The signal sits where the ramp is furthest from the road, which on
+       a real interchange is the terminal — the intersection with the
+       cross street the ramp was walked across. */
+    const at = R.len(road) * 0.5;
+    const phase0 = (spec.startPx / 977) % 11;
+    road.meter = { i: Math.round(at / R.STEP), s: at, phase0,
+                   t: phase0, red: phase0 < 4.2, wait: 0 };
+    W.metered.push(road);
+    return road;
+  }
+
+  function buildStop(parent, stop) {
+    const isExit = stop.kind === "exit";
+    const LEN = isExit ? EXIT_LEN : STOP_LEN;
+    const OFF = isExit ? EXIT_OFF : STOP_OFF;
+    const side = stop.side > 0 ? 1 : -1;
+    const s0 = stop.px - parent.baseS - LEN / 2;
+    const s1 = s0 + LEN;
+    if (s0 < 400 || s1 > R.len(parent) - 400) return null;
+
+    /* Widen the mainline FIRST. The stop's centreline is sampled from
+       `R.edges(parent, s)`, and openAux moves that edge out by up to a
+       full lane — sample before widening and the frontage road ends up
+       sitting on the deceleration lane it is supposed to be fed by. */
+    const iOut = Math.round(s0 / R.STEP);
+    const iIn = Math.round(s1 / R.STEP);
+    R.openAux(parent, iOut, 1, 150);
+    R.closeAux(parent, iIn - 26, 1, 150);
+
+    /* ── where the centreline starts, and why it is not "beside" ──────
+       The first version put the stop road a fixed distance outside the
+       verge and eased it further out. It looked right and it was
+       undrivable: by the time you had steered across the shoulder the
+       road had already peeled away, so there was thirteen pixels of
+       grass between the gravel and the frontage, and steering right at
+       a truck stop killed you.
+
+       road.js already says how this is supposed to work, in the note on
+       `aux`: a ramp's centreline starts exactly at the middle of the
+       deceleration lane, so the two surfaces are contiguous because
+       they were built from the same number. So that is where this
+       starts too — ON the aux lane — and the bump carries it out from
+       there and back. At both ends the offset is zero, which puts it
+       back in the merge lane. Nothing is stitched. */
+    const n = Math.max(8, Math.round(LEN / R.STEP));
+    const pts = new Array(n + 1);
+    for (let k = 0; k <= n; k++) {
+      const t = k / n;
+      const s = s0 + LEN * t;
+      const e = R.edges(parent, s);
+      const sh = R.SH_OUT + R.VERGE;
+      const near = side > 0 ? R.auxLaneU(parent, s) : -R.auxLaneU(parent, s);
+      const far = (side > 0 ? e.uR + sh : e.uL - sh) + side * (OFF + R.LANE / 2);
+      const b = stopBump(t);
+      const u = near + (far - near) * b;
+      const p = R.at(parent, s, u);
+      pts[k] = { x: p.x, y: p.y };
+    }
+
+    /* A stop that serves WESTBOUND traffic is built running westbound.
+       The corridor's stations increase eastward, so a left-side stop
+       sampled in that order would be a road you drive backwards: its
+       own `s` would fall as you advanced along it, and every merge and
+       gore test in the game assumes s grows ahead of you. Reversing the
+       points costs nothing and means a westbound stop is an ordinary
+       forward road that happens to sit on the other side. */
+    if (side < 0) pts.reverse();
+
+    const road = R.makeRoute(pts, {
+      polyline: true, kind: "ramp", fwd: 1, back: 0, lanes: 1,
+      layer: ++W.nextLayer,
+    });
+    road.kind = "ramp";
+    road.rampLanes = 1;
+    road.med = 0;
+    road.back = 0;
+    road.parent = parent;
+    road.routeType = isExit ? "exit" : stop.kind === "truck" ? "truckstop" : "rest";
+    road.stopName = stop.name;
+    road.exitRef = stop.ref || null;
+    road.signTo = stop.to || null;
+    road.signVia = stop.via || null;
+    /* Where this sits on the corridor. Pulling into a truck stop does
+       not move you along I-40, so the mile marker has to keep reading —
+       it went blank the moment you left the mainline, which is exactly
+       when a driver looks at it. */
+    road.corridorPx = stop.px;
+    road.baseS = 0;
+
+    /* ── which end is the beginning ────────────────────────────────────
+       `startU` is not a flag. handovers() does `S.u -= ex.startU` to
+       convert the car from corridor coordinates into ramp coordinates,
+       so it has to be the real offset at which this road's station zero
+       sits on the parent — the centre of the deceleration lane, the same
+       number the centreline was sampled from. A ±1 side flag here meant
+       the commit test compared the car against an offset of one pixel,
+       so nothing was ever committed however you steered.
+
+       And for a westbound ramp station zero is at the OTHER END. The
+       points were reversed above so the road runs the way its driver
+       does, which means it starts at s1 and finishes at s0, and every
+       offset is mirrored because the driver's right is negative u on a
+       corridor that runs the other way. `mirror` tells handovers() which
+       frame to convert in; without it a westbound car was only ever
+       rescued onto the ramp by the surface test rather than handed over,
+       which looked like it worked and was not the same thing. */
+    const auxOut = R.auxLaneU(parent, s0);
+    const auxIn = R.auxLaneU(parent, s1);
+    road.mirror = side < 0;
+    road.merge = side > 0
+      ? { into: parent, s: s1, i: iIn, u: auxIn,
+          lanes: 1, baseLane: 0, laneAdd: false, accel: true, mirror: false }
+      : { into: parent, s: s0, i: iOut, u: -auxOut,
+          lanes: 1, baseLane: 0, laneAdd: false, accel: true, mirror: true };
+    const entry = {
+      i: side > 0 ? iOut : iIn,
+      ramp: road,
+      s: side > 0 ? s0 : s1,
+      side, lanes: 1,
+      startU: side > 0 ? auxOut : -auxIn,
+      mirror: side < 0,
+      from: parent,
+    };
+    parent.exits.push(entry);
+
+    /* ── the gore ──────────────────────────────────────────────────────
+       The hatched wedge and the crash cushion where the ramp parts from
+       the road. draw.js has drawn these since the fictional map and only
+       draws them for a ramp carrying a `junction`, which nothing on the
+       corridor was setting — so every exit here was a lane that quietly
+       stopped being a lane, with no nose and no paint to say where the
+       split was. Every ramp gets one, so they all read the same. */
+    road.junction = entry;
+
+    /* ── the signal ────────────────────────────────────────────────────
+       An exit gets a light where its ramp reaches the cross road; a rest
+       area and a truck stop do not, because the whole point of those is
+       that you drive straight through. traffic.js used to queue against
+       these and is gone, so for now the signal is scenery with a stop
+       bar — but it is REAL scenery, on the right structures only, and it
+       is what the queue will assemble against when traffic returns.
+
+       `phase0` is derived from position rather than random so a given
+       exit shows the same light every time you arrive at it. */
+    if (isExit) {
+      const at = R.len(road) * 0.5;
+      const phase0 = ((stop.px / 977) % 11);
+      road.meter = { i: Math.round(at / R.STEP), s: at, phase0,
+                     t: phase0, red: phase0 < 4.2, wait: 0 };
+      W.metered.push(road);
+    }
+    return road;
+  }
+
   function buildWindow(centrePx) {
     const half = WINDOW / 2;
     let from = centrePx - half, to = centrePx + half;
@@ -360,8 +647,47 @@ const World = (() => {
     applyExits(road);
     W.roads.length = 0; W.grid.clear(); W.trunks.length = 0;
     W.roads.push(road);
-    index(road);
     W.trunks.push(road);
+
+    /* Stops inside the live window. They hang off the mainline, so they
+       are built after it and before it is indexed — openAux() edits the
+       parent's deceleration lanes and the index does not care, but the
+       renderer reads them. */
+    const lo = road.baseS, hi = road.baseS + R.len(road);
+    for (const st of (I40.stops || [])) {
+      if (st.px < lo || st.px > hi) continue;
+      const r = buildStop(road, st);
+      if (r) { W.roads.push(r); index(r); }
+    }
+    /* Every real exit in the window, both directions. Two ramps per exit
+       number — one serving each carriageway — because that is what an
+       Interstate has and because the sign has to be on your own side. */
+    /* Real interchanges first. Where the survey has the shape, use it;
+       the generated loop-back is only for exits the walk could not
+       close, and for the westbound side, whose ramps rejoin a
+       carriageway this corridor does not carry. */
+    const realAt = [];
+    for (const spec of (I40.ramps || [])) {
+      if (spec.endPx < lo || spec.startPx > hi) continue;
+      const r = buildRealRamp(road, spec);
+      if (r) { W.roads.push(r); index(r); realAt.push(spec.startPx); }
+    }
+    const hasReal = (px) => realAt.some((q) => Math.abs(q - px) < 0.55 * MILE);
+
+    let last = -1e9;
+    for (const e of I40.exits) {
+      if (e.px < lo || e.px > hi) continue;
+      if (e.px - last < 0.34 * MILE) continue;   // A/B pairs share one structure
+      last = e.px;
+      for (const side of [1, -1]) {
+        if (side > 0 && hasReal(e.px)) continue;   // the real one is already there
+        const r = buildStop(road, { kind: "exit", px: e.px, side,
+                                    name: (e.to && e.to[0]) || null,
+                                    ref: e.ref, to: e.to, via: e.via });
+        if (r) { W.roads.push(r); index(r); }
+      }
+    }
+    index(road);
     return road;
   }
 
@@ -390,6 +716,7 @@ const World = (() => {
       waypoints: I40.waypoints.length,
       windowMiles: +(WINDOW / MILE).toFixed(0),
       liveStations: W.roads[0] ? W.roads[0].st.length : 0,
+      stops: (I40.stops || []).length,
       exitsPerMile: +(I40.exits.length / Math.max(1, miles)).toFixed(2),
     };
   }
@@ -744,7 +1071,7 @@ const World = (() => {
   return {
     state: W,
     reset, update, surface, nextExit, clearance, nearby, locate, MILE,
-    buildWindow, marker,
+    buildWindow, marker, setStart,
     corridorPx: (road, s) => (road && road.baseS || 0) + s,
     get roads() { return W.roads; },
     get main() { return W.main; },

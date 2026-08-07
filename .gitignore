@@ -29,4 +29,5 @@ projects/apex/__pycache__/
 projects/offramp/data/osm/*.json
 projects/offramp/data/osm/v2/
 projects/offramp/data/osm/ramps/
+projects/offramp/data/osm/cross/
 projects/offramp/data/osm/__pycache__/
