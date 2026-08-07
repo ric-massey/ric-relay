@@ -111,46 +111,119 @@
   }
 
   /* ── on-screen controls ────────────────────────────────────────────────
-     Four big targets rather than a clever gesture: this is a game about
-     holding thrust while turning, and a thumb needs somewhere fixed to rest.
-     Hidden until a touch actually happens, so a laptop with a touchscreen
-     doesn't get a phone's controls. */
-  #pad { display: none; }
-  body.touch #pad {
-    display: flex;
+     A stick and up to three buttons, each one wherever its owner put it.
+     Thumbs are not all in the same place: a phone gripped two-handed wants
+     the stick low and inboard, one-handed wants everything within one arc,
+     and a left-handed player wants the mirror of whatever a right-handed one
+     does. So nothing here is nailed down — every piece carries a position,
+     kept as a fraction of the screen so it survives turning the phone over.
+
+     The whole rig is hidden until a touch actually happens, so a laptop with
+     a touchscreen doesn't get a phone's controls, and it only appears while
+     you are actually flying — a joystick sitting over a menu is a joystick
+     eating the taps meant for it. */
+  #pad {
+    display: none;
     position: fixed;
-    left: 0; right: 0;
-    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    inset: 0;
     z-index: 30;
-    justify-content: space-between;
-    padding: 0 0.6rem;
     pointer-events: none;
+    --u: 1;
   }
-  #pad .side { display: flex; gap: 0.55rem; pointer-events: auto; }
-  #pad button {
-    width: 4.4rem; height: 4.4rem;
-    font: inherit;
-    font-size: 0.68rem;
-    letter-spacing: 0.06em;
-    color: var(--phosphor);
-    background: rgba(10, 10, 10, 0.72);
-    border: 1px solid var(--phosphor-dim);
-    border-radius: 50%;
+  body.touch.flying #pad,
+  body.arranging #pad { display: block; }
+
+  #pad .ctl {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: auto;
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    font: inherit;
+    letter-spacing: 0.06em;
+    color: var(--phosphor);
+    background: rgba(10, 10, 10, 0.55);
+    border: 1px solid var(--phosphor-dim);
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.1;
   }
-  #pad button.down {
+  #pad .ctl[hidden] { display: none; }
+  /* Faint while you fly. These sit on top of the arena, and a rock behind a
+     button is a rock you still have to see coming; a thumb on one brings it
+     back to full so there is no doubt what is being held. */
+  body.flying #pad .ctl { opacity: 0.62; }
+  body.flying #pad .ctl.down { opacity: 1; }
+  #pad .ctl.down {
     background: rgba(255, 194, 51, 0.26);
     border-color: var(--phosphor);
   }
-  #pad button .g { font-size: 1.35rem; display: block; line-height: 1.1; }
+  #pad .ctl .g { font-size: calc(1.5rem * var(--u)); display: block; }
 
-  /* Once the thumb controls are up they own the bottom of the screen: the
-     keyboard legend is no use to a finger, and the way home has to move out
-     from under the turn buttons rather than sit beneath them. */
+  #padStick {
+    width: calc(8.8rem * var(--u));
+    height: calc(8.8rem * var(--u));
+    border-color: var(--phosphor-faint);
+    background:
+      radial-gradient(circle at center,
+                      rgba(255, 194, 51, 0.07), rgba(10, 10, 10, 0.5) 72%);
+  }
+  /* A thumb aiming for the stick misses it, and a miss should still fly the
+     ship. The grab area is a good deal wider than the ring you can see. */
+  #padStick::before {
+    content: "";
+    position: absolute;
+    inset: -18%;
+    border-radius: 50%;
+  }
+  #padStick .knob {
+    width: 38%;
+    height: 38%;
+    border-radius: 50%;
+    border: 1px solid var(--phosphor);
+    background: rgba(255, 194, 51, 0.2);
+  }
+  #padStick.down { border-color: var(--phosphor-dim); }
+  #padStick.down .knob { background: rgba(255, 194, 51, 0.4); }
+
+  #padFire, #padGas {
+    width: calc(5rem * var(--u));
+    height: calc(5rem * var(--u));
+    font-size: calc(0.66rem * var(--u));
+  }
+  #padPause {
+    width: calc(3rem * var(--u));
+    height: calc(3rem * var(--u));
+    color: var(--phosphor-dim);
+  }
+  #padPause .g { font-size: calc(1.15rem * var(--u)); }
+
+  /* Laying them out. Dashed, so it is obvious nothing is live in the way it
+     is live in a match, and a caption on each one saying what it is. */
+  body.arranging #pad .ctl {
+    border-style: dashed;
+    border-color: var(--phosphor);
+  }
+  body.arranging #pad .ctl.held { background: rgba(255, 194, 51, 0.22); }
+  body.arranging #pad .ctl::after {
+    content: attr(data-tag);
+    position: absolute;
+    top: 100%;
+    margin-top: 0.3rem;
+    font-size: 0.6rem;
+    color: var(--phosphor-dim);
+    white-space: nowrap;
+  }
+
+  /* The keyboard legend is no use to a finger, and the way home has no
+     business under a thumb mid-match. */
   body.touch .legend { display: none; }
-  body.touch .relay-return { bottom: 6.4rem; }
+  body.flying .relay-return, body.arranging .relay-return { display: none; }
 
   @media (hover: none) and (pointer: coarse) {
     .legend { display: none; }
@@ -334,14 +407,13 @@
 </div>
 
 <div id="pad" aria-hidden="true">
-  <div class="side">
-    <button type="button" data-hold="l"><span class="g">◀</span>turn</button>
-    <button type="button" data-hold="r"><span class="g">▶</span>turn</button>
-  </div>
-  <div class="side">
-    <button type="button" data-hold="th"><span class="g">▲</span>thrust</button>
-    <button type="button" data-hold="f"><span class="g">◉</span>fire</button>
-  </div>
+  <div id="padStick" class="ctl" data-tag="STICK"><div class="knob"></div></div>
+  <button id="padGas" class="ctl" type="button" data-hold="th" data-tag="GAS"
+          hidden><span class="g">▲</span>gas</button>
+  <button id="padFire" class="ctl" type="button" data-hold="f" data-tag="FIRE">
+    <span class="g">◉</span>fire</button>
+  <button id="padPause" class="ctl" type="button" data-tag="PAUSE"
+          aria-label="pause"><span class="g">‖</span></button>
 </div>
 
 <div id="lobby" hidden role="dialog" aria-modal="true" aria-labelledby="lobbyTitle">
@@ -411,7 +483,8 @@
 </div>
 
 <p class="keyboard-note">
-  One ship per phone — tap the menus, then fly with the four buttons.
+  One ship per phone — tap the menus, then fly with the stick. CONTROLS is
+  where you drag it, and the buttons, to wherever your thumbs actually are.
   For two on one screen, open it on a laptop and bring someone with you.
 </p>
 
@@ -446,6 +519,8 @@
     canvas.width = Math.round(SCREEN_W * s * dpr);
     canvas.height = Math.round(SCREEN_H * s * dpr);
     viewScale = s * dpr;
+    // Turning the phone over can leave a control hanging off the short edge.
+    padApply();
   }
   window.addEventListener("resize", resize);
 
@@ -595,6 +670,153 @@
   // The colour rows that a keyboard can actually reach, and therefore the only
   // ones worth binding keys for. Online you always fly with the first row.
   const keyRows = () => PLAYERS.slice(0, KEYBOARD_MAX);
+
+  /* ── thumb controls ───────────────────────────────────────────────────────
+     A phone gets a stick and some buttons, and where they sit is the player's
+     business, not this file's. Four pieces, each with a position kept as a
+     fraction of the screen, and two decisions that change what the pieces are:
+
+       GAS BUTTON     off, the stick is the throttle — push it and you go.
+                      On, the stick only aims and a separate button burns.
+       ALWAYS SHOOT   on, the gun runs by itself and the fire button goes
+                      away, which is the only way to fly one-thumbed.
+
+     The stick does NOT snap the ship to your thumb. It works out which way to
+     turn and holds the turn for you, exactly as the mouse does — so a phone
+     obeys the same turn rate as a keyboard and gets no advantage from it. */
+  const PAD_STORE = "crossfire.pad.v1";
+
+  // Right-handed, two-handed, landscape: stick under the left thumb, gun under
+  // the right, gas above the gun where the right thumb can rock up to it.
+  const PAD_DEFAULTS = {
+    gas: false,
+    auto: false,
+    size: 1,
+    pos: {
+      stick: { x: 0.16, y: 0.74 },
+      gas:   { x: 0.71, y: 0.58 },
+      fire:  { x: 0.88, y: 0.78 },
+      pause: { x: 0.95, y: 0.08 }
+    }
+  };
+
+  const PAD_SIZES = [
+    { s: 0.82, name: "SMALL" }, { s: 1, name: "MEDIUM" },
+    { s: 1.2, name: "LARGE" },  { s: 1.45, name: "HUGE" }
+  ];
+
+  const padCfg = JSON.parse(JSON.stringify(PAD_DEFAULTS));
+
+  // What the stick is doing right now: an angle on the screen and how far out
+  // it is pushed, which is all the ship ever needs to know.
+  const stick = { on: false, ang: 0, mag: 0, pid: null };
+
+  const padEl    = document.getElementById("pad");
+  const stickEl  = document.getElementById("padStick");
+  const knobEl   = stickEl.querySelector(".knob");
+  const gasEl    = document.getElementById("padGas");
+  const fireEl   = document.getElementById("padFire");
+  const pauseEl  = document.getElementById("padPause");
+
+  const PAD_PARTS = [["stick", stickEl], ["gas", gasEl],
+                     ["fire", fireEl], ["pause", pauseEl]];
+
+  let arranging = false;      // true only on the thumb-controls screen
+  let padDrag = null;
+
+  const fraction = v => typeof v === "number" && isFinite(v) && v >= 0 && v <= 1;
+
+  function padLoad() {
+    let raw = null;
+    try { raw = localStorage.getItem(PAD_STORE); } catch (_) { return; }
+    if (!raw) return;
+    let saved;
+    try { saved = JSON.parse(raw); } catch (_) { return; }
+    if (!saved || typeof saved !== "object") return;
+    padCfg.gas = !!saved.gas;
+    padCfg.auto = !!saved.auto;
+    if (PAD_SIZES.some(z => z.s === saved.size)) padCfg.size = saved.size;
+    // A position that isn't two numbers between 0 and 1 is a control nobody
+    // could reach, so that piece stays where it started.
+    const p = saved.pos;
+    if (p && typeof p === "object") {
+      for (const [key] of PAD_PARTS) {
+        const q = p[key];
+        if (q && fraction(q.x) && fraction(q.y)) padCfg.pos[key] = { x: q.x, y: q.y };
+      }
+    }
+  }
+
+  function padSave() {
+    try { localStorage.setItem(PAD_STORE, JSON.stringify(padCfg)); } catch (_) {}
+  }
+
+  // Nothing is allowed to sit half off the screen, however it got there —
+  // dragged to the edge, or a phone turned from landscape to portrait.
+  function padClamp(el, x, y) {
+    const w = el.offsetWidth, h = el.offsetHeight, r = padEl.getBoundingClientRect();
+    // The pad itself is the thing these fractions are fractions OF, so it is
+    // the pad that is measured — not the window, which counts a scrollbar the
+    // pad doesn't have. A box with no size yet has no edges to be inside, and
+    // dividing by one would put every control at infinity and lose the layout.
+    if (!w || !h || !r.width || !r.height) return { x, y };
+    const mx = (w / 2 + 4) / r.width, my = (h / 2 + 4) / r.height;
+    return { x: Math.min(Math.max(x, mx), Math.max(mx, 1 - mx)),
+             y: Math.min(Math.max(y, my), Math.max(my, 1 - my)) };
+  }
+
+  function padApply() {
+    padEl.style.setProperty("--u", padCfg.size);
+    // A gun that fires itself has no button, and a stick that is the throttle
+    // has no gas — the setting removes the control, it doesn't just ignore it.
+    gasEl.hidden = !padCfg.gas;
+    fireEl.hidden = padCfg.auto;
+    for (const [key, el] of PAD_PARTS) {
+      if (!el.hidden) padCfg.pos[key] = padClamp(el, padCfg.pos[key].x, padCfg.pos[key].y);
+      el.style.left = (padCfg.pos[key].x * 100) + "%";
+      el.style.top = (padCfg.pos[key].y * 100) + "%";
+    }
+  }
+
+  function padReset() {
+    const d = JSON.parse(JSON.stringify(PAD_DEFAULTS));
+    padCfg.gas = d.gas; padCfg.auto = d.auto; padCfg.size = d.size;
+    padCfg.pos = d.pos;
+    padApply(); padSave();
+  }
+
+  // Left-handed is the mirror of right-handed and nothing else, so it's one
+  // button rather than a second set of positions to keep.
+  function padMirror() {
+    for (const [key] of PAD_PARTS) padCfg.pos[key].x = 1 - padCfg.pos[key].x;
+    padApply(); padSave();
+  }
+
+  function stickRelease() {
+    stick.on = false; stick.mag = 0; stick.pid = null;
+    knobEl.style.transform = "translate(0px, 0px)";
+    stickEl.classList.remove("down");
+  }
+
+  // Capture can be refused — a pointer that has already gone, a synthetic
+  // event — and a refusal must not take the press down with it.
+  function grab(el, id) { try { el.setPointerCapture(id); } catch (_) {} }
+
+  /* Everything let go of at once. A pointerup that never arrives — the pad
+     going away under a thumb, the tab losing focus mid-burn — would otherwise
+     leave the ship flying on a control nobody is holding. */
+  function padRelease() {
+    stickRelease();
+    touch.th = touch.f = false;
+    gasEl.classList.remove("down");
+    fireEl.classList.remove("down");
+  }
+
+  /* Which settings screen [C] means. A keyboard's is the key grid; a phone's
+     is the pad. Once a screen has been touched it is a phone, whatever the
+     media queries said when the page loaded. */
+  const settingsScreen = () =>
+    (touchOnly || document.body.classList.contains("touch")) ? "thumb" : "controls";
 
   const ACTIONS = [
     { field: "left",   name: "TURN LEFT",  short: "turn left" },
@@ -821,6 +1043,7 @@
       return;
     }
     if (code === "KeyR") { resetKeys(); note("back to the keys it came with"); return; }
+    if (code === "KeyT") { state = "thumb"; return; }
     if (code === "Backspace" || code === "Delete") {
       // Emptying an action is allowed: two people at one keyboard may want
       // fewer keys in play, not more.
@@ -881,7 +1104,8 @@
   function standDown() {
     keys.clear();
     aim.thrust = aim.fire = false;
-    touch.l = touch.r = touch.th = touch.f = false;
+    touch.th = touch.f = false;
+    padRelease();
     if (!inMatch()) return;
     if (net.on) { if (document.hidden) bgTicker.start(); }
     else if (state === "playing") { state = "paused"; localPause = true; }
@@ -1228,11 +1452,16 @@
       if (d === 3) { pendingMode = "royale";   state = "count"; }
       if (code === "KeyH") openLobby("host");
       if (code === "KeyJ") openLobby("guest");
-      if (code === "KeyC") { backFrom = "title"; state = "controls"; }
+      if (code === "KeyC") { backFrom = "title"; state = settingsScreen(); }
     } else if (state === "controls") {
       controlsKey(code);
+    } else if (state === "thumb") {
+      if (code === "KeyK" && !touchOnly) { state = "controls"; return; }
+      if (code === "Escape" || code === "KeyC" || code === "Backspace") {
+        state = backFrom || "title";
+      }
     } else if (state === "count") {
-      if (code === "KeyC") { backFrom = "count"; state = "controls"; return; }
+      if (code === "KeyC") { backFrom = "count"; state = settingsScreen(); return; }
       const d = digit(code);
       if (code === "KeyB") {
         botPick = (botPick + 1) % MAX_PLAYERS;   // 0…4 bots
@@ -1258,7 +1487,7 @@
         }
       }
       if (state === "paused") {
-        if (code === "KeyC") { backFrom = "paused"; state = "controls"; return; }
+        if (code === "KeyC") { backFrom = "paused"; state = settingsScreen(); return; }
         if (code === "KeyQ") { leaveMatch(); return; }
       }
       // One camera and two people at one keyboard means somebody is off-screen.
@@ -1958,7 +2187,14 @@
      turn and holds the turn key for you, so a mouse player obeys exactly the
      same turn rate as a keyboard player and has no advantage. */
   const aim = { on: false, wx: 0, wy: 0, thrust: false, fire: false };
-  const touch = { l: false, r: false, th: false, f: false, any: false };
+  const touch = { th: false, f: false };
+
+  /* A gun that runs on its own is the whole point of the setting: with it on
+     there is no fire button to hold, which is what makes one-thumbed flying
+     possible. Only for a device that has actually been touched — nobody at a
+     keyboard should find their gun going off because of a phone setting. */
+  const autoFire = () =>
+    padCfg.auto && document.body.classList.contains("touch");
 
   const localSeat = () => (net.role === "guest" ? net.seat : 0);
 
@@ -1990,6 +2226,13 @@
      rather than mouse, or the touchscreen would have to use the keyboard grid
      it may not have. */
   canvas.addEventListener("pointerdown", e => {
+    /* A tap must not arrive a second time as a mouse click. The compatibility
+       mouse events a touchscreen sends afterwards would hand the ship over to
+       aiming at wherever the finger landed — in the middle of somebody flying
+       it with the stick. Cancelling the pointerdown is what stops them, and
+       the canvas has `touch-action: none` already, so nothing is lost. */
+    if (e.pointerType === "touch") e.preventDefault();
+
     const p = screenPoint(e.clientX, e.clientY);
 
     if (state === "controls") {
@@ -2024,13 +2267,18 @@
   canvas.addEventListener("contextmenu", e => e.preventDefault());
   canvas.addEventListener("mouseleave", () => { aim.thrust = aim.fire = false; });
 
-  function aimInput(s) {
-    let diff = Math.atan2(aim.wy - s.y, aim.wx - s.x) - s.a;
+  /* Which turn key to hold to end up pointing at `want`, and how far off the
+     nose currently is. Both the mouse and the stick go through here, so they
+     steer identically and neither can out-turn a keyboard. */
+  function turnToward(s, want) {
+    let diff = want - s.a;
     while (diff > Math.PI) diff -= Math.PI * 2;
     while (diff < -Math.PI) diff += Math.PI * 2;
-    // Dead zone, or the ship shivers either side of the cursor.
-    return { l: diff < -0.05, r: diff > 0.05 };
+    // Dead zone, or the ship shivers either side of where you're pointing.
+    return { l: diff < -0.05, r: diff > 0.05, off: Math.abs(diff) };
   }
+
+  const aimInput = s => turnToward(s, Math.atan2(aim.wy - s.y, aim.wx - s.x));
 
   function readLocalInput() {
     for (const s of ships) {
@@ -2042,19 +2290,30 @@
       s.input.f = held(k.fire);
     }
 
-    // The mouse and the on-screen buttons drive whichever ship belongs to this
+    // The mouse and the thumb controls drive whichever ship belongs to this
     // machine, on top of whatever the keyboard is doing.
     const me = ships[localSeat()];
     if (me && me.localKeys) {
+      let stickGas = false;
       if (aim.on && me.alive) {
         const a = aimInput(me);
         me.input.l = me.input.l || a.l;
         me.input.r = me.input.r || a.r;
       }
-      me.input.th = me.input.th || aim.thrust || touch.th;
-      me.input.f = me.input.f || aim.fire || touch.f;
-      me.input.l = me.input.l || touch.l;
-      me.input.r = me.input.r || touch.r;
+      if (stick.on && me.alive) {
+        const t = turnToward(me, stick.ang);
+        me.input.l = me.input.l || t.l;
+        me.input.r = me.input.r || t.r;
+        /* With no gas button the stick is the throttle. The engine waits until
+           the nose is roughly where you pushed, though: a flick across the
+           stick would otherwise spend the whole turn burning you further into
+           the direction you were trying to leave. Thrust only ever goes out of
+           the nose, so holding it back until the nose has caught up can never
+           cost you a burn you actually asked for. */
+        stickGas = !padCfg.gas && stick.mag > 0.55 && t.off < 1.05;
+      }
+      me.input.th = me.input.th || aim.thrust || touch.th || stickGas;
+      me.input.f = me.input.f || aim.fire || touch.f || autoFire();
     }
     // The host drives remote seats from whatever arrived last.
     if (net.role === "host") {
@@ -2699,7 +2958,6 @@
         text("TAB — follow next ship", 22, SCREEN_H - 18, 12, "#c79000", "left", 1);
       }
       drawMinimap();
-      touchPause();
       return;
     }
 
@@ -2714,17 +2972,6 @@
     if (ffCount > 0) {
       text("FRIENDLY FIRE ×" + ffCount, 22, 56, 13, "#ff6a4d", "left", 0.85);
     }
-
-    touchPause();
-  }
-
-  /* A phone has no P key, and the pause screen is now where the controls and
-     the way out live — so a thumb needs a way in. Only once a thumb has
-     actually been used: a mouse player keeps the whole canvas for aiming. */
-  function touchPause() {
-    if (!document.body.classList.contains("touch")) return;
-    tapText("PAUSE", SCREEN_W - 24, SCREEN_H - 16, 15, "#c79000",
-            pauseHere, "right", 0.9);
   }
 
   function drawBanner() {
@@ -2759,7 +3006,7 @@
     tapText("[H]  HOST ONLINE", 250, 640, 18, "#ffc233", () => openLobby("host"));
     tapText("[J]  JOIN ONLINE", SCREEN_W / 2, 640, 18, "#ffc233", () => openLobby("guest"));
     tapText("[C]  CONTROLS", 760, 640, 18, "#ffc233",
-            () => { backFrom = "title"; state = "controls"; });
+            () => { backFrom = "title"; state = settingsScreen(); });
     text("online has no server — you pass the invite to each other yourselves",
          SCREEN_W / 2, 668, 12, "#c79000");
   }
@@ -2807,13 +3054,14 @@
       text(hintOf(p), SCREEN_W / 2 - 130, y, 15, "#c79000", "left");
     });
     text(touchOnly
-           ? "four buttons appear the first time you touch the screen"
+           ? "a stick and a fire button appear the moment you touch the screen"
            : "more than two? play online — one screen each",
          SCREEN_W / 2, 398 + most * 32 + 14, 13, "#c79000");
 
     tapText("ESC to go back", 340, 596, 14, "#c79000", () => { state = "title"; });
-    tapText("[C] change any of these keys", 660, 596, 14, "#c79000",
-            () => { backFrom = "count"; state = "controls"; });
+    tapText(touchOnly ? "[C] move the stick and the buttons"
+                      : "[C] change any of these keys", 660, 596, 14, "#c79000",
+            () => { backFrom = "count"; state = settingsScreen(); });
   }
 
   /* The controls screen is the settings screen: every key on it is a control
@@ -2905,8 +3153,70 @@
 
     text("MOUSE   the ship turns to follow the pointer · left button thrusts · " +
          "right button fires", SCREEN_W / 2, 624, 13, "#c79000");
-    text("PHONE   four thumb buttons · one player per device",
-         SCREEN_W / 2, 652, 13, "#c79000");
+    tapText("PHONE   [T] a stick and buttons, wherever you want them",
+            SCREEN_W / 2, 652, 13, "#ffc233",
+            () => { binder.listening = false; state = "thumb"; });
+  }
+
+  /* ── the thumb-controls screen ────────────────────────────────────────────
+     The keyboard grid above is no use to a phone, so a phone gets this
+     instead. Everything on it is a choice about the pad, and the pad itself is
+     floating over the top of it the whole time — the controls you are moving
+     are the real ones, at the real size, and you can push the stick and watch
+     the knob follow while you decide where it belongs.
+
+     The canvas is letterboxed inside the window and the pad is fixed to the
+     window, so every word here is kept in the upper half: below that is where
+     thumbs live, and that is where the controls will be sitting. */
+  function drawThumb() {
+    text("THUMB CONTROLS", SCREEN_W / 2, 62, 34, "#ffc233");
+    text("drag the stick and the buttons anywhere on the screen — " +
+         "they stay there", SCREEN_W / 2, 88, 14, "#c79000");
+
+    tapText("‹ DONE", 40, 62, 17, "#ffc233",
+            () => { state = backFrom || "title"; }, "left");
+
+    const row = (y, label, on, blurb, act) => {
+      tapText(label + "   " + (on ? "ON" : "OFF"), SCREEN_W / 2, y, 22,
+              on ? "#ffc233" : "#c79000", act);
+      text(blurb, SCREEN_W / 2, y + 24, 13, "#c79000", "center", 0.85);
+    };
+
+    row(152, "GAS BUTTON", padCfg.gas,
+        padCfg.gas
+          ? "a throttle of its own — the stick does nothing but aim"
+          : "no button: push the stick past halfway and the engine lights",
+        () => { padCfg.gas = !padCfg.gas; padApply(); padSave(); });
+
+    row(216, "ALWAYS SHOOT", padCfg.auto,
+        padCfg.auto
+          ? "the gun runs on its own — no fire button, and none needed"
+          : "hold the fire button to shoot",
+        () => { padCfg.auto = !padCfg.auto; padApply(); padSave(); });
+
+    const z = PAD_SIZES.find(v => v.s === padCfg.size) || PAD_SIZES[1];
+    tapText("SIZE   " + z.name, SCREEN_W / 2, 280, 22, "#ffc233", () => {
+      const i = PAD_SIZES.indexOf(z);
+      padCfg.size = PAD_SIZES[(i + 1) % PAD_SIZES.length].s;
+      padApply(); padSave();
+    });
+    text("how big your thumbs are is not something this game can guess",
+         SCREEN_W / 2, 304, 13, "#c79000", "center", 0.85);
+
+    tapText("SWAP SIDES", 300, 356, 18, "#ffc233", padMirror);
+    tapText("PUT THEM BACK", 700, 356, 18, "#ffc233", padReset);
+    text("left-handed is the mirror of right-handed, and nothing else",
+         SCREEN_W / 2, 382, 13, "#c79000", "center", 0.85);
+
+    if (!touchOnly) {
+      tapText("[K]  KEYBOARD KEYS", SCREEN_W / 2, 428, 16, "#ffc233",
+              () => { state = "controls"; });
+    }
+
+    text("the stick steers at the same rate a key does — it turns the ship " +
+         "towards your thumb,", SCREEN_W / 2, 470, 13, "#c79000", "center", 0.8);
+    text("it doesn't snap the nose round. Nobody on a phone out-turns anybody " +
+         "at a keyboard.", SCREEN_W / 2, 490, 13, "#c79000", "center", 0.8);
   }
 
 
@@ -2953,7 +3263,7 @@
     });
     tapText("[C]  CONTROLS", SCREEN_W / 2, mid + 66, 22, "#ffc233", () => {
       backFrom = "paused";
-      state = "controls";
+      state = settingsScreen();
     });
     tapText("[Q]  QUIT TO MENU", SCREEN_W / 2, mid + 112, 22, "#c79000", leaveMatch);
     if (net.on) {
@@ -2982,7 +3292,28 @@
     state = "title";
   }
 
+  /* The pad is a real thing sitting over the window, so the window has to know
+     which of its three lives it is in: flying, being laid out, or neither —
+     and "neither" means gone, because a stick over a menu is a stick eating
+     taps meant for the menu. */
+  function padStage() {
+    const b = document.body;
+    const flying = state === "playing";
+    const laying = state === "thumb";
+    if (b.classList.contains("flying") && !flying) padRelease();
+    b.classList.toggle("flying", flying);
+    b.classList.toggle("arranging", laying);
+    if (arranging !== laying) {
+      arranging = laying;
+      padDrag = null;
+      // Sizes only settle once the pad is on screen, so this is the first
+      // moment anything can be checked against the edges it must stay inside.
+      if (laying) padApply();
+    }
+  }
+
   function render() {
+    padStage();
     // Collected fresh: a menu line that isn't drawn this frame isn't tappable
     // this frame either, which is what keeps the two from drifting apart.
     taps = [];
@@ -2994,6 +3325,7 @@
     if (state === "title") { drawTitle(); return; }
     if (state === "count") { drawCount(); return; }
     if (state === "controls") { drawControls(); return; }
+    if (state === "thumb") { drawThumb(); return; }
 
     /* World space. The camera puts its centre in the middle of the screen; in
        the survival modes that centre is the middle of the arena at a scale that
@@ -3044,9 +3376,9 @@
   // has to be told about all three.
   const inMatch = () =>
     state === "playing" || state === "paused" || state === "over" ||
-    // The controls screen reached from a pause is still a paused match: the
-    // host has to keep talking while somebody is fiddling with their keys.
-    (state === "controls" && backFrom === "paused");
+    // A settings screen reached from a pause is still a paused match: the host
+    // has to keep talking while somebody is fiddling with their controls.
+    ((state === "controls" || state === "thumb") && backFrom === "paused");
 
   let last = performance.now();
 
@@ -3138,33 +3470,102 @@
     };
   })();
 
-  /* On-screen buttons. Pointer events rather than touch events, so a stylus or
-     a touchscreen laptop works the same, and pointer capture means sliding your
-     thumb off a button still releases it. */
+  /* On-screen controls. Pointer events rather than touch events, so a stylus
+     or a touchscreen laptop works the same, and pointer capture means sliding
+     your thumb off a button still releases it. */
   addEventListener("pointerdown", e => {
     if (e.pointerType === "touch") document.body.classList.add("touch");
   }, { once: false });
 
-  document.getElementById("pad").addEventListener("pointerdown", e => {
-    const b = e.target.closest("button[data-hold]");
-    if (!b) return;
-    touch[b.dataset.hold] = true;
-    b.classList.add("down");
-    b.setPointerCapture(e.pointerId);
+  /* The stick. The knob follows your thumb out to the edge of the ring and no
+     further, so the ring is an honest picture of how far there is to push. */
+  function stickTo(e) {
+    const r = stickEl.getBoundingClientRect();
+    const dx = e.clientX - (r.left + r.width / 2);
+    const dy = e.clientY - (r.top + r.height / 2);
+    const reach = r.width * 0.42;
+    const d = Math.hypot(dx, dy);
+    stick.mag = Math.min(1, d / reach);
+    // Right in the middle there is no direction to be pushing in, so the last
+    // one stands rather than snapping to whatever rounding says.
+    if (d > 1) stick.ang = Math.atan2(dy, dx);
+    stick.on = stick.mag > 0.22;      // dead zone, or a resting thumb steers
+    const k = d > reach ? reach / d : 1;
+    knobEl.style.transform =
+      "translate(" + (dx * k).toFixed(1) + "px, " + (dy * k).toFixed(1) + "px)";
+  }
+
+  stickEl.addEventListener("pointerdown", e => {
+    if (arranging) return;
+    stick.pid = e.pointerId;
+    grab(stickEl, e.pointerId);
+    stickEl.classList.add("down");
+    aim.on = false;      // a thumb on the stick means the mouse stops steering
+    stickTo(e);
     e.preventDefault();
   });
-  document.getElementById("pad").addEventListener("pointerup", e => {
-    const b = e.target.closest("button[data-hold]");
-    if (!b) return;
-    touch[b.dataset.hold] = false;
-    b.classList.remove("down");
+  stickEl.addEventListener("pointermove", e => {
+    if (arranging || stick.pid !== e.pointerId) return;
+    stickTo(e);
+    e.preventDefault();
   });
-  document.getElementById("pad").addEventListener("pointercancel", e => {
-    const b = e.target.closest("button[data-hold]");
-    if (!b) return;
-    touch[b.dataset.hold] = false;
-    b.classList.remove("down");
+  const stickOff = e => { if (stick.pid === e.pointerId) stickRelease(); };
+  stickEl.addEventListener("pointerup", stickOff);
+  stickEl.addEventListener("pointercancel", stickOff);
+
+  // The two hold buttons, and the pause — which is on the pad rather than on
+  // the canvas because the canvas corner it used to live in is now somewhere a
+  // player is entitled to have put their gun.
+  for (const el of [gasEl, fireEl]) {
+    el.addEventListener("pointerdown", e => {
+      if (arranging) return;
+      touch[el.dataset.hold] = true;
+      el.classList.add("down");
+      grab(el, e.pointerId);
+      e.preventDefault();
+    });
+    const off = () => { touch[el.dataset.hold] = false; el.classList.remove("down"); };
+    el.addEventListener("pointerup", off);
+    el.addEventListener("pointercancel", off);
+  }
+  pauseEl.addEventListener("click", e => {
+    if (arranging) return;
+    pauseHere();
+    e.preventDefault();
   });
+
+  /* Laying the pad out. On the thumb-controls screen every piece is a thing
+     you drag, and it is the real control being dragged — you are looking at
+     the size and the reach you will actually be flying with, not a diagram. */
+  for (const [key, el] of PAD_PARTS) {
+    el.addEventListener("pointerdown", e => {
+      if (!arranging) return;
+      const r = el.getBoundingClientRect();
+      padDrag = { key, el, pid: e.pointerId,
+                  dx: e.clientX - (r.left + r.width / 2),
+                  dy: e.clientY - (r.top + r.height / 2) };
+      grab(el, e.pointerId);
+      el.classList.add("held");
+      e.preventDefault();
+    });
+    el.addEventListener("pointermove", e => {
+      if (!padDrag || padDrag.pid !== e.pointerId) return;
+      const r = padEl.getBoundingClientRect();
+      padCfg.pos[key] = padClamp(el, (e.clientX - padDrag.dx - r.left) / r.width,
+                                     (e.clientY - padDrag.dy - r.top) / r.height);
+      el.style.left = (padCfg.pos[key].x * 100) + "%";
+      el.style.top = (padCfg.pos[key].y * 100) + "%";
+      e.preventDefault();
+    });
+    const drop = e => {
+      if (!padDrag || padDrag.pid !== e.pointerId) return;
+      padDrag = null;
+      el.classList.remove("held");
+      padSave();
+    };
+    el.addEventListener("pointerup", drop);
+    el.addEventListener("pointercancel", drop);
+  }
 
   /* ── lobby ───────────────────────────────────────────────────────────────
      The whole online flow is two codes changing hands. Host makes one, guest
@@ -3767,7 +4168,8 @@
                                             stocks: s.stocks, bot: !!s.bot,
                                             x: Math.round(s.x), y: Math.round(s.y),
                                             invuln: +s.invuln.toFixed(2) })) }),
-    live: () => ({ ships, rocks, hazards, net, binder, players: PLAYERS, taps }),
+    live: () => ({ ships, rocks, hazards, net, binder, players: PLAYERS, taps,
+                   pad: padCfg, stick, arranging }),
     // A hidden tab gets no animation frames, so a test harness needs a way to
     // ask for one — including the redraw that decides what is tappable.
     step: () => tick(performance.now(), true)
@@ -3776,6 +4178,11 @@
   loadKeys();
   loadName();
   refreshKeys();   // reading them in is not a change worth writing back
+  // A device with nothing but a touchscreen is a phone before it is touched,
+  // not after: the menus should already know what they are talking to.
+  if (touchOnly) document.body.classList.add("touch");
+  padLoad();
+  padApply();
   resize();
   requestAnimationFrame(frame);
 })();
