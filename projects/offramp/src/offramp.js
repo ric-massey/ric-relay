@@ -2874,10 +2874,17 @@
        is drawn at a paved shoulder: less than that and the two roads are
        touching at the edges, more and their travel lanes are in each
        other. */
+    /* Two questions now, because one of them could not be asked where it
+       mattered most. `worst` is the tightest two roads get out on the
+       open road. `crossed` is every ramp that is on the wrong side of
+       the median at grade — which the gap test is blind to, since it has
+       to stand down inside a junction where a ramp and its parent share
+       pavement by construction. */
     const clear = World.clearance(true);
     document.documentElement.dataset.offrampClearTest = JSON.stringify({
       checked: World.roads.length, worst: clear.worst, where: clear.where,
-      failures: clear.worst != null && clear.worst < -R.SH_OUT ? [clear.where] : [],
+      failures: (clear.worst != null && clear.worst < -R.SH_OUT ? [clear.where] : [])
+        .concat(clear.crossed || []),
     });
 
     /* No exit leads off the corridor. Every ramp you can steer onto has

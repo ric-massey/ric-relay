@@ -640,7 +640,27 @@ const Road = (() => {
     return {
       x: a.x + (b.x - a.x) * t,
       y: a.y + (b.y - a.y) * t,
-      h: a.h + (b.h - a.h) * t,
+      /* ── the short way round, not the arithmetic mean ────────────────
+         `a.h + (b.h - a.h) * t` is right for every heading except the
+         one this road eventually points in. Headings come out of atan2
+         and live in (−π, π]; a road heading due −y crosses that cut, so
+         two ADJACENT stations read +3.141 and −3.141 — a tenth of a
+         degree apart on the ground and 359.9 degrees apart as numbers.
+         Interpolated linearly, the midpoint comes out at 0: exactly
+         backwards.
+
+         Nothing notices while the answer is only used for `x` and `y`,
+         because those interpolate on their own. It matters the moment
+         somebody asks for a point OFFSET from the centreline, which is
+         how every ramp in this game is built: at() takes cos and sin of
+         a heading pointing the wrong way and puts the point on the far
+         side of the road, twice the offset out. One station in the
+         middle of a generated exit at mile 2139 landed 511 px away, and
+         the resampler then walked out to it and back — a hairpin in the
+         centreline of a road you can drive, 134 px deep into the
+         mainline, at the one interchange where I-40 happens to run due
+         south through the Pigeon River Gorge. */
+      h: a.h + angleDiff(b.h, a.h) * t,
       i,
     };
   }
@@ -791,7 +811,16 @@ const Road = (() => {
     }
     if (bi < 0) return null;
     const a = st[bi], b = st[bi + 1];
-    const h = a.h + (b.h - a.h) * bt;
+    /* The short way round — the same trap frame() fell into, and this
+       one is worse because `u` is what the whole game steers by. Two
+       adjacent stations either side of the ±π cut read +3.141 and
+       −3.141; interpolated linearly the heading here came out sideways,
+       and `u` — which is the offset resolved along that heading — came
+       back as its cosine. Measured at mile 2128, where I-40 runs due
+       south through the gorge: two roads 268 px apart reported an offset
+       of 62.7, because the heading was 76 degrees out. Everything that
+       asks where you are across a road was reading that number. */
+    const h = a.h + angleDiff(b.h, a.h) * bt;
     const u = (x - bx) * Math.cos(h) - (y - by) * Math.sin(h);
     return { i: bi, t: bt, s: (bi + bt) * STEP, u, h, dist: Math.sqrt(bd) };
   }

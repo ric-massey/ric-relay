@@ -757,15 +757,38 @@ const World = (() => {
        deck. Most of those 23 are not crossings: they are a ramp running
        alongside and clipping a few pixels of shoulder, and putting a
        bridge over that would draw a parapet in the middle of a field. */
+    /* ── which stations have to be a bridge, and which are just a gore ──
+       Not "how far from the end is it". A gore is where a ramp shares
+       pavement with the road it is leaving, and it is allowed to; the
+       first version of this trimmed a fixed 85 stations at each end for
+       that reason and exit 211 crossed to the far carriageway INSIDE
+       that window, so it stayed at grade for the part that mattered.
+
+       The question is not distance, it is which side of the road you are
+       on. A ramp on its OWN side, near its own end, is at a gore. A ramp
+       past the median is on the other carriageway and must be over it,
+       however close to the gore it happens to be.
+
+       Real ramps here are all eastbound, so their own side is +u. */
     const JOIN_KEEP = Math.round((R.GORE + R.WEDGE * R.STEP) / R.STEP);
     const CROSS_MIN = 20;                    // stations: shorter is a graze
-    const spans = [];
-    for (const g of overlapRanges(road, parent, 0, road.st.length - 1, null)) {
-      const a = Math.max(g.a, JOIN_KEEP), b = Math.min(g.b, road.st.length - 1 - JOIN_KEEP);
-      if (b - a >= CROSS_MIN) spans.push({ a, b });
+    const last = road.st.length - 1;
+    const need = [];
+    let reachMin = 0, reachMax = 0, hint = null;
+    for (let i = 0; i <= last; i++) {
+      const p = road.st[i];
+      const pr = R.project(parent, p.x, p.y, hint, hint == null ? 0 : 40);
+      if (!pr) continue;
+      hint = pr.i;
+      if (pr.u < reachMin) reachMin = pr.u;
+      if (pr.u > reachMax) reachMax = pr.u;
+      if (pr.s <= 0 || pr.s >= R.len(parent)) continue;
+      const e = R.edges(parent, pr.s);
+      if (pr.u <= e.uL - R.SH_OUT || pr.u >= e.uR + R.SH_OUT) continue;   // clear of it
+      const wrongSide = -pr.u > R.insideAt(parent, pr.s) + R.LANE / 2;
+      const atEnd = i < JOIN_KEEP || i > last - JOIN_KEEP;
+      if (wrongSide || !atEnd) need.push(i);
     }
-    if (spans.length) raise(road, spans, 1, 30);
-
     /* ── and which carriageways it is standing on ──────────────────────
        A ramp that crosses the freeway occupies BOTH sides of it, and the
        ground-claiming below only ever knew about the side it left from.
@@ -774,20 +797,13 @@ const World = (() => {
        westbound loop-back for the same exit number was then built into
        it, because as far as `roomAt` was concerned that ground was free.
        Two structures, one piece of tarmac, 35 px of overlap, and the
-       deck above does not help: they are both at grade out there.
-
-       Recorded as the extreme offsets the ramp reaches on the parent, so
-       the caller can claim what it actually covers. */
-    let reachMin = 0, reachMax = 0, hint = null;
-    for (let i = 0; i < road.st.length; i += 2) {
-      const p = road.st[i];
-      const pr = R.project(parent, p.x, p.y, hint, hint == null ? 0 : 40);
-      if (!pr) continue;
-      hint = pr.i;
-      if (pr.u < reachMin) reachMin = pr.u;
-      if (pr.u > reachMax) reachMax = pr.u;
-    }
+       deck above does not help: they are both at grade out there. */
     road.reach = { min: reachMin, max: reachMax };
+
+    const grouped = [];
+    addRanges(grouped, need, 1, 16);
+    const spans = grouped.filter((g) => g.b - g.a >= CROSS_MIN);
+    if (spans.length) raise(road, spans, 1, 30);
 
     road.merge = { into: parent, s: s1, i: iIn, u: R.auxLaneU(parent, s1, 1),
                    lanes: 1, baseLane: 0, laneAdd: false, accel: true, mirror: false };
@@ -2019,14 +2035,70 @@ const World = (() => {
              the question is now the one that was meant: are these two
              actually at the same height AT THE POINT THEY MEET. */
           if (Math.abs(R.deckAt(A, s) - R.deckAt(B, pr.s)) > 0.5) continue;
-          // skip the few hundred px either side of a legitimate join
+          /* Skip the length either side of a legitimate join. Nothing
+             useful can be asserted in there and this does not pretend
+             otherwise: at a merge the ramp's lanes ARE the parent's
+             acceleration lane — the same pavement, by construction —
+             so any threshold that let a merge through would let a
+             collision through beside it. The invariant is about the
+             open road, and that is where it is enforced. */
           if (joined && nearJoin(A, B, s, pr.s)) continue;
           const gap = Math.abs(pr.u) - (half(A, s, pr.u > 0) + half(B, pr.s, pr.u <= 0));
           if (gap < worst) { worst = gap; where = { A: A.kind + A.id, B: B.kind + B.id, sA: Math.round(s), sB: Math.round(pr.s) }; }
         }
       }
     }
-    return { worst: worst === Infinity ? null : +worst.toFixed(1), where };
+    /* ── and nothing drives through the mainline ────────────────────────
+       The gap test above cannot ask this, because near a join it has to
+       stand down — a ramp at its own merge IS the parent's acceleration
+       lane, the same pavement by construction, so no threshold there can
+       tell a correct merge from a collision. Widening that window to the
+       length the roads are really built alongside each other (see
+       nearJoin) therefore buys accuracy at the price of blindness over
+       fifteen hundred pixels, and this is what pays for it.
+
+       The question it asks is the one that was actually going wrong: a
+       ramp must stay on ITS OWN SIDE of the median unless it is on a
+       bridge. Both of today's faults were exactly this and neither was a
+       near miss — exit 211B/211A crossed the whole westbound carriageway
+       at grade, and a bad heading interpolation threw a generated ramp
+       five hundred pixels out and back through the middle of the road.
+       Distance from a join says nothing about either. Which side of the
+       road you are on says everything. */
+    const crossed = [];
+    for (const r of W.roads) {
+      if (r.kind !== "ramp" || !r.junction || !r.junction.from) continue;
+      const par = r.junction.from;
+      const own = r.junction.startU > 0 ? 1 : -1;
+      let hint = null, worstU = 0;
+      for (let i = 0; i < r.st.length; i += 4) {
+        const d = i * R.STEP;
+        if (R.deckAt(r, d) > 0.5) continue;          // a bridge is allowed to
+        const p = r.st[i];
+        const pr = R.project(par, p.x, p.y, hint, hint == null ? 0 : 60);
+        if (!pr) continue;
+        hint = pr.i;
+        if (pr.s <= 0 || pr.s >= R.len(par)) continue;
+        /* How far onto the other side of the road it has got. Being
+           there is not by itself wrong — a ramp that has crossed on a
+           bridge comes back down in the field beyond the far verge and
+           runs its frontage there, which is most of the interchanges on
+           this corridor. What is wrong is being on the far carriageway's
+           TRAVEL LANES, so both ends of that are tested: past the median
+           and its inside shoulder, and still on sealed surface. Half a
+           lane of slack at the near end, because a ramp crossing a
+           barrier median passes through it and the median is 4 px wide
+           where there is a barrier in it. */
+        const far = -(own * pr.u);
+        const e = R.edges(par, pr.s);
+        const outer = (own > 0 ? -e.uL : e.uR) + R.SH_OUT;
+        if (far < R.insideAt(par, pr.s) + R.LANE / 2 || far > outer) continue;
+        if (far > worstU) worstU = far;
+      }
+      if (worstU > 2) crossed.push({ ramp: r.exitRef || r.stopName || (r.kind + r.id),
+                                     px: Math.round(r.corridorPx || 0), by: Math.round(worstU) });
+    }
+    return { worst: worst === Infinity ? null : +worst.toFixed(1), where, crossed };
   }
 
   /* Every ramp here has TWO legitimate joins with its parent — the gore
@@ -2043,8 +2115,20 @@ const World = (() => {
        less than R.GORE alone — so the last twenty pixels of every gore,
        and the whole of the wedge past it, were reported as two roads
        illegally sharing tarmac. Derived now, so it stays right if either
-       constant moves. */
-    const P = R.GORE + R.WEDGE * R.STEP;
+       constant moves.
+
+       ── and the wedge was the wrong half of it ────────────────────────
+       R.WEDGE is how fast the parent's auxiliary lane CLOSES. How long
+       the two roads are actually built alongside each other is the
+       auxiliary lane's own length, which is what both builders hand to
+       openAux and closeAux: 150 stations, 1,200 px, a quarter of a mile
+       of parallel merge. At the 680 px this used to be, three ramps on
+       the corridor were still inside their parent's shoulder when the
+       window ran out — at 692, 794 and 811 px — and were reported as
+       faults for doing exactly what a gore is. Widening the window is
+       not a loosening: inside it the pair is now asked the harder
+       question, not excused the easy one. See clearance(). */
+    const P = R.GORE + R.MERGE * R.STEP;
     const atGore = (r, other, sr, so) => r.parent === other
       && (sr < P || (r.junction && Math.abs(so - r.junction.s) < P));
     const atMerge = (r, other, sr, so) => r.merge && r.merge.into === other
