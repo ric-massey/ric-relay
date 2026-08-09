@@ -42,10 +42,19 @@
    `aux` is the deceleration lane, and it is the whole trick behind an
    offramp: it grows from nothing to a full lane over about two hundred
    pixels, the ramp's own centreline starts exactly at the middle of it,
-   and the moment the ramp exists the freeway's aux drops back to zero.
-   Nothing has to be stitched — the two surfaces are contiguous at the
-   gore because they were built from the same number, and the gap that
-   opens between them afterwards *is* the gore.
+   and once the ramp exists the freeway's aux tapers back to zero over a
+   gore wedge. Nothing has to be stitched — the two surfaces are
+   contiguous at the gore because they were built from the same number,
+   and the gap that opens between them afterwards *is* the gore.
+
+   There are TWO of these, one per carriageway: `aux` widens the +u edge
+   and `auxL` the −u edge. That is not symmetry for its own sake. There
+   was only ever `aux`, and since it is added to uR and nothing else, a
+   westbound exit opened its deceleration lane on the eastbound side of
+   the motorway and got none of its own. Measured on the Knoxville
+   window: every one of the eighteen eastbound ramps started exactly on
+   its aux lane, and the eighteen westbound ones started between 0 and 41
+   px OUTSIDE the pavement, five of them detached from it entirely.
 
    A ramp is the degenerate case: no barrier, no oncoming side, one to
    three lanes. Lane zero is centred on its centreline and extra lanes
@@ -72,6 +81,15 @@ const Road = (() => {
   const SH_IN = 7;         // paved shoulder between lane and median
   const SH_OUT = 17;       // paved shoulder outside each carriageway
   const MED = 2;           // half-width of a 0.72 m concrete barrier
+  /* Above this half-width the middle of the road stops being a barrier
+     and becomes a depressed median: grass, a shallow ditch, no wall. It
+     is the line between "you hit something" and "you end up in the
+     middle", and both the drawing and the surface query turn on it. */
+  const MED_BARRIER = 4;
+  /* What a depressed median actually measures on this corridor. Rural
+     Interstate medians run 60 to 88 ft; these are half-widths, so 51 px
+     is a 60 ft median and 75 px is 88 ft. */
+  const MED_RURAL = 51, MED_SUBURB = 22;
   const VERGE = 9;         // unsealed strip beyond the paved shoulder
   const RAMP_SH = 8;       // roughly 4.7 ft beside the ramp carriageway
 
@@ -97,10 +115,45 @@ const Road = (() => {
       st: [{ x, y, h }],
       fwd: o.fwd != null ? o.fwd : 3,   // lanes in the direction of travel
       back: o.back != null ? o.back : 2,// lanes against it (0 for a ramp)
-      med: kind === "ramp" ? 0 : MED,
-      aux: [0],                         // deceleration-lane width per station
+      med: kind === "ramp" ? 0 : MED,   // the fallback, when no array is set
+      /* ── the median, per station ──────────────────────────────────────
+         This was one number for a whole road, and one number cannot
+         describe an Interstate. Through a city the two carriageways are
+         a concrete barrier apart — 0.72 m, which is what MED is. In open
+         country they are not joined at all: I-40 across the desert runs
+         its two directions sixty to ninety feet apart on separate
+         alignments, with grass, a ditch and sometimes trees between
+         them, and no barrier because nothing can reach.
+
+         So the median half-width is per station like the lane counts
+         are, and the inside shoulder with it — AASHTO asks for 4 ft
+         beside a two-lane carriageway and 10 to 12 beside a six-lane
+         one, which is a real difference you can see from the car. */
+      medW: [kind === "ramp" ? 0 : MED],
+      shIn: [kind === "ramp" ? 0 : SH_IN],
+      /* Whether a rail runs down the median. A wide median is not
+         automatically an empty one: cross-median crashes are what
+         high-tension cable barrier was invented for, and states
+         string it down grass medians up to about seventy feet — so
+         most of rural Tennessee has one and most of the desert does
+         not. Per station, because it runs in stretches. */
+      medRail: [0],
+      aux: [0],                         // deceleration-lane width per station, +u side
+      auxL: [0],                        // the same, −u side: the other carriageway's exits
       lanes: [o.fwd != null ? o.fwd : 3],// retained per station for future lane changes
+      /* Lanes on the OTHER carriageway, per station. `back` below is the
+         scalar it used to be and is still the default this is filled
+         from; the array exists because a real corridor gains and loses
+         lanes along its length in both directions, and a single number
+         set once from the middle of a twenty-mile window is the wrong
+         width for most of it. */
+      bLanes: [o.back != null ? o.back : 2],
       inner: [0],                       // extra inside shoulder after a left lane-drop exit
+      /* The same, for the other carriageway. A left exit happens on one
+         side of the median at a time — I-40's is westbound — and the
+         two carriageways no more share an inside shoulder than they
+         share a lane count. */
+      innerL: [0],
       /* How high off the ground each station is, in decks: 0 is grade,
          1 is one bridge up. See the note on `layer` below — this is the
          PHYSICAL one, and it has to be per-station because a flyover is
@@ -116,6 +169,18 @@ const Road = (() => {
          and a steel barrier straight across the ramp leaving it, eight
          pixels after they part company. */
       noL: [], noR: [],
+      /* The same, for the EDGE LINE rather than the furniture: stations
+         where this road's own edge line falls inside another road's
+         sealed surface, and so is not an edge and must not be painted.
+
+         Without it the two roads at a gore each paint their edge line
+         straight through the other's pavement, and the lines CROSS: the
+         freeway's line runs out along the deceleration lane while the
+         ramp's runs in along its own, and they cut through each other a
+         lane apart. A real gore has one line coming in and two going
+         out, meeting at the nose — which is exactly the point where each
+         of these lines leaves the other road's tarmac. */
+      noPaintL: [], noPaintR: [],
       maxCurv: o.maxCurv != null ? o.maxCurv : 1 / 3400,
       exits: [],       // [{ i, ramp }] offramps leaving this road
       meter: null,     // ramp only: { i, red, t, wait }
@@ -179,8 +244,11 @@ const Road = (() => {
       r.st.push(p);
       note(r, p);
       r.aux.push(0);
+      r.auxL.push(0);
       r.lanes.push(r.lanes[n - 1]);
+      r.bLanes.push(r.bLanes[n - 1]);
       r.inner.push(r.inner[n - 1]);
+      r.innerL.push(r.innerL[n - 1]);
       r.deck.push(r.deck[n - 1]);
     }
   }
@@ -224,8 +292,14 @@ const Road = (() => {
     r.st = head.concat(r.st);
     rebound(r);
     r.aux = new Array(head.length).fill(0).concat(r.aux);
+    r.auxL = new Array(head.length).fill(0).concat(r.auxL);
     r.lanes = new Array(head.length).fill(r.lanes[0]).concat(r.lanes);
+    r.bLanes = new Array(head.length).fill(r.bLanes[0]).concat(r.bLanes);
     r.inner = new Array(head.length).fill(r.inner[0]).concat(r.inner);
+    r.innerL = new Array(head.length).fill(r.innerL[0]).concat(r.innerL);
+    r.medW = new Array(head.length).fill(r.medW[0]).concat(r.medW);
+    r.medRail = new Array(head.length).fill(r.medRail[0]).concat(r.medRail);
+    r.shIn = new Array(head.length).fill(r.shIn[0]).concat(r.shIn);
     r.deck = new Array(head.length).fill(r.deck[0]).concat(r.deck);
     for (const e of r.exits) e.i += head.length;
     return head.length;              // how far every existing index shifted
@@ -324,7 +398,28 @@ const Road = (() => {
        HEAD_SPAN is in stations: 96 of them is 137 m, which is about a
        sixth of the average vertex gap — wide enough to bridge a corner,
        narrow enough that a real curve keeps its shape. */
-    const HEAD_SPAN = 96;
+    /* ── a DESIGNED curve is not a survey and must not be filtered ─────
+       Everything below this line exists to get a usable road out of
+       surveyed points: 840 px apart, straight between them, turning all
+       at once at each one. A road we generated ourselves — the frontage
+       of a rest area, the loop-back of an exit — has none of those
+       problems. Its points are already eight pixels apart on a smooth
+       curve, and its whole design is that the offset from the mainline
+       and the RATE of that offset both reach zero at each end, so it
+       leaves and rejoins exactly tangent with nothing to stitch.
+
+       Filtering it broke precisely that. Both filters are one-sided at
+       the ends — there is no road beyond a ramp to average against — so
+       the last stations got bent, and the tangency the shape was built
+       to have was gone: the heading at the merge was out by up to 10.8°.
+       The car and the camera both take their heading from the road, so
+       rejoining the freeway kicked the whole screen sideways.
+
+       So a generated curve says `smooth: false` and keeps its own shape,
+       with the heading read straight off its neighbours. A surveyed one
+       says nothing and is filtered as before. */
+    const raw = o.smooth === false;
+    const HEAD_SPAN = raw ? 2 : 96;
     for (let i = 0; i <= count; i++) {
       const a = st[Math.max(0, i - HEAD_SPAN)];
       const b = st[Math.min(count, i + HEAD_SPAN)];
@@ -355,7 +450,7 @@ const Road = (() => {
        afterwards — stations must be exactly STEP apart or `s / STEP`
        stops finding them. */
     const SMOOTH_SPAN = 40;
-    if (count > SMOOTH_SPAN * 2) {
+    if (!raw && count > SMOOTH_SPAN * 2) {
       const sx = new Float64Array(count + 1), sy = new Float64Array(count + 1);
       let ax = 0, ay = 0;
       // seed with [0, SPAN): the loop's first pass adds index SPAN itself
@@ -406,8 +501,14 @@ const Road = (() => {
     r.st = kept;
     const L = kept.length;
     r.aux = new Array(L).fill(0);
+    r.auxL = new Array(L).fill(0);
     r.lanes = new Array(L).fill(o.fwd != null ? o.fwd : 3);
+    r.bLanes = new Array(L).fill(o.back != null ? o.back : 2);
     r.inner = new Array(L).fill(0);
+    r.innerL = new Array(L).fill(0);
+    r.medW = new Array(L).fill(MED);
+    r.medRail = new Array(L).fill(0);
+    r.shIn = new Array(L).fill(SH_IN);
     r.deck = new Array(L).fill(0);
     r.wrap = closed;
     /* Where station ZERO actually is, not where the window was asked to
@@ -485,8 +586,14 @@ const Road = (() => {
     const r = make("freeway", sampled[0].x, sampled[0].y, sampled[0].h, o);
     r.st = sampled;
     r.aux = new Array(sampled.length).fill(0);
+    r.auxL = new Array(sampled.length).fill(0);
     r.lanes = new Array(sampled.length).fill(o.fwd != null ? o.fwd : 3);
+    r.bLanes = new Array(sampled.length).fill(o.back != null ? o.back : 2);
     r.inner = new Array(sampled.length).fill(0);
+    r.innerL = new Array(sampled.length).fill(0);
+    r.medW = new Array(sampled.length).fill(MED);
+    r.medRail = new Array(sampled.length).fill(0);
+    r.shIn = new Array(sampled.length).fill(SH_IN);
     r.deck = new Array(sampled.length).fill(0);
     r.wrap = closed;
     rebound(r);
@@ -544,35 +651,36 @@ const Road = (() => {
     return { x: f.x + Math.cos(f.h) * u, y: f.y - Math.sin(f.h) * u, h: f.h };
   }
 
-  const auxAt = (r, s) => {
-    const f = clamp(s / STEP, 0, r.aux.length - 1);
-    const i = Math.min(r.aux.length - 2, Math.floor(f));
-    if (r.aux.length < 2) return r.aux[0] || 0;
-    return r.aux[i] + (r.aux[i + 1] - r.aux[i]) * (f - i);
+  /* Read a per-station array at a distance, interpolated. Every one of
+     these used to be its own six-line copy of the same three lines, and
+     the copies had already drifted — the fallback for a one-station road
+     returned 0 in one and 1 in another. */
+  const sample = (a, s, dflt) => {
+    if (!a || !a.length) return dflt;
+    if (a.length < 2) return a[0] != null ? a[0] : dflt;
+    const f = clamp(s / STEP, 0, a.length - 1);
+    const i = Math.min(a.length - 2, Math.floor(f));
+    return a[i] + (a[i + 1] - a[i]) * (f - i);
   };
-  const lanesAt = (r, s) => {
-    const f = clamp(s / STEP, 0, r.lanes.length - 1);
-    const i = Math.min(r.lanes.length - 2, Math.floor(f));
-    if (r.lanes.length < 2) return r.lanes[0] || 1;
-    return r.lanes[i] + (r.lanes[i + 1] - r.lanes[i]) * (f - i);
-  };
-  const innerAt = (r, s) => {
-    const f = clamp(s / STEP, 0, r.inner.length - 1);
-    const i = Math.min(r.inner.length - 2, Math.floor(f));
-    if (r.inner.length < 2) return r.inner[0] || 0;
-    return r.inner[i] + (r.inner[i + 1] - r.inner[i]) * (f - i);
-  };
+
+  const auxAt = (r, s) => sample(r.aux, s, 0);
+  /* The same lane on the other carriageway. See the header: without it
+     a westbound exit widened the eastbound side of the motorway. */
+  const auxAtL = (r, s) => sample(r.auxL, s, 0);
+  const lanesAt = (r, s) => sample(r.lanes, s, 1);
+  /* Lanes against the direction of travel. `r.back` is the scalar this
+     is seeded from and remains the default for roads that never vary;
+     on the corridor it varies, and a single number taken from the middle
+     of a twenty-mile window was the wrong width for most of it. */
+  const backLanesAt = (r, s) => (r.bLanes ? sample(r.bLanes, s, r.back) : r.back);
+  const innerAt = (r, s) => sample(r.inner, s, 0);
+  const innerAtL = (r, s) => sample(r.innerL, s, 0);
   /* How high this road is at this point, in decks. Interpolated rather
      than stepped, so a bridge approach is a grade you climb and not a
      cliff you teleport up: everything that asks this question is really
      asking "is that other road at my level", and a road halfway up its
      approach embankment is honestly answered by 0.5. */
-  const deckAt = (r, s) => {
-    if (!r.deck || r.deck.length < 2) return (r.deck && r.deck[0]) || 0;
-    const f = clamp(s / STEP, 0, r.deck.length - 1);
-    const i = Math.min(r.deck.length - 2, Math.floor(f));
-    return r.deck[i] + (r.deck[i + 1] - r.deck[i]) * (f - i);
-  };
+  const deckAt = (r, s) => sample(r.deck, s, 0);
 
   /* The sealed surface, as offsets. Everything outside is shoulder,
      then gravel, then grass, then something that ends your run.
@@ -583,14 +691,37 @@ const Road = (() => {
      extra lane appears on the right and the merging lane runs dead
      straight through. Anchored centrally, the whole ramp would shuffle
      sideways by half a lane as it widened, and you would feel it. */
+  /* ── the middle of the road, per station ─────────────────────────────
+     `insideAt` is the offset from the centreline to the first lane edge:
+     the median half-width plus the paved inside shoulder. Almost every
+     caller wants exactly that sum, which is why it is one function and
+     not two — the pair `r.med + SH_IN` appeared in fifteen places and
+     every one of them had to change together or not at all.
+
+     `medAt` is kept separate for the two questions that really are about
+     the median itself: where to put a barrier, and whether a given point
+     is standing in it. */
+  const medAt = (r, s) =>
+    r.kind === "ramp" ? 0 : sample(r.medW, s, r.med != null ? r.med : MED);
+  const shInAt = (r, s) =>
+    r.kind === "ramp" ? 0 : sample(r.shIn, s, SH_IN);
+  const insideAt = (r, s) => medAt(r, s) + shInAt(r, s);
+  /* Half-width of the median rail, or 0 where there is none. Only
+     asked of a median too wide for a concrete barrier — inside that
+     width the barrier IS the median. */
+  const MED_RAIL_W = 1.5;
+  const medRailAt = (r, s) =>
+    r.kind !== "ramp" && medAt(r, s) > MED_BARRIER && sample(r.medRail, s, 0) > 0.5
+      ? MED_RAIL_W : 0;
+
   function edges(r, s) {
     if (r.kind === "ramp") {
       return { uL: -LANE / 2, uR: (r.rampLanes - 0.5) * LANE };
     }
     const inside = innerAt(r, s);
     return {
-      uL: -(r.med + SH_IN + r.back * LANE),
-      uR: r.med + SH_IN + inside + lanesAt(r, s) * LANE + auxAt(r, s),
+      uL: -(insideAt(r, s) + innerAtL(r, s) + backLanesAt(r, s) * LANE + auxAtL(r, s)),
+      uR: insideAt(r, s) + inside + lanesAt(r, s) * LANE + auxAt(r, s),
     };
   }
 
@@ -599,18 +730,29 @@ const Road = (() => {
      that exits, on either side. */
   function laneCount(r, s, dirFwd) {
     if (r.kind === "ramp") return r.rampLanes;
-    return dirFwd ? Math.max(1, Math.round(lanesAt(r, s))) : r.back;
+    return Math.max(dirFwd ? 1 : 0,
+                    Math.round(dirFwd ? lanesAt(r, s) : backLanesAt(r, s)));
   }
   function laneU(r, s, lane, dirFwd) {
     if (r.kind === "ramp") return LANE * lane;
     return dirFwd
-      ? r.med + SH_IN + innerAt(r, s) + LANE * (lane + 0.5)
-      : -(r.med + SH_IN + LANE * (lane + 0.5));
+      ? insideAt(r, s) + innerAt(r, s) + LANE * (lane + 0.5)
+      : -(insideAt(r, s) + innerAtL(r, s) + LANE * (lane + 0.5));
   }
   /* Centre of the first auxiliary lane. More lanes can sit outside it,
-     but lane zero must not slide sideways as they open. */
-  const auxLaneU = (r, s) => r.med + SH_IN + innerAt(r, s) + lanesAt(r, s) * LANE
-    + Math.min(LANE, auxAt(r, s)) / 2;
+     but lane zero must not slide sideways as they open.
+
+     `side` is which carriageway, and the return is ALREADY SIGNED — a
+     left-hand aux lane comes back negative. Callers used to write
+     `side > 0 ? auxLaneU(r, s) : -auxLaneU(r, s)`, which negated a
+     number measured on the wrong side of the road: it put the westbound
+     ramps up to 41 px off the pavement, and five of eighteen clean off
+     it. There is only one right answer per side and this returns it. */
+  const auxLaneU = (r, s, side) => (side < 0
+    ? -(insideAt(r, s) + innerAtL(r, s) + backLanesAt(r, s) * LANE
+        + Math.min(LANE, auxAtL(r, s)) / 2)
+    : insideAt(r, s) + innerAt(r, s) + lanesAt(r, s) * LANE
+      + Math.min(LANE, auxAt(r, s)) / 2);
 
   /* ── projection ─────────────────────────────────────────────────────
      Given a world point, where is it on this road? Used every frame for
@@ -657,14 +799,34 @@ const Road = (() => {
   /* ── the deceleration lanes ─────────────────────────────────────────
      Paint one to three aux lanes onto the full approach: each added
      lane gets a 92 m taper, then all run full width for 137 m before
-     the gore. After the gore they are zero; from there on, those same
-     strips of surface belong to the ramp.
+     the gore. After the gore those same strips of surface belong to the
+     ramp, so the freeway gives them up — over WEDGE, not at once.
      The arrival is deliberately longer still, because a parallel merge
-     lane should feel like time to merge rather than a trapdoor. */
+     lane should feel like time to merge rather than a trapdoor.
+
+     ── WEDGE, and the white line that jumped a lane ──────────────────
+     These two functions used to write only the half of the shape they
+     were named for: openAux ramped the lane up to full width and then
+     stopped, and closeAux began at full width out of nothing. The
+     stations either side of those points therefore held 0 and a full
+     20.5 px lane, eight pixels apart.
+
+     Nothing rounds that off downstream. The asphalt band is usually
+     hidden under the ramp so the step in it does not read, but the edge
+     line is drawn per eight-pixel piece from edges().uR and markings are
+     a later pass, so the white line ran 20.5 px sideways in 8 px of
+     road: a bar at 69° slashed across the exit. Thirty-six of them in a
+     twenty-mile window, two per exit per direction.
+
+     So both ends taper. 40 stations is 320 px, which is close to the
+     rate the ramp itself pulls away from the carriageway over the same
+     ground, so the closing edge line stays roughly parallel to the gore
+     instead of chasing it. */
   const TAPER = 64;         // 92 m: the extra lane opens to full width
   const DECEL = 96;         // 137 m: full-width lane before the gore
   const EXIT_APPROACH = TAPER + DECEL;
   const MERGE = 150;        // 215 m: parallel acceleration/merge lane
+  const WEDGE = 40;         // stations: the aux lane closing up again
   const exitApproach = (lanes) => TAPER * Math.max(1, lanes | 0) + DECEL;
   const mergeLength = (lanes) => MERGE * Math.max(1, lanes | 0);
 
@@ -683,45 +845,147 @@ const Road = (() => {
      street beside an interchange has neither the room nor the need, and
      forcing the freeway figure on it would run the bay back through the
      bridge it is standing on. */
-  function openAux(r, i, lanes, over) {
+  /* Which carriageway's aux array, given a side. `side < 0` is the
+     oncoming one — the −u edge — and it exists because exits happen on
+     both of them. */
+  const auxSide = (r, side) => (side < 0 ? r.auxL : r.aux);
+
+  /* Which way "upstream" is, in stations. The oncoming carriageway is
+     driven against the corridor's own numbering, so its approach lane
+     has to open at falling index and taper away at rising index — build
+     it the other way round and the deceleration lane appears where a
+     westbound driver has already gone past. */
+  const auxDir = (side) => (side < 0 ? -1 : 1);
+
+  function openAux(r, i, lanes, over, side) {
     lanes = Math.max(1, Math.min(3, lanes | 0));
+    const a = auxSide(r, side);
+    const d = auxDir(side);
     const approach = over > 0 ? Math.round(over) : exitApproach(lanes);
+    const taper = over > 0 ? approach * 0.55 : TAPER;
+    const width = (k) => {
+      let w = 0;
+      for (let lane = 0; lane < lanes; lane++) w += LANE * smooth((k - lane * taper) / taper);
+      return w;
+    };
     for (let k = 0; k <= approach; k++) {
-      const j = i - approach + k;
-      if (j < 0 || j >= r.aux.length) continue;
-      const taper = over > 0 ? approach * 0.55 : TAPER;
-      let width = 0;
-      for (let lane = 0; lane < lanes; lane++) width += LANE * smooth((k - lane * taper) / taper);
-      r.aux[j] = Math.max(r.aux[j], width);
+      const j = i - d * (approach - k);
+      if (j < 0 || j >= a.length) continue;
+      a[j] = Math.max(a[j], width(k));
+    }
+    /* …and then it has to close up again. The lane the ramp took is not
+       the freeway's any more, so the freeway's edge comes back in — over
+       WEDGE, from exactly the width it had reached, so the two agree at
+       the gore station and nothing steps. */
+    const full = width(approach);
+    for (let k = 1; k <= WEDGE; k++) {
+      const j = i + d * k;
+      if (j < 0 || j >= a.length) continue;
+      a[j] = Math.max(a[j], full * smooth(1 - k / WEDGE));
     }
   }
 
   /* The mirror image, for the far end of a ramp: its one to three lanes
      arrive full width and thin away together, forcing traffic to merge
-     rather than simply appearing in the destination carriageway. */
-  function closeAux(r, i, lanes, over) {
+     rather than simply appearing in the destination carriageway. `i` is
+     the station the ramp actually ARRIVES at — the lead-in below is what
+     opens the pavement up to meet it, and callers that shifted `i`
+     upstream to fake that lead-in should stop.
+
+     ── the lead-in is an ACCELERATION LANE, not a wedge ────────────────
+     It used to be WEDGE, the same 320 px the gore closes over, and that
+     is far too short for this end. A ramp does not arrive at the
+     freeway; it converges on it, over a fifteen-hundred-pixel taper, and
+     for all but the last few of those the freeway had not opened its
+     lane yet. So the ramp ran alongside with the two roads' edge lines
+     three pixels apart, each painting a solid line, for a quarter of a
+     mile before every merge.
+
+     Opening it over the same distance the lane later closes makes the
+     two ends of a merge symmetric and gives the thing its real shape:
+     the pavement is there, full width, and then it tapers away and you
+     are expected to have merged. */
+  function closeAux(r, i, lanes, over, side) {
     lanes = Math.max(1, Math.min(3, lanes | 0));
+    const a = auxSide(r, side);
+    const d = auxDir(side);
     const length = over > 0 ? Math.round(over) : mergeLength(lanes);
+    const full = lanes * LANE;
+    for (let k = 1; k <= length; k++) {
+      const j = i - d * k;
+      if (j < 0 || j >= a.length) continue;
+      a[j] = Math.max(a[j], full * smooth(1 - k / length));
+    }
     for (let k = 0; k <= length; k++) {
-      const j = i + k;
-      if (j < 0 || j >= r.aux.length) continue;
-      const t = 1 - k / length;
-      r.aux[j] = Math.max(r.aux[j], lanes * LANE * smooth(t));
+      const j = i + d * k;
+      if (j < 0 || j >= a.length) continue;
+      a[j] = Math.max(a[j], full * smooth(1 - k / length));
     }
   }
 
-  /* A left exit takes the existing inside lanes. The continuing road's
+  /* ── a lane drop ────────────────────────────────────────────────────
+     A left exit takes the existing inside lanes. The continuing road's
      remaining lane centres stay exactly where they were; its inside
-     shoulder simply becomes wider by the width of the lanes that left. */
-  function dropLeft(r, i, count) {
-    const from = Math.round(lanesAt(r, i * STEP));
+     shoulder simply becomes wider by the width of the lanes that left.
+     That is the whole difference between a left exit and a right one,
+     and it is why there is no deceleration lane on this side: there is
+     nothing to decelerate into, because the lane you are in IS the
+     ramp. Two lanes of I-40 west become two lanes of I-75 south at the
+     Knoxville wye and they never come back.
+
+     `side < 0` does it to the other carriageway, which on I-40 is where
+     the only left exit actually is. The arrays are the mirror pair —
+     bLanes and innerL — and "downstream" is falling index, because the
+     oncoming carriageway is driven against the corridor's numbering.
+
+     ── why the count is PINNED ahead of the nose ──────────────────────
+     applyLanes() eases the surveyed count over ±120 stations, so a
+     4-to-2 change reads 2.7 lanes a thousand pixels BEFORE the gore.
+     For a taper that is right and for a drop it is not: at a wye you
+     have all four lanes right up to the nose and then two of them are
+     a different Interstate. Pinned, the outer edge holds and the paint
+     stays straight into the gore.
+
+     ── and why it heals ───────────────────────────────────────────────
+     The corridor's centreline is I-40's own, so a mile past the wye the
+     road is an ordinary symmetric two-lane carriageway again. Left
+     displaced, it would run the rest of a twenty-mile window two lanes
+     out from its own median. `heal: 0` — the default, and what the
+     fictional map's makeRamp has always had — means never close up. */
+  const DROP_PIN = 140;              // stations of full width before the nose
+  function dropLeft(r, i, count, side, opts) {
+    opts = opts || {};
+    const back = side < 0;
+    const arr = back ? r.bLanes : r.lanes;
+    const inn = back ? r.innerL : r.inner;
+    if (!arr || !arr.length || !inn) return 0;
+    const d = back ? -1 : 1;                    // the way its driver goes
+    const n = arr.length;
+    const pin = opts.pin != null ? opts.pin : DROP_PIN;
+    const upAt = clamp(i - d * pin, 0, n - 1);   // clear of the survey's taper
+    const from = Math.round(sample(arr, upAt * STEP, back ? r.back : r.fwd));
     count = Math.max(1, Math.min(count | 0, from - 2));
     const width = count * LANE;
-    for (let j = i; j < r.lanes.length; j++) {
-      r.inner[j] += width;
-      r.lanes[j] = Math.max(2, r.lanes[j] - count);
+    const to = from - count;
+
+    for (let k = 0; k <= pin; k++) {
+      const j = i - d * k;                      // upstream: ahead of the nose
+      if (j < 0 || j >= n) break;
+      arr[j] = Math.max(arr[j], from);
+      inn[j] = 0;
     }
-    r.fwd = Math.max(2, r.fwd - count);
+    const hold = opts.hold != null ? opts.hold : Infinity;
+    const heal = opts.heal != null ? opts.heal : 0;
+    const last = hold + heal;
+    for (let k = 1; k <= last; k++) {
+      const j = i + d * k;                      // downstream: past it
+      if (j < 0 || j >= n) break;
+      arr[j] = Math.min(arr[j], to);
+      const t = k > hold ? Math.max(0, 1 - (k - hold) / heal) : 1;
+      inn[j] = Math.max(inn[j], width * smooth(t));
+    }
+    if (back) r.back = Math.max(2, r.back - count);
+    else r.fwd = Math.max(2, r.fwd - count);
     return count;
   }
 
@@ -763,7 +1027,7 @@ const Road = (() => {
     if (side < 0 && before < 3) side = 1;
     if (side < 0) lanes = Math.min(lanes, before - 2);
     if (side > 0) openAux(parent, i, lanes);
-    const inside = parent.med + SH_IN + innerAt(parent, s - STEP);
+    const inside = insideAt(parent, s - STEP) + innerAt(parent, s - STEP);
     const u = side > 0
       ? inside + before * LANE + LANE / 2
       : inside + LANE / 2;
@@ -818,8 +1082,11 @@ const Road = (() => {
       note(r, q);
       travelled += STEP;
       r.aux.push(0);
+      r.auxL.push(0);
       r.lanes.push(lanes);
+      r.bLanes.push(0);
       r.inner.push(0);
+      r.innerL.push(0);
       r.deck.push(0);
     }
     /* Which stations stop wearing a verge is not decided here. It is
@@ -867,7 +1134,7 @@ const Road = (() => {
     const s = i * STEP;
     const before = Math.round(lanesAt(parent, s - STEP));
     openAux(parent, i, lanes, options.approach);
-    const startU = parent.med + SH_IN + innerAt(parent, s - STEP)
+    const startU = insideAt(parent, s - STEP) + innerAt(parent, s - STEP)
       + before * LANE + LANE / 2;
     const p = at(parent, s, startU);
 
@@ -936,8 +1203,11 @@ const Road = (() => {
       ramp.st.push(station);
       note(ramp, station);
       ramp.aux.push(0);
+      ramp.auxL.push(0);
       ramp.lanes.push(lanes);
+      ramp.bLanes.push(0);
       ramp.inner.push(0);
+      ramp.innerL.push(0);
       ramp.deck.push(0);
     }
     ramp.merge = { into: target, s: targetS, i: targetI,
@@ -947,11 +1217,13 @@ const Road = (() => {
   }
 
   return {
-    STEP, LANE, MED, SH_IN, SH_OUT, VERGE, RAMP_SH,
-    TAPER, DECEL, EXIT_APPROACH, MERGE, GORE, LANE_CHANGE, exitApproach, mergeLength,
+    STEP, LANE, MED, MED_BARRIER, MED_RURAL, MED_SUBURB, SH_IN, SH_OUT, VERGE, RAMP_SH,
+    medAt, shInAt, insideAt, medRailAt, MED_RAIL_W,
+    TAPER, DECEL, EXIT_APPROACH, MERGE, WEDGE, GORE, LANE_CHANGE, exitApproach, mergeLength,
     suppressed,
     make, makeRoute, makeStreet, grow, growBack, len, nearBounds,
-    frame, at, edges, laneU, laneCount, auxAt, auxLaneU, lanesAt, innerAt, deckAt,
+    frame, at, edges, laneU, laneCount, auxAt, auxAtL, auxLaneU,
+    lanesAt, backLanesAt, innerAt, innerAtL, deckAt,
     rebound,
     project, makeRamp, makeLink, openAux, closeAux, changeLanes, dropLeft, setRandom,
   };

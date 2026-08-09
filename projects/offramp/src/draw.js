@@ -71,6 +71,7 @@ const Draw = (() => {
     player: "#d94b3a", playerTrim: "#f2e6cf", playerDead: "#8e3128",
     cone: "#ff7a33", coneBand: "#f2e6cf",
     signGreen: "#1c5c34", signBlue: "#1d3f7a", signWhite: "#e8e2cc",
+    work: "#e8761c",            /* temporary traffic control orange */
     smoke: "#7a7a86", fire: "#ffb020", shadow: "#0c0c10",
     dark: "#1a1a20",
   };
@@ -145,7 +146,7 @@ const Draw = (() => {
      lines are therefore chopped into short pieces and dashes are short
      enough to be pieces already. */
   const SEGQ = new Float64Array(8);
-  function seg(r, a, b, u, w, col, u2) {
+  function seg(r, a, b, u, w, u2) {
     const p = R.at(r, a, u), q = R.at(r, b, u2 == null ? u : u2);
     const x1 = sx(p.x, p.y), y1 = sy(p.x, p.y);
     const x2 = sx(q.x, q.y), y2 = sy(q.x, q.y);
@@ -167,7 +168,22 @@ const Draw = (() => {
 
        poly() blends its span ends now, so the honest version works: lay
        the quad along the true normal and let coverage do the rest. The
-       dashes bend with the road instead of stepping down it. */
+       dashes bend with the road instead of stepping down it.
+
+       ── a piece is not a shape ────────────────────────────────────────
+       Span coverage fixed how a marking sits ACROSS a row and did
+       nothing for where it starts and stops ALONG one, because a piece
+       drawn straight onto the buffer has to claim whole rows to tile
+       with the piece after it. So a dash 6.4 rows long drew as 6 or 7
+       depending where it fell, and a line lying across the screen
+       quantised in width.
+
+       The fix is not to draw a piece at all. Every piece goes into the
+       coverage mask, the pieces of one marking sum there — butted ends
+       contributing 0.3 and 0.7 of a row make exactly the 1.0 an unbroken
+       line would have — and `paint()` lays the finished thing down in a
+       single pass. Joints cannot show, because no pixel is touched
+       twice. See maskPoly in raster.js. */
     const dx = x2 - x1, dy = y2 - y1;
     const L = Math.hypot(dx, dy);
     if (L < 1e-6) return;
@@ -176,8 +192,13 @@ const Draw = (() => {
     SEGQ[2] = x1 + hx; SEGQ[3] = y1 + hy;
     SEGQ[4] = x2 + hx; SEGQ[5] = y2 + hy;
     SEGQ[6] = x2 - hx; SEGQ[7] = y2 - hy;
-    X.poly(SEGQ, col);
+    X.maskPoly(SEGQ);
   }
+
+  /* One marking, finished and laid down. Every generator below builds
+     its pieces and then calls this exactly once, with the one colour
+     that marking is painted in. */
+  const paint = (col) => X.maskDraw(col);
 
   const SOLID_SEG = 10;          // px of road per piece of a solid line
 
@@ -190,11 +211,12 @@ const Draw = (() => {
       const step = dashOn + dashOff;
       for (let s = Math.floor(s0 / step) * step; s < s1; s += step) {
         const a = Math.max(s0, s), b = Math.min(s1, s + dashOn);
-        if (b > a) seg(r, a, b, u, w, col);
+        if (b > a) seg(r, a, b, u, w);
       }
     } else {
-      for (let s = s0; s < s1; s += SOLID_SEG) seg(r, s, Math.min(s1, s + SOLID_SEG), u, w, col);
+      for (let s = s0; s < s1; s += SOLID_SEG) seg(r, s, Math.min(s1, s + SOLID_SEG), u, w);
     }
+    paint(col);
   }
 
   /* A through-lane boundary exists only while there is pavement on
@@ -205,17 +227,23 @@ const Draw = (() => {
     for (let s = Math.floor(s0 / cycle) * cycle; s < s1; s += cycle) {
       const a = Math.max(s0, s), b = Math.min(s1, s + on);
       if (b <= a) continue;
-      const count = dirFwd ? R.lanesAt(r, (a + b) / 2) : r.back;
+      const count = dirFwd ? R.lanesAt(r, (a + b) / 2) : R.backLanesAt(r, (a + b) / 2);
       if (count <= boundary + 0.06) continue;
+      /* Measured at BOTH ends of the piece, on both carriageways. The
+         oncoming one used to take its second offset from its first,
+         which is a flat line and was fine while nothing could move that
+         edge — and then exit 368 dropped two lanes off the inside of
+         it, which is precisely a boundary that moves. */
       const ua = dirFwd
-        ? r.med + R.SH_IN + R.innerAt(r, a) + R.LANE * boundary
-        : -(r.med + R.SH_IN + R.LANE * boundary);
+        ? R.insideAt(r, a) + R.innerAt(r, a) + R.LANE * boundary
+        : -(R.insideAt(r, a) + R.innerAtL(r, a) + R.LANE * boundary);
       const ub = dirFwd
-        ? r.med + R.SH_IN + R.innerAt(r, b) + R.LANE * boundary
-        : ua;
-      if (dirFwd && Math.abs(ub - ua) > R.LANE / 2) continue; // do not slash across a left-exit gore
-      seg(r, a, b, ua, 1.1, C.line, ub);
+        ? R.insideAt(r, b) + R.innerAt(r, b) + R.LANE * boundary
+        : -(R.insideAt(r, b) + R.innerAtL(r, b) + R.LANE * boundary);
+      if (Math.abs(ub - ua) > R.LANE / 2) continue; // do not slash across a left-exit gore
+      seg(r, a, b, ua, 1.1, ub);
     }
+    paint(C.line);
   }
 
   /* ── terrain ────────────────────────────────────────────────────────
@@ -297,6 +325,15 @@ const Draw = (() => {
         band(k, k + 1, uR + shR, uR + shR + R.VERGE, C.gravel);
         if (hash2(i, 7) > 0.55) band(k, k + 1, uR + shR + 2, uR + shR + 5, C.gravelDk);
       }
+      /* A depressed median has two more edges in it, and they are edges
+         of the same kind: sealed surface giving way to ground. Without
+         these the inside shoulder stops in a hard line against grass,
+         which is the one place on a road that never looks right. */
+      const mw = ramp ? 0 : R.medAt(r, s);
+      if (mw > R.MED_BARRIER + R.VERGE) {
+        band(k, k + 1, mw - R.VERGE, mw, C.gravel);
+        band(k, k + 1, -mw, -mw + R.VERGE, C.gravel);
+      }
     }
   }
 
@@ -347,16 +384,76 @@ const Draw = (() => {
       const e = R.edges(r, s);
       const e2 = R.edges(r, s + R.STEP);
       const uL = Math.min(e.uL, e2.uL), uR = Math.max(e.uR, e2.uR);
-      // sealed, shoulders included
-      band(k, k + 1, uL - shL, uR + shR, C.asphalt);
+      /* ── one ribbon, or two roads ──────────────────────────────────
+         With a barrier down the middle the two carriageways are a single
+         sealed surface, and it is cheaper and cleaner to lay it as one
+         band with the barrier going on top afterwards. Past the width
+         where a barrier stops being built they are not one surface any
+         more — they are two roads with a field between them — and
+         painting straight across would tarmac sixty feet of grass. */
+      const mw = ramp ? 0 : R.medAt(r, s);
+      const split = mw > R.MED_BARRIER;
+      if (split) {
+        band(k, k + 1, uL - shL, -mw, C.asphalt);     // the other direction
+        band(k, k + 1, mw, uR + shR, C.asphalt);      // yours
+      } else {
+        band(k, k + 1, uL - shL, uR + shR, C.asphalt);
+      }
 
       // wear: patches, stains, and the odd transverse seam
       const hh = hash(i0 + k);
       if (hh > 0.90) band(k, k + 1, uL + hh * 40, uL + hh * 40 + 12 + hash2(i0 + k, 9) * 16, C.patch);
       else if (hh < 0.08) band(k, k + 1, uR - 10 - hh * 90, uR - 4 - hh * 90, C.stain);
-      if (hh > 0.44 && hh < 0.47) band(k, k + 1, uL, uR, C.asphaltDk);
+      if (hh > 0.44 && hh < 0.47) {
+        if (split) { band(k, k + 1, uL, -mw, C.asphaltDk); band(k, k + 1, mw, uR, C.asphaltDk); }
+        else band(k, k + 1, uL, uR, C.asphaltDk);
+      }
     }
 
+  }
+
+  /* ── what collects on a hard shoulder ───────────────────────────────
+     Nobody drives on it, so everything that leaves a vehicle stays
+     there: grit swept off the running lanes, gravel dragged out of the
+     verge by tyres, and the black rags a retread leaves behind. It is
+     the one thing on the sealed surface that is neither tarmac nor
+     paint, and it is what makes a shoulder read as a shoulder rather
+     than as spare road.
+
+     Kept deliberately sparse — a speck every third station or so, never
+     a scatter — because at 220 mph a busy shoulder turns into noise.
+     Anchored to the station index through `hash2`, so a given bit of
+     grit is always in the same place on the same stretch of road and
+     slides past rather than twinkling, and drawn through the coverage
+     mask like the paint is, so a one-pixel speck moves smoothly instead
+     of snapping between pixels the way the grass tufts do. */
+  const SPECK = new Float64Array(8);
+  function debris(r, i0, i1) {
+    const sh = r.kind === "ramp" ? R.RAMP_SH : R.SH_OUT;
+    /* Two passes, because the mask carries coverage and not colour: all
+       the grit, laid down at once, then all the gravel. */
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = i0; i < i1; i++) {
+        if (hash2(i, 419) > 0.30) continue;             // most stations, nothing
+        const g = hash2(i, 613);
+        if ((g > 0.74) !== (pass === 1)) continue;
+        const s = i * R.STEP + hash2(i, 71) * R.STEP;
+        const e = R.edges(r, s);
+        // the outside shoulder collects most of it; the median side some
+        const right = hash2(i, 233) > 0.34;
+        const t = 0.18 + hash2(i, 907) * 0.66;          // how far across
+        const p = R.at(r, s, right ? e.uR + t * sh : e.uL - t * sh);
+        const px = sx(p.x, p.y), py = sy(p.x, p.y);
+        if (px < -4 || py < -4 || px > VW + 4 || py > VH + 4) continue;
+        const w = (hash2(i, 1123) > 0.88 ? 1.9 : 1.15) / 2;
+        SPECK[0] = px - w; SPECK[1] = py - w;
+        SPECK[2] = px + w; SPECK[3] = py - w;
+        SPECK[4] = px + w; SPECK[5] = py + w;
+        SPECK[6] = px - w; SPECK[7] = py + w;
+        X.maskPoly(SPECK);
+      }
+      paint(pass ? C.gravelDk : C.stain);
+    }
   }
 
   /* ── what stands beside and between the lanes ───────────────────────
@@ -371,13 +468,29 @@ const Draw = (() => {
     const shL = ramp ? R.RAMP_SH : R.SH_OUT;
     const shR = ramp ? R.RAMP_SH : R.SH_OUT;
 
-    if (!ramp && r.med > 0) {
+    /* A barrier only where a barrier would actually be built. Sixty feet
+       of grass gets nothing down the middle of it, which is both what the
+       road looks like and the reason a wide median is survivable in a way
+       a wall is not. */
+    if (!ramp) {
       for (let k = 0; k < n; k++) {
-        band(k, k + 1, -r.med, r.med, C.barrierDk);
-        band(k, k + 1, -r.med, -r.med + 1.5, C.kerb);
-        band(k, k + 1, r.med - 1.5, r.med, C.kerb);
-        band(k, k + 1, -1.5, 1.5, C.barrier);
-        if ((i0 + k) % 3 === 0) band(k, k + 1, -2.5, 2.5, C.post);
+        const i = i0 + k;
+        const mw = R.medAt(r, i * R.STEP);
+        if (mw <= 0) continue;
+        if (mw <= R.MED_BARRIER) {
+          band(k, k + 1, -mw, mw, C.barrierDk);
+          band(k, k + 1, -mw, -mw + 1.5, C.kerb);
+          band(k, k + 1, mw - 1.5, mw, C.kerb);
+          band(k, k + 1, -1.5, 1.5, C.barrier);
+          if (i % 3 === 0) band(k, k + 1, -2.5, 2.5, C.post);
+        } else if (R.medRailAt(r, i * R.STEP) > 0) {
+          /* Cable barrier: three strands on light posts, down the middle
+             of the grass. Drawn thin on purpose — from above it is almost
+             nothing, and that is exactly what it looks like from a car. */
+          const w = R.MED_RAIL_W;
+          band(k, k + 1, -w, w, C.rail);
+          if (i % 2 === 0) band(k, k + 1, -w - 0.8, w + 0.8, C.post);
+        }
       }
     }
 
@@ -419,52 +532,101 @@ const Draw = (() => {
      deceleration lane solid too — because on a real road that solid
      line is the instruction not to cross it once the gore has started,
      and it is the only warning the ramp gives you. */
+  /* ── an edge line only where there is an edge ───────────────────────
+     A solid white line at the side of a road says the pavement stops
+     here. Where it does not stop — where the road alongside is the same
+     continuous tarmac, which is every gore and every merge on this
+     corridor — there is nothing for the line to mark, and drawing it
+     anyway drew TWO of them crossing: the freeway's running out along
+     the deceleration lane while the ramp's ran in along its own, a lane
+     apart, cutting straight through each other.
+
+     A real gore has one line arriving and two leaving, and they meet at
+     the nose. The nose is precisely where each line stops being inside
+     the other road's surface, so suppressing the lines where they are
+     inside it produces exactly that picture, at every junction, without
+     anyone having to say where the nose is. World.dress() measures it. */
+  function edgeLine(r, s0, s1, right, w) {
+    const a0 = Math.max(s0, 0.5), a1 = Math.min(s1, R.len(r) - 8.5);
+    const skip = right ? r.noPaintR : r.noPaintL;
+    const off = right ? -1 : 1;
+    for (let s = a0; s < a1; s += 8) {
+      const b = Math.min(a1, s + 8);
+      if (R.suppressed(skip, Math.round(s / R.STEP))) continue;
+      const ua = right ? R.edges(r, s).uR : R.edges(r, s).uL;
+      const ub = right ? R.edges(r, b).uR : R.edges(r, b).uL;
+      seg(r, s, b, ua + off, w, ub + off);
+    }
+    paint(C.line);
+  }
+
   function markings(r, s0, s1) {
     if (r.kind === "ramp") {
-      stripe(r, s0, s1, -R.LANE / 2 + 1, 1.6, C.line, 0, 0);
+      edgeLine(r, s0, s1, false, 1.6);
       // the right edge moves with the flare, so it is sampled per piece
-      {
-        const a0 = Math.max(s0, 0.5), a1 = Math.min(s1, R.len(r) - 8.5);
-        for (let s = a0; s < a1; s += 8) {
-          const b = Math.min(a1, s + 8);
-          seg(r, s, b, R.edges(r, s).uR - 1, 1.6, C.line, R.edges(r, b).uR - 1);
-        }
-      }
+      edgeLine(r, s0, s1, true, 1.6);
       for (let l = 1; l < r.rampLanes; l++)
         stripe(r, s0, s1, (l - 0.5) * R.LANE, 1.1, C.line, 17, 51);
       return;
     }
-    const inner = r.med + R.SH_IN;
-    stripe(r, s0, s1, -(inner + r.back * R.LANE) + 1, 1.3, C.line, 0, 0);
-    /* The right-hand edge line has to follow the deceleration lane out
-       and back, so its offset is different at each end of every piece —
-       that is what the second u is for. */
-    {
-      const a0 = Math.max(s0, 0.5), a1 = Math.min(s1, R.len(r) - 8.5);
-      for (let s = a0; s < a1; s += 8) {
-        const b = Math.min(a1, s + 8);
-        seg(r, s, b, R.edges(r, s).uR - 1, 1.6, C.line, R.edges(r, b).uR - 1);
-      }
-    }
-    // yellow follows the inside shoulder when a rare left exit consumes lanes
+    /* Both edge lines have to follow their own deceleration lane out and
+       back, so each piece's offset differs at its two ends — that is what
+       the second u is for. The left one used to be a single straight
+       stripe at a fixed `r.back` lanes out, which was fine while only the
+       right-hand carriageway could have an aux lane and wrong the moment
+       the westbound exits got theirs. */
+    edgeLine(r, s0, s1, true, 1.6);
+    edgeLine(r, s0, s1, false, 1.6);
+    /* ── both yellow lines, per station ───────────────────────────────
+       These mark the inside edge of each carriageway, so they sit at
+       `insideAt`, and that is no longer one number for a window: the
+       median opens from a barrier to sixty feet of grass along this road.
+       Sampled once at the middle of the window — which is what this did
+       while the median was constant — the line would leave the pavement
+       at both ends of every window where the width changes.
+
+       The far side's used to be a single `stripe` at a constant −inner,
+       which cannot express a varying offset at all, so it is now the
+       same per-piece walk as the near one. Both are the same yellow, so
+       they accumulate into one mask pass and are laid down together. */
     for (let s = Math.max(s0, 0.5); s < s1; s += 8) {
       const b = Math.min(s1, s + 8);
-      const ua = inner + R.innerAt(r, s), ub = inner + R.innerAt(r, b);
-      if (Math.abs(ub - ua) <= R.LANE / 2) seg(r, s, b, ua, 1.25, C.yellow, ub);
+      const ia = R.insideAt(r, s), ib = R.insideAt(r, b);
+      const ua = ia + R.innerAt(r, s), ub = ib + R.innerAt(r, b);
+      /* Yellow follows the inside shoulder when a rare left exit
+         consumes lanes, on whichever carriageway it happened to. The
+         far side used to be plain `-insideAt`, which was the same
+         statement with the left-exit case left out of it — and I-40's
+         one left exit is on that side. Both skip the piece that spans
+         the drop, or the line slashes 41 px across eight of road. */
+      const va = -(ia + R.innerAtL(r, s)), vb = -(ib + R.innerAtL(r, b));
+      if (Math.abs(ub - ua) <= R.LANE / 2) seg(r, s, b, ua, 1.25, ub);
+      if (Math.abs(vb - va) <= R.LANE / 2) seg(r, s, b, va, 1.25, vb);
     }
-    stripe(r, s0, s1, -inner, 1.25, C.yellow, 0, 0);
+    paint(C.yellow);
     // MUTCD proportions: 10 ft line / 30 ft gap at freeway speeds
     for (let l = 1; l < 6; l++) throughStripe(r, s0, s1, l, true);
-    for (let l = 1; l < r.back; l++) throughStripe(r, s0, s1, l, false);
-    // 3 ft / 9 ft dotted lane line through a lane-add or lane-drop area
+    for (let l = 1; l < 6; l++) throughStripe(r, s0, s1, l, false);
+    /* 3 ft / 9 ft dotted lane line through a lane-add or lane-drop area,
+       on whichever carriageway has one open. */
     for (let split = 0; split < 3; split++) {
       for (let s = Math.floor(s0 / 20) * 20; s < s1; s += 20) {
         const a = Math.max(s0, s), b = Math.min(s1, s + 5);
-        if (b <= a || R.auxAt(r, (a + b) / 2) <= R.LANE * (split + 0.08)) continue;
-        const ua = inner + R.innerAt(r, a) + (R.lanesAt(r, a) + split) * R.LANE;
-        const ub = inner + R.innerAt(r, b) + (R.lanesAt(r, b) + split) * R.LANE;
-        seg(r, a, b, ua, 1.25, C.line, ub);
+        if (b <= a) continue;
+        if (R.auxAt(r, (a + b) / 2) > R.LANE * (split + 0.08)) {
+          const ua = R.insideAt(r, a) + R.innerAt(r, a) + (R.lanesAt(r, a) + split) * R.LANE;
+          const ub = R.insideAt(r, b) + R.innerAt(r, b) + (R.lanesAt(r, b) + split) * R.LANE;
+          seg(r, a, b, ua, 1.25, ub);
+        }
+        if (R.auxAtL(r, (a + b) / 2) > R.LANE * (split + 0.08)) {
+          const ua = -(R.insideAt(r, a) + R.innerAtL(r, a)
+                       + (R.backLanesAt(r, a) + split) * R.LANE);
+          const ub = -(R.insideAt(r, b) + R.innerAtL(r, b)
+                       + (R.backLanesAt(r, b) + split) * R.LANE);
+          seg(r, a, b, ua, 1.25, ub);
+        }
       }
+      paint(C.line);
     }
   }
 
@@ -494,36 +656,58 @@ const Draw = (() => {
 
        The edge of the ramp facing the mainline is therefore uL when
        those two agree and uR when they do not. */
-    const right = j.side > 0;
+    /* `right` is which way ACROSS the corridor the ramp leaves, which
+       for every right-hand exit is also the carriageway it serves and
+       for a left one is the opposite — a wye serves the −u carriageway
+       and departs toward +u, so the wedge opens the other way from
+       everything else on the road. */
+    const right = (j.out != null ? j.out : j.side) > 0;
     const mir = !!j.mirror;
     const dir = mir ? -1 : 1;
     const nearIsL = right !== mir;
-    const base = right
-      ? j.startU - R.LANE / 2
-      : j.startU + (j.lanes - 0.5) * R.LANE;
-    /* ── the wedge spans the GAP, not the two centrelines' lane edges ──
-       This used to run from the parent's lane edge to the ramp's lane
-       edge, and both of those sit INSIDE sealed pavement — a lane edge
-       has a ten-foot shoulder outside it. So the wedge was painted right
-       across both roads' shoulders: at the near end, where the two
-       pavements are still contiguous, that is a brown triangle laid over
-       solid tarmac on both sides. Measured off the rendered frame, 52%
-       of every brown pixel on screen was sitting on a sealed surface.
+    /* Half the RAMP's width from its centreline, not half a lane. Two
+       lanes leave at exit 368, so its nose is a lane and a half out. */
+    const half = (Math.max(1, j.lanes) - 0.5) * R.LANE;
+    const base = right ? j.startU - half : j.startU + half;
+    /* ── the wedge is bounded by the two EDGE LINES ────────────────────
+       Twice now this has been measured off the wrong pair of offsets.
+       First off the two lane edges, which sit inside sealed pavement, so
+       52% of every brown pixel was on tarmac. Then off the two outer
+       SEALED edges — right while the deceleration lane vanished at the
+       gore, wrong the moment it started tapering out over a wedge
+       instead: the freeway's sealed edge is then still a full lane
+       OUTSIDE the ramp for hundreds of pixels, so `max(base, sealPar)`
+       reached past the ramp and dragged the brown back across
+       everything. Measured again: 97% of the wedge on sealed pavement.
 
-       Real gore only exists where the two roads have actually parted, so
-       it is measured between the parent's outer SEALED edge and the
-       ramp's, and nothing is drawn at all until that gap opens. */
-    const sealPar = (s) => right ? R.edges(par, s).uR + R.SH_OUT
-                                 : R.edges(par, s).uL - R.SH_OUT;
-    const sealRamp = (d) => nearIsL ? R.edges(ramp, d).uL - R.RAMP_SH
-                                    : R.edges(ramp, d).uR + R.RAMP_SH;
+       The neutral area is the thing between the two solid white lines.
+       That is what it is on a real road — the photograph is unambiguous
+       — and those two lines are now computed, they meet at the nose, and
+       they are what markings() paints. Bounding the wedge by them makes
+       it exactly the shape it bounds, at every structure, and it cannot
+       come apart from the paint again because it IS the paint. */
+    /* The parent's line the wedge is bounded by. For a right-hand exit
+       that is the corridor's outer edge line, which the ramp is leaving
+       through. A left exit leaves through the YELLOW one instead — the
+       edge of the inside shoulder — and bounding its wedge by the white
+       line on the far side of the through lanes would have painted the
+       hatching across all four of them. */
+    const sealPar = (s) => (j.left
+      ? (right ? -(R.insideAt(par, s) + R.innerAtL(par, s))
+               : R.insideAt(par, s) + R.innerAt(par, s))
+      : right ? R.edges(par, s).uR - 1
+              : R.edges(par, s).uL + 1);
+    const sealRamp = (d) => nearIsL ? R.edges(ramp, d).uL + 1
+                                    : R.edges(ramp, d).uR - 1;
     for (let d = 0; d < LEN; d += 10) {
       const a = R.at(ramp, d, sealRamp(d));
       const b = R.at(ramp, d + 10, sealRamp(d + 10));
-      const pu = right ? Math.max(base, sealPar(j.s + dir * d))
-                       : Math.min(base, sealPar(j.s + dir * d));
-      const pu2 = right ? Math.max(base, sealPar(j.s + dir * (d + 10)))
-                        : Math.min(base, sealPar(j.s + dir * (d + 10)));
+      /* No `base` clamp any more. It was holding the inner boundary out
+         at the gore's lane edge because the old measurement collapsed
+         without it; the edge line does not collapse, it tapers in with
+         the pavement, which is the boundary the wedge actually has. */
+      const pu = sealPar(j.s + dir * d);
+      const pu2 = sealPar(j.s + dir * (d + 10));
       const pa = R.at(par, j.s + dir * d, pu);
       const pb = R.at(par, j.s + dir * (d + 10), pu2);
       /* Nothing until the two sealed surfaces have parted — and nothing
@@ -533,19 +717,31 @@ const Draw = (() => {
          field, which is green. Painting the full 360 px regardless meant
          a long brown slab thrown across open ground and, where the
          entrance ramp cuts back through, across its tarmac too. */
-      {
-        const gapA = Math.hypot(a.x - pa.x, a.y - pa.y);
-        const gapB = Math.hypot(b.x - pb.x, b.y - pb.y);
-        if (gapA < 2 && gapB < 2) continue;
-        if (gapA > 60 && gapB > 60) break;
-      }
+      const gapA = Math.hypot(a.x - pa.x, a.y - pa.y);
+      const gapB = Math.hypot(b.x - pb.x, b.y - pb.y);
+      if (gapA < 2 && gapB < 2) continue;
+      /* ── the wedge is the PAVED neutral area and nothing else ─────────
+         It ends where the two shoulders stop meeting across it — the
+         freeway's plus the ramp's, which are different widths, so it is
+         not twice either. Past that the two roads have properly parted
+         and what lies between them is a field: each road's own verge
+         pass has already laid its gravel and the ground is already
+         grass. Painting a brown slab across that span as well is how
+         this ended up thrown over the tarmac of both roads — 97% of the
+         wedge was on sealed surface when it was measured against the
+         outer sealed edges, and even bounded correctly a filled span
+         from line to line covers two paved shoulders that are not
+         ground. So there is nothing to draw once it is wide. */
+      if (gapA >= R.SH_OUT + R.RAMP_SH + 4) break;
       Q[0] = sx(pa.x, pa.y); Q[1] = sy(pa.x, pa.y);
       Q[2] = sx(a.x, a.y);   Q[3] = sy(a.x, a.y);
       Q[4] = sx(b.x, b.y);   Q[5] = sy(b.x, b.y);
       Q[6] = sx(pb.x, pb.y); Q[7] = sy(pb.x, pb.y);
-      if (!marks) X.poly(Q, d < 110 ? C.asphaltDk : C.gravel);
-      // chevrons up the middle of it
-      if (marks && d < 110 && (d / 10) % 2 === 0) {
+      if (!marks) X.poly(Q, C.asphaltDk);
+      /* Chevrons the length of the neutral area, not a fixed 110 px of
+         it — on a real gore the hatching runs the whole way to the nose,
+         which is what the aerial photograph shows. */
+      if (marks && (d / 10) % 2 === 0) {
         const mx = (Q[0] + Q[2]) / 2, my = (Q[1] + Q[3]) / 2;
         const nx2 = (Q[4] + Q[6]) / 2, ny2 = (Q[5] + Q[7]) / 2;
         Q[0] = mx; Q[1] = my; Q[2] = mx + 1.6; Q[3] = my + 1.6;
@@ -566,14 +762,48 @@ const Draw = (() => {
     }
   }
 
+  /* ── the thing on the nose of a gore ────────────────────────────────
+     This used to be four alternating yellow bands stacked up the sprite,
+     and stacked bands read as BARRELS — which is the wrong device. A row
+     of drums is temporary traffic control: orange and white, put out to
+     close something. What sits permanently on a gore is a crash cushion,
+     a solid grey unit bolted to a concrete pad, and what makes it yellow
+     and black is the Type 3 object marker on its FACE — a panel of 45°
+     stripes, which is the only part of it a driver is meant to read.
+
+     So: a grey body seen from above, and the striped panel across the
+     end that faces oncoming traffic. Same palette, right object. The
+     drums moved to where drums actually go, which is a closed exit. */
   let _nose = null;
   function noseBmp() {
     if (_nose) return _nose;
-    _nose = X.bitmap(9, 13);
-    _nose.fill(0, 0, 9, 13, C.dark);
-    for (let i = 0; i < 4; i++) _nose.fill(1, 1 + i * 3, 7, 2, i % 2 ? C.dark : C.yellow);
-    _nose.fill(3, 0, 3, 1, C.line);
+    const w = 9, h = 14;
+    _nose = X.bitmap(w, h);
+    // the pad and the body, narrowing toward the nose
+    _nose.fill(0, 4, w, h - 4, C.barrierDk);
+    _nose.fill(1, 5, w - 2, h - 6, C.barrier);
+    // the object marker across the face: 45° yellow-on-black stripes
+    _nose.fill(0, 0, w, 4, C.dark);
+    for (let y = 0; y < 4; y++)
+      for (let x = 1; x < w - 1; x++)
+        if (((x + y) & 3) < 2) _nose.set(x, y, C.yellow);
     return _nose;
+  }
+
+  /* ── and the drums, which is where the barrels really live ───────────
+     A channelizing drum, from above, is a ring: MUTCD asks for
+     alternating orange and white circumferential stripes with the top
+     one orange, so at this scale it is an orange pixel with white in the
+     middle of it. They are put out in a row to take a lane or a ramp
+     out of service, which on this corridor means one thing — the exits
+     that are signed and have no ramp behind them. */
+  let _drum = null;
+  function drumBmp() {
+    if (_drum) return _drum;
+    _drum = X.bitmap(3, 3);
+    _drum.fill(0, 0, 3, 3, C.cone);
+    _drum.set(1, 1, C.coneBand);
+    return _drum;
   }
 
   function blob(wx, wy, r, col) {
@@ -600,7 +830,15 @@ const Draw = (() => {
   function exitSigns(ramp, parent) {
     if (!ramp.exitRef && !ramp.signTo) return;
     const side = ramp.mirror ? -1 : 1;
-    const gore = ramp.mirror ? ramp.merge.s + R.len(ramp) : ramp.merge.s - R.len(ramp);
+    /* Where the ramp actually leaves, which the junction knows exactly.
+       This used to be derived as `merge.s ∓ len(ramp)` — the merge point
+       walked back by the ramp's own length — and that only holds for a
+       loop-back whose corridor span IS its length. A surveyed ramp turns
+       off, crosses a road and comes back, so its length has nothing to do
+       with how far along the corridor it travelled: exit 369's signs were
+       499 px from its gore. */
+    const gore = ramp.junction ? ramp.junction.s
+      : ramp.mirror ? ramp.merge.s + R.len(ramp) : ramp.merge.s - R.len(ramp);
     for (const back of [5400, 1900]) {
       const s = gore - side * back;
       if (s < 4 || s > R.len(parent) - 4) continue;
@@ -659,7 +897,8 @@ const Draw = (() => {
   const CH = 4;                       // px per character, 3 wide + 1 gap
   function guideBmp(ramp, near) {
     const key = (ramp.exitRef || "") + "|" + (ramp.signVia || []).join(",")
-              + "|" + (ramp.signTo || []).join(",") + "|" + (near ? "n" : "f");
+              + "|" + (ramp.signTo || []).join(",") + "|" + (near ? "n" : "f")
+              + (ramp.leftExit ? "|L" : "");
     let b = guideCache.get(key);
     if (b) return b;
 
@@ -674,12 +913,21 @@ const Draw = (() => {
     const H2 = tabH + 3 + rows.length * 6 + 4;
 
     b = X.bitmap(W2, H2);
-    // the exit tab, top right, reading EXIT <n>
-    const tabTxt = "EXIT " + (ramp.exitRef || "");
+    /* ── the exit tab ──────────────────────────────────────────────────
+       Top right and reading EXIT <n>, because that is where an exit tab
+       goes and what it says — except where the exit is on the left, and
+       then two things change and the MUTCD is explicit about both. The
+       tab carries a LEFT plaque, because the number alone tells a
+       driver nothing about which way to look. And the tab moves to the
+       top LEFT of the panel, over the side the ramp is on, which is the
+       same rule that put it top right in the first place. */
+    const left = !!ramp.leftExit;
+    const tabTxt = (left ? "LEFT EXIT " : "EXIT ") + (ramp.exitRef || "");
     const tabW = Math.min(W2, tabTxt.length * CH + 5);
-    b.fill(W2 - tabW, 0, tabW, tabH, C.signWhite);
-    b.fill(W2 - tabW + 1, 1, tabW - 2, tabH - 2, C.signGreen);
-    tinyText(b, tabTxt, W2 - tabW + 3, 2, C.signWhite);
+    const tabX = left ? 0 : W2 - tabW;
+    b.fill(tabX, 0, tabW, tabH, C.signWhite);
+    b.fill(tabX + 1, 1, tabW - 2, tabH - 2, C.signGreen);
+    tinyText(b, tabTxt, tabX + 3, 2, C.signWhite);
     // the panel
     b.fill(0, tabH - 1, W2, H2 - tabH - 1, C.signWhite);
     b.fill(1, tabH, W2 - 2, H2 - tabH - 3, C.signGreen);
@@ -692,6 +940,218 @@ const Draw = (() => {
     b.fill(0, H2 - 2, W2, 2, C.post);          // the gantry legs
     guideCache.set(key, b);
     return b;
+  }
+
+  /* ── an exit that is open and shut ──────────────────────────────────
+     Different from the plaque below, and the difference is the whole
+     point. That one says the exit is not there. This one says the exit
+     is there, you may take it, and the road behind it is closed for
+     construction — which is the arrangement at exit 368: I-40 west and
+     I-75 south still part at the wye, and I-75 south is a work zone.
+
+     Real closures are signed a long way out and coned even further,
+     and the reason is not politeness. Two lanes of a four-lane
+     carriageway are being taken out of service at seventy miles an
+     hour, and everybody in them has to be somewhere else before the
+     gore. So: orange at a mile and a half, orange again at three
+     quarters, and a drum taper that starts a mile out and shuts the
+     lanes across a thousand pixels — the taper first, then the tangent
+     line of drums running down the gore line to the nose. That is the
+     shape in the MUTCD and it is the shape you see from the car. */
+  const worksCache = new Map();
+  function worksBmp(legend, near) {
+    const key = legend + (near ? "|n" : "|f");
+    if (worksCache.has(key)) return worksCache.get(key);
+    const rows = near ? [signWords(legend), "CLOSED"] : [signWords(legend), "CLOSED", "AHEAD"];
+    const cols = Math.max(6, ...rows.map((t) => t.length));
+    const w = cols * 4 + 6, h = 6 + rows.length * 8;
+    const b = X.bitmap(w, h);
+    b.fill(0, 0, w, h, C.dark);                       // black border
+    b.fill(1, 1, w - 2, h - 2, C.work);               // orange face
+    let y = 3;
+    for (const t of rows) {
+      tinyText(b, t, Math.max(2, ((w - t.length * 4) / 2) | 0), y, C.dark);
+      y += 8;
+    }
+    worksCache.set(key, b);
+    return b;
+  }
+
+  /* The advance signs and the drums, for a ramp that carries a closure.
+     Both are laid out from the gore backwards in the direction the
+     driver is coming from, which `side` carries — the same convention
+     exitSigns() uses and for the same reason. */
+  function worksSigns(ramp, parent) {
+    const c = ramp.closure;
+    if (!c) return;
+    const side = ramp.mirror ? -1 : 1;
+    const gore = ramp.junction ? ramp.junction.s : null;
+    if (gore == null) return;
+    for (const back of [c.warn, c.warn * 0.55]) {
+      const s = gore - side * back;
+      if (s < 4 || s > R.len(parent) - 4) continue;
+      const e = R.edges(parent, s);
+      const u = side > 0 ? e.uR + R.SH_OUT + 14 : e.uL - R.SH_OUT - 14;
+      const p = R.at(parent, s, u);
+      const px = sx(p.x, p.y), py = sy(p.x, p.y);
+      if (px < -34 || py < -34 || px > VW + 34 || py > VH + 34) continue;
+      X.sprite(worksBmp(c.legend, back < c.warn * 0.8), px, py,
+               p.h - camH + (side < 0 ? Math.PI : 0));
+    }
+  }
+
+  /* The drums. A taper that crosses the lanes being closed, then a
+     tangent that runs down the line they are closed at. Both are placed
+     against the CARRIAGEWAY'S own offsets rather than a fixed u, so
+     they follow a median that is opening and a lane count that is about
+     to change — a row of barrels sitting on the paint is the only kind
+     worth drawing. */
+  /* Far enough either side of the camera to cover the view and a
+     margin, and no further. A closure is a mile of drums and a ramp
+     lined down both sides — about 1,300 of them — and computing a world
+     position for every one to throw all but a dozen away is 1,300
+     frames, sines and cosines per drawn frame. Culling on DISTANCE
+     ALONG the road first costs a subtraction. */
+  const DRUM_SPACING = 26;
+  const DRUM_REACH = VIEW + 320;
+  function worksDrums(ramp, parent, camS, camD) {
+    const c = ramp.closure;
+    const j = ramp.junction;
+    if (!c || !j) return;
+    const side = j.side > 0 ? 1 : -1;
+    const out = (j.out != null ? j.out : j.side) > 0 ? 1 : -1;
+    const lanes = Math.max(1, j.lanes);
+    /* Which two offsets the taper runs between: the edge the lanes are
+       being closed FROM — the inside line at a left exit — across to
+       the line the closure holds, which is the gore line. */
+    const at = (s) => {
+      const inside = out > 0 ? -(R.insideAt(parent, s) + R.innerAtL(parent, s))
+                             : R.insideAt(parent, s) + R.innerAt(parent, s);
+      return { a: inside, b: inside - out * lanes * R.LANE };
+    };
+    const total = c.taper;
+    const taperLen = Math.min(total * 0.42, 1400);
+    for (let d = 0; d <= total; d += DRUM_SPACING) {
+      const s = j.s - side * d;
+      if (s < 2 || s > R.len(parent) - 2) continue;
+      if (camS != null && Math.abs(s - camS) > DRUM_REACH) continue;
+      const o = at(s);
+      /* Beyond the taper the drums sit on the gore line; inside it they
+         walk across from the inside edge to it. */
+      const t = d > total - taperLen ? (total - d) / taperLen : 1;
+      const u = o.a + (o.b - o.a) * smooth01(clamp01(t));
+      const p = R.at(parent, s, u);
+      const px = sx(p.x, p.y), py = sy(p.x, p.y);
+      if (px < -4 || py < -4 || px > VW + 4 || py > VH + 4) continue;
+      X.sprite(drumBmp(), px, py, 0);
+    }
+    /* And down both sides of the ramp itself, past the gore, because
+       from here on it is a work zone and not a road. */
+    if (camD == null) return;                 // the ramp itself is not in view
+    for (let d = 0; d < c.works; d += DRUM_SPACING) {
+      if (Math.abs(d - camD) > DRUM_REACH) continue;
+      const e = R.edges(ramp, d);
+      for (const u of [e.uL - 2, e.uR + 2]) {
+        const p = R.at(ramp, d, u);
+        const px = sx(p.x, p.y), py = sy(p.x, p.y);
+        if (px < -4 || py < -4 || px > VW + 4 || py > VH + 4) continue;
+        X.sprite(drumBmp(), px, py, 0);
+      }
+    }
+    /* The end of it: barrels right across the pavement. This is the
+       thing you hit, and unlike the drums beside it, it is solid — the
+       player update knows where it is. */
+    if (Math.abs(c.works - camD) > DRUM_REACH) return;
+    const e = R.edges(ramp, c.works);
+    for (let u = e.uL; u <= e.uR; u += 5) {
+      const p = R.at(ramp, c.works, u);
+      const px = sx(p.x, p.y), py = sy(p.x, p.y);
+      if (px < -4 || py < -4 || px > VW + 4 || py > VH + 4) continue;
+      X.sprite(drumBmp(), px, py, 0);
+    }
+  }
+  const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
+  const smooth01 = (t) => t * t * (3 - 2 * t);
+
+  /* ── the exits that are not there ───────────────────────────────────
+     Half the exit numbers on this corridor are signed and unbuilt — the
+     real exit list has 1,201 entries and only 350 ramps were surveyed.
+     World.applyExits marks those, and this is what it looks like from
+     the car: the orange plaque a real Interstate puts up when an exit is
+     out of service.
+
+     Orange and black, not green and white, and that is the whole point
+     of drawing it at all. Guide signs are green because they tell you
+     where you may go; temporary traffic control is orange because it
+     tells you what has changed. A driver reads the colour before the
+     words, so a closed exit has to be the wrong colour to be useful.
+
+     One sign, closer in than a guide sign's mile board, because it is
+     not helping you choose a route — it is stopping you slowing down
+     for a ramp that is not coming. */
+  const closedCache = new Map();
+  function closedBmp(ref) {
+    const key = String(ref);
+    if (closedCache.has(key)) return closedCache.get(key);
+    const txt = "EXIT " + key;
+    const w = Math.max(30, 6 + txt.length * 4), h = 19;
+    const b = X.bitmap(w, h);
+    b.fill(0, 0, w, h, C.dark);                       // the black border
+    b.fill(1, 1, w - 2, h - 2, C.work);               // orange face
+    tinyText(b, txt, 3, 3, C.dark);
+    tinyText(b, "CLOSED", Math.max(3, (w - 6 * 4) >> 1), 11, C.dark);
+    closedCache.set(key, b);
+    return b;
+  }
+
+  function closedSigns(r, fwd) {
+    if (!r.corridorExits) return;
+    const side = fwd ? 1 : -1;
+    /* The exit list carries one entry per carriageway, so a closed exit
+       number appears twice about six thousand pixels apart. Two identical
+       plaques for one exit is not what a road does — take whichever comes
+       first in the direction being driven and sign it once. */
+    const seen = new Set();
+    const list = side > 0 ? r.corridorExits : [...r.corridorExits].reverse();
+    for (const e of list) {
+      if (!e.closed) continue;
+      if (seen.has(e.ref)) continue;
+      seen.add(e.ref);
+      const s = e.s - side * 2600;                    // one advance plaque
+      if (s < 4 || s > R.len(r) - 4) continue;
+      const ed = R.edges(r, s);
+      const u = side > 0 ? ed.uR + R.SH_OUT + 14 : ed.uL - R.SH_OUT - 14;
+      const p = R.at(r, s, u);
+      const px = sx(p.x, p.y), py = sy(p.x, p.y);
+      if (px > -34 && py > -34 && px < VW + 34 && py < VH + 34)
+        X.sprite(closedBmp(e.ref), px, py, p.h - camH + (side < 0 ? Math.PI : 0));
+
+      /* And the drums themselves, across the shoulder where the ramp
+         would have left. A closure is a row of them on a taper, angled
+         out of the running lane, so the line of drums is the instruction
+         and the sign upstream is only the warning. */
+      const skip = side > 0 ? r.noPaintR : r.noPaintL;
+      const noSh = side > 0 ? r.noR : r.noL;
+      for (let d = 0; d < 8; d++) {
+        const ds = e.s + side * (d * 11 - 40);
+        if (ds < 2 || ds > R.len(r) - 2) continue;
+        /* A drum stands on the shoulder, so there has to be a shoulder
+           under it. Where the pavement is shared with a ramp, crossed by
+           another road, or carried on a deck, there is nothing to stand
+           it on — and a row of drums marching across a cross street is
+           worse than no drums at all. Same gates the edge line uses. */
+        const i = Math.round(ds / R.STEP);
+        if (R.suppressed(skip, i) || R.suppressed(noSh, i)) continue;
+        if (R.deckAt(r, ds) > 0.5) continue;
+        const ed0 = R.edges(r, ds);            // per drum, not once per exit
+        const edge = side > 0 ? ed0.uR : ed0.uL;
+        const across = edge + (side > 0 ? 1 : -1) * (2 + d * (R.SH_OUT - 3) / 7);
+        const q = R.at(r, ds, across);
+        const qx = sx(q.x, q.y), qy = sy(q.x, q.y);
+        if (qx < -4 || qy < -4 || qx > VW + 4 || qy > VH + 4) continue;
+        X.sprite(drumBmp(), qx, qy, 0);
+      }
+    }
   }
 
   /* ── a 3x5 alphabet ─────────────────────────────────────────────────
@@ -833,14 +1293,23 @@ const Draw = (() => {
 
   /* The camera rides the road's centreline, so the car is not pinned to
      the middle of the screen — it moves across a picture that stays
-     put. Its angle is still zero: the car never turns, the road does. */
+     put. Its angle is `S.roll`, and while you are driving that is zero
+     to the bit: the car never turns, the road does, and the whole feel
+     of this game rests on that staying true.
+
+     A wreck is the exception and the only one. `S.roll` is how far the
+     failed corner has dragged the nose round, and the camera keeps
+     facing down the road while it does — so the world holds still and
+     the car goes round in front of it, which is how it looks from
+     anywhere except inside the car. */
   function player(S, wrecked) {
     if (!playerBmp) buildPlayer();
     const b = wrecked ? playerWreck : playerBmp;
     const px = sx(S.x, S.y), py = sy(S.x, S.y);
-    X.silhouette(b, px + 1.5, py + 1.5, 0, C.shadow, 0.4);
-    X.sprite(b, px, py, 0);
-    if (!wrecked && night() > 0.2) beam(px, py, 0, 11, 26);
+    const a = S.roll || 0;
+    X.silhouette(b, px + 1.5, py + 1.5, a, C.shadow, 0.4);
+    X.sprite(b, px, py, a);
+    if (!wrecked && night() > 0.2) beam(px, py, a, 11, 26);
   }
 
   /* When the player is on the lower road, the bridge must cover the
@@ -852,9 +1321,10 @@ const Draw = (() => {
     if (!playerBmp) buildPlayer();
     const b = wrecked ? playerWreck : playerBmp;
     const px = sx(S.x, S.y), py = sy(S.x, S.y);
-    X.silhouette(b, px - 1, py, 0, C.playerTrim, 0.20);
-    X.silhouette(b, px + 1, py, 0, C.playerTrim, 0.20);
-    X.silhouette(b, px, py, 0, C.player, 0.48);
+    const a = S.roll || 0;
+    X.silhouette(b, px - 1, py, a, C.playerTrim, 0.20);
+    X.silhouette(b, px + 1, py, a, C.playerTrim, 0.20);
+    X.silhouette(b, px, py, a, C.player, 0.48);
   }
 
   function deckCoversPlayer(r, S, seed) {
@@ -928,6 +1398,8 @@ const Draw = (() => {
         surface(e.r, e.r._i0, e.r._i1);
         if (e.r.kind === "ramp" && e.r.junction) gore(e.r.junction, false);
       }
+      // after every surface, so one road's tarmac never buries another's grit
+      for (const e of entries) if (e.r._i1 > e.r._i0) debris(e.r, e.r._i0, e.r._i1);
       for (const e of entries) if (e.r._i1 > e.r._i0) furniture(e.r, e.r._i0, e.r._i1);
     }
 
@@ -1006,13 +1478,34 @@ const Draw = (() => {
     /* Signs for the exits on the road under the car. Only the corridor
        carries them, and only the ones serving your direction — a sign
        for the other carriageway is not yours to read. */
-    for (const { r } of near) {
-      if (!r.corridor || !r.exits.length) continue;
+    /* Where the camera falls on each road in view, so a closed ramp's
+       drums can be culled by distance ALONG rather than by projecting
+       all thirteen hundred of them and discarding the ones off screen.
+       A ramp that is not in `near` at all is not in view, and gets
+       none of its drums drawn — which is the same answer, reached
+       without doing any of the work. */
+    const camAt = new Map();
+    for (const e of near) camAt.set(e.r, e.pr.s);
+    for (const { r, pr } of near) {
+      if (!r.corridor) continue;
       for (const e of r.exits) {
         if (e.ramp.dead) continue;
+        /* ── drums are not signage ──────────────────────────────────
+           A sign for the other carriageway is not yours to read, which
+           is what the direction test below is for. A barrel is not a
+           sign: it is an object standing on the road, it is there
+           whichever way you are pointing, and the ones down the sides
+           of a closed ramp are only ever seen from ON that ramp —
+           where `S.fwd` is true because a ramp always runs the way you
+           drive it, and the test would therefore have hidden every one
+           of them from the only person who needed to see them. */
+        worksDrums(e.ramp, r, pr.s, camAt.has(e.ramp) ? camAt.get(e.ramp) : null);
         if ((e.side > 0) !== S.fwd) continue;
         exitSigns(e.ramp, r);
+        worksSigns(e.ramp, r);
       }
+      // and the ones that are signed but have no ramp behind them
+      closedSigns(r, S.fwd);
     }
 
     for (const p of S.parts) {

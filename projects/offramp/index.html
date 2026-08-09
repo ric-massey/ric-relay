@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OFFRAMP — one leads to the next</title>
-<meta name="description" content="An arcade cabinet for one road. Drive Interstate 40 from above, east or west, in pixel-accurate lane and shoulder proportions — every exit puts you back on the freeway.">
-<meta property="og:title" content="OFFRAMP">
-<meta property="og:description" content="Pick a direction and drive. A top-down pixel Interstate where every ramp, rest area and truck stop returns you to the road.">
+<title>Interstate 40</title>
+<meta name="description" content="Drive Interstate 40 from above, east or west, in pixel-accurate lane and shoulder proportions — 2,551 miles from Barstow to Wilmington, pulled off the real survey.">
+<meta property="og:title" content="Interstate 40">
+<meta property="og:description" content="Drive Interstate 40 from above, east or west. Every mile of the real road, with the exits where the exits are.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'><rect width='16' height='16' fill='%233a3a44'/><rect x='7' y='0' width='2' height='16' fill='%239aa0aa'/><rect x='2' y='5' width='4' height='7' fill='%23d94b3a'/><rect x='3' y='7' width='2' height='3' fill='%231d2430'/><rect x='11' y='0' width='1' height='16' fill='%23e8e2cc'/></svg>">
 <script src="../relay-return.js" data-home="../../index.html" data-egg="offramp" defer></script>
 <style>
@@ -131,16 +131,6 @@
     color: var(--white);
     text-shadow: 0 0 18px rgba(255,255,255,.3), 0 2px 3px rgba(0,0,0,.45);
   }
-  .tagline {
-    font-size: 9.5px;
-    letter-spacing: .26em;
-    text-transform: uppercase;
-    color: rgba(242,240,230,.78);
-    align-self: flex-end;
-    padding-bottom: .3rem;
-    white-space: nowrap;
-  }
-
   /* ── the sign gantry: readouts, as guide-sign panels ──────────────── */
   .gantry {
     flex: 0 0 auto;
@@ -243,8 +233,12 @@
   }
   canvas#road {
     display: block;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
+    /* The canvas is sized in device pixels and the buffer is scaled into
+       it by the game itself — nearest to a whole multiple, then a gentle
+       downscale. Asking the browser for `pixelated` on top of that would
+       re-introduce the uneven 2-vs-3-device-pixel grid the two-step
+       exists to remove. See `present` in src/offramp.js. */
+    image-rendering: auto;
     background: #2c5a34;
     border-radius: 2px;
   }
@@ -460,6 +454,20 @@
     font-size: 9.5px;
     color: rgba(242,240,230,.55);
   }
+  /* The odds, after the fact. Quieter than the sentence above it and
+     set line-per-fact, because it is read rather than glanced at —
+     this is where the player learns the shape of the curve. */
+  .panel p.sums {
+    white-space: pre-line;
+    text-align: center;
+    line-height: 1.5;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    font-size: 8.5px;
+    color: rgba(242,240,230,.40);
+    margin: -.15rem 0 .1rem;
+    max-width: min(94%, 22rem);
+  }
   .panel .keys {
     display: grid;
     grid-template-columns: auto auto;
@@ -568,7 +576,6 @@
 
   @media (max-width: 430px) {
     .marquee { padding: .4rem .5rem .45rem; gap: .4rem; }
-    .tagline { display: none; }
     .gantry { gap: 3px; padding: .35rem .3rem .4rem; flex-wrap: nowrap; }
     .panelsign { min-width: 0; flex: 1 1 auto; padding: .08rem .18rem .12rem; }
     .panelsign .k { font-size: 8px; letter-spacing: .06em; }
@@ -596,8 +603,7 @@
       <text x="17" y="23.5" text-anchor="middle" fill="#f2f0e6"
             font-family="Helvetica Neue, Arial Narrow, sans-serif" font-size="13" font-weight="700">40</text>
     </svg>
-    <span class="wordmark">OFFRAMP</span>
-    <span class="tagline">one leads to the next</span>
+    <span class="wordmark">Interstate 40</span>
   </div>
 
   <div class="gantry">
@@ -674,8 +680,13 @@
 
       <!-- wreck -->
       <div class="panel" id="panel-wreck">
-        <h2 class="wreck">WRECKED</h2>
+        <h2 class="wreck" id="wreck-head">WRECKED</h2>
         <p class="tag" id="wreck-why">you left the road</p>
+        <!-- The arithmetic, underneath the sentence. A model built on
+             probabilities that never shows its working reads as
+             arbitrary: you died, and there is no way to tell whether
+             you were unlucky or wrong. -->
+        <p class="sums" id="wreck-sums" hidden></p>
         <div class="score-lines">
           <span>DISTANCE</span><span id="w-dist">0.00 km</span>
           <span>SCORE</span><span id="w-score">0</span>
@@ -700,11 +711,15 @@
 
 <div id="pedals"><button id="brake" type="button">BRAKE</button></div>
 
-<script src="src/raster.js?v=93"></script>
-<script src="data/i40.js?v=93"></script>
-<script src="src/road.js?v=93"></script>
-<script src="src/world.js?v=93"></script>
-<script src="src/draw.js?v=93"></script>
-<script src="src/offramp.js?v=93"></script>
+<script src="src/raster.js?v=126"></script>
+<script src="data/i40.js?v=126"></script>
+<script src="src/road.js?v=126"></script>
+<script src="src/world.js?v=126"></script>
+<script src="src/draw.js?v=126"></script>
+<!-- impact.js is pure and has no dependencies; skill.js reads one
+     constant off it, so it comes second. Both before offramp.js. -->
+<script src="src/impact.js?v=126"></script>
+<script src="src/skill.js?v=126"></script>
+<script src="src/offramp.js?v=126"></script>
 </body>
 </html>
