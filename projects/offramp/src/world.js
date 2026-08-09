@@ -733,6 +733,62 @@ const World = (() => {
     road.baseS = 0;
     road.mirror = false;
 
+    /* ── the ones that go over ─────────────────────────────────────────
+       A surveyed ramp is the interchange as it was walked, and real
+       interchanges have ramps that cross the freeway: a connector to the
+       far side, the second half of a cloverleaf, a left-side ramp coming
+       back. This never lifted any of them. They were built at grade and
+       driven at grade, straight through the mainline — exit 211B/211A at
+       mile 1891 crosses the whole carriageway TWICE, from +111 px to
+       −290 and back, and every station of it was on the road you were
+       driving on. The clearance invariant said so all along; it is only
+       ever asserted for the window the car is in, which is why 23 of 341
+       ramps could sit on the corridor without anyone hearing about it.
+
+       Measured, not declared, the same as every other bridge here: walk
+       the ramp, ask the corridor whether this station is standing on its
+       sealed surface, lift exactly those. The ends are excluded over the
+       distance clearance() itself excuses around a join, because a ramp
+       IS on the mainline at its gore and at its merge — that is what a
+       gore and a merge are — and a bridge there would be a bridge over
+       the road it is joining.
+
+       A span has to be long enough to be a crossing before it is worth a
+       deck. Most of those 23 are not crossings: they are a ramp running
+       alongside and clipping a few pixels of shoulder, and putting a
+       bridge over that would draw a parapet in the middle of a field. */
+    const JOIN_KEEP = Math.round((R.GORE + R.WEDGE * R.STEP) / R.STEP);
+    const CROSS_MIN = 20;                    // stations: shorter is a graze
+    const spans = [];
+    for (const g of overlapRanges(road, parent, 0, road.st.length - 1, null)) {
+      const a = Math.max(g.a, JOIN_KEEP), b = Math.min(g.b, road.st.length - 1 - JOIN_KEEP);
+      if (b - a >= CROSS_MIN) spans.push({ a, b });
+    }
+    if (spans.length) raise(road, spans, 1, 30);
+
+    /* ── and which carriageways it is standing on ──────────────────────
+       A ramp that crosses the freeway occupies BOTH sides of it, and the
+       ground-claiming below only ever knew about the side it left from.
+       So at exit 211 the survey's ramp swung out to −290 px — well past
+       the median, across the westbound carriageway — and the generated
+       westbound loop-back for the same exit number was then built into
+       it, because as far as `roomAt` was concerned that ground was free.
+       Two structures, one piece of tarmac, 35 px of overlap, and the
+       deck above does not help: they are both at grade out there.
+
+       Recorded as the extreme offsets the ramp reaches on the parent, so
+       the caller can claim what it actually covers. */
+    let reachMin = 0, reachMax = 0, hint = null;
+    for (let i = 0; i < road.st.length; i += 2) {
+      const p = road.st[i];
+      const pr = R.project(parent, p.x, p.y, hint, hint == null ? 0 : 40);
+      if (!pr) continue;
+      hint = pr.i;
+      if (pr.u < reachMin) reachMin = pr.u;
+      if (pr.u > reachMax) reachMax = pr.u;
+    }
+    road.reach = { min: reachMin, max: reachMax };
+
     road.merge = { into: parent, s: s1, i: iIn, u: R.auxLaneU(parent, s1, 1),
                    lanes: 1, baseLane: 0, laneAdd: false, accel: true, mirror: false };
     const entry = { i: iOut, ramp: road, s: s0, side: 1, lanes: 1,
@@ -1325,6 +1381,12 @@ const World = (() => {
            more than half a mile apart, and there were three of those in
            this window alone, each drawn twice. */
         claim(1, spec.startPx - GORE_KEEP, spec.endPx + GORE_KEEP);
+        /* …and the other carriageway too, if it went over there. See
+           the note in buildRealRamp: a crossing ramp stands on both
+           sides, and claiming only the side it left from let a
+           generated loop-back be built straight through it. */
+        if (r.reach && r.reach.min < -R.MED_RURAL)
+          claim(-1, spec.startPx - GORE_KEEP, spec.endPx + GORE_KEEP);
       }
     }
 
