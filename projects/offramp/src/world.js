@@ -556,15 +556,95 @@ const World = (() => {
      correction blended along the length so the middle keeps its shape.
      buildRealRamp has done this since the surveyed ramps arrived; it is
      here now because the generated ones need it for the same reason. */
-  function pinEnds(road, a, b) {
+  /* ── and pin the TANGENTS too ────────────────────────────────────────
+     Landing a ramp's ends on the right points is only half of a join.
+     The other half is leaving at the right ANGLE, and until this was
+     measured nothing anywhere made that true: a surveyed ramp met the
+     corridor at up to 8.5° across, and the handover is instantaneous, so
+     the car's heading — which is read straight off the road frame and is
+     exact — was rotated eight and a half degrees inside one frame.
+
+     What the player feels is a kick. The camera does not do it, because
+     the camera has eased toward the car's heading since the flyovers
+     went in for exactly this reason; the CAR does, and it cannot be
+     eased the same way because its heading is not state, it is the road.
+     So the road has to stop kinking.
+
+     It is a sampling artefact and not the survey being right. OSM walks
+     a ramp off the junction node at whatever angle its first fragment
+     has, and the fragments average 497 ft — so a divergence that happens
+     over a hundred metres of real road arrives as a step. The mainline
+     end is then dragged sideways onto the deceleration lane by the
+     position pin above, which skews that first segment further. Real
+     ramps ARE tangent to the mainline at the gore. That is not a detail
+     of how they are drawn, it is a design requirement of building one.
+
+     The correction is the same shape as the position one: take the
+     angle error at each end, spread it back along the road so it has
+     died away by the middle, re-integrate, and put the ends back where
+     they were. Re-integrating moves the far end, so the two corrections
+     fight; three passes settle it, each taking about a tenth of what
+     the last one left. The middle keeps its surveyed shape. */
+  /* ── how far back the angle is spread, and why 24 ────────────────────
+     Two things pull against each other and both were measured.
+
+     Spread it far and the correction is gentle, but the first six
+     hundred pixels of the ramp then run nearly PARALLEL to the mainline
+     instead of pulling away from it — which is where an exit has to do
+     its diverging, and road.js says at length that this map deliberately
+     exaggerates that divergence because the honest one in twenty is
+     invisible at the distance you can see. At 90 stations four windows
+     of the corridor had a ramp back inside the carriageway's shoulder.
+
+     Spread it close and the correction is a flick. The number that
+     settles it is not clearance, it is CURVATURE, against the curvature
+     the ramp already has: these ramps turn at a 444 px radius in their
+     own middles, and the correction has to be looser than that or it
+     becomes the tightest thing on the road and you feel the fix instead
+     of the fault. At 16 stations it is 449 px — exactly as hard as the
+     worst of the ramp, which is too hard. At 24 it is 659 px, half the
+     turn the ramp is already asking for, and the clearance cost against
+     no correction at all is about two pixels. */
+  const TANGENT_BLEND = 24;              // stations, ≈ 192 px at each end
+  const angleTo = (a, b) => ((a - b + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+
+  function pinEnds(road, a, b, ha, hb) {
     const st = road.st, n = st.length - 1;
     if (n < 2) return;
-    const dxA = a.x - st[0].x, dyA = a.y - st[0].y;
-    const dxB = b.x - st[n].x, dyB = b.y - st[n].y;
-    for (let i = 0; i <= n; i++) {
-      const t = i / n;
-      st[i].x += dxA + (dxB - dxA) * t;
-      st[i].y += dyA + (dyB - dyA) * t;
+    const slide = () => {
+      const dxA = a.x - st[0].x, dyA = a.y - st[0].y;
+      const dxB = b.x - st[n].x, dyB = b.y - st[n].y;
+      for (let i = 0; i <= n; i++) {
+        const t = i / n;
+        st[i].x += dxA + (dxB - dxA) * t;
+        st[i].y += dyA + (dyB - dyA) * t;
+      }
+    };
+    slide();
+    const m = Math.min(TANGENT_BLEND, (n / 2) | 0);
+    if ((ha != null || hb != null) && m >= 4) {
+      const seg = new Array(n);
+      for (let pass = 0; pass < 3; pass++) {
+        for (let i = 0; i < n; i++) {
+          const dx = st[i + 1].x - st[i].x, dy = st[i + 1].y - st[i].y;
+          seg[i] = { h: Math.atan2(dx, dy), len: Math.hypot(dx, dy) };
+        }
+        const eA = ha == null ? 0 : angleTo(ha, seg[0].h);
+        const eB = hb == null ? 0 : angleTo(hb, seg[n - 1].h);
+        if (Math.abs(eA) < 1e-4 && Math.abs(eB) < 1e-4) break;
+        for (let i = 0; i < n; i++) {
+          const wA = i < m ? 1 - smooth(i / m) : 0;
+          const wB = i > n - 1 - m ? 1 - smooth((n - 1 - i) / m) : 0;
+          seg[i].h += eA * wA + eB * wB;
+        }
+        let x = st[0].x, y = st[0].y;
+        for (let i = 0; i < n; i++) {
+          x += Math.sin(seg[i].h) * seg[i].len;
+          y += Math.cos(seg[i].h) * seg[i].len;
+          st[i + 1].x = x; st[i + 1].y = y;
+        }
+        slide();                          // the far end moved; put both back
+      }
     }
     for (let i = 0; i <= n; i++) {
       const p = st[Math.max(0, i - 1)], q = st[Math.min(n, i + 1)];
@@ -636,9 +716,12 @@ const World = (() => {
        Both are fixed by warping the built stations so each end lands on
        the centre of the aux lane, blending along the length so the
        middle keeps its surveyed shape. */
+    /* Tangent to the mainline at both ends. Real ramps are all
+       eastbound, so both target headings are the corridor's own. */
     pinEnds(road,
       R.at(parent, s0, R.auxLaneU(parent, s0, 1)),
-      R.at(parent, s1, R.auxLaneU(parent, s1, 1)));
+      R.at(parent, s1, R.auxLaneU(parent, s1, 1)),
+      R.frame(parent, s0).h, R.frame(parent, s1).h);
     road.kind = "ramp"; road.rampLanes = 1; road.med = 0; road.back = 0;
     road.parent = parent;
     road.routeType = "exit";
@@ -830,7 +913,9 @@ const World = (() => {
       polyline: true, kind: "ramp", fwd: lanes, back: 0, lanes,
       smooth: false, layer: ++W.nextLayer,
     });
-    pinEnds(road, R.at(parent, sGore, goreU(sGore)), R.at(parent, sMerge, backU(sMerge)));
+    const turn = side > 0 ? 0 : Math.PI;
+    pinEnds(road, R.at(parent, sGore, goreU(sGore)), R.at(parent, sMerge, backU(sMerge)),
+            R.frame(parent, sGore).h + turn, R.frame(parent, sMerge).h + turn);
     road.kind = "ramp";
     road.rampLanes = lanes;
     road.med = 0;
@@ -1072,9 +1157,15 @@ const World = (() => {
     });
     /* Station zero is the end the DRIVER starts from, which for a
        westbound structure is s1 — the points were reversed above. */
+    /* A westbound structure runs against the corridor's numbering, so
+       the heading it has to be tangent to is the corridor's reversed —
+       the same π that `mirror` carries everywhere else. */
+    const turn = side > 0 ? 0 : Math.PI;
     pinEnds(road,
       R.at(parent, side > 0 ? s0 : s1, R.auxLaneU(parent, side > 0 ? s0 : s1, side)),
-      R.at(parent, side > 0 ? s1 : s0, R.auxLaneU(parent, side > 0 ? s1 : s0, side)));
+      R.at(parent, side > 0 ? s1 : s0, R.auxLaneU(parent, side > 0 ? s1 : s0, side)),
+      R.frame(parent, side > 0 ? s0 : s1).h + turn,
+      R.frame(parent, side > 0 ? s1 : s0).h + turn);
     road.kind = "ramp";
     road.rampLanes = 1;
     road.med = 0;
