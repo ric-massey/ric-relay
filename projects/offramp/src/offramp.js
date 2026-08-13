@@ -239,6 +239,12 @@
     suv:   { latMax: LAT_MAX * 0.86, fade: 0.38, respond: 10 },
     truck: { latMax: LAT_MAX * 0.55, fade: 0.42, respond: 5.5 },
     bike:  { latMax: LAT_MAX * 1.05, fade: 0.30, respond: 15 },
+    /* A tall box on narrow wheels, and the row exists because the Type 2
+       would otherwise fall back to `car` and change direction like a
+       Civic. It sits between the SUV and the lorry: `latScale` off the
+       skidpad already takes the grip away, so what this adds is the
+       LAG — the thing leans, waits, and then goes. */
+    van:   { latMax: LAT_MAX * 0.70, fade: 0.44, respond: 7 },
   };
 
   /* A garage row's steering, which is its CLASS's row scaled by the two
@@ -734,16 +740,55 @@
     A.ctx = ac;
     A.master = ac.createGain(); A.master.gain.value = 0.5; A.master.connect(ac.destination);
 
+    /* ── the engine ───────────────────────────────────────────────────
+       (Ric, 2026-08-13: "simulate them for what the engine is actually
+       made like.")
+
+       This was one sawtooth at 58 + v·0.62 Hz with a square an octave
+       under it. Nothing in that is an engine — it is a note that goes up
+       with road speed, so every car in the garage made the same noise
+       and none of them changed gear.
+
+       An engine is a series of BANGS. A four-stroke fires cyl/2 times
+       per revolution, so what you hear has a fundamental of
+
+           rpm/60 · cyl/2
+
+       and that one expression is why a Harley and an S1000RR are not
+       the same instrument: 2 cylinders to 5,500 rpm is 92 Hz at the
+       limiter, 4 cylinders to 14,200 is 473. It is also why the rpm has
+       to come from a GEARBOX and not from road speed — an engine that
+       rises and drops back is the single most recognisable thing about
+       one, and no amount of timbre substitutes for it.
+
+       Four oscillators, because the harmonic that dominates is what
+       separates the layouts:
+
+         h1   the firing frequency itself
+         h2   its second harmonic — the body of an inline engine
+         h05  HALF of it, once per two revolutions: a V-twin's uneven
+              315/405 interval and a flat-four's unequal headers both
+              put real energy down here, and it is exactly the "potato"
+              and the boxer rumble
+         rasp a detuned partial up top, for the ones that have one
+
+       `A.mix` below sets the four levels per layout. Nothing else about
+       the sound is per-car; everything audible follows from the row. */
     A.eng = ac.createGain(); A.eng.gain.value = 0;
     A.engLP = ac.createBiquadFilter(); A.engLP.type = "lowpass"; A.engLP.frequency.value = 800;
     A.eng.connect(A.engLP); A.engLP.connect(A.master);
-    A.o1 = ac.createOscillator(); A.o1.type = "sawtooth"; A.o1.frequency.value = 80;
-    A.o2 = ac.createOscillator(); A.o2.type = "square"; A.o2.frequency.value = 40;
-    A.g1 = ac.createGain(); A.g1.gain.value = 0.6;
-    A.g2 = ac.createGain(); A.g2.gain.value = 0.4;
-    A.o1.connect(A.g1); A.g1.connect(A.eng);
-    A.o2.connect(A.g2); A.g2.connect(A.eng);
-    A.o1.start(); A.o2.start();
+
+    A.part = {};
+    const part = (name, type, gain) => {
+      const o = ac.createOscillator(); o.type = type; o.frequency.value = 80;
+      const g = ac.createGain(); g.gain.value = gain;
+      o.connect(g); g.connect(A.eng); o.start();
+      A.part[name] = { o, g };
+    };
+    part("h05",  "square",   0.0);
+    part("h1",   "sawtooth", 0.6);
+    part("h2",   "square",   0.2);
+    part("rasp", "sawtooth", 0.0);
 
     const len = ac.sampleRate * 2;
     const buf = ac.createBuffer(1, len, ac.sampleRate);
@@ -757,15 +802,91 @@
     A.ready = true;
   }
 
+  /* ── how loud each partial is, per layout ───────────────────────────
+     Four numbers each: [half-order, firing, second, rasp]. These are
+     the only per-layout settings in the audio, and each one is a claim
+     about the engine rather than a taste:
+
+       i      an even-firing inline. Almost all of it is at the firing
+              frequency and its second harmonic, and there is nothing at
+              the half order because nothing happens once per two revs.
+       flat   a boxer. The unequal-length headers put a real half-order
+              component in — that IS the Subaru rumble, and it is why a
+              flat-four does not sound like the inline-four it otherwise
+              is on paper.
+       v      a cross-plane V8. Its half order is the burble, and the
+              rasp is the overlap you hear off the top of one.
+       vtwin  45 degrees and a 315/405 firing interval, so it fires
+              twice and then waits — the loudest thing in a Harley is
+              the once-per-two-revs beat, not the firing frequency, and
+              that inversion is the whole of the "potato". */
+  const ENG_MIX = {
+    i:     [0.00, 0.62, 0.24, 0.05],
+    flat:  [0.26, 0.50, 0.16, 0.10],
+    v:     [0.30, 0.46, 0.22, 0.16],
+    vtwin: [0.60, 0.30, 0.10, 0.05],
+  };
+  const ENG_DEF = { cyl: 4, layout: "i", idle: 800, red: 6500 };
+
+  /* ── a gearbox, for the sound and nothing else ──────────────────────
+     No torque curve, no clutch and no effect on how the car moves: the
+     physics is unchanged and this exists so the note DROPS when the
+     revs run out.
+
+     TOP GEAR IS LONG, and that is the part worth getting right rather
+     than assuming. Six evenly spaced ratios across the whole speed
+     range is the obvious model and it is audibly wrong: it put the
+     Jetta at 4,500 rpm at 70 mph, where a real one sits near 2,800,
+     because it had two more gears to go. Real gearing is five ratios to
+     get you going and then one very long one to cruise in — top gear
+     here starts at 45% of the car's top speed and stretches to the
+     limiter, so 70 mph in a 120 mph car is a third of the way up top
+     gear and sounds like it.
+
+     The clamp at `frac` matters: past top speed — downhill, or with the
+     speed the wreck code can hand it — the note would otherwise climb
+     past the limiter forever. */
+  const GEARS = 6, TOP_AT = 0.45;
+  function engineRpm(v, car) {
+    const e = (car && car.eng) || ENG_DEF;
+    const vTop = car ? car.vTop : V_MAX;
+    const frac = vTop > 0 ? Math.min(1, Math.abs(v) * (1 / PX_PER_KMH) / vTop) : 0;
+    let within;
+    if (frac >= TOP_AT) within = (frac - TOP_AT) / (1 - TOP_AT);
+    else {
+      const lower = (frac / TOP_AT) * (GEARS - 1);
+      within = lower - Math.floor(lower);         // 0 at a change, 1 at the limiter
+    }
+    return e.idle + (e.red - e.idle) * (0.30 + 0.70 * within);
+  }
+
   function audioFrame() {
     if (!A.ready || A.muted) return;
     const ac = A.ctx, now = ac.currentTime;
     const playing = S.mode === "play";
     const v = S.speed;
+    const e = (S.car && S.car.eng) || ENG_DEF;
+    const mix = ENG_MIX[e.layout] || ENG_MIX.i;
     A.eng.gain.setTargetAtTime(playing ? 0.05 : 0, now, 0.08);
-    A.o1.frequency.setTargetAtTime(58 + v * 0.62, now, 0.05);
-    A.o2.frequency.setTargetAtTime(29 + v * 0.31, now, 0.05);
-    A.engLP.frequency.setTargetAtTime(420 + v * 6, now, 0.1);
+
+    /* The one line the whole thing rests on: a four-stroke fires half
+       its cylinders every revolution. */
+    const rpm = engineRpm(v, S.car);
+    const fire = Math.max(12, (rpm / 60) * (e.cyl / 2));
+    /* A gear change is a step in `fire`, so the glide has to be short
+       enough to be a change and not a swoop — 25 ms. */
+    A.part.h05.o.frequency.setTargetAtTime(fire * 0.5, now, 0.025);
+    A.part.h1.o.frequency.setTargetAtTime(fire, now, 0.025);
+    A.part.h2.o.frequency.setTargetAtTime(fire * 2, now, 0.025);
+    A.part.rasp.o.frequency.setTargetAtTime(fire * 3.02, now, 0.025);
+    const load = playing ? 1 : 0.35;
+    A.part.h05.g.gain.setTargetAtTime(mix[0] * load, now, 0.08);
+    A.part.h1.g.gain.setTargetAtTime(mix[1] * load, now, 0.08);
+    A.part.h2.g.gain.setTargetAtTime(mix[2] * load, now, 0.08);
+    A.part.rasp.g.gain.setTargetAtTime(mix[3] * load, now, 0.08);
+    /* Opens with the revs rather than with road speed, so a downchange
+       shuts the engine up and picking it back up brightens it. */
+    A.engLP.frequency.setTargetAtTime(360 + fire * 5.5, now, 0.1);
     const rough = S.gravelT > 0 ? 1 : 0;
     const scrub = Math.min(1, Math.abs(S.vu) / LAT_MAX);
     /* Grinding down the barrier is the loudest thing this car does and
@@ -907,11 +1028,38 @@
      during a wreck is not the angle of the road — a car sliding
      sideways gouges across its own path, and that is most of what the
      mark is for. */
+  /* ── and a bike lays ONE ──────────────────────────────────────────
+     (Ric, 2026-08-13: "when breaking with the bike there are two tire
+     tracks.") It laid two because the offsets here were the literal
+     4 and 12 of the 11 x 26 car this game used to have and only ever
+     have — the same hardcoded body that `draw.js` had to take out of
+     the scrape marks and the headlight beam. On the S1000RR they put
+     the tracks 1.4 m apart, which is wider than the motorcycle.
+
+     A motorcycle's wheels are IN LINE. It leaves one black line, and
+     that single line is most of what a locked bike looks like from
+     above. So the track count is a property of the vehicle, and the
+     offsets are fractions of its real body: the rear axle 6/13 of the
+     length behind the middle and the tyre 4/11 of the width out from
+     it. Those two fractions are written as fractions and not as 0.46
+     and 0.36 because they are exactly the old hardcoded 12 and 4 over
+     the old hardcoded 26 and 11 — so every car in the garage still
+     lays its marks precisely where this game has always laid them, and
+     only the bike changes. */
+  const MARK_BACK = 6 / 13, MARK_HALF = 4 / 11;
   function mark(a) {
     const h = a === undefined ? S.h : a;
     const c = Math.cos(h), s = Math.sin(h);
-    S.marks.push({ x: S.x - c * 4 - s * 12, y: S.y + s * 4 - c * 12, h });
-    S.marks.push({ x: S.x + c * 4 - s * 12, y: S.y - s * 4 - c * 12, h });
+    const lenPx = (S.car ? S.car.len : PL * M_PER_PX) / M_PER_PX;
+    const widePx = (S.car ? S.car.wide : PW * M_PER_PX) / M_PER_PX;
+    const back = lenPx * MARK_BACK;
+    if (S.car && S.car.klass === "bike") {
+      S.marks.push({ x: S.x - s * back, y: S.y - c * back, h });
+      return;
+    }
+    const half = widePx * MARK_HALF;
+    S.marks.push({ x: S.x - c * half - s * back, y: S.y + s * half - c * back, h });
+    S.marks.push({ x: S.x + c * half - s * back, y: S.y - s * half - c * back, h });
   }
 
   /* ══════════════════════════════════════════════════════════════════

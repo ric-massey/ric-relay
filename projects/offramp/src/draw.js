@@ -1739,9 +1739,43 @@ const Draw = (() => {
     }
   }
 
+  /* ── what `car` actually is ─────────────────────────────────────────
+     (Ric, 2026-08-13: "update all of the models of the cars not just
+     the drivable ones".)
+
+     `car` is one kind in the model and three different vehicles on the
+     road. traffic.js says so itself, where it sets the length span:
+
+       car   3.8–6.0   Mini 3.85 → crew-cab pickup 6.0; median 4.9, and
+                       the American light-vehicle fleet really is half
+                       SUV and pickup, which is what holds it up there
+
+     Every one of them was drawn as the same saloon, so a six-metre
+     crew-cab pickup was a stretched Civic and the fleet looked like one
+     model in eight colours.
+
+     Length is the whole tell from above and it is ALREADY sampled per
+     vehicle, so this needs nothing new modelled, stored or keyed — the
+     length is in the cache key already. The two cuts are where the
+     classes really sit inside that span: under 4.6 m nothing has a
+     third row, over 5.35 m nothing does not have a bed. */
+  function bodyOf(kind, lenPx) {
+    if (kind !== "car") return kind;
+    const m = lenPx * 0.179;
+    return m > 5.35 ? "pickup" : m > 4.6 ? "suv" : "saloon";
+  }
+
   /* A vehicle is drawn nose-up, like the player: +y in the bitmap is
      forward, so a sprite rotated by (heading − camH) points where it is
-     going. */
+     going.
+
+     These are the same shapes as the player's, at the same scale, and
+     that is on purpose — the thing you are driving and the thing beside
+     you must be drawn to one standard or the traffic reads as scenery.
+     What they do NOT get is the player's mirrors and trim: the bitmap
+     stays exactly wPx wide, because `vehicle()` puts the lamps on the
+     corners of the sprite and the scrape marks down its flanks, and
+     both of those measure the body. */
   function vehicleBmp(kind, lenPx, wPx, ci) {
     const key = kind + ":" + lenPx + ":" + wPx + ":" + ci;
     let b = vehCache.get(key);
@@ -1749,45 +1783,93 @@ const Draw = (() => {
     const cols = VEH_PACKED[kind] || VEH_PACKED.car;
     const base = cols[ci % cols.length];
     const w = Math.max(3, wPx), l = Math.max(6, lenPx);
+    const body = bodyOf(kind, l);
     b = X.bitmap(w, l);
-    b.fill(0, 0, w, l, base);
-    /* Both flanks, so a vehicle reads as a solid rather than a slab.
-       The near side catches the sky and the off side falls away. */
-    b.fill(0, 0, 1, l, X.mix(base, C.shadow, 0.42));
-    b.fill(w - 1, 0, 1, l, X.mix(base, X.rgb(255, 255, 255), 0.16));
 
-    if (kind === "moto") {
-      /* Barely a shape at this scale — two wheels and a rider, and what
-         actually identifies it is being narrow enough to see road either
-         side of it inside one lane. */
-      b.fill(0, 0, w, 2, C.dark);
-      b.fill(0, l - 2, w, 2, C.dark);
-      b.fill(Math.max(0, (w >> 1) - 1), 2, Math.min(w, 2), l - 4, X.hex("#1b1f26"));
-    } else if (kind === "artic") {
+    if (body === "moto") {
+      /* Two wheels in line, a fairing and a RIDER — the same drawing
+         the player's bike gets, because from above a motorcycle is
+         mostly the person on it. The outer columns are left transparent
+         so you can see road either side of it inside its own lane,
+         which is what identifies it at this size. */
+      const fw = Math.max(1, w - 2), bx = (w - fw) >> 1, cx = (w - 1) >> 1;
+      const wheel = Math.max(1, Math.round(l * 0.18));
+      b.fill(cx, 0, 1, wheel, X.hex("#15161a"));
+      b.fill(cx, l - wheel, 1, wheel, X.hex("#15161a"));
+      const nose = Math.max(1, Math.round(l * 0.12));
+      const tank = Math.max(1, Math.round(l * 0.55) - nose);
+      b.fill(bx, nose, fw, tank, base);
+      b.fill(bx, nose, 1, tank, X.mix(base, C.shadow, 0.42));
+      const ry = Math.round(l * 0.38), rh = Math.max(2, Math.round(l * 0.32));
+      b.fill(bx, ry, fw, rh, X.hex("#2a2c34"));
+      b.fill(cx, ry + rh, 1, Math.max(1, l - wheel - (ry + rh)), base);
+      vehCache.set(key, b);
+      return b;
+    }
+
+    /* Everything else is a body with its corners knocked off — the
+       shared helper, so a lorry and the player's Jetta round the same
+       way — and then whatever sits on top of it. */
+    shell(b, 0, w, l, base, body === "artic" || body === "rigid" ? 1 : 2, 1);
+    const inset = w >= 7 ? 2 : 1;
+    const gw = Math.max(1, w - inset * 2);
+    const lit = X.mix(base, X.rgb(255, 255, 255), 0.2);
+
+    if (body === "artic") {
       /* Tractor, gap, trailer. The gap is what makes it read as
          articulated at a glance and it is where the unit really is
-         hinged. */
+         hinged. The bows across the trailer roof are what stop 120 px
+         of white reading as a blank domino. */
       const cab = Math.round(l * 0.22);
       b.fill(0, 0, w, cab, X.mix(base, C.shadow, 0.25));
-      b.fill(1, 1, w - 2, Math.max(1, (cab >> 1)), C.glass);
+      b.fill(1, 1, w - 2, Math.max(1, cab >> 1), C.glass);
       b.fill(0, cab, w, 1, C.dark);
       b.fill(1, cab + 1, w - 2, 1, X.mix(base, C.shadow, 0.5));
-      /* A trailer's underside, and the rear doors. */
-      b.fill(0, l - 2, w, 2, X.mix(base, C.shadow, 0.35));
-    } else if (kind === "rigid") {
+      const rib = X.mix(base, C.shadow, 0.14);
+      for (let y = cab + 5; y < l - 3; y += 5) b.fill(1, y, w - 2, 1, rib);
+      b.fill(0, l - 2, w, 2, X.mix(base, C.shadow, 0.35));   // the rear doors
+    } else if (body === "rigid") {
+      /* A box van, a school bus or a motorhome — one bin in the data
+         and one shape here: a short cab and a long body over it. */
       const cab = Math.round(l * 0.3);
       b.fill(0, 0, w, cab, X.mix(base, C.shadow, 0.2));
-      b.fill(1, 1, w - 2, Math.max(1, (cab >> 1)), C.glass);
+      b.fill(1, 1, w - 2, Math.max(1, cab >> 1), C.glass);
       b.fill(0, cab, w, 1, C.dark);
+      const rib = X.mix(base, C.shadow, 0.14);
+      for (let y = cab + 4; y < l - 3; y += 6) b.fill(1, y, w - 2, 1, rib);
       b.fill(0, l - 2, w, 2, X.mix(base, C.shadow, 0.35));
+    } else if (body === "pickup") {
+      /* The half of the fleet with a bed. Cab in the front two fifths,
+         then a dark open box — the box is the entire identification,
+         the same way it is on the player's F-150. */
+      const ws = Math.round(l * 0.17), wh = Math.max(1, Math.round(l * 0.12));
+      const bed = Math.round(l * 0.46);
+      b.fill(inset, ws, gw, wh, C.glass);
+      b.fill(inset, ws + wh, gw, 1, lit);
+      b.fill(inset, Math.round(l * 0.36), gw, Math.max(1, Math.round(l * 0.07)), C.glass);
+      b.fill(1, bed, w - 2, Math.max(1, l - bed - 2), X.mix(base, C.shadow, 0.62));
+      b.fill(1, bed, w - 2, 1, X.mix(base, C.shadow, 0.35));
+      b.fill(1, l - 2, w - 2, 1, X.mix(base, X.rgb(255, 255, 255), 0.12));
+    } else if (body === "suv") {
+      /* One long roof and no boot break — which is the difference you
+         can actually see from directly above, and the reason an SUV is
+         not just a saloon that got longer. A rail down each side. */
+      const ws = Math.round(l * 0.19), wh = Math.max(1, Math.round(l * 0.14));
+      const rear = Math.round(l * 0.76);
+      b.fill(inset, ws, gw, wh, C.glass);
+      b.fill(inset, ws + wh, gw, 1, lit);
+      b.fill(inset, rear, gw, Math.max(1, Math.round(l * 0.11)), C.glass);
+      const rail = X.mix(base, C.shadow, 0.3);
+      b.fill(inset, ws + wh + 1, 1, rear - ws - wh - 1, rail);
+      b.fill(w - inset - 1, ws + wh + 1, 1, rear - ws - wh - 1, rail);
     } else {
-      /* A car: windscreen, roof, rear window. The roof highlight is
-         what stops a row of them reading as one long block. */
+      /* A saloon or a hatchback: windscreen, roof, rear window. The
+         roof highlight is what stops a row of them reading as one long
+         block. */
       const gh = Math.max(1, Math.round(l * 0.17));
-      b.fill(1, Math.round(l * 0.2), w - 2, gh, C.glass);
-      b.fill(1, Math.round(l * 0.2) + gh, w - 2, 1,
-             X.mix(base, X.rgb(255, 255, 255), 0.2));
-      b.fill(1, Math.round(l * 0.66), w - 2, gh, C.glass);
+      b.fill(inset - 1, Math.round(l * 0.2), Math.max(1, w - (inset - 1) * 2), gh, C.glass);
+      b.fill(inset - 1, Math.round(l * 0.2) + gh, Math.max(1, w - (inset - 1) * 2), 1, lit);
+      b.fill(inset - 1, Math.round(l * 0.66), Math.max(1, w - (inset - 1) * 2), gh, C.glass);
     }
     vehCache.set(key, b);
     return b;
@@ -1910,47 +1992,428 @@ const Draw = (() => {
      Three times the length between the bike and the pickup, which is
      the point — the thing you are looking at should be the thing the
      traffic model is solving, and `cars.js` already hands those same
-     metres to the sim. The proportions inside the sprite are fractions
-     of w and l rather than fixed offsets, so a shape this narrow still
-     gets a windscreen and lamps rather than a stripe. */
+     metres to the sim.
+
+     ── the footprint was right and the SHAPE was not ─────────────────
+     (Ric, 2026-08-13: "make the car look like the car it's supposed to
+     be.") Every one of the ten was the same drawing scaled: a rounded
+     rectangle with a rally stripe down it, a windscreen and a rear
+     window. Which is a fair sedan, is a poor pickup, and is an absurd
+     motorcycle — the S1000RR was 11 x 5 px of bodywork with a stripe
+     painted over the rider and glass where his shoulders are.
+
+     `klass` was already in the row and already being read by
+     `offramp.js` for the steering, so the sprite reads it too and there
+     are three builders below rather than one:
+
+       car     bonnet, screen, roof, rear window, boot, and mirrors
+       truck   a cab in the front two fifths and an OPEN BED behind it
+       bike    two wheels, a fairing and a rider, and no roof at all
+
+     The bed and the rider are the whole exercise. From directly above,
+     a pickup is a cab and a dark open box, and a motorcycle is mostly
+     the person on it — those two things are what you recognise at 30 px
+     and the glass and the paint are not. Every offset is still a
+     fraction of w and l, so the shapes hold from the 5 px bike to the
+     33 px F-150 without a special case for either.
+
+     The mirrors are the one thing drawn OUTSIDE the footprint: the
+     bitmap is two pixels wider than the body and the body sits in the
+     middle of it. That is honest rather than cheating — a published
+     width excludes the mirrors, and mirrors are what makes a shape at
+     this scale read as facing away from you. `pW` stays the BODY width,
+     because that is what the scrape marks and the headlight beam want. */
   let playerBmp = null, playerWreck = null;
-  let pW = 11, pL = 26, pPaint = null;
+  let pW = 11, pL = 26, pPaint = null, pBody = "saloon";
+
+  /* WHICH drawing, from the row. `body` is the row's own answer where it
+     has one and the class is the fallback, because the class is right
+     for most of the garage and wrong for exactly the rows that are
+     interesting: a Mustang and a Camry are both `klass: "car"` and are
+     not the same object seen from above. */
+  function bodyOfCar(car) {
+    if (car && car.body) return car.body;
+    const k = (car && car.klass) || "car";
+    return k === "truck" ? "pickup" : k === "bike" ? "sport" : k === "van" ? "van" : "saloon";
+  }
 
   function setPlayerVehicle(car) {
     const w = Math.max(4, Math.round((car && car.wide ? car.wide : 1.97) / 0.179));
     const l = Math.max(8, Math.round((car && car.len ? car.len : 4.65) / 0.179));
     const paint = car && car.paint ? X.hex(car.paint) : null;
-    if (w === pW && l === pL && paint === pPaint) return;
-    pW = w; pL = l; pPaint = paint;
+    const body = bodyOfCar(car);
+    if (w === pW && l === pL && paint === pPaint && body === pBody) return;
+    pW = w; pL = l; pPaint = paint; pBody = body;
     playerBmp = playerWreck = null;               // rebuilt on next draw
   }
 
-  function buildPlayer() {
+  /* The paint, and the trim that says the thing on the screen is you.
+     A wreck keeps its shape and loses its colour.
+
+     The trim is picked against the paint rather than being one colour,
+     and it has to be: the cream stripe that reads beautifully down a
+     dark blue M5 turned the Boxster — which is painted #d8d5cc — into a
+     single pale slab with no stripe visible on it at all, and three of
+     the ten rows are silver or white.
+
+     So a dark car gets the cream, and a light car gets its OWN PAINT
+     shaded halfway down. Not a black one: the glass is #1d2430, a
+     near-black stripe was the same tone as the two windows, and it
+     joined them into a dumbbell down the middle of every silver car.
+     A darker shade of the body is a stripe that can be neither the
+     glass nor the paint, which is the only thing that has to be true
+     of it. */
+  const skin = (dead) => dead ? C.playerDead : (pPaint === null ? C.player : pPaint);
+  function trim(dead) {
+    if (dead) return X.hex("#6d5f4e");
+    const c = skin(false);
+    const luma = 0.30 * (c & 255) + 0.59 * ((c >> 8) & 255) + 0.11 * ((c >> 16) & 255);
+    return luma > 150 ? X.mix(c, C.shadow, 0.5) : C.playerTrim;
+  }
+  const TYRE = X.hex("#15161a");
+  const BURN = X.hex("#4a1f19");
+
+  /* A body, before anything is drawn on it: the paint, a flank in
+     shadow and a flank in the light, and the four corners knocked off.
+     The corners matter more than they sound — a rotated rectangle reads
+     as a brick, and clearing six pixels is the difference between a
+     shape that is pointing somewhere and a shape that is merely at an
+     angle. `x0` is where the body starts, which is 1 when there are
+     mirrors to leave room for. */
+  function shell(b, x0, w, l, base, nose, tail) {
+    b.fill(x0, 0, w, l, base);
+    b.fill(x0, 0, 1, l, X.mix(base, C.shadow, 0.42));
+    b.fill(x0 + w - 1, 0, 1, l, X.mix(base, X.rgb(255, 255, 255), 0.18));
+    for (let i = 0; i < nose && i < w >> 1; i++) {
+      const cut = nose - i;
+      b.fill(x0, i, cut, 1, 0);
+      b.fill(x0 + w - cut, i, cut, 1, 0);
+    }
+    for (let i = 0; i < tail && i < w >> 1; i++) {
+      const cut = tail - i;
+      b.fill(x0, l - 1 - i, cut, 1, 0);
+      b.fill(x0 + w - cut, l - 1 - i, cut, 1, 0);
+    }
+  }
+
+  /* Lamps at the outer corners of the first FULL-WIDTH row at each end,
+     which after the taper is not the corner of the bitmap. They sit on
+     a bumper — a row of the paint in shadow across the whole end — and
+     that dark row is what stops them merging with the stripe into one
+     cream bar across the nose, which is exactly what the first version
+     of this did. */
+  function ends(b, x0, w, l, base, nose, dead) {
+    const bar = X.mix(base, C.shadow, 0.5);
+    b.fill(x0 + 1, nose, w - 2, 1, bar);
+    b.fill(x0 + 1, l - 1, w - 2, 1, bar);
+    if (dead) return;
+    const n = Math.max(1, Math.min(2, w - 2));
+    b.fill(x0 + 1, nose, n, 1, C.head);
+    b.fill(x0 + w - 1 - n, nose, n, 1, C.head);
+    b.fill(x0 + 1, l - 1, n, 1, C.tail);
+    b.fill(x0 + w - 1 - n, l - 1, n, 1, C.tail);
+  }
+
+  /* ── a car ──────────────────────────────────────────────────────────
+     Nine of the ten rows. Bonnet, screen, roof, rear window, boot, in
+     fractions of the length, so a 23 px Civic and a 27 px Mustang are
+     the same car seen from the same height rather than two different
+     drawings. The stripe is laid down first and the glass over it, so
+     it runs the bonnet and the boot and over the roof between them,
+     which is where a stripe goes — and it starts below the nose bar, so
+     the front of the car is a dark bumper with two lamps on it rather
+     than one wide cream smear. */
+  /* ── where the cabin sits, which is the whole difference ────────────
+     (Ric, 2026-08-13: "i want them to actually feel like different cars
+     with kinda different dimensions just like real life.")
+
+     Every car in the garage was this one drawing scaled to its own
+     length and width, so a Mustang was a long Civic and the Smart was a
+     very short one. From directly above you cannot see a bonnet line or
+     a roofline — what you CAN see is how far back the windscreen is and
+     how much roof there is behind it, and that single pair of numbers
+     is the difference between a saloon, a coupe and a city car:
+
+       saloon   screen a quarter back, boot behind the rear glass
+       coupe    long bonnet, cabin shoved back and shortened, and the
+                boot nearly gone — a Mustang is a third bonnet
+       micro    almost no bonnet at all. The Fortwo is 2.69 m and the
+                windscreen is over the front axle; the cabin IS the car,
+                and drawn with a saloon's proportions it came out as a
+                tiny estate with a bonnet it does not have. */
+  const CABIN = {
+    saloon: { ws: 0.26, wh: 0.12, rw: 0.63, rh: 0.10 },
+    coupe:  { ws: 0.34, wh: 0.11, rw: 0.68, rh: 0.09 },
+    micro:  { ws: 0.13, wh: 0.19, rw: 0.60, rh: 0.15 },
+  };
+
+  function carBmp(dead) {
+    const w = pW, l = pL, pad = w >= 9 ? 1 : 0;
+    const b = X.bitmap(w + pad * 2, l);
+    const x0 = pad, base = skin(dead);
+    const inset = w >= 9 ? 2 : 1;
+    const nose = 2;
+    shell(b, x0, w, l, base, nose, 1);
+
+    /* The ROOF between the two screens is the biggest panel on the car —
+       which is what you see from directly above and what the first
+       version of this got wrong: 17% of the length of glass then 13%
+       more of it left a cabin that was nearly all window and a car that
+       read as a slab of dark. */
+    const p = CABIN[pBody] || CABIN.saloon;
+    const ws = Math.round(l * p.ws), wh = Math.max(2, Math.round(l * p.wh));
+    const rw = Math.round(l * p.rw), rh = Math.max(2, Math.round(l * p.rh));
+    b.fill(x0 + 1, ws + wh, w - 2, rw - ws - wh,
+           X.mix(base, X.rgb(255, 255, 255), 0.1));         // the roof
+
+    /* The stripe stops where the back window starts. Run to the tail it
+       crossed the rear screen and made a cross out of the back half of
+       every car; over the bonnet and the roof it is a stripe. */
+    const stripe = Math.max(1, Math.round(w * 0.24));
+    b.fill(x0 + ((w - stripe) >> 1), nose + 1, stripe, rw - nose - 1, trim(dead));
+
+    b.fill(x0 + inset, ws, w - inset * 2, wh, C.glass);
+    b.fill(x0 + inset, ws - 1, w - inset * 2, 1,
+           X.mix(base, X.rgb(255, 255, 255), 0.24));
+    b.fill(x0 + inset, rw, w - inset * 2, rh, C.glass);
+
+    ends(b, x0, w, l, base, nose, dead);
+    if (pad) {                                    // the mirrors
+      const m = X.mix(base, C.shadow, 0.3);
+      b.fill(x0 - 1, ws, 1, 1, m);
+      b.fill(x0 + w, ws, 1, 1, m);
+    }
+    if (dead) b.fill(x0 + 1, nose + 1, Math.min(3, w - 2), 3, BURN);
+    return b;
+  }
+
+  /* ── a pickup ───────────────────────────────────────────────────────
+     The F-150, and the only thing that identifies one from above is
+     that the back of it is EMPTY: a dark open box with a rail down each
+     side and a tailgate across the end of it, and no stripe over it,
+     because there is no bed to paint.
+
+     Where the bed STARTS is a measured thing rather than a look. This
+     row is the SuperCrew, which is 5.89 m long with a 5.5 ft bed — so
+     the box is 1.68 m of 5.89, or a shade under three tenths of it, and
+     the cab and the bonnet have the other seven. Drawn at the two
+     fifths it was first given, the truck was more bed than truck and
+     looked like a flatbed. */
+  function pickupBmp(dead) {
+    const w = pW, l = pL, pad = 1;
+    const b = X.bitmap(w + pad * 2, l);
+    const x0 = pad, base = skin(dead);
+    const inset = 2, nose = 2;
+    shell(b, x0, w, l, base, nose, 1);
+
+    const stripe = Math.max(1, Math.round(w * 0.22));
+    const bed = Math.round(l * 0.71);
+    b.fill(x0 + ((w - stripe) >> 1), nose + 1, stripe, bed - nose - 1, trim(dead));
+
+    const ws = Math.round(l * 0.31), wh = Math.max(2, Math.round(l * 0.10));
+    const rw = Math.round(l * 0.59), rh = Math.max(2, Math.round(l * 0.07));
+    b.fill(x0 + inset, ws, w - inset * 2, wh, C.glass);
+    b.fill(x0 + inset, ws - 1, w - inset * 2, 1,
+           X.mix(base, X.rgb(255, 255, 255), 0.24));
+    b.fill(x0 + inset, ws + wh, w - inset * 2, 1,
+           X.mix(base, X.rgb(255, 255, 255), 0.16));
+    b.fill(x0 + inset, rw, w - inset * 2, rh, C.glass);
+
+    /* The bed. Its floor is in shadow whatever the paint is, the rails
+       are the body colour and one pixel each, and the bulkhead behind
+       the cab is the lit edge of it — three tones, and at 33 px long it
+       reads as a hole rather than as a panel. Half shadow rather than
+       the two thirds it started at: the F-150 is painted #2b3a52 and at
+       0.62 the bed and the tyres were the same colour. */
+    b.fill(x0 + 1, bed, w - 2, l - bed - 2, X.mix(base, C.shadow, 0.5));
+    b.fill(x0 + 1, bed, w - 2, 1, X.mix(base, X.rgb(255, 255, 255), 0.1));
+    b.fill(x0 + 1, l - 2, w - 2, 1, X.mix(base, C.shadow, 0.2));
+
+    const m = X.mix(base, C.shadow, 0.3);         // and a tow mirror each side
+    b.fill(x0 - 1, ws, 1, 2, m);
+    b.fill(x0 + w, ws, 1, 2, m);
+
+    ends(b, x0, w, l, base, nose, dead);
+    if (dead) b.fill(x0 + 1, nose + 1, Math.min(3, w - 2), 3, BURN);
+    return b;
+  }
+
+  /* ── a van ──────────────────────────────────────────────────────────
+     The Type 2, and the thing that identifies one from above is what it
+     HAS NOT GOT: there is no bonnet. The driver sits over the front
+     axle, so the windscreen is the first thing at the front of the
+     vehicle and the roof runs from there very nearly to the back.
+
+     That is also why it is drawn with square corners at the nose — a
+     tapered front is a car's front, and the whole shape of a forward-
+     control van is that it stops dead. */
+  function vanBmp(dead) {
+    const w = pW, l = pL, pad = 1;
+    const b = X.bitmap(w + pad * 2, l);
+    const x0 = pad, base = skin(dead);
+    const inset = w >= 9 ? 2 : 1;
+    shell(b, x0, w, l, base, 0, 1);              // no nose taper at all
+
+    const ws = 1, wh = Math.max(2, Math.round(l * 0.13));
+    b.fill(x0 + inset - 1, ws, w - (inset - 1) * 2, wh, C.glass);
+    /* One long roof, and a rib across it. A Type 2's roof from above is
+       the biggest flat panel in this game and it needs something on it
+       or it is a rectangle of paint. */
+    const roof0 = ws + wh, roof1 = Math.round(l * 0.84);
+    b.fill(x0 + 1, roof0, w - 2, roof1 - roof0,
+           X.mix(base, X.rgb(255, 255, 255), 0.1));
+    b.fill(x0 + 1, Math.round(l * 0.5), w - 2, 1, X.mix(base, C.shadow, 0.18));
+    const stripe = Math.max(1, Math.round(w * 0.22));
+    b.fill(x0 + ((w - stripe) >> 1), roof0, stripe, roof1 - roof0, trim(dead));
+    b.fill(x0 + inset, roof1, w - inset * 2, Math.max(1, Math.round(l * 0.10)), C.glass);
+
+    const m = X.mix(base, C.shadow, 0.3);
+    b.fill(x0 - 1, ws + 1, 1, 2, m);
+    b.fill(x0 + w, ws + 1, 1, 2, m);
+
+    ends(b, x0, w, l, base, 0, dead);
+    if (dead) b.fill(x0 + 1, 1, Math.min(3, w - 2), 3, BURN);
+    return b;
+  }
+
+  /* ── a motorcycle ───────────────────────────────────────────────────
+     11 x 5 px, and three of those five columns are used: the outer ones
+     stay transparent so you can see road either side of it inside its
+     own lane, which is the same thing that makes the traffic's `moto`
+     read as a bike.
+
+     Eleven rows, and every one of them is spoken for — there is no room
+     to be vague, so they are listed:
+
+       0       front tyre
+       1       the nose of the fairing, with the headlight in it
+       2–4     fairing and tank, screen across the middle of it
+       5–7     the RIDER, helmet at the front of him
+       8       the tail unit
+       9–10    rear tyre, tail lamp on the very back of it
+
+     The rider is the dark middle third and is the largest single thing
+     on the sprite — correctly, because from above a sportbike is mostly
+     somebody lying on a tank. His helmet is always the cream, never the
+     contrast trim the cars use: a jacket is dark whatever the bike is
+     painted, so a dark helmet on it was two dark greys touching and
+     disappeared, which is exactly what the first version of this did. */
+  function bikeBmp(dead) {
     const w = pW, l = pL;
-    const mk = (dead) => {
-      const b = X.bitmap(w, l);
-      const live = pPaint === null ? C.player : pPaint;
-      const base = dead ? C.playerDead : live;
-      const inset = w >= 9 ? 2 : 1;               // a bike has no room for 2
-      const stripe = Math.max(1, Math.round(w * 0.27));
-      const wind = Math.max(2, Math.round(l * 0.27));
-      const rear = Math.max(1, Math.round(l * 0.15));
-      b.fill(0, 0, w, l, base);
-      b.fill(0, 0, 1, l, X.mix(base, C.shadow, 0.4));
-      b.fill(w - 1, 0, 1, l, X.mix(base, X.rgb(255, 255, 255), 0.2));
-      b.fill((w - stripe) >> 1, 1, stripe, l - 2, dead ? X.hex("#6d5f4e") : C.playerTrim);
-      b.fill(inset, Math.round(l * 0.23), w - inset * 2, wind, C.glass);
-      b.fill(inset, Math.round(l * 0.23) - 1, w - inset * 2, 1,
-             X.mix(base, X.rgb(255, 255, 255), 0.24));
-      b.fill(inset, l - rear - 2, w - inset * 2, rear, C.glass);
-      if (dead) { b.fill(1, 1, Math.min(3, w - 2), 3, X.hex("#4a1f19")); }
-      else {
-        const lamp = Math.max(1, Math.min(2, w - 2));
-        b.fill(1, 0, lamp, 1, C.head); b.fill(w - 1 - lamp, 0, lamp, 1, C.head);
-        b.fill(1, l - 1, lamp, 1, C.tail); b.fill(w - 1 - lamp, l - 1, lamp, 1, C.tail);
-      }
-      return b;
-    };
+    const b = X.bitmap(w, l);
+    const base = skin(dead);
+    const fw = Math.max(3, w - 2);                // the bodywork
+    const bx = (w - fw) >> 1;
+    const cx = (w - 1) >> 1;
+
+    const nose = Math.max(1, Math.round(l * 0.10));
+    const fair = Math.round(l * 0.45);            // fairing ends, rider starts
+    const back = Math.round(l * 0.73);            // rider ends, tail starts
+    const rear = Math.round(l * 0.82);            // rear tyre starts
+
+    b.fill(cx, 0, 1, nose, TYRE);                 // front tyre
+    b.fill(cx, rear, 1, l - rear, TYRE);          // rear
+
+    /* Fairing and tank. The nose is one pixel wide over the front wheel
+       and the body opens out behind it, which is the whole of what
+       makes this shape point somewhere. */
+    b.fill(bx, nose, fw, fair - nose, base);
+    b.fill(bx, nose, 1, fair - nose, X.mix(base, C.shadow, 0.42));
+    b.fill(bx + fw - 1, nose, 1, fair - nose, X.mix(base, X.rgb(255, 255, 255), 0.18));
+    b.fill(bx + 1, Math.round(l * 0.27), Math.max(1, fw - 2), 1, C.glass);
+    /* The tank, in shadow under the rider leaning over it — and a
+       working line as well as a true one: this bike is painted #e8e4d8
+       and the helmet is the cream, so without a dark row between them
+       the rider's head is just more fairing. */
+    b.fill(bx, fair - 1, fw, 1, X.mix(base, C.shadow, 0.4));
+
+    /* The rider, and the tail unit behind him. */
+    b.fill(bx, fair, fw, back - fair, X.hex(dead ? "#3a3138" : "#2a2c34"));
+    b.fill(bx, fair, 1, back - fair, X.hex("#1c1e24"));
+    b.fill(cx, fair, 1, 1, dead ? X.hex("#6d5f4e") : C.playerTrim);   // helmet
+    b.fill(bx + 1, back, Math.max(1, fw - 2), rear - back, base);
+
+    if (dead) b.fill(bx, fair, fw, 2, BURN);
+    else {
+      b.fill(cx, nose, 1, 1, C.head);
+      b.fill(cx, l - 1, 1, 1, C.tail);
+    }
+    return b;
+  }
+
+  /* ── and a cruiser ──────────────────────────────────────────────────
+     (Ric, 2026-08-13: "also bikes there should be different types of
+     sprites for bikes.")
+
+     The Road King, and it is not the sportbike scaled up. Three things
+     separate them from directly overhead and all three are in here:
+
+       the RIDER SITS UP. On the S1000RR he is lying on the tank and
+       reads as a long dark mass down the middle; on this he is upright,
+       so he is a short wide one — and his shoulders are the widest part
+       of the whole vehicle, wider than the machine under him.
+
+       there is NO FAIRING to speak of. What is out in front is a tank
+       and a headlamp nacelle, and the bike is at its narrowest there,
+       where a sportbike is at its widest.
+
+       there are BARS and panniers. Handlebars are a pixel out each side
+       at the front — the only thing on any of these sprites drawn wider
+       than the body it belongs to except the cars' mirrors — and the
+       hard cases are a pixel out each side at the back.
+
+     Same eleven-ish rows, spent completely differently, which is the
+     point of having two. */
+  function cruiserBmp(dead) {
+    const w = pW, l = pL, pad = 1;
+    const b = X.bitmap(w + pad * 2, l);
+    const x0 = pad, base = skin(dead);
+    const cx = x0 + ((w - 1) >> 1);
+    const fw = Math.max(3, w - 1);
+    const bx = x0 + ((w - fw) >> 1);
+
+    const nose = Math.max(1, Math.round(l * 0.12));   // front tyre
+    const tank = Math.round(l * 0.40);                // nacelle + tank end
+    const back = Math.round(l * 0.68);                // rider ends
+    const rear = Math.round(l * 0.80);                // rear tyre starts
+
+    b.fill(cx, 0, 1, nose, TYRE);
+    b.fill(cx, rear, 1, l - rear, TYRE);
+
+    /* Narrow at the front — nacelle and tank, not a fairing. */
+    const nw = Math.max(1, fw - 2);
+    b.fill(bx + ((fw - nw) >> 1), nose, nw, tank - nose, base);
+    b.fill(bx + ((fw - nw) >> 1), nose, 1, tank - nose, X.mix(base, C.shadow, 0.42));
+
+    // handlebars, and the only thing here drawn outside the body
+    const barY = nose + Math.max(0, Math.round(l * 0.06));
+    b.fill(x0 - 1, barY, w + 2, 1, X.hex("#3c4048"));
+
+    /* The rider, sitting up: short, and the widest thing on it. */
+    b.fill(x0, tank, w, back - tank, X.hex(dead ? "#3a3138" : "#2a2c34"));
+    b.fill(x0, tank, 1, back - tank, X.hex("#1c1e24"));
+    b.fill(cx, tank, 1, Math.max(1, Math.round(l * 0.10)),
+           dead ? X.hex("#6d5f4e") : C.playerTrim);              // helmet
+
+    /* Panniers, one each side, and a slab of chrome between them. */
+    b.fill(x0 - 1, back, 1, rear - back, X.mix(base, C.shadow, 0.35));
+    b.fill(x0 + w, back, 1, rear - back, X.mix(base, C.shadow, 0.35));
+    b.fill(bx + 1, back, Math.max(1, fw - 2), rear - back, base);
+
+    if (dead) b.fill(x0, tank, w, 2, BURN);
+    else {
+      b.fill(cx, nose, 1, 1, C.head);
+      b.fill(cx, l - 1, 1, 1, C.tail);
+    }
+    return b;
+  }
+
+  function buildPlayer() {
+    const mk = pBody === "sport" ? bikeBmp
+             : pBody === "cruiser" ? cruiserBmp
+             : pBody === "pickup" ? pickupBmp
+             : pBody === "van" ? vanBmp
+             : carBmp;                    // saloon, coupe and micro differ inside
     playerBmp = mk(false);
     playerWreck = mk(true);
   }
@@ -1993,10 +2456,15 @@ const Draw = (() => {
     if (S.dmg && S.dmg.scuff > 0.05) {
       const fx = Math.sin(a), fy = -Math.cos(a);
       const rx = Math.cos(a), ry = Math.sin(a);
-      scrapes(px, py, fx, fy, rx, ry, 26, 11,
+      scrapes(px, py, fx, fy, rx, ry, pL, pW,
               S.dmg.scuff, S.dmg.pull >= 0 ? 1 : -1);
     }
-    if (!wrecked && night() > 0.2) beam(px, py, a, 11, 26);
+    /* `pL` and `pW`, not the 26 x 11 that was written here — the marks
+       went down the flanks of the car this game used to have whatever
+       you were driving, so a scraped bike wore them a metre out in
+       clear air and the F-150 was unmarked over the back third of it.
+       Same for the beam: a bike throws a narrow one. */
+    if (!wrecked && night() > 0.2) beam(px, py, a, pW, pL);
   }
 
   /* When the player is on the lower road, the bridge must cover the

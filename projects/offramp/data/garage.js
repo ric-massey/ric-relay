@@ -90,6 +90,29 @@ const Garage = (() => {
      `latG`  steady-state skidpad, in g
      `kg`    kerb weight
      `cost`  banked points to unlock. 0 means you start with it.
+
+     `body`  WHICH DRAWING, where the class is not enough. A Mustang and
+             a Jetta are both `klass: "car"` and both drive like one, and
+             from above one is a long bonnet with a short cabin and the
+             other is neither. Optional: `klass` is the fallback and is
+             right for most rows. draw.js owns the list.
+
+     `eng`   WHAT IT SOUNDS LIKE, and it is not a mood setting — it is
+             the engine's real configuration, because that is what
+             decides the note:
+
+               cyl      cylinders
+               layout   "i" | "flat" | "v" | "vtwin"
+               idle     rpm at rest
+               red      rpm at the limiter
+
+             A four-stroke fires cyl/2 times per revolution, so the
+             fundamental you hear is rpm/60 · cyl/2 and NOT a number
+             anybody gets to choose. A Harley at 2,000 rpm is 33 Hz, an
+             S1000RR at 14,200 is 473, and the reason they sound like
+             different machines rather than the same machine at
+             different speeds is that ratio and the firing interval,
+             both of which are in this table. See `audioFrame`.
      ══════════════════════════════════════════════════════════════════ */
   const ROWS = [
     {
@@ -100,6 +123,7 @@ const Garage = (() => {
       klass: "car", hp: 115, kg: 1300, len: 4.38, wide: 1.74,
       t60: 10.9, top: 120, stop: 135, latG: 0.78,
       cost: 0,
+      eng: { cyl: 4, layout: "i",     idle: 800, red: 6000 },
     },
     {
       id: "civic",
@@ -109,6 +133,7 @@ const Garage = (() => {
       klass: "car", hp: 197, kg: 1270, len: 4.14, wide: 1.72,
       t60: 7.4, top: 127, stop: 130, latG: 0.85,
       cost: 6000,
+      eng: { cyl: 4, layout: "i",     idle: 850, red: 8000 },
     },
     {
       /* The pickup. Two and a half tonnes of it, and the mass is the
@@ -122,6 +147,7 @@ const Garage = (() => {
       klass: "truck", hp: 400, kg: 2400, len: 5.89, wide: 2.03,
       t60: 6.5, top: 110, stop: 140, latG: 0.72,
       cost: 15000,
+      eng: { cyl: 8, layout: "v",     idle: 650, red: 6500 },
     },
     {
       id: "mustang",
@@ -131,6 +157,8 @@ const Garage = (() => {
       klass: "car", hp: 300, kg: 1600, len: 4.78, wide: 1.88,
       t60: 5.1, top: 150, stop: 120, latG: 0.85,
       cost: 32000,
+      eng: { cyl: 8, layout: "v",     idle: 700, red: 6000 },
+      body: "coupe",
     },
     {
       /* Slower to 60 than the Mustang and better than it everywhere
@@ -143,6 +171,8 @@ const Garage = (() => {
       klass: "car", hp: 250, kg: 1320, len: 4.32, wide: 1.78,
       t60: 5.4, top: 161, stop: 110, latG: 0.93,
       cost: 55000,
+      eng: { cyl: 6, layout: "flat",  idle: 800, red: 7200 },
+      body: "coupe",
     },
     {
       /* 155 mph is the gentlemen's limiter, not the car's ability —
@@ -157,6 +187,7 @@ const Garage = (() => {
       klass: "car", hp: 394, kg: 1795, len: 4.78, wide: 1.80,
       t60: 4.8, top: 155, stop: 120, latG: 0.87,
       cost: 85000,
+      eng: { cyl: 8, layout: "v",     idle: 700, red: 7000 },
     },
     {
       id: "z06",
@@ -166,6 +197,8 @@ const Garage = (() => {
       klass: "car", hp: 505, kg: 1420, len: 4.46, wide: 1.93,
       t60: 3.7, top: 198, stop: 105, latG: 1.04,
       cost: 130000,
+      eng: { cyl: 8, layout: "v",     idle: 650, red: 7000 },
+      body: "coupe",
     },
     {
       id: "gtr",
@@ -175,6 +208,8 @@ const Garage = (() => {
       klass: "car", hp: 545, kg: 1740, len: 4.65, wide: 1.90,
       t60: 3.2, top: 196, stop: 105, latG: 0.96,
       cost: 190000,
+      eng: { cyl: 6, layout: "v",     idle: 800, red: 7000 },
+      body: "coupe",
     },
     {
       /* Built rather than stock: a 997 Turbo runs 480 hp and 193 mph as
@@ -186,6 +221,8 @@ const Garage = (() => {
       klass: "car", hp: 700, kg: 1585, len: 4.45, wide: 1.85,
       t60: 2.8, top: 205, stop: 100, latG: 1.00,
       cost: 280000,
+      eng: { cyl: 6, layout: "flat",  idle: 800, red: 6750 },
+      body: "coupe",
     },
     {
       /* Last on purpose, and not because it is the best. It is 197 kg
@@ -200,6 +237,110 @@ const Garage = (() => {
       klass: "bike", hp: 199, kg: 197, len: 2.05, wide: 0.83,
       t60: 2.9, top: 188, stop: 130, latG: 1.00,
       cost: 400000,
+      eng: { cyl: 4, layout: "i",     idle: 1300, red: 14200 },
+      body: "sport",
+    },
+
+    /* ══ the second half of the garage ═══════════════════════════════
+       (Ric, 2026-08-13: "add like 5 more cars some sporty some normal
+       some weird ones. and add another motorcycle.")
+
+       Slotted into the existing ladder by cost rather than appended,
+       because the ladder is the progression and a row nobody reaches
+       until after the 911 is a row nobody drives. What they are FOR is
+       spread: the Smart is 2.69 m and 750 kg where the F-150 is 5.89 m
+       and 2,400, the Bus does 0-60 in half a minute, and the Road King
+       is the first thing here with an uneven firing interval. Every
+       figure is the manufacturer's or a road test's, same as the ten
+       above — nothing is tuned to feel like anything. */
+    {
+      /* Slow, and the point of it. 1.25 tonnes of nothing at all with a
+         skidpad number that embarrasses the Mustang: the ladder is not
+         one axis, and this is the clearest statement of that in it. */
+      id: "miata",
+      paint: "#1c5c3a",
+      make: "Mazda", model: "MX-5", year: 2001,
+      note: "no power anywhere, and it does not need any",
+      klass: "car", hp: 142, kg: 1065, len: 3.95, wide: 1.68,
+      t60: 7.8, top: 127, stop: 125, latG: 0.90,
+      cost: 9000,
+      eng: { cyl: 4, layout: "i",     idle: 850, red: 7000 },
+      body: "coupe",
+    },
+    {
+      /* The weird one, and the slowest thing that has ever been on this
+         road: twenty-six seconds to sixty and a governed 65, which on an
+         Interstate where the traffic model runs 70-80 makes you the
+         obstacle rather than the driver. That is a completely different
+         game on the same map and it costs almost nothing to unlock. */
+      id: "bus",
+      paint: "#d8703c",
+      make: "Volkswagen", model: "Type 2", year: 1971,
+      note: "you are the slow lane now",
+      klass: "van", hp: 60, kg: 1200, len: 4.51, wide: 1.72,
+      t60: 26.0, top: 65, stop: 165, latG: 0.62,
+      cost: 12000,
+      eng: { cyl: 4, layout: "flat",  idle: 750, red: 4200 },
+      body: "van",
+    },
+    {
+      /* The other weird one, from the opposite end: 2.69 m long, which
+         is shorter than a motorcycle is long twice over, and 750 kg.
+         It fits gaps nothing else fits and `impact.js` will not be kind
+         about the ones it does not. A three-cylinder, so it is also the
+         only odd-firing car here. */
+      id: "smart",
+      paint: "#e0dcd2",
+      make: "Smart", model: "Fortwo", year: 2008,
+      note: "two seats, three cylinders, no bonnet",
+      klass: "car", hp: 70, kg: 750, len: 2.69, wide: 1.56,
+      t60: 12.8, top: 90, stop: 140, latG: 0.75,
+      cost: 20000,
+      eng: { cyl: 3, layout: "i",     idle: 900, red: 5800 },
+      body: "micro",
+    },
+    {
+      /* The normal one, and the garage needs one: a car that is neither
+         fast nor interesting nor bad, in the middle of every column.
+         It is what most of the traffic around you actually is. */
+      id: "camry",
+      paint: "#8d939b",
+      make: "Toyota", model: "Camry", year: 2012,
+      note: "the most reasonable object on this road",
+      klass: "car", hp: 178, kg: 1470, len: 4.80, wide: 1.82,
+      t60: 9.0, top: 115, stop: 130, latG: 0.78,
+      cost: 24000,
+      eng: { cyl: 4, layout: "i",     idle: 700, red: 6200 },
+    },
+    {
+      /* Sporty, and the only flat-four here — the boxer's uneven exhaust
+         pulse is the whole reason you can identify one from a street
+         away, and `audioFrame` now has the firing interval to do it. */
+      id: "sti",
+      paint: "#2a5fa8",
+      make: "Subaru", model: "Impreza WRX STI", year: 2005,
+      note: "all four driven, all four complaining",
+      klass: "car", hp: 300, kg: 1470, len: 4.47, wide: 1.73,
+      t60: 4.8, top: 158, stop: 115, latG: 0.93,
+      cost: 68000,
+      eng: { cyl: 4, layout: "flat",  idle: 800, red: 7000 },
+    },
+    {
+      /* The second motorcycle, and deliberately the opposite of the
+         first one. 376 kg against the S1000RR's 197, a 45-degree V-twin
+         with a 315/405 firing interval instead of an even inline four,
+         and 5,500 rpm against 14,200. It is a different SHAPE on the
+         screen and a different sound out of it, which is what makes it
+         worth having two. */
+      id: "roadking",
+      paint: "#1d2b3a",
+      make: "Harley-Davidson", model: "Road King", year: 2015,
+      note: "forty-five degrees, and it wants you to know",
+      klass: "bike", hp: 86, kg: 376, len: 2.43, wide: 0.96,
+      t60: 5.1, top: 110, stop: 145, latG: 0.75,
+      cost: 150000,
+      eng: { cyl: 2, layout: "vtwin", idle: 950, red: 5500 },
+      body: "cruiser",
     },
   ];
 
@@ -278,7 +419,12 @@ const Garage = (() => {
     };
   }
 
-  const ALL = ROWS.map(derive);
+  /* Sorted by cost, because the order of this array IS the ladder —
+     it is what the garage lists and what `Progress.next()` walks. The
+     rows are written in the file in the order they were added, which
+     stopped being the order you unlock them the moment a row was
+     slotted between two existing ones. */
+  const ALL = ROWS.map(derive).sort((a, b) => a.cost - b.cost);
   const BY_ID = Object.fromEntries(ALL.map((c) => [c.id, c]));
 
   const DEFAULT = "jetta";

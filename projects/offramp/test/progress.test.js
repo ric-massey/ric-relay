@@ -57,11 +57,11 @@ Progress.forget();
 const opened = run(6000);
 ok("banking the Civic's cost opens the Civic", opened.opened.map((c) => c.id).join(","), "civic");
 ok("two vehicles now", Progress.unlocked().length, 2);
-ok("the next rung moved on", Progress.next().car.id, "f150");
+ok("the next rung moved on", Progress.next().car.id, "miata");
 
 const jump = run(400000 - 6000);
-ok("a huge run can open several at once", jump.opened.length, 8);
-ok("...and that is the whole garage", Progress.unlocked().length, 10);
+ok("a huge run can open several at once", jump.opened.length, 14);
+ok("...and that is the whole garage", Progress.unlocked().length, 16);
 ok("nothing is left to unlock", Progress.next(), null);
 ok("the bike is available last and is available now", Progress.isUnlocked("s1000rr"), true);
 

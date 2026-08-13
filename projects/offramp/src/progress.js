@@ -207,6 +207,16 @@ const Progress = (() => {
     if (!m) return { ok: false, why: "that is not an Interstate 40 code" };
     let body;
     try { body = b64.from(m[2]); } catch (e) { return { ok: false, why: "the code is damaged" }; }
+    /* The checksum is over the DECODED body, which leaves one hole:
+       base64 padding decodes to nothing, so a code that lost its
+       trailing "=" in a chat window decodes to the same bytes, sums the
+       same, and was accepted as intact. It went unnoticed while the
+       ledger happened to encode to a length that needs no padding — and
+       the moment the garage grew from ten rows to sixteen, the unlocked
+       list got longer, the payload picked up a "=", and progress.test.js
+       caught it. Requiring the payload to be CANONICAL closes it for
+       padding and for any other re-spelling of the same bytes. */
+    if (b64.to(body) !== m[2]) return { ok: false, why: "the code is damaged" };
     if (sum(body) !== m[1]) return { ok: false, why: "the code is damaged" };
     let raw;
     try { raw = JSON.parse(body); } catch (e) { return { ok: false, why: "the code is damaged" }; }
