@@ -2943,6 +2943,41 @@
      ══════════════════════════════════════════════════════════════════ */
   let carIdx = 0;
 
+  /* ── the vehicle, on the card ───────────────────────────────────────
+     (Ric, 2026-08-13: "add so in the garage you can see what the car
+     looks like.")
+
+     The SAME sprite the game draws, not an illustration of it, so what
+     you pick is what arrives — and so that a shape nobody thought to
+     check shows up here the moment it is wrong.
+
+     Blown up by a WHOLE number. A pixel-art sprite at 3.4× is a mess of
+     uneven pixels, so the scale is floored and the bitmap is centred in
+     whatever is left over; the canvas is square and generous enough for
+     the longest thing in the garage, which is the F-150 at 33 px. */
+  function drawCarShot(c) {
+    const cvsEl = el("car-shot");
+    if (!cvsEl || typeof Draw === "undefined" || !Draw.vehicleBitmap) return;
+    const b = Draw.vehicleBitmap(c);
+    if (!b) return;
+    const g = cvsEl.getContext("2d");
+    const W = cvsEl.width, H = cvsEl.height;
+    g.clearRect(0, 0, W, H);
+    const k = Math.max(1, Math.floor(Math.min(W / b.w, H / b.h)));
+    /* Straight from the packed bitmap into an ImageData of its own size,
+       then one scaled blit — rather than k² fillRects, which for the
+       lorry-sized rows is a few thousand calls every time you press an
+       arrow. */
+    const img = g.createImageData(b.w, b.h);
+    new Uint32Array(img.data.buffer).set(b.d);
+    const tmp = document.createElement("canvas");
+    tmp.width = b.w; tmp.height = b.h;
+    tmp.getContext("2d").putImageData(img, 0, 0);
+    g.imageSmoothingEnabled = false;
+    g.drawImage(tmp, Math.round((W - b.w * k) / 2), Math.round((H - b.h * k) / 2),
+                b.w * k, b.h * k);
+  }
+
   function drawCarCard() {
     const c = Garage.ALL[carIdx];
     if (!c || !el("car-model")) return;
@@ -2963,6 +2998,7 @@
       cell("60–0", String(c.stop), "ft");
 
     el("car-note").textContent = c.note;
+    drawCarShot(c);
 
     const lock = el("car-lock");
     lock.hidden = open;
@@ -3027,6 +3063,59 @@
     setCar(c.id);
     drawCarCard();
     blip("tick");
+  }
+
+  /* ── looking one up ─────────────────────────────────────────────────
+     (Ric, 2026-08-13: "also add a search bar.")
+
+     Sixteen rows is past what two arrows are pleasant for. Scored
+     rather than filtered, because the answer has to be ONE vehicle —
+     the card shows one — and "m5" should not lose to whichever row
+     happens to sit earliest in the table and contain an m.
+
+     It reaches LOCKED rows on purpose. The arrows skip them so that the
+     thing you cannot have is never in your way, and the record tab has
+     the ladder to look at; but if you type "corvette" you want to be
+     shown the Corvette, not told it does not exist. Landing on a locked
+     row shows it and does not select it — `drawCarCard` already refuses
+     to start on one and says so. */
+  function findCar(q) {
+    const n = q.trim().toLowerCase();
+    if (!n) return -1;
+    let best = -1, score = 0;
+    Garage.ALL.forEach((c, i) => {
+      const model = c.model.toLowerCase(), make = c.make.toLowerCase();
+      const id = c.id.toLowerCase();
+      let s = 0;
+      if (id === n || model === n) s = 100;
+      else if (model.startsWith(n) || make.startsWith(n) || id.startsWith(n)) s = 80;
+      else if (model.includes(n) || make.includes(n)) s = 60;
+      else if (`${c.year}`.includes(n) || c.note.toLowerCase().includes(n)) s = 30;
+      /* A tie goes to the cheaper row, which is the one further down the
+         ladder and the one more likely to be meant. ALL is cost-sorted,
+         so "first wins" is exactly that rule. */
+      if (s > score) { score = s; best = i; }
+    });
+    return best;
+  }
+
+  function searchCar(q) {
+    const found = el("car-found");
+    const i = findCar(q);
+    if (!q.trim()) { if (found) { found.textContent = ""; found.classList.remove("miss"); } return; }
+    if (i < 0) {
+      if (found) { found.textContent = `nothing called “${q.trim()}”`; found.classList.add("miss"); }
+      return;
+    }
+    carIdx = i;
+    const c = Garage.ALL[i];
+    const open = Progress.isUnlocked(c.id);
+    if (open) { Progress.select(c.id); setCar(c.id); }
+    drawCarCard();
+    if (found) {
+      found.classList.remove("miss");
+      found.textContent = open ? `${c.make} ${c.model}` : `${c.make} ${c.model} — locked`;
+    }
   }
 
   /* What the progress bar and the banked total say. Redrawn whenever
@@ -3295,6 +3384,19 @@
   }
   if (el("car-prev")) el("car-prev").addEventListener("click", () => cycleCar(-1));
   if (el("car-next")) el("car-next").addEventListener("click", () => cycleCar(1));
+  if (el("car-search")) {
+    const box = el("car-search");
+    box.addEventListener("input", () => searchCar(box.value));
+    /* Space is DRIVE and the arrows are the garage, so every key that
+       reaches this field has to stop here — otherwise typing "boxster"
+       starts a run on the "s". Enter gives the field up rather than
+       submitting anything, which puts space and the arrows back. */
+    box.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") { e.preventDefault(); box.blur(); }
+    });
+    box.addEventListener("pointerdown", (e) => e.stopPropagation());
+  }
   /* ── the code box ───────────────────────────────────────────────────
      `unlock` opens the garage; anything else is tried as a save code.
      Both land in the same field because from the player's side they are

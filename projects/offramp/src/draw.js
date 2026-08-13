@@ -2368,9 +2368,7 @@ const Draw = (() => {
     const w = pW, l = pL, pad = 1;
     const b = X.bitmap(w + pad * 2, l);
     const x0 = pad, base = skin(dead);
-    const cx = x0 + ((w - 1) >> 1);
-    const fw = Math.max(3, w - 1);
-    const bx = x0 + ((w - fw) >> 1);
+    const cx = x0 + (w >> 1);
 
     const nose = Math.max(1, Math.round(l * 0.12));   // front tyre
     const tank = Math.round(l * 0.40);                // nacelle + tank end
@@ -2380,10 +2378,16 @@ const Draw = (() => {
     b.fill(cx, 0, 1, nose, TYRE);
     b.fill(cx, rear, 1, l - rear, TYRE);
 
-    /* Narrow at the front — nacelle and tank, not a fairing. */
-    const nw = Math.max(1, fw - 2);
-    b.fill(bx + ((fw - nw) >> 1), nose, nw, tank - nose, base);
-    b.fill(bx + ((fw - nw) >> 1), nose, 1, tank - nose, X.mix(base, C.shadow, 0.42));
+    /* Narrow at the front — a nacelle and a tank, not a fairing — and
+       centred on `cx` rather than on a separately computed body width.
+       It WAS its own width, `max(3, w - 1)`, which for the 5 px Road
+       King came out even, could not be centred on an odd body, and left
+       the tail as `#.##..#`: two holes with the panniers floating off
+       the end of it. Everything here is measured from the one centre
+       line now, which is the only thing a motorcycle has. */
+    const nw = Math.max(1, w - 2);
+    b.fill(cx - (nw >> 1), nose, nw, tank - nose, base);
+    b.fill(cx - (nw >> 1), nose, 1, tank - nose, X.mix(base, C.shadow, 0.42));
 
     // handlebars, and the only thing here drawn outside the body
     const barY = nose + Math.max(0, Math.round(l * 0.06));
@@ -2395,10 +2399,11 @@ const Draw = (() => {
     b.fill(cx, tank, 1, Math.max(1, Math.round(l * 0.10)),
            dead ? X.hex("#6d5f4e") : C.playerTrim);              // helmet
 
-    /* Panniers, one each side, and a slab of chrome between them. */
-    b.fill(x0 - 1, back, 1, rear - back, X.mix(base, C.shadow, 0.35));
-    b.fill(x0 + w, back, 1, rear - back, X.mix(base, C.shadow, 0.35));
-    b.fill(bx + 1, back, Math.max(1, fw - 2), rear - back, base);
+    /* The tail: one solid bar with a hard case on each end of it, laid
+       as a full-width row and then a lighter middle, so there is nothing
+       for a rounding error to leave a gap in. */
+    b.fill(x0 - 1, back, w + 2, rear - back, X.mix(base, C.shadow, 0.35));
+    b.fill(x0 + 1, back, Math.max(1, w - 2), rear - back, base);
 
     if (dead) b.fill(x0, tank, w, 2, BURN);
     else {
@@ -2408,14 +2413,40 @@ const Draw = (() => {
     return b;
   }
 
+  const builderFor = (body) =>
+      body === "sport" ? bikeBmp
+    : body === "cruiser" ? cruiserBmp
+    : body === "pickup" ? pickupBmp
+    : body === "van" ? vanBmp
+    : carBmp;                        // saloon, coupe and micro differ inside
+
   function buildPlayer() {
-    const mk = pBody === "sport" ? bikeBmp
-             : pBody === "cruiser" ? cruiserBmp
-             : pBody === "pickup" ? pickupBmp
-             : pBody === "van" ? vanBmp
-             : carBmp;                    // saloon, coupe and micro differ inside
+    const mk = builderFor(pBody);
     playerBmp = mk(false);
     playerWreck = mk(true);
+  }
+
+  /* ── a sprite for something you are not driving ─────────────────────
+     The garage wants to show you the vehicle, and the vehicle it wants
+     to show is usually not the one loaded. A Raster bitmap is a
+     self-contained { w, h, d } of packed pixels, so this hands one back
+     and the caller can put it on any canvas it likes — no `X.attach`,
+     which would tear the live buffer out from under the frame loop.
+
+     The builders read the module's pW/pL/pPaint/pBody, so those are
+     saved and put back around the call. Getting that wrong would
+     repaint the car you are actually driving in the colours of the one
+     you are looking at, and it would do it silently. */
+  function vehicleBitmap(car) {
+    const sw = pW, sl = pL, sp = pPaint, sb = pBody;
+    pW = Math.max(4, Math.round((car && car.wide ? car.wide : 1.97) / 0.179));
+    pL = Math.max(8, Math.round((car && car.len ? car.len : 4.65) / 0.179));
+    pPaint = car && car.paint ? X.hex(car.paint) : null;
+    pBody = bodyOfCar(car);
+    let b = null;
+    try { b = builderFor(pBody)(false); }
+    finally { pW = sw; pL = sl; pPaint = sp; pBody = sb; }
+    return b;
   }
 
   /* headlight throw — a pale wedge in front of anything moving */
@@ -2697,7 +2728,7 @@ const Draw = (() => {
     get VW() { return VW; }, get VH() { return VH; },
     get CX() { return CX; }, get PY() { return PY; },
     C, resize,
-    world, setPhase, setPlayerVehicle, night, camera, sx, sy,
+    world, setPhase, setPlayerVehicle, vehicleBitmap, night, camera, sx, sy,
     partCols: {
       dust: [C.gravel, C.gravelDk], debris: [C.cone, C.coneBand, C.asphalt],
       spark: [C.head, C.amber], smoke: [C.smoke], fire: [C.fire, C.tail, X.hex("#ffe089")],
