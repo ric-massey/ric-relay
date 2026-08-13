@@ -97,11 +97,22 @@ const Road = (() => {
   let random = Math.random;
 
   const rnd = (a, b) => a + random() * (b - a);
-  const setRandom = (fn) => { random = typeof fn === "function" ? fn : Math.random; };
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
-  /* shortest signed way round from b to a */
-  const angleDiff = (a, b) => ((a - b + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+  /* Shortest signed way round from b to a.
+
+     Written as `((a - b + 3π) % 2π) - π`, which is correct for any two
+     angles and costs two float modulos. Both arguments here are always
+     headings out of `Math.atan2`, so they are in (−π, π] and their
+     difference is in (−2π, 2π) — one conditional wrap covers that
+     range exactly, with no modulo at all. Same answer, and it is worth
+     saying why: this is called once per frame() and once per project(),
+     which put it at 8.7% of a window rebuild on the profile. */
+  const TAU = Math.PI * 2;
+  const angleDiff = (a, b) => {
+    const d = a - b;
+    return d > Math.PI ? d - TAU : d < -Math.PI ? d + TAU : d;
+  };
 
   /* ── construction ───────────────────────────────────────────────────
      A road always starts as a single station and is grown on demand.
@@ -140,6 +151,13 @@ const Road = (() => {
       medRail: [0],
       aux: [0],                         // deceleration-lane width per station, +u side
       auxL: [0],                        // the same, −u side: the other carriageway's exits
+      /* Station ranges of `aux`/`auxL` that `settleAux` may not raise:
+         the wedge each gore closes over. Every other taper on this road
+         is a shape that may be talked out of happening — see the note
+         on settleAux — but the wedge is where the pavement stops being
+         the freeway's, and it has to reach zero whatever is downstream
+         of it. */
+      auxHold: [], auxHoldL: [],
       lanes: [o.fwd != null ? o.fwd : 3],// retained per station for future lane changes
       /* Lanes on the OTHER carriageway, per station. `back` below is the
          scalar it used to be and is still the default this is filled
@@ -216,12 +234,6 @@ const Road = (() => {
     return b;
   }
 
-  function nearBounds(r, x, y, pad) {
-    const b = r.bounds;
-    return x >= b.minX - pad && x <= b.maxX + pad
-        && y >= b.minY - pad && y <= b.maxY + pad;
-  }
-
   const len = (r) => (r.st.length - 1) * STEP;
 
   /* Grow the centreline until it reaches `to` world px long. The
@@ -250,60 +262,31 @@ const Road = (() => {
       r.inner.push(r.inner[n - 1]);
       r.innerL.push(r.innerL[n - 1]);
       r.deck.push(r.deck[n - 1]);
+      /* ── the other three, which used to be left behind ────────────────
+         `medW`, `shIn` and `medRail` were not extended here, so a road
+         built by growing kept them one station long for its whole
+         length. `sample()` reads a one-element array as a constant, so
+         nothing was visibly wrong — the answer was the value at station
+         zero everywhere, which for the only thing that grows now (a
+         scenery cross street) is the same value it would have had.
+
+         They are extended because `edges()` below now takes ONE station
+         index and applies it to all eight arrays, which is only sound
+         if they are all as long as the centreline. Keeping the three in
+         step is what makes that true for every road rather than for
+         most of them. */
+      r.medW.push(r.medW[n - 1]);
+      r.shIn.push(r.shIn[n - 1]);
+      r.medRail.push(r.medRail[n - 1]);
     }
   }
 
-  /* Build a road backwards from a point, so a freeway you are about to
-     merge onto already has a mile of itself behind you, with traffic on
-     it. The stations come out in reverse and get flipped; headings turn
-     round because travelling the other way is what "backwards" means. */
-  /* `aim` bends the first stretch of that back-extension until it is
-     running at a given heading, and it is the reason interchanges here
-     don't tie themselves in knots. A ramp lands on the new freeway
-     already turned thirty or forty degrees off the old one; extend that
-     straight backwards and it drives through the road you just left. So
-     the upstream end is aimed back parallel to the parent instead, and
-     the new freeway resolves into what it would be in the real world —
-     a second motorway running alongside the first, a few hundred pixels
-     off, with a link road between them. */
-  function growBack(r, dist, aim) {
-    const head = [];
-    let x = r.st[0].x, y = r.st[0].y, h = r.st[0].h;
-    let curv = 0, curvT = 0, hold = rnd(900, 2600);
-    const aimH = aim ? aim.h : null, aimLen = aim ? aim.len : 0;
-    const h0 = h;
-    for (let d = 0; d < dist; d += STEP) {
-      let nh;
-      if (aimH != null && d < aimLen) {
-        // smoothstep the heading from where the ramp left it back to parallel
-        const t = (d + STEP) / aimLen;
-        nh = h0 + (aimH - h0) * (t * t * (3 - 2 * t));
-      } else {
-        hold -= STEP;
-        if (hold <= 0) { hold = rnd(900, 2600); curvT = random() < 0.45 ? 0 : rnd(-r.maxCurv, r.maxCurv); }
-        curv += (curvT - curv) * 0.035;
-        nh = h - curv * STEP;
-      }
-      const m = (h + nh) / 2;
-      x -= Math.sin(m) * STEP; y -= Math.cos(m) * STEP; h = nh;
-      head.push({ x, y, h });
-    }
-    head.reverse();
-    r.st = head.concat(r.st);
-    rebound(r);
-    r.aux = new Array(head.length).fill(0).concat(r.aux);
-    r.auxL = new Array(head.length).fill(0).concat(r.auxL);
-    r.lanes = new Array(head.length).fill(r.lanes[0]).concat(r.lanes);
-    r.bLanes = new Array(head.length).fill(r.bLanes[0]).concat(r.bLanes);
-    r.inner = new Array(head.length).fill(r.inner[0]).concat(r.inner);
-    r.innerL = new Array(head.length).fill(r.innerL[0]).concat(r.innerL);
-    r.medW = new Array(head.length).fill(r.medW[0]).concat(r.medW);
-    r.medRail = new Array(head.length).fill(r.medRail[0]).concat(r.medRail);
-    r.shIn = new Array(head.length).fill(r.shIn[0]).concat(r.shIn);
-    r.deck = new Array(head.length).fill(r.deck[0]).concat(r.deck);
-    for (const e of r.exits) e.i += head.length;
-    return head.length;              // how far every existing index shifted
-  }
+  /* `growBack()` was here: it grew a freeway BACKWARDS from a point so
+     that a road you were about to merge onto already had a mile of
+     itself behind you, aiming the upstream end parallel to the parent
+     so the two did not tie themselves in knots. Nothing has called it
+     since the corridor arrived — I-40 is surveyed for its whole length
+     and there is never a road that has to be invented behind you. */
 
   /* Build a complete, deterministic freeway from map-scale waypoints.
      Catmull-Rom keeps every waypoint on the route while smoothing the
@@ -500,16 +483,35 @@ const Road = (() => {
     const r = make(o.kind === "ramp" ? "ramp" : "freeway", kept[0].x, kept[0].y, kept[0].h, o);
     r.st = kept;
     const L = kept.length;
-    r.aux = new Array(L).fill(0);
-    r.auxL = new Array(L).fill(0);
-    r.lanes = new Array(L).fill(o.fwd != null ? o.fwd : 3);
-    r.bLanes = new Array(L).fill(o.back != null ? o.back : 2);
-    r.inner = new Array(L).fill(0);
-    r.innerL = new Array(L).fill(0);
-    r.medW = new Array(L).fill(MED);
-    r.medRail = new Array(L).fill(0);
-    r.shIn = new Array(L).fill(SH_IN);
-    r.deck = new Array(L).fill(0);
+  /* ── the cross-section arrays are TYPED ─────────────────────────────
+     Ten numbers per station, read by `sample()` below, which the
+     profile puts at 31.6% of a window rebuild — not because it is
+     slow but because of how often it is asked. `edges()` alone is
+     eight of these lookups, and the dressing, the paint and the
+     clearance invariant all call `edges()` once per station per road
+     per pass.
+
+     A Float64Array is a contiguous block of doubles; a plain Array of
+     numbers is a heap object whose elements V8 has to keep proving are
+     still numbers. Same values, same arithmetic, one indirection less
+     per read.
+
+     They can be fixed-length here because a road built from a
+     polyline is built once, whole. `grow()` still pushes, so a road
+     that grows — which now means only the scenery cross streets —
+     keeps plain arrays, and `sample()` reads either without caring. */
+    const zeros = () => new Float64Array(L);
+    const filled = (v) => { const a = new Float64Array(L); a.fill(v); return a; };
+    r.aux = zeros();
+    r.auxL = zeros();
+    r.lanes = filled(o.fwd != null ? o.fwd : 3);
+    r.bLanes = filled(o.back != null ? o.back : 2);
+    r.inner = zeros();
+    r.innerL = zeros();
+    r.medW = filled(MED);
+    r.medRail = zeros();
+    r.shIn = filled(SH_IN);
+    r.deck = zeros();
     r.wrap = closed;
     /* Where station ZERO actually is, not where the window was asked to
        start. Sampling is quantised to the STEP grid, so those differ by
@@ -585,16 +587,18 @@ const Road = (() => {
 
     const r = make("freeway", sampled[0].x, sampled[0].y, sampled[0].h, o);
     r.st = sampled;
-    r.aux = new Array(sampled.length).fill(0);
-    r.auxL = new Array(sampled.length).fill(0);
-    r.lanes = new Array(sampled.length).fill(o.fwd != null ? o.fwd : 3);
-    r.bLanes = new Array(sampled.length).fill(o.back != null ? o.back : 2);
-    r.inner = new Array(sampled.length).fill(0);
-    r.innerL = new Array(sampled.length).fill(0);
-    r.medW = new Array(sampled.length).fill(MED);
-    r.medRail = new Array(sampled.length).fill(0);
-    r.shIn = new Array(sampled.length).fill(SH_IN);
-    r.deck = new Array(sampled.length).fill(0);
+    const zeros = () => new Float64Array(sampled.length);
+    const filled = (v) => { const a = new Float64Array(sampled.length); a.fill(v); return a; };
+    r.aux = zeros();
+    r.auxL = zeros();
+    r.lanes = filled(o.fwd != null ? o.fwd : 3);
+    r.bLanes = filled(o.back != null ? o.back : 2);
+    r.inner = zeros();
+    r.innerL = zeros();
+    r.medW = filled(MED);
+    r.medRail = zeros();
+    r.shIn = filled(SH_IN);
+    r.deck = zeros();
     r.wrap = closed;
     rebound(r);
     return r;
@@ -734,9 +738,57 @@ const Road = (() => {
     r.kind !== "ramp" && medAt(r, s) > MED_BARRIER && sample(r.medRail, s, 0) > 0.5
       ? MED_RAIL_W : 0;
 
+  /* ── one station index, eight arrays ────────────────────────────────
+     `edges` is the hottest function in a window rebuild. It is asked
+     once per station per road per pass by the dressing, the paint, the
+     clearance invariant and the renderer, and it used to answer with
+     eight separate `sample()` calls — eight function calls, eight
+     divisions, eight clamps and eight floors, all computing the SAME
+     station index from the same `s`.
+
+     Profiled over five rebuilds, `sample` was 31.6% of the whole build
+     and `dress`/`dressAll`/`noses` — which are almost entirely
+     `edges` and `project` — were 57% between them.
+
+     So the index is computed once here and applied to all eight. That
+     is only sound while every array is as long as the centreline,
+     which `fromPolyline`, `makeRoute` and now `grow` all guarantee;
+     `fits` checks it rather than assuming it, once per road rather
+     than once per call, and anything that does not fit falls back to
+     the general path. Same arithmetic either way — `sample` clamps to
+     `a.length - 1` and this clamps to `n - 1`, and when they are equal
+     so are the answers. */
+  function fits(r) {
+    const n = r.st.length;
+    if (r._fitN === n) return r._fit;
+    r._fitN = n;
+    r._fit = n > 1 && r.medW.length === n && r.shIn.length === n
+          && r.inner.length === n && r.innerL.length === n
+          && r.lanes.length === n && r.bLanes.length === n
+          && r.aux.length === n && r.auxL.length === n;
+    return r._fit;
+  }
+
   function edges(r, s) {
     if (r.kind === "ramp") {
       return { uL: -LANE / 2, uR: (r.rampLanes - 0.5) * LANE };
+    }
+    if (fits(r)) {
+      const n = r.st.length;
+      const f = clamp(s / STEP, 0, n - 1);
+      const i = Math.min(n - 2, Math.floor(f)), t = f - i;
+      const med = r.medW[i] + (r.medW[i + 1] - r.medW[i]) * t
+                + r.shIn[i] + (r.shIn[i + 1] - r.shIn[i]) * t;
+      return {
+        uL: -(med
+          + r.innerL[i] + (r.innerL[i + 1] - r.innerL[i]) * t
+          + (r.bLanes[i] + (r.bLanes[i + 1] - r.bLanes[i]) * t) * LANE
+          + r.auxL[i] + (r.auxL[i + 1] - r.auxL[i]) * t),
+        uR: med
+          + r.inner[i] + (r.inner[i + 1] - r.inner[i]) * t
+          + (r.lanes[i] + (r.lanes[i + 1] - r.lanes[i]) * t) * LANE
+          + r.aux[i] + (r.aux[i + 1] - r.aux[i]) * t,
+      };
     }
     const inside = innerAt(r, s);
     return {
@@ -798,16 +850,28 @@ const Road = (() => {
       hi = Math.min(n - 2, (hint | 0) + w);
     }
     let bi = -1, bt = 0, bd = Infinity, bx = 0, by = 0;
+    /* The far end of one segment is the near end of the next, so the
+       pair is carried rather than loaded twice.
+
+       Mirroring these positions into flat Float64Arrays was tried here
+       — `project` is the most expensive thing in a window rebuild and a
+       station is an object, so the walk is a pointer chase. It was
+       worth 1.5%, which does not pay for a second copy of every
+       centreline and a cache that has to be invalidated whenever
+       geometry settles. V8 keeps these objects monomorphic and packed
+       and is already doing most of the work. */
+    let ax = st[lo].x, ay = st[lo].y;
     for (let i = lo; i <= hi; i++) {
-      const a = st[i], b = st[i + 1];
-      const ex = b.x - a.x, ey = b.y - a.y;
+      const q = st[i + 1], nx = q.x, ny = q.y;
+      const ex = nx - ax, ey = ny - ay;
       const L2 = ex * ex + ey * ey;
-      let t = L2 > 0 ? ((x - a.x) * ex + (y - a.y) * ey) / L2 : 0;
+      let t = L2 > 0 ? ((x - ax) * ex + (y - ay) * ey) / L2 : 0;
       if (t < 0) t = 0; else if (t > 1) t = 1;
-      const cx = a.x + ex * t, cy = a.y + ey * t;
+      const cx = ax + ex * t, cy = ay + ey * t;
       const dx = x - cx, dy = y - cy;
       const d = dx * dx + dy * dy;
       if (d < bd) { bd = d; bi = i; bt = t; bx = cx; by = cy; }
+      ax = nx; ay = ny;
     }
     if (bi < 0) return null;
     const a = st[bi], b = st[bi + 1];
@@ -847,10 +911,22 @@ const Road = (() => {
      road: a bar at 69° slashed across the exit. Thirty-six of them in a
      twenty-mile window, two per exit per direction.
 
-     So both ends taper. 40 stations is 320 px, which is close to the
-     rate the ramp itself pulls away from the carriageway over the same
-     ground, so the closing edge line stays roughly parallel to the gore
-     instead of chasing it. */
+     So both ends taper. 40 stations is 320 px, and what that buys is
+     the width of the neutral area at the back of the gore: measured
+     over 115 junctions, the two roads are a median 25 px apart 320 px
+     past the gore, which on this scale is 4.5 m at 57 m — about four
+     and a half degrees, and a real gore.
+
+     It was claimed here that 320 px is close to the rate the ramp
+     itself pulls away. Measured, it was not: the freeway contributed
+     the whole 20.5 px of it and the ramp a median 4.9, and at the tenth
+     percentile the ramp's near edge moved the wrong way and the freeway
+     opened the gore on its own. That was a fact about the shape the
+     generated exits were drawn with, not about this number, and it is
+     mostly gone — the profile now comes off the survey and a generated
+     ramp contributes a median 6.2 px here against a surveyed 11.7,
+     matching from about 500 px on. What is left is inside the spiral's
+     own 320 px, which is what a spiral is; see PLAN.md §7b. */
   const TAPER = 64;         // 92 m: the extra lane opens to full width
   const DECEL = 96;         // 137 m: full-width lane before the gore
   const EXIT_APPROACH = TAPER + DECEL;
@@ -912,6 +988,12 @@ const Road = (() => {
       if (j < 0 || j >= a.length) continue;
       a[j] = Math.max(a[j], full * smooth(1 - k / WEDGE));
     }
+    /* And this closure is the one that is not negotiable. The gore
+       station itself is left out of the range: it is the full-width end
+       of the approach, and the lane arriving at it is exactly what
+       settleAux has to be able to see. */
+    const hold = side < 0 ? r.auxHoldL : r.auxHold;
+    hold.push({ a: Math.min(i + d, i + d * WEDGE), b: Math.max(i + d, i + d * WEDGE) });
   }
 
   /* The mirror image, for the far end of a ramp: its one to three lanes
@@ -949,6 +1031,68 @@ const Road = (() => {
       const j = i + d * k;
       if (j < 0 || j >= a.length) continue;
       a[j] = Math.max(a[j], full * smooth(1 - k / length));
+    }
+  }
+
+  /* ── two tapers that meet in the middle are not two tapers ───────────
+     openAux and closeAux each write their own shape and combine with
+     Math.max, and where two structures are closer together than the
+     lengths they are sized for, the max of a lane thinning away and a
+     lane opening up is a DIP: full width, down to a trough, back to
+     full width, and the edge line follows it exactly. Swept over 64
+     windows: 283 of them, 9% of every station of open auxiliary lane,
+     a median 4.1 px deep and the worst 13.5 — two thirds of a lane
+     pinched out of the side of the road and put back over 1,100 px.
+
+     It is not a taper rate that is wrong, it is the premise. An
+     acceleration lane tapers away because there is nothing after it. If
+     the next interchange's deceleration lane starts before that has
+     finished, the honest thing on the ground is the thing that is
+     actually built there: ONE auxiliary lane running from the merge to
+     the next gore, full width, dotted on the inside — which is what an
+     auxiliary lane between adjacent interchanges IS.
+
+     So no taper is sized against a neighbour and no two tapers are
+     blended. Each is written as if it were alone, and then the valleys
+     between them are filled: inside a run of open lane, every station
+     is raised to the lower of the highest lane behind it and the
+     highest ahead of it. Rises and falls are untouched by construction
+     — a station on a genuine flank is already the running max on that
+     side — so a lane that really does open out of nothing still opens
+     over the full taper, and only the crossings are removed. The result
+     is unimodal per run: up, along, down, and never back up again.
+
+     `auxHold` is the one exception, and it is why this is not simply a
+     smoothing pass. See openAux. */
+  function settleAux(r) {
+    for (const side of [1, -1]) {
+      const a = auxSide(r, side);
+      const holds = side < 0 ? r.auxHoldL : r.auxHold;
+      const n = a.length;
+      /* Laid out flat rather than asked through `suppressed`, which
+         scans the whole range list per call: this walks every station
+         of a twenty-mile window, and there are thirty ranges. */
+      const held = new Uint8Array(n);
+      for (const h of holds)
+        for (let k = Math.max(0, h.a); k <= Math.min(n - 1, h.b); k++) held[k] = 1;
+      let p = 0;
+      while (p < n) {
+        if (a[p] <= 0 || held[p]) { p++; continue; }
+        let q = p;
+        while (q + 1 < n && a[q + 1] > 0 && !held[q + 1]) q++;
+        /* min(highest behind, highest ahead), over [p, q] */
+        const m = q - p + 1;
+        const ahead = new Float64Array(m);
+        let hi = 0;
+        for (let k = m - 1; k >= 0; k--) { if (a[p + k] > hi) hi = a[p + k]; ahead[k] = hi; }
+        let behind = 0;
+        for (let k = 0; k < m; k++) {
+          if (a[p + k] > behind) behind = a[p + k];
+          const fill = behind < ahead[k] ? behind : ahead[k];
+          if (fill > a[p + k]) a[p + k] = fill;
+        }
+        p = q + 1;
+      }
     }
   }
 
@@ -1018,242 +1162,53 @@ const Road = (() => {
     return count;
   }
 
-  /* Add or remove one outside through lane over a long taper. `lanes`
-     stores a continuous lane-width count, so the asphalt edge and its
-     paint move a fraction of a pixel per station rather than jumping a
-     whole 12-foot lane at once. */
-  const LANE_CHANGE = 120;                    // 172 m at 8 px/station
-  function changeLanes(r, atS, to) {
-    if (r.kind !== "freeway") return null;
-    const i0 = Math.max(0, Math.round(atS / STEP));
-    const from = lanesAt(r, i0 * STEP);
-    to = clamp(Math.round(to), 2, 4);
-    if (Math.abs(from - to) < 0.25) return null;
-    grow(r, (i0 + LANE_CHANGE + 2) * STEP);
-    for (let k = 0; k <= LANE_CHANGE; k++) {
-      const t = k / LANE_CHANGE;
-      r.lanes[i0 + k] = from + (to - from) * smooth(t);
-    }
-    for (let i = i0 + LANE_CHANGE + 1; i < r.lanes.length; i++) r.lanes[i] = to;
-    r.fwd = to;                                // downstream default for future growth
-    const change = { s0: i0 * STEP, s1: (i0 + LANE_CHANGE) * STEP, from, to };
-    r.laneChanges.push(change);
-    return change;
-  }
+  /* How long a lane takes to appear or disappear: 120 stations, 172 m.
+     A twelve-foot lane arriving in one station reads as a fault in the
+     road rather than as a taper, and this is the distance over which it
+     is spread instead.
 
-  /* ── ramps ──────────────────────────────────────────────────────────
-     A ramp is born tangent to its parent, at the centre of the aux lane
-     that has just finished opening. It then turns through `sweep` at a
-     radius the player can actually hold, eases back to straight, and
-     runs on for a while so it can meet a long, parallel acceleration
-     lane on the next freeway. */
-  function makeRamp(parent, i, sweep, radius, options) {
-    options = options || {};
-    let side = options.side < 0 ? -1 : 1;
-    let lanes = Math.max(1, Math.min(3, options.lanes | 0 || 1));
-    const s = i * STEP;
-    const before = Math.round(lanesAt(parent, s - STEP));
-    if (side < 0 && before < 3) side = 1;
-    if (side < 0) lanes = Math.min(lanes, before - 2);
-    if (side > 0) openAux(parent, i, lanes);
-    const inside = insideAt(parent, s - STEP) + innerAt(parent, s - STEP);
-    const u = side > 0
-      ? inside + before * LANE + LANE / 2
-      : inside + LANE / 2;
-    const p = at(parent, s, u);
-    const r = make("ramp", p.x, p.y, p.h, { fwd: lanes, back: 0, lanes });
-    r.parent = parent;
-    r.side = side;
-    r.startU = u;
-    r.med = 0;
-    /* A ramp paints over the road it left — it is drawn second so its
-       gore reads cleanly. It does not thereby become a bridge: it leaves
-       at grade and stays there unless somebody raises its deck. */
-    r.layer = parent.layer + 1;
+     `changeLanes()` used to own this constant and is gone — it added or
+     dropped one outside through lane on demand, which is a thing the
+     fictional map's generator asked for and the corridor never does.
+     The corridor's counts come off the survey, per station, and
+     World.applyLanes eases them with a boxcar of this half-width. So
+     the taper survives; only the function that used to request one has
+     gone, and the number stays here because road.js is where the
+     cross-section's dimensions live. */
+  const LANE_CHANGE = 120;
 
-    if (side < 0) dropLeft(parent, i, lanes);
+  /* ── the two ramp builders that the corridor does not use ───────────
+     `makeRamp()` and `makeLink()` were here, and PLAN.md §3 said to
+     keep them because "these build the loop-backs". That stopped being
+     true when the corridor did.
 
-    sweep = Math.abs(sweep) * side;
-    const dir = side;
-    const k = dir / radius;                 // target curvature
+     makeRamp grew a free-running curve off a parent — a clothoid into
+     a turn of a chosen radius, eased back to straight — and let World
+     put a destination under its far end. makeLink joined two roads
+     that already existed with a cubic and fixed tangents. Both were
+     built for a map where the interchange was invented, and neither
+     has been called since there was a survey to read one out of:
+     buildRealRamp walks the geometry OSM recorded, and buildStop and
+     buildLeftExit sample a shape off the mainline's own frame. All
+     three go through makeRoute.
 
-    /* The transition into the turn is short on purpose.
-
-       A real gore separates at something like one in twenty, which over
-       the hundred-odd pixels you can actually see ahead of the car is
-       three pixels of divergence — invisible. The exit would arrive as
-       a lane that silently stopped being a lane. So the clothoid is
-       compressed to about fifty pixels, which pulls the ramp clear of
-       the carriageway by a readable amount while it is still on screen.
-       This is the one place the road geometry is knowingly exaggerated,
-       and it is exaggerated because the alternative is unreadable. */
-    const easeIn = 90, easeOut = options.easeOut != null ? options.easeOut : 210;
-    /* The clothoids contribute half their length at full curvature.
-       Subtract that contribution so `sweep` is the actual total turn,
-       rather than an underestimate that changes when easing is tuned. */
-    const turnLen = Math.max(0, Math.abs(sweep) * radius - (easeIn + easeOut) / 2);
-    /* How much straight to run after the turn. A connector heading off
-       to meet a motorway wants a long one. A cloverleaf loop wants
-       almost none: it has just turned three-quarters of a circle and is
-       now pointing back across the road it left, so every pixel of
-       straight drives it further into the carriageway it came from. */
-    const TERM = options.term != null ? options.term : 520;
-    r.terminalStart = easeIn + turnLen + easeOut;
-    const total = easeIn + turnLen + easeOut + TERM;
-
-    let travelled = 0, h = p.h, x = p.x, y = p.y;
-    while (travelled < total) {
-      const nh = h + curvAt(travelled) * STEP;
-      const m = (h + nh) / 2;
-      x += Math.sin(m) * STEP; y += Math.cos(m) * STEP; h = nh;
-      const q = { x, y, h };
-      r.st.push(q);
-      note(r, q);
-      travelled += STEP;
-      r.aux.push(0);
-      r.auxL.push(0);
-      r.lanes.push(lanes);
-      r.bLanes.push(0);
-      r.inner.push(0);
-      r.innerL.push(0);
-      r.deck.push(0);
-    }
-    /* Which stations stop wearing a verge is not decided here. It is
-       measured off the finished shapes by World.dress(), because a
-       fixed count of stations is only ever right for one sweep and one
-       radius, and these are rolled fresh every junction. */
-    r.startS = s;
-    parent.exits.push({ i, ramp: r, s, side, lanes, startU: u });
-    return r;
-
-    function curvAt(d) {
-      if (d < easeIn) return k * (d / easeIn);
-      if (d < easeIn + turnLen) return k;
-      if (d < easeIn + turnLen + easeOut) return k * (1 - (d - easeIn - turnLen) / easeOut);
-      return 0;
-    }
-  }
-
-  /* Join two roads that already exist. Unlike makeRamp(), which creates
-     a free-running curve and lets World add a destination beneath its
-     far end, this connector has two fixed endpoints and fixed tangents.
-     It is used by the prebuilt urban map for C-D bypasses, for ramps
-     that close loops between established freeway corridors, and for both
-     halves of an ordinary diamond interchange.
-
-     ── the two ways of arriving ────────────────────────────────────────
-     A system connector arrives as a LANE-ADD: its lanes become permanent
-     outside through lanes on the destination, so a driver who holds a
-     straight line after the merge is still on tarmac a mile later. That
-     is right for a freeway-to-freeway ramp carrying freeway volumes.
-
-     It is wrong for a local onramp. Adding a permanent lane at every
-     diamond means a road that gains a lane every mile, and after twenty
-     junctions the freeway is thirty lanes wide. So a local entrance
-     arrives on an ACCELERATION LANE instead: the pavement is there, full
-     width, for two hundred metres, and then it tapers away and you are
-     expected to have merged. Failing to is not instant — the taper hands
-     you a shoulder, then gravel, then the verge — but it is a real
-     freeway merge, which is the point.
-
-     `options.accel` picks the second. */
-  function makeLink(parent, i, target, targetS, options) {
-    options = options || {};
-    const lanes = Math.max(1, Math.min(2, options.lanes | 0 || 1));
-    const s = i * STEP;
-    const before = Math.round(lanesAt(parent, s - STEP));
-    openAux(parent, i, lanes, options.approach);
-    const startU = insideAt(parent, s - STEP) + innerAt(parent, s - STEP)
-      + before * LANE + LANE / 2;
-    const p = at(parent, s, startU);
-
-    targetS = Math.round(targetS / STEP) * STEP;
-    const accel = !!options.accel;
-    const targetI = Math.round(targetS / STEP);
-    const targetCount = laneCount(target, targetS, true);
-    const baseLane = Math.max(0, targetCount - lanes);
-    if (accel) closeAux(target, targetI, lanes, options.accelLen);
-    const targetU = accel ? auxLaneU(target, targetS) : laneU(target, targetS, baseLane, true);
-    const q = at(target, targetS, targetU);
-    const ramp = make("ramp", p.x, p.y, p.h, { fwd: lanes, back: 0, lanes });
-    ramp.parent = parent;
-    ramp.side = 1;
-    ramp.startU = startU;
-    ramp.routeType = options.type || "link";
-
-    const dx = q.x - p.x, dy = q.y - p.y;
-    const direct = Math.hypot(dx, dy);
-    /* A cubic that turns a quarter circle of radius R wants handles of
-       about 0.552 R, and its endpoints are R√2 apart — so the handle is
-       0.39 of the straight-line distance. The old 0.30-with-a-2400-ceiling
-       was tuned for short C-D roads and, on a two-mile system connector,
-       clipped the handles to a tenth of what the turn needed: the curve
-       left its tangent almost immediately and cut the corner. */
-    /* `options.lead` overrides it where the caller knows something this
-       formula cannot: how much room there is to turn IN. A local
-       entrance ramp leaves the cross street pointing across the freeway
-       and has four hundred pixels of shoulder to get turned round in,
-       while the distance to its merge point is four times that. Sizing
-       the handle from the distance sends the curve five hundred pixels
-       the wrong way first — straight across the carriageway — and it was
-       drawing a ramp through the middle of the road you are driving on. */
-    const lead = options.lead > 0 ? options.lead : clamp(direct * 0.39, 360, 20000);
-    const bulge = options.bulge || 0;
-    const c1 = { x: p.x + Math.sin(p.h) * lead, y: p.y + Math.cos(p.h) * lead };
-    const c2 = { x: q.x - Math.sin(q.h) * lead, y: q.y - Math.cos(q.h) * lead };
-
-    function pos(t) {
-      const u = 1 - t, a = u * u * u, b = 3 * u * u * t;
-      const c = 3 * u * t * t, d = t * t * t;
-      let x = a * p.x + b * c1.x + c * c2.x + d * q.x;
-      let y = a * p.y + b * c1.y + c * c2.y + d * q.y;
-      if (bulge) {
-        const h = p.h + (q.h - p.h) * smooth(t);
-        const off = bulge * Math.sin(Math.PI * t) ** 2;
-        x += Math.cos(h) * off;
-        y -= Math.sin(h) * off;
-      }
-      return { x, y };
-    }
-
-    let estimate = 0, prev = pos(0);
-    for (let k = 1; k <= 40; k++) {
-      const v = pos(k / 40);
-      estimate += Math.hypot(v.x - prev.x, v.y - prev.y);
-      prev = v;
-    }
-    const count = Math.max(2, Math.ceil(estimate / STEP));
-    for (let k = 1; k <= count; k++) {
-      const t = k / count;
-      const v = pos(t);
-      const ahead = pos(Math.min(1, t + 1 / count / 8));
-      const h = k === count ? q.h : Math.atan2(ahead.x - v.x, ahead.y - v.y);
-      const station = { x: v.x, y: v.y, h };
-      ramp.st.push(station);
-      note(ramp, station);
-      ramp.aux.push(0);
-      ramp.auxL.push(0);
-      ramp.lanes.push(lanes);
-      ramp.bLanes.push(0);
-      ramp.inner.push(0);
-      ramp.innerL.push(0);
-      ramp.deck.push(0);
-    }
-    ramp.merge = { into: target, s: targetS, i: targetI,
-      u: targetU, lanes, baseLane, laneAdd: !accel, accel, linked: true };
-    parent.exits.push({ i, ramp, s, side: 1, lanes, startU });
-    return ramp;
-  }
+     What they knew that is worth not losing is written down elsewhere:
+     the gore is deliberately exaggerated because one in twenty is
+     invisible at the distance you can see (the note above openAux),
+     and a ramp's centreline starts at the middle of the deceleration
+     lane so the two surfaces are contiguous by construction (the note
+     on `aux` at the top of this file). Those are the two ideas; the
+     code around them was for a different map. */
 
   return {
     STEP, LANE, MED, MED_BARRIER, MED_RURAL, MED_SUBURB, SH_IN, SH_OUT, VERGE, RAMP_SH,
     medAt, shInAt, insideAt, medRailAt, MED_RAIL_W,
     TAPER, DECEL, EXIT_APPROACH, MERGE, WEDGE, GORE, LANE_CHANGE, exitApproach, mergeLength,
     suppressed,
-    make, makeRoute, makeStreet, grow, growBack, len, nearBounds,
+    make, makeRoute, makeStreet, grow, len,
     frame, at, edges, laneU, laneCount, auxAt, auxAtL, auxLaneU,
     lanesAt, backLanesAt, innerAt, innerAtL, deckAt,
     rebound,
-    project, makeRamp, makeLink, openAux, closeAux, changeLanes, dropLeft, setRandom,
+    project, openAux, closeAux, settleAux, dropLeft,
   };
 })();

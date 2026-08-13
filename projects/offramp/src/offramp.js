@@ -75,7 +75,6 @@
   "use strict";
 
   const R = Road, X = Raster;
-  const VW = Draw.VW, VH = Draw.VH;
 
   /* ── the speed scale, which is not a feel setting ───────────────────
      One world pixel is 0.179 m, so one km/h is (1000/3600)/0.179 =
@@ -88,10 +87,31 @@
   const KMH_PER_MPH = 1.609344;
   const pxs = (kmh) => kmh * PX_PER_KMH;
 
-  /* Top speed, in km/h because everything internal is. 292 was 181.4
-     mph, so the speedometer could never show 220 however long you held
-     it — not a scale error, a ceiling. The scale itself is exact: held
-     at 70 mph the car covers 70.000 miles in a simulated hour. */
+  /* Once the top speed; now a fixed REFERENCE SPEED, and the difference
+     matters enough to be worth the paragraph.
+
+     There is a garage as of today (`data/cars.js`), so "top speed" is a
+     property of what you are driving and lives on `S.car.vTop` — 193
+     km/h in the Jetta, 330 in the built 911. But V_MAX was never only a
+     ceiling: a dozen expressions in this file normalise on it to get a
+     "how fast is this, roughly" fraction, and they feed the barrier
+     drag, the wreck severity, the damage drag and the audio.
+
+     Those are PHYSICAL rates and they must not become car-relative. A
+     Jetta scraping a barrier at 100 mph has to lose paint at the same
+     rate as a 911 scraping it at 100 mph, and if the normaliser were
+     each car's own top speed the Jetta — at 83% of its maximum against
+     the Porsche's 49% — would grind nearly twice as hard for the same
+     collision. That is not a small tuning difference, it is the crash
+     model quietly disagreeing with itself about what a speed is.
+
+     So the value is unchanged at 220 mph and every existing use of it is
+     unchanged with it, which is also why the crash suite and the sim
+     fingerprints do not move. Only the throttle, the brakes, the
+     ceiling and the steering scale read `S.car`.
+
+     The scale itself is exact: held at 70 mph the car covers 70.000
+     miles in a simulated hour. */
   const V_MAX = 220 * 1.609344, V_GRAVEL = 118;
   const LAT_MAX = 124;                   // px/s across the road, at low speed
 
@@ -218,7 +238,27 @@
     // shape of the question is settled before there is an argument.
     suv:   { latMax: LAT_MAX * 0.86, fade: 0.38, respond: 10 },
     truck: { latMax: LAT_MAX * 0.55, fade: 0.42, respond: 5.5 },
+    bike:  { latMax: LAT_MAX * 1.05, fade: 0.30, respond: 15 },
   };
+
+  /* A garage row's steering, which is its CLASS's row scaled by the two
+     figures data/cars.js derives — skidpad grip against a 0.85 g
+     reference, and responsiveness off the square root of mass.
+
+     The scaling is honest about being a modelling choice rather than
+     physics: `latMax` is a lateral velocity the wheel commands, not an
+     acceleration, so tying it to skidpad g asserts that a grippier car
+     lets you ask for more sideways. Defensible; not derivable. The
+     reference is set where the old single car sat, so a mid-pack row
+     drives exactly as this game did before there was a choice. */
+  function steerFor(car) {
+    const base = STEER[car.klass] || STEER.car;
+    return {
+      latMax: base.latMax * car.latScale,
+      fade: base.fade,
+      respond: base.respond * car.respondScale,
+    };
+  }
   /* ── how far past the verge the right-of-way fence is, in px ────────
      28 px is 5 m of field, which puts the fence about 9.7 m out from
      the edge of the travelled way once the shoulder and the verge are
@@ -278,15 +318,13 @@
      reads as luck — which is exactly what it is. */
   const SLIDE_SCRUB = 0.45;              // fraction of speed a survived trip costs
 
-  /* the impact attenuator on the nose of a gore. "Rated at 110 km/h" is
-     a TEST SPEED, not a survivability limit, and treating it as one was
-     the old model's mistake. What decides the outcome is the
-     deceleration over the device's crush length, and a full-size
-     highway unit has six metres of it — see Impact.crushStop. At its
-     design speed that is 7.9 g mean over four tenths of a second, which
-     destroys the car and usually does not kill you. That is precisely
-     what the thing is bought for. */
-  const NOSE_STROKE = IM.ATTEN_STROKE;   // m
+  /* The impact attenuator was here, as a crush stroke on the nose of a
+     gore. There is no attenuator on this road any more — see the note
+     in handovers() — because one is bolted to the end of a barrier run
+     and an ordinary interchange's gore has no barrier in it. The crush
+     model itself is not gone: `Impact.crushStop` is what hitWorks()
+     uses for the barrels across the closed ramp at exit 368, which are
+     really there and really signed. */
 
   /* the wreck itself: a corner is on the ground and it is steering the
      car. `PULL` is the sideways acceleration it drags you off with,
@@ -319,8 +357,10 @@
   const WHY = {
     barrier: ["you found the barrier", "the middle of the road is not a lane",
               "steel, and then nothing"],
-    gore:    ["you split the difference", "the nose of the gore was there first",
-              "on or off — not both"],
+    /* `gore` was here — "you split the difference", "the nose of the
+       gore was there first". Nothing raises it any more: there is no
+       object in a gore to be hit. Splitting the difference now puts you
+       on the grass between two roads, and what that costs is `trip`. */
     /* Leaving the pavement is no longer a way to end a run — it is a
        surface, and a bad one. These two are what the field does to you
        if you take it badly enough, and they are not the same thing:
@@ -353,6 +393,19 @@
        says so. */
     works:   ["the road was closed", "they did warn you about this one",
               "barrels, and then the end of the pavement"],
+    /* The fifth case impact.js was unified for. Split by who ran into
+       whom, because on a motorway those are two different mistakes and
+       the driver knows which one they made. */
+    rearend: ["you ran out of room", "the traffic ahead did not move",
+              "there was a car there a moment ago"],
+    shunted: ["somebody else ran out of room", "you were hit from behind",
+              "it came out of the mirror"],
+    swipe:   ["you and somebody wanted the same lane",
+              "the lane was taken", "you were already alongside"],
+    /* The other carriageway. There is one thing on this road that is
+       always your fault and this is it. */
+    headon:  ["you were on the wrong side of the road",
+              "both of you were going somewhere", "that side was taken"],
   };
 
   const S = {
@@ -372,15 +425,28 @@
     x: 0, y: 0, h: 0, speed: 96,
     camU: 0, camX: 0, camY: 0, camH: 0,
     parts: [], marks: [],
-    distPx: 0, score: 0, mult: 1, combo: 0, comboT: 0,
+    /* What `cars.js` handed over for this frame to draw. Never written
+       by anything but the frame loop, and never read by anything that
+       decides — the traffic model does not know there is a screen. */
+    traffic: null,
+    /* `score` mirrors score.js's carried pot for the HUD; the pot
+       itself lives there. The old `mult`/`combo`/`comboT` trio went
+       with the four-second exit combo it drove. */
+    distPx: 0, score: 0,
     topSpeed: 0, exits: 0,
     shake: 0, flash: 0, wreckT: 0, why: "", cause: "road",
     gravelT: 0, newBest: false, hints: new Map(),
     onWhat: "lane", aimLane: 1,
-    /* Which row of STEER you are driving. One entry today; it is a
-       lookup rather than a constant because traffic needs the answer
-       to differ per vehicle and the player may one day get a choice. */
-    steer: STEER.car,
+    /* What is in the garage, and which row of STEER it drives like.
+       `S.car` is a row out of data/cars.js and it owns four things and
+       only four: the pull, the brakes, the top speed and the mass.
+       Everything else about how the game behaves is unchanged by it.
+
+       The comment that used to be here said this was "a lookup rather
+       than a constant because ... the player may one day get a choice."
+       That day is today; `setCar` below is where the choice lands. */
+    car: Garage.get(Garage.DEFAULT),
+    steer: steerFor(Garage.get(Garage.DEFAULT)),
     /* ── the car's own heading, and it is the only one there is ───────
        `S.h` is the ROAD's heading and stays exact — the camera turns to
        it and the wheels are tested against it. `roll` is how far the
@@ -441,6 +507,9 @@
     tyres: [0, 0, 0, 0], pull: 0, dragK: 0, blown: null,
     blownT: 0, blownFront: false, capped: false,
     wentOff: false, braked: false,
+    /* Cosmetic only — 0..1 of accumulated scraping. Nothing reads it
+       but the paintwork; `dragK` is what a scrape actually costs. */
+    scuff: 0,
   });
 
   const BEST_KEY = "offramp.best.v2";
@@ -448,15 +517,67 @@
   try { best = Number(localStorage.getItem(BEST_KEY)) || 0; } catch (e) { best = 0; }
 
   const keys = new Set();
-  const touch = { steer: 0, brake: false, active: false, lastX: 0 };
+  /* The four buttons and the drag, which are to `steerInput` and
+     `throttleInput` what `keys` is: state, held, read once a frame. */
+  const touch = { steer: 0, brake: false, gas: false, left: false, right: false,
+                  active: false, lastX: 0 };
+  /* Everything let go of at once — on a blur, on the map opening, on
+     anything that takes the screen away mid-corner. A held button whose
+     release lands somewhere else is a car that keeps turning. */
+  function touchRelease() {
+    touch.steer = 0; touch.brake = touch.gas = touch.left = touch.right = false;
+    touch.active = false;
+    for (const id of ["brake", "gas", "steer-l", "steer-r"]) {
+      const b = document.getElementById(id);
+      if (b) b.classList.remove("on");
+    }
+  }
   let isTouch = false;
 
   /* ── canvas, and how the buffer reaches the glass ───────────────────
-     The buffer is a fixed VW×VH and the cabinet it has to fill is
-     whatever the page gives us, which is never a whole multiple of it.
-     Integer-only scaling would waste a quarter of a phone screen, so the
-     scale stays fractional — but handing a fractional scale to a
-     nearest-neighbour upscale is what made the lane markings pulse.
+     The buffer used to be a fixed 256 × 416 and the cabinet it has to
+     fill is whatever the page gives us, which is never that shape. The
+     old answer was to letterbox: scale by the SMALLER of the two ratios
+     and leave bezel down the sides. Two things were wrong with it.
+
+     The bars were black. On a monitor the cabinet is well over twice as
+     wide as 256 world pixels, so a third of the screen was the inside
+     of a television and not the outside of a road.
+
+     And it made the game SMALLER on the smaller screen. A phone is the
+     narrower of the two shapes, so on a phone the width won the `min`
+     and the whole picture came out at 1.44 CSS px per world pixel where
+     a desktop got 1.39 — near enough the same number on a screen a
+     quarter of the size, held at arm's length. A car eleven pixels wide
+     is fine on a monitor and a speck on a phone.
+
+     So the buffer is not a fixed shape any more. We choose the SCALE
+     first, and the buffer is whatever fits in the cabinet at that
+     scale — nothing is letterboxed on either axis, and the edges of the
+     screen are ground rather than bezel. `Draw.resize` takes the
+     numbers; see the note there for what follows from them.
+
+     ── choosing the scale ───────────────────────────────────────────
+     The scale is the largest one at which you can still see everything
+     you actually need to see, which is two separate things:
+
+       WANT_W  200 world px across — your own carriageway, the median,
+               and the first lane of the other one. Below this you are
+               steering blind into your own blind spot.
+       WANT_H  368 world px along — 300 ahead and 68 behind, which is
+               the 54 m of lookahead the 256 × 416 buffer always gave
+               and which is what a sign has to be readable within.
+
+     Take the smaller of the two and a phone is limited by its width, a
+     monitor by its height, and each gets the biggest picture its own
+     shape allows: measured, a 375 px phone goes from 1.44 to 1.80 CSS
+     px per world pixel (a quarter bigger, with the same road ahead) and
+     a 1280 desktop from 1.39 to 1.52 with the black bars replaced by
+     403 world pixels of width instead of 256.
+
+     ── and then the scale reaches the glass ─────────────────────────
+     Handing a fractional scale to a nearest-neighbour upscale is what
+     made the lane markings pulse.
 
      Measured: the buffer was shown at 353×574 CSS px on a 2× display,
      which is 2.758 device pixels per buffer pixel. Nearest-neighbour
@@ -486,20 +607,89 @@
   const ctx = cvs.getContext("2d", { alpha: false });
 
   const bufCvs = document.createElement("canvas");
-  bufCvs.width = VW; bufCvs.height = VH;
+  bufCvs.width = Draw.VW; bufCvs.height = Draw.VH;
   const bufCtx = bufCvs.getContext("2d", { alpha: false });
-  X.attach(bufCtx, VW, VH);
+  X.attach(bufCtx, Draw.VW, Draw.VH);          // so there is a buffer even if `fit` bails
 
   const midCvs = document.createElement("canvas");
   const midCtx = midCvs.getContext("2d", { alpha: false });
-  let midK = 0;
+
+  /* What you must be able to see, in world pixels.
+
+     ACROSS, it is your own carriageway and no more: the median on one
+     side, your verge on the other, and enough ground past both that the
+     edge of the screen is grass rather than somebody else's tarmac.
+     Three lanes with both shoulders and a verge is 94.5 px, four is
+     115, so 130 frames the widest carriageway on the corridor with a
+     little ground to spare and frames the usual one generously. What is
+     going the other way is not part of driving and does not get a
+     width allowance; on a screen with room for it, it comes along
+     anyway — see `camTarget`.
+
+     ALONG, it is 368 px: 300 ahead, which is the 54 m the old fixed
+     buffer always gave and about what a sign needs to be readable
+     within, and 68 behind for the mirror. */
+  const WANT_W = 130, WANT_H = 368;
+  /* Except that a phone cannot have both. The two allowances are met by
+     one scale, so the buffer is always the cabinet's own shape — and a
+     phone is roughly twice as tall as it is wide, which means 368 px of
+     road along it buys about 200 across whatever WANT_W says. The width
+     never binds, the picture never zooms, and the carriageway you are
+     driving on stays half the size it should be. That is the shape of
+     the original complaint.
+
+     So a TALL cabinet spends some of its lookahead on magnification and
+     a wide one does not, which is also the honest answer physically: a
+     phone is held at arm's length and a monitor is not. At 1.85:1 —
+     any ordinary phone — the allowance is 276 px, or 212 ahead, 38 m.
+     That is the cost of this, it is a real one, and it is the only way
+     a tall screen gets to fill itself with the road you are on. */
+  const WANT_H_TALL = 276, TALL_AT = 1.85;
+  /* How large a world pixel is ever allowed to get. The page holds the
+     whole cabinet to 640 CSS px wide, so on a desktop the width term is
+     near enough a constant and it is the HEIGHT of the window that
+     decides the scale — and a tall enough window would otherwise go on
+     zooming past any of this. Past the cap the extra height buys road
+     AHEAD instead of magnification, which is what a tall window is
+     for. */
+  const ZOOM_MAX = 2.5;
+  /* And what the rasteriser is willing to pay for any of it. A pixel
+     here is a pixel written by hand every frame, and the old fixed
+     buffer was 106k of them. Past these the picture zooms in further
+     rather than growing, which is also the right way round: a cabinet
+     that large is not being looked at from further away. */
+  const VW_MAX = 460, VH_MAX = 560;
 
   const stage = document.getElementById("stage");
   const frame = document.getElementById("frame");
   function fit() {
-    const w = stage.clientWidth, h = stage.clientHeight;
-    if (!w || !h) return;
-    const s = Math.max(1, Math.min(w / VW, h / VH));
+    /* The CONTENT box: clientWidth includes the stage's own padding, and
+       counting it made the canvas overflow its bezel by the padding on
+       every side, where `overflow: hidden` quietly cut the shadow off. */
+    const cs = getComputedStyle(stage);
+    const w = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const h = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    if (!(w > 0) || !(h > 0)) return;
+
+    /* Square or wider asks for the full 368 along; a phone asks for
+       WANT_H_TALL; in between it slides, so that resizing a window
+       never steps the picture. */
+    const tall = Math.max(0, Math.min(1, (h / w - 1) / (TALL_AT - 1)));
+    const wantH = WANT_H + (WANT_H_TALL - WANT_H) * tall;
+
+    let s = Math.min(w / WANT_W, h / wantH, ZOOM_MAX);
+    s = Math.max(s, w / VW_MAX, h / VH_MAX);   // never a buffer bigger than the ceiling
+    const VW = Math.max(64, Math.round(w / s)), VH = Math.max(64, Math.round(h / s));
+    /* Unconditional, so that `Draw` and the buffer can never disagree
+       about the shape of the picture. Reallocating the buffer is not:
+       resize fires in streams during a drag, and an ImageData and a
+       coverage mask per event is a lot of garbage for no new pixels. */
+    Draw.resize(VW, VH);
+    if (VW !== bufCvs.width || VH !== bufCvs.height) {
+      bufCvs.width = VW; bufCvs.height = VH;
+      X.attach(bufCtx, VW, VH);
+    }
+
     const cw = Math.round(VW * s), ch = Math.round(VH * s);
     cvs.style.width = cw + "px"; cvs.style.height = ch + "px";
     frame.style.width = cw + "px"; frame.style.height = ch + "px";
@@ -514,8 +704,9 @@
        shrink anything — shrinking with nearest is how you drop whole
        rows of pixels. */
     const k = Math.max(1, Math.ceil(cvs.width / VW), Math.ceil(cvs.height / VH));
-    if (k !== midK) {
-      midK = k;
+    /* The buffer can change shape without k changing with it, so the
+       test is on the mid canvas itself and not only on k. */
+    if (midCvs.width !== VW * k || midCvs.height !== VH * k) {
       midCvs.width = VW * k; midCvs.height = VH * k;
     }
     midCtx.imageSmoothingEnabled = false;      // resizing a canvas resets this
@@ -579,11 +770,20 @@
     const scrub = Math.min(1, Math.abs(S.vu) / LAT_MAX);
     /* Grinding down the barrier is the loudest thing this car does and
        it is the wrong noise entirely — not tyres, but a long metal
-       shriek off the top of the same band of static. */
-    const grind = S.mode === "play" && S.scrapeT > 0;
+       shriek off the top of the same band of static.
+
+       Gated on the rub and not on the contact, for the reason
+       grindRate() gives: a car stopped against the median is touching
+       it, and touching it makes no noise. Below a twentieth of the
+       grind the whole band hands back to ordinary road noise rather
+       than sitting at the shriek's filter with the gain turned down —
+       what you hear at a standstill should be the road, not a quiet
+       scream. */
+    const gr = S.mode === "play" && S.scrapeT > 0 ? grindRate() : 0;
+    const grind = gr > 0.05;
     A.nG.gain.setTargetAtTime(
       !playing ? 0
-        : grind ? 0.10 + v / V_MAX * 0.05
+        : grind ? (0.10 + v / V_MAX * 0.05) * gr
         : rough ? 0.062
         : 0.012 + v / V_MAX * 0.02 + scrub * 0.03, now, grind ? 0.02 : 0.05);
     A.nBP.frequency.setTargetAtTime(
@@ -774,9 +974,22 @@
     return clamp(vu, -cap, cap);
   };
 
+  /* The player as a rigid body, and the mass is now whatever is in the
+     garage. `impact.js` was already mass-general — it carries a BODIES
+     table with a 1500 kg car, a 2270 kg SUV and a 36 tonne semi, and
+     `solve()` takes the masses it is handed — so this is a lookup
+     replacing a constant and not a change to the crash model.
+
+     It is, however, the whole character of the motorcycle. 197 kg
+     against a 2,400 kg pickup is a mass ratio of twelve, and every
+     consequence of that — being thrown by contacts a car would not
+     report, and taking a far larger share of the closing speed in any
+     impact — falls out of the solver without one line anywhere that
+     says "bike". */
   function carBody(vu, speedKmh, spin, r) {
     return {
-      m: IM.CAR_MASS, Iz: IM.CAR_IZ,
+      m: S.car ? S.car.kg : IM.CAR_MASS,
+      Iz: S.car ? S.car.Iz : IM.CAR_IZ,
       v: { x: pxs2ms(vu), y: kmh2ms(speedKmh) },
       /* `roll` grows from +y toward +x, which is clockwise, and the
          solver's yaw is counter-clockwise positive. Hence the sign,
@@ -861,7 +1074,7 @@
 
   /* Apply it. Returns true if the run is over, so every caller can
      bail on the same line. */
-  function land(w, cause, side) {
+  function land(w, cause, side, corner) {
     judge(w);
     S.report = w;
     S.dvTotal += w.dv;
@@ -869,7 +1082,11 @@
       crash(cause, side, w);
       return true;
     }
-    if (w.outcome === "damage") damage(w);
+    if (w.outcome === "damage") damage(w, !!corner);
+    /* Nobody hurt is not nothing happened — see `scuff`. Barriers and
+       fences come through here too and mark the car the same way, which
+       is right: a wall takes paint off exactly like a wing does. */
+    else if (scuff(w, !!corner)) note("SCRAPE");
     return false;
   }
 
@@ -904,7 +1121,7 @@
      Where the blow landed decides which corner is bent. A negative
      bearing is a blow from the car's right — see Impact.blowAngle — and
      a bent corner pulls the car toward the side that took it. */
-  function damage(w) {
+  function damage(w, corner) {
     const d = S.dmg;
     const a = Math.abs(((w.angle + 180) % 360 + 360) % 360 - 180);
     const right = w.angle < 0;
@@ -912,6 +1129,17 @@
     const pull = right ? 1 : -1;
     if (w.dvEff < 25) {
       d.dragK += 0.04;                                   // bodywork. cosmetic.
+      /* A corner hit loads the wheel behind it whatever band it lands
+         in, and this band used to be the one place that was not true:
+         `scuff` puts 0.09 into a tyre at 11.9 km/h and this put ZERO in
+         at 12.1, so a harder blow did less damage than a softer one.
+         Interpolated across the band instead, from `scuff`'s 0.09 where
+         it hands over to the 0.35 of the band above, so the whole curve
+         from a paint scrape to a folded corner is continuous. */
+      if (corner) {
+        const f = clamp((w.dvEff - IM.SUPERFICIAL) / (25 - IM.SUPERFICIAL), 0, 1);
+        d.tyres[i] = Math.min(1, d.tyres[i] + 0.09 + (0.35 - 0.09) * f);
+      }
     } else if (w.dvEff < 40) {
       d.tyres[i] = Math.min(1, d.tyres[i] + 0.35);
       d.pull += pull * PULL_LIGHT;
@@ -927,9 +1155,61 @@
     note("DAMAGE");
   }
 
-  /* What the engine can still reach. A car with a corner folded into
-     the wheel arch does not do 220. */
-  const vMax = () => (S.dmg && S.dmg.capped ? V_MAX * 0.70 : V_MAX);
+  /* ── and what a SCRAPE leaves behind ────────────────────────────────
+     (Ric, 2026-08-12: "cosmetic damage to me and the other vehicles,
+     sometimes a tyre blows out and totals you if you hit it just right.
+     drag sure.. but keep the damage so it feels realistic to a real car
+     at those speeds.")
+
+     Everything under `IM.SUPERFICIAL` used to be free — and `land()` is
+     right not to roll injury for it, because the injury curves read
+     outside their range say a paint scrape kills one driver in a
+     thousand. But "nobody is hurt" is not "nothing happened", and
+     clipping corners down the carriageway at 70 costing precisely
+     nothing is what made the traffic feel like scenery.
+
+     The scale is the real thing at these speeds and deliberately small.
+     A same-direction clip carries 1–4 km/h of effective delta-v: that
+     is panels, a mirror, and a scrub of paint. So this is `damage()`'s
+     own first band — the cosmetic one — scaled down by how far below
+     superficial the blow was, and it takes a lot of clipping to reach
+     anything you would notice in the drag.
+
+     ── the tyre is the one that can end you, and only on a CORNER ────
+     A blow across a door does not touch a wheel. One on the corner
+     loads it, breaks the sidewall internally, and the tyre lets go
+     later with no proximate cause — which is exactly the hazard model
+     `blowoutRate` already implements and which nothing under 25 km/h
+     could previously feed. `sim.js` now says whether only the corners
+     were engaged, so "if you hit it just right" is a geometric fact
+     about the impact rather than a dice roll.
+
+     0.09 a clip against `blowoutRate`'s 0.25 floor means three good
+     corner clips before a tyre is live at all, and it climbs from
+     there. Nothing blows at the moment of contact — it is a rate, so it
+     lands a minute later on an empty road, which is the whole point of
+     modelling it that way. */
+  function scuff(w, corner) {
+    const d = S.dmg;
+    const bite = clamp(w.dvEff / IM.SUPERFICIAL, 0, 1);
+    if (bite < 0.08) return false;                 // a kiss. paint at most.
+    const a = Math.abs(((w.angle + 180) % 360 + 360) % 360 - 180);
+    const right = w.angle < 0;
+    const i = (a <= 90 ? 0 : 2) + (right ? 1 : 0);        // FL FR RL RR
+    d.dragK = Math.min(0.5, d.dragK + 0.012 * bite);
+    d.scuff = Math.min(1, (d.scuff || 0) + 0.20 * bite);
+    if (corner) d.tyres[i] = Math.min(1, d.tyres[i] + 0.09 * bite);
+    return true;
+  }
+
+  /* What the engine can still reach — the CAR's top speed, not the
+     reference. A car with a corner folded into the wheel arch does not
+     do its own top speed either, and 70% of it is the same fraction it
+     always was. */
+  const vMax = () => {
+    const vt = S.car ? S.car.vTop : V_MAX;
+    return S.dmg && S.dmg.capped ? vt * 0.70 : vt;
+  };
 
   /* ── tyres fail later, and that is the accurate part ────────────────
      A tyre damaged in an impact very often does not let go at the
@@ -1014,14 +1294,26 @@
   }
 
   function steerInput() {
-    if (isTouch) return clamp(touch.steer, -1, 1);
+    if (isTouch) {
+      /* A held button is an answer and beats the drag, which is still
+         there for anyone who prefers it and which reads as zero the
+         moment a finger leaves the road. Without the precedence the two
+         fight: a thumb resting anywhere on the glass holds `steer` at
+         whatever it last dragged to, and the button never wins. */
+      const b = (touch.right ? 1 : 0) - (touch.left ? 1 : 0);
+      return b !== 0 ? b : clamp(touch.steer, -1, 1);
+    }
     let s = 0;
     if (keys.has("ArrowLeft") || keys.has("KeyA")) s -= 1;
     if (keys.has("ArrowRight") || keys.has("KeyD")) s += 1;
     return s;
   }
   function throttleInput() {
-    if (isTouch) return touch.brake ? -1 : 1;
+    /* Touch used to be `brake ? -1 : 1` — the throttle was pinned open
+       and the one pedal was the brake. There is a gas button now, so a
+       phone gets the same three states the keyboard has, and letting go
+       of everything coasts rather than accelerating. */
+    if (isTouch) return (touch.gas ? 1 : 0) - (touch.brake ? 1 : 0);
     let t = 0;
     if (keys.has("ArrowUp") || keys.has("KeyW")) t += 1;
     if (keys.has("ArrowDown") || keys.has("KeyS")) t -= 1;
@@ -1041,13 +1333,21 @@
      old form would have stretched an invisible wall right across it —
      the car would scrape along nothing in the middle of a field. A wide
      median has no face, and the grass underneath does the slowing. */
-  const wallFace = (road) => {
-    const mw = R.medAt(road, S.s);
+  /* `s` is a parameter and not `S.s`, and that is not tidying. This read
+     the car's own station whatever station it was asked about, so
+     `underneath(road, s, u)` silently ignored its second argument for
+     the barrier test and answered about somewhere else on the road.
+     Every live caller happened to pass `S.s`, so the game agreed with
+     itself and only an outside caller could see it — which is exactly
+     the kind of agreement that stops holding the moment traffic asks
+     the same question about a car that is not the player. */
+  const wallFace = (road, s) => {
+    const mw = R.medAt(road, s);
     if (mw <= R.MED_BARRIER) return mw + PW / 2 - 1.5;
     /* Wide median: the only thing to hit is the rail, if it is
        there, and it is at the centreline rather than at the edge of
        the median. Zero means there is nothing in the grass at all. */
-    const rw = R.medRailAt(road, S.s);
+    const rw = R.medRailAt(road, s);
     return rw > 0 ? rw + PW / 2 - 1.5 : 0;
   };
 
@@ -1078,7 +1378,36 @@
     const ramp = road.kind === "ramp";
     const e = R.edges(road, s);
     const shL = ramp ? R.RAMP_SH : R.SH_OUT, shR = ramp ? R.RAMP_SH : R.SH_OUT;
-    if (!ramp && Math.abs(u) < wallFace(road)) return "barrier";
+    if (!ramp && Math.abs(u) < wallFace(road, s)) return "barrier";
+    /* ── the middle of the road is not pavement ──────────────────────
+       This function decides what is under the wheels, and it had no
+       median in it at all. It tested the wall — which correctly
+       returns ZERO where a median is too wide to put one in — and then
+       handed everything inside `insideAt` to the branch below as
+       "shoulder". So sixty feet of grass between the carriageways came
+       back as paved hard shoulder: full grip, no drag, no dust, and
+       the rollover dice never rolled.
+
+       Measured, inside lane at 200 km/h with the wheel on full lock:
+       the car crossed 102 px of median in a second, GAINED 51 km/h
+       doing it, and arrived in the oncoming lanes still reporting
+       tarmac. World.classify — which the renderer and the surface
+       rescue use — said grass the whole way, so the game was drawing
+       one road and driving another. That is the exact fault the header
+       of updatePlayer warns about, one function further down.
+
+       1,419 of the corridor's 2,551 miles have a median with neither a
+       barrier nor a cable rail in it: across the desert the two
+       carriageways were freely interchangeable at speed.
+
+       The order matters. A barrier median returns above, because
+       `wallFace` is wider than the median itself there — it is the
+       median plus the car's own flank. What reaches here is a median
+       too wide for a wall, and that is a field. */
+    if (!ramp) {
+      const mw = R.medAt(road, s);
+      if (u > -mw && u < mw) return "grass";
+    }
     /* The inside shoulder, plus whatever a left exit has widened it by.
        The band a lane drop leaves behind is paved and it is not a lane —
        driving down it past the wye is exactly as legal as driving down
@@ -1124,50 +1453,12 @@
      that predates left exits still answers. */
   const exitOut = (ex) => (ex.out != null ? ex.out : (ex.side > 0 ? 1 : -1));
 
-  function hitNose(ex, split) {
-    /* Deflected toward the through lanes, which is `-side` across the
-       road and therefore `-side · direction` across the car. An exit is
-       always on your right — the handover only offers you the ones that
-       serve the way you are pointing — so this is always the car's left,
-       and it is written out rather than hard-coded because the day a
-       left-hand exit exists it should still be right. It does now —
-       exit 368 — and it is: `out` is which way the ramp goes, so −out
-       is the way the through lanes are, whichever carriageway you are
-       on and whichever side the ramp left by. */
-    const off = -exitOut(ex) * (S.fwd ? 1 : -1);
-    const c = IM.crushStop(kmh2ms(S.speed), NOSE_STROKE);
-
-    /* Two events, and they are weighed separately because they have
-       completely different ride-downs: the barrels stretch their share
-       of the delta-v over six metres, the backing delivers what is left
-       in a tenth of a second. The worse of the two is the one that
-       decides the outcome — and it is judged ONCE, on that number,
-       rather than rolled for twice. */
-    let w = weigh(c.dv, 0, c.gMean);
-    if (c.exhausted) {
-      const res = IM.solve(carBody(0, ms2kmh(c.vOut), 0), IM.fixed(),
-                           { n: { x: 0, y: -1 }, mu: IM.BODIES.backing.mu });
-      if (res) {
-        const w2 = weigh(res.dvA, IM.blowAngle(res.J, FWD));
-        if (w2.dvEff > w.dvEff) w = w2;
-      }
-    }
-    w.what = "the gore nose";
-
-    S.speed = ms2kmh(c.vOut);
-    S.vu = 0; S.spin = 0; S.roll = 0;
-    S.u = split - exitOut(ex) * 10;
-    S.shake = 6; S.flash = 0.5;
-    puff(S.x, S.y, 16, "debris");
-    puff(S.x, S.y, 5, "dust");
-    blip("thud");
-    /* A cushion you have hit is a cushion that is gone. Everything
-       after it is scored from a standing start, which is what a
-       combo is for. */
-    S.combo = 0; S.mult = 1; S.comboT = 0;
-    Skill.dirty();
-    land(w, "gore", off);
-  }
+  /* `hitNose()` and `onTheWedge()` were here: the crash-cushion impact,
+     its two-stage crush arithmetic and the test for standing on the
+     neutral area. Removed with the object itself — see the note in
+     handovers(). `Impact.crushStop` survives and is still used by
+     hitWorks(), which is a real row of barrels across a closed ramp
+     rather than invented furniture in a gore. */
 
   /* ── the end of a closed ramp ───────────────────────────────────────
      Barrels right across the pavement, and behind them a rigid backing
@@ -1204,7 +1495,6 @@
     puff(S.x, S.y, 20, "debris");
     puff(S.x, S.y, 8, "dust");
     blip("thud");
-    S.combo = 0; S.mult = 1; S.comboT = 0;
     Skill.dirty();
     /* Survive it and you are stationary against the barrels with the
        ramp behind you, which is the situation the closure was built to
@@ -1254,9 +1544,14 @@
         const split = ex.startU - out * (Math.max(1, ex.lanes) - 0.5) * R.LANE;
         const committed = out > 0 ? S.u > split + 4 : S.u < split - 4;
         if (committed) {
-          // committed: you were in the deceleration lane when it ran out.
-          // camU shifts by the same amount so the picture does not jump;
-          // it then pans across to the ramp under its own steam.
+          /* Which road you are TRACKED on, and nothing more. Nothing is
+             decided here and nothing can be hit here: at this station
+             the ramp and the mainline are the same pavement, so being
+             handed from one to the other is a change of bookkeeping.
+             The decision is at the nose, several hundred pixels on,
+             where the two actually part — see the note on noseOf() in
+             world.js and the test below. Steer back and the handover
+             runs the other way; that is what a deceleration lane is. */
           if (ex.mirror) {
             S.u = ex.startU - S.u;
             S.camU = ex.startU - S.camU;
@@ -1269,12 +1564,22 @@
           S.road = ex.ramp;
           S.fwd = true;                 // a ramp always runs the way you drive it
           S.onRamp = true;
-        } else if (Math.abs(S.u - split) <= 4) {
-          hitNose(ex, split);                         // straddling the nose
-          if (S.mode !== "play") return;
         }
         break;
       }
+      /* ── and nothing is hit here ────────────────────────────────────
+         There was a kill band at the junction station, and then a crash
+         cushion and a kill band at the nose. Both are gone. An impact
+         attenuator is bolted to the end of a barrier run; the gore of an
+         ordinary interchange has no barrier in it, so there is nothing
+         standing there to hit — there is hatched paint you may drive
+         over, and a verge beyond it.
+
+         Which means a gore now costs what it costs in life: you end up
+         on the grass between two roads, at speed, sideways, and the
+         soft-ground model in leftTheRoad() decides what that is worth.
+         That is a better answer than a bespoke object, and it is the
+         one the rest of this file already gives for leaving the road. */
       /* A closed road has no end to run out of, so the wrap has to be
          tested before the end, and the two must not share a branch: the
          last station of a beltway is `>= len - STEP` but not yet
@@ -1385,8 +1690,36 @@
 
      Returns the surface to carry on with, which is the paved inner
      shoulder — you are, after all, standing on tarmac. */
+  /* ── a car resting against a barrier is not scraping it ─────────────
+     Reported from play, 2026-08-11: *"if touching the rail and not
+     moving there should be no shake and sparks."*
+
+     Right, and it is what a grind IS. The shake, the sparks and the
+     shriek are friction work, and friction does no work at a
+     standstill — but all three were unconditional on contact, so a car
+     stopped against the median sat there shuddering, throwing sparks
+     and screaming for as long as you held the wheel into it. The drag
+     was the only part that was already honest, because it is a rate on
+     speed and goes to zero on its own.
+
+     Rubbing speed is not the car's forward speed, and the wreck path is
+     exactly why: a wreck can be stationary and still spinning, and a
+     corner of it against the wall is moving at ω·r whatever the middle
+     is doing. Both terms, in km/h, so one number answers for the player
+     and for the wreck and the two cannot drift apart.
+
+     Faded rather than switched, and DECIDED at 12 km/h: nothing at
+     rest, everything by a slow crawl, which puts the whole fade inside
+     the range where a car is being nudged into a barrier rather than
+     driven along one. */
+  const GRIND_FULL = 12;                        // km/h of rub for full effect
+  function grindRate() {
+    const yaw = Math.abs(S.spin) * (PL / 2) / PX_PER_KMH;
+    return clamp((S.speed + yaw) / GRIND_FULL, 0, 1);
+  }
+
   function scrapeWall(road, dt) {
-    const face = wallFace(road);
+    const face = wallFace(road, S.s);
     const side = S.u >= 0 ? 1 : -1;         // which side of the median you are
     const dir = S.fwd ? 1 : -1;
     const out = side * dir;                 // the car's own way off the wall
@@ -1418,12 +1751,15 @@
     S.scrapeOff = 0;
     S.speed = Math.max(0, S.speed - (BAR_DRAG + BAR_DRAG_V * (S.speed / V_MAX)) * dt);
     /* Held rather than set, because the impact shake decays in a tenth
-       of a second and a grind lasts as long as you hold the wheel. */
-    if (S.shake < 1.5) S.shake = 1.5;
+       of a second and a grind lasts as long as you hold the wheel — for
+       as long as there is a grind. See grindRate: at a standstill there
+       is no rub, so there is nothing to hold up. */
+    const g = grindRate();
+    if (S.shake < 1.5 * g) S.shake = 1.5 * g;
     /* Sparks come off the contact patch, which is the flank of the car
        nearest the wall, not its middle. `out` is in the car's frame and
        so is `S.h`, so this needs no second conversion. */
-    if (Math.random() < 70 * dt) {
+    if (Math.random() < 70 * dt * g) {
       const off = -out * (PW / 2 + 1);
       puff(S.x + Math.cos(S.h) * off + rnd(-2, 2),
            S.y - Math.sin(S.h) * off + rnd(-2, 2), 1, "spark");
@@ -1646,12 +1982,37 @@
     };
 
     if (th > 0) {
-      /* Forward. From a standstill or out of reverse this is the same
-         line it always was — a negative `S.speed` simply means the
-         first part of the pull is spent stopping. */
-      S.speed += (56 * (1 - clamp(S.speed, 0, V_MAX) / V_MAX * 0.72)) * dt;
+      /* Forward, and this is the car's own engine as of the garage.
+
+           a(v) = a0 · (1 − (v/vTop)²)
+
+         `a0` and `vTop` are derived in data/cars.js from a published
+         0–60 and a published top speed; the square term is drag, and it
+         takes the acceleration to exactly ZERO at the top speed rather
+         than leaving it pulling hard into a clamp the way the old
+         single car did. The last few mph therefore take real time to
+         find — 23 seconds of them in the Jetta.
+
+         IF THIS LINE CHANGES, test/garage.test.js §1 CHANGES WITH IT.
+         That file duplicates this expression deliberately, because it
+         cannot import a DOM module and a paraphrase would prove
+         nothing. It stopwatches every vehicle at 60 fps against the
+         figures its row claims.
+
+         From a standstill or out of reverse this behaves as it always
+         did — a negative `S.speed` simply means the first part of the
+         pull is spent stopping. */
+      const vt = S.car.vTop;
+      S.speed += S.car.a0 * (1 - (clamp(S.speed, 0, vt) / vt) ** 2) * dt;
     } else if (th < 0) {
-      if (S.speed > 0) S.speed -= 132 * dt;          // the brakes
+      /* The brakes, and the biggest single change the garage makes.
+         This was 132 km/h/s for everything — 3.7 g, about triple what
+         any tyre has ever managed. It is now the published 60–0
+         distance, inverted, which is 0.86 g in the pickup and 1.20 in
+         the built 911, so stopping distances are roughly THREE TIMES
+         what they were. Arriving at the back of a queue is finally the
+         hazard PLAN.md §2 wanted it to be. */
+      if (S.speed > 0) S.speed -= S.car.brake * dt;
       else {
         /* Reverse gear: short, and geared for a car park rather than a
            freeway. It asymptotes rather than clipping so that backing
@@ -1730,7 +2091,20 @@
     const prevS = S.s;
     S.s += dir * step;
     S.distPx += step;
-    S.score += step * M_PER_PX * S.mult;
+
+    /* ── the score ────────────────────────────────────────────────────
+       Was `step · M_PER_PX · S.mult`, with `mult` coming off a
+       four-second exit combo. It is `score.js` now: distance and exits
+       multiplied by how dangerous the driving actually is — the density
+       around you, the hour, and how long you have held a speed that is
+       high FOR THE CAR YOU ARE IN.
+
+       The density handed over is the local one out of the band that
+       travels with you, in vehicles per km per lane, which is the same
+       quantity `sim.js` measures itself against. If the traffic is not
+       running there is no density to report and the term falls to its
+       floor, which is right: an empty road is an empty road. */
+    S.score += Score.frame(dt, Math.abs(S.speed), localDensity());
 
     /* ── evidence for the skill score ────────────────────────────────
        Rates, not totals, so a long bad run cannot outrank a short
@@ -1749,26 +2123,60 @@
 
     if (th < 0 && S.speed > 90) mark();
 
-    if (S.comboT > 0) {
-      S.comboT -= dt;
-      if (S.comboT <= 0) { S.combo = 0; S.mult = 1; }
-    }
+    /* The four-second exit combo used to decay here. score.js owns the
+       multiplier now and its decaying term is `pace`, which is stepped
+       inside `Score.frame` — so there is nothing left to tick. */
   }
 
   /* ── where the camera sits across the road ──────────────────────────
-     Just inside your carriageway, ignoring any deceleration lane. This
-     keeps the complete six-lane cross-section visible while leaving the
-     player slightly right of centre, where a right-driving car belongs.
-     Ignoring the aux lane prevents the camera drifting as an exit opens. */
+     The subject of this picture is YOUR CARRIAGEWAY — the median on one
+     side of it, your own verge on the other, and nothing about the
+     traffic going the other way that you need in order to drive. So the
+     camera's home is the middle of that strip, `myMid`, and on any
+     cabinet too narrow to hold the whole highway, that is exactly where
+     it sits: your lanes centred, grass or median at both edges, and the
+     oncoming side cropped to whatever is left over.
+
+     It slides back to the middle of the ROAD as the cabinet gets wide
+     enough to hold all of it, and `f` is how much of the way there it
+     has got: zero when the far edge is off the glass, one when it is
+     comfortably on. That is not a second rule bolted on, it is the same
+     rule at a different width — and it is where the old "sit right of
+     centre, where a right-driving car belongs" comes from now, for
+     free. Centre the whole road and your carriageway IS the right-hand
+     half of it, so you end up six tenths across on a desktop without a
+     bias constant asserting it.
+
+     Two earlier versions of this were wrong in the same way, and the
+     way is worth naming because the cabinet is the screen now and it
+     will keep being a trap. `min(VW/2 − half, ownMiddle)` assumed the
+     road always fits: its first term goes NEGATIVE the moment the
+     cabinet is narrower than the road, was clamped at zero, and zero is
+     the centreline of the whole highway — so on a phone at a rural
+     median, sixty feet of grass between the carriageways, it centred
+     the picture on the grass and cropped both sets of lanes. Replacing
+     it with a fixed sixty-per-cent bias fixed that and bought a
+     narrower one: a tenth of the cabinet to the left of your own middle
+     spends the phone's whole width allowance on oncoming tarmac and
+     leaves no grass on the side you are driving on.
+
+     Lane counts come from `lanesAt`, which ignores a deceleration lane,
+     and that is what stops the view sliding sideways every time an exit
+     opens; the aux lane still fits on the glass because `myMid` leaves
+     room for a verge that is wider than the lane is. Everything here is
+     continuous in the median width and the lane count, so a median
+     opening out slides the camera rather than snapping it. */
   function camTarget(road) {
     if (road.kind === "ramp") return 0;
     const mine = S.fwd ? R.lanesAt(road, S.s) : R.backLanesAt(road, S.s);
     const other = S.fwd ? R.backLanesAt(road, S.s) : R.lanesAt(road, S.s);
-    const half = R.insideAt(road, S.s) + Math.max(mine, other) * R.LANE + R.SH_OUT;
-    const room = Math.max(0, VW / 2 - half);
-    const ownMiddle = R.insideAt(road, S.s) + mine * R.LANE / 2;
-    // the far carriageway is the one that gets cropped, whichever it is
-    return (S.fwd ? 1 : -1) * Math.min(room, ownMiddle);
+    const inside = R.insideAt(road, S.s);
+    // your side of it: median edge, out to the far side of your own verge
+    const myMid = (R.medAt(road, S.s) + inside + mine * R.LANE + R.SH_OUT + R.VERGE) / 2;
+    // and the whole of it, to the outside edge of the far carriageway
+    const half = inside + Math.max(mine, other) * R.LANE + R.SH_OUT;
+    const f = Math.max(0, Math.min(1, (Draw.VW / 2 - half) / myMid));
+    return (S.fwd ? 1 : -1) * myMid * (1 - f);
   }
 
   /* road coordinates → the world, once per frame, for drawing and for
@@ -1872,19 +2280,45 @@
      comes from distance and from taking exits — see PLAN.md §2 for
      where it should come from once there is a corridor to score. */
 
+  /* How many vehicles per km per lane are around the player right now.
+     The band that travels with you is BACK + AHEAD metres long and
+     `stats()` counts what is live in it, so this is a straight count
+     over a known volume rather than an estimate. Zero when the traffic
+     is not running, which the score reads as an empty road. */
+  function localDensity() {
+    if (typeof Cars === "undefined" || !Cars.running()) return 0;
+    const st = Cars.stats();
+    if (!st || !st.lanes) return 0;
+    const km = (Cars.BACK + Cars.AHEAD) / 1000;
+    return st.mine / (km * st.lanes);
+  }
+
   /* ── taking an exit ─────────────────────────────────────────────────
      Paid at the far end of the ramp, not at the gore, because until you
      are down on the new motorway you have not been anywhere — and there
-     is usually a queue between the two. */
+     is usually a queue between the two.
+
+     The pot it pays into is only YOURS at a checkpoint, which is every
+     tenth exit — so this is also where a run's winnings stop being at
+     risk. See score.js on why it is ten and not one. */
   function takeExit(routeType) {
     if (S.mode !== "play") return;
     S.exits++;
-    S.score += 900 + 260 * S.exits;
-    S.combo = Math.min(S.combo + 3, 12);
-    S.comboT = 4;
-    S.mult = 1 + S.combo * 0.15;
+    const r = Score.exit(routeType);
+    S.score = Score.read().carried;
     blip("exit");
-    flashExit(routeType);
+    if (r.checkpoint) {
+      flashCheckpoint(r);
+      blip("exit");
+    } else flashExit(routeType);
+  }
+
+  /* A checkpoint is the best news in the game and it gets its own
+     banner rather than sharing the exit's. */
+  function flashCheckpoint(r) {
+    banner.textContent = `CHECKPOINT · ${fmt(r.paid)} BANKED`;
+    banner.classList.add("on");
+    bannerT = 2.6;
   }
 
   /* ── a wreck is a thing that happens over several seconds ───────────
@@ -1945,9 +2379,27 @@
     }
     if (A.ready) { A.eng.gain.value = 0; A.nG.gain.value = 0; }
     Skill.endRun();
-    S.newBest = S.score > best;
+
+    /* ── the books close ──────────────────────────────────────────────
+       Everything carried since the last checkpoint is gone; everything
+       banked at one is kept and goes to the permanent ledger, which is
+       what may open a new vehicle. `S.run` is held for the wreck panel
+       to report, because by the time it draws, score.js has forgotten. */
+    S.run = Score.end(cause || "wreck");
+    S.run.lostAt = S.exits;
+    /* Read before anything stops the traffic, because `Cars.start`
+       zeroes it and a restart would otherwise report the next run's
+       tally on this run's panel. */
+    S.run.passed = (typeof Cars !== "undefined" && Cars.passed) ? Cars.passed() : 0;
+    S.opened = Progress.endRun({
+      banked: S.run.banked, km: S.run.km, exits: S.run.exits,
+    });
+    drawBank();
+    drawCarCard();
+
+    S.newBest = S.run.banked > best;
     if (S.newBest) {
-      best = Math.floor(S.score);
+      best = Math.floor(S.run.banked);
       try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) { /* private mode */ }
     }
     showWreck();
@@ -1959,7 +2411,8 @@
   const el = (id) => document.getElementById(id);
   const hudSpeed = el("hud-speed"), hudDist = el("hud-dist"),
         hudScore = el("hud-score"), hudBest = el("hud-best"),
-        cellScore = el("cell-score"), hudMile = el("hud-mile");
+        cellScore = el("cell-score"), hudMile = el("hud-mile"),
+        hudBank = el("hud-bank");
   const panels = { title: el("panel-title"), pause: el("panel-pause"), wreck: el("panel-wreck") };
   const fmt = (n) => Math.floor(n).toLocaleString("en-US");
   const km = () => S.distPx * M_PER_PX / 1000;
@@ -1999,9 +2452,32 @@
       hudSpeed.innerHTML = Math.round(S.speed) + "<small> km/h</small>";
       hudDist.innerHTML = km().toFixed(2) + "<small> km</small>";
     }
-    hudScore.textContent = fmt(S.score) + (S.mult > 1.01 ? "  ×" + S.mult.toFixed(1) : "");
-    hudBest.textContent = fmt(best);
-    cellScore.classList.toggle("hot", S.mult > 1.5);
+    /* SCORE is what you are CARRYING — not what you have won. It is at
+       risk until the next checkpoint, which is what the second line
+       counts down to, and showing the two together is the whole tension
+       of the thing: a large number and how many exits until it is
+       actually yours. BEST stays the best single run's banked total. */
+    const sc = Score.read();
+    /* The points, and only the points. The multiplier used to be
+       printed beside them as "1,240  ×2.2" — two numbers in a cell four
+       characters wide, on a phone, at a hundred miles an hour. The
+       multiplier is still doing all of its work; you can just see what
+       it is doing in the number going up, which is the only part of it
+       anybody was reading. It still drives the cell going hot. */
+    hudScore.textContent = fmt(sc.carried);
+    // BEST is off the gantry now; it lives on the RECORD tab
+    if (hudBest) hudBest.textContent = fmt(best);
+    /* Hot above ×4, which needs at least two of the three terms to be
+       doing something — it was ×1.5 when the multiplier could only ever
+       reach ×2.8 off the exit combo. */
+    cellScore.classList.toggle("hot", sc.mult > 4);
+    /* The cell is already labelled "Bank in", so the value is a count
+       and a noun and nothing else — it has to fit on one line beside
+       four other cells. */
+    if (hudBank) {
+      hudBank.innerHTML = sc.toCheckpoint === 1
+        ? "1<small> exit</small>" : `${sc.toCheckpoint}<small> exits</small>`;
+    }
     /* Where you are on the real road, which is the one number on this
        machine that a driver would recognise: mile marker and state, the
        same pair painted on the little green posts. */
@@ -2041,6 +2517,11 @@
 
   function showPanel(name) {
     for (const k in panels) panels[k].classList.toggle("on", k === name);
+    /* The one funnel every panel goes through, which is the only place
+       the gear's state can be kept honest — a run can come off pause by
+       the key, by the gear, or by a tap on the road. */
+    const sb = document.getElementById("settings-btn");
+    if (sb) sb.setAttribute("aria-pressed", String(name === "pause"));
   }
 
   /* ── the arithmetic, printed ────────────────────────────────────────
@@ -2095,9 +2576,35 @@
       sums.hidden = !t;
     }
     el("w-dist").textContent = km().toFixed(2) + " km";
-    el("w-score").textContent = fmt(S.score);
+    /* Banked, then what the wreck cost. The second line is the point of
+       the whole checkpoint scheme and it should sting to read. */
+    const r = S.run || { banked: 0, lost: 0, exits: 0 };
+    el("w-score").textContent = fmt(r.banked);
+    if (el("w-lost")) {
+      el("w-lost").textContent = r.lost > 0.5 ? `− ${fmt(r.lost)}` : "—";
+      el("w-lost").classList.toggle("bad", r.lost > 0.5);
+    }
+    if (el("w-passed")) el("w-passed").textContent = fmt(r.passed || 0);
+    if (el("w-exits")) {
+      const since = r.exits % Score.CHECKPOINT_EVERY;
+      el("w-exits").textContent = r.exits === 0 ? "none"
+        : since === 0 ? `${r.exits} · all banked`
+        : `${r.exits} · ${since} unbanked`;
+    }
     el("w-top").textContent = Math.round(S.topSpeed) + " km/h";
     el("w-best").hidden = !S.newBest;
+
+    /* And if the run opened a vehicle, that is the headline and not a
+       footnote. */
+    if (el("w-opened")) {
+      const opened = (S.opened && S.opened.opened) || [];
+      el("w-opened").hidden = !opened.length;
+      if (opened.length) {
+        el("w-opened").innerHTML = opened.length === 1
+          ? `UNLOCKED · <b>${opened[0].make} ${opened[0].model}</b>`
+          : `UNLOCKED · <b>${opened.length} VEHICLES</b>`;
+      }
+    }
     /* The panel is raised by the wreck update when the car has finished
        moving — see step(). Putting it on a timer here meant it landed
        on top of a car that was still travelling at 200 km/h. */
@@ -2240,7 +2747,7 @@
     if (open) {
       mapReturnMode = S.mode;
       S.mode = "map";
-      keys.clear(); touch.steer = 0; touch.brake = false;
+      keys.clear(); touchRelease();
       mapPanel.hidden = false;
       renderMap();
       mapClose.focus();
@@ -2255,9 +2762,195 @@
   mapClose.addEventListener("click", () => setMap(false));
   mapPanel.addEventListener("pointerdown", (e) => e.stopPropagation());
 
+  /* ── settings, which is the same door as pause ──────────────────────
+     There is nowhere else for it to go. Everything you might want to
+     change mid-run — the sound, the units, leaving — is a thing you do
+     while stopped, and the game already has a screen for being stopped
+     with the one sentence on it that matters: what walking away costs.
+     So the gear opens THAT, by the same `hold()` every other route in
+     uses, and the settings sit on it.
+
+     `touchRelease` because the thumb that pressed the gear is not the
+     thumb that was on the gas, and the gas gets no `pointerup` once a
+     panel is over it — without this you come back off pause with the
+     throttle still open. */
+  const settingsBtn = el("settings-btn");
+  if (settingsBtn) {
+    settingsBtn.addEventListener("click", () => {
+      if (S.mode === "play") { touchRelease(); hold(); }
+      else if (S.mode === "pause") { S.mode = "play"; showPanel(null); }
+    });
+  }
+
   /* ══════════════════════════════════════════════════════════════════
      start and reset
      ══════════════════════════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════════════════════
+     THE GARAGE, on the title screen
+
+     You cycle through the whole table and not only what you have
+     earned, because a ladder you cannot see is not a ladder — the point
+     of the Corvette being visible at 4,000 banked is that you know it
+     is there. A locked row shows what it costs and refuses to start.
+     ══════════════════════════════════════════════════════════════════ */
+  let carIdx = 0;
+
+  function drawCarCard() {
+    const c = Garage.ALL[carIdx];
+    if (!c || !el("car-model")) return;
+    const open = Progress.isUnlocked(c.id);
+    const card = el("car-card");
+    card.classList.toggle("locked", !open);
+
+    el("car-make").textContent = c.make.toUpperCase();
+    el("car-model").textContent = c.model;
+    el("car-spec").textContent =
+      `${c.year} · ${c.hp} hp · ${c.kg.toLocaleString()} kg`;
+
+    /* The three figures every other number in data/garage.js is derived
+       from. Shown in the units they were published in. */
+    el("car-figs").innerHTML =
+      cell("0–60", c.t60.toFixed(1), "s") +
+      cell("TOP", String(c.top), "mph") +
+      cell("60–0", String(c.stop), "ft");
+
+    el("car-note").textContent = c.note;
+
+    const lock = el("car-lock");
+    lock.hidden = open;
+    if (!open) {
+      const need = c.cost - Progress.total;
+      lock.innerHTML = `LOCKED · <b>${fmt(need)}</b> TO GO`;
+    }
+    el("title-go").textContent = open
+      ? "press start to drive"
+      : "that one is not yours yet";
+    el("title-go").style.opacity = open ? "" : ".6";
+
+    /* Only worth saying while there is still something to unlock. */
+    const have = Progress.unlocked().length, all = Garage.ALL.length;
+    const count = el("car-count");
+    if (count) count.textContent = have >= all
+      ? `all ${all} vehicles`
+      : `${have} of ${all} — the rest are on RECORD`;
+  }
+
+  /* ── the ladder ─────────────────────────────────────────────────────
+     Every vehicle and what it costs, in order, on the RECORD tab. This
+     is where the locked half of the garage lives now that the arrows
+     step past it: something to go and look at, which is what a ladder
+     is for. */
+  function drawLadder() {
+    const box = el("ladder");
+    if (!box) return;
+    const nx = Progress.next();
+    box.innerHTML = Garage.ALL.map((c) => {
+      const got = Progress.isUnlocked(c.id);
+      const isNext = nx && nx.car.id === c.id;
+      const cls = "lrow" + (got ? " got" : " locked") + (isNext ? " now" : "");
+      const at = got ? "✓" : isNext
+        ? `${fmt(c.cost - Progress.total)} to go`
+        : fmt(c.cost);
+      return `<div class="${cls}"><span class="who">${c.make} ${c.model}</span>` +
+             `<span class="at">${at}</span></div>`;
+    }).join("");
+  }
+
+  const cell = (k, v, u) =>
+    `<div><span class="k">${k}</span><span class="v">${v}<small>${u}</small></span></div>`;
+
+  /* Step to the next vehicle YOU CAN DRIVE, not the next row in the
+     table. Ric: "make the car change to the ones you can change to."
+
+     Paging through cars you cannot have on the way to one you can is
+     the thing this replaces; the locked ones are on the RECORD tab as a
+     ladder instead, which is somewhere you go to look rather than
+     something in your way. Walks rather than filtering into a new array
+     so the order is still the table's, and gives up after a full lap —
+     with one vehicle unlocked, ▲ and ▼ are simply no-ops. */
+  function cycleCar(step) {
+    const n = Garage.ALL.length;
+    for (let k = 0; k < n; k++) {
+      carIdx = ((carIdx + step) % n + n) % n;
+      if (Progress.isUnlocked(Garage.ALL[carIdx].id)) break;
+    }
+    const c = Garage.ALL[carIdx];
+    Progress.select(c.id);
+    setCar(c.id);
+    drawCarCard();
+    blip("tick");
+  }
+
+  /* What the progress bar and the banked total say. Redrawn whenever
+     the ledger could have changed, which is at load and after a run. */
+  function drawBank() {
+    if (!el("bank-total")) return;
+    el("bank-total").textContent = fmt(Progress.total);
+    const nx = Progress.next();
+    if (!nx) {
+      el("bank-bar").style.width = "100%";
+      el("bank-next").textContent = "the whole garage is yours";
+      return;
+    }
+    el("bank-bar").style.width = `${(nx.fraction * 100).toFixed(1)}%`;
+    el("bank-next").innerHTML =
+      `next: ${nx.car.make} ${nx.car.model} · <b>${fmt(nx.need)}</b> to go`;
+  }
+
+  /* ── the tabs ───────────────────────────────────────────────────────
+     Three pages, one shown. Nothing is destroyed or rebuilt — the
+     controls are the same elements they always were, which is why the
+     day and hour selects keep their values across a tab change. */
+  const PAGES = ["route", "garage", "record"];
+  let page = "route";
+
+  function showPage(name) {
+    if (!PAGES.includes(name)) return;
+    page = name;
+    for (const p of PAGES) {
+      const tab = el("tab-" + p), pane = el("page-" + p);
+      if (tab) { tab.classList.toggle("on", p === name); tab.setAttribute("aria-selected", String(p === name)); }
+      if (pane) pane.classList.toggle("on", p === name);
+    }
+    if (name === "record") drawLadder();
+    blip("tick");
+  }
+
+  function initGarage() {
+    const chosen = Progress.chosen();
+    const i = Garage.ALL.findIndex((c) => c.id === chosen);
+    carIdx = i < 0 ? 0 : i;
+    setCar(chosen);
+    drawCarCard();
+    drawBank();
+    drawLadder();
+  }
+
+  /* ── choosing what to drive ─────────────────────────────────────────
+     The only way `S.car` is ever written. It has to reach three places
+     and they are easy to forget separately, so they are one call:
+
+       · `S.car`   the pull, the brakes and the ceiling, in this file
+       · `S.steer` the wheel, scaled off the row's grip and mass
+       · `Cars`    the player's body in the traffic sim — length, width
+                   and mass, which decide what gap you fit in and what
+                   every contact costs
+
+     Refuses an unknown id rather than throwing, because the id comes
+     out of localStorage and a save written by an older build must not
+     be able to stop the game from starting. */
+  function setCar(id) {
+    S.car = Garage.get(id);
+    S.steer = steerFor(S.car);
+    if (typeof Cars !== "undefined" && Cars.setVehicle) Cars.setVehicle(S.car);
+    /* And what it looks like. The sprite is the row's real footprint at
+       the road's own scale, so the thing on the screen is the thing the
+       traffic model is solving rather than a fixed red car with a
+       different name over it. */
+    if (typeof Draw !== "undefined" && Draw.setPlayerVehicle) Draw.setPlayerVehicle(S.car);
+    return S.car;
+  }
+
   function reset(mode) {
     S.mode = mode;
     const p = World.reset();
@@ -2275,9 +2968,9 @@
     S.u = R.laneU(p.road, p.s, 1, S.fwd);
     S.camU = camTarget(p.road);
     S.speed = mode === "title" ? 122 : 100;
-    S.onRamp = false; S.aimLane = 1; S.steer = STEER.car;
+    S.onRamp = false; S.aimLane = 1; S.steer = steerFor(S.car);
     S.parts.length = 0; S.marks.length = 0;
-    S.distPx = 0; S.score = 0; S.mult = 1; S.combo = 0; S.comboT = 0;
+    S.distPx = 0; S.score = 0; S.run = null; S.opened = null;
     S.topSpeed = 0; S.exits = 0;
     S.shake = 0; S.flash = 0; S.wreckT = 0; S.gravelT = 0;
     S.roll = 0; S.spin = 0; S.wreckSide = 1;
@@ -2292,6 +2985,25 @@
     Skill.beginRun();
     S.newBest = false; S.hints.clear();
     place();
+    /* The traffic, built around wherever this run starts. It takes a
+       moment — the band settles itself against the corridor's own
+       density before the first frame, which is the only way it can start
+       full rather than seep in over the following minute — and this is
+       the one place in the game where that moment is free. */
+    S.traffic = null;
+    /* One `chosenWhen()` for the whole run. It has to be resolved once
+       and shared: "any hour" re-rolls on every call, so asking twice
+       would run the traffic at one time of day and score the night
+       bonus off another. */
+    const when = chosenWhen();
+    Score.begin({ car: S.car, hour: when.hour });
+    if (typeof Cars !== "undefined" && S.road && S.road.corridor) {
+      Cars.stop();
+      const px0 = S.road.baseS + S.s;
+      const st = World.stateAt(px0);
+      Cars.start(px0, S.fwd, when, st ? st.name : null,
+                 (Math.random() * 1e9) | 0);
+    }
     /* Snapped, not eased. Easing is for a junction the car drives
        through; a restart is not a place it drove from. */
     S.camH = S.h;
@@ -2326,12 +3038,15 @@
     if (!startSel || typeof I40 === "undefined") return;
     const byState = new Map();
     for (const st of I40.states) byState.set(st.name, []);
+    /* Which state an exit is in is World's question, not this file's.
+       Asking it here — with a ±4 mile window and "last match wins" —
+       filed six exits under the wrong state, California's exit 153
+       among them, in a list where Arizona's own numbering starts at 1.
+       See World.stateAt: one rule, shared with the mile marker. */
     for (const e of I40.exits) {
-      let name = null;
-      for (const st of I40.states)
-        if (e.px >= st.startPx - 4 * World.MILE && e.px <= st.endPx + 4 * World.MILE) name = st.name;
-      if (!name) continue;
-      byState.get(name).push(e);
+      const st = World.stateAt(e.px);
+      if (!st || !byState.has(st.name)) continue;
+      byState.get(st.name).push(e);
     }
     const frag = document.createDocumentFragment();
     for (const [state, list] of byState) {
@@ -2364,6 +3079,189 @@
   }
   fillStarts();
 
+  /* ══════════════════════════════════════════════════════════════════
+     when you are driving
+
+     `traffic.js` keys the counters on day of week and hour, so this is
+     not a cosmetic setting: it is what decides how much traffic there
+     is, how much of it is lorries, and how fast it is going. Knoxville
+     at five on a Friday is 2,178 veh/h/lane and the Mojave at three on a
+     Sunday morning is one vehicle every twenty-nine seconds, and those
+     are the same model reading the same counters.
+
+     NOW is the wall clock, which is what it did before this existed.
+     ANY re-rolls on every run, and re-rolls the day and the hour
+     independently — Sunday at eight in the morning is a different road
+     from Sunday at six in the evening, and being able to get either is
+     the point of asking for it.
+     ══════════════════════════════════════════════════════════════════ */
+  const daySel = el("start-day"), hourSel = el("start-hour");
+  const whenNote = el("when-note");
+  const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
+                "Friday", "Saturday"];
+
+  function hourLabel(h) {
+    const ampm = h < 12 ? "am" : "pm";
+    const t = h % 12 === 0 ? 12 : h % 12;
+    return `${t}${ampm}`;
+  }
+
+  function fillWhen() {
+    const opts = (sel, list) => {
+      if (!sel) return;
+      const frag = document.createDocumentFragment();
+      for (const [value, label] of list) {
+        const o = document.createElement("option");
+        o.value = value; o.textContent = label;
+        frag.appendChild(o);
+      }
+      sel.appendChild(frag);
+      sel.value = "now";
+    };
+    opts(daySel, [["now", "Today"], ["any", "Any day"]]
+      .concat(DAYS.map((d, i) => [String(i), d])));
+    opts(hourSel, [["now", "Now"], ["any", "Any hour"]]
+      .concat(Array.from({ length: 24 }, (_, h) => [String(h), hourLabel(h)])));
+  }
+  fillWhen();
+
+  /* ── the garage, wired ──────────────────────────────────────────────
+     The two buttons and the card are the whole of it. `initGarage`
+     runs once here and sets S.car before the first frame, so the title
+     screen's idling car is already the one you chose last time. */
+  function nudgeLocked() {
+    const c = Garage.ALL[carIdx];
+    const lock = el("car-lock");
+    if (!lock) return;
+    lock.animate(
+      [{ transform: "translateX(0)" }, { transform: "translateX(-3px)" },
+       { transform: "translateX(3px)" }, { transform: "translateX(0)" }],
+      { duration: 220, iterations: 1 });
+    el("title-go").textContent = `${fmt(c.cost - Progress.total)} more to unlock that`;
+    blip("thud");
+  }
+
+  for (const nm of ["route", "garage", "record"]) {
+    const t = el("tab-" + nm);
+    if (t) t.addEventListener("click", (e) => { e.stopPropagation(); showPage(nm); });
+  }
+  if (el("car-prev")) el("car-prev").addEventListener("click", () => cycleCar(-1));
+  if (el("car-next")) el("car-next").addEventListener("click", () => cycleCar(1));
+  /* ── the code box ───────────────────────────────────────────────────
+     `unlock` opens the garage; anything else is tried as a save code.
+     Both land in the same field because from the player's side they are
+     the same action, and because a second box would need a second
+     explanation on a screen that already has five controls on it. */
+  function enterCode() {
+    const input = el("code-in"), note = el("code-note");
+    if (!input || !note) return;
+    const raw = input.value.trim();
+    const say = (msg, cls) => {
+      note.textContent = msg;
+      note.classList.toggle("good", cls === "good");
+      note.classList.toggle("bad", cls === "bad");
+    };
+    if (!raw) { say("", null); return; }
+
+    if (raw.toLowerCase() === "unlock") {
+      Progress.unlockAll();
+      initGarage();
+      input.value = "";
+      say("the whole garage is open", "good");
+      blip("exit");
+      return;
+    }
+
+    const r = Progress.importCode(raw);
+    if (r.ok) {
+      initGarage();
+      input.value = "";
+      say(`save loaded — ${fmt(r.total)} banked`, "good");
+      blip("exit");
+    } else {
+      say(r.why, "bad");
+      blip("thud");
+    }
+  }
+
+  if (el("code-go")) el("code-go").addEventListener("click", (e) => {
+    e.stopPropagation(); enterCode();
+  });
+  if (el("code-in")) {
+    /* Enter submits. The click handler on the frame would otherwise
+       read a click in the box as "start driving", so both are stopped
+       here rather than relying on the panel to swallow them. */
+    el("code-in").addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") { e.preventDefault(); enterCode(); }
+    });
+    el("code-in").addEventListener("pointerdown", (e) => e.stopPropagation());
+    el("code-in").addEventListener("click", (e) => e.stopPropagation());
+  }
+
+  if (el("wreck-menu")) el("wreck-menu").addEventListener("click", (e) => {
+    e.stopPropagation();
+    toMenu();
+  });
+  if (el("pause-quit")) el("pause-quit").addEventListener("click", (e) => {
+    /* Stop it reaching the frame's pointerdown, which would read as
+       "unpause and keep driving" and undo the click. */
+    e.stopPropagation();
+    toMenu();
+  });
+  initGarage();
+
+  /* Resolved at the moment a run starts, so ANY is a fresh roll each
+     time rather than one chosen when the page loaded. */
+  function chosenWhen() {
+    const d = new Date();
+    const pick = (sel, now, n) => {
+      const v = sel ? sel.value : "now";
+      if (v === "now") return now;
+      if (v === "any") return (Math.random() * n) | 0;
+      return +v;
+    };
+    return {
+      dow: pick(daySel, d.getDay(), 7),
+      hour: pick(hourSel, d.getHours(), 24),
+      /* The month is not offered. It moves the counters by a few per
+         cent and there is nothing to choose between one and another —
+         unlike the hour, which moves them by a factor of ten. */
+      month: d.getMonth() + 1,
+    };
+  }
+
+  /* What the road will actually be carrying, said in vehicles rather
+     than in settings, so the choice means something before you make it.
+     Read straight off the same counters the traffic will use. */
+  function describeWhen() {
+    if (!whenNote) return;
+    const anyDay = daySel && daySel.value === "any";
+    const anyHour = hourSel && hourSel.value === "any";
+    if (anyDay || anyHour) {
+      whenNote.innerHTML = anyDay && anyHour
+        ? "a day and an hour, drawn fresh each run"
+        : anyDay ? "any day, drawn fresh each run" : "any hour, drawn fresh each run";
+      return;
+    }
+    if (typeof Traffic === "undefined" || !startSel || !startSel.value) {
+      whenNote.textContent = ""; return;
+    }
+    const px = +startSel.value;
+    const w = chosenWhen();
+    const lanes = Math.max(1, Traffic.lanes(px));
+    const perLane = Traffic.demand(px, w, 1) / lanes;
+    const busy = perLane > 1500 ? "nose to tail"
+               : perLane > 900 ? "busy"
+               : perLane > 400 ? "steady"
+               : perLane > 120 ? "quiet" : "almost empty";
+    whenNote.innerHTML = `${DAYS[w.dow]} ${hourLabel(w.hour)} · `
+      + `<b>${Math.round(perLane)}</b> veh/h/lane · ${busy}`;
+  }
+  for (const s of [daySel, hourSel, startSel])
+    if (s) s.addEventListener("change", describeWhen);
+  describeWhen();
+
   /* Both pickers set the same thing and mirror each other, so the exit
      you chose on the sign is the one already selected when you wreck —
      and changing it there changes where R puts you back. */
@@ -2394,7 +3292,76 @@
   }
   setHeading("E");
 
-  function startDriving() { audioStart(); reset("play"); showPanel(null); }
+  /* The one gate on a locked vehicle, and it is HERE rather than at the
+     three call sites — a key, a direction button and a tap on the road
+     all arrive through this function, and a check repeated three times
+     is a check that will be two next month. */
+  /* ── leaving the road ───────────────────────────────────────────────
+     Back to the menu from a pause, and it closes the books exactly the
+     way a wreck does: whatever was banked at a checkpoint is kept and
+     whatever is being carried is gone.
+
+     That is deliberate and it is the reason this is a button with a
+     warning on it rather than a quiet Escape. If quitting banked the
+     pot, the optimal play would be to build a ×15, stop, and take it —
+     and every decision the checkpoint scheme exists to create would be
+     replaced by that one. See score.js on the same argument.
+
+     `Skill.endRun()` too, because a run that ended by walking away is
+     still evidence about how it was driven, and skill.js's window is
+     distance-based rather than run-based — dropping it would quietly
+     make the record favour people who quit.
+
+     Reachable from a WRECK too, which is the other place you are stuck
+     and the only way to change vehicle after one. `crash()` has already
+     closed the books by then, so the ledger work is gated on the run
+     still being live — calling `Progress.endRun` twice would bank the
+     same points a second time and count the run twice. */
+  function toMenu() {
+    const live = S.mode === "play" || S.mode === "pause";
+    if (live) {
+      Skill.endRun();
+      const run = Score.end("left");
+      Progress.endRun({ banked: run.banked, km: run.km, exits: run.exits });
+    }
+    if (typeof Cars !== "undefined") Cars.stop();
+    reset("title");
+    initGarage();
+    showPanel("title");
+  }
+
+  /* What the pause panel says walking away would cost. Recomputed each
+     time it opens, because it is the number the decision turns on. */
+  function drawPauseRisk() {
+    const p = el("pause-risk");
+    if (!p) return;
+    const sc = Score.read();
+    if (sc.carried < 1) {
+      p.innerHTML = "nothing is at risk yet";
+      return;
+    }
+    p.innerHTML =
+      `leaving loses <b>${fmt(sc.carried)}</b> — ` +
+      `${sc.toCheckpoint} more exit${sc.toCheckpoint === 1 ? "" : "s"} banks it`;
+  }
+
+  /* Every way into a pause goes through here — the key, losing focus,
+     and the tab being hidden — so the panel can never come up without
+     the line saying what leaving would cost. It was three copies of two
+     statements, which is how the third one gets forgotten. */
+  function hold() {
+    S.mode = "pause";
+    drawPauseRisk();
+    showPanel("pause");
+  }
+
+  function startDriving() {
+    if (S.mode === "title" && !Progress.isUnlocked(Garage.ALL[carIdx].id)) {
+      nudgeLocked();
+      return;
+    }
+    audioStart(); reset("play"); showPanel(null);
+  }
 
   /* ══════════════════════════════════════════════════════════════════
      input
@@ -2419,11 +3386,37 @@
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.code === "ArrowLeft") { setHeading("W"); return; }
       if (e.code === "ArrowRight") { setHeading("E"); return; }
+      /* Up and down go through the garage. They have to be caught here,
+         above the fallthrough, because on this screen every other key
+         starts the run — and the two directions are already spoken for
+         by the sign. */
+      if (e.code === "ArrowUp") { cycleCar(-1); return; }
+      if (e.code === "ArrowDown") { cycleCar(1); return; }
+      /* Tabs. Caught here for the same reason the arrows are: on this
+         screen every key that is not spoken for starts the run. */
+      if (e.code === "Digit1") { showPage("route"); return; }
+      if (e.code === "Digit2") { showPage("garage"); return; }
+      if (e.code === "Digit3") { showPage("record"); return; }
+      if (e.code === "Tab") {
+        e.preventDefault();
+        const i = PAGES.indexOf(page);
+        showPage(PAGES[(i + (e.shiftKey ? -1 : 1) + PAGES.length) % PAGES.length]);
+        return;
+      }
+      /* A vehicle you have not earned is not a vehicle you can drive
+         off in. Say so once rather than silently doing nothing. */
+      if (!Progress.isUnlocked(Garage.ALL[carIdx].id)) { nudgeLocked(); return; }
       startDriving();
       return;
     }
+    /* Escape out of a pause goes back to the menu. It is the only key
+       that does, and it is not on the pause panel's own "press P" line,
+       because leaving costs the pot — the button beside it is the
+       signposted way and this is the shortcut for somebody who already
+       knows what it costs. */
+    if (e.code === "Escape" && (S.mode === "pause" || S.mode === "wreck")) { toMenu(); return; }
     if (e.code === "KeyP") {
-      if (S.mode === "play") { S.mode = "pause"; showPanel("pause"); }
+      if (S.mode === "play") { hold(); }
       else if (S.mode === "pause") { S.mode = "play"; showPanel(null); }
       return;
     }
@@ -2433,11 +3426,11 @@
   });
   addEventListener("keyup", (e) => keys.delete(e.code));
   addEventListener("blur", () => {
-    keys.clear(); touch.steer = 0; touch.brake = false;
-    if (S.mode === "play") { S.mode = "pause"; showPanel("pause"); }
+    keys.clear(); touchRelease();
+    if (S.mode === "play") { hold(); }
   });
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden && S.mode === "play") { S.mode = "pause"; showPanel("pause"); }
+    if (document.hidden && S.mode === "play") { hold(); }
   });
 
   function markTouch() {
@@ -2446,12 +3439,36 @@
     document.body.classList.add("touch");
     document.querySelector("#panel-title .keys.kb").style.display = "none";
     document.querySelector("#panel-title .keys.tp").style.display = "grid";
-    el("title-go").textContent = "tap to drive";
+    /* Every panel's last line names a key. On a machine with no keys
+       they all have to name the gesture instead, and they were three
+       separate strings of which exactly one had been remembered — the
+       pause panel still said PRESS P on a phone that has no P. */
+    const say = { "title-go": "tap to drive",
+                  "pause-go": "tap the road to keep driving",
+                  "wreck-go": "tap to get back in" };
+    for (const id in say) { const e = document.getElementById(id); if (e) e.textContent = say[id]; }
   }
 
   frame.addEventListener("pointerdown", (e) => {
     if (e.pointerType === "touch") markTouch();
     audioStart();
+    /* ── a control is not the road ────────────────────────────────────
+       Everything below treats a press anywhere in the frame as "get
+       driving": on the title it starts the run, on a wreck it restarts,
+       and on a pause it resumes. The panels sit INSIDE the frame, so
+       every button on them was being answered by this handler before
+       its own click could land — `pointerdown` fires first, the panel
+       was dismissed, and the click arrived at nothing.
+
+       That is the bug Ric hit as "leave the road button doesnt work
+       when you hit pause", and it was never only that button: the three
+       tabs, the garage arrows and BACK TO THE GARAGE were all being
+       swallowed the same way. Stopping propagation on each of them is
+       the fix that has to be remembered every time a control is added,
+       so the test is here instead — anything interactive is not the
+       road, and the road is what this handler is for. */
+    if (e.target instanceof Element &&
+        e.target.closest("button, input, select, textarea, label, a")) return;
     if (S.mode === "title") startDriving();
     else if (S.mode === "wreck") { if (S.wreckT > 0.9) startDriving(); return; }
     else if (S.mode === "pause") { S.mode = "play"; showPanel(null); }
@@ -2462,19 +3479,44 @@
     if (!touch.active) return;
     const dx = e.clientX - touch.lastX;
     touch.lastX = e.clientX;
-    const scale = cvs.clientWidth / VW || 1;
+    const scale = cvs.clientWidth / Draw.VW || 1;
     touch.steer = clamp(touch.steer + (dx / scale) * 0.19, -1, 1);
   });
   const endTouch = () => { touch.active = false; touch.steer = 0; };
   frame.addEventListener("pointerup", endTouch);
   frame.addEventListener("pointercancel", endTouch);
 
-  const brake = el("brake");
-  const brakeOn = (on) => { touch.brake = on; brake.classList.toggle("on", on); };
-  brake.addEventListener("pointerdown", (e) => { e.preventDefault(); markTouch(); brakeOn(true); brake.setPointerCapture?.(e.pointerId); });
-  brake.addEventListener("pointerup", () => brakeOn(false));
-  brake.addEventListener("pointercancel", () => brakeOn(false));
-  brake.addEventListener("contextmenu", (e) => e.preventDefault());
+  /* ── the four buttons ───────────────────────────────────────────────
+     Each one is a key that happens to be round: press sets its flag,
+     release clears it, and `steerInput`/`throttleInput` read the flags
+     exactly as they read `keys`.
+
+     `setPointerCapture` is the whole reason this is pointer events and
+     not click: without it, sliding a thumb off the edge of a button
+     mid-corner never delivers the release and the input sticks on. With
+     it the release lands on the button that took the press, wherever
+     the thumb has got to by then. `pointercancel` covers the rest —
+     the browser taking the gesture for a scroll or a system edge swipe.
+
+     `preventDefault` on the press stops the double-tap-to-zoom and the
+     press-and-hold text selection that otherwise arrive halfway through
+     a corner. */
+  function held(id, set) {
+    const b = el(id);
+    const go = (on) => { set(on); b.classList.toggle("on", on); };
+    b.addEventListener("pointerdown", (e) => {
+      e.preventDefault(); markTouch(); audioStart();
+      go(true); b.setPointerCapture?.(e.pointerId);
+    });
+    b.addEventListener("pointerup", () => go(false));
+    b.addEventListener("pointercancel", () => go(false));
+    b.addEventListener("contextmenu", (e) => e.preventDefault());
+    return b;
+  }
+  const brake = held("brake", (on) => { touch.brake = on; });
+  held("gas", (on) => { touch.gas = on; });
+  held("steer-l", (on) => { touch.left = on; });
+  held("steer-r", (on) => { touch.right = on; });
   if (matchMedia("(any-pointer: coarse) and (any-hover: none)").matches) markTouch();
 
   /* ══════════════════════════════════════════════════════════════════
@@ -2505,7 +3547,116 @@
   const STEP = 1 / 120;
   let acc = 0, last = performance.now();
 
-  const difficulty = () => 1 - Math.exp(-km() / 6);
+  /* `difficulty()` was here — a 0..1 ramp on distance that traffic used
+     to thicken itself with, and nothing has read it since traffic was
+     deleted. Whatever difficulty means on this corridor is a question
+     for PLAN.md §2, where the scoring is; a curve with no consumer is
+     not an answer to it. */
+
+  /* ── the traffic clock ──────────────────────────────────────────────
+     Stepped from the fixed update rather than the frame, so the model
+     runs at the same rate on every machine — `cars.js` accumulates and
+     spends whole 10 Hz ticks, which is the rate BEHAVIOUR.md's two
+     trajectory datasets were published at and every number in the
+     scoreboard was measured against.
+
+     It keeps running while you are wrecked. A motorway does not stop
+     because you did, and the traffic arriving at the back of what is
+     left of your car is the thing `avoid` was written for. */
+  function stepTraffic(dt) {
+    if (typeof Cars === "undefined" || !Cars.running() || !S.road) return;
+    const px = S.road.corridor ? S.road.baseS + S.s : S.road.corridorPx;
+    if (px == null) return;
+
+    /* ── hand the car over before anybody is asked what they want ─────
+       On the corridor the player is a body in the traffic's index, so
+       the drivers behind follow them, the polite ones move over, and
+       anybody can hit them. Off it — down a ramp, through a truck stop,
+       or wrecked on the grass — the body is withdrawn rather than left
+       standing in a lane the player is not in. */
+    const root = World.state.root;
+    const onMain = S.road.corridor && S.mode === "play";
+    /* Before anything else: the traffic runs on as many lanes as the
+       road has here, not as many as it had where the run started. */
+    if (S.road.corridor) Cars.fitLanes(root, S.s, S.fwd);
+    /* Where the car is on the road, and nothing more — which carriageway
+       that puts it on, which lane, and how its nose relates to its
+       middle are all `cars.js`'s to work out, because it is the file
+       that has to agree with itself about them. */
+    if (onMain) {
+      /* `S.vu` last, because it is the newest of these and the traffic
+         went without it for a long time: without a lateral velocity
+         every sideswipe solved as though the player were tracking dead
+         straight. */
+      Cars.setPlayer(root, S.s, S.u, S.fwd, kmh2ms(S.speed),
+                     keys.has("ArrowDown") || keys.has("KeyS"), S.vu);
+    } else Cars.setPlayer(null);
+
+    /* Position only. How fast the band is travelling ALONG THE CORRIDOR
+       is not the speedometer — on a ramp you can be doing 100 km/h and
+       barely moving along the freeway — so `cars.js` differences it and
+       there is only one answer rather than two that can disagree. */
+    Cars.update(dt, px);
+
+    /* ── and answer for whatever hit us ───────────────────────────────
+       `sim.js` computes the impulse with both real masses and hands back
+       what it did to the player; what that COSTS them is this file's
+       question, and `land()` is the same answer it gives for a barrier,
+       a fence and a blowout. One model of what a crash does to a person,
+       not two. */
+    const hits = Cars.contacts();
+    if (!hits || S.mode !== "play") return;
+    for (const h of hits) {
+      const w = weigh(h.dv, h.angle);
+      const cause = h.oncoming ? "headon"
+                  : h.rear ? (h.fromBehind ? "shunted" : "rearend") : "swipe";
+      /* ── what it did to the car, before what it did to the driver ───
+         (Ric, 2026-08-12: "i can push cars out of the way look at the
+         crash mechanic.")
+
+         He could. `sim.js` solved both bodies and applied only the
+         other one, so running into somebody cost the player nothing at
+         all: measured, 229 contacts in sixty seconds at 108 km/h
+         without losing a single km/h, while every car hit was shoved
+         out of the way. The car you drive was an immovable object with
+         a 1500 kg label on it.
+
+         This is the same line `scrapeWall` has run for the barrier
+         since it was written — `S.speed = max(0, solver's answer)` —
+         and it is here for the same reason: ONE model of what an
+         impact does, not one for walls and a shrug for traffic. Rear-
+         end a stationary car at 108 and you come out the other side at
+         51; do it to a parked artic and you stop dead.
+
+         Unclamped at the top because being shunted from behind should
+         shove you FORWARD, which is the same equation with the sign
+         the solver gives it. The driving update clamps to `top` on the
+         next line it runs anyway. */
+      if (h.dvAlong) S.speed = Math.max(0, S.speed + ms2kmh(h.dvAlong));
+      /* ── and the sideways half of it ────────────────────────────────
+         The same handoff across the road. `scrapeWall` has always done
+         `S.vu = ms2pxs(res.va.x)` off the barrier solver and this is the
+         identical line for traffic.
+
+         This is a NUDGE and not a shove, which is the whole reason it
+         does not fight §8's "steering commands a rate". Solved: a car
+         drifting into your flank at 1 m/s leaves you crossing the road
+         at 0.34 m/s — about 2 px/s, under half the rate of an ordinary
+         lane change — and the wheel pulls it straight out again as soon
+         as you ask. That is what a real sideswipe does: it is a
+         correction you have to make, not a lane you get thrown into.
+         The thing §8 rejected was the player being POSITIONED by the
+         solver, and they still are not. */
+      if (h.vuAfter != null) S.vu = h.vuAfter;
+      /* A shove you can feel even when it does not end the run — the
+         same treatment a barrier scrape gets. */
+      S.shake = Math.max(S.shake, Math.min(2.4, h.eff / 14));
+      blip("scrape");
+      if (land(w, cause, Math.sign(h.theirLane - Cars.laneAt(root, S.s, S.u, S.fwd)) || 1,
+               h.corner))
+        return;                                    // that one ended it
+    }
+  }
 
   function step(dt) {
     S.t += dt;
@@ -2569,7 +3720,7 @@
          as the car leans on the thing, and a wreck that touched a wall
          at 220 mph stopped dead inside a fifth of a second. */
       if (S.road.kind !== "ramp") {
-        const face = wallFace(S.road);
+        const face = wallFace(S.road, S.s);
         if (Math.abs(S.u) < face) {
           const side = S.u >= 0 ? 1 : -1;
           const out = side * dir;
@@ -2593,8 +3744,12 @@
           if (out * S.vu < 0) S.vu = 0;              // no longer crossing
           S.speed = Math.max(0, S.speed - 150 * dt);
           S.spin -= S.spin * Math.min(1, 3 * dt);
-          if (S.shake < 4) S.shake = 4;
-          if (Math.random() < 60 * dt) puff(S.x, S.y, 1, "spark");
+          /* A wreck that has come to rest against the wall is leaning on
+             it, not grinding down it — and unlike the player's it can be
+             stationary and still turning, which grindRate counts. */
+          const g = grindRate();
+          if (S.shake < 4 * g) S.shake = 4 * g;
+          if (Math.random() < 60 * dt * g) puff(S.x, S.y, 1, "spark");
         } else S.wallT = 0;
       }
       /* Same argument at the other end of the cross-section. A wreck
@@ -2607,8 +3762,9 @@
         S.u -= (S.u >= 0 ? 1 : -1) * past;
         if (S.u * S.vu * dir > 0) S.vu = -S.vu * 0.2;
         S.speed = Math.max(0, S.speed - 120 * dt);
-        if (S.shake < 4) S.shake = 4;
-        if (Math.random() < 40 * dt) puff(S.x, S.y, 1, "debris");
+        const g = grindRate();                   // the same argument as the wall
+        if (S.shake < 4 * g) S.shake = 4 * g;
+        if (Math.random() < 40 * dt * g) puff(S.x, S.y, 1, "debris");
       }
       S.s = clamp(S.s + dir * stepPx, 2, R.len(S.road) - 2);
       easeCamera(dt);
@@ -2633,6 +3789,7 @@
         showPanel("wreck");
       }
       rebase(World.update(S.x, S.y, dt, S.road, S.s));
+      stepTraffic(dt);
       updateParts(dt);
       return;
     }
@@ -2642,6 +3799,7 @@
     updatePlayer(dt);
     if (S.mode !== "play") return;         // updatePlayer may have ended it
     rebase(World.update(S.x, S.y, dt, S.road, S.s));
+    stepTraffic(dt);
     updateParts(dt);
   }
 
@@ -2654,6 +3812,14 @@
     let guard = 0;
     while (acc >= STEP && guard++ < 40) { step(STEP); acc -= STEP; }
 
+    /* The drawable traffic, rebuilt once per RENDERED frame rather than
+       once per fixed step: it is a projection of state the step already
+       settled, and doing it twice for one picture is work nobody sees. */
+    /* Always the CORRIDOR, never whatever road the car is standing on:
+       the traffic lives on the mainline and has to keep being drawn
+       while you are down a ramp looking back at it. */
+    S.traffic = (typeof Cars !== "undefined" && Cars.running())
+      ? Cars.visible(World.state.root, S.fwd, 1200, dt) : null;
     Draw.setPhase(DAY_LOCK != null ? DAY_LOCK : S.distPx / 9000 + 0.06);
     const shx = S.shake > 0.05 ? rnd(-S.shake, S.shake) : 0;
     const shy = S.shake > 0.05 ? rnd(-S.shake, S.shake) : 0;

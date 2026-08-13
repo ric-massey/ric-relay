@@ -1,0 +1,33 @@
+# The raw downloads. Every one of them is a public federal file that the
+# scripts beside this can fetch again, and together they are 1.7 GB,
+# which has no business in a website repo.
+#
+#   hpms/       fetch_hpms.py   ~40 MB   geo.dot.gov feature services
+#   tmas/       (see below)     ~1.2 GB  fhwa.dot.gov TMAS 2025
+#   traj/       fetch_traj.py   ~700 MB  data.transportation.gov
+#
+# TMAS has no fetcher of its own because it is twelve plain zip files:
+#   curl -O https://www.fhwa.dot.gov/policyinformation/tables/tmasdata/2025/2025_station_data.zip
+#   for m in jan feb mar apr may jun jul aug sep oct nov dec; do
+#     curl -O https://www.fhwa.dot.gov/policyinformation/tables/tmasdata/2025/${m}_2025_ccs_data.zip
+#     unzip -q ${m}_2025_ccs_data.zip -d $m
+#   done
+#
+# sections.json goes with them: 8 MB, and `join_hpms.py` rebuilds it in
+# two seconds once hpms/ is back. What IS committed is everything that
+# is either small or expensive to regenerate — refline.json (0.8 MB,
+# from the OSM slices in the repo), stations.json, hourly.json (a year
+# of TMAS, and getting it back means the 1.2 GB download),
+# behaviour.json, and ../traffic.js itself.
+hpms/
+tmas/
+traj/
+sections.json
+__pycache__/
+
+# A session token for TDOT's bot filter. Lives for hours, is worthless
+# after that, and is nobody's business but this machine's. `tcds.py`
+# says how to get another. tcds_tn_locations.json is 1.2 MB of every
+# count location in Tennessee and only the I-40 subset of it is kept.
+tcds_cookie.txt
+tcds_tn_locations.json

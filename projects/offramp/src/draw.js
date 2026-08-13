@@ -45,13 +45,47 @@ const Draw = (() => {
 
   const R = Road, X = Raster;
 
-  /* A slightly larger buffer is still scaled into the same cabinet.
-     Road dimensions stay in the same world pixels, so this is a true
-     camera pullback rather than narrower lanes: about 16% more road is
-     visible, with most of the gain placed ahead of the player. */
-  const VW = 256, VH = 416;
-  const CX = 128, PY = 320;              // where the car sits on screen
-  const VIEW = 360;                      // nothing beyond this is drawn
+  /* ── the shape of the picture ───────────────────────────────────────
+     The buffer was a fixed 256 × 416 letterboxed into whatever the page
+     gave it. That is wrong twice over. On a monitor the cabinet is far
+     wider than 256 world pixels, so the sides of the screen were bezel
+     rather than ground. And on a PHONE — the narrower screen of the two
+     — a fit that takes the SMALLER of the two ratios drew the whole
+     game smaller than it drew it on a desktop, which is the opposite of
+     what a small screen wants.
+
+     So the buffer is no longer a fixed shape. `offramp.js` decides how
+     many CSS pixels one world pixel is worth (see `fit`), and the
+     buffer is however much world fits in the cabinet at that scale.
+     Nothing is letterboxed on either axis, which means the edges of the
+     screen are grass and trees instead of black, and the phone is
+     zoomed in rather than out.
+
+     Road dimensions never move: a lane is 20.5 world pixels here and on
+     everything else. What changes is how much of the world you can see
+     and how large a world pixel is drawn, which is what a camera does.
+
+     Everything below follows from VW and VH:
+       CX    dead centre, across
+       PY    where the car sits along it — NOT a fixed fraction, see below
+       VIEW  the far corner in world pixels, and therefore the radius
+             outside which nothing needs projecting at all */
+  let VW = 0, VH = 0, CX = 0, PY = 0, VIEW = 0;
+  function resize(w, h) {
+    VW = Math.max(64, Math.round(w));
+    VH = Math.max(64, Math.round(h));
+    CX = Math.round(VW / 2);
+    /* The road ahead is worth more than the road behind: ahead is where
+       the traffic you still have to do something about is. On a tall
+       buffer the car sits at the old 77% and there is plenty of both.
+       On a short one the FRONT is held at 300 px — the 54 m the old
+       256 × 416 always gave — and the mirror gives way instead, down to
+       a floor of 64 px, which is still three car lengths of it. */
+    PY = Math.min(VH - 64, Math.max(Math.round(VH * 0.77), 300));
+    if (PY < VH * 0.5) PY = Math.round(VH * 0.77);   // a cabinet too short for either rule
+    VIEW = Math.ceil(Math.hypot(Math.max(CX, VW - CX), Math.max(PY, VH - PY))) + 16;
+  }
+  resize(256, 416);                      // the old shape, until `fit` says otherwise
 
   /* ── palette ────────────────────────────────────────────────────────
      Packed once. Small on purpose: the whole game is a dozen greys, a
@@ -61,8 +95,17 @@ const Draw = (() => {
     grass: "#2c5a34", grassDk: "#245029", grassLt: "#357040",
     tree: "#16321d", treeDk: "#102416", bush: "#1d4526",
     gravel: "#6b5b45", gravelDk: "#5b4c39",
-    asphalt: "#3a3a44", asphaltDk: "#33333d", patch: "#45454f", stain: "#2f2f38",
-    shoulder: "#34343e",
+    /* Lifted 2026-08-12, on the report that the road and the cars were
+       too dark to read. The surface was #3a3a44 — about 23% luma —
+       under a night pass that lays 66% of a dark blue over it, so the
+       picture spent most of the clock somewhere near black. These are
+       roughly +12 luma each, which keeps the greys reading as tarmac
+       rather than concrete while putting the paint and the vehicles
+       clear of their background. The RELATIVE spacing is unchanged:
+       shoulder still sits just under the running surface, patches just
+       over it, stains under both. */
+    asphalt: "#47474f", asphaltDk: "#3f3f48", patch: "#53535d", stain: "#3a3a43",
+    shoulder: "#414149",
     line: "#e8e2cc", lineDim: "#b8b2a0", yellow: "#f0b429",
     kerb: "#8a8a92", barrier: "#9aa0aa", barrierDk: "#4e535c",
     rail: "#8f949e", post: "#565b64",
@@ -147,6 +190,21 @@ const Draw = (() => {
      enough to be pieces already. */
   const SEGQ = new Float64Array(8);
   function seg(r, a, b, u, w, u2) {
+    /* ── nothing is painted through a junction ──────────────────────────
+       Where an exit ramp crosses the street it serves, neither road
+       marks: no edge line, no lane line and no centre line runs through
+       the mouth of an intersection, and the absence is most of what
+       says one is there. `World.terminal` measures where that mouth is
+       on both roads and leaves the range here.
+
+       It is checked in `seg` rather than in each marking because `seg`
+       is the one funnel every piece of paint in this file goes through
+       — the edge lines, the dotted lane, the yellow, the through
+       stripes, the ramp's own two lines. Anywhere else it would be six
+       tests that could drift apart, and the mouth would keep one line
+       nobody remembered to suppress. A road with no junction on it
+       reads one undefined property and leaves. */
+    if (r.gap && R.suppressed(r.gap, Math.round((a + b) / (2 * R.STEP)))) return;
     const p = R.at(r, a, u), q = R.at(r, b, u2 == null ? u : u2);
     const x1 = sx(p.x, p.y), y1 = sy(p.x, p.y);
     const x2 = sx(q.x, q.y), y2 = sy(q.x, q.y);
@@ -187,6 +245,7 @@ const Draw = (() => {
     const dx = x2 - x1, dy = y2 - y1;
     const L = Math.hypot(dx, dy);
     if (L < 1e-6) return;
+    if (w < MIN_W) w = MIN_W;             // see MARK_W: thinner than this flickers
     const hx = (-dy / L) * w / 2, hy = (dx / L) * w / 2;
     SEGQ[0] = x1 - hx; SEGQ[1] = y1 - hy;
     SEGQ[2] = x1 + hx; SEGQ[3] = y1 + hy;
@@ -201,6 +260,45 @@ const Draw = (() => {
   const paint = (col) => X.maskDraw(col);
 
   const SOLID_SEG = 10;          // px of road per piece of a solid line
+
+  /* ── how wide a marking has to be to hold still ─────────────────────
+     Coverage conserves INK, and the eye does not read ink. It reads the
+     brightest pixel and the number of pixels lit, and for a line
+     narrower than two of them both of those depend on where the line
+     happens to fall between pixel centres.
+
+     A 1.1-px line, measured off the buffer on one row of one frame —
+     two lane lines of the same paint, twenty pixels apart:
+
+         x=176  0.44 0.65      peak 0.65, two pixels lit
+         x=197  0.94 0.15      peak 0.94, one pixel lit
+
+     Same marking, half the brightness and twice the width, side by side
+     on the same road. And because the phase is a function of where the
+     line sits on screen, every one of them slides through that whole
+     range as the car steers, so the paint breathes. Then the buffer is
+     shown at 2.79×, which turns the pair of greys into a smear about
+     twice as wide as the crisp one, and that is what the road looked
+     wrong as.
+
+     Nothing about it is a rasteriser fault: the ink is exact to a
+     hundredth everywhere, and the joints between pieces are invisible.
+     It is the width. Below 2 px a line is not guaranteed a single fully
+     covered pixel, so its peak is free to vary from w/2 to 1; at 2 px
+     and above there is always a saturated core and only the fringe
+     moves. raster.js measured that same threshold from the other side
+     when the old rounding version was pulled out, and then the markings
+     were left under it.
+
+     So: two pixels is the floor, enforced here rather than trusted to
+     every call site, and the paint scheme is built on it. On the real
+     road an edge line and a lane line are the same 4 inches of white and
+     a wide dotted line is twice that, which is what these are now — the
+     old 1.1 / 1.25 / 1.6 / 2.2 was four different widths for three
+     kinds of line, none of them thick enough to sit still. */
+  const MARK_W = 2;              // lane line, edge line, yellow: one width
+  const WIDE_W = 4;              // a wide line is twice a normal one
+  const MIN_W = 2;               // nothing thinner than a whole pixel core
 
   function stripe(r, s0, s1, u, w, col, dashOn, dashOff) {
     const L = R.len(r);
@@ -241,7 +339,7 @@ const Draw = (() => {
         ? R.insideAt(r, b) + R.innerAt(r, b) + R.LANE * boundary
         : -(R.insideAt(r, b) + R.innerAtL(r, b) + R.LANE * boundary);
       if (Math.abs(ub - ua) > R.LANE / 2) continue; // do not slash across a left-exit gore
-      seg(r, a, b, ua, 1.1, ub);
+      seg(r, a, b, ua, MARK_W, ub);
     }
     paint(C.line);
   }
@@ -264,6 +362,167 @@ const Draw = (() => {
         const px = sx(wx, wy) | 0, py = sy(wx, wy) | 0;
         if (px < -3 || py < -3 || px > VW + 3 || py > VH + 3) continue;
         X.box(px, py, h > 0.9 ? 2 : 1, h > 0.9 ? 2 : 1, h > 0.72 ? C.grassLt : C.grassDk);
+      }
+    }
+  }
+
+  /* ── what grows beside a freeway ────────────────────────────────────
+     The buffer is as wide as the screen now, so the ground either side
+     of the road is most of the picture, and flat green with tufts on it
+     is not what the edge of an Interstate looks like. The right-of-way
+     is mown; past it there is scrub, and past that, trees.
+
+     They are hung off the ROAD rather than scattered on a world grid,
+     because the one thing a tree must not do is stand on tarmac, and a
+     road is the only thing in this file that knows where its tarmac is.
+     Every other station puts a clump out beyond its own verge on each
+     side, at a distance that is a hash of the station index — so the
+     treeline wanders in and out the way a real one does, and never
+     twitches, because the hash is of the station and not of anything
+     that moves.
+
+     Drawn BEFORE the roads, for the same reason the verge is: where two
+     roads run close enough that one road's trees land on the other
+     one's surface, the surface simply covers them. Tarmac outranks
+     scenery everywhere, automatically, for every pair, without anybody
+     having to have thought of that pair in advance.
+
+     A bridge grows nothing — the ground it would grow in is not there —
+     and neither does a surface street, which by the time it has a name
+     and a signal on it is running through somewhere built. */
+  const CANOPY = new Float64Array(16);
+  const COS8 = new Float64Array(8), SIN8 = new Float64Array(8);
+  for (let i = 0; i < 8; i++) {
+    COS8[i] = Math.cos(i * Math.PI / 4);
+    SIN8[i] = Math.sin(i * Math.PI / 4);
+  }
+  /* An octagon, which at a radius of four to eleven pixels is a circle,
+     and is convex, which is what poly() needs it to be. */
+  function canopy(px, py, rad, col) {
+    for (let i = 0; i < 8; i++) {
+      CANOPY[i * 2] = px + COS8[i] * rad;
+      CANOPY[i * 2 + 1] = py + SIN8[i] * rad;
+    }
+    X.poly(CANOPY, col);
+  }
+
+  /* OFF, on Ric's call, 2026-08-13. The edges of the screen are plain
+     grass for now. Everything below is left standing rather than
+     deleted because what it cost was not the drawing — it was working
+     out that the walk over the stations must not depend on the camera,
+     which took two separate bugs and a frame-by-frame instrumented
+     count to pin down, and that reasoning is in the comments here. Flip
+     this to bring the woods back; nothing else has to change. */
+  const TREES = false;
+
+  const TREE_STEP = 2;                   // stations between clumps: 16 px, 2.9 m
+  /* How far off screen a station can still plant something visible, and
+     it has to be the true worst case or a treeline blinks in at the
+     edge of the glass instead of scrolling into it:
+
+       184  the widest half-road on the corridor — an 88 ft median,
+            its inside shoulder, and five lanes
+        17  outside shoulder
+         9  verge
+        87  the furthest `gap` puts the fence line
+        18  the depth of a clump behind it
+        11  and a canopy on the far side of that                       */
+  const TREE_MARGIN = 326;
+  /* And the same margin as stations, which is how far past the drawn
+     span the walk below has to keep going. */
+  const TREE_OVERRUN = Math.ceil(TREE_MARGIN / R.STEP);
+
+  /* ── nothing about the camera may decide which trees exist ──────────
+     Every hash below is of the station index, so WHICH trees a road
+     grows is a property of the road. Twice now the walk over those
+     stations has quietly made it a property of the camera instead, and
+     both times the whole treeline strobed:
+
+     Stepping `k` from zero sampled i0, i0+2, i0+4 — and `i0` moves one
+     station at a time as you drive, so every other frame the PARITY
+     flipped and the treeline was replaced by the one growing between
+     it. Anchoring the walk to a multiple of TREE_STEP fixes that.
+
+     Then the ENDS. The drawn span runs 90 px of road past where the
+     road leaves the view, which is plenty for tarmac and nowhere near
+     enough for a tree: a station 90 px off the bottom of the glass
+     plants things up to 326 px sideways, and those are on screen. So
+     the last station in the span was contributing visible trees, and
+     the span end moves a station at a time too — a couple of clumps
+     blinking in and out at the edges, which measured as a 30% swing in
+     how much of the picture was tree.
+
+     The walk therefore overruns the span by TREE_MARGIN of road at each
+     end, far enough that a station outside it cannot reach the glass,
+     and the per-station screen test below is left as the only thing
+     that decides. That test moves smoothly with the camera, which is
+     the property this needed all along.
+
+     It projects its own stations rather than using the shared scratch,
+     because the overrun can push the range past the 600 that holds. */
+  function trees(entries) {
+    for (const e of entries) {
+      const r = e.r;
+      if (r._i1 == null || r._i1 <= r._i0 || r.street) continue;
+      const st = r.st;
+      const sh = r.kind === "ramp" ? R.RAMP_SH : R.SH_OUT;
+      const lo = Math.max(0, r._i0 - TREE_OVERRUN);
+      const hi = Math.min(st.length - 1, r._i1 + TREE_OVERRUN);
+      for (let i = Math.ceil(lo / TREE_STEP) * TREE_STEP; i <= hi; i += TREE_STEP) {
+        /* One compare kills most of a long road before anything is
+           measured on it. */
+        const p = st[i];
+        const bx = sx(p.x, p.y), by = sy(p.x, p.y);
+        if (bx < -TREE_MARGIN || by < -TREE_MARGIN ||
+            bx > VW + TREE_MARGIN || by > VH + TREE_MARGIN) continue;
+        const th = p.h - camH;
+        const nx = Math.cos(th), ny = Math.sin(th);
+        const s = i * R.STEP;
+        if (R.deckAt(r, s) > 0.5) continue;
+        const ed = R.edges(r, s);
+        for (let side = -1; side <= 1; side += 2) {
+          // where another road is already using this side, it is not woods
+          if (R.suppressed(side > 0 ? r.noR : r.noL, i)) continue;
+          const h = hash2(i, side > 0 ? 4231 : 9377);
+          if (h < 0.34) continue;        // the gaps, without which it is a hedge
+          const outer = side > 0 ? ed.uR + sh + R.VERGE : ed.uL - sh - R.VERGE;
+          /* Two to fifteen metres past the last gravel. Anything closer
+             is inside the clear zone, where a state DOT would have cut
+             it down for exactly the reason you are about to find out if
+             you leave the road.
+
+             SQUARED, so most of them are near the fence and a few are
+             out in the field. Flat, the treeline sat in the middle of
+             the grass and a phone — the screen with the least grass on
+             it and the one that most needs something growing in it —
+             cropped nearly all of it away. */
+          const g = hash2(i + 1013, side);
+          const gap = 9 + g * g * 78;
+          const n = h > 0.86 ? 3 : h > 0.62 ? 2 : 1;
+          for (let t = 0; t < n; t++) {
+            const j = hash2(i * 7 + t, side * 31 + 5);
+            /* The clump's own depth, and deliberately small next to
+               `gap`. It used to be j*34, which put the furthest tree
+               121 px past the verge — far enough out that on a wide
+               road it sat beyond what the station cull below can
+               promise to have considered, and blinked. `gap` already
+               does the wandering; this only stops a clump being a row. */
+            const u = outer + side * (gap + j * 18);
+            const along = (t - (n - 1) / 2) * 9 + (j - 0.5) * 10;
+            /* Along the road is the station normal turned a quarter
+               turn, which in screen space is (−ny, nx). */
+            const px = bx + nx * u - ny * along;
+            const py = by + ny * u + nx * along;
+            const rad = 4 + j * 7;
+            if (px < -rad || py < -rad || px > VW + rad || py > VH + rad) continue;
+            /* Two discs and not one: the lit crown lifted up and left
+               off its own shade is the only thing that says a tree has
+               height when you are looking straight down on it. */
+            canopy(px + 1, py + 1, rad, C.treeDk);
+            canopy(px - 0.5, py - 0.5, rad - 1.2, j > 0.34 ? C.tree : C.bush);
+            if (rad > 8) X.px(px - rad * 0.4, py - rad * 0.4, C.bush);
+          }
+        }
       }
     }
   }
@@ -546,37 +805,116 @@ const Draw = (() => {
      the other road's surface, so suppressing the lines where they are
      inside it produces exactly that picture, at every junction, without
      anyone having to say where the nose is. World.dress() measures it. */
-  function edgeLine(r, s0, s1, right, w) {
+  /* The sealed edge — the outside of everything, auxiliary lane and all.
+     This is where a ramp's edge line goes, and where the outside of a
+     deceleration lane goes. */
+  const sealedU = (r, s, right) => (right ? R.edges(r, s).uR : R.edges(r, s).uL);
+  /* The edge of the THROUGH lanes, which is where a freeway's own edge
+     line belongs and which does not move when a lane opens outside it. */
+  const throughU = (r, s, right) => (right
+    ? R.insideAt(r, s) + R.innerAt(r, s) + R.lanesAt(r, s) * R.LANE
+    : -(R.insideAt(r, s) + R.innerAtL(r, s) + R.backLanesAt(r, s) * R.LANE));
+  const NO_SKIP = [];
+
+  /* `omit` is a second, per-station reason to leave a piece out, on top
+     of the range list. The ranges say "another road is painting this";
+     `omit` says "this stretch of the line is a different KIND of line" —
+     which is how the solid pass and the dotted pass below divide one
+     boundary between them without either drawing over the other. */
+  function edgeLine(r, s0, s1, right, w, uAt, skipList, omit) {
     const a0 = Math.max(s0, 0.5), a1 = Math.min(s1, R.len(r) - 8.5);
-    const skip = right ? r.noPaintR : r.noPaintL;
+    const skip = skipList || (right ? r.noPaintR : r.noPaintL);
     const off = right ? -1 : 1;
+    const at = uAt || sealedU;
     for (let s = a0; s < a1; s += 8) {
       const b = Math.min(a1, s + 8);
       if (R.suppressed(skip, Math.round(s / R.STEP))) continue;
-      const ua = right ? R.edges(r, s).uR : R.edges(r, s).uL;
-      const ub = right ? R.edges(r, b).uR : R.edges(r, b).uL;
-      seg(r, s, b, ua + off, w, ub + off);
+      if (omit && omit((s + b) / 2)) continue;
+      seg(r, s, b, at(r, s, right) + off, w, at(r, b, right) + off);
     }
     paint(C.line);
   }
 
+  /* ── the line you are allowed to cross ───────────────────────────────
+     *"The merge lane needs dotted lines."* Right, and it is the single
+     marking that says what an auxiliary lane IS.
+
+     A freeway's right-hand boundary was drawn solid for the whole
+     window, deceleration lane or no. On the road it is only solid where
+     the pavement stops there. Where a lane opens outside it — a decel
+     lane before an exit, an accel lane after an entrance — that
+     boundary becomes a WIDE DOTTED line for exactly the length of the
+     lane, and that dotting is the instruction: this lane beside you is
+     one you may move into, and it is about to end. Painted solid, the
+     game was telling a driver the opposite of what the geometry meant,
+     at every exit and every entrance on the corridor.
+
+     MUTCD 3 ft mark, 9 ft gap, at twice the width of an ordinary lane
+     line. `throughStripe` already fixes the scale: it lays 10 ft as 17
+     px, so a foot is 1.7 px. */
+  const DOT_ON = 5, DOT_CYCLE = 20.5, DOT_W = WIDE_W;   // 3 ft / 12 ft, double width
+  function dottedEdge(r, s0, s1, right, uAt, when) {
+    const a0 = Math.max(s0, 0.5), a1 = Math.min(s1, R.len(r) - 8.5);
+    const off = right ? -1 : 1;
+    for (let s = Math.floor(a0 / DOT_CYCLE) * DOT_CYCLE; s < a1; s += DOT_CYCLE) {
+      const a = Math.max(a0, s), b = Math.min(a1, s + DOT_ON);
+      if (b <= a) continue;
+      if (!when((a + b) / 2)) continue;
+      seg(r, a, b, uAt(r, a, right) + off, DOT_W, uAt(r, b, right) + off);
+    }
+    paint(C.line);
+  }
+
+  /* Where the mainline has an auxiliary lane of its OWN outside this
+     boundary — which is what makes the boundary dotted. Deliberately
+     not the same test `auxEdge` uses: that one also stands down where
+     the ramp is painting the outer line for it, and inboard of that the
+     lane is still the mainline's decel lane and still crossable. The
+     two agree on the part that matters, which is `auxTaken`. */
+  const auxOwn = (r, side) => (s) =>
+    (side > 0 ? R.auxAt(r, s) : R.auxAtL(r, s)) >= R.LANE * 0.34
+    && !auxTaken(r, s, side);
+
   function markings(r, s0, s1) {
     if (r.kind === "ramp") {
-      edgeLine(r, s0, s1, false, 1.6);
+      edgeLine(r, s0, s1, false, MARK_W);
       // the right edge moves with the flare, so it is sampled per piece
-      edgeLine(r, s0, s1, true, 1.6);
+      edgeLine(r, s0, s1, true, MARK_W);
       for (let l = 1; l < r.rampLanes; l++)
-        stripe(r, s0, s1, (l - 0.5) * R.LANE, 1.1, C.line, 17, 51);
+        stripe(r, s0, s1, (l - 0.5) * R.LANE, MARK_W, C.line, 17, 51);
       return;
     }
-    /* Both edge lines have to follow their own deceleration lane out and
-       back, so each piece's offset differs at its two ends — that is what
-       the second u is for. The left one used to be a single straight
-       stripe at a fixed `r.back` lanes out, which was fine while only the
-       right-hand carriageway could have an aux lane and wrong the moment
-       the westbound exits got theirs. */
-    edgeLine(r, s0, s1, true, 1.6);
-    edgeLine(r, s0, s1, false, 1.6);
+    /* ── the edge line, and the lane that opens outside it ─────────────
+       A freeway's right edge line marks the edge of the THROUGH LANES
+       and it does not move. When a deceleration lane opens, it opens
+       OUTSIDE that line: the line carries straight on, the new lane
+       appears beside it, and the outside of that lane gets an edge line
+       of its own which peels away and becomes the ramp. Two lines that
+       separate — which is what a driver actually sees, and what makes
+       the shape of a gore readable.
+
+       This was ONE line, drawn at the sealed edge with the auxiliary
+       lane included in it. So instead of separating, the single edge
+       line SWUNG OUT across the opening and came back after it: nothing
+       marked the through lanes through an exit at all, and the line
+       appeared to wander sideways and then vanish where the gore
+       suppression took it. Reported from play as the line "turning a
+       little invisible weirdly", and as the arms of the gore pointing
+       the wrong way.
+
+       The through-lane line needs no gore suppression, because it is
+       inboard of the ramp and never crosses anything. The auxiliary
+       one does, and keeps it. */
+    /* One boundary per carriageway, drawn in two passes that divide it
+       on the same predicate: solid where the pavement stops there,
+       wide dotted for the length of any auxiliary lane outside it. */
+    const openR = auxOwn(r, 1), openL = auxOwn(r, -1);
+    edgeLine(r, s0, s1, true, MARK_W, throughU, NO_SKIP, openR);
+    edgeLine(r, s0, s1, false, MARK_W, throughU, NO_SKIP, openL);
+    dottedEdge(r, s0, s1, true, throughU, openR);
+    dottedEdge(r, s0, s1, false, throughU, openL);
+    auxEdge(r, s0, s1, true);
+    auxEdge(r, s0, s1, false);
     /* ── both yellow lines, per station ───────────────────────────────
        These mark the inside edge of each carriageway, so they sit at
        `insideAt`, and that is no longer one number for a window: the
@@ -600,34 +938,107 @@ const Draw = (() => {
          one left exit is on that side. Both skip the piece that spans
          the drop, or the line slashes 41 px across eight of road. */
       const va = -(ia + R.innerAtL(r, s)), vb = -(ib + R.innerAtL(r, b));
-      if (Math.abs(ub - ua) <= R.LANE / 2) seg(r, s, b, ua, 1.25, ub);
-      if (Math.abs(vb - va) <= R.LANE / 2) seg(r, s, b, va, 1.25, vb);
+      if (Math.abs(ub - ua) <= R.LANE / 2) seg(r, s, b, ua, MARK_W, ub);
+      if (Math.abs(vb - va) <= R.LANE / 2) seg(r, s, b, va, MARK_W, vb);
     }
     paint(C.yellow);
     // MUTCD proportions: 10 ft line / 30 ft gap at freeway speeds
     for (let l = 1; l < 6; l++) throughStripe(r, s0, s1, l, true);
     for (let l = 1; l < 6; l++) throughStripe(r, s0, s1, l, false);
-    /* 3 ft / 9 ft dotted lane line through a lane-add or lane-drop area,
-       on whichever carriageway has one open. */
-    for (let split = 0; split < 3; split++) {
-      for (let s = Math.floor(s0 / 20) * 20; s < s1; s += 20) {
-        const a = Math.max(s0, s), b = Math.min(s1, s + 5);
-        if (b <= a) continue;
-        if (R.auxAt(r, (a + b) / 2) > R.LANE * (split + 0.08)) {
-          const ua = R.insideAt(r, a) + R.innerAt(r, a) + (R.lanesAt(r, a) + split) * R.LANE;
-          const ub = R.insideAt(r, b) + R.innerAt(r, b) + (R.lanesAt(r, b) + split) * R.LANE;
-          seg(r, a, b, ua, 1.25, ub);
-        }
-        if (R.auxAtL(r, (a + b) / 2) > R.LANE * (split + 0.08)) {
-          const ua = -(R.insideAt(r, a) + R.innerAtL(r, a)
-                       + (R.backLanesAt(r, a) + split) * R.LANE);
-          const ub = -(R.insideAt(r, b) + R.innerAtL(r, b)
-                       + (R.backLanesAt(r, b) + split) * R.LANE);
-          seg(r, a, b, ua, 1.25, ub);
-        }
-      }
-      paint(C.line);
+    /* The dotted lane line that used to be drawn here, at the edge of
+       the through lanes wherever an auxiliary lane was open, has become
+       the through-lane EDGE LINE above — continuous, and drawn whether
+       or not a lane happens to be open outside it. It was always the
+       same offset; what it was missing was the rest of the road. */
+  }
+
+  /* ── the outside of an auxiliary lane ───────────────────────────────
+     A deceleration lane opens outside the through-lane edge line and
+     carries its own edge line, which at the gore becomes the ramp's.
+     An acceleration lane is the same thing run backwards. Drawn only
+     where the lane is really there, so the two lines meet where it
+     opens and part where it closes — which is the shape of the join.
+
+     It stops at the NOSE. The mainline's auxiliary lane does not end at
+     the gore: it closes over a wedge, so a tapering sliver survives for
+     a few hundred pixels past the point where the ramp has taken the
+     pavement. Drawn on, that sliver put a second line a few pixels
+     outside the through edge, right where the ramp's own two lines are
+     — four lines in the mouth of an exit that has three, and the near
+     arm of the gore doubled. Past the nose the strip is not a lane and
+     not the mainline's.
+
+     ── and it starts at the merge nose, for the same reason ───────────
+     The other end had the identical fault and nobody had looked at it.
+     `closeAux` opens the acceleration lane 150 stations BEFORE the ramp
+     arrives — on purpose, so a merge feels like room to merge — and
+     over all 1,200 px of that the freeway painted the outer edge line
+     of a lane while the ramp converging on it painted its own two.
+     Four lines at the mouth of every entrance, measured at 109 of 109
+     ramps, and at 70% of them two of the four came within 4 px and
+     crossed. Real exit 196, eight-px pieces through its merge:
+
+         thru   aux   rampL  rampR
+           99   108    167    187
+           99   112    145    165
+           99   115    126    147
+           99   117    117    138   ← 0.4 px apart, and then they swap
+
+     Upstream of the merge nose that strip is pavement the ramp is
+     about to land on, not a lane of the freeway, and the only lines
+     that belong there are the ramp's. Downstream of it the two are one
+     surface and the aux line is the outside of it, which is what makes
+     the outer line continuous through the join.
+
+     ── why the interior, rather than a distance from the nose ─────────
+     The gore rule takes a window round its nose because the wedge it is
+     suppressing is a fixed length. This end has no such length: the
+     structure is sized to the room it was given, so the accel lane's
+     run is whatever is left. What IS known is that between a
+     structure's two noses every pixel of aux on that side belongs to
+     that structure — the freeway grew it for this ramp and for nothing
+     else. So the bound is the structure itself: `e.s` is the parent
+     station its gore sits on and the merge nose is the other end. A
+     genuine auxiliary lane running from one interchange's merge to the
+     next one's gore lies OUTSIDE both intervals and keeps its line. */
+  const auxTaken = (r, s, side) => {
+    if (!r.exits) return false;
+    for (const e of r.exits) {
+      if ((e.side > 0 ? 1 : -1) !== side) continue;
+      const n = e.nose;
+      /* Only this junction's own aux run: the wedge it closes over,
+         with slack. Two exits are never closer than MIN_EXIT_LEN, so
+         this cannot reach a neighbour's lane. */
+      if (n && Math.abs(s - n.s) <= R.WEDGE * R.STEP + R.GORE
+          && (e.side > 0 ? s >= n.s : s <= n.s)) return true;
+      /* The interior, back from the merge nose to this junction's own
+         gore station. Eastbound the merge is the high end and the gore
+         the low one; westbound the structure is driven the other way
+         down the same stations and both swap. */
+      const m = e.mergeNose;
+      if (m && (e.side > 0 ? (s >= e.s && s <= m.s)
+                           : (s <= e.s && s >= m.s))) return true;
     }
+    return false;
+  };
+
+  function auxEdge(r, s0, s1, right) {
+    const a0 = Math.max(s0, 0.5), a1 = Math.min(s1, R.len(r) - 8.5);
+    const skip = right ? r.noPaintR : r.noPaintL;
+    const side = right ? 1 : -1;
+    const off = right ? -1 : 1;
+    const aux = right ? R.auxAt : R.auxAtL;
+    for (let s = a0; s < a1; s += 8) {
+      const b = Math.min(a1, s + 8);
+      const mid = (s + b) / 2;
+      /* Below about a third of a lane it is a taper and not a lane, and
+         an edge line on it is a hair beside the through line. */
+      if (aux(r, mid) < R.LANE * 0.34) continue;
+      if (auxTaken(r, mid, side)) continue;
+      if (R.suppressed(skip, Math.round(s / R.STEP))) continue;
+      seg(r, s, b, sealedU(r, s, right) + off, MARK_W, sealedU(r, b, right) + off);
+    }
+    paint(C.line);
   }
 
   /* ── the gore ───────────────────────────────────────────────────────
@@ -738,57 +1149,44 @@ const Draw = (() => {
       Q[4] = sx(b.x, b.y);   Q[5] = sy(b.x, b.y);
       Q[6] = sx(pb.x, pb.y); Q[7] = sy(pb.x, pb.y);
       if (!marks) X.poly(Q, C.asphaltDk);
-      /* Chevrons the length of the neutral area, not a fixed 110 px of
-         it — on a real gore the hatching runs the whole way to the nose,
-         which is what the aerial photograph shows. */
-      if (marks && (d / 10) % 2 === 0) {
-        const mx = (Q[0] + Q[2]) / 2, my = (Q[1] + Q[3]) / 2;
-        const nx2 = (Q[4] + Q[6]) / 2, ny2 = (Q[5] + Q[7]) / 2;
-        Q[0] = mx; Q[1] = my; Q[2] = mx + 1.6; Q[3] = my + 1.6;
-        Q[4] = nx2 + 1.6; Q[5] = ny2 + 1.6; Q[6] = nx2; Q[7] = ny2;
-        X.poly(Q, C.line);
-      }
+      /* ── the hatching is gone ────────────────────────────────────────
+         A real gore is chevron-hatched, and this drew that hatching: a
+         mark every twenty pixels down the middle of the neutral area.
+         The trouble is the scale. A chevron here is 1.6 px of diagonal,
+         which cannot read as a chevron — what it reads as is a dotted
+         white line running down the gore, a third line between the two
+         real ones, on a twenty-pixel cycle. Reported from play as dots
+         that needed removing, and that is the right call: at this size
+         the honest picture is the neutral area's darker asphalt between
+         two solid white lines, which is legible and is not a lie.
+
+         The wedge itself stays — that is the `X.poly` above, and it is
+         what makes the gore read as a surface you are not meant to be
+         on. Only the marks that were pretending to be chevrons go. */
     }
     /* The nose: a striped crash cushion, deliberately the loudest
        object on the road. Seen from a car it is the only part of a
        junction that says "decide now", so it is drawn big enough to
        read at a glance rather than scaled to how much space it takes
        up in real life. */
-    if (!marks) return;
-    const n0 = R.at(par, j.s + dir * 2, base + (right ? 4 : -4));
-    const nx = sx(n0.x, n0.y), ny = sy(n0.x, n0.y);
-    if (nx > -14 && ny > -14 && nx < VW + 14 && ny < VH + 14) {
-      X.sprite(noseBmp(), nx, ny, n0.h - camH);
-    }
+    /* ── nothing stands here ─────────────────────────────────────────
+       A striped crash cushion was drawn on the nose, and then moved to
+       where the two pavements part, and then out again to where the
+       neutral area is wider than the unit. It is gone. An impact
+       attenuator is a thing bolted to the end of a BARRIER RUN, and
+       there is no barrier in the gore of an ordinary rural interchange
+       — there is paint, and beyond the paint there is grass. Drawing
+       one here was inventing furniture, and it was the only object on
+       this road that could end a run without anything hitting it.
+
+       The gore is therefore what it is in life: hatching you may drive
+       over, with a verge past it that will take your speed and may take
+       the car. `j.nose` is still measured and still used — it is where
+       the auxiliary lane's edge line stops. */
   }
 
-  /* ── the thing on the nose of a gore ────────────────────────────────
-     This used to be four alternating yellow bands stacked up the sprite,
-     and stacked bands read as BARRELS — which is the wrong device. A row
-     of drums is temporary traffic control: orange and white, put out to
-     close something. What sits permanently on a gore is a crash cushion,
-     a solid grey unit bolted to a concrete pad, and what makes it yellow
-     and black is the Type 3 object marker on its FACE — a panel of 45°
-     stripes, which is the only part of it a driver is meant to read.
-
-     So: a grey body seen from above, and the striped panel across the
-     end that faces oncoming traffic. Same palette, right object. The
-     drums moved to where drums actually go, which is a closed exit. */
-  let _nose = null;
-  function noseBmp() {
-    if (_nose) return _nose;
-    const w = 9, h = 14;
-    _nose = X.bitmap(w, h);
-    // the pad and the body, narrowing toward the nose
-    _nose.fill(0, 4, w, h - 4, C.barrierDk);
-    _nose.fill(1, 5, w - 2, h - 6, C.barrier);
-    // the object marker across the face: 45° yellow-on-black stripes
-    _nose.fill(0, 0, w, 4, C.dark);
-    for (let y = 0; y < 4; y++)
-      for (let x = 1; x < w - 1; x++)
-        if (((x + y) & 3) < 2) _nose.set(x, y, C.yellow);
-    return _nose;
-  }
+  /* `noseBmp()` was here — a grey crash-cushion body with a Type 3
+     object marker across its face. Removed with the object; see gore(). */
 
   /* ── and the drums, which is where the barrels really live ───────────
      A channelizing drum, from above, is a ring: MUTCD asks for
@@ -898,7 +1296,7 @@ const Draw = (() => {
   function guideBmp(ramp, near) {
     const key = (ramp.exitRef || "") + "|" + (ramp.signVia || []).join(",")
               + "|" + (ramp.signTo || []).join(",") + "|" + (near ? "n" : "f")
-              + (ramp.leftExit ? "|L" : "");
+              + (ramp.leftExit ? "|L" : "") + "|" + (ramp.services || []).join(",");
     let b = guideCache.get(key);
     if (b) return b;
 
@@ -909,8 +1307,19 @@ const Draw = (() => {
     const to = (ramp.signTo || []).slice(0, near ? 2 : 1)
       .flatMap((t) => wrapSign(t, cols, near ? 2 : 1));
     const rows = via.concat(to).slice(0, near ? 3 : 2);
+    /* ── the blue panel, and why the travel centres live on it ─────────
+       A truck stop at an interchange has no gore of its own on a real
+       Interstate and never did: it is on the frontage, and what tells
+       you it is there is the blue services assembly under the green
+       guide sign. So that is where the corridor's 141 crowded-out
+       travel centres went — see the note on `services` in world.js.
+       Near sign only, because the blue panel is a decision sign and a
+       mile out you are being told where the exit GOES, not what is on
+       it. */
+    const serve = near ? (ramp.services || []).slice(0, 1)
+      .flatMap((s) => wrapSign(s, cols, 1)) : [];
     const tabH = 9;
-    const H2 = tabH + 3 + rows.length * 6 + 4;
+    const H2 = tabH + 3 + rows.length * 6 + 4 + (serve.length ? serve.length * 6 + 3 : 0);
 
     b = X.bitmap(W2, H2);
     /* ── the exit tab ──────────────────────────────────────────────────
@@ -929,13 +1338,22 @@ const Draw = (() => {
     b.fill(tabX + 1, 1, tabW - 2, tabH - 2, C.signGreen);
     tinyText(b, tabTxt, tabX + 3, 2, C.signWhite);
     // the panel
+    const greenH = 3 + rows.length * 6 + 1;
     b.fill(0, tabH - 1, W2, H2 - tabH - 1, C.signWhite);
-    b.fill(1, tabH, W2 - 2, H2 - tabH - 3, C.signGreen);
+    b.fill(1, tabH, W2 - 2, greenH, C.signGreen);
     let y = tabH + 2;
     for (let i = 0; i < rows.length; i++) {
       const wpx = rows[i].length * CH;
       tinyText(b, rows[i], Math.max(2, ((W2 - wpx) / 2) | 0), y, C.signWhite);
       y += 6;
+    }
+    if (serve.length) {
+      b.fill(1, tabH + greenH + 1, W2 - 2, serve.length * 6 + 1, C.signBlue);
+      y = tabH + greenH + 2;
+      for (const t of serve) {
+        tinyText(b, t, Math.max(2, ((W2 - t.length * CH) / 2) | 0), y, C.signWhite);
+        y += 6;
+      }
     }
     b.fill(0, H2 - 2, W2, 2, C.post);          // the gantry legs
     guideCache.set(key, b);
@@ -1013,11 +1431,11 @@ const Draw = (() => {
      frames, sines and cosines per drawn frame. Culling on DISTANCE
      ALONG the road first costs a subtraction. */
   const DRUM_SPACING = 26;
-  const DRUM_REACH = VIEW + 320;
   function worksDrums(ramp, parent, camS, camD) {
     const c = ramp.closure;
     const j = ramp.junction;
     if (!c || !j) return;
+    const DRUM_REACH = VIEW + 320;   // read per call: VIEW moves with the cabinet
     const side = j.side > 0 ? 1 : -1;
     const out = (j.out != null ? j.out : j.side) > 0 ? 1 : -1;
     const lanes = Math.max(1, j.lanes);
@@ -1114,7 +1532,15 @@ const Draw = (() => {
     const seen = new Set();
     const list = side > 0 ? r.corridorExits : [...r.corridorExits].reverse();
     for (const e of list) {
-      if (!e.closed) continue;
+      /* Per carriageway. The two sides of an interchange are built
+         separately and either can be crowded off its ground while the
+         other stands, so "is this exit shut" is a question with two
+         answers and the driver only wants theirs. `closed` — both
+         sides — is kept for anything that has no side to ask about. */
+      const shut = side > 0
+        ? (e.closedR != null ? e.closedR : e.closed)
+        : (e.closedL != null ? e.closedL : e.closed);
+      if (!shut) continue;
       if (seen.has(e.ref)) continue;
       seen.add(e.ref);
       const s = e.s - side * 2600;                    // one advance plaque
@@ -1242,34 +1668,286 @@ const Draw = (() => {
   }
 
   /* ── vehicles ───────────────────────────────────────────────────────
-     Deleted along with traffic.js. `vehicleBmp` built a bitmap per type
-     and colour from `Traffic.TYPES`, and `vehicle()` drew one with its
-     shadow, indicator, beacon, brake lights and headlight throw. All of
-     it comes back when traffic does; none of it can outlive the module
-     that owned the dimensions.
+     Back, and rebuilt rather than restored: the old `vehicleBmp` took
+     its dimensions from `Traffic.TYPES`, which does not exist any more.
+     Every dimension here is the one the model is actually simulating —
+     `driver.length` off the measured length bins, `BODY.w` off the
+     class — so a lorry is long on the screen because it is long in the
+     arithmetic that put it there, and the gap in front of it is the gap
+     the following model chose.
 
-     `beam()` below survives because the PLAYER still has headlights, and
+     ── one bitmap per shape, not per vehicle ─────────────────────────
+     Lengths are drawn from a continuous distribution, so caching per
+     vehicle would be a bitmap each for four hundred of them. They are
+     cached per (class, length rounded to 2 px, colour) instead, which
+     is a few dozen bitmaps for the whole corridor, and the rounding is
+     invisible at 0.36 m.
+
+     The LIGHTS are not in the bitmap. Brake lamps, indicators and the
+     beacon change from frame to frame and baking them in would multiply
+     the cache by every combination; they are four `X.box` calls over
+     the sprite, in the vehicle's own frame. */
+  /* ── and they have to be SEEN ─────────────────────────────────────
+     The first palette here was a set of honest mid-tones — the colours
+     cars are actually painted — and on this road they disappeared.
+     Reported from play: "all the cars are dark, it's hard to see them."
+
+     The road is `#3a3a44` and the night pass lays 66% of a dark blue
+     over everything, so anything under about 55% luma is a dark shape on
+     a dark shape. These are lifted well clear of the asphalt and kept
+     saturated, which is what makes them read as VEHICLES rather than as
+     patches — and a road full of white and silver cars, which is what a
+     real one mostly is, is a road you cannot play on. That is a
+     deliberate departure from the survey and it is the only one in the
+     game: everything else here is measured. */
+  const VEH_COL = {
+    car: ["#8299bd", "#d8735f", "#71b28c", "#d9d3c4", "#a291d2",
+          "#ecbc5e", "#72bcc8", "#d992b6"],
+    moto: ["#efebe0", "#e46c5b", "#72a2e0"],
+    rigid: ["#f2eee4", "#93b2d6", "#d1ba88", "#adb5c0"],
+    artic: ["#f7f4ea", "#ecf0f5", "#c5ced8", "#f0ece0"],
+  };
+  const VEH_PACKED = {};
+  for (const k in VEH_COL) VEH_PACKED[k] = VEH_COL[k].map((h) => X.hex(h));
+
+  const vehCache = new Map();
+  const PX_PER_M = 1 / 0.179;
+
+  /* ── the marks a car is carrying ────────────────────────────────────
+     (Ric, 2026-08-12: "cosmetic damage to me and the other vehicles".)
+
+     Drawn OVER the sprite rather than baked into it, exactly as the
+     lamps are and for the same reason: `vehicleBmp` is cached per shape
+     and colour, and putting a damage level in that key would multiply a
+     few dozen bitmaps by every state every vehicle can be in.
+
+     Scraped paint is BARE METAL, not a shadow. That is what it looks
+     like on a real wing and it is also the only choice that reads on
+     this palette: a dark mark vanishes on the dark half of the cars and
+     a light one vanishes on the white lorries, so the mark is a pale
+     grey with a dark edge under it and one of the two always shows. */
+  function scrapes(px, py, fx, fy, rx, ry, lenPx, wPx, scuff, side) {
+    const marks = Math.min(5, 1 + (scuff * 5 | 0));
+    const bare = X.rgb(198, 198, 204), edge = X.rgb(52, 52, 58);
+    for (let m = 0; m < marks; m++) {
+      const along = (m / Math.max(1, marks - 1) - 0.5) * (lenPx - 5);
+      const across = side * (wPx / 2 - 0.5);
+      const mx = px + fx * along + rx * across;
+      const my = py + fy * along + ry * across;
+      X.box(mx - rx * 0.5 - 0.5, my - ry * 0.5 - 0.5, 1.5, 1.5, edge);
+      X.box(mx - 0.5, my - 0.5, 1.5, 1.5, bare);
+    }
+  }
+
+  /* A vehicle is drawn nose-up, like the player: +y in the bitmap is
+     forward, so a sprite rotated by (heading − camH) points where it is
+     going. */
+  function vehicleBmp(kind, lenPx, wPx, ci) {
+    const key = kind + ":" + lenPx + ":" + wPx + ":" + ci;
+    let b = vehCache.get(key);
+    if (b) return b;
+    const cols = VEH_PACKED[kind] || VEH_PACKED.car;
+    const base = cols[ci % cols.length];
+    const w = Math.max(3, wPx), l = Math.max(6, lenPx);
+    b = X.bitmap(w, l);
+    b.fill(0, 0, w, l, base);
+    /* Both flanks, so a vehicle reads as a solid rather than a slab.
+       The near side catches the sky and the off side falls away. */
+    b.fill(0, 0, 1, l, X.mix(base, C.shadow, 0.42));
+    b.fill(w - 1, 0, 1, l, X.mix(base, X.rgb(255, 255, 255), 0.16));
+
+    if (kind === "moto") {
+      /* Barely a shape at this scale — two wheels and a rider, and what
+         actually identifies it is being narrow enough to see road either
+         side of it inside one lane. */
+      b.fill(0, 0, w, 2, C.dark);
+      b.fill(0, l - 2, w, 2, C.dark);
+      b.fill(Math.max(0, (w >> 1) - 1), 2, Math.min(w, 2), l - 4, X.hex("#1b1f26"));
+    } else if (kind === "artic") {
+      /* Tractor, gap, trailer. The gap is what makes it read as
+         articulated at a glance and it is where the unit really is
+         hinged. */
+      const cab = Math.round(l * 0.22);
+      b.fill(0, 0, w, cab, X.mix(base, C.shadow, 0.25));
+      b.fill(1, 1, w - 2, Math.max(1, (cab >> 1)), C.glass);
+      b.fill(0, cab, w, 1, C.dark);
+      b.fill(1, cab + 1, w - 2, 1, X.mix(base, C.shadow, 0.5));
+      /* A trailer's underside, and the rear doors. */
+      b.fill(0, l - 2, w, 2, X.mix(base, C.shadow, 0.35));
+    } else if (kind === "rigid") {
+      const cab = Math.round(l * 0.3);
+      b.fill(0, 0, w, cab, X.mix(base, C.shadow, 0.2));
+      b.fill(1, 1, w - 2, Math.max(1, (cab >> 1)), C.glass);
+      b.fill(0, cab, w, 1, C.dark);
+      b.fill(0, l - 2, w, 2, X.mix(base, C.shadow, 0.35));
+    } else {
+      /* A car: windscreen, roof, rear window. The roof highlight is
+         what stops a row of them reading as one long block. */
+      const gh = Math.max(1, Math.round(l * 0.17));
+      b.fill(1, Math.round(l * 0.2), w - 2, gh, C.glass);
+      b.fill(1, Math.round(l * 0.2) + gh, w - 2, 1,
+             X.mix(base, X.rgb(255, 255, 255), 0.2));
+      b.fill(1, Math.round(l * 0.66), w - 2, gh, C.glass);
+    }
+    vehCache.set(key, b);
+    return b;
+  }
+
+  /* One vehicle, from the record `cars.js` hands over. Nothing here
+     decides anything: every field was settled by the model. */
+  function vehicle(c, t) {
+    const px = sx(c.x, c.y), py = sy(c.x, c.y);
+    const lenPx = Math.max(6, Math.round(c.len * PX_PER_M / 2) * 2);
+    const wPx = Math.max(3, Math.round(c.w * PX_PER_M));
+    /* Off screen by more than its own length: not drawn. Checked on the
+       long axis because an articulated lorry is 120 px and culling it on
+       its centre pops it out of view while a third of it is still on. */
+    const bail = lenPx;
+    if (px < -bail || py < -bail || px > VW + bail || py > VH + bail) return;
+
+    const ci = c.id % 8;
+    const b = vehicleBmp(c.kind, lenPx, wPx, ci);
+    const a = c.h - camH;
+    X.silhouette(b, px + 1.5, py + 1.5, a, C.shadow, 0.4);
+    X.sprite(b, px, py, a);
+
+    /* The vehicle's own axes, so the lamps go on the corners of the
+       thing rather than on the corners of the screen. */
+    const fx = Math.sin(a), fy = -Math.cos(a);
+    const rx = Math.cos(a), ry = Math.sin(a);
+    const hl = lenPx / 2, hw = wPx / 2;
+    const lamp = (along, across, col) => {
+      const lx = px + fx * along + rx * across, ly = py + fy * along + ry * across;
+      X.box(lx - 1, ly - 1, 2, 2, col);
+      return [lx, ly];
+    };
+
+    /* ── the marks it is carrying ──────────────────────────────────
+       Drawn OVER the sprite rather than baked into it, exactly as the
+       lamps are, and for the same reason: `vehicleBmp` is cached per
+       shape and colour, and a cache key with a damage level in it would
+       multiply a few dozen bitmaps by every state every vehicle can be
+       in. Scuffing is a handful of dark pixels down the flank that took
+       it, so a road that has been shunted around stops looking
+       showroom-fresh. Cosmetic only — nothing in the model reads it. */
+    if (c.scuff > 0.05) scrapes(px, py, fx, fy, rx, ry, lenPx, wPx,
+                                c.scuff, c.scuffSide || 1);
+
+    const nt = night();
+    if (c.wreck) {
+      /* Stopped, in a live lane, for twenty minutes. It gets hazards,
+         because that is what a wreck on a motorway has, and they are the
+         warning the `avoid` motive is reacting to. */
+      if ((t * 1.4 | 0) % 2 === 0) {
+        lamp(hl - 1, -hw, C.amber); lamp(hl - 1, hw, C.amber);
+        lamp(-hl + 1, -hw, C.amber); lamp(-hl + 1, hw, C.amber);
+      }
+      return;
+    }
+
+    /* Brake lamps, which is the one thing a vehicle broadcasts and the
+       one thing the drivers behind it are modelled as watching. */
+    if (c.brake) {
+      lamp(-hl + 1, -hw, C.tail); lamp(-hl + 1, hw, C.tail);
+    } else if (nt > 0.2) {
+      lamp(-hl + 1, -hw, X.mix(C.tail, C.dark, 0.45));
+      lamp(-hl + 1, hw, X.mix(C.tail, C.dark, 0.45));
+    }
+
+    /* The indicator. Half the traffic changes lane without one — that is
+       measured, and it is only visible here. 1.5 Hz, which is what a
+       flasher unit does. */
+    if (c.blink && (t * 1.5 % 1) < 0.55) {
+      const side = c.blink * hw;
+      lamp(hl - 1, side, C.amber);
+      lamp(-hl + 1, side, C.amber);
+    }
+
+    if (nt > 0.2) {
+      lamp(hl - 1, -hw, C.head); lamp(hl - 1, hw, C.head);
+      /* Only what is coming towards you throws a beam you can see; a
+         vehicle going away shows you its tail lamps and nothing else,
+         and drawing four hundred wedges would wash the road out.
+
+         A glow was tried on the oncoming headlights and taken out
+         again, measured rather than judged: `world()` lays 66% of a dark
+         blue over the whole buffer as the last thing it does, so
+         anything drawn before it is dimmed with everything else. The
+         glow bought 5% of local brightness — 42 against 40 luma — for a
+         per-vehicle cost, which is decoration that does not show. The
+         street lamps and the player's own headlights live under exactly
+         the same tint, so this is the game's night, not a bug in it. */
+      if (!c.mine) beam(px, py, a, wPx, lenPx);
+    }
+  }
+
+  /* Everything visible, at one deck level. Ordered far-to-near down the
+     screen so that where two vehicles overlap — which happens on a
+     curve, and constantly on the oncoming carriageway — the nearer one
+     wins, the same rule the road surfaces use. */
+  function traffic(list, level, t) {
+    if (!list || !list.length) return;
+    const shown = [];
+    for (const c of list) if (Math.round(c.deck) === level) shown.push(c);
+    shown.sort((a, b) => sy(a.x, a.y) - sy(b.x, b.y));
+    for (const c of shown) vehicle(c, t);
+  }
+
+  /* `beam()` below survives because the PLAYER still has headlights, and
      so does everything from here to the end of this comment — the car
      you drive was built in the middle of the traffic art and very nearly
      went out with it. */
 
+  /* ── the car you are actually in ────────────────────────────────────
+     Was one 11 x 26 red car whatever the garage said. It is the chosen
+     vehicle's REAL footprint now, off `data/garage.js`, at the same
+     0.179 m a pixel everything else on this road uses:
+
+       S1000RR    2.05 x 0.83 m  →  11 x  5 px
+       Jetta      4.38 x 1.74    →  24 x 10
+       F-150      5.89 x 2.03    →  33 x 11
+
+     Three times the length between the bike and the pickup, which is
+     the point — the thing you are looking at should be the thing the
+     traffic model is solving, and `cars.js` already hands those same
+     metres to the sim. The proportions inside the sprite are fractions
+     of w and l rather than fixed offsets, so a shape this narrow still
+     gets a windscreen and lamps rather than a stripe. */
   let playerBmp = null, playerWreck = null;
+  let pW = 11, pL = 26, pPaint = null;
+
+  function setPlayerVehicle(car) {
+    const w = Math.max(4, Math.round((car && car.wide ? car.wide : 1.97) / 0.179));
+    const l = Math.max(8, Math.round((car && car.len ? car.len : 4.65) / 0.179));
+    const paint = car && car.paint ? X.hex(car.paint) : null;
+    if (w === pW && l === pL && paint === pPaint) return;
+    pW = w; pL = l; pPaint = paint;
+    playerBmp = playerWreck = null;               // rebuilt on next draw
+  }
+
   function buildPlayer() {
-    const w = 11, l = 26;
+    const w = pW, l = pL;
     const mk = (dead) => {
       const b = X.bitmap(w, l);
-      const base = dead ? C.playerDead : C.player;
+      const live = pPaint === null ? C.player : pPaint;
+      const base = dead ? C.playerDead : live;
+      const inset = w >= 9 ? 2 : 1;               // a bike has no room for 2
+      const stripe = Math.max(1, Math.round(w * 0.27));
+      const wind = Math.max(2, Math.round(l * 0.27));
+      const rear = Math.max(1, Math.round(l * 0.15));
       b.fill(0, 0, w, l, base);
       b.fill(0, 0, 1, l, X.mix(base, C.shadow, 0.4));
       b.fill(w - 1, 0, 1, l, X.mix(base, X.rgb(255, 255, 255), 0.2));
-      b.fill(4, 1, 3, l - 2, dead ? X.hex("#6d5f4e") : C.playerTrim);
-      b.fill(2, 6, w - 4, 7, C.glass);
-      b.fill(2, 5, w - 4, 1, X.mix(base, X.rgb(255, 255, 255), 0.24));
-      b.fill(2, l - 10, w - 4, 4, C.glass);
-      if (dead) { b.fill(3, 1, 3, 3, X.hex("#4a1f19")); b.fill(w - 6, 2, 3, 2, X.hex("#4a1f19")); }
+      b.fill((w - stripe) >> 1, 1, stripe, l - 2, dead ? X.hex("#6d5f4e") : C.playerTrim);
+      b.fill(inset, Math.round(l * 0.23), w - inset * 2, wind, C.glass);
+      b.fill(inset, Math.round(l * 0.23) - 1, w - inset * 2, 1,
+             X.mix(base, X.rgb(255, 255, 255), 0.24));
+      b.fill(inset, l - rear - 2, w - inset * 2, rear, C.glass);
+      if (dead) { b.fill(1, 1, Math.min(3, w - 2), 3, X.hex("#4a1f19")); }
       else {
-        b.fill(1, 0, 2, 1, C.head); b.fill(w - 3, 0, 2, 1, C.head);
-        b.fill(1, l - 1, 2, 1, C.tail); b.fill(w - 3, l - 1, 2, 1, C.tail);
+        const lamp = Math.max(1, Math.min(2, w - 2));
+        b.fill(1, 0, lamp, 1, C.head); b.fill(w - 1 - lamp, 0, lamp, 1, C.head);
+        b.fill(1, l - 1, lamp, 1, C.tail); b.fill(w - 1 - lamp, l - 1, lamp, 1, C.tail);
       }
       return b;
     };
@@ -1309,6 +1987,15 @@ const Draw = (() => {
     const a = S.roll || 0;
     X.silhouette(b, px + 1.5, py + 1.5, a, C.shadow, 0.4);
     X.sprite(b, px, py, a);
+    /* Your own car wears it too — same marks, same reason. `dmg.pull`
+       is which way a bent corner drags, so it is also the side the blow
+       landed on; with no pull yet the scraping goes down the near side. */
+    if (S.dmg && S.dmg.scuff > 0.05) {
+      const fx = Math.sin(a), fy = -Math.cos(a);
+      const rx = Math.cos(a), ry = Math.sin(a);
+      scrapes(px, py, fx, fy, rx, ry, 26, 11,
+              S.dmg.scuff, S.dmg.pull >= 0 ? 1 : -1);
+    }
     if (!wrecked && night() > 0.2) beam(px, py, a, 11, 26);
   }
 
@@ -1366,6 +2053,12 @@ const Draw = (() => {
        unique per road and assigned parent-first, so every ramp paints
        on top of the road it came off and keeps doing so. */
     near.sort((a, b) => a.r.layer - b.r.layer || a.r.id - b.r.id);
+
+    /* Spans before scenery, because the treeline is hung off them — and
+       scenery before everything else, so that every road on the map is
+       still free to lay its tarmac straight over somebody's woods. */
+    for (const e of near) span(e);
+    if (TREES) trees(near);
 
     /* ── two passes, and this is not a detail ─────────────────────────
        Every road used to lay its own asphalt and then its own paint,
@@ -1468,9 +2161,14 @@ const Draw = (() => {
       paintSurfaces(g);
       paintMarkings(g);
       fixtures(g);
+      /* The traffic at this level, before the car at this level. A
+         vehicle is never allowed to cover the player: you have to be
+         able to see what you are steering, and where two sprites
+         genuinely overlap the interesting one is yours. */
+      traffic(S.traffic, k, S.t);
       if (k === playerLevel) { onTheRoad(); placed = true; }
     }
-    if (!placed) onTheRoad();
+    if (!placed) { traffic(S.traffic, playerLevel, S.t); onTheRoad(); }
 
     const above = near.filter(({ r, pr }) => Math.round(R.deckAt(r, pr.s)) > playerLevel);
     if (above.some(({ r, pr }) => deckCoversPlayer(r, S, pr.i)))
@@ -1517,14 +2215,21 @@ const Draw = (() => {
     // and finally, what time it is
     const nt = night(), wm = warmth();
     if (wm > 0.01) X.tint(255, 132, 40, 0.20 * wm);
-    if (nt > 0.01) X.tint(10, 12, 38, 0.66 * nt);
+    /* Night. 0.66 was enough to take the lifted palette above straight
+       back down again, so it is 0.54 — still unmistakably night, and
+       the one number to reach for first if the picture is ever called
+       too dark or too washed out again. */
+    if (nt > 0.01) X.tint(10, 12, 38, 0.54 * nt);
     if (S.flash > 0.01) X.tint(255, 240, 220, 0.7 * S.flash);
     X.flush();
   }
 
   return {
-    VW, VH, CX, PY, C,
-    world, setPhase, night, camera, sx, sy,
+    /* Live, not copied: the cabinet is resized whenever the page is. */
+    get VW() { return VW; }, get VH() { return VH; },
+    get CX() { return CX; }, get PY() { return PY; },
+    C, resize,
+    world, setPhase, setPlayerVehicle, night, camera, sx, sy,
     partCols: {
       dust: [C.gravel, C.gravelDk], debris: [C.cone, C.coneBand, C.asphalt],
       spark: [C.head, C.amber], smoke: [C.smoke], fire: [C.fire, C.tail, X.hex("#ffe089")],

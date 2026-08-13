@@ -138,6 +138,11 @@
     gap: 4px;
     justify-content: center;
     align-items: stretch;
+    /* Six readouts now that the pot and the checkpoint are separate
+       cells, plus three buttons. On a narrow cabinet that is wider than
+       the case, and unwrapped it clipped the speed off one end and the
+       map button off the other. */
+    flex-wrap: wrap;
     padding: .45rem .5rem .5rem;
     background: rgba(0,0,0,.16);
     border-bottom: 1px solid rgba(242,240,230,.28);
@@ -150,8 +155,8 @@
     background: linear-gradient(178deg, #0a5230, #073d24);
     border: 2px solid var(--white);
     border-radius: 3px;
-    padding: .1rem .42rem .16rem;
-    min-width: 4.6rem;
+    padding: .1rem .36rem .16rem;
+    min-width: 4rem;
     text-align: center;
     box-shadow: 0 1px 0 rgba(0,0,0,.7), inset 0 0 12px rgba(255,255,255,.06);
   }
@@ -199,6 +204,15 @@
     cursor: pointer;
     min-width: 2.4rem;
   }
+  /* Controls that only exist when there is no keyboard to do them with. */
+  .touchonly { display: none; }
+  body.touch .touchonly { display: block; }
+  /* the two settings, on the held panel */
+  .settings { display: flex; gap: .4rem; justify-content: center; margin: .1rem 0 .3rem; }
+  .setbtn { font-size: 11px; padding: .38rem .8rem; min-width: 5.6rem; }
+  /* beats the narrow-screen rule that hides the word in the gantry —
+     there is room for it here and a lone ♪ is not a label */
+  .panel .setbtn .word { display: inline; }
   .cabbtn:hover, .cabbtn:focus-visible { color: var(--white); border-color: var(--white); }
   .cabbtn[aria-pressed="true"] { color: var(--amber); border-color: var(--amber); }
   #mute[aria-pressed="true"] { color: var(--alarm); border-color: var(--alarm); }
@@ -329,12 +343,19 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: .5rem;
+    gap: .3rem;
     text-align: center;
-    padding: .9rem .8rem;
+    padding: .7rem .8rem;
     background: rgba(4, 6, 5, .82);
     z-index: 5;
     border-radius: 2px;
+    /* The title panel grew a garage and a progress bar, and the frame
+       it sits in is only ever as tall as the cabinet. On a short
+       viewport that is more than fits, so it scrolls rather than being
+       clipped — `justify-content: center` alone would cut the top off,
+       which is where the route sign is. */
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .panel.on { display: flex; }
 
@@ -345,9 +366,13 @@
     background: var(--sign-face);
     border: 3px solid var(--white);
     border-radius: 5px;
-    padding: .7rem .7rem .8rem;
+    padding: .55rem .6rem .6rem;
     box-shadow: 0 8px 26px rgba(0,0,0,.7), inset 0 0 24px rgba(255,255,255,.05);
   }
+  /* `display` on a class beats the `hidden` attribute, so it has to be
+     said explicitly — the sign's own shield is hidden now that the
+     title bar above the tabs carries one. */
+  .bgs .route[hidden] { display: none; }
   .bgs .route {
     display: flex;
     align-items: center;
@@ -372,7 +397,7 @@
     display: flex;
     align-items: center;
     gap: .4rem;
-    margin-bottom: .45rem;
+    margin-bottom: .3rem;
     padding: .26rem .34rem;
     background: rgba(0,0,0,.18);
     border: 2px solid rgba(242,240,230,.42);
@@ -405,6 +430,26 @@
   .startpick select:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
   .startpick option { background: #0b5730; color: var(--white); }
 
+  /* Day and hour sit side by side; each is an ordinary startpick so it
+     inherits the guide-sign panel treatment. */
+  .whenpick {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .4rem;
+  }
+  .whenpick .startpick { margin-bottom: .3rem; }
+  .whenpick .lbl { letter-spacing: .14em; }
+  .whennote {
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: rgba(242,240,230,.66);
+    text-align: center;
+    margin: -.15rem 0 .4rem;
+    min-height: 1em;
+  }
+  .whennote b { color: var(--amber); font-weight: 700; }
+
   .dirs {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -433,6 +478,240 @@
   }
   .dir[aria-checked="true"] .arrow { color: var(--white); }
   .dir:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+  /* ── the title bar and the tabs ─────────────────────────────────────
+     The shield names the machine and does not move; the tabs under it
+     are the only thing that changes. Three of them, because there are
+     exactly three questions: where and when, what in, and how am I
+     doing. */
+  .titlebar {
+    display: flex; align-items: center; justify-content: center;
+    gap: .45rem;
+    margin-bottom: .1rem;
+  }
+  .titlebar .shield { width: 34px; height: 30px; }
+  .titlebar .name {
+    font-size: 21px; font-weight: 800; letter-spacing: .05em;
+    color: var(--white); line-height: 1;
+  }
+  .tabs {
+    display: flex;
+    width: min(94%, 22rem);
+    gap: 3px;
+    margin-bottom: .1rem;
+  }
+  .tab {
+    flex: 1 1 0;
+    background: rgba(0,0,0,.4);
+    border: 2px solid rgba(242,240,230,.24);
+    border-bottom-width: 3px;
+    border-radius: 3px 3px 0 0;
+    color: rgba(242,240,230,.55);
+    font: inherit; font-size: 10px; font-weight: 700; letter-spacing: .18em;
+    padding: .3rem .2rem .26rem;
+    cursor: pointer;
+  }
+  .tab:hover { color: var(--white); background: rgba(0,0,0,.55); }
+  .tab.on {
+    background: var(--sign-face);
+    border-color: var(--white);
+    border-bottom-color: var(--amber);
+    color: var(--white);
+  }
+  .tab:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+
+  /* One page shown at a time, and each is its own centred column so the
+     panel never has to be tall enough for all three at once — which is
+     what had it scrolling. */
+  .page { display: none; flex-direction: column; align-items: center; gap: .3rem; width: 100%; }
+  .page.on { display: flex; }
+
+  /* how many of the garage you can actually drive */
+  .gcount {
+    font-size: 9px; letter-spacing: .14em; margin: .1rem 0 0;
+    color: rgba(242,240,230,.45);
+  }
+
+  /* ── the ladder, on the RECORD tab ──────────────────────────────── */
+  .ladder {
+    width: min(94%, 22rem);
+    display: flex; flex-direction: column; gap: 2px;
+    max-height: 9.5rem; overflow-y: auto;
+    margin-top: .1rem;
+  }
+  .lrow {
+    display: flex; align-items: baseline; gap: .4rem;
+    padding: .16rem .34rem;
+    background: rgba(0,0,0,.3);
+    border-left: 3px solid rgba(242,240,230,.18);
+    border-radius: 2px;
+    font-size: 10px;
+  }
+  .lrow.got { border-left-color: var(--go); }
+  .lrow.now { border-left-color: var(--amber); background: rgba(255,176,32,.1); }
+  .lrow .who { flex: 1 1 auto; text-align: left; color: rgba(242,240,230,.85); }
+  .lrow.locked .who { color: rgba(242,240,230,.4); }
+  .lrow .at {
+    font-size: 9px; letter-spacing: .06em; font-variant-numeric: tabular-nums;
+    color: rgba(242,240,230,.45);
+  }
+  .lrow.got .at { color: var(--go); }
+  .lrow.now .at { color: var(--amber); font-weight: 700; }
+
+  /* ── the garage ─────────────────────────────────────────────────────
+     A plate, not a sign. The green BGS above is the road addressing
+     you; this is the thing you arrived in, so it is stamped metal:
+     dark face, hard border, tight tracking. */
+  .garage {
+    display: flex;
+    align-items: stretch;
+    gap: .3rem;
+    width: min(94%, 22rem);
+    margin-top: .1rem;
+  }
+  .gnav {
+    /* Centred on the card rather than stretched down it — `align-items:
+       stretch` on the row made these full-height slivers. */
+    flex: 0 0 auto;
+    align-self: center;
+    width: 1.6rem;
+    height: 2rem;
+    background: rgba(0,0,0,.45);
+    border: 2px solid rgba(242,240,230,.32);
+    border-radius: 3px;
+    color: rgba(242,240,230,.75);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+  }
+  .gnav:hover { background: rgba(0,0,0,.65); color: var(--white); border-color: rgba(242,240,230,.6); }
+  .gnav:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+  .gcard {
+    flex: 1 1 auto;
+    background: linear-gradient(180deg, rgba(18,20,19,.96), rgba(8,10,9,.96));
+    border: 2px solid rgba(242,240,230,.45);
+    border-radius: 4px;
+    padding: .4rem .5rem .45rem;
+    text-align: center;
+    min-width: 0;
+  }
+  .gcard.locked { border-color: rgba(242,240,230,.18); }
+  .gcard.locked .gmake,
+  .gcard.locked .gmodel,
+  .gcard.locked .gspec,
+  .gcard.locked .gfigs,
+  .gcard.locked .gnote { opacity: .38; }
+  .gmake {
+    font-size: 8px; letter-spacing: .24em; font-weight: 700;
+    color: rgba(242,240,230,.55); margin: 0 0 .05rem;
+  }
+  .gmodel {
+    font-size: 17px; font-weight: 800; letter-spacing: .03em;
+    color: var(--white); line-height: 1.05; margin: 0;
+  }
+  .gspec {
+    font-size: 9px; letter-spacing: .1em; color: rgba(242,240,230,.6);
+    margin: .12rem 0 .3rem;
+  }
+  /* 0–60, top speed and 60–0 as three stamped cells. These are the
+     figures the whole garage is derived from, so they get the space. */
+  .gfigs {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: .25rem;
+    margin: 0 0 .28rem;
+  }
+  .gfigs div {
+    background: rgba(0,0,0,.4);
+    border: 1px solid rgba(242,240,230,.16);
+    border-radius: 2px;
+    padding: .16rem .1rem .2rem;
+  }
+  .gfigs .k {
+    display: block; font-size: 7px; letter-spacing: .16em;
+    color: rgba(242,240,230,.45); font-weight: 700;
+  }
+  .gfigs .v {
+    display: block; font-size: 12px; font-weight: 800;
+    color: var(--amber); line-height: 1.15;
+  }
+  .gfigs .v small { font-size: 7px; letter-spacing: .06em; opacity: .75; }
+  .gnote {
+    font-size: 9px; font-style: italic; line-height: 1.3;
+    color: rgba(242,240,230,.5); margin: 0;
+  }
+  .glock {
+    font-size: 9px; font-weight: 700; letter-spacing: .16em;
+    color: var(--alarm); margin: .25rem 0 0;
+  }
+  .glock b { color: var(--white); font-weight: 800; }
+
+  /* ── banked points, and the next rung ─────────────────────────────── */
+  .bank { width: min(94%, 22rem); margin-top: .05rem; }
+  .bankline {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 0 0 .2rem;
+  }
+  .bankline span {
+    font-size: 8px; letter-spacing: .24em; font-weight: 700;
+    color: rgba(242,240,230,.5);
+  }
+  .bankline b {
+    font-size: 15px; font-weight: 800; color: var(--white); letter-spacing: .02em;
+  }
+  .barwrap {
+    height: 5px; background: rgba(0,0,0,.5);
+    border: 1px solid rgba(242,240,230,.2); border-radius: 2px;
+    overflow: hidden;
+  }
+  .bar {
+    height: 100%; width: 0%;
+    background: var(--amber);
+    transition: width .3s ease;
+  }
+  .banknext {
+    font-size: 9px; letter-spacing: .08em; color: rgba(242,240,230,.55);
+    margin: .2rem 0 0;
+  }
+  .banknext b { color: var(--amber); font-weight: 700; }
+
+  /* ── the code box ─────────────────────────────────────────────────── */
+  .codebox {
+    display: flex; gap: .3rem;
+    width: min(94%, 22rem);
+    margin-top: .35rem;
+  }
+  .codebox input {
+    flex: 1 1 auto; min-width: 0;
+    background: rgba(0,0,0,.4);
+    border: 2px solid rgba(242,240,230,.28);
+    border-radius: 3px;
+    padding: .24rem .4rem;
+    color: var(--white);
+    font: inherit;
+    font-size: 11px;
+    letter-spacing: .1em;
+  }
+  .codebox input::placeholder { color: rgba(242,240,230,.3); letter-spacing: .2em; }
+  .codebox input:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+  .codebox button {
+    flex: 0 0 auto;
+    background: rgba(0,0,0,.45);
+    border: 2px solid rgba(242,240,230,.32);
+    border-radius: 3px;
+    color: rgba(242,240,230,.8);
+    font: inherit; font-size: 10px; font-weight: 700; letter-spacing: .16em;
+    padding: 0 .5rem;
+    cursor: pointer;
+  }
+  .codebox button:hover { background: rgba(0,0,0,.65); color: var(--white); }
+  .codebox button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+  .codenote {
+    font-size: 9px; letter-spacing: .08em; margin: .2rem 0 0;
+    min-height: 1em;
+    color: rgba(242,240,230,.55);
+  }
+  .codenote.good { color: var(--go); }
+  .codenote.bad { color: var(--alarm); }
 
   .panel h2 {
     font-size: clamp(20px, 6vw, 32px);
@@ -502,6 +781,30 @@
   }
   .panel .score-lines span:nth-child(odd) { color: rgba(242,240,230,.55); text-align: right; }
   .panel .best-new { color: var(--go); font-size: 10px; letter-spacing: .2em; font-weight: 700; }
+  /* Leaving costs the carried pot, so the button is not styled as the
+     friendly way out — it is bordered in the alarm colour and it says
+     what it will cost on the line above. */
+  .quitbtn {
+    margin-top: .1rem;
+    padding: .34rem .8rem;
+    background: rgba(0,0,0,.35);
+    border: 2px solid rgba(255,90,60,.55);
+    border-radius: 3px;
+    color: var(--white);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    cursor: pointer;
+  }
+  .quitbtn:hover { background: rgba(255,90,60,.18); border-color: var(--alarm); }
+  .quitbtn:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .panel .score-lines span#w-lost.bad { color: var(--alarm); }
+  .panel .opened {
+    color: var(--amber); font-size: 11px; letter-spacing: .16em;
+    font-weight: 700; margin: .2rem 0 0;
+  }
+  .panel .opened b { color: var(--white); font-weight: 800; letter-spacing: .04em; }
 
   /* ── control panel ────────────────────────────────────────────────── */
   .controls {
@@ -519,33 +822,65 @@
   .controls b { color: var(--white); }
   .controls .sep { color: rgba(242,240,230,.4); padding: 0 .2rem; }
 
+  /* ── the pedals and the wheel ─────────────────────────────────────
+     One strip across the bottom holding two clusters: drive on the
+     left, steer on the right, thumbs where they already are when you
+     hold a phone. `justify-content: space-between` and nothing fixed
+     between them, so the two clusters are pushed to the edges and the
+     middle stays open — that gap is still the road, and dragging it
+     still steers for anyone who prefers it.
+
+     The buttons size off the VIEWPORT rather than the root font,
+     because four of them have to fit across the narrowest phone made:
+     4 × 19vw is 76% of the width, and the rest is gaps and margins.
+     The clamp stops them being postage stamps on a small screen and
+     dinner plates on a tablet. */
   #pedals { display: none; }
   body.touch #pedals {
-    display: block;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
     position: fixed;
-    right: max(12px, env(safe-area-inset-right));
-    bottom: max(12px, env(safe-area-inset-bottom));
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    pointer-events: none;          /* the strip is not a control; its buttons are */
     z-index: 50;
   }
-  #brake {
+  .pad { display: flex; gap: .45rem; pointer-events: auto; }
+  .rnd {
     font: inherit;
-    font-size: 12px;
+    font-size: clamp(9px, 2.7vw, 12px);
     font-weight: 800;
-    letter-spacing: .16em;
-    width: 5.4rem;
-    height: 5.4rem;
+    letter-spacing: .12em;
+    width: clamp(3.1rem, 19vw, 4.6rem);
+    height: clamp(3.1rem, 19vw, 4.6rem);
     border-radius: 50%;
     color: #fff;
-    background: radial-gradient(circle at 38% 32%, #d8443a, #8c1d17);
     border: 3px solid #f2f0e6;
-    box-shadow: 0 6px 0 #4d0f0c, 0 10px 20px rgba(0,0,0,.6);
     touch-action: none;
     user-select: none;
+    -webkit-user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  #brake.on { transform: translateY(4px); box-shadow: 0 2px 0 #4d0f0c; }
+  .rnd.brake  { background: radial-gradient(circle at 38% 32%, #d8443a, #8c1d17); box-shadow: 0 6px 0 #4d0f0c, 0 10px 20px rgba(0,0,0,.6); }
+  .rnd.gas    { background: radial-gradient(circle at 38% 32%, #34c46f, #10653a); box-shadow: 0 6px 0 #073b22, 0 10px 20px rgba(0,0,0,.6); }
+  .rnd.steer  { background: radial-gradient(circle at 38% 32%, #2b3038, #14171c); box-shadow: 0 6px 0 #06070a, 0 10px 20px rgba(0,0,0,.6); font-size: clamp(15px, 5vw, 21px); letter-spacing: 0; }
+  /* pressed: the button goes down onto its own shadow */
+  .rnd.on { transform: translateY(4px); }
+  .rnd.brake.on { box-shadow: 0 2px 0 #4d0f0c, 0 4px 10px rgba(0,0,0,.6); }
+  .rnd.gas.on   { box-shadow: 0 2px 0 #073b22, 0 4px 10px rgba(0,0,0,.6); }
+  .rnd.steer.on { box-shadow: 0 2px 0 #06070a, 0 4px 10px rgba(0,0,0,.6); }
   body.touch .controls .kb { display: none; }
   .controls .tp { display: none; }
   body.touch .controls .tp { display: inline; }
+  /* The strip is a legend for a keyboard. With four buttons on the glass
+     saying what they are — and the same three lines on the title sign —
+     it is a caption nobody reads sitting exactly where the pedals want
+     to be, so on a phone the pedals get the bottom of the cabinet. */
+  body.touch .controls { display: none; }
 
   /* the way back to the site, dressed as a small exit tab so it stops
      announcing that this is a page on somebody's website */
@@ -573,15 +908,24 @@
     transform: none !important;
     color: var(--white) !important;
   }
+  /* On a phone the bottom-left corner is the brake. The way out moves up
+     over the glass rather than sitting underneath a pedal. */
+  body.touch .relay-return {
+    bottom: calc(env(safe-area-inset-bottom) + clamp(3.1rem, 19vw, 4.6rem) + 22px) !important;
+  }
 
   @media (max-width: 430px) {
     .marquee { padding: .4rem .5rem .45rem; gap: .4rem; }
     .gantry { gap: 3px; padding: .35rem .3rem .4rem; flex-wrap: nowrap; }
-    .panelsign { min-width: 0; flex: 1 1 auto; padding: .08rem .18rem .12rem; }
-    .panelsign .k { font-size: 8px; letter-spacing: .06em; }
-    .panelsign .v { font-size: 13px; }
-    .panelsign .v small { font-size: 8px; }
-    .cabbtn { padding: .26rem .28rem; letter-spacing: .04em; min-width: 0; }
+    /* Sized for six readouts and four buttons, all of which had been
+       squeezed to the point of not being readable. There are five and
+       two now, so the numbers get their size back — this is the whole
+       reason for taking things out of the row. */
+    .panelsign { min-width: 0; flex: 1 1 auto; padding: .1rem .2rem .14rem; }
+    .panelsign .k { font-size: 8.5px; letter-spacing: .06em; }
+    .panelsign .v { font-size: 16px; }
+    .panelsign .v small { font-size: 8.5px; }
+    .cabbtn { padding: .26rem .3rem; letter-spacing: .04em; min-width: 0; font-size: 13px; }
     .cabbtn .word { display: none; }
     #stage { padding: 5px; }
   }
@@ -606,14 +950,29 @@
     <span class="wordmark">Interstate 40</span>
   </div>
 
+  <!-- ── the gantry ───────────────────────────────────────────────────
+       A sign you read at speed can hold about five things. This held
+       six readouts and four buttons, and on a phone every one of them
+       had been squeezed until none of them could be read — which is a
+       worse failure than not showing them, because the space is still
+       spent. So: the numbers you actually drive by, a settings button
+       in one corner and the map in the other.
+
+       BEST left the row. It is a number about your history rather than
+       about this drive, it never changes while you are moving, and the
+       title sign shows it before you set off. -->
   <div class="gantry">
+    <button id="settings-btn" class="cabbtn" type="button" aria-pressed="false" aria-label="Settings — holds the run">⚙<span class="word"> Menu</span></button>
     <div class="panelsign speed" id="cell-speed"><span class="k">Speed</span><span class="v" id="hud-speed">0<small> km/h</small></span></div>
     <div class="panelsign" id="cell-marker"><span class="k">Mile</span><span class="v" id="hud-mile">—</span></div>
     <div class="panelsign"><span class="k">Distance</span><span class="v" id="hud-dist">0.00<small> km</small></span></div>
-    <div class="panelsign" id="cell-score"><span class="k">Score</span><span class="v" id="hud-score">0</span></div>
-    <div class="panelsign"><span class="k">Best</span><span class="v" id="hud-best">0</span></div>
-    <button id="units" class="cabbtn" type="button" aria-label="Switch between mph and km/h">MPH</button>
-    <button id="mute" class="cabbtn" type="button" aria-pressed="false" aria-label="Mute sound">♪<span class="word"> Snd</span></button>
+    <!-- POINTS, and the cell beside it counts the exits until they are
+         actually yours. It said CARRYING, on the reasoning that the
+         word should say the number is still at risk — but "bank in 10
+         exits" right next to it already says that, and one plain noun
+         reads at a glance where two competing ideas do not. -->
+    <div class="panelsign" id="cell-score"><span class="k">Points</span><span class="v" id="hud-score">0</span></div>
+    <div class="panelsign" id="cell-bank"><span class="k">Bank in</span><span class="v" id="hud-bank">10<small> exits</small></span></div>
     <button id="map-toggle" class="cabbtn" type="button" aria-pressed="false" aria-controls="map-panel" aria-label="Open freeway map">▦<span class="word"> Map</span></button>
   </div>
 
@@ -634,8 +993,37 @@
 
       <!-- title: a guide sign, and you pick a direction off it -->
       <div class="panel on" id="panel-title">
+        <!-- ── the shield, which is not part of any tab ──────────────
+             It names the machine, so it stays put while the tabs change
+             underneath it. -->
+        <div class="titlebar">
+          <svg class="shield" viewBox="0 0 34 30" aria-hidden="true">
+            <path d="M17 0.6c4 2.4 9.2 3.2 15.6 3.2 0 12.4-4.6 21-15.6 25.6C6 24.8 1.4 16.2 1.4 3.8 7.8 3.8 13 3 17 0.6z" fill="#f2f0e6"/>
+            <path d="M17 2.6c3.7 2.2 8.5 3 14 3 0 11.3-4.2 19.2-14 23.4C7.2 24.8 3 16.9 3 5.6c5.5 0 10.3-.8 14-3z" fill="#14306e"/>
+            <path d="M17 2.6c3.7 2.2 8.5 3 14 3 0 1.5-.1 2.9-.2 4.3H3.2C3.1 8.5 3 7.1 3 5.6c5.5 0 10.3-.8 14-3z" fill="#ad1f2d"/>
+            <text x="17" y="23.5" text-anchor="middle" fill="#f2f0e6"
+                  font-family="Helvetica Neue, Arial Narrow, sans-serif" font-size="13" font-weight="700">40</text>
+          </svg>
+          <span class="name">INTERSTATE 40</span>
+        </div>
+
+        <!-- ── three tabs ────────────────────────────────────────────
+             The title screen had seven controls stacked down it and was
+             scrolling on a short viewport. Split by the question each
+             one answers: where and when am I driving, what am I driving,
+             and how am I doing. -->
+        <div class="tabs" role="tablist" aria-label="Menu">
+          <button class="tab on" id="tab-route" type="button" role="tab"
+                  aria-selected="true" aria-controls="page-route" data-page="route">ROUTE</button>
+          <button class="tab" id="tab-garage" type="button" role="tab"
+                  aria-selected="false" aria-controls="page-garage" data-page="garage">GARAGE</button>
+          <button class="tab" id="tab-record" type="button" role="tab"
+                  aria-selected="false" aria-controls="page-record" data-page="record">RECORD</button>
+        </div>
+
+        <div class="page on" id="page-route" role="tabpanel" aria-labelledby="tab-route">
         <div class="bgs">
-          <div class="route">
+          <div class="route" hidden>
             <svg class="shield" viewBox="0 0 34 30" aria-hidden="true">
               <path d="M17 0.6c4 2.4 9.2 3.2 15.6 3.2 0 12.4-4.6 21-15.6 25.6C6 24.8 1.4 16.2 1.4 3.8 7.8 3.8 13 3 17 0.6z" fill="#f2f0e6"/>
               <path d="M17 2.6c3.7 2.2 8.5 3 14 3 0 11.3-4.2 19.2-14 23.4C7.2 24.8 3 16.9 3 5.6c5.5 0 10.3-.8 14-3z" fill="#14306e"/>
@@ -649,6 +1037,21 @@
             <span class="lbl">Start at</span>
             <select id="start-exit" aria-label="Choose the exit to start from"></select>
           </label>
+          <!-- When you drive changes what the road is carrying: the
+               counters are keyed on day of week and hour, so Knoxville at
+               five on a Friday and the Mojave at three on a Sunday are
+               different roads rather than the same one dressed up. -->
+          <div class="whenpick">
+            <label class="startpick">
+              <span class="lbl">Day</span>
+              <select id="start-day" aria-label="Choose the day of the week"></select>
+            </label>
+            <label class="startpick">
+              <span class="lbl">Time</span>
+              <select id="start-hour" aria-label="Choose the time of day"></select>
+            </label>
+          </div>
+          <p class="whennote" id="when-note"></p>
           <div class="dirs" id="dirs" role="radiogroup" aria-label="Choose a direction">
             <button class="dir" id="dir-west" type="button" role="radio" aria-checked="false" data-dir="W">
               <span class="word">WEST</span><span class="arrow">◀</span>
@@ -659,14 +1062,72 @@
           </div>
         </div>
         <p class="tag" id="map-note">loading route</p>
+        </div><!-- /page-route -->
+
+        <!-- ── the garage ────────────────────────────────────────────
+             Deliberately NOT another green sign. A guide sign is the
+             road talking to you; this is your own vehicle, so it is
+             built as a plate — dark, bordered, stamped.
+
+             The arrows step only through vehicles you can actually
+             DRIVE. What is still locked lives on the RECORD tab as a
+             ladder, so the thing you cannot have is somewhere you go to
+             look at rather than something you page past on your way to
+             the car you wanted. -->
+        <div class="page" id="page-garage" role="tabpanel" aria-labelledby="tab-garage">
+        <div class="garage" id="garage">
+          <button class="gnav" id="car-prev" type="button" aria-label="Previous vehicle">▲</button>
+          <div class="gcard" id="car-card">
+            <p class="gmake" id="car-make">—</p>
+            <p class="gmodel" id="car-model">—</p>
+            <p class="gspec" id="car-spec">—</p>
+            <div class="gfigs" id="car-figs"></div>
+            <p class="gnote" id="car-note">—</p>
+            <p class="glock" id="car-lock" hidden>LOCKED</p>
+          </div>
+          <button class="gnav" id="car-next" type="button" aria-label="Next vehicle">▼</button>
+        </div>
+
+        <p class="gcount" id="car-count"></p>
+        </div><!-- /page-garage -->
+
+        <!-- ── what you have banked, the ladder, and the code box ───── -->
+        <div class="page" id="page-record" role="tabpanel" aria-labelledby="tab-record">
+        <div class="bank" id="bank">
+          <p class="bankline"><span>BANKED</span><b id="bank-total">0</b></p>
+          <div class="barwrap"><div class="bar" id="bank-bar"></div></div>
+          <p class="banknext" id="bank-next">—</p>
+          <!-- Off the gantry, onto the record, which is what it is: the
+               best single run, a number that cannot change while you are
+               driving and so has no business on a sign you read at
+               speed. -->
+          <p class="bankline"><span>BEST RUN</span><b id="hud-best">0</b></p>
+        </div>
+        <div class="ladder" id="ladder"></div>
+
+        <!-- ── the code box ──────────────────────────────────────────
+             Two jobs, one field, because both are "type a thing in":
+             `unlock` opens the whole garage, and a save code exported
+             from another browser restores a ledger. Typing here cannot
+             start the run — the keydown handler ignores INPUT. -->
+        <div class="codebox">
+          <input id="code-in" type="text" spellcheck="false" autocomplete="off"
+                 placeholder="code" aria-label="Enter a code or a save code">
+          <button id="code-go" type="button">ENTER</button>
+        </div>
+        <p class="codenote" id="code-note"></p>
+        </div><!-- /page-record -->
+
         <div class="keys kb">
-          <b>← →</b><span>choose · then steer</span>
-          <b>↑ ↓</b><span>throttle · brake</span>
-          <b>P</b><span>pause</span>
+          <b>← →</b><span>direction</span>
+          <b>↑ ↓</b><span>vehicle</span>
+          <b>1 2 3</b><span>tabs</span>
+          <b>space</b><span>drive</span>
         </div>
         <div class="keys tp" style="display:none">
           <b>tap</b><span>choose a direction</span>
-          <b>drag</b><span>steer</span>
+          <b>gas</b><span>hold to drive</span>
+          <b>◀ ▶</b><span>steer</span>
         </div>
         <p class="go" id="title-go">press start to drive</p>
       </div>
@@ -675,7 +1136,22 @@
       <div class="panel" id="panel-pause">
         <h2>HELD</h2>
         <p class="tag">the road is still there</p>
-        <p class="go">press P to keep driving</p>
+        <!-- What walking away costs, in the number it costs. Filled in
+             every time the panel opens, because the whole point of the
+             checkpoint scheme is that this is a real decision. -->
+        <p class="sums" id="pause-risk"></p>
+        <!-- The settings, and there are only two of them. They live here
+             rather than in the gantry because this is the one moment you
+             are not driving, and because a control you touch twice a
+             month should not be permanently occupying a sign you read
+             ten times a minute. Same ids as before, so the wiring in
+             offramp.js is untouched by the move. -->
+        <div class="settings">
+          <button id="mute" class="cabbtn setbtn" type="button" aria-pressed="false" aria-label="Mute sound">♪<span class="word"> SOUND</span></button>
+          <button id="units" class="cabbtn setbtn" type="button" aria-label="Switch between mph and km/h">MPH</button>
+        </div>
+        <button class="quitbtn" id="pause-quit" type="button">LEAVE THE ROAD</button>
+        <p class="go" id="pause-go">press P to keep driving</p>
       </div>
 
       <!-- wreck -->
@@ -689,37 +1165,77 @@
         <p class="sums" id="wreck-sums" hidden></p>
         <div class="score-lines">
           <span>DISTANCE</span><span id="w-dist">0.00 km</span>
-          <span>SCORE</span><span id="w-score">0</span>
+          <span>BANKED</span><span id="w-score">0</span>
+          <span>LOST</span><span id="w-lost">—</span>
+          <span>EXITS</span><span id="w-exits">none</span>
+          <span>PASSED</span><span id="w-passed">0</span>
           <span>TOP SPEED</span><span id="w-top">0 km/h</span>
         </div>
         <p class="best-new" id="w-best" hidden>NEW BEST</p>
+        <p class="opened" id="w-opened" hidden></p>
+        <!-- The only route back to the garage after a wreck, which is
+             the only way to change what you are driving. -->
+        <button class="quitbtn" id="wreck-menu" type="button">BACK TO THE GARAGE</button>
         <label class="startpick" style="width:min(94%,20rem)">
           <span class="lbl">Restart at</span>
           <select id="wreck-exit" aria-label="Choose the exit to restart from"></select>
         </label>
-        <p class="go">press R to get back in</p>
+        <p class="go" id="wreck-go">press R to get back in</p>
       </div>
     </div>
   </div>
 
   <p class="controls">
     <span class="kb"><b>← →</b> steer <span class="sep">·</span> <b>↑ ↓</b> throttle / brake <span class="sep">·</span> <b>G</b> map <span class="sep">·</span> <b>P</b> pause <span class="sep">·</span> <b>R</b> restart</span>
-    <span class="tp"><b>drag anywhere</b> to steer <span class="sep">·</span> hold <b>BRAKE</b></span>
+    <span class="tp">hold <b>GAS</b> <span class="sep">·</span> <b>◀ ▶</b> steer <span class="sep">·</span> or <b>drag</b> the road</span>
   </p>
 
 </div>
 
-<div id="pedals"><button id="brake" type="button">BRAKE</button></div>
+<!-- ── the controls, on a phone ────────────────────────────────────────
+     Left thumb drives, right thumb steers. Brake outboard of the gas,
+     so that the pedal you stab in a hurry is the one at the edge of the
+     glass where your thumb already rests, and so that rolling off the
+     gas onto it is a movement outward rather than a reach across.
+     `aria-label` on each, because "◀" read aloud is nothing.        -->
+<div id="pedals">
+  <div class="pad">
+    <button id="brake" class="rnd brake" type="button" aria-label="Brake">BRAKE</button>
+    <button id="gas" class="rnd gas" type="button" aria-label="Accelerate">GAS</button>
+  </div>
+  <div class="pad">
+    <button id="steer-l" class="rnd steer" type="button" aria-label="Steer left">◀</button>
+    <button id="steer-r" class="rnd steer" type="button" aria-label="Steer right">▶</button>
+  </div>
+</div>
 
-<script src="src/raster.js?v=132"></script>
-<script src="data/i40.js?v=132"></script>
-<script src="src/road.js?v=132"></script>
-<script src="src/world.js?v=132"></script>
-<script src="src/draw.js?v=132"></script>
+<script src="src/raster.js?v=172"></script>
+<script src="data/i40.js?v=172"></script>
+<script src="src/road.js?v=172"></script>
+<script src="src/world.js?v=172"></script>
+<script src="src/draw.js?v=172"></script>
 <!-- impact.js is pure and has no dependencies; skill.js reads one
      constant off it, so it comes second. Both before offramp.js. -->
-<script src="src/impact.js?v=132"></script>
-<script src="src/skill.js?v=132"></script>
-<script src="src/offramp.js?v=132"></script>
+<script src="src/impact.js?v=172"></script>
+<!-- The counted data before the model that reads it: src/traffic.js
+     resolves I40_TRAFFIC at module-init time, so loading it first gets
+     a model with no counters in it. -->
+<script src="data/traffic.js?v=172"></script>
+<script src="src/traffic.js?v=172"></script>
+<script src="src/sim.js?v=172"></script>
+<script src="src/motive.js?v=172"></script>
+<script src="src/cars.js?v=172"></script>
+<!-- The garage. Pure data plus a derivation, no dependencies, and it
+     must load before offramp.js because the initial state reads a row
+     out of it. Note the name: src/cars.js above is the traffic on the
+     screen and exports `Cars`; this is what YOU drive and exports
+     `Garage`. Two different things, and they were briefly one bug. -->
+<script src="data/garage.js?v=172"></script>
+<!-- score.js is pure and knows nothing about the garage; progress.js
+     reads Garage for the unlock costs, so it comes after. -->
+<script src="src/score.js?v=172"></script>
+<script src="src/progress.js?v=172"></script>
+<script src="src/skill.js?v=172"></script>
+<script src="src/offramp.js?v=172"></script>
 </body>
 </html>
