@@ -89,7 +89,12 @@
     max-width: 640px;
     height: 100%;
     display: flex;
-    flex-direction: column;
+    /* A ROW: the rail down the left, and the road takes everything else.
+       It was a column, which spent height on two full-width bands and a
+       strip of key hints — and height is the axis the game wants, since
+       what it needs is to see further along the road. Width is the axis
+       it can spare: it is looking at one carriageway. */
+    flex-direction: row;
     background: linear-gradient(178deg, var(--case-lit) 0%, var(--case) 26%, var(--case) 70%, var(--case-deep) 100%);
     border-left: 3px solid var(--case-edge);
     border-right: 3px solid var(--case-edge);
@@ -106,13 +111,30 @@
   #cab > * { position: relative; z-index: 1; }
 
   /* ── marquee ──────────────────────────────────────────────────────── */
+  /* ── the rail ─────────────────────────────────────────────────────
+     A column down the left edge: the sign at the top of it, the
+     readouts under it, and the road gets the rest. It is sized off the
+     VIEWPORT and clamped, because it has to be legible on a 375 px
+     phone without eating the carriageway it is standing next to. */
+  #rail {
+    flex: 0 0 auto;
+    width: clamp(5.4rem, 23vw, 8.6rem);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-right: 3px solid var(--white);
+    background: rgba(0,0,0,.1);
+  }
   .marquee {
     flex: 0 0 auto;
     display: flex;
+    /* Stacked now that it is in a column — the shield over the words,
+       which is how a shield is used on a real sign anyway. */
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: .6rem;
-    padding: .55rem .8rem .6rem;
+    gap: .18rem;
+    padding: .5rem .3rem .45rem;
     border-bottom: 3px solid var(--white);
     position: relative;
   }
@@ -122,9 +144,12 @@
     position: absolute; inset: 0; pointer-events: none;
     background: radial-gradient(ellipse 62% 140% at 50% 40%, rgba(255,255,255,.14), transparent 72%);
   }
-  .shield { width: 34px; height: 30px; display: block; flex: 0 0 auto; }
+  .shield { width: 30px; height: 27px; display: block; flex: 0 0 auto; }
   .wordmark {
-    font-size: clamp(21px, 6vw, 33px);
+    /* Two words on two lines in a 6 rem column, so it is set small and
+       centred rather than at the banner size it used to have. */
+    text-align: center;
+    font-size: clamp(11px, 3.2vw, 15px);
     font-weight: 800;
     letter-spacing: .10em;
     line-height: 1;
@@ -132,21 +157,31 @@
     text-shadow: 0 0 18px rgba(255,255,255,.3), 0 2px 3px rgba(0,0,0,.45);
   }
   /* ── the sign gantry: readouts, as guide-sign panels ──────────────── */
+  /* Down the rail rather than across the top. Every cell is full width
+     of the rail, so the numbers line up on one left edge and can be
+     read by running your eye down them — which is what a column of
+     readouts is for, and what the old row could not do.
+
+     It SCROLLS if the rail is shorter than its contents: on a landscape
+     phone the whole cabinet is 350 px tall, and a readout that pushes
+     the map button off the bottom is worse than one you have to reach. */
   .gantry {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
     display: flex;
+    flex-direction: column;
     gap: 4px;
-    justify-content: center;
     align-items: stretch;
-    /* Six readouts now that the pot and the checkpoint are separate
-       cells, plus three buttons. On a narrow cabinet that is wider than
-       the case, and unwrapped it clipped the speed off one end and the
-       map button off the other. */
-    flex-wrap: wrap;
-    padding: .45rem .5rem .5rem;
+    padding: .4rem .35rem .5rem;
     background: rgba(0,0,0,.16);
-    border-bottom: 1px solid rgba(242,240,230,.28);
   }
+  /* Every cell keeps its own height. Without this they inherit the
+     row's `flex: 1 1 auto` — which was right when the gantry was a ROW
+     and the cells shared the width, and is badly wrong in a column with
+     700 px of rail to share out: SPEED became a white panel a third of
+     the screen tall. The slack goes to the bottom of the rail instead. */
+  .gantry > * { flex: 0 0 auto; }
   /* on a green banner the guide-sign readouts need to read as INSET
      panels rather than more of the same green, so they are darkened
      rather than lightened — the same trick a real sign uses for a
@@ -844,21 +879,8 @@
   }
   .panel .opened b { color: var(--white); font-weight: 800; letter-spacing: .04em; }
 
-  /* ── control panel ────────────────────────────────────────────────── */
-  .controls {
-    flex: 0 0 auto;
-    padding: .5rem .8rem .6rem;
-    text-align: center;
-    font-size: 9.5px;
-    font-weight: 700;
-    letter-spacing: .13em;
-    text-transform: uppercase;
-    color: rgba(242,240,230,.72);
-    background: rgba(0,0,0,.18);
-    border-top: 3px solid var(--white);
-  }
-  .controls b { color: var(--white); }
-  .controls .sep { color: rgba(242,240,230,.4); padding: 0 .2rem; }
+  /* `.controls` lived here — the strip of key hints across the bottom.
+     Removed with the markup; the title screen still lists the keys. */
 
   /* ── the pedals and the wheel ─────────────────────────────────────
      One strip across the bottom holding two clusters: drive on the
@@ -879,8 +901,24 @@
     justify-content: space-between;
     align-items: flex-end;
     position: fixed;
-    left: max(10px, env(safe-area-inset-left));
-    right: max(10px, env(safe-area-inset-right));
+    /* Over the CABINET, and clear of the rail inside it.
+
+       Two things had to be fixed at once. The rail is a column down the
+       left, so the brake — deliberately the outboard one — landed on
+       top of the readouts. And the strip was pinned to the window,
+       which is the same thing as the cabinet on a phone and is not on
+       anything wider: a landscape tablet centres a 640 px cabinet in a
+       1024 px window and the pedals would have sat out on the desk
+       either side of it.
+
+       So it is centred and capped at the cabinet's own max-width, then
+       padded in by the rail's own clamp — the same expression, so the
+       two cannot drift apart. */
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(100%, 640px);
+    padding-left: calc(clamp(5.4rem, 23vw, 8.6rem) + max(10px, env(safe-area-inset-left)));
+    padding-right: max(10px, env(safe-area-inset-right));
     bottom: max(10px, env(safe-area-inset-bottom));
     pointer-events: none;          /* the strip is not a control; its buttons are */
     z-index: 50;
@@ -888,11 +926,16 @@
   .pad { display: flex; gap: .45rem; pointer-events: auto; }
   .rnd {
     font: inherit;
-    font-size: clamp(9px, 2.7vw, 12px);
+    font-size: clamp(8px, 2.3vw, 12px);
     font-weight: 800;
-    letter-spacing: .12em;
-    width: clamp(3.1rem, 19vw, 4.6rem);
-    height: clamp(3.1rem, 19vw, 4.6rem);
+    letter-spacing: .1em;
+    /* Four of these have to fit across what is left of the window once
+       the rail has taken its 23vw, so they are sized against THAT and
+       not against the whole viewport: 4 x 17vw is 68, the rail is 23,
+       and the gaps and margins have the rest. At 19vw they were 76 and
+       the outboard steer button hung off the right-hand edge. */
+    width: clamp(2.7rem, 17vw, 4.4rem);
+    height: clamp(2.7rem, 17vw, 4.4rem);
     border-radius: 50%;
     color: #fff;
     border: 3px solid #f2f0e6;
@@ -954,17 +997,16 @@
 
   @media (max-width: 430px) {
     .marquee { padding: .4rem .5rem .45rem; gap: .4rem; }
-    .gantry { gap: 3px; padding: .35rem .3rem .4rem; flex-wrap: nowrap; }
+    .gantry { gap: 3px; padding: .35rem .3rem .4rem; }
     /* Sized for six readouts and four buttons, all of which had been
        squeezed to the point of not being readable. There are five and
        two now, so the numbers get their size back — this is the whole
        reason for taking things out of the row. */
-    .panelsign { min-width: 0; flex: 1 1 auto; padding: .1rem .2rem .14rem; }
+    .panelsign { min-width: 0; flex: 0 0 auto; padding: .1rem .2rem .14rem; }
     .panelsign .k { font-size: 8.5px; letter-spacing: .06em; }
     .panelsign .v { font-size: 16px; }
     .panelsign .v small { font-size: 8.5px; }
-    .cabbtn { padding: .26rem .3rem; letter-spacing: .04em; min-width: 0; font-size: 13px; }
-    .cabbtn .word { display: none; }
+    .cabbtn { padding: .26rem .3rem; letter-spacing: .04em; min-width: 0; font-size: 12px; }
     #stage { padding: 5px; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -976,6 +1018,21 @@
 <body>
 
 <div id="cab">
+
+<!-- ── the rail ─────────────────────────────────────────────────────────
+     (Ric, 2026-08-13: "put all the title and the information on the left
+     side of the screen ... the bottom stuff you can just remove.")
+
+     The title and the readouts used to be two full-width bands across
+     the top and a line of key hints across the bottom, and between them
+     they took a third of the height of a phone — on the one axis the
+     game actually wants, because what you need on a road is to see
+     further ALONG it. Standing them up in a column on the left costs
+     width, which is the axis this game has to spare: it is looking at
+     one carriageway.
+
+     They are the same two objects, turned ninety degrees.             -->
+  <div id="rail">
 
   <div class="marquee">
     <svg class="shield" viewBox="0 0 34 30" aria-hidden="true">
@@ -1013,6 +1070,8 @@
     <div class="panelsign" id="cell-bank"><span class="k">Bank in</span><span class="v" id="hud-bank">10<small> exits</small></span></div>
     <button id="map-toggle" class="cabbtn" type="button" aria-pressed="false" aria-controls="map-panel" aria-label="Open freeway map">▦<span class="word"> Map</span></button>
   </div>
+
+  </div><!-- /rail -->
 
   <div id="stage">
     <div id="frame">
@@ -1235,10 +1294,11 @@
     </div>
   </div>
 
-  <p class="controls">
-    <span class="kb"><b>← →</b> steer <span class="sep">·</span> <b>↑ ↓</b> throttle / brake <span class="sep">·</span> <b>G</b> map <span class="sep">·</span> <b>P</b> pause <span class="sep">·</span> <b>R</b> restart</span>
-    <span class="tp">hold <b>GAS</b> <span class="sep">·</span> <b>◀ ▶</b> steer <span class="sep">·</span> or <b>drag</b> the road</span>
-  </p>
+  <!-- The key hints were here, across the bottom. They are gone rather
+       than moved: they said the same five things on every frame of every
+       run forever, and the title screen already lists them for anyone
+       who has not started yet. What that strip was really costing was
+       road ahead. -->
 
 </div>
 
@@ -1259,33 +1319,33 @@
   </div>
 </div>
 
-<script src="src/raster.js?v=178"></script>
-<script src="data/i40.js?v=178"></script>
-<script src="src/road.js?v=178"></script>
-<script src="src/world.js?v=178"></script>
-<script src="src/draw.js?v=178"></script>
+<script src="src/raster.js?v=183"></script>
+<script src="data/i40.js?v=183"></script>
+<script src="src/road.js?v=183"></script>
+<script src="src/world.js?v=183"></script>
+<script src="src/draw.js?v=183"></script>
 <!-- impact.js is pure and has no dependencies; skill.js reads one
      constant off it, so it comes second. Both before offramp.js. -->
-<script src="src/impact.js?v=178"></script>
+<script src="src/impact.js?v=183"></script>
 <!-- The counted data before the model that reads it: src/traffic.js
      resolves I40_TRAFFIC at module-init time, so loading it first gets
      a model with no counters in it. -->
-<script src="data/traffic.js?v=178"></script>
-<script src="src/traffic.js?v=178"></script>
-<script src="src/sim.js?v=178"></script>
-<script src="src/motive.js?v=178"></script>
-<script src="src/cars.js?v=178"></script>
+<script src="data/traffic.js?v=183"></script>
+<script src="src/traffic.js?v=183"></script>
+<script src="src/sim.js?v=183"></script>
+<script src="src/motive.js?v=183"></script>
+<script src="src/cars.js?v=183"></script>
 <!-- The garage. Pure data plus a derivation, no dependencies, and it
      must load before offramp.js because the initial state reads a row
      out of it. Note the name: src/cars.js above is the traffic on the
      screen and exports `Cars`; this is what YOU drive and exports
      `Garage`. Two different things, and they were briefly one bug. -->
-<script src="data/garage.js?v=178"></script>
+<script src="data/garage.js?v=183"></script>
 <!-- score.js is pure and knows nothing about the garage; progress.js
      reads Garage for the unlock costs, so it comes after. -->
-<script src="src/score.js?v=178"></script>
-<script src="src/progress.js?v=178"></script>
-<script src="src/skill.js?v=178"></script>
-<script src="src/offramp.js?v=178"></script>
+<script src="src/score.js?v=183"></script>
+<script src="src/progress.js?v=183"></script>
+<script src="src/skill.js?v=183"></script>
+<script src="src/offramp.js?v=183"></script>
 </body>
 </html>

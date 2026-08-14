@@ -76,12 +76,14 @@ const Draw = (() => {
     VH = Math.max(64, Math.round(h));
     CX = Math.round(VW / 2);
     /* The road ahead is worth more than the road behind: ahead is where
-       the traffic you still have to do something about is. On a tall
-       buffer the car sits at the old 77% and there is plenty of both.
-       On a short one the FRONT is held at 300 px — the 54 m the old
-       256 × 416 always gave — and the mirror gives way instead, down to
-       a floor of 64 px, which is still three car lengths of it. */
-    PY = Math.min(VH - 64, Math.max(Math.round(VH * 0.77), 300));
+       the traffic you still have to do something about is. So the car
+       sits 84% of the way down the glass — it was 77%, and it moved
+       BACK because those 7% are worth more in front of you than behind
+       (Ric, 2026-08-13: "move the car farther back just a bit").
+       On a short buffer the FRONT is held at 340 px and the mirror
+       gives way instead, down to a floor of 56 px — two and a half car
+       lengths, which is enough to see somebody sitting on you. */
+    PY = Math.min(VH - 56, Math.max(Math.round(VH * 0.84), 340));
     if (PY < VH * 0.5) PY = Math.round(VH * 0.77);   // a cabinet too short for either rule
     VIEW = Math.ceil(Math.hypot(Math.max(CX, VW - CX), Math.max(PY, VH - PY))) + 16;
   }

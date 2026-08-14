@@ -632,10 +632,15 @@
      width allowance; on a screen with room for it, it comes along
      anyway — see `camTarget`.
 
-     ALONG, it is 368 px: 300 ahead, which is the 54 m the old fixed
-     buffer always gave and about what a sign needs to be readable
-     within, and 68 behind for the mirror. */
-  const WANT_W = 130, WANT_H = 368;
+     ALONG, it is 430 px. It was 368 — 300 ahead, the 54 m the old fixed
+     buffer always gave — and the reason it can go up is that the title
+     and the readouts moved off the top of the screen and the key hints
+     came off the bottom, so the cabinet is most of the window's height
+     now instead of two thirds of it. 430 is about 62 m of road in front
+     of you at the framing below, which is a second and a half more than
+     before at 70 mph. (Ric, 2026-08-13: "i want to lengthen how far you
+     can see in front of you.") */
+  const WANT_W = 130, WANT_H = 430;
   /* Except that a phone cannot have both. The two allowances are met by
      one scale, so the buffer is always the cabinet's own shape — and a
      phone is roughly twice as tall as it is wide, which means 368 px of
@@ -647,10 +652,13 @@
      So a TALL cabinet spends some of its lookahead on magnification and
      a wide one does not, which is also the honest answer physically: a
      phone is held at arm's length and a monitor is not. At 1.85:1 —
-     any ordinary phone — the allowance is 276 px, or 212 ahead, 38 m.
-     That is the cost of this, it is a real one, and it is the only way
-     a tall screen gets to fill itself with the road you are on. */
-  const WANT_H_TALL = 276, TALL_AT = 1.85;
+     any ordinary phone — the allowance is 330 px. That is still the
+     cost of filling a tall screen with the road you are on, but a much
+     smaller one than it was: the rail took two full-width bands off the
+     top of the cabinet and the key hints off the bottom, so a phone has
+     half the chrome to pay for and can afford 330 where it could only
+     afford 276. */
+  const WANT_H_TALL = 330, TALL_AT = 1.85;
   /* How large a world pixel is ever allowed to get. The page holds the
      whole cabinet to 640 CSS px wide, so on a desktop the width term is
      near enough a constant and it is the HEIGHT of the window that
