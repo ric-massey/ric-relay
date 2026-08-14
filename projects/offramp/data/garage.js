@@ -342,6 +342,276 @@ const Garage = (() => {
       eng: { cyl: 2, layout: "vtwin", idle: 950, red: 5500 },
       body: "cruiser",
     },
+
+    /* ══ and twenty more ═════════════════════════════════════════════
+       (Ric, 2026-08-14: "make 15 more random cars and 5 more
+       motorcycles. some of the more poular ones.")
+
+       Chosen to be RECOGNISED — the cars somebody would actually name —
+       and then spread so the ladder is not twenty ways of being fast.
+       Half of these are slower than the Mustang. The Corolla is the
+       best-selling car ever made and is here for the same reason the
+       Camry is: most of what is around you on that road is one of them.
+
+       Costs interleave with the sixteen above rather than stacking on
+       the end, because `ALL` is sorted by cost and the order of that
+       array IS the ladder.
+
+       Every figure is the manufacturer's or a road test's. The engines
+       are the real configurations, which is where most of the variety
+       actually lands: this adds a straight-six, two V10s, a flat-six
+       MOTORCYCLE and a parallel twin to a garage that was mostly
+       inline-fours and V8s. */
+
+    /* ── the ordinary half ─────────────────────────────────────────── */
+    {
+      id: "corolla",
+      paint: "#c9ccd1",
+      make: "Toyota", model: "Corolla", year: 2005,
+      note: "fifty million of them cannot all be wrong",
+      klass: "car", hp: 126, kg: 1200, len: 4.53, wide: 1.71,
+      t60: 9.5, top: 115, stop: 135, latG: 0.78,
+      cost: 3000,
+      eng: { cyl: 4, layout: "i",     idle: 700, red: 6200 },
+    },
+    {
+      id: "accord",
+      paint: "#3c4a5a",
+      make: "Honda", model: "Accord", year: 2008,
+      note: "competent to the point of being invisible",
+      klass: "car", hp: 190, kg: 1520, len: 4.85, wide: 1.85,
+      t60: 8.0, top: 125, stop: 130, latG: 0.80,
+      cost: 8000,
+      eng: { cyl: 4, layout: "i",     idle: 700, red: 6800 },
+    },
+    {
+      /* Body-on-frame, live axle, and the car every taxi and half the
+         police departments in the country used until they stopped
+         making it. Long, soft and heavy — it is the closest thing here
+         to the F-150's problem in a saloon. */
+      id: "crownvic",
+      paint: "#e9e9e6",
+      make: "Ford", model: "Crown Victoria", year: 2003,
+      note: "a sofa with a body on frame under it",
+      klass: "car", hp: 224, kg: 1810, len: 5.40, wide: 1.99,
+      t60: 8.4, top: 120, stop: 145, latG: 0.75,
+      cost: 11000,
+      eng: { cyl: 8, layout: "v",     idle: 600, red: 5000 },
+    },
+    {
+      /* Short, tall and narrow-tracked: the worst skidpad number in the
+         garage by a distance, and it earns it. */
+      id: "wrangler",
+      paint: "#4a6b3a",
+      make: "Jeep", model: "Wrangler", year: 2010,
+      note: "superb everywhere except a road",
+      klass: "car", hp: 202, kg: 1770, len: 4.22, wide: 1.87,
+      t60: 8.4, top: 112, stop: 150, latG: 0.68,
+      cost: 18000,
+      eng: { cyl: 6, layout: "v",     idle: 700, red: 5600 },
+      body: "suv",
+    },
+    {
+      id: "silverado",
+      paint: "#8a1f1f",
+      make: "Chevrolet", model: "Silverado 1500", year: 2010,
+      note: "the other half of every American car park",
+      klass: "truck", hp: 315, kg: 2270, len: 5.83, wide: 2.03,
+      t60: 7.0, top: 110, stop: 145, latG: 0.72,
+      cost: 22000,
+      eng: { cyl: 8, layout: "v",     idle: 600, red: 5600 },
+      body: "pickup",
+    },
+    {
+      /* The engine really does stop at rest, and the idle figure says
+         so — 0 rpm, which `audioFrame` floors at 12 Hz rather than
+         dividing by. It is the one row here that is silent standing
+         still, and that is the correct behaviour rather than a bug. */
+      id: "prius",
+      paint: "#d8dce0",
+      make: "Toyota", model: "Prius", year: 2010,
+      note: "it is not trying to win and it is still here",
+      klass: "car", hp: 134, kg: 1380, len: 4.46, wide: 1.75,
+      t60: 9.8, top: 112, stop: 135, latG: 0.76,
+      cost: 26000,
+      eng: { cyl: 4, layout: "i",     idle: 0, red: 5200 },
+    },
+    {
+      id: "mini",
+      paint: "#c8102e",
+      make: "Mini", model: "Cooper S", year: 2006,
+      note: "3.63 m of it, and all four corners busy",
+      klass: "car", hp: 168, kg: 1215, len: 3.63, wide: 1.69,
+      t60: 6.9, top: 135, stop: 120, latG: 0.86,
+      cost: 30000,
+      eng: { cyl: 4, layout: "i",     idle: 750, red: 6800 },
+    },
+    {
+      id: "gti",
+      paint: "#1d1d20",
+      make: "Volkswagen", model: "Golf GTI", year: 2010,
+      note: "the answer to a question nobody has improved on",
+      klass: "car", hp: 200, kg: 1390, len: 4.20, wide: 1.79,
+      t60: 6.8, top: 130, stop: 120, latG: 0.87,
+      cost: 36000,
+      eng: { cyl: 4, layout: "i",     idle: 800, red: 6500 },
+    },
+
+    /* ── the ones people put posters of on walls ─────────────────────── */
+    {
+      /* 2JZ-GTE. A straight six, which is the only one in the garage and
+         sounds like nothing else in it. */
+      id: "supra",
+      paint: "#e8b400",
+      make: "Toyota", model: "Supra Turbo", year: 1997,
+      note: "two turbos and an engine people buy on its own",
+      klass: "car", hp: 320, kg: 1570, len: 4.51, wide: 1.81,
+      t60: 4.9, top: 155, stop: 115, latG: 0.92,
+      cost: 60000,
+      eng: { cyl: 6, layout: "i",     idle: 700, red: 6800 },
+      body: "coupe",
+    },
+    {
+      /* S54, and it goes to eight thousand — the highest-revving car
+         here by a thousand rpm. */
+      id: "m3e46",
+      paint: "#5c6b7a",
+      make: "BMW", model: "M3", year: 2003,
+      note: "the one everybody means when they say M3",
+      klass: "car", hp: 333, kg: 1570, len: 4.49, wide: 1.78,
+      t60: 4.8, top: 155, stop: 115, latG: 0.90,
+      cost: 75000,
+      eng: { cyl: 6, layout: "i",     idle: 700, red: 8000 },
+      body: "coupe",
+    },
+    {
+      id: "challenger",
+      paint: "#d85a1a",
+      make: "Dodge", model: "Challenger SRT8", year: 2010,
+      note: "six litres of HEMI and no interest in corners",
+      klass: "car", hp: 425, kg: 1880, len: 5.02, wide: 1.92,
+      t60: 4.9, top: 170, stop: 115, latG: 0.85,
+      cost: 95000,
+      eng: { cyl: 8, layout: "v",     idle: 650, red: 6200 },
+      body: "coupe",
+    },
+    {
+      id: "camaro",
+      paint: "#f2c200",
+      make: "Chevrolet", model: "Camaro SS", year: 2011,
+      note: "the LS3, in the car it was always going to end up in",
+      klass: "car", hp: 426, kg: 1750, len: 4.84, wide: 1.92,
+      t60: 4.7, top: 155, stop: 110, latG: 0.90,
+      cost: 105000,
+      eng: { cyl: 8, layout: "v",     idle: 650, red: 6600 },
+      body: "coupe",
+    },
+    {
+      id: "f430",
+      paint: "#c0140f",
+      make: "Ferrari", model: "F430", year: 2007,
+      note: "8,500 rpm, and it wants all of them",
+      klass: "car", hp: 483, kg: 1450, len: 4.51, wide: 1.92,
+      t60: 3.9, top: 196, stop: 105, latG: 0.98,
+      cost: 210000,
+      eng: { cyl: 8, layout: "v",     idle: 900, red: 8500 },
+      body: "coupe",
+    },
+    {
+      id: "r8",
+      paint: "#9aa3ad",
+      make: "Audi", model: "R8 V10", year: 2010,
+      note: "ten cylinders behind your head, driving all four",
+      klass: "car", hp: 525, kg: 1660, len: 4.43, wide: 1.90,
+      t60: 3.7, top: 196, stop: 105, latG: 0.98,
+      cost: 240000,
+      eng: { cyl: 10, layout: "v",    idle: 800, red: 8700 },
+      body: "coupe",
+    },
+    {
+      id: "gallardo",
+      paint: "#c8e020",
+      make: "Lamborghini", model: "Gallardo LP560-4", year: 2008,
+      note: "5.2 litres, ten cylinders, and no manners at all",
+      klass: "car", hp: 552, kg: 1500, len: 4.39, wide: 1.90,
+      t60: 3.4, top: 202, stop: 100, latG: 1.00,
+      cost: 320000,
+      eng: { cyl: 10, layout: "v",    idle: 900, red: 8000 },
+      body: "coupe",
+    },
+
+    /* ── five more motorcycles ───────────────────────────────────────
+       The Grom was the obvious popular pick and is not here, because it
+       tops out around 58 mph — under the minimum on most of this road,
+       and `derive` says exactly why it cannot be in the table: a top
+       speed below 60 makes `artanh(60/vTop)` undefined. The file's own
+       note on that is right that such a vehicle "does not belong on an
+       Interstate anyway". The Rebel is the cheap one instead. */
+    {
+      id: "rebel",
+      paint: "#1a1a1c",
+      make: "Honda", model: "Rebel 500", year: 2018,
+      note: "the one everybody actually learns on",
+      klass: "bike", hp: 45, kg: 191, len: 2.21, wide: 0.82,
+      t60: 5.5, top: 95, stop: 140, latG: 0.80,
+      cost: 40000,
+      eng: { cyl: 2, layout: "i",     idle: 1200, red: 8500 },
+      body: "cruiser",
+    },
+    {
+      /* An L-twin: 90 degrees, firing at 270 and 450. Not as lopsided as
+         the Harley's 315/405 and nothing like an even four either. */
+      id: "monster",
+      paint: "#b81414",
+      make: "Ducati", model: "Monster 796", year: 2012,
+      note: "no fairing, no excuses, and a dry clutch's worth of noise",
+      klass: "bike", hp: 87, kg: 167, len: 2.10, wide: 0.81,
+      t60: 3.5, top: 130, stop: 135, latG: 0.95,
+      cost: 90000,
+      eng: { cyl: 2, layout: "vtwin", idle: 1100, red: 9500 },
+      body: "sport",
+    },
+    {
+      /* A flat SIX, on a motorcycle, and the only one in the garage —
+         1.8 litres of it, turbine-smooth, in a 421 kg tourer that is
+         heavier than the Fortwo is light. */
+      id: "goldwing",
+      paint: "#7a1420",
+      make: "Honda", model: "Gold Wing", year: 2015,
+      note: "421 kg, six cylinders, and a boot",
+      klass: "bike", hp: 118, kg: 421, len: 2.63, wide: 0.94,
+      t60: 4.4, top: 125, stop: 145, latG: 0.72,
+      cost: 115000,
+      eng: { cyl: 6, layout: "flat",  idle: 800, red: 6000 },
+      body: "cruiser",
+    },
+    {
+      id: "zx10r",
+      paint: "#3fa02f",
+      make: "Kawasaki", model: "Ninja ZX-10R", year: 2016,
+      note: "a superbike with the numbers to prove it",
+      klass: "bike", hp: 197, kg: 206, len: 2.07, wide: 0.74,
+      t60: 3.0, top: 186, stop: 130, latG: 1.00,
+      cost: 160000,
+      eng: { cyl: 4, layout: "i",     idle: 1200, red: 14000 },
+      body: "sport",
+    },
+    {
+      /* The crossplane crank — a four that fires unevenly on purpose,
+         which is why it sounds like a V-twin having a very good day.
+         `vtwin` is the closer of the two mixes for that reason, and it
+         is the one place in this table where the layout field is set for
+         the FIRING ORDER rather than the cylinder arrangement. */
+      id: "r1",
+      paint: "#2b4fa0",
+      make: "Yamaha", model: "YZF-R1", year: 2015,
+      note: "a crossplane four, which is a four pretending otherwise",
+      klass: "bike", hp: 197, kg: 199, len: 2.06, wide: 0.69,
+      t60: 2.9, top: 186, stop: 130, latG: 1.02,
+      cost: 175000,
+      eng: { cyl: 4, layout: "vtwin", idle: 1250, red: 14000 },
+      body: "sport",
+    },
   ];
 
   /* ── the semi is not here yet, and this is the note that says so ────

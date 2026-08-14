@@ -190,7 +190,16 @@ ok("the bike is wheelie-limited, not grip-limited — near 1 g, not above",
 head("§5  the ladder");
 
 const ids = Garage.ids();
-ok("sixteen vehicles", Garage.ALL.length, 16);
+/* Not a count. It was `10`, then `16`, and each time a vehicle was
+   added the only thing this assertion caught was itself going stale.
+   What is worth protecting is that the table LOADED and that every row
+   in it is complete — a row missing `cost` or `eng` is a real fault and
+   a row count is not. */
+ok("the table loaded", Garage.ALL.length > 0, true);
+ok("every row is complete", Garage.ALL.filter((c) =>
+  !c.id || !c.klass || typeof c.cost !== "number" || !c.eng ||
+  !Number.isFinite(c.vTop) || !Number.isFinite(c.a0) || !Number.isFinite(c.brake)
+).length, 0);
 ok("every id is unique", new Set(ids).size, ids.length);
 ok("exactly one vehicle is free to start with",
    Garage.ALL.filter((c) => c.cost === 0).length, 1);

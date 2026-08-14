@@ -39,6 +39,21 @@ function ok(name, got, want, tol) {
 const head = (s) => console.log(`\n${s}\n${"─".repeat(s.length)}`);
 const run = (banked, extra) => Progress.endRun({ banked, km: 30, exits: 10, ...(extra || {}) });
 
+/* ── derived from the table, not written down ───────────────────────────
+   These assertions used to name cars and counts: "the next rung is the
+   Civic", "that is the whole garage = 16". Every one of them broke the
+   two times a vehicle was added, which taught nothing except that a
+   number in a test had gone stale — the LADDER was correct throughout.
+
+   So the fixtures come out of `Garage` now. What is being tested is the
+   rule (the next rung is the cheapest thing you cannot afford; banking a
+   cost opens everything at or below it), and the rule holds at any size
+   of garage. Adding a car should never edit this file again. */
+const byCost = () => [...Garage.ALL].sort((a, b) => a.cost - b.cost);
+const cheapestAbove = (t) => byCost().find((c) => c.cost > t);
+const affordable = (t) => byCost().filter((c) => c.cost <= t);
+const dearest = () => byCost()[Garage.ALL.length - 1];
+
 /* ══════════════════════════════════════════════════════════════════════
    §1  a fresh player
    ══════════════════════════════════════════════════════════════════════ */
@@ -49,8 +64,9 @@ ok("nothing banked", Progress.total, 0);
 ok("exactly one vehicle available", Progress.unlocked().length, 1);
 ok("...and it is the Jetta", Progress.unlocked()[0].id, "jetta");
 ok("the chosen car is the Jetta", Progress.chosen(), "jetta");
-ok("the next rung is the Civic", Progress.next().car.id, "civic");
-ok("...and it needs its full cost", Progress.next().need, Garage.get("civic").cost);
+ok("the next rung is the cheapest thing you cannot afford",
+   Progress.next().car.id, cheapestAbove(0).id);
+ok("...and it needs its full cost", Progress.next().need, cheapestAbove(0).cost);
 ok("a locked car cannot be selected", Progress.select("911"), "jetta");
 ok("...and selecting it did not unlock it", Progress.isUnlocked("911"), false);
 
@@ -60,25 +76,33 @@ ok("...and selecting it did not unlock it", Progress.isUnlocked("911"), false);
 head("§2  climbing it");
 
 Progress.forget();
-const opened = run(6000);
-ok("banking the Civic's cost opens the Civic", opened.opened.map((c) => c.id).join(","), "civic");
-ok("two vehicles now", Progress.unlocked().length, 2);
-ok("the next rung moved on", Progress.next().car.id, "miata");
+const rung = cheapestAbove(0);
+const opened = run(rung.cost);
+ok("banking a rung's cost opens everything at or below it",
+   opened.opened.map((c) => c.id).sort().join(","),
+   affordable(rung.cost).filter((c) => c.cost > 0).map((c) => c.id).sort().join(","));
+ok("...and the garage is now everything up to that cost",
+   Progress.unlocked().length, affordable(rung.cost).length);
+ok("the next rung moved on", Progress.next().car.id, cheapestAbove(rung.cost).id);
 
-const jump = run(400000 - 6000);
-ok("a huge run can open several at once", jump.opened.length, 14);
-ok("...and that is the whole garage", Progress.unlocked().length, 16);
+const jump = run(dearest().cost - rung.cost);
+ok("a huge run can open several at once",
+   jump.opened.length, Garage.ALL.length - affordable(rung.cost).length);
+ok("...and that is the whole garage", Progress.unlocked().length, Garage.ALL.length);
 ok("nothing is left to unlock", Progress.next(), null);
-ok("the bike is available last and is available now", Progress.isUnlocked("s1000rr"), true);
+ok("the dearest is available last and is available now",
+   Progress.isUnlocked(dearest().id), true);
 
 head("§2a  and the bar measures the CURRENT rung, not the whole climb");
 
 Progress.forget();
-run(6000);                                  // exactly at the Civic
+const rungA = cheapestAbove(0);
+run(rungA.cost);                            // exactly on a rung
 ok("standing on a rung, the next bar is empty", Progress.next().fraction, 0, 1e-9);
-const span = Garage.get("f150").cost - Garage.get("civic").cost;
-run(span / 2);
-ok("...and halfway to the pickup it is half full", Progress.next().fraction, 0.5, 1e-6);
+const rungB = cheapestAbove(rungA.cost);
+run((rungB.cost - rungA.cost) / 2);
+ok("...and halfway to the next one it is half full",
+   Progress.next().fraction, 0.5, 1e-6);
 
 /* ══════════════════════════════════════════════════════════════════════
    §3  a total only rises, and nothing is ever taken back
@@ -125,7 +149,7 @@ Progress.load();
 ok("a tampered save cannot start you in a car you have not earned",
    Progress.chosen() === "911", false);
 ok("...it gives you the best one the total actually justifies",
-   Progress.chosen(), "m5");
+   Progress.chosen(), affordable(90000)[affordable(90000).length - 1].id);
 
 /* ══════════════════════════════════════════════════════════════════════
    §5  the save code, which is the only "account" a static site can have

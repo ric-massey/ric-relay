@@ -859,13 +859,26 @@
     const e = (car && car.eng) || ENG_DEF;
     const vTop = car ? car.vTop : V_MAX;
     const frac = vTop > 0 ? Math.min(1, Math.abs(v) * (1 / PX_PER_KMH) / vTop) : 0;
-    let within;
-    if (frac >= TOP_AT) within = (frac - TOP_AT) / (1 - TOP_AT);
+    let within, first;
+    if (frac >= TOP_AT) { within = (frac - TOP_AT) / (1 - TOP_AT); first = false; }
     else {
       const lower = (frac / TOP_AT) * (GEARS - 1);
       within = lower - Math.floor(lower);         // 0 at a change, 1 at the limiter
+      first = lower < 1;
     }
-    return e.idle + (e.red - e.idle) * (0.30 + 0.70 * within);
+    /* Every gear starts 30% up the band, where a clutch picks the engine
+       back up — EXCEPT the first, which starts at idle, because that is
+       what an engine standing still is doing.
+
+       Without that exception `within` is 0 at a standstill and the floor
+       applied anyway, so nothing in the garage idled: the Jetta sat at
+       2,360 rpm at rest and the ZX-10R at 5,040, permanently. It was
+       invisible with ten rows and obvious with thirty-six. It is also
+       what makes the Prius's `idle: 0` mean what the row says it means —
+       the engine really is stopped, and the floor in `audioFrame` takes
+       it from there. */
+    const floor = first ? 0 : 0.30;
+    return e.idle + (e.red - e.idle) * (floor + (1 - floor) * within);
   }
 
   function audioFrame() {

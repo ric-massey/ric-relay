@@ -2142,11 +2142,16 @@ const Draw = (() => {
        micro    almost no bonnet at all. The Fortwo is 2.69 m and the
                 windscreen is over the front axle; the cabin IS the car,
                 and drawn with a saloon's proportions it came out as a
-                tiny estate with a bonnet it does not have. */
+                tiny estate with a bonnet it does not have.
+       suv      a short bonnet and a LONG roof running almost to the
+                tail, because a two-box body has no boot to leave room
+                for — which is the only thing you can see from overhead
+                that says Wrangler rather than saloon. */
   const CABIN = {
     saloon: { ws: 0.26, wh: 0.12, rw: 0.63, rh: 0.10 },
     coupe:  { ws: 0.34, wh: 0.11, rw: 0.68, rh: 0.09 },
     micro:  { ws: 0.13, wh: 0.19, rw: 0.60, rh: 0.15 },
+    suv:    { ws: 0.20, wh: 0.13, rw: 0.78, rh: 0.11 },
   };
 
   function carBmp(dead) {
