@@ -34,16 +34,10 @@
   const CH_STATE = { ordered: false, maxRetransmits: 0 };
 
   /* ── code encoding ────────────────────────────────────────────────────────
-     A raw session description is 2–4 KB of SDP, which is miserable to paste
-     into a message. Deflate is built into the browser, so the code that comes
-     out the other side is usually under 800 characters. */
-  async function squeeze(bytes, format) {
-    const cs = new CompressionStream(format);
-    const writer = cs.writable.getWriter();
-    writer.write(bytes);
-    writer.close();
-    return new Uint8Array(await new Response(cs.readable).arrayBuffer());
-  }
+     A raw session description is 2–4 KB of SDP, which is miserable to paste.
+     The compact description below removes browser-generated boilerplate before
+     base64 encoding it. New codes stay uncompressed so they work across browsers
+     even when only one side implements CompressionStream. */
 
   async function unsqueeze(bytes, format) {
     const ds = new DecompressionStream(format);
@@ -170,10 +164,6 @@
       tag = "C0";
     }
     const raw = new TextEncoder().encode(payload);
-    if (typeof CompressionStream === "function") {
-      try { return tag + "z" + b64(await squeeze(raw, "deflate-raw")); }
-      catch (_) { /* fall through */ }
-    }
     return tag + "p" + b64(raw);
   }
 
@@ -183,7 +173,13 @@
     if (tag !== "C0" && tag !== "C1") {
       throw new Error("That doesn't look like a CROSSFIRE code.");
     }
+    if (enc !== "p" && enc !== "z") {
+      throw new Error("That CROSSFIRE code has an unknown format.");
+    }
     const body = unb64(clean.slice(3));
+    if (enc === "z" && typeof DecompressionStream !== "function") {
+      throw new Error("This browser can't open that older compressed code. Ask for a new code.");
+    }
     const raw = enc === "z" ? await unsqueeze(body, "deflate-raw") : body;
     const o = JSON.parse(new TextDecoder().decode(raw));
     return tag === "C1" ? unpackDesc(o) : { type: o.t, sdp: o.s };
@@ -218,9 +214,22 @@
       this.ctl = null;
       this.state = null;
       this.open = false;
+      this.disconnectTimer = 0;
       this.pc.addEventListener("connectionstatechange", () => {
         const s = this.pc.connectionState;
-        if (s === "failed" || s === "closed" || s === "disconnected") this.die();
+        if (s === "failed" || s === "closed") {
+          this.die();
+        } else if (s === "disconnected") {
+          // `disconnected` is recoverable: wifi changes and brief network stalls
+          // commonly pass through it before returning to `connected`.
+          clearTimeout(this.disconnectTimer);
+          this.disconnectTimer = setTimeout(() => {
+            if (this.pc.connectionState === "disconnected") this.die();
+          }, 12_000);
+        } else if (s === "connected") {
+          clearTimeout(this.disconnectTimer);
+          this.disconnectTimer = 0;
+        }
       });
     }
 
@@ -254,6 +263,8 @@
       if (this.dead) return;
       this.dead = true;
       this.open = false;
+      clearTimeout(this.disconnectTimer);
+      this.disconnectTimer = 0;
       try { this.pc.close(); } catch (_) {}
       this.h.onClose && this.h.onClose(this);
     }
@@ -268,6 +279,9 @@
     pending: null,
 
     async invite(handlers) {
+      if (this.pending) {
+        throw new Error("That invite is still waiting for a reply.");
+      }
       const link = new Link(this.links.length + 1, handlers);
       link.wire(link.pc.createDataChannel("ctl", CH_CTL));
       link.wire(link.pc.createDataChannel("st", CH_STATE));
@@ -313,7 +327,9 @@
     },
 
     close() {
-      for (const l of this.links) l.die();
+      // onClose handlers may remove themselves from `links`; iterate a copy so
+      // that closing one link cannot make the next connection get skipped.
+      for (const l of [...this.links]) l.die();
       this.links = [];
       if (this.pending) this.pending.die();
       this.pending = null;

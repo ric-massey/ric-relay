@@ -21,13 +21,14 @@
        node projects/crossfire/server/rooms.js
        tailscale funnel 8787              (in another terminal, to publish it)
 
-   Then put the Funnel hostname into ROOM_SERVICE in the game's index.html.  */
+   Then put the Funnel hostname into ROOM_HOST in the game's index.html.  */
 
 "use strict";
 
 const http = require("node:http");
 
 const PORT = Number(process.env.PORT || 8787);
+const TRUST_PROXY = process.env.TRUST_PROXY === "1";
 
 /* Which sites may talk to this. A browser will refuse to send the request at
    all unless the origin is echoed back, so this is the guest list. */
@@ -35,14 +36,16 @@ const ALLOWED = new Set([
   "https://ricmassey.com",
   "https://www.ricmassey.com",
   "https://ric-massey.github.io",
-  "http://localhost:8912"          // the local copy of the site, for testing
+  "http://localhost:8000",
+  "http://127.0.0.1:8000",
+  "http://localhost:8912"          // alternate local preview port
 ]);
 
 const ROOM_TTL   = 25_000;   // a room with no heartbeat this long is gone
 const JOIN_TTL   = 60_000;   // an unanswered join request expires
 const MAX_ROOMS  = 200;
 const MAX_JOINS  = 8;        // pending joins per room
-const MAX_BODY   = 8 * 1024; // a connection description is ~300 bytes
+const MAX_BODY   = 12 * 1024; // includes an uncompressed full-SDP fallback
 
 /* Room words are typed by people and shared out loud, so they are kept to
    something you can say down a phone. */
@@ -79,6 +82,17 @@ function allow(ip) {
   b.tokens -= 1;
   return true;
 }
+
+/* Forwarded headers are controlled by the caller unless this service sits
+   behind a proxy we deliberately trust. A single trusted reverse proxy appends
+   the real client address at the right-hand end of X-Forwarded-For. */
+function clientIp(req) {
+  const peer = req.socket.remoteAddress || "?";
+  if (!TRUST_PROXY) return peer;
+  const forwarded = String(req.headers["x-forwarded-for"] || "")
+    .split(",").map(value => value.trim()).filter(Boolean);
+  return forwarded[forwarded.length - 1] || peer;
+}
 setInterval(() => {
   const now = Date.now();
   for (const [ip, b] of buckets) if (now - b.at > 120_000) buckets.delete(ip);
@@ -90,7 +104,7 @@ function send(res, code, body, origin) {
   res.writeHead(code, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
-    "access-control-allow-origin": origin || "null",
+    ...(origin ? { "access-control-allow-origin": origin } : {}),
     "vary": "origin"
   });
   res.end(text);
@@ -99,25 +113,41 @@ function send(res, code, body, origin) {
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let size = 0;
+    let settled = false;
     const parts = [];
     req.on("data", chunk => {
+      if (settled) return;
       size += chunk.length;
-      if (size > MAX_BODY) { reject(new Error("too big")); req.destroy(); return; }
+      if (size > MAX_BODY) {
+        settled = true;
+        reject(new Error("too big"));
+        // Drain the rest so the service can return a normal 400 response rather
+        // than resetting the connection in the middle of it.
+        req.removeAllListeners("data");
+        req.resume();
+        return;
+      }
       parts.push(chunk);
     });
     req.on("end", () => {
+      if (settled) return;
+      settled = true;
       if (!parts.length) return resolve({});
       try { resolve(JSON.parse(Buffer.concat(parts).toString("utf8"))); }
       catch (_) { reject(new Error("not json")); }
     });
-    req.on("error", reject);
+    req.on("error", error => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    });
   });
 }
 
 // Descriptions are opaque here — they're the game's own compact codes, and
 // this only checks that they're the right shape and size to be one.
 const looksLikeCode = c =>
-  typeof c === "string" && c.length > 8 && c.length < 4_000 && /^[\w+/=]+$/.test(c);
+  typeof c === "string" && c.length > 8 && c.length < 7_500 && /^[\w+/=]+$/.test(c);
 
 const tidyName = n =>
   String(n == null ? "" : n).replace(/[^\p{L}\p{N} '-]/gu, "").trim().slice(0, 12);
@@ -130,9 +160,15 @@ const server = http.createServer(async (req, res) => {
   const origin = req.headers.origin;
   const allowedOrigin = ALLOWED.has(origin) ? origin : null;
 
+  // Requests without Origin are health checks or command-line tools. Browser
+  // requests must be on the allowlist; do not make `Origin: null` a back door.
+  if (origin && !allowedOrigin) {
+    return send(res, 403, { error: "origin not allowed" }, null);
+  }
+
   if (req.method === "OPTIONS") {
     res.writeHead(204, {
-      "access-control-allow-origin": allowedOrigin || "null",
+      "access-control-allow-origin": allowedOrigin,
       "access-control-allow-methods": "GET, POST, OPTIONS",
       "access-control-allow-headers": "content-type",
       "access-control-max-age": "86400",
@@ -143,8 +179,7 @@ const server = http.createServer(async (req, res) => {
 
   const url = new URL(req.url, "http://x");
   const parts = url.pathname.split("/").filter(Boolean);
-  const ip = (req.headers["x-forwarded-for"] || "").split(",")[0].trim() ||
-             req.socket.remoteAddress || "?";
+  const ip = clientIp(req);
 
   // Is anybody home? The game asks this before showing the room fields, and
   // shows the paste route instead when it doesn't answer.
@@ -249,6 +284,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`CROSSFIRE rooms on http://localhost:${PORT}`);
-  console.log(`publish it with:  tailscale funnel ${PORT}`);
+  const address = server.address();
+  const port = typeof address === "object" && address ? address.port : PORT;
+  console.log(`CROSSFIRE rooms on http://localhost:${port}`);
+  console.log(`publish it with:  tailscale funnel ${port}`);
 });
