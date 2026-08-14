@@ -1319,33 +1319,33 @@
   </div>
 </div>
 
-<script src="src/raster.js?v=183"></script>
-<script src="data/i40.js?v=183"></script>
-<script src="src/road.js?v=183"></script>
-<script src="src/world.js?v=183"></script>
-<script src="src/draw.js?v=183"></script>
+<script src="src/raster.js?v=184"></script>
+<script src="data/i40.js?v=184"></script>
+<script src="src/road.js?v=184"></script>
+<script src="src/world.js?v=184"></script>
+<script src="src/draw.js?v=184"></script>
 <!-- impact.js is pure and has no dependencies; skill.js reads one
      constant off it, so it comes second. Both before offramp.js. -->
-<script src="src/impact.js?v=183"></script>
+<script src="src/impact.js?v=184"></script>
 <!-- The counted data before the model that reads it: src/traffic.js
      resolves I40_TRAFFIC at module-init time, so loading it first gets
      a model with no counters in it. -->
-<script src="data/traffic.js?v=183"></script>
-<script src="src/traffic.js?v=183"></script>
-<script src="src/sim.js?v=183"></script>
-<script src="src/motive.js?v=183"></script>
-<script src="src/cars.js?v=183"></script>
+<script src="data/traffic.js?v=184"></script>
+<script src="src/traffic.js?v=184"></script>
+<script src="src/sim.js?v=184"></script>
+<script src="src/motive.js?v=184"></script>
+<script src="src/cars.js?v=184"></script>
 <!-- The garage. Pure data plus a derivation, no dependencies, and it
      must load before offramp.js because the initial state reads a row
      out of it. Note the name: src/cars.js above is the traffic on the
      screen and exports `Cars`; this is what YOU drive and exports
      `Garage`. Two different things, and they were briefly one bug. -->
-<script src="data/garage.js?v=183"></script>
+<script src="data/garage.js?v=184"></script>
 <!-- score.js is pure and knows nothing about the garage; progress.js
      reads Garage for the unlock costs, so it comes after. -->
-<script src="src/score.js?v=183"></script>
-<script src="src/progress.js?v=183"></script>
-<script src="src/skill.js?v=183"></script>
-<script src="src/offramp.js?v=183"></script>
+<script src="src/score.js?v=184"></script>
+<script src="src/progress.js?v=184"></script>
+<script src="src/skill.js?v=184"></script>
+<script src="src/offramp.js?v=184"></script>
 </body>
 </html>

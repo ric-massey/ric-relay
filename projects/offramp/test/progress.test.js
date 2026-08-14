@@ -21,6 +21,12 @@ global.localStorage = {
 global.Garage = require("../data/garage.js");
 const Progress = require("../src/progress.js");
 
+/* The garage door is propped open in the shipped file — see ALL_OPEN in
+   src/progress.js, which is temporary. This suite is about the LADDER,
+   so it shuts the door and tests the thing the ladder actually is.
+   Delete this line when the flag goes. */
+Progress.openAll(false);
+
 let pass = 0, fail = 0;
 const near = (a, b, tol) => Math.abs(a - b) <= tol;
 const fmt = (n) => typeof n === "number"

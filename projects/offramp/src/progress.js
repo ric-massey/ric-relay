@@ -104,18 +104,41 @@ const Progress = (() => {
 
   const table = () => (typeof Garage !== "undefined" ? Garage.ALL : []);
 
-  const isUnlocked = (id) => {
-    const c = typeof Garage !== "undefined" ? Garage.get(id) : null;
-    return !!c && P.total >= c.cost;
-  };
+  /* ── the door is propped open ───────────────────────────────────────
+     (Ric, 2026-08-14: "make it so all the cars are unlocked for now.")
 
-  const unlocked = () => table().filter((c) => P.total >= c.cost);
+     TEMPORARY. One line to put the ladder back: set this to false.
+
+     It does NOT touch the ledger, which is the whole reason it is a
+     switch and not a call to `unlockAll()`. That function grants the
+     TOTAL, which is right for someone typing `unlock` — it is meant to
+     be indistinguishable from having earned it — and wrong for this,
+     twice over: it would write 400,000 banked points permanently into
+     the save, so turning this off again would leave everything still
+     open, and every points readout would meanwhile be lying.
+
+     `P.total` therefore stays honest and only the DOOR changes. That
+     does add a second thing deciding availability, which the note on
+     `unlockAll` argues against — the difference is that this one is a
+     constant in the source rather than a value a save could carry, so
+     no ledger can ever disagree with it. It is also why every caller
+     goes through `owns` below and none of them re-implement the test. */
+  let ALL_OPEN = true;
+  const owns = (c) => !!c && (ALL_OPEN || P.total >= c.cost);
+
+  const isUnlocked = (id) =>
+    owns(typeof Garage !== "undefined" ? Garage.get(id) : null);
+
+  const unlocked = () => table().filter(owns);
 
   /* The next thing you have not got, and how far away it is. This is
      what the menu puts a progress bar under, so it returns the gap
      rather than making the caller work it out. */
   function next() {
-    const locked = table().filter((c) => P.total < c.cost);
+    /* `owns`, not `P.total < c.cost` — with the door propped open there
+       is no next rung, and the ladder on the RECORD tab has to say so
+       rather than dangle a target you already have. */
+    const locked = table().filter((c) => !owns(c));
     if (!locked.length) return null;
     const c = locked.reduce((a, b) => (a.cost <= b.cost ? a : b));
     const prev = table().filter((x) => x.cost <= P.total)
@@ -253,6 +276,10 @@ const Progress = (() => {
 
   return {
     load, save, forget, unlockAll,
+    /* So the suite can shut the door and go on testing the real ladder.
+       Without this, propping it open would quietly turn six assertions
+       about unlocking into assertions about nothing. */
+    openAll: (on) => { ALL_OPEN = !!on; },
     endRun, select, chosen, next, unlocked, isUnlocked,
     exportCode, importCode,
     get total() { return P.total; },
