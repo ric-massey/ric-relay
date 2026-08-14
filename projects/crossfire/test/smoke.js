@@ -52,10 +52,48 @@ function checkSyntax() {
     /body\.touch #lobby textarea\s*{[^}]*user-select:\s*text;/s,
     "online codes must remain selectable on mobile"
   );
-  assert.match(html, /state === "over"[\s\S]*?leaveMatch\(\)/,
-    "returning from results must close the online session");
-  assert.match(html, /tapText\("SPACE to return"[\s\S]*?leaveMatch\);/,
-    "the clickable results return must close the online session");
+  assert.match(html, /const MODE_KEYS = \["survival", "royale"\];/,
+    "Survival and Battle Royale must be the only top-level modes");
+  assert.doesNotMatch(html, /MODES\.safe|data-mode="safe"|SURVIVAL — SAFE/,
+    "friendly-fire-free Survival must not remain a separate mode");
+  assert.match(html, /FRIENDLY FIRE: " \+ \(survivalFriendlyFire \? "ON" : "OFF"\)/,
+    "Survival setup must expose its friendly-fire toggle");
+  assert.match(html, /friendlyFire: mode\.friendlyFire/,
+    "online initialization must synchronize the Survival setting");
+  assert.match(html, /tapButton\("PLAY"[\s\S]*?startCountChoice/s,
+    "the setup screen must use an explicit Play button");
+  assert.match(html, /tapButton\(replayLabel[\s\S]*?playAgain/s,
+    "results must offer Play Again");
+  assert.match(html, /tapButton\("MAIN MENU"[\s\S]*?leaveMatch/s,
+    "results must retain a full session exit");
+  assert.match(html, /seated\.forEach\(l => l\.send\(initPacket\(l\.seat\), true\)\);/,
+    "online Play Again must initialize every guest");
+  assert.match(html, /function hazardActive\(h\)[\s\S]*?h\.x >= bounds\.x0/s,
+    "shrinking-wall hazard activity must use the live arena");
+  assert.match(html, /for \(const h of hazards\) \{\s*if \(!hazardActive\(h\)\) continue;/s,
+    "gravity must ignore hazards outside the live arena");
+  assert.match(html, /const p = respawnPoint\(ship\);/,
+    "respawns must choose a point inside the current wall");
+  assert.match(html, /rand\(bounds\.x0 \+ margin, bounds\.x1 - margin\)/,
+    "fallback respawns must retain distance from the current wall");
+  assert.match(html, /const SOUND_STORE = "crossfire\.sound\.v1";/,
+    "sound preference must persist");
+  assert.match(html, /window\.AudioContext \|\| window\.webkitAudioContext/,
+    "sound effects must use the dependency-free Web Audio path");
+  assert.match(html, /gameSound\("shot", ship\.x\)/,
+    "weapon fire must produce sound");
+  assert.match(html, /gameSound\("explode", ship\.x\)/,
+    "ship destruction must produce sound");
+  assert.match(html, /fx: soundEvents\.filter/,
+    "online snapshots must carry recent sound events");
+  assert.match(html, /e\[0\] <= net\.lastSoundSeq/,
+    "online sound events must not replay twice");
+  assert.match(html, /document\.documentElement\.requestFullscreen/,
+    "fullscreen must include the game and its touch controls");
+  assert.match(html, /document\.exitFullscreen \|\| document\.webkitExitFullscreen/,
+    "fullscreen must have an exit path");
+  assert.match(html, /tapButton\(fullscreenLabel\(\)/,
+    "fullscreen must be exposed as a visible game control");
   assert.match(html, /else if \(net\.role === "host"\) readSimulationInput\(\);/,
     "the host must keep remote and bot input current while its menu is open");
   assert.match(html, /t: "s", q: \+\+net\.outSnapSeq/,

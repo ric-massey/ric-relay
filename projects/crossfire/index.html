@@ -6,7 +6,7 @@
 <title>CROSSFIRE — survival, or last ship flying</title>
 <meta name="description" content="CROSSFIRE is bright vector-space combat for 1–5 ships: survive asteroid waves together or fight through a one-minute Battle Royale inside a closing wall.">
 <meta property="og:title" content="CROSSFIRE">
-<meta property="og:description" content="Three modes for 1–5 ships. Survive the rocks together, or be the last ship flying inside a one-minute closing wall.">
+<meta property="og:description" content="Two modes for 1–5 ships. Survive the rocks together with optional friendly fire, or be the last ship flying inside a one-minute closing wall.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230a0a0a'/><path d='M76 50 L34 72 L44 50 L34 28 Z' fill='none' stroke='%23ffc233' stroke-width='6' stroke-linejoin='round'/></svg>">
 <script src="../relay-return.js" data-home="../../index.html" defer></script>
 <script src="net.js"></script>
@@ -363,16 +363,16 @@
 </head>
 <body>
 
-<h1 class="sr-only">CROSSFIRE — Asteroids in three modes</h1>
+<h1 class="sr-only">CROSSFIRE — Asteroids in two modes</h1>
 <p class="sr-only">
   A local or peer-to-peer online space combat game for one to five ships. Survival puts
-  every ship on the same side against a field of drifting rocks, sharing one pool of lives, with friendly fire on —
-  a shot that hits your partner destroys them and costs the team a life. Survival Safe is
-  the same game with shots passing harmlessly through your partner. Battle Royale is a
+  every ship on the same side against a field of drifting rocks, sharing one pool of lives.
+  Friendly fire is optional: when enabled, a shot that hits your partner destroys them and
+  costs the team a life. Battle Royale is a
   larger arena where every ship is an enemy and each has three lives. A bullet or
   asteroid collision damages the ship's two-hit hull; the next hit costs a life. The
   arena wall closes inward until only one ship is left flying, around stationary stars
-  and black holes that pull ships, rocks and shots towards them. In the survival modes the field
+  and black holes that pull ships, rocks and shots towards them. In Survival the field
   wraps: fly off one edge and you arrive at the opposite one, and so do the rocks and the
   shots. Battle royale has solid walls instead — ships bounce off them and bullets are
   destroyed by them. Once the walls close, they pass over rocks instead of pushing them.
@@ -467,7 +467,7 @@
     <div class="modes" id="rowStart" hidden>
       <span class="step">Choose a game mode.</span>
       <button type="button" data-mode="survival">survival</button>
-      <button type="button" data-mode="safe">survival — safe</button>
+      <button id="onlineFriendlyFire" type="button">friendly fire: on</button>
       <button type="button" data-mode="royale">battle royale</button>
     </div>
 
@@ -525,16 +525,9 @@
   const MODES = {
     survival: {
       name: "SURVIVAL",
-      blurb: "one side · one pile of lives · friendly fire ON",
+      blurb: "one side · one pile of lives · optional friendly fire",
       arena: { w: 1300, h: 910 },
       pvp: false, friendlyFire: true, closing: false, wrap: true,
-      camera: false, hazards: 0, minPlayers: 1
-    },
-    safe: {
-      name: "SURVIVAL — SAFE",
-      blurb: "one side · one pile of lives · shots pass through your own",
-      arena: { w: 1300, h: 910 },
-      pvp: false, friendlyFire: false, closing: false, wrap: true,
       camera: false, hazards: 0, minPlayers: 1
     },
     royale: {
@@ -566,7 +559,7 @@
   const FF_PENALTY   = 100;
   const ROYALE_STOCKS = 3;
   const ROYALE_HULL   = 2;
-  // Tuned to give roughly the same rocks-per-screen as the survival modes,
+  // Tuned to give roughly the same rocks-per-screen as Survival,
   // across a map sixteen screens across. Culling means most are never drawn.
   const ROYALE_ROCKS = 84;
 
@@ -923,11 +916,124 @@
 
   const KEY_STORE = "crossfire.keys.v1";
   const CAMERA_STORE = "crossfire.camera.v1";
+  const SOUND_STORE = "crossfire.sound.v1";
   let royaleCameraRotates = false;
+  let soundEnabled = true;
+  let audioCtx = null, audioMaster = null, audioNoise = null;
 
   try {
     royaleCameraRotates = localStorage.getItem(CAMERA_STORE) === "rotating";
+    soundEnabled = localStorage.getItem(SOUND_STORE) !== "off";
   } catch (_) {}
+
+  function audioUnlock() {
+    if (!soundEnabled) return null;
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) return null;
+    if (!audioCtx) {
+      audioCtx = new Audio();
+      audioMaster = audioCtx.createGain();
+      audioMaster.gain.value = 0.24;
+      audioMaster.connect(audioCtx.destination);
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    return audioCtx;
+  }
+
+  function soundOutput(pan, gain) {
+    const g = audioCtx.createGain();
+    g.gain.value = gain;
+    if (typeof audioCtx.createStereoPanner === "function") {
+      const p = audioCtx.createStereoPanner();
+      p.pan.value = Math.max(-1, Math.min(1, pan || 0));
+      g.connect(p); p.connect(audioMaster);
+    } else {
+      g.connect(audioMaster);
+    }
+    return g;
+  }
+
+  function soundTone(freq, endFreq, duration, gain, type, pan, delay) {
+    if (!audioUnlock()) return;
+    const now = audioCtx.currentTime + (delay || 0);
+    const osc = audioCtx.createOscillator();
+    const out = soundOutput(pan, gain);
+    osc.type = type || "square";
+    osc.frequency.setValueAtTime(Math.max(20, freq), now);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq || freq), now + duration);
+    out.gain.setValueAtTime(gain, now);
+    out.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    osc.connect(out); osc.start(now); osc.stop(now + duration + 0.02);
+  }
+
+  function soundNoise(duration, gain, pan) {
+    if (!audioUnlock()) return;
+    if (!audioNoise) {
+      audioNoise = audioCtx.createBuffer(1, Math.ceil(audioCtx.sampleRate * 0.45),
+                                         audioCtx.sampleRate);
+      const data = audioNoise.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    }
+    const now = audioCtx.currentTime;
+    const src = audioCtx.createBufferSource();
+    const out = soundOutput(pan, gain);
+    src.buffer = audioNoise;
+    out.gain.setValueAtTime(gain, now);
+    out.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    src.connect(out); src.start(now); src.stop(now + duration);
+  }
+
+  function playSfx(kind, pan) {
+    if (!soundEnabled || !audioUnlock()) return;
+    if (kind === "shot") soundTone(210, 75, 0.07, 0.055, "square", pan);
+    else if (kind === "hit") {
+      soundNoise(0.1, 0.045, pan); soundTone(120, 62, 0.12, 0.05, "sawtooth", pan);
+    } else if (kind === "rock") {
+      soundNoise(0.16, 0.055, pan); soundTone(95, 48, 0.16, 0.04, "triangle", pan);
+    } else if (kind === "explode") {
+      soundNoise(0.34, 0.13, pan); soundTone(105, 32, 0.38, 0.09, "sawtooth", pan);
+    } else if (kind === "start") {
+      soundTone(220, 220, 0.11, 0.045, "triangle", 0, 0);
+      soundTone(330, 330, 0.11, 0.045, "triangle", 0, 0.1);
+      soundTone(440, 440, 0.16, 0.055, "triangle", 0, 0.2);
+    } else if (kind === "win") {
+      soundTone(330, 440, 0.18, 0.06, "triangle", 0, 0);
+      soundTone(440, 660, 0.24, 0.07, "triangle", 0, 0.16);
+    } else if (kind === "lose") {
+      soundTone(220, 110, 0.28, 0.065, "sawtooth", 0, 0);
+      soundTone(140, 55, 0.34, 0.055, "sawtooth", 0, 0.2);
+    }
+  }
+
+  function toggleSound() {
+    soundEnabled = !soundEnabled;
+    try { localStorage.setItem(SOUND_STORE, soundEnabled ? "on" : "off"); } catch (_) {}
+    if (audioMaster) audioMaster.gain.value = soundEnabled ? 0.24 : 0;
+    if (soundEnabled) { audioUnlock(); playSfx("start", 0); }
+  }
+
+  const fullscreenElement = () =>
+    document.fullscreenElement || document.webkitFullscreenElement || null;
+  const fullscreenSupported = () => !!(
+    document.fullscreenEnabled || document.documentElement.requestFullscreen ||
+    document.documentElement.webkitRequestFullscreen
+  );
+  const fullscreenLabel = () => fullscreenElement() ? "EXIT FULLSCREEN" : "FULLSCREEN";
+
+  function toggleFullscreen() {
+    const leaving = fullscreenElement();
+    const action = leaving
+      ? (document.exitFullscreen || document.webkitExitFullscreen)
+      : (document.documentElement.requestFullscreen ||
+         document.documentElement.webkitRequestFullscreen);
+    if (!action) return;
+    try {
+      const result = action.call(leaving ? document : document.documentElement);
+      if (result && typeof result.catch === "function") result.catch(() => {});
+    } catch (_) {}
+  }
+
+  addEventListener("pointerdown", audioUnlock, { passive: true });
 
   function toggleRoyaleCamera() {
     royaleCameraRotates = !royaleCameraRotates;
@@ -1108,6 +1214,7 @@
   ]);
 
   addEventListener("keydown", e => {
+    audioUnlock();
     // While the online panel is up the keyboard belongs to it — you're pasting
     // a code, and a stray space shouldn't fire a gun or start a match.
     const lob = document.getElementById("lobby");
@@ -1163,12 +1270,13 @@
 
   let ships = [], rocks = [], bullets = [], bits = [], hazards = [], motes = [];
   let killFeed = [];
+  let soundEvents = [], soundEventSeq = 0;
   let score = 0, lives = 0, wave = 0, ffCount = 0, players = 2;
   let clock = 0, topUp = 0;
   let banner = null;
   let outcome = null;         // set when a match ends
 
-  /* The camera is the one view of the world. In the survival modes it sits
+  /* The camera is the one view of the world. In Survival it sits
      still and frames the whole arena. In Battle Royale it follows `watching`
      through a map far bigger than the screen; online, that is the ship owned or
      spectated by this machine. */
@@ -1177,14 +1285,31 @@
   let botPick = 0;        // bots to add on the setup screen
   let titlePick = 0;      // visible arrow-key focus on the title screen
   let countPick = 0;      // zero-based local-player choice
+  let survivalFriendlyFire = true;
+  let lastSetup = { modeKey: "survival", humans: 1, bots: 0 };
   let backFrom = "title"; // which screen the controls page returns to
 
-  const MODE_KEYS = ["survival", "safe", "royale"];
+  function soundPan(x) {
+    if (!mode.camera || typeof x !== "number") return 0;
+    const halfView = SCREEN_W / (2 * Math.max(0.01, cam.scale));
+    return Math.max(-1, Math.min(1, (x - cam.x) / halfView));
+  }
+
+  function gameSound(kind, x) {
+    playSfx(kind, soundPan(x));
+    if (net.role === "host") {
+      soundEvents.push({ q: ++soundEventSeq, k: kind, x, at: clock });
+      if (soundEvents.length > 32) soundEvents.shift();
+    }
+  }
+
+  const MODE_KEYS = ["survival", "royale"];
 
   function chooseMode(key) {
     pendingMode = key;
     titlePick = Math.max(0, MODE_KEYS.indexOf(key));
     countPick = 0;
+    botPick = 0;
     state = "count";
   }
 
@@ -1194,6 +1319,28 @@
     const allowed = n >= m.minPlayers ||
       n + Math.min(botPick, MAX_PLAYERS - n) >= m.minPlayers;
     if (allowed) startGame(pendingMode, n, botPick);
+  }
+
+  function selectHumanCount(n) {
+    countPick = Math.max(0, Math.min(humanMax() - 1, n - 1));
+    botPick = Math.min(botPick, MAX_PLAYERS - (countPick + 1));
+  }
+
+  function cycleBots() {
+    const max = MAX_PLAYERS - (countPick + 1);
+    botPick = max > 0 ? (botPick + 1) % (max + 1) : 0;
+  }
+
+  function paintFriendlyFireButton() {
+    const button = document.getElementById("onlineFriendlyFire");
+    if (button) {
+      button.textContent = "friendly fire: " + (survivalFriendlyFire ? "on" : "off");
+    }
+  }
+
+  function toggleFriendlyFire() {
+    survivalFriendlyFire = !survivalFriendlyFire;
+    paintFriendlyFireButton();
   }
 
   const rand = (a, b) => a + Math.random() * (b - a);
@@ -1350,7 +1497,8 @@
       const y = rand(bounds.y0 + clearance, bounds.y1 - clearance);
       if (ships.some(s => s.alive && gap2(x, y, s.x, s.y) < (190 * U) ** 2)) continue;
       // Don't drop a rock straight down a well — it's eaten before it's drawn.
-      if (hazards.some(h => dist2(x, y, h.x, h.y) < (h.kill + clearance + 60) ** 2)) continue;
+      if (hazards.some(h => hazardActive(h) &&
+                          dist2(x, y, h.x, h.y) < (h.kill + clearance + 60) ** 2)) continue;
       return { x, y };
     }
     return { x: rand(bounds.x0, bounds.x1), y: rand(bounds.y0, bounds.y1) };
@@ -1430,6 +1578,7 @@
     padRelease();
 
     mode = MODES[modeKey];
+    if (modeKey === "survival") mode.friendlyFire = survivalFriendlyFire;
     arena = mode.arena;
     // With a camera the world is simply big, so ships stay their natural size.
     // Without one the whole arena is squeezed onto the screen, so everything
@@ -1440,6 +1589,7 @@
     // Humans first, then bots fill the remaining ships. Five in total, always.
     const humans = Math.max(1, Math.min(MAX_PLAYERS, n));
     const bots = Math.max(0, Math.min(MAX_PLAYERS - humans, botCount || 0));
+    lastSetup = { modeKey, humans, bots };
     players = Math.max(mode.minPlayers, humans + bots);
     ships = [];
     for (let i = 0; i < players; i++) {
@@ -1452,8 +1602,9 @@
     score = 0; wave = 0; ffCount = 0; clock = 0; topUp = 0;
     lives = 2 + 2 * players;   // co-op only
     banner = null; outcome = null; killFeed = [];
+    soundEvents = []; soundEventSeq = 0;
     net.outSnapSeq = net.outRockSeq = net.outInputSeq = 0;
-    net.lastSnapSeq = net.lastRockSeq = 0;
+    net.lastSnapSeq = net.lastRockSeq = net.lastSoundSeq = 0;
     watching = 0;
     state = "playing";
 
@@ -1485,6 +1636,7 @@
       spawnWave();
     }
 
+    playSfx("start", 0);
     matchStarted();
   }
 
@@ -1548,25 +1700,21 @@
       if (code === "KeyC") { backFrom = "count"; state = settingsScreen(); return; }
       const d = digit(code);
       if (code === "ArrowLeft" || code === "ArrowUp") {
-        countPick = (countPick + humanMax() - 1) % humanMax();
+        selectHumanCount((countPick + humanMax() - 1) % humanMax() + 1);
       }
       if (code === "ArrowRight" || code === "ArrowDown") {
-        countPick = (countPick + 1) % humanMax();
+        selectHumanCount((countPick + 1) % humanMax() + 1);
       }
       if (code === "KeyB") {
-        botPick = (botPick + 1) % MAX_PLAYERS;   // 0…4 bots
+        cycleBots();
       }
       // Battle royale needs someone to fight — but a bot counts as someone.
-      if (d >= 1 && d <= humanMax()) {
-        countPick = d - 1;
-        if (d + Math.min(botPick, MAX_PLAYERS - d) >= MODES[pendingMode].minPlayers) {
-          startGame(pendingMode, d, botPick);
-        }
-      }
+      if (d >= 1 && d <= humanMax()) selectHumanCount(d);
       if (code === "Enter" || code === "Space") startCountChoice();
       if (code === "Escape" || code === "Backspace") state = "title";
     } else if (state === "over") {
-      if (code === "Space" || code === "Enter") leaveMatch();
+      if (code === "Space" || code === "Enter") playAgain();
+      if (code === "Escape" || code === "Backspace") leaveMatch();
     } else if (state === "playing" || state === "paused" || state === "menu") {
       if (code === "KeyP" || code === "Escape") {
         state = state === "playing" ? (net.on ? "menu" : "paused") : "playing";
@@ -1667,7 +1815,7 @@
   }
 
   /* ── the edge of the world ────────────────────────────────────────────────
-     Off one side and on at the other: the survival modes are the open field
+     Off one side and on at the other: Survival is the open field
      the original game had, where nothing can corner you and a rock you flee
      from arrives behind you. Battle royale keeps its walls, because a wall
      that closes in is the whole shape of that mode and there is nothing to
@@ -1726,6 +1874,15 @@
     }
   }
 
+  // Once the shrinking wall has passed a hazard, that hazard is no longer in
+  // the playable arena. It stays fixed in world space but cannot pull or kill
+  // through the wall from outside it.
+  function hazardActive(h) {
+    return !mode.closing ||
+      (h.x >= bounds.x0 && h.x <= bounds.x1 &&
+       h.y >= bounds.y0 && h.y <= bounds.y1);
+  }
+
   /* ── gravity ─────────────────────────────────────────────────────────────
      Applied to anything with a velocity: ships, rocks and bullets. Bullets
      matter most — a shot fired past a black hole curves, so the hazards change
@@ -1735,6 +1892,7 @@
   function applyGravity(o, dt) {
     let pull = 0;
     for (const h of hazards) {
+      if (!hazardActive(h)) continue;
       const dx = h.x - o.x, dy = h.y - o.y;
       const d2 = dx * dx + dy * dy;
       if (d2 > h.reach * h.reach) continue;
@@ -1802,6 +1960,7 @@
   // Returns the hazard that just swallowed this point, if any.
   function hazardAt(x, y, r) {
     for (const h of hazards) {
+      if (!hazardActive(h)) continue;
       if (dist2(x, y, h.x, h.y) < (h.kill + r) ** 2) return h;
     }
     return null;
@@ -1843,6 +2002,7 @@
       ship.hull--;
       ship.invuln = Math.max(ship.invuln, HIT_SHIELD);
       burst(ship.x, ship.y, ship.colour, 10, 150 * U);
+      gameSound("hit", ship.x);
       return false;
     }
     killShip(ship, cause, shooter);
@@ -1874,6 +2034,7 @@
     ship.killedBy = shooter && shooter !== ship ? shooter.id : null;
     if (cause !== "shot" && cause !== "ff") ship.envDeaths++;
     burst(ship.x, ship.y, ship.colour, 22, 240 * U);
+    gameSound("explode", ship.x);
 
     if (mode.pvp) {
       if (shooter && shooter !== ship) shooter.kills++;
@@ -1922,6 +2083,7 @@
     // straight through the result screen.
     banner = null;
     state = "over";
+    gameSound(result.kind === "winner" ? "win" : "lose");
   }
 
   function checkRoyaleEnd() {
@@ -1945,6 +2107,7 @@
       vy: Math.sin(ship.a) * BULLET_SPD * U + ship.vy,
       life: BULLET_LIFE * U
     });
+    gameSound("shot", ship.x);
     return true;
   }
 
@@ -1956,6 +2119,7 @@
     rock.flash = 0.13;
     if (rock.hp > 0) {
       burst(b.x, b.y, "#ffcb42", 4, 120 * U);
+      gameSound("hit", rock.x);
       const sp = Math.hypot(b.vx, b.vy) || 1;
       const knock = 26 * U / Math.max(1, rock.r / 30);
       rock.vx += (b.vx / sp) * knock;
@@ -1970,6 +2134,7 @@
     const next = spec.next;
     score += spec.score;
     burst(rock.x, rock.y, "#ffcb42", rock.size === "big" ? 16 : 10, 170 * U);
+    gameSound("rock", rock.x);
     const i = rocks.indexOf(rock);
     if (i >= 0) rocks.splice(i, 1);
     if (next) {
@@ -2016,7 +2181,8 @@
     }
   }
 
-  // Whose shots can hurt whom. The one line the three modes really differ on.
+  // Whose shots can hurt whom. Survival reads its setup toggle; Battle Royale
+  // always allows opponents to damage one another.
   const canHit = (shooter, target) =>
     shooter !== target.id && (mode.pvp || mode.friendlyFire);
 
@@ -2025,9 +2191,44 @@
     if (rocks.some(k => gap2(x, y, k.x, k.y) < (k.r + 95 * U) ** 2)) return false;
     if (ships.some(s => s.alive && gap2(x, y, s.x, s.y) < (r * 3) ** 2)) return false;
     // Respawning inside a gravity well is a death sentence you didn't earn.
-    if (hazards.some(h => dist2(x, y, h.x, h.y) < (h.kill + 220) ** 2)) return false;
+    if (hazards.some(h => hazardActive(h) &&
+                        dist2(x, y, h.x, h.y) < (h.kill + 220) ** 2)) return false;
     return x > bounds.x0 + r && x < bounds.x1 - r &&
            y > bounds.y0 + r && y < bounds.y1 - r;
+  }
+
+  // The original spawn ring belongs to the full map. After the wall moves it
+  // may be outside the arena, so find clear space inside the wall instead of
+  // clamping that old point onto an edge where the ship cannot escape.
+  function respawnPoint(ship) {
+    const preferred = spawnPoint(ship.id, players);
+    if (spotIsClear(preferred.x, preferred.y)) return preferred;
+
+    const cx = (bounds.x0 + bounds.x1) / 2;
+    const cy = (bounds.y0 + bounds.y1) / 2;
+    const room = Math.min(bounds.x1 - bounds.x0, bounds.y1 - bounds.y0);
+    const margin = Math.min(90 * U, room * 0.22);
+    let best = { x: cx, y: cy }, bestGap = -Infinity;
+
+    for (let tries = 0; tries < 80; tries++) {
+      const x = tries === 0 ? cx : rand(bounds.x0 + margin, bounds.x1 - margin);
+      const y = tries === 0 ? cy : rand(bounds.y0 + margin, bounds.y1 - margin);
+      if (spotIsClear(x, y)) {
+        return { x, y, a: Math.atan2(cy - y, cx - x) };
+      }
+
+      let gap = Math.min(x - bounds.x0, bounds.x1 - x,
+                         y - bounds.y0, bounds.y1 - y);
+      for (const r of rocks) gap = Math.min(gap, Math.sqrt(gap2(x, y, r.x, r.y)) - r.r);
+      for (const s of ships) {
+        if (s !== ship && s.alive) gap = Math.min(gap, Math.sqrt(gap2(x, y, s.x, s.y)));
+      }
+      for (const h of hazards) {
+        if (hazardActive(h)) gap = Math.min(gap, Math.hypot(x - h.x, y - h.y) - h.kill);
+      }
+      if (gap > bestGap) { bestGap = gap; best = { x, y }; }
+    }
+    return { x: best.x, y: best.y, a: Math.atan2(cy - best.y, cx - best.x) };
   }
 
   /* ── networking ──────────────────────────────────────────────────────────
@@ -2061,6 +2262,7 @@
     outInputSeq: 0,
     lastSnapSeq: 0,
     lastRockSeq: 0,
+    lastSoundSeq: 0,
     status: "",
     get on() { return this.role !== null; }
   };
@@ -2086,7 +2288,7 @@
     net.role = null; net.seat = 0; net.inputs = {};
     net.lastSnap = net.prevSnap = null;
     net.outSnapSeq = net.outRockSeq = net.outInputSeq = 0;
-    net.lastSnapSeq = net.lastRockSeq = 0;
+    net.lastSnapSeq = net.lastRockSeq = net.lastSoundSeq = 0;
     net.status = "";
     // Back to seat-is-colour and nameless, which is what the keyboard players
     // expect: two people at one keyboard know which of them is green.
@@ -2098,7 +2300,7 @@
   // What a guest needs once, to build a world that matches the host's.
   function initPacket(seat) {
     return {
-      t: "init", seat, skins, names,
+      t: "init", seat, skins, names, friendlyFire: mode.friendlyFire,
       mode: modeKeyOf(mode), players,
       arena, u: U,
       hazards: hazards.map(h => ({ k: h.kind, x: h.x, y: h.y, kill: h.kill,
@@ -2127,6 +2329,8 @@
       bu: bullets.map(b => [Math.round(b.x), Math.round(b.y),
                             Math.round(b.vx), Math.round(b.vy), b.owner]),
       kf: killFeed.map(e => [e.source, e.victim, e.colour, +e.until.toFixed(2)]),
+      fx: soundEvents.filter(e => clock - e.at < 1.25)
+        .map(e => [e.q, e.k, Math.round(e.x == null ? arena.w / 2 : e.x)]),
       o: outcome ? { k: outcome.kind, s: outcome.ship ? outcome.ship.id : -1,
                      ot: !!outcome.onTime } : null,
       bn: banner ? { x: banner.text, s: banner.sub, t: banner.t, c: banner.colour } : null
@@ -2244,6 +2448,13 @@
     killFeed = Array.isArray(msg.kf)
       ? msg.kf.map(e => ({ source: e[0], victim: e[1], colour: e[2], until: e[3] }))
       : [];
+    if (Array.isArray(msg.fx)) {
+      for (const e of msg.fx) {
+        if (!Number.isInteger(e[0]) || e[0] <= net.lastSoundSeq) continue;
+        net.lastSoundSeq = e[0];
+        playSfx(e[1], soundPan(e[2]));
+      }
+    }
 
     outcome = msg.o
       ? { kind: msg.o.k, ship: msg.o.s >= 0 ? ships[msg.o.s] : null, onTime: msg.o.ot }
@@ -2256,11 +2467,12 @@
     // host's and the two worlds quietly drift apart.
     net.role = "guest";
     net.seat = msg.seat;
-    net.lastSnapSeq = net.lastRockSeq = 0;
+    net.lastSnapSeq = net.lastRockSeq = net.lastSoundSeq = 0;
     net.outInputSeq = 0;
     if (Array.isArray(msg.skins)) skins = msg.skins.slice();
     if (Array.isArray(msg.names)) names = msg.names.map(tidyName);
     mode = MODES[msg.mode];
+    if (msg.mode === "survival") mode.friendlyFire = msg.friendlyFire !== false;
     arena = msg.arena;
     U = msg.u;
     players = msg.players;
@@ -2290,6 +2502,7 @@
     clampCam();
     state = "playing";
     net.status = "";
+    playSfx("start", 0);
     matchStarted();
   }
 
@@ -2382,6 +2595,7 @@
 
     // 1. Climb out of any well it has drifted into.
     for (const h of hazards) {
+      if (!hazardActive(h)) continue;
       const dx = sepX(h.x, s.x), dy = sepY(h.y, s.y);
       const d = Math.hypot(dx, dy);
       if (d < h.reach * 0.75) {
@@ -2462,7 +2676,7 @@
 
     const range = BULLET_SPD * U * BULLET_LIFE * U * 0.9;
     if (!urgent && target && Math.abs(diff) < 0.14 && targetDist < range) {
-      // Don't shoot a team-mate in the back in the co-op modes.
+      // Don't shoot a team-mate in the back in co-op Survival.
       const blocked = !mode.pvp && mode.friendlyFire && ships.some(o => {
         if (o === s || !o.alive) return false;
         const dx = sepX(o.x, s.x), dy = sepY(o.y, s.y);
@@ -2640,17 +2854,19 @@
 
       if (!ship.alive) {
         ship.respawn -= dt;
-        const p = spawnPoint(ship.id, players);
         // Waiting for a clear spot can't wait forever — a rock parked on the
         // spawn point would bench a player for the whole match.
-        if (ship.respawn <= 0 && (spotIsClear(p.x, p.y) || ship.respawn < -3)) {
-          ship.x = Math.min(Math.max(p.x, bounds.x0 + shipR), bounds.x1 - shipR);
-          ship.y = Math.min(Math.max(p.y, bounds.y0 + shipR), bounds.y1 - shipR);
-          ship.vx = ship.vy = 0;
-          ship.a = p.a;
-          ship.alive = true;
-          ship.hull = ROYALE_HULL;
-          ship.invuln = INVULN;
+        if (ship.respawn <= 0) {
+          const p = respawnPoint(ship);
+          if (spotIsClear(p.x, p.y) || ship.respawn < -3) {
+            ship.x = p.x;
+            ship.y = p.y;
+            ship.vx = ship.vy = 0;
+            ship.a = p.a;
+            ship.alive = true;
+            ship.hull = ROYALE_HULL;
+            ship.invuln = INVULN;
+          }
         }
         continue;
       }
@@ -2680,7 +2896,7 @@
       const sp = Math.hypot(ship.vx, ship.vy);
       // Gravity is allowed to throw you past your own engine's top speed —
       // being unable to pull out of a well is the whole threat of one. Clear of
-      // any well, the ordinary limit applies again, so the survival modes fly
+      // any well, the ordinary limit applies again, so Survival flies
       // exactly as they did before hazards existed.
       const max = MAX_SPEED * U * (pull > 1 ? 1.9 : 1);
       if (sp > max) { ship.vx *= max / sp; ship.vy *= max / sp; }
@@ -3110,6 +3326,7 @@
     ctx.globalAlpha = 1;
 
     for (const hz of hazards) {
+      if (!hazardActive(hz)) continue;
       ctx.beginPath();
       ctx.arc(mx(hz.x), my(hz.y), hz.kind === "hole" ? 3 : 4, 0, Math.PI * 2);
       if (hz.kind === "hole") {
@@ -3327,7 +3544,7 @@
     text("WAVE " + wave, SCREEN_W / 2, 36, 20, "#ffcb42");
 
     // Lives are one shared pile — drawn as a single row, not per-player,
-    // because that's the whole point of the co-op modes.
+    // because that's the whole point of co-op Survival.
     for (let i = 0; i < lives; i++) shipPip(SCREEN_W - 24 - i * 20, 30, "#ffe56d", 0.85);
     text("SHARED", SCREEN_W - 24, 52, 12, "#ffcb42", "right");
 
@@ -3352,16 +3569,21 @@
          SCREEN_W / 2, 205, 13, "#ffcb42", "center", 0.9);
 
     const rows = [
-      ["survival", MODES.survival.name, "FRIENDLY FIRE ACTIVATED",   "#ffe56d"],
-      ["safe",     MODES.safe.name,     "FRIENDLY FIRE DEACTIVATED", "#6dffbf"],
-      ["royale",   MODES.royale.name,   "",                           "#ff8f77"]
+      ["survival", MODES.survival.name, "CO-OP · FRIENDLY FIRE OPTIONAL", "#ffe56d"],
+      ["royale",   MODES.royale.name,   "",                              "#ff8f77"]
     ];
     rows.forEach(([key, name, blurb, colour], i) => {
-      const y = 250 + i * 96;
+      const y = 280 + i * 120;
       tapButton(name, SCREEN_W / 2, y, 560, 52, colour,
                 () => chooseMode(key), titlePick === i);
       if (blurb) text(blurb, SCREEN_W / 2, y + 44, 17, "#ffcb42");
     });
+
+    tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
+              385, 500, 210, 40, soundEnabled ? "#ffe56d" : "#ffcb42",
+              toggleSound, soundEnabled);
+    tapButton(fullscreenLabel(), 615, 500, 210, 40, "#ffe56d",
+              toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
 
     text(touchOnly
            ? "one player per phone · up to five online, a screen each"
@@ -3394,41 +3616,54 @@
     const step = 200;
     const x0 = SCREEN_W / 2 - step * (most - 1) / 2;
     for (let i = 1; i <= most; i++) {
-      const allowed = i >= m.minPlayers ||
-                      i + Math.min(botPick, MAX_PLAYERS - i) >= m.minPlayers;
       const n = i;
       tapButton(i + (i === 1 ? " PLAYER" : " PLAYERS"),
                 x0 + (i - 1) * step, 260, 174, 52,
-                allowed ? PLAYERS[i - 1].colour : "#ffcb42",
-                () => { countPick = n - 1; startGame(pendingMode, n, botPick); },
-                countPick === i - 1, allowed);
+                PLAYERS[i - 1].colour,
+                () => selectHumanCount(n),
+                countPick === i - 1);
     }
     // Bots fill the seats nobody is sitting in — which, with two hands to a
     // keyboard, is how a five-ship match gets its other ships.
     tapButton("BOTS: " + (botPick === 0 ? "NONE — CLICK TO ADD" : botPick),
               SCREEN_W / 2, 326, 320, 42,
               botPick ? "#ffe56d" : "#ffcb42",
-              () => { botPick = (botPick + 1) % MAX_PLAYERS; });
+              cycleBots);
     text(m.minPlayers > 1
            ? "battle royale needs two ships — a bot counts"
            : "bots take the seats nobody is sitting in",
          SCREEN_W / 2, 360, 13, "#ffcb42");
 
+    let playY = 390;
+    if (pendingMode === "survival") {
+      tapButton("FRIENDLY FIRE: " + (survivalFriendlyFire ? "ON" : "OFF"),
+                SCREEN_W / 2, 395, 360, 42,
+                survivalFriendlyFire ? "#ff8f77" : "#6dffbf",
+                toggleFriendlyFire, survivalFriendlyFire);
+      playY = 445;
+    }
+
+    const humans = countPick + 1;
+    const canPlay = humans + Math.min(botPick, MAX_PLAYERS - humans) >= m.minPlayers;
+    tapButton("PLAY", SCREEN_W / 2, playY, 300, 46, "#ffe56d",
+              startCountChoice, false, canPlay);
+
     // Who is who, and which keys are theirs.
-    text("CONTROLS", SCREEN_W / 2, 404, 15, "#ffcb42");
+    const controlsY = playY + 56;
+    text("CONTROLS", SCREEN_W / 2, controlsY, 15, "#ffcb42");
     keyRows().slice(0, most).forEach((p, i) => {
-      const y = 436 + i * 32;
+      const y = controlsY + 32 + i * 32;
       text(p.label, SCREEN_W / 2 - 150, y, 17, p.colour, "right");
       text(hintOf(p), SCREEN_W / 2 - 130, y, 15, "#ffcb42", "left");
     });
     text(touchOnly
            ? "a stick and a fire button appear the moment you touch the screen"
            : "more than two? play online — one screen each",
-         SCREEN_W / 2, 436 + most * 32 + 14, 13, "#ffcb42");
+         SCREEN_W / 2, controlsY + 46 + most * 32, 13, "#ffcb42");
 
-    tapButton("BACK", 350, 620, 240, 44, "#ffcb42", () => { state = "title"; });
+    tapButton("BACK", 350, 650, 240, 44, "#ffcb42", () => { state = "title"; });
     tapButton(touchOnly ? "PHONE SETTINGS" : "CONTROL SETTINGS",
-              650, 620, 240, 44, "#ffe56d",
+              650, 650, 240, 44, "#ffe56d",
               () => { backFrom = "count"; state = settingsScreen(); });
   }
 
@@ -3523,11 +3758,16 @@
       keysChanged();
       note("Selected key cleared.");
     });
-    tapButton("PHONE CONTROLS", SCREEN_W / 2, 530, 420, 46, "#ffe56d", () => {
+    tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
+              320, 530, 280, 42, soundEnabled ? "#ffe56d" : "#ffcb42",
+              toggleSound, soundEnabled);
+    tapButton(fullscreenLabel(), 680, 530, 280, 42, "#ffe56d",
+              toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
+    tapButton("PHONE CONTROLS", SCREEN_W / 2, 584, 420, 44, "#ffe56d", () => {
       binder.listening = false;
       state = "thumb";
     });
-    tapButton("BACK", SCREEN_W / 2, 604, 320, 46, "#ffcb42", () => {
+    tapButton("BACK", SCREEN_W / 2, 642, 320, 44, "#ffcb42", () => {
       binder.listening = false;
       state = backFrom || "title";
     });
@@ -3603,6 +3843,11 @@
 
     tapButton("SWAP SIDES", 300, 458, 280, 40, "#ffe56d", padMirror);
     tapButton("RESET PHONE CONTROLS", 700, 458, 280, 40, "#ffcb42", padReset);
+    tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
+              300, 516, 280, 40, soundEnabled ? "#ffe56d" : "#ffcb42",
+              toggleSound, soundEnabled);
+    tapButton(fullscreenLabel(), 700, 516, 280, 40, "#ffe56d",
+              toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
 
   }
 
@@ -3656,8 +3901,13 @@
              SCREEN_W / 2, 424, 17, "#ff8f77", "center", 0.9);
       }
     }
-    tapText("SPACE to return", SCREEN_W / 2, outcome && outcome.kind === "winner" ? 636 : 532, 18, "#ffcb42",
-            leaveMatch);
+    const actionY = outcome && outcome.kind === "winner" ? 636 : 520;
+    const replayable = canPlayAgain();
+    const replayLabel = net.role === "guest" ? "WAITING FOR HOST"
+      : replayable ? "PLAY AGAIN" : "NEED ANOTHER PLAYER";
+    tapButton(replayLabel, 350, actionY, 260, 44, "#ffe56d",
+              playAgain, false, replayable);
+    tapButton("MAIN MENU", 650, actionY, 260, 44, "#ffcb42", leaveMatch);
   }
 
   /* Paused is where you end up when something needs sorting out, so it is
@@ -3679,9 +3929,14 @@
       backFrom = online ? "menu" : "paused";
       state = settingsScreen();
     });
-    tapText("[Q]  QUIT TO MENU", SCREEN_W / 2, mid + 112, 22, "#ffcb42", leaveMatch);
+    tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
+              350, mid + 116, 260, 40, soundEnabled ? "#ffe56d" : "#ffcb42",
+              toggleSound, soundEnabled);
+    tapButton(fullscreenLabel(), 650, mid + 116, 260, 40, "#ffe56d",
+              toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
+    tapText("[Q]  QUIT TO MENU", SCREEN_W / 2, mid + 170, 22, "#ffcb42", leaveMatch);
     if (net.on) {
-      text("quitting drops the others too", SCREEN_W / 2, mid + 140, 13,
+      text("quitting drops the others too", SCREEN_W / 2, mid + 198, 13,
            "#ffcb42", "center", 0.75);
     }
   }
@@ -3704,6 +3959,41 @@
     banner = null;
     outcome = null;
     state = "title";
+  }
+
+  function canPlayAgain() {
+    if (net.role === "guest") return false;
+    if (net.role !== "host") return true;
+    const N = window.CrossfireNet;
+    const connected = N ? N.host.links.filter(l => l.open && l.seat != null).length : 0;
+    return 1 + connected >= MODES[lastSetup.modeKey].minPlayers;
+  }
+
+  function playAgain() {
+    if (!canPlayAgain()) return;
+
+    if (net.role !== "host") {
+      startGame(lastSetup.modeKey, lastSetup.humans, lastSetup.bots);
+      return;
+    }
+
+    const N = window.CrossfireNet;
+    const seated = N.host.links
+      .filter(l => l.open && l.seat != null)
+      .sort((a, b) => a.seat - b.seat);
+
+    // A player may have left on the result screen. Compact the remaining
+    // roster before rebuilding ships so every link still owns a valid index.
+    const compactNames = [names[0], ...seated.map(l => names[l.seat])];
+    const chosen = [skins[0], ...seated.map(l => skins[l.seat])];
+    names = compactNames;
+    skins = chosen.concat(PLAYERS.map((_, i) => i).filter(i => !chosen.includes(i)));
+    seated.forEach((l, i) => { l.seat = i + 1; l.inputSeq = 0; });
+
+    net.inputs = {};
+    startGame(lastSetup.modeKey, 1 + seated.length, 0);
+    ships.forEach((s, i) => { s.localKeys = i === 0 ? PLAYERS[0] : null; });
+    seated.forEach(l => l.send(initPacket(l.seat), true));
   }
 
   /* The pad is a real thing sitting over the window, so the window has to know
@@ -3742,7 +4032,7 @@
     if (state === "thumb") { drawThumb(); return; }
 
     /* World space. The camera puts its centre in the middle of the screen; in
-       the survival modes that centre is the middle of the arena at a scale that
+       Survival, that centre is the middle of the arena at a scale that
        fits it exactly, which is the old whole-map view falling out of the same
        maths. Anything off screen is skipped — on a sixteen-screen map most of
        the world is. */
@@ -4459,6 +4749,7 @@
     const N = window.CrossfireNet;
     lobbyRole = role;
     lobby.hidden = false;
+    paintFriendlyFireButton();
     el("lobbyTitle").textContent = role === "host" ? "HOST A GAME" : "JOIN A GAME";
     el("lobbyHint").textContent = role === "host"
       ? ""
@@ -4598,6 +4889,8 @@
     }
     el("btnUse").disabled = false;
   });
+
+  el("onlineFriendlyFire").addEventListener("click", toggleFriendlyFire);
 
   el("rowStart").addEventListener("click", e => {
     const key = e.target.getAttribute && e.target.getAttribute("data-mode");

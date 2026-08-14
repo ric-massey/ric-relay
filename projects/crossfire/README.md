@@ -18,8 +18,7 @@ Open `http://127.0.0.1:8000/projects/crossfire/`.
 
 | Mode | Players | Rules |
 |---|---:|---|
-| Survival | 1-5 | Co-op asteroid waves, shared lives, friendly fire, wrapping arena |
-| Survival Safe | 1-5 | Survival with friendly fire disabled |
+| Survival | 1-5 | Co-op asteroid waves, shared lives, optional friendly fire, wrapping arena |
 | Battle Royale | 2-5 | Three lives each, two-hit hulls, stationary gravity hazards, closing wall, one-minute limit |
 
 Battle Royale shows hull strength only for ships controlled on the current device.
@@ -30,6 +29,12 @@ shows kills, deaths, environmental deaths and time survived for every ship.
 Each spawn can take two bullet or asteroid hits before losing a life. The first
 hit leaves one hull point and a brief impact shield; suns and black holes remain
 immediately lethal.
+
+The shrinking Battle Royale wall deactivates a stationary gravity hazard after
+its center is outside the playable arena. Respawns choose clear space inside the
+current wall rather than clamping the original full-map spawn onto its edge.
+The result screen can immediately replay the same local setup; online, the host
+starts the next round for every connected player.
 
 ## Controls
 
@@ -42,6 +47,12 @@ immediately lethal.
 Every weapon fires three-round bursts. Keyboard bindings and the Battle Royale
 camera preference are editable in Settings and saved in local storage. The mouse
 operates menus only.
+
+Sound effects are synthesized in the browser with Web Audio, so there are no
+audio files to load. Sound starts on the first keypress or tap and can be muted
+from the title, Settings or pause menu; that preference is saved locally.
+Fullscreen is available from those same screens when the browser supports the
+Fullscreen API. The whole page enters fullscreen so phone controls remain visible.
 
 Phones support one ship per screen. Players can choose a directional stick or
 left, right and acceleration buttons, resize and move every control, and enable
