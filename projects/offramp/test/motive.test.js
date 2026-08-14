@@ -74,13 +74,20 @@ function vehicle(o) {
       polite: d.polite == null ? true : d.polite,
       gap: d.gap == null ? 0.6 : d.gap,
       signal: d.signal || "proper",
+      /* How far out this driver starts thinking about getting over.
+         `exit` and `lane drop` are the same trait read twice. */
+      exitLead: d.exitLead == null ? 800 : d.exitLead,
     },
   };
 }
-/* One lane's worth of neighbourhood, in the shape `view.side` returns. */
-const side = (lead, leadGap, lag, lagGap) => ({
+/* One lane's worth of neighbourhood, in the shape `view.side` returns.
+   `ends` is metres of that lane left in front of you, and Infinity is
+   every lane that runs the length of the road — which is all of them
+   unless the caller is testing a lane drop. */
+const side = (lead, leadGap, lag, lagGap, ends) => ({
   lead: lead || null, leadGap: leadGap == null ? Infinity : leadGap,
   lag: lag || null, lagGap: lagGap == null ? Infinity : lagGap,
+  ends: ends == null ? Infinity : ends,
 });
 function world(o) {
   const d = o || {};
@@ -93,6 +100,14 @@ function world(o) {
     junction: d.junction == null ? Infinity : d.junction,
     lead: d.lead || null, gap: d.gap == null ? Infinity : d.gap,
     veh: d.veh || null,
+    /* Metres to this vehicle's own exit, and metres of its own lane
+       left. Infinity is "not getting off here" and "this lane runs on",
+       which is the ordinary case for both. */
+    exitIn: d.exitIn == null ? Infinity : d.exitIn,
+    laneEnds: d.laneEnds == null ? Infinity : d.laneEnds,
+    /* The vehicle on the slip road beside you, or null. */
+    merging: d.merging || null,
+    endsIn(ln) { return (sides[ln] && sides[ln].ends) || Infinity; },
     side(ln) { return sides[ln] === undefined ? side(null) : sides[ln]; },
   };
 }
@@ -344,6 +359,108 @@ head("avoid — wrecks making traffic, which is the game");
                     sides: { 1: side(null), 3: side(null) } });
   ok("ordinary moving traffic is not a hazard",
      M.motives.avoid(v, w, w.side(1), w.side(3)), null);
+}
+
+/* ══ 2b. the junction motives ════════════════════════════════════════
+   `merge` and `lane drop`, which were stubs until the harness could put
+   a slip road and a lane that ends underneath a vehicle. */
+head("merge — somebody is joining, and it is your lane they want");
+{
+  /* Beside me, half way down the taper, and I am in the lane they are
+     joining. */
+  const v = vehicle({ v: 30, want: 31, polite: true });
+  const w = world({ lane: 4, lanes: 4, veh: v,
+                    merging: { ds: 20, used: 0.5, v: 22, len: 4.6 },
+                    sides: { 3: side(null) } });
+  const out = M.motives.merge(v, w, w.side(3), null);
+  ok("a polite driver in the lane being joined moves over",
+     out && out.lane, 3);
+  ok("...and signals it, because that is what the courtesy IS",
+     out && out.signal, true);
+}
+{
+  const v = vehicle({ v: 30, want: 31, polite: false });
+  const w = world({ lane: 4, lanes: 4, veh: v,
+                    merging: { ds: 20, used: 0.5, v: 22, len: 4.6 },
+                    sides: { 3: side(null) } });
+  ok("an impolite one does not, and never will",
+     M.motives.merge(v, w, w.side(3), null), null);
+}
+{
+  /* Two lanes in. Not my gap, and moving over would put me in front of
+     somebody else's problem. */
+  const v = vehicle({ v: 30, want: 31, polite: true });
+  const w = world({ lane: 2, lanes: 4, veh: v,
+                    merging: { ds: 20, used: 0.5, v: 22, len: 4.6 },
+                    sides: { 1: side(null), 3: side(null) } });
+  ok("a driver not in the lane being joined has nothing to give",
+     M.motives.merge(v, w, w.side(1), w.side(3)), null);
+}
+{
+  /* Urgency rises with the taper running out, which is the one thing
+     §5c says about this motive's shape. */
+  const v = vehicle({ v: 30, want: 31, polite: true });
+  const early = world({ lane: 4, lanes: 4, veh: v,
+                        merging: { ds: 20, used: 0.05, v: 22, len: 4.6 },
+                        sides: { 3: side(null) } });
+  const late = world({ lane: 4, lanes: 4, veh: v,
+                       merging: { ds: 20, used: 0.95, v: 22, len: 4.6 },
+                       sides: { 3: side(null) } });
+  const a = M.motives.merge(v, early, early.side(3), null);
+  const b = M.motives.merge(v, late, late.side(3), null);
+  ok("it wants it more as the tarmac runs out", b.urgency > a.urgency, true);
+}
+
+head("lane drop — the road stops being there");
+{
+  const v = vehicle({ v: 30, want: 31, exitLead: 800 });
+  const w = world({ lane: 4, lanes: 4, veh: v, laneEnds: 600,
+                    sides: { 3: side(null) } });
+  const out = M.motives.laneDrop(v, w, w.side(3), null);
+  ok("a driver in a lane that ends wants out of it", out && out.lane, 3);
+}
+{
+  /* Not yet theirs: further away than this driver plans ahead, and
+     further than they need to cross one lane. */
+  const v = vehicle({ v: 30, want: 31, exitLead: 300 });
+  const w = world({ lane: 4, lanes: 4, veh: v, laneEnds: 2500,
+                    sides: { 3: side(null) } });
+  ok("...but not from two miles out, if that is not their habit",
+     M.motives.laneDrop(v, w, w.side(3), null), null);
+}
+{
+  const v = vehicle({ v: 30, want: 31, exitLead: 800 });
+  const w = world({ lane: 4, lanes: 4, veh: v, laneEnds: 40,
+                    sides: { 3: side(null) } });
+  const out = M.motives.laneDrop(v, w, w.side(3), null);
+  ok("out of road: the urgency stops being an opinion",
+     out.urgency > 1, true);
+  ok("...and they will take a worse gap for it", out.nerve > 1, true);
+}
+{
+  /* An inside lane that ends sends you the other way, and nothing in
+     the motive is told which kind of drop it is. */
+  const v = vehicle({ v: 30, want: 31, exitLead: 800 });
+  const w = world({ lane: 1, lanes: 4, veh: v, laneEnds: 500,
+                    sides: { 2: side(null) } });
+  ok("a dropped inside lane sends you right",
+     M.motives.laneDrop(v, w, null, w.side(2)).lane, 2);
+}
+{
+  /* And the rule that keeps the other motives out of it. */
+  const v = vehicle({ v: 30, want: 31 });
+  ok("a lane with less road left than it takes to leave it is not plausible",
+     M.plausible(side(null, Infinity, null, Infinity, 60), v), false);
+  ok("...and the same lane with room to use it is",
+     M.plausible(side(null, Infinity, null, Infinity, 900), v), true);
+}
+{
+  /* `home` is what stops `keep right` shepherding anybody into it. */
+  const v = vehicle({ v: 30, want: 31, push: 0.1, len: 21 });
+  const w = world({ lane: 2, lanes: 4, veh: v,
+                    sides: { 4: side(null, Infinity, null, Infinity, 900) } });
+  ok("nobody rests in a lane that is about to end",
+     M.home(v, w), 3);
 }
 
 /* ══ 3. the argument between them ════════════════════════════════════

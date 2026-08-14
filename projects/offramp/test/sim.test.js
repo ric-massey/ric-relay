@@ -708,7 +708,18 @@ console.log("       missed from lane: "
    hide the lane-distribution defect this section exists to keep
    visible. Pool it the day the defect above is fixed and the ramp stops
    being marginal — then it should be green at every seed, and that is
-   the real test. */
+   the real test.
+
+   ── AND THEY ARE GREEN NOW, WHICH IS NOT A FIX ──────────────────────
+   Both assertions passed from 2026-08-14, at `conserved` 0.996 against
+   the 0.799 they had been failing at. Nothing about the ramp was
+   repaired. §5j added a mainline courtesy which consumes different
+   random draws, the run landed on the other side of the same coin, and
+   the coin is the thing this whole comment is about. The evidence that
+   it is luck rather than progress is two lines further down and has not
+   moved: the ramp still delivers 247 veh/h against a real 1,200, and
+   the median vehicle still joins the motorway at 0.0 m/s. Do not read
+   green here as the on-ramp working. */
 head("On-ramps, and whether the road holds its traffic");
 const RAMP_Q = 1200;
 const noRamp   = at({ q: RAMP_Q, hours: 0.4, exitShare: 0.10, zone: [0, 6000],
@@ -758,6 +769,29 @@ console.log(`       queue ${withRamp.rampQueueMax} at ${RAMP_Q} veh/h/lane,`
    because the lane they are joining has no room in it. */
 const perRamp = withRamp.merged / (0.4) / 4;
 target("veh/h a single on-ramp can deliver", perRamp, 1200, " veh/h");
+
+/* ── and WHY, which is now a number rather than a theory ──────────────
+   §5e blamed the lane shares, and they are wrong in the direction it
+   said. But they are not what pins the ramp, and this is the measurement
+   that says so: a queued ramp discharges FROM A STANDSTILL. A stopped
+   vehicle joining a lane doing 28 m/s needs the follower to lose all of
+   that speed, which asks for a couple of hundred metres of gap, and at
+   the density in the rightmost lane that gap does not come.
+
+   It is the ceiling on everything else about merging. The `merge` motive
+   — mainline drivers moving over and lifting off for somebody joining —
+   was built against it and measured over seven seeds at 600 veh/h
+   offered: the ramp serves about 270 veh/h with the courtesy and about
+   270 without it. Nobody can open a two-hundred-metre gap by being
+   polite. See PLAN.md §5j; the fix is a merging driver who does not
+   merge from rest, and it is in the ramp model rather than in a motive. */
+const mv = withRamp.mergeV.slice().sort((a, b) => a - b);
+const ml = withRamp.mergeLag.slice().sort((a, b) => a - b);
+target("m/s a vehicle is doing when it joins the motorway",
+       mv.length ? mv[mv.length >> 1] : 0, 25, " m/s");
+console.log(`       and the gap behind it when it does:`
+          + ` ${(ml.length ? ml[ml.length >> 1] : 0).toFixed(0)} m —`
+          + ` a stopped vehicle asks the follower for all of its speed`);
 
 /* ══════════════════════════════════════════════════════════════════════
    §10  The band that travels with somebody
@@ -890,6 +924,65 @@ ok("a roaming world keeps no ledger to fill up",
    roamer.stat.changes.length + roamer.stat.headway.length
    + roamer.stat.ttc.length, 0);
 ok("...and nobody drove through anybody in it", roamer.stat.conflicts, 0);
+
+/* ══════════════════════════════════════════════════════════════════════
+   §11  A lane that ends
+
+   The third junction motive, and the last of §5c's seven. The harness
+   never had anywhere to test it until `drop` went in: one lane stops
+   being there at a stated station, the end of it is a stopped obstacle
+   in `follow` like a wreck is, and getting out of it is an ordinary
+   lane change that has to be wanted, decided and granted.
+
+   THE FLOW IT IS MEASURED AT MATTERS and it is easy to get wrong. Drop
+   one of four lanes and the demand does not drop with it — the reference
+   1,585 veh/h/lane is 6,340 veh/h arriving at a road that is three lanes
+   wide from halfway, which is 2,113 per lane against a capacity near
+   1,900. That queues, and it should; measuring the motive there measures
+   the queue instead. So the flow here is one that FITS: 900 veh/h/lane
+   into three lanes is 1,200 each, free-flowing on both sides of the
+   drop, and what is left to measure is the merge itself.
+   ══════════════════════════════════════════════════════════════════════ */
+head("A lane that ends, and whether anybody gets out of it");
+const DP_AT = 4000, DP_Q = 900;
+const dpWide = at({ q: DP_Q, hours: 0.4, zone: [2000, 6000], decide: M.decide });
+const dpRun = at({ q: DP_Q, hours: 0.4, zone: [2000, 6000], decide: M.decide,
+                  drop: DP_AT });
+
+const dpOut = dpRun.changes.filter((c) => c.why === "lane-drop");
+ok("nobody has a lane-drop reason on a road of constant width",
+   dpWide.changes.filter((c) => c.why === "lane-drop").length, 0);
+ok("...and on one that narrows, that is why they move",
+   dpOut.length > 100, true);
+ok("nobody drove through anybody doing it", dpRun.conflicts, 0);
+
+/* Where they get out, as metres before the end. The spread is the whole
+   claim: it comes from `exitLead` alone — one trait drawn 240 m to
+   3.2 km — so the careful are out a kilometre early and the appalling
+   are still there at the taper, and nothing decides which is which. */
+const dpBefore = dpOut.map((c) => DP_AT - c.s).sort((a, b) => a - b);
+const dpQ = (f) => dpBefore[Math.floor(dpBefore.length * f)];
+console.log(`       out of it at ${dpQ(0.15).toFixed(0)} / ${dpQ(0.5).toFixed(0)}`
+          + ` / ${dpQ(0.85).toFixed(0)} m before the end (p15/p50/p85)`);
+ok("THE CAREFUL AND THE APPALLING, out of one trait",
+   dpQ(0.85) > 3 * dpQ(0.15), true);
+
+/* And the ones who leave it too late. A lane drop nobody ever fails at
+   is a lane drop with the urgency turned up until failure is impossible,
+   which is not what §5c asked for — the tails are supposed to have
+   people in them. */
+ok("somebody always leaves it too late", dpRun.dropStuck > 0, true);
+within("...but it is the tail, not the population",
+       dpRun.dropStuck / dpRun.spawned, 0.0, 0.10);
+console.log(`       ${dpRun.dropStuck} of ${dpRun.spawned} stopped at the end of it,`
+          + ` for ${dpRun.dropHeld.toFixed(0)} vehicle-seconds`);
+
+/* The road still works. Three lanes carrying what four were carrying is
+   the point of the exercise, and the detector is downstream of the drop
+   so it is counting three. */
+console.log(`       ${dpWide.flowLane.toFixed(0)} veh/h/lane over four lanes,`
+          + ` ${(dpRun.flow / 3).toFixed(0)} over the three it becomes`);
+ok("the traffic gets past the drop", dpRun.flow / 3 > dpWide.flowLane * 0.9, true);
 
 /* ── done ─────────────────────────────────────────────────────────── */
 console.log(`\n${pass} passed, ${fail} failed, ${todo} measured but not yet reproduced`);

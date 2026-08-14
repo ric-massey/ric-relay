@@ -705,6 +705,45 @@ const Sim = (() => {
     /* Metres from `px` to a particular one, ahead being positive. */
     const toPx = (px, target) => (target - px) * dir * M_PER_PX;
 
+    /* ── and a lane that ends ─────────────────────────────────────────
+       §5c's third junction motive needs the one thing this harness has
+       never had: somewhere the road stops being as wide as it was. The
+       corridor knows where those are — `data/i40.js` carries 732 lane
+       changes over 2,551 miles — but the harness takes it as an option
+       for the same reason it takes `junctions` as one, which is that a
+       behaviour file has no business reading a 900 KB survey.
+
+       `drop: { at, lane }`, or a bare number for the rightmost lane
+       ending at that station. The rightmost is the common case and the
+       one that matters — an exit-only lane, or a widening that closes up
+       again after a city — but a left-hand drop is a real thing on this
+       corridor too and costs nothing to allow.
+
+       What makes it a LANE DROP rather than a narrower road is that
+       nobody is teleported out of it. The end of the lane is a stopped
+       obstacle in `follow`, exactly like a wreck: everybody brakes for
+       it, the queue assembles itself, and getting out is a lane change
+       that has to be wanted, decided and granted like any other. A
+       vehicle that does not manage it stops at the end, which is what
+       actually happens to somebody who leaves it too late.
+
+       It is a HARNESS feature and not yet a game one: the station is
+       fixed, so a roaming band would carry its drop along with it, and
+       wiring the corridor's own 732 lane changes to it is the job that
+       makes this real on the road rather than in a test. */
+    const dropRaw = o.drop || null;
+    const DROP_AT = !dropRaw ? Infinity
+      : (typeof dropRaw === "number" ? dropRaw : dropRaw.at);
+    const DROP_LANE = !dropRaw || typeof dropRaw === "number" || !dropRaw.lane
+      ? nLanes : dropRaw.lane;
+    /* Metres of lane `ln` left in front of somebody standing at `s`.
+       Infinity for every lane that runs the length of the stretch, which
+       is all of them unless the caller said otherwise. */
+    const endsIn = (ln, s) => (ln === DROP_LANE ? DROP_AT - s : Infinity);
+    /* Within this of the end and stopped is somebody who did not make
+       it, rather than somebody in the queue behind them. */
+    const DROP_STUCK = 30;           // m
+
     /* ── where is this one going? ─────────────────────────────────────
        §5c: "A vehicle is given an exit when it spawns and that is its
        whole plan. It does not know where it is going after that."
@@ -824,10 +863,61 @@ const Sim = (() => {
        enough in that a merging vehicle has road to be seen on. */
     const ramps = !jx || RAMP_SHARE <= 0 ? [] : jx
       .map((px) => ({ px, s: sAt(px), end: sAt(px) + MERGE_LEN,
-                      q: [], next: 0, merged: 0, wait: 0 }))
+                      q: [], next: 0, merged: 0, wait: 0,
+                      pub: { ds: 0, used: 0, v: 0, len: 0 } }))
       .filter((r) => r.s > 100 && r.s < roadLen - 100)
       .sort((a, b) => a.s - b.s);
     const rampRate = arrivalRate * RAMP_SHARE;      // veh/s, per junction
+
+    /* ── and the one thing a merging vehicle broadcasts ───────────────
+       A vehicle on a slip road is not in `byLane`, and that is right —
+       it is on its own pavement and obstructs nobody. But it is also the
+       most conspicuous thing on that stretch of motorway: it is beside
+       you, it is going slower than you, and it is indicating.
+
+       So the leader of each ramp queue is published, and a decider in
+       the lane being joined may look at it. Only the leader, because
+       only the leader can merge — everybody behind it is queueing and
+       has no gap to want yet. This is not the decider peering into
+       simulation state for the same reason `avoid` may read `lead.wreck`
+       is not: it is what the vehicle is telling the road about itself. */
+    /* Publishing is the switch for the whole of it — the motive sees
+       nothing and `follow` looks at nothing — so `letIn: false` is the
+       road as it was before anybody made room, which is what the before
+       and after in PLAN.md §5j were measured against. It defaults ON,
+       and that is safe rather than bold: with no ramps on the road there
+       is never anything in this list, so every scoreboard number in this
+       harness is untouched by construction. */
+    const LET_ON = o.letIn == null ? true : !!o.letIn;
+    /* The two halves separate, because they are two different courtesies
+       and the question of which one is doing what has already been asked
+       once in anger. `true` is both; "lateral" is the lane change only;
+       "long" is the lift-off only; `false` is the road as it was before
+       either. Measured, at 600 veh/h offered, all four land in the same
+       place — see §5j, and see the warning about single seeds before
+       reading anything into a difference between them. */
+    const LET_LAT = LET_ON && o.letIn !== "long";
+    const LET_LONG = LET_ON && o.letIn !== "lateral";
+    const mergers = [];              // rebuilt each step, at most one per ramp
+    function nearestMerger(veh) {
+      let best = null, bestD = Infinity;
+      for (let i = 0; i < mergers.length; i++) {
+        const d = Math.abs(mergers[i].ds - veh.s);
+        if (d < bestD) { bestD = d; best = mergers[i]; }
+      }
+      if (!best || bestD > SEE_MERGE) return null;
+      merging.ds = best.ds - veh.s;
+      merging.used = best.used;
+      merging.v = best.v;
+      merging.len = best.len;
+      return merging;
+    }
+    const merging = { ds: 0, used: 0, v: 0, len: 0 };
+    /* How far either side of a merging vehicle a mainline driver counts
+       it as theirs to deal with. DECIDED, and it is a sight line rather
+       than a courtesy: further than this and it is somebody else's gap
+       being taken. */
+    const SEE_MERGE = 120;           // m
 
     /* ── which lane a vehicle arrives in ──────────────────────────────
        It used to be UNIFORM, always, and that made the lane-share table
@@ -887,7 +977,12 @@ const Sim = (() => {
       contacts: 0, crashes: [], wrecks: 0, glances: 0, staged: null,
       exited: 0, missedExit: 0, everMissed: 0,
       /* the on-ramp side */
-      merged: 0, mergeWait: [], mergeAt: [], rampHeld: 0, rampQueueMax: 0,
+      merged: 0, mergeWait: [], mergeAt: [], mergeV: [], mergeLag: [],
+      rampHeld: 0, rampQueueMax: 0,
+      /* Vehicle-seconds spent stopped at the end of a lane that ended,
+         and how many distinct vehicles it happened to. A lane drop that
+         nobody fails at is a lane drop with the urgency set too high. */
+      dropHeld: 0, dropStuck: 0,
       /* Which lane the ones who missed were still sitting in. A model
          that loses people at the gore should say from where. */
       missedFrom: [], exitedFrom: [],
@@ -1161,9 +1256,107 @@ const Sim = (() => {
         const tg = L.s - L.len - veh.s, tdv = veh.v - L.v;
         if (tdv > 0.1 && tg >= 0 && tg / tdv < ttc) ttc = tg / tdv;
       }
+      /* ── and the room somebody makes for a merge ──────────────────────
+         The other half of letting a vehicle in, and on a busy road it is
+         the half that works. `motive.js`'s `merge` moves a driver out of
+         the lane being joined, which is the courtesy everybody thinks of
+         first and which needs a gap in the lane to the left — and in the
+         traffic where a merge is actually hard there is not one. So the
+         courtesy that is left is the one real drivers mostly use: lift
+         off, and let the gap in front of you open up.
+
+         It is deliberately NOT a lane choice, which is why it is here
+         rather than in a motive: the decider answers with a lane, and
+         this driver is staying in theirs. It is the same mechanism as
+         following anybody else, applied to a vehicle that is not in this
+         lane yet, and gated on the same `polite` the rest of the courtesy
+         is — about half the road does not do it and never will.
+
+         ── and it is bounded twice, both times physically ─────────────
+         A driver eases off for a merge. They do not brake for one, and
+         they certainly do not stop on a live carriageway for a vehicle
+         that is on its own pavement — so the deceleration this can ask
+         for is capped at a lift-off, and it does not apply at all to a
+         merger going far slower than the traffic. Without the second
+         bound a vehicle that has already given up and stopped at the end
+         of the taper becomes a stationary leader for the whole lane, and
+         the courtesy that was supposed to clear the ramp closes the
+         motorway instead. */
+      if (LET_LONG && mergers.length && veh.drv.polite && veh.lane > nLanes - 0.5) {
+        const m = nearestMerger(veh);
+        /* Ahead of me and moving with the traffic: I can open the gap
+           they are aiming at. Beside or behind me, there is nothing I
+           can do about it with the throttle. */
+        if (m && m.ds > 0 && m.ds < LET_SEE
+            && m.v >= LET_MATCH * veh.drv.want
+            && veh.v > LET_FLOOR * veh.drv.want) {
+          const g = m.ds - m.len;
+          const a = idm(veh.v, veh.drv.want, g > 0 ? g : 0, veh.v - m.v, veh.par);
+          const eased = a < -LET_BRAKE ? -LET_BRAKE : a;
+          if (eased < worst) worst = eased;
+        }
+      }
+
+      /* ── and the end of the lane, which is a stopped obstacle ────────
+         Not a clamp on position, which would let everybody behind sail
+         up to a wall of stationary cars and only find out on contact.
+         The end of a dying lane brakes the traffic in it the same way a
+         wreck does, through the same solver, so the queue on the taper
+         assembles itself and the drivers behind it can see it coming.
+
+         Only for a vehicle actually committed to that lane — somebody
+         halfway out of it has a lane that does not end. */
+      if (DROP_AT < Infinity && veh.from === DROP_LANE && veh.to === DROP_LANE) {
+        const g = DROP_AT - veh.s;
+        const a = idm(veh.v, veh.drv.want, g > 0 ? g : 0, veh.v, veh.par);
+        if (a < worst) worst = a;
+        /* Somebody who left it too late, standing at the end of a lane
+           that is not there any more, waiting for a gap. It is the same
+           event as the on-ramp jam seen from the other side, and it is
+           counted the same way. */
+        if (counting() && g < DROP_STUCK && veh.v < 1) {
+          stat.dropHeld += dt;
+          if (!veh.stuck) { veh.stuck = true; stat.dropStuck++; }
+        }
+      }
+
       followGap = gap; followLead = lead; followTTC = ttc;
       return worst;
     }
+    /* A lift-off, not a brake: about a tenth of gravity, which is what
+       easing off the throttle at motorway speed costs you. DECIDED. */
+    const LET_BRAKE = 1.0;           // m/s²
+    /* And only for somebody who is nearly up to speed. Below this they
+       are not merging, they are waiting, and nobody stops for them.
+
+       ── measured against the driver's OWN DESIRED speed, not their
+       current one, and that distinction is the whole mechanism ────────
+       The first version asked whether the merger was doing at least half
+       of what THIS DRIVER IS DOING RIGHT NOW, which is a feedback loop
+       with the sign pointing the wrong way: ease off for a slow merger,
+       and your own speed falls, so the merger clears the gate more
+       easily, so you ease off again. A courteous driver near a busy ramp
+       could wind itself down to a crawl and become the obstruction.
+
+       Against `want` there is no loop: it is a fixed property of the
+       driver, so the gate says what it meant to say — *is this vehicle
+       travelling like traffic, or has it given up and stopped?*
+
+       Changed because it was wrong by inspection, and it is worth
+       recording that the RUN which appeared to prove it — the ramp
+       serving 645 veh/h without the courtesy and 180 with it — was one
+       seed, and did not survive six more. See PLAN.md §5j. On this road
+       a single seed is a coin toss and it has now fooled this work
+       twice. */
+    const LET_MATCH = 0.5;           // of the courteous driver's desired speed
+    /* And there is a limit to what a courtesy is worth. Below this you
+       have given up enough of your own journey for somebody else's, and
+       the road behind you has a claim too. */
+    const LET_FLOOR = 0.75;          // of desired speed
+    /* Close enough that it is your gap they are asking for. Beyond it
+       they are somebody else's problem — the same sight line the motive
+       uses, and deliberately the same number. */
+    const LET_SEE = 60;              // m
 
     /* ══ and when it does not work ═══════════════════════════════════
        Two vehicles are in contact when they overlap along the road AND
@@ -1656,6 +1849,13 @@ const Sim = (() => {
     const DESPERATE = 1.6;           // how much extra nerve, at full stretch
 
     function room(veh, ln, nerve) {
+      /* A lane you cannot finish the manoeuvre in is not a lane you can
+         move into, whatever the gap says. This is a physical refusal
+         rather than a preference — the preference belongs in the
+         motives, and the two stand-in deciders have none. */
+      if (ln === DROP_LANE
+          && DROP_AT - veh.s < veh.v * durationOf(latAccel(veh.drv, veh.latZ)))
+        return false;
       const n = neigh(ln, veh.s, veh);
       const tol = tolerable(veh.drv)
                 * Math.min(DESPERATE, Math.max(1, nerve || 1));
@@ -1681,6 +1881,29 @@ const Sim = (() => {
       if (mine < -tol) return false;
 
       if (lag) {
+        /* ── and NOT the speed the arriving vehicle will be at ─────────
+           Tried, measured, and wrong, which is worth a note because it
+           is the obvious idea and it looks right. A queued ramp
+           discharges from a standstill — the median merge speed is
+           **0.0 m/s** — and judging a stationary vehicle against a
+           follower doing 28 demands a couple of hundred metres of gap,
+           so it seemed clear that the follower should be judged against
+           the speed the merger will have accelerated to rather than the
+           one it is sitting at.
+
+           Projecting both over the manoeuvre — merger accelerating,
+           follower holding station — made it strictly WORSE: the ramp
+           served 270 veh/h before and **60** after, because a stopped
+           vehicle gains 16 m while the traffic gains 112, so the
+           projected gap is a hundred metres SMALLER and the criterion
+           tightens. And it double-counts: `idm` already prices the
+           closing, on the real gap and the real speed difference, which
+           is the whole content of the standard safety criterion. Adding
+           a closing term in front of it charges for the same metres
+           twice.
+
+           The number that is wrong here is 0.0 m/s, and it is wrong in
+           the ramp model rather than in this test. See PLAN.md §5j. */
         const theirs = idm(rmLag.spd, lag.drv.want, lagGap, rmLag.spd - veh.v, lag.par);
         /* The arriving driver judges the follower by its OWN nerve, not
            by the follower's, which is exactly the asymmetry that makes a
@@ -1709,10 +1932,24 @@ const Sim = (() => {
       /* Metres to THIS vehicle's own exit. Infinity when it has none,
          which is most of them — see `drawExit`. */
       exitIn: Infinity,
+      /* Metres of THIS vehicle's own lane left in front of it. Infinity
+         unless it is standing in one that ends. */
+      laneEnds: Infinity,
+      /* The vehicle on a slip road beside you, or null — `ds` metres
+         ahead (negative behind), `used` of its acceleration lane spent.
+         Null for everybody not in the lane it is joining, because a
+         merge two lanes over is not yours to make room for. */
+      merging: null,
+      /* Metres of that lane left in front of me, Infinity for a lane
+         that does not end. Both the motive that gets people out of a
+         dying lane and the ones that must stop shepherding people into
+         it ask this. */
+      endsIn(ln) { return endsIn(ln, this.veh.s); },
       side(ln) {
         if (ln < 1 || ln > nLanes) return null;
         const n = neigh(ln, this.veh.s, this.veh);
-        return { lead: n.lead, lag: n.lag, leadGap: n.leadGap, lagGap: n.lagGap };
+        return { lead: n.lead, lag: n.lag, leadGap: n.leadGap, lagGap: n.lagGap,
+                 ends: endsIn(ln, this.veh.s) };
       },
       get left() { return this.side(Math.round(this.lane) - 1); },
       get right() { return this.side(Math.round(this.lane) + 1); },
@@ -2105,6 +2342,7 @@ const Sim = (() => {
          would not have taken on arrival. `room` clamps it at DESPERATE,
          so no amount of waiting buys a gap that is not there — the
          queue just grows, which is the jam. */
+      mergers.length = 0;
       for (let ri = 0; ri < ramps.length; ri++) {
         const rp = ramps[ri];
         while (t >= rp.next) {
@@ -2143,6 +2381,14 @@ const Sim = (() => {
         /* §5c, literally: urgency rises as the taper runs out. */
         const used = Math.max(0, Math.min(1, (v.s - rp.s) / MERGE_LEN));
         const nerve = 1 + (DESPERATE - 1) * used;
+        /* Published BEFORE the attempt, so that the drivers who could
+           make room are looking at the same vehicle this one is about to
+           ask for a gap from. */
+        if (LET_ON) {
+          rp.pub.ds = v.s; rp.pub.used = used;
+          rp.pub.v = v.v; rp.pub.len = v.len;
+          mergers.push(rp.pub);
+        }
         /* ── and it gets up to speed FIRST ───────────────────────────
            `room` asks whether the gap is big enough and whether anybody
            has to brake for it. It does not ask whether the merging
@@ -2176,6 +2422,12 @@ const Sim = (() => {
           stat.merged++;
           stat.mergeWait.push(v.waited);
           stat.mergeAt.push(v.s - rp.s);
+          /* How fast it was going when it got in, and how much room it
+             was given. A merge point pinned to the end of the taper says
+             the queue is saturated; these two say what a merge out of
+             that queue actually costs the road. */
+          stat.mergeV.push(v.v);
+          stat.mergeLag.push(neigh(nLanes, v.s, v).lagGap);
           rp.wait += v.waited;
         }
       }
@@ -2251,6 +2503,12 @@ const Sim = (() => {
         view.lead = followLead; view.gap = followGap; view.px = pxAt(veh.s);
         view.junction = junctionAhead(view.px);
         view.exitIn = veh.exitPx == null ? Infinity : toPx(view.px, veh.exitPx);
+        view.laneEnds = endsIn(Math.round(veh.lane), veh.s);
+        /* Only the lane being joined is asked to look. A driver two
+           lanes in has nothing to give and nothing to fear, and asking
+           everybody would spend the search on drivers who cannot act. */
+        view.merging = LET_LAT && mergers.length && veh.lane > nLanes - 0.5
+          ? nearestMerger(veh) : null;
         const want = decide(veh, view, ctx);
         if (!want) continue;
         const ln = want.lane;

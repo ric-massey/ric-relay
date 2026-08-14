@@ -32,26 +32,31 @@
    kept for its life, so the same car behaves the same way twice and you
    can learn to read it.
 
-   ── four of seven, and why those four ─────────────────────────────────
-   §5c lists seven motives. Three of them — `exit`, `merge`, `lane drop`
-   — are about junctions, and the harness that judges this file is six
-   kilometres of straight mainline with no ramps on it. That is not an
-   oversight in the harness, it is deliberate: every number in
-   BEHAVIOUR.md §2 was measured on mainline, so mainline is what has to
-   reproduce them, and adding geometry before the mainline is right would
-   only hide which of the two was wrong.
-
-   So a junction motive built now could not be checked against anything,
-   and a motive nobody can check is a guess with a docstring. The four
-   here are exactly the four the mainline scoreboard measures:
+   ── all seven, and the order they arrived in ──────────────────────────
+   §5c lists seven, and for a long time this file had four. That was not
+   an oversight: the other three are about junctions, and the harness
+   that judges this file was six kilometres of straight mainline. Every
+   number in BEHAVIOUR.md §2 was measured on mainline, so mainline is
+   what has to reproduce them, and adding geometry before the mainline
+   was right would only have hidden which of the two was wrong. A motive
+   nobody can check is a guess with a docstring.
 
      blocked      overtaking, the elephant race, weaving
      keep right   the 15 mph gradient; lorries out of lane 1
      yield        somebody sees you and moves over
      avoid        wrecks making traffic, which is the game
+     exit         moving over early, and crossing four lanes late
+     merge        making room for somebody joining
+     lane drop    exit-only lanes doing their job
 
-   `exit`, `merge` and `lane drop` are stubbed at the bottom with the
-   signature they will have, and they are the second run of the harness.
+   The last three each waited for the road to be able to ask the
+   question: `exit` for junction positions, `merge` for a slip road with
+   somebody on it, `lane drop` for a lane that ends. Two of the three are
+   judged. **`merge` is not, and knows it** — see its own block and
+   PLAN.md §5j: it is live and it is inert, because a queued on-ramp
+   discharges from a standstill and no courtesy can open the gap a
+   standing start needs. It stays here rather than going back to a stub
+   because the thing that has to change is the ramp model, not this.
 
    ── the traits are already drawn ─────────────────────────────────────
    Nothing here rolls a die about personality. `traffic.js` draws the
@@ -182,6 +187,18 @@ const Motive = (() => {
      motive does not spend its urgency wanting something impossible. */
   function plausible(side, veh) {
     if (!side) return false;
+    /* A lane that runs out before you could use it is not somewhere to
+       go, and this is the single place that has to be said — every
+       motive that proposes a lane already comes through here. Without
+       it `keep right` cheerfully shepherds people into a dying lane and
+       `lane drop` spends the rest of the taper undoing it, which is two
+       motives arguing about the same driver rather than one road being
+       read correctly.
+
+       CROSS is `exit`'s budget for getting across one lane, reused
+       because it is the same question asked from the other end: a lane
+       with less road left than it takes to get out of it again. */
+    if (side.ends != null && side.ends < CROSS * Math.max(4, veh.v)) return false;
     if (side.leadGap < veh.s0) return false;
     if (side.lag && side.lagGap < side.lag.s0) return false;
     return true;
@@ -622,6 +639,13 @@ const Motive = (() => {
      right` as well, so that nobody is being shepherded into the lane
      this motive is trying to clear. */
   function home(veh, view) {
+    /* A lane that ends is not a lane to settle in, whoever you are and
+       however far right it is. This is not the merge shuffle wearing a
+       different hat — it applies to the drivers `MERGE_PUSH` and the
+       length gate below deliberately exclude, because a lane running out
+       is not an inconvenience to be shrugged off. */
+    if (view.endsIn && view.endsIn(view.lanes) < MERGE_NEAR)
+      return Math.max(1, view.lanes - 1);
     if (view.lanes < 3) return view.lanes;      // no middle to shelter in
     /* Somebody actually getting off wants the lane everybody else is
        sheltering from. Their exit outranks the hassle of the merge, and
@@ -743,17 +767,6 @@ const Motive = (() => {
              nerve: 1 + 0.6 * Math.max(0, urgency - 1) };
   }
 
-  /* ══ the junction three, which are the second run of the harness ════
-     Stubbed with the signature they will have rather than left out, so
-     that the shape of `decide` does not change when they land and so
-     that it is obvious they are missing rather than forgotten.
-
-     They need a corridor with ramps in it. `exit` wants the distance to
-     the gore of the exit this vehicle was given when it spawned and the
-     lane that exit leaves from; `merge` wants the taper it is standing
-     on and how much of it is left; `lane drop` wants to know that the
-     lane it is in ends. None of those exist on six kilometres of
-     straight mainline, which is what judges this file today. */
   /* ══ EXIT ═══════════════════════════════════════════════════════════
      Wants: the lane its exit leaves from.
      Rises with: closing on the gore.
@@ -825,8 +838,128 @@ const Motive = (() => {
     return { lane: ln + 1, urgency, why: "exit", signal: true,
              nerve: 1 + 0.6 * Math.max(0, urgency - 1) };
   }
-  const merge = () => null;          // needs a taper under the vehicle
-  const laneDrop = () => null;       // needs the lane count to vary
+  /* ══ MERGE ══════════════════════════════════════════════════════════
+     Wants: the lane being joined to have a hole in it.
+     Rises with: the merger's taper running out.
+     Produces: the gap somebody actually merges into — and, when there
+     are not enough drivers willing to make one, the on-ramp jam.
+
+     ── which half of a merge this is, and where the other half lives ──
+     A merge has two sides and only one of them is a choice between
+     lanes. The joining driver is not picking a lane — there is one lane
+     they can be in and they are trying to enter it from a slip road —
+     so their half is a manoeuvre rather than a motive, and it is
+     executed in `sim.js`: an acceleration lane to travel while they
+     look, `room` for the gap acceptance, and nerve rising with the
+     fraction of the taper spent, which is §5c's "urgency rising to
+     infinity as the taper runs out", literally. See PLAN.md §5e.
+
+     What was missing is this side. §5e measured the consequence and put
+     a number on it: **a single on-ramp delivered 304 veh/h against a
+     real 1,200–1,500**, and the cause was not on the ramp at all —
+     "there is no gap to take because there is no room". Every driver in
+     the rightmost lane held their station while somebody beside them ran
+     out of tarmac. That is not a motorway, and no amount of nerve on the
+     ramp fixes it, because nerve cannot manufacture a gap.
+
+     ── it is not `yield`'s merge half, and the difference is the point ─
+     `yield` already moves drivers out of the rightmost lane NEAR a
+     junction, and that is a habit: it fires on the approach, it is about
+     where you sit, and §5c's evidence for it is where the lorries live —
+     48.1% of lorry-seconds one lane in from the right. It knows nothing
+     about any particular vehicle.
+
+     This is a reaction to somebody specific. They are beside you, they
+     are slower than you, they are indicating, and the road under them
+     ends. A driver who has already sheltered is not here; a driver who
+     is in the rightmost lane by choice is, and this is what they do
+     about it. One is where you live, the other is what you do when
+     somebody arrives, and collapsing them would lose the second — the
+     habit is spent by the time the merger appears.
+
+     ── who does it ────────────────────────────────────────────────────
+     `polite`, which is what §5c gates a courtesy on, and this is one:
+     you are giving up your lane for somebody else's benefit. About half
+     the drivers on the road do not have it and never will, and that is
+     the whole variety — the same car behaves the same way twice.
+
+     The player is not special here either. This sees a vehicle on a slip
+     road with its taper running out. It does not ask what it is. */
+  const LET_MIN = 0.30;              // urgency at the nose of the taper
+
+  function merge(veh, view, L, R) {
+    const m = view.merging;
+    if (!m) return null;
+    const ln = Math.round(view.lane);
+    if (ln !== view.lanes || ln < 2) return null;   // not the lane being joined
+    if (!veh.drv.polite) return null;
+
+    /* Their gap is the one in front of me or the one behind me, and
+       either way it is mine to open. Further off and it is somebody
+       else's to deal with — `sim.js` decides how far "beside" reaches. */
+    const want = veh.drv.want;
+    if (!free(L, want, veh) || !plausible(L, veh)) return null;
+
+    /* Prompt, and then more so. A courtesy that arrives after the tarmac
+       has run out is not one — the whole value of this is being gone
+       before the merger has to stop. */
+    const urgency = clamp01(LET_MIN + (1 - LET_MIN) * m.used);
+    return { lane: ln - 1, urgency, why: "merge", signal: true };
+  }
+
+  /* ══ LANE DROP ══════════════════════════════════════════════════════
+     Wants: out of a lane that ends.
+     Rises with: the same arithmetic as `exit`, but forced.
+     Produces: exit-only lanes doing their job.
+
+     §5c's table puts this next to `exit` and says "the same as exit, but
+     forced", and that is exactly what it is — so it is deliberately the
+     same arithmetic, with one difference that is the whole of it.
+
+     `exit` is optional. A driver who leaves it too late misses their
+     exit, carries on, and gets off at the next one; the harness counts
+     that and it is a real outcome. This is not optional. The road stops
+     being there, so a driver who leaves it too late does not miss
+     anything — they stop, at the end of the lane, with the traffic that
+     is still moving going past them. `sim.js` makes the end of the lane
+     a stopped obstacle for exactly that reason: the consequence is a
+     queue on the taper rather than a rule that says nobody may fail.
+
+     ── one trait again, and it is the same one ────────────────────────
+     `exitLead` is how far out this driver starts thinking about getting
+     over, drawn 240 m to 3.2 km, and it does the same job here that it
+     does for an exit: the careful are out of the dying lane a mile
+     early and the appalling are still in it at the taper. Nothing has to
+     decide which kind a vehicle is, and the same driver is both kinds on
+     the same day for the same reason.
+
+     What stops the appalling ones from simply being deleted is the
+     second term, also `exit`'s: when there is not enough road left to
+     get across, this goes unbounded, and `room` reads that as nerve. */
+  function laneDrop(veh, view, L, R) {
+    const d = view.laneEnds;
+    if (!(d < Infinity)) return null;               // this lane runs on
+    const ln = Math.round(view.lane);
+    /* Out is whichever way there is still a road. A dropped rightmost
+       lane sends you left, a dropped inside lane sends you right, and
+       nothing here has to know which kind of drop it is. */
+    const lane = ln > 1 ? ln - 1 : ln + 1;
+    if (lane < 1 || lane > view.lanes) return null;
+    const side = lane < ln ? L : R;
+    if (!plausible(side, veh)) return null;
+
+    /* One lane to cross, at `exit`'s own budget for actually getting
+       across one — which is not the median manoeuvre duration, and
+       `exit` records what assuming that cost. */
+    const need = CROSS * Math.max(4, veh.v);
+    const lead = Math.max(veh.drv.exitLead, need);
+    if (d > lead) return null;                      // signed, but not yet theirs
+
+    let urgency = clamp01(1 - d / lead);
+    if (d < need) urgency = Math.max(urgency, 1.1 * need / Math.max(20, d));
+    return { lane, urgency, why: "lane-drop", signal: true,
+             nerve: 1 + 0.6 * Math.max(0, urgency - 1) };
+  }
 
   /* ══ and the argument between them ══════════════════════════════════
      Score everything, take the strongest, and move only if it clears the
@@ -883,7 +1016,7 @@ const Motive = (() => {
     free, prospect, plausible, mind,
     FLOOR, BLOCK_TAU, BLOCK_MIN, KR_TAU, KR_MIN, YIELD_DV, YIELD_TTC, YIELD_TAIL,
     AVOID_TTC, REACH, HOLD, SETTLE, BLOCK_MARGIN, KR_GIVE, habit,
-    MERGE_NEAR, MERGE_PUSH, MERGE_LEN, home, CROSS,
+    MERGE_NEAR, MERGE_PUSH, MERGE_LEN, home, CROSS, LET_MIN,
   };
 })();
 

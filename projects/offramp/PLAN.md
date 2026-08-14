@@ -2480,6 +2480,185 @@ of any particular car.
 
 ---
 
+### Phase 5j — the junction motives, and the one that cannot be judged yet
+
+*(2026-08-14. `exit` landed in §5e's run; this is the other two, which
+were the last stubs in `motive.js`. One of them works and is measured.
+The other is built, measured, and does nothing — and finding out WHY it
+does nothing is the useful part of this section.)*
+
+#### `merge` — the half of a merge that nobody was doing
+
+A merge has two sides and only one of them is a choice between lanes.
+The joining driver is not picking a lane — there is one lane they can be
+in and they are entering it from a slip road — so their half is a
+manoeuvre and it lives in `sim.js` (§5e: an acceleration lane, `room`
+for the gap, nerve rising as the taper runs out). What was missing is
+the other side: **on this road, nobody had ever made room for anybody.**
+
+Built as two courtesies, because that is what drivers actually have:
+
+- **lateral**, in `motive.js` — a driver in the lane being joined moves
+  one lane left. Gated on `polite`, which is what §5c gates a courtesy
+  on, so about half the road does not do it and never will.
+- **longitudinal**, in `sim.js`'s `follow` — the same driver lifts off
+  and lets the gap in front open. It is deliberately not a motive: the
+  decider answers with a lane, and this driver is staying in theirs. It
+  is bounded twice, at a lift-off rather than a brake and not at all for
+  a merger going far slower than traffic, because nobody stops on a live
+  carriageway for a vehicle on its own pavement.
+
+The sim publishes the leader of each ramp queue and nothing else, so
+`view.merging` is one vehicle — the only one that can merge — and a
+decider two lanes in never sees it.
+
+**One design fault, found by inspection and not by the numbers.** The
+gate asking whether the merger was moving compared it to *the courteous
+driver's own current speed*, which is a feedback loop pointing the wrong
+way: ease off, and your speed falls, so the merger clears the gate more
+easily, so you ease off again. It is measured against `want` now, which
+is a fixed property of the driver and cannot wind down. Worth being
+precise about the evidence: the run that appeared to show the loop doing
+damage was **one seed**, and it did not survive six more — see below.
+The gate was changed because it was wrong, not because a number said so.
+
+#### And then it does nothing, which is the result
+
+One ramp, offered 600 veh/h, mainline at 800 veh/h/lane on four lanes,
+0.4 h, seven seeds. Everything else identical.
+
+| veh/h the ramp serves | seeds |
+|---|---|
+| no courtesy at all | **645**, 268, 285, 253, 288, 243, 255 |
+| both halves | 290, 310, 263, 250, 260, 300 |
+
+Medians 268 and 275. **The bold 645 is one seed getting away with it**,
+and it is exactly the trap §5f documented and nearly shipped on: read
+the first row alone and the courtesy looks like a catastrophic
+regression, 645 → 290. Read seven and there is no effect either way.
+`test/sim.test.js` §9 has warned about this since §5e — "the outcome is
+BINARY … a single seed is a Bernoulli trial" — and it was still the
+first conclusion reached here.
+
+#### The number that says why, and it is not a motive
+
+**A queued on-ramp discharges from a standstill. The median merge speed
+is 0.0 m/s.**
+
+That is the whole thing. A stopped vehicle joining a lane doing 28 m/s
+asks its follower to lose all of that speed, which is a couple of
+hundred metres of gap — measured, the lag gap at the moment of merging
+runs 69–93 m and is still refusing most attempts. At the density in the
+rightmost lane a gap that size does not come, so the ramp serves about
+270 veh/h whatever anybody does. **Nobody can open a two-hundred-metre
+gap by being polite.** The mainline courtesy is not wrong; it is
+irrelevant while this is true, and it cannot be judged until it is not.
+
+It also retires §5e's diagnosis as *the* cause. The lane shares are
+wrong in the direction §5e said — the rightmost lane is over-full — but
+they are not what pins the ramp. Merging from rest is.
+
+**And one fix tried and rejected, which is worth keeping because it is
+the obvious one.** If the trouble is that the merger is judged at the
+speed it has rather than the speed it will have, project both over the
+manoeuvre — merger accelerating, follower holding station — and judge
+the gap that exists at the end of it. Measured: **270 veh/h before, 60
+after.** It is worse for two reasons and both are instructive. A stopped
+vehicle gains 16 m over a manoeuvre while the traffic gains 112, so the
+projected gap is a hundred metres *smaller* and the criterion tightens.
+And it double-counts: `idm` already prices the closing, on the real gap
+and the real speed difference, which is the entire content of the
+standard safety criterion. Reverted, with the note left in `room`.
+
+**What the fix actually is:** a merging driver who does not merge from
+rest. Either they hold back and keep enough taper to launch into a gap
+they can see coming, or they search the lane upstream for an arriving
+hole rather than testing the one beside them now. Both are real models
+of what a driver at a give-way does, both need their own measurement,
+and neither is a motive. That is the next piece of the on-ramp.
+
+#### `lane drop` — and this one works
+
+The harness had never had anywhere to test it, so most of the work is
+road rather than motive. `drop: { at, lane }` ends a lane at a station,
+and four things follow from it:
+
+- the end of the lane is a **stopped obstacle in `follow`**, exactly
+  like a wreck, so the queue on the taper assembles itself and the
+  traffic behind can see it coming. Nobody is teleported out of a lane.
+- `room` refuses a lane there is not enough of left to finish the
+  manoeuvre in — a physical refusal, so the stand-in deciders obey it
+  too.
+- `plausible` refuses a lane with less road left than it takes to get
+  out of again, which is the single place that has to be said: without
+  it `keep right` shepherds people into a dying lane and `lane drop`
+  spends the taper undoing it.
+- `home` stops anybody resting in it, so the shelter lane logic and the
+  drop do not argue.
+
+The motive itself is `exit`'s arithmetic with one difference that is the
+whole of it: **an exit is optional and this is not.** Miss an exit and
+you get off at the next one; miss this and the road stops being there.
+`exitLead` does the same job it does for an exit, and it is the same
+draw — 240 m to 3.2 km — so the careful and the appalling come out of
+one trait again.
+
+Measured at 900 veh/h/lane, which is the flow that FITS: drop one of
+four lanes and the demand does not drop with it, so the reference 1,585
+would be 2,113 per lane against a capacity near 1,900, and that queues
+whatever the motive does. At a flow three lanes can carry:
+
+| | four lanes throughout | the rightmost ends at 4 km |
+|---|---|---|
+| lane-drop manoeuvres | 0 | hundreds |
+| out of it, p15 / p50 / p85 | — | **102 / 410 / 1033** m before the end |
+| stopped at the end of it | 0 | **46 of 1,473**, for 649 vehicle-seconds |
+| veh/h/lane past the detector | 891 over four | **978 over the three** |
+| driven through anybody | 0 | **0** |
+
+The spread is the claim. Nothing decides which drivers get out early;
+one trait produces the ones who are gone a kilometre out and the ones
+still there at the taper, and a few who do not make it at all — which is
+what §5c asked for, because a lane drop nobody can fail at is one with
+the urgency turned up until failure is impossible.
+
+**What it does badly, printed rather than hidden.** Above about 900
+veh/h/lane the forced merge produces stop-and-go behind it and the model
+shunts far too readily in stop-and-go — 1,629 contacts in a run at
+1,200. That is not new and it is not the lane drop: §5c measured it in
+2026-08-10 ("the shape is right and the rate is not") and named the two
+things missing. The lane drop is the first feature to exercise it hard.
+
+#### And the suite went green, which is not a fix
+
+`sim.test.js` is **106 passed, 0 failed** — and the two reds it has
+carried since §5e are among the passes, at `conserved` 0.996 against the
+0.799 they had been failing at. **Nothing about the on-ramp was
+repaired.** The courtesy consumes different random draws, so the run
+landed on the other side of the coin that section is entirely about.
+The evidence that it is luck sits two lines below it in the same output
+and has not moved: 247 veh/h delivered against a real 1,200, and a
+median merge speed of 0.0 m/s. The comment in §9 now says so in as many
+words, because a future reader seeing 0 failed would otherwise conclude
+the ramp works.
+
+Everything else: 72 motive, 163 garage, 86 impact, 74 traffic, 45
+progress, 41 score, 37 cars. **624 assertions, nothing failing.**
+
+#### What this does not do
+
+- **The corridor's own lane changes are not wired to it.** `drop` is a
+  harness option at a fixed station; `data/i40.js` carries 732 real ones
+  and a roaming band would carry its drop along with it. That is the job
+  that makes this real on the road rather than in a test.
+- **`merge` has no verdict.** It is live, it is inert, and it stays that
+  way until an on-ramp discharges at something other than 0.0 m/s.
+- **The blind spot is still off.** §5c said to turn it back on the day
+  `yield` lands, and `yield` landed — but the merge negotiation it was
+  waiting for is precisely the one that does not work yet.
+
+---
+
 ## 6. Risks and things I expect to go wrong
 
 Flagging these once, here, rather than in conversation.
@@ -3488,17 +3667,28 @@ rather than measured.
      traffic drove into a car that was not on the road (lane 1 now runs
      2.7× faster past a shoulder), and there is an overtake tally on
      the wreck panel. sim unchanged at 97/2
-   - **next: the missing mechanism — a reason to STAY LEFT.** Nothing
-     tried moves the gradient toward the measured 15, because the
-     model's gradient comes from keep-right pressure rather than from
-     drivers sorting by speed. A driver faster than the traffic knows
-     they will be blocked again shortly; nothing in the model knows
-     that. Build it, and judge it on §5g's table. Lorry statistics need
-     more road-hours before they can referee anything either way.
-     Then `merge`'s remaining half, the on-ramp jam, `lane drop` and the
-     blind spot — the last three are now also what the CARS need, since
-     the band is mainline only and nobody is on a ramp. Then signals,
-     then scoring
+   - ~~the junction motives~~ — §5j, and the seven are now all built.
+     `lane drop` works and is measured: a lane that ends is a stopped
+     obstacle in `follow`, `plausible` and `home` stop shepherding
+     anybody into it, and 877 vehicles get out of it at 46/320/974 m
+     before the end off one trait, with a tail who do not. `merge` is
+     built — the mainline moving over and lifting off for somebody
+     joining — and it does **nothing**, over seven seeds, because a
+     queued on-ramp discharges at a median **0.0 m/s** and nobody can
+     open the gap that needs by being polite. The one seed that said
+     otherwise was the coin toss §5e warned about
+   - **next, and it is now two things rather than one.** First, the
+     on-ramp: a merging driver who does not merge from rest — hold back
+     and launch into a gap they can see coming, or search the lane
+     upstream for one arriving. It is not a motive, it is the ramp
+     model, and until it lands `merge` cannot be judged and the blind
+     spot cannot come back on. Second, still, **the missing mechanism —
+     a reason to STAY LEFT**: nothing tried moves the gradient toward
+     the measured 15, because the model's gradient comes from keep-right
+     pressure rather than from drivers sorting by speed. A driver faster
+     than the traffic knows they will be blocked again shortly; nothing
+     in the model knows that. Judge it on §5g's table. Then wiring the
+     corridor's own 732 lane changes to `drop`, then signals
 
 ---
 
