@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const url = require("node:url");
 const { spawn } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "../../..");
@@ -12,6 +13,9 @@ const PROJECT = path.join(ROOT, "projects/crossfire");
 const INDEX = path.join(PROJECT, "index.html");
 const NET = path.join(PROJECT, "net.js");
 const ROOMS = path.join(PROJECT, "server/rooms.js");
+const CORE = path.join(PROJECT, "server/rooms-core.mjs");
+const WORKER = path.join(PROJECT, "server/worker.mjs");
+const WRANGLER = path.join(PROJECT, "server/wrangler.jsonc");
 
 function read(file) {
   return fs.readFileSync(file, "utf8");
@@ -28,7 +32,10 @@ function checkSyntax() {
   assert.equal(scripts.length, 1, "expected one inline game script");
   new vm.Script(scripts[0][1], { filename: "index.inline.js" });
 
-  assert.match(html, /const MATCH_TIME\s*=\s*60;/, "Battle Royale must stay one minute");
+  assert.doesNotMatch(html, /MATCH_TIME|timeUp\(/,
+    "Battle Royale must not end on a timer");
+  assert.match(html, /blurb: "two-hit hulls · no time limit · the wall closes in"/,
+    "Battle Royale must advertise that it has no time limit");
   assert.match(html, /const BURST_SIZE\s*=\s*3;/, "weapons must stay three-round bursts");
   assert.match(html, /const ROYALE_HULL\s*=\s*2;/, "Battle Royale must use two-hit hulls");
   assert.match(html, /cause === "shot" \|\| cause === "rock"/,
@@ -49,13 +56,58 @@ function checkSyntax() {
   );
   assert.match(
     html,
-    /body\.touch #lobby textarea\s*{[^}]*user-select:\s*text;/s,
-    "online codes must remain selectable on mobile"
+    /body\.touch #lobby input\s*{[^}]*user-select:\s*text;/s,
+    "lobby name and password fields must stay editable on mobile"
   );
-  assert.match(html, /state === "over"[\s\S]*?leaveMatch\(\)/,
-    "returning from results must close the online session");
-  assert.match(html, /tapText\("SPACE to return"[\s\S]*?leaveMatch\);/,
-    "the clickable results return must close the online session");
+  // The paste route is gone, so nothing in the lobby is a code any more. Its
+  // markup, its styling and the strings that promised it all have to go too —
+  // a fallback that no longer exists must not be offered to anybody.
+  assert.doesNotMatch(html, /<textarea|#lobby textarea/,
+    "the lobby must not carry the deleted paste route");
+  assert.doesNotMatch(html, /join by code|codes still work/,
+    "the lobby must not offer a manual-code fallback that no longer exists");
+  assert.match(html, /const MODE_KEYS = \["survival", "royale"\];/,
+    "Survival and Battle Royale must be the only top-level modes");
+  assert.doesNotMatch(html, /MODES\.safe|data-mode="safe"|SURVIVAL — SAFE/,
+    "friendly-fire-free Survival must not remain a separate mode");
+  assert.match(html, /FRIENDLY FIRE: " \+ \(survivalFriendlyFire \? "ON" : "OFF"\)/,
+    "Survival setup must expose its friendly-fire toggle");
+  assert.match(html, /friendlyFire: mode\.friendlyFire/,
+    "online initialization must synchronize the Survival setting");
+  assert.match(html, /tapButton\("PLAY"[\s\S]*?startCountChoice/s,
+    "the setup screen must use an explicit Play button");
+  assert.match(html, /tapButton\(replayLabel[\s\S]*?playAgain/s,
+    "results must offer Play Again");
+  assert.match(html, /tapButton\("MAIN MENU"[\s\S]*?leaveMatch/s,
+    "results must retain a full session exit");
+  assert.match(html, /seated\.forEach\(l => l\.send\(initPacket\(l\.seat\), true\)\);/,
+    "online Play Again must initialize every guest");
+  assert.match(html, /function hazardActive\(h\)[\s\S]*?h\.x >= bounds\.x0/s,
+    "shrinking-wall hazard activity must use the live arena");
+  assert.match(html, /for \(const h of hazards\) \{\s*if \(!hazardActive\(h\)\) continue;/s,
+    "gravity must ignore hazards outside the live arena");
+  assert.match(html, /const p = respawnPoint\(ship\);/,
+    "respawns must choose a point inside the current wall");
+  assert.match(html, /rand\(bounds\.x0 \+ margin, bounds\.x1 - margin\)/,
+    "fallback respawns must retain distance from the current wall");
+  assert.match(html, /const SOUND_STORE = "crossfire\.sound\.v1";/,
+    "sound preference must persist");
+  assert.match(html, /window\.AudioContext \|\| window\.webkitAudioContext/,
+    "sound effects must use the dependency-free Web Audio path");
+  assert.match(html, /gameSound\("shot", ship\.x\)/,
+    "weapon fire must produce sound");
+  assert.match(html, /gameSound\("explode", ship\.x\)/,
+    "ship destruction must produce sound");
+  assert.match(html, /fx: soundEvents\.filter/,
+    "online snapshots must carry recent sound events");
+  assert.match(html, /e\[0\] <= net\.lastSoundSeq/,
+    "online sound events must not replay twice");
+  assert.match(html, /document\.documentElement\.requestFullscreen/,
+    "fullscreen must include the game and its touch controls");
+  assert.match(html, /document\.exitFullscreen \|\| document\.webkitExitFullscreen/,
+    "fullscreen must have an exit path");
+  assert.match(html, /tapButton\(fullscreenLabel\(\)/,
+    "fullscreen must be exposed as a visible game control");
   assert.match(html, /else if \(net\.role === "host"\) readSimulationInput\(\);/,
     "the host must keep remote and bot input current while its menu is open");
   assert.match(html, /t: "s", q: \+\+net\.outSnapSeq/,
@@ -80,6 +132,24 @@ function checkSyntax() {
     "local control checks must cover every keyboard player");
   assert.match(html, /const dx = sepX\(o\.x, s\.x\), dy = sepY\(o\.y, s\.y\)/,
     "bot targeting must use wrapped arena distance");
+
+  /* The field idling behind the menus is decoration, and decoration must not be
+     able to reach the match. Three things keep it honest: it is drawn only on
+     screens with no world of their own, it keeps its own arrays rather than
+     borrowing the match's, and it stays faint enough that menu text over it
+     still clears contrast. */
+  assert.match(html, /const menu = state === "title" \|\| state === "count" \|\|/,
+    "the idling field must be gated to menu screens");
+  assert.match(html, /if \(menu\) drawDrift\(/,
+    "the idling field must be drawn behind menus only");
+  assert.doesNotMatch(html, /function driftStep[\s\S]*?\brocks\.push\b[\s\S]*?function drawDrift/,
+    "the idling field must not push into the match's own rock list");
+  assert.match(html, /prefers-reduced-motion: reduce/,
+    "the idling field must stop moving when less motion is asked for");
+  const driftAlpha = /const DRIFT_ALPHA = ([\d.]+);/.exec(html);
+  assert.ok(driftAlpha, "the idling field must keep a single named opacity");
+  assert.ok(Number(driftAlpha[1]) <= 0.35,
+    "the idling field must stay faint enough for menu text to read over it");
 
   const roomSource = read(ROOMS);
   assert.match(roomSource, /const TRUST_PROXY = process\.env\.TRUST_PROXY === "1";/,
@@ -269,10 +339,14 @@ async function checkRoomService() {
     });
     assert.equal(oversized.status, 400, "oversized body was not rejected cleanly");
 
+    /* Without TRUST_PROXY the socket address is the caller, so a fresh
+       X-Forwarded-For on every request must not buy a fresh bucket. Run well
+       past the bucket to prove the header is being ignored rather than merely
+       that the run was short. */
     let throttled = false;
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 400; i++) {
       const request = await fetch(`${base}/room/test/missing`, {
-        headers: { "x-forwarded-for": `198.51.100.${i}` }
+        headers: { "x-forwarded-for": `198.51.100.${i % 255}` }
       });
       if (request.status === 429) { throttled = true; break; }
       assert.equal(request.status, 404, "unexpected response before rate limit");
@@ -284,10 +358,244 @@ async function checkRoomService() {
   }
 }
 
+/* The room list is the part strangers see, so what it does and does not carry
+   is worth pinning down: a locked room appears, says it is locked, and never
+   ships the password or its salt to anybody. */
+async function checkRoomList() {
+  const child = spawn(process.execPath, [ROOMS], {
+    env: { ...process.env, PORT: "0" },
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+
+  const offer = "C1p" + "A".repeat(40);
+
+  try {
+    const port = await waitForService(child);
+    const base = `http://127.0.0.1:${port}`;
+    const origin = "http://127.0.0.1:8000";
+    const head = { Origin: origin, "content-type": "application/json" };
+    const post = (path, body) => fetch(`${base}${path}`, {
+      method: "POST", headers: head, body: JSON.stringify(body)
+    });
+
+    const empty = await (await fetch(`${base}/rooms`, { headers: head })).json();
+    assert.deepEqual(empty.rooms, [], "a fresh service listed rooms");
+
+    await post("/room/glocked/host",
+               { key: "k1", name: "Ric", title: "Ric's game", pass: "otter",
+                 mode: "royale" });
+    await post("/room/gopen/host", { key: "k2", name: "Guest", title: "Open one" });
+
+    const listed = await (await fetch(`${base}/rooms`, { headers: head })).json();
+    assert.equal(listed.rooms.length, 2, "both rooms should be listed");
+    const locked = listed.rooms.find(r => r.id === "glocked");
+    assert.equal(locked.locked, true, "a room with a password must say so");
+    assert.equal(locked.title, "Ric's game", "the room title was not carried");
+    assert.equal(locked.mode, "royale", "the room's mode was not carried");
+    assert.equal(listed.rooms.find(r => r.id === "gopen").mode, "survival",
+      "a room that named no mode should read as survival");
+    assert.equal(listed.rooms.find(r => r.id === "gopen").locked, false,
+      "a room without a password must not read as locked");
+    assert.equal(JSON.stringify(listed).includes("otter"), false,
+      "the list leaked a room password");
+    assert.equal(/salt|hash/i.test(JSON.stringify(listed)), false,
+      "the list leaked password material");
+
+    // An open room takes anybody; a locked one takes only the right password.
+    assert.equal((await post("/room/gopen/join", { offer })).status, 200,
+      "an open room refused a join");
+    assert.equal((await post("/room/glocked/join", { offer, pass: "wrong" })).status, 403,
+      "a locked room accepted the wrong password");
+    assert.equal((await post("/room/glocked/join", { offer, pass: "otter" })).status, 200,
+      "a locked room refused the right password");
+
+    // Guessing stops being answered long before a short password falls.
+    let lockedOut = false;
+    for (let i = 0; i < 20; i++) {
+      const r = await post("/room/glocked/join", { offer, pass: `no${i}` });
+      if (r.status === 429) { lockedOut = true; break; }
+    }
+    assert.equal(lockedOut, true, "wrong passwords were never throttled");
+
+    // Only the room's owner can take it down, and once down it is not listed.
+    assert.equal((await post("/room/gopen/close", { key: "not-the-key" })).status, 403,
+      "a stranger closed somebody else's room");
+    assert.equal((await post("/room/gopen/close", { key: "k2" })).status, 200,
+      "the owner could not close its own room");
+    const after = await (await fetch(`${base}/rooms`, { headers: head })).json();
+    assert.equal(after.rooms.some(r => r.id === "gopen"), false,
+      "a closed room stayed in the list");
+
+    // A room that has started asks to be left out of the list.
+    await post("/room/glocked/host",
+               { key: "k1", name: "Ric", title: "Ric's game", listed: false });
+    const hidden = await (await fetch(`${base}/rooms`, { headers: head })).json();
+    assert.equal(hidden.rooms.length, 0, "an unlisted room was still listed");
+  } finally {
+    child.kill("SIGTERM");
+  }
+}
+
+/* ── the service, without either set of plumbing ─────────────────────────────
+   Everything above reaches the service through the laptop runner's node:http
+   server. Cloudflare runs the same rules behind completely different plumbing,
+   so the rules are worth testing on their own — this is the code path that is
+   live for everybody, and it can be exercised without an account, a network or
+   wrangler. `handle` is handed the caller's address rather than digging one
+   out, because only the runtime knows which header it is allowed to believe. */
+async function checkCore() {
+  const { createRooms, ALLOWED } = await import(url.pathToFileURL(CORE).href);
+  const origin = "https://ricmassey.com";
+  assert.equal(ALLOWED.has(origin), true, "the live site must be allowed to call this");
+
+  const rooms = createRooms();
+  const head = { Origin: origin, "content-type": "application/json" };
+  const at = (ip, path, init) =>
+    rooms.handle(new Request("https://rooms.invalid" + path, init), ip);
+  const post = (ip, path, body) =>
+    at(ip, path, { method: "POST", headers: head, body: JSON.stringify(body) });
+  const get = (ip, path) => at(ip, path, { headers: { Origin: origin } });
+
+  assert.equal((await get("1.1.1.1", "/health")).status, 200, "health check failed");
+
+  /* The whole of matchmaking, which is the one thing no test covered before
+     the service learned to run in two places: a guest leaves an offer, the
+     host collects it on its next heartbeat, answers it, and the guest picks
+     the answer up. After that the two browsers are talking and this is done. */
+  const offer = "C1p" + "A".repeat(40);
+  const answer = "C1p" + "B".repeat(40);
+
+  await post("1.1.1.1", "/room/ghandshake/host", { key: "k1", name: "Ric" });
+  const knock = await (await post("2.2.2.2", "/room/ghandshake/join",
+                                  { offer, name: "Guest" })).json();
+  assert.equal(typeof knock.id, "string", "the guest was given no join id");
+
+  const beat = await (await post("1.1.1.1", "/room/ghandshake/host", { key: "k1" })).json();
+  assert.equal(beat.joins.length, 1, "the host was not handed the waiting offer");
+  assert.equal(beat.joins[0].offer, offer, "the offer was altered in transit");
+  assert.equal(beat.joins[0].name, "Guest", "the guest's name did not travel");
+
+  const again = await (await post("1.1.1.1", "/room/ghandshake/host", { key: "k1" })).json();
+  assert.equal(again.joins.length, 0, "the same offer was handed over twice");
+
+  assert.equal((await (await get("2.2.2.2", `/room/ghandshake/join/${knock.id}`)).json()).waiting,
+    true, "the guest was told to stop waiting before there was an answer");
+
+  assert.equal((await post("3.3.3.3", "/room/ghandshake/answer",
+    { key: "not-the-key", id: knock.id, answer })).status, 403,
+    "a stranger answered somebody else's join");
+  assert.equal((await post("1.1.1.1", "/room/ghandshake/answer",
+    { key: "k1", id: knock.id, answer })).status, 200, "the host could not answer");
+
+  const got = await (await get("2.2.2.2", `/room/ghandshake/join/${knock.id}`)).json();
+  assert.equal(got.answer, answer, "the answer did not reach the guest");
+  assert.equal((await get("2.2.2.2", `/room/ghandshake/join/${knock.id}`)).status, 404,
+    "a collected answer was left lying around for a second caller");
+
+  // A locked room still says nothing about its password to anyone who lists it.
+  await post("1.1.1.1", "/room/glocked/host",
+             { key: "k2", name: "Ric", title: "Locked", pass: "otter" });
+  const listed = await (await get("2.2.2.2", "/rooms")).json();
+  assert.equal(listed.rooms.find(r => r.id === "glocked").locked, true,
+    "a room with a password did not say so");
+  assert.equal(/otter|salt|hash/i.test(JSON.stringify(listed)), false,
+    "the list leaked password material");
+  assert.equal((await post("2.2.2.2", "/room/glocked/join", { offer, pass: "wrong" })).status,
+    403, "a locked room accepted the wrong password");
+  assert.equal((await post("2.2.2.2", "/room/glocked/join", { offer, pass: "otter" })).status,
+    200, "a locked room refused the right password");
+
+  /* An address is a house, not a person: everybody on one wifi arrives here as
+     the same caller. So the limiter has to fit the worst sensible room — five
+     players on one router, the host beating every 2s and four guests refreshing
+     every 3s — which is about 110 requests a minute before anyone does anything
+     unusual. Counted as a burst, because a join adds twenty in ten seconds.
+
+     This is written as the requirement rather than the constant on purpose: the
+     first version allowed 30 a minute, which throttled a family out of their own
+     game, and the way to not do that again is to state the room, not the number. */
+  const household = 30 + 4 * 20;
+  const fresh = createRooms();
+  const busy = ip => fresh.handle(new Request("https://rooms.invalid/rooms",
+                                              { headers: { Origin: origin } }), ip);
+  for (let i = 0; i < household; i++) {
+    assert.equal((await busy("5.5.5.5")).status, 200,
+      `one household was throttled after ${i} requests in a minute`);
+  }
+
+  /* It must still stop somewhere, and stopping one caller must not stop the
+     rest — otherwise anybody could shut the list for everybody. */
+  let throttled = false;
+  for (let i = 0; i < 400; i++) {
+    if ((await get("9.9.9.9", "/rooms")).status === 429) { throttled = true; break; }
+  }
+  assert.equal(throttled, true, "one address was never throttled");
+  assert.equal((await get("8.8.8.8", "/rooms")).status, 200,
+    "throttling one caller shut out everybody else");
+}
+
+/* The Worker is plumbing, but two things about it are worth pinning: that it
+   runs the shared core at all, and that it always names the same Durable
+   Object. A Worker is many isolates in many places; the moment two of them can
+   own different lists, a room opened in one is invisible from the other. */
+async function checkWorker() {
+  const worker = await import(url.pathToFileURL(WORKER).href);
+  assert.equal(typeof worker.default.fetch, "function", "the Worker has no fetch");
+  assert.equal(typeof worker.RoomList, "function",
+    "the Durable Object class must be exported for Cloudflare to find it");
+
+  const made = new Map();
+  const names = [];
+  const env = {
+    ROOMS: {
+      idFromName(name) { names.push(name); return name; },
+      get(name) {
+        if (!made.has(name)) made.set(name, new worker.RoomList());
+        return made.get(name);
+      }
+    }
+  };
+
+  const origin = "https://ricmassey.com";
+  const call = (path, init) => worker.default.fetch(
+    new Request("https://rooms.invalid" + path, init), env
+  );
+
+  await call("/room/gworker/host", {
+    method: "POST",
+    headers: { Origin: origin, "content-type": "application/json",
+               "CF-Connecting-IP": "1.1.1.1" },
+    body: JSON.stringify({ key: "k1", name: "Ric", title: "Through the Worker" })
+  });
+  const listed = await (await call("/rooms", {
+    headers: { Origin: origin, "CF-Connecting-IP": "2.2.2.2" }
+  })).json();
+
+  assert.equal(listed.rooms.length, 1,
+    "a room hosted through the Worker was not visible on the next request");
+  assert.equal(listed.rooms[0].title, "Through the Worker", "the Worker lost the room");
+  assert.equal(made.size, 1, "the Worker used more than one room list");
+  assert.equal(new Set(names).size, 1,
+    "the Worker named a different Durable Object per request");
+
+  /* Free-plan Durable Objects are SQLite-backed ones, and the backend is fixed
+     when the namespace is created. Getting this wrong is not a broken deploy —
+     it is a working deploy that starts costing money. */
+  const config = fs.readFileSync(WRANGLER, "utf8");
+  assert.match(config, /"new_sqlite_classes":\s*\[\s*"RoomList"\s*\]/,
+    "the Durable Object must be declared with the SQLite backend");
+  assert.doesNotMatch(config, /"new_classes"/,
+    "new_classes is the paid-plan backend — the free plan needs new_sqlite_classes");
+  assert.match(config, /"class_name":\s*"RoomList"/, "the binding names no class");
+}
+
 async function main() {
   checkSyntax();
   await checkTransport();
+  await checkCore();
+  await checkWorker();
   await checkRoomService();
+  await checkRoomList();
   console.log("CROSSFIRE smoke checks passed");
 }
 

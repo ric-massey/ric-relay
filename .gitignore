@@ -31,3 +31,8 @@ projects/offramp/data/osm/v2/
 projects/offramp/data/osm/ramps/
 projects/offramp/data/osm/cross/
 projects/offramp/data/osm/__pycache__/
+
+# CROSSFIRE room service: wrangler's local state, including a cached copy of
+# the Cloudflare account id. The Worker itself IS committed — server/worker.mjs,
+# server/rooms-core.mjs and server/wrangler.jsonc are what get deployed.
+projects/crossfire/server/.wrangler/

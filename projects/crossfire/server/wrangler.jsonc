@@ -1,0 +1,20 @@
+{
+  // CROSSFIRE room service. Deploy from this directory:
+  //     npx wrangler@latest deploy
+  //
+  // `new_sqlite_classes` rather than `new_classes` is what makes the Durable
+  // Object free-plan eligible. The object never writes to that storage — see
+  // the note at the top of worker.mjs — but the backend still has to be
+  // declared, and it cannot be changed after the namespace is created.
+  "name": "crossfire-rooms",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-08-01",
+
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "RoomList" }]
+  },
+
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RoomList"] }],
+
+  "observability": { "enabled": true }
+}

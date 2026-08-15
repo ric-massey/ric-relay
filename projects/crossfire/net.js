@@ -2,9 +2,9 @@
    ────────────────────────────────────────────────────────────────────────────
    There is no game server. This site is static files on GitHub Pages, so there
    is nowhere to run one. Players connect straight to each other over WebRTC,
-   and the only thing that has to travel out-of-band is the connection offer —
-   which is why joining means pasting a code rather than typing a room name. A
-   short room name would need a server to look it up; the code IS the lookup.
+   and the only thing that has to travel out-of-band is the connection offer.
+   The room service carries it, and carries nothing else: gameplay never goes
+   near it, and it could stop answering mid-match without anybody noticing.
 
    This file knows nothing about the game. It moves messages and reports who is
    connected. Everything about ships and rocks lives in index.html.
@@ -34,10 +34,12 @@
   const CH_STATE = { ordered: false, maxRetransmits: 0 };
 
   /* ── code encoding ────────────────────────────────────────────────────────
-     A raw session description is 2–4 KB of SDP, which is miserable to paste.
-     The compact description below removes browser-generated boilerplate before
-     base64 encoding it. New codes stay uncompressed so they work across browsers
-     even when only one side implements CompressionStream. */
+     A raw session description is 2–4 KB of SDP, and every one of them sits in
+     the room service's memory until it is claimed. The compact description
+     below removes browser-generated boilerplate before base64 encoding it, so
+     what the service holds is a couple of hundred bytes per join rather than
+     kilobytes. New codes stay uncompressed so they work across browsers even
+     when only one side implements CompressionStream. */
 
   async function unsqueeze(bytes, format) {
     const ds = new DecompressionStream(format);
@@ -50,8 +52,8 @@
   const b64 = bytes => btoa(String.fromCharCode(...bytes));
   const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 
-  /* Compressing the raw SDP still left ~780 characters to paste, because most
-     of an SDP is boilerplate that both ends already know. So we don't send it.
+  /* Compressing the raw SDP still left ~780 characters, because most of an SDP
+     is boilerplate that both ends already know. So we don't send it.
      Only five things actually differ between one connection and another:
 
        the ICE username and password, the DTLS fingerprint, which side starts
@@ -303,12 +305,12 @@
       this.pending = null;
     },
 
-    /* The other way round, for when a room service is carrying the invite.
-       There the guest knocks first — it posts an offer and waits — so the host
-       is the one answering. That matters: with the host offering, two people
-       typing the room word at the same moment would both grab the same offer
-       and one of them would silently fail. Answering each knock in turn has no
-       such race, however many arrive together. */
+    /* The live route: the room service carries the descriptions, so the guest
+       knocks first — it posts an offer and waits — and the host is the one
+       answering. That order matters. With the host offering, two people
+       clicking the same lobby at the same moment would both collect the same
+       offer and one of them would silently fail. Answering each knock in turn
+       has no such race, however many arrive together. */
     async answer(code, handlers) {
       const desc = await decodeDesc(code);
       if (desc.type !== "offer") throw new Error("That isn't someone knocking.");

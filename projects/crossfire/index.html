@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CROSSFIRE — survival, or last ship flying</title>
-<meta name="description" content="CROSSFIRE is bright vector-space combat for 1–5 ships: survive asteroid waves together or fight through a one-minute Battle Royale inside a closing wall.">
+<meta name="description" content="CROSSFIRE is bright vector-space combat for 1–5 ships: survive asteroid waves together or fight a no-time-limit Battle Royale inside a closing wall.">
 <meta property="og:title" content="CROSSFIRE">
-<meta property="og:description" content="Three modes for 1–5 ships. Survive the rocks together, or be the last ship flying inside a one-minute closing wall.">
+<meta property="og:description" content="Two modes for 1–5 ships. Survive the rocks together with optional friendly fire, or be the last ship flying in a no-time-limit Battle Royale.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230a0a0a'/><path d='M76 50 L34 72 L44 50 L34 28 Z' fill='none' stroke='%23ffc233' stroke-width='6' stroke-linejoin='round'/></svg>">
 <script src="../relay-return.js" data-home="../../index.html" defer></script>
 <script src="net.js"></script>
@@ -42,7 +42,7 @@
 
   /* Dragging a thumb across the game must steer, not select page text or open
      the iOS copy/share callout. The online lobby opts its editable fields back
-     in below because names and connection codes still need normal selection. */
+     in below, because a name and a password still need normal selection. */
   body.touch {
     -webkit-user-select: none;
     user-select: none;
@@ -50,8 +50,7 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  body.touch #lobby input,
-  body.touch #lobby textarea {
+  body.touch #lobby input {
     -webkit-user-select: text;
     user-select: text;
     -webkit-touch-callout: default;
@@ -226,8 +225,9 @@
   }
 
   /* ── the online panel ──────────────────────────────────────────────────
-     Real HTML rather than canvas, because this screen is all copying and
-     pasting and the browser already does that properly. */
+     Real HTML rather than canvas, because this screen is a list, some text
+     fields and a password, and the browser already does all of that
+     properly — including on a phone keyboard. */
   #lobby {
     position: fixed;
     inset: 0;
@@ -242,15 +242,22 @@
   #lobby[hidden] { display: none; }
 
   #lobby .panel {
-    /* A column, so the two connection steps can be put in the order that side
-       actually does them: the host makes a code first, the guest pastes one. */
+    /* A column, because the panel is a short sequence you work down: who you
+       are, then the lobbies, then who is here. `order` puts the pieces in it. */
     display: flex;
     flex-direction: column;
     width: min(100%, 680px);
     border: 1px solid var(--phosphor-faint);
     background: #000;
-    padding: 1.2rem 1.3rem 1.4rem;
+    /* The site's return-to-terminal button is fixed to the bottom-left corner
+       at a z-index nothing here can win, so the panel keeps its own last row
+       clear of it rather than letting a button hide under one. */
+    padding: 1.2rem 1.3rem max(1.4rem, 4.5rem);
+    /* The panel does its own scrolling. Capping the height without this let the
+       content spill straight past the box, which put the bottom padding — and
+       so the clearance above — somewhere it could never do its job. */
     max-height: 100%;
+    overflow-y: auto;
   }
 
   #lobby h2 {
@@ -269,20 +276,6 @@
   }
   #lobby .step { color: var(--phosphor); font-size: 0.9rem; letter-spacing: 0.08em;
                  display: block; margin: 1rem 0 0.35rem; }
-
-  #lobby textarea {
-    width: 100%;
-    background: #060606;
-    color: var(--phosphor-dim);
-    border: 1px solid var(--phosphor-faint);
-    font: inherit;
-    font-size: 0.9rem;
-    line-height: 1.45;
-    padding: 0.55rem 0.6rem;
-    resize: vertical;
-    word-break: break-all;
-  }
-  #lobby textarea:focus { outline: 2px solid var(--phosphor-dim); outline-offset: 1px; }
 
   #lobby button {
     font: inherit;
@@ -355,6 +348,41 @@
     background: rgba(255, 176, 0, 0.1);
   }
   #lobby .swatches button[disabled] { opacity: 0.22; }
+  /* The list of open lobbies. Each row is a button, because clicking a lobby is
+     the whole interaction — there is nothing else on a row to aim at. */
+  #lobby .roomlist { display: flex; flex-direction: column; gap: 0.3rem;
+                     max-height: 15rem; overflow-y: auto; margin-bottom: 0.6rem; }
+  #lobby .roomlist button.game {
+    margin: 0; width: 100%; text-align: left;
+    display: flex; align-items: baseline; gap: 0.6rem;
+    padding: 0.5rem 0.7rem;
+  }
+  #lobby .roomlist .title { flex: 1 1 auto; letter-spacing: 0.06em;
+                            overflow: hidden; text-overflow: ellipsis;
+                            white-space: nowrap; }
+  #lobby .roomlist .who { color: var(--phosphor-dim); font-size: 0.85rem;
+                          flex: 0 0 auto; }
+  #lobby .roomlist .count { color: var(--phosphor-dim); font-size: 0.85rem;
+                            flex: 0 0 auto; }
+  #lobby .roomlist .lock { color: var(--phosphor-dim); font-size: 0.8rem;
+                           letter-spacing: 0.1em; flex: 0 0 auto; }
+  #lobby .roomlist button.game.full { opacity: 0.45; }
+  #lobby .roomlist .empty { color: var(--phosphor-faint); font-size: 0.9rem;
+                            padding: 0.6rem 0; }
+  #lobby .modepick { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  #lobby .modepick button { margin: 0; opacity: 0.55; min-width: 8rem; }
+  #lobby .modepick button:hover { opacity: 0.85; }
+  #lobby .modepick button.mine {
+    opacity: 1;
+    box-shadow: inset 0 0 0 1px currentColor;
+    background: rgba(255, 176, 0, 0.1);
+  }
+  #lobby label.lock { display: flex; align-items: center; gap: 0.45rem;
+                      color: var(--phosphor-dim); font-size: 0.9rem;
+                      margin: 0.5rem 0; cursor: pointer; }
+  #lobby .seats .tick { color: var(--phosphor); font-size: 0.85rem;
+                        letter-spacing: 0.08em; }
+
   #lobby .status { color: var(--phosphor); font-size: 0.9rem; min-height: 1.3em; }
   #lobby .status.bad { color: var(--alarm); }
   #lobby .modes { margin-top: 1rem; border-top: 1px solid var(--phosphor-faint);
@@ -363,16 +391,16 @@
 </head>
 <body>
 
-<h1 class="sr-only">CROSSFIRE — Asteroids in three modes</h1>
+<h1 class="sr-only">CROSSFIRE — Asteroids in two modes</h1>
 <p class="sr-only">
   A local or peer-to-peer online space combat game for one to five ships. Survival puts
-  every ship on the same side against a field of drifting rocks, sharing one pool of lives, with friendly fire on —
-  a shot that hits your partner destroys them and costs the team a life. Survival Safe is
-  the same game with shots passing harmlessly through your partner. Battle Royale is a
+  every ship on the same side against a field of drifting rocks, sharing one pool of lives.
+  Friendly fire is optional: when enabled, a shot that hits your partner destroys them and
+  costs the team a life. Battle Royale is a
   larger arena where every ship is an enemy and each has three lives. A bullet or
   asteroid collision damages the ship's two-hit hull; the next hit costs a life. The
   arena wall closes inward until only one ship is left flying, around stationary stars
-  and black holes that pull ships, rocks and shots towards them. In the survival modes the field
+  and black holes that pull ships, rocks and shots towards them. In Survival the field
   wraps: fly off one edge and you arrive at the opposite one, and so do the rocks and the
   shots. Battle royale has solid walls instead — ships bounce off them and bullets are
   destroyed by them. Once the walls close, they pass over rocks instead of pushing them.
@@ -426,35 +454,48 @@
       </div>
     </div>
 
-    <div id="roomRoute" hidden>
-      <span class="step" id="roomLabel">room name</span>
-      <input id="roomWord" type="text" maxlength="24" spellcheck="false"
-             autocomplete="off" placeholder="a word you both know"
-             aria-label="room name">
-      <div><button id="btnRoom" type="button">open the room</button></div>
+    <div id="makeRoute" hidden>
+      <span class="step" id="makeRoomLabel">what your lobby is called</span>
+      <input id="gameName" type="text" maxlength="24" spellcheck="false"
+             autocomplete="off" placeholder="Ric's lobby"
+             aria-label="what your lobby is called">
+      <span class="step">what you're playing</span>
+      <div class="modepick" id="modePick">
+        <button type="button" data-pick="survival">survival</button>
+        <button type="button" data-pick="royale">battle royale</button>
+      </div>
+      <p class="note" id="modeNote"></p>
+
+      <label class="lock" for="gameLock">
+        <input id="gameLock" type="checkbox"> lock it with a password
+      </label>
+      <input id="gamePass" type="text" maxlength="24" spellcheck="false"
+             autocomplete="off" placeholder="password" aria-label="password"
+             hidden>
+      <div>
+        <button id="btnOpenRoom" type="button">open the lobby</button>
+        <button id="btnBackToList" type="button" class="quiet">back to the list</button>
+      </div>
       <p class="note" id="roomNote"></p>
     </div>
 
-    <div id="rowMake">
-      <span class="step" id="makeLabel">1 · make a code</span>
-      <button id="btnInvite" type="button">create code</button>
-    </div>
+    <div id="browseRoute" hidden>
+      <span class="step">Lobbies open right now</span>
+      <div class="roomlist" id="roomList"></div>
+      <div>
+        <button id="btnHostGame" type="button">host your own lobby</button>
+        <button id="btnRefresh" type="button" class="quiet">refresh</button>
+      </div>
 
-    <label id="labOut" hidden>
-      <span class="step" id="outLabel">send this to your friend</span>
-      <textarea id="outCode" readonly rows="3" spellcheck="false"></textarea>
-    </label>
-    <div id="rowCopy" hidden><button id="btnCopy" type="button">copy code</button></div>
-
-    <label id="labIn" hidden>
-      <span class="step" id="inLabel">paste the code they send back</span>
-      <textarea id="inCode" rows="3" spellcheck="false"
-                placeholder="paste the CROSSFIRE code here"></textarea>
-    </label>
-    <div id="rowUse" hidden><button id="btnUse" type="button">connect</button></div>
-
-    <div id="codeSwitch" hidden>
-      <button id="btnCodeRoute" type="button" class="quiet">connect by code instead</button>
+      <div id="joinPassRow" hidden>
+        <span class="step" id="joinPassLabel">password</span>
+        <input id="joinPass" type="password" maxlength="24" spellcheck="false"
+               autocomplete="off" aria-label="password for this lobby">
+        <div>
+          <button id="btnJoinPass" type="button">join</button>
+          <button id="btnJoinCancel" type="button" class="quiet">cancel</button>
+        </div>
+      </div>
     </div>
 
     <p class="status" id="lobbyStatus" role="status"></p>
@@ -464,11 +505,15 @@
       <div class="seats" id="seatList"></div>
     </div>
 
+    <div class="modes" id="rowReady" hidden>
+      <button id="btnReady" type="button">ready up</button>
+      <p class="note" id="readyNote">The host starts the game when everyone is ready.</p>
+    </div>
+
     <div class="modes" id="rowStart" hidden>
-      <span class="step">Choose a game mode.</span>
-      <button type="button" data-mode="survival">survival</button>
-      <button type="button" data-mode="safe">survival — safe</button>
-      <button type="button" data-mode="royale">battle royale</button>
+      <span class="step" id="startWhat">Ready when you are.</span>
+      <button id="btnStart" type="button">start the game</button>
+      <button id="onlineFriendlyFire" type="button">friendly fire: on</button>
     </div>
 
     <div class="modes" id="rowClose"><button id="btnLobbyClose" type="button">back to the menu</button></div>
@@ -525,21 +570,14 @@
   const MODES = {
     survival: {
       name: "SURVIVAL",
-      blurb: "one side · one pile of lives · friendly fire ON",
+      blurb: "one side · one pile of lives · optional friendly fire",
       arena: { w: 1300, h: 910 },
       pvp: false, friendlyFire: true, closing: false, wrap: true,
       camera: false, hazards: 0, minPlayers: 1
     },
-    safe: {
-      name: "SURVIVAL — SAFE",
-      blurb: "one side · one pile of lives · shots pass through your own",
-      arena: { w: 1300, h: 910 },
-      pvp: false, friendlyFire: false, closing: false, wrap: true,
-      camera: false, hazards: 0, minPlayers: 1
-    },
     royale: {
       name: "BATTLE ROYALE",
-      blurb: "two-hit hulls · one minute · the wall closes in",
+      blurb: "two-hit hulls · no time limit · the wall closes in",
       // Sixteen screenfuls of world. You fly through it rather than seeing it
       // all at once, which is what the camera and the minimap are both for.
       arena: { w: 4000, h: 2800 },
@@ -566,7 +604,7 @@
   const FF_PENALTY   = 100;
   const ROYALE_STOCKS = 3;
   const ROYALE_HULL   = 2;
-  // Tuned to give roughly the same rocks-per-screen as the survival modes,
+  // Tuned to give roughly the same rocks-per-screen as Survival,
   // across a map sixteen screens across. Culling means most are never drawn.
   const ROYALE_ROCKS = 84;
 
@@ -596,10 +634,8 @@
     ["small", 0.25]
   ];
 
-  /* Battle royale match, in seconds. The wall is what turns a map this big into
-     a one-minute game: it finishes closing with ten seconds left, by which
-     point the whole fight is inside a single screen. */
-  const MATCH_TIME  = 60;
+  /* The wall compacts Battle Royale into a single-screen endgame. There is no
+     match timer: play continues at the final size until one ship remains. */
   const CLOSE_DELAY = 10;   // grace period before it starts moving
   const CLOSE_TIME  = 40;   // how long it takes to reach its final size
   const CLOSE_TO    = 0.2;  // final size as a fraction of the arena
@@ -923,11 +959,124 @@
 
   const KEY_STORE = "crossfire.keys.v1";
   const CAMERA_STORE = "crossfire.camera.v1";
+  const SOUND_STORE = "crossfire.sound.v1";
   let royaleCameraRotates = false;
+  let soundEnabled = true;
+  let audioCtx = null, audioMaster = null, audioNoise = null;
 
   try {
     royaleCameraRotates = localStorage.getItem(CAMERA_STORE) === "rotating";
+    soundEnabled = localStorage.getItem(SOUND_STORE) !== "off";
   } catch (_) {}
+
+  function audioUnlock() {
+    if (!soundEnabled) return null;
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) return null;
+    if (!audioCtx) {
+      audioCtx = new Audio();
+      audioMaster = audioCtx.createGain();
+      audioMaster.gain.value = 0.24;
+      audioMaster.connect(audioCtx.destination);
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    return audioCtx;
+  }
+
+  function soundOutput(pan, gain) {
+    const g = audioCtx.createGain();
+    g.gain.value = gain;
+    if (typeof audioCtx.createStereoPanner === "function") {
+      const p = audioCtx.createStereoPanner();
+      p.pan.value = Math.max(-1, Math.min(1, pan || 0));
+      g.connect(p); p.connect(audioMaster);
+    } else {
+      g.connect(audioMaster);
+    }
+    return g;
+  }
+
+  function soundTone(freq, endFreq, duration, gain, type, pan, delay) {
+    if (!audioUnlock()) return;
+    const now = audioCtx.currentTime + (delay || 0);
+    const osc = audioCtx.createOscillator();
+    const out = soundOutput(pan, gain);
+    osc.type = type || "square";
+    osc.frequency.setValueAtTime(Math.max(20, freq), now);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq || freq), now + duration);
+    out.gain.setValueAtTime(gain, now);
+    out.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    osc.connect(out); osc.start(now); osc.stop(now + duration + 0.02);
+  }
+
+  function soundNoise(duration, gain, pan) {
+    if (!audioUnlock()) return;
+    if (!audioNoise) {
+      audioNoise = audioCtx.createBuffer(1, Math.ceil(audioCtx.sampleRate * 0.45),
+                                         audioCtx.sampleRate);
+      const data = audioNoise.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    }
+    const now = audioCtx.currentTime;
+    const src = audioCtx.createBufferSource();
+    const out = soundOutput(pan, gain);
+    src.buffer = audioNoise;
+    out.gain.setValueAtTime(gain, now);
+    out.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    src.connect(out); src.start(now); src.stop(now + duration);
+  }
+
+  function playSfx(kind, pan) {
+    if (!soundEnabled || !audioUnlock()) return;
+    if (kind === "shot") soundTone(210, 75, 0.07, 0.055, "square", pan);
+    else if (kind === "hit") {
+      soundNoise(0.1, 0.045, pan); soundTone(120, 62, 0.12, 0.05, "sawtooth", pan);
+    } else if (kind === "rock") {
+      soundNoise(0.16, 0.055, pan); soundTone(95, 48, 0.16, 0.04, "triangle", pan);
+    } else if (kind === "explode") {
+      soundNoise(0.34, 0.13, pan); soundTone(105, 32, 0.38, 0.09, "sawtooth", pan);
+    } else if (kind === "start") {
+      soundTone(220, 220, 0.11, 0.045, "triangle", 0, 0);
+      soundTone(330, 330, 0.11, 0.045, "triangle", 0, 0.1);
+      soundTone(440, 440, 0.16, 0.055, "triangle", 0, 0.2);
+    } else if (kind === "win") {
+      soundTone(330, 440, 0.18, 0.06, "triangle", 0, 0);
+      soundTone(440, 660, 0.24, 0.07, "triangle", 0, 0.16);
+    } else if (kind === "lose") {
+      soundTone(220, 110, 0.28, 0.065, "sawtooth", 0, 0);
+      soundTone(140, 55, 0.34, 0.055, "sawtooth", 0, 0.2);
+    }
+  }
+
+  function toggleSound() {
+    soundEnabled = !soundEnabled;
+    try { localStorage.setItem(SOUND_STORE, soundEnabled ? "on" : "off"); } catch (_) {}
+    if (audioMaster) audioMaster.gain.value = soundEnabled ? 0.24 : 0;
+    if (soundEnabled) { audioUnlock(); playSfx("start", 0); }
+  }
+
+  const fullscreenElement = () =>
+    document.fullscreenElement || document.webkitFullscreenElement || null;
+  const fullscreenSupported = () => !!(
+    document.fullscreenEnabled || document.documentElement.requestFullscreen ||
+    document.documentElement.webkitRequestFullscreen
+  );
+  const fullscreenLabel = () => fullscreenElement() ? "EXIT FULLSCREEN" : "FULLSCREEN";
+
+  function toggleFullscreen() {
+    const leaving = fullscreenElement();
+    const action = leaving
+      ? (document.exitFullscreen || document.webkitExitFullscreen)
+      : (document.documentElement.requestFullscreen ||
+         document.documentElement.webkitRequestFullscreen);
+    if (!action) return;
+    try {
+      const result = action.call(leaving ? document : document.documentElement);
+      if (result && typeof result.catch === "function") result.catch(() => {});
+    } catch (_) {}
+  }
+
+  addEventListener("pointerdown", audioUnlock, { passive: true });
 
   function toggleRoyaleCamera() {
     royaleCameraRotates = !royaleCameraRotates;
@@ -1108,8 +1257,9 @@
   ]);
 
   addEventListener("keydown", e => {
-    // While the online panel is up the keyboard belongs to it — you're pasting
-    // a code, and a stray space shouldn't fire a gun or start a match.
+    audioUnlock();
+    // While the online panel is up the keyboard belongs to it — you're typing
+    // a name or a password, and a stray space shouldn't fire a gun.
     const lob = document.getElementById("lobby");
     if (lob && !lob.hidden) return;
     // While a key is being listened for, the whole keyboard is ours: the point
@@ -1163,12 +1313,13 @@
 
   let ships = [], rocks = [], bullets = [], bits = [], hazards = [], motes = [];
   let killFeed = [];
+  let soundEvents = [], soundEventSeq = 0;
   let score = 0, lives = 0, wave = 0, ffCount = 0, players = 2;
   let clock = 0, topUp = 0;
   let banner = null;
   let outcome = null;         // set when a match ends
 
-  /* The camera is the one view of the world. In the survival modes it sits
+  /* The camera is the one view of the world. In Survival it sits
      still and frames the whole arena. In Battle Royale it follows `watching`
      through a map far bigger than the screen; online, that is the ship owned or
      spectated by this machine. */
@@ -1177,14 +1328,43 @@
   let botPick = 0;        // bots to add on the setup screen
   let titlePick = 0;      // visible arrow-key focus on the title screen
   let countPick = 0;      // zero-based local-player choice
+  let survivalFriendlyFire = true;
+  let lastSetup = { modeKey: "survival", humans: 1, bots: 0 };
   let backFrom = "title"; // which screen the controls page returns to
 
-  const MODE_KEYS = ["survival", "safe", "royale"];
+  function soundPan(x) {
+    if (!mode.camera || typeof x !== "number") return 0;
+    const halfView = SCREEN_W / (2 * Math.max(0.01, cam.scale));
+    return Math.max(-1, Math.min(1, (x - cam.x) / halfView));
+  }
+
+  function gameSound(kind, x) {
+    playSfx(kind, soundPan(x));
+    if (net.role === "host") {
+      soundEvents.push({ q: ++soundEventSeq, k: kind, x, at: clock });
+      if (soundEvents.length > 32) soundEvents.shift();
+    }
+  }
+
+  const MODE_KEYS = ["survival", "royale"];
+
+  /* The title screen is one list, and online is the third thing on it rather
+     than a pair of buttons off to the side — you decide you want to play with
+     other people first, and who is hosting is a question for the lobby. */
+  const TITLE_ROWS = [...MODE_KEYS, "online"];
+
+  function pickTitleRow(i) {
+    const key = TITLE_ROWS[i];
+    if (!key) return;
+    if (key === "online") { titlePick = i; openLobby(); return; }
+    chooseMode(key);
+  }
 
   function chooseMode(key) {
     pendingMode = key;
     titlePick = Math.max(0, MODE_KEYS.indexOf(key));
     countPick = 0;
+    botPick = 0;
     state = "count";
   }
 
@@ -1194,6 +1374,28 @@
     const allowed = n >= m.minPlayers ||
       n + Math.min(botPick, MAX_PLAYERS - n) >= m.minPlayers;
     if (allowed) startGame(pendingMode, n, botPick);
+  }
+
+  function selectHumanCount(n) {
+    countPick = Math.max(0, Math.min(humanMax() - 1, n - 1));
+    botPick = Math.min(botPick, MAX_PLAYERS - (countPick + 1));
+  }
+
+  function cycleBots() {
+    const max = MAX_PLAYERS - (countPick + 1);
+    botPick = max > 0 ? (botPick + 1) % (max + 1) : 0;
+  }
+
+  function paintFriendlyFireButton() {
+    const button = document.getElementById("onlineFriendlyFire");
+    if (button) {
+      button.textContent = "friendly fire: " + (survivalFriendlyFire ? "on" : "off");
+    }
+  }
+
+  function toggleFriendlyFire() {
+    survivalFriendlyFire = !survivalFriendlyFire;
+    paintFriendlyFireButton();
   }
 
   const rand = (a, b) => a + Math.random() * (b - a);
@@ -1223,6 +1425,16 @@
   let names = [];
   const nameOf = seat => names[seat] || skinOf(seat).label;
 
+  /* Who has said they're ready. Seat 0 is the host and never appears here —
+     the host doesn't ready up, the host is the start button. Like `skins` and
+     `names` this is the host's table, sent out with every seat broadcast. */
+  let ready = [];
+  const allReady = () => {
+    const N = window.CrossfireNet;
+    if (!N) return false;
+    return N.host.links.every(l => l.seat == null || !l.open || ready[l.seat]);
+  };
+
   /* Names come off other people's keyboards, so they are cut to size here and
      nowhere else. Drawn to a canvas and written with textContent, never as
      markup — there is no path from a name to anything that runs. */
@@ -1246,6 +1458,17 @@
   function saveName() {
     try { localStorage.setItem(NAME_STORE, myName); } catch (_) {}
   }
+
+  /* What a game is called in the room list. Strangers read this one, so it is
+     cut to size here as well as at the service — and like every other piece of
+     text off the network it reaches the page through textContent. */
+  const TITLE_MAX = 24;
+  const tidyTitle = raw =>
+    String(raw == null ? "" : raw)
+      .replace(/[^\p{L}\p{N} '\-!?.]/gu, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, TITLE_MAX);
 
   function makeShip(i, n, look) {
     const def = look || skinOf(i);
@@ -1350,7 +1573,8 @@
       const y = rand(bounds.y0 + clearance, bounds.y1 - clearance);
       if (ships.some(s => s.alive && gap2(x, y, s.x, s.y) < (190 * U) ** 2)) continue;
       // Don't drop a rock straight down a well — it's eaten before it's drawn.
-      if (hazards.some(h => dist2(x, y, h.x, h.y) < (h.kill + clearance + 60) ** 2)) continue;
+      if (hazards.some(h => hazardActive(h) &&
+                          dist2(x, y, h.x, h.y) < (h.kill + clearance + 60) ** 2)) continue;
       return { x, y };
     }
     return { x: rand(bounds.x0, bounds.x1), y: rand(bounds.y0, bounds.y1) };
@@ -1430,6 +1654,7 @@
     padRelease();
 
     mode = MODES[modeKey];
+    if (modeKey === "survival") mode.friendlyFire = survivalFriendlyFire;
     arena = mode.arena;
     // With a camera the world is simply big, so ships stay their natural size.
     // Without one the whole arena is squeezed onto the screen, so everything
@@ -1440,6 +1665,7 @@
     // Humans first, then bots fill the remaining ships. Five in total, always.
     const humans = Math.max(1, Math.min(MAX_PLAYERS, n));
     const bots = Math.max(0, Math.min(MAX_PLAYERS - humans, botCount || 0));
+    lastSetup = { modeKey, humans, bots };
     players = Math.max(mode.minPlayers, humans + bots);
     ships = [];
     for (let i = 0; i < players; i++) {
@@ -1452,8 +1678,9 @@
     score = 0; wave = 0; ffCount = 0; clock = 0; topUp = 0;
     lives = 2 + 2 * players;   // co-op only
     banner = null; outcome = null; killFeed = [];
+    soundEvents = []; soundEventSeq = 0;
     net.outSnapSeq = net.outRockSeq = net.outInputSeq = 0;
-    net.lastSnapSeq = net.lastRockSeq = 0;
+    net.lastSnapSeq = net.lastRockSeq = net.lastSoundSeq = 0;
     watching = 0;
     state = "playing";
 
@@ -1472,10 +1699,10 @@
     }
 
     if (mode.closing) {
-      // Battle royale keeps a standing rock population instead of waves — the
-      // clock that ends the match is the wall and the timer, not the field
-      // being cleared. Sixteen screens of map needs sixteen screens' worth of
-      // rocks, or you fly through empty space for a minute at a time.
+      // Battle royale keeps a standing rock population instead of waves. The
+      // field is never cleared, and the last surviving ship ends the match.
+      // Sixteen screens of map needs sixteen screens' worth of rocks, or long
+      // stretches of the opening fight would be empty.
       for (let i = 0; i < ROYALE_ROCKS; i++) {
         spawnRoyaleRock();
       }
@@ -1485,11 +1712,12 @@
       spawnWave();
     }
 
+    playSfx("start", 0);
     matchStarted();
   }
 
   /* A match can begin while the page is already in the background: a guest
-     that pasted its codes and went to do something else gets its init packet
+     that readied up and went to do something else gets its init packet
      wherever it is. `standDown` only ever fired on the way out of the
      foreground, so starting from there has to be said out loud — otherwise
      there are no animation frames and nothing has asked the ticker to run. */
@@ -1526,16 +1754,15 @@
   function menuKey(code) {
     if (state === "title") {
       const d = digit(code);
-      if (d >= 1 && d <= MODE_KEYS.length) chooseMode(MODE_KEYS[d - 1]);
+      if (d >= 1 && d <= TITLE_ROWS.length) pickTitleRow(d - 1);
       if (code === "ArrowUp" || code === "ArrowLeft") {
-        titlePick = (titlePick + MODE_KEYS.length - 1) % MODE_KEYS.length;
+        titlePick = (titlePick + TITLE_ROWS.length - 1) % TITLE_ROWS.length;
       }
       if (code === "ArrowDown" || code === "ArrowRight") {
-        titlePick = (titlePick + 1) % MODE_KEYS.length;
+        titlePick = (titlePick + 1) % TITLE_ROWS.length;
       }
-      if (code === "Enter" || code === "Space") chooseMode(MODE_KEYS[titlePick]);
-      if (code === "KeyH") openLobby("host");
-      if (code === "KeyJ") openLobby("guest");
+      if (code === "Enter" || code === "Space") pickTitleRow(titlePick);
+      if (code === "KeyO") openLobby();
       if (code === "KeyC") { backFrom = "title"; state = settingsScreen(); }
     } else if (state === "controls") {
       controlsKey(code);
@@ -1548,25 +1775,21 @@
       if (code === "KeyC") { backFrom = "count"; state = settingsScreen(); return; }
       const d = digit(code);
       if (code === "ArrowLeft" || code === "ArrowUp") {
-        countPick = (countPick + humanMax() - 1) % humanMax();
+        selectHumanCount((countPick + humanMax() - 1) % humanMax() + 1);
       }
       if (code === "ArrowRight" || code === "ArrowDown") {
-        countPick = (countPick + 1) % humanMax();
+        selectHumanCount((countPick + 1) % humanMax() + 1);
       }
       if (code === "KeyB") {
-        botPick = (botPick + 1) % MAX_PLAYERS;   // 0…4 bots
+        cycleBots();
       }
       // Battle royale needs someone to fight — but a bot counts as someone.
-      if (d >= 1 && d <= humanMax()) {
-        countPick = d - 1;
-        if (d + Math.min(botPick, MAX_PLAYERS - d) >= MODES[pendingMode].minPlayers) {
-          startGame(pendingMode, d, botPick);
-        }
-      }
+      if (d >= 1 && d <= humanMax()) selectHumanCount(d);
       if (code === "Enter" || code === "Space") startCountChoice();
       if (code === "Escape" || code === "Backspace") state = "title";
     } else if (state === "over") {
-      if (code === "Space" || code === "Enter") leaveMatch();
+      if (code === "Space" || code === "Enter") playAgain();
+      if (code === "Escape" || code === "Backspace") leaveMatch();
     } else if (state === "playing" || state === "paused" || state === "menu") {
       if (code === "KeyP" || code === "Escape") {
         state = state === "playing" ? (net.on ? "menu" : "paused") : "playing";
@@ -1667,7 +1890,7 @@
   }
 
   /* ── the edge of the world ────────────────────────────────────────────────
-     Off one side and on at the other: the survival modes are the open field
+     Off one side and on at the other: Survival is the open field
      the original game had, where nothing can corner you and a rock you flee
      from arrives behind you. Battle royale keeps its walls, because a wall
      that closes in is the whole shape of that mode and there is nothing to
@@ -1726,6 +1949,15 @@
     }
   }
 
+  // Once the shrinking wall has passed a hazard, that hazard is no longer in
+  // the playable arena. It stays fixed in world space but cannot pull or kill
+  // through the wall from outside it.
+  function hazardActive(h) {
+    return !mode.closing ||
+      (h.x >= bounds.x0 && h.x <= bounds.x1 &&
+       h.y >= bounds.y0 && h.y <= bounds.y1);
+  }
+
   /* ── gravity ─────────────────────────────────────────────────────────────
      Applied to anything with a velocity: ships, rocks and bullets. Bullets
      matter most — a shot fired past a black hole curves, so the hazards change
@@ -1735,6 +1967,7 @@
   function applyGravity(o, dt) {
     let pull = 0;
     for (const h of hazards) {
+      if (!hazardActive(h)) continue;
       const dx = h.x - o.x, dy = h.y - o.y;
       const d2 = dx * dx + dy * dy;
       if (d2 > h.reach * h.reach) continue;
@@ -1802,6 +2035,7 @@
   // Returns the hazard that just swallowed this point, if any.
   function hazardAt(x, y, r) {
     for (const h of hazards) {
+      if (!hazardActive(h)) continue;
       if (dist2(x, y, h.x, h.y) < (h.kill + r) ** 2) return h;
     }
     return null;
@@ -1843,6 +2077,7 @@
       ship.hull--;
       ship.invuln = Math.max(ship.invuln, HIT_SHIELD);
       burst(ship.x, ship.y, ship.colour, 10, 150 * U);
+      gameSound("hit", ship.x);
       return false;
     }
     killShip(ship, cause, shooter);
@@ -1874,6 +2109,7 @@
     ship.killedBy = shooter && shooter !== ship ? shooter.id : null;
     if (cause !== "shot" && cause !== "ff") ship.envDeaths++;
     burst(ship.x, ship.y, ship.colour, 22, 240 * U);
+    gameSound("explode", ship.x);
 
     if (mode.pvp) {
       if (shooter && shooter !== ship) shooter.kills++;
@@ -1922,6 +2158,7 @@
     // straight through the result screen.
     banner = null;
     state = "over";
+    gameSound(result.kind === "winner" ? "win" : "lose");
   }
 
   function checkRoyaleEnd() {
@@ -1945,6 +2182,7 @@
       vy: Math.sin(ship.a) * BULLET_SPD * U + ship.vy,
       life: BULLET_LIFE * U
     });
+    gameSound("shot", ship.x);
     return true;
   }
 
@@ -1956,6 +2194,7 @@
     rock.flash = 0.13;
     if (rock.hp > 0) {
       burst(b.x, b.y, "#ffcb42", 4, 120 * U);
+      gameSound("hit", rock.x);
       const sp = Math.hypot(b.vx, b.vy) || 1;
       const knock = 26 * U / Math.max(1, rock.r / 30);
       rock.vx += (b.vx / sp) * knock;
@@ -1970,6 +2209,7 @@
     const next = spec.next;
     score += spec.score;
     burst(rock.x, rock.y, "#ffcb42", rock.size === "big" ? 16 : 10, 170 * U);
+    gameSound("rock", rock.x);
     const i = rocks.indexOf(rock);
     if (i >= 0) rocks.splice(i, 1);
     if (next) {
@@ -2016,7 +2256,8 @@
     }
   }
 
-  // Whose shots can hurt whom. The one line the three modes really differ on.
+  // Whose shots can hurt whom. Survival reads its setup toggle; Battle Royale
+  // always allows opponents to damage one another.
   const canHit = (shooter, target) =>
     shooter !== target.id && (mode.pvp || mode.friendlyFire);
 
@@ -2025,9 +2266,44 @@
     if (rocks.some(k => gap2(x, y, k.x, k.y) < (k.r + 95 * U) ** 2)) return false;
     if (ships.some(s => s.alive && gap2(x, y, s.x, s.y) < (r * 3) ** 2)) return false;
     // Respawning inside a gravity well is a death sentence you didn't earn.
-    if (hazards.some(h => dist2(x, y, h.x, h.y) < (h.kill + 220) ** 2)) return false;
+    if (hazards.some(h => hazardActive(h) &&
+                        dist2(x, y, h.x, h.y) < (h.kill + 220) ** 2)) return false;
     return x > bounds.x0 + r && x < bounds.x1 - r &&
            y > bounds.y0 + r && y < bounds.y1 - r;
+  }
+
+  // The original spawn ring belongs to the full map. After the wall moves it
+  // may be outside the arena, so find clear space inside the wall instead of
+  // clamping that old point onto an edge where the ship cannot escape.
+  function respawnPoint(ship) {
+    const preferred = spawnPoint(ship.id, players);
+    if (spotIsClear(preferred.x, preferred.y)) return preferred;
+
+    const cx = (bounds.x0 + bounds.x1) / 2;
+    const cy = (bounds.y0 + bounds.y1) / 2;
+    const room = Math.min(bounds.x1 - bounds.x0, bounds.y1 - bounds.y0);
+    const margin = Math.min(90 * U, room * 0.22);
+    let best = { x: cx, y: cy }, bestGap = -Infinity;
+
+    for (let tries = 0; tries < 80; tries++) {
+      const x = tries === 0 ? cx : rand(bounds.x0 + margin, bounds.x1 - margin);
+      const y = tries === 0 ? cy : rand(bounds.y0 + margin, bounds.y1 - margin);
+      if (spotIsClear(x, y)) {
+        return { x, y, a: Math.atan2(cy - y, cx - x) };
+      }
+
+      let gap = Math.min(x - bounds.x0, bounds.x1 - x,
+                         y - bounds.y0, bounds.y1 - y);
+      for (const r of rocks) gap = Math.min(gap, Math.sqrt(gap2(x, y, r.x, r.y)) - r.r);
+      for (const s of ships) {
+        if (s !== ship && s.alive) gap = Math.min(gap, Math.sqrt(gap2(x, y, s.x, s.y)));
+      }
+      for (const h of hazards) {
+        if (hazardActive(h)) gap = Math.min(gap, Math.hypot(x - h.x, y - h.y) - h.kill);
+      }
+      if (gap > bestGap) { bestGap = gap; best = { x, y }; }
+    }
+    return { x: best.x, y: best.y, a: Math.atan2(cy - best.y, cx - best.x) };
   }
 
   /* ── networking ──────────────────────────────────────────────────────────
@@ -2061,6 +2337,7 @@
     outInputSeq: 0,
     lastSnapSeq: 0,
     lastRockSeq: 0,
+    lastSoundSeq: 0,
     status: "",
     get on() { return this.role !== null; }
   };
@@ -2086,7 +2363,7 @@
     net.role = null; net.seat = 0; net.inputs = {};
     net.lastSnap = net.prevSnap = null;
     net.outSnapSeq = net.outRockSeq = net.outInputSeq = 0;
-    net.lastSnapSeq = net.lastRockSeq = 0;
+    net.lastSnapSeq = net.lastRockSeq = net.lastSoundSeq = 0;
     net.status = "";
     // Back to seat-is-colour and nameless, which is what the keyboard players
     // expect: two people at one keyboard know which of them is green.
@@ -2098,7 +2375,7 @@
   // What a guest needs once, to build a world that matches the host's.
   function initPacket(seat) {
     return {
-      t: "init", seat, skins, names,
+      t: "init", seat, skins, names, friendlyFire: mode.friendlyFire,
       mode: modeKeyOf(mode), players,
       arena, u: U,
       hazards: hazards.map(h => ({ k: h.kind, x: h.x, y: h.y, kill: h.kill,
@@ -2127,8 +2404,9 @@
       bu: bullets.map(b => [Math.round(b.x), Math.round(b.y),
                             Math.round(b.vx), Math.round(b.vy), b.owner]),
       kf: killFeed.map(e => [e.source, e.victim, e.colour, +e.until.toFixed(2)]),
-      o: outcome ? { k: outcome.kind, s: outcome.ship ? outcome.ship.id : -1,
-                     ot: !!outcome.onTime } : null,
+      fx: soundEvents.filter(e => clock - e.at < 1.25)
+        .map(e => [e.q, e.k, Math.round(e.x == null ? arena.w / 2 : e.x)]),
+      o: outcome ? { k: outcome.kind, s: outcome.ship ? outcome.ship.id : -1 } : null,
       bn: banner ? { x: banner.text, s: banner.sub, t: banner.t, c: banner.colour } : null
     };
   }
@@ -2244,9 +2522,16 @@
     killFeed = Array.isArray(msg.kf)
       ? msg.kf.map(e => ({ source: e[0], victim: e[1], colour: e[2], until: e[3] }))
       : [];
+    if (Array.isArray(msg.fx)) {
+      for (const e of msg.fx) {
+        if (!Number.isInteger(e[0]) || e[0] <= net.lastSoundSeq) continue;
+        net.lastSoundSeq = e[0];
+        playSfx(e[1], soundPan(e[2]));
+      }
+    }
 
     outcome = msg.o
-      ? { kind: msg.o.k, ship: msg.o.s >= 0 ? ships[msg.o.s] : null, onTime: msg.o.ot }
+      ? { kind: msg.o.k, ship: msg.o.s >= 0 ? ships[msg.o.s] : null }
       : null;
     banner = msg.bn ? { text: msg.bn.x, sub: msg.bn.s, t: msg.bn.t, colour: msg.bn.c } : null;
   }
@@ -2256,11 +2541,12 @@
     // host's and the two worlds quietly drift apart.
     net.role = "guest";
     net.seat = msg.seat;
-    net.lastSnapSeq = net.lastRockSeq = 0;
+    net.lastSnapSeq = net.lastRockSeq = net.lastSoundSeq = 0;
     net.outInputSeq = 0;
     if (Array.isArray(msg.skins)) skins = msg.skins.slice();
     if (Array.isArray(msg.names)) names = msg.names.map(tidyName);
     mode = MODES[msg.mode];
+    if (msg.mode === "survival") mode.friendlyFire = msg.friendlyFire !== false;
     arena = msg.arena;
     U = msg.u;
     players = msg.players;
@@ -2290,6 +2576,7 @@
     clampCam();
     state = "playing";
     net.status = "";
+    playSfx("start", 0);
     matchStarted();
   }
 
@@ -2382,6 +2669,7 @@
 
     // 1. Climb out of any well it has drifted into.
     for (const h of hazards) {
+      if (!hazardActive(h)) continue;
       const dx = sepX(h.x, s.x), dy = sepY(h.y, s.y);
       const d = Math.hypot(dx, dy);
       if (d < h.reach * 0.75) {
@@ -2462,7 +2750,7 @@
 
     const range = BULLET_SPD * U * BULLET_LIFE * U * 0.9;
     if (!urgent && target && Math.abs(diff) < 0.14 && targetDist < range) {
-      // Don't shoot a team-mate in the back in the co-op modes.
+      // Don't shoot a team-mate in the back in co-op Survival.
       const blocked = !mode.pvp && mode.friendlyFire && ships.some(o => {
         if (o === s || !o.alive) return false;
         const dx = sepX(o.x, s.x), dy = sepY(o.y, s.y);
@@ -2640,17 +2928,19 @@
 
       if (!ship.alive) {
         ship.respawn -= dt;
-        const p = spawnPoint(ship.id, players);
         // Waiting for a clear spot can't wait forever — a rock parked on the
         // spawn point would bench a player for the whole match.
-        if (ship.respawn <= 0 && (spotIsClear(p.x, p.y) || ship.respawn < -3)) {
-          ship.x = Math.min(Math.max(p.x, bounds.x0 + shipR), bounds.x1 - shipR);
-          ship.y = Math.min(Math.max(p.y, bounds.y0 + shipR), bounds.y1 - shipR);
-          ship.vx = ship.vy = 0;
-          ship.a = p.a;
-          ship.alive = true;
-          ship.hull = ROYALE_HULL;
-          ship.invuln = INVULN;
+        if (ship.respawn <= 0) {
+          const p = respawnPoint(ship);
+          if (spotIsClear(p.x, p.y) || ship.respawn < -3) {
+            ship.x = p.x;
+            ship.y = p.y;
+            ship.vx = ship.vy = 0;
+            ship.a = p.a;
+            ship.alive = true;
+            ship.hull = ROYALE_HULL;
+            ship.invuln = INVULN;
+          }
         }
         continue;
       }
@@ -2680,7 +2970,7 @@
       const sp = Math.hypot(ship.vx, ship.vy);
       // Gravity is allowed to throw you past your own engine's top speed —
       // being unable to pull out of a well is the whole threat of one. Clear of
-      // any well, the ordinary limit applies again, so the survival modes fly
+      // any well, the ordinary limit applies again, so Survival flies
       // exactly as they did before hazards existed.
       const max = MAX_SPEED * U * (pull > 1 ? 1.9 : 1);
       if (sp > max) { ship.vx *= max / sp; ship.vy *= max / sp; }
@@ -2841,24 +3131,9 @@
         spawnRoyaleRock();
       }
 
-      if (clock >= MATCH_TIME) timeUp();
     } else if (rocks.length === 0) {
       spawnWave();
     }
-  }
-
-  /* One minute gone with more than one ship still flying: decide on kills,
-     then lives left, and call it a draw if both are level. */
-  function timeUp() {
-    const standing = ships.filter(s => !s.dead);
-    if (standing.length === 0) return endMatch({ kind: "draw" });
-
-    const rank = [...standing].sort((a, b) => b.kills - a.kills || b.stocks - a.stocks);
-    const tied = rank.length > 1 &&
-                 rank[0].kills === rank[1].kills &&
-                 rank[0].stocks === rank[1].stocks;
-    endMatch(tied ? { kind: "draw", onTime: true }
-                  : { kind: "winner", ship: rank[0], onTime: true });
   }
 
   /* ── drawing ─────────────────────────────────────────────────────────────
@@ -3084,6 +3359,198 @@
     ctx.globalAlpha = 1;
   }
 
+  /* ── the field behind the menus ───────────────────────────────────────────
+     A menu screen used to be words on black, which said nothing about what the
+     game is. So the game idles behind them: rocks drifting, two ships flying
+     around and taking the occasional shot.
+
+     It is deliberately its own little world rather than a match left running.
+     Nothing in here touches `rocks`, `ships`, `bounds` or any of the match
+     state — a decoration that can put a ship in the wrong place, or leave one
+     behind when a real match starts, is not worth having. It owns four arrays
+     and screen coordinates, and the menus draw straight on top of it.
+
+     Kept faint on purpose. Every menu is text over this, and text has to stay
+     readable — so it is line art at low alpha over black, and the numbers below
+     are chosen to keep it that way rather than to look impressive. */
+  const DRIFT_ALPHA = 0.24;
+  const DRIFT_ROCKS = 9;
+  const DRIFT_EDGE = 90;             // spawn margin, so nothing pops in mid-screen
+  const stillness = window.matchMedia
+    ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+
+  let drift = null;
+
+  function driftRock(atEdge) {
+    const size = ["big", "big", "mid", "small"][(Math.random() * 4) | 0];
+    const looks = rockLooks(++rockSeq, size);
+    const spec = rockSpec(size);
+    const dir = rand(0, Math.PI * 2);
+    const spd = rand(9, 26);
+    return {
+      x: atEdge ? (Math.random() < 0.5 ? -DRIFT_EDGE : SCREEN_W + DRIFT_EDGE)
+                : rand(0, SCREEN_W),
+      y: rand(-DRIFT_EDGE, SCREEN_H + DRIFT_EDGE),
+      vx: Math.cos(dir) * spd, vy: Math.sin(dir) * spd,
+      r: spec.r * 0.72, a: rand(0, Math.PI * 2), spin: rand(-0.5, 0.5),
+      shape: looks.shape, flash: 0
+    };
+  }
+
+  function driftShip(i) {
+    return {
+      x: rand(SCREEN_W * 0.2, SCREEN_W * 0.8), y: rand(SCREEN_H * 0.2, SCREEN_H * 0.8),
+      a: rand(0, Math.PI * 2), vx: 0, vy: 0,
+      colour: PLAYERS[i].colour, thrusting: false,
+      tx: rand(0, SCREEN_W), ty: rand(0, SCREEN_H),
+      aim: rand(2, 6), gun: rand(1, 4)
+    };
+  }
+
+  function driftMake() {
+    drift = {
+      rocks: Array.from({ length: DRIFT_ROCKS }, () => driftRock(false)),
+      ships: [driftShip(0), driftShip(1)],
+      shots: []
+    };
+  }
+
+  /* Wrapping with a wide margin rather than at the edge, so nothing blinks out
+     of existence on the boundary of a screen somebody is reading. */
+  function driftWrap(o) {
+    if (o.x < -DRIFT_EDGE) o.x = SCREEN_W + DRIFT_EDGE;
+    if (o.x > SCREEN_W + DRIFT_EDGE) o.x = -DRIFT_EDGE;
+    if (o.y < -DRIFT_EDGE) o.y = SCREEN_H + DRIFT_EDGE;
+    if (o.y > SCREEN_H + DRIFT_EDGE) o.y = -DRIFT_EDGE;
+  }
+
+  function driftStep(dt) {
+    for (const r of drift.rocks) {
+      r.x += r.vx * dt; r.y += r.vy * dt; r.a += r.spin * dt;
+      if (r.flash > 0) r.flash -= dt;
+      driftWrap(r);
+    }
+
+    for (const s of drift.ships) {
+      /* Fly at a wandering point rather than at anything. A ship that chased
+         rocks would end up circling the middle of the title, and the point of
+         this is movement at the edge of attention, not a performance. */
+      s.aim -= dt;
+      if (s.aim <= 0) {
+        s.tx = rand(0, SCREEN_W); s.ty = rand(0, SCREEN_H);
+        s.aim = rand(2.5, 6);
+      }
+      const want = Math.atan2(s.ty - s.y, s.tx - s.x);
+      let off = ((want - s.a + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      s.a += Math.max(-1.6 * dt, Math.min(1.6 * dt, off));
+      // Only burn when roughly pointed the right way, which is what makes it
+      // read as flying rather than sliding.
+      s.thrusting = Math.abs(off) < 0.7;
+      if (s.thrusting) {
+        s.vx += Math.cos(s.a) * 90 * dt;
+        s.vy += Math.sin(s.a) * 90 * dt;
+      }
+      const sp = Math.hypot(s.vx, s.vy);
+      if (sp > 130) { s.vx = (s.vx / sp) * 130; s.vy = (s.vy / sp) * 130; }
+      s.vx *= 1 - 0.35 * dt; s.vy *= 1 - 0.35 * dt;
+      s.x += s.vx * dt; s.y += s.vy * dt;
+      driftWrap(s);
+
+      s.gun -= dt;
+      if (s.gun <= 0) {
+        s.gun = rand(1.6, 4.5);
+        drift.shots.push({ x: s.x, y: s.y, a: s.a, life: 1.5,
+                           vx: Math.cos(s.a) * 300, vy: Math.sin(s.a) * 300,
+                           colour: s.colour });
+      }
+    }
+
+    for (let i = drift.shots.length - 1; i >= 0; i--) {
+      const b = drift.shots[i];
+      b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+      driftWrap(b);
+      // A shot that never lands looks broken, and splitting rocks here would be
+      // a second physics model to keep honest. So a hit marks the rock and
+      // sends it back in from an edge — cause and effect, no bookkeeping.
+      let hit = false;
+      for (const r of drift.rocks) {
+        if (Math.hypot(r.x - b.x, r.y - b.y) < r.r) {
+          Object.assign(r, driftRock(true), { flash: 0.25 });
+          hit = true;
+          break;
+        }
+      }
+      if (hit || b.life <= 0) drift.shots.splice(i, 1);
+    }
+  }
+
+  function drawDrift(dt) {
+    if (!drift) driftMake();
+    // Asked for less motion: the field is still drawn, so a menu is not a blank
+    // rectangle, but nothing moves.
+    if (!(stillness && stillness.matches)) driftStep(Math.min(dt, 0.05));
+
+    const was = wScale;
+    wScale = 1;                       // menu screens draw in screen units
+    ctx.save();
+
+    for (const r of drift.rocks) {
+      ctx.save();
+      ctx.translate(r.x, r.y);
+      ctx.rotate(r.a);
+      glow(r.flash > 0 ? "#fff2bf" : "#ffcb42", 1.4, DRIFT_ALPHA, () => {
+        ctx.beginPath();
+        for (let i = 0; i < r.shape.length; i++) {
+          const t = (i / r.shape.length) * Math.PI * 2;
+          const rr = r.r * r.shape[i];
+          const x = Math.cos(t) * rr, y = Math.sin(t) * rr;
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    for (const b of drift.shots) {
+      glow(b.colour, 1.6, DRIFT_ALPHA, () => {
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(b.x - Math.cos(b.a) * 9, b.y - Math.sin(b.a) * 9);
+        ctx.stroke();
+      });
+    }
+
+    for (const s of drift.ships) {
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(s.a);
+      glow(s.colour, 1.5, DRIFT_ALPHA, () => {
+        ctx.beginPath();
+        ctx.moveTo(14, 0);
+        ctx.lineTo(-10, 8);
+        ctx.lineTo(-6, 0);
+        ctx.lineTo(-10, -8);
+        ctx.closePath();
+        ctx.stroke();
+      });
+      if (s.thrusting && Math.random() > 0.25) {
+        glow(s.colour, 1.2, DRIFT_ALPHA * 0.85, () => {
+          ctx.beginPath();
+          ctx.moveTo(-7, 4);
+          ctx.lineTo(-10 - Math.random() * 8, 0);
+          ctx.lineTo(-7, -4);
+          ctx.stroke();
+        });
+      }
+      ctx.restore();
+    }
+
+    ctx.restore();
+    ctx.globalAlpha = 1;
+    wScale = was;
+  }
+
   /* ── minimap ─────────────────────────────────────────────────────────────
      Top-right, showing the whole world at once: the wall, the hazards, every
      ship, and the rectangle of it you can actually see. On a map sixteen
@@ -3110,6 +3577,7 @@
     ctx.globalAlpha = 1;
 
     for (const hz of hazards) {
+      if (!hazardActive(hz)) continue;
       ctx.beginPath();
       ctx.arc(mx(hz.x), my(hz.y), hz.kind === "hole" ? 3 : 4, 0, Math.PI * 2);
       if (hz.kind === "hole") {
@@ -3300,11 +3768,7 @@
         }
       });
 
-      const left = MATCH_TIME - clock;
-      const urgent = left <= 30;
-      text(clockText(left), SCREEN_W / 2, 40, 30,
-           urgent ? "#ff8f77" : "#ffe56d", "center",
-           urgent && Math.floor(clock * 2) % 2 === 0 ? 0.65 : 1);
+      text("LAST SHIP WINS", SCREEN_W / 2, 40, 18, "#ffe56d", "center");
 
       const t = Math.max(0, CLOSE_DELAY - clock);
       if (t > 0) {
@@ -3327,7 +3791,7 @@
     text("WAVE " + wave, SCREEN_W / 2, 36, 20, "#ffcb42");
 
     // Lives are one shared pile — drawn as a single row, not per-player,
-    // because that's the whole point of the co-op modes.
+    // because that's the whole point of co-op Survival.
     for (let i = 0; i < lives; i++) shipPip(SCREEN_W - 24 - i * 20, 30, "#ffe56d", 0.85);
     text("SHARED", SCREEN_W - 24, 52, 12, "#ffcb42", "right");
 
@@ -3352,27 +3816,29 @@
          SCREEN_W / 2, 205, 13, "#ffcb42", "center", 0.9);
 
     const rows = [
-      ["survival", MODES.survival.name, "FRIENDLY FIRE ACTIVATED",   "#ffe56d"],
-      ["safe",     MODES.safe.name,     "FRIENDLY FIRE DEACTIVATED", "#6dffbf"],
-      ["royale",   MODES.royale.name,   "",                           "#ff8f77"]
+      ["survival", MODES.survival.name, "CO-OP · FRIENDLY FIRE OPTIONAL", "#ffe56d"],
+      ["royale",   MODES.royale.name,   "",                              "#ff8f77"],
+      ["online",   "ONLINE",            "JOIN A LOBBY · OR HOST YOUR OWN", "#87d8ff"]
     ];
     rows.forEach(([key, name, blurb, colour], i) => {
-      const y = 250 + i * 96;
+      const y = 262 + i * 96;
       tapButton(name, SCREEN_W / 2, y, 560, 52, colour,
-                () => chooseMode(key), titlePick === i);
-      if (blurb) text(blurb, SCREEN_W / 2, y + 44, 17, "#ffcb42");
+                () => pickTitleRow(i), titlePick === i);
+      if (blurb) text(blurb, SCREEN_W / 2, y + 42, 16, "#ffcb42");
     });
+
+    tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
+              385, 546, 210, 40, soundEnabled ? "#ffe56d" : "#ffcb42",
+              toggleSound, soundEnabled);
+    tapButton(fullscreenLabel(), 615, 546, 210, 40, "#ffe56d",
+              toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
 
     text(touchOnly
            ? "one player per phone · up to five online, a screen each"
            : "two at this keyboard · up to five online · every key is yours to change",
-         SCREEN_W / 2, 558, 13, "#ffcb42");
-    tapButton("HOST ONLINE", 240, 616, 220, 44, "#ffe56d", () => openLobby("host"));
-    tapButton("JOIN ONLINE", SCREEN_W / 2, 616, 220, 44, "#ffe56d", () => openLobby("guest"));
-    tapButton("SETTINGS", 760, 616, 220, 44, "#ffe56d",
+         SCREEN_W / 2, 596, 13, "#ffcb42");
+    tapButton("SETTINGS", SCREEN_W / 2, 640, 240, 44, "#ffe56d",
               () => { backFrom = "title"; state = settingsScreen(); });
-    text("online has no server — you pass the invite to each other yourselves",
-         SCREEN_W / 2, 658, 12, "#ffcb42");
   }
 
   function drawCount() {
@@ -3394,41 +3860,54 @@
     const step = 200;
     const x0 = SCREEN_W / 2 - step * (most - 1) / 2;
     for (let i = 1; i <= most; i++) {
-      const allowed = i >= m.minPlayers ||
-                      i + Math.min(botPick, MAX_PLAYERS - i) >= m.minPlayers;
       const n = i;
       tapButton(i + (i === 1 ? " PLAYER" : " PLAYERS"),
                 x0 + (i - 1) * step, 260, 174, 52,
-                allowed ? PLAYERS[i - 1].colour : "#ffcb42",
-                () => { countPick = n - 1; startGame(pendingMode, n, botPick); },
-                countPick === i - 1, allowed);
+                PLAYERS[i - 1].colour,
+                () => selectHumanCount(n),
+                countPick === i - 1);
     }
     // Bots fill the seats nobody is sitting in — which, with two hands to a
     // keyboard, is how a five-ship match gets its other ships.
     tapButton("BOTS: " + (botPick === 0 ? "NONE — CLICK TO ADD" : botPick),
               SCREEN_W / 2, 326, 320, 42,
               botPick ? "#ffe56d" : "#ffcb42",
-              () => { botPick = (botPick + 1) % MAX_PLAYERS; });
+              cycleBots);
     text(m.minPlayers > 1
            ? "battle royale needs two ships — a bot counts"
            : "bots take the seats nobody is sitting in",
          SCREEN_W / 2, 360, 13, "#ffcb42");
 
+    let playY = 390;
+    if (pendingMode === "survival") {
+      tapButton("FRIENDLY FIRE: " + (survivalFriendlyFire ? "ON" : "OFF"),
+                SCREEN_W / 2, 395, 360, 42,
+                survivalFriendlyFire ? "#ff8f77" : "#6dffbf",
+                toggleFriendlyFire, survivalFriendlyFire);
+      playY = 445;
+    }
+
+    const humans = countPick + 1;
+    const canPlay = humans + Math.min(botPick, MAX_PLAYERS - humans) >= m.minPlayers;
+    tapButton("PLAY", SCREEN_W / 2, playY, 300, 46, "#ffe56d",
+              startCountChoice, false, canPlay);
+
     // Who is who, and which keys are theirs.
-    text("CONTROLS", SCREEN_W / 2, 404, 15, "#ffcb42");
+    const controlsY = playY + 56;
+    text("CONTROLS", SCREEN_W / 2, controlsY, 15, "#ffcb42");
     keyRows().slice(0, most).forEach((p, i) => {
-      const y = 436 + i * 32;
+      const y = controlsY + 32 + i * 32;
       text(p.label, SCREEN_W / 2 - 150, y, 17, p.colour, "right");
       text(hintOf(p), SCREEN_W / 2 - 130, y, 15, "#ffcb42", "left");
     });
     text(touchOnly
            ? "a stick and a fire button appear the moment you touch the screen"
            : "more than two? play online — one screen each",
-         SCREEN_W / 2, 436 + most * 32 + 14, 13, "#ffcb42");
+         SCREEN_W / 2, controlsY + 46 + most * 32, 13, "#ffcb42");
 
-    tapButton("BACK", 350, 620, 240, 44, "#ffcb42", () => { state = "title"; });
+    tapButton("BACK", 350, 650, 240, 44, "#ffcb42", () => { state = "title"; });
     tapButton(touchOnly ? "PHONE SETTINGS" : "CONTROL SETTINGS",
-              650, 620, 240, 44, "#ffe56d",
+              650, 650, 240, 44, "#ffe56d",
               () => { backFrom = "count"; state = settingsScreen(); });
   }
 
@@ -3523,11 +4002,16 @@
       keysChanged();
       note("Selected key cleared.");
     });
-    tapButton("PHONE CONTROLS", SCREEN_W / 2, 530, 420, 46, "#ffe56d", () => {
+    tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
+              320, 530, 280, 42, soundEnabled ? "#ffe56d" : "#ffcb42",
+              toggleSound, soundEnabled);
+    tapButton(fullscreenLabel(), 680, 530, 280, 42, "#ffe56d",
+              toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
+    tapButton("PHONE CONTROLS", SCREEN_W / 2, 584, 420, 44, "#ffe56d", () => {
       binder.listening = false;
       state = "thumb";
     });
-    tapButton("BACK", SCREEN_W / 2, 604, 320, 46, "#ffcb42", () => {
+    tapButton("BACK", SCREEN_W / 2, 642, 320, 44, "#ffcb42", () => {
       binder.listening = false;
       state = backFrom || "title";
     });
@@ -3603,6 +4087,11 @@
 
     tapButton("SWAP SIDES", 300, 458, 280, 40, "#ffe56d", padMirror);
     tapButton("RESET PHONE CONTROLS", 700, 458, 280, 40, "#ffcb42", padReset);
+    tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
+              300, 516, 280, 40, soundEnabled ? "#ffe56d" : "#ffcb42",
+              toggleSound, soundEnabled);
+    tapButton(fullscreenLabel(), 700, 516, 280, 40, "#ffe56d",
+              toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
 
   }
 
@@ -3612,9 +4101,7 @@
     if (outcome && outcome.kind === "winner") {
       const s = outcome.ship;
       text(s.name + " WINS", SCREEN_W / 2, 270, 60, s.colour);
-      text(outcome.onTime ? "ahead when the minute ran out"
-                          : "last ship flying",
-           SCREEN_W / 2, 326, 16, "#ffcb42");
+      text("last ship flying", SCREEN_W / 2, 326, 16, "#ffcb42");
       text("the map closed to " + Math.round((bounds.x1 - bounds.x0) / arena.w * 100) +
            "%", SCREEN_W / 2, 354, 15, "#ffcb42");
 
@@ -3642,9 +4129,7 @@
       });
     } else if (outcome && outcome.kind === "draw") {
       text("NOBODY WINS", SCREEN_W / 2, 280, 54, "#ff8f77");
-      text(outcome.onTime ? "one minute, nothing between you"
-                          : "you went out together",
-           SCREEN_W / 2, 330, 18, "#ffcb42");
+      text("you went out together", SCREEN_W / 2, 330, 18, "#ffcb42");
       text(survived, SCREEN_W / 2, 368, 15, "#ffcb42");
     } else {
       text("ALL HANDS LOST", SCREEN_W / 2, 260, 54, "#ff8f77");
@@ -3656,8 +4141,13 @@
              SCREEN_W / 2, 424, 17, "#ff8f77", "center", 0.9);
       }
     }
-    tapText("SPACE to return", SCREEN_W / 2, outcome && outcome.kind === "winner" ? 636 : 532, 18, "#ffcb42",
-            leaveMatch);
+    const actionY = outcome && outcome.kind === "winner" ? 636 : 520;
+    const replayable = canPlayAgain();
+    const replayLabel = net.role === "guest" ? "WAITING FOR HOST"
+      : replayable ? "PLAY AGAIN" : "NEED ANOTHER PLAYER";
+    tapButton(replayLabel, 350, actionY, 260, 44, "#ffe56d",
+              playAgain, false, replayable);
+    tapButton("MAIN MENU", 650, actionY, 260, 44, "#ffcb42", leaveMatch);
   }
 
   /* Paused is where you end up when something needs sorting out, so it is
@@ -3679,9 +4169,14 @@
       backFrom = online ? "menu" : "paused";
       state = settingsScreen();
     });
-    tapText("[Q]  QUIT TO MENU", SCREEN_W / 2, mid + 112, 22, "#ffcb42", leaveMatch);
+    tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
+              350, mid + 116, 260, 40, soundEnabled ? "#ffe56d" : "#ffcb42",
+              toggleSound, soundEnabled);
+    tapButton(fullscreenLabel(), 650, mid + 116, 260, 40, "#ffe56d",
+              toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
+    tapText("[Q]  QUIT TO MENU", SCREEN_W / 2, mid + 170, 22, "#ffcb42", leaveMatch);
     if (net.on) {
-      text("quitting drops the others too", SCREEN_W / 2, mid + 140, 13,
+      text("quitting drops the others too", SCREEN_W / 2, mid + 198, 13,
            "#ffcb42", "center", 0.75);
     }
   }
@@ -3706,6 +4201,41 @@
     state = "title";
   }
 
+  function canPlayAgain() {
+    if (net.role === "guest") return false;
+    if (net.role !== "host") return true;
+    const N = window.CrossfireNet;
+    const connected = N ? N.host.links.filter(l => l.open && l.seat != null).length : 0;
+    return 1 + connected >= MODES[lastSetup.modeKey].minPlayers;
+  }
+
+  function playAgain() {
+    if (!canPlayAgain()) return;
+
+    if (net.role !== "host") {
+      startGame(lastSetup.modeKey, lastSetup.humans, lastSetup.bots);
+      return;
+    }
+
+    const N = window.CrossfireNet;
+    const seated = N.host.links
+      .filter(l => l.open && l.seat != null)
+      .sort((a, b) => a.seat - b.seat);
+
+    // A player may have left on the result screen. Compact the remaining
+    // roster before rebuilding ships so every link still owns a valid index.
+    const compactNames = [names[0], ...seated.map(l => names[l.seat])];
+    const chosen = [skins[0], ...seated.map(l => skins[l.seat])];
+    names = compactNames;
+    skins = chosen.concat(PLAYERS.map((_, i) => i).filter(i => !chosen.includes(i)));
+    seated.forEach((l, i) => { l.seat = i + 1; l.inputSeq = 0; });
+
+    net.inputs = {};
+    startGame(lastSetup.modeKey, 1 + seated.length, 0);
+    ships.forEach((s, i) => { s.localKeys = i === 0 ? PLAYERS[0] : null; });
+    seated.forEach(l => l.send(initPacket(l.seat), true));
+  }
+
   /* The pad is a real thing sitting over the window, so the window has to know
      which of its three lives it is in: flying, being laid out, or neither —
      and "neither" means gone, because a stick over a menu is a stick eating
@@ -3726,7 +4256,7 @@
     }
   }
 
-  function render() {
+  function render(dt) {
     padStage();
     // Collected fresh: a menu line that isn't drawn this frame isn't tappable
     // this frame either, which is what keeps the two from drifting apart.
@@ -3736,13 +4266,20 @@
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
 
+    /* Every screen you can reach without a match running gets the idling field
+       behind it. Not the pause menu or the results, which have a real world of
+       their own to sit over. */
+    const menu = state === "title" || state === "count" ||
+                 state === "controls" || state === "thumb";
+    if (menu) drawDrift(dt || 0);
+
     if (state === "title") { drawTitle(); return; }
     if (state === "count") { drawCount(); return; }
     if (state === "controls") { drawControls(); return; }
     if (state === "thumb") { drawThumb(); return; }
 
     /* World space. The camera puts its centre in the middle of the screen; in
-       the survival modes that centre is the middle of the arena at a scale that
+       Survival, that centre is the middle of the arena at a scale that
        fits it exactly, which is the old whole-map view falling out of the same
        maths. Anything off screen is skipped — on a sixteen-screen map most of
        the world is. */
@@ -3830,7 +4367,7 @@
     // replayed second must not fire off a second's worth of snapshots at once.
     if (net.on && inMatch()) netPump(span);
 
-    if (painting) render();
+    if (painting) render(span);
   }
 
   function frame(now) {
@@ -3887,6 +4424,38 @@
       stop
     };
   })();
+
+  /* The same trick, for anything else that must keep its own time in a tab
+     nobody is looking at. The lobby needs it as much as the match does: a host
+     who switches tabs to send somebody the link is exactly the host who is
+     waiting for a knock, and a throttled two-second heartbeat misses people
+     entirely rather than merely running slowly. */
+  function makeTicker(fn, ms) {
+    const SRC = "let h=0;onmessage=e=>{clearInterval(h);" +
+                "if(e.data)h=setInterval(()=>postMessage(0),e.data)}";
+    let worker = null, timer = 0, on = false;
+    return {
+      start() {
+        if (on) return;
+        on = true;
+        try {
+          worker = new Worker(URL.createObjectURL(
+            new Blob([SRC], { type: "text/javascript" })));
+          worker.onmessage = fn;
+          worker.postMessage(ms);
+        } catch (_) {
+          worker = null;
+          timer = setInterval(fn, ms);
+        }
+      },
+      stop() {
+        if (!on) return;
+        on = false;
+        if (worker) { worker.postMessage(0); worker.terminate(); worker = null; }
+        if (timer) { clearInterval(timer); timer = 0; }
+      }
+    };
+  }
 
   /* On-screen controls. Pointer events rather than touch events, so a stylus
      or a touchscreen laptop works the same, and pointer capture means sliding
@@ -3985,8 +4554,9 @@
   }
 
   /* ── lobby ───────────────────────────────────────────────────────────────
-     The whole online flow is two codes changing hands. Host makes one, guest
-     turns it into a reply, host pastes the reply back. Repeat per guest. */
+     The whole online flow is one list. A host puts a game on it; a guest picks
+     one off it. The two session descriptions that actually open the connection
+     travel through the room service, so neither player ever sees one. */
   const el = id => document.getElementById(id);
   const lobby = el("lobby");
   let lobbyRole = null;
@@ -4034,6 +4604,14 @@
       note.textContent = skinOf(seat).label.toLowerCase() + " · " + what;
 
       row.append(dot, who, note);
+
+      // Seat 0 is the host and has nothing to say about being ready.
+      if (seat !== 0 && what !== "connecting…") {
+        const tick = document.createElement("span");
+        tick.className = "tick";
+        tick.textContent = ready[seat] ? "READY" : "…";
+        row.append(tick);
+      }
       list.appendChild(row);
     }
 
@@ -4051,8 +4629,27 @@
         p.className = "empty";
         p.textContent = "Wait for every player to finish connecting.";
         list.appendChild(p);
+      } else if (!allReady()) {
+        const p = document.createElement("div");
+        p.className = "empty";
+        p.textContent = "Waiting for everyone to ready up.";
+        list.appendChild(p);
       }
-      show("rowStart", hasOpen && !hasConnecting);
+      show("rowStart", hasOpen && !hasConnecting && allReady());
+      el("startWhat").textContent = "Everyone's ready · " + MODES[roomMode].name;
+      show("rowReady", false);
+    } else {
+      // A guest readies up; there is nothing else for it to do down here.
+      const joined = N && N.guest.link && N.guest.link.open;
+      show("rowReady", !!joined);
+      if (joined) {
+        const on = !!ready[net.seat];
+        const what = MODES[roomMode] ? MODES[roomMode].name : "";
+        el("btnReady").textContent = on ? "ready ✓" : "ready up";
+        el("readyNote").textContent = on
+          ? what + " · the host starts when everyone is ready."
+          : what + " · tell the host you're ready.";
+      }
     }
   }
 
@@ -4153,7 +4750,7 @@
     for (const l of N.host.links) {
       if (l.open && l.seat != null) {
         l.send({ t: "seats", seat: l.seat, skins, names,
-                 taken: [...seatsTaken()] }, true);
+                 taken: [...seatsTaken()], ready, mode: roomMode }, true);
       }
     }
     seatsUI();
@@ -4172,6 +4769,9 @@
     if (!link || link.seat == null) return;
     const seat = link.seat;
     delete net.inputs[seat];
+    // A seat that leaves takes its readiness with it, or the next person to
+    // sit in it arrives already ready.
+    ready[seat] = false;
 
     const ship = ships[seat];
     if (ship) {
@@ -4241,6 +4841,10 @@
           names[link.seat] = tidyName(msg.name);
           tellSeats();
         }
+        else if (msg.t === "ready" && link.seat != null) {
+          ready[link.seat] = !!msg.on;
+          tellSeats();
+        }
       }
     };
   }
@@ -4250,7 +4854,23 @@
       say("Connected. Telling the host who you are…");
       window.CrossfireNet.guest.send({ t: "me", name: myName }, true);
     },
-    onClose: () => { say("Disconnected from the host.", true); netReset(); state = "title"; },
+    /* The host going away means something different depending on where you are
+       standing. Mid-match there is nothing to go back to but the title. In the
+       lobby there is: the list you came from, which may well have another game
+       on it — so put them back on it rather than leaving them looking at a
+       seating plan for a game that no longer exists. */
+    onClose: () => {
+      netReset();
+      if (lobby.hidden) { say("Disconnected from the host.", true); state = "title"; return; }
+      ready = [];
+      guestTaken = [0];
+      lobbyRole = "guest";
+      show("colourPick", false);
+      show("rowReady", false);
+      seatsUI();
+      showRoute("room");
+      say("That lobby closed. Here's what else is open.", true);
+    },
     onMessage: msg => {
       if (msg.t === "init") { applyInit(msg); closeLobby(); }
       else if (msg.t === "seats") {
@@ -4258,7 +4878,9 @@
         if (Array.isArray(msg.skins)) skins = msg.skins.slice();
         if (Array.isArray(msg.names)) names = msg.names.map(tidyName);
         guestTaken = Array.isArray(msg.taken) ? msg.taken : [0];
-        say("You're in as " + nameOf(net.seat).toLowerCase() +
+        if (Array.isArray(msg.ready)) ready = msg.ready.slice();
+        if (MODES[msg.mode]) roomMode = msg.mode;
+        say("You're in as " + nameOf(net.seat) +
             ", flying " + skinOf(net.seat).label.toLowerCase() +
             ". Waiting for the host to start.");
         paintColours();
@@ -4270,23 +4892,22 @@
   };
 
   /* ── the room service ─────────────────────────────────────────────────────
-     Optional, and deliberately so. Everything below is a shortcut past the
-     pasting: a host claims a word, a guest types the same word, and the two
-     connection descriptions travel through a small service instead of through
-     a chat window. The game itself is untouched by it — once two browsers are
-     connected they talk directly, and the service could be switched off
-     mid-match without anybody noticing.
+     What makes online play possible at all. A host puts its game on a list and
+     leaves an address; a guest picks it off the list and leaves an offer; the
+     host answers. That is the service's whole job — it never sees a ship.
+
+     Once two browsers are connected they talk directly, so the service could
+     be switched off mid-match without anybody noticing. But nobody can start a
+     new game without it, which is why the panel checks for it up front and
+     says plainly when it isn't there.
 
      Left empty there is no service, and the lobby never makes a request at
      all. ?rooms=… overrides it for testing. */
-  const ROOM_HOST = "";   // ← your Funnel hostname, e.g. "https://mac.tailnet.ts.net"
+  const ROOM_HOST = "https://crossfire-rooms.rmbuster82.workers.dev";
 
   const ROOM_SERVICE =
     (new URLSearchParams(location.search).get("rooms") || ROOM_HOST)
       .trim().replace(/\/+$/, "");
-
-  const tidyWord = w =>
-    String(w || "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 24);
 
   let roomsAlive = null, roomsAskedAt = 0;
 
@@ -4331,11 +4952,30 @@
     } catch (_) { return make(); }
   })();
 
-  let roomWord = "", roomTimer = 0;
+  /* A room id is made here and never shown to anybody. The list is how a game
+     is found, so the id only has to be unique and legal — it is not a secret,
+     and it is not the password. */
+  const newRoomId = () =>
+    "g" + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
+
+  /* What the room is playing. Chosen when the game is made rather than at the
+     moment of starting, so it can be in the list — you should know what you
+     are joining before you join it, not after everybody has readied up. */
+  let roomMode = "survival";
+
+  let roomWord = "", roomTimer = 0, roomTitle = "", roomPass = "";
 
   function stopRoom() {
-    if (roomTimer) { clearInterval(roomTimer); roomTimer = 0; }
+    if (roomTimer) { roomTimer.stop(); roomTimer = 0; }
+    // Take the room down rather than letting it expire: a game that has started
+    // should leave the list now, not in twenty-five seconds. Nothing waits on
+    // the answer — the room expires by itself if this never lands.
+    if (roomWord) {
+      roomPost("/room/" + roomWord + "/close", { key: hostKey }).catch(() => {});
+    }
     roomWord = "";
+    roomTitle = "";
+    roomPass = "";
   }
 
   /* The host's whole loop: say "still here" and collect anybody who knocked
@@ -4344,17 +4984,24 @@
     if (!roomWord) return;
     let data;
     try {
-      const r = await roomPost("/room/" + roomWord + "/host",
-                               { key: hostKey, name: myName });
+      /* The heartbeat is also the advert: it carries what the list shows and
+         whether the room belongs in it at all. A match that has started stops
+         being listed immediately rather than waiting to expire. */
+      const r = await roomPost("/room/" + roomWord + "/host", {
+        key: hostKey, name: myName,
+        title: roomTitle, pass: roomPass, mode: roomMode,
+        players: seatsTaken().size, max: MAX_PLAYERS,
+        listed: !inMatch()
+      });
       data = await r.json();
       if (!r.ok) {
         stopRoom();
-        show("roomRoute", true);
-        el("btnRoom").disabled = false;
+        show("makeRoute", true);
+        el("btnOpenRoom").disabled = false;
         return say(data.error || "The room service turned that down.", true);
       }
     } catch (_) {
-      return say("Can't reach the room service — your friends can still join by code.", true);
+      return say("Can't reach the room service, so nobody can see your lobby.", true);
     }
     for (const join of data.joins || []) await admit(join);
   }
@@ -4376,93 +5023,270 @@
   }
 
   async function openRoom() {
-    const word = tidyWord(el("roomWord").value);
-    if (word.length < 2) return say("Pick a room name — a word you can say out loud.", true);
-    el("btnRoom").disabled = true;
-    say("Opening the room…");
-    roomWord = word;
+    const title = tidyTitle(el("gameName").value) ||
+                  (myName ? myName + "'s lobby" : "a lobby");
+    const pass = el("gameLock").checked ? el("gamePass").value.trim() : "";
+    if (el("gameLock").checked && pass.length < 1) {
+      return say("Type a password, or untick the lock.", true);
+    }
+    el("btnOpenRoom").disabled = true;
+    say("Opening the lobby…");
+    roomWord = newRoomId();
+    roomTitle = title;
+    roomPass = pass;
     await hostBeat();
     if (!roomWord) return;                       // hostBeat gave up and said why
-    el("roomNote").textContent =
-      "room open · tell your friends the word: " + roomWord;
-    show("roomRoute", false);
-    show("codeSwitch", false);
-    say("Room open. Anyone who types " + roomWord + " lands here.");
-    roomTimer = setInterval(hostBeat, 2000);
+    el("roomNote").textContent = pass
+      ? "locked · your friends need the password"
+      : "open · anybody can join from the list";
+    show("makeRoute", false);
+    say(pass ? "\"" + title + "\" is up, locked."
+             : "\"" + title + "\" is up. It's in the list now.");
+    roomTimer = makeTicker(hostBeat, 2000);
+    roomTimer.start();
     seatsUI();
   }
 
-  async function joinRoom() {
+  /* ── the list ────────────────────────────────────────────────────────────
+     Everything on a row came off the network, so every piece of it is written
+     with textContent and nothing is ever built as markup. */
+  let browseTimer = 0, browsing = false, pendingJoin = null, roomsDrawn = "";
+
+  function stopBrowse() {
+    if (browseTimer) { clearInterval(browseTimer); browseTimer = 0; }
+    browsing = false;
+    roomsDrawn = "";
+  }
+
+  function drawRooms(list) {
+    /* Rebuilding every three seconds would throw away the row under somebody's
+       finger just as they press it, so the list is only redrawn when it has
+       actually changed. */
+    const stamp = JSON.stringify(list);
+    if (stamp === roomsDrawn) return;
+    roomsDrawn = stamp;
+
+    const box = el("roomList");
+    box.replaceChildren();
+    if (!list.length) {
+      const p = document.createElement("div");
+      p.className = "empty";
+      p.textContent = "No lobbies open right now. Start one and they'll see it.";
+      box.appendChild(p);
+      return;
+    }
+    for (const room of list) {
+      const full = room.players >= room.max;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "game" + (full ? " full" : "");
+      b.disabled = full;
+
+      const title = document.createElement("span");
+      title.className = "title";
+      title.textContent = room.title || "a lobby";
+      const who = document.createElement("span");
+      who.className = "who";
+      who.textContent = room.host ? room.host : "";
+      const what = document.createElement("span");
+      what.className = "who";
+      what.textContent = MODES[room.mode] ? MODES[room.mode].name.toLowerCase() : "";
+      const count = document.createElement("span");
+      count.className = "count";
+      count.textContent = room.players + "/" + room.max;
+      const lock = document.createElement("span");
+      lock.className = "lock";
+      lock.textContent = room.locked ? "LOCKED" : "OPEN";
+
+      b.append(title, what, who, count, lock);
+      b.addEventListener("click", () => pickRoom(room));
+      box.appendChild(b);
+    }
+  }
+
+  async function refreshRooms() {
+    if (!browsing) return;
+    try {
+      const r = await roomFetch("/rooms");
+      const data = await r.json();
+      if (!browsing) return;
+      drawRooms(Array.isArray(data.rooms) ? data.rooms : []);
+    } catch (_) {
+      if (browsing) say("Lost the room service. The list has stopped updating.", true);
+    }
+  }
+
+  function startBrowse() {
+    browsing = true;
+    pendingJoin = null;
+    roomsDrawn = "";
+    show("joinPassRow", false);
+    el("roomList").replaceChildren();
+    refreshRooms();
+    if (!browseTimer) browseTimer = setInterval(refreshRooms, 3000);
+  }
+
+  /* Clicking a game either goes straight in, or stops to ask for the password
+     first. The password box is deliberately part of the list rather than a
+     separate screen: you can see which game you are unlocking. */
+  function pickRoom(room) {
+    if (room.locked) {
+      pendingJoin = room;
+      el("joinPassLabel").textContent = "password for “" + room.title + "”";
+      el("joinPass").value = "";
+      show("joinPassRow", true);
+      el("joinPass").focus();
+      return;
+    }
+    joinRoom(room.id, "");
+  }
+
+  async function joinRoom(id, pass) {
     const N = window.CrossfireNet;
-    const word = tidyWord(el("roomWord").value);
-    if (word.length < 2) return say("Type the room name the host gave you.", true);
-    el("btnRoom").disabled = true;
+    if (!id) return;
+    stopBrowse();
     say("Knocking…");
     try {
       const offer = await N.guest.offer(guestHandlers);
-      const r = await roomPost("/room/" + word + "/join", { offer, name: myName });
+      const r = await roomPost("/room/" + id + "/join",
+                               { offer, name: myName, pass });
       const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "That room didn't answer.");
+      if (!r.ok) throw new Error(data.error || "That lobby didn't answer.");
 
       // The host answers on its next heartbeat, so this is a couple of seconds
       // at worst. Twenty tries at half a second is a generous ceiling.
       for (let i = 0; i < 20; i++) {
         await new Promise(done => setTimeout(done, 500));
-        const p = await roomFetch("/room/" + word + "/join/" + data.id);
+        const p = await roomFetch("/room/" + id + "/join/" + data.id);
         const got = await p.json();
         if (got.answer) {
           await N.guest.take(got.answer);
           say("Found them. Connecting…");
-          show("roomRoute", false);
-          show("codeSwitch", false);
+          show("browseRoute", false);
           return;
         }
-        if (!p.ok) throw new Error(got.error || "The room went away.");
+        if (!p.ok) throw new Error(got.error || "That lobby went away.");
       }
       throw new Error("Nobody answered. Is the host still there?");
     } catch (e) {
       window.CrossfireNet.guest.close();
       say(e.message || "That didn't work.", true);
-      el("btnRoom").disabled = false;
+      // Back to the list — whatever went wrong, another game may be fine.
+      show("joinPassRow", false);
+      startBrowse();
     }
   }
 
-  el("btnRoom").addEventListener("click", () => {
-    if (lobbyRole === "host") openRoom(); else joinRoom();
+  /* Readiness is the guest's own claim, so it is sent and then echoed back in
+     the next seat broadcast rather than assumed locally — the host's table is
+     the one that decides whether START lights up. */
+  el("btnReady").addEventListener("click", () => {
+    const N = window.CrossfireNet;
+    if (!N || !N.guest.link || !N.guest.link.open) return;
+    const on = !ready[net.seat];
+    ready[net.seat] = on;
+    N.guest.send({ t: "ready", on }, true);
+    seatsUI();
   });
 
-  el("roomWord").addEventListener("keydown", e => {
-    if (e.key === "Enter") { e.preventDefault(); el("btnRoom").click(); }
+  el("btnOpenRoom").addEventListener("click", openRoom);
+  el("btnRefresh").addEventListener("click", refreshRooms);
+  el("btnJoinCancel").addEventListener("click", () => {
+    pendingJoin = null;
+    show("joinPassRow", false);
+    say("");
+  });
+  el("btnJoinPass").addEventListener("click", () => {
+    if (pendingJoin) joinRoom(pendingJoin.id, el("joinPass").value);
+  });
+  el("joinPass").addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); el("btnJoinPass").click(); }
+  });
+  el("gameName").addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); openRoom(); }
+  });
+  /* The mode picker in the create panel. Battle royale needs somebody to fight,
+     so the note says so up front rather than refusing at the moment you press
+     start with everybody watching. */
+  function paintModePick() {
+    for (const b of el("modePick").querySelectorAll("button")) {
+      const mine = b.dataset.pick === roomMode;
+      b.className = mine ? "mine" : "";
+      b.setAttribute("aria-pressed", mine ? "true" : "false");
+    }
+    el("modeNote").textContent = MODES[roomMode].blurb;
+    show("onlineFriendlyFire", roomMode === "survival");
+  }
+
+  el("modePick").addEventListener("click", e => {
+    const pick = e.target.dataset && e.target.dataset.pick;
+    if (!pick || !MODES[pick]) return;
+    roomMode = pick;
+    paintModePick();
   });
 
-  // Always available: the codes work whether or not anything else does.
-  el("btnCodeRoute").addEventListener("click", () => {
+  el("gameLock").addEventListener("change", () => {
+    const on = el("gameLock").checked;
+    show("gamePass", on);
+    if (on) el("gamePass").focus();
+  });
+
+  // The host button lives in the list: you look for a game first, and start
+  // one when there isn't the one you wanted.
+  el("btnHostGame").addEventListener("click", () => {
+    lobbyRole = "host";
+    names[0] = myName;
+    stopBrowse();
+    showRoute("room");
+    // Becoming the host is where seat 0 becomes yours, so it is also where the
+    // ship colours and the mode become things you can choose.
+    paintColours();
+    paintModePick();
+    seatsUI();
+    el("gameName").focus();
+  });
+
+  // Changed your mind before opening anything: back to the list you came from.
+  el("btnBackToList").addEventListener("click", () => {
+    lobbyRole = "guest";
     stopRoom();
-    showRoute("code");
+    show("colourPick", false);
+    showRoute("room");
     say("");
   });
 
-  /* Which of the two ways in the panel is offering. The code route is the one
-     that always works, so it is what everything falls back to. */
+  /* Which way in the panel is offering. A host names a game; everybody else
+     reads the list. There is nothing else — an invite code is a thing the room
+     service carries between two browsers, not a thing anybody has to hold. */
   function showRoute(which) {
     const room = which === "room";
-    show("roomRoute", room);
-    show("codeSwitch", room);
-    show("rowMake", !room && lobbyRole === "host");
-    show("labIn", !room && lobbyRole === "guest");
-    show("rowUse", !room && lobbyRole === "guest");
-    if (!room) { show("labOut", false); show("rowCopy", false); }
+    const host = lobbyRole === "host";
+    show("makeRoute", room && host);
+    show("browseRoute", room && !host);
+    show("hostNote", host);
+    if (room && !host) startBrowse(); else stopBrowse();
     el("roomNote").textContent = "";
+    el("lobbyTitle").textContent = host ? "HOST A LOBBY" : "PLAY ONLINE";
+    el("lobbyHint").textContent = host
+      ? "Name it, lock it if you want, and it appears in everyone's list."
+      : "Pick a lobby to join, or start one of your own.";
+    show("lobbyHint", true);
   }
 
+  /* One door in. You arrive at the list of lobbies and either join one or start
+     your own, and only then are you a host — which is why `role` is a default
+     here rather than a choice made on the title screen. */
   function openLobby(role) {
     const N = window.CrossfireNet;
+    role = role === "host" ? "host" : "guest";
     lobbyRole = role;
+    ready = [];
     lobby.hidden = false;
-    el("lobbyTitle").textContent = role === "host" ? "HOST A GAME" : "JOIN A GAME";
+    paintFriendlyFireButton();
+    el("lobbyTitle").textContent = role === "host" ? "HOST A LOBBY" : "PLAY ONLINE";
     el("lobbyHint").textContent = role === "host"
       ? ""
-      : "The host sends you a code. Paste it in, send the reply back, and you're in.";
+      : "Pick a lobby to join, or start one of your own.";
     show("lobbyHint", role !== "host");
 
     // Your name and ship first — it's the only part that's about you, and the
@@ -4477,131 +5301,63 @@
       : "Your name";
     el("seatTitle").textContent = role === "host" ? "Players" : "Who's here";
 
-    show("rowMake", role === "host");
-    show("labOut", false); show("rowCopy", false);
-    show("labIn", role === "guest"); show("rowUse", role === "guest");
-
-    // Host: make a code, then take their reply. Guest: take their code, then
-    // hand back a reply. Same two boxes, opposite way round.
-    const order = { lobbyTitle: 1, lobbyHint: 2, hostNote: 2, youBlock: 3, roomRoute: 4,
-                    rowMake: 5, codeSwitch: 10, lobbyStatus: 11, seatWrap: 12,
-                    rowStart: 13, rowClose: 14 };
-    Object.assign(order, role === "host"
-      ? { labOut: 6, rowCopy: 7, labIn: 8, rowUse: 9 }
-      : { labIn: 6, rowUse: 7, labOut: 8, rowCopy: 9 });
+    const order = { lobbyTitle: 1, lobbyHint: 2, hostNote: 2, youBlock: 3,
+                    makeRoute: 4, browseRoute: 4,
+                    lobbyStatus: 11, seatWrap: 12,
+                    rowReady: 13, rowStart: 13, rowClose: 14 };
     for (const id in order) { const n = el(id); if (n) n.style.order = order[id]; }
 
-    /* Ask whether there's a room service, and lay the panel out for whichever
-       answer comes back. Codes are shown meanwhile, so a slow or absent
-       service never leaves anybody looking at a spinner. */
-    showRoute("code");
-    if (ROOM_SERVICE) {
-      roomsUp().then(up => {
-        if (lobby.hidden || lobbyRole !== role) return;   // they moved on
-        showRoute(up ? "room" : "code");
-        if (!up) {
-          say("The room service is offline — passing codes still works.", true);
-        }
-      });
-    }
-    el("roomLabel").textContent = role === "host"
-      ? "name your room" : "the room name you were given";
-    el("roomWord").value = "";
-    el("btnRoom").textContent = role === "host" ? "open the room" : "join";
-    el("btnRoom").disabled = false;
+    // Clear the panel down before anything is started, or the reset below
+    // stops the list this function has just asked for.
+    el("gameName").value = "";
+    el("gameLock").checked = false;
+    el("gamePass").value = "";
+    show("gamePass", false);
+    roomMode = "survival";
+    paintModePick();
+    el("btnOpenRoom").disabled = false;
     el("roomNote").textContent = "";
+    show("joinPassRow", false);
     stopRoom();
+    stopBrowse();
 
-    // Two steps each way, and the numbers stay put when a box is hidden:
-    // making the code and sending it are one step, not two.
-    el("makeLabel").textContent = "2. Create a code for one person.";
-    el("outLabel").textContent = role === "host"
-      ? "3. Copy this code and send it to that person."
-      : "2 · send this reply back to the host";
-    el("inLabel").textContent = role === "host"
-      ? "4. Paste that person's reply here."
-      : "1 · paste the code the host sent you";
-    el("btnUse").textContent = role === "host" ? "add player" : "connect";
-    el("inCode").value = "";
+    /* Online is the room list and nothing else, so the panel has one thing to
+       say when there is no room service: it isn't there. Saying so beats a list
+       that never arrives. */
+    showRoute("room");
+    roomsUp().then(up => {
+      if (lobby.hidden || lobbyRole !== role) return;   // they moved on
+      if (!up) {
+        stopBrowse();
+        show("browseRoute", false);
+        show("makeRoute", false);
+        say(ROOM_SERVICE
+              ? "The room service isn't answering, so there are no lobbies to show."
+              : "No room service is configured, so online play is off here.", true);
+      }
+    });
+
     show("rowStart", false);
+    show("rowReady", false);
     say(N && N.supported ? "" : "This browser has no WebRTC, so online play won't work here.",
         !(N && N.supported));
     // The host can choose a ship before anyone arrives; a guest has nothing to
     // choose from until the host has told it what the seating plan is.
     if (role === "host") paintColours(); else show("colourPick", false);
     seatsUI();
-    el(role === "host" ? "btnInvite" : "inCode").focus();
   }
 
   function closeLobby() {
     // A room is only worth holding while somebody is sitting in the lobby.
     stopRoom();
+    stopBrowse();
     lobby.hidden = true;
   }
 
-  el("btnInvite").addEventListener("click", async () => {
-    const N = window.CrossfireNet;
-    if (N.host.links.length >= MAX_PLAYERS - 1) {
-      return say("The game is full.", true);
-    }
-    say("Creating code…");
-    el("btnInvite").disabled = true;
-    try {
-      const code = await N.host.invite(hostHandlers(null));
-      // The handlers close over the link, so rebind now that it exists.
-      const link = N.host.pending;
-      Object.assign(link.h, hostHandlers(link));
-      el("outCode").value = code;
-      show("labOut", true); show("rowCopy", true);
-      show("labIn", true); show("rowUse", true);
-      say("Send the code. Paste the reply in step 4.");
-    } catch (e) {
-      say("Could not create a code: " + e.message, true);
-    }
-    el("btnInvite").disabled = false;
-  });
+  el("onlineFriendlyFire").addEventListener("click", toggleFriendlyFire);
 
-  el("btnCopy").addEventListener("click", async () => {
-    const ta = el("outCode");
-    try {
-      await navigator.clipboard.writeText(ta.value);
-      say("Code copied.");
-    } catch (_) {
-      ta.select();   // clipboard blocked (or no permission); selecting still helps
-      say("Press ⌘C / Ctrl+C to copy the selected code.");
-    }
-  });
-
-  el("btnUse").addEventListener("click", async () => {
-    const N = window.CrossfireNet;
-    const code = el("inCode").value.trim();
-    if (!code) return say("Paste a reply first.", true);
-    el("btnUse").disabled = true;
-    try {
-      if (lobbyRole === "host") {
-        await N.host.accept(code);
-        const link = N.host.links[N.host.links.length - 1];
-        link.seat = freeSeat();               // host is seat 0
-        el("inCode").value = "";
-        show("labOut", false); show("rowCopy", false);
-        say("Player added. Create another code to add another player.");
-        seatsUI();
-      } else {
-        const reply = await N.guest.join(code, guestHandlers);
-        el("outCode").value = reply;
-        el("outLabel").textContent = "send this reply back to the host";
-        show("labOut", true); show("rowCopy", true);
-        say("Send that reply to the host. The game starts when they do.");
-      }
-    } catch (e) {
-      say(e.message || "That code didn't work.", true);
-    }
-    el("btnUse").disabled = false;
-  });
-
-  el("rowStart").addEventListener("click", e => {
-    const key = e.target.getAttribute && e.target.getAttribute("data-mode");
-    if (!key) return;
+  el("btnStart").addEventListener("click", () => {
+    const key = roomMode;
     const N = window.CrossfireNet;
     if (N.host.links.some(l => !l.open)) {
       return say("Wait for every player to finish connecting.", true);
