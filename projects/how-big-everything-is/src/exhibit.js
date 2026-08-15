@@ -100,7 +100,7 @@
      hundredths of a decade, which without the padding below would be a
      rung a third of a pixel wide. So every gap gets a
      flat 0.45-decade allowance on top of its real width. Across the whole
-     rail that is 9 decades of padding against 45 real ones: the shape is
+     rail that is 10 decades of padding against 45 real ones: the shape is
      still overwhelmingly the true shape, and every rung is reachable. */
   const T = new Array(N);
   {
@@ -637,7 +637,7 @@
   }
 
   /* Which chip is lit, and — since the chip strip is a single sideways row
-     of twenty-three — keeping the lit one in view. Guarded on the value, not
+     of twenty-four — keeping the lit one in view. Guarded on the value, not
      run every frame: this touches 42 elements and forces a scroll, and the
      answer changes a few times a minute. */
   let markedRung = -2;
@@ -858,7 +858,7 @@
 
   /* ── the rung pickers ──────────────────────────────────────────────
      Two of them, and they are the same list twice: chips under the rail
-     where there is room for twenty-three of them, and a sheet behind a
+     where there is room for twenty-four of them, and a sheet behind a
      button where there is not. Both call glideTo(), so picking a rung
      flies you there rather than cutting — the journey between two rungs
      is most of what this exhibit has to say. */
@@ -966,7 +966,7 @@
   }
 
   /* ── scrolling the strip ───────────────────────────────────────────
-     The chip strip is a horizontal scroller holding all twenty-three names,
+     The chip strip is a horizontal scroller holding all twenty-four names,
      and browsing it is the one thing it could not do. A vertical wheel
      over a horizontally-overflowing box scrolls nothing in any browser,
      and a trackpad's sideways swipe is the only gesture that ever worked
@@ -1042,7 +1042,7 @@
      Two point one seconds is a little shorter than the arrival flourish
      each painter throws, which means the tour leaves while the rung is
      still reacting rather than after it has gone quiet. That is the right
-     way round: a tour that waited for stillness at twenty-three stops
+     way round: a tour that waited for stillness at twenty-four stops
      would be five minutes long and mostly nothing happening. */
   const TOUR_HOLD = 2100;
   const TOUR_MS_PER_DECADE = 900;

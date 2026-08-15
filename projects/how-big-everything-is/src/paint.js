@@ -10,7 +10,7 @@
 
    That is the whole reason for the transform. If painters worked in
    pixels, every one of them would need its own "and this is roughly how
-   big it should be" fudge, and twenty-three fudges is a diagram, not a
+   big it should be" fudge, and twenty-four fudges is a diagram, not a
    measurement.
 
    Consequences worth stating, because they look like bugs and are not:
@@ -1402,6 +1402,61 @@ window.PAINT = (() => {
     glow(ctx, 0.03, "rgba(255,130,105,$)", [[0, 0.95], [0.3, 0.3], [1, 0]]);
     ctx.restore();
     ctx.restore();
+  };
+
+  /* ── 10¹⁶ · what a hypergiant would hold ────────────────────────────
+     The Sun's cloud again, two and a half times out, around a star that
+     has never been looked at for one. It is deliberately the same shell
+     drawn by the same method, because the point of the frame is that
+     only two things differ from the rung two back — the colour of the
+     marker in the middle, and the fact that nothing is falling through
+     it.
+
+     No comets. That is not an omission. The comets on the Oort rung are
+     the entire evidence that the Oort rung exists, and there is no
+     equivalent here: nobody has ever seen anything fall in from around
+     another star. An empty shell is the honest picture of a shell
+     nobody has caught anything leaving.
+
+     The rim is dashed, which on this page already means one specific
+     thing — the electron, the quark and the neutrino are drawn that way
+     — and it means it here too: nobody knows where this stops.
+
+     The Sun's own cloud is NOT drawn by this painter. It does not need
+     to be. The exhibit draws every rung at its own extent, so the oort
+     rung lands inside this frame at 2.99/7.37 of the width, comets and
+     all, for free and at the true ratio. Drawing a second one here
+     would be a fudge sitting on top of a fact. */
+  P.hyperoort = (ctx, t, focus) => {
+    const shell = once("hyperoort", () => {
+      const r = rng(211), out = [];
+      for (let i = 0; i < 760; i++) {
+        const u = r() * 2 - 1, th = r() * TAU;
+        const rr = 0.31 + 0.19 * Math.cbrt(r());
+        const s = Math.sqrt(1 - u * u);
+        out.push([Math.cos(th) * s * rr, Math.sin(th) * s * rr, u * rr, r() * TAU]);
+      }
+      return out;
+    });
+    for (const [x, y, z, ph] of shell) {
+      const depth = 0.55 + 0.45 * (z + 0.5);
+      // Dimmer than the Sun's cloud, and warmer: ices this far from a red
+      // hypergiant are lit by a star that puts out almost nothing blue.
+      ctx.fillStyle = "rgba(228,205,214," + (0.09 + 0.28 * depth * (0.6 + 0.4 * Math.sin(t * 0.6 + ph))) + ")";
+      ctx.beginPath(); ctx.arc(x, y, 0.0022 + 0.0014 * depth, 0, TAU); ctx.fill();
+    }
+    ctx.strokeStyle = "rgba(214,176,196,.22)";
+    ctx.lineWidth = 0.0030;
+    ctx.setLineDash([0.024, 0.024]);
+    ctx.beginPath(); ctx.arc(0, 0, 0.5, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]);
+
+    /* The star. At this width Stephenson 2-18 is four hundredths of a
+       thousandth of the frame — a fifteenth of a pixel — so this is a
+       marker and not the star, exactly as the Sun's glint is on the Oort
+       rung, and drawn at the same size for the same reason. Red, because
+       that is the one thing that tells you whose cloud you are in. */
+    glow(ctx, 0.04, "rgba(255,150,110,$)", [[0, 0.8], [0.3, 0.26], [1, 0]]);
   };
 
   /* ── 10²⁰ · the Milky Way ───────────────────────────────────────────*/

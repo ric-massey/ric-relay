@@ -1,12 +1,22 @@
 /* ══════════════════════════════════════════════════════════════════════
    The ladder.
 
-   Twenty-three rungs from the smallest thing anyone has put a bound on to
+   Twenty-four rungs from the smallest thing anyone has put a bound on to
    the edge of what anyone can see. Every one of them carries a real number in
    metres, and the whole exhibit is built out of those numbers and nothing
    else: the rail, the camera, the spacing on screen, the calipers, the
    light-crossing times. There is no artistic "about this big" anywhere in
    the geometry.
+
+   One rung — `hyperoort`, the comet shell a hypergiant would hold — is the
+   single exception to where those numbers come from, and it is an exception
+   to the *source* and not to the rule. It is the Sun's Oort Cloud scaled by
+   the cube root of a mass, because a Hill radius goes as M^(1/3), and it is
+   the only rung on the ladder that nobody has observed in any form. It is
+   still one number in metres and the geometry still obeys it exactly; what
+   it does not have is anything at the other end of the measurement. Its
+   caveat says so in the first sentence, its rim is dashed, and nothing falls
+   through it, because nothing has ever been seen to.
 
    THE ORDER IS STRICTLY BY SIZE. That is worth saying out loud because it
    produces one result people argue with: the largest star we have measured
@@ -45,6 +55,11 @@
    `tint`  the one colour the object collapses to when it is two pixels
            wide. Below that, an object is a dot, and the dot should be the
            right colour.
+
+   Of the three pieces of prose, only `fact` is written into the page as
+   HTML. `lede` and `caveat` go in as text — a tag in either of those is
+   printed literally, angle brackets and all. Emphasis in a lede has to be
+   made out of the words.
    ══════════════════════════════════════════════════════════════════════ */
 window.LADDER = [
   {
@@ -265,8 +280,8 @@ window.LADDER = [
     alt: "a hundred thousand times the Earth's distance, in every direction",
     box: [1, 1],
     tint: "#7e8ba6",
-    lede: "A shell of frozen debris wrapped around the Sun, reaching out to something like 100,000 times the Earth's distance from it.",
-    fact: "Nobody has ever seen it. It is inferred from the long-period comets that fall in from every direction with orbits that all seem to turn around at about the same enormous distance, which is what a shell would look like from the inside. It is three thousand times wider than the frame you were just looking at, and it is still, technically, the Sun's.",
+    lede: "A shell of frozen debris wrapped around the Sun — not the hypergiant you passed on the way — reaching out 100,000 times the Earth's distance.",
+    fact: "Nobody has ever seen it. It is inferred from the long-period comets that fall in from every direction with orbits that all seem to turn around at about the same enormous distance, which is what a shell would look like from the inside. Every tail in this frame points away from the same spot, and that spot is the star this cloud belongs to: the Sun, the speck at the middle of the solar system frame you have just left, and not the hypergiant you passed on the way to it. Stephenson 2-18 is the widest thing you have seen so far and it is a <em>ten-thousandth</em> of this frame — about a seventh of a pixel — so it is not drawn, and neither is the Sun, which is two thousand times smaller again. The glint at the middle is a marker standing in for a star that is far too small to appear. This cloud is three thousand times wider than the frame you were just looking at, and it is still, technically, the Sun's.",
     caveat: "This rung is an inference and not an observation. No object has ever been detected out there; the size comes from where the long-period comets' orbits turn around, and the 100,000-AU reach drawn here is the middle of a range that runs from something like 50,000 to 200,000 depending on whose model you take. It is the least directly measured number on the ladder above the proton.",
   },
   {
@@ -282,6 +297,19 @@ window.LADDER = [
     fact: "That last sentence is a trap worth walking into slowly, because the cloud is a sphere and this is a one-way trip. The Oort Cloud's <em>width</em> is three-quarters of the distance to Proxima; its <em>reach</em> — the Sun's centre out to its far edge — is half of that, about 100,000 times the Earth's distance from the Sun against Proxima's 268,000. So the comets get a bit over a third of the way and no further, and there is a clear gap between one star's territory and the next after all. The frame is drawn at the honest ratio: the cloud's radius really is 0.37 of this line. Voyager 1, the furthest thing we have ever thrown, has been going for nearly half a century and has covered about a fifteen-hundredth of it.",
   },
   {
+    id: "hyperoort",
+    name: "Stephenson 2-18's Oort Cloud",
+    kicker: "The one rung nobody has measured",
+    size: 7.37e16,
+    dim: "across, calculated",
+    alt: "seven and three-quarter light-years, if it is there at all",
+    box: [1, 1],
+    tint: "#a2879a",
+    lede: "The same shell, around the largest star instead of the Sun — and this is the only frame on the ladder that is arithmetic rather than an observation.",
+    fact: "How far out a star can keep anything is set by a tug of war it eventually loses: at some distance the Galaxy pulls harder on a comet than the star does, and past that line the comet is not the star's any more. That distance is a Hill radius and it goes as the <em>cube root</em> of the mass, so a hypergiant of about fifteen Suns reaches two and a half times as far as the Sun does, not fifteen times — which is the whole reason this frame is only two and a half times wider than the last cloud. The Sun's own shell is inside it here, drawn at the true ratio: the pale speckled sphere at four-tenths of this width, the one with comets falling through it. The line lying beside it is the entire distance to Proxima Centauri. This shell's <em>reach</em> — centre to edge, half of what the caliper is bracketing — is about 3.9 light-years, which is ninety per cent of that line. The Sun's comets get a third of the way to the nearest star. This star's would very nearly arrive. Nothing is falling through this shell because nothing has ever been seen to, and the rim is dashed for the same reason the electron's is: nobody knows where it stops.",
+    caveat: "Every other rung here is a measurement, or an inference drawn from one. This one is neither. No object has ever been detected around any star but the Sun, and this number is simply the Sun's cloud scaled by the cube root of a mass — roughly fifteen Suns — that is itself an estimate for a star whose distance is disputed on its own rung, four frames back. It also assumes the Galaxy pulls out there the way it pulls here, and it does not: Stephenson 2 sits much closer to the Galactic centre, where the tide is stronger, which would draw this shell in by a third or more. And a hypergiant is the worst candidate imaginable for holding onto one — it is shedding its outer layers now and it is going to explode. Read this rung as a calculation wearing the costume of an object.",
+  },
+  {
     id: "galaxy",
     name: "The Milky Way",
     kicker: "One of a few hundred billion",
@@ -290,7 +318,7 @@ window.LADDER = [
     alt: "588 quadrillion miles, which is why nobody uses miles",
     box: [1, 0.45],
     tint: "#cbb489",
-    lede: "A hundred thousand light-years of stars, and the last frame — the whole distance to the nearest one — is a twenty-thousandth of it.",
+    lede: "A hundred thousand light-years of stars, and the last frame — the widest thing a single star could ever hold onto — is a thirteen-thousandth of it.",
     fact: "There are somewhere between one and four hundred billion stars in it, and the Sun is about twenty-seven thousand light-years out from the middle, in a minor spur off one of the arms. It takes about 230 million years to go around once. The last time the Sun was where it is now, the first dinosaurs were only just appearing.",
     caveat: "A hundred thousand light-years is where the disc's stars thin out, not an edge — the Milky Way does not have one. The bright disc fades, a sparse stellar halo carries on well past it, and the dark matter goes further still. Choose a different place to stop counting and this rung is anything from 100,000 to nearly 200,000 light-years wide.",
   },

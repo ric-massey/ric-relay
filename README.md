@@ -59,8 +59,8 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | `projects/apex/` | Apex (room data) | Not a page — the sync tooling and generated `apex-data.js` that `apex.html` reads |
 | `projects/the-shape-of-harm/` | Psyche | Evidence-informed interactive research framework for comparing psychoactive-substance harms |
 | `projects/siege-conductor/` | Workbench | Star Wars viewing-companion PWA (add-to-home-screen app) |
-| `projects/offramp/` | Workbench | "OFFRAMP" — Interstate 40 as an arcade cabinet. The real corridor, all 2,551 miles Barstow→Wilmington, extracted from OpenStreetMap: true geometry and curves, 1,201 real exits at their real mile markers, real lane counts (85% of I-40 is two lanes each way). Only a 20-mile window of road is built at a time and slides as you drive, because the whole thing is 2.9M stations. `data/osm/` holds the extractor and the raw OSM; `data/i40.js` is the generated corridor. Mainline only so far — ramps, rest areas and truck stops are downloaded but not built. See `projects/offramp/PLAN.md` |
-| `projects/crossfire/` | Workbench | "CROSSFIRE" — Asteroids with walls, 1–5 players, in three modes: co-op survival with friendly fire, co-op survival without it, and a 3-minute battle royale on a 4000×2800 map with a following camera, minimap, gravity wells and a closing wall. Players are named for their ship colour; the `PLAYERS` table is the single source for names, colours and key maps. Empty seats can be filled with bots. Keyboard, mouse (ship follows the pointer) or on-screen thumb controls. One camera today — split screen is a second call to the same render path (see the `cam` comment). See the online-play note below |
+| `projects/offramp/` | Workbench | "OFFRAMP" — Interstate 40 as an arcade cabinet. The real corridor, all 2,551 miles Barstow→Wilmington, extracted from OpenStreetMap: true geometry and curves, 1,201 real exits at their real mile markers, real lane counts (85% of I-40 is two lanes each way), and mile posts that reset at each state line the way the real ones do. Only a 20-mile window of road is built at a time and slides as you drive, because the whole thing is 2.9M stations. Built into that window: the 350 surveyed interchanges as they were walked, 234 real rest areas and truck stops, a generated diamond for every other signed exit, a cross road bridged over each one with the ramp meeting it at a signalised junction, and the I-40/I-75 wye west of Knoxville as a two-lane left exit — signed, open, and closed for construction two thirds of the way down. The generated exits are not invented: their depth and their whole lateral profile are drawn from the 349 ramps the survey walked, so an interchange reaches a median 512 px off the freeway rather than the same 268 px every time, and the travel centres that a diamond crowds out are signed on the blue panel under its guide sign, which is where a real one is advertised. Every ramp puts you back on I-40; that rule is the whole design and it is asserted, not assumed. Crashes go through one SI impulse-momentum solver (`src/impact.js`, `test/impact.test.js`, checked against published crash figures); `test/corridor.js` sweeps every window of the route for two roads sharing tarmac. `data/osm/` holds the extractor and the raw OSM; `data/i40.js` is the generated corridor. See `projects/offramp/PLAN.md` and `projects/offramp/CRASH-MODEL.md` |
+| `projects/crossfire/` | Workbench | "CROSSFIRE" — bright vector-space combat for 1–5 ships: cooperative Survival with optional friendly fire, and a no-time-limit Battle Royale with three lives, two-hit hulls, a following camera, minimap, closing wall, stationary suns and black holes, and randomized moving asteroids. Local keyboard play, bots, synthesized sound, fullscreen, configurable phone controls and peer-to-peer online play. Online needs the room service in `projects/crossfire/server/` — a Cloudflare Worker. See [`projects/crossfire/README.md`](projects/crossfire/README.md) |
 | `projects/autism-reflection.html` | Psyche | Long-form personal reflection on the DSM-5 autism criteria |
 | `projects/state-of-mind-line/` | Psyche | Animated bipolar mood-pattern visualization |
 | `projects/climbing/board.html` | Climbing (unlisted) | "The Woodshed" — Kilter and Tension board logbook, pulled from the apps and drawn on the board itself |
@@ -68,25 +68,28 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 These are self-contained and may carry their own assets/fonts — that's fine; the
 "no dependencies" rule applies to the terminal's own room pages, not embedded projects.
 
-### CROSSFIRE online play — the one external request on the site
+### CROSSFIRE
 
-Online play is **peer-to-peer WebRTC with no server**, because GitHub Pages can't host
-one. Players connect directly: the host generates an invite code (~220 characters),
-sends it to a friend by any means, and pastes their reply back. One exchange per guest.
-`projects/crossfire/net.js` handles this and knows nothing about the game.
+`projects/crossfire/` is a finished, dependency-free canvas game with co-op Survival,
+optional friendly fire, and a Battle Royale that runs until one ship is left. It
+supports one or two players at a keyboard, configurable phone controls, bots, and up to
+five peer-to-peer online screens, with synthesized sound and fullscreen controls. Battle
+Royale adds three-life, two-hit-hull elimination, a following camera, minimap,
+closing wall, randomized colliding asteroids, stationary gravity hazards, spectator
+following, and complete winner-screen statistics.
 
-The one caveat worth knowing: `net.js` lists a **public STUN server**. It isn't a script
-and nothing is downloaded from it — the browser asks it what your address looks like from
-outside, so two peers behind home routers can find each other. Without it, online play
-only works between machines on the same wifi. **It is contacted only when someone opens
-the multiplayer panel**; loading the page or playing locally makes no external request at
-all. Point `ICE_SERVERS` at your own coturn, or set it to `[]` for same-wifi-only play.
+Online play is host-authoritative WebRTC, and joining is a list of open lobbies rather
+than a code anybody copies. That list needs a room service, so online is the one part of
+the site that is not just static files: `projects/crossfire/server/` holds it, deployed
+as a Cloudflare Worker with a single Durable Object, and the same code runs on a laptop
+with `node server/rooms.js` for local work. With no service configured the panel says so
+instead of offering a list. The host page can run in the background, transient
+disconnects get a recovery window, and fully disconnected seats leave the match without
+changing kill or environmental death statistics.
 
-Two other things about the netcode: it is **host-authoritative**, so the host has a small
-latency advantage when shooting (fixing that means rewinding the world to the shooter's
-view — a much bigger job). And because browsers freeze `requestAnimationFrame` in
-background tabs, **the host has to keep the game window in front** or the match stalls for
-everyone.
+Gameplay rules, controls, architecture, local setup, room-service configuration and the
+dependency-free verification command are maintained in
+[`projects/crossfire/README.md`](projects/crossfire/README.md).
 
 ## Starfield
 

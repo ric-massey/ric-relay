@@ -8,7 +8,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Ric's Terminal">
 <meta property="og:title" content="How Big Everything Is">
-<meta property="og:description" content="Twenty-three rungs from a quark to the edge of what can be seen, all drawn to the same scale. Zoom out and watch each thing collapse to a speck next to the next one.">
+<meta property="og:description" content="Twenty-four rungs from a quark to the edge of what can be seen, all drawn to the same scale. Zoom out and watch each thing collapse to a speck next to the next one.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23000'/><circle cx='50' cy='50' r='2.5' fill='%23fff'/><circle cx='50' cy='50' r='14' fill='none' stroke='%23888' stroke-width='2'/><circle cx='50' cy='50' r='38' fill='none' stroke='%23444' stroke-width='2'/></svg>">
 <style>
 /* ══════════════════════════════════════════════════════════════════════
@@ -397,7 +397,7 @@ input[type=range].by-pointer:focus-visible { outline: none; }
 .rungs button[aria-pressed=true] { color: #08080a; background: var(--ink); border-color: var(--ink); }
 
 /* ── the rung sheet ───────────────────────────────────────────────────
-   The same list as the chips, for the widths where twenty-three chips in a
+   The same list as the chips, for the widths where twenty-four chips in a
    sideways strip is a row of tiny targets nobody is going to hit with a
    thumb. Rows are 46px tall, over the 44px minimum. */
 .menu { position: fixed; inset: 0; z-index: 44; display: flex; justify-content: flex-end;
@@ -671,7 +671,7 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
                between them is the whole ladder, scrollable, and it tracks
                where you are without needing to be steered.
 
-               On a phone the arrows are the way you move: twenty-three chips in
+               On a phone the arrows are the way you move: twenty-four chips in
                a sideways strip is a row of targets nobody hits with a thumb,
                and the rail at the bottom stops taking touches entirely. -->
           <div class="steprow">
@@ -683,7 +683,7 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
             </button>
             <div class="rungs" id="rungs" role="group" aria-label="Jump to a rung"></div>
             <!-- What the strip says on a screen too narrow to hold it: which
-                 rung you are on and how far along the twenty-three you are.
+                 rung you are on and how far along the twenty-four you are.
                  The arrows are useless without it — a step control with
                  nothing named between the arrows is a pair of arrows. -->
             <div class="steplabel" id="steplabel" aria-hidden="true">
@@ -812,10 +812,10 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         quietly stops at the edge of the screen is measuring the screen.</p>
       <p class="tight"><strong>The grid</strong> is powers of ten, in real metres. As you zoom
         out the lines slide together, fade, and are replaced by the next decade up, which
-        springs back to full spacing. It is there for the long empty stretches: between the
-        Oort Cloud and the Milky Way there is nothing at all to look at for four and a half
-        decades, and without the grid that reads as the page having frozen instead of as an
-        enormous amount of empty space.</p>
+        springs back to full spacing. It is there for the long empty stretches: between
+        Stephenson 2-18's comet shell and the Milky Way there is nothing at all to look at for
+        four decades, and without the grid that reads as the page having frozen instead of as
+        an enormous amount of empty space.</p>
       <p class="tight"><strong>The background belongs to the scale.</strong> There is no one
         star wallpaper following you from the electron to the edge of everything. Below a
         millimetre the backdrop is suspended matter, because a virus and a blood cell are in
@@ -852,6 +852,14 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
       <p class="tight">Some rungs are objects and some are distances — the Moon's orbit, the
         gap to Proxima Centauri. Those say so in the caption, because a distance quietly
         presented as an object is a lie told by layout.</p>
+      <p class="tight">The rung after Proxima exists because of that same trap. Zoom out from
+        Stephenson 2-18 and the next two frames open up around the spot it just left, so the
+        Oort Cloud arrives looking like the hypergiant's — you have only just been shown the
+        largest star anyone has measured, and the eye hands the shell to it. It is the Sun's.
+        The cure is one frame further out: <strong>Stephenson 2-18's Oort Cloud</strong>, the
+        shell that star would actually hold, two and a half times wider and a frame of its
+        own. Seeing the Sun's cloud sitting inside it at four-tenths of the width is the end
+        of the confusion, and it costs the page its only unmeasured rung to buy — see below.</p>
     </section>
 
     <section id="p-scope">
@@ -881,7 +889,7 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         together (you and an elephant; the Oort Cloud and the nearest star), and a strictly
         logarithmic rail gives those a slice about two pixels wide, which is a rung you cannot
         stop on. So every gap gets a flat extra 0.45 decades. Across the whole rail that is
-        9 decades of padding against 45 real ones.</p>
+        10 decades of padding against 45 real ones.</p>
       <p><strong>The first three rungs are not measurements.</strong> A quark, an electron and
         a neutrino have never shown a size to anybody. They are point-like in every theory in
         use, and the numbers this page draws them at are upper limits — the width below which
@@ -906,11 +914,32 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         universe's width comes out of a cosmology, not off a ruler. Every one of those rungs
         carries a caveat saying so, and this page would rather you read them than take the
         drawing's confidence at face value.</p>
+      <p><strong>And one rung is not measured at all.</strong> Stephenson 2-18's Oort Cloud has
+        never been observed, inferred, or looked for. No object has ever been detected around
+        any star but the Sun. That number is the Sun's own cloud multiplied by the cube root of
+        a mass — a Hill radius, the distance at which the Galaxy starts pulling harder on a
+        comet than its star does, goes as M<sup>1/3</sup> — and the mass is itself an estimate
+        for a star whose distance is disputed. It also assumes the Galaxy pulls out there the
+        way it pulls here, and it does not: Stephenson 2 sits far closer to the Galactic centre,
+        where the tide is stronger, which would draw the shell in by a third or more. It is here
+        because the frame before it is misread by almost everybody, and the only way to show
+        that the Oort Cloud is the Sun's is to put the other star's beside it. The drawing says
+        what it is — the rim is dashed, the way the electron's is, and nothing is falling
+        through it, because nothing has ever been seen to. Treat that one rung as arithmetic
+        wearing the costume of an object.</p>
       <p><strong>Things drawn at true scale that you therefore cannot see.</strong> The nucleus
         inside the hydrogen atom is a hundredth of a pixel. The planets on their orbits are
         thinner than the lines of the orbits themselves. The Sun disappears entirely at
-        Stephenson 2-18's frame. All three are correct, and all three are the reason the
-        diagrams you have seen elsewhere are wrong.</p>
+        Stephenson 2-18's frame, and Stephenson 2-18 itself disappears at the Oort Cloud's — a
+        ten-thousandth of that width, about a seventh of a pixel, and it is left undrawn rather
+        than inflated into something you could see. All of those are correct, and all of them
+        are the reason the diagrams you have seen elsewhere are wrong.</p>
+      <p class="tight">Two things on those last frames <em>are</em> inflated, and both are
+        admitted here rather than in the picture: the glint at the middle of the Oort Cloud and
+        the red one at the middle of Stephenson 2-18's are markers standing in for stars far
+        too small to draw — the Sun there is a twenty-millionth of the frame. They are the same
+        size as each other on purpose, so that the only difference between those two frames is
+        the colour of the star the shell belongs to.</p>
       <p><strong>The Great Lakes are traced from longitude and latitude</strong> and projected
         the way a map is, so the shape you recognize is a shape the numbers produced. It is a
         coarse trace — about sixty points for five lakes — not a coastline dataset.</p>
@@ -943,7 +972,13 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
         CODATA 2018 for the proton charge radius and the Bohr radius.
         IAU 2012 for the astronomical unit; IAU 2015 for the nominal solar radius.
         Fok et al. (2012) for the radius of Stephenson 2-18, whose cluster membership —
-        and therefore its size — is disputed. Hipparcos and later parallaxes for Proxima
+        and therefore its size — is disputed; Davies et al. (2007) and the same paper for the
+        Stephenson 2 red supergiants' masses, from which the fifteen-solar-mass figure behind
+        that star's hypothetical comet shell is taken. The shell itself has no source, because
+        there is nothing to cite: it is the Sun's Oort Cloud times the cube root of that mass
+        ratio, which is the standard Hill-radius scaling against the Galactic tide, and it is
+        the only number on this page that came out of a calculation instead of an observation.
+        Hipparcos and later parallaxes for Proxima
         Centauri, and NASA's mission status page for how far Voyager 1 has got along that line.
         Bland-Hawthorn &amp; Gerhard (2016) for the shape of the Galaxy. Sawala et al. (2025),
         <em>Nature Astronomy</em>, for the Milky Way–Andromeda merger being roughly a coin toss
@@ -971,11 +1006,11 @@ body.welcome-open .relay-return { opacity: 0; pointer-events: none; }
 
 <p class="sr" id="live-region" aria-live="polite" aria-atomic="true"></p>
 
-<script src="src/ladder.js?v=12"></script>
-<script src="src/units.js?v=12"></script>
-<script src="src/sky.js?v=12"></script>
-<script src="src/paint.js?v=12"></script>
-<script src="src/exhibit.js?v=12"></script>
+<script src="src/ladder.js?v=15"></script>
+<script src="src/units.js?v=15"></script>
+<script src="src/sky.js?v=15"></script>
+<script src="src/paint.js?v=15"></script>
+<script src="src/exhibit.js?v=15"></script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="scale" defer></script>
 </body>
 </html>
