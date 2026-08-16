@@ -31,8 +31,20 @@ hit leaves one hull point and a brief impact shield; suns and black holes remain
 immediately lethal.
 
 The shrinking Battle Royale wall deactivates a stationary gravity hazard after
-its center is outside the playable arena. Respawns choose clear space inside the
-current wall rather than clamping the original full-map spawn onto its edge.
+its center is outside the playable arena.
+
+A spawn has three rules and only one of them bends. It is always inside the
+current wall, and always outside every live hazard's *pull* — not merely outside
+the lethal core, because a ship spawned inside a well is dragged into it while
+still invulnerable and dies the moment that runs out. Those two are absolute.
+Being clear of asteroids is the third, and when no point satisfies all three the
+asteroids are destroyed to make room rather than the ship appearing inside one.
+The opening spawn ring is re-checked once hazards and rocks exist, since it is
+laid out before there is anything to avoid.
+
+The wall pushes but cannot hold. A bounce returns at least the wall's own
+closing speed, so anything the wall overtakes is moved ahead of it instead of
+being carried along its face for the rest of the match.
 The result screen can immediately replay the same local setup; online, the host
 starts the next round for every connected player.
 
@@ -185,6 +197,16 @@ runtime dependency for changes that fit the existing static architecture.
 ```sh
 node projects/crossfire/test/smoke.js
 ```
+
+The closing wall and the spawn rules cannot be checked by looking at them. With
+`?debug=1`, `window.__cf.step()` advances one frame and `window.__cf.live()`
+returns the live `ships`, `rocks`, `hazards`, `bounds` and `clock`. Overriding
+`performance.now` with a clock you control turns that into a harness: a whole
+match runs in a few thousand calls instead of a minute, and every frame can be
+checked for a ship outside the wall, inside a rock, inside a gravity well, or
+held against the wall. That is how the wall and spawn bugs were found and how
+the fixes were confirmed — ten matches, ~22,000 frames, 96 respawns, no
+violations. Do not debug these by watching them.
 
 For visual changes, also test the title, Settings, each mode, the pause menu and a
 375px-wide phone layout. For online changes, run the room service locally and

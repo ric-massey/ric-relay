@@ -133,6 +133,44 @@ function checkSyntax() {
   assert.match(html, /const dx = sepX\(o\.x, s\.x\), dy = sepY\(o\.y, s\.y\)/,
     "bot targeting must use wrapped arena distance");
 
+  /* ── the closing wall, and where a ship is allowed to appear ───────────────
+     Four bugs lived here, all of them invisible from the viewport and all of
+     them found by stepping a match with a fake clock and checking the numbers.
+     These assertions exist so the arithmetic cannot quietly come back. */
+
+  // A moving wall must be able to push and unable to keep. Reflecting only the
+  // speed a body already had let the wall overtake anything slow and carry it.
+  assert.match(html, /const wallPush = \{ x: 0, y: 0 \};/,
+    "the wall must publish how fast it is closing");
+  assert.match(html, /wallPush\.x = moving \? \(arena\.w \/ 2\) \* \(1 - CLOSE_TO\) \/ CLOSE_TIME/,
+    "the wall's closing speed must come from the same numbers that move it");
+  assert.match(html, /const off = \(v, push\) => Math\.max\(Math\.abs\(v\) \* restitution, push\);/,
+    "a bounce must never return less than the wall's own speed");
+  assert.ok(/const WALL_SHOVE = ([\d.]+);/.test(html), "the wall shove must be named");
+  assert.ok(Number(/const WALL_SHOVE = ([\d.]+);/.exec(html)[1]) > 1,
+    "leaving at exactly the wall's speed still rides the wall — it must exceed it");
+
+  // Spawning is three rules, and only one of them may be bent.
+  assert.doesNotMatch(html, /ship\.respawn < -3/,
+    "a spawn must never be forced into a spot that failed its own check");
+  assert.match(html, /Math\.hypot\(x - h\.x, y - h\.y\) - h\.reach/,
+    "spawn clearance must be measured from a hazard's pull, not its kill radius");
+  assert.match(html, /function clearRocksAt\(/,
+    "rocks must be the thing that gives way when nothing is clear");
+  assert.match(html, /const outOfWells = scored\.filter\(c => c\.well >= 0\);/,
+    "spawn selection must prefer points outside every gravity well");
+  assert.match(html, /if \(mode\.hazards\) \{\s*\n\s*for \(const s of ships\) \{/,
+    "the opening spawn ring must be rechecked once hazards and rocks exist");
+
+  /* Online failure has two causes that look identical from the guest's seat,
+     and one of them used to have no message at all. */
+  assert.match(html, /async function watchConnection\(\)/,
+    "a guest must not be left on \"Connecting…\" for ever");
+  assert.match(html, /That host isn't answering/,
+    "no answer at all must be reported as an absent host");
+  assert.match(html, /couldn't connect to each other/,
+    "an answered knock that never opens must be reported as a network problem");
+
   /* The field idling behind the menus is decoration, and decoration must not be
      able to reach the match. Three things keep it honest: it is drawn only on
      screens with no world of their own, it keeps its own arrays rather than

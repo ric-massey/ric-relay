@@ -1309,6 +1309,9 @@
   let arena = mode.arena;
   let U = 1;                  // unit scale for the current arena
   let bounds = { x0: 0, y0: 0, x1: 0, y1: 0 };
+  // How fast each wall is closing, in world units a second. Zero unless the
+  // battle royale wall is actually moving. `bounceInBounds` reads it.
+  const wallPush = { x: 0, y: 0 };
   let pendingMode = null;
 
   let ships = [], rocks = [], bullets = [], bits = [], hazards = [], motes = [];
@@ -1712,6 +1715,20 @@
       spawnWave();
     }
 
+    /* The opening spawn ring is laid out before there are any hazards or rocks
+       to avoid, so it is checked once everything exists. Rocks are seeded away
+       from ships already; a hazard is placed best-effort and can still land on
+       a ring point, which is a sun you are standing in before the match has
+       started. Same rules as any other spawn, applied once. */
+    if (mode.hazards) {
+      for (const s of ships) {
+        if (wellGapAt(s.x, s.y) >= 0 && rockGapAt(s.x, s.y) > 95 * U) continue;
+        const p = respawnPoint(s);
+        s.x = p.x; s.y = p.y; s.a = p.a; s.vx = s.vy = 0;
+      }
+      if (mode.camera) { cam.x = ships[0].x; cam.y = ships[0].y; clampCam(); }
+    }
+
     playSfx("start", 0);
     matchStarted();
   }
@@ -1880,12 +1897,29 @@
      The arena is solid. Ships and rocks bounce; bullets are destroyed. Killing
      bullets at the wall is what stops a big map turning into a shooting
      gallery — every shot now has a real, finite range. */
+  /* Reflecting only the speed a body already had is fine for a wall that stays
+     put, and wrong for one that moves. Anything drifting slowly — or sitting
+     still — gets overtaken by the closing wall, clamped back to its face, and
+     handed almost no outward speed, so the wall keeps catching it and carries
+     it along for the rest of the match. That is what being stuck on the wall
+     was: not a collision failing, a collision succeeding every frame.
+
+     Two ships in one audited match hit it different ways. One was drifting at
+     0.6 px/s when the wall arrived and rode it from then on; the other was
+     travelling along the wall at 284 px/s, where the perpendicular speed being
+     reflected was near zero, so it slid down the face instead of leaving it.
+     Both are the same missing idea — leaving with at least the wall's own
+     speed, and then some, so the wall can push you but never keep you. */
+  const WALL_SHOVE = 2.2;
+
   function bounceInBounds(o, r, restitution) {
     let hit = false;
-    if (o.x - r < bounds.x0) { o.x = bounds.x0 + r; o.vx = Math.abs(o.vx) * restitution; hit = true; }
-    else if (o.x + r > bounds.x1) { o.x = bounds.x1 - r; o.vx = -Math.abs(o.vx) * restitution; hit = true; }
-    if (o.y - r < bounds.y0) { o.y = bounds.y0 + r; o.vy = Math.abs(o.vy) * restitution; hit = true; }
-    else if (o.y + r > bounds.y1) { o.y = bounds.y1 - r; o.vy = -Math.abs(o.vy) * restitution; hit = true; }
+    const px = wallPush.x * WALL_SHOVE, py = wallPush.y * WALL_SHOVE;
+    const off = (v, push) => Math.max(Math.abs(v) * restitution, push);
+    if (o.x - r < bounds.x0) { o.x = bounds.x0 + r; o.vx = off(o.vx, px); hit = true; }
+    else if (o.x + r > bounds.x1) { o.x = bounds.x1 - r; o.vx = -off(o.vx, px); hit = true; }
+    if (o.y - r < bounds.y0) { o.y = bounds.y0 + r; o.vy = off(o.vy, py); hit = true; }
+    else if (o.y + r > bounds.y1) { o.y = bounds.y1 - r; o.vy = -off(o.vy, py); hit = true; }
     return hit;
   }
 
@@ -1929,10 +1963,16 @@
   const gap2 = (ax, ay, bx, by) => sepX(ax, bx) ** 2 + sepY(ay, by) ** 2;
 
   function updateWall(dt) {
-    if (!mode.closing) return;
+    if (!mode.closing) { wallPush.x = wallPush.y = 0; return; }
     const t = Math.max(0, clock - CLOSE_DELAY);
     const k = Math.min(1, t / CLOSE_TIME);
     const f = 1 - (1 - CLOSE_TO) * k;          // 1 → CLOSE_TO
+    /* How fast each wall is travelling inward right now. The bounce needs this:
+       a wall that is moving has to be able to push, and a body it catches has to
+       leave faster than the wall is coming, or the wall simply carries it. */
+    const moving = k < 1;
+    wallPush.x = moving ? (arena.w / 2) * (1 - CLOSE_TO) / CLOSE_TIME : 0;
+    wallPush.y = moving ? (arena.h / 2) * (1 - CLOSE_TO) / CLOSE_TIME : 0;
     const w = arena.w * f, h = arena.h * f;
     bounds = {
       x0: (arena.w - w) / 2, y0: (arena.h - h) / 2,
@@ -2272,38 +2312,141 @@
            y > bounds.y0 + r && y < bounds.y1 - r;
   }
 
-  // The original spawn ring belongs to the full map. After the wall moves it
-  // may be outside the arena, so find clear space inside the wall instead of
-  // clamping that old point onto an edge where the ship cannot escape.
-  function respawnPoint(ship) {
-    const preferred = spawnPoint(ship.id, players);
-    if (spotIsClear(preferred.x, preferred.y)) return preferred;
+  /* ── where a ship is allowed to appear ────────────────────────────────────
+     A spawn has three rules, and they are not equally negotiable.
 
+       inside the wall     — outside it is unreachable, and the old code could
+                             land you there because the spawn ring belongs to
+                             the full map, not to whatever the wall has shrunk
+                             to. Hard rule.
+       clear of a hazard   — a sun or a black hole is instant death you did not
+                             earn. Hard rule.
+       not inside a rock   — the negotiable one, because it is the only one
+                             where something else can move instead.
+
+     The old version searched eighty points, and if none of them was clear it
+     returned whichever had been least bad — a point that could be inside a rock
+     or inside a kill radius — and the caller would then place the ship there
+     anyway after three seconds rather than bench a player. That is where
+     spawning inside an asteroid came from. Now the search only ever returns a
+     point satisfying the two hard rules, and if it cannot find one that is also
+     clear of rocks, the rocks are what give way. */
+  /* Clear of a hazard means clear of its *pull*, not of the ball in the middle.
+     A star kills within 46 and pulls from 380; the black holes pull from 520 and
+     650. Measuring the spawn rule from the kill radius put every "legal" spawn
+     deep inside a well, so the ship was hauled in during the two and a half
+     seconds it was invulnerable and died the instant that ran out — which is
+     indistinguishable, from the seat, from spawning on top of a sun. Audited:
+     every ship found inside a kill radius had arrived there that way.
+
+     Late on, a shrunk arena may have no point outside every well. Then this
+     falls back through worse options in order, and the last of them still keeps
+     its distance from anything lethal. */
+  const SPAWN_KILL_MARGIN = 140;
+
+  function wellGapAt(x, y) {        // negative means inside the pull
+    let gap = Infinity;
+    for (const h of hazards) {
+      if (hazardActive(h)) gap = Math.min(gap, Math.hypot(x - h.x, y - h.y) - h.reach);
+    }
+    return gap;
+  }
+
+  function killGapAt(x, y) {
+    let gap = Infinity;
+    for (const h of hazards) {
+      if (hazardActive(h)) gap = Math.min(gap, Math.hypot(x - h.x, y - h.y) - h.kill);
+    }
+    return gap;
+  }
+
+  function rockGapAt(x, y) {
+    let gap = Infinity;
+    for (const r of rocks) gap = Math.min(gap, Math.sqrt(gap2(x, y, r.x, r.y)) - r.r);
+    return gap;
+  }
+
+  function shipGapAt(x, y, self) {
+    let gap = Infinity;
+    for (const s of ships) {
+      if (s !== self && s.alive) gap = Math.min(gap, Math.sqrt(gap2(x, y, s.x, s.y)));
+    }
+    return gap;
+  }
+
+  // Anything overlapping the spot a ship is about to occupy is destroyed rather
+  // than spawned inside. This is the same end a rock meets at the wall, and it
+  // only ever runs when every candidate point was under one.
+  function clearRocksAt(x, y, radius) {
+    for (let i = rocks.length - 1; i >= 0; i--) {
+      const r = rocks[i];
+      if (gap2(x, y, r.x, r.y) < (r.r + radius) ** 2) {
+        burst(r.x, r.y, "#ffcb42", 8, 130 * U);
+        rocks.splice(i, 1);
+      }
+    }
+  }
+
+  function respawnPoint(ship) {
     const cx = (bounds.x0 + bounds.x1) / 2;
     const cy = (bounds.y0 + bounds.y1) / 2;
+    const r = SHIP_R * U;
     const room = Math.min(bounds.x1 - bounds.x0, bounds.y1 - bounds.y0);
-    const margin = Math.min(90 * U, room * 0.22);
-    let best = { x: cx, y: cy }, bestGap = -Infinity;
+    // Never wider than the arena can actually hold, or every candidate is
+    // rejected for being outside a wall that has closed past the margin.
+    const margin = Math.max(r + 1, Math.min(90 * U, room * 0.22));
+    const facing = (x, y) => Math.atan2(cy - y, cx - x);
 
-    for (let tries = 0; tries < 80; tries++) {
-      const x = tries === 0 ? cx : rand(bounds.x0 + margin, bounds.x1 - margin);
-      const y = tries === 0 ? cy : rand(bounds.y0 + margin, bounds.y1 - margin);
-      if (spotIsClear(x, y)) {
-        return { x, y, a: Math.atan2(cy - y, cx - x) };
-      }
+    const inside = (x, y) =>
+      x > bounds.x0 + margin && x < bounds.x1 - margin &&
+      y > bounds.y0 + margin && y < bounds.y1 - margin;
 
-      let gap = Math.min(x - bounds.x0, bounds.x1 - x,
-                         y - bounds.y0, bounds.y1 - y);
-      for (const r of rocks) gap = Math.min(gap, Math.sqrt(gap2(x, y, r.x, r.y)) - r.r);
-      for (const s of ships) {
-        if (s !== ship && s.alive) gap = Math.min(gap, Math.sqrt(gap2(x, y, s.x, s.y)));
-      }
-      for (const h of hazards) {
-        if (hazardActive(h)) gap = Math.min(gap, Math.hypot(x - h.x, y - h.y) - h.kill);
-      }
-      if (gap > bestGap) { bestGap = gap; best = { x, y }; }
+    /* The ring point first, then the middle, then a spread of random points and
+       a coarse grid. The grid is what makes this reliable rather than lucky: a
+       small arena late in a match can be mostly rock, and random sampling alone
+       can miss the one gap that exists. */
+    const tries = [];
+    const ring = spawnPoint(ship.id, players);
+    tries.push({ x: ring.x, y: ring.y, a: ring.a });
+    tries.push({ x: cx, y: cy });
+    for (let i = 0; i < 90; i++) {
+      tries.push({ x: rand(bounds.x0 + margin, bounds.x1 - margin),
+                   y: rand(bounds.y0 + margin, bounds.y1 - margin) });
     }
-    return { x: best.x, y: best.y, a: Math.atan2(cy - best.y, cx - best.x) };
+    for (let gx = 0; gx <= 6; gx++) {
+      for (let gy = 0; gy <= 5; gy++) {
+        tries.push({ x: bounds.x0 + margin + (bounds.x1 - bounds.x0 - 2 * margin) * gx / 6,
+                     y: bounds.y0 + margin + (bounds.y1 - bounds.y0 - 2 * margin) * gy / 5 });
+      }
+    }
+
+    const legal = tries.filter(p => inside(p.x, p.y));
+    const scored = legal.map(p => ({
+      p,
+      well: wellGapAt(p.x, p.y),
+      kill: killGapAt(p.x, p.y),
+      room: Math.min(rockGapAt(p.x, p.y), shipGapAt(p.x, p.y, ship))
+    }));
+    const pickBy = (list, key) =>
+      list.reduce((best, c) => (best === null || c[key] > best[key] ? c : best), null);
+    const out = c => ({ x: c.p.x, y: c.p.y,
+                        a: c.p.a != null ? c.p.a : facing(c.p.x, c.p.y) });
+
+    // Best case: out of every well, and nothing in the way. Nothing is disturbed.
+    const free = scored.filter(c => c.well >= 0 &&
+                                    c.room > Math.max(95 * U, r * 3));
+    if (free.length) return out(pickBy(free, "room"));
+
+    /* From here something has to give, and it is always the rocks — never the
+       wall, and never the distance from a hazard. */
+    const outOfWells = scored.filter(c => c.well >= 0);
+    const safeEnough = scored.filter(c => c.kill >= SPAWN_KILL_MARGIN);
+    const chosen = outOfWells.length ? pickBy(outOfWells, "room")
+                 : safeEnough.length ? pickBy(safeEnough, "well")
+                 : scored.length     ? pickBy(scored, "kill")
+                 : { p: { x: cx, y: cy } };
+    clearRocksAt(chosen.p.x, chosen.p.y, Math.max(95 * U, r * 3));
+    return out(chosen);
   }
 
   /* ── networking ──────────────────────────────────────────────────────────
@@ -2928,19 +3071,20 @@
 
       if (!ship.alive) {
         ship.respawn -= dt;
-        // Waiting for a clear spot can't wait forever — a rock parked on the
-        // spawn point would bench a player for the whole match.
+        /* No waiting and no forcing. This used to retry until a spot was clear
+           and then, after three seconds, drop the ship wherever the search had
+           got to — which is how you ended up inside an asteroid. `respawnPoint`
+           now guarantees a legal spot and clears rocks out of it if it has to,
+           so there is nothing left to wait for. */
         if (ship.respawn <= 0) {
           const p = respawnPoint(ship);
-          if (spotIsClear(p.x, p.y) || ship.respawn < -3) {
-            ship.x = p.x;
-            ship.y = p.y;
-            ship.vx = ship.vy = 0;
-            ship.a = p.a;
-            ship.alive = true;
-            ship.hull = ROYALE_HULL;
-            ship.invuln = INVULN;
-          }
+          ship.x = p.x;
+          ship.y = p.y;
+          ship.vx = ship.vy = 0;
+          ship.a = p.a;
+          ship.alive = true;
+          ship.hull = ROYALE_HULL;
+          ship.invuln = INVULN;
         }
         continue;
       }
@@ -5141,6 +5285,47 @@
     joinRoom(room.id, "");
   }
 
+  /* An answer crossed, so somebody is there and willing. If the data channel
+     still never opens, the two browsers agreed to talk and then could not
+     reach each other — which is the network between them, not the host.
+
+     This is the failure with no message at all before: the guest was told
+     "Connecting…" and left on it for ever, because nothing was watching. It is
+     also the most likely thing to go wrong in real use. Crossfire connects
+     peers directly with STUN and no relay, which is fine between most homes and
+     is not fine behind a school or office network, or on mobile data behind
+     carrier NAT. Naming that is the difference between "this is broken" and
+     "try the other wifi". */
+  const CONNECT_GRACE = 15_000;
+
+  async function watchConnection() {
+    const N = window.CrossfireNet;
+    const until = Date.now() + CONNECT_GRACE;
+    while (Date.now() < until) {
+      await new Promise(done => setTimeout(done, 500));
+      if (lobby.hidden) return;                       // the match already began
+      const link = N.guest.link;
+      if (link && link.open) return;                  // connected, nothing to say
+      if (!link) return;                              // they backed out
+    }
+    if (lobby.hidden) return;
+    const link = N.guest.link;
+    if (link && link.open) return;
+
+    N.guest.close();
+    netReset();
+    ready = [];
+    guestTaken = [0];
+    lobbyRole = "guest";
+    show("colourPick", false);
+    show("rowReady", false);
+    seatsUI();
+    showRoute("room");
+    startBrowse();
+    say("Reached the host, but your two devices couldn't connect to each other. " +
+        "A school, office or mobile network usually blocks this — try another wifi.", true);
+  }
+
   async function joinRoom(id, pass) {
     const N = window.CrossfireNet;
     if (!id) return;
@@ -5163,11 +5348,17 @@
           await N.guest.take(got.answer);
           say("Found them. Connecting…");
           show("browseRoute", false);
+          watchConnection();
           return;
         }
         if (!p.ok) throw new Error(got.error || "That lobby went away.");
       }
-      throw new Error("Nobody answered. Is the host still there?");
+      /* Reaching here means nobody ever collected the knock, which is a host
+         that has gone away — not a network problem. The other failure, where
+         the host answers and the two browsers still cannot reach each other,
+         is caught by watchConnection below. Telling both of them "is the host
+         still there?" sent people looking in the wrong place. */
+      throw new Error("That host isn't answering — they may have closed the lobby.");
     } catch (e) {
       window.CrossfireNet.guest.close();
       say(e.message || "That didn't work.", true);
@@ -5412,8 +5603,13 @@
                                               stocks: s.stocks, hull: s.hull, bot: !!s.bot,
                                               x: Math.round(s.x), y: Math.round(s.y),
                                               invuln: +s.invuln.toFixed(2) })) }),
+      /* `bounds` and `arena` are here because the closing wall is the one part
+         of this game that cannot be checked by looking at it: whether a ship is
+         inside the live arena, or wedged in the wall, is arithmetic, and a
+         harness needs the same numbers the simulation used. */
       live: () => ({ ships, rocks, hazards, net, binder, players: PLAYERS, taps,
-                     pad: padCfg, stick, arranging, camera: cam,
+                     pad: padCfg, stick, arranging, camera: cam, bounds, arena,
+                     clock, shipR: SHIP_R * U,
                      cameraMode: royaleCameraRotates ? "rotating" : "fixed" }),
       step: () => tick(performance.now(), true)
     };
