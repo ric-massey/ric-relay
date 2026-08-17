@@ -119,7 +119,7 @@ createServer(async (req, res) => {
      rehearse the case that actually matters on a phone: the page loads fine and
      the log is unreachable. A total blackout is untestable through a browser —
      the HTML would not arrive either — so this is the realistic half. */
-  if (process.env.DEV_OFFLINE && /^\/(log|climb|auth|strava)\b/.test(u.pathname)) {
+  if (process.env.DEV_OFFLINE && /^\/(log|climb|auth|strava|board)\b/.test(u.pathname)) {
     res.socket.destroy();               // hang up, exactly like no signal
     return;
   }
@@ -127,7 +127,7 @@ createServer(async (req, res) => {
   /* Every route the Worker owns. Keep this in step with worker.mjs — a path
      missing here falls through to the static handler and 404s, which looks
      exactly like a Worker bug and is not one. */
-  if (/^\/(log|climb|auth|strava)\b/.test(u.pathname)) {
+  if (/^\/(log|climb|auth|strava|board)\b/.test(u.pathname)) {
     /* Which day the invented run lands on. Dev scaffolding for the fake Strava
        above; the deployed Worker has no such thing — a real run brings its own
        date and there is nothing to choose. */

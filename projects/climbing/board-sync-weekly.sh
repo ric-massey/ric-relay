@@ -58,6 +58,14 @@ if [ $status -ne 0 ]; then
   exit $status
 fi
 
+# Tell the training log which days had a session, whether or not board-data.js
+# changed: the tick is separate state, and a run that finds nothing new to say
+# is silent and free. Never fatal — a board night that fails to tick is a box
+# Ric ticks himself, not a reason to abandon a good sync.
+if ! node projects/climbing/board-tick.mjs; then
+  echo "board-tick failed — the logbook is still fine, the ticks are not"
+fi
+
 if git diff --quiet -- "$DATA"; then
   echo "no new board entries"
   exit 0

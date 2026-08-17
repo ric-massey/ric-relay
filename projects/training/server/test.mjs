@@ -321,7 +321,7 @@ console.log('\nRULE  a finished run ticks the session that was planned for that 
   const day = await r.hit('GET', '/log/2026-08-17');
   ok(day.body.done['morning-run'] === true, 'the run session is ticked');
   ok(day.body.done['morning-body'] === undefined, 'and nothing else on the day is');
-  ok(day.body.auto['morning-run'] === true, 'the tick is marked as one Strava placed');
+  ok(day.body.auto['morning-run'] === 'strava', 'the tick is marked as one Strava placed');
 
   const runs = await r.hit('GET', '/strava/2026-08-17');
   ok(runs.body.length === 1 && runs.body[0].name === 'Morning Run', 'the run itself is readable');
@@ -402,6 +402,43 @@ console.log('\nRULE  a run marked private on Strava ticks its session and is not
     ok(!JSON.stringify([...r.storage()]).includes('PRIVATE-RUN-CANARY'),
       `${what}: the name was never even stored`);
   }
+}
+
+console.log('\nRULE  a board session ticks the climbing session planned for its date');
+{
+  /* Kilter and Tension have no webhooks, so the Mac polls and posts the dates.
+     The endpoint can tick things, so it needs the token — and it matches the
+     date to a session here rather than trusting the caller to say which. */
+  const r = stravaRig();
+  const day = '2026-08-18';                       // a climbing day in the fixture plan
+
+  ok((await r.hit('POST', '/board', { source: 'kilter', days: [day] })).status === 401,
+     'without the token it ticks nothing');
+
+  const res = await r.hit('POST', '/board', { source: 'kilter', days: [day] }, TOKEN);
+  ok(res.status === 200, 'with the token it is accepted');
+  ok(res.body.ticked.length === 1, 'and it says what it ticked');
+
+  const log = await r.hit('GET', '/log/' + day, null, TOKEN);
+  ok(log.body.done['morning-climb'] === true, 'the climbing session is ticked');
+  ok(log.body.auto['morning-climb'] === 'kilter', 'and marked as the board that did it');
+
+  /* A run session on the same plan must be left alone — only climbing. */
+  const runDay = await r.hit('POST', '/board', { source: 'tension', days: ['2026-08-17'] }, TOKEN);
+  ok(runDay.body.ticked.length === 0, 'a board session on a day with no climbing ticks nothing');
+  ok((await r.hit('GET', '/log/2026-08-17', null, TOKEN)).body.done['morning-run'] === undefined,
+     'and certainly does not tick the run');
+
+  /* Same rule as Strava: a session Ric has already decided about is his. */
+  const r2 = stravaRig();
+  await r2.hit('POST', '/log/' + day, { done: { 'morning-climb': false } }, TOKEN);
+  await r2.hit('POST', '/board', { source: 'kilter', days: [day] }, TOKEN);
+  ok((await r2.hit('GET', '/log/' + day, null, TOKEN)).body.done['morning-climb'] === false,
+     'a session he unticked stays unticked when the board sync runs again');
+
+  ok((await r.hit('POST', '/board', { source: 'nonsense', days: [day] }, TOKEN)).status === 400,
+     'an unknown source is refused');
+  ok((await r.hit('GET', '/board')).status === 405, 'there is no public read on this path');
 }
 
 console.log('\nRULE  the leak guard reads the fields, not the route blob');

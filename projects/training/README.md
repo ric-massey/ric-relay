@@ -97,6 +97,52 @@ Notes: type and hit Enter to post publicly, or the **Private** button to keep
 one to yourself. Private notes are visible to you when signed in and to nobody
 else, ever — there is a test for it.
 
+## Board nights tick themselves off too
+
+Same outcome as runs, different plumbing, and the difference is worth knowing
+because it changes what you can expect.
+
+Strava pushes: a run is on the site seconds after the watch syncs, from
+Cloudflare, whether or not any of Ric's machines are on. Kilter and Tension have
+no webhooks at all, and their credentials are an account password rather than a
+revocable token — that is not going into Cloudflare, so the poll stays on the
+Mac. `board-sync.plist` runs `board-sync-weekly.sh` **hourly**; that pulls both
+logbooks as it always did, then runs `board-tick.mjs`, which posts the dates it
+found to the Worker's `/board`. So:
+
+- A board night ticks its climbing session **within the hour**, not instantly.
+- Nothing happens while the Mac is asleep or shut. launchd runs once on the next
+  wake rather than replaying every missed hour.
+- It is safe to run as often as you like: the Worker refuses to tick a session
+  that has already been decided, so a box you unticked on purpose stays
+  unticked, and a re-run changes nothing.
+
+Only **dates** are sent. What was climbed is already published in
+`projects/climbing/board-data.js`, and the training page reads the detail from
+there — a second copy inside the Worker would be the same logbook twice, free to
+drift apart. The climbing session's dropdown shows each board separately, with
+grade, angle and tries, on the board's own scale.
+
+The tick needs the training log's token, which lives in the Keychain:
+
+```bash
+security add-generic-password -s training-log -a rmbuster82 -w
+```
+
+Without it the sync still works and the logbook still updates — only the ticking
+is skipped, and the log says so. Check what it would do without sending
+anything:
+
+```bash
+node projects/climbing/board-tick.mjs --dry-run
+```
+
+After changing the cadence, reinstall the agent or launchd keeps the old one:
+
+```bash
+launchctl bootout gui/$UID/com.ricmassey.board-sync && cp projects/climbing/board-sync.plist ~/Library/LaunchAgents/com.ricmassey.board-sync.plist && launchctl bootstrap gui/$UID ~/Library/LaunchAgents/com.ricmassey.board-sync.plist
+```
+
 ## Runs tick themselves off
 
 A run finishes, the watch syncs to Strava, Strava POSTs the Worker, and the run

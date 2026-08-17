@@ -157,7 +157,19 @@ and Tension apps. Rules for it:
   `climbing.html`. Don't "fix" this by promoting it into the nav.
 - Board sessions stay out of the sitewide "latest" banner for the same reason.
 - Board grades are their own scale. Never merge them into the outdoor stats,
-  pyramid or ledger — a board V6 and a Red River V6 are unrelated numbers.
+  pyramid or ledger — a board V6 and a Red River V6 are unrelated numbers. The
+  training page shows board nights under the climbing session they answered, and
+  keeps them on their own scale there too.
+- **A board night ticks its climbing session, but nothing pushes.** Kilter and
+  Tension have no webhooks and their credentials are an account password, which
+  does not go near Cloudflare — so the Mac polls hourly (`board-sync.plist`) and
+  `board-tick.mjs` posts the DATES to the Worker's `/board`, which matches them
+  to the plan and ticks. Dates only: what was climbed is already in
+  `board-data.js` and the training page reads it from there rather than keeping
+  a second copy that could drift.
+- `auto` in the training log holds WHICH source placed a tick — `strava`,
+  `kilter`, `tension` — not just `true`. Ticks written before boards existed
+  hold `true` and are read as Strava.
 
 **Runs are pushed, not written.** `training.html` shows runs that Strava POSTs to the
 Worker the moment a watch syncs, and the run session planned for that date ticks itself

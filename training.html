@@ -346,6 +346,16 @@
        next to it. */
     .runblock { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
     .sessex > .runblock:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+    /* One row per climb: grade first, because on a board the grade is the
+       thing you scan for and the names are nonsense words. */
+    .bclimbs { display: grid; gap: 0.1rem; }
+    .bclimb { display: flex; align-items: baseline; gap: 0.5rem; font-size: 0.8rem; padding: 0.12rem 0; }
+    .bclimb .bg { flex: 0 0 3.6rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .bclimb .bn { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bclimb .bbm { margin-left: 0.25rem; color: var(--brand-ink); }
+    .bclimb .ba { flex: 0 0 2.2rem; color: var(--soft); text-align: right; font-variant-numeric: tabular-nums; }
+    .bclimb .bt { flex: 0 0 4.4rem; color: var(--soft); text-align: right; white-space: nowrap; }
+
     .runhead { margin-bottom: 0.6rem; }
     .runhead strong { font-size: 0.92rem; }
     .runhead .runstats { margin-top: 0.1rem; }
@@ -646,6 +656,7 @@
       : 'https://training-log.rmbuster82.workers.dev';
     const PLAN_URL = 'assets/training-plan.json';
     const CLIMB_URL = 'assets/climb-days.json';
+    const BOARD_URL = 'projects/climbing/board-data.js';
     const RECENT_DAYS = 14;
 
     const ICON = { climb: '🧗', run: '🏃', body: '🧘', rest: '😴' };
@@ -656,7 +667,7 @@
     const todayISO = () => isoOf(new Date());
     const pretty = iso => new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' });
 
-    let PLAN = null, LOG = {}, CLIMB_STATIC = {}, CLIMB_WEB = {}, RUNS = {};
+    let PLAN = null, LOG = {}, CLIMB_STATIC = {}, CLIMB_WEB = {}, RUNS = {}, BOARD = {};
     let LOG_STALE = false;          // showing cached state because the log was unreachable
     /* Which session panels are open, keyed "date:index". Held here rather than
        in the DOM so a re-render — and a tick causes one — does not slam shut
@@ -691,6 +702,16 @@
         .then(r => r.ok ? r.json() : Promise.reject(r.status))
         .then(j => ({ days: j.days || {}, live: true }))
         .catch(() => ({ days: cachedLog() || {}, live: false }));
+      /* The board logbook, straight from the file the woodshed already reads.
+         It is a script that assigns a global rather than JSON, so it is fetched
+         and the assignment sliced off — cheaper than loading 50KB of it into
+         every page that only wants a few nights of it, and it keeps the
+         training page from depending on load order. Soft: no boards is a page
+         with less on it, not a broken one. */
+      const boards = fetch(BOARD_URL, { cache: 'no-cache' })
+        .then(r => r.ok ? r.text() : Promise.reject(r.status))
+        .then(t => JSON.parse(t.slice(t.indexOf('{')).trim().replace(/;\s*$/, '')))
+        .catch(() => null);
       const climbWeb = soft(LOG_HOST + '/climb', { cache: 'no-store' }, { days: {} });
       const climbStatic = soft(CLIMB_URL, { cache: 'no-cache' }, { days: {} });
       /* The runs Strava has pushed. Soft like the rest: a page with the plan and
@@ -723,6 +744,19 @@
       if (logResult.live) cacheLog();
       CLIMB_WEB = (await climbWeb).days || {};
       CLIMB_STATIC = (await climbStatic).days || {};
+
+      /* Flattened to date → entries as it arrives, because every question this
+         page asks of it is "what happened on this day". Each entry keeps the
+         board it came from, so a night that touched both is still two lists. */
+      BOARD = {};
+      const bd = await boards;
+      for (const [key, b] of Object.entries((bd && bd.boards) || {})) {
+        for (const e of (b.entries || [])) {
+          const iso = String(e.date || '').slice(0, 10);
+          if (!iso) continue;
+          (BOARD[iso] = BOARD[iso] || []).push({ ...e, board: e.board || key, label: b.label || key });
+        }
+      }
       RUNS = (await runs).days || {};
       const pending = normalizeLegacy();
       render();
@@ -799,7 +833,16 @@
     /* Ticked, and ticked by a watch rather than a thumb. The Worker clears the
        flag the moment Ric touches that session himself, so this only ever marks
        a tick that is still Strava's. */
-    const autoOf = (st, s) => doneOf(st, s) && !!(st.auto && st.auto[s.id]);
+    /* What placed this tick, or '' if a person did. The value is a source name
+       — 'strava', 'kilter', 'tension' — except on ticks written before boards
+       existed, which hold `true` and can only have been Strava. */
+    const SOURCE_LABEL = { strava: 'Strava', kilter: 'Kilter', tension: 'Tension' };
+    const autoOf = (st, s) => {
+      if (!doneOf(st, s)) return '';
+      const v = st.auto && st.auto[s.id];
+      if (!v) return '';
+      return SOURCE_LABEL[v] || (v === true ? 'Strava' : '');
+    };
 
     /* A climbing day is either in the committed archive or was logged from a
        phone. Either way the training page links to the climbing page's anchor
@@ -914,7 +957,8 @@
          Always rendered, hidden when it does not apply, because the tick
          handler paints in place rather than re-rendering the row: the tag has
          to be there for the tap to be able to take it away. */
-      const via = `<span class="viastrava"${autoOf(stateOf(iso), s) ? '' : ' hidden'}>via Strava</span>`;
+      const src = autoOf(stateOf(iso), s);
+      const via = `<span class="viastrava"${src ? '' : ' hidden'}>via ${esc(src || 'Strava')}</span>`;
       const body = `<span class="slot">${esc(s.slot || '')}</span>
         <span class="txt">
           <span class="t">${titleFor(iso, s)}${tag}${via}</span>
@@ -1201,10 +1245,47 @@
       </div>`;
     }
 
-    /* What one chevron opens: the workout, then the run that answered it. */
+    /* A night on the board, under the climbing session it answered. Grouped by
+       board because a session that touched both is two different walls and two
+       different grade scales, and a single merged list would imply otherwise.
+
+       Board grades stay board grades here — no conversion, no merging with the
+       outdoor ledger. That rule is older than this feature. */
+    function boardBlock(iso) {
+      const list = BOARD[iso] || [];
+      if (!list.length) return '';
+      const byBoard = {};
+      list.forEach(e => { (byBoard[e.board] = byBoard[e.board] || []).push(e); });
+
+      return Object.entries(byBoard).map(([key, entries]) => {
+        const sends = entries.filter(e => e.ascent);
+        const hardest = sends.map(e => e.grade).filter(Boolean).sort().pop();
+        const rows = entries.map(e => `<div class="bclimb">
+            <span class="bg">${esc(e.grade || '—')}</span>
+            <span class="bn">${esc(e.name || 'unnamed')}${e.benchmark ? '<span class="bbm" title="benchmark">★</span>' : ''}</span>
+            <span class="ba">${e.angle != null ? esc(String(e.angle)) + '°' : ''}</span>
+            <span class="bt">${e.ascent ? (e.tries === 1 ? 'flash' : `${esc(String(e.tries || '?'))} tries`) : 'no send'}</span>
+          </div>`).join('');
+        return `<div class="runblock">
+          <div class="runhead">
+            <strong>${esc(entries[0].label || key)}</strong>
+            <span class="runstats">
+              <span><b>${sends.length}</b> sent</span>
+              <span><b>${entries.length}</b> logged</span>
+              ${hardest ? `<span>hardest <b>${esc(hardest)}</b></span>` : ''}
+            </span>
+          </div>
+          <div class="bclimbs">${rows}</div>
+        </div>`;
+      }).join('');
+    }
+
+    /* What one chevron opens: the workout, then whatever answered it — a run
+       off the watch, or a night on the board. */
     function sessionPanel(iso, s) {
       const runs = runSplit(iso).bySession[s.id] || [];
-      return exercisePanel(s) + runs.map(runBlock).join('');
+      const board = s.kind === 'climb' ? boardBlock(iso) : '';
+      return exercisePanel(s) + runs.map(runBlock).join('') + board;
     }
 
     function runLink(iso) {

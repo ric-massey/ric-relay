@@ -118,6 +118,9 @@ const SPORT_KIND = { Run: 'run', TrailRun: 'run', VirtualRun: 'run' };
    40-metre "activity", and without a floor that would tick off the long run. */
 const MIN_RUN_M = 500;
 
+/* The two boards, and the only values `source` may take on a board tick. */
+const BOARDS = new Set(['kilter', 'tension']);
+
 /* Where the schedule is read from when a run needs matching to a session. The
    Worker still holds no plan — it reads the published one, the same file every
    visitor gets, and keeps it in memory for a few minutes. Overridable so the
@@ -386,7 +389,12 @@ export class TrainingLog {
     return date;
   }
 
-  async tick(date, sessionId) {
+  /* `source` is what placed the tick — 'strava' for a run off a watch, 'kilter'
+     or 'tension' for a board session. It is stored as the VALUE in `auto` so
+     the page can say which, rather than saying "via Strava" over a night on the
+     Kilter. Older entries hold `true`, which reads as Strava, because that is
+     the only thing that could have written one before boards existed. */
+  async tick(date, sessionId, source = 'strava') {
     const prev = (await this.state.storage.get('d:' + date)) || { done: {}, ticks: {}, notes: [] };
     /* Presence, not truth. Strava re-sends a webhook every time an activity is
        renamed or edited, so this runs again long after the run landed — and a
@@ -398,7 +406,7 @@ export class TrainingLog {
     const entry = {
       ...prev,
       done: { ...(prev.done || {}), [sessionId]: true },
-      auto: { ...(prev.auto || {}), [sessionId]: true },
+      auto: { ...(prev.auto || {}), [sessionId]: source },
       updated: new Date().toISOString()
     };
     await this.state.storage.put('d:' + date, entry);
@@ -537,6 +545,50 @@ export class TrainingLog {
          nothing that narrows the search. */
       this.noteFail();
       return json({ error: 'nope' }, 401, origin);
+    }
+
+    /* ---------- /board ----------
+       A board session ticking off the climbing session planned for its date.
+
+       Unlike Strava, nothing pushes: Kilter and Tension have no webhooks, and
+       their credentials are an account password, which is not going anywhere
+       near Cloudflare. So the Mac polls the boards on a timer and posts the
+       DATES it found here — with the log token, because this endpoint can tick
+       things and is therefore not for strangers.
+
+       The date is all that arrives. What was climbed is already published in
+       board-data.js and the page reads it from there; duplicating it into the
+       Worker would be a second copy of the same logbook, free to drift. So this
+       route writes nothing but the tick.
+
+       Matching is done here rather than by the caller for the same reason the
+       Strava matcher is: the plan lives at a URL the Worker already reads, and
+       a client deciding which session it satisfied is a client that can be
+       wrong about someone else's plan. */
+    if (parts[0] === 'board') {
+      if (request.method !== 'POST') return json({ error: 'method not allowed' }, 405, origin);
+      if (!authed()) return json({ error: 'nope' }, 401, origin);
+
+      const body = await request.json().catch(() => null);
+      const days = Array.isArray(body && body.days) ? body.days : null;
+      if (!days) return json({ error: 'days must be an array' }, 400, origin);
+      const source = BOARDS.has(body.source) ? body.source : null;
+      if (!source) return json({ error: 'source must be kilter or tension' }, 400, origin);
+
+      /* Capped so a bad caller cannot walk the whole plan in one request. */
+      const ticked = [];
+      for (const raw of days.slice(0, 60)) {
+        const d = String(raw || '').slice(0, 10);
+        if (!DAY.test(d)) continue;
+        const day = ((await this.plan()).days || []).find(x => x.date === d);
+        const s = day && (day.sessions || []).find(x => x.kind === 'climb');
+        if (!s) continue;                     // climbed on a day with nothing planned
+        const before = await this.state.storage.get('d:' + d);
+        await this.tick(d, s.id, source);
+        const after = await this.state.storage.get('d:' + d);
+        if (!before || before.updated !== after.updated) ticked.push({ date: d, session: s.id });
+      }
+      return json({ ok: true, source, ticked }, 200, origin);
     }
 
     /* ---------- /climb/:date ----------
@@ -724,7 +776,7 @@ export class TrainingLog {
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board']);
 
 export default {
   async fetch(request, env, ctx) {

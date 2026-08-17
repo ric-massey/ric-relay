@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Weekly board sync. Install with:
+  Hourly board sync. Install with:
 
       cp projects/climbing/board-sync.plist ~/Library/LaunchAgents/com.ricmassey.board-sync.plist
       launchctl bootstrap gui/$UID ~/Library/LaunchAgents/com.ricmassey.board-sync.plist
@@ -26,13 +26,12 @@
     <string>/Users/ricmassey/RicsWebsite/projects/climbing/board-sync-weekly.sh</string>
   </array>
 
-  <!-- Sunday morning. If the Mac is asleep, launchd runs it on the next wake. -->
-  <key>StartCalendarInterval</key>
-  <dict>
-    <key>Weekday</key><integer>0</integer>
-    <key>Hour</key><integer>9</integer>
-    <key>Minute</key><integer>15</integer>
-  </dict>
+  <!-- Hourly. A session logged at the gym ticks its training session off within
+       the hour, which is as close as a board gets to the way Strava pushes a
+       run. If the Mac is asleep or shut, launchd runs it once on the next wake
+       rather than catching up on every hour it missed. -->
+  <key>StartInterval</key>
+  <integer>3600</integer>
 
   <key>RunAtLoad</key>
   <false/>
