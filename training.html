@@ -1089,8 +1089,8 @@
          a missing map otherwise reads as something broken. Signed in there is
          nothing to explain — the route is always there. */
       const map = a.route ? routeMap(a.route)
-        : (Owner.on() ? '' : `<p class="runnote">The route for this one appears in a
-             day or so. Where Ric ran is not published while he might still be out on it.</p>`);
+        : (Owner.on() ? '' : `<p class="runnote">The map turns up a few minutes after a
+             run does — where Ric ran is not published while he might still be out on it.</p>`);
 
       return `${map}<div class="rungrid">${grid}</div>
         <a class="runout" href="https://www.strava.com/activities/${esc(a.id)}"
