@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log a climbing day — Ric's Terminal</title>
+  <meta name="robots" content="noindex">
+  <meta name="description" content="Add a climbing day to the log.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%233a5a40'/><text y='.85em' font-size='64' x='18'>🧗</text></svg>">
+  <style>
+    :root {
+      --bar: #3a5a40; --bar-dark: #2d4632; --bg: #f4f1e9; --card: #fff;
+      --ink: #26241f; --soft: #6f6a5f; --line: #e2ddd0; --clay: #b5502a;
+      --sent: #2f8f4e; --proj: #c77d1a;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body { background: var(--bg); color: var(--ink); font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; line-height: 1.5; font-size: 16px; }
+    a { color: var(--clay); }
+
+    .topbar { background: var(--bar); }
+    .topbar .inner { max-width: 720px; margin: 0 auto; padding: 0.7rem 1.1rem; display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+    .topbar a { color: #fff; font-weight: 800; letter-spacing: 0.15em; font-size: 0.82rem; text-decoration: none; }
+    .topbar .wing { color: #fff; opacity: 0.9; font-size: 0.82rem; letter-spacing: 0.15em; }
+
+    .wrap { max-width: 720px; margin: 0 auto; padding: 1.2rem 1.1rem 5rem; display: grid; gap: 1rem; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; }
+    h1 { font-size: 1.25rem; }
+    .lede { color: var(--soft); font-size: 0.9rem; }
+
+    label { display: block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--soft); margin-bottom: 0.25rem; }
+    input, textarea, select {
+      width: 100%; font: inherit; padding: 0.55rem 0.65rem; min-height: 46px;
+      border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--ink);
+    }
+    textarea { min-height: 4.5rem; resize: vertical; }
+    .field { margin-bottom: 0.8rem; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+    @media (max-width: 520px) { .row2 { grid-template-columns: 1fr; } }
+
+    /* one route = one line. adding the next is a single tap and the cursor
+       lands in it, because this gets filled in on a phone in a car park. */
+    .route { display: grid; grid-template-columns: 1fr 6.5rem 6.5rem auto; gap: 0.45rem; margin-bottom: 0.45rem; align-items: center; }
+    @media (max-width: 560px) { .route { grid-template-columns: 1fr 5rem; grid-template-areas: "n n" "g o" "x x"; }
+      .route .rn { grid-area: n; } .route .rg { grid-area: g; } .route .ro { grid-area: o; } .route .rx { grid-area: x; } }
+    .route .rx { min-height: 46px; min-width: 46px; border: 1px solid var(--line); border-radius: 9px; background: #fff; cursor: pointer; color: var(--soft); font-size: 1.1rem; }
+
+    button { font: inherit; cursor: pointer; }
+    .btn { min-height: 50px; padding: 0.5rem 1rem; font-weight: 700; border-radius: 10px; border: 1px solid var(--bar); background: var(--bar); color: #fff; }
+    .btn.ghost { background: #fff; color: var(--bar); }
+    .btn.wide { width: 100%; }
+    .btn:disabled { opacity: 0.55; cursor: default; }
+
+    .msg { margin-top: 0.6rem; font-size: 0.9rem; min-height: 1.4em; }
+    .msg.good { color: var(--sent); font-weight: 700; }
+    .msg.bad { color: var(--clay); font-weight: 700; }
+
+    .ownerform { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .ownerlabel { font-weight: 700; font-size: 0.85rem; text-transform: none; letter-spacing: 0; color: var(--ink); margin: 0; }
+    .ownerform input { flex: 1 1 9rem; width: auto; }
+    .ownerform button { min-height: 46px; padding: 0.4rem 0.9rem; font-weight: 700; border-radius: 9px; border: 1px solid var(--bar); background: var(--bar); color: #fff; }
+    .ownermsg { flex-basis: 100%; color: var(--clay); font-size: 0.82rem; }
+
+    .match { background: #eef4ef; border: 1px solid #cfe0d4; border-left: 4px solid var(--bar); border-radius: 10px; padding: 0.6rem 0.75rem; font-size: 0.9rem; }
+    .match strong { color: var(--bar-dark); }
+    .recent { font-size: 0.9rem; }
+    .recent .r { display: flex; gap: 0.6rem; padding: 0.4rem 0; border-top: 1px solid var(--line); align-items: center; }
+    .recent .r:first-child { border-top: 0; }
+    .recent .d { font-weight: 700; flex: 0 0 6.5rem; }
+    .recent .rm { margin-left: auto; background: none; border: 0; color: var(--clay); font-size: 0.82rem; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="topbar"><div class="inner">
+    <a href="../../index.html">RIC'S TERMINAL</a>
+    <span class="wing">· LOG A DAY</span>
+  </div></div>
+
+  <div class="wrap">
+    <div class="card">
+      <h1>Log a climbing day</h1>
+      <p class="lede">Goes straight to the climbing log and the training page. If the date
+        matches a training day, the link between them appears on its own.</p>
+    </div>
+
+    <div class="card" id="signin"></div>
+
+    <form class="card" id="form" hidden>
+      <div class="row2">
+        <div class="field">
+          <label for="date">Date</label>
+          <input type="date" id="date" required>
+        </div>
+        <div class="field">
+          <label for="area">Where</label>
+          <!-- Deliberately NOT required: the script's rule is "an area or at
+               least one route", and a required attribute here made that branch
+               unreachable — the browser blocked the submit before the script
+               ever ran, with a generic bubble instead of the real reason. -->
+          <input type="text" id="area" list="areas" placeholder="Ijams Crag">
+          <datalist id="areas"></datalist>
+        </div>
+      </div>
+
+      <div id="matchbox" hidden></div>
+
+      <div class="field" style="margin-top:0.8rem">
+        <label>Routes and problems</label>
+        <div id="routes"></div>
+        <button type="button" class="btn ghost wide" id="addroute">+ Add another</button>
+      </div>
+
+      <div class="field">
+        <label for="people">Who with <span style="text-transform:none;font-weight:400">(optional)</span></label>
+        <input type="text" id="people" placeholder="Ryhan">
+      </div>
+
+      <div class="field">
+        <label for="notes">Notes <span style="text-transform:none;font-weight:400">(optional)</span></label>
+        <textarea id="notes" placeholder="Conditions, how it felt, what to come back for."></textarea>
+      </div>
+
+      <button type="submit" class="btn wide" id="save">Save the day</button>
+      <div class="msg" id="msg" role="status"></div>
+    </form>
+
+    <div class="card" id="recentcard" hidden>
+      <label>Days you've logged here</label>
+      <div class="recent" id="recent"></div>
+      <p class="lede" style="margin-top:0.6rem">These live in the log service. Days from
+        <code>climbs.md</code> aren't listed — those are edited in the file as before.</p>
+    </div>
+
+    <p class="lede"><a href="index.html">← the climbing log</a> · <a href="../../training.html">the training feed →</a></p>
+  </div>
+
+  <script src="../../assets/owner.js"></script>
+  <script src="climbs-data.js"></script>
+  <script>
+  /* LOG A DAY
+     ──────────────────────────────────────────────────────────────────────────
+     The point of this page is that adding a climbing day never requires editing
+     markdown, running a build script, or asking anyone for help. Type it on a
+     phone in the car park; it is live before you have driven home.
+
+     Where it goes: the Worker, tagged source:"web". climbs.md stays the archive
+     and is still edited by hand — this does not write to it. Both appear on the
+     climbing page; the training page links to whichever exists for that date. */
+  (function () {
+    const HOST = location.origin.includes('localhost')
+      ? location.origin
+      : 'https://training-log.rmbuster82.workers.dev';
+    const PLAN_URL = '../../assets/training-plan.json';
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const isoOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    let PLAN = null;
+
+    Owner.init({ host: HOST, onChange: paint });
+
+    /* Area suggestions come from the places already climbed, so the common case
+       is two taps rather than typing "Red River Gorge" on a phone keyboard. */
+    (function areas() {
+      const seen = new Set();
+      ((window.CLIMBING_DATA || {}).trips || []).forEach(t => t.area && seen.add(t.area));
+      $('#areas').innerHTML = [...seen].sort().map(a => `<option value="${esc(a)}">`).join('');
+    })();
+
+    fetch(PLAN_URL).then(r => r.ok ? r.json() : null).then(p => { PLAN = p; matchDay(); }).catch(() => {});
+
+    function routeRow(v = {}) {
+      const d = document.createElement('div');
+      d.className = 'route';
+      d.innerHTML = `
+        <input class="rn" type="text" placeholder="Route or problem" value="${esc(v.name || '')}">
+        <input class="rg" type="text" placeholder="Grade" value="${esc(v.grade || '')}">
+        <select class="ro">
+          <option value="sent">Sent</option>
+          <option value="attempt">Tried</option>
+          <option value="repeat">Repeat</option>
+        </select>
+        <button type="button" class="rx" title="Remove">×</button>`;
+      d.querySelector('.rx').onclick = () => {
+        d.remove();
+        if (!$('#routes').children.length) addRoute();
+      };
+      $('#routes').appendChild(d);
+      return d;
+    }
+    function addRoute() { const r = routeRow(); r.querySelector('.rn').focus(); return r; }
+    $('#addroute').onclick = () => addRoute();
+
+    /* Tell him, before he saves, what the training page will do with this date. */
+    function matchDay() {
+      const iso = $('#date').value;
+      const box = $('#matchbox');
+      if (!PLAN || !iso) { box.hidden = true; return; }
+      const d = (PLAN.days || []).find(x => x.date === iso);
+      if (!d) { box.hidden = true; return; }
+      const climb = d.sessions.find(s => s.kind === 'climb');
+      box.hidden = false;
+      box.className = 'match';
+      box.innerHTML = climb
+        ? `<strong>Training that day:</strong> ${esc(climb.title)}${climb.meta ? ' — ' + esc(climb.meta) : ''}.
+           Saving this will link the two and tick that session off.`
+        : `<strong>Training that day:</strong> ${esc(d.phase)}, week ${d.week} — no climbing session scheduled.
+           The link will still appear on the training page.`;
+    }
+    $('#date').addEventListener('change', matchDay);
+
+    function paint() {
+      const on = Owner.on();
+      $('#form').hidden = !on;
+      $('#recentcard').hidden = !on;
+      if (on) {
+        $('#signin').innerHTML = `<div class="ownerform"><span class="ownerlabel">Signed in.</span>
+          <button type="button" class="btn ghost" id="out" style="margin-left:auto">sign out</button></div>`;
+        $('#out').onclick = () => Owner.signOut();
+        if (!$('#date').value) $('#date').value = isoOf(new Date());
+        if (!$('#routes').children.length) routeRow();
+        matchDay();
+        listRecent();
+      } else {
+        Owner.mountBox($('#signin'), { title: 'Password' });
+      }
+    }
+
+    async function listRecent() {
+      let days = {};
+      try { days = (await (await fetch(HOST + '/climb', { cache: 'no-store' })).json()).days || {}; } catch (e) {}
+      const keys = Object.keys(days).sort().reverse().slice(0, 12);
+      $('#recent').innerHTML = keys.length
+        ? keys.map(k => `<div class="r"><span class="d">${esc(k)}</span>
+            <span>${esc(days[k].area || '')} · ${(days[k].routes || []).length} routes</span>
+            <button type="button" class="rm" data-del="${esc(k)}">remove</button></div>`).join('')
+        : '<p class="lede">Nothing logged from the web yet.</p>';
+      document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+        if (!confirm(`Remove the ${b.dataset.del} entry? This only removes the one added here.`)) return;
+        await Owner.post(`/climb/${b.dataset.del}`, { remove: true });
+        listRecent();
+      });
+    }
+
+    $('#form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const msg = $('#msg');
+      const iso = $('#date').value;
+      const routes = [...document.querySelectorAll('.route')].map(r => ({
+        name: r.querySelector('.rn').value.trim(),
+        grade: r.querySelector('.rg').value.trim(),
+        outcome: r.querySelector('.ro').value
+      })).filter(r => r.name);
+
+      if (!iso) { msg.className = 'msg bad'; msg.textContent = 'Pick a date.'; return; }
+      if (!$('#area').value.trim() && !routes.length) {
+        msg.className = 'msg bad'; msg.textContent = 'Needs somewhere you went, or at least one route.'; return;
+      }
+
+      $('#save').disabled = true;
+      msg.className = 'msg'; msg.textContent = 'Saving…';
+
+      const out = await Owner.post(`/climb/${iso}`, {
+        area: $('#area').value.trim(), people: $('#people').value.trim(),
+        notes: $('#notes').value.trim(), routes
+      });
+
+      if (!out) {
+        $('#save').disabled = false;
+        msg.className = 'msg bad';
+        msg.textContent = 'Did not save — check the connection, or sign in again.';
+        return;
+      }
+
+      /* The friction this page exists to remove: having logged the climb, the
+         matching training session is already known to be done. Tick it here
+         rather than making him go to the other page and say so again. */
+      let ticked = '';
+      const d = PLAN && (PLAN.days || []).find(x => x.date === iso);
+      if (d) {
+        const i = d.sessions.findIndex(s => s.kind === 'climb');
+        if (i >= 0) {
+          const done = {}; done[i] = true;
+          if (await Owner.post(`/log/${iso}`, { done })) ticked = ' Training session ticked off too.';
+        }
+      }
+
+      $('#save').disabled = false;
+      msg.className = 'msg good';
+      msg.textContent = `Saved.${ticked} It is live on both pages now.`;
+      document.querySelectorAll('.route').forEach(r => r.remove());
+      routeRow();
+      $('#notes').value = '';
+      listRecent();
+    });
+
+    paint();
+  })();
+  </script>
+</body>
+</html>

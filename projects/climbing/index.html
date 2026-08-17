@@ -188,7 +188,8 @@
   <div class="wrap">
     <div class="breadcrumb"><a href="../../climbing.html">Climbing</a> &rsaquo; The Log</div>
     <h1>The Climbing Log</h1>
-    <p class="lede">Everything I've recorded outside — every trip, every route, everyone I climbed with.</p>
+    <p class="lede">Everything I've recorded outside — every trip, every route, everyone I climbed with.
+      <a href="add.html" id="addlink" style="white-space:nowrap">Log a day &rsaquo;</a></p>
 
     <section class="recent" id="recent" aria-label="Most recent trip"></section>
 
@@ -218,7 +219,56 @@
   <script src="climbs-data.js"></script>
   <script src="../relay-return.js" data-home="../../index.html"></script>
   <script>
-  (() => {
+  (async () => {
+    /* ── days logged from a phone ──
+       climbs.md is still the archive and is still edited by hand. add.html
+       writes to the log service instead, so a day can be recorded at the crag
+       without a build step. Those days are merged in here, shaped to look like
+       every other trip so nothing downstream has to know the difference — and
+       so the training page's link to #trip-YYYY-MM-DD lands on something.
+
+       The whole render waits on this fetch. It is one small request and the
+       alternative is the page painting once and jumping. If the log service is
+       unreachable the merge is skipped and the archive renders alone. */
+    async function webTrips() {
+      const HOST = location.origin.includes("localhost")
+        ? location.origin
+        : "https://training-log.rmbuster82.workers.dev";
+      let days = {};
+      try {
+        const r = await fetch(HOST + "/climb", { cache: "no-store" });
+        if (r.ok) days = (await r.json()).days || {};
+      } catch (e) { return []; }
+      return Object.values(days).map((d) => ({
+        date: d.date,
+        dateRaw: d.date,
+        area: d.area || "Climbing",
+        notes: d.notes || "",
+        people: d.people ? String(d.people).split(/\s*,\s*/).filter(Boolean) : [],
+        pitches: 0,
+        boulders: 0,
+        hasPhoto: false,
+        hasVideo: false,
+        fromWeb: true,
+        routes: (d.routes || []).map((r) => ({
+          name: r.name, grade: r.grade || "", gradeKind: /^[vV]/.test(r.grade || "") ? "boulder" : "rope",
+          gradeRank: 0, styles: [], outcome: r.outcome || "sent", repeats: 1,
+          star: false, unknown: false, note: null,
+          area: d.area || "", region: "", wall: ""
+        }))
+      }));
+    }
+
+    const extra = await webTrips();
+    if (extra.length && window.CLIMBING_DATA) {
+      const known = new Set(window.CLIMBING_DATA.trips.map((t) => t.date));
+      /* A date already in climbs.md wins — the markdown is the record of
+         intent, and a web entry for the same day is the rough note that
+         preceded it. */
+      window.CLIMBING_DATA.trips = [...extra.filter((t) => !known.has(t.date)), ...window.CLIMBING_DATA.trips]
+        .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+    }
+
     const DATA = window.CLIMBING_DATA;
     const view = document.getElementById("view");
     const countEl = document.getElementById("count");
