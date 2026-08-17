@@ -353,12 +353,12 @@ Strava are exempt from all of it: they tick their session and publish nothing.
 
 They also publish **heart rate** — average and max — along with cadence,
 calories, temperature, relative effort and the watch model.
-That is health data about a named person on a page anyone can read, and it is a
-larger disclosure than the distance beside it: a resting-to-max range and its
-drift week over week say something about a body that "7 mi" does not. It is
-published because the point of the detail panel is to be the run, and because
-this site is already a public training diary. If that ever stops being the
-trade you want, the switch is the same one line — drop `average_heartrate`,
-`max_heartrate` and `average_heartrate` in `SPLIT_FIELDS` from the allowlists in
-`server/worker.mjs` and the cells disappear on their own, because the page draws
-only the fields that arrive.
+That is health data about a named person on a public page, and it is published
+on purpose: Ric settled it on 2026-08-17, having been asked plainly. This site
+is a training diary and the numbers are the diary. Nobody needs to raise it
+again.
+
+Should it ever need undoing, the switch is one line — drop `average_heartrate`
+and `max_heartrate` from `ACTIVITY_FIELDS`, and `average_heartrate` from
+`SPLIT_FIELDS`, in `server/worker.mjs`. The cells disappear on their own,
+because the page draws only the fields that arrive.
