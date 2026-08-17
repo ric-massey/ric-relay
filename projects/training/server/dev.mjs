@@ -59,8 +59,11 @@ const log = new TrainingLog({
     if (url.includes('/api/v3/activities/')) {
       return Response.json({
         id: Number(url.split('/').pop()) || 1,
-        name: 'Morning Run', sport_type: 'Run', type: 'Run',
-        distance: 11265, moving_time: 3120, elapsed_time: 3200, total_elevation_gain: 88,
+        name: FAKE_SPORT === 'Ride' ? 'Evening Spin' : 'Morning Run',
+        sport_type: FAKE_SPORT, type: FAKE_SPORT,
+        /* 6.01 mi against a 7 mi plan — the mismatch is the point: the row's
+           title has to follow the run, not the schedule. */
+        distance: 9673.1, moving_time: 3120, elapsed_time: 3200, total_elevation_gain: 88,
         start_date_local: (FAKE_RUN_DATE || new Date().toISOString().slice(0, 10)) + 'T06:12:00Z',
         athlete: { id: 7 },
         ...(FAKE_RUN_PRIVATE ? { visibility: 'only_me' } : {}),
@@ -93,6 +96,7 @@ const log = new TrainingLog({
 
 let FAKE_RUN_DATE = '';
 let FAKE_RUN_PRIVATE = false;
+let FAKE_SPORT = 'Run';
 
 /* Requests go through the real outer Worker, not straight to the object, so the
    route whitelist and the Strava handshake are exercised here too. The binding
@@ -131,6 +135,9 @@ createServer(async (req, res) => {
     /* ?private=1 marks the invented run "Only You", which is the only way to
        rehearse the half of the page that only its owner ever sees. */
     if (u.searchParams.has('private')) FAKE_RUN_PRIVATE = u.searchParams.get('private') !== '0';
+    /* ?sport=Ride invents something that is not a run, which is the only way to
+       rehearse an activity the plan has no session for. */
+    if (u.searchParams.has('sport')) FAKE_SPORT = u.searchParams.get('sport') || 'Run';
     const chunks = [];
     for await (const c of req) chunks.push(c);
     const r = await worker.fetch(new Request('https://local' + u.pathname + u.search, {

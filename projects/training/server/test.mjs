@@ -404,6 +404,24 @@ console.log('\nRULE  a run marked private on Strava ticks its session and is not
   }
 }
 
+console.log('\nRULE  the leak guard reads the fields, not the route blob');
+{
+  /* A polyline is a thousand characters over an alphabet that includes every
+     lowercase letter, so one will eventually contain "latlng" by chance. The
+     guard used to read it and throw the whole activity away — a run vanishing
+     for a coincidence in a coordinate encoding. It now reads everything but. */
+  const r = stravaRig({
+    activities: { 900001: activity({ map: { summary_polyline: 'ab_latlng_cd~address~ef' } }) }
+  });
+  await r.event();
+  const kept = (await r.hit('GET', '/strava/2026-08-17', null, TOKEN)).body[0];
+  ok(kept, 'the run survives a polyline that reads like a field name');
+  ok(kept.route === 'ab_latlng_cd~address~ef', 'with its route intact');
+
+  /* The planted city inside a split is still caught, which is the guard doing
+     the job it was actually written for — see the leak rule above. */
+}
+
 console.log('\nRULE  the route appears five minutes after the run reaches the site');
 {
   /* "I don't want them to see my location when I'm training — I'm fine if they

@@ -337,7 +337,16 @@ export class TrainingLog {
       if (splits.length) out.splits = splits;
     }
 
-    if (LEAKY.test(JSON.stringify(out))) {
+    /* The guard exists to catch a FIELD that should not be here, so it reads
+       everything except the route's own encoded blob. That blob is a thousand
+       characters drawn from an alphabet that includes every lowercase letter,
+       so sooner or later one will contain "latlng" or "address" by pure chance
+       — and the guard's response is to throw the whole activity away. A run
+       silently vanishing once a decade for a coincidence in a coordinate
+       encoding is a worse bug than the one that would be caught, especially now
+       that the route is a thing we mean to publish. */
+    const { route, ...rest } = out;
+    if (LEAKY.test(JSON.stringify(rest))) {
       console.error('strava: refusing to store an activity that tripped the leak guard');
       return null;
     }

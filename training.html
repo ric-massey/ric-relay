@@ -390,6 +390,14 @@
     /* Only ever rendered for the signed-in owner — the public read never
        carries a hidden run at all — but it is labelled anyway, so the one
        person who sees it is never unsure which runs are on the internet. */
+    /* The plan's number, once the real one has taken its place in the title.
+       Normal weight and muted, so the distance that actually happened is the
+       one the eye lands on. */
+    .planned {
+      margin-left: 0.4rem; font-size: 0.68rem; font-weight: 400;
+      color: var(--soft); white-space: nowrap;
+    }
+
     .privtag {
       margin-left: 0.4rem; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.05em;
       text-transform: uppercase; color: #5b4636; background: #efe7e1;
@@ -870,6 +878,32 @@
       return (rows ? `<div class="pblock">${rows}</div>` : '') + specOnly;
     }
 
+    /* The title as the plan wrote it says what was meant to happen: "Long run —
+       7 mi". Once a run has actually landed against that session, the number in
+       it is a forecast standing where a fact should be — 7 miles on the row, 6.1
+       in the run underneath it. So the distance is rewritten to what was run,
+       and the planned figure moves alongside in small type rather than
+       disappearing: the gap between the two is the interesting part, and a page
+       that silently rounded the plan away would be lying in the other
+       direction.
+
+       Only the distance is touched, and only when a number with `mi` after it
+       is actually in the title — "Easy 3 mi + strides" becomes "Easy 6.1 mi +
+       strides" and a title with no distance in it is left alone. */
+    function titleFor(iso, s) {
+      const ran = runSplit(iso).bySession[s.id] || [];
+      const metres = ran.reduce((n, a) => n + (a.distance || 0), 0);
+      if (!metres) return esc(s.title);
+      const m = String(s.title).match(/(\d+(?:\.\d+)?)\s*mi\b/);
+      const actual = miles(metres);
+      if (!m || m[1] === actual) return esc(s.title);
+      /* Non-breaking space between the number and its unit. On a phone the
+         title column is narrow enough that "6.01 mi" broke across two lines,
+         leaving a bare "mi" under the distance. */
+      return esc(String(s.title).replace(m[0], actual + ' mi')) +
+        `<span class="planned">${esc(m[1])} mi planned</span>`;
+    }
+
     function sessionRow(iso, s, i) {
       const done = doneOf(stateOf(iso), s);
       const tag = s.key ? '<span class="keytag">key</span>' : '';
@@ -883,7 +917,7 @@
       const via = `<span class="viastrava"${autoOf(stateOf(iso), s) ? '' : ' hidden'}>via Strava</span>`;
       const body = `<span class="slot">${esc(s.slot || '')}</span>
         <span class="txt">
-          <span class="t">${esc(s.title)}${tag}${via}</span>
+          <span class="t">${titleFor(iso, s)}${tag}${via}</span>
           ${s.meta ? `<div class="m">${esc(s.meta)}</div>` : ''}
         </span>`;
       /* Two targets. The big one ticks — a 30px checkbox is the wrong size for
@@ -999,6 +1033,11 @@
       if (pts.length < 2) return '';
       const [MAP_W, MAP_H] = mapBox();
       const lats = pts.map(p => p[0]), lngs = pts.map(p => p[1]);
+      /* A truncated or corrupt polyline decodes to NaN, and NaN survives every
+         comparison below to come out as a tile grid that never loops and a path
+         reading "MNaN NaN" — an empty grey box that looks like a broken map
+         rather than an absent one. Nothing is the honest output. */
+      if (![...lats, ...lngs].every(Number.isFinite)) return '';
       const bounds = [Math.min(...lats), Math.max(...lats), Math.min(...lngs), Math.max(...lngs)];
 
       /* The closest zoom that still fits the whole run in the box, with a
@@ -1171,9 +1210,14 @@
     function runLink(iso) {
       const list = runSplit(iso).loose;
       if (!list.length) return '';
-      return list.map((a, i) => {
+      return list.map(a => {
         const p = pace(a);
-        const id = `${iso}:${i}`;
+        /* Keyed by the activity's own id, not its position. This list is the
+           leftovers — the runs that did NOT fold into a session — so its
+           indices stopped matching RUNS[iso] the moment folding existed, and
+           the panel opened whichever activity happened to sit at that position
+           in the full list instead. An id cannot drift. */
+        const id = `${iso}:${a.id}`;
         const open = RUNOPEN.has(id);
         return `<div class="run${open ? ' is-open' : ''}">
           <button type="button" class="runlink" data-run="${esc(id)}" aria-expanded="${open}">
@@ -1366,12 +1410,16 @@
         const ran = weekMetres(d.week);
         $('#w-target').innerHTML = `${wk.miles ?? '—'} <small>mi</small>`;
         $('#w-dist').innerHTML = `${miles(ran)} <small>mi</small>`;
-        let done = 0;
+        /* Out of how many, because a bare "2" means nothing on its own — two
+           of three is a good week and two of fourteen is not, and the tile was
+           showing the same number for both. */
+        let done = 0, total = 0;
         (PLAN.days || []).filter(x => x.week === d.week).forEach(x => {
           const st = stateOf(x.date);
           done += doneCountOf(st, x.sessions);
+          total += (x.sessions || []).length;
         });
-        $('#w-done').textContent = done || '—';
+        $('#w-done').innerHTML = total ? `${done} <small>of ${total}</small>` : (done || '—');
         /* Say it out loud when the ticks on screen came from the cache rather
            than from the log. Otherwise a signal drop is indistinguishable from
            somebody's work disappearing. */
@@ -1511,8 +1559,11 @@
         const panel = card.querySelector('.rundet');
         const open = !RUNOPEN.has(id);
         if (open) {
-          const [iso, i] = id.split(':');
-          panel.innerHTML = runDetail((RUNS[iso] || [])[+i]);
+          /* Split once from the left: an activity id is all digits, but the
+             date in front of it carries the only other colons. */
+          const iso = id.slice(0, 10), rid = id.slice(11);
+          const a = (RUNS[iso] || []).find(x => String(x.id) === rid);
+          panel.innerHTML = a ? runDetail(a) : '';
           RUNOPEN.add(id);
         } else {
           RUNOPEN.delete(id);
