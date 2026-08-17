@@ -10,6 +10,18 @@
   //
   // LOG_TOKEN is a secret, not a var. It must never appear in this file, in
   // worker.mjs, or anywhere else in the repo: this repo is public.
+  //
+  // Strava, if the auto-tick is wired up (see strava-setup.mjs — it prints the
+  // exact commands). All secrets, none of them ever in this file:
+  //     STRAVA_CLIENT_ID       the API application's id
+  //     STRAVA_CLIENT_SECRET   its secret
+  //     STRAVA_REFRESH_TOKEN   a SEED only — Strava rotates it, and from the
+  //                            first refresh the live one lives in storage
+  //     STRAVA_VERIFY_TOKEN    echoed back during the webhook handshake
+  //     STRAVA_ATHLETE_ID      Ric's athlete id, so other people's events stop
+  //                            at the door before costing an API call
+  // Leave them unset and the Worker runs exactly as it did before: the /strava
+  // endpoint records nothing and everything else is untouched.
   "name": "training-log",
   "main": "worker.mjs",
   "compatibility_date": "2026-08-01",

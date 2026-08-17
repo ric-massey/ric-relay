@@ -18,7 +18,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TrainingLog } from './worker.mjs';
+import worker, { TrainingLog } from './worker.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const PORT = 8799;
@@ -32,7 +32,71 @@ const log = new TrainingLog({
     delete: async k => { mem.delete(k); },
     list: async ({ prefix }) => new Map([...mem].filter(([k]) => k.startsWith(prefix)))
   }
-}, { LOG_TOKEN: TOKEN });
+}, {
+  LOG_TOKEN: TOKEN,
+  /* Point the matcher at the plan on disk, so a fake webhook here ticks against
+     the same file the page is rendering rather than the deployed one. */
+  PLAN_URL: 'http://localhost:' + PORT + '/assets/training-plan.json',
+
+  /* ── a Strava that is not Strava ──
+     Real credentials would mean a real athlete and a real run, which is no way
+     to rehearse a run card. So the API is faked here and ONLY here: post a
+     webhook at the dev server and it behaves exactly as the deployed Worker
+     does, against an invented activity.
+
+         curl -s -X POST localhost:8799/strava -H 'content-type: application/json' \
+           -d '{"aspect_type":"create","object_type":"activity","object_id":1,"owner_id":7}'
+
+     ?date=YYYY-MM-DD on that URL puts the run on a chosen day, which is how you
+     see it land on a day the plan has a run scheduled. */
+  STRAVA_CLIENT_ID: 'dev', STRAVA_CLIENT_SECRET: 'dev', STRAVA_REFRESH_TOKEN: 'dev',
+  STRAVA_ATHLETE_ID: '7',
+  FETCH: async (u, init) => {
+    const url = String(u);
+    if (url.includes('/oauth/token')) {
+      return Response.json({ access_token: 'dev', refresh_token: 'dev', expires_at: 1e12 });
+    }
+    if (url.includes('/api/v3/activities/')) {
+      return Response.json({
+        id: Number(url.split('/').pop()) || 1,
+        name: 'Morning Run', sport_type: 'Run', type: 'Run',
+        distance: 11265, moving_time: 3120, elapsed_time: 3200, total_elevation_gain: 88,
+        start_date_local: (FAKE_RUN_DATE || new Date().toISOString().slice(0, 10)) + 'T06:12:00Z',
+        athlete: { id: 7 },
+        ...(FAKE_RUN_PRIVATE ? { visibility: 'only_me' } : {}),
+        average_speed: 3.61, max_speed: 4.9,
+        average_heartrate: 152.4, max_heartrate: 176, has_heartrate: true,
+        average_cadence: 84.2, calories: 812, suffer_score: 121,
+        device_name: 'Garmin Forerunner 265', kudos_count: 4, pr_count: 1,
+        /* Eleven kilometres of them, with a slow first and a fast last, so the
+           split bars on the page have a shape to draw rather than a flat wall. */
+        splits_metric: Array.from({ length: 11 }, (_, i) => ({
+          split: i + 1, distance: 1000,
+          moving_time: 300 - i * 3, elapsed_time: 302 - i * 3,
+          elevation_difference: [4, 6, -2, 1, -5, 3, 8, -6, 0, -3, -2][i],
+          average_speed: 1000 / (300 - i * 3),
+          average_heartrate: 138 + i * 3,
+          pace_zone: 2,
+          location_city: 'Knoxville'      // present so the local page proves it never arrives
+        })),
+        /* Present precisely so the local page proves they never arrive. */
+        start_latlng: [35.9606, -83.9207], map: { polyline: 'ojqzErfhcN' }, location_city: 'Knoxville'
+      });
+    }
+    return fetch(u, init);
+  }
+});
+
+let FAKE_RUN_DATE = '';
+let FAKE_RUN_PRIVATE = false;
+
+/* Requests go through the real outer Worker, not straight to the object, so the
+   route whitelist and the Strava handshake are exercised here too. The binding
+   is the only fake: one object, always the same one. */
+const ENV = {
+  LOG: { idFromName: () => 'training', get: () => log },
+  STRAVA_VERIFY_TOKEN: 'local-verify-token'
+};
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -47,7 +111,7 @@ createServer(async (req, res) => {
      rehearse the case that actually matters on a phone: the page loads fine and
      the log is unreachable. A total blackout is untestable through a browser —
      the HTML would not arrive either — so this is the realistic half. */
-  if (process.env.DEV_OFFLINE && /^\/(log|climb|auth)\b/.test(u.pathname)) {
+  if (process.env.DEV_OFFLINE && /^\/(log|climb|auth|strava)\b/.test(u.pathname)) {
     res.socket.destroy();               // hang up, exactly like no signal
     return;
   }
@@ -55,14 +119,21 @@ createServer(async (req, res) => {
   /* Every route the Worker owns. Keep this in step with worker.mjs — a path
      missing here falls through to the static handler and 404s, which looks
      exactly like a Worker bug and is not one. */
-  if (/^\/(log|climb|auth)\b/.test(u.pathname)) {
+  if (/^\/(log|climb|auth|strava)\b/.test(u.pathname)) {
+    /* Which day the invented run lands on. Dev scaffolding for the fake Strava
+       above; the deployed Worker has no such thing — a real run brings its own
+       date and there is nothing to choose. */
+    if (u.searchParams.has('date')) FAKE_RUN_DATE = u.searchParams.get('date');
+    /* ?private=1 marks the invented run "Only You", which is the only way to
+       rehearse the half of the page that only its owner ever sees. */
+    if (u.searchParams.has('private')) FAKE_RUN_PRIVATE = u.searchParams.get('private') !== '0';
     const chunks = [];
     for await (const c of req) chunks.push(c);
-    const r = await log.fetch(new Request('https://local' + u.pathname, {
+    const r = await worker.fetch(new Request('https://local' + u.pathname + u.search, {
       method: req.method,
       headers: req.headers,
       ...(chunks.length ? { body: Buffer.concat(chunks) } : {})
-    }));
+    }), ENV, null);
     res.writeHead(r.status, Object.fromEntries(r.headers));
     res.end(Buffer.from(await r.arrayBuffer()));
     return;

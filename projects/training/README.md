@@ -12,6 +12,7 @@ and writes notes.
 | The exporter | `projects/training/export.mjs` | yes |
 | The generated plan | `assets/training-plan.json` | yes |
 | The log service | `projects/training/server/` | yes (no secrets in it) |
+| The Strava wiring | `projects/training/server/strava-setup.mjs` | yes (run once, keys in the Keychain) |
 | The feed page | `training.html` | yes |
 
 ## Why it is split this way
@@ -96,6 +97,113 @@ Notes: type and hit Enter to post publicly, or the **Private** button to keep
 one to yourself. Private notes are visible to you when signed in and to nobody
 else, ever — there is a test for it.
 
+## Runs tick themselves off
+
+A run finishes, the watch syncs to Strava, Strava POSTs the Worker, and the run
+session on the plan for that date is ticked before you have taken your shoes
+off. Nobody opens the site. The run also shows up on the day as a card —
+distance, time, pace — linking to the activity on Strava.
+
+The webhook body carries only `{aspect_type, object_id, owner_id}`: no date, no
+sport, no distance. So every fact used is read back from the API afterwards with
+Ric's own token, never from the body. That is what makes the endpoint safe to
+leave open, which it has to be — Strava does not sign its events. A forged POST
+can only choose which activity id gets looked up, and the token returns
+activities belonging to the person who issued it.
+
+### The rules it follows
+
+- **Only runs tick anything.** `Run`, `TrailRun`, `VirtualRun`. A
+  `WeightTraining` is not evidence the morning practice happened, and board
+  sessions already have a real source on the climbing page — a watch ticking
+  those too would double-count the one thing on this site that is properly
+  pulled. Everything else is still recorded and shown; it just ticks nothing.
+- **A run on a day with no run session ticks nothing** and appears as a card
+  anyway. Unplanned is not the same as unrecorded.
+- **Tapping a run opens it rather than leaving the site.** Pace, heart rate,
+  cadence, calories, relative effort, the watch, and a bar per kilometre split —
+  everything Strava returns that is not a place. Strava itself is one tap
+  further in, for the map, which is the thing this site deliberately does not
+  have.
+- **The week's mileage is what you ran**, summed from Strava and shown against
+  the plan's target: "7 of 10 mi". Only runs count, so a ride does not flatter
+  it. Signed in, private runs count too — see below.
+- **Under 500 m ticks nothing.** Starting a watch by accident in a car park
+  makes a 40-metre activity, and without a floor that would tick off the long run.
+- **No coordinate is ever stored.** An activity carries `start_latlng`,
+  `end_latlng` and an encoded `map.polyline` — the route, door to door. The
+  Worker rebuilds the activity from `ACTIVITY_FIELDS` and nothing else survives
+  the copy, the same direction as `PUBLIC_FIELDS` in `export.mjs`. There is a
+  leak guard over the result and a test that says so.
+- **Private on Strava stays private here — from visitors.** A run marked "Only
+  You" or followers-only still ticks its session, but it is not republished, its
+  name is not even written to storage, and no splits are kept for it. Signed in,
+  Ric gets it back: the card appears labelled "only you", and its distance
+  counts towards the week. Withholding it from its own author was the wrong
+  reading of the rule — it made his own mileage wrong on his own page, with
+  nothing on screen to explain the gap. The page asks with his token, and the
+  reply on that path is `cache-control: private, no-store`, so nothing in the
+  middle can hold his copy and hand it to somebody else.
+- **A tick you touched is yours.** Ticks placed by Strava are marked `auto` and
+  the page says "via Strava" on them. Touching that session clears the mark, and
+  deleting the run on Strava then leaves your tick alone. Delete a run you never
+  touched and its tick goes with it.
+- **And it stays yours in both directions.** Strava fires a webhook again every
+  time an activity is edited, so renaming a run hours later replays the whole
+  path. If you unticked the session in between — the watch counted a warm-up as
+  the workout, say — the replay leaves it unticked. Deciding it did not happen
+  is a decision, and the rename is not an argument against it.
+
+### Wiring it up, once
+
+Make an API application at <https://www.strava.com/settings/api> with
+**Authorization Callback Domain** set to exactly `localhost` — that is for the
+one-time authorize below; the webhook callback is a different field and is not
+checked against it. Then:
+
+```bash
+echo '{"client_id":"YOUR_ID"}' > projects/training/server/strava-account.json
+```
+```bash
+security add-generic-password -s strava-api -a YOUR_ID -U -w
+```
+
+The second prompts for the client secret without echoing it. Never pass `-w` a
+value on the command line — that puts the secret in your shell history.
+
+```bash
+node projects/training/server/strava-setup.mjs authorize
+```
+
+Opens a browser, catches the code on localhost, and prints the exact `wrangler
+secret put` commands with the values filled in. Run those, then deploy, then:
+
+```bash
+node projects/training/server/strava-setup.mjs subscribe
+```
+
+Strava validates the callback during that request and expects an answer in two
+seconds, so the Worker must already be deployed with `STRAVA_VERIFY_TOKEN` set.
+`status` shows the current subscription; `unsubscribe` removes it. One
+subscription per application — a second is an error, not a second feed.
+
+The refresh token you paste into Cloudflare is a **seed**. Strava rotates it and
+kills the old one immediately, so from the first refresh onward the live token
+lives in the Worker's storage. Getting that wrong is the failure that breaks the
+integration silently, weeks later, on a token that used to work.
+
+### Seeing it work without a Strava account
+
+`dev.mjs` fakes the Strava API, so the whole path — webhook, token refresh,
+allowlist, match, tick — runs locally against an invented activity:
+
+```bash
+curl -s -X POST 'localhost:8799/strava?date=2026-08-17' -H 'content-type: application/json' -d '{"aspect_type":"create","object_type":"activity","object_id":900001,"owner_id":7}'
+```
+
+The invented activity carries coordinates and a polyline on purpose, so the
+local page proves they never arrive.
+
 ## Logging a climbing day
 
 `projects/climbing/add.html` — date, where, routes, done. No markdown, no build
@@ -137,6 +245,12 @@ Asserts the part that actually matters: writes without the token change nothing,
 private notes never reach a public read, the owner can still re-read his own
 private notes, and two devices ticking the same day do not erase each other.
 
+The Strava half is asserted there too, with a fake Strava and a fixture plan, so
+none of it needs an account or a network: no coordinate reaches storage, a
+forged webhook achieves nothing, a run only ticks a session that matches it, a
+private run ticks without being republished, and the rotating refresh token is
+kept rather than the seed.
+
 `node projects/training/test/rules.js` runs the planning app's own rules, but
 only if you have the private `index.html`.
 
@@ -160,3 +274,24 @@ is a forward-looking calendar of where this person will be. `2026-11-08` says
 Obed, and it says so in advance. If that ever stops being the intent, the
 switches are `PRIVATE_SESSION` and `PUBLIC_FIELDS` in `export.mjs`, and the
 `publicView` filter in `server/worker.mjs`.
+
+Runs from Strava publish **the name you gave the activity**, plus distance, time
+and elevation. No coordinate is stored, so the route is not recoverable — but a
+title is free text, and "Sharp's Ridge repeats" is a place even though no
+latitude was involved. Strava's own defaults ("Morning Run") say nothing, so
+this only bites on runs you rename. It is the same bargain the plan already
+makes by publishing venues, which is why it is allowed; the switch is `name` in
+`ACTIVITY_FIELDS`. Runs marked private on Strava are exempt — they tick their
+session and publish nothing at all.
+
+They also publish **heart rate** — average and max, and a figure per kilometre in
+the splits — along with cadence, calories, relative effort and the watch model.
+That is health data about a named person on a page anyone can read, and it is a
+larger disclosure than the distance beside it: a resting-to-max range and its
+drift week over week say something about a body that "7 mi" does not. It is
+published because the point of the detail panel is to be the run, and because
+this site is already a public training diary. If that ever stops being the
+trade you want, the switch is the same one line — drop `average_heartrate`,
+`max_heartrate` and `average_heartrate` in `SPLIT_FIELDS` from the allowlists in
+`server/worker.mjs` and the cells disappear on their own, because the page draws
+only the fields that arrive.

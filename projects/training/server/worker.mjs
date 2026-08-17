@@ -26,6 +26,62 @@
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
+/* ── what a Strava activity is allowed to become ──
+   An activity off the Strava API carries `start_latlng`, `end_latlng` and an
+   encoded `map.polyline` — the exact route, door to door. Rule one of this repo
+   is that no location data is ever published from it, so the activity is not
+   stored and filtered later: it is rebuilt from this list and nothing else
+   survives the copy. Same direction as PUBLIC_FIELDS in export.mjs, for the same
+   reason — the upstream shape changes without asking, an allowlist does not.
+
+   `name` is in because a run card with no name is a row of numbers, and because
+   Strava's own defaults ("Morning Run") say nothing. It is free text Ric types,
+   so it is the one field here that could name a place. That is the same bargain
+   the plan already makes by publishing venues; the README records it. */
+const ACTIVITY_FIELDS = ['id', 'name', 'sport_type', 'type', 'distance',
+  'moving_time', 'elapsed_time', 'total_elevation_gain', 'start_date_local',
+  /* The numbers a watch actually records. All of it is what happened to a body
+     over a duration — none of it says where, which is the line this file
+     keeps. Deliberately absent: elev_high/elev_low (an altitude pair narrows a
+     town), gear_id (an id nothing here can resolve), and anything named for a
+     segment, because segments are places with names. */
+  'average_speed', 'max_speed', 'average_heartrate', 'max_heartrate',
+  'has_heartrate', 'average_cadence', 'average_watts', 'max_watts', 'calories',
+  'suffer_score', 'workout_type', 'device_name',
+  'kudos_count', 'achievement_count', 'pr_count'];
+
+/* Splits are copied key by key like everything else rather than taken whole.
+   A blind copy of a nested object is how a field nobody reviewed ends up
+   published — the allowlist above would be decoration if the array under it
+   were waved through. */
+const SPLIT_FIELDS = ['split', 'distance', 'elapsed_time', 'moving_time',
+  'elevation_difference', 'average_speed', 'average_heartrate', 'pace_zone'];
+const MAX_SPLITS = 60;                       // a marathon in km, and a stop
+
+/* Anything matching this in the stored output means the allowlist above grew a
+   field it should not have. Cheap, and it fails loudly at the moment of the
+   mistake rather than on the public page a week later. */
+const LEAKY = /latlng|polyline|"map"|location_|address|timezone/i;
+
+/* ── which activities tick something ──
+   Deliberately only runs. A Strava "WeightTraining" is not evidence the morning
+   practice happened, and board sessions are logged on the climbing page from the
+   Kilter and Tension apps — having a watch tick a climbing session too would
+   double-count the one thing on this site that already has a real source.
+   Everything else is still recorded and still shown; it just ticks nothing. */
+const SPORT_KIND = { Run: 'run', TrailRun: 'run', VirtualRun: 'run' };
+
+/* A run has to be a run. Starting a watch by accident in a car park makes a
+   40-metre "activity", and without a floor that would tick off the long run. */
+const MIN_RUN_M = 500;
+
+/* Where the schedule is read from when a run needs matching to a session. The
+   Worker still holds no plan — it reads the published one, the same file every
+   visitor gets, and keeps it in memory for a few minutes. Overridable so the
+   tests and dev.mjs can point it at a fixture. */
+const PLAN_URL = 'https://ricmassey.com/assets/training-plan.json';
+const PLAN_TTL = 10 * 60 * 1000;
+
 /* Constant-time compare. A plain === leaks the length of the matching prefix
    through timing, which is a real if slow way to recover a token. */
 function sameSecret(a, b) {
@@ -57,6 +113,11 @@ const json = (body, status, origin, extra = {}) =>
 const publicView = entry => ({
   done: entry.done || {},
   ticks: entry.ticks || {},
+  /* Which ticks were placed by Strava rather than by a thumb. Public because
+     the page says so on the card — a tick that appeared on its own should look
+     different from one somebody made, and because it is what lets a deleted
+     activity take its own tick back down without touching a manual one. */
+  auto: entry.auto || {},
   notes: (entry.notes || []).filter(n => n.public !== false).map(({ id, text, at }) => ({ id, text, at })),
   updated: entry.updated || null
 });
@@ -66,7 +127,29 @@ export class TrainingLog {
      the token comes from. It is never sent to the client and never logged. */
   constructor(state, env) {
     this.state = state;
+    this.env = env;
     this.token = env.LOG_TOKEN || '';
+    /* The Strava credentials. Absent on a deploy that has never been wired to
+       Strava, which is fine — the endpoint then records nothing and says so,
+       rather than throwing on every webhook. */
+    this.strava = {
+      id: env.STRAVA_CLIENT_ID || '',
+      secret: env.STRAVA_CLIENT_SECRET || '',
+      seed: env.STRAVA_REFRESH_TOKEN || '',
+      athlete: env.STRAVA_ATHLETE_ID || ''
+    };
+    /* A test seam, and the only one. Both of these are the real thing in
+       production; the tests swap them for a fake Strava and a fixture plan so
+       the matching rules can be asserted without a network or an account. */
+    this.fetch_ = env.FETCH || ((...a) => fetch(...a));
+    this.planUrl = env.PLAN_URL || PLAN_URL;
+    this.plan_ = null; this.planAt = 0;
+    this.access = ''; this.accessExp = 0;
+    /* Webhook deliveries seen recently. The callback URL is unauthenticated —
+       it has to be, Strava does not sign its events — so this caps how much
+       work a stranger POSTing rubbish at it can make the Worker do against
+       Strava's rate limit. */
+    this.hooks = [];
     /* Timestamps of recent failed attempts. In memory rather than storage on
        purpose: there is exactly one instance of this object, so a plain array
        is a global counter, and losing it when the object is evicted is fine —
@@ -93,6 +176,233 @@ export class TrainingLog {
     return this.fails.length >= LIMIT;
   }
   noteFail() { this.fails.push(Date.now()); }
+
+  /* ══ STRAVA ══════════════════════════════════════════════════════════════
+     A run finishes, the watch syncs, Strava POSTs here, and the session on the
+     plan for that date ticks itself off. Nobody opens the site.
+
+     The event Strava sends is only ever {aspect_type, object_id, owner_id} —
+     no distance, no date, no sport. So every one of those three facts is read
+     from the API afterwards, with Ric's own token, and NOT from the webhook
+     body. That is what makes a forged POST at this endpoint harmless: the only
+     thing an attacker controls is which activity id gets looked up, and the
+     token only ever returns activities belonging to the person who issued it. */
+
+  /* Strava rotates the refresh token — "expect that this value can change any
+     time you retrieve a new access token", and the old one dies immediately. So
+     the secret in Cloudflare is a SEED, not the credential: the live one lives
+     in storage from the first refresh onward. Getting this wrong breaks the
+     integration silently, weeks later, on a token that used to work. */
+  async accessToken() {
+    const now = Math.floor(Date.now() / 1000);
+    if (this.access && this.accessExp > now + 120) return this.access;
+    if (!this.strava.id || !this.strava.secret) return '';
+
+    const refresh = (await this.state.storage.get('strava:refresh')) || this.strava.seed;
+    if (!refresh) return '';
+
+    const r = await this.fetch_('https://www.strava.com/oauth/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        client_id: this.strava.id,
+        client_secret: this.strava.secret,
+        refresh_token: refresh,
+        grant_type: 'refresh_token'
+      })
+    });
+    if (!r.ok) return '';
+    const j = await r.json();
+    if (j.refresh_token && j.refresh_token !== refresh) {
+      await this.state.storage.put('strava:refresh', j.refresh_token);
+    }
+    this.access = j.access_token || '';
+    this.accessExp = j.expires_at || 0;
+    return this.access;
+  }
+
+  async activity(id) {
+    const token = await this.accessToken();
+    if (!token) return null;
+    const r = await this.fetch_('https://www.strava.com/api/v3/activities/' + id, {
+      headers: { authorization: 'Bearer ' + token }
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  }
+
+  /* The published plan, as any visitor would read it. Held for a few minutes
+     because a Saturday can deliver several activities in a row and refetching
+     364 days for each of them is rude to Pages and slow for no reason. */
+  async plan() {
+    if (this.plan_ && Date.now() - this.planAt < PLAN_TTL) return this.plan_;
+    try {
+      const r = await this.fetch_(this.planUrl, { cf: { cacheTtl: 300 } });
+      if (!r.ok) return this.plan_ || { days: [] };
+      this.plan_ = await r.json();
+      this.planAt = Date.now();
+    } catch { return this.plan_ || { days: [] }; }
+    return this.plan_;
+  }
+
+  /* Cut an API activity down to what may be published. Returns null if the
+     result trips the leak guard, because storing nothing is the right failure
+     — a missing run card is a nuisance, a published GPS trace is not.
+
+     `hidden` is a run Ric marked "Only You" or followers-only on Strava. It
+     still ticks its session — it happened — but it is not republished here, and
+     it does not even keep its name in storage. Marking a run private on Strava
+     is a person saying what they want; a site that then prints it on the front
+     page has ignored them. What is kept is the little needed to tick, and to
+     take the tick back down if the run is later deleted. */
+  trim(a, hidden) {
+    const out = {};
+    for (const f of ACTIVITY_FIELDS) {
+      if (hidden && f === 'name') continue;
+      if (a[f] !== undefined && a[f] !== null) out[f] = a[f];
+    }
+    out.id = String(out.id || '');
+    if (hidden) out.hidden = true;
+    else out.name = String(out.name || '').slice(0, 160);
+
+    /* Per-kilometre splits, on a public run only. They are the one thing here
+       that is a shape rather than a total — where the hills were, where it fell
+       apart — and the page draws them as a bar per split. */
+    if (!hidden && Array.isArray(a.splits_metric)) {
+      const splits = a.splits_metric.slice(0, MAX_SPLITS).map(s => {
+        const t = {};
+        for (const f of SPLIT_FIELDS) {
+          if (s && s[f] !== undefined && s[f] !== null) t[f] = s[f];
+        }
+        return t;
+      }).filter(s => s.distance);
+      if (splits.length) out.splits = splits;
+    }
+
+    if (LEAKY.test(JSON.stringify(out))) {
+      console.error('strava: refusing to store an activity that tripped the leak guard');
+      return null;
+    }
+    return out;
+  }
+
+  /* Which session this activity is evidence for, or null. */
+  async sessionFor(a) {
+    const date = String(a.start_date_local || '').slice(0, 10);
+    if (!DAY.test(date)) return null;
+    const kind = SPORT_KIND[a.sport_type] || SPORT_KIND[a.type];
+    if (!kind) return null;
+    if (kind === 'run' && Number(a.distance || 0) < MIN_RUN_M) return null;
+    const day = ((await this.plan()).days || []).find(d => d.date === date);
+    const s = day && (day.sessions || []).find(x => x.kind === kind);
+    return s ? { date, id: s.id } : null;
+  }
+
+  /* Runs stack: one date can hold a shakeout and a hard session. Merged by id
+     so an `update` event — a rename, a corrected sport — replaces rather than
+     duplicates. `sa:<id>` is the reverse pointer, because a delete event says
+     only which activity went and never which day it was on. */
+  async storeActivity(a) {
+    const date = String(a.start_date_local || '').slice(0, 10);
+    if (!DAY.test(date)) return null;
+    const list = (await this.state.storage.get('s:' + date)) || [];
+    const next = list.filter(x => String(x.id) !== String(a.id));
+    next.push(a);
+    next.sort((x, y) => String(x.start_date_local).localeCompare(String(y.start_date_local)));
+    await this.state.storage.put('s:' + date, next);
+    await this.state.storage.put('sa:' + a.id, date);
+    return date;
+  }
+
+  async tick(date, sessionId) {
+    const prev = (await this.state.storage.get('d:' + date)) || { done: {}, ticks: {}, notes: [] };
+    /* Presence, not truth. Strava re-sends a webhook every time an activity is
+       renamed or edited, so this runs again long after the run landed — and a
+       session Ric has already unticked by hand reads as `false`, which is
+       falsy. Testing the value put his tick back every time he renamed the run
+       on his phone. A key is only in `done` because someone decided it, so
+       once it is there, the watch has had its say. */
+    if (prev.done && sessionId in prev.done) return;
+    const entry = {
+      ...prev,
+      done: { ...(prev.done || {}), [sessionId]: true },
+      auto: { ...(prev.auto || {}), [sessionId]: true },
+      updated: new Date().toISOString()
+    };
+    await this.state.storage.put('d:' + date, entry);
+  }
+
+  /* Deleting the activity on Strava takes its tick back down — but only if
+     Strava is what put it there. A tick Ric made with his thumb is his, and a
+     watch has no business undoing it. */
+  async forget(id) {
+    const date = await this.state.storage.get('sa:' + String(id));
+    if (!date) return;
+    const list = ((await this.state.storage.get('s:' + date)) || [])
+      .filter(x => String(x.id) !== String(id));
+    if (list.length) await this.state.storage.put('s:' + date, list);
+    else await this.state.storage.delete('s:' + date);
+    await this.state.storage.delete('sa:' + String(id));
+
+    const entry = await this.state.storage.get('d:' + date);
+    if (!entry || !entry.auto) return;
+    /* Only drop a tick that nothing left on the day still supports. */
+    const still = new Set();
+    for (const a of list) {
+      const m = await this.sessionFor(a);
+      if (m) still.add(m.id);
+    }
+    const done = { ...(entry.done || {}) }, auto = { ...entry.auto };
+    let changed = false;
+    for (const sid of Object.keys(entry.auto)) {
+      if (!still.has(sid)) { delete done[sid]; delete auto[sid]; changed = true; }
+    }
+    if (!changed) return;
+    await this.state.storage.put('d:' + date, { ...entry, done, auto, updated: new Date().toISOString() });
+  }
+
+  hookFlood() {
+    const now = Date.now(), WINDOW = 15 * 60 * 1000, LIMIT = 100;
+    this.hooks = this.hooks.filter(t => now - t < WINDOW);
+    if (this.hooks.length >= LIMIT) return true;
+    this.hooks.push(now);
+    return false;
+  }
+
+  /* The whole job, run after the 200 has already gone back to Strava. Nothing
+     in here is allowed to throw: a webhook that fails is retried three times
+     and then dropped forever, so a bad day should lose one run, not the log. */
+  async ingest(ev) {
+    try {
+      if (!ev || ev.object_type !== 'activity') return;
+      const id = String(ev.object_id || '');
+      if (!/^\d{1,20}$/.test(id)) return;
+      /* Ric's own athlete id, when configured — the cheap check, before
+         spending a Strava API call on somebody else's event. */
+      if (this.strava.athlete && String(ev.owner_id) !== String(this.strava.athlete)) return;
+      if (this.hookFlood()) { console.error('strava: webhook flood, dropping'); return; }
+
+      if (ev.aspect_type === 'delete') return await this.forget(id);
+
+      const raw = await this.activity(id);
+      if (!raw) return;
+      /* The authoritative owner check. The event body is a stranger's claim;
+         this is the API's answer, made with Ric's token. */
+      if (this.strava.athlete && raw.athlete && String(raw.athlete.id) !== String(this.strava.athlete)) return;
+
+      /* Strava says this two ways depending on the age of the activity, so both
+         are read and either one is enough. */
+      const hidden = raw.private === true || (raw.visibility && raw.visibility !== 'everyone');
+      const a = this.trim(raw, hidden);
+      if (!a) return;
+      const date = await this.storeActivity(a);
+      if (!date) return;
+      const match = await this.sessionFor(a);
+      if (match) await this.tick(match.date, match.id);
+    } catch (e) {
+      console.error('strava: ingest failed', e && e.message);
+    }
+  }
 
   async fetch(request) {
     const url = new URL(request.url);
@@ -212,6 +522,57 @@ export class TrainingLog {
       return json({ error: 'method not allowed' }, 405, origin);
     }
 
+    /* ---------- /strava/:date ----------
+       Read-only to the world: the runs, trimmed to ACTIVITY_FIELDS. There is no
+       public write path here at all — activities only ever arrive through
+       /strava-ingest, which the outer Worker calls and nobody else can reach. */
+    if (parts[0] === 'strava') {
+      if (request.method !== 'GET') return json({ error: 'method not allowed' }, 405, origin);
+      if (date && !DAY.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400, origin);
+      /* The second half of the private-run rule. trim() already refused to keep
+         a hidden run's name; this drops the record itself, so a run marked
+         "Only You" on Strava leaves nothing here but the tick it earned. Two
+         layers rather than one, because there is only one chance to get this
+         right and the cost of the second layer is a filter.
+
+         Signed in, Ric gets his hidden runs back. "Not republished" was always
+         the rule and still is — but the filter was hiding them from their own
+         author too, which made his weekly mileage wrong on his own page and
+         gave him no way to see why. The name still never comes back: trim()
+         refused to keep it, so there is nothing to hand over even here. Same
+         shape as the private notes below, including the caching, which MUST be
+         private on this path or a shared cache would hand the owner's copy to
+         the street. */
+      const isOwner = authed();
+      const seen = list => (list || []).filter(a => isOwner || !a.hidden);
+      const cache = isOwner ? 'private, no-store' : 'public, max-age=30';
+      if (date) {
+        return json(seen(await this.state.storage.get('s:' + date)), 200, origin,
+          { 'cache-control': cache });
+      }
+      const all = await this.state.storage.list({ prefix: 's:' });
+      const out = {};
+      for (const [k, v] of all) {
+        const shown = seen(v);
+        if (shown.length) out[k.slice(2)] = shown;
+      }
+      return json({ days: out }, 200, origin, { 'cache-control': cache });
+    }
+
+    /* ---------- /strava-ingest ----------
+       Internal. The outer Worker builds this request itself after answering
+       Strava, and its route table refuses the path from outside, so this is
+       never reachable over the internet. It carries no token because there is
+       nobody to hold one — Strava does not sign its webhooks. What protects it
+       is that it trusts nothing in the body: see ingest(). */
+    if (parts[0] === 'strava-ingest') {
+      if (request.method !== 'POST') return json({ error: 'method not allowed' }, 405, origin);
+      let ev = {};
+      try { ev = await request.json(); } catch {}
+      await this.ingest(ev);
+      return json({ ok: true }, 200, origin);
+    }
+
     if (parts[0] !== 'log') return json({ error: 'not found' }, 404, origin);
     if (date && !DAY.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400, origin);
 
@@ -223,7 +584,7 @@ export class TrainingLog {
        will stop writing. Caching therefore has to be private on this path. */
     if (request.method === 'GET') {
       const isOwner = authed();
-      const view = e => isOwner ? { done: e.done || {}, ticks: e.ticks || {}, notes: e.notes || [], updated: e.updated || null }
+      const view = e => isOwner ? { done: e.done || {}, ticks: e.ticks || {}, auto: e.auto || {}, notes: e.notes || [], updated: e.updated || null }
                                 : publicView(e);
       const cache = isOwner ? 'private, no-store' : 'public, max-age=30';
 
@@ -252,9 +613,18 @@ export class TrainingLog {
 
       const prev = (await this.state.storage.get('d:' + date)) || { done: {}, ticks: {}, notes: [] };
 
+      /* A session the owner has just spoken about is no longer Strava's to
+         claim. `auto` means "the tick standing here was placed by a watch", so
+         a thumb touching that session — ticking OR unticking it — clears the
+         flag, and a later delete on Strava can no longer take the tick away. */
+      const said = body.done && typeof body.done === 'object' ? Object.keys(body.done) : [];
+      const auto = { ...(prev.auto || {}) };
+      for (const k of said) delete auto[k];
+
       /* Merge rather than replace: the phone and the laptop both write, and a
          tick made on one should not be erased by a stale view from the other. */
       const entry = {
+        auto,
         done:  { ...prev.done,  ...(body.done  && typeof body.done  === 'object' ? body.done  : {}) },
         ticks: { ...prev.ticks, ...(body.ticks && typeof body.ticks === 'object' ? body.ticks : {}) },
         notes: Array.isArray(body.notes) ? body.notes.slice(0, 50).map(n => ({
@@ -271,18 +641,74 @@ export class TrainingLog {
          already proved the token, and it is what the page re-renders from.
          Returning the filtered view here would make a private note vanish the
          instant it was written. */
-      return json({ ok: true, date, done: entry.done, ticks: entry.ticks, notes: entry.notes, updated: entry.updated }, 200, origin);
+      return json({ ok: true, date, done: entry.done, ticks: entry.ticks, auto: entry.auto, notes: entry.notes, updated: entry.updated }, 200, origin);
     }
 
     return json({ error: 'method not allowed' }, 405, origin);
   }
 }
 
+/* Paths the outside world may reach. A whitelist rather than a blacklist,
+   because the only thing standing between the internet and /strava-ingest is
+   this line — and a blacklist is one forgotten entry away from being wrong. */
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava']);
+
 export default {
-  fetch(request, env) {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    const parts = url.pathname.split('/').filter(Boolean);
     /* One named instance, one place, one copy of the log — the same reason
        crossfire-rooms names its object. Every device writing ticks is talking
        to the same one. */
-    return env.LOG.get(env.LOG.idFromName('training')).fetch(request);
+    const stub = env.LOG.get(env.LOG.idFromName('training'));
+
+    if (!PUBLIC_PATHS.has(parts[0])) {
+      return new Response(JSON.stringify({ error: 'not found' }), {
+        status: 404, headers: { 'content-type': 'application/json; charset=utf-8' }
+      });
+    }
+
+    /* ── the Strava callback ──
+       Two different requests arrive on this one URL, and they are told apart by
+       hub.mode, which only the handshake carries.
+
+       Both have a two-second budget. The handshake is trivially inside it; the
+       event is not, because answering it properly means a token refresh, an API
+       call and a plan fetch. So the event is acknowledged FIRST and done after,
+       in waitUntil. Miss the window and Strava retries three times and then
+       drops the event on the floor — the run is gone, and nothing on the page
+       would ever say so. */
+    if (parts[0] === 'strava' && !parts[1]) {
+      if (request.method === 'GET' && url.searchParams.get('hub.mode')) {
+        const given = url.searchParams.get('hub.verify_token') || '';
+        /* The verify token is what stops a stranger pointing THEIR Strava
+           subscription at this URL. It is not a bearer token — it only ever
+           appears in this handshake — but it is still a secret. */
+        if (!env.STRAVA_VERIFY_TOKEN || !sameSecret(given, env.STRAVA_VERIFY_TOKEN)) {
+          return new Response(JSON.stringify({ error: 'nope' }), {
+            status: 403, headers: { 'content-type': 'application/json; charset=utf-8' }
+          });
+        }
+        return new Response(JSON.stringify({ 'hub.challenge': url.searchParams.get('hub.challenge') || '' }), {
+          status: 200, headers: { 'content-type': 'application/json; charset=utf-8' }
+        });
+      }
+
+      if (request.method === 'POST') {
+        let ev = null;
+        try { ev = await request.json(); } catch {}
+        const work = stub.fetch(new Request('https://internal/strava-ingest', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(ev || {})
+        }));
+        /* ctx is absent under dev.mjs and the tests, where awaiting is both
+           possible and what you want — the assertion runs on the next line. */
+        if (ctx && ctx.waitUntil) ctx.waitUntil(work); else await work;
+        return new Response('ok', { status: 200 });
+      }
+    }
+
+    return stub.fetch(request);
   }
 };

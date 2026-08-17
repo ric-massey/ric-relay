@@ -159,6 +159,23 @@ and Tension apps. Rules for it:
 - Board grades are their own scale. Never merge them into the outdoor stats,
   pyramid or ledger — a board V6 and a Red River V6 are unrelated numbers.
 
+**Runs are pushed, not written.** `training.html` shows runs that Strava POSTs to the
+Worker the moment a watch syncs, and the run session planned for that date ticks itself
+off. `projects/training/README.md` has the full rules; the three that constrain edits:
+
+- **No coordinate from Strava may ever be stored.** An activity carries the route door
+  to door in `start_latlng` and `map.polyline`. The Worker rebuilds it from
+  `ACTIVITY_FIELDS` and nothing else survives, with a leak guard over the result and a
+  test that asserts it. This is hard rule 1 arriving through a new door — do not widen
+  that list without thinking about what is in the field you are adding.
+- **The webhook body is never believed.** It carries only an activity id; the date,
+  sport and distance are read back from the API with Ric's token. The endpoint is public
+  and unauthenticated because Strava does not sign its events, and that is only safe as
+  long as nothing trusts the payload. Keep it that way.
+- **Only runs tick, and only sessions that match them.** Board sessions are already
+  pulled properly onto the climbing page — a watch ticking climbing too would
+  double-count the site's one real source.
+
 **Apex is pulled, not written.** `apex.html` reads `projects/apex/apex-data.js`, which
 `projects/apex/pull-apex.py` generates from the Apex Legends Status API. Rules:
 

@@ -27,7 +27,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `orrin.html` | Orrin | Plain-language tour of Orrin plus live public project activity from GitHub |
 | `psyche.html` | Psyche | Human-systems field notebook — mood, criteria, substances, and evidence |
 | `climbing.html` | Climbing | Mountain-Project-style route ledger — projects, ticks, objectives |
-| `training.html` | Training | Strava-style feed — runs, workouts, health (live feed still TODO) · *unlisted on the home directory* |
+| `training.html` | Training | Strava-style feed — the generated plan, ticks and notes from a Worker, and runs pushed in by Strava as they finish · *unlisted on the home directory* |
 | `apex.html` | Apex | Apex Legends lobby — rank ladder, career kills, and every legend carrying a tracker (data pulled by `projects/apex/pull-apex.py`) · *unlisted on the home directory* |
 | `exploration.html` | Exploration | Space deck — experiments dock here |
 | `workbench.html` | Workbench | Blueprint board of random / half-finished projects |
@@ -196,10 +196,10 @@ belong here.
   RP arrive with the key; the ladder can also be lit up early by typing a `rank` block
   into `projects/apex/apex-data.js`. Career kills are account-wide and no API returns
   them — they're typed into the `career` block by hand and `pull-apex.py` preserves them.
-- **Training** (`training.html`) has no live feed. Two ways to wire it up: the quick
-  Strava embed widget, or a small serverless function hitting the Strava API (Garmin
-  syncs into Strava automatically). The two activity cards on the page are marked
-  `example` and exist only to show the format — replace them, don't leave them.
+- **Training** (`training.html`) is live: the plan is generated, ticks and notes are
+  stored in a Worker, and runs push themselves in from Strava. The page still bills
+  itself as "runs, workouts and health telemetry" in its meta description and there is
+  no health data anywhere — either find a source for it or stop claiming it.
 
 ## Easter eggs
 

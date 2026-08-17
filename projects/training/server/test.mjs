@@ -8,7 +8,7 @@
 
    Exits non-zero on any failure. */
 
-import { TrainingLog } from './worker.mjs';
+import worker, { TrainingLog } from './worker.mjs';
 
 const TOKEN = 'test-token-long-enough-to-be-real';
 let failures = 0;
@@ -180,6 +180,371 @@ console.log('\nRULE  malformed input is refused rather than stored');
   ok((await call('POST', '/log', { done: {} }, TOKEN)).status === 400, 'POST with no date');
   ok((await call('GET', '/nope')).status === 404, 'unknown path');
   ok((await call('DELETE', '/log/2026-08-16', null, TOKEN)).status === 405, 'unsupported method');
+}
+
+/* ══ STRAVA ════════════════════════════════════════════════════════════════
+   The auto-tick answers a webhook that ANYONE can POST to — Strava does not
+   sign its events — and it reads activities that carry the exact route Ric ran.
+   Those are the two things worth pinning down: a stranger's event must achieve
+   nothing, and no coordinate may ever reach storage. */
+
+const ATHLETE = 4242;
+
+/* A day with a run session, a day with only climbing. Enough to tell "ticked
+   the right thing" from "ticked something". */
+const PLAN = {
+  days: [
+    { date: '2026-08-17', sessions: [
+      { slot: 'MORNING', kind: 'body', id: 'morning-body', title: 'Morning practice' },
+      { slot: 'MORNING', kind: 'run', id: 'morning-run', title: 'Long run — 7 mi' }
+    ] },
+    { date: '2026-08-18', sessions: [
+      { slot: 'MORNING', kind: 'climb', id: 'morning-climb', title: 'Kilter pyramids' }
+    ] }
+  ]
+};
+
+/* A real activity as the API returns one — including the three fields that must
+   never come out the other side. */
+const activity = (over = {}) => ({
+  id: 900001,
+  name: 'Morning Run',
+  sport_type: 'Run',
+  type: 'Run',
+  distance: 11265,
+  moving_time: 3120,
+  elapsed_time: 3200,
+  total_elevation_gain: 88,
+  start_date_local: '2026-08-17T06:12:00Z',
+  athlete: { id: ATHLETE },
+  average_speed: 3.61,
+  max_speed: 4.9,
+  average_heartrate: 152.4,
+  max_heartrate: 176,
+  has_heartrate: true,
+  average_cadence: 84.2,
+  calories: 812,
+  suffer_score: 121,
+  device_name: 'Garmin Forerunner 265',
+  kudos_count: 4,
+  pr_count: 1,
+  /* Splits carry a place name in `name` on some Strava payloads and always
+     carry fields nobody here reviewed. The fixture puts one of each in, so the
+     copy has something to fail to copy. */
+  splits_metric: [
+    { split: 1, distance: 1000, elapsed_time: 296, moving_time: 293, elevation_difference: 4, average_speed: 3.41, average_heartrate: 141, pace_zone: 2, location_city: 'Knoxville' },
+    { split: 2, distance: 1000, elapsed_time: 288, moving_time: 288, elevation_difference: -2, average_speed: 3.47, average_heartrate: 149, pace_zone: 2 }
+  ],
+  start_latlng: [35.9606, -83.9207],
+  end_latlng: [35.9611, -83.9199],
+  location_city: 'Knoxville',
+  timezone: '(GMT-05:00) America/New_York',
+  map: { id: 'a900001', polyline: 'ojqzErfhcNSKGGCCEIAIAI?QAI' },
+  ...over
+});
+
+function stravaRig(opts = {}) {
+  const mem = new Map();
+  const calls = [];
+  const activities = opts.activities || { 900001: activity() };
+  let refresh = 'seed-refresh';
+
+  const fetch_ = async (u, init) => {
+    const url = String(u);
+    calls.push(url);
+    if (url.includes('/oauth/token')) {
+      const sent = JSON.parse(init.body);
+      /* Strava rotates the refresh token. Handing back a new one every time is
+         the behaviour that breaks integrations which treat the secret as the
+         credential, so the fake does it. */
+      if (sent.refresh_token !== refresh) return new Response('{}', { status: 400 });
+      refresh = 'rotated-' + calls.length;
+      return Response.json({ access_token: 'access-' + calls.length, refresh_token: refresh, expires_at: 1e12 });
+    }
+    if (url.includes('/api/v3/activities/')) {
+      const id = url.split('/').pop();
+      const a = activities[id];
+      return a ? Response.json(a) : new Response('{}', { status: 404 });
+    }
+    if (url.includes('plan')) return Response.json(opts.plan || PLAN);
+    return new Response('{}', { status: 404 });
+  };
+
+  const log = new TrainingLog({
+    storage: {
+      get: async k => mem.get(k),
+      put: async (k, v) => { mem.set(k, v); },
+      delete: async k => { mem.delete(k); },
+      list: async ({ prefix }) => new Map([...mem].filter(([k]) => k.startsWith(prefix)))
+    }
+  }, {
+    LOG_TOKEN: TOKEN,
+    STRAVA_CLIENT_ID: '12345',
+    STRAVA_CLIENT_SECRET: 'client-secret',
+    STRAVA_REFRESH_TOKEN: 'seed-refresh',
+    STRAVA_ATHLETE_ID: String(ATHLETE),
+    STRAVA_VERIFY_TOKEN: 'verify-me',
+    PLAN_URL: 'https://example.invalid/plan.json',
+    FETCH: fetch_,
+    ...(opts.env || {})
+  });
+
+  const env = {
+    LOG: { idFromName: () => 'training', get: () => log },
+    STRAVA_VERIFY_TOKEN: 'verify-me'
+  };
+  /* Through the outer Worker, so the route whitelist and the two-second
+     acknowledgement are part of what is being tested. No ctx is passed, which
+     makes the ingest awaited rather than backgrounded — see the note there. */
+  const hit = async (method, path, body, token) => {
+    const r = await worker.fetch(new Request('https://x' + path, {
+      method,
+      headers: { 'content-type': 'application/json', ...(token ? { authorization: 'Bearer ' + token } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {})
+    }), env, null);
+    const text = await r.text();
+    let parsed = null; try { parsed = JSON.parse(text); } catch {}
+    return { status: r.status, text, body: parsed, headers: r.headers };
+  };
+  const event = (over = {}) => hit('POST', '/strava',
+    { aspect_type: 'create', object_type: 'activity', object_id: 900001, owner_id: ATHLETE, ...over });
+
+  return { hit, event, mem, calls, storage: () => mem, refreshNow: () => refresh };
+}
+
+console.log('\nRULE  a finished run ticks the session that was planned for that day');
+{
+  const r = stravaRig();
+  const ack = await r.event();
+  ok(ack.status === 200, 'the webhook is acknowledged');
+
+  const day = await r.hit('GET', '/log/2026-08-17');
+  ok(day.body.done['morning-run'] === true, 'the run session is ticked');
+  ok(day.body.done['morning-body'] === undefined, 'and nothing else on the day is');
+  ok(day.body.auto['morning-run'] === true, 'the tick is marked as one Strava placed');
+
+  const runs = await r.hit('GET', '/strava/2026-08-17');
+  ok(runs.body.length === 1 && runs.body[0].name === 'Morning Run', 'the run itself is readable');
+  ok(runs.body[0].distance === 11265, 'with the distance the page needs');
+}
+
+console.log('\nRULE  no coordinate from a Strava activity ever reaches storage');
+{
+  /* Rule one of the whole repo. An activity carries the route door to door;
+     the allowlist is what stops it, and this is the test that says so. */
+  const r = stravaRig();
+  await r.event();
+  const everything = JSON.stringify([...r.storage()]);
+  ok(!everything.includes('35.96'), 'no start or end coordinate');
+  ok(!everything.includes('ojqzE'), 'no encoded polyline');
+  ok(!everything.includes('Knoxville'), 'no city');
+  ok(!everything.includes('America/New_York'), 'no timezone');
+
+  const pub = await r.hit('GET', '/strava');
+  ok(!pub.text.includes('35.96') && !pub.text.includes('ojqzE'), 'and none of it in the public read');
+
+  /* Refusing the whole activity would satisfy every assertion above while
+     quietly shipping nothing, so say out loud that the run survived — and that
+     what was dropped is the planted field, not the payload. */
+  const kept = (await r.hit('GET', '/strava/2026-08-17')).body[0];
+  ok(kept && kept.distance === 11265, 'the run itself is still stored');
+  ok(kept.average_heartrate === 152.4 && kept.calories === 812, 'and its numbers with it');
+  ok(Array.isArray(kept.splits) && kept.splits.length === 2, 'the splits are kept');
+  ok(kept.splits[0].average_speed === 3.41, 'with the fields the page draws');
+  ok(kept.splits[0].location_city === undefined, 'and the city planted inside a split is gone');
+}
+
+console.log('\nRULE  a run only ticks a session that actually matches it');
+{
+  const climbDay = stravaRig({ activities: { 900001: activity({ start_date_local: '2026-08-18T06:12:00Z' }) } });
+  await climbDay.event();
+  const d = await climbDay.hit('GET', '/log/2026-08-18');
+  ok(Object.keys(d.body.done).length === 0, 'a run on a climbing day ticks nothing');
+  ok((await climbDay.hit('GET', '/strava/2026-08-18')).body.length === 1, 'but it is still recorded and shown');
+
+  const ride = stravaRig({ activities: { 900001: activity({ sport_type: 'Ride', type: 'Ride' }) } });
+  await ride.event();
+  ok(Object.keys((await ride.hit('GET', '/log/2026-08-17')).body.done).length === 0, 'a ride ticks nothing');
+
+  /* Starting a watch by accident in a car park makes a 40-metre activity. */
+  const stub = stravaRig({ activities: { 900001: activity({ distance: 120 }) } });
+  await stub.event();
+  ok(Object.keys((await stub.hit('GET', '/log/2026-08-17')).body.done).length === 0,
+    'an accidental 120 m does not tick the long run');
+}
+
+console.log('\nRULE  a run marked private on Strava ticks its session and is not republished');
+{
+  /* Marking a run private is a person saying what they want. It still happened,
+     so the session still ticks — but nothing about it appears on a public page,
+     and its name is not even kept. */
+  for (const over of [{ visibility: 'only_me' }, { visibility: 'followers_only' }, { private: true }]) {
+    const r = stravaRig({ activities: { 900001: activity({ name: 'PRIVATE-RUN-CANARY', ...over }) } });
+    await r.event();
+    const what = JSON.stringify(over);
+
+    ok((await r.hit('GET', '/log/2026-08-17')).body.done['morning-run'] === true,
+      `${what}: the session is still ticked`);
+    ok((await r.hit('GET', '/strava/2026-08-17')).body.length === 0,
+      `${what}: but the run is not in the public feed`);
+    ok(!JSON.stringify((await r.hit('GET', '/strava')).body).includes('PRIVATE-RUN-CANARY'),
+      `${what}: and its name is nowhere in the full read`);
+    ok(!JSON.stringify([...r.storage()]).includes('PRIVATE-RUN-CANARY'),
+      `${what}: the name was never even stored`);
+  }
+}
+
+console.log('\nRULE  a private run is withheld from the world, not from the person who ran it');
+{
+  /* The rule is "not republished", and it was over-applied: the filter hid a
+     private run from its own author, so his weekly mileage on his own page was
+     short by exactly the runs he chose not to publish. Signed in he gets the
+     numbers back. The name is a different matter — it was never stored, so
+     there is nothing to hand over at any authorisation level. */
+  const r = stravaRig({ activities: { 900001: activity({ name: 'PRIVATE-RUN-CANARY', visibility: 'only_me' }) } });
+  await r.event();
+
+  const pub = await r.hit('GET', '/strava/2026-08-17');
+  ok(pub.body.length === 0, 'a visitor still sees no private run at all');
+
+  const mine = await r.hit('GET', '/strava/2026-08-17', null, TOKEN);
+  ok(mine.body.length === 1, 'the owner gets it back');
+  ok(mine.body[0].distance === 11265, 'with the distance, so his mileage is his mileage');
+  ok(mine.body[0].hidden === true, 'flagged, so the page can say which runs are not public');
+  ok(mine.body[0].name === undefined, 'and still no name, because none was ever stored');
+  ok(!mine.text.includes('PRIVATE-RUN-CANARY'), 'the canary is nowhere in the owner read either');
+
+  /* A shared cache holding the owner's copy would undo all of the above. */
+  ok(/private|no-store/.test(mine.headers.get('cache-control') || ''),
+     "the owner's copy is not cacheable by anything in the middle");
+  ok(/public/.test(pub.headers.get('cache-control') || ''),
+     "the visitor's copy still caches as before");
+
+  /* Splits are the one field trim() withholds from a hidden run, so even the
+     owner's copy cannot leak a per-kilometre shape into a public cache later. */
+  ok(mine.body[0].splits === undefined, 'no splits are kept for a private run');
+}
+
+console.log('\nRULE  a forged webhook achieves nothing');
+{
+  /* The callback URL is public and unauthenticated — it has to be. What makes
+     that safe is that the event body is never believed: the date, the sport and
+     the distance are all read back from the API with Ric's own token. */
+  const other = stravaRig();
+  await other.event({ owner_id: 999 });
+  ok(Object.keys((await other.hit('GET', '/log/2026-08-17')).body.done).length === 0,
+    "another athlete's event is dropped before it costs an API call");
+  ok(other.calls.length === 0, 'and really does not call Strava at all');
+
+  const unknown = stravaRig();
+  await unknown.event({ object_id: 5 });
+  ok(Object.keys((await unknown.hit('GET', '/strava')).body.days).length === 0,
+    'an id the API will not return stores nothing');
+
+  const lie = stravaRig({ activities: { 900001: activity({ athlete: { id: 777 } }) } });
+  await lie.event();
+  ok(Object.keys((await lie.hit('GET', '/strava')).body.days).length === 0,
+    "an activity the API says belongs to someone else is refused");
+}
+
+console.log('\nRULE  the webhook endpoint gives nothing else away');
+{
+  const r = stravaRig();
+  const good = await r.hit('GET', '/strava?hub.mode=subscribe&hub.challenge=abc123&hub.verify_token=verify-me');
+  ok(good.status === 200 && good.body['hub.challenge'] === 'abc123', 'the right verify token echoes the challenge');
+
+  const bad = await r.hit('GET', '/strava?hub.mode=subscribe&hub.challenge=abc123&hub.verify_token=wrong');
+  ok(bad.status === 403, 'a wrong one is refused');
+  ok(!bad.text.includes('abc123'), 'and the challenge is not echoed to it');
+
+  ok((await r.hit('POST', '/strava/2026-08-17', { name: 'fake' })).status === 405,
+    'there is no public way to write an activity');
+  ok((await r.hit('POST', '/strava-ingest', { object_id: 1 })).status === 404,
+    'and the internal ingest path is not reachable from outside');
+}
+
+console.log('\nRULE  deleting a run on Strava takes back its own tick and no others');
+{
+  const r = stravaRig();
+  await r.event();
+  await r.hit('POST', '/log/2026-08-17', { done: { 'morning-body': true } }, TOKEN);
+
+  await r.event({ aspect_type: 'delete' });
+  const after = await r.hit('GET', '/log/2026-08-17');
+  ok(after.body.done['morning-run'] === undefined, 'the auto tick is gone');
+  ok(after.body.done['morning-body'] === true, "but the owner's own tick on the same day stands");
+  ok((await r.hit('GET', '/strava/2026-08-17')).body.length === 0, 'and the run itself is gone');
+}
+
+console.log('\nRULE  a tick the owner has touched is his, and Strava cannot take it back');
+{
+  /* Ric re-ticks the same session by hand — the watch died mid-run and he said
+     so himself. From that moment the tick is a human's, and a later delete on
+     Strava must leave it exactly where it is. */
+  const r = stravaRig();
+  await r.event();
+  await r.hit('POST', '/log/2026-08-17', { done: { 'morning-run': true } }, TOKEN);
+  const mid = await r.hit('GET', '/log/2026-08-17');
+  ok(mid.body.auto['morning-run'] === undefined, 'touching it clears the Strava mark');
+
+  await r.event({ aspect_type: 'delete' });
+  const after = await r.hit('GET', '/log/2026-08-17');
+  ok(after.body.done['morning-run'] === true, 'and the tick survives the deletion');
+}
+
+console.log('\nRULE  a session unticked by hand stays unticked, however often Strava re-sends it');
+{
+  /* Strava fires a webhook on every edit, so renaming a run on the phone
+     replays this hours later. Ric unticking a session Strava filled in is him
+     saying it did not really happen — a rename must not argue with that. */
+  const r = stravaRig();
+  await r.event();
+  await r.hit('POST', '/log/2026-08-17', { done: { 'morning-run': false } }, TOKEN);
+
+  await r.event({ aspect_type: 'update' });
+  const after = await r.hit('GET', '/log/2026-08-17');
+  ok(after.body.done['morning-run'] === false, 'the untick holds');
+  ok(after.body.auto['morning-run'] === undefined, 'and nothing claims Strava put it back');
+
+  /* The same replay on a day he has never touched still ticks, or the whole
+     feature would have quietly stopped working. */
+  const virgin = stravaRig();
+  await virgin.event({ aspect_type: 'update' });
+  ok((await virgin.hit('GET', '/log/2026-08-17')).body.done['morning-run'] === true,
+     'an untouched session still ticks on an update');
+}
+
+console.log('\nRULE  the rotating refresh token is kept, not the one in the secret');
+{
+  /* Strava says the value "can change anytime you retrieve a new access token"
+     and kills the old one immediately. Treating the Cloudflare secret as the
+     credential works for exactly one refresh and then breaks silently, weeks
+     later, on a token that used to be fine. */
+  const r = stravaRig();
+  await r.event();
+  const stored = r.storage().get('strava:refresh');
+  ok(!!stored && stored !== 'seed-refresh', 'the rotated token is written to storage');
+
+  /* Second activity, same object: the seed is now dead and only the stored
+     token gets an access token back. */
+  await r.event({ object_id: 900001, aspect_type: 'update' });
+  ok((await r.hit('GET', '/strava/2026-08-17')).body.length === 1, 'the next event still works');
+}
+
+console.log('\nRULE  a Worker with no Strava secrets behaves exactly as it did before');
+{
+  const bare = new TrainingLog({
+    storage: {
+      get: async () => undefined, put: async () => {}, delete: async () => {},
+      list: async () => new Map()
+    }
+  }, { LOG_TOKEN: TOKEN });
+  const env = { LOG: { idFromName: () => 'training', get: () => bare } };
+  const r = await worker.fetch(new Request('https://x/strava', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ aspect_type: 'create', object_type: 'activity', object_id: 1, owner_id: 1 })
+  }), env, null);
+  ok(r.status === 200, 'the webhook is still acknowledged rather than erroring');
 }
 
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WORKER RULES PASS'));
