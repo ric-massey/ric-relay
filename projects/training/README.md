@@ -120,21 +120,38 @@ activities belonging to the person who issued it.
   pulled. Everything else is still recorded and shown; it just ticks nothing.
 - **A run on a day with no run session ticks nothing** and appears as a card
   anyway. Unplanned is not the same as unrecorded.
-- **Tapping a run opens it rather than leaving the site.** Pace, heart rate,
-  cadence, calories, relative effort, the watch, and a bar per kilometre split —
-  everything Strava returns that is not a place. Strava itself is one tap
-  further in, for the map, which is the thing this site deliberately does not
-  have.
+- **A run lives inside the session it answered.** One chevron, on the session
+  you tick, opening the workout you were meant to do and then the run you
+  actually did: distance, elapsed, average and best pace, elevation, average and
+  max heart rate, temperature, and the route on a map. A run the plan has no
+  slot for — an unplanned one, or a ride — keeps a card of its own, because
+  there is no session to fold it into.
+- **Most of what Strava sends is stored but not drawn.** Splits, cadence,
+  calories, relative effort, kudos, PRs, the watch model. Each is one line in
+  `runDetail()` to put back, with no re-ingest and no Worker deploy — the page
+  draws only the fields it asks for.
 - **The week's mileage is what you ran**, summed from Strava and shown against
   the plan's target: "7 of 10 mi". Only runs count, so a ride does not flatter
   it. Signed in, private runs count too — see below.
 - **Under 500 m ticks nothing.** Starting a watch by accident in a car park
   makes a 40-metre activity, and without a floor that would tick off the long run.
-- **No coordinate is ever stored.** An activity carries `start_latlng`,
-  `end_latlng` and an encoded `map.polyline` — the route, door to door. The
-  Worker rebuilds the activity from `ACTIVITY_FIELDS` and nothing else survives
-  the copy, the same direction as `PUBLIC_FIELDS` in `export.mjs`. There is a
-  leak guard over the result and a test that says so.
+- **The route is published; nothing else about where is.** The encoded polyline
+  is kept and drawn on a real map in the run detail — Ric's decision on
+  2026-08-17, reversing what this file used to say. `start_latlng`, city,
+  address and timezone are still refused, the leak guard still runs over the
+  result, and the route comes in through one named field rather than by copying
+  Strava's `map` object whole. Everything else is still rebuilt from
+  `ACTIVITY_FIELDS`, the same direction as `PUBLIC_FIELDS` in `export.mjs`.
+- **A visitor cannot see the route for five minutes.** Long enough that the map
+  is never up while he is still standing at the trailhead, short enough to be
+  invisible otherwise. Counted from when the Worker took the activity in, not
+  from when the run started — `start_date_local` is a local time wearing a `Z`
+  and a five minute hold cannot survive a timezone of error. Signed in, Ric
+  sees his own route immediately.
+- **The map is OpenStreetMap tiles, drawn by hand.** No Leaflet, no API key, no
+  script from anywhere: the page does the Web Mercator arithmetic itself, places
+  `<img>` tiles, and draws the route over them as SVG. This is the only external
+  host the site talks to. If the tiles fail the route still draws.
 - **Private on Strava stays private here — from visitors.** A run marked "Only
   You" or followers-only still ticks its session, but it is not republished, its
   name is not even written to storage, and no splits are kept for it. Signed in,
@@ -275,17 +292,21 @@ Obed, and it says so in advance. If that ever stops being the intent, the
 switches are `PRIVATE_SESSION` and `PUBLIC_FIELDS` in `export.mjs`, and the
 `publicView` filter in `server/worker.mjs`.
 
-Runs from Strava publish **the name you gave the activity**, plus distance, time
-and elevation. No coordinate is stored, so the route is not recoverable — but a
-title is free text, and "Sharp's Ridge repeats" is a place even though no
-latitude was involved. Strava's own defaults ("Morning Run") say nothing, so
-this only bites on runs you rename. It is the same bargain the plan already
-makes by publishing venues, which is why it is allowed; the switch is `name` in
-`ACTIVITY_FIELDS`. Runs marked private on Strava are exempt — they tick their
-session and publish nothing at all.
+Runs from Strava publish **the route** — the actual line, on a map, five minutes
+after the run lands here. Ric chose this on 2026-08-17 knowing what it means: the
+routes he runs most, including the point he starts and finishes at, are readable
+by anyone who opens the page. Strava's own privacy zones do not help, because
+this is fetched with his token and Strava returns the real line to its owner. The
+switches are `polyline` in the `LEAKY` guard and the `route` block in `trim()`;
+turning them off stops new runs, and old ones keep their route until re-ingested.
 
-They also publish **heart rate** — average and max, and a figure per kilometre in
-the splits — along with cadence, calories, relative effort and the watch model.
+They also publish **the name you gave the activity**, plus distance, time and
+elevation. A title is free text, and "Sharp's Ridge repeats" is a place — though
+next to a map of the place, that hardly matters now. Runs marked private on
+Strava are exempt from all of it: they tick their session and publish nothing.
+
+They also publish **heart rate** — average and max — along with cadence,
+calories, temperature, relative effort and the watch model.
 That is health data about a named person on a page anyone can read, and it is a
 larger disclosure than the distance beside it: a resting-to-max range and its
 drift week over week say something about a body that "7 mi" does not. It is

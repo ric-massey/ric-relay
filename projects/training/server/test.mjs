@@ -328,20 +328,30 @@ console.log('\nRULE  a finished run ticks the session that was planned for that 
   ok(runs.body[0].distance === 11265, 'with the distance the page needs');
 }
 
-console.log('\nRULE  no coordinate from a Strava activity ever reaches storage');
+console.log('\nRULE  the route is published; everything else about where is still refused');
 {
-  /* Rule one of the whole repo. An activity carries the route door to door;
-     the allowlist is what stops it, and this is the test that says so. */
+  /* This used to read "no coordinate ever reaches storage". Ric decided on
+     2026-08-17 to publish the route so the run detail can draw a map, which
+     reverses that for the polyline and only the polyline. The rest of the rule
+     stands, and the point of this test is now to hold that line: a decision to
+     publish the shape of a run is not a decision to publish its city. */
   const r = stravaRig();
   await r.event();
   const everything = JSON.stringify([...r.storage()]);
-  ok(!everything.includes('35.96'), 'no start or end coordinate');
-  ok(!everything.includes('ojqzE'), 'no encoded polyline');
+  ok(everything.includes('ojqzE'), 'the encoded route IS stored now, by decision');
+  ok(!everything.includes('35.96'), 'but no raw start or end coordinate pair');
   ok(!everything.includes('Knoxville'), 'no city');
   ok(!everything.includes('America/New_York'), 'no timezone');
 
+  /* Storage keeps the route; whether a given reader gets it is the next rule
+     down. The owner always does, which is what proves it was stored rather
+     than quietly dropped. */
+  const mine = await r.hit('GET', '/strava', null, TOKEN);
+  ok(mine.text.includes('ojqzE'), 'and the owner can read it back');
+
   const pub = await r.hit('GET', '/strava');
-  ok(!pub.text.includes('35.96') && !pub.text.includes('ojqzE'), 'and none of it in the public read');
+  ok(!pub.text.includes('35.96') && !pub.text.includes('Knoxville'),
+     'a visitor still gets nothing else that says where');
 
   /* Refusing the whole activity would satisfy every assertion above while
      quietly shipping nothing, so say out loud that the run survived — and that
@@ -392,6 +402,43 @@ console.log('\nRULE  a run marked private on Strava ticks its session and is not
     ok(!JSON.stringify([...r.storage()]).includes('PRIVATE-RUN-CANARY'),
       `${what}: the name was never even stored`);
   }
+}
+
+console.log('\nRULE  the route appears five minutes after the run reaches the site');
+{
+  /* "I don't want them to see my location when I'm training — I'm fine if they
+     know I trained at 9am today." So the time of day publishes as normal, and
+     the route alone waits — counted from when the Worker took the activity in,
+     not from when the run started. */
+  const r = stravaRig();
+  await r.event();
+  const DATE = '2026-08-17';
+
+  const pub = (await r.hit('GET', '/strava/' + DATE)).body[0];
+  ok(pub, 'the run is published straight away');
+  ok(pub.distance === 11265 && pub.average_heartrate === 152.4, 'with its numbers');
+  ok(pub.route === undefined, 'but no route in the first five minutes');
+  ok(pub.start_date_local === '2026-08-17T06:12:00Z',
+     'the time of day is published as normal — that part he does not mind');
+
+  const mine = (await r.hit('GET', '/strava/' + DATE, null, TOKEN)).body[0];
+  ok(mine.route !== undefined, 'signed in, Ric sees his own route immediately');
+
+  /* Wind the arrival stamp back six minutes — the same thing the clock does on
+     its own, without the suite having to wait for it. */
+  const wind = async back => {
+    const list = r.storage().get('s:' + DATE);
+    list[0].at = new Date(Date.now() - back).toISOString();
+    r.storage().set('s:' + DATE, list);
+  };
+  await wind(6 * 60 * 1000);
+  ok((await r.hit('GET', '/strava/' + DATE)).body[0].route !== undefined,
+     'six minutes later a visitor gets the map');
+
+  /* A rename fires a fresh webhook. The run is old; its map must not vanish. */
+  await r.event({ aspect_type: 'update' });
+  ok((await r.hit('GET', '/strava/' + DATE)).body[0].route !== undefined,
+     'and renaming it later does not put the map back behind the hold');
 }
 
 console.log('\nRULE  a private run is withheld from the world, not from the person who ran it');

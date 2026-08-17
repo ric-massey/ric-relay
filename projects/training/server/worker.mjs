@@ -40,14 +40,14 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
    the plan already makes by publishing venues; the README records it. */
 const ACTIVITY_FIELDS = ['id', 'name', 'sport_type', 'type', 'distance',
   'moving_time', 'elapsed_time', 'total_elevation_gain', 'start_date_local',
-  /* The numbers a watch actually records. All of it is what happened to a body
-     over a duration — none of it says where, which is the line this file
-     keeps. Deliberately absent: elev_high/elev_low (an altitude pair narrows a
-     town), gear_id (an id nothing here can resolve), and anything named for a
-     segment, because segments are places with names. */
+  /* The numbers a watch actually records. Deliberately absent: elev_high and
+     elev_low (an altitude pair narrows a town), gear_id (an id nothing here
+     can resolve), and anything named for a segment, because segments are
+     places with names — a route is published now, but a list of place names
+     next to it is a different thing and nobody asked for it. */
   'average_speed', 'max_speed', 'average_heartrate', 'max_heartrate',
   'has_heartrate', 'average_cadence', 'average_watts', 'max_watts', 'calories',
-  'suffer_score', 'workout_type', 'device_name',
+  'suffer_score', 'workout_type', 'device_name', 'average_temp',
   'kudos_count', 'achievement_count', 'pr_count'];
 
 /* Splits are copied key by key like everything else rather than taken whole.
@@ -60,8 +60,51 @@ const MAX_SPLITS = 60;                       // a marathon in km, and a stop
 
 /* Anything matching this in the stored output means the allowlist above grew a
    field it should not have. Cheap, and it fails loudly at the moment of the
-   mistake rather than on the public page a week later. */
-const LEAKY = /latlng|polyline|"map"|location_|address|timezone/i;
+   mistake rather than on the public page a week later.
+
+   `polyline` came out of this list on 2026-08-17, by Ric's decision, so the run
+   detail can draw the route. That is a reversal of what this file was built to
+   guarantee and it is worth being plain about: the site now publishes where he
+   ran, start point included, to anybody who opens the page. Strava's own
+   privacy zones do not help — they trim the map shown to OTHER Strava users,
+   and this is fetched with Ric's token, which returns the real thing.
+
+   Everything else stays refused, and the route arrives through one named field
+   below rather than by waving the whole `map` object through: a decision to
+   publish the line is not a decision to publish city, address or timezone. To
+   undo it, put `polyline` back in this regex and drop the `route` block in
+   trim() — old runs keep theirs until they are re-ingested. */
+const LEAKY = /latlng|"map"|location_|address|timezone/i;
+
+/* ── the route waits five minutes; nothing else does ──
+   Ric does not mind people knowing where he trained, or that he trained at nine
+   this morning. What he does not want is his location readable while he is
+   still out on it. So the timestamp is published as it always was, and the
+   ROUTE is the one thing held — because a map that appears the instant a watch
+   syncs says where he is right now, and the webhook is fast enough to mean it.
+
+   Counted from `at`, the moment this Worker took the activity in, NOT from when
+   the run started. That is what "five minutes after the post to Strava" means,
+   and it is the honest clock: `start_date_local` is a local time wearing a Z,
+   so parsing it can be a timezone out in either direction, which at a five
+   minute hold would be the whole of it. `at` is a real UTC instant we wrote
+   ourselves.
+
+   Five minutes is short. It stops the live broadcast — the case where a run
+   lands mid-cooldown and the map is up while he is still at the trailhead —
+   and nothing more than that. */
+const ROUTE_HOLD_MS = 5 * 60 * 1000;
+
+function forVisitor(a) {
+  if (!a.route) return a;
+  /* No `at` means a run stored before this rule existed. Those are old by
+     definition, so they publish rather than hide forever. */
+  const t = Date.parse(a.at);
+  if (!Number.isFinite(t) || Date.now() - t >= ROUTE_HOLD_MS) return a;
+  const out = { ...a };
+  delete out.route;
+  return out;
+}
 
 /* ── which activities tick something ──
    Deliberately only runs. A Strava "WeightTraining" is not evidence the morning
@@ -262,8 +305,23 @@ export class TrainingLog {
       if (a[f] !== undefined && a[f] !== null) out[f] = a[f];
     }
     out.id = String(out.id || '');
+    /* When this arrived, which is what the route hold counts from. A real UTC
+       instant written here, not Strava's local-time-wearing-a-Z. */
+    out.at = new Date().toISOString();
     if (hidden) out.hidden = true;
     else out.name = String(out.name || '').slice(0, 160);
+
+    /* The route, on a public run only, as Strava's encoded polyline — the page
+       decodes it and draws the shape. `summary_polyline` rather than the full
+       one: it is the simplified line, a few hundred points instead of
+       thousands, which is all a thumbnail-sized map can show anyway.
+
+       A private run gets none of this, the same as its name and its splits.
+       "Not republished" has to mean the route too, or the rule means nothing. */
+    if (!hidden) {
+      const line = a.map && (a.map.summary_polyline || a.map.polyline);
+      if (typeof line === 'string' && line.length > 1 && line.length <= 12000) out.route = line;
+    }
 
     /* Per-kilometre splits, on a public run only. They are the one thing here
        that is a shape rather than a total — where the hills were, where it fell
@@ -306,7 +364,12 @@ export class TrainingLog {
     const date = String(a.start_date_local || '').slice(0, 10);
     if (!DAY.test(date)) return null;
     const list = (await this.state.storage.get('s:' + date)) || [];
+    const prior = list.find(x => String(x.id) === String(a.id));
     const next = list.filter(x => String(x.id) !== String(a.id));
+    /* Keep the first arrival time across re-ingests. Renaming a month-old run
+       fires a fresh webhook, and without this its route would go back behind
+       the five minute hold as though the run had just happened. */
+    if (prior && prior.at) a = { ...a, at: prior.at };
     next.push(a);
     next.sort((x, y) => String(x.start_date_local).localeCompare(String(y.start_date_local)));
     await this.state.storage.put('s:' + date, next);
@@ -544,7 +607,8 @@ export class TrainingLog {
          private on this path or a shared cache would hand the owner's copy to
          the street. */
       const isOwner = authed();
-      const seen = list => (list || []).filter(a => isOwner || !a.hidden);
+      const seen = list => (list || []).filter(a => isOwner || !a.hidden)
+                                       .map(a => isOwner ? a : forVisitor(a));
       const cache = isOwner ? 'private, no-store' : 'public, max-age=30';
       if (date) {
         return json(seen(await this.state.storage.get('s:' + date)), 200, origin,

@@ -66,7 +66,7 @@ const log = new TrainingLog({
         ...(FAKE_RUN_PRIVATE ? { visibility: 'only_me' } : {}),
         average_speed: 3.61, max_speed: 4.9,
         average_heartrate: 152.4, max_heartrate: 176, has_heartrate: true,
-        average_cadence: 84.2, calories: 812, suffer_score: 121,
+        average_cadence: 84.2, calories: 812, suffer_score: 121, average_temp: 21,
         device_name: 'Garmin Forerunner 265', kudos_count: 4, pr_count: 1,
         /* Eleven kilometres of them, with a slow first and a fast last, so the
            split bars on the page have a shape to draw rather than a flat wall. */
@@ -80,7 +80,11 @@ const log = new TrainingLog({
           location_city: 'Knoxville'      // present so the local page proves it never arrives
         })),
         /* Present precisely so the local page proves they never arrive. */
-        start_latlng: [35.9606, -83.9207], map: { polyline: 'ojqzErfhcN' }, location_city: 'Knoxville'
+        start_latlng: [35.9606, -83.9207], location_city: 'Knoxville',
+        /* A real encoded polyline — a loop around Knoxville — so the page has
+           a route to draw. The city and the raw coordinates beside it are still
+           here precisely so the local page proves they never arrive. */
+        map: { summary_polyline: 'ojqzErfhcNaBqAeAsAg@_BQqBFuBl@sB|@iBpAuAjBcA`CU~BJnB^|AlAvAvArAnAbBt@nB^~BB~BW~Bo@rBeAdB{AzAgBjAmBv@_C^kCJ' }
       });
     }
     return fetch(u, init);

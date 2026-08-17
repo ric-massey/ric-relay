@@ -321,11 +321,48 @@
       text-transform: uppercase; color: var(--soft);
     }
     .rungrid .v { font-size: 0.95rem; font-weight: 700; }
-    /* A watch model is prose, not a number, so it gets a row to itself rather
-       than being hyphenated down a 105px column. */
-    .rungrid .wide { grid-column: 1 / -1; }
-    .rungrid .wide .v { font-size: 0.85rem; font-weight: 400; }
     .rungrid .v small { font-weight: 400; font-size: 0.72rem; color: var(--soft); }
+
+    /* 320px wide, which is also the width the tile window is computed at — the
+       two numbers have to agree or the line lands off the streets. */
+    /* content-box on purpose: the tiles are placed at absolute pixel offsets
+       computed for a 320px window, so the content box has to BE 320px. With
+       border-box the 1px border stole two of them, the SVG scaled to 318 while
+       the tiles did not, and the route sat a couple of pixels off the streets.
+       On a narrower screen the box crops — tiles and line together, still
+       aligned — rather than scaling one and not the other. */
+    /* content-box on purpose, and the size comes from the inline style the
+       renderer wrote: the tiles are placed at absolute pixel offsets computed
+       for exactly that box, so the box has to be exactly that many pixels. With
+       border-box the 1px border stole two of them, the SVG scaled while the
+       tiles did not, and the route sat off the streets. */
+    .runmap {
+      position: relative; box-sizing: content-box; margin: 0 auto;
+      overflow: hidden; border-radius: 10px; border: 1px solid var(--line);
+      background: #e8e0d8;                     /* what shows if tiles never load */
+    }
+    /* The run, sitting inside a session's panel under the workout. Separated by
+       a rule rather than boxed: it is part of that session, not a card parked
+       next to it. */
+    .runblock { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
+    .sessex > .runblock:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+    .runhead { margin-bottom: 0.6rem; }
+    .runhead strong { font-size: 0.92rem; }
+    .runhead .runstats { margin-top: 0.1rem; }
+
+    .runmap .tiles { position: absolute; inset: 0; }
+    .runmap .tiles img { position: absolute; width: 256px; height: 256px; }
+    .runmap .line { position: absolute; left: 0; top: 0; }
+    .mapcredit {
+      position: absolute; right: 0; bottom: 0; font-size: 0.58rem; line-height: 1.5;
+      padding: 0 0.28rem; background: rgba(255,255,255,0.82); color: #3b3b3b;
+    }
+    .mapcredit a { color: #3b3b3b; text-decoration: underline; }
+    .mapkey { display: flex; justify-content: center; gap: 1rem; margin: 0.35rem 0 0.9rem; font-size: 0.68rem; color: var(--soft); }
+    .mapkey span { display: inline-flex; align-items: center; gap: 0.3rem; }
+    .mapkey span::before { content: ""; width: 8px; height: 8px; border-radius: 50%; }
+    .mapkey .s::before { background: #1a7f37; }
+    .mapkey .e::before { background: var(--brand-dark); }
 
     .splits { margin-top: 0.85rem; }
     .splits h4 {
@@ -529,10 +566,9 @@
     <div class="week">
       <h2>This Week</h2>
       <div class="stats">
-        <div class="stat"><div class="n" id="w-dist">— <small>mi</small></div><div class="l">Run this week</div></div>
+        <div class="stat"><div class="n" id="w-target">— <small>mi</small></div><div class="l">Running target</div></div>
         <div class="stat"><div class="n" id="w-done">—</div><div class="l">Sessions done</div></div>
-        <div class="stat"><div class="n" id="w-week">—</div><div class="l">Week of 52</div></div>
-        <div class="stat"><div class="n" id="w-phase">—</div><div class="l">Block</div></div>
+        <div class="stat"><div class="n" id="w-dist">— <small>mi</small></div><div class="l">Current mileage</div></div>
       </div>
       <p class="week-note" id="w-note">Loading the plan…</p>
     </div>
@@ -867,7 +903,7 @@
           <button type="button" class="expander" data-ex="${esc(id)}" aria-expanded="${open}"
                   aria-label="Show what to do">${'›'}</button>
         </div>
-        <div class="sessex" ${open ? '' : 'hidden'}>${open ? exercisePanel(s) : ''}</div>
+        <div class="sessex" ${open ? '' : 'hidden'}>${open ? sessionPanel(iso, s) : ''}</div>
       </div>`;
     }
 
@@ -913,62 +949,152 @@
     };
     const feet = m => Math.round(m * 3.28084);
 
+    /* Google's encoded polyline, which is what Strava sends. Signed values,
+       five decimal places, each one stored as a delta from the last — which is
+       why this has to be walked from the start rather than indexed into. */
+    function decodeRoute(s) {
+      const pts = [];
+      let i = 0, lat = 0, lng = 0;
+      while (i < s.length) {
+        let b, shift = 0, result = 0;
+        do { b = s.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20 && i < s.length);
+        lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+        shift = 0; result = 0;
+        do { b = s.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20 && i < s.length);
+        lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+        pts.push([lat / 1e5, lng / 1e5]);
+      }
+      return pts;
+    }
+
+    /* ── the map ──
+       Real streets under the line, which means real map tiles, which means the
+       one thing this site otherwise never does: a request to somebody else's
+       server. OpenStreetMap's, for images only — no map library, no API key, no
+       script from anywhere. If those tiles ever stop loading the line still
+       draws on the background colour, because the route is ours and only the
+       basemap is borrowed.
+
+       Web Mercator, the projection every slippy map uses. Latitude goes through
+       the log-tangent business below; longitude is a straight scale. */
+    const TILE = 256, MAX_Z = 17;
+    /* Sized to the room actually available, not to a constant. A fixed 320px
+       box is wider than the panel on a phone, and because the page's cards are
+       grid items — which refuse to shrink below their contents — one oversized
+       map pushed the whole layout past the viewport and put a horizontal
+       scrollbar on every card above it. Measured at open, which is the only
+       moment the width is knowable from inside a string of HTML. */
+    const mapBox = () => {
+      const w = Math.max(200, Math.min(320, (window.innerWidth || 360) - 96));
+      return [Math.round(w), Math.round(w * 0.75)];
+    };
+    const lngToWorld = (lng, z) => (lng + 180) / 360 * Math.pow(2, z) * TILE;
+    const latToWorld = (lat, z) => {
+      const s = Math.sin(lat * Math.PI / 180);
+      return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * Math.pow(2, z) * TILE;
+    };
+
+    function routeMap(encoded) {
+      const pts = decodeRoute(encoded);
+      if (pts.length < 2) return '';
+      const [MAP_W, MAP_H] = mapBox();
+      const lats = pts.map(p => p[0]), lngs = pts.map(p => p[1]);
+      const bounds = [Math.min(...lats), Math.max(...lats), Math.min(...lngs), Math.max(...lngs)];
+
+      /* The closest zoom that still fits the whole run in the box, with a
+         margin so the line never touches the edge. Zooming to fit rather than
+         to a fixed level is what makes a 3 km loop and a 20 km point-to-point
+         both readable in the same 320px. */
+      let z = MAX_Z;
+      for (; z > 1; z--) {
+        const w = lngToWorld(bounds[3], z) - lngToWorld(bounds[2], z);
+        const h = latToWorld(bounds[0], z) - latToWorld(bounds[1], z);
+        if (w <= MAP_W - 30 && h <= MAP_H - 30) break;
+      }
+
+      const cx = (lngToWorld(bounds[2], z) + lngToWorld(bounds[3], z)) / 2;
+      const cy = (latToWorld(bounds[0], z) + latToWorld(bounds[1], z)) / 2;
+      const left = cx - MAP_W / 2, top = cy - MAP_H / 2;
+
+      /* Every tile the window overlaps, placed at its own world offset. */
+      const n = Math.pow(2, z);
+      const tiles = [];
+      for (let tx = Math.floor(left / TILE); tx <= Math.floor((left + MAP_W) / TILE); tx++) {
+        for (let ty = Math.floor(top / TILE); ty <= Math.floor((top + MAP_H) / TILE); ty++) {
+          if (ty < 0 || ty >= n) continue;
+          const wrapped = ((tx % n) + n) % n;             // the world repeats sideways
+          tiles.push(`<img src="https://tile.openstreetmap.org/${z}/${wrapped}/${ty}.png"
+            alt="" loading="lazy" draggable="false"
+            style="left:${tx * TILE - left}px; top:${ty * TILE - top}px">`);
+        }
+      }
+
+      const at = p => [(lngToWorld(p[1], z) - left).toFixed(1), (latToWorld(p[0], z) - top).toFixed(1)];
+      const d = pts.map((p, i) => (i ? 'L' : 'M') + at(p).join(' ')).join(' ');
+      const s = at(pts[0]), e = at(pts[pts.length - 1]);
+
+      return `<div class="runmap" style="width:${MAP_W}px; height:${MAP_H}px">
+        <div class="tiles">${tiles.join('')}</div>
+        <svg class="line" width="${MAP_W}" height="${MAP_H}" viewBox="0 0 ${MAP_W} ${MAP_H}"
+             role="img" aria-label="A map of this run's route">
+          <path d="${d}" fill="none" stroke="#fff" stroke-width="6"
+                stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+          <path d="${d}" fill="none" stroke="var(--brand)" stroke-width="3.2"
+                stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="${s[0]}" cy="${s[1]}" r="5" fill="#1a7f37" stroke="#fff" stroke-width="2"/>
+          <circle cx="${e[0]}" cy="${e[1]}" r="5" fill="var(--brand-dark)" stroke="#fff" stroke-width="2"/>
+        </svg>
+        <span class="mapcredit">© <a href="https://www.openstreetmap.org/copyright"
+          target="_blank" rel="noopener">OpenStreetMap</a> contributors</span>
+      </div>
+      <p class="mapkey"><span class="s">start</span><span class="e">finish</span></p>`;
+    }
+
     /* Everything Strava gave us for one run, minus the things this site refuses
        to hold. Each cell is dropped entirely when the field is absent rather
        than printed as a dash: not every watch records power, and a column of
        blanks reads as broken rather than as "not measured". */
     function runDetail(a) {
       if (!a) return '';
-      const cell = (k, v, sub, wide) => v === undefined || v === null || v === '' ? ''
-        : `<div${wide ? ' class="wide"' : ''}><span class="k">${esc(k)}</span><span class="v">${esc(String(v))}${sub ? ` <small>${esc(sub)}</small>` : ''}</span></div>`;
+      const cell = (k, v, sub) => v === undefined || v === null || v === '' ? ''
+        : `<div><span class="k">${esc(k)}</span><span class="v">${esc(String(v))}${sub ? ` <small>${esc(sub)}</small>` : ''}</span></div>`;
 
+      /* Nine cells, all of them about the run itself. Moving time, cadence,
+         calories, relative effort, kudos, PRs and the watch model all came out
+         by choice: moving time is on the card's summary line anyway, and the
+         rest were either trivia or numbers nobody reads twice. The Worker still
+         stores every one, so any of them is a line to put back — no re-ingest,
+         no deploy of the Worker at all. */
       const grid = [
         cell('Distance', a.distance ? miles(a.distance) : '', 'mi'),
-        cell('Moving', a.moving_time ? clock(a.moving_time) : ''),
         cell('Elapsed', a.elapsed_time ? clock(a.elapsed_time) : ''),
         cell('Avg pace', pace(a) || paceOf(a.average_speed), '/mi'),
         cell('Best pace', paceOf(a.max_speed), '/mi'),
         cell('Elevation', a.total_elevation_gain ? feet(a.total_elevation_gain) : '', 'ft'),
         cell('Avg HR', a.average_heartrate ? Math.round(a.average_heartrate) : '', 'bpm'),
         cell('Max HR', a.max_heartrate ? Math.round(a.max_heartrate) : '', 'bpm'),
-        /* Strava stores running cadence one leg at a time; the number everyone
-           quotes is both feet, so it is doubled here to match the watch. */
-        cell('Cadence', a.average_cadence ? Math.round(a.average_cadence * 2) : '', 'spm'),
         cell('Power', a.average_watts ? Math.round(a.average_watts) : '', 'W avg'),
-        cell('Calories', a.calories),
-        cell('Relative effort', a.suffer_score),
-        cell('Kudos', a.kudos_count),
-        cell('PRs', a.pr_count || ''),
-        cell('Recorded on', a.device_name, '', true)
+        /* Strava reports it in Celsius, from the watch, and only when the watch
+           recorded one. Fahrenheit here because the rest of the page is in
+           miles and feet. */
+        cell('Temperature', a.average_temp === undefined || a.average_temp === null
+          ? '' : Math.round(a.average_temp * 9 / 5 + 32), '°F')
       ].join('');
 
-      /* Scaled between the fastest and slowest split, with a floor under the
-         range so a metronome-steady run does not turn its 4-second spread into
-         a chart that looks like intervals. */
-      let splits = '';
-      if (Array.isArray(a.splits) && a.splits.length > 1) {
-        const sp = a.splits.filter(s => s.moving_time && s.distance);
-        const paces = sp.map(s => s.moving_time / (s.distance / MI));
-        const fast = Math.min(...paces), slow = Math.max(...paces);
-        const span = Math.max(slow - fast, 20);
-        splits = `<div class="splits"><h4>Splits <span style="text-transform:none;font-weight:400">· per km</span></h4>
-          ${sp.map((s, i) => {
-            const pc = paces[i];
-            const w = 22 + 78 * (1 - (pc - fast) / span);   // fastest longest
-            return `<div class="split">
-              <span class="n">${i + 1}</span>
-              <span class="bar"><i style="width:${w.toFixed(1)}%"></i></span>
-              <span class="p">${esc(`${Math.floor(pc / 60)}:${String(Math.round(pc % 60)).padStart(2, '0')}`)}</span>
-              <span class="hr">${s.average_heartrate ? esc(String(Math.round(s.average_heartrate))) + ' bpm' : ''}</span>
-            </div>`;
-          }).join('')}</div>`;
-      }
+      /* No splits panel by choice — the Worker still keeps them, so putting the
+         bars back is a render away and needs no re-ingest. */
 
-      return `<div class="rungrid">${grid}</div>${splits}
+      /* No route on a run that is only hours old, because the Worker holds it
+         back from visitors until it is stale. Saying so is better than a gap:
+         a missing map otherwise reads as something broken. Signed in there is
+         nothing to explain — the route is always there. */
+      const map = a.route ? routeMap(a.route)
+        : (Owner.on() ? '' : `<p class="runnote">The route for this one appears in a
+             day or so. Where Ric ran is not published while he might still be out on it.</p>`);
+
+      return `${map}<div class="rungrid">${grid}</div>
         <a class="runout" href="https://www.strava.com/activities/${esc(a.id)}"
-           target="_blank" rel="noopener">View on Strava ↗</a>
-        <p class="runnote">The route is not here on purpose — no coordinate from a
-          run is ever stored. The map lives on Strava.</p>`;
+           target="_blank" rel="noopener">View on Strava ↗</a>`;
     }
 
     /* Only runs count towards run mileage — the feed holds whatever the watch
@@ -990,8 +1116,60 @@
       return m;
     }
 
+    /* Which run belongs to which session. A run that matched something on the
+       plan belongs inside that session's panel — the same panel the tick and
+       the workout live in, because they are all one thing: what you were meant
+       to do, whether you did it, and what actually happened.
+
+       What is left over stays a card of its own: an unplanned run the plan has
+       no slot for, and anything that is not a run at all. Those still have to
+       appear somewhere, and there is no session to fold them into.
+
+       The Worker's own matcher takes the first run-kind session of the day, so
+       this pairs in the same order. Extra runs land on the last run session
+       rather than being dropped. */
+    function runSplit(iso) {
+      const d = dayOf(iso);
+      const all = RUNS[iso] || [];
+      const runSessions = d ? (d.sessions || []).filter(x => x.kind === 'run') : [];
+      const bySession = {};
+      const loose = [];
+      let n = 0;
+      all.forEach(a => {
+        if (!isRun(a) || !runSessions.length) { loose.push(a); return; }
+        const target = runSessions[Math.min(n++, runSessions.length - 1)];
+        (bySession[target.id] = bySession[target.id] || []).push(a);
+      });
+      return { bySession, loose };
+    }
+
+    /* The run as it appears inside a session panel: its name and headline
+       numbers, then the map and the rest. No button — the session's own chevron
+       already opened this. */
+    function runBlock(a) {
+      const p = pace(a);
+      return `<div class="runblock">
+        <div class="runhead">
+          <strong>${esc(a.name || (a.hidden ? 'Private run' : 'Run'))}</strong>${a.hidden ? '<span class="privtag">only you</span>' : ''}
+          <span class="runstats">
+            ${a.distance ? `<span><b>${esc(miles(a.distance))}</b> mi</span>` : ''}
+            ${a.moving_time ? `<span><b>${esc(clock(a.moving_time))}</b></span>` : ''}
+            ${p ? `<span><b>${esc(p)}</b> /mi</span>` : ''}
+            ${a.total_elevation_gain ? `<span><b>${feet(a.total_elevation_gain)}</b> ft</span>` : ''}
+          </span>
+        </div>
+        ${runDetail(a)}
+      </div>`;
+    }
+
+    /* What one chevron opens: the workout, then the run that answered it. */
+    function sessionPanel(iso, s) {
+      const runs = runSplit(iso).bySession[s.id] || [];
+      return exercisePanel(s) + runs.map(runBlock).join('');
+    }
+
     function runLink(iso) {
-      const list = RUNS[iso] || [];
+      const list = runSplit(iso).loose;
       if (!list.length) return '';
       return list.map((a, i) => {
         const p = pace(a);
@@ -1181,15 +1359,13 @@
 
       if (d) {
         const wk = (PLAN.weeks || {})[d.week] || {};
-        /* Run first, target second. The question this stat answers on a
-           Thursday is "how much have I actually done", and the plan's number is
-           the thing it is measured against, not the headline. */
+        /* Target and actual as two separate tiles rather than one "6 of 10"
+           reading: they are two different facts, and the one you want on a
+           Thursday is the gap between them, which two numbers side by side
+           show as well as a sentence does. */
         const ran = weekMetres(d.week);
-        $('#w-dist').innerHTML = wk.miles
-          ? `${miles(ran)} <small>of ${wk.miles} mi</small>`
-          : `${miles(ran)} <small>mi</small>`;
-        $('#w-week').textContent = d.week;
-        $('#w-phase').textContent = d.phase;
+        $('#w-target').innerHTML = `${wk.miles ?? '—'} <small>mi</small>`;
+        $('#w-dist').innerHTML = `${miles(ran)} <small>mi</small>`;
         let done = 0;
         (PLAN.days || []).filter(x => x.week === d.week).forEach(x => {
           const st = stateOf(x.date);
@@ -1199,11 +1375,15 @@
         /* Say it out loud when the ticks on screen came from the cache rather
            than from the log. Otherwise a signal drop is indistinguishable from
            somebody's work disappearing. */
+        /* The target is a tile now, so repeating it here would be the same
+           number twice. What is left is the block you are in, and the two
+           things a tile cannot say: that the ticks came from a cache, or that
+           the week is meant to be light. */
         $('#w-note').textContent = LOG_STALE
           ? 'Offline — showing the last ticks this device saw. Nothing is lost.'
           : d.deload
-            ? 'Deload week — volume down by design.'
-            : `${wk.phase || d.phase} · running target ${wk.miles ?? '—'} mi.`;
+            ? `${wk.phase || d.phase} · deload week, volume down by design.`
+            : `${wk.phase || d.phase} · week ${d.week} of 52.`;
         $('#today').innerHTML = dayCard(iso, true);
       } else {
         $('#w-note').textContent = 'Outside the plan\'s 52 weeks.';
@@ -1314,7 +1494,7 @@
         if (open) {
           const [iso, i] = id.split(':');
           const d = dayOf(iso);
-          panel.innerHTML = exercisePanel(d.sessions[+i]);
+          panel.innerHTML = sessionPanel(iso, d.sessions[+i]);
           EXPANDED.add(id);
         } else {
           EXPANDED.delete(id);

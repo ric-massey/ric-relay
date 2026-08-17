@@ -163,11 +163,26 @@ and Tension apps. Rules for it:
 Worker the moment a watch syncs, and the run session planned for that date ticks itself
 off. `projects/training/README.md` has the full rules; the three that constrain edits:
 
-- **No coordinate from Strava may ever be stored.** An activity carries the route door
-  to door in `start_latlng` and `map.polyline`. The Worker rebuilds it from
-  `ACTIVITY_FIELDS` and nothing else survives, with a leak guard over the result and a
-  test that asserts it. This is hard rule 1 arriving through a new door — do not widen
-  that list without thinking about what is in the field you are adding.
+- **The route is published; everything else about "where" is not.** Ric decided this on
+  2026-08-17 and it reverses what this file said before, so read it carefully: the
+  encoded polyline IS stored and drawn on a real map in the run detail. `start_latlng`,
+  city, address and timezone are all still refused, the leak guard still runs over the
+  result, and the route still arrives through one named field rather than by waving
+  Strava's whole `map` object through. Widening `ACTIVITY_FIELDS` past that is a fresh
+  decision, not a continuation of this one.
+- **A route is held back from visitors for five minutes.** His line was "I don't want
+  them to see my location when I'm training" — a map appearing the instant a watch syncs
+  says where he is *now*. Timestamps publish as normal; only the route waits, only for
+  visitors, and only briefly. Signed in he sees it at once. The constant is
+  `ROUTE_HOLD_MS` in `server/worker.mjs`, counted from `at` — the moment the Worker took
+  the activity in, not `start_date_local`, which is a local time wearing a `Z` and can
+  be a timezone out in either direction. `at` survives re-ingest so a rename does not
+  send an old map back behind the hold.
+- **The run detail loads map tiles from openstreetmap.org.** This is the one external
+  host on the site and it breaks the "no external requests" line in the checklist below.
+  Images only — no map library, no API key, no script. If tiles fail the route still
+  draws on the background colour. Attribution is required and is in the corner of the
+  map; do not remove it.
 - **The webhook body is never believed.** It carries only an activity id; the date,
   sport and distance are read back from the API with Ric's token. The endpoint is public
   and unauthenticated because Strava does not sign its events, and that is only safe as
@@ -230,6 +245,7 @@ legacy redirects, not rooms.
 - [ ] All internal links resolve (files exist; current page marked `here`).
 - [ ] The menu label set is identical across all room pages.
 - [ ] Page still opens as a static file — no console errors, no external requests
-      beyond the GitHub API calls that already exist.
+      beyond the GitHub API calls that already exist and the OpenStreetMap tiles in
+      the training page's run detail.
 - [ ] Looks right at mobile width.
 - [ ] Didn't add location data, extra repos, or a build step.
