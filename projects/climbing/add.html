@@ -278,9 +278,12 @@
       let ticked = '';
       const d = PLAN && (PLAN.days || []).find(x => x.date === iso);
       if (d) {
-        const i = d.sessions.findIndex(s => s.kind === 'climb');
-        if (i >= 0) {
-          const done = {}; done[i] = true;
+        /* Keyed by the session's id, not its position — the training page
+           stores ticks that way now, and an index here would write a tick the
+           other page cannot read. */
+        const s = d.sessions.find(x => x.kind === 'climb');
+        if (s) {
+          const done = {}; done[s.id] = true;
           if (await Owner.post(`/log/${iso}`, { done })) ticked = ' Training session ticked off too.';
         }
       }

@@ -577,11 +577,77 @@
       if (logResult.live) cacheLog();
       CLIMB_WEB = (await climbWeb).days || {};
       CLIMB_STATIC = (await climbStatic).days || {};
+      const pending = normalizeLegacy();
       render();
+      persistLegacy(pending);
+    }
+
+    /* ── moving old ticks onto ids ──
+       Anything ticked before ids existed is keyed by index. Each one is
+       resolved against the plan as it stands — index 1 means whatever sits at
+       index 1 today — and copied onto that session's id.
+
+       This runs for EVERYONE, in memory, before the first paint, because it is
+       what makes an old tick render at all now that the index is no longer
+       read. Writing it back needs the token, so a visitor gets the right
+       picture and the owner gets the right picture made permanent.
+
+       The resolution is only as good as the assumption that the day has not
+       been reshaped since it was ticked, which is exactly the assumption ids
+       exist to stop relying on. It is sound here because it happens ONCE, on
+       state that predates ids, and every such day is checked against the
+       current plan before anything is written. Days the plan no longer knows
+       about are left alone rather than guessed at.
+
+       Returns the writes to persist, so the caller can do that after painting.
+       The old numeric keys stay in storage — the Worker merges rather than
+       replaces, so they cannot be deleted from here — and they are now inert,
+       because nothing reads them. */
+    function normalizeLegacy() {
+      const pending = [];
+      for (const [iso, st] of Object.entries(LOG)) {
+        const legacy = Object.keys(st.done || {}).filter(k => /^\d+$/.test(k));
+        if (!legacy.length) continue;
+        const d = dayOf(iso);
+        if (!d) continue;                       // outside the plan; nothing to resolve against
+        const done = {};
+        for (const k of legacy) {
+          const s = d.sessions[+k];
+          /* Never overwrite an id that already has a value: a tick made since
+             the change is the more recent truth. */
+          if (s && st.done[s.id] === undefined) done[s.id] = !!st.done[k];
+        }
+        if (Object.keys(done).length) {
+          Object.assign(st.done, done);
+          pending.push([iso, done]);
+        }
+      }
+      if (pending.length) cacheLog();
+      return pending;
+    }
+
+    async function persistLegacy(pending) {
+      if (!Owner.on()) return;
+      for (const [iso, done] of pending) await save(iso, { done });
     }
 
     const dayOf = iso => (PLAN.days || []).find(d => d.date === iso);
     const stateOf = iso => LOG[iso] || { done: {}, notes: [] };
+
+    /* ── reading a tick ──
+       Ticks are stored against a session's id, which means the same session
+       whatever the plan does around it. Before ids they were stored against
+       the session's INDEX, and an index only means anything until the week is
+       reshaped — when a Sunday and a Monday swapped, a tick on "climbed" would
+       have become a tick on "ran" with nothing on screen to show it.
+
+       The id is read and nothing else. Falling back to the index when the id
+       says nothing was the obvious thing to write and it is wrong: on exactly
+       the reshaped day the ids exist to protect, the fallback marks whatever
+       moved into that position as done. A session with no id key is not done —
+       legacy state is converted once, up front, by normalizeLegacy. */
+    const doneOf = (st, s) => !!st.done[s.id];
+    const doneCountOf = (st, sessions) => sessions.filter(s => doneOf(st, s)).length;
 
     /* A climbing day is either in the committed archive or was logged from a
        phone. Either way the training page links to the climbing page's anchor
@@ -621,7 +687,7 @@
     }
 
     function sessionRow(iso, s, i) {
-      const done = !!stateOf(iso).done[i];
+      const done = doneOf(stateOf(iso), s);
       const tag = s.key ? '<span class="keytag">key</span>' : '';
       const body = `<span class="slot">${esc(s.slot || '')}</span>
         <span class="txt">
@@ -633,7 +699,7 @@
          and it has to be its own control because a button cannot be nested
          inside a button. */
       const ticker = Owner.on()
-        ? `<button type="button" class="ticker${done ? ' is-done' : ''}" data-tick="${iso}:${i}" aria-pressed="${done}">
+        ? `<button type="button" class="ticker${done ? ' is-done' : ''}" data-tick="${iso}:${esc(s.id)}" aria-pressed="${done}">
              <span class="tickbox" aria-hidden="true">${done ? '✓' : ''}</span>${body}
            </button>`
         : `<div class="ticker static${done ? ' is-done' : ''}">${body}</div>`;
@@ -679,7 +745,7 @@
       const st = stateOf(iso);
       const main = d.sessions.find(s => s.key) || d.sessions.find(s => s.kind === 'climb' || s.kind === 'run') || d.sessions[0];
       const kind = main ? main.kind : 'rest';
-      const doneCount = d.sessions.filter((_, i) => st.done[i]).length;
+      const doneCount = doneCountOf(st, d.sessions);
       const all = doneCount === d.sessions.length && d.sessions.length > 0;
       const allBtn = (Owner.on() && !all && d.sessions.length > 1)
         ? `<button type="button" class="allbtn" data-all="${iso}">Did all of it</button>` : '';
@@ -739,7 +805,7 @@
         const d = dayOf(iso);
         if (!d) { cells.push(`<div class="calcell outside"><span class="cd">${n}</span></div>`); continue; }
         const st = stateOf(iso);
-        const doneCount = d.sessions.filter((_, i) => st.done[i]).length;
+        const doneCount = doneCountOf(st, d.sessions);
         const allDone = doneCount === d.sessions.length && d.sessions.length > 0;
         const cls = ['calcell'];
         if (iso === todayISO()) cls.push('today');
@@ -822,7 +888,7 @@
         let done = 0;
         (PLAN.days || []).filter(x => x.week === d.week).forEach(x => {
           const st = stateOf(x.date);
-          done += x.sessions.filter((_, i) => st.done[i]).length;
+          done += doneCountOf(st, x.sessions);
         });
         $('#w-done').textContent = done || '—';
         /* Say it out loud when the ticks on screen came from the cache rather
@@ -903,14 +969,14 @@
     function wire(root) {
       root = root || document;
       root.querySelectorAll('[data-tick]').forEach(b => b.addEventListener('click', async () => {
-        const [iso, i] = b.dataset.tick.split(':');
+        const [iso, sid] = b.dataset.tick.split(':');
         const now = b.getAttribute('aria-pressed') !== 'true';
         /* Paint first. At a crag on one bar, a checkbox that waits reads as broken. */
         b.setAttribute('aria-pressed', String(now));
         b.classList.toggle('is-done', now);
         b.querySelector('.tickbox').textContent = now ? '✓' : '';
         const st = stateOf(iso);
-        const out = await save(iso, { done: { ...st.done, [i]: now } });
+        const out = await save(iso, { done: { ...st.done, [sid]: now } });
         if (!out) {                                    // roll the optimistic paint back
           b.setAttribute('aria-pressed', String(!now));
           b.classList.toggle('is-done', !now);
@@ -944,7 +1010,7 @@
         const iso = b.dataset.all;
         const d = dayOf(iso);
         const done = {};
-        d.sessions.forEach((_, i) => { done[i] = true; });
+        d.sessions.forEach(s => { done[s.id] = true; });
         b.disabled = true; b.textContent = 'saving…';
         const out = await save(iso, { done });
         if (out) render(); else { b.disabled = false; b.textContent = 'Did all of it'; }

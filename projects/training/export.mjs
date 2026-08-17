@@ -135,6 +135,22 @@ for (let w = 1; w <= 52; w++) {
         /* Point only at protocols that still exist, or the page would carry
            364 days of keys resolving to nothing. */
         if (out.k) out.k = out.k.filter(k => protocols[k]);
+        /* ── the tick key ──
+           A tick is stored against this id, so it has to mean the same session
+           tomorrow as it did today. It used to be the session's INDEX, which
+           is stable only until the plan changes: the Sunday/Monday swap moved
+           the sessions on 94 days, and any tick on one of those would have
+           silently become a tick on whatever landed in that slot instead —
+           "climbed" quietly turning into "ran". Nothing would look broken,
+           which is the worst kind of wrong.
+
+           Slot plus kind is the identity that survives: it is what the session
+           IS — the morning body session, the day's climb, the evening run —
+           rather than where it sits or what it is called. Titles carry
+           mileage and mileage changes; positions move whenever the week is
+           reshaped. Neither of those touches this. */
+        out.id = `${out.slot || ''}-${out.kind || ''}`
+          .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         return out;
       });
     days.push({
@@ -181,6 +197,27 @@ const hits = LEAKS.filter(([, re]) => re.test(text));
 if (hits.length) {
   console.error('REFUSING TO PUBLISH — private content reached the output:');
   hits.forEach(([name]) => console.error('  · ' + name));
+  process.exit(1);
+}
+
+/* ── the tick-key guard ──
+   Two sessions on one day sharing an id would share a tick: ticking one would
+   tick the other, and there is no way to tell from the page that it happened.
+   Slot+kind is unique across all 364 days today, and this exists so that stays
+   true — if a phase ever authors two runs in one slot, this stops the build
+   rather than letting the ambiguity reach the log. */
+const clashes = [];
+for (const d of out.days) {
+  const seen = new Map();
+  for (const s of d.sessions) {
+    if (seen.has(s.id)) clashes.push(`${d.date}: "${seen.get(s.id)}" and "${s.title}" both id "${s.id}"`);
+    seen.set(s.id, s.title);
+  }
+}
+if (clashes.length) {
+  console.error('REFUSING TO PUBLISH — two sessions in a day share a tick key:');
+  clashes.slice(0, 10).forEach(c => console.error('  · ' + c));
+  console.error(`  (${clashes.length} total). Give one of them a distinct slot or kind.`);
   process.exit(1);
 }
 
