@@ -18,6 +18,14 @@
 //   },
 window.RELAY_LATEST = [
   {
+    date: "2026-08-17",
+    kind: "new room",
+    room: "training",
+    title: "The Training Log",
+    description: "A year of climbing and running, planned to the day and ticked off from wherever it actually happens. Fifty-two weeks, a calendar you can walk through, and every session opening onto what to do.",
+    href: "training.html",
+  },
+  {
     date: "2026-08-04",
     kind: "interactive",
     room: "workbench",
