@@ -139,7 +139,7 @@ edit it.
 `projects/climbing/index.html` and `projects/climbing/gallery.html` all read
 generated files. To add a climb, edit `projects/climbing/climbs.md` and run
 `python3 projects/climbing/build-data.py`. See `projects/climbing/readme.md`.
-That script also writes `projects/climbing/latest-climb.js`, which every room loads
+That script also writes `projects/climbing/latest-climb.js`, which `index.html` loads
 so the newest day out leads the "latest" banner without anyone editing a list.
 
 **The board log is pulled, not written.** `projects/climbing/board.html` — the
@@ -177,12 +177,12 @@ and Tension apps. Rules for it:
   keep that honesty intact.
 
 Homepage "transmissions" live in `notes.js`. Curated newest additions live
-in `latest.js`; every room renders
-that data as a banner in its own native style. A banner may opt into
-`data-latest-skip-linked`, which passes over any item the page already links to
-outside its `<nav>` — `exploration.html` sets it because it plots all of its own
-projects on the page, so the banner was announcing the newest one directly above
-its own card. Rooms happy to repeat one of their own entries just leave it off. `orrin.html` is self-updating — leave
+in `latest.js` and are announced in exactly one place: the NOTIFICATION banner on
+`index.html`. Every room used to carry one in its own native style; they don't any
+more, so an addition is not repeated eight times. The per-room support is still in
+`latest.js` (`data-latest-room` for a room's own wording, `data-latest-skip-linked`
+to pass over an item the page already links to outside its `<nav>`) — if a room
+takes a banner back, use it. `orrin.html` is self-updating — leave
 its GitHub data logic alone unless fixing a bug. `systems.html` and `updates.html` are
 legacy redirects, not rooms.
 

@@ -41,7 +41,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `projects/` | — | Self-contained sub-projects, each linked from a room (see below) |
 | `photos/` | — | Web-optimized images (originals stay out of git in `_photo-originals/`) |
 | `notes.js` | — | Homepage "transmissions" — the one file you edit by hand to post a note |
-| `latest.js` | — | Curated newest additions shown in each room's native latest-signal banner |
+| `latest.js` | — | Curated newest additions shown in the homepage's NOTIFICATION banner |
 | `effects.js` | — | Persistent visual modes and Mochi, the reduced-motion-aware resident cat with progressively loaded, decoded instant frame swaps; calibrated visible-body scale; collision-safe placements; relaxed multi-angle movement; feature entrances and stretching; element interactions; occasional walk-offs; page-aware returns; and a helmeted zero-gravity mode used only by compatible games |
 | `EASTER_EGGS.md` | — | Complete field guide to every hidden command and typed surprise |
 
@@ -177,10 +177,10 @@ file — copy the example block, edit, done.
 - **Add or rename a room:** edit the `ROOMS` array in `index.html` — it is the one list
   the directory, `ls`, `tree`, `find` and Tab completion all render from — then update
   the `<nav>` on every room page.
-- **Change the clickable newest-item banners:** edit `latest.js` once; every room
-  presents the same curated addition in its own visual language. Give each entry a
-  `room`, so a room only uses its own flavoured wording ("new route") when the newest
-  item actually belongs to it.
+- **Change the clickable newest-item banner:** edit `latest.js`. Only the homepage
+  shows it now — the rooms no longer carry one — so a new addition is announced once.
+  Still give each entry a `room`: it is what a room banner would use to pick its own
+  flavoured wording ("new route") if one is ever added back.
 - **`orrin.html` explains the architecture in plain language** and pulls public code
   activity from the GitHub API. It does not expose Orrin's private runtime state.
 - **Never** commit real location data anywhere in this repo (see the map page).

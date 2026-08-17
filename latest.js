@@ -1,13 +1,17 @@
-// Curated additions shown by each room's native "latest" banner.
+// Curated additions shown by the terminal's "latest" banner.
 // Newest first. Keep these meaningful: projects and posts, not implementation commits.
 //
-// `room` is which room the item belongs to. There is one global newest item and
-// every room shows it, so a room only gets to use its own flavoured wording when
-// the item is actually its own — see data-latest-prefix-own below. Set it.
+// The banner used to sit in every room; it now lives only on the terminal
+// (index.html), so an addition is announced in one place. The per-room support
+// below (data-latest-room, data-latest-prefix-own, data-latest-skip-linked) is
+// kept for whenever a room wants one back.
+//
+// `room` is which room the item belongs to. Set it — it is what lets a room use
+// its own flavoured wording for its own items rather than the plain prefix.
 // Held back on purpose, not forgotten — "How Big Everything Is" is live at
 // projects/how-big-everything-is/ and linked from Exploration, but it is not
-// being announced yet. Every room's banner shows the newest entry in this
-// list, so putting it back at the top is the whole of "announce it".
+// being announced yet. The banner shows the newest entry in this list, so
+// putting it back at the top is the whole of "announce it".
 //   {
 //     date: "2026-08-01",
 //     kind: "interactive",
@@ -131,7 +135,7 @@ window.RELAY_LATEST = [
       //   data-latest-prefix      always safe — used for anything from anywhere
       //   data-latest-prefix-own  the room's own wording, ONLY for its own items
       //                           (pair it with data-latest-room)
-      // The banner shows the newest thing on the whole site, not this room's
+      // The banner shows the newest thing on the whole site, not one room's
       // newest, so an unguarded flavoured prefix lies: /climbing announced a
       // relativity explainer as a "new route", /captures called it a "fresh
       // frame". If it isn't this room's item, fall back to the plain prefix.
