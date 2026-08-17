@@ -29,6 +29,10 @@ window.Owner = (function () {
   let HOST = '';
   let token = null;
   let onChange = () => {};
+  /* One replay at a time. post() kicks a flush on every successful write and
+     the `online` event fires its own, so without this two passes can walk the
+     same queue at once and each remove the other's work. */
+  let flushing = false;
 
   const read = () => { try { return localStorage.getItem(KEY); } catch (e) { return null; } };
   const write = v => { try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY); } catch (e) {} };
@@ -144,25 +148,59 @@ window.Owner = (function () {
     /* Replay in order, stop at the first failure and keep the rest. Stopping
        rather than skipping is deliberate: these are ordered edits to the same
        days, and applying number three without number two would write a state
-       that never existed. */
+       that never existed.
+
+       ── why this re-reads the queue every single time ──
+       It used to take one snapshot at the top and write `q.slice(sent)` back at
+       the end. Anything queued WHILE the flush was in flight lived in
+       localStorage but not in that snapshot, so the final write erased it. A
+       tick made on flaky signal during a replay was destroyed silently: the
+       caller was told `{queued: true}`, the tick painted, and the write was
+       gone. That is the one outcome this whole queue exists to prevent, and the
+       window was the length of a single fetch — at a crag, on one bar, which is
+       precisely when a replay is happening.
+
+       So the queue on disk is the only queue. Each pass re-reads it, sends the
+       head, and re-reads again before removing that head, which means a write
+       appended to the tail mid-flight is still there afterwards.
+
+       ── and why a refusal no longer jams it ──
+       Stopping at the first failure is right for "no signal" and wrong for "the
+       server will never accept this". A single malformed entry used to block
+       every write behind it for ever, retried on every flush, silently. A 4xx
+       that is not about authentication or rate limiting is a permanent no: it
+       is dropped, loudly, so the rest of the queue can move. */
     async flush() {
-      if (!token) return 0;
-      const q = readQ();
-      if (!q.length) return 0;
+      if (!token || flushing) return 0;
+      flushing = true;
       let sent = 0;
-      for (const item of q) {
-        try {
-          const r = await fetch(HOST + item.path, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
-            body: JSON.stringify(item.body)
-          });
+      try {
+        for (;;) {
+          const head = readQ()[0];
+          if (!head) break;
+          let r;
+          try {
+            r = await fetch(HOST + head.path, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
+              body: JSON.stringify(head.body)
+            });
+          } catch (e) { break; }               // no signal — keep everything, try later
           if (r.status === 401) { this.signOut(); break; }
-          if (!r.ok) break;
-          sent++;
-        } catch (e) { break; }
-      }
-      if (sent) { writeQ(q.slice(sent)); onChange(); }
+          /* Re-read before removing, so a write appended while that fetch was
+             in flight survives. */
+          const drop = () => { const q = readQ(); q.shift(); writeQ(q); };
+          if (r.ok) { drop(); sent++; continue; }
+          if (r.status >= 400 && r.status < 500 && r.status !== 408 && r.status !== 429) {
+            console.error('owner: dropping a queued write the server refuses permanently —',
+                          r.status, head.path, head.body);
+            drop();
+            continue;
+          }
+          break;                               // 5xx, 429, 408 — transient, keep and retry
+        }
+      } finally { flushing = false; }
+      if (sent) onChange();
       return sent;
     },
 

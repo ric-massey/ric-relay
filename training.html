@@ -308,9 +308,14 @@
        cosmetic leak — the buttons it carries are useless without the token —
        but a visitor being shown a "sign out" control is a confusing lie. */
     [hidden] { display: none !important; }
+    /* At the bottom of the PAGE, not stuck to the bottom of the screen. It was
+       sticky, so it rode along over the content the whole way down — a bar you
+       have to scroll past on every screenful, to do a thing you do once. It
+       sits after the feed now and you meet it when you get there. */
     .owner {
-      position: sticky; bottom: 0; margin: 1rem -1.25rem -4rem; padding: 0.7rem 1.25rem;
-      background: #fff; border-top: 2px solid var(--brand); font-size: 0.82rem;
+      margin: 1rem 0 0; padding: 0.7rem 1rem;
+      background: #fff; border: 1px solid var(--line); border-top: 2px solid var(--brand);
+      border-radius: 0 0 12px 12px; font-size: 0.82rem;
       display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
     }
     .owner .ownerbtn { margin-left: auto; background: #fff; color: var(--brand-ink); }
@@ -639,11 +644,18 @@
     /* A climbing day is either in the committed archive or was logged from a
        phone. Either way the training page links to the climbing page's anchor
        for that date, which already exists as id="trip-YYYY-MM-DD". */
+    /* The archive wins where both have the date. This page used to prefer the
+       web entry and the climbing page preferred the markdown, so the moment a
+       phone-logged day was written up into climbs.md properly — which is the
+       documented workflow, not an edge case — the two pages disagreed about the
+       area and the route count for the same day. climbs.md is the record of
+       intent and the web entry is the rough note that preceded it, which is the
+       rule web-trips.js already states; this now says the same thing. */
     function climbOn(iso) {
-      const web = CLIMB_WEB[iso];
-      if (web) return { area: web.area || 'Climbing', routes: (web.routes || []).length, web: true };
       const st = CLIMB_STATIC[iso];
       if (st) return { area: st.area, routes: st.routes, web: false };
+      const web = CLIMB_WEB[iso];
+      if (web) return { area: web.area || 'Climbing', routes: (web.routes || []).length, web: true };
       return null;
     }
 
@@ -896,6 +908,12 @@
     }
 
     function render() {
+      /* Owner.init drains the offline queue on a timer, and a successful drain
+         calls onChange — which is this. That can land before the plan fetch
+         resolves, and every branch below reads PLAN. It threw a TypeError on
+         exactly the come-home-from-the-crag path. load() renders again once the
+         plan is in, so there is nothing to do here but wait. */
+      if (!PLAN) return;
       const iso = todayISO();
       const d = dayOf(iso);
       mountOwnerBar();
@@ -1038,7 +1056,13 @@
 
       root.querySelectorAll('[data-addnote]').forEach(b => b.addEventListener('click', async () => {
         const iso = b.dataset.addnote;
-        const ta = document.querySelector(`[data-note="${iso}"]`);
+        /* The textarea in THIS form, not the first one on the page with a
+           matching date. Selecting today in the calendar puts the same date on
+           screen twice — today's card and the day panel — and a document-wide
+           lookup always found the card's. Typing a note in the calendar and
+           pressing Post read the empty box up the page, bailed, and moved your
+           cursor there. */
+        const ta = b.closest('.noteform').querySelector('[data-note]');
         const text = (ta.value || '').trim();
         if (!text) { ta.focus(); return; }
         const st = stateOf(iso);
@@ -1054,7 +1078,7 @@
       root.querySelectorAll('[data-note]').forEach(ta => ta.addEventListener('keydown', e => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
-          document.querySelector(`[data-addnote="${ta.dataset.note}"]:not([data-private])`).click();
+          ta.closest('.noteform').querySelector('[data-addnote]:not([data-private])').click();
         }
       }));
     }
