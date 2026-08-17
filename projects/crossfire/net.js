@@ -9,29 +9,53 @@
    This file knows nothing about the game. It moves messages and reports who is
    connected. Everything about ships and rocks lives in index.html.
 
-   ── the one external thing ──
-   ICE_SERVERS below is a public STUN server. It is not a script and nothing is
-   downloaded from it: the browser asks it "what does my address look like from
-   outside?" so two peers behind home routers can find each other. Without it
-   this works only between machines on the same wifi. It is contacted only when
-   someone actually opens the multiplayer panel — loading the page, or playing
-   locally, makes no external request at all.
+   ── the two external things ──
+   A STUN server, which is not a script and downloads nothing: the browser asks
+   it "what does my address look like from outside?" so two peers behind home
+   routers can find each other. Without it this works only between machines on
+   the same wifi.
 
-   Point it at your own coturn instance, or set it to [] for same-wifi-only
-   play, and nothing else here changes.                                       */
+   And, when the room service offers one, a TURN server. STUN only describes
+   your address; it cannot help when both ends sit behind something that
+   refuses to be told about an inbound connection at all — carrier-grade NAT on
+   mobile data, or an office or school firewall. For those pairs the only way
+   through is to stop trying to connect them and relay the traffic instead,
+   which is what TURN is. It is the slow, expensive path and it is used only
+   when nothing else works: the browser tries every direct route first and falls
+   back to the relay when they all fail.
+
+   Both are contacted only when someone actually opens the multiplayer panel —
+   loading the page, or playing locally, makes no external request at all.
+
+   The relay is not configured here. Its credentials expire, so they are minted
+   by the room service and handed over with the lobby (see `setIce` below); with
+   no room service, or an older one that does not offer them, this falls back to
+   the STUN-only list and behaves exactly as it always did.                   */
 
 (() => {
   "use strict";
 
-  const ICE_SERVERS = [
+  /* What we have before anybody tells us otherwise, and what we fall back to if
+     the room service can't offer a relay. Direct connections only. */
+  const DEFAULT_ICE = [
     { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }
   ];
+
+  let iceServers = DEFAULT_ICE;
+  const usingTurn = () => iceServers.some(s =>
+    [].concat(s.urls || []).some(u => /^turns?:/.test(u)));
 
   // Reliable for lobby and match control, unreliable for the firehose of state.
   // Snapshots are worthless the moment a newer one exists, so retransmitting a
   // lost one only delays the good ones behind it.
   const CH_CTL = { ordered: true };
   const CH_STATE = { ordered: false, maxRetransmits: 0 };
+
+  /* How long a link has to open once both descriptions have crossed. Both ends
+     count it, so a pair that cannot reach each other gives up at the same
+     moment on both machines rather than one of them holding a seat open for a
+     player the other has already written off. */
+  const OPEN_GRACE = 15_000;
 
   /* ── code encoding ────────────────────────────────────────────────────────
      A raw session description is 2–4 KB of SDP, and every one of them sits in
@@ -98,7 +122,6 @@
       if (!m) continue;
       const [, , comp, , pri, ip, port, typ] = m;
       if (comp !== "1") continue;                 // RTCP candidates are unused here
-      if (typ === "relay") continue;              // no TURN server in play
       const key = ip + ":" + port;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -107,10 +130,20 @@
       // quietly ignore it. Dropping it is what costs you — it is the only
       // address that works on the same wifi, or between two tabs on one
       // machine, where the router usually refuses to bounce traffic back.
+      /* A relay address is kept and marked as one. It used to be thrown away
+         here, on the grounds that there was no TURN server to produce one — but
+         that reasoning stopped being true the moment the room service started
+         offering a relay, and a dropped relay candidate fails silently: the
+         browser gathers it, this discards it, and the pair that needed it goes
+         on not connecting for no visible reason.
+
+         A relay candidate is never an mDNS name, so the local branch below is
+         untouched by this. */
       const local = MDNS_RE.exec(ip);
+      const kind = typ === "host" ? 0 : typ === "relay" ? 3 : 1;
       cands.push(local
         ? [2, b64(uuidToBytes(local[1])), +port, +pri]
-        : [typ === "host" ? 0 : 1, ip, +port, +pri]);
+        : [kind, ip, +port, +pri]);
     }
     return [
       desc.type === "offer" ? 0 : 1,
@@ -144,11 +177,20 @@
       "a=sctp-port:5000",
       "a=max-message-size:262144"
     ];
+    /* A relay candidate is announced as udp like the rest: the transport in a
+       candidate line is the relay's own hop to the far peer, which is UDP
+       however this browser reached its TURN server — so reaching it over TCP or
+       TLS, which is what gets through a firewall that drops UDP outright,
+       changes nothing that has to be written down here.
+
+       raddr is where the candidate was seen from, and the far end only reads it
+       for diagnostics — it is never used to connect — so the same placeholder
+       serves for relayed and reflexive alike. */
     cands.forEach(([typ, ip, port, pri], i) => {
-      const t = typ === 1 ? "srflx" : "host";
+      const t = typ === 3 ? "relay" : typ === 1 ? "srflx" : "host";
       const addr = typ === 2 ? bytesToUuid(unb64(ip)) + ".local" : ip;
       lines.push(`a=candidate:${i + 1} 1 udp ${pri} ${addr} ${port} typ ${t}` +
-                 (t === "srflx" ? ` raddr 0.0.0.0 rport 0` : ""));
+                 (t === "host" ? "" : ` raddr 0.0.0.0 rport 0`));
     });
     lines.push("a=end-of-candidates");
     return { type: kind === 0 ? "offer" : "answer", sdp: lines.join("\r\n") + "\r\n" };
@@ -189,22 +231,48 @@
 
   /* ICE candidates trickle in over a second or two. With no signalling server
      there's no channel to trickle them down, so we wait for gathering to finish
-     and ship them inside the one description. */
+     and ship them inside the one description.
+
+     Some networks never reach "complete", so that wait is cut short rather than
+     hanging the lobby on it. What must not be cut short is the relay. It is the
+     slowest candidate to arrive by some way — a TURN allocation is an
+     authenticated round trip where a STUN binding is a single packet — and it
+     is the only candidate that helps the people who cannot connect without it.
+     Leaving before it lands would spend the whole cost of running a relay and
+     then not use it, which is the worst of both.
+
+     So there are two deadlines. The short one is what everybody used to get and
+     still applies whenever a relay is either already in hand or not on offer.
+     The long one is the ceiling, paid only while still waiting for a relay that
+     was promised — which is exactly when it is worth waiting for. */
+  const GATHER_SOFT = 3000;
+  const GATHER_HARD = 8000;
+
   function whenGathered(pc) {
     if (pc.iceGatheringState === "complete") return Promise.resolve();
     return new Promise(resolve => {
-      let done = false;
-      const finish = () => { if (!done) { done = true; resolve(); } };
+      let done = false, soft = 0, hard = 0;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(soft);
+        clearTimeout(hard);
+        resolve();
+      };
       pc.addEventListener("icegatheringstatechange", () => {
         if (pc.iceGatheringState === "complete") finish();
       });
-      // Some networks never reach "complete". Don't hang the UI on it.
-      setTimeout(finish, 3000);
+      const haveRelay = () => {
+        const sdp = pc.localDescription && pc.localDescription.sdp;
+        return !!sdp && /\btyp relay\b/.test(sdp);
+      };
+      soft = setTimeout(() => { if (!usingTurn() || haveRelay()) finish(); }, GATHER_SOFT);
+      hard = setTimeout(finish, GATHER_HARD);
     });
   }
 
   function newPeer() {
-    return new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    return new RTCPeerConnection({ iceServers });
   }
 
   /* ── a single link to one other player ──────────────────────────────────── */
@@ -216,7 +284,12 @@
       this.ctl = null;
       this.state = null;
       this.open = false;
+      // Whether this link was ever actually up. A link that dies having never
+      // opened is somebody who couldn't get in, not somebody who left, and the
+      // lobby says two different things about those.
+      this.everOpen = false;
       this.disconnectTimer = 0;
+      this.openTimer = 0;
       this.pc.addEventListener("connectionstatechange", () => {
         const s = this.pc.connectionState;
         if (s === "failed" || s === "closed") {
@@ -244,6 +317,9 @@
             this.ctl.readyState === "open" && this.state.readyState === "open" &&
             !this.open) {
           this.open = true;
+          this.everOpen = true;
+          clearTimeout(this.openTimer);
+          this.openTimer = 0;
           this.h.onOpen && this.h.onOpen(this);
         }
       });
@@ -253,6 +329,20 @@
         this.h.onMessage && this.h.onMessage(msg, this);
       });
       ch.addEventListener("close", () => this.die());
+    }
+
+    /* Called once both descriptions have crossed, which is the moment the two
+       browsers have agreed to talk. From here either the channels open or these
+       two networks cannot reach each other — and that second outcome has no
+       event to listen for. With nothing worth trying, ICE never starts, the
+       connection sits in `new`, and `failed` never arrives. Nothing would ever
+       notice, so the link would be held for ever: the lobby would keep a seat
+       for it, count it as a player, and refuse to start the match while it was
+       still "connecting". This deadline is the only thing that sees it. */
+    arm(ms) {
+      if (this.open || this.dead) return;
+      clearTimeout(this.openTimer);
+      this.openTimer = setTimeout(() => { if (!this.open) this.die(); }, ms);
     }
 
     send(obj, reliable) {
@@ -267,6 +357,8 @@
       this.open = false;
       clearTimeout(this.disconnectTimer);
       this.disconnectTimer = 0;
+      clearTimeout(this.openTimer);
+      this.openTimer = 0;
       try { this.pc.close(); } catch (_) {}
       this.h.onClose && this.h.onClose(this);
     }
@@ -301,6 +393,7 @@
         throw new Error("That's an invite code, not a reply. You need the code your friend sent back.");
       }
       await this.pending.pc.setRemoteDescription(desc);
+      this.pending.arm(OPEN_GRACE);
       this.links.push(this.pending);
       this.pending = null;
     },
@@ -315,12 +408,19 @@
       const desc = await decodeDesc(code);
       if (desc.type !== "offer") throw new Error("That isn't someone knocking.");
       const link = new Link(this.links.length + 1, handlers);
+      /* Listed before the waiting below rather than after it. Building an answer
+         takes a second or three, and a link that dies inside that window runs
+         its close handler while it is still in nobody's list — so the handler
+         finds nothing to remove, and then this would add the corpse afterwards
+         and leave it there for good. */
+      this.links.push(link);
       link.pc.addEventListener("datachannel", e => link.wire(e.channel));
       await link.pc.setRemoteDescription(desc);
       const answer = await link.pc.createAnswer();
       await link.pc.setLocalDescription(answer);
       await whenGathered(link.pc);
-      this.links.push(link);
+      if (link.dead) throw new Error("That connection went away before it started.");
+      link.arm(OPEN_GRACE);
       return { link, code: await encodeDesc(link.pc.localDescription) };
     },
 
@@ -390,7 +490,20 @@
 
   window.CrossfireNet = {
     host, guest,
+    grace: OPEN_GRACE,
     supported: typeof RTCPeerConnection === "function",
+
+    /* The room service hands these over when the lobby opens, because a relay's
+       credentials expire and so cannot be written into a static page. Anything
+       that isn't a usable list is ignored in favour of the STUN-only default:
+       a room service that is old, broken or lying should cost the direct
+       connections that were always going to work anyway. */
+    setIce(list) {
+      iceServers = Array.isArray(list) && list.length ? list : DEFAULT_ICE;
+      return usingTurn();
+    },
+    get relaying() { return usingTurn(); },
+
     reset() { host.close(); guest.close(); }
   };
 })();

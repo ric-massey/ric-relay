@@ -4965,10 +4965,16 @@
       },
       onClose: () => {
         const N = window.CrossfireNet;
+        const arrived = link.everOpen;
         dropRemoteSeat(link);
         const i = N.host.links.indexOf(link);
         if (i >= 0) N.host.links.splice(i, 1);
-        say("A player disconnected.", true);
+        // Somebody who never got in is not somebody who left, and saying they
+        // disconnected sends the host looking for a player who was never there.
+        say(arrived
+              ? "A player disconnected."
+              : "Somebody tried to join but couldn't reach you. They can try again.",
+            true);
         tellSeats();
       },
       onMessage: msg => {
@@ -5075,6 +5081,32 @@
   const roomFetch = (path, opts) => fetch(ROOM_SERVICE + path, Object.assign(
     { signal: AbortSignal.timeout(6000), cache: "no-store" }, opts));
 
+  /* How to reach the other player. Fetched when the panel opens rather than
+     built into the page, because a relay's credentials expire — and asked for
+     exactly once per visit, since they are good for hours and every peer this
+     tab makes can share them.
+
+     Nothing waits on this to *succeed*. A room service that is old, unwell or
+     doesn't offer a relay leaves the STUN-only default in place, which is what
+     every direct connection was using anyway. */
+  let icePromise = null;
+
+  function iceReady() {
+    if (icePromise) return icePromise;
+    icePromise = (async () => {
+      if (!ROOM_SERVICE) return false;
+      try {
+        const r = await roomFetch("/ice");
+        if (!r.ok) return false;
+        const data = await r.json();
+        return window.CrossfireNet.setIce(data.iceServers);
+      } catch (_) {
+        return false;
+      }
+    })();
+    return icePromise;
+  }
+
   const roomPost = (path, body) => roomFetch(path, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -5130,15 +5162,30 @@
     try {
       /* The heartbeat is also the advert: it carries what the list shows and
          whether the room belongs in it at all. A match that has started stops
-         being listed immediately rather than waiting to expire. */
+         being listed immediately rather than waiting to expire.
+
+         The count it carries is players, not seats. A seat is held from the
+         moment somebody knocks, so counting seats advertised a lobby as fuller
+         than it was — and a room that reached its maximum in half-connected
+         strangers went grey in everybody's list. */
       const r = await roomPost("/room/" + roomWord + "/host", {
         key: hostKey, name: myName,
         title: roomTitle, pass: roomPass, mode: roomMode,
-        players: seatsTaken().size, max: MAX_PLAYERS,
+        players: 1 + window.CrossfireNet.host.links.filter(l => l.open).length,
+        max: MAX_PLAYERS,
         listed: !inMatch()
       });
       data = await r.json();
       if (!r.ok) {
+        /* Being throttled or finding the service briefly unwell is not the same
+           as being refused the room. A room lives twenty-five seconds and this
+           beats every two, so a few lost beats cost nothing and the next one
+           puts the lobby straight back in the list. Tearing it down for those
+           threw a host out of a lobby with people already sitting in it. */
+        if (r.status === 429 || r.status >= 500) {
+          return say("The room service is busy — your lobby may drop out of the " +
+                     "list for a moment.", true);
+        }
         stopRoom();
         show("makeRoute", true);
         el("btnOpenRoom").disabled = false;
@@ -5154,6 +5201,10 @@
     const N = window.CrossfireNet;
     if (N.host.links.length >= MAX_PLAYERS - 1) return;
     try {
+      // Settled long before anybody knocks; awaited rather than assumed because
+      // answering with the wrong ICE configuration is a connection that fails
+      // for no reason the players can see.
+      await iceReady();
       const made = await N.host.answer(join.offer, hostHandlers(null));
       Object.assign(made.link.h, hostHandlers(made.link));
       made.link.seat = freeSeat();
@@ -5295,8 +5346,12 @@
      peers directly with STUN and no relay, which is fine between most homes and
      is not fine behind a school or office network, or on mobile data behind
      carrier NAT. Naming that is the difference between "this is broken" and
-     "try the other wifi". */
-  const CONNECT_GRACE = 15_000;
+     "try the other wifi".
+
+     The host watches the same clock from its end — one number, shared, so that
+     neither side is left holding a seat open for somebody the other has already
+     given up on. */
+  const CONNECT_GRACE = (window.CrossfireNet && window.CrossfireNet.grace) || 15_000;
 
   async function watchConnection() {
     const N = window.CrossfireNet;
@@ -5332,6 +5387,7 @@
     stopBrowse();
     say("Knocking…");
     try {
+      await iceReady();
       const offer = await N.guest.offer(guestHandlers);
       const r = await roomPost("/room/" + id + "/join",
                                { offer, name: myName, pass });
@@ -5516,6 +5572,8 @@
        say when there is no room service: it isn't there. Saying so beats a list
        that never arrives. */
     showRoute("room");
+    // Started now so it has settled by the time anybody clicks a lobby.
+    iceReady();
     roomsUp().then(up => {
       if (lobby.hidden || lobbyRole !== role) return;   // they moved on
       if (!up) {

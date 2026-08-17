@@ -56,7 +56,9 @@ function readRaw(req) {
 
 async function main() {
   const { createRooms } = await import("./rooms-core.mjs");
-  const rooms = createRooms();
+  // Same names the Worker binds, so a relay can be tried from here with
+  // TURN_KEY_ID=… TURN_TOKEN=… node rooms.js. Without them: direct only.
+  const rooms = createRooms(process.env);
 
   const server = http.createServer(async (req, res) => {
     const hasBody = req.method !== "GET" && req.method !== "HEAD";

@@ -27,8 +27,13 @@
 import { createRooms } from "./rooms-core.mjs";
 
 export class RoomList {
-  constructor() {
-    this.rooms = createRooms();
+  /* `env` carries the relay account — TURN_KEY_ID and TURN_TOKEN — and is
+     handed over whole rather than picked apart here, because which names mean
+     what is a rule and rules live in `rooms-core.mjs`. Neither is required:
+     without them the service says "direct connections only" and the game plays
+     as it always has. */
+  constructor(state, env) {
+    this.rooms = createRooms(env);
   }
 
   fetch(request) {

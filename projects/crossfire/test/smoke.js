@@ -209,6 +209,10 @@ class FakeChannel {
 
 let peerSequence = 0;
 
+// A browser publishes a random name rather than your real local address; the
+// compact encoding packs the UUID in it down to 16 bytes and must rebuild it.
+const MDNS_NAME = "4f3c1a2b-5d6e-4f70-8192-a3b4c5d6e7f8.local";
+
 class FakePeer {
   constructor() {
     this.id = ++peerSequence;
@@ -225,6 +229,11 @@ class FakePeer {
     return new FakeChannel(label);
   }
 
+  /* One of every kind of candidate a real browser produces, because the compact
+     encoding keeps them by type and has already lost one that way: relay
+     candidates were dropped on the grounds that there was no TURN server, which
+     stopped being true without this noticing. A relayed address is the only
+     route two players behind carrier NAT have, and losing it fails silently. */
   description(type, setup) {
     return {
       type,
@@ -232,7 +241,15 @@ class FakePeer {
         `a=ice-ufrag:test${this.id}`,
         `a=ice-pwd:password${this.id}`,
         "a=fingerprint:sha-256 00:11:22:33",
-        `a=setup:${setup}`
+        `a=setup:${setup}`,
+        "a=candidate:1 1 udp 2130706431 192.168.1.5 50000 typ host",
+        "a=candidate:2 1 udp 2113937151 " + MDNS_NAME + " 50001 typ host",
+        "a=candidate:3 1 udp 1677729535 203.0.113.7 50002 typ srflx " +
+          "raddr 192.168.1.5 rport 50000",
+        "a=candidate:4 1 udp 41885439 198.51.100.9 50003 typ relay " +
+          "raddr 203.0.113.7 rport 50002",
+        // Component 2 is RTCP, which this game never uses and must not carry.
+        "a=candidate:5 2 udp 2130706430 192.168.1.5 50004 typ host"
       ].join("\r\n") + "\r\n"
     };
   }
@@ -297,6 +314,26 @@ async function checkTransport() {
 
   const answer = await network.guest.join(invite, {});
   assert.match(answer, /^C1p/, "new answer should use compact plain encoding");
+
+  /* What the far side actually received. Every address the browser offered has
+     to survive the round trip, because each one is the only route for somebody:
+     the mDNS name is what works on one wifi and between two tabs on one machine,
+     the reflexive address is what works between two homes, and the relay is the
+     only thing that works for anyone the other two have failed. */
+  const crossed = network.guest.link.pc.remoteDescription.sdp;
+  assert.match(crossed, /198\.51\.100\.9 50003 typ relay/,
+    "a relay candidate did not survive the compact encoding");
+  assert.match(crossed, /203\.0\.113\.7 50002 typ srflx/,
+    "a reflexive candidate did not survive the compact encoding");
+  assert.match(crossed, /192\.168\.1\.5 50000 typ host/,
+    "a host candidate did not survive the compact encoding");
+  assert.ok(crossed.includes(MDNS_NAME + " 50001 typ host"),
+    "an mDNS candidate did not survive the compact encoding");
+  assert.ok(!crossed.includes("50004"),
+    "an RTCP candidate was carried across and should not have been");
+  assert.equal((crossed.match(/^a=candidate:/gm) || []).length, 4,
+    "wrong number of candidates crossed");
+
   await network.host.accept(answer);
   assert.equal(network.host.links.length, 1, "offer/answer round trip did not connect");
 

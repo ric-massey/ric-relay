@@ -129,6 +129,66 @@ function passAllow(room) {
   return room.fails.n < PASS_TRIES;
 }
 
+/* ── the relay ───────────────────────────────────────────────────────────────
+   Most pairs of players connect straight to each other and none of this is
+   touched. The rest — mobile data behind carrier NAT, an office or a school —
+   cannot be connected at all, and their only way through is a TURN server that
+   relays the traffic. That is what this hands out.
+
+   Why the service and not the game: a relay's credentials expire, so they
+   cannot be written into a static page. They are minted here, on demand, and
+   they are all the browser ever sees. The account token that mints them stays
+   in this process.
+
+   Not being able to mint them is not an outage. It costs the minority of
+   players who needed a relay, and everybody else is unaffected — so every
+   failure below returns an empty list, and the game falls back to its own
+   direct-only configuration rather than refusing to play. */
+const TURN_API = "https://rtc.live.cloudflare.com/v1/turn/keys";
+
+/* Ask for six hours and stop handing the same set out after four, so that the
+   worst credential anybody is ever given still has two hours left on it — a
+   match is minutes. Cloudflare's own ceiling is 48 hours. */
+const TURN_TTL = 6 * 60 * 60;          // seconds, what we ask for
+const TURN_KEEP = 4 * 60 * 60 * 1000;  // ms, how long we pass it on
+
+function makeRelay(config) {
+  const keyId = config.TURN_KEY_ID || "";
+  const token = config.TURN_TOKEN || "";
+  let held = null;                     // { at, iceServers }
+
+  return async function iceServers() {
+    if (!keyId || !token) return [];
+    if (held && Date.now() - held.at < TURN_KEEP) return held.iceServers;
+    try {
+      const r = await fetch(
+        `${TURN_API}/${encodeURIComponent(keyId)}/credentials/generate-ice-servers`,
+        {
+          method: "POST",
+          headers: {
+            authorization: "Bearer " + token,
+            "content-type": "application/json"
+          },
+          body: JSON.stringify({ ttl: TURN_TTL })
+        }
+      );
+      if (!r.ok) throw new Error("turn " + r.status);
+      const got = await r.json();
+      if (!Array.isArray(got.iceServers) || !got.iceServers.length) {
+        throw new Error("no ice servers");
+      }
+      held = { at: Date.now(), iceServers: got.iceServers };
+      return held.iceServers;
+    } catch (_) {
+      // A set we already have is worth more than nothing right up until it
+      // expires, so a failed refresh keeps serving it until it is actually dead.
+      if (held && Date.now() - held.at < TURN_TTL * 1000) return held.iceServers;
+      held = null;
+      return [];
+    }
+  };
+}
+
 /* ── plumbing ───────────────────────────────────────────────────────────── */
 function send(code, body, origin) {
   const headers = {
@@ -158,13 +218,14 @@ async function readBody(request) {
    different lists. It sits in one region and everybody else's lobby polls
    cross an ocean to reach it, which for picking a game off a list nobody will
    ever feel — and the match itself never comes near it.                     */
-export function createRooms() {
+export function createRooms(config = {}) {
   /* id → { host: the owner's key, seen: last heartbeat, joins: Map(id → join),
             name: the host player's name, title: what the room is called,
             pass: null or { salt, hash }, players, max,
             listed: whether it belongs in the public list,
             fails: wrong-password counter }                                  */
   const rooms = new Map();
+  const relayServers = makeRelay(config);
 
   /* A public list invites poking at it, so make every request cost. A leaky
      bucket per address.
@@ -256,6 +317,13 @@ export function createRooms() {
     }
 
     if (!allow(ip)) return send(429, { error: "slow down" }, allowedOrigin);
+
+    /* How to reach the other player. Asked for once when the lobby opens, and
+       an empty list is a normal answer meaning "direct connections only" —
+       the game has its own STUN configuration and falls back to it. */
+    if (request.method === "GET" && parts[0] === "ice") {
+      return send(200, { ok: true, iceServers: await relayServers() }, allowedOrigin);
+    }
 
     /* The list. Everything here is meant to be seen by strangers — the password
        and its salt never leave this process, and a locked room says only that it

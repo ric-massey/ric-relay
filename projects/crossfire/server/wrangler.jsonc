@@ -16,5 +16,16 @@
 
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RoomList"] }],
 
+  // The relay. Optional: with neither of these set the service tells the game
+  // "direct connections only" and online play works exactly as it did before —
+  // just not for the players who need a relay to connect at all.
+  //
+  // TURN_KEY_ID is not a secret and can live here once you have made a TURN key
+  // in the dashboard (Realtime → TURN). TURN_TOKEN is a secret and must NOT:
+  //
+  //     npx wrangler@latest secret put TURN_TOKEN
+  //
+  // "vars": { "TURN_KEY_ID": "…" },
+
   "observability": { "enabled": true }
 }
