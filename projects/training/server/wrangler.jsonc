@@ -1,0 +1,24 @@
+{
+  // TRAINING log service. Deploy from this directory:
+  //     npx wrangler@latest secret put LOG_TOKEN     # once — this is the gate
+  //     npx wrangler@latest deploy
+  //
+  // Unlike crossfire-rooms, this object genuinely writes to its SQLite storage:
+  // a lobby list is worth twenty-five seconds and a training log is worth a
+  // year. `new_sqlite_classes` is still what makes it free-plan eligible, and
+  // the write volume — one person ticking boxes — sits nowhere near the limit.
+  //
+  // LOG_TOKEN is a secret, not a var. It must never appear in this file, in
+  // worker.mjs, or anywhere else in the repo: this repo is public.
+  "name": "training-log",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-08-01",
+
+  "durable_objects": {
+    "bindings": [{ "name": "LOG", "class_name": "TrainingLog" }]
+  },
+
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TrainingLog"] }],
+
+  "observability": { "enabled": true }
+}

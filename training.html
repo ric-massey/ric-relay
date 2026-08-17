@@ -181,6 +181,217 @@
     .latest-training:hover,.latest-training:focus-visible{border-color:var(--brand);outline:none;background:#fff8f5}
 
     footer { color: var(--soft); font-size: 0.82rem; text-align: center; margin-top: 0.5rem; }
+    .foot-dim { font-size: 0.76rem; opacity: 0.8; }
+
+    /* session rows inside an activity card */
+    .sess .slot {
+      flex: 0 0 5.6rem; color: var(--soft); font-size: 0.66rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .sess .txt { flex: 1 1 auto; min-width: 0; }
+    .sess .t { font-weight: 600; }
+    .sess .m { color: var(--soft); font-size: 0.8rem; }
+    .ticker.is-done .t { color: var(--good); }
+    .ticker.is-done .t::after { content: " ✓"; font-weight: 700; }
+    .sess .keytag {
+      display: inline-block; margin-left: 0.35rem; vertical-align: 0.08em;
+      font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--brand-dark); background: #ffe8de; border-radius: 999px; padding: 0.05rem 0.4rem;
+    }
+    /* A session is a block: the row, then the exercises it hides.
+       Two separate targets on the row, because they do different things and
+       sharing one tap would make both worse — the big one ticks it off, the
+       chevron opens what you are meant to be doing. */
+    .sess { display: block; border-top: 1px solid var(--line); padding: 0; }
+    .sess:first-child { border-top: 0; }
+    .sessrow { display: flex; align-items: center; gap: 0.35rem; }
+    .ticker {
+      flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 0.6rem;
+      text-align: left; font: inherit; color: inherit;
+      background: none; border: 0; cursor: pointer; padding: 0.6rem 0; min-height: 52px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ticker.static { cursor: default; }
+    .ticker:active:not(.static) { background: #fff8f5; }
+    .ticker:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; border-radius: 8px; }
+    .expander {
+      flex: 0 0 auto; width: 44px; min-height: 44px; font: inherit; font-size: 1rem;
+      cursor: pointer; color: var(--soft); background: none; border: 1px solid transparent;
+      border-radius: 8px; line-height: 1;
+    }
+    .expander:hover, .expander:focus-visible { color: var(--brand-ink); border-color: var(--line); outline: none; }
+    .expander[aria-expanded="true"] { color: var(--brand-ink); transform: rotate(90deg); }
+
+    /* the exercise panel */
+    .sessex { padding: 0 0 0.7rem 2.1rem; }
+    .sessex .pblock { margin-top: 0.5rem; }
+    .sessex .pname {
+      font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--brand-ink);
+    }
+    .sessex .pspec { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.3rem 0 0.45rem; }
+    .sessex .pspec span {
+      font-size: 0.7rem; color: var(--soft);
+      background: #f6f6f9; border: 1px solid var(--line); border-radius: 999px; padding: 0.08rem 0.5rem;
+    }
+    .sessex .pspec b { color: var(--ink); font-weight: 700; }
+    .sessex .exrow { display: flex; gap: 0.6rem; align-items: baseline; padding: 0.3rem 0; border-top: 1px solid #f1f1f5; }
+    .sessex .exrow:first-of-type { border-top: 0; }
+    .sessex .exn { flex: 1 1 auto; min-width: 0; font-size: 0.88rem; }
+    .sessex .exd { flex: 0 0 auto; font-size: 0.78rem; font-weight: 700; color: var(--brand-ink); white-space: nowrap; }
+    .sessex .excue { display: block; color: var(--soft); font-size: 0.78rem; margin-top: 0.1rem; }
+    .sessex .nodetail { color: var(--soft); font-size: 0.82rem; font-style: italic; }
+    @media (max-width: 480px) { .sessex { padding-left: 0.2rem; } }
+    .tickbox {
+      flex: 0 0 auto; width: 30px; height: 30px; border: 2px solid var(--line);
+      border-radius: 8px; background: #fff; display: grid; place-items: center;
+      font-size: 1rem; line-height: 1; color: var(--good); font-weight: 700;
+    }
+    .ticker.is-done .tickbox { border-color: var(--good); background: #eefaf1; }
+
+    .allbtn {
+      display: block; width: 100%; margin-top: 0.7rem; min-height: 46px;
+      font: inherit; font-weight: 700; cursor: pointer;
+      color: var(--brand-ink); background: #fff6f2;
+      border: 1px dashed var(--brand); border-radius: 10px;
+    }
+    .allbtn:active { background: #ffe8de; }
+    .allbtn:disabled { opacity: 0.6; cursor: default; }
+
+    .activity.all-done { border-color: #bfe6cd; }
+    .donetag {
+      display: inline-block; margin-left: 0.45rem; vertical-align: 0.1em;
+      font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.09em;
+      color: #1f6b3c; background: #e6f6ec; border-radius: 999px; padding: 0.08rem 0.5rem;
+    }
+
+    /* the bridge to the climbing room */
+    .climblink {
+      display: flex; align-items: center; gap: 0.7rem; margin: 0.5rem 0 0.2rem;
+      padding: 0.6rem 0.75rem; min-height: 52px; text-decoration: none; color: var(--ink);
+      background: #f6f4ff; border: 1px solid #ddd8f5; border-left: 4px solid #6b5bd6; border-radius: 10px;
+    }
+    .climblink:hover, .climblink:focus-visible { background: #efebff; text-decoration: none; outline: none; border-color: #6b5bd6; }
+    .climblink .cl-ico { font-size: 1.15rem; }
+    .climblink .cl-txt { flex: 1 1 auto; min-width: 0; }
+    .climblink .cl-sub { display: block; color: var(--soft); font-size: 0.76rem; }
+    .climblink .cl-go { color: #6b5bd6; font-weight: 700; }
+
+    /* sign-in */
+    .ownerform { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; width: 100%; }
+    .ownerlabel { font-weight: 700; font-size: 0.82rem; }
+    /* 44px minimum — this is typed on a phone, and 16px on the input is what
+       stops iOS zooming the whole page when it gets focus. */
+    .ownerform input {
+      flex: 1 1 9rem; min-width: 0; min-height: 44px; font: inherit; font-size: 16px;
+      padding: 0.4rem 0.6rem; border: 1px solid var(--line); border-radius: 8px;
+    }
+    .ownerform button {
+      font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; min-height: 44px;
+      padding: 0.4rem 1rem; border: 1px solid var(--brand); border-radius: 8px;
+      background: var(--brand); color: #fff;
+    }
+    .ownermsg { color: var(--brand-ink); font-size: 0.78rem; flex-basis: 100%; }
+
+    .notes { margin-top: 0.5rem; }
+    .note {
+      background: #fbfbfd; border: 1px solid var(--line); border-left: 3px solid var(--brand);
+      border-radius: 8px; padding: 0.5rem 0.7rem; margin-top: 0.4rem; font-size: 0.88rem;
+    }
+    .note .when { color: var(--soft); font-size: 0.72rem; margin-top: 0.2rem; }
+    .note.is-private { border-left-color: var(--soft); opacity: 0.85; }
+    .note.is-private .when::after { content: " · private"; font-weight: 700; }
+    .noteform { display: flex; gap: 0.4rem; margin-top: 0.5rem; flex-wrap: wrap; }
+    .noteform textarea {
+      flex: 1 1 12rem; min-height: 2.4rem; font: inherit; font-size: 0.88rem;
+      padding: 0.4rem 0.5rem; border: 1px solid var(--line); border-radius: 8px; resize: vertical;
+    }
+    .noteform button, .ownerbtn {
+      font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+      padding: 0.4rem 0.7rem; min-height: 36px;
+      border: 1px solid var(--brand); border-radius: 8px; background: var(--brand); color: #fff;
+    }
+    .noteform .secondary { background: #fff; color: var(--brand-ink); }
+
+    /* `display:flex` from an author stylesheet beats the UA rule behind the
+       hidden attribute, so the owner bar rendered for everybody. It is only a
+       cosmetic leak — the buttons it carries are useless without the token —
+       but a visitor being shown a "sign out" control is a confusing lie. */
+    [hidden] { display: none !important; }
+    .owner {
+      position: sticky; bottom: 0; margin: 1rem -1.25rem -4rem; padding: 0.7rem 1.25rem;
+      background: #fff; border-top: 2px solid var(--brand); font-size: 0.82rem;
+      display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+    }
+    .owner .ownerbtn { margin-left: auto; background: #fff; color: var(--brand-ink); }
+
+    /* ── the calendar ──
+       Seven columns at every width. A month of a training plan is only useful
+       as a shape — which days are heavy, where the rest falls — and that shape
+       only reads when the week is a row. So the cells shrink rather than the
+       grid reflowing, and detail moves into the day panel below. */
+    .calwrap { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.9rem 1rem 1rem; }
+    .calhead { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
+    .calmonth { flex: 1 1 auto; text-align: center; font-weight: 700; }
+    .calnav {
+      min-width: 44px; min-height: 44px; font: inherit; font-size: 1.3rem; line-height: 1;
+      cursor: pointer; color: var(--brand-ink); background: #fff;
+      border: 1px solid var(--line); border-radius: 10px;
+    }
+    .calnav:active { background: #fff2ec; }
+    .calnav:disabled { opacity: 0.35; cursor: default; }
+
+    .caldow, .calgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+    .caldow { margin-bottom: 3px; }
+    .caldow span {
+      text-align: center; font-size: 0.62rem; font-weight: 700; color: var(--soft);
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .calcell {
+      position: relative; min-height: 52px; padding: 0.2rem 0.1rem 0.35rem;
+      font: inherit; cursor: pointer; text-align: center;
+      background: #fcfcfd; border: 1px solid var(--line); border-radius: 8px;
+      display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+    }
+    .calcell.blank { background: transparent; border-color: transparent; cursor: default; }
+    .calcell.outside { opacity: 0.4; cursor: default; }
+    .calcell .cd { font-size: 0.8rem; font-weight: 700; }
+    .calcell .cdots { display: flex; gap: 2px; justify-content: center; min-height: 6px; }
+    .calcell .cdots i { width: 6px; height: 6px; border-radius: 50%; display: block; }
+    .calcell.today { border-color: var(--brand); border-width: 2px; background: #fff8f5; }
+    .calcell.sel { outline: 2px solid var(--brand); outline-offset: 1px; }
+    .calcell.isdone { background: #f2fbf5; border-color: #bfe6cd; }
+    .calcell.deload::after {
+      content: ""; position: absolute; inset: auto 4px 3px; height: 2px;
+      background: repeating-linear-gradient(90deg, var(--soft) 0 3px, transparent 3px 6px);
+      opacity: 0.5;
+    }
+    .calcell .ctick { position: absolute; top: 1px; right: 3px; font-size: 0.62rem; color: var(--good); font-weight: 800; }
+    .calcell .cevent { position: absolute; top: 1px; left: 3px; font-size: 0.6rem; }
+
+    .k-climb, .calcell .cdots i.climb { background: #6b5bd6; }
+    .k-run, .calcell .cdots i.run { background: var(--brand); }
+    .k-rest, .calcell .cdots i.rest { background: #c9c9d2; }
+    .k-done { background: var(--good); }
+    .calkey { display: flex; gap: 0.9rem; flex-wrap: wrap; margin-top: 0.7rem; font-size: 0.72rem; color: var(--soft); }
+    .calkey i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 0.25rem; }
+
+    .calday {
+      margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid var(--line);
+    }
+    .calday h3 { font-size: 0.95rem; margin-bottom: 0.1rem; }
+    .calday .sub { color: var(--soft); font-size: 0.8rem; margin-bottom: 0.4rem; }
+    .calday .cs { display: flex; gap: 0.55rem; padding: 0.35rem 0; border-top: 1px solid var(--line); }
+    .calday .cs:first-of-type { border-top: 0; }
+    .calday .cs .slot { flex: 0 0 5.4rem; color: var(--soft); font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 0.15rem; }
+    .calday .cs .t { font-weight: 600; font-size: 0.9rem; }
+    .calday .cs .m { color: var(--soft); font-size: 0.78rem; }
+
+    .emptyday { color: var(--soft); font-style: italic; padding: 0.4rem 0; }
+    .loadfail {
+      background: #fff6f1; border: 1px solid #ffd9c9; border-radius: 10px;
+      padding: 0.9rem 1.1rem; color: var(--ink); font-size: 0.88rem;
+    }
 
     @media (max-width: 620px) {
       .topbar .roomnav { width: 100%; margin-left: 0; }
@@ -218,76 +429,553 @@
     <a class="latest-training" data-latest-banner data-latest-prefix="new on the terminal"
        data-latest-room="training" data-latest-prefix-own="new activity"></a>
 
-    <!-- Dashes, not zeros. "0 mi / 0h 0m / 0 ft / 0 Activities" reads as a week
-         where Ric did nothing; a dash reads as a week nothing was recorded for,
-         which is the true statement until the feed is connected. -->
+    <!-- The four tiles show what the plan actually knows. Elevation and moving
+         time used to sit here and could only ever render a dash, because
+         nothing upstream produces them — a permanent dash is just a broken
+         promise with better manners. -->
     <div class="week">
       <h2>This Week</h2>
       <div class="stats">
-        <div class="stat"><div class="n" id="w-dist">— <small>mi</small></div><div class="l">Distance</div></div>
-        <div class="stat"><div class="n" id="w-time">—<small>h</small> —<small>m</small></div><div class="l">Time</div></div>
-        <div class="stat"><div class="n" id="w-elev">— <small>ft</small></div><div class="l">Elevation</div></div>
-        <div class="stat"><div class="n" id="w-acts">—</div><div class="l">Activities</div></div>
+        <div class="stat"><div class="n" id="w-dist">— <small>mi</small></div><div class="l">Running target</div></div>
+        <div class="stat"><div class="n" id="w-done">—</div><div class="l">Sessions done</div></div>
+        <div class="stat"><div class="n" id="w-week">—</div><div class="l">Week of 52</div></div>
+        <div class="stat"><div class="n" id="w-phase">—</div><div class="l">Block</div></div>
       </div>
-      <p class="week-note">Nothing recorded yet — the feed below isn't connected.</p>
+      <p class="week-note" id="w-note">Loading the plan…</p>
     </div>
 
-    <!-- Visitor-facing. How the feed actually gets wired up is in README.md;
-         it is not a note a family member should be reading off the page. -->
-    <div class="placeholder">
-      <strong>Live feed coming soon.</strong> This page will pull my real runs and workouts
-      in so family can follow along without needing a Strava account. Until it's connected,
-      the two cards below are examples showing what an entry will look like.
+    <div class="section-label">Today</div>
+    <div id="today"></div>
+
+    <!-- Public and forward-looking: the whole season is generated, so there is
+         nothing to keep up to date here. -->
+    <div class="section-label">The plan</div>
+    <div class="calwrap">
+      <div class="calhead">
+        <button type="button" class="calnav" id="calprev" aria-label="Previous month">‹</button>
+        <div class="calmonth" id="calmonth">—</div>
+        <button type="button" class="calnav" id="calnext" aria-label="Next month">›</button>
+      </div>
+      <div class="caldow" aria-hidden="true"></div>
+      <div class="calgrid" id="calgrid" role="grid"></div>
+      <div class="calkey">
+        <span><i class="k-climb"></i> climbing</span>
+        <span><i class="k-run"></i> running</span>
+        <span><i class="k-rest"></i> rest</span>
+        <span><i class="k-done"></i> done</span>
+      </div>
+      <div id="calday"></div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════
-         TO ADD AN ACTIVITY: copy a <div class="activity">
-         block, newest at the top. .icon emoji = sport,
-         .kind = RUN / RIDE / HIKE / STRENGTH, etc.
-         Delete the .map div for activities with no route.
-         ═══════════════════════════════════════════════════ -->
+    <div class="section-label">Recent</div>
+    <div id="feed"></div>
 
-    <div class="section-label">Recent Activity — examples</div>
-
-    <div class="activity is-example">
-      <div class="head">
-        <div class="icon">🏃</div>
-        <div class="meta">
-          <div class="title">Morning run <span class="example-tag">example</span></div>
-          <div class="when">what a run will look like here</div>
-        </div>
-        <div class="kind">Run</div>
-      </div>
-      <div class="body">
-        <div class="figures">
-          <div class="fig"><div class="n">5.2 mi</div><div class="l">Distance</div></div>
-          <div class="fig"><div class="n">7:48 /mi</div><div class="l">Pace</div></div>
-          <div class="fig"><div class="n">410 ft</div><div class="l">Elevation</div></div>
-        </div>
-        <div class="map"></div>
-      </div>
+    <!-- Owner controls. Hidden for everyone, including Ric, until a token is
+         stored — and storing one buys nothing on its own, because the Worker is
+         what checks it. Someone who sets this by hand gets a row of checkboxes
+         that return 401 and change nothing. -->
+    <div class="owner" id="ownerbar" hidden>
+      <strong>Owner mode.</strong> <span id="ownerstate">checking…</span>
+      <button type="button" class="ownerbtn" id="signout">sign out</button>
     </div>
 
-    <div class="activity is-example">
-      <div class="head">
-        <div class="icon">💪</div>
-        <div class="meta">
-          <div class="title">Strength session <span class="example-tag">example</span></div>
-          <div class="when">what a gym day will look like here</div>
-        </div>
-        <div class="kind">Strength</div>
-      </div>
-      <div class="body">
-        <div class="figures">
-          <div class="fig"><div class="n">48 min</div><div class="l">Duration</div></div>
-          <div class="fig"><div class="n">Pull day</div><div class="l">Focus</div></div>
-          <div class="fig"><div class="n">Solid</div><div class="l">Felt like</div></div>
-        </div>
-      </div>
-    </div>
-
-    <footer>Ric's personal training log · powered by stubbornness</footer>
+    <footer>
+      Ric's personal training log · powered by stubbornness<br>
+      <span class="foot-dim">The plan is generated; ticks and notes are live.</span>
+    </footer>
   </div>
+  <script src="assets/owner.js"></script>
+  <script>
+  /* TRAINING FEED
+     ──────────────────────────────────────────────────────────────────────────
+     Three sources, all static-or-public:
+       assets/training-plan.json  the sessions, generated from the private plan
+       assets/climb-days.json     which dates have a climbing trip in climbs.md
+       the Worker                 ticks, notes, and climbing days added by phone
+
+     Owner mode is a rendering hint; assets/owner.js says why at length. The
+     Worker is what refuses a write.
+
+     ── the friction budget ──
+     Marking a session done has to survive being done one-handed, in the cold,
+     on one bar of signal, by someone who has just climbed for five hours. So:
+     the whole row is the tap target rather than a 30px box, the tick paints
+     immediately and the network catches up behind it, and there is a single
+     "did all of it" button per day for the common case where the answer is yes
+     to everything. */
+  (function () {
+    const LOG_HOST = location.origin.includes('localhost')
+      ? location.origin
+      : 'https://training-log.rmbuster82.workers.dev';
+    const PLAN_URL = 'assets/training-plan.json';
+    const CLIMB_URL = 'assets/climb-days.json';
+    const RECENT_DAYS = 14;
+
+    const ICON = { climb: '🧗', run: '🏃', body: '🧘', rest: '😴' };
+    const KINDNAME = { climb: 'Climb', run: 'Run', body: 'Body', rest: 'Rest' };
+    const $ = s => document.querySelector(s);
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const isoOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const todayISO = () => isoOf(new Date());
+    const pretty = iso => new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' });
+
+    let PLAN = null, LOG = {}, CLIMB_STATIC = {}, CLIMB_WEB = {};
+    let LOG_STALE = false;          // showing cached state because the log was unreachable
+    /* Which session panels are open, keyed "date:index". Held here rather than
+       in the DOM so a re-render — and a tick causes one — does not slam shut
+       the list you were reading mid-session. */
+    const EXPANDED = new Set();
+
+    /* ── the log cache ──
+       Without this, opening the page with no signal renders every tick as
+       unticked. Nothing is lost — it is all still in Cloudflare — but it looks
+       exactly like data loss, which is the same alarming failure as the two
+       private-note bugs, and it would arrive at the worst possible moment.
+
+       Written after every read and every write, so it always includes anything
+       still sitting in the offline queue. */
+    const CACHE_KEY = 'trainingLogCache';
+    const cacheLog = () => { try { localStorage.setItem(CACHE_KEY, JSON.stringify(LOG)); } catch (e) {} };
+    const cachedLog = () => { try { return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch (e) { return null; } };
+
+    Owner.init({ host: LOG_HOST, onChange: () => render() });
+
+    /* ---------- data ---------- */
+    async function load() {
+      const plan = fetch(PLAN_URL, { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.reject(r.status));
+      /* Everything except the plan is optional. A page that shows the schedule
+         with no ticks is useful; an error page is not. */
+      const soft = (url, opts, fallback) => fetch(url, opts).then(r => r.ok ? r.json() : fallback).catch(() => fallback);
+      /* The log is the one fetch whose failure must be TOLD APART from an empty
+         result — `{}` and "could not reach it" look identical downstream and
+         mean opposite things. */
+      const log = fetch(LOG_HOST + '/log', { cache: 'no-store', headers: Owner.headers() })
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(j => ({ days: j.days || {}, live: true }))
+        .catch(() => ({ days: cachedLog() || {}, live: false }));
+      const climbWeb = soft(LOG_HOST + '/climb', { cache: 'no-store' }, { days: {} });
+      const climbStatic = soft(CLIMB_URL, { cache: 'no-cache' }, { days: {} });
+
+      try { PLAN = await plan; }
+      catch (e) {
+        /* Visitor-facing. "Run node projects/training/export.mjs" is a note for
+           whoever maintains this, not for someone's mum reading the page on a
+           phone — the same reason the placeholder card downstairs never
+           explained how the feed was wired up. The detail goes to the console.
+           And the sign-in box still gets drawn, or a bad deploy would lock the
+           owner out of the one control that might help. */
+        console.error('training-plan.json failed to load — regenerate with: node projects/training/export.mjs', e);
+        $('#w-note').textContent = 'Couldn\'t load the plan just now.';
+        $('#today').innerHTML = '<div class="loadfail"><strong>The training plan isn\'t loading.</strong> ' +
+          'Nothing\'s broken on your end — try again in a bit.</div>';
+        mountOwnerBar();
+        return;
+      }
+      const logResult = await log;
+      LOG = logResult.days || {};
+      LOG_STALE = !logResult.live && Object.keys(LOG).length > 0;
+      if (logResult.live) cacheLog();
+      CLIMB_WEB = (await climbWeb).days || {};
+      CLIMB_STATIC = (await climbStatic).days || {};
+      render();
+    }
+
+    const dayOf = iso => (PLAN.days || []).find(d => d.date === iso);
+    const stateOf = iso => LOG[iso] || { done: {}, notes: [] };
+
+    /* A climbing day is either in the committed archive or was logged from a
+       phone. Either way the training page links to the climbing page's anchor
+       for that date, which already exists as id="trip-YYYY-MM-DD". */
+    function climbOn(iso) {
+      const web = CLIMB_WEB[iso];
+      if (web) return { area: web.area || 'Climbing', routes: (web.routes || []).length, web: true };
+      const st = CLIMB_STATIC[iso];
+      if (st) return { area: st.area, routes: st.routes, web: false };
+      return null;
+    }
+
+    /* ---------- render ---------- */
+    /* The protocols a session points at, minus the ones with nothing to show.
+       A protocol earns its place with an exercise list OR with a dose table:
+       Kilter pyramids has no list of movements because "V2 → V6 → V2, four
+       sets, no rest" IS the session. Requiring `ex` used to hide those
+       entirely, which only went unnoticed while the warm-up was still being
+       published underneath them and the panel never looked empty. */
+    const protosOf = s => (s.k || [])
+      .map(k => [k, (PLAN.protocols || {})[k]])
+      .filter(([, p]) => p && ((p.ex && p.ex.length) || (p.spec && Object.keys(p.spec).length)));
+
+    function exercisePanel(s) {
+      const list = protosOf(s);
+      if (!list.length) return '<div class="nodetail">No set exercises — the session is the whole of it.</div>';
+      return list.map(([, p]) => `
+        <div class="pblock">
+          <div class="pname">${esc(p.n)}</div>
+          ${p.spec ? `<div class="pspec">${Object.entries(p.spec)
+              .map(([k, v]) => `<span>${esc(k)} <b>${esc(v)}</b></span>`).join('')}</div>` : ''}
+          ${(p.ex || []).map(([name, dose, cue]) => `<div class="exrow">
+              <span class="exn">${esc(name)}${cue ? `<span class="excue">${esc(cue)}</span>` : ''}</span>
+              <span class="exd">${esc(dose)}</span>
+            </div>`).join('')}
+        </div>`).join('');
+    }
+
+    function sessionRow(iso, s, i) {
+      const done = !!stateOf(iso).done[i];
+      const tag = s.key ? '<span class="keytag">key</span>' : '';
+      const body = `<span class="slot">${esc(s.slot || '')}</span>
+        <span class="txt">
+          <span class="t">${esc(s.title)}${tag}</span>
+          ${s.meta ? `<div class="m">${esc(s.meta)}</div>` : ''}
+        </span>`;
+      /* Two targets. The big one ticks — a 30px checkbox is the wrong size for
+         cold hands. The chevron opens what you are actually meant to be doing,
+         and it has to be its own control because a button cannot be nested
+         inside a button. */
+      const ticker = Owner.on()
+        ? `<button type="button" class="ticker${done ? ' is-done' : ''}" data-tick="${iso}:${i}" aria-pressed="${done}">
+             <span class="tickbox" aria-hidden="true">${done ? '✓' : ''}</span>${body}
+           </button>`
+        : `<div class="ticker static${done ? ' is-done' : ''}">${body}</div>`;
+      const id = `${iso}:${i}`;
+      const open = EXPANDED.has(id);
+      return `<div class="sess">
+        <div class="sessrow">
+          ${ticker}
+          <button type="button" class="expander" data-ex="${esc(id)}" aria-expanded="${open}"
+                  aria-label="Show what to do">${'›'}</button>
+        </div>
+        <div class="sessex" ${open ? '' : 'hidden'}>${open ? exercisePanel(s) : ''}</div>
+      </div>`;
+    }
+
+    function climbLink(iso) {
+      const c = climbOn(iso);
+      if (!c) return '';
+      return `<a class="climblink" href="projects/climbing/index.html#trip-${esc(iso)}">
+          <span class="cl-ico">🧗</span>
+          <span class="cl-txt"><strong>Climbed at ${esc(c.area)}</strong>
+            <span class="cl-sub">${c.routes} route${c.routes === 1 ? '' : 's'} logged · see the climbing page</span></span>
+          <span class="cl-go">→</span>
+        </a>`;
+    }
+
+    function notesBlock(iso) {
+      const st = stateOf(iso);
+      const list = (st.notes || []).map(n => `<div class="note${n.public === false ? ' is-private' : ''}">
+          ${esc(n.text)}<div class="when">${esc((n.at || '').slice(0, 10))}</div>
+        </div>`).join('');
+      const form = Owner.on() ? `<div class="noteform">
+          <textarea data-note="${iso}" rows="1" placeholder="How did it go?"></textarea>
+          <button type="button" data-addnote="${iso}">Post</button>
+          <button type="button" class="secondary" data-addnote="${iso}" data-private="1">Private</button>
+        </div>` : '';
+      return (list || form) ? `<div class="notes">${list}${form}</div>` : '';
+    }
+
+    function dayCard(iso, isToday) {
+      const d = dayOf(iso);
+      if (!d) return '';
+      const st = stateOf(iso);
+      const main = d.sessions.find(s => s.key) || d.sessions.find(s => s.kind === 'climb' || s.kind === 'run') || d.sessions[0];
+      const kind = main ? main.kind : 'rest';
+      const doneCount = d.sessions.filter((_, i) => st.done[i]).length;
+      const all = doneCount === d.sessions.length && d.sessions.length > 0;
+      const allBtn = (Owner.on() && !all && d.sessions.length > 1)
+        ? `<button type="button" class="allbtn" data-all="${iso}">Did all of it</button>` : '';
+      return `<div class="activity${all ? ' all-done' : ''}">
+        <div class="head">
+          <div class="icon">${ICON[kind] || '🏃'}</div>
+          <div class="meta">
+            <div class="title">${esc(isToday ? 'Today' : pretty(iso))}${all ? '<span class="donetag">done</span>' : ''}</div>
+            <div class="when">${esc(d.phase)}${d.deload ? ' · deload' : ''} · week ${d.week}${doneCount ? ` · ${doneCount}/${d.sessions.length}` : ''}</div>
+          </div>
+          <div class="kind">${esc(KINDNAME[kind] || 'Session')}</div>
+        </div>
+        <div class="body">
+          ${climbLink(iso)}
+          ${d.sessions.length ? d.sessions.map((s, i) => sessionRow(iso, s, i)).join('') : '<div class="emptyday">Nothing scheduled.</div>'}
+          ${allBtn}
+          ${notesBlock(iso)}
+        </div>
+      </div>`;
+    }
+
+    /* ---------- calendar ----------
+       Public and forward-looking. The plan file already holds all 364 days, so
+       this needs no upkeep — it is a view, not a second copy of anything. */
+    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    let CAL_MONTH = null;     // first of the month being shown
+    let CAL_SEL = null;       // the day whose detail panel is open
+
+    /* Which dot to draw. A day is climbing if it has a climbing session, and so
+       on — the morning practice and the wind-down are on every single day and
+       would make every cell look identical, so they do not get a dot. */
+    function dotsFor(d) {
+      const kinds = new Set(d.sessions.map(s => s.kind).filter(k => k === 'climb' || k === 'run'));
+      if (!kinds.size) kinds.add('rest');
+      return [...kinds];
+    }
+
+    function renderCal() {
+      if (!PLAN || !PLAN.days.length) return;
+      const first = PLAN.days[0].date, last = PLAN.days[PLAN.days.length - 1].date;
+      if (!CAL_MONTH) {
+        const t = new Date(todayISO() + 'T00:00:00');
+        const inPlan = dayOf(todayISO());
+        const anchor = inPlan ? t : new Date(first + 'T00:00:00');
+        CAL_MONTH = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+      }
+      const y = CAL_MONTH.getFullYear(), m = CAL_MONTH.getMonth();
+      $('#calmonth').textContent = `${MONTH_NAMES[m]} ${y}`;
+      $('.caldow').innerHTML = ['S','M','T','W','T','F','S'].map(x => `<span>${x}</span>`).join('');
+
+      const start = new Date(y, m, 1).getDay();
+      const days = new Date(y, m + 1, 0).getDate();
+      const cells = [];
+      for (let i = 0; i < start; i++) cells.push('<div class="calcell blank"></div>');
+      for (let n = 1; n <= days; n++) {
+        const iso = isoOf(new Date(y, m, n));
+        const d = dayOf(iso);
+        if (!d) { cells.push(`<div class="calcell outside"><span class="cd">${n}</span></div>`); continue; }
+        const st = stateOf(iso);
+        const doneCount = d.sessions.filter((_, i) => st.done[i]).length;
+        const allDone = doneCount === d.sessions.length && d.sessions.length > 0;
+        const cls = ['calcell'];
+        if (iso === todayISO()) cls.push('today');
+        if (iso === CAL_SEL) cls.push('sel');
+        if (allDone) cls.push('isdone');
+        if (d.deload) cls.push('deload');
+        const climbed = climbOn(iso) ? '<span class="cevent" title="climbed">🧗</span>' : '';
+        cells.push(`<button type="button" class="${cls.join(' ')}" data-cal="${iso}" role="gridcell"
+            aria-label="${esc(pretty(iso))}${allDone ? ', done' : ''}">
+          ${allDone ? '<span class="ctick">✓</span>' : ''}${climbed}
+          <span class="cd">${n}</span>
+          <span class="cdots">${dotsFor(d).map(k => `<i class="${k}"></i>`).join('')}</span>
+        </button>`);
+      }
+      $('#calgrid').innerHTML = cells.join('');
+
+      /* Do not offer months the plan does not cover. */
+      const prevEnd = new Date(y, m, 0), nextStart = new Date(y, m + 1, 1);
+      $('#calprev').disabled = isoOf(prevEnd) < first;
+      $('#calnext').disabled = isoOf(nextStart) > last;
+
+      $('#calday').innerHTML = CAL_SEL ? calDayPanel(CAL_SEL) : '';
+      /* Scoped: #today and #feed already carry their listeners and must not be
+         handed a second set every time a month is turned. */
+      if (CAL_SEL) wire($('#calday'));
+
+      $('#calprev').onclick = () => { CAL_MONTH = new Date(y, m - 1, 1); CAL_SEL = null; renderCal(); };
+      $('#calnext').onclick = () => { CAL_MONTH = new Date(y, m + 1, 1); CAL_SEL = null; renderCal(); };
+      document.querySelectorAll('[data-cal]').forEach(b => b.onclick = () => {
+        CAL_SEL = (CAL_SEL === b.dataset.cal) ? null : b.dataset.cal;
+        renderCal();
+        if (CAL_SEL) $('#calday').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      });
+    }
+
+    function calDayPanel(iso) {
+      const d = dayOf(iso);
+      if (!d) return '';
+      const st = stateOf(iso);
+      const c = climbOn(iso);
+      const wk = (PLAN.weeks || {})[d.week] || {};
+      return `<div class="calday">
+        <h3>${esc(pretty(iso))}</h3>
+        <div class="sub">${esc(d.phase)} · week ${d.week}${d.deload ? ' · deload' : ''} · ${wk.miles ?? '—'} mi that week</div>
+        ${c ? `<a class="climblink" href="projects/climbing/index.html#trip-${esc(iso)}">
+            <span class="cl-ico">🧗</span><span class="cl-txt"><strong>Climbed at ${esc(c.area)}</strong>
+            <span class="cl-sub">${c.routes} route${c.routes === 1 ? '' : 's'} logged</span></span><span class="cl-go">→</span></a>` : ''}
+        ${d.sessions.map((s, i) => sessionRow(iso, s, i)).join('')}
+        ${Owner.on() && d.sessions.length > 1 ? `<button type="button" class="allbtn" data-all="${esc(iso)}">Did all of it</button>` : ''}
+        ${notesBlock(iso)}
+      </div>`;
+    }
+
+    /* Pulled out of render() so the load-failure path can still draw it. */
+    function mountOwnerBar() {
+      const bar = $('#ownerbar');
+      bar.hidden = false;
+      if (Owner.on()) {
+        const q = Owner.pending();
+        bar.innerHTML = `<strong>Signed in.</strong> <span id="ownerstate">${q
+            ? `${q} tick${q === 1 ? '' : 's'} waiting for signal — they'll send themselves.`
+            : 'ticks and notes save as you tap.'}</span>
+          <button type="button" class="ownerbtn" id="signout">sign out</button>`;
+        $('#signout').onclick = () => Owner.signOut();
+      } else {
+        Owner.mountBox(bar, { title: 'Password', note: '' });
+      }
+    }
+
+    function render() {
+      const iso = todayISO();
+      const d = dayOf(iso);
+      mountOwnerBar();
+
+      if (d) {
+        const wk = (PLAN.weeks || {})[d.week] || {};
+        $('#w-dist').innerHTML = `${wk.miles ?? '—'} <small>mi</small>`;
+        $('#w-week').textContent = d.week;
+        $('#w-phase').textContent = d.phase;
+        let done = 0;
+        (PLAN.days || []).filter(x => x.week === d.week).forEach(x => {
+          const st = stateOf(x.date);
+          done += x.sessions.filter((_, i) => st.done[i]).length;
+        });
+        $('#w-done').textContent = done || '—';
+        /* Say it out loud when the ticks on screen came from the cache rather
+           than from the log. Otherwise a signal drop is indistinguishable from
+           somebody's work disappearing. */
+        $('#w-note').textContent = LOG_STALE
+          ? 'Offline — showing the last ticks this device saw. Nothing is lost.'
+          : d.deload
+            ? 'Deload week — volume down by design.'
+            : `${wk.phase || d.phase} · running target ${wk.miles ?? '—'} mi.`;
+        $('#today').innerHTML = dayCard(iso, true);
+      } else {
+        $('#w-note').textContent = 'Outside the plan\'s 52 weeks.';
+        $('#today').innerHTML = '<div class="loadfail">Nothing scheduled for today.</div>';
+      }
+
+      const feed = [];
+      for (let i = 1; i <= RECENT_DAYS; i++) {
+        const dt = new Date(iso + 'T00:00:00'); dt.setDate(dt.getDate() - i);
+        const k = isoOf(dt);
+        if (dayOf(k)) feed.push(dayCard(k, false));
+      }
+      $('#feed').innerHTML = feed.join('') || '<div class="placeholder">Nothing before today yet.</div>';
+      renderCal();
+      wire();
+    }
+
+    const say = t => { const el = $('#ownerstate'); if (el) el.textContent = t; };
+
+    /* ---------- writes ----------
+       The local state is updated FIRST, mirroring exactly what the Worker will
+       do to it. That is what makes an offline tick survive a reload: the write
+       sits in the queue and the cache already shows its effect, so the page is
+       not lying about anything — it is showing the state the server will hold
+       as soon as there is signal.
+
+       This merge has to match worker.mjs. If one changes, change both. */
+    function applyLocal(iso, body) {
+      const prev = LOG[iso] || { done: {}, ticks: {}, notes: [] };
+      LOG[iso] = {
+        done: { ...prev.done, ...(body.done || {}) },
+        ticks: { ...prev.ticks, ...(body.ticks || {}) },
+        notes: Array.isArray(body.notes) ? body.notes : (prev.notes || []),
+        updated: new Date().toISOString()
+      };
+    }
+
+    async function save(iso, body) {
+      const before = LOG[iso] ? JSON.parse(JSON.stringify(LOG[iso])) : undefined;
+      applyLocal(iso, body);
+      cacheLog();
+
+      const out = await Owner.post(`/log/${iso}`, body, { queue: true });
+
+      if (out && out.queued) {
+        /* No signal. The optimistic state STANDS — rolling it back here would
+           be the lie, because the write is kept and will land. */
+        say(`saved on this device — ${Owner.pending()} waiting for signal.`);
+        return { queued: true };
+      }
+      if (!out) {
+        /* Refused rather than unreachable: put it back the way it was. */
+        if (before === undefined) delete LOG[iso]; else LOG[iso] = before;
+        cacheLog();
+        say('not saved — tap again.');
+        return null;
+      }
+      LOG[iso] = { done: out.done, ticks: out.ticks, notes: out.notes, updated: out.updated };
+      cacheLog();
+      say(Owner.pending() ? `saved — ${Owner.pending()} still waiting.` : 'saved.');
+      return out;
+    }
+
+    /* Scoped to a root, because the calendar re-renders on its own — on month
+       navigation and after every tick — while #today and #feed stay put. An
+       unscoped wire() would add a SECOND listener to those existing rows each
+       time, and one tap would toggle twice and cancel itself out. */
+    function wire(root) {
+      root = root || document;
+      root.querySelectorAll('[data-tick]').forEach(b => b.addEventListener('click', async () => {
+        const [iso, i] = b.dataset.tick.split(':');
+        const now = b.getAttribute('aria-pressed') !== 'true';
+        /* Paint first. At a crag on one bar, a checkbox that waits reads as broken. */
+        b.setAttribute('aria-pressed', String(now));
+        b.classList.toggle('is-done', now);
+        b.querySelector('.tickbox').textContent = now ? '✓' : '';
+        const st = stateOf(iso);
+        const out = await save(iso, { done: { ...st.done, [i]: now } });
+        if (!out) {                                    // roll the optimistic paint back
+          b.setAttribute('aria-pressed', String(!now));
+          b.classList.toggle('is-done', !now);
+          b.querySelector('.tickbox').textContent = !now ? '✓' : '';
+        }
+        /* Keep the month grid in step — a tick anywhere should turn its cell
+           green, including a tick made from inside the calendar itself. */
+        renderCal();
+      }));
+
+      /* Toggled in place rather than through a full re-render: the panel is
+         static content, and re-rendering would scroll the page out from under
+         a thumb that just tapped it. */
+      root.querySelectorAll('[data-ex]').forEach(b => b.addEventListener('click', () => {
+        const id = b.dataset.ex;
+        const panel = b.closest('.sess').querySelector('.sessex');
+        const open = !EXPANDED.has(id);
+        if (open) {
+          const [iso, i] = id.split(':');
+          const d = dayOf(iso);
+          panel.innerHTML = exercisePanel(d.sessions[+i]);
+          EXPANDED.add(id);
+        } else {
+          EXPANDED.delete(id);
+        }
+        panel.hidden = !open;
+        b.setAttribute('aria-expanded', String(open));
+      }));
+
+      root.querySelectorAll('[data-all]').forEach(b => b.addEventListener('click', async () => {
+        const iso = b.dataset.all;
+        const d = dayOf(iso);
+        const done = {};
+        d.sessions.forEach((_, i) => { done[i] = true; });
+        b.disabled = true; b.textContent = 'saving…';
+        const out = await save(iso, { done });
+        if (out) render(); else { b.disabled = false; b.textContent = 'Did all of it'; }
+      }));
+
+      root.querySelectorAll('[data-addnote]').forEach(b => b.addEventListener('click', async () => {
+        const iso = b.dataset.addnote;
+        const ta = document.querySelector(`[data-note="${iso}"]`);
+        const text = (ta.value || '').trim();
+        if (!text) { ta.focus(); return; }
+        const st = stateOf(iso);
+        const notes = [...(st.notes || []), {
+          id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+          text, public: !b.dataset.private, at: new Date().toISOString()
+        }];
+        ta.value = '';
+        if (await save(iso, { notes })) render();
+      }));
+
+      /* Enter posts a public note; Shift+Enter is a newline. */
+      root.querySelectorAll('[data-note]').forEach(ta => ta.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          document.querySelector(`[data-addnote="${ta.dataset.note}"]:not([data-private])`).click();
+        }
+      }));
+    }
+
+    load();
+  })();
+  </script>
   <script src="effects.js"></script>
   <script src="projects/climbing/latest-climb.js?v=2"></script>
   <script src="latest.js?v=2"></script>
