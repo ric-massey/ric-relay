@@ -404,11 +404,12 @@
   <script src="projects/climbing/latest-climb.js?v=2"></script>
   <script src="latest.js?v=2"></script>
   <script src="projects/climbing/climbs-data.js"></script>
+  <script src="projects/climbing/web-trips.js"></script>
   <script>
     // ── fill the ledger from climbs.md ──────────────────────────────
     // Everything below reads projects/climbing/climbs-data.js. The deep log
     // lives at projects/climbing/ — this page is the front of it.
-    (() => {
+    (async () => {
       const DATA = window.CLIMBING_DATA;
       const el = (id) => document.getElementById(id);
       if (!DATA) {
@@ -416,6 +417,12 @@
           '<div class="empty">Ledger data missing — run <code>python3 projects/climbing/build-data.py</code>.</div>';
         return;
       }
+
+      // Days logged from a phone, merged in before anything is drawn. This page
+      // is the front door, so "most recent day out" saying something three
+      // weeks stale is the most visible way the site can be wrong — and it was,
+      // because the merge only ever existed on the deep log page.
+      await WebTrips.merge(DATA);
 
       const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
       const fmtDate = (iso) => {
