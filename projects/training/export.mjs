@@ -33,6 +33,28 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
 const SRC = join(HERE, 'index.html');
 const OUT = join(ROOT, 'assets', 'training-plan.json');
+/* The climbing page asks one question of the plan — when is the next day out
+   and where — and the plan is 200 kB. Same reasoning as climb-days.json going
+   the other way: a small file for the small question. */
+const CRAG_OUT = join(ROOT, 'assets', 'crag-plan.json');
+
+/* Which protocols mean "actually going somewhere to climb outside". The gym
+   sessions are climbing too, so kind alone cannot answer this. */
+const OUTDOOR = ['outboulder', 'outrope', 'ijams', 'ijamssolo'];
+
+/* The engine writes prose for one reader, so the venue lands in different
+   places depending on the day: Obed days name the crag in the meta, between the
+   duration and the conditions, while Ijams days carry it in the title. Resolved
+   here, once, so every page downstream just reads `venue`. */
+function venueOf(s) {
+  const seg = (s.meta || '').split('·').map(x => x.trim()).find(x =>
+    x && !/^[\d.,–—-]+\s*(h|min)\b/.test(x)
+      && !/conditions$/i.test(x)
+      && !/of light|dusk|away|send day/i.test(x));
+  if (seg) return seg;
+  if (/Ijams/i.test(s.title)) return 'Ijams Crag';
+  return null;
+}
 
 /* ── the allowlist ── */
 const PUBLIC_FIELDS = ['slot', 'kind', 'title', 'meta', 'key', 'k'];
@@ -181,6 +203,26 @@ const out = {
 
 mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT, JSON.stringify(out));
+
+/* ── the crag index ──
+   Every outdoor day in the year, with where it is. The climbing page shows the
+   next one; nothing else in here is worth 200 kB to answer that. */
+const cragDays = [];
+for (const d of days) {
+  for (const s of d.sessions) {
+    if (!(s.k || []).some(k => OUTDOOR.includes(k))) continue;
+    cragDays.push({ date: d.date, title: s.title, venue: venueOf(s), meta: s.meta || '' });
+  }
+}
+/* A day out with nowhere attached would render as "Next: Saturday, at" — so
+   fail the build instead of shipping the gap. */
+const placeless = cragDays.filter(c => !c.venue);
+if (placeless.length) {
+  console.error('REFUSING TO PUBLISH — outdoor days with no venue resolved:');
+  placeless.slice(0, 5).forEach(c => console.error(`  · ${c.date} "${c.title}" meta="${c.meta}"`));
+  process.exit(1);
+}
+writeFileSync(CRAG_OUT, JSON.stringify({ generated: out.generated, days: cragDays }));
 
 /* ── the guard ──
    Fail loudly rather than publish a leak. If any of these strings reach the

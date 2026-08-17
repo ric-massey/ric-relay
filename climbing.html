@@ -149,6 +149,54 @@
       margin: 2rem 0 0.2rem;
     }
 
+    /* ── foldable sections ──
+       Projects, dream routes and the tick list are three long lists stacked
+       under the one thing most visits actually want, which is what happened
+       most recently. They fold. <details> rather than a script, so the state
+       is the browser's problem, it works with the keyboard for free, and
+       ctrl-F still finds what is inside an open one.
+
+       The summary has to keep looking exactly like the h2 it replaces, or the
+       page grows two kinds of heading. */
+    details.fold { margin: 2rem 0 0; }
+    details.fold > summary {
+      font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--bar); border-bottom: 2px solid var(--bar); padding-bottom: 0.35rem;
+      margin-bottom: 0.2rem; cursor: pointer; list-style: none;
+      display: flex; align-items: center; gap: 0.5rem; min-height: 44px;
+    }
+    details.fold > summary::-webkit-details-marker { display: none; }
+    details.fold > summary::after {
+      content: "▸"; margin-left: auto; font-size: 0.85rem; transition: transform 0.15s ease;
+    }
+    details.fold[open] > summary::after { transform: rotate(90deg); }
+    details.fold > summary:hover { color: var(--bar-dark); }
+    details.fold > summary:focus-visible { outline: 2px solid var(--bar); outline-offset: 2px; }
+    /* How many are folded away, so the heading still tells you something when
+       it is shut. */
+    details.fold > summary .fold-n {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
+      color: var(--soft); text-transform: none;
+    }
+
+    /* ── next day out ──
+       Read from the training plan, which is where the answer already lives. */
+    .nextout {
+      display: flex; align-items: baseline; gap: 0.5rem 0.9rem; flex-wrap: wrap;
+      margin: 1.15rem 0; padding: 0.75rem 0.9rem;
+      background: var(--card); border: 1px solid var(--line);
+      border-left: 5px solid var(--clay); border-radius: 6px;
+    }
+    .nextout .k {
+      color: var(--clay); font-size: 0.69rem; font-weight: 800;
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .nextout .when { font-weight: 700; }
+    .nextout .where { color: var(--clay); font-weight: 700; }
+    .nextout .what { color: var(--soft); font-size: 0.82rem; }
+    .nextout .away { margin-left: auto; color: var(--soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    @media (max-width: 620px) { .nextout .away { margin-left: 0; flex-basis: 100%; } }
+
     /* route table */
     .routes { background: var(--card); border: 1px solid var(--line); border-top: none; border-radius: 0 0 8px 8px; }
     .route {
@@ -344,6 +392,11 @@
     <a class="latest-climb" data-latest-banner data-latest-prefix="new on the terminal"
        data-latest-room="climbing" data-latest-prefix-own="new route"></a>
 
+    <!-- Filled from assets/crag-plan.json, which the training exporter writes.
+         Hidden until it has an answer — an empty "next day out" is worse than
+         no row at all. -->
+    <div class="nextout" id="nextout" hidden></div>
+
     <div class="ledger">
       <div class="cell"><div class="n" id="n-sent">—</div><div class="l">Sends logged</div></div>
       <div class="cell"><div class="n" id="n-proj">—</div><div class="l">Active projects</div></div>
@@ -386,14 +439,20 @@
     <h2>Most Recent Day Out</h2>
     <div class="routes" id="recent"><div class="empty">Loading the ledger…</div></div>
 
-    <h2>Current Projects</h2>
-    <div class="routes compact" id="projects"></div>
+    <details class="fold" id="fold-projects">
+      <summary>Current Projects <span class="fold-n" id="fold-n-projects"></span></summary>
+      <div class="routes compact" id="projects"></div>
+    </details>
 
-    <h2>Dream Routes</h2>
-    <div class="routes compact" id="objectives"></div>
+    <details class="fold" id="fold-objectives">
+      <summary>Dream Routes <span class="fold-n" id="fold-n-objectives"></span></summary>
+      <div class="routes compact" id="objectives"></div>
+    </details>
 
-    <h2>Recent Ticks</h2>
-    <div class="routes" id="ticks"></div>
+    <details class="fold" id="fold-ticks">
+      <summary>Recent Ticks <span class="fold-n" id="fold-n-ticks"></span></summary>
+      <div class="routes" id="ticks"></div>
+    </details>
 
     <footer>Ric's personal climbing ledger · grades are opinions · stars are the ones that mattered</footer>
     <p class="woodshed"><a href="projects/climbing/board.html">the woodshed</a></p>
@@ -424,6 +483,47 @@
       // weeks stale is the most visible way the site can be wrong — and it was,
       // because the merge only ever existed on the deep log page.
       await WebTrips.merge(DATA);
+
+      /* ── the next day out ──
+         The training plan already knows: it schedules every crag day of the
+         year and names the venue. crag-plan.json is the 5 kB answer to that one
+         question, written by the training exporter, so this page does not pull
+         200 kB of sessions to read one line.
+
+         Deliberately quiet on failure. This is a nicety at the top of a page
+         whose actual content is the ledger below it, so if the file is missing
+         or the plan has run out of days, the row simply never appears. */
+      (async () => {
+        const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        let plan;
+        try {
+          const r = await fetch("assets/crag-plan.json", { cache: "no-cache" });
+          if (!r.ok) return;
+          plan = await r.json();
+        } catch (e) { return; }
+
+        const today = iso(new Date());
+        const next = (plan.days || []).filter((d) => d.date >= today)[0];
+        if (!next) return;
+
+        /* "in 4 days" reads better than a date you have to count from, but the
+           date has to be there too — this is the thing you plan a week around. */
+        const days = Math.round(
+          (new Date(next.date + "T00:00:00") - new Date(today + "T00:00:00")) / 86400000);
+        const away = days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
+        const when = new Date(next.date + "T00:00:00").toLocaleDateString(undefined, {
+          weekday: "long", day: "numeric", month: "long"
+        });
+
+        const box = el("nextout");
+        box.innerHTML =
+          `<span class="k">Next day out</span>` +
+          `<span class="when">${esc(when)}</span>` +
+          `<span class="where">${esc(next.venue)}</span>` +
+          `<span class="what">${esc(next.title)}</span>` +
+          `<span class="away">${esc(away)}</span>`;
+        box.hidden = false;
+      })();
 
       const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
       const fmtDate = (iso) => {
@@ -577,6 +677,15 @@
         when: fmtDate(r.date),
         grade: r.grade,
       })).join("") || '<div class="empty">No sends logged yet.</div>';
+
+      /* A shut heading should still tell you how much is behind it. The counts
+         are what is actually rendered, not the totals — the lists are capped,
+         and "8" over a list of eight is honest where the full project count
+         would not be. */
+      const foldCount = (id, n) => { const e = el(id); if (e) e.textContent = n ? `(${n})` : "(none)"; };
+      foldCount("fold-n-projects", Math.min(projects.length, 8));
+      foldCount("fold-n-objectives", Math.min(open.length, 10));
+      foldCount("fold-n-ticks", Math.min(ticks.length, 12));
     })();
 
     // rotate the hero photos
