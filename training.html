@@ -672,19 +672,52 @@
       .map(k => [k, (PLAN.protocols || {})[k]])
       .filter(([, p]) => p && ((p.ex && p.ex.length) || (p.spec && Object.keys(p.spec).length)));
 
+    /* ── one list, each thing once ──
+       A session points at several protocols and they overlap. The morning is
+       the worst of it: "Full morning practice" and "Daily wrist dose" both open
+       with the pre-engagement drill and the quadruped rocks, so 207 mornings of
+       the year listed those two twice, under two headings, as though they were
+       two different jobs. Whatever you are meant to do, you do once — so the
+       panel is one list and each movement appears in it once.
+
+       Where two protocols ask for the same movement at DIFFERENT doses — the
+       rocks are 20 s in the wrist dose and 30 s in the full practice, the
+       Romanian deadlift is 3 × 6 to lift heavy and 3 × 8 for the knees — both
+       are shown. Picking one silently would be the plan quietly deciding
+       something it has not thought about, and there are only two such cases in
+       the year. */
     function exercisePanel(s) {
       const list = protosOf(s);
       if (!list.length) return '<div class="nodetail">No set exercises — the session is the whole of it.</div>';
-      return list.map(([, p]) => `
-        <div class="pblock">
-          <div class="pname">${esc(p.n)}</div>
-          ${p.spec ? `<div class="pspec">${Object.entries(p.spec)
-              .map(([k, v]) => `<span>${esc(k)} <b>${esc(v)}</b></span>`).join('')}</div>` : ''}
-          ${(p.ex || []).map(([name, dose, cue]) => `<div class="exrow">
-              <span class="exn">${esc(name)}${cue ? `<span class="excue">${esc(cue)}</span>` : ''}</span>
-              <span class="exd">${esc(dose)}</span>
-            </div>`).join('')}
+
+      const moves = new Map();
+      for (const [, p] of list) {
+        for (const [name, dose, cue] of (p.ex || [])) {
+          if (!moves.has(name)) moves.set(name, { doses: [dose], cue });
+          else {
+            const m = moves.get(name);
+            if (!m.doses.includes(dose)) m.doses.push(dose);
+            if (!m.cue && cue) m.cue = cue;
+          }
+        }
+      }
+
+      const rows = [...moves].map(([name, m]) => `<div class="exrow">
+          <span class="exn">${esc(name)}${m.cue ? `<span class="excue">${esc(m.cue)}</span>` : ''}</span>
+          <span class="exd">${m.doses.map(esc).join(' / ')}</span>
         </div>`).join('');
+
+      /* A protocol with no movements is one whose dose table IS the session —
+         Kilter pyramids, ARC, the run paces. Those keep their name, because
+         "Angle 30°, V2 → V6 → V2" means nothing without it. */
+      const specOnly = list.filter(([, p]) => !(p.ex && p.ex.length) && p.spec && Object.keys(p.spec).length)
+        .map(([, p]) => `<div class="pblock">
+          <div class="pname">${esc(p.n)}</div>
+          <div class="pspec">${Object.entries(p.spec)
+            .map(([k, v]) => `<span>${esc(k)} <b>${esc(v)}</b></span>`).join('')}</div>
+        </div>`).join('');
+
+      return (rows ? `<div class="pblock">${rows}</div>` : '') + specOnly;
     }
 
     function sessionRow(iso, s, i) {
