@@ -10,7 +10,11 @@
   <meta property="og:title" content="Training — Ric's Terminal">
   <meta property="og:description" content="Ric's training feed — runs, workouts, and health telemetry.">
   <meta property="og:url" content="https://ricmassey.com/training.html">
-  <meta name="twitter:card" content="summary">
+  <meta property="og:image" content="https://ricmassey.com/assets/og-terminal.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Ric's Terminal — amber text on a black CRT screen">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="canonical" href="https://ricmassey.com/training.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fc4c02'/><text y='.85em' font-size='64' x='18'>🏃</text></svg>">
   <style>
@@ -31,6 +35,13 @@
       --line: #e6e6ec;
       --heat: #fc4c02;
       --good: #2f9e57;
+      /* The same split --brand/--brand-ink already makes, for the same reason.
+         --good is a fill: the legend swatch, the done row's border. As type it
+         is 3.42:1 on the card and 3.18:1 on the #eefaf1 a ticked row turns —
+         under AA both times, on the one word that tells you a session is done.
+         --good-ink is the text version: 4.94:1 and 4.61:1. Don't use --good on
+         anything carrying words. */
+      --good-ink: #248046;
     }
 
     * { box-sizing: border-box; margin: 0; }
@@ -175,17 +186,17 @@
 
     /* session rows inside an activity card */
     .sess .slot {
-      flex: 0 0 5.6rem; color: var(--soft); font-size: 0.66rem; font-weight: 700;
+      flex: 0 0 5.6rem; color: var(--soft); font-size: 0.69rem; font-weight: 700;
       text-transform: uppercase; letter-spacing: 0.06em;
     }
     .sess .txt { flex: 1 1 auto; min-width: 0; }
     .sess .t { font-weight: 600; }
     .sess .m { color: var(--soft); font-size: 0.8rem; }
-    .ticker.is-done .t { color: var(--good); }
+    .ticker.is-done .t { color: var(--good-ink); }
     .ticker.is-done .t::after { content: " ✓"; font-weight: 700; }
     .sess .keytag {
       display: inline-block; margin-left: 0.35rem; vertical-align: 0.08em;
-      font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+      font-size: 0.69rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
       color: var(--brand-dark); background: #ffe8de; border-radius: 999px; padding: 0.05rem 0.4rem;
     }
     /* A session is a block: the row, then the exercises it hides.
@@ -216,7 +227,7 @@
     .sessex { padding: 0 0 0.7rem 2.1rem; }
     .sessex .pblock { margin-top: 0.5rem; }
     .sessex .pname {
-      font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em;
+      font-size: 0.69rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em;
       color: var(--brand-ink);
     }
     .sessex .pspec { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.3rem 0 0.45rem; }
@@ -235,7 +246,7 @@
     .tickbox {
       flex: 0 0 auto; width: 30px; height: 30px; border: 2px solid var(--line);
       border-radius: 8px; background: #fff; display: grid; place-items: center;
-      font-size: 1rem; line-height: 1; color: var(--good); font-weight: 700;
+      font-size: 1rem; line-height: 1; color: var(--good-ink); font-weight: 700;
     }
     .ticker.is-done .tickbox { border-color: var(--good); background: #eefaf1; }
 
@@ -251,7 +262,7 @@
     .activity.all-done { border-color: #bfe6cd; }
     .donetag {
       display: inline-block; margin-left: 0.45rem; vertical-align: 0.1em;
-      font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.09em;
+      font-size: 0.69rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.09em;
       color: #1f6b3c; background: #e6f6ec; border-radius: 999px; padding: 0.08rem 0.5rem;
     }
 
@@ -317,7 +328,7 @@
     }
     .rungrid div { min-width: 0; }
     .rungrid .k {
-      display: block; font-size: 0.63rem; font-weight: 700; letter-spacing: 0.05em;
+      display: block; font-size: 0.69rem; font-weight: 700; letter-spacing: 0.05em;
       text-transform: uppercase; color: var(--soft);
     }
     .rungrid .v { font-size: 0.95rem; font-weight: 700; }
@@ -364,11 +375,11 @@
     .runmap .tiles img { position: absolute; width: 256px; height: 256px; }
     .runmap .line { position: absolute; left: 0; top: 0; }
     .mapcredit {
-      position: absolute; right: 0; bottom: 0; font-size: 0.58rem; line-height: 1.5;
+      position: absolute; right: 0; bottom: 0; font-size: 0.69rem; line-height: 1.5;
       padding: 0 0.28rem; background: rgba(255,255,255,0.82); color: #3b3b3b;
     }
     .mapcredit a { color: #3b3b3b; text-decoration: underline; }
-    .mapkey { display: flex; justify-content: center; gap: 1rem; margin: 0.35rem 0 0.9rem; font-size: 0.68rem; color: var(--soft); }
+    .mapkey { display: flex; justify-content: center; gap: 1rem; margin: 0.35rem 0 0.9rem; font-size: 0.69rem; color: var(--soft); }
     .mapkey span { display: inline-flex; align-items: center; gap: 0.3rem; }
     .mapkey span::before { content: ""; width: 8px; height: 8px; border-radius: 50%; }
     .mapkey .s::before { background: #1a7f37; }
@@ -376,7 +387,7 @@
 
     .splits { margin-top: 0.85rem; }
     .splits h4 {
-      margin: 0 0 0.4rem; font-size: 0.63rem; font-weight: 700; letter-spacing: 0.05em;
+      margin: 0 0 0.4rem; font-size: 0.69rem; font-weight: 700; letter-spacing: 0.05em;
       text-transform: uppercase; color: var(--soft);
     }
     /* A row per kilometre: number, bar, pace. The bar is scaled between the
@@ -404,19 +415,19 @@
        Normal weight and muted, so the distance that actually happened is the
        one the eye lands on. */
     .planned {
-      margin-left: 0.4rem; font-size: 0.68rem; font-weight: 400;
+      margin-left: 0.4rem; font-size: 0.69rem; font-weight: 400;
       color: var(--soft); white-space: nowrap;
     }
 
     .privtag {
-      margin-left: 0.4rem; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.05em;
+      margin-left: 0.4rem; font-size: 0.69rem; font-weight: 700; letter-spacing: 0.05em;
       text-transform: uppercase; color: #5b4636; background: #efe7e1;
       border-radius: 999px; padding: 0.08rem 0.42rem; vertical-align: middle;
     }
 
     .viastrava[hidden] { display: none; }
     .viastrava {
-      display: inline-block; margin-left: 0.35rem; font-size: 0.63rem; font-weight: 700;
+      display: inline-block; margin-left: 0.35rem; font-size: 0.69rem; font-weight: 700;
       letter-spacing: 0.04em; text-transform: uppercase; vertical-align: middle;
       /* --brand-dark, not --brand-ink: at this size on a tinted pill the ink
          orange lands at 4.48:1, which is under AA by a whisker. */
@@ -432,10 +443,15 @@
       flex: 1 1 9rem; min-width: 0; min-height: 44px; font: inherit; font-size: 16px;
       padding: 0.4rem 0.6rem; border: 1px solid var(--line); border-radius: 8px;
     }
+    /* --brand-dark, not --brand, behind white type. Strava orange is a fill
+       colour: #fff on #fc4c02 is 3.40:1, under AA at any size this button is.
+       That is the whole reason --brand-dark exists — same rule as --brand-ink
+       for orange type on a light ground. The border stays --brand so the button
+       still reads as the brand's shape. */
     .ownerform button {
       font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; min-height: 44px;
       padding: 0.4rem 1rem; border: 1px solid var(--brand); border-radius: 8px;
-      background: var(--brand); color: #fff;
+      background: var(--brand-dark); color: #fff;
     }
     .ownermsg { color: var(--brand-ink); font-size: 0.78rem; flex-basis: 100%; }
 
@@ -471,10 +487,11 @@
       flex: 1 1 12rem; min-height: 2.4rem; font: inherit; font-size: 0.88rem;
       padding: 0.4rem 0.5rem; border: 1px solid var(--line); border-radius: 8px; resize: vertical;
     }
+    /* Same rule as .ownerform button: white type needs --brand-dark under it. */
     .noteform button, .ownerbtn {
       font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer;
       padding: 0.4rem 0.7rem; min-height: 36px;
-      border: 1px solid var(--brand); border-radius: 8px; background: var(--brand); color: #fff;
+      border: 1px solid var(--brand); border-radius: 8px; background: var(--brand-dark); color: #fff;
     }
     .noteform .secondary { background: #fff; color: var(--brand-ink); }
 
@@ -514,7 +531,7 @@
     .caldow, .calgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
     .caldow { margin-bottom: 3px; }
     .caldow span {
-      text-align: center; font-size: 0.62rem; font-weight: 700; color: var(--soft);
+      text-align: center; font-size: 0.69rem; font-weight: 700; color: var(--soft);
       text-transform: uppercase; letter-spacing: 0.04em;
     }
     .calcell {
@@ -536,8 +553,8 @@
       background: repeating-linear-gradient(90deg, var(--soft) 0 3px, transparent 3px 6px);
       opacity: 0.5;
     }
-    .calcell .ctick { position: absolute; top: 1px; right: 3px; font-size: 0.62rem; color: var(--good); font-weight: 800; }
-    .calcell .cevent { position: absolute; top: 1px; left: 3px; font-size: 0.6rem; }
+    .calcell .ctick { position: absolute; top: 1px; right: 3px; font-size: 0.69rem; color: var(--good-ink); font-weight: 800; }
+    .calcell .cevent { position: absolute; top: 1px; left: 3px; font-size: 0.69rem; }
 
     .k-climb, .calcell .cdots i.climb { background: #6b5bd6; }
     .k-run, .calcell .cdots i.run { background: var(--brand); }
@@ -553,7 +570,7 @@
     .calday .sub { color: var(--soft); font-size: 0.8rem; margin-bottom: 0.4rem; }
     .calday .cs { display: flex; gap: 0.55rem; padding: 0.35rem 0; border-top: 1px solid var(--line); }
     .calday .cs:first-of-type { border-top: 0; }
-    .calday .cs .slot { flex: 0 0 5.4rem; color: var(--soft); font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 0.15rem; }
+    .calday .cs .slot { flex: 0 0 5.4rem; color: var(--soft); font-size: 0.69rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 0.15rem; }
     .calday .cs .t { font-weight: 600; font-size: 0.9rem; }
     .calday .cs .m { color: var(--soft); font-size: 0.78rem; }
 

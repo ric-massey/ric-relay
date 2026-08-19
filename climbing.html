@@ -10,7 +10,11 @@
   <meta property="og:title" content="Climbing — Ric's Terminal">
   <meta property="og:description" content="Ric's climbing & mountaineering ledger — projects, ticks, and objectives.">
   <meta property="og:url" content="https://ricmassey.com/climbing.html">
-  <meta name="twitter:card" content="summary">
+  <meta property="og:image" content="https://ricmassey.com/assets/og-terminal.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Ric's Terminal — amber text on a black CRT screen">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="canonical" href="https://ricmassey.com/climbing.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%233a5a40'/><text y='.85em' font-size='68' x='16'>🧗</text></svg>">
   <style>
@@ -30,7 +34,12 @@
       --star: #966400;
       --sent: #217a40;
       --proj: #9c5c00;
-      --scope: #7a7568;
+      /* The fourth tag state was missed when the other three were fixed: it
+         only renders on a route with no goes on it yet, so it is off the page
+         most days and was never on screen to be caught. #7a7568 was 3.89:1 on
+         its own #efece4; #6e6a5e is 4.58:1 and still reads as the grey one
+         next to the green and the orange. */
+      --scope: #6e6a5e;
     }
 
     * { box-sizing: border-box; margin: 0; }

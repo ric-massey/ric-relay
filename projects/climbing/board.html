@@ -12,8 +12,19 @@
       --panel-2: #1b1b20;
       --line: #26262c;
       --ink: #f4f4f6;
-      --soft: #8a8a94;
-      --dim: #5c5c66;
+      /* Two steps of quiet, and both of them carry words — the breadcrumb, the
+         tile labels, the dates on every row, the note under the pyramid. So
+         both have to clear 4.5:1 on the three things that sit behind them
+         (--bg, --panel, --panel-2), and the pair has to stay far enough apart
+         to still read as two steps.
+
+         --dim was #5c5c66: 3.03 / 2.78 / 2.60 — under AA on all three, which
+         made the smallest type on the darkest page the hardest to read. #83838e
+         is the point where the worst of the three (on --panel-2) clears, at
+         4.58. --soft moves up with it, or the two tiers collapse into one grey
+         and the hierarchy the page was drawing disappears. */
+      --soft: #a4a4ae;
+      --dim: #83838e;
       --accent: #00e0c6;
       --wood-a: #1d1815;
       --wood-b: #120f0d;
@@ -46,7 +57,7 @@
     }
     .appbar .back:hover { color: var(--ink); }
     .appbar .spacer { flex: 1 1 auto; }
-    .synced { color: var(--dim); font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+    .synced { color: var(--dim); font-size: 0.69rem; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
 
     .segmented {
       display: inline-flex; padding: 3px; gap: 3px;
@@ -112,7 +123,10 @@
     .boardframe svg { display: block; width: 100%; height: auto; }
     .boardframe .frame-label {
       position: absolute; left: .8rem; bottom: .6rem;
-      color: rgba(255,255,255,.28); font-size: .62rem;
+      /* .28 alpha put this at 2.4:1 on the wood — the one line that says WHICH
+         board and what size it is, and it was the least readable thing on the
+         page. .5 is 5.2:1 against both wood tones, on both boards. */
+      color: rgba(255,255,255,.5); font-size: 0.69rem;
       letter-spacing: .1em; text-transform: uppercase; pointer-events: none;
     }
     .hold-ghost { fill: rgba(255,255,255,.07); }
@@ -142,7 +156,7 @@
     .readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: .4rem; }
     .readout div { background: var(--panel-2); border-radius: 9px; padding: .42rem .55rem; }
     .readout .n { font-size: .92rem; font-weight: 700; line-height: 1.15; white-space: nowrap; font-variant-numeric: tabular-nums; }
-    .readout .l { color: var(--dim); font-size: .58rem; letter-spacing: .06em; text-transform: uppercase; margin-top: .08rem; }
+    .readout .l { color: var(--dim); font-size: 0.69rem; letter-spacing: .06em; text-transform: uppercase; margin-top: .08rem; }
     .note {
       margin: .7rem 0 0; padding-top: .7rem; border-top: 1px solid var(--line);
       color: var(--soft); font-size: .82rem; font-style: italic;
@@ -161,8 +175,8 @@
     }
     .tile .n { font-size: 1.2rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
     .tile .n small { font-size: .72rem; font-weight: 600; color: var(--soft); }
-    .tile .l { color: var(--dim); font-size: .58rem; letter-spacing: .07em; text-transform: uppercase; margin-top: .15rem; }
-    .tile .sub { color: var(--soft); font-size: .68rem; margin-top: .15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tile .l { color: var(--dim); font-size: 0.69rem; letter-spacing: .07em; text-transform: uppercase; margin-top: .15rem; }
+    .tile .sub { color: var(--soft); font-size: 0.69rem; margin-top: .15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* ── panels ──────────────────────────────────────────────── */
     .panel {
@@ -185,12 +199,12 @@
     .bar .fill { height: 100%; background: var(--accent); border-radius: 999px; min-width: 2px; }
     .bar .fill.ghost { background: rgba(255,255,255,.13); }
     .bar .v { color: var(--soft); font-size: .76rem; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
-    .bar .v em { display: block; color: var(--dim); font-size: .68rem; font-style: normal; }
+    .bar .v em { display: block; color: var(--dim); font-size: 0.69rem; font-style: normal; }
 
     .strip { display: flex; gap: 3px; align-items: flex-end; overflow-x: auto; padding-bottom: .4rem; }
     .strip .m { flex: 0 0 auto; width: 12px; display: grid; gap: 3px; justify-items: center; }
     .strip .m i { display: block; width: 100%; background: var(--accent); border-radius: 2px; opacity: .85; }
-    .strip .m span { color: var(--dim); font-size: .5rem; writing-mode: vertical-rl; }
+    .strip .m span { color: var(--dim); font-size: 0.69rem; writing-mode: vertical-rl; }
 
     /* ── logbook ─────────────────────────────────────────────── */
     .filters { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .8rem; }
@@ -218,7 +232,7 @@
     }
     .row:hover { background: var(--panel-2); }
     .row[aria-current="true"] { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--accent); }
-    .row .d { color: var(--dim); font-size: .68rem; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+    .row .d { color: var(--dim); font-size: 0.69rem; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
     .row .t { min-width: 0; }
     .row .t b { display: block; font-size: .9rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .row .t small { color: var(--dim); font-size: .72rem; }
@@ -345,6 +359,16 @@
       "use strict";
       const DATA = window.BOARD_DATA;
       const $ = (id) => document.getElementById(id);
+
+      /* Every string on this page came off Kilter's or Tension's API, and a
+         climb name, a setter name and a display name are all typed by whoever
+         set the climb — other people, not Ric. board-data.js is generated and
+         committed, so nothing arrives live, but "it is in a file we wrote" is
+         not escaping: the file is written from whatever the API returned. The
+         free-text fields that go through textContent are already safe; this is
+         for the ones that get built into markup. */
+      const esc = (v) => String(v ?? "").replace(/[&<>"']/g,
+        (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
       const boards = DATA && DATA.boards ? DATA.boards : {};
       const names = Object.keys(boards).filter((b) => (boards[b].entries || []).length);
 
@@ -419,7 +443,7 @@
 
         const chips = [];
         const grade = entry.communityGrade || entry.grade;
-        if (grade) chips.push(`<span class="chip grade">${grade}</span>`);
+        if (grade) chips.push(`<span class="chip grade">${esc(grade)}</span>`);
         chips.push(`<span class="chip">${entry.angle}°</span>`);
         chips.push(entry.ascent
           ? `<span class="chip send">✓ sent</span>`
@@ -436,7 +460,7 @@
         if (entry.triesTotal > entry.tries) cells.push(["Tries in total", entry.triesTotal]);
         if (entry.sessions > 1) cells.push(["Sessions on it", entry.sessions]);
         if (entry.crowd) cells.push(["Others up it", entry.crowd.toLocaleString()]);
-        if (entry.loggedGrade && entry.loggedGrade !== grade) cells.push(["I called it", entry.loggedGrade]);
+        if (entry.loggedGrade && entry.loggedGrade !== grade) cells.push(["I called it", esc(entry.loggedGrade)]);
         $("c-readout").innerHTML = cells
           .map(([l, n]) => `<div><div class="n">${n}</div><div class="l">${l}</div></div>`)
           .join("");
@@ -469,12 +493,12 @@
 
         $("profile").innerHTML =
           `<span class="pic">${account.avatar
-            ? `<img src="${account.avatar}" alt="">`
-            : initials}</span>` +
-          `<span class="who"><span class="handle">@${handle}</span>` +
-          `<span class="meta">${line || board.label}</span></span>` +
-          `<a class="open" href="${account.profile || account.host}" target="_blank" ` +
-          `rel="noopener noreferrer">Open in ${board.label} ↗</a>`;
+            ? `<img src="${esc(account.avatar)}" alt="">`
+            : esc(initials)}</span>` +
+          `<span class="who"><span class="handle">@${esc(handle)}</span>` +
+          `<span class="meta">${esc(line || board.label)}</span></span>` +
+          `<a class="open" href="${esc(account.profile || account.host)}" target="_blank" ` +
+          `rel="noopener noreferrer">Open in ${esc(board.label)} ↗</a>`;
       }
 
       function renderStats() {
@@ -680,12 +704,12 @@
           .map((item) => {
             const [angle, , ascents, , benchmark] = item.stat;
             const done = item.tick && item.tick.ascent;
-            return `<button class="row" type="button" data-uuid="${item.uuid}" ` +
-              `data-key="cat:${item.uuid}" aria-current="${selected && selected._key === "cat:" + item.uuid}">` +
+            return `<button class="row" type="button" data-uuid="${esc(item.uuid)}" ` +
+              `data-key="cat:${esc(item.uuid)}" aria-current="${selected && selected._key === "cat:" + item.uuid}">` +
               `<span class="d">${ascents.toLocaleString()}<br>ascents</span>` +
-              `<span class="t"><b>${item.name}</b><small>${angle}° · ${item.setter}` +
+              `<span class="t"><b>${esc(item.name)}</b><small>${esc(angle)}° · ${esc(item.setter)}` +
               `${benchmark ? " · benchmark" : ""}</small></span>` +
-              `<span class="r"><span class="g">${item.grade}</span>` +
+              `<span class="r"><span class="g">${esc(item.grade)}</span>` +
               `<span class="mark ${done ? "sent" : "bid"}">${done ? "✓" : item.tick ? "·" : ""}</span></span>` +
               `</button>`;
           })
@@ -719,12 +743,12 @@
               ? "flash" : `${e.tries} tr${e.tries === 1 ? "y" : "ies"}`;
             // Repeating the angle on every row is noise when it never varies.
             const angle = oneAngle() ? "" : `${e.angle}° · `;
-            return `<button class="row" type="button" data-key="${e._key}" ` +
+            return `<button class="row" type="button" data-key="${esc(e._key)}" ` +
               `aria-current="${selected && selected._key === e._key}">` +
               `<span class="d">${e.date.slice(5)}<br>${e.date.slice(0, 4)}</span>` +
-              `<span class="t"><b>${e.name}</b><small>${angle}${tries}` +
+              `<span class="t"><b>${esc(e.name)}</b><small>${esc(angle)}${tries}` +
               `${e.repeat ? " · repeat" : ""}${e.mirror ? " · mirrored" : ""}</small></span>` +
-              `<span class="r"><span class="g">${grade}</span>` +
+              `<span class="r"><span class="g">${esc(grade)}</span>` +
               `<span class="mark ${e.ascent ? "sent" : "bid"}">${e.ascent ? "✓" : "•"}</span></span>` +
               `</button>`;
           })
