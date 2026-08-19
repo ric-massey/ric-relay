@@ -272,22 +272,70 @@
       border: 1px solid #fff; border-radius: 6px; background: #fff; color: var(--bar); font-weight: 700;
     }
 
-    /* ── the player ──────────────────────────────────── */
+    /* ── the player ──────────────────────────────────────
+       A dark room around the clip rather than a bordered box on a beige page:
+       the thing being looked at is a video, and everything else should get out
+       of its way. Three rows — where and when, the clip, the caption — so the
+       chrome never sits on top of the picture. */
     dialog.viewer {
-      border: 0; border-radius: 10px; padding: 0; background: #14140f; color: #f2efe6;
-      max-width: min(1000px, 94vw); width: auto;
+      border: 0; border-radius: 14px; padding: 0; background: #16150f; color: #f2efe6;
+      max-width: min(1100px, 96vw); max-height: 96vh; width: auto; overflow: hidden;
+      box-shadow: 0 24px 70px rgba(0,0,0,.55);
+      /* A modal dialog centres itself with `margin: auto` — which the `*` reset
+         at the top of this file sets to 0, so it opened pinned to the top-left
+         corner instead. Put it back explicitly rather than carving an exception
+         into the reset. */
+      margin: auto;
     }
-    dialog.viewer::backdrop { background: rgba(0,0,0,.8); }
-    dialog.viewer video, dialog.viewer img {
-      display: block; max-width: 100%; max-height: 78vh; margin: 0 auto; background: #000;
+    dialog.viewer::backdrop { background: rgba(12,11,8,.88); backdrop-filter: blur(3px); }
+    dialog.viewer[open] { animation: vpop .16s ease-out; }
+    @keyframes vpop { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+
+    .vtop {
+      display: flex; align-items: center; gap: .6rem; padding: .6rem .7rem .55rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,.08);
     }
+    .vwhere { flex: 1 1 auto; min-width: 0; font-size: .82rem; color: #a9a291; letter-spacing: .04em; text-transform: uppercase; }
     .vclose {
-      position: absolute; top: .3rem; right: .5rem; z-index: 2; font: inherit; font-size: 1.5rem;
-      line-height: 1; cursor: pointer; border: 0; background: rgba(0,0,0,.5); color: #fff;
-      border-radius: 50%; width: 34px; height: 34px;
+      flex: 0 0 auto; font: inherit; font-size: 1.4rem; line-height: 1; cursor: pointer;
+      border: 0; background: rgba(255,255,255,.07); color: #f2efe6;
+      border-radius: 9px; width: 40px; height: 40px;
     }
-    .vcap { padding: .6rem .9rem; font-size: .85rem; color: #cdc7b8; }
+    .vclose:hover { background: rgba(255,255,255,.16); }
+
+    /* The clip sits on black, and the arrows sit beside it rather than over it —
+       an arrow floating on the picture is an arrow covering the hold you were
+       trying to see. */
+    .vstage { position: relative; display: flex; align-items: center; background: #000; }
+    .vstage #vmedia { flex: 1 1 auto; min-width: 0; display: flex; justify-content: center; }
+    dialog.viewer video, dialog.viewer img {
+      display: block; max-width: 100%; max-height: min(74vh, 720px); background: #000;
+    }
+    .vnav {
+      flex: 0 0 auto; align-self: stretch; width: 52px; font: inherit; font-size: 1.9rem; line-height: 1;
+      cursor: pointer; border: 0; background: rgba(255,255,255,.05); color: #f2efe6;
+    }
+    .vnav:hover { background: rgba(255,255,255,.14); }
+    .vnav[disabled] { opacity: .22; cursor: default; background: none; }
+
+    .vfoot {
+      display: flex; align-items: baseline; gap: .8rem; padding: .65rem 1rem .8rem;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .vcap { flex: 1 1 auto; font-size: .88rem; color: #cdc7b8; }
     .vcap strong { color: #fff; }
+    .vcount { flex: 0 0 auto; font-size: .76rem; color: #8d8878; font-variant-numeric: tabular-nums; }
+
+    @media (max-width: 620px) {
+      /* Arrows under the thumb, not at arm's length, and a stage that uses the
+         whole width — a 52px rail either side of a portrait phone clip leaves
+         almost nothing for the clip. */
+      .vstage { flex-wrap: wrap; }
+      .vstage #vmedia { flex-basis: 100%; order: 1; }
+      .vnav { order: 2; flex: 1 1 0; align-self: auto; height: 52px; width: auto; }
+      .vnav.next { order: 3; }
+      dialog.viewer video, dialog.viewer img { max-height: 62vh; }
+    }
 
     @media (max-width: 620px) {
       .trip .tally { margin-left: 0; width: 100%; }
@@ -347,10 +395,20 @@
   <!-- The player. One dialog reused by every thumbnail on the page rather than
        one per clip: a hundred <video> elements all holding a connection is how
        a log page with a few years in it becomes unopenable on a phone. -->
-  <dialog class="viewer" id="viewer">
-    <button class="vclose" id="vclose" aria-label="Close">&times;</button>
-    <div id="vmedia"></div>
-    <div class="vcap" id="vcap"></div>
+  <dialog class="viewer" id="viewer" aria-label="Media viewer">
+    <div class="vtop">
+      <div class="vwhere" id="vwhere"></div>
+      <button class="vclose" id="vclose" aria-label="Close">&times;</button>
+    </div>
+    <div class="vstage">
+      <button class="vnav prev" id="vprev" aria-label="Previous">&lsaquo;</button>
+      <div id="vmedia"></div>
+      <button class="vnav next" id="vnext" aria-label="Next">&rsaquo;</button>
+    </div>
+    <div class="vfoot">
+      <div class="vcap" id="vcap"></div>
+      <div class="vcount" id="vcount"></div>
+    </div>
   </dialog>
 
   <script src="../../assets/owner.js"></script>
@@ -775,27 +833,84 @@
     const viewer = document.getElementById("viewer");
     const vmedia = document.getElementById("vmedia");
     const vcap = document.getElementById("vcap");
+    const vwhere = document.getElementById("vwhere");
+    const vcount = document.getElementById("vcount");
+    const vprev = document.getElementById("vprev");
+    const vnext = document.getElementById("vnext");
 
-    function openViewer(m) {
+    /* The viewer holds the whole day, not one file. Opening a thumbnail from a
+       day with five clips on it and then having to shut the player to see the
+       second one is the thing that makes a gallery annoying to use. */
+    let reel = [];
+    let reelAt = 0;
+
+    function showAt(i) {
+      if (i < 0 || i >= reel.length) return;
+      reelAt = i;
+      const m = reel[i];
+      const trip = DATA.trips.find((t) => t.date === m.date);
       vmedia.innerHTML = m.kind === "video"
         ? `<video src="${esc(m.src)}" controls autoplay playsinline></video>`
         : `<img src="${esc(m.src)}" alt="${esc(m.caption || m.route || "")}">`;
+      vwhere.textContent = [fmtDate(m.date), trip && trip.area].filter(Boolean).join(" · ");
       vcap.innerHTML = [
         m.route ? `<strong>${esc(m.route)}</strong>` : "",
-        esc(m.caption || ""),
-        esc(fmtDate(m.date))
-      ].filter(Boolean).join(" · ");
+        esc(m.caption || "")
+      ].filter(Boolean).join(" — ");
+      vcount.textContent = reel.length > 1 ? `${i + 1} of ${reel.length}` : "";
+      vprev.disabled = i === 0;
+      vnext.disabled = i === reel.length - 1;
+      /* Both arrows pointless on a single clip — hide the rail rather than show
+         two dead buttons. */
+      const solo = reel.length < 2;
+      vprev.hidden = solo;
+      vnext.hidden = solo;
+    }
+
+    function openViewer(date, id) {
+      reel = ClimbMedia.of(date);
+      const at = Math.max(0, reel.findIndex((m) => m.id === id));
+      if (!reel.length) return;
+      showAt(at);
       viewer.showModal();
     }
-    function closeViewer() {
-      viewer.close();
-      vmedia.innerHTML = "";
-    }
+    function closeViewer() { viewer.close(); }
+
     document.getElementById("vclose").onclick = closeViewer;
-    viewer.addEventListener("close", () => { vmedia.innerHTML = ""; });
+    vprev.onclick = () => showAt(reelAt - 1);
+    vnext.onclick = () => showAt(reelAt + 1);
+    /* Emptying on close is not tidiness: a <video> left in the DOM goes on
+       holding its connection and, on iOS, goes on playing the audio. Bound to
+       the close event so Escape gets the same treatment as the button. */
+    viewer.addEventListener("close", () => { vmedia.innerHTML = ""; reel = []; });
     /* Clicking the backdrop shuts it. The dialog element reports a click on its
        own box for backdrop hits, so the target has to be the dialog itself. */
     viewer.addEventListener("click", (e) => { if (e.target === viewer) closeViewer(); });
+
+    document.addEventListener("keydown", (e) => {
+      if (!viewer.open) return;
+      /* Not while the video has focus — space and the arrows are its own
+         controls there, and stealing them breaks scrubbing. */
+      if (e.target.tagName === "VIDEO") return;
+      if (e.key === "ArrowLeft") { e.preventDefault(); showAt(reelAt - 1); }
+      if (e.key === "ArrowRight") { e.preventDefault(); showAt(reelAt + 1); }
+    });
+
+    /* Swipe, because on a phone that is what a gallery is. Only counted when
+       it is clearly horizontal, so scrolling a tall photo does not skip. */
+    let touchX = null, touchY = null;
+    vmedia.addEventListener("touchstart", (e) => {
+      touchX = e.changedTouches[0].clientX;
+      touchY = e.changedTouches[0].clientY;
+    }, { passive: true });
+    vmedia.addEventListener("touchend", (e) => {
+      if (touchX === null) return;
+      const dx = e.changedTouches[0].clientX - touchX;
+      const dy = e.changedTouches[0].clientY - touchY;
+      touchX = touchY = null;
+      if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      showAt(reelAt + (dx < 0 ? 1 : -1));
+    }, { passive: true });
 
     /* ── media: open one, or take one down ────────────
        On document rather than on `view`, because the newest day's card lives
@@ -813,8 +928,7 @@
       }
       const open = e.target.closest("[data-open]");
       if (!open) return;
-      const m = ClimbMedia.of(open.dataset.date).find((x) => x.id === open.dataset.open);
-      if (m) openViewer(m);
+      openViewer(open.dataset.date, open.dataset.open);
     });
 
     /* ── adding media ─────────────────────────────────

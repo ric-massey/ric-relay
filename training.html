@@ -447,6 +447,25 @@
     .note .when { color: var(--soft); font-size: 0.72rem; margin-top: 0.2rem; }
     .note.is-private { border-left-color: var(--soft); opacity: 0.85; }
     .note.is-private .when::after { content: " · private"; font-weight: 700; }
+    /* The notes are shut behind this. Full width and tall enough to hit with a
+       thumb, because it is now the thing you tap to read them at all. */
+    .notesbtn {
+      display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 42px;
+      margin-top: 0.5rem; padding: 0.35rem 0.7rem; font: inherit; font-size: 0.85rem;
+      cursor: pointer; text-align: left;
+      border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--brand-ink);
+    }
+    .notesbtn:hover { border-color: var(--brand); }
+    .notesbtn .nb-txt { flex: 1 1 auto; font-weight: 700; }
+    .notesbtn .nb-go { color: var(--soft); font-size: 1.1rem; font-weight: 700; }
+    .noteswrap[hidden] { display: none; }
+
+    /* What happened outside, and the clip of it. */
+    .climbwrap { margin-top: 0.6rem; }
+    .climbclip { margin-top: 0.5rem; border-radius: 10px; overflow: hidden; background: #000; }
+    .climbclip video, .climbclip img { display: block; width: 100%; max-height: 60vh; object-fit: contain; }
+    .climbcap { margin-top: 0.3rem; color: var(--soft); font-size: 0.8rem; }
+
     .noteform { display: flex; gap: 0.4rem; margin-top: 0.5rem; flex-wrap: wrap; }
     .noteform textarea {
       flex: 1 1 12rem; min-height: 2.4rem; font: inherit; font-size: 0.88rem;
@@ -614,9 +633,6 @@
       <div id="calday"></div>
     </div>
 
-    <div class="section-label">Recent</div>
-    <div id="feed"></div>
-
     <!-- Owner controls. Hidden for everyone, including Ric, until a token is
          stored — and storing one buys nothing on its own, because the Worker is
          what checks it. Someone who sets this by hand gets a row of checkboxes
@@ -632,6 +648,7 @@
     </footer>
   </div>
   <script src="assets/owner.js"></script>
+  <script src="projects/climbing/climb-media.js"></script>
   <script>
   /* TRAINING FEED
      ──────────────────────────────────────────────────────────────────────────
@@ -657,7 +674,6 @@
     const PLAN_URL = 'assets/training-plan.json';
     const CLIMB_URL = 'assets/climb-days.json';
     const BOARD_URL = 'projects/climbing/board-data.js';
-    const RECENT_DAYS = 14;
 
     const ICON = { climb: '🧗', run: '🏃', body: '🧘', rest: '😴' };
     const KINDNAME = { climb: 'Climb', run: 'Run', body: 'Body', rest: 'Rest' };
@@ -713,6 +729,9 @@
         .then(t => JSON.parse(t.slice(t.indexOf('{')).trim().replace(/;\s*$/, '')))
         .catch(() => null);
       const climbWeb = soft(LOG_HOST + '/climb', { cache: 'no-store' }, { days: {} });
+      /* The clips. Soft by construction — ClimbMedia.load() answers {} on any
+         failure — so a day card loses a video and keeps everything else. */
+      const media = ClimbMedia.load();
       const climbStatic = soft(CLIMB_URL, { cache: 'no-cache' }, { days: {} });
       /* The runs Strava has pushed. Soft like the rest: a page with the plan and
          the ticks but no run cards is a smaller loss than an error.
@@ -749,6 +768,7 @@
          page asks of it is "what happened on this day". Each entry keeps the
          board it came from, so a night that touched both is still two lists. */
       BOARD = {};
+      await media;
       const bd = await boards;
       for (const [key, b] of Object.entries((bd && bd.boards) || {})) {
         for (const e of (b.entries || [])) {
@@ -985,15 +1005,35 @@
       </div>`;
     }
 
+    /* ── what happened outside, at the foot of the day ──
+       This sits under the sessions now rather than over them, by Ric's call:
+       it is the thing that ALREADY happened, and it was pushing the checkboxes
+       — the only part of the card you act on — down the screen.
+
+       It carries the clip when there is one. ClimbMedia is loaded soft, so a
+       log service that is down costs a thumbnail and nothing else. */
     function climbLink(iso) {
       const c = climbOn(iso);
-      if (!c) return '';
-      return `<a class="climblink" href="projects/climbing/index.html#trip-${esc(iso)}">
+      const m = (window.ClimbMedia && ClimbMedia.feature(iso)) || null;
+      if (!c && !m) return '';
+      const head = c
+        ? `<strong>Climbed at ${esc(c.area)}</strong>
+           <span class="cl-sub">${c.routes} route${c.routes === 1 ? '' : 's'} logged · see the climbing page</span>`
+        : `<strong>Filmed that day</strong><span class="cl-sub">see the climbing page</span>`;
+      return `<div class="climbwrap">
+        <a class="climblink" href="projects/climbing/index.html#trip-${esc(iso)}">
           <span class="cl-ico">🧗</span>
-          <span class="cl-txt"><strong>Climbed at ${esc(c.area)}</strong>
-            <span class="cl-sub">${c.routes} route${c.routes === 1 ? '' : 's'} logged · see the climbing page</span></span>
+          <span class="cl-txt">${head}</span>
           <span class="cl-go">→</span>
-        </a>`;
+        </a>
+        ${m ? `<div class="climbclip">${
+          m.kind === 'video'
+            ? `<video src="${esc(m.src)}" controls playsinline preload="metadata"></video>`
+            : `<img src="${esc(m.src)}" alt="${esc(m.caption || m.route || '')}">`
+        }</div>${m.route || m.caption ? `<div class="climbcap">${
+          [m.route ? `<strong>${esc(m.route)}</strong>` : '', esc(m.caption || '')].filter(Boolean).join(' — ')
+        }</div>` : ''}` : ''}
+      </div>`;
     }
 
     /* ── the runs off the watch ──
@@ -1320,17 +1360,39 @@
       }).join('');
     }
 
+    /* Which days have their notes open. A set rather than one date, so reading
+       yesterday's does not shut today's — and held outside the render, because
+       every tick repaints the card underneath it. */
+    const NOTES_OPEN = new Set();
+
     function notesBlock(iso) {
       const st = stateOf(iso);
-      const list = (st.notes || []).map(n => `<div class="note${n.public === false ? ' is-private' : ''}">
-          ${esc(n.text)}<div class="when">${esc((n.at || '').slice(0, 10))}</div>
-        </div>`).join('');
+      const notes = st.notes || [];
       const form = Owner.on() ? `<div class="noteform">
           <textarea data-note="${iso}" rows="1" placeholder="How did it go?"></textarea>
           <button type="button" data-addnote="${iso}">Post</button>
           <button type="button" class="secondary" data-addnote="${iso}" data-private="1">Private</button>
         </div>` : '';
-      return (list || form) ? `<div class="notes">${list}${form}</div>` : '';
+      if (!notes.length && !form) return '';
+
+      /* Shut by default. The notes were the tallest thing on every card and
+         pushed the sessions — the part with the checkboxes on it — off the
+         screen. Now the card says how many there are and you ask for them. */
+      const open = NOTES_OPEN.has(iso);
+      const label = notes.length
+        ? `${notes.length} note${notes.length === 1 ? '' : 's'}`
+        : 'Add a note';
+      const list = notes.map(n => `<div class="note${n.public === false ? ' is-private' : ''}">
+          ${esc(n.text)}<div class="when">${esc((n.at || '').slice(0, 10))}</div>
+        </div>`).join('');
+      return `<div class="notes">
+        <button type="button" class="notesbtn" data-notes="${iso}" aria-expanded="${open}">
+          <span class="nb-ico" aria-hidden="true">${notes.length ? '💬' : '✎'}</span>
+          <span class="nb-txt">${esc(label)}</span>
+          <span class="nb-go" aria-hidden="true">${open ? '−' : '+'}</span>
+        </button>
+        <div class="noteswrap"${open ? '' : ' hidden'}>${list}${form}</div>
+      </div>`;
     }
 
     function dayCard(iso, isToday) {
@@ -1353,11 +1415,11 @@
           <div class="kind">${esc(KINDNAME[kind] || 'Session')}</div>
         </div>
         <div class="body">
-          ${climbLink(iso)}
           ${runLink(iso)}
           ${d.sessions.length ? d.sessions.map((s, i) => sessionRow(iso, s, i)).join('') : '<div class="emptyday">Nothing scheduled.</div>'}
           ${allBtn}
           ${notesBlock(iso)}
+          ${climbLink(iso)}
         </div>
       </div>`;
     }
@@ -1423,8 +1485,8 @@
       $('#calnext').disabled = isoOf(nextStart) > last;
 
       $('#calday').innerHTML = CAL_SEL ? calDayPanel(CAL_SEL) : '';
-      /* Scoped: #today and #feed already carry their listeners and must not be
-         handed a second set every time a month is turned. */
+      /* Scoped: #today already carries its listeners and must not be handed a
+         second set every time a month is turned. */
       if (CAL_SEL) wire($('#calday'));
 
       $('#calprev').onclick = () => { CAL_MONTH = new Date(y, m - 1, 1); CAL_SEL = null; renderCal(); };
@@ -1440,18 +1502,15 @@
       const d = dayOf(iso);
       if (!d) return '';
       const st = stateOf(iso);
-      const c = climbOn(iso);
       const wk = (PLAN.weeks || {})[d.week] || {};
       return `<div class="calday">
         <h3>${esc(pretty(iso))}</h3>
         <div class="sub">${esc(d.phase)} · week ${d.week}${d.deload ? ' · deload' : ''} · ${wk.miles ?? '—'} mi that week</div>
-        ${c ? `<a class="climblink" href="projects/climbing/index.html#trip-${esc(iso)}">
-            <span class="cl-ico">🧗</span><span class="cl-txt"><strong>Climbed at ${esc(c.area)}</strong>
-            <span class="cl-sub">${c.routes} route${c.routes === 1 ? '' : 's'} logged</span></span><span class="cl-go">→</span></a>` : ''}
         ${runLink(iso)}
         ${d.sessions.map((s, i) => sessionRow(iso, s, i)).join('')}
         ${Owner.on() && d.sessions.length > 1 ? `<button type="button" class="allbtn" data-all="${esc(iso)}">Did all of it</button>` : ''}
         ${notesBlock(iso)}
+        ${climbLink(iso)}
       </div>`;
     }
 
@@ -1519,13 +1578,6 @@
         $('#today').innerHTML = '<div class="loadfail">Nothing scheduled for today.</div>';
       }
 
-      const feed = [];
-      for (let i = 1; i <= RECENT_DAYS; i++) {
-        const dt = new Date(iso + 'T00:00:00'); dt.setDate(dt.getDate() - i);
-        const k = isoOf(dt);
-        if (dayOf(k)) feed.push(dayCard(k, false));
-      }
-      $('#feed').innerHTML = feed.join('') || '<div class="placeholder">Nothing before today yet.</div>';
       renderCal();
       wire();
     }
@@ -1583,11 +1635,29 @@
     }
 
     /* Scoped to a root, because the calendar re-renders on its own — on month
-       navigation and after every tick — while #today and #feed stay put. An
-       unscoped wire() would add a SECOND listener to those existing rows each
-       time, and one tap would toggle twice and cancel itself out. */
+       navigation and after every tick — while #today stays put. An unscoped
+       wire() would add a SECOND listener to those existing rows each time, and
+       one tap would toggle twice and cancel itself out.
+
+       The Recent feed used to be the other fixed root here. It was fourteen
+       copies of the calendar's own day panel stacked under it, and the calendar
+       is the better way to reach any of them — so it went, by Ric's call, on
+       2026-08-19. */
     function wire(root) {
       root = root || document;
+      /* Open the notes. Toggled in place rather than through a re-render: a
+         repaint here would rebuild the textarea and throw away whatever was
+         half-typed in it. */
+      root.querySelectorAll('[data-notes]').forEach(b => b.addEventListener('click', () => {
+        const iso = b.dataset.notes;
+        const wrap = b.parentElement.querySelector('.noteswrap');
+        const open = wrap.hidden;
+        wrap.hidden = !open;
+        b.setAttribute('aria-expanded', String(open));
+        b.querySelector('.nb-go').textContent = open ? '−' : '+';
+        if (open) { NOTES_OPEN.add(iso); const ta = wrap.querySelector('[data-note]'); if (ta) ta.focus(); }
+        else NOTES_OPEN.delete(iso);
+      }));
       root.querySelectorAll('[data-tick]').forEach(b => b.addEventListener('click', async () => {
         const [iso, sid] = b.dataset.tick.split(':');
         const now = b.getAttribute('aria-pressed') !== 'true';
