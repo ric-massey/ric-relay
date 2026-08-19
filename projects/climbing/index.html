@@ -754,9 +754,18 @@
 
       /* The newest day keeps its clip in the page rather than behind a
          thumbnail — it is the one video worth spending the bandwidth on
-         unasked, and it is what the whole card is for. Muted and not
-         autoplaying: a page that starts making noise on its own is a page
-         people close. */
+         unasked, and it is what the whole card is for.
+
+         It starts itself, muted and looping. A paused video renders its first
+         frame, and the first frame of a climb is usually somebody standing
+         still under the wall in the dark — so the card opened on a black
+         rectangle that read as broken. Playing it is the fix.
+
+         Muted is not a nicety, it is the price of admission: every browser
+         blocks a sound-on autoplay, so an unmuted `autoplay` would simply not
+         start and we would be back to the black frame. `preload="auto"`
+         because it is going to play regardless, and metadata-only just adds a
+         stall before it does. */
       const lead = ClimbMedia.feature(latest.date);
       const rest = ClimbMedia.of(latest.date).filter((m) => !lead || m.id !== lead.id);
 
@@ -768,7 +777,7 @@
         }</div>
         ${lead ? `<div class="feature">${
           lead.kind === "video"
-            ? `<video src="${esc(lead.src)}" controls playsinline preload="metadata"></video>`
+            ? `<video src="${esc(lead.src)}" controls autoplay muted loop playsinline preload="auto"></video>`
             : `<img src="${esc(lead.src)}" alt="${esc(lead.caption || lead.route || "")}">`
         }</div>${lead.route || lead.caption ? `<div class="fcap">${
           [lead.route ? `<strong>${esc(lead.route)}</strong>` : "", esc(lead.caption || "")]
@@ -778,6 +787,25 @@
         ${latest.notes ? `<div class="note">${esc(latest.notes)}</div>` : ""}
         ${rest.length ? `<div class="media">${rest.map(thumbHTML).join("")}</div>` : ""}
         ${addHTML(latest.date)}`;
+
+      /* The attribute alone is not enough to rely on. Safari decides whether an
+         autoplay is allowed at the moment play() is attempted, and a <video>
+         written in through innerHTML can miss its own autoplay; setting .muted
+         on the live element and asking once is what actually makes it go.
+
+         The catch() is required, not defensive padding: a blocked autoplay
+         rejects the promise, and an unhandled rejection here would be a console
+         error on every load of the page. Blocked means the reader sees the
+         controls and presses play, which is a fine outcome. */
+      const fv = document.querySelector(".recent .feature video");
+      if (fv) {
+        fv.muted = true;
+        const go = () => fv.play().catch(() => {});
+        /* Nothing to play yet on a cold load — wait for the first frame rather
+           than firing at a video with no data and being refused for it. */
+        if (fv.readyState >= 2) go();
+        else fv.addEventListener("loadeddata", go, { once: true });
+      }
     }
 
     /* ── events ───────────────────────────────────────── */
