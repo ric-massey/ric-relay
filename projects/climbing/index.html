@@ -169,10 +169,132 @@
     .empty { padding: 1.4rem 1rem; color: var(--soft); font-style: italic; text-align: center; }
     footer { margin-top: 2.5rem; color: var(--soft); font-size: .8rem; border-top: 1px solid var(--line); padding-top: 1rem; }
 
+    /* ── a day, shut ─────────────────────────────────────
+       The whole header is the button. Not a caret at the end of it: this gets
+       opened on a phone by somebody scrolling with one thumb, and a 12px arrow
+       is a target you miss. */
+    .trip > header.tophead {
+      display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap;
+      width: 100%; text-align: left; font: inherit; color: inherit;
+      background: none; border: 0; padding: 0; cursor: pointer;
+    }
+    .trip > header.tophead:hover .date { color: var(--clay); }
+    .trip .caret {
+      margin-left: auto; color: var(--soft); font-size: .8rem;
+      transition: transform .15s ease; flex: 0 0 auto;
+    }
+    .trip.opened .caret { transform: rotate(90deg); }
+    .trip .tally + .caret { margin-left: .5rem; }
+    /* One line of the note, and only one — the point of a shut day is that a
+       year of them can be read by scrolling. */
+    .trip .peek {
+      flex-basis: 100%; color: var(--soft); font-size: .85rem;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .trip .peek .cnt { color: var(--bar); font-weight: 700; }
+    .trip .body[hidden] { display: none; }
+
+    /* ── media ───────────────────────────────────────────
+       Thumbnails, not players. The <video> only comes into being when a clip is
+       actually opened; before that a poster-less video tag would have every
+       browser fetching metadata for every clip on the page at once. */
+    .media { margin-top: .8rem; display: flex; gap: .5rem; flex-wrap: wrap; }
+    .media .m {
+      position: relative; width: 116px; height: 86px; border-radius: 7px; overflow: hidden;
+      border: 1px solid var(--line); background: #ece7dc; cursor: pointer; padding: 0;
+      flex: 0 0 auto; display: block;
+    }
+    .media .m img, .media .m video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .media .m .play {
+      position: absolute; inset: 0; display: grid; place-items: center;
+      background: rgba(0,0,0,.28); color: #fff; font-size: 1.6rem; text-shadow: 0 1px 3px rgba(0,0,0,.5);
+    }
+    .media .m .kill {
+      position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; line-height: 1;
+      border: 0; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff;
+      font-size: .9rem; cursor: pointer; display: none;
+    }
+    .owner-on .media .m .kill { display: block; }
+    .media .m .rt {
+      position: absolute; left: 0; right: 0; bottom: 0; padding: .1rem .35rem;
+      background: linear-gradient(transparent, rgba(0,0,0,.72)); color: #fff;
+      font-size: .68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* ── the featured clip on the most recent day ──────── */
+    .recent .feature { margin-top: .9rem; border-radius: 8px; overflow: hidden; background: #000; }
+    .recent .feature video, .recent .feature img { display: block; width: 100%; max-height: 62vh; object-fit: contain; }
+    .recent .fcap { color: var(--soft); font-size: .8rem; margin-top: .35rem; }
+
+    /* ── adding it ───────────────────────────────────────
+       Only ever rendered for the signed-in owner. A visitor being shown an
+       upload box is a confusing lie, and one that returns 401 at that. */
+    .add {
+      margin-top: .8rem; padding: .6rem .7rem; border: 1px dashed var(--line);
+      border-radius: 8px; background: var(--bg);
+      display: flex; gap: .5rem; align-items: center; flex-wrap: wrap;
+    }
+    .add label.pick {
+      cursor: pointer; font-size: .8rem; font-weight: 700; padding: .35rem .8rem; min-height: 38px;
+      display: inline-flex; align-items: center;
+      border: 1px solid var(--bar); border-radius: 7px; background: var(--bar); color: #fff;
+    }
+    .add input[type=file] { display: none; }
+    .add input[type=text] {
+      font: inherit; font-size: .82rem; padding: .3rem .5rem; min-height: 38px;
+      border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--ink);
+      flex: 1 1 9rem; min-width: 0;
+    }
+    .add .say { flex-basis: 100%; color: var(--soft); font-size: .78rem; }
+    .add .say.bad { color: var(--clay); font-weight: 700; }
+    .add .bar { flex-basis: 100%; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+    .add .bar i { display: block; height: 100%; background: var(--bar); width: 0; transition: width .15s linear; }
+
+    /* ── sign in ─────────────────────────────────────── */
+    #ownerbar { margin-bottom: 1.2rem; }
+    .ownerform { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+    .ownerlabel { font-weight: 700; font-size: .82rem; }
+    .ownerform input {
+      font: inherit; font-size: .85rem; padding: .35rem .55rem; min-height: 40px;
+      border: 1px solid var(--line); border-radius: 7px; background: var(--card); color: var(--ink); flex: 0 1 12rem;
+    }
+    .ownerform button {
+      font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; min-height: 40px; padding: .35rem .9rem;
+      border: 1px solid var(--bar); border-radius: 7px; background: var(--bar); color: #fff;
+    }
+    .ownermsg { flex-basis: 100%; color: var(--clay); font-size: .78rem; }
+    .signedin {
+      display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+      background: var(--bar); color: #fff; border-radius: 8px; padding: .5rem .8rem; font-size: .85rem;
+    }
+    .signedin button {
+      font: inherit; font-size: .78rem; cursor: pointer; margin-left: auto; padding: .2rem .7rem;
+      border: 1px solid #fff; border-radius: 6px; background: #fff; color: var(--bar); font-weight: 700;
+    }
+
+    /* ── the player ──────────────────────────────────── */
+    dialog.viewer {
+      border: 0; border-radius: 10px; padding: 0; background: #14140f; color: #f2efe6;
+      max-width: min(1000px, 94vw); width: auto;
+    }
+    dialog.viewer::backdrop { background: rgba(0,0,0,.8); }
+    dialog.viewer video, dialog.viewer img {
+      display: block; max-width: 100%; max-height: 78vh; margin: 0 auto; background: #000;
+    }
+    .vclose {
+      position: absolute; top: .3rem; right: .5rem; z-index: 2; font: inherit; font-size: 1.5rem;
+      line-height: 1; cursor: pointer; border: 0; background: rgba(0,0,0,.5); color: #fff;
+      border-radius: 50%; width: 34px; height: 34px;
+    }
+    .vcap { padding: .6rem .9rem; font-size: .85rem; color: #cdc7b8; }
+    .vcap strong { color: #fff; }
+
     @media (max-width: 620px) {
       .trip .tally { margin-left: 0; width: 100%; }
+      .trip .tally + .caret { margin-left: auto; }
       .rank .row { grid-template-columns: 1.8rem 1fr auto; }
       .topbar .up { margin-left: 0; }
+      .media .m { width: 96px; height: 72px; }
     }
   </style>
 </head>
@@ -188,12 +310,18 @@
   <div class="wrap">
     <div class="breadcrumb"><a href="../../climbing.html">Climbing</a> &rsaquo; The Log</div>
     <h1>The Climbing Log</h1>
-    <p class="lede">Everything I've recorded outside — every trip, every route, everyone I climbed with.
-      <a href="add.html" id="addlink" style="white-space:nowrap">Log a day &rsaquo;</a></p>
+    <p class="lede"><a href="add.html" id="addlink" style="white-space:nowrap">Log a day &rsaquo;</a></p>
+
+    <!-- The tally reads first now, then the day it is counting up to. The other
+         way round, the most recent trip pushed the numbers below the fold on a
+         phone and the page opened on one day rather than on the whole log. -->
+    <div class="ledger" id="ledger"></div>
 
     <section class="recent" id="recent" aria-label="Most recent trip"></section>
 
-    <div class="ledger" id="ledger"></div>
+    <!-- Signed out this is a password box; signed in it is a line saying so.
+         Owner mode is a rendering hint — assets/owner.js says why at length. -->
+    <div id="ownerbar"></div>
 
     <div class="controls">
       <input type="search" class="search" id="search" autocomplete="off"
@@ -216,8 +344,19 @@
     </footer>
   </div>
 
+  <!-- The player. One dialog reused by every thumbnail on the page rather than
+       one per clip: a hundred <video> elements all holding a connection is how
+       a log page with a few years in it becomes unopenable on a phone. -->
+  <dialog class="viewer" id="viewer">
+    <button class="vclose" id="vclose" aria-label="Close">&times;</button>
+    <div id="vmedia"></div>
+    <div class="vcap" id="vcap"></div>
+  </dialog>
+
+  <script src="../../assets/owner.js"></script>
   <script src="climbs-data.js"></script>
   <script src="web-trips.js"></script>
+  <script src="climb-media.js"></script>
   <script src="../relay-return.js" data-home="../../index.html"></script>
   <script>
   (async () => {
@@ -229,7 +368,13 @@
        The whole render waits on it. It is one small request and the
        alternative is the page painting once and jumping. If the log service is
        unreachable the merge is skipped and the archive renders alone. */
-    await WebTrips.merge(window.CLIMBING_DATA);
+    /* Both at once. They are independent — one asks the log service what was
+       climbed, the other what was filmed — and doing them in sequence made the
+       page wait for the sum of two round trips to paint anything. */
+    await Promise.all([
+      WebTrips.merge(window.CLIMBING_DATA),
+      ClimbMedia.load()
+    ]);
 
     const DATA = window.CLIMBING_DATA;
     const view = document.getElementById("view");
@@ -260,7 +405,10 @@
       ].join(" ").toLowerCase();
     });
 
-    let state = { tab: "trips", q: "", filter: null, person: null };
+    /* `open` is a set of dates rather than a single one, so opening a second day
+       does not shut the first. It used to be read off location.hash, which meant
+       exactly one day could be open and reading two required going back. */
+    let state = { tab: "trips", q: "", filter: null, person: null, open: new Set() };
 
     /* ── filter chips ─────────────────────────────────── */
     const FILTERS = [
@@ -317,25 +465,88 @@
         </div>`).join("");
     }
 
+    /* ── media ────────────────────────────────────────
+       A thumbnail is a button, and for video it is a still frame rather than a
+       player. `preload="metadata"` on a poster-less <video> is enough to get the
+       first frame drawn without pulling the clip, which is the difference
+       between a log page opening and a log page downloading forty videos. */
+    /* A div carrying role=button rather than a real <button>, because the remove
+       control sits on top of it and a <button> inside a <button> is not markup —
+       the parser unnests it, and the delete ends up beside the thumbnail
+       instead of on it. */
+    function thumbHTML(m) {
+      return `
+        <div class="m" role="button" tabindex="0" data-open="${esc(m.id)}" data-date="${esc(m.date)}"
+             title="${esc(m.caption || m.route || m.name || "")}">
+          ${m.kind === "video"
+            ? `<video src="${esc(m.src)}#t=0.1" muted playsinline preload="metadata"></video>
+               <span class="play" aria-hidden="true">▶</span>`
+            : `<img src="${esc(m.src)}" alt="${esc(m.caption || m.route || "")}" loading="lazy">`}
+          ${m.route ? `<span class="rt">${esc(m.route)}</span>` : ""}
+          <button class="kill" data-kill="${esc(m.id)}" data-date="${esc(m.date)}"
+                  title="Remove this" aria-label="Remove this">&times;</button>
+        </div>`;
+    }
+
+    function mediaHTML(date) {
+      const items = date ? ClimbMedia.of(date) : [];
+      return items.length ? `<div class="media">${items.map(thumbHTML).join("")}</div>` : "";
+    }
+
+    /* The upload box. Rendered only when signed in — see the note in the CSS. */
+    function addHTML(date) {
+      if (!date || !Owner.on()) return "";
+      return `
+        <div class="add" data-add="${esc(date)}">
+          <label class="pick">
+            <input type="file" accept="${esc(ClimbMedia.ACCEPT)}" multiple>
+            Add photo or video
+          </label>
+          <input type="text" class="rt-in" placeholder="Which route? (optional)">
+          <div class="bar" hidden><i></i></div>
+          <div class="say"></div>
+        </div>`;
+    }
+
     function tripHTML(trip, q, opened, hidden) {
       const tally = [];
       if (trip.pitches) tally.push(`${trip.pitches} pitches`);
       if (trip.boulders) tally.push(`${trip.boulders} boulders`);
+      const key = trip.date || trip.dateRaw;
+      const shots = ClimbMedia.of(trip.date);
+      const clips = shots.filter((m) => m.kind === "video").length;
+
+      /* What a shut day says: the date, where, and one line of the note. If
+         there is no note, the routes stand in for it — a day that reads
+         "Aug 18 · Obed" and nothing else is not worth scrolling past. */
+      const peek = trip.notes
+        ? esc(trip.notes.replace(/\s+/g, " ").trim())
+        : esc(trip.routes.slice(0, 4).map((r) => r.name).filter(Boolean).join(", "));
+      const badge = shots.length
+        ? `<span class="cnt">${clips ? `${clips} clip${clips === 1 ? "" : "s"}` : `${shots.length} photo${shots.length === 1 ? "" : "s"}`}</span> · `
+        : "";
+
       return `
-        <article class="trip${opened ? " opened" : ""}" id="trip-${esc(trip.date || trip.dateRaw)}">
-          <header>
-            <a class="date" href="#trip-${esc(trip.date || trip.dateRaw)}">${esc(fmtDate(trip.date))}</a>
+        <article class="trip${opened ? " opened" : ""}" id="trip-${esc(key)}">
+          <header class="tophead" role="button" tabindex="0"
+                  aria-expanded="${opened}" data-toggle="${esc(key)}">
+            <span class="date">${esc(fmtDate(trip.date))}</span>
             <span class="area">${esc(trip.area || "")}</span>
             ${tally.length ? `<span class="tally">${esc(tally.join(" · "))}</span>` : ""}
+            <span class="caret" aria-hidden="true">&rsaquo;</span>
+            ${!opened && (peek || badge) ? `<span class="peek">${badge}${peek}</span>` : ""}
           </header>
-          ${hidden && !opened ? `<div class="hidden-note">${hidden} climb${
-            hidden === 1 ? "" : "s"} I couldn't name — <a href="#trip-${esc(trip.date || trip.dateRaw)}">open this day</a> to see ${
-            hidden === 1 ? "it" : "them"}.</div>` : ""}
-          <div class="walls">${wallsHTML(trip.routes, q)}</div>
-          ${trip.people.length ? `<div class="people">${
-            trip.people.map((p) => `<button class="who" data-person="${esc(p)}">${esc(p)}</button>`).join("")
-          }</div>` : ""}
-          ${trip.notes ? `<div class="note">${esc(trip.notes)}</div>` : ""}
+          <div class="body"${opened ? "" : " hidden"}>
+            ${hidden ? `<div class="hidden-note">${hidden} climb${
+              hidden === 1 ? "" : "s"} I couldn't name.</div>` : ""}
+            <div class="walls">${wallsHTML(trip.routes, q)}</div>
+            ${trip.people.length ? `<div class="people">${
+              trip.people.map((p) => `<button class="who" data-person="${esc(p)}">${esc(p)}</button>`).join("")
+            }</div>` : ""}
+            ${trip.notes ? `<div class="note">${esc(trip.notes)}</div>` : ""}
+            ${mediaHTML(trip.date)}
+            ${addHTML(trip.date)}
+          </div>
         </article>`;
     }
 
@@ -343,13 +554,15 @@
     function tripsView() {
       const q = state.q.trim().toLowerCase();
       const f = activeFilter();
-      const opened = (location.hash.match(/^#trip-(.+)$/) || [])[1];
       let shown = 0, routeCount = 0;
 
       const html = DATA.trips.map((trip) => {
         if (q && !trip._hay.includes(q)) return "";
         if (state.person && !trip.people.some((p) => p.toLowerCase() === state.person.toLowerCase())) return "";
-        const isOpen = opened === (trip.date || trip.dateRaw);
+        /* A day is open because it was tapped, or deep-linked to — or because a
+           search is running, and a search that returns rows of shut days has
+           hidden the very thing it was asked to find. */
+        const isOpen = state.open.has(trip.date || trip.dateRaw) || !!q || !!f;
         // "did climb, not sure what i got on" is a real memory but not a route —
         // it stays out of the lists until you open that particular day.
         const hidden = isOpen ? 0 : trip.routes.filter((r) => r.unknown).length;
@@ -480,14 +693,33 @@
 
       const latest = DATA.trips.find((t) => t.date);
       if (!latest) return;
+
+      /* The newest day keeps its clip in the page rather than behind a
+         thumbnail — it is the one video worth spending the bandwidth on
+         unasked, and it is what the whole card is for. Muted and not
+         autoplaying: a page that starts making noise on its own is a page
+         people close. */
+      const lead = ClimbMedia.feature(latest.date);
+      const rest = ClimbMedia.of(latest.date).filter((m) => !lead || m.id !== lead.id);
+
       document.getElementById("recent").innerHTML = `
         <div class="kicker">Most recent day out</div>
         <h2>${esc(latest.area || "")}</h2>
         <div class="when">${esc(fmtDate(latest.date))}${
           latest.people.length ? ` · with ${esc(latest.people.join(", "))}` : ""
         }</div>
+        ${lead ? `<div class="feature">${
+          lead.kind === "video"
+            ? `<video src="${esc(lead.src)}" controls playsinline preload="metadata"></video>`
+            : `<img src="${esc(lead.src)}" alt="${esc(lead.caption || lead.route || "")}">`
+        }</div>${lead.route || lead.caption ? `<div class="fcap">${
+          [lead.route ? `<strong>${esc(lead.route)}</strong>` : "", esc(lead.caption || "")]
+            .filter(Boolean).join(" — ")
+        }</div>` : ""}` : ""}
         <div class="walls">${wallsHTML(latest.routes, "")}</div>
-        ${latest.notes ? `<div class="note">${esc(latest.notes)}</div>` : ""}`;
+        ${latest.notes ? `<div class="note">${esc(latest.notes)}</div>` : ""}
+        ${rest.length ? `<div class="media">${rest.map(thumbHTML).join("")}</div>` : ""}
+        ${addHTML(latest.date)}`;
     }
 
     /* ── events ───────────────────────────────────────── */
@@ -516,6 +748,145 @@
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
+    /* ── opening a day ────────────────────────────────
+       Delegated from the container so it survives every re-render, and checked
+       against the media controls first — a tap on "remove this" inside an open
+       day would otherwise also fold the day up underneath it. */
+    view.addEventListener("click", (e) => {
+      if (e.target.closest("[data-open], [data-kill], .add")) return;
+      const head = e.target.closest("[data-toggle]");
+      if (!head) return;
+      const key = head.dataset.toggle;
+      if (state.open.has(key)) state.open.delete(key); else state.open.add(key);
+      render();
+    });
+    view.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const head = e.target.closest("[data-toggle]");
+      if (!head) return;
+      e.preventDefault();
+      head.click();
+    });
+
+    /* ── the player ───────────────────────────────────
+       One dialog for the whole page. Clearing it on close is not tidiness: a
+       <video> left in the DOM goes on holding the connection and, on iOS, goes
+       on playing the audio. */
+    const viewer = document.getElementById("viewer");
+    const vmedia = document.getElementById("vmedia");
+    const vcap = document.getElementById("vcap");
+
+    function openViewer(m) {
+      vmedia.innerHTML = m.kind === "video"
+        ? `<video src="${esc(m.src)}" controls autoplay playsinline></video>`
+        : `<img src="${esc(m.src)}" alt="${esc(m.caption || m.route || "")}">`;
+      vcap.innerHTML = [
+        m.route ? `<strong>${esc(m.route)}</strong>` : "",
+        esc(m.caption || ""),
+        esc(fmtDate(m.date))
+      ].filter(Boolean).join(" · ");
+      viewer.showModal();
+    }
+    function closeViewer() {
+      viewer.close();
+      vmedia.innerHTML = "";
+    }
+    document.getElementById("vclose").onclick = closeViewer;
+    viewer.addEventListener("close", () => { vmedia.innerHTML = ""; });
+    /* Clicking the backdrop shuts it. The dialog element reports a click on its
+       own box for backdrop hits, so the target has to be the dialog itself. */
+    viewer.addEventListener("click", (e) => { if (e.target === viewer) closeViewer(); });
+
+    /* ── media: open one, or take one down ────────────
+       On document rather than on `view`, because the newest day's card lives
+       outside it and has thumbnails too. */
+    document.addEventListener("click", async (e) => {
+      const kill = e.target.closest("[data-kill]");
+      if (kill) {
+        e.stopPropagation();
+        if (!confirm("Remove this from the log? It is deleted for good.")) return;
+        const okDone = await ClimbMedia.remove(kill.dataset.date, kill.dataset.kill);
+        if (!okDone) { alert("That did not delete — check the connection, or sign in again."); return; }
+        renderHeader();
+        render();
+        return;
+      }
+      const open = e.target.closest("[data-open]");
+      if (!open) return;
+      const m = ClimbMedia.of(open.dataset.date).find((x) => x.id === open.dataset.open);
+      if (m) openViewer(m);
+    });
+
+    /* ── adding media ─────────────────────────────────
+       Files go up one at a time rather than in parallel. On a phone at a crag,
+       three 40MB clips racing each other is how all three time out; in order,
+       the first one is safe before the second starts. */
+    document.addEventListener("change", async (e) => {
+      const input = e.target.closest('.add input[type=file]');
+      if (!input) return;
+      const box = input.closest("[data-add]");
+      const date = box.dataset.add;
+      const route = box.querySelector(".rt-in").value.trim();
+      const say = box.querySelector(".say");
+      const bar = box.querySelector(".bar");
+      const fill = bar.querySelector("i");
+      const files = [...input.files];
+      input.value = "";
+      if (!files.length) return;
+
+      const tooBig = files.filter((f) => f.size > ClimbMedia.MAX_BYTES);
+      if (tooBig.length) {
+        say.className = "say bad";
+        say.textContent = `${tooBig[0].name} is ${Math.round(tooBig[0].size / 1048576)}MB — the limit is ${
+          ClimbMedia.MAX_BYTES / 1048576}MB. Trim the clip and try again.`;
+        return;
+      }
+
+      bar.hidden = false;
+      let done = 0;
+      for (const f of files) {
+        say.className = "say";
+        say.textContent = `Uploading ${f.name}${files.length > 1 ? ` (${done + 1} of ${files.length})` : ""}…`;
+        const out = await ClimbMedia.upload(date, f, {
+          route,
+          onProgress: (p) => { fill.style.width = Math.round(p * 100) + "%"; }
+        });
+        if (out.error) {
+          say.className = "say bad";
+          say.textContent = out.error;
+          bar.hidden = true;
+          return;
+        }
+        done += 1;
+        fill.style.width = "0%";
+      }
+      bar.hidden = true;
+      say.className = "say";
+      say.textContent = `${done} added. ${done === 1 ? "It is" : "They are"} live now.`;
+      /* Repaint both, because the newest day is drawn by the other one. */
+      renderHeader();
+      render();
+    });
+
+    /* ── owner mode ───────────────────────────────────
+       The gate is the Worker; this only decides whether the controls are drawn.
+       assets/owner.js says why that is not a hole at length. */
+    function paintOwner() {
+      const bar = document.getElementById("ownerbar");
+      document.body.classList.toggle("owner-on", Owner.on());
+      if (Owner.on()) {
+        bar.innerHTML = `<div class="signedin"><strong>Signed in.</strong>
+          <span>Open a day to add photos or video to it.</span>
+          <button type="button" id="signout">sign out</button></div>`;
+        bar.querySelector("#signout").onclick = () => Owner.signOut();
+      } else {
+        Owner.mountBox(bar, { title: "Password" });
+      }
+      renderHeader();
+      render();
+    }
+    Owner.init({ host: ClimbMedia.HOST, onChange: paintOwner });
+
     const tabButtons = [...document.querySelectorAll(".tab")];
     const tabId = (btn) => btn.id.replace("tab-", "");
     function syncTabs() {
@@ -532,6 +903,9 @@
     function openFromHash(scroll) {
       if (!/^#trip-/.test(location.hash)) return;
       state.tab = "trips";
+      /* A deep link has to expand the day it points at, not just scroll to it —
+         landing on a shut row is landing on nothing. */
+      state.open.add(location.hash.replace(/^#trip-/, ""));
       syncTabs();
       render();
       const target = document.getElementById(location.hash.slice(1));
@@ -539,8 +913,7 @@
     }
     window.addEventListener("hashchange", () => openFromHash(true));
 
-    renderHeader();
-    render();
+    paintOwner();                 // draws the sign-in, then the header and list
     openFromHash(true);
   })();
   </script>

@@ -30,6 +30,22 @@
     "bindings": [{ "name": "LOG", "class_name": "TrainingLog" }]
   },
 
+  // Climbing photos and video. The bucket is `photos`, made by hand in the
+  // Cloudflare dashboard on 2026-08-19 — so there is no create step here, and
+  // renaming it means changing this line and redeploying, nothing else.
+  //
+  // R2 and not git: a send clip is tens of megabytes and permanent, the repo is
+  // already ~500MB, and Pages caps a site around a gigabyte. R2 and not some
+  // other bucket: no egress charge, so a video being WATCHED costs nothing,
+  // which is the whole point of putting it on a page.
+  //
+  // Nothing here is a secret — a bucket name is not a credential, and the
+  // objects are served through this Worker rather than from a public bucket
+  // URL, so there is no bucket to find. Remove this binding and the Worker
+  // still runs: /media answers "nothing here" and every page renders as it did
+  // before, which is what makes it safe to deploy this ahead of the bucket.
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "photos" }],
+
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TrainingLog"] }],
 
   "observability": { "enabled": true }

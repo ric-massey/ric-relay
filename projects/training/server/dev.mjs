@@ -19,6 +19,7 @@ import { readFile } from 'node:fs/promises';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import worker, { TrainingLog } from './worker.mjs';
+import { memoryBucket } from './r2-memory.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const PORT = 8799;
@@ -103,7 +104,14 @@ let FAKE_SPORT = 'Run';
    is the only fake: one object, always the same one. */
 const ENV = {
   LOG: { idFromName: () => 'training', get: () => log },
-  STRAVA_VERIFY_TOKEN: 'local-verify-token'
+  STRAVA_VERIFY_TOKEN: 'local-verify-token',
+  /* A bucket that is a Map. Upload a real clip at
+     http://localhost:8799/projects/climbing/index.html?key=local-dev-token and
+     it plays, from memory, and is gone when you stop the server — which is the
+     right amount of permanence for a rehearsal. Drop this line to rehearse the
+     other case: a deploy with no bucket, where /media answers "nothing here"
+     and every page has to render anyway. */
+  MEDIA: memoryBucket()
 };
 
 const TYPES = {
@@ -119,7 +127,7 @@ createServer(async (req, res) => {
      rehearse the case that actually matters on a phone: the page loads fine and
      the log is unreachable. A total blackout is untestable through a browser —
      the HTML would not arrive either — so this is the realistic half. */
-  if (process.env.DEV_OFFLINE && /^\/(log|climb|auth|strava|board)\b/.test(u.pathname)) {
+  if (process.env.DEV_OFFLINE && /^\/(log|climb|auth|strava|board|media)\b/.test(u.pathname)) {
     res.socket.destroy();               // hang up, exactly like no signal
     return;
   }
@@ -127,7 +135,7 @@ createServer(async (req, res) => {
   /* Every route the Worker owns. Keep this in step with worker.mjs — a path
      missing here falls through to the static handler and 404s, which looks
      exactly like a Worker bug and is not one. */
-  if (/^\/(log|climb|auth|strava|board)\b/.test(u.pathname)) {
+  if (/^\/(log|climb|auth|strava|board|media)\b/.test(u.pathname)) {
     /* Which day the invented run lands on. Dev scaffolding for the fake Strava
        above; the deployed Worker has no such thing — a real run brings its own
        date and there is nothing to choose. */

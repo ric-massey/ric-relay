@@ -60,6 +60,25 @@
     .ownerform button { min-height: 46px; padding: 0.4rem 0.9rem; font-weight: 700; border-radius: 9px; border: 1px solid var(--bar); background: var(--bar); color: #fff; }
     .ownermsg { flex-basis: 100%; color: var(--clay); font-size: 0.82rem; }
 
+    .pickbtn { display: block; cursor: pointer; }
+    .pickbtn input[type=file] { display: none; }
+    .pickbtn span {
+      display: flex; align-items: center; justify-content: center; min-height: 46px;
+      border: 1px dashed var(--line); border-radius: 9px; background: #fff;
+      color: var(--soft); font-size: 0.9rem; padding: 0.4rem 0.7rem; text-align: center;
+      /* The page uppercases every <label>, and this one is a sentence. */
+      text-transform: none; letter-spacing: 0; font-weight: 400;
+    }
+    .pickbtn span.has { border-style: solid; border-color: var(--bar); color: var(--bar); font-weight: 700; }
+    .picked { margin-top: 0.4rem; display: flex; gap: 0.35rem; flex-wrap: wrap; }
+    .picked .p {
+      font-size: 0.74rem; color: var(--soft); background: #fff; border: 1px solid var(--line);
+      border-radius: 999px; padding: 0.1rem 0.55rem; max-width: 100%;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .bar { height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; margin-top: 0.5rem; }
+    .bar i { display: block; height: 100%; width: 0; background: var(--bar); transition: width .15s linear; }
+
     .match { background: #eef4ef; border: 1px solid #cfe0d4; border-left: 4px solid var(--bar); border-radius: 10px; padding: 0.6rem 0.75rem; font-size: 0.9rem; }
     .match strong { color: var(--bar-dark); }
     .recent { font-size: 0.9rem; }
@@ -120,7 +139,20 @@
         <textarea id="notes" placeholder="Conditions, how it felt, what to come back for."></textarea>
       </div>
 
+      <!-- Picked here, sent AFTER the day saves. A 60MB clip on crag signal is
+           the slowest thing on this page and the day is the thing that matters:
+           uploading first would mean a failed video losing the log entry too. -->
+      <div class="field">
+        <label>Photos and video <span style="text-transform:none;font-weight:400">(optional)</span></label>
+        <label class="pickbtn">
+          <input type="file" id="media" accept="" multiple>
+          <span id="picklabel">Choose from the camera roll</span>
+        </label>
+        <div class="picked" id="picked"></div>
+      </div>
+
       <button type="submit" class="btn wide" id="save">Save the day</button>
+      <div class="bar" id="upbar" hidden><i></i></div>
       <div class="msg" id="msg" role="status"></div>
     </form>
 
@@ -136,6 +168,7 @@
 
   <script src="../../assets/owner.js"></script>
   <script src="climbs-data.js"></script>
+  <script src="climb-media.js"></script>
   <script>
   /* LOG A DAY
      ──────────────────────────────────────────────────────────────────────────
@@ -190,6 +223,22 @@
     }
     function addRoute() { const r = routeRow(); r.querySelector('.rn').focus(); return r; }
     $('#addroute').onclick = () => addRoute();
+
+    /* The accept list comes from climb-media.js rather than being typed here,
+       so it cannot drift from what the Worker will actually take. A type the
+       picker offers and the Worker refuses is a failed upload with no
+       explanation, on a phone, at a crag. */
+    $('#media').accept = ClimbMedia.ACCEPT;
+    $('#media').addEventListener('change', () => {
+      const files = [...$('#media').files];
+      const label = $('#picklabel');
+      label.classList.toggle('has', files.length > 0);
+      label.textContent = files.length
+        ? `${files.length} file${files.length === 1 ? '' : 's'} ready — they go up after the day saves`
+        : 'Choose from the camera roll';
+      $('#picked').innerHTML = files.map(f =>
+        `<span class="p">${esc(f.name)} · ${Math.max(1, Math.round(f.size / 1048576))}MB</span>`).join('');
+    });
 
     /* Tell him, before he saves, what the training page will do with this date. */
     function matchDay() {
@@ -288,12 +337,60 @@
         }
       }
 
+      /* ── the media ──
+         Only now, with the day already safe on the server. If a clip fails from
+         here the day is still logged and the message says which half went — the
+         alternative is a lost afternoon because a video timed out. */
+      let shots = '';
+      const files = [...$('#media').files];
+      if (files.length) {
+        const bar = $('#upbar');
+        const fill = bar.querySelector('i');
+        bar.hidden = false;
+        let sent = 0, clips = 0, failed = null;
+        for (const f of files) {
+          msg.className = 'msg';
+          msg.textContent = `Day saved. Uploading ${f.name} (${sent + 1} of ${files.length})…`;
+          if (f.size > ClimbMedia.MAX_BYTES) {
+            failed = `${f.name} is ${Math.round(f.size / 1048576)}MB — the limit is ${ClimbMedia.MAX_BYTES / 1048576}MB.`;
+            break;
+          }
+          const up = await ClimbMedia.upload(iso, f, {
+            onProgress: p => { fill.style.width = Math.round(p * 100) + '%'; }
+          });
+          if (up.error) { failed = up.error; break; }
+          sent += 1;
+          if (up.kind === 'video') clips += 1;
+          fill.style.width = '0%';
+        }
+        bar.hidden = true;
+        if (failed) {
+          $('#save').disabled = false;
+          msg.className = 'msg bad';
+          msg.textContent = `The day is saved${ticked ? ' and the session ticked' : ''}, but the media did not all go: ${
+            failed} ${sent ? `${sent} did upload. ` : ''}Add the rest from the log page.`;
+          return;
+        }
+        /* Named for what actually went up — "1 photo/clip" is the shape of a
+           variable, not of a sentence. */
+        const photos = sent - clips;
+        const said = [
+          clips ? `${clips} clip${clips === 1 ? '' : 's'}` : '',
+          photos ? `${photos} photo${photos === 1 ? '' : 's'}` : ''
+        ].filter(Boolean).join(' and ');
+        shots = ` ${said} up too.`;
+      }
+
       $('#save').disabled = false;
       msg.className = 'msg good';
-      msg.textContent = `Saved.${ticked} It is live on both pages now.`;
+      msg.textContent = `Saved.${ticked}${shots} It is live on both pages now.`;
       document.querySelectorAll('.route').forEach(r => r.remove());
       routeRow();
       $('#notes').value = '';
+      $('#media').value = '';
+      $('#picked').innerHTML = '';
+      $('#picklabel').classList.remove('has');
+      $('#picklabel').textContent = 'Choose from the camera roll';
       listRecent();
     });
 

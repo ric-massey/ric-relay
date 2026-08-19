@@ -242,6 +242,9 @@
     .daymeta { color: var(--soft); font-size: 0.84rem; margin-top: 0.1rem; }
     .daystory { margin-top: 0.55rem; font-size: 0.88rem; white-space: pre-wrap; }
     .daylink { display: inline-block; margin-top: 0.6rem; font-size: 0.8rem; font-weight: 700; }
+    .dayclip { margin-top: 0.7rem; border-radius: 8px; overflow: hidden; background: #000; }
+    .dayclip video, .dayclip img { display: block; width: 100%; max-height: 58vh; object-fit: contain; }
+    .daycap { margin-top: 0.35rem; font-size: 0.8rem; color: var(--soft); }
 
     /* Compact rows — projects and objectives are lists you scan, not read.
        One line per route, and it has to stay one line on a phone. */
@@ -446,6 +449,7 @@
   <script src="effects.js"></script>
   <script src="projects/climbing/climbs-data.js"></script>
   <script src="projects/climbing/web-trips.js"></script>
+  <script src="projects/climbing/climb-media.js"></script>
   <script>
     // ── fill the ledger from climbs.md ──────────────────────────────
     // Everything below reads projects/climbing/climbs-data.js. The deep log
@@ -464,6 +468,9 @@
       // weeks stale is the most visible way the site can be wrong — and it was,
       // because the merge only ever existed on the deep log page.
       await WebTrips.merge(DATA);
+      /* What was filmed, not just what was climbed. Failing softly is the point:
+         a room page with no thumbnail is right, an error page is not. */
+      await ClimbMedia.load();
 
       /* ── the next day out ──
          The training plan already knows: it schedules every crag day of the
@@ -597,6 +604,24 @@
           latest.boulders ? `${latest.boulders} boulders` : "",
         ].filter(Boolean).join(" · ");
 
+        /* ── the clip ──
+           The newest day plays its video here rather than only in the deep log,
+           because this is the page people actually land on and a send worth
+           filming is worth putting in front of them. Controls, muted, and no
+           autoplay — a page that starts making noise on its own gets closed.
+           Anything beyond the one lead clip stays in the log. */
+        function clipHTML(date) {
+          const m = ClimbMedia.feature(date);
+          if (!m) return "";
+          return `<div class="dayclip">${
+            m.kind === "video"
+              ? `<video src="${esc(m.src)}" controls playsinline preload="metadata"></video>`
+              : `<img src="${esc(m.src)}" alt="${esc(m.caption || m.route || "")}">`
+          }</div>${m.route || m.caption ? `<div class="daycap">${
+            [m.route ? `<strong>${esc(m.route)}</strong>` : "", esc(m.caption || "")].filter(Boolean).join(" — ")
+          }</div>` : ""}`;
+        }
+
         // Where he went and how it went, then the climbs themselves.
         el("recent").innerHTML = `
           <div class="dayhead">
@@ -605,7 +630,9 @@
               latest.people.length ? ` · with ${esc(latest.people.join(", "))}` : ""
             }${summary ? ` · ${esc(summary)}` : ""}</div>
             ${latest.notes ? `<div class="daystory">${esc(latest.notes)}</div>` : ""}
-            <a class="daylink" href="projects/climbing/index.html#trip-${esc(latest.date)}">See this day in the log →</a>
+            ${clipHTML(latest.date)}
+            <a class="daylink" href="projects/climbing/index.html#trip-${esc(latest.date)}">See this day in the log${
+              ClimbMedia.has(latest.date) ? " — and the rest of it" : ""} →</a>
           </div>` + routes;
       }
 

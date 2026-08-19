@@ -9,6 +9,7 @@
    Exits non-zero on any failure. */
 
 import worker, { TrainingLog } from './worker.mjs';
+import { memoryBucket } from './r2-memory.mjs';
 
 const TOKEN = 'test-token-long-enough-to-be-real';
 let failures = 0;
@@ -647,6 +648,137 @@ console.log('\nRULE  a Worker with no Strava secrets behaves exactly as it did b
     body: JSON.stringify({ aspect_type: 'create', object_type: 'activity', object_id: 1, owner_id: 1 })
   }), env, null);
   ok(r.status === 200, 'the webhook is still acknowledged rather than erroring');
+}
+
+
+/* ── /media ──
+   The bytes live in R2 and are served back through this Worker, so the rules
+   worth asserting are the same two the rest of the file exists for: a stranger
+   cannot put anything in, and the things Ric put in are readable by everyone. */
+function mediaRig() {
+  const mem = new Map();
+  const obj = new TrainingLog({
+    storage: {
+      get: async k => mem.get(k), put: async (k, v) => { mem.set(k, v); },
+      delete: async k => { mem.delete(k); },
+      list: async ({ prefix }) => new Map([...mem].filter(([k]) => k.startsWith(prefix)))
+    }
+  }, { LOG_TOKEN: TOKEN });
+  const bucket = memoryBucket();
+  const env = { LOG: { idFromName: () => 'training', get: () => obj }, MEDIA: bucket };
+  return {
+    bucket,
+    async hit(method, path, { token, type, body, json: asJson } = {}) {
+      const headers = {};
+      if (token) headers.authorization = 'Bearer ' + token;
+      if (type) headers['content-type'] = type;
+      if (asJson) headers['content-type'] = 'application/json';
+      const r = await worker.fetch(new Request('https://x' + path, {
+        method, headers,
+        ...(body != null ? { body: asJson ? JSON.stringify(body) : body } : {})
+      }), env, null);
+      return r;
+    }
+  };
+}
+
+const CLIP = new Uint8Array(2048).fill(7);         // stands in for a video
+
+console.log('\nRULE  only the owner can add media, and everyone can watch it');
+{
+  const r = mediaRig();
+
+  const no = await r.hit('POST', '/media/2026-08-18', { type: 'video/mp4', body: CLIP });
+  ok(no.status === 401, 'an upload with no token is refused');
+  const wrong = await r.hit('POST', '/media/2026-08-18', { token: 'wrong', type: 'video/mp4', body: CLIP });
+  ok(wrong.status === 401, 'an upload with the wrong token is refused');
+  ok(r.bucket._map.size === 0, 'neither of them stored a single byte');
+
+  const up = await r.hit('POST', '/media/2026-08-18?name=gaia.mp4&route=Gaia&caption=first%20go',
+    { token: TOKEN, type: 'video/mp4', body: CLIP });
+  const rec = await up.json();
+  ok(up.status === 200 && rec.ok, 'the owner\'s upload is accepted');
+  ok(rec.kind === 'video' && rec.date === '2026-08-18', 'it comes back as a video on the right day');
+  ok(rec.route === 'Gaia' && rec.caption === 'first go', 'the route and caption survive the round trip');
+
+  /* The whole point of the feature: a visitor with no token sees it. */
+  const seen = await (await r.hit('GET', '/media')).json();
+  ok(seen.days['2026-08-18'] && seen.days['2026-08-18'].length === 1, 'a visitor can list it');
+  ok(seen.days['2026-08-18'][0].path === rec.path, 'and gets the same path to play');
+
+  const file = await r.hit('GET', rec.path);
+  ok(file.status === 200, 'a visitor can fetch the bytes');
+  ok((await file.arrayBuffer()).byteLength === CLIP.length, 'and gets all of them');
+  ok(file.headers.get('content-type') === 'video/mp4', 'served as the type it was uploaded as');
+}
+
+console.log('\nRULE  a phone can scrub a video, which means Range has to work');
+{
+  const r = mediaRig();
+  const up = await (await r.hit('POST', '/media/2026-08-18', { token: TOKEN, type: 'video/mp4', body: CLIP })).json();
+  const part = await worker.fetch(new Request('https://x' + up.path, {
+    headers: { range: 'bytes=100-199' }
+  }), { LOG: { idFromName: () => 'training', get: () => null }, MEDIA: r.bucket }, null);
+  ok(part.status === 206, 'a range request gets a 206 rather than the whole file');
+  ok(part.headers.get('content-range') === `bytes 100-199/${CLIP.length}`, 'the range that came back is the range asked for');
+  ok((await part.arrayBuffer()).byteLength === 100, 'and is exactly that many bytes');
+}
+
+console.log('\nRULE  what may be uploaded is an allowlist, not a guess');
+{
+  const r = mediaRig();
+  const bad = await r.hit('POST', '/media/2026-08-18', { type: 'text/html', body: '<script>x</script>' });
+  ok(bad.status === 401, 'an unknown type with no token is refused for the token first');
+  const bad2 = await r.hit('POST', '/media/2026-08-18', { token: TOKEN, type: 'text/html', body: '<script>x</script>' });
+  ok(bad2.status === 415, 'and refused for the type even with the token');
+  ok(r.bucket._map.size === 0, 'nothing was stored either way');
+
+  const nodate = await r.hit('POST', '/media/not-a-date', { token: TOKEN, type: 'video/mp4', body: CLIP });
+  ok(nodate.status === 400, 'a date that is not a date is refused');
+}
+
+console.log('\nRULE  a caption with real punctuation in it survives R2 metadata');
+{
+  /* customMetadata rides in HTTP headers, so a curly apostrophe raw would be
+     rejected by R2 itself. The board logbook is full of them. */
+  const r = mediaRig();
+  const caption = 'That One’s Good — 40°, felt easy';
+  const up = await (await r.hit('POST', '/media/2026-08-18?caption=' + encodeURIComponent(caption),
+    { token: TOKEN, type: 'video/mp4', body: CLIP })).json();
+  ok(up.caption === caption, 'it comes straight back off the upload');
+  const listed = await (await r.hit('GET', '/media/2026-08-18')).json();
+  ok(listed.items[0].caption === caption, 'and again out of the listing');
+}
+
+console.log('\nRULE  only the owner can take media down');
+{
+  const r = mediaRig();
+  const up = await (await r.hit('POST', '/media/2026-08-18', { token: TOKEN, type: 'video/mp4', body: CLIP })).json();
+  const nope = await r.hit('POST', `/media/2026-08-18/${up.id}`, { json: true, body: { remove: true } });
+  ok(nope.status === 401, 'a stranger deleting is refused');
+  ok(r.bucket._map.size === 1, 'and it is still there');
+  const gone = await r.hit('POST', `/media/2026-08-18/${up.id}`, { token: TOKEN, json: true, body: { remove: true } });
+  ok(gone.status === 200, 'the owner deleting is accepted');
+  ok(r.bucket._map.size === 0, 'and it is gone');
+  ok((await r.hit('GET', up.path)).status === 404, 'the bytes 404 afterwards');
+}
+
+console.log('\nRULE  a Worker with no bucket still serves every page');
+{
+  /* This is the state the site is in between deploying the code and creating
+     the bucket, and it must not be a broken climbing page. */
+  const obj = new TrainingLog({
+    storage: { get: async () => undefined, put: async () => {}, delete: async () => {}, list: async () => new Map() }
+  }, { LOG_TOKEN: TOKEN });
+  const env = { LOG: { idFromName: () => 'training', get: () => obj } };
+  const r = await worker.fetch(new Request('https://x/media'), env, null);
+  const body = await r.json();
+  ok(r.status === 200, 'listing media answers rather than failing');
+  ok(body.configured === false && Object.keys(body.days).length === 0, 'it says there is nothing, and why');
+  const up = await worker.fetch(new Request('https://x/media/2026-08-18', {
+    method: 'POST', headers: { authorization: 'Bearer ' + TOKEN, 'content-type': 'video/mp4' }, body: CLIP
+  }), env, null);
+  ok(up.status === 503, 'an upload says the storage is not there rather than pretending it worked');
 }
 
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WORKER RULES PASS'));

@@ -773,10 +773,74 @@ export class TrainingLog {
   }
 }
 
+/* ── /media — photos and video, kept in R2 rather than in git ──
+   A clip of a send is 40MB and permanent. The repo is already half a gigabyte
+   and Pages caps a site at about one, so video in git is a bill that only ever
+   grows and never comes back out. R2 takes the bytes instead: same Cloudflare
+   account as this Worker, and — the reason it is R2 and not any other bucket —
+   no egress charge, so a video being watched costs nothing.
+
+   ── why the index is the bucket ──
+   There is no separate table of what exists. The listing IS an R2 list, and a
+   record's fields ride along in the object's own customMetadata. A DO table
+   would be the more familiar shape and it would be wrong: two stores means two
+   ways to disagree, and both of them show up as a thumbnail that plays nothing
+   or a file nobody can find. One store cannot drift from itself.
+
+   customMetadata is carried as HTTP headers, so it is ASCII-only — a caption
+   with a curly apostrophe in it (and the board logbook is full of them) would
+   be rejected raw. Hence one `meta` field, percent-encoded JSON. */
+const MEDIA_PREFIX = 'climb/';
+/* The Workers free plan refuses a request body over 100MB, so a bigger cap here
+   would only ever fail later and less clearly. A phone clip of a boulder sits
+   far inside it; a ten-minute 4K multipitch does not, and is told so up front. */
+const MAX_MEDIA_BYTES = 100 * 1024 * 1024;
+/* An allowlist, and it decides the extension too — the filename is whatever the
+   phone called it and is not trusted to name the format. */
+const MEDIA_TYPES = {
+  'image/jpeg': ['jpg', 'photo'], 'image/png': ['png', 'photo'],
+  'image/webp': ['webp', 'photo'], 'image/gif': ['gif', 'photo'],
+  'image/heic': ['heic', 'photo'], 'image/heif': ['heif', 'photo'],
+  'video/mp4': ['mp4', 'video'], 'video/quicktime': ['mov', 'video'],
+  'video/webm': ['webm', 'video'], 'video/x-m4v': ['m4v', 'video']
+};
+
+const mediaId = () => [...crypto.getRandomValues(new Uint8Array(8))]
+  .map(b => b.toString(16).padStart(2, '0')).join('');
+
+/* One record, rebuilt from the object rather than stored twice. `key` is what
+   the delete takes and `path` is what an <img> or <video> points at.
+
+   A path and not a whole URL, deliberately. The page already knows the host it
+   is talking to — it is the same constant every other call uses — and building
+   the URL here would mean this Worker guessing at its own public name, which it
+   gets wrong the moment it is reached through anything but its canonical
+   address. Under dev.mjs that address is `https://local`, which no browser can
+   fetch: an absolute src would have looked fine in every test and been broken
+   in the only place it mattered. */
+function mediaRecord(obj) {
+  let meta = {};
+  try { meta = JSON.parse(decodeURIComponent((obj.customMetadata || {}).meta || '%7B%7D')); } catch {}
+  const key = obj.key;
+  return {
+    id: meta.id || key.split('/').pop().split('.')[0],
+    date: key.slice(MEDIA_PREFIX.length).split('/')[0],
+    key,
+    path: '/media/file/' + key.slice(MEDIA_PREFIX.length),
+    kind: meta.kind === 'video' ? 'video' : 'photo',
+    name: meta.name || '',
+    route: meta.route || '',
+    caption: meta.caption || '',
+    type: obj.httpMetadata && obj.httpMetadata.contentType || meta.type || '',
+    size: obj.size || 0,
+    at: meta.at || (obj.uploaded && new Date(obj.uploaded).toISOString()) || null
+  };
+}
+
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media']);
 
 export default {
   async fetch(request, env, ctx) {
@@ -832,6 +896,164 @@ export default {
         if (ctx && ctx.waitUntil) ctx.waitUntil(work); else await work;
         return new Response('ok', { status: 200 });
       }
+    }
+
+    /* ── /media ──
+       Handled out here rather than in the Durable Object, because a 90MB video
+       has no business being streamed through one: a DO is a single-threaded
+       instance that every tick and every note in the log also has to get
+       through, and the bytes are going to R2 either way.
+
+       The one thing it still asks the object for is whether the caller is Ric.
+       That could have been a compare right here — the token is on `env` — but
+       then this endpoint would be an unthrottled oracle for guessing the same
+       password /auth rate-limits, which would quietly undo that limit. One
+       subrequest, only on writes, and the throttle stays honest. */
+    if (parts[0] === 'media') {
+      const origin = request.headers.get('origin');
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(origin) });
+
+      /* Ship-before-the-bucket-exists: reads answer "nothing here" rather than
+         failing, so every page renders exactly as it did before R2 was turned
+         on. Only a write says the thing out loud. */
+      if (!env.MEDIA) {
+        if (request.method === 'GET') {
+          return json({ days: {}, items: [], configured: false }, 200, origin,
+            { 'cache-control': 'public, max-age=30' });
+        }
+        return json({ error: 'media storage is not configured — create the R2 bucket and redeploy' }, 503, origin);
+      }
+
+      const owner = async () => {
+        const a = request.headers.get('authorization') || '';
+        const given = a.startsWith('Bearer ') ? a.slice(7) : '';
+        if (!given) return false;
+        const r = await stub.fetch(new Request('https://internal/auth', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ password: given })
+        }));
+        return r.status === 200;
+      };
+
+      /* ---------- GET /media/file/<date>/<file> — the bytes ----------
+         Public, and the only path that serves them. Range requests are passed
+         through to R2 untouched: without that, a phone will not scrub a video
+         and Safari will not play one at all. */
+      if (parts[1] === 'file') {
+        if (request.method !== 'GET' && request.method !== 'HEAD') {
+          return json({ error: 'method not allowed' }, 405, origin);
+        }
+        const key = MEDIA_PREFIX + parts.slice(2).map(decodeURIComponent).join('/');
+        const range = request.headers.get('range');
+        const obj = await env.MEDIA.get(key, {
+          range: range ? request.headers : undefined,
+          onlyIf: request.headers
+        });
+        if (!obj) return json({ error: 'not found' }, 404, origin);
+
+        const headers = new Headers(cors(origin));
+        obj.writeHttpMetadata(headers);
+        headers.set('etag', obj.httpEtag);
+        /* Immutable in the strict sense: a key contains a random id and is never
+           written twice, so a year is safe and a re-watch costs nothing. */
+        headers.set('cache-control', 'public, max-age=31536000, immutable');
+        headers.set('accept-ranges', 'bytes');
+        if (!obj.body) return new Response(null, { status: 304, headers });
+        if (obj.range && range) {
+          const start = obj.range.offset || 0;
+          const len = obj.range.length ?? (obj.size - start);
+          headers.set('content-range', `bytes ${start}-${start + len - 1}/${obj.size}`);
+          return new Response(obj.body, { status: 206, headers });
+        }
+        return new Response(obj.body, { status: 200, headers });
+      }
+
+      const date = parts[1];
+      if (date && !DAY.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400, origin);
+
+      /* ---------- GET /media, GET /media/<date> — what exists ---------- */
+      if (request.method === 'GET') {
+        const prefix = MEDIA_PREFIX + (date ? date + '/' : '');
+        const days = {};
+        let cursor;
+        do {
+          const page = await env.MEDIA.list({ prefix, cursor, include: ['customMetadata', 'httpMetadata'] });
+          for (const obj of page.objects) {
+            const rec = mediaRecord(obj);
+            (days[rec.date] || (days[rec.date] = [])).push(rec);
+          }
+          cursor = page.truncated ? page.cursor : null;
+        } while (cursor);
+        /* Oldest first within a day, so the order on the page is the order it
+           was shot in rather than whatever the bucket felt like. */
+        for (const k of Object.keys(days)) days[k].sort((a, b) => String(a.at).localeCompare(String(b.at)));
+        return json({ days, items: date ? (days[date] || []) : [], configured: true }, 200, origin,
+          { 'cache-control': 'public, max-age=30' });
+      }
+
+      if (request.method === 'POST') {
+        if (!date) return json({ error: 'POST needs a date: /media/YYYY-MM-DD' }, 400, origin);
+        if (!(await owner())) return json({ error: 'nope' }, 401, origin);
+
+        /* ---------- POST /media/<date>/<id> {remove:true} — take it down ----------
+           A POST rather than a DELETE for the same reason /climb deletes that
+           way: one verb is one less thing to get wrong on a phone. */
+        if (parts[2]) {
+          let body = {};
+          try { body = await request.json(); } catch {}
+          if (body.remove !== true) return json({ error: 'send {"remove":true}' }, 400, origin);
+          const prefix = MEDIA_PREFIX + date + '/' + parts[2];
+          /* Keyed by id without the extension, because the page holds the id and
+             should not have to know what the phone shot it as. */
+          const page = await env.MEDIA.list({ prefix });
+          if (!page.objects.length) return json({ error: 'not found' }, 404, origin);
+          await env.MEDIA.delete(page.objects.map(o => o.key));
+          return json({ ok: true, removed: page.objects.map(o => o.key) }, 200, origin);
+        }
+
+        /* ---------- POST /media/<date> — the upload ----------
+           Raw bytes, with the describing fields in the query string. Not
+           multipart: parsing a form would mean buffering the whole video in the
+           isolate to get at a caption, and the caption fits in a URL. */
+        const type = (request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+        const known = MEDIA_TYPES[type];
+        if (!known) {
+          return json({ error: 'that file type is not accepted', type, accepted: Object.keys(MEDIA_TYPES) }, 415, origin);
+        }
+        const declared = Number(request.headers.get('content-length') || 0);
+        if (declared > MAX_MEDIA_BYTES) {
+          return json({ error: `too big — ${Math.round(declared / 1048576)}MB, and the limit is ${MAX_MEDIA_BYTES / 1048576}MB` }, 413, origin);
+        }
+        if (!request.body) return json({ error: 'no file in the body' }, 400, origin);
+
+        const q = url.searchParams;
+        const [ext, kind] = known;
+        const id = mediaId();
+        const meta = {
+          id, kind, type,
+          name: (q.get('name') || '').slice(0, 160),
+          route: (q.get('route') || '').slice(0, 160),
+          caption: (q.get('caption') || '').slice(0, 400),
+          at: new Date().toISOString()
+        };
+        const key = `${MEDIA_PREFIX}${date}/${id}.${ext}`;
+        const put = await env.MEDIA.put(key, request.body, {
+          httpMetadata: { contentType: type },
+          customMetadata: { meta: encodeURIComponent(JSON.stringify(meta)) }
+        });
+        /* R2 refuses a stream longer than the declared length rather than
+           truncating it, so a null here is a lie in content-length, not a
+           mystery. Nothing was stored. */
+        if (!put) return json({ error: 'the upload did not complete — try it again' }, 502, origin);
+        if (put.size > MAX_MEDIA_BYTES) {
+          await env.MEDIA.delete(key);
+          return json({ error: 'too big' }, 413, origin);
+        }
+        return json({ ok: true, ...mediaRecord({ ...put, key, customMetadata: { meta: encodeURIComponent(JSON.stringify(meta)) } }) }, 200, origin);
+      }
+
+      return json({ error: 'method not allowed' }, 405, origin);
     }
 
     return stub.fetch(request);
