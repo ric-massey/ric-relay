@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>/map — ACCESS RESTRICTED</title>
+  <title>/map — ATLAS</title>
   <meta name="description" content="Crew access only.">
   <meta name="robots" content="noindex">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ric's Terminal">
-  <meta property="og:title" content="/map — Access Restricted">
-  <meta property="og:description" content="Crew access only. The private atlas lives elsewhere, with real security.">
+  <meta property="og:title" content="/map — ATLAS">
+  <meta property="og:description" content="Crew access only. A private map, behind a real login.">
   <meta property="og:url" content="https://ricmassey.com/map.html">
   <meta property="og:image" content="https://ricmassey.com/assets/og-terminal.png">
   <meta property="og:image:width" content="1200">
@@ -86,19 +86,40 @@
 
     a { color: var(--amber); text-decoration: none; }
     a:hover { text-shadow: 0 0 10px var(--amber); }
+
+    .enter {
+      display: block;
+      margin: 1.8rem 0 1.2rem;
+      padding: 0.9rem 1rem;
+      text-align: center;
+      color: var(--bg);
+      background: var(--amber);
+      border: 1px solid var(--amber);
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      box-shadow: 0 0 30px rgba(255, 176, 0, 0.25);
+    }
+    .enter:hover { background: #ffc63d; text-shadow: none; }
+    .enter:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+    p.small { font-size: 0.82rem; }
   </style>
 </head>
 <body>
   <div class="plate">
     <span class="stripe">RESTRICTED AREA</span>
-    <h1>/map — ACCESS DENIED <span class="blink">▮</span></h1>
-    <p class="bright">crew authorization required. this directory is sealed.</p>
-    <p>what's behind this door: a private atlas — places tagged by a crew of three.
-      locations are not stored on this site and never will be. the real thing is being
-      built separately, with actual security, because some coordinates are nobody
-      else's business.</p>
-    <p>status: UNDER CONSTRUCTION.</p>
-    <p>if you are the brother or the friend: you'll get a key when it's ready.</p>
+    <h1>/map — CREDENTIALS REQUIRED <span class="blink">▮</span></h1>
+    <p class="bright">the door is here. it does not open for everyone.</p>
+    <p>behind it: ATLAS — a private map of places the crew has found. caves worth
+      going back to, bridges worth a rope. every pin carries who dropped it and when,
+      so you can go somewhere your brother found without your brother.</p>
+    <p>no coordinates are stored on this site and never will be. they live behind a
+      real login, and the database refuses to answer anyone without one. that is the
+      whole security model — there is nothing here to find.</p>
+    <p>status: <span class="bright">ONLINE</span>.</p>
+    <a class="enter" href="atlas/">OPEN ATLAS →</a>
+    <p class="small">if you're not crew, it will ask you for a password you don't have,
+      and tell you nothing else.</p>
     <p style="margin-top: 1.8rem;"><a href="index.html">← return to the terminal</a></p>
   </div>
   <script src="effects.js"></script>

@@ -1,0 +1,339 @@
+/* ATLAS — styling for a screen held at arm's length in direct sun.
+ *
+ * Day is the default and the one that matters. Outdoors in bright light a dark
+ * UI turns into a mirror, thin type disappears and translucent panels wash out.
+ * So: opaque white, near-black text, heavy weights, hard borders, big targets.
+ * Night mode exists for caves and dusk and is a deliberate choice, not default.
+ */
+
+:root,
+:root[data-theme="day"] {
+  --bg:        #ffffff;
+  --panel:     #ffffff;
+  --panel-2:   #eef1f4;
+  --line:      #9aa4ae;      /* strong enough to still read in glare */
+  --line-soft: #d3d9df;
+  --ink:       #0a0c0f;
+  --ink-dim:   #39424c;      /* still 8:1 — "dim" outdoors must not mean faint */
+  --accent:    #e8490f;
+  --accent-dk: #b8360a;
+  --on-accent: #ffffff;
+  --good:      #0f7a3d;
+  --warn-bg:   #ffd400;
+  --warn-ink:  #241d00;
+  --danger:    #c00d0d;
+  --halo:      #ffffff;      /* ring around map markers */
+  --shadow:    0 2px 10px rgba(0,0,0,0.28);
+  --safe-b:    env(safe-area-inset-bottom, 0px);
+  --safe-t:    env(safe-area-inset-top, 0px);
+}
+
+:root[data-theme="night"] {
+  --bg:        #0d0f12;
+  --panel:     #16191e;
+  --panel-2:   #1e232a;
+  --line:      #39414b;
+  --line-soft: #262c34;
+  --ink:       #f2f4f6;
+  --ink-dim:   #a9b2bd;
+  --accent:    #ff6b35;
+  --accent-dk: #d8481a;
+  --on-accent: #14161a;
+  --good:      #3ddc84;
+  --warn-bg:   #6b5600;
+  --warn-ink:  #ffe680;
+  --danger:    #ff6b6b;
+  --halo:      #0d0f12;
+  --shadow:    0 2px 12px rgba(0,0,0,0.6);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; border: none; background: none; }
+
+/* Author styles beat the UA stylesheet, so any rule of ours that sets `display`
+   silently defeats the `hidden` attribute. .gate, .panel and .progress all do.
+   Without this the login screen never goes away after you sign in. */
+[hidden] { display: none !important; }
+
+/* ── the door ─────────────────────────────────────────────────────────── */
+.gate {
+  position: fixed; inset: 0; z-index: 100;
+  display: grid; place-items: center; padding: 1.5rem;
+  background: var(--bg);
+}
+.gate-card { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 1rem; }
+
+.mark {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 2rem; font-weight: 700; letter-spacing: 0.4em; text-indent: 0.4em;
+  text-align: center; color: var(--accent);
+}
+.gate-sub {
+  text-align: center; color: var(--ink-dim); font-weight: 600;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.8rem; letter-spacing: 0.2em; margin-bottom: 0.5rem;
+}
+
+.field { display: flex; flex-direction: column; gap: 0.35rem; }
+.field span {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.14em; color: var(--ink-dim);
+}
+.field input {
+  background: var(--bg); border: 2px solid var(--line); border-radius: 10px;
+  padding: 0.8rem; font-size: 17px;    /* >=16px stops iOS zooming on focus */
+}
+.field input:focus { outline: 3px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+
+.gate-error { color: var(--danger); font-weight: 600; text-align: center; }
+.linkish {
+  color: var(--ink-dim); font-weight: 600; font-size: 0.88rem;
+  text-decoration: underline; text-underline-offset: 3px; padding: 0.5rem;
+}
+.linkish:active { color: var(--ink); }
+.gate-note {
+  color: var(--ink-dim); font-size: 0.9rem; text-align: center;
+  margin: -0.4rem 0 0.3rem; line-height: 1.45;
+}
+
+/* ── buttons ──────────────────────────────────────────────────────────── */
+.btn-primary {
+  background: var(--accent); color: var(--on-accent); font-weight: 700;
+  border-radius: 10px; padding: 0.85rem 1.1rem; letter-spacing: 0.02em;
+}
+.btn-primary:active { background: var(--accent-dk); }
+.btn-primary:disabled { opacity: 0.5; }
+.btn-primary.is-cancel { background: var(--danger); }
+
+.btn-ghost {
+  background: var(--panel-2); color: var(--ink); font-weight: 600;
+  border: 2px solid var(--line); border-radius: 10px; padding: 0.7rem 0.9rem;
+}
+.btn-ghost:active { background: var(--line-soft); }
+
+.btn-danger { background: none; color: var(--danger); font-weight: 700; padding: 0.7rem 0.6rem; }
+.wide { width: 100%; margin-top: 0.5rem; }
+
+.icon-btn { color: var(--ink); font-size: 1.35rem; padding: 0.35rem 0.6rem; line-height: 1; }
+
+/* ── map + chrome ─────────────────────────────────────────────────────── */
+#app { position: fixed; inset: 0; }
+#map { position: absolute; inset: 0; background: var(--panel-2); }
+
+.topbar {
+  position: absolute; z-index: 10;
+  top: calc(var(--safe-t) + 0.6rem); left: 0.6rem; right: 0.6rem;
+  display: flex; justify-content: space-between; gap: 0.5rem; pointer-events: none;
+}
+.topbar > * { pointer-events: auto; }
+.topbar-right { display: flex; gap: 0.35rem; }
+
+.basemaps { display: flex; gap: 3px; background: var(--panel); border: 2px solid var(--line);
+            border-radius: 10px; padding: 3px; box-shadow: var(--shadow); }
+
+.chip {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; color: var(--ink);
+  padding: 0.5rem 0.7rem; border-radius: 7px; min-height: 38px;
+}
+.chip.is-on { background: var(--accent); color: var(--on-accent); }
+.chip.solo {
+  background: var(--panel); border: 2px solid var(--line); box-shadow: var(--shadow);
+  min-width: 42px; display: grid; place-items: center; font-size: 1rem;
+}
+.who { max-width: 8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── status badges ────────────────────────────────────────────────────── */
+.status {
+  position: absolute; z-index: 11; left: 0; right: 0;
+  top: calc(var(--safe-t) + 3.6rem);
+  display: flex; justify-content: center; gap: 0.4rem; pointer-events: none;
+}
+.status > * { pointer-events: auto; }
+.badge {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em;
+  padding: 0.4rem 0.75rem; border-radius: 999px; box-shadow: var(--shadow);
+}
+.badge-off  { background: var(--ink); color: var(--bg); }
+.badge-warn { background: var(--warn-bg); color: var(--warn-ink); border: 2px solid rgba(0,0,0,0.25); }
+
+/* ── the dock: the reason this app exists ─────────────────────────────── */
+.dock {
+  position: absolute; z-index: 10; left: 0; right: 0;
+  bottom: calc(var(--safe-b) + 1.1rem);
+  display: flex; align-items: center; justify-content: center; gap: 0.75rem;
+  pointer-events: none;
+}
+.dock > * { pointer-events: auto; }
+
+.btn-pin {
+  background: var(--accent); color: var(--on-accent);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-weight: 700; font-size: 1.05rem; letter-spacing: 0.14em;
+  padding: 1.15rem 1.9rem; border-radius: 999px;
+  border: 3px solid var(--halo);
+  box-shadow: var(--shadow), 0 0 0 1px rgba(0,0,0,0.3);
+}
+.btn-pin:active { transform: scale(0.97); background: var(--accent-dk); }
+.btn-pin.is-busy { opacity: 0.75; }
+
+.btn-round {
+  width: 54px; height: 54px; border-radius: 50%;
+  background: var(--panel); border: 3px solid var(--line);
+  color: var(--ink); font-size: 1.4rem; box-shadow: var(--shadow);
+}
+.btn-round:active { background: var(--panel-2); }
+
+/* ── markers ──────────────────────────────────────────────────────────────
+ * A halo ring plus a hard shadow, so a pin reads against dark forest, bright
+ * rock and washed-out satellite alike. */
+.pin-marker {
+  width: 26px; height: 26px; border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--accent);
+  border: 3px solid var(--halo);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.55), 2px 2px 6px rgba(0,0,0,0.5);
+  cursor: pointer;
+}
+.pin-marker.is-mine    { background: var(--good); }
+.pin-marker.is-pending { background: var(--warn-bg); }
+
+.me-marker {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #1a6dff; border: 3px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 0 0 8px rgba(26,109,255,0.22);
+}
+
+/* ── sheet ────────────────────────────────────────────────────────────── */
+.sheet {
+  position: absolute; z-index: 20; left: 0; right: 0; bottom: 0;
+  background: var(--panel); border-top: 3px solid var(--line);
+  border-radius: 16px 16px 0 0; box-shadow: 0 -6px 30px rgba(0,0,0,0.35);
+  padding-bottom: var(--safe-b); max-height: 84vh; overflow-y: auto;
+  animation: rise 0.18s ease-out;
+}
+@keyframes rise { from { transform: translateY(100%); } }
+@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+
+.sheet-grab { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0.6rem auto 0; }
+.sheet-body { padding: 0.8rem 1rem 1.2rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.sheet-head { display: flex; align-items: center; gap: 0.5rem; }
+
+.pin-name {
+  flex: 1; background: none; border: none; font-size: 1.25rem; font-weight: 700; padding: 0.25rem 0;
+}
+.pin-name:focus { outline: none; border-bottom: 3px solid var(--accent); }
+.pin-name::placeholder { color: var(--ink-dim); font-weight: 500; }
+.pin-name:disabled { opacity: 1; }
+
+.pin-desc {
+  background: var(--bg); border: 2px solid var(--line); border-radius: 10px;
+  padding: 0.7rem; resize: vertical; font-size: 17px; min-height: 84px;
+}
+.pin-desc:focus { outline: 3px solid var(--accent); outline-offset: -1px; }
+.pin-desc:disabled { opacity: 1; background: var(--panel-2); }
+
+.pin-meta {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.78rem; font-weight: 600; color: var(--ink-dim); line-height: 1.7;
+}
+.pin-meta b { color: var(--ink); font-weight: 700; }
+
+.sheet-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.sheet-actions .btn-primary { flex: 1 1 auto; min-width: 100px; }
+
+/* ── full-screen panels (all pins, offline maps) ──────────────────────── */
+.panel {
+  position: absolute; z-index: 30; inset: 0; background: var(--bg);
+  display: flex; flex-direction: column;
+  padding-top: var(--safe-t); padding-bottom: var(--safe-b);
+}
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.9rem 1rem; border-bottom: 3px solid var(--line); font-size: 1.1rem;
+}
+.panel-body { overflow-y: auto; flex: 1; }
+.panel-body.pad { padding: 1rem; display: flex; flex-direction: column; gap: 0.9rem; }
+
+.lede { color: var(--ink-dim); font-weight: 500; }
+
+.list-row { width: 100%; text-align: left; display: block;
+            padding: 0.95rem 1rem; border-bottom: 2px solid var(--line-soft); }
+.list-row:active { background: var(--panel-2); }
+.list-row .r-name { font-weight: 700; font-size: 1.02rem; }
+.list-row .r-sub {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.76rem; font-weight: 600; color: var(--ink-dim); margin-top: 0.2rem;
+}
+.list-empty { padding: 2.5rem 1rem; text-align: center; color: var(--ink-dim); font-weight: 600; }
+
+.dot-pending {
+  display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--warn-bg); border: 1px solid rgba(0,0,0,0.4); vertical-align: middle;
+}
+
+/* ── offline maps panel ───────────────────────────────────────────────── */
+.detail { border: 2px solid var(--line); border-radius: 10px; padding: 0.8rem; }
+.detail legend {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em;
+  color: var(--ink-dim); padding: 0 0.4rem;
+}
+.detail label { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0; font-weight: 600; }
+.detail input { width: 22px; height: 22px; accent-color: var(--accent); }
+
+.estimate {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.85rem; font-weight: 600; color: var(--ink-dim);
+}
+.estimate b { color: var(--ink); font-weight: 700; }
+
+.warn {
+  background: var(--warn-bg); color: var(--warn-ink); font-weight: 700;
+  padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.88rem;
+}
+
+.progress { display: flex; align-items: center; gap: 0.7rem; }
+.progress-track { flex: 1; height: 14px; background: var(--panel-2);
+                  border: 2px solid var(--line); border-radius: 999px; overflow: hidden; }
+.progress-bar { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+.progress-count {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.78rem; font-weight: 700; white-space: nowrap;
+}
+
+/* ── toast ────────────────────────────────────────────────────────────── */
+.toast {
+  position: absolute; z-index: 40; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--safe-b) + 6rem);
+  background: var(--ink); color: var(--bg);
+  border-radius: 999px; padding: 0.6rem 1.1rem;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.82rem; font-weight: 700;
+  box-shadow: var(--shadow); max-width: 88vw; text-align: center;
+}
+.toast.is-bad { background: var(--danger); color: #fff; }
+
+/* Offline: put a hard band down the edge of the screen so it's obvious at a
+   glance, without covering any of the map. */
+body.is-offline #app::after {
+  content: ""; position: absolute; inset: 0; z-index: 9; pointer-events: none;
+  border: 4px solid var(--ink); border-radius: 2px;
+}
+
+/* MapLibre's own furniture */
+.maplibregl-ctrl-attrib { font-size: 10px; }
+.maplibregl-ctrl-bottom-right { margin-bottom: calc(var(--safe-b) + 5.4rem); }
+.maplibregl-ctrl-group { border: 2px solid var(--line) !important; box-shadow: var(--shadow) !important; }

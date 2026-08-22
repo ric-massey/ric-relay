@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="day">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ATLAS">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>ATLAS</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ── the door ──────────────────────────────────────────────────────────── -->
+<div id="gate" class="gate" hidden>
+  <form id="login-form" class="gate-card" autocomplete="on">
+    <div class="mark">ATLAS</div>
+    <p class="gate-sub">crew access</p>
+
+    <label class="field">
+      <span>email</span>
+      <input id="email" name="email" type="email" autocomplete="username"
+             inputmode="email" autocapitalize="none" autocorrect="off"
+             spellcheck="false" required>
+    </label>
+
+    <label class="field">
+      <span>password</span>
+      <input id="password" name="password" type="password"
+             autocomplete="current-password" required>
+    </label>
+
+    <button id="login-btn" class="btn-primary" type="submit">sign in</button>
+    <button id="forgot" class="linkish" type="button">forgot my password</button>
+    <p id="login-error" class="gate-error" role="alert" hidden></p>
+  </form>
+</div>
+
+<!-- ── first sign-in: pick your own password ─────────────────────────────── -->
+<div id="newpass" class="gate" hidden>
+  <form id="newpass-form" class="gate-card" autocomplete="on">
+    <div class="mark">ATLAS</div>
+    <p class="gate-sub">choose your password</p>
+    <p class="gate-note">Pick something only you know. You'll use your email
+      address and this password to sign in from now on.</p>
+
+    <input id="np-user" type="text" autocomplete="username" hidden aria-hidden="true" tabindex="-1">
+
+    <label class="field">
+      <span>new password</span>
+      <input id="np-1" type="password" autocomplete="new-password" required minlength="8">
+    </label>
+
+    <label class="field">
+      <span>again</span>
+      <input id="np-2" type="password" autocomplete="new-password" required minlength="8">
+    </label>
+
+    <button id="np-btn" class="btn-primary" type="submit">set password</button>
+    <p id="np-error" class="gate-error" role="alert" hidden></p>
+  </form>
+</div>
+
+<!-- ── the map ───────────────────────────────────────────────────────────── -->
+<div id="app" hidden>
+  <div id="map"></div>
+
+  <header class="topbar">
+    <div class="basemaps" role="group" aria-label="Base map">
+      <button class="chip is-on" data-basemap="sat">sat</button>
+      <button class="chip" data-basemap="topo">topo</button>
+      <button class="chip" data-basemap="street">street</button>
+    </div>
+    <div class="topbar-right">
+      <button id="theme-btn" class="chip solo" title="Day mode — tap for night">☀</button>
+      <button id="maps-btn" class="chip solo" title="Offline maps">⤓</button>
+      <button id="whoami" class="chip solo who" title="Sign out"></button>
+    </div>
+  </header>
+
+  <div class="status">
+    <span id="net" class="badge badge-off" hidden>offline</span>
+    <button id="pending" class="badge badge-warn" hidden title="Tap to sync now"></button>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <div class="dock">
+    <button id="locate-btn" class="btn-round" title="Centre on me" aria-label="Centre on me">◎</button>
+    <button id="pin-btn" class="btn-pin">PIN HERE</button>
+    <button id="list-btn" class="btn-round" title="All pins" aria-label="All pins">☰</button>
+  </div>
+
+  <!-- pin detail / edit -->
+  <div id="sheet" class="sheet" hidden>
+    <div class="sheet-grab"></div>
+    <div class="sheet-body">
+      <div class="sheet-head">
+        <input id="pin-name" class="pin-name" placeholder="name it (optional)"
+               autocapitalize="sentences" spellcheck="false">
+        <button id="sheet-close" class="icon-btn" aria-label="Close">✕</button>
+      </div>
+      <textarea id="pin-desc" class="pin-desc" rows="3"
+                placeholder="what is it? how do you get in? what do you need?"></textarea>
+      <div id="pin-meta" class="pin-meta"></div>
+      <div class="sheet-actions">
+        <button id="pin-save" class="btn-primary">save</button>
+        <button id="pin-directions" class="btn-ghost">directions</button>
+        <button id="pin-copy" class="btn-ghost">copy coords</button>
+        <button id="pin-delete" class="btn-danger" hidden>delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- all pins -->
+  <div id="list" class="panel" hidden>
+    <div class="panel-head">
+      <strong>all pins</strong>
+      <button id="list-close" class="icon-btn" aria-label="Close">✕</button>
+    </div>
+    <div id="list-body" class="panel-body"></div>
+  </div>
+
+  <!-- offline maps -->
+  <div id="maps" class="panel" hidden>
+    <div class="panel-head">
+      <strong>offline maps</strong>
+      <button id="maps-close" class="icon-btn" aria-label="Close">✕</button>
+    </div>
+    <div class="panel-body pad">
+      <p class="lede">Download what's on screen now, and the map still draws
+        out there with no signal. Move the map to cover the area first.</p>
+
+      <fieldset class="detail">
+        <legend>how much detail</legend>
+        <label><input type="radio" name="detail" value="14"> rough — big area, small download</label>
+        <label><input type="radio" name="detail" value="16" checked> good — reads individual trees</label>
+        <label><input type="radio" name="detail" value="17"> max — slow and heavy</label>
+      </fieldset>
+
+      <p id="dl-estimate" class="estimate"></p>
+      <p id="dl-warn" class="warn" hidden>That's a big download. Do it on wifi.</p>
+
+      <div id="dl-progress" class="progress" hidden>
+        <div class="progress-track"><div id="dl-bar" class="progress-bar"></div></div>
+        <span id="dl-count" class="progress-count"></span>
+      </div>
+
+      <button id="dl-go" class="btn-primary wide">download this area</button>
+      <p id="dl-storage" class="estimate"></p>
+      <button id="dl-clear" class="btn-ghost wide">clear downloaded maps</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
