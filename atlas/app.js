@@ -537,7 +537,8 @@ function addMarker(p) {
   const el = document.createElement('div');
   el.className = 'pin-marker'
     + (p.created_by === me.id ? ' is-mine' : '')
-    + (p._pending ? ' is-pending' : '');
+    + (p._pending ? ' is-pending' : '')
+    + (p.is_private ? ' is-private' : '');
   el.title = pinTitle(p);
   el.addEventListener('click', (e) => { e.stopPropagation(); openPin(p); });
 
@@ -584,6 +585,8 @@ function openNewPin(lat, lng, accuracy) {
   $('pin-desc').value = '';
   $('pin-name').disabled = false;
   $('pin-desc').disabled = false;
+  $('pin-private').checked = false;      // shared by default — that is the point
+  $('pin-private').disabled = false;
   $('pin-save').hidden = false;
   $('pin-save').textContent = 'save pin';
   $('pin-delete').hidden = true;
@@ -599,6 +602,8 @@ function openPin(p) {
   $('pin-desc').value = p.description || '';
   $('pin-name').disabled = !mine;
   $('pin-desc').disabled = !mine;
+  $('pin-private').checked = !!p.is_private;
+  $('pin-private').disabled = !mine;
   $('pin-save').hidden = !mine;
   $('pin-save').textContent = 'save changes';
   $('pin-delete').hidden = !mine;
@@ -615,7 +620,8 @@ function metaHtml(p, author) {
   const acc = p.accuracy_m ? ` &middot; &plusmn;${Math.round(p.accuracy_m)} m` : '';
   const pending = p._pending
     ? '<br><span class="warn">waiting to sync — lives on this phone only</span>' : '';
-  return `${head}<br>${fmtCoords(p.lat, p.lng)}${acc}${pending}`;
+  const priv = p.is_private ? '<br><b>personal</b> &middot; nobody else can see this pin' : '';
+  return `${head}<br>${fmtCoords(p.lat, p.lng)}${acc}${priv}${pending}`;
 }
 
 function closeSheet() {
@@ -633,6 +639,7 @@ async function savePin() {
   const fields = {
     name: $('pin-name').value.trim(),
     description: $('pin-desc').value.trim(),
+    is_private: $('pin-private').checked,
   };
 
   try {
@@ -678,7 +685,11 @@ async function updatePin(fields) {
 
   await local.putPin(p);
   const el = markers.get(p.id)?.getElement();
-  if (el) { el.title = pinTitle(p); el.classList.toggle('is-pending', !!p._pending); }
+  if (el) {
+    el.title = pinTitle(p);
+    el.classList.toggle('is-pending', !!p._pending);
+    el.classList.toggle('is-private', !!p.is_private);
+  }
   closeSheet();
   toast(sent ? 'saved' : 'saved on this phone — will sync later');
   refreshNetworkUI();
@@ -784,7 +795,7 @@ function openList() {
   const body = $('list-body');
   body.innerHTML = pins.length ? pins.map((p) => `
     <button class="list-row" data-pin="${p.id}">
-      <div class="r-name">${escapeHtml(pinTitle(p))}${p._pending ? ' <span class="dot-pending"></span>' : ''}</div>
+      <div class="r-name">${escapeHtml(pinTitle(p))}${p.is_private ? ' <span class="tag-private">personal</span>' : ''}${p._pending ? ' <span class="dot-pending"></span>' : ''}</div>
       <div class="r-sub">${escapeHtml(p.display_name || p.username || 'unknown')}
         &middot; ${fmtDate(p.created_at)} &middot; ${fmtCoords(p.lat, p.lng)}</div>
     </button>`).join('')
