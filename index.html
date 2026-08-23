@@ -484,7 +484,9 @@ type Sydney's cat's name for a surprise!</div>
     ];
 
     const PAGES = Object.fromEntries(ROOMS.map((room) => [room.name, room.href]));
-    const PAGE_ALIASES = { psyche: "mind" };
+    // What someone types when they aren't thinking in room names: the page is
+    // called /training, but the thing they came for is the run.
+    const PAGE_ALIASES = { psyche: "mind", run: "training" };
 
     // render the front-door directory from the same list
     (() => {
