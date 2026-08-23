@@ -178,6 +178,23 @@ function toast(msg, bad = false) {
   toastTimer = setTimeout(() => { el.hidden = true; }, bad ? 4200 : 2200);
 }
 
+/* Relative time, short. A feed is read as "what has happened lately", and
+ * "Aug 20, 2026" makes you do the subtraction yourself — in tabular monospace,
+ * at the same visual weight as the name of the place. */
+function fmtAgo(iso) {
+  const secs = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (secs < 90) return 'just now';
+  const mins = secs / 60;
+  if (mins < 60) return `${Math.round(mins)}m ago`;
+  const hrs = mins / 60;
+  if (hrs < 24) return `${Math.round(hrs)}h ago`;
+  const days = hrs / 24;
+  if (days < 7) return `${Math.round(days)}d ago`;
+  if (days < 35) return `${Math.round(days / 7)}w ago`;
+  if (days < 365) return `${Math.round(days / 30)}mo ago`;
+  return `${Math.round(days / 365)}y ago`;
+}
+
 const fmtDate = (iso) => new Date(iso).toLocaleDateString(undefined,
   { year: 'numeric', month: 'short', day: 'numeric' });
 
@@ -671,6 +688,9 @@ function drawPins() {
   markers.forEach((m) => m.remove());
   markers.clear();
   pins.forEach(addMarker);
+  // The only way to make a pin is a gesture, and a gesture leaves no trace on
+  // screen. Say it while there is nothing else to look at.
+  $('map-hint').hidden = pins.length > 0;
 }
 
 function addMarker(p) {
@@ -684,27 +704,6 @@ function addMarker(p) {
 
   markers.set(p.id, new maplibregl.Marker({ element: el, anchor: 'bottom' })
     .setLngLat([p.lng, p.lat]).addTo(map));
-}
-
-/* PIN HERE — the one-tap path. GPS works with no signal, so this whole flow
- * runs fine in a canyon; the write just queues up. */
-async function pinHere() {
-  const btn = $('pin-btn');
-  btn.classList.add('is-busy');
-  btn.textContent = 'GETTING FIX…';
-  try {
-    const pos = await getPosition();
-    const { latitude, longitude, accuracy } = pos.coords;
-    showMe(latitude, longitude);
-    map.easeTo({ center: [longitude, latitude], zoom: Math.max(map.getZoom(), 16) });
-    openNewPin(latitude, longitude, accuracy);
-    if (navigator.vibrate) navigator.vibrate(20);
-  } catch (err) {
-    toast(geoMessage(err), true);
-  } finally {
-    btn.classList.remove('is-busy');
-    btn.textContent = 'PIN HERE';
-  }
 }
 
 /* ── the sheet ─────────────────────────────────────────────────────────────
@@ -1815,23 +1814,39 @@ function releaseListUrls() {
 const listPhoto = (pinId) => pinOnlyPhotos(pinId)[0] || photosForPin(pinId)[0] || null;
 
 function listRow(p, here) {
-  const its = notes.filter((n) => n.pin_id === p.id).length;
+  const its = notes.filter((n) => n.pin_id === p.id);
   const desc = (p.description || '').trim().split('\n')[0];
   const away = here ? metresBetween(here, p) : null;
-
-  const bits = [`<b>${escapeHtml(p.display_name || p.username || 'someone')}</b>`,
-                fmtDate(p.created_at)];
-  if (its) bits.push(`${its} note${its > 1 ? 's' : ''}`);
-  if (away != null) bits.push(fmtDistance(away));
-
   const photo = listPhoto(p.id);
+
+  // Whose it is, said as plainly as it can be said. Three people share this
+  // map; when every row is a name in the same grey you cannot scan for "what
+  // did Silas find", which is most of what you open this screen to do. And
+  // yours says "you", which no colour or badge conveys as quickly.
+  const mine = p.created_by === me.id;
+  const who = mine ? 'you' : (p.display_name || p.username || 'someone');
+
+  // The time shown is the time the list is SORTED by, or the sort looks broken:
+  // a pin found a month ago sitting at the top because somebody left a note on
+  // it yesterday has to say so, not say "1mo ago".
+  const bits = [`<b>${escapeHtml(who)}</b>`];
+  if (its.length) {
+    const last = its.reduce((a, b) => (a.created_at > b.created_at ? a : b));
+    bits.push(`${its.length} note${its.length > 1 ? 's' : ''}`);
+    bits.push(`last ${fmtAgo(last.created_at)}`);
+  } else {
+    bits.push(`found ${fmtAgo(p.created_at)}`);
+  }
 
   return `<button class="list-row" data-pin="${p.id}">
     <div class="r-thumb${photo ? '' : ' is-empty'}"${photo ? ` data-thumb="${photo.id}"` : ''}></div>
     <div class="r-text">
-      <div class="r-name">${escapeHtml(pinTitle(p))}${
-        p.is_private ? ' <span class="tag-private">personal</span>' : ''}${
-        p._pending ? ' <span class="dot-pending"></span>' : ''}</div>
+      <div class="r-top">
+        <div class="r-name">${escapeHtml(pinTitle(p))}${
+          p.is_private ? ' <span class="tag-private">personal</span>' : ''}${
+          p._pending ? ' <span class="dot-pending"></span>' : ''}</div>
+        ${away != null ? `<div class="r-away">${fmtDistance(away)}</div>` : ''}
+      </div>
       ${desc ? `<div class="r-desc">${escapeHtml(desc)}</div>` : ''}
       <div class="r-sub">${bits.join(' &middot; ')}</div>
     </div>
@@ -2055,7 +2070,6 @@ $('login-form').addEventListener('submit', handleLogin);
 $('newpass-form').addEventListener('submit', setNewPassword);
 $('forgot').addEventListener('click', forgotPassword);
 $('whoami').addEventListener('click', signOut);
-$('pin-btn').addEventListener('click', pinHere);
 $('locate-btn').addEventListener('click', () => locate().catch(() => {}));
 $('list-btn').addEventListener('click', openList);
 $('list-close').addEventListener('click', () => { $('list').hidden = true; releaseListUrls(); });

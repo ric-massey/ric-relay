@@ -138,9 +138,7 @@ button { cursor: pointer; border: none; background: none; }
   outline-offset: 2px;
   border-radius: var(--r-xs);
 }
-.btn-primary:focus-visible, .btn-pin:focus-visible {
-  outline-color: var(--ink);
-}
+.btn-primary:focus-visible { outline-color: var(--ink); }
 
 /* Author styles beat the UA stylesheet, so any rule of ours that sets `display`
    silently defeats the `hidden` attribute. .gate, .panel and .progress all do.
@@ -313,8 +311,18 @@ button { cursor: pointer; border: none; background: none; }
   .who { width: 38px; min-width: 38px; }
   .topbar-right { gap: var(--s-1); }
   .btn-round { width: 48px; height: 48px; font-size: 1.2rem; }
-  .btn-pin { padding: 0 var(--s-5); font-size: var(--t-md); letter-spacing: 0.1em; }
-  .dock { gap: var(--s-2); }
+}
+
+/* Said once, while the map is empty. Quiet on purpose — it is an instruction
+   nobody needs twice, not a call to action. */
+.map-hint {
+  position: absolute; z-index: 10; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--safe-b) + var(--s-4) + 54px + var(--s-3));
+  background: var(--panel); color: var(--ink-dim);
+  border: var(--b) solid var(--rule); border-radius: var(--r-pill);
+  padding: var(--s-2) var(--s-4); box-shadow: var(--e-2);
+  font-size: var(--t-sm); font-weight: 700; white-space: nowrap;
+  pointer-events: none;
 }
 
 /* ── status badges ────────────────────────────────────────────────────── */
@@ -332,30 +340,17 @@ button { cursor: pointer; border: none; background: none; }
 .badge-off  { background: var(--ink); color: var(--bg); }
 .badge-warn { background: var(--warn-bg); color: var(--warn-ink); box-shadow: var(--e-2), inset 0 0 0 1px rgba(0,0,0,0.3); }
 
-/* ── the dock: the reason this app exists ─────────────────────────────── */
+/* One control sits on the map now: where am I. A pin is made by pressing and
+   holding the map, which is the whole gesture — there is no button for it,
+   because a button would only be a slower way of saying the same thing.
+   Bottom left, clear of MapLibre's zoom stack on the right. */
 .dock {
-  position: absolute; z-index: 10; left: 0; right: 0;
-  bottom: calc(var(--safe-b) + var(--s-5));
-  display: flex; align-items: center; justify-content: center; gap: var(--s-3);
+  position: absolute; z-index: 10;
+  left: var(--s-4); bottom: calc(var(--safe-b) + var(--s-4));
+  display: flex; align-items: center; gap: var(--s-3);
   pointer-events: none;
 }
 .dock > * { pointer-events: auto; }
-/* With only two controls left, centring them as a pair pushes the one that
-   matters off to the right. PIN HERE is the reason this app exists, so it sits
-   dead centre under a thumb and "where am I" is parked at the edge. */
-.dock #locate-btn { position: absolute; left: var(--s-4); }
-
-.btn-pin {
-  background: var(--accent); color: var(--on-accent);
-  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
-  font-weight: 700; font-size: var(--t-lg); letter-spacing: 0.13em;
-  padding: 0 var(--s-8); min-height: 60px; border-radius: var(--r-pill);
-  border: var(--b-strong) solid var(--halo);
-  box-shadow: var(--e-2), 0 0 0 1px rgba(0,0,0,0.25);
-  transition: transform 0.08s var(--ease), background 0.12s var(--ease);
-}
-.btn-pin:active { transform: scale(0.97); background: var(--accent-dk); }
-.btn-pin.is-busy { opacity: 0.75; }
 
 .btn-round {
   width: 54px; height: 54px; border-radius: 50%;
@@ -760,9 +755,19 @@ button { cursor: pointer; border: none; background: none; }
   color: var(--ink-mute); font-size: 1.1rem;
 }
 .r-text { min-width: 0; }
+/* Distance sits in its own column on the right rather than on the end of the
+   byline, where it was the first thing to be truncated away — and it is the
+   one number on the row that decides whether you go this weekend. */
+.r-top { display: flex; align-items: baseline; gap: var(--s-3); }
 .list-row .r-name {
+  flex: 1; min-width: 0;
   font-weight: 700; font-size: var(--t-md); letter-spacing: -0.01em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.list-row .r-away {
+  flex: none; font-size: var(--t-xs); font-weight: 700; color: var(--ink-dim);
+  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  font-variant-numeric: tabular-nums;
 }
 /* One line of the description — the pitch. Clipped rather than wrapped, so
    every row is the same height and the list stays scannable. */
@@ -774,7 +779,13 @@ button { cursor: pointer; border: none; background: none; }
   font-size: var(--t-xs); font-weight: 600; color: var(--ink-mute); margin-top: 2px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.list-row .r-sub b { color: var(--ink-dim); font-weight: 800; }
+/* The author is the headline of a row on a shared map, not a footnote: full
+   ink, heaviest weight on the line, and first. */
+.list-row .r-sub b {
+  color: var(--ink); font-weight: 800;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: var(--t-sm);
+}
 .list-empty { padding: var(--s-10) var(--s-4); text-align: center; color: var(--ink-mute); font-weight: 600; }
 
 .tag-private {
@@ -854,7 +865,7 @@ body.is-offline #app::after {
    It ships looking like every other MapLibre map. Two minutes here is the
    difference between an app and a demo. */
 .maplibregl-ctrl-attrib { font-size: 10px; border-radius: var(--r-xs) 0 0 0 !important; }
-.maplibregl-ctrl-bottom-right { margin-bottom: calc(var(--safe-b) + 5.4rem); }
+.maplibregl-ctrl-bottom-right { margin-bottom: calc(var(--safe-b) + var(--s-3)); }
 .maplibregl-ctrl-group {
   border: var(--b) solid var(--edge) !important;
   border-radius: var(--r-md) !important;

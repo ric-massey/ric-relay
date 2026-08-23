@@ -90,9 +90,13 @@
 
   <div id="toast" class="toast" hidden></div>
 
+  <!-- With no button that makes a pin, the gesture has to be said out loud at
+       least once. Shown only while the map is empty, which is exactly when
+       somebody is looking for the thing they cannot find. -->
+  <p id="map-hint" class="map-hint" hidden>press and hold the map to drop a pin</p>
+
   <div id="dock" class="dock">
     <button id="locate-btn" class="btn-round" title="Centre on me" aria-label="Centre on me">◎</button>
-    <button id="pin-btn" class="btn-pin">PIN HERE</button>
   </div>
 
   <!-- pin detail / edit -->

@@ -66,8 +66,8 @@ python3 -m http.server 8920 --directory ~/RicsWebsite/atlas
 Then <http://localhost:8920>.
 
 Geolocation needs a **secure context** — `localhost` counts, a bare IP on your
-LAN does not. On a phone it has to be served over HTTPS or the PIN HERE button
-will never get a fix.
+LAN does not. On a phone it has to be served over HTTPS or **◎** will never get
+a fix.
 
 ---
 
@@ -90,12 +90,14 @@ Every button sits under the heading that says what it is for, because the
 question in the field is rarely "what does this button do" — it is "which of
 these do I want", and that gets answered by what a button is *near*.
 
-- **PIN HERE** — grabs a GPS fix and opens the sheet. Name and description are
-  optional; save an untitled pin now, fill it in at home. That is the design.
-- **Press and hold the map** — drops a pin somewhere you are not standing. Hold
-  without dragging; drag and it is a pan, which is the whole distinction. 12px
-  of drift is still a press, because nobody holds a phone still.
-- **◎** — centres on you.
+- **Press and hold the map** — the only way a pin is made, and there is no
+  button for one, because a button would be a slower way of saying the same
+  thing. Hold without dragging; drag and it is a pan, which is the whole
+  distinction. 12px of drift is still a press, because nobody holds a phone
+  still. Name and description are optional — drop it now, fill it in at home.
+  While the map has nothing on it, it says so on screen: a gesture leaves no
+  trace, so it gets told to you once, when you have nothing else to look at.
+- **◎** — centres on you. Press and hold your own dot to pin where you stand.
 - **☰ places** — the closest thing here to a feed, and it is built for the
   question it actually gets asked: somebody has handed you a place, do you want
   to go. So a row is a photo of it, one line of what it is, who found it, how
@@ -286,7 +288,7 @@ move the map, so you can see the cost before committing.
   is every note on it — both are mirrored into IndexedDB.
 - Photos you have opened are still there; photos you never opened are not. Tap
   **get all photos for offline** in ⤓ before you leave and it pulls the rest.
-- **PIN HERE still works.** GPS is a radio receiver; it needs no network. New
+- **Finding yourself still works.** GPS is a radio receiver; it needs no network. New
   pins, notes, photos and edits all queue up and show yellow. A photo taken with
   no signal is written to the phone before anything else is attempted, so the
   only copy is never the one in flight.
