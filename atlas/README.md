@@ -228,11 +228,27 @@ day it was needed.
 
 The pieces:
 
+- **A box means you can press it.** That one rule decides every container in the
+  file. Information gets type and a hairline, never a box. Before it, the pin
+  sheet had a grey well holding white buttons beside an outlined card beside
+  grey note cards — all at the same level, all saying "I am a thing" equally
+  loudly, which is why it read as busy even after every label was fixed. Notes
+  became a log separated by hairlines; parking and the ownership answer lost
+  their boxes entirely. The one exception earns it: a discovered county is a
+  proposal with two buttons in it, so it gets a wash and an accent edge.
+- **A fill alone cannot mark a control here.** `--panel-2` on white is 1.05:1 —
+  indoors it reads as a subtle grouping, in glare it is simply not there. So
+  the pressable things keep a real border, and that is also why removing the
+  boxes from everything else costs nothing outdoors.
 - **Three line weights by meaning, not thickness.** `--edge` is where a surface
   meets the map and has to survive glare; `--rule` divides things inside a
-  surface; `--hair` is a whisper. Boxes-inside-boxes became fills instead.
+  surface; `--hair` is a whisper.
 - **Three inks.** Two of them stay past 7:1 on every surface. The third is for
   detail — a timestamp, a hostname — and never carries a value or a warning.
+- **Words, not glyphs**, on anything you have to find in a hurry: a note's
+  controls read `photo · edit · ✕`. The pencil went because nobody is sure what
+  it means at arm's length, and it rendered a weight lighter than the ✕ beside
+  it, so the row looked like three unrelated marks.
 - **One focus ring**, keyboard-only, on everything.
 - **44px minimum on anything you have to hit outdoors.**
 

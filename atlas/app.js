@@ -1191,7 +1191,7 @@ function noteHtml(n) {
         wasEdited(n) ? ` &middot; edited ${fmtDate(n.updated_at)}` : ''}</span>
       ${mine && editingNote !== n.id ? `
         <button class="note-photo" data-photo="${n.id}">photo</button>
-        <button class="note-edit" data-edit="${n.id}" aria-label="Edit note">✎</button>
+        <button class="note-photo" data-edit="${n.id}">edit</button>
         <button class="note-del" data-id="${n.id}" aria-label="Delete note">✕</button>` : ''}
     </div>`;
 

@@ -212,7 +212,16 @@ button { cursor: pointer; border: none; background: none; }
 
 /* ── buttons ──────────────────────────────────────────────────────────────
    Three kinds and no more: the one thing this screen is for, the ordinary
-   ones, and the one that destroys something. */
+   ones, and the one that destroys something.
+
+   And one rule that decides every box in the file: A BOX MEANS YOU CAN PRESS
+   IT. Information gets type and a hairline, never a container. Before this the
+   sheet had a grey well holding white buttons sitting next to an outlined card
+   sitting next to grey note cards, all at the same level and all saying
+   "I am a thing" equally loudly — which is why it read as busy even after
+   every label was fixed. Note that a fill alone cannot mark a control here:
+   --panel-2 on white is 1.05:1 and simply is not there in glare. That is why
+   the pressable things keep a real border. */
 .btn-primary {
   background: var(--accent); color: var(--on-accent); font-weight: 700;
   border-radius: var(--r-md); padding: 0 var(--s-5); min-height: var(--tap);
@@ -451,6 +460,10 @@ button { cursor: pointer; border: none; background: none; }
   font-size: var(--t-sm); font-weight: 600; color: var(--ink-dim); line-height: 1.65;
 }
 .pin-meta b { color: var(--ink); font-weight: 700; }
+/* Sits under the coordinates rather than in the stack of buttons below: it acts
+   on the two lines directly above it, and a full-width bar was more weight than
+   "copy location" has ever needed. */
+.meta-action { align-self: flex-start; padding: var(--s-1) 0; margin-top: calc(var(--s-2) * -1); }
 
 /* Groups, not a list. A rule and a heading over each one, so the sheet can be
    scanned rather than read — you are looking for the part of it you want, and
@@ -538,8 +551,7 @@ button { cursor: pointer; border: none; background: none; }
  * a well rather than another headline.
  */
 .park {
-  background: var(--panel-2); border-radius: var(--r-md);
-  padding: var(--s-3); display: flex; flex-direction: column; gap: var(--s-2);
+  display: flex; flex-direction: column; gap: var(--s-2);
 }
 .park-head {
   display: flex; align-items: baseline; gap: var(--s-2);
@@ -554,7 +566,7 @@ button { cursor: pointer; border: none; background: none; }
   font-size: var(--t-xs); font-weight: 600;
 }
 .park-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
-.park-actions .btn-ghost { flex: 1 1 auto; background: var(--panel); }
+.park-actions .btn-ghost { flex: 1 1 auto; }
 #park-here.is-busy { opacity: 0.6; pointer-events: none; }
 
 /* The truck. Square, so it never reads as one of the round crew pins, and
@@ -573,10 +585,7 @@ button { cursor: pointer; border: none; background: none; }
  * description you paste into a county search, and where that county is.
  */
 .owner { display: flex; flex-direction: column; gap: var(--s-2); }
-.owner-result {
-  border: var(--b) solid var(--rule); border-radius: var(--r-md);
-  padding: var(--s-3); display: flex; flex-direction: column; gap: var(--s-2);
-}
+.owner-result { display: flex; flex-direction: column; gap: var(--s-2); }
 .owner-agency { font-weight: 800; font-size: var(--t-lg); line-height: 1.25; letter-spacing: -0.01em; }
 .owner-agency.owner-unknown { font-weight: 700; font-size: var(--t-md); color: var(--ink-dim); }
 .owner-access {
@@ -610,10 +619,13 @@ button { cursor: pointer; border: none; background: none; }
   font-size: var(--t-sm); font-weight: 600; color: var(--ink-dim);
   line-height: 1.45;
 }
+/* The exception, and it earns it: this is not an answer, it is a proposal with
+   two buttons in it. A wash and an accent edge mark it as waiting on you. */
 .owner-found {
   display: flex; flex-direction: column; gap: var(--s-2);
-  border: var(--b) solid var(--edge); border-radius: var(--r-md);
-  padding: var(--s-3); background: var(--panel-2);
+  border-left: var(--b-strong) solid var(--accent);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  padding: var(--s-3); background: var(--accent-wash);
 }
 .owner-found-head { font-weight: 800; font-size: var(--t-md); line-height: 1.3; }
 
@@ -621,8 +633,9 @@ button { cursor: pointer; border: none; background: none; }
 .sources-list { display: flex; flex-direction: column; gap: var(--s-2); }
 .source-row {
   display: flex; align-items: center; gap: var(--s-3);
-  background: var(--panel-2); border-radius: var(--r-md); padding: var(--s-3);
+  padding: var(--s-3) 0; border-bottom: 1px solid var(--hair);
 }
+.source-row:last-child { border-bottom: none; }
 .source-row > div:first-child { flex: 1; min-width: 0; }
 .source-name { font-weight: 800; font-size: var(--t-md); }
 .source-host {
@@ -657,29 +670,31 @@ button { cursor: pointer; border: none; background: none; }
 .notes-list { display: flex; flex-direction: column; gap: var(--s-2); }
 .notes-empty { color: var(--ink-mute); font-size: var(--t-md); }
 
-.note {
-  background: var(--panel-2); border-radius: var(--r-md); padding: var(--s-3);
-  border-left: var(--s-1) solid var(--rule);
-}
-.note.is-pending { border-left-color: var(--warn-bg); }
+/* A log reads as a log: entries separated by a line, not nine cards. The grey
+   card was doing nothing outdoors anyway — --panel-2 on white is 1.05:1, so in
+   sun it was a stack of things with no edges. A hairline is still a hairline. */
+.note { padding: var(--s-2) 0 var(--s-3); border-bottom: 1px solid var(--hair); }
+.note:last-of-type { border-bottom: none; padding-bottom: var(--s-1); }
+/* Unsynced is said in words underneath — see .note-warn — rather than with a
+   coloured edge that only means something once you have been told. */
 .note-head {
   display: flex; align-items: center; gap: var(--s-2);
   font-size: var(--t-xs); color: var(--ink-mute); margin-bottom: var(--s-1);
 }
 .note-head b { color: var(--ink); font-weight: 800; font-size: var(--t-sm); }
 .note-head span { flex: 1; }
-.note-del, .note-edit {
+.note-del {
   background: none; border: none; color: var(--ink-mute);
   padding: 0 var(--s-1); cursor: pointer; line-height: 1;
-  border-radius: var(--r-xs);
+  border-radius: var(--r-xs); font-size: var(--t-md);
 }
-.note-del { font-size: var(--t-md); }
-.note-edit { font-size: var(--t-lg); }
-@media (hover: hover) { .note-del:hover, .note-edit:hover, .note-photo:hover { color: var(--ink); } }
+@media (hover: hover) { .note-del:hover, .note-photo:hover { color: var(--ink); } }
 
-/* A word rather than a glyph. Nobody guesses a camera pictogram at arm's
-   length in the sun, and this one has to be found by someone who has just
-   walked up to a gate and wants to show the others the new lock. */
+/* Words rather than glyphs, for both of these. A pencil is not obvious at arm's
+   length in the sun, and it rendered a full weight lighter than the ✕ beside it,
+   so the row read as three unrelated marks. "photo" and "edit" say what they
+   are; ✕ stays, because closing and removing is the one pictogram everybody
+   already knows. */
 .note-photo {
   background: none; border: none; color: var(--ink-mute); font: inherit;
   font-size: var(--t-2xs); font-weight: 800; letter-spacing: 0.03em;
@@ -687,7 +702,12 @@ button { cursor: pointer; border: none; background: none; }
   text-decoration: underline; text-underline-offset: 3px;
 }
 .note p { font-size: var(--t-md); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
-.note-warn { color: var(--ink-mute); font-size: var(--t-2xs); font-weight: 700; }
+.note-warn {
+  display: inline-block; margin-top: var(--s-1);
+  color: var(--warn-ink); background: var(--warn-bg);
+  font-size: var(--t-2xs); font-weight: 700;
+  border-radius: var(--r-xs); padding: 1px var(--s-1);
+}
 
 .note-body {
   background: var(--bg); border: var(--b) solid var(--rule); border-radius: var(--r-md);
@@ -699,12 +719,17 @@ button { cursor: pointer; border: none; background: none; }
 
 /* Editing a note happens in place. The note keeps its box and its byline and
    the words become typeable, so it stays obvious which one you are changing. */
-.note.is-editing { border-left-color: var(--accent); }
+/* Editing is the one state that gets a box, because while it is on there is a
+   control here rather than a record. */
+.note.is-editing {
+  background: var(--accent-wash); border-radius: var(--r-sm);
+  padding: var(--s-3); border-bottom-color: transparent;
+}
 .note-edit-box { width: 100%; margin-top: var(--s-1); }
 .note-edit-actions { display: flex; align-items: center; gap: var(--s-3); margin-top: var(--s-2); }
 .note-edit-actions .btn-ghost { min-height: 38px; padding: 0 var(--s-3); background: var(--panel); }
 .note-compose { display: flex; gap: var(--s-2); }
-.note-compose .btn-ghost { flex: 1; }
+.note-compose .btn-ghost { flex: 1 1 0; min-width: 0; }
 
 /* ── full-screen panels (all pins, layers, offline maps) ──────────────── */
 .panel {
@@ -746,10 +771,13 @@ button { cursor: pointer; border: none; background: none; }
 }
 
 /* ── offline maps panel ───────────────────────────────────────────────── */
-.detail { border: var(--b) solid var(--rule); border-radius: var(--r-md); padding: var(--s-4); }
+/* Grouped exactly like the blocks in the sheet — a heading and a rule — so the
+   two screens stop being two different designs. */
+.detail { border: none; padding: var(--s-4) 0 var(--s-2); border-top: var(--b) solid var(--hair); }
+.detail:first-of-type { border-top: none; padding-top: 0; }
 .detail legend {
-  font-size: var(--t-xs); font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--ink-mute); padding: 0 var(--s-2);
+  font-size: var(--t-xs); font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--ink-mute); padding: 0;
 }
 /* A checkbox row with its explanation on the line below, not beside it.
    Grid rather than flex: in a flex row the bare text node and the <small> are
