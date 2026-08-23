@@ -46,11 +46,27 @@ const BASEMAPS = {
     attribution: 'Esri, Maxar, Earthstar Geographics',
     maxzoom: 19,
   },
+  hybrid: {
+    label: 'satellite + topo',
+    url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'USGS The National Map',
+    maxzoom: 16,
+  },
   topo: {
     label: 'USGS topo',
     url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',
     attribution: 'USGS The National Map',
     maxzoom: 16,
+  },
+  otm: {
+    label: 'contour topo',
+    url: 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenTopoMap, OpenStreetMap contributors (CC-BY-SA)',
+    maxzoom: 17,
+    // OpenTopoMap is run by volunteers off donated hardware. Browsing it is
+    // fine; pulling four thousand tiles of it in one go is not, so it is left
+    // out of area downloads on purpose.
+    noBulk: true,
   },
   street: {
     label: 'street',
@@ -67,11 +83,14 @@ const BASEMAPS = {
  */
 const OVERLAYS = {
   roads: {
-    label: 'roads & place names',
-    urls: [
-      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
-      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-    ],
+    label: 'roads',
+    urls: ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}'],
+    maxzoom: 19,
+    attribution: 'Esri',
+  },
+  labels: {
+    label: 'place names',
+    urls: ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
     maxzoom: 19,
     attribution: 'Esri',
   },
@@ -89,9 +108,11 @@ const OVERLAYS = {
   },
   terrain: {
     label: 'terrain shading',
-    urls: ['https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}'],
+    // Esri's hillshade rather than the USGS one: sharper, and it does not stop
+    // at the US border.
+    urls: ['https://services.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}'],
     maxzoom: 16,
-    attribution: 'USGS The National Map',
+    attribution: 'Esri',
   },
   water: {
     label: 'creeks & water',
@@ -323,7 +344,7 @@ function initMap() {
   // first so roads and labels draw on top of it rather than under.
   // Order is the draw order: ground-shading first, then areas, then lines, then
   // labels last so nothing is drawn over the text.
-  const DRAW_ORDER = ['terrain', 'publicland', 'water', 'parcels', 'trails', 'rail', 'roads'];
+  const DRAW_ORDER = ['terrain', 'publicland', 'water', 'parcels', 'trails', 'rail', 'roads', 'labels'];
   for (const key of DRAW_ORDER) {
     const cfg = OVERLAYS[key];
     cfg.urls.forEach((url, i) => {
@@ -826,7 +847,7 @@ function tilesForView(minZoom, maxZoom) {
     urls.push(...tileUrlsForBounds(bounds, minZoom, Math.min(maxZoom, layerMax), template));
 
   const cfg = BASEMAPS[basemap];
-  add(cfg.url, cfg.maxzoom);
+  if (!cfg.noBulk) add(cfg.url, cfg.maxzoom);
 
   // Whatever is switched on comes down too — a satellite tile with no road
   // layer over it is half the map you were looking at when you hit download.
@@ -846,7 +867,9 @@ const maxZoomChoice = () => parseInt(
 function updateDownloadEstimate() {
   if ($('maps').hidden || !map) return;
   const n = tilesForView(9, maxZoomChoice()).length;
-  const what = [BASEMAPS[basemap].label, ...[...overlaysOn].map((k) => OVERLAYS[k].label)];
+  const base = BASEMAPS[basemap];
+  const what = [...(base.noBulk ? [] : [base.label]), ...[...overlaysOn].map((k) => OVERLAYS[k].label)];
+  $('dl-nobulk').hidden = !base.noBulk;
   $('dl-estimate').innerHTML =
     `<b>${n.toLocaleString()}</b> tiles &middot; about <b>${fmtSize(n * BYTES_PER_TILE)}</b>
      &middot; ${escapeHtml(what.join(' + '))}`;

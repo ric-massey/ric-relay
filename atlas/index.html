@@ -140,23 +140,40 @@
     <div class="panel-body pad">
       <fieldset class="detail">
         <legend>base map</legend>
-        <label><input type="radio" name="basemap" value="sat" checked> satellite</label>
-        <label><input type="radio" name="basemap" value="topo"> USGS topo</label>
-        <label><input type="radio" name="basemap" value="street"> street</label>
+        <label><input type="radio" name="basemap" value="sat" checked> satellite
+          <small>what is actually there</small></label>
+        <label><input type="radio" name="basemap" value="hybrid"> satellite + topo
+          <small>imagery with contours and names drawn over it</small></label>
+        <label><input type="radio" name="basemap" value="topo"> USGS topo
+          <small>the paper quad map</small></label>
+        <label><input type="radio" name="basemap" value="otm"> contour topo
+          <small>contours, trails and huts together — browse only, not downloadable</small></label>
+        <label><input type="radio" name="basemap" value="street"> street
+          <small>plain road map</small></label>
       </fieldset>
 
       <fieldset class="detail">
-        <legend>on top</legend>
-        <label><input type="checkbox" data-overlay="roads"> roads &amp; place names
-          <small>puts the road network over satellite</small></label>
-        <label><input type="checkbox" data-overlay="rail"> railways
-          <small>lines, sidings and abandoned track</small></label>
+        <legend>names &amp; ways</legend>
+        <label><input type="checkbox" data-overlay="labels"> place names
+          <small>towns, parks, peaks, creeks — the labels</small></label>
+        <label><input type="checkbox" data-overlay="roads"> roads
+          <small>the road network and route shields</small></label>
         <label><input type="checkbox" data-overlay="trails"> trails
           <small>marked hiking routes</small></label>
+        <label><input type="checkbox" data-overlay="rail"> railways
+          <small>lines, sidings and abandoned track</small></label>
+      </fieldset>
+
+      <fieldset class="detail">
+        <legend>the ground</legend>
         <label><input type="checkbox" data-overlay="terrain"> terrain shading
           <small>the layer that shows you a cliff or a sinkhole</small></label>
         <label><input type="checkbox" data-overlay="water"> creeks &amp; water
           <small>streams, springs and everything that carved the place</small></label>
+      </fieldset>
+
+      <fieldset class="detail">
+        <legend>who owns it</legend>
         <label><input type="checkbox" data-overlay="publicland"> public land
           <small>BLM, forest and state — where nobody needs asking</small></label>
         <label><input type="checkbox" data-overlay="parcels"> property lines
@@ -195,6 +212,9 @@
 
       <p id="dl-estimate" class="estimate"></p>
       <p id="dl-warn" class="warn" hidden>That's a big download. Do it on wifi.</p>
+      <p id="dl-nobulk" class="warn" hidden>The contour topo base map is run by
+        volunteers, so ATLAS won't bulk-download it. Overlays still save; switch
+        to satellite or USGS topo if you want a base map offline too.</p>
 
       <div id="dl-progress" class="progress" hidden>
         <div class="progress-track"><div id="dl-bar" class="progress-bar"></div></div>
