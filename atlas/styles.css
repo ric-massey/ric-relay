@@ -152,7 +152,18 @@ button { cursor: pointer; border: none; background: none; }
   background: var(--panel); border: 2px solid var(--line); box-shadow: var(--shadow);
   min-width: 42px; display: grid; place-items: center; font-size: 1rem;
 }
-.who { max-width: 8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who { max-width: 4.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip.wide-chip { min-width: auto; padding: 0.5rem 0.85rem; }
+
+/* On a narrow phone the top bar has to give: shrink the padding before
+   anything is allowed to slide off the right edge. */
+@media (max-width: 400px) {
+  .chip.solo { min-width: 38px; padding: 0.45rem 0.4rem; }
+  .chip { font-size: 0.74rem; }
+  .who { max-width: 3.6rem; }
+  .topbar-right { gap: 0.25rem; }
+}
+
 
 /* ── status badges ────────────────────────────────────────────────────── */
 .status {
@@ -291,8 +302,22 @@ button { cursor: pointer; border: none; background: none; }
   font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em;
   color: var(--ink-dim); padding: 0 0.4rem;
 }
-.detail label { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0; font-weight: 600; }
-.detail input { width: 22px; height: 22px; accent-color: var(--accent); }
+/* A checkbox row with its explanation on the line below, not beside it.
+   Grid rather than flex: in a flex row the bare text node and the <small> are
+   siblings, so the description sits alongside the name instead of under it. */
+.detail label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.1rem 0.65rem;
+  align-items: start;
+  padding: 0.45rem 0;
+  font-weight: 600;
+}
+.detail label small {
+  grid-column: 2;
+  color: var(--ink-dim); font-weight: 500; font-size: 0.8rem; line-height: 1.35;
+}
+.detail input { width: 22px; height: 22px; accent-color: var(--accent); margin-top: 0.15rem; }
 
 .estimate {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;

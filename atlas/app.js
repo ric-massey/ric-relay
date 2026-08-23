@@ -60,6 +60,43 @@ const BASEMAPS = {
   },
 };
 
+/* ── overlays ────────────────────────────────────────────────────────────
+ * Things you can put on top of a base map. Roads-over-satellite is the one
+ * that gets used most: imagery tells you what's there, the road layer tells you
+ * how to get near it. All free, all keyless.
+ */
+const OVERLAYS = {
+  roads: {
+    label: 'roads & place names',
+    urls: [
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+    ],
+    maxzoom: 19,
+    attribution: 'Esri',
+  },
+  rail: {
+    label: 'railways',
+    urls: ['https://a.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png'],
+    maxzoom: 19,
+    attribution: '&copy; OpenRailwayMap, OpenStreetMap contributors',
+  },
+  trails: {
+    label: 'trails',
+    urls: ['https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png'],
+    maxzoom: 18,
+    attribution: 'waymarkedtrails.org, OpenStreetMap contributors',
+  },
+  terrain: {
+    label: 'terrain shading',
+    urls: ['https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}'],
+    maxzoom: 16,
+    attribution: 'USGS The National Map',
+  },
+};
+
+let overlaysOn = new Set();
+
 /* ── little helpers ─────────────────────────────────────────────────────── */
 
 let toastTimer = null;
@@ -259,6 +296,23 @@ function initMap() {
     });
   }
 
+  // Overlays go into the initial style rather than being added afterwards:
+  // addSource() before the style finishes loading throws. Terrain is listed
+  // first so roads and labels draw on top of it rather than under.
+  for (const key of ['terrain', 'trails', 'rail', 'roads']) {
+    OVERLAYS[key].urls.forEach((url, i) => {
+      const id = `ov-${key}-${i}`;
+      sources[id] = {
+        type: 'raster', tiles: [url], tileSize: 256,
+        maxzoom: OVERLAYS[key].maxzoom, attribution: OVERLAYS[key].attribution,
+      };
+      layers.push({
+        id, type: 'raster', source: id,
+        layout: { visibility: overlaysOn.has(key) ? 'visible' : 'none' },
+      });
+    });
+  }
+
   map = new maplibregl.Map({
     container: 'map',
     style: { version: 8, sources, layers },
@@ -280,7 +334,9 @@ function initMap() {
   // canyon rather than the whole country.
   local.get('lastView').then((v) => {
     if (v) map.jumpTo({ center: v.center, zoom: v.zoom });
-    locate({ silent: true, fly: true });
+    // Not silent: if there's no blue dot, the reason should be on screen rather
+    // than left for you to wonder about.
+    locate({ fly: true }).catch(() => {});
   });
   map.on('moveend', () => {
     const c = map.getCenter();
@@ -322,10 +378,19 @@ function setBasemap(key) {
   for (const k of Object.keys(BASEMAPS)) {
     map.setLayoutProperty(`base-${k}`, 'visibility', k === key ? 'visible' : 'none');
   }
-  document.querySelectorAll('[data-basemap]').forEach((b) => {
-    b.classList.toggle('is-on', b.dataset.basemap === key);
-  });
+  const radio = document.querySelector(`[name="basemap"][value="${key}"]`);
+  if (radio) radio.checked = true;
   local.set('basemap', key);
+  updateDownloadEstimate();
+}
+
+function setOverlay(key, on) {
+  on ? overlaysOn.add(key) : overlaysOn.delete(key);
+  OVERLAYS[key].urls.forEach((_, i) => {
+    const id = `ov-${key}-${i}`;
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+  });
+  local.set('overlays', [...overlaysOn]);
   updateDownloadEstimate();
 }
 
@@ -668,13 +733,21 @@ function onListClick(e) {
 
 function tilesForView(minZoom, maxZoom) {
   const b = map.getBounds();
+  const bounds = { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() };
+  const urls = [];
+
+  const add = (template, layerMax) =>
+    urls.push(...tileUrlsForBounds(bounds, minZoom, Math.min(maxZoom, layerMax), template));
+
   const cfg = BASEMAPS[basemap];
-  return tileUrlsForBounds(
-    { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() },
-    minZoom,
-    Math.min(maxZoom, cfg.maxzoom),
-    cfg.url,
-  );
+  add(cfg.url, cfg.maxzoom);
+
+  // Whatever is switched on comes down too — a satellite tile with no road
+  // layer over it is half the map you were looking at when you hit download.
+  for (const key of overlaysOn) {
+    OVERLAYS[key].urls.forEach((u) => add(u, OVERLAYS[key].maxzoom));
+  }
+  return urls;
 }
 
 const maxZoomChoice = () => parseInt(
@@ -683,9 +756,10 @@ const maxZoomChoice = () => parseInt(
 function updateDownloadEstimate() {
   if ($('maps').hidden || !map) return;
   const n = tilesForView(9, maxZoomChoice()).length;
+  const what = [BASEMAPS[basemap].label, ...[...overlaysOn].map((k) => OVERLAYS[k].label)];
   $('dl-estimate').innerHTML =
     `<b>${n.toLocaleString()}</b> tiles &middot; about <b>${fmtSize(n * BYTES_PER_TILE)}</b>
-     of ${escapeHtml(BASEMAPS[basemap].label)}`;
+     &middot; ${escapeHtml(what.join(' + '))}`;
   $('dl-warn').hidden = n < 6000;
   $('dl-go').disabled = n === 0;
 }
@@ -802,6 +876,13 @@ $('pin-delete').addEventListener('click', deletePin);
 $('pin-directions').addEventListener('click', openDirections);
 $('pin-copy').addEventListener('click', copyCoords);
 $('maps-btn').addEventListener('click', openMaps);
+$('layers-btn').addEventListener('click', () => { $('layers').hidden = false; });
+$('layers-close').addEventListener('click', () => { $('layers').hidden = true; });
+
+document.querySelectorAll('[name="basemap"]').forEach((r) =>
+  r.addEventListener('change', () => r.checked && setBasemap(r.value)));
+document.querySelectorAll('[data-overlay]').forEach((c) =>
+  c.addEventListener('change', () => setOverlay(c.dataset.overlay, c.checked)));
 $('maps-close').addEventListener('click', () => { $('maps').hidden = true; });
 $('dl-go').addEventListener('click', downloadArea);
 $('dl-clear').addEventListener('click', clearTiles);
@@ -809,13 +890,14 @@ $('pending').addEventListener('click', syncQueue);
 $('theme-btn').addEventListener('click', () =>
   setTheme(document.documentElement.dataset.theme === 'night' ? 'day' : 'night'));
 
-document.querySelectorAll('[data-basemap]').forEach((b) =>
-  b.addEventListener('click', () => setBasemap(b.dataset.basemap)));
 document.querySelectorAll('[name="detail"]').forEach((r) =>
   r.addEventListener('change', updateDownloadEstimate));
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { closeSheet(); $('list').hidden = true; $('maps').hidden = true; }
+  if (e.key === 'Escape') {
+    closeSheet();
+    ['list', 'maps', 'layers'].forEach((id) => { $(id).hidden = true; });
+  }
 });
 
 window.addEventListener('online', () => { refreshNetworkUI(); syncQueue(); });
@@ -826,8 +908,16 @@ window.addEventListener('offline', refreshNetworkUI);
   setTheme((await local.get('theme')) || 'day');
   const saved = await local.get('basemap');
   if (saved && BASEMAPS[saved]) basemap = saved;
-  document.querySelectorAll('[data-basemap]').forEach((b) =>
-    b.classList.toggle('is-on', b.dataset.basemap === basemap));
+  const radio = document.querySelector(`[name="basemap"][value="${basemap}"]`);
+  if (radio) radio.checked = true;
+
+  const savedOverlays = await local.get('overlays');
+  if (Array.isArray(savedOverlays)) {
+    overlaysOn = new Set(savedOverlays.filter((k) => OVERLAYS[k]));
+    document.querySelectorAll('[data-overlay]').forEach((c) => {
+      c.checked = overlaysOn.has(c.dataset.overlay);
+    });
+  }
   start();
 })();
 

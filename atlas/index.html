@@ -73,11 +73,7 @@
   <div id="map"></div>
 
   <header class="topbar">
-    <div class="basemaps" role="group" aria-label="Base map">
-      <button class="chip is-on" data-basemap="sat">sat</button>
-      <button class="chip" data-basemap="topo">topo</button>
-      <button class="chip" data-basemap="street">street</button>
-    </div>
+    <button id="layers-btn" class="chip solo wide-chip" title="Layers">layers</button>
     <div class="topbar-right">
       <button id="theme-btn" class="chip solo" title="Day mode — tap for night">☀</button>
       <button id="maps-btn" class="chip solo" title="Offline maps">⤓</button>
@@ -126,6 +122,37 @@
       <button id="list-close" class="icon-btn" aria-label="Close">✕</button>
     </div>
     <div id="list-body" class="panel-body"></div>
+  </div>
+
+  <!-- layers -->
+  <div id="layers" class="panel" hidden>
+    <div class="panel-head">
+      <strong>layers</strong>
+      <button id="layers-close" class="icon-btn" aria-label="Close">✕</button>
+    </div>
+    <div class="panel-body pad">
+      <fieldset class="detail">
+        <legend>base map</legend>
+        <label><input type="radio" name="basemap" value="sat" checked> satellite</label>
+        <label><input type="radio" name="basemap" value="topo"> USGS topo</label>
+        <label><input type="radio" name="basemap" value="street"> street</label>
+      </fieldset>
+
+      <fieldset class="detail">
+        <legend>on top</legend>
+        <label><input type="checkbox" data-overlay="roads"> roads &amp; place names
+          <small>puts the road network over satellite</small></label>
+        <label><input type="checkbox" data-overlay="rail"> railways
+          <small>lines, sidings and abandoned track</small></label>
+        <label><input type="checkbox" data-overlay="trails"> trails
+          <small>marked hiking routes</small></label>
+        <label><input type="checkbox" data-overlay="terrain"> terrain shading
+          <small>the layer that shows you a cliff or a sinkhole</small></label>
+      </fieldset>
+
+      <p class="estimate">Overlays download with the map when you save an area
+        offline, so turn on what you want before you download.</p>
+    </div>
   </div>
 
   <!-- offline maps -->
