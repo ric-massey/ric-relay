@@ -78,7 +78,7 @@ will never get a fix.
 - **Long-press the map** — drops a pin somewhere you are not standing.
 - **◎** — centres on you.
 - **☰** — every pin the crew has dropped, newest first.
-- **⤓** — offline maps (below).
+- **⤓** — save maps for offline (below).
 - **☀ / ☾** — day and night. Day is the default: outdoors in bright sun a dark
   UI is a mirror, so everything is opaque white, near-black and heavy-weight.
   Night is for caves and dusk.
@@ -106,14 +106,14 @@ will never get a fix.
   note's photos are the note author's, and they go when the note goes.
 - **parking** — a pin is the thing you came for, and it is usually not
   somewhere you can drive to. So a pin carries a second point: the pull-off, the
-  gate, the wide spot on the forest road. Tap **the truck is here** standing at
-  it, or **use map centre** for a pull-off you can see on the imagery, and
-  **drive to parking** hands *that* to Apple or Google Maps instead of sending
+  gate, the wide spot on the forest road. Tap **use my location** standing at
+  it, or **pick on the map** for a pull-off you can see on the imagery, and
+  **directions to parking** hands *that* to Apple or Google Maps instead of sending
   you at a cave mouth up a hillside. The sheet shows how far out the pin is and
   the map draws a dashed line between the two. It is also the thing you want on
   the walk out in the dark. Saving is immediate — you set this with the truck
   door open, about to walk away from the phone.
-- **who owns it** — see below.
+- **check who owns this land** — see below.
 - **directions** — hands the pin to Apple Maps or Google Maps.
 - Green pins are yours. Orange pins are someone else's. Yellow means not synced
   yet. You can only edit and delete your own.
@@ -127,7 +127,8 @@ public land and property lines. All free, no keys, nationwide.
 
 ## Who owns it
 
-The property-lines overlay draws the boundary. **who owns it?** on a pin answers
+The property-lines overlay draws the boundary. **check who owns this land** on a
+pin answers
 the question the boundary raises. Three sources, all free, all keyless, all
 nationwide:
 
@@ -154,7 +155,7 @@ more than once and it is still true — names live with county assessors, and ev
 county publishes differently. Most of them publish through ArcGIS, though, so one
 generic adapter covers a lot of them.
 
-**find the county's records** does that for you, and it is the button to reach
+**look up the owner's name** does that for you, and it is the button to reach
 for. It appears under the answer whenever ATLAS knows which county you are in
 and has no adapter for it. It searches the public ArcGIS catalogue for that
 county and for its state, then *asks each candidate about the point this pin is
@@ -163,9 +164,9 @@ accepted on the strength of its name. A service is only offered once it has
 answered about your ground.
 
 It shows you what it found before it changes anything: which service, how many
-parcels are in it, and what it just read off the ground under the pin. **use
-this from now on** saves it, and from that moment the county answers instantly,
-for everyone, and offline afterwards. **not that one** falls back to the form.
+parcels are in it, and what it just read off the ground under the pin. **yes,
+use this** saves it, and from that moment the county answers instantly,
+for everyone, and offline afterwards. **no, skip it** falls back to the form.
 
 Two things it is deliberately careful about:
 
@@ -179,7 +180,7 @@ Two things it is deliberately careful about:
   a county's real parcel fabric has tens of thousands of rows, and coverage
   outranks having an owner column at all.
 
-**layers → property lines → parcel lookups** is the same thing by hand, for a
+**layers → counties with owner names** is the same thing by hand, for a
 county nothing is published for. A layer URL and the names of the fields holding
 the owner, the parcel number, the address and the acreage. Find it by searching
 "*&lt;county&gt; GIS REST services parcels*"; you want a single layer, so the URL
@@ -205,7 +206,7 @@ most of the time is worse than one you never call.
 
 The places worth pinning have no signal, so none of this depends on having any.
 
-**Before you go**, open **⤓ offline maps**, move the map over the area, pick a
+**Before you go**, open **⤓ save maps for offline**, move the map over the area, pick a
 detail level and download. Tiles land in a cache that survives app updates —
 shipping a new version does not wipe your canyon. Rough is a big area cheaply;
 good reads individual trees; max is slow and heavy. The estimate updates as you

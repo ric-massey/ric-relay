@@ -101,7 +101,7 @@
     <div class="sheet-grab"></div>
     <div class="sheet-body">
       <div class="sheet-head">
-        <input id="pin-name" class="pin-name" placeholder="name it (optional)"
+        <input id="pin-name" class="pin-name" placeholder="name this place (optional)"
                autocapitalize="sentences" spellcheck="false">
         <button id="sheet-close" class="icon-btn" aria-label="Close">✕</button>
       </div>
@@ -109,8 +109,8 @@
                 placeholder="what is it? how do you get in? what do you need?"></textarea>
       <label class="privacy">
         <input id="pin-private" type="checkbox">
-        <span>personal
-          <small>only you can see this one. the others never get sent it.</small></span>
+        <span>only me
+          <small>nobody else can see this pin. it is never sent to them.</small></span>
       </label>
       <div id="pin-photos" class="photo-strip" hidden></div>
       <button id="photo-add" class="btn-ghost wide">add photo</button>
@@ -126,26 +126,26 @@
         </div>
         <p id="park-state" class="park-state"></p>
         <div id="park-set" class="park-actions">
-          <button id="park-here" class="btn-ghost">the truck is here</button>
-          <button id="park-centre" class="btn-ghost">use map centre</button>
+          <button id="park-here" class="btn-ghost">use my location</button>
+          <button id="park-centre" class="btn-ghost">pick on the map</button>
         </div>
         <div id="park-have" class="park-actions" hidden>
-          <button id="park-go" class="btn-ghost">drive to parking</button>
-          <button id="park-clear" class="btn-ghost">clear</button>
+          <button id="park-go" class="btn-ghost">directions to parking</button>
+          <button id="park-clear" class="btn-ghost">remove parking</button>
         </div>
       </div>
 
       <!-- whose ground is this -->
       <div id="own-block" class="owner">
-        <button id="own-ask" class="btn-ghost wide">who owns it?</button>
+        <button id="own-ask" class="btn-ghost wide">check who owns this land</button>
         <div id="own-result" class="owner-result" hidden></div>
       </div>
 
       <div class="sheet-actions">
         <button id="pin-save" class="btn-primary">save</button>
-        <button id="pin-directions" class="btn-ghost">directions</button>
-        <button id="pin-copy" class="btn-ghost">copy coords</button>
-        <button id="pin-delete" class="btn-danger" hidden>delete</button>
+        <button id="pin-directions" class="btn-ghost">get directions</button>
+        <button id="pin-copy" class="btn-ghost">copy location</button>
+        <button id="pin-delete" class="btn-danger" hidden>delete pin</button>
       </div>
 
       <!-- the running log: what happened when someone actually went -->
@@ -202,7 +202,7 @@
       </fieldset>
 
       <fieldset class="detail">
-        <legend>names &amp; ways</legend>
+        <legend>names, roads &amp; trails</legend>
         <label><input type="checkbox" data-overlay="labels"> place names
           <small>towns, parks, peaks, creeks — the labels</small></label>
         <label><input type="checkbox" data-overlay="roads"> roads
@@ -214,7 +214,7 @@
       </fieldset>
 
       <fieldset class="detail">
-        <legend>the ground</legend>
+        <legend>terrain &amp; water</legend>
         <label><input type="checkbox" data-overlay="terrain"> terrain shading
           <small>the layer that shows you a cliff or a sinkhole</small></label>
         <label><input type="checkbox" data-overlay="water"> creeks &amp; water
@@ -222,12 +222,12 @@
       </fieldset>
 
       <fieldset class="detail">
-        <legend>who owns it</legend>
+        <legend>land ownership</legend>
         <label><input type="checkbox" data-overlay="publicland"> public land
           <small>BLM, forest and state — where nobody needs asking</small></label>
         <label><input type="checkbox" data-overlay="parcels"> property lines
           <small>parcel boundaries. zoom right in — they only exist up close</small></label>
-        <button id="sources-open" class="btn-ghost wide">parcel lookups…</button>
+        <button id="sources-open" class="btn-ghost wide">counties with owner names…</button>
       </fieldset>
 
       <p class="estimate">Overlays download with the map when you save an area
@@ -239,14 +239,14 @@
         <button id="loc-enable" class="btn-ghost wide">turn on my location</button>
       </fieldset>
 
-      <button id="maps-from-layers" class="btn-ghost wide">offline maps…</button>
+      <button id="maps-from-layers" class="btn-ghost wide">save maps for offline…</button>
     </div>
   </div>
 
   <!-- county parcel lookups -->
   <div id="sources" class="panel" hidden>
     <div class="panel-head">
-      <strong>parcel lookups</strong>
+      <strong>owner names by county</strong>
       <button id="sources-close" class="icon-btn" aria-label="Close">✕</button>
     </div>
     <div class="panel-body pad">
@@ -258,7 +258,7 @@
       <div id="sources-list" class="sources-list"></div>
 
       <details class="add-source">
-        <summary>add a county</summary>
+        <summary>add a county myself</summary>
         <p class="hint">Find the county's ArcGIS parcel layer — search
           "&lt;county&gt; GIS REST services parcels". You want the URL of a single
           layer, ending in a number. Open it in a browser first: it should list
@@ -293,7 +293,7 @@
         <p class="hint">Put <b>{apn}</b> where the parcel number goes and
           ATLAS will fill it in.</p>
 
-        <button id="src-save" class="btn-primary wide">add it</button>
+        <button id="src-save" class="btn-primary wide">add this county</button>
         <p id="src-error" class="gate-error" role="alert" hidden></p>
       </details>
 
@@ -334,9 +334,9 @@
       <button id="dl-go" class="btn-primary wide">download this area</button>
       <p class="estimate">Photos are kept on the phone once you have opened
         them. This grabs the ones you haven't.</p>
-      <button id="dl-photos" class="btn-ghost wide">get all photos for offline</button>
+      <button id="dl-photos" class="btn-ghost wide">download all photos</button>
       <p id="dl-storage" class="estimate"></p>
-      <button id="dl-clear" class="btn-ghost wide">clear downloaded maps</button>
+      <button id="dl-clear" class="btn-ghost wide">delete downloaded maps</button>
     </div>
   </div>
 </div>

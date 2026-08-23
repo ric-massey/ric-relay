@@ -1437,7 +1437,7 @@ async function parkHere() {
     toast(geoMessage(err), true);
   } finally {
     btn.classList.remove('is-busy');
-    btn.textContent = 'the truck is here';
+    btn.textContent = 'use my location';
   }
 }
 
@@ -1471,7 +1471,7 @@ function resetOwner() {
   out.hidden = true;
   out.innerHTML = '';
   $('own-ask').disabled = false;
-  $('own-ask').textContent = 'who owns it?';
+  $('own-ask').textContent = 'check who owns this land';
   if (!sheet) return;
 
   // A spot you have already looked up answers instantly, and answers in the
@@ -1566,8 +1566,8 @@ function huntHtml() {
       escapeHtml(new URL(f.source.url).hostname)}</div>
     ${read}
     <div class="owner-links">
-      <button class="linkish" data-own="save-county"><b>use this from now on</b></button>
-      <button class="linkish" data-own="drop-county">not that one</button>
+      <button class="linkish" data-own="save-county"><b>yes, use this</b></button>
+      <button class="linkish" data-own="drop-county">no, skip it</button>
     </div>
   </div>`;
 }
@@ -1650,10 +1650,10 @@ function renderOwner(r, cached) {
       target="_blank" rel="noopener">find the assessor's office</a>`);
   }
   if (!r.parcel && r.county && !countyHunt) {
-    links.push('<button class="linkish" data-own="find">find the county\'s records</button>');
+    links.push('<button class="linkish" data-own="find">look up the owner\'s name</button>');
   }
   if (!r.parcel && r.county && ['none', 'dropped'].includes(countyHunt?.state)) {
-    links.push('<button class="linkish" data-own="sources">add the county by hand</button>');
+    links.push('<button class="linkish" data-own="sources">enter the county myself</button>');
   }
   if (links.length) parts.push(`<div class="owner-links">${links.join('')}</div>`);
 
@@ -1889,7 +1889,7 @@ function openDirections() {
 async function copyCoords() {
   if (!sheet) return;
   const text = fmtCoords(sheet.pin.lat, sheet.pin.lng);
-  try { await navigator.clipboard.writeText(text); toast('coords copied'); }
+  try { await navigator.clipboard.writeText(text); toast('location copied'); }
   catch { prompt('Copy these:', text); }
 }
 
@@ -2038,7 +2038,7 @@ async function cachePhotosOffline() {
     if (await photoBlob(row)) got++;
   }
   btn.disabled = false;
-  btn.textContent = 'get all photos for offline';
+  btn.textContent = 'download all photos';
   toast(`${got} photo${got === 1 ? '' : 's'} saved for offline`);
   refreshStorage();
 }
