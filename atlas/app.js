@@ -54,6 +54,10 @@ let photoTarget = null;  // which strip the next pick from the file input lands 
  * that finishes against a stale one throws its URL away. */
 let objectUrls = [];
 let photoGen   = 0;
+/* The list keeps its own bucket. The sheet revokes every URL it owns each time
+ * it repaints, and it must not take the list's thumbnails down with them. */
+let listUrls = [];
+let listGen  = 0;
 let lightboxUrl = null;
 
 /* ── base maps ───────────────────────────────────────────────────────────
@@ -204,11 +208,11 @@ function metresBetween(a, b) {
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-/* Both units on purpose: the app talks in metres because GPS does, and the crew
- * thinks in feet and miles. */
-const fmtDistance = (m) => m < 1000
-  ? `${Math.round(m)} m &middot; ${Math.round(m * 3.28084).toLocaleString()} ft`
-  : `${(m / 1000).toFixed(1)} km &middot; ${(m / 1609.344).toFixed(1)} mi`;
+/* One unit, in what the crew thinks in. This goes on the end of a list row
+ * beside a name, a date and a note count, and two units there is a sentence. */
+const fmtDistance = (m) => m < 1609
+  ? `${Math.round(m * 3.28084).toLocaleString()} ft`
+  : `${(m / 1609.344).toFixed(m < 16093 ? 1 : 0)} mi`;
 
 /* ── auth ────────────────────────────────────────────────────────────────
  * Crew types a username. Supabase only understands emails, so the domain gets
@@ -1781,15 +1785,91 @@ async function copyCoords() {
 
 /* ── all pins ────────────────────────────────────────────────────────────── */
 
+/* ── the list ────────────────────────────────────────────────────────────
+ * This is the closest thing ATLAS has to a feed, and what it is for is not
+ * "find a pin by name" — it is somebody handing you a place and you deciding
+ * whether you want to go. So a row has to answer that: what does it look like,
+ * what is it, who found it, has anyone been since, and how far is it.
+ *
+ * It used to be a name, an author, a date and a pair of coordinates. Nobody has
+ * ever decided to drive somewhere because of its longitude.
+ */
+
+/* Sorted by the last thing that HAPPENED rather than the day it was dropped.
+ * Someone leaving a note on a two-year-old pin means somebody just went there,
+ * which is news, and news is the entire point of a feed. */
+function lastActivity(p) {
+  const times = notes.filter((n) => n.pin_id === p.id)
+    .map((n) => new Date(n.created_at).getTime());
+  return Math.max(new Date(p.created_at).getTime() || 0, ...times, 0);
+}
+
+function releaseListUrls() {
+  listGen++;
+  listUrls.forEach(URL.revokeObjectURL);
+  listUrls = [];
+}
+
+/* The pin's own photo if it has one, otherwise whatever a note carries — for
+ * deciding whether to go, any picture of the place beats none. */
+const listPhoto = (pinId) => pinOnlyPhotos(pinId)[0] || photosForPin(pinId)[0] || null;
+
+function listRow(p, here) {
+  const its = notes.filter((n) => n.pin_id === p.id).length;
+  const desc = (p.description || '').trim().split('\n')[0];
+  const away = here ? metresBetween(here, p) : null;
+
+  const bits = [`<b>${escapeHtml(p.display_name || p.username || 'someone')}</b>`,
+                fmtDate(p.created_at)];
+  if (its) bits.push(`${its} note${its > 1 ? 's' : ''}`);
+  if (away != null) bits.push(fmtDistance(away));
+
+  const photo = listPhoto(p.id);
+
+  return `<button class="list-row" data-pin="${p.id}">
+    <div class="r-thumb${photo ? '' : ' is-empty'}"${photo ? ` data-thumb="${photo.id}"` : ''}></div>
+    <div class="r-text">
+      <div class="r-name">${escapeHtml(pinTitle(p))}${
+        p.is_private ? ' <span class="tag-private">personal</span>' : ''}${
+        p._pending ? ' <span class="dot-pending"></span>' : ''}</div>
+      ${desc ? `<div class="r-desc">${escapeHtml(desc)}</div>` : ''}
+      <div class="r-sub">${bits.join(' &middot; ')}</div>
+    </div>
+  </button>`;
+}
+
 function openList() {
+  releaseListUrls();
+  const gen = listGen;
+
+  // Where you are, if the app has been told. Never asked for on opening a list:
+  // this is the one screen you might read on the sofa.
+  const at = meMarker?.getLngLat();
+  const here = at ? { lat: at.lat, lng: at.lng } : null;
+
+  const rows = [...pins].sort((a, b) => lastActivity(b) - lastActivity(a));
+  $('list-count').textContent = pins.length
+    ? `${pins.length} place${pins.length > 1 ? 's' : ''}` : '';
+
   const body = $('list-body');
-  body.innerHTML = pins.length ? pins.map((p) => `
-    <button class="list-row" data-pin="${p.id}">
-      <div class="r-name">${escapeHtml(pinTitle(p))}${p.is_private ? ' <span class="tag-private">personal</span>' : ''}${p._pending ? ' <span class="dot-pending"></span>' : ''}</div>
-      <div class="r-sub">${escapeHtml(p.display_name || p.username || 'unknown')}
-        &middot; ${fmtDate(p.created_at)} &middot; ${fmtCoords(p.lat, p.lng)}</div>
-    </button>`).join('')
+  body.innerHTML = rows.length
+    ? rows.map((p) => listRow(p, here)).join('')
     : '<p class="list-empty">No pins yet. Go find something.</p>';
+
+  // Thumbnails after the markup, same rule as the sheet's strips: a blob that
+  // arrives after the list has moved on must not paint into a live row.
+  body.querySelectorAll('[data-thumb]').forEach((el) => {
+    const row = photoRows.find((r) => r.id === el.dataset.thumb);
+    if (!row) return;
+    photoBlob(row).then((blob) => {
+      if (gen !== listGen || !blob) return;
+      const url = URL.createObjectURL(blob);
+      listUrls.push(url);
+      el.style.backgroundImage = `url("${url}")`;
+      el.classList.add('is-loaded');
+    });
+  });
+
   $('list').hidden = false;
 }
 
@@ -1798,6 +1878,7 @@ function onListClick(e) {
   if (!row) return;
   const p = pins.find((x) => x.id === row.dataset.pin);
   $('list').hidden = true;
+  releaseListUrls();
   if (p) { map.jumpTo({ center: [p.lng, p.lat], zoom: 15 }); openPin(p); }
 }
 
@@ -1977,7 +2058,7 @@ $('whoami').addEventListener('click', signOut);
 $('pin-btn').addEventListener('click', pinHere);
 $('locate-btn').addEventListener('click', () => locate().catch(() => {}));
 $('list-btn').addEventListener('click', openList);
-$('list-close').addEventListener('click', () => { $('list').hidden = true; });
+$('list-close').addEventListener('click', () => { $('list').hidden = true; releaseListUrls(); });
 $('list-body').addEventListener('click', onListClick);
 $('sheet-close').addEventListener('click', closeSheet);
 $('pin-save').addEventListener('click', savePin);

@@ -96,7 +96,17 @@ these do I want", and that gets answered by what a button is *near*.
   without dragging; drag and it is a pan, which is the whole distinction. 12px
   of drift is still a press, because nobody holds a phone still.
 - **◎** — centres on you.
-- **☰** — every pin the crew has dropped, newest first.
+- **☰ places** — the closest thing here to a feed, and it is built for the
+  question it actually gets asked: somebody has handed you a place, do you want
+  to go. So a row is a photo of it, one line of what it is, who found it, how
+  many notes it has picked up since, and how far it is from you — rather than a
+  name and a pair of coordinates. Nobody ever decided to drive somewhere
+  because of its longitude.
+
+  Sorted by the last thing that *happened*, not the day it was dropped: a note
+  left on a two-year-old pin means somebody just went there, and that is news.
+  Distance only appears once the app knows where you are — opening a list is
+  not a reason to ask.
 - **⤓** — save maps for offline (below).
 - **☀ / ☾** — day and night. Day is the default: outdoors in bright sun a dark
   UI is a mirror, so everything is opaque white, near-black and heavy-weight.

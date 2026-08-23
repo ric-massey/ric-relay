@@ -726,19 +726,55 @@ button { cursor: pointer; border: none; background: none; }
   font-size: var(--t-xl); font-weight: 700; letter-spacing: -0.01em;
 }
 .panel-head strong { font-weight: 700; }
+.panel-count {
+  margin-right: auto; margin-left: var(--s-3);
+  font-size: var(--t-sm); font-weight: 600; color: var(--ink-mute);
+  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+}
 .panel-body { overflow-y: auto; flex: 1; overscroll-behavior: contain; }
 .panel-body.pad { padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-4); }
 
 .lede { color: var(--ink-dim); font-weight: 500; font-size: var(--t-md); line-height: 1.55; }
 
+/* A row is somebody handing you a place: a picture of it, what it is, and who
+   found it. Grid rather than flex so the text column can be told to shrink —
+   without min-width 0 a long name pushes the row wider than the screen. */
 .list-row {
-  width: 100%; text-align: left; display: block;
+  width: 100%; text-align: left;
+  display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: var(--s-3);
+  align-items: center;
   padding: var(--s-3) var(--s-4); border-bottom: var(--b) solid var(--hair);
 }
 .list-row:active { background: var(--panel-2); }
 @media (hover: hover) { .list-row:hover { background: var(--panel-2); } }
-.list-row .r-name { font-weight: 700; font-size: var(--t-lg); letter-spacing: -0.01em; }
-.list-row .r-sub { font-size: var(--t-xs); font-weight: 600; color: var(--ink-mute); margin-top: 2px; }
+
+.r-thumb {
+  width: 64px; height: 64px; border-radius: var(--r-sm);
+  background: var(--panel-2) center / cover no-repeat;
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+/* A place with no picture yet still gets the same square, so the names stay in
+   one column and the list does not comb up and down. */
+.r-thumb.is-empty::after {
+  content: "◎"; display: grid; place-items: center; height: 100%;
+  color: var(--ink-mute); font-size: 1.1rem;
+}
+.r-text { min-width: 0; }
+.list-row .r-name {
+  font-weight: 700; font-size: var(--t-md); letter-spacing: -0.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* One line of the description — the pitch. Clipped rather than wrapped, so
+   every row is the same height and the list stays scannable. */
+.list-row .r-desc {
+  font-size: var(--t-sm); color: var(--ink-dim); font-weight: 500;
+  margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.list-row .r-sub {
+  font-size: var(--t-xs); font-weight: 600; color: var(--ink-mute); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.list-row .r-sub b { color: var(--ink-dim); font-weight: 800; }
 .list-empty { padding: var(--s-10) var(--s-4); text-align: center; color: var(--ink-mute); font-weight: 600; }
 
 .tag-private {
