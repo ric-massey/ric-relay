@@ -162,6 +162,9 @@ button { cursor: pointer; border: none; background: none; }
   .chip { font-size: 0.74rem; }
   .who { max-width: 3.6rem; }
   .topbar-right { gap: 0.25rem; }
+  .btn-round { width: 48px; height: 48px; font-size: 1.25rem; }
+  .btn-pin { padding: 1rem 1.3rem; font-size: 0.95rem; letter-spacing: 0.1em; }
+  .dock { gap: 0.55rem; }
 }
 
 
@@ -206,6 +209,20 @@ button { cursor: pointer; border: none; background: none; }
   color: var(--ink); font-size: 1.4rem; box-shadow: var(--shadow);
 }
 .btn-round:active { background: var(--panel-2); }
+
+/* The crosshair marks exactly what "the middle of the map" means while you are
+   placing a pin by hand. */
+.crosshair {
+  position: absolute; z-index: 12; left: 50%; top: 50%;
+  width: 44px; height: 44px; margin: -22px 0 0 -22px;
+  pointer-events: none;
+}
+.crosshair::before, .crosshair::after {
+  content: ""; position: absolute; background: var(--accent);
+  box-shadow: 0 0 0 1.5px var(--halo);
+}
+.crosshair::before { left: 50%; top: 0; width: 3px; height: 100%; margin-left: -1.5px; }
+.crosshair::after  { top: 50%; left: 0; height: 3px; width: 100%; margin-top: -1.5px; }
 
 /* ── markers ──────────────────────────────────────────────────────────────
  * A halo ring plus a hard shadow, so a pin reads against dark forest, bright

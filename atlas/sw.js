@@ -9,7 +9,7 @@
  *      data would be rude.
  */
 
-const SHELL_VERSION = 'atlas-shell-v6';
+const SHELL_VERSION = 'atlas-shell-v7';
 const TILE_CACHE    = 'atlas-tiles-v1';
 
 const SHELL = [
@@ -36,6 +36,8 @@ const TILE_HOSTS = [
   'tile.openstreetmap.org',
   'a.tiles.openrailwaymap.org',
   'tile.waymarkedtrails.org',
+  'tiles.arcgis.com',
+  'gis.blm.gov',
 ];
 
 self.addEventListener('install', (event) => {

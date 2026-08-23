@@ -93,6 +93,28 @@ const OVERLAYS = {
     maxzoom: 16,
     attribution: 'USGS The National Map',
   },
+  water: {
+    label: 'creeks & water',
+    urls: ['https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}'],
+    maxzoom: 16,
+    attribution: 'USGS The National Map',
+  },
+  publicland: {
+    label: 'public land',
+    urls: ['https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Cached_without_PriUnk/MapServer/tile/{z}/{y}/{x}'],
+    maxzoom: 16,
+    attribution: 'BLM Surface Management Agency',
+    opacity: 0.45,
+  },
+  parcels: {
+    label: 'property lines',
+    urls: ['https://tiles.arcgis.com/tiles/KzeiCaQsMoeCfoCq/arcgis/rest/services/Regrid_Nationwide_Parcel_Boundaries_v1/MapServer/tile/{z}/{y}/{x}'],
+    // The cache starts at 16 — below that the server 404s every tile, so asking
+    // for them just spams the network with misses.
+    minzoom: 16,
+    maxzoom: 19,
+    attribution: 'Regrid',
+  },
 };
 
 let overlaysOn = new Set();
@@ -299,16 +321,22 @@ function initMap() {
   // Overlays go into the initial style rather than being added afterwards:
   // addSource() before the style finishes loading throws. Terrain is listed
   // first so roads and labels draw on top of it rather than under.
-  for (const key of ['terrain', 'trails', 'rail', 'roads']) {
-    OVERLAYS[key].urls.forEach((url, i) => {
+  // Order is the draw order: ground-shading first, then areas, then lines, then
+  // labels last so nothing is drawn over the text.
+  const DRAW_ORDER = ['terrain', 'publicland', 'water', 'parcels', 'trails', 'rail', 'roads'];
+  for (const key of DRAW_ORDER) {
+    const cfg = OVERLAYS[key];
+    cfg.urls.forEach((url, i) => {
       const id = `ov-${key}-${i}`;
       sources[id] = {
         type: 'raster', tiles: [url], tileSize: 256,
-        maxzoom: OVERLAYS[key].maxzoom, attribution: OVERLAYS[key].attribution,
+        maxzoom: cfg.maxzoom, attribution: cfg.attribution,
+        ...(cfg.minzoom ? { minzoom: cfg.minzoom } : {}),
       };
       layers.push({
         id, type: 'raster', source: id,
         layout: { visibility: overlaysOn.has(key) ? 'visible' : 'none' },
+        ...(cfg.opacity ? { paint: { 'raster-opacity': cfg.opacity } } : {}),
       });
     });
   }
@@ -413,9 +441,11 @@ async function locate({ silent = false, fly = false } = {}) {
     if (fly) map.flyTo({ center: [lng, lat], zoom: 15, duration: 1200 });
     else map.easeTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15) });
     if (!silent) toast(`you, within ${Math.round(accuracy)} m`);
+    refreshLocationState();
     return pos;
   } catch (err) {
     if (!silent) toast(geoMessage(err), true);
+    refreshLocationState();
     throw err;
   }
 }
@@ -433,6 +463,40 @@ function showMe(lat, lng) {
     meMarker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
   } else {
     meMarker.setLngLat([lng, lat]);
+  }
+}
+
+/* Location is a browser permission, not an app setting — so the honest thing is
+ * to report what the browser actually thinks and hand over the one button that
+ * can change it. A denied permission cannot be undone from here, only from the
+ * browser or phone settings, and saying so beats a button that does nothing. */
+async function refreshLocationState() {
+  const el = $('loc-state');
+  const btn = $('loc-enable');
+  if (!navigator.geolocation) {
+    el.textContent = 'this device has no location hardware the browser can reach';
+    btn.hidden = true;
+    return;
+  }
+  let state = 'prompt';
+  try {
+    state = (await navigator.permissions.query({ name: 'geolocation' })).state;
+  } catch { /* Safari has historically not supported this query */ }
+
+  if (state === 'granted') {
+    el.innerHTML = meMarker
+      ? 'on &middot; <b>the blue dot is you</b>'
+      : 'allowed — tap below to get a fix';
+    btn.hidden = false;
+    btn.textContent = meMarker ? 'find me again' : 'get a fix';
+  } else if (state === 'denied') {
+    el.innerHTML = '<b>blocked.</b> the app cannot re-ask — you have to allow location '
+      + 'for this site in your browser settings. on iPhone: Settings → Safari → Location.';
+    btn.hidden = true;
+  } else {
+    el.textContent = 'off. the map cannot see where you are until you allow it.';
+    btn.hidden = false;
+    btn.textContent = 'turn on my location';
   }
 }
 
@@ -502,10 +566,20 @@ async function pinHere() {
   }
 }
 
+/* Pin the middle of the map. No GPS involved — this is how you tag the far side
+ * of the valley, or anywhere at all when location is off or refusing to fix. */
+function pinMapCentre() {
+  const c = map.getCenter();
+  openNewPin(c.lat, c.lng, null);
+}
+
 /* ── the sheet ───────────────────────────────────────────────────────────── */
 
 function openNewPin(lat, lng, accuracy) {
   sheet = { mode: 'new', pin: { lat, lng, accuracy_m: accuracy ?? null } };
+  // Show where the pin will land, so "the middle of the map" isn't a guess.
+  map.easeTo({ center: [lng, lat] });
+  $('crosshair').hidden = false;
   $('pin-name').value = '';
   $('pin-desc').value = '';
   $('pin-name').disabled = false;
@@ -546,6 +620,7 @@ function metaHtml(p, author) {
 
 function closeSheet() {
   $('sheet').hidden = true;
+  $('crosshair').hidden = true;
   $('pin-save').hidden = false;
   sheet = null;
 }
@@ -745,7 +820,11 @@ function tilesForView(minZoom, maxZoom) {
   // Whatever is switched on comes down too — a satellite tile with no road
   // layer over it is half the map you were looking at when you hit download.
   for (const key of overlaysOn) {
-    OVERLAYS[key].urls.forEach((u) => add(u, OVERLAYS[key].maxzoom));
+    const cfg = OVERLAYS[key];
+    const from = Math.max(minZoom, cfg.minzoom || 0);
+    if (from > Math.min(maxZoom, cfg.maxzoom)) continue;   // nothing to fetch
+    cfg.urls.forEach((u) =>
+      urls.push(...tileUrlsForBounds(bounds, from, Math.min(maxZoom, cfg.maxzoom), u)));
   }
   return urls;
 }
@@ -875,8 +954,13 @@ $('pin-save').addEventListener('click', savePin);
 $('pin-delete').addEventListener('click', deletePin);
 $('pin-directions').addEventListener('click', openDirections);
 $('pin-copy').addEventListener('click', copyCoords);
-$('maps-btn').addEventListener('click', openMaps);
-$('layers-btn').addEventListener('click', () => { $('layers').hidden = false; });
+$('layers-btn').addEventListener('click', () => {
+  $('layers').hidden = false;
+  refreshLocationState();
+});
+$('pin-map-btn').addEventListener('click', pinMapCentre);
+$('loc-enable').addEventListener('click', () => locate().catch(() => {}));
+$('maps-from-layers').addEventListener('click', () => { $('layers').hidden = true; openMaps(); });
 $('layers-close').addEventListener('click', () => { $('layers').hidden = true; });
 
 document.querySelectorAll('[name="basemap"]').forEach((r) =>

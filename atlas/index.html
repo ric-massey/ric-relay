@@ -76,7 +76,7 @@
     <button id="layers-btn" class="chip solo wide-chip" title="Layers">layers</button>
     <div class="topbar-right">
       <button id="theme-btn" class="chip solo" title="Day mode — tap for night">☀</button>
-      <button id="maps-btn" class="chip solo" title="Offline maps">⤓</button>
+      <button id="list-btn" class="chip solo" title="All pins">☰</button>
       <button id="whoami" class="chip solo who" title="Sign out"></button>
     </div>
   </header>
@@ -86,12 +86,14 @@
     <button id="pending" class="badge badge-warn" hidden title="Tap to sync now"></button>
   </div>
 
+  <div id="crosshair" class="crosshair" aria-hidden="true" hidden></div>
   <div id="toast" class="toast" hidden></div>
 
   <div class="dock">
     <button id="locate-btn" class="btn-round" title="Centre on me" aria-label="Centre on me">◎</button>
     <button id="pin-btn" class="btn-pin">PIN HERE</button>
-    <button id="list-btn" class="btn-round" title="All pins" aria-label="All pins">☰</button>
+    <button id="pin-map-btn" class="btn-round" title="Pin the middle of the map"
+            aria-label="Pin the middle of the map">✛</button>
   </div>
 
   <!-- pin detail / edit -->
@@ -148,10 +150,24 @@
           <small>marked hiking routes</small></label>
         <label><input type="checkbox" data-overlay="terrain"> terrain shading
           <small>the layer that shows you a cliff or a sinkhole</small></label>
+        <label><input type="checkbox" data-overlay="water"> creeks &amp; water
+          <small>streams, springs and everything that carved the place</small></label>
+        <label><input type="checkbox" data-overlay="publicland"> public land
+          <small>BLM, forest and state — where nobody needs asking</small></label>
+        <label><input type="checkbox" data-overlay="parcels"> property lines
+          <small>parcel boundaries. zoom right in — they only exist up close</small></label>
       </fieldset>
 
       <p class="estimate">Overlays download with the map when you save an area
         offline, so turn on what you want before you download.</p>
+
+      <fieldset class="detail">
+        <legend>my location</legend>
+        <p id="loc-state" class="estimate">checking…</p>
+        <button id="loc-enable" class="btn-ghost wide">turn on my location</button>
+      </fieldset>
+
+      <button id="maps-from-layers" class="btn-ghost wide">offline maps…</button>
     </div>
   </div>
 
