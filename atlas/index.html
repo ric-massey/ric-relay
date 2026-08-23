@@ -87,13 +87,26 @@
   </div>
 
   <div id="crosshair" class="crosshair" aria-hidden="true" hidden></div>
+
+  <!-- Placing a point by hand. "pick on the map" used to take whatever happened
+       to be at the centre the instant you pressed it, with the sheet covering
+       the map and no crosshair anywhere — so the one thing you were choosing
+       was the one thing you could not see. Now the map is cleared, the
+       crosshair is on, and nothing is set until you say so. -->
+  <div id="placer" class="placer" hidden>
+    <p id="place-label" class="place-label"></p>
+    <div class="place-actions">
+      <button id="place-ok" class="btn-primary">put it here</button>
+      <button id="place-cancel" class="btn-ghost">cancel</button>
+    </div>
+  </div>
   <div id="toast" class="toast" hidden></div>
 
-  <div class="dock">
+  <div id="dock" class="dock">
     <button id="locate-btn" class="btn-round" title="Centre on me" aria-label="Centre on me">◎</button>
     <button id="pin-btn" class="btn-pin">PIN HERE</button>
-    <button id="pin-map-btn" class="btn-round" title="Pin the middle of the map"
-            aria-label="Pin the middle of the map">✛</button>
+    <button id="pin-map-btn" class="btn-round" title="Pick a spot on the map"
+            aria-label="Pick a spot on the map">✛</button>
   </div>
 
   <!-- pin detail / edit -->
@@ -109,6 +122,7 @@
                 placeholder="what is it? how do you get in? what do you need?"></textarea>
       <div id="pin-meta" class="pin-meta"></div>
       <button id="pin-copy" class="linkish meta-action">copy location</button>
+      <button id="pin-directions" class="btn-ghost wide">directions to this place</button>
       <label class="privacy">
         <input id="pin-private" type="checkbox">
         <span>only me
@@ -126,29 +140,6 @@
         <div id="pin-photos" class="photo-strip" hidden></div>
         <button id="photo-add" class="btn-ghost wide">add photo</button>
         <input id="photo-input" type="file" accept="image/*" multiple hidden>
-      </section>
-
-      <!-- Getting to it. The two directions buttons live together on purpose:
-           side by side it is obvious that one drives you to the pull-off and the
-           other points at whatever you walked in to find. -->
-      <section class="block">
-        <h3 class="block-head">getting there</h3>
-        <div id="park-block" class="park">
-          <div class="park-head">
-            <span>parking</span>
-            <span id="park-dist" class="park-dist"></span>
-          </div>
-          <p id="park-state" class="park-state"></p>
-          <div id="park-set" class="park-actions">
-            <button id="park-here" class="btn-ghost">use my location</button>
-            <button id="park-centre" class="btn-ghost">pick on the map</button>
-          </div>
-          <div id="park-have" class="park-actions" hidden>
-            <button id="park-go" class="btn-ghost">directions to parking</button>
-            <button id="park-clear" class="btn-ghost">remove parking</button>
-          </div>
-        </div>
-        <button id="pin-directions" class="btn-ghost wide">directions to this place</button>
       </section>
 
       <!-- whose ground is this -->

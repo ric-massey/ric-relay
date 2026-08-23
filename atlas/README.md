@@ -1,7 +1,7 @@
 # ATLAS
 
 A private map for a crew of three. Pins carry a name, a description, photos, a
-running log of notes, where you left the truck, and who dropped them and when.
+running log of notes, and who dropped them and when.
 Anyone in the crew can add one; everyone can find it again, which is the whole
 point — you can go to a cave your brother found without your brother.
 
@@ -110,20 +110,8 @@ want", and that gets answered by what a button is *near*.
   signed. A new lock on the gate belongs to that Tuesday. It is not a truth
   about the place, and filing it as one is how a map starts lying to you. A
   note's photos are the note author's, and they go when the note goes.
-- **parking** — a pin is the thing you came for, and it is usually not
-  somewhere you can drive to. So a pin carries a second point: the pull-off, the
-  gate, the wide spot on the forest road. Tap **use my location** standing at
-  it, or **pick on the map** for a pull-off you can see on the imagery, and
-  **directions to parking** hands *that* to Apple or Google Maps instead of sending
-  you at a cave mouth up a hillside. The sheet shows how far out the pin is and
-  the map draws a dashed line between the two. It is also the thing you want on
-  the walk out in the dark. Saving is immediate — you set this with the truck
-  door open, about to walk away from the phone.
 - **check who owns this land** — see below.
-- **directions to this place** — hands the pin itself to Apple Maps or Google
-  Maps. It sits directly under **directions to parking** on purpose: side by
-  side it is obvious that they are not interchangeable. One drives you to the
-  pull-off; the other points at a cave up a hillside.
+- **directions to this place** — hands the pin to Apple Maps or Google Maps.
 - Green pins are yours. Orange pins are someone else's. Yellow means not synced
   yet. You can only edit and delete your own.
 
@@ -233,8 +221,8 @@ The pieces:
   sheet had a grey well holding white buttons beside an outlined card beside
   grey note cards — all at the same level, all saying "I am a thing" equally
   loudly, which is why it read as busy even after every label was fixed. Notes
-  became a log separated by hairlines; parking and the ownership answer lost
-  their boxes entirely. The one exception earns it: a discovered county is a
+  became a log separated by hairlines, and the ownership answer lost its box
+  entirely. The one exception earns it: a discovered county is a
   proposal with two buttons in it, so it gets a wash and an accent edge.
 - **A fill alone cannot mark a control here.** `--panel-2` on white is 1.05:1 —
   indoors it reads as a subtle grouping, in glare it is simply not there. So

@@ -376,6 +376,23 @@ button { cursor: pointer; border: none; background: none; }
 .crosshair::before { left: 50%; top: 0; width: 3px; height: 100%; margin-left: -1.5px; }
 .crosshair::after  { top: 50%; left: 0; height: 3px; width: 100%; margin-top: -1.5px; }
 
+/* Choosing a point by hand. Sits where the dock was, so the thing you press to
+   confirm is where your thumb already is, and says out loud what the crosshair
+   in the middle of the screen is for. */
+.placer {
+  position: absolute; z-index: 13; left: var(--s-3); right: var(--s-3);
+  bottom: calc(var(--safe-b) + var(--s-4));
+  background: var(--panel); border: var(--b) solid var(--edge);
+  border-radius: var(--r-lg); box-shadow: var(--e-2);
+  padding: var(--s-3); display: flex; flex-direction: column; gap: var(--s-3);
+}
+.place-label {
+  font-size: var(--t-md); font-weight: 700; color: var(--ink); text-align: center;
+}
+.place-actions { display: flex; gap: var(--s-2); }
+.place-actions .btn-primary { flex: 2 1 0; }
+.place-actions .btn-ghost { flex: 1 1 0; }
+
 /* ── markers ──────────────────────────────────────────────────────────────
  * A halo ring plus a hard shadow, so a pin reads against dark forest, bright
  * rock and washed-out satellite alike. */
@@ -544,39 +561,6 @@ button { cursor: pointer; border: none; background: none; }
   bottom: calc(var(--safe-b) + var(--s-4));
   background: var(--panel); border: var(--b) solid var(--danger);
   border-radius: var(--r-md); padding: 0 var(--s-5);
-}
-
-/* ── parking ──────────────────────────────────────────────────────────────
- * A second point on the pin, and visually a smaller thing than the pin itself:
- * a well rather than another headline.
- */
-.park {
-  display: flex; flex-direction: column; gap: var(--s-2);
-}
-.park-head {
-  display: flex; align-items: baseline; gap: var(--s-2);
-  font-size: var(--t-sm); font-weight: 800; color: var(--ink-dim);
-}
-.park-dist { margin-left: auto; font-weight: 700; color: var(--ink); }
-.park-state {
-  font-size: var(--t-sm); font-weight: 600; color: var(--ink-dim); line-height: 1.55;
-}
-.park-hint {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  font-size: var(--t-xs); font-weight: 600;
-}
-.park-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
-.park-actions .btn-ghost { flex: 1 1 auto; }
-#park-here.is-busy { opacity: 0.6; pointer-events: none; }
-
-/* The truck. Square, so it never reads as one of the round crew pins, and
-   labelled, because a shape alone is a thing you have to remember. */
-.park-marker {
-  width: 26px; height: 26px; border-radius: var(--r-xs);
-  background: var(--panel); color: var(--ink);
-  border: var(--b-strong) solid #e8490f;
-  box-shadow: 0 0 0 2px var(--halo), var(--e-2);
-  font-weight: 900; font-size: var(--t-sm); line-height: 20px; text-align: center;
 }
 
 /* ── who owns it ──────────────────────────────────────────────────────────

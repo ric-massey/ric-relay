@@ -42,10 +42,10 @@ let download  = null;    // { cancel: bool } while an area download runs
 let notes     = [];      // every note on every pin the crew can see
 let photoRows = [];      // the photo index. The images live in IndexedDB.
 let parcelSources = [];  // county assessor adapters — see owners.js
-let parkMarker = null;   // the truck, while a pin that has one is open
 let ownerShown = null;   // { r, cached } — the ownership answer currently drawn
 let countyHunt = null;   // { pinId, state, found } while looking for a county
 let editingNote = null;  // id of the note currently open for editing
+let placing = false;     // true while you are choosing a point on the map
 let draftNote = null;    // { id, pending } — photos attached to a note not yet written
 let photoTarget = null;  // which strip the next pick from the file input lands in
 
@@ -414,22 +414,6 @@ function initMap() {
     });
   }
 
-  // The line from the truck to the pin. Empty until a pin with a parking point
-  // is open, but the source has to be in the initial style all the same:
-  // addSource() before the style finishes loading throws. Orange over a white
-  // casing so it reads on satellite, topo and in either theme.
-  sources['park-link'] = { type: 'geojson', data: EMPTY_GEOJSON };
-  layers.push({
-    id: 'park-link-casing', type: 'line', source: 'park-link',
-    layout: { 'line-cap': 'round' },
-    paint: { 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.8 },
-  });
-  layers.push({
-    id: 'park-link', type: 'line', source: 'park-link',
-    layout: { 'line-cap': 'round' },
-    paint: { 'line-color': '#e8490f', 'line-width': 2.5, 'line-dasharray': [1.6, 1.4] },
-  });
-
   map = new maplibregl.Map({
     container: 'map',
     style: { version: 8, sources, layers },
@@ -705,11 +689,38 @@ async function pinHere() {
   }
 }
 
-/* Pin the middle of the map. No GPS involved — this is how you tag the far side
- * of the valley, or anywhere at all when location is off or refusing to fix. */
-function pinMapCentre() {
+/* ── picking a point by hand ─────────────────────────────────────────────
+ * How you tag the far side of the valley, or anywhere at all when location is
+ * off or refusing to fix.
+ *
+ * This used to be one tap that took whatever happened to be at the centre of
+ * the map the instant you pressed it — and the centre was not marked, so the
+ * one thing you were choosing was the one thing you could not see.
+ *
+ * So it is a mode now. The dock clears, the crosshair marks exactly what "the
+ * middle" means, you move the map under it, and nothing is written until you
+ * say so.
+ */
+function startPlacing() {
+  placing = true;
+  $('dock').hidden = true;
+  $('crosshair').hidden = false;
+  $('place-label').textContent = 'move the map — the pin goes in the middle';
+  $('placer').hidden = false;
+}
+
+function stopPlacing() {
+  if (!placing) return false;
+  placing = false;
+  $('placer').hidden = true;
+  $('dock').hidden = false;
+  $('crosshair').hidden = true;
+  return true;
+}
+
+function confirmPlace() {
   const c = map.getCenter();
-  openNewPin(c.lat, c.lng, null);
+  if (stopPlacing()) openNewPin(c.lat, c.lng, null);
 }
 
 /* ── the sheet ───────────────────────────────────────────────────────────── */
@@ -743,7 +754,6 @@ function openNewPin(lat, lng, accuracy) {
   // document, and renderPhotos paints every strip it can find.
   $('notes-list').innerHTML = '';
   renderPhotos();
-  renderPark();
   resetOwner();
   $('sheet').hidden = false;
   setTimeout(() => $('pin-name').focus(), 80);
@@ -772,7 +782,6 @@ function openPin(p) {
   $('note-body').value = '';
   editingNote = null;
   renderNotes();          // which paints the photo strips, this pin's included
-  renderPark();
   resetOwner();
   $('sheet').hidden = false;
   map.easeTo({ center: [p.lng, p.lat] });
@@ -796,7 +805,6 @@ function closeSheet() {
   $('pin-save').hidden = false;
   discardDraftNote();
   releaseObjectUrls();
-  clearParkOverlay();
   editingNote = null;
   sheet = null;
 }
@@ -836,10 +844,6 @@ async function createPin(fields) {
     lat: sheet.pin.lat,
     lng: sheet.pin.lng,
     accuracy_m: sheet.pin.accuracy_m,
-    // Set before the pin existed — you park, you walk in, you pin the thing you
-    // came for. It goes in with the insert rather than as an update behind it.
-    park_lat: sheet.pin.park_lat ?? null,
-    park_lng: sheet.pin.park_lng ?? null,
     created_at: new Date().toISOString(),
     ...fields,
   };
@@ -1339,134 +1343,6 @@ function onNotesClick(e) {
   if (save) { saveNoteEdit(save.dataset.save); return; }
 
   if (e.target.closest('[data-cancel]')) cancelEditNote();
-}
-
-/* ── where you left the truck ────────────────────────────────────────────
- * A pin is the thing you came for. It is usually not somewhere you can drive
- * to, and the drivable point is a different piece of information — the pull-off,
- * the gate, the wide spot on the forest road. Handing "directions" the cave
- * mouth sends you up a hillside; handing it the pull-off sends you where you
- * actually go. So a pin can carry a second point, and the columns for it have
- * been sitting in the schema since day one waiting for this.
- *
- * It is also the thing you want at midnight on the walk out.
- */
-
-const parkOf = (p) => (p && p.park_lat != null && p.park_lng != null)
-  ? { lat: p.park_lat, lng: p.park_lng } : null;
-
-function renderPark() {
-  if (!sheet) return;
-  const p = sheet.pin;
-  const mine = sheet.mode === 'new' || p.created_by === me.id;
-  const park = parkOf(p);
-
-  // Someone else's pin with no parking on it: there is nothing to show and
-  // nothing you may do, so the block does not take up room.
-  $('park-block').hidden = !mine && !park;
-  $('park-set').hidden = !!park || !mine;
-  $('park-have').hidden = !park;
-  $('park-clear').hidden = !mine;
-
-  if (park) {
-    const away = metresBetween(park, { lat: p.lat, lng: p.lng });
-    $('park-dist').innerHTML = `${fmtDistance(away)} out`;
-    $('park-state').innerHTML =
-      `${fmtCoords(park.lat, park.lng)}<br><span class="park-hint">straight line — not the walk</span>`;
-  } else {
-    $('park-dist').textContent = '';
-    $('park-state').textContent = mine
-      ? 'not set. mark it when you park and the walk out has something to aim at.'
-      : '';
-  }
-
-  drawParkOverlay();
-}
-
-function drawParkOverlay() {
-  if (!map) return;
-  const p = sheet?.pin;
-  const park = parkOf(p);
-  if (!park) { clearParkOverlay(); return; }
-
-  if (!parkMarker) {
-    const el = document.createElement('div');
-    el.className = 'park-marker';
-    el.textContent = 'P';
-    el.title = 'parking';
-    parkMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' });
-  }
-  parkMarker.setLngLat([park.lng, park.lat]).addTo(map);
-
-  map.getSource('park-link')?.setData({
-    type: 'Feature',
-    properties: {},
-    geometry: { type: 'LineString', coordinates: [[park.lng, park.lat], [p.lng, p.lat]] },
-  });
-}
-
-function clearParkOverlay() {
-  parkMarker?.remove();
-  map?.getSource('park-link')?.setData(EMPTY_GEOJSON);
-}
-
-/* Setting parking saves straight away rather than waiting for the save button.
- * You do this standing at the truck with the door open, about to walk away from
- * the phone — an unsaved change is the wrong shape for that moment. */
-async function setPark(lat, lng) {
-  if (!sheet) return;
-  sheet.pin.park_lat = lat;
-  sheet.pin.park_lng = lng;
-  renderPark();
-  if (sheet.mode === 'new') { toast('parking set — saves with the pin'); return; }
-  await commitPark();
-}
-
-async function commitPark() {
-  const p = sheet.pin;
-  const fields = { park_lat: p.park_lat, park_lng: p.park_lng };
-  const sent = await push({ op: 'update', id: p.id, fields });
-  if (!sent) p._pending = true;
-  await local.putPin(p);
-  markers.get(p.id)?.getElement()?.classList.toggle('is-pending', !!p._pending);
-  toast(p.park_lat == null
-    ? (sent ? 'parking cleared' : 'cleared here — will sync later')
-    : (sent ? 'parking saved' : 'parking saved here — will sync later'));
-  refreshNetworkUI();
-}
-
-async function parkHere() {
-  const btn = $('park-here');
-  btn.classList.add('is-busy');
-  btn.textContent = 'getting fix…';
-  try {
-    const pos = await getPosition();
-    showMe(pos.coords.latitude, pos.coords.longitude);
-    await setPark(pos.coords.latitude, pos.coords.longitude);
-  } catch (err) {
-    toast(geoMessage(err), true);
-  } finally {
-    btn.classList.remove('is-busy');
-    btn.textContent = 'use my location';
-  }
-}
-
-async function clearPark() {
-  if (!sheet || !confirm('Forget where the truck was?')) return;
-  sheet.pin.park_lat = null;
-  sheet.pin.park_lng = null;
-  renderPark();
-  if (sheet.mode !== 'new') await commitPark();
-}
-
-function parkDirections() {
-  const park = parkOf(sheet?.pin);
-  if (!park) return;
-  const label = encodeURIComponent(`${pinTitle(sheet.pin)} — parking`);
-  window.open(IS_APPLE
-    ? `https://maps.apple.com/?daddr=${park.lat},${park.lng}&q=${label}`
-    : `https://www.google.com/maps/dir/?api=1&destination=${park.lat},${park.lng}`,
-    '_blank', 'noopener');
 }
 
 /* ── who owns it ─────────────────────────────────────────────────────────
@@ -2126,13 +2002,8 @@ $('lightbox').addEventListener('click', (e) => {
 $('lightbox-del').addEventListener('click', (e) => deletePhoto(e.target.dataset.id));
 $('note-add').addEventListener('click', addNote);
 $('notes-list').addEventListener('click', onNotesClick);
-$('park-here').addEventListener('click', parkHere);
-$('park-centre').addEventListener('click', () => {
-  const c = map.getCenter();
-  setPark(c.lat, c.lng);
-});
-$('park-go').addEventListener('click', parkDirections);
-$('park-clear').addEventListener('click', clearPark);
+$('place-ok').addEventListener('click', confirmPlace);
+$('place-cancel').addEventListener('click', stopPlacing);
 $('own-ask').addEventListener('click', askOwner);
 $('own-result').addEventListener('click', onOwnerClick);
 $('sources-open').addEventListener('click', () => { $('layers').hidden = true; openSources(); });
@@ -2144,7 +2015,7 @@ $('layers-btn').addEventListener('click', () => {
   $('layers').hidden = false;
   refreshLocationState();
 });
-$('pin-map-btn').addEventListener('click', pinMapCentre);
+$('pin-map-btn').addEventListener('click', startPlacing);
 $('loc-enable').addEventListener('click', () => locate().catch(() => {}));
 $('maps-from-layers').addEventListener('click', () => { $('layers').hidden = true; openMaps(); });
 $('layers-close').addEventListener('click', () => { $('layers').hidden = true; });
@@ -2168,6 +2039,8 @@ document.addEventListener('keydown', (e) => {
   // The lightbox sits on top of the sheet, so it gets the first Escape on its
   // own — otherwise closing the photo also closes the pin behind it.
   if (!$('lightbox').hidden) { closeLightbox(); return; }
+  // Backing out of placing must not also close the sheet it came from.
+  if (placing) { stopPlacing(); return; }
   // A note open for editing gets the next one on its own, for the same reason:
   // backing out of an edit should not also close the pin.
   if (editingNote) { cancelEditNote(); return; }
