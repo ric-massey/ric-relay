@@ -9,7 +9,7 @@
  *      data would be rude.
  */
 
-const SHELL_VERSION = 'atlas-shell-v10';
+const SHELL_VERSION = 'atlas-shell-v11';
 const TILE_CACHE    = 'atlas-tiles-v1';
 
 const SHELL = [
@@ -21,6 +21,7 @@ const SHELL = [
   './db.js',
   './tiles.js',
   './photos.js',
+  './owners.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -73,6 +74,13 @@ self.addEventListener('fetch', (event) => {
   // Never cache Supabase. Stale pins are worse than no pins, and the app keeps
   // its own copy in IndexedDB for when there's no signal.
   if (url.hostname.endsWith('.supabase.co')) return;
+
+  // An ArcGIS /query is not a tile — it is an answer about one point. gis.blm.gov
+  // is in TILE_HOSTS, so without this the ownership lookups would be filed in the
+  // tile cache and kept forever, and the offline fallback would hand a question
+  // about who owns a canyon a transparent PNG. Straight to the network; the app
+  // keeps its own answer per pin in IndexedDB for when there is no network.
+  if (url.pathname.endsWith('/query')) return;
 
   if (TILE_HOSTS.includes(url.hostname)) {
     event.respondWith(tileFirst(req));

@@ -347,6 +347,104 @@ button { cursor: pointer; border: none; background: none; }
   border-radius: 10px; padding: 0.7rem 1.2rem;
 }
 
+/* ── parking ──────────────────────────────────────────────────────────────
+ * A second point on the pin, and visually a smaller thing than the pin itself:
+ * boxed and quiet rather than another headline.
+ */
+.park {
+  border: 2px solid var(--line-soft); border-radius: 10px;
+  padding: 0.55rem 0.7rem; display: flex; flex-direction: column; gap: 0.45rem;
+}
+.park-head {
+  display: flex; align-items: baseline; gap: 0.5rem;
+  font-weight: 800; font-size: 0.82rem; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--ink-dim);
+}
+.park-dist { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 700; color: var(--ink); }
+.park-state {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.78rem; font-weight: 600; color: var(--ink-dim); line-height: 1.6;
+}
+.park-hint {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 0.75rem; font-weight: 600;
+}
+.park-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.park-actions .btn-ghost { flex: 1 1 auto; padding: 0.55rem 0.7rem; }
+#park-here.is-busy { opacity: 0.6; pointer-events: none; }
+
+/* The truck. Square, so it never reads as one of the round crew pins, and
+   labelled, because a shape alone is a thing you have to remember. */
+.park-marker {
+  width: 26px; height: 26px; border-radius: 6px;
+  background: var(--panel); color: var(--ink);
+  border: 3px solid #e8490f; box-shadow: 0 0 0 2px var(--halo), var(--shadow);
+  font-weight: 900; font-size: 0.85rem; line-height: 20px; text-align: center;
+}
+
+/* ── who owns it ──────────────────────────────────────────────────────────
+ * The agency is the answer to the question that was asked, so it is the only
+ * thing here at full size. Everything under it is reference: the survey
+ * description you paste into a county search, and where that county is.
+ */
+.owner { display: flex; flex-direction: column; gap: 0.5rem; }
+.owner-result {
+  border: 2px solid var(--line-soft); border-radius: 10px;
+  padding: 0.6rem 0.7rem; display: flex; flex-direction: column; gap: 0.4rem;
+}
+.owner-agency { font-weight: 800; font-size: 1.02rem; line-height: 1.3; }
+.owner-agency.owner-unknown { font-weight: 700; font-size: 0.92rem; color: var(--ink-dim); }
+.owner-access { font-weight: 700; font-size: 0.85rem; color: var(--good); }
+.owner-unit { font-size: 0.88rem; color: var(--ink-dim); font-weight: 600; }
+
+.owner-rows {
+  display: flex; flex-direction: column; gap: 0.2rem;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.76rem;
+}
+.owner-rows > div { display: flex; gap: 0.6rem; align-items: baseline; }
+.owner-rows dt {
+  flex: 0 0 4.6rem; color: var(--ink-dim); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.68rem;
+}
+.owner-rows dd { font-weight: 700; overflow-wrap: anywhere; }
+
+.owner-links { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; padding-top: 0.15rem; }
+.owner-links .linkish, .owner-links a { font-size: 0.82rem; text-align: left; }
+.owner-when { font-size: 0.7rem; color: var(--ink-dim); font-weight: 600; }
+#own-ask:disabled { opacity: 0.6; }
+
+/* ── parcel lookups ───────────────────────────────────────────────────── */
+.sources-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.source-row {
+  display: flex; align-items: center; gap: 0.6rem;
+  background: var(--panel-2); border-radius: 10px; padding: 0.55rem 0.7rem;
+}
+.source-row > div:first-child { flex: 1; min-width: 0; }
+.source-name { font-weight: 800; }
+.source-host {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.72rem; color: var(--ink-dim); font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.add-source {
+  border: 2px solid var(--line-soft); border-radius: 10px; padding: 0.6rem 0.75rem;
+  display: flex; flex-direction: column; gap: 0.6rem;
+}
+.add-source > summary {
+  font-weight: 800; cursor: pointer; list-style: none;
+  padding: 0.2rem 0; margin: -0.2rem 0;
+}
+.add-source > summary::before { content: "＋ "; color: var(--accent); font-weight: 900; }
+.add-source:not([open]) { gap: 0; }
+.add-source .field input { font-size: 16px; padding: 0.55rem 0.6rem; }
+.field-row { display: flex; gap: 0.5rem; align-items: end; }
+.field-row .field { flex: 1; min-width: 0; }
+
+/* .estimate is monospace because it is nearly always numbers. Prose in it reads
+   like a printout, so instructions get their own class. */
+.hint { font-size: 0.85rem; font-weight: 500; color: var(--ink-dim); line-height: 1.5; }
+.hint b { color: var(--ink); font-weight: 700; }
+
 /* ── notes ───────────────────────────────────────────────────────────────
  * Deliberately plainer than the description above it. The description is the
  * pin; these are what happened afterwards, and they should read as a log.
@@ -383,6 +481,19 @@ button { cursor: pointer; border: none; background: none; }
   color: var(--ink);
 }
 .note-body:focus { outline: 3px solid var(--accent); outline-offset: -1px; }
+
+/* Editing a note happens in place. The note keeps its box and its byline and
+   the words become typeable, so it stays obvious which one you are changing. */
+.note-edit {
+  background: none; border: none; color: var(--ink-dim);
+  font-size: 1.05rem; padding: 0 0.25rem; cursor: pointer; line-height: 1;
+}
+.note.is-editing { border-left-color: var(--accent); }
+.note-edit-box { width: 100%; margin-top: 0.15rem; }
+.note-edit-actions {
+  display: flex; align-items: center; gap: 0.8rem; margin-top: 0.4rem;
+}
+.note-edit-actions .btn-ghost { padding: 0.45rem 0.8rem; }
 
 /* ── full-screen panels (all pins, offline maps) ──────────────────────── */
 .panel {

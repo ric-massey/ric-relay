@@ -117,6 +117,30 @@
       <input id="photo-input" type="file" accept="image/*" multiple hidden>
 
       <div id="pin-meta" class="pin-meta"></div>
+
+      <!-- where you actually left the truck -->
+      <div id="park-block" class="park">
+        <div class="park-head">
+          <span>parking</span>
+          <span id="park-dist" class="park-dist"></span>
+        </div>
+        <p id="park-state" class="park-state"></p>
+        <div id="park-set" class="park-actions">
+          <button id="park-here" class="btn-ghost">the truck is here</button>
+          <button id="park-centre" class="btn-ghost">use map centre</button>
+        </div>
+        <div id="park-have" class="park-actions" hidden>
+          <button id="park-go" class="btn-ghost">drive to parking</button>
+          <button id="park-clear" class="btn-ghost">clear</button>
+        </div>
+      </div>
+
+      <!-- whose ground is this -->
+      <div id="own-block" class="owner">
+        <button id="own-ask" class="btn-ghost wide">who owns it?</button>
+        <div id="own-result" class="owner-result" hidden></div>
+      </div>
+
       <div class="sheet-actions">
         <button id="pin-save" class="btn-primary">save</button>
         <button id="pin-directions" class="btn-ghost">directions</button>
@@ -199,6 +223,7 @@
           <small>BLM, forest and state — where nobody needs asking</small></label>
         <label><input type="checkbox" data-overlay="parcels"> property lines
           <small>parcel boundaries. zoom right in — they only exist up close</small></label>
+        <button id="sources-open" class="btn-ghost wide">parcel lookups…</button>
       </fieldset>
 
       <p class="estimate">Overlays download with the map when you save an area
@@ -211,6 +236,66 @@
       </fieldset>
 
       <button id="maps-from-layers" class="btn-ghost wide">offline maps…</button>
+    </div>
+  </div>
+
+  <!-- county parcel lookups -->
+  <div id="sources" class="panel" hidden>
+    <div class="panel-head">
+      <strong>parcel lookups</strong>
+      <button id="sources-close" class="icon-btn" aria-label="Close">✕</button>
+    </div>
+    <div class="panel-body pad">
+      <p class="lede">ATLAS can tell you which agency manages a piece of ground
+        anywhere in the country, and read you its legal description. Putting a
+        <b>name</b> to a private parcel is the county's business, and every
+        county publishes differently — so you point it at one, once.</p>
+
+      <div id="sources-list" class="sources-list"></div>
+
+      <details class="add-source">
+        <summary>add a county</summary>
+        <p class="hint">Find the county's ArcGIS parcel layer — search
+          "&lt;county&gt; GIS REST services parcels". You want the URL of a single
+          layer, ending in a number. Open it in a browser first: it should list
+          the fields by name.</p>
+
+        <label class="field"><span>what to call it</span>
+          <input id="src-label" type="text" autocapitalize="words" spellcheck="false"></label>
+        <label class="field"><span>layer URL (https, ends in a number)</span>
+          <input id="src-url" type="url" inputmode="url" autocapitalize="none"
+                 autocorrect="off" spellcheck="false"
+                 placeholder="https://…/MapServer/0"></label>
+
+        <div class="field-row">
+          <label class="field"><span>owner field</span>
+            <input id="src-owner" type="text" autocapitalize="none" spellcheck="false"
+                   placeholder="OWNER_NAME"></label>
+          <label class="field"><span>parcel no. field</span>
+            <input id="src-apn" type="text" autocapitalize="none" spellcheck="false"
+                   placeholder="APN"></label>
+        </div>
+        <div class="field-row">
+          <label class="field"><span>address field</span>
+            <input id="src-address" type="text" autocapitalize="none" spellcheck="false"></label>
+          <label class="field"><span>acres field</span>
+            <input id="src-acres" type="text" autocapitalize="none" spellcheck="false"></label>
+        </div>
+
+        <label class="field"><span>the county's parcel page (optional)</span>
+          <input id="src-site" type="url" inputmode="url" autocapitalize="none"
+                 autocorrect="off" spellcheck="false"
+                 placeholder="https://…/parcel?id={apn}"></label>
+        <p class="hint">Put <b>{apn}</b> where the parcel number goes and
+          ATLAS will fill it in.</p>
+
+        <button id="src-save" class="btn-primary wide">add it</button>
+        <p id="src-error" class="gate-error" role="alert" hidden></p>
+      </details>
+
+      <p class="hint">These live in the database, not in the code — the
+        website's repository is public, and which counties you look things up in
+        is nobody else's business.</p>
     </div>
   </div>
 

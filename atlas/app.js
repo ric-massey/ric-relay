@@ -13,6 +13,9 @@
 import { local } from './db.js';
 import { lngLatToTile, tileUrlsForBounds } from './tiles.js';
 import { shrink, photoPath } from './photos.js';
+import {
+  lookup as lookupOwnership, assessorSearchUrl, parcelSiteUrl,
+} from './owners.js';
 
 const db = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
@@ -37,6 +40,9 @@ let basemap   = 'sat';
 let download  = null;    // { cancel: bool } while an area download runs
 let notes     = [];      // every note on every pin the crew can see
 let photoRows = [];      // the photo index. The images live in IndexedDB.
+let parcelSources = [];  // county assessor adapters — see owners.js
+let parkMarker = null;   // the truck, while a pin that has one is open
+let editingNote = null;  // id of the note currently open for editing
 
 /* Object URLs handed to <img>, and a generation counter. Rendering a photo is
  * async, so a sheet closed mid-load would otherwise hand a URL to a thumbnail
@@ -179,6 +185,26 @@ const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const online = () => navigator.onLine;
+
+const EMPTY_GEOJSON = { type: 'FeatureCollection', features: [] };
+
+/* Straight-line metres between two points. It is not the walk — nothing here
+ * knows about the ridge in between — so everything that shows it says so. */
+function metresBetween(a, b) {
+  const R = 6371000;
+  const toRad = (d) => d * Math.PI / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/* Both units on purpose: the app talks in metres because GPS does, and the crew
+ * thinks in feet and miles. */
+const fmtDistance = (m) => m < 1000
+  ? `${Math.round(m)} m &middot; ${Math.round(m * 3.28084).toLocaleString()} ft`
+  : `${(m / 1000).toFixed(1)} km &middot; ${(m / 1609.344).toFixed(1)} mi`;
 
 /* ── auth ────────────────────────────────────────────────────────────────
  * Crew types a username. Supabase only understands emails, so the domain gets
@@ -333,6 +359,7 @@ async function start() {
   await loadPins();
   await loadNotes();
   await loadPhotos();
+  await loadSources();
   await syncQueue();
   refreshNetworkUI();
 }
@@ -375,6 +402,22 @@ function initMap() {
       });
     });
   }
+
+  // The line from the truck to the pin. Empty until a pin with a parking point
+  // is open, but the source has to be in the initial style all the same:
+  // addSource() before the style finishes loading throws. Orange over a white
+  // casing so it reads on satellite, topo and in either theme.
+  sources['park-link'] = { type: 'geojson', data: EMPTY_GEOJSON };
+  layers.push({
+    id: 'park-link-casing', type: 'line', source: 'park-link',
+    layout: { 'line-cap': 'round' },
+    paint: { 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.8 },
+  });
+  layers.push({
+    id: 'park-link', type: 'line', source: 'park-link',
+    layout: { 'line-cap': 'round' },
+    paint: { 'line-color': '#e8490f', 'line-width': 2.5, 'line-dasharray': [1.6, 1.4] },
+  });
 
   map = new maplibregl.Map({
     container: 'map',
@@ -573,11 +616,21 @@ async function loadNotes() {
     const { data, error } = await db.from('pin_notes_with_author').select('*')
       .order('created_at', { ascending: true });
     if (!error && data) {
-      const queued = (await local.queued())
+      const pending = await local.queued();
+      const queued = pending
         .filter((q) => q.op === 'note-insert')
         .map((q) => ({ ...q.row, _pending: true,
                        username: me.username, display_name: me.display_name }));
       notes = [...data, ...queued];
+
+      // An edit still sitting in the queue has to win over the server's copy of
+      // the same note, or a refresh puts the old wording back on screen and the
+      // edit looks like it never happened.
+      for (const q of pending.filter((q) => q.op === 'note-update')) {
+        const n = notes.find((x) => x.id === q.id);
+        if (n) Object.assign(n, q.fields, { _pending: true });
+      }
+
       await local.replaceNotes(notes);
       return;
     }
@@ -674,6 +727,8 @@ function openNewPin(lat, lng, accuracy) {
   $('pin-meta').innerHTML = metaHtml(sheet.pin, null);
   $('notes-block').hidden = true;    // nothing to log about a place yet
   renderPhotos();
+  renderPark();
+  resetOwner();
   $('sheet').hidden = false;
   setTimeout(() => $('pin-name').focus(), 80);
 }
@@ -693,8 +748,11 @@ function openPin(p) {
   $('pin-meta').innerHTML = metaHtml(p, p.display_name || p.username);
   $('notes-block').hidden = false;
   $('note-body').value = '';
+  editingNote = null;
   renderNotes();
   renderPhotos();
+  renderPark();
+  resetOwner();
   $('sheet').hidden = false;
   map.easeTo({ center: [p.lng, p.lat] });
 }
@@ -716,6 +774,8 @@ function closeSheet() {
   $('crosshair').hidden = true;
   $('pin-save').hidden = false;
   releaseObjectUrls();
+  clearParkOverlay();
+  editingNote = null;
   sheet = null;
 }
 
@@ -754,6 +814,10 @@ async function createPin(fields) {
     lat: sheet.pin.lat,
     lng: sheet.pin.lng,
     accuracy_m: sheet.pin.accuracy_m,
+    // Set before the pin existed — you park, you walk in, you pin the thing you
+    // came for. It goes in with the insert rather than as an update behind it.
+    park_lat: sheet.pin.park_lat ?? null,
+    park_lng: sheet.pin.park_lng ?? null,
     created_at: new Date().toISOString(),
     ...fields,
   };
@@ -822,6 +886,7 @@ async function deletePin() {
   markers.delete(id);
   pins = pins.filter((p) => p.id !== id);
   await local.deletePin(id);
+  await local.del(`own:${id}`);
   closeSheet();
   toast(sent ? 'deleted' : 'deleted here — will sync later');
   refreshNetworkUI();
@@ -1006,17 +1071,82 @@ function renderNotes() {
     : '<p class="notes-empty">No notes yet. Been out there? Say what you found.</p>';
 }
 
+/* An edit keeps the day it was written and says so separately, because on a log
+ * of "gate was locked in March" the date is half the meaning. Rewriting March
+ * to today would quietly turn a record into a claim. */
+const wasEdited = (n) => !!n.updated_at
+  && new Date(n.updated_at) - new Date(n.created_at) > 1000;
+
 function noteHtml(n) {
   const who = escapeHtml(n.display_name || n.username || 'someone');
   const mine = n.created_by === me.id;
-  return `<article class="note${n._pending ? ' is-pending' : ''}">
-    <div class="note-head">
-      <b>${who}</b><span>${fmtDate(n.created_at)}</span>
-      ${mine ? `<button class="note-del" data-id="${n.id}" aria-label="Delete note">✕</button>` : ''}
-    </div>
-    <p>${escapeHtml(n.body)}</p>
+
+  const head = `<div class="note-head">
+      <b>${who}</b><span>${fmtDate(n.created_at)}${
+        wasEdited(n) ? ` &middot; edited ${fmtDate(n.updated_at)}` : ''}</span>
+      ${mine && editingNote !== n.id ? `
+        <button class="note-edit" data-edit="${n.id}" aria-label="Edit note">✎</button>
+        <button class="note-del" data-id="${n.id}" aria-label="Delete note">✕</button>` : ''}
+    </div>`;
+
+  const body = editingNote === n.id
+    ? `<textarea class="note-body note-edit-box" id="note-edit-box" rows="3"
+                 autocapitalize="sentences">${escapeHtml(n.body)}</textarea>
+       <div class="note-edit-actions">
+         <button class="btn-ghost" data-save="${n.id}">save note</button>
+         <button class="linkish" data-cancel="1">cancel</button>
+       </div>`
+    : `<p>${escapeHtml(n.body)}</p>`;
+
+  return `<article class="note${n._pending ? ' is-pending' : ''}${
+    editingNote === n.id ? ' is-editing' : ''}">
+    ${head}
+    ${body}
     ${n._pending ? '<span class="note-warn">not synced yet</span>' : ''}
   </article>`;
+}
+
+function startEditNote(id) {
+  editingNote = id;
+  renderNotes();
+  const box = $('note-edit-box');
+  if (box) {
+    box.focus();
+    box.setSelectionRange(box.value.length, box.value.length);
+  }
+}
+
+async function saveNoteEdit(id) {
+  const box = $('note-edit-box');
+  const n = notes.find((x) => x.id === id);
+  if (!box || !n) return;
+
+  const body = box.value.trim();
+  // An empty note is not an edit, it is a deletion, and it should have to say so
+  // out loud rather than happening because someone selected all and typed.
+  if (!body) { toast('a note cannot be emptied — delete it instead', true); return; }
+  if (body === n.body) { editingNote = null; renderNotes(); return; }
+
+  // Minted here for the same reason every other timestamp in ATLAS is: an edit
+  // made in a canyon on Tuesday keeps Tuesday when it lands on Thursday. The
+  // trigger on pin_notes yields to this rather than stamping now().
+  const updated_at = new Date().toISOString();
+  const sent = await push({ op: 'note-update', id, fields: { body, updated_at } });
+
+  n.body = body;
+  n.updated_at = updated_at;
+  if (!sent) n._pending = true;
+  await local.putNote(n);
+
+  editingNote = null;
+  renderNotes();
+  refreshNetworkUI();
+  if (!sent) toast('edit saved here — will sync later');
+}
+
+function cancelEditNote() {
+  editingNote = null;
+  renderNotes();
 }
 
 async function addNote() {
@@ -1055,7 +1185,353 @@ async function deleteNote(id) {
 
 function onNotesClick(e) {
   const del = e.target.closest('.note-del');
-  if (del) deleteNote(del.dataset.id);
+  if (del) { deleteNote(del.dataset.id); return; }
+
+  const edit = e.target.closest('[data-edit]');
+  if (edit) { startEditNote(edit.dataset.edit); return; }
+
+  const save = e.target.closest('[data-save]');
+  if (save) { saveNoteEdit(save.dataset.save); return; }
+
+  if (e.target.closest('[data-cancel]')) cancelEditNote();
+}
+
+/* ── where you left the truck ────────────────────────────────────────────
+ * A pin is the thing you came for. It is usually not somewhere you can drive
+ * to, and the drivable point is a different piece of information — the pull-off,
+ * the gate, the wide spot on the forest road. Handing "directions" the cave
+ * mouth sends you up a hillside; handing it the pull-off sends you where you
+ * actually go. So a pin can carry a second point, and the columns for it have
+ * been sitting in the schema since day one waiting for this.
+ *
+ * It is also the thing you want at midnight on the walk out.
+ */
+
+const parkOf = (p) => (p && p.park_lat != null && p.park_lng != null)
+  ? { lat: p.park_lat, lng: p.park_lng } : null;
+
+function renderPark() {
+  if (!sheet) return;
+  const p = sheet.pin;
+  const mine = sheet.mode === 'new' || p.created_by === me.id;
+  const park = parkOf(p);
+
+  // Someone else's pin with no parking on it: there is nothing to show and
+  // nothing you may do, so the block does not take up room.
+  $('park-block').hidden = !mine && !park;
+  $('park-set').hidden = !!park || !mine;
+  $('park-have').hidden = !park;
+  $('park-clear').hidden = !mine;
+
+  if (park) {
+    const away = metresBetween(park, { lat: p.lat, lng: p.lng });
+    $('park-dist').innerHTML = `${fmtDistance(away)} out`;
+    $('park-state').innerHTML =
+      `${fmtCoords(park.lat, park.lng)}<br><span class="park-hint">straight line — not the walk</span>`;
+  } else {
+    $('park-dist').textContent = '';
+    $('park-state').textContent = mine
+      ? 'not set. mark it when you park and the walk out has something to aim at.'
+      : '';
+  }
+
+  drawParkOverlay();
+}
+
+function drawParkOverlay() {
+  if (!map) return;
+  const p = sheet?.pin;
+  const park = parkOf(p);
+  if (!park) { clearParkOverlay(); return; }
+
+  if (!parkMarker) {
+    const el = document.createElement('div');
+    el.className = 'park-marker';
+    el.textContent = 'P';
+    el.title = 'parking';
+    parkMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' });
+  }
+  parkMarker.setLngLat([park.lng, park.lat]).addTo(map);
+
+  map.getSource('park-link')?.setData({
+    type: 'Feature',
+    properties: {},
+    geometry: { type: 'LineString', coordinates: [[park.lng, park.lat], [p.lng, p.lat]] },
+  });
+}
+
+function clearParkOverlay() {
+  parkMarker?.remove();
+  map?.getSource('park-link')?.setData(EMPTY_GEOJSON);
+}
+
+/* Setting parking saves straight away rather than waiting for the save button.
+ * You do this standing at the truck with the door open, about to walk away from
+ * the phone — an unsaved change is the wrong shape for that moment. */
+async function setPark(lat, lng) {
+  if (!sheet) return;
+  sheet.pin.park_lat = lat;
+  sheet.pin.park_lng = lng;
+  renderPark();
+  if (sheet.mode === 'new') { toast('parking set — saves with the pin'); return; }
+  await commitPark();
+}
+
+async function commitPark() {
+  const p = sheet.pin;
+  const fields = { park_lat: p.park_lat, park_lng: p.park_lng };
+  const sent = await push({ op: 'update', id: p.id, fields });
+  if (!sent) p._pending = true;
+  await local.putPin(p);
+  markers.get(p.id)?.getElement()?.classList.toggle('is-pending', !!p._pending);
+  toast(p.park_lat == null
+    ? (sent ? 'parking cleared' : 'cleared here — will sync later')
+    : (sent ? 'parking saved' : 'parking saved here — will sync later'));
+  refreshNetworkUI();
+}
+
+async function parkHere() {
+  const btn = $('park-here');
+  btn.classList.add('is-busy');
+  btn.textContent = 'getting fix…';
+  try {
+    const pos = await getPosition();
+    showMe(pos.coords.latitude, pos.coords.longitude);
+    await setPark(pos.coords.latitude, pos.coords.longitude);
+  } catch (err) {
+    toast(geoMessage(err), true);
+  } finally {
+    btn.classList.remove('is-busy');
+    btn.textContent = 'the truck is here';
+  }
+}
+
+async function clearPark() {
+  if (!sheet || !confirm('Forget where the truck was?')) return;
+  sheet.pin.park_lat = null;
+  sheet.pin.park_lng = null;
+  renderPark();
+  if (sheet.mode !== 'new') await commitPark();
+}
+
+function parkDirections() {
+  const park = parkOf(sheet?.pin);
+  if (!park) return;
+  const label = encodeURIComponent(`${pinTitle(sheet.pin)} — parking`);
+  window.open(IS_APPLE
+    ? `https://maps.apple.com/?daddr=${park.lat},${park.lng}&q=${label}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${park.lat},${park.lng}`,
+    '_blank', 'noopener');
+}
+
+/* ── who owns it ─────────────────────────────────────────────────────────
+ * See owners.js for what is being asked and why those sources and no others.
+ * Here: ask once, keep the answer on the phone, and never pretend to know.
+ */
+
+function resetOwner() {
+  const out = $('own-result');
+  out.hidden = true;
+  out.innerHTML = '';
+  $('own-ask').disabled = false;
+  $('own-ask').textContent = 'who owns it?';
+  if (!sheet) return;
+
+  // A spot you have already looked up answers instantly, and answers in the
+  // canyon — which is the half of this that matters.
+  const id = sheet.pin.id;
+  local.get(`own:${id}`).then((cached) => {
+    if (cached && sheet?.pin?.id === id) renderOwner(cached, true);
+  });
+}
+
+async function askOwner() {
+  if (!sheet) return;
+  const { id, lat, lng } = sheet.pin;
+  const btn = $('own-ask');
+
+  if (!online()) {
+    const cached = await local.get(`own:${id}`);
+    if (cached) { renderOwner(cached, true); return; }
+    toast('that one needs signal — look it up before you go', true);
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'asking…';
+  try {
+    const result = await lookupOwnership(lat, lng, { sources: parcelSources });
+    if (sheet?.pin?.id !== id) return;          // sheet moved on while we waited
+    await local.set(`own:${id}`, result);
+    renderOwner(result, false);
+  } catch {
+    toast('could not reach the land records', true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'check again';
+  }
+}
+
+function ownerRow(term, value) {
+  return `<div><dt>${escapeHtml(term)}</dt><dd>${escapeHtml(String(value))}</dd></div>`;
+}
+
+function renderOwner(r, cached) {
+  const out = $('own-result');
+  const parts = [];
+
+  if (r.agencyName) {
+    parts.push(`<div class="owner-agency">${escapeHtml(r.agencyName)}</div>`);
+    if (r.access) parts.push(`<div class="owner-access">${escapeHtml(r.access)}</div>`);
+  } else {
+    parts.push('<div class="owner-agency owner-unknown">not on the federal ownership map</div>');
+  }
+  if (r.unit) {
+    parts.push(`<div class="owner-unit">${escapeHtml(r.unit)}${
+      r.unitType ? ` &middot; ${escapeHtml(r.unitType)}` : ''}</div>`);
+  }
+
+  const rows = [];
+  if (r.parcel?.owner)   rows.push(ownerRow('owner', r.parcel.owner));
+  if (r.parcel?.apn)     rows.push(ownerRow('parcel', r.parcel.apn));
+  if (r.parcel?.address) rows.push(ownerRow('address', r.parcel.address));
+  if (r.parcel?.acres)   rows.push(ownerRow('acres', r.parcel.acres.toLocaleString()));
+  if (r.legal)  rows.push(ownerRow('survey', [r.legal, r.aliquotArea].filter(Boolean).join(' · ')));
+  if (r.meridian) rows.push(ownerRow('meridian', r.meridian));
+  if (r.county) rows.push(ownerRow('county', [r.county, r.state].filter(Boolean).join(', ')));
+  if (rows.length) parts.push(`<dl class="owner-rows">${rows.join('')}</dl>`);
+
+  const links = [];
+  if (r.legal) links.push('<button class="linkish" data-own="copy">copy the description</button>');
+
+  const site = r.parcel ? parcelSiteUrl(r.parcel.source, r.parcel) : null;
+  if (site) {
+    links.push(`<a class="linkish" href="${escapeHtml(site)}" target="_blank" rel="noopener">
+      open it at ${escapeHtml(r.parcel.source.label || 'the county')}</a>`);
+  } else if (r.county) {
+    links.push(`<a class="linkish" href="${escapeHtml(assessorSearchUrl(r.county, r.state))}"
+      target="_blank" rel="noopener">find the assessor's office</a>`);
+  }
+  if (!r.parcel && r.county) {
+    links.push('<button class="linkish" data-own="sources">teach it this county</button>');
+  }
+  if (links.length) parts.push(`<div class="owner-links">${links.join('')}</div>`);
+
+  parts.push(`<div class="owner-when">${cached
+    ? `looked up ${fmtDate(new Date(r.at).toISOString())} &middot; kept on this phone`
+    : 'BLM surface management &middot; BLM cadastral survey &middot; US Census'}</div>`);
+
+  out.innerHTML = parts.join('');
+  out.hidden = false;
+  out.dataset.legal = r.legal
+    ? [r.legal, r.meridian, r.county && `${r.county}${r.state ? ', ' + r.state : ''}`]
+        .filter(Boolean).join(', ')
+    : '';
+  $('own-ask').textContent = 'check again';
+}
+
+async function onOwnerClick(e) {
+  const btn = e.target.closest('[data-own]');
+  if (!btn) return;
+  if (btn.dataset.own === 'sources') { closeSheet(); openSources(); return; }
+
+  const text = $('own-result').dataset.legal;
+  if (!text) return;
+  try { await navigator.clipboard.writeText(text); toast('description copied'); }
+  catch { prompt('Copy this:', text); }
+}
+
+/* ── county parcel adapters ──────────────────────────────────────────────
+ * The sources themselves live in the database rather than in this repo, because
+ * the repo is public and which counties the crew searches is location data.
+ */
+
+async function loadSources() {
+  if (online()) {
+    const { data, error } = await db.from('parcel_sources').select('*').order('label');
+    if (!error && data) {
+      parcelSources = data;
+      await local.set('parcelSources', data);
+      return;
+    }
+  }
+  parcelSources = (await local.get('parcelSources')) || [];
+}
+
+function openSources() {
+  $('sources').hidden = false;
+  renderSources();
+}
+
+function renderSources() {
+  const body = $('sources-list');
+  body.innerHTML = parcelSources.length
+    ? parcelSources.map((s) => {
+        let host = '';
+        try { host = new URL(s.url).hostname; } catch { host = s.url; }
+        return `<div class="source-row">
+          <div>
+            <div class="source-name">${escapeHtml(s.label)}</div>
+            <div class="source-host">${escapeHtml(host)}</div>
+          </div>
+          ${s.created_by === me.id
+            ? `<button class="note-del" data-drop="${s.id}" aria-label="Remove">✕</button>` : ''}
+        </div>`;
+      }).join('')
+    : '<p class="notes-empty">None yet. Everything above still works — this only '
+      + 'adds the owner’s name.</p>';
+}
+
+async function addSource() {
+  const err = $('src-error');
+  const fail = (msg) => { err.textContent = msg; err.hidden = false; };
+  err.hidden = true;
+
+  if (!online()) return fail('this one needs signal');
+
+  const row = {
+    label:         $('src-label').value.trim(),
+    url:           $('src-url').value.trim(),
+    owner_field:   $('src-owner').value.trim() || null,
+    apn_field:     $('src-apn').value.trim() || null,
+    address_field: $('src-address').value.trim() || null,
+    acres_field:   $('src-acres').value.trim() || null,
+    site_url:      $('src-site').value.trim() || null,
+    created_by:    me.id,
+  };
+
+  if (!row.label) return fail('give it a name');
+  if (!/^https:\/\//i.test(row.url)) return fail('the layer URL has to start with https://');
+  if (!/\/\d+\/?$/.test(row.url)) return fail('that should be one layer — a URL ending in a number');
+  if (!row.owner_field && !row.apn_field) return fail('name at least the owner or parcel-number field');
+  if (row.site_url && !/^https:\/\//i.test(row.site_url)) return fail('the parcel page has to be https:// too');
+
+  const btn = $('src-save');
+  btn.disabled = true;
+  const { error } = await db.from('parcel_sources').insert(row);
+  btn.disabled = false;
+  if (error) return fail(error.message);
+
+  ['src-label', 'src-url', 'src-owner', 'src-apn', 'src-address', 'src-acres', 'src-site']
+    .forEach((id) => { $(id).value = ''; });
+  document.querySelector('.add-source').open = false;
+  await loadSources();
+  renderSources();
+  toast('county added');
+}
+
+async function dropSource(id) {
+  const s = parcelSources.find((x) => x.id === id);
+  if (!s || !confirm(`Remove ${s.label}?`)) return;
+  const { error } = await db.from('parcel_sources').delete().eq('id', id);
+  if (error) { toast(error.message, true); return; }
+  await loadSources();
+  renderSources();
+}
+
+function onSourcesClick(e) {
+  const drop = e.target.closest('[data-drop]');
+  if (drop) dropSource(drop.dataset.drop);
 }
 
 /* ── the queue ───────────────────────────────────────────────────────────
@@ -1081,6 +1557,7 @@ async function runOp(op) {
   else if (op.op === 'delete') res = await db.from('pins').delete().eq('id', op.id);
 
   else if (op.op === 'note-insert') res = await db.from('pin_notes').upsert(op.row);
+  else if (op.op === 'note-update') res = await db.from('pin_notes').update(op.fields).eq('id', op.id);
   else if (op.op === 'note-delete') res = await db.from('pin_notes').delete().eq('id', op.id);
 
   else if (op.op === 'photo-insert') {
@@ -1382,6 +1859,19 @@ $('lightbox').addEventListener('click', (e) => {
 $('lightbox-del').addEventListener('click', (e) => deletePhoto(e.target.dataset.id));
 $('note-add').addEventListener('click', addNote);
 $('notes-list').addEventListener('click', onNotesClick);
+$('park-here').addEventListener('click', parkHere);
+$('park-centre').addEventListener('click', () => {
+  const c = map.getCenter();
+  setPark(c.lat, c.lng);
+});
+$('park-go').addEventListener('click', parkDirections);
+$('park-clear').addEventListener('click', clearPark);
+$('own-ask').addEventListener('click', askOwner);
+$('own-result').addEventListener('click', onOwnerClick);
+$('sources-open').addEventListener('click', () => { $('layers').hidden = true; openSources(); });
+$('sources-close').addEventListener('click', () => { $('sources').hidden = true; });
+$('sources-list').addEventListener('click', onSourcesClick);
+$('src-save').addEventListener('click', addSource);
 $('dl-photos').addEventListener('click', cachePhotosOffline);
 $('layers-btn').addEventListener('click', () => {
   $('layers').hidden = false;
@@ -1411,8 +1901,11 @@ document.addEventListener('keydown', (e) => {
   // The lightbox sits on top of the sheet, so it gets the first Escape on its
   // own — otherwise closing the photo also closes the pin behind it.
   if (!$('lightbox').hidden) { closeLightbox(); return; }
+  // A note open for editing gets the next one on its own, for the same reason:
+  // backing out of an edit should not also close the pin.
+  if (editingNote) { cancelEditNote(); return; }
   closeSheet();
-  ['list', 'maps', 'layers'].forEach((id) => { $(id).hidden = true; });
+  ['list', 'maps', 'layers', 'sources'].forEach((id) => { $(id).hidden = true; });
 });
 
 window.addEventListener('online', () => { refreshNetworkUI(); syncQueue(); });

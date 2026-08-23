@@ -9,7 +9,9 @@
  *   blobs  — the images themselves, keyed by photo id. A photo you have looked
  *            at once, or pulled down before leaving, is yours out there.
  *   queue  — writes made with no signal, replayed in order when there is one.
- *   meta   — small odds and ends (who you are, when we last synced).
+ *   meta   — small odds and ends (who you are, when we last synced, the parcel
+ *            sources, and one cached ownership answer per pin under `own:<id>`.
+ *            All of it small, none of it worth its own store).
  */
 
 const DB_NAME = 'atlas';
@@ -112,4 +114,5 @@ export const local = {
   /* ── meta ── */
   async get(key)         { const r = await tx('meta', 'readonly', (s) => s.get(key)); return r ? r.value : null; },
   async set(key, value)  { return tx('meta', 'readwrite', (s) => s.put({ key, value })); },
+  async del(key)         { return tx('meta', 'readwrite', (s) => s.delete(key)); },
 };
