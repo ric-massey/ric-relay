@@ -211,6 +211,35 @@ most of the time is worse than one you never call.
 
 ---
 
+## How it looks
+
+Day is the default and it is not a preference. Outdoors in bright light a dark UI
+is a mirror, thin type disappears and translucent panels wash out — so: opaque
+white, near-black text, heavy weights, hard borders, big targets. Night mode is
+for caves and dusk and is a deliberate choice.
+
+That constraint rules out the usual route to looking professional (dark, glassy,
+hairline, low contrast), so `styles.css` gets there the way an instrument does:
+**nothing arbitrary**. Every size comes off one seven-step type scale, every gap
+off one four-pixel rhythm, and radius, border weight and elevation are short
+lists with names. What reads as amateur in an interface is almost never the
+colours — it is fourteen text sizes between 11px and 17px, each one picked on the
+day it was needed.
+
+The pieces:
+
+- **Three line weights by meaning, not thickness.** `--edge` is where a surface
+  meets the map and has to survive glare; `--rule` divides things inside a
+  surface; `--hair` is a whisper. Boxes-inside-boxes became fills instead.
+- **Three inks.** Two of them stay past 7:1 on every surface. The third is for
+  detail — a timestamp, a hostname — and never carries a value or a warning.
+- **One focus ring**, keyboard-only, on everything.
+- **44px minimum on anything you have to hit outdoors.**
+
+`node test/contrast.test.mjs` enforces the floors.
+
+---
+
 ## Offline
 
 The places worth pinning have no signal, so none of this depends on having any.
@@ -254,6 +283,7 @@ browser chrome. On iOS that's Share → Add to Home Screen.
 node test/tiles.test.mjs
 node test/photos.test.mjs
 node test/owners.test.mjs
+node test/contrast.test.mjs
 ```
 
 The tile maths — which square of the planet gets downloaded. Worth having tested,
@@ -272,6 +302,16 @@ tax-delinquent layers get pushed below the full one they are named like, that
 against a stubbed catalogue and picks the layer which answered about the pin
 itself. No real county appears in that file — a fixture is still a list of the
 places we look.
+
+`contrast.test.mjs` guards the one rule the whole look is built on. It reads the
+real tokens out of `styles.css` — not a copy of them — and measures every text
+colour against every surface it can land on. Body and "dim" text must clear
+**7:1**; the one tertiary tone allowed below that must still clear 4.5:1, and it
+is only ever used for detail nobody has to read in the field. This is here
+because that rule does not die in a redesign, it dies when somebody nudges a
+grey one step lighter because it looked nicer on a desk at night. Nothing on
+screen complains; the person checking a note at a gate in July finds out. One
+token moved by that much fails the test with the number attached.
 
 And the photo paths, which are not cosmetic: a photo's object name is
 `{pin_id}/{uploader_id}/{photo_id}.jpg`, and the storage policies read the

@@ -358,7 +358,13 @@ async function start() {
 
   $('newpass').hidden = true;
   $('app').hidden = false;
-  $('whoami').textContent = me.username;
+  // A monogram rather than a squeezed username: "rmbuster82" clipped to
+  // "rmbus" at the edge of a phone reads as a layout that gave up. The whole
+  // name goes on the tooltip, where it costs no room.
+  const whoami = $('whoami');
+  whoami.textContent = (me.display_name || me.username || '?').trim().charAt(0);
+  whoami.title = `${me.display_name || me.username} — sign out`;
+  whoami.setAttribute('aria-label', whoami.title);
 
   if (!map) initMap();
   await loadPins();
