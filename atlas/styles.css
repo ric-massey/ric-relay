@@ -368,7 +368,12 @@ button { cursor: pointer; border: none; background: none; }
   position: absolute; z-index: 12; left: 50%; top: 50%;
   width: 44px; height: 44px; margin: -22px 0 0 -22px;
   pointer-events: none;
+  transition: top 0.22s var(--ease);
 }
+/* With the sheet up, "the middle" is the middle of what you can still see —
+   the top half — not the middle of the screen, which is behind the sheet. The
+   map is given matching bottom padding so its centre lands here too. */
+.crosshair.is-offset { top: 25%; }
 .crosshair::before, .crosshair::after {
   content: ""; position: absolute; background: var(--accent);
   box-shadow: 0 0 0 1.5px var(--halo);
@@ -428,8 +433,15 @@ button { cursor: pointer; border: none; background: none; }
   border-top: var(--b-strong) solid var(--edge);
   border-radius: var(--r-lg) var(--r-lg) 0 0;
   box-shadow: var(--e-3);
-  padding-bottom: var(--safe-b); max-height: 86vh; overflow-y: auto;
+  padding-bottom: var(--safe-b); overflow-y: auto;
   animation: rise 0.22s var(--ease);
+  /* Half the screen, always. The map keeps the other half so you can see the
+     ground you are describing while you describe it — and the sheet scrolls
+     inside itself, with "save pin" stuck to the bottom of it, so the form is
+     something you go down through rather than something that buries the map.
+     A percentage of #app rather than vh: #app is fixed and inset 0, so this is
+     immune to the browser chrome sliding around on a phone. */
+  height: 50%;
 }
 @keyframes rise { from { transform: translateY(100%); } }
 @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }

@@ -73,15 +73,28 @@ will never get a fix.
 
 ## Using it
 
-A pin's sheet is groups, not a list: **photos**, **getting there**, **whose
-land**, **notes**, and one bar stuck to the bottom holding **save**. Every
-button sits under the heading that says what it is for, because the question
-in the field is rarely "what does this button do" — it is "which of these do I
-want", and that gets answered by what a button is *near*.
+A pin's sheet takes the bottom half of the screen and the map keeps the top
+half, with the pin centred in the part you can still see — so the ground is in
+front of you while you write about it. The sheet scrolls inside itself and
+**save pin** is stuck to the bottom of it, so filling one in is something you go
+down through rather than something that buries the map.
+
+Getting that right is a camera setting rather than an offset: the map is given
+bottom padding equal to the sheet, which moves the map's own idea of its centre
+up into the visible half. The crosshair, the eased flight, and anything later
+that asks the map where the middle is all follow from that one number instead of
+each carrying its own correction.
+
+Inside, it is groups rather than a list: **photos**, **whose land**, **notes**.
+Every button sits under the heading that says what it is for, because the
+question in the field is rarely "what does this button do" — it is "which of
+these do I want", and that gets answered by what a button is *near*.
 
 - **PIN HERE** — grabs a GPS fix and opens the sheet. Name and description are
   optional; save an untitled pin now, fill it in at home. That is the design.
-- **Long-press the map** — drops a pin somewhere you are not standing.
+- **Press and hold the map** — drops a pin somewhere you are not standing. Hold
+  without dragging; drag and it is a pan, which is the whole distinction. 12px
+  of drift is still a press, because nobody holds a phone still.
 - **◎** — centres on you.
 - **☰** — every pin the crew has dropped, newest first.
 - **⤓** — save maps for offline (below).

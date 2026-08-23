@@ -445,33 +445,48 @@ function initMap() {
   });
 }
 
+/* Press and hold somewhere and it becomes a pin. Drag instead and it is a pan —
+ * that distinction is the whole of it, and 12px of drift is still a press,
+ * because nobody holds a phone still.
+ *
+ * Wired for a finger and for a mouse. The mouse half is not only for a desktop:
+ * it is the only way this path can be exercised in a browser that is being
+ * driven rather than touched, and an interaction nobody can test is one that
+ * quietly stops working. */
 function wireLongPress() {
   const canvas = map.getCanvasContainer();
   let timer = null, startPt = null;
 
-  canvas.addEventListener('touchstart', (e) => {
-    if (e.touches.length !== 1) return;
-    const t = e.touches[0];
-    startPt = { x: t.clientX, y: t.clientY };
+  const arm = (x, y) => {
+    startPt = { x, y };
+    clearTimeout(timer);
     timer = setTimeout(() => {
       const rect = canvas.getBoundingClientRect();
       const ll = map.unproject([startPt.x - rect.left, startPt.y - rect.top]);
       openNewPin(ll.lat, ll.lng, null);
       if (navigator.vibrate) navigator.vibrate(30);
     }, 600);
-  }, { passive: true });
-
-  const cancel = (e) => {
-    if (e?.touches?.length === 1 && startPt) {
-      const t = e.touches[0];
-      // A little drift is still a press; a real drag is a pan.
-      if (Math.hypot(t.clientX - startPt.x, t.clientY - startPt.y) < 12) return;
-    }
-    clearTimeout(timer);
   };
-  canvas.addEventListener('touchmove', cancel, { passive: true });
-  canvas.addEventListener('touchend', cancel, { passive: true });
-  canvas.addEventListener('touchcancel', cancel, { passive: true });
+
+  // A little drift is still a press; a real drag is a pan.
+  const moved = (x, y) => startPt && Math.hypot(x - startPt.x, y - startPt.y) >= 12;
+  const disarm = () => { clearTimeout(timer); timer = null; };
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    arm(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 1 && !moved(e.touches[0].clientX, e.touches[0].clientY)) return;
+    disarm();
+  }, { passive: true });
+  canvas.addEventListener('touchend', disarm, { passive: true });
+  canvas.addEventListener('touchcancel', disarm, { passive: true });
+
+  canvas.addEventListener('mousedown', (e) => { if (e.button === 0) arm(e.clientX, e.clientY); });
+  canvas.addEventListener('mousemove', (e) => { if (timer && moved(e.clientX, e.clientY)) disarm(); });
+  canvas.addEventListener('mouseup', disarm);
+  canvas.addEventListener('mouseleave', disarm);
 }
 
 function setBasemap(key) {
@@ -723,7 +738,22 @@ function confirmPlace() {
   if (stopPlacing()) openNewPin(c.lat, c.lng, null);
 }
 
-/* ── the sheet ───────────────────────────────────────────────────────────── */
+/* ── the sheet ─────────────────────────────────────────────────────────────
+ * The sheet takes the bottom half and the map keeps the top half, so the ground
+ * is still on screen while you write about it. That makes "centre the map on
+ * this point" wrong by half a sheet: the middle of the viewport is behind the
+ * sheet. Padding the camera by the sheet's height moves the map's own idea of
+ * its centre up into the half you can see, which fixes the crosshair, the eased
+ * flight, and anything later that asks the map where the middle is — rather
+ * than each of those carrying its own offset.
+ */
+function sheetPadding(open) {
+  if (!map) return;
+  const h = map.getContainer().clientHeight;
+  map.setPadding({ top: 0, left: 0, right: 0, bottom: open ? Math.round(h / 2) : 0 });
+}
+
+
 
 function openNewPin(lat, lng, accuracy) {
   // The id is minted here rather than in createPin, because a photo taken
@@ -736,8 +766,10 @@ function openNewPin(lat, lng, accuracy) {
     pending: [],       // photos added before the pin itself exists
   };
   // Show where the pin will land, so "the middle of the map" isn't a guess.
-  map.easeTo({ center: [lng, lat] });
+  sheetPadding(true);
+  $('crosshair').classList.add('is-offset');
   $('crosshair').hidden = false;
+  map.easeTo({ center: [lng, lat] });
   $('pin-name').value = '';
   $('pin-desc').value = '';
   $('pin-name').disabled = false;
@@ -784,6 +816,7 @@ function openPin(p) {
   renderNotes();          // which paints the photo strips, this pin's included
   resetOwner();
   $('sheet').hidden = false;
+  sheetPadding(true);
   map.easeTo({ center: [p.lng, p.lat] });
 }
 
@@ -802,6 +835,8 @@ function metaHtml(p, author) {
 function closeSheet() {
   $('sheet').hidden = true;
   $('crosshair').hidden = true;
+  $('crosshair').classList.remove('is-offset');
+  sheetPadding(false);
   $('pin-save').hidden = false;
   discardDraftNote();
   releaseObjectUrls();
