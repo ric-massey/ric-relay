@@ -299,7 +299,33 @@ button { cursor: pointer; border: none; background: none; }
 }
 .pin-meta b { color: var(--ink); font-weight: 700; }
 
-.sheet-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+/* Groups, not a list. A rule and a heading over each one, so the sheet can be
+   scanned rather than read — you are looking for the part of it you want, and
+   only then for a button inside that part. Same treatment the notes block has
+   always had; it was the only group that got it. */
+.block {
+  display: flex; flex-direction: column; gap: 0.5rem;
+  border-top: 2px solid var(--line-soft); padding-top: 0.8rem;
+}
+.block-head {
+  font-weight: 800; font-size: 0.82rem; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--ink-dim);
+}
+/* .wide carries a top margin for when it stands alone; inside a group the gap
+   already spaces it and the margin just makes the group look broken. */
+.block .wide { margin-top: 0; }
+
+/* Save sticks to the bottom of the sheet rather than sitting in the middle of
+   it. It was landing between "who owns it" and the notes, which put the most
+   important button on the screen somewhere you had to scroll to find, in a row
+   of four that all looked the same. Now it is the only orange thing, it is
+   always at the bottom, and it never moves. */
+.sheet-actions {
+  position: sticky; bottom: 0; z-index: 2;
+  display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+  background: var(--panel); border-top: 2px solid var(--line);
+  padding: 0.7rem 0 0.2rem; margin-top: 0.2rem;
+}
 .sheet-actions .btn-primary { flex: 1 1 auto; min-width: 100px; }
 
 
@@ -362,8 +388,7 @@ button { cursor: pointer; border: none; background: none; }
 }
 .park-head {
   display: flex; align-items: baseline; gap: 0.5rem;
-  font-weight: 800; font-size: 0.82rem; letter-spacing: 0.06em;
-  text-transform: uppercase; color: var(--ink-dim);
+  font-weight: 800; font-size: 0.82rem; color: var(--ink-dim);
 }
 .park-dist { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 700; color: var(--ink); }
 .park-state {
@@ -473,6 +498,7 @@ button { cursor: pointer; border: none; background: none; }
   display: flex; flex-direction: column; gap: 0.55rem;
   border-top: 2px solid var(--line-soft); padding-top: 0.8rem;
 }
+.notes .wide { margin-top: 0; }
 .notes-head { font-weight: 800; font-size: 0.82rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-dim); }
 .notes-list { display: flex; flex-direction: column; gap: 0.5rem; }
 .notes-empty { color: var(--ink-dim); font-size: 0.9rem; }

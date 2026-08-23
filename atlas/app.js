@@ -730,6 +730,7 @@ function openNewPin(lat, lng, accuracy) {
   $('pin-save').hidden = false;
   $('pin-save').textContent = 'save pin';
   $('pin-delete').hidden = true;
+  $('sheet-actions').hidden = false;
   $('pin-meta').innerHTML = metaHtml(sheet.pin, null);
   $('notes-block').hidden = true;    // nothing to log about a place yet
   // Emptied rather than just hidden: the strips inside it are still in the
@@ -757,6 +758,9 @@ function openPin(p) {
   $('pin-save').hidden = !mine;
   $('pin-save').textContent = 'save changes';
   $('pin-delete').hidden = !mine;
+  // Someone else's pin: nothing in the bar, so the bar itself goes. An empty
+  // strip with a rule over it reads as something that failed to load.
+  $('sheet-actions').hidden = !mine;
   $('pin-meta').innerHTML = metaHtml(p, p.display_name || p.username);
   $('notes-block').hidden = false;
   $('note-body').value = '';

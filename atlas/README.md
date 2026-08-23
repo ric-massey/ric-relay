@@ -73,6 +73,12 @@ will never get a fix.
 
 ## Using it
 
+A pin's sheet is groups, not a list: **photos**, **getting there**, **whose
+land**, **notes**, and one bar stuck to the bottom holding **save**. Every
+button sits under the heading that says what it is for, because the question
+in the field is rarely "what does this button do" — it is "which of these do I
+want", and that gets answered by what a button is *near*.
+
 - **PIN HERE** — grabs a GPS fix and opens the sheet. Name and description are
   optional; save an untitled pin now, fill it in at home. That is the design.
 - **Long-press the map** — drops a pin somewhere you are not standing.
@@ -114,7 +120,10 @@ will never get a fix.
   the walk out in the dark. Saving is immediate — you set this with the truck
   door open, about to walk away from the phone.
 - **check who owns this land** — see below.
-- **directions** — hands the pin to Apple Maps or Google Maps.
+- **directions to this place** — hands the pin itself to Apple Maps or Google
+  Maps. It sits directly under **directions to parking** on purpose: side by
+  side it is obvious that they are not interchangeable. One drives you to the
+  pull-off; the other points at a cave up a hillside.
 - Green pins are yours. Orange pins are someone else's. Yellow means not synced
   yet. You can only edit and delete your own.
 

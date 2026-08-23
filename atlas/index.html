@@ -107,46 +107,58 @@
       </div>
       <textarea id="pin-desc" class="pin-desc" rows="3"
                 placeholder="what is it? how do you get in? what do you need?"></textarea>
+      <div id="pin-meta" class="pin-meta"></div>
       <label class="privacy">
         <input id="pin-private" type="checkbox">
         <span>only me
           <small>nobody else can see this pin. it is never sent to them.</small></span>
       </label>
-      <div id="pin-photos" class="photo-strip" hidden></div>
-      <button id="photo-add" class="btn-ghost wide">add photo</button>
-      <input id="photo-input" type="file" accept="image/*" multiple hidden>
 
-      <div id="pin-meta" class="pin-meta"></div>
+      <!--
+        From here down the sheet is groups, not a list. Every button sits under a
+        heading that says what it is for, because the question at a gate is never
+        "what does this button do" — it is "which of these do I want", and that
+        is answered by what a button is NEAR at least as much as by what it says.
+      -->
+      <section class="block">
+        <h3 class="block-head">photos</h3>
+        <div id="pin-photos" class="photo-strip" hidden></div>
+        <button id="photo-add" class="btn-ghost wide">add photo</button>
+        <input id="photo-input" type="file" accept="image/*" multiple hidden>
+      </section>
 
-      <!-- where you actually left the truck -->
-      <div id="park-block" class="park">
-        <div class="park-head">
-          <span>parking</span>
-          <span id="park-dist" class="park-dist"></span>
+      <!-- Getting to it. The two directions buttons live together on purpose:
+           side by side it is obvious that one drives you to the pull-off and the
+           other points at whatever you walked in to find. -->
+      <section class="block">
+        <h3 class="block-head">getting there</h3>
+        <div id="park-block" class="park">
+          <div class="park-head">
+            <span>parking</span>
+            <span id="park-dist" class="park-dist"></span>
+          </div>
+          <p id="park-state" class="park-state"></p>
+          <div id="park-set" class="park-actions">
+            <button id="park-here" class="btn-ghost">use my location</button>
+            <button id="park-centre" class="btn-ghost">pick on the map</button>
+          </div>
+          <div id="park-have" class="park-actions" hidden>
+            <button id="park-go" class="btn-ghost">directions to parking</button>
+            <button id="park-clear" class="btn-ghost">remove parking</button>
+          </div>
         </div>
-        <p id="park-state" class="park-state"></p>
-        <div id="park-set" class="park-actions">
-          <button id="park-here" class="btn-ghost">use my location</button>
-          <button id="park-centre" class="btn-ghost">pick on the map</button>
-        </div>
-        <div id="park-have" class="park-actions" hidden>
-          <button id="park-go" class="btn-ghost">directions to parking</button>
-          <button id="park-clear" class="btn-ghost">remove parking</button>
-        </div>
-      </div>
+        <button id="pin-directions" class="btn-ghost wide">directions to this place</button>
+        <button id="pin-copy" class="btn-ghost wide">copy location</button>
+      </section>
 
       <!-- whose ground is this -->
-      <div id="own-block" class="owner">
-        <button id="own-ask" class="btn-ghost wide">check who owns this land</button>
-        <div id="own-result" class="owner-result" hidden></div>
-      </div>
-
-      <div class="sheet-actions">
-        <button id="pin-save" class="btn-primary">save</button>
-        <button id="pin-directions" class="btn-ghost">get directions</button>
-        <button id="pin-copy" class="btn-ghost">copy location</button>
-        <button id="pin-delete" class="btn-danger" hidden>delete pin</button>
-      </div>
+      <section class="block">
+        <h3 class="block-head">whose land</h3>
+        <div id="own-block" class="owner">
+          <button id="own-ask" class="btn-ghost wide">check who owns this land</button>
+          <div id="own-result" class="owner-result" hidden></div>
+        </div>
+      </section>
 
       <!-- the running log: what happened when someone actually went -->
       <div id="notes-block" class="notes" hidden>
@@ -160,6 +172,14 @@
           <button id="note-photo" class="btn-ghost">add photo</button>
           <button id="note-add" class="btn-ghost">add note</button>
         </div>
+      </div>
+
+      <!-- Always on screen, always the same two, always in the same place. The
+           one thing you should never have to go looking for is how to keep what
+           you just typed. -->
+      <div id="sheet-actions" class="sheet-actions">
+        <button id="pin-save" class="btn-primary">save</button>
+        <button id="pin-delete" class="btn-danger" hidden>delete pin</button>
       </div>
     </div>
   </div>
