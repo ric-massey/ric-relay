@@ -1,10 +1,13 @@
 # ATLAS
 
-A private map for a crew of three. Pins carry a name, a description, who dropped
-them and when. Anyone in the crew can add one; everyone can find it again, which
-is the whole point — you can go to a cave your brother found without your brother.
+A private map for a crew of three. Pins carry a name, a description, photos, a
+running log of notes, and who dropped them and when. Anyone in the crew can add
+one; everyone can find it again, which is the whole point — you can go to a cave
+your brother found without your brother.
 
-Lives entirely separate from the public website. No coordinates ever touch that repo.
+The app lives in the public site repo and is served from `/atlas`, but the only
+thing committed here is code. Every coordinate, note and photo lives in Supabase
+behind row-level security, and nothing that identifies a place is ever in git.
 
 ---
 
@@ -57,7 +60,7 @@ To add a fourth person later, that's the whole process: one invitation.
 Locally:
 
 ```bash
-python3 -m http.server 8920 --directory ~/Atlas
+python3 -m http.server 8920 --directory ~/RicsWebsite/atlas
 ```
 
 Then <http://localhost:8920>.
@@ -79,11 +82,24 @@ will never get a fix.
 - **☀ / ☾** — day and night. Day is the default: outdoors in bright sun a dark
   UI is a mirror, so everything is opaque white, near-black and heavy-weight.
   Night is for caves and dusk.
+- **add photo** — camera or library, one or several. Photos are shrunk to
+  1600px on the phone before they go anywhere, which is small enough for cell
+  data and still reads a rock face. Re-encoding strips EXIF on the way through,
+  so the camera's embedded GPS never leaves the phone — the pin already knows
+  where the place is, under a rule the database enforces. Tap a photo for full
+  size. You can delete your own, and anything on a pin of yours.
+- **notes** — the description is what the place *is*, written by whoever found
+  it. A note is what happened when someone went: gate locked, wash dry, second
+  entrance easier. Anyone can leave one on any pin, including someone else's.
+  That is the point — the map gets better every time one of you goes out.
 - **directions** — hands the pin to Apple Maps or Google Maps.
 - Green pins are yours. Orange pins are someone else's. Yellow means not synced
   yet. You can only edit and delete your own.
 
-Base maps: satellite (Esri), USGS topo, and OpenStreetMap. All free, no keys.
+Base maps under **layers**: satellite (Esri), satellite + topo, USGS topo,
+contour topo (OpenTopoMap), and street. Over the top of those, eight overlays in
+four groups — place names, roads, trails, railways; terrain shading and water;
+public land and property lines. All free, no keys, nationwide.
 
 ---
 
@@ -102,10 +118,14 @@ move the map, so you can see the cost before committing.
 - The app opens. The shell is cached.
 - Downloaded areas draw. Anything you never downloaded shows as blank tiles
   rather than errors.
-- Every pin the crew had last time you were online is still on the map — they
-  are mirrored into IndexedDB.
+- Every pin the crew had last time you were online is still on the map, and so
+  is every note on it — both are mirrored into IndexedDB.
+- Photos you have opened are still there; photos you never opened are not. Tap
+  **get all photos for offline** in ⤓ before you leave and it pulls the rest.
 - **PIN HERE still works.** GPS is a radio receiver; it needs no network. New
-  pins and edits queue up and show yellow.
+  pins, notes, photos and edits all queue up and show yellow. A photo taken with
+  no signal is written to the phone before anything else is attempted, so the
+  only copy is never the one in flight.
 - A badge counts what hasn't synced. Tap it to force a sync attempt.
 
 **Back on signal**, the queue replays itself in order. Pin ids and timestamps are
@@ -124,10 +144,16 @@ browser chrome. On iOS that's Share → Add to Home Screen.
 
 ```bash
 node test/tiles.test.mjs
+node test/photos.test.mjs
 ```
 
-Covers the tile maths — which square of the planet gets downloaded. Worth having
-tested, because the wrong answer only shows up somewhere with no signal.
+The tile maths — which square of the planet gets downloaded. Worth having tested,
+because the wrong answer only shows up somewhere with no signal.
+
+And the photo paths, which are not cosmetic: a photo's object name is
+`{pin_id}/{uploader_id}/{photo_id}.jpg`, and the storage policies read the
+permissions straight out of that shape. A path built wrong is either a photo the
+database refuses or, worse, one it shouldn't have accepted.
 
 ---
 
@@ -140,11 +166,31 @@ no valid session the database returns nothing to anyone.
 The **service_role** key must never appear in this repo. It bypasses every
 policy.
 
+A **personal** pin is enforced in the SELECT policy, not in the interface — it is
+never sent to anyone else, whatever they type into a network tab. Notes and
+photos inherit that same rule through `public.can_see_pin()`, which is why they
+gate on a function rather than each reimplementing the check. That function must
+stay SECURITY INVOKER; marked DEFINER it would hand out exactly what it exists to
+withhold.
+
+The **pin-photos** bucket is private. Photos are read through short-lived signed
+URLs, and an object's own name carries its permissions — the policies read the
+pin and the uploader out of `{pin_id}/{uploader_id}/{photo_id}.jpg` rather than
+out of `storage.objects.owner`, which has been renamed across storage releases.
+A policy that silently stops matching is a policy that silently stops
+protecting.
+
 ---
 
 ## Not built yet
 
-- Photos on pins (Cloudflare R2)
-- Layer toggles: lidar hillshade, trails, parcel boundaries, public land
-- Owner lookup by parcel
+- Owner lookup by parcel — no free nationwide source exists. Parcel boundaries
+  and public land are already on the map; putting a *name* to a parcel means
+  per-county assessor adapters, added as they're actually needed.
+- Editing a note after you've left it. The policy allows it; there's no button.
 - "Park here" second point on a pin (the column exists, nothing writes to it yet)
+
+Ruled out, on evidence, so they don't get re-proposed: Strava's heatmap (503s to
+anyone unauthenticated, and their terms forbid republishing), AllTrails (no
+public tiles at all), and real 3DEP lidar hillshade (no tile cache, only
+per-request rendering, so it can never be saved for offline).

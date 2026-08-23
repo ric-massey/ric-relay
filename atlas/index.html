@@ -112,6 +112,10 @@
         <span>personal
           <small>only you can see this one. the others never get sent it.</small></span>
       </label>
+      <div id="pin-photos" class="photo-strip" hidden></div>
+      <button id="photo-add" class="btn-ghost wide">add photo</button>
+      <input id="photo-input" type="file" accept="image/*" multiple hidden>
+
       <div id="pin-meta" class="pin-meta"></div>
       <div class="sheet-actions">
         <button id="pin-save" class="btn-primary">save</button>
@@ -119,7 +123,24 @@
         <button id="pin-copy" class="btn-ghost">copy coords</button>
         <button id="pin-delete" class="btn-danger" hidden>delete</button>
       </div>
+
+      <!-- the running log: what happened when someone actually went -->
+      <div id="notes-block" class="notes" hidden>
+        <div class="notes-head">notes</div>
+        <div id="notes-list" class="notes-list"></div>
+        <textarea id="note-body" class="note-body" rows="2"
+                  placeholder="gate locked? creek dry? road washed out? leave it here."
+                  autocapitalize="sentences"></textarea>
+        <button id="note-add" class="btn-ghost wide">add note</button>
+      </div>
     </div>
+  </div>
+
+  <!-- one photo, full size -->
+  <div id="lightbox" class="lightbox" hidden>
+    <button id="lightbox-close" class="icon-btn lightbox-close" aria-label="Close">✕</button>
+    <img id="lightbox-img" alt="">
+    <button id="lightbox-del" class="btn-danger lightbox-del" hidden>delete photo</button>
   </div>
 
   <!-- all pins -->
@@ -222,6 +243,9 @@
       </div>
 
       <button id="dl-go" class="btn-primary wide">download this area</button>
+      <p class="estimate">Photos are kept on the phone once you have opened
+        them. This grabs the ones you haven't.</p>
+      <button id="dl-photos" class="btn-ghost wide">get all photos for offline</button>
       <p id="dl-storage" class="estimate"></p>
       <button id="dl-clear" class="btn-ghost wide">clear downloaded maps</button>
     </div>

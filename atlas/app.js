@@ -12,6 +12,7 @@
 
 import { local } from './db.js';
 import { lngLatToTile, tileUrlsForBounds } from './tiles.js';
+import { shrink, photoPath } from './photos.js';
 
 const db = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
@@ -23,6 +24,7 @@ const LINK_TYPE = new URLSearchParams(location.hash.replace(/^#/, '')).get('type
 const $ = (id) => document.getElementById(id);
 const IS_APPLE = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent);
 const TILE_CACHE = 'atlas-tiles-v1';
+const PHOTO_BUCKET = 'pin-photos';
 const BYTES_PER_TILE = 28 * 1024;   // measured: Esri ~20 KB, USGS/OSM ~32 KB
 
 let map       = null;
@@ -33,6 +35,16 @@ let meMarker  = null;
 let sheet     = null;    // { mode: 'new' | 'view', pin }
 let basemap   = 'sat';
 let download  = null;    // { cancel: bool } while an area download runs
+let notes     = [];      // every note on every pin the crew can see
+let photoRows = [];      // the photo index. The images live in IndexedDB.
+
+/* Object URLs handed to <img>, and a generation counter. Rendering a photo is
+ * async, so a sheet closed mid-load would otherwise hand a URL to a thumbnail
+ * nobody is looking at and leak it. Every render bumps the generation; a load
+ * that finishes against a stale one throws its URL away. */
+let objectUrls = [];
+let photoGen   = 0;
+let lightboxUrl = null;
 
 /* ── base maps ───────────────────────────────────────────────────────────
  * All free, all no-key, all nationwide. Satellite is the default because it is
@@ -319,6 +331,8 @@ async function start() {
 
   if (!map) initMap();
   await loadPins();
+  await loadNotes();
+  await loadPhotos();
   await syncQueue();
   refreshNetworkUI();
 }
@@ -548,6 +562,45 @@ async function loadPins() {
   drawPins();
 }
 
+/* Notes and photo rows for every pin at once, rather than a round trip each
+ * time a sheet opens. Three people do not generate enough of either for this to
+ * be worth paginating, and pulling the lot means the whole log is already on the
+ * phone when the signal goes — which is the only version of this that matters.
+ * The images are a separate question; see photoBlob.
+ */
+async function loadNotes() {
+  if (online()) {
+    const { data, error } = await db.from('pin_notes_with_author').select('*')
+      .order('created_at', { ascending: true });
+    if (!error && data) {
+      const queued = (await local.queued())
+        .filter((q) => q.op === 'note-insert')
+        .map((q) => ({ ...q.row, _pending: true,
+                       username: me.username, display_name: me.display_name }));
+      notes = [...data, ...queued];
+      await local.replaceNotes(notes);
+      return;
+    }
+  }
+  notes = await local.getNotes();
+}
+
+async function loadPhotos() {
+  if (online()) {
+    const { data, error } = await db.from('pin_photos_with_author').select('*')
+      .order('created_at', { ascending: true });
+    if (!error && data) {
+      const queued = (await local.queued())
+        .filter((q) => q.op === 'photo-insert')
+        .map((q) => ({ ...q.row, _pending: true }));
+      photoRows = [...data, ...queued];
+      await local.replacePhotos(photoRows);
+      return;
+    }
+  }
+  photoRows = await local.getPhotos();
+}
+
 function drawPins() {
   markers.forEach((m) => m.remove());
   markers.clear();
@@ -598,7 +651,14 @@ function pinMapCentre() {
 /* ── the sheet ───────────────────────────────────────────────────────────── */
 
 function openNewPin(lat, lng, accuracy) {
-  sheet = { mode: 'new', pin: { lat, lng, accuracy_m: accuracy ?? null } };
+  // The id is minted here rather than in createPin, because a photo taken
+  // before the pin is saved still has to know which pin it belongs to. Nothing
+  // is written anywhere until save, so an abandoned sheet costs a uuid.
+  sheet = {
+    mode: 'new',
+    pin: { id: crypto.randomUUID(), lat, lng, accuracy_m: accuracy ?? null },
+    pending: [],       // photos added before the pin itself exists
+  };
   // Show where the pin will land, so "the middle of the map" isn't a guess.
   map.easeTo({ center: [lng, lat] });
   $('crosshair').hidden = false;
@@ -612,6 +672,8 @@ function openNewPin(lat, lng, accuracy) {
   $('pin-save').textContent = 'save pin';
   $('pin-delete').hidden = true;
   $('pin-meta').innerHTML = metaHtml(sheet.pin, null);
+  $('notes-block').hidden = true;    // nothing to log about a place yet
+  renderPhotos();
   $('sheet').hidden = false;
   setTimeout(() => $('pin-name').focus(), 80);
 }
@@ -629,6 +691,10 @@ function openPin(p) {
   $('pin-save').textContent = 'save changes';
   $('pin-delete').hidden = !mine;
   $('pin-meta').innerHTML = metaHtml(p, p.display_name || p.username);
+  $('notes-block').hidden = false;
+  $('note-body').value = '';
+  renderNotes();
+  renderPhotos();
   $('sheet').hidden = false;
   map.easeTo({ center: [p.lng, p.lat] });
 }
@@ -649,7 +715,14 @@ function closeSheet() {
   $('sheet').hidden = true;
   $('crosshair').hidden = true;
   $('pin-save').hidden = false;
+  releaseObjectUrls();
   sheet = null;
+}
+
+function releaseObjectUrls() {
+  photoGen++;
+  objectUrls.forEach(URL.revokeObjectURL);
+  objectUrls = [];
 }
 
 async function savePin() {
@@ -676,7 +749,7 @@ async function createPin(fields) {
   // dropped on Tuesday in a canyon still says Tuesday when it syncs on Thursday,
   // and replaying the queue twice can't create it twice.
   const row = {
-    id: crypto.randomUUID(),
+    id: sheet.pin.id,
     created_by: me.id,
     lat: sheet.pin.lat,
     lng: sheet.pin.lng,
@@ -692,6 +765,12 @@ async function createPin(fields) {
   pins.unshift(shown);
   await local.putPin(shown);
   addMarker(shown);
+
+  // Photos queued behind the pin, never in front of it: a photo row references
+  // the pin, so replaying them the other way round would fail the foreign key
+  // and jam the queue. The queue is strictly ordered, so this is enough.
+  for (const photo of sheet.pending || []) await commitPhoto(photo);
+
   closeSheet();
   toast(sent ? 'pinned' : 'pinned — will sync when you have signal');
   refreshNetworkUI();
@@ -721,7 +800,23 @@ async function deletePin() {
   if (!confirm(`Delete "${pinTitle(sheet.pin)}"? This cannot be undone.`)) return;
 
   const id = sheet.pin.id;
+
+  // Photos go FIRST, and deliberately. The rows cascade when the pin goes, but
+  // the objects in the bucket do not, and the permission to delete someone
+  // else's photo off your pin is checked against a pin that still exists. Kill
+  // the pin first and those files are unreachable and undeletable forever.
+  const its = photosForPin(id);
+  if (its.length) {
+    await push({ op: 'photo-delete', paths: its.map((r) => r.path), ids: its.map((r) => r.id) });
+    for (const r of its) { await local.deletePhoto(r.id); await local.deleteBlob(r.id); }
+    photoRows = photoRows.filter((r) => r.pin_id !== id);
+  }
+
   const sent = await push({ op: 'delete', id });
+
+  // The notes cascade in the database; this just keeps the mirror honest.
+  for (const n of notes.filter((n) => n.pin_id === id)) await local.deleteNote(n.id);
+  notes = notes.filter((n) => n.pin_id !== id);
 
   markers.get(id)?.remove();
   markers.delete(id);
@@ -730,6 +825,237 @@ async function deletePin() {
   closeSheet();
   toast(sent ? 'deleted' : 'deleted here — will sync later');
   refreshNetworkUI();
+}
+
+
+/* ── photos ──────────────────────────────────────────────────────────────
+ * A photo answers the question a description can't: is that the entrance, or
+ * is it the one forty feet left of it. Shrunk and stripped of EXIF on the
+ * phone (see photos.js), uploaded to a private bucket, and kept in IndexedDB
+ * once you have seen it so it is still there with no signal.
+ */
+
+const photosForPin = (pinId) => photoRows.filter((r) => r.pin_id === pinId);
+
+function sheetPhotos() {
+  if (!sheet) return [];
+  return sheet.mode === 'new'
+    ? (sheet.pending || [])
+    : photosForPin(sheet.pin.id);
+}
+
+async function onPhotoPick(e) {
+  const files = [...e.target.files];
+  e.target.value = '';                 // so picking the same file twice works
+  if (!sheet || !files.length) return;
+
+  const btn = $('photo-add');
+  btn.classList.add('is-busy');
+  try {
+    for (const file of files) await addPhoto(file);
+  } finally {
+    btn.classList.remove('is-busy');
+  }
+}
+
+async function addPhoto(file) {
+  let image;
+  try {
+    image = await shrink(file);
+  } catch {
+    toast('could not read that photo', true);
+    return;
+  }
+
+  const id = crypto.randomUUID();
+  const row = {
+    id,
+    pin_id: sheet.pin.id,
+    created_by: me.id,
+    path: photoPath(sheet.pin.id, me.id, id),
+    width: image.width,
+    height: image.height,
+    bytes: image.blob.size,
+    created_at: new Date().toISOString(),
+  };
+
+  // The image goes to the phone first, always. Everything after this can fail
+  // and be retried; losing the only copy of a photo cannot be.
+  await local.putBlob(id, image.blob);
+
+  if (sheet.mode === 'new') sheet.pending.push(row);
+  else await commitPhoto(row);
+
+  renderPhotos();
+}
+
+async function commitPhoto(row) {
+  const sent = await push({ op: 'photo-insert', row });
+  const shown = { ...row, username: me.username, display_name: me.display_name };
+  if (!sent) shown._pending = true;
+
+  photoRows.push(shown);
+  await local.putPhoto(shown);
+  refreshNetworkUI();
+}
+
+/* The bucket is private, so there is no URL to point an <img> at. Take the
+ * bytes once and keep them: the second look costs nothing, and it works in the
+ * canyon. Returns null when we have neither the blob nor a way to get it. */
+async function photoBlob(row) {
+  const cached = await local.getBlob(row.id);
+  if (cached) return cached;
+  if (!online()) return null;
+
+  const { data, error } = await db.storage.from(PHOTO_BUCKET).download(row.path);
+  if (error || !data) return null;
+  await local.putBlob(row.id, data);
+  return data;
+}
+
+function renderPhotos() {
+  const strip = $('pin-photos');
+  releaseObjectUrls();
+  const gen = photoGen;
+  strip.innerHTML = '';
+
+  const rows = sheetPhotos();
+  strip.hidden = !rows.length;
+
+  rows.forEach((row) => {
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = 'thumb' + (row._pending ? ' is-pending' : '');
+    tile.dataset.id = row.id;
+    tile.setAttribute('aria-label', 'Open photo');
+    strip.appendChild(tile);
+
+    photoBlob(row).then((blob) => {
+      if (gen !== photoGen) return;             // sheet moved on without us
+      if (!blob) {
+        tile.classList.add('is-missing');
+        tile.title = 'not downloaded — open this with signal once';
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      objectUrls.push(url);
+      tile.style.backgroundImage = `url("${url}")`;
+      tile.classList.add('is-loaded');
+    });
+  });
+}
+
+/* You can bin your own photo, or any photo on a pin of yours. Same rule the
+ * database enforces — this only decides whether to draw the button. */
+const canDeletePhoto = (row) =>
+  row.created_by === me.id || sheet?.pin?.created_by === me.id;
+
+async function openLightbox(id) {
+  const row = sheetPhotos().find((r) => r.id === id);
+  if (!row) return;
+
+  const blob = await photoBlob(row);
+  if (!blob) { toast('that one is not downloaded yet', true); return; }
+
+  if (lightboxUrl) URL.revokeObjectURL(lightboxUrl);
+  lightboxUrl = URL.createObjectURL(blob);
+  $('lightbox-img').src = lightboxUrl;
+  $('lightbox-del').hidden = !canDeletePhoto(row);
+  $('lightbox-del').dataset.id = id;
+  $('lightbox').hidden = false;
+}
+
+function closeLightbox() {
+  $('lightbox').hidden = true;
+  $('lightbox-img').removeAttribute('src');
+  if (lightboxUrl) { URL.revokeObjectURL(lightboxUrl); lightboxUrl = null; }
+}
+
+async function deletePhoto(id) {
+  const row = sheetPhotos().find((r) => r.id === id);
+  if (!row) return;
+  if (!confirm('Delete this photo?')) return;
+
+  if (sheet.mode === 'new') {
+    sheet.pending = sheet.pending.filter((r) => r.id !== id);
+  } else {
+    await push({ op: 'photo-delete', paths: [row.path], ids: [id] });
+    photoRows = photoRows.filter((r) => r.id !== id);
+    await local.deletePhoto(id);
+  }
+  await local.deleteBlob(id);
+
+  closeLightbox();
+  renderPhotos();
+  refreshNetworkUI();
+}
+
+/* ── notes ───────────────────────────────────────────────────────────────
+ * The description is what the place is. A note is what happened when someone
+ * went. Anyone can add one to any pin they can see, including someone else's —
+ * that is the point: the map gets better every time one of you goes out.
+ */
+
+function renderNotes() {
+  const rows = notes
+    .filter((n) => n.pin_id === sheet.pin.id)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+  $('notes-list').innerHTML = rows.length
+    ? rows.map(noteHtml).join('')
+    : '<p class="notes-empty">No notes yet. Been out there? Say what you found.</p>';
+}
+
+function noteHtml(n) {
+  const who = escapeHtml(n.display_name || n.username || 'someone');
+  const mine = n.created_by === me.id;
+  return `<article class="note${n._pending ? ' is-pending' : ''}">
+    <div class="note-head">
+      <b>${who}</b><span>${fmtDate(n.created_at)}</span>
+      ${mine ? `<button class="note-del" data-id="${n.id}" aria-label="Delete note">✕</button>` : ''}
+    </div>
+    <p>${escapeHtml(n.body)}</p>
+    ${n._pending ? '<span class="note-warn">not synced yet</span>' : ''}
+  </article>`;
+}
+
+async function addNote() {
+  if (!sheet || sheet.mode !== 'view') return;
+  const body = $('note-body').value.trim();
+  if (!body) return;
+
+  const row = {
+    id: crypto.randomUUID(),
+    pin_id: sheet.pin.id,
+    created_by: me.id,
+    body,
+    created_at: new Date().toISOString(),
+  };
+
+  const sent = await push({ op: 'note-insert', row });
+  const shown = { ...row, username: me.username, display_name: me.display_name };
+  if (!sent) shown._pending = true;
+
+  notes.push(shown);
+  await local.putNote(shown);
+  $('note-body').value = '';
+  renderNotes();
+  refreshNetworkUI();
+  if (!sent) toast('note saved here — will sync later');
+}
+
+async function deleteNote(id) {
+  if (!confirm('Delete this note?')) return;
+  await push({ op: 'note-delete', id });
+  notes = notes.filter((n) => n.id !== id);
+  await local.deleteNote(id);
+  renderNotes();
+  refreshNetworkUI();
+}
+
+function onNotesClick(e) {
+  const del = e.target.closest('.note-del');
+  if (del) deleteNote(del.dataset.id);
 }
 
 /* ── the queue ───────────────────────────────────────────────────────────
@@ -753,6 +1079,32 @@ async function runOp(op) {
   if (op.op === 'insert')      res = await db.from('pins').upsert(op.row);
   else if (op.op === 'update') res = await db.from('pins').update(op.fields).eq('id', op.id);
   else if (op.op === 'delete') res = await db.from('pins').delete().eq('id', op.id);
+
+  else if (op.op === 'note-insert') res = await db.from('pin_notes').upsert(op.row);
+  else if (op.op === 'note-delete') res = await db.from('pin_notes').delete().eq('id', op.id);
+
+  else if (op.op === 'photo-insert') {
+    const blob = await local.getBlob(op.row.id);
+    // The image is the part that can genuinely be gone — cleared storage, a
+    // reinstall. Nothing to upload and nothing to retry, so let it go rather
+    // than jamming everything queued behind it forever.
+    if (!blob) return;
+
+    const up = await db.storage.from(PHOTO_BUCKET)
+      .upload(op.row.path, blob, { contentType: 'image/jpeg', upsert: true });
+    if (up.error) throw new Error(up.error.message);
+
+    res = await db.from('pin_photos').upsert(op.row);
+  }
+
+  else if (op.op === 'photo-delete') {
+    // Bucket first: the row is what tells us the object's name, so losing the
+    // row while the object lives leaves a file nothing can ever find again.
+    const rm = await db.storage.from(PHOTO_BUCKET).remove(op.paths);
+    if (rm.error) throw new Error(rm.error.message);
+    res = await db.from('pin_photos').delete().in('id', op.ids);
+  }
+
   if (res?.error) throw new Error(res.error.message);
 }
 
@@ -777,6 +1129,8 @@ async function syncQueue() {
   if (done) {
     toast(`${done} pin${done > 1 ? 's' : ''} synced`);
     await loadPins();
+    await loadNotes();
+    await loadPhotos();
   }
   refreshNetworkUI();
 }
@@ -935,12 +1289,39 @@ function showProgress(done, total) {
   $('dl-count').textContent = `${done.toLocaleString()} / ${total.toLocaleString()}`;
 }
 
+/* Photos are cached as you look at them, which is the right default — nobody
+ * wants their whole photo library pulled over cell data. But "before you go" is
+ * exactly when you want the lot, and out there is exactly when you cannot get
+ * them. So: one button, same panel as the offline maps.
+ */
+async function cachePhotosOffline() {
+  const btn = $('dl-photos');
+  if (!online()) { toast('that one needs signal', true); return; }
+
+  const missing = [];
+  for (const row of photoRows) if (!(await local.hasBlob(row.id))) missing.push(row);
+  if (!missing.length) { toast('every photo is already on this phone'); return; }
+
+  btn.disabled = true;
+  let got = 0;
+  for (const row of missing) {
+    btn.textContent = `getting photos… ${got}/${missing.length}`;
+    if (await photoBlob(row)) got++;
+  }
+  btn.disabled = false;
+  btn.textContent = 'get all photos for offline';
+  toast(`${got} photo${got === 1 ? '' : 's'} saved for offline`);
+  refreshStorage();
+}
+
 async function refreshStorage() {
   const est = await navigator.storage?.estimate?.();
   if (!est) return;
   const persisted = await navigator.storage?.persisted?.().catch(() => false);
+  const photoBytes = await local.blobBytes();
   $('dl-storage').innerHTML =
     `using <b>${fmtSize(est.usage)}</b> of ${fmtSize(est.quota)} available`
+    + (photoBytes ? ` &middot; ${fmtSize(photoBytes)} of that is photos` : '')
     + (persisted ? ' &middot; protected from cleanup' : '');
 }
 
@@ -988,6 +1369,20 @@ $('pin-save').addEventListener('click', savePin);
 $('pin-delete').addEventListener('click', deletePin);
 $('pin-directions').addEventListener('click', openDirections);
 $('pin-copy').addEventListener('click', copyCoords);
+$('photo-input').addEventListener('change', onPhotoPick);
+$('photo-add').addEventListener('click', () => $('photo-input').click());
+$('pin-photos').addEventListener('click', (e) => {
+  const tile = e.target.closest('.thumb');
+  if (tile) openLightbox(tile.dataset.id);
+});
+$('lightbox-close').addEventListener('click', closeLightbox);
+$('lightbox').addEventListener('click', (e) => {
+  if (e.target === $('lightbox')) closeLightbox();   // tap the backdrop
+});
+$('lightbox-del').addEventListener('click', (e) => deletePhoto(e.target.dataset.id));
+$('note-add').addEventListener('click', addNote);
+$('notes-list').addEventListener('click', onNotesClick);
+$('dl-photos').addEventListener('click', cachePhotosOffline);
 $('layers-btn').addEventListener('click', () => {
   $('layers').hidden = false;
   refreshLocationState();
@@ -1012,10 +1407,12 @@ document.querySelectorAll('[name="detail"]').forEach((r) =>
   r.addEventListener('change', updateDownloadEstimate));
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    closeSheet();
-    ['list', 'maps', 'layers'].forEach((id) => { $(id).hidden = true; });
-  }
+  if (e.key !== 'Escape') return;
+  // The lightbox sits on top of the sheet, so it gets the first Escape on its
+  // own — otherwise closing the photo also closes the pin behind it.
+  if (!$('lightbox').hidden) { closeLightbox(); return; }
+  closeSheet();
+  ['list', 'maps', 'layers'].forEach((id) => { $(id).hidden = true; });
 });
 
 window.addEventListener('online', () => { refreshNetworkUI(); syncQueue(); });

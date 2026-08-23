@@ -302,6 +302,88 @@ button { cursor: pointer; border: none; background: none; }
 .sheet-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
 .sheet-actions .btn-primary { flex: 1 1 auto; min-width: 100px; }
 
+
+/* ── photos ───────────────────────────────────────────────────────────────
+ * A horizontal strip that scrolls, so any number of photos costs the same
+ * vertical space — the sheet has a description and a log to fit as well.
+ */
+.photo-strip {
+  display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.2rem;
+  scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+}
+.thumb {
+  flex: 0 0 auto; width: 96px; height: 96px; scroll-snap-align: start;
+  border: 2px solid var(--line); border-radius: 10px; background: var(--panel-2);
+  background-size: cover; background-position: center; cursor: pointer;
+  position: relative;
+}
+.thumb.is-loaded { border-color: var(--line-soft); }
+/* Yellow means "lives on this phone only" everywhere else in here; a photo
+ * waiting to upload is the same statement, so it gets the same colour. */
+.thumb.is-pending { border-color: var(--warn-bg); border-width: 3px; }
+.thumb.is-missing::after {
+  content: "no signal"; position: absolute; inset: auto 0 0 0;
+  background: var(--panel); color: var(--ink-dim); font-size: 0.65rem;
+  font-weight: 700; padding: 0.2rem; border-radius: 0 0 8px 8px;
+}
+#photo-add.is-busy { opacity: 0.6; pointer-events: none; }
+
+.lightbox {
+  position: absolute; z-index: 60; inset: 0; background: rgba(0,0,0,0.92);
+  display: flex; align-items: center; justify-content: center;
+  padding: calc(var(--safe-t) + 3rem) 1rem calc(var(--safe-b) + 4.5rem);
+}
+.lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+.lightbox-close {
+  position: absolute; top: calc(var(--safe-t) + 0.6rem); right: 0.7rem;
+  background: var(--panel); border: 2px solid var(--line);
+}
+/* On the backdrop, .btn-danger's bare red text has nothing behind it and reads
+ * as though it belongs to whatever is dimmed underneath. Give it a solid pill. */
+.lightbox-del {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--safe-b) + 1rem);
+  background: var(--panel); border: 2px solid var(--danger);
+  border-radius: 10px; padding: 0.7rem 1.2rem;
+}
+
+/* ── notes ───────────────────────────────────────────────────────────────
+ * Deliberately plainer than the description above it. The description is the
+ * pin; these are what happened afterwards, and they should read as a log.
+ */
+.notes {
+  display: flex; flex-direction: column; gap: 0.55rem;
+  border-top: 2px solid var(--line-soft); padding-top: 0.8rem;
+}
+.notes-head { font-weight: 800; font-size: 0.82rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-dim); }
+.notes-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.notes-empty { color: var(--ink-dim); font-size: 0.9rem; }
+
+.note {
+  background: var(--panel-2); border-radius: 10px; padding: 0.55rem 0.7rem;
+  border-left: 4px solid var(--line);
+}
+.note.is-pending { border-left-color: var(--warn-bg); }
+.note-head {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.76rem; color: var(--ink-dim); margin-bottom: 0.2rem;
+}
+.note-head b { color: var(--ink); font-weight: 800; font-size: 0.82rem; }
+.note-head span { flex: 1; }
+.note-del {
+  background: none; border: none; color: var(--ink-dim);
+  font-size: 0.95rem; padding: 0 0.2rem; cursor: pointer; line-height: 1;
+}
+.note p { font-size: 0.95rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.note-warn { color: var(--ink-dim); font-size: 0.72rem; font-weight: 700; }
+
+.note-body {
+  background: var(--bg); border: 2px solid var(--line); border-radius: 10px;
+  padding: 0.6rem; resize: vertical; font-size: 17px; font-family: inherit;
+  color: var(--ink);
+}
+.note-body:focus { outline: 3px solid var(--accent); outline-offset: -1px; }
+
 /* ── full-screen panels (all pins, offline maps) ──────────────────────── */
 .panel {
   position: absolute; z-index: 30; inset: 0; background: var(--bg);
