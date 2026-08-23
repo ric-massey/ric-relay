@@ -340,6 +340,10 @@ button { cursor: pointer; border: none; background: none; }
   pointer-events: none;
 }
 .dock > * { pointer-events: auto; }
+/* With only two controls left, centring them as a pair pushes the one that
+   matters off to the right. PIN HERE is the reason this app exists, so it sits
+   dead centre under a thumb and "where am I" is parked at the edge. */
+.dock #locate-btn { position: absolute; left: var(--s-4); }
 
 .btn-pin {
   background: var(--accent); color: var(--on-accent);
@@ -362,8 +366,8 @@ button { cursor: pointer; border: none; background: none; }
 }
 .btn-round:active { background: var(--panel-2); transform: scale(0.96); }
 
-/* The crosshair marks exactly what "the middle of the map" means while you are
-   placing a pin by hand. */
+/* Marks the exact point a new pin is sitting on, which the pin's own marker
+   cannot do yet — it is not drawn until the pin is saved. */
 .crosshair {
   position: absolute; z-index: 12; left: 50%; top: 50%;
   width: 44px; height: 44px; margin: -22px 0 0 -22px;
@@ -380,23 +384,6 @@ button { cursor: pointer; border: none; background: none; }
 }
 .crosshair::before { left: 50%; top: 0; width: 3px; height: 100%; margin-left: -1.5px; }
 .crosshair::after  { top: 50%; left: 0; height: 3px; width: 100%; margin-top: -1.5px; }
-
-/* Choosing a point by hand. Sits where the dock was, so the thing you press to
-   confirm is where your thumb already is, and says out loud what the crosshair
-   in the middle of the screen is for. */
-.placer {
-  position: absolute; z-index: 13; left: var(--s-3); right: var(--s-3);
-  bottom: calc(var(--safe-b) + var(--s-4));
-  background: var(--panel); border: var(--b) solid var(--edge);
-  border-radius: var(--r-lg); box-shadow: var(--e-2);
-  padding: var(--s-3); display: flex; flex-direction: column; gap: var(--s-3);
-}
-.place-label {
-  font-size: var(--t-md); font-weight: 700; color: var(--ink); text-align: center;
-}
-.place-actions { display: flex; gap: var(--s-2); }
-.place-actions .btn-primary { flex: 2 1 0; }
-.place-actions .btn-ghost { flex: 1 1 0; }
 
 /* ── markers ──────────────────────────────────────────────────────────────
  * A halo ring plus a hard shadow, so a pin reads against dark forest, bright

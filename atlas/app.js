@@ -45,7 +45,6 @@ let parcelSources = [];  // county assessor adapters — see owners.js
 let ownerShown = null;   // { r, cached } — the ownership answer currently drawn
 let countyHunt = null;   // { pinId, state, found } while looking for a county
 let editingNote = null;  // id of the note currently open for editing
-let placing = false;     // true while you are choosing a point on the map
 let draftNote = null;    // { id, pending } — photos attached to a note not yet written
 let photoTarget = null;  // which strip the next pick from the file input lands in
 
@@ -704,40 +703,6 @@ async function pinHere() {
   }
 }
 
-/* ── picking a point by hand ─────────────────────────────────────────────
- * How you tag the far side of the valley, or anywhere at all when location is
- * off or refusing to fix.
- *
- * This used to be one tap that took whatever happened to be at the centre of
- * the map the instant you pressed it — and the centre was not marked, so the
- * one thing you were choosing was the one thing you could not see.
- *
- * So it is a mode now. The dock clears, the crosshair marks exactly what "the
- * middle" means, you move the map under it, and nothing is written until you
- * say so.
- */
-function startPlacing() {
-  placing = true;
-  $('dock').hidden = true;
-  $('crosshair').hidden = false;
-  $('place-label').textContent = 'move the map — the pin goes in the middle';
-  $('placer').hidden = false;
-}
-
-function stopPlacing() {
-  if (!placing) return false;
-  placing = false;
-  $('placer').hidden = true;
-  $('dock').hidden = false;
-  $('crosshair').hidden = true;
-  return true;
-}
-
-function confirmPlace() {
-  const c = map.getCenter();
-  if (stopPlacing()) openNewPin(c.lat, c.lng, null);
-}
-
 /* ── the sheet ─────────────────────────────────────────────────────────────
  * The sheet takes the bottom half and the map keeps the top half, so the ground
  * is still on screen while you write about it. That makes "centre the map on
@@ -765,7 +730,7 @@ function openNewPin(lat, lng, accuracy) {
     pin: { id: crypto.randomUUID(), lat, lng, accuracy_m: accuracy ?? null },
     pending: [],       // photos added before the pin itself exists
   };
-  // Show where the pin will land, so "the middle of the map" isn't a guess.
+  // Mark the exact spot: the pin has no marker of its own until it is saved.
   sheetPadding(true);
   $('crosshair').classList.add('is-offset');
   $('crosshair').hidden = false;
@@ -2037,8 +2002,6 @@ $('lightbox').addEventListener('click', (e) => {
 $('lightbox-del').addEventListener('click', (e) => deletePhoto(e.target.dataset.id));
 $('note-add').addEventListener('click', addNote);
 $('notes-list').addEventListener('click', onNotesClick);
-$('place-ok').addEventListener('click', confirmPlace);
-$('place-cancel').addEventListener('click', stopPlacing);
 $('own-ask').addEventListener('click', askOwner);
 $('own-result').addEventListener('click', onOwnerClick);
 $('sources-open').addEventListener('click', () => { $('layers').hidden = true; openSources(); });
@@ -2050,7 +2013,6 @@ $('layers-btn').addEventListener('click', () => {
   $('layers').hidden = false;
   refreshLocationState();
 });
-$('pin-map-btn').addEventListener('click', startPlacing);
 $('loc-enable').addEventListener('click', () => locate().catch(() => {}));
 $('maps-from-layers').addEventListener('click', () => { $('layers').hidden = true; openMaps(); });
 $('layers-close').addEventListener('click', () => { $('layers').hidden = true; });
@@ -2074,8 +2036,6 @@ document.addEventListener('keydown', (e) => {
   // The lightbox sits on top of the sheet, so it gets the first Escape on its
   // own — otherwise closing the photo also closes the pin behind it.
   if (!$('lightbox').hidden) { closeLightbox(); return; }
-  // Backing out of placing must not also close the sheet it came from.
-  if (placing) { stopPlacing(); return; }
   // A note open for editing gets the next one on its own, for the same reason:
   // backing out of an edit should not also close the pin.
   if (editingNote) { cancelEditNote(); return; }
