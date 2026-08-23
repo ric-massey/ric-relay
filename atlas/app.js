@@ -15,6 +15,7 @@ import { lngLatToTile, tileUrlsForBounds } from './tiles.js';
 import { shrink, photoPath } from './photos.js';
 import {
   lookup as lookupOwnership, assessorSearchUrl, parcelSiteUrl,
+  discoverParcelSource,
 } from './owners.js';
 
 const db = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -42,7 +43,11 @@ let notes     = [];      // every note on every pin the crew can see
 let photoRows = [];      // the photo index. The images live in IndexedDB.
 let parcelSources = [];  // county assessor adapters — see owners.js
 let parkMarker = null;   // the truck, while a pin that has one is open
+let ownerShown = null;   // { r, cached } — the ownership answer currently drawn
+let countyHunt = null;   // { pinId, state, found } while looking for a county
 let editingNote = null;  // id of the note currently open for editing
+let draftNote = null;    // { id, pending } — photos attached to a note not yet written
+let photoTarget = null;  // which strip the next pick from the file input lands in
 
 /* Object URLs handed to <img>, and a generation counter. Rendering a photo is
  * async, so a sheet closed mid-load would otherwise hand a URL to a thumbnail
@@ -707,6 +712,7 @@ function openNewPin(lat, lng, accuracy) {
   // The id is minted here rather than in createPin, because a photo taken
   // before the pin is saved still has to know which pin it belongs to. Nothing
   // is written anywhere until save, so an abandoned sheet costs a uuid.
+  discardDraftNote();
   sheet = {
     mode: 'new',
     pin: { id: crypto.randomUUID(), lat, lng, accuracy_m: accuracy ?? null },
@@ -726,6 +732,9 @@ function openNewPin(lat, lng, accuracy) {
   $('pin-delete').hidden = true;
   $('pin-meta').innerHTML = metaHtml(sheet.pin, null);
   $('notes-block').hidden = true;    // nothing to log about a place yet
+  // Emptied rather than just hidden: the strips inside it are still in the
+  // document, and renderPhotos paints every strip it can find.
+  $('notes-list').innerHTML = '';
   renderPhotos();
   renderPark();
   resetOwner();
@@ -734,6 +743,9 @@ function openNewPin(lat, lng, accuracy) {
 }
 
 function openPin(p) {
+  // Tapping straight from one pin to another never closes the sheet, so the
+  // photos hung on a note half-written for the last one are cleared here too.
+  discardDraftNote();
   sheet = { mode: 'view', pin: p };
   const mine = p.created_by === me.id;
   $('pin-name').value = p.name || '';
@@ -749,8 +761,7 @@ function openPin(p) {
   $('notes-block').hidden = false;
   $('note-body').value = '';
   editingNote = null;
-  renderNotes();
-  renderPhotos();
+  renderNotes();          // which paints the photo strips, this pin's included
   renderPark();
   resetOwner();
   $('sheet').hidden = false;
@@ -773,6 +784,7 @@ function closeSheet() {
   $('sheet').hidden = true;
   $('crosshair').hidden = true;
   $('pin-save').hidden = false;
+  discardDraftNote();
   releaseObjectUrls();
   clearParkOverlay();
   editingNote = null;
@@ -898,32 +910,80 @@ async function deletePin() {
  * is it the one forty feet left of it. Shrunk and stripped of EXIF on the
  * phone (see photos.js), uploaded to a private bucket, and kept in IndexedDB
  * once you have seen it so it is still there with no signal.
+ *
+ * A photo hangs off the pin or off a note, and which one it is is the whole
+ * meaning. On the pin: this is the place — here is the entrance, here is the
+ * crack. On a note: this is what it looked like the day I went, under a line
+ * that is dated and signed. A new lock on the gate belongs to that Tuesday. It
+ * is not a truth about the place, and filing it as one is how a map starts
+ * lying to you.
  */
 
+/* Every photo on this pin, notes included — what deleting the pin has to clear
+ * out of the bucket. */
 const photosForPin = (pinId) => photoRows.filter((r) => r.pin_id === pinId);
 
+/* The strip under the description is the place itself, not anybody's trip. */
+const pinOnlyPhotos = (pinId) => photosForPin(pinId).filter((r) => !r.note_id);
+
+const notePhotos = (noteId) => photoRows.filter((r) => r.note_id === noteId);
+
+/* Everything the lightbox might be looking at, including photos hung on a note
+ * that has not been written yet. */
 function sheetPhotos() {
   if (!sheet) return [];
+  const drafted = draftNote?.pending || [];
   return sheet.mode === 'new'
-    ? (sheet.pending || [])
-    : photosForPin(sheet.pin.id);
+    ? [...(sheet.pending || []), ...drafted]
+    : [...photosForPin(sheet.pin.id), ...drafted];
+}
+
+/* One file input, several strips. Which one a pick lands in is decided by the
+ * button that opened it — the input itself knows nothing. */
+function pickPhotos(target, btn) {
+  if (!sheet) return;
+  photoTarget = { ...target, btn };
+  $('photo-input').click();
 }
 
 async function onPhotoPick(e) {
   const files = [...e.target.files];
   e.target.value = '';                 // so picking the same file twice works
+  // A pick with no target is the pin's: iOS can hand the file back after the
+  // sheet has been through a re-render, and the place itself is the safe guess.
+  const target = photoTarget || { kind: 'pin' };
+  photoTarget = null;
   if (!sheet || !files.length) return;
 
-  const btn = $('photo-add');
-  btn.classList.add('is-busy');
+  const btn = target.btn;
+  btn?.classList.add('is-busy');
   try {
-    for (const file of files) await addPhoto(file);
+    for (const file of files) await addPhoto(file, target);
   } finally {
-    btn.classList.remove('is-busy');
+    btn?.classList.remove('is-busy');
   }
 }
 
-async function addPhoto(file) {
+/* A photo attached to a note nobody has written yet needs the note's id before
+ * the note exists. Minting it early is the same trick a new pin plays, for the
+ * same reason: an id is free, and it means the picture and the sentence go in
+ * together instead of the picture waiting on a round trip. */
+function draft() {
+  if (!draftNote) draftNote = { id: crypto.randomUUID(), pending: [] };
+  return draftNote;
+}
+
+/* Closing the sheet on a half-written note throws its photos away. They belong
+ * to a note that will never exist, and leaving them behind means an abandoned
+ * sentence quietly costs someone three megabytes of phone. */
+async function discardDraftNote() {
+  const d = draftNote;
+  draftNote = null;
+  if (!d) return;
+  for (const row of d.pending) await local.deleteBlob(row.id);
+}
+
+async function addPhoto(file, target = { kind: 'pin' }) {
   let image;
   try {
     image = await shrink(file);
@@ -936,6 +996,9 @@ async function addPhoto(file) {
   const row = {
     id,
     pin_id: sheet.pin.id,
+    note_id: target.kind === 'note'  ? target.id
+           : target.kind === 'draft' ? draft().id
+           : null,
     created_by: me.id,
     path: photoPath(sheet.pin.id, me.id, id),
     width: image.width,
@@ -948,7 +1011,8 @@ async function addPhoto(file) {
   // and be retried; losing the only copy of a photo cannot be.
   await local.putBlob(id, image.blob);
 
-  if (sheet.mode === 'new') sheet.pending.push(row);
+  if (target.kind === 'draft') draft().pending.push(row);
+  else if (sheet.mode === 'new') sheet.pending.push(row);
   else await commitPhoto(row);
 
   renderPhotos();
@@ -978,13 +1042,30 @@ async function photoBlob(row) {
   return data;
 }
 
+/* Every strip on screen is painted in one pass: the pin's, the one under the
+ * note being written, and one per note. They have to be, because they are
+ * revoked together — a load that finishes after the sheet has moved on would
+ * otherwise draw somebody else's photo into a tile that is still on screen. */
 function renderPhotos() {
-  const strip = $('pin-photos');
   releaseObjectUrls();
   const gen = photoGen;
-  strip.innerHTML = '';
 
-  const rows = sheetPhotos();
+  paintStrip($('pin-photos'), !sheet ? []
+    : sheet.mode === 'new' ? (sheet.pending || [])
+    : pinOnlyPhotos(sheet.pin.id), gen);
+
+  paintStrip($('note-draft-photos'), draftNote?.pending || [], gen);
+
+  // The strips inside the notes are drawn by renderNotes and filled here, so a
+  // note always has an empty one waiting — otherwise a photo added to a note
+  // would have nowhere to land until the whole list was rebuilt.
+  document.querySelectorAll('[data-note-photos]').forEach((el) =>
+    paintStrip(el, notePhotos(el.dataset.notePhotos), gen));
+}
+
+function paintStrip(strip, rows, gen) {
+  if (!strip) return;
+  strip.innerHTML = '';
   strip.hidden = !rows.length;
 
   rows.forEach((row) => {
@@ -1041,7 +1122,10 @@ async function deletePhoto(id) {
   if (!row) return;
   if (!confirm('Delete this photo?')) return;
 
-  if (sheet.mode === 'new') {
+  if (draftNote?.pending.some((r) => r.id === id)) {
+    // Never left the phone: no row, no object, nothing to tell the server.
+    draftNote.pending = draftNote.pending.filter((r) => r.id !== id);
+  } else if (sheet.mode === 'new') {
     sheet.pending = sheet.pending.filter((r) => r.id !== id);
   } else {
     await push({ op: 'photo-delete', paths: [row.path], ids: [id] });
@@ -1059,6 +1143,11 @@ async function deletePhoto(id) {
  * The description is what the place is. A note is what happened when someone
  * went. Anyone can add one to any pin they can see, including someone else's —
  * that is the point: the map gets better every time one of you goes out.
+ *
+ * A note carries its own photos, because "here is what the gate looks like now"
+ * is a different picture from "here is the entrance" and filing them together
+ * loses the difference. They are the note author's: a note is one person's
+ * account of one day, and the database says so too.
  */
 
 function renderNotes() {
@@ -1069,6 +1158,12 @@ function renderNotes() {
   $('notes-list').innerHTML = rows.length
     ? rows.map(noteHtml).join('')
     : '<p class="notes-empty">No notes yet. Been out there? Say what you found.</p>';
+
+  // Rebuilding the list threw every note's photo strip away with it, so the
+  // tiles are repainted here rather than at each of the seven call sites that
+  // could forget. renderPhotos paints all the strips on screen, this one
+  // included.
+  renderPhotos();
 }
 
 /* An edit keeps the day it was written and says so separately, because on a log
@@ -1085,6 +1180,7 @@ function noteHtml(n) {
       <b>${who}</b><span>${fmtDate(n.created_at)}${
         wasEdited(n) ? ` &middot; edited ${fmtDate(n.updated_at)}` : ''}</span>
       ${mine && editingNote !== n.id ? `
+        <button class="note-photo" data-photo="${n.id}">photo</button>
         <button class="note-edit" data-edit="${n.id}" aria-label="Edit note">✎</button>
         <button class="note-del" data-id="${n.id}" aria-label="Delete note">✕</button>` : ''}
     </div>`;
@@ -1098,10 +1194,14 @@ function noteHtml(n) {
        </div>`
     : `<p>${escapeHtml(n.body)}</p>`;
 
+  // The strip is always drawn, empty or not, and renderPhotos fills it. A note
+  // that only grows its first photo after the list was built still has
+  // somewhere to put it.
   return `<article class="note${n._pending ? ' is-pending' : ''}${
     editingNote === n.id ? ' is-editing' : ''}">
     ${head}
     ${body}
+    <div class="photo-strip is-note" data-note-photos="${n.id}" hidden></div>
     ${n._pending ? '<span class="note-warn">not synced yet</span>' : ''}
   </article>`;
 }
@@ -1152,10 +1252,19 @@ function cancelEditNote() {
 async function addNote() {
   if (!sheet || sheet.mode !== 'view') return;
   const body = $('note-body').value.trim();
-  if (!body) return;
+  const drafted = draftNote?.pending || [];
+  if (!body) {
+    // A picture with nothing said about it is a photo of the place, and it
+    // belongs on the pin. Say that rather than writing an empty note to hang
+    // it off — the sentence is what makes a note worth reading later.
+    if (drafted.length) toast('say what happened, or put the photo on the pin', true);
+    return;
+  }
 
   const row = {
-    id: crypto.randomUUID(),
+    // The drafted photos already point at this id. If nothing was attached
+    // there is no draft and this is an ordinary new uuid.
+    id: draft().id,
     pin_id: sheet.pin.id,
     created_by: me.id,
     body,
@@ -1168,6 +1277,13 @@ async function addNote() {
 
   notes.push(shown);
   await local.putNote(shown);
+
+  // Photos queued behind the note, never in front of it: a photo row references
+  // the note, so replaying them the other way round fails the foreign key and
+  // jams everything behind it in the queue. Same rule as a new pin's photos.
+  draftNote = null;
+  for (const photo of drafted) await commitPhoto(photo);
+
   $('note-body').value = '';
   renderNotes();
   refreshNetworkUI();
@@ -1175,7 +1291,20 @@ async function addNote() {
 }
 
 async function deleteNote(id) {
-  if (!confirm('Delete this note?')) return;
+  const its = notePhotos(id);
+  if (!confirm(its.length
+    ? `Delete this note and ${its.length === 1 ? 'its photo' : `its ${its.length} photos`}?`
+    : 'Delete this note?')) return;
+
+  // Photos first, exactly as when a pin goes. The rows cascade away with the
+  // note, but the objects in the bucket do not, and once the row is gone
+  // nothing knows the object's name to delete it by — it sits there forever.
+  if (its.length) {
+    await push({ op: 'photo-delete', paths: its.map((r) => r.path), ids: its.map((r) => r.id) });
+    for (const r of its) { await local.deletePhoto(r.id); await local.deleteBlob(r.id); }
+    photoRows = photoRows.filter((r) => r.note_id !== id);
+  }
+
   await push({ op: 'note-delete', id });
   notes = notes.filter((n) => n.id !== id);
   await local.deleteNote(id);
@@ -1184,6 +1313,12 @@ async function deleteNote(id) {
 }
 
 function onNotesClick(e) {
+  const thumb = e.target.closest('.thumb');
+  if (thumb) { openLightbox(thumb.dataset.id); return; }
+
+  const photo = e.target.closest('[data-photo]');
+  if (photo) { pickPhotos({ kind: 'note', id: photo.dataset.photo }, photo); return; }
+
   const del = e.target.closest('.note-del');
   if (del) { deleteNote(del.dataset.id); return; }
 
@@ -1331,6 +1466,8 @@ function parkDirections() {
 
 function resetOwner() {
   const out = $('own-result');
+  ownerShown = null;
+  countyHunt = null;
   out.hidden = true;
   out.innerHTML = '';
   $('own-ask').disabled = false;
@@ -1357,6 +1494,7 @@ async function askOwner() {
     return;
   }
 
+  countyHunt = null;          // "check again" means the whole question, not half of it
   btn.disabled = true;
   btn.textContent = 'asking…';
   try {
@@ -1376,8 +1514,107 @@ function ownerRow(term, value) {
   return `<div><dt>${escapeHtml(term)}</dt><dd>${escapeHtml(String(value))}</dd></div>`;
 }
 
+/* ── going and finding the county ────────────────────────────────────────
+ * Everything above is national and works anywhere. The owner's NAME is the one
+ * thing that isn't, and the answer to that used to be a form: find your
+ * county's ArcGIS parcel layer, work out which of its ninety columns is the
+ * owner, type it all in. Which is a reasonable thing to ask of somebody at a
+ * desk and a ridiculous one to ask of somebody standing at a gate.
+ *
+ * So it goes and looks instead, and what it finds is only ever offered, never
+ * applied: it says which service, how many parcels are in it, and what it just
+ * read off the ground under this pin. You look at that and decide. Saving it
+ * writes one row, and from then on the county answers instantly and offline
+ * for everybody.
+ */
+
+function huntHtml() {
+  if (!countyHunt || countyHunt.pinId !== sheet?.pin?.id) return '';
+
+  if (countyHunt.state === 'busy') {
+    return '<div class="owner-hunt">looking through what the county publishes… '
+         + 'give it a few seconds</div>';
+  }
+  if (countyHunt.state === 'none') {
+    return '<div class="owner-hunt">nothing published that will answer about this '
+         + 'point. The office still will — the description above is what they '
+         + 'search on.</div>';
+  }
+  if (countyHunt.state === 'dropped') {
+    return '<div class="owner-hunt">left alone. If you know the county\'s layer, '
+         + 'it can still be added by hand.</div>';
+  }
+
+  const f = countyHunt.found;
+  const rows = [];
+  if (f.parcel?.owner)   rows.push(ownerRow('owner', f.parcel.owner));
+  if (f.parcel?.apn)     rows.push(ownerRow('parcel', f.parcel.apn));
+  if (f.parcel?.address) rows.push(ownerRow('address', f.parcel.address));
+
+  // Said plainly, because it is the difference between an answer and a service
+  // that merely covers the area: standing on a road or on public land, there is
+  // no parcel under you and there is not supposed to be one.
+  const read = rows.length
+    ? `<dl class="owner-rows">${rows.join('')}</dl>`
+    : `<div class="owner-hunt">It covers this area, but nothing owns the exact
+        spot this pin is on — usually a road, or public land. Save it and it
+        will answer for the pins that do.</div>`;
+
+  return `<div class="owner-found">
+    <div class="owner-found-head">${escapeHtml(f.service)}</div>
+    <div class="owner-when">${f.count ? `${f.count.toLocaleString()} parcels &middot; ` : ''}${
+      escapeHtml(new URL(f.source.url).hostname)}</div>
+    ${read}
+    <div class="owner-links">
+      <button class="linkish" data-own="save-county"><b>use this from now on</b></button>
+      <button class="linkish" data-own="drop-county">not that one</button>
+    </div>
+  </div>`;
+}
+
+async function findCounty() {
+  const r = ownerShown?.r;
+  if (!sheet || !r?.county) return;
+  if (!online()) { toast('finding a county needs signal', true); return; }
+
+  const pinId = sheet.pin.id;
+  countyHunt = { pinId, state: 'busy' };
+  renderOwner(r, ownerShown.cached);
+
+  let found = null;
+  try {
+    found = await discoverParcelSource(r.county, r.state, sheet.pin.lat, sheet.pin.lng);
+  } catch {
+    found = null;
+  }
+  if (sheet?.pin?.id !== pinId) return;        // sheet moved on while we looked
+
+  countyHunt = found
+    ? { pinId, state: 'found', found }
+    : { pinId, state: 'none' };
+  renderOwner(r, ownerShown.cached);
+}
+
+async function saveCounty() {
+  const found = countyHunt?.found;
+  if (!found) return;
+
+  const { error } = await db.from('parcel_sources')
+    .insert({ ...found.source, created_by: me.id });
+  if (error) { toast(error.message, true); return; }
+
+  countyHunt = null;
+  await loadSources();
+  toast('saved — this county answers from now on');
+  // Ask again rather than showing what the search happened to read: the real
+  // lookup goes through the same code every other pin uses, so what you end up
+  // looking at is what everybody will see, not a preview of it.
+  askOwner();
+}
+
 function renderOwner(r, cached) {
   const out = $('own-result');
+  ownerShown = { r, cached };
   const parts = [];
 
   if (r.agencyName) {
@@ -1412,10 +1649,15 @@ function renderOwner(r, cached) {
     links.push(`<a class="linkish" href="${escapeHtml(assessorSearchUrl(r.county, r.state))}"
       target="_blank" rel="noopener">find the assessor's office</a>`);
   }
-  if (!r.parcel && r.county) {
-    links.push('<button class="linkish" data-own="sources">teach it this county</button>');
+  if (!r.parcel && r.county && !countyHunt) {
+    links.push('<button class="linkish" data-own="find">find the county\'s records</button>');
+  }
+  if (!r.parcel && r.county && ['none', 'dropped'].includes(countyHunt?.state)) {
+    links.push('<button class="linkish" data-own="sources">add the county by hand</button>');
   }
   if (links.length) parts.push(`<div class="owner-links">${links.join('')}</div>`);
+
+  parts.push(huntHtml());
 
   parts.push(`<div class="owner-when">${cached
     ? `looked up ${fmtDate(new Date(r.at).toISOString())} &middot; kept on this phone`
@@ -1433,7 +1675,17 @@ function renderOwner(r, cached) {
 async function onOwnerClick(e) {
   const btn = e.target.closest('[data-own]');
   if (!btn) return;
-  if (btn.dataset.own === 'sources') { closeSheet(); openSources(); return; }
+  const what = btn.dataset.own;
+  if (what === 'sources') { closeSheet(); openSources(); return; }
+  if (what === 'find')    { findCounty(); return; }
+  if (what === 'save-county') { saveCounty(); return; }
+  if (what === 'drop-county') {
+    // Rejecting a candidate leaves the manual form as the way through, which is
+    // the same place this always ended before it could go and look.
+    countyHunt = { pinId: sheet?.pin?.id, state: 'dropped' };
+    renderOwner(ownerShown.r, ownerShown.cached);
+    return;
+  }
 
   const text = $('own-result').dataset.legal;
   if (!text) return;
@@ -1847,8 +2099,13 @@ $('pin-delete').addEventListener('click', deletePin);
 $('pin-directions').addEventListener('click', openDirections);
 $('pin-copy').addEventListener('click', copyCoords);
 $('photo-input').addEventListener('change', onPhotoPick);
-$('photo-add').addEventListener('click', () => $('photo-input').click());
+$('photo-add').addEventListener('click', (e) => pickPhotos({ kind: 'pin' }, e.currentTarget));
+$('note-photo').addEventListener('click', (e) => pickPhotos({ kind: 'draft' }, e.currentTarget));
 $('pin-photos').addEventListener('click', (e) => {
+  const tile = e.target.closest('.thumb');
+  if (tile) openLightbox(tile.dataset.id);
+});
+$('note-draft-photos').addEventListener('click', (e) => {
   const tile = e.target.closest('.thumb');
   if (tile) openLightbox(tile.dataset.id);
 });

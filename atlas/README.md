@@ -95,6 +95,15 @@ will never get a fix.
   Tap **✎** on one of yours to reword it. The note keeps the day it was
   written and says "edited" separately, because on a log of "gate was locked in
   March" the date is half the meaning.
+- **a photo on a note** — **add photo** next to the note box attaches to what
+  you are writing; **photo** on one of your existing notes adds to that one.
+  They draw smaller than the pin's, under the line they belong to, and the
+  difference is the whole point: a photo on the *pin* is what the place is —
+  the entrance, the crack, the thing you are looking for. A photo on a *note*
+  is what it looked like the day someone went, under a line that is dated and
+  signed. A new lock on the gate belongs to that Tuesday. It is not a truth
+  about the place, and filing it as one is how a map starts lying to you. A
+  note's photos are the note author's, and they go when the note goes.
 - **parking** — a pin is the thing you came for, and it is usually not
   somewhere you can drive to. So a pin carries a second point: the pull-off, the
   gate, the wide spot on the forest road. Tap **the truck is here** standing at
@@ -145,16 +154,40 @@ more than once and it is still true — names live with county assessors, and ev
 county publishes differently. Most of them publish through ArcGIS, though, so one
 generic adapter covers a lot of them.
 
-**layers → property lines → parcel lookups** is where you point it at a county:
-a layer URL and the names of the fields holding the owner, the parcel number, the
-address and the acreage. Find it by searching "*&lt;county&gt; GIS REST services
-parcels*"; you want a single layer, so the URL ends in a number. Open it in a
-browser first and it will list its own field names. Optionally give it the
-county's parcel page with `{apn}` where the number goes, and the answer gets a
-link straight through to it.
+**find the county's records** does that for you, and it is the button to reach
+for. It appears under the answer whenever ATLAS knows which county you are in
+and has no adapter for it. It searches the public ArcGIS catalogue for that
+county and for its state, then *asks each candidate about the point this pin is
+on* — that last part is what makes it honest rather than clever. Nothing is
+accepted on the strength of its name. A service is only offered once it has
+answered about your ground.
 
-Without an adapter the lookup still works — it just stops one step short, at the
-legal description and a link to find that county's assessor.
+It shows you what it found before it changes anything: which service, how many
+parcels are in it, and what it just read off the ground under the pin. **use
+this from now on** saves it, and from that moment the county answers instantly,
+for everyone, and offline afterwards. **not that one** falls back to the form.
+
+Two things it is deliberately careful about:
+
+- **Statewide layers.** A dozen states run one parcel service better maintained
+  than any of their counties', and a search naming the county will never find
+  it. So the state is searched too.
+- **Partial layers.** The nastiest wrong answer available is a real parcel layer
+  from the right county, with a beautiful `OWNERNAME` column, that only contains
+  the ninety-five lots the county itself owns — everywhere else it answers
+  "nothing here", which reads exactly like the truth. So candidates are counted:
+  a county's real parcel fabric has tens of thousands of rows, and coverage
+  outranks having an owner column at all.
+
+**layers → property lines → parcel lookups** is the same thing by hand, for a
+county nothing is published for. A layer URL and the names of the fields holding
+the owner, the parcel number, the address and the acreage. Find it by searching
+"*&lt;county&gt; GIS REST services parcels*"; you want a single layer, so the URL
+ends in a number. Optionally give it the county's parcel page with `{apn}` where
+the number goes, and the answer gets a link straight through to it.
+
+With no adapter at all the lookup still works — it just stops one step short, at
+the legal description and a link to find that county's assessor.
 
 **Those adapters live in the database, not in this repo, and that is deliberate.**
 The repo is public. Which counties this crew looks parcels up in is location data,
@@ -222,6 +255,14 @@ pasting the wrong forty into an assessor's search returns somebody else's name
 with no hint that it happened. Those tests also hold the line that private land
 is never described as open, and that a source URL which isn't `https` is refused.
 
+`owners.test.mjs` also covers going and finding a county: that a county's own
+service outranks a republished national one, that the county-owned and
+tax-delinquent layers get pushed below the full one they are named like, that
+`OWNER_ADDRESS` is never read as an owner's name, and that the whole search runs
+against a stubbed catalogue and picks the layer which answered about the pin
+itself. No real county appears in that file — a fixture is still a list of the
+places we look.
+
 And the photo paths, which are not cosmetic: a photo's object name is
 `{pin_id}/{uploader_id}/{photo_id}.jpg`, and the storage policies read the
 permissions straight out of that shape. A path built wrong is either a photo the
@@ -256,10 +297,14 @@ protecting.
 
 ## Not built yet
 
-- Photos on a note, as opposed to on the pin. "Here is what the gate looks like
-  now" is a different picture from "here is the entrance".
-- Owner **name** outside a county someone has added an adapter for. That is the
-  shape of the problem rather than a missing feature — see above.
+- Owner **name** in a county that publishes no parcel service at all, or
+  publishes one without names on it. Some counties genuinely do not put owner
+  names online, and no amount of searching invents one — that is a shape of the
+  problem, not a missing feature. What ATLAS can do is find whatever *is*
+  published, in one tap, and say plainly what it got.
+- A county's own parcel page (`{apn}` deep link) still has to be typed in by
+  hand. The search finds the data service; it cannot find the public web page
+  that goes with it.
 
 Ruled out, on evidence, so they don't get re-proposed: Strava's heatmap (503s to
 anyone unauthenticated, and their terms forbid republishing), AllTrails (no

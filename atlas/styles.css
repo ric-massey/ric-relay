@@ -318,6 +318,11 @@ button { cursor: pointer; border: none; background: none; }
   position: relative;
 }
 .thumb.is-loaded { border-color: var(--line-soft); }
+/* A note's photos are smaller than the pin's on purpose. The pin's strip is
+   what the place is; these are what one person saw on one day, and the size
+   difference says which is which before you read a word. */
+.photo-strip.is-note { margin-top: 0.45rem; }
+.photo-strip.is-note .thumb { width: 72px; height: 72px; border-radius: 8px; }
 /* Yellow means "lives on this phone only" everywhere else in here; a photo
  * waiting to upload is the same statement, so it gets the same colour. */
 .thumb.is-pending { border-color: var(--warn-bg); border-width: 3px; }
@@ -413,6 +418,21 @@ button { cursor: pointer; border: none; background: none; }
 .owner-when { font-size: 0.7rem; color: var(--ink-dim); font-weight: 600; }
 #own-ask:disabled { opacity: 0.6; }
 
+/* What came back from going and looking for the county. Boxed off from the
+   answer above it because it is not one yet — it is a proposal, and the whole
+   point is that you look at it before it becomes the thing everybody sees. */
+.owner-hunt {
+  font-size: 0.82rem; font-weight: 600; color: var(--ink-dim);
+  line-height: 1.35; padding-top: 0.2rem;
+}
+.owner-found {
+  display: flex; flex-direction: column; gap: 0.35rem;
+  border: 2px solid var(--line); border-radius: 10px;
+  padding: 0.6rem; margin-top: 0.3rem; background: var(--panel-2);
+}
+.owner-found-head { font-weight: 800; font-size: 0.9rem; line-height: 1.25; }
+.owner-found .owner-hunt { padding-top: 0; }
+
 /* ── parcel lookups ───────────────────────────────────────────────────── */
 .sources-list { display: flex; flex-direction: column; gap: 0.4rem; }
 .source-row {
@@ -472,6 +492,15 @@ button { cursor: pointer; border: none; background: none; }
   background: none; border: none; color: var(--ink-dim);
   font-size: 0.95rem; padding: 0 0.2rem; cursor: pointer; line-height: 1;
 }
+/* A word rather than a glyph. Nobody guesses a camera pictogram at arm's
+   length in the sun, and this one has to be found by someone who has just
+   walked up to a gate and wants to show the others the new lock. */
+.note-photo {
+  background: none; border: none; color: var(--ink-dim); font: inherit;
+  font-size: 0.72rem; font-weight: 800; letter-spacing: 0.03em;
+  padding: 0 0.25rem; cursor: pointer; line-height: 1;
+  text-decoration: underline; text-underline-offset: 3px;
+}
 .note p { font-size: 0.95rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .note-warn { color: var(--ink-dim); font-size: 0.72rem; font-weight: 700; }
 
@@ -493,6 +522,8 @@ button { cursor: pointer; border: none; background: none; }
 .note-edit-actions {
   display: flex; align-items: center; gap: 0.8rem; margin-top: 0.4rem;
 }
+.note-compose { display: flex; gap: 0.5rem; }
+.note-compose .btn-ghost { flex: 1; }
 .note-edit-actions .btn-ghost { padding: 0.45rem 0.8rem; }
 
 /* ── full-screen panels (all pins, offline maps) ──────────────────────── */

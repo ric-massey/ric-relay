@@ -303,3 +303,403 @@ export async function lookup(lat, lng, { sources = [], timeout = 12000 } = {}) {
     parcel: tried.find(Boolean) || null,
   };
 }
+
+/* ── finding the county's records for yourself ───────────────────────────
+ * Everything above works anywhere in the country, free, with no key. The one
+ * thing it cannot do from a national source is put a NAME on private ground,
+ * because names live with county assessors and every county publishes its own
+ * way. The answer to that was always "add an adapter for the county" — a layer
+ * URL and four field names, typed into a form.
+ *
+ * Which is a fine answer at a desk and a useless one at a gate. So this goes
+ * and looks. Counties overwhelmingly publish through ArcGIS, ArcGIS Online has
+ * a public catalogue, and a service either answers a point query with the
+ * parcel you are standing in or it does not. That last part is what makes this
+ * honest rather than clever: nothing is guessed from a name and hoped for. A
+ * candidate is only accepted when it has been asked about THIS point and has
+ * come back with a parcel.
+ *
+ * What comes out the other end is a parcel_sources row, ready to save, so the
+ * next person to stand somewhere in that county gets the name immediately and
+ * offline afterwards. The search is the one-off; the row is the point.
+ */
+
+const AGOL_SEARCH = 'https://www.arcgis.com/sharing/rest/search';
+
+/* Fixed federal table, same as STATE_FIPS above and for the same reason: the
+ * catalogue is searched by words, and a statewide parcel service is titled
+ * "Montana", never "MT". No places of ours in here. */
+export const STATE_NAMES = {
+  AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California',
+  CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', DC: 'District of Columbia',
+  FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois',
+  IN: 'Indiana', IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana',
+  ME: 'Maine', MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan',
+  MN: 'Minnesota', MS: 'Mississippi', MO: 'Missouri', MT: 'Montana',
+  NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire', NJ: 'New Jersey',
+  NM: 'New Mexico', NY: 'New York', NC: 'North Carolina', ND: 'North Dakota',
+  OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania',
+  RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee',
+  TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington',
+  WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming', AS: 'American Samoa',
+  GU: 'Guam', MP: 'Northern Mariana Islands', PR: 'Puerto Rico',
+  VI: 'Virgin Islands',
+};
+
+export const stateName = (abbr) => STATE_NAMES[String(abbr || '').toUpperCase()] || null;
+
+/* Two searches, not one. The county's own GIS office is the usual publisher,
+ * but a dozen states run a single statewide parcel layer that is better
+ * maintained than any of their counties' — and a query naming the county will
+ * never find it. Both sets go into the same pile and the probe sorts them out.
+ *
+ * The catalogue's bbox filter was tried here and does nothing useful: the same
+ * Ohio and Florida services come back for a point in Kansas and a point in
+ * Colorado. The words are the filter; the point query is the proof. */
+export function serviceSearchUrls(county, state, { num = 12 } = {}) {
+  const kinds = '(type:"Feature Service" OR type:"Map Service")';
+  const terms = [];
+  if (county) terms.push(`(parcels OR "land records") AND "${county} County" AND ${kinds}`);
+  const sn = stateName(state);
+  if (sn) terms.push(`parcels AND "${sn}" AND statewide AND ${kinds}`);
+
+  return terms.map((q) => {
+    const params = new URLSearchParams({ q, f: 'json', num: String(num) });
+    return `${AGOL_SEARCH}?${params}`;
+  });
+}
+
+/* Reading a catalogue entry: does this look like a county's own parcel service,
+ * or like the fiftieth copy of a national dataset someone republished. Only a
+ * shortlist for probing — being wrong here costs one request, and the point
+ * query is what actually decides. */
+const GOOD_TITLE = /\bparcel|\btax ?lot|cadastr|land ?record|\bownership/i;
+const BAD_TITLE  =
+  /nationwide|national|\bUSA\b|regrid|permit|zoning|right[- ]of[- ]way|\bROW\b|survey|legend|sample|test|draft|training|extraction|deprecated|archive/i;
+
+/* A different and nastier kind of wrong. These are real parcel layers from the
+ * real county, with the right fields and plausible names — they just only
+ * contain SOME of the parcels: the ones the county itself owns, the ones behind
+ * on their taxes, the ones that are not houses. Asked about a place they do not
+ * cover they answer nothing at all, which reads exactly like "no parcel here"
+ * and is a lie. Worth pushing down hard; there is nearly always a full layer
+ * from the same office sitting next to it. */
+const PARTIAL_TITLE =
+  /\b(county|city|state|federally|publicly)[- ]owned|surplus|delinquent|tax ?sale|foreclos|abandoned|vacant|landfill|supplemental|not_|_final\b|\b(19|20)\d\d\b/i;
+
+export function scoreCandidate(item, county, state) {
+  const title = String(item?.title || '');
+  const publisher = `${item?.owner || ''} ${item?.orgId || ''}`;
+  if (!GOOD_TITLE.test(title)) return 0;
+
+  let score = 10;
+  if (BAD_TITLE.test(title)) score -= 12;
+  if (PARTIAL_TITLE.test(title)) score -= 20;
+
+  const c = String(county || '').toLowerCase();
+  const sn = String(stateName(state) || '').toLowerCase();
+  const squash = (s) => s.toLowerCase().replace(/[^a-z]/g, '');
+
+  if (c && title.toLowerCase().includes(c)) score += 14;
+  if (c && squash(publisher).includes(squash(c))) score += 12;
+  if (sn && title.toLowerCase().includes(sn)) score += 6;
+  if (sn && squash(publisher).includes(squash(sn))) score += 4;
+  if (/assessor|appraisal|county|parish|borough/i.test(publisher)) score += 4;
+  if (/\bparcel/i.test(title)) score += 3;
+
+  return score;
+}
+
+export function rankCandidates(results, county, state, { keep = 8 } = {}) {
+  return (results || [])
+    .filter((r) => r?.url && /^https:\/\//i.test(r.url))
+    .map((r) => ({ title: r.title, url: r.url.replace(/\/+$/, ''), owner: r.owner,
+                   score: scoreCandidate(r, county, state) }))
+    .filter((r) => r.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .filter((r, i, all) => all.findIndex((x) => x.url === r.url) === i)
+    .slice(0, keep);
+}
+
+/* Which layers inside a service are worth asking. A county service is usually
+ * a stack — subdivisions, lots, zoning, parcels — and only some of it answers
+ * the question. */
+export function parcelLayers(service, { keep = 2 } = {}) {
+  return (service?.layers || [])
+    .filter((l) => GOOD_TITLE.test(String(l.name || '')))
+    .filter((l) => !l.subLayerIds)                 // group layers hold nothing
+    .sort((a, b) => Number(/\bparcel/i.test(b.name)) - Number(/\bparcel/i.test(a.name)))
+    .slice(0, keep);
+}
+
+/* ── which field is the owner ────────────────────────────────────────────
+ * Counties name their columns anything: OWNER, own1, DEEDHOLDER, NAME1. What
+ * makes this safe rather than a guess is the NEVER list. Matching OWNER_ADDRESS
+ * as the owner would print a street as somebody's name and look completely
+ * plausible doing it, so a field that fails a never-rule is out, however well
+ * it scores otherwise.
+ */
+const norm = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+const FIELD_RULES = {
+  owner_field: {
+    exact: ['OWNER', 'OWNERNAME', 'OWNERNAME1', 'OWNER1', 'OWN1', 'OWNNAME',
+            'OWNERNM', 'OWNERS', 'OWNERFULLNAME', 'CURRENTOWNER', 'DEEDHOLDER',
+            'TAXPAYER', 'TAXPAYERNAME', 'PROPERTYOWNER', 'NAMEOWNER', 'GRANTEE',
+            'OWNERNAMES', 'OWNER_NAME1', 'NAME1', 'OWNERFIRST'],
+    like:  [/^OWN/, /OWNER/, /TAXPAYER/, /DEEDHOLDER/],
+    never: [/ADDR/, /MAIL/, /CITY/, /STATE/, /ZIP/, /PHONE/, /CODE/, /TYPE/,
+            /DATE/, /PERCENT|^PCT/, /OCCUP/, /^OWNERID$/, /COUNT$/],
+  },
+  apn_field: {
+    exact: ['APN', 'PIN', 'PARCELID', 'PARCELNO', 'PARCELNUM', 'PARCELNUMBER',
+            'PARCELPIN', 'PARID', 'PARCEL', 'TAXID', 'TAXPIN', 'TAXPARCELID',
+            'ACCOUNT', 'ACCOUNTNO', 'PROPID', 'PROPERTYID', 'AIN', 'PIDN',
+            'PID', 'STATEPARCELID', 'GEOID', 'PARCELIDNO'],
+    like:  [/^APN/, /PARCEL.*(ID|NO|NUM|PIN)/, /^PIN/, /TAX.*(ID|PIN)/],
+    never: [/OWNER/, /ADDR/, /OBJECTID/, /SHAPE/, /GLOBALID/],
+  },
+  address_field: {
+    exact: ['SITEADDRESS', 'SITUSADDRESS', 'SITUSADDR', 'SITEADDR',
+            'PROPERTYADDRESS', 'PROPADDRESS', 'PROPADDR', 'PHYSICALADDRESS',
+            'FULLADDRESS', 'STREETADDRESS', 'ADDRESS', 'ADDR', 'SITUS',
+            'SITEADDRESSFULL', 'LOCATION'],
+    like:  [/SITUS/, /SITE.*ADDR/, /PROP.*ADDR/, /^ADDR/, /ADDRESS/],
+    never: [/MAIL/, /OWNER/, /CITY/, /ZIP/, /STATE/, /^ADDRESSID/],
+  },
+  acres_field: {
+    exact: ['ACRES', 'ACREAGE', 'GISACRES', 'CALCACRES', 'CALCULATEDACRES',
+            'DEEDACRES', 'LEGALACRES', 'TOTALACRES', 'ACRESGIS', 'PARCELACRES',
+            'SHAPEACRES', 'ACRESCALC'],
+    like:  [/ACRE/],
+    never: [/BLDG|BUILDING/, /PRICE|VALUE/],
+  },
+};
+
+/* Names alone, or names weighed against a real record from the layer. The
+ * sample matters: half these services carry an OWNER column that every row
+ * leaves blank, and a blank column beaming out as the answer is worse than
+ * admitting there is no name here. */
+export function guessFields(fieldNames, sample = null) {
+  const names = Array.isArray(fieldNames) ? fieldNames
+    : Object.keys(fieldNames || {});
+  const out = {};
+
+  for (const [role, rule] of Object.entries(FIELD_RULES)) {
+    let best = null;
+    for (const name of names) {
+      const key = norm(name);
+      if (!key) continue;
+      if (rule.never.some((re) => re.test(key))) continue;
+
+      let score = 0;
+      const exact = rule.exact.map(norm).indexOf(key);
+      if (exact >= 0) score = 100 - exact;
+      else {
+        const like = rule.like.findIndex((re) => re.test(key));
+        if (like >= 0) score = 50 - like;
+      }
+      if (!score) continue;
+
+      if (sample) {
+        const v = sample[name];
+        // A column that is empty in the one record we have is not disqualified,
+        // only outranked — some parcels genuinely have no address on file.
+        score += (v == null || v === '' || v === ' ') ? -20 : 5;
+      }
+      if (!best || score > best.score) best = { name, score };
+    }
+    out[role] = best && best.score > 0 ? best.name : null;
+  }
+  return out;
+}
+
+/* ── the search itself ───────────────────────────────────────────────────── */
+
+async function getJson(url, timeout, fetchImpl) {
+  const doFetch = fetchImpl || fetch;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeout);
+  try {
+    const res = await doFetch(url, { signal: ctl.signal });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.error ? null : data;          // ArcGIS says no in a 200 body
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/* A layer, asked about one point. Optionally with a few metres of slack, which
+ * is not sloppiness — it is how you tell "this service does not cover here"
+ * apart from "you are standing in the middle of the road", and the road is
+ * where people stand when they stop to check. A buffered answer is used to
+ * confirm the SERVICE, never to name an owner. */
+function layerQueryUrl(layerUrl, lat, lng, metres = 0) {
+  const params = new URLSearchParams({
+    geometry: `${lng},${lat}`,
+    geometryType: 'esriGeometryPoint',
+    inSR: '4326',
+    spatialRel: 'esriSpatialRelIntersects',
+    outFields: '*',
+    returnGeometry: 'false',
+    resultRecordCount: '1',
+    f: 'json',
+  });
+  if (metres) {
+    params.set('distance', String(metres));
+    params.set('units', 'esriSRUnit_Meter');
+  }
+  return `${layerUrl}/query?${params}`;
+}
+
+/* How many parcels the layer holds at all. One cheap request, and the single
+ * most useful thing you can know about a candidate: the county's real parcel
+ * fabric has tens or hundreds of thousands of rows in it, and the layer of
+ * county-owned lots that is named almost identically and carries a beautiful
+ * OWNERNAME column has ninety-five. Measured, not guessed — the alternative is
+ * saving the ninety-five and having ATLAS answer "no parcel here" for the rest
+ * of the county forever, which is indistinguishable from the truth. */
+async function layerCount(layerUrl, timeout, fetchImpl) {
+  const data = await getJson(
+    `${layerUrl}/query?where=1%3D1&returnCountOnly=true&f=json`, timeout, fetchImpl);
+  const n = Number(data?.count);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/* Rows, on a curve, capped. The gap that matters is between hundreds and tens
+ * of thousands; past that, bigger is not better and a county with a million
+ * parcels should not outrank one doing its job with eighty thousand. */
+export function coverageScore(count) {
+  if (!count) return 0;
+  return Math.min(16, Math.max(0, (Math.log10(count) - 2) * 6));
+}
+
+/* Everything a probe found out about one layer, or null if it is not one.
+ * `nearby` means the layer holds parcels around here but not under this exact
+ * point — good enough to save the county, not good enough to name anybody. */
+async function probeLayer(layerUrl, label, lat, lng, timeout, fetchImpl) {
+  const meta = await getJson(`${layerUrl}?f=json`, timeout, fetchImpl);
+  if (!meta || meta.type === 'Table' || !/Polygon/i.test(meta.geometryType || '')) return null;
+
+  const names = (meta.fields || []).map((f) => f.name);
+  if (!names.length) return null;
+
+  let hit = await getJson(layerQueryUrl(layerUrl, lat, lng), timeout, fetchImpl);
+  let attrs = hit?.features?.[0]?.attributes || null;
+  let nearby = false;
+
+  if (!attrs) {
+    hit = await getJson(layerQueryUrl(layerUrl, lat, lng, 150), timeout, fetchImpl);
+    attrs = hit?.features?.[0]?.attributes || null;
+    nearby = !!attrs;
+  }
+  if (!attrs) return null;
+
+  const fields = guessFields(names, attrs);
+  if (!fields.owner_field && !fields.apn_field) return null;
+
+  const source = { url: layerUrl, ...fields, site_url: null };
+  const parcel = nearby ? null : readParcel({ ...source, label }, attrs);
+
+  // Only now, once the layer has proved it holds parcels around here. A
+  // candidate that failed above never costs anybody this request.
+  const count = await layerCount(layerUrl, timeout, fetchImpl);
+
+  return {
+    layerUrl, label, fields, nearby, attrs, parcel, count,
+    // An owner's name on the ground you are standing on is the whole point.
+    // Answering about this exact point at all comes next and it is worth more
+    // than it looks: the partial layers — county-owned, delinquent, everything
+    // that is not a house — are precisely the ones that come back empty here.
+    rank: (parcel?.owner ? 40 : 0) + (parcel?.apn ? 15 : 0)
+        + (nearby ? 0 : 12) + (fields.owner_field ? 6 : 0)
+        + coverageScore(count),
+  };
+}
+
+/* Half the catalogue points at a service and half points straight at one layer
+ * inside it — .../MapServer/3 is a perfectly ordinary item URL. Appending
+ * ?f=json to a layer gets you a layer, which has no `layers` array, so treating
+ * everything as a service silently skipped the best answers: it was the county
+ * assessor's own layer that got dropped, every time, while some republished
+ * fragment three places down the list got saved instead. */
+const IS_LAYER_URL = /\/\d+$/;
+
+async function probeService(cand, lat, lng, timeout, fetchImpl) {
+  if (IS_LAYER_URL.test(cand.url)) {
+    const probe = await probeLayer(cand.url, cand.title, lat, lng, timeout, fetchImpl);
+    return probe ? [{ ...probe, candidate: cand }] : [];
+  }
+
+  const service = await getJson(`${cand.url}?f=json`, timeout, fetchImpl);
+  if (!service) return [];
+
+  const layers = parcelLayers(service);
+  // A county's own service often names its layers for the office rather than
+  // for the data — "CountyOwnerParcel_shp" says parcel, "Assessor_2024" does
+  // not. When nothing matches by name, ask the first couple anyway; the point
+  // query is cheap and it is the thing that actually decides.
+  const list = layers.length ? layers
+    : (service.layers || []).slice(0, 2);
+
+  const found = [];
+  for (const layer of list) {
+    const probe = await probeLayer(`${cand.url}/${layer.id}`, cand.title, lat, lng, timeout, fetchImpl);
+    if (probe) found.push({ ...probe, candidate: cand });
+    if (probe?.parcel?.owner) break;             // no reason to keep asking
+  }
+  return found;
+}
+
+/* Go and find the county. Returns a parcel_sources row ready to be saved, plus
+ * whatever it read at this point so the app can show its working — or null,
+ * which is a perfectly ordinary answer and the reason the manual form stays.
+ */
+export async function discoverParcelSource(county, state, lat, lng, {
+  timeout = 12000, fetchImpl = null, maxServices = 5,
+} = {}) {
+  const searches = await Promise.all(
+    serviceSearchUrls(county, state).map((u) => getJson(u, timeout, fetchImpl)));
+
+  const results = searches.flatMap((s) => s?.results || []);
+  const candidates = rankCandidates(results, county, state).slice(0, maxServices);
+  if (!candidates.length) return null;
+
+  let best = null;
+  // Three at a time. All at once is a dozen requests off a phone on one bar for
+  // answers that are usually settled by the first three; one at a time is a
+  // minute of standing there watching a spinner.
+  for (let i = 0; i < candidates.length; i += 3) {
+    const batch = await Promise.all(candidates.slice(i, i + 3)
+      .map((c) => probeService(c, lat, lng, timeout, fetchImpl)));
+
+    for (const probe of batch.flat()) {
+      if (!best || probe.rank > best.rank) best = probe;
+    }
+    if (best?.parcel?.owner) break;
+  }
+  if (!best) return null;
+
+  const label = county
+    ? `${county} County, ${state || ''}`.replace(/,\s*$/, '')
+    : best.label;
+
+  return {
+    source: {
+      label,
+      url: best.layerUrl,
+      owner_field:   best.fields.owner_field,
+      apn_field:     best.fields.apn_field,
+      address_field: best.fields.address_field,
+      acres_field:   best.fields.acres_field,
+      site_url: null,
+    },
+    parcel: best.parcel,
+    service: best.candidate.title,
+    nearby: best.nearby,
+    count: best.count,
+  };
+}

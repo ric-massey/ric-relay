@@ -9,7 +9,7 @@
  *      data would be rude.
  */
 
-const SHELL_VERSION = 'atlas-shell-v11';
+const SHELL_VERSION = 'atlas-shell-v12';
 const TILE_CACHE    = 'atlas-tiles-v1';
 
 const SHELL = [
@@ -80,7 +80,13 @@ self.addEventListener('fetch', (event) => {
   // tile cache and kept forever, and the offline fallback would hand a question
   // about who owns a canyon a transparent PNG. Straight to the network; the app
   // keeps its own answer per pin in IndexedDB for when there is no network.
-  if (url.pathname.endsWith('/query')) return;
+  //
+  // The same goes for every other ArcGIS answer the app asks for — the layer
+  // metadata and the catalogue search behind "find the county's records" are
+  // questions, not tiles, and www.arcgis.com is not in TILE_HOSTS, so without
+  // this they would go to shellFirst and be answered out of the app-shell cache
+  // for the life of the deploy. Nothing that is a tile asks for f=json.
+  if (url.pathname.endsWith('/query') || url.searchParams.get('f') === 'json') return;
 
   if (TILE_HOSTS.includes(url.hostname)) {
     event.respondWith(tileFirst(req));
