@@ -473,21 +473,6 @@
       <p class="estimate">Overlays download with the map when you save an area
         offline, so turn on what you want before you download.</p>
 
-      <section class="detail">
-        <h3 class="detail-head">my location</h3>
-        <label class="switch">
-          <span>use my location</span>
-          <input id="loc-use" type="checkbox">
-          <span class="switch-track"></span>
-          <small>the blue dot, the button that centres on you, and how far away
-            each place is. off means ATLAS never asks the phone where you are.</small>
-        </label>
-        <p id="loc-state" class="estimate">checking…</p>
-        <button id="loc-enable" class="btn-ghost wide">
-          <svg class="icon icon-sm"><use href="#i-locate"/></svg><span class="lbl">turn on my location</span>
-        </button>
-      </section>
-
       <button id="maps-from-layers" class="btn-ghost wide">
         <svg class="icon icon-sm"><use href="#i-download"/></svg>save maps for offline…
       </button>
@@ -497,13 +482,32 @@
   <!-- settings -->
   <div id="settings" class="panel" hidden>
     <div class="panel-head">
-      <strong>settings</strong>
+      <strong id="settings-title">settings</strong>
       <button id="settings-close" class="icon-btn" aria-label="Close">
         <svg class="icon"><use href="#i-close"/></svg>
       </button>
     </div>
     <div class="panel-body pad">
-      <section class="detail">
+      <!-- Shown once, the first time this phone signs in. It is the settings
+           screen rather than a wizard of its own on purpose: the three things
+           worth setting at the start are three things you will want to change
+           later, and this way you have already been to the room they live in. -->
+      <div class="first-intro first-only">
+        <h2>welcome to ATLAS</h2>
+        <p class="lede">One map, everything the crew has found on it, and it
+          keeps working in a canyon with no signal. Three things are worth a
+          minute before you go — none of them compulsory, and all of them are
+          right here in settings whenever you want them.</p>
+        <p class="first-loc"><b>Your location is not one of them.</b> With it
+          switched off you still see every pin, still drop your own by pressing
+          and holding the map, still search, and still download an area for a
+          weekend with no bars. What you give up is the blue dot, the button
+          that centres on you, and how far away each place is. Turn it on and
+          where you are stays on this phone — the only coordinates that go
+          anywhere are the ones on a pin you chose to drop.</p>
+      </div>
+
+      <section class="detail at-first">
         <h3 class="detail-head">you</h3>
         <p class="hint">Your name and your face are on every pin you drop and
           every note you leave. It is what the others see; nobody sees your
@@ -536,7 +540,22 @@
         </button>
       </section>
 
-      <section class="detail">
+      <section class="detail at-first">
+        <h3 class="detail-head">my location</h3>
+        <label class="switch">
+          <span>use my location</span>
+          <input id="loc-use" type="checkbox">
+          <span class="switch-track"></span>
+          <small>the blue dot, the button that centres on you, and how far away
+            each place is. off means ATLAS never asks the phone where you are.</small>
+        </label>
+        <p id="loc-state" class="estimate">checking…</p>
+        <button id="loc-enable" class="btn-ghost wide">
+          <svg class="icon icon-sm"><use href="#i-locate"/></svg><span class="lbl">turn on my location</span>
+        </button>
+      </section>
+
+      <section class="detail at-first">
         <h3 class="detail-head">home</h3>
         <p class="hint">The town the map opens on, and what &ldquo;near me&rdquo; means
           when the phone will not say where you are. Naming one costs nothing:
@@ -605,6 +624,12 @@
             trade, and it is yours to make</small>
         </label>
       </section>
+    </div>
+
+    <!-- No close button during the first run, because there is nothing to
+         escape from: everything above is optional and this is the way on. -->
+    <div id="first-foot" class="first-foot first-only">
+      <button id="first-go" class="btn-primary wide">open the map</button>
     </div>
   </div>
 

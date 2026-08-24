@@ -51,6 +51,11 @@ They get an email, click it, land on ATLAS, and **choose their own password**.
 You never pick or text anyone a password. That flow doubles as the reset path —
 "forgot my password" on the sign-in screen sends the same kind of link.
 
+Straight after the password they get the **first run** (below): what to call
+them, what they look like, whether ATLAS may ask the phone where they are, and
+the town the map should open on. Nothing on it is compulsory and all of it is
+in settings afterwards.
+
 To add a fourth person later, that's the whole process: one invitation.
 
 ---
@@ -106,7 +111,7 @@ these do I want", and that gets answered by what a button is *near*.
 - **the crosshair button**, bottom left — centres on you, and its ring turns
   accent once the app has a fix. Press and hold your own dot to pin where you
   stand. It is only there while **use my location** is on.
-- **use my location**, under **layers → my location** — off and ATLAS never asks
+- **use my location**, under **settings → my location** — off and ATLAS never asks
   the phone where you are: no blue dot, no crosshair button, no distances in the
   list, and no call made on boot or on a tap. This is a different switch from
   the browser's permission, and both of them exist for a reason: the permission
@@ -213,8 +218,34 @@ these do I want", and that gets answered by what a button is *near*.
   the bounding-box conversion, which are the two things in here that go wrong
   without throwing.
 - **save maps for offline** — at the bottom of **layers** (below).
-- **settings** — you, home, colour, light and glass. Reachable from the sliders
-  button or by tapping your own monogram.
+- **settings** — you, my location, home, colour, light and glass. Reachable
+  from the sliders button or by tapping your own monogram.
+  - **the first run** — the first time a phone signs in, settings *is* the
+    screen: it opens itself, wearing the word **welcome**, with everything but
+    the three things worth setting at the start hidden and no close button —
+    there is nothing to escape from, and the button on the floor is the way on.
+
+    It is this panel rather than a wizard of its own for three reasons. Every
+    control on it is one you will want to change later, and the room you will
+    have to find to change it is this one, so you have already been. A wizard
+    would be a second name field and a second avatar picker that can drift out
+    of step with the real ones. And a wizard has to be *finished*, where this
+    can be walked out of at any point with nothing set.
+
+    What it is really for is the location question. ATLAS asks the phone where
+    you are unless told not to, and the honest moment to say that it is
+    optional — and to make saying no one tap — is *before* the browser's own
+    permission box appears, not after. So while this screen is up the map does
+    not call for a fix and the opening camera waits; the button at the bottom
+    releases it, which means the map immediately opens the way the choice just
+    made says it should. That is the shortest possible proof it took.
+
+    A name typed and not saved is a name you meant, so walking out of the door
+    saves it — and if it cannot be saved, the door stays shut with the reason
+    on screen. Shown once per phone, and only to a phone that has never been
+    used: a device with a last map position on it has been here before,
+    whatever the flag says, and nobody who has been dropping pins for a month
+    should be handed a "welcome to ATLAS".
   - **you** — your picture and the name the crew sees, which together are the
     byline on every pin you drop and every note you leave.
 

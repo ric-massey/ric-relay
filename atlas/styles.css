@@ -1643,6 +1643,43 @@ body.is-offline #app::after {
 .me-face-do .linkish { padding-left: 0; }
 #avatar-pick.is-busy { opacity: 0.6; pointer-events: none; }
 
+/* ── the first run ────────────────────────────────────────────────────────
+ * The settings panel wearing a different name the first time a phone signs in.
+ * Everything that is not one of the three things worth setting at the start is
+ * hidden, the close button with it — there is nothing to escape from, and the
+ * button on the floor is the way on.
+ */
+.first-only { display: none; }
+#settings.is-first .first-only { display: block; }
+#settings.is-first .first-intro { display: flex; }
+#settings.is-first #settings-close { display: none; }
+#settings.is-first .detail:not(.at-first) { display: none; }
+/* Signing out and reciting your own email address are not first-run business. */
+#settings.is-first #signout,
+#settings.is-first .me-facts { display: none; }
+
+.first-intro { flex-direction: column; gap: var(--s-3); }
+.first-intro h2 {
+  font-size: var(--t-xl); font-weight: 800; letter-spacing: -0.02em;
+}
+/* The one paragraph the whole screen exists for, marked as such: a rule down
+   its edge in the accent, so it is read rather than scrolled past on the way to
+   the buttons. */
+.first-loc {
+  font-size: var(--t-sm); font-weight: 500; line-height: 1.55; color: var(--ink-dim);
+  border-left: var(--b-strong) solid var(--accent);
+  padding-left: var(--s-3);
+}
+.first-loc b { color: var(--ink); font-weight: 700; }
+
+.first-foot {
+  flex: none;
+  padding: var(--s-3) var(--s-4) var(--s-4);
+  border-top: var(--b) solid var(--edge);
+  background: var(--panel);
+}
+.first-foot .wide { margin-top: 0; }
+
 /* ── home ─────────────────────────────────────────────────────────────────
  * A town, named once. The set state is a plain card rather than another line of
  * text: this is a thing you chose, and it should look chosen. */

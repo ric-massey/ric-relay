@@ -59,6 +59,7 @@ let placeTimer = null;
 let scope     = 'near';  // near | view | anywhere — which ground the search covers
 let widened   = false;   // the near search found nothing, so it asked the world
 let home      = null;    // { name, detail, lat, lng, bounds } — the town you named
+let firstRun  = false;   // the setup screen is up and the map is waiting
 let foundMarker = null;  // the place a search put on the map
 let sources   = { pins: true, places: true };
 let editingNote = null;  // id of the note currently open for editing
@@ -452,6 +453,18 @@ async function start() {
   // not be either.
   warmAvatars().then(pruneAvatars);
 
+  // The first time this phone signs in, the map is built behind the setup
+  // screen and told to stay where it is until the button at the bottom of it.
+  //
+  // A phone that has been used before has been welcomed, whatever the flag
+  // says — the flag is new, the crew is not, and nobody who has been dropping
+  // pins for a month should be handed a "welcome to ATLAS". The last view is
+  // the tell: it is written the first time the map settles anywhere.
+  if (!(await local.get('welcomed'))) {
+    if (await local.get('lastView')) await local.set('welcomed', true);
+    else openFirstRun();
+  }
+
   if (!map) initMap();
   await loadPins();
   await loadNotes();
@@ -536,6 +549,10 @@ function initMap() {
    * than left for you to wonder about. */
   local.get('lastView').then((v) => {
     if (v) map.jumpTo({ center: v.center, zoom: v.zoom });
+    // On the first run nobody has agreed to be asked yet, and the browser's
+    // permission box arriving over the screen that explains it is optional
+    // would make a liar of the screen. firstRunDone() takes it from here.
+    if (firstRun) return;
     if (useLocation) locate({ fly: true }).catch(() => goHome());
     else goHome();
   });
@@ -654,7 +671,7 @@ function getPosition() {
 
 async function locate({ silent = false, fly = false } = {}) {
   if (!useLocation) {
-    if (!silent) toast('my location is switched off — turn it on under layers');
+    if (!silent) toast('my location is switched off — turn it on in settings');
     return null;
   }
   try {
@@ -2756,6 +2773,58 @@ function goHome() {
   return true;
 }
 
+/* ── the first run ───────────────────────────────────────────────────────
+ * Somebody is invited by email, follows the link, chooses a password, and the
+ * very next thing they see is this. It is the settings panel wearing a
+ * different name rather than a wizard of its own, for three reasons: every
+ * control here is one they will want to change later, the room they will have
+ * to find to change it is this one, and a wizard is a second copy of a name
+ * field and an avatar picker that can drift out of step with the real ones.
+ *
+ * What it is really for is the location question. ATLAS defaults to asking the
+ * phone where you are, and the honest moment to explain that — and to make it
+ * one tap to say no — is before the browser's own permission box appears, not
+ * after. So while this screen is up the map does not call for a fix, and the
+ * opening camera waits for the button at the bottom.
+ *
+ * Nothing here is compulsory. The button says "open the map" rather than
+ * "finish" because there is nothing to finish.
+ */
+function openFirstRun() {
+  firstRun = true;
+  $('settings').classList.add('is-first');
+  $('settings-title').textContent = 'welcome';
+  openPanel('settings');
+  refreshLocationState();
+}
+
+async function firstRunDone() {
+  const btn = $('first-go');
+  btn.disabled = true;
+
+  // A name typed and not saved is a name you meant. The button underneath it
+  // still says "save name" for the day you come back and change it, but
+  // walking out of the door has to count as meaning it too — and if the save
+  // cannot happen, the door stays shut with the reason on screen.
+  const typed = $('me-name').value.trim();
+  if (typed && typed !== me.display_name && !(await saveMyName())) {
+    btn.disabled = false;
+    return;
+  }
+  btn.disabled = false;
+
+  await local.set('welcomed', true);
+  firstRun = false;
+  $('settings').classList.remove('is-first');
+  $('settings-title').textContent = 'settings';
+  closePanel('settings');
+
+  // The map now opens exactly the way it will open every morning from here,
+  // which is the shortest possible proof that the choice just made took.
+  if (useLocation) locate({ fly: true }).catch(() => goHome());
+  else goHome();
+}
+
 /* ── offline maps ────────────────────────────────────────────────────────
  * Download the tiles for whatever is on screen before you leave the house, and
  * the map still draws in the canyon. This is the difference between an app that
@@ -3042,17 +3111,17 @@ async function saveMyName() {
   err.hidden = true; said.hidden = true;
 
   const name = $('me-name').value.trim();
-  if (!name) { err.textContent = 'give the crew something to call you'; err.hidden = false; return; }
-  if (name === me.display_name) { said.textContent = 'no change'; said.hidden = false; return; }
+  if (!name) { err.textContent = 'give the crew something to call you'; err.hidden = false; return false; }
+  if (name === me.display_name) { said.textContent = 'no change'; said.hidden = false; return true; }
   // Unlike a pin, this one is not worth queueing: it changes what everybody
   // else sees, so it either reaches them or it has not happened.
-  if (!online()) { err.textContent = 'this one needs signal'; err.hidden = false; return; }
+  if (!online()) { err.textContent = 'this one needs signal'; err.hidden = false; return false; }
 
   const btn = $('me-save');
   btn.disabled = true;
   const { error } = await db.from('profiles').update({ display_name: name }).eq('id', me.id);
   btn.disabled = false;
-  if (error) { err.textContent = error.message; err.hidden = false; return; }
+  if (error) { err.textContent = error.message; err.hidden = false; return false; }
 
   me.display_name = name;
   await local.set('me', me);
@@ -3067,6 +3136,7 @@ async function saveMyName() {
   await loadNotes();
   await loadPhotos();
   if (!$('list').hidden) renderResults();
+  return true;
 }
 
 /* The monogram, kept in one place so signing in and renaming both use it. */
@@ -3166,6 +3236,7 @@ $('home-q-clear').addEventListener('click', () => {
   $('home-q').focus();
 });
 $('home-clear').addEventListener('click', clearHome);
+$('first-go').addEventListener('click', firstRunDone);
 $('home-results').addEventListener('click', (e) => {
   const el = e.target.closest('[data-home]');
   const pl = el && homeFound.find((x) => x.id === el.dataset.home);
