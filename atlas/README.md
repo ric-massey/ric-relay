@@ -240,12 +240,18 @@ these do I want", and that gets answered by what a button is *near*.
     releases it, which means the map immediately opens the way the choice just
     made says it should. That is the shortest possible proof it took.
 
-    A name typed and not saved is a name you meant, so walking out of the door
-    saves it — and if it cannot be saved, the door stays shut with the reason
-    on screen. Shown once per phone, and only to a phone that has never been
-    used: a device with a last map position on it has been here before,
-    whatever the flag says, and nobody who has been dropping pins for a month
-    should be handed a "welcome to ATLAS".
+    Nobody reads a paragraph standing up with a car door open, so the screen
+    is a five-second read: three headings, three controls, and one line saying
+    location is optional. Settings keeps its full prose — the first run hides
+    those hints and shows a short version, which is why the copy only exists
+    once. The save button under the name is hidden too, because walking out of
+    the door saves it, and if it cannot be saved the door stays shut with the
+    reason on screen.
+
+    Shown once per phone, and only to a phone that has never been used: a
+    device with a last map position on it has been here before, whatever the
+    flag says, and nobody who has been dropping pins for a month should be
+    handed a welcome screen.
   - **you** — your picture and the name the crew sees, which together are the
     byline on every pin you drop and every note you leave.
 
