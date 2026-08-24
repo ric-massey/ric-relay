@@ -56,6 +56,9 @@
     <path d="m4 17 5-5 4 3.5 3-2.5 4 4"/><circle cx="8.6" cy="9.4" r="1.4"/>
   </symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24">
+    <circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.4 15.4 4.6 4.6"/>
+  </symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24">
     <path d="M4 6.5h16M9.5 6.5V4h5v2.5M6.5 6.5 7.5 20h9l1-13.5"/>
@@ -82,6 +85,10 @@
   </symbol>
   <symbol id="i-lock" viewBox="0 0 24 24">
     <rect x="4.5" y="10.5" width="15" height="10.5" rx="2.4"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/>
+  </symbol>
+  <symbol id="i-home" viewBox="0 0 24 24">
+    <path d="M4 10.5 12 3.8l8 6.7V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8.5Z"/>
+    <path d="M9.5 20v-5.5h5V20"/>
   </symbol>
   <symbol id="i-map" viewBox="0 0 24 24">
     <path d="m3 6.5 6-2.5v13.5l-6 2.5V6.5Z"/><path d="M9 4l6 2.5v13.5L9 17.5"/><path d="m15 6.5 6-2.5v13.5l-6 2.5"/>
@@ -164,14 +171,14 @@
 <div id="app" hidden>
   <div id="map"></div>
 
+  <!-- The list button is gone from up here: the list of places and the results
+       of an empty search are the same list, so the search bar is the way into
+       both, and it lives at the bottom where a thumb is. -->
   <header class="topbar">
     <button id="layers-btn" class="chip solo wide-chip" title="Layers">
       <svg class="icon"><use href="#i-layers"/></svg>layers
     </button>
     <div class="topbar-right">
-      <button id="list-btn" class="chip solo" title="All pins" aria-label="All pins">
-        <svg class="icon"><use href="#i-list"/></svg>
-      </button>
       <button id="settings-btn" class="chip solo" title="Settings" aria-label="Settings">
         <svg class="icon"><use href="#i-settings"/></svg>
       </button>
@@ -188,16 +195,21 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <!-- With no button that makes a pin, the gesture has to be said out loud at
-       least once. Shown only while the map is empty, which is exactly when
-       somebody is looking for the thing they cannot find. -->
-  <p id="map-hint" class="map-hint" hidden>
-    <svg class="icon icon-sm"><use href="#i-pin"/></svg>press and hold the map to drop a pin
-  </p>
+  <!-- The whole bottom of the screen, in one row: where am I, and what am I
+       looking for. Nothing else lives down here — the zooms are up under your
+       own buttons and the map credits are in settings, because the two things
+       a thumb reaches for should not be sharing the corner with them.
 
-  <div id="dock" class="dock">
+       The bar is a button rather than a live input: a text field sitting on the
+       map is a keyboard waiting to cover the map, and there is nothing to type
+       into until you have said you want to search. -->
+  <div class="bottombar">
     <button id="locate-btn" class="btn-round" title="Centre on me" aria-label="Centre on me">
       <svg class="icon"><use href="#i-locate"/></svg>
+    </button>
+    <button id="search-open" class="searchbar" aria-label="Search places and pins">
+      <svg class="icon"><use href="#i-search"/></svg>
+      <span id="search-open-label">search places, roads and pins</span>
     </button>
   </div>
 
@@ -304,20 +316,50 @@
     </button>
   </div>
 
-  <!-- all pins -->
-  <div id="list" class="panel" hidden>
-    <div class="panel-head">
-      <strong>places</strong>
-      <span id="list-count" class="panel-count"></span>
-      <button id="list-close" class="icon-btn" aria-label="Close">
-        <svg class="icon"><use href="#i-close"/></svg>
-      </button>
-    </div>
-    <div class="filter-bar">
-      <div id="kind-filter" class="kind-list"></div>
-      <button id="filter-all" class="linkish">all</button>
-    </div>
+  <!-- Search: the crew's pins, and everywhere else.
+       Built upside down on purpose. The field is at the bottom, where the bar
+       that opened it was and where the keyboard is about to be, and the results
+       fill the room above it — so what you are reading is never the thing your
+       own hand is covering. -->
+  <div id="list" class="panel is-bottom" hidden>
     <div id="list-body" class="panel-body"></div>
+
+    <div class="search-foot">
+      <!-- Where to look. Two switches rather than three tabs: the answer to
+           "where is Cave Hollow Road" is often one of each, and a tab would
+           make you ask twice to find that out. -->
+      <div class="filter-bar">
+        <div class="kind-list">
+          <label class="kind-chip src-chip">
+            <input id="src-pins" type="checkbox" checked>
+            <svg class="icon icon-sm"><use href="#i-pin"/></svg>our pins
+          </label>
+          <label class="kind-chip src-chip">
+            <input id="src-places" type="checkbox" checked>
+            <svg class="icon icon-sm"><use href="#i-map"/></svg>areas &amp; roads
+          </label>
+        </div>
+        <span id="list-count" class="panel-count"></span>
+      </div>
+
+      <div id="kind-bar" class="filter-bar">
+        <div id="kind-filter" class="kind-list"></div>
+        <button id="filter-all" class="linkish">all</button>
+      </div>
+
+      <div class="search-row">
+        <label class="search-field">
+          <svg class="icon"><use href="#i-search"/></svg>
+          <input id="q" type="search" enterkeyhint="search" aria-label="Search"
+                 placeholder="a place, a road, or a word from a note"
+                 autocapitalize="none" autocorrect="off" spellcheck="false">
+          <button id="q-clear" class="icon-btn" aria-label="Clear search" hidden>
+            <svg class="icon icon-sm"><use href="#i-close"/></svg>
+          </button>
+        </label>
+        <button id="list-close" class="linkish">done</button>
+      </div>
+    </div>
   </div>
 
   <!-- layers -->
@@ -495,6 +537,34 @@
       </section>
 
       <section class="detail">
+        <h3 class="detail-head">home</h3>
+        <p class="hint">The town the map opens on, and what &ldquo;near me&rdquo; means
+          when the phone will not say where you are. Naming one costs nothing:
+          your own location still wins whenever there is one.</p>
+
+        <div id="home-set" class="home-set" hidden>
+          <svg class="icon"><use href="#i-home"/></svg>
+          <div class="home-where">
+            <b id="home-name"></b>
+            <small id="home-detail"></small>
+          </div>
+          <button id="home-clear" class="linkish">clear</button>
+        </div>
+
+        <label class="search-field home-field">
+          <svg class="icon"><use href="#i-search"/></svg>
+          <input id="home-q" type="search" enterkeyhint="search"
+                 placeholder="name your town" aria-label="Find your home town"
+                 autocapitalize="words" autocorrect="off" spellcheck="false">
+          <button id="home-q-clear" class="icon-btn" aria-label="Clear" hidden>
+            <svg class="icon icon-sm"><use href="#i-close"/></svg>
+          </button>
+        </label>
+        <p id="home-note" class="hint home-note" hidden></p>
+        <div id="home-results" class="home-results"></div>
+      </section>
+
+      <section class="detail">
         <h3 class="detail-head">colour</h3>
         <div class="swatches">
           <label class="swatch" data-accent="ember"><input type="radio" name="accent" value="ember"><span></span>ember</label>
@@ -515,6 +585,13 @@
         </div>
         <p class="hint">Day is opaque and high contrast, which is what survives
           direct light. Night is a deliberate choice, not a default.</p>
+      </section>
+
+      <section class="detail">
+        <h3 class="detail-head">map data</h3>
+        <p class="hint">Who the map you are looking at belongs to. It changes
+          with the base map and the overlays you have on.</p>
+        <ul id="map-credit" class="credits"></ul>
       </section>
 
       <section class="detail">

@@ -9,7 +9,7 @@
  *      data would be rude.
  */
 
-const SHELL_VERSION = 'atlas-shell-v24';
+const SHELL_VERSION = 'atlas-shell-v26';
 const TILE_CACHE    = 'atlas-tiles-v1';
 
 const SHELL = [
@@ -22,6 +22,7 @@ const SHELL = [
   './tiles.js',
   './photos.js',
   './owners.js',
+  './search.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -87,6 +88,12 @@ self.addEventListener('fetch', (event) => {
   // this they would go to shellFirst and be answered out of the app-shell cache
   // for the life of the deploy. Nothing that is a tile asks for f=json.
   if (url.pathname.endsWith('/query') || url.searchParams.get('f') === 'json') return;
+
+  // A search is a question too. Without this, shellFirst would file every
+  // distinct geocoder URL in the app-shell cache and answer it from there for
+  // the life of the deploy — so a road that got named last month would stay
+  // un-findable, and the cache would grow a row per thing anyone ever typed.
+  if (url.hostname.endsWith('nominatim.openstreetmap.org')) return;
 
   if (TILE_HOSTS.includes(url.hostname)) {
     event.respondWith(tileFirst(req));

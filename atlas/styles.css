@@ -456,22 +456,53 @@ button { cursor: pointer; border: none; background: none; }
   .topbar-right { gap: var(--s-1); }
 }
 
-/* Said once, while the map is empty. Quiet on purpose — it is an instruction
-   nobody needs twice, not a call to action. */
-.map-hint {
-  position: absolute; z-index: 10; left: 50%;
-  bottom: calc(var(--safe-b) + var(--s-4) + 56px + var(--s-3));
-  background: var(--panel); color: var(--ink-dim);
-  border: var(--b) solid var(--rule); border-radius: var(--r-pill);
-  padding: var(--s-2) var(--s-4); box-shadow: var(--e-2);
-  font-size: var(--t-sm); font-weight: 700; white-space: nowrap;
-  display: flex; align-items: center; gap: var(--s-2);
+/* ── the bottom of the map ────────────────────────────────────────────────
+ * One row, and only one. Where am I, and what am I looking for — the two things
+ * a thumb goes to. Everything that used to compete for this corner has moved:
+ * the zooms are top right under your own buttons, and the credits are a line in
+ * settings rather than a ⓘ sitting on the map.
+ */
+:root { --bar: 52px; }
+
+.bottombar {
+  position: absolute; z-index: 10;
+  left: var(--s-3); right: var(--s-3);
+  bottom: calc(var(--safe-b) + var(--s-3));
+  display: flex; align-items: center; gap: var(--s-3);
   pointer-events: none;
-  transform: translateX(-50%);
-  animation: hint-in var(--t-slow) var(--ease) both;
 }
-.map-hint .icon { color: var(--ink-mute); }
-@keyframes hint-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+.bottombar > * { pointer-events: auto; }
+
+/* A button dressed as a field. There is nothing to type into until you have
+   said you want to search, and a live input sitting on the map is a keyboard
+   waiting to cover the map. */
+.searchbar {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: var(--s-3);
+  min-height: var(--bar); padding: 0 var(--s-4);
+  background: var(--panel); border: var(--b) solid var(--edge);
+  border-radius: var(--r-pill); box-shadow: var(--e-3);
+  color: var(--ink-dim); font-size: var(--t-md); font-weight: 600;
+  text-align: left;
+  transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--spring),
+              color var(--t-fast) var(--ease);
+}
+.searchbar .icon { color: var(--ink-mute); }
+.searchbar span {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.searchbar:active { background: var(--panel-2); transform: scale(0.985); }
+@media (hover: hover) { .searchbar:hover { background: var(--panel-2); } }
+/* Something is being searched for: the bar says what, in full ink, and carries
+   the same dot the list button used to when a filter is on. */
+.searchbar.is-set { color: var(--ink); font-weight: 700; }
+.searchbar.is-filtered::after {
+  content: ""; position: absolute; top: 6px; right: 10px;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 0 2px var(--panel);
+}
+.searchbar { position: relative; }
 
 /* ── status badges ────────────────────────────────────────────────────── */
 .status {
@@ -492,20 +523,9 @@ button { cursor: pointer; border: none; background: none; }
 .badge-off  { background: var(--ink); color: var(--bg); }
 .badge-warn { background: var(--warn-bg); color: var(--warn-ink); box-shadow: var(--e-2), inset 0 0 0 1px rgba(0,0,0,0.3); }
 
-/* One control sits on the map: where am I. A pin is made by pressing and
-   holding the map, which is the whole gesture — there is no button for it,
-   because a button would only be a slower way of saying the same thing.
-   Bottom left, clear of MapLibre's zoom stack on the right. */
-.dock {
-  position: absolute; z-index: 10;
-  left: var(--s-4); bottom: calc(var(--safe-b) + var(--s-4));
-  display: flex; align-items: center; gap: var(--s-3);
-  pointer-events: none;
-}
-.dock > * { pointer-events: auto; }
-
 .btn-round {
-  width: 56px; height: 56px; border-radius: 50%;
+  flex: none;
+  width: var(--bar); height: var(--bar); border-radius: 50%;
   background: var(--panel); border: var(--b-strong) solid var(--edge);
   color: var(--ink); box-shadow: var(--e-3);
   display: grid; place-items: center;
@@ -515,7 +535,6 @@ button { cursor: pointer; border: none; background: none; }
 .btn-round .icon { width: 26px; height: 26px; }
 .btn-round:active { background: var(--panel-2); transform: scale(0.9); }
 .btn-round.is-live { border-color: var(--accent); color: var(--accent); }
-@media (max-width: 400px) { .btn-round { width: 52px; height: 52px; } }
 
 /* Marks the exact point a new pin is sitting on, which the pin's own marker
    cannot do yet — it is not drawn until the pin is saved. */
@@ -942,6 +961,18 @@ button { cursor: pointer; border: none; background: none; }
 .field-row .field { flex: 1; min-width: 0; }
 
 .hint { font-size: var(--t-sm); font-weight: 500; color: var(--ink-dim); line-height: 1.55; }
+
+/* Whose map this is. A licence condition, so it is plain and readable rather
+   than a ⓘ in a corner that has to be pressed to say anything. */
+.credits {
+  list-style: none; margin-top: var(--s-3);
+  display: flex; flex-direction: column; gap: var(--s-1);
+}
+.credits li {
+  font-size: var(--t-sm); font-weight: 600; color: var(--ink-dim);
+  padding-bottom: var(--s-1); border-bottom: 1px solid var(--hair);
+}
+.credits li:last-child { border-bottom: none; }
 .hint b { color: var(--ink); font-weight: 700; }
 
 /* ── notes ───────────────────────────────────────────────────────────────
@@ -1047,6 +1078,173 @@ button { cursor: pointer; border: none; background: none; }
 
 .lede { color: var(--ink-dim); font-weight: 500; font-size: var(--t-md); line-height: 1.55; }
 
+/* ── the search panel ─────────────────────────────────────────────────────
+ * Built upside down. The field sits on the floor of the panel, where the bar
+ * that opened it was and where the keyboard is about to be, and the results
+ * fill the room above — so what you are reading is never behind your own hand.
+ */
+.panel.is-bottom { padding-top: var(--safe-t); }
+/* Results sit ON the field rather than hanging from the ceiling with a gulf
+   under them. Done with an auto margin on a pseudo-element rather than
+   justify-content: flex-end, which is the obvious way and clips the top of the
+   list off once it overflows, with no way to scroll back up to it. */
+.panel.is-bottom .panel-body { flex: 1; display: flex; flex-direction: column; }
+.panel.is-bottom .panel-body::before { content: ""; margin-top: auto; }
+.panel.is-bottom .panel-body > * { flex: none; }
+
+.search-foot {
+  flex: none;
+  background: var(--panel);
+  border-top: var(--b) solid var(--edge);
+  padding-bottom: var(--s-2);
+}
+/* The rows above the field are its settings, so they read as part of it rather
+   than as the bottom of the list. */
+.search-foot .filter-bar { border-bottom: none; padding-bottom: 0; }
+.search-foot .filter-bar + .filter-bar { padding-top: var(--s-2); }
+
+.search-row {
+  display: flex; align-items: center; gap: var(--s-2);
+  padding: var(--s-2) var(--s-4) 0;
+}
+.search-row .linkish { flex: none; font-weight: 700; color: var(--accent); }
+
+.search-field {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: var(--s-2);
+  background: var(--bg); border: var(--b) solid var(--edge);
+  border-radius: var(--r-pill); padding: 0 var(--s-2) 0 var(--s-4);
+  min-height: var(--tap);
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.search-field > .icon { color: var(--ink-mute); }
+.search-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 var(--b) var(--accent-wash); }
+.search-field input {
+  flex: 1; min-width: 0;
+  background: none; border: none; outline: none;
+  font-size: var(--t-lg); padding: var(--s-2) 0;
+  -webkit-appearance: none; appearance: none;
+}
+/* The browser's own clear button is a different shape and size on every one of
+   them, and it does not know to also clear the results. */
+.search-field input::-webkit-search-cancel-button,
+.search-field input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+.search-field .icon-btn { min-width: 34px; min-height: 34px; color: var(--ink-mute); }
+
+/* Which half of the answer you are looking at. A heading rather than two tabs,
+   because "where is Cave Hollow Road" is usually one of each and a tab would
+   make you ask the question twice to find that out. */
+.result-head {
+  display: flex; align-items: baseline; gap: var(--s-2);
+  padding: var(--s-4) var(--s-4) var(--s-2);
+  font-size: var(--t-xs); font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--ink-mute);
+}
+.result-head b { color: var(--ink-dim); font-weight: 800; }
+.result-head + .result-head { padding-top: var(--s-2); }
+.result-note {
+  padding: 0 var(--s-4) var(--s-3);
+  font-size: var(--t-sm); font-weight: 600; color: var(--ink-dim);
+  display: flex; align-items: center; gap: var(--s-2);
+}
+.result-note .icon { color: var(--ink-mute); flex: none; }
+
+/* A place somebody else's index knows about. Deliberately plainer than a pin:
+   a pin is a thing the crew found and wrote up, this is a name on a map. */
+.place-row {
+  width: 100%; text-align: left;
+  display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: var(--s-3);
+  align-items: center;
+  padding: var(--s-3) var(--s-4); border-bottom: var(--b) solid var(--hair);
+  transition: background var(--t-fast) var(--ease);
+}
+.place-row:active { background: var(--panel-2); }
+@media (hover: hover) { .place-row:hover { background: var(--panel-2); } }
+.place-row .p-mark {
+  width: 40px; height: 40px; border-radius: var(--r-sm);
+  display: grid; place-items: center;
+  background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--ink-mute);
+}
+.place-row .r-name {
+  font-weight: 700; font-size: var(--t-md); letter-spacing: -0.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.place-row .r-sub {
+  font-size: var(--t-xs); font-weight: 600; color: var(--ink-mute); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+}
+.place-row .r-go { color: var(--ink-mute); width: 20px; height: 20px; }
+
+/* Why a pin is in the results when its own words do not say so: the note that
+   found it, quoted back. Without this a search for "locked" returns a list of
+   places whose names have nothing to do with it. */
+.r-why {
+  font-size: var(--t-sm); color: var(--ink-dim); font-weight: 500;
+  margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-style: italic;
+}
+
+/* Which ground the search covers. A row of three under the heading it belongs
+   to, rather than a fourth thing in the foot: it is a property of this half of
+   the answer, and putting it beside the pins/places switches would have read as
+   a fourth switch of the same kind. Chosen is filled, same as everywhere else —
+   at arm's length an outline that got darker is not a state change. */
+.scope-bar {
+  display: flex; gap: var(--s-2);
+  padding: 0 var(--s-4) var(--s-3);
+  overflow-x: auto; scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.scope-bar::-webkit-scrollbar { display: none; }
+.scope-chip {
+  flex: 0 0 auto;
+  padding: 0 var(--s-3); min-height: 34px;
+  border: var(--b) solid var(--rule); border-radius: var(--r-pill);
+  background: var(--panel); cursor: pointer;
+  font-size: var(--t-sm); font-weight: 700; color: var(--ink-dim);
+  white-space: nowrap;
+  transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease),
+              background var(--t-fast) var(--ease), transform var(--t-fast) var(--spring);
+}
+.scope-chip:active { transform: scale(0.95); }
+.scope-chip.is-on {
+  border-color: var(--ink); color: var(--ink); background: var(--panel-2);
+}
+.scope-chip:focus-visible { outline: var(--b-strong) solid var(--accent); outline-offset: 2px; }
+
+/* A place row in the results carries the same distance column a pin row does,
+   which needs the name to give up the room rather than run under it. */
+.place-row .r-top .r-name { flex: 1; }
+.place-row .r-away { flex: none; font-size: var(--t-xs); font-weight: 700; color: var(--ink-dim); }
+
+/* A source chip is a kind chip with a drawn mark instead of a colour dot —
+   there is no colour for "somebody else's index". */
+.src-chip .icon { color: var(--ink-mute); }
+.src-chip:has(input:checked) { border-color: var(--ink); color: var(--ink); background: var(--panel-2); }
+.src-chip:has(input:checked) .icon { color: var(--ink); }
+.kind-list .src-chip:not(:has(input:checked)) { opacity: 0.4; }
+
+/* What the map found, standing on it until you look somewhere else. Not a pin:
+   a pin is a place the crew has been, and this is a name off an index. */
+.found-marker {
+  display: flex; align-items: center; gap: var(--s-2);
+  cursor: pointer; transform: translateY(-50%);
+}
+.found-dot {
+  width: 18px; height: 18px; border-radius: 50%; flex: none;
+  border: var(--b-strong) solid var(--accent); background: var(--halo);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.35);
+}
+.found-label {
+  background: var(--panel); color: var(--ink);
+  border: var(--b) solid var(--edge); border-radius: var(--r-pill);
+  padding: 2px var(--s-3); box-shadow: var(--e-2);
+  font-size: var(--t-sm); font-weight: 700; white-space: nowrap;
+  max-width: 46vw; overflow: hidden; text-overflow: ellipsis;
+}
+
 /* ── the list ─────────────────────────────────────────────────────────────
  * A row is somebody handing you a place: a picture of it, what it is, and who
  * found it. Grid rather than flex so the text column can be told to shrink —
@@ -1120,6 +1318,8 @@ button { cursor: pointer; border: none; background: none; }
 
 /* Nothing here yet, or nothing that passes the filter. Either way it is a state
    the app is in, not a failure, so it gets a drawn mark and a plain sentence. */
+.result-head + .list-empty { padding: var(--s-5) var(--s-6); }
+.result-head + .list-empty .icon { width: 32px; height: 32px; }
 .list-empty {
   padding: var(--s-10) var(--s-6); text-align: center;
   color: var(--ink-mute); font-weight: 600;
@@ -1328,7 +1528,7 @@ button { cursor: pointer; border: none; background: none; }
 /* ── toast ────────────────────────────────────────────────────────────── */
 .toast {
   position: absolute; z-index: 40; left: 50%;
-  bottom: calc(var(--safe-b) + 6rem);
+  bottom: calc(var(--safe-b) + var(--s-3) + var(--bar) + var(--s-4));
   background: var(--ink); color: var(--bg);
   border-radius: var(--r-pill); padding: var(--s-3) var(--s-5);
   font-size: var(--t-sm); font-weight: 700;
@@ -1443,6 +1643,53 @@ body.is-offline #app::after {
 .me-face-do .linkish { padding-left: 0; }
 #avatar-pick.is-busy { opacity: 0.6; pointer-events: none; }
 
+/* ── home ─────────────────────────────────────────────────────────────────
+ * A town, named once. The set state is a plain card rather than another line of
+ * text: this is a thing you chose, and it should look chosen. */
+.home-set {
+  display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-3); margin-bottom: var(--s-3);
+  border: var(--b) solid var(--rule); border-radius: var(--r-md);
+  background: var(--panel-2);
+}
+.home-set > .icon { color: var(--accent); flex: none; }
+.home-where { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.home-where b {
+  font-size: var(--t-md); font-weight: 700; letter-spacing: -0.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.home-where small {
+  font-size: var(--t-xs); font-weight: 600; color: var(--ink-mute);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.home-set .linkish { flex: none; }
+.home-field { margin-top: var(--s-3); }
+.home-note { margin-top: var(--s-2); }
+.home-results:not(:empty) {
+  margin-top: var(--s-2);
+  border: var(--b) solid var(--rule); border-radius: var(--r-md);
+  overflow: hidden;
+}
+.home-row {
+  width: 100%; text-align: left;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-3);
+  align-items: center;
+  padding: var(--s-3); background: none;
+  transition: background var(--t-fast) var(--ease);
+}
+.home-row + .home-row { border-top: var(--b) solid var(--hair); }
+.home-row:active { background: var(--panel-2); }
+@media (hover: hover) { .home-row:hover { background: var(--panel-2); } }
+.home-row .r-name {
+  font-weight: 700; font-size: var(--t-md); letter-spacing: -0.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.home-row .r-sub {
+  font-size: var(--t-xs); font-weight: 600; color: var(--ink-mute); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.home-row .r-go { color: var(--ink-mute); width: 20px; height: 20px; }
+
 /* ── kind chips ───────────────────────────────────────────────────────────
  * Used twice: choosing one on a pin, and filtering the map. The dot carries the
  * colour so the same vocabulary is being learnt in both places — pick "caves"
@@ -1535,7 +1782,7 @@ body.is-offline #app::after {
 :root[data-glass="on"] .panel,
 :root[data-glass="on"] .chip.solo,
 :root[data-glass="on"] .btn-round,
-:root[data-glass="on"] .map-hint,
+:root[data-glass="on"] .searchbar,
 :root[data-glass="on"] .sheet-actions {
   background: color-mix(in srgb, var(--panel) 72%, transparent);
   -webkit-backdrop-filter: blur(20px) saturate(1.6);
@@ -1554,7 +1801,7 @@ body.is-offline #app::after {
   :root[data-glass="on"] .panel,
   :root[data-glass="on"] .chip.solo,
   :root[data-glass="on"] .btn-round,
-  :root[data-glass="on"] .map-hint,
+  :root[data-glass="on"] .searchbar,
   :root[data-glass="on"] .sheet-actions { background: var(--panel); }
 }
 
@@ -1562,7 +1809,11 @@ body.is-offline #app::after {
    It ships looking like every other MapLibre map. Two minutes here is the
    difference between an app and a demo. */
 .maplibregl-ctrl-attrib { font-size: 10px; border-radius: var(--r-xs) 0 0 0 !important; }
-.maplibregl-ctrl-bottom-right { margin-bottom: calc(var(--safe-b) + var(--s-3)); }
+/* Under the top bar's own buttons, not overlapping them. */
+.maplibregl-ctrl-top-right {
+  margin-top: calc(var(--safe-t) + var(--s-3) + var(--tap) + var(--s-3));
+  margin-right: var(--s-3);
+}
 .maplibregl-ctrl-group {
   border: var(--b) solid var(--edge) !important;
   border-radius: var(--r-md) !important;

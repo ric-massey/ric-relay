@@ -132,29 +132,89 @@ these do I want", and that gets answered by what a button is *near*.
   check constraint: an unrecognised kind falls back to "other" in the app and
   still draws, lists and filters, where a constraint would turn a future rename
   into a write that fails on a phone in a canyon.
-- **filtering** — the chips at the top of **places** turn kinds on and off,
-  and they filter the map as well as the list. Turning the last one off turns
-  them all back on rather than leaving you a blank map with no way to read why.
-  While a filter is on, the places button carries a dot — a filtered-out pin
-  should never look
-  like a lost one.
+- **filtering** — the kind chips in the foot of the search screen turn kinds on
+  and off, and they filter the map as well as the list. Turning the last one off
+  turns them all back on rather than leaving you a blank map with no way to read
+  why. While a filter is on, the search bar carries a dot — a filtered-out pin
+  should never look like a lost one.
 - **your monogram** — opens settings. It used to sign you out on a single tap,
   which is a destructive action on the smallest target on screen behind a
   tooltip nobody reads on a phone.
-- **places** — the closest thing here to a feed, and it is built for the
-  question it actually gets asked: somebody has handed you a place, do you want
-  to go. So a row is a photo of it, one line of what it is, who found it, how
-  many notes it has picked up since, and how far it is from you — rather than a
-  name and a pair of coordinates. Nobody ever decided to drive somewhere
-  because of its longitude.
+- **the search bar**, along the bottom next to the crosshair — the way into
+  everything the app can list. There is no separate list button any more,
+  because the list of places and the results of an empty search are the same
+  list. It is a button rather than a live field: a text box sitting on the map
+  is a keyboard waiting to cover the map, and there is nothing to type into
+  until you have said you want to search.
 
-  Sorted by the last thing that *happened*, not the day it was dropped: a note
-  left on a two-year-old pin means somebody just went there, and that is news.
-  Distance only appears once the app knows where you are — opening a list is
-  not a reason to ask.
+  The screen is built upside down. The field is at the bottom, where the bar you
+  pressed was and where the keyboard is about to be, and the results fill the
+  room above it — so what you are reading is never what your own hand is
+  covering.
+
+  With nothing typed it is the old feed, and it is built for the question it
+  actually gets asked: somebody has handed you a place, do you want to go. So a
+  row is a photo of it, one line of what it is, who found it, how many notes it
+  has picked up since, and how far it is from you — rather than a name and a
+  pair of coordinates. Nobody ever decided to drive somewhere because of its
+  longitude. Sorted by the last thing that *happened*, not the day it was
+  dropped: a note left on a two-year-old pin means somebody just went there, and
+  that is news.
+
+  Type, and it is **two questions in one box**, kept apart on purpose. Your own
+  pins are already on the phone, so they are searched on every keystroke, for
+  free, in a canyon: name, description, kind, who dropped it, and the words in
+  every note. A name match outranks a note match at every grade, every word you
+  type has to land somewhere (two words narrow, they never widen), and when a
+  note is the only reason a pin is in the list, that note is quoted back — or a
+  search for "locked" returns a list of names with nothing to do with it.
+
+  Everywhere else — towns, creeks, peaks, forest roads, wilderness areas — is
+  **Nominatim**, the same OpenStreetMap data the street base map and the trail
+  overlay are drawn from, so a road you find is a road you can see underneath.
+  It costs a request over cell data, so it waits for you to stop typing and for
+  there to be a real word to ask about, one request a second at most, and the
+  request in flight is aborted the moment the query moves on. Every state says
+  which it is: "no signal", "could not reach the index" and "nothing by that
+  name" are three different answers that all look like an empty list.
+
+  **Where you are asking** is three chips under *areas & roads*, because the
+  three questions are genuinely different and nothing in the words you type
+  tells them apart:
+
+  - **near me** fences the search to a 160 km box around you. This is the
+    default and it is what makes a brand name work at all: unbounded, `rei`
+    comes back as a town in Brazil, one in Catalonia and a peak in Japan —
+    every one of them a better "place named Rei" than a shop. Fenced, there
+    are no such towns to beat the shops, so the shops are the answer. If it
+    finds nothing it asks the world instead, and says so.
+  - **in this view** fences it to the piece of ground on screen. Pan over a
+    canyon, search "spring", get the springs in that canyon. Nothing there is
+    nothing there — this one does not widen, or the control would be doing
+    nothing.
+  - **anywhere** is the whole index, for the trip you have not taken yet.
+
+  Results are ranked by importance *plus* how close they are, capped so a
+  national park still outranks a hardware store in the next town but two shops
+  of equal standing are decided by distance — which is the case where distance
+  is the whole question. The same object listed three times by the index (a
+  building, its entrance, its address point) is listed once. An area is flown to
+  as a box and a point as a point: a wilderness area framed as a point drops you
+  in the middle of it at street zoom with no idea how big it is.
+
+  What the map found stands on it with its name beside it until you look for
+  something else or tap it away. Deliberately not a pin — a pin is somewhere the
+  crew has been and written up.
+
+  Distances appear once the app knows where to measure from, which is your own
+  position, or your home town, or failing both the middle of the map. The near
+  chip is named after whichever it got — "near me" is a promise the app cannot
+  keep with location switched off. `test/search.test.mjs` holds the ranking and
+  the bounding-box conversion, which are the two things in here that go wrong
+  without throwing.
 - **save maps for offline** — at the bottom of **layers** (below).
-- **settings** — you, colour, light and glass. Reachable from the sliders button
-  or by tapping your own monogram.
+- **settings** — you, home, colour, light and glass. Reachable from the sliders
+  button or by tapping your own monogram.
   - **you** — your picture and the name the crew sees, which together are the
     byline on every pin you drop and every note you leave.
 
@@ -201,6 +261,31 @@ these do I want", and that gets answered by what a button is *near*.
     address and username are shown but not editable: the username is derived
     from the address and other rows point at it. Signing out is a labelled
     button here rather than a hidden consequence of tapping your own name.
+  - **home** — one town, named once, doing two jobs. It is where the map opens
+    when the phone will not say where you are: off on the sofa, off indoors, off
+    before the fix comes in, off for anybody who would rather not be asked. A
+    map that opens on the middle of the country is a map you fly out of every
+    morning. And it is what "near me" measures from with location off, which is
+    the difference between a brand-name search working and returning a town in
+    Brazil.
+
+    Your own position always wins when there is one, so naming a town costs you
+    nothing. The order is a confidence ranking rather than a preference: being
+    told where you are beats a town you typed in once, which beats wherever the
+    map happens to be pointing — that could be somewhere you were only looking
+    at. Everything that shows a distance says which of the three it measured
+    from, because a list in distance order is a lie if it does not say distance
+    from what.
+
+    Looked up in the same index as everything else, and it is the one search in
+    the app that is *not* biased by where you are standing — you might be
+    setting it from a hotel three states away, and "which Springfield" is
+    exactly the question the index's own ranking answers. A town is opened as a
+    town: its bounding box, capped so a county-sized boundary cannot pull you
+    out to nothing and a single node cannot drop you into four blocks of it.
+    Picking one deliberately does not fly the map there — you could be standing
+    at a gate with a live fix, and a settings screen that throws the map three
+    counties away while you are using it is a setting you would not touch twice.
   - **light** — day and night. Day is the default and it is not a preference:
     outdoors in bright sun a dark UI is a mirror, so everything is opaque
     white, near-black and heavy-weight. Night is for caves and dusk.
@@ -451,6 +536,7 @@ node test/tiles.test.mjs
 node test/photos.test.mjs
 node test/owners.test.mjs
 node test/contrast.test.mjs
+node test/search.test.mjs
 ```
 
 The tile maths — which square of the planet gets downloaded. Worth having tested,
@@ -479,6 +565,19 @@ because that rule does not die in a redesign, it dies when somebody nudges a
 grey one step lighter because it looked nicer on a desk at night. Nothing on
 screen complains; the person checking a note at a gate in July finds out. One
 token moved by that much fails the test with the number attached.
+
+`search.test.mjs` covers the two things in the search that go wrong quietly and
+never throw. A ranking that puts the wrong pin first just looks like search not
+working, and there is no way to tell by looking whether it is the scorer or the
+data — so the weights are held to the rule they exist for: a name match at any
+grade beats a note match at every grade. And Nominatim hands a bounding box back
+as `[south, north, west, east]` while MapLibre wants `[[west, south], [east,
+north]]` — the same four numbers in a different order with the pairs swapped,
+which is exactly the kind of thing that survives a glance and then flies the map
+somewhere confidently wrong. It also holds that the near box is square on the
+ground rather than square in degrees, that each scope says which question it is
+asking in the URL it builds, and that a home saved from a row with a missing
+latitude comes back as *no home* rather than as 0,0 in the Gulf of Guinea.
 
 And the photo paths, which are not cosmetic: a photo's object name is
 `{pin_id}/{uploader_id}/{photo_id}.jpg`, and the storage policies read the

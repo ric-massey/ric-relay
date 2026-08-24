@@ -14,6 +14,11 @@ import { local } from './db.js';
 import { lngLatToTile, tileUrlsForBounds } from './tiles.js';
 import { shrink, photoPath, shrinkSquare, avatarPath } from './photos.js';
 import {
+  terms, scorePin, placeSearchUrl, viewboxFromBounds, normalisePlaces,
+  rankPlaces, dedupePlaces, isArea, MIN_QUERY,
+  SCOPES, searchUrlForScope, searchOrigin, homeFromPlace, homeCamera,
+} from './search.js';
+import {
   lookup as lookupOwnership, assessorSearchUrl, parcelSiteUrl,
   discoverParcelSource,
 } from './owners.js';
@@ -46,6 +51,16 @@ let parcelSources = [];  // county assessor adapters — see owners.js
 let ownerShown = null;   // { r, cached } — the ownership answer currently drawn
 let countyHunt = null;   // { pinId, state, found } while looking for a county
 let crew      = [];      // every profile: id, username, display_name, avatar_path
+let query     = '';      // what is in the search field
+let places    = [];      // what the geocoder last said about it
+let placeState = 'idle'; // idle | asking | done | failed | offline
+let placeAsk  = null;    // AbortController for the request in flight
+let placeTimer = null;
+let scope     = 'near';  // near | view | anywhere — which ground the search covers
+let widened   = false;   // the near search found nothing, so it asked the world
+let home      = null;    // { name, detail, lat, lng, bounds } — the town you named
+let foundMarker = null;  // the place a search put on the map
+let sources   = { pins: true, places: true };
 let editingNote = null;  // id of the note currently open for editing
 let draftNote = null;    // { id, pending } — photos attached to a note not yet written
 let photoTarget = null;  // which strip the next pick from the file input lands in
@@ -490,10 +505,16 @@ function initMap() {
     style: { version: 8, sources, layers },
     center: [-98.6, 39.8],   // middle of the country until we know better
     zoom: 3.4,
-    attributionControl: { compact: true },
+    // Off the map. The credits are a licence condition, not a control, and
+    // down in the corner they were the third thing competing for the bottom of
+    // the screen with the two things you actually press. They are in settings,
+    // under "map data", and they say more there than the little ⓘ ever did.
+    attributionControl: false,
   });
 
-  map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-right');
+  // Top right, under your own buttons, so the bottom of the screen is the two
+  // things a thumb reaches for and nothing else.
+  map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
 
   // Long-press (or right-click) pins the thing across the valley that you can
   // see but are not standing in.
@@ -502,13 +523,21 @@ function initMap() {
 
   map.on('moveend', updateDownloadEstimate);
 
-  // Restore the last place we were, so opening the app in a canyon shows the
-  // canyon rather than the whole country.
+  /* Where the map opens, in order of how much each answer knows.
+   *
+   * The last view is painted first whatever happens: it is instant, it is
+   * usually right, and it means nobody is looking at the whole of Kansas while
+   * the GPS thinks about it. Then your own position, which wins whenever the
+   * phone will give one — nothing beats being told where you are. And if it
+   * will not, the town you named, because the alternative is opening on
+   * wherever you happened to be looking last time.
+   *
+   * Not silent: if there is no blue dot, the reason should be on screen rather
+   * than left for you to wonder about. */
   local.get('lastView').then((v) => {
     if (v) map.jumpTo({ center: v.center, zoom: v.zoom });
-    // Not silent: if there's no blue dot, the reason should be on screen rather
-    // than left for you to wonder about.
-    locate({ fly: true }).catch(() => {});
+    if (useLocation) locate({ fly: true }).catch(() => goHome());
+    else goHome();
   });
   map.on('moveend', () => {
     const c = map.getCenter();
@@ -569,6 +598,7 @@ function setBasemap(key) {
   if (radio) radio.checked = true;
   local.set('basemap', key);
   updateDownloadEstimate();
+  renderCredits();
 }
 
 function setOverlay(key, on) {
@@ -579,6 +609,7 @@ function setOverlay(key, on) {
   });
   local.set('overlays', [...overlaysOn]);
   updateDownloadEstimate();
+  renderCredits();
 }
 
 /* ── where am I ──────────────────────────────────────────────────────────── */
@@ -606,7 +637,7 @@ function setUseLocation(on) {
     // The distance column is drawn from the dot, so it has to be redrawn
     // without it rather than left showing a number from a position we have
     // just agreed to stop holding.
-    if (!$('list').hidden) openList();
+    if (!$('list').hidden) renderResults();
   }
   local.set('useLocation', useLocation);
   refreshLocationState();
@@ -895,12 +926,9 @@ function drawPins() {
   markers.forEach((m) => m.remove());
   markers.clear();
   pins.filter(passesFilter).forEach(addMarker);
-  // The only way to make a pin is a gesture, and a gesture leaves no trace on
-  // screen. Say it while there is nothing else to look at.
-  $('map-hint').hidden = pins.length > 0;
-  // And say when the map is deliberately incomplete, or a filtered-out pin
-  // reads as a lost one.
-  $('list-btn').classList.toggle('is-filtered', filtering());
+  // Say when the map is deliberately incomplete, or a filtered-out pin reads
+  // as a lost one.
+  $('search-open').classList.toggle('is-filtered', filtering());
   // Every marker is thrown away and rebuilt in here, so the one being read
   // about has to be told again that it is — a filter change or a sync mid-sheet
   // would otherwise quietly put the open pin back in the crowd.
@@ -978,7 +1006,7 @@ async function applyFilter() {
   });
   await local.set('kindFilter', [...kindFilter]);
   drawPins();
-  if (!$('list').hidden) openList();
+  if (!$('list').hidden) renderResults();
 }
 
 function toggleKind(key, on) {
@@ -2181,7 +2209,7 @@ function releaseListUrls() {
  * deciding whether to go, any picture of the place beats none. */
 const listPhoto = (pinId) => pinOnlyPhotos(pinId)[0] || photosForPin(pinId)[0] || null;
 
-function listRow(p, here) {
+function listRow(p, here, why = null) {
   const its = notes.filter((n) => n.pin_id === p.id);
   const desc = (p.description || '').trim().split('\n')[0];
   const away = here ? metresBetween(here, p) : null;
@@ -2220,34 +2248,230 @@ function listRow(p, here) {
         ${away != null ? `<div class="r-away">${fmtDistance(away)}</div>` : ''}
       </div>
       ${desc ? `<div class="r-desc">${escapeHtml(desc)}</div>` : ''}
+      ${why ? `<div class="r-why">&ldquo;${escapeHtml(why)}&rdquo;</div>` : ''}
       <div class="r-sub">${bits.join(' &middot; ')}</div>
     </div>
     ${icon('i-chevron', 'r-go')}
   </button>`;
 }
 
-function openList() {
+/* ── search ──────────────────────────────────────────────────────────────
+ * One box, two questions, and keeping them apart is the whole design.
+ *
+ * The crew's pins are already on the phone, so they are searched on every
+ * keystroke, for free, in a canyon. Everywhere else — towns, creeks, forest
+ * roads, wilderness areas — belongs to somebody else's index and costs a
+ * request over cell data, so it waits for you to stop typing and for there to
+ * be a real word to ask about.
+ */
+
+function openSearch() {
+  openPanel('list');
+  renderResults();
+  // The bar you pressed was a search bar, so the thing you meant to do next was
+  // type. Delayed past the panel's own entrance or iOS scrolls it mid-animation.
+  setTimeout(() => $('q').focus(), 140);
+}
+
+function onQuery() {
+  query = $('q').value;
+  $('q-clear').hidden = !query;
+  renderResults();          // the pins are free and instant
+  schedulePlaces();         // the rest of the world is neither
+  searchBarLabel();
+}
+
+function searchBarLabel() {
+  const q = query.trim();
+  const bar = $('search-open');
+  $('search-open-label').textContent = q || 'search places, roads and pins';
+  bar.classList.toggle('is-set', !!q);
+}
+
+function clearQuery() {
+  $('q').value = '';
+  onQuery();
+  $('q').focus();
+}
+
+/* Nominatim asks for no more than one request a second and no bulk use. This is
+ * where that promise is kept: nothing is sent until you pause, nothing is sent
+ * for a fragment too short to mean anything, and a request whose query has
+ * already moved on is aborted rather than left to arrive and overwrite the
+ * answer to a question you are no longer asking. */
+function schedulePlaces() {
+  clearTimeout(placeTimer);
+  placeAsk?.abort();
+  placeAsk = null;
+
+  const q = query.trim();
+  if (!sources.places || q.length < MIN_QUERY) {
+    places = [];
+    placeState = 'idle';
+    renderResults();
+    return;
+  }
+  if (!online()) {
+    places = [];
+    placeState = 'offline';
+    renderResults();
+    return;
+  }
+
+  placeState = 'asking';
+  renderResults();
+  placeTimer = setTimeout(() => askPlaces(q), 350);
+}
+
+/* Nominatim's usage policy is an absolute maximum of one request a second, and
+ * this is the one place in the app that could break it — the fallback below
+ * fires two in a row. So every request goes through here, and here waits. */
+let lastAsk = 0;
+
+async function politeFetch(url, ctl) {
+  const wait = Math.max(0, 1100 - (Date.now() - lastAsk));
+  if (wait) await new Promise((r) => setTimeout(r, wait));
+  if (ctl.signal.aborted) return [];
+  lastAsk = Date.now();
+
+  const res = await fetch(url, { signal: ctl.signal });
+  if (!res.ok) throw new Error(String(res.status));
+  const rows = await res.json();
+  return Array.isArray(rows) ? rows : [];
+}
+
+/* Where the search is asked from, and it is a ranking rather than a setting.
+ * Being told where you are beats a town you typed in once, which beats wherever
+ * the map happens to be pointing — that could be somewhere you were only
+ * looking at. Everything downstream reads `from` to say which it got, because a
+ * list ordered by distance is a lie if it does not say distance from what. */
+function originNow() {
+  const at = meMarker?.getLngLat();
+  const c = map?.getCenter();
+  return searchOrigin({
+    here: at ? { lat: at.lat, lng: at.lng } : null,
+    home,
+    centre: c ? { lat: c.lat, lng: c.lng } : null,
+  });
+}
+
+/* The piece of ground on screen, as Nominatim wants it. Null before the map
+ * exists, which every caller has to survive — search can be open on the first
+ * paint. */
+function viewNow() {
+  const b = map?.getBounds();
+  return b ? viewboxFromBounds({
+    west: b.getWest(), north: b.getNorth(), east: b.getEast(), south: b.getSouth(),
+  }) : null;
+}
+
+async function askPlaces(q) {
+  const ctl = new AbortController();
+  placeAsk = ctl;
+  widened = false;
+
+  try {
+    const origin = originNow();
+    const view = viewNow();
+
+    let rows = await politeFetch(searchUrlForScope(q, scope, { origin, view }), ctl);
+    if (ctl.signal.aborted) return;
+
+    // Only "near" widens, and only when it came back with nothing. Asking for
+    // what is around here and being told about a canyon in Utah is the right
+    // answer to a question you would obviously ask next; asking for what is IN
+    // THIS VIEW and being handed the whole country is the control not working.
+    if (!rows.length && scope === 'near' && origin) {
+      widened = true;
+      rows = await politeFetch(placeSearchUrl(q, { viewbox: view }), ctl);
+    }
+    if (ctl.signal.aborted) return;
+
+    // Ranked by where you are rather than by how famous a thing is, and the
+    // same object listed three times listed once.
+    places = dedupePlaces(rankPlaces(normalisePlaces(rows), origin));
+    placeState = 'done';
+  } catch (err) {
+    if (ctl.signal.aborted || err?.name === 'AbortError') return;
+    places = [];
+    placeState = 'failed';
+  }
+
+  if (placeAsk === ctl) placeAsk = null;
+  renderResults();
+}
+
+/* The crew's pins, ranked. With nothing typed this is the old list — everything,
+ * newest activity first — because the list of places and the results of an
+ * empty search are the same list, which is why there is only one screen now. */
+function matchedPins() {
+  const rows = pins.filter(passesFilter);
+  const q = terms(query);
+
+  if (!q.length) {
+    return rows
+      .sort((a, b) => lastActivity(b) - lastActivity(a))
+      .map((p) => ({ pin: p, why: null }));
+  }
+
+  const out = [];
+  for (const p of rows) {
+    const mine = p.created_by === me.id;
+    const name = p.display_name || p.username || 'someone';
+    const scored = scorePin({
+      name: pinTitle(p),
+      description: p.description || '',
+      kind: kindLabel(kindOf(p)),
+      // Your own pins answer to "you" as well as to your name, because that is
+      // what the row itself says and it is what people type.
+      author: mine ? `you ${name}` : name,
+      notes: notes.filter((nt) => nt.pin_id === p.id).map((nt) => nt.body),
+    }, q);
+    if (scored) out.push({ pin: p, why: scored.why, score: scored.score });
+  }
+
+  return out.sort((a, b) => b.score - a.score || lastActivity(b.pin) - lastActivity(a.pin));
+}
+
+function renderResults() {
   releaseListUrls();
   const gen = listGen;
+  const q = query.trim();
 
-  // Where you are, if the app has been told. Never asked for on opening a list:
-  // this is the one screen you might read on the sofa.
+  // Where you are, if the app has been told. Never asked for on opening this:
+  // it is the one screen you might read on the sofa.
   const at = meMarker?.getLngLat();
   const here = at ? { lat: at.lat, lng: at.lng } : null;
 
-  const rows = pins.filter(passesFilter).sort((a, b) => lastActivity(b) - lastActivity(a));
-  $('list-count').textContent = pins.length
-    ? `${rows.length} of ${pins.length} places` : '';
-  if (!filtering() && pins.length) {
-    $('list-count').textContent = `${pins.length} place${pins.length > 1 ? 's' : ''}`;
+  const hits = sources.pins ? matchedPins() : [];
+  const html = [];
+
+  if (sources.pins) {
+    html.push(`<div class="result-head">our pins<b>${hits.length}</b></div>`);
+    html.push(hits.length
+      ? hits.map(({ pin, why }) => listRow(pin, here, why)).join('')
+      : `<div class="list-empty">${icon('i-pin')}<span>${
+          q ? 'No pin says that — try the map below.'
+            : pins.length ? 'Nothing of those kinds. Turn some back on.'
+                          : 'No pins yet. Go find something.'}</span></div>`);
+  }
+
+  if (sources.places) {
+    // The scope belongs to this half of the answer and to nothing else — your
+    // own pins are all on the phone and there is no sense in which some of them
+    // are further away than the search can reach.
+    const origin = originNow();
+    html.push(`<div class="result-head">areas &amp; roads${
+      placeState === 'done' ? `<b>${places.length}</b>` : ''}</div>`);
+    html.push(scopeBar(origin));
+    html.push(placesHtml(q, origin));
   }
 
   const body = $('list-body');
-  body.innerHTML = rows.length
-    ? rows.map((p) => listRow(p, here)).join('')
-    : `<div class="list-empty">${icon('i-pin')}<span>${pins.length
-        ? 'Nothing of those kinds. Turn some back on above.'
-        : 'No pins yet. Go find something.'}</span></div>`;
+  body.innerHTML = html.join('');
+  $('list-count').textContent = q ? '' : (pins.length
+    ? `${hits.length} of ${pins.length}` : '');
+  $('kind-bar').hidden = !sources.pins;
 
   paintAvatars(body);
 
@@ -2264,16 +2488,272 @@ function openList() {
       el.classList.add('is-loaded');
     });
   });
+}
 
-  openPanel('list');
+/* Which ground the question covers. Three chips rather than a guess, because
+ * the three questions are genuinely different and nothing in the words you type
+ * tells them apart: "spring" near me, "spring" in this canyon and "spring"
+ * anywhere are three answers and all three are somebody's real question.
+ *
+ * The near chip is named after what it will actually measure from, because "near
+ * me" with location switched off is a promise the app cannot keep. */
+function scopeName(key, origin) {
+  if (key === 'view') return 'in this view';
+  if (key === 'anywhere') return 'anywhere';
+  if (origin?.from === 'you') return 'near me';
+  if (origin?.from === 'home') return `near ${home?.name || 'home'}`;
+  return 'near here';
+}
+
+function scopeBar(origin) {
+  return `<div class="scope-bar" role="radiogroup" aria-label="where to search">${
+    SCOPES.map((key) => `<button class="scope-chip${key === scope ? ' is-on' : ''}"
+      role="radio" aria-checked="${key === scope}" data-scope="${key}"
+      >${escapeHtml(scopeName(key, origin))}</button>`).join('')}</div>`;
+}
+
+function setScope(key) {
+  if (!SCOPES.includes(key) || key === scope) return;
+  scope = key;
+  local.set('scope', scope);
+  schedulePlaces();   // renders on its way through, whatever state it lands in
+}
+
+/* Half of this is states rather than results, and every one of them says which
+ * it is. "Nothing found" and "could not ask" look identical as an empty list,
+ * and out there the difference is the whole answer. */
+function placesHtml(q, origin) {
+  const note = (name, text) =>
+    `<p class="result-note">${icon(name, 'icon-sm')}<span>${text}</span></p>`;
+
+  if (q.length < MIN_QUERY) {
+    return note('i-search', q
+      ? 'Keep typing — a word or two is enough.'
+      : 'Type a name and the map is searched too: towns, creeks, peaks, forest roads.');
+  }
+  if (placeState === 'offline') return note('i-offline', 'No signal, so only your own pins can be searched.');
+  if (placeState === 'asking')  return note('i-search', 'looking…');
+  if (placeState === 'failed')  return note('i-alert', 'Could not reach the map index. Try again in a moment.');
+  if (!places.length) {
+    return note('i-map', scope === 'view'
+      ? 'Nothing by that name on the piece of map you are looking at.'
+      : 'Nothing on the map by that name.');
+  }
+
+  // Say when the answer is not to the question asked. A near search that came
+  // back empty and quietly showed the whole country looks like the scope chip
+  // doing nothing.
+  const widenedNote = widened
+    ? note('i-map', `Nothing ${escapeHtml(scopeName('near', origin))} — showing everywhere instead.`)
+    : '';
+  return widenedNote + places.map((pl) => placeRow(pl, origin)).join('');
+}
+
+function placeRow(pl, origin) {
+  const sub = [pl.type, pl.detail].filter(Boolean).map(escapeHtml).join(' &middot; ');
+  // The same number a pin row carries, measured from the same place the list is
+  // sorted by — a list in distance order with no distances on it is a list you
+  // have to take on trust.
+  const away = origin ? metresBetween(origin, pl) : null;
+  return `<button class="place-row" data-place="${escapeHtml(pl.id)}">
+    <span class="p-mark">${icon(isArea(pl) ? 'i-layers' : 'i-map')}</span>
+    <div class="r-text">
+      <div class="r-top">
+        <div class="r-name">${escapeHtml(pl.name)}</div>
+        ${away != null ? `<div class="r-away">${fmtDistance(away)}</div>` : ''}
+      </div>
+      ${sub ? `<div class="r-sub">${sub}</div>` : ''}
+    </div>
+    ${icon('i-chevron', 'r-go')}
+  </button>`;
+}
+
+/* An area is flown to as a box and a point as a point. A wilderness area framed
+ * as a point drops you in the middle of it at street zoom with no idea how big
+ * it is, and a gate framed as a box is the whole county. */
+function goToPlace(pl) {
+  closePanel('list', releaseListUrls);
+  showFound(pl);
+  if (isArea(pl) && pl.bounds) {
+    map.fitBounds(pl.bounds, { padding: 56, maxZoom: 15, duration: 900 });
+  } else {
+    map.flyTo({ center: [pl.lng, pl.lat], zoom: 15, duration: 900 });
+  }
+}
+
+/* Deliberately not a pin. A pin is somewhere the crew has been and written up;
+ * this is a name off an index, and it stands on the map with its name beside it
+ * until you look for something else or tap it away. */
+function showFound(pl) {
+  foundMarker?.remove();
+  const el = document.createElement('div');
+  el.className = 'found-marker';
+  el.title = pl.name;
+  el.innerHTML = `<span class="found-dot"></span>`
+    + `<span class="found-label">${escapeHtml(pl.name)}</span>`;
+  el.addEventListener('click', (e) => { e.stopPropagation(); clearFound(); });
+  foundMarker = new maplibregl.Marker({ element: el, anchor: 'left' })
+    .setLngLat([pl.lng, pl.lat]).addTo(map);
+}
+
+function clearFound() {
+  foundMarker?.remove();
+  foundMarker = null;
+}
+
+function setSource(which, on) {
+  sources[which] = !!on;
+  // Both off is a search that cannot answer anything, so the one you just
+  // turned off comes back on rather than leaving a blank screen with no way to
+  // read why — the same rule the kind filter has.
+  if (!sources.pins && !sources.places) sources[which] = true;
+  $('src-pins').checked = sources.pins;
+  $('src-places').checked = sources.places;
+  local.set('sources', sources);
+  schedulePlaces();
+  renderResults();
 }
 
 function onListClick(e) {
-  const row = e.target.closest('[data-pin]');
-  if (!row) return;
-  const p = pins.find((x) => x.id === row.dataset.pin);
-  closePanel('list', releaseListUrls);
-  if (p) { map.jumpTo({ center: [p.lng, p.lat], zoom: 15 }); openPin(p); }
+  const scopeEl = e.target.closest('[data-scope]');
+  if (scopeEl) { setScope(scopeEl.dataset.scope); return; }
+
+  const pinRow = e.target.closest('[data-pin]');
+  if (pinRow) {
+    const p = pins.find((x) => x.id === pinRow.dataset.pin);
+    closePanel('list', releaseListUrls);
+    if (p) { map.jumpTo({ center: [p.lng, p.lat], zoom: 15 }); openPin(p); }
+    return;
+  }
+
+  const placeEl = e.target.closest('[data-place]');
+  if (placeEl) {
+    const pl = places.find((x) => x.id === placeEl.dataset.place);
+    if (pl) goToPlace(pl);
+  }
+}
+
+/* ── home ────────────────────────────────────────────────────────────────
+ * One town, named once, doing two jobs.
+ *
+ * It is where the map opens when the phone will not say where you are — off on
+ * the sofa, off indoors, off before the fix comes in, off for anybody who would
+ * rather not be asked — because a map that opens on the middle of the country
+ * is a map you fly out of every morning.
+ *
+ * And it is what "near me" measures from with location off, which is the
+ * difference between a brand-name search working and returning a town in
+ * Brazil. Your own position still wins whenever there is one; this is the
+ * fallback, not a preference.
+ */
+let homeTimer = null;
+let homeAsk   = null;
+let homeFound = [];      // the towns the last lookup offered
+
+function renderHome() {
+  $('home-set').hidden = !home;
+  if (home) {
+    $('home-name').textContent = home.name;
+    $('home-detail').textContent = home.detail || '';
+  }
+  $('home-q').placeholder = home ? 'somewhere else' : 'name your town';
+}
+
+function homeSaying(text) {
+  const el = $('home-note');
+  el.textContent = text || '';
+  el.hidden = !text;
+}
+
+function onHomeQuery() {
+  const q = $('home-q').value.trim();
+  $('home-q-clear').hidden = !q;
+  clearTimeout(homeTimer);
+  homeAsk?.abort();
+  homeAsk = null;
+
+  if (q.length < MIN_QUERY) {
+    renderHomeResults([]);
+    homeSaying(q ? 'keep going — a town name is enough' : '');
+    return;
+  }
+  if (!online()) {
+    renderHomeResults([]);
+    homeSaying('no signal, and a town cannot be looked up from memory');
+    return;
+  }
+  homeSaying('looking…');
+  // The same debounce and the same one-a-second queue as the map search: this
+  // is the second box in the app that can talk to Nominatim, and the promise
+  // made to them is about the app, not about the box.
+  homeTimer = setTimeout(() => askHome(q), 350);
+}
+
+async function askHome(q) {
+  const ctl = new AbortController();
+  homeAsk = ctl;
+  try {
+    // Unbounded and unbiased, unlike every other search in here. Home is the
+    // one question that is not about where you are standing — you might be
+    // setting it from a hotel three states away, and the index's own ranking
+    // by importance is exactly right for "which Springfield".
+    const rows = await politeFetch(placeSearchUrl(q, { limit: 6 }), ctl);
+    if (ctl.signal.aborted) return;
+    const found = dedupePlaces(normalisePlaces(rows));
+    renderHomeResults(found);
+    homeSaying(found.length ? '' : 'nothing by that name');
+  } catch (err) {
+    if (ctl.signal.aborted || err?.name === 'AbortError') return;
+    renderHomeResults([]);
+    homeSaying('could not reach the map index — try again in a moment');
+  }
+  if (homeAsk === ctl) homeAsk = null;
+}
+
+function renderHomeResults(list) {
+  homeFound = list || [];
+  $('home-results').innerHTML = homeFound.map((pl) => `
+    <button class="home-row" data-home="${escapeHtml(pl.id)}">
+      <div class="r-text">
+        <div class="r-name">${escapeHtml(pl.name)}</div>
+        ${pl.detail ? `<div class="r-sub">${escapeHtml(pl.detail)}</div>` : ''}
+      </div>
+      ${icon('i-chevron', 'r-go')}
+    </button>`).join('');
+}
+
+function pickHome(pl) {
+  home = homeFromPlace(pl);
+  if (!home) return;
+  local.set('home', home);
+  $('home-q').value = '';
+  $('home-q-clear').hidden = true;
+  renderHomeResults([]);
+  homeSaying('');
+  renderHome();
+  // Deliberately does not fly there. You could be standing at a gate with a
+  // live fix, and a settings screen that throws the map three counties away
+  // while you are using it is a setting you would not touch twice.
+  toast(`home is ${home.name} — the map opens there`);
+  if (!$('list').hidden) renderResults();   // the near chip is named after it
+}
+
+function clearHome() {
+  home = null;
+  local.del('home');
+  renderHome();
+  if (!$('list').hidden) renderResults();
+}
+
+/* Instant, never animated. The only caller is the app opening, and a second and
+ * a half of flying out of the middle of the country is a second and a half of
+ * watching nothing. */
+function goHome() {
+  const cam = homeCamera(home);
+  if (!cam || !map) return false;
+  if (cam.bounds) map.fitBounds(cam.bounds, { padding: 40, maxZoom: cam.maxZoom, duration: 0 });
+  else map.jumpTo({ center: cam.center, zoom: cam.zoom });
+  return true;
 }
 
 /* ── offline maps ────────────────────────────────────────────────────────
@@ -2500,7 +2980,7 @@ async function setAvatar(file) {
     renderMe();
     whoamiChip();
     resetAvatars(me.id);
-    if (!$('list').hidden) openList();
+    if (!$('list').hidden) renderResults();
     if (sheet) renderNotes();
     said.textContent = 'saved';
     said.hidden = false;
@@ -2537,7 +3017,7 @@ async function clearAvatar() {
   renderMe();
   whoamiChip();
   resetAvatars(me.id);
-  if (!$('list').hidden) openList();
+  if (!$('list').hidden) renderResults();
   if (sheet) renderNotes();
 }
 
@@ -2586,7 +3066,7 @@ async function saveMyName() {
   await loadPins();
   await loadNotes();
   await loadPhotos();
-  if (!$('list').hidden) openList();
+  if (!$('list').hidden) renderResults();
 }
 
 /* The monogram, kept in one place so signing in and renaming both use it. */
@@ -2598,6 +3078,17 @@ function whoamiChip() {
   el.title = `${name} — settings`;
   el.setAttribute('aria-label', el.title);
   paintAvatars();
+}
+
+/* Every source currently drawing on the map, named. Built from the same two
+ * tables the layers are built from, so a base map or an overlay added later is
+ * credited by existing rather than by somebody remembering to. */
+function renderCredits() {
+  const bits = [];
+  const add = (t) => { if (t && !bits.includes(t)) bits.push(t); };
+  add(BASEMAPS[basemap]?.attribution);
+  overlaysOn.forEach((k) => add(OVERLAYS[k]?.attribution));
+  $('map-credit').innerHTML = bits.map((b) => `<li>${b}</li>`).join('');
 }
 
 /* ── settings ─────────────────────────────────────────────────────────────
@@ -2650,15 +3141,38 @@ $('forgot').addEventListener('click', forgotPassword);
 // Tapping your own name used to sign you out — a destructive action on the
 // smallest target in the app, behind a tooltip nobody reads on a phone. It
 // opens settings now, where signing out is a labelled button.
-$('whoami').addEventListener('click', () => openPanel('settings'));
+$('whoami').addEventListener('click', () => { openPanel('settings'); renderCredits(); });
 $('signout').addEventListener('click', signOut);
 $('me-save').addEventListener('click', saveMyName);
 $('avatar-pick').addEventListener('click', () => $('avatar-input').click());
 $('avatar-input').addEventListener('change', onAvatarPick);
 $('avatar-clear').addEventListener('click', clearAvatar);
 $('locate-btn').addEventListener('click', () => locate().catch(() => {}));
-$('list-btn').addEventListener('click', openList);
+$('search-open').addEventListener('click', openSearch);
 $('list-close').addEventListener('click', () => closePanel('list', releaseListUrls));
+$('q').addEventListener('input', onQuery);
+$('q-clear').addEventListener('click', clearQuery);
+// Enter takes the first thing on the list, which is the whole point of ranking
+// it — punch a name in, hit go, and the map is there.
+$('q').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  $('list-body').querySelector('[data-pin], [data-place]')?.click();
+});
+$('home-q').addEventListener('input', onHomeQuery);
+$('home-q-clear').addEventListener('click', () => {
+  $('home-q').value = '';
+  onHomeQuery();
+  $('home-q').focus();
+});
+$('home-clear').addEventListener('click', clearHome);
+$('home-results').addEventListener('click', (e) => {
+  const el = e.target.closest('[data-home]');
+  const pl = el && homeFound.find((x) => x.id === el.dataset.home);
+  if (pl) pickHome(pl);
+});
+$('src-pins').addEventListener('change', (e) => setSource('pins', e.target.checked));
+$('src-places').addEventListener('change', (e) => setSource('places', e.target.checked));
 $('list-body').addEventListener('click', onListClick);
 $('sheet-close').addEventListener('click', closeSheet);
 $('pin-save').addEventListener('click', savePin);
@@ -2700,7 +3214,7 @@ $('filter-all').addEventListener('click', () => {
   kindFilter = new Set(KIND_KEYS);
   applyFilter();
 });
-$('settings-btn').addEventListener('click', () => openPanel('settings'));
+$('settings-btn').addEventListener('click', () => { openPanel('settings'); renderCredits(); });
 $('settings-close').addEventListener('click', () => closePanel('settings'));
 $('glass-toggle').addEventListener('change', (e) => setGlass(e.target.checked));
 document.querySelectorAll('[name="accent"]').forEach((r) =>
@@ -2803,6 +3317,22 @@ window.addEventListener('offline', refreshNetworkUI);
   // Default on, so a phone that has never opened layers behaves as it always
   // did; only an explicit false turns it off.
   setUseLocation((await local.get('useLocation')) !== false);
+
+  // Both of these have to be in hand before the map is built: home decides
+  // where it opens, and the scope decides what the first search asks.
+  home = await local.get('home');
+  renderHome();
+  const savedScope = await local.get('scope');
+  if (SCOPES.includes(savedScope)) scope = savedScope;
+
+  const savedSources = await local.get('sources');
+  if (savedSources && typeof savedSources === 'object') {
+    sources = { pins: savedSources.pins !== false, places: savedSources.places !== false };
+    if (!sources.pins && !sources.places) sources = { pins: true, places: true };
+  }
+  $('src-pins').checked = sources.pins;
+  $('src-places').checked = sources.places;
+  searchBarLabel();
 
   setTheme((await local.get('theme')) || 'day');
   setAccent((await local.get('accent')) || 'ember');
