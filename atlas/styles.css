@@ -205,6 +205,9 @@
   /* The same idea for the results sheet. Separate from --sheet-frac because
      the two can be open at once and pushing one must not move the other. */
   --list-frac: 0.52;
+  /* How much of the bottom of the screen the on-screen keyboard is sitting on.
+     Written by trackKeyboard(); 0 whenever there is no keyboard. */
+  --kb: 0px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -1146,8 +1149,15 @@ button { cursor: pointer; border: none; background: none; }
    the screen and the head above it is not part of the measurement. */
 .search-sheet {
   pointer-events: auto;
-  position: absolute; left: 0; right: 0; bottom: 0;
-  height: calc(var(--list-frac) * 100%);
+  position: absolute; left: 0; right: 0;
+  /* Sits ON the keyboard, not under it. iOS does not shrink the window when the
+     keyboard opens — it draws one over the bottom of it — so anything anchored
+     to bottom: 0 while you are typing is behind the thing you are typing on,
+     which for a list of search results is the entire list. The height is a
+     fraction of what is left rather than of the window, or dragging it to full
+     would put its top above the field. */
+  bottom: var(--kb);
+  height: calc(var(--list-frac) * (100% - var(--kb)));
   display: flex; flex-direction: column;
   background: var(--panel);
   border-top: var(--b-strong) solid var(--edge);

@@ -98,16 +98,21 @@ const BASEMAPS = {
     url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}',
     attribution: 'USGS The National Map',
     // USGS bakes the contours INTO the imagery and stops the whole thing at 16
-    // — three levels short of plain satellite, and it 404s above that. Which is
-    // why this map turns to mush while the satellite one is still sharp: they
-    // are not one picture at two settings, they are two different pictures.
+    // — three levels short of plain satellite, and it 404s above that. That is
+    // why this map goes soft while the satellite one is still sharp: they are
+    // not one picture at two settings, they are two different pictures.
     //
-    // So past 16 it gets out of the way. It fades out over about a zoom level
-    // and the Esri satellite underneath comes through at its own full depth.
-    // Up close the contours are the part you can do without; the ground isn't.
+    // It was briefly made to fade out past 16 and let plain satellite through,
+    // which fixed the sharpness by deleting the map: at the zoom you actually
+    // use it, "satellite + topo" became satellite. The two base maps mean
+    // opposite things — one is bare ground, one has the information drawn on —
+    // and a map that quietly turns into the other one is worse than a soft map.
+    //
+    // So it stays itself and stops where its tiles stop. The card in the layers
+    // panel says so, and says what to do instead: satellite, with whichever
+    // overlays you actually wanted. There is no fix beyond that — every free
+    // transparent contour service was checked and none goes past 16 either.
     maxzoom: 16,
-    fallsBackTo: 'sat',
-    fadeOut: [16.2, 17.4],
   },
   topo: {
     label: 'USGS topo',
@@ -547,35 +552,63 @@ const SYNCED_PREFS = ['theme', 'accent', 'glass', 'basemap', 'overlays',
 
 let prefsTimer = null;
 
+/* True while applyPrefs is putting saved values back into the controls. Every
+ * one of those setters is the same function the user's own tap calls, so
+ * without this the app would record its own boot as a change — stamping
+ * prefsAt with "now" on every open, which would make every device permanently
+ * look like the newest one and turn the rule below into a coin toss. */
+let restoring = false;
+
 async function pushPrefs() {
   if (!me || !online()) return;
-  const prefs = {};
+  const prefs = { at: (await local.get('prefsAt')) || Date.now() };
   for (const k of SYNCED_PREFS) {
     const v = await local.get(k);
     if (v !== null && v !== undefined) prefs[k] = v;
   }
   // Not awaited by anything and not worth a toast: a preference that failed to
-  // reach the server is still right on this device and will go up next time.
+  // reach the server is still right on this device and goes up next start.
   await db.from('profiles').update({ prefs }).eq('id', me.id);
 }
 
 /* Debounced, because dragging the accent picker is twenty changes and one
- * decision. Local is written immediately either way. */
+ * decision. Local is written immediately either way — and so is the time it
+ * changed, which is what stops the sync going backwards (see adoptPrefs). */
 async function savePref(key, value) {
   await local.set(key, value);
+  if (restoring) return;          // putting a setting back is not changing it
+  await local.set('prefsAt', Date.now());
   clearTimeout(prefsTimer);
   prefsTimer = setTimeout(() => pushPrefs().catch(() => {}), 900);
 }
 
-/* The server's copy wins on arrival. It has to: the whole point is that the
- * phone finds out what the laptop decided, and the only way that reads as one
- * account rather than two is if the newer answer replaces the older one rather
- * than being merged with it. */
+/* The newer copy wins, and which one that is has to be asked rather than
+ * assumed.
+ *
+ * "The server is always right" is the obvious rule and it quietly eats work:
+ * change the base map in a canyon with no signal, come back into range, and the
+ * server's older answer would land on top of the one you actually made and then
+ * get pushed back up as though you had chosen it. So both sides carry the time
+ * they last changed, and the older one gives way. Clocks between two of your
+ * own devices are close enough for this; nothing here is a bank ledger. */
 async function adoptPrefs(prefs) {
   if (!prefs || typeof prefs !== 'object') return false;
   const keys = SYNCED_PREFS.filter((k) => prefs[k] !== undefined);
   if (!keys.length) return false;
+
+  const mine = (await local.get('prefsAt')) || 0;
+  const theirs = Number(prefs.at) || 0;
+  if (mine > theirs) {
+    // This device is ahead — probably changed with no signal. Send, don't take.
+    pushPrefs().catch(() => {});
+    return false;
+  }
+
   for (const k of keys) await local.set(k, prefs[k]);
+  // Adopted wholesale, so this device is now exactly as old as what it took.
+  // Without this the next change would look newer than it is by however long
+  // the app has been open, and two devices would take turns overwriting.
+  await local.set('prefsAt', theirs);
   return true;
 }
 
@@ -591,12 +624,7 @@ function initMap() {
     };
     layers.push({
       id: `base-${key}`, type: 'raster', source: key,
-      layout: { visibility: baseVisible(key) ? 'visible' : 'none' },
-      ...(cfg.fadeOut ? {
-        maxzoom: Math.ceil(cfg.fadeOut[1]) + 1,   // stop fetching once invisible
-        paint: { 'raster-opacity':
-          ['interpolate', ['linear'], ['zoom'], cfg.fadeOut[0], 1, cfg.fadeOut[1], 0] },
-      } : {}),
+      layout: { visibility: key === basemap ? 'visible' : 'none' },
     });
   }
 
@@ -724,16 +752,10 @@ function wireLongPress() {
   canvas.addEventListener('mouseleave', disarm);
 }
 
-/* Usually one base layer is drawn. One that fades out at depth needs the map it
- * falls back to drawn underneath it the whole time — switching that on at the
- * moment of the fade would leave a blank screen for as long as those tiles take
- * to arrive, which on a ridge with one bar is the whole descent. */
-const baseVisible = (k) => k === basemap || k === BASEMAPS[basemap]?.fallsBackTo;
-
 function setBasemap(key) {
   basemap = key;
   for (const k of Object.keys(BASEMAPS)) {
-    map.setLayoutProperty(`base-${k}`, 'visibility', baseVisible(k) ? 'visible' : 'none');
+    map.setLayoutProperty(`base-${k}`, 'visibility', k === key ? 'visible' : 'none');
   }
   const radio = document.querySelector(`[name="basemap"][value="${key}"]`);
   if (radio) radio.checked = true;
@@ -3058,8 +3080,25 @@ function updateDownloadEstimate() {
   if ($('maps').hidden || !map) return;
   const n = tilesForView(9, maxZoomChoice()).length;
   const base = BASEMAPS[basemap];
-  const what = [...(base.noBulk ? [] : [base.label]), ...[...overlaysOn].map((k) => OVERLAYS[k].label)];
+
+  // Split what is switched on into what will actually come down and what will
+  // not. Listing an overlay that is not in the tile count is the estimate
+  // promising something the download cannot deliver, and the place you find
+  // that out is the place with no signal.
+  const on = [...overlaysOn].map((k) => OVERLAYS[k]);
+  const coming = on.filter((o) => !o.noBulk);
+  const staying = on.filter((o) => o.noBulk);
+  const what = [...(base.noBulk ? [] : [base.label]), ...coming.map((o) => o.label)];
+
   $('dl-nobulk').hidden = !base.noBulk;
+  $('dl-noserve').hidden = !staying.length;
+  if (staying.length) {
+    const names = staying.map((o) => o.label).join(' and ');
+    $('dl-noserve').querySelector('span').textContent =
+      `${names} ${staying.length > 1 ? 'are' : 'is'} drawn to order rather than `
+      + `served as tiles, so ${staying.length > 1 ? 'they are' : 'it is'} not in that `
+      + `number. You keep whatever you have already looked at, and nothing more.`;
+  }
   $('dl-estimate').innerHTML =
     `<b>${n.toLocaleString()}</b> tiles &middot; about <b>${fmtSize(n * BYTES_PER_TILE)}</b>
      &middot; ${escapeHtml(what.join(' + '))}`;
@@ -3612,6 +3651,30 @@ document.addEventListener('keydown', (e) => {
   grip.addEventListener('pointercancel', letGo);
 })();
 
+/* How much of the bottom of the screen the keyboard has taken.
+ *
+ * iOS does not shrink the window when the keyboard opens — it draws one over
+ * the bottom of it — so `100%` keeps saying the same number while a third of
+ * the screen stops existing. Everything anchored to the bottom is then behind
+ * the keyboard, which for the results sheet means the answers are hidden under
+ * the thing you are typing on. visualViewport is the only honest measurement of
+ * what is still visible, and offsetTop matters as well as height: the page is
+ * scrolled up as well as covered.
+ *
+ * Nothing here assumes it exists. Where it does not, --kb stays 0 and the sheet
+ * sits on the bottom of the window exactly as it did. */
+(function trackKeyboard() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const set = () => {
+    const covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    document.documentElement.style.setProperty('--kb', `${Math.round(covered)}px`);
+  };
+  vv.addEventListener('resize', set);
+  vv.addEventListener('scroll', set);
+  set();
+})();
+
 window.addEventListener('online', () => { refreshNetworkUI(); syncQueue(); });
 window.addEventListener('offline', refreshNetworkUI);
 
@@ -3621,6 +3684,8 @@ window.addEventListener('offline', refreshNetworkUI);
  * and an update path, because two of them drift and then the phone and the
  * laptop disagree about exactly one setting for a month. */
 async function applyPrefs() {
+  restoring = true;
+  try {
   renderKindControls();
   const savedFilter = await local.get('kindFilter');
   if (Array.isArray(savedFilter) && savedFilter.length) {
@@ -3666,14 +3731,18 @@ async function applyPrefs() {
       c.checked = overlaysOn.has(c.dataset.overlay);
     });
   }
+  } finally { restoring = false; }
 }
 
 /* On a second run the map already exists, so the settings have to be pushed
  * into it rather than merely read into the variables it was built from. */
 function reapplyToMap() {
   if (!map) return;
-  setBasemap(basemap);
-  for (const key of Object.keys(OVERLAYS)) setOverlay(key, overlaysOn.has(key));
+  restoring = true;
+  try {
+    setBasemap(basemap);
+    for (const key of Object.keys(OVERLAYS)) setOverlay(key, overlaysOn.has(key));
+  } finally { restoring = false; }
 }
 
 (async () => {

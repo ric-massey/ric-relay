@@ -451,10 +451,15 @@ public land and property lines. All free, no keys, nationwide.
 **State and county lines** are two switches off one Census service, which
 publishes each boundary at half a dozen generalisations and picks the right one
 for the scale — a clean line at state zoom, the real jagged river up close.
-They are the one pair that cannot be saved for offline: the service has no tile
-cache, so instead of asking for a tile it is handed the bounding box of the
-screen and asked to draw it. There is nothing to put in a box and take up the
-mountain.
+
+They are the one pair that cannot be *saved ahead* for offline. The service has
+no tile cache, so instead of asking for a tile it is handed the bounding box of
+the screen and asked to draw it, and the bulk downloader has nothing to put in
+a box. It does still cache like anything else once you have looked at it — the
+bounding box is worked out from the tile, so the same tile always produces the
+same URL — which is also why `tigerweb.geo.census.gov` has to be in the service
+worker's TILE_HOSTS. Left out of that list it falls through to the app-shell
+cache and gets answered from there until the next deploy.
 
 **The overlays only add.** Four of the five base maps have roads and place names
 painted into their own tiles — everything except satellite — so turning *roads*
@@ -463,12 +468,20 @@ spends the rest of the day looking broken. It isn't: it owns one layer and that
 layer is off. Satellite is the only base map that is bare ground. The switches
 say which one you are on rather than leaving you to work it out on a mountain.
 
-**How far in it is worth zooming.** Satellite + topo used to go soft three
-zoom levels before plain satellite did, and it was not imagination: it is a
+**How far in it is worth zooming.** Satellite + topo goes soft three zoom
+levels before plain satellite does, and that is not imagination: it is a
 different USGS product that fuses the contours into the imagery and stops the
-whole thing at z16. Past 16 it now fades out over a zoom level and the Esri
-satellite underneath comes through at its own full depth — up close the
-contours are the part you can do without, the ground is not.
+whole thing at z16, 404ing above it.
+
+It was briefly made to fade out past 16 and let plain satellite through. That
+fixed the sharpness by deleting the map — at the zoom you actually use it,
+"satellite + topo" became satellite. The two base maps mean opposite things:
+one is bare ground and one has the information drawn on, and a map that quietly
+turns into the other one is worse than a soft map. It stays itself now and
+stops where its tiles stop; the card says so, and says what to do instead —
+satellite, with whichever overlays you actually wanted. Every free transparent
+contour service was checked for a deeper one and none of them goes past 16
+either, so there is no third option to find.
 
 Everywhere else, Esri's imagery is the deepest free nationwide picture there is
 and it stops at z19 — past that the map is

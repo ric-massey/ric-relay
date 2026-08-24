@@ -392,20 +392,23 @@
             <span class="map-swatch sw-sat"></span>
             <div>
               <div class="map-name">satellite</div>
-              <small>what is actually there</small>
+              <small>bare ground, and nothing drawn on it unless you switch it
+                on below. Sharp the furthest in of any of them</small>
             </div>
           </label>
           <label class="map-card">
             <input type="radio" name="basemap" value="hybrid">
             <span class="map-swatch sw-hybrid"></span>
             <span class="map-name">satellite + topo</span>
-            <small>imagery with contours and names over it</small>
+            <small>imagery with contours and names baked in. USGS stop drawing
+              it three zooms before satellite does, so it softens up close —
+              that is theirs, not a setting</small>
           </label>
           <label class="map-card">
             <input type="radio" name="basemap" value="topo">
             <span class="map-swatch sw-topo"></span>
             <span class="map-name">USGS topo</span>
-            <small>the paper quad map</small>
+            <small>the paper quad map. Same limit as above</small>
           </label>
           <label class="map-card">
             <input type="radio" name="basemap" value="otm">
@@ -472,13 +475,15 @@
           <span>state lines</span>
           <input type="checkbox" data-overlay="states">
           <span class="switch-track"></span>
-          <small>which state you are standing in, and where that stops</small>
+          <small>which state you are standing in, and where that stops. Cannot
+            be saved ahead of time — kept for wherever you have already looked</small>
         </label>
         <label class="switch">
           <span>county lines</span>
           <input type="checkbox" data-overlay="counties">
           <span class="switch-track"></span>
-          <small>the county — which is who to ask about a road or a deed</small>
+          <small>the county — which is who to ask about a road or a deed. Same:
+            no saving ahead, kept for wherever you have already looked</small>
         </label>
       </section>
 
@@ -500,7 +505,10 @@
       </section>
 
       <p class="estimate">Overlays download with the map when you save an area
-        offline, so turn on what you want before you download.</p>
+        offline, so turn on what you want before you download. State and county
+        lines are the exception: they are drawn to order rather than served, so
+        they cannot be saved ahead — you keep the ones you have already looked
+        at, and nothing more.</p>
 
       <button id="maps-from-layers" class="btn-ghost wide">
         <svg class="icon icon-sm"><use href="#i-download"/></svg>save maps for offline…
@@ -748,8 +756,12 @@
       <p id="dl-nobulk" class="warn" hidden>
         <svg class="icon icon-sm"><use href="#i-alert"/></svg>
         <span>The contour topo base map is run by volunteers, so ATLAS won't
-        bulk-download it. Overlays still save; switch to satellite or USGS topo
-        if you want a base map offline too.</span>
+        bulk-download it. Most overlays still save; switch to satellite or USGS
+        topo if you want a base map offline too.</span>
+      </p>
+      <p id="dl-noserve" class="warn" hidden>
+        <svg class="icon icon-sm"><use href="#i-alert"/></svg>
+        <span></span>
       </p>
 
       <div id="dl-progress" class="progress" hidden>

@@ -9,7 +9,7 @@
  *      data would be rude.
  */
 
-const SHELL_VERSION = 'atlas-shell-v31';
+const SHELL_VERSION = 'atlas-shell-v32';
 const TILE_CACHE    = 'atlas-tiles-v1';
 
 const SHELL = [
@@ -43,6 +43,13 @@ const TILE_HOSTS = [
   'gis.blm.gov',
   'services.arcgisonline.com',
   'a.tile.opentopomap.org',
+  // State and county lines. Not a tile server — each request is a bounding box
+  // and a "draw me this" — but the box is worked out FROM the tile, so the same
+  // tile always produces the same URL and it caches exactly like one. Left out
+  // of this list it would fall through to shellFirst, which files it in the
+  // app-shell cache and answers it from there until the next deploy: a stale
+  // boundary for a month and a shell cache that grows a row per pan.
+  'tigerweb.geo.census.gov',
 ];
 
 self.addEventListener('install', (event) => {
