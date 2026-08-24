@@ -1158,6 +1158,11 @@ button { cursor: pointer; border: none; background: none; }
      would put its top above the field. */
   bottom: var(--kb);
   height: calc(var(--list-frac) * (100% - var(--kb)));
+  /* Dragged to full with a keyboard up, the fraction alone leaves two pixels
+     between the top of this and the bottom of the field — technically clear,
+     and it reads as the sheet swallowing the thing you are typing into. Keep
+     the field, and a sliver of map under it, always. Measured, not guessed. */
+  max-height: calc(100% - var(--kb) - 116px);
   display: flex; flex-direction: column;
   background: var(--panel);
   border-top: var(--b-strong) solid var(--edge);
