@@ -693,12 +693,26 @@ function drawPins() {
   $('map-hint').hidden = pins.length > 0;
 }
 
+/* An actual pin: a round head on a point, with the point being the bit that
+ * means something — it is the only part of the shape that says "here, exactly".
+ * It was a rotated CSS square with one square corner, which is the shape a pin
+ * makes if you have only got border-radius. Drawn rather than approximated now,
+ * so the head is round, the point is sharp and it sits on its own shadow.
+ *
+ * Colour comes from one custom property the classes set, so mine/theirs,
+ * unsynced and personal all compose instead of fighting each other. */
+const PIN_SVG = `<svg class="pin-art" viewBox="0 0 24 33" aria-hidden="true">
+  <path class="pin-body" d="M12 32C12 32 22.6 19.8 22.6 11.6 22.6 5.5 17.8.7 12 .7S1.4 5.5 1.4 11.6C1.4 19.8 12 32 12 32Z"/>
+  <circle class="pin-eye" cx="12" cy="11.5" r="4.2"/>
+</svg>`;
+
 function addMarker(p) {
   const el = document.createElement('div');
   el.className = 'pin-marker'
     + (p.created_by === me.id ? ' is-mine' : '')
     + (p._pending ? ' is-pending' : '')
     + (p.is_private ? ' is-private' : '');
+  el.innerHTML = PIN_SVG;
   el.title = pinTitle(p);
   el.addEventListener('click', (e) => { e.stopPropagation(); openPin(p); });
 
@@ -2050,12 +2064,40 @@ function openMaps() {
   refreshStorage();
 }
 
+/* ── settings ─────────────────────────────────────────────────────────────
+ * Three preferences, all of them written to the phone rather than to the
+ * database: they are about this screen in this light, not about the crew. Two
+ * of them are one attribute on <html> and nothing else — the stylesheet holds
+ * the actual values, so there is no palette arithmetic here to drift out of
+ * step with what the contrast test measures.
+ */
+const ACCENTS = ['ember', 'signal', 'moss', 'sky', 'plum'];
+
+function setAccent(name) {
+  const key = ACCENTS.includes(name) ? name : 'ember';
+  document.documentElement.dataset.accent = key;
+  const radio = document.querySelector(`[name="accent"][value="${key}"]`);
+  if (radio) radio.checked = true;
+  local.set('accent', key);
+}
+
+function setGlass(on) {
+  // The attribute is only ever present when it is on, so the default costs
+  // nothing and a phone that has never opened settings behaves as before.
+  if (on) document.documentElement.dataset.glass = 'on';
+  else delete document.documentElement.dataset.glass;
+  $('glass-toggle').checked = !!on;
+  local.set('glass', !!on);
+}
+
 /* ── theme ───────────────────────────────────────────────────────────────
  * Bright by default. This gets used outdoors, and a dark UI in direct sun is
  * a mirror. Night mode is a deliberate choice, not the default.
  */
 
 function setTheme(theme) {
+  const radio = document.querySelector(`[name="theme"][value="${theme}"]`);
+  if (radio) radio.checked = true;
   document.documentElement.dataset.theme = theme;
   $('theme-btn').textContent = theme === 'night' ? '☾' : '☀';
   $('theme-btn').title = theme === 'night' ? 'Night mode — tap for day' : 'Day mode — tap for night';
@@ -2104,6 +2146,14 @@ $('sources-close').addEventListener('click', () => { $('sources').hidden = true;
 $('sources-list').addEventListener('click', onSourcesClick);
 $('src-save').addEventListener('click', addSource);
 $('dl-photos').addEventListener('click', cachePhotosOffline);
+$('settings-btn').addEventListener('click', () => { $('settings').hidden = false; });
+$('settings-close').addEventListener('click', () => { $('settings').hidden = true; });
+$('glass-toggle').addEventListener('change', (e) => setGlass(e.target.checked));
+document.querySelectorAll('[name="accent"]').forEach((r) =>
+  r.addEventListener('change', () => r.checked && setAccent(r.value)));
+document.querySelectorAll('[name="theme"]').forEach((r) =>
+  r.addEventListener('change', () => r.checked && setTheme(r.value)));
+
 $('layers-btn').addEventListener('click', () => {
   $('layers').hidden = false;
   refreshLocationState();
@@ -2135,7 +2185,7 @@ document.addEventListener('keydown', (e) => {
   // backing out of an edit should not also close the pin.
   if (editingNote) { cancelEditNote(); return; }
   closeSheet();
-  ['list', 'maps', 'layers', 'sources'].forEach((id) => { $(id).hidden = true; });
+  ['list', 'maps', 'layers', 'sources', 'settings'].forEach((id) => { $(id).hidden = true; });
 });
 
 window.addEventListener('online', () => { refreshNetworkUI(); syncQueue(); });
@@ -2144,6 +2194,8 @@ window.addEventListener('offline', refreshNetworkUI);
 // Restore preferences before anything paints.
 (async () => {
   setTheme((await local.get('theme')) || 'day');
+  setAccent((await local.get('accent')) || 'ember');
+  setGlass((await local.get('glass')) === true);
   const saved = await local.get('basemap');
   if (saved && BASEMAPS[saved]) basemap = saved;
   const radio = document.querySelector(`[name="basemap"][value="${basemap}"]`);

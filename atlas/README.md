@@ -110,9 +110,22 @@ these do I want", and that gets answered by what a button is *near*.
   Distance only appears once the app knows where you are — opening a list is
   not a reason to ask.
 - **⤓** — save maps for offline (below).
-- **☀ / ☾** — day and night. Day is the default: outdoors in bright sun a dark
-  UI is a mirror, so everything is opaque white, near-black and heavy-weight.
-  Night is for caves and dusk.
+- **☀ / ☾** — day and night, one tap, because you switch it walking into a
+  cave rather than sitting down to configure anything.
+- **⚙ settings** — colour, light and glass.
+  - **colour** — five accents: ember, signal, moss, sky, plum. Each one is a
+    hand-picked pair, one for day and one for night, rather than one hex with a
+    "darker" computed off it at runtime — that is how a palette ends up with a
+    pressed state nobody can see. All five are measured by
+    `test/contrast.test.mjs`, in both themes.
+  - **glass** — frosted panels, the map showing through the sheet and the
+    buttons. **Off by default, and that is not timidity.** This is read at
+    arm's length in direct sun, where a translucent panel washes out and takes
+    its text with it, which is why every surface in here is opaque. The setting
+    says as much in the app. It is pinned at 72% opacity, which is the level
+    that keeps body text past 7:1 even over black satellite imagery at night —
+    the test holds that number, and a device that cannot blur falls back to
+    solid rather than to see-through.
 - **add photo** — camera or library, one or several. Photos are shrunk to
   1600px on the phone before they go anywhere, which is small enough for cell
   data and still reads a rock face. Re-encoding strips EXIF on the way through,

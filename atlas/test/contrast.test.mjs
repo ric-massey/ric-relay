@@ -46,7 +46,7 @@ const day   = tokens(themeBlock(':root[data-theme="day"]'));
 const night = tokens(themeBlock(':root[data-theme="night"]'));
 
 /* ── WCAG relative luminance, the actual formula ── */
-const channels = (h) => {
+export const channels = (h) => {
   const s = h.replace('#', '');
   const full = s.length === 3 ? [...s].map((c) => c + c).join('') : s;
   return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
@@ -125,6 +125,83 @@ test('night holds the same floors', () => {
   atLeast(night, 'on-accent', 'accent', 3);
   atLeast(night, 'good', 'good-wash', 4.5);
   atLeast(night, 'danger', 'danger-wash', 4.5);
+});
+
+/* ── the accents ──────────────────────────────────────────────────────────
+ * A colour picker is five more chances to ship an unreadable button, and the
+ * one that fails will be the one nobody on the team happens to choose. Every
+ * pair in the stylesheet is measured, in both themes, from the stylesheet.
+ */
+function accentBlocks(nightMode) {
+  const out = {};
+  const re = nightMode
+    ? /:root\[data-theme="night"\]\[data-accent="(\w+)"\]\s*\{([^}]*)\}/g
+    : /:root\[data-accent="(\w+)"\]\s*\{([^}]*)\}/g;
+  for (const [, name, body] of css.matchAll(re)) out[name] = tokens('{' + body + '}');
+  return out;
+}
+
+const dayAccents = accentBlocks(false);
+const nightAccents = accentBlocks(true);
+
+test('every accent exists in both themes', () => {
+  const names = Object.keys(dayAccents);
+  assert.ok(names.length >= 5, `only found ${names.length} accents`);
+  for (const n of names) {
+    assert.ok(nightAccents[n], `${n} has no night pair — it would keep the day colour on a dark panel`);
+  }
+});
+
+test('every accent carries its own label colour, in both themes', () => {
+  for (const [name, t] of Object.entries(dayAccents)) {
+    const r = contrast(day['on-accent'], t.accent);
+    assert.ok(r >= 3, `day ${name}: label on accent is ${r.toFixed(2)}:1, needs 3:1`);
+  }
+  for (const [name, t] of Object.entries(nightAccents)) {
+    const r = contrast(night['on-accent'], t.accent);
+    assert.ok(r >= 3, `night ${name}: label on accent is ${r.toFixed(2)}:1, needs 3:1`);
+  }
+});
+
+/* The wash is the background of the privacy card, a note being edited and the
+ * county proposal. Body text lands on all three. */
+test('every accent wash still carries body text', () => {
+  for (const [name, t] of Object.entries(dayAccents)) {
+    const r = contrast(day.ink, t['accent-wash']);
+    assert.ok(r >= 7, `day ${name}: ink on wash is ${r.toFixed(2)}:1, needs 7:1`);
+  }
+  for (const [name, t] of Object.entries(nightAccents)) {
+    const r = contrast(night.ink, t['accent-wash']);
+    assert.ok(r >= 7, `night ${name}: ink on wash is ${r.toFixed(2)}:1, needs 7:1`);
+  }
+});
+
+test('the pressed state is visibly darker than the accent it belongs to', () => {
+  for (const [name, t] of Object.entries(dayAccents)) {
+    assert.ok(luminance(t['accent-dk']) < luminance(t.accent),
+      `day ${name}: accent-dk is not darker than accent`);
+  }
+});
+
+/* ── glass ────────────────────────────────────────────────────────────────
+ * Opt-in, and the number that makes it survivable is the opacity. Worked out
+ * against the worst backdrop there is — black satellite imagery at night —
+ * because that is the case where a frosted panel stops being a panel.
+ */
+test('glass is opt-in and stays readable over the worst backdrop', () => {
+  const m = css.match(/color-mix\(in srgb, var\(--panel\) (\d+)%, transparent\)/);
+  assert.ok(m, 'the glass surface is no longer a color-mix — re-check its opacity');
+  const alpha = Number(m[1]) / 100;
+  assert.ok(alpha >= 0.65, `glass is ${m[1]}% opaque; below 65% text starts to go`);
+
+  // panel over pure black at that alpha, then body text on the result
+  const over = channels(day.panel).map((c) => Math.round(c * alpha));
+  const worst = '#' + over.map((c) => c.toString(16).padStart(2, '0')).join('');
+  const r = contrast(day.ink, worst);
+  assert.ok(r >= 7, `over black backdrop, body text is ${r.toFixed(2)}:1, needs 7:1`);
+
+  assert.doesNotMatch(css, /^:root\s*\{[^}]*backdrop-filter/m,
+    'glass must never be on the bare :root — it is a choice, not the default');
 });
 
 /* Day being the default is a decision someone made outdoors, and it is the kind

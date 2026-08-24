@@ -77,6 +77,7 @@
     <div class="topbar-right">
       <button id="theme-btn" class="chip solo" title="Day mode — tap for night">☀</button>
       <button id="list-btn" class="chip solo" title="All pins">☰</button>
+      <button id="settings-btn" class="chip solo" title="Settings" aria-label="Settings">⚙</button>
       <button id="whoami" class="chip solo who" title="Sign out"></button>
     </div>
   </header>
@@ -242,6 +243,42 @@
       </fieldset>
 
       <button id="maps-from-layers" class="btn-ghost wide">save maps for offline…</button>
+    </div>
+  </div>
+
+  <!-- settings -->
+  <div id="settings" class="panel" hidden>
+    <div class="panel-head">
+      <strong>settings</strong>
+      <button id="settings-close" class="icon-btn" aria-label="Close">✕</button>
+    </div>
+    <div class="panel-body pad">
+      <fieldset class="detail">
+        <legend>colour</legend>
+        <div class="swatches">
+          <label class="swatch" data-accent="ember"><input type="radio" name="accent" value="ember"><span></span>ember</label>
+          <label class="swatch" data-accent="signal"><input type="radio" name="accent" value="signal"><span></span>signal</label>
+          <label class="swatch" data-accent="moss"><input type="radio" name="accent" value="moss"><span></span>moss</label>
+          <label class="swatch" data-accent="sky"><input type="radio" name="accent" value="sky"><span></span>sky</label>
+          <label class="swatch" data-accent="plum"><input type="radio" name="accent" value="plum"><span></span>plum</label>
+        </div>
+      </fieldset>
+
+      <fieldset class="detail">
+        <legend>light</legend>
+        <label><input type="radio" name="theme" value="day"> day
+          <small>opaque and high contrast. what you want in the sun</small></label>
+        <label><input type="radio" name="theme" value="night"> night
+          <small>for caves and dusk</small></label>
+      </fieldset>
+
+      <fieldset class="detail">
+        <legend>glass</legend>
+        <label><input id="glass-toggle" type="checkbox"> frosted panels
+          <small>the map shows through the sheet and the buttons. it looks
+            better indoors and it is harder to read outdoors — that is the
+            trade, and it is yours to make</small></label>
+      </fieldset>
     </div>
   </div>
 

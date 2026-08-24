@@ -89,6 +89,30 @@
   --e-3: 0 -2px 10px rgba(0,0,0,0.4), 0 -14px 44px rgba(0,0,0,0.6);
 }
 
+/* ── accents ──────────────────────────────────────────────────────────────
+ * The button colour is a preference, so it lives in the stylesheet as data
+ * rather than in JS as a calculation: five pairs, each hand-picked for its
+ * theme, each measured. Deriving a "darker" and a "wash" from one hex at
+ * runtime is how a palette ends up with a pressed state nobody can see and a
+ * tint that eats its own text — test/contrast.test.mjs reads these blocks and
+ * holds every one of them to the same floors as the rest of the app.
+ *
+ * These come after the theme blocks on purpose: equal specificity, later wins,
+ * so a chosen accent overrides the theme default. The night pairs carry both
+ * attributes and therefore outrank the day ones.
+ */
+:root[data-accent="ember"]  { --accent: #e8490f; --accent-dk: #b8360a; --accent-wash: #fdeee8; }
+:root[data-accent="signal"] { --accent: #c81e2d; --accent-dk: #9c1622; --accent-wash: #fdecee; }
+:root[data-accent="moss"]   { --accent: #12703c; --accent-dk: #0c5a2f; --accent-wash: #e7f5ec; }
+:root[data-accent="sky"]    { --accent: #0b5fbf; --accent-dk: #084a96; --accent-wash: #e8f1fd; }
+:root[data-accent="plum"]   { --accent: #6b3fbf; --accent-dk: #553098; --accent-wash: #f0eafc; }
+
+:root[data-theme="night"][data-accent="ember"]  { --accent: #ff6b35; --accent-dk: #d8481a; --accent-wash: #2a1710; }
+:root[data-theme="night"][data-accent="signal"] { --accent: #ff5a67; --accent-dk: #d8323f; --accent-wash: #2c1215; }
+:root[data-theme="night"][data-accent="moss"]   { --accent: #35d17e; --accent-dk: #22a862; --accent-wash: #0f2419; }
+:root[data-theme="night"][data-accent="sky"]    { --accent: #4f9dff; --accent-dk: #2f79d6; --accent-wash: #0f1d2e; }
+:root[data-theme="night"][data-accent="plum"]   { --accent: #a37cff; --accent-dk: #7f57d6; --accent-wash: #1c1430; }
+
 /* ── the scales everything else is built from ─────────────────────────────
    Type: seven steps. If a size is not on this list it does not go in the file.
    Space: a 4px rhythm. Radius and border likewise — short lists, with names. */
@@ -383,24 +407,28 @@ button { cursor: pointer; border: none; background: none; }
 /* ── markers ──────────────────────────────────────────────────────────────
  * A halo ring plus a hard shadow, so a pin reads against dark forest, bright
  * rock and washed-out satellite alike. */
+/* One property carries the colour, so "whose it is", "not synced" and "personal"
+   compose instead of each needing to know about the others. */
 .pin-marker {
-  position: relative;
-  width: 26px; height: 26px; border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  background: var(--accent);
-  border: var(--b-strong) solid var(--halo);
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 2px 2px 6px rgba(0,0,0,0.45);
-  cursor: pointer;
+  --pin: var(--accent);
+  width: 28px; height: 38px; cursor: pointer; display: block;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.45));
 }
-.pin-marker.is-mine    { background: var(--good); }
-.pin-marker.is-pending { background: var(--warn-bg); }
+.pin-marker .pin-art { width: 100%; height: 100%; display: block; overflow: visible; }
+.pin-marker.is-mine    { --pin: var(--good); }
+.pin-marker.is-pending { --pin: var(--warn-bg); }
+
+.pin-body {
+  fill: var(--pin);
+  stroke: var(--halo); stroke-width: 2;
+  paint-order: stroke;                 /* the halo sits outside the silhouette */
+}
+.pin-eye { fill: var(--halo); }
 
 /* A personal pin is hollow — it reads at a glance as "this one is only mine",
    without spending a colour, since colour already says whose it is. */
-.pin-marker.is-private::after {
-  content: ""; position: absolute; inset: 5px;
-  border-radius: 50%; background: var(--halo);
-}
+.pin-marker.is-private .pin-body { fill: var(--halo); stroke: var(--pin); stroke-width: 3; }
+.pin-marker.is-private .pin-eye  { fill: var(--pin); }
 
 .me-marker {
   width: 18px; height: 18px; border-radius: 50%;
@@ -859,6 +887,81 @@ button { cursor: pointer; border: none; background: none; }
 body.is-offline #app::after {
   content: ""; position: absolute; inset: 0; z-index: 9; pointer-events: none;
   border: var(--s-1) solid var(--ink); border-radius: 2px;
+}
+
+/* Colour swatches. The dot IS the choice, so it is the biggest thing in the
+   row, and the ring around a chosen one is drawn in ink rather than in the
+   colour itself — a selection marked in the colour it selects is invisible on
+   half the palette. */
+.swatches { display: flex; gap: var(--s-4); padding-top: var(--s-2); flex-wrap: wrap; }
+/* Written as .swatches .swatch, not .swatch: the panel's own `.detail label`
+   rule makes every label in here a two-column grid, and it out-specifies a
+   single class. That is what put the names beside the dots instead of under. */
+.swatches .swatch {
+  display: flex; flex-direction: column; align-items: center; gap: var(--s-2);
+  font-size: var(--t-2xs); font-weight: 700; color: var(--ink-dim);
+  cursor: pointer; padding: 0; min-width: 0;
+}
+.swatch input { position: absolute; opacity: 0; pointer-events: none; }
+.swatch span {
+  width: 38px; height: 38px; border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+}
+.swatch[data-accent="ember"]  span { background: #e8490f; }
+.swatch[data-accent="signal"] span { background: #c81e2d; }
+.swatch[data-accent="moss"]   span { background: #12703c; }
+.swatch[data-accent="sky"]    span { background: #0b5fbf; }
+.swatch[data-accent="plum"]   span { background: #6b3fbf; }
+:root[data-theme="night"] .swatch[data-accent="ember"]  span { background: #ff6b35; }
+:root[data-theme="night"] .swatch[data-accent="signal"] span { background: #ff5a67; }
+:root[data-theme="night"] .swatch[data-accent="moss"]   span { background: #35d17e; }
+:root[data-theme="night"] .swatch[data-accent="sky"]    span { background: #4f9dff; }
+:root[data-theme="night"] .swatch[data-accent="plum"]   span { background: #a37cff; }
+
+.swatch:has(input:checked) { color: var(--ink); }
+.swatch:has(input:checked) span {
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25), 0 0 0 3px var(--panel), 0 0 0 6px var(--ink);
+}
+.swatch:has(input:focus-visible) span { outline: var(--b-strong) solid var(--ink); outline-offset: 4px; }
+
+/* ── glass ────────────────────────────────────────────────────────────────
+ * Off by default, and that is not timidity. This app is read at arm's length in
+ * direct sun, where a translucent panel washes out and takes its text with it —
+ * which is why every surface in here is opaque. So glass is a switch you throw,
+ * not the house style.
+ *
+ * Made survivable rather than merely pretty: 72% is high enough that even over
+ * black satellite imagery the worst-case backdrop still leaves body text past
+ * 9:1, and the blur is doing the work the missing opacity used to. The borders
+ * get stronger at the same time, because a frosted panel with a hairline edge
+ * has no edge at all outdoors. contrast.test.mjs pins the 72%.
+ */
+:root[data-glass="on"] .sheet,
+:root[data-glass="on"] .panel,
+:root[data-glass="on"] .chip.solo,
+:root[data-glass="on"] .basemaps,
+:root[data-glass="on"] .btn-round,
+:root[data-glass="on"] .map-hint,
+:root[data-glass="on"] .sheet-actions {
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: blur(20px) saturate(1.6);
+}
+:root[data-glass="on"] .sheet,
+:root[data-glass="on"] .panel { border-color: var(--edge); }
+:root[data-glass="on"] .panel-head,
+:root[data-glass="on"] .sheet-actions { border-color: var(--edge); }
+
+/* A device that cannot blur would otherwise just get see-through panels, which
+   is the failure mode this whole app is built to avoid. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-glass="on"] .sheet,
+  :root[data-glass="on"] .panel,
+  :root[data-glass="on"] .chip.solo,
+  :root[data-glass="on"] .basemaps,
+  :root[data-glass="on"] .btn-round,
+  :root[data-glass="on"] .map-hint,
+  :root[data-glass="on"] .sheet-actions { background: var(--panel); }
 }
 
 /* ── MapLibre's own furniture ─────────────────────────────────────────────
