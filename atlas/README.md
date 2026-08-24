@@ -430,10 +430,31 @@ these do I want", and that gets answered by what a button is *near*.
   is a personal one. The pin whose sheet is open stands up out of the others
   with a ring under it. You can only edit and delete your own.
 
+**Settings follow the person, not the phone.** The base map, the overlays, the
+theme and accent, the kind filter, the search scope and your home town live on
+your profile row in `prefs`, and the server's copy wins the moment it lands —
+change the base map on the laptop and the phone has it next time it opens.
+Local storage still gets written first and is what the app reads on the way up,
+so none of this needs signal. What stays on the device is what is true of the
+device: whether it may ask for your location, where it last had the map, and
+what it has downloaded.
+
+The same column pair is why **the first-run setup happens once per person, not
+once per phone**. `setup_done` is on the profile. Sign in on a second device and
+you get the map you already set up, not a welcome screen.
+
 Base maps under **layers**: satellite (Esri), satellite + topo, USGS topo,
 contour topo (OpenTopoMap), and street. Over the top of those, eight overlays in
 four groups — place names, roads, trails, railways; terrain shading and water;
 public land and property lines. All free, no keys, nationwide.
+
+**State and county lines** are two switches off one Census service, which
+publishes each boundary at half a dozen generalisations and picks the right one
+for the scale — a clean line at state zoom, the real jagged river up close.
+They are the one pair that cannot be saved for offline: the service has no tile
+cache, so instead of asking for a tile it is handed the bounding box of the
+screen and asked to draw it. There is nothing to put in a box and take up the
+mountain.
 
 **The overlays only add.** Four of the five base maps have roads and place names
 painted into their own tiles — everything except satellite — so turning *roads*
@@ -442,8 +463,15 @@ spends the rest of the day looking broken. It isn't: it owns one layer and that
 layer is off. Satellite is the only base map that is bare ground. The switches
 say which one you are on rather than leaving you to work it out on a mountain.
 
-**How far in it is worth zooming.** Esri's imagery is the deepest free
-nationwide picture there is and it stops at z19 — past that the map is
+**How far in it is worth zooming.** Satellite + topo used to go soft three
+zoom levels before plain satellite did, and it was not imagination: it is a
+different USGS product that fuses the contours into the imagery and stops the
+whole thing at z16. Past 16 it now fades out over a zoom level and the Esri
+satellite underneath comes through at its own full depth — up close the
+contours are the part you can do without, the ground is not.
+
+Everywhere else, Esri's imagery is the deepest free nationwide picture there is
+and it stops at z19 — past that the map is
 enlarging the last real tile it has, which is why it goes soft. Asking Esri for
 z20 over the Ozarks does not return a sharper picture; it returns a grey square
 reading "Map data not yet available", which is why the cap is where it is. The

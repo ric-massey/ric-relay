@@ -97,7 +97,17 @@ const BASEMAPS = {
     ownRoads: true,
     url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}',
     attribution: 'USGS The National Map',
+    // USGS bakes the contours INTO the imagery and stops the whole thing at 16
+    // — three levels short of plain satellite, and it 404s above that. Which is
+    // why this map turns to mush while the satellite one is still sharp: they
+    // are not one picture at two settings, they are two different pictures.
+    //
+    // So past 16 it gets out of the way. It fades out over about a zoom level
+    // and the Esri satellite underneath comes through at its own full depth.
+    // Up close the contours are the part you can do without; the ground isn't.
     maxzoom: 16,
+    fallsBackTo: 'sat',
+    fadeOut: [16.2, 17.4],
   },
   topo: {
     label: 'USGS topo',
@@ -182,6 +192,33 @@ const OVERLAYS = {
     maxzoom: 16,
     attribution: 'BLM Surface Management Agency',
     opacity: 0.45,
+  },
+  /* State and county lines, from the Census. Two switches off one service,
+   * which publishes each boundary at half a dozen generalisations and picks
+   * the right one for the scale itself — so a state line is a clean line at
+   * z5 and the real jagged river at z14, with nothing here to choose between
+   * them.
+   *
+   * The odd part is the URL. This service has no tile cache, so instead of
+   * z/x/y it is handed the bounding box of each tile and asked to draw it:
+   * {bbox-epsg-3857} is MapLibre's own token for exactly that. The cost is
+   * that these two cannot be bulk-downloaded for offline — there is no tile to
+   * download, only a question to ask — which is what noBulk means below and why
+   * both descriptions in the layers panel stop short of promising otherwise.
+   */
+  states: {
+    label: 'state lines',
+    urls: ['https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image&layers=show:0,2,4,6,8,10,12,14,15,16'],
+    maxzoom: 16,
+    noBulk: true,
+    attribution: 'US Census Bureau TIGERweb',
+  },
+  counties: {
+    label: 'county lines',
+    urls: ['https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image&layers=show:1,3,5,7,9,11,13'],
+    maxzoom: 16,
+    noBulk: true,
+    attribution: 'US Census Bureau TIGERweb',
   },
   parcels: {
     label: 'property lines',
@@ -428,11 +465,16 @@ async function start() {
 
   // Offline, the profile fetch will fail — fall back to the copy we kept.
   let profile = await local.get('me');
+  let adopted = false;
   if (online()) {
     const { data } = await db.from('profiles')
-      .select('id, username, display_name, avatar_path, must_change_password')
+      .select('id, username, display_name, avatar_path, must_change_password, prefs, setup_done')
       .eq('id', session.user.id).single();
-    if (data) { profile = data; await local.set('me', data); }
+    if (data) {
+      profile = data;
+      await local.set('me', data);
+      adopted = await adoptPrefs(data.prefs);
+    }
   }
 
   me = profile || {
@@ -466,25 +508,75 @@ async function start() {
   // not be either.
   warmAvatars().then(pruneAvatars);
 
-  // The first time this phone signs in, the map is built behind the setup
-  // screen and told to stay where it is until the button at the bottom of it.
-  //
-  // A phone that has been used before has been welcomed, whatever the flag
-  // says — the flag is new, the app is not, and nobody who has been dropping
-  // pins for a month should be handed a "welcome to ATLAS". The last view is
-  // the tell: it is written the first time the map settles anywhere.
-  if (!(await local.get('welcomed'))) {
-    if (await local.get('lastView')) await local.set('welcomed', true);
-    else openFirstRun();
-  }
+  // Whatever the laptop decided last, before the map is built out of it.
+  if (adopted) await applyPrefs();
+
+  // The first time this PERSON signs in — not the first time this device does.
+  // It is a column on their profile, so a second phone gets the map they have
+  // already set up rather than a welcome screen and a fresh start. Offline
+  // there is no answer and no first sign-in either: reaching this screen at all
+  // needed a network once.
+  if (me.setup_done === false) openFirstRun();
 
   if (!map) initMap();
+  else if (adopted) reapplyToMap();
   await loadPins();
   await loadNotes();
   await loadPhotos();
   await loadSources();
   await syncQueue();
   refreshNetworkUI();
+}
+
+/* ── settings that follow the person ─────────────────────────────────────
+ * These used to live only in IndexedDB, which made the laptop and the phone two
+ * different maps and handed the first-run setup to every new device as though
+ * nobody had ever signed in.
+ *
+ * Local is still written first and always: it is instant, it works in a canyon,
+ * and it is what the app reads on the way up. The server copy is the one that
+ * outlives the phone, and it is written behind the scenes — nothing on screen
+ * waits for it, and if it cannot be written now it goes up on the next start.
+ *
+ * Only preferences are in here. What this DEVICE may do — whether it may ask
+ * for your location, where it last had the map, what it has downloaded — stays
+ * local, because those are facts about the phone rather than about you.
+ */
+const SYNCED_PREFS = ['theme', 'accent', 'glass', 'basemap', 'overlays',
+                      'kindFilter', 'scope', 'sources', 'home'];
+
+let prefsTimer = null;
+
+async function pushPrefs() {
+  if (!me || !online()) return;
+  const prefs = {};
+  for (const k of SYNCED_PREFS) {
+    const v = await local.get(k);
+    if (v !== null && v !== undefined) prefs[k] = v;
+  }
+  // Not awaited by anything and not worth a toast: a preference that failed to
+  // reach the server is still right on this device and will go up next time.
+  await db.from('profiles').update({ prefs }).eq('id', me.id);
+}
+
+/* Debounced, because dragging the accent picker is twenty changes and one
+ * decision. Local is written immediately either way. */
+async function savePref(key, value) {
+  await local.set(key, value);
+  clearTimeout(prefsTimer);
+  prefsTimer = setTimeout(() => pushPrefs().catch(() => {}), 900);
+}
+
+/* The server's copy wins on arrival. It has to: the whole point is that the
+ * phone finds out what the laptop decided, and the only way that reads as one
+ * account rather than two is if the newer answer replaces the older one rather
+ * than being merged with it. */
+async function adoptPrefs(prefs) {
+  if (!prefs || typeof prefs !== 'object') return false;
+  const keys = SYNCED_PREFS.filter((k) => prefs[k] !== undefined);
+  if (!keys.length) return false;
+  for (const k of keys) await local.set(k, prefs[k]);
+  return true;
 }
 
 /* ── map ─────────────────────────────────────────────────────────────────── */
@@ -499,7 +591,12 @@ function initMap() {
     };
     layers.push({
       id: `base-${key}`, type: 'raster', source: key,
-      layout: { visibility: key === basemap ? 'visible' : 'none' },
+      layout: { visibility: baseVisible(key) ? 'visible' : 'none' },
+      ...(cfg.fadeOut ? {
+        maxzoom: Math.ceil(cfg.fadeOut[1]) + 1,   // stop fetching once invisible
+        paint: { 'raster-opacity':
+          ['interpolate', ['linear'], ['zoom'], cfg.fadeOut[0], 1, cfg.fadeOut[1], 0] },
+      } : {}),
     });
   }
 
@@ -508,7 +605,8 @@ function initMap() {
   // first so roads and labels draw on top of it rather than under.
   // Order is the draw order: ground-shading first, then areas, then lines, then
   // labels last so nothing is drawn over the text.
-  const DRAW_ORDER = ['terrain', 'publicland', 'water', 'parcels', 'trails', 'rail', 'roads', 'labels'];
+  const DRAW_ORDER = ['terrain', 'publicland', 'water', 'parcels',
+                     'counties', 'states', 'trails', 'rail', 'roads', 'labels'];
   for (const key of DRAW_ORDER) {
     const cfg = OVERLAYS[key];
     cfg.urls.forEach((url, i) => {
@@ -626,14 +724,20 @@ function wireLongPress() {
   canvas.addEventListener('mouseleave', disarm);
 }
 
+/* Usually one base layer is drawn. One that fades out at depth needs the map it
+ * falls back to drawn underneath it the whole time — switching that on at the
+ * moment of the fade would leave a blank screen for as long as those tiles take
+ * to arrive, which on a ridge with one bar is the whole descent. */
+const baseVisible = (k) => k === basemap || k === BASEMAPS[basemap]?.fallsBackTo;
+
 function setBasemap(key) {
   basemap = key;
   for (const k of Object.keys(BASEMAPS)) {
-    map.setLayoutProperty(`base-${k}`, 'visibility', k === key ? 'visible' : 'none');
+    map.setLayoutProperty(`base-${k}`, 'visibility', baseVisible(k) ? 'visible' : 'none');
   }
   const radio = document.querySelector(`[name="basemap"][value="${key}"]`);
   if (radio) radio.checked = true;
-  local.set('basemap', key);
+  savePref('basemap', key);
   overlayNotes();
   updateDownloadEstimate();
   renderCredits();
@@ -662,7 +766,7 @@ function setOverlay(key, on) {
     const id = `ov-${key}-${i}`;
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
   });
-  local.set('overlays', [...overlaysOn]);
+  savePref('overlays', [...overlaysOn]);
   updateDownloadEstimate();
   renderCredits();
 }
@@ -1082,7 +1186,7 @@ async function applyFilter() {
   document.querySelectorAll('[data-filter]').forEach((c) => {
     c.checked = kindFilter.has(c.dataset.filter);
   });
-  await local.set('kindFilter', [...kindFilter]);
+  await savePref('kindFilter', [...kindFilter]);
   drawPins();
   if (!$('list').hidden) renderResults();
 }
@@ -2619,7 +2723,7 @@ function scopeBar(origin) {
 function setScope(key) {
   if (!SCOPES.includes(key) || key === scope) return;
   scope = key;
-  local.set('scope', scope);
+  savePref('scope', scope);
   schedulePlaces();   // renders on its way through, whatever state it lands in
 }
 
@@ -2713,7 +2817,7 @@ function setSource(which, on) {
   if (!sources.pins && !sources.places) sources[which] = true;
   $('src-pins').checked = sources.pins;
   $('src-places').checked = sources.places;
-  local.set('sources', sources);
+  savePref('sources', sources);
   schedulePlaces();
   renderResults();
 }
@@ -2829,7 +2933,7 @@ function renderHomeResults(list) {
 function pickHome(pl) {
   home = homeFromPlace(pl);
   if (!home) return;
-  local.set('home', home);
+  savePref('home', home);
   $('home-q').value = '';
   $('home-q-clear').hidden = true;
   renderHomeResults([]);
@@ -2900,7 +3004,10 @@ async function firstRunDone() {
   }
   btn.disabled = false;
 
-  await local.set('welcomed', true);
+  // On the account, not on the phone — that is the whole point of it.
+  me.setup_done = true;
+  await local.set('me', me);
+  if (online()) await db.from('profiles').update({ setup_done: true }).eq('id', me.id);
   firstRun = false;
   $('settings').classList.remove('is-first');
   $('settings-title').textContent = 'settings';
@@ -2933,6 +3040,9 @@ function tilesForView(minZoom, maxZoom) {
   // layer over it is half the map you were looking at when you hit download.
   for (const key of overlaysOn) {
     const cfg = OVERLAYS[key];
+    // Some overlays are drawn to order from a bounding box rather than served
+    // as tiles. There is nothing to put in a box and take up the mountain.
+    if (cfg.noBulk) continue;
     const from = Math.max(minZoom, cfg.minzoom || 0);
     if (from > Math.min(maxZoom, cfg.maxzoom)) continue;   // nothing to fetch
     cfg.urls.forEach((u) =>
@@ -3262,7 +3372,7 @@ function setAccent(name) {
   document.documentElement.dataset.accent = key;
   const radio = document.querySelector(`[name="accent"][value="${key}"]`);
   if (radio) radio.checked = true;
-  local.set('accent', key);
+  savePref('accent', key);
 }
 
 function setGlass(on) {
@@ -3271,7 +3381,7 @@ function setGlass(on) {
   if (on) document.documentElement.dataset.glass = 'on';
   else delete document.documentElement.dataset.glass;
   $('glass-toggle').checked = !!on;
-  local.set('glass', !!on);
+  savePref('glass', !!on);
 }
 
 /* ── theme ───────────────────────────────────────────────────────────────
@@ -3287,7 +3397,7 @@ function setTheme(theme) {
   // map in a white status bar.
   document.querySelector('meta[name="theme-color"]')
     .setAttribute('content', theme === 'night' ? '#0b0e13' : '#ffffff');
-  local.set('theme', theme);
+  savePref('theme', theme);
 }
 
 /* ── wiring ──────────────────────────────────────────────────────────────── */
@@ -3505,8 +3615,12 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('online', () => { refreshNetworkUI(); syncQueue(); });
 window.addEventListener('offline', refreshNetworkUI);
 
-// Restore preferences before anything paints.
-(async () => {
+/* Painted from whatever this device already knows, before anything is on
+ * screen — and run a second time from start() if the server turns out to have a
+ * newer answer. Written as one function called twice rather than as a boot path
+ * and an update path, because two of them drift and then the phone and the
+ * laptop disagree about exactly one setting for a month. */
+async function applyPrefs() {
   renderKindControls();
   const savedFilter = await local.get('kindFilter');
   if (Array.isArray(savedFilter) && savedFilter.length) {
@@ -3552,6 +3666,18 @@ window.addEventListener('offline', refreshNetworkUI);
       c.checked = overlaysOn.has(c.dataset.overlay);
     });
   }
+}
+
+/* On a second run the map already exists, so the settings have to be pushed
+ * into it rather than merely read into the variables it was built from. */
+function reapplyToMap() {
+  if (!map) return;
+  setBasemap(basemap);
+  for (const key of Object.keys(OVERLAYS)) setOverlay(key, overlaysOn.has(key));
+}
+
+(async () => {
+  await applyPrefs();
   start();
 })();
 
