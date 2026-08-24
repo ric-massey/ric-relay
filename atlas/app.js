@@ -2184,8 +2184,8 @@ function setTheme(theme) {
   const radio = document.querySelector(`[name="theme"][value="${theme}"]`);
   if (radio) radio.checked = true;
   document.documentElement.dataset.theme = theme;
-  $('theme-btn').textContent = theme === 'night' ? '☾' : '☀';
-  $('theme-btn').title = theme === 'night' ? 'Night mode — tap for day' : 'Day mode — tap for night';
+  // The browser's own chrome follows the app, so a phone does not frame a dark
+  // map in a white status bar.
   document.querySelector('meta[name="theme-color"]')
     .setAttribute('content', theme === 'night' ? '#0d0f12' : '#ffffff');
   local.set('theme', theme);
@@ -2262,8 +2262,6 @@ $('maps-close').addEventListener('click', () => { $('maps').hidden = true; });
 $('dl-go').addEventListener('click', downloadArea);
 $('dl-clear').addEventListener('click', clearTiles);
 $('pending').addEventListener('click', syncQueue);
-$('theme-btn').addEventListener('click', () =>
-  setTheme(document.documentElement.dataset.theme === 'night' ? 'day' : 'night'));
 
 document.querySelectorAll('[name="detail"]').forEach((r) =>
   r.addEventListener('change', updateDownloadEstimate));

@@ -134,9 +134,10 @@ these do I want", and that gets answered by what a button is *near*.
   Distance only appears once the app knows where you are — opening a list is
   not a reason to ask.
 - **⤓** — save maps for offline (below).
-- **☀ / ☾** — day and night, one tap, because you switch it walking into a
-  cave rather than sitting down to configure anything.
-- **⚙ settings** — colour, light and glass.
+- **⚙ settings** — colour, light and glass, all in one place.
+  - **light** — day and night. Day is the default and it is not a preference:
+    outdoors in bright sun a dark UI is a mirror, so everything is opaque
+    white, near-black and heavy-weight. Night is for caves and dusk.
   - **colour** — five accents: ember, signal, moss, sky, plum. Each one is a
     hand-picked pair, one for day and one for night, rather than one hex with a
     "darker" computed off it at runtime — that is how a palette ends up with a
