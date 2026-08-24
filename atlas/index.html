@@ -60,6 +60,7 @@
     <circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.4 15.4 4.6 4.6"/>
   </symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5m0 0 7-7m-7 7 7 7"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24">
     <path d="M4 6.5h16M9.5 6.5V4h5v2.5M6.5 6.5 7.5 20h9l1-13.5"/>
   </symbol>
@@ -317,14 +318,37 @@
   </div>
 
   <!-- Search: everybody's pins, and everywhere else.
-       Built upside down on purpose. The field is at the bottom, where the bar
-       that opened it was and where the keyboard is about to be, and the results
-       fill the room above it — so what you are reading is never the thing your
-       own hand is covering. -->
-  <div id="list" class="panel is-bottom" hidden>
-    <div id="list-body" class="panel-body"></div>
+       Not a screen you go to — a field over the top of the map and a sheet of
+       results under it, with the map still there in the gap. Searching is
+       nearly always about somewhere you can see, so covering the ground to ask
+       about it was backwards. Push the sheet down and the map is right there;
+       the arrow in the corner is the way out. -->
+  <div id="list" class="panel is-search" hidden>
+    <!-- The field, and the way back. Both stay put at the top of the screen
+         while the results move underneath them, so the thing you are typing
+         never travels and the arrow is always in the same corner. -->
+    <div class="search-head">
+      <button id="list-back" class="icon-btn search-back" aria-label="Back to the map">
+        <svg class="icon"><use href="#i-back"/></svg>
+      </button>
+      <label class="search-field">
+        <svg class="icon"><use href="#i-search"/></svg>
+        <input id="q" type="search" enterkeyhint="search" aria-label="Search"
+               placeholder="a place, a road, or a word from a note"
+               autocapitalize="none" autocorrect="off" spellcheck="false">
+        <button id="q-clear" class="icon-btn" aria-label="Clear search" hidden>
+          <svg class="icon icon-sm"><use href="#i-close"/></svg>
+        </button>
+      </label>
+    </div>
 
-    <div class="search-foot">
+    <!-- The results are a sheet like any other: take the grip and push them
+         down to look at the ground they are describing. -->
+    <div id="list-sheet" class="search-sheet">
+      <div id="list-grip" class="sheet-grip" role="separator" aria-label="Resize results">
+        <span class="sheet-grab"></span>
+      </div>
+
       <!-- Where to look. Two switches rather than three tabs: the answer to
            "where is Cave Hollow Road" is often one of each, and a tab would
            make you ask twice to find that out. -->
@@ -347,18 +371,7 @@
         <button id="filter-all" class="linkish">all</button>
       </div>
 
-      <div class="search-row">
-        <label class="search-field">
-          <svg class="icon"><use href="#i-search"/></svg>
-          <input id="q" type="search" enterkeyhint="search" aria-label="Search"
-                 placeholder="a place, a road, or a word from a note"
-                 autocapitalize="none" autocorrect="off" spellcheck="false">
-          <button id="q-clear" class="icon-btn" aria-label="Clear search" hidden>
-            <svg class="icon icon-sm"><use href="#i-close"/></svg>
-          </button>
-        </label>
-        <button id="list-close" class="linkish">done</button>
-      </div>
+      <div id="list-body" class="panel-body"></div>
     </div>
   </div>
 
@@ -415,13 +428,13 @@
           <span>place names</span>
           <input type="checkbox" data-overlay="labels">
           <span class="switch-track"></span>
-          <small>towns, parks, peaks, creeks — the labels</small>
+          <small id="ov-note-labels">towns, parks, peaks, creeks — the labels</small>
         </label>
         <label class="switch">
           <span>roads</span>
           <input type="checkbox" data-overlay="roads">
           <span class="switch-track"></span>
-          <small>the road network and route shields</small>
+          <small id="ov-note-roads">the road network and route shields</small>
         </label>
         <label class="switch">
           <span>trails</span>

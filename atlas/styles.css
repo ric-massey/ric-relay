@@ -202,6 +202,9 @@
      and the crosshair and the map's own idea of its centre both read it, so
      there is one number rather than three that have to agree. */
   --sheet-frac: 0.52;
+  /* The same idea for the results sheet. Separate from --sheet-frac because
+     the two can be open at once and pushing one must not move the other. */
+  --list-frac: 0.52;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -504,6 +507,15 @@ button { cursor: pointer; border: none; background: none; }
 }
 .searchbar { position: relative; }
 
+/* MapLibre's own zoom/compass stack, moved to the bottom right in initMap().
+   It has no idea the bottom bar exists, so the clearance is spelled out here:
+   the bar's own offset, the bar, and a gap — one expression, so moving the bar
+   moves the buttons with it rather than leaving them sitting on top of it. */
+.maplibregl-ctrl-bottom-right {
+  margin-bottom: calc(var(--safe-b) + var(--s-3) + var(--bar) + var(--s-3));
+  margin-right: var(--s-1);
+}
+
 /* ── status badges ────────────────────────────────────────────────────── */
 .status {
   position: absolute; z-index: 11; left: 0; right: 0;
@@ -570,17 +582,34 @@ button { cursor: pointer; border: none; background: none; }
  * rock and washed-out satellite alike. */
 /* One property carries the colour, so "whose it is", "not synced" and "personal"
    compose instead of each needing to know about the others. */
+/* Sized from the zoom, not scaled: MapLibre owns this element's `transform` —
+   it is how the pin is held over its coordinate — so a transform of ours is
+   either overwritten or it puts the pin somewhere there is no pin. Changing
+   width and height is safe, because the anchoring translate is a PERCENTAGE
+   of the element, so the tip stays on the point at every size.
+
+   Everything of ours that does want a transform lives on the .pin-art inside,
+   which MapLibre has never heard of. */
 .pin-marker {
   --pin: var(--accent);
-  width: 30px; height: 40px; cursor: pointer; display: block;
+  width: calc(30px * var(--pin-scale, 1));
+  height: calc(40px * var(--pin-scale, 1));
+  cursor: pointer; display: block;
   filter: drop-shadow(0 2px 2px rgba(0,0,0,0.45));
+  /* No transition on the size, and not only because a pin should track a pinch
+     frame for frame rather than lag it: a `width` transition over a calc() of a
+     custom property never lands in Chrome — the pin simply stays at its old
+     size for ever. Measured, not guessed. */
+  transition: filter var(--t-fast) var(--ease);
+}
+.pin-marker .pin-art {
+  width: 100%; height: 100%; display: block; overflow: visible;
   transform-origin: 50% 100%;
-  transition: transform var(--t-mid) var(--spring), filter var(--t-fast) var(--ease);
+  transition: transform var(--t-mid) var(--spring);
   animation: pin-drop var(--t-slow) var(--spring) both;
 }
 @keyframes pin-drop { from { opacity: 0; transform: translateY(-14px) scale(0.7); } }
-.pin-marker:active { transform: scale(1.12); }
-.pin-marker .pin-art { width: 100%; height: 100%; display: block; overflow: visible; }
+.pin-marker:active .pin-art { transform: scale(1.12); }
 /* Colour says WHAT the place is now, not whose it is. Only one thing can be
    encoded in a colour and be read at a glance, and on a shared map of finds
    the kind is the thing you are scanning for — who dropped it is written on
@@ -601,10 +630,14 @@ button { cursor: pointer; border: none; background: none; }
    the difference between "a pin is selected" and "which of these was I reading
    about" — and the pulse is on the ring, not the pin, so the silhouette that
    has to stay recognisable never moves. */
-.pin-marker.is-active { transform: scale(1.18); filter: drop-shadow(0 4px 5px rgba(0,0,0,0.5)); }
+.pin-marker.is-active { filter: drop-shadow(0 4px 5px rgba(0,0,0,0.5)); }
+.pin-marker.is-active .pin-art { transform: scale(1.18); }
+/* The ring shrinks with the pin it is under, or a pin the size of a tick mark
+   sits inside a ring meant for one three times the size. */
 .pin-marker.is-active::after {
   content: ""; position: absolute; left: 50%; bottom: -5px;
-  width: 22px; height: 22px; margin-left: -11px; border-radius: 50%;
+  width: calc(22px * var(--pin-scale, 1)); height: calc(22px * var(--pin-scale, 1));
+  margin-left: calc(-11px * var(--pin-scale, 1)); border-radius: 50%;
   border: var(--b) solid var(--pin);
   animation: ping 1.9s var(--ease) infinite;
 }
@@ -1079,35 +1112,59 @@ button { cursor: pointer; border: none; background: none; }
 .lede { color: var(--ink-dim); font-weight: 500; font-size: var(--t-md); line-height: 1.55; }
 
 /* ── the search panel ─────────────────────────────────────────────────────
- * Built upside down. The field sits on the floor of the panel, where the bar
- * that opened it was and where the keyboard is about to be, and the results
- * fill the room above — so what you are reading is never behind your own hand.
+ * Not a screen. The panel itself is a pane of glass over the map holding two
+ * things — the field at the top, the results in a sheet below — and the map
+ * keeps the gap between them, live and draggable. Which is why the panel takes
+ * no pointer events and each of its two children takes them back: an empty
+ * strip of "search screen" that silently eats a pan is the whole reason this
+ * used to have to cover everything.
  */
-.panel.is-bottom { padding-top: var(--safe-t); }
-/* Results sit ON the field rather than hanging from the ceiling with a gulf
-   under them. Done with an auto margin on a pseudo-element rather than
-   justify-content: flex-end, which is the obvious way and clips the top of the
-   list off once it overflows, with no way to scroll back up to it. */
-.panel.is-bottom .panel-body { flex: 1; display: flex; flex-direction: column; }
-.panel.is-bottom .panel-body::before { content: ""; margin-top: auto; }
-.panel.is-bottom .panel-body > * { flex: none; }
+.panel.is-search {
+  background: none; pointer-events: none; animation: none;
+  padding-bottom: 0;
+}
+.panel.is-search.is-closing { animation: none; }
 
-.search-foot {
-  flex: none;
+/* The field and the way back, pinned to the top of the SCREEN, not to the top
+   of the results — the sheet slides under them and they never move. */
+.search-head {
+  pointer-events: auto;
+  flex: none; display: flex; align-items: center; gap: var(--s-2);
+  padding: var(--s-2) var(--s-3) var(--s-3);
   background: var(--panel);
-  border-top: var(--b) solid var(--edge);
-  padding-bottom: var(--s-2);
+  border-bottom: var(--b) solid var(--edge);
+  box-shadow: var(--e-2);
+  animation: head-in var(--t-mid) var(--ease);
 }
-/* The rows above the field are its settings, so they read as part of it rather
-   than as the bottom of the list. */
-.search-foot .filter-bar { border-bottom: none; padding-bottom: 0; }
-.search-foot .filter-bar + .filter-bar { padding-top: var(--s-2); }
+@keyframes head-in { from { opacity: 0; transform: translateY(-10px); } }
 
-.search-row {
-  display: flex; align-items: center; gap: var(--s-2);
-  padding: var(--s-2) var(--s-4) 0;
+.search-back { flex: none; }
+
+/* The sheet of answers. Same height sum as the pin sheet and the same grip, so
+   the gesture is one gesture across the whole app rather than two that look
+   alike. It is `top` rather than `height` because it hangs from the bottom of
+   the screen and the head above it is not part of the measurement. */
+.search-sheet {
+  pointer-events: auto;
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: calc(var(--list-frac) * 100%);
+  display: flex; flex-direction: column;
+  background: var(--panel);
+  border-top: var(--b-strong) solid var(--edge);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: var(--e-4);
+  padding-bottom: var(--safe-b);
+  animation: rise var(--t-mid) var(--ease);
+  transition: height var(--t-mid) var(--ease);
 }
-.search-row .linkish { flex: none; font-weight: 700; color: var(--accent); }
+.search-sheet.is-dragging { transition: none; }
+.panel.is-search.is-closing .search-sheet { animation: fall var(--t-fast) var(--ease) forwards; }
+
+/* The two filter rows belong to the results, not to the field, so they ride
+   down with the sheet and the count stays next to the list it counts. */
+.search-sheet .filter-bar { border-bottom: none; padding-bottom: 0; }
+.search-sheet .filter-bar + .filter-bar { padding-top: var(--s-2); }
+.search-sheet .panel-body { padding-top: var(--s-2); }
 
 .search-field {
   flex: 1; min-width: 0;

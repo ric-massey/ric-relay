@@ -92,18 +92,27 @@ const BASEMAPS = {
   },
   hybrid: {
     label: 'satellite + topo',
+    // Draws its own roads and place names into the tile: the overlays below
+    // can add to that, but nothing can take it away. See overlayNotes().
+    ownRoads: true,
     url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}',
     attribution: 'USGS The National Map',
     maxzoom: 16,
   },
   topo: {
     label: 'USGS topo',
+    // Draws its own roads and place names into the tile: the overlays below
+    // can add to that, but nothing can take it away. See overlayNotes().
+    ownRoads: true,
     url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',
     attribution: 'USGS The National Map',
     maxzoom: 16,
   },
   otm: {
     label: 'contour topo',
+    // Draws its own roads and place names into the tile: the overlays below
+    // can add to that, but nothing can take it away. See overlayNotes().
+    ownRoads: true,
     url: 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
     attribution: '&copy; OpenTopoMap, OpenStreetMap contributors (CC-BY-SA)',
     maxzoom: 17,
@@ -114,6 +123,9 @@ const BASEMAPS = {
   },
   street: {
     label: 'street',
+    // Draws its own roads and place names into the tile: the overlays below
+    // can add to that, but nothing can take it away. See overlayNotes().
+    ownRoads: true,
     url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution: '&copy; OpenStreetMap contributors',
     maxzoom: 19,
@@ -526,9 +538,12 @@ function initMap() {
     attributionControl: false,
   });
 
-  // Top right, under your own buttons, so the bottom of the screen is the two
-  // things a thumb reaches for and nothing else.
-  map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
+  // Bottom right, stacked above the search bar. Up in the corner they were
+  // tucked under the settings and avatar chips — half hidden, and at the end of
+  // the reach from a thumb that is already down at the search bar. Zooming is
+  // the most-pressed thing on the whole map; it belongs where the hand is.
+  // The clearance above the bottom bar is set in styles.css.
+  map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-right');
 
   // Long-press (or right-click) pins the thing across the valley that you can
   // see but are not standing in.
@@ -536,6 +551,10 @@ function initMap() {
   wireLongPress();
 
   map.on('moveend', updateDownloadEstimate);
+  // Every frame of a pinch, not just the end of it — a pin that resizes once
+  // the gesture is over reads as a glitch rather than as a response.
+  map.on('zoom', scalePins);
+  scalePins();
 
   /* Where the map opens, in order of how much each answer knows.
    *
@@ -615,8 +634,26 @@ function setBasemap(key) {
   const radio = document.querySelector(`[name="basemap"][value="${key}"]`);
   if (radio) radio.checked = true;
   local.set('basemap', key);
+  overlayNotes();
   updateDownloadEstimate();
   renderCredits();
+}
+
+/* The roads and place-names switches add Esri's layers on top. They cannot
+ * subtract, and four of the five base maps have roads and names painted into
+ * their own tiles — so turning "roads" off on the topo map does exactly nothing
+ * visible, and the switch spends the rest of the day looking broken. It is not:
+ * it is telling the truth about a layer it does not own. Say so where the
+ * switch is, rather than leaving everyone to work it out on a mountain. */
+function overlayNotes() {
+  const own = !!BASEMAPS[basemap]?.ownRoads;
+  const name = BASEMAPS[basemap]?.label ?? 'this map';
+  $('ov-note-roads').textContent = own
+    ? `${name} draws its own roads — this only adds route shields on top`
+    : 'the road network and route shields';
+  $('ov-note-labels').textContent = own
+    ? `${name} has its own names — switch to satellite for a clean picture`
+    : 'towns, parks, peaks, creeks — the labels';
 }
 
 function setOverlay(key, on) {
@@ -976,6 +1013,29 @@ function markActive(id) {
     m.getElement().classList.toggle('is-active', key === id));
 }
 
+/* ── how big a pin is drawn ──────────────────────────────────────────────
+ * A pin is a label at walking zoom and a symptom of clutter at state zoom. At
+ * z15 you are looking at one place and want the thing legible; at z5 you are
+ * looking at nine counties and what you want is to see the SHAPE of where the
+ * pins are — which ones are clustered on one bluff and which one is off on its
+ * own — and thirty full-size pins is one blob with no shape in it at all.
+ *
+ * The curve is deliberately not linear. Halfway between z5 and z15 is not
+ * halfway between the two problems: clutter arrives fast on the way out, so
+ * the size falls away fast too, and the power keeps them small over the whole
+ * range where a pin is a marker rather than a label.
+ */
+const PIN_Z_FULL  = 15;      // at and above this, drawn at its designed size
+const PIN_Z_MIN   = 4;       // at and below this, as small as it ever gets
+const PIN_MIN     = 0.34;    // 10x14px — a coloured tick, still the right colour
+
+function scalePins() {
+  const t = Math.max(0, Math.min(1,
+    (map.getZoom() - PIN_Z_MIN) / (PIN_Z_FULL - PIN_Z_MIN)));
+  const scale = PIN_MIN + (1 - PIN_MIN) * t ** 1.5;
+  document.documentElement.style.setProperty('--pin-scale', scale.toFixed(3));
+}
+
 function addMarker(p) {
   const el = document.createElement('div');
   el.className = 'pin-marker'
@@ -1057,6 +1117,24 @@ let sheetFrac = SHEET_HALF;
 function setSheetFrac(f) {
   sheetFrac = f;
   document.documentElement.style.setProperty('--sheet-frac', f.toFixed(3));
+}
+
+/* The results sheet has its own three, and a fourth stop the pin sheet does not
+ * need: PEEK, a hand's width of list left showing. Searching is nearly always
+ * about ground you can see, so getting the map back has to cost one push rather
+ * than a close and a re-open — the arrow in the corner is for leaving, not for
+ * looking. Snapping is to the NEAREST of the three; with three stops a
+ * threshold either side of the middle one puts you somewhere you did not aim. */
+const LIST_PEEK = 0.22;
+const LIST_HALF = 0.52;
+const LIST_FULL = 0.86;
+const LIST_GONE = 0.11;      // shoved well past peek: you meant to be rid of it
+
+let listFrac = LIST_HALF;
+
+function setListFrac(f) {
+  listFrac = f;
+  document.documentElement.style.setProperty('--list-frac', f.toFixed(3));
 }
 
 function sheetPadding(open) {
@@ -2284,11 +2362,19 @@ function listRow(p, here, why = null) {
  */
 
 function openSearch() {
+  // Always back to half, however far it was pushed last time. Where the sheet
+  // was left is an answer to the last question, not to this one.
+  setListFrac(LIST_HALF);
   openPanel('list');
   renderResults();
   // The bar you pressed was a search bar, so the thing you meant to do next was
   // type. Delayed past the panel's own entrance or iOS scrolls it mid-animation.
   setTimeout(() => $('q').focus(), 140);
+}
+
+function closeSearch() {
+  $('q').blur();          // take the keyboard with it
+  closePanel('list', releaseListUrls);
 }
 
 function onQuery() {
@@ -2590,7 +2676,7 @@ function placeRow(pl, origin) {
  * as a point drops you in the middle of it at street zoom with no idea how big
  * it is, and a gate framed as a box is the whole county. */
 function goToPlace(pl) {
-  closePanel('list', releaseListUrls);
+  closeSearch();
   showFound(pl);
   if (isArea(pl) && pl.bounds) {
     map.fitBounds(pl.bounds, { padding: 56, maxZoom: 15, duration: 900 });
@@ -2639,7 +2725,7 @@ function onListClick(e) {
   const pinRow = e.target.closest('[data-pin]');
   if (pinRow) {
     const p = pins.find((x) => x.id === pinRow.dataset.pin);
-    closePanel('list', releaseListUrls);
+    closeSearch();
     if (p) { map.jumpTo({ center: [p.lng, p.lat], zoom: 15 }); openPin(p); }
     return;
   }
@@ -3220,7 +3306,7 @@ $('avatar-input').addEventListener('change', onAvatarPick);
 $('avatar-clear').addEventListener('click', clearAvatar);
 $('locate-btn').addEventListener('click', () => locate().catch(() => {}));
 $('search-open').addEventListener('click', openSearch);
-$('list-close').addEventListener('click', () => closePanel('list', releaseListUrls));
+$('list-back').addEventListener('click', closeSearch);
 $('q').addEventListener('input', onQuery);
 $('q-clear').addEventListener('click', clearQuery);
 // Enter takes the first thing on the list, which is the whole point of ranking
@@ -3296,6 +3382,7 @@ document.querySelectorAll('[name="theme"]').forEach((r) =>
 
 $('layers-btn').addEventListener('click', () => {
   openPanel('layers');
+  overlayNotes();     // the note depends on the base map, which may have moved
   refreshLocationState();
 });
 $('loc-enable').addEventListener('click', () => locate().catch(() => {}));
@@ -3324,7 +3411,8 @@ document.addEventListener('keydown', (e) => {
   // backing out of an edit should not also close the pin.
   if (editingNote) { cancelEditNote(); return; }
   closeSheet();
-  ['list', 'maps', 'layers', 'sources', 'settings'].forEach((id) => closePanel(id));
+  if (!$('list').hidden) closeSearch();
+  ['maps', 'layers', 'sources', 'settings'].forEach((id) => closePanel(id));
 });
 
 /* ── dragging the sheet ──────────────────────────────────────────────────
@@ -3366,6 +3454,49 @@ document.addEventListener('keydown', (e) => {
     if (sheetFrac < SHEET_GONE) { setSheetFrac(SHEET_HALF); closeSheet(); return; }
     setSheetFrac(sheetFrac > (SHEET_HALF + SHEET_FULL) / 2 ? SHEET_FULL : SHEET_HALF);
     sheetPadding(true);
+  };
+  grip.addEventListener('pointerup', letGo);
+  grip.addEventListener('pointercancel', letGo);
+})();
+
+/* ── dragging the results ────────────────────────────────────────────────
+ * The same gesture as the pin sheet, on the same grip, landing on one of three
+ * stops instead of two — and one thing the pin sheet does not do: taking hold
+ * of it puts the keyboard away. A push downwards is a request to see the map,
+ * and answering it by moving the sheet down while a keyboard holds the bottom
+ * third of the screen is answering half of it.
+ */
+(() => {
+  const el = $('list-sheet');
+  const grip = $('list-grip');
+  const stops = [LIST_PEEK, LIST_HALF, LIST_FULL];
+  let from = 0;
+  let base = LIST_HALF;
+  let dragging = false;
+  const height = () => $('app').clientHeight || window.innerHeight;
+
+  grip.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    from = e.clientY;
+    base = listFrac;
+    grip.setPointerCapture(e.pointerId);
+    el.classList.add('is-dragging');
+    $('q').blur();
+  });
+
+  grip.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    setListFrac(Math.min(LIST_FULL, Math.max(0.05, base + (from - e.clientY) / height())));
+  });
+
+  const letGo = () => {
+    if (!dragging) return;
+    dragging = false;
+    el.classList.remove('is-dragging');
+    if (listFrac < LIST_GONE) { setListFrac(LIST_HALF); closeSearch(); return; }
+    // Nearest of the three, not a pair of thresholds — see LIST_PEEK.
+    setListFrac(stops.reduce((best, f) =>
+      Math.abs(f - listFrac) < Math.abs(best - listFrac) ? f : best));
   };
   grip.addEventListener('pointerup', letGo);
   grip.addEventListener('pointercancel', letGo);

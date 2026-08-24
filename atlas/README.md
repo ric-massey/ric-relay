@@ -203,10 +203,20 @@ these do I want", and that gets answered by what a button is *near*.
   is a keyboard waiting to cover the map, and there is nothing to type into
   until you have said you want to search.
 
-  The screen is built upside down. The field is at the bottom, where the bar you
-  pressed was and where the keyboard is about to be, and the results fill the
-  room above it — so what you are reading is never what your own hand is
-  covering.
+  Pressing it does not take you to a screen. The field moves to the top with a
+  back arrow beside it, and the answers come up as a sheet from the bottom with
+  the **map still live in between** — searching is nearly always about ground
+  you can already see, so covering that ground in order to ask about it was
+  backwards.
+
+  The sheet takes the same grip as a pin's, and lands on the same kind of
+  stops: **full** for reading a long list, **half** to start, and **peek** —
+  pushed down out of the way, which is what you want the moment a result makes
+  you look at the map. Taking hold of the grip also puts the keyboard away,
+  because a push downwards is a request to see the ground and answering half of
+  it is worse than not answering. Shove it well past peek and the search closes
+  altogether; the arrow in the corner does the same thing on purpose rather
+  than by accident.
 
   With nothing typed it is the old feed, and it is built for the question it
   actually gets asked: somebody has handed you a place, do you want to go. So a
@@ -424,6 +434,21 @@ Base maps under **layers**: satellite (Esri), satellite + topo, USGS topo,
 contour topo (OpenTopoMap), and street. Over the top of those, eight overlays in
 four groups — place names, roads, trails, railways; terrain shading and water;
 public land and property lines. All free, no keys, nationwide.
+
+**The overlays only add.** Four of the five base maps have roads and place names
+painted into their own tiles — everything except satellite — so turning *roads*
+off while you are on the topo map does nothing you can see, and the switch
+spends the rest of the day looking broken. It isn't: it owns one layer and that
+layer is off. Satellite is the only base map that is bare ground. The switches
+say which one you are on rather than leaving you to work it out on a mountain.
+
+**How far in it is worth zooming.** Esri's imagery is the deepest free
+nationwide picture there is and it stops at z19 — past that the map is
+enlarging the last real tile it has, which is why it goes soft. Asking Esri for
+z20 over the Ozarks does not return a sharper picture; it returns a grey square
+reading "Map data not yet available", which is why the cap is where it is. The
+USGS maps stop harder still, at z16, and 404 above it. Those numbers are
+measured against the live services, not copied off a wiki.
 
 ---
 
