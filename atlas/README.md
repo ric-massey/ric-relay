@@ -24,12 +24,52 @@ Schema changes are migrations in `supabase/migrations/`, not copy-paste.
 
 ### 2. Custom SMTP
 
-Supabase's built-in email sender does **2 messages per hour** and is explicitly
-not for production. Invites and password resets both need email, so wire up a
-real provider (Resend) under Authentication → Emails → SMTP Settings.
+Nothing goes out until this is done, and that is the trap: Supabase's built-in
+sender does **2 messages an hour** and delivers only to addresses belonging to
+the project's own organisation — which is to say, to you. Invite your brother
+without SMTP and the invitation goes nowhere and says nothing about it.
 
-The SMTP password is an API key and lives in the dashboard only — never in this
-repo. Note that `supabase config push` can clear it; check after any push.
+Resend is free at this scale (100 a day) and takes ten minutes.
+
+**Verify a subdomain, not the domain.** `ricmassey.com` already has MX records
+pointing at Namecheap's email forwarding; aiming those somewhere else would
+quietly stop mail to `ric@ricmassey.com`. Resend's default —
+`send.ricmassey.com` — puts its MX on a subdomain and leaves the forwarder
+alone. Take the default.
+
+1. resend.com → **Domains → Add Domain** → `send.ricmassey.com`.
+2. It hands back three records — MX, SPF (TXT), DKIM (TXT). Add them at
+   Namecheap under **Advanced DNS**, putting in the *host* field exactly what
+   Resend gives (`send`, `resend._domainkey.send`, …) and not the full name;
+   Namecheap appends the domain itself, and a host of `send.ricmassey.com`
+   becomes `send.ricmassey.com.ricmassey.com`. Verification takes minutes.
+3. **API Keys → Create**, sending permission only. It is shown once.
+4. Supabase → Authentication → **Emails → SMTP Settings**:
+
+   | Field | Value |
+   |---|---|
+   | Host | `smtp.resend.com` |
+   | Port | `465` |
+   | Username | `resend` |
+   | Password | the API key |
+   | Sender email | `atlas@send.ricmassey.com` |
+   | Sender name | `ATLAS` |
+
+   The sender has to be on the verified domain. It does not have to be a mailbox
+   that exists — nobody replies to an invitation.
+5. Authentication → **Rate Limits** → emails per hour: **2 → 30**. Turning SMTP
+   on does not raise it for you.
+
+The API key lives in the dashboard and nowhere else. `supabase config push`
+overwrites live auth settings wholesale, so `[auth.email.smtp]` in `config.toml`
+reads the key back out of `env(RESEND_API_KEY)`:
+
+```bash
+RESEND_API_KEY=re_... supabase config push
+```
+
+Push without it and SMTP is cleared — no error, just invitations that stop
+arriving.
 
 ### 3. Lock the door
 
