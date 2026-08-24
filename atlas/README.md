@@ -102,17 +102,28 @@ To add a fourth person later, that's the whole process: one invitation.
 
 ## Running it
 
-Locally:
+From anywhere in the terminal:
 
 ```bash
-python3 -m http.server 8920 --directory ~/RicsWebsite/atlas
+atlas
 ```
 
-Then <http://localhost:8920>.
+`map` does the same thing. It starts a server if one isn't already up and opens
+the app; `atlas live` opens the deployed one at ricmassey.com instead, `atlas
+stop` shuts the local server down, `atlas log` follows it.
+
+The function is `atlas.zsh` in this directory, sourced from `~/.zshrc`. It
+serves the **whole site repo** on 8912 rather than this folder on its own,
+which matters more than it looks: in production the app is at `/atlas/`, and
+`http://localhost:8912/atlas/` is the one local address in Supabase's redirect
+allowlist. Serve this folder as a site root on some other port and every invite
+and password-reset link bounces — which is exactly the flow you most want to
+test locally.
 
 Geolocation needs a **secure context** — `localhost` counts, a bare IP on your
-LAN does not. On a phone it has to be served over HTTPS or **◎** will never get
-a fix.
+LAN does not. That is why the server binds to 127.0.0.1 and doesn't offer
+itself to the network: pointing a phone at your laptop's LAN address would only
+produce an app that can never find you. Test on a phone against the live site.
 
 ---
 
