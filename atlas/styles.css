@@ -5,14 +5,30 @@
  * So: opaque white, near-black text, heavy weights, hard borders, big targets.
  * Night mode exists for caves and dusk and is a deliberate choice, not default.
  *
- * ── on looking professional ──────────────────────────────────────────────
- * The rules above are not the enemy of that and they are not negotiable, so
- * this does not get there the usual way — dark, translucent, hairline, low
- * contrast. It gets there the way an instrument does: nothing arbitrary. Every
- * size comes off one type scale, every gap off one four-pixel rhythm, every
- * corner and border and shadow off a short list with names. What reads as
- * amateur in an interface is almost never the colours; it is fourteen text
- * sizes between 11px and 17px, each one chosen on the day it was needed.
+ * ── on looking modern ────────────────────────────────────────────────────
+ * The rules above are not negotiable, so this does not get there the usual way
+ * — dark, translucent, hairline, low contrast. Every one of those is a legibility
+ * budget being spent on a screenshot. What actually reads as current in 2026 is
+ * not colour at all, it is the other four:
+ *
+ *   SHAPE   — generous, consistent radii off one short list, and a real
+ *             elevation ladder instead of a border wherever a border will do.
+ *   MOTION  — nothing appears or leaves by blinking. One easing curve for
+ *             surfaces, one springier one for things you press, both cheap
+ *             enough to run on a phone with a map under them.
+ *   CONTROL — a switch is a switch, a choice of one is a segmented control, a
+ *             choice of a map is a picture of that map. Not a column of radio
+ *             buttons the browser drew in 1996.
+ *   ICON    — one drawn set on a 24px grid, in currentColor, at the same stroke
+ *             weight. The single loudest amateur tell in a UI is ☰ ⚙ ◎ ✕ borrowed
+ *             out of a font: four different weights, four different sizes, four
+ *             different vertical alignments, and none of them yours.
+ *
+ * The rest is unchanged doctrine: every size comes off one type scale, every gap
+ * off one four-pixel rhythm, every corner and border and shadow off a short list
+ * with names. test/contrast.test.mjs reads the palettes out of this file and
+ * holds all of them to their floors, so the look can move and the legibility
+ * cannot.
  */
 
 :root,
@@ -20,8 +36,8 @@
   /* ── surfaces ── */
   --bg:        #ffffff;
   --panel:     #ffffff;
-  --panel-2:   #f2f5f8;      /* raised block inside a panel */
-  --panel-3:   #e7ecf2;      /* pressed, or a well */
+  --panel-2:   #f3f6fa;      /* raised block inside a panel */
+  --panel-3:   #e6ecf3;      /* pressed, or a well */
 
   /* ── lines, in three weights of MEANING, not thickness ──
      edge   — where a surface meets the map. Must survive glare.
@@ -46,12 +62,16 @@
   --warn-ink:  #241d00;
   --danger:    #bf1212;
   --danger-wash: #fdecec;
-  --halo:      #ffffff;      /* ring around map markers */
+  --halo:      #ffffff;      /* what a pin is drawn against */
 
-  /* ── elevation: three steps, and they mean height above the map ── */
-  --e-1: 0 1px 2px rgba(11,15,20,0.10), 0 1px 3px rgba(11,15,20,0.06);
-  --e-2: 0 2px 4px rgba(11,15,20,0.10), 0 6px 16px rgba(11,15,20,0.14);
-  --e-3: 0 -2px 8px rgba(11,15,20,0.06), 0 -12px 40px rgba(11,15,20,0.22);
+  /* ── elevation: four steps, and they mean height above the map ──
+     Tinted with the ink rather than pure black, and split into a tight contact
+     shadow plus a wide soft one. A single blurred black box-shadow is what a
+     panel looked like when the answer to depth was one number. */
+  --e-1: 0 1px 2px rgba(11,15,20,0.08), 0 1px 3px rgba(11,15,20,0.06);
+  --e-2: 0 1px 2px rgba(11,15,20,0.10), 0 4px 12px rgba(11,15,20,0.10);
+  --e-3: 0 2px 4px rgba(11,15,20,0.10), 0 12px 32px rgba(11,15,20,0.16);
+  --e-4: 0 -1px 2px rgba(11,15,20,0.06), 0 -16px 48px rgba(11,15,20,0.22);
   --shadow: var(--e-2);      /* kept: older rules and JS refer to it */
 
   --safe-b:    env(safe-area-inset-bottom, 0px);
@@ -59,8 +79,8 @@
 }
 
 :root[data-theme="night"] {
-  --bg:        #0c0e12;
-  --panel:     #15181e;
+  --bg:        #0b0e13;
+  --panel:     #151920;
   --panel-2:   #1d222a;
   --panel-3:   #262c36;
 
@@ -82,11 +102,12 @@
   --warn-ink:  #ffe680;
   --danger:    #ff6b6b;
   --danger-wash: #2a1414;
-  --halo:      #0c0e12;
+  --halo:      #0b0e13;
 
   --e-1: 0 1px 2px rgba(0,0,0,0.5);
-  --e-2: 0 2px 6px rgba(0,0,0,0.55), 0 8px 20px rgba(0,0,0,0.45);
-  --e-3: 0 -2px 10px rgba(0,0,0,0.4), 0 -14px 44px rgba(0,0,0,0.6);
+  --e-2: 0 1px 3px rgba(0,0,0,0.55), 0 6px 16px rgba(0,0,0,0.4);
+  --e-3: 0 2px 6px rgba(0,0,0,0.6), 0 14px 36px rgba(0,0,0,0.5);
+  --e-4: 0 -2px 10px rgba(0,0,0,0.45), 0 -18px 52px rgba(0,0,0,0.62);
 }
 
 /* ── accents ──────────────────────────────────────────────────────────────
@@ -142,7 +163,7 @@
 
 /* ── the scales everything else is built from ─────────────────────────────
    Type: seven steps. If a size is not on this list it does not go in the file.
-   Space: a 4px rhythm. Radius and border likewise — short lists, with names. */
+   Space: a 4px rhythm. Radius, border, motion likewise — short lists, named. */
 :root {
   --t-2xs: 0.6875rem;   /* 11 — stamps, tags, the smallest legal label */
   --t-xs:  0.75rem;     /* 12 — micro-labels, uppercase headings */
@@ -155,13 +176,32 @@
   --s-1: 0.25rem; --s-2: 0.5rem;  --s-3: 0.75rem; --s-4: 1rem;
   --s-5: 1.25rem; --s-6: 1.5rem;  --s-8: 2rem;    --s-10: 2.5rem;
 
-  --r-xs: 6px; --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-pill: 999px;
+  /* Bigger than they were, and consistent. A 12px corner on a full-screen
+     panel and a 12px corner on a chip are not the same corner — radius reads
+     relative to the thing it is cut into, so the list has a top end now. */
+  --r-xs: 8px; --r-sm: 10px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px;
+  --r-pill: 999px;
 
   --b:        2px;      /* the standard line. Thick enough to read in sun. */
   --b-strong: 3px;      /* an edge that has the map behind it */
 
   --tap: 44px;          /* nothing you must hit outdoors is smaller */
-  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ── motion ──
+     Two curves and three durations, and that is the whole vocabulary. `ease`
+     is for surfaces arriving and leaving; `spring` overshoots slightly and is
+     only ever for something you touched, so the overshoot reads as the thing
+     answering you rather than as the layout being loose. */
+  --ease:   cubic-bezier(0.2, 0, 0, 1);
+  --spring: cubic-bezier(0.34, 1.24, 0.5, 1);
+  --t-fast: 120ms;
+  --t-mid:  220ms;
+  --t-slow: 320ms;
+
+  /* How much of the screen the sheet is taking. JS writes it while you drag,
+     and the crosshair and the map's own idea of its centre both read it, so
+     there is one number rather than three that have to agree. */
+  --sheet-frac: 0.52;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -198,41 +238,147 @@ button { cursor: pointer; border: none; background: none; }
 
 /* Numbers that sit in a column — coordinates, counts, sizes — should not jitter
    as they change. Every monospace run in here is doing that job. */
-.mono, .pin-meta, .park-state, .owner-rows, .estimate, .progress-count,
-.list-row .r-sub, .source-host, .badge, .chip, .toast, .field span,
-.mark, .gate-sub, .detail legend, .tag-private {
+.mono, .pin-meta, .owner-rows, .estimate, .progress-count,
+.list-row .r-sub, .source-host, .badge, .toast, .field > span,
+.mark, .gate-sub, .detail-head, .tag-private, .panel-count, .r-away {
   font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
   font-variant-numeric: tabular-nums;
 }
 
-/* ── the door ─────────────────────────────────────────────────────────── */
+/* ── the icon set ─────────────────────────────────────────────────────────
+ * One sprite in index.html, one class here, one grid. Everything is stroked in
+ * currentColor at the same weight, so an icon inherits the colour and the state
+ * of whatever it is sitting in and there is no such thing as an icon that is
+ * the wrong shade of grey. Sized in three steps and no more.
+ */
+.icon {
+  width: 22px; height: 22px; display: block; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 1.9;
+  stroke-linecap: round; stroke-linejoin: round;
+  pointer-events: none;               /* the button gets the tap, not the glyph */
+}
+.icon-sm { width: 18px; height: 18px; stroke-width: 2; }
+.icon-lg { width: 26px; height: 26px; stroke-width: 1.8; }
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+/* ── buttons ──────────────────────────────────────────────────────────────
+   Three kinds and no more: the one thing this screen is for, the ordinary
+   ones, and the one that destroys something.
+
+   And one rule that decides every box in the file: A BOX MEANS YOU CAN PRESS
+   IT. Information gets type and a hairline, never a container. Note that a
+   fill alone cannot mark a control here: --panel-2 on white is 1.05:1 and
+   simply is not there in glare. That is why the pressable things keep a real
+   border. What is new is the press itself — every one of them now moves, on
+   the spring curve, because a control that does not answer reads as a picture
+   of a control. */
+.btn-primary {
+  background: var(--accent); color: var(--on-accent); font-weight: 700;
+  border-radius: var(--r-md); padding: 0 var(--s-5); min-height: var(--tap);
+  font-size: var(--t-md); letter-spacing: 0.01em;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+  box-shadow: var(--e-1);
+  transition: background var(--t-fast) var(--ease),
+              transform var(--t-fast) var(--spring),
+              box-shadow var(--t-fast) var(--ease);
+}
+.btn-primary:active { background: var(--accent-dk); transform: scale(0.975); box-shadow: none; }
+.btn-primary:disabled { opacity: 0.45; box-shadow: none; transform: none; }
+.btn-primary.is-cancel { background: var(--danger); }
+@media (hover: hover) { .btn-primary:hover:not(:disabled) { background: var(--accent-dk); box-shadow: var(--e-2); } }
+
+.btn-ghost {
+  background: var(--panel-2); color: var(--ink); font-weight: 600;
+  border: var(--b) solid var(--rule); border-radius: var(--r-md);
+  padding: 0 var(--s-4); min-height: var(--tap); font-size: var(--t-md);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
+              transform var(--t-fast) var(--spring);
+}
+.btn-ghost:active { background: var(--panel-3); border-color: var(--edge); transform: scale(0.975); }
+.btn-ghost .icon { color: var(--ink-dim); }
+@media (hover: hover) { .btn-ghost:hover { border-color: var(--edge); } }
+
+.btn-danger {
+  background: none; color: var(--danger); font-weight: 700;
+  padding: 0 var(--s-3); min-height: var(--tap); border-radius: var(--r-md);
+  font-size: var(--t-md);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+  transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--spring);
+}
+.btn-danger:active { background: var(--danger-wash); transform: scale(0.975); }
+@media (hover: hover) { .btn-danger:hover { background: var(--danger-wash); } }
+
+.wide { width: 100%; margin-top: var(--s-2); }
+
+.icon-btn {
+  color: var(--ink); line-height: 1;
+  min-width: var(--tap); min-height: var(--tap);
+  display: grid; place-items: center; border-radius: var(--r-md);
+  transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--spring);
+}
+.icon-btn:active { background: var(--panel-2); transform: scale(0.92); }
+@media (hover: hover) { .icon-btn:hover { background: var(--panel-2); } }
+
+.linkish {
+  color: var(--ink-dim); font-weight: 600; font-size: var(--t-sm);
+  text-decoration: underline; text-underline-offset: 3px;
+  padding: var(--s-2); border-radius: var(--r-xs);
+  transition: color var(--t-fast) var(--ease);
+}
+.linkish:active { color: var(--ink); }
+@media (hover: hover) { .linkish:hover { color: var(--ink); } }
+
+/* ── the door ─────────────────────────────────────────────────────────────
+ * The one screen with nothing else on it, so it is allowed to be composed:
+ * the card floats on a wash that carries a breath of the accent, which is the
+ * only gradient in the app and the only place one is affordable.
+ */
 .gate {
   position: fixed; inset: 0; z-index: 100;
   display: grid; place-items: center; padding: var(--s-6);
-  background: var(--bg);
+  background:
+    radial-gradient(120% 80% at 50% -10%, var(--accent-wash) 0%, transparent 60%),
+    var(--bg);
 }
-.gate-card { width: 100%; max-width: 336px; display: flex; flex-direction: column; gap: var(--s-4); }
+.gate-card {
+  width: 100%; max-width: 340px;
+  display: flex; flex-direction: column; gap: var(--s-4);
+  animation: gate-in var(--t-slow) var(--ease) both;
+}
+@keyframes gate-in { from { opacity: 0; transform: translateY(12px); } }
 
+.gate-mark {
+  display: grid; place-items: center; gap: var(--s-3);
+  margin-bottom: var(--s-2);
+}
+.gate-badge {
+  width: 62px; height: 62px; border-radius: var(--r-lg);
+  display: grid; place-items: center;
+  background: var(--accent); color: var(--on-accent);
+  box-shadow: var(--e-2);
+}
+.gate-badge .icon { width: 32px; height: 32px; stroke-width: 1.7; }
 .mark {
   font-size: var(--t-2xl); font-weight: 700;
   letter-spacing: 0.34em; text-indent: 0.34em;
-  text-align: center; color: var(--accent);
+  text-align: center; color: var(--ink);
 }
 .gate-sub {
   text-align: center; color: var(--ink-dim); font-weight: 600;
   font-size: var(--t-xs); letter-spacing: 0.22em;
-  margin-bottom: var(--s-2);
 }
 
 .field { display: flex; flex-direction: column; gap: var(--s-1); }
-.field span {
+.field > span {
   font-size: var(--t-xs); font-weight: 700; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--ink-dim);
 }
 .field input {
   background: var(--bg); border: var(--b) solid var(--edge); border-radius: var(--r-md);
   padding: 0 var(--s-3); min-height: var(--tap); font-size: var(--t-lg);
-  transition: border-color 0.12s var(--ease), box-shadow 0.12s var(--ease);
+  width: 100%;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 .field input:focus {
   outline: none;
@@ -244,71 +390,17 @@ button { cursor: pointer; border: none; background: none; }
   color: var(--danger); font-weight: 700; text-align: center;
   font-size: var(--t-sm); background: var(--danger-wash);
   border-radius: var(--r-sm); padding: var(--s-2) var(--s-3);
+  animation: shake 0.32s var(--ease);
 }
-.linkish {
-  color: var(--ink-dim); font-weight: 600; font-size: var(--t-sm);
-  text-decoration: underline; text-underline-offset: 3px;
-  padding: var(--s-2); border-radius: var(--r-xs);
-  transition: color 0.12s var(--ease);
+@keyframes shake {
+  20% { transform: translateX(-5px); } 40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); } 80% { transform: translateX(3px); }
 }
-.linkish:active { color: var(--ink); }
-@media (hover: hover) { .linkish:hover { color: var(--ink); } }
 
 .gate-note {
   color: var(--ink-dim); font-size: var(--t-sm); text-align: center;
   margin: calc(var(--s-1) * -1) 0 0; line-height: 1.5;
 }
-
-/* ── buttons ──────────────────────────────────────────────────────────────
-   Three kinds and no more: the one thing this screen is for, the ordinary
-   ones, and the one that destroys something.
-
-   And one rule that decides every box in the file: A BOX MEANS YOU CAN PRESS
-   IT. Information gets type and a hairline, never a container. Before this the
-   sheet had a grey well holding white buttons sitting next to an outlined card
-   sitting next to grey note cards, all at the same level and all saying
-   "I am a thing" equally loudly — which is why it read as busy even after
-   every label was fixed. Note that a fill alone cannot mark a control here:
-   --panel-2 on white is 1.05:1 and simply is not there in glare. That is why
-   the pressable things keep a real border. */
-.btn-primary {
-  background: var(--accent); color: var(--on-accent); font-weight: 700;
-  border-radius: var(--r-md); padding: 0 var(--s-5); min-height: var(--tap);
-  font-size: var(--t-md); letter-spacing: 0.01em;
-  box-shadow: var(--e-1);
-  transition: background 0.12s var(--ease), transform 0.06s var(--ease);
-}
-.btn-primary:active { background: var(--accent-dk); transform: translateY(1px); }
-.btn-primary:disabled { opacity: 0.45; box-shadow: none; }
-.btn-primary.is-cancel { background: var(--danger); }
-@media (hover: hover) { .btn-primary:hover:not(:disabled) { background: var(--accent-dk); } }
-
-.btn-ghost {
-  background: var(--panel-2); color: var(--ink); font-weight: 600;
-  border: var(--b) solid var(--rule); border-radius: var(--r-md);
-  padding: 0 var(--s-4); min-height: var(--tap); font-size: var(--t-md);
-  transition: background 0.12s var(--ease), border-color 0.12s var(--ease), transform 0.06s var(--ease);
-}
-.btn-ghost:active { background: var(--panel-3); border-color: var(--edge); transform: translateY(1px); }
-@media (hover: hover) { .btn-ghost:hover { border-color: var(--edge); } }
-
-.btn-danger {
-  background: none; color: var(--danger); font-weight: 700;
-  padding: 0 var(--s-3); min-height: var(--tap); border-radius: var(--r-md);
-  font-size: var(--t-md);
-}
-.btn-danger:active { background: var(--danger-wash); }
-@media (hover: hover) { .btn-danger:hover { background: var(--danger-wash); } }
-
-.wide { width: 100%; margin-top: var(--s-2); }
-
-.icon-btn {
-  color: var(--ink); font-size: 1.25rem; line-height: 1;
-  min-width: var(--tap); min-height: var(--tap);
-  display: grid; place-items: center; border-radius: var(--r-md);
-}
-.icon-btn:active { background: var(--panel-2); }
-@media (hover: hover) { .icon-btn:hover { background: var(--panel-2); } }
 
 /* ── map + chrome ─────────────────────────────────────────────────────── */
 #app { position: fixed; inset: 0; }
@@ -322,76 +414,85 @@ button { cursor: pointer; border: none; background: none; }
 .topbar > * { pointer-events: auto; }
 .topbar-right { display: flex; gap: var(--s-2); }
 
-.basemaps {
-  display: flex; gap: 3px; background: var(--panel);
-  border: var(--b) solid var(--edge);
-  border-radius: var(--r-md); padding: 3px; box-shadow: var(--e-2);
-}
-
+/* A control floating on the map: square-ish, 44, its own shadow, and an icon
+   that is actually centred in it — which a font glyph never is. */
 .chip {
-  font-size: var(--t-sm); font-weight: 700; letter-spacing: 0.04em; color: var(--ink);
-  padding: 0 var(--s-3); min-height: 40px; border-radius: var(--r-sm);
-  display: inline-flex; align-items: center; justify-content: center;
-  transition: background 0.12s var(--ease), border-color 0.12s var(--ease);
+  font-size: var(--t-sm); font-weight: 700; letter-spacing: 0.02em; color: var(--ink);
+  padding: 0 var(--s-3); min-height: var(--tap); border-radius: var(--r-md);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
+              transform var(--t-fast) var(--spring);
 }
 .chip.is-on { background: var(--accent); color: var(--on-accent); }
 .chip.solo {
+  position: relative;
   background: var(--panel); border: var(--b) solid var(--edge);
-  box-shadow: var(--e-2); border-radius: var(--r-md);
-  min-width: 40px; padding: 0 var(--s-2); font-size: 1rem;
+  box-shadow: var(--e-2); min-width: var(--tap); padding: 0 var(--s-2);
 }
-.chip.solo:active { background: var(--panel-2); }
+.chip.solo:active { background: var(--panel-2); transform: scale(0.94); }
 @media (hover: hover) { .chip.solo:hover { background: var(--panel-2); } }
-.chip.wide-chip { min-width: auto; padding: 0 var(--s-4); }
+.chip.wide-chip { padding: 0 var(--s-4); }
+.chip .icon { color: var(--ink-dim); }
 
 /* A monogram, not a truncated username. "rmbuster82" clipped to "rmbus" reads
    as a layout that gave up; one letter in a circle is a decision. The full name
-   is on the title attribute, and the only thing this control does is sign out. */
-.who {
-  width: 40px; min-width: 40px; padding: 0;
+   is on the title attribute. */
+.chip.solo.who {
+  width: var(--tap); min-width: var(--tap); padding: 0;
   border-radius: 50%; overflow: hidden;
   font-size: var(--t-md); font-weight: 800; text-transform: uppercase;
-  letter-spacing: 0; color: var(--ink);
+  letter-spacing: 0; color: var(--on-accent);
+  background: var(--accent); border-color: var(--accent-dk);
 }
+.chip.solo.who:active { background: var(--accent-dk); }
+@media (hover: hover) { .chip.solo.who:hover { background: var(--accent-dk); } }
 
 /* On a narrow phone the top bar has to give: shrink the padding before
    anything is allowed to slide off the right edge. */
 @media (max-width: 400px) {
-  .chip.solo { min-width: 38px; padding: 0 var(--s-1); }
-  .chip { font-size: var(--t-xs); }
-  .who { width: 38px; min-width: 38px; }
+  .chip.solo { min-width: 42px; padding: 0 var(--s-1); }
+  .chip.wide-chip { padding: 0 var(--s-3); }
+  .chip.solo.who { width: 42px; min-width: 42px; }
   .topbar-right { gap: var(--s-1); }
-  .btn-round { width: 48px; height: 48px; font-size: 1.2rem; }
 }
 
 /* Said once, while the map is empty. Quiet on purpose — it is an instruction
    nobody needs twice, not a call to action. */
 .map-hint {
-  position: absolute; z-index: 10; left: 50%; transform: translateX(-50%);
-  bottom: calc(var(--safe-b) + var(--s-4) + 54px + var(--s-3));
+  position: absolute; z-index: 10; left: 50%;
+  bottom: calc(var(--safe-b) + var(--s-4) + 56px + var(--s-3));
   background: var(--panel); color: var(--ink-dim);
   border: var(--b) solid var(--rule); border-radius: var(--r-pill);
   padding: var(--s-2) var(--s-4); box-shadow: var(--e-2);
   font-size: var(--t-sm); font-weight: 700; white-space: nowrap;
+  display: flex; align-items: center; gap: var(--s-2);
   pointer-events: none;
+  transform: translateX(-50%);
+  animation: hint-in var(--t-slow) var(--ease) both;
 }
+.map-hint .icon { color: var(--ink-mute); }
+@keyframes hint-in { from { opacity: 0; transform: translate(-50%, 8px); } }
 
 /* ── status badges ────────────────────────────────────────────────────── */
 .status {
   position: absolute; z-index: 11; left: 0; right: 0;
-  top: calc(var(--safe-t) + 3.6rem);
+  top: calc(var(--safe-t) + var(--tap) + var(--s-5));
   display: flex; justify-content: center; gap: var(--s-2); pointer-events: none;
 }
 .status > * { pointer-events: auto; }
 .badge {
   font-size: var(--t-xs); font-weight: 700; letter-spacing: 0.06em;
   padding: var(--s-1) var(--s-3); border-radius: var(--r-pill);
-  box-shadow: var(--e-2); min-height: 28px; display: inline-flex; align-items: center;
+  box-shadow: var(--e-2); min-height: 30px;
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  animation: drop-in var(--t-mid) var(--spring) both;
 }
+.badge .icon { width: 15px; height: 15px; stroke-width: 2.2; }
+@keyframes drop-in { from { opacity: 0; transform: translateY(-10px) scale(0.9); } }
 .badge-off  { background: var(--ink); color: var(--bg); }
 .badge-warn { background: var(--warn-bg); color: var(--warn-ink); box-shadow: var(--e-2), inset 0 0 0 1px rgba(0,0,0,0.3); }
 
-/* One control sits on the map now: where am I. A pin is made by pressing and
+/* One control sits on the map: where am I. A pin is made by pressing and
    holding the map, which is the whole gesture — there is no button for it,
    because a button would only be a slower way of saying the same thing.
    Bottom left, clear of MapLibre's zoom stack on the right. */
@@ -404,32 +505,46 @@ button { cursor: pointer; border: none; background: none; }
 .dock > * { pointer-events: auto; }
 
 .btn-round {
-  width: 54px; height: 54px; border-radius: 50%;
+  width: 56px; height: 56px; border-radius: 50%;
   background: var(--panel); border: var(--b-strong) solid var(--edge);
-  color: var(--ink); font-size: 1.35rem; box-shadow: var(--e-2);
+  color: var(--ink); box-shadow: var(--e-3);
   display: grid; place-items: center;
-  transition: background 0.12s var(--ease), transform 0.08s var(--ease);
+  transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--spring),
+              border-color var(--t-fast) var(--ease);
 }
-.btn-round:active { background: var(--panel-2); transform: scale(0.96); }
+.btn-round .icon { width: 26px; height: 26px; }
+.btn-round:active { background: var(--panel-2); transform: scale(0.9); }
+.btn-round.is-live { border-color: var(--accent); color: var(--accent); }
+@media (max-width: 400px) { .btn-round { width: 52px; height: 52px; } }
 
 /* Marks the exact point a new pin is sitting on, which the pin's own marker
    cannot do yet — it is not drawn until the pin is saved. */
 .crosshair {
   position: absolute; z-index: 12; left: 50%; top: 50%;
-  width: 44px; height: 44px; margin: -22px 0 0 -22px;
+  width: 48px; height: 48px; margin: -24px 0 0 -24px;
   pointer-events: none;
-  transition: top 0.22s var(--ease);
+  transition: top var(--t-mid) var(--ease);
+  animation: cross-in var(--t-mid) var(--spring) both;
 }
-/* With the sheet up, "the middle" is the middle of what you can still see —
-   the top half — not the middle of the screen, which is behind the sheet. The
-   map is given matching bottom padding so its centre lands here too. */
-.crosshair.is-offset { top: 25%; }
+@keyframes cross-in { from { opacity: 0; transform: scale(1.6); } }
+/* With the sheet up, "the middle" is the middle of what you can still see, not
+   the middle of the screen, which is behind the sheet. One number does it: the
+   sheet writes how much of the screen it is taking and this is the centre of
+   what is left. The map is padded by the same fraction, so its own idea of its
+   centre lands here too. */
+.crosshair.is-offset { top: calc((100% - 100% * var(--sheet-frac)) / 2); }
 .crosshair::before, .crosshair::after {
   content: ""; position: absolute; background: var(--accent);
   box-shadow: 0 0 0 1.5px var(--halo);
+  border-radius: 2px;
 }
 .crosshair::before { left: 50%; top: 0; width: 3px; height: 100%; margin-left: -1.5px; }
 .crosshair::after  { top: 50%; left: 0; height: 3px; width: 100%; margin-top: -1.5px; }
+/* A ring in the middle so the cross has a centre you can see against detail. */
+.crosshair span {
+  position: absolute; inset: 25%; border-radius: 50%;
+  border: 3px solid var(--accent); box-shadow: 0 0 0 1.5px var(--halo), inset 0 0 0 1.5px var(--halo);
+}
 
 /* ── markers ──────────────────────────────────────────────────────────────
  * A halo ring plus a hard shadow, so a pin reads against dark forest, bright
@@ -438,9 +553,14 @@ button { cursor: pointer; border: none; background: none; }
    compose instead of each needing to know about the others. */
 .pin-marker {
   --pin: var(--accent);
-  width: 28px; height: 38px; cursor: pointer; display: block;
+  width: 30px; height: 40px; cursor: pointer; display: block;
   filter: drop-shadow(0 2px 2px rgba(0,0,0,0.45));
+  transform-origin: 50% 100%;
+  transition: transform var(--t-mid) var(--spring), filter var(--t-fast) var(--ease);
+  animation: pin-drop var(--t-slow) var(--spring) both;
 }
+@keyframes pin-drop { from { opacity: 0; transform: translateY(-14px) scale(0.7); } }
+.pin-marker:active { transform: scale(1.12); }
 .pin-marker .pin-art { width: 100%; height: 100%; display: block; overflow: visible; }
 /* Colour says WHAT the place is now, not whose it is. Only one thing can be
    encoded in a colour and be read at a glance, and on a shared map of finds
@@ -458,6 +578,22 @@ button { cursor: pointer; border: none; background: none; }
    only on this phone is not yet a place anyone else can go to. */
 .pin-marker.is-pending { --pin: var(--warn-bg); }
 
+/* The one whose sheet is open. Standing it up and putting a ring under it is
+   the difference between "a pin is selected" and "which of these was I reading
+   about" — and the pulse is on the ring, not the pin, so the silhouette that
+   has to stay recognisable never moves. */
+.pin-marker.is-active { transform: scale(1.18); filter: drop-shadow(0 4px 5px rgba(0,0,0,0.5)); }
+.pin-marker.is-active::after {
+  content: ""; position: absolute; left: 50%; bottom: -5px;
+  width: 22px; height: 22px; margin-left: -11px; border-radius: 50%;
+  border: var(--b) solid var(--pin);
+  animation: ping 1.9s var(--ease) infinite;
+}
+@keyframes ping {
+  0%   { transform: scale(0.5); opacity: 0.9; }
+  100% { transform: scale(2.1); opacity: 0; }
+}
+
 .pin-body {
   fill: var(--pin);
   stroke: var(--halo); stroke-width: 2;
@@ -466,7 +602,7 @@ button { cursor: pointer; border: none; background: none; }
 .pin-eye { fill: var(--halo); }
 
 /* A personal pin is hollow — it reads at a glance as "this one is only mine",
-   without spending a colour, since colour already says whose it is. */
+   without spending a colour, since colour already says what kind of place it is. */
 .pin-marker.is-private .pin-body { fill: var(--halo); stroke: var(--pin); stroke-width: 3; }
 .pin-marker.is-private .pin-eye  { fill: var(--pin); }
 
@@ -475,37 +611,85 @@ button { cursor: pointer; border: none; background: none; }
   background: #1a6dff; border: var(--b-strong) solid #fff;
   box-shadow: 0 0 0 1px rgba(0,0,0,0.45), 0 0 0 8px rgba(26,109,255,0.2);
 }
+.me-marker::after {
+  content: ""; position: absolute; inset: -4px; border-radius: 50%;
+  border: 2px solid rgba(26,109,255,0.55);
+  animation: ping 2.6s var(--ease) infinite;
+}
 
-/* ── sheet ────────────────────────────────────────────────────────────── */
+/* ── sheet ────────────────────────────────────────────────────────────────
+ * Half the screen by default, and the map keeps the other half so you can see
+ * the ground you are describing while you describe it. It DRAGS now: take the
+ * grip and it goes to full height for filling a pin in at home, or back down,
+ * or off the bottom to close. The height is one custom property so the map's
+ * padding and the crosshair follow it instead of each holding its own copy of
+ * the number.
+ */
 .sheet {
   position: absolute; z-index: 20; left: 0; right: 0; bottom: 0;
   background: var(--panel);
   border-top: var(--b-strong) solid var(--edge);
-  border-radius: var(--r-lg) var(--r-lg) 0 0;
-  box-shadow: var(--e-3);
-  padding-bottom: var(--safe-b); overflow-y: auto;
-  animation: rise 0.22s var(--ease);
-  /* Half the screen, always. The map keeps the other half so you can see the
-     ground you are describing while you describe it — and the sheet scrolls
-     inside itself, with "save pin" stuck to the bottom of it, so the form is
-     something you go down through rather than something that buries the map.
-     A percentage of #app rather than vh: #app is fixed and inset 0, so this is
-     immune to the browser chrome sliding around on a phone. */
-  height: 50%;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: var(--e-4);
+  padding-bottom: var(--safe-b);
+  display: flex; flex-direction: column;
+  height: calc(var(--sheet-frac) * 100%);
+  animation: rise var(--t-slow) var(--ease);
+  transition: height var(--t-mid) var(--ease);
 }
+/* While a finger is on it there is no transition, or the sheet lags the thumb
+   by a fifth of a second, which is the whole difference between dragging a
+   thing and asking a thing to move. */
+.sheet.is-dragging { transition: none; }
+.sheet.is-closing { animation: fall var(--t-mid) var(--ease) forwards; }
 @keyframes rise { from { transform: translateY(100%); } }
-@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+@keyframes fall { to { transform: translateY(100%); } }
 
-.sheet-grab {
-  width: 36px; height: 4px; border-radius: var(--r-pill);
-  background: var(--rule); margin: var(--s-2) auto 0;
+/* The grip is a target, not a decoration: the whole strip is draggable, so it
+   is 24px of it rather than the 4px bar you can see. */
+.sheet-grip {
+  flex: none; padding: var(--s-3) 0 var(--s-1);
+  display: grid; place-items: center; cursor: grab;
+  /* Only the grip refuses the browser's own touch handling. On the sheet as a
+     whole this would take the body's scrolling with it, which is most of what a
+     finger does in here. */
+  touch-action: none;
 }
-.sheet-body { padding: var(--s-3) var(--s-4) var(--s-5); display: flex; flex-direction: column; gap: var(--s-3); }
+.sheet-grip:active { cursor: grabbing; }
+.sheet-grab {
+  width: 40px; height: 5px; border-radius: var(--r-pill);
+  background: var(--rule);
+  transition: background var(--t-fast) var(--ease), width var(--t-mid) var(--spring);
+}
+.sheet-grip:active .sheet-grab, .sheet.is-dragging .sheet-grab {
+  background: var(--edge); width: 56px;
+}
+
+.sheet-body {
+  flex: 1; overflow-y: auto; overscroll-behavior: contain;
+  padding: var(--s-2) var(--s-4) var(--s-5);
+  display: flex; flex-direction: column; gap: var(--s-3);
+}
 .sheet-head { display: flex; align-items: center; gap: var(--s-2); }
+
+/* The kind's colour, on the pin's own title line. It is the same vocabulary the
+   markers use, so the dot answers "which of those coloured pins is this" before
+   you have read the name. */
+.pin-kind-dot {
+  width: 14px; height: 14px; border-radius: 50%; flex: none;
+  background: var(--kind-other); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.3);
+}
+.sheet-head[data-kind="cliffs"]    .pin-kind-dot { background: var(--kind-cliffs); }
+.sheet-head[data-kind="caves"]     .pin-kind-dot { background: var(--kind-caves); }
+.sheet-head[data-kind="trails"]    .pin-kind-dot { background: var(--kind-trails); }
+.sheet-head[data-kind="tunnels"]   .pin-kind-dot { background: var(--kind-tunnels); }
+.sheet-head[data-kind="buildings"] .pin-kind-dot { background: var(--kind-buildings); }
+.sheet-head[data-kind="mountains"] .pin-kind-dot { background: var(--kind-mountains); }
+.sheet-head[data-kind="towers"]    .pin-kind-dot { background: var(--kind-towers); }
 
 .pin-name {
   flex: 1; background: none; border: none;
-  font-size: var(--t-xl); font-weight: 700; letter-spacing: -0.01em;
+  font-size: var(--t-xl); font-weight: 700; letter-spacing: -0.015em;
   padding: var(--s-1) 0; min-width: 0;
 }
 .pin-name:focus { outline: none; box-shadow: inset 0 -3px 0 var(--accent); }
@@ -516,24 +700,31 @@ button { cursor: pointer; border: none; background: none; }
   background: var(--bg); border: var(--b) solid var(--rule); border-radius: var(--r-md);
   padding: var(--s-3); resize: vertical; font-size: var(--t-lg); min-height: 84px;
   line-height: 1.5;
-  transition: border-color 0.12s var(--ease), box-shadow 0.12s var(--ease);
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 .pin-desc:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 var(--b) var(--accent-wash); }
 .pin-desc:disabled { opacity: 1; background: var(--panel-2); border-color: var(--hair); }
 
+/* One switch, in a card, saying who can see this. It used to be a checkbox and
+   a paragraph; a switch is the control this actually is — a thing with two
+   states you flip, not a box you tick as part of a form you submit. */
 .privacy {
-  display: grid; grid-template-columns: auto 1fr; gap: var(--s-1) var(--s-3);
-  align-items: start; font-weight: 700;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--s-1) var(--s-3); align-items: center;
   border: var(--b) solid var(--rule); border-radius: var(--r-md);
-  padding: var(--s-3); cursor: pointer;
-  transition: border-color 0.12s var(--ease), background 0.12s var(--ease);
+  padding: var(--s-3); cursor: pointer; font-weight: 700;
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
-.privacy input { width: 22px; height: 22px; accent-color: var(--accent); margin-top: 1px; }
+.privacy > .icon { grid-column: 1; grid-row: 1 / span 2; color: var(--ink-mute); }
+.privacy > span:not(.switch-track) { grid-column: 2; grid-row: 1; }
+.privacy .switch-track { grid-column: 3; grid-row: 1 / span 2; }
+.privacy input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
 .privacy small {
-  display: block; color: var(--ink-dim); font-weight: 500;
-  font-size: var(--t-sm); line-height: 1.4; margin-top: 1px;
+  grid-column: 2; grid-row: 2; display: block; color: var(--ink-dim); font-weight: 500;
+  font-size: var(--t-sm); line-height: 1.4;
 }
 .privacy:has(input:checked) { border-color: var(--accent); background: var(--accent-wash); }
+.privacy:has(input:checked) > .icon { color: var(--accent); }
 
 .pin-meta {
   font-size: var(--t-sm); font-weight: 600; color: var(--ink-dim); line-height: 1.65;
@@ -542,7 +733,11 @@ button { cursor: pointer; border: none; background: none; }
 /* Sits under the coordinates rather than in the stack of buttons below: it acts
    on the two lines directly above it, and a full-width bar was more weight than
    "copy location" has ever needed. */
-.meta-action { align-self: flex-start; padding: var(--s-1) 0; margin-top: calc(var(--s-2) * -1); }
+.meta-action {
+  align-self: flex-start; padding: var(--s-1) 0; margin-top: calc(var(--s-2) * -1);
+  display: inline-flex; align-items: center; gap: var(--s-2);
+}
+.meta-action .icon { width: 15px; height: 15px; }
 
 /* Groups, not a list. A rule and a heading over each one, so the sheet can be
    scanned rather than read — you are looking for the part of it you want, and
@@ -554,7 +749,9 @@ button { cursor: pointer; border: none; background: none; }
 .block-head, .notes-head {
   font-size: var(--t-xs); font-weight: 800; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--ink-mute);
+  display: flex; align-items: center; gap: var(--s-2);
 }
+.block-head .icon, .notes-head .icon { width: 15px; height: 15px; stroke-width: 2.2; }
 /* .wide carries a top margin for when it stands alone; inside a group the gap
    already spaces it and the margin just makes the group look broken. */
 .block .wide, .notes .wide { margin-top: 0; }
@@ -563,32 +760,59 @@ button { cursor: pointer; border: none; background: none; }
    it, where the most important button on the screen was something you had to
    scroll past, in a row of four that all looked the same. */
 .sheet-actions {
-  position: sticky; bottom: 0; z-index: 2;
+  flex: none; z-index: 2;
   display: flex; gap: var(--s-2); align-items: center;
   background: var(--panel); border-top: var(--b) solid var(--rule);
-  padding: var(--s-3) 0 var(--s-1); margin-top: var(--s-1);
+  padding: var(--s-3) var(--s-4) var(--s-3);
 }
 .sheet-actions .btn-primary { flex: 1 1 auto; min-width: 100px; }
 
 /* ── photos ───────────────────────────────────────────────────────────────
  * A horizontal strip that scrolls, so any number of photos costs the same
- * vertical space — the sheet has a description and a log to fit as well.
+ * vertical space — the sheet has a description and a log to fit as well. The
+ * "add" tile lives on the same line as the pictures rather than as a bar under
+ * them: it is one more square in a row of squares, which is what it does.
  */
+.photo-row { display: flex; gap: var(--s-2); align-items: flex-start; min-width: 0; }
 .photo-strip {
   display: flex; gap: var(--s-2); overflow-x: auto; padding-bottom: 2px;
   scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  scrollbar-width: thin; min-width: 0;
 }
 .thumb {
   flex: 0 0 auto; width: 96px; height: 96px; scroll-snap-align: start;
   border: var(--b) solid var(--rule); border-radius: var(--r-md);
   background: var(--panel-2) center / cover no-repeat;
   cursor: pointer; position: relative; overflow: hidden;
-  transition: border-color 0.12s var(--ease), transform 0.08s var(--ease);
+  transition: border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--spring);
 }
-.thumb:active { transform: scale(0.97); }
+.thumb:active { transform: scale(0.95); }
 .thumb.is-loaded { border-color: var(--hair); }
 @media (hover: hover) { .thumb:hover { border-color: var(--edge); } }
+
+/* Until the picture lands, the square is doing something rather than sitting
+   there grey — which is the difference between "loading" and "broken". */
+.thumb:not(.is-loaded):not(.is-missing)::before,
+.r-thumb[data-thumb]:not(.is-loaded)::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 20%, var(--panel-3) 50%, transparent 80%);
+  background-size: 220% 100%;
+  animation: shimmer 1.3s linear infinite;
+}
+@keyframes shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+
+.photo-add {
+  flex: 0 0 auto; width: 96px; height: 96px;
+  display: grid; place-items: center; align-content: center; gap: var(--s-1);
+  border: var(--b) dashed var(--edge); border-radius: var(--r-md);
+  background: var(--panel-2); color: var(--ink-dim);
+  font-size: var(--t-2xs); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease),
+              transform var(--t-fast) var(--spring);
+}
+.photo-add:active { transform: scale(0.95); background: var(--panel-3); }
+@media (hover: hover) { .photo-add:hover { border-color: var(--accent); color: var(--ink); } }
+.photo-add.is-busy { opacity: 0.6; pointer-events: none; }
 
 /* A note's photos are smaller than the pin's on purpose. The pin's strip is
    what the place is; these are what one person saw on one day, and the size
@@ -604,14 +828,19 @@ button { cursor: pointer; border: none; background: none; }
   background: var(--panel); color: var(--ink-dim);
   font-size: var(--t-2xs); font-weight: 700; padding: 2px; text-align: center;
 }
-#photo-add.is-busy { opacity: 0.6; pointer-events: none; }
 
 .lightbox {
-  position: absolute; z-index: 60; inset: 0; background: rgba(0,0,0,0.93);
+  position: absolute; z-index: 60; inset: 0; background: rgba(0,0,0,0.94);
   display: flex; align-items: center; justify-content: center;
   padding: calc(var(--safe-t) + var(--s-10)) var(--s-4) calc(var(--safe-b) + 4.5rem);
+  animation: fade-in var(--t-mid) var(--ease);
 }
-.lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: var(--r-sm); }
+@keyframes fade-in { from { opacity: 0; } }
+.lightbox img {
+  max-width: 100%; max-height: 100%; object-fit: contain; border-radius: var(--r-sm);
+  animation: zoom-in var(--t-mid) var(--ease);
+}
+@keyframes zoom-in { from { transform: scale(0.94); opacity: 0; } }
 .lightbox-close {
   position: absolute; top: calc(var(--safe-t) + var(--s-2)); right: var(--s-3);
   background: var(--panel); border: var(--b) solid var(--edge);
@@ -631,13 +860,17 @@ button { cursor: pointer; border: none; background: none; }
  * description you paste into a county search, and where that county is.
  */
 .owner { display: flex; flex-direction: column; gap: var(--s-2); }
-.owner-result { display: flex; flex-direction: column; gap: var(--s-2); }
-.owner-agency { font-weight: 800; font-size: var(--t-lg); line-height: 1.25; letter-spacing: -0.01em; }
+.owner-result {
+  display: flex; flex-direction: column; gap: var(--s-2);
+  animation: drop-in var(--t-mid) var(--ease);
+}
+.owner-agency { font-weight: 800; font-size: var(--t-lg); line-height: 1.25; letter-spacing: -0.015em; }
 .owner-agency.owner-unknown { font-weight: 700; font-size: var(--t-md); color: var(--ink-dim); }
 .owner-access {
   font-weight: 700; font-size: var(--t-sm); color: var(--good);
-  background: var(--good-wash); border-radius: var(--r-xs);
-  padding: var(--s-1) var(--s-2); align-self: flex-start;
+  background: var(--good-wash); border-radius: var(--r-pill);
+  padding: var(--s-1) var(--s-3); align-self: flex-start;
+  display: inline-flex; align-items: center; gap: var(--s-2);
 }
 .owner-unit { font-size: var(--t-sm); color: var(--ink-dim); font-weight: 600; }
 
@@ -670,7 +903,7 @@ button { cursor: pointer; border: none; background: none; }
 .owner-found {
   display: flex; flex-direction: column; gap: var(--s-2);
   border-left: var(--b-strong) solid var(--accent);
-  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
   padding: var(--s-3); background: var(--accent-wash);
 }
 .owner-found-head { font-weight: 800; font-size: var(--t-md); line-height: 1.3; }
@@ -695,8 +928,14 @@ button { cursor: pointer; border: none; background: none; }
 .add-source > summary {
   font-weight: 800; cursor: pointer; list-style: none;
   padding: var(--s-1) 0; margin: calc(var(--s-1) * -1) 0;
+  display: flex; align-items: center; gap: var(--s-2);
 }
-.add-source > summary::before { content: "＋ "; color: var(--accent); font-weight: 900; }
+.add-source > summary::-webkit-details-marker { display: none; }
+.add-source > summary::before {
+  content: "+"; color: var(--accent); font-weight: 900; font-size: var(--t-lg);
+  width: 22px; height: 22px; border-radius: 50%; background: var(--accent-wash);
+  display: grid; place-items: center; line-height: 1;
+}
 .add-source:not([open]) { gap: 0; }
 .add-source .field input { font-size: var(--t-md); min-height: 40px; padding: 0 var(--s-2); }
 .field-row { display: flex; gap: var(--s-2); align-items: end; }
@@ -731,16 +970,15 @@ button { cursor: pointer; border: none; background: none; }
 .note-head span { flex: 1; }
 .note-del {
   background: none; border: none; color: var(--ink-mute);
-  padding: 0 var(--s-1); cursor: pointer; line-height: 1;
-  border-radius: var(--r-xs); font-size: var(--t-md);
+  padding: var(--s-1); cursor: pointer; line-height: 1;
+  border-radius: var(--r-xs); display: grid; place-items: center;
 }
+.note-del .icon { width: 16px; height: 16px; }
 @media (hover: hover) { .note-del:hover, .note-photo:hover { color: var(--ink); } }
 
-/* Words rather than glyphs, for both of these. A pencil is not obvious at arm's
-   length in the sun, and it rendered a full weight lighter than the ✕ beside it,
-   so the row read as three unrelated marks. "photo" and "edit" say what they
-   are; ✕ stays, because closing and removing is the one pictogram everybody
-   already knows. */
+/* Words rather than glyphs, for both of these, and that stays true even now
+   there is a drawn icon set: a pencil is not obvious at arm's length in the
+   sun. "photo" and "edit" say what they are. */
 .note-photo {
   background: none; border: none; color: var(--ink-mute); font: inherit;
   font-size: var(--t-2xs); font-weight: 800; letter-spacing: 0.03em;
@@ -749,79 +987,105 @@ button { cursor: pointer; border: none; background: none; }
 }
 .note p { font-size: var(--t-md); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
 .note-warn {
-  display: inline-block; margin-top: var(--s-1);
+  display: inline-flex; align-items: center; gap: var(--s-1); margin-top: var(--s-1);
   color: var(--warn-ink); background: var(--warn-bg);
   font-size: var(--t-2xs); font-weight: 700;
-  border-radius: var(--r-xs); padding: 1px var(--s-1);
+  border-radius: var(--r-pill); padding: 1px var(--s-2);
 }
 
 .note-body {
   background: var(--bg); border: var(--b) solid var(--rule); border-radius: var(--r-md);
   padding: var(--s-3); resize: vertical; font-size: var(--t-lg); font-family: inherit;
-  color: var(--ink); line-height: 1.5;
-  transition: border-color 0.12s var(--ease), box-shadow 0.12s var(--ease);
+  color: var(--ink); line-height: 1.5; width: 100%;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 .note-body:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 var(--b) var(--accent-wash); }
 
-/* Editing a note happens in place. The note keeps its box and its byline and
-   the words become typeable, so it stays obvious which one you are changing. */
-/* Editing is the one state that gets a box, because while it is on there is a
-   control here rather than a record. */
+/* Editing a note happens in place. The note keeps its byline and the words
+   become typeable, so it stays obvious which one you are changing — and it is
+   the one state that gets a box, because while it is on there is a control here
+   rather than a record. */
 .note.is-editing {
-  background: var(--accent-wash); border-radius: var(--r-sm);
+  background: var(--accent-wash); border-radius: var(--r-md);
   padding: var(--s-3); border-bottom-color: transparent;
 }
-.note-edit-box { width: 100%; margin-top: var(--s-1); }
+.note-edit-box { margin-top: var(--s-1); }
 .note-edit-actions { display: flex; align-items: center; gap: var(--s-3); margin-top: var(--s-2); }
 .note-edit-actions .btn-ghost { min-height: 38px; padding: 0 var(--s-3); background: var(--panel); }
 .note-compose { display: flex; gap: var(--s-2); }
 .note-compose .btn-ghost { flex: 1 1 0; min-width: 0; }
 
-/* ── full-screen panels (all pins, layers, offline maps) ──────────────── */
+/* ── full-screen panels (all pins, layers, settings, offline maps) ────────
+ * They cover the map, so they arrive like something that came from the map:
+ * up from the bottom, quickly, and back down the same way. An exit needs the
+ * element to still be there while it plays, which is why closing goes through
+ * closePanel() in app.js rather than straight to hidden.
+ */
 .panel {
   position: absolute; z-index: 30; inset: 0; background: var(--bg);
   display: flex; flex-direction: column;
   padding-top: var(--safe-t); padding-bottom: var(--safe-b);
+  animation: panel-in var(--t-mid) var(--ease);
 }
+.panel.is-closing { animation: panel-out var(--t-fast) var(--ease) forwards; }
+@keyframes panel-in  { from { opacity: 0; transform: translateY(16px) scale(0.99); } }
+@keyframes panel-out { to   { opacity: 0; transform: translateY(10px) scale(0.99); } }
+
 .panel-head {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; gap: var(--s-3);
   padding: var(--s-3) var(--s-4); border-bottom: var(--b) solid var(--edge);
-  font-size: var(--t-xl); font-weight: 700; letter-spacing: -0.01em;
+  font-size: var(--t-xl); font-weight: 700; letter-spacing: -0.02em;
 }
 .panel-head strong { font-weight: 700; }
+.panel-head .icon-btn { margin-left: auto; margin-right: calc(var(--s-2) * -1); }
 .panel-count {
-  margin-right: auto; margin-left: var(--s-3);
   font-size: var(--t-sm); font-weight: 600; color: var(--ink-mute);
-  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
 }
 .panel-body { overflow-y: auto; flex: 1; overscroll-behavior: contain; }
 .panel-body.pad { padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-4); }
 
 .lede { color: var(--ink-dim); font-weight: 500; font-size: var(--t-md); line-height: 1.55; }
 
-/* A row is somebody handing you a place: a picture of it, what it is, and who
-   found it. Grid rather than flex so the text column can be told to shrink —
-   without min-width 0 a long name pushes the row wider than the screen. */
+/* ── the list ─────────────────────────────────────────────────────────────
+ * A row is somebody handing you a place: a picture of it, what it is, and who
+ * found it. Grid rather than flex so the text column can be told to shrink —
+ * without min-width 0 a long name pushes the row wider than the screen.
+ */
 .list-row {
   width: 100%; text-align: left;
-  display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: var(--s-3);
+  display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: var(--s-3);
   align-items: center;
   padding: var(--s-3) var(--s-4); border-bottom: var(--b) solid var(--hair);
+  transition: background var(--t-fast) var(--ease);
 }
 .list-row:active { background: var(--panel-2); }
 @media (hover: hover) { .list-row:hover { background: var(--panel-2); } }
+.list-row .r-go { color: var(--ink-mute); width: 20px; height: 20px; }
 
 .r-thumb {
-  width: 64px; height: 64px; border-radius: var(--r-sm);
+  width: 72px; height: 72px; border-radius: var(--r-md);
   background: var(--panel-2) center / cover no-repeat;
   box-shadow: inset 0 0 0 1px var(--hair);
+  position: relative; overflow: hidden;
+  display: grid; place-items: center;
 }
 /* A place with no picture yet still gets the same square, so the names stay in
-   one column and the list does not comb up and down. */
-.r-thumb.is-empty::after {
-  content: "◎"; display: grid; place-items: center; height: 100%;
-  color: var(--ink-mute); font-size: 1.1rem;
+   one column and the list does not comb up and down. It gets the kind's own
+   colour, which turns the gap into the one piece of information it can carry. */
+.r-thumb .icon {
+  position: relative; z-index: 1;
+  color: var(--kind, var(--ink-mute)); width: 26px; height: 26px;
 }
+.r-thumb.is-loaded .icon { display: none; }
+.r-thumb[data-kind="cliffs"]    { --kind: var(--kind-cliffs); }
+.r-thumb[data-kind="caves"]     { --kind: var(--kind-caves); }
+.r-thumb[data-kind="trails"]    { --kind: var(--kind-trails); }
+.r-thumb[data-kind="tunnels"]   { --kind: var(--kind-tunnels); }
+.r-thumb[data-kind="buildings"] { --kind: var(--kind-buildings); }
+.r-thumb[data-kind="mountains"] { --kind: var(--kind-mountains); }
+.r-thumb[data-kind="towers"]    { --kind: var(--kind-towers); }
+.r-thumb[data-kind="other"]     { --kind: var(--kind-other); }
+
 .r-text { min-width: 0; }
 /* Distance sits in its own column on the right rather than on the end of the
    byline, where it was the first thing to be truncated away — and it is the
@@ -834,8 +1098,6 @@ button { cursor: pointer; border: none; background: none; }
 }
 .list-row .r-away {
   flex: none; font-size: var(--t-xs); font-weight: 700; color: var(--ink-dim);
-  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
-  font-variant-numeric: tabular-nums;
 }
 /* One line of the description — the pitch. Clipped rather than wrapped, so
    every row is the same height and the list stays scannable. */
@@ -844,7 +1106,7 @@ button { cursor: pointer; border: none; background: none; }
   margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .list-row .r-sub {
-  font-size: var(--t-xs); font-weight: 600; color: var(--ink-mute); margin-top: 2px;
+  font-size: var(--t-xs); font-weight: 600; color: var(--ink-mute); margin-top: 3px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* The author is the headline of a row on a shared map, not a footnote: full
@@ -854,7 +1116,15 @@ button { cursor: pointer; border: none; background: none; }
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   font-size: var(--t-sm);
 }
-.list-empty { padding: var(--s-10) var(--s-4); text-align: center; color: var(--ink-mute); font-weight: 600; }
+
+/* Nothing here yet, or nothing that passes the filter. Either way it is a state
+   the app is in, not a failure, so it gets a drawn mark and a plain sentence. */
+.list-empty {
+  padding: var(--s-10) var(--s-6); text-align: center;
+  color: var(--ink-mute); font-weight: 600;
+  display: flex; flex-direction: column; align-items: center; gap: var(--s-3);
+}
+.list-empty .icon { width: 44px; height: 44px; stroke-width: 1.4; color: var(--rule); }
 
 .tag-private {
   display: inline-block; vertical-align: middle;
@@ -868,39 +1138,177 @@ button { cursor: pointer; border: none; background: none; }
   background: var(--warn-bg); box-shadow: 0 0 0 1px rgba(0,0,0,0.35); vertical-align: middle;
 }
 
-/* ── offline maps panel ───────────────────────────────────────────────── */
-/* Grouped exactly like the blocks in the sheet — a heading and a rule — so the
-   two screens stop being two different designs. */
-.detail { border: none; padding: var(--s-4) 0 var(--s-2); border-top: var(--b) solid var(--hair); }
-.detail:first-of-type { border-top: none; padding-top: 0; }
-.detail legend {
+/* ── grouped settings ─────────────────────────────────────────────────────
+ * Used by layers, settings and offline maps, so those three stop being three
+ * different designs. A heading, a rule, and the controls under it.
+ */
+.detail { border: none; padding: 0 0 var(--s-1); }
+.detail::before {
+  content: ""; display: block;
+  border-top: var(--b) solid var(--hair);
+  margin-bottom: var(--s-4);
+}
+.detail:first-of-type::before { display: none; }
+/* A <legend> is rendered into the box's own border, which means it cuts a hole
+   in any rule drawn there and cannot be moved off it without a float — and a
+   float pushes the grid rows underneath it sideways off the screen. These are
+   plain sections with a heading now; the three that are a choice of one carry
+   role="radiogroup" instead, which is what the fieldset was really for. */
+.detail-head {
   font-size: var(--t-xs); font-weight: 800; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--ink-mute); padding: 0;
+  text-transform: uppercase; color: var(--ink-mute);
+  margin-bottom: var(--s-2);
 }
-/* A checkbox row with its explanation on the line below, not beside it.
-   Grid rather than flex: in a flex row the bare text node and the <small> are
-   siblings, so the description sits alongside the name instead of under it. */
-.detail label {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2px var(--s-3);
-  align-items: start;
-  padding: var(--s-2) 0;
-  font-weight: 600; cursor: pointer;
+.detail .field { display: flex; flex-direction: column; gap: var(--s-1); padding: 0; }
+.detail .seg + .hint, .detail .map-grid + *,
+.detail .switch + .btn-ghost, .detail .switch + .estimate,
+.detail > .hint + .field, .detail > .lede + * { margin-top: var(--s-3); }
+.detail > .btn-ghost { margin-top: var(--s-2); }
+
+/* ── the switch ───────────────────────────────────────────────────────────
+ * For anything that is on or off on its own. It is a real control drawn out of
+ * the box's own input, so the label still toggles it, the keyboard still finds
+ * it and the checkbox is still what JS reads. 52×32 with a 24 thumb, on a row
+ * that is 44 tall whatever the text does.
+ */
+.switch {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center; gap: 1px var(--s-4);
+  padding: var(--s-2) 0; min-height: var(--tap); cursor: pointer;
+  font-weight: 700;
 }
-.detail label small {
-  grid-column: 2;
+.switch + .switch { border-top: 1px solid var(--hair); }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+.switch small {
+  grid-column: 1; display: block;
   color: var(--ink-dim); font-weight: 500; font-size: var(--t-sm); line-height: 1.4;
 }
-.detail input { width: 22px; height: 22px; accent-color: var(--accent); margin-top: 1px; }
+.switch-track {
+  grid-column: 2; grid-row: 1 / span 2; align-self: center;
+  width: 52px; height: 32px; border-radius: var(--r-pill); flex: none;
+  background: var(--panel-3); border: var(--b) solid var(--rule);
+  position: relative;
+  transition: background var(--t-mid) var(--ease), border-color var(--t-mid) var(--ease);
+}
+.switch-track::after {
+  content: ""; position: absolute; top: 2px; left: 2px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--panel); box-shadow: var(--e-1), 0 0 0 1px rgba(11,15,20,0.12);
+  transition: transform var(--t-mid) var(--spring);
+}
+.switch input:checked + .switch-track { background: var(--accent); border-color: var(--accent-dk); }
+.switch input:checked + .switch-track::after { transform: translateX(20px); }
+.switch input:focus-visible + .switch-track { outline: var(--b-strong) solid var(--accent); outline-offset: 3px; }
+.switch:active .switch-track::after { width: 28px; }
 
+/* ── the segmented control ────────────────────────────────────────────────
+ * For a choice of one from three or four, where the options are short and you
+ * want all of them visible at once. The moving part is a real element rather
+ * than a background on the selected item, so the selection slides.
+ */
+.seg {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  gap: 3px; padding: 3px; border-radius: var(--r-md);
+  background: var(--panel-2); border: var(--b) solid var(--rule);
+}
+.seg-item {
+  /* Titles line up across the control even when one option's explanation runs
+     to a line more than another's, which centring would stagger. */
+  display: grid; justify-items: center; align-content: start; gap: 1px;
+  text-align: center;
+  min-height: 42px; padding: var(--s-2) var(--s-1); border-radius: var(--r-sm);
+  cursor: pointer; color: var(--ink-dim); font-weight: 700; font-size: var(--t-sm);
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease),
+              box-shadow var(--t-fast) var(--ease);
+}
+.seg-item input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+.seg-item small {
+  font-size: var(--t-2xs); font-weight: 600; color: var(--ink-mute);
+  line-height: 1.25; letter-spacing: 0;
+}
+.seg-item:has(input:checked) {
+  background: var(--panel); color: var(--ink); box-shadow: var(--e-1);
+}
+.seg-item:has(input:checked) small { color: var(--ink-dim); }
+.seg-item:has(input:focus-visible) { outline: var(--b-strong) solid var(--accent); outline-offset: -1px; }
+
+/* ── base maps, as pictures of themselves ─────────────────────────────────
+ * Choosing a map from a column of radio buttons means reading five names and
+ * remembering what each one looked like. The swatch is a crude drawing of what
+ * the tiles actually are — imagery, contours, roads — which is the thing you
+ * are choosing between.
+ */
+.map-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
+.map-card {
+  display: flex; flex-direction: column; gap: var(--s-1);
+  padding: var(--s-2); border-radius: var(--r-md);
+  border: var(--b) solid var(--rule); background: var(--panel);
+  cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--spring),
+              box-shadow var(--t-fast) var(--ease);
+}
+.map-card:active { transform: scale(0.98); }
+.map-card input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+.map-swatch {
+  height: 54px; border-radius: var(--r-sm); position: relative; overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(11,15,20,0.15);
+  background: #4d5f4a;
+}
+.map-name { font-weight: 700; font-size: var(--t-sm); letter-spacing: -0.01em; }
+.map-card small { color: var(--ink-mute); font-size: var(--t-2xs); font-weight: 600; line-height: 1.3; }
+.map-card:has(input:checked) {
+  border-color: var(--accent); box-shadow: 0 0 0 var(--b) var(--accent-wash);
+}
+.map-card:has(input:checked) .map-name { color: var(--accent); }
+.map-card:has(input:focus-visible) { outline: var(--b-strong) solid var(--accent); outline-offset: 2px; }
+/* The map that takes the full width, because it is the one that gets used. */
+.map-card.is-wide { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: var(--s-3); }
+.map-card.is-wide .map-swatch { width: 84px; height: 56px; flex: none; }
+.map-card.is-wide > div { min-width: 0; }
+
+/* Four crude tile drawings. Cheap gradients, no images, and they only have to
+   be right enough to be told apart at 84px. */
+.map-swatch.sw-sat {
+  background:
+    radial-gradient(circle at 30% 35%, #6f8a5e 0 18%, transparent 19%),
+    radial-gradient(circle at 62% 68%, #55703f 0 22%, transparent 23%),
+    linear-gradient(140deg, #3f5233 0%, #6b7f4e 45%, #8a8256 70%, #4e6b74 100%);
+}
+.map-swatch.sw-topo {
+  background:
+    linear-gradient(90deg, rgba(60,80,60,0.35) 0 1px, transparent 1px) 0 0 / 22px 100%,
+    linear-gradient(rgba(60,80,60,0.35) 0 1px, transparent 1px) 0 0 / 100% 20px,
+    repeating-radial-gradient(circle at 38% 62%, transparent 0 5px, rgba(90,120,95,0.9) 5px 6px),
+    #f4f1e6;
+}
+.map-swatch.sw-hybrid {
+  background:
+    repeating-radial-gradient(circle at 45% 55%, transparent 0 6px, rgba(255,255,255,0.5) 6px 7px),
+    linear-gradient(140deg, #3f5233 0%, #6b7f4e 50%, #4e6b74 100%);
+}
+.map-swatch.sw-otm {
+  background:
+    linear-gradient(64deg, transparent 46%, rgba(180,60,40,0.75) 46% 49%, transparent 49%),
+    repeating-radial-gradient(circle at 55% 45%, transparent 0 5px, rgba(175,120,60,0.85) 5px 6px),
+    linear-gradient(120deg, #dcecd2, #f2efdd);
+}
+.map-swatch.sw-street {
+  background:
+    linear-gradient(90deg, transparent 44%, #f0c14b 44% 56%, transparent 56%),
+    linear-gradient(18deg, transparent 47%, #ffffff 47% 53%, transparent 53%),
+    #e8e5dd;
+}
+
+/* ── a row that reports something ─────────────────────────────────────── */
 .estimate { font-size: var(--t-sm); font-weight: 600; color: var(--ink-dim); line-height: 1.55; }
 .estimate b { color: var(--ink); font-weight: 700; }
 
 .warn {
   background: var(--warn-bg); color: var(--warn-ink); font-weight: 700;
-  padding: var(--s-3); border-radius: var(--r-sm); font-size: var(--t-sm); line-height: 1.45;
+  padding: var(--s-3); border-radius: var(--r-md); font-size: var(--t-sm); line-height: 1.45;
+  display: flex; align-items: flex-start; gap: var(--s-2);
 }
+.warn .icon { flex: none; margin-top: 1px; }
 
 .progress { display: flex; align-items: center; gap: var(--s-3); }
 .progress-track {
@@ -908,18 +1316,25 @@ button { cursor: pointer; border: none; background: none; }
   border-radius: var(--r-pill); overflow: hidden;
   box-shadow: inset 0 0 0 1px var(--rule);
 }
-.progress-bar { height: 100%; width: 0; background: var(--accent); transition: width 0.25s var(--ease); }
+.progress-bar {
+  height: 100%; width: 0; border-radius: var(--r-pill);
+  background: var(--accent);
+  transition: width var(--t-slow) var(--ease);
+}
 .progress-count { font-size: var(--t-sm); font-weight: 700; white-space: nowrap; }
 
 /* ── toast ────────────────────────────────────────────────────────────── */
 .toast {
-  position: absolute; z-index: 40; left: 50%; transform: translateX(-50%);
+  position: absolute; z-index: 40; left: 50%;
   bottom: calc(var(--safe-b) + 6rem);
   background: var(--ink); color: var(--bg);
   border-radius: var(--r-pill); padding: var(--s-3) var(--s-5);
   font-size: var(--t-sm); font-weight: 700;
-  box-shadow: var(--e-2); max-width: 88vw; text-align: center;
+  box-shadow: var(--e-3); max-width: 88vw; text-align: center;
+  transform: translateX(-50%);
+  animation: toast-in var(--t-mid) var(--spring);
 }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 14px) scale(0.94); } }
 .toast.is-bad { background: var(--danger); color: #fff; }
 
 /* Offline: put a hard band down the edge of the screen so it's obvious at a
@@ -929,29 +1344,26 @@ body.is-offline #app::after {
   border: var(--s-1) solid var(--ink); border-radius: 2px;
 }
 
-/* Your own row in settings. The name field is a real input rather than a line
-   of text with a pencil beside it, because it is the one thing on this screen
-   people actually come here to change. */
-/* The panel's `.detail label` rule makes every label in here a two-column grid,
-   which turns a labelled input into a caption with a 40px box beside it. Same
-   trap the colour swatches hit; a field inside a fieldset has to say so. */
-.detail .field { display: flex; flex-direction: column; gap: var(--s-1); padding: 0; }
-.detail .field input { width: 100%; }
-
-.me-row { display: flex; align-items: center; gap: var(--s-3); margin-top: var(--s-1); }
-.me-said { font-size: var(--t-sm); font-weight: 700; color: var(--good); }
-.me-facts { margin-top: var(--s-2); }
+/* ── you, in settings ─────────────────────────────────────────────────────
+ * The name field is a real input rather than a line of text with a pencil
+ * beside it, because it is the one thing on this screen people come here to
+ * change.
+ */
+.me-row { display: flex; align-items: center; gap: var(--s-3); margin-top: var(--s-2); }
+.me-said {
+  font-size: var(--t-sm); font-weight: 700; color: var(--good);
+  display: inline-flex; align-items: center; gap: var(--s-1);
+}
+.me-facts { margin-top: var(--s-3); }
 .me-facts dd { font-weight: 600; color: var(--ink-dim); }
-#signout { margin-top: var(--s-3); color: var(--danger); border-color: var(--rule); }
+#signout { margin-top: var(--s-4); color: var(--danger); border-color: var(--rule); }
+#signout .icon { color: var(--danger); }
 
 /* Colour swatches. The dot IS the choice, so it is the biggest thing in the
    row, and the ring around a chosen one is drawn in ink rather than in the
    colour itself — a selection marked in the colour it selects is invisible on
    half the palette. */
-.swatches { display: flex; gap: var(--s-4); padding-top: var(--s-2); flex-wrap: wrap; }
-/* Written as .swatches .swatch, not .swatch: the panel's own `.detail label`
-   rule makes every label in here a two-column grid, and it out-specifies a
-   single class. That is what put the names beside the dots instead of under. */
+.swatches { display: flex; gap: var(--s-4); padding-top: var(--s-1); flex-wrap: wrap; }
 .swatches .swatch {
   display: flex; flex-direction: column; align-items: center; gap: var(--s-2);
   font-size: var(--t-2xs); font-weight: 700; color: var(--ink-dim);
@@ -959,9 +1371,11 @@ body.is-offline #app::after {
 }
 .swatch input { position: absolute; opacity: 0; pointer-events: none; }
 .swatch span {
-  width: 38px; height: 38px; border-radius: 50%;
+  width: 40px; height: 40px; border-radius: 50%;
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+  transition: transform var(--t-mid) var(--spring), box-shadow var(--t-mid) var(--ease);
 }
+.swatch:active span { transform: scale(0.9); }
 .swatch[data-accent="ember"]  span { background: #e8490f; }
 .swatch[data-accent="signal"] span { background: #c81e2d; }
 .swatch[data-accent="moss"]   span { background: #12703c; }
@@ -979,23 +1393,30 @@ body.is-offline #app::after {
 }
 .swatch:has(input:focus-visible) span { outline: var(--b-strong) solid var(--ink); outline-offset: 4px; }
 
-/* Kind chips, used twice: choosing one on a pin, and filtering the map by them.
-   The dot carries the colour so the same vocabulary is being learnt in both
-   places — pick "caves" here, and the purple pins on the map are the caves. */
+/* ── kind chips ───────────────────────────────────────────────────────────
+ * Used twice: choosing one on a pin, and filtering the map. The dot carries the
+ * colour so the same vocabulary is being learnt in both places — pick "caves"
+ * here, and the purple pins on the map are the caves. Chosen is a filled chip
+ * now rather than a slightly darker outline: at arm's length an outline that
+ * changed from grey to black is not a state change, it is a rendering artefact.
+ */
 .kind-list { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .kind-list .kind-chip {
-  display: flex; align-items: center; gap: var(--s-2);
-  padding: var(--s-2) var(--s-3); min-height: 38px; min-width: 0;
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  padding: 0 var(--s-3); min-height: 40px; min-width: 0;
   border: var(--b) solid var(--rule); border-radius: var(--r-pill);
   background: var(--panel); cursor: pointer;
   font-size: var(--t-sm); font-weight: 700; color: var(--ink-dim);
-  transition: border-color 0.12s var(--ease), color 0.12s var(--ease);
+  transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease),
+              background var(--t-fast) var(--ease), transform var(--t-fast) var(--spring);
 }
+.kind-list .kind-chip:active { transform: scale(0.95); }
 .kind-list .kind-chip input { position: absolute; opacity: 0; pointer-events: none; }
 .kind-dot {
   width: 14px; height: 14px; border-radius: 50%; flex: none;
   background: var(--kind-other);
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.3);
+  transition: box-shadow var(--t-fast) var(--ease);
 }
 .kind-chip[data-kind="cliffs"]    .kind-dot { background: var(--kind-cliffs); }
 .kind-chip[data-kind="caves"]     .kind-dot { background: var(--kind-caves); }
@@ -1005,21 +1426,37 @@ body.is-offline #app::after {
 .kind-chip[data-kind="mountains"] .kind-dot { background: var(--kind-mountains); }
 .kind-chip[data-kind="towers"]    .kind-dot { background: var(--kind-towers); }
 
-.kind-list .kind-chip:has(input:checked) {
+#pin-kind .kind-chip:has(input:checked) {
   border-color: var(--ink); color: var(--ink); background: var(--panel-2);
 }
+#pin-kind .kind-chip:has(input:checked) .kind-dot {
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.3), 0 0 0 2px var(--panel), 0 0 0 4px currentColor;
+}
+/* In the filter every kind is on until you turn one off, so "on" is the resting
+   state and gets no decoration at all. Off is what has to be visible, and it is
+   said by the whole chip going pale — see below. */
+#kind-filter .kind-chip:has(input:checked) { color: var(--ink); }
 .kind-list .kind-chip:has(input:focus-visible) {
   outline: var(--b-strong) solid var(--accent); outline-offset: 2px;
 }
 /* Unticked in the filter reads as "switched off" rather than merely "not
    chosen" — a filter you cannot see the state of is a bug report waiting. */
-#kind-filter .kind-chip:not(:has(input:checked)) { opacity: 0.45; }
+#kind-filter .kind-chip:not(:has(input:checked)) { opacity: 0.4; }
 
+/* The filter row scrolls sideways rather than wrapping to three lines and
+   pushing the list itself off the screen. */
 .filter-bar {
-  display: flex; align-items: flex-start; gap: var(--s-3);
+  display: flex; align-items: center; gap: var(--s-3);
   padding: var(--s-3) var(--s-4); border-bottom: var(--b) solid var(--hair);
 }
-.filter-bar .kind-list { flex: 1; }
+.filter-bar .kind-list {
+  flex: 1; flex-wrap: nowrap; overflow-x: auto; padding: 2px 0;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+}
+.filter-bar .kind-list::-webkit-scrollbar { display: none; }
+.filter-bar .kind-chip { flex: 0 0 auto; }
 #filter-all {
   flex: none; font-size: var(--t-xs); font-weight: 800; color: var(--ink-dim);
   text-decoration: underline; text-underline-offset: 3px; padding: var(--s-2) 0;
@@ -1027,11 +1464,10 @@ body.is-offline #app::after {
 /* Something has to say the map is not showing everything, or a missing pin
    looks like a lost pin. */
 .chip.solo.is-filtered::after {
-  content: ""; position: absolute; top: 3px; right: 3px;
-  width: 8px; height: 8px; border-radius: 50%;
+  content: ""; position: absolute; top: 4px; right: 4px;
+  width: 9px; height: 9px; border-radius: 50%;
   background: var(--accent); box-shadow: 0 0 0 2px var(--panel);
 }
-.chip.solo { position: relative; }
 
 /* ── glass ────────────────────────────────────────────────────────────────
  * Off by default, and that is not timidity. This app is read at arm's length in
@@ -1048,7 +1484,6 @@ body.is-offline #app::after {
 :root[data-glass="on"] .sheet,
 :root[data-glass="on"] .panel,
 :root[data-glass="on"] .chip.solo,
-:root[data-glass="on"] .basemaps,
 :root[data-glass="on"] .btn-round,
 :root[data-glass="on"] .map-hint,
 :root[data-glass="on"] .sheet-actions {
@@ -1056,6 +1491,7 @@ body.is-offline #app::after {
   -webkit-backdrop-filter: blur(20px) saturate(1.6);
   backdrop-filter: blur(20px) saturate(1.6);
 }
+:root[data-glass="on"] .chip.solo.who { background: var(--accent); }
 :root[data-glass="on"] .sheet,
 :root[data-glass="on"] .panel { border-color: var(--edge); }
 :root[data-glass="on"] .panel-head,
@@ -1067,7 +1503,6 @@ body.is-offline #app::after {
   :root[data-glass="on"] .sheet,
   :root[data-glass="on"] .panel,
   :root[data-glass="on"] .chip.solo,
-  :root[data-glass="on"] .basemaps,
   :root[data-glass="on"] .btn-round,
   :root[data-glass="on"] .map-hint,
   :root[data-glass="on"] .sheet-actions { background: var(--panel); }
@@ -1086,10 +1521,24 @@ body.is-offline #app::after {
   overflow: hidden;
 }
 .maplibregl-ctrl-group button {
-  width: 38px !important; height: 38px !important;
+  width: 40px !important; height: 40px !important;
   background: var(--panel) !important;
 }
 .maplibregl-ctrl-group button + button { border-top: 1px solid var(--hair) !important; }
 .maplibregl-ctrl-group button:active { background: var(--panel-2) !important; }
 .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: none; }
 :root[data-theme="night"] .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
+
+/* ── motion, switched off ─────────────────────────────────────────────────
+ * One block, at the end, so there is a single place to check that a new
+ * animation asked permission. Everything above is either an entrance or a
+ * press; none of it carries meaning that is lost when it is skipped.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

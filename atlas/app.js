@@ -199,6 +199,21 @@ const passesFilter = (p) => kindFilter.has(kindOf(p));
 
 /* ── little helpers ─────────────────────────────────────────────────────── */
 
+/* Every icon in the app is a <use> of the sprite in index.html, so markup built
+ * in here draws from the same set as the markup that is written by hand. Taking
+ * only a symbol id means there is no way to smuggle a different stroke weight
+ * or a stray viewBox into a template. */
+const icon = (name, cls = '') =>
+  `<svg class="icon${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#${name}"/></svg>`;
+
+/* A button with an icon in it cannot have its words replaced with textContent —
+ * that throws the icon away, and the button silently loses it the first time
+ * its label changes. The words live in a span and only the span is written. */
+function setLabel(btn, text) {
+  const lbl = btn.querySelector('.lbl');
+  if (lbl) lbl.textContent = text; else btn.textContent = text;
+}
+
 let toastTimer = null;
 function toast(msg, bad = false) {
   const el = $('toast');
@@ -562,6 +577,35 @@ function setOverlay(key, on) {
 
 /* ── where am I ──────────────────────────────────────────────────────────── */
 
+/* Two switches, not one, and they answer different questions. The browser's
+ * permission is "may this site ask". This one is "does ATLAS want to know" —
+ * and it is the one that was missing. Granting a permission you then cannot
+ * decline from inside the app without digging through Safari's settings is
+ * exactly what makes people deny it forever instead.
+ *
+ * Off is total: the blue dot goes, the button that centres on you goes,
+ * distances leave the list, and no call is made to the phone at all — not on
+ * boot, not on a tap, not silently.
+ */
+let useLocation = true;
+
+function setUseLocation(on) {
+  useLocation = !!on;
+  $('loc-use').checked = useLocation;
+  $('locate-btn').hidden = !useLocation;
+  if (!useLocation) {
+    meMarker?.remove();
+    meMarker = null;
+    $('locate-btn').classList.remove('is-live');
+    // The distance column is drawn from the dot, so it has to be redrawn
+    // without it rather than left showing a number from a position we have
+    // just agreed to stop holding.
+    if (!$('list').hidden) openList();
+  }
+  local.set('useLocation', useLocation);
+  refreshLocationState();
+}
+
 function getPosition() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) return reject(new Error('no GPS on this device'));
@@ -572,6 +616,10 @@ function getPosition() {
 }
 
 async function locate({ silent = false, fly = false } = {}) {
+  if (!useLocation) {
+    if (!silent) toast('my location is switched off — turn it on under layers');
+    return null;
+  }
   try {
     const pos = await getPosition();
     const { latitude: lat, longitude: lng, accuracy } = pos.coords;
@@ -595,6 +643,7 @@ function geoMessage(err) {
 }
 
 function showMe(lat, lng) {
+  $('locate-btn').classList.add('is-live');
   if (!meMarker) {
     const el = document.createElement('div');
     el.className = 'me-marker';
@@ -611,6 +660,11 @@ function showMe(lat, lng) {
 async function refreshLocationState() {
   const el = $('loc-state');
   const btn = $('loc-enable');
+  if (!useLocation) {
+    el.textContent = 'off. nothing here asks the phone where you are.';
+    btn.hidden = true;
+    return;
+  }
   if (!navigator.geolocation) {
     el.textContent = 'this device has no location hardware the browser can reach';
     btn.hidden = true;
@@ -626,7 +680,7 @@ async function refreshLocationState() {
       ? 'on &middot; <b>the blue dot is you</b>'
       : 'allowed — tap below to get a fix';
     btn.hidden = false;
-    btn.textContent = meMarker ? 'find me again' : 'get a fix';
+    setLabel(btn, meMarker ? 'find me again' : 'get a fix');
   } else if (state === 'denied') {
     el.innerHTML = '<b>blocked.</b> the app cannot re-ask — you have to allow location '
       + 'for this site in your browser settings. on iPhone: Settings → Safari → Location.';
@@ -634,7 +688,7 @@ async function refreshLocationState() {
   } else {
     el.textContent = 'off. the map cannot see where you are until you allow it.';
     btn.hidden = false;
-    btn.textContent = 'turn on my location';
+    setLabel(btn, 'turn on my location');
   }
 }
 
@@ -724,6 +778,10 @@ function drawPins() {
   // And say when the map is deliberately incomplete, or a filtered-out pin
   // reads as a lost one.
   $('list-btn').classList.toggle('is-filtered', filtering());
+  // Every marker is thrown away and rebuilt in here, so the one being read
+  // about has to be told again that it is — a filter change or a sync mid-sheet
+  // would otherwise quietly put the open pin back in the crowd.
+  if (sheet?.mode === 'view') markActive(sheet.pin.id);
 }
 
 /* An actual pin: a round head on a point, with the point being the bit that
@@ -738,6 +796,16 @@ const PIN_SVG = `<svg class="pin-art" viewBox="0 0 24 33" aria-hidden="true">
   <path class="pin-body" d="M12 32C12 32 22.6 19.8 22.6 11.6 22.6 5.5 17.8.7 12 .7S1.4 5.5 1.4 11.6C1.4 19.8 12 32 12 32Z"/>
   <circle class="pin-eye" cx="12" cy="11.5" r="4.2"/>
 </svg>`;
+
+/* Exactly one pin is the one whose sheet is open, and it is drawn standing up
+ * with a ring under it. Written as "set them all, one is true" rather than
+ * "clear the old one, set the new one", because the old one may have just been
+ * removed by a redraw and clearing something that is gone is a silent no-op
+ * that leaves two pins looking selected. */
+function markActive(id) {
+  markers.forEach((m, key) =>
+    m.getElement().classList.toggle('is-active', key === id));
+}
 
 function addMarker(p) {
   const el = document.createElement('div');
@@ -773,6 +841,9 @@ function renderKindControls() {
 function setPinKind(key) {
   const radio = document.querySelector(`[name="kind"][value="${key}"]`);
   if (radio) radio.checked = true;
+  // The dot on the title line is the same vocabulary the markers use, so the
+  // sheet says which of those coloured pins you are reading before the name does.
+  $('sheet-head').dataset.kind = key;
 }
 
 const chosenKind = () =>
@@ -804,10 +875,77 @@ function toggleKind(key, on) {
  * flight, and anything later that asks the map where the middle is — rather
  * than each of those carrying its own offset.
  */
+/* Three places the sheet can sit, and one number that says which. Everything
+ * that needs to know how much of the screen is left — the map's own centre, the
+ * crosshair, the drag itself — reads --sheet-frac rather than keeping its own
+ * copy of "half", which is how those three used to disagree with each other. */
+const SHEET_HALF = 0.52;
+const SHEET_FULL = 0.92;
+const SHEET_GONE = 0.3;      // let go below this and you meant to close it
+
+let sheetFrac = SHEET_HALF;
+
+function setSheetFrac(f) {
+  sheetFrac = f;
+  document.documentElement.style.setProperty('--sheet-frac', f.toFixed(3));
+}
+
 function sheetPadding(open) {
   if (!map) return;
   const h = map.getContainer().clientHeight;
-  map.setPadding({ top: 0, left: 0, right: 0, bottom: open ? Math.round(h / 2) : 0 });
+  // Capped: dragged to full height the sheet leaves almost no map, and padding
+  // the camera by 92% of itself puts the centre off the top of the world.
+  const bottom = open ? Math.round(h * Math.min(sheetFrac, 0.62)) : 0;
+  map.setPadding({ top: 0, left: 0, right: 0, bottom });
+}
+
+/* Shown and hidden through here rather than by setting `hidden` directly, so
+ * the sheet has time to slide back down. The timer is cancelled on the way in:
+ * tapping a second pin while the first is still leaving must not hand the new
+ * sheet the old one's disappearance. */
+let sheetHideTimer = null;
+
+function showSheet() {
+  clearTimeout(sheetHideTimer);
+  const el = $('sheet');
+  el.classList.remove('is-closing');
+  el.hidden = false;
+}
+
+function hideSheet() {
+  const el = $('sheet');
+  if (el.hidden) return;
+  el.classList.add('is-closing');
+  clearTimeout(sheetHideTimer);
+  sheetHideTimer = setTimeout(() => {
+    el.hidden = true;
+    el.classList.remove('is-closing');
+  }, 220);
+}
+
+/* Same trick for the full-screen panels: they animate out, so they cannot be
+ * hidden the instant the button is pressed. `then` runs once it is really gone,
+ * for the caller that has cleanup — the list revoking its thumbnails — which
+ * would otherwise blank every picture mid-fade. */
+const panelTimers = new Map();
+
+function openPanel(id) {
+  clearTimeout(panelTimers.get(id));
+  const el = $(id);
+  el.classList.remove('is-closing');
+  el.hidden = false;
+}
+
+function closePanel(id, then) {
+  const el = $(id);
+  if (el.hidden) { then?.(); return; }
+  el.classList.add('is-closing');
+  clearTimeout(panelTimers.get(id));
+  panelTimers.set(id, setTimeout(() => {
+    el.hidden = true;
+    el.classList.remove('is-closing');
+    then?.();
+  }, 130));
 }
 
 
@@ -823,7 +961,9 @@ function openNewPin(lat, lng, accuracy) {
     pending: [],       // photos added before the pin itself exists
   };
   // Mark the exact spot: the pin has no marker of its own until it is saved.
+  setSheetFrac(SHEET_HALF);
   sheetPadding(true);
+  markActive(null);
   $('crosshair').classList.add('is-offset');
   $('crosshair').hidden = false;
   map.easeTo({ center: [lng, lat] });
@@ -845,7 +985,7 @@ function openNewPin(lat, lng, accuracy) {
   $('notes-list').innerHTML = '';
   renderPhotos();
   resetOwner();
-  $('sheet').hidden = false;
+  showSheet();
   setTimeout(() => $('pin-name').focus(), 80);
 }
 
@@ -874,8 +1014,11 @@ function openPin(p) {
   editingNote = null;
   renderNotes();          // which paints the photo strips, this pin's included
   resetOwner();
-  $('sheet').hidden = false;
+  showSheet();
+  setSheetFrac(SHEET_HALF);
   sheetPadding(true);
+  // Stand the pin you are reading about up out of the others.
+  markActive(p.id);
   map.easeTo({ center: [p.lng, p.lat] });
 }
 
@@ -886,13 +1029,15 @@ function metaHtml(p, author) {
   const head = bits.length ? bits.join(' &middot; ') : 'new pin';
   const acc = p.accuracy_m ? ` &middot; &plusmn;${Math.round(p.accuracy_m)} m` : '';
   const pending = p._pending
-    ? '<br><span class="warn">waiting to sync — lives on this phone only</span>' : '';
+    ? '<br><span class="note-warn">' + icon('i-alert', 'icon-sm')
+      + 'waiting to sync — lives on this phone only</span>' : '';
   const priv = p.is_private ? '<br><b>personal</b> &middot; nobody else can see this pin' : '';
   return `${head}<br>${fmtCoords(p.lat, p.lng)}${acc}${priv}${pending}`;
 }
 
 function closeSheet() {
-  $('sheet').hidden = true;
+  hideSheet();
+  markActive(null);
   $('crosshair').hidden = true;
   $('crosshair').classList.remove('is-offset');
   sheetPadding(false);
@@ -1292,7 +1437,8 @@ function noteHtml(n) {
       ${mine && editingNote !== n.id ? `
         <button class="note-photo" data-photo="${n.id}">photo</button>
         <button class="note-photo" data-edit="${n.id}">edit</button>
-        <button class="note-del" data-id="${n.id}" aria-label="Delete note">✕</button>` : ''}
+        <button class="note-del" data-id="${n.id}" aria-label="Delete note">${
+          icon('i-close', 'icon-sm')}</button>` : ''}
     </div>`;
 
   const body = editingNote === n.id
@@ -1312,7 +1458,7 @@ function noteHtml(n) {
     ${head}
     ${body}
     <div class="photo-strip is-note" data-note-photos="${n.id}" hidden></div>
-    ${n._pending ? '<span class="note-warn">not synced yet</span>' : ''}
+    ${n._pending ? `<span class="note-warn">${icon('i-alert', 'icon-sm')}not synced yet</span>` : ''}
   </article>`;
 }
 
@@ -1693,7 +1839,7 @@ async function loadSources() {
 }
 
 function openSources() {
-  $('sources').hidden = false;
+  openPanel('sources');
   renderSources();
 }
 
@@ -1849,10 +1995,10 @@ async function syncQueue() {
 async function refreshNetworkUI() {
   const n = await local.queueCount();
   const badge = $('pending');
-  badge.textContent = n ? `${n} unsynced` : '';
+  badge.innerHTML = n ? `${icon('i-sync', 'icon-sm')}${n} unsynced` : '';
   badge.hidden = !n;
   document.body.classList.toggle('is-offline', !online());
-  $('net').textContent = online() ? '' : 'offline';
+  $('net').innerHTML = online() ? '' : `${icon('i-offline', 'icon-sm')}offline`;
   $('net').hidden = online();
 }
 
@@ -1932,7 +2078,9 @@ function listRow(p, here) {
   }
 
   return `<button class="list-row" data-pin="${p.id}">
-    <div class="r-thumb${photo ? '' : ' is-empty'}"${photo ? ` data-thumb="${photo.id}"` : ''}></div>
+    <div class="r-thumb" data-kind="${kindOf(p)}"${photo ? ` data-thumb="${photo.id}"` : ''}>
+      ${icon(photo ? 'i-image' : 'i-pin')}
+    </div>
     <div class="r-text">
       <div class="r-top">
         <div class="r-name">${escapeHtml(pinTitle(p))}${
@@ -1943,6 +2091,7 @@ function listRow(p, here) {
       ${desc ? `<div class="r-desc">${escapeHtml(desc)}</div>` : ''}
       <div class="r-sub">${bits.join(' &middot; ')}</div>
     </div>
+    ${icon('i-chevron', 'r-go')}
   </button>`;
 }
 
@@ -1965,9 +2114,9 @@ function openList() {
   const body = $('list-body');
   body.innerHTML = rows.length
     ? rows.map((p) => listRow(p, here)).join('')
-    : `<p class="list-empty">${pins.length
+    : `<div class="list-empty">${icon('i-pin')}<span>${pins.length
         ? 'Nothing of those kinds. Turn some back on above.'
-        : 'No pins yet. Go find something.'}</p>`;
+        : 'No pins yet. Go find something.'}</span></div>`;
 
   // Thumbnails after the markup, same rule as the sheet's strips: a blob that
   // arrives after the list has moved on must not paint into a live row.
@@ -1983,15 +2132,14 @@ function openList() {
     });
   });
 
-  $('list').hidden = false;
+  openPanel('list');
 }
 
 function onListClick(e) {
   const row = e.target.closest('[data-pin]');
   if (!row) return;
   const p = pins.find((x) => x.id === row.dataset.pin);
-  $('list').hidden = true;
-  releaseListUrls();
+  closePanel('list', releaseListUrls);
   if (p) { map.jumpTo({ center: [p.lng, p.lat], zoom: 15 }); openPin(p); }
 }
 
@@ -2051,7 +2199,7 @@ async function downloadArea() {
 
   download = { cancel: false };
   const go = $('dl-go');
-  go.textContent = 'cancel';
+  setLabel(go, 'cancel');
   go.classList.add('is-cancel');
 
   const cache = await caches.open(TILE_CACHE);
@@ -2080,7 +2228,7 @@ async function downloadArea() {
 
   const cancelled = download.cancel;
   download = null;
-  go.textContent = 'download this area';
+  setLabel(go, 'download this area');
   go.classList.remove('is-cancel');
   $('dl-progress').hidden = true;
 
@@ -2143,7 +2291,7 @@ async function clearTiles() {
 }
 
 function openMaps() {
-  $('maps').hidden = false;
+  openPanel('maps');
   updateDownloadEstimate();
   refreshStorage();
 }
@@ -2244,7 +2392,7 @@ function setTheme(theme) {
   // The browser's own chrome follows the app, so a phone does not frame a dark
   // map in a white status bar.
   document.querySelector('meta[name="theme-color"]')
-    .setAttribute('content', theme === 'night' ? '#0d0f12' : '#ffffff');
+    .setAttribute('content', theme === 'night' ? '#0b0e13' : '#ffffff');
   local.set('theme', theme);
 }
 
@@ -2256,12 +2404,12 @@ $('forgot').addEventListener('click', forgotPassword);
 // Tapping your own name used to sign you out — a destructive action on the
 // smallest target in the app, behind a tooltip nobody reads on a phone. It
 // opens settings now, where signing out is a labelled button.
-$('whoami').addEventListener('click', () => { $('settings').hidden = false; });
+$('whoami').addEventListener('click', () => openPanel('settings'));
 $('signout').addEventListener('click', signOut);
 $('me-save').addEventListener('click', saveMyName);
 $('locate-btn').addEventListener('click', () => locate().catch(() => {}));
 $('list-btn').addEventListener('click', openList);
-$('list-close').addEventListener('click', () => { $('list').hidden = true; releaseListUrls(); });
+$('list-close').addEventListener('click', () => closePanel('list', releaseListUrls));
 $('list-body').addEventListener('click', onListClick);
 $('sheet-close').addEventListener('click', closeSheet);
 $('pin-save').addEventListener('click', savePin);
@@ -2288,11 +2436,14 @@ $('note-add').addEventListener('click', addNote);
 $('notes-list').addEventListener('click', onNotesClick);
 $('own-ask').addEventListener('click', askOwner);
 $('own-result').addEventListener('click', onOwnerClick);
-$('sources-open').addEventListener('click', () => { $('layers').hidden = true; openSources(); });
-$('sources-close').addEventListener('click', () => { $('sources').hidden = true; });
+$('sources-open').addEventListener('click', () => { closePanel('layers'); openSources(); });
+$('sources-close').addEventListener('click', () => closePanel('sources'));
 $('sources-list').addEventListener('click', onSourcesClick);
 $('src-save').addEventListener('click', addSource);
 $('dl-photos').addEventListener('click', cachePhotosOffline);
+$('pin-kind').addEventListener('change', (e) => {
+  if (e.target.name === 'kind') $('sheet-head').dataset.kind = e.target.value;
+});
 $('kind-filter').addEventListener('change', (e) => {
   if (e.target.dataset.filter) toggleKind(e.target.dataset.filter, e.target.checked);
 });
@@ -2300,8 +2451,8 @@ $('filter-all').addEventListener('click', () => {
   kindFilter = new Set(KIND_KEYS);
   applyFilter();
 });
-$('settings-btn').addEventListener('click', () => { $('settings').hidden = false; });
-$('settings-close').addEventListener('click', () => { $('settings').hidden = true; });
+$('settings-btn').addEventListener('click', () => openPanel('settings'));
+$('settings-close').addEventListener('click', () => closePanel('settings'));
 $('glass-toggle').addEventListener('change', (e) => setGlass(e.target.checked));
 document.querySelectorAll('[name="accent"]').forEach((r) =>
   r.addEventListener('change', () => r.checked && setAccent(r.value)));
@@ -2309,18 +2460,19 @@ document.querySelectorAll('[name="theme"]').forEach((r) =>
   r.addEventListener('change', () => r.checked && setTheme(r.value)));
 
 $('layers-btn').addEventListener('click', () => {
-  $('layers').hidden = false;
+  openPanel('layers');
   refreshLocationState();
 });
 $('loc-enable').addEventListener('click', () => locate().catch(() => {}));
-$('maps-from-layers').addEventListener('click', () => { $('layers').hidden = true; openMaps(); });
-$('layers-close').addEventListener('click', () => { $('layers').hidden = true; });
+$('loc-use').addEventListener('change', (e) => setUseLocation(e.target.checked));
+$('maps-from-layers').addEventListener('click', () => { closePanel('layers'); openMaps(); });
+$('layers-close').addEventListener('click', () => closePanel('layers'));
 
 document.querySelectorAll('[name="basemap"]').forEach((r) =>
   r.addEventListener('change', () => r.checked && setBasemap(r.value)));
 document.querySelectorAll('[data-overlay]').forEach((c) =>
   c.addEventListener('change', () => setOverlay(c.dataset.overlay, c.checked)));
-$('maps-close').addEventListener('click', () => { $('maps').hidden = true; });
+$('maps-close').addEventListener('click', () => closePanel('maps'));
 $('dl-go').addEventListener('click', downloadArea);
 $('dl-clear').addEventListener('click', clearTiles);
 $('pending').addEventListener('click', syncQueue);
@@ -2337,8 +2489,52 @@ document.addEventListener('keydown', (e) => {
   // backing out of an edit should not also close the pin.
   if (editingNote) { cancelEditNote(); return; }
   closeSheet();
-  ['list', 'maps', 'layers', 'sources', 'settings'].forEach((id) => { $(id).hidden = true; });
+  ['list', 'maps', 'layers', 'sources', 'settings'].forEach((id) => closePanel(id));
 });
+
+/* ── dragging the sheet ──────────────────────────────────────────────────
+ * Take the grip and the sheet follows your thumb, then lands on one of three
+ * things when you let go: full height for filling a pin in at home, half for
+ * looking at the ground while you write about it, or off the bottom.
+ *
+ * Pointer events rather than touch: the same handful of lines then work for a
+ * finger, a trackpad and a stylus, and pointer capture means a fast drag that
+ * leaves the grip behind still gets its own pointerup instead of the sheet
+ * sticking wherever the finger crossed the edge.
+ */
+(() => {
+  const el = $('sheet');
+  const grip = $('sheet-grip');
+  let from = 0;
+  let base = SHEET_HALF;
+  let dragging = false;
+  const height = () => $('app').clientHeight || window.innerHeight;
+
+  grip.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    from = e.clientY;
+    base = sheetFrac;
+    grip.setPointerCapture(e.pointerId);
+    el.classList.add('is-dragging');
+  });
+
+  grip.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    // Down the screen is up in Y and down in height, hence the subtraction.
+    setSheetFrac(Math.min(SHEET_FULL, Math.max(0.1, base + (from - e.clientY) / height())));
+  });
+
+  const letGo = () => {
+    if (!dragging) return;
+    dragging = false;
+    el.classList.remove('is-dragging');
+    if (sheetFrac < SHEET_GONE) { setSheetFrac(SHEET_HALF); closeSheet(); return; }
+    setSheetFrac(sheetFrac > (SHEET_HALF + SHEET_FULL) / 2 ? SHEET_FULL : SHEET_HALF);
+    sheetPadding(true);
+  };
+  grip.addEventListener('pointerup', letGo);
+  grip.addEventListener('pointercancel', letGo);
+})();
 
 window.addEventListener('online', () => { refreshNetworkUI(); syncQueue(); });
 window.addEventListener('offline', refreshNetworkUI);
@@ -2354,6 +2550,10 @@ window.addEventListener('offline', refreshNetworkUI);
   document.querySelectorAll('[data-filter]').forEach((c) => {
     c.checked = kindFilter.has(c.dataset.filter);
   });
+
+  // Default on, so a phone that has never opened layers behaves as it always
+  // did; only an explicit false turns it off.
+  setUseLocation((await local.get('useLocation')) !== false);
 
   setTheme((await local.get('theme')) || 'day');
   setAccent((await local.get('accent')) || 'ember');

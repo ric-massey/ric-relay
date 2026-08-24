@@ -76,14 +76,20 @@ a fix.
 A pin's sheet takes the bottom half of the screen and the map keeps the top
 half, with the pin centred in the part you can still see — so the ground is in
 front of you while you write about it. The sheet scrolls inside itself and
-**save pin** is stuck to the bottom of it, so filling one in is something you go
-down through rather than something that buries the map.
+**save** is stuck to the floor of it, so filling one in is something you go down
+through rather than something that buries the map.
+
+**Take the grip at the top of the sheet and it moves.** Up goes to full height,
+which is what you want at home with a keyboard and eleven things to type; down
+goes back to half, which is what you want standing at the gate; further down
+closes it. It lands on one of those three, never between them.
 
 Getting that right is a camera setting rather than an offset: the map is given
 bottom padding equal to the sheet, which moves the map's own idea of its centre
 up into the visible half. The crosshair, the eased flight, and anything later
 that asks the map where the middle is all follow from that one number instead of
-each carrying its own correction.
+each carrying its own correction — and since the sheet now moves, that number is
+one custom property, `--sheet-frac`, that the drag writes and the rest reads.
 
 Inside, it is groups rather than a list: **photos**, **whose land**, **notes**.
 Every button sits under the heading that says what it is for, because the
@@ -97,7 +103,16 @@ these do I want", and that gets answered by what a button is *near*.
   still. Name and description are optional — drop it now, fill it in at home.
   While the map has nothing on it, it says so on screen: a gesture leaves no
   trace, so it gets told to you once, when you have nothing else to look at.
-- **◎** — centres on you. Press and hold your own dot to pin where you stand.
+- **the crosshair button**, bottom left — centres on you, and its ring turns
+  accent once the app has a fix. Press and hold your own dot to pin where you
+  stand. It is only there while **use my location** is on.
+- **use my location**, under **layers → my location** — off and ATLAS never asks
+  the phone where you are: no blue dot, no crosshair button, no distances in the
+  list, and no call made on boot or on a tap. This is a different switch from
+  the browser's permission, and both of them exist for a reason: the permission
+  answers "may this site ask", and this one answers "does ATLAS want to know".
+  Having only the first is what makes people deny location forever rather than
+  dig through Safari's settings to take it back.
 - **what kind of place it is** — cliffs, caves, trails, tunnels, abandoned
   buildings, mountains, towers, other. Chosen on the pin, and it is what the
   pin's **colour** means: eight colours, each measured to stand clear of the
@@ -117,15 +132,16 @@ these do I want", and that gets answered by what a button is *near*.
   check constraint: an unrecognised kind falls back to "other" in the app and
   still draws, lists and filters, where a constraint would turn a future rename
   into a write that fails on a phone in a canyon.
-- **filtering** — the chips at the top of **☰ places** turn kinds on and off,
+- **filtering** — the chips at the top of **places** turn kinds on and off,
   and they filter the map as well as the list. Turning the last one off turns
   them all back on rather than leaving you a blank map with no way to read why.
-  While a filter is on, ☰ carries a dot — a filtered-out pin should never look
+  While a filter is on, the places button carries a dot — a filtered-out pin
+  should never look
   like a lost one.
 - **your monogram** — opens settings. It used to sign you out on a single tap,
   which is a destructive action on the smallest target on screen behind a
   tooltip nobody reads on a phone.
-- **☰ places** — the closest thing here to a feed, and it is built for the
+- **places** — the closest thing here to a feed, and it is built for the
   question it actually gets asked: somebody has handed you a place, do you want
   to go. So a row is a photo of it, one line of what it is, who found it, how
   many notes it has picked up since, and how far it is from you — rather than a
@@ -136,9 +152,9 @@ these do I want", and that gets answered by what a button is *near*.
   left on a two-year-old pin means somebody just went there, and that is news.
   Distance only appears once the app knows where you are — opening a list is
   not a reason to ask.
-- **⤓** — save maps for offline (below).
-- **⚙ settings** — you, colour, light and glass. Reachable from ⚙ or by tapping
-  your own monogram.
+- **save maps for offline** — at the bottom of **layers** (below).
+- **settings** — you, colour, light and glass. Reachable from the sliders button
+  or by tapping your own monogram.
   - **you** — the name the crew sees, which is the byline on every pin you drop
     and every note you leave. Until now it was whatever the invite trigger made
     of your email address, title-cased, with no way to change it. Your sign-in
@@ -171,7 +187,7 @@ these do I want", and that gets answered by what a button is *near*.
   it. A note is what happened when someone went: gate locked, wash dry, second
   entrance easier. Anyone can leave one on any pin, including someone else's.
   That is the point — the map gets better every time one of you goes out.
-  Tap **✎** on one of yours to reword it. The note keeps the day it was
+  Tap **edit** on one of yours to reword it. The note keeps the day it was
   written and says "edited" separately, because on a log of "gate was locked in
   March" the date is half the meaning.
 - **a photo on a note** — **add photo** next to the note box attaches to what
@@ -185,8 +201,10 @@ these do I want", and that gets answered by what a button is *near*.
   note's photos are the note author's, and they go when the note goes.
 - **check who owns this land** — see below.
 - **directions to this place** — hands the pin to Apple Maps or Google Maps.
-- Green pins are yours. Orange pins are someone else's. Yellow means not synced
-  yet. You can only edit and delete your own.
+- A pin's **colour is what kind of place it is** — eight kinds, eight measured
+  colours. Yellow outranks all of them and means not synced yet. A hollow pin
+  is a personal one. The pin whose sheet is open stands up out of the others
+  with a ring under it. You can only edit and delete your own.
 
 Base maps under **layers**: satellite (Esri), satellite + topo, USGS topo,
 contour topo (OpenTopoMap), and street. Over the top of those, eight overlays in
@@ -279,15 +297,41 @@ is a mirror, thin type disappears and translucent panels wash out — so: opaque
 white, near-black text, heavy weights, hard borders, big targets. Night mode is
 for caves and dusk and is a deliberate choice.
 
-That constraint rules out the usual route to looking professional (dark, glassy,
-hairline, low contrast), so `styles.css` gets there the way an instrument does:
+That constraint rules out the usual route to looking current (dark, glassy,
+hairline, low contrast) — every one of those is a legibility budget being spent
+on a screenshot. So `styles.css` gets there the way an instrument does:
 **nothing arbitrary**. Every size comes off one seven-step type scale, every gap
 off one four-pixel rhythm, and radius, border weight and elevation are short
 lists with names. What reads as amateur in an interface is almost never the
 colours — it is fourteen text sizes between 11px and 17px, each one picked on the
 day it was needed.
 
-The pieces:
+What does the rest of the work is the other four:
+
+- **Icons.** One sprite at the top of `index.html`, one 24px grid, one stroke
+  weight, all in `currentColor`, so an icon inherits the colour and the state of
+  whatever it sits in. Markup built in JS goes through `icon()` in `app.js` and
+  draws from the same set. The single loudest amateur tell in an interface is
+  `☰ ⚙ ◎ ✕` borrowed out of the system font: four weights, four sizes, four
+  vertical alignments, none of them yours — and none of them themeable.
+- **Motion.** Two curves and three durations and that is the whole vocabulary:
+  `--ease` for surfaces arriving and leaving, `--spring` — which overshoots
+  slightly — only ever for something you touched, so the overshoot reads as the
+  thing answering rather than as the layout being loose. Panels animate out as
+  well as in, which is why they close through `closePanel()` rather than by
+  having `hidden` set on them. One `prefers-reduced-motion` block at the end of
+  the stylesheet switches all of it off.
+- **Controls that are the shape of what they do.** A thing with two states is a
+  switch. A choice of one out of three is a segmented control. A choice of a map
+  is a picture of that map. All of them are still the same `<input>` underneath
+  — the label still toggles it, the keyboard still finds it, and the JS still
+  reads `.checked` — so nothing about the wiring changed.
+- **Shape.** Radii off one list with a top end on it, and a four-step elevation
+  ladder tinted with the ink rather than pure black, each step a tight contact
+  shadow plus a wide soft one. A single blurred black `box-shadow` is what depth
+  looks like when the answer to it was one number.
+
+The rest:
 
 - **A box means you can press it.** That one rule decides every container in the
   file. Information gets type and a hairline, never a box. Before it, the pin
@@ -306,12 +350,18 @@ The pieces:
   surface; `--hair` is a whisper.
 - **Three inks.** Two of them stay past 7:1 on every surface. The third is for
   detail — a timestamp, a hostname — and never carries a value or a warning.
-- **Words, not glyphs**, on anything you have to find in a hurry: a note's
-  controls read `photo · edit · ✕`. The pencil went because nobody is sure what
-  it means at arm's length, and it rendered a weight lighter than the ✕ beside
-  it, so the row looked like three unrelated marks.
+- **Words, not glyphs**, on anything you have to find in a hurry — and that
+  survived getting a drawn icon set: a note's controls still read
+  `photo · edit · ✕`, because a pencil is not obvious at arm's length in the sun.
+  Closing is the one pictogram everybody already knows.
 - **One focus ring**, keyboard-only, on everything.
 - **44px minimum on anything you have to hit outdoors.**
+
+- **No `<fieldset>`.** A `<legend>` is rendered into the box's own border, so it
+  cuts a hole in any rule drawn there and cannot be moved off it without a float
+  — and a float pushes the grid rows under it sideways off the screen. The
+  groups are plain sections with a heading; the three that are a choice of one
+  carry `role="radiogroup"`, which is what the fieldset was really for.
 
 `node test/contrast.test.mjs` enforces the floors.
 
@@ -321,7 +371,7 @@ The pieces:
 
 The places worth pinning have no signal, so none of this depends on having any.
 
-**Before you go**, open **⤓ save maps for offline**, move the map over the area, pick a
+**Before you go**, open **save maps for offline** at the bottom of **layers**, move the map over the area, pick a
 detail level and download. Tiles land in a cache that survives app updates —
 shipping a new version does not wipe your canyon. Rough is a big area cheaply;
 good reads individual trees; max is slow and heavy. The estimate updates as you
@@ -335,7 +385,7 @@ move the map, so you can see the cost before committing.
 - Every pin the crew had last time you were online is still on the map, and so
   is every note on it — both are mirrored into IndexedDB.
 - Photos you have opened are still there; photos you never opened are not. Tap
-  **get all photos for offline** in ⤓ before you leave and it pulls the rest.
+  **download all photos** in offline maps before you leave and it pulls the rest.
 - **Finding yourself still works.** GPS is a radio receiver; it needs no network. New
   pins, notes, photos and edits all queue up and show yellow. A photo taken with
   no signal is written to the phone before anything else is attempted, so the

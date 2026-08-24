@@ -18,11 +18,100 @@
 </head>
 <body>
 
+<!-- ── the icon set ────────────────────────────────────────────────────────
+     One sprite, one 24px grid, one stroke weight, all in currentColor. Every
+     icon in the app is a <use> of something in here, which is what stops the
+     set drifting into four sizes and three weights the way a pile of ☰ ⚙ ◎ ✕
+     glyphs borrowed out of the system font always does. Drawn rather than
+     typed, so they inherit colour and state from whatever they sit in. -->
+<svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-layers" viewBox="0 0 24 24">
+    <path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/><path d="m3 17.5 9 5 9-5"/>
+  </symbol>
+  <symbol id="i-list" viewBox="0 0 24 24">
+    <path d="M9 6h11M9 12h11M9 18h11"/>
+    <circle cx="4.5" cy="6" r="1.3"/><circle cx="4.5" cy="12" r="1.3"/><circle cx="4.5" cy="18" r="1.3"/>
+  </symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24">
+    <path d="M3 8h18M3 16h18"/>
+    <circle cx="9" cy="8" r="2.7"/><circle cx="15" cy="16" r="2.7"/>
+  </symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>
+    <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+  </symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24">
+    <path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11Z"/><circle cx="12" cy="10" r="2.6"/>
+  </symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9.2"/><path d="m15.8 8.2-2 5.6-5.6 2 2-5.6 5.6-2Z"/>
+  </symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24">
+    <path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.4l1.3-2h7.6l1.3 2h2.4A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-9Z"/>
+    <circle cx="12" cy="13" r="3.4"/>
+  </symbol>
+  <symbol id="i-image" viewBox="0 0 24 24">
+    <rect x="3" y="4.5" width="18" height="15" rx="2.5"/>
+    <path d="m4 17 5-5 4 3.5 3-2.5 4 4"/><circle cx="8.6" cy="9.4" r="1.4"/>
+  </symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24">
+    <path d="M4 6.5h16M9.5 6.5V4h5v2.5M6.5 6.5 7.5 20h9l1-13.5"/>
+  </symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24">
+    <rect x="9" y="9" width="11" height="11" rx="2.2"/><path d="M15 6.5V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h1.5"/>
+  </symbol>
+  <symbol id="i-navigate" viewBox="0 0 24 24"><path d="M21 3 3.5 10.4l7.6 2.5 2.5 7.6L21 3Z"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24">
+    <path d="M12 3v11m0 0 4.2-4.2M12 14l-4.2-4.2"/><path d="M4 16v2.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V16"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m4.5 12.5 5 5 10-11"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24">
+    <path d="M12 3.5 22 20H2L12 3.5Z"/><path d="M12 10v4.2"/><circle cx="12" cy="17" r="1.1" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="i-offline" viewBox="0 0 24 24">
+    <path d="M3 3.5 21 21"/><path d="M5 11.5a10.5 10.5 0 0 1 3.4-2.3M19 11.5a10.5 10.5 0 0 0-7.8-2.9"/>
+    <path d="M8.2 15a6 6 0 0 1 1.6-1.1M15.7 15a6 6 0 0 0-1.4-1"/>
+    <circle cx="12" cy="18.6" r="1.2" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24">
+    <path d="M20 12a8 8 0 0 1-13.7 5.6M4 12a8 8 0 0 1 13.7-5.6"/>
+    <path d="M4 20v-4h4M20 4v4h-4"/>
+  </symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24">
+    <rect x="4.5" y="10.5" width="15" height="10.5" rx="2.4"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/>
+  </symbol>
+  <symbol id="i-map" viewBox="0 0 24 24">
+    <path d="m3 6.5 6-2.5v13.5l-6 2.5V6.5Z"/><path d="M9 4l6 2.5v13.5L9 17.5"/><path d="m15 6.5 6-2.5v13.5l-6 2.5"/>
+  </symbol>
+  <symbol id="i-note" viewBox="0 0 24 24">
+    <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9l-5 4V5.5Z"/>
+    <path d="M8 8.5h8M8 12h5"/>
+  </symbol>
+  <symbol id="i-user" viewBox="0 0 24 24">
+    <circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>
+  </symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24">
+    <path d="M14 4.5h4.5A1.5 1.5 0 0 1 20 6v12a1.5 1.5 0 0 1-1.5 1.5H14"/>
+    <path d="M9.5 8 5.5 12l4 4M5.5 12H15"/>
+  </symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24">
+    <path d="M3 3.5 21 21"/>
+    <path d="M9.6 6.6A9.6 9.6 0 0 1 12 6.3c5 0 9 5.7 9 5.7a17 17 0 0 1-3 3.5M6.3 8.4A17.6 17.6 0 0 0 3 12s4 5.7 9 5.7a8.9 8.9 0 0 0 3.2-.6"/>
+    <path d="M10.2 10.4a2.4 2.4 0 0 0 3.3 3.4"/>
+  </symbol>
+</svg>
+
 <!-- ── the door ──────────────────────────────────────────────────────────── -->
 <div id="gate" class="gate" hidden>
   <form id="login-form" class="gate-card" autocomplete="on">
-    <div class="mark">ATLAS</div>
-    <p class="gate-sub">crew access</p>
+    <div class="gate-mark">
+      <span class="gate-badge"><svg class="icon"><use href="#i-compass"/></svg></span>
+      <div class="mark">ATLAS</div>
+      <p class="gate-sub">crew access</p>
+    </div>
 
     <label class="field">
       <span>email</span>
@@ -46,8 +135,11 @@
 <!-- ── first sign-in: pick your own password ─────────────────────────────── -->
 <div id="newpass" class="gate" hidden>
   <form id="newpass-form" class="gate-card" autocomplete="on">
-    <div class="mark">ATLAS</div>
-    <p class="gate-sub">choose your password</p>
+    <div class="gate-mark">
+      <span class="gate-badge"><svg class="icon"><use href="#i-lock"/></svg></span>
+      <div class="mark">ATLAS</div>
+      <p class="gate-sub">choose your password</p>
+    </div>
     <p class="gate-note">Pick something only you know. You'll use your email
       address and this password to sign in from now on.</p>
 
@@ -73,51 +165,76 @@
   <div id="map"></div>
 
   <header class="topbar">
-    <button id="layers-btn" class="chip solo wide-chip" title="Layers">layers</button>
+    <button id="layers-btn" class="chip solo wide-chip" title="Layers">
+      <svg class="icon"><use href="#i-layers"/></svg>layers
+    </button>
     <div class="topbar-right">
-      <button id="list-btn" class="chip solo" title="All pins">☰</button>
-      <button id="settings-btn" class="chip solo" title="Settings" aria-label="Settings">⚙</button>
-      <button id="whoami" class="chip solo who" title="Sign out"></button>
+      <button id="list-btn" class="chip solo" title="All pins" aria-label="All pins">
+        <svg class="icon"><use href="#i-list"/></svg>
+      </button>
+      <button id="settings-btn" class="chip solo" title="Settings" aria-label="Settings">
+        <svg class="icon"><use href="#i-settings"/></svg>
+      </button>
+      <button id="whoami" class="chip solo who" title="Settings"></button>
     </div>
   </header>
 
   <div class="status">
-    <span id="net" class="badge badge-off" hidden>offline</span>
+    <span id="net" class="badge badge-off" hidden></span>
     <button id="pending" class="badge badge-warn" hidden title="Tap to sync now"></button>
   </div>
 
-  <div id="crosshair" class="crosshair" aria-hidden="true" hidden></div>
+  <div id="crosshair" class="crosshair" aria-hidden="true" hidden><span></span></div>
 
   <div id="toast" class="toast" hidden></div>
 
   <!-- With no button that makes a pin, the gesture has to be said out loud at
        least once. Shown only while the map is empty, which is exactly when
        somebody is looking for the thing they cannot find. -->
-  <p id="map-hint" class="map-hint" hidden>press and hold the map to drop a pin</p>
+  <p id="map-hint" class="map-hint" hidden>
+    <svg class="icon icon-sm"><use href="#i-pin"/></svg>press and hold the map to drop a pin
+  </p>
 
   <div id="dock" class="dock">
-    <button id="locate-btn" class="btn-round" title="Centre on me" aria-label="Centre on me">◎</button>
+    <button id="locate-btn" class="btn-round" title="Centre on me" aria-label="Centre on me">
+      <svg class="icon"><use href="#i-locate"/></svg>
+    </button>
   </div>
 
   <!-- pin detail / edit -->
   <div id="sheet" class="sheet" hidden>
-    <div class="sheet-grab"></div>
+    <!-- The grip is the drag target: take it and the sheet goes full height for
+         filling a pin in at home, back to half for looking at the ground, or
+         off the bottom to close. -->
+    <div id="sheet-grip" class="sheet-grip" role="separator" aria-label="Resize sheet">
+      <span class="sheet-grab"></span>
+    </div>
+
     <div class="sheet-body">
-      <div class="sheet-head">
+      <div id="sheet-head" class="sheet-head" data-kind="other">
+        <span class="pin-kind-dot" aria-hidden="true"></span>
         <input id="pin-name" class="pin-name" placeholder="name this place (optional)"
                autocapitalize="sentences" spellcheck="false">
-        <button id="sheet-close" class="icon-btn" aria-label="Close">✕</button>
+        <button id="sheet-close" class="icon-btn" aria-label="Close">
+          <svg class="icon"><use href="#i-close"/></svg>
+        </button>
       </div>
       <div id="pin-kind" class="kind-list"></div>
       <textarea id="pin-desc" class="pin-desc" rows="3"
                 placeholder="what is it? how do you get in? what do you need?"></textarea>
       <div id="pin-meta" class="pin-meta"></div>
-      <button id="pin-copy" class="linkish meta-action">copy location</button>
-      <button id="pin-directions" class="btn-ghost wide">directions to this place</button>
+      <button id="pin-copy" class="linkish meta-action">
+        <svg class="icon"><use href="#i-copy"/></svg>copy location
+      </button>
+      <button id="pin-directions" class="btn-ghost wide">
+        <svg class="icon"><use href="#i-navigate"/></svg>directions to this place
+      </button>
       <label class="privacy">
+        <svg class="icon"><use href="#i-eye-off"/></svg>
+        <span>only me</span>
         <input id="pin-private" type="checkbox">
-        <span>only me
-          <small>nobody else can see this pin. it is never sent to them.</small></span>
+        <span class="switch-track"></span>
+        <small>nobody else can see this pin. it is never sent to them.</small>
       </label>
 
       <!--
@@ -127,15 +244,19 @@
         is answered by what a button is NEAR at least as much as by what it says.
       -->
       <section class="block">
-        <h3 class="block-head">photos</h3>
-        <div id="pin-photos" class="photo-strip" hidden></div>
-        <button id="photo-add" class="btn-ghost wide">add photo</button>
+        <h3 class="block-head"><svg class="icon"><use href="#i-camera"/></svg>photos</h3>
+        <div class="photo-row">
+          <div id="pin-photos" class="photo-strip" hidden></div>
+          <button id="photo-add" class="photo-add">
+            <svg class="icon"><use href="#i-plus"/></svg>add photo
+          </button>
+        </div>
         <input id="photo-input" type="file" accept="image/*" multiple hidden>
       </section>
 
       <!-- whose ground is this -->
       <section class="block">
-        <h3 class="block-head">whose land</h3>
+        <h3 class="block-head"><svg class="icon"><use href="#i-map"/></svg>whose land</h3>
         <div id="own-block" class="owner">
           <button id="own-ask" class="btn-ghost wide">check who owns this land</button>
           <div id="own-result" class="owner-result" hidden></div>
@@ -144,33 +265,43 @@
 
       <!-- the running log: what happened when someone actually went -->
       <div id="notes-block" class="notes" hidden>
-        <div class="notes-head">notes</div>
+        <div class="notes-head"><svg class="icon"><use href="#i-note"/></svg>notes</div>
         <div id="notes-list" class="notes-list"></div>
         <textarea id="note-body" class="note-body" rows="2"
                   placeholder="gate locked? creek dry? road washed out? leave it here."
                   autocapitalize="sentences"></textarea>
         <div id="note-draft-photos" class="photo-strip is-note" hidden></div>
         <div class="note-compose">
-          <button id="note-photo" class="btn-ghost">add photo</button>
-          <button id="note-add" class="btn-ghost">add note</button>
+          <button id="note-photo" class="btn-ghost">
+            <svg class="icon icon-sm"><use href="#i-camera"/></svg>add photo
+          </button>
+          <button id="note-add" class="btn-ghost">
+            <svg class="icon icon-sm"><use href="#i-plus"/></svg>add note
+          </button>
         </div>
       </div>
+    </div>
 
-      <!-- Always on screen, always the same two, always in the same place. The
-           one thing you should never have to go looking for is how to keep what
-           you just typed. -->
-      <div id="sheet-actions" class="sheet-actions">
-        <button id="pin-save" class="btn-primary">save</button>
-        <button id="pin-delete" class="btn-danger" hidden>delete pin</button>
-      </div>
+    <!-- Pinned to the floor of the sheet rather than scrolling inside it, where
+         the most important button on the screen was something you had to scroll
+         past, in a row of four that all looked the same. -->
+    <div id="sheet-actions" class="sheet-actions">
+      <button id="pin-save" class="btn-primary">save</button>
+      <button id="pin-delete" class="btn-danger" hidden>
+        <svg class="icon icon-sm"><use href="#i-trash"/></svg>delete
+      </button>
     </div>
   </div>
 
   <!-- one photo, full size -->
   <div id="lightbox" class="lightbox" hidden>
-    <button id="lightbox-close" class="icon-btn lightbox-close" aria-label="Close">✕</button>
+    <button id="lightbox-close" class="icon-btn lightbox-close" aria-label="Close">
+      <svg class="icon"><use href="#i-close"/></svg>
+    </button>
     <img id="lightbox-img" alt="">
-    <button id="lightbox-del" class="btn-danger lightbox-del" hidden>delete photo</button>
+    <button id="lightbox-del" class="btn-danger lightbox-del" hidden>
+      <svg class="icon icon-sm"><use href="#i-trash"/></svg>delete photo
+    </button>
   </div>
 
   <!-- all pins -->
@@ -178,7 +309,9 @@
     <div class="panel-head">
       <strong>places</strong>
       <span id="list-count" class="panel-count"></span>
-      <button id="list-close" class="icon-btn" aria-label="Close">✕</button>
+      <button id="list-close" class="icon-btn" aria-label="Close">
+        <svg class="icon"><use href="#i-close"/></svg>
+      </button>
     </div>
     <div class="filter-bar">
       <div id="kind-filter" class="kind-list"></div>
@@ -191,62 +324,131 @@
   <div id="layers" class="panel" hidden>
     <div class="panel-head">
       <strong>layers</strong>
-      <button id="layers-close" class="icon-btn" aria-label="Close">✕</button>
+      <button id="layers-close" class="icon-btn" aria-label="Close">
+        <svg class="icon"><use href="#i-close"/></svg>
+      </button>
     </div>
     <div class="panel-body pad">
-      <fieldset class="detail">
-        <legend>base map</legend>
-        <label><input type="radio" name="basemap" value="sat" checked> satellite
-          <small>what is actually there</small></label>
-        <label><input type="radio" name="basemap" value="hybrid"> satellite + topo
-          <small>imagery with contours and names drawn over it</small></label>
-        <label><input type="radio" name="basemap" value="topo"> USGS topo
-          <small>the paper quad map</small></label>
-        <label><input type="radio" name="basemap" value="otm"> contour topo
-          <small>contours, trails and huts together — browse only, not downloadable</small></label>
-        <label><input type="radio" name="basemap" value="street"> street
-          <small>plain road map</small></label>
-      </fieldset>
+      <section class="detail" role="radiogroup" aria-label="base map">
+        <h3 class="detail-head">base map</h3>
+        <div class="map-grid">
+          <label class="map-card is-wide">
+            <input type="radio" name="basemap" value="sat" checked>
+            <span class="map-swatch sw-sat"></span>
+            <div>
+              <div class="map-name">satellite</div>
+              <small>what is actually there</small>
+            </div>
+          </label>
+          <label class="map-card">
+            <input type="radio" name="basemap" value="hybrid">
+            <span class="map-swatch sw-hybrid"></span>
+            <span class="map-name">satellite + topo</span>
+            <small>imagery with contours and names over it</small>
+          </label>
+          <label class="map-card">
+            <input type="radio" name="basemap" value="topo">
+            <span class="map-swatch sw-topo"></span>
+            <span class="map-name">USGS topo</span>
+            <small>the paper quad map</small>
+          </label>
+          <label class="map-card">
+            <input type="radio" name="basemap" value="otm">
+            <span class="map-swatch sw-otm"></span>
+            <span class="map-name">contour topo</span>
+            <small>contours, trails and huts — browse only</small>
+          </label>
+          <label class="map-card">
+            <input type="radio" name="basemap" value="street">
+            <span class="map-swatch sw-street"></span>
+            <span class="map-name">street</span>
+            <small>plain road map</small>
+          </label>
+        </div>
+      </section>
 
-      <fieldset class="detail">
-        <legend>names, roads &amp; trails</legend>
-        <label><input type="checkbox" data-overlay="labels"> place names
-          <small>towns, parks, peaks, creeks — the labels</small></label>
-        <label><input type="checkbox" data-overlay="roads"> roads
-          <small>the road network and route shields</small></label>
-        <label><input type="checkbox" data-overlay="trails"> trails
-          <small>marked hiking routes</small></label>
-        <label><input type="checkbox" data-overlay="rail"> railways
-          <small>lines, sidings and abandoned track</small></label>
-      </fieldset>
+      <section class="detail">
+        <h3 class="detail-head">names, roads &amp; trails</h3>
+        <label class="switch">
+          <span>place names</span>
+          <input type="checkbox" data-overlay="labels">
+          <span class="switch-track"></span>
+          <small>towns, parks, peaks, creeks — the labels</small>
+        </label>
+        <label class="switch">
+          <span>roads</span>
+          <input type="checkbox" data-overlay="roads">
+          <span class="switch-track"></span>
+          <small>the road network and route shields</small>
+        </label>
+        <label class="switch">
+          <span>trails</span>
+          <input type="checkbox" data-overlay="trails">
+          <span class="switch-track"></span>
+          <small>marked hiking routes</small>
+        </label>
+        <label class="switch">
+          <span>railways</span>
+          <input type="checkbox" data-overlay="rail">
+          <span class="switch-track"></span>
+          <small>lines, sidings and abandoned track</small>
+        </label>
+      </section>
 
-      <fieldset class="detail">
-        <legend>terrain &amp; water</legend>
-        <label><input type="checkbox" data-overlay="terrain"> terrain shading
-          <small>the layer that shows you a cliff or a sinkhole</small></label>
-        <label><input type="checkbox" data-overlay="water"> creeks &amp; water
-          <small>streams, springs and everything that carved the place</small></label>
-      </fieldset>
+      <section class="detail">
+        <h3 class="detail-head">terrain &amp; water</h3>
+        <label class="switch">
+          <span>terrain shading</span>
+          <input type="checkbox" data-overlay="terrain">
+          <span class="switch-track"></span>
+          <small>the layer that shows you a cliff or a sinkhole</small>
+        </label>
+        <label class="switch">
+          <span>creeks &amp; water</span>
+          <input type="checkbox" data-overlay="water">
+          <span class="switch-track"></span>
+          <small>streams, springs and everything that carved the place</small>
+        </label>
+      </section>
 
-      <fieldset class="detail">
-        <legend>land ownership</legend>
-        <label><input type="checkbox" data-overlay="publicland"> public land
-          <small>BLM, forest and state — where nobody needs asking</small></label>
-        <label><input type="checkbox" data-overlay="parcels"> property lines
-          <small>parcel boundaries. zoom right in — they only exist up close</small></label>
+      <section class="detail">
+        <h3 class="detail-head">land ownership</h3>
+        <label class="switch">
+          <span>public land</span>
+          <input type="checkbox" data-overlay="publicland">
+          <span class="switch-track"></span>
+          <small>BLM, forest and state — where nobody needs asking</small>
+        </label>
+        <label class="switch">
+          <span>property lines</span>
+          <input type="checkbox" data-overlay="parcels">
+          <span class="switch-track"></span>
+          <small>parcel boundaries. zoom right in — they only exist up close</small>
+        </label>
         <button id="sources-open" class="btn-ghost wide">counties with owner names…</button>
-      </fieldset>
+      </section>
 
       <p class="estimate">Overlays download with the map when you save an area
         offline, so turn on what you want before you download.</p>
 
-      <fieldset class="detail">
-        <legend>my location</legend>
+      <section class="detail">
+        <h3 class="detail-head">my location</h3>
+        <label class="switch">
+          <span>use my location</span>
+          <input id="loc-use" type="checkbox">
+          <span class="switch-track"></span>
+          <small>the blue dot, the button that centres on you, and how far away
+            each place is. off means ATLAS never asks the phone where you are.</small>
+        </label>
         <p id="loc-state" class="estimate">checking…</p>
-        <button id="loc-enable" class="btn-ghost wide">turn on my location</button>
-      </fieldset>
+        <button id="loc-enable" class="btn-ghost wide">
+          <svg class="icon icon-sm"><use href="#i-locate"/></svg><span class="lbl">turn on my location</span>
+        </button>
+      </section>
 
-      <button id="maps-from-layers" class="btn-ghost wide">save maps for offline…</button>
+      <button id="maps-from-layers" class="btn-ghost wide">
+        <svg class="icon icon-sm"><use href="#i-download"/></svg>save maps for offline…
+      </button>
     </div>
   </div>
 
@@ -254,11 +456,13 @@
   <div id="settings" class="panel" hidden>
     <div class="panel-head">
       <strong>settings</strong>
-      <button id="settings-close" class="icon-btn" aria-label="Close">✕</button>
+      <button id="settings-close" class="icon-btn" aria-label="Close">
+        <svg class="icon"><use href="#i-close"/></svg>
+      </button>
     </div>
     <div class="panel-body pad">
-      <fieldset class="detail">
-        <legend>you</legend>
+      <section class="detail">
+        <h3 class="detail-head">you</h3>
         <p class="hint">Your name is on every pin you drop and every note you
           leave. It is what the others see; nobody sees your sign-in.</p>
         <label class="field"><span>name the crew sees</span>
@@ -273,11 +477,13 @@
           <div><dt>sign-in</dt><dd id="me-email">—</dd></div>
           <div><dt>username</dt><dd id="me-user">—</dd></div>
         </dl>
-        <button id="signout" class="btn-ghost wide">sign out</button>
-      </fieldset>
+        <button id="signout" class="btn-ghost wide">
+          <svg class="icon icon-sm"><use href="#i-logout"/></svg>sign out
+        </button>
+      </section>
 
-      <fieldset class="detail">
-        <legend>colour</legend>
+      <section class="detail">
+        <h3 class="detail-head">colour</h3>
         <div class="swatches">
           <label class="swatch" data-accent="ember"><input type="radio" name="accent" value="ember"><span></span>ember</label>
           <label class="swatch" data-accent="signal"><input type="radio" name="accent" value="signal"><span></span>signal</label>
@@ -285,23 +491,31 @@
           <label class="swatch" data-accent="sky"><input type="radio" name="accent" value="sky"><span></span>sky</label>
           <label class="swatch" data-accent="plum"><input type="radio" name="accent" value="plum"><span></span>plum</label>
         </div>
-      </fieldset>
+      </section>
 
-      <fieldset class="detail">
-        <legend>light</legend>
-        <label><input type="radio" name="theme" value="day"> day
-          <small>opaque and high contrast. what you want in the sun</small></label>
-        <label><input type="radio" name="theme" value="night"> night
-          <small>for caves and dusk</small></label>
-      </fieldset>
+      <section class="detail" role="radiogroup" aria-label="light">
+        <h3 class="detail-head">light</h3>
+        <div class="seg">
+          <label class="seg-item"><input type="radio" name="theme" value="day">
+            <span>day</span><small>for the sun</small></label>
+          <label class="seg-item"><input type="radio" name="theme" value="night">
+            <span>night</span><small>for caves and dusk</small></label>
+        </div>
+        <p class="hint">Day is opaque and high contrast, which is what survives
+          direct light. Night is a deliberate choice, not a default.</p>
+      </section>
 
-      <fieldset class="detail">
-        <legend>glass</legend>
-        <label><input id="glass-toggle" type="checkbox"> frosted panels
+      <section class="detail">
+        <h3 class="detail-head">glass</h3>
+        <label class="switch">
+          <span>frosted panels</span>
+          <input id="glass-toggle" type="checkbox">
+          <span class="switch-track"></span>
           <small>the map shows through the sheet and the buttons. it looks
             better indoors and it is harder to read outdoors — that is the
-            trade, and it is yours to make</small></label>
-      </fieldset>
+            trade, and it is yours to make</small>
+        </label>
+      </section>
     </div>
   </div>
 
@@ -309,7 +523,9 @@
   <div id="sources" class="panel" hidden>
     <div class="panel-head">
       <strong>owner names by county</strong>
-      <button id="sources-close" class="icon-btn" aria-label="Close">✕</button>
+      <button id="sources-close" class="icon-btn" aria-label="Close">
+        <svg class="icon"><use href="#i-close"/></svg>
+      </button>
     </div>
     <div class="panel-body pad">
       <p class="lede">ATLAS can tell you which agency manages a piece of ground
@@ -369,31 +585,46 @@
   <div id="maps" class="panel" hidden>
     <div class="panel-head">
       <strong>offline maps</strong>
-      <button id="maps-close" class="icon-btn" aria-label="Close">✕</button>
+      <button id="maps-close" class="icon-btn" aria-label="Close">
+        <svg class="icon"><use href="#i-close"/></svg>
+      </button>
     </div>
     <div class="panel-body pad">
       <p class="lede">Download what's on screen now, and the map still draws
         out there with no signal. Move the map to cover the area first.</p>
 
-      <fieldset class="detail">
-        <legend>how much detail</legend>
-        <label><input type="radio" name="detail" value="14"> rough — big area, small download</label>
-        <label><input type="radio" name="detail" value="16" checked> good — reads individual trees</label>
-        <label><input type="radio" name="detail" value="17"> max — slow and heavy</label>
-      </fieldset>
+      <section class="detail" role="radiogroup" aria-label="how much detail">
+        <h3 class="detail-head">how much detail</h3>
+        <div class="seg">
+          <label class="seg-item"><input type="radio" name="detail" value="14">
+            <span>rough</span><small>big area, small download</small></label>
+          <label class="seg-item"><input type="radio" name="detail" value="16" checked>
+            <span>good</span><small>reads individual trees</small></label>
+          <label class="seg-item"><input type="radio" name="detail" value="17">
+            <span>max</span><small>slow and heavy</small></label>
+        </div>
+      </section>
 
       <p id="dl-estimate" class="estimate"></p>
-      <p id="dl-warn" class="warn" hidden>That's a big download. Do it on wifi.</p>
-      <p id="dl-nobulk" class="warn" hidden>The contour topo base map is run by
-        volunteers, so ATLAS won't bulk-download it. Overlays still save; switch
-        to satellite or USGS topo if you want a base map offline too.</p>
+      <p id="dl-warn" class="warn" hidden>
+        <svg class="icon icon-sm"><use href="#i-alert"/></svg>
+        <span>That's a big download. Do it on wifi.</span>
+      </p>
+      <p id="dl-nobulk" class="warn" hidden>
+        <svg class="icon icon-sm"><use href="#i-alert"/></svg>
+        <span>The contour topo base map is run by volunteers, so ATLAS won't
+        bulk-download it. Overlays still save; switch to satellite or USGS topo
+        if you want a base map offline too.</span>
+      </p>
 
       <div id="dl-progress" class="progress" hidden>
         <div class="progress-track"><div id="dl-bar" class="progress-bar"></div></div>
         <span id="dl-count" class="progress-count"></span>
       </div>
 
-      <button id="dl-go" class="btn-primary wide">download this area</button>
+      <button id="dl-go" class="btn-primary wide">
+        <svg class="icon icon-sm"><use href="#i-download"/></svg><span class="lbl">download this area</span>
+      </button>
       <p class="estimate">Photos are kept on the phone once you have opened
         them. This grabs the ones you haven't.</p>
       <button id="dl-photos" class="btn-ghost wide">download all photos</button>
