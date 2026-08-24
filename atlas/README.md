@@ -122,6 +122,9 @@ these do I want", and that gets answered by what a button is *near*.
   them all back on rather than leaving you a blank map with no way to read why.
   While a filter is on, ☰ carries a dot — a filtered-out pin should never look
   like a lost one.
+- **your monogram** — opens settings. It used to sign you out on a single tap,
+  which is a destructive action on the smallest target on screen behind a
+  tooltip nobody reads on a phone.
 - **☰ places** — the closest thing here to a feed, and it is built for the
   question it actually gets asked: somebody has handed you a place, do you want
   to go. So a row is a photo of it, one line of what it is, who found it, how
@@ -134,7 +137,14 @@ these do I want", and that gets answered by what a button is *near*.
   Distance only appears once the app knows where you are — opening a list is
   not a reason to ask.
 - **⤓** — save maps for offline (below).
-- **⚙ settings** — colour, light and glass, all in one place.
+- **⚙ settings** — you, colour, light and glass. Reachable from ⚙ or by tapping
+  your own monogram.
+  - **you** — the name the crew sees, which is the byline on every pin you drop
+    and every note you leave. Until now it was whatever the invite trigger made
+    of your email address, title-cased, with no way to change it. Your sign-in
+    address and username are shown but not editable: the username is derived
+    from the address and other rows point at it. Signing out is a labelled
+    button here rather than a hidden consequence of tapping your own name.
   - **light** — day and night. Day is the default and it is not a preference:
     outdoors in bright sun a dark UI is a mirror, so everything is opaque
     white, near-black and heavy-weight. Night is for caves and dusk.

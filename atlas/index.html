@@ -258,6 +258,25 @@
     </div>
     <div class="panel-body pad">
       <fieldset class="detail">
+        <legend>you</legend>
+        <p class="hint">Your name is on every pin you drop and every note you
+          leave. It is what the others see; nobody sees your sign-in.</p>
+        <label class="field"><span>name the crew sees</span>
+          <input id="me-name" type="text" autocapitalize="words" spellcheck="false"
+                 maxlength="40" autocomplete="nickname"></label>
+        <div class="me-row">
+          <button id="me-save" class="btn-primary">save name</button>
+          <span id="me-said" class="me-said" hidden></span>
+        </div>
+        <p id="me-error" class="gate-error" role="alert" hidden></p>
+        <dl class="owner-rows me-facts">
+          <div><dt>sign-in</dt><dd id="me-email">—</dd></div>
+          <div><dt>username</dt><dd id="me-user">—</dd></div>
+        </dl>
+        <button id="signout" class="btn-ghost wide">sign out</button>
+      </fieldset>
+
+      <fieldset class="detail">
         <legend>colour</legend>
         <div class="swatches">
           <label class="swatch" data-accent="ember"><input type="radio" name="accent" value="ember"><span></span>ember</label>

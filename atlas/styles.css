@@ -929,6 +929,21 @@ body.is-offline #app::after {
   border: var(--s-1) solid var(--ink); border-radius: 2px;
 }
 
+/* Your own row in settings. The name field is a real input rather than a line
+   of text with a pencil beside it, because it is the one thing on this screen
+   people actually come here to change. */
+/* The panel's `.detail label` rule makes every label in here a two-column grid,
+   which turns a labelled input into a caption with a 40px box beside it. Same
+   trap the colour swatches hit; a field inside a fieldset has to say so. */
+.detail .field { display: flex; flex-direction: column; gap: var(--s-1); padding: 0; }
+.detail .field input { width: 100%; }
+
+.me-row { display: flex; align-items: center; gap: var(--s-3); margin-top: var(--s-1); }
+.me-said { font-size: var(--t-sm); font-weight: 700; color: var(--good); }
+.me-facts { margin-top: var(--s-2); }
+.me-facts dd { font-weight: 600; color: var(--ink-dim); }
+#signout { margin-top: var(--s-3); color: var(--danger); border-color: var(--rule); }
+
 /* Colour swatches. The dot IS the choice, so it is the biggest thing in the
    row, and the ring around a chosen one is drawn in ink rather than in the
    colour itself — a selection marked in the colour it selects is invisible on

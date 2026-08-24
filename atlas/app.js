@@ -412,10 +412,9 @@ async function start() {
   // A monogram rather than a squeezed username: "rmbuster82" clipped to
   // "rmbus" at the edge of a phone reads as a layout that gave up. The whole
   // name goes on the tooltip, where it costs no room.
-  const whoami = $('whoami');
-  whoami.textContent = (me.display_name || me.username || '?').trim().charAt(0);
-  whoami.title = `${me.display_name || me.username} — sign out`;
-  whoami.setAttribute('aria-label', whoami.title);
+  me.email = session.user.email;
+  whoamiChip();
+  renderMe();
 
   if (!map) initMap();
   await loadPins();
@@ -2149,6 +2148,64 @@ function openMaps() {
   refreshStorage();
 }
 
+/* ── who the crew sees ───────────────────────────────────────────────────
+ * Your display name is on every pin you drop and every note you leave, and
+ * until now it was whatever the invite trigger made of your email address —
+ * "rmbuster82" title-cased — with no way to change it. On a map three people
+ * read, that name is the byline on everything you have ever found.
+ *
+ * It writes to profiles, which has had an "own profile is editable" policy
+ * since the first migration. Only display_name is offered: the username is
+ * derived from the sign-in address and other rows point at it.
+ */
+function renderMe() {
+  if (!me) return;
+  $('me-name').value = me.display_name || '';
+  $('me-user').textContent = me.username || '—';
+  $('me-email').textContent = me.email || '—';
+}
+
+async function saveMyName() {
+  const err = $('me-error');
+  const said = $('me-said');
+  err.hidden = true; said.hidden = true;
+
+  const name = $('me-name').value.trim();
+  if (!name) { err.textContent = 'give the crew something to call you'; err.hidden = false; return; }
+  if (name === me.display_name) { said.textContent = 'no change'; said.hidden = false; return; }
+  // Unlike a pin, this one is not worth queueing: it changes what everybody
+  // else sees, so it either reaches them or it has not happened.
+  if (!online()) { err.textContent = 'this one needs signal'; err.hidden = false; return; }
+
+  const btn = $('me-save');
+  btn.disabled = true;
+  const { error } = await db.from('profiles').update({ display_name: name }).eq('id', me.id);
+  btn.disabled = false;
+  if (error) { err.textContent = error.message; err.hidden = false; return; }
+
+  me.display_name = name;
+  await local.set('me', me);
+  whoamiChip();
+  said.textContent = 'saved';
+  said.hidden = false;
+
+  // Every byline in the app is drawn from rows the server already sent, so the
+  // new name only appears after they are fetched again.
+  await loadPins();
+  await loadNotes();
+  await loadPhotos();
+  if (!$('list').hidden) openList();
+}
+
+/* The monogram, kept in one place so signing in and renaming both use it. */
+function whoamiChip() {
+  const el = $('whoami');
+  const name = (me?.display_name || me?.username || '?').trim();
+  el.textContent = name.charAt(0);
+  el.title = `${name} — settings`;
+  el.setAttribute('aria-label', el.title);
+}
+
 /* ── settings ─────────────────────────────────────────────────────────────
  * Three preferences, all of them written to the phone rather than to the
  * database: they are about this screen in this light, not about the crew. Two
@@ -2196,7 +2253,12 @@ function setTheme(theme) {
 $('login-form').addEventListener('submit', handleLogin);
 $('newpass-form').addEventListener('submit', setNewPassword);
 $('forgot').addEventListener('click', forgotPassword);
-$('whoami').addEventListener('click', signOut);
+// Tapping your own name used to sign you out — a destructive action on the
+// smallest target in the app, behind a tooltip nobody reads on a phone. It
+// opens settings now, where signing out is a labelled button.
+$('whoami').addEventListener('click', () => { $('settings').hidden = false; });
+$('signout').addEventListener('click', signOut);
+$('me-save').addEventListener('click', saveMyName);
 $('locate-btn').addEventListener('click', () => locate().catch(() => {}));
 $('list-btn').addEventListener('click', openList);
 $('list-close').addEventListener('click', () => { $('list').hidden = true; releaseListUrls(); });
