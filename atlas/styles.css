@@ -1150,7 +1150,7 @@ button { cursor: pointer; border: none; background: none; }
 .result-note .icon { color: var(--ink-mute); flex: none; }
 
 /* A place somebody else's index knows about. Deliberately plainer than a pin:
-   a pin is a thing the crew found and wrote up, this is a name on a map. */
+   a pin is a thing somebody found and wrote up, this is a name on a map. */
 .place-row {
   width: 100%; text-align: left;
   display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: var(--s-3);
@@ -1227,7 +1227,7 @@ button { cursor: pointer; border: none; background: none; }
 .kind-list .src-chip:not(:has(input:checked)) { opacity: 0.4; }
 
 /* What the map found, standing on it until you look somewhere else. Not a pin:
-   a pin is a place the crew has been, and this is a name off an index. */
+   a pin is a place one of you has been, and this is a name off an index. */
 .found-marker {
   display: flex; align-items: center; gap: var(--s-2);
   cursor: pointer; transform: translateY(-50%);
@@ -1661,13 +1661,18 @@ body.is-offline #app::after {
 /* Nobody reads a paragraph standing up with a car door open. The settings
    prose stays where it is and the first run says the short version of it: the
    long hints are hidden, the save button under the name is hidden because the
-   button on the floor already saves, and what is left is three headings, three
-   controls and one line about location. */
+   button on the floor already saves, and what is left is a heading and a
+   control at a time, plus one line about location. */
 #settings.is-first .detail > .hint:not(.first-only) { display: none; }
 #settings.is-first .me-row { display: none; }
 /* The switch's own small print says what the line about location above it has
    just said. Once is enough. */
 #settings.is-first .switch small { display: none; }
+/* And on the first run the switch is the whole question. What the browser's
+   permission currently says, and the button that asks it, are settings' job —
+   here the map asks the moment it opens, which is a few seconds away. */
+#settings.is-first #loc-state,
+#settings.is-first #loc-enable { display: none; }
 
 .first-intro { flex-direction: column; gap: var(--s-3); }
 /* The one paragraph the whole screen exists for, marked as such: a rule down

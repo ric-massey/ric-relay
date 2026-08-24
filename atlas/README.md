@@ -1,8 +1,8 @@
 # ATLAS
 
-A private map for a crew of three. Pins carry a name, a description, photos, a
+A private map for three people. Pins carry a name, a description, photos, a
 running log of notes, and who dropped them and when.
-Anyone in the crew can add one; everyone can find it again, which is the whole
+Any of them can add one; all of them can find it again, which is the whole
 point — you can go to a cave your brother found without your brother.
 
 The app lives in the public site repo and is served from `/atlas`, but the only
@@ -43,7 +43,7 @@ Authentication → Sign In / Providers → Email:
 Set **Site URL** and **Redirect URLs** to wherever ATLAS is actually served, or
 the links in invite and reset emails will point at the wrong place.
 
-### 4. Invite the crew
+### 4. Invite the others
 
 Authentication → Users → **Add user → Send invitation**, with their real email.
 
@@ -209,7 +209,7 @@ these do I want", and that gets answered by what a button is *near*.
 
   What the map found stands on it with its name beside it until you look for
   something else or tap it away. Deliberately not a pin — a pin is somewhere the
-  crew has been and written up.
+  one of you has been and written up.
 
   Distances appear once the app knows where to measure from, which is your own
   position, or your home town, or failing both the middle of the map. The near
@@ -222,8 +222,8 @@ these do I want", and that gets answered by what a button is *near*.
   from the sliders button or by tapping your own monogram.
   - **the first run** — the first time a phone signs in, settings *is* the
     screen: it opens itself, wearing the word **welcome**, with everything but
-    the three things worth setting at the start hidden and no close button —
-    there is nothing to escape from, and the button on the floor is the way on.
+    what is worth setting at the start hidden and no close button — there is
+    nothing to escape from, and the button on the floor is the way on.
 
     It is this panel rather than a wizard of its own for three reasons. Every
     control on it is one you will want to change later, and the room you will
@@ -241,7 +241,8 @@ these do I want", and that gets answered by what a button is *near*.
     made says it should. That is the shortest possible proof it took.
 
     Nobody reads a paragraph standing up with a car door open, so the screen
-    is a five-second read: three headings, three controls, and one line saying
+    is a five-second read: a heading and a control at a time — your face and
+    your name, location, home town, accent colour — and one line saying
     location is optional. Settings keeps its full prose — the first run hides
     those hints and shows a short version, which is why the copy only exists
     once. The save button under the name is hidden too, because walking out of
@@ -252,7 +253,7 @@ these do I want", and that gets answered by what a button is *near*.
     device with a last map position on it has been here before, whatever the
     flag says, and nobody who has been dropping pins for a month should be
     handed a welcome screen.
-  - **you** — your picture and the name the crew sees, which together are the
+  - **you** — your picture and the name everybody else sees, which together are the
     byline on every pin you drop and every note you leave.
 
     A face turns up in five places: your own button in the top bar, the corner
@@ -273,7 +274,7 @@ these do I want", and that gets answered by what a button is *near*.
     and for the same reasons — the object name `{user_id}/{avatar_id}.jpg` *is*
     the permission model, read by the storage policies through
     `public.uuid_segment()`. The one difference is who may look: a face is not
-    filed under a pin, so any signed-in crew member reads any avatar. That is
+    filed under a pin, so anybody signed in reads any avatar. That is
     the point of it.
 
     The avatar id is minted fresh for every picture rather than the object being
@@ -441,7 +442,7 @@ With no adapter at all the lookup still works — it just stops one step short, 
 the legal description and a link to find that county's assessor.
 
 **Those adapters live in the database, not in this repo, and that is deliberate.**
-The repo is public. Which counties this crew looks parcels up in is location data,
+The repo is public. Which counties get parcels looked up in is location data,
 and rule 1 says location data does not go in git. Same split as everything else
 here: the code is the mechanism, the database holds the places.
 
@@ -544,7 +545,7 @@ move the map, so you can see the cost before committing.
 - The app opens. The shell is cached.
 - Downloaded areas draw. Anything you never downloaded shows as blank tiles
   rather than errors.
-- Every pin the crew had last time you were online is still on the map, and so
+- Every pin there was last time you were online is still on the map, and so
   is every note on it — both are mirrored into IndexedDB.
 - Photos you have opened are still there; photos you never opened are not. Tap
   **download all photos** in offline maps before you leave and it pulls the rest.

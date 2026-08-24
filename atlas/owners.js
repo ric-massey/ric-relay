@@ -19,7 +19,7 @@
  * A NAME needs the county assessor, and every county publishes differently.
  * Most of them run ArcGIS, so one generic adapter covers them: a URL and the
  * names of four fields. Those adapters live in the DATABASE, not in this repo —
- * see the parcel_sources migration. Which counties the crew looks things up in
+ * see the parcel_sources migration. Which counties get looked up in
  * is location data, and rule 1 says location data does not go in git.
  *
  * PAD-US was tried for richer unit names and rejected: the public ArcGIS
@@ -168,7 +168,7 @@ export function assessorSearchUrl(county, state) {
 
 export function parcelQueryUrl(source, lat, lng) {
   const base = String(source.url || '').replace(/\/+$/, '');
-  // These get fetched by the crew's own browsers from whatever someone typed
+  // These get fetched by your own browser from whatever someone typed
   // into the sources form. https only — no plain-text queries about where
   // anyone is standing, and nothing that isn't a web address at all.
   if (!/^https:\/\//i.test(base)) throw new Error('parcel source must be an https URL');

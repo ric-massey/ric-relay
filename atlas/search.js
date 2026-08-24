@@ -209,7 +209,7 @@ export function placeName(displayName) {
 }
 
 /* What is left of the address once the parts nobody needs are gone: the country,
- * because a crew of three is not searching Peru, and the postcode, which is
+ * because nobody here is searching Peru, and the postcode, which is
  * noise on a forest road. */
 export function placeDetail(displayName) {
   return parts(displayName).slice(1)

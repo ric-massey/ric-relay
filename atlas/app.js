@@ -1,6 +1,6 @@
-/* ATLAS — private crew map.
+/* ATLAS — a private map, shared.
  *
- * Three people, one map, pins anyone in the crew can drop and everyone can find
+ * Three people, one map, pins any of them can drop and all of them can find
  * again. Two rules drive every decision in here:
  *
  *   1. Dropping a pin in the field takes one tap and no thought. The filling-in
@@ -39,18 +39,18 @@ const BYTES_PER_TILE = 28 * 1024;   // measured: Esri ~20 KB, USGS/OSM ~32 KB
 
 let map       = null;
 let me        = null;    // { id, username, display_name }
-let pins      = [];      // every pin the crew has dropped
+let pins      = [];      // every pin anybody has dropped
 let markers   = new Map();
 let meMarker  = null;
 let sheet     = null;    // { mode: 'new' | 'view', pin }
 let basemap   = 'sat';
 let download  = null;    // { cancel: bool } while an area download runs
-let notes     = [];      // every note on every pin the crew can see
+let notes     = [];      // every note on every pin you can see
 let photoRows = [];      // the photo index. The images live in IndexedDB.
 let parcelSources = [];  // county assessor adapters — see owners.js
 let ownerShown = null;   // { r, cached } — the ownership answer currently drawn
 let countyHunt = null;   // { pinId, state, found } while looking for a county
-let crew      = [];      // every profile: id, username, display_name, avatar_path
+let people    = [];      // every profile: id, username, display_name, avatar_path
 let query     = '';      // what is in the search field
 let places    = [];      // what the geocoder last said about it
 let placeState = 'idle'; // idle | asking | done | failed | offline
@@ -210,7 +210,7 @@ const kindOf = (p) => (KIND_KEYS.has(p?.kind) ? p.kind : 'other');
 const kindLabel = (key) => KINDS.find((k) => k.key === key)?.label || 'other';
 
 /* Every kind shown until told otherwise, and the choice is kept on the phone:
- * it is about what you are looking for today, not about the crew. */
+ * it is about what you are looking for today, not about anybody else. */
 let kindFilter = new Set(KIND_KEYS);
 const filtering = () => kindFilter.size !== KINDS.length;
 const passesFilter = (p) => kindFilter.has(kindOf(p));
@@ -289,15 +289,16 @@ function metresBetween(a, b) {
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-/* One unit, in what the crew thinks in. This goes on the end of a list row
+/* One unit, in what everybody here thinks in. This goes on the end of a list row
  * beside a name, a date and a note count, and two units there is a sentence. */
 const fmtDistance = (m) => m < 1609
   ? `${Math.round(m * 3.28084).toLocaleString()} ft`
   : `${(m / 1609.344).toFixed(m < 16093 ? 1 : 0)} mi`;
 
 /* ── auth ────────────────────────────────────────────────────────────────
- * Crew types a username. Supabase only understands emails, so the domain gets
- * glued on here and they never see it.
+ * An email and a password, and the email is also the invitation: Supabase
+ * sends the link, whoever follows it picks their own password, and nobody is
+ * ever handed one.
  */
 
 async function handleLogin(e) {
@@ -317,7 +318,7 @@ async function handleLogin(e) {
     // Don't leak which half was wrong — same message either way.
     err.textContent = !online()
       ? 'no signal — you need to be online to sign in the first time'
-      : (/invalid/i.test(error.message) ? 'wrong username or password' : error.message);
+      : (/invalid/i.test(error.message) ? 'wrong email or password' : error.message);
     err.hidden = false;
     btn.disabled = false;
     btn.textContent = 'sign in';
@@ -446,7 +447,7 @@ async function start() {
   // "rmbus" at the edge of a phone reads as a layout that gave up. The whole
   // name goes on the tooltip, where it costs no room.
   me.email = session.user.email;
-  await loadCrew();
+  await loadPeople();
   whoamiChip();
   renderMe();
   // Not awaited: nothing on screen is waiting for a face, and the map should
@@ -457,7 +458,7 @@ async function start() {
   // screen and told to stay where it is until the button at the bottom of it.
   //
   // A phone that has been used before has been welcomed, whatever the flag
-  // says — the flag is new, the crew is not, and nobody who has been dropping
+  // says — the flag is new, the app is not, and nobody who has been dropping
   // pins for a month should be handed a "welcome to ATLAS". The last view is
   // the tell: it is written the first time the map settles anywhere.
   if (!(await local.get('welcomed'))) {
@@ -746,7 +747,7 @@ async function refreshLocationState() {
   }
 }
 
-/* ── the crew, and their faces ───────────────────────────────────────────
+/* ── everybody else, and their faces ────────────────────────────────────
  * Three profiles, fetched once and mirrored, rather than an avatar column
  * threaded through pins_with_author, pin_notes_with_author and every view added
  * after them. A name belongs on the row it was written with — a note says who
@@ -754,17 +755,17 @@ async function refreshLocationState() {
  * opposite: it is whoever that person is right now, so it is looked up by id at
  * the moment of drawing and there is exactly one place it can be wrong.
  */
-async function loadCrew() {
+async function loadPeople() {
   if (online()) {
     const { data, error } = await db.from('profiles')
       .select('id, username, display_name, avatar_path');
     if (!error && data) {
-      crew = data;
-      await local.set('crew', data);
+      people = data;
+      await local.set('people', data);
       return;
     }
   }
-  crew = (await local.get('crew')) || [];
+  people = (await local.get('people')) || [];
 }
 
 /* Three faces at about 7 KB each, fetched once so they are on the phone before
@@ -773,7 +774,7 @@ async function loadCrew() {
  * costs less than a single tile. */
 async function warmAvatars() {
   if (!online()) return;
-  await Promise.all(crew
+  await Promise.all(people
     .filter((p) => p.avatar_path)
     .map((p) => avatarBlob(p.avatar_path).catch(() => null)));
 }
@@ -782,12 +783,12 @@ async function warmAvatars() {
  * the cache safe to trust — and is also what would otherwise leave every
  * picture anybody had ever tried sitting on every phone forever.
  *
- * Guarded on the crew being known: offline on a fresh install the mirror is
+ * Guarded on the profiles being known: offline on a fresh install the mirror is
  * empty, and "keep nothing" would then throw away every face on the phone at
  * exactly the moment there is no way to fetch them back. */
 async function pruneAvatars() {
-  if (!crew.length) return;
-  const keep = new Set(crew.filter((p) => p.avatar_path).map((p) => `avatar:${p.avatar_path}`));
+  if (!people.length) return;
+  const keep = new Set(people.filter((p) => p.avatar_path).map((p) => `avatar:${p.avatar_path}`));
   for (const id of await local.blobIds()) {
     if (typeof id === 'string' && id.startsWith('avatar:') && !keep.has(id)) {
       await local.deleteBlob(id);
@@ -796,7 +797,7 @@ async function pruneAvatars() {
 }
 
 const avatarPathFor = (userId) =>
-  crew.find((p) => p.id === userId)?.avatar_path || null;
+  people.find((p) => p.id === userId)?.avatar_path || null;
 
 /* One object URL per picture per session, held in a Map keyed by path. The
  * photo strips mint a URL per render and revoke the lot on the next one, which
@@ -1997,7 +1998,7 @@ async function onOwnerClick(e) {
 
 /* ── county parcel adapters ──────────────────────────────────────────────
  * The sources themselves live in the database rather than in this repo, because
- * the repo is public and which counties the crew searches is location data.
+ * the repo is public and which counties get searched is location data.
  */
 
 async function loadSources() {
@@ -2275,7 +2276,7 @@ function listRow(p, here, why = null) {
 /* ── search ──────────────────────────────────────────────────────────────
  * One box, two questions, and keeping them apart is the whole design.
  *
- * The crew's pins are already on the phone, so they are searched on every
+ * Every pin is already on the phone, so they are searched on every
  * keystroke, for free, in a canyon. Everywhere else — towns, creeks, forest
  * roads, wilderness areas — belongs to somebody else's index and costs a
  * request over cell data, so it waits for you to stop typing and for there to
@@ -2418,7 +2419,7 @@ async function askPlaces(q) {
   renderResults();
 }
 
-/* The crew's pins, ranked. With nothing typed this is the old list — everything,
+/* The pins, ranked. With nothing typed this is the old list — everything,
  * newest activity first — because the list of places and the results of an
  * empty search are the same list, which is why there is only one screen now. */
 function matchedPins() {
@@ -2598,7 +2599,7 @@ function goToPlace(pl) {
   }
 }
 
-/* Deliberately not a pin. A pin is somewhere the crew has been and written up;
+/* Deliberately not a pin. A pin is somewhere one of you has been and written up;
  * this is a name off an index, and it stands on the map with its name beside it
  * until you look for something else or tap it away. */
 function showFound(pl) {
@@ -2978,7 +2979,7 @@ function openMaps() {
   refreshStorage();
 }
 
-/* ── who the crew sees ───────────────────────────────────────────────────
+/* ── who everybody else sees ─────────────────────────────────────────────
  * Your display name is on every pin you drop and every note you leave, and
  * until now it was whatever the invite trigger made of your email address —
  * "rmbuster82" title-cased — with no way to change it. On a map three people
@@ -3005,7 +3006,7 @@ function renderMe() {
 /* Your picture, the same deal as your name: it changes what everybody else
  * sees, so it either reaches them or it has not happened. Nothing here is
  * queued for later the way a pin is — a face that only landed on your own phone
- * is a lie about what the crew is looking at, and it would be an awkward lie,
+ * is a lie about what everybody else is looking at, and it would be an awkward lie,
  * because you would be the one person who could not see that it had not worked.
  */
 async function setAvatar(file) {
@@ -3045,7 +3046,7 @@ async function setAvatar(file) {
     await local.putBlob(`avatar:${path}`, blob);
     await forgetAvatar(old);
 
-    await loadCrew();
+    await loadPeople();
     renderMe();
     whoamiChip();
     resetAvatars(me.id);
@@ -3082,7 +3083,7 @@ async function clearAvatar() {
   await db.storage.from(AVATAR_BUCKET).remove([old]);
   await forgetAvatar(old);
 
-  await loadCrew();
+  await loadPeople();
   renderMe();
   whoamiChip();
   resetAvatars(me.id);
@@ -3111,7 +3112,7 @@ async function saveMyName() {
   err.hidden = true; said.hidden = true;
 
   const name = $('me-name').value.trim();
-  if (!name) { err.textContent = 'give the crew something to call you'; err.hidden = false; return false; }
+  if (!name) { err.textContent = 'put a name in'; err.hidden = false; return false; }
   if (name === me.display_name) { said.textContent = 'no change'; said.hidden = false; return true; }
   // Unlike a pin, this one is not worth queueing: it changes what everybody
   // else sees, so it either reaches them or it has not happened.
@@ -3125,7 +3126,7 @@ async function saveMyName() {
 
   me.display_name = name;
   await local.set('me', me);
-  await loadCrew();
+  await loadPeople();
   whoamiChip();
   said.textContent = 'saved';
   said.hidden = false;
@@ -3163,7 +3164,7 @@ function renderCredits() {
 
 /* ── settings ─────────────────────────────────────────────────────────────
  * Three preferences, all of them written to the phone rather than to the
- * database: they are about this screen in this light, not about the crew. Two
+ * database: they are about this screen in this light, not about anybody else. Two
  * of them are one attribute on <html> and nothing else — the stylesheet holds
  * the actual values, so there is no palette arithmetic here to drift out of
  * step with what the contrast test measures.

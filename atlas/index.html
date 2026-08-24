@@ -117,7 +117,7 @@
     <div class="gate-mark">
       <span class="gate-badge"><svg class="icon"><use href="#i-compass"/></svg></span>
       <div class="mark">ATLAS</div>
-      <p class="gate-sub">crew access</p>
+      <p class="gate-sub">private map</p>
     </div>
 
     <label class="field">
@@ -316,7 +316,7 @@
     </button>
   </div>
 
-  <!-- Search: the crew's pins, and everywhere else.
+  <!-- Search: everybody's pins, and everywhere else.
        Built upside down on purpose. The field is at the bottom, where the bar
        that opened it was and where the keyboard is about to be, and the results
        fill the room above it — so what you are reading is never the thing your
@@ -489,11 +489,11 @@
     </div>
     <div class="panel-body pad">
       <!-- Shown once, the first time this phone signs in. It is the settings
-           screen rather than a wizard of its own on purpose: the three things
-           worth setting at the start are three things you will want to change
-           later, and this way you have already been to the room they live in. -->
+           screen rather than a wizard of its own on purpose: what is worth
+           setting at the start is what you will want to change later, and this
+           way you have already been to the room it lives in. -->
       <div class="first-intro first-only">
-        <p class="lede">Three things. None of them required.</p>
+        <p class="lede">Set what you like. All of it is in settings later.</p>
         <p class="first-loc"><b>Location is optional.</b> Without it you lose
           the blue dot and how far away things are. Nothing else.</p>
       </div>
@@ -501,8 +501,8 @@
       <section class="detail at-first">
         <h3 class="detail-head">you</h3>
         <p class="hint">Your name and your face are on every pin you drop and
-          every note you leave. It is what the others see; nobody sees your
-          sign-in.</p>
+          every note you leave. It is what everybody else sees; nobody sees
+          your sign-in.</p>
 
         <div class="me-face">
           <span id="me-avatar" class="avatar avatar-lg" data-avatar=""></span>
@@ -514,7 +514,7 @@
           </div>
         </div>
         <input id="avatar-input" type="file" accept="image/*" hidden>
-        <label class="field"><span>name the crew sees</span>
+        <label class="field"><span>name</span>
           <input id="me-name" type="text" autocapitalize="words" spellcheck="false"
                  maxlength="40" autocomplete="nickname"></label>
         <div class="me-row">
@@ -548,7 +548,7 @@
 
       <section class="detail at-first">
         <h3 class="detail-head">home</h3>
-        <p class="hint first-only">Where the map opens when there is no fix.</p>
+        <p class="hint first-only">Where the map opens when there is no &ldquo;my location&rdquo;.</p>
         <p class="hint">The town the map opens on, and what &ldquo;near me&rdquo; means
           when the phone will not say where you are. Naming one costs nothing:
           your own location still wins whenever there is one.</p>
@@ -575,7 +575,7 @@
         <div id="home-results" class="home-results"></div>
       </section>
 
-      <section class="detail">
+      <section class="detail at-first">
         <h3 class="detail-head">colour</h3>
         <div class="swatches">
           <label class="swatch" data-accent="ember"><input type="radio" name="accent" value="ember"><span></span>ember</label>
