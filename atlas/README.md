@@ -155,8 +155,48 @@ these do I want", and that gets answered by what a button is *near*.
 - **save maps for offline** — at the bottom of **layers** (below).
 - **settings** — you, colour, light and glass. Reachable from the sliders button
   or by tapping your own monogram.
-  - **you** — the name the crew sees, which is the byline on every pin you drop
-    and every note you leave. Until now it was whatever the invite trigger made
+  - **you** — your picture and the name the crew sees, which together are the
+    byline on every pin you drop and every note you leave.
+
+    A face turns up in five places: your own button in the top bar, the corner
+    of the picture of the place on every row of **places**, the line that says
+    who dropped a pin, and the top of every note. Anyone who has not set one
+    gets their initial on the accent colour, and so does everybody, offline,
+    before a face has been downloaded — the monogram is the answer, not a grey
+    circle waiting for something.
+
+    Pictures are **square, cropped from the middle** rather than letterboxed,
+    because they are drawn in a circle everywhere and a 16:9 photo fitted into a
+    circle is a horizontal slice of somebody's chin. 256px, re-encoded on the
+    phone like every other photo here, which strips the EXIF and lands at about
+    7 KB. All three are pulled down at sign-in so the bylines still have faces
+    in a canyon.
+
+    Stored in a second private bucket, `avatars`, the same shape as pin photos
+    and for the same reasons — the object name `{user_id}/{avatar_id}.jpg` *is*
+    the permission model, read by the storage policies through
+    `public.uuid_segment()`. The one difference is who may look: a face is not
+    filed under a pin, so any signed-in crew member reads any avatar. That is
+    the point of it.
+
+    The avatar id is minted fresh for every picture rather than the object being
+    written over, which makes the path its own cache key — a phone holding the
+    old face cannot draw it under the new name, and there is no version number
+    for anything to get wrong. The cost of that is old objects, so setting or
+    removing a picture deletes the one it replaces, and every phone drops cached
+    faces nobody wears any more on the next sign-in.
+
+    Faces are looked up **by id at the moment of drawing**, from one mirrored
+    copy of `profiles`, rather than joined into `pins_with_author` and
+    `pin_notes_with_author` and every view added after them. That is not just
+    less plumbing, it is the right answer: a name belongs to the row it was
+    written with — a note says who wrote it, that day, and stays true if they
+    are renamed — but a face is whoever that person is *right now*.
+
+    Neither the name nor the picture is queued for later the way a pin is: both
+    change what everybody else sees, so they either reach the server or they
+    have not happened. The app says "this one needs signal" rather than
+    pretending. Until now it was whatever the invite trigger made
     of your email address, title-cased, with no way to change it. Your sign-in
     address and username are shown but not editable: the username is derived
     from the address and other rows point at it. Signing out is a labelled

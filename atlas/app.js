@@ -12,7 +12,7 @@
 
 import { local } from './db.js';
 import { lngLatToTile, tileUrlsForBounds } from './tiles.js';
-import { shrink, photoPath } from './photos.js';
+import { shrink, photoPath, shrinkSquare, avatarPath } from './photos.js';
 import {
   lookup as lookupOwnership, assessorSearchUrl, parcelSiteUrl,
   discoverParcelSource,
@@ -29,6 +29,7 @@ const $ = (id) => document.getElementById(id);
 const IS_APPLE = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent);
 const TILE_CACHE = 'atlas-tiles-v1';
 const PHOTO_BUCKET = 'pin-photos';
+const AVATAR_BUCKET = 'avatars';
 const BYTES_PER_TILE = 28 * 1024;   // measured: Esri ~20 KB, USGS/OSM ~32 KB
 
 let map       = null;
@@ -44,6 +45,7 @@ let photoRows = [];      // the photo index. The images live in IndexedDB.
 let parcelSources = [];  // county assessor adapters — see owners.js
 let ownerShown = null;   // { r, cached } — the ownership answer currently drawn
 let countyHunt = null;   // { pinId, state, found } while looking for a county
+let crew      = [];      // every profile: id, username, display_name, avatar_path
 let editingNote = null;  // id of the note currently open for editing
 let draftNote = null;    // { id, pending } — photos attached to a note not yet written
 let photoTarget = null;  // which strip the next pick from the file input lands in
@@ -399,7 +401,7 @@ async function start() {
   let profile = await local.get('me');
   if (online()) {
     const { data } = await db.from('profiles')
-      .select('id, username, display_name, must_change_password')
+      .select('id, username, display_name, avatar_path, must_change_password')
       .eq('id', session.user.id).single();
     if (data) { profile = data; await local.set('me', data); }
   }
@@ -428,8 +430,12 @@ async function start() {
   // "rmbus" at the edge of a phone reads as a layout that gave up. The whole
   // name goes on the tooltip, where it costs no room.
   me.email = session.user.email;
+  await loadCrew();
   whoamiChip();
   renderMe();
+  // Not awaited: nothing on screen is waiting for a face, and the map should
+  // not be either.
+  warmAvatars().then(pruneAvatars);
 
   if (!map) initMap();
   await loadPins();
@@ -690,6 +696,123 @@ async function refreshLocationState() {
     btn.hidden = false;
     setLabel(btn, 'turn on my location');
   }
+}
+
+/* ── the crew, and their faces ───────────────────────────────────────────
+ * Three profiles, fetched once and mirrored, rather than an avatar column
+ * threaded through pins_with_author, pin_notes_with_author and every view added
+ * after them. A name belongs on the row it was written with — a note says who
+ * wrote it, that day, and stays true if they are renamed later. A FACE is the
+ * opposite: it is whoever that person is right now, so it is looked up by id at
+ * the moment of drawing and there is exactly one place it can be wrong.
+ */
+async function loadCrew() {
+  if (online()) {
+    const { data, error } = await db.from('profiles')
+      .select('id, username, display_name, avatar_path');
+    if (!error && data) {
+      crew = data;
+      await local.set('crew', data);
+      return;
+    }
+  }
+  crew = (await local.get('crew')) || [];
+}
+
+/* Three faces at about 7 KB each, fetched once so they are on the phone before
+ * the phone is in a canyon. A byline that falls back to a letter offline is not
+ * broken, but it is a worse map than the one you had on the drive out, and this
+ * costs less than a single tile. */
+async function warmAvatars() {
+  if (!online()) return;
+  await Promise.all(crew
+    .filter((p) => p.avatar_path)
+    .map((p) => avatarBlob(p.avatar_path).catch(() => null)));
+}
+
+/* Faces nobody wears any more. A new picture is a new path, which is what makes
+ * the cache safe to trust — and is also what would otherwise leave every
+ * picture anybody had ever tried sitting on every phone forever.
+ *
+ * Guarded on the crew being known: offline on a fresh install the mirror is
+ * empty, and "keep nothing" would then throw away every face on the phone at
+ * exactly the moment there is no way to fetch them back. */
+async function pruneAvatars() {
+  if (!crew.length) return;
+  const keep = new Set(crew.filter((p) => p.avatar_path).map((p) => `avatar:${p.avatar_path}`));
+  for (const id of await local.blobIds()) {
+    if (typeof id === 'string' && id.startsWith('avatar:') && !keep.has(id)) {
+      await local.deleteBlob(id);
+    }
+  }
+}
+
+const avatarPathFor = (userId) =>
+  crew.find((p) => p.id === userId)?.avatar_path || null;
+
+/* One object URL per picture per session, held in a Map keyed by path. The
+ * photo strips mint a URL per render and revoke the lot on the next one, which
+ * is right for a strip that repaints as you scroll; a face is drawn in five
+ * places, repeats on every row of the list, and never changes without the app
+ * being told — so it is made once. A new picture is a new path, so a stale
+ * entry is impossible rather than merely unlikely. */
+const avatarUrls = new Map();
+
+async function avatarBlob(path) {
+  const key = `avatar:${path}`;
+  const cached = await local.getBlob(key);
+  if (cached) return cached;
+  if (!online()) return null;
+
+  const { data, error } = await db.storage.from(AVATAR_BUCKET).download(path);
+  if (error || !data) return null;
+  await local.putBlob(key, data);
+  return data;
+}
+
+async function avatarUrl(path) {
+  if (avatarUrls.has(path)) return avatarUrls.get(path);
+  const blob = await avatarBlob(path);
+  if (!blob) return null;
+  const url = URL.createObjectURL(blob);
+  avatarUrls.set(path, url);
+  return url;
+}
+
+/* The monogram is not a placeholder waiting for a picture — it is the answer
+ * for anybody who has not set one, and it is what everybody sees offline before
+ * a face has ever been downloaded. So it is always what gets drawn first, and
+ * the picture lands on top of it if there is one. */
+const initialOf = (name) => (String(name || '?').trim().charAt(0) || '?');
+
+function avatarHtml(userId, name, cls = '') {
+  return `<span class="avatar${cls ? ' ' + cls : ''}" data-avatar="${userId || ''}"`
+    + ` title="${escapeHtml(name || '')}">${escapeHtml(initialOf(name))}</span>`;
+}
+
+/* Painted after the markup, like the photo strips, and idempotent: anything
+ * already carrying its picture is skipped, so calling this after every render
+ * costs a Map lookup per face rather than a download. */
+function paintAvatars(root = document) {
+  root.querySelectorAll('[data-avatar]:not(.is-loaded)').forEach((el) => {
+    const path = avatarPathFor(el.dataset.avatar);
+    if (!path) return;
+    avatarUrl(path).then((url) => {
+      if (!url) return;
+      el.style.backgroundImage = `url("${url}")`;
+      el.classList.add('is-loaded');
+    });
+  });
+}
+
+/* After somebody's picture changes, every copy of the old one on screen has to
+ * be told to forget it — they are marked painted and would never look again. */
+function resetAvatars(userId) {
+  document.querySelectorAll(`[data-avatar="${userId}"]`).forEach((el) => {
+    el.classList.remove('is-loaded');
+    el.style.backgroundImage = '';
+  });
+  paintAvatars();
 }
 
 /* ── pins ────────────────────────────────────────────────────────────────── */
@@ -1013,6 +1136,7 @@ function openPin(p) {
   $('note-body').value = '';
   editingNote = null;
   renderNotes();          // which paints the photo strips, this pin's included
+  paintAvatars($('pin-meta'));
   resetOwner();
   showSheet();
   setSheetFrac(SHEET_HALF);
@@ -1026,7 +1150,8 @@ function metaHtml(p, author) {
   const bits = [];
   if (author) bits.push(`dropped by <b>${escapeHtml(author)}</b>`);
   if (p.created_at) bits.push(fmtDate(p.created_at));
-  const head = bits.length ? bits.join(' &middot; ') : 'new pin';
+  const face = author ? avatarHtml(p.created_by, author, 'avatar-sm') : '';
+  const head = bits.length ? `${face}${bits.join(' &middot; ')}` : 'new pin';
   const acc = p.accuracy_m ? ` &middot; &plusmn;${Math.round(p.accuracy_m)} m` : '';
   const pending = p._pending
     ? '<br><span class="note-warn">' + icon('i-alert', 'icon-sm')
@@ -1414,6 +1539,8 @@ function renderNotes() {
     ? rows.map(noteHtml).join('')
     : '<p class="notes-empty">No notes yet. Been out there? Say what you found.</p>';
 
+  paintAvatars($('notes-list'));
+
   // Rebuilding the list threw every note's photo strip away with it, so the
   // tiles are repainted here rather than at each of the seven call sites that
   // could forget. renderPhotos paints all the strips on screen, this one
@@ -1428,10 +1555,12 @@ const wasEdited = (n) => !!n.updated_at
   && new Date(n.updated_at) - new Date(n.created_at) > 1000;
 
 function noteHtml(n) {
-  const who = escapeHtml(n.display_name || n.username || 'someone');
+  const name = n.display_name || n.username || 'someone';
+  const who = escapeHtml(name);
   const mine = n.created_by === me.id;
 
   const head = `<div class="note-head">
+      ${avatarHtml(n.created_by, name, 'avatar-sm')}
       <b>${who}</b><span>${fmtDate(n.created_at)}${
         wasEdited(n) ? ` &middot; edited ${fmtDate(n.updated_at)}` : ''}</span>
       ${mine && editingNote !== n.id ? `
@@ -2063,7 +2192,8 @@ function listRow(p, here) {
   // did Silas find", which is most of what you open this screen to do. And
   // yours says "you", which no colour or badge conveys as quickly.
   const mine = p.created_by === me.id;
-  const who = mine ? 'you' : (p.display_name || p.username || 'someone');
+  const name = p.display_name || p.username || 'someone';
+  const who = mine ? 'you' : name;
 
   // The time shown is the time the list is SORTED by, or the sort looks broken:
   // a pin found a month ago sitting at the top because somebody left a note on
@@ -2080,6 +2210,7 @@ function listRow(p, here) {
   return `<button class="list-row" data-pin="${p.id}">
     <div class="r-thumb" data-kind="${kindOf(p)}"${photo ? ` data-thumb="${photo.id}"` : ''}>
       ${icon(photo ? 'i-image' : 'i-pin')}
+      ${avatarHtml(p.created_by, name, 'avatar-badge')}
     </div>
     <div class="r-text">
       <div class="r-top">
@@ -2117,6 +2248,8 @@ function openList() {
     : `<div class="list-empty">${icon('i-pin')}<span>${pins.length
         ? 'Nothing of those kinds. Turn some back on above.'
         : 'No pins yet. Go find something.'}</span></div>`;
+
+  paintAvatars(body);
 
   // Thumbnails after the markup, same rule as the sheet's strips: a blob that
   // arrives after the list has moved on must not paint into a live row.
@@ -2311,6 +2444,116 @@ function renderMe() {
   $('me-name').value = me.display_name || '';
   $('me-user').textContent = me.username || '—';
   $('me-email').textContent = me.email || '—';
+
+  const face = $('me-avatar');
+  face.dataset.avatar = me.id || '';
+  face.textContent = initialOf(me.display_name || me.username);
+  setLabel($('avatar-pick'), me.avatar_path ? 'change photo' : 'add a photo');
+  $('avatar-clear').hidden = !me.avatar_path;
+  paintAvatars();
+}
+
+/* Your picture, the same deal as your name: it changes what everybody else
+ * sees, so it either reaches them or it has not happened. Nothing here is
+ * queued for later the way a pin is — a face that only landed on your own phone
+ * is a lie about what the crew is looking at, and it would be an awkward lie,
+ * because you would be the one person who could not see that it had not worked.
+ */
+async function setAvatar(file) {
+  const err = $('me-error');
+  const said = $('me-said');
+  err.hidden = true; said.hidden = true;
+  if (!me) return;
+
+  if (!online()) { err.textContent = 'this one needs signal'; err.hidden = false; return; }
+
+  const btn = $('avatar-pick');
+  btn.classList.add('is-busy');
+  try {
+    const { blob } = await shrinkSquare(file);
+    // A fresh id every time rather than writing over the object: the path is
+    // the cache key, on this phone and on everybody else's.
+    const path = avatarPath(me.id, crypto.randomUUID());
+
+    const up = await db.storage.from(AVATAR_BUCKET)
+      .upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+    if (up.error) throw new Error(up.error.message);
+
+    const { error } = await db.from('profiles')
+      .update({ avatar_path: path }).eq('id', me.id);
+    // The row is what names the object. If it did not land, the upload is a
+    // file nothing points at, so take it back out rather than leaving it.
+    if (error) {
+      await db.storage.from(AVATAR_BUCKET).remove([path]);
+      throw new Error(error.message);
+    }
+
+    const old = me.avatar_path;
+    me.avatar_path = path;
+    await local.set('me', me);
+    // Cached before anything is drawn, so your own new face appears at once
+    // rather than being fetched back down from where it just came from.
+    await local.putBlob(`avatar:${path}`, blob);
+    await forgetAvatar(old);
+
+    await loadCrew();
+    renderMe();
+    whoamiChip();
+    resetAvatars(me.id);
+    if (!$('list').hidden) openList();
+    if (sheet) renderNotes();
+    said.textContent = 'saved';
+    said.hidden = false;
+  } catch (e) {
+    err.textContent = e.message || 'that picture would not upload';
+    err.hidden = false;
+  } finally {
+    btn.classList.remove('is-busy');
+  }
+}
+
+async function clearAvatar() {
+  const err = $('me-error');
+  err.hidden = true;
+  if (!me?.avatar_path) return;
+  if (!online()) { err.textContent = 'this one needs signal'; err.hidden = false; return; }
+  if (!confirm('Go back to your initial?')) return;
+
+  const old = me.avatar_path;
+  const { error } = await db.from('profiles').update({ avatar_path: null }).eq('id', me.id);
+  if (error) { err.textContent = error.message; err.hidden = false; return; }
+
+  // The row goes first here, the opposite way round from a pin photo. There the
+  // row is the only record of the object's name; here the name is derived from
+  // your own id, so a row cleared before the file is removed leaves nothing
+  // stranded — and a file removed before the row would leave every phone
+  // pointed at a picture that no longer exists.
+  me.avatar_path = null;
+  await local.set('me', me);
+  await db.storage.from(AVATAR_BUCKET).remove([old]);
+  await forgetAvatar(old);
+
+  await loadCrew();
+  renderMe();
+  whoamiChip();
+  resetAvatars(me.id);
+  if (!$('list').hidden) openList();
+  if (sheet) renderNotes();
+}
+
+/* A face that is no longer anybody's: drop the copy on the phone and the URL
+ * handed out for it, or the old one keeps being drawn from memory. */
+async function forgetAvatar(path) {
+  if (!path) return;
+  const url = avatarUrls.get(path);
+  if (url) { URL.revokeObjectURL(url); avatarUrls.delete(path); }
+  await local.deleteBlob(`avatar:${path}`);
+}
+
+async function onAvatarPick(e) {
+  const file = e.target.files?.[0];
+  e.target.value = '';                 // so picking the same file twice works
+  if (file) await setAvatar(file);
 }
 
 async function saveMyName() {
@@ -2333,6 +2576,7 @@ async function saveMyName() {
 
   me.display_name = name;
   await local.set('me', me);
+  await loadCrew();
   whoamiChip();
   said.textContent = 'saved';
   said.hidden = false;
@@ -2349,9 +2593,11 @@ async function saveMyName() {
 function whoamiChip() {
   const el = $('whoami');
   const name = (me?.display_name || me?.username || '?').trim();
-  el.textContent = name.charAt(0);
+  el.textContent = initialOf(name);
+  el.dataset.avatar = me?.id || '';
   el.title = `${name} — settings`;
   el.setAttribute('aria-label', el.title);
+  paintAvatars();
 }
 
 /* ── settings ─────────────────────────────────────────────────────────────
@@ -2407,6 +2653,9 @@ $('forgot').addEventListener('click', forgotPassword);
 $('whoami').addEventListener('click', () => openPanel('settings'));
 $('signout').addEventListener('click', signOut);
 $('me-save').addEventListener('click', saveMyName);
+$('avatar-pick').addEventListener('click', () => $('avatar-input').click());
+$('avatar-input').addEventListener('change', onAvatarPick);
+$('avatar-clear').addEventListener('click', clearAvatar);
 $('locate-btn').addEventListener('click', () => locate().catch(() => {}));
 $('list-btn').addEventListener('click', openList);
 $('list-close').addEventListener('click', () => closePanel('list', releaseListUrls));

@@ -55,3 +55,62 @@ export async function shrink(file, maxEdge = MAX_EDGE, quality = QUALITY) {
 
   return { blob, width, height };
 }
+
+/* ── avatars ──────────────────────────────────────────────────────────────
+ * A face on a byline. Same machinery as a pin photo and the same reasoning —
+ * re-encode on the phone, strip EXIF on the way through — with two differences
+ * that come from what an avatar is rather than from what it costs.
+ *
+ * It is SQUARE, cropped from the middle rather than letterboxed, because it is
+ * drawn in a circle everywhere it appears and a 16:9 photo fitted into a circle
+ * shows a horizontal slice of somebody's chin. And it is small: 256px is four
+ * times the largest circle in the app, which leaves room for a retina screen
+ * and stops well short of paying to store a portrait nobody will ever open.
+ */
+export const AVATAR_EDGE    = 256;
+export const AVATAR_QUALITY = 0.85;
+
+/* Object names are {user_id}/{avatar_id}.jpg — the storage policies read the
+ * owner straight out of that first segment, so it is not cosmetic. The avatar
+ * id is minted fresh for every picture rather than the object being written
+ * over, which makes the path its own cache key: a phone holding the old face
+ * cannot draw it under the new name. */
+export function avatarPath(userId, avatarId) {
+  return `${userId}/${avatarId}.jpg`;
+}
+
+export function avatarOwnerFromPath(path) {
+  return String(path).split('/')[0] || null;
+}
+
+/* The biggest centred square the image contains, and how big to draw it.
+ * Kept separate from the canvas work so it can be tested without a browser.
+ * Never upscales: a 90px thumbnail stays 90px rather than being blown up into
+ * a soft 256px one. */
+export function squareCrop(width, height, edge = AVATAR_EDGE) {
+  const side = Math.max(1, Math.min(width, height));
+  return {
+    sx:   Math.max(0, Math.round((width  - side) / 2)),
+    sy:   Math.max(0, Math.round((height - side) / 2)),
+    side,
+    out:  Math.max(1, Math.min(edge, side)),
+  };
+}
+
+export async function shrinkSquare(file, edge = AVATAR_EDGE, quality = AVATAR_QUALITY) {
+  const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  const { sx, sy, side, out } = squareCrop(bmp.width, bmp.height, edge);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = out;
+  canvas.height = out;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bmp, sx, sy, side, side, 0, 0, out, out);
+  bmp.close?.();
+
+  const blob = await new Promise((resolve) =>
+    canvas.toBlob(resolve, 'image/jpeg', quality));
+  if (!blob) throw new Error('could not read that image');
+
+  return { blob, width: out, height: out };
+}

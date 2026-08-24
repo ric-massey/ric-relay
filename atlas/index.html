@@ -463,8 +463,20 @@
     <div class="panel-body pad">
       <section class="detail">
         <h3 class="detail-head">you</h3>
-        <p class="hint">Your name is on every pin you drop and every note you
-          leave. It is what the others see; nobody sees your sign-in.</p>
+        <p class="hint">Your name and your face are on every pin you drop and
+          every note you leave. It is what the others see; nobody sees your
+          sign-in.</p>
+
+        <div class="me-face">
+          <span id="me-avatar" class="avatar avatar-lg" data-avatar=""></span>
+          <div class="me-face-do">
+            <button id="avatar-pick" class="btn-ghost">
+              <svg class="icon icon-sm"><use href="#i-camera"/></svg><span class="lbl">add a photo</span>
+            </button>
+            <button id="avatar-clear" class="linkish" hidden>use my initial instead</button>
+          </div>
+        </div>
+        <input id="avatar-input" type="file" accept="image/*" hidden>
         <label class="field"><span>name the crew sees</span>
           <input id="me-name" type="text" autocapitalize="words" spellcheck="false"
                  maxlength="40" autocomplete="nickname"></label>

@@ -8,7 +8,10 @@
  * tier, over cell data, from a canyon rim.
  */
 import assert from 'node:assert/strict';
-import { fitDims, photoPath, pinIdFromPath, MAX_EDGE } from '../photos.js';
+import {
+  fitDims, photoPath, pinIdFromPath, MAX_EDGE,
+  squareCrop, avatarPath, avatarOwnerFromPath, AVATAR_EDGE,
+} from '../photos.js';
 
 let passed = 0;
 const test = (name, fn) => {
@@ -67,6 +70,50 @@ test('aspect ratio survives the rounding', () => {
     const got = out.width / out.height;
     assert.ok(Math.abs(got - want) / want < 0.01,
       `${w}x${h} came back distorted as ${out.width}x${out.height}`);
+  }
+});
+
+console.log('avatars');
+
+const AVATAR = '77777777-6666-5555-4444-333333333333';
+
+test('the path is owner / avatar, which is what the policies read', () => {
+  assert.equal(avatarPath(USER, AVATAR), `${USER}/${AVATAR}.jpg`);
+});
+
+test('segment 1 is the owner, so nobody can write a face over yours', () => {
+  // Mirrors public.uuid_segment(name, 1) in the avatars migration, which is the
+  // only thing standing between "my picture" and "anyone's picture".
+  assert.equal(avatarOwnerFromPath(avatarPath(USER, AVATAR)), USER);
+});
+
+test('a new picture is a new path, which is what makes the path a cache key', () => {
+  const a = avatarPath(USER, '11111111-1111-1111-1111-111111111111');
+  const b = avatarPath(USER, '22222222-2222-2222-2222-222222222222');
+  assert.notEqual(a, b, 'two faces for one person share a path and one wins');
+});
+
+test('the crop is the biggest square in the middle, whichever way up it is', () => {
+  // Landscape: the sides come off. Portrait: the top and bottom do. Getting
+  // this backwards crops somebody's face out of their own avatar.
+  assert.deepEqual(squareCrop(4000, 3000), { sx: 500, sy: 0, side: 3000, out: AVATAR_EDGE });
+  assert.deepEqual(squareCrop(3000, 4000), { sx: 0, sy: 500, side: 3000, out: AVATAR_EDGE });
+  assert.deepEqual(squareCrop(1000, 1000), { sx: 0, sy: 0, side: 1000, out: AVATAR_EDGE });
+});
+
+test('a small picture is cropped but never blown up', () => {
+  assert.deepEqual(squareCrop(90, 90), { sx: 0, sy: 0, side: 90, out: 90 });
+  assert.deepEqual(squareCrop(300, 120), { sx: 90, sy: 0, side: 120, out: 120 });
+});
+
+test('nothing rounds away to nothing, however odd the shape', () => {
+  // A zero here is a canvas that throws rather than a face that looks wrong.
+  for (const [w, h] of [[6000, 200], [200, 6000], [1, 9000], [9000, 1], [1, 1]]) {
+    const c = squareCrop(w, h);
+    assert.ok(c.side >= 1 && c.out >= 1, `${w}x${h} collapsed to nothing`);
+    assert.ok(c.sx >= 0 && c.sy >= 0, `${w}x${h} crops from outside the image`);
+    assert.ok(c.sx + c.side <= Math.max(w, c.side), `${w}x${h} crops past the edge`);
+    assert.ok(c.out <= AVATAR_EDGE, `${w}x${h} came back bigger than the cap`);
   }
 });
 
