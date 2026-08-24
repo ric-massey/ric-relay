@@ -98,6 +98,30 @@ these do I want", and that gets answered by what a button is *near*.
   While the map has nothing on it, it says so on screen: a gesture leaves no
   trace, so it gets told to you once, when you have nothing else to look at.
 - **◎** — centres on you. Press and hold your own dot to pin where you stand.
+- **what kind of place it is** — cliffs, caves, trails, tunnels, abandoned
+  buildings, mountains, towers, other. Chosen on the pin, and it is what the
+  pin's **colour** means: eight colours, each measured to stand clear of the
+  halo drawn around it in both themes and to be unmistakable for any of the
+  other seven at 28px on satellite imagery. `test/contrast.test.mjs` holds both
+  of those.
+
+  Colour used to say whose pin it was. It says what the place is now, because
+  only one thing can be encoded in a colour and still be read at a glance, and
+  on a shared map of finds the kind is what you are scanning for — who dropped
+  it is written on the pin's own sheet and on every row of the list. Yellow
+  still outranks everything: a pin that has not synced yet is not a place
+  anyone else can go to.
+
+  The `kind` column has been on the pins table since the first migration and
+  nothing ever wrote to it, so this needed no migration. Deliberately **not** a
+  check constraint: an unrecognised kind falls back to "other" in the app and
+  still draws, lists and filters, where a constraint would turn a future rename
+  into a write that fails on a phone in a canyon.
+- **filtering** — the chips at the top of **☰ places** turn kinds on and off,
+  and they filter the map as well as the list. Turning the last one off turns
+  them all back on rather than leaving you a blank map with no way to read why.
+  While a filter is on, ☰ carries a dot — a filtered-out pin should never look
+  like a lost one.
 - **☰ places** — the closest thing here to a feed, and it is built for the
   question it actually gets asked: somebody has handed you a place, do you want
   to go. So a row is a photo of it, one line of what it is, who found it, how

@@ -204,6 +204,71 @@ test('glass is opt-in and stays readable over the worst backdrop', () => {
     'glass must never be on the bare :root — it is a choice, not the default');
 });
 
+/* ── the kinds ────────────────────────────────────────────────────────────
+ * Eight colours that have to do two jobs at 28px on satellite imagery: stand
+ * out from the halo drawn around them, and not be mistakable for each other.
+ * Both are measurable, so neither is left to whether it looked fine on the day.
+ */
+/* Found by looking for the blocks that actually declare --kind-*, rather than
+ * by slicing between the first `:root {` and the first night block. That was
+ * the obvious way to write it and it was wrong: the night PALETTE appears
+ * before the kinds do, so the slice ran backwards and came back empty — and an
+ * empty set silently passes a test that loops over it. */
+function kindBlocks() {
+  const out = { day: {}, night: {} };
+  const re = /(:root(?:\[data-theme="night"\])?)\s*\{([^}]*?--kind-[^}]*)\}/g;
+  for (const [, selector, body] of css.matchAll(re)) {
+    const into = selector.includes('night') ? out.night : out.day;
+    for (const [, name, value] of body.matchAll(/--kind-([\w-]+):\s*(#[0-9a-fA-F]{6})/g)) {
+      into[name] = value;
+    }
+  }
+  return out;
+}
+
+const { day: dayKinds, night: nightKinds } = kindBlocks();
+
+/* Two colours near enough in this measure are the same pin at arm's length.
+ * Weighted RGB — cheap, and it tracks perception well enough for a dot. */
+function apart(a, b) {
+  const [x, y] = [channels(a), channels(b)];
+  return Math.sqrt(2 * (x[0] - y[0]) ** 2 + 4 * (x[1] - y[1]) ** 2 + 3 * (x[2] - y[2]) ** 2);
+}
+
+test('there is a colour for every kind, in both themes', () => {
+  assert.equal(Object.keys(dayKinds).length, 8, 'expected eight day kinds');
+  for (const k of Object.keys(dayKinds)) {
+    assert.ok(nightKinds[k], `${k} has no night colour and would stay dark-on-dark`);
+  }
+});
+
+test('every kind stands out from the halo drawn around it', () => {
+  assert.ok(Object.keys(dayKinds).length && Object.keys(nightKinds).length,
+    'no kind colours were found at all — this test would otherwise pass on nothing');
+  for (const [k, v] of Object.entries(dayKinds)) {
+    const r = contrast(v, day.halo);
+    assert.ok(r >= 3, `day ${k} against the halo is ${r.toFixed(2)}:1, needs 3:1`);
+  }
+  for (const [k, v] of Object.entries(nightKinds)) {
+    const r = contrast(v, night.halo);
+    assert.ok(r >= 3, `night ${k} against the halo is ${r.toFixed(2)}:1, needs 3:1`);
+  }
+});
+
+test('no two kinds are the same pin at a glance', () => {
+  for (const [label, set] of [['day', dayKinds], ['night', nightKinds]]) {
+    const keys = Object.keys(set);
+    assert.ok(keys.length >= 8, `${label}: only ${keys.length} kinds found`);
+    for (let i = 0; i < keys.length; i++) {
+      for (let j = i + 1; j < keys.length; j++) {
+        const d = apart(set[keys[i]], set[keys[j]]);
+        assert.ok(d > 90,
+          `${label}: ${keys[i]} and ${keys[j]} are only ${d.toFixed(0)} apart, want > 90`);
+      }
+    }
+  }
+});
+
 /* Day being the default is a decision someone made outdoors, and it is the kind
  * of thing a later refactor "tidies up". */
 test('day is still what a browser with no preference gets', () => {

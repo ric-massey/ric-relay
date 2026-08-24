@@ -166,6 +166,37 @@ const OVERLAYS = {
 
 let overlaysOn = new Set();
 
+/* ── what kind of place it is ────────────────────────────────────────────
+ * The `kind` column has been on the pins table since the first migration,
+ * defaulting to 'spot', and nothing has ever written to it. It is the
+ * vocabulary now: eight kinds, each with a colour, chosen when you drop a pin
+ * and filterable afterwards.
+ *
+ * Deliberately NOT a check constraint in the database. A kind nobody
+ * recognises falls back to "other" here and still draws, still lists and still
+ * filters — whereas a constraint would turn a future rename into a write that
+ * fails on a phone in a canyon, which is the worst place to find out.
+ */
+const KINDS = [
+  { key: 'cliffs',    label: 'cliffs' },
+  { key: 'caves',     label: 'caves' },
+  { key: 'trails',    label: 'trails' },
+  { key: 'tunnels',   label: 'tunnels' },
+  { key: 'buildings', label: 'abandoned buildings' },
+  { key: 'mountains', label: 'mountains' },
+  { key: 'towers',    label: 'towers' },
+  { key: 'other',     label: 'other' },
+];
+const KIND_KEYS = new Set(KINDS.map((k) => k.key));
+const kindOf = (p) => (KIND_KEYS.has(p?.kind) ? p.kind : 'other');
+const kindLabel = (key) => KINDS.find((k) => k.key === key)?.label || 'other';
+
+/* Every kind shown until told otherwise, and the choice is kept on the phone:
+ * it is about what you are looking for today, not about the crew. */
+let kindFilter = new Set(KIND_KEYS);
+const filtering = () => kindFilter.size !== KINDS.length;
+const passesFilter = (p) => kindFilter.has(kindOf(p));
+
 /* ── little helpers ─────────────────────────────────────────────────────── */
 
 let toastTimer = null;
@@ -687,10 +718,13 @@ async function loadPhotos() {
 function drawPins() {
   markers.forEach((m) => m.remove());
   markers.clear();
-  pins.forEach(addMarker);
+  pins.filter(passesFilter).forEach(addMarker);
   // The only way to make a pin is a gesture, and a gesture leaves no trace on
   // screen. Say it while there is nothing else to look at.
   $('map-hint').hidden = pins.length > 0;
+  // And say when the map is deliberately incomplete, or a filtered-out pin
+  // reads as a lost one.
+  $('list-btn').classList.toggle('is-filtered', filtering());
 }
 
 /* An actual pin: a round head on a point, with the point being the bit that
@@ -712,12 +746,54 @@ function addMarker(p) {
     + (p.created_by === me.id ? ' is-mine' : '')
     + (p._pending ? ' is-pending' : '')
     + (p.is_private ? ' is-private' : '');
+  el.dataset.kind = kindOf(p);
   el.innerHTML = PIN_SVG;
   el.title = pinTitle(p);
   el.addEventListener('click', (e) => { e.stopPropagation(); openPin(p); });
 
   markers.set(p.id, new maplibregl.Marker({ element: el, anchor: 'bottom' })
     .setLngLat([p.lng, p.lat]).addTo(map));
+}
+
+/* ── choosing and filtering by kind ─────────────────────────────────────── */
+
+function renderKindControls() {
+  $('pin-kind').innerHTML = KINDS.map((k) => `
+    <label class="kind-chip" data-kind="${k.key}">
+      <input type="radio" name="kind" value="${k.key}">
+      <span class="kind-dot"></span>${escapeHtml(k.label)}
+    </label>`).join('');
+
+  $('kind-filter').innerHTML = KINDS.map((k) => `
+    <label class="kind-chip" data-kind="${k.key}">
+      <input type="checkbox" data-filter="${k.key}" checked>
+      <span class="kind-dot"></span>${escapeHtml(k.label)}
+    </label>`).join('');
+}
+
+function setPinKind(key) {
+  const radio = document.querySelector(`[name="kind"][value="${key}"]`);
+  if (radio) radio.checked = true;
+}
+
+const chosenKind = () =>
+  document.querySelector('[name="kind"]:checked')?.value || 'other';
+
+async function applyFilter() {
+  document.querySelectorAll('[data-filter]').forEach((c) => {
+    c.checked = kindFilter.has(c.dataset.filter);
+  });
+  await local.set('kindFilter', [...kindFilter]);
+  drawPins();
+  if (!$('list').hidden) openList();
+}
+
+function toggleKind(key, on) {
+  if (on) kindFilter.add(key); else kindFilter.delete(key);
+  // Filtering everything out leaves a blank map and no way to read why, so the
+  // last one off turns them all back on rather than showing nothing.
+  if (!kindFilter.size) kindFilter = new Set(KIND_KEYS);
+  applyFilter();
 }
 
 /* ── the sheet ─────────────────────────────────────────────────────────────
@@ -756,6 +832,7 @@ function openNewPin(lat, lng, accuracy) {
   $('pin-desc').value = '';
   $('pin-name').disabled = false;
   $('pin-desc').disabled = false;
+  setPinKind('other');
   $('pin-private').checked = false;      // shared by default — that is the point
   $('pin-private').disabled = false;
   $('pin-save').hidden = false;
@@ -783,6 +860,7 @@ function openPin(p) {
   $('pin-desc').value = p.description || '';
   $('pin-name').disabled = !mine;
   $('pin-desc').disabled = !mine;
+  setPinKind(kindOf(p));
   $('pin-private').checked = !!p.is_private;
   $('pin-private').disabled = !mine;
   $('pin-save').hidden = !mine;
@@ -840,6 +918,7 @@ async function savePin() {
   const fields = {
     name: $('pin-name').value.trim(),
     description: $('pin-desc').value.trim(),
+    kind: chosenKind(),
     is_private: $('pin-private').checked,
   };
 
@@ -896,6 +975,7 @@ async function updatePin(fields) {
     el.title = pinTitle(p);
     el.classList.toggle('is-pending', !!p._pending);
     el.classList.toggle('is-private', !!p.is_private);
+    el.dataset.kind = kindOf(p);
   }
   closeSheet();
   toast(sent ? 'saved' : 'saved on this phone — will sync later');
@@ -1843,7 +1923,7 @@ function listRow(p, here) {
   // The time shown is the time the list is SORTED by, or the sort looks broken:
   // a pin found a month ago sitting at the top because somebody left a note on
   // it yesterday has to say so, not say "1mo ago".
-  const bits = [`<b>${escapeHtml(who)}</b>`];
+  const bits = [`<b>${escapeHtml(who)}</b>`, escapeHtml(kindLabel(kindOf(p)))];
   if (its.length) {
     const last = its.reduce((a, b) => (a.created_at > b.created_at ? a : b));
     bits.push(`${its.length} note${its.length > 1 ? 's' : ''}`);
@@ -1876,14 +1956,19 @@ function openList() {
   const at = meMarker?.getLngLat();
   const here = at ? { lat: at.lat, lng: at.lng } : null;
 
-  const rows = [...pins].sort((a, b) => lastActivity(b) - lastActivity(a));
+  const rows = pins.filter(passesFilter).sort((a, b) => lastActivity(b) - lastActivity(a));
   $('list-count').textContent = pins.length
-    ? `${pins.length} place${pins.length > 1 ? 's' : ''}` : '';
+    ? `${rows.length} of ${pins.length} places` : '';
+  if (!filtering() && pins.length) {
+    $('list-count').textContent = `${pins.length} place${pins.length > 1 ? 's' : ''}`;
+  }
 
   const body = $('list-body');
   body.innerHTML = rows.length
     ? rows.map((p) => listRow(p, here)).join('')
-    : '<p class="list-empty">No pins yet. Go find something.</p>';
+    : `<p class="list-empty">${pins.length
+        ? 'Nothing of those kinds. Turn some back on above.'
+        : 'No pins yet. Go find something.'}</p>`;
 
   // Thumbnails after the markup, same rule as the sheet's strips: a blob that
   // arrives after the list has moved on must not paint into a live row.
@@ -2146,6 +2231,13 @@ $('sources-close').addEventListener('click', () => { $('sources').hidden = true;
 $('sources-list').addEventListener('click', onSourcesClick);
 $('src-save').addEventListener('click', addSource);
 $('dl-photos').addEventListener('click', cachePhotosOffline);
+$('kind-filter').addEventListener('change', (e) => {
+  if (e.target.dataset.filter) toggleKind(e.target.dataset.filter, e.target.checked);
+});
+$('filter-all').addEventListener('click', () => {
+  kindFilter = new Set(KIND_KEYS);
+  applyFilter();
+});
 $('settings-btn').addEventListener('click', () => { $('settings').hidden = false; });
 $('settings-close').addEventListener('click', () => { $('settings').hidden = true; });
 $('glass-toggle').addEventListener('change', (e) => setGlass(e.target.checked));
@@ -2193,6 +2285,16 @@ window.addEventListener('offline', refreshNetworkUI);
 
 // Restore preferences before anything paints.
 (async () => {
+  renderKindControls();
+  const savedFilter = await local.get('kindFilter');
+  if (Array.isArray(savedFilter) && savedFilter.length) {
+    kindFilter = new Set(savedFilter.filter((k) => KIND_KEYS.has(k)));
+    if (!kindFilter.size) kindFilter = new Set(KIND_KEYS);
+  }
+  document.querySelectorAll('[data-filter]').forEach((c) => {
+    c.checked = kindFilter.has(c.dataset.filter);
+  });
+
   setTheme((await local.get('theme')) || 'day');
   setAccent((await local.get('accent')) || 'ember');
   setGlass((await local.get('glass')) === true);
