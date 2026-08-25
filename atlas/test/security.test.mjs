@@ -35,8 +35,12 @@ const sql = files
  * definition nothing uses. */
 const defined = new Map();
 for (const m of sql.matchAll(
-  /create or replace function public\.(\w+)\(([^)]*)\)\s*returns ([\s\S]*?)\bas \$\$/g)) {
-  defined.set(m[1], { args: m[2], head: m[3], definer: /security definer/.test(m[3]) });
+  /create or replace function public\.(\w+)\(([^)]*)\)\s*returns ([\s\S]*?)\bas \$\$([\s\S]*?)\$\$/g)) {
+  defined.set(m[1], {
+    args: m[2], head: m[3], body: m[4],
+    definer: /security definer/.test(m[3]),
+    immutable: /\bimmutable\b/.test(m[3]),
+  });
 }
 
 test('the migration set defines the functions this app runs on', () => {
@@ -84,4 +88,32 @@ test('the DEFINER functions that take an argument justify it', () => {
   const argued = [...defined].filter(([, f]) => f.definer && f.args.trim() && !/\btrigger\b/.test(f.head));
   assert.deepEqual(argued.map(([n]) => n).sort(), ['lookup_username', 'set_username'],
     'a SECURITY DEFINER function now takes an argument that nobody has argued for — see docs/audiences.md');
+});
+
+test('nothing that reads auth.uid() claims to be IMMUTABLE', () => {
+  /* IMMUTABLE is a promise that the answer depends on nothing but the
+   * arguments — same input, same answer, for everybody, forever. auth.uid()
+   * reads the current request's JWT, which is a different answer per person.
+   * Postgres does not check; it believes you, and is then free to fold the call
+   * at plan time or reuse it from a cached plan on a pooled connection. In a
+   * policy that is an authorization decision computed for one account and
+   * handed to the next.
+   *
+   * can_add_to_group() shipped this way for a few hours. It was harmless only
+   * because there are three people here who may all add each other. */
+  for (const [name, fn] of defined) {
+    if (!fn.immutable) continue;
+    assert.equal(/auth\.uid\(\)/.test(fn.body), false,
+      `public.${name}() is IMMUTABLE and reads auth.uid() — it must be STABLE`);
+  }
+});
+
+test('everything that reads auth.uid() is at least STABLE', () => {
+  // The other half: a function the planner thinks is VOLATILE is merely slow,
+  // but one with no marking at all defaults to VOLATILE and gets re-run per
+  // row. These are the read-side checks, and they are in hot policies.
+  for (const fn of ['can_see_pin', 'can_add_to_group', 'people_i_can_draw']) {
+    assert.match(defined.get(fn).head, /\bstable\b/,
+      `public.${fn}() is not STABLE — it is called from a policy and will be re-evaluated per row`);
+  }
 });

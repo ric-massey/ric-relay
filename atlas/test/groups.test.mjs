@@ -105,3 +105,34 @@ test('the app asks for a person by username, never by id', () => {
   assert.equal(/insert\(\{ group_id: id, user_id: [^w]/.test(block), false,
     'a user id is going into group_members from somewhere other than the lookup');
 });
+
+test('a byline is the way to a person, and it never becomes a list', () => {
+  /* The dead end this fixed: putting somebody in a group needs their exact
+   * username, and nothing was telling you what anybody's was. A byline is safe
+   * to open — you are looking at something they made, so you can already read
+   * their profile — but it is ONE person, reached from a thing on screen. The
+   * set of people you may draw must never be rendered as a list to pick from. */
+  assert.match(app, /data-person="\$\{p\.created_by\}"/,
+    'the pin byline is no longer a way through to the person who dropped it');
+  assert.match(app, /data-person="\$\{n\.created_by\}"/,
+    'the note byline is no longer a way through to whoever wrote it');
+  assert.equal(/people\.map\(/.test(app), false,
+    'something is rendering the whole people array — that is the roster this design does not have');
+});
+
+test('the person panel shows YOUR groups, never the other way round', () => {
+  const fn = app.slice(app.indexOf('function personGroupsHtml'), app.indexOf('async function openPerson'));
+  // Your groups are the rows; the other person is only a key looked up inside
+  // them. The inverse — their groups, listed for you — is the thing that must
+  // never exist, and it would have to read from something other than `groups`.
+  assert.match(fn, /^\s*return groups\.map/m,
+    'the rows are no longer built from YOUR groups');
+  assert.match(fn, /g\.members\.includes\(userId\)/,
+    'the switch is no longer showing whether this person is in a group of yours');
+});
+
+test('a person is loaded fresh, and a slow answer cannot land on the wrong face', () => {
+  const fn = app.slice(app.indexOf('async function openPerson'), app.indexOf('async function togglePersonGroup'));
+  assert.match(fn, /if \(personShown !== userId\) return;/,
+    'two bylines tapped quickly will paint one person\'s memberships under the other one\'s name');
+});

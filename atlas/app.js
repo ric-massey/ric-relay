@@ -960,9 +960,15 @@ async function refreshLocationState() {
 }
 
 /* ── everybody else, and their faces ────────────────────────────────────
- * Three profiles, fetched once and mirrored, rather than an avatar column
- * threaded through pins_with_author, pin_notes_with_author and every view added
- * after them. A name belongs on the row it was written with — a note says who
+ * The people the app may have to draw, fetched once and mirrored, rather than
+ * an avatar column threaded through pins_with_author, pin_notes_with_author and
+ * every view added after them.
+ *
+ * This used to be everybody, because profiles was readable by anybody signed
+ * in. It is not any more: the policy answers people_i_can_draw() — you, your
+ * group members, the owners of groups you are in, and whoever wrote something
+ * you can see. So this is a set that gets smaller as pins get narrower, and
+ * nothing may treat it as a roster or show it as a list. A name belongs on the row it was written with — a note says who
  * wrote it, that day, and stays true if they are renamed later. A FACE is the
  * opposite: it is whoever that person is right now, so it is looked up by id at
  * the moment of drawing and there is exactly one place it can be wrong.
@@ -1508,10 +1514,15 @@ function openPin(p) {
 
 function metaHtml(p, author) {
   const bits = [];
-  if (author) bits.push(`dropped by <b>${escapeHtml(author)}</b>`);
+  // The face and the name together are one target, and it opens the person.
+  // Somebody's username is the only way to put them in a group, and until this
+  // existed there was nowhere in the app to find out what anybody's was.
+  if (author) {
+    bits.push(`dropped by <button class="byline" data-person="${p.created_by}">`
+      + `${avatarHtml(p.created_by, author, 'avatar-sm')}<b>${escapeHtml(author)}</b></button>`);
+  }
   if (p.created_at) bits.push(fmtDate(p.created_at));
-  const face = author ? avatarHtml(p.created_by, author, 'avatar-sm') : '';
-  const head = bits.length ? `${face}${bits.join(' &middot; ')}` : 'new pin';
+  const head = bits.length ? bits.join(' &middot; ') : 'new pin';
   const acc = p.accuracy_m ? ` &middot; &plusmn;${Math.round(p.accuracy_m)} m` : '';
   const pending = p._pending
     ? '<br><span class="note-warn">' + icon('i-alert', 'icon-sm')
@@ -1951,8 +1962,9 @@ function noteHtml(n) {
   const mine = n.created_by === me.id;
 
   const head = `<div class="note-head">
-      ${avatarHtml(n.created_by, name, 'avatar-sm')}
-      <b>${who}</b><span>${fmtDate(n.created_at)}${
+      <button class="byline" data-person="${n.created_by}">
+        ${avatarHtml(n.created_by, name, 'avatar-sm')}<b>${who}</b></button>
+      <span>${fmtDate(n.created_at)}${
         wasEdited(n) ? ` &middot; edited ${fmtDate(n.updated_at)}` : ''}</span>
       ${mine && editingNote !== n.id ? `
         <button class="note-photo" data-photo="${n.id}">photo</button>
@@ -3778,6 +3790,111 @@ async function saveMyName() {
 }
 
 /* The monogram, kept in one place so signing in and renaming both use it. */
+/* ── one person ──────────────────────────────────────────────────────────
+ * Reached by tapping a face or a name on something somebody made.
+ *
+ * It exists because of a dead end. Putting somebody in a group needs their
+ * exact username — that is the whole design, a name has to be handed to you
+ * rather than found — and nothing in the app was handing it to you. Bylines
+ * carry a display name, and a display name is deliberately not searchable, so
+ * the first person you ever tried to add was unaddable.
+ *
+ * Showing it here gives nothing away. You are looking at a pin they dropped, so
+ * you can already read their profile; this is that same fact, in the place you
+ * are already looking, with the string you would have had to type turned into a
+ * switch. And it is one person, never a list — the set of people you may draw
+ * must never be enumerated.
+ */
+let personShown = null;
+
+function personGroupsHtml(userId) {
+  if (!groups.length) {
+    return `<p class="hint">You have no groups yet. Make one below and this
+      person can go straight into it.</p>
+      <button id="person-to-groups" class="btn-ghost wide">my groups…</button>`;
+  }
+  return groups.map((g) => `<label class="switch">
+      <span>${escapeHtml(g.name)}</span>
+      <input type="checkbox" data-group="${g.id}"${g.members.includes(userId) ? ' checked' : ''}>
+      <span class="switch-track"></span>
+    </label>`).join('');
+}
+
+async function openPerson(userId) {
+  if (!userId) return;
+  personShown = userId;
+  const p = personById(userId) || { id: userId };
+  const nm = personName(p);
+
+  $('person-avatar').dataset.avatar = userId;
+  $('person-avatar').textContent = initialOf(nm);
+  $('person-name').textContent = nm;
+  $('person-handle').textContent = p.username ? `@${p.username}` : '—';
+  $('person-error').hidden = true;
+  openPanel('person');
+  paintAvatars($('person'));
+
+  // Your own face is a shortcut to your own settings, not a thing to file.
+  if (userId === me?.id) {
+    $('person-body').innerHTML =
+      '<p class="hint">This is you. Everybody sees this name and this face on '
+      + 'every pin you drop — change either in settings.</p>';
+    return;
+  }
+  $('person-body').innerHTML = `<h3 class="detail-head">in my groups</h3>
+    <p class="hint">Groups are how you say who sees a place. Nobody is ever told
+      which of your groups they are in, or that they are in one.</p>
+    <div id="person-groups"></div>`;
+
+  if (!online()) {
+    $('person-groups').innerHTML =
+      '<p class="hint">Groups need signal. They decide who can see your places, '
+      + 'so they are never changed on the phone alone and caught up later.</p>';
+    return;
+  }
+  $('person-groups').innerHTML = '<p class="hint">loading…</p>';
+  try {
+    await loadGroups();
+    // Two bylines tapped in quick succession: the first request comes back
+    // after the second has already redrawn the panel, and without this it
+    // paints the first person's memberships under the second person's name.
+    if (personShown !== userId) return;
+    $('person-groups').innerHTML = personGroupsHtml(userId);
+  } catch (e) {
+    if (personShown !== userId) return;
+    $('person-groups').innerHTML = '';
+    $('person-error').textContent = e.message;
+    $('person-error').hidden = false;
+  }
+}
+
+/* A switch that flicks back is the only honest failure here: the box says a
+ * thing about the world, so if the world did not change, neither may it. */
+async function togglePersonGroup(box) {
+  const groupId = box.dataset.group;
+  const err = $('person-error');
+  err.hidden = true;
+  if (!online()) {
+    box.checked = !box.checked;
+    err.textContent = 'this one needs signal';
+    err.hidden = false;
+    return;
+  }
+  box.disabled = true;
+  const { error } = box.checked
+    ? await db.from('group_members').insert({ group_id: groupId, user_id: personShown })
+    : await db.from('group_members').delete()
+        .eq('group_id', groupId).eq('user_id', personShown);
+  box.disabled = false;
+  if (error) {
+    box.checked = !box.checked;
+    err.textContent = error.message;
+    err.hidden = false;
+    return;
+  }
+  await loadGroups();
+}
+
 /* ── groups ──────────────────────────────────────────────────────────────
  * A group is a list of people you keep, so that saying who may see a place is
  * one tap instead of picking names one at a time.
@@ -3839,9 +3956,9 @@ function groupHtml(g) {
   // group's life — so it says what to do next rather than reading as a failure.
   const body = members
     ? `<ul class="group-members">${members}</ul>`
-    : `<p class="hint">Nobody in this one yet. Add somebody by their username
-         below — it is the only way to find a person, and they have to have told
-         you what theirs is.</p>`;
+    : `<p class="hint">Nobody in this one yet. Two ways in: type somebody's
+         username below, or tap their name on a pin they dropped and use the
+         switches there.</p>`;
 
   return `<section class="group" data-group="${g.id}">
     <header class="group-head">
@@ -3866,16 +3983,34 @@ function groupHtml(g) {
 
 function renderGroups() {
   const list = $('groups-list');
+  // Every write redraws the whole list, which is cheap and always truthful. But
+  // a username half typed into another card is not the server's to throw away,
+  // and losing it silently is the kind of thing you blame yourself for.
+  const typed = new Map();
+  list.querySelectorAll('.group').forEach((sect) => {
+    const v = sect.querySelector('.group-add-user')?.value;
+    if (v) typed.set(sect.dataset.group, v);
+  });
+
   list.innerHTML = groups.length
     ? groups.map(groupHtml).join('')
     : `<p class="hint">No groups yet. Make one above — a group is just a name and
          a list of people, and you can have as many as you keep track of.</p>`;
+
+  typed.forEach((v, id) => {
+    const box = list.querySelector(`.group[data-group="${id}"] .group-add-user`);
+    if (box) box.value = v;
+  });
   paintAvatars(list);
 }
 
 async function openGroups() {
   openPanel('groups');
   groupsSay('');
+  // The other half of the dead end: you cannot tell somebody how to add you if
+  // you do not know what you are called either.
+  $('groups-me-handle').textContent = me?.username ? `@${me.username}` : '—';
+  $('groups-me-unset').hidden = !me?.must_choose_username;
   if (!online()) {
     $('groups-list').innerHTML =
       '<p class="hint">Groups need signal. They decide who can see your places, '
@@ -4123,6 +4258,36 @@ $('signout').addEventListener('click', signOut);
 $('me-save').addEventListener('click', saveMyName);
 $('me-user-save').addEventListener('click', saveMyUsername);
 $('groups-open').addEventListener('click', () => { closePanel('settings'); openGroups(); });
+$('person-close').addEventListener('click', () => closePanel('person'));
+
+/* One listener for every byline in the app, present and future. A pin's author,
+ * a note's author, anything drawn with data-person on it. */
+document.addEventListener('click', (e) => {
+  const by = e.target.closest('.byline');
+  if (by) { e.preventDefault(); openPerson(by.dataset.person); }
+});
+
+$('person').addEventListener('change', (e) => {
+  if (e.target.matches('#person-groups input[type=checkbox]')) togglePersonGroup(e.target);
+});
+$('person').addEventListener('click', (e) => {
+  if (e.target.closest('#person-to-groups')) { closePanel('person'); openGroups(); }
+});
+
+/* A username is a thing you say out loud or send to somebody, so both places it
+ * appears are a copy button rather than text you have to select on a phone. */
+async function copyHandle(el) {
+  const handle = (el.textContent || '').replace(/^@/, '');
+  if (!handle || handle === '—') return;
+  try {
+    await navigator.clipboard.writeText(handle);
+    toast(`copied @${handle}`);
+  } catch {
+    toast('could not copy — read it out instead', true);
+  }
+}
+$('person-handle').addEventListener('click', (e) => copyHandle(e.currentTarget));
+$('groups-me-handle').addEventListener('click', (e) => copyHandle(e.currentTarget));
 $('groups-close').addEventListener('click', () => closePanel('groups'));
 $('group-new-go').addEventListener('click', newGroup);
 $('group-new-name').addEventListener('keydown', (e) => {

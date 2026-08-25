@@ -762,6 +762,44 @@
   </div>
 
   <!-- county parcel lookups -->
+  <!-- One person, reached by tapping their face or their name on something they
+       made. It exists because of a dead end: putting somebody in a group needs
+       their exact username, and nothing in the app was telling you what anybody's
+       was. Bylines carry a display name, and a display name is deliberately not
+       searchable.
+
+       Showing it here gives nothing away. You are looking at a pin they dropped
+       or a note they wrote, so you can already read their profile — this is the
+       same fact, in the one place you are already looking, with the thing you
+       would have had to type turned into a switch you can flick. -->
+  <div id="person" class="panel" hidden>
+    <div class="panel-head">
+      <strong>person</strong>
+      <button id="person-close" class="icon-btn" aria-label="Close">
+        <svg class="icon"><use href="#i-close"/></svg>
+      </button>
+    </div>
+    <div class="panel-body pad">
+      <div class="me-face">
+        <span id="person-avatar" class="avatar avatar-lg" data-avatar=""></span>
+        <div class="person-who">
+          <b id="person-name"></b>
+          <button id="person-handle" class="handle" type="button"
+                  title="copy this username"></button>
+        </div>
+      </div>
+
+      <div id="person-body">
+        <h3 class="detail-head">in my groups</h3>
+        <p class="hint">Groups are how you say who sees a place. Nobody is ever
+          told which of your groups they are in, or that they are in one.</p>
+        <div id="person-groups"></div>
+      </div>
+
+      <p id="person-error" class="gate-error" role="alert" hidden></p>
+    </div>
+  </div>
+
   <!-- Groups. A list of people you keep, so that saying who may see a place is
        one tap rather than picking names one at a time. Its own panel rather than
        a block inside settings: this is a thing you come to on purpose and then
@@ -775,11 +813,19 @@
     </div>
     <div class="panel-body pad">
       <p class="lede">A group is a list of people you keep, so you can say who
-        sees a place without picking names one at a time.</p>
+        sees a place without picking names one at a time. You can also put
+        somebody in one by tapping their name on a pin they dropped.</p>
       <p class="hint"><b>They are yours.</b> Nobody can see your groups, what you
         called them, or that they are in one. What people do see is who else can
         see a particular pin — that is a fact about the pin, and it never says
         which group anybody came from.</p>
+
+      <p class="you-are">people add you by typing
+        <button id="groups-me-handle" class="handle" type="button"
+                title="copy your username"></button></p>
+      <p id="groups-me-unset" class="hint hint-warn" hidden>That is the name the
+        account was born with, not one you picked. Change it in settings — it is
+        what anybody adding you has to type.</p>
 
       <div class="group-new">
         <label class="field"><span>new group</span>

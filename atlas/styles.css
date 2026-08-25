@@ -1102,6 +1102,30 @@ button { cursor: pointer; border: none; background: none; }
   font-size: var(--t-xs); color: var(--ink-mute); font-weight: 600;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* A name and a face on something somebody made, and a way in to that person.
+   It has to read as the byline it replaced, not as a button — so no chrome
+   until it is touched. */
+.byline {
+  display: inline-flex; align-items: center; gap: var(--s-1);
+  background: none; border: none; padding: 0; margin: 0;
+  font: inherit; color: inherit; cursor: pointer;
+}
+.byline b { border-bottom: 1px dotted var(--ink-mute); }
+.byline:active b { border-bottom-color: var(--accent); color: var(--accent); }
+
+/* A username, wherever one is shown to be read off or handed over. Monospaced
+   because it is a string somebody has to type exactly, and typing it wrong is
+   the difference between finding a person and finding nobody. */
+.handle {
+  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  font-size: var(--t-sm); font-weight: 700;
+  color: var(--accent); background: none; border: none; padding: 0;
+  cursor: pointer; text-align: left;
+}
+.handle:active { opacity: 0.6; }
+.person-who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.you-are { font-size: var(--t-sm); font-weight: 600; color: var(--ink-dim); }
+
 /* ── groups ──────────────────────────────────────────────────────────────
    A card per group rather than a row: a group is a name, a headcount and a
    list of faces, and all three want to be read at a glance from the same
@@ -1219,6 +1243,7 @@ button { cursor: pointer; border: none; background: none; }
 }
 .note-head b { color: var(--ink); font-weight: 800; font-size: var(--t-sm); }
 .note-head .avatar { flex: none; margin-right: 0; }
+.note-head .byline { flex: none; }
 .note-head span { flex: 1; }
 .note-del {
   background: none; border: none; color: var(--ink-mute);
