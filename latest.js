@@ -190,15 +190,35 @@ window.RELAY_LATEST = [
     const current = window.RELAY_LATEST_CLIMB;
     if (current && String(current.date) >= String(newest.date)) return;
 
-    const sent = newest.routes.filter((r) => r.outcome === "sent");
-    const names = sent.length ? sent.map((r) => r.name) : newest.routes.map((r) => r.name);
-    if (!names.length && !newest.area) return;
+    /* Worded the way build-data.py words the static one, because the two take
+       turns filling the same banner and a day that read differently for having
+       been logged from a phone would be the tell. Three things had to change:
+       a ten-route day listed all ten names, a day with nothing sent still said
+       "new routes sent", and "0 sent" was a description it could print.
+
+       The one case that can't be reproduced here is "first time at X" — that
+       needs every area ever visited, and this file deliberately doesn't load
+       the 200 kB ledger to decorate one line. A first visit logged from a
+       phone reads as an ordinary day until it's filed. */
+    const routes = newest.routes.filter((r) => !r.unknown);
+    const sent = routes.filter((r) => r.outcome === "sent");
+    const worked = routes.filter((r) => r.outcome === "attempt");
+    if (!routes.length && !newest.area) return;
+
+    const headline = [...new Set(sent.map((r) => r.name))].slice(0, 3).join(", ");
+    const bits = [
+      sent.length ? `${sent.length} sent` : "",
+      worked.length ? `${worked.length} worked` : "",
+      newest.people.length ? `with ${newest.people.join(", ")}` : ""
+    ].filter(Boolean);
 
     window.RELAY_LATEST_CLIMB = {
       date: newest.date,
-      kind: "new routes sent",
-      title: `${names.join(", ")}${newest.area ? ` — ${newest.area}` : ""}`,
-      description: `${sent.length} sent${newest.people.length ? ` · with ${newest.people.join(", ")}` : ""}`,
+      kind: sent.length ? "new routes sent" : "new climbing day",
+      title: sent.length
+        ? `${headline}${newest.area ? ` — ${newest.area}` : ""}`
+        : `A day at ${newest.area || "the crag"}`,
+      description: bits.join(" · ") || "Another day on rock.",
       href: `projects/climbing/index.html#trip-${newest.date}`
     };
     installLatestBanners();

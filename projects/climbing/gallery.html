@@ -12,7 +12,7 @@
   <style>
     :root {
       --bar: #3a5a40; --bg: #f4f1e9; --card: #fff; --ink: #26241f;
-      --soft: #6f6a5f; --line: #e2ddd0; --clay: #b5502a; --star: #e0a021;
+      --soft: #6f6a5f; --line: #e2ddd0; --clay: #b14f2a; --star: #e0a021;
     }
     * { box-sizing: border-box; margin: 0; }
     body {
@@ -74,7 +74,7 @@
       border-radius: 999px; font-size: 0.69rem; font-weight: 700; letter-spacing: .06em;
       text-transform: uppercase; background: rgba(20,18,14,.72); color: #fff;
     }
-    .shot .flag.todo { background: rgba(181,80,42,.9); }
+    .shot .flag.todo { background: #b14f2a; }
     .shot:hover { border-color: var(--bar); }
     .shot:focus-visible { outline: 2px solid var(--bar); outline-offset: 2px; }
 
@@ -123,13 +123,15 @@
 
     <div class="controls">
       <input type="search" class="search" id="search" autocomplete="off"
+             aria-label="Search the gallery"
              placeholder="Search a route, a crag, a caption or a year">
     </div>
     <div class="chips" id="chips"></div>
     <p class="count" id="count"></p>
     <div id="grid" class="grid"></div>
 
-    <footer>Captions live in <code>photos.md</code> — run <code>import-photos.py</code> after adding files.</footer>
+    <footer>Captions live in <code>photos.md</code> — run <code>import-photos.py</code> after adding files.
+      Anything sent up from a crag arrives without one, under <em>Needs a label</em>.</footer>
   </div>
 
   <dialog class="viewer" id="viewer">
@@ -140,10 +142,13 @@
 
   <script src="climbs-data.js"></script>
   <script src="photos-data.js"></script>
+  <script src="climb-vocab.js"></script>
+  <script src="climb-parse.js"></script>
+  <script src="web-trips.js"></script>
+  <script src="climb-media.js"></script>
   <script src="../relay-return.js" data-home="../../index.html"></script>
   <script>
-  (() => {
-    const PHOTOS = window.CLIMBING_PHOTOS || [];
+  (async () => {
     const grid = document.getElementById("grid");
     const countEl = document.getElementById("count");
     const chipsEl = document.getElementById("chips");
@@ -159,6 +164,55 @@
     const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => (
       { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]
     ));
+
+    /* ── two piles of pictures, one gallery ──
+       photos-data.js is the imported set: files dropped into photos/, captioned
+       in photos.md, committed. The other pile is whatever went up from a phone
+       at the crag, which lives in R2 behind the log service and never touches
+       this repo.
+
+       This page was the last climbing page that couldn't see the second pile.
+       Every other one already merged them — the room shows the newest day's
+       clip, the deep log puts them on the day card — so the gallery, the page
+       whose entire job is "show me the pictures", was the one place a video you
+       shot that afternoon was missing from. It reads the same two sources they
+       do, and softly: no service, no uploads, and the imported set renders
+       exactly as it did before.
+
+       An upload arrives with no route and no caption — nothing at a crag asks
+       for them — so it lands under "Needs a label", which is what that filter
+       has always been for. */
+    async function uploaded() {
+      if (!window.ClimbMedia) return [];
+      const DATA = window.CLIMBING_DATA;
+      if (DATA && window.WebTrips) await WebTrips.merge(DATA);
+      const trips = (DATA && DATA.trips) || [];
+      const days = await ClimbMedia.load();
+      return Object.keys(days).flatMap((date) => {
+        const trip = trips.find((t) => t.date === date) || null;
+        return ClimbMedia.of(date).map((m) => ({
+          file: m.name || m.id,
+          src: m.src,
+          type: m.kind === "video" ? "video" : "photo",
+          date,
+          route: m.route || null,
+          caption: m.caption || null,
+          area: trip ? trip.area : null,
+          tripDate: trip ? trip.date : null,
+          approx: false,
+          /* What else went down that day — the gallery searches on it, so a
+             clip finds itself by the name of the route next to it. */
+          tripRoutes: trip ? trip.routes.map((r) => r.name).filter(Boolean) : [],
+          fromWeb: true
+        }));
+      });
+    }
+
+    /* Newest first, undated last — the order photos-data.js already comes in,
+       kept for the merged list so nothing jumps about. */
+    const PHOTOS = [...(window.CLIMBING_PHOTOS || []), ...await uploaded()]
+      .sort((a, b) => (a.date ? 0 : 1) - (b.date ? 0 : 1) ||
+        String(b.date || "").localeCompare(String(a.date || "")));
 
     if (!PHOTOS.length) {
       countEl.textContent = "";

@@ -118,6 +118,23 @@
       DATA.index.areas = [...areas].sort(byName);
     }
 
+    /* ── the tick list ──
+       build-data.py ties the wish list back to the log: each dream route knows
+       whether he has been on it, how many goes, and when. It does that against
+       the most-climbed table, which has just changed — so without this, getting
+       on a project at the crag left "Dream Routes" still saying "not yet" about
+       the thing he spent the afternoon on. */
+    if (DATA.todo && DATA.index) {
+      const byRoute = {};
+      DATA.index.mostClimbed.forEach(r => { byRoute[r.name.toLowerCase()] = r; });
+      DATA.todo.forEach(item => {
+        const m = byRoute[ClimbParse.canonicalRoute(item.name).toLowerCase()];
+        item.tried = m ? {
+          ascents: m.ascents, days: m.days, sent: m.sends > 0, lastDate: m.lastDate
+        } : null;
+      });
+    }
+
     if (DATA.stats) {
       /* Counted the way build-data.py counts: a line that records a day without
          recording a climb ("2 other climbs, not sure what they were") is not a
