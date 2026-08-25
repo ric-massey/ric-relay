@@ -646,6 +646,7 @@
         <dl class="owner-rows me-facts">
           <div><dt>sign-in</dt><dd id="me-email">—</dd></div>
         </dl>
+        <button id="groups-open" class="btn-ghost wide">my groups…</button>
         <button id="signout" class="btn-ghost wide">
           <svg class="icon icon-sm"><use href="#i-logout"/></svg>sign out
         </button>
@@ -761,6 +762,38 @@
   </div>
 
   <!-- county parcel lookups -->
+  <!-- Groups. A list of people you keep, so that saying who may see a place is
+       one tap rather than picking names one at a time. Its own panel rather than
+       a block inside settings: this is a thing you come to on purpose and then
+       work in for a minute, not a switch you flip on the way past. -->
+  <div id="groups" class="panel" hidden>
+    <div class="panel-head">
+      <strong>my groups</strong>
+      <button id="groups-close" class="icon-btn" aria-label="Close">
+        <svg class="icon"><use href="#i-close"/></svg>
+      </button>
+    </div>
+    <div class="panel-body pad">
+      <p class="lede">A group is a list of people you keep, so you can say who
+        sees a place without picking names one at a time.</p>
+      <p class="hint"><b>They are yours.</b> Nobody can see your groups, what you
+        called them, or that they are in one. What people do see is who else can
+        see a particular pin — that is a fact about the pin, and it never says
+        which group anybody came from.</p>
+
+      <div class="group-new">
+        <label class="field"><span>new group</span>
+          <input id="group-new-name" type="text" maxlength="40"
+                 autocapitalize="none" spellcheck="false"
+                 placeholder="hunting, family, the boys"></label>
+        <button id="group-new-go" class="btn-primary">make it</button>
+      </div>
+      <p id="groups-error" class="gate-error" role="alert" hidden></p>
+
+      <div id="groups-list" class="groups-list"></div>
+    </div>
+  </div>
+
   <div id="sources" class="panel" hidden>
     <div class="panel-head">
       <strong>owner names by county</strong>

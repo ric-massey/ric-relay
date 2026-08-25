@@ -1102,6 +1102,54 @@ button { cursor: pointer; border: none; background: none; }
   font-size: var(--t-xs); color: var(--ink-mute); font-weight: 600;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* ── groups ──────────────────────────────────────────────────────────────
+   A card per group rather than a row: a group is a name, a headcount and a
+   list of faces, and all three want to be read at a glance from the same
+   place. Rows would put the faces somewhere else. */
+.group-new { display: flex; align-items: flex-end; gap: var(--s-2); }
+.group-new .field { flex: 1; min-width: 0; }
+
+.groups-list { display: flex; flex-direction: column; gap: var(--s-3); margin-top: var(--s-4); }
+
+.group {
+  border: var(--b) solid var(--hair); border-radius: var(--r-md);
+  padding: var(--s-3); display: flex; flex-direction: column; gap: var(--s-2);
+}
+.group-head { display: flex; align-items: center; gap: var(--s-2); }
+/* The name IS the input. A group is a thing you rename in passing, and a pencil
+   you have to find first makes it feel like a form you are filling in. */
+.group-name {
+  flex: 1; min-width: 0; border: none; background: none; padding: 0;
+  font-size: var(--t-md); font-weight: 800; color: var(--ink);
+  font-family: inherit;
+}
+.group-name:focus { outline: none; box-shadow: 0 2px 0 var(--accent); }
+.group-count { font-size: var(--t-xs); font-weight: 700; color: var(--ink-mute); }
+
+.group-members { list-style: none; display: flex; flex-direction: column; gap: var(--s-1); }
+.group-member { display: flex; align-items: center; gap: var(--s-2); }
+.gm-who { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.gm-who small { font-size: var(--t-xs); color: var(--ink-mute); font-weight: 600; }
+.gm-rm { flex: none; }
+
+.group-add { display: flex; align-items: center; gap: var(--s-2); }
+.group-add-user {
+  flex: 1; min-width: 0;
+  border: var(--b) solid var(--hair); border-radius: var(--r-sm);
+  background: var(--panel-2); color: var(--ink);
+  font-family: inherit; font-size: var(--t-sm); padding: var(--s-2);
+}
+.group-said { font-size: var(--t-sm); font-weight: 600; color: var(--ink-dim); }
+
+/* The one error line at the top of the panel doubles as the one confirmation
+   line, because they are never both true and a screen with two report slots
+   makes you look in two places. It borrows .gate-error, so the wash and the
+   shake have to be taken back off as well as the colour — a green word on a red
+   card reads as a failure somebody has been polite about. */
+#groups-error.is-good {
+  color: var(--good); background: var(--good-wash); animation: none;
+}
+
 .add-source {
   border: var(--b) solid var(--hair); border-radius: var(--r-md); padding: var(--s-3);
   display: flex; flex-direction: column; gap: var(--s-3);

@@ -3778,6 +3778,275 @@ async function saveMyName() {
 }
 
 /* The monogram, kept in one place so signing in and renaming both use it. */
+/* ── groups ──────────────────────────────────────────────────────────────
+ * A group is a list of people you keep, so that saying who may see a place is
+ * one tap instead of picking names one at a time.
+ *
+ * It is yours and it is invisible. Nobody can read the row — not even the
+ * people in it — because what a group is FOR is building an audience, and the
+ * audience is the part everybody gets to see: "these seven people can see this
+ * pin". The tool stays private so that two of your people never find out how
+ * you have them filed. Enforced in the policies, not here: `groups` and
+ * `group_members` are owner-only all the way down, so a member asking for their
+ * own membership gets nothing back.
+ *
+ * Nothing on this screen is queued for later. A group changes who can see your
+ * places, so it either reached the server or it has not happened — the same
+ * rule your name and your face already follow, and for a stronger reason.
+ */
+let groups = [];       // [{ id, name, created_at, members: [user_id] }]
+
+async function loadGroups() {
+  const { data, error } = await db.from('groups')
+    .select('id, name, created_at, group_members(user_id)')
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(error.message);
+  groups = (data || []).map((g) => ({
+    id: g.id,
+    name: g.name,
+    created_at: g.created_at,
+    members: (g.group_members || []).map((m) => m.user_id),
+  }));
+}
+
+const personById = (id) => people.find((p) => p.id === id) || null;
+const personName = (p) => (p && (p.display_name || p.username)) || 'somebody';
+
+function groupsSay(msg, bad = true) {
+  const el = $('groups-error');
+  el.textContent = msg || '';
+  el.hidden = !msg;
+  el.classList.toggle('is-good', !bad);
+}
+
+function memberHtml(g, id) {
+  const p = personById(id);
+  const nm = personName(p);
+  return `<li class="group-member">
+    ${avatarHtml(id, nm)}
+    <span class="gm-who"><b>${escapeHtml(nm)}</b>
+      <small>@${escapeHtml(p?.username || '—')}</small></span>
+    <button class="icon-btn gm-rm" data-user="${id}"
+            aria-label="Take ${escapeHtml(nm)} out of ${escapeHtml(g.name)}">
+      <svg class="icon icon-sm"><use href="#i-close"/></svg>
+    </button>
+  </li>`;
+}
+
+function groupHtml(g) {
+  const members = g.members.map((id) => memberHtml(g, id)).join('');
+  // An empty group is not a broken one — it is the normal first second of a
+  // group's life — so it says what to do next rather than reading as a failure.
+  const body = members
+    ? `<ul class="group-members">${members}</ul>`
+    : `<p class="hint">Nobody in this one yet. Add somebody by their username
+         below — it is the only way to find a person, and they have to have told
+         you what theirs is.</p>`;
+
+  return `<section class="group" data-group="${g.id}">
+    <header class="group-head">
+      <input class="group-name" value="${escapeHtml(g.name)}" maxlength="40"
+             autocapitalize="none" spellcheck="false"
+             aria-label="What this group is called">
+      <button class="linkish group-del">delete</button>
+    </header>
+    ${g.members.length
+      ? `<p class="group-count">${g.members.length === 1 ? '1 person' : `${g.members.length} people`}</p>`
+      : ''}
+    ${body}
+    <div class="group-add">
+      <input class="group-add-user" type="text" maxlength="20" autocapitalize="none"
+             autocorrect="off" spellcheck="false" placeholder="username"
+             aria-label="Username of somebody to add">
+      <button class="btn-ghost group-add-go">add</button>
+    </div>
+    <p class="group-said" hidden></p>
+  </section>`;
+}
+
+function renderGroups() {
+  const list = $('groups-list');
+  list.innerHTML = groups.length
+    ? groups.map(groupHtml).join('')
+    : `<p class="hint">No groups yet. Make one above — a group is just a name and
+         a list of people, and you can have as many as you keep track of.</p>`;
+  paintAvatars(list);
+}
+
+async function openGroups() {
+  openPanel('groups');
+  groupsSay('');
+  if (!online()) {
+    $('groups-list').innerHTML =
+      '<p class="hint">Groups need signal. They decide who can see your places, '
+      + 'so they are never changed on the phone alone and caught up later.</p>';
+    return;
+  }
+  $('groups-list').innerHTML = '<p class="hint">loading…</p>';
+  try {
+    await loadPeople();
+    await loadGroups();
+    renderGroups();
+  } catch (e) {
+    $('groups-list').innerHTML = '';
+    groupsSay(e.message);
+  }
+}
+
+/* Everything below reloads the whole list rather than patching a row in place.
+ * A group is a handful of rows and this screen is opened on purpose, so the
+ * round trip costs nothing you would notice — and it means the screen is always
+ * showing what the server actually holds rather than what we hoped it took. */
+async function afterGroupWrite(said) {
+  await loadGroups();
+  renderGroups();
+  if (said) groupsSay(said, false);
+}
+
+async function newGroup() {
+  const input = $('group-new-name');
+  const name = input.value.trim();
+  if (!name) { groupsSay('give it a name'); return; }
+  if (!online()) { groupsSay('this one needs signal'); return; }
+
+  const btn = $('group-new-go');
+  btn.disabled = true;
+  const { error } = await db.from('groups').insert({ owner: me.id, name });
+  btn.disabled = false;
+  // 23505 is the one-name-per-owner index. Say what it means rather than
+  // handing somebody the constraint name.
+  if (error) {
+    groupsSay(error.code === '23505' ? `you already have a group called "${name}"` : error.message);
+    return;
+  }
+  input.value = '';
+  await afterGroupWrite(`made "${name}"`);
+}
+
+async function renameGroup(id, name) {
+  const g = groups.find((x) => x.id === id);
+  if (!g || name === g.name) return;
+  if (!name) { renderGroups(); return; }      // put the old one back
+  if (!online()) { groupsSay('this one needs signal'); renderGroups(); return; }
+
+  const { error } = await db.from('groups').update({ name }).eq('id', id);
+  if (error) {
+    groupsSay(error.code === '23505' ? `you already have a group called "${name}"` : error.message);
+    renderGroups();
+    return;
+  }
+  await afterGroupWrite('renamed');
+}
+
+async function deleteGroup(id) {
+  const g = groups.find((x) => x.id === id);
+  if (!g) return;
+  // Worth a sentence about consequence rather than "are you sure": once pins
+  // point at groups, the pins that used this one narrow rather than break.
+  if (!confirm(`Delete "${g.name}"? The people in it are not affected — you just`
+    + ' stop having them in a list.')) return;
+  if (!online()) { groupsSay('this one needs signal'); return; }
+
+  const { error } = await db.from('groups').delete().eq('id', id);
+  if (error) { groupsSay(error.message); return; }
+  await afterGroupWrite(`deleted "${g.name}"`);
+}
+
+/* Adding somebody is two steps on purpose: find out who that username is, then
+ * put them in. The lookup is the only way to find a person in ATLAS — exact
+ * username, one row, nothing that is not already on a byline — and it exists so
+ * that nobody can be discovered by their real name or their email address. */
+async function addToGroup(id, handle, sect) {
+  const said = sect.querySelector('.group-said');
+  said.hidden = true;
+  const want = handle.trim().toLowerCase();
+  if (!want) { said.textContent = 'type a username'; said.hidden = false; return; }
+  if (!online()) { said.textContent = 'this one needs signal'; said.hidden = false; return; }
+
+  const btn = sect.querySelector('.group-add-go');
+  btn.disabled = true;
+  try {
+    const { data, error } = await db.rpc('lookup_username', { handle: want });
+    if (error) throw new Error(error.message);
+    const who = data?.[0];
+    // Deliberately the same answer for "no such person" and "that name was let
+    // go": a retired username finds nobody, which is the whole point of never
+    // handing one on.
+    if (!who) { said.textContent = `nobody here is @${want}`; said.hidden = false; return; }
+    if (who.id === me.id) { said.textContent = 'that is you — you always see your own pins'; said.hidden = false; return; }
+
+    const g = groups.find((x) => x.id === id);
+    if (g?.members.includes(who.id)) {
+      said.textContent = `${personName(who)} is already in it`;
+      said.hidden = false;
+      return;
+    }
+
+    const ins = await db.from('group_members').insert({ group_id: id, user_id: who.id });
+    if (ins.error) throw new Error(ins.error.message);
+    await loadPeople();
+    await afterGroupWrite(`added ${personName(who)}`);
+  } catch (e) {
+    said.textContent = e.message;
+    said.hidden = false;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function removeFromGroup(id, userId) {
+  const g = groups.find((x) => x.id === id);
+  const nm = personName(personById(userId));
+  if (!g || !confirm(`Take ${nm} out of "${g.name}"?`)) return;
+  if (!online()) { groupsSay('this one needs signal'); return; }
+
+  const { error } = await db.from('group_members')
+    .delete().eq('group_id', id).eq('user_id', userId);
+  if (error) { groupsSay(error.message); return; }
+  await afterGroupWrite(`took ${nm} out`);
+}
+
+/* One listener for the whole list rather than rebinding every row on every
+ * render, which is also what makes re-rendering after each write cheap. */
+function wireGroups() {
+  const list = $('groups-list');
+
+  list.addEventListener('click', (e) => {
+    const sect = e.target.closest('.group');
+    if (!sect) return;
+    const id = sect.dataset.group;
+    if (e.target.closest('.group-del')) return void deleteGroup(id);
+    const rm = e.target.closest('.gm-rm');
+    if (rm) return void removeFromGroup(id, rm.dataset.user);
+    if (e.target.closest('.group-add-go')) {
+      return void addToGroup(id, sect.querySelector('.group-add-user').value, sect);
+    }
+  });
+
+  // Enter in either box does the obvious thing, because a phone keyboard's
+  // "go" is nearer than a button.
+  list.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const sect = e.target.closest('.group');
+    if (!sect) return;
+    if (e.target.matches('.group-add-user')) {
+      e.preventDefault();
+      addToGroup(sect.dataset.group, e.target.value, sect);
+    } else if (e.target.matches('.group-name')) {
+      e.preventDefault();
+      e.target.blur();
+    }
+  });
+
+  // A name typed and not saved is a name you meant — the same rule the display
+  // name follows when you walk out of first-run.
+  list.addEventListener('blur', (e) => {
+    if (!e.target.matches('.group-name')) return;
+    const sect = e.target.closest('.group');
+    renameGroup(sect.dataset.group, e.target.value.trim());
+  }, true);
+}
+
 function whoamiChip() {
   const el = $('whoami');
   const name = (me?.display_name || me?.username || '?').trim();
@@ -3853,6 +4122,13 @@ $('whoami').addEventListener('click', () => { openPanel('settings'); renderCredi
 $('signout').addEventListener('click', signOut);
 $('me-save').addEventListener('click', saveMyName);
 $('me-user-save').addEventListener('click', saveMyUsername);
+$('groups-open').addEventListener('click', () => { closePanel('settings'); openGroups(); });
+$('groups-close').addEventListener('click', () => closePanel('groups'));
+$('group-new-go').addEventListener('click', newGroup);
+$('group-new-name').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); newGroup(); }
+});
+wireGroups();
 $('avatar-pick').addEventListener('click', () => $('avatar-input').click());
 $('avatar-input').addEventListener('change', onAvatarPick);
 $('avatar-clear').addEventListener('click', clearAvatar);

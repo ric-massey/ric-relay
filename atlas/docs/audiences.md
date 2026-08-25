@@ -4,12 +4,25 @@
 argument gets settled before the migrations do, because every mistake in the
 audience model becomes two mistakes once chat can move pins around.
 
-**Built so far:** usernames are chosen rather than cut off the front of an email
-address — `20260825150000_usernames_are_chosen.sql`, the `public.usernames`
-table, `set_username()`, and the settings field that drives it. That one had to
-go first: it was leaking half of everybody's sign-in address onto every byline,
-and it gets harder to fix with every account that joins. Everything else in this
-file is still an argument.
+**Built so far:**
+
+- **Usernames are chosen**, not cut off the front of an email address —
+  `20260825150000_usernames_are_chosen.sql`, `public.usernames`,
+  `set_username()`, and the settings field. That one had to go first: it was
+  leaking half of everybody's sign-in address onto every byline, and it gets
+  harder to fix with every account that joins.
+- **Groups** — `20260825170000_groups.sql`, `public.groups`,
+  `public.group_members`, `can_add_to_group()`, `lookup_username()`, and the
+  *my groups* panel. You can make them, name them, put people in by username and
+  take them out. They are owner-only in the policies, so a member cannot read
+  the group they are in.
+
+**Not built:** connections, `pin_audience`, the picker, chat. Which means the
+one thing on this page that is deliberately *not yet true* is the connection
+gate — today `can_add_to_group()` answers "anybody with an account, other than
+you", because there are three of us and we are brothers. It is a function so
+that the real check lands in one place. See
+[Why connection has to gate group membership](#why-connection-has-to-gate-group-membership).
 
 ---
 
