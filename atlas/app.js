@@ -57,6 +57,7 @@ let placeState = 'idle'; // idle | asking | done | failed | offline
 let placeAsk  = null;    // AbortController for the request in flight
 let placeTimer = null;
 let scope     = 'near';  // near | view | anywhere — which ground the search covers
+let navApp    = null;    // google | apple | waze — which app opens directions
 let widened   = false;   // the near search found nothing, so it asked the world
 let home      = null;    // { name, detail, lat, lng, bounds } — the town you named
 let firstRun  = false;   // the setup screen is up and the map is waiting
@@ -267,7 +268,16 @@ const kindLabel = (key) => KINDS.find((k) => k.key === key)?.label || 'other';
  * it is about what you are looking for today, not about anybody else. */
 let kindFilter = new Set(KIND_KEYS);
 const filtering = () => kindFilter.size !== KINDS.length;
-const passesFilter = (p) => kindFilter.has(kindOf(p));
+/* A parking spot is not a kind of place — it belongs to one. It shows when the
+ * pin it serves shows and hides when that hides, or you are left with a lone P
+ * in the woods and nothing on the map to explain it. */
+function passesFilter(p) {
+  if (isParking(p)) {
+    const parent = pins.find((x) => x.id === p.parent_id);
+    return !!parent && kindFilter.has(kindOf(parent));
+  }
+  return kindFilter.has(kindOf(p));
+}
 
 /* ── little helpers ─────────────────────────────────────────────────────── */
 
@@ -548,7 +558,7 @@ async function start() {
  * local, because those are facts about the phone rather than about you.
  */
 const SYNCED_PREFS = ['theme', 'accent', 'glass', 'basemap', 'overlays',
-                      'kindFilter', 'scope', 'sources', 'home'];
+                      'kindFilter', 'scope', 'sources', 'home', 'navApp'];
 
 let prefsTimer = null;
 
@@ -628,6 +638,19 @@ function initMap() {
     });
   }
 
+  // The thread from a pin to its parking spot. In the initial style rather than
+  // added later for the same reason as the overlays: addSource() before the
+  // style has loaded throws. Empty until a sheet is open.
+  sources[PARK_LINE_SRC] = { type: 'geojson', data: EMPTY_GEOJSON };
+  const parkLineLayer = {
+    id: 'park-line', type: 'line', source: PARK_LINE_SRC,
+    layout: { 'line-cap': 'round' },
+    paint: {
+      'line-color': '#ffffff', 'line-width': 2.4, 'line-opacity': 0.9,
+      'line-dasharray': [1.6, 1.6],
+    },
+  };
+
   // Overlays go into the initial style rather than being added afterwards:
   // addSource() before the style finishes loading throws. Terrain is listed
   // first so roads and labels draw on top of it rather than under.
@@ -651,6 +674,10 @@ function initMap() {
       });
     });
   }
+
+  // Last, so the thread is drawn over every base map and overlay. The markers
+  // are DOM and sit above all of it regardless.
+  layers.push(parkLineLayer);
 
   map = new maplibregl.Map({
     container: 'map',
@@ -1103,10 +1130,28 @@ async function loadPhotos() {
   photoRows = await local.getPhotos();
 }
 
+/* The dashed thread from a pin to its parking spot, drawn only for the pin you
+ * currently have open. Drawn for all of them at once it is a plate of spaghetti;
+ * drawn for none of them, a P on a forest road belongs to nothing. */
+const PARK_LINE_SRC = 'park-line';
+
+function drawParkLine() {
+  if (!map || !map.getSource(PARK_LINE_SRC)) return;
+  const pin = sheet?.mode === 'view' ? sheet.pin : null;
+  const park = pin && !isParking(pin) ? parkingFor(pin.id) : null;
+  map.getSource(PARK_LINE_SRC).setData(park
+    ? { type: 'FeatureCollection', features: [{
+        type: 'Feature', properties: {},
+        geometry: { type: 'LineString',
+          coordinates: [[park.lng, park.lat], [pin.lng, pin.lat]] } }] }
+    : EMPTY_GEOJSON);
+}
+
 function drawPins() {
   markers.forEach((m) => m.remove());
   markers.clear();
   pins.filter(passesFilter).forEach(addMarker);
+  drawParkLine();
   // Say when the map is deliberately incomplete, or a filtered-out pin reads
   // as a lost one.
   $('search-open').classList.toggle('is-filtered', filtering());
@@ -1162,15 +1207,26 @@ function scalePins() {
   document.documentElement.style.setProperty('--pin-scale', scale.toFixed(3));
 }
 
+/* A parking spot is drawn as what it is rather than as another find: a small
+ * square with a P in it, the shape every road sign in the country already uses
+ * for this. Deliberately NOT the pin silhouette — the whole job of the map is
+ * that a glance tells you which of these you drive to and which you walk to. */
+const PARK_SVG = `<svg class="pin-art" viewBox="0 0 24 28" aria-hidden="true">
+  <path class="pin-body" d="M3 2.6h18a1.6 1.6 0 0 1 1.6 1.6v13.4A1.6 1.6 0 0 1 21 19.2h-6.4L12 25.4l-2.6-6.2H3a1.6 1.6 0 0 1-1.6-1.6V4.2A1.6 1.6 0 0 1 3 2.6Z"/>
+  <path class="pin-letter" d="M9.6 15.4V6.6h3.1a2.6 2.6 0 0 1 0 5.2H9.6"/>
+</svg>`;
+
 function addMarker(p) {
+  const park = isParking(p);
   const el = document.createElement('div');
   el.className = 'pin-marker'
+    + (park ? ' is-park' : '')
     + (p.created_by === me.id ? ' is-mine' : '')
     + (p._pending ? ' is-pending' : '')
     + (p.is_private ? ' is-private' : '');
-  el.dataset.kind = kindOf(p);
-  el.innerHTML = PIN_SVG;
-  el.title = pinTitle(p);
+  el.dataset.kind = park ? 'parking' : kindOf(p);
+  el.innerHTML = park ? PARK_SVG : PIN_SVG;
+  el.title = park ? 'parking' : pinTitle(p);
   el.addEventListener('click', (e) => { e.stopPropagation(); openPin(p); });
 
   markers.set(p.id, new maplibregl.Marker({ element: el, anchor: 'bottom' })
@@ -1191,6 +1247,15 @@ function renderKindControls() {
       <input type="checkbox" data-filter="${k.key}" checked>
       <span class="kind-dot"></span>${escapeHtml(k.label)}
     </label>`).join('');
+}
+
+/* Someone else's pin is read-only, and a disabled radio has to LOOK disabled or
+ * it is just a control that ignores you. The class is what the stylesheet dims;
+ * the disabled attribute is what actually refuses the tap. */
+function setPinKindEnabled(on) {
+  $('pin-kind').classList.toggle('is-locked', !on);
+  $('pin-kind').querySelectorAll('input[name="kind"]')
+    .forEach((r) => { r.disabled = !on; });
 }
 
 function setPinKind(key) {
@@ -1345,6 +1410,10 @@ function openNewPin(lat, lng, accuracy) {
   $('pin-name').disabled = false;
   $('pin-desc').disabled = false;
   setPinKind('other');
+  // A new pin is always yours, and the sheet is reused — so anything openPin
+  // locked on somebody else's pin has to be handed back here.
+  setPinKindEnabled(true);
+  $('photo-add').hidden = false;
   $('pin-private').checked = false;      // shared by default — that is the point
   $('pin-private').disabled = false;
   $('pin-save').hidden = false;
@@ -1373,8 +1442,17 @@ function openPin(p) {
   $('pin-name').disabled = !mine;
   $('pin-desc').disabled = !mine;
   setPinKind(kindOf(p));
+  // The kind chips were the one control left live on somebody else's pin. They
+  // could not save anything — the save button is hidden below — but tapping one
+  // recoloured the dot at the top of the sheet, so it looked like an edit that
+  // had taken, right up until you closed the sheet and it came back.
+  setPinKindEnabled(mine);
   $('pin-private').checked = !!p.is_private;
   $('pin-private').disabled = !mine;
+  // A photo with no note on it is a photo OF THE PLACE — it speaks in the pin's
+  // voice and belongs to whoever found it. Photos on a note are the other half
+  // of that and stay open to everybody; see the note compose box below.
+  $('photo-add').hidden = !mine;
   $('pin-save').hidden = !mine;
   $('pin-save').textContent = 'save changes';
   $('pin-delete').hidden = !mine;
@@ -1382,6 +1460,8 @@ function openPin(p) {
   // strip with a rule over it reads as something that failed to load.
   $('sheet-actions').hidden = !mine;
   $('pin-meta').innerHTML = metaHtml(p, p.display_name || p.username);
+  renderParking();
+  renderDirectionsLabel();
   $('notes-block').hidden = false;
   $('note-body').value = '';
   editingNote = null;
@@ -1391,8 +1471,10 @@ function openPin(p) {
   showSheet();
   setSheetFrac(SHEET_HALF);
   sheetPadding(true);
-  // Stand the pin you are reading about up out of the others.
+  // Stand the pin you are reading about up out of the others, and thread it to
+  // where you leave the truck.
   markActive(p.id);
+  drawParkLine();
   map.easeTo({ center: [p.lng, p.lat] });
 }
 
@@ -1421,6 +1503,7 @@ function closeSheet() {
   releaseObjectUrls();
   editingNote = null;
   sheet = null;
+  drawParkLine();      // nothing open, so nothing to thread
 }
 
 function releaseObjectUrls() {
@@ -1501,22 +1584,40 @@ async function updatePin(fields) {
   refreshNetworkUI();
 }
 
+/* Every photo on one pin, out of the bucket and out of the mirror.
+ *
+ * Its own function because deleting a pin now has two of these to do — the pin
+ * and the parking spot hanging off it — and the order is the whole point: the
+ * permission to remove a photo is checked against a pin that still exists, so
+ * the moment the pin goes its files are stranded in the bucket for ever. */
+async function erasePinPhotos(pinId) {
+  const its = photosForPin(pinId);
+  if (!its.length) return;
+  await push({ op: 'photo-delete', paths: its.map((r) => r.path), ids: its.map((r) => r.id) });
+  for (const r of its) { await local.deletePhoto(r.id); await local.deleteBlob(r.id); }
+  photoRows = photoRows.filter((r) => r.pin_id !== pinId);
+}
+
 async function deletePin() {
   if (!sheet || sheet.mode !== 'view') return;
   if (!confirm(`Delete "${pinTitle(sheet.pin)}"? This cannot be undone.`)) return;
 
   const id = sheet.pin.id;
 
+  // The parking spot goes with it, and it has to go FIRST and by hand.
+  //
+  // The database cascades the child row on its own — that part is fine. What it
+  // cannot do is reach into the storage bucket. Its photo rows would vanish in
+  // the cascade while the objects stayed behind, unfindable and so undeletable
+  // for ever: exactly the trap described below, reached through the back door.
+  const park = parkingFor(id);
+  if (park) await erasePinPhotos(park.id);
+
   // Photos go FIRST, and deliberately. The rows cascade when the pin goes, but
   // the objects in the bucket do not, and the permission to delete someone
   // else's photo off your pin is checked against a pin that still exists. Kill
   // the pin first and those files are unreachable and undeletable forever.
-  const its = photosForPin(id);
-  if (its.length) {
-    await push({ op: 'photo-delete', paths: its.map((r) => r.path), ids: its.map((r) => r.id) });
-    for (const r of its) { await local.deletePhoto(r.id); await local.deleteBlob(r.id); }
-    photoRows = photoRows.filter((r) => r.pin_id !== id);
-  }
+  await erasePinPhotos(id);
 
   const sent = await push({ op: 'delete', id });
 
@@ -1526,7 +1627,15 @@ async function deletePin() {
 
   markers.get(id)?.remove();
   markers.delete(id);
-  pins = pins.filter((p) => p.id !== id);
+  // The child cascaded on the server; the mirror and the map have to be told.
+  if (park) {
+    markers.get(park.id)?.remove();
+    markers.delete(park.id);
+    await local.deletePin(park.id);
+    for (const n of notes.filter((n) => n.pin_id === park.id)) await local.deleteNote(n.id);
+    notes = notes.filter((n) => n.pin_id !== park.id);
+  }
+  pins = pins.filter((p) => p.id !== id && p.id !== park?.id);
   await local.deletePin(id);
   await local.del(`own:${id}`);
   closeSheet();
@@ -2381,16 +2490,203 @@ async function refreshNetworkUI() {
   $('net').hidden = online();
 }
 
+/* ── parking ─────────────────────────────────────────────────────────────
+ * The place you came for is usually not somewhere you can drive to, and the
+ * gap between the two is where trips go wrong: the pull-off is unmarked, the
+ * gate is a mile before the trailhead, the obvious wide spot is somebody's
+ * drive.
+ *
+ * So a parking spot is a PIN, hanging off the pin it serves. It gets a name, a
+ * photo of the gate, and its own running log — "washed out in March" is exactly
+ * the kind of thing you need to know about a pull-off and exactly the kind of
+ * thing two columns on the parent could never hold. Everything a pin already
+ * knows how to do it does for free, privacy and the offline queue included.
+ *
+ * The database enforces the rest: one level deep, same owner, and privacy taken
+ * from the parent whether the client remembers or not.
+ */
+const isParking = (p) => !!p?.parent_id;
+const placePins = () => pins.filter((p) => !p.parent_id);
+const parkingFor = (pinId) => pins.find((p) => p.parent_id === pinId);
+
+/* Where "directions" should actually send you. The parking spot if there is
+ * one — that is the entire point of having asked for it. */
+function navTarget(pin) {
+  const park = pin ? parkingFor(pin.id) : null;
+  return park || pin;
+}
+
+function renderParking() {
+  const pin = sheet?.pin;
+  const block = $('park-block');
+  // A parking spot does not get a parking spot, and a pin that is not saved yet
+  // has nothing for one to hang off.
+  if (!pin || sheet.mode !== 'view' || isParking(pin)) { block.hidden = true; return; }
+  block.hidden = false;
+
+  const mine = pin.created_by === me.id;
+  const park = parkingFor(pin.id);
+
+  $('park-set').hidden = !park;
+  $('park-clear').hidden = !park || !mine;
+  // Only the finder sets it — a parking spot is part of the pin, and the pin is
+  // theirs. Everyone else reads it, which is the half that matters out there.
+  $('park-add').hidden = !!park || !mine;
+  $('park-none').hidden = !!park || mine;
+
+  if (park) {
+    $('park-name').textContent = park.name?.trim() || 'the parking spot';
+    const away = metresBetween({ lat: park.lat, lng: park.lng }, { lat: pin.lat, lng: pin.lng });
+    $('park-meta').textContent =
+      `${fmtDistance(away)} from the pin, in a straight line`;
+  }
+}
+
+/* Picking the spot. The crosshair is already how this app says "this exact
+ * point", so this borrows it rather than inventing a second gesture, and the
+ * confirm goes on the floor of the screen instead of in a dialog over the map
+ * you are trying to read. */
+let parkPick = null;      // { forPin } while choosing
+
+function startParkPick() {
+  const pin = sheet?.pin;
+  if (!pin) return;
+  parkPick = { forPin: pin };
+  closeSheet();
+  $('park-pick').hidden = false;
+  $('crosshair').classList.remove('is-offset');
+  $('crosshair').hidden = false;
+  // Start over the pin itself: the pull-off is near the place, so the fewest
+  // drags from here is almost always the right answer.
+  map.easeTo({ center: [pin.lng, pin.lat], zoom: Math.max(map.getZoom(), 15) });
+}
+
+function cancelParkPick() {
+  const pin = parkPick?.forPin;
+  parkPick = null;
+  $('park-pick').hidden = true;
+  $('crosshair').hidden = true;
+  if (pin) openPin(pin);
+}
+
+async function confirmParkPick() {
+  const pin = parkPick?.forPin;
+  if (!pin) return;
+  const c = map.getCenter();
+  parkPick = null;
+  $('park-pick').hidden = true;
+  $('crosshair').hidden = true;
+  await createParking(pin, c.lat, c.lng);
+  openPin(pin);
+}
+
+async function createParking(pin, lat, lng) {
+  const row = {
+    id: crypto.randomUUID(),
+    created_by: me.id,
+    parent_id: pin.id,
+    name: '',
+    description: '',
+    lat, lng,
+    accuracy_m: null,
+    kind: 'other',
+    // Sent for the sake of the mirror this device keeps; the database forces it
+    // from the parent regardless, which is what actually makes it safe.
+    is_private: !!pin.is_private,
+    created_at: new Date().toISOString(),
+  };
+  const shown = { ...row, username: me.username, display_name: me.display_name };
+  const sent = await push({ op: 'insert', row });
+  if (!sent) shown._pending = true;
+
+  pins.unshift(shown);
+  await local.putPin(shown);
+  addMarker(shown);
+  drawParkLine();
+  toast(sent ? 'parking saved' : 'parking saved — will sync when you have signal');
+}
+
+async function clearParking() {
+  const pin = sheet?.pin;
+  const park = pin && parkingFor(pin.id);
+  if (!park) return;
+  if (!confirm('Remove the parking spot? Its notes and photos go with it.')) return;
+  await push({ op: 'delete', id: park.id });
+  pins = pins.filter((p) => p.id !== park.id);
+  await local.deletePin(park.id);
+  markers.get(park.id)?.remove();
+  markers.delete(park.id);
+  drawParkLine();
+  renderParking();
+  toast('parking removed');
+}
+
 /* ── getting there ───────────────────────────────────────────────────────── */
+
+/* Three apps, because which one is right is a fact about the person and not
+ * about the phone: Waze on an iPhone is a perfectly ordinary preference, and
+ * guessing Apple Maps from the user agent — which is what this used to do —
+ * gets it wrong for exactly the people who care most. */
+const NAV_APPS = {
+  google: { label: 'Google Maps', url: (lat, lng) =>
+    `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving` },
+  apple:  { label: 'Apple Maps',  url: (lat, lng) =>
+    `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d` },
+  waze:   { label: 'Waze',        url: (lat, lng) =>
+    `https://waze.com/ul?ll=${lat},${lng}&navigate=yes` },
+};
+
+let navFor = null;      // the point waiting on a choice of app
 
 function openDirections() {
   if (!sheet) return;
-  const { lat, lng } = sheet.pin;
-  const label = encodeURIComponent(pinTitle(sheet.pin));
-  window.open(IS_APPLE
-    ? `https://maps.apple.com/?daddr=${lat},${lng}&q=${label}`
-    : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
-    '_blank', 'noopener');
+  const to = navTarget(sheet.pin);
+  navFor = { lat: to.lat, lng: to.lng };
+
+  const saved = navApp;
+  if (saved && NAV_APPS[saved]) { launchNav(saved); return; }
+  $('nav-remember').checked = true;
+  $('nav-pick').hidden = false;
+}
+
+/* The button has to say where it is actually going to send you, or the first
+ * time it opens a pull-off half a mile from the pin it reads as a bug. */
+function renderDirectionsLabel() {
+  const pin = sheet?.pin;
+  const park = pin && !isParking(pin) ? parkingFor(pin.id) : null;
+  $('pin-directions-label').textContent = park
+    ? 'directions to the parking spot'
+    : 'directions to this place';
+}
+
+/* Settings shows which app is remembered, and lets it be taken back — an
+ * "always" that cannot be undone is a trap, not a preference. */
+function renderNavChoice() {
+  const el = $('nav-current');
+  if (!el) return;
+  el.textContent = navApp && NAV_APPS[navApp]
+    ? NAV_APPS[navApp].label
+    : 'asked each time';
+  const clear = $('nav-clear');
+  if (clear) clear.hidden = !navApp;
+}
+
+function launchNav(key) {
+  const app = NAV_APPS[key];
+  const to = navFor;
+  navFor = null;
+  $('nav-pick').hidden = true;
+  if (!app || !to) return;
+  window.open(app.url(to.lat, to.lng), '_blank', 'noopener');
+}
+
+async function chooseNav(key) {
+  if (!NAV_APPS[key]) return;
+  // Remembered on the account, so the phone and the laptop agree — and
+  // changeable in settings, because "always" is a promise this has to keep.
+  if ($('nav-remember').checked) { navApp = key; await savePref('navApp', key); }
+  renderNavChoice();
+  launchNav(key);
 }
 
 async function copyCoords() {
@@ -2635,7 +2931,10 @@ async function askPlaces(q) {
  * newest activity first — because the list of places and the results of an
  * empty search are the same list, which is why there is only one screen now. */
 function matchedPins() {
-  const rows = pins.filter(passesFilter);
+  // Places only. A parking spot is reached through the pin it serves — it has
+  // no business being a result in its own right, sitting in the list next to
+  // the thing it is fifty metres from.
+  const rows = placePins().filter(passesFilter);
   const q = terms(query);
 
   if (!q.length) {
@@ -2682,7 +2981,7 @@ function renderResults() {
       ? hits.map(({ pin, why }) => listRow(pin, here, why)).join('')
       : `<div class="list-empty">${icon('i-pin')}<span>${
           q ? 'No pin says that — try the map below.'
-            : pins.length ? 'Nothing of those kinds. Turn some back on.'
+            : placePins().length ? 'Nothing of those kinds. Turn some back on.'
                           : 'No pins yet. Go find something.'}</span></div>`);
   }
 
@@ -2699,8 +2998,8 @@ function renderResults() {
 
   const body = $('list-body');
   body.innerHTML = html.join('');
-  $('list-count').textContent = q ? '' : (pins.length
-    ? `${hits.length} of ${pins.length}` : '');
+  const total = placePins().length;
+  $('list-count').textContent = q ? '' : (total ? `${hits.length} of ${total}` : '');
   $('kind-bar').hidden = !sources.pins;
 
   paintAvatars(body);
@@ -3485,6 +3784,28 @@ $('sheet-close').addEventListener('click', closeSheet);
 $('pin-save').addEventListener('click', savePin);
 $('pin-delete').addEventListener('click', deletePin);
 $('pin-directions').addEventListener('click', openDirections);
+$('park-add').addEventListener('click', startParkPick);
+$('park-cancel').addEventListener('click', cancelParkPick);
+$('park-confirm').addEventListener('click', confirmParkPick);
+$('park-clear').addEventListener('click', clearParking);
+$('park-open').addEventListener('click', () => {
+  const park = sheet?.pin && parkingFor(sheet.pin.id);
+  // Its own sheet, because it is its own pin: name it, photograph the gate,
+  // write down that the road was washed out.
+  if (park) openPin(park);
+});
+$('nav-clear').addEventListener('click', async () => {
+  navApp = null;
+  await savePref('navApp', null);
+  renderNavChoice();
+  toast('directions will ask again');
+});
+$('nav-cancel').addEventListener('click', () => { navFor = null; $('nav-pick').hidden = true; });
+$('nav-pick').addEventListener('click', (e) => {
+  if (e.target === $('nav-pick')) { navFor = null; $('nav-pick').hidden = true; return; }
+  const btn = e.target.closest('[data-nav]');
+  if (btn) chooseNav(btn.dataset.nav);
+});
 $('pin-copy').addEventListener('click', copyCoords);
 $('photo-input').addEventListener('change', onPhotoPick);
 $('photo-add').addEventListener('click', (e) => pickPhotos({ kind: 'pin' }, e.currentTarget));
@@ -3715,6 +4036,10 @@ async function applyPrefs() {
   $('src-pins').checked = sources.pins;
   $('src-places').checked = sources.places;
   searchBarLabel();
+
+  const savedNav = await local.get('navApp');
+  navApp = NAV_APPS[savedNav] ? savedNav : null;
+  renderNavChoice();
 
   setTheme((await local.get('theme')) || 'day');
   setAccent((await local.get('accent')) || 'ember');

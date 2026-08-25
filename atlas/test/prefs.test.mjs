@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 const SYNCED_PREFS = ['theme', 'accent', 'glass', 'basemap', 'overlays',
-                      'kindFilter', 'scope', 'sources', 'home'];
+                      'kindFilter', 'scope', 'sources', 'home', 'navApp'];
 
 /* A stand-in for the IndexedDB meta store, and for app.js's two module flags.
  * The logic below is a transcription of savePref/adoptPrefs — kept honest by

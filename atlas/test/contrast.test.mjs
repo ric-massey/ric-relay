@@ -255,6 +255,26 @@ test('every kind stands out from the halo drawn around it', () => {
   }
 });
 
+/* Parking is not a ninth kind and is not tested as one — see the note beside
+ * --park in styles.css. It is a square sign rather than a teardrop, and that
+ * separates it further than any colour left in the space would. What it still
+ * has to do is survive being drawn on satellite imagery, which is the same
+ * halo rule as everything else, so that half is not waived. */
+test('the parking colour stands out from its halo in both themes', () => {
+  const park = {};
+  for (const [, selector, body] of css.matchAll(
+      /(:root(?:\[data-theme="night"\])?)\s*\{([^}]*?--park:[^}]*)\}/g)) {
+    const m = body.match(/--park:\s*(#[0-9a-fA-F]{6})/);
+    if (m) park[selector.includes('night') ? 'night' : 'day'] = m[1];
+  }
+  assert.ok(park.day, 'no --park in the day palette');
+  assert.ok(park.night, 'no --park in the night palette — it would be dark on dark');
+  for (const [label, theme] of [['day', day], ['night', night]]) {
+    const r = contrast(park[label], theme.halo);
+    assert.ok(r >= 3, `${label} parking against the halo is ${r.toFixed(2)}:1, needs 3:1`);
+  }
+});
+
 test('no two kinds are the same pin at a glance', () => {
   for (const [label, set] of [['day', dayKinds], ['night', nightKinds]]) {
     const keys = Object.keys(set);

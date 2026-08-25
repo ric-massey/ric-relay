@@ -428,7 +428,49 @@ these do I want", and that gets answered by what a button is *near*.
 - A pin's **colour is what kind of place it is** — eight kinds, eight measured
   colours. Yellow outranks all of them and means not synced yet. A hollow pin
   is a personal one. The pin whose sheet is open stands up out of the others
-  with a ring under it. You can only edit and delete your own.
+  with a ring under it.
+
+**Only the person who dropped a pin can change it.** The name, the description,
+the kind, the privacy switch, the parking spot and the photos of the place are
+all theirs — the database says so and the sheet stops offering them. What
+everyone else can do is **leave notes**, with their own photos on them, signed
+and dated. That split is the whole social contract of the thing: the pin is one
+person's find, and the log under it is everybody's account of going there.
+
+  The one subtlety is photos. A photo with no note on it speaks in the pin's
+  voice — "this is what the place looks like" — so it belongs to the finder. A
+  photo on your note belongs to your note. Same table, different `note_id`, and
+  the policy splits on exactly that.
+
+### Parking
+
+A pull-off is a place, not two numbers. It has a name — "the wide bit past the
+second cattle guard" — it earns a photo of the gate, and it earns notes, because
+"washed out in March" is exactly what you need to know about one.
+
+So a parking spot is **a pin inside a pin**: a real row with `parent_id` set,
+which means it gets row-level security, the offline queue, notes and photos for
+free without anything new being taught how to be careful. It draws as a road
+sign rather than a teardrop — deliberately not a ninth pin colour, because the
+eight kinds have used the colour space up and shape separates further than any
+colour left in it does — with a dashed thread to the pin it serves, drawn only
+for the pin you have open.
+
+The database enforces what the client must not be trusted with: one level deep,
+same owner, and **privacy taken from the parent**. A personal pin nobody can see
+with a visible parking spot fifty metres away is not a personal pin, so making a
+pin personal drags its parking spot with it, in a trigger rather than in a hope.
+
+### Directions
+
+Google Maps, Apple Maps or Waze — asked once, remembered on your account, and
+changeable in settings. It used to guess Apple from the user agent, which is
+wrong for exactly the people who care: Waze on an iPhone is an ordinary
+preference, not a contradiction.
+
+**Directions go to the parking spot** whenever the pin has one, and the button
+says so, because the first time it silently opens a pull-off half a mile away it
+reads as a bug rather than a feature.
 
 **Settings follow the person, not the phone.** The base map, the overlays, the
 theme and accent, the kind filter, the search scope and your home town live on

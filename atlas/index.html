@@ -68,6 +68,11 @@
     <rect x="9" y="9" width="11" height="11" rx="2.2"/><path d="M15 6.5V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h1.5"/>
   </symbol>
   <symbol id="i-navigate" viewBox="0 0 24 24"><path d="M21 3 3.5 10.4l7.6 2.5 2.5 7.6L21 3Z"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24">
+    <path d="M4.5 16.5v2a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-2M21.5 16.5v2a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-2"/>
+    <path d="M2.5 16.5v-4.2l2-5a2 2 0 0 1 1.9-1.3h11.2a2 2 0 0 1 1.9 1.3l2 5v4.2Z"/>
+    <path d="M4.6 11.8h14.8"/><circle cx="6.8" cy="14.2" r="1"/><circle cx="17.2" cy="14.2" r="1"/>
+  </symbol>
   <symbol id="i-download" viewBox="0 0 24 24">
     <path d="M12 3v11m0 0 4.2-4.2M12 14l-4.2-4.2"/><path d="M4 16v2.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V16"/>
   </symbol>
@@ -240,7 +245,7 @@
         <svg class="icon"><use href="#i-copy"/></svg>copy location
       </button>
       <button id="pin-directions" class="btn-ghost wide">
-        <svg class="icon"><use href="#i-navigate"/></svg>directions to this place
+        <svg class="icon"><use href="#i-navigate"/></svg><span id="pin-directions-label">directions to this place</span>
       </button>
       <label class="privacy">
         <svg class="icon"><use href="#i-eye-off"/></svg>
@@ -265,6 +270,29 @@
           </button>
         </div>
         <input id="photo-input" type="file" accept="image/*" multiple hidden>
+      </section>
+
+      <!-- Where you actually leave the truck. It is a pin of its own, hanging
+           off this one, so it can be named, photographed and written about —
+           "washed out in March" is a thing you need to know about a pull-off,
+           and two numbers on a parent row could never hold it. -->
+      <section class="block" id="park-block">
+        <h3 class="block-head"><svg class="icon"><use href="#i-car"/></svg>parking</h3>
+        <div id="park-set" hidden>
+          <button id="park-open" class="park-row">
+            <span class="park-dot" aria-hidden="true"></span>
+            <span class="park-text">
+              <span id="park-name" class="park-name"></span>
+              <small id="park-meta" class="park-meta"></small>
+            </span>
+            <svg class="icon icon-sm"><use href="#i-chevron"/></svg>
+          </button>
+          <button id="park-clear" class="linkish meta-action" hidden>remove the parking spot</button>
+        </div>
+        <button id="park-add" class="btn-ghost wide" hidden>
+          <svg class="icon icon-sm"><use href="#i-plus"/></svg>choose a parking spot
+        </button>
+        <p id="park-none" class="hint" hidden>No parking spot on this one yet.</p>
       </section>
 
       <!-- whose ground is this -->
@@ -303,6 +331,40 @@
       <button id="pin-delete" class="btn-danger" hidden>
         <svg class="icon icon-sm"><use href="#i-trash"/></svg>delete
       </button>
+    </div>
+  </div>
+
+  <!-- Choosing where to park: the crosshair is already the app's way of saying
+       "this exact point", so picking a spot borrows it and puts a confirm on the
+       bottom of the screen rather than opening another sheet over the map you
+       are trying to look at. -->
+  <div id="park-pick" class="park-pick" hidden>
+    <div class="park-pick-say">
+      <strong>Where do you park?</strong>
+      <small>Move the map. The cross is the spot.</small>
+    </div>
+    <div class="park-pick-do">
+      <button id="park-cancel" class="btn-ghost">cancel</button>
+      <button id="park-confirm" class="btn-primary">park here</button>
+    </div>
+  </div>
+
+  <!-- Which app opens when you ask for directions. Asked once and remembered,
+       and it travels with the account like every other setting. -->
+  <div id="nav-pick" class="modal" hidden>
+    <div class="modal-card">
+      <h3 class="modal-head">Open directions in</h3>
+      <div class="nav-list">
+        <button class="nav-app" data-nav="google">Google Maps</button>
+        <button class="nav-app" data-nav="apple">Apple Maps</button>
+        <button class="nav-app" data-nav="waze">Waze</button>
+      </div>
+      <label class="nav-remember">
+        <input id="nav-remember" type="checkbox" checked>
+        <span class="switch-track"></span>
+        <span>use this one from now on</span>
+      </label>
+      <button id="nav-cancel" class="btn-ghost wide">cancel</button>
     </div>
   </div>
 
@@ -610,6 +672,21 @@
         </label>
         <p id="home-note" class="hint home-note" hidden></p>
         <div id="home-results" class="home-results"></div>
+      </section>
+
+      <section class="detail">
+        <h3 class="detail-head">directions</h3>
+        <p class="hint">Which app opens when you ask for directions. Asked the
+          first time and remembered after that — and directions go to the
+          parking spot whenever the pin has one.</p>
+        <div class="home-set">
+          <svg class="icon"><use href="#i-navigate"/></svg>
+          <div class="home-where">
+            <b id="nav-current">asked each time</b>
+            <small>changeable any time</small>
+          </div>
+          <button id="nav-clear" class="linkish" hidden>ask again</button>
+        </div>
       </section>
 
       <section class="detail at-first">

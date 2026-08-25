@@ -20,7 +20,7 @@ test('the synced key list is the same in both places', () => {
   assert.ok(m, 'app.js no longer declares SYNCED_PREFS');
   const inApp = [...m[1].matchAll(/'([a-zA-Z]+)'/g)].map((x) => x[1]).sort();
   const inTest = ['theme', 'accent', 'glass', 'basemap', 'overlays',
-                  'kindFilter', 'scope', 'sources', 'home'].sort();
+                  'kindFilter', 'scope', 'sources', 'home', 'navApp'].sort();
   assert.deepEqual(inApp, inTest,
     'prefs.test.mjs is testing a different set of settings than the app syncs');
 });

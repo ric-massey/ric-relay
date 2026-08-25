@@ -149,6 +149,15 @@
   --kind-mountains: #2563c9;
   --kind-towers:    #c0227a;
   --kind-other:     #4a5560;
+
+  /* Parking is deliberately NOT a ninth kind colour. There is no room for one:
+     every blue that reads as a parking sign lands within ~90 of `mountains` or
+     `tunnels`, where the eight kinds are 116 apart from each other at worst, so
+     a ninth colour would be the first pair anyone confused. It does not need to
+     compete — it is a different SILHOUETTE, a square sign against a teardrop,
+     which separates at further than any colour does. So it takes the neutral a
+     road sign would take and leaves the vocabulary alone. */
+  --park:           #243447;
 }
 :root[data-theme="night"] {
   --kind-cliffs:    #ff8a4c;
@@ -159,6 +168,7 @@
   --kind-mountains: #68a6ff;
   --kind-towers:    #ff6bb0;
   --kind-other:     #9aa7b4;
+  --park:           #c3d2e0;
 }
 
 /* ── the scales everything else is built from ─────────────────────────────
@@ -593,6 +603,100 @@ button { cursor: pointer; border: none; background: none; }
 
    Everything of ours that does want a transform lives on the .pin-art inside,
    which MapLibre has never heard of. */
+/* ── parking ──────────────────────────────────────────────────────────────
+ * A parking spot is drawn as a road sign, not as another find. The point of the
+ * map is that a glance says which of these you drive to and which you walk to,
+ * and two pin silhouettes in two colours does not say that at a distance.
+ */
+.pin-marker.is-park { --pin: var(--park); }
+.pin-marker.is-park .pin-body { fill: var(--pin); stroke: var(--halo); stroke-width: 2; paint-order: stroke; }
+.pin-letter { fill: none; stroke: var(--halo); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.pin-marker.is-park.is-private .pin-body { fill: var(--halo); stroke: var(--pin); stroke-width: 3; }
+.pin-marker.is-park.is-private .pin-letter { stroke: var(--pin); }
+
+/* The row in the sheet: a whole button, because the parking spot is its own pin
+   and tapping it opens it, same as tapping anything else that is one. */
+.park-row {
+  width: 100%; display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-3); border-radius: var(--r-md);
+  background: var(--panel-2); border: var(--b) solid var(--edge);
+  text-align: left; cursor: pointer; color: inherit; font: inherit;
+}
+.park-row:active { background: var(--panel-3); }
+.park-row .icon { margin-left: auto; color: var(--ink-mute); }
+.park-dot {
+  flex: none; width: 12px; height: 12px; border-radius: 3px;
+  background: var(--park); box-shadow: 0 0 0 var(--b) var(--edge);
+}
+.park-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.park-name { font-weight: 700; }
+.park-meta { color: var(--ink-dim); font-size: var(--t-sm); }
+
+/* Choosing the spot. Along the floor rather than in a dialog, so the map you
+   are aiming is the thing you can see. */
+.park-pick {
+  position: absolute; z-index: 25;
+  left: var(--s-3); right: var(--s-3);
+  bottom: calc(var(--safe-b) + var(--s-3));
+  /* Stacked, not side by side. Side by side, a 375px phone squeezed the text
+     column until "Where do you park?" broke across two lines mid-question with
+     the buttons crushed against it. The question is short; it deserves one
+     line, and the buttons deserve the width. */
+  display: flex; flex-direction: column; align-items: stretch; gap: var(--s-3);
+  padding: var(--s-3) var(--s-4) var(--s-4);
+  background: var(--panel); border: var(--b) solid var(--edge);
+  border-radius: var(--r-lg); box-shadow: var(--e-4);
+  animation: rise var(--t-mid) var(--ease);
+}
+.park-pick-say { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.park-pick-say small { color: var(--ink-dim); font-size: var(--t-sm); line-height: 1.4; }
+.park-pick-do { display: flex; align-items: center; gap: var(--s-2); }
+/* The confirm gets the room. Cancel is the one you press by accident. */
+.park-pick-do .btn-ghost { flex: none; }
+.park-pick-do .btn-primary { flex: 1; }
+
+/* ── a small centred dialog ───────────────────────────────────────────────
+ * Used by the directions chooser. Deliberately not a .panel: this is a question
+ * with three answers, not a screen, and covering the map to ask it would lose
+ * the thing the answer is about.
+ */
+.modal {
+  position: absolute; z-index: 50; inset: 0;
+  display: grid; place-items: center;
+  padding: var(--s-4);
+  background: rgba(0, 0, 0, 0.45);
+  animation: fade-in var(--t-fast) var(--ease);
+}
+@keyframes fade-in { from { opacity: 0; } }
+.modal-card {
+  width: 100%; max-width: 340px;
+  display: flex; flex-direction: column; gap: var(--s-3);
+  padding: var(--s-4);
+  background: var(--panel); border: var(--b) solid var(--edge);
+  border-radius: var(--r-xl); box-shadow: var(--e-4);
+  animation: rise var(--t-mid) var(--ease);
+}
+.modal-head { font-size: var(--t-lg); font-weight: 700; letter-spacing: -0.01em; }
+.nav-list { display: flex; flex-direction: column; gap: var(--s-2); }
+.nav-app {
+  width: 100%; min-height: var(--tap);
+  padding: var(--s-3) var(--s-4); border-radius: var(--r-md);
+  background: var(--panel-2); border: var(--b) solid var(--edge);
+  font: inherit; font-weight: 700; color: inherit; cursor: pointer; text-align: left;
+}
+.nav-app:active { background: var(--panel-3); }
+.nav-remember {
+  display: flex; align-items: center; gap: var(--s-3);
+  font-size: var(--t-sm); color: var(--ink-dim); cursor: pointer;
+}
+.nav-remember input { position: absolute; opacity: 0; pointer-events: none; }
+
+/* A locked control has to look locked. Dimmed and un-pressable, rather than a
+   row of chips that quietly ignore the tap — which reads as a broken app, not
+   as somebody else's pin. */
+.kind-list.is-locked { opacity: 0.55; }
+.kind-list.is-locked .kind-chip { cursor: default; }
+
 .pin-marker {
   --pin: var(--accent);
   width: calc(30px * var(--pin-scale, 1));
@@ -1470,10 +1574,21 @@ button { cursor: pointer; border: none; background: none; }
   background: var(--panel); box-shadow: var(--e-1), 0 0 0 1px rgba(11,15,20,0.12);
   transition: transform var(--t-mid) var(--spring);
 }
-.switch input:checked + .switch-track { background: var(--accent); border-color: var(--accent-dk); }
-.switch input:checked + .switch-track::after { transform: translateX(20px); }
-.switch input:focus-visible + .switch-track { outline: var(--b-strong) solid var(--accent); outline-offset: 3px; }
-.switch:active .switch-track::after { width: 28px; }
+/* Scoped to the track, NOT to .switch.
+ *
+ * These three rules used to start `.switch input:checked`, which meant they
+ * only fired inside a label that also carried that class — and the "only me"
+ * toggle on a pin does not. It is `.privacy`, because it needed a different
+ * layout. So marking a place personal moved a checkbox the database believed,
+ * and left a switch on screen that stayed grey and un-flipped for ever: the one
+ * control in here where not being able to tell is actually dangerous.
+ *
+ * A .switch-track only ever follows the checkbox it belongs to, so the class on
+ * the label around them is not information this needs. */
+input:checked + .switch-track { background: var(--accent); border-color: var(--accent-dk); }
+input:checked + .switch-track::after { transform: translateX(20px); }
+input:focus-visible + .switch-track { outline: var(--b-strong) solid var(--accent); outline-offset: 3px; }
+.switch:active .switch-track::after, .privacy:active .switch-track::after { width: 28px; }
 
 /* ── the segmented control ────────────────────────────────────────────────
  * For a choice of one from three or four, where the options are short and you
