@@ -18,6 +18,8 @@ Don't hand-edit these — they're overwritten.
 
 - `climbs-data.js` — from `climbs.md` + `todo.md`
 - `photos-data.js` — from `photos.md` + the files in `photos/`
+- `climb-vocab.js` — the alias tables and patterns `build-data.py` parses with,
+  written out so the browser can parse a day the same way. See below.
 
 ## After you edit anything
 
@@ -41,7 +43,59 @@ EXIF date so a photo can find its own trip.
 | `../../climbing.html` | The room. Most recent day out, current projects, objectives, recent ticks. |
 | `index.html` | The full log — search by route, crag, partner, date or grade; most-climbed; people; tick list. |
 | `gallery.html` | Photos and video, filtered by year, crag and route. |
+| `add.html` | Logging a day from a phone. Password-gated, `noindex`, not in the menus. |
 | `board.html` | The woodshed — Kilter and Tension logbooks, dressed as the app. Deliberately not in the menus. |
+
+## Logging a day without opening the file
+
+`add.html` is for the car park: type the day on a phone and it is live before
+you have driven home. It does not touch `climbs.md` — a browser can't commit to
+git — so it writes to the log service instead, and the pages merge the two.
+
+The thing that makes it worth using is that a day added there is not a lesser
+day. It used to be: no styles, no repeats, no sector, and `gradeRank: 0`, so a
+5.12 typed at the crag could never place in "hardest", and a route already
+sent twenty times started a second row in most-climbed instead of joining its
+own. That gap is closed, and the
+way it is closed is worth knowing about, because it is the reason there are two
+parsers in here:
+
+- The form composes **the markdown block you would have written by hand** —
+  `# 08/25/26`, `## Red River Gorge`, `#### The Shire`, route lines with their
+  tags, a `### NOTES` section. It is on screen while you type it, with a copy
+  button under it, so filing it into `climbs.md` later is a paste.
+- `climb-parse.js` reads that block with `build-data.py`'s rules. It is a port,
+  not a lookalike: every table and every regular expression comes out of
+  `climb-vocab.js`, which the Python writes from the constants it parses with.
+  Fix a crag's spelling in `AREA_ALIASES` and both readers get it at once.
+- What's stored is the markdown **and** the parsed routes. The markdown is the
+  record; the routes are a convenience for readers that only want a count.
+- `web-trips.js` merges those days into `window.CLIMBING_DATA` — trips, most
+  climbed, the people and area lists, the headline counters. A day already in
+  `climbs.md` wins, because the markdown is the record of intent and the web
+  entry is the rough note that preceded it.
+
+A route line the form writes says what a climber would say: `onsight`, `flash`,
+`redpoint`, `attempts` — and `x2` for two of them, which on a send means laps
+and on a project means goes. Both land in the data as `repeats`, which is what
+`x2` has always meant in the file.
+
+The two parsers agreeing is a test, not a hope:
+
+```bash
+node projects/climbing/test/parse-parity.js
+```
+
+It parses the real `climbs.md` with the JavaScript and compares every trip,
+every route and every field against what the Python wrote — then checks that a
+day composed by the form and read back is the day that went in. **Run it after
+changing `build-data.py`.** The vocabulary regenerates itself, but the control
+flow in `parse()` and `route()` is hand-ported, and this is what catches drift.
+
+The write end is `/climb/:date` on the training Worker: public to read, token to
+write, with the route fields clamped rather than computed — working out whether
+a line was a flash is the parser's job, done once, on the client that has the
+vocabulary. `node projects/training/server/test.mjs` covers that.
 
 ## The boards
 

@@ -171,6 +171,21 @@ DATE_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{2,4})$")
 PITCH_RE = re.compile(r"(\d+)\+?\s*pitch", re.I)
 BOULDER_RE = re.compile(r"(\d+)\+?\s*boulder", re.I)
 
+# The rest of the rules parse_route and parse_climbs apply. They were written
+# inline until add.html needed to answer the same questions in the browser —
+# they're named here so both sides read one rule, not two that drift.
+UNKNOWN_RE = re.compile(r"not sure|other climbs?|dont remember|don't remember", re.I)
+CLEAN_RE = re.compile(r"\bsent\b|\bsend\b", re.I)
+WORKED_RE = re.compile(r"\bfalls?\b|\btakes?\b|\brapp?ed\b|\bclips?\b", re.I)
+FAKE_FALL_RE = re.compile(r"\b(?:fake|practice|training)\s+falls?\b", re.I)
+SENT_WORD_RE = re.compile(r"\b(?:sent|send)\s*(?:it)?\b", re.I)
+PUNCT_RE = re.compile(r"[()\[\],!]+")           # keep '.' — "12.58" is a time
+DASH_SPLIT_RE = re.compile(r"\s+-\s*")
+WITH_RE = re.compile(r"\b(?:w/|with)\s*([^\n.!]*)", re.I)
+PHOTO_RE = re.compile(r"\bpic(?:ture)?s?\b|\bphotos?\b", re.I)
+VIDEO_RE = re.compile(r"\bvideos?\b", re.I)
+HEADING_RE = re.compile(r"^(#{1,6})\s*(.*)$")
+
 
 def normalize(name, table):
     """Map a heading to its canonical spelling, keeping unknown ones as written."""
@@ -219,7 +234,7 @@ def parse_route(line, report, context):
     # Split on the separating dash. Requiring a space *before* it keeps
     # hyphenated names ("Wac-a-mole", "Warm-up") intact, while not requiring one
     # after it catches "Shackles -v2".
-    parts = re.split(r"\s+-\s*", text, maxsplit=1)
+    parts = DASH_SPLIT_RE.split(text, maxsplit=1)
     name = parts[0].strip()
     rest = parts[1].strip() if len(parts) > 1 else ""
 
@@ -232,7 +247,7 @@ def parse_route(line, report, context):
     else:
         # Some lines forget the dash ("27 years of climbing 5.8 x2"), so look for
         # a grade anywhere and treat everything before it as the name.
-        loose = re.search(r"(?<![\w.])(" + GRADE_RE.pattern + r")", text, re.X)
+        loose = re.search(r"(?<![\w.])(" + GRADE_RE.pattern.lstrip("^") + r")", text, re.X)
         if loose:
             grade, grade_kind, sort_key = normalize_grade(loose.group(1))
             name = text[:loose.start()].strip(" -")
@@ -242,9 +257,7 @@ def parse_route(line, report, context):
 
     # Lines that record a day without recording a climb. Real, but not a route —
     # the pages keep them out of the ledgers and show them only on their own day.
-    unknown = grade is None and bool(
-        re.search(r"not sure|other climbs?|dont remember|don't remember", text, re.I)
-    )
+    unknown = grade is None and bool(UNKNOWN_RE.search(text))
 
     blob = rest.lower()
     styles = [label for label, pattern in STYLE_WORDS if re.search(pattern, blob)]
@@ -255,12 +268,12 @@ def parse_route(line, report, context):
     # A tick log defaults to "sent" — but only a clean one counts. An explicit
     # onsight/flash/redpoint/"sent it" wins outright; otherwise a note about
     # falls, takes or bailing at a clip means he got on it, not up it.
-    clean = re.search(r"\bsent\b|\bsend\b", blob) or any(
+    clean = CLEAN_RE.search(blob) or any(
         s in styles for s in ("onsight", "flash", "redpoint")
     )
     # A deliberate practice whipper isn't a failed go — don't let it read as one.
-    outcome_blob = re.sub(r"\b(?:fake|practice|training)\s+falls?\b", " ", blob)
-    worked = re.search(r"\bfalls?\b|\btakes?\b|\brapp?ed\b|\bclips?\b", outcome_blob)
+    outcome_blob = FAKE_FALL_RE.sub(" ", blob)
+    worked = WORKED_RE.search(outcome_blob)
     # An explicit send wins outright — "couple attempts then a send" is a send.
     if clean:
         outcome = "sent"
@@ -277,8 +290,8 @@ def parse_route(line, report, context):
     for _, pattern in STYLE_WORDS:
         leftover = re.sub(pattern, " ", leftover, flags=re.I)
     leftover = REPEAT_RE.sub(" ", leftover)
-    leftover = re.sub(r"\b(?:sent|send)\s*(?:it)?\b", " ", leftover, flags=re.I)
-    leftover = re.sub(r"[()\[\],!]+", " ", leftover)          # keep '.' — "12.58" is a time
+    leftover = SENT_WORD_RE.sub(" ", leftover)
+    leftover = PUNCT_RE.sub(" ", leftover)
     leftover = re.sub(r"\s+", " ", leftover).strip(" ./-")
     if re.fullmatch(r"[\d\s]*", leftover):                     # a bare "2" says nothing
         leftover = ""
@@ -304,7 +317,7 @@ def parse_people(notes, report, context):
     what follows it is filtered against PROSE_WORDS rather than trusted.
     """
     people = []
-    candidates = [m.group(1) for m in re.finditer(r"\b(?:w/|with)\s*([^\n.!]*)", notes, re.I)]
+    candidates = [m.group(1) for m in WITH_RE.finditer(notes)]
 
     for chunk in candidates:
         chunk = re.sub(r"\band\b", ",", chunk, flags=re.I)
@@ -432,7 +445,7 @@ def parse_climbs(text, report):
         if line.strip() == "-":
             continue
 
-        heading = re.match(r"^(#{1,6})\s*(.*)$", line)
+        heading = HEADING_RE.match(line)
         if heading:
             level = len(heading.group(1))
             title = heading.group(2).strip()
@@ -506,8 +519,8 @@ def parse_climbs(text, report):
         bm = BOULDER_RE.search(t["notes"])
         t["pitches"] = int(pm.group(1)) if pm else None
         t["boulders"] = int(bm.group(1)) if bm else None
-        t["hasPhoto"] = bool(re.search(r"\bpic(?:ture)?s?\b|\bphotos?\b", t["notes"], re.I))
-        t["hasVideo"] = bool(re.search(r"\bvideos?\b", t["notes"], re.I))
+        t["hasPhoto"] = bool(PHOTO_RE.search(t["notes"]))
+        t["hasVideo"] = bool(VIDEO_RE.search(t["notes"]))
 
     dated = [t for t in trips if t["date"]]
     undated = [t for t in trips if not t["date"]]
@@ -590,6 +603,90 @@ def parse_todo(text, report):
             block.append(line)
     flush()
     return entries
+
+
+def js_pattern(pattern, verbose=False):
+    """A Python pattern as a JavaScript one.
+
+    Everything here is already common syntax — the only thing JS can't read is
+    re.X, so the comments and the layout whitespace come out. Whitespace inside
+    a character class stays, because there it means itself.
+    """
+    if not verbose:
+        return pattern
+    out = []
+    i = 0
+    in_class = False
+    while i < len(pattern):
+        c = pattern[i]
+        if c == "\\":
+            out.append(pattern[i:i + 2])
+            i += 2
+            continue
+        if c == "[":
+            in_class = True
+        elif c == "]":
+            in_class = False
+        if not in_class:
+            if c == "#":
+                while i < len(pattern) and pattern[i] != "\n":
+                    i += 1
+                continue
+            if c.isspace():
+                i += 1
+                continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def write_vocab():
+    """Hand the browser the rules this file parses by.
+
+    add.html has to answer the same questions this script does — is that a
+    grade, is that a flash, does 'x2' mean two of them — because a day typed at
+    the crag has to land in the data identically to the same day typed into
+    climbs.md. Two parsers is fine; two copies of the vocabulary is not, because
+    a typo fixed in AREA_ALIASES here would go on being wrong over there. So the
+    tables and the patterns are written out, and climb-parse.js has none of its
+    own.
+    """
+    payload = {
+        "areaAliases": AREA_ALIASES,
+        "regionAliases": REGION_ALIASES,
+        "wallAliases": WALL_ALIASES,
+        "routeAliases": ROUTE_ALIASES,
+        "styleWords": [[label, pattern] for label, pattern in STYLE_WORDS],
+        "prosePeople": sorted(PROSE_WORDS),
+        "patterns": {
+            "grade": js_pattern(GRADE_RE.pattern, verbose=True),
+            "repeat": js_pattern(REPEAT_RE.pattern),
+            "date": js_pattern(DATE_RE.pattern),
+            "pitch": js_pattern(PITCH_RE.pattern),
+            "boulder": js_pattern(BOULDER_RE.pattern),
+            "unknown": js_pattern(UNKNOWN_RE.pattern),
+            "clean": js_pattern(CLEAN_RE.pattern),
+            "worked": js_pattern(WORKED_RE.pattern),
+            "fakeFall": js_pattern(FAKE_FALL_RE.pattern),
+            "sentWord": js_pattern(SENT_WORD_RE.pattern),
+            "punct": js_pattern(PUNCT_RE.pattern),
+            "dashSplit": js_pattern(DASH_SPLIT_RE.pattern),
+            "with": js_pattern(WITH_RE.pattern),
+            "photo": js_pattern(PHOTO_RE.pattern),
+            "video": js_pattern(VIDEO_RE.pattern),
+            "heading": js_pattern(HEADING_RE.pattern),
+            "notPeople": js_pattern(NOT_PEOPLE.pattern),
+            "trailingLabel": js_pattern(TRAILING_LABEL.pattern),
+        },
+    }
+    (HERE / "climb-vocab.js").write_text(
+        "// Generated by build-data.py — the tables and patterns climbs.md is read\n"
+        "// with, so climb-parse.js can read a typed-in day exactly the same way.\n"
+        "window.CLIMB_VOCAB = " + json.dumps(payload, indent=1, ensure_ascii=False) + ";\n"
+        "if (typeof module !== 'undefined') module.exports = window.CLIMB_VOCAB;\n",
+        encoding="utf-8",
+    )
+    print("  vocab: climb-vocab.js")
 
 
 def write_latest_banner(trips):
@@ -689,6 +786,7 @@ def main():
         encoding="utf-8",
     )
     write_latest_banner(trips)
+    write_vocab()
 
     s = data["stats"]
     print(f"wrote {out.relative_to(HERE.parent.parent)}")

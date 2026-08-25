@@ -623,15 +623,46 @@ export class TrainingLog {
           return json({ ok: true, removed: date }, 200, origin);
         }
 
+        /* `md` is the record and the routes are its reading.
+           add.html composes the same markdown block it would have written into
+           climbs.md by hand and parses THAT with climb-parse.js, which is the
+           browser port of the parser build-data.py uses. So a day logged from a
+           phone is not a lesser shape of a day logged in the file — it is the
+           same block of markdown, read by the same rules, and the pages can't
+           tell the two apart. Storing the routes as well is a convenience for
+           readers that don't want to parse (the training page only counts
+           them); storing the markdown is what makes it re-readable when the
+           parser learns something new.
+
+           The route fields are clamped, not computed. Working out whether a
+           line was a flash is the parser's job, done once, on the client that
+           has the vocabulary; this end only refuses nonsense. */
+        const num = (v, max) => {
+          const n = Math.floor(Number(v));
+          return Number.isFinite(n) && n > 0 ? Math.min(n, max) : null;
+        };
+        const STYLES = ['onsight', 'flash', 'redpoint', 'free solo', 'top rope', 'trad', 'mixed', 'aid'];
         const entry = {
           date,
           area: String(body.area || '').slice(0, 120),
+          region: String(body.region || '').slice(0, 120),
           notes: String(body.notes || '').slice(0, 2000),
           people: String(body.people || '').slice(0, 200),
+          md: String(body.md || '').slice(0, 8000),
+          pitches: num(body.pitches, 99),
+          boulders: num(body.boulders, 99),
           routes: Array.isArray(body.routes) ? body.routes.slice(0, 200).map(r => ({
             name: String(r.name || '').slice(0, 160),
             grade: String(r.grade || '').slice(0, 24),
-            outcome: ['sent', 'attempt', 'repeat'].includes(r.outcome) ? r.outcome : 'sent'
+            gradeKind: ['rope', 'boulder', 'other'].includes(r.gradeKind) ? r.gradeKind : null,
+            gradeRank: num(r.gradeRank, 999) || 0,
+            styles: Array.isArray(r.styles)
+              ? r.styles.filter(s => STYLES.includes(s)).slice(0, 4) : [],
+            outcome: ['sent', 'attempt'].includes(r.outcome) ? r.outcome : 'sent',
+            repeats: num(r.repeats, 99) || 1,
+            star: r.star === true,
+            note: r.note ? String(r.note).slice(0, 200) : null,
+            wall: String(r.wall || '').slice(0, 120)
           })).filter(r => r.name) : [],
           source: 'web',
           updated: new Date().toISOString()

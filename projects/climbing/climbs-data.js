@@ -2882,13 +2882,13 @@ window.CLIMBING_DATA = {
    "area": "Red River Gorge",
    "routes": [
     {
-     "name": "27 years of climbing 5.8 x2",
-     "grade": null,
-     "gradeKind": null,
-     "gradeRank": 0,
+     "name": "27 years of climbing",
+     "grade": "5.8",
+     "gradeKind": "rope",
+     "gradeRank": 32,
      "styles": [],
      "outcome": "sent",
-     "repeats": 1,
+     "repeats": 2,
      "star": false,
      "unknown": false,
      "note": null,
@@ -6750,6 +6750,21 @@ window.CLIMBING_DATA = {
     "star": false
    },
    {
+    "name": "27 Years of Climbing",
+    "grade": "5.8",
+    "gradeKind": "rope",
+    "gradeRank": 32,
+    "area": "Red River Gorge",
+    "wall": "The Gallery",
+    "ascents": 3,
+    "days": 2,
+    "sends": 3,
+    "attempts": 0,
+    "firstDate": "2023-07-07",
+    "lastDate": "2023-07-31",
+    "star": false
+   },
+   {
     "name": "Father and Son",
     "grade": "5.7",
     "gradeKind": "rope",
@@ -7122,36 +7137,6 @@ window.CLIMBING_DATA = {
     "attempts": 0,
     "firstDate": "2025-03-03",
     "lastDate": "2025-03-03",
-    "star": false
-   },
-   {
-    "name": "27 Years of Climbing",
-    "grade": "5.8",
-    "gradeKind": "rope",
-    "gradeRank": 32,
-    "area": "Red River Gorge",
-    "wall": "The Gallery",
-    "ascents": 1,
-    "days": 1,
-    "sends": 1,
-    "attempts": 0,
-    "firstDate": "2023-07-31",
-    "lastDate": "2023-07-31",
-    "star": false
-   },
-   {
-    "name": "27 years of climbing 5.8 x2",
-    "grade": null,
-    "gradeKind": null,
-    "gradeRank": 0,
-    "area": "Red River Gorge",
-    "wall": "The Gallery",
-    "ascents": 1,
-    "days": 1,
-    "sends": 1,
-    "attempts": 0,
-    "firstDate": "2023-07-07",
-    "lastDate": "2023-07-07",
     "star": false
    },
    {
@@ -9649,7 +9634,7 @@ window.CLIMBING_DATA = {
  "stats": {
   "trips": 74,
   "routes": 258,
-  "uniqueRoutes": 208,
+  "uniqueRoutes": 207,
   "sends": 207,
   "people": 46,
   "areas": 9,

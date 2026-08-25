@@ -123,6 +123,37 @@ console.log('\nRULE  climbing days are public to read and token-gated to write')
   ok(r.body && r.body.routes.length === 1, 'and anyone can read it back');
   ok(r.body.source === 'web', 'tagged as web-added so it can be told from climbs.md');
 
+  /* A day off a phone has to survive the trip with everything a day in
+     climbs.md has: the style it went in, how many goes, the sector, the star.
+     Dropping any of them here would make a web day a second-class one on every
+     page that reads it, which is the thing add.html exists not to do. */
+  const full = {
+    area: 'Red River Gorge', region: 'PMRP', people: 'Dorcey', pitches: 3,
+    md: '# 08/17/26\n-\n## Red River Gorge\n### PMRP\n#### The Shire\nGold Rush - 5.11d (redpoint, x4)',
+    routes: [{
+      name: 'Gold Rush', grade: '5.11d', gradeKind: 'rope', gradeRank: 47,
+      styles: ['redpoint'], outcome: 'sent', repeats: 4, star: true,
+      note: 'greasy', wall: 'The Shire'
+    }]
+  };
+  const f = await call('POST', '/climb/2026-08-17', full, TOKEN);
+  const fr = (await call('GET', '/climb/2026-08-17')).body.routes[0];
+  ok(f.status === 200 && f.body.md.startsWith('# 08/17/26'),
+    'the markdown the page would have written is kept as the record');
+  ok(fr.gradeRank === 47 && fr.gradeKind === 'rope', 'the grade keeps its rank, so it can be ranked');
+  ok(fr.styles[0] === 'redpoint' && fr.repeats === 4, 'the style and the number of goes survive');
+  ok(fr.star === true && fr.wall === 'The Shire', 'so do the star and the sector');
+
+  const junk = await call('POST', '/climb/2026-08-18', {
+    area: 'Nowhere',
+    routes: [{ name: 'X', styles: ['sandbagged', 'flash'], outcome: 'dyno', repeats: 500 }]
+  }, TOKEN);
+  const jr = junk.body.routes[0];
+  ok(JSON.stringify(jr.styles) === '["flash"]', 'a style nobody climbs in is dropped');
+  ok(jr.outcome === 'sent' && jr.repeats === 99, 'and a nonsense outcome or count is clamped, not stored');
+  await call('POST', '/climb/2026-08-17', { remove: true }, TOKEN);
+  await call('POST', '/climb/2026-08-18', { remove: true }, TOKEN);
+
   const all = await call('GET', '/climb');
   ok(!!all.body.days['2026-08-16'], 'it appears in the full climbing read');
 

@@ -2,8 +2,8 @@
    ────────────────────────────────────────────────────────────────────────────
    climbs.md is the archive and is still edited by hand. add.html writes to the
    log service instead, so a day can be recorded at the crag without a build
-   step. This is the one place that knows how to fetch those days and reshape
-   them to look like every other trip.
+   step. This is the one place that knows how to fetch those days and put them
+   into the archive's shape.
 
    It lives in its own file because it used to live inside the deep log page,
    which meant climbing.html — the room, and the page most people actually land
@@ -15,52 +15,65 @@
 
    Returns the number of days merged. Safe to call when the service is down: it
    returns 0 and leaves the archive alone, because a page showing the committed
-   history is right and an error page is not. */
+   history is right and an error page is not.
+
+   ── what a web day is now ──
+   It used to be a thinner thing than a markdown one: no styles, no ×2, no
+   sector, and `gradeRank: 0` so it could never place in "hardest". Honest, but
+   it meant the same afternoon was worth less to the site for having been typed
+   at the crag rather than at a desk — and the ranking blank was self-inflicted,
+   because a grade is a grade whoever typed it.
+
+   So add.html now stores the markdown block it would have written into
+   climbs.md by hand, and this reads that block with climb-parse.js, the browser
+   port of the parser build-data.py uses. Same grades, same ranks, same styles,
+   same send-or-project rule. A web day is a markdown day that hasn't been
+   filed yet — including in the ledgers below, which it now counts towards.
+
+   Needs climb-vocab.js and climb-parse.js loaded first. */
 (function (global) {
   const HOST = global.location.origin.includes('localhost')
     ? global.location.origin
     : 'https://training-log.rmbuster82.workers.dev';
 
-  /* The log service stores what add.html collected. The rest of the site
-     expects the richer shape build-data.py produces, so the gaps are filled
-     with honest blanks rather than guesses — `gradeRank: 0` in particular means
-     a web entry can never win "hardest", which is correct: the grade is a
-     free-text string here and ranking it would be inventing precision. */
-  function shape(d) {
-    return {
+  /* Days written before the page kept its markdown. They carry a name, a grade
+     and an outcome and nothing else — so rather than reading them a second,
+     poorer way, they are written out as the markdown they would have been and
+     parsed like everything else. An old entry gets a grade rank out of it. */
+  function legacyMarkdown(d) {
+    return ClimbParse.compose({
       date: d.date,
-      dateRaw: d.date,
-      area: d.area || 'Climbing',
-      notes: d.notes || '',
-      people: d.people ? String(d.people).split(/\s*,\s*/).filter(Boolean) : [],
-      pitches: 0,
-      boulders: 0,
-      hasPhoto: false,
-      hasVideo: false,
-      fromWeb: true,
+      area: d.area,
+      people: d.people,
+      notes: d.notes,
       routes: (d.routes || []).map(r => ({
         name: r.name,
-        grade: r.grade || '',
-        gradeKind: /^[vV]/.test(r.grade || '') ? 'boulder' : 'rope',
-        gradeRank: 0,
-        styles: [],
-        outcome: r.outcome || 'sent',
-        repeats: 1,
-        star: false,
-        unknown: false,
-        note: null,
-        area: d.area || '',
-        region: '',
-        wall: ''
+        grade: r.grade,
+        // 'repeat' was a third outcome this page once offered. It meant "I have
+        // been up this before", which the log records by the route appearing
+        // twice — not by the ascent being something other than a send.
+        outcome: r.outcome === 'attempt' ? 'attempt' : 'sent',
+        repeats: 1
       }))
-    };
+    });
+  }
+
+  function shape(d) {
+    const trip = ClimbParse.day(d.md || legacyMarkdown(d));
+    if (!trip) return null;
+    if (!trip.area) trip.area = 'Climbing';
+    trip.routes.forEach(r => { if (!r.area) r.area = trip.area; });
+    /* The one thing the markdown can't say about itself. Pages use it to mark
+       a day as logged from the crag rather than filed. */
+    trip.fromWeb = true;
+    return trip;
   }
 
   async function fetchDays() {
     try {
       const r = await fetch(HOST + '/climb', { cache: 'no-store' });
       if (!r.ok) return [];
-      return Object.values((await r.json()).days || {}).map(shape);
+      return Object.values((await r.json()).days || {}).map(shape).filter(Boolean);
     } catch (e) {
       return [];
     }
@@ -80,14 +93,44 @@
     DATA.trips = [...fresh, ...DATA.trips]
       .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
 
-    /* The headline counters are precomputed by build-data.py, so they have to
-       be told. Without this the room page adds the trip to the list and then
-       goes on reporting a trip count that does not include it — two numbers on
-       one screen disagreeing, which is worse than either being stale. */
+    /* 'Silas' typed at a crag and 'Silas Whitaker' in the archive are one
+       person, and the log's people list is how you'd ever notice they weren't.
+       Run over everything, so a short name meets the full ones it might be. */
+    ClimbParse.mergeAliases(DATA.trips);
+
+    /* ── the ledgers ──
+       Everything below is precomputed by build-data.py, so it has to be told.
+       Without this the page adds the trip to the list and then goes on
+       reporting totals that don't include it — two numbers on one screen
+       disagreeing, which is worse than either being stale. And a route he sent
+       today would be missing from most-climbed while sitting in the day card
+       directly above it. */
+    if (DATA.index) {
+      DATA.index.mostClimbed = ClimbParse.tally(fresh, DATA.index.mostClimbed || []);
+      const people = new Set(DATA.index.people || []);
+      const areas = new Set(DATA.index.areas || []);
+      fresh.forEach(t => {
+        t.people.forEach(p => people.add(p));
+        if (t.area) areas.add(t.area);
+      });
+      const byName = (a, b) => a.toLowerCase().localeCompare(b.toLowerCase());
+      DATA.index.people = [...people].sort(byName);
+      DATA.index.areas = [...areas].sort(byName);
+    }
+
     if (DATA.stats) {
+      /* Counted the way build-data.py counts: a line that records a day without
+         recording a climb ("2 other climbs, not sure what they were") is not a
+         route, and a send is one route entry rather than one lap. */
+      const routes = fresh.reduce((all, t) => all.concat(t.routes.filter(r => !r.unknown)), []);
       DATA.stats.trips = (DATA.stats.trips || 0) + fresh.length;
-      DATA.stats.sends = (DATA.stats.sends || 0) +
-        fresh.reduce((n, t) => n + t.routes.filter(r => r.outcome === 'sent').length, 0);
+      DATA.stats.routes = (DATA.stats.routes || 0) + routes.length;
+      DATA.stats.sends = (DATA.stats.sends || 0) + routes.filter(r => r.outcome === 'sent').length;
+      if (DATA.index) {
+        DATA.stats.uniqueRoutes = DATA.index.mostClimbed.length;
+        DATA.stats.people = DATA.index.people.length;
+        DATA.stats.areas = DATA.index.areas.length;
+      }
     }
     return fresh.length;
   }

@@ -10,7 +10,7 @@
   <style>
     :root {
       --bar: #3a5a40; --bar-dark: #2d4632; --bg: #f4f1e9; --card: #fff;
-      --ink: #26241f; --soft: #6f6a5f; --line: #e2ddd0; --clay: #b5502a;
+      --ink: #26241f; --soft: #6f6a5f; --line: #e2ddd0; --clay: #b14f2a;
       --sent: #2f8f4e; --proj: #c77d1a;
     }
     * { box-sizing: border-box; margin: 0; }
@@ -35,24 +35,50 @@
     textarea { min-height: 4.5rem; resize: vertical; }
     .field { margin-bottom: 0.8rem; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
-    @media (max-width: 520px) { .row2 { grid-template-columns: 1fr; } }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.7rem; }
+    @media (max-width: 520px) { .row2, .row3 { grid-template-columns: 1fr; } }
 
-    /* one route = one line. adding the next is a single tap and the cursor
-       lands in it, because this gets filled in on a phone in a car park. */
-    .route { display: grid; grid-template-columns: 1fr 6.5rem 6.5rem auto; gap: 0.45rem; margin-bottom: 0.45rem; align-items: center; }
-    @media (max-width: 560px) { .route { grid-template-columns: 1fr 5rem; grid-template-areas: "n n" "g o" "x x"; }
-      .route .rn { grid-area: n; } .route .rg { grid-area: g; } .route .ro { grid-area: o; } .route .rx { grid-area: x; } }
-    .route .rx { min-height: 46px; min-width: 46px; border: 1px solid var(--line); border-radius: 9px; background: #fff; cursor: pointer; color: var(--soft); font-size: 1.1rem; }
+    /* One route is one line, and it wraps rather than shrinking, because this
+       gets filled in on a phone in a car park and a 3rem-wide grade box is not
+       a thing anybody can type into. Adding the next route is a single tap and
+       the cursor lands in it. */
+    .routebox { border: 1px solid var(--line); border-radius: 10px; background: #fcfbf6; padding: 0.5rem; margin-bottom: 0.5rem; }
+    .route, .extra { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+    .route input, .route select, .extra input, .extra select { width: auto; min-width: 0; }
+    .route .rn { flex: 1 1 11rem; }
+    .route .rg { flex: 0 1 5.5rem; }
+    .route .ro { flex: 1 1 8.5rem; }
+    .route .rt { flex: 0 0 4.6rem; text-align: center; }
+    .route .icons { display: flex; gap: 0.4rem; flex: 0 0 auto; margin-left: auto; }
+    .route .icon { flex: 0 0 46px; }
+    .icon { min-height: 46px; border: 1px solid var(--line); border-radius: 9px; background: #fff; cursor: pointer; color: var(--soft); font-size: 1.05rem; padding: 0; }
+    .icon.on { border-color: var(--proj); color: var(--proj); background: #fdf6e9; }
+    .extra { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px dashed var(--line); }
+    .extra input, .extra select { min-height: 42px; font-size: 0.92rem; }
+    .extra .rw { flex: 1 1 9rem; }
+    .extra .rh { flex: 1 1 8rem; }
+    .extra .rnote { flex: 2 1 12rem; }
 
     button { font: inherit; cursor: pointer; }
     .btn { min-height: 50px; padding: 0.5rem 1rem; font-weight: 700; border-radius: 10px; border: 1px solid var(--bar); background: var(--bar); color: #fff; }
     .btn.ghost { background: #fff; color: var(--bar); }
+    .btn.small { min-height: 40px; padding: 0.3rem 0.8rem; font-size: 0.85rem; }
     .btn.wide { width: 100%; }
     .btn:disabled { opacity: 0.55; cursor: default; }
 
     .msg { margin-top: 0.6rem; font-size: 0.9rem; min-height: 1.4em; }
     .msg.good { color: var(--sent); font-weight: 700; }
     .msg.bad { color: var(--clay); font-weight: 700; }
+
+    /* What the day looks like as markdown. Not decoration: it is the thing that
+       gets stored, so it is the thing worth showing. */
+    .preview {
+      background: #2b2823; color: #e9e4d7; border-radius: 10px; padding: 0.7rem 0.8rem;
+      font: 0.82rem/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: pre-wrap; overflow-x: auto; margin-top: 0.4rem;
+    }
+    .preview .k { color: #9dc4a6; }
+    .warn { color: var(--clay); font-size: 0.85rem; margin-top: 0.5rem; }
 
     .ownerform { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .ownerlabel { font-weight: 700; font-size: 0.85rem; text-transform: none; letter-spacing: 0; color: var(--ink); margin: 0; }
@@ -82,10 +108,11 @@
     .match { background: #eef4ef; border: 1px solid #cfe0d4; border-left: 4px solid var(--bar); border-radius: 10px; padding: 0.6rem 0.75rem; font-size: 0.9rem; }
     .match strong { color: var(--bar-dark); }
     .recent { font-size: 0.9rem; }
-    .recent .r { display: flex; gap: 0.6rem; padding: 0.4rem 0; border-top: 1px solid var(--line); align-items: center; }
+    .recent .r { display: flex; gap: 0.6rem; padding: 0.4rem 0; border-top: 1px solid var(--line); align-items: center; flex-wrap: wrap; }
     .recent .r:first-child { border-top: 0; }
     .recent .d { font-weight: 700; flex: 0 0 6.5rem; }
-    .recent .rm { margin-left: auto; background: none; border: 0; color: var(--clay); font-size: 0.82rem; }
+    .recent .what { flex: 1 1 8rem; color: var(--soft); }
+    .recent button { background: none; border: 0; color: var(--clay); font-size: 0.82rem; padding: 0.2rem 0.3rem; }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -98,8 +125,10 @@
   <div class="wrap">
     <div class="card">
       <h1>Log a climbing day</h1>
-      <p class="lede">Goes straight to the climbing log and the training page. If the date
-        matches a training day, the link between them appears on its own.</p>
+      <p class="lede">Writes the same markdown you'd have put in <code>climbs.md</code>, and the
+        pages read it the same way — grades ranked, styles kept, laps counted. Goes straight to
+        the climbing log and the training page. If the date matches a training day, the link
+        between them appears on its own.</p>
     </div>
 
     <div class="card" id="signin"></div>
@@ -121,17 +150,35 @@
         </div>
       </div>
 
+      <div class="field">
+        <label for="region">Region <span style="text-transform:none;font-weight:400">(optional — PMRP, Muir Valley)</span></label>
+        <input type="text" id="region" list="regions" placeholder="Only somewhere big enough to have them">
+        <datalist id="regions"></datalist>
+      </div>
+
       <div id="matchbox" hidden></div>
 
       <div class="field" style="margin-top:0.8rem">
         <label>Routes and problems</label>
         <div id="routes"></div>
+        <datalist id="walls"></datalist>
         <button type="button" class="btn ghost wide" id="addroute">+ Add another</button>
       </div>
 
-      <div class="field">
-        <label for="people">Who with <span style="text-transform:none;font-weight:400">(optional)</span></label>
-        <input type="text" id="people" placeholder="Ryhan">
+      <div class="row3">
+        <div class="field">
+          <label for="people">Who with</label>
+          <input type="text" id="people" list="partners" placeholder="Ryhan, Dorcey">
+          <datalist id="partners"></datalist>
+        </div>
+        <div class="field">
+          <label for="pitches">Pitches</label>
+          <input type="number" id="pitches" min="1" max="99" inputmode="numeric" placeholder="—">
+        </div>
+        <div class="field">
+          <label for="boulders">Boulders</label>
+          <input type="number" id="boulders" min="1" max="99" inputmode="numeric" placeholder="—">
+        </div>
       </div>
 
       <div class="field">
@@ -151,6 +198,16 @@
         <div class="picked" id="picked"></div>
       </div>
 
+      <!-- The markdown, before it goes anywhere. It is what gets stored and it
+           is what climbs.md would have said, so it is worth being able to read
+           and worth being able to lift straight into the file. -->
+      <div class="field">
+        <label>What goes in the log</label>
+        <div class="preview" id="preview"></div>
+        <div class="warn" id="warn" hidden></div>
+        <button type="button" class="btn ghost small" id="copy" style="margin-top:0.5rem">Copy the markdown</button>
+      </div>
+
       <button type="submit" class="btn wide" id="save">Save the day</button>
       <div class="bar" id="upbar" hidden><i></i></div>
       <div class="msg" id="msg" role="status"></div>
@@ -168,6 +225,8 @@
 
   <script src="../../assets/owner.js"></script>
   <script src="climbs-data.js"></script>
+  <script src="climb-vocab.js"></script>
+  <script src="climb-parse.js"></script>
   <script src="climb-media.js"></script>
   <script>
   /* LOG A DAY
@@ -176,8 +235,17 @@
      markdown, running a build script, or asking anyone for help. Type it on a
      phone in the car park; it is live before you have driven home.
 
+     What it stores is markdown all the same. The form composes the block that
+     would have gone into climbs.md — headings, route lines, tags, a NOTES
+     section — and climb-parse.js reads it back with build-data.py's own rules
+     before anything is sent. So the day's data isn't a lesser version of a
+     filed day, it is the identical thing: 5.11b ranks, a flash is a flash, x2
+     is two of them, and a route he has done before joins its existing row in
+     most-climbed rather than starting a second one.
+
      Where it goes: the Worker, tagged source:"web". climbs.md stays the archive
-     and is still edited by hand — this does not write to it. Both appear on the
+     and is still edited by hand — this does not write to it, which is why the
+     markdown is on screen with a copy button under it. Both appear on the
      climbing page; the training page links to whichever exists for that date. */
   (function () {
     const HOST = location.origin.includes('localhost')
@@ -192,37 +260,158 @@
 
     Owner.init({ host: HOST, onChange: paint });
 
-    /* Area suggestions come from the places already climbed, so the common case
-       is two taps rather than typing "Red River Gorge" on a phone keyboard. */
-    (function areas() {
-      const seen = new Set();
-      ((window.CLIMBING_DATA || {}).trips || []).forEach(t => t.area && seen.add(t.area));
-      $('#areas').innerHTML = [...seen].sort().map(a => `<option value="${esc(a)}">`).join('');
+    /* Suggestions come from the log itself, so the common case is two taps
+       rather than typing "Red River Gorge" on a phone keyboard — and, more to
+       the point, so the spelling matches what is already in the data. A crag
+       typed a second way is a second crag on the areas list. */
+    (function suggestions() {
+      const D = window.CLIMBING_DATA || {};
+      const trips = D.trips || [];
+      const fill = (sel, values) =>
+        $(sel).innerHTML = [...new Set(values)].filter(Boolean).sort()
+          .map(v => `<option value="${esc(v)}">`).join('');
+      fill('#areas', trips.map(t => t.area));
+      fill('#regions', trips.flatMap(t => (t.routes || []).map(r => r.region)));
+      fill('#partners', (D.index || {}).people || []);
+      fill('#walls', trips.flatMap(t => (t.routes || []).map(r => r.wall)));
     })();
 
     fetch(PLAN_URL).then(r => r.ok ? r.json() : null).then(p => { PLAN = p; matchDay(); }).catch(() => {});
 
-    function routeRow(v = {}) {
+    /* ── a route ──
+       The five ways a climb goes are the five a climber would say out loud, and
+       they are the same words climbs.md uses, because the line this builds is
+       parsed by the same reader. Onsight, flash and redpoint are sends by
+       definition — the parser treats them as clean whatever else the line says
+       — so choosing one here is choosing an outcome too.
+
+       "Goes" is the ×N. On a send it means laps; on attempts it means tries.
+       Both come out of the line as `repeats`, which is what x2 has always meant
+       in the file. */
+    const WENT = [
+      ['onsight', 'Onsight'],
+      ['flash', 'Flash'],
+      ['redpoint', 'Redpoint'],
+      ['sent', 'Sent'],
+      ['attempt', 'Attempts']
+    ];
+    const HOW = [
+      ['', 'Sport / boulder'],
+      ['trad', 'Trad'],
+      ['top rope', 'Top rope'],
+      ['free solo', 'Free solo'],
+      ['mixed', 'Mixed'],
+      ['aid', 'Aid']
+    ];
+    const opts = (list, chosen) => list
+      .map(([v, l]) => `<option value="${v}"${v === chosen ? ' selected' : ''}>${l}</option>`).join('');
+
+    function routeRow(v) {
+      v = v || {};
       const d = document.createElement('div');
-      d.className = 'route';
+      d.className = 'routebox';
       d.innerHTML = `
-        <input class="rn" type="text" placeholder="Route or problem" value="${esc(v.name || '')}">
-        <input class="rg" type="text" placeholder="Grade" value="${esc(v.grade || '')}">
-        <select class="ro">
-          <option value="sent">Sent</option>
-          <option value="attempt">Tried</option>
-          <option value="repeat">Repeat</option>
-        </select>
-        <button type="button" class="rx" title="Remove">×</button>`;
-      d.querySelector('.rx').onclick = () => {
+        <div class="route">
+          <input class="rn" type="text" placeholder="Route or problem" value="${esc(v.name || '')}">
+          <input class="rg" type="text" placeholder="Grade" value="${esc(v.grade || '')}">
+          <select class="ro">${opts(WENT, v.went || 'sent')}</select>
+          <input class="rt" type="number" min="1" max="99" inputmode="numeric" placeholder="×1"
+                 value="${v.repeats > 1 ? v.repeats : ''}" title="How many goes">
+          <span class="icons">
+            <button type="button" class="icon rs${v.star ? ' on' : ''}" title="One that mattered">⭑</button>
+            <button type="button" class="icon rmore" title="Sector, style, a note">⋯</button>
+            <button type="button" class="icon rd" title="Remove">×</button>
+          </span>
+        </div>
+        <div class="extra"${v.wall || v.how || v.note ? '' : ' hidden'}>
+          <input class="rw" type="text" list="walls" placeholder="Wall or sector" value="${esc(v.wall || '')}">
+          <select class="rh">${opts(HOW, v.how || '')}</select>
+          <input class="rnote" type="text" placeholder="Anything else" value="${esc(v.note || '')}">
+        </div>`;
+      d.querySelector('.rd').onclick = () => {
         d.remove();
         if (!$('#routes').children.length) addRoute();
+        preview();
       };
+      d.querySelector('.rs').onclick = e => { e.currentTarget.classList.toggle('on'); preview(); };
+      d.querySelector('.rmore').onclick = () => {
+        const x = d.querySelector('.extra');
+        x.hidden = !x.hidden;
+        if (!x.hidden) x.querySelector('.rw').focus();
+      };
+      d.addEventListener('input', preview);
+      d.addEventListener('change', preview);
       $('#routes').appendChild(d);
       return d;
     }
-    function addRoute() { const r = routeRow(); r.querySelector('.rn').focus(); return r; }
+    function addRoute() { const r = routeRow(); r.querySelector('.rn').focus(); preview(); return r; }
     $('#addroute').onclick = () => addRoute();
+
+    /* ── the form, as a day ──
+       One reader for the whole form, used by the preview, by the save, and by
+       nothing else — so what is shown on screen and what is sent cannot be two
+       different days. */
+    function readForm() {
+      const routes = [...document.querySelectorAll('.routebox')].map(d => {
+        const went = d.querySelector('.ro').value;
+        return {
+          name: d.querySelector('.rn').value.trim(),
+          grade: d.querySelector('.rg').value.trim(),
+          style: (went === 'sent' || went === 'attempt') ? '' : went,
+          outcome: went === 'attempt' ? 'attempt' : 'sent',
+          repeats: Math.max(1, parseInt(d.querySelector('.rt').value, 10) || 1),
+          how: d.querySelector('.rh').value,
+          wall: d.querySelector('.rw').value.trim(),
+          note: d.querySelector('.rnote').value.trim(),
+          star: d.querySelector('.rs').classList.contains('on')
+        };
+      }).filter(r => r.name);
+
+      return {
+        date: $('#date').value,
+        area: $('#area').value.trim(),
+        region: $('#region').value.trim(),
+        people: $('#people').value.trim(),
+        notes: $('#notes').value.trim(),
+        pitches: parseInt($('#pitches').value, 10) || null,
+        boulders: parseInt($('#boulders').value, 10) || null,
+        routes
+      };
+    }
+
+    /* The markdown, and then the markdown read back. The second half is the
+       honest check: if the parser can't find a grade in what you typed, the
+       warning says so now rather than the log being quietly short a route. */
+    function preview() {
+      const day = readForm();
+      const md = ClimbParse.compose(day);
+      const box = $('#preview');
+      box.innerHTML = md
+        ? esc(md).replace(/^(#+ .*)$/gm, '<span class="k">$1</span>')
+        : '<span class="k">Nothing yet.</span>';
+
+      const trip = md ? ClimbParse.day(md) : null;
+      const missing = trip ? trip.routes.filter(r => !r.grade && !r.unknown).map(r => r.name) : [];
+      const warn = $('#warn');
+      warn.hidden = !missing.length;
+      warn.textContent = missing.length
+        ? `No grade read on ${missing.join(', ')} — it'll be logged as a climb without one.`
+        : '';
+      return { day, md, trip };
+    }
+    ['#date', '#area', '#region', '#people', '#notes', '#pitches', '#boulders']
+      .forEach(s => $(s).addEventListener('input', preview));
+
+    $('#copy').onclick = async () => {
+      const { md } = preview();
+      try {
+        await navigator.clipboard.writeText(md + '\n');
+        $('#copy').textContent = 'Copied — paste it into climbs.md';
+        setTimeout(() => { $('#copy').textContent = 'Copy the markdown'; }, 2500);
+      } catch (e) {
+        $('#copy').textContent = 'Select it from the box above';
+      }
+    };
 
     /* The accept list comes from climb-media.js rather than being typed here,
        so it cannot drift from what the Worker will actually take. A type the
@@ -269,10 +458,55 @@
         if (!$('#date').value) $('#date').value = isoOf(new Date());
         if (!$('#routes').children.length) routeRow();
         matchDay();
+        preview();
         listRecent();
       } else {
         Owner.mountBox($('#signin'), { title: 'Password' });
       }
+    }
+
+    /* ── fixing one ──
+       A stored day comes back as its markdown, so editing it is parsing that
+       and filling the form in from the result. The same route line that made
+       the data makes the row, which is the only reason "edit" is safe to offer
+       at all: there is no second reading of a day for the two to disagree on. */
+    function loadDay(entry) {
+      const trip = ClimbParse.day(entry.md || '') || { routes: [] };
+      $('#date').value = entry.date;
+      $('#area').value = entry.area || trip.area || '';
+      $('#region').value = entry.region || (trip.routes.find(r => r.region) || {}).region || '';
+      $('#people').value = entry.people || trip.people.join(', ');
+      $('#pitches').value = entry.pitches || trip.pitches || '';
+      $('#boulders').value = entry.boulders || trip.boulders || '';
+      /* The partners line is rebuilt from the people field, so it must not also
+         survive in the notes or it would be written twice. */
+      $('#notes').value = String(trip.notes || '')
+        .split('\n')
+        .filter(l => !/^w\//i.test(l.trim()) && !/^\d+\s*(pitch|boulder)/i.test(l.trim()))
+        .join('\n').trim();
+
+      $('#routes').innerHTML = '';
+      const source = trip.routes.length ? trip.routes : (entry.routes || []);
+      source.forEach(r => {
+        const styles = r.styles || [];
+        routeRow({
+          name: r.name,
+          grade: r.grade || '',
+          went: r.outcome === 'attempt' ? 'attempt'
+            : (styles.find(s => ['onsight', 'flash', 'redpoint'].includes(s)) || 'sent'),
+          how: styles.find(s => ['trad', 'top rope', 'free solo', 'mixed', 'aid'].includes(s)) || '',
+          repeats: r.repeats || 1,
+          wall: r.wall || '',
+          note: r.note || '',
+          star: !!r.star
+        });
+      });
+      if (!$('#routes').children.length) routeRow();
+      matchDay();
+      preview();
+      $('#msg').className = 'msg';
+      $('#msg').textContent = `Editing ${entry.date}. Saving overwrites it.`;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     async function listRecent() {
@@ -280,10 +514,18 @@
       try { days = (await (await fetch(HOST + '/climb', { cache: 'no-store' })).json()).days || {}; } catch (e) {}
       const keys = Object.keys(days).sort().reverse().slice(0, 12);
       $('#recent').innerHTML = keys.length
-        ? keys.map(k => `<div class="r"><span class="d">${esc(k)}</span>
-            <span>${esc(days[k].area || '')} · ${(days[k].routes || []).length} routes</span>
-            <button type="button" class="rm" data-del="${esc(k)}">remove</button></div>`).join('')
+        ? keys.map(k => {
+            const d = days[k];
+            const n = (d.routes || []).length;
+            const sent = (d.routes || []).filter(r => r.outcome === 'sent').length;
+            return `<div class="r"><span class="d">${esc(k)}</span>
+              <span class="what">${esc(d.area || '')} · ${n} route${n === 1 ? '' : 's'}${
+                n ? `, ${sent} sent` : ''}</span>
+              <button type="button" data-edit="${esc(k)}">edit</button>
+              <button type="button" data-del="${esc(k)}">remove</button></div>`;
+          }).join('')
         : '<p class="lede">Nothing logged from the web yet.</p>';
+      document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => loadDay(days[b.dataset.edit]));
       document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
         if (!confirm(`Remove the ${b.dataset.del} entry? This only removes the one added here.`)) return;
         await Owner.post(`/climb/${b.dataset.del}`, { remove: true });
@@ -294,24 +536,28 @@
     $('#form').addEventListener('submit', async e => {
       e.preventDefault();
       const msg = $('#msg');
-      const iso = $('#date').value;
-      const routes = [...document.querySelectorAll('.route')].map(r => ({
-        name: r.querySelector('.rn').value.trim(),
-        grade: r.querySelector('.rg').value.trim(),
-        outcome: r.querySelector('.ro').value
-      })).filter(r => r.name);
+      const { day, md, trip } = preview();
+      const iso = day.date;
 
       if (!iso) { msg.className = 'msg bad'; msg.textContent = 'Pick a date.'; return; }
-      if (!$('#area').value.trim() && !routes.length) {
+      if (!day.area && !day.routes.length) {
         msg.className = 'msg bad'; msg.textContent = 'Needs somewhere you went, or at least one route.'; return;
       }
 
       $('#save').disabled = true;
       msg.className = 'msg'; msg.textContent = 'Saving…';
 
+      /* The markdown is the record; the routes are its reading, done here with
+         the vocabulary loaded rather than server-side where it isn't. Both are
+         sent so the pages that only want a count don't have to parse. */
       const out = await Owner.post(`/climb/${iso}`, {
-        area: $('#area').value.trim(), people: $('#people').value.trim(),
-        notes: $('#notes').value.trim(), routes
+        area: day.area, region: day.region, people: day.people, notes: day.notes,
+        pitches: day.pitches, boulders: day.boulders, md,
+        routes: (trip ? trip.routes : []).map(r => ({
+          name: r.name, grade: r.grade || '', gradeKind: r.gradeKind, gradeRank: r.gradeRank,
+          styles: r.styles, outcome: r.outcome, repeats: r.repeats, star: r.star,
+          note: r.note, wall: r.wall || ''
+        }))
       });
 
       if (!out) {
@@ -381,16 +627,31 @@
         shots = ` ${said} up too.`;
       }
 
+      /* What actually landed, in the log's own terms — a save that says "3
+         sent, 1 worked" is a save you can check without opening another page. */
+      const logged = (trip ? trip.routes : []).filter(r => !r.unknown);
+      const tally = [
+        logged.filter(r => r.outcome === 'sent').length,
+        logged.filter(r => r.outcome === 'attempt').length
+      ];
+      const said = [
+        tally[0] ? `${tally[0]} sent` : '',
+        tally[1] ? `${tally[1]} worked` : ''
+      ].filter(Boolean).join(', ');
+
       $('#save').disabled = false;
       msg.className = 'msg good';
-      msg.textContent = `Saved.${ticked}${shots} It is live on both pages now.`;
-      document.querySelectorAll('.route').forEach(r => r.remove());
+      msg.textContent = `Saved${said ? ' — ' + said : ''}.${ticked}${shots} It is live on both pages now.`;
+      $('#routes').innerHTML = '';
       routeRow();
       $('#notes').value = '';
+      $('#pitches').value = '';
+      $('#boulders').value = '';
       $('#media').value = '';
       $('#picked').innerHTML = '';
       $('#picklabel').classList.remove('has');
       $('#picklabel').textContent = 'Choose from the camera roll';
+      preview();
       listRecent();
     });
 

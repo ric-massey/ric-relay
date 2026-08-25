@@ -382,7 +382,11 @@ type Sydney's cat's name for a surprise!</div>
   <script src="effects.js"></script>
   <script src="projects/climbing/latest-climb.js?v=2"></script>
   <!-- Lets the banner see days logged from a phone, not just the ones
-       committed into climbs.md. latest.js uses it if it is there. -->
+       committed into climbs.md. latest.js uses it if it is there. The two
+       parser files come first: a web day is stored as the markdown it would
+       have been, and these are what read it. -->
+  <script src="projects/climbing/climb-vocab.js"></script>
+  <script src="projects/climbing/climb-parse.js"></script>
   <script src="projects/climbing/web-trips.js"></script>
   <script src="latest.js?v=2"></script>
   <script>
