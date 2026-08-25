@@ -119,7 +119,8 @@
   <div class="wrap">
     <div class="breadcrumb"><a href="../../climbing.html">Climbing</a> &rsaquo; <a href="index.html">The Log</a> &rsaquo; Gallery</div>
     <h1>Gallery</h1>
-    <p class="lede">Photos and video from the trips — dated, and tied to the route where I know it.</p>
+    <p class="lede">Photos and video from the days out — each one tied to a climb, and to the
+      route where I know which one.</p>
 
     <div class="controls">
       <input type="search" class="search" id="search" autocomplete="off"
@@ -131,7 +132,7 @@
     <div id="grid" class="grid"></div>
 
     <footer>Captions live in <code>photos.md</code> — run <code>import-photos.py</code> after adding files.
-      Anything sent up from a crag arrives without one, under <em>Needs a label</em>.</footer>
+      A photo joins the gallery once it has a route, or a date that lands on a day in the log.</footer>
   </div>
 
   <dialog class="viewer" id="viewer">
@@ -214,7 +215,22 @@
       .sort((a, b) => (a.date ? 0 : 1) - (b.date ? 0 : 1) ||
         String(b.date || "").localeCompare(String(a.date || "")));
 
-    if (!PHOTOS.length) {
+    /* ── a climbing gallery, not a camera roll ──
+       A picture earns its place by being attached to a climb: a route named in
+       photos.md, or a date that lands on a day in the log — which means the
+       crag and everything climbed that day are known, and the search can find
+       the shot by the name of the route next to it.
+
+       Everything else is a picture that happens to live in photos/. It isn't
+       deleted and it isn't hidden for good: the last chip brings the loose pile
+       up on its own, which is how you find the file that needs a line in
+       photos.md. But it is not what the gallery opens on, because a gallery of
+       climbing that is mostly undated snapshots is a camera roll. */
+    const linked = (p) => Boolean(p.route || p.tripDate);
+    const LINKED = PHOTOS.filter(linked);
+    const LOOSE = PHOTOS.filter((p) => !linked(p));
+
+    if (!LINKED.length && !LOOSE.length) {
       countEl.textContent = "";
       grid.outerHTML = `<div class="empty">
         <p>No photos registered yet.</p>
@@ -223,18 +239,24 @@
       return;
     }
 
-    const years = [...new Set(PHOTOS.map((p) => p.date && p.date.slice(0, 4)).filter(Boolean))].sort().reverse();
-    const areas = [...new Set(PHOTOS.map((p) => p.area).filter(Boolean))].sort();
-    let state = { q: "", year: null, area: null, only: null };
+    let state = { q: "", year: null, area: null, only: null, loose: false };
+    const base = () => (state.loose ? LOOSE : LINKED);
 
+    /* Off the pile actually on screen. A year chip that filters to nothing is
+       worse than no chip — and the loose pile's years are not the log's. */
     function renderChips() {
+      const pile = base();
+      const years = [...new Set(pile.map((p) => p.date && p.date.slice(0, 4)).filter(Boolean))].sort().reverse();
+      const areas = [...new Set(pile.map((p) => p.area).filter(Boolean))].sort();
       const chip = (label, key, value) =>
         `<button class="chip" data-key="${key}" data-value="${esc(value)}" aria-pressed="${state[key] === value}">${esc(label)}</button>`;
       chipsEl.innerHTML = [
         ...years.map((y) => chip(y, "year", y)),
         ...areas.map((a) => chip(a, "area", a)),
-        chip("Needs a label", "only", "unlabelled"),
-        chip("Video", "only", "video"),
+        pile.some((p) => p.type === "video") ? chip("Video", "only", "video") : "",
+        state.loose ? "" : chip("No route yet", "only", "unnamed"),
+        LOOSE.length ? `<button class="chip" data-key="loose" data-value="1"
+          aria-pressed="${state.loose}">Not tied to a climb (${LOOSE.length})</button>` : "",
       ].join("");
     }
 
@@ -242,7 +264,7 @@
       const q = state.q.trim().toLowerCase();
       if (state.year && (!p.date || p.date.slice(0, 4) !== state.year)) return false;
       if (state.area && p.area !== state.area) return false;
-      if (state.only === "unlabelled" && p.route && p.date) return false;
+      if (state.only === "unnamed" && p.route) return false;
       if (state.only === "video" && p.type !== "video") return false;
       if (!q) return true;
       return [p.route, p.caption, p.area, p.date, p.file, p.tripRoutes.join(" ")]
@@ -251,10 +273,14 @@
 
     function render() {
       renderChips();
-      const shown = PHOTOS.filter(matches);
-      countEl.textContent = `${shown.length} of ${PHOTOS.length} — ${
-        PHOTOS.filter((p) => p.route).length} named to a route, ${
-        PHOTOS.filter((p) => !p.date).length} still undated`;
+      const pile = base();
+      const shown = pile.filter(matches);
+      const anyNamed = pile.some((p) => p.route);
+      countEl.textContent = state.loose
+        ? `${shown.length} of ${LOOSE.length} in photos/ with nothing to tie them to — ` +
+          `give one a route, or a date that matches a day out, in photos.md`
+        : `${shown.length} of ${LINKED.length} — ${
+            LINKED.filter((p) => p.route).length} named to a route, the rest to the day they were shot`;
 
       grid.innerHTML = shown.map((p) => {
         const i = PHOTOS.indexOf(p);
@@ -264,13 +290,19 @@
         const title = p.route || (p.area ? p.area : "Unlabelled");
         const sub = [p.date ? fmtDate(p.date) : "no date yet", p.route ? p.area : null]
           .filter(Boolean).join(" · ");
+        /* The badge only appears once it means something. With nothing yet
+           named in photos.md every single tile carried it, which is a gallery
+           that looks broken rather than a gallery with a job to do. */
         const flag = p.type === "video" ? '<span class="flag">video</span>'
-          : (!p.route || !p.date) ? '<span class="flag todo">needs a label</span>' : "";
+          : (!p.route && anyNamed) ? '<span class="flag todo">no route yet</span>' : "";
         return `<button class="shot" data-i="${i}">
           ${media}${flag}
           <span class="meta"><b>${esc(title)}</b><span>${esc(sub)}</span></span>
         </button>`;
-      }).join("") || `<div class="empty">Nothing matches that.</div>`;
+      }).join("") || `<div class="empty">${state.loose
+        ? "Nothing matches that."
+        : "Nothing here yet — a photo joins the gallery once it has a route in " +
+          "<code>photos.md</code>, or a date that lands on a day in the log."}</div>`;
     }
 
     grid.addEventListener("click", (e) => {
@@ -298,7 +330,13 @@
       const chip = e.target.closest("[data-key]");
       if (!chip) return;
       const { key, value } = chip.dataset;
-      state[key] = state[key] === value ? null : value;
+      if (key === "loose") {
+        /* The two piles don't share a year or a crag, so carrying the other
+           set's filters across would land on an empty grid. */
+        state = { ...state, loose: !state.loose, year: null, area: null, only: null };
+      } else {
+        state[key] = state[key] === value ? null : value;
+      }
       render();
     });
     searchEl.addEventListener("input", () => { state.q = searchEl.value; render(); });

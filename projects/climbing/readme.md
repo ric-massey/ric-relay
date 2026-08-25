@@ -42,7 +42,7 @@ EXIF date so a photo can find its own trip.
 |---|---|
 | `../../climbing.html` | The room. Most recent day out, current projects, objectives, recent ticks. |
 | `index.html` | The full log — search by route, crag, partner, date or grade; most-climbed; people; tick list. |
-| `gallery.html` | Photos and video, filtered by year, crag and route. |
+| `gallery.html` | Photos and video **that are attached to a climb** — a route named in `photos.md`, or a date that lands on a day in the log. Anything else is behind the *Not tied to a climb* chip, which is the worklist for `photos.md`. |
 | `add.html` | Logging a day from a phone. Password-gated, `noindex`, not in the menus. |
 | `board.html` | The woodshed — Kilter and Tension logbooks, dressed as the app. Deliberately not in the menus. |
 
