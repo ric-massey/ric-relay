@@ -70,15 +70,7 @@
     .msg.good { color: var(--sent); font-weight: 700; }
     .msg.bad { color: var(--clay); font-weight: 700; }
 
-    /* What the day looks like as markdown. Not decoration: it is the thing that
-       gets stored, so it is the thing worth showing. */
-    .preview {
-      background: #2b2823; color: #e9e4d7; border-radius: 10px; padding: 0.7rem 0.8rem;
-      font: 0.82rem/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
-      white-space: pre-wrap; overflow-x: auto; margin-top: 0.4rem;
-    }
-    .preview .k { color: #9dc4a6; }
-    .warn { color: var(--clay); font-size: 0.85rem; margin-top: 0.5rem; }
+    .warn { color: var(--clay); font-size: 0.85rem; margin: 0.1rem 0 0.5rem; }
 
     .ownerform { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .ownerlabel { font-weight: 700; font-size: 0.85rem; text-transform: none; letter-spacing: 0; color: var(--ink); margin: 0; }
@@ -125,10 +117,8 @@
   <div class="wrap">
     <div class="card">
       <h1>Log a climbing day</h1>
-      <p class="lede">Writes the same markdown you'd have put in <code>climbs.md</code>, and the
-        pages read it the same way — grades ranked, styles kept, laps counted. Goes straight to
-        the climbing log and the training page. If the date matches a training day, the link
-        between them appears on its own.</p>
+      <p class="lede">Goes straight to the climbing log and the training page. If the date
+        matches a training day, the link between them appears on its own.</p>
     </div>
 
     <div class="card" id="signin"></div>
@@ -150,40 +140,49 @@
         </div>
       </div>
 
-      <div class="field">
-        <label for="region">Region <span style="text-transform:none;font-weight:400">(optional — PMRP, Muir Valley)</span></label>
-        <input type="text" id="region" list="regions" placeholder="Only somewhere big enough to have them">
-        <datalist id="regions"></datalist>
-      </div>
-
       <div id="matchbox" hidden></div>
 
       <div class="field" style="margin-top:0.8rem">
         <label>Routes and problems</label>
         <div id="routes"></div>
+        <div class="warn" id="warn" hidden></div>
         <datalist id="walls"></datalist>
         <button type="button" class="btn ghost wide" id="addroute">+ Add another</button>
       </div>
 
-      <div class="row3">
-        <div class="field">
-          <label for="people">Who with</label>
-          <input type="text" id="people" list="partners" placeholder="Ryhan, Dorcey">
-          <datalist id="partners"></datalist>
-        </div>
-        <div class="field">
-          <label for="pitches">Pitches</label>
-          <input type="number" id="pitches" min="1" max="99" inputmode="numeric" placeholder="—">
-        </div>
-        <div class="field">
-          <label for="boulders">Boulders</label>
-          <input type="number" id="boulders" min="1" max="99" inputmode="numeric" placeholder="—">
-        </div>
+      <div class="field">
+        <label for="people">Who with</label>
+        <input type="text" id="people" list="partners" placeholder="Ryhan, Dorcey">
+        <datalist id="partners"></datalist>
       </div>
 
       <div class="field">
         <label for="notes">Notes <span style="text-transform:none;font-weight:400">(optional)</span></label>
         <textarea id="notes" placeholder="Conditions, how it felt, what to come back for."></textarea>
+      </div>
+
+      <!-- The three fields a normal day doesn't have. Region is for the crags
+           big enough to need one; the counts are for a day where the number is
+           the point. Out of the way, not gone — the log still records them. -->
+      <div class="field">
+        <button type="button" class="btn ghost small" id="moreday">+ Region, pitches, boulders</button>
+        <div id="dayextra" hidden style="margin-top:0.6rem">
+          <div class="field">
+            <label for="region">Region</label>
+            <input type="text" id="region" list="regions" placeholder="PMRP, Muir Valley">
+            <datalist id="regions"></datalist>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="pitches">Pitches</label>
+              <input type="number" id="pitches" min="1" max="99" inputmode="numeric" placeholder="—">
+            </div>
+            <div class="field">
+              <label for="boulders">Boulders</label>
+              <input type="number" id="boulders" min="1" max="99" inputmode="numeric" placeholder="—">
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Picked here, sent AFTER the day saves. A 60MB clip on crag signal is
@@ -196,16 +195,6 @@
           <span id="picklabel">Choose from the camera roll</span>
         </label>
         <div class="picked" id="picked"></div>
-      </div>
-
-      <!-- The markdown, before it goes anywhere. It is what gets stored and it
-           is what climbs.md would have said, so it is worth being able to read
-           and worth being able to lift straight into the file. -->
-      <div class="field">
-        <label>What goes in the log</label>
-        <div class="preview" id="preview"></div>
-        <div class="warn" id="warn" hidden></div>
-        <button type="button" class="btn ghost small" id="copy" style="margin-top:0.5rem">Copy the markdown</button>
       </div>
 
       <button type="submit" class="btn wide" id="save">Save the day</button>
@@ -331,24 +320,24 @@
       d.querySelector('.rd').onclick = () => {
         d.remove();
         if (!$('#routes').children.length) addRoute();
-        preview();
+        check();
       };
-      d.querySelector('.rs').onclick = e => { e.currentTarget.classList.toggle('on'); preview(); };
+      d.querySelector('.rs').onclick = e => { e.currentTarget.classList.toggle('on'); check(); };
       d.querySelector('.rmore').onclick = () => {
         const x = d.querySelector('.extra');
         x.hidden = !x.hidden;
         if (!x.hidden) x.querySelector('.rw').focus();
       };
-      d.addEventListener('input', preview);
-      d.addEventListener('change', preview);
+      d.addEventListener('input', check);
+      d.addEventListener('change', check);
       $('#routes').appendChild(d);
       return d;
     }
-    function addRoute() { const r = routeRow(); r.querySelector('.rn').focus(); preview(); return r; }
+    function addRoute() { const r = routeRow(); r.querySelector('.rn').focus(); check(); return r; }
     $('#addroute').onclick = () => addRoute();
 
     /* ── the form, as a day ──
-       One reader for the whole form, used by the preview, by the save, and by
+       One reader for the whole form, used by the check, by the save, and by
        nothing else — so what is shown on screen and what is sent cannot be two
        different days. */
     function readForm() {
@@ -379,17 +368,17 @@
       };
     }
 
-    /* The markdown, and then the markdown read back. The second half is the
-       honest check: if the parser can't find a grade in what you typed, the
-       warning says so now rather than the log being quietly short a route. */
-    function preview() {
+    /* The form, written out as the markdown it would have been in climbs.md,
+       and read straight back — which is how the day gets its grades ranked and
+       its styles kept without anyone having to think about markdown.
+
+       None of that is on screen. The one thing worth saying back is the one
+       thing that would be wrong later: if the grade you typed isn't one the log
+       can read, better to hear it here than to find the route grade-less in the
+       ledger a month from now. */
+    function check() {
       const day = readForm();
       const md = ClimbParse.compose(day);
-      const box = $('#preview');
-      box.innerHTML = md
-        ? esc(md).replace(/^(#+ .*)$/gm, '<span class="k">$1</span>')
-        : '<span class="k">Nothing yet.</span>';
-
       const trip = md ? ClimbParse.day(md) : null;
       const missing = trip ? trip.routes.filter(r => !r.grade && !r.unknown).map(r => r.name) : [];
       const warn = $('#warn');
@@ -400,18 +389,13 @@
       return { day, md, trip };
     }
     ['#date', '#area', '#region', '#people', '#notes', '#pitches', '#boulders']
-      .forEach(s => $(s).addEventListener('input', preview));
+      .forEach(s => $(s).addEventListener('input', check));
 
-    $('#copy').onclick = async () => {
-      const { md } = preview();
-      try {
-        await navigator.clipboard.writeText(md + '\n');
-        $('#copy').textContent = 'Copied — paste it into climbs.md';
-        setTimeout(() => { $('#copy').textContent = 'Copy the markdown'; }, 2500);
-      } catch (e) {
-        $('#copy').textContent = 'Select it from the box above';
-      }
-    };
+    $('#moreday').onclick = () => showDayExtra($('#dayextra').hidden);
+    function showDayExtra(open) {
+      $('#dayextra').hidden = !open;
+      $('#moreday').textContent = open ? '– Region, pitches, boulders' : '+ Region, pitches, boulders';
+    }
 
     /* The accept list comes from climb-media.js rather than being typed here,
        so it cannot drift from what the Worker will actually take. A type the
@@ -458,7 +442,7 @@
         if (!$('#date').value) $('#date').value = isoOf(new Date());
         if (!$('#routes').children.length) routeRow();
         matchDay();
-        preview();
+        check();
         listRecent();
       } else {
         Owner.mountBox($('#signin'), { title: 'Password' });
@@ -478,6 +462,7 @@
       $('#people').value = entry.people || trip.people.join(', ');
       $('#pitches').value = entry.pitches || trip.pitches || '';
       $('#boulders').value = entry.boulders || trip.boulders || '';
+      showDayExtra(!!($('#region').value || $('#pitches').value || $('#boulders').value));
       /* The partners line is rebuilt from the people field, so it must not also
          survive in the notes or it would be written twice. */
       $('#notes').value = String(trip.notes || '')
@@ -503,7 +488,7 @@
       });
       if (!$('#routes').children.length) routeRow();
       matchDay();
-      preview();
+      check();
       $('#msg').className = 'msg';
       $('#msg').textContent = `Editing ${entry.date}. Saving overwrites it.`;
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -536,7 +521,7 @@
     $('#form').addEventListener('submit', async e => {
       e.preventDefault();
       const msg = $('#msg');
-      const { day, md, trip } = preview();
+      const { day, md, trip } = check();
       const iso = day.date;
 
       if (!iso) { msg.className = 'msg bad'; msg.textContent = 'Pick a date.'; return; }
@@ -647,11 +632,12 @@
       $('#notes').value = '';
       $('#pitches').value = '';
       $('#boulders').value = '';
+      showDayExtra(false);
       $('#media').value = '';
       $('#picked').innerHTML = '';
       $('#picklabel').classList.remove('has');
       $('#picklabel').textContent = 'Choose from the camera roll';
-      preview();
+      check();
       listRecent();
     });
 

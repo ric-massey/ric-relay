@@ -62,8 +62,10 @@ parsers in here:
 
 - The form composes **the markdown block you would have written by hand** —
   `# 08/25/26`, `## Red River Gorge`, `#### The Shire`, route lines with their
-  tags, a `### NOTES` section. It is on screen while you type it, with a copy
-  button under it, so filing it into `climbs.md` later is a paste.
+  tags, a `### NOTES` section. None of that is on screen: the markdown is how
+  the day gets read, not something to be read. The page is a date, a crag, a
+  row per route and a save button, and the only thing it says back is when a
+  grade you typed isn't one the log can read.
 - `climb-parse.js` reads that block with `build-data.py`'s rules. It is a port,
   not a lookalike: every table and every regular expression comes out of
   `climb-vocab.js`, which the Python writes from the constants it parses with.
@@ -78,7 +80,9 @@ parsers in here:
 A route line the form writes says what a climber would say: `onsight`, `flash`,
 `redpoint`, `attempts` — and `x2` for two of them, which on a send means laps
 and on a project means goes. Both land in the data as `repeats`, which is what
-`x2` has always meant in the file.
+`x2` has always meant in the file. Sector, style, star and a note are behind the
+`⋯` on the row; region, pitches and boulders are behind one toggle at the
+bottom. A normal day needs none of them and shouldn't have to look at them.
 
 The two parsers agreeing is a test, not a hope:
 
