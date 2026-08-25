@@ -1,8 +1,15 @@
 # Audiences — groups, connections, and chat
 
-**Status: design, not built.** Nothing in this file exists yet. It is here so the
+**Status: design, not built** — with one exception, below. It is here so the
 argument gets settled before the migrations do, because every mistake in the
 audience model becomes two mistakes once chat can move pins around.
+
+**Built so far:** usernames are chosen rather than cut off the front of an email
+address — `20260825150000_usernames_are_chosen.sql`, the `public.usernames`
+table, `set_username()`, and the settings field that drives it. That one had to
+go first: it was leaking half of everybody's sign-in address onto every byline,
+and it gets harder to fix with every account that joins. Everything else in this
+file is still an argument.
 
 ---
 
@@ -390,12 +397,16 @@ there is no route from an id you happened to see to an action against a person.
 
 ### Usernames are chosen, and changeable
 
-**Chosen at signup.** `handle_new_user()` currently sets
-`username = split_part(new.email, '@', 1)`, and that has to go. It **publishes
-the local part of your email address** to anybody who can see your name on a
-pin, and it makes guessing a username and guessing an email the same attack —
-which defeats the whole section above through the back door. This has to land
-before anybody else joins.
+**Chosen at signup — done.** `handle_new_user()` used to set
+`username = split_part(new.email, '@', 1)`, and `display_name` to the same thing
+title-cased. It **published the local part of your email address** to anybody who
+could see your name on a pin, and it made guessing a username and guessing an
+email the same attack, which defeated this whole section through the back door.
+
+An account now arrives with an opaque placeholder off its own user id, and the
+person picks a real name in settings. Everybody who predates the migration is
+flagged `must_choose_username` and asked. See
+[`20260825150000_usernames_are_chosen.sql`](../supabase/migrations/20260825150000_usernames_are_chosen.sql).
 
 **Changeable afterwards**, with two rules:
 
@@ -422,7 +433,7 @@ namespace, so the limit is there to stop one account hoarding a hundred of them.
 -- never come back once it has been let go.
 create table public.usernames (
   username   text primary key,
-  user_id    uuid not null references auth.users on delete cascade,
+  user_id    uuid references auth.users on delete cascade,  -- NULL = reserved
   claimed_at timestamptz not null default now(),
   retired_at timestamptz          -- null while it is the one in use
 );
@@ -433,7 +444,15 @@ create unique index usernames_current_uniq
 
 The lookup matches only rows where `retired_at is null`. Retired rows exist to
 refuse a claim, and for nothing else — they are never read on the way to a
-person.
+person. A row with a NULL `user_id` is a reserved word — `admin`, `atlas`,
+`support` — held by nobody and claimable by nobody, which falls out of the same
+check for free.
+
+The table has row-level security on and **no SELECT policy at all**, so nothing
+reads it directly; `set_username()` is SECURITY DEFINER and is the only door.
+`profiles.username` is a denormalised copy so `pins_with_author` can join a name
+in one query, and `revoke update on public.profiles` plus a column-level grant is
+what stops the client writing it behind the function's back.
 
 ### Consequences
 

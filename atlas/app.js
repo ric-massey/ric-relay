@@ -504,7 +504,7 @@ async function start() {
   let adopted = false;
   if (online()) {
     const { data } = await db.from('profiles')
-      .select('id, username, display_name, avatar_path, must_change_password, prefs, setup_done')
+      .select('id, username, display_name, avatar_path, must_change_password, must_choose_username, prefs, setup_done')
       .eq('id', session.user.id).single();
     if (data) {
       profile = data;
@@ -513,11 +513,12 @@ async function start() {
     }
   }
 
-  me = profile || {
-    id: session.user.id,
-    username: session.user.email.split('@')[0],
-    display_name: session.user.email.split('@')[0],
-  };
+  // No row and no signal — something has to go on the byline until the real one
+  // arrives. Not the email: a username is what other people see and type, and
+  // the front of your address is nobody's business but yours. Same string the
+  // signup trigger mints, so the stand-in and the real placeholder agree.
+  const standIn = `user-${session.user.id.replace(/-/g, '').slice(0, 12)}`;
+  me = profile || { id: session.user.id, username: standIn, display_name: standIn };
 
   $('gate').hidden = true;
 
@@ -3356,6 +3357,15 @@ async function firstRunDone() {
     btn.disabled = false;
     return;
   }
+
+  // Same for the username underneath it, and this one matters more on the way
+  // out: leave without picking and you are `user-4f3a…` to everybody who tries
+  // to add you, with nothing on screen to explain why.
+  const wanted = $('me-user').value.trim().toLowerCase();
+  if (wanted && wanted !== me.username && !(await saveMyUsername())) {
+    btn.disabled = false;
+    return;
+  }
   btn.disabled = false;
 
   // On the account, not on the phone — that is the whole point of it.
@@ -3547,20 +3557,33 @@ function openMaps() {
 }
 
 /* ── who everybody else sees ─────────────────────────────────────────────
- * Your display name is on every pin you drop and every note you leave, and
- * until now it was whatever the invite trigger made of your email address —
- * "rmbuster82" title-cased — with no way to change it. On a map three people
- * read, that name is the byline on everything you have ever found.
+ * Two names, and they do different jobs.
  *
- * It writes to profiles, which has had an "own profile is editable" policy
- * since the first migration. Only display_name is offered: the username is
- * derived from the sign-in address and other rows point at it.
+ * Your DISPLAY NAME is the byline on every pin you drop and every note you
+ * leave. It is for reading. It does not have to be unique and nobody types it.
+ *
+ * Your USERNAME is the one string somebody types to find you before they know
+ * you, and after that first handshake nothing depends on it — every row in the
+ * database points at your id, so changing your name loses nobody.
+ *
+ * Neither one comes off your email address any more. Both used to: the signup
+ * trigger took the local part for the username and title-cased it for the
+ * display name, which quietly put half of everybody's sign-in address on every
+ * byline in the app. See 20260825150000_usernames_are_chosen.sql.
+ *
+ * The display name goes straight to profiles under the "own profile is
+ * editable" policy. The username cannot — the column is not writable from here
+ * at all, and set_username() is the only door, because it also has to retire
+ * the old name so nobody can ever wear it after you.
  */
 function renderMe() {
   if (!me) return;
   $('me-name').value = me.display_name || '';
-  $('me-user').textContent = me.username || '—';
+  $('me-user').value = me.username || '';
   $('me-email').textContent = me.email || '—';
+  // Nothing was chosen yet, so what is in the box is the placeholder minted at
+  // signup. Say so rather than letting it read as a name somebody picked.
+  $('me-user-unset').hidden = !me.must_choose_username;
 
   const face = $('me-avatar');
   face.dataset.avatar = me.id || '';
@@ -3673,6 +3696,53 @@ async function onAvatarPick(e) {
   if (file) await setAvatar(file);
 }
 
+/* The username, which is not the same errand as the name above it.
+ *
+ * It goes through an RPC because it is not a column you may write: taking a
+ * name means retiring the one you had, so nobody can ever wear it after you,
+ * and checking it against every name anybody has ever worn. That check cannot
+ * live in the client — it is the reason somebody cannot come along later and
+ * be `silas` at people who were told to add Silas.
+ *
+ * Not queued, for the same reason a name change is not: it changes what
+ * everybody else sees, so it either reaches them or it has not happened.
+ */
+async function saveMyUsername() {
+  const err = $('me-user-error');
+  const said = $('me-user-said');
+  err.hidden = true; said.hidden = true;
+
+  const want = $('me-user').value.trim().toLowerCase();
+  if (!want) { err.textContent = 'pick a username'; err.hidden = false; return false; }
+  if (want === me.username) { said.textContent = 'no change'; said.hidden = false; return true; }
+  if (!online()) { err.textContent = 'this one needs signal'; err.hidden = false; return false; }
+
+  const btn = $('me-user-save');
+  btn.disabled = true;
+  // Every complaint the database can make here is written for a person to read
+  // — taken, wrong shape, too soon — so it goes on screen as it comes back.
+  const { data, error } = await db.rpc('set_username', { want });
+  btn.disabled = false;
+  if (error) { err.textContent = error.message; err.hidden = false; return false; }
+
+  me.username = data;
+  me.must_choose_username = false;
+  await local.set('me', me);
+  await loadPeople();
+  whoamiChip();
+  renderMe();
+  said.textContent = 'saved';
+  said.hidden = false;
+
+  // A byline falls back to the username when somebody has no display name, and
+  // those rows came down from the server with the old one written into them.
+  await loadPins();
+  await loadNotes();
+  await loadPhotos();
+  if (!$('list').hidden) renderResults();
+  return true;
+}
+
 async function saveMyName() {
   const err = $('me-error');
   const said = $('me-said');
@@ -3782,6 +3852,7 @@ $('forgot').addEventListener('click', forgotPassword);
 $('whoami').addEventListener('click', () => { openPanel('settings'); renderCredits(); });
 $('signout').addEventListener('click', signOut);
 $('me-save').addEventListener('click', saveMyName);
+$('me-user-save').addEventListener('click', saveMyUsername);
 $('avatar-pick').addEventListener('click', () => $('avatar-input').click());
 $('avatar-input').addEventListener('change', onAvatarPick);
 $('avatar-clear').addEventListener('click', clearAvatar);

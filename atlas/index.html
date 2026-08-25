@@ -626,9 +626,25 @@
           <span id="me-said" class="me-said" hidden></span>
         </div>
         <p id="me-error" class="gate-error" role="alert" hidden></p>
+
+        <label class="field"><span>username</span>
+          <input id="me-user" type="text" autocapitalize="none" autocorrect="off"
+                 spellcheck="false" maxlength="20" autocomplete="username"></label>
+        <p class="hint">Lowercase letters, numbers and underscores. This is the one
+          thing somebody types to find you, so it is worth being able to say out
+          loud. It has nothing to do with your sign-in address, and letting a
+          name go does not hand it to anybody else.</p>
+        <p id="me-user-unset" class="hint hint-warn" hidden>You have not picked one
+          yet — what is in there was made up when the account was, and it is what
+          anybody trying to add you would have to type.</p>
+        <div class="me-row">
+          <button id="me-user-save" class="btn-primary">save username</button>
+          <span id="me-user-said" class="me-said" hidden></span>
+        </div>
+        <p id="me-user-error" class="gate-error" role="alert" hidden></p>
+
         <dl class="owner-rows me-facts">
           <div><dt>sign-in</dt><dd id="me-email">—</dd></div>
-          <div><dt>username</dt><dd id="me-user">—</dd></div>
         </dl>
         <button id="signout" class="btn-ghost wide">
           <svg class="icon icon-sm"><use href="#i-logout"/></svg>sign out

@@ -9,7 +9,7 @@
  *      data would be rude.
  */
 
-const SHELL_VERSION = 'atlas-shell-v36';
+const SHELL_VERSION = 'atlas-shell-v37';
 const TILE_CACHE    = 'atlas-tiles-v1';
 
 const SHELL = [

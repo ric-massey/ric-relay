@@ -60,6 +60,7 @@
   --good-wash: #e8f5ed;
   --warn-bg:   #ffd400;
   --warn-ink:  #241d00;
+  --warn-rule: #b38600;      /* --warn-bg is a fill; a 3px line needs darker */
   --danger:    #bf1212;
   --danger-wash: #fdecec;
   --halo:      #ffffff;      /* what a pin is drawn against */
@@ -100,6 +101,7 @@
   --good-wash: #10231a;
   --warn-bg:   #6b5600;
   --warn-ink:  #ffe680;
+  --warn-rule: #ffd400;      /* the fill goes dark at night, so the line goes light */
   --danger:    #ff6b6b;
   --danger-wash: #2a1414;
   --halo:      #0b0e13;
@@ -1134,6 +1136,16 @@ button { cursor: pointer; border: none; background: none; }
 }
 .credits li:last-child { border-bottom: none; }
 .hint b { color: var(--ink); font-weight: 700; }
+
+/* A hint about something still outstanding rather than something explained.
+   Not an error — nothing has gone wrong — so it borrows the warning colour and
+   a rule down the side rather than the red an error gets. */
+.hint-warn {
+  color: var(--ink);
+  border-left: 3px solid var(--warn-rule);
+  padding: var(--s-1) 0 var(--s-1) var(--s-2);
+  margin-top: var(--s-2);
+}
 
 /* ── notes ───────────────────────────────────────────────────────────────
  * Deliberately plainer than the description above it. The description is the
