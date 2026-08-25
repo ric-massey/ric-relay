@@ -132,9 +132,13 @@ create table public.connection_requests (
 );
 ```
 
-Accepting is one RPC that verifies `auth.uid() = to_id`, inserts the connection
-and deletes the request in a single transaction. Two round trips would leave a
-window where the request is gone and the connection is not.
+**Neither table is written by the client.** Sending is an RPC that takes a
+*username*, resolves it, and inserts — never a `to_id` from the caller, because
+an id you saw on somebody's pin must not become a way to contact them; see
+[The id identifies](#the-id-identifies-it-never-authorizes). Accepting is an RPC
+that verifies `auth.uid() = to_id`, inserts the connection and deletes the
+request in one transaction — two round trips would leave a window where the
+request is gone and the connection is not.
 
 ### Groups
 
@@ -353,6 +357,37 @@ here. Cap pending outbound requests and invites per account; it is a count check
 in the same function, it is the only abuse either one opens, and there is no
 server to rate-limit with later.
 
+### The username is a handshake, not an identity
+
+Nothing in this design is keyed on a username. Every relationship — connections,
+group membership, pin audiences, thread members, who dropped a pin, who wrote a
+note — references `uuid references auth.users`, and the username is rendered at
+draw time from whatever the person is called *now*.
+
+That is what makes the name safe to change: **your friends hold you by id, so
+renaming loses nobody.** The username has exactly one job, and it is the first
+handshake — the string you type to find somebody you have not met yet. After
+that first moment it is presentation, permanently.
+
+### The id identifies. It never authorizes.
+
+The uuid cannot be hidden and does not need to be. The app needs a stable key to
+hang an avatar off a byline and to draw an audience list, and a v4 uuid is not
+guessable, so exposing one discloses nothing.
+
+What matters is that it is **inert**: it is never an input, and seeing one never
+lets you do anything to the person it belongs to.
+
+That rules out one thing directly. `connection_requests.to_id` is a uuid, and if
+the client were allowed to insert rows itself, then anybody who had seen your id
+by being **co-visible with you on a pin** could send you a request without ever
+knowing your username — which turns tier 2 into a contact channel, exactly what
+it must never be.
+
+So requests go through an RPC that takes a **username**, resolves it server-side
+and inserts the row. The client never writes `connection_requests` directly, and
+there is no route from an id you happened to see to an action against a person.
+
 ### Usernames are chosen, and changeable
 
 **Chosen at signup.** `handle_new_user()` currently sets
@@ -362,25 +397,29 @@ pin, and it makes guessing a username and guessing an email the same attack —
 which defeats the whole section above through the back door. This has to land
 before anybody else joins.
 
-**Changeable afterwards**, which is only safe with three rules attached, because
-a username is now the *only* way anybody can find you:
+**Changeable afterwards**, with two rules:
 
-1. **Old usernames are retired permanently and are never reassignable.** Held in
-   their own table, checked on every claim. You release `ric`, a stranger takes
-   `ric`, and everybody who was told "add ric" adds a stranger instead — and
-   adding is what exposes you to their circles. That is not a cosmetic problem,
-   so the name never comes back on the market.
-2. **A retired username still resolves to the person who wore it**, showing
-   their current one on the card. Somebody wrote your handle on the back of a
-   receipt six months ago; without this, changing it silently breaks every
-   piece of paper in the world, and there is no email fallback any more.
-3. **Rate-limited — one change a month or so.** A name nobody can rely on for a
-   week is not an identifier, it is a nickname.
+1. **Old usernames are retired permanently and are never reassignable.** You
+   release `ric`, a stranger claims `ric`, and everybody who was told "add ric"
+   adds a stranger instead — and adding is what exposes you to their circles.
+   That is not a cosmetic problem, so a name never comes back on the market.
+2. **A retired username resolves to nothing.** Not to its old owner, not to
+   anybody. The lookup says no such user, because the only thing a username was
+   ever for was the first handshake, and everybody who already shook your hand
+   holds you by id. The name dies with the change.
+
+Rule 2 is what makes a rename a real escape: somebody who only ever had your
+handle loses you, deliberately. It is a blunt substitute for blocking, but it is
+a real one, which is why blocking is a gap and not a hole.
+
+**Rate-limited anyway — one change a month or so.** Not for stability; nothing
+depends on the string. Every rename permanently burns a name out of a shared
+namespace, so the limit is there to stop one account hoarding a hundred of them.
 
 ```sql
 -- Every username anybody has ever worn, current ones included. The claim check
--- is against this table, not against profiles.username, which is why a name can
--- never come back on the market once it has been let go.
+-- runs against this table rather than profiles.username, which is why a name can
+-- never come back once it has been let go.
 create table public.usernames (
   username   text primary key,
   user_id    uuid not null references auth.users on delete cascade,
@@ -392,13 +431,9 @@ create unique index usernames_current_uniq
   on public.usernames (user_id) where retired_at is null;
 ```
 
-The lookup resolves through this table and then reads `profiles`, so an old name
-finds the right person and shows their current one.
-
-Rule 2 has a real cost: **a rename cannot be used to get away from somebody**,
-because the old handle still leads to you. There is no blocking in this design
-at all, and renaming was going to be the improvised substitute for it. See the
-open questions.
+The lookup matches only rows where `retired_at is null`. Retired rows exist to
+refuse a claim, and for nothing else — they are never read on the way to a
+person.
 
 ### Consequences
 
@@ -559,13 +594,10 @@ should land only once the interface no longer sends the column.
 - **Does revoking a connection pull the person out of your groups?** It has to —
   and out of individual grants too. Trigger on `connections` delete, fail
   closed, same discipline as the parking trigger.
-- **Blocking.** There is none, and dropping email search makes that gap real:
-  a username is the only way you are reachable, and retiring-but-still-resolving
-  an old one means a rename cannot be used to escape anybody. Blocking is the
-  honest answer and it is not designed yet — at minimum it should sever the
-  connection, drop you from their groups, and make the lookup answer as though
-  you were not here.
-- **What happens to a connection request in flight** when the sender renames, or
-  when the recipient does. It should follow the account, not the string, which
-  is an argument for storing ids everywhere and treating the username as
-  presentation only.
+- **Blocking.** There is none. It matters less than it did — a rename now
+  genuinely loses somebody who only had your handle, and connections can be
+  revoked — but "make the lookup answer as though I am not here, to one specific
+  person" is still not expressible, and one day somebody will want it.
+- **Does a rename get announced to your connections?** They do not lose you, but
+  they will see a different name on the same face with no explanation. Probably
+  a quiet line in the thread rather than a notification.
