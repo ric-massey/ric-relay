@@ -13,10 +13,16 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const app  = readFileSync(join(root, 'app.js'), 'utf8');
+
+/* Comments stripped from both — see the note in security.test.mjs. A grep over
+ * the raw text of these files tests the prose, not the rule. */
+const noJsComments  = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const noSqlComments = (t) => t.replace(/--[^\n]*/g, '');
+
+const app = noJsComments(readFileSync(join(root, 'app.js'), 'utf8'));
 const migDir = join(root, 'supabase', 'migrations');
-const sql = readFileSync(
-  join(migDir, readdirSync(migDir).filter((f) => f.endsWith('_groups.sql'))[0]), 'utf8');
+const sql = noSqlComments(readFileSync(
+  join(migDir, readdirSync(migDir).filter((f) => f.endsWith('_groups.sql'))[0]), 'utf8'));
 
 test('both tables have row-level security on', () => {
   for (const t of ['groups', 'group_members']) {

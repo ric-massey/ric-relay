@@ -17,6 +17,11 @@ audience model becomes two mistakes once chat can move pins around.
   take them out. They are owner-only in the policies, so a member cannot read
   the group they are in.
 
+- **Whose profile you can read** — `20260825190000_people_you_can_draw.sql`.
+  `crew reads profiles ... using (true)` is gone; `people_i_can_draw()` is the
+  set, and it is you, your group members, the owners of groups you are in, and
+  the authors of anything you can already see.
+
 **Not built:** connections, `pin_audience`, the picker, chat. Which means the
 one thing on this page that is deliberately *not yet true* is the connection
 gate — today `can_add_to_group()` answers "anybody with an account, other than
@@ -467,14 +472,50 @@ reads it directly; `set_username()` is SECURITY DEFINER and is the only door.
 in one query, and `revoke update on public.profiles` plus a column-level grant is
 what stops the client writing it behind the function's back.
 
+### Whose face the app may draw
+
+Finding a person is one question. *Resolving* one — putting a name and a face on
+a byline that is already on screen — is a different and much more common one,
+and it needs a wider answer or the app renders blanks it cannot explain.
+
+`people_i_can_draw()` is that set: **you**, **people in your groups**, **people
+whose groups you are in**, and **the authors of anything you can already see**.
+The third is the one that is not obvious: somebody who has filed you can be
+drawn by you before they have shared a thing. It is a small disclosure and it
+buys something worth more — there is no state in which the app holds a face it
+cannot render.
+
+**The rule that makes it safe: the set is never enumerated.** It resolves a
+name that is on screen for some other reason. No screen lists it and no query
+walks it, and there must never be one — shown as a list it stops being *who can
+be drawn* and becomes *who has you filed*, which is a different and much louder
+fact. The same discipline as the user id: it identifies, it never authorizes, it
+is never an entry point.
+
+Two shapes to keep:
+
+- It takes **no parameters**, which is what makes a `SECURITY DEFINER` function
+  provably safe — there is nothing to point it at somebody else, so it can only
+  describe the caller. It has to be DEFINER because two of its four clauses read
+  rows the caller cannot: `groups` is owner-only, so "groups I am in" is
+  invisible to me by design, and that is exactly the question.
+- The policy is `array[id] <@ (select public.people_i_can_draw())`. The subquery
+  makes it an InitPlan — evaluated once, not once per row. And `<@` rather than
+  `= any(...)`, because with a subquery in that position the parser tries to
+  compare a uuid to a uuid[] and refuses.
+
+One consequence to remember: `can_add_to_group()` used to check that an account
+exists by reading `profiles`, and it is INVOKER — so this policy would have made
+it impossible to add anybody you could not already draw, which is backwards.
+The check was redundant with the foreign key and came out.
+
 ### Consequences
 
 - **Email lives only in `auth.users`.** Never copied to `profiles`, never
   returned by any function, never in a view, and compared nowhere except by the
   auth system itself.
-- [`crew reads profiles ... using (true)`](../supabase/migrations/20260821183141_atlas_initial.sql)
-  has to die. Profiles become readable to you, your connections, and anyone
-  co-visible with you on a pin.
+- `crew reads profiles ... using (true)` **is gone** — see
+  [Whose face the app may draw](#whose-face-the-app-may-draw) below.
 - **Display names need not be unique**, and two Daves in an audience list is
   fine — you only ever see people you are connected to or co-visible with, and
   the avatar settles it.
@@ -591,6 +632,14 @@ Where this will actually break, in order of likelihood:
    this once in `pin_photos`; chat attachments are the same trap again.
 4. **A new view missing `security_invoker = true`, or using `select p.*`.** Both
    mistakes are already in the git history. Name every column.
+5. **A `SECURITY DEFINER` function shipped without its revoke.** A function is
+   EXECUTE-able by PUBLIC unless somebody says otherwise, and PUBLIC includes
+   `anon`. `people_i_can_draw()` went out that way and handed a list of real
+   user ids to anybody holding the publishable key — which is in the public
+   JavaScript by design. The function was right and the policy that called it
+   was right; the hole was in neither. Every DEFINER function needs
+   `revoke all ... from public, anon` and a grant back to `authenticated`, and
+   `test/security.test.mjs` now checks all of them.
 
 ---
 

@@ -20,10 +20,18 @@ import { dirname, join } from 'node:path';
 
 const here  = dirname(fileURLToPath(import.meta.url));
 const root  = join(here, '..');
-const app   = readFileSync(join(root, 'app.js'), 'utf8');
+
+/* Comments stripped from both. Every rule in this codebase is explained in
+ * prose right next to the statement that implements it, so a grep over the raw
+ * text finds the sentence ABOUT the rule and goes green whether or not the rule
+ * is still there. See the note in security.test.mjs — that is how it was found. */
+const noJsComments  = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const noSqlComments = (t) => t.replace(/--[^\n]*/g, '');
+
+const app = noJsComments(readFileSync(join(root, 'app.js'), 'utf8'));
 const migDir = join(root, 'supabase', 'migrations');
-const latest = readFileSync(
-  join(migDir, readdirSync(migDir).filter((f) => f.includes('usernames_are_chosen'))[0]), 'utf8');
+const latest = noSqlComments(readFileSync(
+  join(migDir, readdirSync(migDir).filter((f) => f.includes('usernames_are_chosen'))[0]), 'utf8'));
 
 test('the app never builds a name out of the sign-in address', () => {
   assert.equal(/email[^\n]*\.split\('@'\)/.test(app), false,
