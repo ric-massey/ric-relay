@@ -26,7 +26,7 @@
       --ink: #26241f;
       --soft: #6f6a5f;
       --line: #e2ddd0;
-      --clay: #b5502a;
+      --clay: #b14f2a;
       /* These three set the smallest, most meaningful text on the page — the
          star ratings and the sent/projecting tags are how you read the ledger.
          All three were between 2.2:1 and 3.6:1 on their own backgrounds; these
@@ -360,6 +360,7 @@
         <span class="here" aria-current="page">climbing</span>
         <a href="training.html">training</a>
         <a href="exploration.html">exploration</a>
+        <a href="gaming.html">gaming</a>
         <a href="workbench.html">workbench</a>
         <a href="captures.html">captures</a>
       </nav>
@@ -550,11 +551,17 @@
       const ranked = DATA.index.mostClimbed;
       const sentRoutes = ranked.filter((r) => r.sends > 0);
 
-      // A project is a route he's got on but hasn't sent. Starred ones — the
-      // climbs that actually matter to him — sort to the top.
+      /* A project is a route he's got on but hasn't sent.
+         The heading says CURRENT, and for a long time the list wasn't:
+         it sorted by star, then grade, then ascents, with nothing in it about
+         when. So eight things last touched in 2023 sat at the top and a 5.12
+         worked yesterday was thirty rows down, invisible. What makes a project
+         current is having been on it lately, so that leads — then the starred
+         ones, then the grade, to break the ties within a session. */
       const projects = ranked
         .filter((r) => r.attempts > 0 && r.sends === 0)
         .sort((a, b) =>
+          String(b.lastDate || "").localeCompare(String(a.lastDate || "")) ||
           Number(b.star) - Number(a.star) ||
           b.gradeRank - a.gradeRank ||
           b.ascents - a.ascents);
@@ -654,7 +661,11 @@
         loc: [r.wall, r.area].filter(Boolean).join(" · "),
         tag: "projecting",
         tagClass: "projecting",
-        when: `${r.attempts} ${r.attempts === 1 ? "go" : "goes"} over ${r.days} ${r.days === 1 ? "day" : "days"}`,
+        /* "over 3 days" was the wrong second fact for a list that is now
+           ordered by recency — when you were last on it is the thing you're
+           scanning for. The number of goes stays; the day count is in the log. */
+        when: `${r.attempts} ${r.attempts === 1 ? "go" : "goes"}${
+          r.lastDate ? ` · ${fmtDate(r.lastDate)}` : ""}`,
         grade: r.grade,
       })).join("") || '<div class="empty">Nothing open right now.</div>';
 

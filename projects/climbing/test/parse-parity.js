@@ -244,5 +244,36 @@ rule('a web day folds into the ledger rather than sitting beside it');
   }
 }
 
+/* An iPhone types ’ and climbs.md types '. Same route, same row — and it
+   wasn't: "Jr’s corner" logged at Lilly sat next to Jr's Corner in the
+   most-climbed table, so a problem he had been on four times read as two
+   problems, and the newer one never reached Current Projects. */
+rule('a route typed on a phone joins the row it belongs to');
+{
+  const same = [
+    ['Jr\u2019s corner', "Jr's Corner"],
+    ['Buddah\u2019s Belly', "Buddah's Belly"],
+    ['JR\u2019S CORNER', "Jr's Corner"]
+  ];
+  let bad = 0;
+  for (const [typed, want] of same) {
+    const got = P.canonicalRoute(typed);
+    if (got !== want) { fail(`${JSON.stringify(typed)} canonicalised to ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`); bad++; }
+  }
+
+  const before = DATA.index.mostClimbed.find((e) => e.name === "Jr's Corner");
+  const trip = P.day(P.compose({
+    date: '2026-08-16', area: 'Lilly Boulders',
+    routes: [{ name: 'Jr\u2019s corner', grade: 'V6', outcome: 'attempt', repeats: 1 }]
+  }));
+  const rows = P.tally([trip], DATA.index.mostClimbed)
+    .filter((e) => P.canonicalRoute(e.name) === "Jr's Corner");
+  if (rows.length !== 1) { fail(`it made ${rows.length} rows, not 1`); bad++; }
+  else if (rows[0].attempts !== before.attempts + 1) {
+    fail(`attempts went ${before.attempts} -> ${rows[0].attempts}`); bad++;
+  }
+  if (!bad) pass(`three spellings, one row: ${before.attempts} -> ${rows[0].attempts} attempts`);
+}
+
 console.log('\n' + (failures ? `${failures} DISAGREEMENT${failures > 1 ? 'S' : ''}` : 'THE TWO PARSERS AGREE'));
 process.exit(failures ? 1 : 0);

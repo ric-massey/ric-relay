@@ -414,7 +414,10 @@
      most, so a day added from a phone folds into the same table rather than
      sitting outside it. */
   function canonicalRoute(name) {
-    const key = String(name).toLowerCase().replace(/[^a-z0-9' ]/g, '').trim().replace(/\s+/g, ' ');
+    /* The smart quote first: a phone types ’ where climbs.md types ', and
+       without this "Jr’s corner" is a different route from Jr's Corner. */
+    const key = String(name).replace(rx('smartQuote', 'g'), "'")
+      .toLowerCase().replace(/[^a-z0-9' ]/g, '').trim().replace(/\s+/g, ' ');
     return V().routeAliases[key] || String(name).trim();
   }
 

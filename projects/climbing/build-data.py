@@ -187,6 +187,12 @@ PHOTO_RE = re.compile(r"\bpic(?:ture)?s?\b|\bphotos?\b", re.I)
 VIDEO_RE = re.compile(r"\bvideos?\b", re.I)
 HEADING_RE = re.compile(r"^(#{1,6})\s*(.*)$")
 
+# A phone types ’ where this file types '. Same route, and the tally has to
+# agree — "Jr’s corner" logged at Lilly started a SECOND row next to Jr's
+# Corner, which is how a project he had been on four times read as a new one
+# he had been on once.
+SMART_QUOTE_RE = re.compile(r"[\u2018\u2019\u02bc\u2032`]")
+
 
 def normalize(name, table):
     """Map a heading to its canonical spelling, keeping unknown ones as written."""
@@ -371,7 +377,8 @@ def merge_person_aliases(trips):
 
 
 def canonical_route(name):
-    key = re.sub(r"[^a-z0-9' ]", "", name.lower()).strip()
+    key = SMART_QUOTE_RE.sub("'", name)
+    key = re.sub(r"[^a-z0-9' ]", "", key.lower()).strip()
     key = re.sub(r"\s+", " ", key)
     return ROUTE_ALIASES.get(key, name.strip())
 
@@ -671,6 +678,7 @@ def write_vocab():
             "fakeFall": js_pattern(FAKE_FALL_RE.pattern),
             "sentWord": js_pattern(SENT_WORD_RE.pattern),
             "punct": js_pattern(PUNCT_RE.pattern),
+            "smartQuote": js_pattern(SMART_QUOTE_RE.pattern),
             "dashSplit": js_pattern(DASH_SPLIT_RE.pattern),
             "with": js_pattern(WITH_RE.pattern),
             "photo": js_pattern(PHOTO_RE.pattern),

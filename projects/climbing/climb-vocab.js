@@ -227,6 +227,7 @@ window.CLIMB_VOCAB = {
   "fakeFall": "\\b(?:fake|practice|training)\\s+falls?\\b",
   "sentWord": "\\b(?:sent|send)\\s*(?:it)?\\b",
   "punct": "[()\\[\\],!]+",
+  "smartQuote": "[\\u2018\\u2019\\u02bc\\u2032`]",
   "dashSplit": "\\s+-\\s*",
   "with": "\\b(?:w/|with)\\s*([^\\n.!]*)",
   "photo": "\\bpic(?:ture)?s?\\b|\\bphotos?\\b",
