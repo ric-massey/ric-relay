@@ -100,6 +100,7 @@ PROSE_WORDS = {
     "a", "an", "the", "my", "his", "her", "their", "our", "then", "very", "so",
     "did", "didnt", "didn't", "done", "took", "take", "hiked", "walked", "went",
     "sent", "send", "got", "had", "was", "were", "is", "are", "been", "being",
+    "played", "playing", "explored", "camped", "stayed", "hung", "chilled",
     "pictures", "picture", "photos", "photo", "video", "videos", "coolest",
     "scary", "first", "second", "last", "midnight", "met", "who", "that",
     "which", "what", "when", "it", "this", "these", "those", "some", "more",
