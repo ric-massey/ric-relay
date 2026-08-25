@@ -44,9 +44,9 @@ used consistently everywhere below.
 
 ### 1. Stranger
 
-Reachable only by **exact username or exact email** — never by name. A username
-lookup gets you display name and avatar, enough to confirm you found the right
-person. An email gets you nothing at all; see [Finding people](#finding-people).
+Reachable only by **exact username** — never by name, never by email address.
+The lookup gets you display name and avatar, enough to confirm you found the
+right person, and nothing more. See [Finding people](#finding-people).
 
 ### 2. Co-visible
 
@@ -316,58 +316,95 @@ for having had one chokepoint.
 
 ## Finding people
 
-There are exactly two ways to find somebody, and **a person's name is not one of
-them.** No searching by display name, no prefix matching, no fuzzy match, no
-"people you may know," no list results ever. A search that takes a real name and
-returns people is the thing that makes Instagram browsable, and it is the single
+There is exactly one way to find somebody: **their exact username.** Not their
+name, and not their email address.
+
+No display-name search, no prefix matching, no fuzzy match, no "people you may
+know," and no result that is a *list*. A search that takes a real name and hands
+back people is the thing that makes Instagram browsable, and it is the single
 feature that would turn this app into that one.
 
-You find a person by **exact username** or by **exact email address**, and the
-two behave differently on purpose.
-
-### By username — returns a card
+### The lookup
 
 At most one row, exact match, through a narrow SECURITY DEFINER function
-returning username, display name and avatar. Nothing else.
+returning username, display name and avatar. Nothing else, ever.
 
-A username exists only inside ATLAS, so confirming that one exists tells an
-outsider nothing they did not already bring with them — and you need the card to
-check you have the right person before you send a request.
+That is safe to answer because a username exists **only inside ATLAS**.
+Confirming one exists tells an outsider nothing they did not already bring with
+them — and you need the card to check you have the right person before you send
+a request, because sending it is what puts your name in front of them.
 
-### By email — returns nothing, ever
+### Why there is no search by email
 
-Not a lookup. You type an address and it **sends a connection request**, and the
-answer is identical whether or not an account exists:
+An email address exists out in the world and is frequently guessable —
+`firstname.lastname@gmail.com`. A lookup that answered them would be an oracle:
+anybody could test addresses and learn **which of the people they know are on
+this app**, about people who never agreed to be findable.
 
-> *If somebody is here with that address, they will see this.*
+You can still reach somebody at an address. That gesture is called an
+**invite**, it lives in the mail flow, and it is not a search: it queries
+nothing and reports nothing back. You type an address, mail goes to it, and you
+learn absolutely nothing unless a person chooses to turn up. Whether there was
+already an account there is not something the app will tell you.
 
-An email exists out in the world and is frequently guessable —
-`firstname.lastname@gmail.com`. If an email lookup returned a card, it would be
-an oracle: anybody could test addresses and learn **which of the people they
-know are on this app**, about people who never agreed to be findable. The
-password-reset non-enumeration rule, for the same reason it exists there.
-
-The card was never load-bearing here anyway. You know whose address you typed.
-Confirmation arrives when they accept.
-
-Cap the number of pending outbound requests per account. It is a count check
-inside the same function, it is the only abuse this opens up, and there is no
+So there is one email path and one username path, and they do different jobs —
+the invite brings a stranger *in*, the username lookup finds somebody already
+here. Cap pending outbound requests and invites per account; it is a count check
+in the same function, it is the only abuse either one opens, and there is no
 server to rate-limit with later.
+
+### Usernames are chosen, and changeable
+
+**Chosen at signup.** `handle_new_user()` currently sets
+`username = split_part(new.email, '@', 1)`, and that has to go. It **publishes
+the local part of your email address** to anybody who can see your name on a
+pin, and it makes guessing a username and guessing an email the same attack —
+which defeats the whole section above through the back door. This has to land
+before anybody else joins.
+
+**Changeable afterwards**, which is only safe with three rules attached, because
+a username is now the *only* way anybody can find you:
+
+1. **Old usernames are retired permanently and are never reassignable.** Held in
+   their own table, checked on every claim. You release `ric`, a stranger takes
+   `ric`, and everybody who was told "add ric" adds a stranger instead — and
+   adding is what exposes you to their circles. That is not a cosmetic problem,
+   so the name never comes back on the market.
+2. **A retired username still resolves to the person who wore it**, showing
+   their current one on the card. Somebody wrote your handle on the back of a
+   receipt six months ago; without this, changing it silently breaks every
+   piece of paper in the world, and there is no email fallback any more.
+3. **Rate-limited — one change a month or so.** A name nobody can rely on for a
+   week is not an identifier, it is a nickname.
+
+```sql
+-- Every username anybody has ever worn, current ones included. The claim check
+-- is against this table, not against profiles.username, which is why a name can
+-- never come back on the market once it has been let go.
+create table public.usernames (
+  username   text primary key,
+  user_id    uuid not null references auth.users on delete cascade,
+  claimed_at timestamptz not null default now(),
+  retired_at timestamptz          -- null while it is the one in use
+);
+
+create unique index usernames_current_uniq
+  on public.usernames (user_id) where retired_at is null;
+```
+
+The lookup resolves through this table and then reads `profiles`, so an old name
+finds the right person and shows their current one.
+
+Rule 2 has a real cost: **a rename cannot be used to get away from somebody**,
+because the old handle still leads to you. There is no blocking in this design
+at all, and renaming was going to be the improvised substitute for it. See the
+open questions.
 
 ### Consequences
 
-- **`handle_new_user()` has to stop deriving the username.** It currently sets
-  `username = split_part(new.email, '@', 1)`, which is two failures at once. It
-  **publishes the local part of your email address** to anyone who can see your
-  name on a pin — and it makes guessing a username and guessing an email the
-  same attack, which defeats the email rule above through the username door.
-  Usernames must be **chosen at signup**, unique, stable, and unrelated to the
-  address. This has to land before anybody else joins, because renaming people
-  afterwards is not safe.
-- **Email is compared lowercased and trimmed**, and lives only in `auth.users`.
-  It is never copied to `profiles`, never returned by any function, and never
-  appears in a view. Do not get clever about Gmail dots or `+` aliases — two
-  valid addresses that differ are two addresses.
+- **Email lives only in `auth.users`.** Never copied to `profiles`, never
+  returned by any function, never in a view, and compared nowhere except by the
+  auth system itself.
 - [`crew reads profiles ... using (true)`](../supabase/migrations/20260821183141_atlas_initial.sql)
   has to die. Profiles become readable to you, your connections, and anyone
   co-visible with you on a pin.
@@ -375,12 +412,12 @@ server to rate-limit with later.
   fine — you only ever see people you are connected to or co-visible with, and
   the avatar settles it.
 - **ATLAS will never grow on its own**, and that is deliberate. Every account
-  arrives because somebody deliberately handed over an address or a username.
+  arrives because somebody deliberately handed over a username, or deliberately
+  mailed an invitation.
 
-An elegance worth taking: the paused invite work could *be* the connection. An
-invite is already an email sent to an address, which is exactly the gesture
-above — so an invite link that creates the account and the connection in one
-step makes joining and being vouched for the same act.
+The paused invite work is now load-bearing rather than optional: it is the only
+door into the app, and an invite link that creates the account **and** the
+connection in one step makes joining and being vouched for the same act.
 
 ---
 
@@ -522,8 +559,13 @@ should land only once the interface no longer sends the column.
 - **Does revoking a connection pull the person out of your groups?** It has to —
   and out of individual grants too. Trigger on `connections` delete, fail
   closed, same discipline as the parking trigger.
-- **Usernames.** Chosen at signup, unique, stable, and separate from the email
-  local part. Not really an open question so much as the one thing that has to
-  be fixed first — see [Finding people](#finding-people). What *is* open is
-  whether an existing username can ever be changed afterwards, given it is an
-  identifier other people have written down.
+- **Blocking.** There is none, and dropping email search makes that gap real:
+  a username is the only way you are reachable, and retiring-but-still-resolving
+  an old one means a rename cannot be used to escape anybody. Blocking is the
+  honest answer and it is not designed yet — at minimum it should sever the
+  connection, drop you from their groups, and make the lookup answer as though
+  you were not here.
+- **What happens to a connection request in flight** when the sender renames, or
+  when the recipient does. It should follow the account, not the string, which
+  is an argument for storing ids everywhere and treating the username as
+  presentation only.
