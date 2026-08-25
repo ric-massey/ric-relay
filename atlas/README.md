@@ -838,6 +838,10 @@ protecting.
 
 ## Not built yet
 
+- **Groups, connections and chat** — the map for hundreds of people instead of
+  three, where a pin is visible only to the circles its finder chose. Designed
+  but not built: [`docs/audiences.md`](docs/audiences.md) has the tables, the
+  policies, the recursion trap in the middle of it, and the open questions.
 - Owner **name** in a county that publishes no parcel service at all, or
   publishes one without names on it. Some counties genuinely do not put owner
   names online, and no amount of searching invents one — that is a shape of the
