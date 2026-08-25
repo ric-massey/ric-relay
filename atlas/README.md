@@ -171,7 +171,7 @@ these do I want", and that gets answered by what a button is *near*.
   dig through Safari's settings to take it back.
 - **what kind of place it is** — cliffs, caves, trails, tunnels, abandoned
   buildings, mountains, towers, other. Chosen on the pin, and it is what the
-  pin's **colour** means: eight colours, each measured to stand clear of the
+  pin's **colour** means: nine colours, each measured to stand clear of the
   halo drawn around it in both themes and to be unmistakable for any of the
   other seven at 28px on satellite imagery. `test/contrast.test.mjs` holds both
   of those.
@@ -425,7 +425,7 @@ these do I want", and that gets answered by what a button is *near*.
   note's photos are the note author's, and they go when the note goes.
 - **check who owns this land** — see below.
 - **directions to this place** — hands the pin to Apple Maps or Google Maps.
-- A pin's **colour is what kind of place it is** — eight kinds, eight measured
+- A pin's **colour is what kind of place it is** — nine kinds, nine measured
   colours. Yellow outranks all of them and means not synced yet. A hollow pin
   is a personal one. The pin whose sheet is open stands up out of the others
   with a ring under it.
@@ -442,6 +442,18 @@ person's find, and the log under it is everybody's account of going there.
   photo on your note belongs to your note. Same table, different `note_id`, and
   the policy splits on exactly that.
 
+**Bridges** was added on 2026-08-25, and it is the last easy one. Nine colours
+now have to be distinguishable from each other at 28px on satellite imagery, and
+the space is nearly used up: a sweep of every hue found that only a properly
+saturated red still clears the floor, and that the pleasant soft corals all land
+inside `cliffs`. Day is `#a5121b`, night `#f53838` — 163 and 168 from their
+nearest neighbour, against a floor of 116 and 102. A tenth will have to argue
+for itself against those numbers, in `test/contrast.test.mjs`.
+
+Worth knowing what happens if a kind is added without its colour: `--pin` falls
+back to the accent, and the pin renders as a slightly-off `cliffs` with nothing
+on screen complaining. That is what the "colour for every kind" test is for.
+
 ### Parking
 
 A pull-off is a place, not two numbers. It has a name — "the wide bit past the
@@ -452,7 +464,7 @@ So a parking spot is **a pin inside a pin**: a real row with `parent_id` set,
 which means it gets row-level security, the offline queue, notes and photos for
 free without anything new being taught how to be careful. It draws as a road
 sign rather than a teardrop — deliberately not a ninth pin colour, because the
-eight kinds have used the colour space up and shape separates further than any
+nine kinds have used the colour space up and shape separates further than any
 colour left in it does — with a dashed thread to the pin it serves, drawn only
 for the pin you have open.
 

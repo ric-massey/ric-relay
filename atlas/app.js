@@ -255,6 +255,7 @@ const KINDS = [
   { key: 'caves',     label: 'caves' },
   { key: 'trails',    label: 'trails' },
   { key: 'tunnels',   label: 'tunnels' },
+  { key: 'bridges',   label: 'bridges' },
   { key: 'buildings', label: 'abandoned buildings' },
   { key: 'mountains', label: 'mountains' },
   { key: 'towers',    label: 'towers' },

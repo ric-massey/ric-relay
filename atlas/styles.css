@@ -145,6 +145,7 @@
   --kind-caves:     #7b3fb5;
   --kind-trails:    #1f8a4c;
   --kind-tunnels:   #0d7d8c;
+  --kind-bridges:   #a5121b;
   --kind-buildings: #8a6a3e;
   --kind-mountains: #2563c9;
   --kind-towers:    #c0227a;
@@ -164,6 +165,7 @@
   --kind-caves:     #b98cff;
   --kind-trails:    #48d17f;
   --kind-tunnels:   #3ec6d8;
+  --kind-bridges:   #f53838;
   --kind-buildings: #d0a967;
   --kind-mountains: #68a6ff;
   --kind-towers:    #ff6bb0;
@@ -725,6 +727,7 @@ button { cursor: pointer; border: none; background: none; }
 .pin-marker[data-kind="caves"]     { --pin: var(--kind-caves); }
 .pin-marker[data-kind="trails"]    { --pin: var(--kind-trails); }
 .pin-marker[data-kind="tunnels"]   { --pin: var(--kind-tunnels); }
+.pin-marker[data-kind="bridges"]   { --pin: var(--kind-bridges); }
 .pin-marker[data-kind="buildings"] { --pin: var(--kind-buildings); }
 .pin-marker[data-kind="mountains"] { --pin: var(--kind-mountains); }
 .pin-marker[data-kind="towers"]    { --pin: var(--kind-towers); }

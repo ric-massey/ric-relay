@@ -236,7 +236,7 @@ function apart(a, b) {
 }
 
 test('there is a colour for every kind, in both themes', () => {
-  assert.equal(Object.keys(dayKinds).length, 8, 'expected eight day kinds');
+  assert.equal(Object.keys(dayKinds).length, 9, 'expected nine day kinds');
   for (const k of Object.keys(dayKinds)) {
     assert.ok(nightKinds[k], `${k} has no night colour and would stay dark-on-dark`);
   }
