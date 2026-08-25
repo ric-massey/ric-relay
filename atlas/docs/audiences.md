@@ -44,8 +44,9 @@ used consistently everywhere below.
 
 ### 1. Stranger
 
-Findable by **exact handle only**. You get handle, display name, avatar. That is
-all. Enough to confirm you found the right person, not enough to browse them.
+Reachable only by **exact username or exact email** — never by name. A username
+lookup gets you display name and avatar, enough to confirm you found the right
+person. An email gets you nothing at all; see [Finding people](#finding-people).
 
 ### 2. Co-visible
 
@@ -315,34 +316,71 @@ for having had one chokepoint.
 
 ## Finding people
 
-**Do not build a search that returns a list.** Build a lookup that returns at
-most one row, on exact handle match, through a narrow SECURITY DEFINER function
-returning handle, display name and avatar.
+There are exactly two ways to find somebody, and **a person's name is not one of
+them.** No searching by display name, no prefix matching, no fuzzy match, no
+"people you may know," no list results ever. A search that takes a real name and
+returns people is the thing that makes Instagram browsable, and it is the single
+feature that would turn this app into that one.
 
-No prefix matching. No fuzzy. No "people you may know." That kills enumeration
-outright — there is no way to walk the roster, and no rate limiting to get
-right, which matters because there is no server to rate-limit with.
+You find a person by **exact username** or by **exact email address**, and the
+two behave differently on purpose.
 
-The cost is that you have to know somebody's handle exactly. That is the point:
-handles get passed in person, by text, over the tailgate. Instagram's problem is
-precisely that you do not need to know.
+### By username — returns a card
 
-Consequences:
+At most one row, exact match, through a narrow SECURITY DEFINER function
+returning username, display name and avatar. Nothing else.
 
+A username exists only inside ATLAS, so confirming that one exists tells an
+outsider nothing they did not already bring with them — and you need the card to
+check you have the right person before you send a request.
+
+### By email — returns nothing, ever
+
+Not a lookup. You type an address and it **sends a connection request**, and the
+answer is identical whether or not an account exists:
+
+> *If somebody is here with that address, they will see this.*
+
+An email exists out in the world and is frequently guessable —
+`firstname.lastname@gmail.com`. If an email lookup returned a card, it would be
+an oracle: anybody could test addresses and learn **which of the people they
+know are on this app**, about people who never agreed to be findable. The
+password-reset non-enumeration rule, for the same reason it exists there.
+
+The card was never load-bearing here anyway. You know whose address you typed.
+Confirmation arrives when they accept.
+
+Cap the number of pending outbound requests per account. It is a count check
+inside the same function, it is the only abuse this opens up, and there is no
+server to rate-limit with later.
+
+### Consequences
+
+- **`handle_new_user()` has to stop deriving the username.** It currently sets
+  `username = split_part(new.email, '@', 1)`, which is two failures at once. It
+  **publishes the local part of your email address** to anyone who can see your
+  name on a pin — and it makes guessing a username and guessing an email the
+  same attack, which defeats the email rule above through the username door.
+  Usernames must be **chosen at signup**, unique, stable, and unrelated to the
+  address. This has to land before anybody else joins, because renaming people
+  afterwards is not safe.
+- **Email is compared lowercased and trimmed**, and lives only in `auth.users`.
+  It is never copied to `profiles`, never returned by any function, and never
+  appears in a view. Do not get clever about Gmail dots or `+` aliases — two
+  valid addresses that differ are two addresses.
 - [`crew reads profiles ... using (true)`](../supabase/migrations/20260821183141_atlas_initial.sql)
   has to die. Profiles become readable to you, your connections, and anyone
   co-visible with you on a pin.
-- `handle_new_user()` derives the username from the email local-part
-  (`split_part(new.email, '@', 1)`). At hundreds of accounts that collides, and
-  the column is `unique not null` — so the trigger will start throwing on
-  signup. Handles have to become chosen, unique and stable before the roster
-  grows.
+- **Display names need not be unique**, and two Daves in an audience list is
+  fine — you only ever see people you are connected to or co-visible with, and
+  the avatar settles it.
 - **ATLAS will never grow on its own**, and that is deliberate. Every account
-  arrives because somebody deliberately handed over a handle.
+  arrives because somebody deliberately handed over an address or a username.
 
 An elegance worth taking: the paused invite work could *be* the connection. An
-invite link that creates the account and the connection in one step makes
-joining and being vouched for the same act.
+invite is already an email sent to an address, which is exactly the gesture
+above — so an invite link that creates the account and the connection in one
+step makes joining and being vouched for the same act.
 
 ---
 
@@ -484,6 +522,8 @@ should land only once the interface no longer sends the column.
 - **Does revoking a connection pull the person out of your groups?** It has to —
   and out of individual grants too. Trigger on `connections` delete, fail
   closed, same discipline as the parking trigger.
-- **Handles.** Chosen at signup, unique, stable, and separate from the email
-  local-part. Needs deciding before the roster grows past the point where
-  renaming is safe.
+- **Usernames.** Chosen at signup, unique, stable, and separate from the email
+  local part. Not really an open question so much as the one thing that has to
+  be fixed first — see [Finding people](#finding-people). What *is* open is
+  whether an existing username can ever be changed afterwards, given it is an
+  identifier other people have written down.
