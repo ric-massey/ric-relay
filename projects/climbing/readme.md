@@ -84,6 +84,12 @@ and on a project means goes. Both land in the data as `repeats`, which is what
 `⋯` on the row; region, pitches and boulders are behind one toggle at the
 bottom. A normal day needs none of them and shouldn't have to look at them.
 
+The script tags carry `?v=N`. Pages serves these with `max-age=600`, and a
+stale `climb-parse.js` doesn't look stale — it looks like the tally is wrong,
+which is ten minutes of trusting a number that has already been fixed. **Bump
+the `v` on `climb-vocab.js`, `climb-parse.js` and `web-trips.js` when you change
+them**; they move together, so one number does for all three.
+
 The two parsers agreeing is a test, not a hope:
 
 ```bash
