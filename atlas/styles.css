@@ -693,6 +693,22 @@ button { cursor: pointer; border: none; background: none; }
 }
 .nav-remember input { position: absolute; opacity: 0; pointer-events: none; }
 
+/* The line under the chips where "other" says what it actually is. Sized and
+   weighted like the description below it rather than like the name above it —
+   it is a note about the place, not the place's title. */
+.kind-other {
+  width: 100%; min-height: var(--tap);
+  margin-top: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  background: var(--bg); border: var(--b) solid var(--edge);
+  border-radius: var(--r-md);
+  font: inherit; font-size: var(--t-md); color: inherit;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.kind-other::placeholder { color: var(--ink-mute); }
+.kind-other:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 var(--b) var(--accent-wash); }
+.kind-other:disabled { opacity: 0.55; }
+
 /* A locked control has to look locked. Dimmed and un-pressable, rather than a
    row of chips that quietly ignore the tap — which reads as a broken app, not
    as somebody else's pin. */
@@ -845,6 +861,7 @@ button { cursor: pointer; border: none; background: none; }
 .sheet-head[data-kind="caves"]     .pin-kind-dot { background: var(--kind-caves); }
 .sheet-head[data-kind="trails"]    .pin-kind-dot { background: var(--kind-trails); }
 .sheet-head[data-kind="tunnels"]   .pin-kind-dot { background: var(--kind-tunnels); }
+.sheet-head[data-kind="bridges"]   .pin-kind-dot { background: var(--kind-bridges); }
 .sheet-head[data-kind="buildings"] .pin-kind-dot { background: var(--kind-buildings); }
 .sheet-head[data-kind="mountains"] .pin-kind-dot { background: var(--kind-mountains); }
 .sheet-head[data-kind="towers"]    .pin-kind-dot { background: var(--kind-towers); }
@@ -1459,6 +1476,7 @@ button { cursor: pointer; border: none; background: none; }
 .r-thumb[data-kind="caves"]     { --kind: var(--kind-caves); }
 .r-thumb[data-kind="trails"]    { --kind: var(--kind-trails); }
 .r-thumb[data-kind="tunnels"]   { --kind: var(--kind-tunnels); }
+.r-thumb[data-kind="bridges"]   { --kind: var(--kind-bridges); }
 .r-thumb[data-kind="buildings"] { --kind: var(--kind-buildings); }
 .r-thumb[data-kind="mountains"] { --kind: var(--kind-mountains); }
 .r-thumb[data-kind="towers"]    { --kind: var(--kind-towers); }
@@ -1959,6 +1977,7 @@ body.is-offline #app::after {
 .kind-chip[data-kind="caves"]     .kind-dot { background: var(--kind-caves); }
 .kind-chip[data-kind="trails"]    .kind-dot { background: var(--kind-trails); }
 .kind-chip[data-kind="tunnels"]   .kind-dot { background: var(--kind-tunnels); }
+.kind-chip[data-kind="bridges"]   .kind-dot { background: var(--kind-bridges); }
 .kind-chip[data-kind="buildings"] .kind-dot { background: var(--kind-buildings); }
 .kind-chip[data-kind="mountains"] .kind-dot { background: var(--kind-mountains); }
 .kind-chip[data-kind="towers"]    .kind-dot { background: var(--kind-towers); }

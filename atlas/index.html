@@ -238,6 +238,11 @@
         </button>
       </div>
       <div id="pin-kind" class="kind-list"></div>
+      <!-- Only for "other", and only ever optional. Half the time there is no
+           word for the thing, and demanding one just gets a guess typed in. -->
+      <input id="pin-kind-other" class="kind-other" hidden
+             placeholder="a word for it (optional) — quarry, adit, spring house"
+             autocapitalize="none" spellcheck="false" maxlength="40">
       <textarea id="pin-desc" class="pin-desc" rows="3"
                 placeholder="what is it? how do you get in? what do you need?"></textarea>
       <div id="pin-meta" class="pin-meta"></div>

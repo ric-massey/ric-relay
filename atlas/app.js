@@ -265,6 +265,26 @@ const KIND_KEYS = new Set(KINDS.map((k) => k.key));
 const kindOf = (p) => (KIND_KEYS.has(p?.kind) ? p.kind : 'other');
 const kindLabel = (key) => KINDS.find((k) => k.key === key)?.label || 'other';
 
+/* What a pin's kind is CALLED, which is not always what its kind IS. Eight of
+ * the nine name themselves; "other" is the honest answer often enough, and also
+ * the least useful thing a row can tell you, so it gets a line to say what it
+ * actually is. Empty is normal and falls back to the word.
+ *
+ * Everything user-facing goes through here — the list row, the search index —
+ * so typing "quarry" into that line makes the pin findable by it without a
+ * second field being taught to the scorer. */
+function kindText(p) {
+  const said = kindOf(p) === 'other' ? (p.kind_other || '').trim() : '';
+  return said || kindLabel(kindOf(p));
+}
+
+/* Shown only for "other", because for the other eight it would be asking you to
+ * name a thing that is already named. */
+function syncKindOther() {
+  const on = chosenKind() === 'other';
+  $('pin-kind-other').hidden = !on;
+}
+
 /* Every kind shown until told otherwise, and the choice is kept on the phone:
  * it is about what you are looking for today, not about anybody else. */
 let kindFilter = new Set(KIND_KEYS);
@@ -1411,6 +1431,9 @@ function openNewPin(lat, lng, accuracy) {
   $('pin-name').disabled = false;
   $('pin-desc').disabled = false;
   setPinKind('other');
+  $('pin-kind-other').value = '';
+  $('pin-kind-other').disabled = false;
+  syncKindOther();
   // A new pin is always yours, and the sheet is reused — so anything openPin
   // locked on somebody else's pin has to be handed back here.
   setPinKindEnabled(true);
@@ -1443,6 +1466,9 @@ function openPin(p) {
   $('pin-name').disabled = !mine;
   $('pin-desc').disabled = !mine;
   setPinKind(kindOf(p));
+  $('pin-kind-other').value = p.kind_other || '';
+  $('pin-kind-other').disabled = !mine;
+  syncKindOther();
   // The kind chips were the one control left live on somebody else's pin. They
   // could not save anything — the save button is hidden below — but tapping one
   // recoloured the dot at the top of the sheet, so it looked like an edit that
@@ -1522,6 +1548,10 @@ async function savePin() {
     name: $('pin-name').value.trim(),
     description: $('pin-desc').value.trim(),
     kind: chosenKind(),
+    // Kept even when the kind is not "other" — change your mind twice and what
+    // you typed is still there, rather than being quietly thrown away the first
+    // time you tried a different chip.
+    kind_other: $('pin-kind-other').value.trim(),
     is_private: $('pin-private').checked,
   };
 
@@ -2745,7 +2775,7 @@ function listRow(p, here, why = null) {
   // The time shown is the time the list is SORTED by, or the sort looks broken:
   // a pin found a month ago sitting at the top because somebody left a note on
   // it yesterday has to say so, not say "1mo ago".
-  const bits = [`<b>${escapeHtml(who)}</b>`, escapeHtml(kindLabel(kindOf(p)))];
+  const bits = [`<b>${escapeHtml(who)}</b>`, escapeHtml(kindText(p))];
   if (its.length) {
     const last = its.reduce((a, b) => (a.created_at > b.created_at ? a : b));
     bits.push(`${its.length} note${its.length > 1 ? 's' : ''}`);
@@ -2951,7 +2981,9 @@ function matchedPins() {
     const scored = scorePin({
       name: pinTitle(p),
       description: p.description || '',
-      kind: kindLabel(kindOf(p)),
+      // The finder's own word for it, when they gave one — so a pin they called
+      // a quarry is found by typing "quarry" and not only by "other".
+      kind: kindText(p),
       // Your own pins answer to "you" as well as to your name, because that is
       // what the row itself says and it is what people type.
       author: mine ? `you ${name}` : name,
@@ -3834,7 +3866,9 @@ $('sources-list').addEventListener('click', onSourcesClick);
 $('src-save').addEventListener('click', addSource);
 $('dl-photos').addEventListener('click', cachePhotosOffline);
 $('pin-kind').addEventListener('change', (e) => {
-  if (e.target.name === 'kind') $('sheet-head').dataset.kind = e.target.value;
+  if (e.target.name !== 'kind') return;
+  $('sheet-head').dataset.kind = e.target.value;
+  syncKindOther();
 });
 $('kind-filter').addEventListener('change', (e) => {
   if (e.target.dataset.filter) toggleKind(e.target.dataset.filter, e.target.checked);

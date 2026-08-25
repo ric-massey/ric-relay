@@ -298,3 +298,49 @@ test('day is still what a browser with no preference gets', () => {
 });
 
 console.log(`\n${passed} passed\n`);
+
+/* ── every kind, in every place that lists them by hand ───────────────────
+ * The colours are one problem; remembering to USE them is another, and it is
+ * the one that actually happened. Adding `bridges` meant touching four separate
+ * hand-maintained lists in this stylesheet — the marker, the dot on the sheet
+ * head, the dot on a chip, and the thumbnail in a list row — and the first pass
+ * updated one of them. Nothing failed. The chip dot simply fell back to the
+ * `other` grey, and the only reason it was caught is that somebody looked at a
+ * screenshot.
+ *
+ * So: whatever KINDS says, every one of those lists has to say too. Read out of
+ * app.js rather than repeated here, because a copy of the list in this file is
+ * the same bug one level up.
+ */
+const appSrc = readFileSync(fileURLToPath(new URL('../app.js', import.meta.url)), 'utf8');
+
+const kindKeys = (() => {
+  const block = appSrc.match(/const KINDS = \[([\s\S]*?)\];/);
+  assert.ok(block, 'app.js no longer declares KINDS');
+  return [...block[1].matchAll(/key:\s*'([a-z]+)'/g)].map((m) => m[1]);
+})();
+
+test('KINDS and the kind colours agree', () => {
+  assert.ok(kindKeys.length >= 8, `only found ${kindKeys.length} kinds in app.js`);
+  for (const k of kindKeys) {
+    assert.ok(dayKinds[k], `${k} is in KINDS but has no --kind-${k} in the day palette`);
+    assert.ok(nightKinds[k], `${k} is in KINDS but has no --kind-${k} at night`);
+  }
+});
+
+test('every kind is wired into every list the stylesheet keeps by hand', () => {
+  // `other` is each list's default background, so it is deliberately absent.
+  const needed = kindKeys.filter((k) => k !== 'other');
+  const lists = {
+    'the map marker':          (k) => `.pin-marker[data-kind="${k}"]`,
+    'the dot on the sheet head': (k) => `.sheet-head[data-kind="${k}"]`,
+    'the dot on a chip':       (k) => `.kind-chip[data-kind="${k}"]`,
+    'the list-row thumbnail':  (k) => `.r-thumb[data-kind="${k}"]`,
+  };
+  for (const [what, sel] of Object.entries(lists)) {
+    for (const k of needed) {
+      assert.ok(css.includes(sel(k)),
+        `${k} has no rule for ${what} — it will silently fall back to the "other" grey`);
+    }
+  }
+});

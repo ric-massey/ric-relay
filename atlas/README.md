@@ -442,6 +442,17 @@ person's find, and the log under it is everybody's account of going there.
   photo on your note belongs to your note. Same table, different `note_id`, and
   the policy splits on exactly that.
 
+**"Other" can say what it is.** Eight of the nine kinds name themselves; the
+ninth is the honest answer often enough — a quarry, a spring house, an adit, a
+hole nobody has a word for — but it is also the least useful thing a row can
+tell you. So picking *other* opens one optional line for the finder's own word,
+and that word is what the list row prints and what the search index holds: a pin
+called a quarry is found by typing "quarry", with nothing new taught to the
+scorer. Leaving it blank is normal and just says "other".
+
+What you type is kept even if you change the kind away from other and back, so
+changing your mind twice does not lose it.
+
 **Bridges** was added on 2026-08-25, and it is the last easy one. Nine colours
 now have to be distinguishable from each other at 28px on satellite imagery, and
 the space is nearly used up: a sweep of every hue found that only a properly
@@ -450,9 +461,14 @@ inside `cliffs`. Day is `#a5121b`, night `#f53838` — 163 and 168 from their
 nearest neighbour, against a floor of 116 and 102. A tenth will have to argue
 for itself against those numbers, in `test/contrast.test.mjs`.
 
-Worth knowing what happens if a kind is added without its colour: `--pin` falls
-back to the accent, and the pin renders as a slightly-off `cliffs` with nothing
-on screen complaining. That is what the "colour for every kind" test is for.
+Two ways a new kind fails quietly, both now under test. Without its colour,
+`--pin` falls back to the accent and the pin renders as a slightly-off `cliffs`.
+And the colours are only half of it: this stylesheet keeps **four** hand-written
+lists of kinds — the map marker, the dot on the sheet head, the dot on a chip,
+and the list-row thumbnail — and adding `bridges` updated one of them on the
+first pass. Nothing failed; the chip dot just fell back to the `other` grey, and
+it was caught by looking at a screenshot. `test/contrast.test.mjs` now reads
+`KINDS` out of `app.js` and checks all four lists against it.
 
 ### Parking
 
