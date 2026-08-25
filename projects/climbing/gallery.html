@@ -284,8 +284,16 @@
 
       grid.innerHTML = shown.map((p) => {
         const i = PHOTOS.indexOf(p);
+        /* `#t=0.1` is what makes a video tile a picture. A poster-less <video>
+           parked at 0 s paints nothing — the send clips came through as blank
+           grey rectangles with a VIDEO badge on them — so the media fragment
+           seeks a tenth of a second in and the browser draws that frame. Same
+           trick the deep log uses on its thumbnails, and the same reason:
+           `preload="metadata"` gets a frame without pulling the whole clip,
+           which is the difference between a gallery opening and a gallery
+           downloading a hundred megabytes of .mov. */
         const media = p.type === "video"
-          ? `<video src="${esc(p.src)}" muted playsinline preload="metadata"></video>`
+          ? `<video src="${esc(p.src)}#t=0.1" muted playsinline preload="metadata"></video>`
           : `<img src="${esc(p.src)}" alt="${esc(p.route || p.caption || "Climbing photo")}" loading="lazy">`;
         const title = p.route || (p.area ? p.area : "Unlabelled");
         const sub = [p.date ? fmtDate(p.date) : "no date yet", p.route ? p.area : null]
