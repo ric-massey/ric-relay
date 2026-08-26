@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Arcade — playable games</title>
+  <meta name="description" content="A small arcade of playable games — vector combat, a relativistic rocket, a momentum prototype, and Interstate 40 as an arcade cabinet. Click a cover to play.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0b0b0d">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Arcade">
+  <meta property="og:title" content="Arcade — playable games">
+  <meta property="og:description" content="Playable games. Click a cover to play.">
+  <meta property="og:url" content="https://ricmassey.com/gaming.html">
+  <meta property="og:image" content="https://ricmassey.com/assets/games/crossfire.jpg">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="655">
+  <meta property="og:image:alt" content="Crossfire gameplay — a vector ship among drifting asteroids.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://ricmassey.com/gaming.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230b0b0d'/><path d='M31 40h38a19 19 0 0 1 18 25 11 11 0 0 1-20 4l-2-4H37l-2 4a11 11 0 0 1-20-4 19 19 0 0 1 18-25Z' fill='none' stroke='%23a855f7' stroke-width='6'/><path d='M29 51h11M34 45v11' stroke='%23a855f7' stroke-width='5' stroke-linecap='round'/><circle cx='64' cy='53' r='4' fill='%23a855f7'/><circle cx='74' cy='58' r='4' fill='%23a855f7'/></svg>">
+
+  <!-- The covers are the page. Warm the two that are visible before a scroll
+       so the arcade opens with art in it rather than four grey boxes. -->
+  <link rel="preload" as="image" href="assets/games/crossfire.jpg" fetchpriority="high">
+  <link rel="preload" as="image" href="assets/games/starfield.jpg">
+  <style>
+    /* ARCADE
+       ────────────────────────────────────────────────────────────────────────
+       Dark, quiet, and the art does the talking. Everything that moves is
+       driven by something the reader did — a scroll, a pointer, a focus — and
+       every one of them is switched off wholesale under prefers-reduced-motion,
+       because a games page that lurches at somebody who asked for stillness is
+       just a worse games page. */
+
+    /* No @view-transition opt-in here.
+       Cross-document transitions need BOTH pages to ask for one, and none of
+       the game pages do — so all this produced was an "AbortError: Transition
+       was skipped" in the console every time the browser started one it could
+       not finish. A feature that emits nothing but an error is not a feature.
+       Wiring it properly means one line in each of the four game pages and a
+       matching view-transition-name on whatever the cover should morph into;
+       worth doing, but as its own change with each game checked. */
+
+    :root {
+      color-scheme: dark;
+
+      --bg: #0b0b0d;
+      --card: #141416;
+      --text: #ededf0;
+      --muted: #9295a0;
+      --line: rgba(255, 255, 255, 0.09);
+      --line-2: rgba(255, 255, 255, 0.16);
+      --accent: #a855f7;      /* single accent: play, current room, links */
+      --beta: #ff6a55;        /* status only */
+      /* The cyan effects.js already lights this room with. Borrowing it rather
+         than picking a second blue means the HUD and the backdrop agree. */
+      --tech: #41d3e8;
+
+      --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+      /* Derived rather than hand-picked, so changing --accent above changes the
+         glow, the hover and the focus ring with it instead of leaving three
+         near-misses behind. */
+      --accent-dim: color-mix(in oklab, var(--accent) 60%, var(--bg));
+      --accent-glow: color-mix(in oklab, var(--accent) 13%, transparent);
+      --hover-surface: color-mix(in oklab, var(--text) 6%, transparent);
+
+      --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      min-height: 100svh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { display: block; }
+    h1, h2, h3 { text-wrap: balance; }
+    p { text-wrap: pretty; }
+
+    *:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+      border-radius: 6px;
+    }
+
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 1.25rem 4rem; }
+
+    /* ── top bar ──
+       Sticky and frosted, so the way back out of the arcade is always one tap
+       away rather than a scroll to the top. The rule underneath only appears
+       once there is something scrolled under it. */
+    .barwrap {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: color-mix(in oklab, var(--bg) 68%, transparent);
+      backdrop-filter: blur(16px) saturate(1.6);
+      -webkit-backdrop-filter: blur(16px) saturate(1.6);
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.3s var(--ease), background 0.3s var(--ease);
+    }
+    .barwrap.scrolled {
+      border-bottom-color: var(--line);
+      background: color-mix(in oklab, var(--bg) 86%, transparent);
+    }
+    .bar {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.85rem 1.25rem;
+    }
+    .brand { display: flex; align-items: baseline; gap: 0.2rem; flex-wrap: wrap; }
+    /* Its own line under the name, and never two of them — the readout broke
+       as "BROWSER-" / "NATIVE" and dragged the whole bar down with it. */
+    .brand em {
+      flex-basis: 100%;
+      font-style: normal;
+      margin-top: 0.15rem;
+      white-space: nowrap;
+    }
+    @media (max-width: 900px) { .brand em { display: none; } }
+    .brand b { font-size: 1.05rem; font-weight: 800; letter-spacing: 0.02em; }
+    .brand span {
+      color: var(--muted);
+      font-size: 0.82rem;
+      padding-left: 0.55rem;
+      margin-left: 0.15rem;
+      border-left: 1px solid var(--line-2);
+    }
+
+    /* Small technical type, used only for things that are literally true about
+       the arcade — a count, a status, a position in the shelf. It is a HUD, not
+       a set of invented statistics. */
+    .sys {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: color-mix(in oklab, var(--tech) 70%, var(--muted));
+    }
+    .sys .dot {
+      display: inline-block;
+      width: 5px; height: 5px;
+      margin-right: 0.45rem;
+      border-radius: 50%;
+      background: var(--tech);
+      box-shadow: 0 0 8px var(--tech);
+      animation: blip 2.6s var(--ease) infinite;
+    }
+    @keyframes blip { 50% { opacity: 0.35; } }
+
+    nav.launcher { display: flex; align-items: center; gap: 0.15rem; flex-wrap: wrap; }
+    nav.launcher a,
+    nav.launcher .here {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 0.25rem 0.6rem;
+      border-radius: 7px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      transition: color 0.15s var(--ease), background 0.15s var(--ease);
+    }
+    nav.launcher a:hover { color: var(--text); background: var(--hover-surface); }
+    nav.launcher .here { color: var(--accent); font-weight: 600; }
+    /* The current room gets an underline that draws itself, once, on arrival. */
+    nav.launcher .here::after {
+      content: "";
+      position: absolute;
+      left: 0.6rem; right: 0.6rem; bottom: 0.1rem;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--accent);
+      transform-origin: left;
+      animation: draw 0.5s 0.15s var(--ease) both;
+    }
+    @keyframes draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .roomnav-toggle { display: none; }
+
+    /* ── the shared cover treatment ──
+       A cover lights up from wherever the pointer is. --mx/--my are written by
+       the script; with no pointer they sit at the middle and the glow is a
+       plain vignette, which is why there is no separate "no hover" styling. */
+    .cover {
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+      background: var(--card);
+    }
+    .cover::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      opacity: 0;
+      background: radial-gradient(
+        14rem 14rem at var(--mx, 50%) var(--my, 50%),
+        var(--accent-glow), transparent 65%);
+      transition: opacity 0.35s var(--ease);
+    }
+    .game:hover .cover::after,
+    .game:focus-visible .cover::after,
+    .feature:hover .cover::after,
+    .feature:focus-visible .cover::after { opacity: 1; }
+
+    /* ── the reticle ──
+       Four corner brackets drawn as eight gradients on one element, so a cover
+       gets targeting-frame furniture without eight spans of markup in it. They
+       close in slightly on hover, which is the whole trick: the frame reads as
+       something locking on rather than a border that was always there. */
+    .frame {
+      position: absolute;
+      inset: 14px;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0;
+      --c: var(--tech);
+      background:
+        linear-gradient(var(--c), var(--c)) 0 0 / 20px 2px no-repeat,
+        linear-gradient(var(--c), var(--c)) 0 0 / 2px 20px no-repeat,
+        linear-gradient(var(--c), var(--c)) 100% 0 / 20px 2px no-repeat,
+        linear-gradient(var(--c), var(--c)) 100% 0 / 2px 20px no-repeat,
+        linear-gradient(var(--c), var(--c)) 0 100% / 20px 2px no-repeat,
+        linear-gradient(var(--c), var(--c)) 0 100% / 2px 20px no-repeat,
+        linear-gradient(var(--c), var(--c)) 100% 100% / 20px 2px no-repeat,
+        linear-gradient(var(--c), var(--c)) 100% 100% / 2px 20px no-repeat;
+      transition: opacity 0.3s var(--ease), inset 0.35s var(--ease);
+    }
+    .game:hover .frame, .game:focus-visible .frame,
+    .feature:hover .frame, .feature:focus-visible .frame { opacity: 0.85; inset: 9px; }
+
+    /* One pass of a scan line down the cover, on hover only. */
+    .cover .scan {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0;
+      background:
+        linear-gradient(180deg, transparent, var(--tech) 45%, transparent) no-repeat,
+        linear-gradient(180deg, transparent, color-mix(in oklab, var(--tech) 26%, transparent), transparent) no-repeat;
+      background-size: 100% 2px, 100% 90px;
+      background-position: 0 -6%, 0 -6%;
+      filter: drop-shadow(0 0 7px var(--tech));
+    }
+    .game:hover .scan, .feature:hover .scan { animation: scan 1.6s var(--ease); }
+    @keyframes scan {
+      0% { opacity: 0; background-position: 0 -6%, 0 -6%; }
+      14% { opacity: 0.85; }
+      86% { opacity: 0.85; }
+      100% { opacity: 0; background-position: 0 106%, 0 106%; }
+    }
+
+    /* A grid over the art, faint enough to read as screen rather than pattern. */
+    .cover .grid {
+      position: absolute; inset: 0; z-index: 2;
+      pointer-events: none;
+      opacity: 0.35;
+      background:
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.045) 0 1px, transparent 1px 4px);
+      mix-blend-mode: overlay;
+    }
+
+    .clip {
+      display: block;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      background: #0b0b0d;
+    }
+
+    /* ── featured ── */
+    .feature {
+      position: relative;
+      display: block;
+      margin-top: 1.9rem;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--card);
+      isolation: isolate;
+      transform: perspective(1400px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+      transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease);
+      will-change: transform;
+    }
+    .feature:hover {
+      box-shadow: 0 30px 70px -30px color-mix(in oklab, var(--accent) 30%, transparent);
+    }
+    .feature .cover { aspect-ratio: 16 / 8; border-radius: var(--radius); }
+    .feature .clip { object-position: 50% 42%; }
+    .feature .cover::before {
+      content: "";
+      position: absolute; inset: 0; z-index: 1;
+      /* The clip runs on into Crossfire's own menu, which is text — and the
+         title and the paragraph sit right on top of it. The scrim starts
+         earlier and lands harder than a pure decoration would, because what it
+         is actually doing is guaranteeing the copy stays readable over a frame
+         nobody chose. */
+      background: linear-gradient(180deg,
+        rgba(11,11,13,0.12) 0%,
+        rgba(11,11,13,0.40) 34%,
+        rgba(11,11,13,0.86) 68%,
+        rgba(11,11,13,0.98) 100%);
+    }
+    .feature-info {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      z-index: 3;
+      padding: 2.6rem 1.6rem 1.5rem;
+      /* Its own lower-third rather than trusting the cover's gradient.
+         The clip runs on into Crossfire's menu — bright text, dead centre —
+         and the title and paragraph sit right across it. A scrim measured off
+         the cover can only ever be a guess about where the copy will land; one
+         measured off the copy is exactly as tall as the copy is. */
+      background: linear-gradient(180deg,
+        transparent 0%,
+        rgba(11,11,13,0.72) 26%,
+        rgba(11,11,13,0.93) 55%,
+        rgba(11,11,13,0.97) 100%);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+    }
+    .feature h1 {
+      text-shadow: 0 0 34px color-mix(in oklab, var(--accent) 45%, transparent);
+      margin: 0.5rem 0 0.35rem;
+      font-size: clamp(2rem, 5vw, 3.1rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    .feature p { max-width: 52ch; color: #d7d9df; font-size: 1rem; }
+
+    .cta { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem 1rem; margin-top: 1.1rem; }
+    .btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      min-height: 46px;
+      padding: 0 1.35rem;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #14051f;
+      font-weight: 700;
+      font-size: 0.95rem;
+      overflow: hidden;
+      transition: filter 0.15s var(--ease), transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+    }
+    .btn::before {
+      content: "";
+      width: 0; height: 0;
+      border-style: solid;
+      border-width: 6px 0 6px 10px;
+      border-color: transparent transparent transparent #14051f;
+    }
+    /* A single pass of light across the button when the card is hovered — the
+       one piece of motion here that nobody asked for, kept to 0.7s and to the
+       thing you are already pointing at. */
+    .btn::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      transform: translateX(-120%) skewX(-18deg);
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+    }
+    .feature:hover .btn {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px -12px var(--accent);
+    }
+    .feature:hover .btn::after { animation: sheen 0.7s var(--ease); }
+    @keyframes sheen { to { transform: translateX(120%) skewX(-18deg); } }
+    .cta .meta {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ── shelf ── */
+    .shelf-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+      margin: 2.6rem 0.1rem 1rem;
+    }
+    .shelf-head h2 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
+    .shelf-head .sys { color: color-mix(in oklab, var(--tech) 60%, var(--muted)); }
+
+    /* Container queries rather than viewport ones: the shelf lays itself out
+       from the width it actually has, so it stays right wherever it is put. */
+    .shelfwrap { container-type: inline-size; }
+    .shelf { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
+    @container (max-width: 860px) { .shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @container (max-width: 560px) { .shelf { grid-template-columns: 1fr; } }
+
+    .game {
+      display: flex;
+      flex-direction: column;
+      transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--lift, 0));
+      transition: transform 0.4s var(--ease);
+      will-change: transform;
+    }
+    .game:hover { --lift: -4px; }
+    .game .cover {
+      aspect-ratio: 16 / 9;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      transition: border-color 0.25s var(--ease), box-shadow 0.35s var(--ease);
+    }
+    .game:hover .cover {
+      border-color: color-mix(in oklab, var(--accent) 45%, var(--line-2));
+      box-shadow: 0 22px 50px -26px color-mix(in oklab, var(--accent) 45%, transparent);
+    }
+    .game .clip { object-position: 50% 40%; transition: transform 0.6s var(--ease); }
+    .game:hover .clip { transform: scale(1.045); }
+
+    .tag {
+      position: absolute;
+      top: 0.6rem; left: 0.6rem;
+      z-index: 3;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 7px;
+      background: color-mix(in oklab, var(--bg) 78%, transparent);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border: 1px solid var(--line-2);
+      color: #d7d9df;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .tag.rel { color: #fff; border-color: color-mix(in oklab, var(--accent) 55%, var(--line-2)); }
+    .tag.rel::before { background: var(--accent); box-shadow: 0 0 0 0 transparent; animation: none; }
+    .feature .tag { top: 0.9rem; left: 0.9rem; z-index: 4; }
+    .tag::before {
+      content: "";
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--beta);
+      box-shadow: 0 0 0 0 color-mix(in oklab, var(--beta) 70%, transparent);
+      animation: pulse 2.4s var(--ease) infinite;
+    }
+    @keyframes pulse {
+      70% { box-shadow: 0 0 0 7px transparent; }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+
+    .game-info { padding: 0.8rem 0.1rem 0; }
+    .game-info .idx {
+      display: block;
+      margin-bottom: 0.25rem;
+      color: color-mix(in oklab, var(--accent) 55%, var(--muted));
+      transition: color 0.2s var(--ease);
+    }
+    .game:hover .game-info .idx { color: var(--tech); }
+    .game-info h3 {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em;
+      transition: color 0.15s var(--ease);
+    }
+    /* The arrow only exists on hover, and it moves — the cheapest possible way
+       to say "this is a door" without writing the words on every card. */
+    .game-info h3::after {
+      content: "→";
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: opacity 0.2s var(--ease), transform 0.2s var(--ease);
+    }
+    .game:hover .game-info h3,
+    .game:focus-visible .game-info h3 { color: var(--accent); }
+    .game:hover .game-info h3::after,
+    .game:focus-visible .game-info h3::after { opacity: 1; transform: translateX(0); }
+    .game-info p { margin-top: 0.25rem; color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
+
+    /* ── arriving ──
+       Scroll-driven where the browser can do it natively, which is the whole
+       animation off the main thread and exactly in step with the scrollbar. IO
+       is the fallback, and the failsafe is that nothing hides at all until the
+       script has said it is there to unhide it. */
+    /* `translate`, not `transform`.
+       Every card is both a .reveal and a .tiltable, and the reveal is an
+       ANIMATION — which outranks a normal declaration in the cascade, so the
+       moment it finished it pinned `transform: none` on the card and the tilt
+       and the lift stopped rendering for good. They still computed: --rx and
+       --lift were sitting there correct and having no effect, which is the
+       worst kind of broken because it looks like it works from the console.
+       The independent translate property composes with transform instead of
+       overwriting it, so the two can share an element. */
+    .js .reveal { opacity: 0; translate: 0 18px; }
+    .js .reveal.in {
+      opacity: 1;
+      translate: none;
+      transition: opacity 0.6s var(--ease), translate 0.6s var(--ease);
+    }
+    @supports (animation-timeline: view()) {
+      @media (prefers-reduced-motion: no-preference) {
+        .js .reveal {
+          opacity: 1; translate: none;
+          animation: rise linear both;
+          animation-timeline: view();
+          animation-range: entry 0% cover 26%;
+        }
+        .js .reveal.in { transition: none; }
+      }
+    }
+    @keyframes rise {
+      from { opacity: 0; translate: 0 22px; }
+      to { opacity: 1; translate: none; }
+    }
+
+    /* ── footer ── */
+    .foot {
+      margin-top: 2.8rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .foot b { color: var(--text); font-weight: 600; }
+    .foot .vibe { color: var(--accent); font-weight: 600; }
+
+    @media (max-width: 620px) {
+      .wrap { padding: 0 1rem 3rem; }
+      .bar { padding: 0.75rem 1rem; flex-wrap: wrap; }
+
+      /* The hero stops being an overlay here.
+         A title, four lines of copy, a full-width button and a two-line meta
+         row do not fit inside a 4:3 cover — so the text ran off the top of its
+         own container, "Crossfire" was sliced in half by the card edge and the
+         RELEASE chip landed in the middle of the paragraph. Laid out under the
+         art instead, it cannot outgrow anything, and the scrim goes with it
+         because there is no longer any text over video to protect. */
+      .feature .cover { aspect-ratio: 16 / 10; }
+      .feature .cover::before { display: none; }
+      .feature-info {
+        position: static;
+        padding: 1.1rem 1.1rem 1.3rem;
+        background: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+      .feature h1 { margin-top: 0; }
+      .cta .btn { width: 100%; justify-content: center; }
+      .cta .meta { font-size: 0.68rem; }
+
+      .roomnav-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 40px;
+        padding: 0 0.85rem;
+        border-radius: 9px;
+        border: 1px solid var(--line-2);
+        background: transparent;
+        color: var(--text);
+        font: inherit;
+        font-size: 0.85rem;
+        cursor: pointer;
+      }
+      .roomnav-toggle[aria-expanded="true"] { border-color: var(--accent); }
+      .roomnav-toggle-bars {
+        position: relative;
+        width: 14px; height: 10px;
+        border-top: 2px solid currentColor;
+        border-bottom: 2px solid currentColor;
+      }
+      .roomnav-toggle-bars::after {
+        content: "";
+        position: absolute;
+        inset: calc(50% - 1px) 0 auto;
+        border-top: 2px solid currentColor;
+      }
+      nav.launcher[data-roomnav] { display: none; width: 100%; }
+      nav.launcher[data-roomnav].roomnav-open {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.15rem;
+        margin-top: 0.6rem;
+        padding-bottom: 0.4rem;
+      }
+      nav.launcher[data-roomnav].roomnav-open a,
+      nav.launcher[data-roomnav].roomnav-open .here {
+        min-height: 42px;
+        padding: 0 0.75rem;
+        border-radius: 9px;
+        font-size: 0.95rem;
+      }
+      nav.launcher[data-roomnav].roomnav-open .here::after { display: none; }
+    }
+
+    /* A pointer that can't hover shouldn't be tilting anything, and a phone
+       shouldn't be painting a glow that only a mouse could aim. */
+    @media (hover: none) {
+      .game, .feature { transform: none; }
+      .cover::after, .scan { display: none; }
+      /* Without a pointer there is no lock-on, so the reticle is just on. */
+      .frame { opacity: 0.5; inset: 10px; }
+    }
+
+
+    /* One switch, and it takes everything: the blooms, the sheen, the pulse,
+       the tilt, the reveal, and smooth scrolling with them. */
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+      }
+      .game, .feature { transform: none !important; }
+      .js .reveal { opacity: 1; translate: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="barwrap" id="barwrap">
+    <header class="bar">
+      <div class="brand">
+        <b>Arcade</b>
+        <span>playable games</span>
+        <em class="sys" aria-hidden="true"><span class="dot"></span>4 titles · browser-native</em>
+      </div>
+
+      <nav class="launcher" aria-label="Terminal rooms">
+        <a href="index.html">terminal</a>
+        <a href="orrin.html">orrin</a>
+        <a href="psyche.html">psyche</a>
+        <a href="climbing.html">climbing</a>
+        <a href="training.html">training</a>
+        <a href="exploration.html">exploration</a>
+        <span class="here" aria-current="page">gaming</span>
+        <a href="workbench.html">workbench</a>
+        <a href="captures.html">captures</a>
+      </nav>
+    </header>
+  </div>
+
+  <div class="wrap">
+    <main>
+      <a class="feature tiltable reveal" href="projects/crossfire/index.html" aria-label="Play Crossfire (full release)">
+        <div class="cover">
+          <video class="clip" muted loop playsinline preload="auto" poster="assets/games/crossfire.jpg" aria-hidden="true">
+            <source src="assets/games/crossfire.webm" type="video/webm">
+          </video>
+          <span class="grid" aria-hidden="true"></span>
+          <span class="scan" aria-hidden="true"></span>
+          <span class="frame" aria-hidden="true"></span>
+          <span class="tag rel">Release</span>
+        </div>
+        <div class="feature-info">
+          <h1>Crossfire</h1>
+          <p>Up to five ships in a bright vector field. Play co-op survival, or a battle royale that runs until one ship is left — bots fill the empty seats, and it goes online when you want a crowd.</p>
+          <div class="cta">
+            <span class="btn">Play</span>
+            <span class="meta">1–5 players · co-op &amp; battle royale · online</span>
+          </div>
+        </div>
+      </a>
+
+      <div class="shelf-head reveal">
+        <h2>Also in the arcade</h2>
+        <span class="sys">3 in beta</span>
+      </div>
+
+      <div class="shelfwrap">
+        <section class="shelf" aria-label="More games">
+          <a class="game tiltable reveal" href="projects/starfield/index.html" aria-label="Play Starfield (beta)">
+            <div class="cover">
+              <video class="clip" muted loop playsinline preload="none" poster="assets/games/starfield.jpg" aria-hidden="true">
+                <source src="assets/games/starfield.webm" type="video/webm">
+              </video>
+              <span class="grid" aria-hidden="true"></span>
+              <span class="scan" aria-hidden="true"></span>
+              <span class="frame" aria-hidden="true"></span>
+              <span class="tag">Beta</span>
+            </div>
+            <div class="game-info">
+              <span class="sys idx" aria-hidden="true">01</span>
+              <h3>Starfield</h3>
+              <p>A relativistic rocket through the real star catalogue. Fly near lightspeed and watch home-time run away from you.</p>
+            </div>
+          </a>
+
+          <a class="game tiltable reveal" href="projects/farlight/index.html" aria-label="Play Farlight (beta)">
+            <div class="cover">
+              <video class="clip" muted loop playsinline preload="none" poster="assets/games/farlight.jpg" aria-hidden="true">
+                <source src="assets/games/farlight.webm" type="video/webm">
+              </video>
+              <span class="grid" aria-hidden="true"></span>
+              <span class="scan" aria-hidden="true"></span>
+              <span class="frame" aria-hidden="true"></span>
+              <span class="tag">Beta</span>
+            </div>
+            <div class="game-info">
+              <span class="sys idx" aria-hidden="true">02</span>
+              <h3>Farlight</h3>
+              <p>Dive the slope, launch, tilt to land flat and keep your speed. All momentum, all feel.</p>
+            </div>
+          </a>
+
+          <a class="game tiltable reveal" href="projects/offramp/index.html" aria-label="Play Offramp (beta)">
+            <div class="cover">
+              <video class="clip" muted loop playsinline preload="none" poster="assets/games/offramp.jpg" aria-hidden="true">
+                <source src="assets/games/offramp.webm" type="video/webm">
+              </video>
+              <span class="grid" aria-hidden="true"></span>
+              <span class="scan" aria-hidden="true"></span>
+              <span class="frame" aria-hidden="true"></span>
+              <span class="tag">Beta</span>
+            </div>
+            <div class="game-info">
+              <span class="sys idx" aria-hidden="true">03</span>
+              <h3>Offramp</h3>
+              <p>The real Interstate 40 as an arcade cabinet — 2,551 miles, exit to exit, with the exits where they really are.</p>
+            </div>
+          </a>
+        </section>
+      </div>
+
+      <div class="foot reveal">
+        Everything here plays in the browser — no installs, no accounts. Click a cover and it opens. <span class="vibe">Vibecoded.</span>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+      var root = document.documentElement;
+      /* Everything that hides an element is gated on this class, so a script
+         that fails to parse leaves a plain, complete page rather than a blank
+         one. Set first, before anything can throw. */
+      root.classList.add('js');
+
+      var motionOK = !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+      var fine = !window.matchMedia || matchMedia('(hover: hover) and (pointer: fine)').matches;
+      /* A phone on a metered connection should get the posters and nothing
+         else. The covers are the only heavy thing on the page. */
+      var save = navigator.connection && navigator.connection.saveData;
+
+      /* ── the bar earns its rule once you have scrolled ── */
+      var bar = document.getElementById('barwrap');
+      var onScroll = function () {
+        bar.classList.toggle('scrolled', window.scrollY > 8);
+      };
+      addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+
+      /* ── arriving ──
+         Only for browsers without scroll-driven animations; where those work,
+         the CSS has already done it and this would fight it. */
+      var native = CSS.supports && CSS.supports('animation-timeline', 'view()');
+      var revealing = document.querySelectorAll('.reveal');
+      if (!motionOK || native || !window.IntersectionObserver) {
+        Array.prototype.forEach.call(revealing, function (el) { el.classList.add('in'); });
+      } else {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (!e.isIntersecting) return;
+            e.target.classList.add('in');
+            io.unobserve(e.target);
+          });
+        }, { rootMargin: '0px 0px -12% 0px' });
+        Array.prototype.forEach.call(revealing, function (el, i) {
+          el.style.transitionDelay = Math.min(i * 60, 240) + 'ms';
+          io.observe(el);
+        });
+      }
+
+      /* ── the pointer ──
+         One handler for the glow and the tilt, because they read the same two
+         numbers and doing it twice would mean two layout reads per move. The
+         write is a custom property, so the compositor does the rest. */
+      var tiltables = document.querySelectorAll('.tiltable');
+      if (fine) {
+        Array.prototype.forEach.call(tiltables, function (card) {
+          var frame = 0;
+          card.addEventListener('pointermove', function (ev) {
+            if (frame) return;
+            frame = requestAnimationFrame(function () {
+              frame = 0;
+              var b = card.getBoundingClientRect();
+              var x = (ev.clientX - b.left) / b.width;
+              var y = (ev.clientY - b.top) / b.height;
+              card.style.setProperty('--mx', (x * 100).toFixed(1) + '%');
+              card.style.setProperty('--my', (y * 100).toFixed(1) + '%');
+              if (!motionOK) return;
+              /* Deliberately small. Past about 4° a cover stops looking like a
+                 cover and starts looking like a bug. */
+              card.style.setProperty('--ry', ((x - 0.5) * 5).toFixed(2) + 'deg');
+              card.style.setProperty('--rx', ((0.5 - y) * 4).toFixed(2) + 'deg');
+            });
+          });
+          card.addEventListener('pointerleave', function () {
+            card.style.setProperty('--rx', '0deg');
+            card.style.setProperty('--ry', '0deg');
+          });
+        });
+      }
+
+      /* ── the clips ──
+         The featured one plays on its own; the shelf plays what you point at.
+         Both stop the moment they leave the screen, because four decoded video
+         streams running behind a scrolled-past viewport is how a page like
+         this quietly eats a laptop battery. */
+      var featured = document.querySelector('.feature .clip');
+      if (featured && motionOK && !save) { featured.play().catch(function () {}); }
+
+      if (window.IntersectionObserver) {
+        var seen = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            var v = e.target;
+            if (e.isIntersecting) {
+              if (v === featured && motionOK && !save) v.play().catch(function () {});
+            } else {
+              v.pause();
+            }
+          });
+        }, { threshold: 0.15 });
+        Array.prototype.forEach.call(document.querySelectorAll('.clip'), function (v) { seen.observe(v); });
+      }
+
+      Array.prototype.forEach.call(document.querySelectorAll('.game'), function (card) {
+        var v = card.querySelector('.clip');
+        if (!v) return;
+        var start = function () {
+          if (!motionOK || save) return;
+          try { v.currentTime = 0; } catch (e) {}
+          v.play().catch(function () {});
+        };
+        var stop = function () { v.pause(); };
+        card.addEventListener('pointerenter', start);
+        card.addEventListener('pointerleave', stop);
+        card.addEventListener('focusin', start);
+        card.addEventListener('focusout', stop);
+      });
+    })();
+  </script>
+  <script src="effects.js"></script>
+</body>
+</html>

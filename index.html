@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Terminal — Ric Massey's corner of the internet</title>
-  <meta name="description" content="Ric Massey's personal terminal — Orrin, psyche, climbing, training, and exploration.">
+  <meta name="description" content="Ric Massey's personal terminal — Orrin, psyche, climbing, training, exploration, and gaming.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ric's Terminal">
   <meta property="og:title" content="Terminal — Ric Massey's corner of the internet">
-  <meta property="og:description" content="A personal terminal for family & friends — Orrin, climbing, training, photos, and write-ups.">
+  <meta property="og:description" content="A personal terminal for family & friends — Orrin, climbing, training, gaming, photos, and write-ups.">
   <meta property="og:url" content="https://ricmassey.com/">
   <meta property="og:image" content="https://ricmassey.com/assets/og-terminal.png">
   <meta property="og:image:width" content="1200">
@@ -34,6 +34,7 @@
       --flash-log: #ff8ae0;
       --flash-workbench: #ffe14d;
       --flash-climbing: #79c46b;
+      --flash-gaming: #6fd8ff;
       /* Kept for the rooms currently unlisted in #dir — see the note above the
          directory. Restore the entry and its hue together. */
       --flash-map: #ff3b30;
@@ -363,7 +364,7 @@ type Sydney's cat's name for a surprise!</div>
            /training was one of them until it grew a 52-week plan, a calendar,
            and a log you can tick from a crag; it earned its place back.
            They are NOT gone: `ls`, `tree`, `find`, `open <room>`, typing the room
-           name, and the URL all still reach them. The room navs show the same six
+           name, and the URL all still reach them. The room navs show the same eight
            this list does, so the site says one thing about what it contains.
            Re-list one by flipping `listed` when it's actually built out. -->
       <nav id="dir" class="hidden" aria-label="Site directory"></nav>
@@ -481,6 +482,7 @@ type Sydney's cat's name for a surprise!</div>
       { name: "training",    href: "training.html",    hue: "--flash-training",    desc: "runs · sessions · the 52-week plan", listed: true },
       { name: "apex",        href: "apex.html",        hue: "--flash-apex",        desc: "the drop · rank · career kills",    listed: false },
       { name: "exploration", href: "exploration.html", hue: "--flash-exploration", desc: "space · physics · science",         listed: true },
+      { name: "gaming",      href: "gaming.html",      hue: "--flash-gaming",      desc: "games · launches · playable builds", listed: true },
       { name: "workbench",   href: "workbench.html",   hue: "--flash-workbench",   desc: "random projects · ideas · hobbies", listed: true },
       { name: "captures",    href: "captures.html",    hue: "--flash-captures",    desc: "photographs",                       listed: true },
       { name: "log",         href: "log.html",         hue: "--flash-log",         desc: "notes · theories · written",        listed: false },
@@ -539,7 +541,7 @@ type Sydney's cat's name for a surprise!</div>
         href: "projects/spacetime/index.html",
       },
       {
-        command: "farlight", aliases: ["feel", "momentum", "hill", "hills"], room: "workbench",
+        command: "farlight", aliases: ["feel", "momentum", "hill", "hills"], room: "gaming",
         title: "FARLIGHT", description: "playable momentum and landing-feel prototype",
         href: "projects/farlight/index.html",
       },
@@ -550,14 +552,19 @@ type Sydney's cat's name for a surprise!</div>
       },
       {
         command: "highway", aliases: ["offramp", "i40", "i-40", "interstate", "interstate-40", "drive"],
-        room: "workbench",
+        room: "gaming",
         title: "Interstate 40", description: "drive the real I-40 from above, exit to exit",
         href: "projects/offramp/index.html",
       },
       {
-        command: "starfield", aliases: ["stars"], room: "exploration",
+        command: "starfield", aliases: ["stars"], room: "gaming",
         title: "Starfield", description: "relativistic rocket through real space",
         href: "projects/starfield/index.html",
+      },
+      {
+        command: "crossfire", aliases: ["vector", "asteroids", "wall"], room: "gaming",
+        title: "CROSSFIRE", description: "vector-space combat with online play",
+        href: "projects/crossfire/index.html",
       },
       {
         command: "speed", aliases: ["time", "dilation", "twins", "how-speed-affects-time"],
