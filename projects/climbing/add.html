@@ -88,12 +88,14 @@
       text-transform: none; letter-spacing: 0; font-weight: 400;
     }
     .pickbtn span.has { border-style: solid; border-color: var(--bar); color: var(--bar); font-weight: 700; }
-    .picked { margin-top: 0.4rem; display: flex; gap: 0.35rem; flex-wrap: wrap; }
-    .picked .p {
-      font-size: 0.74rem; color: var(--soft); background: #fff; border: 1px solid var(--line);
-      border-radius: 999px; padding: 0.1rem 0.55rem; max-width: 100%;
+    .picked { margin-top: 0.5rem; display: grid; gap: 0.45rem; }
+    .picked .pick { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+    .picked .pf {
+      flex: 1 1 9rem; font-size: 0.74rem; color: var(--soft); background: #fff;
+      border: 1px solid var(--line); border-radius: 999px; padding: 0.15rem 0.6rem;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
+    .picked .pr { flex: 1 1 10rem; width: auto; min-height: 42px; font-size: 0.9rem; }
     .bar { height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; margin-top: 0.5rem; }
     .bar i { display: block; height: 100%; width: 0; background: var(--bar); transition: width .15s linear; }
 
@@ -216,7 +218,7 @@
   <script src="climbs-data.js"></script>
   <script src="climb-vocab.js?v=2"></script>
   <script src="climb-parse.js?v=2"></script>
-  <script src="climb-media.js"></script>
+  <script src="climb-media.js?v=2"></script>
   <script>
   /* LOG A DAY
      ──────────────────────────────────────────────────────────────────────────
@@ -379,6 +381,7 @@
     function check() {
       const day = readForm();
       const md = ClimbParse.compose(day);
+      if ($('#media').files.length) pickedRows();
       const trip = md ? ClimbParse.day(md) : null;
       const missing = trip ? trip.routes.filter(r => !r.grade && !r.unknown).map(r => r.name) : [];
       const warn = $('#warn');
@@ -402,6 +405,31 @@
        picker offers and the Worker refuses is a failed upload with no
        explanation, on a phone, at a crag. */
     $('#media').accept = ClimbMedia.ACCEPT;
+    /* ── which route is this of ──
+       A clip goes up with the route on it or it doesn't get one: nothing at a
+       crag asks, so the Ijams photo from Monday is still called nothing. The
+       answer is nearly always one of the routes just typed in above, so they
+       are the options — pick from a list rather than spell "Amarillo Sunset"
+       on a phone. Left blank it uploads as before. */
+    function pickedRows() {
+      const files = [...$('#media').files];
+      const names = [...new Set(readForm().routes.map(r => r.name).filter(Boolean))];
+      /* Held across the rebuild. The route list grows as routes are typed, so
+         this re-renders on every keystroke — and without carrying the choices
+         over, picking a route and then touching any other field silently threw
+         it away and the file uploaded unnamed. */
+      const held = [...document.querySelectorAll('.pr')].map(sel => sel.value);
+      $('#picked').innerHTML = files.map((f, i) => `
+        <div class="pick">
+          <span class="pf">${esc(f.name)} · ${Math.max(1, Math.round(f.size / 1048576))}MB</span>
+          <select class="pr" data-i="${i}">
+            <option value="">Which route? (optional)</option>
+            ${names.map(n => `<option value="${esc(n)}"${
+              held[i] === n ? ' selected' : ''}>${esc(n)}</option>`).join('')}
+          </select>
+        </div>`).join('');
+    }
+
     $('#media').addEventListener('change', () => {
       const files = [...$('#media').files];
       const label = $('#picklabel');
@@ -409,8 +437,7 @@
       label.textContent = files.length
         ? `${files.length} file${files.length === 1 ? '' : 's'} ready — they go up after the day saves`
         : 'Choose from the camera roll';
-      $('#picked').innerHTML = files.map(f =>
-        `<span class="p">${esc(f.name)} · ${Math.max(1, Math.round(f.size / 1048576))}MB</span>`).join('');
+      pickedRows();
     });
 
     /* Tell him, before he saves, what the training page will do with this date. */
@@ -578,8 +605,10 @@
         const bar = $('#upbar');
         const fill = bar.querySelector('i');
         bar.hidden = false;
-        let sent = 0, clips = 0, failed = null;
+        const chosen = [...document.querySelectorAll('.pr')].map(sel => sel.value.trim());
+        let sent = 0, clips = 0, failed = null, at = -1;
         for (const f of files) {
+          at += 1;
           msg.className = 'msg';
           msg.textContent = `Day saved. Uploading ${f.name} (${sent + 1} of ${files.length})…`;
           if (f.size > ClimbMedia.MAX_BYTES) {
@@ -587,6 +616,7 @@
             break;
           }
           const up = await ClimbMedia.upload(iso, f, {
+            route: chosen[at] || '',
             onProgress: p => { fill.style.width = Math.round(p * 100) + '%'; }
           });
           if (up.error) { failed = up.error; break; }

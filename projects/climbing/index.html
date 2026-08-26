@@ -308,6 +308,21 @@
        trying to see. */
     .vstage { position: relative; display: flex; align-items: center; background: #000; }
     .vstage #vmedia { flex: 1 1 auto; min-width: 0; display: flex; justify-content: center; }
+    /* Naming a clip, from inside the viewer that is showing it — which is the
+       only moment you actually know which route it was. */
+    .vname { flex: 1 0 100%; display: flex; gap: .4rem; margin-bottom: .15rem; }
+    .vname input {
+      flex: 1 1 auto; min-width: 0; font: inherit; font-size: .9rem; padding: .45rem .6rem;
+      border: 1px solid rgba(255,255,255,.25); border-radius: 8px;
+      background: rgba(255,255,255,.08); color: #f2eee2;
+    }
+    .vname input::placeholder { color: rgba(242,238,226,.55); }
+    .vname button {
+      font: inherit; font-size: .85rem; font-weight: 700; padding: .45rem .9rem; cursor: pointer;
+      border: 1px solid rgba(255,255,255,.25); border-radius: 8px;
+      background: rgba(255,255,255,.14); color: #f2eee2;
+    }
+    .vname button:disabled { opacity: .55; cursor: default; }
     dialog.viewer video, dialog.viewer img {
       display: block; max-width: 100%; max-height: min(74vh, 720px); background: #000;
     }
@@ -320,7 +335,7 @@
 
     .vfoot {
       display: flex; align-items: baseline; gap: .8rem; padding: .65rem 1rem .8rem;
-      border-top: 1px solid rgba(255,255,255,.08);
+      border-top: 1px solid rgba(255,255,255,.08); flex-wrap: wrap;
     }
     .vcap { flex: 1 1 auto; font-size: .88rem; color: #cdc7b8; }
     .vcap strong { color: #fff; }
@@ -406,6 +421,13 @@
       <button class="vnav next" id="vnext" aria-label="Next">&rsaquo;</button>
     </div>
     <div class="vfoot">
+      <!-- Owner only. Most clips arrive from a crag with no route on them,
+           because nothing at a crag asks; this is where that gets fixed. -->
+      <form class="vname" id="vname" hidden>
+        <input type="text" id="vroute" list="vroutes" placeholder="Which route is this?" autocomplete="off">
+        <datalist id="vroutes"></datalist>
+        <button type="submit" id="vsave">Save</button>
+      </form>
       <div class="vcap" id="vcap"></div>
       <div class="vcount" id="vcount"></div>
     </div>
@@ -416,7 +438,7 @@
   <script src="climb-vocab.js?v=2"></script>
   <script src="climb-parse.js?v=2"></script>
   <script src="web-trips.js?v=2"></script>
-  <script src="climb-media.js"></script>
+  <script src="climb-media.js?v=2"></script>
   <script src="../relay-return.js" data-home="../../index.html"></script>
   <script>
   (async () => {
@@ -887,6 +909,21 @@
         m.route ? `<strong>${esc(m.route)}</strong>` : "",
         esc(m.caption || "")
       ].filter(Boolean).join(" — ");
+      /* The routes climbed that day, offered as the answer — because the
+         answer is nearly always one of them, and typing "Amarillo Sunset" on a
+         phone to label a photo of it is how photos stay unlabelled. */
+      const nameBox = document.getElementById("vname");
+      nameBox.hidden = !(window.Owner && Owner.on());
+      if (!nameBox.hidden) {
+        document.getElementById("vroutes").innerHTML = trip
+          ? [...new Set(trip.routes.map((r) => r.name).filter(Boolean))]
+              .map((n) => `<option value="${esc(n)}">`).join("")
+          : "";
+        document.getElementById("vroute").value = m.route || "";
+        const save = document.getElementById("vsave");
+        save.disabled = false;
+        save.textContent = "Save";
+      }
       vcount.textContent = reel.length > 1 ? `${i + 1} of ${reel.length}` : "";
       vprev.disabled = i === 0;
       vnext.disabled = i === reel.length - 1;
@@ -905,6 +942,26 @@
       viewer.showModal();
     }
     function closeViewer() { viewer.close(); }
+
+    /* Saving re-renders the row underneath, so the thumbnail's route chip and
+       the gallery's "no route yet" both change without a reload. */
+    document.getElementById("vname").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const m = reel[reelAt];
+      if (!m) return;
+      const save = document.getElementById("vsave");
+      const route = document.getElementById("vroute").value.trim();
+      save.disabled = true;
+      save.textContent = "Saving…";
+      const ok = await ClimbMedia.label(m.date, m.id, { route, caption: m.caption || "" });
+      save.textContent = ok ? "Saved" : "Didn't save";
+      save.disabled = false;
+      if (!ok) return;
+      m.route = route;
+      vcap.innerHTML = [route ? `<strong>${esc(route)}</strong>` : "", esc(m.caption || "")]
+        .filter(Boolean).join(" — ");
+      render();
+    });
 
     document.getElementById("vclose").onclick = closeViewer;
     vprev.onclick = () => showAt(reelAt - 1);

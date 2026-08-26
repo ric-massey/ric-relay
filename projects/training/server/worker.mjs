@@ -677,6 +677,49 @@ export class TrainingLog {
       return json({ error: 'method not allowed' }, 405, origin);
     }
 
+    /* ---------- /medialabel/:date/:id ----------
+       Which route a photo is of, set after it went up.
+
+       In here rather than on the R2 object, and that is the whole design. R2
+       has no metadata-only write: changing a customMetadata field means putting
+       the object again, which for a 74MB send clip means streaming 74MB back
+       through the Worker to fix a spelling — and a put that fails halfway is a
+       video Ric cannot re-shoot. A label is a few dozen bytes and belongs
+       somewhere it can be rewritten for free. The upload still stamps what it
+       knew at the time; this wins where both exist, because it is the later
+       word and the only one that can be corrected.
+
+       Not in PUBLIC_PATHS, so nothing outside can reach it — the Worker checks
+       the owner and then calls in here, the same way /media does for auth. */
+    if (parts[0] === 'medialabel') {
+      if (request.method === 'GET') {
+        const all = await this.state.storage.list({ prefix: 'ml:' });
+        const labels = {};
+        for (const [k, v] of all) labels[k.slice(3)] = v;
+        return json({ labels }, 200, origin);
+      }
+      if (request.method === 'POST') {
+        const id = parts[2];
+        if (!date || !id) return json({ error: 'POST needs /medialabel/YYYY-MM-DD/<id>' }, 400, origin);
+        let body = {};
+        try { body = await request.json(); } catch {}
+        const key = 'ml:' + date + '/' + id;
+        /* Clearing both fields removes the record rather than storing two empty
+           strings, so an unlabelled photo reads the same whether it was never
+           labelled or the label was taken off again. */
+        const route = String(body.route || '').slice(0, 160).trim();
+        const caption = String(body.caption || '').slice(0, 400).trim();
+        if (!route && !caption) {
+          await this.state.storage.delete(key);
+          return json({ ok: true, cleared: true }, 200, origin);
+        }
+        const label = { route, caption, at: new Date().toISOString() };
+        await this.state.storage.put(key, label);
+        return json({ ok: true, ...label }, 200, origin);
+      }
+      return json({ error: 'method not allowed' }, 405, origin);
+    }
+
     /* ---------- /strava/:date ----------
        Read-only to the world: the runs, trimmed to ACTIVITY_FIELDS. There is no
        public write path here at all — activities only ever arrive through
@@ -1016,6 +1059,25 @@ export default {
           }
           cursor = page.truncated ? page.cursor : null;
         } while (cursor);
+        /* The later word about what a photo is of. One subrequest, on a read
+           that is already cached for thirty seconds — and it can only ever add
+           a route or a caption, so if the object is unreachable the listing is
+           still every file that exists. */
+        try {
+          const r = await stub.fetch(new Request('https://internal/medialabel'));
+          if (r.ok) {
+            const { labels } = await r.json();
+            for (const list of Object.values(days)) {
+              for (const rec of list) {
+                const label = labels[rec.date + '/' + rec.id];
+                if (!label) continue;
+                if (label.route) rec.route = label.route;
+                if (label.caption) rec.caption = label.caption;
+              }
+            }
+          }
+        } catch (e) { /* the files are the point; the labels are a bonus */ }
+
         /* Oldest first within a day, so the order on the page is the order it
            was shot in rather than whatever the bucket felt like. */
         for (const k of Object.keys(days)) days[k].sort((a, b) => String(a.at).localeCompare(String(b.at)));
@@ -1033,13 +1095,39 @@ export default {
         if (parts[2]) {
           let body = {};
           try { body = await request.json(); } catch {}
-          if (body.remove !== true) return json({ error: 'send {"remove":true}' }, 400, origin);
+
+          /* ---------- POST /media/<date>/<id> {route, caption} — name it ----------
+             Nothing at a crag asks which route a clip is of, so most arrive
+             without one; and until this existed the only way to correct that
+             was to delete the file and upload it again. Now that the gallery
+             shows what is attached to a climb, an unnameable photo is a photo
+             that can never join it. */
+          if (body.remove !== true) {
+            if (!('route' in body) && !('caption' in body)) {
+              return json({ error: 'send {"remove":true}, or a route or caption to set' }, 400, origin);
+            }
+            const r = await stub.fetch(new Request(
+              `https://internal/medialabel/${date}/${encodeURIComponent(parts[2])}`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ route: body.route, caption: body.caption })
+              }));
+            return json(await r.json(), r.status, origin);
+          }
           const prefix = MEDIA_PREFIX + date + '/' + parts[2];
           /* Keyed by id without the extension, because the page holds the id and
              should not have to know what the phone shot it as. */
           const page = await env.MEDIA.list({ prefix });
           if (!page.objects.length) return json({ error: 'not found' }, 404, origin);
           await env.MEDIA.delete(page.objects.map(o => o.key));
+          /* And its label, or a re-upload that happened to draw the same id
+             would inherit the name of a photo that no longer exists. */
+          await stub.fetch(new Request(
+            `https://internal/medialabel/${date}/${encodeURIComponent(parts[2])}`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ route: '', caption: '' })
+            }));
           return json({ ok: true, removed: page.objects.map(o => o.key) }, 200, origin);
         }
 

@@ -781,6 +781,54 @@ console.log('\nRULE  a caption with real punctuation in it survives R2 metadata'
   ok(listed.items[0].caption === caption, 'and again out of the listing');
 }
 
+console.log('\nRULE  a photo can be told which route it is of, after it went up');
+{
+  /* The bug this closes: nothing at a crag asks which route a clip is of, so
+     most arrive with none — and the only fix used to be deleting the file and
+     sending 74MB back up a phone connection. */
+  const r = mediaRig();
+  const up = await (await r.hit('POST', '/media/2026-08-18', { token: TOKEN, type: 'video/mp4', body: CLIP })).json();
+  ok(up.route === '', 'it goes up with no route on it');
+
+  const nope = await r.hit('POST', `/media/2026-08-18/${up.id}`, { json: true, body: { route: 'Gold Rush' } });
+  ok(nope.status === 401, 'a stranger cannot name it');
+
+  const named = await r.hit('POST', `/media/2026-08-18/${up.id}`, { token: TOKEN, json: true, body: { route: 'Gold Rush' } });
+  ok(named.status === 200, 'the owner can');
+  const listed = await (await r.hit('GET', '/media/2026-08-18')).json();
+  ok(listed.items[0].route === 'Gold Rush', 'and the listing says so');
+
+  /* The bytes are the expensive, irreplaceable half. A label must never be a
+     reason to rewrite them. */
+  ok(r.bucket._map.size === 1, 'one object still, not a second copy');
+  const bytes = await r.hit('GET', up.path);
+  ok(bytes.status === 200, 'and the file is still served');
+
+  const fixed = await r.hit('POST', `/media/2026-08-18/${up.id}`, { token: TOKEN, json: true, body: { route: 'Tapeworm' } });
+  ok(fixed.status === 200, 'a wrong route can be corrected');
+  ok((await (await r.hit('GET', '/media/2026-08-18')).json()).items[0].route === 'Tapeworm', 'to the new one');
+
+  await r.hit('POST', `/media/2026-08-18/${up.id}`, { token: TOKEN, json: true, body: { route: '' } });
+  ok((await (await r.hit('GET', '/media/2026-08-18')).json()).items[0].route === '', 'and taken off again');
+
+  const junk = await r.hit('POST', `/media/2026-08-18/${up.id}`, { token: TOKEN, json: true, body: {} });
+  ok(junk.status === 400, 'a POST that says nothing is refused rather than guessed at');
+}
+
+console.log('\nRULE  a label does not outlive the file it was on');
+{
+  const r = mediaRig();
+  const up = await (await r.hit('POST', '/media/2026-08-18', { token: TOKEN, type: 'video/mp4', body: CLIP })).json();
+  await r.hit('POST', `/media/2026-08-18/${up.id}`, { token: TOKEN, json: true, body: { route: 'Gold Rush' } });
+  await r.hit('POST', `/media/2026-08-18/${up.id}`, { token: TOKEN, json: true, body: { remove: true } });
+  const after = await (await r.hit('GET', '/media/2026-08-18')).json();
+  ok(!after.items.length, 'the file is gone');
+  /* An id is eight random bytes, so a collision is not the worry — a label
+     surviving its file is just a row nothing will ever clean up. */
+  const again = await (await r.hit('POST', '/media/2026-08-18', { token: TOKEN, type: 'video/mp4', body: CLIP })).json();
+  ok(again.route === '', 'and the next upload starts unnamed');
+}
+
 console.log('\nRULE  only the owner can take media down');
 {
   const r = mediaRig();

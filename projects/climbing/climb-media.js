@@ -106,6 +106,29 @@
     return true;
   }
 
+  /* Which route a photo is of, set after the fact.
+
+     Nothing at a crag asks, so most files arrive without one, and until this
+     existed the only way to correct that was to delete the file and upload it
+     again — 74MB back up a phone connection to fix a spelling. The label lives
+     in the log service rather than on the object, so this is a few dozen bytes
+     either way. The local copy is patched too, so the page it was set from
+     doesn't have to reload to show it. */
+  async function label(date, id, fields) {
+    if (!global.Owner || !Owner.on()) return false;
+    const out = await Owner.post(`/media/${date}/${id}`, {
+      route: String(fields.route || ''),
+      caption: String(fields.caption || '')
+    });
+    if (!out) return false;
+    (days[date] || []).forEach(m => {
+      if (m.id !== id) return;
+      m.route = String(fields.route || '');
+      m.caption = String(fields.caption || '');
+    });
+    return true;
+  }
+
   /* What the file picker should offer. Kept next to the Worker's allowlist on
      purpose — a type accepted here and refused there is a failed upload with no
      explanation, which is the worst version of this to debug on a phone. */
@@ -113,5 +136,5 @@
                  'video/mp4,video/quicktime,video/webm,video/x-m4v,.jpg,.jpeg,.png,.heic,.mov,.mp4,.m4v,.webm';
   const MAX_BYTES = 100 * 1024 * 1024;
 
-  global.ClimbMedia = { HOST, load, of, has, feature, upload, remove, url, ACCEPT, MAX_BYTES, byExtension };
+  global.ClimbMedia = { HOST, load, of, has, feature, upload, remove, label, url, ACCEPT, MAX_BYTES, byExtension };
 })(window);
