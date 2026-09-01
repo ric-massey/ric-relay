@@ -74,7 +74,7 @@ function checkSyntax() {
     "Survival setup must expose its friendly-fire toggle");
   assert.match(html, /friendlyFire: mode\.friendlyFire/,
     "online initialization must synchronize the Survival setting");
-  assert.match(html, /tapButton\("PLAY"[\s\S]*?startCountChoice/s,
+  assert.match(html, /tapButton\([^,]*"PLAY"[\s\S]*?startCountChoice/s,
     "the setup screen must use an explicit Play button");
   assert.match(html, /tapButton\(replayLabel[\s\S]*?playAgain/s,
     "results must offer Play Again");

@@ -1,8 +1,10 @@
 # CROSSFIRE
 
 CROSSFIRE is a dependency-free canvas game for one to five ships. Play co-op
-against asteroid waves or fight a no-time-limit Battle Royale inside a closing
-wall. It runs as static HTML, CSS and JavaScript with no build step.
+against asteroid waves, fight a no-time-limit Battle Royale inside a closing
+wall, or run the three-mission Campaign — escort a transport, raid an enemy
+convoy, and break a mothership in an all-out fleet war. It runs as static HTML,
+CSS and JavaScript with no build step.
 
 ## Run locally
 
@@ -20,6 +22,7 @@ Open `http://127.0.0.1:8000/projects/crossfire/`.
 |---|---:|---|
 | Survival | 1-5 | Co-op asteroid waves, shared lives, optional friendly fire, wrapping arena |
 | Battle Royale | 2-5 | Three lives each, two-hit hulls, stationary gravity hazards, closing wall, no time limit |
+| Campaign | 1-2 | Three scripted missions, sides instead of a free-for-all, an allied fleet flying with you, a shared reserve of lives |
 
 Battle Royale shows hull strength only for ships controlled on the current device.
 First hits stay quiet; losing a life adds a short entry to the feed beneath the
@@ -48,18 +51,87 @@ being carried along its face for the rest of the match.
 The result screen can immediately replay the same local setup; online, the host
 starts the next round for every connected player.
 
+## Campaign
+
+The campaign is three scripted missions, played local — one or two pilots at the
+keyboard, no online. It reuses the Battle Royale engine but adds two ideas the
+free-for-all modes don't have: a ship has a *side* (yours flies teal, the enemy
+red), and a ship has a *kind* — most are fighters, but a transport, a turret and
+a mothership are not. Friendly fire is off, so a shot only ever bites the other
+side, which is what keeps a crowded battle readable.
+
+You never fly alone. An allied fleet flies with you, and both sides field more
+ships than are ever alive at once: a downed fighter is a slot its side refills
+from a reserve, so a fifty-ship roster stays a thirty-ship battle and holds frame
+rate on a phone. The pilots draw their respawns from one shared pile, the way
+co-op Survival does; when it runs out and the last pilot falls, the mission is
+lost.
+
+Each mission is a **run of phases** with a shifting objective, not one long
+fight:
+
+| # | Mission | The acts |
+|--:|---|---|
+| 1 | **Convoy** | A transport crosses from one side of the map to a planet on the far side at a steady, unwavering speed — your job is to keep it alive the ~fifty seconds that takes. Three worsening threats travel with it: three waves, an ambush, then a blockade gunship. Reaching the planet is the win; losing the transport is the loss. |
+| 2 | **Raid** | Hunt down three fleeing enemy transports and their guards · then ride out the counterattack they scramble in revenge. Lose if every pilot falls. |
+| 3 | **Mothership** | Breach the picket line · knock out the hangar bays that keep launching fighters · destroy the three shield generators sealing the core · kill the exposed core, which comes apart in a slow-motion death sequence. An allied flagship pushes in with you and can be lost. |
+
+Every mission is fought across a real battlefield: drifting **asteroids** for
+cover and **suns and black holes** whose gravity bends shots and swallows the
+careless — placed clear of the ships' starts, the convoy's lane, and the
+mothership itself, so a well never does your job for you. The bots fly around
+them; so should you.
+
+In a campaign the pilot picks a **difficulty** on the setup screen that sets both
+the trigger and how many hits a ship takes. On **Easy** ships take five hits and
+the gun **fires continuously** — hold the trigger for a steady stream. **Hard**
+(three hits) and **Impossible** (one hit for *everything that flies*, you and the
+enemy both) drop back to the three-round burst the free-for-all modes use, so
+harder runs ask you to pick every shot as well as survive on less. Difficulty only
+ever touches fighters; the transports, the mothership
+and its subsystems always keep their own hulls, so a mission is never decided by a
+single lucky shot on the objective. Easy is the default — a gentle way in.
+
+Two things make you a commander, not just a pilot. **Squad command** — `1` focus
+fire on your target, `2` defend the objective, `3` regroup on you — orders the
+whole allied wing at once. And **salvage**: an enemy that dies sometimes leaves a
+canister, an ace always does, and flying through one patches your hull, raises a
+shield, or loads rapid or heavy rounds. Named **aces** — tougher, near-perfect,
+worth the salvage — drop into the harder fights and show up in the kill feed.
+
+The missions climb: Convoy hands a new player three wingmates that screen the
+transport and weak opening waves, and Mothership is deliberately hard — the
+allied fleet can crack it on a good run, but it is built to want a person tipping
+the balance with orders and salvaged guns. A cleared mission offers the next one
+straight away (`N`), a retry, or the mission list.
+
+The three missions are **one war, not three loose fights**. A few of your
+wingmates fly with callsigns and a forward chevron; the ones who **live** carry
+into the next mission by name as veterans, flying a shade sharper. A strong
+showing banks a **fleet-strength** rating and a **reserve of extra lives** that
+top up the next mission's reinforcements, and the enemy aces you down are tallied
+across the campaign. The debrief spells out exactly what you're carrying forward,
+and `NEXT`/`RETRY` continue that war while a fresh pick from the mission list
+starts a clean one — so winning matters past the result screen. All of it is
+campaign-only; Survival and Battle Royale never build a fleet ledger.
+
 ## Controls
 
 - Amber: `A` / `D` turn, `W` thrust, `Space` fire.
 - Green: arrow keys turn and thrust, `Enter` fire.
 - `O`: open the online panel from the title screen.
 - `P` or `Escape`: pause locally or open the online game menu.
-- `Tab`: watch another active ship in Battle Royale.
+- `Tab`: watch another active ship in Battle Royale, or your own side in a Campaign.
+- `1` / `2` / `3`: in a Campaign, order the allied wing to focus fire, defend, or regroup.
+- `N`: on a cleared-mission screen, fly straight into the next mission.
 - `C`: open Settings from the title or pause menu.
 
-Every weapon fires three-round bursts. Keyboard bindings and the Battle Royale
-camera preference are editable in Settings and saved in local storage. The mouse
-operates menus only.
+Every weapon fires three-round bursts, except the campaign pilot on **Easy**, who
+holds the trigger for a continuous stream; Hard and Impossible put the pilot back
+on the burst. Keyboard bindings and the Battle Royale camera
+preference are editable in Settings and saved in local storage. On a campaign
+setup screen `E` / `H` / `I` pick Easy, Hard or Impossible. The mouse operates
+menus only.
 
 The menus are not still: asteroids drift behind them and two ships fly around
 taking the occasional shot. That field is its own small world in screen
@@ -248,13 +320,14 @@ eligible, and the backend cannot be changed after the namespace is created.
 
 | File | Responsibility |
 |---|---|
-| `index.html` | UI, settings, simulation, rendering, bots and match rules |
+| `index.html` | UI, settings, simulation, rendering, bots, campaign and match rules |
 | `net.js` | WebRTC links and compact session-description encoding |
 | `server/rooms-core.mjs` | The room service: every rule, no plumbing |
 | `server/worker.mjs` | Runs it on Cloudflare, in one Durable Object |
 | `server/rooms.js` | Runs it on a laptop, with nothing installed |
 | `server/wrangler.jsonc` | Deploy configuration |
 | `test/smoke.js` | Dependency-free syntax, transport and service checks |
+| `test/campaign.js` | Headless play-through of all three missions to a verdict |
 
 The game intentionally remains self-contained. Do not add a framework, bundler or
 runtime dependency for changes that fit the existing static architecture.
@@ -263,6 +336,7 @@ runtime dependency for changes that fit the existing static architecture.
 
 ```sh
 node projects/crossfire/test/smoke.js
+node projects/crossfire/test/campaign.js
 ```
 
 The closing wall and the spawn rules cannot be checked by looking at them. With
@@ -274,6 +348,23 @@ checked for a ship outside the wall, inside a rock, inside a gravity well, or
 held against the wall. That is how the wall and spawn bugs were found and how
 the fixes were confirmed — ten matches, ~22,000 frames, 96 respawns, no
 violations. Do not debug these by watching them.
+
+The campaign is checked the same way. `?debug=1` also exposes
+`window.__cf.start(levelKey, pilots)` to begin a mission without the menus,
+`window.__cf.campaign()` to read the mission controller, `window.__cf.squad()` to
+issue a wing order, and `window.__cf.draw()` to force a frame.
+`test/campaign.js` uses them to play all three missions to a win or a loss with
+the pilots on autopilot — cycling squad orders, drawing every screen and capital
+ship, and watching the phases advance. It asserts every frame that no ship leaves
+the arena and no position goes non-finite; that salvage drops and radio chatter
+fire; that every mission seeds asteroids and gravity wells; that the convoy has a
+destination planet and crosses to it at a genuinely constant speed; and that the
+hard mission stays winnable — the allied fleet, unaided, has to carve real
+subsystems off the mothership. Because a real pilot only ever helps
+— defending the objective, spending salvaged guns, commanding the wing — a
+mission the autopilot can nearly finish is one a person certainly can. Convoy is
+an escort, so its bar is that a passive run still carries the transport most of
+the way home. Do not debug these by watching them either.
 
 For visual changes, also test the title, Settings, each mode, the pause menu and a
 375px-wide phone layout. For online changes, run the room service locally and

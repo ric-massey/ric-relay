@@ -583,8 +583,42 @@
       arena: { w: 4000, h: 2800 },
       pvp: true, friendlyFire: true, closing: true, wrap: false,
       camera: true, hazards: 5, minPlayers: 2
+    },
+
+    /* ── campaign ────────────────────────────────────────────────────────────
+       Three scripted missions. They share the Battle-Royale engine — a big
+       camera-followed map, no closing wall — but add two ideas the free-for-all
+       modes don't have: `team` (a ship's side) and `kind` (fighter, transport,
+       mothership). `campaign: true` is the switch every generalisation reads.
+       Each level's script lives in CAMPAIGN below; the mode row here is only the
+       arena and the flags. Local co-op up to two pilots; no online. */
+    convoy: {
+      name: "CONVOY",
+      blurb: "escort the transport home · three waves, each worse",
+      arena: { w: 3400, h: 2200 },
+      pvp: true, friendlyFire: false, closing: false, wrap: false,
+      camera: true, hazards: 0, minPlayers: 1, campaign: true, level: 1
+    },
+    raid: {
+      name: "RAID",
+      blurb: "hunt down three enemy transports and their escorts",
+      arena: { w: 4200, h: 2800 },
+      pvp: true, friendlyFire: false, closing: false, wrap: false,
+      camera: true, hazards: 0, minPlayers: 1, campaign: true, level: 2
+    },
+    mothership: {
+      name: "MOTHERSHIP",
+      blurb: "all-out fleet war · break the turrets, kill the core",
+      // Larger than Battle Royale — a whole warzone the fleets fight across.
+      arena: { w: 6400, h: 4500 },
+      pvp: true, friendlyFire: false, closing: false, wrap: false,
+      camera: true, hazards: 0, minPlayers: 1, campaign: true, level: 3
     }
   };
+
+  // The order the campaign is played and offered in. Used by the level-select
+  // screen and by the "next level" button on a victory screen.
+  const CAMPAIGN_ORDER = ["convoy", "raid", "mothership"];
 
   /* ── base tuning, in a 1000-wide arena ───────────────────────────────── */
   const TURN         = 3.2;    // rad/s — not scaled; turning rate is ergonomic
@@ -598,6 +632,11 @@
   const BURST_GAP    = 0.12;
   const FIRE_GAP     = 0.62;  // recovery after the third round
   const MAX_SHOTS    = 6;
+  // On Easy the campaign pilot holds the trigger for a steady stream instead of a
+  // three-round burst, with more rounds allowed in the air to feed it. This is
+  // Easy-campaign-only; Hard, Impossible, Survival and Battle Royale keep the burst.
+  const CAMPAIGN_FIRE_GAP = 0.12;
+  const CAMPAIGN_SHOTS    = 9;
   const RESPAWN_WAIT = 1.4;
   const INVULN       = 2.6;
   const HIT_SHIELD   = 0.65;
@@ -675,7 +714,10 @@
   const MOTES_PER_HAZARD = 28;   // debris falling in, marking where the pull starts
 
   function rockSpec(size) {
-    return mode && mode.closing ? ROYALE_ROCK[size] : ROCK[size];
+    // Big camera maps — Battle Royale and the campaigns — use the larger, slower
+    // royale rocks so a boulder is real cover; the fixed Survival view keeps the
+    // small ones that fit its single screen.
+    return mode && (mode.closing || mode.campaign) ? ROYALE_ROCK[size] : ROCK[size];
   }
 
   function randomRoyaleRockSize() {
@@ -1321,15 +1363,24 @@
   let clock = 0, topUp = 0;
   let banner = null;
   let outcome = null;         // set when a match ends
+  let camp = null;            // campaign level controller, null outside campaign
+  let campaignDifficulty = "easy";   // easy | hard | impossible — chosen per run
+  let pickups = [];           // campaign salvage drops
+  let comms = [];             // campaign radio chatter, a small scrolling log
+  let shake = 0;              // screen-shake magnitude, decays every frame
+  let slowScale = 1, slowTimer = 0;   // brief slow-motion on the biggest beats
+  let campRun = null;         // the through-line a campaign's missions share
+  let campContinue = false;   // true only while NEXT/RETRY continues that run
 
   /* The camera is the one view of the world. In Survival it sits
      still and frames the whole arena. In Battle Royale it follows `watching`
      through a map far bigger than the screen; online, that is the ship owned or
      spectated by this machine. */
-  let cam = { x: 0, y: 0, scale: 1, rot: 0 };
+  let cam = { x: 0, y: 0, scale: 1, rot: 0, goalScale: 1 };
   let watching = 0;
   let botPick = 0;        // bots to add on the setup screen
   let titlePick = 0;      // visible arrow-key focus on the title screen
+  let levelPick = 0;      // visible focus on the campaign level-select screen
   let countPick = 0;      // zero-based local-player choice
   let survivalFriendlyFire = true;
   let lastSetup = { modeKey: "survival", humans: 1, bots: 0 };
@@ -1354,12 +1405,13 @@
   /* The title screen is one list, and online is the third thing on it rather
      than a pair of buttons off to the side — you decide you want to play with
      other people first, and who is hosting is a question for the lobby. */
-  const TITLE_ROWS = [...MODE_KEYS, "online"];
+  const TITLE_ROWS = [...MODE_KEYS, "campaign", "online"];
 
   function pickTitleRow(i) {
     const key = TITLE_ROWS[i];
     if (!key) return;
     if (key === "online") { titlePick = i; openLobby(); return; }
+    if (key === "campaign") { titlePick = i; levelPick = 0; state = "levels"; return; }
     chooseMode(key);
   }
 
@@ -1374,9 +1426,11 @@
   function startCountChoice() {
     const n = Math.min(humanMax(), countPick + 1);
     const m = MODES[pendingMode];
+    // A mission fields its own fleets; it never takes free-for-all filler bots.
+    const bots = m.campaign ? 0 : botPick;
     const allowed = n >= m.minPlayers ||
-      n + Math.min(botPick, MAX_PLAYERS - n) >= m.minPlayers;
-    if (allowed) startGame(pendingMode, n, botPick);
+      n + Math.min(bots, MAX_PLAYERS - n) >= m.minPlayers;
+    if (allowed) startGame(pendingMode, n, bots);
   }
 
   function selectHumanCount(n) {
@@ -1493,6 +1547,16 @@
       dead: false,           // out of the match for good
       stocks: ROYALE_STOCKS, // battle royale only; co-op uses the shared pile
       hull: ROYALE_HULL,     // bullet/asteroid hits left in the current stock
+      maxHull: ROYALE_HULL,  // what a respawn restores it to
+      // Campaign only, ignored everywhere else. `team` is the side (0 = yours,
+      // 1 = enemy); `kind` is what the ship is; `skill` scales bot competence
+      // from 0 (hopeless) to 1 (the free-for-all bots). `role` steers campaign
+      // AI. `shielded` gates damage on a mothership while its turrets stand.
+      team: 0, kind: "fighter", skill: 1, role: null,
+      human: true, shielded: false,
+      goalX: null, goalY: null,
+      // Campaign salvage buffs, seconds remaining. Ignored outside a mission.
+      buffRapid: 0, buffHeavy: 0,
       kills: 0,
       deaths: 0,
       envDeaths: 0,
@@ -1680,7 +1744,9 @@
     rocks = []; bullets = []; bits = []; hazards = [];
     score = 0; wave = 0; ffCount = 0; clock = 0; topUp = 0;
     lives = 2 + 2 * players;   // co-op only
-    banner = null; outcome = null; killFeed = [];
+    banner = null; outcome = null; killFeed = []; camp = null;
+    pickups = []; comms = []; shake = 0; slowScale = 1; slowTimer = 0;
+    cam.goalScale = 1;
     soundEvents = []; soundEventSeq = 0;
     net.outSnapSeq = net.outRockSeq = net.outInputSeq = 0;
     net.lastSnapSeq = net.lastRockSeq = net.lastSoundSeq = 0;
@@ -1701,7 +1767,11 @@
       cam.x = arena.w / 2; cam.y = arena.h / 2; cam.rot = 0;
     }
 
-    if (mode.closing) {
+    if (mode.campaign) {
+      // The humans are placed already; the mission builds the fleets, the
+      // objective and the reinforcement reserves around them.
+      setupCampaign(modeKey, humans);
+    } else if (mode.closing) {
       // Battle royale keeps a standing rock population instead of waves. The
       // field is never cleared, and the last surviving ship ends the match.
       // Sixteen screens of map needs sixteen screens' worth of rocks, or long
@@ -1781,6 +1851,17 @@
       if (code === "Enter" || code === "Space") pickTitleRow(titlePick);
       if (code === "KeyO") openLobby();
       if (code === "KeyC") { backFrom = "title"; state = settingsScreen(); }
+    } else if (state === "levels") {
+      if (code === "Escape" || code === "Backspace") { state = "title"; return; }
+      const d = digit(code);
+      if (d >= 1 && d <= CAMPAIGN_ORDER.length) { chooseMode(CAMPAIGN_ORDER[d - 1]); return; }
+      if (code === "ArrowUp" || code === "ArrowLeft") {
+        levelPick = (levelPick + CAMPAIGN_ORDER.length - 1) % CAMPAIGN_ORDER.length;
+      }
+      if (code === "ArrowDown" || code === "ArrowRight") {
+        levelPick = (levelPick + 1) % CAMPAIGN_ORDER.length;
+      }
+      if (code === "Enter" || code === "Space") chooseMode(CAMPAIGN_ORDER[levelPick]);
     } else if (state === "controls") {
       controlsKey(code);
     } else if (state === "thumb") {
@@ -1800,11 +1881,32 @@
       if (code === "KeyB") {
         cycleBots();
       }
+      // Difficulty by key on a mission's setup screen.
+      if (MODES[pendingMode] && MODES[pendingMode].campaign) {
+        if (code === "KeyE") campaignDifficulty = "easy";
+        if (code === "KeyH") campaignDifficulty = "hard";
+        if (code === "KeyI") campaignDifficulty = "impossible";
+      }
       // Battle royale needs someone to fight — but a bot counts as someone.
       if (d >= 1 && d <= humanMax()) selectHumanCount(d);
       if (code === "Enter" || code === "Space") startCountChoice();
       if (code === "Escape" || code === "Backspace") state = "title";
     } else if (state === "over") {
+      // On a mission-cleared screen, N flies straight into the next one.
+      if (code === "KeyN" && outcome && outcome.kind === "victory") {
+        const idx = CAMPAIGN_ORDER.indexOf(outcome.levelKey);
+        if (idx >= 0 && idx < CAMPAIGN_ORDER.length - 1) {
+          playCampaignLevel(CAMPAIGN_ORDER[idx + 1]);
+          return;
+        }
+      }
+      // In a campaign, replaying continues the war — the RETRY button and the
+      // key press must agree, or the keyboard would quietly drop the veterans.
+      if ((code === "Space" || code === "Enter") && !net.on && outcome &&
+          (outcome.kind === "victory" || outcome.kind === "defeat")) {
+        playCampaignLevel(outcome.levelKey);
+        return;
+      }
       if (code === "Space" || code === "Enter") playAgain();
       if (code === "Escape" || code === "Backspace") leaveMatch();
     } else if (state === "playing" || state === "paused" || state === "menu") {
@@ -1823,13 +1925,26 @@
         if (code === "KeyC") { backFrom = state; state = settingsScreen(); return; }
         if (code === "KeyQ") { leaveMatch(); return; }
       }
+      // Squad command: one key orders the whole allied wing. Mission-only, and
+      // only while actually flying — not from a pause menu.
+      if (state === "playing" && mode.campaign) {
+        const d = digit(code);
+        if (d === 1) { setSquadOrder("focus"); return; }
+        if (d === 2) { setSquadOrder("defend"); return; }
+        if (d === 3) { setSquadOrder("regroup"); return; }
+      }
       // One camera and two people at one keyboard means somebody is off-screen.
       // Tab hands the view to the next ship still in the match. This goes away
       // the moment each player has their own screen.
       if (code === "Tab" && mode.camera) {
         for (let i = 1; i <= ships.length; i++) {
           const next = (watching + i) % ships.length;
-          if (!ships[next].dead) { watching = next; break; }
+          const n = ships[next];
+          if (n.dead) continue;
+          // In a mission you only ever look through your own side's ships —
+          // never out of an enemy cockpit. Free-for-all modes cycle everyone.
+          if (mode.campaign && n.team !== TEAM_ALLY) continue;
+          watching = next; break;
         }
       }
     }
@@ -1853,6 +1968,13 @@
 
   function updateCamera(dt) {
     if (!mode.camera) return;
+    // A mission can pull the camera back for a set-piece — the fleet warping in,
+    // the mothership coming apart. Everywhere else goalScale stays 1, so this is
+    // a no-op and the view is exactly as steady as it always was.
+    if (mode.campaign && cam.goalScale !== cam.scale) {
+      cam.scale += (cam.goalScale - cam.scale) * (1 - Math.exp(-3 * dt));
+      if (Math.abs(cam.goalScale - cam.scale) < 0.002) cam.scale = cam.goalScale;
+    }
     let s = ships[watching];
     // Network guests learn about eliminations from snapshots rather than
     // running killShip locally, so repair a stale camera target here too.
@@ -2111,8 +2233,35 @@
   }
 
   /* ── deaths ──────────────────────────────────────────────────────────── */
-  function damageShip(ship, cause, shooter) {
+  function damageShip(ship, cause, shooter, dmg = 1) {
     const twoHitCause = cause === "shot" || cause === "rock";
+    if (mode.campaign) {
+      // A capital under shield eats shots without flinching — its shield
+      // generators are what you have to break first, and the spark says so.
+      if (ship.shielded && twoHitCause) {
+        ship.invuln = Math.max(ship.invuln, HIT_SHIELD * 0.5);
+        burst(ship.x, ship.y, "#87d8ff", 6, 120 * U);
+        if (Math.random() < 0.3) gameSound("hit", ship.x);
+        return false;
+      }
+      // Everything in a mission has a hull; a hit spends one point of it (a
+      // salvaged heavy round spends two) and only the last one is fatal.
+      // Fighters have two, transports and subsystems many, so the same rule
+      // makes both a duel and a siege.
+      if (twoHitCause && ship.hull > dmg) {
+        ship.hull -= dmg;
+        ship.invuln = Math.max(ship.invuln, ship.kind === "fighter" ? HIT_SHIELD : 0.12);
+        burst(ship.x, ship.y, ship.colour, ship.kind === "fighter" ? 10 : 6, 150 * U);
+        gameSound("hit", ship.x);
+        return false;
+      }
+      // The core doesn't just die — it comes apart. Hand it to the finale and
+      // keep it on screen; the ship is never `killShip`ed, so it stays drawable
+      // while it breaks up.
+      if (ship.kind === "mothership") { beginFinale(); return true; }
+      killShip(ship, cause, shooter);
+      return true;
+    }
     if (mode.pvp && twoHitCause && ship.hull > 1) {
       ship.hull--;
       ship.invuln = Math.max(ship.invuln, HIT_SHIELD);
@@ -2150,6 +2299,8 @@
     if (cause !== "shot" && cause !== "ff") ship.envDeaths++;
     burst(ship.x, ship.y, ship.colour, 22, 240 * U);
     gameSound("explode", ship.x);
+
+    if (mode.campaign) { campaignKill(ship, cause, shooter); return; }
 
     if (mode.pvp) {
       if (shooter && shooter !== ship) shooter.kills++;
@@ -2209,11 +2360,14 @@
 
   function fire(ship) {
     const mine = bullets.reduce((n, b) => n + (b.owner === ship.id ? 1 : 0), 0);
-    if (mine >= MAX_SHOTS) return false;
+    const cap = (mode.campaign && ship.human) ? CAMPAIGN_SHOTS : MAX_SHOTS;
+    if (mine >= cap) return false;
     const r = SHIP_R * U;
+    const heavy = ship.buffHeavy > 0;
     bullets.push({
       owner: ship.id,
-      colour: ship.colour,
+      colour: heavy ? "#ffd36b" : ship.colour,
+      dmg: heavy ? 2 : 1,           // salvaged heavy rounds punch through twice
       x: ship.x + Math.cos(ship.a) * (r + 2),
       y: ship.y + Math.sin(ship.a) * (r + 2),
       // Inheriting ship velocity is what makes a fast pass dangerous — your
@@ -2297,9 +2451,1124 @@
   }
 
   // Whose shots can hurt whom. Survival reads its setup toggle; Battle Royale
-  // always allows opponents to damage one another.
-  const canHit = (shooter, target) =>
-    shooter !== target.id && (mode.pvp || mode.friendlyFire);
+  // always allows opponents to damage one another. Campaign is by side: your
+  // bullets pass through your own fleet and only bite the enemy, and theirs
+  // only bite you — friendly fire is off, so a crowded warzone stays readable.
+  const canHit = (shooter, target) => {
+    if (shooter === target.id) return false;
+    if (mode.campaign) {
+      const src = ships[shooter];
+      return !src || src.team !== target.team;
+    }
+    return mode.pvp || mode.friendlyFire;
+  };
+
+  /* ══ CAMPAIGN ════════════════════════════════════════════════════════════
+     Three scripted missions built on the Battle-Royale engine. Two ideas the
+     free-for-all modes lack carry the whole thing: a ship's `team` (0 yours,
+     1 the enemy) decides who its shots bite, and its `kind` (fighter, transport,
+     turret, mothership) decides how it flies and how it dies. Everything else —
+     physics, bullets, camera, minimap — is the code the other modes already run.
+
+     Reinforcements are rolling: a downed fighter is not gone, it is a slot its
+     side refills from a reserve. So a level can field a fifty-ship roster with
+     only thirty-odd ever alive at once, which is what keeps a warzone at frame
+     rate on a phone. `camp` holds the whole of a mission's live state. */
+  const TEAM_ALLY = 0, TEAM_ENEMY = 1;
+  const ALLY_COLOUR = "#5fd0a0";     // your fleet: warm teal, clear of player amber
+  const ENEMY_COLOUR = "#ff6b6b";    // the enemy: cold red
+
+  /* Difficulty sets how many hits a fighter takes. It only ever touches fighters
+     — the pilots, and on Impossible everything that flies — never the transports,
+     the mothership or its subsystems, which keep the hulls their mission gave
+     them. Easy is the default, because the whole point is a mission you can win. */
+  // `autoFire` decides the pilot's trigger: Easy holds for a steady stream, the
+  // harder settings drop back to the three-round burst the other modes use, so
+  // every shot has to be picked and the extra difficulty isn't only in the hull.
+  const DIFFICULTY = {
+    easy:       { pilotHull: 5, allOneHit: false, autoFire: true,  colour: "#6dffbf",
+                  blurb: "your ships take five hits · auto fire" },
+    hard:       { pilotHull: 3, allOneHit: false, autoFire: false, colour: "#ff8f77",
+                  blurb: "your ships take three hits · burst fire" },
+    impossible: { pilotHull: 1, allOneHit: true,  autoFire: false, colour: "#ff6b6b",
+                  blurb: "one hit kills anything — you and them · burst fire" }
+  };
+
+  const clamp01 = v => Math.max(0, Math.min(1, v));
+
+  /* ── mission feel ────────────────────────────────────────────────────────
+     Radio chatter is a small scrolling log under the pilots; screen shake and a
+     brief slow-motion mark the biggest beats. All three are campaign-only and
+     decay on their own, so nothing here leaks into Survival or Battle Royale. */
+  function chatter(text, colour) {
+    comms.unshift({ text, colour: colour || "#ffcb42", until: clock + 6 });
+    comms.length = Math.min(comms.length, 4);
+  }
+  function addShake(m) { shake = Math.min(64, shake + m); }
+  function slowmo(scale, secs) { slowScale = scale; slowTimer = secs; }
+
+  // Whose screen the mission is played from, and what that pilot is pointed at —
+  // squad orders are given relative to the player, so both have to be knowable.
+  function playerShip() {
+    const w = ships[watching];
+    if (w && w.team === TEAM_ALLY && !w.dead) return w;
+    return ships.find(s => s.human && !s.dead) ||
+           ships.find(s => s.team === TEAM_ALLY && !s.dead) || ships[0];
+  }
+  function playerTarget() {
+    const p = playerShip();
+    if (!p) return null;
+    let best = Infinity, t = null;
+    for (const o of ships) {
+      if (o.team === p.team || !o.alive || o.dead || o.shielded) continue;
+      const d = Math.hypot(sepX(o.x, p.x), sepY(o.y, p.y));
+      if (d < best) { best = d; t = o; }
+    }
+    return t;
+  }
+
+  /* Squad command. One key issues an order to every allied bot at once — the
+     thing that turns a pilot into a fleet commander. Pressing the same order
+     again stands the wing back down to fighting at will. */
+  const ORDER_LABEL = { focus: "FOCUS FIRE", defend: "DEFEND", regroup: "REGROUP" };
+  function setSquadOrder(order) {
+    if (!camp) return;
+    camp.order = camp.order === order ? null : order;
+    if (camp.order === "focus") camp.focusTarget = playerTarget();
+    chatter("All wings: " + (camp.order ? ORDER_LABEL[order] : "weapons free"),
+            "#5fd0a0");
+    gameSound("start");
+  }
+
+  const enemyFightersLeft = () => ships.filter(s =>
+    s.team === TEAM_ENEMY && (s.kind === "fighter" || s.kind === "gunship") &&
+    !s.dead).length;
+  const anyAllyNear = (o, dist) => !!o && ships.some(s =>
+    s.team === TEAM_ALLY && s.alive && !s.dead &&
+    Math.hypot(sepX(s.x, o.x), sepY(s.y, o.y)) < dist);
+
+  /* Salvage. An enemy that dies sometimes leaves a canister the player can fly
+     through; an ace always does. Four kinds — patch the hull, raise a shield,
+     rapid fire, or heavy rounds — and only a pilot can pick one up. */
+  const PICKUPS = {
+    repair: { colour: "#6dffbf" },
+    shield: { colour: "#87d8ff" },
+    rapid:  { colour: "#ffe56d" },
+    heavy:  { colour: "#ff9d5c" }
+  };
+  const PICKUP_KINDS = ["repair", "shield", "rapid", "heavy"];
+  function spawnPickup(x, y, kind) {
+    pickups.push({ x, y, vx: rand(-30, 30) * U, vy: rand(-30, 30) * U,
+                   kind, life: 15, spin: rand(0, 6.28) });
+  }
+  function maybeDrop(ship) {
+    const chance = ship.ace ? 1 : ship.kind !== "fighter" ? 0.85 : 0.13;
+    if (Math.random() > chance) return;
+    spawnPickup(ship.x, ship.y,
+                PICKUP_KINDS[Math.floor(Math.random() * PICKUP_KINDS.length)]);
+  }
+  function collectPickup(p, s) {
+    gameSound("start"); addShake(4);
+    if (p.kind === "repair") { s.hull = s.maxHull; s.invuln = Math.max(s.invuln, 1.2); }
+    else if (p.kind === "shield") s.invuln = Math.max(s.invuln, 5);
+    else if (p.kind === "rapid") s.buffRapid = 9;
+    else if (p.kind === "heavy") s.buffHeavy = 9;
+    burst(p.x, p.y, PICKUPS[p.kind].colour, 12, 160 * U);
+    chatter(p.kind.toUpperCase() + " salvaged", PICKUPS[p.kind].colour);
+  }
+  function updatePickups(dt) {
+    for (let i = pickups.length - 1; i >= 0; i--) {
+      const p = pickups[i];
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vx *= Math.exp(-1.2 * dt); p.vy *= Math.exp(-1.2 * dt);
+      p.spin += dt * 2; p.life -= dt;
+      if (p.life <= 0) { pickups.splice(i, 1); continue; }
+      let taken = false;
+      for (const s of ships) {
+        if (!s.alive || !s.human || s.dead) continue;
+        if (gap2(p.x, p.y, s.x, s.y) < (SHIP_R * U + 17 * U) ** 2) {
+          collectPickup(p, s); taken = true; break;
+        }
+      }
+      if (taken) pickups.splice(i, 1);
+    }
+  }
+
+  /* ── the campaign as one war ─────────────────────────────────────────────
+     A campaign is three missions with a through-line, not three loose fights.
+     `campRun` is the ledger that survives between them: the fleet's strength,
+     a reserve of lives a strong showing earns, the wingmates who lived, and the
+     aces they killed. It is spent into the next mission (`applyCampRun`) and
+     rewritten when one is won (`computeCarryover`), so winning MATTERS past the
+     result screen — the fleet you finish with is the fleet you start the next
+     one with. It resets only when a fresh campaign begins from the first
+     mission; NEXT and RETRY carry it forward. None of it touches the other
+     modes, which never build a `campRun`. */
+  const ALLY_CALLSIGNS = ["VECTOR", "ROOK", "ECHO", "SABLE", "JETT", "KESTREL"];
+  const HERO_CAP = 4;         // allies named per mission — a few faces in a swarm
+  const VET_SKILL = 0.06;     // a returning veteran flies a shade sharper
+  function freshCampRun() {
+    return { fleet: 1, bonusReserve: 0, veterans: [], acesKilled: [],
+             missionsWon: 0, kills: 0 };
+  }
+
+  // Named enemy aces: rare elites, tougher and near-perfect, always worth
+  // salvage, and announced so the kill feed has a rival in it.
+  const ACE_NAMES = ["VYPER", "REAPER", "NOVA", "WRAITH", "TALON", "HALO"];
+  function spawnAce() {
+    const name = ACE_NAMES[(camp.aceCount++) % ACE_NAMES.length];
+    const a = makeCombatant(TEAM_ENEMY, "fighter",
+      bounds.x1 - rand(120, 300) * U, rand(bounds.y0 + 180 * U, bounds.y1 - 180 * U),
+      { colour: "#ff3b6b", skill: 0.88, hull: 4, role: "hunt", name: "ACE " + name });
+    a.ace = true;
+    chatter("Enemy ace " + name + " has entered the battle", "#ff3b6b");
+    killFeed.unshift({ source: "ACE", victim: name + " inbound",
+                       colour: "#ff3b6b", until: clock + 4 });
+    killFeed.length = Math.min(killFeed.length, 4);
+    addShake(6);
+    return a;
+  }
+
+  /* A campaign ship. Made through `makeShip` so it carries every field the rest
+     of the engine expects, then dressed for its side and its job. Its `id` is
+     its index in `ships`, which is what `owner`, `canHit` and `ships[owner]` all
+     rely on — so campaign ships are only ever appended, never spliced out. */
+  function makeCombatant(team, kind, x, y, opts = {}) {
+    const id = ships.length;
+    const colour = opts.colour ||
+      (team === TEAM_ENEMY ? ENEMY_COLOUR : ALLY_COLOUR);
+    const s = makeShip(id, id + 1, { colour, label: opts.label || "SHIP" });
+    s.id = id;
+    s.bot = true;
+    s.localKeys = null;
+    s.human = false;
+    s.team = team;
+    s.kind = kind;
+    s.skill = opts.skill != null ? opts.skill : 0.7;
+    s.role = opts.role || null;
+    s.colour = colour;
+    s.name = opts.name || opts.label || (team === TEAM_ENEMY ? "ENEMY" : "ALLY");
+    s.x = x; s.y = y;
+    s.a = opts.a != null ? opts.a : (team === TEAM_ENEMY ? Math.PI : 0);
+    s.vx = s.vy = 0;
+    // Fighters (including aces) take their hits from the difficulty; capitals and
+    // subsystems keep the hull the mission asked for.
+    s.maxHull = kind === "fighter"
+      ? (DIFFICULTY[campaignDifficulty].allOneHit ? 1 : (opts.hull || 2))
+      : (opts.hull || 2);
+    s.hull = s.maxHull;
+    s.radius = opts.radius || null;   // capitals are wider than a fighter
+    s.invuln = opts.invuln != null ? opts.invuln : INVULN;
+    s.stocks = 1;
+    if (opts.guard != null) s.guard = opts.guard;
+    ships.push(s);
+    return s;
+  }
+
+  function setupCampaign(levelKey, humans) {
+    // A new war starts fresh; a continued one (NEXT/RETRY) keeps its ledger, so
+    // veterans and reserve carry across. The first mission is always a clean
+    // slate, and a cold drop-in from the menu has nothing to inherit.
+    if (!campContinue || !campRun || levelKey === CAMPAIGN_ORDER[0]) {
+      campRun = freshCampRun();
+    }
+    campContinue = false;
+
+    const cy = arena.h / 2;
+    camp = {
+      levelKey, level: mode.level, humans,
+      reserve: { 0: 0, 1: 0 },        // reinforcements left per side
+      reinforce: { 0: true, 1: true },
+      reinforceDelay: 2.6,
+      objective: "", progress: 0,
+      transports: [], mothership: null, turrets: [],
+      hangars: [], shieldGens: [], flagship: null, gunship: null, planet: null,
+      hangarTimer: 5, aceCount: 0,
+      order: null, focusTarget: null,
+      waves: [], waveThresholds: [], waveIndex: 0,
+      transportStartX: 0, exitX: arena.w,
+      // A mission is a small phase machine. `onComplete` fires when the last
+      // phase is done; the mothership routes it through a death sequence first.
+      phases: [], phase: -1, phaseClock: 0, finale: null,
+      onComplete: campaignWin,
+      won: false, lost: false
+    };
+
+    // The pilots: a short line on the ally side, all team 0, facing the enemy.
+    // They draw their lives from one shared pile, the way co-op Survival does.
+    lives = 3 + 2 * humans;
+    const pilotHull = DIFFICULTY[campaignDifficulty].pilotHull;
+    ships.forEach((s, i) => {
+      s.team = TEAM_ALLY; s.kind = "fighter"; s.human = true; s.skill = 1;
+      s.role = "pilot"; s.maxHull = pilotHull; s.hull = pilotHull;
+      s.radius = null; s.shielded = false;
+      s.x = arena.w * 0.13;
+      s.y = cy + (i - (humans - 1) / 2) * 100 * U;
+      s.a = 0; s.vx = s.vy = 0; s.invuln = INVULN;
+    });
+
+    if (levelKey === "convoy") setupConvoy(cy);
+    else if (levelKey === "raid") setupRaid(cy);
+    else if (levelKey === "mothership") setupMothership(cy);
+
+    // Seed the battlefield: wells and asteroids, placed around what the mission
+    // already put down. The convoy keeps its lane clear; the mothership keeps a
+    // wide berth so a well never does the player's job for them.
+    if (levelKey === "convoy") {
+      placeCampaignHazards(2, { laneY: cy });
+      seedCampaignRocks(12, { laneY: cy });
+    } else if (levelKey === "raid") {
+      placeCampaignHazards(3);
+      seedCampaignRocks(16);
+    } else if (levelKey === "mothership") {
+      const m = camp.mothership;
+      placeCampaignHazards(3, { avoid: [{ x: m.x, y: m.y, r: m.radius * 2.4 }] });
+      seedCampaignRocks(14);
+    }
+
+    applyCampRun();        // name the wing, seat the veterans, bank the reserve
+    advancePhase();        // enter phase 0
+
+    // What the last mission bought you, announced over the radio as you drop in.
+    const vetNames = camp.heroes.filter(s => s.veteran).map(s => s.name);
+    if (vetNames.length)
+      chatter("Back on the line: " + vetNames.join(", "), "#5fd0a0");
+    if (camp.carriedReserve > 0)
+      chatter("Command sent +" + camp.carriedReserve + " reserve", "#5fd0a0");
+
+    cam.x = ships[0].x; cam.y = ships[0].y;
+    cam.rot = royaleCameraRotates ? -Math.PI / 2 - ships[0].a : 0;
+    clampCam();
+  }
+
+  /* Spend the campaign ledger into the mission that is now built. The first few
+     allied fighters are the "heroes" — named, tracked, and carried forward if
+     they live; a returning veteran keeps their name and flies a shade sharper.
+     A strong last mission also banks extra reinforcements. Reads `campRun` but
+     never writes it, so a RETRY brings the very same fleet in again. */
+  function applyCampRun() {
+    const wing = ships.filter(s => s.team === TEAM_ALLY && !s.human &&
+                                   s.kind === "fighter");
+    const heroes = wing.slice(0, HERO_CAP);
+    const vets = campRun.veterans.slice(0, heroes.length);
+    const taken = new Set(vets.map(v => v.name));
+    const pool = ALLY_CALLSIGNS.filter(n => !taken.has(n));
+    let pi = 0;
+    heroes.forEach((s, i) => {
+      s.hero = true;
+      const vet = vets[i];
+      if (vet) {
+        s.name = vet.name;
+        s.veteran = true;
+        s.skill = Math.min(0.98, s.skill + VET_SKILL);
+      } else {
+        s.name = pool[pi++] || ALLY_CALLSIGNS[i % ALLY_CALLSIGNS.length];
+      }
+    });
+    camp.heroes = heroes;
+    camp.startHeroCount = heroes.length;
+    camp.carriedReserve = campRun.bonusReserve || 0;
+    camp.reserve[TEAM_ALLY] += camp.carriedReserve;
+  }
+
+  /* Rewrite the ledger from how the mission just won actually went: the fleet's
+     strength (survivors + surviving pilots), the reserve that earns, the named
+     wingmates who lived to fly the next one, and the aces added to the tally. */
+  function computeCarryover() {
+    const prev = campRun || freshCampRun();
+    const heroes = camp.heroes || [];
+    const survivors = heroes.filter(s => !s.dead);
+    const startHero = camp.startHeroCount || heroes.length || 1;
+    const humans = camp.humans || 1;
+    const pilotsAlive = ships.filter(s => s.human && !s.dead).length;
+    const kills = ships.filter(s => s.team === TEAM_ALLY)
+                       .reduce((n, s) => n + s.kills, 0);
+    const newAces = ships.filter(s => s.team === TEAM_ENEMY && s.ace && s.dead)
+                         .map(s => s.name.replace(/^ACE\s+/, ""));
+    const fleet = clamp01(0.35 + 0.4 * (survivors.length / startHero) +
+                          0.25 * (pilotsAlive / humans));
+    return {
+      fleet,
+      bonusReserve: Math.min(4, survivors.length + (fleet > 0.75 ? 1 : 0)),
+      veterans: survivors.map(s => ({ name: s.name })),
+      acesKilled: prev.acesKilled.concat(newAces),
+      missionsWon: prev.missionsWon + 1,
+      kills: prev.kills + kills,
+      // display-only, for the debrief screen:
+      survivorNames: survivors.map(s => s.name), newAces, thisKills: kills
+    };
+  }
+
+  /* The phase machine. Each phase names an objective and knows when it is done;
+     advancing runs the next phase's `enter` and announces it. A phase whose
+     goal is already met (an out-of-order kill) is skipped, so the sequence can
+     never wedge. Past the last phase, the mission's `onComplete` fires. */
+  function advancePhase() {
+    camp.phase++;
+    camp.phaseClock = 0;
+    const p = camp.phases[camp.phase];
+    if (!p) { camp.onComplete(); return; }
+    if (p.objective) camp.objective = p.objective;
+    if (p.banner) banner = Object.assign({ t: 3, colour: "#ffe56d" }, p.banner);
+    if (p.chatter) chatter(p.chatter.text, p.chatter.colour);
+    if (p.enter) p.enter();
+    if (!camp.finale && p.done && p.done()) advancePhase();
+  }
+
+  // LEVEL 1 — CONVOY. A transport crosses from one side to a planet on the far
+  // side at a steady, unwavering speed; your only job is to keep it alive the
+  // ~fifty seconds that takes. Three acts of rising threat travel with it — three
+  // waves, an ambush, then a blockade gunship — but the transport never stops,
+  // so reaching the planet is the win. The enemies are the weakest in the game.
+  function setupConvoy(cy) {
+    const startX = arena.w * 0.08;
+    camp.planet = { x: arena.w - 210 * U, y: cy, r: 150 * U };
+    camp.transportStartX = startX;
+    camp.exitX = camp.planet.x - camp.planet.r * 0.75;   // "arrived" at the edge
+
+    const t = makeCombatant(TEAM_ALLY, "transport", startX, cy, {
+      colour: "#87d8ff", label: "TRANSPORT", name: "TRANSPORT",
+      hull: 82, role: "convoy", skill: 0.5, radius: 30 * U, invuln: 3.5, a: 0
+    });
+    t.kinematic = true;
+    t.cruise = 52 * U;            // constant speed, the whole way across
+    t.goalX = camp.exitX; t.goalY = cy;
+    camp.transports = [t];
+
+    // Three wingmates on the easy mission — this is where a new player learns
+    // the game, so the odds are with them.
+    for (let k = 0; k < 3; k++) {
+      makeCombatant(TEAM_ALLY, "fighter", startX + 40 * U,
+        cy + (k - 1) * 130 * U, { skill: 0.76, role: "escort" });
+    }
+    camp.reserve[TEAM_ALLY] = 6;
+    camp.waves = [
+      { count: 3, skill: 0.32, reserve: 1 },
+      { count: 4, skill: 0.4, reserve: 2 },
+      { count: 4, skill: 0.48, reserve: 3 }
+    ];
+    camp.waveThresholds = [0.08, 0.34, 0.55];
+
+    camp.phases = [
+      { objective: "ESCORT THE TRANSPORT TO THE PLANET",
+        tick() {
+          while (camp.waveIndex < camp.waves.length &&
+                 camp.progress >= camp.waveThresholds[camp.waveIndex]) {
+            deployWave(camp.waves[camp.waveIndex]);
+            camp.waveIndex++;
+          }
+        },
+        done() { return camp.progress >= 0.62; } },
+      { objective: "AMBUSH — KEEP THE TRANSPORT ALIVE",
+        banner: { text: "AMBUSH", sub: "they're swarming the transport — cover it",
+                  colour: "#ff8f77" },
+        chatter: { text: "Ambush on the transport — get on them!", colour: "#ff8f77" },
+        enter() {
+          for (let i = 0; i < 3; i++) {
+            makeCombatant(TEAM_ENEMY, "fighter",
+              bounds.x1 - rand(120, 380) * U,
+              rand(bounds.y0 + 160 * U, bounds.y1 - 160 * U),
+              { skill: 0.42, role: "hunt" });
+          }
+        },
+        done() { return camp.progress >= 0.8; } },
+      { objective: "PROTECT IT FROM THE GUNSHIP",
+        banner: { text: "BLOCKADE", sub: "a gunship is closing on the transport",
+                  colour: "#ff8f77" },
+        chatter: { text: "Gunship inbound — kill it before it reaches her!",
+                   colour: "#ff8f77" },
+        enter() {
+          const t0 = camp.transports[0];
+          const gx = Math.min(bounds.x1 - 300 * U, t0.x + 700 * U);
+          camp.gunship = makeCombatant(TEAM_ENEMY, "gunship", gx, t0.y, {
+            colour: "#ff7a5c", label: "GUNSHIP", name: "GUNSHIP",
+            hull: 11, role: "gunship", skill: 0.54, radius: 34 * U, invuln: 2
+          });
+        },
+        done() { return camp.progress >= 0.99; } }
+    ];
+    camp.onComplete = campaignWin;   // reaching the planet is the win
+
+    banner = { text: "CONVOY", t: 3.4, colour: "#87d8ff",
+      sub: "see the transport safely across to the planet" };
+  }
+
+  // LEVEL 2 — RAID. Three enemy transports run the map, each with a guard pair.
+  // Destroy all three — they flee when you close, so it is a hunt — then ride
+  // out the counterattack they scramble in revenge.
+  function setupRaid(cy) {
+    const spots = [
+      { x: arena.w * 0.72, y: arena.h * 0.24 },
+      { x: arena.w * 0.83, y: arena.h * 0.72 },
+      { x: arena.w * 0.52, y: arena.h * 0.86 }
+    ];
+    spots.forEach((p, idx) => {
+      const t = makeCombatant(TEAM_ENEMY, "transport", p.x, p.y, {
+        colour: "#ff9d5c", label: "TRANSPORT", name: "TRANSPORT " + (idx + 1),
+        hull: 14, role: "flee", skill: 0.5, radius: 28 * U, invuln: 2
+      });
+      t.goalX = rand(arena.w * 0.45, arena.w * 0.9);
+      t.goalY = rand(arena.h * 0.2, arena.h * 0.8);
+      camp.transports.push(t);
+      for (let k = 0; k < 2; k++) {
+        makeCombatant(TEAM_ENEMY, "fighter",
+          p.x + rand(-120, 120) * U, p.y + rand(-120, 120) * U,
+          { skill: 0.46, role: "guard", guard: t.id });
+      }
+    });
+    for (let k = 0; k < 3; k++) {
+      makeCombatant(TEAM_ALLY, "fighter", arena.w * 0.14,
+        cy + (k - 1) * 150 * U, { skill: 0.74, role: "hunt" });
+    }
+    camp.reserve[TEAM_ALLY] = 8;
+    camp.reserve[TEAM_ENEMY] = 6;
+
+    camp.phases = [
+      { objective: "DESTROY THE TRANSPORTS",
+        tick() {
+          camp.objective = "DESTROY THE TRANSPORTS · " +
+            camp.transports.filter(t => !t.dead).length + " LEFT";
+        },
+        done() { return camp.transports.every(t => t.dead); } },
+      { objective: "SURVIVE THE COUNTERATTACK",
+        banner: { text: "COUNTERATTACK", sub: "they want revenge — hold them off",
+                  colour: "#ff6b6b" },
+        chatter: { text: "Enemy's scrambling everything — hold the line!",
+                   colour: "#ff6b6b" },
+        enter() {
+          camp.reserve[TEAM_ENEMY] += 1;
+          for (let i = 0; i < 3; i++) {
+            makeCombatant(TEAM_ENEMY, "fighter",
+              bounds.x1 - rand(100, 320) * U,
+              rand(bounds.y0 + 160 * U, bounds.y1 - 160 * U),
+              { skill: 0.52, role: "hunt" });
+          }
+          spawnAce();
+        },
+        done() { return enemyFightersLeft() === 0; } }
+    ];
+
+    banner = { text: "RAID", t: 3.4, colour: "#ff9d5c",
+      sub: "three transports on the run — hunt them all down" };
+  }
+
+  // LEVEL 3 — MOTHERSHIP. A fleet war around a capital ship with real innards:
+  // turrets that never stop shooting, hangar bays that keep launching fighters
+  // until you kill them, and shield generators that hold the core sealed. Four
+  // acts: breach the picket, silence the hangars, break the generators, kill the
+  // exposed core — which goes up in a death sequence, not a puff. An allied
+  // flagship pushes in with you and can be lost. Both sides refill from big
+  // reserves, so the warzone never thins until you have carved into it.
+  function setupMothership(cy) {
+    const mx = arena.w * 0.82, my = cy;
+    const m = makeCombatant(TEAM_ENEMY, "mothership", mx, my, {
+      colour: ENEMY_COLOUR, label: "MOTHERSHIP", name: "MOTHERSHIP",
+      hull: 18, role: "station", radius: 150 * U, invuln: 2, a: -Math.PI / 2
+    });
+    m.shielded = true;
+    camp.mothership = m;
+
+    // Turrets ring the hull and fire the whole battle long.
+    const TN = 5;
+    for (let k = 0; k < TN; k++) {
+      const ang = -Math.PI / 2 + (k / TN) * Math.PI * 2;
+      const rr = m.radius * 1.06;
+      makeCombatant(TEAM_ENEMY, "turret",
+        mx + Math.cos(ang) * rr, my + Math.sin(ang) * rr, {
+          colour: "#ffb0a0", label: "TURRET", name: "TURRET",
+          hull: 3, role: "turret", skill: 0.64, radius: 15 * U, invuln: 1, a: ang
+        });
+    }
+    camp.turrets = ships.filter(s => s.kind === "turret");
+
+    // Two hangar bays on the flanks — they launch fighters until destroyed.
+    for (const sy of [-0.62, 0.62]) {
+      const h = makeCombatant(TEAM_ENEMY, "hangar",
+        mx - m.radius * 0.15, my + m.radius * sy, {
+          colour: "#ffb347", label: "HANGAR", name: "HANGAR BAY",
+          hull: 6, role: "structure", radius: 26 * U, invuln: 1, a: -Math.PI / 2
+        });
+      camp.hangars.push(h);
+    }
+
+    // Three shield generators close to the core — while any stands, it is sealed.
+    for (let k = 0; k < 3; k++) {
+      const ang = -Math.PI / 2 + (k / 3) * Math.PI * 2;
+      const g = makeCombatant(TEAM_ENEMY, "shieldgen",
+        mx + Math.cos(ang) * m.radius * 0.62, my + Math.sin(ang) * m.radius * 0.62, {
+          colour: "#87d8ff", label: "GENERATOR", name: "SHIELD GENERATOR",
+          hull: 5, role: "structure", radius: 16 * U, invuln: 1, a: ang
+        });
+      camp.shieldGens.push(g);
+    }
+
+    // Your flagship: a friendly capital that advances with the fleet and is the
+    // reserve it draws from. Lose it and the reinforcements stop.
+    const f = makeCombatant(TEAM_ALLY, "flagship", arena.w * 0.07, cy, {
+      colour: "#7fe0c0", label: "FLAGSHIP", name: "ALLIED FLAGSHIP",
+      hull: 44, role: "flagship", radius: 92 * U, invuln: 3, a: 0
+    });
+    f.goalX = arena.w * 0.56; f.goalY = cy;
+    camp.flagship = f;
+
+    const ALLY_LIVE = 17, ENEMY_LIVE = 10;
+    for (let k = 0; k < ALLY_LIVE; k++) {
+      makeCombatant(TEAM_ALLY, "fighter",
+        rand(arena.w * 0.05, arena.w * 0.22), rand(arena.h * 0.15, arena.h * 0.85),
+        { skill: 0.76, role: "assault" });
+    }
+    for (let k = 0; k < ENEMY_LIVE; k++) {
+      makeCombatant(TEAM_ENEMY, "fighter",
+        rand(arena.w * 0.55, arena.w * 0.78), rand(arena.h * 0.12, arena.h * 0.88),
+        { skill: 0.6, role: "defend" });
+    }
+    camp.reserve[TEAM_ALLY] = 36;
+    camp.reserve[TEAM_ENEMY] = 18;
+    camp.reinforceDelay = 2.2;
+    camp.onComplete = campaignWin;   // finale is triggered by the core's death
+
+    camp.phases = [
+      { objective: "BREACH THE PICKET LINE",
+        chatter: { text: "All wings, push to the mothership!", colour: "#5fd0a0" },
+        done() { return anyAllyNear(camp.mothership, 1150 * U) || camp.phaseClock > 30; } },
+      { objective: "KNOCK OUT THE HANGAR BAYS",
+        banner: { text: "HANGARS", sub: "they keep launching fighters — kill the bays",
+                  colour: "#ff8f77" },
+        chatter: { text: "Those hangars won't quit — take the bays out!",
+                   colour: "#ff8f77" },
+        done() { return camp.hangars.every(h => h.dead); } },
+      { objective: "DESTROY THE SHIELD GENERATORS",
+        banner: { text: "SHIELD GENERATORS", sub: "three nodes hold the shield — break them",
+                  colour: "#87d8ff" },
+        chatter: { text: "Shield generators exposed — focus them down!",
+                   colour: "#87d8ff" },
+        done() { return camp.shieldGens.every(g => g.dead); } },
+      { objective: "KILL THE EXPOSED CORE",
+        banner: { text: "CORE EXPOSED", sub: "everything you've got — now!",
+                  colour: "#ffe56d" },
+        chatter: { text: "Core's wide open — hit it with everything!",
+                   colour: "#ffe56d" },
+        enter() { addShake(18); },
+        done() { return camp.finale != null && camp.finale <= 0; } }
+    ];
+
+    banner = { text: "MOTHERSHIP", t: 3.6, colour: ENEMY_COLOUR,
+      sub: "carve into the hull, then kill the core — all fleets engage" };
+  }
+
+  // The core takes its last hit: not a quiet death but a set-piece — the whole
+  // hull comes apart in slow motion while the camera pulls back to watch.
+  function beginFinale() {
+    if (camp.finale != null) return;
+    camp.finale = 3.6;
+    const m = camp.mothership;
+    if (m) { m.dying = true; m.hull = 0; m.shielded = false; m.invuln = 999; }
+    slowmo(0.45, 1.4);
+    addShake(44);
+    cam.goalScale = 0.72;
+    banner = { text: "MOTHERSHIP DOWN", sub: "", t: 3.6, colour: "#ffe56d" };
+    chatter("Direct hit — she's breaking apart! Pull back!", "#ffe56d");
+    gameSound("win");
+  }
+
+  function launchFromHangar(h) {
+    makeCombatant(TEAM_ENEMY, "fighter", h.x, h.y,
+      { skill: 0.58, role: "defend" });
+    burst(h.x, h.y, "#ffb347", 8, 130 * U);
+  }
+
+  // Reinforcements enter from their own side, never amidships.
+  function campaignSpawnPoint(ship) {
+    const enemy = ship.team === TEAM_ENEMY;
+    const x = enemy ? bounds.x1 - 90 * U : bounds.x0 + 90 * U;
+    let best = { x, y: (bounds.y0 + bounds.y1) / 2 }, bestGap = -1;
+    for (let i = 0; i < 28; i++) {
+      const y = rand(bounds.y0 + 140 * U, bounds.y1 - 140 * U);
+      // Never appear inside a well or on a rock — arrive somewhere survivable.
+      const g = Math.min(shipGapAt(x, y, ship), wellGapAt(x, y), rockGapAt(x, y));
+      if (g > bestGap) { bestGap = g; best = { x, y }; }
+      if (g > 150 * U) break;
+    }
+    return { x: best.x, y: best.y, a: enemy ? Math.PI : 0 };
+  }
+
+  /* Suns and black holes, seeded into a mission — the same stationary wells as
+     Battle Royale, but placed to respect the fight: never on a ship's start,
+     never in the convoy's lane, and never on top of the mothership. A spot that
+     cannot be found clear is simply skipped rather than forced. */
+  function placeCampaignHazards(count, opts = {}) {
+    hazards = [];
+    const laneY = opts.laneY, avoid = opts.avoid || [];
+    let holeIndex = 0;
+    for (let i = 0; i < count; i++) {
+      const kind = i % 2 === 1 ? "hole" : "star";
+      const holeSizeIndex = kind === "hole" ? holeIndex++ : 0;
+      const holeSize = kind === "hole" ? (holeSizeIndex % 2 ? "large" : "small") : "sun";
+      const spec = hazardSpec(kind, holeSizeIndex);
+      let best = null, bestGap = -1;
+      for (let tries = 0; tries < 110; tries++) {
+        const x = rand(arena.w * 0.16, arena.w * 0.84);
+        const y = rand(arena.h * 0.15, arena.h * 0.85);
+        let gap = Infinity;
+        for (const s of ships) {
+          gap = Math.min(gap, Math.hypot(x - s.x, y - s.y) - (s.radius || 0));
+        }
+        for (const h of hazards) gap = Math.min(gap, Math.hypot(x - h.x, y - h.y) * 0.8);
+        if (laneY != null && Math.abs(y - laneY) < spec.reach + 130 * U) gap = -1;
+        for (const a of avoid) {
+          if (Math.hypot(x - a.x, y - a.y) < a.r + spec.reach) gap = -1;
+        }
+        if (gap > bestGap) { bestGap = gap; best = { x, y }; }
+        if (gap > spec.reach) break;
+      }
+      if (!best || bestGap < spec.reach * 0.55) continue;   // no clear room — skip
+      hazards.push({
+        kind, x: best.x, y: best.y,
+        kill: spec.kill, reach: spec.reach, mass: spec.mass, soft: spec.soft,
+        fill: spec.fill || null, size: holeSize, phase: rand(0, Math.PI * 2)
+      });
+    }
+    if (hazards.length) seedMotes();
+  }
+
+  // Asteroids: slow royale-sized boulders scattered as cover and obstacle, kept
+  // off ship starts, the convoy lane and the live wells.
+  function seedCampaignRocks(count, opts = {}) {
+    const laneY = opts.laneY;
+    for (let n = 0; n < count; n++) {
+      let x = 0, y = 0, ok = false;
+      for (let tries = 0; tries < 40 && !ok; tries++) {
+        x = rand(arena.w * 0.12, arena.w * 0.88);
+        y = rand(arena.h * 0.1, arena.h * 0.9);
+        ok = laneY == null || Math.abs(y - laneY) > 170 * U;
+        if (ok) for (const s of ships) {
+          if (Math.hypot(x - s.x, y - s.y) < (s.radius || 0) + 170 * U) { ok = false; break; }
+        }
+        if (ok) for (const h of hazards) {
+          if (Math.hypot(x - h.x, y - h.y) < h.reach) { ok = false; break; }
+        }
+      }
+      if (ok) rocks.push(makeRock(randomRoyaleRockSize(), x, y));
+    }
+  }
+
+  // A ship just died in a mission. Credit the kill, refill the slot if the side
+  // has reserve, and re-check the objective. Capitals go out loud; fighters go
+  // quietly, or a fifty-ship battle is nothing but a scrolling kill feed.
+  function campaignKill(ship, cause, shooter) {
+    if (shooter && shooter !== ship && shooter.team !== ship.team) shooter.kills++;
+    if (ship.team === TEAM_ENEMY) maybeDrop(ship);
+
+    // Capitals, subsystems and aces go out loud, with a shake and a feed line;
+    // plain fighters go quietly, or a fifty-ship battle is nothing but a
+    // scrolling column of names.
+    const capital = ship.kind !== "fighter";
+    if (capital || ship.ace) {
+      const rad = ship.radius || 40 * U;
+      const bursts = capital ? 3 : 1;
+      for (let i = 0; i < bursts; i++) {
+        burst(ship.x + rand(-1, 1) * rad * 0.5, ship.y + rand(-1, 1) * rad * 0.5,
+              ship.colour, 22, 320 * U);
+      }
+      gameSound("explode", ship.x);
+      addShake(ship.kind === "flagship" ? 24 : capital ? 16 : 8);
+      killFeed.unshift({ source: shooter && shooter.team !== ship.team
+                         ? shooter.name : "DESTROYED",
+                         victim: ship.name,
+                         colour: ship.colour, until: clock + 4.2 });
+      killFeed.length = Math.min(killFeed.length, 4);
+    }
+
+    // Subsystem fallout — the callouts that tell the player their work is landing.
+    if (ship.kind === "hangar") {
+      chatter("Hangar bay down — fewer fighters coming", "#ff8f77");
+    } else if (ship.kind === "shieldgen") {
+      const left = camp.shieldGens.filter(g => !g.dead && g !== ship).length;
+      chatter(left ? left + " shield generator" + (left > 1 ? "s" : "") + " to go"
+                   : "Last generator's down!", "#87d8ff");
+    } else if (ship.kind === "flagship") {
+      camp.reinforce[TEAM_ALLY] = false;
+      chatter("The flagship's gone — no more reinforcements!", "#ff6b6b");
+    } else if (ship.ace) {
+      chatter("Ace down — good shooting", "#5fd0a0");
+    }
+
+    const t = ship.team;
+    if (ship.human) {
+      if (lives > 0) { lives--; ship.respawn = RESPAWN_WAIT; }
+      else {
+        ship.dead = true; ship.survivedFor = clock;
+        // Hand a dead pilot's screen to a living friendly ship.
+        if (ship.id === localSeat()) {
+          const ally = ships.find(o => o.team === TEAM_ALLY && !o.dead && o.alive);
+          if (ally) watching = ally.id;
+        }
+      }
+    } else if (ship.kind === "fighter" && !ship.ace &&
+               camp.reinforce[t] && camp.reserve[t] > 0) {
+      // Plain fighters refill from reserve; aces, gunships and capitals don't.
+      camp.reserve[t]--;
+      ship.respawn = camp.reinforceDelay;
+    } else {
+      ship.dead = true; ship.survivedFor = clock;
+      // A named wingmate falling for good is a loss you should hear — and one
+      // fewer face that carries into the next mission.
+      if (ship.hero && ship.team === TEAM_ALLY)
+        chatter(ship.name + " is down", "#ff8f77");
+    }
+
+    campaignCheck();
+  }
+
+  function campaignWin() {
+    if (camp.won || camp.lost) return;
+    camp.won = true;
+    // A win rewrites the campaign ledger the next mission will inherit, and hands
+    // the same figures to the debrief. A loss leaves it untouched, so a retry
+    // brings back exactly the fleet that flew this attempt.
+    const carry = computeCarryover();
+    campRun = {
+      fleet: carry.fleet, bonusReserve: carry.bonusReserve,
+      veterans: carry.veterans, acesKilled: carry.acesKilled,
+      missionsWon: carry.missionsWon, kills: carry.kills
+    };
+    endMatch({ kind: "victory", levelKey: camp.levelKey, level: camp.level, carry });
+  }
+
+  function campaignLose(reason) {
+    if (camp.won || camp.lost) return;
+    camp.lost = true;
+    endMatch({ kind: "defeat", reason, levelKey: camp.levelKey, level: camp.level });
+  }
+
+  function campaignCheck() {
+    if (!camp || camp.won || camp.lost) return;
+    // Losses are checked here; wins come from the phase machine finishing. A
+    // mission is lost the moment there is no pilot left to fly it, or — on the
+    // convoy — the moment the transport it is built around is destroyed.
+    if (!ships.some(s => s.human && !s.dead)) {
+      campaignLose("all pilots lost");
+      return;
+    }
+    if (camp.levelKey === "convoy" && camp.transports[0].dead) {
+      campaignLose("the transport was destroyed");
+    }
+  }
+
+  function deployWave(w) {
+    const n = camp.waveIndex + 1;
+    camp.reserve[TEAM_ENEMY] += w.reserve;
+    for (let i = 0; i < w.count; i++) {
+      makeCombatant(TEAM_ENEMY, "fighter",
+        bounds.x1 - rand(80, 240) * U,
+        rand(bounds.y0 + 140 * U, bounds.y1 - 140 * U),
+        { skill: w.skill, role: "hunt" });
+    }
+    banner = { text: "WAVE " + n, t: 2.4, colour: "#ff8f77",
+      sub: n === camp.waves.length ? "last wave — hold them off" : null };
+    gameSound("start");
+  }
+
+  function campaignTick(dt) {
+    if (!camp) return;
+    shake = Math.max(0, shake - 90 * dt);
+    updatePickups(dt);
+
+    // Convoy progress, for the HUD and the wave/phase logic.
+    if (camp.levelKey === "convoy") {
+      const t = camp.transports[0];
+      if (t && !t.dead) camp.progress = clamp01(
+        (t.x - camp.transportStartX) / (camp.exitX - camp.transportStartX));
+    }
+
+    // The core's shield holds while any generator stands. When the last one
+    // falls the shield drops on its own.
+    const m = camp.mothership;
+    if (m && m.shielded && camp.shieldGens.length &&
+        camp.shieldGens.every(g => g.dead)) {
+      m.shielded = false;
+      banner = { text: "SHIELD DOWN", sub: "the core is exposed", t: 2.8, colour: "#ffe56d" };
+      chatter("Shield's collapsing — the core's exposed!", "#ffe56d");
+      gameSound("start"); addShake(22);
+    }
+
+    // Live hangar bays keep launching fighters until the enemy hits its cap or
+    // the bays are destroyed. This is the pressure that makes them worth killing.
+    if (camp.hangars.length) {
+      const liveH = camp.hangars.filter(h => !h.dead);
+      if (liveH.length) {
+        camp.hangarTimer -= dt;
+        if (camp.hangarTimer <= 0) {
+          camp.hangarTimer = 7;
+          const enemyLive = ships.filter(s => s.team === TEAM_ENEMY &&
+            s.kind === "fighter" && s.alive && !s.dead).length;
+          if (enemyLive < 11) for (const h of liveH) launchFromHangar(h);
+        }
+      }
+    }
+
+    // The death sequence: chained blasts rolling across the hull, then the win.
+    if (camp.finale != null && camp.finale > 0) {
+      camp.finale -= dt;
+      if (m && Math.random() < 0.7) {
+        const rr = m.radius;
+        const col = ["#ffe56d", "#ff8f77", "#ffffff"][Math.floor(Math.random() * 3)];
+        burst(m.x + rand(-1, 1) * rr, m.y + rand(-1, 1) * rr * 0.6, col, 16, 260 * U);
+      }
+      if (camp.finale <= 0) { camp.finale = 0; campaignWin(); }
+    }
+
+    // Advance the phase machine.
+    camp.phaseClock += dt;
+    const p = camp.phases[camp.phase];
+    if (p) {
+      if (p.tick) p.tick(dt);
+      if (!camp.finale && p.done && p.done()) advancePhase();
+    }
+
+    campaignCheck();
+  }
+
+  /* ── campaign flight AI ──────────────────────────────────────────────────
+     One dispatch by kind. Fighters pick an enemy-side target (weighted so a
+     raider goes for the transport, not its guards), fly a lead shot, and keep
+     to their role's lane. `skill` is the whole difficulty knob: a low-skill bot
+     turns into its aim slower, fires in a wider, looser cone, and holds fire
+     more often, so Level 1's opening wave misses in ways Level 3's fleet does
+     not. */
+  const SUBSYSTEM = { turret: 1, hangar: 1, shieldgen: 1 };
+  function driveCampaignBot(s, dt) {
+    // Stationary structures don't fly; the core, hangars and generators just sit
+    // and take it (turrets track and fire, handled on their own).
+    if (s.kind === "mothership" || s.kind === "hangar" || s.kind === "shieldgen") return;
+    if (s.kind === "turret") { driveTurret(s, dt); return; }
+    if (s.kind === "flagship") { driveFlagship(s, dt); return; }
+    if (s.kind === "transport") { if (!s.kinematic) driveTransport(s, dt); return; }
+    // Gunships and fighters share the dogfighting AI below.
+
+    const i = s.input;
+    const skill = s.skill;
+
+    // The environment comes first: climb out of any gravity well it has drifted
+    // into, or slip sideways past a rock it is about to fly into. An urgent avoid
+    // overrides the fight — a well kills you faster than an enemy does.
+    let avoidX = null, avoidY = null;
+    for (const h of hazards) {
+      if (!hazardActive(h)) continue;
+      const dx = sepX(h.x, s.x), dy = sepY(h.y, s.y), d = Math.hypot(dx, dy);
+      if (d < h.reach * 0.72) {
+        avoidX = s.x - dx / (d || 1) * 400; avoidY = s.y - dy / (d || 1) * 400;
+        break;
+      }
+    }
+    if (avoidX == null) {
+      for (const r of rocks) {
+        const dx = sepX(r.x, s.x), dy = sepY(r.y, s.y), d = Math.hypot(dx, dy);
+        if (d > r.r + 150 * U) continue;
+        if (Math.cos(s.a) * dx + Math.sin(s.a) * dy <= 0) continue;   // already behind
+        avoidX = s.x - dy; avoidY = s.y + dx;
+        break;
+      }
+    }
+
+    let target = null, best = Infinity, tdx = 0, tdy = 0;
+    for (const o of ships) {
+      if (o.team === s.team || !o.alive || o.dead || o.shielded) continue;
+      const dx = sepX(o.x, s.x), dy = sepY(o.y, s.y);
+      const d = Math.hypot(dx, dy);
+      let w = 1;
+      if (s.role === "hunt" && o.kind === "transport") w = 0.5;
+      // The blockade gunship holds the lane against the wing — it duels fighters
+      // and largely ignores the cargo, so the fight is with you, not the truck.
+      if (s.role === "gunship" && o.kind === "transport") w = 3;
+      // Escorts screen their charge: they go after whatever is closest to the
+      // transport, not whatever is closest to themselves, so the cargo is
+      // actually defended and not just orbited.
+      if (s.role === "escort" && camp.transports[0] && !camp.transports[0].dead) {
+        const dtr = Math.hypot(sepX(o.x, camp.transports[0].x),
+                               sepY(o.y, camp.transports[0].y));
+        w *= dtr < 420 * U ? 0.5 : 1.5;
+      }
+      // Assault ships drive for the hull: they prefer subsystems over trading
+      // with the screen, which is what carries the allied push into the
+      // mothership instead of letting it stall in a mid-map dogfight forever.
+      if (s.role === "assault" && SUBSYSTEM[o.kind]) w = 0.5;
+      else if (o.kind === "turret") w *= 0.85;
+      const score = d * w;
+      if (score < best) { best = score; target = o; tdx = dx; tdy = dy; }
+    }
+
+    // A home anchor keeps a role in its lane instead of chasing across the map.
+    let homeX = null, homeY = null;
+    if (s.role === "escort" && camp.transports[0] && !camp.transports[0].dead) {
+      homeX = camp.transports[0].x + 130 * U; homeY = camp.transports[0].y;
+    } else if (s.role === "guard" && s.guard != null) {
+      const g = ships[s.guard];
+      if (g && !g.dead) { homeX = g.x; homeY = g.y; }
+    } else if (s.role === "defend" && camp.mothership) {
+      homeX = camp.mothership.x - 340 * U; homeY = camp.mothership.y;
+    }
+
+    // Squad orders override an ally bot's own instincts — the fleet moves as one.
+    if (s.team === TEAM_ALLY && camp.order) {
+      if (camp.order === "focus" && camp.focusTarget && camp.focusTarget.alive &&
+          !camp.focusTarget.dead && !camp.focusTarget.shielded) {
+        target = camp.focusTarget;
+        tdx = sepX(target.x, s.x); tdy = sepY(target.y, s.y);
+        homeX = null;
+      } else if (camp.order === "regroup") {
+        const pl = playerShip();
+        if (pl && pl !== s) {
+          homeX = pl.x - Math.cos(pl.a) * 130 * U;
+          homeY = pl.y - Math.sin(pl.a) * 130 * U;
+        }
+      } else if (camp.order === "defend") {
+        const d = camp.transports.find(x => !x.dead && x.team === TEAM_ALLY) ||
+                  (camp.flagship && !camp.flagship.dead ? camp.flagship : null);
+        if (d) { homeX = d.x; homeY = d.y; }
+        else { const pl = playerShip(); if (pl) { homeX = pl.x; homeY = pl.y; } }
+      }
+    }
+
+    const leash = (s.role === "escort" || s.role === "guard") ? 560 * U : Infinity;
+    let wantX, wantY, dist;
+    if (avoidX != null) {
+      // Getting clear of the hazard is the only thing that matters right now.
+      wantX = avoidX; wantY = avoidY; dist = 9e9; target = null;
+    } else if (target && Math.hypot(tdx, tdy) < leash) {
+      const tof = Math.min(1.2, Math.hypot(tdx, tdy) / (BULLET_SPD * U));
+      wantX = s.x + tdx + (target.vx || 0) * tof;
+      wantY = s.y + tdy + (target.vy || 0) * tof;
+      dist = Math.hypot(tdx, tdy);
+    } else if (homeX != null) {
+      wantX = homeX; wantY = homeY; dist = Math.hypot(homeX - s.x, homeY - s.y);
+      target = null;
+    } else if (target) {
+      const tof = Math.min(1.2, Math.hypot(tdx, tdy) / (BULLET_SPD * U));
+      wantX = s.x + tdx + (target.vx || 0) * tof;
+      wantY = s.y + tdy + (target.vy || 0) * tof;
+      dist = Math.hypot(tdx, tdy);
+    } else {
+      wantX = s.team === TEAM_ALLY ? bounds.x1 - 200 * U : bounds.x0 + 200 * U;
+      wantY = s.y; dist = 9e9;
+    }
+
+    // Peel away from a wall it is about to bury itself in.
+    const margin = 130 * U;
+    if (s.x < bounds.x0 + margin) wantX = s.x + 300 * U;
+    else if (s.x > bounds.x1 - margin) wantX = s.x - 300 * U;
+    if (s.y < bounds.y0 + margin) wantY = s.y + 300 * U;
+    else if (s.y > bounds.y1 - margin) wantY = s.y - 300 * U;
+
+    let diff = Math.atan2(wantY - s.y, wantX - s.x) - s.a;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+
+    const dead = 0.06 + (1 - skill) * 0.12;
+    if (diff > dead) i.r = true; else if (diff < -dead) i.l = true;
+
+    const speed = Math.hypot(s.vx, s.vy);
+    const aimed = Math.abs(diff) < 0.6;
+    const close = target ? 250 * U : 70 * U;
+    if (aimed && dist > close && speed < MAX_SPEED * U * (0.55 + 0.35 * skill)) {
+      i.th = true;
+    }
+
+    const cone = 0.10 + (1 - skill) * 0.16;
+    const range = BULLET_SPD * U * BULLET_LIFE * U * (0.6 + 0.35 * skill);
+    if (target && Math.abs(diff) < cone && dist < range &&
+        (skill > 0.9 || Math.random() < 0.45 + 0.5 * skill)) {
+      i.f = true;
+    }
+  }
+
+  function driveTurret(s, dt) {
+    const i = s.input;
+    let target = null, best = Infinity, tdx = 0, tdy = 0;
+    for (const o of ships) {
+      if (o.team === s.team || !o.alive || o.dead || o.shielded) continue;
+      const dx = sepX(o.x, s.x), dy = sepY(o.y, s.y);
+      const d = Math.hypot(dx, dy);
+      if (d < best) { best = d; target = o; tdx = dx; tdy = dy; }
+    }
+    if (!target) return;
+    const tof = Math.min(1.2, best / (BULLET_SPD * U));
+    const aim = Math.atan2(tdy + (target.vy || 0) * tof,
+                           tdx + (target.vx || 0) * tof);
+    // Welded to the hull: it tracks by turning in place, it never moves.
+    let diff = aim - s.a;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    s.a += Math.max(-TURN * 1.5 * dt, Math.min(TURN * 1.5 * dt, diff));
+    const range = BULLET_SPD * U * BULLET_LIFE * U * 0.95;
+    if (Math.abs(diff) < 0.12 && best < range) i.f = true;
+  }
+
+  function driveTransport(s, dt) {
+    const i = s.input;
+    let gx = s.goalX, gy = s.goalY;
+    if (s.role === "flee") {
+      let nx = null, ny = null, nd = Infinity;
+      for (const o of ships) {
+        if (o.team === s.team || !o.alive || o.dead) continue;
+        const dx = o.x - s.x, dy = o.y - s.y, d = Math.hypot(dx, dy);
+        if (d < nd) { nd = d; nx = dx; ny = dy; }
+      }
+      if (nx != null && nd < 660 * U) { gx = s.x - nx; gy = s.y - ny; }
+      else {
+        if (Math.hypot(s.goalX - s.x, s.goalY - s.y) < 170 * U) {
+          s.goalX = rand(bounds.x0 + 320 * U, bounds.x1 - 320 * U);
+          s.goalY = rand(bounds.y0 + 320 * U, bounds.y1 - 320 * U);
+        }
+        gx = s.goalX; gy = s.goalY;
+      }
+    }
+    const m = 110 * U;
+    gx = Math.max(bounds.x0 + m, Math.min(bounds.x1 - m, gx));
+    gy = Math.max(bounds.y0 + m, Math.min(bounds.y1 - m, gy));
+    let diff = Math.atan2(gy - s.y, gx - s.x) - s.a;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    if (diff > 0.08) i.r = true; else if (diff < -0.08) i.l = true;
+    const speed = Math.hypot(s.vx, s.vy);
+    // Only the raid's fleeing transports fly by thrust; the convoy transport is
+    // kinematic and never reaches here.
+    if (Math.abs(diff) < 0.5 && speed < MAX_SPEED * U * 0.5) i.th = true;
+  }
+
+  // The allied flagship: a slow capital that creeps to the front, then turns to
+  // face the enemy and adds its guns to the push. It doesn't dodge — it soaks.
+  function driveFlagship(s, dt) {
+    const i = s.input;
+    const m = 220 * U;
+    const gx = Math.max(bounds.x0 + m, Math.min(bounds.x1 - m, s.goalX));
+    const gy = Math.max(bounds.y0 + m, Math.min(bounds.y1 - m, s.goalY));
+    const distGoal = Math.hypot(gx - s.x, gy - s.y);
+
+    let tgt = null, best = Infinity, tdx = 0, tdy = 0;
+    for (const o of ships) {
+      if (o.team === s.team || !o.alive || o.dead || o.shielded) continue;
+      const dx = sepX(o.x, s.x), dy = sepY(o.y, s.y), d = Math.hypot(dx, dy);
+      if (d < best) { best = d; tdx = dx; tdy = dy; tgt = o; }
+    }
+
+    // Steer to the front while there is ground to cover, then aim the hull at
+    // whatever is closest so its forward guns bear.
+    const wantA = distGoal > 240 * U
+      ? Math.atan2(gy - s.y, gx - s.x)
+      : (tgt ? Math.atan2(tdy, tdx) : s.a);
+    let diff = wantA - s.a;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    if (diff > 0.05) i.r = true; else if (diff < -0.05) i.l = true;
+
+    const speed = Math.hypot(s.vx, s.vy);
+    if (distGoal > 240 * U && Math.abs(diff) < 0.4 && speed < MAX_SPEED * U * 0.2) {
+      i.th = true;
+    }
+    const range = BULLET_SPD * U * BULLET_LIFE * U;
+    if (tgt && Math.abs(diff) < 0.16 && best < range) i.f = true;
+  }
 
   function spotIsClear(x, y) {
     const r = SHIP_R * U;
@@ -2388,6 +3657,10 @@
   }
 
   function respawnPoint(ship) {
+    // Campaign reinforcements fly in from their own side of the map, not from a
+    // ring round the middle — a fresh enemy appearing amidships would be a ship
+    // teleporting into your six. Yours enter behind you, theirs from their line.
+    if (mode.campaign) return campaignSpawnPoint(ship);
     const cx = (bounds.x0 + bounds.x1) / 2;
     const cy = (bounds.y0 + bounds.y1) / 2;
     const r = SHIP_R * U;
@@ -2805,6 +4078,7 @@
     const i = s.input;
     i.l = i.r = i.th = i.f = false;
     if (!s.alive) return;
+    if (mode.campaign) { driveCampaignBot(s, dt); return; }
 
     s.think = (s.think || 0) - dt;
     const R = SHIP_R * U;
@@ -3083,7 +4357,7 @@
           ship.vx = ship.vy = 0;
           ship.a = p.a;
           ship.alive = true;
-          ship.hull = ROYALE_HULL;
+          ship.hull = ship.maxHull;
           ship.invuln = INVULN;
         }
         continue;
@@ -3091,6 +4365,25 @@
 
       ship.invuln = Math.max(0, ship.invuln - dt);
       ship.cool = Math.max(0, ship.cool - dt);
+      if (ship.buffRapid > 0) ship.buffRapid = Math.max(0, ship.buffRapid - dt);
+      if (ship.buffHeavy > 0) ship.buffHeavy = Math.max(0, ship.buffHeavy - dt);
+
+      // The convoy transport is kinematic: it turns toward its planet and moves
+      // at a fixed cruise speed, ignoring thrust, drag and gravity, so it crosses
+      // the map at a rate the escort can plan around and no well can drag it in.
+      if (mode.campaign && ship.kinematic) {
+        const ang = Math.atan2(ship.goalY - ship.y, ship.goalX - ship.x);
+        let d = ang - ship.a;
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        ship.a += Math.max(-TURN * dt, Math.min(TURN * dt, d));
+        ship.vx = Math.cos(ship.a) * ship.cruise;
+        ship.vy = Math.sin(ship.a) * ship.cruise;
+        ship.x += ship.vx * dt;
+        ship.y += ship.vy * dt;
+        ship.thrusting = true;
+        continue;
+      }
 
       const k = ship.input;
       if (k.l) ship.a -= TURN * dt;
@@ -3106,7 +4399,10 @@
         }
       }
 
-      const pull = applyGravity(ship, dt);
+      // Capitals and structures are too massive for the wells to move; only
+      // fighters get pulled (and dodge). Everywhere but the campaign, every ship
+      // is a fighter, so this is the same call it always was.
+      const pull = (mode.campaign && ship.radius) ? 0 : applyGravity(ship, dt);
 
       const damp = Math.exp(-DRAG * dt);
       ship.vx *= damp; ship.vy *= damp;
@@ -3129,16 +4425,30 @@
         continue;
       }
 
-      if (k.f && ship.burstLeft === 0 && ship.cool <= 0) {
-        ship.burstLeft = BURST_SIZE;
-      }
-      if (ship.burstLeft > 0 && ship.cool <= 0) {
-        if (fire(ship)) {
-          ship.burstLeft--;
-          ship.cool = ship.burstLeft > 0 ? BURST_GAP : FIRE_GAP;
-        } else {
-          // Keep the burst queued until one of this ship's old rounds expires.
-          ship.cool = BURST_GAP;
+      if (mode.campaign && ship.human && DIFFICULTY[campaignDifficulty].autoFire) {
+        // On Easy the campaign pilot fires continuously — hold the trigger for a
+        // steady stream, no burst and no recovery pause, only the round-in-the-air
+        // cap. Hard and Impossible fall through to the three-round burst below.
+        if (k.f && ship.cool <= 0) {
+          if (fire(ship)) {
+            ship.cool = CAMPAIGN_FIRE_GAP * (ship.buffRapid > 0 ? 0.5 : 1);
+          } else {
+            ship.cool = 0.05;   // magazine full — retry as soon as one expires
+          }
+        }
+      } else {
+        if (k.f && ship.burstLeft === 0 && ship.cool <= 0) {
+          ship.burstLeft = BURST_SIZE;
+        }
+        if (ship.burstLeft > 0 && ship.cool <= 0) {
+          if (fire(ship)) {
+            ship.burstLeft--;
+            const rapid = ship.buffRapid > 0 ? 0.45 : 1;
+            ship.cool = (ship.burstLeft > 0 ? BURST_GAP : FIRE_GAP) * rapid;
+          } else {
+            // Keep the burst queued until one of this ship's old rounds expires.
+            ship.cool = BURST_GAP;
+          }
         }
       }
     }
@@ -3159,8 +4469,11 @@
           dx = Math.cos(t); dy = Math.sin(t); d = 1;
         }
         const nx = dx / d, ny = dy / d, push = 90 * U;
-        a.vx += nx * push; a.vy += ny * push;
-        b.vx -= nx * push; b.vy -= ny * push;
+        // Capital ships have too much mass to shove: a fighter bounces off the
+        // hull, the hull does not move. In every other mode all ships are
+        // fighters, so this is the same all-pairs bounce it always was.
+        if (a.kind === "fighter") { a.vx += nx * push; a.vy += ny * push; }
+        if (b.kind === "fighter") { b.vx -= nx * push; b.vy -= ny * push; }
       }
     }
 
@@ -3200,8 +4513,8 @@
       if (!spent) {
         for (const s of ships) {
           if (!s.alive || s.invuln > 0 || !canHit(b.owner, s)) continue;
-          if (gap2(b.x, b.y, s.x, s.y) < (shipR + 2) ** 2) {
-            damageShip(s, mode.pvp ? "shot" : "ff", ships[b.owner]);
+          if (gap2(b.x, b.y, s.x, s.y) < ((s.radius || shipR) + 2) ** 2) {
+            damageShip(s, mode.pvp ? "shot" : "ff", ships[b.owner], b.dmg || 1);
             if (!worldRunning()) return;
             spent = true;
             break;
@@ -3234,7 +4547,9 @@
     resolveRockCollisions();
 
     for (const s of ships) {
-      if (!s.alive || s.invuln > 0) continue;
+      // The convoy transport is on a rails-steady course down a cleared lane;
+      // a stray drifting asteroid neither knocks it nor chips it.
+      if (!s.alive || s.invuln > 0 || s.kinematic) continue;
       for (const r of rocks) {
         if (gap2(s.x, s.y, r.x, r.y) < (r.r + shipR * 0.75) ** 2) {
           // Push a damaged ship clear so one overlap cannot become both hits as
@@ -3263,7 +4578,9 @@
 
     updateCamera(dt);
 
-    if (mode.closing) {
+    if (mode.campaign) {
+      campaignTick(dt);
+    } else if (mode.closing) {
       // Keep a standing rock population so the shrinking arena stays hostile.
       // The target falls as the wall closes, or the endgame turns into soup.
       const room = (bounds.x1 - bounds.x0) * (bounds.y1 - bounds.y0) /
@@ -3351,6 +4668,16 @@
 
   function drawShip(s) {
     if (!s.alive) return;
+    if (mode.campaign && s.kind !== "fighter") {
+      if (s.kind === "mothership") drawMothership(s);
+      else if (s.kind === "transport") drawTransport(s);
+      else if (s.kind === "flagship") drawFlagship(s);
+      else if (s.kind === "gunship") drawGunship(s);
+      else if (s.kind === "turret") drawTurret(s);
+      else if (s.kind === "hangar") drawHangar(s);
+      else if (s.kind === "shieldgen") drawShieldGen(s);
+      return;
+    }
     // Blink while the respawn shield is up so nobody wastes shots on a ghost.
     const blink = s.invuln > 0 && Math.floor(s.invuln * 10) % 2 === 0;
     const alpha = s.invuln > 0 ? (blink ? 0.35 : 0.9) : 1;
@@ -3378,6 +4705,298 @@
         ctx.stroke();
       });
     }
+    // An ace wears a hostile chevron so you can pick it out of the swarm.
+    if (mode.campaign && s.ace) {
+      glow("#ff3b6b", 1.3 * (12 / r), alpha, () => {
+        ctx.beginPath();
+        ctx.moveTo(-14, -11); ctx.lineTo(-20, 0); ctx.lineTo(-14, 11);
+        ctx.stroke();
+      });
+    }
+    // A named wingmate wears a forward chevron — the ally's answer to the ace's,
+    // so a known face is findable in the fleet. Veterans burn a touch brighter.
+    if (mode.campaign && s.hero && !s.ace) {
+      glow("#8fe3c0", 1.2 * (12 / r), alpha * (s.veteran ? 0.95 : 0.7), () => {
+        ctx.beginPath();
+        ctx.moveTo(14, -10); ctx.lineTo(20, 0); ctx.lineTo(14, 10);
+        ctx.stroke();
+      });
+    }
+    ctx.restore();
+
+    // A ring on a pilot who is running salvaged ordnance — teal shield, amber
+    // rapid, orange heavy — so the buff is visible on the ship, not just the HUD.
+    if (mode.campaign && (s.buffRapid > 0 || s.buffHeavy > 0)) {
+      const col = s.buffHeavy > 0 ? "#ff9d5c" : "#ffe56d";
+      glow(col, 1.4, 0.4 + 0.3 * Math.sin(clock * 8), () => {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, r * 1.7, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+    }
+  }
+
+  /* The mission's capital ships. All hairline vector like everything else, sized
+     off `radius` so the same shape reads at fighter scale on the minimap and at
+     warship scale up close. */
+  function drawTransport(s) {
+    const R = s.radius || 30 * U;
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.a);
+    glow(s.colour, 2, 1, () => {
+      ctx.beginPath();
+      ctx.moveTo(R * 1.15, 0);
+      ctx.lineTo(R * 0.55, -R * 0.55);
+      ctx.lineTo(-R * 1.0, -R * 0.55);
+      ctx.lineTo(-R * 1.0, R * 0.55);
+      ctx.lineTo(R * 0.55, R * 0.55);
+      ctx.closePath();
+      ctx.stroke();
+      // cargo cells, so it reads as a hauler and not just a bigger fighter
+      for (let k = 0; k < 3; k++) {
+        ctx.strokeRect(-R * 0.85 + k * R * 0.52, -R * 0.34, R * 0.4, R * 0.68);
+      }
+    });
+    if (s.thrusting && Math.random() > 0.3) {
+      glow("#ffcb42", 1.6, 0.8, () => {
+        ctx.beginPath();
+        ctx.moveTo(-R * 1.0, -R * 0.28);
+        ctx.lineTo(-R * 1.25 - Math.random() * 10, 0);
+        ctx.lineTo(-R * 1.0, R * 0.28);
+        ctx.stroke();
+      });
+    }
+    ctx.restore();
+  }
+
+  function drawTurret(s) {
+    const R = s.radius || 15 * U;
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.a);
+    glow(s.colour, 1.8, 1, () => {
+      ctx.beginPath();
+      ctx.arc(0, 0, R, 0, Math.PI * 2);
+      ctx.moveTo(0, 0);
+      ctx.lineTo(R * 2.0, 0);          // the barrel, pointed where it fires
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  function drawMothership(s) {
+    const R = s.radius || 150 * U;
+    const steel = "#c9d4e0";
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.a);
+
+    // Shield bubble — a slow pulse while it holds, gone the moment it drops.
+    if (s.shielded) {
+      const p = 0.5 + 0.5 * Math.sin(clock * 2);
+      glow("#87d8ff", 2, 0.22 + 0.24 * p, () => {
+        ctx.beginPath();
+        ctx.arc(0, 0, R * 1.2, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+    }
+
+    // The hull: a long angular dreadnought wedge.
+    glow(steel, 2.4, 1, () => {
+      ctx.beginPath();
+      ctx.moveTo(R * 1.02, 0);
+      ctx.lineTo(R * 0.36, -R * 0.5);
+      ctx.lineTo(-R * 0.7, -R * 0.62);
+      ctx.lineTo(-R * 1.0, -R * 0.28);
+      ctx.lineTo(-R * 1.0, R * 0.28);
+      ctx.lineTo(-R * 0.7, R * 0.62);
+      ctx.lineTo(R * 0.36, R * 0.5);
+      ctx.closePath();
+      ctx.stroke();
+    });
+    // Spine ribs down the length, so the hull has plating not just an outline.
+    glow(steel, 1.1, 0.6, () => {
+      for (let k = -2; k <= 2; k++) {
+        ctx.beginPath();
+        ctx.moveTo(R * 0.34, k * R * 0.2);
+        ctx.lineTo(-R * 0.92, k * R * 0.2);
+        ctx.stroke();
+      }
+    });
+    // Engine banks flaring off the stern.
+    glow("#87d8ff", 2.2, 0.9, () => {
+      for (const gy of [-0.4, 0, 0.4]) {
+        ctx.beginPath();
+        ctx.moveTo(-R * 1.0, gy * R - 7);
+        ctx.lineTo(-R * 1.18 - Math.random() * 9, gy * R);
+        ctx.lineTo(-R * 1.0, gy * R + 7);
+        ctx.stroke();
+      }
+    });
+    // The core: red and steady behind the shield, a fast yellow throb once it is
+    // exposed, and a white-hot bloom that swells as the ship comes apart.
+    const dead = !s.shielded;
+    const pulse = 0.55 + 0.45 * Math.sin(clock * (dead ? 7 : 3));
+    glow(s.dying ? "#ffffff" : dead ? "#ffe56d" : ENEMY_COLOUR, 3, pulse, () => {
+      ctx.beginPath();
+      ctx.arc(-R * 0.14, 0, R * (s.dying ? 0.34 : 0.22), 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    // Breaking up: hairline splits opening across the hull, flashing white.
+    if (s.dying) {
+      glow("#fff", 1.6, 0.5 + 0.5 * Math.random(), () => {
+        for (let k = 0; k < 5; k++) {
+          const a0 = k * 1.7;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a0) * R * 0.2, Math.sin(a0) * R * 0.16);
+          ctx.lineTo(Math.cos(a0) * R * (0.7 + Math.random() * 0.3),
+                     Math.sin(a0) * R * (0.5 + Math.random() * 0.3));
+          ctx.stroke();
+        }
+      });
+    }
+    ctx.restore();
+  }
+
+  // Your flagship: a friendly cruiser, teal and blockier than the enemy wedge,
+  // with a bright bridge and engine glow so it reads as "ours" at a glance.
+  function drawFlagship(s) {
+    const R = s.radius || 92 * U;
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.a);
+    glow(s.colour, 2.4, 1, () => {
+      ctx.beginPath();
+      ctx.moveTo(R * 1.05, 0);
+      ctx.lineTo(R * 0.5, -R * 0.42);
+      ctx.lineTo(-R * 0.95, -R * 0.5);
+      ctx.lineTo(-R * 1.0, -R * 0.2);
+      ctx.lineTo(-R * 1.0, R * 0.2);
+      ctx.lineTo(-R * 0.95, R * 0.5);
+      ctx.lineTo(R * 0.5, R * 0.42);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.strokeRect(-R * 0.2, -R * 0.22, R * 0.5, R * 0.44);   // bridge block
+    });
+    glow("#ffe56d", 2, 0.85, () => {
+      for (const gy of [-0.28, 0.28]) {
+        ctx.beginPath();
+        ctx.moveTo(-R * 1.0, gy * R - 6);
+        ctx.lineTo(-R * 1.16 - Math.random() * 8, gy * R);
+        ctx.lineTo(-R * 1.0, gy * R + 6);
+        ctx.stroke();
+      }
+    });
+    ctx.restore();
+  }
+
+  // A blockade gunship: a heavy, armoured fighter — a mini-boss silhouette.
+  function drawGunship(s) {
+    const R = s.radius || 34 * U;
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.a);
+    glow(s.colour, 2.2, 1, () => {
+      ctx.beginPath();
+      ctx.moveTo(R * 1.1, 0);
+      ctx.lineTo(R * 0.2, -R * 0.7);
+      ctx.lineTo(-R * 0.8, -R * 0.55);
+      ctx.lineTo(-R * 0.55, 0);
+      ctx.lineTo(-R * 0.8, R * 0.55);
+      ctx.lineTo(R * 0.2, R * 0.7);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.moveTo(R * 0.2, -R * 0.4); ctx.lineTo(R * 1.0, -R * 0.2);   // gun pods
+      ctx.moveTo(R * 0.2, R * 0.4); ctx.lineTo(R * 1.0, R * 0.2);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  // A hangar bay: an armoured box with a lit launch slot.
+  function drawHangar(s) {
+    const R = s.radius || 26 * U;
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.a);
+    glow(s.colour, 2, 1, () => {
+      ctx.strokeRect(-R, -R * 0.7, R * 2, R * 1.4);
+    });
+    glow("#fff2c0", 1.6, 0.5 + 0.3 * Math.sin(clock * 4), () => {
+      ctx.beginPath();
+      ctx.moveTo(R, -R * 0.4); ctx.lineTo(R, R * 0.4);          // the launch mouth
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  // A shield generator: a node under a small humming dome.
+  function drawShieldGen(s) {
+    const R = s.radius || 16 * U;
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    glow(s.colour, 1.9, 0.9, () => {
+      ctx.beginPath();
+      ctx.arc(0, 0, R, Math.PI, 0);                            // dome
+      ctx.moveTo(-R, 0); ctx.lineTo(R, 0);
+      ctx.stroke();
+    });
+    const p = 0.4 + 0.4 * Math.sin(clock * 3 + s.x);
+    glow("#cdefff", 1.4, p, () => {
+      ctx.beginPath();
+      ctx.arc(0, -R * 0.1, R * 0.4, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  // Salvage: a slowly spinning diamond in its kind's colour, blinking out as its
+  // life runs down so a canister about to vanish reads as one.
+  function drawPickup(p) {
+    const R = 12 * U;
+    const spec = PICKUPS[p.kind] || { colour: "#ffe56d" };
+    const fade = p.life < 3 ? clamp01(p.life / 3) : 1;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.spin);
+    glow(spec.colour, 2, (0.55 + 0.45 * Math.sin(clock * 5)) * fade, () => {
+      ctx.beginPath();
+      ctx.moveTo(0, -R); ctx.lineTo(R, 0); ctx.lineTo(0, R); ctx.lineTo(-R, 0);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.moveTo(-R * 0.4, 0); ctx.lineTo(R * 0.4, 0);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  // The convoy's destination: a banded planet with a soft halo, sitting at the
+  // far side of the map so "home" is a place you can see the whole way there.
+  function drawPlanet(pl) {
+    if (!onScreen(pl.x, pl.y, pl.r + 40)) return;
+    const R = pl.r;
+    ctx.save();
+    ctx.translate(pl.x, pl.y);
+    glow("#7fb4ff", 3, 0.5 + 0.15 * Math.sin(clock * 1.5), () => {
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 1.12, 0, Math.PI * 2);       // atmosphere halo
+      ctx.stroke();
+    });
+    glow("#9ad0ff", 2.4, 1, () => {
+      ctx.beginPath();
+      ctx.arc(0, 0, R, 0, Math.PI * 2);              // the disc
+      ctx.stroke();
+    });
+    // A few latitude bands, clipped to the disc, so it reads as a world.
+    glow("#6fa8e6", 1.3, 0.65, () => {
+      for (const f of [-0.55, -0.2, 0.2, 0.55]) {
+        const yy = f * R, half = Math.sqrt(Math.max(0, R * R - yy * yy));
+        ctx.beginPath();
+        ctx.moveTo(-half, yy); ctx.lineTo(half, yy);
+        ctx.stroke();
+      }
+    });
     ctx.restore();
   }
 
@@ -3754,12 +5373,28 @@
     ctx.stroke();
     ctx.globalAlpha = 1;
 
+    // In the convoy the planet is home — mark it so the player always knows
+    // which way the transport is headed.
+    if (mode.campaign && camp && camp.planet) {
+      ctx.fillStyle = "#9ad0ff";
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.arc(mx(camp.planet.x), my(camp.planet.y), 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
     for (const s of ships) {
       if (s.dead) continue;
       ctx.globalAlpha = s.alive ? 1 : 0.35;
       ctx.fillStyle = s.colour;
+      const rad = s.kind === "mothership" ? 7
+        : s.kind === "flagship" ? 6
+        : s.kind === "transport" || s.kind === "gunship" ? 5
+        : s.kind === "hangar" || s.kind === "shieldgen" ? 4
+        : s.id === watching ? 4 : 3;
       ctx.beginPath();
-      ctx.arc(mx(s.x), my(s.y), s.id === watching ? 4 : 3, 0, Math.PI * 2);
+      ctx.arc(mx(s.x), my(s.y), rad, 0, Math.PI * 2);
       ctx.fill();
       if (s.id === watching) {
         ctx.strokeStyle = s.colour;
@@ -3887,7 +5522,87 @@
     });
   }
 
+  // A labelled progress/health bar for the campaign HUD.
+  function drawBar(x, y, w, h, frac, colour) {
+    ctx.strokeStyle = "#9a7a1f";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = colour;
+    ctx.fillRect(x + 1, y + 1, Math.max(0, (w - 2) * clamp01(frac)), h - 2);
+  }
+
+  function drawCampaignHUD() {
+    // The pilots and the shared reserve pile they draw respawns from.
+    const pilots = ships.filter(s => s.human);
+    pilots.forEach((s, i) => {
+      const y = 34 + i * 26;
+      text(s.name, 24, y, 15, s.dead ? "#ffcb42" : s.colour, "left");
+      if (s.dead) text("OUT", 150, y, 13, "#ffcb42", "left");
+      else text("HULL " + s.hull, 150, y, 13,
+                s.hull > 1 ? s.colour : "#ff8f77", "left");
+      if (s.id === watching) text("▸", 12, y, 14, s.colour, "left", 0.9);
+    });
+    const py = 34 + pilots.length * 26 + 6;
+    text("RESERVE", 24, py, 12, "#ffcb42", "left");
+    for (let i = 0; i < Math.min(lives, 12); i++) {
+      shipPip(98 + i * 16, py - 4, "#ffe56d", 0.85);
+    }
+
+    // The objective, dead centre, with whatever readout the level wants.
+    const cx = SCREEN_W / 2;
+    text(camp.objective, cx, 34, 18, "#ffe56d");
+    if (camp.levelKey === "convoy") {
+      drawBar(cx - 120, 44, 240, 10, camp.progress, "#87d8ff");
+      text("DISTANCE " + Math.round(camp.progress * 100) + "%", cx, 74, 12, "#ffcb42");
+      const t = camp.transports[0];
+      if (t && !t.dead) {
+        text("TRANSPORT", cx, 94, 11, "#87d8ff");
+        drawBar(cx - 90, 100, 180, 8, t.hull / t.maxHull, "#87d8ff");
+      }
+      text("WAVE " + Math.min(camp.waveIndex, camp.waves.length) +
+           " / " + camp.waves.length, cx, 126, 12, "#ff8f77");
+    } else if (camp.levelKey === "raid") {
+      const left = camp.transports.filter(t => !t.dead).length;
+      text("TRANSPORTS LEFT   " + left + " / " + camp.transports.length,
+           cx, 58, 15, "#ff9d5c");
+    } else if (camp.levelKey === "mothership") {
+      const m = camp.mothership;
+      const hangars = camp.hangars.filter(h => !h.dead).length;
+      const gens = camp.shieldGens.filter(g => !g.dead).length;
+      if (hangars) {
+        text("HANGAR BAYS  " + hangars + " / " + camp.hangars.length, cx, 58, 14, "#ffb347");
+      } else if (m.shielded) {
+        text("SHIELD GENERATORS  " + gens + " / " + camp.shieldGens.length,
+             cx, 58, 14, "#87d8ff");
+      } else {
+        text(m.dying ? "MOTHERSHIP DOWN" : "CORE EXPOSED — KILL IT", cx, 54, 14, "#ffe56d");
+        drawBar(cx - 110, 64, 220, 10, m.hull / m.maxHull, ENEMY_COLOUR);
+      }
+    }
+
+    // Squad order, and the keys that give one — the pilot commands a fleet.
+    if (camp.order) {
+      text("WING: " + ORDER_LABEL[camp.order], cx, SCREEN_H - 40, 13, "#5fd0a0");
+    }
+    text("1 FOCUS   2 DEFEND   3 REGROUP", cx, SCREEN_H - 20, 11, "#ffcb42",
+         "center", 0.75);
+
+    // Radio chatter, a short scrolling log bottom-left.
+    const live = comms.filter(c => c.until > clock);
+    live.slice(0, 4).forEach((c, i) => {
+      const a = Math.min(1, (c.until - clock) * 0.8);
+      text("▸ " + c.text, 22, SCREEN_H - 92 + i * 20, 12, c.colour, "left", a * 0.9);
+    });
+
+    if (ships.filter(s => !s.dead && s.alive).length > 1) {
+      text("TAB — follow next ship", 22, SCREEN_H - 8, 11, "#ffcb42", "left", 0.7);
+    }
+    drawMinimap();
+    drawKillFeed();
+  }
+
   function drawHUD() {
+    if (mode.campaign) { drawCampaignHUD(); return; }
     if (mode.pvp) {
       // Stocks down the left, so the minimap owns the top-right corner.
       ships.forEach((s, i) => {
@@ -3947,51 +5662,78 @@
   function drawBanner() {
     if (!banner) return;
     const a = Math.min(1, banner.t * 1.8);
-    text(banner.text, SCREEN_W / 2, SCREEN_H / 2 - 6, 42, banner.colour, "center", a);
+    // Near the top of the screen rather than across the middle, and smaller, so
+    // a callout never sits over the fight it is announcing.
+    text(banner.text, SCREEN_W / 2, 150, 32, banner.colour, "center", a);
     if (banner.sub) {
-      text(banner.sub, SCREEN_W / 2, SCREEN_H / 2 + 26, 16, banner.colour, "center", a * 0.8);
+      text(banner.sub, SCREEN_W / 2, 176, 15, banner.colour, "center", a * 0.8);
     }
   }
 
   function drawTitle() {
-    text("CROSSFIRE", SCREEN_W / 2, 128, 70, "#ffe56d");
-    text("asteroids — open space, or a closing wall", SCREEN_W / 2, 164, 16, "#ffcb42");
+    text("CROSSFIRE", SCREEN_W / 2, 118, 64, "#ffe56d");
+    text("asteroids — open space, a closing wall, or a war to fight",
+         SCREEN_W / 2, 154, 15, "#ffcb42");
     text("CLICK A MODE  ·  OR MOVE WITH ARROWS + ENTER",
-         SCREEN_W / 2, 205, 13, "#ffcb42", "center", 0.9);
+         SCREEN_W / 2, 188, 13, "#ffcb42", "center", 0.9);
 
     const rows = [
-      ["survival", MODES.survival.name, "CO-OP · FRIENDLY FIRE OPTIONAL", "#ffe56d"],
-      ["royale",   MODES.royale.name,   "",                              "#ff8f77"],
+      ["survival", MODES.survival.name, "CO-OP · FRIENDLY FIRE OPTIONAL",  "#ffe56d"],
+      ["royale",   MODES.royale.name,   "TWO-HIT HULLS · THE WALL CLOSES IN", "#ff8f77"],
+      ["campaign", "CAMPAIGN",          "THREE MISSIONS · ESCORT · RAID · MOTHERSHIP", "#6dffbf"],
       ["online",   "ONLINE",            "JOIN A LOBBY · OR HOST YOUR OWN", "#87d8ff"]
     ];
     rows.forEach(([key, name, blurb, colour], i) => {
-      const y = 262 + i * 96;
-      tapButton(name, SCREEN_W / 2, y, 560, 52, colour,
+      const y = 230 + i * 78;
+      tapButton(name, SCREEN_W / 2, y, 560, 46, colour,
                 () => pickTitleRow(i), titlePick === i);
-      if (blurb) text(blurb, SCREEN_W / 2, y + 42, 16, "#ffcb42");
+      if (blurb) text(blurb, SCREEN_W / 2, y + 36, 14, "#ffcb42");
     });
 
     tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
-              385, 546, 210, 40, soundEnabled ? "#ffe56d" : "#ffcb42",
+              385, 566, 210, 38, soundEnabled ? "#ffe56d" : "#ffcb42",
               toggleSound, soundEnabled);
-    tapButton(fullscreenLabel(), 615, 546, 210, 40, "#ffe56d",
+    tapButton(fullscreenLabel(), 615, 566, 210, 38, "#ffe56d",
               toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
 
     text(touchOnly
            ? "one player per phone · up to five online, a screen each"
            : "two at this keyboard · up to five online · every key is yours to change",
-         SCREEN_W / 2, 596, 13, "#ffcb42");
-    tapButton("SETTINGS", SCREEN_W / 2, 640, 240, 44, "#ffe56d",
+         SCREEN_W / 2, 606, 12, "#ffcb42");
+    tapButton("SETTINGS", SCREEN_W / 2, 644, 240, 42, "#ffe56d",
               () => { backFrom = "title"; state = settingsScreen(); });
+  }
+
+  function drawLevels() {
+    text("CAMPAIGN", SCREEN_W / 2, 108, 54, "#6dffbf");
+    text("three missions — play them in order, or drop into any one",
+         SCREEN_W / 2, 148, 15, "#ffcb42");
+    text("CLICK A MISSION  ·  OR MOVE WITH ARROWS + ENTER",
+         SCREEN_W / 2, 180, 12, "#ffcb42", "center", 0.85);
+
+    CAMPAIGN_ORDER.forEach((key, i) => {
+      const m = MODES[key];
+      const y = 244 + i * 112;
+      tapButton((i + 1) + ".   " + m.name, SCREEN_W / 2, y, 620, 54,
+                i === CAMPAIGN_ORDER.length - 1 ? "#ff6b6b" : "#6dffbf",
+                () => chooseMode(key), levelPick === i);
+      text(m.blurb, SCREEN_W / 2, y + 44, 15, "#ffcb42");
+    });
+
+    tapButton("BACK", SCREEN_W / 2, 640, 240, 44, "#ffcb42",
+              () => { state = "title"; });
   }
 
   function drawCount() {
     const m = MODES[pendingMode];
+    const isCamp = m.campaign;
     text(m.name, SCREEN_W / 2, 96, 40, "#ffe56d");
     text(m.blurb, SCREEN_W / 2, 126, 14, "#ffcb42");
-    text(m.wrap
-           ? "open space — fly off one edge and you arrive at the other"
-           : "solid walls — you bounce, your shots don't",
+    text(isCamp
+           ? "your side flies teal, the enemy flies red — friendly fire is off"
+           : m.wrap
+             ? "open space — fly off one edge and you arrive at the other"
+             : "solid walls — you bounce, your shots don't",
          SCREEN_W / 2, 150, 13, "#ffcb42", "center", 0.8);
 
     const most = humanMax();
@@ -4012,15 +5754,21 @@
                 countPick === i - 1);
     }
     // Bots fill the seats nobody is sitting in — which, with two hands to a
-    // keyboard, is how a five-ship match gets its other ships.
-    tapButton("BOTS: " + (botPick === 0 ? "NONE — CLICK TO ADD" : botPick),
-              SCREEN_W / 2, 326, 320, 42,
-              botPick ? "#ffe56d" : "#ffcb42",
-              cycleBots);
-    text(m.minPlayers > 1
-           ? "battle royale needs two ships — a bot counts"
-           : "bots take the seats nobody is sitting in",
-         SCREEN_W / 2, 360, 13, "#ffcb42");
+    // keyboard, is how a five-ship match gets its other ships. A mission brings
+    // its own fleets, so it offers pilots only.
+    if (!isCamp) {
+      tapButton("BOTS: " + (botPick === 0 ? "NONE — CLICK TO ADD" : botPick),
+                SCREEN_W / 2, 326, 320, 42,
+                botPick ? "#ffe56d" : "#ffcb42",
+                cycleBots);
+      text(m.minPlayers > 1
+             ? "battle royale needs two ships — a bot counts"
+             : "bots take the seats nobody is sitting in",
+           SCREEN_W / 2, 360, 13, "#ffcb42");
+    } else {
+      text("one or two pilots share this keyboard · allied fighters fly with you",
+           SCREEN_W / 2, 330, 13, "#ffcb42");
+    }
 
     let playY = 390;
     if (pendingMode === "survival") {
@@ -4029,12 +5777,27 @@
                 survivalFriendlyFire ? "#ff8f77" : "#6dffbf",
                 toggleFriendlyFire, survivalFriendlyFire);
       playY = 445;
+    } else if (isCamp) {
+      // Difficulty: how many hits your ships take (Impossible: everything dies
+      // in one). A steady continuous trigger and weak enemies mean Easy is a
+      // gentle way in.
+      text("DIFFICULTY", SCREEN_W / 2, 358, 14, "#ffcb42");
+      const diffs = ["easy", "hard", "impossible"];
+      const dstep = 214, dx0 = SCREEN_W / 2 - dstep;
+      diffs.forEach((d, i) => {
+        tapButton(DIFFICULTY[d].label, dx0 + i * dstep, 390, 196, 42,
+                  DIFFICULTY[d].colour, () => { campaignDifficulty = d; },
+                  campaignDifficulty === d);
+      });
+      text(DIFFICULTY[campaignDifficulty].blurb, SCREEN_W / 2, 424, 12, "#ffcb42");
+      playY = 462;
     }
 
     const humans = countPick + 1;
-    const canPlay = humans + Math.min(botPick, MAX_PLAYERS - humans) >= m.minPlayers;
-    tapButton("PLAY", SCREEN_W / 2, playY, 300, 46, "#ffe56d",
-              startCountChoice, false, canPlay);
+    const bots = isCamp ? 0 : botPick;
+    const canPlay = humans + Math.min(bots, MAX_PLAYERS - humans) >= m.minPlayers;
+    tapButton(isCamp ? "START MISSION" : "PLAY", SCREEN_W / 2, playY, 300, 46,
+              "#ffe56d", startCountChoice, false, canPlay);
 
     // Who is who, and which keys are theirs.
     const controlsY = playY + 56;
@@ -4049,7 +5812,8 @@
            : "more than two? play online — one screen each",
          SCREEN_W / 2, controlsY + 46 + most * 32, 13, "#ffcb42");
 
-    tapButton("BACK", 350, 650, 240, 44, "#ffcb42", () => { state = "title"; });
+    tapButton("BACK", 350, 650, 240, 44, "#ffcb42",
+              () => { state = isCamp ? "levels" : "title"; });
     tapButton(touchOnly ? "PHONE SETTINGS" : "CONTROL SETTINGS",
               650, 650, 240, 44, "#ffe56d",
               () => { backFrom = "count"; state = settingsScreen(); });
@@ -4240,7 +6004,92 @@
   }
 
 
+  function playCampaignLevel(levelKey) {
+    // NEXT and RETRY both come through here — a continued war, so the ledger
+    // carries. A fresh pick from the mission list goes via startGame instead.
+    campContinue = true;
+    startGame(levelKey, lastSetup.humans || 1, 0);
+  }
+
+  const CAMPAIGN_WIN_LINE = {
+    convoy: "the transport is home — every crate intact",
+    raid: "all three transports are wrecks — nothing got away",
+    mothership: "the core is gone — the mothership is breaking apart"
+  };
+
+  // A ten-cell strength gauge, drawn in block characters so it needs no shapes.
+  function fleetBar(v) {
+    const n = Math.max(0, Math.min(10, Math.round(v * 10)));
+    return "█".repeat(n) + "░".repeat(10 - n);
+  }
+
+  function drawCampaignOver() {
+    const win = outcome.kind === "victory";
+    const m = MODES[outcome.levelKey];
+    text(win ? "MISSION COMPLETE" : "MISSION FAILED", SCREEN_W / 2, 206, 52,
+         win ? "#6dffbf" : "#ff8f77");
+    text(m.name, SCREEN_W / 2, 248, 20, "#ffe56d");
+    text(win ? (CAMPAIGN_WIN_LINE[outcome.levelKey] || "objective complete")
+             : (outcome.reason || "the mission was lost"),
+         SCREEN_W / 2, 280, 15, "#ffcb42");
+
+    const kills = ships.filter(s => s.team === TEAM_ALLY)
+                       .reduce((n, s) => n + s.kills, 0);
+    text("ENEMY SHIPS DOWNED   " + kills + "        TIME   " + clockText(clock),
+         SCREEN_W / 2, 318, 15, "#ffcb42");
+
+    const idx = CAMPAIGN_ORDER.indexOf(outcome.levelKey);
+    const hasNext = win && idx >= 0 && idx < CAMPAIGN_ORDER.length - 1;
+
+    // The debrief: what this win banks for the war. It IS the campaign feel —
+    // the fleet you finish with is the fleet you start the next mission with.
+    const carry = win ? outcome.carry : null;
+    let y = 356;
+    if (carry) {
+      const last = idx === CAMPAIGN_ORDER.length - 1;
+      text(last ? "THE WAR IS WON"
+                : "CARRIED INTO " + MODES[CAMPAIGN_ORDER[idx + 1]].name,
+           SCREEN_W / 2, y, 16, "#6dffbf"); y += 30;
+      text("FLEET STRENGTH  " + fleetBar(carry.fleet) + "  " +
+           Math.round(carry.fleet * 100) + "%", SCREEN_W / 2, y, 16, "#ffe56d");
+      y += 28;
+      if (last) {
+        text("MISSIONS WON  " + carry.missionsWon +
+             "        ENEMIES DOWNED  " + carry.kills,
+             SCREEN_W / 2, y, 15, "#ffcb42"); y += 26;
+      } else {
+        const vets = carry.survivorNames.length
+          ? carry.survivorNames.join(", ") : "none — a fresh wing next time";
+        text("RESERVE  +" + carry.bonusReserve + "        VETERANS  " + vets,
+             SCREEN_W / 2, y, 15, "#ffcb42"); y += 26;
+      }
+      if (carry.acesKilled.length) {
+        text("ACES DOWNED  " + carry.acesKilled.join(", "),
+             SCREEN_W / 2, y, 14, "#ff8f77"); y += 26;
+      }
+      y += 14;
+    }
+
+    y = Math.max(y, 474);
+    if (hasNext) {
+      tapButton("NEXT MISSION  [N]", SCREEN_W / 2 - 150, y, 268, 46, "#6dffbf",
+                () => playCampaignLevel(CAMPAIGN_ORDER[idx + 1]));
+      tapButton("RETRY", SCREEN_W / 2 + 152, y, 196, 46, "#ffcb42",
+                () => playCampaignLevel(outcome.levelKey));
+    } else {
+      tapButton("RETRY", SCREEN_W / 2 - 140, y, 240, 46, "#ffe56d",
+                () => playCampaignLevel(outcome.levelKey));
+      tapButton("MISSIONS", SCREEN_W / 2 + 140, y, 240, 46, "#ffcb42",
+                () => { outcome = null; state = "levels"; });
+    }
+    tapButton("MAIN MENU", SCREEN_W / 2, y + 60, 260, 44, "#ffcb42", leaveMatch);
+  }
+
   function drawOver() {
+    if (outcome && (outcome.kind === "victory" || outcome.kind === "defeat")) {
+      drawCampaignOver();
+      return;
+    }
     const survived = "time survived " + clockText(clock);
     if (outcome && outcome.kind === "winner") {
       const s = outcome.ship;
@@ -4413,11 +6262,12 @@
     /* Every screen you can reach without a match running gets the idling field
        behind it. Not the pause menu or the results, which have a real world of
        their own to sit over. */
-    const menu = state === "title" || state === "count" ||
+    const menu = state === "title" || state === "count" || state === "levels" ||
                  state === "controls" || state === "thumb";
     if (menu) drawDrift(dt || 0);
 
     if (state === "title") { drawTitle(); return; }
+    if (state === "levels") { drawLevels(); return; }
     if (state === "count") { drawCount(); return; }
     if (state === "controls") { drawControls(); return; }
     if (state === "thumb") { drawThumb(); return; }
@@ -4430,21 +6280,30 @@
     ctx.save();
     wScale = cam.scale;
     ctx.translate(SCREEN_W / 2, SCREEN_H / 2);
+    // Screen shake — campaign-only, a jitter of the whole view on the big hits.
+    if (shake > 0.5) {
+      ctx.translate((Math.random() * 2 - 1) * shake, (Math.random() * 2 - 1) * shake);
+    }
     ctx.rotate(cam.rot);
     ctx.scale(cam.scale, cam.scale);
     ctx.translate(-cam.x, -cam.y);
 
     drawArena();
+    if (mode.campaign && camp && camp.planet) drawPlanet(camp.planet);
     drawMotes();
     for (const h of hazards) if (onScreen(h.x, h.y, h.reach)) drawHazard(h);
     for (const r of rocks) {
       if (onScreen(r.x, r.y, r.r + 20)) drawWrapped(r.x, r.y, r.r, () => drawRock(r));
     }
+    for (const p of pickups) if (onScreen(p.x, p.y, 30)) drawPickup(p);
     for (const b of bullets) {
       if (onScreen(b.x, b.y, 40)) drawWrapped(b.x, b.y, 12 * U, () => drawBullet(b));
     }
     for (const s of ships) {
-      if (onScreen(s.x, s.y, 60)) drawWrapped(s.x, s.y, SHIP_R * U, () => drawShip(s));
+      // Capitals are wider than the cull pad, so give them their radius or they
+      // vanish the moment their centre leaves the screen.
+      const pad = s.radius ? s.radius + 60 : 60;
+      if (onScreen(s.x, s.y, pad)) drawWrapped(s.x, s.y, SHIP_R * U, () => drawShip(s));
     }
     drawBits();
     ctx.restore();
@@ -4495,7 +6354,12 @@
     if (worldRunning()) {
       if (state === "playing") readLocalInput();
       else if (net.role === "host") readSimulationInput();
-      const slices = Math.max(1, Math.ceil(span / STEP)), dt = span / slices;
+      // A mission can drop into slow motion for a beat — the mothership's core
+      // going up. The clock the timer runs on is real, so slow motion ends when
+      // it should no matter the frame rate; only the world advances slower.
+      if (slowTimer > 0) { slowTimer -= span; if (slowTimer <= 0) slowScale = 1; }
+      const worldSpan = span * (mode.campaign ? slowScale : 1);
+      const slices = Math.max(1, Math.ceil(worldSpan / STEP)), dt = worldSpan / slices;
       for (let i = 0; i < slices; i++) {
         // A guest never simulates the world — it coasts what the host last
         // said and flies its own ship. The host runs the one real simulation.
@@ -5667,9 +7531,23 @@
          harness needs the same numbers the simulation used. */
       live: () => ({ ships, rocks, hazards, net, binder, players: PLAYERS, taps,
                      pad: padCfg, stick, arranging, camera: cam, bounds, arena,
-                     clock, shipR: SHIP_R * U,
+                     clock, shipR: SHIP_R * U, pickups, comms,
                      cameraMode: royaleCameraRotates ? "rotating" : "fixed" }),
-      step: () => tick(performance.now(), true)
+      step: () => tick(performance.now(), true),
+      // Start a match straight from a harness, skipping the menus, read the
+      // campaign controller, force a screen, and draw one frame. Behind ?debug=1
+      // with the rest, so a normal load never gets a shortcut into the game.
+      start: (key, humans) => startGame(key, Math.max(1, humans || 1), 0),
+      // Continue a campaign the way NEXT/RETRY do, so the carryover path is
+      // reachable from a harness; `run` reads the ledger between missions.
+      resume: (key, humans) => playCampaignLevel(key, humans),
+      run: () => campRun,
+      campaign: () => camp,
+      draw: () => render(1 / 60),
+      screen: s => { state = s; },
+      pick: key => chooseMode(key),  // the real menu action: sets up the count screen
+      squad: order => setSquadOrder(order),  // issue a wing order, as a keypress would
+      diff: d => { campaignDifficulty = d; }  // choose difficulty before a start
     };
   }
 
