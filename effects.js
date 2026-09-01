@@ -25,6 +25,57 @@
     spaceDrift: ["relay-cat-space-drift-1.png", "relay-cat-space-drift-2.png", "relay-cat-space-drift-3.png"],
     spaceCurl: ["relay-cat-space-curl-1.png", "relay-cat-space-curl-2.png", "relay-cat-space-curl-3.png"],
     spaceReach: ["relay-cat-space-reach-1.png", "relay-cat-space-reach-2.png", "relay-cat-space-reach-3.png"],
+    climb: ["relay-cat-climb-1.png"],
+    climbStepA: [
+      "relay-cat-climb-1.png",
+      "relay-cat-climb-step-a-lift.png",
+      "relay-cat-climb-step-a-reach.png",
+      "relay-cat-climb-step-a-set.png",
+      "relay-cat-climb-step-a-plant.png",
+    ],
+    climbStepB: [
+      "relay-cat-climb-step-a-plant.png",
+      "relay-cat-climb-step-b-lift.png",
+      "relay-cat-climb-step-b-reach.png",
+      "relay-cat-climb-step-b-set.png",
+      "relay-cat-climb-step-b-plant.png",
+    ],
+    climbTurn: [
+      "relay-cat-climb-turn-1.png",
+      "relay-cat-climb-turn-quarter.png",
+      "relay-cat-climb-turn-2.png",
+      "relay-cat-climb-turn-three-quarter.png",
+      "relay-cat-climb-turn-3.png",
+    ],
+    climbJump: [
+      "relay-cat-climb-jump-1.png",
+      "relay-cat-climb-jump-compress.png",
+      "relay-cat-climb-jump-2.png",
+      "relay-cat-climb-jump-extend.png",
+      "relay-cat-climb-jump-3.png",
+      "relay-cat-climb-jump-prepare-catch.png",
+      "relay-cat-climb-jump-4.png",
+      "relay-cat-climb-jump-mantle.png",
+      "relay-cat-climb-3.png",
+      "relay-cat-climb-1.png",
+    ],
+    climbPlay: [
+      "relay-cat-climb-3.png",
+      "relay-cat-climb-play.png",
+      "relay-cat-climb-play.png",
+      "relay-cat-climb-3.png",
+    ],
+    climbFall: [
+      "relay-cat-climb-fall-1.png",
+      "relay-cat-climb-fall-2.png",
+      "relay-cat-climb-fall-3.png",
+      "relay-cat-climb-fall-4.png",
+    ],
+    climbLand: [
+      "relay-cat-climb-land.png",
+      "relay-cat-climb-land.png",
+      "relay-cat-climb-recover.png",
+    ],
   }).map(([pose, files]) => [pose, files.map((file) => new URL(`assets/${file}`, document.currentScript?.src || location.href).href)]));
   const CAT_FRAME_Y = {
     "relay-cat-walk-2.png": -.172,
@@ -69,6 +120,40 @@
     "relay-cat-space-curl-3.png": 3.44,
     "relay-cat-space-reach-2.png": -.1,
     "relay-cat-space-reach-3.png": -.1,
+    "relay-cat-climb-1.png": 0,
+    "relay-cat-climb-2.png": -2.15,
+    "relay-cat-climb-3.png": -.1,
+    "relay-cat-climb-4.png": -3.06,
+    "relay-cat-climb-5.png": 1.6,
+    "relay-cat-climb-6.png": -1.11,
+    "relay-cat-climb-play.png": .33,
+    "relay-cat-climb-fall-1.png": 0,
+    "relay-cat-climb-fall-2.png": 0,
+    "relay-cat-climb-fall-3.png": 0,
+    "relay-cat-climb-fall-4.png": 0,
+    "relay-cat-climb-land.png": 0,
+    "relay-cat-climb-recover.png": 0,
+    "relay-cat-climb-step-a-reach.png": .39,
+    "relay-cat-climb-step-a-plant.png": -.2,
+    "relay-cat-climb-step-b-reach.png": -.07,
+    "relay-cat-climb-step-b-plant.png": .16,
+    "relay-cat-climb-turn-1.png": -2.08,
+    "relay-cat-climb-turn-2.png": -1.73,
+    "relay-cat-climb-turn-3.png": -2.64,
+    "relay-cat-climb-jump-1.png": 0,
+    "relay-cat-climb-jump-2.png": 0,
+    "relay-cat-climb-jump-3.png": 0,
+    "relay-cat-climb-jump-4.png": 0,
+    "relay-cat-climb-step-a-lift.png": .2,
+    "relay-cat-climb-step-a-set.png": .68,
+    "relay-cat-climb-step-b-lift.png": -1.37,
+    "relay-cat-climb-step-b-set.png": -.85,
+    "relay-cat-climb-turn-quarter.png": -2.31,
+    "relay-cat-climb-turn-three-quarter.png": -3.55,
+    "relay-cat-climb-jump-compress.png": -4.43,
+    "relay-cat-climb-jump-extend.png": 1.33,
+    "relay-cat-climb-jump-prepare-catch.png": 6.87,
+    "relay-cat-climb-jump-mantle.png": -2.28,
   };
   const CAT_FRAME_X = {
     "relay-cat-walk-2.png": 1.188,
@@ -114,6 +199,40 @@
     "relay-cat-space-reach-1.png": .07,
     "relay-cat-space-reach-2.png": -1.11,
     "relay-cat-space-reach-3.png": .28,
+    "relay-cat-climb-1.png": 0,
+    "relay-cat-climb-2.png": -.1,
+    "relay-cat-climb-3.png": .24,
+    "relay-cat-climb-4.png": 1.81,
+    "relay-cat-climb-5.png": .49,
+    "relay-cat-climb-6.png": -.39,
+    "relay-cat-climb-play.png": .49,
+    "relay-cat-climb-fall-1.png": 0,
+    "relay-cat-climb-fall-2.png": 0,
+    "relay-cat-climb-fall-3.png": 0,
+    "relay-cat-climb-fall-4.png": 0,
+    "relay-cat-climb-land.png": 0,
+    "relay-cat-climb-recover.png": 0,
+    "relay-cat-climb-step-a-reach.png": 1.17,
+    "relay-cat-climb-step-a-plant.png": 1.37,
+    "relay-cat-climb-step-b-reach.png": 2.49,
+    "relay-cat-climb-step-b-plant.png": .49,
+    "relay-cat-climb-turn-1.png": 1.42,
+    "relay-cat-climb-turn-2.png": -1.37,
+    "relay-cat-climb-turn-3.png": 4.98,
+    "relay-cat-climb-jump-1.png": 0,
+    "relay-cat-climb-jump-2.png": 0,
+    "relay-cat-climb-jump-3.png": 0,
+    "relay-cat-climb-jump-4.png": 0,
+    "relay-cat-climb-step-a-lift.png": 1.22,
+    "relay-cat-climb-step-a-set.png": 1.46,
+    "relay-cat-climb-step-b-lift.png": 1.71,
+    "relay-cat-climb-step-b-set.png": 2.59,
+    "relay-cat-climb-turn-quarter.png": 2.29,
+    "relay-cat-climb-turn-three-quarter.png": 2,
+    "relay-cat-climb-jump-compress.png": .59,
+    "relay-cat-climb-jump-extend.png": -3.61,
+    "relay-cat-climb-jump-prepare-catch.png": -4.1,
+    "relay-cat-climb-jump-mantle.png": .63,
   };
   // The sprites share a canvas, but several generated poses do not share the
   // same *body* scale. These corrections are based on matched fur/head features,
@@ -141,6 +260,40 @@
     "relay-cat-turn-away-2.png": 1.13,
     "relay-cat-emerge.png": 1.18,
     "relay-cat-run.png": 1.27,
+    "relay-cat-climb-1.png": 1,
+    "relay-cat-climb-2.png": .964,
+    "relay-cat-climb-3.png": .961,
+    "relay-cat-climb-4.png": .996,
+    "relay-cat-climb-5.png": .99,
+    "relay-cat-climb-6.png": 1.009,
+    "relay-cat-climb-play.png": 1.009,
+    "relay-cat-climb-fall-1.png": 1,
+    "relay-cat-climb-fall-2.png": 1,
+    "relay-cat-climb-fall-3.png": 1,
+    "relay-cat-climb-fall-4.png": 1,
+    "relay-cat-climb-land.png": 1,
+    "relay-cat-climb-recover.png": 1,
+    "relay-cat-climb-step-a-reach.png": .99,
+    "relay-cat-climb-step-a-plant.png": .948,
+    "relay-cat-climb-step-b-reach.png": 1.015,
+    "relay-cat-climb-step-b-plant.png": .952,
+    "relay-cat-climb-turn-1.png": .984,
+    "relay-cat-climb-turn-2.png": .969,
+    "relay-cat-climb-turn-3.png": 1.014,
+    "relay-cat-climb-jump-1.png": 1,
+    "relay-cat-climb-jump-2.png": 1,
+    "relay-cat-climb-jump-3.png": 1,
+    "relay-cat-climb-jump-4.png": 1,
+    "relay-cat-climb-step-a-lift.png": .987,
+    "relay-cat-climb-step-a-set.png": .979,
+    "relay-cat-climb-step-b-lift.png": .975,
+    "relay-cat-climb-step-b-set.png": .967,
+    "relay-cat-climb-turn-quarter.png": .995,
+    "relay-cat-climb-turn-three-quarter.png": 1.019,
+    "relay-cat-climb-jump-compress.png": 1,
+    "relay-cat-climb-jump-extend.png": 1,
+    "relay-cat-climb-jump-prepare-catch.png": 1,
+    "relay-cat-climb-jump-mantle.png": .945,
   };
   const CAT_MAX_VISUAL_SCALE = Math.max(1, ...Object.values(CAT_FRAME_SCALE));
   const CAT_IDLE_POSES = ["sit", "loaf", "groom", "look", "stretch"];
@@ -150,8 +303,50 @@
     settle: 270, swat: 240, emerge: 230, run: 150,
     sit: 1050, loaf: 1250, groom: 650, look: 950, peek: 560, stretch: 820, top: 360,
     spaceFloat: 760, spaceDrift: 620, spaceCurl: 900, spaceReach: 700,
+    climb: 700, climbStepA: 620, climbStepB: 620, climbTurn: 520,
+    climbJump: 310, climbPlay: 420, climbFall: 260, climbLand: 420,
   };
   const catWorld = document.documentElement.dataset.mochiWorld || "site";
+  function currentRootPage() {
+    const path = (location.pathname || "").replace(/\\/g, "/");
+    return {
+      path,
+      page: (path.split("/").pop() || "index.html").replace(/\.html$/, ""),
+      isProject: path.includes("/projects/"),
+    };
+  }
+  function currentRoomPage() {
+    return currentRootPage().page;
+  }
+  function isClimbingPage() {
+    return currentRoomPage() === "climbing";
+  }
+  function roomSceneForPage(page) {
+    return ({
+      index: "terminal",
+      orrin: "orrin",
+      psyche: "psyche",
+      climbing: "climbing",
+      training: "training",
+      exploration: "exploration",
+      gaming: "gaming",
+      workbench: "workbench",
+      captures: "captures",
+      log: "log",
+      apex: "apex",
+      map: "signal",
+      404: "signal",
+    })[page] || null;
+  }
+  function mochiPropsForPage(page) {
+    return ({
+      training: ["shoes"],
+      gaming: ["headset"],
+      psyche: ["notebook", "pencil"],
+      captures: ["camera"],
+      workbench: ["hardhat", "hammer"],
+    })[page] || [];
+  }
   const MODES = new Set(["lsd", "shrooms"]);
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let active = null;
@@ -165,6 +360,9 @@
   let catActionTimer;
   let catScrollTimer;
   let catRunningAway = false;
+  let climbingFallSeen = false;
+  let climbingFeatureId = 0;
+  const climbingFeatureIds = new WeakMap();
   const catPreloadedFrames = new Set();
   let lastScrollY = window.scrollY || 0;
   let lastScrollDirection = 1;
@@ -209,6 +407,8 @@
       animation: relay-cat-gait .72s ease-in-out infinite;
     }
     .relay-cat-image.sprite-top { aspect-ratio: 2 / 3; }
+    .relay-cat-image.sprite-climb { aspect-ratio: 2 / 3; }
+    .relay-cat-image.sprite-climb .relay-cat-frame { transform-origin: 50% 50%; }
     .relay-cat-frame {
       position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
       opacity: 0; transform-origin: 50% 100%;
@@ -217,6 +417,162 @@
       user-select: none; pointer-events: none;
     }
     .relay-cat-frame.active { opacity: 1; }
+    .relay-cat-props {
+      position: absolute; inset: 0; z-index: 3; pointer-events: none;
+      transform: scaleX(var(--cat-facing, 1));
+      transform-origin: 50% 50%;
+    }
+    .relay-cat-prop {
+      position: absolute; display: block;
+    }
+    .relay-cat-prop::before, .relay-cat-prop::after {
+      content: ""; position: absolute; display: block;
+    }
+    .relay-cat-prop-harness {
+      left: 23%; right: 23%; top: 44%; height: 28%;
+      border: 2px solid rgba(37, 28, 19, .62);
+      border-top: 0;
+      border-radius: 0 0 46% 46%;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0) 30%),
+        linear-gradient(90deg, transparent 0 34%, rgba(37, 28, 19, .7) 34% 36%, transparent 36% 64%, rgba(37, 28, 19, .7) 64% 66%, transparent 66%);
+      box-shadow: inset 0 -2px 0 rgba(255,255,255,.08);
+    }
+    .relay-cat-prop-harness::before {
+      left: 11%; right: 11%; top: -22%; height: 64%;
+      border: 2px solid rgba(37, 28, 19, .48);
+      border-bottom: 0;
+      border-radius: 40% 40% 0 0;
+    }
+    .relay-cat-prop-shoe {
+      bottom: 4%; width: 12%; height: 8%;
+      background: linear-gradient(180deg, #f6efe3, #d8cfbf);
+      border: 2px solid rgba(37, 28, 19, .58);
+      border-radius: 54% 42% 34% 36%;
+      box-shadow: inset 0 -2px 0 rgba(255,255,255,.25);
+    }
+    .relay-cat-prop-shoe::before {
+      left: 14%; right: 14%; top: 23%; height: 16%;
+      background: rgba(37, 28, 19, .20);
+      border-radius: 999px;
+    }
+    .relay-cat-prop-shoe::after {
+      right: -13%; top: 16%; width: 27%; height: 64%;
+      border-top: 2px solid rgba(37, 28, 19, .45);
+      border-right: 2px solid rgba(37, 28, 19, .45);
+      border-radius: 0 72% 72% 0;
+      transform: rotate(10deg);
+    }
+    .relay-cat-prop-shoe.left { left: 23%; transform: rotate(-10deg); }
+    .relay-cat-prop-shoe.right { right: 23%; transform: rotate(10deg); }
+    .relay-cat-prop-headset {
+      left: 18%; right: 18%; top: 4%; height: 29%;
+    }
+    .relay-cat-prop-headset::before {
+      left: 18%; right: 18%; top: 2%; height: 28%;
+      border-top: 3px solid rgba(37, 28, 19, .62);
+      border-radius: 999px 999px 0 0;
+    }
+    .relay-cat-prop-headset::after {
+      left: 10%; right: 10%; top: 18%; height: 48%;
+      border-left: 3px solid rgba(37, 28, 19, .58);
+      border-right: 3px solid rgba(37, 28, 19, .58);
+      border-radius: 42% 42% 46% 46%;
+      box-shadow:
+        -18% 12% 0 -13px rgba(37, 28, 19, .58),
+        18% 12% 0 -13px rgba(37, 28, 19, .58);
+    }
+    .relay-cat-prop-notebook {
+      left: 16%; top: 30%; width: 23%; height: 34%;
+      background:
+        repeating-linear-gradient(180deg, transparent 0 10px, rgba(52, 44, 38, .08) 10px 11px),
+        linear-gradient(180deg, #fcf9f1, #e7ddcf);
+      border: 2px solid rgba(37, 28, 19, .50);
+      border-radius: 4px 8px 8px 4px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.22);
+      transform: rotate(-18deg);
+    }
+    .relay-cat-prop-notebook::before {
+      left: 0; top: 0; bottom: 0; width: 12%;
+      background: rgba(37, 28, 19, .22);
+      border-radius: 3px 0 0 3px;
+    }
+    .relay-cat-prop-notebook::after {
+      right: -14%; top: 16%; width: 16%; height: 50%;
+      background: linear-gradient(180deg, #ffc95c, #c37b19);
+      border: 1.5px solid rgba(37, 28, 19, .48);
+      clip-path: polygon(0 0, 100% 10%, 48% 100%, 0 100%);
+      transform: rotate(14deg);
+    }
+    .relay-cat-prop-pencil {
+      right: 20%; top: 33%; width: 4.5%; height: 34%;
+      background: linear-gradient(180deg, #f0c35d, #d18f22);
+      border: 1.5px solid rgba(37, 28, 19, .45);
+      border-radius: 999px;
+      transform: rotate(18deg);
+      transform-origin: 50% 100%;
+    }
+    .relay-cat-prop-pencil::before {
+      left: 0; right: 0; bottom: -16%; height: 16%;
+      background: #9a6b34;
+      clip-path: polygon(50% 100%, 0 0, 100% 0);
+    }
+    .relay-cat-prop-camera {
+      left: 32%; top: 40%; width: 28%; height: 22%;
+      background: linear-gradient(180deg, #2f2b28, #171411);
+      border: 2px solid rgba(255,255,255,.14);
+      border-radius: 11% 11% 13% 13%;
+      box-shadow: inset 0 -3px 0 rgba(255,255,255,.06);
+      transform: rotate(5deg);
+    }
+    .relay-cat-prop-camera::before {
+      left: 28%; top: 18%; width: 44%; height: 60%;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.2);
+      background: radial-gradient(circle, rgba(78, 86, 96, .9) 0 28%, rgba(16, 15, 13, .96) 30% 100%);
+    }
+    .relay-cat-prop-camera::after {
+      left: -8%; right: -8%; top: -18%; height: 160%;
+      border-top: 2px solid rgba(37, 28, 19, .42);
+      border-bottom: 2px solid rgba(37, 28, 19, .42);
+      border-radius: 38% / 48%;
+      opacity: .8;
+    }
+    .relay-cat-prop-hardhat {
+      left: 29%; right: 29%; top: -1%; height: 21%;
+      background: linear-gradient(180deg, #ffe56b, #dcb22f);
+      border: 2px solid rgba(37, 28, 19, .50);
+      border-radius: 52% 52% 34% 34%;
+      box-shadow: inset 0 -2px 0 rgba(255,255,255,.14);
+      transform: rotate(-4deg);
+    }
+    .relay-cat-prop-hardhat::before {
+      left: 42%; top: 36%; width: 16%; height: 46%;
+      border-left: 2px solid rgba(37, 28, 19, .46);
+      border-right: 2px solid rgba(37, 28, 19, .46);
+    }
+    .relay-cat-prop-hardhat::after {
+      left: 17%; right: 17%; top: 58%; height: 12%;
+      background: rgba(37, 28, 19, .22);
+      border-radius: 999px;
+    }
+    .relay-cat-prop-hammer {
+      right: 6%; top: 31%; width: 26%; height: 38%;
+      transform: rotate(24deg);
+      transform-origin: 50% 18%;
+    }
+    .relay-cat-prop-hammer::before {
+      left: 43%; top: 0; width: 18%; height: 86%;
+      background: linear-gradient(180deg, #9f6832, #5f3818);
+      border-radius: 999px;
+      box-shadow: 0 0 0 1px rgba(37, 28, 19, .34);
+    }
+    .relay-cat-prop-hammer::after {
+      left: 24%; top: 0; width: 52%; height: 26%;
+      background: linear-gradient(180deg, #575049, #2d2721);
+      border-radius: 10% 10% 22% 22%;
+      box-shadow: inset 0 -1px 0 rgba(255,255,255,.08);
+    }
     .relay-cat-resident {
       opacity: .98; pointer-events: auto; cursor: pointer; touch-action: manipulation;
       transition: left var(--cat-move, 5s) ease-in-out,
@@ -235,7 +591,30 @@
     .relay-cat-resident.idle .relay-cat-image { animation-name: relay-cat-idle; animation-duration: 2.8s; }
     .relay-cat-resident.walking .relay-cat-image { animation-name: relay-cat-gait; }
     .relay-cat-resident.pose-top .relay-cat-image { animation: none; }
+    .relay-cat-resident.pose-climb .relay-cat-image { animation: none; }
+    .relay-cat-resident.climb-stepping {
+      transition-timing-function: cubic-bezier(.32,.02,.28,1);
+    }
+    .relay-cat-resident.climb-turning .relay-cat-image {
+      animation: relay-cat-climb-turn 2.2s ease-in-out both;
+    }
+    .relay-cat-resident.climb-jumping {
+      transition-timing-function: cubic-bezier(.32,.06,.24,1);
+    }
+    .relay-cat-resident.climb-jumping .relay-cat-image {
+      animation: relay-cat-jump-arc 2.8s cubic-bezier(.25,.05,.25,1) both;
+    }
+    .relay-cat-resident.climb-falling {
+      transition-timing-function: cubic-bezier(.28,.08,.82,.72);
+    }
+    .relay-cat-resident.climb-landing .relay-cat-image {
+      animation: relay-cat-land .52s cubic-bezier(.2,.72,.32,1) both;
+    }
     .relay-cat-resident.pose-top.from-bottom .relay-cat-image { transform: rotate(180deg); }
+    .relay-cat-resident.pose-climb::after {
+      left: 28%; right: 28%; bottom: 10%; height: 5%;
+      opacity: .38;
+    }
     .relay-cat-resident.relay-cat-space {
       transform: rotate(var(--cat-space-roll, 0deg));
       transition: left var(--cat-move, 8s) linear,
@@ -361,6 +740,25 @@
       0%{transform:scaleX(var(--cat-facing)) rotate(0deg)}
       100%{transform:scaleX(var(--cat-facing)) rotate(32deg)}
     }
+    @keyframes relay-cat-climb {
+      0%,100%{transform:scaleX(var(--cat-facing)) translate3d(0,0,0) rotate(-.4deg)}
+      50%{transform:scaleX(var(--cat-facing)) translate3d(0,-2px,0) rotate(.45deg)}
+    }
+    @keyframes relay-cat-climb-turn {
+      0%,100%{transform:scaleX(var(--cat-facing)) translate3d(0,0,0) rotate(0)}
+      50%{transform:scaleX(var(--cat-facing)) translate3d(0,2px,0) rotate(-1deg)}
+    }
+    @keyframes relay-cat-jump-arc {
+      0%{transform:scaleX(var(--cat-facing)) translate3d(0,0,0) rotate(0)}
+      44%{transform:scaleX(var(--cat-facing)) translate3d(0,-34px,0) rotate(-2deg)}
+      78%{transform:scaleX(var(--cat-facing)) translate3d(0,-12px,0) rotate(1deg)}
+      100%{transform:scaleX(var(--cat-facing)) translate3d(0,0,0) rotate(0)}
+    }
+    @keyframes relay-cat-land {
+      0%{transform:scaleX(var(--cat-facing)) translate3d(0,-5px,0) scaleY(1.03)}
+      48%{transform:scaleX(var(--cat-facing)) translate3d(0,3px,0) scaleY(.94)}
+      100%{transform:scaleX(var(--cat-facing)) translate3d(0,0,0) scaleY(1)}
+    }
     @keyframes relay-cat-peek-right {
       0%,100%{opacity:0;transform:translateX(-98%)}
       12%{opacity:.98}
@@ -399,6 +797,7 @@
       html.relay-effect-shrooms body > :not(script):not(.relay-trip-layer):not(.relay-filter-bank):not(.relay-cat-layer) { filter: url(#relay-shroom-distortion) saturate(1.25) sepia(.08); }
       .relay-cat-image { animation: none; }
       .relay-cat-resident.relay-cat-space .relay-cat-image { animation: none; }
+      .relay-cat-resident.pose-climb .relay-cat-image { animation: none; }
       .relay-cat-resident { transition: none; }
       .relay-cat-feather { animation: none; display: none; }
       .relay-cat-peek .relay-cat-slider { animation: none !important; }
@@ -516,6 +915,7 @@
     image._relayCatFrameToken = token;
     image.dataset.pose = nextPose;
     image.classList.toggle("sprite-top", nextPose === "top");
+    image.classList.toggle("sprite-climb", nextPose.startsWith("climb"));
     const layers = [...image.querySelectorAll(".relay-cat-frame")];
     let activeLayer = Number.isInteger(image._relayCatActiveLayer)
       ? image._relayCatActiveLayer
@@ -546,6 +946,7 @@
         incoming.classList.add("active");
         activeLayer = incomingLayer;
         image._relayCatActiveLayer = incomingLayer;
+        options.onFrame?.(frameIndex);
         resolve();
       }));
       return isCurrent();
@@ -568,6 +969,7 @@
       if (reducedMotion && options.once) cursor = sequence.length - 1;
       if (!(await showFrame(sequence[cursor]))) return;
       if (reducedMotion) return finish();
+      if (frames.length === 1) return finish();
       image._relayCatFrameTimer = setTimeout(advance, CAT_FRAME_DELAYS[nextPose]);
     };
     start();
@@ -583,6 +985,43 @@
       frame.draggable = false;
       image.appendChild(frame);
     }
+    const props = mochiPropsForPage(currentRootPage().page);
+    if (props.length) {
+      const propLayer = document.createElement("div");
+      propLayer.className = "relay-cat-props";
+      propLayer.setAttribute("aria-hidden", "true");
+      for (const prop of props) {
+        if (prop === "shoes") {
+          const left = document.createElement("span");
+          left.className = "relay-cat-prop relay-cat-prop-shoe left";
+          left.setAttribute("aria-hidden", "true");
+          const right = document.createElement("span");
+          right.className = "relay-cat-prop relay-cat-prop-shoe right";
+          right.setAttribute("aria-hidden", "true");
+          propLayer.append(left, right);
+          continue;
+        }
+        if (prop === "notebook") {
+          const notebook = document.createElement("span");
+          notebook.className = "relay-cat-prop relay-cat-prop-notebook";
+          notebook.setAttribute("aria-hidden", "true");
+          propLayer.appendChild(notebook);
+          continue;
+        }
+        if (prop === "pencil") {
+          const pencil = document.createElement("span");
+          pencil.className = "relay-cat-prop relay-cat-prop-pencil";
+          pencil.setAttribute("aria-hidden", "true");
+          propLayer.appendChild(pencil);
+          continue;
+        }
+        const propNode = document.createElement("span");
+        propNode.className = `relay-cat-prop relay-cat-prop-${prop}`;
+        propNode.setAttribute("aria-hidden", "true");
+        propLayer.appendChild(propNode);
+      }
+      image.appendChild(propLayer);
+    }
     image.style.width = `${width}px`;
     image.style.setProperty("--cat-facing", facing);
     setCatImagePose(image, pose);
@@ -596,6 +1035,8 @@
     setCatImagePose(image, pose, options);
     if (facing) image.style.setProperty("--cat-facing", facing);
     catResident.classList.toggle("pose-top", pose === "top");
+    catResident.classList.toggle("pose-climb", pose.startsWith("climb") &&
+      pose !== "climbFall" && pose !== "climbLand" && pose !== "climbJump");
   }
 
   function randomIdlePose() {
@@ -607,7 +1048,9 @@
     resident.setAttribute("tabindex", "0");
     resident.setAttribute("aria-label", catWorld === "space"
       ? "Mochi, the helmeted Terminal cat. Click to send him tumbling through space."
-      : "Mochi, the fluffy Terminal cat. Click to make him run away.");
+      : isClimbingPage()
+        ? "Mochi, the fluffy climbing cat. Click to make him slip, right himself, and land on his feet."
+        : "Mochi, the fluffy Terminal cat. Click to make him run away.");
     resident.addEventListener("click", runAwayCat);
     resident.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") return;
@@ -616,6 +1059,7 @@
     });
     resident.addEventListener("pointerenter", () => {
       if (catResident !== resident || !resident.classList.contains("idle")) return;
+      if (isClimbingPage()) return;
       // Don't interrupt a transient one-shot pose (e.g. "settle"): its completion
       // callback is what schedules his next move, so interrupting it strands him.
       const pose = resident.querySelector(".relay-cat-image")?.dataset.pose;
@@ -750,6 +1194,394 @@
 
   function pageHeight() {
     return Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight || 0, innerHeight);
+  }
+
+  function climbingCatWidth() {
+    if (innerWidth <= 560) return Math.min(118, Math.max(104, innerWidth * .3));
+    return Math.min(185, Math.max(145, innerWidth * .18));
+  }
+
+  function climbingCatHeight(width) {
+    return width * 1.5;
+  }
+
+  function climbingFeatureAnchors(width) {
+    const height = climbingCatHeight(width);
+    const scrollTop = window.scrollY || 0;
+    const scrollLeft = window.scrollX || 0;
+    const viewportSideInset = Math.ceil(width * .06);
+    const viewportTopInset = Math.ceil(34 + height * .05);
+    const viewportBottomInset = Math.ceil(height * .075);
+    const selectors = ".hero, .nextout:not([hidden]), .ledger, .routes, details.fold, .woodshed";
+    const features = [...document.querySelectorAll(selectors)].filter((feature) => {
+      const rect = feature.getBoundingClientRect();
+      return rect.width >= 140 && rect.height >= 42 && rect.bottom > 24 &&
+        rect.top < innerHeight - 24;
+    });
+    const anchors = [];
+    const gap = innerWidth <= 560 ? 44 : 58;
+
+    features.forEach((feature, featureIndex) => {
+      if (!climbingFeatureIds.has(feature)) climbingFeatureIds.set(feature, ++climbingFeatureId);
+      const stableFeatureId = climbingFeatureIds.get(feature);
+      const rect = feature.getBoundingClientRect();
+      const pageTop = rect.top + scrollTop;
+      const pageBottom = rect.bottom + scrollTop;
+      const pageLeft = rect.left + scrollLeft;
+      const pageRight = rect.right + scrollLeft;
+      const start = pageTop + Math.min(34, rect.height * .2);
+      const end = pageBottom - Math.min(22, rect.height * .14);
+      const levelCount = Math.max(1, Math.min(7, Math.floor((end - start) / gap) + 1));
+
+      for (let level = 0; level < levelCount; level += 1) {
+        const contactY = levelCount === 1
+          ? (start + end) / 2
+          : start + (end - start) * level / (levelCount - 1);
+        for (const side of ["left", "right"]) {
+          const edgeX = side === "left" ? pageLeft : pageRight;
+          const rawLeft = side === "left" ? edgeX - width * .74 : edgeX - width * .26;
+          anchors.push({
+            key: `${stableFeatureId}:${side}:${level}`,
+            feature,
+            featureIndex,
+            side,
+            level,
+            contactY,
+            left: Math.max(scrollLeft + viewportSideInset,
+              Math.min(scrollLeft + innerWidth - width - viewportSideInset, rawLeft)),
+            top: Math.max(scrollTop + viewportTopInset,
+              Math.min(scrollTop + innerHeight - height - viewportBottomInset,
+              contactY - height * .22)),
+            facing: side === "left" ? 1 : -1,
+            kind: "side",
+          });
+        }
+      }
+
+      const ledgeCount = innerWidth <= 560 ? 2 : 3;
+      for (let ledge = 0; ledge < ledgeCount; ledge += 1) {
+        const contactX = pageLeft + rect.width * (ledge + 1) / (ledgeCount + 1);
+        const rawLeft = contactX - width * .5;
+        anchors.push({
+          key: `${stableFeatureId}:ledge:${ledge}`,
+          feature,
+          featureIndex,
+          side: `ledge-${ledge}`,
+          level: 0,
+          contactY: pageTop,
+          left: Math.max(scrollLeft + viewportSideInset,
+            Math.min(scrollLeft + innerWidth - width - viewportSideInset, rawLeft)),
+          // The catch frame's front paws sit about 12% down its canvas.
+          top: Math.max(scrollTop + viewportTopInset,
+            Math.min(scrollTop + innerHeight - height - viewportBottomInset,
+            pageTop - height * .12)),
+          facing: contactX < (pageLeft + pageRight) / 2 ? 1 : -1,
+          kind: "ledge",
+        });
+      }
+    });
+
+    return anchors;
+  }
+
+  function initialClimbingAnchor(width) {
+    const scrollTop = window.scrollY || 0;
+    const scrollLeft = window.scrollX || 0;
+    const anchors = climbingFeatureAnchors(width).filter((anchor) => anchor.kind === "side" &&
+      anchor.level > 0 &&
+      anchor.top > scrollTop - climbingCatHeight(width) * .4 &&
+      anchor.top < scrollTop + innerHeight - climbingCatHeight(width) * .16);
+    if (anchors.length) {
+      const lowerAnchors = anchors.sort((a, b) => b.contactY - a.contactY)
+        .slice(0, Math.min(6, anchors.length));
+      return lowerAnchors[Math.floor(Math.random() * lowerAnchors.length)];
+    }
+
+    const onLeft = Math.random() < .5;
+    const height = climbingCatHeight(width);
+    const sideInset = Math.ceil(width * .06);
+    const bottomInset = Math.ceil(height * .075);
+    return {
+      key: "viewport-fallback",
+      feature: document.body,
+      featureIndex: -1,
+      side: onLeft ? "left" : "right",
+      level: 0,
+      contactY: scrollTop + innerHeight - height * .24,
+      left: scrollLeft + (onLeft ? sideInset : Math.max(sideInset,
+        innerWidth - width - sideInset)),
+      top: scrollTop + innerHeight - height - bottomInset,
+      facing: onLeft ? 1 : -1,
+      kind: "side",
+    };
+  }
+
+  function nextClimbingStepAnchor(resident, width) {
+    const current = resident._relayClimbAnchor;
+    if (!current) return null;
+    return climbingFeatureAnchors(width)
+      .filter((anchor) => anchor.feature === current.feature && anchor.side === current.side &&
+        anchor.contactY < current.contactY - 18 && anchor.contactY > current.contactY - 92)
+      .sort((a, b) => b.contactY - a.contactY)[0] || null;
+  }
+
+  function nextClimbingTransferAnchor(resident, width) {
+    const current = resident._relayClimbAnchor;
+    if (!current) return null;
+    const maxAcross = Math.min(430, innerWidth * .94);
+    const visited = resident._relayClimbVisited || new Set();
+    return climbingFeatureAnchors(width)
+      .map((anchor) => ({
+        anchor,
+        dx: anchor.left - current.left,
+        dy: anchor.contactY - current.contactY,
+      }))
+      .filter(({ anchor, dx, dy }) => (anchor.feature !== current.feature || anchor.side !== current.side ||
+        anchor.level !== current.level) &&
+        !visited.has(anchor.key) &&
+        Math.abs(dx) > width * .32 && Math.abs(dx) < maxAcross &&
+        dy < 36 && dy > -250)
+      .sort((a, b) => {
+        const aScore = Math.hypot(a.dx, a.dy) + (a.dy > 0 ? 180 : 0) +
+          (a.anchor.feature === current.feature ? 210 : 0);
+        const bScore = Math.hypot(b.dx, b.dy) + (b.dy > 0 ? 180 : 0) +
+          (b.anchor.feature === current.feature ? 210 : 0);
+        return aScore - bScore;
+      })[0]?.anchor || null;
+  }
+
+  function climbResidentCat() {
+    if (!catsEnabled) return;
+    clearCatAction();
+    catResident?.remove();
+
+    const width = climbingCatWidth();
+    const spot = initialClimbingAnchor(width);
+    preloadCatPose("climbStepA");
+    preloadCatPose("climbStepB");
+    preloadCatPose("climbTurn");
+    preloadCatPose("climbJump");
+    preloadCatPose("climbPlay");
+    preloadCatPose("climbFall");
+    preloadCatPose("climbLand");
+    const resident = document.createElement("div");
+    resident.className = "relay-cat-visit relay-cat-resident idle pose-climb";
+    resident.style.width = `${width}px`;
+    resident.style.left = `${spot.left}px`;
+    resident.style.top = `${spot.top}px`;
+    resident.style.setProperty("--cat-move", "1180ms");
+    resident._relayClimbMoves = 0;
+    resident._relayClimbParity = 0;
+    resident._relayClimbBusy = false;
+    resident._relayClimbAnchor = spot;
+    resident._relayClimbVisited = new Set([spot.key]);
+    wireResident(resident);
+    resident.appendChild(makeCat(width, spot.facing, "climb"));
+    ensureCatLayer().appendChild(resident);
+    catResident = resident;
+
+    if (reducedMotion) return;
+    catActionTimer = setTimeout(() => {
+      if (catResident !== resident || !resident.isConnected) return;
+      scheduleClimbingCatAction(1200 + Math.random() * 700);
+    }, 180);
+  }
+
+  function performClimbingStep(resident, target) {
+    if (resident._relayClimbBusy) return;
+    resident._relayClimbBusy = true;
+    const parity = resident._relayClimbParity || 0;
+    const pose = parity ? "climbStepB" : "climbStepA";
+    const facing = resident._relayClimbAnchor?.facing || target.facing;
+    let planted = false;
+
+    resident.classList.remove("idle", "climb-turning", "climb-jumping");
+    resident.classList.add("pose-climb", "climb-stepping");
+    resident.style.setProperty("--cat-move", "1180ms");
+    setResidentPose(pose, facing, {
+      once: true,
+      force: true,
+      onFrame: (frameIndex) => {
+        if (frameIndex !== 3 || planted || catResident !== resident) return;
+        planted = true;
+        // The body advances only after the reaching paw has become the new fixed point.
+        resident.style.left = `${target.left}px`;
+        resident.style.top = `${target.top}px`;
+      },
+      onComplete: () => {
+        if (catResident !== resident || !resident.isConnected) return;
+        resident._relayClimbAnchor = target;
+        resident._relayClimbVisited?.add(target.key);
+        resident._relayClimbParity = parity ? 0 : 1;
+        resident._relayClimbMoves = (resident._relayClimbMoves || 0) + 1;
+        resident._relayClimbBusy = false;
+        resident.classList.remove("climb-stepping");
+        resident.classList.add("idle", "pose-climb");
+        scheduleClimbingCatAction(1300 + Math.random() * 900);
+      },
+    });
+  }
+
+  function jumpClimbingCat(resident, target) {
+    if (catResident !== resident || !resident.isConnected) return;
+    const image = resident.querySelector(".relay-cat-image");
+    let launched = false;
+    resident.classList.remove("idle", "climb-turning", "climb-stepping", "pose-climb");
+    resident.classList.add("climb-jumping");
+    resident.style.setProperty("--cat-move", "1800ms");
+    setResidentPose("climbJump", target.facing, {
+      once: true,
+      force: true,
+      onFrame: (frameIndex) => {
+        if (frameIndex !== 2 || launched || catResident !== resident) return;
+        launched = true;
+        image?.style.setProperty("--cat-facing", target.facing);
+        resident.style.left = `${target.left}px`;
+        resident.style.top = `${target.top}px`;
+      },
+      onComplete: () => {
+        if (catResident !== resident || !resident.isConnected) return;
+        resident._relayClimbAnchor = target;
+        resident._relayClimbVisited?.add(target.key);
+        resident._relayClimbMoves = (resident._relayClimbMoves || 0) + 1;
+        resident._relayClimbJustJumped = true;
+        resident._relayClimbBusy = false;
+        resident.classList.remove("climb-jumping");
+        resident.classList.add("idle", "pose-climb");
+        setResidentPose("climb", target.facing, { force: true });
+        scheduleClimbingCatAction(1800 + Math.random() * 900);
+      },
+    });
+  }
+
+  function turnAndJumpClimbingCat(resident, target) {
+    if (resident._relayClimbBusy) return;
+    resident._relayClimbBusy = true;
+    const currentFacing = resident._relayClimbAnchor?.facing || 1;
+    const image = resident.querySelector(".relay-cat-image");
+    resident.classList.remove("idle", "climb-stepping");
+    resident.classList.add("climb-turning", "pose-climb");
+    setResidentPose("climbTurn", currentFacing, {
+      once: true,
+      force: true,
+      onFrame: (frameIndex) => {
+        // The middle frame is almost front-on, so this is where the mirrored
+        // orientation can change without snapping one planted leg across the wall.
+        if (frameIndex === 2) image?.style.setProperty("--cat-facing", target.facing);
+      },
+      onComplete: () => {
+        if (catResident === resident && resident.isConnected) jumpClimbingCat(resident, target);
+      },
+    });
+  }
+
+  function playWithClimbingQuickdraw(resident) {
+    if (catResident !== resident || !resident.isConnected) return;
+    const image = resident.querySelector(".relay-cat-image");
+    const facing = Number.parseFloat(image?.style.getPropertyValue("--cat-facing")) || 1;
+    resident._relayClimbBusy = true;
+    resident.classList.remove("walking");
+    resident.classList.add("idle", "pose-climb");
+    setResidentPose("climbPlay", facing, {
+      once: true,
+      force: true,
+      onComplete: () => {
+        if (catResident !== resident || !resident.isConnected) return;
+        resident.classList.remove("idle");
+        resident.classList.add("idle", "pose-climb");
+        setResidentPose("climb", facing, { force: true });
+        resident._relayClimbBusy = false;
+        scheduleClimbingCatAction(1000 + Math.random() * 650);
+      },
+    });
+  }
+
+  function fallClimbingCat(resident, force = false) {
+    if (catResident !== resident || !resident?.isConnected || catRunningAway) return false;
+    if (climbingFallSeen && !force) return false;
+
+    const width = Number.parseFloat(resident.style.width) || climbingCatWidth();
+    const height = climbingCatHeight(width);
+    const scrollTop = window.scrollY || 0;
+    const scrollLeft = window.scrollX || 0;
+    const fromLeft = Number.parseFloat(resident.style.left) || scrollLeft;
+    const fromTop = Number.parseFloat(resident.style.top) || scrollTop;
+    const landingTop = Math.max(fromTop, scrollTop + innerHeight - height - 10);
+    const availableDrop = landingTop - fromTop;
+    if (!force && availableDrop < height * .42) return false;
+
+    climbingFallSeen = true;
+    catRunningAway = true;
+    clearCatAction();
+    clearTimeout(catScrollTimer);
+
+    const onLeftWall = fromLeft + width / 2 < scrollLeft + innerWidth / 2;
+    const drift = Math.min(innerWidth * .24, width * .72);
+    const landingLeft = Math.max(scrollLeft + 8, Math.min(scrollLeft + innerWidth - width - 8,
+      fromLeft + (onLeftWall ? drift : -drift)));
+    const fallDuration = reducedMotion ? 80 : Math.max(1000, Math.min(1600, availableDrop / 300 * 1000));
+    const image = resident.querySelector(".relay-cat-image");
+    const facing = Number.parseFloat(image?.style.getPropertyValue("--cat-facing")) || 1;
+
+    resident._relayClimbBusy = true;
+    resident.classList.remove("idle", "walking", "running", "pose-climb", "climb-landing",
+      "climb-stepping", "climb-turning", "climb-jumping");
+    resident.classList.add("climb-falling");
+    resident.style.setProperty("--cat-move", `${fallDuration}ms`);
+    setResidentPose("climbFall", facing, { once: true, force: true });
+    resident.style.left = `${landingLeft}px`;
+    resident.style.top = `${landingTop}px`;
+
+    catActionTimer = setTimeout(() => {
+      if (catResident !== resident || !resident.isConnected) return;
+      resident.classList.remove("climb-falling");
+      resident.classList.add("climb-landing");
+      setResidentPose("climbLand", facing, {
+        once: true,
+        force: true,
+        onComplete: () => {
+          if (catResident !== resident || !resident.isConnected) return;
+          catActionTimer = setTimeout(() => {
+            if (catResident !== resident || !resident.isConnected) return;
+            resident.remove();
+            if (catResident === resident) catResident = null;
+            catRunningAway = false;
+            climbResidentCat();
+          }, 920);
+        },
+      });
+    }, fallDuration + 20);
+    return true;
+  }
+
+  function scheduleClimbingCatAction(delay = 900 + Math.random() * 900) {
+    clearTimeout(catActionTimer);
+    if (!catsEnabled || !catResident?.isConnected) return;
+    if (!isClimbingPage()) return scheduleCatAction();
+    catActionTimer = setTimeout(() => {
+      const resident = catResident;
+      if (!resident?.isConnected) return climbResidentCat();
+      const width = Number.parseFloat(resident.style.width) || climbingCatWidth();
+      if (resident._relayClimbBusy) return scheduleClimbingCatAction(420);
+      const moves = resident._relayClimbMoves || 0;
+      if (resident._relayClimbJustJumped) {
+        resident._relayClimbJustJumped = false;
+        playWithClimbingQuickdraw(resident);
+        return;
+      }
+      if (moves >= 4 && !climbingFallSeen && Math.random() < .1 &&
+        fallClimbingCat(resident)) return;
+      if (moves >= 2 && Math.random() < .13) {
+        playWithClimbingQuickdraw(resident);
+        return;
+      }
+      const step = nextClimbingStepAnchor(resident, width);
+      if (step) return performClimbingStep(resident, step);
+      const transfer = nextClimbingTransferAnchor(resident, width);
+      if (transfer) return turnAndJumpClimbingCat(resident, transfer);
+      if (!climbingFallSeen && fallClimbingCat(resident)) return;
+      playWithClimbingQuickdraw(resident);
+    }, delay);
   }
 
   function protectedContentRects() {
@@ -936,6 +1768,7 @@
     const resident = catResident;
     if (!resident?.isConnected) return;
     resident.classList.remove("walking", "running", "pose-top", "from-bottom");
+    resident.classList.remove("pose-climb");
     resident.classList.add("idle");
     setResidentPose("settle", null, {
       once: true,
@@ -971,6 +1804,7 @@
 
   function scheduleCatAction() {
     if (catWorld === "space") return scheduleSpaceCatAction();
+    if (isClimbingPage()) return scheduleClimbingCatAction();
     clearTimeout(catActionTimer);
     if (!catsEnabled || !catResident?.isConnected) return;
     catActionTimer = setTimeout(() => {
@@ -1062,6 +1896,10 @@
 
   function summonResidentCat(walkIn = true) {
     if (!catsEnabled) return;
+    if (isClimbingPage()) {
+      climbResidentCat();
+      return;
+    }
     clearCatAction();
     catResident?.remove();
 
@@ -1153,6 +1991,10 @@
 
   function enterResidentCat() {
     if (!catsEnabled) return;
+    if (isClimbingPage()) {
+      climbResidentCat();
+      return;
+    }
     const roll = Math.random();
     if (visibleFeatures().length && roll < .58) emergeFromFeature();
     else if (roll < .9) stretchOntoFeature();
@@ -1234,6 +2076,7 @@
   }
 
   function roamResidentCat() {
+    if (isClimbingPage()) return scheduleClimbingCatAction(160 + Math.random() * 240);
     if (!catResident?.isConnected) {
       summonResidentCat(true);
       return;
@@ -1440,6 +2283,7 @@
   function catchUpResidentCat(direction = lastScrollDirection) {
     if (!catsEnabled || catRunningAway) return;
     if (catWorld === "space") return summonSpaceCat();
+    if (isClimbingPage()) return climbResidentCat();
     clearCatAction();
     catResident?.remove();
 
@@ -1510,6 +2354,11 @@
       tumbleSpaceCat();
       return;
     }
+    if (isClimbingPage()) {
+      const resident = catResident;
+      fallClimbingCat(resident, true);
+      return;
+    }
     catRunningAway = true;
     clearCatAction();
     clearTimeout(catScrollTimer);
@@ -1576,6 +2425,10 @@
     if (!catsEnabled || catRunningAway) return;
     clearTimeout(catScrollTimer);
     catScrollTimer = setTimeout(() => {
+      if (isClimbingPage()) {
+        if (!catIsInViewport()) climbResidentCat();
+        return;
+      }
       if (settledCatNeedsCatchUp()) catchUpResidentCat(lastScrollDirection);
     }, 650);
   }
@@ -1633,6 +2486,290 @@
       const cleanPath = location.pathname.replace(/index\.html$/, "");
       history.replaceState(history.state, "", `${cleanPath}${location.search}${location.hash}`);
     }
+  }
+
+  function installRoomScene() {
+    if (document.querySelector(".relay-scene")) return;
+
+    // The motion is only for the root rooms. Project pages have their own
+    // art direction and should stay out of this layer entirely.
+    const { page, isProject } = currentRootPage();
+    if (isProject) return;
+    const scene = roomSceneForPage(page);
+
+    if (!scene) return;
+
+    const style = document.createElement("style");
+    style.id = "relay-scene-styles";
+    style.textContent = `
+      body { position: relative; isolation: isolate; }
+      .relay-scene {
+        position: fixed;
+        inset: -14%;
+        z-index: -1;
+        pointer-events: none;
+        overflow: hidden;
+        opacity: .72;
+        transform: translateZ(0);
+      }
+      .relay-scene::before,
+      .relay-scene::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        will-change: transform, opacity, filter;
+      }
+      @keyframes relay-scene-drift {
+        from { transform: translate3d(-1.5%, -1%, 0) scale(1.05); }
+        to { transform: translate3d(1.5%, 1%, 0) scale(1.08); }
+      }
+      @keyframes relay-scene-roll {
+        from { transform: rotate(-4deg) scale(1.03); }
+        to { transform: rotate(5deg) scale(1.08); }
+      }
+      @keyframes relay-scene-sweep {
+        from { transform: translate3d(-12%, 0, 0) scale(1.02); }
+        to { transform: translate3d(12%, 0, 0) scale(1.02); }
+      }
+      @keyframes relay-scene-wave {
+        0%, 100% { transform: translate3d(0, 0, 0) scale(1.01); }
+        50% { transform: translate3d(0, -1.5%, 0) scale(1.04); }
+      }
+      @keyframes relay-scene-pulse {
+        0%, 100% { opacity: .35; }
+        50% { opacity: .82; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .relay-scene,
+        .relay-scene::before,
+        .relay-scene::after { animation: none !important; }
+      }
+
+      html.relay-scene-terminal .relay-scene {
+        opacity: .58;
+        background:
+          radial-gradient(circle at 50% 16%, rgba(255, 176, 0, 0.08), transparent 24%),
+          radial-gradient(circle at 50% 52%, rgba(255, 176, 0, 0.03), transparent 62%),
+          linear-gradient(180deg, rgba(255, 176, 0, 0.015), transparent 32%, rgba(255, 176, 0, 0.01));
+      }
+      html.relay-scene-terminal .relay-scene::before {
+        background: repeating-linear-gradient(0deg, rgba(255, 176, 0, 0.04) 0 1px, transparent 1px 6px);
+        animation: relay-scene-drift 20s linear infinite alternate;
+      }
+      html.relay-scene-terminal .relay-scene::after {
+        background:
+          radial-gradient(circle at 50% 16%, rgba(255, 176, 0, 0.12), transparent 18%),
+          radial-gradient(circle at 50% 52%, rgba(255, 176, 0, 0.05), transparent 52%);
+        animation: relay-scene-pulse 11s ease-in-out infinite;
+      }
+
+      html.relay-scene-orrin .relay-scene {
+        opacity: .66;
+        background:
+          radial-gradient(circle at 18% 18%, rgba(77, 232, 255, 0.10), transparent 26%),
+          radial-gradient(circle at 82% 22%, rgba(180, 138, 255, 0.09), transparent 24%),
+          radial-gradient(circle at 50% 78%, rgba(255, 77, 216, 0.05), transparent 30%);
+      }
+      html.relay-scene-orrin .relay-scene::before {
+        background:
+          repeating-radial-gradient(circle at 50% 50%, rgba(77, 232, 255, 0.10) 0 1px, transparent 2px 42px),
+          repeating-linear-gradient(125deg, transparent 0 20px, rgba(180, 138, 255, 0.05) 20px 21px, transparent 21px 64px);
+        filter: blur(1px);
+        animation: relay-scene-roll 42s linear infinite alternate;
+      }
+      html.relay-scene-orrin .relay-scene::after {
+        background: radial-gradient(circle at 50% 50%, rgba(77, 232, 255, 0.08), transparent 58%);
+        animation: relay-scene-pulse 14s ease-in-out infinite;
+      }
+
+      html.relay-scene-psyche .relay-scene {
+        opacity: .62;
+        background:
+          radial-gradient(ellipse at 22% 34%, rgba(96, 67, 111, 0.18), transparent 22%),
+          radial-gradient(ellipse at 78% 64%, rgba(166, 64, 77, 0.14), transparent 24%),
+          radial-gradient(circle at 50% 50%, rgba(255, 253, 247, 0.04), transparent 48%);
+      }
+      html.relay-scene-psyche .relay-scene::before {
+        background:
+          radial-gradient(ellipse at 36% 46%, rgba(96, 67, 111, 0.20), transparent 18%),
+          radial-gradient(ellipse at 64% 54%, rgba(96, 67, 111, 0.20), transparent 18%),
+          radial-gradient(circle at 50% 50%, rgba(96, 67, 111, 0.08), transparent 42%);
+        filter: blur(16px);
+        animation: relay-scene-wave 18s ease-in-out infinite;
+      }
+      html.relay-scene-psyche .relay-scene::after {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 30%, rgba(96, 67, 111, 0.05) 76%);
+        animation: relay-scene-drift 28s linear infinite alternate;
+      }
+
+      html.relay-scene-climbing .relay-scene {
+        opacity: .64;
+        background:
+          radial-gradient(circle at 14% 22%, rgba(121, 196, 107, 0.12), transparent 22%),
+          radial-gradient(circle at 84% 74%, rgba(255, 226, 143, 0.07), transparent 26%),
+          linear-gradient(160deg, rgba(121, 196, 107, 0.04), transparent 36%, rgba(255, 226, 143, 0.02));
+      }
+      html.relay-scene-climbing .relay-scene::before {
+        background:
+          repeating-linear-gradient(135deg, rgba(121, 196, 107, 0.05) 0 2px, transparent 2px 28px),
+          repeating-linear-gradient(45deg, transparent 0 18px, rgba(255, 226, 143, 0.04) 18px 19px, transparent 19px 60px);
+        animation: relay-scene-sweep 32s linear infinite;
+      }
+      html.relay-scene-climbing .relay-scene::after {
+        background: radial-gradient(circle at 50% 50%, rgba(121, 196, 107, 0.09), transparent 58%);
+        animation: relay-scene-pulse 12s ease-in-out infinite;
+      }
+
+      html.relay-scene-training .relay-scene {
+        opacity: .62;
+        background:
+          radial-gradient(circle at 50% 20%, rgba(252, 76, 2, 0.10), transparent 26%),
+          radial-gradient(circle at 20% 82%, rgba(252, 76, 2, 0.06), transparent 22%),
+          linear-gradient(180deg, rgba(252, 76, 2, 0.02), transparent 30%, rgba(252, 76, 2, 0.01));
+      }
+      html.relay-scene-training .relay-scene::before {
+        background:
+          repeating-linear-gradient(90deg, rgba(252, 76, 2, 0.05) 0 3px, transparent 3px 38px),
+          repeating-linear-gradient(0deg, rgba(252, 76, 2, 0.04) 0 1px, transparent 1px 26px);
+        animation: relay-scene-sweep 18s linear infinite;
+      }
+      html.relay-scene-training .relay-scene::after {
+        background: radial-gradient(circle at 50% 50%, rgba(252, 76, 2, 0.07), transparent 60%);
+        animation: relay-scene-wave 14s ease-in-out infinite;
+      }
+
+      html.relay-scene-exploration .relay-scene {
+        opacity: .56;
+        background:
+          radial-gradient(circle at 18% 16%, rgba(122, 92, 255, 0.11), transparent 24%),
+          radial-gradient(circle at 82% 22%, rgba(77, 201, 255, 0.08), transparent 24%),
+          radial-gradient(circle at 48% 78%, rgba(122, 92, 255, 0.06), transparent 28%);
+      }
+      html.relay-scene-exploration .relay-scene::before {
+        background:
+          repeating-radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.10) 0 1px, transparent 2px 52px),
+          linear-gradient(120deg, transparent 0 42%, rgba(160, 140, 255, 0.07) 50%, transparent 58%);
+        animation: relay-scene-roll 60s linear infinite alternate;
+      }
+      html.relay-scene-exploration .relay-scene::after {
+        background: radial-gradient(circle at 50% 50%, rgba(122, 92, 255, 0.08), transparent 60%);
+        animation: relay-scene-pulse 12s ease-in-out infinite;
+      }
+
+      html.relay-scene-gaming .relay-scene {
+        opacity: .62;
+        background:
+          radial-gradient(circle at 50% 18%, rgba(65, 211, 232, 0.09), transparent 24%),
+          radial-gradient(circle at 18% 80%, rgba(255, 106, 85, 0.08), transparent 20%),
+          radial-gradient(circle at 82% 78%, rgba(239, 164, 42, 0.06), transparent 22%);
+      }
+      html.relay-scene-gaming .relay-scene::before {
+        background:
+          repeating-linear-gradient(90deg, rgba(65, 211, 232, 0.06) 0 1px, transparent 1px 78px),
+          repeating-linear-gradient(0deg, rgba(65, 211, 232, 0.04) 0 1px, transparent 1px 78px);
+        animation: relay-scene-sweep 40s linear infinite;
+      }
+      html.relay-scene-gaming .relay-scene::after {
+        background:
+          radial-gradient(circle at 50% 46%, rgba(255, 106, 85, 0.09), transparent 18%),
+          radial-gradient(circle at 20% 30%, rgba(239, 164, 42, 0.07), transparent 24%);
+        animation: relay-scene-pulse 10s ease-in-out infinite;
+      }
+
+      html.relay-scene-workbench .relay-scene {
+        opacity: .64;
+        background:
+          radial-gradient(circle at 14% 18%, rgba(255, 210, 77, 0.09), transparent 20%),
+          radial-gradient(circle at 84% 82%, rgba(143, 165, 207, 0.09), transparent 24%),
+          linear-gradient(180deg, rgba(232, 238, 252, 0.015), transparent 28%, rgba(255, 210, 77, 0.01));
+      }
+      html.relay-scene-workbench .relay-scene::before {
+        background:
+          repeating-linear-gradient(90deg, rgba(232, 238, 252, 0.08) 0 1px, transparent 1px 24px),
+          repeating-linear-gradient(0deg, rgba(232, 238, 252, 0.06) 0 1px, transparent 1px 24px);
+        animation: relay-scene-sweep 34s linear infinite;
+      }
+      html.relay-scene-workbench .relay-scene::after {
+        background: linear-gradient(135deg, transparent 0 44%, rgba(255, 210, 77, 0.08) 50%, transparent 56%);
+        animation: relay-scene-drift 22s linear infinite alternate;
+      }
+
+      html.relay-scene-captures .relay-scene {
+        opacity: .60;
+        background:
+          radial-gradient(circle at 50% 0%, rgba(226, 103, 63, 0.12), transparent 24%),
+          radial-gradient(circle at 16% 22%, rgba(226, 103, 63, 0.06), transparent 18%),
+          radial-gradient(circle at 84% 78%, rgba(216, 211, 202, 0.05), transparent 20%);
+      }
+      html.relay-scene-captures .relay-scene::before {
+        background:
+          repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 4px),
+          linear-gradient(180deg, transparent 0 42%, rgba(226, 103, 63, 0.04) 56%, transparent 78%);
+        animation: relay-scene-wave 16s ease-in-out infinite;
+      }
+      html.relay-scene-captures .relay-scene::after {
+        background: radial-gradient(circle at 50% 50%, rgba(226, 103, 63, 0.08), transparent 62%);
+        animation: relay-scene-pulse 13s ease-in-out infinite;
+      }
+
+      html.relay-scene-log .relay-scene {
+        opacity: .60;
+        background:
+          radial-gradient(circle at 82% 10%, rgba(255, 138, 224, 0.08), transparent 18%),
+          radial-gradient(circle at 18% 86%, rgba(255, 138, 224, 0.05), transparent 20%),
+          linear-gradient(180deg, rgba(255, 138, 224, 0.02), transparent 30%, rgba(255, 138, 224, 0.01));
+      }
+      html.relay-scene-log .relay-scene::before {
+        background:
+          repeating-linear-gradient(0deg, rgba(255, 138, 224, 0.04) 0 1px, transparent 1px 7px),
+          repeating-linear-gradient(90deg, rgba(255, 138, 224, 0.02) 0 1px, transparent 1px 68px);
+        animation: relay-scene-sweep 28s linear infinite;
+      }
+      html.relay-scene-log .relay-scene::after {
+        background: radial-gradient(circle at 50% 50%, rgba(255, 138, 224, 0.07), transparent 60%);
+        animation: relay-scene-pulse 10s ease-in-out infinite;
+      }
+
+      html.relay-scene-apex .relay-scene {
+        opacity: .64;
+        background:
+          radial-gradient(circle at 50% 22%, rgba(65, 211, 232, 0.08), transparent 26%),
+          radial-gradient(circle at 18% 78%, rgba(232, 66, 47, 0.07), transparent 20%),
+          radial-gradient(circle at 82% 74%, rgba(255, 194, 40, 0.06), transparent 22%);
+      }
+      html.relay-scene-apex .relay-scene::before {
+        background:
+          repeating-linear-gradient(60deg, rgba(65, 211, 232, 0.05) 0 1px, transparent 1px 18px),
+          repeating-linear-gradient(120deg, rgba(232, 66, 47, 0.04) 0 1px, transparent 1px 18px);
+        animation: relay-scene-roll 48s linear infinite alternate;
+      }
+      html.relay-scene-apex .relay-scene::after {
+        background: radial-gradient(circle at 50% 46%, rgba(232, 66, 47, 0.08), transparent 24%);
+        animation: relay-scene-pulse 12s ease-in-out infinite;
+      }
+
+      html.relay-scene-signal .relay-scene {
+        opacity: .58;
+        background:
+          radial-gradient(circle at 50% 32%, rgba(255, 59, 48, 0.12), transparent 24%),
+          radial-gradient(circle at 50% 62%, rgba(255, 176, 0, 0.06), transparent 28%);
+      }
+      html.relay-scene-signal .relay-scene::before {
+        background: repeating-linear-gradient(135deg, rgba(255, 59, 48, 0.08) 0 12px, rgba(255, 176, 0, 0.05) 12px 24px);
+        animation: relay-scene-sweep 18s linear infinite;
+      }
+      html.relay-scene-signal .relay-scene::after {
+        background: radial-gradient(circle at 50% 50%, rgba(255, 59, 48, 0.10), transparent 52%);
+        animation: relay-scene-pulse 10s ease-in-out infinite;
+      }
+    `;
+    document.head.appendChild(style);
+
+    document.documentElement.classList.add(`relay-scene-${scene}`);
+    const layer = document.createElement("div");
+    layer.className = "relay-scene";
+    layer.setAttribute("aria-hidden", "true");
+    document.body.prepend(layer);
   }
 
   // ─── room menu (mobile) ──────────────────────────────────────────────
@@ -1718,6 +2855,7 @@
   function start() {
     installFilters();
     cleanIndexRoutes();
+    installRoomScene();
     installRoomMenu();
     const navigation = performance.getEntriesByType?.("navigation")?.[0];
     const wasReloaded = navigation?.type === "reload" || performance.navigation?.type === 1;
