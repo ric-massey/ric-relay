@@ -19,7 +19,7 @@
       --ink: #26241f;
       --soft: #6f6a5f;
       --line: #e2ddd0;
-      --clay: #b5502a;
+      --clay: #b14f2a;
       --star: #e0a021;
       --sent: #2f8f4e;
       --proj: #c77d1a;
@@ -388,6 +388,7 @@
 
     <div class="controls">
       <input type="search" class="search" id="search" autocomplete="off"
+             aria-label="Search the logbook"
              placeholder="Search a route, crag, partner, date or grade — try “Cavers”, “Lane”, “V5”, “2023”">
       <div class="tabs" role="tablist" aria-label="Views">
         <button class="tab" role="tab" id="tab-trips" aria-selected="true">Trips</button>
@@ -478,6 +479,21 @@
     const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => (
       { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]
     ));
+
+    /* A trip's key is its id, its toggle handle and its deep-link anchor. The
+       date alone is not unique — two days at the Red River share 2023-07-07,
+       and every undated day is "undated" — so identical keys meant duplicate
+       DOM ids, and, because the open-set is keyed on this, tapping one of the
+       pair silently opened both. The first day on a date keeps the bare key so
+       the #trip-YYYY-MM-DD links already out on the site still land; a second
+       one is suffixed. */
+    const keySeen = new Map();
+    DATA.trips.forEach((trip) => {
+      const base = trip.date || trip.dateRaw || "undated";
+      const n = (keySeen.get(base) || 0) + 1;
+      keySeen.set(base, n);
+      trip._key = n === 1 ? base : `${base}-${n}`;
+    });
 
     // Precompute one lowercase haystack per trip so search stays instant.
     DATA.trips.forEach((trip) => {
@@ -594,7 +610,7 @@
       const tally = [];
       if (trip.pitches) tally.push(`${trip.pitches} pitches`);
       if (trip.boulders) tally.push(`${trip.boulders} boulders`);
-      const key = trip.date || trip.dateRaw;
+      const key = trip._key;
       const shots = ClimbMedia.of(trip.date);
       const clips = shots.filter((m) => m.kind === "video").length;
 
@@ -644,7 +660,7 @@
         /* A day is open because it was tapped, or deep-linked to — or because a
            search is running, and a search that returns rows of shut days has
            hidden the very thing it was asked to find. */
-        const isOpen = state.open.has(trip.date || trip.dateRaw) || !!q || !!f;
+        const isOpen = state.open.has(trip._key) || !!q || !!f;
         // "did climb, not sure what i got on" is a real memory but not a route —
         // it stays out of the lists until you open that particular day.
         const hidden = isOpen ? 0 : trip.routes.filter((r) => r.unknown).length;

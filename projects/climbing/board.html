@@ -715,8 +715,12 @@
           })
           .join("") || `<p class="why" style="padding:1rem 0">Nothing matches that.</p>`;
 
-        $("more").hidden = list.length <= shown;
-        $("more").textContent = `Show more (${(list.length - shown).toLocaleString()} left)`;
+        // Only label it when there is a remainder to name. Setting the text
+        // unconditionally left "Show more (-22 left)" sitting on a hidden
+        // button, one CSS change away from being read out loud.
+        const catLeft = Math.max(0, list.length - shown);
+        $("more").hidden = !catLeft;
+        if (catLeft) $("more").textContent = `Show more (${catLeft.toLocaleString()} left)`;
         $("log-why").textContent =
           `${list.length.toLocaleString()} climbs on this board with at least ` +
           `${catalogue().minAscents} ascents. Tap one to light it up.`;
@@ -754,8 +758,9 @@
           })
           .join("") || `<p class="why" style="padding:1rem 0">Nothing matches that.</p>`;
 
-        $("more").hidden = list.length <= shown;
-        $("more").textContent = `Show more (${list.length - shown} left)`;
+        const left = Math.max(0, list.length - shown);
+        $("more").hidden = !left;
+        if (left) $("more").textContent = `Show more (${left.toLocaleString()} left)`;
         document.querySelectorAll(".row").forEach((row) => {
           row.addEventListener("click", () => {
             const entry = boards[current].entries.find((e) => e._key === row.dataset.key);
