@@ -19,9 +19,16 @@ unless Ric asks.
 
 ## Hard rules — do not break these
 
-1. **No location data, ever.** The private map (`map.html`) is a locked placeholder on
-   purpose. Real coordinates/places live in a separate, authenticated app — never in
-   this public repo. Don't add a real map, addresses, or GPS data here.
+1. **No location DATA, ever — the app is fine, the coordinates are not.** As of
+   2026-08-21 the private map lives in this repo at `atlas/` and is served from
+   `ricmassey.com/atlas/`. That is deliberate: `atlas/` is only *code*, and it holds
+   no places. Every pin, coordinate and photo lives in Supabase behind a real login,
+   and row-level security — not the repo being private — is what guards it. So: never
+   commit coordinates, addresses, GPS traces, or a hard-coded pin into this repo, and
+   never put the Supabase **service_role** key here (it bypasses every policy; the
+   publishable key in `atlas/config.js` is public by design and is fine).
+   `map.html` stays as the themed door that links through to `atlas/` — don't
+   "fix" it back into a dead placeholder.
    **This includes photo EXIF.** A phone photo carries the exact coordinates it was
    taken at, and six committed `climbing-*.jpg` were publishing crag and home-area
    positions to anyone who downloaded them (found and stripped 2026-07-31). **Strip
@@ -46,16 +53,16 @@ There is intentionally **no shared nav component**. Each page has its own `<nav>
 labels** so navigation stays predictable:
 
 ```
-terminal · orrin · psyche · climbing · exploration · workbench · captures
+terminal · orrin · psyche · climbing · training · exploration · gaming · workbench · captures
 ```
 
 **This set matches the home page's `#dir` listing on purpose.** The room navs used to
-carry all nine rooms while the front door showed six, so the site said two different
-things about what it contains — a visitor landed on the terminal, saw six places, clicked
-into `/climbing` and was offered nine. `training`, `apex` and `log` are out of the nav for
-the same reason they're out of `#dir`. Those three pages still *carry* the nav (with no
-`.here` marked, since they aren't in it) rather than dropping it like `map.html` does —
-losing the way out of a room is worse than an unhighlighted bar.
+carry different sets in different places, so the site said two different things about
+what it contains — a visitor landed on the terminal, saw one list, clicked into a room
+and was offered another. `apex`, `log` and `map` are out of the nav for the same reason
+they're out of `#dir`. Those pages still *carry* the nav (with no `.here` marked, since
+they aren't in it) rather than dropping it like `map.html` does — losing the way out of
+a room is worse than an unhighlighted bar.
 
 **The mobile menu is shared behaviour, not shared styling.** `installRoomMenu()` in
 `effects.js` finds `nav[aria-label="Terminal rooms"]`, injects a `.roomnav-toggle` button
@@ -65,6 +72,11 @@ where the room's look lives. Tap targets in the open menu must be at least 44px 
 With JS off nothing is injected and the nav renders exactly as it always did.
 
 - `href` targets and link text are **identical on every page** — only the CSS differs.
+- **Known drift, not a licence to add more:** the front door and `ls` render the Psyche
+  room as `/mind` (that is its `name` in `ROOMS`), while every room nav still says
+  `psyche`. `PAGE_ALIASES` in `index.html` maps `psyche` → `mind` so both words work,
+  but a visitor sees two names for one room. If you are asked to settle it, change the
+  `ROOMS` name **or** the nine navs — not one page of them.
 - Keep Terminal home links as `index.html` in room markup for direct-file compatibility.
   `effects.js` normalizes those links to the clean directory root when served over HTTP;
   `projects/relay-return.js` does the same for project return controls. Do not hardcode
@@ -74,13 +86,13 @@ With JS off nothing is injected and the nav renders exactly as it always did.
 - Each `<nav>` carries `aria-label="Terminal rooms"`.
 - `map.html` is deliberately left out of the room menus entirely.
 
-**`training`, `apex`, `log` and `map` are deliberately unlisted** — in `#dir` *and* in
-the room navs. They are the thin rooms and Ric does not want the front door advertising
-work that isn't done. They are *not* removed: `ls`, `tree`, `find`, `open <room>`, typing
+**`apex`, `log` and `map` are deliberately unlisted** — in `#dir` *and* in the room
+navs. They are the thin rooms and Ric does not want the front door advertising work
+that isn't done. They are *not* removed: `ls`, `tree`, `find`, `open <room>`, typing
 the room name and the plain URL all still reach them, and Tab completion offers
-`training`, `apex` and `log` (`map` is left out of completions only, since it answers
-`[LOCKED]` — completing to a dead end is just untidy). Don't "fix" this by putting them
-back. If one gets built out properly, that's the moment to re-list it.
+`apex` and `log` (`map` is left out of completions only, since it answers `[LOCKED]`
+— completing to a dead end is just untidy). Don't "fix" this by putting them back.
+If one gets built out properly, that's the moment to re-list it.
 
 **There is one room list, in `index.html`.** The `ROOMS` array near the top of its script
 is the single source for the `#dir` markup (rendered from it), `PAGES`, `ls`, `tree`,
@@ -88,6 +100,21 @@ is the single source for the `#dir` markup (rendered from it), `PAGES`, `ls`, `t
 drifted (two typos lived in the page twice each). Add, rename or unlist a room by editing
 `ROOMS` and nothing else in that file: `listed: true` puts it on the front door,
 `locked: true` marks it `[LOCKED]` and keeps it out of `random` and completions.
+
+`locked` means the room is a dead end, and right now `map` still carries it even though
+ATLAS is live and `map.html` says `status: ONLINE`. So `ls` describes it as "being
+built", `tree` prints `[LOCKED]` and Tab completion skips it, all of which are now
+untrue. Clearing that flag and rewriting its `desc` is the fix — the room being
+*unlisted* is separate and stays.
+
+**There is a second list too: `PROJECTS`.** `ROOMS` covers the rooms; `PROJECTS`, right
+below it, is what `projects`, `open <shortcut>`, `find` and the project branches of
+`tree` read. Linking a project from its room is only half of shipping it — if it is not
+in `PROJECTS`, the terminal cannot see it at all. (`projects/how-big-everything-is/` is
+live and linked from Exploration and is missing from this array today; that is a bug, not
+a precedent.) The woodshed is the one deliberate exception: it stays out of `PROJECTS`
+and answers to its own `tension` / `kilter` / `woodshed` commands instead.
+
 
 Per-room nav treatments (class on the `<nav>`):
 
@@ -99,6 +126,7 @@ Per-room nav treatments (class on the `<nav>`):
 | training | Strava underline tabs | `.topbar .roomnav` |
 | apex | Apex lobby tab strip (scrolls sideways, red underline on the current room) | `nav.lobbytabs` |
 | exploration | star-chart waypoints | `nav.starchart` |
+| gaming | understated top-bar text links | `nav.launcher` |
 | workbench | blueprint sheet-index chips | `nav.sheets` |
 | captures | darkroom film strip | `nav.filmstrip` |
 | log | newspaper section bar | `nav.sections` |
@@ -112,22 +140,58 @@ everywhere — the navs must agree with each other *and* with the front door.
 ## Projects and photos
 
 - **Sub-projects** live in `projects/<name>/` (or a single `.html`) and are **linked
-  from the room that fits them** — not given their own room. Current: `spacetime`,
-  `starfield`, `how-speed-affects-time` and `how-big-everything-is` → Exploration;
+  from the room that fits them — from exactly one room.** Current: `spacetime`,
+  `how-speed-affects-time` and `how-big-everything-is` → Exploration;
   `the-shape-of-harm`,
-  `autism-reflection.html`, and `state-of-mind-line` → Psyche; `siege-conductor`,
-  `farlight` and `crossfire` → Workbench; `climbing` → Climbing
-  (including the unlisted `climbing/board.html`). Each is
-  self-contained and may carry its own assets/fonts; the "no dependencies" rule is for
-  the terminal's own room pages, not embedded projects. Keep their internal links relative.
+  `autism-reflection.html`, and `state-of-mind-line` → Psyche; `siege-conductor` →
+  Workbench; `farlight`, `offramp`, `crossfire`, and `starfield` → Gaming; `climbing`
+  → Climbing (including the unlisted `climbing/board.html`); `training` and `apex` are
+  room data rather than pages. Each is self-contained and may carry its own assets/fonts;
+  the "no dependencies" rule is for the terminal's own room pages, not embedded projects.
+  Keep their internal links relative.
+- **The games moved to Gaming and their old cards were left behind.** `workbench.html`
+  still carries FARLIGHT, CROSSFIRE and Interstate 40 as bench items, and
+  `exploration.html` still carries Starfield as MODULE 004 — so four projects are
+  advertised from two rooms each, and the Workbench copy for Interstate 40 ("Nothing to
+  hit yet, and no way off it — the ramps are the next thing") describes a version of
+  OFFRAMP that hasn't existed for months. Moving a project means removing the old card,
+  not just adding the new one.
 - **Every standalone project HTML page needs a visible route back to the terminal.** Use
   `projects/relay-return.js` with the correct relative `src` and `data-home` paths so the
   fixed “← Ric's Terminal” control works from desktop and mobile. The optional `data-egg`
-  value may add a project-themed typed easter egg.
+  value may add a project-themed typed easter egg — but **the value has to exist in the
+  `eggs` map inside `relay-return.js`**, or the page declares an egg that silently never
+  fires. `projects/offramp/index.html` sets `data-egg="offramp"` and there is no
+  `offramp` entry, so that one is dead today. Every egg also belongs in
+  `EASTER_EGGS.md`.
 - **Photos** go in `photos/`, web-optimized (resize to ~1600px, convert HEIC→JPG). Do
   **not** commit full-res originals — they belong in `_photo-originals/`, which is
   gitignored. `captures.html` reads a `FRAMES` array; `climbing.html` rotates a few as
   a hero banner. If you add photos, optimize first (`sips -Z 1600 -s format jpeg …`).
+- **Game cover art** for `gaming.html` lives in `assets/games/<game>.jpg` and is **real
+  in-game screenshots**, not mockups, gradients, or menu grabs — the room is a storefront
+  and lives or dies on real art. The games are canvas-rendered. A plain headless
+  `--screenshot` only catches the title/menu; to capture actual GAMEPLAY you must feed the
+  canvas *trusted* input, which a JS-synthesized `KeyboardEvent` is not. Drive it over the
+  Chrome DevTools Protocol instead: launch with `--remote-debugging-port`, attach, and use
+  `Input.dispatchMouseEvent` / `Input.dispatchKeyEvent` to click "start" and play a few
+  seconds, then `Page.captureScreenshot`. Crop the bottom ~8% (control hints + the
+  "← Ric's Terminal" button) and optimise with `sips -s format jpeg -s formatOptions 82`
+  (or PIL). Starfield's real visual is in `fly.html`, not its text `index.html`; its FTL
+  gears throw a milestone banner, so shoot it in the default thruster gear. Don't replace
+  this art with CSS gradients or menu screenshots.
+- **Game clips.** Each cover also has a looping `assets/games/<game>.webm` — the featured
+  game autoplays it (muted, looping), the others play on hover; both fall back to the `.jpg`
+  poster and neither autoplays under `prefers-reduced-motion` (small inline script at the
+  foot of `gaming.html`). No ffmpeg on this box: the clips are recorded **in the browser**
+  by driving the game over CDP (as above), then `canvas.captureStream(30)` →
+  `MediaRecorder('video/webm')`, collecting the blob and pulling it out as base64 (chunk it
+  — a multi-MB `returnByValue` comes back `undefined`). The `.jpg` poster for each is a
+  frame *from* its clip so the two line up with no hover-jump: draw the `<video>` to a
+  canvas and `toDataURL`, but a `file://` video **taints** the canvas — serve the folder
+  over HTTP (`python3 -m http.server`) and load video + wrapper from the same origin so the
+  export is allowed. Keep clips a few seconds and reasonably compressed; webm needs a
+  static-poster fallback for older Safari/iOS, which the `<video poster>` already gives.
 
 ## Editing content
 
@@ -141,6 +205,15 @@ generated files. To add a climb, edit `projects/climbing/climbs.md` and run
 `python3 projects/climbing/build-data.py`. See `projects/climbing/readme.md`.
 That script also writes `projects/climbing/latest-climb.js`, which `index.html` loads
 so the newest day out leads the "latest" banner without anyone editing a list.
+
+**A day can also be logged from a phone at the crag.** `projects/climbing/add.html`
+writes the markdown block it *would* have written into `climbs.md` to the Worker;
+`web-trips.js` is the one place that fetches those days and folds them into the archive's
+shape using `climb-parse.js`, the browser port of the parser `build-data.py` uses. Both
+parsers are held to each other by `projects/climbing/test/parse-parity.js`. Any page that
+loads `web-trips.js` must load `climb-vocab.js` and `climb-parse.js` first, in that
+order. When the service is down it merges nothing and the committed history stands —
+a page showing real history is right, and an error page is not.
 
 **The board log is pulled, not written.** `projects/climbing/board.html` — the
 woodshed — reads `board-data.js`, which `pull-boards.py` generates from the Kilter
@@ -226,9 +299,22 @@ in `latest.js` and are announced in exactly one place: the NOTIFICATION banner o
 more, so an addition is not repeated eight times. The per-room support is still in
 `latest.js` (`data-latest-room` for a room's own wording, `data-latest-skip-linked`
 to pass over an item the page already links to outside its `<nav>`) — if a room
-takes a banner back, use it. `orrin.html` is self-updating — leave
-its GitHub data logic alone unless fixing a bug. `systems.html` and `updates.html` are
-legacy redirects, not rooms.
+takes a banner back, use it. Give each entry the `room` it belongs to and **keep that
+value right when a project moves** — CROSSFIRE, FARLIGHT and Starfield are still filed
+under `workbench`/`exploration` in `latest.js` after moving to Gaming, which is harmless
+only for as long as no room carries a banner again. `latest.js` is also the thing that
+goes stale quietest: its newest entry is still the Training Log from 2026-08-17, so the
+front door announces that as the new thing while the Gaming room, the CROSSFIRE campaign
+and ATLAS have all shipped since. If you ship something family would care about, put it
+at the top of that list. `orrin.html` is self-updating — leave its GitHub data logic
+alone unless fixing a bug. `systems.html` and `updates.html` are legacy redirects, not
+rooms.
+
+**ATLAS (`atlas/`) plays by its own rules and has its own README.** It is the one part
+of this repo that is an application rather than a page: Supabase, a real login,
+row-level security, migrations in `atlas/supabase/migrations/`, and a test suite in
+`atlas/test/`. Read [`atlas/README.md`](atlas/README.md) before touching it, and
+remember hard rule 1: code here, places there. `map.html` is only the door.
 
 ## House style
 
@@ -238,6 +324,14 @@ legacy redirects, not rooms.
   in `effects.js`; preserve the reduced-motion fallback, room-to-room persistence,
   refresh-to-reset behavior, and the `sober` terminal command. Do not add a visible
   reset button or Escape-key exit unless Ric asks for one.
+- **Mochi has three worlds and they are room-aware, not global.** Ordinary rooms get the
+  walking resident. `climbing.html` swaps him onto the wall — he grabs the side edges of
+  the page's own features, steps up them, turns, hops, plays and falls
+  (`assets/relay-cat-climb-*.png`). Starfield puts him in a bubble helmet in zero
+  gravity. Each set has its own sprite list in `CAT_FRAMES` and its own per-frame
+  offset/scale tuning in `CAT_FRAME_X` / `CAT_FRAME_Y` / `CAT_FRAME_SCALE`, keyed by
+  filename — a new frame with no entry silently renders at the wrong offset, so add its
+  row when you add the art, and every referenced file must exist in `assets/`.
 - Keep pages responsive — test at ~375px wide; nothing may overflow sideways, and the
   room nav must collapse behind its `.roomnav-toggle` rather than wrapping into rows.
 - Keep the palette and font already defined in each page's `:root` / `body`. **But every
@@ -252,12 +346,44 @@ legacy redirects, not rooms.
 - Room pages are for visitors. Setup steps, filenames, API keys and "replace me" copy
   belong in `README.md`, not on a page family reads.
 
+## Verifying a change
+
+There is no build and no test runner, so verification is: serve the folder, open the
+pages you touched, and run whichever suites cover the code you touched.
+
+```sh
+python3 -m http.server 8912
+```
+
+```sh
+node projects/crossfire/test/smoke.js      # syntax, transport, room service
+node projects/crossfire/test/campaign.js   # headless play-through of all three missions
+node projects/training/test/rules.js       # plan/tick rules
+node projects/climbing/test/parse-parity.js  # build-data.py and climb-parse.js agree
+for t in projects/offramp/test/*.test.js; do node "$t" || break; done
+for t in atlas/test/*.test.mjs; do node "$t" || break; done
+```
+
+`projects/offramp/test/motive.test.js` and `sim.test.js` take a couple of minutes each —
+they are simulations, not unit tests. Let them finish.
+
+Served from a plain static server, `/climb`, `/media`, `/log` and `/strava` all 404:
+those are Cloudflare Worker endpoints, and on `localhost` the client points at the origin
+it was loaded from. Every caller treats a failed fetch as "no extra data" and falls back
+to the committed history, so those 404s in the console are expected and are **not** the
+bug you are looking for.
+
 ## Quick verification checklist before you finish
 
 - [ ] All internal links resolve (files exist; current page marked `here`).
 - [ ] The menu label set is identical across all room pages.
+- [ ] A new room is in `ROOMS`; a new project is in `PROJECTS` **and** linked from
+      exactly one room **and** loads `relay-return.js`.
+- [ ] Any `data-egg` you added has a matching entry in `relay-return.js` and a line in
+      `EASTER_EGGS.md`.
 - [ ] Page still opens as a static file — no console errors, no external requests
       beyond the GitHub API calls that already exist and the OpenStreetMap tiles in
       the training page's run detail.
 - [ ] Looks right at mobile width.
 - [ ] Didn't add location data, extra repos, or a build step.
+- [ ] The relevant test suite above still passes.
