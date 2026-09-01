@@ -19,6 +19,7 @@ import {
   kmBetween, placeRank, rankPlaces, dedupePlaces, NEAR_BONUS,
   boxAround, NEAR_BOX_KM, searchUrlForScope, SCOPES,
   searchOrigin, homeFromPlace, homeCamera, HOME_ZOOM, HOME_MAX_ZOOM,
+  parseCoords, formatCoords,
 } from '../search.js';
 
 let passed = 0;
@@ -351,6 +352,116 @@ test('a town is opened as a town, not as four blocks of it', () => {
   const tiny = homeCamera({ ...HOME, bounds: [[-85.9501, 37.1299], [-85.9500, 37.1300]] });
   assert.equal(tiny.zoom, HOME_ZOOM);
   assert.equal(homeCamera(null), null);
+});
+
+console.log('\na coordinate is not a search');
+
+/* Every reading below is the same point, written the way somebody actually
+ * writes it: off a phone, off a forum, off a radio, off a topo margin. */
+const SPOT = { lat: 39.50417, lng: -111.20833 };
+const near = (c, msg) => {
+  assert.ok(c, `${msg}: not read as a coordinate at all`);
+  assert.ok(Math.abs(c.lat - SPOT.lat) < 0.001 && Math.abs(c.lng - SPOT.lng) < 0.001,
+    `${msg}: ${c.lat}, ${c.lng}`);
+};
+
+test('the ways a decimal pair gets typed all land on the same ground', () => {
+  for (const s of [
+    '39.50417, -111.20833',
+    '39.50417,-111.20833',
+    '39.50417 -111.20833',
+    '  39.50417 , -111.20833  ',
+    '39.50417/-111.20833',
+    '+39.50417, -111.20833',
+  ]) near(parseCoords(s), s);
+});
+
+test('hemisphere letters, on either side of the number', () => {
+  for (const s of [
+    '39.50417N 111.20833W',
+    '39.50417° N, 111.20833° W',
+    'N39.50417 W111.20833',
+    'N 39.50417, W 111.20833',
+    '39.50417n 111.20833w',
+  ]) near(parseCoords(s), s);
+});
+
+test('degrees, minutes and seconds — with the marks and without them', () => {
+  for (const s of [
+    `39°30'15"N 111°12'30"W`,
+    `39° 30' 15" N, 111° 12' 30" W`,
+    '39 30 15 N 111 12 30 W',
+    `39°30.25' N 111°12.5' W`,
+    // The marks iOS and a paste off the web actually produce.
+    `39º30’15”N 111º12’30”W`,
+  ]) near(parseCoords(s), s);
+});
+
+test('a letter decides the axis, so the order it was written in stops mattering', () => {
+  // Somebody reading a GPS aloud gives longitude first about as often as not.
+  const c = parseCoords('W111.20833 N39.50417');
+  near(c, 'longitude first, with letters');
+  assert.equal(parseCoords('39.5 N 111.2 N'), null, 'two latitudes is a typo, not a place');
+  assert.equal(parseCoords('39.5 W 111.2 E'), null, 'two longitudes is a typo, not a place');
+});
+
+test('a pair pasted the wrong way round is put back, and only when it has to be', () => {
+  // -111 cannot be a latitude, so nothing is lost by reading it as longitude.
+  const rescued = parseCoords('-111.20833, 39.50417');
+  near(rescued, 'longitude first, no letters');
+
+  // Both inside 90 is ambiguous, and lat-first is what every map writes. Do NOT
+  // get clever: 40, 30 is Turkey and it is what was typed.
+  // The rescue is not only for the six-decimal case: 91 is past the pole in
+  // any reading, so the pair can only have been written longitude first.
+  const off = parseCoords('91, 20.5');
+  assert.equal(off.lat, 20.5);
+  assert.equal(off.lng, 91);
+
+  const plain = parseCoords('40, 30');
+  assert.equal(plain.lat, 40);
+  assert.equal(plain.lng, 30);
+});
+
+test('the things that are not coordinates, which is nearly everything typed', () => {
+  for (const s of [
+    'narrows', 'cave 39', 'the gate', '',  '   ',
+    '39.50417',            // half of one — somebody mid-type
+    '39',                  // ditto, and a common enough word
+    '5 W',                 // a forest road, and it has a hemisphere letter in it
+    'W', 'N S',            // letters with nothing to be
+    '1,2,3',               // three halves is not two
+    '39.50417, -111.20833 cave',
+    '91, 200',             // neither number can be a latitude, either way round
+    '39.5, 181',           // off the end of the world
+    '39 61 15 N 111 12 30 W',   // sixty is not a minute
+    `39°30'75" N 111°12'30" W`, // nor a second
+  ]) assert.equal(parseCoords(s), null, `${JSON.stringify(s)} was read as a coordinate`);
+});
+
+test('the poles and the meridian are places, and 0,0 is one too', () => {
+  assert.deepEqual(
+    { lat: parseCoords('90, 180').lat, lng: parseCoords('90, 180').lng },
+    { lat: 90, lng: 180 });
+  assert.deepEqual(
+    { lat: parseCoords('-90, -180').lat, lng: parseCoords('-90, -180').lng },
+    { lat: -90, lng: -180 });
+  // Null here would be the tidier-looking answer and the wrong one: it is a
+  // real point, and a search box that silently ignores it is a search box that
+  // looks broken.
+  assert.ok(parseCoords('0, 0'));
+});
+
+test('what comes back is what was read out, not fifteen decimal places of it', () => {
+  // Five places is a shade over a metre. A label carrying 39.504166666666666 is
+  // a number nobody said, and it is unreadable at a gate.
+  assert.equal(parseCoords('39.50417, -111.20833').label, '39.50417, -111.20833');
+  assert.equal(parseCoords(`39°30'15"N 111°12'30"W`).label, '39.50417, -111.20833');
+  assert.equal(formatCoords(39.5, -111.2), '39.5, -111.2');
+  assert.equal(formatCoords(0, 0), '0, 0');
+  // South and west come back negative rather than lettered, because that is
+  // what the map is handed and what the pin will be stored as.
+  assert.equal(parseCoords('39.5 S 111.2 E').label, '-39.5, 111.2');
 });
 
 console.log(`\n${passed} passed\n`);

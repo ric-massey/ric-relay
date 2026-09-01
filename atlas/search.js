@@ -99,6 +99,134 @@ export function scorePin(entry, qterms) {
   return { score: total, why: inWords ? null : noteHit };
 }
 
+/* ── a coordinate is not a search ─────────────────────────────────────────
+ * Somebody reads you a number over the radio, a forum post gives a trailhead as
+ * 39°30'15"N 111°12'30"W, or you copy six decimal places off another map. There
+ * is exactly one place that means. Ranking it against towns called something
+ * similar is the wrong shape of answer, and asking a geocoder for it is a
+ * request over cell data for a fact already in your hand — which is why this
+ * runs first, and why a coordinate is found in a canyon with no signal.
+ *
+ * What it must never do is match something that isn't one. "5 W" is a forest
+ * road and "39" is somebody still typing, and a false positive here does not
+ * show a bad result — it replaces the whole list with one wrong place.
+ */
+
+// Everything a coordinate is allowed to be made of, and nothing else. A letter
+// outside NSEW means a name, and a name is not a coordinate.
+const COORD_CHARS = /^[-+0-9.,°'" NSEW/]+$/;
+
+function coordTokens(s) {
+  const out = [];
+  const re = /([NSEW])|([-+]?\d+(?:\.\d+)?)|([,/])/g;
+  let m;
+  while ((m = re.exec(s))) {
+    if (m[1]) out.push({ t: 'letter', v: m[1] });
+    else if (m[2]) out.push({ t: 'num', v: Number(m[2]) });
+    else out.push({ t: 'sep' });
+  }
+  return out;
+}
+
+/* One half of a reading: one to three numbers with an optional hemisphere
+ * letter on either side. A letter closes the half it trails; a letter that
+ * leads opens a new one, which is what keeps "N39 W111" from being read as a
+ * single half wearing two hemispheres.
+ *
+ * `dms` decides whether loose numbers stack into degrees-minutes-seconds or
+ * stand as halves of their own, and it is the one genuinely ambiguous call in
+ * here: "40 30" is either two decimal degrees or one reading of 40°30'. With no
+ * °, no ' and no hemisphere letter anywhere, it is read as two degrees, because
+ * that is what people type. */
+function coordHalves(tokens, dms) {
+  const halves = [];
+  let cur = null;
+  const close = () => { if (cur) { halves.push(cur); cur = null; } };
+
+  for (const tok of tokens) {
+    if (tok.t === 'sep') { close(); continue; }
+    if (tok.t === 'letter') {
+      if (cur && cur.nums.length && !cur.side) { cur.side = tok.v; close(); }
+      else { close(); cur = { side: tok.v, nums: [] }; }
+      continue;
+    }
+    if (!cur) cur = { side: null, nums: [] };
+    else if (!dms || cur.nums.length >= 3) { close(); cur = { side: null, nums: [] }; }
+    cur.nums.push(tok.v);
+  }
+  close();
+  return halves;
+}
+
+/* Degrees, minutes and seconds into one number. Sixty is not a minute: a
+ * reading with 61 in it is a typo, not somewhere an hour further on. */
+function coordValue({ side, nums }) {
+  const [deg, min = 0, sec = 0] = nums;
+  if (!Number.isFinite(deg) || min < 0 || sec < 0 || min >= 60 || sec >= 60) return null;
+  const size = Math.abs(deg) + min / 60 + sec / 3600;
+  const negative = side ? (side === 'S' || side === 'W') : deg < 0;
+  return {
+    v: negative ? -size : size,
+    axis: side ? (side === 'N' || side === 'S' ? 'lat' : 'lng') : null,
+  };
+}
+
+/* Five places is a shade over a metre — finer than a phone knows about itself,
+ * and far finer than anything you can stand on. Trailing zeros go, so a number
+ * read off a radio comes back looking like the number read off the radio. */
+export function formatCoords(lat, lng) {
+  const one = (n) => String(Number(n.toFixed(5)));
+  return `${one(lat)}, ${one(lng)}`;
+}
+
+/* The whole thing: a string in, { lat, lng, label } or null out. Null is by far
+ * the commoner answer and has to stay cheap — this runs on every keystroke. */
+export function parseCoords(input) {
+  const s = String(input ?? '')
+    .toUpperCase()
+    .replace(/[º˚∘]/g, '°')
+    .replace(/[’‘′]/g, "'")
+    .replace(/[”“″]/g, '"')
+    .trim();
+  if (!s || !COORD_CHARS.test(s)) return null;
+
+  const dms = /['"°NSEW]/.test(s);
+  const halves = coordHalves(coordTokens(s), dms);
+  if (halves.length !== 2) return null;
+  if (!halves[0].nums.length || !halves[1].nums.length) return null;
+
+  const a = coordValue(halves[0]);
+  const b = coordValue(halves[1]);
+  if (!a || !b) return null;
+
+  // Which number is which. Hemisphere letters say so outright, and two of the
+  // same axis is a contradiction rather than a reading. With no letters the
+  // order is latitude then longitude, as every map on earth writes it — unless
+  // the first one is past the poles, in which case it was pasted longitude
+  // first and can be put back the right way round.
+  let lat;
+  let lng;
+  if (a.axis && b.axis) {
+    if (a.axis === b.axis) return null;
+    lat = a.axis === 'lat' ? a.v : b.v;
+    lng = a.axis === 'lng' ? a.v : b.v;
+  } else if (a.axis || b.axis) {
+    const known = a.axis ? a : b;
+    const other = a.axis ? b : a;
+    lat = known.axis === 'lat' ? known.v : other.v;
+    lng = known.axis === 'lng' ? known.v : other.v;
+  } else if (Math.abs(a.v) > 90 && Math.abs(b.v) <= 90) {
+    lat = b.v;
+    lng = a.v;
+  } else {
+    lat = a.v;
+    lng = b.v;
+  }
+
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat, lng, label: formatCoords(lat, lng) };
+}
+
 /* ── the rest of the world ────────────────────────────────────────────────
  * Nominatim: free, keyless, nationwide, and the same OpenStreetMap data the
  * street base map and the trail overlay are already drawn from — so a road you

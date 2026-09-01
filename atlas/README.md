@@ -244,6 +244,27 @@ these do I want", and that gets answered by what a button is *near*.
   which it is: "no signal", "could not reach the index" and "nothing by that
   name" are three different answers that all look like an empty list.
 
+  **A coordinate is a third thing, and it comes before both.** Type
+  `39.50417, -111.20833` — or `39°30'15"N 111°12'30"W`, or `N39.5 W111.2`, with
+  the marks or without them, and in whichever order the hemisphere letters say
+  — and the list stops being a ranking. There is one place that means, so there
+  is one row, and pressing it jumps there and **starts a pin on the spot**.
+
+  That is what typing a coordinate is usually for. Somebody reads you a number
+  over the radio, or a forum post gives a trailhead as six decimal places, and
+  what you want is not to look at it — it is to write down what it is while you
+  still have the words. The pin opens with an empty name and nothing is written
+  anywhere until you save it, so it is also just a way to go and see.
+
+  Nominatim is never asked for one, which is a request saved and, more to the
+  point, the reason a number read out over the radio still finds its ground in a
+  canyon with no signal. What the parser must never do is match something that
+  is not a coordinate: `5 W` is a forest road and `39` is somebody still typing,
+  and a false positive here would not show a bad result — it would replace the
+  whole list with one wrong place. Latitude comes first, as every map on earth
+  writes it, unless the first number is past the pole — then it was pasted
+  longitude-first and is put back the right way round.
+
   **Where you are asking** is three chips under *areas & roads*, because the
   three questions are genuinely different and nothing in the words you type
   tells them apart:
@@ -799,7 +820,10 @@ grade beats a note match at every grade. And Nominatim hands a bounding box back
 as `[south, north, west, east]` while MapLibre wants `[[west, south], [east,
 north]]` — the same four numbers in a different order with the pairs swapped,
 which is exactly the kind of thing that survives a glance and then flies the map
-somewhere confidently wrong. It also holds that the near box is square on the
+somewhere confidently wrong. It holds the coordinate reader from both ends —
+every way a reading gets written landing on the same ground, and the far more
+important half, that a road called `5 W` and a half-typed `39` are not
+coordinates. And it holds that the near box is square on the
 ground rather than square in degrees, that each scope says which question it is
 asking in the URL it builds, and that a home saved from a row with a missing
 latitude comes back as *no home* rather than as 0,0 in the Gulf of Guinea.

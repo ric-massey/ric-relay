@@ -15,7 +15,7 @@ import { lngLatToTile, tileUrlsForBounds } from './tiles.js';
 import { shrink, photoPath, shrinkSquare, avatarPath } from './photos.js';
 import {
   terms, scorePin, placeSearchUrl, viewboxFromBounds, normalisePlaces,
-  rankPlaces, dedupePlaces, isArea, MIN_QUERY,
+  rankPlaces, dedupePlaces, isArea, MIN_QUERY, parseCoords,
   SCOPES, searchUrlForScope, searchOrigin, homeFromPlace, homeCamera,
 } from './search.js';
 import {
@@ -2875,6 +2875,15 @@ function schedulePlaces() {
   placeAsk = null;
 
   const q = query.trim();
+  // A coordinate answers itself, so nobody is asked. That is a request saved
+  // and, more to the point, the reason a number read off a radio still finds
+  // its place with no signal at all.
+  if (parseCoords(q)) {
+    places = [];
+    placeState = 'idle';
+    renderResults();
+    return;
+  }
   if (!sources.places || q.length < MIN_QUERY) {
     places = [];
     placeState = 'idle';
@@ -3018,6 +3027,17 @@ function renderResults() {
   const at = meMarker?.getLngLat();
   const here = at ? { lat: at.lat, lng: at.lng } : null;
 
+  // A coordinate is not a ranking. There is one place it means, so the list
+  // stops being a list of guesses and becomes that place — no scope chips, no
+  // kind filter, nothing to choose between.
+  const coord = parseCoords(q);
+  if (coord) {
+    $('list-body').innerHTML = coordHtml(coord, originNow());
+    $('list-count').textContent = '';
+    $('kind-bar').hidden = true;
+    return;
+  }
+
   const hits = sources.pins ? matchedPins() : [];
   const html = [];
 
@@ -3104,7 +3124,8 @@ function placesHtml(q, origin) {
   if (q.length < MIN_QUERY) {
     return note('i-search', q
       ? 'Keep typing — a word or two is enough.'
-      : 'Type a name and the map is searched too: towns, creeks, peaks, forest roads.');
+      : 'Type a name and the map is searched too: towns, creeks, peaks, forest '
+        + 'roads. Type a coordinate and it goes straight there.');
   }
   if (placeState === 'offline') return note('i-offline', 'No signal, so only your own pins can be searched.');
   if (placeState === 'asking')  return note('i-search', 'looking…');
@@ -3141,6 +3162,42 @@ function placeRow(pl, origin) {
     </div>
     ${icon('i-chevron', 'r-go')}
   </button>`;
+}
+
+/* The one row a coordinate gets, and it says what pressing it does — because
+ * what it does is more than travel. Typing a number in is how you write down
+ * somewhere you have been told about and not yet been, so it lands there and
+ * opens a new pin on the spot, name empty, waiting for what to call it. Walk
+ * away without saving and nothing was written. */
+function coordHtml(c, origin) {
+  const away = origin ? metresBetween(origin, c) : null;
+  return `<div class="result-head">coordinates</div>
+  <button class="place-row" data-coords="${c.lat},${c.lng}">
+    <span class="p-mark">${icon('i-pin')}</span>
+    <div class="r-text">
+      <div class="r-top">
+        <div class="r-name">${escapeHtml(c.label)}</div>
+        ${away != null ? `<div class="r-away">${fmtDistance(away)}</div>` : ''}
+      </div>
+      <div class="r-sub">go here and start a pin</div>
+    </div>
+    ${icon('i-chevron', 'r-go')}
+  </button>`;
+}
+
+/* Jumped to rather than flown. A flight is for a name off an index, where half
+ * the answer is where it turned out to be; a coordinate is a place you already
+ * know, and the nine hundred milliseconds are just nine hundred milliseconds.
+ *
+ * Never zooms out. Sitting closer in than street level and typing a number that
+ * is fifty metres away should not pull the ground out from under you. */
+const COORD_ZOOM = 16;
+
+function goToCoords(lat, lng) {
+  closeSearch();
+  clearFound();      // whatever the last search left standing is not this place
+  map.jumpTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), COORD_ZOOM) });
+  openNewPin(lat, lng, null);
 }
 
 /* An area is flown to as a box and a point as a point. A wilderness area framed
@@ -3190,6 +3247,13 @@ function setSource(which, on) {
 }
 
 function onListClick(e) {
+  const coordEl = e.target.closest('[data-coords]');
+  if (coordEl) {
+    const [lat, lng] = coordEl.dataset.coords.split(',').map(Number);
+    goToCoords(lat, lng);
+    return;
+  }
+
   const scopeEl = e.target.closest('[data-scope]');
   if (scopeEl) { setScope(scopeEl.dataset.scope); return; }
 
@@ -4307,7 +4371,7 @@ $('q-clear').addEventListener('click', clearQuery);
 $('q').addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
   e.preventDefault();
-  $('list-body').querySelector('[data-pin], [data-place]')?.click();
+  $('list-body').querySelector('[data-coords], [data-pin], [data-place]')?.click();
 });
 $('home-q').addEventListener('input', onHomeQuery);
 $('home-q-clear').addEventListener('click', () => {
