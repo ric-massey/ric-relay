@@ -636,6 +636,17 @@ button { cursor: pointer; border: none; background: none; }
 .park-name { font-weight: 700; }
 .park-meta { color: var(--ink-dim); font-size: var(--t-sm); }
 
+/* A saved area reads as the same kind of object a parking spot does — a named
+   thing with a line of detail under it and somewhere to go when you press it —
+   so it is the same row, with a bin beside it rather than inside it. Deleting
+   a map you carried up a mountain should not be one mis-tap away from opening
+   it. */
+.area-list { display: flex; flex-direction: column; gap: var(--s-2); }
+.area-list:not(:empty) { margin-bottom: var(--s-3); }
+.area-row { display: flex; align-items: center; gap: var(--s-2); }
+.area-row .park-row { flex: 1; min-width: 0; }
+.areas { margin-top: var(--s-4); }
+
 /* Choosing the spot. Along the floor rather than in a dialog, so the map you
    are aiming is the thing you can see. */
 .park-pick {

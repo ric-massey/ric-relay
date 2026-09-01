@@ -1,6 +1,8 @@
 /* Run: node test/tiles.test.mjs */
 import assert from 'node:assert/strict';
-import { lngLatToTile, tileToBBox, tileUrlsForBounds } from '../tiles.js';
+import {
+  lngLatToTile, tileToBBox, tileUrlsForBounds, tileCountForBounds, tileZoomFor,
+} from '../tiles.js';
 
 let passed = 0;
 const test = (name, fn) => {
@@ -91,6 +93,77 @@ test('the URL template is filled in the right order', () => {
   const [u] = tileUrlsForBounds(bounds, 14, 14, 'https://host/tile/{z}/{y}/{x}');
   const t = lngLatToTile(bounds.west, bounds.north, 14);
   assert.equal(u, `https://host/tile/14/${t.y}/${t.x}`);
+});
+
+test('counting and building agree, which is the only reason counting is safe', () => {
+  // The estimate counts and the download builds. If those two ever disagree the
+  // number on the button is not the download you get, and the place you notice
+  // is the place with no signal.
+  const boxes = [
+    { west: -105.29, south: 40.01, east: -105.28, north: 40.02 },
+    { west: -111.3, south: 39.4, east: -111.1, north: 39.6 },
+    { west: -0.01, south: -0.01, east: 0.01, north: 0.01 },   // across the seam
+  ];
+  for (const b of boxes) {
+    for (const [lo, hi] of [[9, 12], [12, 14], [14, 14]]) {
+      assert.equal(
+        tileCountForBounds(b, lo, hi),
+        tileUrlsForBounds(b, lo, hi, '{z}/{x}/{y}').length,
+        `${JSON.stringify(b)} z${lo}-${hi}`);
+    }
+  }
+});
+
+test('the whole world is counted rather than built', () => {
+  // The count for the planet at street detail is nine figures. This returns it
+  // in microseconds; building the same list is a browser that never comes back,
+  // and the panel needs the number in order to refuse.
+  const world = { west: -180, south: -85, east: 180, north: 85 };
+  assert.equal(tileCountForBounds(world, 0, 0), 1);
+  assert.equal(tileCountForBounds(world, 0, 2), 1 + 4 + 16);
+  assert.ok(tileCountForBounds(world, 9, 16) > 1e8);
+});
+
+console.log('\nwhich level gets asked for');
+
+test('a 256-pixel tile is fetched one level below the map, a 128 two', () => {
+  // MapLibre reckons its zoom against 512-pixel tiles. This is the whole of the
+  // retina change in one line: the same picture, from a level deeper, drawn at
+  // half the size, so a phone gets a real pixel per pixel instead of a stretched
+  // third of one.
+  assert.equal(tileZoomFor(15, 256), 16);
+  assert.equal(tileZoomFor(15, 128), 17);
+  assert.equal(tileZoomFor(15, 512), 15);
+});
+
+test('a part-way zoom asks for the level it has got past, not the next one', () => {
+  // Floor, not round. Rounding up would ask for a level the map is not showing
+  // yet, which on a metered connection is a quarter of the data for nothing.
+  assert.equal(tileZoomFor(15.9, 256), 16);
+  assert.equal(tileZoomFor(16.0, 256), 17);
+});
+
+test('the rule is the one MapLibre uses, written out a second way', () => {
+  // The download's depth and the map's request come from this one function, so
+  // asserting they agree with each other proves nothing. What is worth holding
+  // is that the function is the RIGHT rule: MapLibre reckons zoom against
+  // 512-pixel tiles, so a source declaring S is asked for zoom + log2(512/S).
+  // Written here from that sentence rather than copied from the implementation.
+  const asMapLibreDoesIt = (z, css) => Math.floor(z + Math.log(512 / css) / Math.LN2);
+  for (const css of [512, 256, 128]) {
+    for (const mapZoom of [3, 9, 12, 13.4, 14, 15, 16, 18]) {
+      assert.equal(tileZoomFor(mapZoom, css), asMapLibreDoesIt(mapZoom, css),
+        `z${mapZoom} at ${css}px`);
+    }
+  }
+});
+
+test('the shallow end never goes negative', () => {
+  // Zoomed all the way out on a retina screen the arithmetic wants a level
+  // below zero, and there is no such tile.
+  assert.equal(tileZoomFor(0, 128), 2);
+  assert.equal(tileZoomFor(0, 512), 0);
+  assert.ok(tileZoomFor(-3, 512) >= 0);
 });
 
 console.log(`\n${passed} passed`);

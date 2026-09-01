@@ -910,20 +910,15 @@
       </button>
     </div>
     <div class="panel-body pad">
-      <p class="lede">Download what's on screen now, and the map still draws
-        out there with no signal. Move the map to cover the area first.</p>
+      <p class="lede">Move the map over the ground you want and save it. A saved
+        area draws out there with no signal, and how much detail comes down is
+        worked out from how big the area is — there is nothing to set.</p>
 
-      <section class="detail" role="radiogroup" aria-label="how much detail">
-        <h3 class="detail-head">how much detail</h3>
-        <div class="seg">
-          <label class="seg-item"><input type="radio" name="detail" value="14">
-            <span>rough</span><small>big area, small download</small></label>
-          <label class="seg-item"><input type="radio" name="detail" value="16" checked>
-            <span>good</span><small>reads individual trees</small></label>
-          <label class="seg-item"><input type="radio" name="detail" value="17">
-            <span>max</span><small>slow and heavy</small></label>
-        </div>
-      </section>
+      <label class="field">
+        <span>what to call it</span>
+        <input id="area-name" type="text" autocomplete="off" maxlength="60"
+               spellcheck="false" placeholder="this area">
+      </label>
 
       <p id="dl-estimate" class="estimate"></p>
       <p id="dl-warn" class="warn" hidden>
@@ -947,13 +942,26 @@
       </div>
 
       <button id="dl-go" class="btn-primary wide">
-        <svg class="icon icon-sm"><use href="#i-download"/></svg><span class="lbl">download this area</span>
+        <svg class="icon icon-sm"><use href="#i-download"/></svg><span class="lbl">save this area</span>
       </button>
+
+      <!-- What you have taken with you, one row each. A saved area is something
+           you did on purpose for a particular trip, so it gets a name, and it
+           can be thrown away on its own rather than only along with every other
+           tile on the phone. -->
+      <section class="areas">
+        <h3 class="block-head"><svg class="icon"><use href="#i-download"/></svg>saved areas</h3>
+        <div id="area-list" class="area-list"></div>
+        <p id="area-none" class="hint" hidden>Nothing saved yet. Anything you
+          have looked at is still on the phone, but only saving an area is a
+          promise.</p>
+      </section>
+
       <p class="estimate">Photos are kept on the phone once you have opened
         them. This grabs the ones you haven't.</p>
       <button id="dl-photos" class="btn-ghost wide">download all photos</button>
       <p id="dl-storage" class="estimate"></p>
-      <button id="dl-clear" class="btn-ghost wide">delete downloaded maps</button>
+      <button id="dl-clear" class="btn-ghost wide">delete every downloaded tile</button>
     </div>
   </div>
 </div>

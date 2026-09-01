@@ -505,6 +505,21 @@ nine kinds have used the colour space up and shape separates further than any
 colour left in it does — with a dashed thread to the pin it serves, drawn only
 for the pin you have open.
 
+**It is offered while you are still making the pin**, not only afterwards.
+Standing at the pull-off and being told to save the pin, reopen it and only then
+say where you parked is three steps for one thing you already knew on the way in.
+The sheet is hidden rather than closed while you aim the crosshair, so the name
+half typed into it is still there when you come back, and the spot rides on the
+draft until the pin it hangs off exists — a parking row whose parent has not been
+written is a row the database refuses and a queue entry that jams everything
+behind it.
+
+**It is not on the map until you open the pin it belongs to.** It used to stand
+there permanently, which made it behave like a find: a P in the woods a hundred
+metres from its pin, competing with that pin at exactly the zoom where you are
+trying to tell which of the two you walk to. It now appears with the dashed
+thread, on the same rule and for the same reason, and goes when the sheet goes.
+
 The database enforces what the client must not be trusted with: one level deep,
 same owner, and **privacy taken from the parent**. A personal pin nobody can see
 with a visible parking spot fifty metres away is not a personal pin, so making a
@@ -533,6 +548,25 @@ what it has downloaded.
 The same column pair is why **the first-run setup happens once per person, not
 once per phone**. `setup_done` is on the profile. Sign in on a second device and
 you get the map you already set up, not a welcome screen.
+
+**On a phone the tiles are fetched a level deeper than the map is showing.** A
+tile is 256 pixels of picture; handed to MapLibre as 256 CSS pixels it is
+stretched across two or three device pixels, which is why the imagery looked like
+it had been painted with a thumb on the one screen it is actually read on.
+Declared as 128 instead, the same tile comes from the level below and is drawn at
+half size — identical data, at the density the screen has, nothing invented and
+nothing upscaled. It costs four tiles where there was one, which is why it is not
+only a display setting: the offline download reads the same function for its
+depth, or a phone would ask for a level it never saved and find the canyon blank.
+`tiles.js` owns that one rule and `test/tiles.test.mjs` holds it against
+MapLibre's, written out a second way. Volunteer-run and draw-to-order layers
+(contour topo, the Census boundaries) stay at 256 on purpose — quadrupling what
+we ask of them is the rudeness `noBulk` exists to prevent everywhere else.
+
+Deeper than this there is nothing to be had. Esri's imagery genuinely stops at
+z19 — above it the server answers 200 with a 2 KB "no data" placeholder rather
+than a sharper tile — and USGS topo stops at 16, which is a fact about their
+cache and not a setting here.
 
 Base maps under **layers**: satellite (Esri), satellite + topo, USGS topo,
 contour topo (OpenTopoMap), and street. Over the top of those, eight overlays in
@@ -742,11 +776,34 @@ The rest:
 
 The places worth pinning have no signal, so none of this depends on having any.
 
-**Before you go**, open **save maps for offline** at the bottom of **layers**, move the map over the area, pick a
-detail level and download. Tiles land in a cache that survives app updates —
-shipping a new version does not wipe your canyon. Rough is a big area cheaply;
-good reads individual trees; max is slow and heavy. The estimate updates as you
-move the map, so you can see the cost before committing.
+**Before you go**, open **save maps for offline** at the bottom of **layers**,
+move the map over the ground you want, and save it. There is nothing to set.
+
+There used to be: rough, good or max, and a tile count to read before deciding.
+That is a question about tile arithmetic wearing the clothes of a question about
+the ground, and the honest answer to it depends entirely on how big the box on
+screen is — the same "good" is four hundred tiles over a crag and forty thousand
+over a county, and only one of those is a download anybody wanted. So the box
+decides: as deep as the budget allows and no deeper. A crag comes down at full
+detail, a county comes down usably, and the line under the field says what you
+will be able to see — *close enough for individual trees*, *trails and
+clearings*, *roads and ridgelines* — rather than a number. Past about 60 MB even
+at the roughest setting it refuses, says the figure, and tells you to zoom in.
+
+**A saved area is a thing with a name on it.** It is something you did on purpose
+for a particular trip, so it goes on a list with its size and the day you took
+it, the map flies back to it when you press it, and it can be thrown away on its
+own. The name is filled in for you from the nearest pin, or your home town, or
+failing both the coordinates — and it follows the map until you type over it,
+after which it is yours. Deleting one works out what every area that is *staying*
+still needs before it removes anything, because a tile inside two saved areas
+belongs to both and trimming one should not punch a hole through the middle of
+another.
+
+Tiles land in a cache that survives app updates — shipping a new version does not
+wipe your canyon. The blunt "delete every downloaded tile" is still there, and it
+is still worth having: the cache holds every tile you have ever *looked* at as
+well as every tile you saved on purpose, and only that gets rid of those.
 
 **Out there**, with no signal:
 
@@ -786,7 +843,12 @@ node test/search.test.mjs
 ```
 
 The tile maths — which square of the planet gets downloaded. Worth having tested,
-because the wrong answer only shows up somewhere with no signal.
+because the wrong answer only shows up somewhere with no signal. It also holds
+the two rules the offline download depends on: that counting tiles and building
+them give the same number, since the estimate counts and the download builds and
+the whole country at street detail is nine figures either way; and that the level
+MapLibre asks for is the level that gets saved. Take one level less than the map
+asks for and nothing throws, nothing warns, and the ground is simply not there.
 
 And the ownership string-work, for the same reason: a legal description is
 checked in a canyon, where nobody can tell a wrong one from a right one, and

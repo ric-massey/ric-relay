@@ -11,12 +11,15 @@
  */
 
 import { local } from './db.js';
-import { lngLatToTile, tileUrlsForBounds } from './tiles.js';
+import {
+  lngLatToTile, tileUrlsForBounds, tileCountForBounds, tileZoomFor,
+} from './tiles.js';
 import { shrink, photoPath, shrinkSquare, avatarPath } from './photos.js';
 import {
   terms, scorePin, placeSearchUrl, viewboxFromBounds, normalisePlaces,
   rankPlaces, dedupePlaces, isArea, MIN_QUERY, parseCoords,
   SCOPES, searchUrlForScope, searchOrigin, homeFromPlace, homeCamera,
+  formatCoords,
 } from './search.js';
 import {
   lookup as lookupOwnership, assessorSearchUrl, parcelSiteUrl,
@@ -236,6 +239,28 @@ const OVERLAYS = {
     attribution: 'Regrid',
   },
 };
+
+/* ── how sharp the ground is ──────────────────────────────────────────────
+ * A tile is 256 pixels of picture. Handed to MapLibre as 256 CSS pixels it is
+ * stretched across two or three device pixels on a phone, which is why the
+ * imagery has always looked like it was painted with a thumb on the one screen
+ * it is actually read on. Declared as 128 instead, the same tile is fetched
+ * from the level below and drawn at half size: identical data, at the density
+ * the screen has. Nothing is invented and nothing is upscaled.
+ *
+ * It costs four tiles where there was one, which is why this is not only a
+ * display setting. The offline download adds the same boost to its depth, or a
+ * phone would ask for a level it never saved and find the canyon blank — the
+ * one place the mistake cannot be fixed.
+ *
+ * The layers marked noBulk stay at 256 on purpose. They are the ones served by
+ * volunteers or drawn to order per request, and quadrupling what we ask of them
+ * for a sharper picture is exactly the rudeness the noBulk flag exists to
+ * prevent everywhere else.
+ */
+const RETINA = (window.devicePixelRatio || 1) >= 1.5;
+const TILE_CSS = RETINA ? 128 : 256;
+const tileCssFor = (cfg) => (cfg.noBulk ? 256 : TILE_CSS);
 
 let overlaysOn = new Set();
 
@@ -651,7 +676,7 @@ function initMap() {
   const layers = [];
   for (const [key, cfg] of Object.entries(BASEMAPS)) {
     sources[key] = {
-      type: 'raster', tiles: [cfg.url], tileSize: 256,
+      type: 'raster', tiles: [cfg.url], tileSize: tileCssFor(cfg),
       maxzoom: cfg.maxzoom, attribution: cfg.attribution,
     };
     layers.push({
@@ -685,7 +710,7 @@ function initMap() {
     cfg.urls.forEach((url, i) => {
       const id = `ov-${key}-${i}`;
       sources[id] = {
-        type: 'raster', tiles: [url], tileSize: 256,
+        type: 'raster', tiles: [url], tileSize: tileCssFor(cfg),
         maxzoom: cfg.maxzoom, attribution: cfg.attribution,
         ...(cfg.minzoom ? { minzoom: cfg.minzoom } : {}),
       };
@@ -1163,6 +1188,36 @@ async function loadPhotos() {
  * drawn for none of them, a P on a forest road belongs to nothing. */
 const PARK_LINE_SRC = 'park-line';
 
+/* And the spot itself is hidden on the same rule, for the same reason the
+ * thread is. A parking spot is not a find — it is a detail OF one — and left
+ * standing on the map it behaves like a find: a P in the woods a hundred metres
+ * from the pin it belongs to, competing with that pin at exactly the zoom where
+ * you are trying to tell which of the two you walk to. It appears when you open
+ * the pin it serves, with the thread that says which pin that is, and goes when
+ * the sheet goes. */
+function parkingShown(p) {
+  const open = sheet?.mode === 'view' ? sheet.pin : null;
+  return !!open && (open.id === p.parent_id || open.id === p.id);
+}
+
+/* Both halves of "this belongs to that" move together, so there is no state in
+ * which one of them is right and the other is not. */
+function drawParkFor() {
+  drawParkLine();
+  syncParkMarkers();
+}
+
+function syncParkMarkers() {
+  if (!map) return;
+  for (const p of pins) {
+    if (!isParking(p)) continue;
+    const want = parkingShown(p) && passesFilter(p);
+    const has = markers.has(p.id);
+    if (want && !has) addMarker(p);
+    if (!want && has) { markers.get(p.id).remove(); markers.delete(p.id); }
+  }
+}
+
 function drawParkLine() {
   if (!map || !map.getSource(PARK_LINE_SRC)) return;
   const pin = sheet?.mode === 'view' ? sheet.pin : null;
@@ -1178,7 +1233,8 @@ function drawParkLine() {
 function drawPins() {
   markers.forEach((m) => m.remove());
   markers.clear();
-  pins.filter(passesFilter).forEach(addMarker);
+  pins.filter((p) => passesFilter(p) && (!isParking(p) || parkingShown(p)))
+    .forEach(addMarker);
   drawParkLine();
   // Say when the map is deliberately incomplete, or a filtered-out pin reads
   // as a lost one.
@@ -1452,6 +1508,7 @@ function openNewPin(lat, lng, accuracy) {
   $('pin-delete').hidden = true;
   $('sheet-actions').hidden = false;
   $('pin-meta').innerHTML = metaHtml(sheet.pin, null);
+  renderParking();                   // offered from the start, not after saving
   $('notes-block').hidden = true;    // nothing to log about a place yet
   // Emptied rather than just hidden: the strips inside it are still in the
   // document, and renderPhotos paints every strip it can find.
@@ -1508,7 +1565,7 @@ function openPin(p) {
   // Stand the pin you are reading about up out of the others, and thread it to
   // where you leave the truck.
   markActive(p.id);
-  drawParkLine();
+  drawParkFor();
   map.easeTo({ center: [p.lng, p.lat] });
 }
 
@@ -1542,7 +1599,7 @@ function closeSheet() {
   releaseObjectUrls();
   editingNote = null;
   sheet = null;
-  drawParkLine();      // nothing open, so nothing to thread
+  drawParkFor();       // nothing open, so nothing to thread or draw
 }
 
 function releaseObjectUrls() {
@@ -1596,6 +1653,12 @@ async function createPin(fields) {
   pins.unshift(shown);
   await local.putPin(shown);
   addMarker(shown);
+
+  // The pull-off chosen before the pin existed, written now — after the parent
+  // insert is in the queue and never before it, for the same reason the photos
+  // below wait: the row points at the pin, and the queue replays in order.
+  // Quietly, because "pinned" is the only thing that needs saying.
+  if (sheet.park) await createParking(shown, sheet.park.lat, sheet.park.lng, { quiet: true });
 
   // Photos queued behind the pin, never in front of it: a photo row references
   // the pin, so replaying them the other way round would fail the foreign key
@@ -2563,13 +2626,19 @@ function navTarget(pin) {
 function renderParking() {
   const pin = sheet?.pin;
   const block = $('park-block');
-  // A parking spot does not get a parking spot, and a pin that is not saved yet
-  // has nothing for one to hang off.
-  if (!pin || sheet.mode !== 'view' || isParking(pin)) { block.hidden = true; return; }
+  // A parking spot does not get a parking spot of its own.
+  const usable = sheet?.mode === 'view' || sheet?.mode === 'new';
+  if (!pin || !usable || isParking(pin)) { block.hidden = true; return; }
   block.hidden = false;
 
-  const mine = pin.created_by === me.id;
-  const park = parkingFor(pin.id);
+  // While the pin is still being made there is no row for a spot to hang off,
+  // so the spot is held on the draft and written straight after the pin is.
+  // Standing at the pull-off and being told to save the pin, reopen it, and
+  // only then say where you parked is three steps for one thing you knew on
+  // the way in.
+  const making = sheet.mode === 'new';
+  const mine = making || pin.created_by === me.id;   // a pin being made is yours
+  const park = making ? sheet.park : parkingFor(pin.id);
 
   $('park-set').hidden = !park;
   $('park-clear').hidden = !park || !mine;
@@ -2579,10 +2648,14 @@ function renderParking() {
   $('park-none').hidden = !!park || mine;
 
   if (park) {
-    $('park-name').textContent = park.name?.trim() || 'the parking spot';
+    $('park-name').textContent = making
+      ? 'the parking spot' : (park.name?.trim() || 'the parking spot');
     const away = metresBetween({ lat: park.lat, lng: park.lng }, { lat: pin.lat, lng: pin.lng });
-    $('park-meta').textContent =
-      `${fmtDistance(away)} from the pin, in a straight line`;
+    // Say plainly that it is not written yet. Nothing else on a new sheet is
+    // either, and a row that looks saved is a row you stop thinking about.
+    $('park-meta').textContent = making
+      ? `${fmtDistance(away)} away — saved when the pin is`
+      : `${fmtDistance(away)} from the pin, in a straight line`;
   }
 }
 
@@ -2595,8 +2668,13 @@ let parkPick = null;      // { forPin } while choosing
 function startParkPick() {
   const pin = sheet?.pin;
   if (!pin) return;
-  parkPick = { forPin: pin };
-  closeSheet();
+  // A pin being made lives nowhere but this sheet, so the sheet is HIDDEN
+  // rather than closed and the name half typed into it is still there when we
+  // come back. A pin being viewed is written down, and closing it is free.
+  const making = sheet.mode === 'new';
+  parkPick = { forPin: pin, making };
+  if (making) { hideSheet(); sheetPadding(false); }
+  else closeSheet();
   $('park-pick').hidden = false;
   $('crosshair').classList.remove('is-offset');
   $('crosshair').hidden = false;
@@ -2606,25 +2684,49 @@ function startParkPick() {
 }
 
 function cancelParkPick() {
-  const pin = parkPick?.forPin;
+  const { forPin, making } = parkPick || {};
   parkPick = null;
   $('park-pick').hidden = true;
+  if (making) { resumeNewPin(); return; }
   $('crosshair').hidden = true;
-  if (pin) openPin(pin);
+  if (forPin) openPin(forPin);
 }
 
 async function confirmParkPick() {
-  const pin = parkPick?.forPin;
-  if (!pin) return;
+  const { forPin, making } = parkPick || {};
+  if (!forPin) return;
   const c = map.getCenter();
   parkPick = null;
   $('park-pick').hidden = true;
+
+  if (making) {
+    // Nothing is written. The parent row does not exist yet, and a parking row
+    // whose parent does not exist is a row the database refuses and a queue
+    // entry that jams everything behind it. It rides on the draft instead.
+    sheet.park = { lat: c.lat, lng: c.lng };
+    resumeNewPin();
+    return;
+  }
+
   $('crosshair').hidden = true;
-  await createParking(pin, c.lat, c.lng);
-  openPin(pin);
+  await createParking(forPin, c.lat, c.lng);
+  openPin(forPin);
 }
 
-async function createParking(pin, lat, lng) {
+/* Back to the pin you were in the middle of making. Nothing is restored because
+ * nothing was thrown away — the sheet was only hidden — so this is the crosshair
+ * and the camera going back to where openNewPin had them. */
+function resumeNewPin() {
+  if (!sheet) return;
+  sheetPadding(true);
+  $('crosshair').classList.add('is-offset');
+  $('crosshair').hidden = false;
+  map.easeTo({ center: [sheet.pin.lng, sheet.pin.lat] });
+  renderParking();
+  showSheet();
+}
+
+async function createParking(pin, lat, lng, { quiet = false } = {}) {
   const row = {
     id: crypto.randomUUID(),
     created_by: me.id,
@@ -2645,12 +2747,19 @@ async function createParking(pin, lat, lng) {
 
   pins.unshift(shown);
   await local.putPin(shown);
-  addMarker(shown);
-  drawParkLine();
-  toast(sent ? 'parking saved' : 'parking saved — will sync when you have signal');
+  // Not addMarker: whether it is drawn at all is parkingShown()'s call, and it
+  // is drawn here only because the pin it hangs off is the one on screen.
+  drawParkFor();
+  if (!quiet) {
+    toast(sent ? 'parking saved' : 'parking saved — will sync when you have signal');
+  }
 }
 
 async function clearParking() {
+  // Nothing has been written, so nothing has to be unwritten — and asking
+  // "are you sure" about a decision that has not left the screen is noise.
+  if (sheet?.mode === 'new') { sheet.park = null; renderParking(); return; }
+
   const pin = sheet?.pin;
   const park = pin && parkingFor(pin.id);
   if (!park) return;
@@ -2660,7 +2769,7 @@ async function clearParking() {
   await local.deletePin(park.id);
   markers.get(park.id)?.remove();
   markers.delete(park.id);
-  drawParkLine();
+  drawParkFor();
   renderParking();
   toast('parking removed');
 }
@@ -3460,53 +3569,158 @@ async function firstRunDone() {
 }
 
 /* ── offline maps ────────────────────────────────────────────────────────
- * Download the tiles for whatever is on screen before you leave the house, and
- * the map still draws in the canyon. This is the difference between an app that
- * works out there and a black screen with a blue dot on it.
+ * Save the ground before you leave the house and the map still draws in the
+ * canyon. This is the difference between an app that works out there and a
+ * black screen with a blue dot on it.
+ *
+ * What this used to ask you was: move the map, then pick "rough", "good" or
+ * "max", then read a tile count, then decide. That is a question about tile
+ * arithmetic wearing the clothes of a question about the ground, and the honest
+ * answer to it depends entirely on how big the box on screen is — the same
+ * "good" is four hundred tiles over a crag and forty thousand over a county,
+ * and only one of those is a download anybody wanted. So the box decides now:
+ * go as deep as the budget allows and no deeper. You name it and press save.
+ *
+ * And what came back was one undifferentiated cache with one button that
+ * deleted all of it. A saved area is a thing you did on purpose, for a trip,
+ * and it should be a thing on a list with a name on it that you can throw away
+ * on its own.
  */
 
-function tilesForView(minZoom, maxZoom) {
+const OFFLINE_MIN_Z = 9;            // the whole region at a glance, and cheap
+const TILE_BUDGET = 2200;           // about 60 MB at BYTES_PER_TILE
+
+/* How deep, said as what you will be able to see rather than as a zoom number.
+ * These are MAP zooms — the number in the corner of a slippy map — and the
+ * pyramid level that has to be on the phone to draw one is tileZoomFor()'s
+ * answer, which is a level below it — and another again on a retina screen,
+ * because that is what makes it sharp. See TILE_CSS. */
+const DETAILS = [
+  { zoom: 16, say: 'close enough for individual trees' },
+  { zoom: 15, say: 'trails and clearings' },
+  { zoom: 14, say: 'roads and ridgelines' },
+  { zoom: 13, say: 'the shape of the country' },
+];
+
+const pyramidFor = (mapZoom) => tileZoomFor(mapZoom, TILE_CSS);
+
+function viewBox() {
   const b = map.getBounds();
-  const bounds = { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() };
-  const urls = [];
+  return { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() };
+}
 
-  const add = (template, layerMax) =>
-    urls.push(...tileUrlsForBounds(bounds, minZoom, Math.min(maxZoom, layerMax), template));
+const layersNow = () => ({ base: basemap, overlays: [...overlaysOn] });
 
-  const cfg = BASEMAPS[basemap];
-  if (!cfg.noBulk) add(cfg.url, cfg.maxzoom);
-
+/* Every tile a box needs, for a given base map and set of overlays. Split out
+ * from "what is on screen" so a saved area can be measured before it is taken,
+ * and — a year later, when it is deleted — worked out again from the box it was
+ * saved as. Nothing records the URLs; the box and the layers are enough, and a
+ * list of forty thousand strings in IndexedDB is not. */
+function eachTiledLayer(bounds, { base, overlays, minZoom = OFFLINE_MIN_Z, maxZoom }, fn) {
+  const cfg = BASEMAPS[base];
+  if (cfg && !cfg.noBulk) fn([cfg.url], minZoom, Math.min(maxZoom, cfg.maxzoom));
   // Whatever is switched on comes down too — a satellite tile with no road
-  // layer over it is half the map you were looking at when you hit download.
-  for (const key of overlaysOn) {
-    const cfg = OVERLAYS[key];
+  // layer over it is half the map you were looking at when you pressed save.
+  for (const key of overlays) {
+    const ov = OVERLAYS[key];
     // Some overlays are drawn to order from a bounding box rather than served
     // as tiles. There is nothing to put in a box and take up the mountain.
-    if (cfg.noBulk) continue;
-    const from = Math.max(minZoom, cfg.minzoom || 0);
-    if (from > Math.min(maxZoom, cfg.maxzoom)) continue;   // nothing to fetch
-    cfg.urls.forEach((u) =>
-      urls.push(...tileUrlsForBounds(bounds, from, Math.min(maxZoom, cfg.maxzoom), u)));
+    if (!ov || ov.noBulk) continue;
+    const from = Math.max(minZoom, ov.minzoom || 0);
+    const to = Math.min(maxZoom, ov.maxzoom);
+    if (from > to) continue;                       // nothing to fetch
+    fn(ov.urls, from, to);
   }
+}
+
+/* How many, and what. Two functions rather than one because the count is asked
+ * for every time the map stops moving, and the honest count for the country at
+ * street detail is nine figures — arithmetic either way, but a list of nine
+ * figures' worth of strings is a browser that does not come back. Only the
+ * download itself, which by then is known to be small, builds the URLs. */
+function tileCountForBox(bounds, what) {
+  let n = 0;
+  eachTiledLayer(bounds, what, (urls, from, to) => {
+    n += urls.length * tileCountForBounds(bounds, from, to);
+  });
+  return n;
+}
+
+function tilesForBox(bounds, what) {
+  const urls = [];
+  eachTiledLayer(bounds, what, (templates, from, to) =>
+    templates.forEach((u) => urls.push(...tileUrlsForBounds(bounds, from, to, u))));
   return urls;
 }
 
-const maxZoomChoice = () => parseInt(
-  document.querySelector('[name="detail"]:checked')?.value || '16', 10);
+const urlsForArea = (a) =>
+  tilesForBox(a.bounds, { base: a.base, overlays: a.overlays || [], maxZoom: a.maxZoom });
+
+/* The deepest detail this box fits into the budget. A crag comes down at full
+ * detail; a county comes down usably. Neither one asks a question you would
+ * have to do arithmetic to answer. */
+function pickDetail(bounds, what) {
+  for (const d of DETAILS) {
+    const tiles = tileCountForBox(bounds, { ...what, maxZoom: pyramidFor(d.zoom) });
+    if (tiles <= TILE_BUDGET) return { ...d, tiles, tooBig: false };
+  }
+  // Even the shallowest is out of reach. The box is not an area any more, it is
+  // a region, and the honest answer is a number and a way out of it rather than
+  // a download this app should not be asking a phone to make.
+  const last = DETAILS[DETAILS.length - 1];
+  const tiles = tileCountForBox(bounds, { ...what, maxZoom: pyramidFor(last.zoom) });
+  return { ...last, tiles, tooBig: true };
+}
+
+/* ── the saved areas themselves ───────────────────────────────────────── */
+
+const savedAreas = async () => (await local.get('areas')) || [];
+const putAreas = (list) => local.set('areas', list);
+
+/* Something to call it that you will recognise in three months, worked out
+ * rather than demanded: the nearest pin to the middle of what you are saving,
+ * or the town you set as home, or — failing both — the coordinates, which at
+ * least say where on earth it was. */
+function areaNameGuess() {
+  const c = map.getCenter();
+  const at = { lat: c.lat, lng: c.lng };
+  let best = null;
+  let bestAway = Infinity;
+  for (const p of placePins()) {
+    const away = metresBetween(at, p);
+    if (away < bestAway) { bestAway = away; best = p; }
+  }
+  if (best && bestAway < 40000) return pinTitle(best);
+  if (home?.name) return home.name;
+  return formatCoords(at.lat, at.lng);
+}
+
+/* The name follows the map until you type in it, and then it is yours. Filling
+ * it in again under somebody's cursor because they panned two hundred metres is
+ * the app arguing with them. */
+let areaNamed = false;
+
+function suggestAreaName() {
+  if (areaNamed || !map) return;
+  $('area-name').value = areaNameGuess();
+}
 
 function updateDownloadEstimate() {
   if ($('maps').hidden || !map) return;
-  const n = tilesForView(9, maxZoomChoice()).length;
-  const base = BASEMAPS[basemap];
+  const what = layersNow();
+  const bounds = viewBox();
+  const detail = pickDetail(bounds, what);
+  const base = BASEMAPS[what.base];
 
   // Split what is switched on into what will actually come down and what will
-  // not. Listing an overlay that is not in the tile count is the estimate
-  // promising something the download cannot deliver, and the place you find
-  // that out is the place with no signal.
-  const on = [...overlaysOn].map((k) => OVERLAYS[k]);
+  // not. Listing an overlay that is not in the download is a promise the
+  // download cannot keep, and the place you find that out is the place with no
+  // signal.
+  const on = what.overlays.map((k) => OVERLAYS[k]);
   const coming = on.filter((o) => !o.noBulk);
   const staying = on.filter((o) => o.noBulk);
-  const what = [...(base.noBulk ? [] : [base.label]), ...coming.map((o) => o.label)];
+  const layers = [...(base.noBulk ? [] : [base.label]), ...coming.map((o) => o.label)];
+  const bytes = detail.tiles * BYTES_PER_TILE;
 
   $('dl-nobulk').hidden = !base.noBulk;
   $('dl-noserve').hidden = !staying.length;
@@ -3517,29 +3731,52 @@ function updateDownloadEstimate() {
       + `served as tiles, so ${staying.length > 1 ? 'they are' : 'it is'} not in that `
       + `number. You keep whatever you have already looked at, and nothing more.`;
   }
-  $('dl-estimate').innerHTML =
-    `<b>${n.toLocaleString()}</b> tiles &middot; about <b>${fmtSize(n * BYTES_PER_TILE)}</b>
-     &middot; ${escapeHtml(what.join(' + '))}`;
-  $('dl-warn').hidden = n < 6000;
-  $('dl-go').disabled = n === 0;
+
+  if (!detail.tiles) {
+    $('dl-estimate').textContent =
+      'Nothing on this base map can be saved. Switch to satellite or USGS topo.';
+  } else if (detail.tooBig) {
+    // Say the real number and say what to do. "Too big" with no figure on it is
+    // the app refusing without explaining, and the person on the other end has
+    // no way to know whether they are close or nowhere near.
+    $('dl-estimate').innerHTML =
+      `<b>${fmtSize(bytes)}</b> even at the roughest detail, which is more than
+       ATLAS will take in one go. Zoom in and it will come down.`;
+  } else {
+    $('dl-estimate').innerHTML =
+      `about <b>${fmtSize(bytes)}</b> &middot; ${escapeHtml(detail.say)}
+       &middot; ${escapeHtml(layers.join(' + '))}`;
+  }
+  $('dl-warn').hidden = detail.tooBig || bytes < 25 * 1024 * 1024;
+  $('dl-go').disabled = !detail.tiles || detail.tooBig;
+  suggestAreaName();
 }
 
-async function downloadArea() {
+async function saveArea() {
   if (download) { download.cancel = true; return; }
 
-  const urls = tilesForView(9, maxZoomChoice());
+  const what = layersNow();
+  const bounds = viewBox();
+  const detail = pickDetail(bounds, what);
+  if (!detail.tiles || detail.tooBig) return;
+  const maxZoom = pyramidFor(detail.zoom);
+  const urls = tilesForBox(bounds, { ...what, maxZoom });
   if (!urls.length) return;
+
+  const name = $('area-name').value.trim() || areaNameGuess();
+  const total = urls.length;
 
   // Ask the OS not to evict this the moment storage gets tight.
   if (navigator.storage?.persist) await navigator.storage.persist().catch(() => {});
 
   download = { cancel: false };
   const go = $('dl-go');
-  setLabel(go, 'cancel');
+  setLabel(go, 'stop');
   go.classList.add('is-cancel');
 
   const cache = await caches.open(TILE_CACHE);
-  let done = 0, failed = 0;
+  let done = 0;
+  let failed = 0;
   const CONCURRENCY = 8;
 
   const worker = async () => {
@@ -3554,24 +3791,97 @@ async function downloadArea() {
         }
       } catch { failed++; }
       done++;
-      if (done % 12 === 0) showProgress(done, done + urls.length);
+      if (done % 12 === 0) showProgress(done, total);
     }
   };
 
-  const total = urls.length;
   showProgress(0, total);
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
   const cancelled = download.cancel;
   download = null;
-  setLabel(go, 'download this area');
+  setLabel(go, 'save this area');
   go.classList.remove('is-cancel');
   $('dl-progress').hidden = true;
 
+  // A stopped download is not an area. Half a box is not a promise the list
+  // should be making, and the tiles that did land are still in the cache doing
+  // their job — they are simply not something with a name on it.
+  if (!cancelled) {
+    const areas = await savedAreas();
+    areas.unshift({
+      id: crypto.randomUUID(),
+      name, bounds, maxZoom,
+      base: what.base, overlays: what.overlays,
+      say: detail.say,
+      tiles: total,
+      bytes: (done - failed) * BYTES_PER_TILE,
+      at: new Date().toISOString(),
+    });
+    await putAreas(areas);
+    areaNamed = false;
+    suggestAreaName();
+  }
+
+  await renderAreas();
   await refreshStorage();
   toast(cancelled
     ? `stopped — ${done.toLocaleString()} tiles kept`
-    : `${(done - failed).toLocaleString()} tiles saved${failed ? `, ${failed} failed` : ''}`);
+    : `"${name}" saved${failed ? `, ${failed} tiles failed` : ''}`);
+}
+
+async function renderAreas() {
+  const areas = await savedAreas();
+  $('area-none').hidden = !!areas.length;
+  $('area-list').innerHTML = areas.map((a) => `
+    <div class="area-row">
+      <button class="park-row" data-area="${escapeHtml(a.id)}">
+        <span class="park-text">
+          <span class="park-name">${escapeHtml(a.name)}</span>
+          <small class="park-meta">${fmtSize(a.bytes)} &middot; ${escapeHtml(a.say || '')}
+            &middot; ${escapeHtml(fmtDate(a.at))}</small>
+        </span>
+        <svg class="icon icon-sm"><use href="#i-chevron"/></svg>
+      </button>
+      <button class="icon-btn" data-area-del="${escapeHtml(a.id)}"
+              aria-label="Delete ${escapeHtml(a.name)}">
+        <svg class="icon icon-sm"><use href="#i-trash"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+async function showArea(id) {
+  const a = (await savedAreas()).find((x) => x.id === id);
+  if (!a) return;
+  closePanel('maps');
+  map.fitBounds([[a.bounds.west, a.bounds.south], [a.bounds.east, a.bounds.north]],
+    { padding: 24, duration: 700 });
+}
+
+async function deleteArea(id) {
+  const areas = await savedAreas();
+  const gone = areas.find((a) => a.id === id);
+  if (!gone) return;
+  if (!confirm(`Delete "${gone.name}"? The tiles come off this phone. `
+    + 'Your pins and photos are not touched.')) return;
+
+  const rest = areas.filter((a) => a.id !== id);
+  // A tile inside two saved areas belongs to both of them. Work out everything
+  // the areas that are STAYING still need before deleting anything, or trimming
+  // one area punches a hole through the middle of another and the first you
+  // hear about it is a grey square in a canyon.
+  const keep = new Set(rest.flatMap(urlsForArea));
+  const cache = await caches.open(TILE_CACHE);
+  let freed = 0;
+  for (const url of new Set(urlsForArea(gone))) {
+    if (keep.has(url)) continue;
+    if (await cache.delete(url)) freed++;
+  }
+
+  await putAreas(rest);
+  await renderAreas();
+  await refreshStorage();
+  toast(`"${gone.name}" deleted — ${fmtSize(freed * BYTES_PER_TILE)} freed`);
 }
 
 function showProgress(done, total) {
@@ -3618,9 +3928,16 @@ async function refreshStorage() {
     + (persisted ? ' &middot; protected from cleanup' : '');
 }
 
+/* The blunt one, and it is still worth having: the cache holds every tile you
+ * have ever LOOKED at as well as every tile you saved on purpose, and only this
+ * gets rid of those. It takes the saved areas with it, because leaving a list of
+ * names pointing at tiles that are gone is worse than an empty list. */
 async function clearTiles() {
-  if (!confirm('Delete all downloaded map tiles? Your pins are not touched.')) return;
+  if (!confirm('Delete every downloaded map tile, saved areas included? '
+    + 'Your pins and photos are not touched.')) return;
   await caches.delete(TILE_CACHE);
+  await putAreas([]);
+  await renderAreas();
   await refreshStorage();
   updateDownloadEstimate();
   toast('downloaded maps cleared');
@@ -3628,7 +3945,9 @@ async function clearTiles() {
 
 function openMaps() {
   openPanel('maps');
+  areaNamed = false;
   updateDownloadEstimate();
+  renderAreas();
   refreshStorage();
 }
 
@@ -4398,6 +4717,10 @@ $('park-cancel').addEventListener('click', cancelParkPick);
 $('park-confirm').addEventListener('click', confirmParkPick);
 $('park-clear').addEventListener('click', clearParking);
 $('park-open').addEventListener('click', () => {
+  // On a pin still being made there is no sheet to open — the spot is two
+  // numbers on a draft — so pressing the row moves it instead, which is the
+  // only thing it could usefully mean.
+  if (sheet?.mode === 'new') { startParkPick(); return; }
   const park = sheet?.pin && parkingFor(sheet.pin.id);
   // Its own sheet, because it is its own pin: name it, photograph the gate,
   // write down that the road was washed out.
@@ -4476,12 +4799,18 @@ document.querySelectorAll('[name="basemap"]').forEach((r) =>
 document.querySelectorAll('[data-overlay]').forEach((c) =>
   c.addEventListener('change', () => setOverlay(c.dataset.overlay, c.checked)));
 $('maps-close').addEventListener('click', () => closePanel('maps'));
-$('dl-go').addEventListener('click', downloadArea);
+$('dl-go').addEventListener('click', saveArea);
 $('dl-clear').addEventListener('click', clearTiles);
 $('pending').addEventListener('click', syncQueue);
 
-document.querySelectorAll('[name="detail"]').forEach((r) =>
-  r.addEventListener('change', updateDownloadEstimate));
+// The suggested name follows the map right up until somebody types over it.
+$('area-name').addEventListener('input', () => { areaNamed = true; });
+$('area-list').addEventListener('click', (e) => {
+  const del = e.target.closest('[data-area-del]');
+  if (del) { deleteArea(del.dataset.areaDel); return; }
+  const row = e.target.closest('[data-area]');
+  if (row) showArea(row.dataset.area);
+});
 
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
