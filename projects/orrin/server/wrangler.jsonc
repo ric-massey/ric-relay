@@ -1,0 +1,33 @@
+{
+  // ORRIN status service. Deploy from this directory:
+  //     npx wrangler@latest secret put ORRIN_TOKEN    # once — this is the gate
+  //     npx wrangler@latest deploy
+  //
+  // ORRIN_TOKEN is a secret, not a var. It must never appear in this file, in
+  // worker.mjs, or anywhere else in the repo: this repo is public. The same
+  // string goes in orrin_v3's .env, which is gitignored there — and orrin_v3 is
+  // a public repo too, so it must not be committed on that side either.
+  //
+  // Like the training log and the apex watcher, this object genuinely writes to
+  // its SQLite storage: the run record is what the brain room shows when Orrin
+  // is switched off, so it has to outlive the run that produced it.
+  // `new_sqlite_classes` is what makes it free-plan eligible, and the write
+  // volume — one machine pushing once a minute while a run is up — sits nowhere
+  // near the limit.
+  //
+  // No R2 binding and no plan URL: this Worker holds a status and a window of
+  // things he said, and nothing else. His memory, his private thoughts and his
+  // conversations stay on Ric's machine, which is the entire design.
+
+  "name": "orrin-status",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-08-01",
+
+  "durable_objects": {
+    "bindings": [{ "name": "ORRIN", "class_name": "OrrinStatus" }]
+  },
+
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["OrrinStatus"] }],
+
+  "observability": { "enabled": true }
+}

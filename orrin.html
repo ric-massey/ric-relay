@@ -223,6 +223,25 @@
     .vital .v { font-size: 1.3rem; font-weight: 700; color: #fff; text-shadow: 0 0 14px rgba(77, 232, 255, 0.5); display: block; }
     .vital .k { color: var(--whisper); font-size: 0.69rem; letter-spacing: 0.18em; }
 
+    /* ── is he running ────────────────────────────────────────────────────
+       The state dot is the one thing on this page that is allowed to be a
+       colour with a meaning, so it also carries a word: a green light means
+       nothing to anyone reading with the colour stripped out. */
+    .state { display: flex; align-items: baseline; gap: 0.55rem; margin-bottom: 0.9rem; }
+    .state .dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--whisper); flex-shrink: 0; }
+    .state.awake .dot { background: var(--axon); box-shadow: 0 0 10px var(--axon); animation: pulse 1.6s infinite; }
+    .state .word { color: var(--whisper); font-size: 0.72rem; letter-spacing: 0.26em; }
+    .state.awake .word { color: var(--axon); }
+    .state .since { color: var(--whisper); font-size: 0.72rem; }
+
+    /* What he said. Quiet, indented, and deliberately not styled as a chat:
+       nobody is on the other side of it. */
+    .said { border-left: 2px solid var(--membrane); padding: 0.1rem 0 0.1rem 0.9rem; margin: 0.75rem 0; }
+    .said .line { padding: 0.4rem 0; }
+    .said .line .t { color: var(--thought); }
+    .said .line .m { display: block; color: var(--whisper); font-size: 0.69rem; letter-spacing: 0.14em; margin-top: 0.15rem; }
+    .said .line + .line { border-top: 1px solid rgba(35, 32, 72, 0.55); }
+
     /* engram + firing rows */
     .row { padding: 0.32rem 0; display: flex; gap: 0.8rem; align-items: baseline; }
     .row .tag { color: var(--dendrite); flex-shrink: 0; font-size: 0.8rem; }
@@ -308,6 +327,31 @@
         </div>
         <p class="copy"><strong>Why build it?</strong> Ric is studying whether long-term, inspectable behavior can come from the machinery around intelligence: memory, priorities, consequences, limited resources, and time.</p>
         <p class="copy"><a class="ext" href="https://github.com/ric-massey/orrin_v3">→ Read the source, run reports, and full technical explanation on GitHub</a></p>
+      </div>
+    </div>
+
+    <!-- The only region fed by Orrin's own machine rather than by GitHub. It
+         pushes a snapshot out once a minute while a run is up; nothing here
+         reaches back toward him, and there is no way to send him anything. When
+         he is off this shows the run that just ended, because "he is not on
+         right now" is a fact about him worth showing, not an error. -->
+    <div class="region">
+      <div class="region-head"><h2>IS ORRIN RUNNING?</h2><span class="live">FROM ORRIN'S MACHINE</span></div>
+      <div class="region-body">
+        <div class="state" id="orrin-state">
+          <span class="dot"></span>
+          <span class="word">CONTACTING</span>
+          <span class="since"></span>
+        </div>
+        <div id="orrin-vitals" class="vitals" aria-live="polite">
+          <div class="vital"><span class="v muted">…</span><span class="k">ASKING HIS MACHINE</span></div>
+        </div>
+        <p class="copy muted" style="font-size:.8rem;margin-top:1rem">
+          Below is what Orrin said out loud during this run. You can read him; you
+          can't talk to him. Nothing on this page can send him anything, and his
+          private thoughts stay on Ric's machine while he's alive.
+        </p>
+        <div class="said" id="orrin-said"><div class="muted">loading…</div></div>
       </div>
     </div>
 
@@ -494,6 +538,121 @@
     }
 
     function fail(id, msg) { document.getElementById(id).innerHTML = `<div class="muted">${msg}</div>`; }
+
+    /* ── Orrin's own machine ───────────────────────────────────────────────
+       Everything above this line comes from GitHub and describes the CODE.
+       This block is the only thing on the page that describes the running
+       program, and it arrives the same way the training runs and the apex
+       matches do: his machine pushes to a Worker, this reads the Worker.
+
+       His sentences are built with textContent and never innerHTML. They are
+       text he composed rather than text anyone typed at him, but they still
+       travel machine → Worker → here, and the one place a page like this
+       breaks is the moment it decides some text source is trusted enough to
+       interpolate. There is no such source. */
+    (() => {
+      /* Served locally, the status comes from whatever is answering on the same
+         origin, so the region can be worked on without deploying. Both spellings
+         of loopback: `python3 -m http.server` is reached as 127.0.0.1 as often
+         as localhost, and matching only one of them silently points local edits
+         at the live Worker. */
+      const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+      const HOST = LOCAL ? location.origin : "https://orrin-status.rmbuster82.workers.dev";
+      const REFRESH_MS = 30000;
+
+      const stateEl = document.getElementById("orrin-state");
+      const vitalsEl = document.getElementById("orrin-vitals");
+      const saidEl = document.getElementById("orrin-said");
+
+      const dur = (s) => {
+        if (!isFinite(s) || s < 0) return null;
+        const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+        if (d) return `${d}d ${h}h`;
+        if (h) return `${h}h ${m}m`;
+        return `${m}m`;
+      };
+
+      const setState = (cls, word, since) => {
+        stateEl.className = "state" + (cls ? " " + cls : "");
+        stateEl.querySelector(".word").textContent = word;
+        stateEl.querySelector(".since").textContent = since || "";
+      };
+
+      const vitals = (pairs) => {
+        vitalsEl.replaceChildren(...pairs.filter(([v]) => v !== null && v !== undefined).map(([v, k]) => {
+          const cell = document.createElement("div"); cell.className = "vital";
+          const val = document.createElement("span"); val.className = "v"; val.textContent = String(v);
+          const key = document.createElement("span"); key.className = "k"; key.textContent = k;
+          cell.append(val, key); return cell;
+        }));
+      };
+
+      const said = (lines) => {
+        if (!lines.length) {
+          const none = document.createElement("div");
+          none.className = "muted";
+          /* A run where he never spoke is a real and fairly common outcome —
+             he spends most cycles thinking, not talking — so this is a finding
+             about the run, not a failure to load it. */
+          none.textContent = "He didn't say anything out loud during this run.";
+          saidEl.replaceChildren(none);
+          return;
+        }
+        saidEl.replaceChildren(...lines.slice(-40).reverse().map((l) => {
+          const row = document.createElement("div"); row.className = "line";
+          const t = document.createElement("span"); t.className = "t"; t.textContent = l.text;
+          const meta = document.createElement("span"); meta.className = "m";
+          meta.textContent = [timeAgo(l.at), l.kind, l.tone].filter(Boolean).join(" · ");
+          row.append(t, meta); return row;
+        }));
+      };
+
+      async function tick() {
+        let data;
+        try {
+          const res = await fetch(`${HOST}/status`, { headers: { accept: "application/json" } });
+          if (!res.ok) throw new Error(String(res.status));
+          data = await res.json();
+        } catch {
+          /* The Worker being unreachable says nothing about whether Orrin is
+             running, so this must not render as "asleep" — that would be this
+             page inventing a fact about him out of its own network error. */
+          setState("", "STATUS UNAVAILABLE", "");
+          vitals([]);
+          fail("orrin-said", "Couldn't reach the status service. This says nothing about whether Orrin is running.");
+          return;
+        }
+
+        const run = data.run;
+        if (!run) {
+          setState("", "NO RUNS RECORDED YET", "");
+          vitals([]);
+          fail("orrin-said", "Nothing has been recorded yet.");
+          return;
+        }
+
+        if (data.live) {
+          setState("awake", "RUNNING", run.startedAt ? `life began ${timeAgo(run.startedAt)}` : "");
+        } else {
+          setState("", "ASLEEP", run.lastSeen ? `last seen ${timeAgo(run.lastSeen)}` : "");
+        }
+
+        vitals([
+          [run.cyclesTotal ?? run.cycle ?? null, data.live ? "CYCLES THIS LIFE" : "CYCLES LAST RUN"],
+          [run.secPerCycle ? `${run.secPerCycle}s` : null, "PER CYCLE"],
+          [run.lifeAgeS ? dur(run.lifeAgeS) : null, "LIFE AGE"],
+          [run.goalsActive ?? null, "ACTIVE GOALS"],
+          [run.valence !== undefined ? run.valence.toFixed(2) : null, "VALENCE"],
+          [run.energy !== undefined ? run.energy.toFixed(2) : null, "ENERGY"],
+          [run.buildSha || null, "BUILD"]
+        ]);
+
+        said(Array.isArray(data.speech) ? data.speech : []);
+      }
+
+      tick();
+      setInterval(tick, REFRESH_MS);
+    })();
 
     gh(`/repos/${GH_USER}/${REPO}`)
       .then((r) => {
