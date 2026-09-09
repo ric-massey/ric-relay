@@ -372,7 +372,9 @@ orderings are asserted in `test/smoke.js`.
 - In a Survey: `F` sweeps a scan, `M` opens the sector chart, `L` opens the
   almanac, `E` docks at a station you are sitting in, and `Escape` leaves
   whichever page you are on. On the chart, drag or arrow to pan, `±` zooms, `C`
-  recentres, `P` cycles the pin kind and a click drops or lifts one; in the
+  recentres, `P` cycles the pin kind and a click drops or lifts one — the wheel
+  zooms through nine steps, from 690,000 units across down to 8,300, and the
+  widest fits any world the generator can roll; in the
   almanac the wheel and a drag both scroll, and clicking an entry opens it full
   size — arrows then page through entries without closing it. At a station the
   arrows move and `Enter` buys. On a phone every one of those is a tap or a drag,

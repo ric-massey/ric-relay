@@ -1309,6 +1309,99 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     .map(w => w.seed + ": " + w.name).join("  |  "));
 }
 
+// ── 26. the chart zooms, pans, and can see the whole world ───────────────
+/* Zoom and pan both worked mechanically; what did not work was the range. Five
+   steps, the widest showing 250,000 units across, which was fine when every
+   sector's last landmark sat near 108,000 — and stopped being fine the moment
+   worlds started rolling their own size and a sprawling one reached past
+   180,000 in every direction. The map could not be pulled back far enough to
+   show you the place you were flying around in. */
+{
+  const { cf } = boot("?debug=1&seed=99");
+  cf.start("survey", 1);
+  const hud = cf.hud();
+  const st = cf.surveyView();
+  hud.chartOpened(st);
+
+  const v0 = hud.chartView();
+  check(v0.follow === true, "the chart did not open following the ship");
+
+  /* The opening scale has to be a step on the ladder. It was not — it was a
+     number that appeared in no zoom table, so the first press fell through to a
+     hard-coded index and jumped somewhere unrelated to where you were. */
+  const seen = new Set([v0.scale]);
+  for (let i = 0; i < 20; i++) { hud.chartZoomBy(1); seen.add(hud.chartView().scale); }
+  const widestIn = hud.chartView().scale;
+  for (let i = 0; i < 40; i++) { hud.chartZoomBy(-1); seen.add(hud.chartView().scale); }
+  const widestOut = hud.chartView().scale;
+
+  check(seen.size >= v0.steps,
+        "only " + seen.size + " distinct zoom levels are reachable of " + v0.steps);
+  check(widestIn > widestOut * 10,
+        "the zoom range is too narrow: " + widestOut + " to " + widestIn);
+
+  // Clamped at both ends rather than running off.
+  hud.chartZoomBy(-1);
+  check(hud.chartView().scale === widestOut, "zooming out ran past the last step");
+  for (let i = 0; i < 40; i++) hud.chartZoomBy(1);
+  check(hud.chartView().scale === widestIn, "zooming in ran past the last step");
+
+  /* And the widest step has to fit the biggest world this generator can roll,
+     or the map is smaller than the sector it is a map of. */
+  let furthest = 0;
+  for (const seed of [1, 2, 12345, 99999, 777, 424242, 8675309, 31337]) {
+    const w = boot("?debug=1&seed=" + seed);
+    w.cf.start("survey", 1);
+    for (const l of w.cf.survey().landmarks) {
+      furthest = Math.max(furthest, Math.hypot(l.x, l.y));
+    }
+  }
+  const widestSpan = 1000 / widestOut;
+  check(widestSpan > furthest * 2.1,
+        "the widest zoom shows " + Math.round(widestSpan) +
+        " units but worlds reach " + Math.round(furthest) + " in every direction");
+
+  // Panning moves the view and stops it chasing the ship.
+  hud.chartOpened(st);
+  const before = hud.chartView();
+  hud.chartDragBy(140, -60);
+  const after = hud.chartView();
+  check(after.x !== before.x || after.y !== before.y, "dragging did not pan the chart");
+  check(after.follow === false, "panning did not stop the chart following the ship");
+  console.log("  chart      " + seen.size + " zoom steps · widest " +
+              Math.round(widestSpan) + " units across, worlds reach " +
+              Math.round(furthest) + " · drag pans and releases follow");
+}
+
+// ── 27. the page state has one set of defaults ───────────────────────────
+/* `HUD.reset` built the chart and the almanac from a second copy of their
+   defaults, and the two copies drifted: the reset one still carried an old
+   opening zoom, and it had never learned about the pin kind or the open card at
+   all. So a fresh survey started with no pin kind selected — every pin dropped
+   would have been of kind `undefined`. */
+{
+  const { cf } = boot("?debug=1&seed=246");
+  cf.start("survey", 1);
+  const hud = cf.hud();
+  const surv = cf.survey();
+  const st = cf.surveyView();
+
+  const v = hud.chartView();
+  check(v.scale > 0.02, "a fresh survey opened the chart at the stale zoom");
+
+  // The proof that matters: a pin dropped straight after a reset has a kind.
+  hud.chartOpened(st);
+  st.onPin(3000, 3000, "cache", 400);
+  check(surv.pins.length === 1, "no pin was dropped");
+  check(typeof surv.pins[0].kind === "string" && surv.pins[0].kind,
+        "a pin dropped on a fresh survey has no kind: " + surv.pins[0].kind);
+
+  // And the almanac's open card is a number rather than undefined.
+  check(hud.almanacDetailOpen() === false,
+        "a fresh almanac thinks a card is already open");
+  console.log("  defaults   chart and almanac survive a reset with every field intact");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

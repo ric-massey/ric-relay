@@ -87,7 +87,17 @@
   let padGuard = { right: 0, bottom: 0 };
 
   // The chart page's own camera, so panning around it does not move the ship.
-  let chart = { x: 0, y: 0, scale: 0.02, follow: true, pin: 0 };
+  /* Built by a function rather than written out inline, because they used to be
+     written out twice — once here and once inside `HUD.reset` — and the two
+     copies drifted. The reset copy still carried the old opening zoom long after
+     this one had moved on, and it had never learned about `pin` or `open` at
+     all, so every fresh survey started with no pin kind selected and an almanac
+     that could not remember which card was open. One source, so they cannot
+     disagree again. */
+  const freshChart = () => ({ x: 0, y: 0, scale: 0.0232, follow: true, pin: 0 });
+  const freshAlmanac = () => ({ scroll: 0, pick: 0, open: -1 });
+
+  let chart = freshChart();
 
   /* ── pins ─────────────────────────────────────────────────────────────────
      Endless space has no place names. Nothing out here is called anything, the
@@ -107,7 +117,7 @@
     { key: "danger",  name: "DANGER",  colour: "#ff8f77" }
   ];
   const pinSpec = k => PIN_KINDS.find(p => p.key === k) || PIN_KINDS[0];
-  let almanac = { scroll: 0, pick: 0, open: -1 };
+  let almanac = freshAlmanac();
   let refit = { pick: 0 };
   let manifest = { pick: 0 };
 
@@ -139,8 +149,8 @@
     trail = [];
     toasts = [];
     pulse = 0;
-    chart = { x: 0, y: 0, scale: 0.02, follow: true };
-    almanac = { scroll: 0, pick: 0 };
+    chart = freshChart();
+    almanac = freshAlmanac();
   };
 
   /* ── revealing ────────────────────────────────────────────────────────────
@@ -904,7 +914,19 @@
      Its own screen, with the world not drawn behind it. Space has no edges, so
      the chart has no extent either: it is a window you pan and zoom over an
      infinite lattice, and it opens centred on you. */
-  const ZOOMS = [0.004, 0.008, 0.016, 0.032, 0.064];
+  /* ── how far the chart can pull back ──────────────────────────────────────
+     Five steps, and the widest of them showed 250,000 units across. That was
+     fine when every sector's last landmark sat around 108,000 units out; it
+     stopped being fine when worlds started rolling their own size, because a
+     sprawling one now reaches past 180,000 in every direction — 360,000 across
+     — and the map simply could not be pulled back far enough to show you the
+     place you were flying around in.
+
+     Nine steps now, from 690,000 units across down to 8,300. The widest fits
+     any world this generator can roll with room to spare, and the closest is
+     tight enough to pick one wreck out of a field. */
+  const ZOOMS = [0.00145, 0.0029, 0.0058, 0.0116, 0.0232,
+                 0.0464, 0.0696, 0.0928, 0.12];
 
   function drawPins(st, mx, my, big) {
     const { ctx } = api;
@@ -984,6 +1006,9 @@
     chart.follow = false;
   };
   HUD.chartZoomBy = function (dir) { zoomChart(dir); };
+  HUD.chartView = () => ({ x: Math.round(chart.x), y: Math.round(chart.y),
+                           scale: chart.scale, follow: chart.follow,
+                           steps: ZOOMS.length });
 
   HUD.chartKey = function (code, st) {
     const step = 260 / chart.scale;
@@ -998,9 +1023,15 @@
     return false;
   };
 
+  /* Nearest step rather than exact match. The chart's opening scale used to be
+     a number that was not in this list at all, so the first press fell through
+     to a hard-coded index and jumped somewhere unrelated to where you were. */
   function zoomChart(dir) {
-    let i = ZOOMS.indexOf(chart.scale);
-    if (i < 0) i = 2;
+    let i = 0, best = Infinity;
+    for (let k = 0; k < ZOOMS.length; k++) {
+      const d = Math.abs(Math.log(ZOOMS[k] / chart.scale));
+      if (d < best) { best = d; i = k; }
+    }
     chart.scale = ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, i + dir))];
   }
 
@@ -1111,6 +1142,16 @@
     label(api.touchOnly ? "TAP THE MAP TO PIN  ·  TAP A PIN TO LIFT IT"
                         : "CLICK THE MAP TO PIN  ·  CLICK A PIN TO LIFT IT",
           SCREEN_W / 2, SCREEN_H - 56, SIZE.cap, VIOLET_LOW, "center", 0.75);
+
+    /* Which step you are on, and how wide the view actually is. Zoom without a
+       readout is a control you cannot tell is working — especially at the wide
+       end, where a sector of empty space looks much the same at two scales. */
+    const step = ZOOMS.reduce((a, z, k) =>
+      Math.abs(Math.log(z / chart.scale)) < Math.abs(Math.log(ZOOMS[a] / chart.scale))
+        ? k : a, 0);
+    label("ZOOM " + (step + 1) + "/" + ZOOMS.length + "   ·   " +
+          fmtCells(Math.round(SCREEN_W / chart.scale)) + " UNITS ACROSS",
+          SCREEN_W - 34, SCREEN_H - 56, SIZE.cap, VIOLET_DIM, "right", 0.8);
 
     if (api.touchOnly) {
       api.tapButton("−", 60, SCREEN_H - 30, 46, 38, VIOLET, () => zoomChart(-1));
