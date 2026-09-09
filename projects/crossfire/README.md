@@ -321,6 +321,22 @@ chart pans and zooms over the infinite lattice, draws the line you actually flew
 labels sectors by chunk coordinate and carries a scale bar; the almanac is a grid
 of illustrated cards.
 
+### Starting over
+
+Settings carries **RESET SURVEY**. It wipes the almanac, the chart and the flown
+line, the hold, the refit, the yard's manifest, every pin, and the record of
+which caches and hulks had been worked over — then rolls a new sector and drops
+you into it. Preferences are not progress, so the zoom, the keys and the sound
+all stay.
+
+It asks twice, with four seconds to answer. This is the only button in the game
+that destroys hours of work, there is no undo, and it sits near one that resets
+the keyboard — a much smaller thing wearing a much similar word.
+
+The new seed beats a `?seed=` in the address bar as well as the saved one.
+Somebody who opened a seeded link and then asked for a new world means it, and
+handing back the same sector would look like the button did nothing.
+
 ### Seeds and saving
 
 A **seed** makes a sector, so a sector is a place you can go back to and a link

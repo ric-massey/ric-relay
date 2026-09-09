@@ -1143,6 +1143,65 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   console.log("  camera     0.72 by default · five steps · persists · other modes still 1:1");
 }
 
+// ── 23. wiping a survey ──────────────────────────────────────────────────
+/* The only button in the game that destroys hours of work, and it sits near one
+   that resets the keyboard — a much smaller thing wearing a much similar word.
+   So the first press must do nothing at all, and the second must do everything. */
+{
+  const { cf } = boot("?debug=1&seed=5150");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+
+  // Make some progress worth losing.
+  surv.salvage = 240;
+  surv.built.add("spar");
+  surv.pins.push({ x: 100, y: 200, kind: "cache" });
+  cf.find("first-light");
+  cf.find("thread");
+  const oldSeed = surv.seed;
+  check(surv.found.size >= 2, "the test failed to make any progress to wipe");
+
+  // One press arms it and changes nothing.
+  cf.resetSurvey();
+  check(cf.resetArmed() === true, "the first press did not arm the reset");
+  check(cf.survey().seed === oldSeed, "one press already changed the sector");
+  check(cf.survey().found.size >= 2, "one press already wiped the almanac");
+  check(cf.survey().salvage === 240, "one press already spent the hold");
+
+  // The second does all of it.
+  cf.resetSurvey();
+  const fresh = cf.survey();
+  check(fresh.seed !== oldSeed,
+        "the reset kept the same sector (" + oldSeed + ")");
+  check(fresh.found.size === 0, "the almanac survived the reset");
+  check(fresh.salvage === 0, "the hold survived the reset");
+  check(fresh.built.size === 0, "the yard's manifest survived the reset");
+  check(fresh.pins.length === 0, "the pins survived the reset");
+  check(cf.hud().charted() === 0, "the chart survived the reset");
+  check(!store["crossfire.survey.v3"] ||
+        JSON.parse(store["crossfire.survey.v3"]).seed !== oldSeed,
+        "the old book is still in local storage");
+
+  // And it drops you into the new sector rather than leaving you in the old one.
+  check(cf.peek().state === "playing", "the reset left the game in " + cf.peek().state);
+  console.log("  reset      first press arms, second wipes · new seed · " +
+              "chart, almanac, hold, yard and pins all gone");
+}
+
+// ── 24. a reset beats a seeded link ──────────────────────────────────────
+/* Someone who opened a `?seed=` link and then asked for a new world means it.
+   Handing them the same sector back would look like the button did nothing. */
+{
+  const { cf } = boot("?debug=1&seed=31337");
+  cf.start("survey", 1);
+  check(cf.survey().seed === 31337, "the seeded link did not take");
+  cf.resetSurvey();
+  cf.resetSurvey();
+  check(cf.survey().seed !== 31337,
+        "a reset handed back the sector named in the URL");
+  console.log("  reset·url  a wipe overrides the seed in the address bar");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

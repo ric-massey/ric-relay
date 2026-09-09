@@ -4159,12 +4159,62 @@
     } catch (_) { /* private browsing; the run still plays, it just won't keep */ }
   }
 
+  /* Set by a reset and consumed by the next setup. It has to beat the URL as
+     well as the book: someone who opened a `?seed=` link and then asked for a
+     new world means it, and handing them the same sector back would look like
+     the button did nothing. */
+  let nextSurveySeed = 0;
+
   function surveySeed() {
+    if (nextSurveySeed) {
+      const s = nextSurveySeed;
+      nextSurveySeed = 0;
+      return s;
+    }
     const p = new URLSearchParams(location.search).get("seed");
     if (p && /^\d+$/.test(p)) return Number(p) >>> 0;
     const book = loadSurveyBook();
     if (book.seed) return book.seed;
     return (Math.random() * 0xffffffff) >>> 0;
+  }
+
+  /* ── wiping a survey ──────────────────────────────────────────────────────
+     Everything Survey keeps lives in one key, so a reset is one `removeItem`
+     and a fresh seed. What goes: the almanac, the chart and the flown line, the
+     hold, the refit, the yard's manifest, every pin, and which caches and hulks
+     had been worked over. What stays: the zoom, the keys, the sound — those are
+     preferences, not progress.
+
+     It asks twice. This is the only button in the game that destroys hours of
+     someone's work, there is no undo, and it sits three rows below a button
+     that resets the keyboard — which is a much smaller thing wearing a much
+     similar word. The second press has four seconds to arrive. */
+  const RESET_WINDOW = 4000;
+  let surveyResetArm = 0;
+
+  const surveyResetArmed = () => performance.now() < surveyResetArm;
+  const surveyResetLabel = () =>
+    surveyResetArmed() ? "SURE? THIS WIPES IT ALL" : "RESET SURVEY";
+
+  function resetSurveyProgress() {
+    if (!surveyResetArmed()) {
+      surveyResetArm = performance.now() + RESET_WINDOW;
+      note("Press again to wipe the survey — chart, almanac, salvage, the lot.");
+      return;
+    }
+    surveyResetArm = 0;
+    try { localStorage.removeItem(SURVEY_STORE); } catch (_) { /* private mode */ }
+    nextSurveySeed = (Math.random() * 0xffffffff) >>> 0;
+
+    // In the sector already? Then the new one starts now rather than next time.
+    if (mode && mode.survey && surv) {
+      surv = null;
+      startGame("survey", 1, 0);
+      state = "playing";
+      note("New sector.");
+      return;
+    }
+    note("Survey wiped. A new sector is waiting.");
   }
 
   /* One seed and one pair of chunk coordinates make one number, and that number
@@ -8975,10 +9025,13 @@
               toggleSound, soundEnabled);
     tapButton(fullscreenLabel(), 680, 530, 280, 42, "#ffe56d",
               toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
-    tapButton("PHONE CONTROLS", SCREEN_W / 2, 584, 420, 44, "#ffe56d", () => {
+    tapButton("PHONE CONTROLS", 330, 584, 340, 44, "#ffe56d", () => {
       binder.listening = false;
       state = "thumb";
     });
+    tapButton(surveyResetLabel(), 690, 584, 300, 44,
+              surveyResetArmed() ? "#ff8f77" : "#a08cff",
+              resetSurveyProgress, surveyResetArmed());
     tapButton("BACK", SCREEN_W / 2, 642, 320, 44, "#ffcb42", () => {
       binder.listening = false;
       state = backFrom || "title";
@@ -9057,6 +9110,9 @@
 
     tapButton("SWAP SIDES", 300, 458, 280, 40, "#ffe56d", padMirror);
     tapButton("RESET PHONE CONTROLS", 700, 458, 280, 40, "#ffcb42", padReset);
+    tapButton(surveyResetLabel(), SCREEN_W / 2, 574, 420, 40,
+              surveyResetArmed() ? "#ff8f77" : "#a08cff",
+              resetSurveyProgress, surveyResetArmed());
     tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
               300, 516, 280, 40, soundEnabled ? "#ffe56d" : "#ffcb42",
               toggleSound, soundEnabled);
@@ -10672,6 +10728,8 @@
       bandAt: (x, y) => bandAt(x, y),
       dangerAt: (x, y) => dangerAt(x, y),
       cycleZoom: () => cycleSurveyZoom(),
+      resetSurvey: () => resetSurveyProgress(),
+      resetArmed: () => surveyResetArmed(),
       hud: () => surveyHUD
     };
   }
