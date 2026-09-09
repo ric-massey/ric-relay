@@ -13,6 +13,7 @@ const PROJECT = path.join(ROOT, "projects/crossfire");
 const INDEX = path.join(PROJECT, "index.html");
 const NET = path.join(PROJECT, "net.js");
 const SURVEY_HUD = path.join(PROJECT, "survey-hud.js");
+const MENU = path.join(PROJECT, "menu.js");
 const ROOMS = path.join(PROJECT, "server/rooms.js");
 const CORE = path.join(PROJECT, "server/rooms-core.mjs");
 const WORKER = path.join(PROJECT, "server/worker.mjs");
@@ -25,6 +26,7 @@ function read(file) {
 function checkSyntax() {
   new vm.Script(read(NET), { filename: "net.js" });
   new vm.Script(read(SURVEY_HUD), { filename: "survey-hud.js" });
+  new vm.Script(read(MENU), { filename: "menu.js" });
   new vm.Script(read(ROOMS), { filename: "rooms.js" });
 
   const html = read(INDEX);
@@ -43,6 +45,28 @@ function checkSyntax() {
     "survey-hud.js must be loaded before the inline game script");
   assert.match(html, /blurb: "no enemies · endless space · chart it and fill the almanac"/,
     "Survey must advertise that nothing out there fights back");
+
+  /* The menu's dioramas are a separate file for the same reason the survey
+     panel is, and they are captured by the same boot, so they carry the same
+     ordering rule. A card with no picture is the failure this catches. */
+  assert.match(html, /<script src="menu\.js"><\/script>/,
+    "index.html must load menu.js");
+  assert.ok(html.indexOf('src="menu.js"') < html.indexOf("<script>"),
+    "menu.js must be loaded before the inline game script");
+
+  /* Every mode card names a scene, and every named scene must exist. A card
+     whose `art` is a typo silently draws nothing at all — the preview call
+     returns false and the card is simply empty, which no syntax check sees. */
+  const menuSrc = read(MENU);
+  const scenes = new Set(
+    [...menuSrc.matchAll(/^    ([a-z0-9]+)\(x, y, w, h, t\) \{/gm)].map(m => m[1])
+  );
+  assert.ok(scenes.size >= 5, "menu.js should define a scene per mode, found " + scenes.size);
+  const arts = [...html.matchAll(/art: "([a-z0-9]+)"/g)].map(m => m[1]);
+  assert.ok(arts.length >= 7, "expected every lane and card to name a diorama");
+  for (const art of new Set(arts)) {
+    assert.ok(scenes.has(art), 'the menu names a diorama that does not exist: "' + art + '"');
+  }
   /* Survey's space has no edges, so the wall is skipped rather than pushed far
      enough away to be unreachable. A `bounds` big enough to look infinite is
      still a box, and a ship that reaches it bounces — which is the one thing

@@ -11,6 +11,7 @@
 <script src="../relay-return.js" data-home="../../index.html" defer></script>
 <script src="net.js"></script>
 <script src="survey-hud.js"></script>
+<script src="menu.js"></script>
 <style>
   :root {
     /* Same phosphor as the terminal front door. The player hues are all lifted
@@ -1403,7 +1404,10 @@
   let cam = { x: 0, y: 0, scale: 1, rot: 0, goalScale: 1 };
   let watching = 0;
   let botPick = 0;        // bots to add on the setup screen
-  let titlePick = 0;      // visible arrow-key focus on the title screen
+  let titlePick = 0;      // which lane the front page has focus on
+  let modeLane = "solo";  // which lane's cards the mode page is showing
+  let modePick = 0;       // keyboard focus among those cards
+  let modeHover = -1;     // pointer focus, which beats the keyboard while set
   let levelPick = 0;      // visible focus on the campaign level-select screen
   let countPick = 0;      // zero-based local-player choice
   let survivalFriendlyFire = true;
@@ -1429,22 +1433,11 @@
   /* The title screen is one list, and online is the third thing on it rather
      than a pair of buttons off to the side — you decide you want to play with
      other people first, and who is hosting is a question for the lobby. */
-  const TITLE_ROWS = [...MODE_KEYS, "campaign", "survey", "online"];
-
-  function pickTitleRow(i) {
-    const key = TITLE_ROWS[i];
-    if (!key) return;
-    if (key === "online") { titlePick = i; openLobby(); return; }
-    if (key === "campaign") { titlePick = i; levelPick = 0; state = "levels"; return; }
-    // Survey is one pilot and no bots, so there is nothing to ask on a count
-    // screen. Straight into the sector.
-    if (key === "survey") { titlePick = i; startGame("survey", 1, 0); return; }
-    chooseMode(key);
-  }
 
   function chooseMode(key) {
     pendingMode = key;
-    titlePick = Math.max(0, MODE_KEYS.indexOf(key));
+    // `titlePick` is which *lane* the front page is on, not which mode — a mode
+    // index written into it here would send you back to the wrong lane.
     countPick = 0;
     botPick = 0;
     state = "count";
@@ -1876,16 +1869,31 @@
   function menuKey(code) {
     if (state === "title") {
       const d = digit(code);
-      if (d >= 1 && d <= TITLE_ROWS.length) pickTitleRow(d - 1);
-      if (code === "ArrowUp" || code === "ArrowLeft") {
-        titlePick = (titlePick + TITLE_ROWS.length - 1) % TITLE_ROWS.length;
+      if (d >= 1 && d <= LANE_KEYS.length) { openLane(LANE_KEYS[d - 1]); return; }
+      if (code === "ArrowUp" || code === "ArrowLeft" ||
+          code === "ArrowDown" || code === "ArrowRight") {
+        titlePick = (titlePick + 1) % LANE_KEYS.length;
       }
-      if (code === "ArrowDown" || code === "ArrowRight") {
-        titlePick = (titlePick + 1) % TITLE_ROWS.length;
-      }
-      if (code === "Enter" || code === "Space") pickTitleRow(titlePick);
+      if (code === "Enter" || code === "Space") openLane(LANE_KEYS[titlePick]);
+      // O still opens the lobby from the front page. It was a shortcut before
+      // the menu was rebuilt and somebody's fingers already know it.
       if (code === "KeyO") openLobby();
       if (code === "KeyC") { backFrom = "title"; state = settingsScreen(); }
+    } else if (state === "modes") {
+      const rows = laneRows();
+      if (code === "Escape" || code === "Backspace") { state = "title"; return; }
+      const d = digit(code);
+      if (d >= 1 && d <= rows.length) { modePick = d - 1; playCard(rows[d - 1]); return; }
+      if (code === "ArrowLeft" || code === "ArrowUp") {
+        modePick = (modePick + rows.length - 1) % rows.length;
+        modeHover = -1;                 // the keyboard has taken the row back
+      }
+      if (code === "ArrowRight" || code === "ArrowDown") {
+        modePick = (modePick + 1) % rows.length;
+        modeHover = -1;
+      }
+      if (code === "Enter" || code === "Space") playCard(rows[openCard()]);
+      if (code === "KeyC") { backFrom = "modes"; state = settingsScreen(); }
     } else if (state === "levels") {
       if (code === "Escape" || code === "Backspace") { state = "title"; return; }
       const d = digit(code);
@@ -3704,6 +3712,9 @@
      and not a record. */
 
   const surveyHUD = window.CrossfireSurveyHUD || null;
+  // The mode cards’ moving pictures. Absent is survivable: a card without
+  // its diorama is a card, and the menu still works.
+  const menuArt = window.CrossfireMenu || null;
 
   const SURVEY_STORE  = "crossfire.survey.v3";
   const CHUNK         = 2600;   // world units a side
@@ -6026,6 +6037,23 @@
     if (state === "controls") {
       binder.hover = cellAt(s.x, s.y);
     }
+    /* Which card the pointer is over. Read off the tap rectangles the row drew
+       last frame rather than recomputing the layout here — the widths are
+       animating, so a second copy of that arithmetic would be a second copy
+       that is wrong for one frame every time the row moves. */
+    if (state === "modes") {
+      modeHover = -1;
+      for (const t of taps) {
+        if (t.card == null) continue;
+        if (s.x >= t.x && s.x <= t.x + t.w && s.y >= t.y && s.y <= t.y + t.h) {
+          modeHover = t.card;
+          break;
+        }
+      }
+      // Keep the keyboard's focus under the pointer, so tabbing away from the
+      // mouse carries on from where the mouse was rather than jumping home.
+      if (modeHover >= 0) modePick = modeHover;
+    }
     canvas.style.cursor = tapAt(s.x, s.y) ||
       (state === "controls" && cellAt(s.x, s.y)) ? "pointer" : "default";
   });
@@ -7535,39 +7563,263 @@
     text(sub, SCREEN_W / 2, SCREEN_H / 2 + 30, 15, "#ffcb42", "center", a * 0.85);
   }
 
-  function drawTitle() {
+  /* ── the menu, in two steps ───────────────────────────────────────────────
+     The front page used to be five rows: three modes, a campaign and a lobby,
+     each with a line of small print under it, all competing for the same glance.
+     That is a list, not a choice, and it got longer every time the game grew.
+
+     It is two questions now. The first one — on your own, or with other people —
+     is the one a player has already answered before they opened the game, so it
+     costs nothing to ask and it halves what the second page has to show. The
+     second page is the modes for that answer, as cards you can actually look at:
+     hover one and it opens, and what is inside is the mode running.
+
+     The same mode appears in both lanes where it honestly belongs, and reads
+     differently in each — Battle Royale against bots is a different proposition
+     from Battle Royale against your brother, and the card says so. */
+  const LANES = {
+    solo: { name: "SOLO", colour: "#ffe56d", art: "survival",
+            line: "one pilot · four ways to fly",
+            rows: ["survival", "royale", "campaign", "survey"] },
+    multi: { name: "MULTIPLAYER", colour: "#87d8ff", art: "online",
+             line: "at this keyboard, or across the internet",
+             rows: ["survival", "royale", "campaign", "online"] }
+  };
+  const LANE_KEYS = ["solo", "multi"];
+
+  /* What each card says. `long` is the mode in three sentences — what you do,
+     what makes it different, and how it ends — because a card with room for a
+     paragraph should use it rather than repeat its own name. */
+  const CARDS = {
+    survival: {
+      name: "SURVIVAL", colour: "#ffe56d", art: "survival",
+      solo: "1 PILOT", multi: "1–5 AT ONE KEYBOARD",
+      long: "Waves of asteroids in an arena that wraps at every edge. Big rocks " +
+            "break into small ones, lives are shared, and friendly fire is a " +
+            "setting rather than a rule. It gets faster until it stops."
+    },
+    royale: {
+      name: "BATTLE ROYALE", colour: "#ff8f77", art: "royale",
+      solo: "YOU AGAINST THE BOTS", multi: "2–5 AT ONE KEYBOARD",
+      long: "Three lives each, two-hit hulls, and gravity wells that stand still " +
+            "while everything else moves. The wall closes until there is nowhere " +
+            "left to be. No time limit — it ends when one ship is flying."
+    },
+    campaign: {
+      name: "CAMPAIGN", colour: "#6dffbf", art: "campaign",
+      solo: "1 PILOT", multi: "2-PLAYER CO-OP",
+      long: "Three missions and a side to fly for: escort a transport through " +
+            "three waves, raid a convoy, then break a mothership with your fleet " +
+            "beside you. The war carries between missions and remembers who lived."
+    },
+    survey: {
+      name: "SURVEY", colour: "#a08cff", art: "survey",
+      solo: "1 PILOT — THERE IS ONE CHART", multi: null,
+      long: "Endless space and nothing hunting you. Chart a sector, fill a " +
+            "thirty-one entry almanac, strip wrecks and guarded caches for " +
+            "salvage, refit at a station, and go further out than that."
+    },
+    online: {
+      name: "ONLINE", colour: "#87d8ff", art: "online",
+      solo: null, multi: "UP TO 5, A SCREEN EACH",
+      long: "Host a lobby and hand out the code, or join one. Everybody on their " +
+            "own device in the same match, with the modes above to pick from " +
+            "once the room fills."
+    }
+  };
+
+  /* How open each card is, 0 to 1. Animated rather than switched: a card that
+     snaps to its open size reads as a layout bug, and the movement is what tells
+     you the cards are one row rather than four separate buttons. */
+  let cardAnim = [0, 0, 0, 0];
+  let laneAnim = [0, 0];
+
+  function laneRows() { return LANES[modeLane].rows; }
+
+  /* Wrapping, measured against the font the text is actually drawn in — the
+     card is the only place in this game with a paragraph in it, and a paragraph
+     laid out against a guess at the character width is a paragraph that spills
+     out of its box on somebody else's browser. */
+  function wrapText(str, size, maxW) {
+    ctx.save();
+    ctx.font = readableTextSize(size) +
+               'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+    const out = [];
+    let line = "";
+    for (const word of String(str).split(" ")) {
+      const next = line ? line + " " + word : word;
+      if (ctx.measureText(next).width > maxW && line) { out.push(line); line = word; }
+      else line = next;
+    }
+    if (line) out.push(line);
+    ctx.restore();
+    return out;
+  }
+
+  function drawTitle(dt) {
     text("CROSSFIRE", SCREEN_W / 2, 118, 64, "#ffe56d");
     text("asteroids — open space, a closing wall, or a war to fight",
          SCREEN_W / 2, 154, 15, "#ffcb42");
-    text("CLICK A MODE  ·  OR MOVE WITH ARROWS + ENTER",
-         SCREEN_W / 2, 182, 13, "#ffcb42", "center", 0.9);
 
-    const rows = [
-      ["survival", MODES.survival.name, "CO-OP · FRIENDLY FIRE OPTIONAL",  "#ffe56d"],
-      ["royale",   MODES.royale.name,   "TWO-HIT HULLS · THE WALL CLOSES IN", "#ff8f77"],
-      ["campaign", "CAMPAIGN",          "THREE MISSIONS · ESCORT · RAID · MOTHERSHIP", "#6dffbf"],
-      ["survey",   MODES.survey.name,   surveyBlurb(), "#a08cff"],
-      ["online",   "ONLINE",            "JOIN A LOBBY · OR HOST YOUR OWN", "#87d8ff"]
-    ];
-    rows.forEach(([key, name, blurb, colour], i) => {
-      const y = 216 + i * 70;
-      tapButton(name, SCREEN_W / 2, y, 560, 46, colour,
-                () => pickTitleRow(i), titlePick === i);
-      if (blurb) text(blurb, SCREEN_W / 2, y + 34, 14, "#ffcb42");
+    const w = 380, h = 300, gap = 40, y = 210;
+    const x0 = SCREEN_W / 2 - w - gap / 2;
+
+    LANE_KEYS.forEach((key, i) => {
+      const L = LANES[key];
+      const on = titlePick === i;
+      laneAnim[i] += ((on ? 1 : 0) - laneAnim[i]) * Math.min(1, (dt || 0) * 9);
+      const x = x0 + i * (w + gap);
+      const lift = laneAnim[i] * 6;
+
+      ctx.save();
+      ctx.fillStyle = L.colour;
+      ctx.globalAlpha = 0.05 + laneAnim[i] * 0.06;
+      ctx.fillRect(x, y - lift, w, h);
+      ctx.strokeStyle = L.colour;
+      ctx.globalAlpha = 0.4 + laneAnim[i] * 0.6;
+      ctx.lineWidth = on ? 2 : 1;
+      ctx.strokeRect(x, y - lift, w, h);
+      ctx.restore();
+
+      if (menuArt) menuArt.preview(L.art, x + 14, y - lift + 14, w - 28, 150, clock);
+      text(L.name, x + w / 2, y - lift + 208, 30, L.colour);
+      text(L.line, x + w / 2, y - lift + 238, 14, "#ffcb42", "center", 0.85);
+      text(L.rows.length + " MODES", x + w / 2, y - lift + 270, 13, L.colour,
+           "center", 0.6);
+
+      taps.push({ x, y: y - lift, w, h, act: () => openLane(key) });
     });
 
+    text("CLICK ONE  ·  OR ARROWS + ENTER", SCREEN_W / 2, 540, 13, "#ffcb42",
+         "center", 0.9);
+
     tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
-              385, 580, 210, 36, soundEnabled ? "#ffe56d" : "#ffcb42",
+              300, 590, 210, 36, soundEnabled ? "#ffe56d" : "#ffcb42",
               toggleSound, soundEnabled);
-    tapButton(fullscreenLabel(), 615, 580, 210, 36, "#ffe56d",
+    tapButton(fullscreenLabel(), 520, 590, 210, 36, "#ffe56d",
               toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
+    tapButton("SETTINGS", 740, 590, 210, 36, "#ffe56d",
+              () => { backFrom = "title"; state = settingsScreen(); });
 
     text(touchOnly
            ? "one player per phone · up to five online, a screen each"
            : "two at this keyboard · up to five online · every key is yours to change",
-         SCREEN_W / 2, 620, 12, "#ffcb42");
-    tapButton("SETTINGS", SCREEN_W / 2, 656, 240, 40, "#ffe56d",
-              () => { backFrom = "title"; state = settingsScreen(); });
+         SCREEN_W / 2, 646, 12, "#ffcb42");
+  }
+
+  function openLane(key) {
+    modeLane = key;
+    titlePick = Math.max(0, LANE_KEYS.indexOf(key));
+    modePick = 0;
+    modeHover = -1;
+    cardAnim = laneRows().map(() => 0);
+    state = "modes";
+  }
+
+  /* The open card is whichever one the pointer is over, and the keyboard's
+     otherwise. A mouse that has been moved is a stated preference and wins;
+     leaving the row hands it back, so the two never fight over it. */
+  function openCard() {
+    return modeHover >= 0 ? modeHover : modePick;
+  }
+
+  function drawModes(dt) {
+    const L = LANES[modeLane];
+    const rows = laneRows();
+    text(L.name, SCREEN_W / 2, 92, 44, L.colour);
+    text(L.line, SCREEN_W / 2, 126, 15, "#ffcb42");
+    text(touchOnly ? "TAP A MODE TO OPEN IT  ·  TAP AGAIN TO PLAY"
+                   : "HOVER TO OPEN  ·  ARROWS MOVE  ·  ENTER PLAYS",
+         SCREEN_W / 2, 152, 13, "#ffcb42", "center", 0.9);
+
+    const left = 40, right = SCREEN_W - 40, top = 184, h = 372;
+    const gap = 12, span = right - left - gap * (rows.length - 1);
+    const open = openCard();
+
+    /* Widths come from weights rather than from a fixed open size, so the row
+       always fills the same span whatever is open and the cards beside the open
+       one give up exactly what it takes. */
+    let weights = [], total = 0;
+    rows.forEach((key, i) => {
+      cardAnim[i] += ((i === open ? 1 : 0) - (cardAnim[i] || 0)) *
+                     Math.min(1, (dt || 0) * 10);
+      const w = 1 + cardAnim[i] * 1.55;
+      weights.push(w);
+      total += w;
+    });
+
+    let x = left;
+    rows.forEach((key, i) => {
+      const c = CARDS[key];
+      const w = span * weights[i] / total;
+      const a = cardAnim[i];
+      const isOpen = a > 0.5;
+
+      ctx.save();
+      ctx.fillStyle = c.colour;
+      ctx.globalAlpha = 0.04 + a * 0.07;
+      ctx.fillRect(x, top, w, h);
+      ctx.strokeStyle = c.colour;
+      ctx.globalAlpha = 0.35 + a * 0.65;
+      ctx.lineWidth = isOpen ? 2 : 1;
+      ctx.strokeRect(x, top, w, h);
+      ctx.restore();
+
+      // The picture. It gets the top of every card, open or not — a collapsed
+      // card still has to be recognisable, and a still name is not.
+      const pad = 10;
+      const artH = 120 + a * 84;
+      if (menuArt) menuArt.preview(c.art, x + pad, top + pad, w - pad * 2, artH, clock);
+
+      const nameY = top + pad + artH + 30;
+      text(c.name, x + w / 2, nameY, isOpen ? 24 : 15, c.colour);
+
+      const who = modeLane === "solo" ? c.solo : c.multi;
+      if (who) {
+        text(who, x + w / 2, nameY + 24, 12, "#ffcb42", "center", 0.75);
+      }
+
+      // The paragraph belongs to the open card alone; on a closed one there is
+      // no room for it and it would only be four columns of hyphens.
+      if (a > 0.35) {
+        const lines = wrapText(c.long, 14, w - 34);
+        lines.forEach((ln, k) => {
+          text(ln, x + w / 2, nameY + 56 + k * 21, 14, "#ffcb42", "center",
+               (a - 0.35) / 0.65 * 0.95);
+        });
+      }
+
+      /* One tap opens a card and the next one plays it. On a desk the hover has
+         already opened it, so the first click plays — which is what a mouse
+         user expects and what a thumb cannot do. */
+      taps.push({ x, y: top, w, h, card: i, act: () => {
+        if (!touchOnly || modePick === i) { modePick = i; playCard(key); }
+        else { modePick = i; modeHover = -1; }
+      } });
+      x += w + gap;
+    });
+
+    tapButton("BACK", SCREEN_W / 2, 600, 240, 40, "#ffcb42",
+              () => { state = "title"; });
+    text("every key is yours to change — SETTINGS on the front page",
+         SCREEN_W / 2, 648, 12, "#ffcb42", "center", 0.7);
+  }
+
+  /* What a card actually does. Survey and the lobby go straight in; everything
+     else needs to know how many are playing, and in the solo lane that question
+     has one answer, so it is not asked. */
+  function playCard(key) {
+    if (key === "online") { openLobby(); return; }
+    if (key === "survey") { startGame("survey", 1, 0); return; }
+    if (key === "campaign") { levelPick = 0; state = "levels"; return; }
+    if (modeLane === "solo") {
+      // One human. Battle Royale needs opponents to be a match at all, so it
+      // gets bots; Survival alone is the game it has always been.
+      pendingMode = key;
+      startGame(key, 1, key === "royale" ? 3 : 0);
+      return;
+    }
+    chooseMode(key);
   }
 
   function drawLevels() {
@@ -8143,8 +8395,12 @@
     if (state === "almanac" && surv && surveyHUD) {
       surveyHUD.drawAlmanac(surveyState(), dt || 0); return;
     }
+    if (state === "refit" && surv && surveyHUD) {
+      surveyHUD.drawRefit(surveyState(), dt || 0); return;
+    }
 
-    if (state === "title") { drawTitle(); return; }
+    if (state === "title") { drawTitle(dt); return; }
+    if (state === "modes") { drawModes(dt); return; }
     if (state === "levels") { drawLevels(); return; }
     if (state === "count") { drawCount(); return; }
     if (state === "controls") { drawControls(); return; }
@@ -9448,6 +9704,16 @@
       // A menu/page keypress, so a harness can drive the chart and the almanac
       // through the same handler a keyboard reaches them by.
       key: code => menuKey(code),
+      /* The mode row, and the pointer focus that opens a card. Hover arrives as
+         a real mousemove on the canvas, which a harness has no way to dispatch,
+         so the one value that event sets is settable directly — everything
+         downstream of it is then the same code a mouse drives. */
+      menu: () => ({ lane: modeLane, pick: modePick, hover: modeHover,
+                     open: openCard(), rows: laneRows().slice(),
+                     anim: cardAnim.slice(),
+                     lanes: LANE_KEYS.slice() }),
+      hover: i => { modeHover = i; if (i >= 0) modePick = i; },
+      lane: key => openLane(key),
       scan: () => surveyScan(),
       // The refit, driven the way the station screen drives it, so a harness
       // can prove salvage actually turns into a better ship.
@@ -9478,6 +9744,7 @@
       addTap: rect => taps.push(rect)
     });
   }
+  if (menuArt) menuArt.init({ ctx, glow });
   requestAnimationFrame(frame);
 })();
 </script>

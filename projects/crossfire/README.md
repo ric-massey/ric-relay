@@ -17,6 +17,22 @@ python3 -m http.server 8000
 
 Open `http://127.0.0.1:8000/projects/crossfire/`.
 
+## The menu
+
+The front page asks one question — **solo or multiplayer** — and the modes for
+that answer are the next page. It used to be five rows with a line of small print
+under each, all competing for one glance, and it got a row longer every time the
+game grew.
+
+The second page is a row of cards. Point at one and it opens: the card takes the
+room the others give up, the paragraph fades in, and the picture at the top is
+the mode *moving*. Those pictures are drawn, not filmed — see `menu.js` for why —
+and the same mode reads differently in each lane, because Battle Royale against
+bots is not the same proposition as Battle Royale against the person next to you.
+
+Solo flies straight in, since there is only one answer to "how many". Multiplayer
+stops at the count screen first. Both reach the same modes and the same match.
+
 ## Modes
 
 | Mode | Players | Rules |
@@ -259,12 +275,15 @@ fifteen seconds of flying.
 
 ### Where it lives
 
-`index.html` is already 7,600 lines, and a fourth mode's interface — a fog
-chart, an illustrated almanac, contact bearings — is not a small tenant.
-`survey-hud.js` is loaded the way `net.js` is and handed the engine's drawing
-primitives at boot. It must be loaded **before** the inline script, which
-captures the global once; loading it late is silent, and the mode would play
-with no chart and no almanac.
+`index.html` is already 8,000 lines, and a fourth mode's interface — a fog chart,
+an illustrated almanac, contact bearings, a station screen — is not a small
+tenant. `survey-hud.js` is loaded the way `net.js` is and handed the engine's
+drawing primitives at boot. `menu.js` is loaded the same way for the same reason.
+
+Both must be loaded **before** the inline script, which captures each global
+once. Loading either late is silent: the mode would play with no chart and no
+almanac, and the menu would draw cards with nothing moving inside them. Both
+orderings are asserted in `test/smoke.js`.
 
 ## Controls
 
@@ -484,14 +503,16 @@ eligible, and the backend cannot be changed after the namespace is created.
 |---|---|
 | `index.html` | UI, settings, simulation, rendering, bots, campaign, survey and match rules |
 | `net.js` | WebRTC links and compact session-description encoding |
-| `survey-hud.js` | Survey's interface: the flight panel, the chart page, the illustrated almanac |
+| `survey-hud.js` | Survey's interface: the flight panel, the chart page, the illustrated almanac, the station |
+| `menu.js` | The mode cards' moving pictures — five dioramas, drawn rather than filmed |
 | `server/rooms-core.mjs` | The room service: every rule, no plumbing |
 | `server/worker.mjs` | Runs it on Cloudflare, in one Durable Object |
 | `server/rooms.js` | Runs it on a laptop, with nothing installed |
 | `server/wrangler.jsonc` | Deploy configuration |
 | `test/smoke.js` | Dependency-free syntax, transport and service checks |
 | `test/campaign.js` | Headless play-through of all three missions to a verdict |
-| `test/survey.js` | Headless survey: chunk purity, that space really is endless, almanac reachability, chart persistence |
+| `test/survey.js` | Headless survey: chunk purity, endless space, almanac reachability, chart persistence, solidity, the economy, the Leviathan's corridor |
+| `test/menu.js` | The two lanes, the card row's arithmetic, and that every card starts what it advertises |
 
 The game intentionally remains self-contained. Do not add a framework, bundler or
 runtime dependency for changes that fit the existing static architecture.
@@ -502,6 +523,7 @@ runtime dependency for changes that fit the existing static architecture.
 node projects/crossfire/test/smoke.js
 node projects/crossfire/test/campaign.js
 node projects/crossfire/test/survey.js
+node projects/crossfire/test/menu.js
 ```
 
 The closing wall and the spawn rules cannot be checked by looking at them. With
