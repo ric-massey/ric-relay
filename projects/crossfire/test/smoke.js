@@ -93,16 +93,41 @@ function checkSyntax() {
     "live ship rows must not show a stray kill multiplier");
   assert.match(html, /fill: h\.fill, size: h\.size/, "hazard visuals must reach guests");
   assert.match(html, /get\("debug"\) === "1"/, "debug API must remain opt-in");
+  /* Selection is suppressed on `html` rather than on `body.touch`. The class is
+     only added once a touch has been seen, so hanging the rule off it left the
+     very first press on a selectable document — a held thumb could highlight
+     the page or raise the iOS copy callout before the game knew it was on a
+     phone. Asserted as "not scoped to a class" on purpose: putting it back
+     behind `body.touch` is exactly the regression this catches. */
   assert.match(
     html,
-    /body\.touch\s*{[^}]*user-select:\s*none;/s,
-    "mobile game surface must not select text"
+    /\bhtml\s*{[^}]*user-select:\s*none;[^}]*}/s,
+    "the game surface must not select text, from the first frame"
   );
   assert.match(
     html,
-    /body\.touch #lobby input\s*{[^}]*user-select:\s*text;/s,
-    "lobby name and password fields must stay editable on mobile"
+    /\bhtml\s*{[^}]*-webkit-touch-callout:\s*none;/s,
+    "a held thumb must not raise the iOS copy callout"
   );
+  assert.match(
+    html,
+    /#lobby input\s*{[^}]*user-select:\s*text;/s,
+    "lobby name and password fields must stay editable"
+  );
+
+  /* The three things that make a phone browser give the game its whole screen.
+     Each is silent when missing: without `dvh` the bottom of the game sits
+     behind the address bar, without `viewport-fit=cover` a notch eats a strip
+     of it, and without `overscroll-behavior` a dragged thumb rubber-bands the
+     page instead of steering. */
+  assert.match(html, /height:\s*100dvh/,
+    "the layout must track the visible viewport, not the layout viewport");
+  assert.match(html, /viewport-fit=cover/,
+    "the viewport must reach under a notch");
+  assert.match(html, /overscroll-behavior:\s*none/,
+    "a dragged thumb must not rubber-band or pull-to-refresh the page");
+  assert.match(html, /enterPlayFullscreen\(\);\s*\n\s*\/\/ Enter and Space/,
+    "starting a match must request fullscreen inside the tap that started it");
   // The paste route is gone, so nothing in the lobby is a code any more. Its
   // markup, its styling and the strings that promised it all have to go too —
   // a fallback that no longer exists must not be offered to anybody.

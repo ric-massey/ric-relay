@@ -2,7 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- `viewport-fit=cover` lets the canvas reach under a notch, and the scale
+     locks stop a double-tap in the middle of a dogfight zooming the page.
+     iOS ignores the scale locks by policy; `touch-action` below is what
+     actually holds the line there. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>CROSSFIRE — survival, or last ship flying</title>
 <meta name="description" content="CROSSFIRE is bright vector-space combat for 1–5 ships: survive asteroid waves together or fight a no-time-limit Battle Royale inside a closing wall.">
 <meta property="og:title" content="CROSSFIRE">
@@ -27,7 +34,18 @@
 
   * { box-sizing: border-box; margin: 0; }
 
-  html, body { height: 100%; }
+  /* A phone's address bar grows and shrinks under you, and `100%` measures the
+     layout viewport rather than the part you can actually see — so the bottom
+     of the game sits behind the toolbar. `dvh` is the one unit that tracks it.
+     `overscroll-behavior` stops a dragged thumb rubber-banding the page or
+     triggering pull-to-refresh mid-flight. */
+  html, body {
+    height: 100%;
+    overscroll-behavior: none;
+  }
+  @supports (height: 100dvh) {
+    html, body { height: 100dvh; }
+  }
 
   body {
     background: var(--bg);
@@ -43,16 +61,28 @@
   }
 
   /* Dragging a thumb across the game must steer, not select page text or open
-     the iOS copy/share callout. The online lobby opts its editable fields back
-     in below, because a name and a password still need normal selection. */
-  body.touch {
+     the iOS copy/share callout.
+
+     This used to hang off `body.touch`, which is a class added when a touch is
+     first seen — so on any device the game did not recognise as a phone up
+     front, the *first* press was still a press on a selectable document, and a
+     held thumb highlighted the page or raised the copy callout before the class
+     ever landed. A game is not a document at any point in its life, so the rule
+     is unconditional now and the lobby opts its editable fields back in.
+
+     `touch-action: manipulation` is the other half: it kills the double-tap
+     zoom that survives the viewport scale locks on iOS. The canvas and the
+     thumb controls take `none` instead, further down — they handle every
+     gesture themselves. */
+  html {
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
-  body.touch #lobby input {
+  #lobby input {
     -webkit-user-select: text;
     user-select: text;
     -webkit-touch-callout: default;
@@ -76,7 +106,25 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.6rem;
+    /* Never less than the margin it always had, and never under a notch. */
+    padding: max(0.6rem, env(safe-area-inset-top))
+             max(0.6rem, env(safe-area-inset-right))
+             max(0.6rem, env(safe-area-inset-bottom))
+             max(0.6rem, env(safe-area-inset-left));
+  }
+
+  /* Flying on a phone, the margin and the frame are the only things between the
+     game and the edge of the glass, and neither is worth the pixels — the
+     canvas letterboxes itself anyway, so what this buys is a bigger picture
+     rather than a stretched one. The frame comes back the moment you are back
+     in a menu. */
+  body.touch.flying #stage {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+             env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  body.touch.flying canvas {
+    border-color: transparent;
+    box-shadow: none;
   }
 
   canvas {
@@ -563,6 +611,20 @@
     padApply();
   }
   window.addEventListener("resize", resize);
+  /* A phone's toolbar sliding away changes what you can see without ever firing
+     a window resize, so the canvas would keep the size it had behind the bar and
+     leave a strip of dead space. The visual viewport is the only thing that
+     reports it. `orientationchange` lands before the new size is readable, so it
+     is answered on the next frame rather than immediately. */
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", resize);
+    window.visualViewport.addEventListener("scroll", resize);
+  }
+  window.addEventListener("orientationchange", () => {
+    requestAnimationFrame(() => requestAnimationFrame(resize));
+  });
+  document.addEventListener("fullscreenchange", resize);
+  document.addEventListener("webkitfullscreenchange", resize);
 
   /* ── modes ───────────────────────────────────────────────────────────────
      `unit` scales ship size, rock size and every speed with the arena. Without
@@ -1127,8 +1189,15 @@
   );
   const fullscreenLabel = () => fullscreenElement() ? "EXIT FULLSCREEN" : "FULLSCREEN";
 
+  /* Set when the player leaves fullscreen using the button. Asking again after
+     that is nagging, and a game that keeps grabbing the whole screen back is a
+     game people close. Leaving by the system gesture or the Escape key does not
+     set it, because that is as often a mis-swipe as a decision. */
+  let fullscreenOptOut = false;
+
   function toggleFullscreen() {
     const leaving = fullscreenElement();
+    if (leaving) fullscreenOptOut = true;
     const action = leaving
       ? (document.exitFullscreen || document.webkitExitFullscreen)
       : (document.documentElement.requestFullscreen ||
@@ -1138,6 +1207,29 @@
       const result = action.call(leaving ? document : document.documentElement);
       if (result && typeof result.catch === "function") result.catch(() => {});
     } catch (_) {}
+  }
+
+  /* Going fullscreen for a match, on a phone, without being asked.
+
+     A browser only grants this inside a user gesture, and the tap that starts a
+     match is one — so this has to be called straight out of `startGame` and not
+     from anything deferred, or the request is refused and nothing says why.
+
+     On an iPhone there is no Fullscreen API at all (Safari only ever offered it
+     for video), so this quietly does nothing there and the layout does the work
+     instead: `100dvh`, `viewport-fit=cover` and the safe-area insets are what
+     make the game reach the edges of the glass on iOS. Everywhere else — Android
+     Chrome, Firefox, an iPad — this is the real thing. */
+  function enterPlayFullscreen() {
+    if (fullscreenOptOut || fullscreenElement()) return;
+    if (!document.body.classList.contains("touch")) return;
+    const req = document.documentElement.requestFullscreen ||
+                document.documentElement.webkitRequestFullscreen;
+    if (!req) return;
+    try {
+      const result = req.call(document.documentElement, { navigationUI: "hide" });
+      if (result && typeof result.catch === "function") result.catch(() => {});
+    } catch (_) { /* refused outside a gesture, or not allowed here */ }
   }
 
   addEventListener("pointerdown", audioUnlock, { passive: true });
@@ -1734,6 +1826,9 @@
   }
 
   function startGame(modeKey, n, botCount) {
+    // The tap that got here is the gesture a fullscreen request needs, so this
+    // has to happen now rather than once the match is up.
+    enterPlayFullscreen();
     // Enter and Space are both menu confirmation keys and default fire keys.
     // Do not carry the keydown that starts the match into its first frame.
     keys.clear();
