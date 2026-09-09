@@ -12,6 +12,7 @@ const ROOT = path.resolve(__dirname, "../../..");
 const PROJECT = path.join(ROOT, "projects/crossfire");
 const INDEX = path.join(PROJECT, "index.html");
 const NET = path.join(PROJECT, "net.js");
+const SURVEY_HUD = path.join(PROJECT, "survey-hud.js");
 const ROOMS = path.join(PROJECT, "server/rooms.js");
 const CORE = path.join(PROJECT, "server/rooms-core.mjs");
 const WORKER = path.join(PROJECT, "server/worker.mjs");
@@ -23,6 +24,7 @@ function read(file) {
 
 function checkSyntax() {
   new vm.Script(read(NET), { filename: "net.js" });
+  new vm.Script(read(SURVEY_HUD), { filename: "survey-hud.js" });
   new vm.Script(read(ROOMS), { filename: "rooms.js" });
 
   const html = read(INDEX);
@@ -31,6 +33,24 @@ function checkSyntax() {
   )];
   assert.equal(scripts.length, 1, "expected one inline game script");
   new vm.Script(scripts[0][1], { filename: "index.inline.js" });
+
+  /* The survey panel is a separate file, and the inline script captures its
+     global once at boot — so it has to be loaded before, not after. Loading it
+     late is silent: the mode plays with no chart and no catalogue readout. */
+  assert.match(html, /<script src="survey-hud\.js"><\/script>/,
+    "index.html must load survey-hud.js");
+  assert.ok(html.indexOf('src="survey-hud.js"') < html.indexOf("<script>"),
+    "survey-hud.js must be loaded before the inline game script");
+  assert.match(html, /blurb: "no enemies · endless space · chart it and fill the almanac"/,
+    "Survey must advertise that nothing out there fights back");
+  /* Survey's space has no edges, so the wall is skipped rather than pushed far
+     enough away to be unreachable. A `bounds` big enough to look infinite is
+     still a box, and a ship that reaches it bounces — which is the one thing
+     "endless" cannot do. */
+  assert.match(html, /if \(!mode\.survey\) edgeOf\(ship, shipR, WALL_BOUNCE\);/,
+    "Survey must skip the wall bounce entirely, not merely widen the arena");
+  assert.match(html, /if \(!mode\.survey && \(!mode\.closing \|\| clock <= CLOSE_DELAY\)\)/,
+    "Survey's rocks must not bounce off an arena either");
 
   assert.doesNotMatch(html, /MATCH_TIME|timeUp\(/,
     "Battle Royale must not end on a timer");

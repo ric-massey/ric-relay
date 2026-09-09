@@ -2,9 +2,10 @@
 
 CROSSFIRE is a dependency-free canvas game for one to five ships. Play co-op
 against asteroid waves, fight a no-time-limit Battle Royale inside a closing
-wall, or run the three-mission Campaign — escort a transport, raid an enemy
-convoy, and break a mothership in an all-out fleet war. It runs as static HTML,
-CSS and JavaScript with no build step.
+wall, run the three-mission Campaign — escort a transport, raid an enemy convoy,
+and break a mothership in an all-out fleet war — or take a Survey, alone, of the
+endless space all of that happened in. It runs as static HTML, CSS and JavaScript with
+no build step.
 
 ## Run locally
 
@@ -23,6 +24,7 @@ Open `http://127.0.0.1:8000/projects/crossfire/`.
 | Survival | 1-5 | Co-op asteroid waves, shared lives, optional friendly fire, wrapping arena |
 | Battle Royale | 2-5 | Three lives each, two-hit hulls, stationary gravity hazards, closing wall, no time limit |
 | Campaign | 1-2 | Three scripted missions, sides instead of a free-for-all, an allied fleet flying with you, a shared reserve of lives |
+| Survey | 1 | No enemies, no edges and no losing. Endless procedural space, a fog-of-war chart, a twenty-five entry almanac, and gravity wells that are tools as much as hazards |
 
 Battle Royale shows hull strength only for ships controlled on the current device.
 First hits stay quiet; losing a life adds a short entry to the feed beneath the
@@ -115,6 +117,101 @@ and `NEXT`/`RETRY` continue that war while a fresh pick from the mission list
 starts a clean one — so winning matters past the result screen. All of it is
 campaign-only; Survival and Battle Royale never build a fleet ledger.
 
+## Survey
+
+Survey is the mode with nothing shooting at you. It borrows Battle Royale's
+camera-followed view and its gravity wells and drops the wall, the enemies and
+the losing. There is no score, no timer and no result screen. The only thing
+that accumulates is the almanac.
+
+### It has no edges
+
+Survey does not have an arena. Space is generated in **chunks** as you reach it
+and thrown away behind you: what a chunk contains is a pure function of the seed
+and the chunk's coordinates, so flying back to somewhere you left an hour ago
+finds the same stars where you left them without any of it having been kept.
+Nothing is stored for space you have not visited, which is the only way an
+endless map costs less than endless memory.
+
+Two consequences shape everything else. Ships never bounce off anything, because
+there is nothing to bounce off — the wall code is **skipped**, not moved far
+enough away to be unreachable; a `bounds` big enough to look infinite is still a
+box. And "percent charted" is meaningless, since every fraction of an infinite
+plane is zero, so the player is given a **count of cells** and the three
+CARTOGRAPHER entries are thresholds on that count.
+
+Rocks are deliberately *not* part of a chunk. They drift, so a chunk that
+regenerated them would snap them back to where they started every time you flew
+away and returned; instead a population is kept around the ship and topped up at
+the edge of it, the way Battle Royale tops up its field.
+
+### Two inversions
+
+**The chart starts blank.** The minimap every other mode hands you complete is,
+here, a record of where you have actually been — objects appear on it only in
+cells you have charted.
+
+**A gravity well is a tool as much as a hazard.** A star is the one place a hull
+repairs, so it is a destination rather than only a way to die, and a black hole
+is the fastest way across open space if you are willing to fall into one on
+purpose. The cores of both still kill; in Survey that costs the climb back out
+rather than the run, so the risk stays real without anything ending.
+
+### The almanac
+
+Twenty-five entries. Seventeen are conditions on telemetry the simulation
+already computes every frame, seven are **landmarks** placed out in the dark,
+and one is inside a rock. Every entry has a **picture** — a small vector drawing
+of the thing it is asking you to find, which is what makes it a field guide
+rather than a checklist: a name tells you what you have not got, a picture tells
+you what to go and look for. Two entries keep their picture and lose their name
+until found.
+
+The seven landmarks sit at increasing distances from the origin — the graveyard
+is a short flight, the supernebula is an expedition, and NODE 01 is out past
+anywhere you would reach by accident. That ladder is what endless space is
+*for*. Each takes one equal slice of the compass with a little play inside it,
+so no seed can put the whole ladder down one corridor.
+
+A **scan pulse** returns a bearing to the nearest landmark you have not logged,
+at any range — direction only, never a position. In endless space that is the
+whole navigation system: there is always somewhere to go, and no scan ever hands
+you the way there.
+
+Configurations that used to be placed by hand — a binary pair, two wells whose
+pulls overlap — are now rolled per chunk, roughly one in eight. That is the
+endless-space answer to a problem the fixed arena solved by hand: an entry that
+needs a configuration cannot depend on a single lucky spot when there is no
+single sector, so both are always somewhere ahead of you.
+
+### The chart and the almanac are pages
+
+Not overlays. They take the whole screen, the world is not drawn behind them,
+and they are reached and left the way the title and settings screens are — a map
+you read through a half-transparent asteroid field is a map you squint at. The
+chart pans and zooms over the infinite lattice, draws the line you actually flew,
+labels sectors by chunk coordinate and carries a scale bar; the almanac is a grid
+of illustrated cards.
+
+### Seeds and saving
+
+A **seed** makes a sector, so a sector is a place you can go back to and a link
+you can send someone: `?seed=1234`. Without one, your sector, the chart you have
+made of it and the line you flew are remembered between visits. Both big
+structures are run-length encoded and packed rather than written as JSON — a
+survey's charted cells are the shape of the path that made them, so long
+horizontal runs compress hard — and written both when an entry ticks and every
+fifteen seconds of flying.
+
+### Where it lives
+
+`index.html` is already 7,600 lines, and a fourth mode's interface — a fog
+chart, an illustrated almanac, contact bearings — is not a small tenant.
+`survey-hud.js` is loaded the way `net.js` is and handed the engine's drawing
+primitives at boot. It must be loaded **before** the inline script, which
+captures the global once; loading it late is silent, and the mode would play
+with no chart and no almanac.
+
 ## Controls
 
 - Amber: `A` / `D` turn, `W` thrust, `Space` fire.
@@ -125,6 +222,11 @@ campaign-only; Survival and Battle Royale never build a fleet ledger.
 - `1` / `2` / `3`: in a Campaign, order the allied wing to focus fire, defend, or regroup.
 - `N`: on a cleared-mission screen, fly straight into the next mission.
 - `C`: open Settings from the title or pause menu.
+- In a Survey: `F` sends a scan pulse, `M` opens the sector chart, `L` opens the
+  almanac, and `Escape` leaves whichever page you are on. On the chart the
+  arrows pan, `+` and `−` zoom and `C` recentres; in the almanac the arrows move
+  between entries. On a phone the panel chart is a tap and the scan is a button
+  beside the hull bar — the corners are where thumbs are.
 
 Every weapon fires three-round bursts, except the campaign pilot on **Easy**, who
 holds the trigger for a continuous stream; Hard and Impossible put the pilot back
@@ -320,14 +422,16 @@ eligible, and the backend cannot be changed after the namespace is created.
 
 | File | Responsibility |
 |---|---|
-| `index.html` | UI, settings, simulation, rendering, bots, campaign and match rules |
+| `index.html` | UI, settings, simulation, rendering, bots, campaign, survey and match rules |
 | `net.js` | WebRTC links and compact session-description encoding |
+| `survey-hud.js` | Survey's interface: the flight panel, the chart page, the illustrated almanac |
 | `server/rooms-core.mjs` | The room service: every rule, no plumbing |
 | `server/worker.mjs` | Runs it on Cloudflare, in one Durable Object |
 | `server/rooms.js` | Runs it on a laptop, with nothing installed |
 | `server/wrangler.jsonc` | Deploy configuration |
 | `test/smoke.js` | Dependency-free syntax, transport and service checks |
 | `test/campaign.js` | Headless play-through of all three missions to a verdict |
+| `test/survey.js` | Headless survey: chunk purity, that space really is endless, almanac reachability, chart persistence |
 
 The game intentionally remains self-contained. Do not add a framework, bundler or
 runtime dependency for changes that fit the existing static architecture.
@@ -337,6 +441,7 @@ runtime dependency for changes that fit the existing static architecture.
 ```sh
 node projects/crossfire/test/smoke.js
 node projects/crossfire/test/campaign.js
+node projects/crossfire/test/survey.js
 ```
 
 The closing wall and the spawn rules cannot be checked by looking at them. With
@@ -365,6 +470,33 @@ subsystems off the mothership. Because a real pilot only ever helps
 mission the autopilot can nearly finish is one a person certainly can. Convoy is
 an escort, so its bar is that a passive run still carries the transport most of
 the way home. Do not debug these by watching them either.
+
+Survey is checked the same way, and for the same reason: a mode with no opponent
+has no "did you win" to assert on. An endless sector cannot be checked by
+enumerating it either, so what is checked instead is that generation is **pure**
+— the same chunk built twice is identical, neighbouring chunks are not, and the
+chunk you start in never holds a hazard — and that space really is endless: six
+minutes of full burn must simply keep going, with rocks still around the ship
+and hazards still being made 130,000 units out.
+
+`?debug=1` exposes `window.__cf.survey()` (the controller), `.catalogue()`,
+`.chunk(cx, cy)`, `.scan()`, `.find(key)`, `.hud()`, `.leave()`,
+`.key(code)` and `.hold(code, on)` — which presses a key the way a player does,
+because `readLocalInput` rebuilds every ship's input from the held-key set each
+frame and Survey has no bot to fly itself.
+
+Two things about that harness are worth knowing before writing another test with
+it. **A ship that turns continuously orbits**: the turn radius at full burn is
+about 110 units, so a "fly around and see" loop charts a smudge. **A ship that
+turns by the same angle every leg closes a polygon** and comes back to where it
+started. Both were written, both passed a `charted > 0` bar, and both were
+measuring nothing; only a walk that does not close actually crosses a sector.
+
+`test/survey.js` also proves all seventeen telemetry conditions can fire and
+that none fire on an empty block, that every almanac entry has its own picture,
+that all seven landmarks are placed at distinct bearings, and that the chart and
+the flight path round-trip through local storage — including that a new seed
+does not inherit the old sector's almanac.
 
 For visual changes, also test the title, Settings, each mode, the pause menu and a
 375px-wide phone layout. For online changes, run the room service locally and

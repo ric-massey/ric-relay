@@ -10,6 +10,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230a0a0a'/><path d='M76 50 L34 72 L44 50 L34 28 Z' fill='none' stroke='%23ffc233' stroke-width='6' stroke-linejoin='round'/></svg>">
 <script src="../relay-return.js" data-home="../../index.html" defer></script>
 <script src="net.js"></script>
+<script src="survey-hud.js"></script>
 <style>
   :root {
     /* Same phosphor as the terminal front door. The player hues are all lifted
@@ -613,6 +614,24 @@
       arena: { w: 6400, h: 4500 },
       pvp: true, friendlyFire: false, closing: false, wrap: false,
       camera: true, hazards: 0, minPlayers: 1, campaign: true, level: 3
+    },
+
+    /* ── survey ──────────────────────────────────────────────────────────────
+       The mode with nothing shooting at you. It borrows Battle Royale's shape —
+       a big camera-followed map, gravity wells, standing rocks — and drops the
+       wall, the enemies and the losing. `survey: true` is the switch, the way
+       `campaign: true` is for a mission. One pilot: there is one chart and one
+       catalogue, and two people at one keyboard cannot both be looking. */
+    survey: {
+      name: "SURVEY",
+      blurb: "no enemies · endless space · chart it and fill the almanac",
+      /* There is no arena. Survey generates space in chunks as you reach it and
+         never bounces you off anything, so this box exists only to keep the
+         camera and the code that reads `arena` in ordinary numbers — nothing in
+         the mode ever approaches it. `setupSurvey` widens `bounds` to match. */
+      arena: { w: 2e7, h: 1.4e7 },
+      pvp: false, friendlyFire: false, closing: false, wrap: false,
+      camera: true, hazards: 0, minPlayers: 1, survey: true
     }
   };
 
@@ -643,6 +662,8 @@
   const FF_PENALTY   = 100;
   const ROYALE_STOCKS = 3;
   const ROYALE_HULL   = 2;
+  // How long the elimination card holds before it fades into the spectate HUD.
+  const TERMINATED_HOLD = 2.6;
   // Tuned to give roughly the same rocks-per-screen as Survival,
   // across a map sixteen screens across. Culling means most are never drawn.
   const ROYALE_ROCKS = 84;
@@ -1362,6 +1383,9 @@
   let score = 0, lives = 0, wave = 0, ffCount = 0, players = 2;
   let clock = 0, topUp = 0;
   let banner = null;
+  // The elimination card for this screen. Set only when the seat driven from
+  // this machine runs out of stocks, so it never fires for a respawn.
+  let terminated = null;
   let outcome = null;         // set when a match ends
   let camp = null;            // campaign level controller, null outside campaign
   let campaignDifficulty = "easy";   // easy | hard | impossible — chosen per run
@@ -1405,13 +1429,16 @@
   /* The title screen is one list, and online is the third thing on it rather
      than a pair of buttons off to the side — you decide you want to play with
      other people first, and who is hosting is a question for the lobby. */
-  const TITLE_ROWS = [...MODE_KEYS, "campaign", "online"];
+  const TITLE_ROWS = [...MODE_KEYS, "campaign", "survey", "online"];
 
   function pickTitleRow(i) {
     const key = TITLE_ROWS[i];
     if (!key) return;
     if (key === "online") { titlePick = i; openLobby(); return; }
     if (key === "campaign") { titlePick = i; levelPick = 0; state = "levels"; return; }
+    // Survey is one pilot and no bots, so there is nothing to ask on a count
+    // screen. Straight into the sector.
+    if (key === "survey") { titlePick = i; startGame("survey", 1, 0); return; }
     chooseMode(key);
   }
 
@@ -1730,8 +1757,11 @@
     bounds = { x0: 0, y0: 0, x1: arena.w, y1: arena.h };
 
     // Humans first, then bots fill the remaining ships. Five in total, always.
-    const humans = Math.max(1, Math.min(MAX_PLAYERS, n));
-    const bots = Math.max(0, Math.min(MAX_PLAYERS - humans, botCount || 0));
+    // Survey is the exception and it is not negotiable: one chart, one
+    // catalogue, one ship, however many were asked for.
+    const humans = mode.survey ? 1 : Math.max(1, Math.min(MAX_PLAYERS, n));
+    const bots = mode.survey
+      ? 0 : Math.max(0, Math.min(MAX_PLAYERS - humans, botCount || 0));
     lastSetup = { modeKey, humans, bots };
     players = Math.max(mode.minPlayers, humans + bots);
     ships = [];
@@ -1744,7 +1774,7 @@
     rocks = []; bullets = []; bits = []; hazards = [];
     score = 0; wave = 0; ffCount = 0; clock = 0; topUp = 0;
     lives = 2 + 2 * players;   // co-op only
-    banner = null; outcome = null; killFeed = []; camp = null;
+    banner = null; terminated = null; outcome = null; killFeed = []; camp = null;
     pickups = []; comms = []; shake = 0; slowScale = 1; slowTimer = 0;
     cam.goalScale = 1;
     soundEvents = []; soundEventSeq = 0;
@@ -1767,7 +1797,12 @@
       cam.x = arena.w / 2; cam.y = arena.h / 2; cam.rot = 0;
     }
 
-    if (mode.campaign) {
+    if (mode.survey) {
+      // Survey builds its own space, chunk by chunk, and re-seeds the motes
+      // every time the loaded block moves — so it goes through neither
+      // placeHazards nor the one-shot seedMotes here.
+      setupSurvey();
+    } else if (mode.campaign) {
       // The humans are placed already; the mission builds the fleets, the
       // objective and the reinforcement reserves around them.
       setupCampaign(modeKey, humans);
@@ -1862,6 +1897,23 @@
         levelPick = (levelPick + 1) % CAMPAIGN_ORDER.length;
       }
       if (code === "Enter" || code === "Space") chooseMode(CAMPAIGN_ORDER[levelPick]);
+    } else if (state === "chart") {
+      /* The chart is a page you pan around, so the arrows belong to it rather
+         than to any menu. `M` closes it the way it opened it, and Escape and
+         Backspace both go back to flying. */
+      if (code === "Escape" || code === "Backspace" || code === "KeyM") {
+        state = "playing"; return;
+      }
+      if (code === "KeyL") { state = "almanac"; return; }
+      if (surveyHUD) surveyHUD.chartKey(code, surveyState());
+    } else if (state === "almanac") {
+      if (code === "Escape" || code === "Backspace" || code === "KeyL") {
+        state = "playing"; return;
+      }
+      if (code === "KeyM") {
+        state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
+      }
+      if (surveyHUD) surveyHUD.almanacKey(code, ALMANAC);
     } else if (state === "controls") {
       controlsKey(code);
     } else if (state === "thumb") {
@@ -1910,6 +1962,15 @@
       if (code === "Space" || code === "Enter") playAgain();
       if (code === "Escape" || code === "Backspace") leaveMatch();
     } else if (state === "playing" || state === "paused" || state === "menu") {
+      // Survey's three keys, and they come first so the pause handler never
+      // sees a press that was meant for the panel.
+      if (mode && mode.survey && state === "playing") {
+        if (code === "KeyF") { surveyScan(); return; }
+        if (code === "KeyM") {
+          state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
+        }
+        if (code === "KeyL") { state = "almanac"; return; }
+      }
       if (code === "KeyP" || code === "Escape") {
         state = state === "playing" ? (net.on ? "menu" : "paused") : "playing";
         localPause = state === "paused";
@@ -2235,6 +2296,20 @@
   /* ── deaths ──────────────────────────────────────────────────────────── */
   function damageShip(ship, cause, shooter, dmg = 1) {
     const twoHitCause = cause === "shot" || cause === "rock";
+    /* Survey has a five-point hull that a star puts back, and running out of it
+       is a recovery rather than a death: nothing here counts stocks, awards a
+       kill or ends a match, so `killShip` is never the right call. */
+    if (mode.survey) {
+      if (twoHitCause && ship.hull > 1) {
+        ship.hull -= dmg;
+        ship.invuln = Math.max(ship.invuln, HIT_SHIELD);
+        burst(ship.x, ship.y, ship.colour, 10, 150 * U);
+        gameSound("hit", ship.x);
+        return false;
+      }
+      surveyRecover(ship);
+      return false;
+    }
     if (mode.campaign) {
       // A capital under shield eats shots without flinching — its shield
       // generators are what you have to break first, and the spark says so.
@@ -2315,7 +2390,10 @@
         const target = standing.length > 1 ? chooseSpectator(ship, shooter) : null;
         // Each screen belongs to its local seat. A ship being watched through
         // Tab is not allowed to steal that screen when it gets eliminated.
-        if (ship.id === localSeat() && target) watching = target.id;
+        if (ship.id === localSeat()) {
+          terminated = { t: TERMINATED_HOLD };
+          if (target) watching = target.id;
+        }
       }
       checkRoyaleEnd();
       return;
@@ -2402,6 +2480,13 @@
     const spec = rockSpec(rock.size);
     const next = spec.next;
     score += spec.score;
+    // Nine rocks in a Survey sector have something in them, and this is the
+    // only way to find out which. It survives a split, so cracking a big one
+    // open hands the core down to the pieces.
+    if (mode.survey && rock.core && !next) {
+      burst(rock.x, rock.y, "#a08cff", 20, 220 * U);
+      surveyFind("prospector");
+    }
     burst(rock.x, rock.y, "#ffcb42", rock.size === "big" ? 16 : 10, 170 * U);
     gameSound("rock", rock.x);
     const i = rocks.indexOf(rock);
@@ -2412,6 +2497,7 @@
         // Keep the parent's drift so a split reads as a break-up, not a respawn.
         r.vx += rock.vx * 0.4;
         r.vy += rock.vy * 0.4;
+        if (rock.core && k === 0) r.core = true;
         rocks.push(r);
       }
     }
@@ -3570,6 +3656,707 @@
     if (tgt && Math.abs(diff) < 0.16 && best < range) i.f = true;
   }
 
+  /* ── SURVEY ──────────────────────────────────────────────────────────────
+     A fourth thing to do with the same engine, and the only one with nothing
+     shooting at you. The war is over; this is the space afterwards, and the job
+     is to look at it. There is no wall, no enemy, no score and no losing — the
+     only thing that accumulates is the almanac.
+
+     It reuses Battle Royale's camera-followed view and the gravity wells, and
+     inverts what both of them are for. A well is no longer only a way to die: a
+     star is the one place a hull repairs, and a black hole is the fastest way
+     across open space if you are willing to fall into one on purpose. That
+     inversion is most of the mode. The rest is that the chart starts blank.
+
+     ── the sector has no edges ──────────────────────────────────────────────
+     Survey does not have an arena. Space is generated in chunks as you reach
+     them and thrown away behind you: what a chunk contains is a pure function
+     of the seed and the chunk's coordinates, so flying back to a place you left
+     an hour ago finds the same stars where you left them without any of it
+     having been kept. Nothing is ever stored for space you have not visited,
+     which is the only way an endless map costs less than endless memory.
+
+     Two consequences shape everything downstream. Ships never bounce off
+     anything, because there is nothing to bounce off — the wall code is skipped
+     rather than moved out of the way. And "percent charted" is meaningless,
+     since every fraction of an infinite plane is zero, so what the player is
+     given is a count of cells and the three CARTOGRAPHER entries are thresholds
+     on that count.
+
+     `surv` holds the whole of a survey the way `camp` holds a mission. The
+     almanac and the chart are longer-lived than that — written to local storage
+     and survive the tab, because a list you rebuild every session is a score
+     and not a record. */
+
+  const surveyHUD = window.CrossfireSurveyHUD || null;
+
+  const SURVEY_STORE  = "crossfire.survey.v2";
+  const CHUNK         = 2600;   // world units a side
+  const CHUNK_LOAD    = 2;      // chunks kept either side of the ship: a 5×5 block
+  const SURVEY_SIGHT  = 700;    // charted either side of the ship as it flies
+  const SURVEY_SCAN   = 9;      // seconds to recharge the pulse
+  const SURVEY_REPAIR = 0.55;   // hull points a second, in a star's light
+  const SURVEY_ROCKS  = 90;     // rocks kept around the ship
+  const SURVEY_ROCK_R = 3200;   // how far out they are kept
+  const SURVEY_HULL   = 5;
+  const NEBULA        = "#a08cff";
+  const WRECK         = "#7d8596";
+
+  /* ── the almanac ──────────────────────────────────────────────────────────
+     Twenty-five entries, and the split between them is deliberate: seventeen
+     are conditions on telemetry the simulation already computes every frame,
+     seven are landmarks placed out in the dark at increasing distances, and one
+     is inside a rock. The count is cheap; the places are not.
+
+     `test` entries are checked every tick against the telemetry block. The rest
+     are events — arriving somewhere, breaking something — and call `surveyFind`
+     where they happen. `secret` hides the name until it is found, because a
+     redaction is an invitation and a blank line is not. */
+  const ALMANAC = [
+    { key: "first-light", name: "FIRST LIGHT", note: "a star, close up",
+      test: t => t.nearStar },
+    { key: "event-horizon", name: "EVENT HORIZON", note: "in, and back out again",
+      test: t => t.leftHole },
+    { key: "slingshot", name: "SLINGSHOT", note: "left faster than you arrived",
+      test: t => t.slung },
+    { key: "thread", name: "THREAD", note: "between two cores, touching neither",
+      test: t => t.threaded },
+    { key: "close-pass", name: "CLOSE PASS", note: "skimmed a core and lived",
+      test: t => t.skimmed },
+    { key: "dead-stick", name: "DEAD STICK", note: "sixty seconds without thrust",
+      test: t => t.coast >= 60 },
+    { key: "full-stop", name: "FULL STOP", note: "dead still, nothing near",
+      test: t => t.stopped },
+    { key: "terminal-velocity", name: "TERMINAL VELOCITY",
+      note: "faster than an engine can push",
+      test: t => t.top >= MAX_SPEED * U * 1.5 },
+    { key: "long-haul", name: "LONG HAUL", note: "150,000 units flown",
+      test: t => t.dist >= 150000 },
+    { key: "deep-field", name: "DEEP FIELD", note: "60,000 units from where you started",
+      test: t => t.fromHome >= 60000 },
+    { key: "dark-run", name: "DARK RUN", note: "6,000 units with no star out there",
+      test: t => t.dark >= 6000 },
+    { key: "cartographer-1", name: "CARTOGRAPHER I", note: "300 cells charted",
+      test: t => t.charted >= 300 },
+    { key: "cartographer-2", name: "CARTOGRAPHER II", note: "1,200 cells charted",
+      test: t => t.charted >= 1200 },
+    { key: "cartographer-3", name: "CARTOGRAPHER III", note: "4,000 cells charted",
+      test: t => t.charted >= 4000 },
+
+    { key: "binary", name: "BINARY", note: "two stars, one dance",
+      test: t => t.stars >= 2 },
+    { key: "double", name: "DOUBLE", note: "two wells, overlapping",
+      test: t => t.holes >= 2 },
+    { key: "eclipse", name: "ECLIPSE", note: "a world drawn across a sun",
+      test: t => t.eclipse },
+
+    { key: "prospector", name: "PROSPECTOR", note: "a rock that was not only rock" },
+
+    { key: "graveyard", name: "GRAVEYARD", note: "where a raid ended" },
+    { key: "rogue", name: "ROGUE", note: "a planet with no star" },
+    { key: "last-transmission", name: "LAST TRANSMISSION", note: "still broadcasting" },
+    { key: "pale-dot", name: "PALE DOT", note: "one pixel, until it wasn't" },
+    { key: "the-wall", name: "THE WALL", note: "markers around an empty square",
+      secret: true },
+    { key: "supernebula", name: "THE SUPERNEBULA", note: "you found the big one" },
+    { key: "node-01", name: "NODE 01", note: "somebody else's terminal", secret: true }
+  ];
+  const SURVEY_TOTAL = ALMANAC.length;
+
+  /* ── the landmarks ────────────────────────────────────────────────────────
+     The seven entries that are places rather than conditions, at increasing
+     distances from the origin. This ladder is what an endless sector is *for*:
+     the graveyard is a short flight, the supernebula is an expedition, and NODE
+     01 is out past anywhere you would go by accident. A scan returns a bearing
+     to the nearest one you have not found, at any range — direction only — so
+     there is always somewhere to go and never a map that gives it away. */
+  const LANDMARKS = [
+    { key: "graveyard",         name: "GRAVEYARD",     dist: 13000, r: 620 },
+    { key: "rogue",             name: "ROGUE",         dist: 20000, r: 520 },
+    { key: "last-transmission", name: "TRANSMISSION",  dist: 27000, r: 430 },
+    { key: "pale-dot",          name: "PALE DOT",      dist: 36000, r: 330 },
+    { key: "the-wall",          name: "THE WALL",      dist: 48000, r: 760 },
+    { key: "supernebula",       name: "SUPERNEBULA",   dist: 64000, r: 1150 },
+    { key: "node-01",           name: "NODE 01",       dist: 88000, r: 400 }
+  ];
+
+  let surv = null;
+
+  /* ── the book ─────────────────────────────────────────────────────────────
+     What survives the tab: which sector you were in, what you have found, the
+     chart you made of it and the line you flew. Both of the big ones are packed
+     and run-length encoded by the interface module rather than written as JSON;
+     see `exportFog` there for why. */
+  function loadSurveyBook() {
+    const empty = { seed: 0, found: [], fog: "", trail: "" };
+    try {
+      const raw = localStorage.getItem(SURVEY_STORE);
+      if (!raw) return empty;
+      const b = JSON.parse(raw);
+      if (!b || typeof b !== "object") return empty;
+      return {
+        seed: Number(b.seed) || 0,
+        found: Array.isArray(b.found) ? b.found.filter(k => typeof k === "string") : [],
+        fog: typeof b.fog === "string" ? b.fog : "",
+        trail: typeof b.trail === "string" ? b.trail : ""
+      };
+    } catch (_) { return empty; }
+  }
+
+  function saveSurveyBook() {
+    if (!surv) return;
+    try {
+      localStorage.setItem(SURVEY_STORE, JSON.stringify({
+        seed: surv.seed,
+        found: [...surv.found],
+        fog: surveyHUD ? surveyHUD.exportFog() : "",
+        trail: surveyHUD ? surveyHUD.exportTrail() : ""
+      }));
+    } catch (_) { /* private browsing; the run still plays, it just won't keep */ }
+  }
+
+  function surveySeed() {
+    const p = new URLSearchParams(location.search).get("seed");
+    if (p && /^\d+$/.test(p)) return Number(p) >>> 0;
+    const book = loadSurveyBook();
+    if (book.seed) return book.seed;
+    return (Math.random() * 0xffffffff) >>> 0;
+  }
+
+  /* One seed and one pair of chunk coordinates make one number, and that number
+     makes one chunk. Mixed rather than added so neighbouring chunks are not
+     neighbouring seeds — without the mixing, a row of chunks comes out as a row
+     of near-identical fields, which reads as a corridor. */
+  function chunkSeed(cx, cy) {
+    let h = surv.seed >>> 0;
+    h = Math.imul(h ^ (cx + 0x9e3779b9), 0x85ebca6b) >>> 0;
+    h = Math.imul(h ^ (cy + 0xc2b2ae35), 0x27d4eb2f) >>> 0;
+    h ^= h >>> 15;
+    return h >>> 0;
+  }
+
+  const chunkKey = (cx, cy) => cx + "," + cy;
+
+  function makeStar(x, y, R) {
+    const s = HAZARD.star;
+    return { kind: "star", x, y, kill: s.kill, reach: s.reach, mass: s.mass,
+             soft: s.soft, fill: s.fill, size: "sun", phase: R() * Math.PI * 2 };
+  }
+  function makeHole(x, y, big, R) {
+    const s = big ? HAZARD.hole.large : HAZARD.hole.small;
+    return { kind: "hole", x, y, kill: s.kill, reach: s.reach, mass: s.mass,
+             soft: s.soft, fill: null, size: big ? "large" : "small",
+             phase: R() * Math.PI * 2 };
+  }
+
+  /* ── one chunk ────────────────────────────────────────────────────────────
+     Pure: same seed and same coordinates, same contents, every time. Nothing in
+     here may look at the ship, the clock or anything already loaded, or flying
+     away and back would find somewhere different.
+
+     Binaries and overlapping wells are rolled here rather than placed once,
+     which is the endless-space answer to a problem the fixed arena solved by
+     hand: an entry that needs a *configuration* cannot depend on a single lucky
+     spot when there is no single sector — so roughly one chunk in eight is a
+     pair, and both entries are always somewhere ahead of you. */
+  function buildChunk(cx, cy) {
+    const R = seeded(chunkSeed(cx, cy));
+    const ox = cx * CHUNK, oy = cy * CHUNK;
+    const rnd = (a, b) => a + R() * (b - a);
+    const spot = (m) => ({ x: ox + rnd(m, CHUNK - m), y: oy + rnd(m, CHUNK - m) });
+    const out = { hazards: [], planets: [], wrecks: [], nebulae: [], marks: [] };
+
+    // Where you start is quiet: an opening spawn inside a well is a death you
+    // could not have avoided, and the first thing this mode asks you to do is
+    // relax and look around.
+    const home = cx === 0 && cy === 0;
+
+    if (!home) {
+      const roll = R();
+      if (roll < 0.07) {
+        const p = spot(760);
+        out.hazards.push(makeStar(p.x - 150, p.y, R), makeStar(p.x + 150, p.y, R));
+      } else if (roll < 0.14) {
+        const p = spot(900);
+        out.hazards.push(makeHole(p.x - 210, p.y - 60, true, R),
+                         makeHole(p.x + 210, p.y + 60, true, R));
+      } else if (roll < 0.42) {
+        const p = spot(500);
+        out.hazards.push(makeStar(p.x, p.y, R));
+      } else if (roll < 0.60) {
+        const p = spot(600);
+        out.hazards.push(makeHole(p.x, p.y, R() < 0.5, R));
+      }
+      if (R() < 0.16) {
+        const p = spot(420);
+        out.planets.push({ x: p.x, y: p.y, r: rnd(110, 200) });
+      }
+      if (R() < 0.05) {
+        const p = spot(300);
+        out.wrecks.push({ x: p.x, y: p.y, a: R() * Math.PI * 2,
+                          spin: rnd(-0.05, 0.05), size: rnd(0.8, 1.7) });
+      }
+    }
+
+    const lm = surv.landmarkAt.get(chunkKey(cx, cy));
+    if (lm) buildLandmark(lm, out, R, rnd);
+    return out;
+  }
+
+  /* A landmark's own furniture. Each one is a thing the engine already knows
+     how to draw, which is why an endless sector can afford landmarks at all. */
+  function buildLandmark(lm, out, R, rnd) {
+    if (lm.key === "graveyard") {
+      for (let i = 0; i < 7; i++) {
+        out.wrecks.push({ x: lm.x + rnd(-340, 340), y: lm.y + rnd(-340, 340),
+                          a: R() * Math.PI * 2, spin: rnd(-0.05, 0.05),
+                          size: rnd(0.9, 1.9) });
+      }
+    } else if (lm.key === "last-transmission") {
+      out.wrecks.push({ x: lm.x, y: lm.y, a: R() * Math.PI * 2, spin: 0.02,
+                        size: 2.1, beacon: true });
+    } else if (lm.key === "node-01") {
+      out.wrecks.push({ x: lm.x, y: lm.y, a: R() * Math.PI * 2, spin: -0.014,
+                        size: 1.9, node: true });
+    } else if (lm.key === "rogue") {
+      // A planet with no star, and the chunk's own roll is overruled so it
+      // stays that way — the entry is the absence, not the planet.
+      out.hazards.length = 0;
+      out.planets.push({ x: lm.x, y: lm.y, r: 175, rogue: true });
+    } else if (lm.key === "pale-dot") {
+      out.planets.push({ x: lm.x, y: lm.y, r: 26, pale: true });
+    } else if (lm.key === "supernebula") {
+      out.nebulae.push({ x: lm.x, y: lm.y, r: 1250, phase: R() * Math.PI * 2 });
+    } else if (lm.key === "the-wall") {
+      /* Battle Royale's wall stops at a fifth of its arena. Out here there is
+         no arena and no wall, so what is left is the shape of one: four markers
+         around an empty square, exactly that size, in the middle of nowhere. */
+      const half = (MODES.royale.arena.w * CLOSE_TO) / 2;
+      const halfY = (MODES.royale.arena.h * CLOSE_TO) / 2;
+      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        out.marks.push({ x: lm.x + sx * half, y: lm.y + sy * halfY });
+      }
+    }
+  }
+
+  /* ── streaming ────────────────────────────────────────────────────────────
+     Chunks within CHUNK_LOAD of the ship are built and kept; everything else is
+     dropped. The flat lists the rest of the engine reads — `hazards` above all
+     — are rebuilt only when the block actually moves, not every frame, because
+     re-seeding the motes is the expensive half and it has nothing to do sixty
+     times a second. */
+  function streamChunks(force) {
+    const me = ships[0];
+    const cx = Math.floor(me.x / CHUNK), cy = Math.floor(me.y / CHUNK);
+    const centre = chunkKey(cx, cy);
+    if (!force && centre === surv.centre) return;
+    surv.centre = centre;
+
+    const want = new Set();
+    for (let y = cy - CHUNK_LOAD; y <= cy + CHUNK_LOAD; y++) {
+      for (let x = cx - CHUNK_LOAD; x <= cx + CHUNK_LOAD; x++) {
+        const k = chunkKey(x, y);
+        want.add(k);
+        if (!surv.chunks.has(k)) surv.chunks.set(k, buildChunk(x, y));
+      }
+    }
+    for (const k of [...surv.chunks.keys()]) {
+      if (!want.has(k)) surv.chunks.delete(k);
+    }
+
+    hazards = [];
+    surv.planets = []; surv.wrecks = []; surv.nebulae = []; surv.marks = [];
+    for (const c of surv.chunks.values()) {
+      for (const h of c.hazards) hazards.push(h);
+      for (const p of c.planets) surv.planets.push(p);
+      for (const w of c.wrecks) surv.wrecks.push(w);
+      for (const n of c.nebulae) surv.nebulae.push(n);
+      for (const m of c.marks) surv.marks.push(m);
+    }
+    seedMotes();
+  }
+
+  /* Rocks are not part of a chunk. They drift, so a chunk that regenerated them
+     would snap them back to where they started every time you flew away and
+     returned; instead a population is kept around the ship and topped up at the
+     edge of it, the way Battle Royale tops up its field. */
+  function streamRocks() {
+    const me = ships[0];
+    const far = (SURVEY_ROCK_R * 1.7) ** 2;
+    for (let i = rocks.length - 1; i >= 0; i--) {
+      if (dist2(rocks[i].x, rocks[i].y, me.x, me.y) > far) rocks.splice(i, 1);
+    }
+    let guard = 40;
+    while (rocks.length < SURVEY_ROCKS && guard-- > 0) {
+      const a = Math.random() * Math.PI * 2;
+      const d = rand(SURVEY_ROCK_R * 0.85, SURVEY_ROCK_R * 1.35);
+      const x = me.x + Math.cos(a) * d, y = me.y + Math.sin(a) * d;
+      if (hazards.some(h => dist2(x, y, h.x, h.y) < (h.kill + 260) ** 2)) continue;
+      const r = makeRock(randomRoyaleRockSize(), x, y);
+      // One rock in sixty has something in it, and cracking it open is the only
+      // way to find out which. Stops once the entry is logged.
+      if (!surv.found.has("prospector") && Math.random() < 1 / 60) r.core = true;
+      rocks.push(r);
+    }
+  }
+
+  function setupSurvey() {
+    const seed = surveySeed();
+    const book = loadSurveyBook();
+    const R = seeded(seed ^ 0x5bf03635);
+
+    surv = {
+      seed,
+      // A fresh seed is a fresh almanac: the entries are about this sector, so
+      // carrying them into a different one would tick things you never saw.
+      found: new Set(book.seed === seed ? book.found : []),
+      chunks: new Map(), centre: null,
+      planets: [], wrecks: [], nebulae: [], marks: [],
+      landmarks: [], landmarkAt: new Map(),
+      contacts: [],
+      scan: { charge: 1 },
+      save: 15,
+      t: {
+        dist: 0, coast: 0, dark: 0, top: 0, charted: 0, fromHome: 0,
+        stars: 0, holes: 0, eclipse: false, stopped: false,
+        nearStar: false, leftHole: false, slung: false, threaded: false,
+        skimmed: false, inWell: null, entrySpeed: 0
+      }
+    };
+
+    /* The landmarks, one to each equal slice of the compass with a little play
+       inside its own slice. The golden angle was the first thing tried and it
+       is the wrong tool here: over seven items it wraps, and a wrap can drop two
+       landmarks a tenth of a radian apart — which makes the ladder a corridor
+       rather than a sector. Equal slices cannot, and the jitter is bounded well
+       inside a slice so it never can either. */
+    const slice = (Math.PI * 2) / LANDMARKS.length;
+    const a0 = R() * Math.PI * 2;
+    LANDMARKS.forEach((L, i) => {
+      const a = a0 + i * slice + (R() - 0.5) * slice * 0.6;
+      const d = L.dist * (0.9 + R() * 0.2);
+      const lm = { key: L.key, name: L.name, r: L.r,
+                   x: Math.cos(a) * d, y: Math.sin(a) * d,
+                   found: surv.found.has(L.key) };
+      surv.landmarks.push(lm);
+      surv.landmarkAt.set(
+        chunkKey(Math.floor(lm.x / CHUNK), Math.floor(lm.y / CHUNK)), lm);
+    });
+
+    /* No arena, so `bounds` is only here to keep the code that reads it from
+       reading NaN — nothing in Survey ever reaches it, because `edgeOf` is
+       skipped rather than given a bigger box to bounce off. */
+    bounds = { x0: -1e7, y0: -1e7, x1: 1e7, y1: 1e7 };
+
+    const me = ships[0];
+    me.x = 0; me.y = 0; me.vx = me.vy = 0; me.a = -Math.PI / 2;
+    me.hull = me.maxHull = SURVEY_HULL;
+    me.invuln = INVULN;
+    cam.x = 0; cam.y = 0;
+
+    rocks = [];
+    streamChunks(true);
+    streamRocks();
+
+    if (surveyHUD) {
+      surveyHUD.reset();
+      if (book.seed === seed) {
+        if (book.fog) surveyHUD.importFog(book.fog);
+        if (book.trail) surveyHUD.importTrail(book.trail);
+      }
+    }
+
+    banner = { text: "SURVEY", t: 3.4, colour: NEBULA,
+               sub: "nothing out here is hunting you — go and look" };
+  }
+
+  /* ── finding things ───────────────────────────────────────────────────────
+     One way in, so the toast, the sound, the chart mark and the save all happen
+     together and cannot drift apart. */
+  function surveyFind(key) {
+    if (!surv || surv.found.has(key)) return;
+    const entry = ALMANAC.find(e => e.key === key);
+    if (!entry) return;
+    surv.found.add(key);
+    for (const lm of surv.landmarks) if (lm.key === key) lm.found = true;
+    for (const c of surv.contacts) if (c.key === key) c.resolved = true;
+    if (surveyHUD) {
+      surveyHUD.logged({ name: entry.name, note: entry.note,
+                         n: surv.found.size, of: SURVEY_TOTAL });
+    }
+    gameSound("win", ships[0] ? ships[0].x : 0);
+    saveSurveyBook();
+  }
+
+  /* The pulse. It does not reveal the map — it returns bearings to landmarks
+     you have not logged yet, at any range, which is a direction to fly rather
+     than an answer. In endless space that is the whole navigation system: there
+     is always somewhere to go, and no scan ever hands you the way there. */
+  function surveyScan() {
+    if (!surv || surv.scan.charge < 1) return;
+    surv.scan.charge = 0;
+    if (surveyHUD) surveyHUD.ping();
+    gameSound("shot", ships[0].x);
+    const me = ships[0];
+    surv.contacts = surv.landmarks
+      .filter(l => !l.found)
+      .map(l => ({ key: l.key, name: l.name, x: l.x, y: l.y, resolved: false,
+                   d: Math.hypot(l.x - me.x, l.y - me.y) }))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 3);
+    if (!surv.contacts.length) {
+      chatter("Nothing left out there to find.", NEBULA);
+      return;
+    }
+    const c = surv.contacts[0];
+    const deg = Math.round(
+      ((Math.atan2(c.y - me.y, c.x - me.x) * 180) / Math.PI + 450) % 360);
+    const range = c.d > 40000 ? "a very long way out"
+                : c.d > 16000 ? "a long way out"
+                : c.d > 6000  ? "out there"
+                : "close";
+    chatter("Bearing " + String(deg).padStart(3, "0") + " — " + range, NEBULA);
+  }
+
+  /* A hull that runs out does not end anything. It leaves you adrift where you
+     fell, because there is no beacon to be dragged home to and no run to lose —
+     the mode has no fail state to protect and inventing one would only punish
+     going and looking. Falling into a well is the exception: it puts you back
+     at the edge of it, since the alternative is dying again immediately. */
+  function surveyRecover(ship, well) {
+    burst(ship.x, ship.y, NEBULA, 22, 260 * U);
+    if (well) {
+      const a = Math.atan2(ship.y - well.y, ship.x - well.x) || 0;
+      ship.x = well.x + Math.cos(a) * (well.reach + 240);
+      ship.y = well.y + Math.sin(a) * (well.reach + 240);
+    }
+    ship.vx = ship.vy = 0;
+    ship.hull = ship.maxHull;
+    ship.invuln = INVULN;
+    surv.t.inWell = null;
+    chatter("Hull gone — systems back up. Take it slower.", "#ff8f77");
+    gameSound("lose", ship.x);
+  }
+
+  /* ── the tick ─────────────────────────────────────────────────────────────
+     Telemetry first, then the table. Everything the seventeen `test` entries
+     need is gathered here once a frame; nothing walks the hazard list twice. */
+  function surveyTick(dt) {
+    const me = ships[0];
+    if (!me || !me.alive) return;
+    const t = surv.t;
+
+    streamChunks(false);
+    streamRocks();
+
+    surv.scan.charge = Math.min(1, surv.scan.charge + dt / SURVEY_SCAN);
+    surv.save -= dt;
+    if (surv.save <= 0) { surv.save = 15; saveSurveyBook(); }
+
+    const sp = Math.hypot(me.vx, me.vy);
+    const moved = sp * dt;
+    t.dist += moved;
+    t.top = Math.max(t.top, sp);
+    t.coast = me.thrusting ? 0 : t.coast + dt;
+    t.fromHome = Math.hypot(me.x, me.y);
+
+    if (surveyHUD) {
+      surveyHUD.reveal(me.x, me.y, SURVEY_SIGHT);
+      surveyHUD.track(me.x, me.y);
+      t.charted = surveyHUD.charted();
+    }
+
+    // One pass over the wells does the work of six entries.
+    let stars = 0, holes = 0, nearestStar = Infinity;
+    let inWell = null, skim = false, tight = 0, lit = null;
+    for (const h of hazards) {
+      const d = Math.hypot(me.x - h.x, me.y - h.y);
+      if (h.kind === "star") nearestStar = Math.min(nearestStar, d);
+      if (d < h.reach) {
+        if (h.kind === "star") { stars++; lit = lit || h; } else holes++;
+        if (!inWell || d < inWell.d) inWell = { h, d };
+        if (d < h.kill * 2.6) tight++;
+        if (d < h.kill * 1.6) skim = true;
+      }
+    }
+    t.stars = stars; t.holes = holes;
+    t.nearStar = t.nearStar || stars > 0;
+    if (skim) t.skimmed = true;
+    if (tight >= 2) t.threaded = true;
+    t.dark = nearestStar > 2200 ? t.dark + moved : 0;
+    t.stopped = sp < 3 && !inWell && t.dist > 400;
+
+    /* Entering and leaving a well. Both entries that come off this are about
+       the leaving, so the speed on the way in is remembered and compared with
+       the speed on the way out. */
+    if (inWell && !t.inWell) {
+      t.inWell = inWell.h;
+      t.entrySpeed = sp;
+    } else if (!inWell && t.inWell) {
+      if (t.inWell.kind === "hole") t.leftHole = true;
+      if (sp > t.entrySpeed * 1.3 && sp > MAX_SPEED * U * 0.7) t.slung = true;
+      t.inWell = null;
+    }
+
+    // In a star's light the hull comes back. The only repair in the mode, and
+    // the reason a sun is a destination rather than only a hazard.
+    surv.inStar = !!lit;
+    if (lit && me.hull < me.maxHull) {
+      me.hull = Math.min(me.maxHull, me.hull + SURVEY_REPAIR * dt);
+    }
+
+    /* An eclipse is geometry, not an object: a world sitting between you and a
+       sun. Only checked against stars whose glow you could actually see, so it
+       is a handful of comparisons rather than every pair in the sector. */
+    t.eclipse = false;
+    for (const h of hazards) {
+      if (h.kind !== "star" || t.eclipse) continue;
+      const hd = Math.hypot(h.x - me.x, h.y - me.y);
+      if (hd > 3200) continue;
+      for (const p of surv.planets) {
+        const pd = Math.hypot(p.x - me.x, p.y - me.y);
+        if (pd > hd || pd < p.r * 1.5) continue;
+        const ux = (h.x - me.x) / hd, uy = (h.y - me.y) / hd;
+        const px = p.x - me.x, py = p.y - me.y;
+        if (Math.abs(px * uy - py * ux) < p.r) { t.eclipse = true; break; }
+      }
+    }
+
+    // Arriving somewhere. Landmarks are found by being near them — there is
+    // nothing to press, because pressing something is not what looking is.
+    for (const lm of surv.landmarks) {
+      if (lm.found) continue;
+      if (dist2(me.x, me.y, lm.x, lm.y) < lm.r * lm.r) surveyFind(lm.key);
+    }
+    for (const c of surv.contacts) {
+      if (!c.resolved && dist2(me.x, me.y, c.x, c.y) < 600 * 600) c.resolved = true;
+    }
+
+    for (const e of ALMANAC) {
+      if (e.test && !surv.found.has(e.key) && e.test(t)) surveyFind(e.key);
+    }
+  }
+
+  /* ── drawing the sector ───────────────────────────────────────────────── */
+  function drawNebula(n) {
+    if (!onScreen(n.x, n.y, n.r)) return;
+    ctx.save();
+    ctx.translate(n.x, n.y);
+    const beat = reduceMotion ? 0 : Math.sin(clock * 0.4 + n.phase) * 0.06;
+    // Rings rather than a fill: a filled cloud at this size is a wash over the
+    // whole screen, and you still have to be able to fly through it.
+    for (let i = 0; i < 7; i++) {
+      const f = 0.32 + i * 0.11 + beat;
+      glow(i % 2 ? NEBULA : "#6f5cc4", 2, 0.30 - i * 0.03, () => {
+        ctx.beginPath();
+        for (let k = 0; k <= 40; k++) {
+          const a = (k / 40) * Math.PI * 2;
+          const wob = 1 + Math.sin(a * 3 + i * 1.7 + n.phase) * 0.13;
+          const rr = n.r * f * wob;
+          const px = Math.cos(a) * rr, py = Math.sin(a) * rr * 0.74;
+          k ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      });
+    }
+    ctx.restore();
+  }
+
+  function drawWreck(w) {
+    const r = 22 * w.size;
+    if (!onScreen(w.x, w.y, r + 40)) return;
+    ctx.save();
+    ctx.translate(w.x, w.y);
+    ctx.rotate(w.a);
+    ctx.scale(w.size, w.size);
+    // The same hull everything else in the game flies, sheared open and unlit.
+    glow(w.node ? "#ffe56d" : WRECK, 1.6, w.node ? 0.75 : 0.6, () => {
+      ctx.beginPath();
+      ctx.moveTo(16, 0); ctx.lineTo(-12, 9); ctx.lineTo(-7, 0);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-12, -9); ctx.lineTo(-4, -3);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(2, -6); ctx.lineTo(9, -11);
+      ctx.stroke();
+    });
+    ctx.restore();
+
+    if (w.beacon || w.node) {
+      const pulse = 0.5 + 0.5 * Math.sin(clock * (w.node ? 1.4 : 2.6));
+      glow(w.node ? "#ffe56d" : NEBULA, 2, 0.25 + pulse * 0.5, () => {
+        ctx.beginPath();
+        ctx.arc(w.x, w.y, r + 16 + pulse * 26, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+    }
+  }
+
+  // The wall's markers: a corner bracket each, so four of them read as one
+  // square from the middle even though you can only ever see one at a time.
+  function drawMark(m) {
+    if (!onScreen(m.x, m.y, 120)) return;
+    const beat = 0.6 + 0.4 * Math.sin(clock * 2 + m.x * 0.01);
+    glow("#ff8f77", 2, beat * 0.85, () => {
+      ctx.beginPath();
+      ctx.arc(m.x, m.y, 26, 0, Math.PI * 2);
+      ctx.moveTo(m.x - 46, m.y); ctx.lineTo(m.x + 46, m.y);
+      ctx.moveTo(m.x, m.y - 46); ctx.lineTo(m.x, m.y + 46);
+      ctx.stroke();
+    });
+  }
+
+  function drawSurveyWorld() {
+    if (!surv) return;
+    for (const n of surv.nebulae) drawNebula(n);
+    for (const p of surv.planets) drawPlanet(p);
+    for (const w of surv.wrecks) drawWreck(w);
+    for (const m of surv.marks) drawMark(m);
+  }
+
+  /* Everything the interface module needs, gathered once. Both pages and the
+     panel read the same object, so what the chart shows and what the panel
+     shows can never disagree. */
+  function surveyState() {
+    return {
+      ship: ships[0], cam, clock, seed: surv.seed,
+      hazards, planets: surv.planets, landmarks: surv.landmarks,
+      contacts: surv.contacts,
+      found: surv.found.size, total: SURVEY_TOTAL,
+      inStar: surv.inStar, scan: surv.scan,
+      almanac: ALMANAC.map(e => ({ key: e.key, name: e.name, note: e.note,
+                                   secret: e.secret, found: surv.found.has(e.key) })),
+      onScan: surveyScan,
+      onChart: () => { state = "chart"; surveyHUD.chartOpened(surveyState()); },
+      onClose: () => { state = "playing"; }
+    };
+  }
+
+  function drawSurveyPanel(dt) {
+    if (!surv || !surveyHUD) return;
+    surveyHUD.drawPanel(surveyState(), dt);
+
+    /* Radio lines go just above the status strip rather than bottom-left where
+       the campaign puts them: bottom-left is under a thumb on a phone. The
+       interface module stays out of this — comms belong to the game. */
+    const live = comms.filter(c => c.until > clock);
+    live.slice(0, 2).forEach((c, i) => {
+      const a = Math.min(1, (c.until - clock) * 0.8);
+      text(c.text, SCREEN_W / 2, SCREEN_H - (touchOnly ? 96 : 88) + i * 22,
+           13, c.colour, "center", a * 0.85);
+    });
+  }
+
+  /* The title row says where you got to, if you have been before. A mode that
+     remembers should say so on the way in, not once you are already inside. */
+  function surveyBlurb() {
+    const b = loadSurveyBook();
+    if (!b.seed || !b.found.length) return MODES.survey.blurb.toUpperCase();
+    return b.found.length + " / " + SURVEY_TOTAL + " LOGGED · CONTINUE THE SECTOR";
+  }
+
   function spotIsClear(x, y) {
     const r = SHIP_R * U;
     if (rocks.some(k => gap2(x, y, k.x, k.y) < (k.r + 95 * U) ** 2)) return false;
@@ -3926,6 +4713,7 @@
     if (localEliminated) {
       const me = ships[net.seat];
       const target = chooseSpectator(me, null);
+      terminated = { t: TERMINATED_HOLD };
       if (target) watching = target.id;
     }
 
@@ -4063,6 +4851,7 @@
     }
 
     if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
+    if (terminated) { terminated.t -= dt; if (terminated.t <= 0) terminated = null; }
     updateCamera(dt);
   }
 
@@ -4334,6 +5123,7 @@
   function update(dt) {
     clock += dt;
     if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
+    if (terminated) { terminated.t -= dt; if (terminated.t <= 0) terminated = null; }
     killFeed = killFeed.filter(e => e.until > clock);
     updateWall(dt);
     updateMotes(dt);
@@ -4416,10 +5206,16 @@
       if (sp > max) { ship.vx *= max / sp; ship.vy *= max / sp; }
 
       ship.x += ship.vx * dt; ship.y += ship.vy * dt;
-      edgeOf(ship, shipR, WALL_BOUNCE);
+      // Survey has no edges to bounce off, so the wall is skipped rather than
+      // moved far enough away to be unreachable.
+      if (!mode.survey) edgeOf(ship, shipR, WALL_BOUNCE);
 
       const swallowed = hazardAt(ship.x, ship.y, shipR * 0.6);
       if (swallowed && ship.invuln <= 0) {
+        // The core of a well still kills in Survey — it just costs the trip
+        // back rather than the run, so the risk stays real and the punishment
+        // does not end anything.
+        if (mode.survey) { surveyRecover(ship, swallowed); continue; }
         killShip(ship, swallowed.kind === "hole" ? "hole" : "star", null);
         if (!worldRunning()) return;
         continue;
@@ -4532,8 +5328,10 @@
       r.x += r.vx * dt; r.y += r.vy * dt;
       r.a += r.spin * dt;
       // The moving wall removes rocks after passing them; it never changes
-      // their velocity or sweeps them into the shrinking arena.
-      if (!mode.closing || clock <= CLOSE_DELAY) {
+      // their velocity or sweeps them into the shrinking arena. In Survey a
+      // rock simply drifts, and `streamRocks` collects the ones that drift out
+      // of range.
+      if (!mode.survey && (!mode.closing || clock <= CLOSE_DELAY)) {
         edgeOf(r, r.r, ROCK_BOUNCE);
       }
       // A rock that falls in is gone — which is how the wells slowly sweep the
@@ -4578,7 +5376,9 @@
 
     updateCamera(dt);
 
-    if (mode.campaign) {
+    if (mode.survey) {
+      surveyTick(dt);
+    } else if (mode.campaign) {
       campaignTick(dt);
     } else if (mode.closing) {
       // Keep a standing rock population so the shrinking arena stays hostile.
@@ -4631,6 +5431,9 @@
   }
 
   function drawArena() {
+    // Endless space has no frame, and drawing one ten million units out is a
+    // stroke nobody will ever see.
+    if (mode.survey) return;
     // Nothing solid to draw when the edges lead back round. A dotted frame
     // says where the field is without claiming you can hit it.
     if (mode.wrap) {
@@ -5601,7 +6404,8 @@
     drawKillFeed();
   }
 
-  function drawHUD() {
+  function drawHUD(dt) {
+    if (mode.survey) { drawSurveyPanel(dt); return; }
     if (mode.campaign) { drawCampaignHUD(); return; }
     if (mode.pvp) {
       // Stocks down the left, so the minimap owns the top-right corner.
@@ -5628,6 +6432,16 @@
       });
 
       text("LAST SHIP WINS", SCREEN_W / 2, 40, 18, "#ffe56d", "center");
+
+      // Once your stocks are gone the view belongs to someone else, and a
+      // borrowed view with nothing saying so reads as a bug. Name it, in the
+      // colour of the ship you are riding, for as long as you are dead.
+      const meHud = ships[localSeat()];
+      const seenHud = ships[watching];
+      if (meHud && meHud.dead && seenHud && seenHud.id !== meHud.id) {
+        text("SPECTATING — " + seenHud.name, SCREEN_W / 2, 64, 15,
+             seenHud.colour, "center", 0.95);
+      }
 
       const t = Math.max(0, CLOSE_DELAY - clock);
       if (t > 0) {
@@ -5670,37 +6484,58 @@
     }
   }
 
+  /* The moment the run ends for this screen. It holds over the fight that
+     killed you, then fades out and hands the job to the SPECTATING line in the
+     HUD — the card says the run is over, the HUD line says whose eyes these
+     are. Only pvp sets `terminated`, so Survival and the campaign never see it. */
+  function drawTerminated() {
+    if (!terminated) return;
+    const a = Math.min(1, terminated.t / 0.6);
+    ctx.globalAlpha = a * 0.55;
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    ctx.globalAlpha = 1;
+    text("YOU ARE TERMINATED", SCREEN_W / 2, SCREEN_H / 2 - 6, 52,
+         "#ff6b6b", "center", a);
+    const seen = ships[watching];
+    const sub = seen && seen.id !== localSeat()
+      ? "spectating " + seen.name + " · tab — follow another ship"
+      : "no one left to watch";
+    text(sub, SCREEN_W / 2, SCREEN_H / 2 + 30, 15, "#ffcb42", "center", a * 0.85);
+  }
+
   function drawTitle() {
     text("CROSSFIRE", SCREEN_W / 2, 118, 64, "#ffe56d");
     text("asteroids — open space, a closing wall, or a war to fight",
          SCREEN_W / 2, 154, 15, "#ffcb42");
     text("CLICK A MODE  ·  OR MOVE WITH ARROWS + ENTER",
-         SCREEN_W / 2, 188, 13, "#ffcb42", "center", 0.9);
+         SCREEN_W / 2, 182, 13, "#ffcb42", "center", 0.9);
 
     const rows = [
       ["survival", MODES.survival.name, "CO-OP · FRIENDLY FIRE OPTIONAL",  "#ffe56d"],
       ["royale",   MODES.royale.name,   "TWO-HIT HULLS · THE WALL CLOSES IN", "#ff8f77"],
       ["campaign", "CAMPAIGN",          "THREE MISSIONS · ESCORT · RAID · MOTHERSHIP", "#6dffbf"],
+      ["survey",   MODES.survey.name,   surveyBlurb(), "#a08cff"],
       ["online",   "ONLINE",            "JOIN A LOBBY · OR HOST YOUR OWN", "#87d8ff"]
     ];
     rows.forEach(([key, name, blurb, colour], i) => {
-      const y = 230 + i * 78;
+      const y = 216 + i * 70;
       tapButton(name, SCREEN_W / 2, y, 560, 46, colour,
                 () => pickTitleRow(i), titlePick === i);
-      if (blurb) text(blurb, SCREEN_W / 2, y + 36, 14, "#ffcb42");
+      if (blurb) text(blurb, SCREEN_W / 2, y + 34, 14, "#ffcb42");
     });
 
     tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
-              385, 566, 210, 38, soundEnabled ? "#ffe56d" : "#ffcb42",
+              385, 580, 210, 36, soundEnabled ? "#ffe56d" : "#ffcb42",
               toggleSound, soundEnabled);
-    tapButton(fullscreenLabel(), 615, 566, 210, 38, "#ffe56d",
+    tapButton(fullscreenLabel(), 615, 580, 210, 36, "#ffe56d",
               toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
 
     text(touchOnly
            ? "one player per phone · up to five online, a screen each"
            : "two at this keyboard · up to five online · every key is yours to change",
-         SCREEN_W / 2, 606, 12, "#ffcb42");
-    tapButton("SETTINGS", SCREEN_W / 2, 644, 240, 42, "#ffe56d",
+         SCREEN_W / 2, 620, 12, "#ffcb42");
+    tapButton("SETTINGS", SCREEN_W / 2, 656, 240, 40, "#ffe56d",
               () => { backFrom = "title"; state = settingsScreen(); });
   }
 
@@ -6187,9 +7022,11 @@
   /* Leaving for real: the online connection goes with it, or a host that has
      wandered back to the menu is still holding four people in a match. */
   function leaveMatch() {
+    if (mode && mode.survey && surv) saveSurveyBook();
     if (net.on) netReset();
     localPause = false;
     banner = null;
+    terminated = null;
     outcome = null;
     state = "title";
   }
@@ -6266,6 +7103,16 @@
                  state === "controls" || state === "thumb";
     if (menu) drawDrift(dt || 0);
 
+    /* The chart and the almanac are pages, not overlays: the world is not
+       drawn behind them at all. A map you read through a half-transparent
+       asteroid field is a map you squint at. */
+    if (state === "chart" && surv && surveyHUD) {
+      surveyHUD.drawChart(surveyState(), dt || 0); return;
+    }
+    if (state === "almanac" && surv && surveyHUD) {
+      surveyHUD.drawAlmanac(surveyState(), dt || 0); return;
+    }
+
     if (state === "title") { drawTitle(); return; }
     if (state === "levels") { drawLevels(); return; }
     if (state === "count") { drawCount(); return; }
@@ -6289,6 +7136,7 @@
     ctx.translate(-cam.x, -cam.y);
 
     drawArena();
+    if (mode.survey) drawSurveyWorld();
     if (mode.campaign && camp && camp.planet) drawPlanet(camp.planet);
     drawMotes();
     for (const h of hazards) if (onScreen(h.x, h.y, h.reach)) drawHazard(h);
@@ -6309,11 +7157,14 @@
     ctx.restore();
     wScale = 1;
 
-    drawHUD();
+    drawHUD(dt || 0);
     // A banner's fade is driven by the clock, and the clock is what pausing
     // stops — so a banner caught mid-fade would sit under the pause menu for
     // as long as the pause lasts.
-    if (state !== "over" && state !== "paused" && state !== "menu") drawBanner();
+    if (state !== "over" && state !== "paused" && state !== "menu") {
+      drawBanner();
+      drawTerminated();
+    }
 
     if (state === "paused" || state === "menu") drawPaused();
     if (state === "over") {
@@ -7547,7 +8398,27 @@
       screen: s => { state = s; },
       pick: key => chooseMode(key),  // the real menu action: sets up the count screen
       squad: order => setSquadOrder(order),  // issue a wing order, as a keypress would
-      diff: d => { campaignDifficulty = d; }  // choose difficulty before a start
+      diff: d => { campaignDifficulty = d; },  // choose difficulty before a start
+      /* Survey's controller and its two player actions. The catalogue is the
+         one thing in the game whose correctness is a set of conditions rather
+         than a place a ship ends up, so a harness needs to be able to read it
+         and to press both of the mode's buttons. */
+      survey: () => surv,
+      catalogue: () => ALMANAC,
+      chunk: (cx, cy) => buildChunk(cx, cy),
+      leave: () => leaveMatch(),
+      find: key => surveyFind(key),
+      /* Press and release a key the way a player does. `readLocalInput` rebuilds
+         every ship's input from the held-key set each frame, so a harness that
+         pokes `ship.input` directly is overwritten before the ship ever moves —
+         and Survey has no bot to fly it instead. This drives the real path,
+         bindings and all. */
+      hold: (code, on) => { if (on) keys.add(code); else keys.delete(code); },
+      // A menu/page keypress, so a harness can drive the chart and the almanac
+      // through the same handler a keyboard reaches them by.
+      key: code => menuKey(code),
+      scan: () => surveyScan(),
+      hud: () => surveyHUD
     };
   }
 
@@ -7560,6 +8431,18 @@
   padLoad();
   padApply();
   resize();
+  /* The survey panel is a separate file and gets the drawing primitives handed
+     to it here, after resize() so it can measure the canvas against the
+     viewport. `addTap` is a function rather than the `taps` array itself
+     because that array is rebuilt every frame. */
+  if (surveyHUD) {
+    surveyHUD.init({
+      ctx, canvas, SCREEN_W, SCREEN_H, arena,
+      touchOnly, reduceMotion,
+      text, glow, tapButton, shipPip,
+      addTap: rect => taps.push(rect)
+    });
+  }
   requestAnimationFrame(frame);
 })();
 </script>
