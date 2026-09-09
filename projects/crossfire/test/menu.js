@@ -357,6 +357,53 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   console.log("  dioramas   five scenes · every card has one · unknown keys refused");
 }
 
+// ── 9. the Battle Royale wall stays a place, and only ever closes ────────
+/* It used to inset the arena by a fraction on all four sides, leaving `1 - 2f`
+   with f peaking at 0.46 — eight per cent of the card. That is not a closing
+   wall, it is a dot with four ships stacked in it, and no drawing test catches
+   it because the scene draws perfectly. The geometry is a pure function now, so
+   the floor is arithmetic and can be held here. */
+{
+  const { windowStub } = boot("?debug=1");
+  const art = windowStub.CrossfireMenu;
+  check(typeof art.royaleWall === "function", "the royale wall is not measurable");
+  if (art && art.royaleWall) {
+    let min = Infinity, max = -Infinity;
+    for (let t = 0; t < 60; t += 0.02) {
+      const { size, fade } = art.royaleWall(t);
+      check(Number.isFinite(size) && size > 0, "the wall went non-finite at t=" + t);
+      check(fade >= 0 && fade <= 1, "the wall's fade left 0..1 at t=" + t);
+      min = Math.min(min, size);
+      max = Math.max(max, size);
+    }
+    /* The smallest card the row ever draws is about 185 x 120 for its art. At
+       0.4 that is 74 x 48, which still holds four ships; much under that and
+       the scene is a smudge. */
+    check(min >= 0.4,
+          "the wall closes to " + min.toFixed(3) + " of the card — too small to read");
+    check(max <= 0.95, "the wall starts at " + max.toFixed(3) + ", past the card edge");
+    check(max - min > 0.2,
+          "the wall barely moves (" + min.toFixed(2) + "–" + max.toFixed(2) +
+          "), so it does not read as closing");
+
+    /* And it must never reopen. The real wall cannot, so the picture must not
+       either — the only place it may grow is the cut back to the start, which
+       is hidden by the fade being at zero. */
+    let prev = art.royaleWall(0);
+    for (let t = 0.02; t < 30; t += 0.02) {
+      const now = art.royaleWall(t);
+      if (now.size > prev.size + 1e-9) {
+        check(prev.fade < 0.05,
+              "the wall reopened in view at t=" + t.toFixed(2) +
+              " (fade " + prev.fade.toFixed(2) + ")");
+      }
+      prev = now;
+    }
+    console.log("  royale     wall closes " + max.toFixed(2) + " → " + min.toFixed(2) +
+                " of the card · never reopens in view");
+  }
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE menu checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

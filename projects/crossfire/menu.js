@@ -151,24 +151,33 @@
     royale(x, y, w, h, t) {
       const { ctx, glow } = api;
       stars(x, y, w, h, t * 0.3, 10, "#ff8f77");
-      // The wall, closing and reopening on a loop — the one idea of the mode.
-      const f = 0.18 + 0.28 * (1 + Math.cos(t * 0.55)) / 2;
-      const ix = x + w * f, iy = y + h * f;
-      const iw = w * (1 - f * 2), ih = h * (1 - f * 2);
-      glow(WARN, 2, 0.85, () => { ctx.strokeRect(ix, iy, iw, ih); });
+
+      const { size, fade } = MENU.royaleWall(t);
+      const iw = w * size, ih = h * size;
+      const ix = x + (w - iw) / 2, iy = y + (h - ih) / 2;
+
+      // Outside the wall is dead ground, so it is tinted rather than left as
+      // more of the same black — the shrinking is the whole point of the card
+      // and it does not read unless what is being lost looks lost.
       ctx.save();
       ctx.fillStyle = WARN;
-      ctx.globalAlpha = 0.05;
+      ctx.globalAlpha = 0.06 * fade;
       ctx.fillRect(x, y, w, h);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#05070c";
+      ctx.fillRect(ix, iy, iw, ih);
       ctx.restore();
+
+      glow(WARN, 2, 0.85 * fade, () => { ctx.strokeRect(ix, iy, iw, ih); });
+
       // Four ships circling inside what is left of it.
       const cols = [AMBER, MINT, ICE, "#ffb0ee"];
+      const rr = Math.min(iw, ih) * 0.3;
       for (let i = 0; i < 4; i++) {
         const a = t * (0.5 + i * 0.11) + i * 1.7;
-        const rr = Math.min(iw, ih) * 0.3;
         const px = ix + iw / 2 + Math.cos(a) * rr;
         const py = iy + ih / 2 + Math.sin(a) * rr * 0.8;
-        ship(px, py, a + Math.PI / 2, 0.85, cols[i], 0.95, 0.5);
+        ship(px, py, a + Math.PI / 2, 0.85, cols[i], 0.95 * fade, 0.5);
       }
     },
 
@@ -269,6 +278,39 @@
         }
       }
     }
+  };
+
+  /* ── the closing wall, as one number ──────────────────────────────────────
+     Pulled out of the scene and exported because the two things wrong with it
+     were arithmetic rather than visual, and nothing about looking at a drawing
+     catches either.
+
+     It used to inset the arena by `f` on all four sides with `f` peaking at
+     0.46, which leaves `1 - 2f` — eight per cent of the card. A box that small
+     is not a closing wall, it is a dot, and the four ships inside it were on top
+     of each other. The floor is a fraction of the card now, not an inset, so it
+     cannot be squeezed from both ends by accident.
+
+     And it used to run on a cosine, which meant the wall opened back up every
+     few seconds. The real one never does — the mode is over before it could —
+     so this is a sawtooth that closes and starts again, with the last tenth of
+     the cycle faded out so the reset reads as a cut rather than as the wall
+     springing open.
+
+     The end size is a compromise the header already licenses: the real wall
+     stops at a fifth of its arena, and a fifth of a menu card is forty pixels
+     across with four ships to fit in it. What this card has to sell is that the
+     space closes, not the exact ratio it closes to. */
+  const ROYALE_OPEN = 0.92;   // arena as a fraction of the card, at the start
+  const ROYALE_SHUT = 0.46;   // and once it has closed
+
+  MENU.royaleWall = function (t) {
+    const cycle = ((t * 0.15) % 1 + 1) % 1;          // safe for negative clocks
+    const closing = Math.min(1, cycle / 0.9);
+    return {
+      size: ROYALE_OPEN - (ROYALE_OPEN - ROYALE_SHUT) * closing,
+      fade: cycle > 0.9 ? Math.max(0, 1 - (cycle - 0.9) / 0.1) : 1
+    };
   };
 
   MENU.has = key => Object.prototype.hasOwnProperty.call(SCENES, key);
