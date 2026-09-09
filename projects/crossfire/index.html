@@ -2016,6 +2016,10 @@
       if (surveyHUD) surveyHUD.refitKey(code, surveyState());
     } else if (state === "almanac") {
       if (code === "Escape" || code === "Backspace" || code === "KeyL") {
+        // An open entry is what Escape closes first; the page goes next.
+        if (surveyHUD && surveyHUD.almanacDetailOpen()) {
+          surveyHUD.almanacCloseDetail(); return;
+        }
         state = "playing"; return;
       }
       if (code === "KeyM") {
@@ -3475,7 +3479,6 @@
 
   function campaignTick(dt) {
     if (!camp) return;
-    shake = Math.max(0, shake - 90 * dt);
     updatePickups(dt);
 
     // Convoy progress, for the HUD and the wave/phase logic.
@@ -3841,6 +3844,31 @@
      legible at a glance: what a thing is worth, and whether you can carry it. */
   const YIELD = { rock: 3, wreck: 9, cache: 34, drone: 7, hulk: 16 };
 
+  /* ── how far out you are ──────────────────────────────────────────────────
+     The sector used to be the same everywhere. Every chunk rolled from the same
+     table however far you had flown, so 90,000 units out was the same trip as
+     900 and the only thing distance cost you was time — which makes an endless
+     map a long one rather than a deep one.
+
+     Distance from the origin is the difficulty dial now. It thickens the field,
+     posts more sentries, and pays better for all of it, so going further is a
+     decision with two sides rather than a formality. It is a smooth curve and
+     never a wall: there is no line you cross where the sector turns on you, and
+     home is always the quiet end. */
+  const DANGER_FULL = 90000;    // where the curve tops out
+  const dangerAt = (x, y) => Math.min(1, Math.hypot(x, y) / DANGER_FULL);
+  const DANGER_BANDS = [
+    [0.12, "QUIET",     SALVAGE],
+    [0.32, "OPEN",      "#ffe56d"],
+    [0.55, "UNSETTLED", "#ffcb42"],
+    [0.78, "HOSTILE",   "#ff9d5c"],
+    [1.01, "DEEP",      DRONE_COLOUR]
+  ];
+  function dangerBand(d) {
+    for (const b of DANGER_BANDS) if (d < b[0]) return { name: b[1], colour: b[2] };
+    return { name: "DEEP", colour: DRONE_COLOUR };
+  }
+
   /* ── the refit ────────────────────────────────────────────────────────────
      Four tracks, three tiers each, bought with salvage at a station. Numbers
      rather than verbs: a refit makes the ship you have better, and the almanac
@@ -3853,7 +3881,7 @@
       cost: [35, 85, 170] },
     { key: "hold",    name: "CARGO HOLD",    note: "+45 salvage a tier",
       cost: [30, 70, 150] },
-    { key: "scanner", name: "SCANNER",       note: "range, then names, then wells",
+    { key: "scanner", name: "SCANNER",       note: "how far a pulse reaches",
       cost: [45, 110, 220] }
   ];
   const REFIT_TIERS = 3;
@@ -3943,9 +3971,52 @@
     { key: "refit", name: "REFIT", note: "traded what you found for what you fly",
       test: t => t.refitted },
     { key: "grave-robber", name: "GRAVE ROBBER", note: "took what was being guarded",
-      test: t => t.looted }
+      test: t => t.looted },
+    { key: "salvor", name: "SALVOR", note: "carried the first piece home" },
+    { key: "finished", name: "THE YARD", note: "you built the thing", secret: true }
   ];
   const SURVEY_TOTAL = ALMANAC.length;
+
+  /* ── the yard, and the six things it needs ────────────────────────────────
+     Survey never said what you were doing. It had an almanac, which is a record
+     of what you happened to see, and that is not the same as a reason to go —
+     you could fly for an hour without the mode ever asking you for anything.
+
+     So there is something being built, and it is short of parts. The loop is
+     the obvious one: go out, find a thing, carry it home, and the thing you are
+     building gets one step further along. What makes it navigation rather than
+     a shopping list is that nothing tells you where a part *is*. Each one comes
+     with a clue describing the kind of place it is kept, the sector really does
+     put that kind of place there, and a scan gives you a bearing and nothing
+     else. You still have to go and look; you just know what you are looking
+     for now.
+
+     Each part is placed the way a landmark is — its own bearing, its own
+     distance — and brings its own scenery with it, so the clue is a promise the
+     generator keeps rather than flavour text laid over whatever was already
+     there. The distances interleave with the landmark ladder, so filling the
+     manifest walks you outward past most of the almanac on the way. */
+  const BUILD = [
+    { key: "spar", name: "DRIVE SPAR", dist: 9000,
+      clue: "Among the dead. Somewhere a lot of ships stopped at once.",
+      where: "a wreck field" },
+    { key: "core", name: "FUSION CORE", dist: 17000,
+      clue: "In the light of two suns, where nothing is ever dark.",
+      where: "a binary pair" },
+    { key: "lens", name: "RANGING LENS", dist: 26000,
+      clue: "On a world nobody warms. Look for a planet with no star.",
+      where: "a rogue world" },
+    { key: "coil", name: "JUMP COIL", dist: 38000,
+      clue: "Wound around a mouth that goes somewhere else.",
+      where: "a gate" },
+    { key: "beacon", name: "SIGNAL BEACON", dist: 54000,
+      clue: "Still calling, long after anyone stopped listening.",
+      where: "a transmitting wreck" },
+    { key: "plate", name: "ABLATIVE PLATE", dist: 0,
+      clue: "The big dead one is carrying plenty. You will have to go inside.",
+      where: "deep in the Leviathan", inside: "leviathan" }
+  ];
+  const YARD_R = 220;          // how close counts as delivered
 
   /* ── the landmarks ────────────────────────────────────────────────────────
      The seven entries that are places rather than conditions, at increasing
@@ -3979,7 +4050,8 @@
 
   function loadSurveyBook() {
     const empty = { seed: 0, found: [], fog: "", trail: "", salvage: 0,
-                    refit: freshRefit(), opened: [], stripped: [] };
+                    refit: freshRefit(), opened: [], stripped: [],
+                    carrying: [], built: [], pins: [] };
     try {
       const raw = localStorage.getItem(SURVEY_STORE);
       if (!raw) return empty;
@@ -4001,7 +4073,13 @@
         salvage: Math.max(0, Math.floor(Number(b.salvage)) || 0),
         refit,
         opened: strs(b.opened),
-        stripped: strs(b.stripped)
+        stripped: strs(b.stripped),
+        carrying: strs(b.carrying),
+        built: strs(b.built),
+        pins: Array.isArray(b.pins)
+          ? b.pins.filter(q => q && Number.isFinite(q.x) && Number.isFinite(q.y) &&
+                               typeof q.kind === "string").slice(0, 200)
+          : []
       };
     } catch (_) { return empty; }
   }
@@ -4020,7 +4098,12 @@
            worked over for an hour is a few hundred short strings, which is well
            inside what the fog and the trail already cost. */
         opened: [...surv.opened],
-        stripped: [...surv.stripped]
+        stripped: [...surv.stripped],
+        // The manifest is the spine of the mode; losing it to a closed tab
+        // would be losing the run itself.
+        carrying: [...surv.carrying],
+        built: [...surv.built],
+        pins: surv.pins
       }));
     } catch (_) { /* private browsing; the run still plays, it just won't keep */ }
   }
@@ -4075,15 +4158,21 @@
     const rnd = (a, b) => a + R() * (b - a);
     const spot = (m) => ({ x: ox + rnd(m, CHUNK - m), y: oy + rnd(m, CHUNK - m) });
     const out = { hazards: [], planets: [], wrecks: [], nebulae: [], marks: [],
-                  gates: [], caches: [], stations: [], hulks: [] };
+                  gates: [], caches: [], stations: [], hulks: [], parts: [],
+                  fields: [] };
 
     // Where you start is quiet: an opening spawn inside a well is a death you
     // could not have avoided, and the first thing this mode asks you to do is
     // relax and look around.
     const home = cx === 0 && cy === 0;
 
+    /* Everything below is rolled against how far out this chunk is. `deep` runs
+       0 at the origin to 1 at the far end, and it is read rather than compared —
+       no thresholds, so there is no visible seam anywhere in the sector. */
+    const deep = dangerAt(ox + CHUNK / 2, oy + CHUNK / 2);
+
     if (!home) {
-      const roll = R();
+      const roll = R() * (1 - deep * 0.34);   // wells get commoner further out
       if (roll < 0.07) {
         const p = spot(760);
         out.hazards.push(makeStar(p.x - 150, p.y, R), makeStar(p.x + 150, p.y, R));
@@ -4125,16 +4214,19 @@
          in open space is scenery, and salvage behind something that shoots is a
          decision. Two or three drones, posted rather than roaming — they hold
          station over the cache and go back to it when you leave. */
-      if (R() < 0.05) {
+      if (R() < 0.05 + deep * 0.05) {
         const p = spot(520);
-        const n = 2 + (R() < 0.4 ? 1 : 0);
+        // One sentry near home, up to five at the far end.
+        const n = 1 + Math.round(deep * 3) + (R() < 0.4 ? 1 : 0);
         const guards = [];
         for (let i = 0; i < n; i++) {
           const a = (i / n) * Math.PI * 2 + R();
           guards.push({ x: p.x + Math.cos(a) * 300, y: p.y + Math.sin(a) * 300,
                         a });
         }
+        // And they are worth more for it, or nobody would ever leave home.
         out.caches.push({ x: p.x, y: p.y, r: 46, guards, opened: false,
+                          rich: deep > 0.55 && R() < deep,
                           phase: R() * Math.PI * 2 });
       }
 
@@ -4147,10 +4239,19 @@
       }
 
       // A drifting dead hull, big enough to hit and worth stripping.
-      if (R() < 0.06) {
+      if (R() < 0.06 + deep * 0.07) {
         const p = spot(360);
         out.hulks.push({ x: p.x, y: p.y, r: rnd(52, 96), a: R() * Math.PI * 2,
                          spin: rnd(-0.12, 0.12), hp: 4 });
+      }
+      /* Asteroid fields, out where the sector stops being tidy. Standing rock
+         is the oldest hazard this game has and Survey only ever had a thin
+         drifting population of it; a real field is somewhere you have to fly
+         *through* rather than past. */
+      if (deep > 0.2 && R() < deep * 0.3) {
+        const p = spot(700);
+        out.fields.push({ x: p.x, y: p.y, r: rnd(500, 900),
+                          n: Math.round(rnd(10, 16 + deep * 14)) });
       }
     } else {
       /* The first station is given rather than found. The mode's opening move
@@ -4162,7 +4263,43 @@
 
     const lm = surv.landmarkAt.get(chunkKey(cx, cy));
     if (lm) buildLandmark(lm, out, R, rnd);
+
+    /* A part brings the place its clue describes. Without this the clue would
+       be decoration over whatever the chunk happened to roll, and "in the light
+       of two suns" would be a lie about half the time. The scenery is forced,
+       not hoped for. */
+    const site = surv.partAt.get(chunkKey(cx, cy));
+    if (site && !surv.built.has(site.key) && !surv.carrying.has(site.key)) {
+      buildPartSite(site, out, R, rnd);
+    }
     return out;
+  }
+
+  function buildPartSite(site, out, R, rnd) {
+    if (site.key === "spar") {
+      out.hazards.length = 0;
+      for (let i = 0; i < 9; i++) {
+        out.wrecks.push({ x: site.x + rnd(-420, 420), y: site.y + rnd(-420, 420),
+                          a: R() * Math.PI * 2, spin: rnd(-0.05, 0.05),
+                          size: rnd(0.9, 2.0) });
+      }
+    } else if (site.key === "core") {
+      out.hazards.length = 0;
+      out.hazards.push(makeStar(site.x - 340, site.y - 90, R),
+                       makeStar(site.x + 340, site.y + 90, R));
+    } else if (site.key === "lens") {
+      out.hazards.length = 0;                 // a rogue world has no sun, ever
+      out.planets.push({ x: site.x + 300, y: site.y, r: 190, rogue: true });
+    } else if (site.key === "coil") {
+      const a = R() * Math.PI * 2, d = rnd(15000, 40000);
+      out.gates.push({ x: site.x, y: site.y, phase: R() * Math.PI * 2,
+                       tx: site.x + Math.cos(a) * d, ty: site.y + Math.sin(a) * d });
+    } else if (site.key === "beacon") {
+      out.wrecks.push({ x: site.x, y: site.y, a: R() * Math.PI * 2, spin: 0.02,
+                        size: 2.2, beacon: true });
+    }
+    out.parts.push({ key: site.key, name: site.name, x: site.x, y: site.y,
+                     r: site.r, phase: R() * Math.PI * 2 });
   }
 
   /* A landmark's own furniture. Each one is a thing the engine already knows
@@ -4271,6 +4408,16 @@
       out.caches.push({ x: cx2, y: cy2, r: 46, guards, opened: false,
                         rich: deep, phase: R() * Math.PI * 2 });
     });
+
+    // The last part of the manifest, at the far end of the corridor, behind
+    // four sentries. It is the only one that is not a flight but a raid.
+    const plate = BUILD.find(b => b.inside === "leviathan");
+    if (plate && !surv.built.has(plate.key) && !surv.carrying.has(plate.key)) {
+      out.parts.push({ key: plate.key, name: plate.name, r: 40,
+                       x: wx(spots[spots.length - 1] * LEV_LEN, 0),
+                       y: wy(spots[spots.length - 1] * LEV_LEN, 0),
+                       phase: R() * Math.PI * 2 });
+    }
   }
 
   /* ── streaming ────────────────────────────────────────────────────────────
@@ -4301,14 +4448,18 @@
     hazards = [];
     surv.planets = []; surv.wrecks = []; surv.nebulae = []; surv.marks = [];
     surv.gates = []; surv.caches = []; surv.stations = []; surv.hulks = [];
-    surv.drones = []; surv.leviathan = null;
+    surv.drones = []; surv.leviathan = null; surv.parts = []; surv.fields = [];
     for (const [k, c] of surv.chunks) {
       for (const h of c.hazards) hazards.push(h);
       for (const p of c.planets) surv.planets.push(p);
       for (const w of c.wrecks) surv.wrecks.push(w);
       for (const n of c.nebulae) surv.nebulae.push(n);
       for (const m of c.marks) surv.marks.push(m);
+      for (const f of c.fields) surv.fields.push(f);
       for (const g of c.gates) surv.gates.push(g);
+      for (const pt of c.parts) {
+        if (!surv.built.has(pt.key) && !surv.carrying.has(pt.key)) surv.parts.push(pt);
+      }
       if (c.leviathan) surv.leviathan = c.leviathan;
 
       /* A chunk is rebuilt from its seed every time you come back to it, so
@@ -4354,11 +4505,31 @@
     for (let i = rocks.length - 1; i >= 0; i--) {
       if (dist2(rocks[i].x, rocks[i].y, me.x, me.y) > far) rocks.splice(i, 1);
     }
-    let guard = 40;
-    while (rocks.length < SURVEY_ROCKS && guard-- > 0) {
-      const a = Math.random() * Math.PI * 2;
-      const d = rand(SURVEY_ROCK_R * 0.85, SURVEY_ROCK_R * 1.35);
-      const x = me.x + Math.cos(a) * d, y = me.y + Math.sin(a) * d;
+    // Thicker further out, and thicker again inside a field.
+    const deep = dangerAt(me.x, me.y);
+    const want = Math.round(SURVEY_ROCKS * (1 + deep * 0.7));
+    const near = surv.fields.filter(f =>
+      dist2(f.x, f.y, me.x, me.y) < (SURVEY_ROCK_R * 1.4) ** 2);
+    let guard = 60;
+    while (rocks.length < want && guard-- > 0) {
+      let x, y;
+      /* A field is a place, so its rocks are put *in* it rather than on the ring
+         around the ship. They still drift out of it and are collected like any
+         other, which is what keeps a field a thing you fly through rather than a
+         box that refills behind you. */
+      if (near.length && Math.random() < 0.62) {
+        const f = near[Math.floor(Math.random() * near.length)];
+        const fa = Math.random() * Math.PI * 2;
+        const fd = Math.sqrt(Math.random()) * f.r;
+        x = f.x + Math.cos(fa) * fd;
+        y = f.y + Math.sin(fa) * fd;
+        if (dist2(x, y, me.x, me.y) < 700 * 700) continue;   // never on top of you
+      } else {
+        const a = Math.random() * Math.PI * 2;
+        const d = rand(SURVEY_ROCK_R * 0.85, SURVEY_ROCK_R * 1.35);
+        x = me.x + Math.cos(a) * d;
+        y = me.y + Math.sin(a) * d;
+      }
       if (hazards.some(h => dist2(x, y, h.x, h.y) < (h.kill + 260) ** 2)) continue;
       const r = makeRock(randomRoyaleRockSize(), x, y);
       // One rock in sixty has something in it, and cracking it open is the only
@@ -4387,8 +4558,19 @@
       shots: [],                 // what the sentries fire; see `surveyShots`
       motes: [],                 // loose salvage, drifting
       landmarks: [], landmarkAt: new Map(),
+      partSites: [], partAt: new Map(), parts: [], fields: [],
+      carrying: new Set(carried ? book.carrying : []),
+      built: new Set(carried ? book.built : []),
       contacts: [],
-      scan: { charge: 1 },
+      scan: { charge: 1, reach: 0, flash: 0 },
+      echoes: [],
+      target: null,
+      /* Pins the player drops on the chart. Endless space has no place names,
+         so the only way anywhere gets one is if you say so — this is how a
+         sector stops being uniform and starts having a "back at the twin suns".
+         Kept in the book, because a note you lose on closing the tab is not a
+         note. */
+      pins: carried && Array.isArray(book.pins) ? book.pins.slice(0, 200) : [],
       save: 15,
 
       /* The two progression tracks. `salvage` and `refit` are the numbers one —
@@ -4403,6 +4585,7 @@
       tractorLit: 0,
       warpCool: 0,
       quiet: 0,
+      bumpCool: 0,
 
       t: {
         dist: 0, coast: 0, dark: 0, top: 0, charted: 0, fromHome: 0,
@@ -4432,6 +4615,25 @@
       surv.landmarkAt.set(
         chunkKey(Math.floor(lm.x / CHUNK), Math.floor(lm.y / CHUNK)), lm);
     });
+
+    /* The parts. Placed like landmarks and deliberately off their bearings, so a
+       run at the manifest is not the same flight as a run at the almanac —
+       finding one does not hand you the other. The plate has no bearing of its
+       own: it lives inside the Leviathan, which already has one. */
+    const pslice = (Math.PI * 2) / BUILD.filter(b => !b.inside).length;
+    const pa0 = R() * Math.PI * 2 + pslice / 2;
+    let pi = 0;
+    for (const B of BUILD) {
+      if (B.inside) continue;
+      const a = pa0 + pi * pslice + (R() - 0.5) * pslice * 0.5;
+      const d = B.dist * (0.92 + R() * 0.16);
+      const site = { key: B.key, name: B.name, x: Math.cos(a) * d,
+                     y: Math.sin(a) * d, r: 40 };
+      surv.partSites.push(site);
+      surv.partAt.set(
+        chunkKey(Math.floor(site.x / CHUNK), Math.floor(site.y / CHUNK)), site);
+      pi++;
+    }
 
     /* No arena, so `bounds` is only here to keep the code that reads it from
        reading NaN — nothing in Survey ever reaches it, because `edgeOf` is
@@ -4491,34 +4693,82 @@
     saveSurveyBook();
   }
 
-  /* The pulse. It does not reveal the map — it returns bearings to landmarks
-     you have not logged yet, at any range, which is a direction to fly rather
-     than an answer. In endless space that is the whole navigation system: there
-     is always somewhere to go, and no scan ever hands you the way there. */
+  /* ── the pulse ────────────────────────────────────────────────────────────
+     The scan used to answer a question nobody asked. It returned a compass
+     bearing to the nearest almanac entry you had not logged — which is a fine
+     thing to have and a terrible thing to press a button for, because the
+     answer was a number in a message feed and nothing on screen ever explained
+     what it was a number about.
+
+     It is a survey now, which is what a scan should be in a mode called Survey:
+     it sweeps a radius and tells you what is inside it. Salvage, caches,
+     stations, gates, parts, sentries — each one comes back as a tagged echo
+     that sits on the world and on the chart until it fades. That is a thing you
+     can see the result of, and the scanner refit makes the circle bigger, which
+     is a thing you can feel.
+
+     Direction to the thing you are actually looking for is no longer here at
+     all. It belongs on the HUD, permanently, next to the clue that says what
+     you are looking for — see `objective`. A button you have to press to be
+     told what you are doing is a button that is doing the interface's job. */
+  const ECHO_KINDS = {
+    part:    { name: "COMPONENT", colour: SALVAGE },
+    cache:   { name: "CACHE",     colour: SALVAGE },
+    sealed:  { name: "GUARDED",   colour: DRONE_COLOUR },
+    station: { name: "STATION",   colour: SALVAGE },
+    gate:    { name: "GATE",      colour: "#5ce1ff" },
+    hulk:    { name: "HULK",      colour: WRECK },
+    salvage: { name: "SALVAGE",   colour: SALVAGE },
+    drone:   { name: "SENTRY",    colour: DRONE_COLOUR }
+  };
+
   function surveyScan() {
     if (!surv || surv.scan.charge < 1) return;
     surv.scan.charge = 0;
     if (surveyHUD) surveyHUD.ping();
     gameSound("shot", ships[0].x);
+
     const me = ships[0];
-    surv.contacts = surv.landmarks
-      .filter(l => !l.found)
-      .map(l => ({ key: l.key, name: l.name, x: l.x, y: l.y, resolved: false,
-                   d: Math.hypot(l.x - me.x, l.y - me.y) }))
-      .sort((a, b) => a.d - b.d)
-      .slice(0, 3);
-    if (!surv.contacts.length) {
-      chatter("Nothing left out there to find.", NEBULA);
+    const reach = scanRange();
+    const r2 = reach * reach;
+    const found = [];
+    const add = (kind, x, y) => {
+      if (dist2(x, y, me.x, me.y) <= r2) found.push({ kind, x, y, t: ECHO_LIFE });
+    };
+
+    for (const pt of surv.parts) add("part", pt.x, pt.y);
+    for (const c of surv.caches) add(c.sealed ? "sealed" : "cache", c.x, c.y);
+    for (const st of surv.stations) add("station", st.x, st.y);
+    for (const g of surv.gates) add("gate", g.x, g.y);
+    for (const h of surv.hulks) add("hulk", h.x, h.y);
+    for (const d of surv.drones) add("drone", d.x, d.y);
+    /* Loose salvage is clustered by nature — a broken rock is twenty motes — so
+       it is reported as one echo per cluster rather than twenty on top of each
+       other, which would bury everything else on the chart. */
+    const seen = [];
+    for (const m of surv.motes) {
+      if (dist2(m.x, m.y, me.x, me.y) > r2) continue;
+      if (seen.some(c => dist2(c.x, c.y, m.x, m.y) < 260 * 260)) continue;
+      seen.push(m);
+      found.push({ kind: "salvage", x: m.x, y: m.y, t: ECHO_LIFE });
+    }
+
+    surv.echoes = found;
+    surv.scan.reach = reach;
+    surv.scan.flash = 1;
+
+    if (!found.length) {
+      chatter("Nothing within " + Math.round(reach) + " units.", NEBULA);
       return;
     }
-    const c = surv.contacts[0];
-    const deg = Math.round(
-      ((Math.atan2(c.y - me.y, c.x - me.x) * 180) / Math.PI + 450) % 360);
-    const range = c.d > 40000 ? "a very long way out"
-                : c.d > 16000 ? "a long way out"
-                : c.d > 6000  ? "out there"
-                : "close";
-    chatter("Bearing " + String(deg).padStart(3, "0") + " — " + range, NEBULA);
+    // A tally rather than a list: what is out there, and how much of it.
+    const tally = {};
+    for (const e of found) tally[e.kind] = (tally[e.kind] || 0) + 1;
+    const parts = Object.keys(tally)
+      .sort((a, b) => tally[b] - tally[a])
+      .map(k => tally[k] + " " + ECHO_KINDS[k].name.toLowerCase())
+      .join("  ·  ");
+    chatter(parts, NEBULA);
   }
 
   /* A hull that runs out does not end anything. It leaves you adrift where you
@@ -4579,8 +4829,11 @@
 
   const holdCap = () => SURVEY_HOLD + tier("hold") * 45;
 
-  // Scanner tiers: further, then named, then wells drawn on the chart.
-  const scanRange = () => 1 + tier("scanner") * 0.9;
+  /* How far a pulse reaches. This is the only thing the scanner track buys, and
+     it is the only thing it ever claimed to buy that could be felt. */
+  const SCAN_BASE = 2100;
+  const scanRange = () => SCAN_BASE * (1 + tier("scanner") * 0.85);
+  const ECHO_LIFE = 20;        // seconds a return stays on the chart
 
   function applyRefit(ship) {
     ship.maxHull   = SURVEY_HULL + tier("hull") * 2;
@@ -4707,7 +4960,14 @@
     }
     const impact = Math.abs(vn);
     surv.t.struck = true;
-    if (impact > STRIKE_SPEED * 0.35) {
+    /* A strike resolves every frame the ship is touching something, so scraping
+       along a hull used to add shake sixty times a second — faster than it
+       decays, which pinned the screen for as long as contact lasted. The noise
+       and the jolt are what an *impact* sounds like, so they are rate-limited to
+       one every quarter second; the push-out above still happens every frame,
+       because that is physics rather than feedback. */
+    if (impact > STRIKE_SPEED * 0.35 && surv.bumpCool <= 0) {
+      surv.bumpCool = 0.25;
       burst(ship.x, ship.y, "#ffcb42", impact > STRIKE_SPEED ? 12 : 5,
             140 * U);
       gameSound("rock", ship.x);
@@ -4984,6 +5244,267 @@
     }
   }
 
+  /* ═══ THE YARD ════════════════════════════════════════════════════════════
+     What you are doing out here. Sits just off the origin so it is the first
+     thing you see and the thing you keep coming back to. */
+  const YARD = { x: -280, y: -400 };
+
+  const partSpec = key => BUILD.find(b => b.key === key);
+  const nextPart = () =>
+    BUILD.find(b => !surv.built.has(b.key) && !surv.carrying.has(b.key)) || null;
+  const yardDone = () => surv.built.size >= BUILD.length;
+
+  /* The one line of text that answers "what am I doing". It changes three
+     times: go and find this, bring it back, and it is finished. Anything more
+     than that on screen while flying is a menu. */
+  /* Where the thing you are looking for is. Not shown as a position — the HUD
+     only ever gets a bearing and a range out of this — but the mode needs to
+     know the point to take a bearing to. */
+  function objectiveTarget() {
+    if (yardDone()) return null;
+    if (surv.carrying.size) {
+      return { key: "yard", name: "THE YARD", x: YARD.x, y: YARD.y };
+    }
+    const n = nextPart();
+    if (!n) return null;
+    if (n.inside === "leviathan") {
+      const lev = surv.landmarks.find(l => l.key === "leviathan");
+      return lev ? { key: "plate", name: "THE LEVIATHAN", x: lev.x, y: lev.y } : null;
+    }
+    const site = surv.partSites.find(p => p.key === n.key);
+    return site ? { key: site.key, name: site.name, x: site.x, y: site.y } : null;
+  }
+
+  const bearingTo = (me, t) =>
+    Math.round(((Math.atan2(t.y - me.y, t.x - me.x) * 180) / Math.PI + 450) % 360);
+
+  function objective() {
+    if (yardDone()) {
+      return { text: "THE YARD IS FINISHED", sub: "the sector is yours to wander",
+               colour: SALVAGE };
+    }
+    if (surv.carrying.size) {
+      const names = [...surv.carrying].map(k => partSpec(k).name).join("  ·  ");
+      return { text: "CARRYING " + names, sub: "bring it back to the yard",
+               colour: SALVAGE };
+    }
+    const n = nextPart();
+    return { text: "FIND THE " + n.name, sub: n.clue, colour: NEBULA };
+  }
+
+  /* The bearing and the range, worked out fresh every time the HUD asks. A
+     range band rather than a number of units: "a long way out" is what you
+     actually need to decide whether to go now, and an exact distance would make
+     the clue redundant by turning the search into a countdown. */
+  function objectiveFix() {
+    const me = ships[0];
+    if (!surv.target || !me) return null;
+    const d = Math.hypot(surv.target.x - me.x, surv.target.y - me.y);
+    return {
+      name: surv.target.name,
+      bearing: bearingTo(me, surv.target),
+      range: d > 40000 ? "a very long way out"
+           : d > 16000 ? "a long way out"
+           : d > 6000  ? "out there"
+           : d > 1200  ? "close"
+           : "right here"
+    };
+  }
+
+  /* Picking one up and handing it over. A part is not salvage: it does not go
+     in the hold, it cannot be sold, and losing your hull does not drop it —
+     the manifest is the spine of the mode and a part lost in deep space would
+     be a run you cannot finish. */
+  function surveyParts(dt) {
+    const me = ships[0];
+    if (!me.alive) return;
+    const R = shipRadius();
+
+    for (let i = surv.parts.length - 1; i >= 0; i--) {
+      const pt = surv.parts[i];
+      if (dist2(me.x, me.y, pt.x, pt.y) > (pt.r + R) ** 2) continue;
+      surv.parts.splice(i, 1);
+      surv.carrying.add(pt.key);
+      burst(pt.x, pt.y, SALVAGE, 26, 260 * U);
+      gameSound("win", pt.x);
+      addShake(5);
+      chatter(pt.name + " recovered — take it home", SALVAGE);
+      surveyFind("salvor");
+      saveSurveyBook();
+    }
+
+    if (!surv.carrying.size) return;
+    if (dist2(me.x, me.y, YARD.x, YARD.y) > YARD_R * YARD_R) return;
+
+    for (const key of surv.carrying) {
+      surv.built.add(key);
+      chatter(partSpec(key).name + " fitted — " + surv.built.size + " of " +
+              BUILD.length, SALVAGE);
+    }
+    surv.carrying.clear();
+    burst(YARD.x, YARD.y, SALVAGE, 40, 320 * U);
+    gameSound("win", YARD.x);
+    addShake(9);
+    if (yardDone()) {
+      surveyFind("finished");
+      banner = { text: "THE YARD IS FINISHED", t: 4.2, colour: SALVAGE,
+                 sub: "it was never about the parts" };
+    }
+    saveSurveyBook();
+  }
+
+  /* ── the background ───────────────────────────────────────────────────────
+     Survey had no stars behind it, which is why the sector could look like a
+     black sheet with objects on it however much was in front of you. Three
+     layers at different depths fix that for the price of a hash: a star's
+     position is a pure function of where it is, so nothing is stored and the
+     field is the same every time you fly back through it.
+
+     Parallax is the whole point. A star at depth `k` sits at world position
+     `p + cam * (1 - k)`, so it slides at `k` of the camera's speed — the far
+     layer barely moves and the near one nearly keeps up, and the gap between
+     them is what reads as distance. Only the cells actually on screen are ever
+     visited, so an endless sky costs what one screen costs. */
+  const SKY = [
+    { k: 0.22, cell: 150, size: 1.1, alpha: 0.30, tint: "#8f86c4" },
+    { k: 0.42, cell: 115, size: 1.5, alpha: 0.45, tint: "#b9b2e8" },
+    { k: 0.68, cell: 90,  size: 1.9, alpha: 0.62, tint: "#e8e4ff" }
+  ];
+
+  function skyHash(x, y, salt) {
+    let h = (surv ? surv.seed : 1) ^ salt;
+    h = Math.imul(h ^ (x + 0x7f4a7c15), 0x9e3779b1) >>> 0;
+    h = Math.imul(h ^ (y + 0x165667b1), 0x85ebca77) >>> 0;
+    h ^= h >>> 13;
+    return (h >>> 0) / 4294967296;
+  }
+
+  function drawSky() {
+    const z = cam.scale || 1;
+    const halfW = (SCREEN_W / 2) / z + 80;
+    const halfH = (SCREEN_H / 2) / z + 80;
+    ctx.save();
+    for (let L = 0; L < SKY.length; L++) {
+      const s = SKY[L];
+      // Where this layer's lattice has to be walked to cover the screen.
+      const px0 = cam.x * s.k - halfW, px1 = cam.x * s.k + halfW;
+      const py0 = cam.y * s.k - halfH, py1 = cam.y * s.k + halfH;
+      const c0 = Math.floor(px0 / s.cell), c1 = Math.ceil(px1 / s.cell);
+      const r0 = Math.floor(py0 / s.cell), r1 = Math.ceil(py1 / s.cell);
+      if ((c1 - c0) * (r1 - r0) > 6000) continue;      // absurd zoom; skip a layer
+      ctx.fillStyle = s.tint;
+      for (let cx = c0; cx <= c1; cx++) {
+        for (let cy = r0; cy <= r1; cy++) {
+          const h1 = skyHash(cx, cy, L * 0x51ed + 1);
+          if (h1 > 0.62) continue;                     // not every cell has a star
+          const h2 = skyHash(cx, cy, L * 0x51ed + 2);
+          const h3 = skyHash(cx, cy, L * 0x51ed + 3);
+          const wx = (cx + h2) * s.cell + cam.x * (1 - s.k);
+          const wy = (cy + h3) * s.cell + cam.y * (1 - s.k);
+          // A slow, per-star twinkle. Off entirely under reduced motion.
+          const tw = reduceMotion ? 1
+                   : 0.72 + 0.28 * Math.sin(clock * 0.7 + h1 * 40);
+          ctx.globalAlpha = s.alpha * tw * (0.55 + h1);
+          const r = s.size * (0.7 + h2 * 0.7);
+          ctx.fillRect(wx - r / 2, wy - r / 2, r, r);
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawYard() {
+    if (!onScreen(YARD.x, YARD.y, YARD_R + 160)) return;
+    const done = surv.built.size, need = BUILD.length;
+    const frac = done / need;
+    ctx.save();
+    ctx.translate(YARD.x, YARD.y);
+
+    // A hull under construction: the ribs are always there, and the plating
+    // fills in one segment per part, so the thing you are building visibly
+    // becomes a ship as the manifest empties.
+    glow(WRECK, 1.6, 0.75, () => {
+      ctx.beginPath();
+      ctx.arc(0, 0, 120, 0, Math.PI * 2);
+      ctx.stroke();
+      for (let i = 0; i < BUILD.length; i++) {
+        const a = (i / BUILD.length) * Math.PI * 2 - Math.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * 44, Math.sin(a) * 44);
+        ctx.lineTo(Math.cos(a) * 120, Math.sin(a) * 120);
+        ctx.stroke();
+      }
+    });
+    for (let i = 0; i < done; i++) {
+      const a0 = (i / need) * Math.PI * 2 - Math.PI / 2;
+      const a1 = ((i + 1) / need) * Math.PI * 2 - Math.PI / 2;
+      glow(SALVAGE, 3, 0.9, () => {
+        ctx.beginPath();
+        ctx.arc(0, 0, 82, a0 + 0.04, a1 - 0.04);
+        ctx.stroke();
+      });
+    }
+    const beat = 0.4 + 0.6 * Math.sin(clock * (yardDone() ? 1.2 : 2.2));
+    glow(yardDone() ? SALVAGE : NEBULA, 2, 0.3 + beat * 0.4, () => {
+      ctx.beginPath();
+      ctx.arc(0, 0, 30 + (yardDone() ? beat * 12 : 0), 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    ctx.restore();
+
+    label3(yardDone() ? "THE YARD" : "THE YARD  " + done + "/" + need,
+           YARD.x, YARD.y + 152, yardDone() ? SALVAGE : NEBULA);
+
+    // The delivery ring, shown only while you are carrying something to it.
+    if (surv.carrying.size) {
+      glow(SALVAGE, 1.4, 0.3 + 0.25 * Math.sin(clock * 3), () => {
+        ctx.beginPath();
+        ctx.arc(YARD.x, YARD.y, YARD_R, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+    }
+  }
+
+  // A small world-space caption. The menus have `text`, but that draws in
+  // screen space and everything here is under the camera transform.
+  function label3(str, x, y, colour) {
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = colour;
+    ctx.font = '13px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+    ctx.textAlign = "center";
+    ctx.fillText(str, x, y);
+    ctx.restore();
+  }
+
+  function drawPart(pt) {
+    if (!onScreen(pt.x, pt.y, 130)) return;
+    const spin = reduceMotion ? 0 : clock * 0.9 + pt.phase;
+    const beat = 0.55 + 0.45 * Math.sin(clock * 2.4 + pt.phase);
+    ctx.save();
+    ctx.translate(pt.x, pt.y);
+    ctx.rotate(spin);
+    glow(SALVAGE, 2.4, 0.95, () => {
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2;
+        const px = Math.cos(a) * pt.r, py = Math.sin(a) * pt.r;
+        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    });
+    ctx.restore();
+    // A halo, because a part in a wreck field is one bright thing among forty
+    // dim ones and has to win that fight from off screen.
+    glow(SALVAGE, 1.6, 0.25 + beat * 0.45, () => {
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, pt.r + 30 + beat * 18, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    label3(pt.name, pt.x, pt.y + pt.r + 62, SALVAGE);
+  }
+
   /* ── the tick ─────────────────────────────────────────────────────────────
      Telemetry first, then the table. Everything the seventeen `test` entries
      need is gathered here once a frame; nothing walks the hazard list twice. */
@@ -5000,6 +5521,24 @@
        course does not. */
     surv.quiet = me.thrusting ? 0 : surv.quiet + dt;
     surv.warpCool = Math.max(0, surv.warpCool - dt);
+    surv.bumpCool = Math.max(0, surv.bumpCool - dt);
+    surv.scan.flash = Math.max(0, surv.scan.flash - dt * 0.7);
+
+    // Echoes fade. A scan is a snapshot of a moment, not a permanent overlay —
+    // the sector moves, and a chart full of hour-old returns is a lie.
+    for (let i = surv.echoes.length - 1; i >= 0; i--) {
+      if ((surv.echoes[i].t -= dt) <= 0) surv.echoes.splice(i, 1);
+    }
+
+    /* The objective is recomputed every frame rather than cached, because
+       picking a part up or handing it over changes it and there is no single
+       place either of those happens. */
+    surv.target = objectiveTarget();
+    surv.contacts = surv.target
+      ? [{ key: surv.target.key, name: surv.target.name,
+           x: surv.target.x, y: surv.target.y, resolved: false,
+           d: Math.hypot(surv.target.x - me.x, surv.target.y - me.y) }]
+      : [];
     surv.tractorLit = Math.max(0, surv.tractorLit - dt);
 
     // The world, in the order it has to happen: move things, then let the ship
@@ -5010,6 +5549,7 @@
     surveyShots(dt);
     surveyBullets();
     surveyCaches(dt);
+    surveyParts(dt);
     surveyMotes(dt);
     surveyStations();
     updatePickups(dt);
@@ -5320,6 +5860,37 @@
     }
   }
 
+  /* A scan's returns, on the world. Each one is a ring with a word on it, so
+     what came back is legible without opening anything — the point of the
+     rewrite was that a scan should show you something. */
+  function drawEchoes() {
+    for (const e of surv.echoes) {
+      if (!onScreen(e.x, e.y, 120)) continue;
+      const spec = ECHO_KINDS[e.kind] || ECHO_KINDS.salvage;
+      const fade = Math.min(1, e.t / 4);           // the last four seconds dim
+      const beat = 0.6 + 0.4 * Math.sin(clock * 3 + e.x * 0.01);
+      glow(spec.colour, 1.6, fade * 0.75 * beat, () => {
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, 34, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(e.x, e.y - 46); ctx.lineTo(e.x, e.y - 34);
+        ctx.stroke();
+      });
+      label3(spec.name, e.x, e.y - 54, spec.colour);
+    }
+
+    // The pulse itself, expanding once to the edge of what it reached.
+    if (surv.scan.flash > 0 && surv.scan.reach) {
+      const f = 1 - surv.scan.flash;
+      glow(NEBULA, 2, surv.scan.flash * 0.5, () => {
+        ctx.beginPath();
+        ctx.arc(ships[0].x, ships[0].y, surv.scan.reach * f, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+    }
+  }
+
   function drawSurveyShots() {
     glow(DRONE_COLOUR, 2.4, 1, () => {
       for (const b of surv.shots) {
@@ -5332,7 +5903,12 @@
     });
   }
 
-  function drawMotes() {
+  /* Named `drawSalvage`, not `drawMotes`. It was `drawMotes` first, which is
+     also the name of the engine's hazard-debris painter three thousand lines
+     down — two function declarations in one scope, and the later one wins. The
+     result was silent and total: loose salvage was never drawn at all, so the
+     thing the whole economy is made of was invisible. */
+  function drawSalvage() {
     const lit = surv.tractorLit > 0;
     glow(SALVAGE, 1.6, 1, () => {
       for (const m of surv.motes) {
@@ -5417,6 +5993,7 @@
 
   function drawSurveyWorld() {
     if (!surv) return;
+    drawSky();
     for (const n of surv.nebulae) drawNebula(n);
     for (const g of surv.gates) drawGate(g);
     for (const p of surv.planets) drawPlanet(p);
@@ -5427,8 +6004,11 @@
     for (const c of surv.caches) drawCache(c);
     for (const d of surv.drones) drawDrone(d);
     for (const m of surv.marks) drawMark(m);
+    drawYard();
+    for (const pt of surv.parts) drawPart(pt);
     for (const p of pickups) if (onScreen(p.x, p.y, 30)) drawPickup(p);
-    drawMotes();
+    drawSalvage();
+    drawEchoes();
     drawSurveyShots();
   }
 
@@ -5455,6 +6035,32 @@
                                cost: refitCost(r.key) })),
       unlocks: UNLOCKS.map(u => ({ key: u.key, name: u.name, note: u.note,
                                    at: u.at, have: unlocked(u.key) })),
+      objective: objective(),
+      fix: objectiveFix(),
+      echoes: surv.echoes,
+      scanReach: scanRange(),
+      pins: surv.pins,
+      danger: dangerAt(ships[0] ? ships[0].x : 0, ships[0] ? ships[0].y : 0),
+      dangerBand: dangerBand(dangerAt(ships[0] ? ships[0].x : 0,
+                                      ships[0] ? ships[0].y : 0)),
+      /* `snap` is a world-space radius the chart works out from its own zoom —
+         the same finger-width on screen is a very different distance when the
+         map is zoomed out, and the interface is the only thing that knows the
+         scale. */
+      onPin: (x, y, kind, snap) => {
+        // Dropping one on top of another lifts it instead, so the same gesture
+        // both marks and unmarks and there is no eraser mode to be in.
+        const near = surv.pins.findIndex(q => dist2(q.x, q.y, x, y) < (snap || 400) ** 2);
+        if (near >= 0) surv.pins.splice(near, 1);
+        else if (surv.pins.length < 200) surv.pins.push({ x, y, kind });
+        gameSound("start");
+        saveSurveyBook();
+      },
+      manifest: BUILD.map(b => ({ key: b.key, name: b.name, clue: b.clue,
+                                  where: b.where,
+                                  have: surv.built.has(b.key),
+                                  carrying: surv.carrying.has(b.key) })),
+      built: surv.built.size, needs: BUILD.length,
       onBuy: buyRefit,
       onUndock: () => { state = "playing"; },
       onRefit: () => {
@@ -6158,6 +6764,64 @@
      a rebind is one touch and one key on a laptop or a tablet alike. Pointer
      rather than mouse, or the touchscreen would have to use the keyboard grid
      it may not have. */
+  /* ── pages that scroll ────────────────────────────────────────────────────
+     The almanac and the chart are longer than the screen, and until now the only
+     things that could move either were the arrow keys and, on the almanac, two
+     small buttons. A wheel did nothing at all — there was no wheel listener
+     anywhere in the game — and the almanac's own footer promised a swipe that
+     was never implemented.
+
+     A drag is awkward here for one specific reason: every menu tap in this game
+     fires on *pointerdown*, so the moment a thumb lands on a card, that card is
+     already selected and any movement after it is too late to mean anything. On
+     these two pages the press is therefore held rather than acted on, and it
+     becomes a tap on release only if the pointer barely moved. Everywhere else
+     keeps firing on the way down, where it belongs. */
+  let pageDrag = null;
+  const DRAG_SLOP = 7;          // screen units before a press becomes a drag
+
+  const scrollingPage = () => state === "almanac" || state === "chart";
+
+  canvas.addEventListener("wheel", e => {
+    if (!surv || !surveyHUD) return;
+    // A wheel reports lines on some browsers and pixels on others.
+    const px = e.deltaMode === 1 ? e.deltaY * 16
+             : e.deltaMode === 2 ? e.deltaY * 400
+             : e.deltaY;
+    if (state === "almanac") {
+      surveyHUD.almanacDragBy(px, SURVEY_TOTAL);
+      e.preventDefault();
+    } else if (state === "chart") {
+      // On a map the wheel is zoom, not pan — that is what every map does.
+      surveyHUD.chartZoomBy(px > 0 ? -1 : 1);
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener("pointermove", e => {
+    if (!pageDrag || e.pointerId !== pageDrag.id || !surveyHUD) return;
+    const p = screenPoint(e.clientX, e.clientY);
+    const dx = p.x - pageDrag.x, dy = p.y - pageDrag.y;
+    pageDrag.moved += Math.abs(dx) + Math.abs(dy);
+    // Content follows the finger: drag down and you see what was above.
+    if (state === "almanac") surveyHUD.almanacDragBy(-dy, SURVEY_TOTAL);
+    else if (state === "chart") surveyHUD.chartDragBy(dx, dy);
+    pageDrag.x = p.x; pageDrag.y = p.y;
+    e.preventDefault();
+  });
+
+  function endPageDrag(e, act) {
+    if (!pageDrag || (e && e.pointerId !== pageDrag.id)) return;
+    const d = pageDrag;
+    pageDrag = null;
+    /* A press that never travelled was a tap all along. The release point goes
+       with it, because a tap on a map means "here" and an `act` with no
+       coordinates cannot know where here was. */
+    if (act && d.moved < DRAG_SLOP && d.hit) d.hit.act(d.x, d.y);
+  }
+  canvas.addEventListener("pointerup", e => endPageDrag(e, true));
+  canvas.addEventListener("pointercancel", e => endPageDrag(e, false));
+
   canvas.addEventListener("pointerdown", e => {
     // Suppress the compatibility mouse event emitted after a touchscreen tap.
     if (e.pointerType === "touch") e.preventDefault();
@@ -6175,6 +6839,14 @@
 
     // Everything else on a menu screen registered itself while being drawn.
     const hit = tapAt(p.x, p.y);
+
+    if (scrollingPage()) {
+      pageDrag = { id: e.pointerId, x: p.x, y: p.y, moved: 0, hit };
+      try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+      e.preventDefault();
+      return;
+    }
+
     if (hit) {
       // A settings button is a decision to stop waiting for a replacement key.
       // Without this, Camera/Reset/Clear leave the next keypress captured.
@@ -6527,6 +7199,16 @@
     }
 
     if (!worldRunning()) return;
+
+    /* Screen shake decays here rather than in `campaignTick`, which is where it
+       used to live back when the campaign was the only thing that shook the
+       view. It has not been true for a while: salvaging a pickup shakes, and
+       Survey shakes on every hull strike, every cache and every gate. In any
+       mode without a campaign controller nothing was subtracting it, so the
+       first impact pinned the screen at full amplitude and it never stopped.
+
+       0.55 seconds from the hardest hit in the game to nothing. */
+    shake = Math.max(0, shake - 90 * dt);
 
     updateCamera(dt);
 
@@ -8509,7 +9191,8 @@
     ctx.save();
     wScale = cam.scale;
     ctx.translate(SCREEN_W / 2, SCREEN_H / 2);
-    // Screen shake — campaign-only, a jitter of the whole view on the big hits.
+    // Screen shake — a jitter of the whole view on the big hits, in any mode
+    // that asks for one. It decays in the world update, not here.
     if (shake > 0.5) {
       ctx.translate((Math.random() * 2 - 1) * shake, (Math.random() * 2 - 1) * shake);
     }
@@ -9764,7 +10447,7 @@
          harness needs the same numbers the simulation used. */
       live: () => ({ ships, rocks, hazards, net, binder, players: PLAYERS, taps,
                      pad: padCfg, stick, arranging, camera: cam, bounds, arena,
-                     clock, shipR: SHIP_R * U, pickups, comms,
+                     clock, shipR: SHIP_R * U, pickups, comms, shake,
                      cameraMode: royaleCameraRotates ? "rotating" : "fixed" }),
       step: () => tick(performance.now(), true),
       // Start a match straight from a harness, skipping the menus, read the
@@ -9814,6 +10497,10 @@
       // can prove salvage actually turns into a better ship.
       buy: key => buyRefit(key),
       unlocked: key => unlocked(key),
+      // The yard and the scan, as the interface sees them.
+      objective: () => objective(),
+      scanReach: () => scanRange(),
+      surveyView: () => surveyState(),
       hud: () => surveyHUD
     };
   }

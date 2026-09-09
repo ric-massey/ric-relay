@@ -87,9 +87,29 @@
   let padGuard = { right: 0, bottom: 0 };
 
   // The chart page's own camera, so panning around it does not move the ship.
-  let chart = { x: 0, y: 0, scale: 0.02, follow: true };
-  let almanac = { scroll: 0, pick: 0 };
+  let chart = { x: 0, y: 0, scale: 0.02, follow: true, pin: 0 };
+
+  /* ── pins ─────────────────────────────────────────────────────────────────
+     Endless space has no place names. Nothing out here is called anything, the
+     chart labels sectors by chunk coordinate, and a coordinate is not a memory —
+     so the only way anywhere gets a name is if the player gives it one.
+
+     A pin is that. Six kinds, because "I found something here" and "do not come
+     back here" are different notes and a chart covered in identical dots is a
+     chart you stop reading. They are the player's own marks and are drawn in
+     their own colours, distinct from anything the sector puts there itself. */
+  const PIN_KINDS = [
+    { key: "salvage", name: "SALVAGE", colour: "#6dffbf" },
+    { key: "cache",   name: "CACHE",   colour: "#ffe56d" },
+    { key: "station", name: "STATION", colour: "#87d8ff" },
+    { key: "gate",    name: "GATE",    colour: "#5ce1ff" },
+    { key: "part",    name: "PART",    colour: "#a08cff" },
+    { key: "danger",  name: "DANGER",  colour: "#ff8f77" }
+  ];
+  const pinSpec = k => PIN_KINDS.find(p => p.key === k) || PIN_KINDS[0];
+  let almanac = { scroll: 0, pick: 0, open: -1 };
   let refit = { pick: 0 };
+  let manifest = { pick: 0 };
 
   HUD.init = function (deps) {
     api = deps;
@@ -259,6 +279,30 @@
     ctx.restore();
   }
 
+  /* ── text that fits ───────────────────────────────────────────────────────
+     Every caption in this interface was drawn at a fixed size into a box whose
+     width depends on the layout, the platform and how many cards are in the
+     row — so the long ones ran out of their boxes and over their neighbours.
+
+     This shrinks a line until it fits, down to the 16px floor the whole module
+     respects (anything under that is a lie on a phone), and only then clips it
+     with an ellipsis. Shrink first, cut last: a name one size smaller is still
+     the name, and a name cut in half is not. */
+  function fitText(str, x, y, size, colour, align, alpha, maxW, track) {
+    str = String(str);
+    let px = Math.max(16, size);
+    while (px > 16 && widthOf(str, px, track) > maxW) px -= 1;
+    if (widthOf(str, px, track) > maxW) {
+      let cut = str;
+      while (cut.length > 1 && widthOf(cut + "…", px, track) > maxW) {
+        cut = cut.slice(0, -1);
+      }
+      str = cut + "…";
+    }
+    label(str, x, y, px, colour, align, alpha, track);
+    return px;
+  }
+
   function widthOf(str, size, track) {
     const ctx = api.ctx;
     ctx.save();
@@ -322,9 +366,49 @@
     }
     drawPanelChart(st);
     drawCounters(st);
+    drawObjective(st);
     drawStrip(st);
     drawToasts();
   };
+
+  /* ── what you are doing ───────────────────────────────────────────────────
+     Survey went a long time without answering this. It had an almanac, which
+     records what you happened to see, and a scan, which returned a number to a
+     message feed — between them a new pilot could fly for an hour without the
+     mode ever stating a goal. So the goal is on screen, always, in three lines
+     at the top of the frame:
+
+       what to find      the part the yard is short of
+       where to look     the clue, which describes a kind of place
+       which way         a bearing and a range band, never a position
+
+     The bearing is here rather than behind the scan key for the same reason the
+     rest of it is: a button you have to press to be told what you are doing is a
+     button doing the interface's job. The scan is for what is *near* you now;
+     this is for where you are going. */
+  function drawObjective(st) {
+    const o = st.objective;
+    if (!o) return;
+    const { SCREEN_W } = api;
+    const cx = SCREEN_W / 2;
+    const wide = SCREEN_W - 420;          // clear of the counters and the chart
+
+    fitText(o.text, cx, 40, SIZE.val, o.colour || VIOLET, "center", 1, wide, "0.1em");
+    if (o.sub) {
+      fitText(o.sub, cx, 62, SIZE.cap, AMBER_DIM, "center", 0.8, wide);
+    }
+    if (st.fix) {
+      fitText("BEARING " + String(st.fix.bearing).padStart(3, "0") +
+              "   ·   " + st.fix.range,
+              cx, 86, SIZE.cap, VIOLET, "center", 0.95, wide, "0.12em");
+    }
+    if (st.needs) {
+      // The tally, small, at the top right of the band — it is a progress bar
+      // for the whole mode and it should never be the loudest thing on screen.
+      label("YARD " + st.built + " / " + st.needs, cx + wide / 2, 40, SIZE.cap,
+            st.built >= st.needs ? SALVAGE : VIOLET_DIM, "right", 0.75, "0.14em");
+    }
+  }
 
   function panelBox() {
     const W = api.SCREEN_W;
@@ -355,6 +439,7 @@
     ctx.fillRect(b.x, b.y, b.w, b.h);
     paintFog(mx, my, ship.x, ship.y, PANEL_SPAN, sx, sy, 0.30);
     paintMarks(st, mx, my, false);
+    drawPins(st, mx, my, false);
     ctx.restore();
 
     ctx.save();
@@ -490,12 +575,32 @@
      is the whole fix, and making the number tappable is what makes it true on a
      phone as well. */
   function drawCounters(st) {
+    const { ctx } = api;
     const found = st.found || 0, total = st.total || 25;
     const key = api.touchOnly ? "" : "  [L]";
     label("ALMANAC" + key, 24, 36, SIZE.cap, VIOLET, "left", 0.7, "0.18em");
     label(String(found).padStart(2, "0") + " / " + total, 24, 62,
           SIZE.head, found >= total ? AMBER : VIOLET, "left");
     api.addTap({ x: 14, y: 18, w: 150, h: 56, act: st.onAlmanac || (() => {}) });
+
+    /* How far out you are, as a word. The curve behind it is smooth and has no
+       thresholds, so this is the only place the sector is ever banded — and it
+       is banded here because "UNSETTLED" is a thing you can decide about and
+       0.47 is not. */
+    if (st.dangerBand) {
+      label("SECTOR", 24, 168, SIZE.cap, VIOLET_DIM, "left", 0.65, "0.18em");
+      label(st.dangerBand.name, 24, 192, SIZE.val, st.dangerBand.colour, "left", 0.95);
+      const bw = 108;
+      ctx.save();
+      ctx.strokeStyle = VIOLET_LOW;
+      ctx.globalAlpha = 0.6;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(24, 200, bw, 5);
+      ctx.fillStyle = st.dangerBand.colour;
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(25, 201, Math.max(1, (bw - 2) * (st.danger || 0)), 3);
+      ctx.restore();
+    }
 
     if (st.hold) {
       const salv = st.salvage || 0, cap = st.hold;
@@ -542,6 +647,12 @@
     label(ready ? (api.touchOnly ? "SCAN" : "SCAN  [F]") : "CHARGING",
           cx + w / 2 + 16, y, SIZE.cap, ready ? VIOLET : VIOLET_DIM,
           "left", ready ? 1 : 0.5);
+    // Saying the radius is what makes the scanner refit legible: the number
+    // goes up when you buy a tier, and that is the whole purchase.
+    if (ready && st.scanReach && !api.touchOnly) {
+      label(Math.round(st.scanReach) + "u", cx + w / 2 + 16, y + 18, SIZE.cap,
+            VIOLET_DIM, "left", 0.6);
+    }
     if (!ready && st.scan) {
       ctx.save();
       ctx.strokeStyle = VIOLET_DIM;
@@ -570,7 +681,7 @@
     } else if (!api.touchOnly) {
       // The mode's three keys, stated once, quietly, where a new player is
       // already looking. Survey has no tutorial and should not need one.
-      label("M CHART   ·   L ALMANAC   ·   F SCAN", cx, y + 38, SIZE.cap,
+      label("M CHART   ·   L ALMANAC   ·   F SCAN NEARBY", cx, y + 38, SIZE.cap,
             VIOLET_LOW, "center", 0.8, "0.1em");
     }
   }
@@ -660,10 +771,43 @@
      infinite lattice, and it opens centred on you. */
   const ZOOMS = [0.004, 0.008, 0.016, 0.032, 0.064];
 
+  function drawPins(st, mx, my, big) {
+    const { ctx } = api;
+    for (const q of (st.pins || [])) {
+      const spec = pinSpec(q.kind);
+      const x = mx(q.x), y = my(q.y);
+      const r = big ? 7 : 4;
+      ctx.save();
+      ctx.strokeStyle = spec.colour;
+      ctx.globalAlpha = 0.95;
+      ctx.lineWidth = big ? 2 : 1.4;
+      // A dropped pin: a ring on a stem, so it reads as sitting on the map
+      // rather than being a thing that is in the world.
+      ctx.beginPath();
+      ctx.arc(x, y - r * 1.6, r, 0, Math.PI * 2);
+      ctx.moveTo(x, y - r * 0.6);
+      ctx.lineTo(x, y + r * 1.2);
+      ctx.stroke();
+      ctx.restore();
+      if (big) {
+        label(spec.name, x, y + r * 3.4, SIZE.cap, spec.colour, "center", 0.7);
+      }
+    }
+  }
+
   HUD.chartOpened = function (st) {
     if (st && st.ship) { chart.x = st.ship.x; chart.y = st.ship.y; }
     chart.follow = true;
   };
+
+  /* The chart had the same hole: arrows panned it and nothing else did, so on a
+     phone the only way across a sector was the arrow keys it does not have. */
+  HUD.chartDragBy = function (dx, dy) {
+    chart.x -= dx / chart.scale;
+    chart.y -= dy / chart.scale;
+    chart.follow = false;
+  };
+  HUD.chartZoomBy = function (dir) { zoomChart(dir); };
 
   HUD.chartKey = function (code, st) {
     const step = 260 / chart.scale;
@@ -674,6 +818,7 @@
     if (code === "Equal" || code === "NumpadAdd")      { zoomChart(1); return true; }
     if (code === "Minus" || code === "NumpadSubtract") { zoomChart(-1); return true; }
     if (code === "KeyC") { HUD.chartOpened(st); return true; }
+    if (code === "KeyP") { chart.pin = (chart.pin + 1) % PIN_KINDS.length; return true; }
     return false;
   };
 
@@ -692,7 +837,7 @@
     pageFrame("SECTOR CHART",
               "SEED " + (st.seed || 0) + "  ·  " + fmtCells(HUD.charted()) + " CELLS CHARTED",
               api.touchOnly ? "DRAG TO PAN  ·  ± ZOOM  ·  C RECENTRE"
-                            : "ARROWS PAN  ·  + / −  ZOOM  ·  C RECENTRE");
+                            : "DRAG OR ARROWS PAN  ·  ± ZOOM  ·  C RECENTRE  ·  P PIN KIND");
 
     const view = { x: 34, y: 86, w: SCREEN_W - 68, h: SCREEN_H - 86 - 70 };
     const mx = wx => view.x + view.w / 2 + (wx - chart.x) * chart.scale;
@@ -710,6 +855,7 @@
     paintFog(mx, my, chart.x, chart.y, span, chart.scale, chart.scale, 0.26);
     drawTrail(mx, my);
     paintMarks(st, mx, my, true);
+    drawPins(st, mx, my, true);
 
     ctx.restore();
 
@@ -741,6 +887,51 @@
         label("YOU", ex, ey + 26, SIZE.cap, AMBER, "center", 0.8);
       }
     }
+
+    /* Dropping a pin. The whole map is one tap target, registered *before* the
+       palette and the buttons so anything drawn after it wins — the tap list is
+       last-drawn-first-served, and a palette button sitting inside the map area
+       would otherwise be unreachable.
+
+       A tap here is a tap and not a drag: the page holds a press until release
+       and only calls this if the pointer barely moved, so panning the chart
+       never leaves a trail of pins behind it. */
+    api.addTap({
+      x: view.x, y: view.y, w: view.w, h: view.h,
+      act: (sx, sy) => {
+        if (sx == null || !st.onPin) return;
+        const wx = chart.x + (sx - (view.x + view.w / 2)) / chart.scale;
+        const wy = chart.y + (sy - (view.y + view.h / 2)) / chart.scale;
+        // Fourteen screen pixels' worth of world, so lifting a pin is as easy
+        // zoomed out as zoomed in.
+        st.onPin(wx, wy, PIN_KINDS[chart.pin].key, 14 / chart.scale);
+      }
+    });
+
+    // The palette. Which kind of note the next tap leaves.
+    const pw = 96, pgap = 6;
+    const total = PIN_KINDS.length * pw + (PIN_KINDS.length - 1) * pgap;
+    let px0 = (SCREEN_W - total) / 2;
+    PIN_KINDS.forEach((k, i) => {
+      const on = i === chart.pin;
+      const bx = px0 + i * (pw + pgap);
+      ctx.save();
+      ctx.fillStyle = k.colour;
+      ctx.globalAlpha = on ? 0.20 : 0.06;
+      ctx.fillRect(bx, SCREEN_H - 48, pw, 34);
+      ctx.strokeStyle = k.colour;
+      ctx.globalAlpha = on ? 1 : 0.4;
+      ctx.lineWidth = on ? 2 : 1;
+      ctx.strokeRect(bx, SCREEN_H - 48, pw, 34);
+      ctx.restore();
+      fitText(k.name, bx + pw / 2, SCREEN_H - 26, SIZE.cap, k.colour, "center",
+              on ? 1 : 0.6, pw - 12);
+      api.addTap({ x: bx, y: SCREEN_H - 48, w: pw, h: 34,
+                   act: () => { chart.pin = i; } });
+    });
+    label(api.touchOnly ? "TAP THE MAP TO PIN  ·  TAP A PIN TO LIFT IT"
+                        : "CLICK THE MAP TO PIN  ·  CLICK A PIN TO LIFT IT",
+          SCREEN_W / 2, SCREEN_H - 56, SIZE.cap, VIOLET_LOW, "center", 0.75);
 
     if (api.touchOnly) {
       api.tapButton("−", 60, SCREEN_H - 30, 46, 38, VIOLET, () => zoomChart(-1));
@@ -852,9 +1043,27 @@
      with their note; unfound ones keep the silhouette and lose the detail, and
      the two the sector never hints at lose their name as well — a redaction is
      an invitation and a blank line is not. */
+  // True when a detail card is open, so the page's own Escape does not close
+  // the whole almanac out from under it.
+  HUD.almanacDetailOpen = () => almanac.open >= 0;
+  HUD.almanacCloseDetail = () => { almanac.open = -1; };
+
   HUD.almanacKey = function (code, entries) {
     const cols = api.touchOnly ? 1 : 3;
     const n = entries.length;
+    if (almanac.open >= 0) {
+      // Arrows page through entries with the card still open, which is how you
+      // read a field guide — one after another, not back to the grid each time.
+      if (code === "ArrowLeft" || code === "ArrowUp") {
+        almanac.open = (almanac.open + n - 1) % n;
+      } else if (code === "ArrowRight" || code === "ArrowDown") {
+        almanac.open = (almanac.open + 1) % n;
+      } else return false;
+      almanac.pick = almanac.open;
+      keepPickVisible(n, cols);
+      return true;
+    }
+    if (code === "Enter" || code === "Space") { almanac.open = almanac.pick; return true; }
     if (code === "ArrowLeft")  { almanac.pick = (almanac.pick + n - 1) % n; }
     else if (code === "ArrowRight") { almanac.pick = (almanac.pick + 1) % n; }
     else if (code === "ArrowUp")   { almanac.pick = Math.max(0, almanac.pick - cols); }
@@ -876,16 +1085,46 @@
     return { cols, gap, left, cardW, cardH, top, rows };
   }
 
+  /* Driven by the arrows, the list snaps to whole rows — a keyboard is moving
+     between entries, not between pixels, and a half-row offset left over from a
+     drag would make every subsequent arrow press look like it moved twice. */
   function keepPickVisible(n, cols) {
     const L = almanacLayout();
     const row = Math.floor(almanac.pick / L.cols);
+    almanac.scroll = Math.round(almanac.scroll);
     if (row < almanac.scroll) almanac.scroll = row;
     if (row >= almanac.scroll + L.rows) almanac.scroll = row - L.rows + 1;
-    almanac.scroll = Math.max(0, almanac.scroll);
+    almanac.scroll = Math.max(0, Math.min(maxScroll(n), almanac.scroll));
   }
 
+  /* ── scrolling ────────────────────────────────────────────────────────────
+     `almanac.scroll` is a row index and it used to be a whole number, which is
+     why the only things that could move it were the arrow keys and two buttons:
+     a wheel or a thumb produces pixels, and there was nowhere to put a fraction
+     of a row. It is a float now. Everything that reads it either floors it for
+     culling or uses it directly for placement, so a half-scrolled row is drawn
+     half off the top rather than snapping.
+
+     The page is clipped to its card area for the same reason — a row leaving
+     the top of a scrolling list has to be cut off by the list, not drawn over
+     the heading. */
+  const rowPitch = () => { const L = almanacLayout(); return L.cardH + L.gap; };
+
+  function maxScroll(n) {
+    const L = almanacLayout();
+    return Math.max(0, Math.ceil(n / L.cols) - L.rows);
+  }
+
+  HUD.almanacScrollBy = function (rows, n) {
+    almanac.scroll = Math.max(0, Math.min(maxScroll(n), almanac.scroll + rows));
+  };
+  // A thumb and a wheel both arrive as pixels; one row is one pitch.
+  HUD.almanacDragBy = function (dy, n) { HUD.almanacScrollBy(dy / rowPitch(), n); };
+  HUD.almanacCanScroll = n => maxScroll(n) > 0;
+  HUD.almanacAt = () => almanac.scroll;
+
   HUD.drawAlmanac = function (st, dt) {
-    const { SCREEN_W, SCREEN_H } = api;
+    const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
     const entries = st.almanac || [];
     const found = entries.filter(e => e.found).length;
@@ -895,21 +1134,28 @@
 
     pageFrame("ALMANAC",
               found + " OF " + entries.length + " LOGGED",
-              api.touchOnly ? "TAP AN ENTRY  ·  SWIPE TO SCROLL"
-                            : "ARROWS MOVE  ·  L OR ESC CLOSES");
+              api.touchOnly ? "TAP AN ENTRY  ·  DRAG TO SCROLL"
+                            : "ARROWS MOVE  ·  SCROLL OR DRAG  ·  L OR ESC CLOSES");
 
+    const viewH = L.rows * (L.cardH + L.gap) - L.gap;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, L.top - 4, SCREEN_W, viewH + 8);
+    ctx.clip();
+    const first = Math.floor(almanac.scroll);
+    const last = Math.ceil(almanac.scroll + L.rows);
     for (let i = 0; i < entries.length; i++) {
       const row = Math.floor(i / L.cols), col = i % L.cols;
-      if (row < almanac.scroll || row >= almanac.scroll + L.rows) continue;
+      if (row < first || row >= last) continue;
       const x = L.left + col * (L.cardW + L.gap);
       const y = L.top + (row - almanac.scroll) * (L.cardH + L.gap);
       drawCard(entries[i], x, y, L.cardW, L.cardH, i === almanac.pick, i);
     }
+    ctx.restore();
 
     // A scrollbar, because an almanac that scrolls with no sign it scrolls is
     // an almanac people think is twelve entries long.
     if (totalRows > L.rows) {
-      const { ctx } = api;
       const trackY = L.top, trackH = L.rows * (L.cardH + L.gap) - L.gap;
       const h = Math.max(24, trackH * (L.rows / totalRows));
       const t = totalRows - L.rows ? almanac.scroll / (totalRows - L.rows) : 0;
@@ -923,13 +1169,63 @@
       ctx.restore();
       if (api.touchOnly) {
         api.tapButton("▲", 60, SCREEN_H - 30, 46, 38, VIOLET,
-                      () => { almanac.scroll = Math.max(0, almanac.scroll - 1); });
+                      () => HUD.almanacScrollBy(-1, entries.length));
         api.tapButton("▼", 114, SCREEN_H - 30, 46, 38, VIOLET,
-                      () => { almanac.scroll++; });
+                      () => HUD.almanacScrollBy(1, entries.length));
       }
     }
-    closeButton(st.onClose || (() => {}));
+    if (almanac.open >= 0 && entries[almanac.open]) {
+      drawEntryDetail(entries[almanac.open], st);
+    } else {
+      closeButton(st.onClose || (() => {}));
+    }
   };
+
+  /* One entry, given the room to be looked at. The picture is the reason the
+     almanac exists and a 60px thumbnail is not looking at it, so here it is
+     four times the size with the name and the note under it and nothing else
+     competing. Tapping anywhere closes it — a detail view you have to find the
+     exit of is a modal, and this is a card being turned over. */
+  function drawEntryDetail(e, st) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    const on = !!e.found;
+    const w = Math.min(560, SCREEN_W - 80), h = 400;
+    const x = (SCREEN_W - w) / 2, y = (SCREEN_H - h) / 2;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(5,5,10,0.86)";
+    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    ctx.fillStyle = on ? "rgba(160,140,255,0.06)" : "rgba(255,255,255,0.02)";
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = on ? VIOLET : VIOLET_LOW;
+    ctx.globalAlpha = 0.95;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, w, h);
+    ctx.restore();
+
+    const art = 190;
+    ctx.save();
+    ctx.strokeStyle = on ? VIOLET_LOW : "#24203f";
+    ctx.globalAlpha = 0.7;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + (w - art) / 2, y + 34, art, art);
+    ctx.restore();
+    drawIcon(e.key, x + w / 2, y + 34 + art / 2, art * 0.34, on);
+
+    fitText(on || !e.secret ? e.name : "??????????",
+            x + w / 2, y + art + 84, SIZE.big, on ? AMBER : AMBER_DIM,
+            "center", on ? 1 : 0.5, w - 60, "0.1em");
+    fitText(on ? e.note : (e.secret ? "not on any chart" : e.note),
+            x + w / 2, y + art + 116, SIZE.val, on ? VIOLET : VIOLET_DIM,
+            "center", on ? 0.9 : 0.45, w - 60);
+    label(on ? "LOGGED" : "NOT YET FOUND", x + w / 2, y + art + 150, SIZE.cap,
+          on ? SALVAGE : VIOLET_LOW, "center", 0.8, "0.18em");
+
+    label(api.touchOnly ? "TAP TO CLOSE" : "CLICK, OR ESC, TO CLOSE",
+          x + w / 2, y + h - 22, SIZE.cap, VIOLET_LOW, "center", 0.8);
+    api.addTap({ x: 0, y: 0, w: SCREEN_W, h: SCREEN_H,
+                 act: () => { almanac.open = -1; } });
+  }
 
   function drawCard(e, x, y, w, h, selected, index) {
     const { ctx } = api;
@@ -960,14 +1256,25 @@
     ctx.restore();
 
     const tx = x + art + 22;
+    // The tick lives at the right edge, so the text stops before it rather than
+    // running underneath it.
+    const room = (x + w - 18) - tx - (on ? 20 : 4);
     const name = on || !e.secret ? e.name : "??????????";
-    label(name, tx, y + 30, SIZE.cap, on ? AMBER : AMBER_DIM, "left",
-          on ? 1 : 0.45, "0.08em");
-    label(on ? e.note : (e.secret ? "not on any chart" : e.note),
-          tx, y + 52, SIZE.cap, on ? VIOLET : VIOLET_DIM, "left", on ? 0.85 : 0.4);
+    fitText(name, tx, y + 30, SIZE.cap, on ? AMBER : AMBER_DIM, "left",
+            on ? 1 : 0.45, room, "0.08em");
+    fitText(on ? e.note : (e.secret ? "not on any chart" : e.note),
+            tx, y + 52, SIZE.cap, on ? VIOLET : VIOLET_DIM, "left",
+            on ? 0.85 : 0.4, room);
     if (on) label("✓", x + w - 18, y + 30, SIZE.cap, VIOLET, "right", 0.9);
 
-    api.addTap({ x, y, w, h, act: () => { almanac.pick = index; } });
+    /* Clicking an entry opens it. It used to only move the selection, which
+       made every card in the book look like a button that did nothing —
+       and the picture, which is the point of the almanac, was stuck at
+       thumbnail size with no way to see it properly. */
+    api.addTap({ x, y, w, h, act: () => {
+      almanac.open = (almanac.open === index) ? -1 : index;
+      almanac.pick = index;
+    } });
   }
 
   /* ── the pictures ─────────────────────────────────────────────────────────
@@ -1309,6 +1616,37 @@
           ctx.arc(cx, cy, r * 0.88, Math.PI * 1.2, Math.PI * 1.75);
           ctx.stroke();
         });
+        break;
+      case "salvor":
+        // A part, carried: the triangle the world draws one with, on its way.
+        stroke(SALVAGE, 1.7, () => {
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - r * 0.62);
+          ctx.lineTo(cx + r * 0.56, cy + r * 0.36);
+          ctx.lineTo(cx - r * 0.56, cy + r * 0.36);
+          ctx.closePath();
+          ctx.stroke();
+        });
+        stroke(SALVAGE_DIM, 1.3, () => {
+          ctx.beginPath();
+          ctx.moveTo(cx - r * 0.9, cy + r * 0.72);
+          ctx.lineTo(cx + r * 0.9, cy + r * 0.72);
+          ctx.stroke();
+        });
+        break;
+      case "finished":
+        // The yard, closed: every segment of the ring filled in.
+        ring(cx, cy, r * 0.86, SALVAGE, 1.6);
+        for (let i = 0; i < 6; i++) {
+          const a0 = (i / 6) * Math.PI * 2 + 0.06;
+          const a1 = ((i + 1) / 6) * Math.PI * 2 - 0.06;
+          stroke(SALVAGE, 3, () => {
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 0.56, a0, a1);
+            ctx.stroke();
+          });
+        }
+        disc(cx, cy, r * 0.2, SALVAGE);
         break;
       default:                  ring(cx, cy, r * 0.8, VIOLET, 1.6);
     }

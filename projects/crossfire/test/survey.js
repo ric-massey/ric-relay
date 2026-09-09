@@ -355,7 +355,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const { cf } = boot("?debug=1&seed=31337");
   cf.start("survey", 1);
   const cat = cf.catalogue();
-  check(cat.length === 31, "the catalogue must have 31 entries, has " + cat.length);
+  check(cat.length === 33, "the catalogue must have 33 entries, has " + cat.length);
   check(new Set(cat.map(e => e.key)).size === cat.length, "duplicate catalogue keys");
   for (const e of cat) {
     check(!!e.name && !!e.key, "a catalogue entry is missing a name or key");
@@ -711,6 +711,290 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(surv.chunks.size > 0, "arriving through a gate streamed nothing in");
   console.log("  gates      one throw of " + Math.round(jump) +
               " units, and the far side was built on arrival");
+}
+
+// ── 12. the screen stops shaking ─────────────────────────────────────────
+/* Shake used to be decayed inside `campaignTick`, which is the one controller
+   Survey never runs. Every hull strike, cache and gate added to it and nothing
+   ever took any away, so the first impact pinned the view at full amplitude for
+   the rest of the session. Two things are checked: that it settles at all, and
+   that sustained contact cannot pump it faster than it decays — scraping along
+   a hull resolves a strike every frame, which is what made it permanent. */
+{
+  const { cf } = boot("?debug=1&seed=4242");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const lv = cf.live();
+  const me = lv.ships[0];
+
+  surv.planets.push({ x: me.x + 700, y: me.y, r: 200 });
+  me.a = 0;                                 // pointed at it, not at open space
+  me.vx = me.vy = 0;
+  me.invuln = 0;
+
+  // Fly into it and stay there, which is the case that used to pin the screen.
+  cf.hold("KeyW", true);
+  let peak = 0;
+  for (let i = 0; i < 300; i++) {
+    now += 1000 / 60; cf.step();
+    peak = Math.max(peak, cf.live().shake);
+  }
+  const held = cf.live().shake;
+  check(peak > 0, "flying into a planet produced no shake at all");
+  check(held <= peak,
+        "resting against a hull pumped the shake higher than the impact did");
+
+  // Let go and let it settle.
+  cf.hold("KeyW", false);
+  me.vx = me.vy = 0;
+  me.x = 0; me.y = 0;                       // clear of everything
+  let settled = -1;
+  for (let i = 0; i < 180; i++) {
+    now += 1000 / 60; cf.step();
+    if (cf.live().shake === 0) { settled = i; break; }
+  }
+  check(settled >= 0,
+        "the shake never reached zero — still " + cf.live().shake.toFixed(2) +
+        " after three seconds");
+  check(settled < 60,
+        "the shake took " + (settled / 60).toFixed(2) + "s to settle, which is too long");
+  console.log("  shake      peaked at " + peak.toFixed(1) + " · back to nothing in " +
+              (settled / 60).toFixed(2) + "s");
+}
+
+// ── 13. the almanac actually scrolls ─────────────────────────────────────
+/* There was no wheel listener anywhere in the game, and no drag handler either —
+   while the almanac's own footer promised "SWIPE TO SCROLL". The only things
+   that could move the list were the arrow keys and two buttons. */
+{
+  const { cf } = boot("?debug=1&seed=31337");
+  cf.start("survey", 1);
+  const hud = cf.hud();
+  const n = cf.catalogue().length;
+
+  check(hud.almanacCanScroll(n),
+        n + " entries do not fill the page, so scrolling cannot be checked");
+  check(typeof hud.almanacDragBy === "function", "the almanac has no drag handler");
+
+  const top = hud.almanacAt();
+  check(top === 0, "the almanac did not open at the top");
+
+  // A wheel notch, in pixels, must move it — and by less than a whole page.
+  hud.almanacDragBy(120, n);
+  const afterWheel = hud.almanacAt();
+  check(afterWheel > top, "a wheel notch did not scroll the almanac");
+
+  // A long drag must stop at the end rather than running off it.
+  hud.almanacDragBy(100000, n);
+  const bottom = hud.almanacAt();
+  check(Number.isFinite(bottom), "scrolling to the end went non-finite");
+  hud.almanacDragBy(100000, n);
+  check(hud.almanacAt() === bottom,
+        "the almanac scrolled past its own last row");
+
+  // And back, clamped at the top.
+  hud.almanacDragBy(-100000, n);
+  check(hud.almanacAt() === 0, "the almanac scrolled above its first row");
+
+  // Fractional positions have to survive, or a thumb can only move whole rows.
+  hud.almanacDragBy(18, n);
+  const part = hud.almanacAt();
+  check(part > 0 && part < 1,
+        "a short drag snapped to " + part + " instead of scrolling smoothly");
+
+  // Drawing at a half-scrolled position must not throw.
+  cf.screen("almanac");
+  cf.draw();
+  console.log("  almanac    wheel and drag scroll it · clamps at both ends · " +
+              "holds a fractional row");
+}
+
+// ── 14. the yard: what the mode is actually for ──────────────────────────
+/* Survey went a long time without a goal. The yard is it: six parts, each in a
+   kind of place its clue describes, carried home one at a time. The clue is the
+   part that can silently rot — it is prose, and prose does not fail a syntax
+   check — so what is asserted is that every part has one, that every part is
+   actually reachable in the sector, and that the loop closes. */
+{
+  const { cf } = boot("?debug=1&seed=2468");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const sites = surv.partSites;
+  check(sites.length >= 5, "only " + sites.length + " part sites were placed");
+  for (const site of sites) {
+    check(Number.isFinite(site.x) && Number.isFinite(site.y),
+          site.key + " was placed nowhere");
+    const d = Math.hypot(site.x, site.y);
+    check(d > 3000, site.key + " is only " + Math.round(d) + " units out");
+  }
+  // Two parts in the same chunk would mean one of them is unreachable scenery.
+  const chunks = new Set(sites.map(s2 =>
+    Math.floor(s2.x / 2600) + "," + Math.floor(s2.y / 2600)));
+  check(chunks.size === sites.length, "two parts share a chunk");
+
+  check(surv.built.size === 0, "a fresh yard started already built");
+  check(surv.carrying.size === 0, "a fresh run started holding a part");
+
+  /* The loop, driven for real: fly to a part, pick it up, fly to the yard, and
+     the yard must be one further along. No shortcuts through the internals —
+     the ship is moved and the tick does the rest. */
+  const me = cf.live().ships[0];
+  const target = sites[0];
+  me.x = target.x; me.y = target.y; me.vx = me.vy = 0;
+  for (let i = 0; i < 8; i++) { now += 1000 / 60; cf.step(); }
+  check(surv.carrying.has(target.key),
+        "flying onto " + target.key + " did not pick it up");
+
+  me.x = -280; me.y = -400; me.vx = me.vy = 0;      // the yard
+  for (let i = 0; i < 8; i++) { now += 1000 / 60; cf.step(); }
+  check(surv.built.has(target.key), "delivering to the yard did not fit the part");
+  check(!surv.carrying.has(target.key), "the part was fitted and still carried");
+  check(surv.found.has("salvor"), "carrying the first part home logged nothing");
+
+  // A fitted part must not respawn when its chunk streams back in.
+  me.x = target.x; me.y = target.y;
+  for (let i = 0; i < 8; i++) { now += 1000 / 60; cf.step(); }
+  check(!surv.parts.some(pt => pt.key === target.key),
+        "a part that was already fitted came back");
+  console.log("  yard       " + sites.length + " sites, one per chunk · " +
+              "picked up, carried home and fitted");
+}
+
+// ── 15. you are always told what you are doing ───────────────────────────
+{
+  const { cf } = boot("?debug=1&seed=1357");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+
+  const KEYS = ["spar", "core", "lens", "coil", "beacon", "plate"];
+  for (let step = 0; step <= KEYS.length; step++) {
+    now += 1000 / 60; cf.step();
+    const obj = cf.objective();
+    check(!!obj && !!obj.text, "the objective line went blank at step " + step);
+    if (step < KEYS.length) {
+      check(/FIND|CARRYING/.test(obj.text),
+            "the objective did not say what to do: " + obj.text);
+      check(!!obj.sub, "the objective gave no clue at step " + step);
+      // Walk the manifest by hand so every state of the line is drawn once.
+      surv.built.add(KEYS[step]);
+    }
+  }
+  const done = cf.objective();
+  check(/FINISHED/.test(done.text),
+        "a full manifest did not read as finished: " + done.text);
+  console.log("  objective  states every step of the manifest, clue and all");
+}
+
+// ── 16. the scan reports what is near, and the refit makes it reach ──────
+/* The old scan returned a compass bearing to an almanac entry and printed it in
+   a message feed, which is why nobody could tell what it was for. It sweeps a
+   radius now, so what is checked is that the radius is real: things inside come
+   back, things outside do not, and buying a scanner tier moves the line. */
+{
+  const { cf } = boot("?debug=1&seed=8642");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+
+  const reach0 = cf.scanReach();
+  check(reach0 > 500, "the scan reaches only " + reach0 + " units");
+
+  // One thing just inside, one well outside.
+  surv.hulks.push({ x: me.x + reach0 * 0.5, y: me.y, r: 60, a: 0, spin: 0, hp: 4,
+                    id: "near" });
+  surv.hulks.push({ x: me.x + reach0 * 3, y: me.y, r: 60, a: 0, spin: 0, hp: 4,
+                    id: "far" });
+  cf.scan();
+  const hit = surv.echoes.filter(e => e.kind === "hulk");
+  check(hit.length === 1,
+        "the scan returned " + hit.length + " hulks, expected the near one only");
+  check(hit.length && Math.abs(hit[0].x - (me.x + reach0 * 0.5)) < 1,
+        "the scan returned the wrong hulk");
+
+  // Echoes fade rather than staying on the chart forever.
+  for (let i = 0; i < 60 * 25; i++) { now += 1000 / 60; cf.step(); }
+  check(surv.echoes.length === 0, "scan returns never faded");
+
+  // And the refit reaches further.
+  surv.salvage = 5000;
+  check(cf.buy("scanner") === true, "could not buy a scanner tier");
+  check(cf.scanReach() > reach0,
+        "a scanner tier did not extend the scan (" + reach0 + " → " + cf.scanReach() + ")");
+  console.log("  scan       " + Math.round(reach0) + "u sweep · reports only what is inside · " +
+              "fades · reaches " + Math.round(cf.scanReach()) + "u refitted");
+}
+
+// ── 17. pins ─────────────────────────────────────────────────────────────
+{
+  const { cf } = boot("?debug=1&seed=999");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const st = cf.surveyView();
+
+  check(Array.isArray(surv.pins) && surv.pins.length === 0, "a fresh sector had pins");
+  st.onPin(4000, -2500, "cache", 400);
+  check(surv.pins.length === 1, "dropping a pin did not add one");
+  check(surv.pins[0].kind === "cache", "the pin lost its kind");
+
+  // The same gesture lifts it again.
+  st.onPin(4050, -2520, "cache", 400);
+  check(surv.pins.length === 0, "tapping a pin did not lift it");
+
+  // Different kinds coexist, and they survive the book.
+  st.onPin(1000, 1000, "danger", 400);
+  st.onPin(-9000, 400, "part", 400);
+  check(surv.pins.length === 2, "two pins of different kinds did not both stick");
+  cf.leave();
+  const raw = store["crossfire.survey.v3"];
+  const book = JSON.parse(raw);
+  check(Array.isArray(book.pins) && book.pins.length === 2,
+        "pins were not written to the book");
+  check(book.pins.some(q => q.kind === "danger"), "a pin lost its kind in the book");
+  console.log("  pins       drop, lift with the same tap, keep their kind, survive the book");
+}
+
+// ── 18. the sector gets worse the further out you go ─────────────────────
+/* It used to roll from the same table everywhere, so 90,000 units out was the
+   same trip as 900 and distance cost only time. Sampled over a lot of chunks
+   rather than asserted on one, because every individual chunk is still a roll —
+   the curve is a bias, not a rule, and a test that demanded any single far chunk
+   be nastier than any single near one would be testing the dice. */
+{
+  const { cf } = boot("?debug=1&seed=13579");
+  cf.start("survey", 1);
+
+  function sample(ring) {
+    let guards = 0, hulks = 0, fields = 0, chunks = 0;
+    for (let i = 0; i < 160; i++) {
+      const a = (i / 160) * Math.PI * 2;
+      const cx = Math.round(Math.cos(a) * ring), cy = Math.round(Math.sin(a) * ring);
+      const c = cf.chunk(cx, cy);
+      chunks++;
+      for (const cache of c.caches) guards += cache.guards.length;
+      hulks += c.hulks.length;
+      fields += c.fields.length;
+    }
+    return { guards, hulks, fields, chunks };
+  }
+
+  const near = sample(2);      // ~5,000 units out
+  const far  = sample(32);     // ~83,000 units out
+
+  check(far.guards > near.guards,
+        "the deep sector posts no more sentries than home (" +
+        near.guards + " → " + far.guards + ")");
+  check(far.hulks >= near.hulks,
+        "the deep sector is no thicker with wrecks (" +
+        near.hulks + " → " + far.hulks + ")");
+  check(far.fields > near.fields,
+        "asteroid fields do not appear further out (" +
+        near.fields + " → " + far.fields + ")");
+
+  // And home has to stay quiet, or the curve is a wall rather than a slope.
+  check(near.fields === 0, "an asteroid field spawned in the home ring");
+  check(cf.chunk(0, 0).hazards.length === 0, "the home chunk grew a hazard");
+  console.log("  danger     home " + near.guards + " sentries / " + near.fields +
+              " fields · deep " + far.guards + " sentries / " + far.fields + " fields");
 }
 
 if (problems.length) {

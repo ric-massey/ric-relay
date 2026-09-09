@@ -40,7 +40,7 @@ stops at the count screen first. Both reach the same modes and the same match.
 | Survival | 1-5 | Co-op asteroid waves, shared lives, optional friendly fire, wrapping arena |
 | Battle Royale | 2-5 | Three lives each, two-hit hulls, stationary gravity hazards, closing wall, no time limit |
 | Campaign | 1-2 | Three scripted missions, sides instead of a free-for-all, an allied fleet flying with you, a shared reserve of lives |
-| Survey | 1 | No edges and no losing. Endless procedural space, a fog-of-war chart, a thirty-one entry almanac, salvage, a refit, guarded caches and a derelict you fly inside |
+| Survey | 1 | No edges and no losing. Something to build, six parts to find and a clue for each, endless procedural space, a chart you pin yourself, a thirty-three entry almanac, salvage, a refit and a derelict you fly inside |
 
 Battle Royale shows hull strength only for ships controlled on the current device.
 First hits stay quiet; losing a life adds a short entry to the feed beneath the
@@ -160,6 +160,64 @@ Rocks are deliberately *not* part of a chunk. They drift, so a chunk that
 regenerated them would snap them back to where they started every time you flew
 away and returned; instead a population is kept around the ship and topped up at
 the edge of it, the way Battle Royale tops up its field.
+
+### What you are doing
+
+Survey shipped without a goal. It had an almanac — a record of what you happened
+to see — and that is not the same as a reason to go anywhere. You could fly for
+an hour without the mode ever asking you for anything.
+
+So there is **the yard**, just off the origin, and it is short of six parts.
+
+| Part | Where its clue sends you |
+|---|---|
+| Drive spar | a wreck field — somewhere a lot of ships stopped at once |
+| Fusion core | a binary pair, where nothing is ever dark |
+| Ranging lens | a rogue world, with no star to warm it |
+| Jump coil | wound around a gate |
+| Signal beacon | a wreck still calling, long after anyone stopped listening |
+| Ablative plate | deep inside the Leviathan, past its sentries |
+
+Each part is placed the way a landmark is — its own bearing, its own distance —
+and **brings its own scenery with it**, so the clue is a promise the generator
+keeps rather than flavour text laid over whatever the chunk happened to roll. The
+distances interleave with the landmark ladder, so filling the manifest walks you
+past most of the almanac on the way out.
+
+Nothing hands you a position. The clue says what kind of place to look for, the
+HUD carries a bearing and a range band, and the rest is flying. Parts do not go
+in the hold, cannot be sold, and are not dropped when your hull goes — the
+manifest is the spine of the mode, and a part lost in deep space would be a run
+you could not finish.
+
+### The scan is a scan now
+
+It used to return a compass bearing to the nearest unlogged almanac entry and
+print it in the message feed, which is a fine thing to have and a terrible thing
+to press a button for: the answer was a number, and nothing on screen ever said
+what it was a number about.
+
+It sweeps a radius now and tells you what is inside it — salvage, caches,
+stations, gates, components, sentries — each one a tagged echo that sits on the
+world and the chart for twenty seconds and then fades. That is something you can
+see the result of, and the scanner refit makes the circle bigger, which is
+something you can feel.
+
+Direction to the thing you are looking for is not on that key at all. It lives on
+the HUD, permanently, next to the clue. A button you have to press to be told
+what you are doing is a button doing the interface's job.
+
+### The chart is yours to mark
+
+Endless space has no place names. Nothing out here is called anything and the
+chart labels sectors by chunk coordinate, which is not a memory. So you pin it
+yourself: six kinds — salvage, cache, station, gate, part, danger — because "I
+found something here" and "do not come back here" are different notes, and a
+chart covered in identical dots is a chart you stop reading. Pins are drawn on
+the flight panel too, and they are kept in the book.
+
+Tapping a pin lifts it. The same gesture marks and unmarks, so there is no eraser
+mode to be in.
 
 ### It is a world, not a backdrop
 
@@ -295,13 +353,14 @@ orderings are asserted in `test/smoke.js`.
 - `1` / `2` / `3`: in a Campaign, order the allied wing to focus fire, defend, or regroup.
 - `N`: on a cleared-mission screen, fly straight into the next mission.
 - `C`: open Settings from the title or pause menu.
-- In a Survey: `F` sends a scan pulse, `M` opens the sector chart, `L` opens the
+- In a Survey: `F` sweeps a scan, `M` opens the sector chart, `L` opens the
   almanac, `E` docks at a station you are sitting in, and `Escape` leaves
-  whichever page you are on. On the chart the arrows pan, `+` and `−` zoom and
-  `C` recentres; in the almanac the arrows move between entries; at a station the
-  arrows move and `Enter` buys. On a phone the panel chart is a tap, the scan is
-  a button beside the hull bar, and the almanac counter is a button — the corners
-  are where thumbs are.
+  whichever page you are on. On the chart, drag or arrow to pan, `±` zooms, `C`
+  recentres, `P` cycles the pin kind and a click drops or lifts one; in the
+  almanac the wheel and a drag both scroll, and clicking an entry opens it full
+  size — arrows then page through entries without closing it. At a station the
+  arrows move and `Enter` buys. On a phone every one of those is a tap or a drag,
+  and the almanac counter is itself the button.
 
   The almanac was on `L` from the first day and almost nobody found it. A
   keybinding with nothing on screen pointing at it is a keybinding that does not
