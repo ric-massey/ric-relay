@@ -997,6 +997,152 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               " fields · deep " + far.guards + " sentries / " + far.fields + " fields");
 }
 
+// ── 19. deep space is a number, and the curve keeps climbing ─────────────
+{
+  const { cf } = boot("?debug=1&seed=112233");
+  cf.start("survey", 1);
+
+  const at = d => cf.bandAt(d, 0).name;
+  check(at(0) === "HOME", "the origin is not HOME, it is " + at(0));
+  check(at(5000) === "HOME", "5k out is " + at(5000));
+  check(at(20000) === "OPEN", "20k out is " + at(20000));
+  check(at(50000) === "UNSETTLED", "50k out is " + at(50000));
+  check(at(100000) === "HOSTILE", "100k out is " + at(100000));
+  check(at(250000) === "DEEP", "250k out is " + at(250000));
+  check(at(900000) === "ABYSSAL", "900k out is " + at(900000));
+
+  // The curve must rise the whole way and never flatten at the last band, or
+  // the abyss is just the deep with a different word on it.
+  let prev = -1;
+  for (const d of [0, 5e3, 2e4, 6e4, 1.4e5, 3.2e5, 6e5, 2e6]) {
+    const v = cf.dangerAt(d, 0);
+    check(v > prev, "the danger curve stopped rising at " + d);
+    prev = v;
+  }
+  check(cf.dangerAt(3.2e5, 0) >= 1, "the curve does not reach 1 by the deep band");
+  check(cf.dangerAt(2e6, 0) > cf.dangerAt(3.2e5, 0),
+        "the abyss is no worse than the deep");
+  console.log("  bands      home→abyssal named at the right ranges · curve never flattens");
+}
+
+// ── 20. fewer wells, and bigger ones further out ─────────────────────────
+/* They used to sit in three chunks out of five at one fixed size, which makes
+   them terrain rather than hazards — and terrain frightens nobody. */
+{
+  const { cf } = boot("?debug=1&seed=445566");
+  cf.start("survey", 1);
+
+  function survey(ring) {
+    let wells = 0, chunks = 0, big = 0, reach = 0;
+    for (let i = 0; i < 200; i++) {
+      const a = (i / 200) * Math.PI * 2;
+      const c = cf.chunk(Math.round(Math.cos(a) * ring), Math.round(Math.sin(a) * ring));
+      chunks++;
+      for (const h of c.hazards) {
+        wells++; reach += h.reach;
+        if (h.k >= 1.8) big++;
+      }
+    }
+    return { per: wells / chunks, big, avgReach: wells ? reach / wells : 0 };
+  }
+
+  const near = survey(3), far = survey(60);   // ~7.8k out vs ~156k, in DEEP
+  check(near.per < 0.45,
+        "home still carries " + near.per.toFixed(2) + " wells a chunk — too dense");
+  check(near.per > 0.05, "home has essentially no wells at all");
+  check(far.avgReach > near.avgReach * 1.4,
+        "wells do not grow with range (" + Math.round(near.avgReach) + " → " +
+        Math.round(far.avgReach) + ")");
+  check(far.big > 0, "nothing supermassive exists anywhere");
+  check(near.big === 0, "a supermassive well spawned near home");
+  console.log("  wells      " + near.per.toFixed(2) + "/chunk at home vs " +
+              far.per.toFixed(2) + " deep · reach " + Math.round(near.avgReach) +
+              " → " + Math.round(far.avgReach) + " · " + far.big + " supermassive");
+}
+
+// ── 21. a well that can hold you says so first ───────────────────────────
+/* The single most important readability fix in the phase. A well that kills you
+   without warning is unfair; one that warns you is a decision. The comparison is
+   honest physics, so a refitted drive must move the threshold — that is also the
+   clearest demonstration in the game of what the drive upgrade bought. */
+{
+  const { cf } = boot("?debug=1&seed=778899");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const lv = cf.live();
+  const me = lv.ships[0];
+
+  // Open space: nothing to say.
+  now += 1000 / 60; cf.step();
+  check(!surv.warn, "a warning fired in empty space");
+
+  /* A supermassive hole off the bow, at a distance that is nowhere near its
+     kill radius of 88 — the point of the warning is that it arrives while there
+     is still a long way to fall and something you can do about it. */
+  lv.hazards.length = 0;
+  lv.hazards.push({ kind: "hole", x: me.x + 700, y: me.y, kill: 88, reach: 1690,
+                    mass: 1.22e7 * Math.pow(2.6, 2.6), soft: 343, k: 2.6,
+                    fill: null, size: "large", phase: 0 });
+  me.invuln = 999;                       // this is about the warning, not dying
+  now += 1000 / 60; cf.step();
+  check(!!surv.warn, "a supermassive hole 700 units away raised no warning");
+  check(700 > 88 * 4, "the test sat inside the kill radius, so it proves nothing");
+  if (surv.warn) {
+    check(surv.warn.big === true, "a supermassive well did not read as one");
+    check(surv.warn.kind === "hole", "the warning named the wrong kind");
+    check(surv.warn.ratio > 0, "the warning carried no severity");
+    check(surv.warn.bearing >= 0 && surv.warn.bearing < 360,
+          "the warning bearing is not a compass bearing: " + surv.warn.bearing);
+  }
+
+  // A better drive escapes what a stock one cannot, so the same well is less
+  // frightening to a refitted ship. Buy the whole track and check it eased.
+  const before = surv.warn ? surv.warn.ratio : 0;
+  surv.salvage = 100000;
+  while (cf.buy("thrust")) { /* every tier */ }
+  now += 1000 / 60; cf.step();
+  const after = surv.warn ? surv.warn.ratio : 0;
+  check(after < before,
+        "a fully refitted drive did not ease the warning (" +
+        before.toFixed(2) + " → " + after.toFixed(2) + ")");
+  console.log("  warnings   supermassive well warns with room to act · " +
+              "ratio " + before.toFixed(2) + " → " + after.toFixed(2) + " once refitted");
+}
+
+// ── 22. the camera sits back, and the setting sticks ─────────────────────
+{
+  const { cf } = boot("?debug=1&seed=321");
+  cf.start("survey", 1);
+  check(Math.abs(cf.zoom() - 0.72) < 0.001,
+        "Survey did not default to the standard pull-back, got " + cf.zoom());
+  check(Math.abs(cf.live().camera.scale - cf.zoom()) < 0.001,
+        "the camera ignored the survey zoom");
+
+  const first = cf.zoom();
+  cf.cycleZoom();
+  check(cf.zoom() !== first, "cycling the zoom did nothing");
+  const chosen = cf.zoom();
+  check(Math.abs(cf.live().camera.scale - chosen) < 0.001,
+        "the camera did not follow the new zoom immediately");
+
+  // Five steps returns to where it started, and the choice survives a reboot.
+  for (let i = 0; i < 4; i++) cf.cycleZoom();
+  check(Math.abs(cf.zoom() - first) < 0.001, "the zoom list does not cycle cleanly");
+  cf.cycleZoom();
+  const kept = cf.zoom();
+  const again = bootKeepingStorage("?debug=1&seed=321");
+  again.cf.start("survey", 1);
+  check(Math.abs(again.cf.zoom() - kept) < 0.001,
+        "the zoom choice did not survive a reboot");
+
+  // Every other mode is untouched at 1:1.
+  const other = boot("?debug=1");
+  other.cf.start("royale", 2);
+  check(Math.abs(other.cf.live().camera.scale - 1) < 0.001,
+        "the survey zoom leaked into Battle Royale");
+  console.log("  camera     0.72 by default · five steps · persists · other modes still 1:1");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

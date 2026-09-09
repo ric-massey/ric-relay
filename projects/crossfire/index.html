@@ -1494,6 +1494,42 @@
      through a map far bigger than the screen; online, that is the ship owned or
      spectated by this machine. */
   let cam = { x: 0, y: 0, scale: 1, rot: 0, goalScale: 1 };
+
+  /* ── how far out Survey sits ──────────────────────────────────────────────
+     Every other mode is drawn at 1:1 and always has been. Survey should not be:
+     its wells are now large enough that at 1:1 one fills the screen before you
+     have any chance to read it, and a hazard you meet at the edge of the frame
+     is a hazard you cannot plan around. Pulled back to 0.72 by default, which
+     roughly doubles the ground you can see.
+
+     It is a setting rather than a constant because how far back you want to sit
+     is a preference and not a fact — and because ship size is going to feed
+     into this later, so the number needs a home either way. */
+  const SURVEY_ZOOMS = [
+    { s: 1.00, name: "CLOSE" },
+    { s: 0.86, name: "NEAR" },
+    { s: 0.72, name: "STANDARD" },
+    { s: 0.58, name: "WIDE" },
+    { s: 0.46, name: "DISTANT" }
+  ];
+  let surveyZoom = 0.72;
+
+  function surveyZoomName() {
+    const z = SURVEY_ZOOMS.reduce((a, b) =>
+      Math.abs(b.s - surveyZoom) < Math.abs(a.s - surveyZoom) ? b : a);
+    return z.name;
+  }
+  function cycleSurveyZoom() {
+    const i = SURVEY_ZOOMS.findIndex(z => Math.abs(z.s - surveyZoom) < 0.01);
+    surveyZoom = SURVEY_ZOOMS[(i + 1) % SURVEY_ZOOMS.length].s;
+    if (mode && mode.survey) cam.scale = surveyZoom;
+    try { localStorage.setItem("crossfire.survey.zoom", String(surveyZoom)); }
+    catch (_) {}
+  }
+  try {
+    const z = parseFloat(localStorage.getItem("crossfire.survey.zoom"));
+    if (z >= 0.4 && z <= 1.2) surveyZoom = z;
+  } catch (_) {}
   let watching = 0;
   let botPick = 0;        // bots to add on the setup screen
   let titlePick = 0;      // which lane the front page has focus on
@@ -1876,7 +1912,7 @@
 
     // Frame the camera before the first frame is drawn, or it visibly slides
     // in from the corner of the map.
-    cam.scale = mode.camera ? 1 : SCREEN_W / arena.w;
+    cam.scale = mode.camera ? (mode.survey ? surveyZoom : 1) : SCREEN_W / arena.w;
     if (mode.camera) {
       cam.x = ships[0].x; cam.y = ships[0].y;
       cam.rot = royaleCameraRotates ? -Math.PI / 2 - ships[0].a : 0;
@@ -3855,18 +3891,33 @@
      decision with two sides rather than a formality. It is a smooth curve and
      never a wall: there is no line you cross where the sector turns on you, and
      home is always the quiet end. */
-  const DANGER_FULL = 90000;    // where the curve tops out
-  const dangerAt = (x, y) => Math.min(1, Math.hypot(x, y) / DANGER_FULL);
-  const DANGER_BANDS = [
-    [0.12, "QUIET",     SALVAGE],
-    [0.32, "OPEN",      "#ffe56d"],
-    [0.55, "UNSETTLED", "#ffcb42"],
-    [0.78, "HOSTILE",   "#ff9d5c"],
-    [1.01, "DEEP",      DRONE_COLOUR]
+  /* Distance from the origin is the difficulty dial, and these are the numbers
+     behind it. The curve inside a band is smooth — nothing switches on, there is
+     no seam anywhere — but the bands are named, because "UNSETTLED" is something
+     a pilot can make a decision about and 0.47 is not.
+
+     It runs to 320,000 units and then keeps going: abyssal space returns more
+     than 1, so everything downstream that multiplies by it gets worse forever
+     rather than flattening out at the edge of the table. */
+  const BANDS = [
+    { to:   6000, name: "HOME",      colour: "#6dffbf" },
+    { to:  25000, name: "OPEN",      colour: "#ffe56d" },
+    { to:  60000, name: "UNSETTLED", colour: "#ffcb42" },
+    { to: 140000, name: "HOSTILE",   colour: "#ff9d5c" },
+    { to: 320000, name: "DEEP",      colour: "#ff6d8f" },
+    { to: Infinity, name: "ABYSSAL", colour: "#ff4d6d" }
   ];
-  function dangerBand(d) {
-    for (const b of DANGER_BANDS) if (d < b[0]) return { name: b[1], colour: b[2] };
-    return { name: "DEEP", colour: DRONE_COLOUR };
+  const DANGER_FULL = 320000;
+  // Soft-capped rather than clamped: past the last band it keeps climbing, just
+  // slowly, so the abyss is always worse than the deep.
+  function dangerAt(x, y) {
+    const d = Math.hypot(x, y) / DANGER_FULL;
+    return d <= 1 ? d : 1 + Math.min(0.5, (d - 1) * 0.35);
+  }
+  function bandAt(x, y) {
+    const d = Math.hypot(x, y);
+    for (const b of BANDS) if (d < b.to) return b;
+    return BANDS[BANDS.length - 1];
   }
 
   /* ── the refit ────────────────────────────────────────────────────────────
@@ -4130,16 +4181,39 @@
 
   const chunkKey = (cx, cy) => cx + "," + cy;
 
-  function makeStar(x, y, R) {
-    const s = HAZARD.star;
-    return { kind: "star", x, y, kill: s.kill, reach: s.reach, mass: s.mass,
-             soft: s.soft, fill: s.fill, size: "sun", phase: R() * Math.PI * 2 };
+  /* Wells come in sizes now. `k` scales the geometry and the mass together, but
+     not at the same rate: radius goes as k and mass as k^2.6, so a big well is
+     not merely a wide one — the pull at its edge climbs faster than its reach
+     does, which is what makes a supermassive one a region of the map you plan
+     around instead of a wider version of the same nuisance.
+
+     Sizes are handed out by band, so the abyss has wells that will take a stock
+     ship off the board and home never does. */
+  function wellScale(deep, R) {
+    /* A spread at every range, sliding upward. The ramp is steep on purpose:
+       the plan puts supermassive wells — ones a stock drive cannot climb out of
+       — in the DEEP band from 140,000 units, and at a gentler slope they never
+       actually arrived anywhere on the map. Home lands near 0.85, the deep band
+       crosses 1.8, and the abyss runs past 3. */
+    const base = 0.8 + deep * 2.2;
+    return base * (0.9 + R() * 0.35);
   }
-  function makeHole(x, y, big, R) {
+
+  function makeStar(x, y, R, k) {
+    const s = HAZARD.star;
+    k = k || 1;
+    const m = Math.pow(k, 2.6);
+    return { kind: "star", x, y, kill: s.kill * k, reach: s.reach * k,
+             mass: s.mass * m, soft: s.soft * k, fill: s.fill, size: "sun",
+             k, phase: R() * Math.PI * 2 };
+  }
+  function makeHole(x, y, big, R, k) {
     const s = big ? HAZARD.hole.large : HAZARD.hole.small;
-    return { kind: "hole", x, y, kill: s.kill, reach: s.reach, mass: s.mass,
-             soft: s.soft, fill: null, size: big ? "large" : "small",
-             phase: R() * Math.PI * 2 };
+    k = k || 1;
+    const m = Math.pow(k, 2.6);
+    return { kind: "hole", x, y, kill: s.kill * k, reach: s.reach * k,
+             mass: s.mass * m, soft: s.soft * k, fill: null,
+             size: big ? "large" : "small", k, phase: R() * Math.PI * 2 };
   }
 
   /* ── one chunk ────────────────────────────────────────────────────────────
@@ -4172,20 +4246,28 @@
     const deep = dangerAt(ox + CHUNK / 2, oy + CHUNK / 2);
 
     if (!home) {
-      const roll = R() * (1 - deep * 0.34);   // wells get commoner further out
-      if (roll < 0.07) {
-        const p = spot(760);
-        out.hazards.push(makeStar(p.x - 150, p.y, R), makeStar(p.x + 150, p.y, R));
-      } else if (roll < 0.14) {
-        const p = spot(900);
-        out.hazards.push(makeHole(p.x - 210, p.y - 60, true, R),
-                         makeHole(p.x + 210, p.y + 60, true, R));
-      } else if (roll < 0.42) {
-        const p = spot(500);
-        out.hazards.push(makeStar(p.x, p.y, R));
-      } else if (roll < 0.60) {
+      /* Roughly a fifth of chunks carry a well, where it used to be three in
+         five. They were dense enough to read as scenery you steer around all
+         day; a hazard you meet constantly is terrain, and terrain does not
+         frighten anybody. Rare and enormous beats frequent and survivable. */
+      const roll = R();
+      const k = () => wellScale(deep, R);
+      if (roll < 0.025) {
+        const p = spot(900 * (1 + deep));
+        const kk = k();
+        out.hazards.push(makeStar(p.x - 190 * kk, p.y, R, kk),
+                         makeStar(p.x + 190 * kk, p.y, R, kk));
+      } else if (roll < 0.045) {
+        const p = spot(1000 * (1 + deep));
+        const kk = k();
+        out.hazards.push(makeHole(p.x - 250 * kk, p.y - 70 * kk, true, R, kk),
+                         makeHole(p.x + 250 * kk, p.y + 70 * kk, true, R, kk));
+      } else if (roll < 0.135) {
         const p = spot(600);
-        out.hazards.push(makeHole(p.x, p.y, R() < 0.5, R));
+        out.hazards.push(makeStar(p.x, p.y, R, k()));
+      } else if (roll < 0.21) {
+        const p = spot(700);
+        out.hazards.push(makeHole(p.x, p.y, R() < 0.45, R, k()));
       }
       if (R() < 0.16) {
         const p = spot(420);
@@ -4285,8 +4367,9 @@
       }
     } else if (site.key === "core") {
       out.hazards.length = 0;
-      out.hazards.push(makeStar(site.x - 340, site.y - 90, R),
-                       makeStar(site.x + 340, site.y + 90, R));
+      const bk = wellScale(dangerAt(site.x, site.y), R);
+      out.hazards.push(makeStar(site.x - 340 * bk, site.y - 90 * bk, R, bk),
+                       makeStar(site.x + 340 * bk, site.y + 90 * bk, R, bk));
     } else if (site.key === "lens") {
       out.hazards.length = 0;                 // a rogue world has no sun, ever
       out.planets.push({ x: site.x + 300, y: site.y, r: 190, rogue: true });
@@ -4565,6 +4648,7 @@
       scan: { charge: 1, reach: 0, flash: 0 },
       echoes: [],
       target: null,
+      warn: null,
       /* Pins the player drops on the chart. Endless space has no place names,
          so the only way anywhere gets one is if you say so — this is how a
          sector stops being uniform and starts having a "back at the twin suns".
@@ -4902,7 +4986,10 @@
      movement instead of six. */
   function surveyMotes(dt) {
     const me = ships[0];
-    const reach = shipRadius() + 15 * U;
+    /* A forgiving grab. Salvage is the reward for work you have already done —
+       breaking the rock was the game, and threading a mote afterwards is not —
+       so the pickup is wider than the hull rather than exactly it. */
+    const reach = shipRadius() + 30 * U;
     const beam = unlocked("tractor") ? SURVEY_TRACTOR * U : 0;
     for (let i = surv.motes.length - 1; i >= 0; i--) {
       const m = surv.motes[i];
@@ -5353,6 +5440,77 @@
     saveSurveyBook();
   }
 
+  /* ── the warning ──────────────────────────────────────────────────────────
+     A well that kills you without warning is unfair. A well that warns you is a
+     decision, and that is the whole difference between a hazard and a trap.
+
+     What is compared is honest physics: the pull where you are actually sitting
+     against what your own drive can push. A ship with a refitted engine can sit
+     somewhere a stock one cannot leave, so the same well warns different pilots
+     at different distances — which is exactly right, and is also the clearest
+     demonstration in the game of what the drive upgrade bought. */
+  const WARN_LEVELS = [
+    [1.00, "CANNOT ESCAPE", "#ff4d6d"],
+    [0.80, "PULL EXCEEDS DRIVE", "#ff6d8f"],
+    [0.50, "HEAVY PULL", "#ff9d5c"]
+  ];
+
+  function surveyWarning() {
+    const me = ships[0];
+    if (!me || !me.alive) { surv.warn = null; return; }
+    const escape = THRUST * (me.thrustMul || 1) * U;
+
+    let worst = null;
+    for (const h of hazards) {
+      const dx = h.x - me.x, dy = h.y - me.y;
+      const d2 = dx * dx + dy * dy;
+      // Look further than the well reaches, so the warning arrives before the
+      // pull does rather than at the same moment.
+      if (d2 > (h.reach * 2.1) ** 2) continue;
+      const a = h.mass / (d2 + h.soft * h.soft);
+      if (!worst || a > worst.a) {
+        worst = { h, a, d: Math.sqrt(d2) || 1 };
+      }
+    }
+    if (!worst) { surv.warn = null; return; }
+
+    const ratio = worst.a / escape;
+    const level = WARN_LEVELS.find(l => ratio >= l[0]);
+    if (!level) { surv.warn = null; return; }
+    surv.warn = {
+      text: level[1], colour: level[2], ratio,
+      kind: worst.h.kind, big: worst.h.k >= 1.8,
+      x: worst.h.x, y: worst.h.y, r: worst.h.reach,
+      bearing: bearingTo(me, worst.h)
+    };
+  }
+
+  /* The warning, on the world: a ring round the thing doing it, so the words on
+     the HUD have somewhere to point. */
+  function drawWarning() {
+    const w = surv.warn;
+    if (!w) return;
+    const beat = 0.5 + 0.5 * Math.sin(clock * (w.ratio >= 1 ? 7 : 4));
+    glow(w.colour, 2, 0.35 + beat * 0.5, () => {
+      ctx.beginPath();
+      ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    if (w.ratio >= 0.8) {
+      // Ticks around the rim at the two worse levels, so a glance tells them
+      // apart without reading anything.
+      glow(w.colour, 1.6, beat * 0.8, () => {
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2 + clock * 0.3;
+          ctx.beginPath();
+          ctx.moveTo(w.x + Math.cos(a) * w.r, w.y + Math.sin(a) * w.r);
+          ctx.lineTo(w.x + Math.cos(a) * (w.r + 34), w.y + Math.sin(a) * (w.r + 34));
+          ctx.stroke();
+        }
+      });
+    }
+  }
+
   /* ── the background ───────────────────────────────────────────────────────
      Survey had no stars behind it, which is why the sector could look like a
      black sheet with objects on it however much was in front of you. Three
@@ -5552,6 +5710,7 @@
     surveyParts(dt);
     surveyMotes(dt);
     surveyStations();
+    surveyWarning();
     updatePickups(dt);
 
     surv.scan.charge = Math.min(1, surv.scan.charge + dt / SURVEY_SCAN);
@@ -6008,6 +6167,7 @@
     for (const pt of surv.parts) drawPart(pt);
     for (const p of pickups) if (onScreen(p.x, p.y, 30)) drawPickup(p);
     drawSalvage();
+    drawWarning();
     drawEchoes();
     drawSurveyShots();
   }
@@ -6041,8 +6201,8 @@
       scanReach: scanRange(),
       pins: surv.pins,
       danger: dangerAt(ships[0] ? ships[0].x : 0, ships[0] ? ships[0].y : 0),
-      dangerBand: dangerBand(dangerAt(ships[0] ? ships[0].x : 0,
-                                      ships[0] ? ships[0].y : 0)),
+      dangerBand: bandAt(ships[0] ? ships[0].x : 0, ships[0] ? ships[0].y : 0),
+      warn: surv.warn,
       /* `snap` is a world-space radius the chart works out from its own zoom —
          the same finger-width on screen is a very different distance when the
          map is zoomed out, and the interface is the only thing that knows the
@@ -6513,7 +6673,7 @@
     seedMotes();
     rocks = []; bullets = []; bits = []; killFeed = [];
     watching = net.seat;
-    cam.scale = mode.camera ? 1 : SCREEN_W / arena.w;
+    cam.scale = mode.camera ? (mode.survey ? surveyZoom : 1) : SCREEN_W / arena.w;
     cam.x = ships[net.seat].x; cam.y = ships[net.seat].y;
     cam.rot = mode.camera && royaleCameraRotates
       ? -Math.PI / 2 - ships[net.seat].a
@@ -8723,9 +8883,14 @@
 
     tapButton("BATTLE ROYALE CAMERA: " +
               (royaleCameraRotates ? "ROTATING" : "FIXED"),
-              SCREEN_W / 2, 132, 540, 46, "#ffe56d", toggleRoyaleCamera);
+              300, 132, 380, 46, "#ffe56d", toggleRoyaleCamera);
     text(royaleCameraRotates ? "Ship stays pointed up." : "Map stays north-up.",
-         SCREEN_W / 2, 170, 16, "#ffcb42");
+         300, 170, 16, "#ffcb42");
+
+    tapButton("SURVEY ZOOM: " + surveyZoomName(),
+              700, 132, 380, 46, "#a08cff", cycleSurveyZoom);
+    text("How far back the camera sits out there.",
+         700, 170, 16, "#ffcb42");
 
     text("KEYBOARD CONTROLS", SCREEN_W / 2, 218, 18, "#ffe56d");
 
@@ -8886,7 +9051,9 @@
 
     tapButton("BATTLE ROYALE CAMERA: " +
               (royaleCameraRotates ? "ROTATING" : "FIXED"),
-              SCREEN_W / 2, 410, 560, 40, "#ffe56d", toggleRoyaleCamera);
+              300, 410, 380, 40, "#ffe56d", toggleRoyaleCamera);
+    tapButton("SURVEY ZOOM: " + surveyZoomName(),
+              700, 410, 380, 40, "#a08cff", cycleSurveyZoom);
 
     tapButton("SWAP SIDES", 300, 458, 280, 40, "#ffe56d", padMirror);
     tapButton("RESET PHONE CONTROLS", 700, 458, 280, 40, "#ffcb42", padReset);
@@ -10501,6 +10668,10 @@
       objective: () => objective(),
       scanReach: () => scanRange(),
       surveyView: () => surveyState(),
+      zoom: () => surveyZoom,
+      bandAt: (x, y) => bandAt(x, y),
+      dangerAt: (x, y) => dangerAt(x, y),
+      cycleZoom: () => cycleSurveyZoom(),
       hud: () => surveyHUD
     };
   }

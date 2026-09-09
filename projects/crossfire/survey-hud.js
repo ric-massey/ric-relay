@@ -367,6 +367,7 @@
     drawPanelChart(st);
     drawCounters(st);
     drawObjective(st);
+    drawWarnBand(st);
     drawStrip(st);
     drawToasts();
   };
@@ -386,6 +387,45 @@
      rest of it is: a button you have to press to be told what you are doing is a
      button doing the interface's job. The scan is for what is *near* you now;
      this is for where you are going. */
+  /* The gravity warning. Loud, central, and above the objective — it is the one
+     thing on this HUD that is about the next four seconds rather than the next
+     four minutes, so it takes the position the eye goes to first and it is the
+     only element allowed to move. */
+  function drawWarnBand(st) {
+    const w = st.warn;
+    if (!w) return;
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    const beat = 0.55 + 0.45 * Math.abs(Math.sin(Date.now() / (w.ratio >= 1 ? 160 : 280)));
+
+    /* A border that closes in, rather than a box in the middle: the danger is
+       out there, and framing the whole view says so without covering any of it.
+       Nested strokes rather than a radial gradient — a gradient is an
+       allocation every frame for something six rectangles do, and this module
+       already refuses shadowBlur on the same grounds. */
+    ctx.save();
+    ctx.strokeStyle = w.colour;
+    const bands = 6;
+    for (let i = 0; i < bands; i++) {
+      ctx.globalAlpha = (0.16 + beat * 0.2 * Math.min(1, w.ratio)) *
+                        (1 - i / bands) * 0.8;
+      ctx.lineWidth = 3;
+      const inset = 2 + i * 7;
+      ctx.strokeRect(inset, inset, SCREEN_W - inset * 2, SCREEN_H - inset * 2);
+    }
+    ctx.restore();
+
+    const y = SCREEN_H / 2 - 132;
+    label(w.text, SCREEN_W / 2, y, SIZE.head, w.colour, "center", beat, "0.16em");
+    label((w.big ? "SUPERMASSIVE " : "") +
+          (w.kind === "hole" ? "BLACK HOLE" : "STAR") +
+          "   ·   BEARING " + String(w.bearing).padStart(3, "0"),
+          SCREEN_W / 2, y + 24, SIZE.cap, w.colour, "center", 0.85, "0.1em");
+    if (w.ratio >= 1) {
+      label("BURN AWAY — YOUR DRIVE WILL NOT LIFT YOU OUT",
+            SCREEN_W / 2, y + 46, SIZE.cap, w.colour, "center", beat);
+    }
+  }
+
   function drawObjective(st) {
     const o = st.objective;
     if (!o) return;
