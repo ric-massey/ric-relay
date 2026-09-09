@@ -189,10 +189,28 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
           "seed " + seed + ": two landmarks are only " + closest.toFixed(3) +
           " rad apart — the ladder is a corridor");
 
-    const near = surv.landmarks.find(l => l.key === "graveyard");
-    const far = surv.landmarks.find(l => l.key === "node-01");
-    check(Math.hypot(near.x, near.y) < 20000, "seed " + seed + ": the first landmark is too far");
-    check(Math.hypot(far.x, far.y) > 60000, "seed " + seed + ": the last landmark is too close");
+    /* The ladder's rungs are dealt per world now, so no individual landmark can
+       be pinned to a distance any more — the graveyard is near in one sector
+       and eight hours out in the next. What must still hold is the *shape*: a
+       first rung close enough to reach on an early flight, a last rung that is
+       an expedition, and the Leviathan always standing on that last rung
+       because it is the finale and the yard's last part is inside it. */
+    const byDist = surv.landmarks
+      .map(l => ({ key: l.key, d: Math.hypot(l.x, l.y) }))
+      .sort((a, b) => a.d - b.d);
+    check(byDist[0].d < 34000,
+          "seed " + seed + ": the nearest landmark is " + Math.round(byDist[0].d) +
+          " units out — nothing is reachable early");
+    check(byDist[byDist.length - 1].d > 45000,
+          "seed " + seed + ": the furthest landmark is only " +
+          Math.round(byDist[byDist.length - 1].d) + " units out");
+    check(byDist[byDist.length - 1].key === "leviathan",
+          "seed " + seed + ": the Leviathan is not the last rung, " +
+          byDist[byDist.length - 1].key + " is");
+    for (let k = 1; k < byDist.length; k++) {
+      check(byDist[k].d > byDist[k - 1].d * 1.02,
+            "seed " + seed + ": two rungs sit on top of each other");
+    }
 
     /* Purity: the same chunk built twice must be identical, and two different
        chunks must not be — an unmixed seed makes rows of near-identical
@@ -521,8 +539,8 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               Math.round(deepest) + " units)");
 }
 
-// ── 8. salvage, the hold, and the refit ───────────────────────────────────
-/* The numbers track, end to end: salvage goes in, the hold caps it, the station
+// ── 8. cash, the hold, and the refit ──────────────────────────────────────
+/* The numbers track, end to end: cash goes in, the hold caps it, the station
    spends it, and the ship that comes out is measurably better than the one that
    went in. Each step is checked rather than the total, because a progression
    that silently stops paying out is the failure players actually hit. */
@@ -533,42 +551,42 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const lv = cf.live();
   const me = lv.ships[0];
 
-  check(surv.salvage === 0, "a fresh sector started with salvage in the hold");
+  check(surv.cash === 0, "a fresh sector started with cash in the hold");
 
   // Fill the hold past its cap and prove it stops rather than overflowing.
-  const before = surv.salvage;
+  const before = surv.cash;
   for (let i = 0; i < 400; i++) {
     surv.motes.push({ x: me.x, y: me.y, vx: 0, vy: 0, spin: 0, life: 90 });
     now += 1000 / 60; cf.step();
   }
-  check(surv.salvage > before, "collecting salvage did not add any");
+  check(surv.cash > before, "collecting cash did not add any");
   check(surv.t.laden === true, "a full hold did not register");
-  const capped = surv.salvage;
+  const capped = surv.cash;
 
   surv.motes.push({ x: me.x, y: me.y, vx: 0, vy: 0, spin: 0, life: 90 });
   now += 1000 / 60; cf.step();
-  check(surv.salvage === capped,
-        "the hold took " + (surv.salvage - capped) + " past its own cap");
+  check(surv.cash === capped,
+        "the hold took " + (surv.cash - capped) + " past its own cap");
 
   // The refit: it must cost, and it must change the ship.
   const hullBefore = me.maxHull, thrustBefore = me.thrustMul || 1;
-  const purse = surv.salvage;
+  const purse = surv.cash;
   check(purse >= 40, "the hold cap is too small to buy anything — test is stale");
   check(cf.buy("hull") === true, "could not buy a hull tier with a full hold");
-  check(surv.salvage < purse, "buying a tier did not spend any salvage");
+  check(surv.cash < purse, "buying a tier did not spend any cash");
   check(me.maxHull > hullBefore,
         "a hull tier did not raise max hull (" + hullBefore + " → " + me.maxHull + ")");
-  surv.salvage = 500;                    // top the hold up between purchases
+  surv.cash = 500;                    // top the hold up between purchases
   check(cf.buy("thrust") === true, "could not buy a drive tier");
   check((me.thrustMul || 1) > thrustBefore, "a drive tier did not raise thrust");
   check(surv.t.refitted === true, "refitting did not register");
 
   // And it must refuse when the hold is empty.
-  surv.salvage = 0;
+  surv.cash = 0;
   check(cf.buy("hull") === false, "bought a tier with an empty hold");
 
   // A track runs out at its last tier rather than taking money forever.
-  surv.salvage = 100000;
+  surv.cash = 100000;
   let bought = 0;
   while (cf.buy("hold")) bought++;
   check(bought <= 3, "the cargo track sold " + bought + " tiers past its cap");
@@ -596,8 +614,8 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   }
   check(cf.unlocked("tractor") && cf.unlocked("warp") && cf.unlocked("cloak"),
         "a full almanac did not hand over every verb");
-  // No amount of salvage buys one.
-  surv.salvage = 1e6;
+  // No amount of cash buys one.
+  surv.cash = 1e6;
   check(!cf.buy("tractor"), "a verb was purchasable at a station");
   console.log("  verbs      three unlocks, at 6/12/18 entries, none for sale");
 }
@@ -621,7 +639,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   surv.drones.push({ x: me.x + 400, y: me.y, vx: 0, vy: 0, a: 0, home: cache,
                      post: { x: me.x + 400, y: me.y }, hp: 2, cool: 99,
                      awake: false, hit: 0 });
-  const purse = surv.salvage;
+  const purse = surv.cash;
   for (let i = 0; i < 30; i++) { now += 1000 / 60; cf.step(); }
   check(surv.caches.includes(cache), "a guarded cache opened anyway");
   check(cache.sealed === true, "a guarded cache did not read as sealed");
@@ -632,7 +650,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   for (let i = 0; i < 30; i++) { now += 1000 / 60; cf.step(); }
   check(!surv.caches.includes(cache), "an unguarded cache stayed shut");
   check(surv.t.looted === true, "opening a cache did not register");
-  check(surv.motes.length > 0 || surv.salvage > purse,
+  check(surv.motes.length > 0 || surv.cash > purse,
         "an opened cache paid out nothing");
 
   /* The Leviathan. Fly to the sector's own copy and prove two things: its hull
@@ -916,7 +934,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(surv.echoes.length === 0, "scan returns never faded");
 
   // And the refit reaches further.
-  surv.salvage = 5000;
+  surv.cash = 5000;
   check(cf.buy("scanner") === true, "could not buy a scanner tier");
   check(cf.scanReach() > reach0,
         "a scanner tier did not extend the scan (" + reach0 + " → " + cf.scanReach() + ")");
@@ -963,21 +981,29 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const { cf } = boot("?debug=1&seed=13579");
   cf.start("survey", 1);
 
+  /* Distinct chunks. Walking a ring by angle and rounding lands on the same
+     handful of coordinates over and over at small radii — a near sample was
+     counting eight chunks a hundred and sixty times, so one unlucky cache near
+     home outweighed a whole hostile ring. Dedupe, then compare per-chunk. */
   function sample(ring) {
-    let guards = 0, hulks = 0, fields = 0, chunks = 0;
-    for (let i = 0; i < 160; i++) {
-      const a = (i / 160) * Math.PI * 2;
+    const seen = new Set();
+    let guards = 0, hulks = 0, fields = 0;
+    for (let i = 0; i < ring * 12; i++) {
+      const a = (i / (ring * 12)) * Math.PI * 2;
       const cx = Math.round(Math.cos(a) * ring), cy = Math.round(Math.sin(a) * ring);
+      const k = cx + "," + cy;
+      if (seen.has(k)) continue;
+      seen.add(k);
       const c = cf.chunk(cx, cy);
-      chunks++;
       for (const cache of c.caches) guards += cache.guards.length;
       hulks += c.hulks.length;
       fields += c.fields.length;
     }
-    return { guards, hulks, fields, chunks };
+    const n = seen.size;
+    return { guards: guards / n, hulks: hulks / n, fields: fields / n, chunks: n };
   }
 
-  const near = sample(2);      // ~5,000 units out
+  const near = sample(4);      // ~10,000 units out
   const far  = sample(32);     // ~83,000 units out
 
   check(far.guards > near.guards,
@@ -993,8 +1019,9 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   // And home has to stay quiet, or the curve is a wall rather than a slope.
   check(near.fields === 0, "an asteroid field spawned in the home ring");
   check(cf.chunk(0, 0).hazards.length === 0, "the home chunk grew a hazard");
-  console.log("  danger     home " + near.guards + " sentries / " + near.fields +
-              " fields · deep " + far.guards + " sentries / " + far.fields + " fields");
+  console.log("  danger     per chunk — home " + near.guards.toFixed(2) + " sentries / " +
+              near.fields.toFixed(2) + " fields · deep " + far.guards.toFixed(2) +
+              " / " + far.fields.toFixed(2));
 }
 
 // ── 19. deep space is a number, and the curve keeps climbing ─────────────
@@ -1032,32 +1059,48 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const { cf } = boot("?debug=1&seed=445566");
   cf.start("survey", 1);
 
-  function survey(ring) {
-    let wells = 0, chunks = 0, big = 0, reach = 0;
-    for (let i = 0; i < 200; i++) {
-      const a = (i / 200) * Math.PI * 2;
-      const c = cf.chunk(Math.round(Math.cos(a) * ring), Math.round(Math.sin(a) * ring));
-      chunks++;
-      for (const h of c.hazards) {
+  /* Well abundance is part of a world's character now, so a single seed proves
+     nothing — a WELL-RIDDLED sector is *supposed* to be thick with them, near
+     home included. What has to hold is the average across worlds, and that the
+     wells still grow with range inside any one of them. */
+  function survey(cfx, ring) {
+    const seen = new Set();
+    let wells = 0, big = 0, reach = 0;
+    for (let i = 0; i < ring * 12; i++) {
+      const a = (i / (ring * 12)) * Math.PI * 2;
+      const cx = Math.round(Math.cos(a) * ring), cy = Math.round(Math.sin(a) * ring);
+      const k = cx + "," + cy;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      for (const h of cfx.chunk(cx, cy).hazards) {
         wells++; reach += h.reach;
         if (h.k >= 1.8) big++;
       }
     }
-    return { per: wells / chunks, big, avgReach: wells ? reach / wells : 0 };
+    return { per: wells / seen.size, big, avgReach: wells ? reach / wells : 0 };
   }
 
-  const near = survey(3), far = survey(60);   // ~7.8k out vs ~156k, in DEEP
-  check(near.per < 0.45,
-        "home still carries " + near.per.toFixed(2) + " wells a chunk — too dense");
-  check(near.per > 0.05, "home has essentially no wells at all");
-  check(far.avgReach > near.avgReach * 1.4,
-        "wells do not grow with range (" + Math.round(near.avgReach) + " → " +
-        Math.round(far.avgReach) + ")");
-  check(far.big > 0, "nothing supermassive exists anywhere");
-  check(near.big === 0, "a supermassive well spawned near home");
-  console.log("  wells      " + near.per.toFixed(2) + "/chunk at home vs " +
-              far.per.toFixed(2) + " deep · reach " + Math.round(near.avgReach) +
-              " → " + Math.round(far.avgReach) + " · " + far.big + " supermassive");
+  let nearPer = 0, nearReach = 0, farReach = 0, farBig = 0, nearBig = 0, n = 0;
+  for (const seed of [445566, 1, 2, 999, 31337, 8675309]) {
+    const w = boot("?debug=1&seed=" + seed);
+    w.cf.start("survey", 1);
+    const near = survey(w.cf, 4), far = survey(w.cf, 60);
+    nearPer += near.per; nearReach += near.avgReach; farReach += far.avgReach;
+    farBig += far.big; nearBig += near.big; n++;
+    check(far.avgReach > near.avgReach * 1.2,
+          "seed " + seed + ": wells do not grow with range (" +
+          Math.round(near.avgReach) + " → " + Math.round(far.avgReach) + ")");
+  }
+  nearPer /= n; nearReach /= n; farReach /= n;
+
+  check(nearPer < 0.5,
+        "home averages " + nearPer.toFixed(2) + " wells a chunk across worlds — too dense");
+  check(nearPer > 0.05, "home has essentially no wells in any world");
+  check(farBig > 0, "nothing supermassive exists in any world");
+  check(nearBig === 0, "a supermassive well spawned near home");
+  console.log("  wells      " + nearPer.toFixed(2) + "/chunk at home across " + n +
+              " worlds · reach " + Math.round(nearReach) + " → " + Math.round(farReach) +
+              " · " + farBig + " supermassive found deep, " + nearBig + " at home");
 }
 
 // ── 21. a well that can hold you says so first ───────────────────────────
@@ -1098,7 +1141,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   // A better drive escapes what a stock one cannot, so the same well is less
   // frightening to a refitted ship. Buy the whole track and check it eased.
   const before = surv.warn ? surv.warn.ratio : 0;
-  surv.salvage = 100000;
+  surv.cash = 100000;
   while (cf.buy("thrust")) { /* every tier */ }
   now += 1000 / 60; cf.step();
   const after = surv.warn ? surv.warn.ratio : 0;
@@ -1153,7 +1196,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const surv = cf.survey();
 
   // Make some progress worth losing.
-  surv.salvage = 240;
+  surv.cash = 240;
   surv.built.add("spar");
   surv.pins.push({ x: 100, y: 200, kind: "cache" });
   cf.find("first-light");
@@ -1166,7 +1209,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(cf.resetArmed() === true, "the first press did not arm the reset");
   check(cf.survey().seed === oldSeed, "one press already changed the sector");
   check(cf.survey().found.size >= 2, "one press already wiped the almanac");
-  check(cf.survey().salvage === 240, "one press already spent the hold");
+  check(cf.survey().cash === 240, "one press already spent the hold");
 
   // The second does all of it.
   cf.resetSurvey();
@@ -1174,7 +1217,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(fresh.seed !== oldSeed,
         "the reset kept the same sector (" + oldSeed + ")");
   check(fresh.found.size === 0, "the almanac survived the reset");
-  check(fresh.salvage === 0, "the hold survived the reset");
+  check(fresh.cash === 0, "the hold survived the reset");
   check(fresh.built.size === 0, "the yard's manifest survived the reset");
   check(fresh.pins.length === 0, "the pins survived the reset");
   check(cf.hud().charted() === 0, "the chart survived the reset");
@@ -1200,6 +1243,70 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(cf.survey().seed !== 31337,
         "a reset handed back the sector named in the URL");
   console.log("  reset·url  a wipe overrides the seed in the address bar");
+}
+
+// ── 25. two seeds are two different worlds ───────────────────────────────
+/* The complaint that started this: a new seed was a new arrangement of one map
+   rather than a new map. Every sector had its ladder at the same distances in
+   the same order at the same densities, and only the bearings moved.
+
+   So this measures the thing a player actually notices — how big the world is,
+   how far apart its rungs are, which landmark is nearest, and how much of each
+   kind of thing there is — across a spread of seeds, and insists they differ. */
+{
+  const seeds = [1, 2, 12345, 99999, 777, 424242, 8675309, 31337];
+  const worlds = seeds.map(seed => {
+    const { cf } = boot("?debug=1&seed=" + seed);
+    cf.start("survey", 1);
+    const surv = cf.survey();
+    let wells = 0, planets = 0, wrecks = 0, gates = 0, stations = 0;
+    for (let x = -12; x <= 12; x += 2) {
+      for (let y = -12; y <= 12; y += 2) {
+        const c = cf.chunk(x, y);
+        wells += c.hazards.length; planets += c.planets.length;
+        wrecks += c.wrecks.length; gates += c.gates.length;
+        stations += c.stations.length;
+      }
+    }
+    const byDist = surv.landmarks
+      .map(l => ({ key: l.key, d: Math.hypot(l.x, l.y) }))
+      .sort((a, b) => a.d - b.d);
+    return { seed, name: surv.world.name, reach: byDist[byDist.length - 1].d,
+             nearest: byDist[0].key, wells, planets, wrecks, gates, stations };
+  });
+
+  // How big the sector is has to actually vary — this is what "sprawling" means.
+  const reaches = worlds.map(w => w.reach);
+  const spread = Math.max(...reaches) / Math.min(...reaches);
+  check(spread > 1.4,
+        "every world is the same size (widest / narrowest = " + spread.toFixed(2) + ")");
+
+  // The route through the ladder has to vary, or every sector is walked in the
+  // same order however far apart the rungs are.
+  const firsts = new Set(worlds.map(w => w.nearest));
+  check(firsts.size >= 3,
+        "only " + firsts.size + " different landmarks are ever nearest: " +
+        [...firsts].join(", "));
+
+  // And each kind of thing has to be scarce in some worlds and common in others.
+  for (const kind of ["wells", "planets", "wrecks", "gates", "stations"]) {
+    const vals = worlds.map(w => w[kind]);
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    check(hi > lo * 2,
+          kind + " barely varies between worlds (" + lo + " to " + hi + ")");
+  }
+
+  // A world says what kind of place it is, and not every world says the same.
+  const names = new Set(worlds.map(w => w.name));
+  check(names.size >= 4,
+        "only " + names.size + " sector characters across " + seeds.length + " seeds");
+  for (const w of worlds) check(!!w.name, "seed " + w.seed + " has no character");
+
+  console.log("  worlds     size varies " + spread.toFixed(2) + "x · " +
+              firsts.size + " different nearest landmarks · " +
+              names.size + " characters over " + seeds.length + " seeds");
+  console.log("             e.g. " + worlds.slice(0, 3)
+    .map(w => w.seed + ": " + w.name).join("  |  "));
 }
 
 if (problems.length) {

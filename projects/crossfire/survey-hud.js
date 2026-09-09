@@ -62,8 +62,8 @@
   const ICE        = "#87d8ff";
   const SOLAR      = "#ffd76d";
   const WRECKC     = "#7d8596";
-  const SALVAGE    = "#6dffbf";
-  const SALVAGE_DIM= "#3f9d78";
+  const CASH       = "#6dffbf";
+  const CASH_DIM   = "#3f9d78";
   const INK        = "#05050a";
 
   /* Real steps only — anything below 16 is a lie on a phone. */
@@ -99,7 +99,7 @@
      chart you stop reading. They are the player's own marks and are drawn in
      their own colours, distinct from anything the sector puts there itself. */
   const PIN_KINDS = [
-    { key: "salvage", name: "SALVAGE", colour: "#6dffbf" },
+    { key: "salvage", name: "CASH", colour: "#6dffbf" },
     { key: "cache",   name: "CACHE",   colour: "#ffe56d" },
     { key: "station", name: "STATION", colour: "#87d8ff" },
     { key: "gate",    name: "GATE",    colour: "#5ce1ff" },
@@ -437,16 +437,16 @@
     if (o.sub) {
       fitText(o.sub, cx, 62, SIZE.cap, AMBER_DIM, "center", 0.8, wide);
     }
-    if (st.fix) {
-      fitText("BEARING " + String(st.fix.bearing).padStart(3, "0") +
-              "   ·   " + st.fix.range,
-              cx, 86, SIZE.cap, VIOLET, "center", 0.95, wide, "0.12em");
-    }
+    /* There used to be a "BEARING 191 · a long way out" line here. It was two
+       pieces of jargon stacked on the busiest part of the screen, and neither
+       told you anything you could act on — a compass bearing means nothing
+       without a compass, and "a long way out" is not a distance. The direction
+       lives on the chart, where directions belong. */
     if (st.needs) {
       // The tally, small, at the top right of the band — it is a progress bar
       // for the whole mode and it should never be the loudest thing on screen.
       label("YARD " + st.built + " / " + st.needs, cx + wide / 2, 40, SIZE.cap,
-            st.built >= st.needs ? SALVAGE : VIOLET_DIM, "right", 0.75, "0.14em");
+            st.built >= st.needs ? CASH : VIOLET_DIM, "right", 0.75, "0.14em");
     }
   }
 
@@ -492,6 +492,31 @@
           SIZE.cap, VIOLET, "right", 0.8);
 
     api.addTap({ x: b.x, y: b.y, w: b.w, h: b.h, act: st.onChart || (() => {}) });
+
+    /* Under the chart, where the eye already is once it has looked at the map.
+       It is the way in to everything the flight HUD has no room for. */
+    const iy = b.y + b.h + 30;
+    ctx.save();
+    ctx.strokeStyle = VIOLET;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(b.x, iy, b.w, 30);
+    ctx.restore();
+    label(api.touchOnly ? "INVENTORY" : "INVENTORY  [I]", b.x + b.w / 2, iy + 20,
+          SIZE.cap, VIOLET, "center", 0.95, "0.12em");
+    api.addTap({ x: b.x, y: iy, w: b.w, h: 30, act: st.onInventory || (() => {}) });
+
+    if (st.atYard) {
+      ctx.save();
+      ctx.strokeStyle = CASH;
+      ctx.globalAlpha = 0.8;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(b.x, iy + 36, b.w, 30);
+      ctx.restore();
+      label(api.touchOnly ? "THE YARD" : "THE YARD  [E]", b.x + b.w / 2, iy + 56,
+            SIZE.cap, CASH, "center", 1, "0.12em");
+      api.addTap({ x: b.x, y: iy + 36, w: b.w, h: 30, act: st.onYard || (() => {}) });
+    }
   }
 
   const fmtCells = n => n >= 10000 ? (n / 1000).toFixed(1) + "K" : String(n);
@@ -522,31 +547,101 @@
   /* Everything plotted on either chart. Objects appear only where you have
      actually charted — the chart is your record, not the sector's truth, and
      that distinction is most of the mode. */
+  /* Everything the chart can show, and how it shows it. One table so a legend
+     can be drawn from the same source the marks are — a key that drifts from
+     the map is worse than no key at all. */
+  const CHART_MARKS = {
+    station:   { name: "STATION",  colour: "#6dffbf" },
+    gate:      { name: "GATE",     colour: "#5ce1ff" },
+    cache:     { name: "CACHE",    colour: "#ffe56d" },
+    part:      { name: "COMPONENT", colour: "#a08cff" },
+    leviathan: { name: "LEVIATHAN", colour: "#7d8596" },
+    star:      { name: "STAR",     colour: "#ffd76d" },
+    hole:      { name: "BLACK HOLE", colour: "#ff8f77" },
+    planet:    { name: "WORLD",    colour: "#87d8ff" }
+  };
+
+  function markGlyph(ctx, k, x, y, r) {
+    switch (k) {
+      case "station":
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, r * 0.34, 0, Math.PI * 2); ctx.stroke();
+        break;
+      case "gate":
+        ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.62, 0, 0, Math.PI * 2); ctx.stroke();
+        break;
+      case "cache":
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
+          i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+        }
+        ctx.closePath(); ctx.stroke();
+        break;
+      case "part":
+        ctx.beginPath();
+        ctx.moveTo(x, y - r); ctx.lineTo(x + r, y + r * 0.7);
+        ctx.lineTo(x - r, y + r * 0.7); ctx.closePath(); ctx.stroke();
+        break;
+      case "leviathan":
+        ctx.beginPath();
+        ctx.moveTo(x - r * 1.6, y - r * 0.5); ctx.lineTo(x + r * 1.2, y - r * 0.5);
+        ctx.lineTo(x + r * 1.7, y); ctx.lineTo(x + r * 1.2, y + r * 0.5);
+        ctx.lineTo(x - r * 1.6, y + r * 0.5); ctx.closePath(); ctx.stroke();
+        break;
+      case "hole":
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = "#000"; ctx.fill(); ctx.stroke();
+        break;
+      case "planet":
+        ctx.beginPath(); ctx.arc(x, y, r * 0.9, 0, Math.PI * 2); ctx.stroke();
+        break;
+      default:                              // star
+        ctx.beginPath(); ctx.arc(x, y, r * 0.85, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  /* The record, drawn. This is the half of the chart that answers "where was
+     that thing" — the live lists below only ever knew about the five chunks
+     either side of the ship, so the map used to forget a station the moment you
+     left it behind. */
+  function paintKnown(st, mx, my, big) {
+    const { ctx } = api;
+    const R = big ? 5 : 3;
+    ctx.save();
+    ctx.lineWidth = big ? 1.6 : 1;
+    for (const q of (st.known || [])) {
+      const spec = CHART_MARKS[q.k];
+      if (!spec) continue;
+      // The panel is small; only the things you navigate by go on it.
+      if (!big && q.k !== "station" && q.k !== "gate" && q.k !== "part") continue;
+      ctx.strokeStyle = spec.colour;
+      ctx.fillStyle = spec.colour;
+      ctx.globalAlpha = 0.9;
+      markGlyph(ctx, q.k, mx(q.x), my(q.y), R);
+    }
+    ctx.restore();
+  }
+
   function paintMarks(st, mx, my, big) {
     const { ctx } = api;
     const R = big ? 1.7 : 1;
 
-    for (const hz of (st.hazards || [])) {
-      if (!HUD.seen(hz.x, hz.y)) continue;
-      ctx.beginPath();
-      ctx.arc(mx(hz.x), my(hz.y), (hz.kind === "hole" ? 3 : 4) * R, 0, Math.PI * 2);
-      if (hz.kind === "hole") {
-        ctx.fillStyle = "#000"; ctx.fill();
-        ctx.strokeStyle = WARN; ctx.lineWidth = 1; ctx.stroke();
-      } else {
-        ctx.fillStyle = SOLAR; ctx.fill();
-      }
-    }
+    paintKnown(st, mx, my, big);
 
-    for (const pl of (st.planets || [])) {
-      if (!HUD.seen(pl.x, pl.y)) continue;
+    // The yard is the one fixed place in the sector and the thing you keep
+    // coming back to, so it is always on the chart whether or not it is loaded.
+    if (st.yard && big) {
+      const x = mx(st.yard.x), y = my(st.yard.y);
       ctx.save();
-      ctx.globalAlpha = 0.9;
-      ctx.fillStyle = ICE;
-      ctx.beginPath();
-      ctx.arc(mx(pl.x), my(pl.y), 4 * R, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.strokeStyle = st.yard.built >= st.yard.needs ? CASH : VIOLET;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
+      label("THE YARD  " + st.yard.built + "/" + st.yard.needs,
+            x + 14, y + 5, SIZE.cap, VIOLET, "left", 0.9);
     }
 
     // A found landmark keeps its mark for good — the chart is the record of
@@ -643,11 +738,11 @@
     }
 
     if (st.hold) {
-      const salv = st.salvage || 0, cap = st.hold;
+      const salv = st.cash || 0, cap = st.hold;
       const full = salv >= cap;
-      label("SALVAGE", 24, 96, SIZE.cap, SALVAGE_DIM, "left", 0.7, "0.18em");
+      label("CASH", 24, 96, SIZE.cap, CASH_DIM, "left", 0.7, "0.18em");
       label(salv + " / " + cap, 24, 122, SIZE.head,
-            full ? WARN : SALVAGE, "left");
+            full ? WARN : CASH, "left");
       if (full) {
         label("HOLD FULL — FIND A STATION", 24, 144, SIZE.cap, WARN, "left",
               0.55 + 0.45 * Math.abs(Math.sin(Date.now() / 400)));
@@ -715,7 +810,7 @@
     if (st.docked) {
       const beat = 0.6 + 0.4 * Math.sin(clockish() * 4);
       label(api.touchOnly ? "DOCKED — TAP TO REFIT" : "DOCKED — [E] REFIT",
-            cx, y - 30, SIZE.val, SALVAGE, "center", beat, "0.1em");
+            cx, y - 30, SIZE.val, CASH, "center", beat, "0.1em");
       api.addTap({ x: cx - 130, y: y - 58, w: 260, h: 40,
                    act: st.onRefit || (() => {}) });
     } else if (!api.touchOnly) {
@@ -835,6 +930,47 @@
     }
   }
 
+  /* The key. Drawn from the same table the marks are, so it cannot drift from
+     the map — a legend that disagrees with its chart is worse than none. Only
+     the kinds you have actually found are listed: a key full of symbols you
+     have never seen is a spoiler and a wall of text at the same time. */
+  function drawChartLegend(view, st) {
+    const { ctx } = api;
+    const kinds = [];
+    for (const q of (st.known || [])) {
+      if (CHART_MARKS[q.k] && !kinds.includes(q.k)) kinds.push(q.k);
+    }
+    if (!kinds.length) return;
+    kinds.sort();
+
+    const w = 148, rowH = 19, pad = 10;
+    const h = kinds.length * rowH + pad * 2;
+    const x = view.x + view.w - w - 12, y = view.y + 12;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(5,5,10,0.78)";
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = VIOLET_LOW;
+    ctx.globalAlpha = 0.8;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, w, h);
+    ctx.restore();
+
+    kinds.forEach((k, i) => {
+      const spec = CHART_MARKS[k];
+      const cy = y + pad + i * rowH + 7;
+      ctx.save();
+      ctx.strokeStyle = spec.colour;
+      ctx.fillStyle = spec.colour;
+      ctx.lineWidth = 1.4;
+      markGlyph(ctx, k, x + pad + 7, cy, 5);
+      ctx.restore();
+      const n = (st.known || []).filter(q => q.k === k).length;
+      label(spec.name, x + pad + 22, cy + 5, SIZE.cap, spec.colour, "left", 0.9);
+      label(String(n), x + w - pad, cy + 5, SIZE.cap, spec.colour, "right", 0.55);
+    });
+  }
+
   HUD.chartOpened = function (st) {
     if (st && st.ship) { chart.x = st.ship.x; chart.y = st.ship.y; }
     chart.follow = true;
@@ -875,7 +1011,9 @@
 
     const span = SCREEN_W / chart.scale;
     pageFrame("SECTOR CHART",
-              "SEED " + (st.seed || 0) + "  ·  " + fmtCells(HUD.charted()) + " CELLS CHARTED",
+              "SEED " + (st.seed || 0) +
+              (st.world ? "  ·  " + st.world.name : "") +
+              "  ·  " + fmtCells(HUD.charted()) + " CELLS CHARTED",
               api.touchOnly ? "DRAG TO PAN  ·  ± ZOOM  ·  C RECENTRE"
                             : "DRAG OR ARROWS PAN  ·  ± ZOOM  ·  C RECENTRE  ·  P PIN KIND");
 
@@ -906,6 +1044,7 @@
     ctx.restore();
 
     drawScaleBar(view);
+    drawChartLegend(view, st);
     drawChartReadout(view, st);
 
     // Off-view: where you are, if you have panned away from yourself.
@@ -1259,7 +1398,7 @@
             x + w / 2, y + art + 116, SIZE.val, on ? VIOLET : VIOLET_DIM,
             "center", on ? 0.9 : 0.45, w - 60);
     label(on ? "LOGGED" : "NOT YET FOUND", x + w / 2, y + art + 150, SIZE.cap,
-          on ? SALVAGE : VIOLET_LOW, "center", 0.8, "0.18em");
+          on ? CASH : VIOLET_LOW, "center", 0.8, "0.18em");
 
     label(api.touchOnly ? "TAP TO CLOSE" : "CLICK, OR ESC, TO CLOSE",
           x + w / 2, y + h - 22, SIZE.cap, VIOLET_LOW, "center", 0.8);
@@ -1609,13 +1748,13 @@
         break;
       case "laden":
         // A hold with nothing left in it but salvage.
-        stroke(SALVAGE_DIM, 1.6, () => {
+        stroke(CASH_DIM, 1.6, () => {
           ctx.strokeRect(cx - r * 0.8, cy - r * 0.6, r * 1.6, r * 1.2);
         });
         for (let i = 0; i < 3; i++) {
           for (let j = 0; j < 2; j++) {
             disc(cx - r * 0.45 + i * r * 0.45, cy - r * 0.22 + j * r * 0.45,
-                 r * 0.13, SALVAGE);
+                 r * 0.13, CASH);
           }
         }
         break;
@@ -1623,13 +1762,13 @@
         // Three tiers, two of them bought.
         for (let i = 0; i < 3; i++) {
           const bx = cx - r * 0.7 + i * r * 0.7;
-          stroke(SALVAGE_DIM, 1.4, () => {
+          stroke(CASH_DIM, 1.4, () => {
             ctx.strokeRect(bx - r * 0.22, cy - r * 0.5 + i * r * 0.1,
                            r * 0.44, r * 1.0 - i * r * 0.2);
           });
           if (i < 2) {
             ctx.save();
-            ctx.fillStyle = lit(SALVAGE);
+            ctx.fillStyle = lit(CASH);
             ctx.globalAlpha = a;
             ctx.fillRect(bx - r * 0.14, cy - r * 0.42 + i * r * 0.1,
                          r * 0.28, r * 0.84 - i * r * 0.2);
@@ -1639,7 +1778,7 @@
         break;
       case "grave-robber":
         // The cache, and the broken ring that was guarding it.
-        stroke(SALVAGE, 1.6, () => {
+        stroke(CASH, 1.6, () => {
           ctx.beginPath();
           for (let i = 0; i < 6; i++) {
             const t = (i / 6) * Math.PI * 2;
@@ -1659,7 +1798,7 @@
         break;
       case "salvor":
         // A part, carried: the triangle the world draws one with, on its way.
-        stroke(SALVAGE, 1.7, () => {
+        stroke(CASH, 1.7, () => {
           ctx.beginPath();
           ctx.moveTo(cx, cy - r * 0.62);
           ctx.lineTo(cx + r * 0.56, cy + r * 0.36);
@@ -1667,7 +1806,7 @@
           ctx.closePath();
           ctx.stroke();
         });
-        stroke(SALVAGE_DIM, 1.3, () => {
+        stroke(CASH_DIM, 1.3, () => {
           ctx.beginPath();
           ctx.moveTo(cx - r * 0.9, cy + r * 0.72);
           ctx.lineTo(cx + r * 0.9, cy + r * 0.72);
@@ -1676,17 +1815,17 @@
         break;
       case "finished":
         // The yard, closed: every segment of the ring filled in.
-        ring(cx, cy, r * 0.86, SALVAGE, 1.6);
+        ring(cx, cy, r * 0.86, CASH, 1.6);
         for (let i = 0; i < 6; i++) {
           const a0 = (i / 6) * Math.PI * 2 + 0.06;
           const a1 = ((i + 1) / 6) * Math.PI * 2 - 0.06;
-          stroke(SALVAGE, 3, () => {
+          stroke(CASH, 3, () => {
             ctx.beginPath();
             ctx.arc(cx, cy, r * 0.56, a0, a1);
             ctx.stroke();
           });
         }
-        disc(cx, cy, r * 0.2, SALVAGE);
+        disc(cx, cy, r * 0.2, CASH);
         break;
       default:                  ring(cx, cy, r * 0.8, VIOLET, 1.6);
     }
@@ -1724,10 +1863,10 @@
     const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
     const rows = st.refit || [];
-    const salv = st.salvage || 0, cap = st.hold || 1;
+    const salv = st.cash || 0, cap = st.hold || 1;
 
     pageFrame("STATION",
-              "SALVAGE " + salv + " / " + cap,
+              "CASH " + salv + " / " + cap,
               api.touchOnly ? "TAP TO BUY  ·  UNDOCK BELOW"
                             : "ARROWS MOVE  ·  ENTER BUYS  ·  E OR ESC UNDOCKS");
 
@@ -1735,11 +1874,11 @@
     // next tier" is read off a length faster than off a pair of digits.
     const bw = SCREEN_W - 68, by = 92;
     ctx.save();
-    ctx.strokeStyle = SALVAGE_DIM;
+    ctx.strokeStyle = CASH_DIM;
     ctx.globalAlpha = 0.8;
     ctx.lineWidth = 1;
     ctx.strokeRect(34, by, bw, 12);
-    ctx.fillStyle = SALVAGE;
+    ctx.fillStyle = CASH;
     ctx.globalAlpha = 0.9;
     ctx.fillRect(35, by + 1, Math.max(0, (bw - 2) * Math.min(1, salv / cap)), 10);
     ctx.restore();
@@ -1756,13 +1895,13 @@
       ctx.save();
       ctx.fillStyle = sel ? "rgba(109,255,191,0.07)" : "rgba(255,255,255,0.022)";
       ctx.fillRect(left, y, colW, rowH);
-      ctx.strokeStyle = sel ? SALVAGE : SALVAGE_DIM;
+      ctx.strokeStyle = sel ? CASH : CASH_DIM;
       ctx.globalAlpha = sel ? 1 : 0.55;
       ctx.lineWidth = sel ? 2 : 1;
       ctx.strokeRect(left, y, colW, rowH);
       ctx.restore();
 
-      label(r.name, left + 16, y + 28, SIZE.val, maxed ? AMBER : SALVAGE, "left",
+      label(r.name, left + 16, y + 28, SIZE.val, maxed ? AMBER : CASH, "left",
             1, "0.08em");
       label(r.note, left + 16, y + 50, SIZE.cap, VIOLET_DIM, "left", 0.8);
 
@@ -1771,16 +1910,16 @@
       for (let t = 0; t < r.max; t++) {
         const px = left + colW - 20 - (r.max - t) * 18;
         ctx.save();
-        ctx.strokeStyle = SALVAGE_DIM;
+        ctx.strokeStyle = CASH_DIM;
         ctx.globalAlpha = 0.9;
         ctx.lineWidth = 1;
         ctx.strokeRect(px, y + 16, 12, 12);
-        if (t < r.tier) { ctx.fillStyle = SALVAGE; ctx.fillRect(px + 2, y + 18, 8, 8); }
+        if (t < r.tier) { ctx.fillStyle = CASH; ctx.fillRect(px + 2, y + 18, 8, 8); }
         ctx.restore();
       }
       label(maxed ? "MAX" : String(r.cost),
             left + colW - 20, y + 56, SIZE.cap,
-            maxed ? AMBER_DIM : (afford ? SALVAGE : WARN), "right",
+            maxed ? AMBER_DIM : (afford ? CASH : WARN), "right",
             maxed ? 0.7 : 1);
 
       if (!maxed) {
@@ -1814,6 +1953,200 @@
       api.tapButton("UNDOCK", SCREEN_W / 2, SCREEN_H - 30, 200, 40, VIOLET,
                     st.onUndock || (() => {}));
     }
+  };
+
+  /* ═══ THE INVENTORY ═══════════════════════════════════════════════════════
+     One page that answers "what have I got". It existed in pieces before — cash
+     in a corner of the flight panel, the refit only visible inside a shop, the
+     verbs only mentioned when they arrived — which meant the answer was spread
+     across three screens and one of them you had to fly somewhere to open.
+
+     Reached from a button under the panel chart, or on `I`. */
+  HUD.drawInventory = function (st, dt) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    st = st || {};
+    const cash = st.cash || 0, cap = st.hold || 1;
+
+    pageFrame("INVENTORY",
+              (st.world ? st.world.name + "  ·  " : "") + "SEED " + (st.seed || 0),
+              api.touchOnly ? "TAP A PANEL  ·  CLOSE BELOW"
+                            : "I OR ESC CLOSES  ·  M CHART  ·  L ALMANAC");
+
+    const colW = (SCREEN_W - 68 - 20) / 2;
+    const left = 34, right = left + colW + 20;
+
+    // ── the hold ──────────────────────────────────────────────────────────
+    panel(left, 92, colW, 118, CASH, "THE HOLD");
+    label(cash + " / " + cap, left + 18, 148, SIZE.big,
+          cash >= cap ? WARN : CASH, "left");
+    label("CASH", left + 18, 170, SIZE.cap, CASH_DIM, "left", 0.8, "0.18em");
+    barAt(left + 18, 182, colW - 36, 9, cash / cap, CASH, cash >= cap);
+
+    // ── what you are carrying ─────────────────────────────────────────────
+    const held = (st.manifest || []).filter(m => m.carrying);
+    panel(left, 226, colW, 132, VIOLET, "CARRYING");
+    if (!held.length) {
+      label("nothing but cash", left + 18, 268, SIZE.val, VIOLET_LOW, "left", 0.8);
+      label("Components go straight to the yard.", left + 18, 292, SIZE.cap,
+            VIOLET_LOW, "left", 0.7);
+    } else {
+      held.forEach((m, i) => {
+        label("▲  " + m.name, left + 18, 268 + i * 24, SIZE.val, CASH, "left");
+      });
+      label("Take them to the yard.", left + 18, 268 + held.length * 24 + 12,
+            SIZE.cap, CASH_DIM, "left", 0.8);
+    }
+
+    // ── the ship ──────────────────────────────────────────────────────────
+    panel(left, 374, colW, 176, AMBER, "THE SHIP");
+    (st.refit || []).forEach((r, i) => {
+      const y = 414 + i * 34;
+      fitText(r.name, left + 18, y, SIZE.cap, AMBER_DIM, "left", 0.9, colW - 130);
+      for (let t = 0; t < r.max; t++) {
+        const px = left + colW - 24 - (r.max - t) * 18;
+        ctx.save();
+        ctx.strokeStyle = CASH_DIM;
+        ctx.globalAlpha = 0.9;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px, y - 11, 12, 12);
+        if (t < r.tier) { ctx.fillStyle = CASH; ctx.fillRect(px + 2, y - 9, 8, 8); }
+        ctx.restore();
+      }
+    });
+
+    // ── the manifest ──────────────────────────────────────────────────────
+    const done = st.built || 0, need = st.needs || 6;
+    panel(right, 92, colW, 266, VIOLET, "THE YARD   " + done + " / " + need);
+    (st.manifest || []).forEach((m, i) => {
+      const y = 130 + i * 38;
+      const on = m.have;
+      label(on ? "✓" : (m.carrying ? "▲" : "·"), right + 18, y, SIZE.val,
+            on ? CASH : (m.carrying ? CASH : VIOLET_LOW), "left");
+      fitText(m.name, right + 40, y, SIZE.cap, on ? CASH : VIOLET,
+              "left", on ? 0.75 : 1, colW - 60);
+      if (!on && !m.carrying) {
+        fitText(m.where, right + 40, y + 17, SIZE.cap, AMBER_DIM, "left", 0.7,
+                colW - 60);
+      }
+    });
+
+    // ── what the almanac has bought ───────────────────────────────────────
+    panel(right, 374, colW, 176, VIOLET, "EARNED");
+    label("ALMANAC  " + (st.found || 0) + " / " + (st.total || 0),
+          right + 18, 412, SIZE.val, VIOLET, "left");
+    api.addTap({ x: right, y: 374, w: colW, h: 52,
+                 act: st.onAlmanac || (() => {}) });
+    (st.unlocks || []).forEach((u, i) => {
+      const y = 444 + i * 30;
+      label(u.have ? "✓" : "·", right + 18, y, SIZE.cap,
+            u.have ? CASH : VIOLET_LOW, "left");
+      fitText(u.have ? u.name : "locked — " + u.at + " entries",
+              right + 40, y, SIZE.cap, u.have ? VIOLET : VIOLET_LOW, "left",
+              u.have ? 0.95 : 0.6, colW - 60);
+    });
+
+    /* Food and water belong on this page and are not here yet — they arrive
+       with the survival phase, and a meter that does not move is worse than an
+       honest gap. See SURVEY-PLAN.md, phase 2. */
+
+    closeButton(st.onClose || (() => {}));
+  };
+
+  function panel(x, y, w, h, colour, title) {
+    const { ctx } = api;
+    ctx.save();
+    ctx.fillStyle = colour;
+    ctx.globalAlpha = 0.04;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = colour;
+    ctx.globalAlpha = 0.45;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, w, h);
+    ctx.restore();
+    label(title, x + 18, y + 24, SIZE.cap, colour, "left", 0.85, "0.16em");
+  }
+
+  function barAt(x, y, w, h, frac, colour, warn) {
+    const { ctx } = api;
+    ctx.save();
+    ctx.strokeStyle = warn ? WARN : colour;
+    ctx.globalAlpha = 0.7;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = warn ? WARN : colour;
+    ctx.globalAlpha = 0.9;
+    ctx.fillRect(x + 1, y + 1, Math.max(0, (w - 2) * Math.min(1, frac)), h - 2);
+    ctx.restore();
+  }
+
+  /* ═══ THE YARD ════════════════════════════════════════════════════════════
+     Opened by docking at it. Says what is being built, what it will do, and
+     which six things it is still short of — with the clue for each one you have
+     not brought in yet. The clue is the whole navigation system, so this is the
+     page you come back to when you do not know where to go next. */
+  HUD.drawYardPage = function (st, dt) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    st = st || {};
+    const b = st.builds || { name: "THE YARD", does: "", blurb: "" };
+    const done = st.built || 0, need = st.needs || 6;
+    const finished = done >= need;
+
+    pageFrame("THE YARD",
+              done + " OF " + need + " FITTED",
+              api.touchOnly ? "CLOSE BELOW" : "E OR ESC LEAVES");
+
+    label(finished ? b.name + " — BUILT" : "BUILDING:  " + b.name,
+          SCREEN_W / 2, 118, SIZE.big, finished ? CASH : VIOLET, "center", 1, "0.1em");
+    fitText(b.does, SCREEN_W / 2, 146, SIZE.val, finished ? CASH : AMBER_DIM,
+            "center", 0.9, SCREEN_W - 120);
+    if (!finished) {
+      fitText(b.blurb, SCREEN_W / 2, 172, SIZE.cap, VIOLET_DIM, "center", 0.8,
+              SCREEN_W - 160);
+    }
+
+    // Progress as the thing itself: a ring that fills a segment per part, the
+    // same shape the yard draws out in the world.
+    const cx = SCREEN_W / 2, cy = 236, r = 34;
+    ctx.save();
+    ctx.strokeStyle = VIOLET_LOW;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    for (let i = 0; i < done; i++) {
+      const a0 = (i / need) * Math.PI * 2 - Math.PI / 2;
+      const a1 = ((i + 1) / need) * Math.PI * 2 - Math.PI / 2;
+      api.glow(CASH, 4, 0.95, () => {
+        ctx.beginPath(); ctx.arc(cx, cy, r, a0 + 0.05, a1 - 0.05); ctx.stroke();
+      });
+    }
+
+    const top = 296, rowH = 56;
+    const left = 60, w = SCREEN_W - 120;
+    (st.manifest || []).forEach((m, i) => {
+      const y = top + i * rowH;
+      const state = m.have ? "have" : m.carrying ? "aboard" : "wanted";
+      const colour = m.have ? CASH_DIM : m.carrying ? CASH : VIOLET;
+
+      ctx.save();
+      ctx.strokeStyle = colour;
+      ctx.globalAlpha = m.have ? 0.3 : 0.55;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(left, y, w, rowH - 8);
+      ctx.restore();
+
+      label(m.have ? "✓" : m.carrying ? "▲" : "·", left + 18, y + 30,
+            SIZE.val, colour, "left");
+      fitText(m.name, left + 44, y + 24, SIZE.val, colour, "left",
+              m.have ? 0.6 : 1, w - 220);
+      fitText(m.have ? "fitted" : m.carrying ? "aboard — drop it here" : m.clue,
+              left + 44, y + 42, SIZE.cap,
+              m.have ? CASH_DIM : m.carrying ? CASH : AMBER_DIM, "left",
+              m.have ? 0.5 : 0.85, w - 220);
+      label(state.toUpperCase(), left + w - 18, y + 30, SIZE.cap, colour,
+            "right", m.have ? 0.5 : 0.8, "0.14em");
+    });
+
+    closeButton(st.onClose || (() => {}));
   };
 
   window.CrossfireSurveyHUD = HUD;

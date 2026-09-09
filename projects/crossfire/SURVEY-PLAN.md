@@ -115,6 +115,46 @@ Cut the number of gravity wells hard and make the survivors matter.
 - Salvage pickup widened to thirty units past the hull. Breaking the rock was
   the game; threading the mote afterwards is not.
 
+## Decisions taken since this file was written
+
+**The currency is cash.** It is what buys ships, food and refits. Right now the
+loose pickups *are* cash, capped by the cargo hold. Phase 3 splits that properly:
+metals become the cargo you carry, and cash becomes the money you get for
+selling them. Doing half of that split early would have left the game with two
+half-explained resources, so it waits for 3.1.
+
+**Seeds make different worlds, not different arrangements of one world.** Every
+sector used to put its landmarks at the same distances in the same order at the
+same densities — only the bearings moved, and it showed. A world now rolls a
+*character* before anything is placed: the ladder stretches or compresses, every
+kind of thing has its own abundance, and the rungs are dealt in a shuffled order.
+Measured across eight seeds, sector size varies 1.9×, four different landmarks
+turn up nearest, and every seed names itself something different. The Leviathan
+is held to the last rung, because it is the finale and the yard's last part is
+inside it.
+
+**The chart remembers.** It used to draw straight from the streamed lists — five
+chunks either side of the ship — so it showed what was already on screen and
+forgot everything else. Notable places are now written into a gazetteer as you
+pass them, kept in the book, and drawn with typed glyphs and a legend built from
+the same table as the marks.
+
+**The yard builds a light drive.** A fetch quest with no stated prize is a chore.
+Finishing it lets you jump, from the chart, to any station you have already
+charted — so the reward for mapping is that the map starts working for you, and
+every station stumbled across on the way is worth noting.
+
+**Two new pages.** An inventory on `I` and a button under the panel chart —
+cash, what you are carrying, the ship's refit, the manifest with clues, and what
+the almanac has bought. And a yard page when you dock at it, saying what is being
+built, what it will do, and which parts it is still short of. Food and water go
+on the inventory page **when they exist**; a meter that does not move is worse
+than an honest gap.
+
+**The bearing readout is gone.** "BEARING 191 · a long way out" sat on the busiest
+part of the screen and told you nothing you could act on. Direction lives on the
+chart, where directions belong.
+
 ## Phase 2 — survival
 
 This is the phase that changes what Survey *is*. It reverses the mode's original
