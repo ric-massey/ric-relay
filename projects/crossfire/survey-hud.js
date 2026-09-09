@@ -62,6 +62,8 @@
   const ICE        = "#87d8ff";
   const SOLAR      = "#ffd76d";
   const WRECKC     = "#7d8596";
+  const SALVAGE    = "#6dffbf";
+  const SALVAGE_DIM= "#3f9d78";
   const INK        = "#05050a";
 
   /* Real steps only — anything below 16 is a lie on a phone. */
@@ -87,6 +89,7 @@
   // The chart page's own camera, so panning around it does not move the ship.
   let chart = { x: 0, y: 0, scale: 0.02, follow: true };
   let almanac = { scroll: 0, pick: 0 };
+  let refit = { pick: 0 };
 
   HUD.init = function (deps) {
     api = deps;
@@ -476,11 +479,35 @@
     }
   }
 
+  /* Top left, the two things that are actually accumulating. The almanac count
+     was here from the start and the salvage count joins it, because a mode with
+     two progression tracks has to show both or the player is only playing the
+     one they can see.
+
+     The count is also the *button*. It was reachable on `L` from the first day
+     and almost nobody found it: a keybinding with nothing on screen pointing at
+     it is a keybinding that does not exist. Naming the key next to the number
+     is the whole fix, and making the number tappable is what makes it true on a
+     phone as well. */
   function drawCounters(st) {
     const found = st.found || 0, total = st.total || 25;
-    label("ALMANAC", 24, 36, SIZE.cap, VIOLET, "left", 0.7, "0.18em");
+    const key = api.touchOnly ? "" : "  [L]";
+    label("ALMANAC" + key, 24, 36, SIZE.cap, VIOLET, "left", 0.7, "0.18em");
     label(String(found).padStart(2, "0") + " / " + total, 24, 62,
           SIZE.head, found >= total ? AMBER : VIOLET, "left");
+    api.addTap({ x: 14, y: 18, w: 150, h: 56, act: st.onAlmanac || (() => {}) });
+
+    if (st.hold) {
+      const salv = st.salvage || 0, cap = st.hold;
+      const full = salv >= cap;
+      label("SALVAGE", 24, 96, SIZE.cap, SALVAGE_DIM, "left", 0.7, "0.18em");
+      label(salv + " / " + cap, 24, 122, SIZE.head,
+            full ? WARN : SALVAGE, "left");
+      if (full) {
+        label("HOLD FULL — FIND A STATION", 24, 144, SIZE.cap, WARN, "left",
+              0.55 + 0.45 * Math.abs(Math.sin(Date.now() / 400)));
+      }
+    }
   }
 
   /* Bottom centre: the one band a thumb never covers on a phone and a player
@@ -530,7 +557,26 @@
       api.addTap({ x: cx + w / 2 + 2, y: y - 26, w: 108, h: 52,
                    act: st.onScan || (() => {}) });
     }
+
+    /* Docked. The prompt is the only thing on the strip that comes and goes, so
+       it gets the position the eye is already on and the mode's one loud
+       colour — a station you flew past without noticing was worth flying to. */
+    if (st.docked) {
+      const beat = 0.6 + 0.4 * Math.sin(clockish() * 4);
+      label(api.touchOnly ? "DOCKED — TAP TO REFIT" : "DOCKED — [E] REFIT",
+            cx, y - 30, SIZE.val, SALVAGE, "center", beat, "0.1em");
+      api.addTap({ x: cx - 130, y: y - 58, w: 260, h: 40,
+                   act: st.onRefit || (() => {}) });
+    } else if (!api.touchOnly) {
+      // The mode's three keys, stated once, quietly, where a new player is
+      // already looking. Survey has no tutorial and should not need one.
+      label("M CHART   ·   L ALMANAC   ·   F SCAN", cx, y + 38, SIZE.cap,
+            VIOLET_LOW, "center", 0.8, "0.1em");
+    }
   }
+
+  // The panel has no clock of its own and does not need a precise one.
+  const clockish = () => Date.now() / 1000;
 
   /* Chevrons at the screen edge pointing at what the scan turned up and you
      have not reached yet. Spatial rather than a list: no text to be unreadable
@@ -1161,12 +1207,236 @@
           disc(cx + dx * r, cy + dy * r, 2.4, WARN);
         }
         break;
+      /* The six the world grew. Each one is the *shape of the thing*, not a
+         symbol for it — a picture tells you what to go and look for, and a
+         glyph only tells you it has a name. */
+      case "leviathan":
+        // The hull in plan: two flanks, a bow, and the stern gap you go in by.
+        stroke(WRECKC, 1.7, () => {
+          ctx.beginPath();
+          ctx.moveTo(cx - r, cy - r * 0.52); ctx.lineTo(cx + r * 0.62, cy - r * 0.52);
+          ctx.lineTo(cx + r, cy); ctx.lineTo(cx + r * 0.62, cy + r * 0.52);
+          ctx.lineTo(cx - r * 0.2, cy + r * 0.52);
+          ctx.stroke();
+        });
+        stroke(VIOLET, 1.3, () => {
+          ctx.beginPath();
+          ctx.moveTo(cx - r * 0.75, cy); ctx.lineTo(cx + r * 0.5, cy);
+          ctx.stroke();
+        });
+        disc(cx - r * 0.86, cy + r * 0.3, 2.2, VIOLET);
+        break;
+      case "hard-contact":
+        // A hull, and the wall it found.
+        stroke(WRECKC, 2, () => {
+          ctx.beginPath();
+          ctx.moveTo(cx + r * 0.25, cy - r); ctx.lineTo(cx + r * 0.25, cy + r);
+          ctx.stroke();
+        });
+        stroke(AMBER, 1.6, () => {
+          ctx.beginPath();
+          ctx.moveTo(cx - r, cy - r * 0.4); ctx.lineTo(cx + r * 0.1, cy);
+          ctx.lineTo(cx - r, cy + r * 0.4);
+          ctx.stroke();
+        });
+        for (let i = 0; i < 5; i++) {
+          const t = -0.9 + i * 0.45;
+          stroke(WARN, 1.2, () => {
+            ctx.beginPath();
+            ctx.moveTo(cx + r * 0.3, cy + Math.sin(t) * r * 0.6);
+            ctx.lineTo(cx + r * 0.7, cy + Math.sin(t) * r * 0.85);
+            ctx.stroke();
+          });
+        }
+        break;
+      case "through":
+        // In one side and out the other: two mouths and the line between.
+        ring(cx - r * 0.55, cy, r * 0.42, ICE, 1.6);
+        ring(cx + r * 0.55, cy, r * 0.42, VIOLET, 1.6);
+        stroke(VIOLET_DIM, 1.2, () => {
+          ctx.beginPath();
+          ctx.moveTo(cx - r * 0.2, cy - r * 0.22);
+          ctx.bezierCurveTo(cx, cy - r * 0.8, cx, cy + r * 0.8, cx + r * 0.2, cy + r * 0.22);
+          ctx.stroke();
+        });
+        break;
+      case "laden":
+        // A hold with nothing left in it but salvage.
+        stroke(SALVAGE_DIM, 1.6, () => {
+          ctx.strokeRect(cx - r * 0.8, cy - r * 0.6, r * 1.6, r * 1.2);
+        });
+        for (let i = 0; i < 3; i++) {
+          for (let j = 0; j < 2; j++) {
+            disc(cx - r * 0.45 + i * r * 0.45, cy - r * 0.22 + j * r * 0.45,
+                 r * 0.13, SALVAGE);
+          }
+        }
+        break;
+      case "refit":
+        // Three tiers, two of them bought.
+        for (let i = 0; i < 3; i++) {
+          const bx = cx - r * 0.7 + i * r * 0.7;
+          stroke(SALVAGE_DIM, 1.4, () => {
+            ctx.strokeRect(bx - r * 0.22, cy - r * 0.5 + i * r * 0.1,
+                           r * 0.44, r * 1.0 - i * r * 0.2);
+          });
+          if (i < 2) {
+            ctx.save();
+            ctx.fillStyle = lit(SALVAGE);
+            ctx.globalAlpha = a;
+            ctx.fillRect(bx - r * 0.14, cy - r * 0.42 + i * r * 0.1,
+                         r * 0.28, r * 0.84 - i * r * 0.2);
+            ctx.restore();
+          }
+        }
+        break;
+      case "grave-robber":
+        // The cache, and the broken ring that was guarding it.
+        stroke(SALVAGE, 1.6, () => {
+          ctx.beginPath();
+          for (let i = 0; i < 6; i++) {
+            const t = (i / 6) * Math.PI * 2;
+            const px = cx + Math.cos(t) * r * 0.5, py = cy + Math.sin(t) * r * 0.5;
+            i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+          }
+          ctx.closePath(); ctx.stroke();
+        });
+        stroke(WARN, 1.3, () => {
+          ctx.beginPath();
+          ctx.arc(cx, cy, r * 0.88, 0.5, Math.PI * 0.85);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(cx, cy, r * 0.88, Math.PI * 1.2, Math.PI * 1.75);
+          ctx.stroke();
+        });
+        break;
       default:                  ring(cx, cy, r * 0.8, VIOLET, 1.6);
     }
   }
 
   // Exposed so the game can draw the same picture anywhere else it wants one.
   HUD.icon = drawIcon;
+
+  /* ═══ THE STATION ═════════════════════════════════════════════════════════
+     Where salvage becomes a better ship. A page like the chart and the almanac
+     rather than an overlay, for the same reason they are: a shop you read
+     through a drifting asteroid field is a shop you misread.
+
+     It shows both progression tracks side by side even though only one of them
+     can be spent here. That is deliberate — the verbs are the reason to go
+     looking rather than to keep grinding the same three rocks, and a player
+     staring at a price list is exactly the player who should be able to see
+     what looking would buy instead. */
+
+  HUD.refitOpened = function () { refit.pick = 0; };
+
+  HUD.refitKey = function (code, st) {
+    const rows = (st && st.refit) || [];
+    if (!rows.length) return false;
+    if (code === "ArrowUp")        refit.pick = (refit.pick + rows.length - 1) % rows.length;
+    else if (code === "ArrowDown") refit.pick = (refit.pick + 1) % rows.length;
+    else if (code === "Enter" || code === "Space") {
+      const row = rows[refit.pick];
+      if (row && st.onBuy) st.onBuy(row.key);
+    } else return false;
+    return true;
+  };
+
+  HUD.drawRefit = function (st, dt) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    st = st || {};
+    const rows = st.refit || [];
+    const salv = st.salvage || 0, cap = st.hold || 1;
+
+    pageFrame("STATION",
+              "SALVAGE " + salv + " / " + cap,
+              api.touchOnly ? "TAP TO BUY  ·  UNDOCK BELOW"
+                            : "ARROWS MOVE  ·  ENTER BUYS  ·  E OR ESC UNDOCKS");
+
+    // The hold, as a bar. One number in two forms, because "can I afford the
+    // next tier" is read off a length faster than off a pair of digits.
+    const bw = SCREEN_W - 68, by = 92;
+    ctx.save();
+    ctx.strokeStyle = SALVAGE_DIM;
+    ctx.globalAlpha = 0.8;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(34, by, bw, 12);
+    ctx.fillStyle = SALVAGE;
+    ctx.globalAlpha = 0.9;
+    ctx.fillRect(35, by + 1, Math.max(0, (bw - 2) * Math.min(1, salv / cap)), 10);
+    ctx.restore();
+
+    const left = 34, colW = SCREEN_W * 0.56 - 44;
+    const top = 128, rowH = 76, gap = 12;
+
+    rows.forEach((r, i) => {
+      const y = top + i * (rowH + gap);
+      const sel = i === refit.pick;
+      const maxed = r.cost == null;
+      const afford = !maxed && salv >= r.cost;
+
+      ctx.save();
+      ctx.fillStyle = sel ? "rgba(109,255,191,0.07)" : "rgba(255,255,255,0.022)";
+      ctx.fillRect(left, y, colW, rowH);
+      ctx.strokeStyle = sel ? SALVAGE : SALVAGE_DIM;
+      ctx.globalAlpha = sel ? 1 : 0.55;
+      ctx.lineWidth = sel ? 2 : 1;
+      ctx.strokeRect(left, y, colW, rowH);
+      ctx.restore();
+
+      label(r.name, left + 16, y + 28, SIZE.val, maxed ? AMBER : SALVAGE, "left",
+            1, "0.08em");
+      label(r.note, left + 16, y + 50, SIZE.cap, VIOLET_DIM, "left", 0.8);
+
+      // Tier pips: three boxes, filled for what is bought. A tier count is a
+      // small number and a row of boxes is read without counting.
+      for (let t = 0; t < r.max; t++) {
+        const px = left + colW - 20 - (r.max - t) * 18;
+        ctx.save();
+        ctx.strokeStyle = SALVAGE_DIM;
+        ctx.globalAlpha = 0.9;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px, y + 16, 12, 12);
+        if (t < r.tier) { ctx.fillStyle = SALVAGE; ctx.fillRect(px + 2, y + 18, 8, 8); }
+        ctx.restore();
+      }
+      label(maxed ? "MAX" : String(r.cost),
+            left + colW - 20, y + 56, SIZE.cap,
+            maxed ? AMBER_DIM : (afford ? SALVAGE : WARN), "right",
+            maxed ? 0.7 : 1);
+
+      if (!maxed) {
+        api.addTap({ x: left, y, w: colW, h: rowH,
+                     act: () => { refit.pick = i; if (st.onBuy) st.onBuy(r.key); } });
+      }
+    });
+
+    // ── the other track ────────────────────────────────────────────────────
+    const rx = SCREEN_W * 0.6, rw = SCREEN_W - 34 - rx;
+    label("EARNED, NOT BOUGHT", rx, top - 18, SIZE.cap, VIOLET, "left", 0.75, "0.18em");
+
+    (st.unlocks || []).forEach((u, i) => {
+      const y = top + i * 82;
+      ctx.save();
+      ctx.strokeStyle = u.have ? VIOLET : VIOLET_LOW;
+      ctx.globalAlpha = u.have ? 0.9 : 0.5;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(rx, y, rw, 68);
+      ctx.restore();
+      label(u.have ? u.name : "LOCKED", rx + 14, y + 26, SIZE.val,
+            u.have ? VIOLET : VIOLET_LOW, "left", u.have ? 1 : 0.8, "0.08em");
+      label(u.have ? u.note : (u.at + " almanac entries"), rx + 14, y + 48,
+            SIZE.cap, u.have ? VIOLET_DIM : VIOLET_LOW, "left", 0.85);
+    });
+
+    label("the almanac pays in verbs · the hold pays in numbers",
+          SCREEN_W - 34, SCREEN_H - 30, SIZE.cap, VIOLET_LOW, "right", 0.8);
+
+    if (api.touchOnly) {
+      api.tapButton("UNDOCK", SCREEN_W / 2, SCREEN_H - 30, 200, 40, VIOLET,
+                    st.onUndock || (() => {}));
+    }
+  };
 
   window.CrossfireSurveyHUD = HUD;
 })();

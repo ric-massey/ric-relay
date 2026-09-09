@@ -24,7 +24,7 @@ Open `http://127.0.0.1:8000/projects/crossfire/`.
 | Survival | 1-5 | Co-op asteroid waves, shared lives, optional friendly fire, wrapping arena |
 | Battle Royale | 2-5 | Three lives each, two-hit hulls, stationary gravity hazards, closing wall, no time limit |
 | Campaign | 1-2 | Three scripted missions, sides instead of a free-for-all, an allied fleet flying with you, a shared reserve of lives |
-| Survey | 1 | No enemies, no edges and no losing. Endless procedural space, a fog-of-war chart, a twenty-five entry almanac, and gravity wells that are tools as much as hazards |
+| Survey | 1 | No edges and no losing. Endless procedural space, a fog-of-war chart, a thirty-one entry almanac, salvage, a refit, guarded caches and a derelict you fly inside |
 
 Battle Royale shows hull strength only for ships controlled on the current device.
 First hits stay quiet; losing a life adds a short entry to the feed beneath the
@@ -145,6 +145,36 @@ regenerated them would snap them back to where they started every time you flew
 away and returned; instead a population is kept around the ship and topped up at
 the edge of it, the way Battle Royale tops up its field.
 
+### It is a world, not a backdrop
+
+Survey shipped as a sector you flew *through*: the only thing that could touch
+you was a gravity well, and every planet, wreck and marker was painted on. An
+endless sector still felt small, and this is why — nothing in it pushed back.
+
+Everything is solid now. Planets, drifting hulks and the Leviathan's plates all
+resolve against one collision, and the rule they are drawn by is that **the shape
+you can see is the shape that stops you**: the first time a player clips a hull
+they could clearly see, they stop trusting every other edge in the sector. A slow
+brush is free and only a real impact costs hull, because a world that charges a
+hull point for every graze is a world you fly through the middle of.
+
+Four things were added to have somewhere to go:
+
+- **Wormholes.** Falling into one throws you tens of thousands of units. There is
+  nothing to press — the same way there is nothing to press to arrive anywhere
+  else out here. A gate's far side is a pure function of the gate, so it is a
+  route rather than a random teleport.
+- **Guarded caches.** Sealed while anything is standing over them. The guard is
+  the point: a cache you can dash past is a pickup with decoration around it.
+  Sentries are *posted*, never roaming — Survey's promise was that nothing hunts
+  you, and a guard that never leaves its post keeps it.
+- **Stations.** Where salvage becomes a better ship. One is planted at the origin
+  so the first refit is not a scavenger hunt.
+- **The Leviathan.** The eighth landmark, 112,000 units out, and the only one
+  with an *inside*. Two flanks of hull discs with the stern quarter left open,
+  a bow cap that makes the corridor a dead end rather than a tunnel, and three
+  caches down the spine — the deepest worth the other two together.
+
 ### Two inversions
 
 **The chart starts blank.** The minimap every other mode hands you complete is,
@@ -183,6 +213,30 @@ pulls overlap — are now rolled per chunk, roughly one in eight. That is the
 endless-space answer to a problem the fixed arena solved by hand: an entry that
 needs a configuration cannot depend on a single lucky spot when there is no
 single sector, so both are always somewhere ahead of you.
+
+### Two kinds of progression
+
+They are deliberately separate, and they pay in different currencies.
+
+**Salvage buys numbers.** Break a rock, strip a hulk, crack a cache, and it goes
+in the hold — one number with one cap. Spend it at a station across four tracks
+of three tiers: hull plating, drive, cargo hold, scanner. Losing your hull spills
+half the hold where you lost it, and it is still lying there when you get back:
+Survey has no fail state and inventing one would only punish going and looking,
+but a hold you can drop is what gives a long haul home its nerve.
+
+**The almanac buys verbs.** Three things the ship simply could not do, handed
+over for looking rather than for money, at six, twelve and eighteen entries:
+
+| Entries | Unlock | What changes |
+|---:|---|---|
+| 6 | Tractor beam | Salvage comes to you. A pass over a broken rock stops being six manoeuvres |
+| 12 | Warp tuning | A gate drops you at the nearest thing you have not logged, which is what puts the far end of the ladder inside an evening |
+| 18 | Running dark | Cut the engine and sentries lose you — every cache becomes a choice between shooting in and drifting in cold |
+
+A station shows both tracks side by side even though only one is for sale there.
+The player staring at a price list is exactly the player who should be able to
+see what *looking* would buy instead.
 
 ### The chart and the almanac are pages
 
@@ -223,10 +277,16 @@ with no chart and no almanac.
 - `N`: on a cleared-mission screen, fly straight into the next mission.
 - `C`: open Settings from the title or pause menu.
 - In a Survey: `F` sends a scan pulse, `M` opens the sector chart, `L` opens the
-  almanac, and `Escape` leaves whichever page you are on. On the chart the
-  arrows pan, `+` and `−` zoom and `C` recentres; in the almanac the arrows move
-  between entries. On a phone the panel chart is a tap and the scan is a button
-  beside the hull bar — the corners are where thumbs are.
+  almanac, `E` docks at a station you are sitting in, and `Escape` leaves
+  whichever page you are on. On the chart the arrows pan, `+` and `−` zoom and
+  `C` recentres; in the almanac the arrows move between entries; at a station the
+  arrows move and `Enter` buys. On a phone the panel chart is a tap, the scan is
+  a button beside the hull bar, and the almanac counter is a button — the corners
+  are where thumbs are.
+
+  The almanac was on `L` from the first day and almost nobody found it. A
+  keybinding with nothing on screen pointing at it is a keybinding that does not
+  exist, so the counter names its key and is itself the button.
 
 Every weapon fires three-round bursts, except the campaign pilot on **Easy**, who
 holds the trigger for a continuous stream; Hard and Impossible put the pilot back

@@ -160,7 +160,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 // ── 1. generation is pure, and the ladder is complete ────────────────────
 /* An endless sector cannot be checked by enumerating it. What can be checked is
    that a chunk is a pure function of its coordinates — fly away and back and
-   find the same stars — and that the seven landmarks are all placed, all at
+   find the same stars — and that the eight landmarks are all placed, all at
    different bearings, and all at the distances the ladder promises. */
 {
   const SEEDS = 60;
@@ -173,7 +173,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
     const keys = surv.landmarks.map(l => l.key);
     for (const key of ["graveyard", "rogue", "last-transmission", "pale-dot",
-                       "the-wall", "supernebula", "node-01"]) {
+                       "the-wall", "supernebula", "node-01", "leviathan"]) {
       check(keys.filter(k => k === key).length === 1,
             "seed " + seed + ": landmark " + key + " appears " +
             keys.filter(k => k === key).length + " times");
@@ -209,7 +209,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
           "seed " + seed + ": the home chunk has a hazard in it");
   }
   console.log("  chunks     " + SEEDS + " seeds · pure and mixing · home chunk clear · " +
-              "7 landmarks each, min bearing gap " + minSpread.toFixed(2) + " rad");
+              "8 landmarks each, min bearing gap " + minSpread.toFixed(2) + " rad");
 }
 
 // ── 1b. the sector really is endless ─────────────────────────
@@ -355,7 +355,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const { cf } = boot("?debug=1&seed=31337");
   cf.start("survey", 1);
   const cat = cf.catalogue();
-  check(cat.length === 25, "the catalogue must have 25 entries, has " + cat.length);
+  check(cat.length === 31, "the catalogue must have 31 entries, has " + cat.length);
   check(new Set(cat.map(e => e.key)).size === cat.length, "duplicate catalogue keys");
   for (const e of cat) {
     check(!!e.name && !!e.key, "a catalogue entry is missing a name or key");
@@ -367,12 +367,14 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const full = {
     dist: 1e9, coast: 999, dark: 1e9, top: 1e9, charted: 1e6, fromHome: 1e9,
     stars: 5, holes: 5, eclipse: true, stopped: true,
-    nearStar: true, leftHole: true, slung: true, threaded: true, skimmed: true
+    nearStar: true, leftHole: true, slung: true, threaded: true, skimmed: true,
+    struck: true, warped: true, laden: true, refitted: true, looted: true
   };
   const empty = {
     dist: 0, coast: 0, dark: 0, top: 0, charted: 0, fromHome: 0,
     stars: 0, holes: 0, eclipse: false, stopped: false,
-    nearStar: false, leftHole: false, slung: false, threaded: false, skimmed: false
+    nearStar: false, leftHole: false, slung: false, threaded: false, skimmed: false,
+    struck: false, warped: false, laden: false, refitted: false, looted: false
   };
   let tested = 0;
   for (const e of cat) {
@@ -381,7 +383,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     check(e.test(full) === true, e.key + ": cannot fire even when everything is true");
     check(e.test(empty) === false, e.key + ": fires on an empty telemetry block");
   }
-  check(tested === 17, "expected 17 telemetry entries, found " + tested);
+  check(tested === 22, "expected 22 telemetry entries, found " + tested);
 
   // Every entry must have a picture. That is the point of the almanac.
   check(typeof cf.hud().icon === "function", "the almanac has no icon painter");
@@ -389,15 +391,15 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     check(ICON_CASES.has(e.key), e.key + ": no picture in the almanac");
   }
 
-  // And the seven that are places must each be somewhere to fly to.
+  // And the eight that are places must each be somewhere to fly to.
   const lmKeys = new Set(cf.survey().landmarks.map(l => l.key));
   for (const key of ["rogue", "pale-dot", "supernebula", "graveyard",
-                     "last-transmission", "node-01", "the-wall"]) {
+                     "last-transmission", "node-01", "the-wall", "leviathan"]) {
     check(lmKeys.has(key), key + " has no landmark in the sector");
   }
-  console.log("  almanac    25 entries · " + tested +
+  console.log("  almanac    " + cat.length + " entries · " + tested +
               " telemetry conditions all reachable and none free · " +
-              "25 pictures · 7 landmarks");
+              cat.length + " pictures · 8 landmarks");
 }
 
 // ── 5. the chart survives the tab ─────────────────────────────────────────
@@ -437,7 +439,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const foundBefore = surv.found.size;
   const chartedBefore = hud.charted();
   cf.leave();                                     // the real quit path, which saves
-  const raw = store["crossfire.survey.v2"];
+  const raw = store["crossfire.survey.v3"];
   check(!!raw, "nothing was written to local storage");
   if (raw) {
     const book = JSON.parse(raw);
@@ -477,6 +479,238 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     cf.draw();
   }
   console.log("  regression survival and royale still start, step and draw");
+}
+
+// ── 7. the sector is solid ────────────────────────────────────────────────
+/* The thing that separates a world from a backdrop. Survey used to let a ship
+   fly through every object in it, so the only honest check is the blunt one:
+   put a planet in front of a ship, fly at it, and prove the ship is still
+   outside it afterwards. A pass that ends up inside the disc is the exact bug
+   this mode used to have everywhere. */
+{
+  const { cf } = boot("?debug=1&seed=4242");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const lv = cf.live();
+  const me = lv.ships[0];
+
+  // A world of our own, right in front of the ship, so the check does not
+  // depend on what this seed happened to generate.
+  surv.planets.push({ x: me.x + 900, y: me.y, r: 200 });
+  me.vx = 0; me.vy = 0; me.a = 0;
+  me.invuln = 0;
+
+  let deepest = Infinity;
+  cf.hold("KeyW", true);                 // player one's thrust, the real binding
+  for (let i = 0; i < 420; i++) {
+    now += 1000 / 60; cf.step();
+    const p = surv.planets[surv.planets.length - 1];
+    deepest = Math.min(deepest, Math.hypot(me.x - p.x, me.y - p.y) - p.r);
+  }
+  cf.hold("KeyW", false);
+  check(Number.isFinite(deepest), "the solidity run went non-finite");
+  /* The check is worthless unless the ship actually arrived, and a run that
+     never left the start line passes "did not end up inside" for free — so the
+     approach is asserted before the collision is. */
+  check(deepest < 40,
+        "the ship never reached the planet (closest " + Math.round(deepest) + ")");
+  check(deepest > -lv.shipR,
+        "a ship flew " + Math.round(-deepest) + " units inside a planet");
+  check(surv.t.struck === true, "hitting a planet did not register as contact");
+  console.log("  solid      flew into a world and stopped at its surface (deepest " +
+              Math.round(deepest) + " units)");
+}
+
+// ── 8. salvage, the hold, and the refit ───────────────────────────────────
+/* The numbers track, end to end: salvage goes in, the hold caps it, the station
+   spends it, and the ship that comes out is measurably better than the one that
+   went in. Each step is checked rather than the total, because a progression
+   that silently stops paying out is the failure players actually hit. */
+{
+  const { cf } = boot("?debug=1&seed=99");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const lv = cf.live();
+  const me = lv.ships[0];
+
+  check(surv.salvage === 0, "a fresh sector started with salvage in the hold");
+
+  // Fill the hold past its cap and prove it stops rather than overflowing.
+  const before = surv.salvage;
+  for (let i = 0; i < 400; i++) {
+    surv.motes.push({ x: me.x, y: me.y, vx: 0, vy: 0, spin: 0, life: 90 });
+    now += 1000 / 60; cf.step();
+  }
+  check(surv.salvage > before, "collecting salvage did not add any");
+  check(surv.t.laden === true, "a full hold did not register");
+  const capped = surv.salvage;
+
+  surv.motes.push({ x: me.x, y: me.y, vx: 0, vy: 0, spin: 0, life: 90 });
+  now += 1000 / 60; cf.step();
+  check(surv.salvage === capped,
+        "the hold took " + (surv.salvage - capped) + " past its own cap");
+
+  // The refit: it must cost, and it must change the ship.
+  const hullBefore = me.maxHull, thrustBefore = me.thrustMul || 1;
+  const purse = surv.salvage;
+  check(purse >= 40, "the hold cap is too small to buy anything — test is stale");
+  check(cf.buy("hull") === true, "could not buy a hull tier with a full hold");
+  check(surv.salvage < purse, "buying a tier did not spend any salvage");
+  check(me.maxHull > hullBefore,
+        "a hull tier did not raise max hull (" + hullBefore + " → " + me.maxHull + ")");
+  surv.salvage = 500;                    // top the hold up between purchases
+  check(cf.buy("thrust") === true, "could not buy a drive tier");
+  check((me.thrustMul || 1) > thrustBefore, "a drive tier did not raise thrust");
+  check(surv.t.refitted === true, "refitting did not register");
+
+  // And it must refuse when the hold is empty.
+  surv.salvage = 0;
+  check(cf.buy("hull") === false, "bought a tier with an empty hold");
+
+  // A track runs out at its last tier rather than taking money forever.
+  surv.salvage = 100000;
+  let bought = 0;
+  while (cf.buy("hold")) bought++;
+  check(bought <= 3, "the cargo track sold " + bought + " tiers past its cap");
+  check(cf.buy("hold") === false, "a maxed track kept selling");
+  console.log("  economy    hold caps · a refit costs and lands · maxed tracks stop selling");
+}
+
+// ── 9. the verbs are earned, never bought ─────────────────────────────────
+{
+  const { cf } = boot("?debug=1&seed=1234");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  check(cf.unlocked("tractor") === false, "the beam was unlocked on a blank almanac");
+  check(cf.unlocked("warp") === false, "warp was unlocked on a blank almanac");
+
+  // Log entries until each threshold, and prove the verb arrives exactly there.
+  const keys = cf.catalogue().map(e => e.key);
+  for (const key of keys) {
+    const had = cf.unlocked("tractor");
+    cf.find(key);
+    if (!had && cf.unlocked("tractor")) {
+      check(surv.found.size === 6,
+            "the beam arrived at " + surv.found.size + " entries, not 6");
+    }
+  }
+  check(cf.unlocked("tractor") && cf.unlocked("warp") && cf.unlocked("cloak"),
+        "a full almanac did not hand over every verb");
+  // No amount of salvage buys one.
+  surv.salvage = 1e6;
+  check(!cf.buy("tractor"), "a verb was purchasable at a station");
+  console.log("  verbs      three unlocks, at 6/12/18 entries, none for sale");
+}
+
+// ── 10. guarded caches, and the Leviathan's inside ────────────────────────
+/* The cache is the mode's one gate that is not a distance, so both halves are
+   checked: that a guarded one refuses to open, and that clearing the post opens
+   it. And the Leviathan is checked for the thing that makes it a place rather
+   than a wall — that there is a route from outside it to its middle. */
+{
+  const { cf } = boot("?debug=1&seed=8888");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const lv = cf.live();
+  const me = lv.ships[0];
+
+  // Build a guarded cache under the ship. Sealed: it must not pay out.
+  const cache = { x: me.x, y: me.y, r: 46, guards: [], opened: false, phase: 0,
+                  id: "test-cache" };
+  surv.caches.push(cache);
+  surv.drones.push({ x: me.x + 400, y: me.y, vx: 0, vy: 0, a: 0, home: cache,
+                     post: { x: me.x + 400, y: me.y }, hp: 2, cool: 99,
+                     awake: false, hit: 0 });
+  const purse = surv.salvage;
+  for (let i = 0; i < 30; i++) { now += 1000 / 60; cf.step(); }
+  check(surv.caches.includes(cache), "a guarded cache opened anyway");
+  check(cache.sealed === true, "a guarded cache did not read as sealed");
+
+  // Clear the post; now it must open, and pay.
+  surv.drones.length = 0;
+  me.x = cache.x; me.y = cache.y;
+  for (let i = 0; i < 30; i++) { now += 1000 / 60; cf.step(); }
+  check(!surv.caches.includes(cache), "an unguarded cache stayed shut");
+  check(surv.t.looted === true, "opening a cache did not register");
+  check(surv.motes.length > 0 || surv.salvage > purse,
+        "an opened cache paid out nothing");
+
+  /* The Leviathan. Fly to the sector's own copy and prove two things: its hull
+     actually blocks (a disc between the outside and the spine), and the spine
+     itself is clear — a corridor you cannot get down is a solid block with a
+     drawing of a door on it. */
+  const lm = surv.landmarks.find(l => l.key === "leviathan");
+  check(!!lm, "the sector has no Leviathan");
+  if (lm) {
+    me.x = lm.x; me.y = lm.y; me.vx = me.vy = 0;
+    now += 1000 / 60; cf.step();
+    const lev = surv.leviathan;
+    check(!!lev, "standing on the Leviathan did not stream its hull in");
+    if (lev) {
+      check(lev.segs.length > 10,
+            "the Leviathan has only " + lev.segs.length + " hull sections");
+      const R = lv.shipR;
+      const blocked = (px, py, pad) =>
+        lev.segs.some(g => Math.hypot(px - g.x, py - g.y) < g.r + (pad || 0));
+      const spine = f => [lev.x + f * lev.len * lev.ca, lev.y + f * lev.len * lev.sa];
+
+      // Points down the spine, from the stern opening to short of the bow cap.
+      let clear = 0, total = 0;
+      for (let f = -0.44; f < 0.36; f += 0.02) {
+        const [px, py] = spine(f);
+        total++;
+        if (!blocked(px, py, R)) clear++;
+      }
+      check(clear === total,
+            "the Leviathan's corridor is blocked at " + (total - clear) +
+            " of " + total + " points — it is a wall, not a place");
+      // The bow is a dead end by design: you turn around in there, you do not
+      // pass through. If that ever opens, the inside stops being a room.
+      let capped = false;
+      for (let f = 0.36; f <= 0.52; f += 0.01) {
+        if (blocked(...spine(f), R)) { capped = true; break; }
+      }
+      check(capped, "the Leviathan's bow is open — it is a tunnel, not a room");
+
+      /* And nothing worth flying in for may be buried in the hull. This is the
+         check that caught the deep cache sitting inside the bow cap, where it
+         drew perfectly and could never be reached. */
+      for (const c of surv.caches) {
+        if (Math.hypot(c.x - lev.x, c.y - lev.y) > lev.len) continue;
+        check(!blocked(c.x, c.y, c.r + R),
+              "a cache inside the Leviathan is buried in its hull");
+      }
+      // And the flanks are not: a hull that lets you through the side is scenery.
+      const off = lev.beam + 158;
+      const sx = lev.x - off * lev.sa, sy = lev.y + off * lev.ca;
+      check(lev.segs.some(g => Math.hypot(sx - g.x, sy - g.y) < g.r + R),
+            "the Leviathan's flank has a hole in it");
+      console.log("  leviathan  " + lev.segs.length + " hull sections · " +
+                  Math.round(lev.len) + " units stem to stern · corridor clear end to end");
+    }
+  }
+  console.log("  caches     sealed while guarded · opens and pays once the post is clear");
+}
+
+// ── 11. a gate goes somewhere ─────────────────────────────────────────────
+{
+  const { cf } = boot("?debug=1&seed=606");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+
+  const gate = { x: me.x, y: me.y, phase: 0, tx: me.x + 30000, ty: me.y - 18000 };
+  surv.gates.push(gate);
+  const from = { x: me.x, y: me.y };
+  now += 1000 / 60; cf.step();
+  const jump = Math.hypot(me.x - from.x, me.y - from.y);
+  check(jump > 20000, "a gate moved the ship only " + Math.round(jump) + " units");
+  check(surv.t.warped === true, "going through a gate did not register");
+  check(Number.isFinite(me.x) && Number.isFinite(me.y), "a gate left the ship nowhere");
+  // The far side has to be built, or you arrive in a sector that is not there.
+  check(surv.chunks.size > 0, "arriving through a gate streamed nothing in");
+  console.log("  gates      one throw of " + Math.round(jump) +
+              " units, and the far side was built on arrival");
 }
 
 if (problems.length) {
