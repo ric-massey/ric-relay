@@ -966,8 +966,16 @@ by thumb like the almanac.
 
 **Reverse thrusters** are a fixed Survey key (`S` / down arrow) rather than a
 bindable action, the same as the scan and the light drive — the part gives your
-ship a verb it did not have. *Owed: a touch control for it.* A phone can fit the
-part and cannot use it yet.
+ship a verb it did not have.
+
+And a **pad button**, which is the one control on the pad that comes and goes: it
+appears when the part is fitted *and has finished fitting*, and goes when the part
+is pulled, letting go of the thumb on its way out. Both control schemes get it —
+backing off a rock is as useful with arrows as with a stick. It is an ordinary pad
+part in every other respect: draggable, sizeable, and mirrored by SWAP SIDES.
+
+The gating hangs off the fit rather than off the purchase on purpose: a button that
+will do nothing for the next forty-five seconds is worse than no button.
 
 **One of a kind on the ship.** Two pulse coils in two slots would be a way to
 spend slots rather than to choose between them, and the choosing is the whole of
@@ -1146,9 +1154,6 @@ bottom-left is exactly where a thumb lives — nor the site's ambient effects la
 painting over a full-screen canvas. The way back is **EXIT GAME**, on both settings
 screens, armed before it fires like the survey reset: one stray tap should not end
 a run and close the game. It saves the survey book on the way out.
-
-*Still owed: a touch control for the reverse thrusters (5.2), which are on a
-keyboard-only key.*
 
 ### Settings, per game mode  ·  **DONE**
 
