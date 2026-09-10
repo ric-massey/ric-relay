@@ -638,6 +638,43 @@ notifications over two minutes that never appear again. They are kept in the
 book, so a sector you have played has stopped explaining itself — and a resumed
 survey starts at the origin rather than in the shop.
 
+## The pages, on one grid  ·  **DONE**
+
+Six full-screen pages built one at a time over four phases, each of which looked
+fine on its own and none of which agreed with any other. Measured before:
+
+| | was |
+|---|---|
+| content top | 86, 88, 90 or 92 depending which page |
+| panel padding | 14, 16, 18, 20 or 34 |
+| column gutter | 12, 20 or 50 |
+| list row pitch | 26, 30, 32, 34, 38, 46 or 70 |
+| "medium" type | 18 *and* 19 — two sizes doing one job, from two files |
+
+None of that reads as a bug on any single page, and all of it reads the moment
+you press `I` and the panels land somewhere else than they did a second ago.
+That is what "designed" means here: not how one page looks, but whether six of
+them are the same object.
+
+So: one grid, six numbers, and every page laid out from it and nothing else —
+`EDGE 34 · TOP 92 · GUTTER 22 · PAD 20 · STEP 26 · HEAD 34`. A panel is
+`HEAD + n·STEP + PAD`, a list row is one `STEP`, a gap between panels is one
+`STEP`, and `COL(n, i)` hands out the i-th of n equal columns so a two-column
+page and a four-column page put their edges in the same places.
+
+Measured after, across all six: **content top 92 everywhere; type sizes 16, 23
+and 30 and nothing else; panel edges only ever at 34, 273, 352, 511, 670, 750** —
+which are exactly the two-, three- and four-column positions and nothing
+arbitrary.
+
+Three things changed besides the arithmetic. Panels have a **rule under their
+title**, inset to the padding, which is most of why they now read as designed
+rather than as boxes with words in. The module draws its **own buttons** rather
+than the engine's, which is where the stray 18px came from — one file's idea of
+"medium" landing a pixel off every heading in another's. And the almanac and the
+chart, which had their own margins because they are grids rather than lists, are
+on the same columns as everything else.
+
 ---
 
 ## Rules for building this

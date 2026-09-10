@@ -332,6 +332,43 @@
     return w;
   }
 
+  /* ── the page grid ────────────────────────────────────────────────────────
+     Every full-screen page is laid out from these six numbers and nothing else.
+
+     They exist because the pages had drifted apart from one another in every
+     dimension at once. Measured across six of them: content began at y 86, 88,
+     90 or 92 depending which page you were on; panel padding was 14, 16, 18, 20
+     or 34; the gutter between two columns was 12, 20 or 50; and rows in a list
+     were spaced 26, 30, 32, 34, 38, 46 or 70 apart with no relationship between
+     any of them. None of that is visible as a bug — each page looks fine on its
+     own — and all of it is visible the moment you move between two, which is
+     what "designed" actually means here.
+
+     `STEP` is the unit everything vertical is a multiple of. A panel is
+     `HEAD + n·STEP + PAD`, a list row is `STEP`, and a gap between panels is
+     `STEP`. That is the whole system.
+
+     `COL(n, i)` hands back the i-th of n equal columns inside the margins, so a
+     two-column page and a four-column page put their edges in the same places as
+     each other rather than each inventing a width. */
+  const PAGE = {
+    EDGE: 34,      // outer margin — the same one `pageFrame` rules to
+    TOP: 92,       // first row of content, clear of the title rule at 70
+    GUTTER: 22,    // between columns
+    PAD: 20,       // inside a panel, on every side
+    STEP: 26,      // the vertical unit: one list row, one gap
+    HEAD: 34       // a panel's title band
+  };
+  const COL = (n, i) => {
+    const W = api.SCREEN_W - PAGE.EDGE * 2 - PAGE.GUTTER * (n - 1);
+    const w = W / n;
+    return { x: PAGE.EDGE + i * (w + PAGE.GUTTER), w };
+  };
+  // A panel tall enough for `rows` rows of content under its title.
+  const PANEL_H = rows => PAGE.HEAD + rows * PAGE.STEP + PAGE.PAD - 6;
+  // The baseline of the i-th row inside a panel that starts at `y`.
+  const ROW = (y, i) => y + PAGE.HEAD + i * PAGE.STEP + 12;
+
   /* A page's furniture: a ground, a title, a rule under it, and a footer. Both
      pages use it, so they cannot drift apart from each other. */
   function pageFrame(title, sub, footer) {
@@ -363,8 +400,8 @@
      memory and a target big enough for a thumb, drawn as one thing. */
   function closeButton(act) {
     const { SCREEN_W, SCREEN_H } = api;
-    api.tapButton(api.touchOnly ? "CLOSE" : "CLOSE  [ESC]",
-                  SCREEN_W - 128, SCREEN_H - 30, 180, 38, VIOLET, act);
+    button(api.touchOnly ? "CLOSE" : "CLOSE  [ESC]",
+           SCREEN_W - 124, SCREEN_H - 30, 180, 38, VIOLET, act);
   }
 
   /* ═══ THE PANEL ═══════════════════════════════════════════════════════════
@@ -1444,7 +1481,8 @@
     /* The band under the map used to be 56px holding five things — a hint, a
        zoom readout, six palette buttons, the footer and CLOSE — all inside
        each other. The map gives up a row so each of them gets its own. */
-    const view = { x: 34, y: 86, w: SCREEN_W - 68, h: SCREEN_H - 86 - 124 };
+    const view = { x: PAGE.EDGE, y: PAGE.TOP,
+                   w: SCREEN_W - PAGE.EDGE * 2, h: SCREEN_H - PAGE.TOP - 118 };
     const mx = wx => view.x + view.w / 2 + (wx - chart.x) * chart.scale;
     const my = wy => view.y + view.h / 2 + (wy - chart.y) * chart.scale;
 
@@ -1541,14 +1579,15 @@
           fmtCells(Math.round(SCREEN_W / chart.scale)) + " UNITS ACROSS",
           SCREEN_W - 34, SCREEN_H - 104, SIZE.cap, VIOLET_DIM, "right", 0.8);
 
-    // The palette. Which kind of note the next tap leaves. A row to itself, so
-    // nothing is drawn through it and nothing steals its taps.
-    const pw = 96, pgap = 6, py = SCREEN_H - 94;
-    const total = PIN_KINDS.length * pw + (PIN_KINDS.length - 1) * pgap;
-    let px0 = (SCREEN_W - total) / 2;
+    /* The palette. Which kind of note the next tap leaves — a row to itself, so
+       nothing is drawn through it and nothing steals its taps, and on the page's
+       own six columns so it lines up with the map above it rather than floating
+       centred in the middle of nowhere. */
+    const py = SCREEN_H - 94;
     PIN_KINDS.forEach((k, i) => {
       const on = i === chart.pin && !chart.jump;
-      const bx = px0 + i * (pw + pgap);
+      const c = COL(PIN_KINDS.length, i);
+      const bx = c.x, pw = c.w;
       ctx.save();
       ctx.globalAlpha = chart.jump ? 0.35 : 1;
       ctx.fillStyle = k.colour;
@@ -1570,10 +1609,10 @@
        swatches, and CLOSE on top of its last — and taps go to whatever was
        drawn last, so those pin kinds could not be chosen on a phone at all. */
     if (api.touchOnly) {
-      api.tapButton("−", 60, SCREEN_H - 30, 46, 38, VIOLET, () => zoomChart(-1));
-      api.tapButton("+", 114, SCREEN_H - 30, 46, 38, VIOLET, () => zoomChart(1));
-      api.tapButton("RECENTRE", 220, SCREEN_H - 30, 140, 38, VIOLET,
-                    () => HUD.chartOpened(st));
+      button("−", 60, SCREEN_H - 30, 46, 38, VIOLET, () => zoomChart(-1));
+      button("+", 114, SCREEN_H - 30, 46, 38, VIOLET, () => zoomChart(1));
+      button("RECENTRE", 220, SCREEN_H - 30, 140, 38, VIOLET,
+             () => HUD.chartOpened(st));
     }
     /* The manmade wormhole, which is what the yard was for. Six parts carried
        home for a reward that was wired up in the engine and never reached the
@@ -1585,19 +1624,19 @@
        fixed rather than packed: a button that moves depending on what else is
        there is a button you have to look for. */
     if (st.waypoint && !chart.mark) {
-      api.tapButton("CLEAR", 450, SCREEN_H - 30, 96, 38, VIOLET_DIM,
+      button("CLEAR", 450, SCREEN_H - 30, 96, 38, VIOLET_DIM,
                     () => { if (st.onWaypoint) st.onWaypoint(null); });
     }
     /* Somewhere to go. Pins are notes and there can be two hundred of them; a
        waypoint is the one place you have decided on, and the flight HUD points
        at it. Armed the same way the wormhole is, because that gesture is already
        learned by the time anyone has a wormhole. */
-    api.tapButton(chart.mark ? "CANCEL" : st.waypoint ? "MOVE  ▸" : "WAYPOINT  ▸",
+    button(chart.mark ? "CANCEL" : st.waypoint ? "MOVE  ▸" : "WAYPOINT  ▸",
                   560, SCREEN_H - 30, 130, 38, chart.mark ? WARN : ICE,
                   () => { chart.mark = !chart.mark; chart.jump = false; },
                   chart.mark);
     if (canJump) {
-      api.tapButton(chart.jump ? "CANCEL" : "WORMHOLE  ▸",
+      button(chart.jump ? "CANCEL" : "WORMHOLE  ▸",
                     700, SCREEN_H - 30, 140, 38, chart.jump ? WARN : CASH,
                     () => { chart.jump = !chart.jump; chart.mark = false; },
                     chart.jump);
@@ -1757,16 +1796,19 @@
     return true;
   };
 
+  /* On the page's own columns and the page's own step, like every other page.
+     It had its own margins, its own 14px gap and an 82px card that was not a
+     multiple of anything — which looked fine here and stopped looking fine the
+     moment you pressed I and the inventory's panels landed somewhere else. */
   function almanacLayout() {
-    const { SCREEN_W, SCREEN_H } = api;
+    const { SCREEN_H } = api;
     const cols = api.touchOnly ? 1 : 3;
-    const gap = 14;
-    const left = 34, right = SCREEN_W - 34;
-    const cardW = (right - left - gap * (cols - 1)) / cols;
-    const cardH = api.touchOnly ? 74 : 82;
-    const top = 92;
-    const rows = Math.floor((SCREEN_H - top - 74) / (cardH + gap));
-    return { cols, gap, left, cardW, cardH, top, rows };
+    const c0 = COL(cols, 0);
+    const cardH = api.touchOnly ? 78 : 78;
+    const top = PAGE.TOP;
+    const pitch = cardH + PAGE.STEP;
+    const rows = Math.floor((SCREEN_H - top - 80) / pitch);
+    return { cols, gap: PAGE.GUTTER, left: c0.x, cardW: c0.w, cardH, top, rows };
   }
 
   /* Driven by the arrows, the list snaps to whole rows — a keyboard is moving
@@ -1852,9 +1894,9 @@
       ctx.fillRect(SCREEN_W - 28, trackY + t * (trackH - h), 3, h);
       ctx.restore();
       if (api.touchOnly) {
-        api.tapButton("▲", 60, SCREEN_H - 30, 46, 38, VIOLET,
+        button("▲", 60, SCREEN_H - 30, 46, 38, VIOLET,
                       () => HUD.almanacScrollBy(-1, entries.length));
-        api.tapButton("▼", 114, SCREEN_H - 30, 46, 38, VIOLET,
+        button("▼", 114, SCREEN_H - 30, 46, 38, VIOLET,
                       () => HUD.almanacScrollBy(1, entries.length));
       }
     }
@@ -1914,7 +1956,7 @@
   function drawCard(e, x, y, w, h, selected, index) {
     const { ctx } = api;
     const on = !!e.found;
-    const art = h - 20;
+    const art = h - 22;
 
     ctx.save();
     ctx.fillStyle = on ? "rgba(160,140,255,0.07)" : "rgba(255,255,255,0.022)";
@@ -1931,15 +1973,15 @@
     ctx.strokeStyle = on ? VIOLET_LOW : "#24203f";
     ctx.globalAlpha = 0.8;
     ctx.lineWidth = 1;
-    ctx.strokeRect(x + 10, y + 10, art, art);
+    ctx.strokeRect(x + 11, y + 11, art, art);
     ctx.beginPath();
-    ctx.rect(x + 10, y + 10, art, art);
+    ctx.rect(x + 11, y + 11, art, art);
     ctx.clip();
     ctx.globalAlpha = 1;
-    drawIcon(e.key, x + 10 + art / 2, y + 10 + art / 2, art * 0.34, on);
+    drawIcon(e.key, x + 11 + art / 2, y + 11 + art / 2, art * 0.34, on);
     ctx.restore();
 
-    const tx = x + art + 22;
+    const tx = x + art + PAGE.PAD;
     // The tick lives at the right edge, so the text stops before it rather than
     // running underneath it.
     const room = (x + w - 18) - tx - (on ? 20 : 4);
@@ -2390,167 +2432,126 @@
     const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
     const rows = st.refit || [];
-    const salv = st.cash || 0;
+    const cash = st.cash || 0;
+    const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
+    const L = COL(2, 0), R = COL(2, 1);
 
-    pageFrame("STATION",
-              "CASH " + salv,
-              api.touchOnly ? "TAP TO BUY  ·  SELL AND UNDOCK BELOW"
-                            : "ARROWS MOVE  ·  ENTER BUYS  ·  S SELLS  ·  E OR ESC UNDOCKS");
+    pageFrame("STATION", "CASH  " + cash,
+              api.touchOnly ? "TAP TO BUY  \u00b7  UNDOCK BELOW"
+                            : "ARROWS MOVE  \u00b7  ENTER BUYS  \u00b7  S SELLS  \u00b7  E UNDOCKS");
 
-    /* ── the buyer ──────────────────────────────────────────────────────────
-       What this station pays, and what your hold is worth to it. This is the
-       whole of the selling half of the economy and it belongs at the top of the
-       page, because it is the thing you came here to do — a shop that shows you
-       prices before it shows you its stock is a shop you can make a decision
-       in. The prices are this station's own, so the row is also the argument
-       for carrying a load somewhere further out next time. */
-    const carriedNow = st.carried || 0;
-    const worth = st.worth || 0;
-    const mats = (st.materials || []);
-    const bw = SCREEN_W - 68, by = 88, bh = 62;
-    ctx.save();
-    ctx.fillStyle = CASH;
-    ctx.globalAlpha = 0.035;
-    ctx.fillRect(34, by, bw, bh);
-    ctx.strokeStyle = CASH_DIM;
-    ctx.globalAlpha = 0.7;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(34, by, bw, bh);
-    ctx.restore();
-
-    label("THIS STATION BUYS", 48, by + 20, SIZE.cap, CASH_DIM, "left", 0.8, "0.16em");
-    // Four columns across the width the SELL button leaves, wide enough that the
-    // longest name and its price cannot meet in the middle.
-    const colStep = 172;
+    /* ── what it pays ──────────────────────────────────────────────────────
+       The selling half leads the page because it is what you came here to do.
+       The price comes before the count, because the price is the half that
+       differs between here and the next station. */
+    const mats = st.materials || [];
+    const carried = st.carried || 0;
+    const buyH = PANEL_H(1);
+    panel(full.x, PAGE.TOP, full.w, buyH, CASH, "THIS STATION BUYS",
+          carried ? carried + " UNITS ABOARD" : "NOTHING ABOARD");
+    const cellW = (full.w - PAGE.PAD * 2 - 230) / Math.max(1, mats.length);
     mats.forEach((m, i) => {
-      const mx = 48 + i * colStep;
-      label(m.name, mx, by + 44, SIZE.cap, m.colour, "left",
-            m.n ? 1 : 0.45, "0.08em");
-      // The price, then how many of it you have — the price first, because it is
-      // what differs between this station and the next one.
-      label((m.price == null ? m.value : m.price) + "  ×" + m.n,
-            mx + 156, by + 44, SIZE.cap, m.n ? CASH : VIOLET_LOW, "right",
-            m.n ? 0.95 : 0.45);
+      const x = full.x + PAGE.PAD + i * cellW;
+      const yy = ROW(PAGE.TOP, 0);
+      fitText(m.name, x, yy, SIZE.cap, m.colour, "left", m.n ? 1 : 0.4,
+              cellW - 78, "0.06em");
+      label((m.price == null ? m.value : m.price) + "  \u00d7" + m.n,
+            x + cellW - 22, yy, SIZE.cap, m.n ? CASH : VIOLET_LOW, "right",
+            m.n ? 0.95 : 0.4);
     });
+    button(carried ? "SELL ALL   " + (st.worth || 0) : "NOTHING TO SELL",
+           full.x + full.w - 114, PAGE.TOP + buyH / 2, 200, 40,
+           carried ? CASH : VIOLET_LOW, st.onSell, false, !!carried);
 
-    const sellable = carriedNow > 0;
-    api.tapButton(sellable ? "SELL ALL   " + worth : "NOTHING TO SELL",
-                  SCREEN_W - 148, by + bh / 2, 200, 40,
-                  sellable ? CASH : VIOLET_LOW,
-                  sellable ? (st.onSell || (() => {})) : null,
-                  false, sellable);
-
-
-    /* ── the chandler ───────────────────────────────────────────────────────
-       Water and food, which is the other half of what a station is for now. The
-       price is what is *missing* rather than a flat fee, so topping off before a
-       long trip is never a rip-off — and the button says the number, because a
-       shop that makes you press to find out the price is a shop you do not use
-       when you are down to four minutes of water. */
-    const sy = by + bh + 12, sh = 46;
-    ctx.save();
-    ctx.strokeStyle = ICE;
-    ctx.globalAlpha = 0.35;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(34, sy, SCREEN_W - 68, sh);
-    ctx.restore();
-    label("SUPPLIES", 48, sy + 28, SIZE.cap, ICE, "left", 0.8, "0.16em");
-
+    /* ── the chandler ──────────────────────────────────────────────────────
+       Priced on what is missing rather than a flat fee, and the button says the
+       number: a shop that makes you press to find the price is a shop you do not
+       use when you are down to four minutes of water. */
+    const supY = PAGE.TOP + buyH + PAGE.STEP;
+    panel(full.x, supY, full.w, buyH, ICE, "SUPPLIES");
     [["water", "WATER", ICE], ["food", "FOOD", AMBER_DIM]].forEach(([k, name, col], i) => {
       const m = st[k] || {};
-      const full = m.cost == null;
-      const afford = !full && (st.cash || 0) >= m.cost;
-      const bxx = 250 + i * 250;
-      label(name + "  " + fmtSecs(m.left || 0), bxx - 88, sy + 28, SIZE.cap,
-            m.countdown > 0 ? WARN : col, "left", 0.9, "0.08em");
-      api.tapButton(full ? "FULL" : "FILL  " + m.cost,
-                    bxx + 108, sy + sh / 2, 130, 32,
-                    full ? VIOLET_LOW : afford ? col : WARN,
-                    full ? null : () => st.onBuySupply && st.onBuySupply(k),
-                    false, !full && afford);
+      const done = m.cost == null;
+      const afford = !done && cash >= m.cost;
+      const x = full.x + PAGE.PAD + i * 300;
+      const yy = ROW(supY, 0);
+      label(name, x, yy, SIZE.cap, m.countdown > 0 ? WARN : col, "left", 0.9, "0.14em");
+      label(m.countdown > 0 ? fmtSecs(m.countdown)
+                            : Math.round((m.frac || 0) * 100) + "%",
+            x + 84, yy, SIZE.cap, m.countdown > 0 ? WARN : col, "left", 0.95);
+      barAt(x + 132, yy - 9, 66, 8, m.frac || 0, col, m.countdown > 0);
+      button(done ? "FULL" : "FILL  " + m.cost, x + 250, supY + buyH / 2,
+             110, 34, done ? VIOLET_LOW : afford ? col : WARN,
+             done ? null : () => st.onBuySupply && st.onBuySupply(k),
+             false, !done && afford);
     });
 
-    const left = 34, colW = SCREEN_W * 0.56 - 44;
-    const top = 244, rowH = 62, gap = 8;
-
+    /* ── the two tracks ────────────────────────────────────────────────────
+       Two rows of the grid apiece: what it is and what it does above, the tier
+       pips and the price below. */
+    const colY = supY + buyH + PAGE.STEP;
+    const refitH = PANEL_H(rows.length * 2);
+    panel(L.x, colY, L.w, refitH, CASH, "REFIT", "PAID IN CASH");
     rows.forEach((r, i) => {
-      const y = top + i * (rowH + gap);
+      const yTop = ROW(colY, i * 2), yBot = ROW(colY, i * 2 + 1) - 6;
       const sel = i === refit.pick;
       const maxed = r.cost == null;
-      const afford = !maxed && salv >= r.cost;
-
-      ctx.save();
-      ctx.fillStyle = sel ? "rgba(109,255,191,0.07)" : "rgba(255,255,255,0.022)";
-      ctx.fillRect(left, y, colW, rowH);
-      ctx.strokeStyle = sel ? CASH : CASH_DIM;
-      ctx.globalAlpha = sel ? 1 : 0.55;
-      ctx.lineWidth = sel ? 2 : 1;
-      ctx.strokeRect(left, y, colW, rowH);
-      ctx.restore();
-
-      label(r.name, left + 16, y + 26, SIZE.val, maxed ? AMBER : CASH, "left",
-            1, "0.08em");
-      label(r.note, left + 16, y + 46, SIZE.cap, VIOLET_DIM, "left", 0.8);
-
-      // Tier pips: three boxes, filled for what is bought. A tier count is a
-      // small number and a row of boxes is read without counting.
-      for (let t = 0; t < r.max; t++) {
-        const px = left + colW - 20 - (r.max - t) * 18;
+      const afford = !maxed && cash >= r.cost;
+      if (sel) {
         ctx.save();
-        ctx.strokeStyle = CASH_DIM;
-        ctx.globalAlpha = 0.9;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(px, y + 16, 12, 12);
-        if (t < r.tier) { ctx.fillStyle = CASH; ctx.fillRect(px + 2, y + 18, 8, 8); }
+        ctx.fillStyle = CASH;
+        ctx.globalAlpha = 0.07;
+        ctx.fillRect(L.x + 1, yTop - 18, L.w - 2, PAGE.STEP * 2);
         ctx.restore();
       }
-      label(maxed ? "MAX" : String(r.cost),
-            left + colW - 20, y + 50, SIZE.cap,
-            maxed ? AMBER_DIM : (afford ? CASH : WARN), "right",
-            maxed ? 0.7 : 1);
-
+      fitText(r.name, L.x + PAGE.PAD, yTop, SIZE.cap, maxed ? AMBER : CASH,
+              "left", 1, L.w - 200, "0.08em");
+      fitText(r.note, L.x + PAGE.PAD, yBot, SIZE.cap, VIOLET_DIM, "left", 0.7,
+              L.w - 200);
+      for (let t = 0; t < r.max; t++) {
+        const px = L.x + L.w - PAGE.PAD - (r.max - t) * 16;
+        ctx.save();
+        ctx.fillStyle = t < r.tier ? CASH : VIOLET_LOW;
+        ctx.globalAlpha = t < r.tier ? 0.9 : 0.35;
+        ctx.fillRect(px, yTop - 9, 11, 9);
+        ctx.restore();
+      }
+      label(maxed ? "MAX" : String(r.cost), L.x + L.w - PAGE.PAD, yBot,
+            SIZE.cap, maxed ? AMBER_DIM : afford ? CASH : WARN, "right",
+            maxed ? 0.6 : 1);
       if (!maxed) {
-        api.addTap({ x: left, y, w: colW, h: rowH,
+        api.addTap({ x: L.x, y: yTop - 18, w: L.w, h: PAGE.STEP * 2,
                      act: () => { refit.pick = i; if (st.onBuy) st.onBuy(r.key); } });
       }
     });
 
-    // ── the other track ────────────────────────────────────────────────────
-    const rx = SCREEN_W * 0.6, rw = SCREEN_W - 34 - rx;
-    label("EARNED, NOT BOUGHT", rx, top - 18, SIZE.cap, VIOLET, "left", 0.75, "0.18em");
-
-    (st.unlocks || []).forEach((u, i) => {
-      const y = top + i * 70;
-      ctx.save();
-      ctx.strokeStyle = u.have ? VIOLET : VIOLET_LOW;
-      ctx.globalAlpha = u.have ? 0.9 : 0.5;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(rx, y, rw, 58);
-      ctx.restore();
-      label(u.have ? u.name : "LOCKED", rx + 14, y + 24, SIZE.val,
-            u.have ? VIOLET : VIOLET_LOW, "left", u.have ? 1 : 0.8, "0.08em");
-      label(u.have ? u.note : (u.at + " almanac entries"), rx + 14, y + 44,
-            SIZE.cap, u.have ? VIOLET_DIM : VIOLET_LOW, "left", 0.85);
+    const unlocks = st.unlocks || [];
+    const earnH = PANEL_H(unlocks.length * 2);
+    panel(R.x, colY, R.w, earnH, VIOLET, "EARNED, NOT BOUGHT", "PAID IN LOOKING");
+    unlocks.forEach((u, i) => {
+      const yTop = ROW(colY, i * 2), yBot = ROW(colY, i * 2 + 1) - 6;
+      fitText(u.have ? u.name : "LOCKED", R.x + PAGE.PAD, yTop, SIZE.cap,
+              u.have ? VIOLET : VIOLET_LOW, "left", u.have ? 1 : 0.6, R.w - 140,
+              "0.08em");
+      fitText(u.have ? u.note : u.at + " almanac entries", R.x + PAGE.PAD, yBot,
+              SIZE.cap, VIOLET_DIM, "left", u.have ? 0.75 : 0.5, R.w - 60);
+      label(u.have ? "\u2713" : "\u00b7", R.x + R.w - PAGE.PAD, yTop, SIZE.cap,
+            u.have ? CASH : VIOLET_LOW, "right", u.have ? 1 : 0.5);
     });
 
-    /* The shipyard. A door rather than a panel, because twenty-five hulls with
-       five numbers each is a catalogue, and a catalogue needs a page. It sits
-       under the verbs rather than beside the refit tracks: the hull is the bigger
-       decision by an order of magnitude — a tier of drive costs a hundred and
-       forty and a Cathedral costs a hundred and twelve thousand — so it gets a
-       door of its own rather than a fifth row on a list of upgrades. */
-    api.tapButton("HANGAR  ▸    " + (st.shipName || "SKIFF"),
-                  rx + rw / 2, 498, Math.min(320, rw), 46, VIOLET,
-                  st.onHangar || (() => {}));
+    /* The shipyard. A door rather than a panel: the hull is the bigger decision
+       by an order of magnitude — a tier of drive costs a hundred and forty and a
+       Cathedral costs a hundred and twelve thousand. */
+    button("HANGAR  \u25b8    " + (st.shipName || "SKIFF"),
+           R.x + R.w / 2, colY + earnH + PAGE.STEP + 10, R.w, 44, VIOLET,
+           st.onHangar || (() => {}));
 
-    // Above the rule, not on the footer line: at SCREEN_H - 30 it ran into the
-    // key hints on a desk and sat across the UNDOCK button on a phone.
-    label("the almanac pays in verbs · storage pays in numbers",
-          SCREEN_W - 34, SCREEN_H - 70, SIZE.cap, VIOLET_LOW, "right", 0.8);
+    label("the almanac pays in verbs \u00b7 storage pays in numbers",
+          SCREEN_W - PAGE.EDGE, SCREEN_H - 70, SIZE.cap, VIOLET_LOW, "right", 0.6);
 
     if (api.touchOnly) {
-      api.tapButton("UNDOCK", SCREEN_W / 2, SCREEN_H - 30, 200, 40, VIOLET,
-                    st.onUndock || (() => {}));
+      button("UNDOCK", SCREEN_W / 2, SCREEN_H - 30, 200, 38, VIOLET,
+             st.onUndock || (() => {}));
     }
   };
 
@@ -2562,139 +2563,160 @@
 
      Reached from a button under the panel chart, or on `I`. */
   HUD.drawInventory = function (st, dt) {
-    const { ctx, SCREEN_W, SCREEN_H } = api;
+    const { ctx, SCREEN_W } = api;
     st = st || {};
     const cash = st.cash || 0, cap = st.hold || 1;
+    const L = COL(2, 0), R = COL(2, 1);
 
     pageFrame("INVENTORY",
-              (st.world ? st.world.name + "  ·  " : "") + "SEED " + (st.seed || 0),
-              api.touchOnly ? "TAP A PANEL  ·  CLOSE BELOW"
-                            : "I OR ESC CLOSES  ·  M CHART  ·  L ALMANAC");
+              (st.world ? st.world.name + "  \u00b7  " : "") + "SEED " + (st.seed || 0),
+              api.touchOnly ? "TAP A PANEL  \u00b7  CLOSE BELOW"
+                            : "I OR ESC CLOSES  \u00b7  M CHART  \u00b7  L ALMANAC");
 
-    const colW = (SCREEN_W - 68 - 20) / 2;
-    const left = 34, right = left + colW + 20;
-
-    /* ── the two pages, at the top ─────────────────────────────────────────
-       The almanac was a line of small type in a corner of a panel further down
-       this page, and the manifest was a panel that only ever showed you what it
+    /* ── the two doors ─────────────────────────────────────────────────────
+       The almanac was a line of small type in the corner of a panel further down
+       this page, and the manifest was a panel that only ever showed what it
        already knew. Both are pages, so both are doors, and doors go at the top
-       where they are the first thing you see and big enough to be obviously
-       pressable. Everything below them is a readout. */
-    const doors = [
-      { title: "ALMANAC", val: (st.found || 0) + " / " + (st.total || 0),
-        sub: "what is out there, and what you have seen",
-        key: api.touchOnly ? "" : "L", colour: VIOLET,
-        act: st.onAlmanac },
-      { title: "MISSIONS", val: (st.built || 0) + " / " + (st.needs || 6),
-        sub: "what the yard wants, and where to look",
-        key: "", colour: CASH,
-        act: st.onMissions }
-    ];
-    doors.forEach((d, i) => {
-      const x = i === 0 ? left : right;
-      const y = 90, h = 96;
-      const hot = true;
-      ctx.save();
-      ctx.fillStyle = d.colour;
-      ctx.globalAlpha = 0.07;
-      ctx.fillRect(x, y, colW, h);
-      ctx.strokeStyle = d.colour;
-      ctx.globalAlpha = 0.85;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x, y, colW, h);
-      ctx.restore();
-      label(d.title + (d.key ? "   [" + d.key + "]" : ""), x + 20, y + 32,
-            SIZE.val, d.colour, "left", 1, "0.16em");
-      label(d.val, x + colW - 20, y + 36, SIZE.big, d.colour, "right", 1);
-      fitText(d.sub, x + 20, y + 62, SIZE.cap, VIOLET_DIM, "left", 0.75,
-              colW - 40);
-      // The arrow says it opens; the whole panel is the target.
-      label(api.touchOnly ? "TAP TO OPEN  ▸" : "OPEN  ▸", x + 20, y + 82,
-            SIZE.cap, d.colour, "left", 0.7, "0.14em");
-      api.addTap({ x, y, w: colW, h, act: d.act || (() => {}) });
+       where they are the first thing you see and unmistakably pressable. */
+    const doorH = PANEL_H(2);
+    [{ title: "ALMANAC", val: (st.found || 0) + " / " + (st.total || 0),
+       sub: "what is out there, and what you have seen",
+       key: api.touchOnly ? "" : "L", colour: VIOLET, act: st.onAlmanac, col: L },
+     { title: "MISSIONS", val: (st.built || 0) + " / " + (st.needs || 6),
+       sub: "what the yard wants, and where to look",
+       key: "", colour: CASH, act: st.onMissions, col: R }
+    ].forEach(d => {
+      const { x, w } = d.col;
+      panel(x, PAGE.TOP, w, doorH, d.colour,
+            d.title + (d.key ? "   [" + d.key + "]" : ""),
+            api.touchOnly ? "TAP" : "OPEN  \u25b8");
+      label(d.val, x + PAGE.PAD, ROW(PAGE.TOP, 0) + 6, SIZE.big, d.colour, "left");
+      fitText(d.sub, x + PAGE.PAD, ROW(PAGE.TOP, 1) + 8, SIZE.cap, VIOLET_DIM,
+              "left", 0.7, w - PAGE.PAD * 2);
+      api.addTap({ x, y: PAGE.TOP, w, h: doorH, act: d.act || (() => {}) });
     });
 
-    /* ── the bank, and the hold ────────────────────────────────────────────
-       Two panels where there used to be one, because they were one number doing
-       two jobs. Cash has no capacity and cannot be dropped; the hold has both,
-       and what is in it is worth knowing kind by kind — a hold of ice and a
-       hold of iridium are the same weight and nothing like the same trip. */
-    panel(left, 208, colW, 76, CASH, "CASH");
-    label(String(cash), left + 18, 266, SIZE.big, CASH, "left");
-    label("buys refits, food and water",
-          left + 18 + widthOf(String(cash), SIZE.big) + 16, 266, SIZE.cap,
-          CASH_DIM, "left", 0.6);
+    /* Cash gets its own panel and its own line: it is the one number on this
+       page with no ceiling and no second half. Everything else here is a
+       fraction of something. */
+    const y2 = PAGE.TOP + doorH + PAGE.STEP;
+    const cashH = PANEL_H(1);
+    panel(L.x, y2, L.w, cashH, CASH, "CASH");
+    label(String(cash), L.x + PAGE.PAD, ROW(y2, 0) + 6, SIZE.big, CASH, "left");
+    label("refits, supplies and ships", L.x + L.w - PAGE.PAD, ROW(y2, 0) + 4,
+          SIZE.cap, CASH_DIM, "right", 0.55);
 
-    const used = st.carried || 0;
-    const mats = st.materials || [];
-    panel(left, 300, colW, 174, VIOLET, "STORAGE   " + used + " / " + cap);
-    barAt(left + 18, 332, colW - 36, 9, cap ? used / cap : 0, VIOLET, used >= cap);
-    mats.forEach((m, i) => {
-      const y = 366 + i * 26;
-      ctx.save();
-      ctx.fillStyle = m.colour;
-      ctx.globalAlpha = m.n ? 0.9 : 0.25;
-      ctx.fillRect(left + 18, y - 9, 9, 9);
-      ctx.restore();
-      fitText(m.name, left + 34, y, SIZE.cap, m.colour, "left",
-              m.n ? 0.95 : 0.4, colW - 130, "0.08em");
-      label(String(m.n), left + colW - 66, y, SIZE.cap,
-            m.n ? m.colour : VIOLET_LOW, "right", m.n ? 1 : 0.4);
-      label("@" + m.value, left + colW - 18, y, SIZE.cap, VIOLET_DIM, "right", 0.55);
-    });
-    if (!used) {
-      label("empty — go and break something", left + 34, 470, SIZE.cap,
-            VIOLET_LOW, "left", 0.7);
-    }
-
-    // ── the ship ──────────────────────────────────────────────────────────
-    panel(right, 208, colW, 166, AMBER, "THE SHIP");
-    (st.refit || []).forEach((r, i) => {
-      const y = 248 + i * 32;
-      fitText(r.name, right + 18, y, SIZE.cap, AMBER_DIM, "left", 0.9, colW - 130);
+    // ── the ship, as four tracks of pips ──────────────────────────────────
+    panel(R.x, y2, R.w, cashH, AMBER, "THE SHIP", st.shipName || "");
+    const tracks = st.refit || [];
+    tracks.forEach((r, i) => {
+      const bw = (R.w - PAGE.PAD * 2 - 12 * (tracks.length - 1)) / tracks.length;
+      const bx = R.x + PAGE.PAD + i * (bw + 12);
+      const yy = ROW(y2, 0) - 2;
+      fitText(r.name.split(" ")[0], bx, yy, SIZE.cap, AMBER_DIM, "left", 0.8,
+              bw, "0.06em");
       for (let t = 0; t < r.max; t++) {
-        const px = right + colW - 24 - (r.max - t) * 18;
+        const pw = (bw - (r.max - 1) * 4) / r.max;
         ctx.save();
-        ctx.strokeStyle = CASH_DIM;
-        ctx.globalAlpha = 0.9;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(px, y - 11, 12, 12);
-        if (t < r.tier) { ctx.fillStyle = CASH; ctx.fillRect(px + 2, y - 9, 8, 8); }
+        ctx.fillStyle = t < r.tier ? CASH : VIOLET_LOW;
+        ctx.globalAlpha = t < r.tier ? 0.9 : 0.4;
+        ctx.fillRect(bx + t * (pw + 4), yy + 8, pw, 6);
         ctx.restore();
       }
     });
 
-    // ── what the almanac has bought ───────────────────────────────────────
-    panel(right, 390, colW, 122, VIOLET, "EARNED, NOT BOUGHT");
-    (st.unlocks || []).forEach((u, i) => {
-      const y = 430 + i * 28;
-      label(u.have ? "✓" : "·", right + 18, y, SIZE.cap,
-            u.have ? CASH : VIOLET_LOW, "left");
-      fitText(u.have ? u.name : "locked — " + u.at + " entries",
-              right + 40, y, SIZE.cap, u.have ? VIOLET : VIOLET_LOW, "left",
-              u.have ? 0.95 : 0.6, colW - 60);
+    /* ── storage ───────────────────────────────────────────────────────────
+       One row a material, on the same rhythm as every other list in the mode: a
+       swatch, a name, a count, and what it is worth apiece. */
+    const y3 = y2 + cashH + PAGE.STEP;
+    const used = st.carried || 0;
+    const mats = st.materials || [];
+    const storeH = PANEL_H(mats.length + 1);
+    panel(L.x, y3, L.w, storeH, VIOLET, "STORAGE", used + " / " + cap);
+    barAt(L.x + PAGE.PAD, y3 + PAGE.HEAD + 2, L.w - PAGE.PAD * 2, 8,
+          cap ? used / cap : 0, VIOLET, used >= cap);
+    mats.forEach((m, i) => {
+      const yy = ROW(y3, i + 1) - 4;
+      ctx.save();
+      ctx.fillStyle = m.colour;
+      ctx.globalAlpha = m.n ? 0.9 : 0.22;
+      ctx.fillRect(L.x + PAGE.PAD, yy - 9, 9, 9);
+      ctx.restore();
+      fitText(m.name, L.x + PAGE.PAD + 18, yy, SIZE.cap, m.colour, "left",
+              m.n ? 0.95 : 0.35, L.w - 200, "0.06em");
+      label(String(m.n), L.x + L.w - PAGE.PAD - 58, yy, SIZE.cap,
+            m.n ? m.colour : VIOLET_LOW, "right", m.n ? 1 : 0.35);
+      label("@" + m.value, L.x + L.w - PAGE.PAD, yy, SIZE.cap, VIOLET_DIM,
+            "right", 0.5);
     });
+    if (!used) {
+      label("empty \u2014 go and break something", L.x + PAGE.PAD,
+            ROW(y3, mats.length + 1) - 6, SIZE.cap, VIOLET_LOW, "left", 0.6);
+    }
 
-    /* Food and water are on this page as of phase 2 — as a percentage each on
-       the flight panel, and as time on whichever shop you are standing in. They
-       are not repeated here: the two numbers that matter about a tank are how
-       full it is and what a fill costs, and neither of those is an inventory. */
+    // ── what the almanac has bought ───────────────────────────────────────
+    const unlocks = st.unlocks || [];
+    panel(R.x, y3, R.w, storeH, VIOLET, "EARNED, NOT BOUGHT",
+          (st.found || 0) + " LOGGED");
+    unlocks.forEach((u, i) => {
+      const yy = ROW(y3, i);
+      label(u.have ? "\u2713" : "\u00b7", R.x + PAGE.PAD, yy, SIZE.cap,
+            u.have ? CASH : VIOLET_LOW, "left", u.have ? 1 : 0.5);
+      fitText(u.have ? u.name : "locked", R.x + PAGE.PAD + 20, yy, SIZE.cap,
+              u.have ? VIOLET : VIOLET_LOW, "left", u.have ? 0.95 : 0.5,
+              R.w - 220, "0.06em");
+      fitText(u.have ? u.note : u.at + " entries", R.x + R.w - PAGE.PAD, yy,
+              SIZE.cap, VIOLET_DIM, "right", u.have ? 0.6 : 0.5, 190);
+    });
 
     closeButton(st.onClose || (() => {}));
   };
 
-  function panel(x, y, w, h, colour, title) {
+  function panel(x, y, w, h, colour, title, right) {
     const { ctx } = api;
     ctx.save();
     ctx.fillStyle = colour;
-    ctx.globalAlpha = 0.04;
+    ctx.globalAlpha = 0.035;
     ctx.fillRect(x, y, w, h);
     ctx.strokeStyle = colour;
-    ctx.globalAlpha = 0.45;
+    ctx.globalAlpha = 0.4;
     ctx.lineWidth = 1;
     ctx.strokeRect(x, y, w, h);
+    ctx.globalAlpha = 0.22;
+    ctx.beginPath();
+    ctx.moveTo(x + PAGE.PAD, y + PAGE.HEAD - 8);
+    ctx.lineTo(x + w - PAGE.PAD, y + PAGE.HEAD - 8);
+    ctx.stroke();
     ctx.restore();
-    label(title, x + 18, y + 24, SIZE.cap, colour, "left", 0.85, "0.16em");
+    label(title, x + PAGE.PAD, y + PAGE.HEAD - 16, SIZE.cap, colour, "left",
+          0.9, "0.16em");
+    if (right) {
+      label(right, x + w - PAGE.PAD, y + PAGE.HEAD - 16, SIZE.cap, colour,
+            "right", 0.6);
+    }
+  }
+
+  /* A button in the module's own type rather than the engine's. `api.tapButton`
+     draws its label at a hard 18px, which sat a pixel off every heading on every
+     page — two "medium" sizes doing one job, one of them from a different file.
+     Same rectangle, same tap registration, the pages' own scale. */
+  function button(text, cx, cy, w, h, colour, act, on, live) {
+    const { ctx } = api;
+    const enabled = live === undefined ? true : !!live;
+    ctx.save();
+    ctx.fillStyle = colour;
+    ctx.globalAlpha = enabled ? (on ? 0.18 : 0.06) : 0.02;
+    ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
+    ctx.strokeStyle = colour;
+    ctx.globalAlpha = enabled ? (on ? 1 : 0.45) : 0.16;
+    ctx.lineWidth = on ? 2 : 1;
+    ctx.strokeRect(cx - w / 2, cy - h / 2, w, h);
+    ctx.restore();
+    fitText(text, cx, cy + 6, SIZE.cap, colour, "center",
+            enabled ? 1 : 0.35, w - 20, "0.12em");
+    if (enabled && typeof act === "function") {
+      api.addTap({ x: cx - w / 2, y: cy - h / 2, w, h, act });
+    }
   }
 
   function barAt(x, y, w, h, frac, colour, warn) {
@@ -2723,100 +2745,98 @@
   HUD.drawMissions = function (st, dt) { HUD.drawYardPage(st, dt); };
 
   HUD.drawYardPage = function (st, dt) {
-    const { ctx, SCREEN_W, SCREEN_H } = api;
+    const { ctx, SCREEN_W } = api;
     st = st || {};
     const b = st.builds || { name: "THE YARD", does: "", blurb: "" };
     const done = st.built || 0, need = st.needs || 6;
     const finished = done >= need;
+    const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
 
     pageFrame(st.atYard ? "THE YARD" : "MISSIONS",
               done + " OF " + need + " FITTED",
               api.touchOnly ? "CLOSE BELOW"
                             : st.atYard ? "E OR ESC LEAVES" : "ESC OR I CLOSES");
 
-    label(finished ? b.name + " — BUILT" : "BUILDING:  " + b.name,
-          SCREEN_W / 2, 118, SIZE.big, finished ? CASH : VIOLET, "center", 1, "0.1em");
-    fitText(b.does, SCREEN_W / 2, 146, SIZE.val, finished ? CASH : AMBER_DIM,
-            "center", 0.9, SCREEN_W - 120);
-    if (!finished) {
-      fitText(b.blurb, SCREEN_W / 2, 172, SIZE.cap, VIOLET_DIM, "center", 0.8,
-              SCREEN_W - 160);
-    }
+    /* ── what is being built ───────────────────────────────────────────────
+       The ring stays: it is the same shape the yard draws out in the world, one
+       segment a part, and it is the only progress readout in the mode that is a
+       picture of the thing rather than a bar. It sits at the end of the header
+       row rather than in the middle of the page, so the words lead. */
+    const headH = PANEL_H(2);
+    panel(full.x, PAGE.TOP, full.w, headH, finished ? CASH : VIOLET,
+          finished ? "BUILT" : "BUILDING", done + " / " + need);
+    fitText(b.name, full.x + PAGE.PAD, ROW(PAGE.TOP, 0) + 4, SIZE.head,
+            finished ? CASH : VIOLET, "left", 1, full.w - 320, "0.12em");
+    fitText(finished ? b.does : b.blurb, full.x + PAGE.PAD, ROW(PAGE.TOP, 1) + 6,
+            SIZE.cap, finished ? CASH_DIM : VIOLET_DIM, "left", 0.8,
+            full.w - 320);
 
-    // Progress as the thing itself: a ring that fills a segment per part, the
-    // same shape the yard draws out in the world.
-    const cx = SCREEN_W / 2, cy = 214, r = 30;
+    const rx = full.x + full.w - PAGE.PAD - 34;
+    const ry = PAGE.TOP + headH / 2, rr = 28;
     ctx.save();
     ctx.strokeStyle = VIOLET_LOW;
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 0.6;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(rx, ry, rr, 0, Math.PI * 2); ctx.stroke();
     ctx.restore();
     for (let i = 0; i < done; i++) {
       const a0 = (i / need) * Math.PI * 2 - Math.PI / 2;
       const a1 = ((i + 1) / need) * Math.PI * 2 - Math.PI / 2;
-      api.glow(CASH, 4, 0.95, () => {
-        ctx.beginPath(); ctx.arc(cx, cy, r, a0 + 0.05, a1 - 0.05); ctx.stroke();
+      api.glow(CASH, 3.4, 0.95, () => {
+        ctx.beginPath(); ctx.arc(rx, ry, rr, a0 + 0.06, a1 - 0.06); ctx.stroke();
       });
     }
 
-    /* Tightened to leave a row for the light drive underneath. Six manifest rows
-       at 56 apiece ran to y 624, and the panel below them landed on the footer
-       and straight through the CLOSE button. */
-    const top = 262, rowH = 46;
-    const left = 60, w = SCREEN_W - 120;
-    (st.manifest || []).forEach((m, i) => {
-      const y = top + i * rowH;
-      const state = m.have ? "have" : m.carrying ? "aboard" : "wanted";
-      const colour = m.have ? CASH_DIM : m.carrying ? CASH : VIOLET;
-
-      ctx.save();
-      ctx.strokeStyle = colour;
-      ctx.globalAlpha = m.have ? 0.3 : 0.55;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(left, y, w, rowH - 8);
-      ctx.restore();
-
-      label(m.have ? "✓" : m.carrying ? "▲" : "·", left + 18, y + 25,
-            SIZE.val, colour, "left");
-      fitText(m.name, left + 44, y + 19, SIZE.cap, colour, "left",
-              m.have ? 0.6 : 1, w - 220, "0.06em");
-      fitText(m.have ? "fitted" : m.carrying ? "aboard — drop it here" : m.clue,
-              left + 44, y + 34, SIZE.cap,
-              m.have ? CASH_DIM : m.carrying ? CASH : AMBER_DIM, "left",
-              m.have ? 0.5 : 0.85, w - 220);
-      label(state.toUpperCase(), left + w - 18, y + 25, SIZE.cap, colour,
-            "right", m.have ? 0.5 : 0.8, "0.14em");
+    /* ── the manifest ──────────────────────────────────────────────────────
+       One row a part: a mark, the name, the clue, and where it stands. The clue
+       is the whole navigation system, so it gets the width — everything else on
+       the line is as short as it can be. Alternate rows are banded, which is
+       what lets an eye track a clue back to its name across 900 pixels. */
+    const listY = PAGE.TOP + headH + PAGE.STEP;
+    const man = st.manifest || [];
+    panel(full.x, listY, full.w, PANEL_H(man.length), VIOLET, "THE MANIFEST",
+          finished ? "COMPLETE" : (need - done) + " TO FIND");
+    man.forEach((m, i) => {
+      const y = ROW(listY, i);
+      const have = m.have, aboard = m.carrying;
+      const colour = have ? CASH_DIM : aboard ? CASH : VIOLET;
+      if (i % 2 === 1) {
+        ctx.save();
+        ctx.fillStyle = VIOLET;
+        ctx.globalAlpha = 0.03;
+        ctx.fillRect(full.x + 1, y - 18, full.w - 2, PAGE.STEP);
+        ctx.restore();
+      }
+      label(have ? "\u2713" : aboard ? "\u25b2" : "\u00b7",
+            full.x + PAGE.PAD, y, SIZE.cap, colour, "left", have ? 0.7 : 1);
+      fitText(m.name, full.x + PAGE.PAD + 22, y, SIZE.cap, colour, "left",
+              have ? 0.6 : 1, 190, "0.08em");
+      fitText(have ? "fitted" : aboard ? "aboard \u2014 drop it at the yard" : m.clue,
+              full.x + 250, y, SIZE.cap,
+              have ? CASH_DIM : aboard ? CASH : AMBER_DIM, "left",
+              have ? 0.45 : 0.8, full.w - 420);
+      label(have ? "FITTED" : aboard ? "ABOARD" : "WANTED",
+            full.x + full.w - PAGE.PAD, y, SIZE.cap, colour, "right",
+            have ? 0.45 : 0.8, "0.14em");
     });
 
-    /* The yard's second project, and the only one you buy rather than fetch.
-       Shown only once the first is finished: offering it alongside six parts you
-       have not found yet would make the page a list of two things you cannot
-       have, and the wormhole is what teaches you the yard is worth coming back
-       to at all. */
+    /* The yard's second project, shown only once the first is finished:
+       offering it beside six parts you have not found would make the page a list
+       of two things you cannot have. */
     const L = st.light;
     if (finished && L) {
-      const by = top + (st.manifest || []).length * rowH + 10;
-      ctx.save();
-      ctx.fillStyle = ICE;
-      ctx.globalAlpha = L.have ? 0.05 : 0.03;
-      ctx.fillRect(left, by, w, 62);
-      ctx.strokeStyle = ICE;
-      ctx.globalAlpha = L.have ? 0.85 : 0.5;
-      ctx.lineWidth = L.have ? 2 : 1;
-      ctx.strokeRect(left, by, w, 62);
-      ctx.restore();
-      label(L.have ? L.name + " — FITTED" : L.name, left + 18, by + 26,
-            SIZE.val, ICE, "left", 1, "0.1em");
-      fitText(L.have ? L.does : L.blurb, left + 18, by + 48, SIZE.cap,
-              L.have ? ICE : VIOLET_DIM, "left", 0.8, w - 260);
+      const ly = listY + PANEL_H(man.length) + PAGE.STEP;
+      panel(full.x, ly, full.w, PANEL_H(2), ICE,
+            L.have ? L.name + " \u2014 FITTED" : L.name,
+            L.have ? (api.touchOnly ? "READY" : "READY  \u00b7  [R] TO RUN")
+                   : L.cost + " CASH");
+      fitText(L.have ? L.does : L.blurb, full.x + PAGE.PAD, ROW(ly, 0) + 2,
+              SIZE.cap, L.have ? ICE : VIOLET_DIM, "left", 0.85, full.w - 280);
       if (!L.have) {
-        api.tapButton("BUILD IT   " + L.cost, left + w - 120, by + 31, 190, 38,
-                      L.afford ? ICE : WARN,
-                      L.afford ? (st.onBuildLight || (() => {})) : null,
-                      false, !!L.afford);
-      } else {
-        label(api.touchOnly ? "READY" : "READY  ·  [R] TO RUN",
-              left + w - 18, by + 36, SIZE.cap, ICE, "right", 0.8, "0.14em");
+        button("BUILD IT   " + L.cost, full.x + full.w - PAGE.PAD - 100,
+               ly + PANEL_H(2) / 2, 200, 40, L.afford ? ICE : WARN,
+               L.afford ? (st.onBuildLight || (() => {})) : null,
+               false, !!L.afford);
       }
     }
 
@@ -2861,16 +2881,19 @@
 
     /* The run, as three numbers on one line. Where, how far, how long — the
        three things you will want to say out loud about it. */
+    /* The run, as three numbers on one line — the three things you will want to
+       say out loud about it. On the page grid's columns rather than a width of
+       their own, so they line up with the two panels beneath them. */
     const cols = [
-      { cap: "HOW FAR OUT", val: fmtCells(d.dist) + " UNITS", colour: VIOLET },
-      { cap: "SECTOR",      val: d.band,                      colour: VIOLET },
-      { cap: "LASTED",      val: fmtClock(d.lasted),          colour: VIOLET }
+      { cap: "HOW FAR OUT", val: fmtCells(d.dist) + " UNITS" },
+      { cap: "SECTOR",      val: d.band },
+      { cap: "LASTED",      val: fmtClock(d.lasted) }
     ];
-    const cw = 260;
     cols.forEach((c, i) => {
-      const x = cx + (i - 1) * cw;
-      label(c.cap, x, 250, SIZE.cap, VIOLET_DIM, "center", 0.7, "0.18em");
-      fitText(c.val, x, 282, SIZE.head, c.colour, "center", 1, cw - 24);
+      const col = COL(3, i);
+      const x = col.x + col.w / 2;
+      label(c.cap, x, 252, SIZE.cap, VIOLET_DIM, "center", 0.7, "0.18em");
+      fitText(c.val, x, 284, SIZE.head, VIOLET, "center", 1, col.w - 20);
     });
 
     /* Two columns, and they are the whole argument of the screen: this is what
@@ -2882,65 +2905,57 @@
        Each column gets its own half and neither may reach into the other, which
        is not a stylistic point: the worth line used to be right-aligned to the
        box's far edge and printed straight through the right column. */
-    const bw = 780, bx = cx - bw / 2, by = 320, bh = 196;
-    const half = bw / 2;
-    const lx = bx + 22, rx = bx + half + 22, colW = half - 44;
-    ctx.save();
-    ctx.fillStyle = WARN;
-    ctx.globalAlpha = 0.03;
-    ctx.fillRect(bx, by, half, bh);
-    ctx.fillStyle = CASH;
-    ctx.fillRect(bx + half, by, half, bh);
-    ctx.globalAlpha = 0.4;
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = WARN;
-    ctx.strokeRect(bx, by, half, bh);
-    ctx.strokeStyle = CASH_DIM;
-    ctx.strokeRect(bx + half, by, half, bh);
-    ctx.restore();
-
-    label("LOST WITH THE SHIP", lx, by + 26, SIZE.cap, WARN, "left", 0.85, "0.16em");
+    /* Two panels, and they are the whole argument of the screen: this is what it
+       cost, and this is what you still have. A death screen that lists only
+       losses reads as a wipe, and this is not one. They are the page's own two
+       columns, so they sit under the three numbers above rather than beside
+       them. */
     const carried = (d.hold || []).filter(m => m.n);
+    const rowsN = Math.max(4, carried.length + 1);
+    const by = 320, bh = PANEL_H(rowsN);
+    const L = COL(2, 0), R = COL(2, 1);
+
+    panel(L.x, by, L.w, bh, WARN, "LOST WITH THE SHIP",
+          carried.length ? d.lost + " UNITS" : "");
     if (!carried.length) {
-      fitText("empty storage — the one mercy", lx, by + 68, SIZE.val,
-              VIOLET_LOW, "left", 0.8, colW);
+      fitText("empty storage — the one mercy", L.x + PAGE.PAD, ROW(by, 0),
+              SIZE.cap, VIOLET_LOW, "left", 0.7, L.w - PAGE.PAD * 2);
     } else {
       carried.forEach((m, i) => {
-        const y = by + 60 + i * 26;
+        const y = ROW(by, i);
         ctx.save();
         ctx.fillStyle = m.colour;
         ctx.globalAlpha = 0.85;
-        ctx.fillRect(lx, y - 9, 9, 9);
+        ctx.fillRect(L.x + PAGE.PAD, y - 9, 9, 9);
         ctx.restore();
-        fitText(m.name, lx + 16, y, SIZE.cap, m.colour, "left", 0.9,
-                colW - 80, "0.08em");
-        label(String(m.n), lx + colW, y, SIZE.cap, m.colour, "right", 1);
+        fitText(m.name, L.x + PAGE.PAD + 18, y, SIZE.cap, m.colour, "left",
+                0.9, L.w - 160, "0.08em");
+        label(String(m.n), L.x + L.w - PAGE.PAD, y, SIZE.cap, m.colour, "right", 1);
       });
-      // On its own line under the list, never beside it.
-      fitText("worth about " + d.worth + " cash", lx, by + bh - 22, SIZE.cap,
-              WARN, "left", 0.7, colW);
+      fitText("worth about " + d.worth + " cash", L.x + PAGE.PAD,
+              ROW(by, carried.length), SIZE.cap, WARN, "left", 0.65,
+              L.w - PAGE.PAD * 2);
     }
 
-    label("STILL YOURS", rx, by + 26, SIZE.cap, CASH_DIM, "left", 0.85, "0.16em");
-    const keeps = [
-      d.cash + " CASH",
-      d.found + " ALMANAC " + (d.found === 1 ? "ENTRY" : "ENTRIES"),
-      fmtCells(d.charted) + " CELLS CHARTED",
-      "the yard and everything fitted"
-    ];
-    keeps.forEach((k, i) => {
-      fitText("·  " + k, rx, by + 60 + i * 26, SIZE.cap, CASH_DIM, "left",
-              0.8, colW);
+    panel(R.x, by, R.w, bh, CASH_DIM, "STILL YOURS", "NONE OF IT TAKEN");
+    [d.cash + " CASH",
+     d.found + " ALMANAC " + (d.found === 1 ? "ENTRY" : "ENTRIES"),
+     fmtCells(d.charted) + " CELLS CHARTED",
+     "the yard and everything fitted"
+    ].forEach((k, i) => {
+      label("·", R.x + PAGE.PAD, ROW(by, i), SIZE.cap, CASH_DIM, "left", 0.6);
+      fitText(k, R.x + PAGE.PAD + 16, ROW(by, i), SIZE.cap, CASH_DIM, "left",
+              0.8, R.w - PAGE.PAD * 2 - 20);
     });
 
     if (st.deaths > 1) {
-      label("DEATH " + st.deaths, cx, by + bh + 30, SIZE.cap, VIOLET_LOW,
+      label("DEATH " + st.deaths, cx, by + bh + 28, SIZE.cap, VIOLET_LOW,
             "center", 0.6, "0.2em");
     }
 
-    api.tapButton(api.touchOnly ? "BACK TO THE STATION"
-                                : "BACK TO THE STATION   [ENTER]",
-                  cx, SCREEN_H - 44, 420, 46, CASH, st.onRespawn || (() => {}));
+    button(api.touchOnly ? "BACK TO THE STATION"
+                        : "BACK TO THE STATION   [ENTER]",
+           cx, SCREEN_H - 44, 420, 46, CASH, st.onRespawn || (() => {}));
   };
 
   /* ═══ A WORLD YOU CAN LAND ON ═════════════════════════════════════════════
@@ -3004,11 +3019,10 @@
       label(m.countdown > 0 ? fmtSecs(m.countdown) : fmtSecs(m.left || 0),
             x, 456, SIZE.head, m.countdown > 0 ? WARN : col, "center", 1);
       barAt(x - 90, 470, 180, 9, m.frac || 0, col, m.countdown > 0);
-      api.tapButton(full ? "FULL" : "FILL  " + m.cost,
-                    x, 516, 200, 40,
-                    full ? VIOLET_LOW : afford ? col : WARN,
-                    full ? null : () => st.onBuySupply && st.onBuySupply(k),
-                    false, !full && afford);
+      button(full ? "FULL" : "FILL  " + m.cost, x, 516, 200, 40,
+             full ? VIOLET_LOW : afford ? col : WARN,
+             full ? null : () => st.onBuySupply && st.onBuySupply(k),
+             false, !full && afford);
     });
 
     /* The free option, stated where it is relevant. A player who cannot afford
@@ -3108,7 +3122,7 @@
   }
 
   HUD.drawHangar = function (st, dt) {
-    const { ctx, SCREEN_W, SCREEN_H } = api;
+    const { ctx, SCREEN_W } = api;
     st = st || {};
     const list = st.ships || [];
     if (!list.length) return;
@@ -3116,109 +3130,118 @@
     hangar.pick = Math.max(0, Math.min(list.length - 1, hangar.pick));
 
     pageFrame("HANGAR",
-              "FLYING THE " + (st.shipName || "SKIFF") + "  ·  CASH " + (st.cash || 0),
-              api.touchOnly ? "TAP A HULL  ·  CLOSE BELOW"
-                            : "ARROWS MOVE  ·  ENTER BUYS OR SWAPS  ·  ESC CLOSES");
+              "FLYING THE " + (st.shipName || "SKIFF") + "  \u00b7  CASH  " + (st.cash || 0),
+              api.touchOnly ? "TAP A HULL  \u00b7  TAP AGAIN TO TAKE IT"
+                            : "ARROWS MOVE  \u00b7  ENTER BUYS OR SWAPS  \u00b7  ESC CLOSES");
 
-    // ── the grid ───────────────────────────────────────────────────────────
-    const gap = 12, left = 34;
-    const cardW = (SCREEN_W - 68 - gap * (cols - 1)) / cols;
-    const cardH = 108, top = 88;
-    const first = hangar.scroll * cols;
+    /* A catalogue, laid out like the almanac for the same reason the almanac is
+       laid out that way: the picture is the point, and nobody ever picked a ship
+       off a table of numbers. */
+    const cardH = 104, first = hangar.scroll * cols;
     const last = Math.min(list.length, first + SHIP_ROWS * cols);
 
     for (let i = first; i < last; i++) {
       const sh = list[i];
-      const col = (i - first) % cols, row = Math.floor((i - first) / cols);
-      const x = left + col * (cardW + gap), y = top + row * (cardH + gap);
+      const c = COL(cols, (i - first) % cols);
+      const row = Math.floor((i - first) / cols);
+      const y = PAGE.TOP + row * (cardH + PAGE.STEP);
       const on = i === hangar.pick;
-      const colour = sh.flying ? CASH : sh.owned ? VIOLET : VIOLET_DIM;
+      const reach = sh.owned || sh.afford;
+      const colour = sh.flying ? CASH : sh.owned ? VIOLET : reach ? VIOLET_DIM : WRECKC;
 
       ctx.save();
       ctx.fillStyle = sh.flying ? CASH : VIOLET;
-      ctx.globalAlpha = on ? 0.09 : 0.03;
-      ctx.fillRect(x, y, cardW, cardH);
+      ctx.globalAlpha = on ? 0.1 : 0.03;
+      ctx.fillRect(c.x, y, c.w, cardH);
       ctx.strokeStyle = on ? (sh.flying ? CASH : VIOLET) : colour;
-      ctx.globalAlpha = on ? 1 : 0.45;
+      ctx.globalAlpha = on ? 1 : 0.35;
       ctx.lineWidth = on ? 2 : 1;
-      ctx.strokeRect(x, y, cardW, cardH);
+      ctx.strokeRect(c.x, y, c.w, cardH);
+      // A footing rule under the art, so the name sits on something.
+      ctx.globalAlpha = 0.18;
+      ctx.beginPath();
+      ctx.moveTo(c.x + PAGE.PAD, y + 62);
+      ctx.lineTo(c.x + c.w - PAGE.PAD, y + 62);
+      ctx.stroke();
       ctx.restore();
 
-      drawHull(sh, x + cardW / 2, y + 40, 30, colour,
-               sh.owned || sh.afford ? 1 : 0.4);
-      fitText(sh.name, x + cardW / 2, y + 76, SIZE.cap, colour, "center",
-              sh.owned || sh.afford ? 1 : 0.5, cardW - 16, "0.08em");
-      fitText(sh.flying ? "FLYING" : sh.owned ? "IN THE HANGAR"
-                        : sh.cost + " CASH",
-              x + cardW / 2, y + 96, SIZE.cap,
-              sh.flying ? CASH : sh.owned ? VIOLET_DIM
-                        : sh.afford ? CASH_DIM : WARN,
-              "center", 0.85, cardW - 16);
-      api.addTap({ x, y, w: cardW, h: cardH, act: () => {
-        if (hangar.pick === i && (sh.owned || sh.afford)) {
+      drawHull(sh, c.x + c.w / 2, y + 32, 26, colour, reach ? 1 : 0.35);
+      fitText(sh.name, c.x + PAGE.PAD, y + 80, SIZE.cap, colour, "left",
+              reach ? 1 : 0.45, c.w - PAGE.PAD * 2 - 8, "0.08em");
+      fitText(sh.cls, c.x + PAGE.PAD, y + 96, SIZE.cap, VIOLET_LOW, "left",
+              0.6, c.w * 0.5, "0.12em");
+      fitText(sh.flying ? "FLYING" : sh.owned ? "OWNED" : sh.cost + " CASH",
+              c.x + c.w - PAGE.PAD, y + 96, SIZE.cap,
+              sh.flying ? CASH : sh.owned ? VIOLET_DIM : sh.afford ? CASH_DIM : WARN,
+              "right", 0.85, c.w * 0.5);
+      api.addTap({ x: c.x, y, w: c.w, h: cardH, act: () => {
+        if (hangar.pick === i && reach) {
           if (st.onBuyShip) st.onBuyShip(sh.key);
         } else hangar.pick = i;
       } });
     }
 
-    if (Math.ceil(list.length / cols) > SHIP_ROWS) {
-      const trackH = SHIP_ROWS * (cardH + gap) - gap;
-      const rows = Math.ceil(list.length / cols);
-      const h = Math.max(24, trackH * (SHIP_ROWS / rows));
-      const t = rows - SHIP_ROWS ? hangar.scroll / (rows - SHIP_ROWS) : 0;
+    const rowsAll = Math.ceil(list.length / cols);
+    if (rowsAll > SHIP_ROWS) {
+      const trackH = SHIP_ROWS * (cardH + PAGE.STEP) - PAGE.STEP;
+      const h = Math.max(26, trackH * (SHIP_ROWS / rowsAll));
+      const t = rowsAll - SHIP_ROWS ? hangar.scroll / (rowsAll - SHIP_ROWS) : 0;
       ctx.save();
       ctx.fillStyle = VIOLET_LOW;
-      ctx.globalAlpha = 0.5;
-      ctx.fillRect(SCREEN_W - 26, top, 3, trackH);
+      ctx.globalAlpha = 0.4;
+      ctx.fillRect(SCREEN_W - 22, PAGE.TOP, 3, trackH);
       ctx.fillStyle = VIOLET;
-      ctx.globalAlpha = 0.85;
-      ctx.fillRect(SCREEN_W - 26, top + t * (trackH - h), 3, h);
+      ctx.globalAlpha = 0.8;
+      ctx.fillRect(SCREEN_W - 22, PAGE.TOP + t * (trackH - h), 3, h);
       ctx.restore();
     }
 
-    // ── the one you are looking at ─────────────────────────────────────────
+    /* ── the one you are looking at ────────────────────────────────────────
+       Five bars against the best in the roster rather than against an absolute:
+       "how does this compare to everything else on the page" is the only
+       question a shipyard is ever asked. */
     const sh = list[hangar.pick];
-    const dy = top + SHIP_ROWS * (cardH + gap) + 8;
-    ctx.save();
-    ctx.strokeStyle = VIOLET_LOW;
-    ctx.globalAlpha = 0.7;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(34, dy, SCREEN_W - 68, 118);
-    ctx.restore();
+    const dy = PAGE.TOP + SHIP_ROWS * (cardH + PAGE.STEP);
+    const detailH = PANEL_H(4);
+    panel(PAGE.EDGE, dy, SCREEN_W - PAGE.EDGE * 2, detailH,
+          sh.flying ? CASH : VIOLET, sh.name, sh.cls);
 
-    label(sh.name, 52, dy + 30, SIZE.head, sh.flying ? CASH : VIOLET, "left",
-          1, "0.14em");
-    label(sh.cls, 52, dy + 52, SIZE.cap, VIOLET_DIM, "left", 0.8, "0.18em");
-    fitText(sh.note, 52, dy + 76, SIZE.cap, AMBER_DIM, "left", 0.85, 300);
+    drawHull(sh, PAGE.EDGE + 70, dy + PAGE.HEAD + 44, 34,
+             sh.flying ? CASH : VIOLET, 1);
+    fitText(sh.note, PAGE.EDGE + 140, ROW(dy, 0), SIZE.cap, AMBER_DIM, "left",
+            0.85, 260);
+    label(sh.flying ? "YOU ARE FLYING THIS"
+        : sh.owned ? "IN THE HANGAR"
+        : sh.afford ? "YOU CAN AFFORD THIS" : "OUT OF REACH",
+          PAGE.EDGE + 140, ROW(dy, 1), SIZE.cap,
+          sh.flying ? CASH : sh.owned ? VIOLET_DIM : sh.afford ? CASH_DIM : WARN,
+          "left", 0.8, "0.12em");
 
-    /* The five numbers, as bars against the best in the roster. A number on its
-       own says nothing in a shipyard; the only question is how this one compares
-       to the others on the page. */
     const best = k => list.reduce((m, o) => Math.max(m, o[k]), 0.0001);
+    const guns = o => o.dmg * o.rate;
     const stats = [
-      ["HULL", sh.hull / best("hull"), sh.hull],
-      ["GUNS", (sh.dmg * sh.rate) / list.reduce((m, o) => Math.max(m, o.dmg * o.rate), 0.0001),
-       (sh.dmg * sh.rate).toFixed(1) + "x"],
-      ["CARGO", sh.cargo / best("cargo"), sh.cargo],
+      ["HULL",  sh.hull / best("hull"),   String(sh.hull)],
+      ["GUNS",  guns(sh) / list.reduce((m, o) => Math.max(m, guns(o)), 0.0001),
+                guns(sh).toFixed(1) + "x"],
+      ["CARGO", sh.cargo / best("cargo"), String(sh.cargo)],
       ["SPEED", sh.speed / best("speed"), sh.speed.toFixed(2) + "x"],
-      ["TURN", sh.turn / best("turn"), sh.turn.toFixed(2) + "x"]
+      ["TURN",  sh.turn / best("turn"),   sh.turn.toFixed(2) + "x"]
     ];
+    const sw = 96;
     stats.forEach(([name, frac, val], i) => {
-      const sx = 380 + i * 112;
-      label(name, sx, dy + 30, SIZE.cap, VIOLET_DIM, "left", 0.7, "0.14em");
-      label(String(val), sx, dy + 54, SIZE.val, VIOLET, "left", 0.95);
-      barAt(sx, dy + 64, 88, 8, frac, sh.flying ? CASH : VIOLET, false);
+      const x = 430 + i * (sw + 12);
+      label(name, x, ROW(dy, 0) - 4, SIZE.cap, VIOLET_DIM, "left", 0.65, "0.14em");
+      label(val, x, ROW(dy, 1) - 4, SIZE.cap, VIOLET, "left", 0.95);
+      barAt(x, ROW(dy, 1) + 4, sw, 7, frac, sh.flying ? CASH : VIOLET, false);
     });
 
-    const canTake = sh.owned || sh.afford;
-    api.tapButton(sh.flying ? "FLYING IT"
-                : sh.owned ? "FLY IT"
-                : "BUY   " + sh.cost,
-                  SCREEN_W - 150, dy + 60, 220, 44,
-                  sh.flying ? VIOLET_LOW : canTake ? CASH : WARN,
-                  sh.flying || !canTake ? null
-                    : () => st.onBuyShip && st.onBuyShip(sh.key),
-                  false, !sh.flying && canTake);
+    const reach = sh.owned || sh.afford;
+    button(sh.flying ? "FLYING IT" : sh.owned ? "FLY IT" : "BUY   " + sh.cost,
+           SCREEN_W - PAGE.EDGE - 110, dy + detailH - 34, 200, 40,
+           sh.flying ? VIOLET_LOW : reach ? CASH : WARN,
+           sh.flying || !reach ? null
+             : () => st.onBuyShip && st.onBuyShip(sh.key),
+           false, !sh.flying && reach);
 
     closeButton(st.onClose || (() => {}));
   };
