@@ -840,13 +840,36 @@ the same jobs. Every one of those is a menu pretending to be depth.
 
 ### 5.2 Parts, slots, and time to install
 
-**Ships get a fixed number of equipment slots.** The starter gets four; the rest
-differ, and the count is a balancing lever as much as the five stats are — a scout
-with two slots and a hauler with eight are different games. Slots are a *ship*
-property, like cargo: you change how many you have by changing what you fly.
+**Every ship, no exceptions, gets exactly four attachment slots.**
+
+Not four on the starter and a spread across the rest — **four on all twenty-five**.
+This overrides the earlier version of this section, which made the count a
+balancing lever and gave a scout two and a hauler eight. It is a flat rule now and
+it should stay one.
+
+Why it is better as a flat rule:
+
+- **The hulls are already differentiated.** Twenty-five ships vary by hull, cargo,
+  speed, handling and size. Varying the slot count on top of that stacks a second
+  balancing axis onto ships that did not need one, and the two axes fight — a
+  hauler that is roomier *and* better equipped is not a trade, it is a strictly
+  better ship.
+- **Four is the same decision on every hull.** You always have exactly four
+  choices to make, so the interesting question is never "which hull lets me carry
+  more gear", it is "which four do I want *this* trip". That question survives
+  the whole game; the other one is answered once.
+- **It makes the loadout page one page.** Four boxes, always, on every ship, on a
+  phone as well as a desktop. No hull that needs a scrolling equipment list and no
+  hull whose page is mostly empty.
+- **Swapping hulls stays cheap.** You keep every ship you buy and change them at
+  the home station. If slot counts varied, changing hull could strand parts you
+  have nowhere to put — and trying a hauler for an afternoon would stop being free.
+
+So: slots are **not** a ship property. Cargo is, speed is, hull is; the four boxes
+are the same on all of them.
 
 **Everything you bolt on is a part in a slot.** Not a tier on a list — a thing you
-found or built, fitted to a hull with room for it. The categories:
+found or built, taking up one of your four. The categories:
 
 - **engines** — how fast
 - **thrusters** — how you handle; reverse thrusters are the example worth building first
@@ -926,8 +949,8 @@ on Ric's four-item list of what a station is for, and it is a small piece of wor
 ### 5.8 Loose ends, so they are not lost
 
 - **Better station storage** — somewhere to leave what you are not carrying, so a
-  full hold stops being the end of a trip. Interacts with slots: a ship you are
-  not flying is also storage.
+  full hold stops being the end of a trip. A ship you are not flying is also
+  storage — including the four parts left fitted to it.
 - **Stranger things farther out** — the danger curve has promised this since Phase
   1 and not paid it. The abyss is *harder* than the home band, not yet *stranger*.
   5.2's "only found very far away" parts are the first instalment.
