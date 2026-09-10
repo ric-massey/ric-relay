@@ -2713,6 +2713,129 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "range and bearing to it · pins still work · survives the tab");
 }
 
+// ── twenty-five ships ─────────────────────────────────────────────────────
+/* Phase 3.3. Five numbers and a silhouette each, and the spread is the whole
+   point: a skiff is a bicycle with a pistol taped to it and an Ossuary is a
+   building. What has to hold is that they are genuinely different, that none of
+   them is strictly better than a cheaper one, and that every one of the five
+   numbers actually reaches the ship you are flying — a roster whose cargo column
+   is decoration would be twenty-five paint jobs. */
+{
+  const { cf } = boot("?debug=1&seed=252525");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const list = cf.surveyView().ships;
+
+  check(list.length === 25, "the roster has " + list.length + " ships, not 25");
+  check(new Set(list.map(s2 => s2.key)).size === 25, "two ships share a key");
+  check(new Set(list.map(s2 => s2.name)).size === 25, "two ships share a name");
+
+  // Every hull needs a shape, and no two may be the same shape.
+  const shapes = new Set();
+  for (const sh of list) {
+    check(Array.isArray(sh.art) && sh.art.length >= 3,
+          sh.name + " has no silhouette");
+    check(sh.art.every(p => Number.isFinite(p[0]) && Number.isFinite(p[1])),
+          sh.name + "'s outline has a non-finite point");
+    shapes.add(JSON.stringify(sh.art));
+  }
+  check(shapes.size === 25, "only " + shapes.size + " distinct silhouettes");
+
+  /* The spread. Each of the five has to differ by a lot across the roster, or
+     the column is decoration. */
+  const span = k => {
+    const v = list.map(s2 => s2[k]);
+    return Math.max(...v) / Math.min(...v);
+  };
+  check(span("hull") >= 8, "hull only spans " + span("hull").toFixed(1) + "x");
+  check(span("cargo") >= 20, "cargo only spans " + span("cargo").toFixed(1) + "x");
+  check(span("speed") >= 1.8, "speed only spans " + span("speed").toFixed(2) + "x");
+  check(span("turn") >= 3, "turn only spans " + span("turn").toFixed(1) + "x");
+  check(span("size") >= 4, "size only spans " + span("size").toFixed(1) + "x");
+
+  /* Nothing is strictly better than something cheaper. A ship that beat a
+     cheaper one on all five would make the cheaper one unbuyable and the
+     roster that much shorter. */
+  const beats = (a, b) => a.hull >= b.hull && a.cargo >= b.cargo &&
+                          a.speed >= b.speed && a.turn >= b.turn &&
+                          a.dmg * a.rate >= b.dmg * b.rate &&
+                          (a.hull > b.hull || a.cargo > b.cargo ||
+                           a.speed > b.speed || a.turn > b.turn);
+  for (const a of list) {
+    for (const b of list) {
+      if (a.key === b.key || a.cost > b.cost) continue;
+      check(!beats(a, b),
+            a.name + " (" + a.cost + ") beats " + b.name + " (" + b.cost +
+            ") on every number — nobody would ever buy the " + b.name);
+    }
+  }
+
+  // You start in the skiff, owning only the skiff, and it is free.
+  check(cf.shipNow().key === "skiff", "a new survey starts in a " + cf.shipNow().key);
+  check(list.find(s2 => s2.key === "skiff").cost === 0, "the starter costs money");
+  check(cf.shipNow().owned.length === 1, "a new survey owns more than one hull");
+
+  // Buying needs a station and the money for it.
+  const big = list.find(s2 => s2.key === "ossuary");
+  check(cf.buyShip("ossuary") === false, "bought a ship in open space");
+  surv.docked = { x: 0, y: 0 };
+  surv.cash = big.cost - 1;
+  check(cf.buyShip("ossuary") === false, "bought a ship a cash short");
+  surv.cash = big.cost + 500;
+  check(cf.buyShip("ossuary") === true, "could not buy a ship with the money for it");
+  check(surv.cash === 500, "the ship cost " + (big.cost + 500 - surv.cash));
+
+  /* And the numbers reach the ship. Each of the five is checked against the
+     hull's own entry rather than against a constant. */
+  check(me.maxHull === big.hull, "hull reads " + me.maxHull + ", roster says " + big.hull);
+  check(cf.shipNow().cap === big.cargo, "cargo reads " + cf.shipNow().cap);
+  check(Math.abs(me.speedMul - big.speed) < 0.01, "speed did not reach the ship");
+  check(Math.abs(me.turnMul - big.turn) < 0.01, "turn did not reach the ship");
+  check(Math.abs(me.dmgMul - big.dmg) < 0.01, "firepower did not reach the ship");
+  check(Math.abs(me.sizeMul - big.size) < 0.01, "size did not reach the ship");
+  // Size reaches the world too: collision and pickup both measure off it.
+  check(cf.live().shipR > 30, "a capital's radius is " + cf.live().shipR);
+
+  /* 3.4: a bigger ship pulls the camera back, behind the Settings zoom rather
+     than instead of it. */
+  const wideZoom = cf.shipNow().zoom;
+  check(wideZoom < 0.7, "a capital only pulls the camera to " + wideZoom.toFixed(2));
+  check(cf.live().camera.scale < 0.72,
+        "the camera did not move when the ship did: " + cf.live().camera.scale);
+  cf.flyShip("skiff");
+  check(Math.abs(cf.shipNow().zoom - 1) < 0.01,
+        "a skiff does not sit at 1:1: " + cf.shipNow().zoom.toFixed(2));
+
+  /* Owning is kept. Swapping back must not charge you again — the whole reason
+     to have twenty-five is that trying one is cheap. */
+  const purse = surv.cash;
+  check(cf.buyShip("ossuary") === true, "could not go back to a ship already owned");
+  check(surv.cash === purse, "swapping to an owned ship cost " + (purse - surv.cash));
+
+  // A hold that does not fit the new hull is left on the dock rather than lost
+  // silently or carried impossibly.
+  surv.hold.iron = 900;
+  cf.flyShip("skiff");
+  const cap = cf.shipNow().cap;
+  check(surv.hold.iron <= cap,
+        "downsizing kept " + surv.hold.iron + " units in a hold of " + cap);
+
+  // And the hangar survives the tab.
+  cf.leave();
+  const book = JSON.parse(store["crossfire.survey.v3"]);
+  check(book.ship === "skiff", "the book saved ship " + book.ship);
+  check(book.owned.includes("ossuary"), "the book forgot a ship you bought");
+  const again = bootKeepingStorage("?debug=1&seed=252525");
+  again.cf.start("survey", 1);
+  check(again.cf.shipNow().owned.includes("ossuary"),
+        "a resumed sector lost the hangar");
+  console.log("  ships      25 hulls, 25 silhouettes · hull " +
+              span("hull").toFixed(0) + "x, cargo " + span("cargo").toFixed(0) +
+              "x, size " + span("size").toFixed(1) + "x · none dominates a " +
+              "cheaper one · all five numbers reach the ship · camera follows size");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

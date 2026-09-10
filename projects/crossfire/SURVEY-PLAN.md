@@ -485,7 +485,7 @@ it pays and what your hold is worth to it, and sells the lot on one button or
 `S`. A realistic hold of ordinary rock is worth about 250 near home, which is
 about one tier of one refit.
 
-### 3.3 Twenty-five ships
+### 3.3 Twenty-five ships  ·  **DONE**
 
 All twenty-five buyable, each with real numbers:
 
@@ -502,7 +502,7 @@ screen. They must look as different as they play — a hauler should be
 unmistakable from a fighter at a glance, and one of them should read as a
 TIE-fighter silhouette without being one.
 
-### 3.4 Ship size and the camera
+### 3.4 Ship size and the camera  ·  **DONE**
 
 A bigger ship zooms the camera out. This keeps a capital feeling enormous
 without breaking the framing, and it is a real trade: the big ship carries more
@@ -512,6 +512,44 @@ and survives more, and it sees less detail and handles like a barge.
 > works at this scale. It will be built behind the Settings zoom control (1.3)
 > so both can be felt together, and if it fights the game it gets cut rather
 > than tuned forever.
+
+---
+
+### What 3.3 and 3.4 landed
+
+Twenty-five hulls, each five numbers and a polygon. Spread measured: **hull 12×,
+cargo 50×, size 4.5×**, speed 1.8× and turn 3.7×. Twenty-five distinct
+silhouettes, drawn in the world from the same outline the hangar draws — a
+Louvre is a slab between two flat panels and reads as a TIE without being one; a
+Coffer is a safe with a drive on it.
+
+Five classes with different shapes of trade: scouts pay hull and cargo for speed
+and turn, fighters buy guns, couriers carry and run, haulers carry and don't, and
+capitals do everything slowly. **No ship beats a cheaper ship on all five** —
+tested exhaustively over every pair, because one that did would make the cheaper
+one unbuyable and the roster that much shorter.
+
+Every number reaches the ship: hull, hold, thrust, turn rate, round damage, fire
+rate and radius. The radius matters most and is easiest to forget — collision,
+salvage pickup, where a round leaves the nose and how big it draws all read it,
+so a Cathedral is a Cathedral to all of them at once. Refits scale what the hull
+already has rather than adding a flat bonus, so a tier of drive is worth more on
+a fast hull than on a barge and both purchases stay worth making.
+
+Bought at a station, from a **HANGAR** page laid out like the almanac, because
+the picture is the point and nobody ever picked a ship off a table of numbers.
+The five stats are bars against the best in the roster, which is the only
+question a shipyard is ever asked. Ships are **kept, not sold** — trying a hauler
+for an afternoon and going back to a fighter costs nothing but the walk. A hold
+that will not fit the new hull is left on the dock.
+
+**3.4 — the open question.** Built as Ric asked: a factor *on* the Settings zoom
+rather than instead of it, so both can be felt together and this can be cut
+without taking the control with it. The curve is deliberately weaker than the
+size it answers — a Cathedral is three times a Skiff and gets about half again
+the view, because a capital that showed the whole sector would make the small
+ships feel blind rather than nimble. Measured: a Skiff sits at 1:1, an Ossuary
+at 0.49.
 
 ---
 

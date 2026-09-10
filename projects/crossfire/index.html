@@ -1520,6 +1520,23 @@
   ];
   let surveyZoom = 0.72;
 
+  /* ── 3.4, and the open question in the plan ───────────────────────────────
+     A bigger ship pulls the camera back. Ric flagged this himself as something
+     that might simply not work at this scale, so it is built the way he asked
+     for it: behind the Settings zoom rather than instead of it, as a factor on
+     whatever you chose, so both can be felt together and this one can be cut
+     without taking the control with it.
+
+     The curve is deliberately weaker than the size it responds to — a Cathedral
+     is three times a Skiff and gets about half again the view, not three times —
+     because a capital that showed the whole sector would make the small ships
+     feel blind rather than nimble. */
+  const shipZoomFactor = () => {
+    if (!surv) return 1;
+    const size = shipSpec(surv.ship).size;
+    return 1 / (1 + (size - 1) * 0.42);
+  };
+
   function surveyZoomName() {
     const z = SURVEY_ZOOMS.reduce((a, b) =>
       Math.abs(b.s - surveyZoom) < Math.abs(a.s - surveyZoom) ? b : a);
@@ -1528,7 +1545,7 @@
   function cycleSurveyZoom() {
     const i = SURVEY_ZOOMS.findIndex(z => Math.abs(z.s - surveyZoom) < 0.01);
     surveyZoom = SURVEY_ZOOMS[(i + 1) % SURVEY_ZOOMS.length].s;
-    if (mode && mode.survey) cam.scale = surveyZoom;
+    if (mode && mode.survey) cam.scale = surveyZoom * shipZoomFactor();
     try { localStorage.setItem("crossfire.survey.zoom", String(surveyZoom)); }
     catch (_) {}
   }
@@ -1918,7 +1935,9 @@
 
     // Frame the camera before the first frame is drawn, or it visibly slides
     // in from the corner of the map.
-    cam.scale = mode.camera ? (mode.survey ? surveyZoom : 1) : SCREEN_W / arena.w;
+    cam.scale = mode.camera
+      ? (mode.survey ? surveyZoom * shipZoomFactor() : 1)
+      : SCREEN_W / arena.w;
     if (mode.camera) {
       cam.x = ships[0].x; cam.y = ships[0].y;
       cam.rot = royaleCameraRotates ? -Math.PI / 2 - ships[0].a : 0;
@@ -2059,6 +2078,10 @@
       if (code === "KeyM") {
         state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
       }
+    } else if (state === "hangar") {
+      if (code === "Escape" || code === "Backspace") { state = "refit"; return; }
+      if (code === "KeyE") { state = "playing"; return; }
+      if (surveyHUD) surveyHUD.hangarKey(code, surveyState());
     } else if (state === "missions") {
       /* Back to the inventory rather than to the sector: it was opened from
          there, and a page that drops you two levels out is a page you stop
@@ -2660,12 +2683,14 @@
     const mine = bullets.reduce((n, b) => n + (b.owner === ship.id ? 1 : 0), 0);
     const cap = (mode.campaign && ship.human) ? CAMPAIGN_SHOTS : MAX_SHOTS;
     if (mine >= cap) return false;
-    const r = SHIP_R * U;
+    const r = SHIP_R * U * (ship.sizeMul || 1);
     const heavy = ship.buffHeavy > 0;
     bullets.push({
       owner: ship.id,
       colour: heavy ? "#ffd36b" : ship.colour,
-      dmg: heavy ? 2 : 1,           // salvaged heavy rounds punch through twice
+      // Salvaged heavy rounds punch through twice; a hull's own firepower is a
+      // multiplier over the top of whatever it is firing.
+      dmg: (heavy ? 2 : 1) * (ship.dmgMul || 1),
       x: ship.x + Math.cos(ship.a) * (r + 2),
       y: ship.y + Math.sin(ship.a) * (r + 2),
       // Inheriting ship velocity is what makes a fast pass dangerous — your
@@ -3971,6 +3996,191 @@
      bug to find. */
   const HOME_STATION  = { x: 620, y: 300 };
 
+  /* ═══ THE SHIPS ═══════════════════════════════════════════════════════════
+     Twenty-five of them, and every one is five numbers and a silhouette.
+
+       hull    how many hits before the last one
+       guns    damage a round, and how fast the rounds come
+       cargo   how much material you can carry
+       speed   how fast you go
+       turn    how fast you come about
+
+     The spread is the point. A skiff is a bicycle with a pistol taped to it and
+     an Ossuary is a building; between them every hull is a different answer to
+     the same five questions, and none of them is strictly better than the one
+     below it. Cargo trades against turn, guns trade against cargo, and speed
+     trades against everything.
+
+     `size` is the hull's radius against the stock 12, and it does three jobs at
+     once: how big it draws, how big a target it is, and — see 3.4 — how far the
+     camera sits back. A ship that does not fit on the screen would be a ship you
+     fly by guesswork, so the camera gives ground instead.
+
+     The art is a polygon in the same space the stock hull uses: nose at +x,
+     twelve units to the flank. `fins` are loose strokes over the top, which is
+     what makes a panelled ship read as panelled rather than as a wider triangle.
+     Drawn rather than described, because a hauler has to be unmistakable from a
+     fighter at a glance and a paragraph of stats cannot do that. */
+  const SHIPS = [
+    // ── skiffs and scouts: fast, thin, and carrying almost nothing ──────────
+    { key: "skiff", name: "SKIFF", cls: "SCOUT", cost: 0,
+      hull: 5, dmg: 1, rate: 1, cargo: 60, speed: 1, turn: 1, size: 1,
+      note: "what everyone starts in",
+      art: [[14, 0], [-10, 8], [-6, 0], [-10, -8]] },
+
+    { key: "needle", name: "NEEDLE", cls: "SCOUT", cost: 900,
+      hull: 4, dmg: 1, rate: 1.35, cargo: 45, speed: 1.28, turn: 1.3, size: 0.86,
+      note: "quicker than it is sensible",
+      art: [[17, 0], [-6, 4], [-11, 2], [-11, -2], [-6, -4]],
+      fins: [[[-2, 4], [-6, 10]], [[-2, -4], [-6, -10]]] },
+
+    { key: "kite", name: "KITE", cls: "SCOUT", cost: 1600,
+      hull: 5, dmg: 1, rate: 1.2, cargo: 70, speed: 1.2, turn: 1.22, size: 0.94,
+      note: "a scout that can carry something home",
+      art: [[15, 0], [0, 9], [-11, 5], [-7, 0], [-11, -5], [0, -9]] },
+
+    { key: "vane", name: "VANE", cls: "SCOUT", cost: 2600,
+      hull: 5, dmg: 1.2, rate: 1.3, cargo: 60, speed: 1.34, turn: 1.18, size: 0.9,
+      note: "built to be somewhere else",
+      art: [[18, 0], [2, 5], [-9, 7], [-5, 0], [-9, -7], [2, -5]],
+      fins: [[[2, 5], [6, 11]], [[2, -5], [6, -11]]] },
+
+    { key: "mote", name: "MOTE", cls: "SCOUT", cost: 4200,
+      hull: 4, dmg: 1, rate: 1.7, cargo: 40, speed: 1.44, turn: 1.42, size: 0.78,
+      note: "the fastest thing anyone sells",
+      art: [[16, 0], [-4, 3], [-9, 6], [-6, 0], [-9, -6], [-4, -3]] },
+
+    // ── fighters: the hull everything else is measured against ──────────────
+    { key: "lance", name: "LANCE", cls: "FIGHTER", cost: 3400,
+      hull: 7, dmg: 1.4, rate: 1.1, cargo: 65, speed: 1.06, turn: 1.04, size: 1.05,
+      note: "a gun with somewhere to sit",
+      art: [[18, 0], [-8, 7], [-4, 0], [-8, -7]],
+      fins: [[[6, 3], [4, 9]], [[6, -3], [4, -9]]] },
+
+    { key: "wedge", name: "WEDGE", cls: "FIGHTER", cost: 5200,
+      hull: 8, dmg: 1.5, rate: 1.05, cargo: 75, speed: 1.02, turn: 0.98, size: 1.1,
+      note: "nothing clever, nothing wrong",
+      art: [[16, 0], [-2, 10], [-11, 8], [-7, 0], [-11, -8], [-2, -10]] },
+
+    { key: "harrier", name: "HARRIER", cls: "FIGHTER", cost: 7600,
+      hull: 8, dmg: 1.6, rate: 1.25, cargo: 70, speed: 1.12, turn: 1.12, size: 1.06,
+      note: "quick on the trigger and quick away",
+      art: [[18, 0], [4, 6], [-6, 9], [-10, 4], [-6, 0], [-10, -4], [-6, -9], [4, -6]] },
+
+    { key: "cradle", name: "CRADLE", cls: "FIGHTER", cost: 9800,
+      hull: 11, dmg: 1.5, rate: 0.95, cargo: 110, speed: 0.94, turn: 0.9, size: 1.24,
+      note: "a fighter that will take a beating",
+      art: [[15, 0], [6, 9], [-9, 11], [-5, 0], [-9, -11], [6, -9]] },
+
+    /* The one that reads as a TIE without being one: a slab of a cockpit between
+       two flat panels, and nothing else. Straight lines only — the silhouette is
+       the whole joke and any curve on it would spoil the reference. */
+    { key: "louvre", name: "LOUVRE", cls: "FIGHTER", cost: 13500,
+      hull: 9, dmg: 1.9, rate: 1.3, cargo: 55, speed: 1.16, turn: 1.24, size: 1.14,
+      note: "two panels and an argument",
+      art: [[9, 0], [3, 5], [-7, 5], [-7, -5], [3, -5]],
+      fins: [[[1, 5], [1, 15]], [[1, -5], [1, -15]],
+             [[-6, 15], [8, 15]], [[-6, -15], [8, -15]],
+             [[-6, 15], [-6, -15]], [[8, 15], [8, -15]]] },
+
+    { key: "spur", name: "SPUR", cls: "FIGHTER", cost: 17000,
+      hull: 12, dmg: 2.1, rate: 1.15, cargo: 90, speed: 1.08, turn: 1.06, size: 1.22,
+      note: "the last small ship worth buying",
+      art: [[20, 0], [8, 5], [-4, 8], [-10, 5], [-6, 0], [-10, -5], [-4, -8], [8, -5]],
+      fins: [[[8, 5], [14, 10]], [[8, -5], [14, -10]]] },
+
+    // ── couriers: cargo that runs ───────────────────────────────────────────
+    { key: "runner", name: "RUNNER", cls: "COURIER", cost: 6400,
+      hull: 6, dmg: 0.8, rate: 0.9, cargo: 170, speed: 1.18, turn: 1.02, size: 1.16,
+      note: "a hold with an engine behind it",
+      art: [[15, 0], [8, 6], [-12, 8], [-8, 0], [-12, -8], [8, -6]] },
+
+    { key: "pannier", name: "PANNIER", cls: "COURIER", cost: 11000,
+      hull: 8, dmg: 0.8, rate: 0.85, cargo: 250, speed: 1.1, turn: 0.94, size: 1.34,
+      note: "two holds, one crew",
+      art: [[14, 0], [7, 5], [-13, 6], [-9, 0], [-13, -6], [7, -5]],
+      fins: [[[4, 6], [-10, 12]], [[-10, 12], [-13, 6]],
+             [[4, -6], [-10, -12]], [[-10, -12], [-13, -6]]] },
+
+    { key: "stride", name: "STRIDE", cls: "COURIER", cost: 19500,
+      hull: 10, dmg: 1, rate: 0.9, cargo: 340, speed: 1.14, turn: 0.9, size: 1.46,
+      note: "long legs, deep pockets",
+      art: [[18, 0], [10, 6], [-14, 9], [-10, 0], [-14, -9], [10, -6]],
+      fins: [[[10, 6], [6, 13]], [[10, -6], [6, -13]]] },
+
+    { key: "carrack", name: "CARRACK", cls: "COURIER", cost: 31000,
+      hull: 13, dmg: 1.1, rate: 0.9, cargo: 470, speed: 1.06, turn: 0.82, size: 1.62,
+      note: "the long haul, done properly",
+      art: [[17, 0], [11, 7], [-6, 11], [-16, 8], [-11, 0], [-16, -8], [-6, -11], [11, -7]] },
+
+    // ── haulers: everything, slowly ─────────────────────────────────────────
+    { key: "drayman", name: "DRAYMAN", cls: "HAULER", cost: 15000,
+      hull: 16, dmg: 0.7, rate: 0.7, cargo: 420, speed: 0.82, turn: 0.7, size: 1.7,
+      note: "slow, and it does not care",
+      art: [[13, 0], [9, 10], [-14, 12], [-10, 0], [-14, -12], [9, -10]] },
+
+    { key: "coffer", name: "COFFER", cls: "HAULER", cost: 26000,
+      hull: 19, dmg: 0.7, rate: 0.7, cargo: 620, speed: 0.78, turn: 0.64, size: 1.88,
+      note: "a safe with a drive",
+      art: [[12, 0], [10, 9], [10, 13], [-15, 13], [-15, -13], [10, -13], [10, -9]] },
+
+    { key: "windlass", name: "WINDLASS", cls: "HAULER", cost: 42000,
+      hull: 22, dmg: 0.9, rate: 0.75, cargo: 820, speed: 0.8, turn: 0.6, size: 2.05,
+      note: "built round the winch",
+      art: [[14, 0], [8, 8], [8, 14], [-16, 12], [-12, 0], [-16, -12], [8, -14], [8, -8]],
+      fins: [[[-4, 14], [-4, -14]], [[2, 13], [2, -13]]] },
+
+    { key: "granary", name: "GRANARY", cls: "HAULER", cost: 63000,
+      hull: 26, dmg: 0.8, rate: 0.7, cargo: 1150, speed: 0.74, turn: 0.54, size: 2.3,
+      note: "you will not fill it in one trip",
+      art: [[13, 0], [11, 11], [-4, 16], [-18, 13], [-14, 0], [-18, -13], [-4, -16], [11, -11]] },
+
+    // ── gunships: the guns get their own hull ───────────────────────────────
+    { key: "bastion", name: "BASTION", cls: "GUNSHIP", cost: 24000,
+      hull: 20, dmg: 2.4, rate: 1, cargo: 150, speed: 0.9, turn: 0.76, size: 1.66,
+      note: "it shoots back harder than you do",
+      art: [[17, 0], [12, 8], [-4, 11], [-13, 7], [-9, 0], [-13, -7], [-4, -11], [12, -8]],
+      fins: [[[12, 8], [17, 13]], [[12, -8], [17, -13]]] },
+
+    { key: "reprisal", name: "REPRISAL", cls: "GUNSHIP", cost: 38000,
+      hull: 23, dmg: 2.8, rate: 1.1, cargo: 180, speed: 0.94, turn: 0.8, size: 1.74,
+      note: "the answer to a guarded cache",
+      art: [[20, 0], [13, 6], [13, 12], [-6, 14], [-14, 8], [-10, 0],
+            [-14, -8], [-6, -14], [13, -12], [13, -6]] },
+
+    { key: "ironmonger", name: "IRONMONGER", cls: "GUNSHIP", cost: 58000,
+      hull: 28, dmg: 3.2, rate: 0.95, cargo: 260, speed: 0.86, turn: 0.66, size: 1.98,
+      note: "a foundry that flies",
+      art: [[18, 0], [14, 10], [0, 15], [-16, 12], [-12, 0], [-16, -12], [0, -15], [14, -10]],
+      fins: [[[14, 10], [20, 8]], [[14, -10], [20, -8]], [[0, 15], [0, -15]]] },
+
+    // ── capitals: things that do not fit on a screen ────────────────────────
+    { key: "revenant", name: "REVENANT", cls: "CAPITAL", cost: 86000,
+      hull: 34, dmg: 3.4, rate: 0.9, cargo: 700, speed: 0.8, turn: 0.5, size: 2.6,
+      note: "you will hear it before you see it",
+      art: [[22, 0], [16, 9], [2, 14], [-14, 16], [-20, 9], [-16, 0],
+            [-20, -9], [-14, -16], [2, -14], [16, -9]],
+      fins: [[[2, 14], [2, -14]], [[-8, 16], [-8, -16]]] },
+
+    { key: "cathedral", name: "CATHEDRAL", cls: "CAPITAL", cost: 112000,
+      hull: 40, dmg: 3.6, rate: 0.85, cargo: 1400, speed: 0.72, turn: 0.44, size: 3,
+      note: "a hold you could hold a service in",
+      art: [[24, 0], [18, 8], [10, 17], [-12, 19], [-22, 10], [-18, 0],
+            [-22, -10], [-12, -19], [10, -17], [18, -8]],
+      fins: [[[10, 17], [10, -17]], [[-2, 19], [-2, -19]], [[18, 8], [18, -8]]] },
+
+    { key: "ossuary", name: "OSSUARY", cls: "CAPITAL", cost: 168000,
+      hull: 48, dmg: 4, rate: 0.9, cargo: 2000, speed: 0.7, turn: 0.38, size: 3.5,
+      note: "the last thing anyone builds",
+      art: [[26, 0], [20, 10], [12, 20], [-10, 23], [-24, 14], [-20, 0],
+            [-24, -14], [-10, -23], [12, -20], [20, -10]],
+      fins: [[[12, 20], [12, -20]], [[0, 22], [0, -22]], [[-12, 22], [-12, -22]],
+             [[20, 10], [20, -10]]] }
+  ];
+
+  const shipSpec = key =>
+    SHIPS.find(sh => sh.key === key) || SHIPS[0];
+
   /* ── life support ─────────────────────────────────────────────────────────
      Two clocks that are always running, and they are the reason range is a
      supply problem rather than only a danger problem. Water goes about twice as
@@ -4593,6 +4803,7 @@
 
   function loadSurveyBook() {
     const empty = { seed: 0, found: [], fog: "", cash: 0, deaths: 0, waypoint: null,
+                    ship: "skiff", owned: ["skiff"],
                     water: WATER_FULL, food: FOOD_FULL,
                     hold: freshHold(),
                     refit: freshRefit(), opened: [], stripped: [],
@@ -4627,6 +4838,14 @@
           : Math.max(0, Math.floor(Number(b.cash)) || 0),
         deaths: Math.max(0, Math.floor(Number(b.deaths)) || 0),
         light: !!b.light,
+        /* Validated against the roster: a hull that is not in it would be a ship
+           with no stats and no shape, and every read of it downstream would be
+           an undefined. */
+        ship: SHIPS.some(sh => sh.key === b.ship) ? b.ship : "skiff",
+        owned: (Array.isArray(b.owned) ? b.owned : [])
+          .filter(k => SHIPS.some(sh => sh.key === k))
+          .concat("skiff")
+          .filter((k, i, a) => a.indexOf(k) === i),
         waypoint: b.waypoint && Number.isFinite(b.waypoint.x) &&
                   Number.isFinite(b.waypoint.y)
           ? { x: Math.round(b.waypoint.x), y: Math.round(b.waypoint.y) } : null,
@@ -4689,6 +4908,8 @@
         deaths: surv.deaths || 0,
         light: !!surv.hasLight,
         waypoint: surv.waypoint,
+        ship: surv.ship,
+        owned: [...surv.owned],
         water: Math.round(surv.water),
         food: Math.round(surv.food),
         refit: surv.refit,
@@ -5534,6 +5755,12 @@
          one at a time, and the flight HUD holds a bearing to it, because "I want
          to go there" is a different act from "something happened here". */
       waypoint: carried && book.waypoint ? { ...book.waypoint } : null,
+      /* Which hull you are flying, and which ones you have bought. Owning is
+         kept as well as flying, because a ship you paid sixty thousand for and
+         then swapped out of should still be in the hangar when you come back —
+         re-buying it would make every experiment cost full price. */
+      ship: carried ? book.ship : "skiff",
+      owned: new Set(carried ? book.owned : ["skiff"]),
       // The light drive: whether it is built, whether it is running, and what is
       // in the way if anything is.
       hasLight: carried ? !!book.light : false,
@@ -6086,7 +6313,10 @@
      are doors. Some of them object to you being there. And what you take off
      them is the currency of the two progression tracks. */
 
-  const shipRadius = () => SHIP_R * U;
+  /* How big the ship you are flying actually is. Collision, the salvage pickup,
+     where a round leaves the nose and how big it draws all read this, so a
+     Cathedral is a Cathedral to every one of them at once. */
+  const shipRadius = () => SHIP_R * U * (ships[0] && ships[0].sizeMul || 1);
 
   /* ── the two tracks ───────────────────────────────────────────────────────
      Salvage buys numbers at a station; the almanac hands out verbs for free.
@@ -6101,7 +6331,9 @@
     return !!u && surv.found.size >= u.at;
   }
 
-  const holdCap = () => SURVEY_HOLD + tier("hold") * 45;
+  // The hull's own hold, plus what the storage track adds to it.
+  const holdCap = () =>
+    (surv ? shipSpec(surv.ship).cargo : SURVEY_HOLD) + tier("hold") * 45;
 
   /* How far a pulse reaches. This is the only thing the scanner track buys, and
      it is the only thing it ever claimed to buy that could be felt. */
@@ -6109,10 +6341,20 @@
   const scanRange = () => SCAN_BASE * (1 + tier("scanner") * 0.85);
   const ECHO_LIFE = 20;        // seconds a return stays on the chart
 
+  /* The hull's own numbers and the refit tiers on top of them. The refit scales
+     what the hull already has rather than adding a flat bonus, so a tier of drive
+     is worth more on a fast hull than on a barge — which is the only way buying a
+     better ship and buying a better engine can both stay worth doing. */
   function applyRefit(ship) {
-    ship.maxHull   = SURVEY_HULL + tier("hull") * 2;
-    ship.thrustMul = 1 + tier("thrust") * 0.22;
-    ship.speedMul  = 1 + tier("thrust") * 0.15;
+    const sh = shipSpec(surv ? surv.ship : "skiff");
+    ship.spec      = sh;
+    ship.maxHull   = sh.hull + tier("hull") * 2;
+    ship.thrustMul = sh.speed * (1 + tier("thrust") * 0.22);
+    ship.speedMul  = sh.speed * (1 + tier("thrust") * 0.15);
+    ship.turnMul   = sh.turn;
+    ship.dmgMul    = sh.dmg;
+    ship.rateMul   = sh.rate;
+    ship.sizeMul   = sh.size;
     if (ship.hull > ship.maxHull) ship.hull = ship.maxHull;
   }
 
@@ -6689,6 +6931,58 @@
     saveSurveyBook();
     return true;
   }
+  /* ── the hangar ───────────────────────────────────────────────────────────
+     Ships are bought at a station, which is where a shipyard would be, and the
+     one you are flying is swapped rather than sold: you keep everything you have
+     bought, so trying a hauler for an afternoon and going back to a fighter costs
+     nothing but the walk. The alternative — selling the old hull to pay for the
+     new one — would make every experiment a commitment, and the whole point of
+     twenty-five of them is that you find out which one you like. */
+  function buyShip(key) {
+    if (!surv || !surv.docked) { gameSound("hit"); return false; }
+    const sh = SHIPS.find(x => x.key === key);
+    if (!sh) return false;
+    if (!surv.owned.has(key)) {
+      if (surv.cash < sh.cost) { gameSound("hit"); return false; }
+      surv.cash -= sh.cost;
+      surv.owned.add(key);
+      chatter(sh.name + " bought — " + sh.cost + " cash", CASH);
+    }
+    return flyShip(key);
+  }
+
+  function flyShip(key) {
+    if (!surv || !surv.owned.has(key)) { gameSound("hit"); return false; }
+    const was = surv.ship;
+    surv.ship = key;
+    const me = ships[0];
+    applyRefit(me);
+    /* A swap is a full hull. You are standing in a shipyard and the ship is new
+       to you; handing it over pre-damaged would be a rule nobody could guess. */
+    me.hull = me.maxHull;
+    me.invuln = Math.max(me.invuln, 1.5);
+    // The hold does not come with you if the new one is smaller. What will not
+    // fit is left on the dock, which is the cost of downsizing.
+    const cap = holdCap();
+    let over = holdUsed() - cap;
+    for (const m of MATERIALS) {
+      if (over <= 0) break;
+      const take = Math.min(over, surv.hold[m.key] || 0);
+      surv.hold[m.key] -= take;
+      over -= take;
+    }
+    // The camera is set at startup and by the Settings control, and a swap is
+    // the third thing that changes it — without this you walked out of the
+    // hangar in a Cathedral still looking through a Skiff's window.
+    if (mode && mode.survey) cam.scale = surveyZoom * shipZoomFactor();
+    if (was !== key) {
+      gameSound("win");
+      chatter("Flying the " + shipSpec(key).name + ".", CASH);
+    }
+    saveSurveyBook();
+    return true;
+  }
+
   /* Bought at the yard rather than fetched, and only once the wormhole is done —
      the yard has to have finished something before it can start something else,
      and the wormhole is what teaches you the yard is worth going back to. */
@@ -7853,6 +8147,26 @@
       },
       onLight: toggleLightDrive,
       onBuildLight: buildLightDrive,
+      /* The roster, as the hangar sees it. Every hull with its five numbers and
+         whether you own it, fly it, or could afford it — the page does no
+         arithmetic of its own, so what it shows and what buying does cannot
+         drift apart. */
+      ships: SHIPS.map(sh => ({
+        key: sh.key, name: sh.name, cls: sh.cls, note: sh.note, cost: sh.cost,
+        hull: sh.hull, dmg: sh.dmg, rate: sh.rate, cargo: sh.cargo,
+        speed: sh.speed, turn: sh.turn, size: sh.size,
+        art: sh.art, fins: sh.fins || null,
+        owned: surv.owned.has(sh.key),
+        flying: surv.ship === sh.key,
+        afford: surv.cash >= sh.cost
+      })),
+      /* `shipName`, not `ship`. `ship` is the ship *object* the whole panel reads
+         — hull, position, heading — and calling this one `ship` too silently
+         replaced it with a string, so every readout that touched it went to NaN.
+         The hull bar was drawing a bar of width NaN and nothing said a word. */
+      shipName: shipSpec(surv.ship).name,
+      onBuyShip: buyShip,
+      onHangar: () => { if (surv.docked) state = "hangar"; },
       /* The waypoint, and the two numbers the flight HUD needs to point at it.
          Bearing is in the same degrees the gravity warning uses, so the two
          readouts on the same screen cannot mean different things. */
@@ -8326,7 +8640,9 @@
     seedMotes();
     rocks = []; bullets = []; bits = []; killFeed = [];
     watching = net.seat;
-    cam.scale = mode.camera ? (mode.survey ? surveyZoom : 1) : SCREEN_W / arena.w;
+    cam.scale = mode.camera
+      ? (mode.survey ? surveyZoom * shipZoomFactor() : 1)
+      : SCREEN_W / arena.w;
     cam.x = ships[net.seat].x; cam.y = ships[net.seat].y;
     cam.rot = mode.camera && royaleCameraRotates
       ? -Math.PI / 2 - ships[net.seat].a
@@ -8818,7 +9134,8 @@
          give up the ability to react while you do — but locking the nose solid
          would mean the five-second impact warning was information you could do
          nothing with, and a warning you cannot act on is decoration. */
-      const turn = TURN * (lightDriveOn() ? LIGHT_TURN : 1);
+      const turn = TURN * (ship.turnMul || 1) *
+                   (lightDriveOn() ? LIGHT_TURN : 1);
       if (k.l) ship.a -= turn * dt;
       if (k.r) ship.a += turn * dt;
 
@@ -8936,7 +9253,10 @@
           if (fire(ship)) {
             ship.burstLeft--;
             const rapid = ship.buffRapid > 0 ? 0.45 : 1;
-            ship.cool = (ship.burstLeft > 0 ? BURST_GAP : FIRE_GAP) * rapid;
+            // A hull's rate of fire divides the gap: a Louvre spits and an
+            // Ossuary takes its time, and neither is a different weapon.
+            ship.cool = (ship.burstLeft > 0 ? BURST_GAP : FIRE_GAP) * rapid /
+                        (ship.rateMul || 1);
           } else {
             // Keep the burst queued until one of this ship's old rounds expires.
             ship.cool = BURST_GAP;
@@ -9208,7 +9528,12 @@
     // Blink while the respawn shield is up so nobody wastes shots on a ghost.
     const blink = s.invuln > 0 && Math.floor(s.invuln * 10) % 2 === 0;
     const alpha = s.invuln > 0 ? (blink ? 0.35 : 0.9) : 1;
-    const r = SHIP_R * U;
+    const r = SHIP_R * U * (s.sizeMul || 1);
+    /* The hull's own outline. Every other mode flies the stock triangle and
+       always will; Survey draws whichever of the twenty-five you bought, from the
+       same polygon the roster describes it with. A hauler has to be
+       unmistakable from a fighter at a glance and no amount of stats does that. */
+    const spec = (mode.survey && s.spec) ? s.spec : null;
 
     ctx.save();
     ctx.translate(s.x, s.y);
@@ -9216,13 +9541,23 @@
     ctx.scale(r / 12, r / 12);
     glow(s.colour, 1.7 * (12 / r), alpha, () => {
       ctx.beginPath();
-      ctx.moveTo(14, 0);
-      ctx.lineTo(-10, 8);
-      ctx.lineTo(-6, 0);
-      ctx.lineTo(-10, -8);
+      const art = spec ? spec.art : [[14, 0], [-10, 8], [-6, 0], [-10, -8]];
+      art.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
       ctx.closePath();
       ctx.stroke();
     });
+    // Loose strokes over the outline: panels, spars, the ribs of a hold. This is
+    // what stops eight wide polygons reading as one wide polygon.
+    if (spec && spec.fins) {
+      glow(s.colour, 1.3 * (12 / r), alpha * 0.85, () => {
+        ctx.beginPath();
+        for (const f of spec.fins) {
+          ctx.moveTo(f[0][0], f[0][1]);
+          ctx.lineTo(f[1][0], f[1][1]);
+        }
+        ctx.stroke();
+      });
+    }
     if (s.thrusting && Math.random() > 0.25) {
       glow(s.colour, 1.4 * (12 / r), alpha * 0.85, () => {
         ctx.beginPath();
@@ -11131,6 +11466,9 @@
     if (state === "yard" && surv && surveyHUD) {
       surveyHUD.drawYardPage(surveyState(), dt || 0); return;
     }
+    if (state === "hangar" && surv && surveyHUD) {
+      surveyHUD.drawHangar(surveyState(), dt || 0); return;
+    }
     if (state === "missions" && surv && surveyHUD) {
       surveyHUD.drawMissions(surveyState(), dt || 0); return;
     }
@@ -12412,7 +12750,11 @@
          harness needs the same numbers the simulation used. */
       live: () => ({ ships, rocks, hazards, net, binder, players: PLAYERS, taps,
                      pad: padCfg, stick, arranging, camera: cam, bounds, arena,
-                     clock, shipR: SHIP_R * U, pickups, comms, shake,
+                     clock,
+                     // The hull you are actually flying, not the stock constant:
+                     // collision, pickup and drawing all read this one.
+                     shipR: mode.survey ? shipRadius() : SHIP_R * U,
+                     pickups, comms, shake,
                      cameraMode: royaleCameraRotates ? "rotating" : "fixed" }),
       step: () => tick(performance.now(), true),
       // Start a match straight from a harness, skipping the menus, read the
@@ -12494,6 +12836,13 @@
       setTanks: (w, f) => { if (w != null) surv.water = w;
                             if (f != null) surv.food = f; },
       buySupply: kind => buySupply(kind),
+      // The hangar, driven directly: twenty-five hulls is a lot of arithmetic to
+      // leave to a look.
+      buyShip: key => buyShip(key),
+      flyShip: key => flyShip(key),
+      shipNow: () => ({ key: surv.ship, owned: [...surv.owned],
+                        spec: shipSpec(surv.ship),
+                        zoom: shipZoomFactor(), cap: holdCap() }),
       // Where you are, as the supply system sees it.
       light: () => ({ have: surv.hasLight, run: surv.lightRun,
                       hit: surv.lightHit }),

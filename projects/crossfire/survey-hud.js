@@ -2440,6 +2440,7 @@
                   sellable ? (st.onSell || (() => {})) : null,
                   false, sellable);
 
+
     /* ── the chandler ───────────────────────────────────────────────────────
        Water and food, which is the other half of what a station is for now. The
        price is what is *missing* rather than a flat fee, so topping off before a
@@ -2531,6 +2532,16 @@
       label(u.have ? u.note : (u.at + " almanac entries"), rx + 14, y + 44,
             SIZE.cap, u.have ? VIOLET_DIM : VIOLET_LOW, "left", 0.85);
     });
+
+    /* The shipyard. A door rather than a panel, because twenty-five hulls with
+       five numbers each is a catalogue, and a catalogue needs a page. It sits
+       under the verbs rather than beside the refit tracks: the hull is the bigger
+       decision by an order of magnitude — a tier of drive costs a hundred and
+       forty and a Cathedral costs a hundred and twelve thousand — so it gets a
+       door of its own rather than a fifth row on a list of upgrades. */
+    api.tapButton("HANGAR  ▸    " + (st.shipName || "SKIFF"),
+                  rx + rw / 2, 498, Math.min(320, rw), 46, VIOLET,
+                  st.onHangar || (() => {}));
 
     // Above the rule, not on the footer line: at SCREEN_H - 30 it ran into the
     // key hints on a desk and sat across the UNDOCK button on a phone.
@@ -3008,6 +3019,206 @@
               "it is slow, and it is free",
               SCREEN_W / 2, 566, SIZE.cap, ICE, "center", 0.7, SCREEN_W - 160);
     }
+
+    closeButton(st.onClose || (() => {}));
+  };
+
+  /* ═══ THE HANGAR ══════════════════════════════════════════════════════════
+     Twenty-five hulls, and the only page in the mode that is a *catalogue*. It
+     is laid out like the almanac for the same reason the almanac is laid out
+     that way: the picture is the point. Five numbers tell you what a ship does
+     and the silhouette tells you what it is, and nobody ever picked a ship off a
+     table of numbers.
+
+     One row of bars a stat, drawn against the best in the roster rather than
+     against an absolute — "how does this compare to everything else I could
+     buy" is the only question a shipyard is ever asked. */
+  let hangar = { pick: 0, scroll: 0 };
+  HUD.hangarOpened = function (st) {
+    const list = (st && st.ships) || [];
+    const i = list.findIndex(sh => sh.flying);
+    hangar.pick = i < 0 ? 0 : i;
+    hangar.scroll = 0;
+    keepShipVisible(list.length);
+  };
+
+  const SHIP_COLS = () => (api.touchOnly ? 2 : 4);
+  const SHIP_ROWS = 3;
+  function keepShipVisible(n) {
+    const cols = SHIP_COLS();
+    const row = Math.floor(hangar.pick / cols);
+    if (row < hangar.scroll) hangar.scroll = row;
+    if (row >= hangar.scroll + SHIP_ROWS) hangar.scroll = row - SHIP_ROWS + 1;
+    const rows = Math.ceil(n / cols);
+    hangar.scroll = Math.max(0, Math.min(Math.max(0, rows - SHIP_ROWS), hangar.scroll));
+  }
+
+  HUD.hangarKey = function (code, st) {
+    const list = (st && st.ships) || [];
+    if (!list.length) return false;
+    const cols = SHIP_COLS();
+    if (code === "ArrowLeft")       hangar.pick = Math.max(0, hangar.pick - 1);
+    else if (code === "ArrowRight") hangar.pick = Math.min(list.length - 1, hangar.pick + 1);
+    else if (code === "ArrowUp")    hangar.pick = Math.max(0, hangar.pick - cols);
+    else if (code === "ArrowDown")  hangar.pick = Math.min(list.length - 1, hangar.pick + cols);
+    else if (code === "Enter" || code === "Space") {
+      const sh = list[hangar.pick];
+      if (sh && st.onBuyShip && (sh.owned || sh.afford)) st.onBuyShip(sh.key);
+      return true;
+    } else return false;
+    keepShipVisible(list.length);
+    return true;
+  };
+
+  /* One hull, drawn from the same polygon the world draws it with. Scaled to the
+     box rather than to its real size, so a Skiff is not a speck beside an
+     Ossuary on a page whose job is comparing them — the size bar says which is
+     bigger, and the outline says what each one *is*. */
+  function drawHull(sh, cx, cy, box, colour, alpha) {
+    const { ctx } = api;
+    let far = 1;
+    for (const p of sh.art) far = Math.max(far, Math.hypot(p[0], p[1]));
+    if (sh.fins) {
+      for (const f of sh.fins) {
+        far = Math.max(far, Math.hypot(f[0][0], f[0][1]), Math.hypot(f[1][0], f[1][1]));
+      }
+    }
+    const k = box / far;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(k, k);
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = 1.6 / k;
+    ctx.beginPath();
+    sh.art.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+    ctx.closePath();
+    ctx.stroke();
+    if (sh.fins) {
+      ctx.globalAlpha = alpha * 0.8;
+      ctx.lineWidth = 1.2 / k;
+      ctx.beginPath();
+      for (const f of sh.fins) {
+        ctx.moveTo(f[0][0], f[0][1]);
+        ctx.lineTo(f[1][0], f[1][1]);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  HUD.drawHangar = function (st, dt) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    st = st || {};
+    const list = st.ships || [];
+    if (!list.length) return;
+    const cols = SHIP_COLS();
+    hangar.pick = Math.max(0, Math.min(list.length - 1, hangar.pick));
+
+    pageFrame("HANGAR",
+              "FLYING THE " + (st.shipName || "SKIFF") + "  ·  CASH " + (st.cash || 0),
+              api.touchOnly ? "TAP A HULL  ·  CLOSE BELOW"
+                            : "ARROWS MOVE  ·  ENTER BUYS OR SWAPS  ·  ESC CLOSES");
+
+    // ── the grid ───────────────────────────────────────────────────────────
+    const gap = 12, left = 34;
+    const cardW = (SCREEN_W - 68 - gap * (cols - 1)) / cols;
+    const cardH = 108, top = 88;
+    const first = hangar.scroll * cols;
+    const last = Math.min(list.length, first + SHIP_ROWS * cols);
+
+    for (let i = first; i < last; i++) {
+      const sh = list[i];
+      const col = (i - first) % cols, row = Math.floor((i - first) / cols);
+      const x = left + col * (cardW + gap), y = top + row * (cardH + gap);
+      const on = i === hangar.pick;
+      const colour = sh.flying ? CASH : sh.owned ? VIOLET : VIOLET_DIM;
+
+      ctx.save();
+      ctx.fillStyle = sh.flying ? CASH : VIOLET;
+      ctx.globalAlpha = on ? 0.09 : 0.03;
+      ctx.fillRect(x, y, cardW, cardH);
+      ctx.strokeStyle = on ? (sh.flying ? CASH : VIOLET) : colour;
+      ctx.globalAlpha = on ? 1 : 0.45;
+      ctx.lineWidth = on ? 2 : 1;
+      ctx.strokeRect(x, y, cardW, cardH);
+      ctx.restore();
+
+      drawHull(sh, x + cardW / 2, y + 40, 30, colour,
+               sh.owned || sh.afford ? 1 : 0.4);
+      fitText(sh.name, x + cardW / 2, y + 76, SIZE.cap, colour, "center",
+              sh.owned || sh.afford ? 1 : 0.5, cardW - 16, "0.08em");
+      fitText(sh.flying ? "FLYING" : sh.owned ? "IN THE HANGAR"
+                        : sh.cost + " CASH",
+              x + cardW / 2, y + 96, SIZE.cap,
+              sh.flying ? CASH : sh.owned ? VIOLET_DIM
+                        : sh.afford ? CASH_DIM : WARN,
+              "center", 0.85, cardW - 16);
+      api.addTap({ x, y, w: cardW, h: cardH, act: () => {
+        if (hangar.pick === i && (sh.owned || sh.afford)) {
+          if (st.onBuyShip) st.onBuyShip(sh.key);
+        } else hangar.pick = i;
+      } });
+    }
+
+    if (Math.ceil(list.length / cols) > SHIP_ROWS) {
+      const trackH = SHIP_ROWS * (cardH + gap) - gap;
+      const rows = Math.ceil(list.length / cols);
+      const h = Math.max(24, trackH * (SHIP_ROWS / rows));
+      const t = rows - SHIP_ROWS ? hangar.scroll / (rows - SHIP_ROWS) : 0;
+      ctx.save();
+      ctx.fillStyle = VIOLET_LOW;
+      ctx.globalAlpha = 0.5;
+      ctx.fillRect(SCREEN_W - 26, top, 3, trackH);
+      ctx.fillStyle = VIOLET;
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(SCREEN_W - 26, top + t * (trackH - h), 3, h);
+      ctx.restore();
+    }
+
+    // ── the one you are looking at ─────────────────────────────────────────
+    const sh = list[hangar.pick];
+    const dy = top + SHIP_ROWS * (cardH + gap) + 8;
+    ctx.save();
+    ctx.strokeStyle = VIOLET_LOW;
+    ctx.globalAlpha = 0.7;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(34, dy, SCREEN_W - 68, 118);
+    ctx.restore();
+
+    label(sh.name, 52, dy + 30, SIZE.head, sh.flying ? CASH : VIOLET, "left",
+          1, "0.14em");
+    label(sh.cls, 52, dy + 52, SIZE.cap, VIOLET_DIM, "left", 0.8, "0.18em");
+    fitText(sh.note, 52, dy + 76, SIZE.cap, AMBER_DIM, "left", 0.85, 300);
+
+    /* The five numbers, as bars against the best in the roster. A number on its
+       own says nothing in a shipyard; the only question is how this one compares
+       to the others on the page. */
+    const best = k => list.reduce((m, o) => Math.max(m, o[k]), 0.0001);
+    const stats = [
+      ["HULL", sh.hull / best("hull"), sh.hull],
+      ["GUNS", (sh.dmg * sh.rate) / list.reduce((m, o) => Math.max(m, o.dmg * o.rate), 0.0001),
+       (sh.dmg * sh.rate).toFixed(1) + "x"],
+      ["CARGO", sh.cargo / best("cargo"), sh.cargo],
+      ["SPEED", sh.speed / best("speed"), sh.speed.toFixed(2) + "x"],
+      ["TURN", sh.turn / best("turn"), sh.turn.toFixed(2) + "x"]
+    ];
+    stats.forEach(([name, frac, val], i) => {
+      const sx = 380 + i * 112;
+      label(name, sx, dy + 30, SIZE.cap, VIOLET_DIM, "left", 0.7, "0.14em");
+      label(String(val), sx, dy + 54, SIZE.val, VIOLET, "left", 0.95);
+      barAt(sx, dy + 64, 88, 8, frac, sh.flying ? CASH : VIOLET, false);
+    });
+
+    const canTake = sh.owned || sh.afford;
+    api.tapButton(sh.flying ? "FLYING IT"
+                : sh.owned ? "FLY IT"
+                : "BUY   " + sh.cost,
+                  SCREEN_W - 150, dy + 60, 220, 44,
+                  sh.flying ? VIOLET_LOW : canTake ? CASH : WARN,
+                  sh.flying || !canTake ? null
+                    : () => st.onBuyShip && st.onBuyShip(sh.key),
+                  false, !sh.flying && canTake);
 
     closeButton(st.onClose || (() => {}));
   };
