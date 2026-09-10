@@ -31,9 +31,10 @@ discovered later. Those three are not.
 
 ---
 
-## What already exists
+## What already existed
 
-Done and tested, as of this file being written:
+The state of the mode when this file was written, kept as the baseline every
+"what actually landed" section below is measured against:
 
 - Endless chunked space, pure from a seed; a fog chart with pins; a 33-entry
   illustrated almanac.
@@ -71,15 +72,23 @@ which is the class rule 2 below exists for.
 - Five overlapping-text and dead-tap-target bugs across the chart, the station,
   the inventory and the objective band.
 
-## What is wrong with it right now
+## What was wrong with it  ·  *all four addressed*
 
-- **No stakes.** Losing your hull costs a trip, not a run. Survival needs death.
-- **Too many hazards, all the same size.** They read as scenery to dodge rather
-  than as things that will kill you.
-- **Too close in.** The camera sits tight enough that a well fills the screen
-  before you can react to it.
-- **Too much to read.** The mode explains itself in text, and text is not how
-  someone learns a game in two minutes.
+The four complaints this plan was written to answer. Kept because they are the
+argument for everything below them, and because a plan that deletes its own
+premise is a list of features.
+
+- ~~**No stakes.** Losing your hull costs a trip, not a run.~~ The hull runs to
+  zero and stops there, and the next thing that touches you kills you. Phase 2.1.
+- ~~**Too many hazards, all the same size.**~~ Wells cut to 0.18 a chunk with
+  black holes down to a third of that, sized by band, and every supermassive one
+  named and charted. Phase 1.2, and the places pass.
+- ~~**Too close in.**~~ Drawn at 0.72 with five steps in Settings, and the ship's
+  own size pulls it back further. Phase 1.3 and 3.4.
+- ~~**Too much to read.**~~ The objective band is gone, radio and logged cards and
+  the objective are one notification stack, the bars are gone from the panel, and
+  the opening teaches by arranging for you to want things. The quiet screen, and
+  Phase 4.2.
 
 ---
 
@@ -345,15 +354,20 @@ promise that nothing ends your run, deliberately.
   water only. 62% of worlds have air. Nothing you scoop out of a sky is food, or
   the inhabited worlds would be pointless.
 
-> **Worth knowing before phase 3.** Measured from five distances out to 300,000
-> units, the nearest place that sells water is *never more than a minute of flight
-> away* — so supply is not yet the constraint 2.4 describes. The tension that does
-> exist is informational rather than physical: you have twelve minutes of water and
-> you do not know where the nearest station is until you have charted it. The
-> levers, when it wants tightening, are the station roll (currently ~1 in 20
-> chunks, plus one given at home) and the tank sizes. Left alone rather than tuned
-> blind, because it is a feel decision and 3.3's twenty-five ships will change the
-> travel budget it depends on.
+> **Where supply is pitched, and why it stays there.** Measured from five
+> distances out to 300,000 units, the nearest place that sells water is never more
+> than a minute of flight away, and near home it is far closer than that. So
+> running dry is not something that happens on an ordinary trip.
+>
+> That is the intended pitch and it is settled: **water and food are a constraint
+> on going a long way, not a difficulty everywhere.** Twelve minutes of water is
+> about 260,000 units at full burn against a sector that runs past 320,000, so a
+> run at the abyss is a run you have to provision for — and a run round the home
+> band is not. Something you think about before a long haul and never during a
+> short one.
+>
+> The levers, if it ever wants moving: the station roll (~1 in 20 chunks, plus the
+> one given at home), the inhabited-world gradient, and the tank sizes.
 
 ---
 
@@ -454,7 +468,7 @@ rule.
 
 ---
 
-## Phase 3 — the economy and the ships
+## Phase 3 — the economy and the ships  ·  **DONE**
 
 ### 3.1 Metals  ·  **DONE**
 
@@ -508,10 +522,15 @@ A bigger ship zooms the camera out. This keeps a capital feeling enormous
 without breaking the framing, and it is a real trade: the big ship carries more
 and survives more, and it sees less detail and handles like a barge.
 
-> **Open question.** Ric flagged this himself: whether size-driven zoom actually
-> works at this scale. It will be built behind the Settings zoom control (1.3)
-> so both can be felt together, and if it fights the game it gets cut rather
-> than tuned forever.
+> **Open question — still open, and only Ric can close it.** Whether size-driven
+> zoom actually works at this scale. It is built the way he asked: a factor *on*
+> the Settings zoom rather than instead of it, so both can be felt together and
+> this one can be cut without taking the control with it. Measured, a Skiff sits
+> at 1:1 and an Ossuary at 0.49.
+>
+> This is the one item in the whole plan that cannot be settled by measuring
+> something. It needs an afternoon in a capital. If it fights the game, delete
+> `shipZoomFactor` and its three call sites and nothing else moves.
 
 ---
 
