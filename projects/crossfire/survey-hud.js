@@ -2145,7 +2145,9 @@
     ctx.save();
     ctx.fillStyle = "rgba(5,5,10,0.86)";
     ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
-    ctx.fillStyle = on ? "rgba(160,140,255,0.06)" : "rgba(255,255,255,0.02)";
+    // A ground dark enough that the type on it is type on a page rather than type
+    // over an asteroid field.
+    ctx.fillStyle = on ? "rgba(26,20,52,0.96)" : "rgba(16,16,24,0.96)";
     ctx.fillRect(x, y, w, h);
     ctx.strokeStyle = on ? VIOLET : VIOLET_LOW;
     ctx.globalAlpha = 0.95;
@@ -2164,10 +2166,10 @@
 
     fitText(on || !e.secret ? e.name : "??????????",
             x + w / 2, y + art + 84, SIZE.big, on ? AMBER : AMBER_DIM,
-            "center", on ? 1 : 0.5, w - 60, "0.1em");
+            "center", on ? 1 : 0.92, w - 60, "0.1em");
     fitText(on ? e.note : (e.secret ? "not on any chart" : e.note),
             x + w / 2, y + art + 116, SIZE.val, on ? VIOLET : VIOLET_DIM,
-            "center", on ? 0.9 : 0.45, w - 60);
+            "center", on ? 0.95 : 0.85, w - 60);
     label(on ? "LOGGED" : "NOT YET FOUND", x + w / 2, y + art + 150, SIZE.cap,
           on ? CASH : VIOLET_LOW, "center", 0.8, "0.18em");
 
@@ -2183,10 +2185,10 @@
     const art = h - 22;
 
     ctx.save();
-    ctx.fillStyle = on ? "rgba(160,140,255,0.07)" : "rgba(255,255,255,0.022)";
+    ctx.fillStyle = on ? "rgba(160,140,255,0.10)" : "rgba(255,255,255,0.05)";
     ctx.fillRect(x, y, w, h);
     ctx.strokeStyle = selected ? VIOLET : (on ? VIOLET_DIM : VIOLET_LOW);
-    ctx.globalAlpha = selected ? 1 : (on ? 0.7 : 0.45);
+    ctx.globalAlpha = selected ? 1 : (on ? 0.85 : 0.7);
     ctx.lineWidth = selected ? 2 : 1;
     ctx.strokeRect(x, y, w, h);
     ctx.restore();
@@ -2209,12 +2211,16 @@
     // The tick lives at the right edge, so the text stops before it rather than
     // running underneath it.
     const room = (x + w - 18) - tx - (on ? 20 : 4);
+    /* Read at the same weight whether it is found or not. What an entry you have
+       not got says is the whole reason to read the book, and it was the half
+       printed at 0.4. The colour is what marks it as unfound — a dimmer amber and
+       a dimmer violet — not the alpha. */
     const name = on || !e.secret ? e.name : "??????????";
     fitText(name, tx, y + 30, SIZE.cap, on ? AMBER : AMBER_DIM, "left",
-            on ? 1 : 0.45, room, "0.08em");
+            on ? 1 : 0.9, room, "0.08em");
     fitText(on ? e.note : (e.secret ? "not on any chart" : e.note),
             tx, y + 52, SIZE.cap, on ? VIOLET : VIOLET_DIM, "left",
-            on ? 0.85 : 0.4, room);
+            on ? 0.9 : 0.8, room);
     if (on) label("✓", x + w - 18, y + 30, SIZE.cap, VIOLET, "right", 0.9);
 
     /* Clicking an entry opens it. It used to only move the selection, which
@@ -2231,12 +2237,16 @@
      Twenty-five small drawings, in the same hairline vector as the game. They
      are what turns a checklist into a field guide: a name tells you what you
      have not got, a picture tells you what to go and look for. Unfound entries
-     draw the same shape at low alpha in grey — a silhouette, so the outline
-     still says what kind of thing it is without giving away the detail. */
+     draw the same shape in grey rather than in colour — a silhouette, so the
+     outline still says what kind of thing it is without giving away the detail.
+
+     They used to be drawn at 0.3 alpha as well, which made the half of the book
+     that is *supposed to be a lead* the half you cannot read. Grey is the signal;
+     faintness on top of grey was just a page you squint at. */
   function drawIcon(key, cx, cy, r, on) {
     const { ctx } = api;
     const lit = c => (on ? c : WRECKC);
-    const a = on ? 1 : 0.3;
+    const a = on ? 1 : 0.82;
     const stroke = (colour, width, path) => api.glow(lit(colour), width, a, path);
     const disc = (x, y, rr, colour, alpha) => {
       ctx.save();
@@ -3877,14 +3887,34 @@
     /* A catalogue, laid out like the almanac for the same reason the almanac is
        laid out that way: the picture is the point, and nobody ever picked a ship
        off a table of numbers. */
-    const cardH = 104, first = hangar.scroll * cols;
-    const last = Math.min(list.length, first + SHIP_ROWS * cols);
+    /* `hangar.scroll` is a float — a wheel and a thumb both arrive as pixels, so
+       it has to be — and `first` was `scroll * cols` straight off it. A
+       fractional array index is `undefined`, so the moment anybody scrolled by
+       anything other than a whole row the grid simply drew nothing and the page
+       went blank. That is the bug behind "the scroll in the hangar doesn't work".
+
+       So: floor for the index, and put the fraction back as an offset, which is
+       how the almanac has always done it. The rows are clipped to their own area
+       for the same reason — a card leaving the top has to be cut off by the list
+       rather than drawn over the heading. */
+    const cardH = 104, pitch = cardH + PAGE.STEP;
+    const firstRow = Math.floor(hangar.scroll);
+    const first = firstRow * cols;
+    const last = Math.min(list.length, first + (SHIP_ROWS + 1) * cols);
+    const viewTop = PAGE.TOP - 6;
+    const viewH = SHIP_ROWS * pitch - PAGE.STEP + 12;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, viewTop, SCREEN_W, viewH);
+    ctx.clip();
 
     for (let i = first; i < last; i++) {
       const sh = list[i];
+      if (!sh) continue;
       const c = COL(cols, (i - first) % cols);
       const row = Math.floor((i - first) / cols);
-      const y = PAGE.TOP + row * (cardH + PAGE.STEP);
+      const y = PAGE.TOP + (row - (hangar.scroll - firstRow)) * pitch;
       const on = i === hangar.pick;
       const reach = sh.owned || sh.afford;
       const colour = sh.flying ? CASH : sh.owned ? VIOLET : reach ? VIOLET_DIM : WRECKC;
@@ -3914,12 +3944,18 @@
               c.x + c.w - PAGE.PAD, y + 96, SIZE.cap,
               sh.flying ? CASH : sh.owned ? VIOLET_DIM : sh.afford ? CASH_DIM : WARN,
               "right", 0.85, c.w * 0.5);
-      api.addTap({ x: c.x, y, w: c.w, h: cardH, act: () => {
-        if (hangar.pick === i && reach) {
-          if (st.onBuyShip) st.onBuyShip(sh.key);
-        } else hangar.pick = i;
-      } });
+      /* Only a card that is actually in the list. A half-scrolled one is cut off
+         by the clip, but a tap rectangle is not clipped — one riding up under the
+         page heading would be a ship you cannot see and can still buy. */
+      if (y >= viewTop - 2 && y + cardH <= viewTop + viewH + 2) {
+        api.addTap({ x: c.x, y, w: c.w, h: cardH, act: () => {
+          if (hangar.pick === i && reach) {
+            if (st.onBuyShip) st.onBuyShip(sh.key);
+          } else hangar.pick = i;
+        } });
+      }
     }
+    ctx.restore();
 
     const rowsAll = Math.ceil(list.length / cols);
     if (rowsAll > SHIP_ROWS) {

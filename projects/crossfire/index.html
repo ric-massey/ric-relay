@@ -9881,7 +9881,15 @@
       if (d < h.reach) {
         if (h.kind === "star") { stars++; lit = lit || h; } else holes++;
         if (!inWell || d < inWell.d) inWell = { h, d };
-        if (d < h.kill * 2.6) tight++;
+        /* THREAD: between two cores, touching neither. This asked to be inside
+           `kill * 2.6` of two wells at once — 120 units of a star — and measured
+           over a 29-chunk patch of real sector, **no two wells are ever that
+           close**. The entry could not be earned by anybody, ever.
+
+           What it should have asked is what it says: well inside both wells'
+           reach, and outside both killing radii. Forty-seven pairs in that same
+           patch have overlapping reaches, so it is rare and it is possible. */
+        if (d < h.reach * 0.8 && d > h.kill * 1.3) tight++;
         if (d < h.kill * 1.6) skim = true;
       }
     }

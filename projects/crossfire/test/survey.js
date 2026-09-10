@@ -4622,6 +4622,75 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "across the tab");
 }
 
+// ── an almanac entry has to be earnable in the actual sector ─────────────
+/* THREAD — "between two cores, touching neither" — asked to be inside
+   `kill * 2.6` of two wells at once. That is 120 units of a star, and measured
+   over a 29-chunk patch of real sector **no two wells are ever that close**. The
+   entry could not be earned by anybody, ever.
+
+   The almanac block further up checks that every condition *can* fire, but it
+   does that against a synthetic telemetry object with everything switched on —
+   which is exactly why it never caught this. So this one goes the other way: it
+   finds two real wells in a real sector, flies the ship between them, and checks
+   the book ticks. */
+{
+  const { cf } = boot("?debug=1&seed=4242");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+
+  /* Two wells whose reaches overlap, out of the sector's own generation. If none
+     exist the entry is unearnable however the condition is written, so that is
+     the first thing worth knowing. */
+  const wells = [];
+  for (let cx = -14; cx <= 14; cx++) {
+    for (let cy = -14; cy <= 14; cy++) {
+      for (const h of cf.chunk(cx, cy).hazards) wells.push(h);
+    }
+  }
+  let pair = null;
+  for (let i = 0; i < wells.length && !pair; i++) {
+    for (let j = i + 1; j < wells.length && !pair; j++) {
+      const a = wells[i], b = wells[j];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      // Close enough to stand inside both, far enough to stand outside both cores.
+      if (d < (a.reach + b.reach) * 0.7 && d > (a.kill + b.kill) * 3) pair = [a, b, d];
+    }
+  }
+  check(!!pair, "no two wells in this sector are close enough to fly between");
+
+  if (pair) {
+    const [a, b, d] = pair;
+    check(!surv.found.has("thread"), "THREAD was already logged");
+    // Stand exactly between them, which is what the entry describes.
+    me.x = (a.x + b.x) / 2; me.y = (a.y + b.y) / 2;
+    me.vx = me.vy = 0;
+    for (let i = 0; i < 30; i++) {
+      me.invuln = 999; surv.water = 900; surv.food = 900;
+      now += 1000 / 60; cf.step();
+    }
+    check(surv.found.has("thread"),
+          "flew between two wells " + Math.round(d) + " units apart, inside both " +
+          "reaches and outside both cores, and THREAD did not tick");
+  }
+
+  /* And it is not free: sitting in open space with no well anywhere near must
+     not hand it out. */
+  const other = boot("?debug=1&seed=4242");
+  other.cf.start("survey", 1);
+  const s2 = other.cf.survey(), m2 = other.cf.live().ships[0];
+  m2.x = 5e5; m2.y = 5e5;
+  for (let i = 0; i < 60; i++) {
+    m2.invuln = 999; s2.water = 900; s2.food = 900;
+    now += 1000 / 60; other.cf.step();
+  }
+  check(!s2.found.has("thread"), "THREAD ticked in empty space");
+
+  console.log("  thread     two real wells " + (pair ? Math.round(pair[2]) : "?") +
+              " units apart, flown between \u00b7 the entry ticks \u00b7 " +
+              "empty space does not");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);
