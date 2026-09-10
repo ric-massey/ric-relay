@@ -4801,6 +4801,7 @@
 
   function loadSurveyBook() {
     const empty = { seed: 0, found: [], fog: "", cash: 0, deaths: 0, waypoint: null,
+                    heat: 0,
                     ship: "skiff", owned: ["skiff"], taught: [],
                     water: WATER_FULL, food: FOOD_FULL,
                     hold: freshHold(),
@@ -4835,6 +4836,7 @@
           ? 0                        // it was cargo, and it is read back as iron
           : Math.max(0, Math.floor(Number(b.cash)) || 0),
         deaths: Math.max(0, Math.floor(Number(b.deaths)) || 0),
+        heat: Math.max(0, Math.min(240, Number(b.heat) || 0)),
         light: !!b.light,
         /* Validated against the roster: a hull that is not in it would be a ship
            with no stats and no shape, and every read of it downstream would be
@@ -4907,6 +4909,7 @@
         deaths: surv.deaths || 0,
         light: !!surv.hasLight,
         waypoint: surv.waypoint,
+        heat: Math.round(surv.heat || 0),
         ship: surv.ship,
         owned: [...surv.owned],
         taught: [...surv.taught],
@@ -5776,6 +5779,11 @@
       deadGuards: new Set(),
       // Traffic that has been destroyed, remembered only while its chunk is up.
       goneTraffic: new Set(),
+      /* What the sector thinks of you. A number the player never sees — see
+         `addHeat` — and the thing that decides whether a patrol follows you,
+         shoots at you, or comes looking. */
+      heat: carried ? book.heat : 0,
+      huntCool: 20,
       opened: new Set(carried ? book.opened : []),
       stripped: new Set(carried ? book.stripped : []),
       docked: null,
@@ -6009,7 +6017,8 @@
     drone:   { name: "SENTRY",    colour: DRONE_COLOUR,  bad: true },
     traffic: { name: "TRAFFIC",   colour: "#8fb4d8",     bad: false },
     patrol:  { name: "PATROL",    colour: CASH,          bad: false },
-    distress:{ name: "DISTRESS",  colour: "#ffcb42",     bad: false }
+    distress:{ name: "DISTRESS",  colour: "#ffcb42",     bad: false },
+    hunter:  { name: "HUNTER",    colour: "#ff6b6b",     bad: true }
   };
 
   function surveyScan() {
@@ -6045,7 +6054,8 @@
     // for, so it comes back as its own kind rather than as generic traffic.
     for (const t of surv.traffic) {
       add(t.kind === "patrol" ? "patrol"
-        : t.kind === "distress" ? "distress" : "traffic", t.x, t.y, t);
+        : t.kind === "distress" ? "distress"
+        : t.kind === "hunter" ? "hunter" : "traffic", t.x, t.y, t);
     }
     /* Loose salvage is clustered by nature — a broken rock is twenty motes — so
        it is reported as one echo per cluster rather than twenty on top of each
@@ -6064,7 +6074,8 @@
       // Everything that moves is left out: a note of where a freighter was an
       // hour ago is worse than no note at all.
       if (e.kind === "salvage" || e.kind === "drone" || e.kind === "traffic" ||
-          e.kind === "patrol" || e.kind === "distress") continue;
+          e.kind === "patrol" || e.kind === "distress" ||
+          e.kind === "hunter") continue;
       noteKnown(e.kind === "sealed" ? "cache" : e.kind, e.x, e.y);
     }
     surv.echoes = found;
@@ -6131,6 +6142,9 @@
           t.hp = t.maxHp;
           surv.cash += DISTRESS_PAY;
           surv.t.rescued = true;
+          // Worth about a hauler, in the other direction. Being able to work it
+          // off is what keeps this a state rather than a verdict on the save.
+          addHeat(HEAT.RESCUE);
           chatter("They made it. " + DISTRESS_PAY + " cash, and their thanks.", CASH);
           gameSound("win", t.x);
           saveSurveyBook();
@@ -6140,13 +6154,28 @@
 
       /* A route, walked end to end. `leg` is which way along it, so a ship met
          twice is the same ship going about its day rather than a new one. */
-      /* An angry patrol stops patrolling. It closes on you instead, which is the
-         only readable way for a neutral to say it has changed its mind. */
+      /* What a patrol does about you, in three steps. WANTED makes it hostile on
+         sight — it does not wait for you to shoot first any more — and WATCHED
+         makes it *follow* without firing, which is the whole of the first step:
+         somebody is keeping an eye on you and you can see them doing it.
+
+         A hunter is angry by construction and skips all of this. */
+      const near = Math.hypot(me.x - t.x, me.y - t.y);
+      if (t.kind === "patrol" && me.alive && near < 2600 * U) {
+        const lvl = heatLevel();
+        if (lvl >= 2) t.angry = true;
+        else if (lvl >= 1) t.shadow = true;
+      }
+      /* Shadowing sits off your shoulder rather than closing: near enough that
+         you notice, far enough that it is not a threat yet. */
+      const tailing = t.shadow && !t.angry && me.alive;
       const goal = (t.angry && me.alive) ? { x: me.x, y: me.y }
+                 : tailing ? { x: me.x - Math.cos(t.a) * 700 * U,
+                               y: me.y - Math.sin(t.a) * 700 * U }
                  : t.leg > 0 ? t.to : t.from;
       const dx = goal.x - t.x, dy = goal.y - t.y;
       const d = Math.hypot(dx, dy) || 1;
-      if (d < 220) { if (!t.angry) t.leg = -t.leg; continue; }
+      if (d < 220) { if (!t.angry && !tailing) t.leg = -t.leg; continue; }
       const want = Math.atan2(dy, dx);
       let diff = want - t.a;
       while (diff > Math.PI) diff -= Math.PI * 2;
@@ -6158,7 +6187,7 @@
       /* A patrol shoots at sentries. It is the one thing that tells you these
          are on your side without a word being said — and it means a guarded
          cache near a station is a fight you can arrive in the middle of. */
-      if (t.kind === "patrol") {
+      if (t.kind === "patrol" || t.kind === "hunter") {
         t.cool -= dt;
         if (t.cool <= 0) {
           /* Angry, it comes for you and its rounds are live. Otherwise it looks
@@ -6206,7 +6235,12 @@
     for (const d of surv.drones) if (d.prey === t) d.prey = null;
     if (byYou) {
       surv.t.robbed = true;
-      chatter("They were not armed.", "#ff8f77");
+      /* The cost of it, and it is not the cargo. A hunter is the exception —
+         it came for you, and killing it settles nothing in either direction. */
+      addHeat(HEAT[t.kind] || 0);
+      if (t.kind === "hauler" || t.kind === "distress") {
+        chatter("They were not armed.", "#ff8f77");
+      }
     }
   }
 
@@ -7282,10 +7316,127 @@
     patrol:   ["lance", "harrier", "wedge", "spur", "bastion"],
     distress: ["drayman", "pannier", "stride", "coffer"]
   };
-  const TRAFFIC_COLOUR = { hauler: "#8fb4d8", patrol: "#6dffbf", distress: "#ffcb42" };
-  const TRAFFIC_HP     = { hauler: 6, patrol: 8, distress: 5 };
+  const TRAFFIC_COLOUR = { hauler: "#8fb4d8", patrol: "#6dffbf", distress: "#ffcb42",
+                           // A hunter is the one that is not on your side.
+                           hunter: "#ff6b6b" };
+  const TRAFFIC_HP     = { hauler: 6, patrol: 8, distress: 5, hunter: 8 };
   const DISTRESS_PAY   = 260;    // for clearing the sentries off one
   const TRAFFIC_TALK   = 2600;   // how close before it says anything
+
+  /* ═══ WHAT THE SECTOR THINKS OF YOU ═══════════════════════════════════════
+     The more innocent people you kill, the more ships want to kill you.
+
+     There is a number behind this and the player must never see it. No bar, no
+     faction table, no "-12 REPUTATION" toast — if somebody can tell you the
+     figure, it has been built wrong. What they get instead is the sector
+     behaving differently, in three steps that are each visible from the cockpit:
+
+       WATCHED   a patrol near you stops walking its beat and follows, at a
+                 distance, without firing. Somebody is keeping an eye on you.
+       WANTED    patrols do not wait for you to shoot first any more.
+       HUNTED    ships come out specifically to find you, and keep coming.
+
+     Two things it must not become. Not a morality meter that scolds you: the
+     lines it says are rumour and consequence, never judgement. And not a wall —
+     stations never close, prices never change, nothing is locked. Piracy stays
+     playable and simply gets more expensive and more dangerous, which is a
+     different thing from forbidden.
+
+     It cools on its own, slowly, and faster if you pull somebody out of trouble.
+     Being able to work it off is what keeps it a *state* rather than a verdict on
+     the save file. */
+  const HEAT = {
+    hauler:   26,    // an unarmed freighter, going about its day
+    distress: 34,    // one that was already being taken apart
+    patrol:   14,    // armed, and still on your side
+    hunter:   0,     // came for you; killing it settles nothing either way
+    RESCUE:  -30,    // pulling one out is worth about a hauler
+    COOL:     0.075, // a second — a single hauler fades in about six minutes
+    MAX:      240,
+    WATCHED:  30,
+    WANTED:   90,
+    HUNTED:  150
+  };
+
+  /* The three steps, as words. Used for the lines it says and for the one
+     qualitative readout on the inventory — never as a number anywhere. */
+  function heatLevel() {
+    const h = surv ? surv.heat : 0;
+    return h >= HEAT.HUNTED ? 3 : h >= HEAT.WANTED ? 2 : h >= HEAT.WATCHED ? 1 : 0;
+  }
+  const HEAT_WORDS = [
+    { name: "UNREMARKABLE", note: "nobody out here is looking for you" },
+    { name: "WATCHED",      note: "patrols have started keeping an eye on you" },
+    { name: "WANTED",       note: "patrols do not wait for you to shoot first" },
+    { name: "HUNTED",       note: "ships are coming out specifically to find you" }
+  ];
+  /* Said when it changes, and only when it changes. Rumour rather than a score:
+     what somebody out here would actually say about you. */
+  const HEAT_RISING = [
+    "",
+    "Someone saw that.",
+    "Word travels out here. They are not waiting for you to shoot first.",
+    "There are ships out looking for you now."
+  ];
+  const HEAT_FALLING = [
+    "Whatever they heard about you, they have stopped repeating it.",
+    "The patrols have lost interest in you.",
+    "They are still watching, but they have stopped hunting.",
+    ""
+  ];
+
+  function addHeat(n) {
+    if (!surv) return;
+    const was = heatLevel();
+    surv.heat = Math.max(0, Math.min(HEAT.MAX, (surv.heat || 0) + n));
+    const now2 = heatLevel();
+    if (now2 === was) return;
+    const line = now2 > was ? HEAT_RISING[now2] : HEAT_FALLING[now2];
+    if (line) chatter(line, now2 > was ? "#ff8f77" : NEBULA);
+    saveSurveyBook();
+  }
+
+  /* Cooling, and the hunters. Both belong to the same idea: how much the sector
+     is thinking about you, and what it does about it. */
+  function surveyHeat(dt) {
+    const me = ships[0];
+    if (!surv || surv.death) return;
+    if (surv.heat > 0) addHeat(-HEAT.COOL * dt);
+
+    if (heatLevel() < 3 || !me.alive) return;
+    /* Hunters. Spawned rather than generated, which is the only honest way to do
+       this: a chunk is a pure function of its coordinates and may not know how
+       many people you have shot. They arrive from off screen, come for you, and
+       are ordinary traffic in every other respect — you can outrun one, kill it,
+       or lead it into a well.
+
+       The rate scales past HUNTED, and there is a hard cap: three at once is a
+       situation and six is a firing squad. */
+    surv.huntCool -= dt;
+    if (surv.huntCool > 0) return;
+    const over = (surv.heat - HEAT.HUNTED) / (HEAT.MAX - HEAT.HUNTED);
+    surv.huntCool = 26 - over * 14;
+    const out = surv.traffic.filter(t => t.kind === "hunter").length;
+    if (out >= 3) return;
+    const a = Math.random() * Math.PI * 2;
+    const d = 2600 + Math.random() * 1400;
+    const hulls = ["harrier", "lance", "spur", "bastion", "reprisal"];
+    const hull = hulls[Math.min(hulls.length - 1,
+                                Math.floor(over * hulls.length + Math.random()))];
+    surv.traffic.push({
+      id: null,                       // not a chunk's, so it is never re-streamed
+      kind: "hunter", hull,
+      x: me.x + Math.cos(a) * d, y: me.y + Math.sin(a) * d, a: a + Math.PI,
+      from: { x: me.x, y: me.y }, to: { x: me.x, y: me.y }, leg: 1,
+      speed: 150 + over * 60,
+      hp: TRAFFIC_HP.patrol + Math.round(over * 6),
+      maxHp: TRAFFIC_HP.patrol + Math.round(over * 6),
+      cargo: trafficCargo("patrol", dangerAt(me.x, me.y), Math.random),
+      cool: 1.4, doom: 0, guards: 0, phase: Math.random() * 6.28,
+      angry: true, hunter: true
+    });
+    chatter("Contact — and it is not a patrol.", "#ff8f77");
+  }
 
   /* What one is carrying, and therefore what robbing it pays. A hauler carries
      what a hauler carries — bulk, mostly cheap — so piracy is a living rather
@@ -7907,6 +8058,7 @@
     surveyShots(dt);
     surveyBullets();
     surveyTraffic(dt);
+    surveyHeat(dt);
     surveyCaches(dt);
     surveyParts(dt);
     surveyMotes(dt);
@@ -8286,7 +8438,16 @@
       label3("DISTRESS  " + Math.max(0, Math.round(t.doom)) + "s",
              t.x, t.y - r * 2.2 - 14, "#ff8f77", 18);
     } else if (t.kind === "patrol") {
-      label3("PATROL", t.x, t.y - r * 2 - 10, colour, 15);
+      label3(t.angry ? "PATROL — HOSTILE" : t.shadow ? "PATROL — WATCHING" : "PATROL",
+             t.x, t.y - r * 2 - 10, colour, 15);
+    } else if (t.kind === "hunter") {
+      const beat = 0.55 + 0.45 * Math.sin(clock * 3.6 + t.phase);
+      glow(colour, 2, 0.3 + beat * 0.4, () => {
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, r * 1.7 + beat * 8, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      label3("HUNTER", t.x, t.y - r * 2 - 10, colour, 17);
     }
   }
 
@@ -8520,6 +8681,11 @@
         return MATERIALS.reduce((t, m) => t + (surv.hold[m.key] || 0) * pr[m.key], 0);
       })(),
       onSell: sellHold,
+      /* How the sector feels about you, as a word. This is the *only* place it is
+         ever stated, it is never a figure, and it lives on a page you open rather
+         than on the flight HUD — a meter in the corner would turn a reputation
+         into a score to manage. */
+      standing: HEAT_WORDS[heatLevel()],
       // Who is out there, and whether any of them has decided about you.
       traffic: surv.traffic.map(t => ({ kind: t.kind, hull: t.hull,
                                         x: t.x, y: t.y, angry: !!t.angry })),

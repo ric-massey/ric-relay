@@ -2629,7 +2629,7 @@
 
      Reached from a button under the panel chart, or on `I`. */
   HUD.drawInventory = function (st, dt) {
-    const { ctx, SCREEN_W } = api;
+    const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
     const cash = st.cash || 0, cap = st.hold || 1;
     const L = COL(2, 0), R = COL(2, 1);
@@ -2733,6 +2733,21 @@
       fitText(u.have ? u.note : u.at + " entries", R.x + R.w - PAGE.PAD, yy,
               SIZE.cap, VIOLET_DIM, "right", u.have ? 0.6 : 0.5, 190);
     });
+
+    /* What the sector makes of you, in one line and no numbers. It sits at the
+       foot of the page rather than in a panel of its own because it is not a
+       resource you manage — it is a fact about the world you can go and read, the
+       way you would read a room. */
+    const st8 = st.standing;
+    if (st8) {
+      const lvl = st8.name === "UNREMARKABLE" ? 0 : st8.name === "WATCHED" ? 1
+                : st8.name === "WANTED" ? 2 : 3;
+      const col = lvl === 0 ? VIOLET_LOW : lvl === 1 ? AMBER_DIM : WARN;
+      label(st8.name, PAGE.EDGE, SCREEN_H - 76, SIZE.cap, col, "left",
+            lvl ? 0.9 : 0.55, "0.18em");
+      fitText(st8.note, PAGE.EDGE + 180, SCREEN_H - 76, SIZE.cap, VIOLET_DIM,
+              "left", 0.6, SCREEN_W - 260);
+    }
 
     pageNav(st, "inventory");
     closeButton(st.onClose || (() => {}));

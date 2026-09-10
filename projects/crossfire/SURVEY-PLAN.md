@@ -694,117 +694,172 @@ The next phase. Everything here came out of playing it, and the shape of it is
 that the mode currently rewards going farther but does not yet make going farther
 *change* anything about how the sector treats you.
 
-### 5.1 A reputation, and no number for it
+### 5.1 A reputation, and no number for it  ·  **DONE**
 
 The more innocent people you kill, the more ships want to kill you.
 
-Deliberately **not a number on the HUD**. No bar, no faction table, no "-12
-reputation" toast. It lives in the background and you read it off the world:
-patrols that used to ignore you start shadowing you, then start shooting first;
-haulers change course when they see you coming; the density of armed traffic near
-your usual stations goes up. If a player can tell you the number, it has been
-built wrong.
+**What landed.** A number the player never sees, and three steps they read off
+the world instead:
 
-The armed-neutral reprisal is already in — shoot a patrol and it closes on you and
-fires live rounds. That is one ship's opinion. This is the sector's, and it
-persists.
-
-Two things it must not become: a morality meter that scolds you, and a wall that
-locks you out of stations. Piracy has to stay *playable* — expensive, and
-increasingly dangerous, which is a different thing from forbidden.
-
-### 5.2 Modules, slots, and time to install
-
-The big one, and the thing most of the rest hangs off.
-
-**Ships get a fixed number of upgrade slots.** The starter gets four; the rest
-differ, and the count is a balancing lever as much as the five stats are — a
-scout with two slots and a hauler with eight are different games. Slots are a
-*ship* property, like cargo: you change how many you have by changing what you
-fly, never by paying.
-
-**Everything you bolt on is a part in a slot.** Not a tier on a list — a thing
-you bought or made, fitted to a hull that has room for it. That includes what are
-currently refit tracks and almanac verbs both:
-
-| today | becomes |
+| | what it does |
 |---|---|
-| HULL PLATING tier | a plating part, fitted |
-| DRIVE tier | a drive part, fitted |
-| SCANNER tier | a scanner part, fitted — **upgradeable by paying or by crafting** |
-| TRACTOR BEAM (almanac) | a part the almanac gives you the recipe for |
-| WARP TUNING, RUNNING DARK | the same |
+| **UNREMARKABLE** | nobody out here is looking for you |
+| **WATCHED** | a patrol near you stops walking its beat and *follows*, at a distance, without firing |
+| **WANTED** | patrols do not wait for you to shoot first any more |
+| **HUNTED** | ships come out specifically to find you, and keep coming |
 
-Hull and speed staying buyable is fine — what has to change is that it reads as
-*buying a part and having it installed*, rather than as a number going up on a
-list. Same purchase, different verb.
+Killing an unarmed freighter costs about twice what killing a patrol does, and
+one that was already being taken apart costs most of all. Killing a **hunter**
+costs nothing either way — otherwise the only way out of being hunted would be to
+become worse.
 
-> **Already settled.** Storage is not on this list. How much you can carry is the
-> ship's and nothing else changes it — the refit track for it has been removed,
-> because two different things were answering the same question and it made the
-> 50× cargo spread across the roster mean less than it should.
+Hunters are *spawned*, not generated. A chunk is a pure function of its
+coordinates and may not know how many people you have shot, so they arrive from
+off screen, come for you, and are ordinary traffic in every other respect: you can
+outrun one, kill it, or lead it into a well. Three at once is a situation; six
+would be a firing squad, so three is the cap.
 
-**Installing takes time.** You cannot swap a module mid-fight; fitting one runs a
-clock. That single rule turns loadout from a menu into a decision you make before
-you leave — the same trick the tanks pull on range, and the reason a station is a
-place rather than a screen.
+It **cools on its own** — about six minutes to shed one freighter — and a rescue
+works off about the same. Being able to work it off is what keeps it a state
+rather than a verdict on the save file.
 
-### 5.3 An ice melter, and craft as a reason to hold cargo
+Said out loud only when it *changes*, and phrased as rumour rather than as score:
+*"Someone saw that."* → *"Word travels out here."* → *"There are ships out looking
+for you now."* Stated as a word in exactly one place, the foot of the inventory,
+and nowhere else. Stations never close, prices never move, nothing locks. Piracy
+stays playable and gets more expensive, which is a different thing from forbidden.
 
-Water and food are bought at a station, and that is currently the only way to get
-them. It should not be.
+---
 
-The **ice melter** is the first craftable: a few parts, found rather than bought,
-that melt and purify ICE into water directly. It makes the cheapest material in
-the game worth carrying, gives the deep an answer to "what if there is no station
-for 200,000 units", and it is the honest use for a hold full of the stuff nobody
-wants to buy.
+## How the rest of Phase 5 is shaped
 
-More recipes after it — that is one of the five tracks below.
+Ric's constraint, and it is the most useful thing in this file:
 
-### 5.4 Crafting you can navigate
+> The ship can stay very simple: **health, cargo, equipment slots, movement.**
+> Stations give you **storage, buying/selling, repairs, and maybe
+> crafting/installing parts.** That's enough.
+>
+> Instead of research trees, reverse-engineering systems, component
+> subcomponents, multiple currencies, station specializations — **just have parts
+> and materials.**
 
-The manifest works because it is six things with six clues. A crafting system
-with thirty parts and thirty clues would not.
+So the whole of the rest of this phase is two nouns. A **part** is a thing you
+find or build and fit to a ship. A **material** is a thing you carry and spend.
+There is no third noun, and anything that wants to be one has to earn it by the
+game demonstrably needing it.
 
-What is needed before more recipes exist: a way to ask *where do I find this*, and
-be pointed. The waypoint system is already the answer to "take me there"; the
-missing half is a recipe page that can set one.
+**Explicitly not building:** research trees. Reverse-engineering. Components
+inside components. A second currency. Stations that each do a different subset of
+the same jobs. Every one of those is a menu pretending to be depth.
 
-### 5.5 Weapons that are parts
+> **Two things this contradicts, flagged rather than quietly resolved.**
+>
+> *Cargo upgrades.* "Storage bay shouldn't be upgradeable, that only changes with
+> the ship" — already done, the refit track is gone. But "cargo upgrades" is in
+> the parts list below. The reading that satisfies both: you cannot *buy tiers* of
+> cargo, and a **found part** that adds capacity is a different thing and fits the
+> parts-and-materials model. Worth confirming before it is built.
+>
+> *Station specializations.* Ruled out — but stations already pay different
+> prices for materials, which is what makes carrying a load somewhere worth
+> doing. Reading that as price variation rather than as "this station only does
+> shipyards" keeps both. Nothing about what a station *does* should vary.
+
+### 5.2 Parts, slots, and time to install
+
+**Ships get a fixed number of equipment slots.** The starter gets four; the rest
+differ, and the count is a balancing lever as much as the five stats are — a scout
+with two slots and a hauler with eight are different games. Slots are a *ship*
+property, like cargo: you change how many you have by changing what you fly.
+
+**Everything you bolt on is a part in a slot.** Not a tier on a list — a thing you
+found or built, fitted to a hull with room for it. The categories:
+
+- **engines** — how fast
+- **thrusters** — how you handle; reverse thrusters are the example worth building first
+- **scanners** — how far a pulse reaches
+- **armour** — how many hits
+- **cargo** — see the flag above
+- **weapons** — see 5.3
+- **tractor gear** — the beam, and better beams
+- **rare weird parts** — the ones that are the reason to go a long way
+
+Some are better in different ways rather than simply better. Some take materials
+to build. **Some are only found very far away** — which is the danger curve
+finally paying out.
+
+What are currently refit *tiers* and almanac *verbs* both become parts. Hull and
+drive staying buyable is fine; what changes is that it reads as buying a part and
+having it installed rather than a number going up on a list.
+
+**Installing takes time.** You cannot swap a part mid-fight. That one rule turns
+loadout from a menu into a decision you make before you leave.
+
+### 5.3 Weapons are parts too
 
 Firepower stops being one number. Heat-seeking missiles, something that explodes,
-whatever comes after — each one an actual part taking an actual slot, so arming
-up costs you the room you would have given to a tractor beam or a bigger scanner.
-That trade is the whole point; a weapon that costs nothing but money is a stat.
+whatever comes after — each an actual part in an actual slot, so arming up costs
+the room you would have given to a tractor beam or a bigger scanner. That trade is
+the point; a weapon that costs only money is a stat.
 
-### 5.6 Handling parts
+### 5.4 Crafting, kept at Minecraft depth
 
-Not everything in a slot has to shoot. **Reverse thrusters** are the example Ric
-gave and they are a good one: a part that changes how the ship *moves* is worth a
-slot to some pilots and worthless to others, which is exactly the shape a good
-module has.
+Flat recipes. Ingredients in, part out, one step:
 
-Others worth trying when the frame exists — none of these are committed, they are
-the shape of the space: a docking assist, a longer tractor, a cargo scoop that
-collects without stopping, a hull that mends slowly out of the light.
+```
+3 alloy + 2 electronics + 1 reactor core  →  Mk II Engine
+```
 
-### 5.7 Loose ends, so they are not lost
+No engineering UI. No components inside components *unless the game eventually
+proves it needs that* — and it has not. Recipes mix **materials** you carry with
+**parts** you found, which is the only nesting there is and it is one level deep.
 
-Things said in passing that have not been built and are not big enough to be
-their own item. Written down because the worst outcome for any of them is being
-forgotten rather than being rejected.
+This implies a couple more material-or-part kinds than the current four —
+`electronics` and `reactor core` in Ric's own example. They are found, not mined.
 
-- **Food and water from more places than a station.** The ice melter (5.3) is the
-  first answer. There may want to be others.
-- **Towing.** Listed as a long-term track below; no design yet. It is the version
-  of "more cargo" that changes what you can *do* rather than only how much.
-- **Better station storage.** Somewhere to leave what you are not carrying, so a
-  full hold stops being the end of a trip. Interacts with 5.2's slots: a ship you
-  are not flying is also storage.
-- **Stranger things farther out.** The danger curve has been promising this since
-  Phase 1 and has not paid it. The abyss is *harder* than the home band and not
-  yet *stranger*.
+Still needed before there are many recipes: a way to ask *where do I find this*
+and be pointed at it. The waypoint system is already the answer to "take me
+there"; the missing half is a recipe page that can set one.
+
+### 5.5 Cargo crates, and towing
+
+The idea Ric liked best, and the reason is that it is physical rather than
+administrative: **your hold fills up, so you either leave things, sell things, or
+tow a crate home.**
+
+A crate is an object in the world. You attach to it, it slows you down, and you
+drag it back. No new menu, no second inventory — the decision is made by flying,
+which is the only place this game should be making decisions.
+
+It is also the honest answer to "more cargo capacity" as a progression track: a
+bigger hull carries more, and a tow carries more than any hull, at the cost of
+handling and time.
+
+### 5.6 An ice melter, and craft as a reason to hold cargo
+
+Water and food are bought at a station, and that is currently the only way.
+
+The **ice melter** is the first craftable: a few parts that melt and purify ICE
+into water directly. It makes the cheapest material in the game worth carrying,
+answers "what if there is no station for 200,000 units", and is the honest use for
+a hold full of the stuff nobody wants to buy.
+
+### 5.7 Repairs
+
+Stations do not currently repair anything. Hull comes back from sitting in a
+star's light, or from dying. A station is the obvious place to pay for it, it is
+on Ric's four-item list of what a station is for, and it is a small piece of work.
+
+### 5.8 Loose ends, so they are not lost
+
+- **Better station storage** — somewhere to leave what you are not carrying, so a
+  full hold stops being the end of a trip. Interacts with slots: a ship you are
+  not flying is also storage.
+- **Stranger things farther out** — the danger curve has promised this since Phase
+  1 and not paid it. The abyss is *harder* than the home band, not yet *stranger*.
+  5.2's "only found very far away" parts are the first instalment.
+- **Food from somewhere other than a station** — the ice melter answers water.
+  Food has no equivalent yet.
 
 ### The five long-term tracks
 

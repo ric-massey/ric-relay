@@ -3153,6 +3153,121 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "a hauler cannot and does not");
 }
 
+// ── what the sector thinks of you ─────────────────────────────────────────
+/* Phase 5.1. The more innocent people you kill, the more ships want to kill you —
+   and the player must never see the number. What is testable is everything the
+   number *does*: that it goes up for the right things and not the wrong ones,
+   that each step changes how a patrol behaves, that ships eventually come looking,
+   that it cools on its own, that pulling somebody out of trouble works it off, and
+   that it survives the tab. */
+{
+  const { cf } = boot("?debug=1&seed=770077");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const step = n => {
+    for (let i = 0; i < n; i++) { me.invuln = 3; now += 1000 / 60; cf.step(); }
+  };
+  const standing = () => cf.surveyView().standing.name;
+
+  const put = (kind, hp) => {
+    surv.traffic.length = 0;
+    const t = { id: null, kind, hull: "drayman", x: me.x + 300, y: me.y, a: 0,
+                from: { x: me.x, y: me.y }, to: { x: me.x + 900, y: me.y }, leg: 1,
+                speed: 80, hp, maxHp: 6, cargo: [], cool: 1, doom: 40,
+                guards: 0, phase: 0 };
+    surv.traffic.push(t);
+    return t;
+  };
+  const shoot = t => {
+    cf.live().bullets.push({ owner: 0, colour: "#fff", dmg: 1,
+                             x: t.x, y: t.y, vx: 0, vy: 0, life: 1 });
+    step(1);
+  };
+
+  check(standing() === "UNREMARKABLE", "a fresh sector already has a reputation");
+  check(cf.surveyView().standing.name !== undefined, "standing has no name");
+  // It is a word, never a figure. Nothing the interface can read is a number.
+  check(typeof cf.surveyView().standing.note === "string",
+        "standing has no plain-language note");
+  check(!("heat" in cf.surveyView()), "the raw number is exposed to the interface");
+
+  /* Killing people raises it, and the steps arrive in order. */
+  for (let i = 0; i < 2; i++) shoot(put("hauler", 0.5));
+  check(standing() === "WATCHED",
+        "two unarmed freighters left you " + standing());
+  for (let i = 0; i < 3; i++) shoot(put("hauler", 0.5));
+  check(standing() === "WANTED", "five left you " + standing());
+  for (let i = 0; i < 3; i++) shoot(put("hauler", 0.5));
+  check(standing() === "HUNTED", "eight left you " + standing());
+
+  /* WANTED means a patrol does not wait for you to shoot first. It has to become
+     hostile without being touched, which is the whole of the second step. */
+  const patrol = put("patrol", 40);
+  patrol.x = me.x + 400; patrol.y = me.y;
+  check(!patrol.angry, "the patrol arrived angry");
+  step(4);
+  check(patrol.angry === true,
+        "at HUNTED a patrol still waited to be shot at first");
+
+  /* And ships come looking. They are spawned rather than generated, because a
+     chunk may not know how many people you have shot. */
+  let hunters = 0;
+  for (let i = 0; i < 60 * 120 && !hunters; i++) {
+    step(1);
+    hunters = surv.traffic.filter(t => t.kind === "hunter").length;
+  }
+  check(hunters > 0, "nothing came looking for you at HUNTED");
+  const hunter = surv.traffic.find(t => t.kind === "hunter");
+  check(hunter.angry === true, "the hunter that came for you is not hostile");
+  check(hunter.id == null, "a hunter was given a chunk id and will be re-streamed");
+
+  /* Killing the thing that came for you settles nothing either way — otherwise
+     the only way out of being hunted would be to become worse. */
+  const at = surv.heat;
+  hunter.hp = 0.5;
+  shootAtHunter: {
+    cf.live().bullets.push({ owner: 0, colour: "#fff", dmg: 1,
+                             x: hunter.x, y: hunter.y, vx: 0, vy: 0, life: 1 });
+    step(1);
+  }
+  check(Math.abs(surv.heat - at) < 1,
+        "killing a hunter moved your standing by " + Math.round(surv.heat - at));
+
+  /* It cools on its own — a state, not a verdict on the save file. */
+  const hot = surv.heat;
+  step(60 * 200);
+  check(surv.heat < hot - 10,
+        "four minutes cooled it by only " + Math.round(hot - surv.heat));
+
+  /* And pulling somebody out of trouble works it off, which is the shortcut. */
+  const owed = surv.heat;
+  surv.traffic.length = 0; surv.drones.length = 0;
+  const sos = put("distress", 5);
+  sos.doom = 40; sos.guards = 1;
+  surv.drones.push({ id: null, x: sos.x + 200, y: sos.y, vx: 0, vy: 0, a: 0,
+                     home: null, prey: sos, post: { x: sos.x, y: sos.y },
+                     hp: 2, cool: 1, awake: true, hit: 0 });
+  step(30);
+  surv.drones.length = 0;                       // the rescue, done the only way
+  step(4);
+  check(surv.heat < owed - 20,
+        "saving a ship worked off only " + Math.round(owed - surv.heat));
+
+  // It survives the tab: a reputation you can reload away is not one.
+  surv.heat = 120;
+  cf.leave();
+  const book = JSON.parse(store["crossfire.survey.v3"]);
+  check(book.heat === 120, "the book saved a standing of " + book.heat);
+  const again = bootKeepingStorage("?debug=1&seed=770077");
+  again.cf.start("survey", 1);
+  check(again.cf.surveyView().standing.name === "WANTED",
+        "a resumed sector forgot what you did");
+  console.log("  standing   unremarkable \u2192 watched \u2192 wanted \u2192 hunted \u00b7 " +
+              "patrols shadow then shoot first \u00b7 hunters come \u00b7 cools on its " +
+              "own \u00b7 a rescue works it off \u00b7 never a number");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);
