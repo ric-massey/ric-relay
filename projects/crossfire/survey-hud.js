@@ -427,6 +427,7 @@
     const tabs = [
       { key: "refit",     name: "STATION",  live: docked, act: st.onStation },
       { key: "hangar",    name: "HANGAR",   live: !!st.atHome, act: st.onHangar },
+      { key: "craft",     name: "BUILD",    live: true,   act: st.onCraftPage },
       { key: "loadout",   name: "LOADOUT",  live: true,   act: st.onLoadout },
       { key: "inventory", name: "STORAGE",  live: true,   act: st.onInventory },
       { key: "missions",  name: "MISSIONS", live: true,   act: st.onMissions },
@@ -1074,9 +1075,12 @@
             108, y, out ? SIZE.cap : SIZE.val, colour, "left", out ? beat : 0.95);
     });
 
-    if (st.skimming) {
-      label("SKIMMING", 24, 250, SIZE.cap, ICE, "left",
-            0.5 + 0.5 * Math.abs(Math.sin(Date.now() / 260)), "0.14em");
+    /* Two ways water arrives that are not a shop, and both say so in the same
+       place. Skimming wins the line: you are flying through an atmosphere to do
+       it, and the melter runs quietly on its own. */
+    if (st.skimming || st.melting) {
+      label(st.skimming ? "SKIMMING" : "MELTING ICE", 24, 250, SIZE.cap, ICE,
+            "left", 0.5 + 0.5 * Math.abs(Math.sin(Date.now() / 260)), "0.14em");
     }
   }
 
@@ -2584,6 +2588,37 @@
           ctx.stroke();
         });
         break;
+      case "shipwright":
+        /* An anvil, more or less: raw stock going in on the left and a finished
+           shape coming out, over a bench. The one picture in here that is about
+           making rather than finding. */
+        stroke(CASH, 1.7, () => {
+          ctx.beginPath();
+          ctx.moveTo(cx - r * 0.85, cy + r * 0.5);
+          ctx.lineTo(cx + r * 0.85, cy + r * 0.5);
+          ctx.stroke();
+          // the finished part, standing on the bench
+          ctx.beginPath();
+          ctx.moveTo(cx + r * 0.1, cy + r * 0.5);
+          ctx.lineTo(cx + r * 0.1, cy - r * 0.2);
+          ctx.lineTo(cx + r * 0.7, cy - r * 0.2);
+          ctx.lineTo(cx + r * 0.7, cy + r * 0.5);
+          ctx.stroke();
+        });
+        stroke(CASH_DIM, 1.3, () => {
+          // three units of stock, waiting
+          for (let i = 0; i < 3; i++) {
+            const bx = cx - r * 0.75 + i * r * 0.26;
+            ctx.beginPath();
+            ctx.moveTo(bx, cy + r * 0.42);
+            ctx.lineTo(bx + r * 0.1, cy + r * 0.16);
+            ctx.lineTo(bx + r * 0.2, cy + r * 0.42);
+            ctx.closePath();
+            ctx.stroke();
+          }
+        });
+        break;
+
       case "salvor":
         // A part, carried: the triangle the world draws one with, on its way.
         stroke(CASH, 1.7, () => {
@@ -2695,21 +2730,39 @@
        the water block's FILL button ran to x 359 and the food block began at 354,
        so the button's edge was drawn through the word FOOD. Halves cannot
        overlap, whatever the panel is doing. */
-    const supIn = full.w - PAGE.PAD * 2, supHalf = supIn / 2;
-    [["water", "WATER", ICE], ["food", "FOOD", AMBER_DIM]].forEach(([k, name, col], i) => {
+    /* Three things a station tops up, on thirds of the panel's inside width. The
+       hull is here rather than on the refit column on purpose: mending is the same
+       question as filling a tank — what does this place sell me before I go back
+       out — and it is not an upgrade. */
+    const supIn = full.w - PAGE.PAD * 2, supThird = supIn / 3;
+    const sup = [
+      { k: "water", name: "WATER", col: ICE, verb: "FILL" },
+      { k: "food", name: "FOOD", col: AMBER_DIM, verb: "FILL" },
+      { k: "repair", name: "HULL", col: WARN, verb: "MEND" }
+    ];
+    sup.forEach((row, i) => {
+      const k = row.k, col = row.col;
       const m = st[k] || {};
       const done = m.cost == null;
       const afford = !done && cash >= m.cost;
-      const x = full.x + PAGE.PAD + i * supHalf;
+      const x = full.x + PAGE.PAD + i * supThird;
       const yy = ROW(supY, 0);
-      label(name, x, yy, SIZE.cap, m.countdown > 0 ? WARN : col, "left", 0.9, "0.14em");
-      label(m.countdown > 0 ? fmtSecs(m.countdown)
-                            : Math.round((m.frac || 0) * 100) + "%",
-            x + 84, yy, SIZE.cap, m.countdown > 0 ? WARN : col, "left", 0.95);
-      barAt(x + 142, yy - 9, 92, 8, m.frac || 0, col, m.countdown > 0);
-      button(done ? "FULL" : "FILL  " + m.cost, x + supHalf - 82, yy - 4,
-             130, 32, done ? VIOLET_LOW : afford ? col : WARN,
-             done ? null : () => st.onBuySupply && st.onBuySupply(k),
+      // A hull is read as points rather than as a percentage: "2 / 7" is a
+      // number of hits and "29%" is not.
+      const reading = k === "repair"
+        ? Math.round(m.hull || 0) + " / " + Math.round(m.max || 0)
+        : m.countdown > 0 ? fmtSecs(m.countdown)
+                          : Math.round((m.frac || 0) * 100) + "%";
+      const hurt = k === "repair" ? !done : m.countdown > 0;
+      label(row.name, x, yy, SIZE.cap, hurt ? WARN : col, "left", 0.9, "0.14em");
+      label(reading, x + 68, yy, SIZE.cap, hurt ? WARN : col, "left", 0.95);
+      barAt(x + 150, yy - 9, 62, 8, m.frac || 0, col, hurt);
+      button(done ? (k === "repair" ? "WHOLE" : "FULL") : row.verb + "  " + m.cost,
+             x + supThird - 66, yy - 4, 118, 32,
+             done ? VIOLET_LOW : afford ? col : WARN,
+             done ? null
+                  : k === "repair" ? () => st.onRepair && st.onRepair()
+                                   : () => st.onBuySupply && st.onBuySupply(k),
              false, !done && afford);
     });
 
@@ -2857,6 +2910,150 @@
              action.colour, action.act, false, action.live !== false, "0.06em");
     }
   }
+
+  /* ═══ THE WORKBENCH ═══════════════════════════════════════════════════════
+     Flat recipes. Ingredients in, part out, one step. No engineering interface,
+     no nested trees to hold in your head — a row per recipe, what it wants,
+     what you have of it, and one button.
+
+     It works anywhere, which is the whole point: the ice melter's reason to
+     exist is being the answer when there is no station for two hundred thousand
+     units, and a workbench you have to dock at cannot be that. So the page is
+     live, like the loadout, and the world keeps going behind it.
+
+     The two things it must answer that a list of recipes does not:
+
+       · **what is this for** — the reverse lookup. You are carrying three
+         reactor cores and no idea why until something tells you, so every
+         material in the hold says what it is an ingredient for.
+       · **the one step down** — a recipe that eats a finished part says whether
+         you have that part, and offers to build it in the same action when you
+         could. Nobody should have to work a chain out by hand. */
+  let craftPg = { scroll: 0, pick: -1 };
+  const CRAFT_ROWS = 8;
+  HUD.craftOpened = function () { craftPg.pick = -1; };
+  HUD.craftDragBy = function (dy, n) {
+    const max = Math.max(0, n - CRAFT_ROWS);
+    craftPg.scroll = Math.max(0, Math.min(max, craftPg.scroll + dy / (PAGE.STEP * 2)));
+  };
+
+  HUD.drawCraft = function (st, dt) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    st = st || {};
+    const recipes = st.recipes || [];
+    const hold = st.materials || [];
+
+    pageFrame("WORKBENCH",
+              (st.carried || 0) + " / " + (st.hold || 0) + " ABOARD",
+              "");
+
+    const L = COL(3, 0), M = COL(3, 1), R = COL(3, 2);
+    const listX = L.x, listW = L.w + M.w + PAGE.GUTTER;
+
+    /* ── what you can build ────────────────────────────────────────────────
+       Two rows a recipe: the part above, the ingredients below, coloured green
+       where you have enough and red where you are short. A row you can build is
+       lit; a row you cannot tells you what is missing without being asked. */
+    const listH = PANEL_H(CRAFT_ROWS * 2);
+    const ready = recipes.filter(r => r.ready).length;
+    const over = Math.max(0, recipes.length - CRAFT_ROWS);
+    panel(listX, PAGE.TOP, listW, listH, CASH, "RECIPES",
+          ready ? ready + " YOU CAN BUILD NOW" : "NOTHING YOU CAN BUILD YET");
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(listX + 1, PAGE.TOP + PAGE.HEAD - 8, listW - 2, listH - PAGE.HEAD + 4);
+    ctx.clip();
+    const first = Math.floor(craftPg.scroll);
+    recipes.slice(first, first + CRAFT_ROWS + 1).forEach((r, k) => {
+      const i = first + k;
+      const yTop = ROW(PAGE.TOP, (i - craftPg.scroll) * 2);
+      const yBot = ROW(PAGE.TOP, (i - craftPg.scroll) * 2 + 1) - 6;
+      const rar = rarity(r.rarity);
+      if (r.ready) {
+        ctx.save();
+        ctx.fillStyle = CASH;
+        ctx.globalAlpha = 0.06;
+        ctx.fillRect(listX + 1, yTop - 18, listW - 2, PAGE.STEP * 2);
+        ctx.restore();
+      }
+      fitText(r.name, listX + PAGE.PAD, yTop, SIZE.cap,
+              r.ready ? CASH : rar.colour, "left", r.ready ? 1 : 0.75,
+              listW - 260, "0.08em");
+      // What it is, in three words, so the list is readable without the catalogue.
+      fitText(r.note, listX + PAGE.PAD + 210, yTop, SIZE.cap, VIOLET_DIM,
+              "left", 0.55, listW - 470);
+
+      /* The ingredients, as have/want pairs. Red is the only signal needed for
+         "you are short", so there is no other. */
+      let ix = listX + PAGE.PAD;
+      const parts = [];
+      if (r.part) {
+        parts.push({ name: r.part.name, have: r.part.have ? 1 : 0, want: 1,
+                     colour: r.part.have ? CASH : r.part.makeable ? AMBER : WARN });
+      }
+      for (const row of r.rows) {
+        parts.push({ name: row.name, have: row.have, want: row.want,
+                     colour: row.have >= row.want ? CASH_DIM : WARN });
+      }
+      for (const p of parts) {
+        const txt = p.name + " " + Math.min(p.have, p.want) + "/" + p.want;
+        label(txt, ix, yBot, SIZE.cap, p.colour, "left",
+              p.have >= p.want ? 0.85 : 1);
+        ix += txt.length * 9.4 + 16;
+      }
+
+      /* One button, and it says which of the three things it is about to do:
+         build it, build the step below it first, or nothing. */
+      const can = r.ready || (r.part && !r.part.have && r.part.makeable &&
+                              !r.rows.some(x => x.have < x.want));
+      const label2 = r.ready ? "BUILD"
+                   : (r.part && r.part.makeable) ? "BUILD BOTH"
+                   : "SHORT";
+      /* Only on a row that is actually in the list. A half-scrolled row's text is
+         cut off by the clip, but a button is a tap target as well as a drawing —
+         one riding up into the title band would be a control you cannot see and
+         can still press. */
+      const vis = i - craftPg.scroll;
+      if (vis >= -0.15 && vis <= CRAFT_ROWS - 0.85) {
+        button(label2, listX + listW - PAGE.PAD - 54, yTop + 6, 116, 26,
+               can ? CASH : VIOLET_LOW,
+               can ? () => st.onCraft && st.onCraft(r.key) : null, false, can);
+      }
+    });
+    ctx.restore();
+    if (over) {
+      scrollHint(listX + listW - 8, PAGE.TOP + PAGE.HEAD,
+                 listH - PAGE.HEAD - 8, craftPg.scroll / over);
+    }
+
+    /* ── what you are carrying, and what it is for ─────────────────────────
+       The reverse lookup. A material with nothing to spend it on says so, which
+       is how you learn that ice is for the melter and cores are for the things a
+       long way out. */
+    const holdH = PANEL_H(hold.length * 2);
+    panel(R.x, PAGE.TOP, R.w, holdH, VIOLET, "IN THE HOLD", "AND WHAT IT IS FOR");
+    hold.forEach((m, i) => {
+      const yTop = ROW(PAGE.TOP, i * 2), yBot = ROW(PAGE.TOP, i * 2 + 1) - 6;
+      label(m.name, R.x + PAGE.PAD, yTop, SIZE.cap, m.colour, "left",
+            m.n ? 1 : 0.4, "0.08em");
+      label(String(m.n), R.x + R.w - PAGE.PAD, yTop, SIZE.cap,
+            m.n ? m.colour : VIOLET_LOW, "right", m.n ? 0.95 : 0.4);
+      const uses = (st.usedIn && st.usedIn[m.key]) || [];
+      fitText(uses.length ? uses.slice(0, 3).join(", ").toLowerCase() +
+                            (uses.length > 3 ? ", …" : "")
+                          : "nothing takes it — sell it",
+              R.x + PAGE.PAD, yBot, SIZE.cap, VIOLET_DIM, "left", 0.55,
+              R.w - PAGE.PAD * 2);
+    });
+
+    label("BUILT PARTS GO IN THE CRATE  \u00b7  FIT THEM ON THE LOADOUT PAGE",
+          PAGE.EDGE, PAGE.TOP + listH + 34, SIZE.cap, VIOLET_LOW, "left", 0.55,
+          "0.1em");
+
+    pageNav(st, "craft");
+    closeButton(st.onClose);
+  };
 
   HUD.drawLoadout = function (st, dt) {
     const { ctx, SCREEN_W, SCREEN_H } = api;

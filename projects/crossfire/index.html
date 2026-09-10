@@ -2346,6 +2346,18 @@
       if (code === "KeyM") {
         state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
       }
+    } else if (state === "craft") {
+      /* Back to the sector: building is a thing you do while flying, and the
+         world has been running the whole time you were in here. */
+      if (code === "Escape" || code === "KeyB") { state = "playing"; return; }
+      if (code === "Backspace" || code === "KeyG") {
+        state = "loadout"; surveyHUD && surveyHUD.loadoutOpened(); return;
+      }
+      if (code === "KeyI") { state = "inventory"; return; }
+      if (code === "KeyL") { state = "almanac"; return; }
+      if (code === "KeyM") {
+        state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
+      }
     } else if (state === "loadout") {
       /* Back to the sector, because the loadout is a thing you do *while*
          flying — the world has been running the whole time you were in here. */
@@ -2472,6 +2484,12 @@
         // flying, and every other letter near it was already spoken for.
         if (code === "KeyG") {
           state = "loadout"; surveyHUD && surveyHUD.loadoutOpened(); return;
+        }
+        // `B` for build. The workbench is you and your hold, so it opens
+        // anywhere — a bench you had to dock at could not be the answer to
+        // being two hundred thousand units from a station.
+        if (code === "KeyB") {
+          state = "craft"; surveyHUD && surveyHUD.craftOpened(); return;
         }
         // The light drive, if you have one. `R` for run: nothing else uses it,
         // and the three page keys are already spoken for.
@@ -4843,21 +4861,35 @@
     { key: "alloy",   name: "ALLOY",   colour: "#ffcb42", value: 9,
       note: "refined — it comes out of things that were built" },
     { key: "iridium", name: "IRIDIUM", colour: "#a08cff", value: 22,
-      note: "deep, dense and rare; the reason to go out that far" }
+      note: "deep, dense and rare; the reason to go out that far" },
+    /* Two things you cannot mine. A rock is rock — these come out of what
+       somebody else built, which is what makes a hulk or a guarded cache worth
+       stopping for even when your hold is nearly full of ore. They are the
+       ingredients the recipes are short of, on purpose: a part you can build
+       from four units of iron is a part you buy by flying in circles. */
+    { key: "electronics", name: "ELECTRONICS", colour: "#6dffbf", value: 16,
+      note: "pulled out of things that were wired; never out of a rock" },
+    { key: "core", name: "REACTOR CORE", colour: "#ff8f77", value: 48,
+      note: "the heart of something that used to run; rare and always salvage" }
   ];
   const matSpec = k => MATERIALS.find(m => m.key === k) || MATERIALS[1];
-  const freshHold = () => ({ ice: 0, iron: 0, alloy: 0, iridium: 0 });
+  const freshHold = () =>
+    MATERIALS.reduce((h, m) => { h[m.key] = 0; return h; }, {});
 
   /* Where a kind of material comes from. A rock is mostly ice and iron; a thing
      somebody built is mostly alloy; a guarded cache is where the iridium is.
      Depth slides every table toward the rare end, which is most of what makes a
      long haul worth the fuel. */
+  /* Electronics and cores are absent from `rock` and present everywhere else,
+     which is the whole of "found, not mined": the only way to get them is to take
+     apart something that was made. A core is rarer than iridium anywhere it
+     appears, because one recipe wanting one is a reason to go and look. */
   const MAT_TABLE = {
     rock:  { ice: 46, iron: 44, alloy: 6,  iridium: 4 },
-    hulk:  { ice: 4,  iron: 33, alloy: 58, iridium: 5 },
-    drone: { ice: 2,  iron: 24, alloy: 68, iridium: 6 },
-    wreck: { ice: 5,  iron: 38, alloy: 52, iridium: 5 },
-    cache: { ice: 5,  iron: 20, alloy: 40, iridium: 35 }
+    hulk:  { ice: 4,  iron: 30, alloy: 46, iridium: 5, electronics: 13, core: 2 },
+    drone: { ice: 2,  iron: 20, alloy: 50, iridium: 6, electronics: 20, core: 2 },
+    wreck: { ice: 5,  iron: 34, alloy: 42, iridium: 5, electronics: 12, core: 2 },
+    cache: { ice: 5,  iron: 18, alloy: 32, iridium: 30, electronics: 11, core: 4 }
   };
 
   function rollMaterial(source, deep) {
@@ -5056,6 +5088,22 @@
       cost: 3200, deep: 0.6, note: "water and food last a third longer",
       eff: { life: -0.25 } }
   ];
+  /* ── the ice melter ───────────────────────────────────────────────────────
+     Phase 5.6, and it lives here because it is a part like any other. Water is
+     bought at a station, and that was the only way — which makes a long haul a
+     question about station spacing rather than about what you are carrying.
+
+     This melts ICE, the cheapest thing in the game and the thing nobody wants to
+     buy, straight into the tank. It is the honest use for a hold full of the
+     stuff, it answers "what if there is no station for 200,000 units", and it is
+     the first thing worth crafting rather than buying: see `RECIPES`. */
+  MODULES.push({
+    key: "icemelter", name: "ICE MELTER", cat: "odd", rarity: "uncommon",
+    cost: 1100, deep: 0.2,
+    note: "turns ice in the hold into water in the tank",
+    eff: { melt: 1 }
+  });
+
   const moduleSpec = key => MODULES.find(m => m.key === key) || null;
   const fitSeconds = key => {
     const m = moduleSpec(key);
@@ -5115,6 +5163,67 @@
     });
     return out;
   }
+
+  /* ── recipes ──────────────────────────────────────────────────────────────
+     Flat. Ingredients in, part out, one step, no engineering interface:
+
+         3 alloy + 2 electronics + 1 reactor core  ->  Mk II Engine
+
+     `part` is the one piece of depth there is, and it is deliberately fenced. A
+     recipe may consume **one finished part** — the better engine is visibly built
+     out of the one you have been flying, which is the good version of depth and
+     gives the strange things found a long way out something to be for besides
+     sitting in a slot.
+
+     Three rules keep that from becoming the research tree that was already
+     rejected, and the tests hold them:
+
+       · two steps, never a tree. A part made from a part may not itself need a
+         third crafted part.
+       · anything a recipe eats must also be buyable, so nesting is a shortcut
+         rather than a gate. Every module is on some station's shelf, so this
+         holds by construction — and the test checks it anyway.
+       · nothing exists only to be an ingredient. Every ingredient is a part you
+         could have flown. */
+  const RECIPES = [
+    // ── the cheap end: things worth building rather than buying ────────────
+    { out: "layerplate", need: { iron: 8, alloy: 3 } },
+    { out: "vernier",    need: { iron: 5, alloy: 4, electronics: 2 } },
+    { out: "pulsecoil",  need: { alloy: 4, electronics: 5 } },
+    { out: "tractorrig", need: { iron: 6, alloy: 5, electronics: 3 } },
+    { out: "scattergun", need: { iron: 7, alloy: 5, electronics: 2 } },
+
+    /* The ice melter, which is the reason this system exists at all: the answer
+       to a long haul is something you build, not something you buy. */
+    { out: "icemelter",  need: { iron: 6, alloy: 6, electronics: 4 } },
+
+    // ── the middle: a core, so it is a trip rather than an afternoon ───────
+    { out: "reverser",   need: { alloy: 8, electronics: 5, core: 1 } },
+    { out: "seekerrack", need: { alloy: 9, electronics: 7, core: 1 } },
+    { out: "sparthruster", need: { iron: 9, alloy: 7, electronics: 3 } },
+
+    /* ── built out of what you were flying ────────────────────────────────
+       Each of these eats the part below it. That is the whole of the nesting and
+       it stops here: none of the ingredients below is itself made from a part. */
+    { out: "heavyrig",   part: "tractorrig",
+      need: { alloy: 8, electronics: 4, iridium: 2 } },
+    { out: "deepear",    part: "pulsecoil",
+      need: { alloy: 7, electronics: 9, iridium: 3, core: 1 } },
+    { out: "ablativeshell", part: "layerplate",
+      need: { iron: 14, alloy: 12, iridium: 3 } },
+    { out: "overburner", part: "sparthruster",
+      need: { alloy: 12, electronics: 6, iridium: 4, core: 1 } },
+    { out: "burstcharge", part: "scattergun",
+      need: { alloy: 10, electronics: 8, iridium: 3, core: 1 } },
+
+    // ── the far end: iridium and cores, which are a reason to go out ───────
+    { out: "starsiphon", need: { ice: 6, alloy: 10, electronics: 8,
+                                 iridium: 6, core: 2 } },
+    { out: "raillance",  need: { alloy: 14, electronics: 10, iridium: 9, core: 3 } },
+    { out: "coldlarder", need: { ice: 10, alloy: 12, electronics: 12,
+                                 iridium: 11, core: 3 } }
+  ];
+  const recipeFor = key => RECIPES.find(r => r.out === key) || null;
 
   const MOD_CATS = [
     { key: "engine",   name: "ENGINE" },
@@ -5219,6 +5328,11 @@
     { key: "grave-robber", name: "GRAVE ROBBER", note: "took what was being guarded",
       test: t => t.looted },
     { key: "salvor", name: "SALVOR", note: "carried the first piece home" },
+    /* Built rather than bought. It belongs in the almanac because it is the first
+       time the sector's cheap small change turns into something you fly with —
+       which is a different feeling from paying for one, and worth marking. */
+    { key: "shipwright", name: "SHIPWRIGHT",
+      note: "built a part out of what you found" },
     { key: "finished", name: "THE YARD", note: "you built the thing", secret: true }
   ];
   const SURVEY_TOTAL = ALMANAC.length;
@@ -6586,6 +6700,8 @@
       food:  carried ? book.food  : FOOD_FULL,
       thirst: 0, hunger: 0,        // how long each has been empty
       skimming: 0,                 // lit while an atmosphere is being drawn from
+      melting: 0,                  // and while the melter is turning ice to water
+      meltSaid: false,
       tractorLit: 0,
       warpCool: 0,
       quiet: 0,
@@ -7193,6 +7309,7 @@
     }
 
     surv.skimming = Math.max(0, surv.skimming - dt);
+    surv.melting = Math.max(0, (surv.melting || 0) - dt);
   }
 
   /* The objective, as news. It used to be three lines painted across the top of
@@ -7230,6 +7347,47 @@
     gameSound("start");
     chatter((kind === "water" ? "Water" : "Food") + " aboard — " + cost + " cash",
             kind === "water" ? "#87d8ff" : "#ffcb42");
+    saveSurveyBook();
+    return true;
+  }
+
+  /* ── repairs ──────────────────────────────────────────────────────────────
+     Phase 5.7. Hull used to come back from exactly two things: sitting in a
+     star's light, and dying. Both of those are fine and neither is a station —
+     and repairing is on the short list of what a station is *for*, next to
+     storage, buying and selling.
+
+     Priced per point missing rather than as a flat fee, the same rule the water
+     and the food follow, so the button can say the number: a shop that makes you
+     press it to find out the price is a shop you do not use when you are one hit
+     from dead. Dearer in the deep for the same reason everything else is — a yard
+     a long way from anywhere knows what it has.
+
+     It is not cheap. A hull is the thing standing between you and losing the
+     hold, so mending one should be felt; sitting in a star is still the free
+     answer and still costs you the time. */
+  const REPAIR_PRICE = 130;      // per point of hull, near home
+
+  const repairCost = () => {
+    const me = ships[0];
+    if (!me || !surv) return null;
+    const gap = Math.max(0, (me.maxHull || 0) - (me.hull || 0));
+    if (gap <= 0) return null;                        // nothing to sell you
+    const deep = 1 + dangerAt(me.x, me.y) * 0.8;
+    return Math.max(1, Math.round(gap * REPAIR_PRICE * deep));
+  };
+
+  function buyRepair() {
+    if (!surv || !surv.docked) { gameSound("hit"); return false; }
+    const cost = repairCost();
+    if (cost == null) { gameSound("hit"); return false; }
+    if (surv.cash < cost) { gameSound("hit"); return false; }
+    const me = ships[0];
+    surv.cash -= cost;
+    me.hull = me.maxHull;
+    surv.t.repaired = true;
+    gameSound("win");
+    chatter("Hull made good \u2014 " + cost + " cash", CASH);
     saveSurveyBook();
     return true;
   }
@@ -8347,6 +8505,106 @@
   const stationDepth = () =>
     surv && surv.docked ? dangerAt(surv.docked.x, surv.docked.y) : 0;
 
+  /* ── building one ─────────────────────────────────────────────────────────
+     Anywhere, out of what you are carrying. Not at a station: the ice melter's
+     entire reason to exist is being the answer when there is no station for two
+     hundred thousand units, and a workbench you have to dock at cannot be that.
+
+     What a recipe wants and what you have, as one object, so the page can draw
+     the answer instead of working it out itself. `canMake` is the short version
+     and `chainable` is the interesting one — whether an ingredient part is
+     something you could build right now out of what is left. */
+  function recipeState(key) {
+    const r = recipeFor(key);
+    if (!r) return null;
+    const rows = Object.keys(r.need).map(k => ({
+      key: k, name: matSpec(k).name, colour: matSpec(k).colour,
+      want: r.need[k], have: surv.hold[k] || 0
+    }));
+    const short = rows.filter(row => row.have < row.want);
+    let part = null;
+    if (r.part) {
+      const pm = moduleSpec(r.part);
+      const held = storeCount(r.part) > 0;
+      part = { key: r.part, name: pm ? pm.name : r.part, have: held,
+               /* The nested case, answered rather than left to the player: if you
+                  do not have the part but could build it out of what is left over,
+                  the page offers to do both in one action. */
+               makeable: !held && !!recipeFor(r.part) && canMake(r.part, r.need) };
+    }
+    return { out: key, rows, short: short.length, part,
+             ready: !short.length && (!part || part.have) };
+  }
+
+  /* Whether a recipe can be met, optionally with some of the hold already
+     spoken for by the recipe above it. `reserve` is that claim. */
+  function canMake(key, reserve) {
+    const r = recipeFor(key);
+    if (!r) return false;
+    if (r.part && storeCount(r.part) <= 0) return false;
+    for (const k of Object.keys(r.need)) {
+      const claimed = (reserve && reserve[k]) || 0;
+      if ((surv.hold[k] || 0) < r.need[k] + claimed) return false;
+    }
+    return true;
+  }
+
+  function craft(key) {
+    const st = recipeState(key);
+    if (!st) { gameSound("hit"); return false; }
+    const r = recipeFor(key);
+
+    /* One tap builds the ingredient too, when the ingredient is one step down and
+       you have the materials for both. Nobody should have to hold a chain in
+       their head — and two steps is the whole of the depth, so this can never
+       recurse further than once. */
+    if (r.part && storeCount(r.part) <= 0) {
+      if (!st.part || !st.part.makeable) {
+        chatter("Needs " + (st.part ? st.part.name : "a part") + " first.", "#ff8f77");
+        gameSound("hit");
+        return false;
+      }
+      if (!craftOne(r.part)) return false;
+    }
+    return craftOne(key);
+  }
+
+  /* The step itself: take the materials, take the part if there is one, hand over
+     the thing. Nothing here recurses. */
+  function craftOne(key) {
+    const r = recipeFor(key);
+    if (!r || !canMake(key)) { gameSound("hit"); return false; }
+    for (const k of Object.keys(r.need)) surv.hold[k] -= r.need[k];
+    if (r.part) storeAdd(r.part, -1);
+    storeAdd(key, 1);
+    surv.t.crafted = true;
+    const m = moduleSpec(key);
+    gameSound("win");
+    addShake(3);
+    chatter(m.name + " built" + (r.part ? " out of the " + moduleSpec(r.part).name : ""),
+            CASH);
+    surveyFind("shipwright");
+    saveSurveyBook();
+    return true;
+  }
+
+  /* What a material is an ingredient *for*. The reverse lookup, and the thing
+     that turns a strange part found a long way out into a lead rather than a
+     curiosity — you have three reactor cores and no idea why until something
+     tells you. */
+  const usedIn = matKey => {
+    const out = RECIPES
+      .filter(r => r.need[matKey])
+      .map(r => moduleSpec(r.out))
+      .filter(Boolean)
+      .map(m => m.name);
+    /* Ice is the exception, and it is the important one. Nothing is *built* out
+       of it — the melter drinks it, which is a use the recipe table cannot see
+       and the whole reason to keep a hold full of the cheapest thing there is. */
+    if (matKey === "ice") out.unshift("THE MELTER DRINKS IT");
+    return out;
+  };
+
   function buyModule(key) {
     const m = moduleSpec(key);
     if (!m || !surv.docked) { gameSound("hit"); return false; }
@@ -8364,6 +8622,47 @@
             CASH);
     saveSurveyBook();
     return true;
+  }
+
+  /* ── the ice melter ───────────────────────────────────────────────────────
+     Phase 5.6. Water was bought at a station and that was the only way, which
+     made a long haul a question about station spacing rather than about what you
+     are carrying. This turns ICE — the cheapest thing in the game and the thing
+     nobody wants to buy — straight into the tank.
+
+     Slow on purpose. It is not a tap; it is the reason a hold full of ice is
+     worth keeping rather than dumping, and the reason you can go somewhere with
+     no station and come back. One unit of ice is a useful stretch of water, and
+     the melter only runs when the tank has room, so it never quietly eats the
+     hold you were going to sell. */
+  const MELT_SECONDS = 26;      // of water, per unit of ice
+  const MELT_RATE = 0.55;       // units of ice a second, at full tilt
+
+  function surveyMelt(dt) {
+    if (!mods().melt) return;
+    const me = ships[0];
+    if (!me.alive || surv.death) return;
+    if (surv.water >= WATER_FULL) return;
+    if ((surv.hold.ice || 0) <= 0) return;
+
+    const room = (WATER_FULL - surv.water) / MELT_SECONDS;   // in units of ice
+    const take = Math.min(surv.hold.ice, MELT_RATE * dt, room);
+    if (take <= 0) return;
+    surv.hold.ice -= take;
+    surv.water = Math.min(WATER_FULL, surv.water + take * MELT_SECONDS);
+    surv.melting = 0.3;
+    /* Said once when it starts rather than every frame it runs: a line of chatter
+       a second is not information. */
+    if (!surv.meltSaid) {
+      surv.meltSaid = true;
+      chatter("Melter running \u2014 the ice is worth more as water.", "#87d8ff");
+    }
+    if (surv.hold.ice <= 0.001) {
+      surv.hold.ice = 0;
+      surv.meltSaid = false;
+      chatter("Out of ice.", NEBULA);
+      saveSurveyBook();
+    }
   }
 
   /* Anything you own and are not flying. Kept as counts rather than as a list,
@@ -9359,6 +9658,7 @@
     surveyBullets();
     surveyTraffic(dt);
     surveyFitting(dt);
+    surveyMelt(dt);
     surveyBattles(dt);
     surveyHeat(dt);
     surveyCaches(dt);
@@ -10036,7 +10336,17 @@
                frac: surv.food / FOOD_FULL,
                countdown: surv.food <= 0 ? Math.max(0, HUNGER_GRACE - surv.hunger) : 0,
                cost: supplyCost("food") },
+      /* The hull, on the same panel as the water and the food, because it is the
+         same question: what does this station have to sell me before I go back
+         out. `cost` is null when there is nothing to mend. */
+      repair: { hull: ships[0] ? ships[0].hull : 0,
+                max: ships[0] ? ships[0].maxHull : 0,
+                frac: ships[0] && ships[0].maxHull
+                  ? ships[0].hull / ships[0].maxHull : 1,
+                cost: repairCost() },
+      onRepair: buyRepair,
       skimming: surv.skimming > 0,
+      melting: surv.melting > 0,
       onBuySupply: buySupply,
       /* The world under you, if it is one you can do anything with. Two separate
          facts: somebody lives here, and there is air here. A world can be either
@@ -10098,6 +10408,21 @@
         for (const m of MODULES) out[m.key] = m.eff;
         return out;
       })(),
+      /* The recipe book, already answered. Every recipe with what it wants, what
+         you have of it, whether the part it eats is aboard, and — the reverse
+         lookup — what each material you are carrying is an ingredient for, which
+         is what turns three reactor cores from a curiosity into a lead. */
+      recipes: RECIPES.map(r => {
+        const m = moduleSpec(r.out);
+        const rs = recipeState(r.out);
+        return { key: r.out, name: m.name, cat: m.cat, rarity: m.rarity,
+                 note: m.note, cost: m.cost, secs: fitSeconds(r.out),
+                 owned: storeCount(r.out),
+                 fitted: surv.slots.some(sl => sl && sl.key === r.out),
+                 rows: rs.rows, part: rs.part, ready: rs.ready };
+      }),
+      usedIn: MATERIALS.reduce((o, m) => { o[m.key] = usedIn(m.key); return o; }, {}),
+      onCraft: key => craft(key),
       onFit: (i, key) => fitModule(i, key),
       onPull: i => pullModule(i),
       onBuyPart: key => buyModule(key),
@@ -10214,6 +10539,7 @@
       onAlmanac: () => { state = "almanac"; },
       onInventory: () => { state = "inventory"; },
       onLoadout: () => { state = "loadout"; },
+      onCraftPage: () => { state = "craft"; surveyHUD && surveyHUD.craftOpened(); },
       // The nav strip's own destination for the station itself.
       onStation: () => { if (surv.docked) { state = "refit"; surveyHUD && surveyHUD.refitOpened(); } },
       onMissions: () => { state = "missions"; },
@@ -10460,7 +10786,7 @@
      space, and a page that paused the clock would turn that cost into a loading
      screen you wait out rather than a risk you take. */
   const SURVEY_LIVE_PAGES = { chart: 1, inventory: 1, missions: 1, almanac: 1,
-                              loadout: 1 };
+                              loadout: 1, craft: 1 };
   const surveyLive = () =>
     mode && mode.survey && surv && !surv.death && SURVEY_LIVE_PAGES[state];
   const worldRunning = () => state === "playing" || surveyLive() || onlineMenuOpen();
@@ -10954,7 +11280,7 @@
 
   const scrollingPage = () =>
     state === "almanac" || state === "chart" || state === "hangar" ||
-    state === "loadout";
+    state === "loadout" || state === "craft";
   // How many rows the shelf on the loadout page has to scroll through.
   const shelfRows = () => (surv && surv.docked ? MODULES.length : 0);
 
@@ -10973,6 +11299,9 @@
     } else if (state === "loadout") {
       surveyHUD.loadoutDragBy(px, shelfRows());
       e.preventDefault();
+    } else if (state === "craft") {
+      surveyHUD.craftDragBy(px, RECIPES.length);
+      e.preventDefault();
     } else if (state === "chart") {
       // On a map the wheel is zoom, not pan — that is what every map does.
       surveyHUD.chartZoomBy(px > 0 ? -1 : 1);
@@ -10989,6 +11318,7 @@
     if (state === "almanac") surveyHUD.almanacDragBy(-dy, SURVEY_TOTAL);
     else if (state === "hangar") surveyHUD.hangarDragBy(-dy, SHIPS.length);
     else if (state === "loadout") surveyHUD.loadoutDragBy(-dy, shelfRows());
+    else if (state === "craft") surveyHUD.craftDragBy(-dy, RECIPES.length);
     else if (state === "chart") surveyHUD.chartDragBy(dx, dy);
     pageDrag.x = p.x; pageDrag.y = p.y;
     e.preventDefault();
@@ -13695,6 +14025,9 @@
     }
     if (state === "loadout" && surv && surveyHUD) {
       surveyHUD.drawLoadout(surveyState(), dt || 0); return;
+    }
+    if (state === "craft" && surv && surveyHUD) {
+      surveyHUD.drawCraft(surveyState(), dt || 0); return;
     }
     if (state === "yard" && surv && surveyHUD) {
       surveyHUD.drawYardPage(surveyState(), dt || 0); return;

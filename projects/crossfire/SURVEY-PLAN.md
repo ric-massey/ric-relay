@@ -1076,7 +1076,7 @@ the objective, because it is a suggestion rather than the plan.
 placements, checked against the boxes the HUD itself reports. The one thing a
 screenshot cannot tell you is whether something is underneath something.
 
-### 5.4 Crafting, kept at Minecraft depth
+### 5.4 Crafting, kept at Minecraft depth  ·  **DONE**
 
 Flat recipes. Ingredients in, part out, one step:
 
@@ -1114,12 +1114,58 @@ that was already rejected, so it is fenced:
 - **Still no subcomponents.** Parts are made of materials and, sometimes, one
   finished part. Nothing is made of a thing that only exists to be made of.
 
-Still needed before there are many recipes: a way to ask *where do I find this*
-and be pointed at it. The waypoint system is already the answer to "take me
-there"; the missing half is a recipe page that can set one. With nesting in, that
-page also has to answer *what is this an ingredient for* — the reverse lookup,
-which is the thing that makes a strange part found far out feel like a lead
-rather than a curiosity.
+### What 5.4 actually landed
+
+**Two new materials, found and never mined.** `ELECTRONICS` and `REACTOR CORE`
+appear in hulks, drones, wrecks and caches and are absent from rocks entirely —
+which is the whole of "found, not mined", and what makes a hulk worth stopping for
+when your hold is already full of ore. A core is rarer than iridium anywhere it
+appears, because one recipe wanting one is a reason to go and look.
+
+**Seventeen recipes**, flat, one step, no engineering interface. Five of them eat
+a finished part, and the three fences are held by tests rather than by good
+intentions: two steps and never three, a crafted ingredient must also be buyable,
+and nothing exists only to be an ingredient.
+
+**The WORKBENCH page** (`B`, on the nav strip, live so the world keeps running).
+A row per recipe: what it wants, what you have of it in green or red, and one
+button that says which of three things it is about to do — BUILD, BUILD BOTH, or
+SHORT. **BUILD BOTH is the nesting answered**: if you do not have the ingredient
+part but could make it out of what is left over, one tap makes both. Nobody should
+have to work a chain out by hand, and two steps is the whole of the depth so it
+can never recurse further than once.
+
+**The reverse lookup**, which was the missing half. The hold is listed beside the
+recipes and every material says what it is an ingredient *for* — which is what
+turns three reactor cores from a curiosity into a lead. Ice is the special case
+and the important one: nothing is built out of it, so it says THE MELTER DRINKS IT.
+
+**It works anywhere.** Not at a station — the melter's entire reason to exist is
+being the answer when there is no station for two hundred thousand units, and a
+workbench you have to dock at cannot be that.
+
+**And an almanac entry**: SHIPWRIGHT, for building a part out of what you found.
+The first time the sector's small change becomes something you fly with is a
+different feeling from paying for one.
+
+*Still owed:* a recipe page that can **set a waypoint** to where an ingredient
+comes from. The reverse lookup answers "what is this for"; "where do I find this"
+is still unanswered.
+
+### What 5.6 landed
+
+The **ICE MELTER** is a part like any other — uncommon, buildable from iron, alloy
+and electronics — and it turns ICE in the hold into water in the tank. One unit is
+about twenty-six seconds of water and it melts slowly on purpose: it is not a tap,
+it is the reason a hold full of the cheapest thing in the game is worth keeping
+rather than dumping.
+
+It stops at a full tank, so it never quietly eats a hold you were going to sell,
+and it says MELTING ICE on the panel where SKIMMING says skimming — two ways water
+arrives that are not a shop, in the same place.
+
+Water is answered. **Food still has no equivalent** and stays on the loose-ends
+list.
 
 ### 5.5 Cargo crates, and towing
 
@@ -1135,7 +1181,7 @@ It is also the honest answer to "more cargo capacity" as a progression track: a
 bigger hull carries more, and a tow carries more than any hull, at the cost of
 handling and time.
 
-### 5.6 An ice melter, and craft as a reason to hold cargo
+### 5.6 An ice melter, and craft as a reason to hold cargo  ·  **DONE**
 
 Water and food are bought at a station, and that is currently the only way.
 
@@ -1144,11 +1190,19 @@ into water directly. It makes the cheapest material in the game worth carrying,
 answers "what if there is no station for 200,000 units", and is the honest use for
 a hold full of the stuff nobody wants to buy.
 
-### 5.7 Repairs
+### 5.7 Repairs  ·  **DONE**
 
-Stations do not currently repair anything. Hull comes back from sitting in a
-star's light, or from dying. A station is the obvious place to pay for it, it is
-on Ric's four-item list of what a station is for, and it is a small piece of work.
+Hull used to come back from exactly two things: sitting in a star's light, and
+dying. A station mends it now, on the SUPPLIES panel next to the water and the
+food — because it is the same question as filling a tank, not an upgrade.
+
+Priced **per point missing** rather than as a flat fee, the same rule the supplies
+follow, so the button can say the number: a shop that makes you press it to find
+the price is a shop you do not use when you are one hit from dead. Dearer in the
+deep, like everything else a station sells. Read as points rather than a
+percentage — "2 / 7" is a number of hits and "29%" is not.
+
+Sitting in a star is still the free answer and still costs you the time.
 
 ### 5.8 Loose ends, so they are not lost
 
@@ -1245,6 +1299,153 @@ Ric's list, and the shape of every hour after the first:
 5. **Stranger and rarer things farther out** — the payoff the danger curve has
    been promising since Phase 1. The abyss is currently *harder* than the home
    band; it is not yet *stranger*, and it should be.
+
+---
+
+## Phase 6 — possibility multiplication
+
+Ric's brief, and it is a different *kind* of instruction from everything above.
+Phases 1–5 are lists of things to build. This one is a rule about how the things
+already built should relate to each other:
+
+> **Almost every important system should be capable of affecting at least three
+> other systems.** That's how you get possibility multiplication rather than
+> feature addition.
+
+The rest of this section is that brief, kept close to how it was given, with an
+honest note under each on where Survey actually stands.
+
+### 6.1 NPC ships need simple wants, not complicated AI
+
+> A trader wants to reach another station with cargo. A pirate wants valuable
+> cargo. An escort wants its client alive. A patrol responds to threats. A damaged
+> ship wants safety. A scavenger wants wreckage. A faction wants to protect routes.
+> Nothing needs ChatGPT-level intelligence; they just need **goals that can
+> collide**.
+
+*Where it stands.* Half done and the wrong half. 5.1 gave every ship a `role` and
+a `faction`, and roles already differ in temperament — armed or not, a personal
+space bubble or not, flees or fights. What they do **not** have is a *want*. A
+freighter walks a line between two points it was born with; it is not going
+anywhere in particular and nothing it is carrying matters to it. A pirate is
+hostile rather than *acquisitive* — it does not prefer the loaded hauler to the
+empty one.
+
+The work: give each role a want that references the world rather than a route.
+A trader wants **that station**. A pirate wants **that cargo**. An escort wants
+**that ship** alive. Then stop writing behaviour and let the wants meet.
+
+### 6.2 The economy should respond to events a little
+
+> A station needs water. Convoys supply it. Pirates destroy several convoys. Water
+> becomes scarce there temporarily. Patrol activity increases. Traders reroute
+> because the price is attractive. Pirates follow those traders. Suddenly the
+> player's boring "take water somewhere" trip intersects with an actual situation.
+
+Ric's own caveat, and it is the right one: *"The current plan deliberately keeps
+station functionality simple, which I agree with, but completely static economics
+would leave a lot of emergent potential unused."*
+
+*Where it stands.* Prices already vary **by place** — the deep pays more for
+iridium, a deep station stocks the strange parts, repairs cost more a long way
+out. Nothing varies **by event**. Nothing that happens near a station changes
+anything about it.
+
+The smallest version that would earn its keep: a station holds a short list of
+what it is short of; a convoy destroyed near it deepens that shortage; the
+shortage moves its prices and pulls patrols in. Three systems touching, no new
+interface.
+
+### 6.3 World objects should obey universal rules
+
+> Gravity affects everyone. Cargo can be stolen, abandoned, destroyed or towed by
+> anyone. Weapons can hit things other than their intended target. Ships can run
+> out of something. Wreckage remains useful. Environmental effects should affect
+> NPCs too. **This produces accidents and opportunities instead of scripted
+> events.**
+
+*Where it stands.* The best-covered of the six, and worth protecting. Gravity is
+already universal. A friendly round already destroys other traffic — that is how
+the war is fought in front of you. Wreckage is already useful: a battle leaves
+hulks you can strip. A burst charge already takes whatever is standing near what
+you aimed at.
+
+The gaps: **NPCs cannot run out of anything** — no fuel, no water, no ammunition —
+and a well does not kill them the way it kills you. A hauler dragged into a star
+in front of you would be exactly the accident this rule is for.
+
+### 6.4 Parts should create verbs rather than percentages
+
+> A **+12% engine** eventually becomes boring. A decoy, grapple, mine layer,
+> emergency jump module, cloak, tractor modification, EMP, cargo ejector or weird
+> alien drive changes what you can *do*. Noita's possibility space comes largely
+> from **recombining capabilities**, not from increasing damage numbers.
+
+*Where it stands.* Leaning the right way and not far enough — and this is the one
+place the plan should be honest that 5.2 partly went the wrong direction. Of the
+seventeen parts, most are numbers: +14% speed, +2 hull, +70% scan. The ones that
+are genuinely verbs are the good ones: **reverse thrusters** (a movement you did
+not have), the **ice melter** (a supply line you did not have), the **seeker**,
+the **charge** and the **lance** (three different ways to solve a rock).
+
+The rule from here: **a new part has to add a verb or it does not get made.**
+Ric's own list is the backlog — decoy, grapple, mine layer, emergency jump,
+cloak, EMP, cargo ejector, and something genuinely strange from a long way out.
+The four-slot rule is what makes them interesting, because it forces them to
+compete.
+
+### 6.5 Consequences should persist enough for the player to remember them
+
+> Save a particular captain and maybe you encounter that ship again. Destroy a
+> convoy and later encounter the wreck. A battle creates a memorial. A pirate you
+> failed to kill shows up somewhere else. A station temporarily suffers because
+> something happened nearby.
+
+*Where it stands.* Started, in exactly one place: **battles end and about one in
+three leaves a named memorial on the chart**, which is the shape this rule wants.
+Reputation persists per power. Everything else is forgotten — a rescued distress
+call becomes an anonymous freighter, a pirate that got away is gone for good, a
+station never suffers.
+
+The cheap wins, in order: a ship you saved or spared **keeps its name and comes
+back**; a pirate that escaped is re-spawned rather than re-rolled; a convoy you
+destroyed leaves a wreck field where it died.
+
+### 6.6 Handcrafted mysteries should sit on top of the simulation
+
+> **This is important.** Pure procedural generation eventually shows its seams.
+> Caves of Qud combines handwritten story and worldbuilding with physical,
+> factional and procedural simulation, which is part of why its world can surprise
+> players for so long. Survey should probably have **dozens** of extremely rare
+> *authored* weird things — the Leviathan is already an example — embedded in an
+> otherwise systemic universe.
+>
+> **That last one is crucial.**
+>
+> Don't try to procedurally generate everything. Use procedural systems to create
+> the journey. Use handcrafted things to occasionally make the player say:
+> *"What the FUCK is that?"*
+
+*Where it stands.* There are **eight** authored places — the Leviathan, the Wall,
+Node 01, the supernebula, the graveyard, the rogue world, the pale dot, the last
+transmission — and they are the best things in the mode. Eight is not dozens.
+
+This is the track with the highest ceiling and the least code: an authored thing
+is a name, a shape, an almanac entry and a reason. No system needs building. The
+one rule it must keep is the one it already keeps — an authored thing sits *in*
+the procedural sector rather than replacing a piece of it, so finding one is an
+accident of where you flew.
+
+### How to read Phase 6
+
+It is a **filter**, not a queue. Nothing in it is next; everything in it is a
+question to ask of whatever *is* next:
+
+> *What three other systems does this touch?*
+
+A part that only changes a number, a station that only sells, an NPC that only
+flies its line — each of those is a feature added. The rule says to keep looking
+until it is a system multiplied.
 
 ---
 

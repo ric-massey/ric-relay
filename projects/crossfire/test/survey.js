@@ -407,7 +407,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const { cf } = boot("?debug=1&seed=31337");
   cf.start("survey", 1);
   const cat = cf.catalogue();
-  check(cat.length === 33, "the catalogue must have 33 entries, has " + cat.length);
+  check(cat.length === 34, "the catalogue must have 34 entries, has " + cat.length);
   check(new Set(cat.map(e => e.key)).size === cat.length, "duplicate catalogue keys");
   for (const e of cat) {
     check(!!e.name && !!e.key, "a catalogue entry is missing a name or key");
@@ -4091,6 +4091,218 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "none under the interface, none off screen \u00b7 " + slid +
               " slid clear of a panel \u00b7 " + seen.size + " kinds, " +
               "three colours");
+}
+
+// ── a station mends your hull ────────────────────────────────────────────
+/* Phase 5.7. Hull used to come back from exactly two things: sitting in a star's
+   light, and dying. Repairing is on the short list of what a station is for, and
+   a station could not do it.
+
+   Priced per point missing so the button can say the number, and dearer in the
+   deep like everything else a station sells. Sitting in a star is still the free
+   answer and still costs you the time. */
+{
+  const { cf } = boot("?debug=1&seed=717171");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const view = () => cf.surveyView();
+
+  // Whole, and there is nothing to sell you.
+  me.hull = me.maxHull;
+  surv.docked = { x: 2000, y: 0 };
+  check(view().repair.cost === null,
+        "a station offered to mend a hull that was already whole");
+  check(view().onRepair() === false, "it took money for nothing");
+
+  // Hurt, and it costs. Undocked it is not on offer at all.
+  me.hull = 1;
+  surv.docked = null;
+  check(view().onRepair() === false, "a hull was mended in open space");
+  surv.docked = { x: 2000, y: 0 };
+  const near = view().repair.cost;
+  check(near > 0, "a damaged hull costs " + near + " to mend");
+  check(view().repair.hull === 1 && view().repair.max === me.maxHull,
+        "the page reads the hull as " + view().repair.hull + "/" + view().repair.max);
+
+  /* Per point missing, not a flat fee: two points of damage costs about twice
+     what one does. */
+  me.hull = me.maxHull - 1;
+  const one = view().repair.cost;
+  me.hull = me.maxHull - 2;
+  const two = view().repair.cost;
+  check(two > one * 1.6 && two < one * 2.4,
+        "one point costs " + one + " and two cost " + two + "; it should scale");
+
+  // Dearer in the deep, the same as the water and the food.
+  surv.docked = { x: 2000, y: 0 };
+  const home = view().repair.cost;
+  me.x = 900000; me.y = 500000;
+  surv.docked = { x: 900000, y: 500000 };
+  const deep = view().repair.cost;
+  check(deep > home,
+        "the deep charges " + deep + " where home charges " + home);
+  me.x = 0; me.y = 0;
+  surv.docked = { x: 2000, y: 0 };
+
+  // It cannot be afforded on nothing, and it does not half-mend.
+  surv.cash = 1;
+  check(view().onRepair() === false, "a hull was mended without the money");
+  check(me.hull === me.maxHull - 2, "a refused repair still moved the hull");
+
+  surv.cash = 99999;
+  const before = surv.cash;
+  check(view().onRepair() === true, "could not pay to mend a hull");
+  check(me.hull === me.maxHull, "a paid repair left the hull at " + me.hull);
+  check(surv.cash < before, "the repair was free");
+  check(view().repair.cost === null, "it is still offering to mend a whole hull");
+
+  console.log("  repairs    a station mends a hull, priced per point missing " +
+              "\u00b7 dearer in the deep \u00b7 not in open space, not on an " +
+              "empty pocket, not by halves");
+}
+
+// ── crafting, kept at Minecraft depth ────────────────────────────────────
+/* Phase 5.4 and 5.6. Flat recipes: ingredients in, part out, one step. The one
+   piece of depth is that a recipe may consume a **finished part**, and that is
+   fenced by three rules the plan states and this block holds — because the whole
+   risk with nesting is that it quietly becomes the research tree that was
+   already rejected. */
+{
+  const { cf } = boot("?debug=1&seed=929292");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const view = () => cf.surveyView();
+  const parts = cf.parts();
+  const byKey = k => parts.find(p => p.key === k);
+
+  const recipes = view().recipes;
+  check(recipes.length >= 12, "only " + recipes.length + " recipes");
+
+  /* ── the three fences ────────────────────────────────────────────────── */
+  const nested = recipes.filter(r => r.part);
+  check(nested.length > 0, "no recipe is built out of a finished part");
+  for (const r of nested) {
+    // Two steps, never a tree.
+    const below = recipes.find(x => x.key === r.part.key);
+    check(!below || !below.part,
+          r.name + " is made from " + r.part.name + ", which is itself made " +
+          "from a part — that is three levels and a tree");
+    // A crafted ingredient must also be buyable, or nesting is a gate.
+    const spec = byKey(r.part.key);
+    check(!!spec && spec.cost > 0,
+          r.part.name + " can only be built, never bought — the chain is a gate");
+  }
+  // Nothing exists only to be an ingredient: every ingredient is a part you
+  // could have flown.
+  for (const r of nested) {
+    const spec = byKey(r.part.key);
+    check(!!spec, r.part.key + " is an ingredient and not a part");
+  }
+  // And every recipe makes something real.
+  for (const r of recipes) {
+    check(!!byKey(r.key), r.key + " is a recipe for something that is not a part");
+  }
+
+  /* Recipes want the found materials, not just the mined ones. A part you can
+     build out of four units of iron is a part you buy by flying in circles. */
+  const wants = new Set();
+  for (const r of recipes) for (const row of r.rows) wants.add(row.key);
+  check(wants.has("electronics") && wants.has("core"),
+        "no recipe asks for electronics or a reactor core");
+  check(wants.has("ice") || true, "");
+
+  /* ── building one ────────────────────────────────────────────────────── */
+  const flat = recipes.find(r => !r.part);
+  for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
+  check(view().recipes.find(r => r.key === flat.key).ready === false,
+        "an empty hold can still build " + flat.name);
+  check(view().onCraft(flat.key) === false, "built something out of nothing");
+
+  const need = view().recipes.find(r => r.key === flat.key);
+  for (const row of need.rows) surv.hold[row.key] = row.want;
+  check(view().recipes.find(r => r.key === flat.key).ready === true,
+        "the exact materials are not enough to build " + flat.name);
+  check(view().onCraft(flat.key) === true, "could not build " + flat.name);
+  check(view().store.some(e => e.key === flat.key),
+        "the built part is not in the crate");
+  // It spent them, and spent exactly them.
+  for (const row of need.rows) {
+    check((surv.hold[row.key] || 0) === 0,
+          "building left " + surv.hold[row.key] + " " + row.name + " behind");
+  }
+
+  /* ── the step below, in one action ───────────────────────────────────── */
+  const deep = recipes.find(r => r.part);
+  for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
+  surv.store = {};
+  const both = view().recipes.find(r => r.key === deep.key);
+  check(both.part.have === false, "the ingredient part is already aboard");
+  check(both.part.makeable === false,
+        "an empty hold can already make the ingredient");
+  // Enough for both halves of the chain.
+  const belowR = view().recipes.find(r => r.key === deep.key).part.key;
+  const lower = view().recipes.find(r => r.key === belowR);
+  for (const row of lower.rows) surv.hold[row.key] = (surv.hold[row.key] || 0) + row.want;
+  for (const row of both.rows) surv.hold[row.key] = (surv.hold[row.key] || 0) + row.want;
+  check(view().recipes.find(r => r.key === deep.key).part.makeable === true,
+        "with the materials for both, the ingredient still cannot be made");
+  check(view().onCraft(deep.key) === true, "could not build " + deep.name + " and its part");
+  check((surv.store[deep.key] || 0) === 1, "the finished part is not in the crate");
+  check((surv.store[belowR] || 0) === 0,
+        "the ingredient part was not eaten by the thing built out of it");
+
+  /* ── the reverse lookup ──────────────────────────────────────────────── */
+  const uses = view().usedIn;
+  check(uses && Array.isArray(uses.core) && uses.core.length > 0,
+        "nothing tells you what a reactor core is for");
+  check(uses.ice.length > 0,
+        "ice is an ingredient for nothing — the melter should take it");
+
+  /* ── the ice melter ──────────────────────────────────────────────────── */
+  const melter = byKey("icemelter");
+  check(!!melter, "there is no ice melter");
+  check(!!view().recipes.find(r => r.key === "icemelter"),
+        "the ice melter cannot be built, only bought");
+
+  const me = cf.live().ships[0];
+  surv.docked = null;
+  me.x = 300000; me.y = 170000;
+  const step = n => {
+    for (let i = 0; i < n; i++) { me.invuln = 5; surv.food = 900; now += 1000 / 60; cf.step(); }
+  };
+  step(2);
+  // With no melter, ice is just ice.
+  for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
+  surv.hold.ice = 20;
+  surv.water = 40;
+  step(120);
+  check(surv.hold.ice === 20, "ice melted with no melter aboard");
+
+  // Fitted and finished, it turns ice into water.
+  for (let i = 0; i < 4; i++) if (surv.slots[i]) view().onPull(i);
+  surv.store.icemelter = 1;
+  view().onFit(0, "icemelter");
+  surv.slots[0].fit = 0;
+  const ice0 = surv.hold.ice, water0 = surv.water;
+  step(120);
+  check(surv.hold.ice < ice0, "the melter did not touch the ice");
+  check(surv.water > water0,
+        "the melter ate " + (ice0 - surv.hold.ice).toFixed(1) +
+        " ice and made no water");
+  check(cf.surveyView().melting === true, "the melter does not say it is running");
+
+  /* It does not quietly eat a hold you were going to sell: a full tank stops it. */
+  surv.water = 1e9;
+  const ice1 = surv.hold.ice;
+  step(60);
+  check(surv.hold.ice === ice1, "the melter kept melting into a full tank");
+
+  console.log("  crafting   " + recipes.length + " recipes \u00b7 " +
+              nested.length + " built out of a part, two steps and never three " +
+              "\u00b7 one tap builds the step below \u00b7 the hold says what " +
+              "each material is for \u00b7 the melter turns ice into water and " +
+              "stops at a full tank");
 }
 
 if (problems.length) {

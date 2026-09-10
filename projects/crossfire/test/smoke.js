@@ -62,7 +62,9 @@ function checkSyntax() {
     [...menuSrc.matchAll(/^    ([a-z0-9]+)\(x, y, w, h, t\) \{/gm)].map(m => m[1])
   );
   assert.ok(scenes.size >= 5, "menu.js should define a scene per mode, found " + scenes.size);
-  const arts = [...html.matchAll(/art: "([a-z0-9]+)"/g)].map(m => m[1]);
+  /* `\b` matters: without it this also matched the tail of `part: "tractorrig"`
+     in the recipe table and demanded a diorama for a tractor rig. */
+  const arts = [...html.matchAll(/\bart: "([a-z0-9]+)"/g)].map(m => m[1]);
   assert.ok(arts.length >= 7, "expected every lane and card to name a diorama");
   for (const art of new Set(arts)) {
     assert.ok(scenes.has(art), 'the menu names a diorama that does not exist: "' + art + '"');
