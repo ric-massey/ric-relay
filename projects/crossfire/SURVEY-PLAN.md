@@ -888,8 +888,56 @@ What are currently refit *tiers* and almanac *verbs* both become parts. Hull and
 drive staying buyable is fine; what changes is that it reads as buying a part and
 having it installed rather than a number going up on a list.
 
-**Installing takes time.** You cannot swap a part mid-fight. That one rule turns
-loadout from a menu into a decision you make before you leave.
+### 5.2a Installing takes time — but you can do it anywhere
+
+This replaces the earlier line, which said you *cannot* swap a part mid-fight.
+You can. It just costs you.
+
+**Out in space, a swap takes time, and the slot is out of action while it runs.**
+Pull the old part, fit the new one, and that slot does nothing until the install
+finishes. So a four-slot ship mid-swap is a three-slot ship, and swapping your
+weapon in the middle of a fight means fighting without it for as long as the fit
+takes. That is the whole cost, and it is a better rule than a ban: you are allowed
+to make the call, and the call can be wrong.
+
+**At a station it is instant.** No timer, no blocked slot. Which is what makes a
+station worth flying back to for reasons other than selling — and it means the
+timer never punishes ordinary loadout planning, only changing your mind out there.
+
+**Time varies per part, by rarity.** Something common goes on quickly; something
+you crossed the sector for takes a while. The ceiling is three minutes and nothing
+goes past it:
+
+| | fit time |
+|---|---|
+| **common** | ~20s |
+| **uncommon** | ~45s |
+| **rare** | ~90s |
+| **exotic / very far out** | up to 180s |
+
+**This only works because the inventory does not pause the world**, which is
+already the rule (chart, storage, missions and almanac all keep the clock
+running; only a station and the yard stop it). Open the inventory, start a fit,
+close it, and keep flying — the fit runs while you fly. Without the live-inventory
+rule this would just be a loading screen.
+
+**The details, decided now so they are not argued later:**
+
+- **The slot shows its own progress.** A fitting slot reads as *fitting*, with time
+  left, in the loadout page and as something glanceable in the cockpit. A cost you
+  cannot see is a bug report.
+- **Cancelling loses the progress**, and the part goes back to storage. The old
+  part is already off; the slot is simply empty again. No half-credit.
+- **Docking mid-fit finishes it**, because a station is instant — arriving at one
+  completes whatever was in progress rather than starting again.
+- **The clock stops when you die**, the same as everything else on the survey
+  clock. Being adrift is not a workbench.
+- **One fit at a time**, per slot. Starting a second fit in the same slot cancels
+  the first. Different slots can fit at once — nothing about the rule needs them
+  to queue.
+
+*The point of all of it: loadout stops being a menu you visit between trips and
+becomes a decision you can make badly, at speed, with something shooting at you.*
 
 ### 5.3 Weapons are parts too
 
