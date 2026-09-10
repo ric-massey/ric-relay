@@ -704,7 +704,7 @@
       ctx.lineWidth = 1;
       ctx.strokeRect(b.x, iy + 36, b.w, 30);
       ctx.restore();
-      label(api.touchOnly ? "THE YARD" : "THE YARD  [E]", b.x + b.w / 2, iy + 56,
+      label(api.touchOnly ? "JUMP GATE" : "JUMP GATE  [E]", b.x + b.w / 2, iy + 56,
             SIZE.cap, CASH, "center", 1, "0.12em");
       api.addTap({ x: b.x, y: iy + 36, w: b.w, h: 30, act: st.onYard || (() => {}) });
     }
@@ -947,7 +947,7 @@
       ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.stroke();
       ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
-      label("THE YARD  " + st.yard.built + "/" + st.yard.needs,
+      label("JUMP GATE  " + st.yard.built + "/" + st.yard.needs,
             x + 14, y + 5, SIZE.cap, VIOLET, "left", 0.9);
     }
 
@@ -3252,7 +3252,7 @@
        sub: "what is out there, and what you have seen",
        key: api.touchOnly ? "" : "L", colour: VIOLET, act: st.onAlmanac, col: L },
      { title: "MISSIONS", val: (st.built || 0) + " / " + (st.needs || 6),
-       sub: "what the yard wants, and where to look",
+       sub: "what the gate wants, and where to look",
        key: "", colour: CASH, act: st.onMissions, col: R }
     ].forEach(d => {
       const { x, w } = d.col;
@@ -3429,7 +3429,7 @@
     ctx.restore();
   }
 
-  /* ═══ THE YARD ════════════════════════════════════════════════════════════
+  /* ═══ THE JUMP GATE ═══════════════════════════════════════════════════════
      Opened by docking at it. Says what is being built, what it will do, and
      which six things it is still short of — with the clue for each one you have
      not brought in yet. The clue is the whole navigation system, so this is the
@@ -3444,12 +3444,12 @@
   HUD.drawYardPage = function (st, dt) {
     const { ctx, SCREEN_W } = api;
     st = st || {};
-    const b = st.builds || { name: "THE YARD", does: "", blurb: "" };
+    const b = st.builds || { name: "THE JUMP GATE", does: "", blurb: "" };
     const done = st.built || 0, need = st.needs || 6;
     const finished = done >= need;
     const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
 
-    pageFrame(st.atYard ? "THE YARD" : "MISSIONS",
+    pageFrame(st.atYard ? "THE JUMP GATE" : "MISSIONS",
               done + " OF " + need + " FITTED",
               "");
 
@@ -3507,7 +3507,7 @@
             full.x + PAGE.PAD, y, SIZE.cap, colour, "left", have ? 0.7 : 1);
       fitText(m.name, full.x + PAGE.PAD + 22, y, SIZE.cap, colour, "left",
               have ? 0.6 : 1, 190, "0.08em");
-      fitText(have ? "fitted" : aboard ? "aboard \u2014 drop it at the yard" : m.clue,
+      fitText(have ? "fitted" : aboard ? "aboard \u2014 take it to the gate" : m.clue,
               full.x + 250, y, SIZE.cap,
               have ? CASH_DIM : aboard ? CASH : AMBER_DIM, "left",
               have ? 0.45 : 0.8, full.w - 420);
@@ -3638,15 +3638,32 @@
     [d.cash + " CASH",
      d.found + " ALMANAC " + (d.found === 1 ? "ENTRY" : "ENTRIES"),
      fmtCells(d.charted) + " CELLS CHARTED",
-     "the yard and everything fitted"
+     "the gate and everything fitted"
     ].forEach((k, i) => {
       label("·", R.x + PAGE.PAD, ROW(by, i), SIZE.cap, CASH_DIM, "left", 0.6);
       fitText(k, R.x + PAGE.PAD + 16, ROW(by, i), SIZE.cap, CASH_DIM, "left",
               0.8, R.w - PAGE.PAD * 2 - 20);
     });
 
+    /* Not lost and not kept: still out there. A part you were carrying stays
+       exactly where you died and is on the chart by name, and this is the line
+       that says so — because a part that vanished from your hold with no
+       explanation reads as a bug, and a trip you have to make reads as a trip
+       only if somebody tells you to make it. */
+    if (d.dropped && d.dropped.length) {
+      const line = d.dropped.join("  \u00b7  ");
+      label("STILL OUT THERE", cx, by + bh + 30, SIZE.cap, AMBER, "center",
+            0.9, "0.2em");
+      fitText(line + "  \u2014  where you fell, on the chart, waiting",
+              cx, by + bh + 54, SIZE.cap, AMBER_DIM, "center", 0.85,
+              SCREEN_W - PAGE.EDGE * 2);
+    }
+
+    /* Under whichever of the two lines above is showing, so the two cannot
+       print through each other on a run where both are true. */
     if (st.deaths > 1) {
-      label("DEATH " + st.deaths, cx, by + bh + 28, SIZE.cap, VIOLET_LOW,
+      const dy = (d.dropped && d.dropped.length) ? 82 : 28;
+      label("DEATH " + st.deaths, cx, by + bh + dy, SIZE.cap, VIOLET_LOW,
             "center", 0.6, "0.2em");
     }
 

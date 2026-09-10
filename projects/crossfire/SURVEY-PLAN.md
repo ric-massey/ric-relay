@@ -1302,6 +1302,69 @@ Ric's list, and the shape of every hour after the first:
 
 ---
 
+### The jump gate, and what a death does to a part  ·  **DONE**
+
+> *"If you die with an item used to make the yard — which needs to be changed on
+> the name, the teleport. But if you die with a part that part needs to be left
+> where you died. And you have to go get it."*
+
+**THE YARD is THE JUMP GATE.** The old name said where it was and not what it
+was: the six parts build a manmade wormhole — a mouth you open on any station you
+have charted, straight from the chart — and calling the place a yard left the
+player hauling parts across a sector for a thing with no name. It says what it is
+from the first banner now, and finishing it reads *THE JUMP GATE IS OPEN* rather
+than *THE YARD IS FINISHED*.
+
+**A part you were carrying stays where you died.** It used to come home with you,
+and the reasoning written down at the time was that a part lost in deep space is a
+run you cannot finish. That was the wrong conclusion from the right worry: the
+answer is not to make a part indestructible, it is to make sure you can always go
+back for it.
+
+So it is left exactly where you fell, and everything about it is built around the
+trip back:
+
+- **It does not drift and it does not expire.** It is not a mote and not a chunk's
+  property; it belongs to the run.
+- **It is nudged clear of whatever killed you**, on a spiral outward until it is
+  out of every well and every world — a part inside a star is a part nobody is
+  ever getting back.
+- **It goes on the chart by name**, so "go and get it" is something you can
+  navigate rather than something you have to have remembered.
+- **The death page says so**, under STILL OUT THERE — a part that vanished from
+  your hold with no explanation reads as a bug, and a trip you have to make reads
+  as a trip only if something tells you to make it.
+- **There is never a second one.** While it is lying where you died, its landmark
+  is empty; a death must not duplicate the thing you were carrying.
+- **It survives the tab.** A part you have to fetch is worthless if closing the
+  tab loses it.
+
+Everything else about dying is unchanged: the hold is gone, the almanac and the
+fitted parts and the cash and the chart are all kept.
+
+### A bug this turned up: the book is a whitelist  ·  **FIXED**
+
+`loadSurveyBook` validates the save field by field, which is right — the book is a
+file on somebody's disk and a hand-edited one must not be able to hand out a hull
+that does not exist. What it also means is that **a field written to the book and
+not read back is silently thrown away**, and nothing anywhere says so.
+
+Four things had been landing in exactly that hole and nobody had noticed, because
+every test that checked persistence read the raw JSON rather than resuming through
+the real path:
+
+- the **four slots** — every fitted part fell off on reload
+- the **crate** of parts you own but are not flying
+- **which battles are over**, so a finished fight restarted itself
+- **which battles are remembered**, so a memorial forgot its own name
+
+All four are in the whitelist now, each validated on the way in, and there is a
+test that writes a whole run, closes the tab, opens it again and reads it back —
+plus one cheap check that would have caught all four at once: *every key the save
+writes must be a key the loader reads.*
+
+---
+
 ## Phase 6 — possibility multiplication
 
 Ric's brief, and it is a different *kind* of instruction from everything above.

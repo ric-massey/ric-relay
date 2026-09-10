@@ -795,8 +795,14 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(surv.cash === purse, "dying took " + (purse - surv.cash) + " cash");
   check(surv.found.size === foundBefore,
         "dying took almanac entries: " + foundBefore + " → " + surv.found.size);
-  check(surv.built.has(parts[0].key), "dying unfitted a yard part");
-  check(surv.carrying.has(parts[1].key), "dying dropped a part you were carrying");
+  check(surv.built.has(parts[0].key), "dying unfitted a fitted part");
+  /* A part you were *carrying* is the exception, and it is deliberate: it stays
+     where you died and you go back for it. See the "left where you fell" block
+     further down, which is where that behaviour is actually pinned. */
+  check(!surv.carrying.has(parts[1].key),
+        "a part you were carrying came home with you");
+  check(surv.dropped.some(d => d.key === parts[1].key),
+        "the part you were carrying is nowhere at all");
   check(surv.pins.length === 1, "dying wiped the pins");
   check(cf.hud().charted() >= chartedNow, "dying wiped the chart");
   check(surv.deaths === 1, "the death was not counted: " + surv.deaths);
@@ -1232,7 +1238,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     }
   }
   const done = cf.objective();
-  check(/FINISHED/.test(done.text),
+  check(/OPEN|FINISHED/.test(done.text),
         "a full manifest did not read as finished: " + done.text);
   console.log("  objective  states every step of the manifest, clue and all");
 }
@@ -4303,6 +4309,203 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "\u00b7 one tap builds the step below \u00b7 the hold says what " +
               "each material is for \u00b7 the melter turns ice into water and " +
               "stops at a full tank");
+}
+
+// ── a part you were carrying is left where you fell ──────────────────────
+/* It used to come home with you. The reasoning was that a part lost in deep
+   space is a run you cannot finish, and that was the wrong conclusion from the
+   right worry: the answer is not to make a part indestructible, it is to make
+   sure you can always go back for it.
+
+   So the things this has to hold are all about *going back*: it is exactly where
+   you died, it is on the chart by name, it does not drift or expire, it survives
+   the tab, it is not somewhere that will kill you again, and there is never a
+   second copy of it anywhere. */
+{
+  const { cf } = boot("?debug=1&seed=246810");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  // Held alive on the way out: this block is about what a death does to a part,
+  // not about surviving the trip to the spot the death happens at.
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 5; surv.water = 900; surv.food = 900;
+      now += 1000 / 60; cf.step();
+    }
+  };
+  const view = () => cf.surveyView();
+
+  // Out in the deep, carrying two of the six.
+  const manifest = view().manifest;
+  const carried = [manifest[0].key, manifest[1].key];
+  me.x = 240000; me.y = -160000; me.vx = me.vy = 0;
+  step(2);
+  for (const k of carried) surv.carrying.add(k);
+  surv.hold.iron = 12;
+  const diedAt = { x: me.x, y: me.y };
+
+  cf.die("rock");
+  check(!!surv.death, "the ship did not die");
+
+  /* Not in the hold, not in your hands, and not gone. */
+  for (const k of carried) {
+    check(!surv.carrying.has(k), k + " came home in your hands");
+    check(!surv.built.has(k), k + " fitted itself on the way down");
+    check(surv.dropped.some(d => d.key === k), k + " is nowhere at all");
+  }
+  check(surv.death.dropped && surv.death.dropped.length === 2,
+        "the death page does not say what was left behind");
+
+  // Where you fell, near enough to fly back to rather than near enough to be a
+  // coincidence — it is nudged clear of whatever killed you.
+  for (const d of surv.dropped) {
+    const off = Math.hypot(d.x - diedAt.x, d.y - diedAt.y);
+    check(off < 12000, "a part was left " + Math.round(off) + " units from where you died");
+  }
+  // And not inside anything that would kill the trip back.
+  for (const d of surv.dropped) {
+    for (const h of cf.live().hazards || []) {
+      check(Math.hypot(d.x - h.x, d.y - h.y) > h.kill,
+            "a part was left inside a well");
+    }
+  }
+
+  // On the chart, by name, so "go back for it" is a thing you can navigate.
+  const marks = view().known.filter(q => q.k === "part");
+  for (const d of surv.dropped) {
+    check(marks.some(q => Math.abs(q.x - d.x) < 90 && Math.abs(q.y - d.y) < 90),
+          d.name + " was left out there and never put on the chart");
+  }
+
+  /* It survives the tab. A part you have to fetch is worthless if closing the
+     tab loses it. */
+  cf.leave();
+  const book = JSON.parse(store["crossfire.survey.v3"]);
+  check(Array.isArray(book.dropped) && book.dropped.length === 2,
+        "the book forgot the parts you left behind");
+  const again = bootKeepingStorage("?debug=1&seed=246810");
+  again.cf.start("survey", 1);
+  const s2 = again.cf.survey();
+  check(s2.dropped.length === 2, "a resumed sector forgot them");
+
+  /* Go back for it. Standing on it picks it up, the same as any part. */
+  const m2 = again.cf.live().ships[0];
+  const target = s2.dropped[0];
+  if (!target) throw new Error("nothing was left behind to go back for");
+  const key = target.key;
+  m2.x = target.x; m2.y = target.y; m2.vx = m2.vy = 0;
+  for (let i = 0; i < 6; i++) {
+    m2.invuln = 5; s2.water = 900; s2.food = 900;
+    now += 1000 / 60; again.cf.step();
+  }
+  check(s2.carrying.has(key), "standing on a dropped part did not pick it up");
+  check(!s2.dropped.some(d => d.key === key),
+        "it was picked up and is still lying out there");
+
+  /* And there is never a second one. The sector generates a part at its landmark
+     from the seed, so while one is lying where you died that landmark must be
+     empty — otherwise a death would *duplicate* the thing you were carrying. */
+  const still = s2.dropped[0];
+  check(!!still, "the second part vanished when the first was picked up");
+  if (still) {
+    const site = s2.partSites.find(p => p.key === still.key);
+    check(!!site, still.key + " has no landmark in this sector");
+    if (site) {
+      m2.x = site.x; m2.y = site.y; m2.vx = m2.vy = 0;
+      for (let i = 0; i < 6; i++) {
+        m2.invuln = 5; s2.water = 900; s2.food = 900;
+        now += 1000 / 60; again.cf.step();
+      }
+      check(!s2.carrying.has(still.key),
+            still.key + " was lying where you died and standing at its " +
+            "landmark as well — dying duplicated it");
+      // It is still out there where it was left, untouched by the trip.
+      check(s2.dropped.some(d => d.key === still.key),
+            "visiting the landmark cleared the part you left behind");
+    }
+  }
+
+  console.log("  dropped    a part you carried stays where you fell \u00b7 " +
+              "clear of whatever killed you \u00b7 on the chart by name \u00b7 " +
+              "survives the tab \u00b7 picked up by flying back \u00b7 never " +
+              "two of the same one");
+}
+
+// ── the book is a whitelist, and it must list everything ─────────────────
+/* `loadSurveyBook` validates the save field by field, which is right — the book
+   is a file on somebody's disk and a hand-edited one must not be able to hand out
+   a hull that does not exist. What it also means is that **a field written to the
+   book and not read back is silently thrown away**, and nothing anywhere says so.
+
+   Four things had been landing in exactly that hole: the four slots, the crate of
+   parts, which battles are over, and which are remembered. Each one saved
+   perfectly and vanished on the next load. So rather than checking one field at a
+   time, this writes a whole run, closes the tab, opens it again, and reads it
+   back through the real path. */
+{
+  const { cf } = boot("?debug=1&seed=135791");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const view = () => cf.surveyView();
+
+  // A run with something in every one of those boxes.
+  surv.cash = 4321;
+  surv.docked = { x: 2000, y: 0 };
+  surv.store.pulsecoil = 2;
+  view().onFit(0, "pulsecoil");
+  surv.store.layerplate = 1;
+  surv.battleAge["c1b0"] = 0;
+  surv.battleAge["c2b0"] = 41.5;
+  surv.memorials.add("c1b0");
+  surv.carrying.add(view().manifest[0].key);
+  surv.docked = null;
+  me.x = 88000; me.y = 44000;
+  cf.die("hole");
+  const droppedKey = surv.dropped[0] && surv.dropped[0].key;
+  check(!!droppedKey, "nothing was dropped to check");
+
+  /* The hold goes in after the death, because dying empties it — the point here
+     is that the two *new* materials round-trip like the old four, not that they
+     survive a death they are not supposed to survive. Setting a waypoint is the
+     cheapest thing in the mode that writes the book. */
+  surv.hold.iron = 7; surv.hold.electronics = 3; surv.hold.core = 2;
+  view().onWaypoint(1000, 2000);
+
+  cf.leave();
+  const again = bootKeepingStorage("?debug=1&seed=135791");
+  again.cf.start("survey", 1);
+  const s2 = again.cf.survey();
+  const v2 = again.cf.surveyView();
+
+  check(s2.slots[0] && s2.slots[0].key === "pulsecoil",
+        "a fitted part did not survive the tab");
+  check((s2.store.pulsecoil || 0) === 1 && (s2.store.layerplate || 0) === 1,
+        "the crate did not survive the tab: " + JSON.stringify(s2.store));
+  check(s2.battleAge["c1b0"] === 0 && Math.abs(s2.battleAge["c2b0"] - 41.5) < 1,
+        "the battle clocks did not survive the tab");
+  check(s2.memorials.has("c1b0"), "a memorial did not survive the tab");
+  check(s2.dropped.some(d => d.key === droppedKey),
+        "a part left where you died did not survive the tab");
+  check(s2.hold.electronics === 3 && s2.hold.core === 2,
+        "the two new materials did not survive the tab");
+  check(Math.round(s2.cash) === 4321, "the cash did not survive the tab");
+  // And the fitted part is actually doing its job on the resumed ship.
+  check(again.cf.scanRange() > 2100 * 1.5,
+        "the resumed ship is not getting the scanner it is carrying");
+
+  /* Every key the save writes must be a key the load reads. This is the check
+     that would have caught all four at once, and it is cheap. */
+  const written = Object.keys(JSON.parse(store["crossfire.survey.v3"]));
+  const read = again.cf.bookKeys();
+  const lost = written.filter(k => read.indexOf(k) < 0 && k !== "fog");
+  check(lost.length === 0,
+        "the book writes fields the loader throws away: " + lost.join(", "));
+
+  console.log("  book       " + written.length + " fields written, every one read " +
+              "back \u00b7 slots, crate, battle clocks, memorials, dropped parts " +
+              "and the new materials all survive the tab");
 }
 
 if (problems.length) {

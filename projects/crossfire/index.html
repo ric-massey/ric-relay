@@ -5333,7 +5333,7 @@
        which is a different feeling from paying for one, and worth marking. */
     { key: "shipwright", name: "SHIPWRIGHT",
       note: "built a part out of what you found" },
-    { key: "finished", name: "THE YARD", note: "you built the thing", secret: true }
+    { key: "finished", name: "THE JUMP GATE", note: "you built the thing", secret: true }
   ];
   const SURVEY_TOTAL = ALMANAC.length;
 
@@ -5581,7 +5581,9 @@
                     water: WATER_FULL, food: FOOD_FULL,
                     hold: freshHold(),
                     refit: freshRefit(), opened: [], stripped: [],
-                    carrying: [], built: [], pins: [], known: [] };
+                    carrying: [], built: [], pins: [], known: [],
+                    slots: [], store: {}, battleAge: {}, memorials: [],
+                    dropped: [] };
     try {
       const raw = localStorage.getItem(SURVEY_STORE);
       if (!raw) return empty;
@@ -5673,6 +5675,48 @@
                                 name: typeof q.name === "string" ? q.name : "",
                                 r: Math.max(0, Math.floor(Number(q.r)) || 0) }))
                    .slice(0, 600)
+          : [],
+
+        /* ── everything Phase 5 added ──────────────────────────────────────
+           This function is a whitelist: a field that is written to the book and
+           not read back here is silently thrown away on the next load, and
+           nothing anywhere says so. Four things had been quietly landing in that
+           hole — the four slots, the crate of parts, which battles are over, and
+           which are remembered — and the parts you die carrying would have made
+           five. Every one of them is validated on the way in, because the book is
+           a file on somebody's disk and a hand-edited one must not be able to
+           hand out a part that does not exist. */
+        slots: Array.isArray(b.slots)
+          ? b.slots.slice(0, SLOTS).map(sl =>
+              sl && typeof sl.key === "string" && MODULES.some(m => m.key === sl.key)
+                ? { key: sl.key, fit: Math.max(0, Math.min(999, Number(sl.fit) || 0)) }
+                : null)
+          : [],
+        store: (() => {
+          const out = {};
+          const src = b.store && typeof b.store === "object" ? b.store : {};
+          for (const m of MODULES) {
+            const n = Math.max(0, Math.min(999, Math.floor(Number(src[m.key])) || 0));
+            if (n) out[m.key] = n;
+          }
+          return out;
+        })(),
+        battleAge: (() => {
+          const out = {};
+          const src = b.battleAge && typeof b.battleAge === "object" ? b.battleAge : {};
+          for (const k of Object.keys(src).slice(0, 400)) {
+            const v = Number(src[k]);
+            if (Number.isFinite(v)) out[k] = Math.max(0, Math.min(9999, v));
+          }
+          return out;
+        })(),
+        memorials: strs(b.memorials).slice(0, 400),
+        dropped: Array.isArray(b.dropped)
+          ? b.dropped.filter(d => d && typeof d.key === "string" &&
+                                  BUILD.some(x => x.key === d.key) &&
+                                  Number.isFinite(d.x) && Number.isFinite(d.y))
+                     .map(d => ({ key: d.key, x: Math.round(d.x), y: Math.round(d.y) }))
+                     .slice(0, BUILD.length)
           : []
       };
     } catch (_) { return empty; }
@@ -5707,6 +5751,7 @@
         // would be losing the run itself.
         carrying: [...surv.carrying],
         built: [...surv.built],
+        dropped: surv.dropped,
         pins: surv.pins,
         // What is bolted on, mid-fit and all, and what is in the crate.
         slots: surv.slots.map(sl => sl && { key: sl.key, fit: Math.round(sl.fit) }),
@@ -6397,7 +6442,11 @@
       for (const f of c.fields) surv.fields.push(f);
       for (const g of c.gates) surv.gates.push(g);
       for (const pt of c.parts) {
-        if (!surv.built.has(pt.key) && !surv.carrying.has(pt.key)) surv.parts.push(pt);
+        /* A part that has been dropped is not also still at its landmark — the
+           sector generated one and there is one, wherever it happens to be. */
+        if (surv.built.has(pt.key) || surv.carrying.has(pt.key)) continue;
+        if (surv.dropped.some(d => d.key === pt.key)) continue;
+        surv.parts.push(pt);
       }
       if (c.leviathan) surv.leviathan = c.leviathan;
 
@@ -6522,6 +6571,20 @@
         });
       });
     }
+
+    /* Whatever you died carrying, wherever you died carrying it. Not out of a
+       chunk, because it does not belong to one — it belongs to the run, and it
+       has to be there when you come back whether its chunk happens to be loaded
+       or not. It never drifts and it never expires. */
+    for (const d of surv.dropped) {
+      if (Math.abs(d.x - ships[0].x) > CHUNK * 3 ||
+          Math.abs(d.y - ships[0].y) > CHUNK * 3) continue;
+      const spec = partSpec(d.key);
+      if (!spec) continue;
+      surv.parts.push({ key: d.key, name: spec.name, x: d.x, y: d.y, r: 40,
+                        dropped: true });
+    }
+
     seedMotes();
   }
 
@@ -6606,6 +6669,13 @@
       partSites: [], partAt: new Map(), parts: [], fields: [],
       carrying: new Set(carried ? book.carrying : []),
       built: new Set(carried ? book.built : []),
+      /* Parts you were carrying when you died. They sit where you died until you
+         go back for them, and they are written into the book because a part you
+         have to fetch is worthless if closing the tab loses it. */
+      dropped: (carried && Array.isArray(book.dropped) ? book.dropped : [])
+        .filter(d => d && partSpec(d.key))
+        .map(d => ({ key: d.key, name: partSpec(d.key).name,
+                     x: Math.round(+d.x || 0), y: Math.round(+d.y || 0) })),
       /* The four slots, and the parts you own but are not flying. A slot is
          `null`, or `{ key, fit }` where `fit` is the seconds of installation
          left — zero means it is working. */
@@ -7451,6 +7521,36 @@
     surv.lightRun = 0;
     surv.lightHit = null;
     for (const m of MATERIALS) surv.hold[m.key] = 0;
+
+    /* ── what a part does when you die ──────────────────────────────────────
+       It used to come home with you. The reasoning was that a part lost in deep
+       space is a run you cannot finish, and that was the wrong conclusion from
+       the right worry: the answer is not to make a part indestructible, it is to
+       make sure you can always go back for it.
+
+       So it stays exactly where you died. It does not drift, it does not expire,
+       it goes on the chart by name, and the ship that comes back for it is a trip
+       you have to make — which is the only thing in the mode that makes carrying
+       one feel like carrying something.
+
+       Everything else about dying is unchanged: the hold is gone, the almanac and
+       the fitted parts and the cash are kept. */
+    const left = [...surv.carrying];
+    if (left.length) {
+      surv.carrying.clear();
+      left.forEach((key, i) => {
+        const spec = partSpec(key);
+        /* Spread a little, so two parts are two things to fly to rather than one
+           glyph on top of another — and nudged clear of whatever killed you, or
+           the trip back would end the same way. */
+        const a = (i / Math.max(1, left.length)) * Math.PI * 2;
+        const spot = safeDrop(ship.x + Math.cos(a) * 120 * i,
+                              ship.y + Math.sin(a) * 120 * i);
+        surv.dropped.push({ key, name: spec.name, x: spot.x, y: spot.y });
+        noteKnown("part", spot.x, spot.y, spec.name);
+      });
+      surv.death.dropped = left.map(k => partSpec(k).name);
+    }
     burst(ship.x, ship.y, "#ff8f77", 40, 420 * U);
     addShake(12);
     gameSound("lose", ship.x);
@@ -7458,6 +7558,28 @@
     ship.alive = false;
     state = "died";
     saveSurveyBook();
+  }
+
+  /* Somewhere a part can sit and be fetched. Whatever killed you is still there,
+     so the spot walks outward until it is clear of every well and every world —
+     a part inside a star is a part nobody is ever getting back. */
+  function safeDrop(x, y) {
+    for (let step = 0; step < 40; step++) {
+      const d = step * 260;
+      const a = step * 2.399;                    // a spiral rather than a line
+      const px = x + Math.cos(a) * d, py = y + Math.sin(a) * d;
+      let clear = true;
+      for (const h of hazards) {
+        if (dist2(px, py, h.x, h.y) < (h.kill * 2.2 + 400) ** 2) { clear = false; break; }
+      }
+      if (clear) {
+        for (const pl of surv.planets) {
+          if (dist2(px, py, pl.x, pl.y) < (pl.r + 300) ** 2) { clear = false; break; }
+        }
+      }
+      if (clear) return { x: Math.round(px), y: Math.round(py) };
+    }
+    return { x: Math.round(x), y: Math.round(y) };
   }
 
   /* Back at the home station, which is the one place in an endless sector that
@@ -8177,9 +8299,15 @@
     }
   }
 
-  /* ═══ THE YARD ════════════════════════════════════════════════════════════
+  /* ═══ THE JUMP GATE ═══════════════════════════════════════════════════════
      What you are doing out here. Sits just off the origin so it is the first
-     thing you see and the thing you keep coming back to. */
+     thing you see and the thing you keep coming back to.
+
+     It was called THE YARD, which said where it was and not what it was. What
+     the six parts build is a **manmade wormhole** — a mouth you open on any
+     station you have charted, from the chart — and calling the place a yard left
+     the player carrying parts across a sector for a thing with no name. It is
+     the jump gate now, and it says so from the first banner. */
   const YARD = { x: -280, y: -400 };
 
   const partSpec = key => BUILD.find(b => b.key === key);
@@ -8239,7 +8367,7 @@
       colour: "#87d8ff" },
     { key: "yard",
       when: () => surv.water >= WATER_FULL * 0.9 && !yardDone(),
-      text: () => "THE YARD WANTS A " + (nextPart() ? nextPart().name : "PART"),
+      text: () => "THE JUMP GATE WANTS A " + (nextPart() ? nextPart().name : "PART"),
       sub: () => nextPart() ? nextPart().clue : "",
       colour: NEBULA },
     { key: "material",
@@ -8736,7 +8864,7 @@
     if (any) {
       applyRefit(ships[0]);
       padApply();
-      chatter("The yard hands finished what you started.", CASH);
+      chatter("The station hands finished what you started.", CASH);
       saveSurveyBook();
     }
   }
@@ -9120,7 +9248,7 @@
   function objectiveTarget() {
     if (yardDone()) return null;
     if (surv.carrying.size) {
-      return { key: "yard", name: "THE YARD", x: YARD.x, y: YARD.y };
+      return { key: "yard", name: "THE JUMP GATE", x: YARD.x, y: YARD.y };
     }
     const n = nextPart();
     if (!n) return null;
@@ -9137,7 +9265,7 @@
 
   function objective() {
     if (yardDone()) {
-      return { text: "THE YARD IS FINISHED", sub: "the sector is yours to wander",
+      return { text: "THE JUMP GATE IS OPEN", sub: "the sector is yours to wander",
                colour: CASH };
     }
     if (surv.carrying.size) {
@@ -9147,7 +9275,7 @@
       const names = [...surv.carrying]
         .map(k => partSpec(k)).filter(Boolean).map(b => b.name).join("  ·  ");
       if (names) {
-        return { text: "CARRYING " + names, sub: "bring it back to the yard",
+        return { text: "CARRYING " + names, sub: "bring it back to the gate",
                  colour: CASH };
       }
     }
@@ -9243,10 +9371,19 @@
       if (dist2(me.x, me.y, pt.x, pt.y) > (pt.r + R) ** 2) continue;
       surv.parts.splice(i, 1);
       surv.carrying.add(pt.key);
+      /* If this is one you dropped when you died, it stops being dropped — the
+         list is what makes it exist out here, so leaving it on would put a second
+         copy in the sky the next time the chunks stream. */
+      const back = surv.dropped.findIndex(d => d.key === pt.key);
+      if (back >= 0) {
+        surv.dropped.splice(back, 1);
+        surv.known.delete(knownId("part", pt.x, pt.y));
+      }
       burst(pt.x, pt.y, CASH, 26, 260 * U);
       gameSound("win", pt.x);
       addShake(5);
-      chatter(pt.name + " recovered — take it home", CASH);
+      chatter(pt.name + (back >= 0 ? " back aboard \u2014 take it home"
+                                   : " recovered \u2014 take it home"), CASH);
       surveyFind("salvor");
       /* The coil is not a component until it is bolted down. Pulling it off the
          gate it was wound around discharges the thing, and the sector folds:
@@ -9271,7 +9408,7 @@
     addShake(9);
     if (yardDone()) {
       surveyFind("finished");
-      banner = { text: "THE YARD IS FINISHED", t: 4.2, colour: CASH,
+      banner = { text: "THE JUMP GATE IS OPEN", t: 4.2, colour: CASH,
                  sub: "it was never about the parts" };
     }
     saveSurveyBook();
@@ -9550,7 +9687,8 @@
     });
     ctx.restore();
 
-    label3(yardDone() ? "THE YARD" : "THE YARD  " + done + "/" + need,
+    label3(yardDone() ? "THE JUMP GATE"
+                      : "THE JUMP GATE  " + done + "/" + need,
            YARD.x, YARD.y + 152, yardDone() ? CASH : NEBULA);
 
     // The delivery ring, shown only while you are carrying something to it.
@@ -15410,6 +15548,10 @@
          a harness cannot wait for one, but the *consequences* of a death are the
          whole of phase 2 and they are all arithmetic. */
       die: cause => surveyDie(cause || "rock"),
+      /* Which fields the loader actually reads back. The book is a whitelist, so
+         a field written and not listed here is thrown away silently — this is how
+         a test can check the two lists agree. */
+      bookKeys: () => Object.keys(loadSurveyBook()),
       // One hit, through the real damage path, so the hull's own arithmetic is
       // what the harness is testing rather than a poke at `ship.hull`.
       hurt: cause => damageShip(ships[0], cause || "rock", null),
