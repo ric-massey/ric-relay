@@ -689,12 +689,15 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(cf.buy("hull") === false, "a hold full of iridium bought a tier by itself");
   surv.hold.iridium = 0;
 
-  // A track runs out at its last tier rather than taking money forever.
+  /* A track runs out at its last tier rather than taking money forever. Checked
+     on the scanner, since the cargo track has gone — how much you can carry is
+     the ship's and nothing you buy changes it. */
   surv.cash = 1000000;
   let bought = 0;
-  while (cf.buy("hold")) bought++;
-  check(bought <= 3, "the cargo track sold " + bought + " tiers past its cap");
-  check(cf.buy("hold") === false, "a maxed track kept selling");
+  while (cf.buy("scanner")) bought++;
+  check(bought <= 3, "the scanner track sold " + bought + " tiers past its cap");
+  check(cf.buy("scanner") === false, "a maxed track kept selling");
+  check(cf.buy("hold") === false, "storage is still for sale as a refit");
   console.log("  economy    4 materials, all reachable · deep rock " +
               (abyss / home).toFixed(1) + "x richer · hold caps at " + cap +
               " · a hold sold for " + got + " · refits cost cash, not cargo");
@@ -2821,7 +2824,13 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   // Buying needs a station and the money for it.
   const big = list.find(s2 => s2.key === "ossuary");
   check(cf.buyShip("ossuary") === false, "bought a ship in open space");
-  surv.docked = { x: 0, y: 0 };
+  /* An ordinary station is not enough. Ships change hands at your home station
+     and nowhere else, so that the hull you left home in is the hull you are
+     stuck with out there. */
+  surv.docked = { x: 180000, y: -90000 };
+  surv.cash = big.cost + 500;
+  check(cf.buyShip("ossuary") === false, "bought a ship at an ordinary station");
+  surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
   surv.cash = big.cost - 1;
   check(cf.buyShip("ossuary") === false, "bought a ship a cash short");
   surv.cash = big.cost + 500;
@@ -2854,6 +2863,10 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const purse = surv.cash;
   check(cf.buyShip("ossuary") === true, "could not go back to a ship already owned");
   check(surv.cash === purse, "swapping to an owned ship cost " + (purse - surv.cash));
+  // Swapping is home-only as well: owning one out there is not flying it.
+  surv.docked = { x: 180000, y: -90000 };
+  check(cf.flyShip("skiff") === false, "swapped ships at an ordinary station");
+  surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
 
   // A hold that does not fit the new hull is left on the dock rather than lost
   // silently or carried impossibly.
@@ -3056,6 +3069,88 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   console.log("  opening    starts docked at the station on a " +
               Math.round(v.water.frac * 100) + "% tank · water, then the yard, " +
               "then what it is worth · each beat once · a resumed sector is quiet");
+}
+
+// ── which pages stop the clock ────────────────────────────────────────────
+/* A page that pauses the world is a page you can hide in, and the chart and the
+   storage manifest are precisely the two anyone would hide in — two tanks are
+   draining and there are things out there that move. So the world keeps running
+   behind the chart, storage, missions and the almanac, and stops at a station,
+   which is where you are docked and doing business. */
+{
+  const { cf } = boot("?debug=1&seed=515152");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const runs = (page, docked) => {
+    surv.docked = docked ? { x: 0, y: 0 } : null;
+    cf.screen(page);
+    const w0 = surv.water, x0 = me.x;
+    me.vx = 200; me.vy = 0;
+    for (let i = 0; i < 120; i++) { me.invuln = 3; now += 1000 / 60; cf.step(); }
+    return Math.abs(me.x - x0) > 20 || (w0 - surv.water) > 1;
+  };
+  for (const p of ["chart", "inventory", "missions", "almanac"]) {
+    check(runs(p, false), "the world stops behind the " + p + " page");
+  }
+  for (const p of ["refit", "hangar"]) {
+    check(!runs(p, true), "the world keeps running at a station (" + p + ")");
+  }
+  check(runs("playing", false), "the world stops while you are flying it");
+
+  // And a dead ship stops it whatever page is up.
+  cf.die("rock");
+  const before = surv.water;
+  for (let i = 0; i < 120; i++) { now += 1000 / 60; cf.step(); }
+  check(Math.abs(surv.water - before) < 0.5, "the tanks drained while you were dead");
+  console.log("  clock      runs behind the chart, storage, missions and almanac \u00b7 " +
+              "stops at a station and when you are dead");
+}
+
+// ── an armed neutral fights back ──────────────────────────────────────────
+/* A patrol that took fire and carried on politely shooting at sentries was not a
+   neutral, it was a target: being unable to defend itself is not the same as not
+   wanting to. A hauler is genuinely unarmed and must not suddenly grow guns. */
+{
+  const { cf } = boot("?debug=1&seed=515153");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const put = (kind, hull) => {
+    const t = { id: "t-" + kind, kind, hull, x: me.x + 500, y: me.y, a: Math.PI,
+                from: { x: me.x + 500, y: me.y }, to: { x: me.x + 3000, y: me.y },
+                leg: 1, speed: 120, hp: 40, maxHp: 40, cargo: ["iron"],
+                cool: 0, doom: 0, guards: 0, phase: 0 };
+    surv.traffic.length = 0; surv.drones.length = 0; surv.shots.length = 0;
+    surv.traffic.push(t);
+    return t;
+  };
+  const shoot = t => {
+    cf.live().bullets.push({ owner: 0, colour: "#fff", dmg: 1,
+                             x: t.x, y: t.y, vx: 0, vy: 0, life: 1 });
+    now += 1000 / 60; cf.step();
+  };
+
+  // A patrol, shot at, comes for you and its rounds are live.
+  const patrol = put("patrol", "harrier");
+  check(!patrol.angry, "a patrol started out angry");
+  shoot(patrol);
+  check(patrol.angry === true, "shooting a patrol did not anger it");
+  const away = Math.hypot(patrol.x - me.x, patrol.y - me.y);
+  for (let i = 0; i < 180; i++) { me.invuln = 3; now += 1000 / 60; cf.step(); }
+  check(Math.hypot(patrol.x - me.x, patrol.y - me.y) < away,
+        "an angry patrol did not close on the ship");
+  check(surv.shots.some(b => !b.friendly),
+        "an angry patrol never fired a round that could hit you");
+
+  // A hauler is unarmed and stays that way.
+  const hauler = put("hauler", "drayman");
+  shoot(hauler);
+  check(!hauler.angry, "a hauler grew a temper");
+  for (let i = 0; i < 180; i++) { me.invuln = 3; now += 1000 / 60; cf.step(); }
+  check(!surv.shots.some(b => !b.friendly), "an unarmed hauler shot back");
+  console.log("  reprisal   shoot a patrol and it closes and fires live rounds \u00b7 " +
+              "a hauler cannot and does not");
 }
 
 if (problems.length) {

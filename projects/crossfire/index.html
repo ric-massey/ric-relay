@@ -4508,8 +4508,6 @@
       cost: [160, 380, 760] },
     { key: "thrust",  name: "DRIVE",         note: "faster, and quicker to it",
       cost: [140, 340, 680] },
-    { key: "hold",    name: "STORAGE BAY",   note: "+45 units carried",
-      cost: [120, 280, 600] },
     { key: "scanner", name: "SCANNER",       note: "how far a pulse reaches",
       cost: [180, 440, 880] }
   ];
@@ -4521,7 +4519,7 @@
      rather than behind money. Each one changes how the sector is crossed. */
   const UNLOCKS = [
     { key: "tractor", at: 6,  name: "TRACTOR BEAM",
-      note: "cash comes to you, out to " + SURVEY_TRACTOR + " units" },
+      note: "loose salvage comes to you, out to " + SURVEY_TRACTOR + " units" },
     { key: "warp",    at: 12, name: "WARP TUNING",
       note: "a gate drops you at the nearest thing you have not logged" },
     { key: "cloak",   at: 18, name: "RUNNING DARK",
@@ -4799,7 +4797,7 @@
      chart you made of it and the line you flew. Both of the big ones are packed
      and run-length encoded by the interface module rather than written as JSON;
      see `exportFog` there for why. */
-  const freshRefit = () => ({ hull: 0, thrust: 0, hold: 0, scanner: 0 });
+  const freshRefit = () => ({ hull: 0, thrust: 0, scanner: 0 });
 
   function loadSurveyBook() {
     const empty = { seed: 0, found: [], fog: "", cash: 0, deaths: 0, waypoint: null,
@@ -6142,10 +6140,13 @@
 
       /* A route, walked end to end. `leg` is which way along it, so a ship met
          twice is the same ship going about its day rather than a new one. */
-      const goal = t.leg > 0 ? t.to : t.from;
+      /* An angry patrol stops patrolling. It closes on you instead, which is the
+         only readable way for a neutral to say it has changed its mind. */
+      const goal = (t.angry && me.alive) ? { x: me.x, y: me.y }
+                 : t.leg > 0 ? t.to : t.from;
       const dx = goal.x - t.x, dy = goal.y - t.y;
       const d = Math.hypot(dx, dy) || 1;
-      if (d < 220) { t.leg = -t.leg; continue; }
+      if (d < 220) { if (!t.angry) t.leg = -t.leg; continue; }
       const want = Math.atan2(dy, dx);
       let diff = want - t.a;
       while (diff > Math.PI) diff -= Math.PI * 2;
@@ -6160,18 +6161,28 @@
       if (t.kind === "patrol") {
         t.cool -= dt;
         if (t.cool <= 0) {
-          let best = null, bd = 1500 * U;
-          for (const dr of surv.drones) {
-            const dd = Math.hypot(dr.x - t.x, dr.y - t.y);
-            if (dd < bd) { bd = dd; best = dr; }
+          /* Angry, it comes for you and its rounds are live. Otherwise it looks
+             for the nearest sentry, and its rounds cannot touch you at all. */
+          let tx = null, ty = null, live = false;
+          if (t.angry && me.alive) {
+            const dd = Math.hypot(me.x - t.x, me.y - t.y);
+            if (dd < 1800 * U) { tx = me.x; ty = me.y; live = true; }
           }
-          if (best) {
-            t.cool = 0.5;
-            const a = Math.atan2(best.y - t.y, best.x - t.x);
+          if (tx == null) {
+            let best = null, bd = 1500 * U;
+            for (const dr of surv.drones) {
+              const dd = Math.hypot(dr.x - t.x, dr.y - t.y);
+              if (dd < bd) { bd = dd; best = dr; }
+            }
+            if (best) { tx = best.x; ty = best.y; }
+          }
+          if (tx != null) {
+            t.cool = t.angry ? 0.42 : 0.5;
+            const a = Math.atan2(ty - t.y, tx - t.x);
             surv.shots.push({
               x: t.x + Math.cos(a) * 20 * U, y: t.y + Math.sin(a) * 20 * U,
               vx: Math.cos(a) * 360 * U, vy: Math.sin(a) * 360 * U,
-              life: 2.2, friendly: true
+              life: 2.2, friendly: !live
             });
             gameSound("shot", t.x);
           } else t.cool = 1.2;
@@ -6527,9 +6538,12 @@
     return !!u && surv.found.size >= u.at;
   }
 
-  // The hull's own hold, plus what the storage track adds to it.
-  const holdCap = () =>
-    (surv ? shipSpec(surv.ship).cargo : SURVEY_HOLD) + tier("hold") * 45;
+  /* How much you can carry is the *ship's*, full stop. It used to have a refit
+     track on top of it, which made two different things — which hull you fly and
+     how much you have spent — both answer the same question, and made the 50×
+     spread across the roster mean less than it should. Cargo is a reason to buy
+     a different ship now, and nothing else changes it. */
+  const holdCap = () => (surv ? shipSpec(surv.ship).cargo : SURVEY_HOLD);
 
   /* How far a pulse reaches. This is the only thing the scanner track buys, and
      it is the only thing it ever claimed to buy that could be felt. */
@@ -7121,6 +7135,11 @@
         spent = true;
         t.hp -= (b.dmg || 1);
         t.hit = 0.12;
+        /* Shot at, and armed. A patrol that took fire and carried on politely
+           shooting at sentries was not a neutral, it was a target — being unable
+           to defend itself is not the same thing as not wanting to fight. Anger
+           does not wear off: you started it, and it has a long memory. */
+        if (t.kind === "patrol") t.angry = true;
         burst(b.x, b.y, TRAFFIC_COLOUR[t.kind] || WRECK, 5, 120 * U);
         if (t.hp <= 0) killTraffic(i, true); else gameSound("hit", t.x);
       }
@@ -7329,8 +7348,16 @@
      nothing but the walk. The alternative — selling the old hull to pay for the
      new one — would make every experiment a commitment, and the whole point of
      twenty-five of them is that you find out which one you like. */
+  /* Your home station, and only there. A hangar at every station would make the
+     twenty-five hulls a menu you flick through whenever the mood takes you;
+     keeping them in one place means the ship you left home in is the ship you
+     are stuck with out there, which is most of what makes choosing one a
+     decision rather than a preference. */
+  const atHomeStation = () =>
+    !!(surv && surv.docked && surv.docked.home);
+
   function buyShip(key) {
-    if (!surv || !surv.docked) { gameSound("hit"); return false; }
+    if (!surv || !atHomeStation()) { gameSound("hit"); return false; }
     const sh = SHIPS.find(x => x.key === key);
     if (!sh) return false;
     if (!surv.owned.has(key)) {
@@ -7343,7 +7370,9 @@
   }
 
   function flyShip(key) {
-    if (!surv || !surv.owned.has(key)) { gameSound("hit"); return false; }
+    if (!surv || !surv.owned.has(key) || !atHomeStation()) {
+      gameSound("hit"); return false;
+    }
     const was = surv.ship;
     surv.ship = key;
     const me = ships[0];
@@ -8491,6 +8520,9 @@
         return MATERIALS.reduce((t, m) => t + (surv.hold[m.key] || 0) * pr[m.key], 0);
       })(),
       onSell: sellHold,
+      // Who is out there, and whether any of them has decided about you.
+      traffic: surv.traffic.map(t => ({ kind: t.kind, hull: t.hull,
+                                        x: t.x, y: t.y, angry: !!t.angry })),
       /* Life support. Seconds rather than fractions, and the fraction alongside,
          because the bar wants one and the readout wants the other. */
       water: { left: surv.water, full: WATER_FULL,
@@ -8611,7 +8643,12 @@
          The hull bar was drawing a bar of width NaN and nothing said a word. */
       shipName: shipSpec(surv.ship).name,
       onBuyShip: buyShip,
-      onHangar: () => { if (surv.docked) state = "hangar"; },
+      atHome: atHomeStation(),
+      onHangar: () => {
+        if (!atHomeStation()) return;
+        state = "hangar";
+        surveyHUD && surveyHUD.hangarOpened && surveyHUD.hangarOpened(surveyState());
+      },
       /* The waypoint, and the two numbers the flight HUD needs to point at it.
          Bearing is in the same degrees the gravity warning uses, so the two
          readouts on the same screen cannot mean different things. */
@@ -8640,6 +8677,8 @@
       onChart: () => { state = "chart"; surveyHUD.chartOpened(surveyState()); },
       onAlmanac: () => { state = "almanac"; },
       onInventory: () => { state = "inventory"; },
+      // The nav strip's own destination for the station itself.
+      onStation: () => { if (surv.docked) { state = "refit"; surveyHUD && surveyHUD.refitOpened(); } },
       onMissions: () => { state = "missions"; },
       onYard: () => { if (surv.atYard) state = "yard"; },
       onClose: () => { state = "playing"; }
@@ -8865,7 +8904,24 @@
     ((state === "controls" || state === "thumb") && backFrom === "menu")
   );
 
-  const worldRunning = () => state === "playing" || onlineMenuOpen();
+  /* ── which pages stop the clock ───────────────────────────────────────────
+     Not all of them, and the split is a design decision rather than a technical
+     one. Survey is a survival game with two tanks draining and things out there
+     that move; a page that pauses the world is a page you can hide in, and the
+     chart and your storage manifest are exactly the two you would hide in.
+
+     So the world keeps running behind the chart, storage, the missions list and
+     the almanac. Your hands are off the controls — the arrows are panning a map
+     — so the ship coasts, and the tanks keep going down while you read. That is
+     the honest version: looking at the map costs you something.
+
+     A station stops the clock, because you are docked and doing business, and so
+     does the pause key, because that is what a pause key is for. And the death
+     page stops it because there is nothing left to run. */
+  const SURVEY_LIVE_PAGES = { chart: 1, inventory: 1, missions: 1, almanac: 1 };
+  const surveyLive = () =>
+    mode && mode.survey && surv && !surv.death && SURVEY_LIVE_PAGES[state];
+  const worldRunning = () => state === "playing" || surveyLive() || onlineMenuOpen();
 
   function sharedMatchState() {
     if (onlineMenuOpen()) return "playing";
@@ -9354,7 +9410,8 @@
   let pageDrag = null;
   const DRAG_SLOP = 7;          // screen units before a press becomes a drag
 
-  const scrollingPage = () => state === "almanac" || state === "chart";
+  const scrollingPage = () =>
+    state === "almanac" || state === "chart" || state === "hangar";
 
   canvas.addEventListener("wheel", e => {
     if (!surv || !surveyHUD) return;
@@ -9364,6 +9421,9 @@
              : e.deltaY;
     if (state === "almanac") {
       surveyHUD.almanacDragBy(px, SURVEY_TOTAL);
+      e.preventDefault();
+    } else if (state === "hangar") {
+      surveyHUD.hangarDragBy(px, SHIPS.length);
       e.preventDefault();
     } else if (state === "chart") {
       // On a map the wheel is zoom, not pan — that is what every map does.
@@ -9379,6 +9439,7 @@
     pageDrag.moved += Math.abs(dx) + Math.abs(dy);
     // Content follows the finger: drag down and you see what was above.
     if (state === "almanac") surveyHUD.almanacDragBy(-dy, SURVEY_TOTAL);
+    else if (state === "hangar") surveyHUD.hangarDragBy(-dy, SHIPS.length);
     else if (state === "chart") surveyHUD.chartDragBy(dx, dy);
     pageDrag.x = p.x; pageDrag.y = p.y;
     e.preventDefault();

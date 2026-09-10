@@ -398,6 +398,44 @@
 
   /* One way out, the same shape on both platforms: a key that is already muscle
      memory and a target big enough for a thumb, drawn as one thing. */
+  /* ── moving between pages ─────────────────────────────────────────────────
+     Six pages reachable only by flying back out to the sector and pressing a
+     different key. That is fine on a keyboard and it is close to unusable on a
+     phone, where the keys do not exist — the way into the almanac was a button
+     inside the inventory, and the way into the inventory was a button on the
+     flight panel, and the way out of both was the sector.
+
+     So every page carries the same strip: where you can go from here, which one
+     you are on, and the way out. It sits on the footer line because that is the
+     one row every page already reserves and, on a phone, the row a thumb is
+     already resting on.
+
+     A destination you cannot reach from here is dimmed rather than removed —
+     the strip has to be in the same order and the same places on every page, or
+     it stops being navigation and becomes six different rows of buttons. */
+  function pageNav(st, here) {
+    const { SCREEN_H } = api;
+    const docked = !!st.docked;
+    const tabs = [
+      { key: "refit",     name: "STATION",  live: docked, act: st.onStation },
+      { key: "hangar",    name: "HANGAR",   live: !!st.atHome, act: st.onHangar },
+      { key: "inventory", name: "STORAGE",  live: true,   act: st.onInventory },
+      { key: "missions",  name: "MISSIONS", live: true,   act: st.onMissions },
+      { key: "almanac",   name: "ALMANAC",  live: true,   act: st.onAlmanac },
+      { key: "chart",     name: "CHART",    live: true,   act: st.onChart }
+    ];
+    // Wide enough for MISSIONS at the module's own type without ellipsis, and
+    // narrow enough that six of them clear the close button on the right.
+    const w = 116, gap = 9;
+    tabs.forEach((t, i) => {
+      const cx = PAGE.EDGE + w / 2 + i * (w + gap);
+      const on = t.key === here;
+      button(t.name, cx, SCREEN_H - 30, w, 38,
+             on ? VIOLET : t.live ? VIOLET_DIM : VIOLET_LOW,
+             on || !t.live ? null : t.act, on, t.live && !on, "0.06em");
+    });
+  }
+
   function closeButton(act) {
     const { SCREEN_W, SCREEN_H } = api;
     button(api.touchOnly ? "CLOSE" : "CLOSE  [ESC]",
@@ -481,12 +519,16 @@
     /* Named where it has a name. "SUPERMASSIVE BLACK HOLE" is a category and
        "TORIS MAW" is a place — and the whole point of naming them was that the
        one you have to plan around becomes a thing you can talk about. */
+    /* Held clear of the right-hand column. On a phone the panel chart is pushed
+       left to leave the pause button room, and this line — the widest on the
+       warning — was drawn straight through the minimap's border. */
+    const clear = (panelBox().x - 30 - SCREEN_W / 2) * 2;
     fitText((w.name ? w.name + "   ·   " : "") +
             (w.big ? "SUPERMASSIVE " : "") +
             (w.kind === "hole" ? "BLACK HOLE" : "STAR") +
             "   ·   BEARING " + String(w.bearing).padStart(3, "0"),
             SCREEN_W / 2, y + 24, SIZE.cap, w.colour, "center", 0.85,
-            SCREEN_W - 120, "0.1em");
+            Math.max(320, Math.min(SCREEN_W - 120, clear)), "0.1em");
     if (w.ratio >= 1) {
       label("BURN AWAY — YOUR DRIVE WILL NOT LIFT YOU OUT",
             SCREEN_W / 2, y + 46, SIZE.cap, w.colour, "center", beat);
@@ -1204,6 +1246,11 @@
 
      Through the camera's rotation, like the contacts: the main view is
      player-up, and an arrow that ignored that would point at the wrong sky. */
+  /* Yellow, on Ric's call, and it is the right choice: nothing else on the
+     flight screen is this colour, so the one thing that means "you decided to go
+     there" cannot be confused with a scan return, a material or a warning. */
+  const WAYPOINT = "#ffd23f";
+
   function drawWaypointArrow(st) {
     const w = st.waypoint;
     if (!w) return;
@@ -1219,7 +1266,7 @@
     const here = px > 30 && px < SCREEN_W - 30 && py > 30 && py < SCREEN_H - 30;
     if (here) {
       ctx.save();
-      ctx.strokeStyle = ICE;
+      ctx.strokeStyle = WAYPOINT;
       ctx.globalAlpha = 0.55 + 0.25 * Math.abs(Math.sin(Date.now() / 480));
       ctx.lineWidth = 1.6;
       ctx.beginPath();
@@ -1230,7 +1277,7 @@
       ctx.moveTo(px, py + 8); ctx.lineTo(px, py + 26);
       ctx.stroke();
       ctx.restore();
-      label(fmtCells(w.dist) + "u", px, py + 42, SIZE.cap, ICE, "center", 0.8);
+      label(fmtCells(w.dist) + "u", px, py + 42, SIZE.cap, WAYPOINT, "center", 0.8);
       return;
     }
 
@@ -1245,14 +1292,14 @@
     ctx.save();
     ctx.translate(ex, ey);
     ctx.rotate(ang);
-    api.glow(ICE, 2, 0.85, () => {
+    api.glow(WAYPOINT, 2, 0.85, () => {
       ctx.beginPath();
       ctx.moveTo(-9, -10); ctx.lineTo(9, 0); ctx.lineTo(-9, 10);
       ctx.closePath();
       ctx.stroke();
     });
     ctx.restore();
-    label(fmtCells(w.dist) + "u", ex, ey + 30, SIZE.cap, ICE, "center", 0.85);
+    label(fmtCells(w.dist) + "u", ex, ey + 30, SIZE.cap, WAYPOINT, "center", 0.85);
   }
 
   /* The pulse has no gameplay effect — the contacts are already in the list —
@@ -1333,7 +1380,7 @@
     const { ctx } = api;
     const x = mx(w.x), y = my(w.y), r = big ? 9 : 5;
     ctx.save();
-    ctx.strokeStyle = ICE;
+    ctx.strokeStyle = WAYPOINT;
     ctx.globalAlpha = 0.95;
     ctx.lineWidth = big ? 2 : 1.5;
     ctx.beginPath();
@@ -1344,7 +1391,7 @@
     ctx.restore();
     if (big) {
       label("WAYPOINT  " + fmtCells(w.dist) + "u", x, y + r * 2.6 + 12,
-            SIZE.cap, ICE, "center", 0.8);
+            SIZE.cap, WAYPOINT, "center", 0.8);
     }
   }
 
@@ -1567,7 +1614,7 @@
             ? verb + " ANYWHERE TO SET THE WAYPOINT"
             : verb + " THE MAP TO PIN  ·  " + verb + " A PIN TO LIFT IT",
           34, SCREEN_H - 104, SIZE.cap,
-          chart.jump ? CASH : chart.mark ? ICE : VIOLET_LOW, "left", 0.8);
+          chart.jump ? CASH : chart.mark ? WAYPOINT : VIOLET_LOW, "left", 0.8);
 
     /* Which step you are on, and how wide the view actually is. Zoom without a
        readout is a control you cannot tell is working — especially at the wide
@@ -1632,7 +1679,7 @@
        at it. Armed the same way the wormhole is, because that gesture is already
        learned by the time anyone has a wormhole. */
     button(chart.mark ? "CANCEL" : st.waypoint ? "MOVE  ▸" : "WAYPOINT  ▸",
-                  560, SCREEN_H - 30, 130, 38, chart.mark ? WARN : ICE,
+                  560, SCREEN_H - 30, 130, 38, chart.mark ? WARN : WAYPOINT,
                   () => { chart.mark = !chart.mark; chart.jump = false; },
                   chart.mark);
     if (canJump) {
@@ -1859,9 +1906,10 @@
     almanac.scroll = Math.max(0, Math.min(almanac.scroll, Math.max(0, totalRows - L.rows)));
 
     pageFrame("ALMANAC",
-              found + " OF " + entries.length + " LOGGED",
-              api.touchOnly ? "TAP AN ENTRY  ·  DRAG TO SCROLL"
-                            : "ARROWS MOVE  ·  SCROLL OR DRAG  ·  L OR ESC CLOSES");
+              found + " OF " + entries.length + " LOGGED" +
+              (totalRows > L.rows ? (api.touchOnly ? "  ·  DRAG TO SCROLL"
+                                                   : "  ·  SCROLL OR ARROWS") : ""),
+              "");   // the nav strip has the footer line
 
     const viewH = L.rows * (L.cardH + L.gap) - L.gap;
     ctx.save();
@@ -1893,17 +1941,17 @@
       ctx.globalAlpha = 0.85;
       ctx.fillRect(SCREEN_W - 28, trackY + t * (trackH - h), 3, h);
       ctx.restore();
-      if (api.touchOnly) {
-        button("▲", 60, SCREEN_H - 30, 46, 38, VIOLET,
-                      () => HUD.almanacScrollBy(-1, entries.length));
-        button("▼", 114, SCREEN_H - 30, 46, 38, VIOLET,
-                      () => HUD.almanacScrollBy(1, entries.length));
-      }
+      /* No scroll buttons on the footer line any more — the page navigation
+         lives there now, and two arrows drawn through the STATION tab is worse
+         than no arrows at all. Dragging scrolls the page and always has, which
+         is the gesture a phone reaches for first anyway; the heading says so, so
+         nobody has to discover it. */
     }
     if (almanac.open >= 0 && entries[almanac.open]) {
       drawEntryDetail(entries[almanac.open], st);
     } else {
-      closeButton(st.onClose || (() => {}));
+      pageNav(st, "almanac");
+    closeButton(st.onClose || (() => {}));
     }
   };
 
@@ -2437,8 +2485,7 @@
     const L = COL(2, 0), R = COL(2, 1);
 
     pageFrame("STATION", "CASH  " + cash,
-              api.touchOnly ? "TAP TO BUY  \u00b7  UNDOCK BELOW"
-                            : "ARROWS MOVE  \u00b7  ENTER BUYS  \u00b7  S SELLS  \u00b7  E UNDOCKS");
+              "");   // the nav strip has the footer line
 
     /* ── what it pays ──────────────────────────────────────────────────────
        The selling half leads the page because it is what you came here to do.
@@ -2459,8 +2506,11 @@
             x + cellW - 22, yy, SIZE.cap, m.n ? CASH : VIOLET_LOW, "right",
             m.n ? 0.95 : 0.4);
     });
+    /* Centred on the content row rather than on the panel, and short enough to
+       clear the title band above it. Centred on the panel it sat 9px too high and
+       its top edge ran straight through "N UNITS ABOARD". */
     button(carried ? "SELL ALL   " + (st.worth || 0) : "NOTHING TO SELL",
-           full.x + full.w - 114, PAGE.TOP + buyH / 2, 200, 40,
+           full.x + full.w - 114, ROW(PAGE.TOP, 0) - 4, 200, 32,
            carried ? CASH : VIOLET_LOW, st.onSell, false, !!carried);
 
     /* ── the chandler ──────────────────────────────────────────────────────
@@ -2469,19 +2519,24 @@
        use when you are down to four minutes of water. */
     const supY = PAGE.TOP + buyH + PAGE.STEP;
     panel(full.x, supY, full.w, buyH, ICE, "SUPPLIES");
+    /* Two halves of the panel's inside width rather than a hard 300 apart. At 300
+       the water block's FILL button ran to x 359 and the food block began at 354,
+       so the button's edge was drawn through the word FOOD. Halves cannot
+       overlap, whatever the panel is doing. */
+    const supIn = full.w - PAGE.PAD * 2, supHalf = supIn / 2;
     [["water", "WATER", ICE], ["food", "FOOD", AMBER_DIM]].forEach(([k, name, col], i) => {
       const m = st[k] || {};
       const done = m.cost == null;
       const afford = !done && cash >= m.cost;
-      const x = full.x + PAGE.PAD + i * 300;
+      const x = full.x + PAGE.PAD + i * supHalf;
       const yy = ROW(supY, 0);
       label(name, x, yy, SIZE.cap, m.countdown > 0 ? WARN : col, "left", 0.9, "0.14em");
       label(m.countdown > 0 ? fmtSecs(m.countdown)
                             : Math.round((m.frac || 0) * 100) + "%",
             x + 84, yy, SIZE.cap, m.countdown > 0 ? WARN : col, "left", 0.95);
-      barAt(x + 132, yy - 9, 66, 8, m.frac || 0, col, m.countdown > 0);
-      button(done ? "FULL" : "FILL  " + m.cost, x + 250, supY + buyH / 2,
-             110, 34, done ? VIOLET_LOW : afford ? col : WARN,
+      barAt(x + 142, yy - 9, 92, 8, m.frac || 0, col, m.countdown > 0);
+      button(done ? "FULL" : "FILL  " + m.cost, x + supHalf - 82, yy - 4,
+             130, 32, done ? VIOLET_LOW : afford ? col : WARN,
              done ? null : () => st.onBuySupply && st.onBuySupply(k),
              false, !done && afford);
     });
@@ -2530,11 +2585,15 @@
     panel(R.x, colY, R.w, earnH, VIOLET, "EARNED, NOT BOUGHT", "PAID IN LOOKING");
     unlocks.forEach((u, i) => {
       const yTop = ROW(colY, i * 2), yBot = ROW(colY, i * 2 + 1) - 6;
-      fitText(u.have ? u.name : "LOCKED", R.x + PAGE.PAD, yTop, SIZE.cap,
-              u.have ? VIOLET : VIOLET_LOW, "left", u.have ? 1 : 0.6, R.w - 140,
+      /* A locked one says its own name. Three rows all reading "LOCKED" told you
+         there were three of something and nothing about what — and the only
+         reason to show them at all is that they are a reason to go and look. */
+      fitText(u.name, R.x + PAGE.PAD, yTop, SIZE.cap,
+              u.have ? VIOLET : VIOLET_LOW, "left", u.have ? 1 : 0.55, R.w - 140,
               "0.08em");
-      fitText(u.have ? u.note : u.at + " almanac entries", R.x + PAGE.PAD, yBot,
-              SIZE.cap, VIOLET_DIM, "left", u.have ? 0.75 : 0.5, R.w - 60);
+      fitText(u.have ? u.note : "locked — find " + u.at + " almanac entries",
+              R.x + PAGE.PAD, yBot, SIZE.cap, VIOLET_DIM, "left",
+              u.have ? 0.75 : 0.5, R.w - 60);
       label(u.have ? "\u2713" : "\u00b7", R.x + R.w - PAGE.PAD, yTop, SIZE.cap,
             u.have ? CASH : VIOLET_LOW, "right", u.have ? 1 : 0.5);
     });
@@ -2542,17 +2601,24 @@
     /* The shipyard. A door rather than a panel: the hull is the bigger decision
        by an order of magnitude — a tier of drive costs a hundred and forty and a
        Cathedral costs a hundred and twelve thousand. */
-    button("HANGAR  \u25b8    " + (st.shipName || "SKIFF"),
-           R.x + R.w / 2, colY + earnH + PAGE.STEP + 10, R.w, 44, VIOLET,
-           st.onHangar || (() => {}));
+    /* "HANGAR \u25b8 SKIFF" told you nothing: a SKIFF is a word you have never
+       seen, and the button read as though the hangar were called one. It says
+       what it is for, and what you are in, in that order. */
+    const doorY = colY + earnH + PAGE.STEP + 10;
+    const home = !!st.atHome;
+    button(home ? "HANGAR  \u25b8    BUY A SHIP" : "HANGAR  \u00b7  HOME STATION ONLY",
+           R.x + R.w / 2, doorY, R.w, 44, home ? VIOLET : VIOLET_LOW,
+           home ? (st.onHangar || (() => {})) : null, false, home);
+    label(home ? "you fly the " + (st.shipName || "SKIFF")
+               : "you fly the " + (st.shipName || "SKIFF") +
+                 "  \u00b7  ships change hands at home",
+          R.x + R.w / 2, doorY + 40, SIZE.cap, VIOLET_DIM, "center", 0.6);
 
-    label("the almanac pays in verbs \u00b7 storage pays in numbers",
-          SCREEN_W - PAGE.EDGE, SCREEN_H - 70, SIZE.cap, VIOLET_LOW, "right", 0.6);
+    label("ARROWS MOVE  \u00b7  ENTER BUYS  \u00b7  S SELLS  \u00b7  E UNDOCKS",
+          SCREEN_W - PAGE.EDGE, SCREEN_H - 70, SIZE.cap, VIOLET_LOW, "right", 0.55);
 
-    if (api.touchOnly) {
-      button("UNDOCK", SCREEN_W / 2, SCREEN_H - 30, 200, 38, VIOLET,
-             st.onUndock || (() => {}));
-    }
+    pageNav(st, "refit");
+    closeButton(st.onUndock || st.onClose || (() => {}));
   };
 
   /* ═══ THE INVENTORY ═══════════════════════════════════════════════════════
@@ -2570,8 +2636,7 @@
 
     pageFrame("INVENTORY",
               (st.world ? st.world.name + "  \u00b7  " : "") + "SEED " + (st.seed || 0),
-              api.touchOnly ? "TAP A PANEL  \u00b7  CLOSE BELOW"
-                            : "I OR ESC CLOSES  \u00b7  M CHART  \u00b7  L ALMANAC");
+              "");
 
     /* ── the two doors ─────────────────────────────────────────────────────
        The almanac was a line of small type in the corner of a panel further down
@@ -2669,6 +2734,7 @@
               SIZE.cap, VIOLET_DIM, "right", u.have ? 0.6 : 0.5, 190);
     });
 
+    pageNav(st, "inventory");
     closeButton(st.onClose || (() => {}));
   };
 
@@ -2700,7 +2766,7 @@
      draws its label at a hard 18px, which sat a pixel off every heading on every
      page — two "medium" sizes doing one job, one of them from a different file.
      Same rectangle, same tap registration, the pages' own scale. */
-  function button(text, cx, cy, w, h, colour, act, on, live) {
+  function button(text, cx, cy, w, h, colour, act, on, live, track) {
     const { ctx } = api;
     const enabled = live === undefined ? true : !!live;
     ctx.save();
@@ -2713,7 +2779,7 @@
     ctx.strokeRect(cx - w / 2, cy - h / 2, w, h);
     ctx.restore();
     fitText(text, cx, cy + 6, SIZE.cap, colour, "center",
-            enabled ? 1 : 0.35, w - 20, "0.12em");
+            enabled ? 1 : 0.35, w - 18, track === undefined ? "0.12em" : track);
     if (enabled && typeof act === "function") {
       api.addTap({ x: cx - w / 2, y: cy - h / 2, w, h, act });
     }
@@ -2754,8 +2820,7 @@
 
     pageFrame(st.atYard ? "THE YARD" : "MISSIONS",
               done + " OF " + need + " FITTED",
-              api.touchOnly ? "CLOSE BELOW"
-                            : st.atYard ? "E OR ESC LEAVES" : "ESC OR I CLOSES");
+              "");
 
     /* ── what is being built ───────────────────────────────────────────────
        The ring stays: it is the same shape the yard draws out in the world, one
@@ -2840,6 +2905,7 @@
       }
     }
 
+    pageNav(st, "missions");
     closeButton(st.onClose || (() => {}));
   };
 
@@ -3067,6 +3133,17 @@
     hangar.scroll = Math.max(0, Math.min(Math.max(0, rows - SHIP_ROWS), hangar.scroll));
   }
 
+  /* The hangar scrolls too. Twenty-five hulls, and on a phone the grid is two
+     across and three down — six visible of twenty-five, with the other nineteen
+     reachable only by arrow keys a phone does not have. Drag and wheel both move
+     it, the way they already move the almanac. */
+  HUD.hangarDragBy = function (dy, n) {
+    const rows = Math.ceil(n / SHIP_COLS());
+    hangar.scroll = Math.max(0, Math.min(Math.max(0, rows - SHIP_ROWS),
+                                         hangar.scroll + dy / 130));
+  };
+  HUD.hangarCanScroll = n => Math.ceil(n / SHIP_COLS()) > SHIP_ROWS;
+
   HUD.hangarKey = function (code, st) {
     const list = (st && st.ships) || [];
     if (!list.length) return false;
@@ -3130,9 +3207,8 @@
     hangar.pick = Math.max(0, Math.min(list.length - 1, hangar.pick));
 
     pageFrame("HANGAR",
-              "FLYING THE " + (st.shipName || "SKIFF") + "  \u00b7  CASH  " + (st.cash || 0),
-              api.touchOnly ? "TAP A HULL  \u00b7  TAP AGAIN TO TAKE IT"
-                            : "ARROWS MOVE  \u00b7  ENTER BUYS OR SWAPS  \u00b7  ESC CLOSES");
+              "YOUR SHIP: " + (st.shipName || "SKIFF") + "  \u00b7  CASH  " + (st.cash || 0),
+              "");
 
     /* A catalogue, laid out like the almanac for the same reason the almanac is
        laid out that way: the picture is the point, and nobody ever picked a ship
@@ -3243,6 +3319,7 @@
              : () => st.onBuyShip && st.onBuyShip(sh.key),
            false, !sh.flying && reach);
 
+    pageNav(st, "hangar");
     closeButton(st.onClose || (() => {}));
   };
 

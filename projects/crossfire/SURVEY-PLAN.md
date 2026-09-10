@@ -677,6 +677,153 @@ on the same columns as everything else.
 
 ---
 
+## The loop, stated
+
+> **Explore → find stuff → bring it home → improve your ship → go farther.**
+
+Ric's sentence, and it carries the whole game. Everything below is judged against
+it: a feature that does not sit on one of those five verbs is a feature that is
+making the game bigger rather than better. The five long-term tracks in Phase 5
+are the same sentence read as *progression* rather than as a loop.
+
+---
+
+## Phase 5 — consequence, and things worth going out for
+
+The next phase. Everything here came out of playing it, and the shape of it is
+that the mode currently rewards going farther but does not yet make going farther
+*change* anything about how the sector treats you.
+
+### 5.1 A reputation, and no number for it
+
+The more innocent people you kill, the more ships want to kill you.
+
+Deliberately **not a number on the HUD**. No bar, no faction table, no "-12
+reputation" toast. It lives in the background and you read it off the world:
+patrols that used to ignore you start shadowing you, then start shooting first;
+haulers change course when they see you coming; the density of armed traffic near
+your usual stations goes up. If a player can tell you the number, it has been
+built wrong.
+
+The armed-neutral reprisal is already in — shoot a patrol and it closes on you and
+fires live rounds. That is one ship's opinion. This is the sector's, and it
+persists.
+
+Two things it must not become: a morality meter that scolds you, and a wall that
+locks you out of stations. Piracy has to stay *playable* — expensive, and
+increasingly dangerous, which is a different thing from forbidden.
+
+### 5.2 Modules, slots, and time to install
+
+The big one, and the thing most of the rest hangs off.
+
+**Ships get a fixed number of upgrade slots.** The starter gets four; the rest
+differ, and the count is a balancing lever as much as the five stats are — a
+scout with two slots and a hauler with eight are different games. Slots are a
+*ship* property, like cargo: you change how many you have by changing what you
+fly, never by paying.
+
+**Everything you bolt on is a part in a slot.** Not a tier on a list — a thing
+you bought or made, fitted to a hull that has room for it. That includes what are
+currently refit tracks and almanac verbs both:
+
+| today | becomes |
+|---|---|
+| HULL PLATING tier | a plating part, fitted |
+| DRIVE tier | a drive part, fitted |
+| SCANNER tier | a scanner part, fitted — **upgradeable by paying or by crafting** |
+| TRACTOR BEAM (almanac) | a part the almanac gives you the recipe for |
+| WARP TUNING, RUNNING DARK | the same |
+
+Hull and speed staying buyable is fine — what has to change is that it reads as
+*buying a part and having it installed*, rather than as a number going up on a
+list. Same purchase, different verb.
+
+> **Already settled.** Storage is not on this list. How much you can carry is the
+> ship's and nothing else changes it — the refit track for it has been removed,
+> because two different things were answering the same question and it made the
+> 50× cargo spread across the roster mean less than it should.
+
+**Installing takes time.** You cannot swap a module mid-fight; fitting one runs a
+clock. That single rule turns loadout from a menu into a decision you make before
+you leave — the same trick the tanks pull on range, and the reason a station is a
+place rather than a screen.
+
+### 5.3 An ice melter, and craft as a reason to hold cargo
+
+Water and food are bought at a station, and that is currently the only way to get
+them. It should not be.
+
+The **ice melter** is the first craftable: a few parts, found rather than bought,
+that melt and purify ICE into water directly. It makes the cheapest material in
+the game worth carrying, gives the deep an answer to "what if there is no station
+for 200,000 units", and it is the honest use for a hold full of the stuff nobody
+wants to buy.
+
+More recipes after it — that is one of the five tracks below.
+
+### 5.4 Crafting you can navigate
+
+The manifest works because it is six things with six clues. A crafting system
+with thirty parts and thirty clues would not.
+
+What is needed before more recipes exist: a way to ask *where do I find this*, and
+be pointed. The waypoint system is already the answer to "take me there"; the
+missing half is a recipe page that can set one.
+
+### 5.5 Weapons that are parts
+
+Firepower stops being one number. Heat-seeking missiles, something that explodes,
+whatever comes after — each one an actual part taking an actual slot, so arming
+up costs you the room you would have given to a tractor beam or a bigger scanner.
+That trade is the whole point; a weapon that costs nothing but money is a stat.
+
+### 5.6 Handling parts
+
+Not everything in a slot has to shoot. **Reverse thrusters** are the example Ric
+gave and they are a good one: a part that changes how the ship *moves* is worth a
+slot to some pilots and worthless to others, which is exactly the shape a good
+module has.
+
+Others worth trying when the frame exists — none of these are committed, they are
+the shape of the space: a docking assist, a longer tractor, a cargo scoop that
+collects without stopping, a hull that mends slowly out of the light.
+
+### 5.7 Loose ends, so they are not lost
+
+Things said in passing that have not been built and are not big enough to be
+their own item. Written down because the worst outcome for any of them is being
+forgotten rather than being rejected.
+
+- **Food and water from more places than a station.** The ice melter (5.3) is the
+  first answer. There may want to be others.
+- **Towing.** Listed as a long-term track below; no design yet. It is the version
+  of "more cargo" that changes what you can *do* rather than only how much.
+- **Better station storage.** Somewhere to leave what you are not carrying, so a
+  full hold stops being the end of a trip. Interacts with 5.2's slots: a ship you
+  are not flying is also storage.
+- **Stranger things farther out.** The danger curve has been promising this since
+  Phase 1 and has not paid it. The abyss is *harder* than the home band and not
+  yet *stranger*.
+
+### The five long-term tracks
+
+Ric's list, and the shape of every hour after the first:
+
+1. **Better equipment** — the modules of 5.2, and the ones after those.
+2. **More cargo capacity, and towing** — a bigger hold is the simplest reason to
+   go farther, and towing is the version of it that changes what you can *do*
+   rather than only how much.
+3. **Better station storage** — somewhere to keep what you are not carrying, so a
+   full hold stops being the end of a trip.
+4. **More recipes and craftable parts** — 5.3 is the first one; the track is the
+   rest.
+5. **Stranger and rarer things farther out** — the payoff the danger curve has
+   been promising since Phase 1. The abyss is currently *harder* than the home
+   band; it is not yet *stranger*, and it should be.
+
+---
+
 ## Rules for building this
 
 1. **One item at a time.** Finished, tested, committed, before the next starts.
