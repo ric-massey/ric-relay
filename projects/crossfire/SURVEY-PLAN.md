@@ -1465,25 +1465,80 @@ Its own small box **in loadout**. It explains the factions a little, and it is
 easy to understand — at the moment it is three words at the foot of a page and it
 assumes you know who these people are.
 
-### 7.6 Smaller things  ·  *not started*
+### 7.6 Smaller things
 
-- **Cash** stays top left and stays small.
-- **Thirst is a 20-minute clock; food is 45 minutes.**
+- **Cash** stays top left and stays small.  ·  *not started*
+- **Thirst is a 20-minute clock; food is 45 minutes.**  ·  **DONE**
 - **A bigger ship carries more food** — the hull decides the pantry, as it decides
-  the hold.
-- **The scan button has to look like a button** on a phone.
+  the hold.  ·  **DONE** (37 minutes in a Mote, 260 in an Ossuary; water does not
+  scale, because a tank is a tank)
+- **The scan button has to look like a button** on a phone.  ·  *not started*
 
-### 7.7 Things that fly through each other  ·  *not started*
+### 7.8 Anything with a name can be asked about  ·  *not started*
 
-Two solid objects that are not solid to each other:
+> *"Anything we run into in the world that has words — like THE ACTION AT MULANE —
+> needs to be clickable, or go up and press E, and an info thing pops up telling
+> you what it is."*
 
-- **Asteroids sit inside planets, and inside each other.** A rock has a radius and
-  a world has a radius and neither has ever been asked about the other.
-- **Ships fly straight through the Leviathan.** The player's hull collides with
-  its plates; the traffic does not, so a hauler will cross the one authored object
-  in the sector as though it were a picture.
+The sector prints names on things now — memorials, worlds, wells, the jump gate —
+and a name with no way to ask about it is a tease. Walk up, press **E** (or tap
+it), and get a card: what it is, what happened here, what it is worth going near.
+
+### 7.9 The notifications need somewhere to live  ·  *not started*
+
+> *"I don't know what 'they made it, 260 cash' was. You need to be able to see
+> notifications somewhere else too."*
+
+Two problems in one.
+
+- **The messages do not say enough.** *"They made it. 260 cash, and their
+  thanks."* assumes you know a distress call was the thing you just cleared. Every
+  line of chatter has to make sense to somebody who looked away for ten seconds.
+- **They scroll past and are gone.** There is nowhere to read back what happened.
+  A log — on a page, scrollable, with the last few dozen lines.
+
+### 7.10 The three powers need three colours  ·  **DONE**
+
+You cannot tell whose ship you are looking at. Each faction gets its own hull
+colour, distinct from each other, from the pirates, from the independents and from
+your own — so "who is that" is answered by looking.
+
+### 7.11 EREIA V and things flying through things  ·  **DONE**
+
+One report, three faults, all of them "solid to you, not solid to anything else":
+
+- **A named world is not on the chart.** EREIA V is right there in the sector and
+  the map has never heard of it.
+- **Asteroids sit inside planets, and inside each other.**
+- **Traffic and drones fly through worlds**, and through the Leviathan.
+
+**What landed.** The chart bug was the interesting one: the check measured to a
+world's *centre* against a sight radius of 980, and a world can be 1,800 in radius
+— so the biggest, most unmissable objects in the sector were exactly the ones the
+map had never heard of. You could land on one and it still would not be there. It
+measures to the surface now.
+
+For the rest, three answers and they are deliberately different. A **world breaks
+a rock** — a rock meeting a planet at speed is not a bounce, and the sector already
+breaks rocks on stars. **Two rocks part**, each giving way in proportion to how
+small it is, so a pebble gets out of a boulder's way. And **a ship is put back on
+the surface and turned along it**, which reads as going round rather than as a
+reflection, and cannot trap anything.
+
+### 7.12 Still to do, from playing it  ·  *not started*
+
+- **An asteroid is solid.** Taking a hit from one currently lets you pass through
+  it; the hit and the collision should be the same event.
+- **The gravity warning comes too late** on supermassive wells.
+- **Suns and black holes should be drawn at different sizes.** They vary in the
+  simulation and not in the picture.
+- **A page should be very lightly transparent**, so an asteroid coming at you or a
+  star you are drifting into is visible behind it.
+- **About 15% fewer asteroids**, everywhere.
 
 ---
+
+
 
 ## Phase 6 — possibility multiplication
 

@@ -4806,6 +4806,187 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "non-finite");
 }
 
+// ── solid to you is solid to everybody ───────────────────────────────────
+/* Three faults with one shape: the player's hull stops at a world's surface and
+   at the Leviathan's plates, and nothing else did. Asteroids sat inside planets
+   and inside each other, and traffic crossed the one authored object in the
+   sector as though it were a picture.
+
+   And a fourth, found while looking at the same code: a big world could never be
+   put on the chart. The check measured to a world's *centre* against a sight
+   radius of 980, and a world can be 1,800 in radius — so the biggest and most
+   unmissable objects in the sector were exactly the ones the map had never heard
+   of. You could land on one and it would still not be there. */
+{
+  const { cf } = boot("?debug=1&seed=4242");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const live = cf.live();
+  const me = live.ships[0];
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 999; surv.water = 900; surv.food = 900;
+      now += 1000 / 60; cf.step();
+    }
+  };
+
+  // A world far bigger than the sight radius, which is the case that broke.
+  let world = null;
+  for (let ring = 1; ring < 20 && !world; ring++) {
+    for (let cx = -ring; cx <= ring && !world; cx++) {
+      for (let cy = -ring; cy <= ring && !world; cy++) {
+        if (Math.max(Math.abs(cx), Math.abs(cy)) !== ring) continue;
+        for (const p of cf.chunk(cx, cy).planets) if (p.r > 900) world = p;
+      }
+    }
+  }
+  check(!!world, "no world in this sector is bigger than the sight radius");
+
+  if (world) {
+    check(world.r > 980,
+          "the world found is " + Math.round(world.r) + " across; the case that " +
+          "broke needs one bigger than sight");
+    me.x = world.x + world.r + 900; me.y = world.y; me.vx = me.vy = 0;
+    step(20);
+    const charted = cf.surveyView().known
+      .filter(q => q.k === "planet" && Math.abs(q.x - world.x) < 60);
+    check(charted.length === 1,
+          "flew alongside " + (world.name || "a world") + " (" +
+          Math.round(world.r) + " radius) and it is not on the chart");
+    check(charted.length && charted[0].name === world.name,
+          "the world went on the chart without its name");
+
+    /* Rocks are solid to it. Twelve dropped inside must not still be inside. */
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2, d = (i / 12) * world.r * 0.7;
+      const r = cf.makeRock("mid", world.x + Math.cos(a) * d,
+                                   world.y + Math.sin(a) * d);
+      r.vx = r.vy = 0;
+      live.rocks.push(r);
+    }
+    // And so is traffic.
+    surv.traffic.length = 0;
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2, d = world.r * 0.5;
+      surv.traffic.push({ id: null, kind: "freight", role: "freight",
+        faction: "free", hull: "drayman",
+        x: world.x + Math.cos(a) * d, y: world.y + Math.sin(a) * d, a,
+        from: { x: world.x, y: world.y }, to: { x: world.x + 9000, y: world.y },
+        leg: 1, speed: 90, hp: 6, maxHp: 6, cargo: [], cool: 1, doom: 0,
+        guards: 0, space: 0, trades: false, phase: 0 });
+    }
+    step(180);
+
+    const rocksIn = live.rocks.filter(r =>
+      Math.hypot(r.x - world.x, r.y - world.y) < world.r).length;
+    check(rocksIn === 0, rocksIn + " asteroids are sitting inside a planet");
+    const shipsIn = surv.traffic.filter(t =>
+      Math.hypot(t.x - world.x, t.y - world.y) < world.r * 0.98).length;
+    check(shipsIn === 0, shipsIn + " ships are sitting inside a planet");
+
+    /* And rocks are solid to each other. */
+    let overlaps = 0;
+    for (let i = 0; i < live.rocks.length; i++) {
+      for (let j = i + 1; j < live.rocks.length; j++) {
+        const a = live.rocks[i], b = live.rocks[j];
+        if (Math.hypot(a.x - b.x, a.y - b.y) < (a.r + b.r) * 0.85) overlaps++;
+      }
+    }
+    check(overlaps === 0, overlaps + " pairs of asteroids are inside each other");
+  }
+
+  /* The Leviathan is solid to traffic too. It is the one authored object out
+     there and a hauler crossing it would say the whole sector is a backdrop. */
+  const other = boot("?debug=1&seed=4242");
+  other.cf.start("survey", 1);
+  const s2 = other.cf.survey(), m2 = other.cf.live().ships[0];
+  const lm = s2.landmarks.find(l => l.key === "leviathan");
+  m2.x = lm.x; m2.y = lm.y + 2000; m2.vx = m2.vy = 0;
+  for (let i = 0; i < 20; i++) {
+    m2.invuln = 999; s2.water = 900; s2.food = 900;
+    now += 1000 / 60; other.cf.step();
+  }
+  check(!!s2.leviathan, "the Leviathan did not stream in");
+  if (s2.leviathan) {
+    const lev = s2.leviathan;
+    s2.traffic.length = 0;
+    for (let i = 0; i < 8; i++) {
+      const g = lev.segs[(i * 3) % lev.segs.length];
+      s2.traffic.push({ id: null, kind: "freight", role: "freight",
+        faction: "free", hull: "drayman", x: g.x, y: g.y, a: i,
+        from: { x: g.x, y: g.y }, to: { x: g.x + 9000, y: g.y },
+        leg: 1, speed: 90, hp: 6, maxHp: 6, cargo: [], cool: 1, doom: 0,
+        guards: 0, space: 0, trades: false, phase: 0 });
+    }
+    for (let i = 0; i < 180; i++) {
+      m2.invuln = 999; s2.water = 900; s2.food = 900;
+      now += 1000 / 60; other.cf.step();
+    }
+    const inHull = s2.traffic.filter(t =>
+      lev.segs.some(g => Math.hypot(t.x - g.x, t.y - g.y) < g.r * 0.9)).length;
+    check(inHull === 0, inHull + " ships are inside the Leviathan");
+  }
+
+  console.log("  solids     a " + (world ? Math.round(world.r) : "?") +
+              "-radius world charts by its surface \u00b7 rocks break on worlds " +
+              "and part from each other \u00b7 traffic and sentries go round a " +
+              "world and round the Leviathan");
+}
+
+// ── you can tell whose ship that is ──────────────────────────────────────
+/* "Whose is that" is the first question a war asks you, and the answer has to be
+   available by looking. The five flags were a mint, two pale blues and a
+   grey-blue: at the size a ship is drawn out there a Hallow patrol and an
+   independent hauler were the same object.
+
+   Checked as distance in colour space rather than by eye, because "these look
+   different to me on this monitor" is not a check. */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const flags = cf.factions();
+  check(flags.length === 5,
+        "there are " + flags.length + " flags a ship can fly, not 5");
+
+  const rgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16),
+                    parseInt(h.slice(5, 7), 16)];
+  /* Weighted the way an eye weighs them — green carries most of the perceived
+     difference and blue least — so two colours that differ only in blue do not
+     pass as "far apart". */
+  const gap = (a, b) => {
+    const [r1, g1, b1] = rgb(a), [r2, g2, b2] = rgb(b);
+    return Math.sqrt(2 * (r1 - r2) ** 2 + 4 * (g1 - g2) ** 2 + 3 * (b1 - b2) ** 2);
+  };
+
+  let worst = { d: Infinity, a: "", b: "" };
+  for (let i = 0; i < flags.length; i++) {
+    for (let j = i + 1; j < flags.length; j++) {
+      const d = gap(flags[i].colour, flags[j].colour);
+      if (d < worst.d) worst = { d, a: flags[i].short, b: flags[j].short };
+    }
+  }
+  check(worst.d > 120,
+        worst.a + " and " + worst.b + " are " + Math.round(worst.d) +
+        " apart in colour; that is two ships you cannot tell apart");
+
+  // And none of them is the amber the player and the asteroids already own.
+  for (const f of flags) {
+    check(gap(f.colour, "#ffcb42") > 120,
+          f.short + " flies the same colour as an asteroid");
+    check(gap(f.colour, "#ffe56d") > 120,
+          f.short + " flies the same colour as the player");
+  }
+
+  // Every flag says who these people are, not just what they are called.
+  for (const f of flags) {
+    check(typeof f.long === "string" && f.long.length > 40,
+          f.short + " has no description worth reading");
+  }
+
+  console.log("  colours    five flags, closest pair " + Math.round(worst.d) +
+              " apart \u00b7 none of them amber \u00b7 each says who they are");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

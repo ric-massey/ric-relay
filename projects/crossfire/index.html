@@ -6604,6 +6604,98 @@
     seedMotes();
   }
 
+  /* ── everything solid is solid to everybody ───────────────────────────────
+     The player's hull stops at a world's surface and at the Leviathan's plates.
+     Nothing else did — so a hauler would cross the one authored object in the
+     sector as though it were a picture, and a patrol would fly through a planet
+     on its way to somewhere.
+
+     It is a push rather than a physics: put the thing back on the surface, and
+     turn its nose along it so it goes round instead of grinding into it. That
+     reads as a ship avoiding a planet, which is what it is, and it cannot trap
+     anything the way a reflection can. */
+  function solidBounce(o, r) {
+    if (!surv) return false;
+    let hit = false;
+    const clear = (cx, cy, cr) => {
+      const dx = o.x - cx, dy = o.y - cy;
+      const d = Math.hypot(dx, dy);
+      const min = cr + r;
+      if (d >= min) return;
+      hit = true;
+      const nx = d > 1 ? dx / d : 1, ny = d > 1 ? dy / d : 0;
+      o.x = cx + nx * min;
+      o.y = cy + ny * min;
+      // Along the surface, in whichever direction it was already going.
+      const along = Math.atan2(ny, nx);
+      const turn = Math.cos(o.a - along) > 0 ? 0 : Math.PI;
+      o.a = along + (Math.sin(o.a - along) >= 0 ? 1.35 : -1.35) + turn * 0;
+    };
+    for (const pl of surv.planets) clear(pl.x, pl.y, pl.r);
+    const lev = surv.leviathan;
+    if (lev) for (const g of lev.segs) clear(g.x, g.y, g.r);
+    return hit;
+  }
+
+  /* ── a rock is solid to more than your hull ───────────────────────────────
+     A rock had a radius and a world had a radius and nothing had ever asked one
+     about the other, so asteroids sat inside planets and inside each other —
+     which is exactly the kind of thing that makes a sector read as a backdrop
+     rather than a place.
+
+     Three answers, and they are deliberately different:
+
+       a world   breaks it. A rock meeting a planet at speed is not a bounce, and
+                 the sector already breaks rocks on stars and black holes.
+       a rock    pushes it. Two rocks are the same kind of thing, so they part
+                 and swap a little momentum rather than one of them winning.
+
+     Only in Survey: the arena modes have no worlds and a field small enough that
+     rocks knocking each other about would change how every one of them plays. */
+  function surveyRockSolids() {
+    if (!mode.survey || !surv) return;
+
+    for (let i = rocks.length - 1; i >= 0; i--) {
+      const r = rocks[i];
+      let gone = false;
+      for (const pl of surv.planets) {
+        if (dist2(r.x, r.y, pl.x, pl.y) > (pl.r + r.r) ** 2) continue;
+        burst(r.x, r.y, "#ffcb42", 10, 180 * U);
+        if (onScreen(r.x, r.y, 400)) gameSound("rock", r.x);
+        rocks.splice(i, 1);
+        gone = true;
+        break;
+      }
+      if (gone) continue;
+    }
+
+    /* And each other. One pass, each pair once — a few dozen rocks around the
+       ship is a few hundred comparisons, which is nothing next to what the
+       renderer is doing on the same frame. */
+    for (let i = 0; i < rocks.length; i++) {
+      const a = rocks[i];
+      for (let j = i + 1; j < rocks.length; j++) {
+        const b = rocks[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const min = a.r + b.r;
+        const d2 = dx * dx + dy * dy;
+        if (d2 >= min * min || d2 < 1) continue;
+        const d = Math.sqrt(d2);
+        const nx = dx / d, ny = dy / d;
+        /* Parted along the line between them, each giving way in proportion to
+           how small it is — a pebble gets out of a boulder's way. */
+        const over = min - d;
+        const ma = a.r * a.r, mb = b.r * b.r, tot = ma + mb;
+        a.x -= nx * over * (mb / tot); a.y -= ny * over * (mb / tot);
+        b.x += nx * over * (ma / tot); b.y += ny * over * (ma / tot);
+        // And a nudge, so they drift apart rather than grinding on each other.
+        const push = 26 * U;
+        a.vx -= nx * push * (mb / tot); a.vy -= ny * push * (mb / tot);
+        b.vx += nx * push * (ma / tot); b.vy += ny * push * (ma / tot);
+      }
+    }
+  }
+
   /* Rocks are not part of a chunk. They drift, so a chunk that regenerated them
      would snap them back to where they started every time you flew away and
      returned; instead a population is kept around the ship and topped up at the
@@ -7097,6 +7189,7 @@
           // Drifting, not flying: it is not going anywhere under its own power.
           t.x += Math.cos(t.a) * 14 * U * dt;
           t.y += Math.sin(t.a) * 14 * U * dt;
+          solidBounce(t, 22 * U * (shipSpec(t.hull).size || 1));
           if (!t.called && dist2(me.x, me.y, t.x, t.y) < TRAFFIC_TALK ** 2) {
             t.called = true;
             chatter("Distress call — they are being taken apart out here.", "#ffcb42");
@@ -7167,6 +7260,8 @@
       t.a += Math.max(-1.4 * dt, Math.min(1.4 * dt, diff));
       t.x += Math.cos(t.a) * t.speed * U * dt;
       t.y += Math.sin(t.a) * t.speed * U * dt;
+      // A world and a dead hull are solid to everybody, not only to you.
+      solidBounce(t, 22 * U * (shipSpec(t.hull).size || 1));
 
       /* A patrol shoots at sentries. It is the one thing that tells you these
          are on your side without a word being said — and it means a guarded
@@ -8075,6 +8170,10 @@
       // sector gets to hover inside a black hole.
       applyGravity(d, dt);
       d.x += d.vx * dt; d.y += d.vy * dt;
+      /* A sentry is solid to a world too. It has no heading of its own to turn,
+         so it is put back on the surface and its velocity is taken with it —
+         which reads as bumping into the thing and giving up on that direction. */
+      if (solidBounce(d, 16 * U)) { d.vx *= 0.2; d.vy *= 0.2; }
       if (hazardAt(d.x, d.y, 12 * U)) {
         burst(d.x, d.y, DRONE_COLOUR, 12, 180 * U);
         if (d.id) surv.deadGuards.add(d.id);
@@ -8480,18 +8579,42 @@
        · The war is not scenery: ships of warring powers shoot each other on
          sight, and you can watch it and stay out of it.
        · A trader will trade. Pull alongside and deal. */
+  /* Five flags, five colours you can tell apart at a glance and at a distance.
+     They used to be a mint, two pale blues and a grey-blue, which is four ways of
+     saying the same thing: at the size a ship is drawn out there you could not
+     tell a Hallow patrol from an independent hauler, and "whose is that" is the
+     first question the war asks you.
+
+     So they are pushed to the corners — green, blue, magenta, grey, red — and
+     none of them is the amber the player and the asteroids already own.
+
+     `note` is the one-line description the reputation box reads, so each of them
+     has to say who these people are and not merely name them. */
   const FACTIONS = [
     { key: "cordon", name: "THE CORDON",      short: "CORDON",
-      colour: "#6dffbf", note: "keeps the lanes open, and says so a lot" },
+      colour: "#6dffbf",
+      note: "keeps the lanes open and polices them; will not start it",
+      long: "Lane-keepers. They run the routes between stations and think that " +
+            "makes the routes theirs. Correct with anybody who is." },
     { key: "hallow", name: "THE HALLOW LINE", short: "HALLOW",
-      colour: "#87d8ff", note: "older than the lanes, and less interested" },
+      colour: "#4aa3ff",
+      note: "older than the lanes, and less interested in them",
+      long: "Here before the stations were. Fly their own roads, answer to " +
+            "nobody, and take being flown at very personally." },
     { key: "morrow", name: "MORROW COMPACT",  short: "MORROW",
-      colour: "#b79aff", note: "a trading compact with guns, in that order" }
+      colour: "#e07bff",
+      note: "a trading compact with guns, in that order",
+      long: "Merchants who armed themselves and found they liked it. Everything " +
+            "is for sale and the price goes up if they do not like you." }
   ];
   const UNALIGNED = { key: "free",   name: "UNALIGNED", short: "FREE",
-                      colour: "#8fb4d8", note: "flying for themselves" };
+                      colour: "#9aa6b8", note: "flying for themselves",
+                      long: "No flag, no side, no interest in yours. Haulers " +
+                            "and traders getting on with it." };
   const PIRATE    = { key: "pirate", name: "NO COLOURS", short: "PIRATE",
-                      colour: "#ff6b6b", note: "nobody's, and everybody's problem" };
+                      colour: "#ff5555", note: "nobody's, and everybody's problem",
+                      long: "Nobody's. They want what you are carrying and " +
+                            "everyone else wants them gone." };
   const factionOf = k => FACTIONS.find(f => f.key === k) ||
                          (k === "pirate" ? PIRATE : UNALIGNED);
 
@@ -9562,9 +9685,16 @@
       }
     }
     for (const pl of surv.planets) {
-      // A world's own name goes into the gazetteer with it: the chart is the
-      // record, and a record of "a world, here" is most of a record.
-      if (dist2(pl.x, pl.y, me.x, me.y) < s2) {
+      /* A world's own name goes into the gazetteer with it: the chart is the
+         record, and a record of "a world, here" is most of a record.
+
+         Measured to its *surface*, not to its centre, and that is the whole of a
+         bug worth writing down. Sight is 980 units and a world can be 1,800 in
+         radius — so a big one could never bring its centre inside the check, and
+         the biggest, most unmissable objects in the sector were the ones the
+         chart had never heard of. You could land on EREIA V and it would still
+         not be on the map. */
+      if (dist2(pl.x, pl.y, me.x, me.y) < (sight + pl.r) ** 2) {
         added += noteKnown("planet", pl.x, pl.y, pl.name || "", pl.r);
       }
     }
@@ -9867,6 +9997,7 @@
     surveyShots(dt);
     surveyBullets();
     surveyTraffic(dt);
+    surveyRockSolids();
     surveyFitting(dt);
     surveyMelt(dt);
     surveyBattles(dt);
@@ -10535,12 +10666,31 @@
          into a score to manage. */
       /* Where you stand with each power, as words, and who is fighting whom.
          The only place any of this is ever stated, and never as a figure. */
+      /* Who is out there and what each of them makes of you, in the one shape
+         the interface needs: a colour so it matches the ships, a line saying who
+         they are, a word for how they feel, and who they are fighting. Never a
+         number — see `REP`. */
       standings: FACTIONS.map(f => ({
         key: f.key, name: f.name, short: f.short, colour: f.colour,
-        note: f.note, standing: standingOf(f.key).name,
+        note: f.note, long: f.long, standing: standingOf(f.key).name,
         says: standingOf(f.key).note,
-        enemy: warPairs()[f.key] ? factionOf(warPairs()[f.key]).short : ""
+        enemy: warPairs()[f.key] ? factionOf(warPairs()[f.key]).short : "",
+        atWar: !!warPairs()[f.key]
       })),
+      /* The two flags that are not powers. They are on the same board because
+         "who is that red one" is the same question, and the answer is not a
+         reputation — it is who they are. */
+      others: [UNALIGNED, PIRATE].map(f => ({
+        key: f.key, short: f.short, name: f.name, colour: f.colour,
+        note: f.note, long: f.long
+      })),
+      war: (() => {
+        const w = warPairs();
+        const pair = Object.keys(w);
+        if (!pair.length) return null;
+        return { a: factionOf(pair[0]).short, b: factionOf(w[pair[0]]).short,
+                 scale: warScale().name, note: warScale().note };
+      })(),
       // Who is out there, and whether any of them has decided about you.
       traffic: surv.traffic.map(t => ({ kind: t.kind, hull: t.hull,
                                         x: t.x, y: t.y, angry: !!t.angry })),
@@ -15651,6 +15801,11 @@
                                        rarity: m.rarity, cost: m.cost,
                                        deep: m.deep, secs: fitSeconds(m.key) })),
       scanRange: () => scanRange(),
+      // The five flags a ship can fly, for anything checking they are telling
+      // themselves apart.
+      factions: () => FACTIONS.concat([UNALIGNED, PIRATE])
+        .map(f => ({ key: f.key, short: f.short, name: f.name,
+                     colour: f.colour, note: f.note, long: f.long })),
       // A real rock, built the way the sector builds them. A hand-rolled one
       // with a made-up size breaks the splitter the moment it is destroyed.
       makeRock: (size, x, y) => makeRock(size, x, y),
