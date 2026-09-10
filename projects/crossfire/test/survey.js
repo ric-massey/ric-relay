@@ -2615,12 +2615,18 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   /* Held invulnerable *and* left alone. Invulnerability stops the damage but not
      the shove — ramming a sentry bounces you whatever your shield is doing — so
      since phase 4 filled the sector with company this measured 203 against a
-     stated 360 and looked like a speed-cap bug. What is under test is the cap. */
+     stated 360 and looked like a speed-cap bug. What is under test is the cap.
+
+     The rocks go for the same reason, and it is a newer one: an asteroid is a
+     solid object now rather than a damage event, so a thrown ship bounces off one
+     and loses speed to it. That is correct and it is noise in a measurement of
+     the drag curve — the check that a bounce cannot *add* speed is below. */
   const step = n => {
     for (let i = 0; i < n; i++) {
       me.invuln = 3;
       surv.drones.length = 0;
       surv.traffic.length = 0;
+      cf.live().rocks.length = 0;
       now += 1000 / 60;
       cf.step();
     }
@@ -2659,6 +2665,39 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   step(60 * 20);
   check(speed() < stated * 1.05,
         "twenty-two seconds on, the ship is still doing " + Math.round(speed()));
+  /* And a rock is solid without being a trampoline. Driven straight into one at
+     the top speed, the ship must come off it slower than it went in — at a
+     restitution of one it would come off at the same speed, and over one it would
+     come off faster, which is free energy and a way past the drive's own cap. */
+  {
+    const live = cf.live();
+    me.x = 90000; me.y = -90000; me.boost = 0;
+    live.rocks.length = 0;
+    const rock = cf.makeRock("big", me.x + 600, me.y);
+    rock.vx = rock.vy = 0;
+    live.rocks.push(rock);
+    me.a = 0; me.vx = stated; me.vy = 0;
+    const before = Math.hypot(me.vx, me.vy);
+    for (let i = 0; i < 90; i++) {
+      me.invuln = 3;
+      surv.drones.length = 0; surv.traffic.length = 0;
+      // The one rock stays; everything the sector wants to add does not.
+      for (let k = live.rocks.length - 1; k >= 0; k--) {
+        if (live.rocks[k] !== rock) live.rocks.splice(k, 1);
+      }
+      now += 1000 / 60;
+      cf.step();
+    }
+    const after = Math.hypot(me.vx, me.vy);
+    check(after < before,
+          "a ship went into a rock at " + Math.round(before) + " and came off " +
+          "at " + Math.round(after) + "; a collision must not add speed");
+    const gap = Math.hypot(me.x - rock.x, me.y - rock.y);
+    check(gap > rock.r,
+          "the ship ended up " + Math.round(gap) + " units from the centre of a " +
+          Math.round(rock.r) + "-radius rock — it is inside it");
+  }
+
   check((me.boost || 0) < stated * 0.1,
         "the allowance never ran out: " + Math.round(me.boost));
 

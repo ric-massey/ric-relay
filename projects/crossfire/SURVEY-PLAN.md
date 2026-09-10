@@ -1525,16 +1525,34 @@ small it is, so a pebble gets out of a boulder's way. And **a ship is put back o
 the surface and turned along it**, which reads as going round rather than as a
 reflection, and cannot trap anything.
 
-### 7.12 Still to do, from playing it  ·  *not started*
+### 7.12 How it feels to fly  ·  **DONE**
 
-- **An asteroid is solid.** Taking a hit from one currently lets you pass through
-  it; the hit and the collision should be the same event.
-- **The gravity warning comes too late** on supermassive wells.
-- **Suns and black holes should be drawn at different sizes.** They vary in the
-  simulation and not in the picture.
-- **A page should be very lightly transparent**, so an asteroid coming at you or a
-  star you are drifting into is visible behind it.
-- **About 15% fewer asteroids**, everywhere.
+- **An asteroid is solid.** It used to be a hit and a shove, which meant that for
+  as long as the impact shield lasted you flew *through* the thing that had just
+  hit you — a boulder was a damage event rather than an object, and cover you
+  could hide behind was cover you fell into. The collision and the damage are
+  separate now: the collision always happens, the damage is what the shield stops.
+  Damped, at a restitution of 0.4, because a bounce that adds energy is free speed
+  past the drive's own cap — and there is a test that drives into a rock and checks
+  the ship comes off slower than it went in.
+- **Stations and inhabited worlds deflect.** A perimeter well outside themselves
+  turns a rock away rather than letting it arrive and break, which is the
+  difference between somewhere lived in and somewhere not — and the reason a
+  station is a place you can sit still. An empty world still breaks them.
+- **The gravity warning is earlier**, and earlier again on the supermassive ones.
+  Four steps rather than three, the first at a fifth of your drive rather than a
+  half, and the look-ahead is 3x a well's reach — 4.5x for a supermassive, which
+  is the case where arriving late is fatal rather than annoying.
+- **Wells vary in size again.** The roll was ±17% around the band's figure, so
+  every well in the same stretch of sector came out the same size — and since the
+  picture is drawn from `kill`, they all looked identical too. It is nearly a
+  factor of two either way now; depth still decides the trend.
+- **A live page is very lightly transparent**, with the world drawn behind it. The
+  clock running behind those pages was a rule about time and not about sight: a
+  rock arriving while your storage was open hit you out of a black screen. The
+  chart is the exception — a map you read through an asteroid field is a map you
+  squint at — and the station, which stops the clock anyway.
+- **15% fewer asteroids**, everywhere: 90 kept around the ship, now 76.
 
 ---
 

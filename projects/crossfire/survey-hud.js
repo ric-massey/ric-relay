@@ -371,10 +371,18 @@
 
   /* A page's furniture: a ground, a title, a rule under it, and a footer. Both
      pages use it, so they cannot drift apart from each other. */
+  /* How solid a page's ground is. The pages the world keeps running behind get
+     the world drawn under them, so their ground is very nearly opaque rather than
+     opaque: enough to read type on, thin enough that a rock coming at you or a
+     star you are drifting into shows through. The pages that stop the clock have
+     nothing behind them and stay solid. */
+  HUD.pageGhost = false;
+
   function pageFrame(title, sub, footer) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
     ctx.save();
     ctx.fillStyle = INK;
+    ctx.globalAlpha = HUD.pageGhost ? 0.88 : 1;
     ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
     ctx.restore();
 

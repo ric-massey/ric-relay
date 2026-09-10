@@ -4435,7 +4435,7 @@
   const SURVEY_SIGHT  = 700;    // charted either side of the ship as it flies
   const SURVEY_SCAN   = 9;      // seconds to recharge the pulse
   const SURVEY_REPAIR = 0.55;   // hull points a second, in a star's light
-  const SURVEY_ROCKS  = 90;     // rocks kept around the ship
+  const SURVEY_ROCKS  = 76;     // rocks kept around the ship (was 90)
   const SURVEY_ROCK_R = 3200;   // how far out they are kept
   const SURVEY_HULL   = 5;
   /* Where the first station stands, and therefore where you come back to. One
@@ -5985,7 +5985,13 @@
        actually arrived anywhere on the map. Home lands near 0.85, the deep band
        crosses 1.8, and the abyss runs past 3. */
     const base = 0.8 + deep * 2.2;
-    return base * (0.9 + R() * 0.35);
+    /* And a wide roll on top of it. This was `0.9 + R() * 0.35` — seventeen per
+       cent either side of the band's figure — so every well in the same stretch
+       of sector came out the same size, and since the drawing is made from `kill`
+       they all looked identical too. Depth still decides the trend; this decides
+       whether the one in front of you is a big one, and it is nearly a factor of
+       two either way. */
+    return base * (0.68 + R() * 0.82);
   }
 
   function makeStar(x, y, R, k) {
@@ -6655,18 +6661,48 @@
   function surveyRockSolids() {
     if (!mode.survey || !surv) return;
 
+    /* Somewhere with people on it keeps the rocks off. An inhabited world and a
+       station both do it, at a perimeter well outside themselves — a rock is
+       turned away rather than allowed to arrive and break, which is the
+       difference between somewhere that is lived in and somewhere that is not.
+
+       It is also the reason a station is a place you can sit still: an anchorage
+       that got hit by the field it is anchored in would not be one. */
+    const shield = [];
+    for (const pl of surv.planets) {
+      if (pl.inhabited) shield.push({ x: pl.x, y: pl.y, r: pl.r + 700 });
+    }
+    for (const st of surv.stations) shield.push({ x: st.x, y: st.y, r: 900 });
+
     for (let i = rocks.length - 1; i >= 0; i--) {
       const r = rocks[i];
-      let gone = false;
+      let handled = false;
+
+      for (const sh of shield) {
+        const dx = r.x - sh.x, dy = r.y - sh.y;
+        const d = Math.hypot(dx, dy);
+        if (d > sh.r + r.r || d < 1) continue;
+        // Put it on the perimeter and send it back out the way it came.
+        const nx = dx / d, ny = dy / d;
+        r.x = sh.x + nx * (sh.r + r.r);
+        r.y = sh.y + ny * (sh.r + r.r);
+        const into = r.vx * nx + r.vy * ny;
+        if (into < 0) { r.vx -= into * nx * 1.8; r.vy -= into * ny * 1.8; }
+        r.vx += nx * 30 * U; r.vy += ny * 30 * U;
+        r.flash = 0.1;
+        handled = true;
+        break;
+      }
+      if (handled) continue;
+
+      // Everywhere else, a world simply breaks it.
       for (const pl of surv.planets) {
         if (dist2(r.x, r.y, pl.x, pl.y) > (pl.r + r.r) ** 2) continue;
         burst(r.x, r.y, "#ffcb42", 10, 180 * U);
         if (onScreen(r.x, r.y, 400)) gameSound("rock", r.x);
         rocks.splice(i, 1);
-        gone = true;
         break;
       }
-      if (gone) continue;
     }
 
     /* And each other. One pass, each pair once — a few dozen rocks around the
@@ -9714,10 +9750,19 @@
      somewhere a stock one cannot leave, so the same well warns different pilots
      at different distances — which is exactly right, and is also the clearest
      demonstration in the game of what the drive upgrade bought. */
+  /* Four steps rather than three, and every one of them earlier. The first said
+     nothing until the pull was already half your engine, which on a supermassive
+     well is close enough that turning round is a plan you have most of a second
+     to form. A warning you cannot act on is decoration.
+
+     The new first step fires at a fifth of your drive — a long way out, entirely
+     survivable, and exactly the point at which somebody should be deciding
+     whether to go round. */
   const WARN_LEVELS = [
     [1.00, "CANNOT ESCAPE", "#ff4d6d"],
-    [0.80, "PULL EXCEEDS DRIVE", "#ff6d8f"],
-    [0.50, "HEAVY PULL", "#ff9d5c"]
+    [0.70, "PULL EXCEEDS DRIVE", "#ff6d8f"],
+    [0.40, "HEAVY PULL", "#ff9d5c"],
+    [0.20, "GRAVITY AHEAD", "#ffcb42"]
   ];
 
   function surveyWarning() {
@@ -9729,9 +9774,13 @@
     for (const h of hazards) {
       const dx = h.x - me.x, dy = h.y - me.y;
       const d2 = dx * dx + dy * dy;
-      // Look further than the well reaches, so the warning arrives before the
-      // pull does rather than at the same moment.
-      if (d2 > (h.reach * 2.1) ** 2) continue;
+      /* Look a long way past what the well reaches, so the warning arrives
+         before the pull does rather than at the same moment — and further still
+         for a supermassive one, which is the case where arriving late is fatal
+         rather than annoying. The whole point of naming them and warning about
+         them is that they can be planned around. */
+      const look = h.reach * (h.k >= SUPERMASSIVE ? 4.5 : 3);
+      if (d2 > look * look) continue;
       const a = h.mass / (d2 + h.soft * h.soft);
       if (!worst || a > worst.a) {
         worst = { h, a, d: Math.sqrt(d2) || 1 };
@@ -10914,6 +10963,26 @@
       onYard: () => { if (surv.atYard) state = "yard"; },
       onClose: () => { state = "playing"; }
     };
+  }
+
+  /* The world, drawn for a page to sit on. The camera, the sky, the sector and
+     nothing else — no HUD, because the page has its own and two sets of readouts
+     over each other is worse than none. */
+  function drawSurveyBehind(dt) {
+    if (!surv) return;
+    ctx.save();
+    wScale = cam.scale;
+    ctx.translate(SCREEN_W / 2, SCREEN_H / 2);
+    ctx.rotate(cam.rot);
+    ctx.scale(cam.scale, cam.scale);
+    ctx.translate(-cam.x, -cam.y);
+    drawSurveyWorld();
+    for (const r of rocks) {
+      if (onScreen(r.x, r.y, r.r + 20)) drawRock(r);
+    }
+    for (const s2 of ships) if (s2.alive) drawShip(s2);
+    ctx.restore();
+    drawBits();
   }
 
   function drawSurveyPanel(dt) {
@@ -12174,7 +12243,10 @@
     for (const s of ships) {
       // The convoy transport is on a rails-steady course down a cleared lane;
       // a stray drifting asteroid neither knocks it nor chips it.
-      if (!s.alive || s.invuln > 0 || s.kinematic) continue;
+      /* An invulnerable ship still *collides* — it simply is not hurt. Skipping
+         the whole check while the shield was up is what let a hit ship pass
+         through the rock that hit it. */
+      if (!s.alive || s.kinematic) continue;
       const light = throughRocks && s === ships[0];
       for (let ri = rocks.length - 1; ri >= 0; ri--) {
         const r = rocks[ri];
@@ -12185,15 +12257,43 @@
           rocks.splice(ri, 1);
           continue;                       // and keep going; there may be more
         }
-        // Push a damaged ship clear so one overlap cannot become both hits as
-        // soon as the brief impact shield expires.
+        /* A rock is solid. It used to be a hit and a shove, which meant that
+           for as long as the impact shield lasted you flew *through* the thing
+           that had just hit you — so a boulder was a damage event rather than an
+           object, and cover you could hide behind was cover you fell into.
+
+           The collision and the damage are separate now. The collision always
+           happens: you are put back on the rock's surface and the part of your
+           velocity heading into it is reversed, so you bounce off. The damage is
+           what the shield stops. */
         let dx = sepX(s.x, r.x), dy = sepY(s.y, r.y);
         const d = Math.hypot(dx, dy) || 1;
         dx /= d; dy /= d;
-        s.vx += dx * 180 * U;
-        s.vy += dy * 180 * U;
-        damageShip(s, "rock", null);
-        if (!worldRunning()) return;
+        const min = r.r + shipR * 0.75;
+        s.x = r.x + dx * min;
+        s.y = r.y + dy * min;
+        /* Along the normal, reversed and *damped*; across it, kept — so a
+           glancing pass slides along the rock instead of stopping dead on it.
+
+           The factor is 1.4, which leaves four tenths of the inward speed coming
+           back out. It must stay under two: at two the bounce is perfectly
+           elastic, and anything over it hands you energy — a ship could gain
+           speed by driving into rocks, which is both wrong and a way past the
+           drive's top speed. */
+        const into = s.vx * dx + s.vy * dy;
+        if (into < 0) {
+          s.vx -= into * dx * 1.4;
+          s.vy -= into * dy * 1.4;
+        }
+        // And the rock takes some of it, because it is a rock and not a wall.
+        const push = 90 * U / Math.max(1, r.r / 30);
+        r.vx -= dx * push;
+        r.vy -= dy * push;
+        // The hit itself, which the shield is allowed to stop.
+        if (s.invuln <= 0) {
+          damageShip(s, "rock", null);
+          if (!worldRunning()) return;
+        }
         break;
       }
     }
@@ -14376,9 +14476,26 @@
                  state === "controls" || state === "thumb";
     if (menu) drawDrift(dt || 0);
 
-    /* The chart and the almanac are pages, not overlays: the world is not
-       drawn behind them at all. A map you read through a half-transparent
+    /* ── the world behind a page ───────────────────────────────────────────
+       The pages the clock keeps running behind are pages you are *flying*
+       behind. That was a rule about time and not about sight: the world went on
+       without you and you could not see any of it, so a rock arriving while your
+       storage was open was a rock that hit you out of a black screen.
+
+       So the live pages get the world drawn underneath and a ground that is very
+       nearly opaque over the top of it — enough to read type on, thin enough that
+       an asteroid coming at you or a star you are drifting into is visible
+       through it. The pages that stop the clock stay solid, because there is
+       nothing behind them to see.
+
+       The one exception is the chart: it is a map, and a map you read through an
        asteroid field is a map you squint at. */
+    if (surveyHUD) surveyHUD.pageGhost = false;
+    if (surveyLive() && state !== "chart") {
+      drawSurveyBehind(dt);
+      if (surveyHUD) surveyHUD.pageGhost = true;
+    }
+
     if (state === "chart" && surv && surveyHUD) {
       surveyHUD.drawChart(surveyState(), dt || 0); return;
     }
