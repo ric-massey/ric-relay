@@ -597,6 +597,14 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
   check(surv.cash === 0, "a fresh sector started with money in the bank");
   check(total() === 0, "a fresh sector started with cargo in the hold");
+  /* Flown off the station. A new survey opens parked at one — that is the whole
+     of the two-minute pass — so "selling needs a station" has to be asked from
+     somewhere that is not one. Clearing `surv.docked` on its own is not enough:
+     `surveyStations` re-docks you every frame you are still sitting there. */
+  const dock = cf.home();
+  me.x = dock.x + 900; me.y = dock.y; me.vx = me.vy = 0;
+  now += 1000 / 60; cf.step();
+  check(cf.places().docked === false, "still docked 900 units off the station");
 
   // Every material has to be reachable, or a kind that cannot be found is a
   // kind that is a lie on the inventory page.
@@ -621,6 +629,8 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
   // Fill the hold past its cap and prove it stops rather than overflowing.
   for (let i = 0; i < 400; i++) {
+    me.x = dock.x + 900; me.y = dock.y; me.vx = me.vy = 0;
+    me.invuln = 3;
     surv.motes.push({ x: me.x, y: me.y, vx: 0, vy: 0, spin: 0, life: 90,
                       mat: KINDS[i % 4] });
     now += 1000 / 60; cf.step();
@@ -632,6 +642,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(total() === cap, "the hold holds " + total() + " against a cap of " + cap);
 
   surv.motes.push({ x: me.x, y: me.y, vx: 0, vy: 0, spin: 0, life: 90, mat: "iron" });
+  me.invuln = 3;
   now += 1000 / 60; cf.step();
   check(total() === cap, "the hold took " + (total() - cap) + " past its own cap");
 
@@ -755,6 +766,11 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const foundBefore = surv.found.size;
   const chartedNow = cf.hud().charted();
 
+  /* Read immediately before, not assumed. Since phase 4 a rescue can pay out
+     while the harness is flying — a patrol clears the sentries off a distress
+     call nearby and the purse goes *up* — and this check is about whether dying
+     takes anything, not about what the number happens to be. */
+  const purse = surv.cash;
   cf.die("hole");
   const d = surv.death;
   check(!!d, "the ship did not die");
@@ -773,7 +789,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
           .every(k => surv.hold[k] === 0),
         "the hold survived a death: " + JSON.stringify(surv.hold));
   // Kept: everything the run earned.
-  check(surv.cash === 900, "dying took " + (900 - surv.cash) + " cash");
+  check(surv.cash === purse, "dying took " + (purse - surv.cash) + " cash");
   check(surv.found.size === foundBefore,
         "dying took almanac entries: " + foundBefore + " → " + surv.found.size);
   check(surv.built.has(parts[0].key), "dying unfitted a yard part");
@@ -1232,6 +1248,13 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const reach0 = cf.scanReach();
   check(reach0 > 500, "the scan reaches only " + reach0 + " units");
 
+  /* Cleared first. The sector generates its own hulks and, since phase 4, its
+     own traffic — so "how many hulks came back" stopped being a question about
+     the scan and became a question about what happened to be nearby. What is
+     being measured here is the radius, so the radius is all that is left in. */
+  surv.hulks.length = 0;
+  surv.traffic.length = 0;
+  surv.drones.length = 0;
   // One thing just inside, one well outside.
   surv.hulks.push({ x: me.x + reach0 * 0.5, y: me.y, r: 60, a: 0, spin: 0, hp: 4,
                     id: "near" });
@@ -1814,11 +1837,14 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const me = cf.live().ships[0];
   const v = () => cf.surveyView();
 
-  // Fresh tanks, and water has to be the faster of the two.
-  check(v().water.left > 300, "a fresh water tank is only " + v().water.left + "s");
-  check(v().food.left > v().water.left * 1.4,
-        "food (" + v().food.left + "s) does not outlast water (" +
-        v().water.left + "s) by enough to be a different clock");
+  /* The *capacity* of the tanks, not what is in them: a new survey opens with
+     them low on purpose, which is what makes the first thing you want the first
+     thing the station sells. */
+  check(v().water.full > 300, "a full water tank is only " + v().water.full + "s");
+  check(v().food.full > v().water.full * 1.4,
+        "food (" + v().food.full + "s) does not outlast water (" +
+        v().water.full + "s) by enough to be a different clock");
+  cf.setTanks(v().water.full, v().food.full);
 
   // They drain while you fly, and water drains faster.
   const w0 = surv.water, f0 = surv.food;
@@ -2215,6 +2241,12 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const echoes = () => cf.surveyView().echoes;
 
   // A hostile and a friendly return, side by side under the ship.
+  /* The sector's own sentries and traffic are cleared out first: `find(e => e.kind
+     === "drone")` picked whichever came back first, which since phase 4 could be
+     a sentry taking apart a freighter three chunks away rather than the one this
+     test planted. */
+  surv.drones.length = 0;
+  surv.traffic.length = 0;
   const cache = { x: me.x + 700, y: me.y, r: 46, guards: [], phase: 0, id: "e-c" };
   const drone = { x: me.x + 820, y: me.y, vx: 0, vy: 0, a: 0, home: cache,
                   post: { x: me.x + 820, y: me.y }, hp: 3, awake: false,
@@ -2571,8 +2603,18 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   cf.start("survey", 1);
   const surv = cf.survey();
   const me = cf.live().ships[0];
+  /* Held invulnerable *and* left alone. Invulnerability stops the damage but not
+     the shove — ramming a sentry bounces you whatever your shield is doing — so
+     since phase 4 filled the sector with company this measured 203 against a
+     stated 360 and looked like a speed-cap bug. What is under test is the cap. */
   const step = n => {
-    for (let i = 0; i < n; i++) { me.invuln = 3; now += 1000 / 60; cf.step(); }
+    for (let i = 0; i < n; i++) {
+      me.invuln = 3;
+      surv.drones.length = 0;
+      surv.traffic.length = 0;
+      now += 1000 / 60;
+      cf.step();
+    }
   };
   const speed = () => Math.hypot(me.vx, me.vy);
 
@@ -2834,6 +2876,186 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               span("hull").toFixed(0) + "x, cargo " + span("cargo").toFixed(0) +
               "x, size " + span("size").toFixed(1) + "x · none dominates a " +
               "cheaper one · all five numbers reach the ship · camera follows size");
+}
+
+// ── company ───────────────────────────────────────────────────────────────
+/* Phase 4.1. Traffic that is not trying to kill you, and the thing that makes a
+   sector feel like anywhere. What matters is the *gradient* — inhabited near
+   home and empty far out is most of what makes distance feel like distance, and
+   a flat density would make the abyss exactly as lively as the home band. */
+{
+  const rings = [[2, 8], [10, 24], [40, 70], [90, 120]];
+  const acc = rings.map(() => ({ chunks: 0, n: 0 }));
+  const kinds = new Set();
+  for (const seed of [11, 515, 8675309, 4242]) {
+    const { cf } = boot("?debug=1&seed=" + seed);
+    cf.start("survey", 1);
+    rings.forEach(([lo, hi], i) => {
+      for (let cx = -hi; cx <= hi; cx++) {
+        for (let cy = -hi; cy <= hi; cy++) {
+          const d = Math.hypot(cx, cy);
+          if (d < lo || d > hi) continue;
+          acc[i].chunks++;
+          for (const t of cf.chunk(cx, cy).traffic) {
+            acc[i].n++;
+            kinds.add(t.kind);
+            check(t.hull && t.from && t.to, "a traffic ship with no route or hull");
+            check(Array.isArray(t.cargo), t.kind + " carries nothing at all");
+          }
+        }
+      }
+    });
+  }
+  const rate = a => a.n / Math.max(1, a.chunks);
+  const home = rate(acc[0]), deep = rate(acc[acc.length - 1]);
+  check(home > 0.1, "the home band only has " + home.toFixed(3) + " traffic a chunk");
+  check(home > deep * 4,
+        "traffic is as common in the deep as near home (" + home.toFixed(3) +
+        " → " + deep.toFixed(3) + ")");
+  check(deep < 0.05, "the abyss still has " + deep.toFixed(3) + " traffic a chunk");
+  check(kinds.has("hauler") && kinds.has("patrol") && kinds.has("distress"),
+        "only these kinds ever appear: " + [...kinds].join(", "));
+
+  /* Robbing one. It is meant to be possible — "you can rob it" is half of what
+     makes company mean anything — and what it drops has to be what it was
+     carrying rather than a fresh roll. */
+  {
+    const { cf } = boot("?debug=1&seed=4747");
+    cf.start("survey", 1);
+    const surv = cf.survey();
+    const me = cf.live().ships[0];
+    surv.traffic.length = 0;
+    surv.motes.length = 0;
+    const hauler = { id: "t-test", kind: "hauler", hull: "drayman",
+                     x: me.x + 300, y: me.y, a: 0,
+                     from: { x: me.x + 300, y: me.y }, to: { x: me.x + 4000, y: me.y },
+                     leg: 1, speed: 80, hp: 6, maxHp: 6,
+                     cargo: ["iridium", "iridium", "ice"], cool: 1, doom: 0,
+                     guards: 0, phase: 0 };
+    surv.traffic.push(hauler);
+    for (let i = 0; i < 30; i++) {
+      hauler.hp = 6;
+      cf.live().bullets.push({ owner: 0, colour: "#fff", dmg: 1,
+                               x: hauler.x, y: hauler.y, vx: 0, vy: 0, life: 1 });
+      now += 1000 / 60; cf.step();
+      if (!surv.traffic.includes(hauler)) break;
+    }
+    hauler.hp = 0.5;
+    cf.live().bullets.push({ owner: 0, colour: "#fff", dmg: 1,
+                             x: hauler.x, y: hauler.y, vx: 0, vy: 0, life: 1 });
+    now += 1000 / 60; cf.step();
+    check(!surv.traffic.includes(hauler), "a hauler survived being shot to pieces");
+    const spilled = surv.motes.map(m => m.mat).sort().join(",");
+    check(spilled === "ice,iridium,iridium",
+          "it dropped " + JSON.stringify(spilled) + ", not what it was carrying");
+  }
+
+  /* And rescuing one. Clearing the sentries off a distress call is the whole of
+     the interaction — there is nothing to press — so what has to hold is that
+     the clock stops and it pays. */
+  {
+    const { cf } = boot("?debug=1&seed=4848");
+    cf.start("survey", 1);
+    const surv = cf.survey();
+    const me = cf.live().ships[0];
+    surv.traffic.length = 0;
+    surv.drones.length = 0;
+    surv.cash = 0;
+    const ship = { id: "t-sos", kind: "distress", hull: "coffer",
+                   x: me.x + 600, y: me.y, a: 0,
+                   from: { x: me.x + 600, y: me.y }, to: { x: me.x + 900, y: me.y },
+                   leg: 1, speed: 60, hp: 5, maxHp: 5, cargo: ["iron"],
+                   cool: 1, doom: 40, guards: 2, phase: 0 };
+    surv.traffic.push(ship);
+    for (let g = 0; g < 2; g++) {
+      surv.drones.push({ id: "t-sos-g" + g, x: ship.x + 200 * (g ? 1 : -1),
+                         y: ship.y, vx: 0, vy: 0, a: 0, home: null, prey: ship,
+                         post: { x: ship.x, y: ship.y }, hp: 2,
+                         cool: 1, awake: true, hit: 0 });
+    }
+    for (let i = 0; i < 120; i++) { me.invuln = 3; now += 1000 / 60; cf.step(); }
+    check(ship.doom < 40, "the distress clock is not running: " + ship.doom);
+    check(surv.traffic.includes(ship), "it died in two seconds");
+
+    surv.drones.length = 0;                    // the rescue, done the only way
+    now += 1000 / 60; cf.step();
+    check(surv.cash > 0, "clearing the sentries paid nothing");
+    check(ship.kind === "hauler",
+          "a rescued ship is still flagged " + ship.kind + " — it should get on " +
+          "with its day");
+    check(surv.t.rescued === true, "the rescue did not register");
+  }
+  console.log("  company    " + home.toFixed(2) + "/chunk at home → " +
+              deep.toFixed(3) + " in the deep · haulers, patrols and distress " +
+              "calls · robbing drops what it carried · rescuing pays");
+}
+
+// ── the first two minutes ─────────────────────────────────────────────────
+/* Phase 4.2, and the test the whole plan is written against: somebody sits down
+   cold and inside two minutes knows what they are doing and why.
+
+   The rule is that every mechanic is introduced by *needing* it. So what is
+   checked here is the arrangement rather than the words: that a new survey opens
+   docked with the tanks low, that the beats fire on events in the order a player
+   would meet them, that each fires once, and that a sector you have played stops
+   explaining itself. */
+{
+  const { cf } = boot("?debug=1&seed=606061");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const home = cf.home();
+
+  // Docked, at the station, low on water. All three, or the opening is text.
+  now += 1000 / 60; cf.step();
+  check(Math.hypot(me.x - home.x, me.y - home.y) < 400,
+        "a new survey starts " + Math.round(Math.hypot(me.x - home.x, me.y - home.y)) +
+        " units from the station");
+  check(cf.places().docked === true, "a new survey does not start docked");
+  const v = cf.surveyView();
+  check(v.water.frac < 0.45, "the opening tank is " +
+        Math.round(v.water.frac * 100) + "% — nothing to want");
+  check(v.water.countdown === 0, "the opening starts you already dying");
+
+  // The first beat is the one you can act on without moving.
+  check(surv.taught.has("thirst"), "nothing pointed at the water");
+  check(!surv.taught.has("yard"), "the yard spoke before the water was dealt with");
+
+  // Deal with it, and the next beat is where to go.
+  surv.cash = 500;
+  cf.buySupply("water");
+  now += 1000 / 60; cf.step();
+  check(surv.taught.has("yard"), "with a full tank, nothing said where to go");
+
+  // Break something, and it says what it is worth.
+  surv.hold.iron = 4;
+  now += 1000 / 60; cf.step();
+  check(surv.taught.has("material"), "picking material up explained nothing");
+
+  // Each fires once. Emptying and refilling must not start it over.
+  const seen = surv.taught.size;
+  cf.setTanks(10, 100);
+  for (let i = 0; i < 8; i++) { now += 1000 / 60; cf.step(); }
+  cf.setTanks(cf.surveyView().water.full, cf.surveyView().food.full);
+  for (let i = 0; i < 8; i++) { now += 1000 / 60; cf.step(); }
+  check(surv.taught.size >= seen, "a beat was un-taught");
+  check(surv.taught.size <= seen + 2, "the opening is repeating itself");
+
+  /* And a sector you have played stops explaining itself: the beats are in the
+     book, and a resumed survey starts at the origin rather than in the shop. */
+  cf.leave();
+  const book = JSON.parse(store["crossfire.survey.v3"]);
+  check(book.taught.includes("thirst"), "the book forgot the opening");
+  const again = bootKeepingStorage("?debug=1&seed=606061");
+  again.cf.start("survey", 1);
+  const back = again.cf.live().ships[0];
+  check(Math.hypot(back.x, back.y) < 400,
+        "a resumed survey did not start at the origin");
+  check(again.cf.survey().taught.has("thirst"),
+        "a resumed survey would teach it all again");
+  console.log("  opening    starts docked at the station on a " +
+              Math.round(v.water.frac * 100) + "% tank · water, then the yard, " +
+              "then what it is worth · each beat once · a resumed sector is quiet");
 }
 
 if (problems.length) {

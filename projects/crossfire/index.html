@@ -4803,7 +4803,7 @@
 
   function loadSurveyBook() {
     const empty = { seed: 0, found: [], fog: "", cash: 0, deaths: 0, waypoint: null,
-                    ship: "skiff", owned: ["skiff"],
+                    ship: "skiff", owned: ["skiff"], taught: [],
                     water: WATER_FULL, food: FOOD_FULL,
                     hold: freshHold(),
                     refit: freshRefit(), opened: [], stripped: [],
@@ -4877,6 +4877,7 @@
            a name off the result, so one unknown key — a save from a build with
            a different manifest, or a hand-edited one — threw on the first frame
            and took the whole mode with it before anything could be drawn. */
+        taught: strs(b.taught),
         carrying: strs(b.carrying).filter(k => BUILD.some(x => x.key === k)),
         built: strs(b.built).filter(k => BUILD.some(x => x.key === k)),
         pins: Array.isArray(b.pins)
@@ -4910,6 +4911,7 @@
         waypoint: surv.waypoint,
         ship: surv.ship,
         owned: [...surv.owned],
+        taught: [...surv.taught],
         water: Math.round(surv.water),
         food: Math.round(surv.food),
         refit: surv.refit,
@@ -5178,7 +5180,7 @@
     const spot = (m) => ({ x: ox + rnd(m, CHUNK - m), y: oy + rnd(m, CHUNK - m) });
     const out = { hazards: [], planets: [], wrecks: [], nebulae: [], marks: [],
                   gates: latticeGates, caches: [], stations: [], hulks: [],
-                  parts: [], fields: [] };
+                  parts: [], fields: [], traffic: [] };
 
     // Where you start is quiet: an opening spawn inside a well is a death you
     // could not have avoided, and the first thing this mode asks you to do is
@@ -5243,6 +5245,7 @@
         out.nebulae.push({ x: p.x, y: p.y, r: rnd(420, 900),
                            phase: R() * Math.PI * 2 });
       }
+      buildTraffic(cx, cy, R, rnd, deep, out);
       if (R() < 0.05 * abund("wrecks")) {
         const p = spot(300);
         out.wrecks.push({ x: p.x, y: p.y, a: R() * Math.PI * 2,
@@ -5558,6 +5561,11 @@
        across the rebuild as the same object rather than made again. */
     const liveGuards = new Map();
     for (const d of surv.drones) if (d.id) liveGuards.set(d.id, d);
+    // Traffic moves, so it is carried across a rebuild for the same reason a
+    // guard is: a freighter that snapped back to its start line every time the
+    // ship crossed a chunk line would be scenery, not company.
+    const liveTraffic = new Map();
+    for (const t of surv.traffic) if (t.id) liveTraffic.set(t.id, t);
 
     const want = new Set();
     for (let y = cy - load; y <= cy + load; y++) {
@@ -5577,12 +5585,18 @@
       for (const id of [...surv.deadGuards]) {
         if (id.startsWith(k + "c")) surv.deadGuards.delete(id);
       }
+      // Same rule for traffic: out of range is out of mind, and coming back
+      // finds the route running again.
+      for (const id of [...surv.goneTraffic]) {
+        if (id.startsWith(k + "t")) surv.goneTraffic.delete(id);
+      }
     }
 
     hazards = [];
     surv.planets = []; surv.wrecks = []; surv.nebulae = []; surv.marks = [];
     surv.gates = []; surv.caches = []; surv.stations = []; surv.hulks = [];
     surv.drones = []; surv.leviathan = null; surv.parts = []; surv.fields = [];
+    surv.traffic = [];
     for (const [k, c] of surv.chunks) {
       for (const h of c.hazards) hazards.push(h);
       for (const p of c.planets) surv.planets.push(p);
@@ -5608,6 +5622,29 @@
         surv.hulks.push(h);
       });
       c.stations.forEach(st => surv.stations.push(st));
+
+      c.traffic.forEach((t, ti) => {
+        const tid = k + "t" + ti;
+        if (surv.goneTraffic.has(tid)) return;
+        const was = liveTraffic.get(tid);
+        if (was) { surv.traffic.push(was); return; }
+        const made = Object.assign({}, t, { id: tid, cargo: t.cargo.slice() });
+        surv.traffic.push(made);
+        /* A distress call brings its own attackers. They are drones like any
+           other so they behave like any other, and they are posted on the ship
+           rather than on a cache — which is what makes the scene read as
+           something happening rather than something placed. */
+        for (let g = 0; g < t.guards; g++) {
+          const ga = (g / Math.max(1, t.guards)) * Math.PI * 2;
+          surv.drones.push({
+            id: tid + "g" + g,
+            x: t.x + Math.cos(ga) * 260, y: t.y + Math.sin(ga) * 260,
+            vx: 0, vy: 0, a: ga + Math.PI, home: null, prey: made,
+            post: { x: t.x, y: t.y }, hp: 2, cool: rand(0.2, 1),
+            awake: true, hit: 0
+          });
+        }
+      });
       c.caches.forEach((cache, i) => {
         const id = k + "c" + i;
         if (surv.opened.has(id)) return;
@@ -5705,6 +5742,7 @@
       chunks: new Map(), centre: null,
       planets: [], wrecks: [], nebulae: [], marks: [],
       coilExitAt: new Map(),
+      traffic: [],
       gates: [], caches: [], stations: [], hulks: [], drones: [],
       leviathan: null,
       shots: [],                 // what the sentries fire; see `surveyShots`
@@ -5738,6 +5776,8 @@
       // Guards killed while their post is still in range. Not in the book: a
       // post you have left and come back to is manned again by design.
       deadGuards: new Set(),
+      // Traffic that has been destroyed, remembered only while its chunk is up.
+      goneTraffic: new Set(),
       opened: new Set(carried ? book.opened : []),
       stripped: new Set(carried ? book.stripped : []),
       docked: null,
@@ -5750,6 +5790,9 @@
       deaths: carried ? book.deaths : 0,
       runStart: 0,
       lastObjective: null,        // so a change can be told apart from a repeat
+      // Which of the opening's beats have already fired. Kept in the book, so a
+      // sector you have played is a sector that has stopped explaining itself.
+      taught: new Set(carried ? book.taught : []),
       /* Somewhere you have decided to go. Pins are notes — six kinds, as many as
          you like, and none of them point anywhere. A waypoint is the other thing:
          one at a time, and the flight HUD holds a bearing to it, because "I want
@@ -5785,6 +5828,7 @@
         nearStar: false, leftHole: false, slung: false, threaded: false,
         skimmed: false, inWell: null, entrySpeed: 0,
         struck: false, warped: false, laden: false, refitted: false, sold: false,
+        rescued: false, robbed: false,
         looted: false
       }
     };
@@ -5860,7 +5904,27 @@
     bounds = { x0: -1e7, y0: -1e7, x1: 1e7, y1: 1e7 };
 
     const me = ships[0];
-    me.x = 0; me.y = 0; me.vx = me.vy = 0; me.a = -Math.PI / 2;
+    /* A new survey opens *at the station*, not in empty space at the origin.
+       That single change is most of the two-minute pass: you did not choose to be
+       there, you cannot leave without noticing the shop, and the tanks are low
+       enough that the first thing you want is the first thing it sells.
+
+       A resumed survey starts where a resumed survey should — at the origin,
+       having already been taught all of this — so the opening is something that
+       happens once rather than every time the tab is reopened. */
+    const opening = !carried;
+    if (opening) {
+      me.x = HOME_STATION.x - 210;
+      me.y = HOME_STATION.y + 130;
+      me.a = Math.atan2(HOME_STATION.y - me.y, HOME_STATION.x - me.x);
+      // Low, not empty: there is no countdown running and no emergency, only a
+      // reason to press the button you are parked in front of.
+      surv.water = WATER_FULL * 0.3;
+      surv.food = FOOD_FULL * 0.55;
+    } else {
+      me.x = 0; me.y = 0; me.a = -Math.PI / 2;
+    }
+    me.vx = me.vy = 0;
     applyRefit(me);
     me.hull = me.maxHull;
     surv.runStart = clock;
@@ -5880,7 +5944,8 @@
     }
 
     banner = { text: "SURVEY", t: 3.8, colour: NEBULA,
-               sub: "SEED " + seed + "  ·  " + surv.world.name };
+               sub: carried ? "SEED " + seed + "  ·  " + surv.world.name
+                            : "you are docked  ·  " + surv.world.name };
   }
 
   /* ── finding things ───────────────────────────────────────────────────────
@@ -5943,7 +6008,10 @@
     gate:    { name: "GATE",      colour: "#5ce1ff",     bad: false },
     hulk:    { name: "HULK",      colour: WRECK,         bad: false },
     salvage: { name: "CASH",      colour: CASH,          bad: false },
-    drone:   { name: "SENTRY",    colour: DRONE_COLOUR,  bad: true }
+    drone:   { name: "SENTRY",    colour: DRONE_COLOUR,  bad: true },
+    traffic: { name: "TRAFFIC",   colour: "#8fb4d8",     bad: false },
+    patrol:  { name: "PATROL",    colour: CASH,          bad: false },
+    distress:{ name: "DISTRESS",  colour: "#ffcb42",     bad: false }
   };
 
   function surveyScan() {
@@ -5974,6 +6042,13 @@
     for (const g of surv.gates) add("gate", g.x, g.y);
     for (const h of surv.hulks) add("hulk", h.x, h.y);
     for (const d of surv.drones) add("drone", d.x, d.y, d);
+    // Traffic moves, so it is tracked rather than photographed, the same way a
+    // sentry is — and a distress call is the one return worth crossing a sector
+    // for, so it comes back as its own kind rather than as generic traffic.
+    for (const t of surv.traffic) {
+      add(t.kind === "patrol" ? "patrol"
+        : t.kind === "distress" ? "distress" : "traffic", t.x, t.y, t);
+    }
     /* Loose salvage is clustered by nature — a broken rock is twenty motes — so
        it is reported as one echo per cluster rather than twenty on top of each
        other, which would bury everything else on the chart. */
@@ -5988,7 +6063,10 @@
     /* A scan writes what it finds into the gazetteer. Half the value of
        pressing the button is that the chart remembers the answer. */
     for (const e of found) {
-      if (e.kind === "salvage" || e.kind === "drone") continue;   // both move
+      // Everything that moves is left out: a note of where a freighter was an
+      // hour ago is worse than no note at all.
+      if (e.kind === "salvage" || e.kind === "drone" || e.kind === "traffic" ||
+          e.kind === "patrol" || e.kind === "distress") continue;
       noteKnown(e.kind === "sealed" ? "cache" : e.kind, e.x, e.y);
     }
     surv.echoes = found;
@@ -6014,6 +6092,124 @@
      the mode has no fail state to protect and inventing one would only punish
      going and looking. Falling into a well is the exception: it puts you back
      at the edge of it, since the alternative is dying again immediately. */
+  /* ── what everybody else is doing ─────────────────────────────────────────
+     Haulers run their line. Patrols hold their circuit and shoot at sentries,
+     never at you — an armed neutral that opens fire on the player is not company,
+     it is another enemy with a different colour. A distress call sits there
+     losing hull until either its attackers are dead or it is.
+
+     None of them shoot at you and none of them get in your way, which is the
+     point: the sector should feel inhabited without becoming another thing to
+     manage. What you can do to them is your business. */
+  function surveyTraffic(dt) {
+    const me = ships[0];
+    for (let i = surv.traffic.length - 1; i >= 0; i--) {
+      const t = surv.traffic[i];
+
+      t.hit = Math.max(0, (t.hit || 0) - dt);
+
+      if (t.kind === "distress") {
+        /* The clock. Its attackers are drones posted on it, so "are they dead"
+           is a question about the drone list — and clearing them is the rescue,
+           whether you meant it or not. */
+        const attackers = surv.drones.filter(d => d.prey === t).length;
+        if (attackers > 0) {
+          t.doom -= dt;
+          t.hp = Math.max(0.4, t.maxHp * (t.doom / 60));
+          if (t.doom <= 0) { killTraffic(i, false); continue; }
+          // Drifting, not flying: it is not going anywhere under its own power.
+          t.x += Math.cos(t.a) * 14 * U * dt;
+          t.y += Math.sin(t.a) * 14 * U * dt;
+          if (!t.called && dist2(me.x, me.y, t.x, t.y) < TRAFFIC_TALK ** 2) {
+            t.called = true;
+            chatter("Distress call — they are being taken apart out here.", "#ffcb42");
+          }
+        } else if (!t.saved) {
+          /* Saved. It pays, and then it becomes an ordinary hauler and gets on
+             with its day — which is a better ending than a thank-you and a
+             despawn, because you can pass it again later. */
+          t.saved = true;
+          t.kind = "hauler";
+          t.hp = t.maxHp;
+          surv.cash += DISTRESS_PAY;
+          surv.t.rescued = true;
+          chatter("They made it. " + DISTRESS_PAY + " cash, and their thanks.", CASH);
+          gameSound("win", t.x);
+          saveSurveyBook();
+        }
+        continue;
+      }
+
+      /* A route, walked end to end. `leg` is which way along it, so a ship met
+         twice is the same ship going about its day rather than a new one. */
+      const goal = t.leg > 0 ? t.to : t.from;
+      const dx = goal.x - t.x, dy = goal.y - t.y;
+      const d = Math.hypot(dx, dy) || 1;
+      if (d < 220) { t.leg = -t.leg; continue; }
+      const want = Math.atan2(dy, dx);
+      let diff = want - t.a;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      t.a += Math.max(-1.4 * dt, Math.min(1.4 * dt, diff));
+      t.x += Math.cos(t.a) * t.speed * U * dt;
+      t.y += Math.sin(t.a) * t.speed * U * dt;
+
+      /* A patrol shoots at sentries. It is the one thing that tells you these
+         are on your side without a word being said — and it means a guarded
+         cache near a station is a fight you can arrive in the middle of. */
+      if (t.kind === "patrol") {
+        t.cool -= dt;
+        if (t.cool <= 0) {
+          let best = null, bd = 1500 * U;
+          for (const dr of surv.drones) {
+            const dd = Math.hypot(dr.x - t.x, dr.y - t.y);
+            if (dd < bd) { bd = dd; best = dr; }
+          }
+          if (best) {
+            t.cool = 0.5;
+            const a = Math.atan2(best.y - t.y, best.x - t.x);
+            surv.shots.push({
+              x: t.x + Math.cos(a) * 20 * U, y: t.y + Math.sin(a) * 20 * U,
+              vx: Math.cos(a) * 360 * U, vy: Math.sin(a) * 360 * U,
+              life: 2.2, friendly: true
+            });
+            gameSound("shot", t.x);
+          } else t.cool = 1.2;
+        }
+      }
+    }
+  }
+
+  /* Destroyed, by you or by somebody else. What it was carrying ends up on the
+     floor either way — which is what makes robbing one a thing you can do, and
+     failing to save one a thing that costs somebody else rather than you. */
+  function killTraffic(i, byYou) {
+    const t = surv.traffic[i];
+    burst(t.x, t.y, TRAFFIC_COLOUR[t.kind] || WRECK, 26, 300 * U);
+    gameSound("boom", t.x);
+    addShake(4);
+    for (const key of t.cargo) dropKnownMote(t.x, t.y, key, 90);
+    if (t.id) surv.goneTraffic.add(t.id);
+    surv.traffic.splice(i, 1);
+    // Its attackers have nothing left to attack.
+    for (const d of surv.drones) if (d.prey === t) d.prey = null;
+    if (byYou) {
+      surv.t.robbed = true;
+      chatter("They were not armed.", "#ff8f77");
+    }
+  }
+
+  /* One mote of a known kind. Traffic drops what it was actually carrying rather
+     than a roll, so robbing a hauler pays what the hauler had. */
+  function dropKnownMote(x, y, key, spread) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = rand(20, 90) * U;
+    surv.motes.push({ x: x + Math.cos(a) * rand(0, spread || 30),
+                      y: y + Math.sin(a) * rand(0, spread || 30),
+                      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+                      spin: rand(0, 6.28), life: 90, mat: key });
+  }
+
   /* ── running at light ─────────────────────────────────────────────────────
      Engaged and disengaged by the player, and dropped for them the moment
      anything is about to matter. Three things end a run: pressing again, taking
@@ -6693,9 +6889,11 @@
         d.awake = false;
       }
 
-      // Toward the player when awake, back to the post when not.
-      const gx = d.awake ? me.x : d.post.x;
-      const gy = d.awake ? me.y : d.post.y;
+      // Toward the player when awake, back to the post when not — or onto the
+      // thing it is taking apart, which outranks both.
+      const onPrey = d.prey && surv.traffic.includes(d.prey);
+      const gx = onPrey ? d.prey.x : d.awake ? me.x : d.post.x;
+      const gy = onPrey ? d.prey.y : d.awake ? me.y : d.post.y;
       const gd = Math.hypot(gx - d.x, gy - d.y) || 1;
       const want = d.awake ? 520 * U : 0;      // stand off rather than ram
       if (gd > want) {
@@ -6718,16 +6916,26 @@
         surv.drones.splice(i, 1);
         continue;
       }
-      d.a = Math.atan2(me.y - d.y, me.x - d.x);
+      /* A sentry posted on a distress call has something else to shoot at, and
+         keeps shooting at it until it is gone. That is the whole scene: you can
+         watch it happen from a long way off and decide whether to turn. */
+      const prey = d.prey && surv.traffic.includes(d.prey) ? d.prey : null;
+      if (prey) { d.prey = prey; } else if (d.prey) { d.prey = null; }
+      const at = prey || me;
+      d.a = Math.atan2(at.y - d.y, at.x - d.x);
 
       d.cool -= dt;
-      if (d.awake && d.cool <= 0 && toMe < 1000 * U && me.alive) {
+      const toTarget = prey ? Math.hypot(prey.x - d.x, prey.y - d.y) : toMe;
+      if ((prey || (d.awake && me.alive)) && d.cool <= 0 && toTarget < 1000 * U) {
         d.cool = rand(1.1, 1.9);
         const sp = 420 * U;
         surv.shots.push({ x: d.x + Math.cos(d.a) * 20 * U,
                           y: d.y + Math.sin(d.a) * 20 * U,
                           vx: Math.cos(d.a) * sp, vy: Math.sin(d.a) * sp,
-                          life: 2.4 });
+                          life: 2.4,
+                          // Aimed at a freighter, not at you: it must not clip
+                          // the player on its way past.
+                          atPrey: !!prey });
         gameSound("shot", d.x);
       }
 
@@ -6757,6 +6965,25 @@
       const b = surv.shots[i];
       b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
       if (b.life <= 0) { surv.shots.splice(i, 1); continue; }
+      /* A patrol's rounds go the other way. They are in the same list because
+         they are the same object and the same drawing; the only difference is
+         who they are allowed to hit — and a neutral whose fire could clip you
+         would stop being a neutral the first time it did. */
+      if (b.friendly) {
+        for (let k = surv.drones.length - 1; k >= 0; k--) {
+          const d = surv.drones[k];
+          if (dist2(b.x, b.y, d.x, d.y) > (18 * U) ** 2) continue;
+          surv.shots.splice(i, 1);
+          d.hp -= 1;
+          d.hit = 0.12;
+          d.awake = true;
+          burst(b.x, b.y, DRONE_COLOUR, 5, 120 * U);
+          if (d.hp <= 0) killDrone(k); else gameSound("hit", d.x);
+          break;
+        }
+        continue;
+      }
+      if (b.atPrey) continue;      // meant for the freighter, not for you
       if (me.alive && me.invuln <= 0 && dist2(b.x, b.y, me.x, me.y) < R * R) {
         surv.shots.splice(i, 1);
         damageShip(me, "shot", null);
@@ -6884,6 +7111,19 @@
         burst(b.x, b.y, DRONE_COLOUR, 5, 120 * U);
         if (d.hp <= 0) killDrone(i); else gameSound("hit", d.x);
       }
+      /* Traffic can be shot. Deliberately: "you can rob it" is half of what
+         makes company mean anything, and a neutral you are physically unable to
+         harm is scenery with a flight path. */
+      for (let i = surv.traffic.length - 1; i >= 0 && !spent; i--) {
+        const t = surv.traffic[i];
+        const rr = 22 * U * (shipSpec(t.hull).size || 1);
+        if (dist2(b.x, b.y, t.x, t.y) > rr * rr) continue;
+        spent = true;
+        t.hp -= (b.dmg || 1);
+        t.hit = 0.12;
+        burst(b.x, b.y, TRAFFIC_COLOUR[t.kind] || WRECK, 5, 120 * U);
+        if (t.hp <= 0) killTraffic(i, true); else gameSound("hit", t.x);
+      }
       for (let i = surv.hulks.length - 1; i >= 0 && !spent; i--) {
         const h = surv.hulks[i];
         if (dist2(b.x, b.y, h.x, h.y) > h.r * h.r) continue;
@@ -6931,6 +7171,157 @@
     saveSurveyBook();
     return true;
   }
+  /* ═══ THE FIRST TWO MINUTES ═══════════════════════════════════════════════
+     Ric's sister sits down cold, and inside two minutes she knows what she is
+     doing and why. That is the test the whole plan is written against, and this
+     is the only part of the mode that exists to pass it.
+
+     The rule it is built on: **every mechanic is introduced by needing it.** Not
+     by a tutorial, not by a wall of text on the title card, and not by a tooltip
+     — by the game arranging for you to want the thing about ninety seconds
+     before you would have found it on your own.
+
+     So a new survey starts *docked at the home station with the tanks low*. You
+     did not choose to be there and you cannot leave without noticing the shop,
+     which means the first thing that happens is you buy water — and buying water
+     teaches cash, storage, the station page and the fact that something out here
+     is counting down, in one press. Everything after that is the same trick:
+
+       water low        →  you are already standing in the shop that sells it
+       water bought     →  the yard says what it wants and where to look
+       first material   →  it says what it is worth and that a station buys it
+       storage filling  →  it says to go and sell
+       first sale       →  the refit tracks are right there on the same page
+
+     Each beat fires once, on an event, and is remembered — a prompt you have
+     already acted on is noise the second time. None of them stops the game or
+     asks for a click. If you already know all this, the whole thing is four
+     notifications you can ignore over two minutes and then never see again. */
+  const OPENING = [
+    { key: "thirst",
+      when: () => surv.docked && surv.water < WATER_FULL * 0.45,
+      text: "WATER LOW",
+      sub: "you are docked — the station sells it",
+      colour: "#87d8ff" },
+    { key: "yard",
+      when: () => surv.water >= WATER_FULL * 0.9 && !yardDone(),
+      text: () => "THE YARD WANTS A " + (nextPart() ? nextPart().name : "PART"),
+      sub: () => nextPart() ? nextPart().clue : "",
+      colour: NEBULA },
+    { key: "material",
+      when: () => holdUsed() > 0,
+      text: "THAT IS WORTH MONEY",
+      sub: "a station will buy it — press M for the chart",
+      colour: CASH },
+    { key: "sell",
+      when: () => holdUsed() >= holdCap() * 0.6,
+      text: "STORAGE FILLING UP",
+      sub: "find a station and sell what you are carrying",
+      colour: CASH },
+    { key: "spend",
+      when: () => surv.cash >= 200 && surv.docked,
+      text: "YOU CAN AFFORD A REFIT",
+      sub: "the station fits them — and it sells ships",
+      colour: CASH }
+  ];
+
+  function surveyOpening() {
+    if (!surv || surv.death || !surveyHUD) return;
+    for (const beat of OPENING) {
+      if (surv.taught.has(beat.key)) continue;
+      if (!beat.when()) continue;
+      surv.taught.add(beat.key);
+      const text = typeof beat.text === "function" ? beat.text() : beat.text;
+      const sub  = typeof beat.sub === "function" ? beat.sub() : beat.sub;
+      surveyHUD.notify(text, sub, beat.colour, 9);
+      saveSurveyBook();
+      return;        // one at a time; two at once is a wall
+    }
+  }
+
+  /* ═══ COMPANY ═════════════════════════════════════════════════════════════
+     Traffic that is not trying to kill you, which is the only thing that has
+     ever made a sector feel like anywhere. Three kinds, and each is a different
+     answer to "what is somebody else doing out here":
+
+       hauler      a freighter on a route between two points, carrying material
+                   and minding its own business
+       patrol      an armed ship holding a circuit near a station, which will
+                   shoot at a sentry and never at you
+       distress    a hauler being taken apart by sentries, with a clock on it
+
+     Density falls with distance, hard. Near home you are never alone for long;
+     past the Hostile band you can fly for an hour and see nobody, and that
+     contrast is most of what makes distance feel like distance — a sector that
+     is equally empty everywhere is just big.
+
+     They fly the same twenty-five hulls you can buy, which is most of what makes
+     the roster feel like a world rather than a shop: the Drayman that passes you
+     on a route is the Drayman in the hangar. */
+  const TRAFFIC_HULLS = {
+    hauler:   ["drayman", "coffer", "pannier", "runner", "windlass", "carrack"],
+    patrol:   ["lance", "harrier", "wedge", "spur", "bastion"],
+    distress: ["drayman", "pannier", "stride", "coffer"]
+  };
+  const TRAFFIC_COLOUR = { hauler: "#8fb4d8", patrol: "#6dffbf", distress: "#ffcb42" };
+  const TRAFFIC_HP     = { hauler: 6, patrol: 8, distress: 5 };
+  const DISTRESS_PAY   = 260;    // for clearing the sentries off one
+  const TRAFFIC_TALK   = 2600;   // how close before it says anything
+
+  /* What one is carrying, and therefore what robbing it pays. A hauler carries
+     what a hauler carries — bulk, mostly cheap — so piracy is a living rather
+     than a fortune, and shooting the thing that makes the sector feel inhabited
+     is a decision with a price rather than a free lunch. */
+  function trafficCargo(kind, deep, R) {
+    const n = kind === "patrol" ? 4 : Math.round(10 + R() * 22 + deep * 14);
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const roll = R();
+      out.push(roll < 0.42 ? "ice" : roll < 0.82 ? "iron"
+             : roll < 0.96 ? "alloy" : "iridium");
+    }
+    return out;
+  }
+
+  /* Rolled per chunk like everything else, and — like a cache's guards — carried
+     across a re-stream rather than rebuilt, because these move and a freighter
+     that snapped back to its start line every few seconds would be worse than no
+     freighter at all. */
+  function buildTraffic(cx, cy, R, rnd, deep, out) {
+    const ox = cx * CHUNK, oy = cy * CHUNK;
+    // Common at home, gone by the deep. Squared, so the falloff is felt rather
+    // than merely present.
+    const near = Math.pow(1 - Math.min(1, deep), 2);
+    if (R() > 0.34 * near + 0.012) return;
+
+    const roll = R();
+    const kind = roll < 0.58 ? "hauler" : roll < 0.86 ? "patrol" : "distress";
+    const hulls = TRAFFIC_HULLS[kind];
+    const hull = hulls[Math.floor(R() * hulls.length)];
+    const x = ox + rnd(300, CHUNK - 300), y = oy + rnd(300, CHUNK - 300);
+
+    /* A route rather than a destination: a hauler runs a line and turns round at
+       the ends, which is what makes meeting one twice feel like the same ship
+       going about its day rather than a spawn. */
+    const a = R() * Math.PI * 2;
+    const len = kind === "patrol" ? rnd(900, 2200) : rnd(4000, 14000);
+    const to = { x: x + Math.cos(a) * len, y: y + Math.sin(a) * len };
+
+    out.traffic.push({
+      kind, hull, x, y, a,
+      from: { x, y }, to, leg: 1,
+      speed: kind === "patrol" ? rnd(120, 190) : rnd(70, 130),
+      hp: TRAFFIC_HP[kind], maxHp: TRAFFIC_HP[kind],
+      cargo: trafficCargo(kind, deep, R),
+      cool: rnd(0.3, 1.4),
+      // A distress call has a clock on it. Long enough to be worth turning
+      // around for, short enough that turning around has to be a decision.
+      doom: kind === "distress" ? rnd(38, 62) : 0,
+      guards: kind === "distress" ? 1 + Math.floor(R() * 2) : 0,
+      phase: R() * Math.PI * 2
+    });
+  }
+
   /* ── the hangar ───────────────────────────────────────────────────────────
      Ships are bought at a station, which is where a shipyard would be, and the
      one you are flying is swapped rather than sold: you keep everything you have
@@ -7461,7 +7852,8 @@
          killed must not leave a contact behind, and one that chased you must not
          leave one where it started. */
       if (e.ref) {
-        if (!surv.drones.includes(e.ref)) { surv.echoes.splice(i, 1); continue; }
+        const live = surv.drones.includes(e.ref) || surv.traffic.includes(e.ref);
+        if (!live) { surv.echoes.splice(i, 1); continue; }
         e.x = e.ref.x; e.y = e.ref.y;
       }
       if ((e.t -= dt) <= 0) surv.echoes.splice(i, 1);
@@ -7485,6 +7877,7 @@
     surveyDrones(dt);
     surveyShots(dt);
     surveyBullets();
+    surveyTraffic(dt);
     surveyCaches(dt);
     surveyParts(dt);
     surveyMotes(dt);
@@ -7498,6 +7891,7 @@
     surveyLifeSupport(dt);
     surveyWarning();
     surveyObjectiveNote();
+    surveyOpening();
     recordSurroundings();
     updatePickups(dt);
 
@@ -7817,6 +8211,56 @@
     ctx.restore();
   }
 
+  /* Somebody else's ship. Drawn from the same twenty-five outlines you can buy,
+     which is most of what makes the roster feel like a world rather than a shop:
+     the Drayman that passes you on a route is the Drayman in the hangar.
+
+     Colour carries the kind — a hauler minds its own business, a patrol is on
+     your side, a distress call is the one you have to decide about — and a
+     distress call gets a ring that beats, because it has a clock on it and the
+     whole scene is about noticing in time. */
+  function drawTraffic(t) {
+    const spec = shipSpec(t.hull);
+    const r = SHIP_R * U * spec.size;
+    if (!onScreen(t.x, t.y, r * 2.5 + 80)) return;
+    const colour = TRAFFIC_COLOUR[t.kind] || WRECK;
+    const hit = t.hit > 0;
+    ctx.save();
+    ctx.translate(t.x, t.y);
+    ctx.rotate(t.a);
+    ctx.scale(r / 12, r / 12);
+    glow(hit ? "#fff2bf" : colour, 1.6 * (12 / r), 1, () => {
+      ctx.beginPath();
+      spec.art.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+      ctx.closePath();
+      ctx.stroke();
+    });
+    if (spec.fins) {
+      glow(colour, 1.2 * (12 / r), 0.75, () => {
+        ctx.beginPath();
+        for (const f of spec.fins) {
+          ctx.moveTo(f[0][0], f[0][1]);
+          ctx.lineTo(f[1][0], f[1][1]);
+        }
+        ctx.stroke();
+      });
+    }
+    ctx.restore();
+
+    if (t.kind === "distress") {
+      const beat = 0.5 + 0.5 * Math.sin(clock * 4 + t.phase);
+      glow("#ff8f77", 2, 0.3 + beat * 0.5, () => {
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, r * 1.8 + beat * 14, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      label3("DISTRESS  " + Math.max(0, Math.round(t.doom)) + "s",
+             t.x, t.y - r * 2.2 - 14, "#ff8f77", 18);
+    } else if (t.kind === "patrol") {
+      label3("PATROL", t.x, t.y - r * 2 - 10, colour, 15);
+    }
+  }
+
   function drawDrone(d) {
     if (!onScreen(d.x, d.y, 60)) return;
     ctx.save();
@@ -7995,6 +8439,7 @@
     for (const g of surv.gates) drawGate(g);
     for (const p of surv.planets) drawPlanet(p);
     drawWellNames();
+    for (const t of surv.traffic) drawTraffic(t);
     if (surv.leviathan) drawLeviathan(surv.leviathan);
     for (const h of surv.hulks) drawHulk(h);
     for (const w of surv.wrecks) drawWreck(w);
@@ -12748,7 +13193,8 @@
          of this game that cannot be checked by looking at it: whether a ship is
          inside the live arena, or wedged in the wall, is arithmetic, and a
          harness needs the same numbers the simulation used. */
-      live: () => ({ ships, rocks, hazards, net, binder, players: PLAYERS, taps,
+      live: () => ({ ships, rocks, hazards, bullets, net, binder,
+                     players: PLAYERS, taps,
                      pad: padCfg, stick, arranging, camera: cam, bounds, arena,
                      clock,
                      // The hull you are actually flying, not the stock constant:

@@ -553,21 +553,71 @@ at 0.49.
 
 ---
 
-## Phase 4 — company, and the first two minutes
+## Phase 4 — company, and the first two minutes  ·  **DONE**
 
-### 4.1 Friendly ships
+### 4.1 Friendly ships  ·  done
 
 Traffic that is not trying to kill you: haulers on a route, patrols near
 stations, wrecks-in-progress you can help or rob. The sector should feel
 inhabited near home and empty far out — that contrast is most of what makes
 distance feel like distance.
 
-### 4.2 The two-minute pass
+### 4.2 The two-minute pass  ·  done
 
 The last item, done once everything else exists, because you cannot teach a game
 that is still changing shape. A deliberate opening: you start docked, the first
 thing you need is water, the station sells it, and the station points at the
 yard. Every mechanic introduced by needing it, none of it by text.
+
+### What Phase 4 landed
+
+**Company.** Three kinds, all flying the same twenty-five hulls you can buy —
+which is most of what makes the roster feel like a world rather than a shop:
+haulers running a line between two points, patrols holding a circuit near a
+station, and distress calls being taken apart by sentries on a clock.
+
+Density measured at **0.32 a chunk near home against 0.020 in the deep** — a
+sixteen-fold falloff, squared so it is felt rather than merely present. Near home
+you are never alone for long; past the Hostile band you can fly for an hour and
+see nobody, and that contrast is most of what makes distance feel like distance.
+
+A patrol shoots at sentries and never at you. That one behaviour is what tells
+you these are on your side without a word being said, and it means a guarded
+cache near a station is a fight you can arrive in the middle of. A sentry posted
+on a distress call shoots at the freighter rather than at you, so the scene can
+be watched from a long way off and turned toward or not.
+
+You can rob one — "you can rob it" is half of what makes company mean anything,
+and a neutral you are physically unable to harm is scenery with a flight path. It
+drops what it was actually carrying rather than a fresh roll, so piracy is a
+living rather than a fortune. And you can save one: clear the sentries and it
+pays, then becomes an ordinary hauler and gets on with its day, which is a better
+ending than a thank-you and a despawn because you can pass it again later.
+
+Like the guards, traffic is carried across a chunk re-stream rather than rebuilt.
+A freighter that snapped back to its start line every few seconds would be
+scenery, not company.
+
+**The first two minutes.** A new survey now opens *docked at the home station
+with the tanks at 30%*. That single arrangement is most of the pass: you did not
+choose to be there, you cannot leave without noticing the shop, and the first
+thing you want is the first thing it sells — and buying it teaches cash, storage,
+the station page and the fact that something is counting down, in one press.
+
+After that, five beats, each fired by an event and each fired once:
+
+| when | what it says |
+|---|---|
+| docked, tank under 45% | water is low, and you are standing in the shop |
+| tank full again | what the yard wants, and the clue for where to look |
+| first material aboard | it is worth money, and a station buys it |
+| storage 60% full | go and sell |
+| 200 cash, docked | you can afford a refit — and it sells ships |
+
+Nothing stops the game, nothing asks for a click, and the whole thing is four
+notifications over two minutes that never appear again. They are kept in the
+book, so a sector you have played has stopped explaining itself — and a resumed
+survey starts at the origin rather than in the shop.
 
 ---
 
