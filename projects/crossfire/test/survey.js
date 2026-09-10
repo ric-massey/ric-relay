@@ -3802,6 +3802,297 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               Math.round(back / fwd * 100) + "% of the engine, pointed the other way");
 }
 
+// ── firepower is a part, and it costs you a slot ─────────────────────────
+/* Phase 5.3. Firepower used to be one number on a refit page. It is four things
+   you bolt on now, each taking one of your four slots, so arming up costs the
+   room you would have given to a tractor beam or a bigger scanner. That trade is
+   the whole point: a weapon that costs only money is a stat.
+
+   Every one of them fires on the trigger you already have — no second button, on
+   a keyboard or a thumb. What has to be true and can rot quietly: the cannon
+   still works with nothing fitted (it is how a rock becomes materials, and the
+   economy hangs off that), a launcher does not eat the cannon's magazine, and
+   each one behaves like the thing it is called. */
+{
+  const { cf } = boot("?debug=1&seed=838383");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const live = cf.live();
+  const me = live.ships[0];
+  const view = () => cf.surveyView();
+
+  /* The sector keeps streaming rocks in around the ship, and a homing missile
+     will happily go for one of them — so a test about what a weapon does to a
+     particular target has to be the only thing in the sky. `pin` keeps exactly
+     the rocks handed to it, every frame. */
+  let pinned = null;
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 5; surv.water = 900; surv.food = 900;
+      if (pinned) {
+        for (let k = live.rocks.length - 1; k >= 0; k--) {
+          if (pinned.indexOf(live.rocks[k]) < 0) live.rocks.splice(k, 1);
+        }
+      }
+      now += 1000 / 60; cf.step();
+      // Count what was launched rather than what is still flying: a missile can
+      // reach something and be gone before the next check runs.
+      for (const bl of live.bullets) {
+        if (bl.owner === me.id && bl.alt) launched.add(bl);
+      }
+    }
+  };
+  let launched = new Set();
+  const salvo = () => { launched = new Set(); };
+  const rounds = () => live.bullets.filter(b => b.owner === me.id);
+  const clearAir = () => { live.bullets.length = 0; salvo(); };
+  const hold = n => { cf.hold("Space", true); step(n); cf.hold("Space", false); };
+
+  // Somewhere quiet, and away from a station so fits take their time.
+  surv.docked = null;
+  me.x = 300000; me.y = 170000; me.vx = me.vy = 0; me.a = 0;
+  step(2);
+  surv.traffic.length = 0;
+  surv.drones.length = 0;
+  pinned = [];
+
+  /* The cannon, with nothing fitted at all. This is the check that matters most:
+     a ship that needed a slot spent before it could mine would not have a
+     choice, it would have a tax. */
+  clearAir();
+  hold(30);
+  check(rounds().length > 0, "an unarmed ship cannot fire its cannon");
+  check(launched.size === 0, "something fired that was not the cannon");
+
+  // Every weapon is a part, in the catalogue, in the weapon category.
+  const guns = cf.parts().filter(m => m.cat === "weapon");
+  check(guns.length === 4, "there are " + guns.length + " weapons, not 4");
+  const rar = new Set(guns.map(g => g.rarity));
+  check(rar.size === 4,
+        "the four weapons are " + [...rar].join(", ") +
+        "; they should span the rarities");
+
+  // Fitting one, the long way, so the rest of the block is on a real ship.
+  const arm = key => {
+    for (let i = 0; i < 4; i++) if (surv.slots[i]) view().onPull(i);
+    surv.store[key] = 1;
+    check(view().onFit(0, key) === true, "could not fit " + key);
+    surv.slots[0].fit = 0;
+  };
+
+  /* Three rounds in a fan about the nose, not three on top of each other. */
+  arm("scattergun");
+  clearAir();
+  hold(4);
+  const scat = [...launched];
+  check(scat.length === 3,
+        "the scatter gun put " + scat.length + " rounds up, not 3");
+  if (scat.length === 3) {
+    const ang = scat.map(b => Math.atan2(b.vy, b.vx)).sort((x, y) => x - y);
+    check(ang[2] - ang[0] > 0.3,
+          "the three scatter rounds came out in a " + (ang[2] - ang[0]).toFixed(2) +
+          " rad fan; that is not a spread");
+    check(Math.abs((ang[0] + ang[2]) / 2) < 0.05, "the fan is not centred on the nose");
+  }
+
+  /* And it is slow. Holding the trigger must not give a stream of them. */
+  clearAir();
+  hold(30);
+  check(launched.size <= 3,
+        "half a second on the trigger gave " + launched.size +
+        " scatter rounds; it should be one salvo");
+
+  /* A launcher must not spend the cannon's magazine. Rather than counting what
+     happens to be in the air, the magazine is filled to the brim with the
+     cannon's own rounds and the launcher is asked to fire anyway. */
+  arm("seekerrack");
+  clearAir();
+  hold(60);
+  check(launched.size > 0, "the seeker never fired");
+
+  step(180);                    // let the rack reload
+  clearAir();
+  for (let i = 0; i < 6; i++) {
+    live.bullets.push({ owner: me.id, colour: "#fff", dmg: 1,
+                        x: me.x - 4000 - i * 40, y: me.y - 4000,
+                        vx: 0, vy: 0, life: 9 });
+  }
+  hold(4);
+  check(launched.size > 0,
+        "with the cannon's magazine full the launcher would not fire — it is " +
+        "sharing the cap");
+
+  /* A seeker turns after things. One target off to the side, nothing else in the
+     sky at all, and the missile's heading has to bend towards it. */
+  step(180);                    // the rack again
+  clearAir();
+  surv.drones.length = 0;
+  surv.drones.push({ id: "t", x: me.x + 2000, y: me.y + 1300, vx: 0, vy: 0, a: 0,
+                     home: null, prey: null, post: { x: me.x, y: me.y },
+                     hp: 999, cool: 9, awake: false, hit: 0 });
+  me.a = 0;
+  hold(4);
+  const miss = [...launched][0];
+  check(!!miss, "no missile was launched");
+  if (miss) {
+    const a0 = Math.atan2(miss.vy, miss.vx);
+    step(24);
+    const a1 = Math.atan2(miss.vy, miss.vx);
+    check(a1 > a0 + 0.05,
+          "the missile flew straight past a target off its starboard bow (" +
+          a0.toFixed(2) + " to " + a1.toFixed(2) + ")");
+  }
+  surv.drones.length = 0;
+
+  /* A burst charge takes the neighbours. Four real rocks in a cluster, one round
+     into the middle of it, and more than the one it touched has to feel it. */
+  arm("burstcharge");
+  clearAir();
+  // Inside the charge's run, so the test is about the blast and not the range.
+  const cx = me.x + 420, cy = me.y;
+  pinned = [];
+  live.rocks.length = 0;
+  for (const [dx, dy] of [[0, 0], [96, 62], [-72, 84], [64, -92]]) {
+    const r = cf.makeRock("mid", cx + dx, cy + dy);
+    r.vx = r.vy = 0;
+    live.rocks.push(r);
+    pinned.push(r);
+  }
+  const hp0 = new Map(pinned.map(r => [r, r.hp]));
+  me.a = 0;
+  hold(4);
+  step(80);
+  /* Either several were chipped, or several were destroyed outright and are no
+     longer in the list — both are the blast having reached more than one. */
+  const gone = pinned.filter(r => live.rocks.indexOf(r) < 0).length;
+  const chipped = pinned.filter(r => live.rocks.indexOf(r) >= 0 &&
+                                     r.hp < hp0.get(r)).length;
+  check(gone + chipped > 1,
+        "the charge went off and reached " + (gone + chipped) +
+        " of four rocks; a blast that only hits what it touched is not a blast");
+
+  /* A lance goes through. Three rocks in a line, one round, and it must not stop
+     at the first. */
+  arm("raillance");
+  clearAir();
+  pinned = [];
+  live.rocks.length = 0;
+  for (let i = 0; i < 3; i++) {
+    const r = cf.makeRock("big", me.x + 420 + i * 200, me.y);
+    r.vx = r.vy = 0;
+    live.rocks.push(r);
+    pinned.push(r);
+  }
+  const lanceHp = new Map(pinned.map(r => [r, r.hp]));
+  me.a = 0;
+  hold(4);
+  step(60);
+  const reached = pinned.filter(r => live.rocks.indexOf(r) < 0 ||
+                                     r.hp < lanceHp.get(r)).length;
+  check(reached >= 2,
+        "the lance reached " + reached + " of three rocks in a line; it is " +
+        "supposed to go through");
+  pinned = null;
+
+  /* A weapon is one of the four, and it competes for the room. */
+  check(view().slots.some(sl => sl && sl.cat === "weapon"),
+        "the fitted weapon does not read as a weapon");
+  for (const k of ["scattergun", "seekerrack", "burstcharge"]) surv.store[k] = 1;
+  view().onFit(1, "scattergun");
+  view().onFit(2, "seekerrack");
+  view().onFit(3, "burstcharge");
+  check(view().slots.filter(Boolean).length === 4, "four weapons did not all fit");
+  surv.store.pulsecoil = 1;
+  check(view().onFit(0, "pulsecoil") === false,
+        "a scanner went on a ship with four weapons already bolted to it");
+
+  console.log("  weapons    four parts, one per rarity \u00b7 the cannon needs no " +
+              "slot \u00b7 same trigger, own clock \u00b7 a fan, a missile that " +
+              "turns, a charge that spreads, a lance that goes through \u00b7 " +
+              "four fitted leaves no room for anything else");
+}
+
+// ── the arrows that point off screen ─────────────────────────────────────
+/* Three things point off the edge of the screen: the objective you are looking
+   for, the returns from a scan, and a waypoint you set. All three used to pick
+   their own spot and two of them picked badly — the scan's arrows rode an
+   ellipse inset by a flat 74 and 62, which put the ones pointing up and right
+   underneath the panel chart and the ones pointing down through the hull bar.
+
+   An arrow you cannot see is worse than no arrow, because you go looking for it.
+   So every bearing round the compass is driven here and each arrow the HUD
+   actually placed is checked against the boxes the HUD itself says it has taken.
+   This is a geometry test rather than a drawing test on purpose: the one thing a
+   screenshot cannot tell you is whether something is *underneath* something. */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  for (let i = 0; i < 30; i++) {
+    me.invuln = 5; surv.water = 900; surv.food = 900;
+    now += 1000 / 60; cf.step();
+  }
+  const hud = cf.hud();
+  const W = cf.live().screenW, H = cf.live().screenH;
+  check(typeof hud.hudBlocks === "function" && Array.isArray(hud.arrows),
+        "the HUD does not say where its arrows went");
+
+  const R = 40000;
+  let total = 0, buried = 0, offscreen = 0, slid = 0;
+  const seen = new Set();
+  for (let i = 0; i < 96; i++) {
+    const a = (i / 96) * Math.PI * 2;
+    // One of each kind, on four different bearings, so every ring is exercised.
+    surv.target = { key: "t", name: "TARGET", r: 40,
+                    x: me.x + Math.cos(a) * R, y: me.y + Math.sin(a) * R };
+    surv.echoes = [
+      { kind: "salvage", x: me.x + Math.cos(a + 0.7) * R,
+        y: me.y + Math.sin(a + 0.7) * R, t: 20 },
+      { kind: "cache", x: me.x + Math.cos(a - 1.4) * R,
+        y: me.y + Math.sin(a - 1.4) * R, t: 20 }
+    ];
+    surv.waypoint = { x: me.x + Math.cos(a + 2.6) * R,
+                      y: me.y + Math.sin(a + 2.6) * R };
+    cf.draw();
+    const blocks = hud.hudBlocks(cf.surveyView());
+    check(blocks.length >= 3, "the HUD claims " + blocks.length + " occupied boxes");
+    for (const arw of hud.arrows) {
+      total++;
+      seen.add(arw.colour);
+      if (arw.moved) slid++;
+      if (arw.x < 8 || arw.x > W - 8 || arw.y < 8 || arw.y > H - 8) { offscreen++; continue; }
+      for (const b of blocks) {
+        if (arw.x > b.x && arw.x < b.x + b.w &&
+            arw.y > b.y && arw.y < b.y + b.h) buried++;
+      }
+    }
+  }
+  surv.target = null; surv.echoes = []; surv.waypoint = null;
+
+  check(total > 300, "only " + total + " arrows were drawn across 96 bearings");
+  check(buried === 0, buried + " of " + total + " arrows sat underneath the interface");
+  check(offscreen === 0, offscreen + " of " + total + " arrows were off the screen");
+  /* Some of them have to slide — that is the mechanism working. If none ever did,
+     the ring is not passing near the interface at all and the check proves
+     nothing. */
+  check(slid > 0, "no arrow ever had to move out from under a panel; " +
+                  "either the boxes are wrong or the ring misses them entirely");
+  check(slid < total / 2,
+        slid + " of " + total + " arrows had to be moved; the ring itself is " +
+        "in the wrong place");
+  // Three kinds, three colours: an objective, a scan return and a waypoint must
+  // not be the same arrow wearing one colour.
+  check(seen.size >= 3,
+        "the arrows come in " + seen.size + " colours; the objective, the scan " +
+        "and the waypoint should each be their own");
+
+  console.log("  arrows     " + total + " placements over 96 bearings \u00b7 " +
+              "none under the interface, none off screen \u00b7 " + slid +
+              " slid clear of a panel \u00b7 " + seen.size + " kinds, " +
+              "three colours");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

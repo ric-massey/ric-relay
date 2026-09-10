@@ -456,9 +456,12 @@
      What you fly behind. Deliberately thin: the mode is about looking at the
      world, so the resting state is a chart, two counters and a hull bar, and
      everything else blooms in when it has something to say. */
+  HUD.arrows = [];
+
   HUD.drawPanel = function (st, dt) {
     if (!api) return;
     st = st || {};
+    HUD.arrows = [];
     if (pulse > 0) pulse = Math.max(0, pulse - (dt || 0));
     for (const n of notes) n.t -= (dt || 0);
     notes = notes.filter(n => n.t > 0);
@@ -473,7 +476,7 @@
     if (st.critical) drawCriticalEdge(!!st.inStar);
     else if ((st.water && st.water.countdown > 0) ||
              (st.food && st.food.countdown > 0)) drawCriticalEdge(false);
-    if (st.ship) drawWaypointArrow(st);
+    if (st.ship) { drawEchoArrows(st); drawWaypointArrow(st); }
     drawSector(st);
     drawPanelChart(st);
     drawCounters(st);
@@ -1236,32 +1239,170 @@
      on a phone, and no hierarchy to collapse. The main view is player-up, so
      every bearing goes through the camera's rotation or the arrows point at the
      wrong sky. */
-  function drawContacts(st) {
+  /* ── where an edge arrow is allowed to be ─────────────────────────────────
+     Every arrow that points off screen used to pick its own spot, and both of
+     them picked badly. The scan's arrows rode an ellipse inset by a flat 74 and
+     62, which put the ones pointing up-and-right underneath the panel chart and
+     the ones pointing down through the hull bar; the waypoint's clamped its `x`
+     against the panel and left its `y` to land wherever it liked.
+
+     So there is one answer to "where does an edge arrow go" now. A rectangle
+     inset from the screen, a ray from the middle, and the point where the ray
+     leaves the rectangle — a rectangle rather than an ellipse because an arrow
+     on a rectangle is actually at the edge of the screen rather than floating a
+     third of the way in at the corners.
+
+     And a list of the places the HUD has already taken. If the point lands in
+     one, it walks around the ring until it is clear, rather than being drawn
+     under a chart where nobody will see it. */
+  HUD.hudBlocks = st => hudBlocks(st);
+
+  function hudBlocks(st) {
+    const { SCREEN_W, SCREEN_H } = api;
+    const b = panelBox();
+    return [
+      // Top right: the sector readout and the chart under it, as one column.
+      { x: b.x - 12, y: 0, w: SCREEN_W - b.x + 12, h: b.y + b.h + 16 },
+      // Top left: cash and storage.
+      { x: 0, y: 0, w: 210, h: 118 },
+      /* Bottom centre: the hull bar, and above it the one line that holds
+         whichever of four warnings is loudest. That line is fitted to
+         `SCREEN_W - 380`, so the box it can fill is most of the width — which is
+         why arrows pointing down slide out to the sides rather than finding a gap
+         in the middle. There is no gap in the middle. */
+      { x: SCREEN_W / 2 - (SCREEN_W - 360) / 2, y: SCREEN_H - 78,
+        w: SCREEN_W - 360, h: 78 }
+    ];
+  }
+
+  function edgePoint(ang, inset) {
+    const { SCREEN_W, SCREEN_H } = api;
+    const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
+    const hx = cx - inset, hy = cy - inset;
+    const c = Math.cos(ang), s = Math.sin(ang);
+    /* Where the ray leaves the box: whichever axis it reaches first. This is the
+       whole reason for a box instead of an ellipse — at 45 degrees an ellipse
+       puts the arrow 30% of the way into the picture. */
+    const t = Math.min(Math.abs(c) < 1e-6 ? Infinity : hx / Math.abs(c),
+                       Math.abs(s) < 1e-6 ? Infinity : hy / Math.abs(s));
+    return { x: cx + c * t, y: cy + s * t };
+  }
+
+  /* The arrow's spot, dragged around the ring until it is out from under the
+     interface. Both directions are tried and the nearer answer wins, so an arrow
+     never travels further than it has to and never crosses the screen to escape
+     a panel it was only just touching. */
+  function edgeSpot(st, ang, inset) {
+    const blocks = hudBlocks(st);
+    const inside = p => blocks.some(b => p.x > b.x && p.x < b.x + b.w &&
+                                         p.y > b.y && p.y < b.y + b.h);
+    const first = edgePoint(ang, inset);
+    if (!inside(first)) return { p: first, ang, moved: 0 };
+    const STEP = 0.045;
+    for (let k = 1; k <= 80; k++) {
+      for (const dir of [1, -1]) {
+        const a = ang + dir * k * STEP;
+        const p = edgePoint(a, inset);
+        if (!inside(p)) return { p, ang, moved: k * STEP * dir };
+      }
+    }
+    return { p: first, ang, moved: 0 };
+  }
+
+  /* One arrow, drawn to be seen. Bigger than the old one, never dimmer than
+     two thirds, with a tail so it reads as a direction rather than a speck, and
+     the range printed *inboard* of it so the label cannot fall off the screen
+     the arrow is sitting on the edge of. */
+  function edgeArrow(st, ang, colour, text, opts) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
+    const o = opts || {};
+    const inset = o.inset === undefined ? 46 : o.inset;
+    const at = edgeSpot(st, ang, inset);
+    /* Where every arrow ended up this frame. The one thing a screenshot cannot
+       tell you is whether an arrow is *under* something, so the check for that
+       reads this rather than trying to pick arrowheads out of the draw calls. */
+    HUD.arrows.push({ x: at.p.x, y: at.p.y, ang, colour,
+                      moved: at.moved, label: text || "" });
+    const scale = o.scale || 1;
+    const beat = o.beat ? 0.82 + 0.18 * Math.abs(Math.sin(Date.now() / 420)) : 1;
+    ctx.save();
+    ctx.translate(at.p.x, at.p.y);
+    ctx.rotate(ang);
+    api.glow(colour, 2.4, (o.alpha === undefined ? 1 : o.alpha) * beat, () => {
+      // A solid head, so it is a shape rather than an outline at a distance.
+      ctx.beginPath();
+      ctx.moveTo(13 * scale, 0);
+      ctx.lineTo(-9 * scale, -10 * scale);
+      ctx.lineTo(-4 * scale, 0);
+      ctx.lineTo(-9 * scale, 10 * scale);
+      ctx.closePath();
+      ctx.fillStyle = colour;
+      ctx.fill();
+      ctx.stroke();
+      // And a stub of tail pointing back the way you would turn from.
+      ctx.beginPath();
+      ctx.moveTo(-10 * scale, 0);
+      ctx.lineTo(-20 * scale, 0);
+      ctx.stroke();
+    });
+    ctx.restore();
+    if (!text) return at;
+    /* Inboard, along the line back to the middle: at the top of the screen the
+       label sits below the arrow and at the bottom it sits above it, without
+       either case being written down anywhere. */
+    const lx = at.p.x - Math.cos(ang) * 26;
+    const ly = at.p.y - Math.sin(ang) * 26 + 5;
+    label(text, lx, ly, SIZE.cap, colour, "center", 0.95);
+    return at;
+  }
+
+  /* What you are looking for, and which way it is. This is the arrow you fly by
+     when the objective is off screen, so it is the loudest thing on the ring: full
+     alpha, half again the size, and a range beside it. */
+  function drawContacts(st) {
+    const { SCREEN_W, SCREEN_H } = api;
     const cam = st.cam || { x: st.ship.x, y: st.ship.y, rot: 0, scale: 1 };
     const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
-    const rx = cx - 74, ry = cy - 62;
     const cos = Math.cos(-cam.rot), sin = Math.sin(-cam.rot);
     let n = 0;
     for (const c of (st.contacts || [])) {
-      if (c.resolved || n >= 6) continue;
+      if (c.resolved || n >= 4) continue;
       const wx = c.x - cam.x, wy = c.y - cam.y;
       const sx = wx * cos - wy * sin, sy = wx * sin + wy * cos;
       const px = cx + sx * cam.scale, py = cy + sy * cam.scale;
-      if (px > 40 && px < SCREEN_W - 40 && py > 40 && py < SCREEN_H - 40) continue;
+      if (px > 60 && px < SCREEN_W - 60 && py > 60 && py < SCREEN_H - 60) continue;
       n++;
       const ang = Math.atan2(sy, sx);
-      const dist = Math.hypot(wx, wy);
-      const alpha = Math.max(0.22, Math.min(0.85, 900 / Math.max(1, dist)));
-      ctx.save();
-      ctx.translate(cx + Math.cos(ang) * rx, cy + Math.sin(ang) * ry);
-      ctx.rotate(ang);
-      api.glow(VIOLET, 2, alpha, () => {
-        ctx.beginPath();
-        ctx.moveTo(-7, -8); ctx.lineTo(7, 0); ctx.lineTo(-7, 8);
-        ctx.stroke();
-      });
-      ctx.restore();
+      const dist = Math.round(Math.hypot(wx, wy));
+      edgeArrow(st, ang, VIOLET, fmtCells(dist) + "u",
+                { scale: 1.35, beat: true });
+    }
+  }
+
+  /* And what a scan turned up. A return that is off screen used to be a dot on
+     the panel chart and nothing else — which made the scan a thing you read
+     rather than a thing you fly by. Each one gets an arrow in its own colour, on
+     the same ring, smaller than the objective because it is a suggestion rather
+     than the plan. */
+  function drawEchoArrows(st) {
+    const { SCREEN_W, SCREEN_H } = api;
+    if (!st.ship) return;
+    const cam = st.cam || { x: st.ship.x, y: st.ship.y, rot: 0, scale: 1 };
+    const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
+    const cos = Math.cos(-cam.rot), sin = Math.sin(-cam.rot);
+    let n = 0;
+    for (const e of (st.echoes || [])) {
+      if (n >= 8) break;
+      const wx = e.x - cam.x, wy = e.y - cam.y;
+      const sx = wx * cos - wy * sin, sy = wx * sin + wy * cos;
+      const px = cx + sx * cam.scale, py = cy + sy * cam.scale;
+      if (px > 60 && px < SCREEN_W - 60 && py > 60 && py < SCREEN_H - 60) continue;
+      n++;
+      // Fading with the return itself, so the ring empties as the scan goes cold
+      // rather than all at once.
+      const fade = Math.max(0.55, Math.min(1, (e.t || 0) / 4));
+      edgeArrow(st, Math.atan2(sy, sx), e.colour || VIOLET, null,
+                { scale: 0.85, alpha: fade, inset: 74 });
     }
   }
 
@@ -1308,25 +1449,12 @@
       return;
     }
 
-    /* Held clear of the right-hand column. The arrow rides an ellipse inset from
-       the screen edge, and on a phone the panel chart is pushed left to leave the
-       pause button room — so the arrow's range label landed on the INVENTORY
-       button. The column's own left edge is the bound. */
-    const ang = Math.atan2(sy, sx);
-    const bound = panelBox().x - 30;
-    const ex = Math.min(cx + Math.cos(ang) * (cx - 92), bound);
-    const ey = cy + Math.sin(ang) * (cy - 78);
-    ctx.save();
-    ctx.translate(ex, ey);
-    ctx.rotate(ang);
-    api.glow(WAYPOINT, 2, 0.85, () => {
-      ctx.beginPath();
-      ctx.moveTo(-9, -10); ctx.lineTo(9, 0); ctx.lineTo(-9, 10);
-      ctx.closePath();
-      ctx.stroke();
-    });
-    ctx.restore();
-    label(fmtCells(w.dist) + "u", ex, ey + 30, SIZE.cap, WAYPOINT, "center", 0.85);
+    /* On the same ring as everything else that points off screen, and clear of
+       the interface for the same reason: this used to clamp its `x` against the
+       panel column and leave its `y` to land wherever it liked, which put it
+       under the hull bar every time the waypoint was behind you. */
+    edgeArrow(st, Math.atan2(sy, sx), WAYPOINT, fmtCells(w.dist) + "u",
+              { scale: 1.35, beat: true });
   }
 
   /* The pulse has no gameplay effect — the contacts are already in the list —
@@ -2877,6 +3005,7 @@
     const sum = [];
     const add = (v, txt) => { if (v) sum.push(txt); };
     let hull = 0, speed = 0, turn = 0, scan = 0, tract = false, rev = false;
+    const guns = [];
     for (const sl of slots) {
       if (!sl || sl.fit > 0) continue;
       const e = st.effects && st.effects[sl.key];
@@ -2885,6 +3014,8 @@
       scan += e.scan || 0;
       if (e.tractor) tract = true;
       if (e.reverse) rev = true;
+      // A weapon is not a number, so it is named rather than totalled.
+      if (e.weapon) guns.push(sl.name);
     }
     add(hull, "+" + hull + " HULL");
     add(speed, "+" + Math.round(speed * 100) + "% SPEED");
@@ -2892,6 +3023,7 @@
     add(scan, "+" + Math.round(scan * 100) + "% SCAN");
     if (tract) sum.push("TRACTOR BEAM");
     if (rev) sum.push("REVERSE  [S]");
+    for (const g of guns) sum.push(g);
     label("FLYING WITH", PAGE.EDGE, listY + listH + 34, SIZE.cap, VIOLET_DIM,
           "left", 0.55, "0.18em");
     fitText(sum.length ? sum.join("   \u00b7   ") : "four empty slots",

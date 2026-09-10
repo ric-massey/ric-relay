@@ -2963,7 +2963,10 @@
   }
 
   function fire(ship) {
-    const mine = bullets.reduce((n, b) => n + (b.owner === ship.id ? 1 : 0), 0);
+    // The cannon's own rounds only. Six in the air has always been the cannon's
+    // limit and a missile must not spend one of them.
+    const mine = bullets.reduce(
+      (n, b) => n + (b.owner === ship.id && !b.alt ? 1 : 0), 0);
     const cap = (mode.campaign && ship.human) ? CAMPAIGN_SHOTS : MAX_SHOTS;
     if (mine >= cap) return false;
     const r = SHIP_R * U * (ship.sizeMul || 1);
@@ -2986,11 +2989,155 @@
     return true;
   }
 
+  /* ── firing what you bolted on ────────────────────────────────────────────
+     One trigger, several guns. The cannon fires as it always did; each weapon
+     part runs its own clock alongside it, and because those clocks are slow the
+     effect of holding fire is your ordinary stream with something heavy leaving
+     every couple of seconds.
+
+     `alt` marks a round as not the cannon's, which keeps it out of the magazine
+     cap: six rounds in the air has always been the cannon's limit and a missile
+     should not use up one of them. */
+  function fireWeapons(ship, dt, held) {
+    if (!mode.survey || !surv) return;
+    ship.wcool = ship.wcool || {};
+    const fitted = weaponsFitted();
+    for (const w of fitted) {
+      const spec = weaponSpec(w.key);
+      if (!spec) continue;
+      const left = (ship.wcool[w.key] || 0) - dt;
+      ship.wcool[w.key] = Math.max(0, left);
+      if (!held || left > 0 || !ship.alive) continue;
+      ship.wcool[w.key] = spec.cool / (ship.rateMul || 1);
+      launch(ship, spec);
+    }
+    // Anything fitted but not fired keeps its clock; anything pulled loses it.
+    for (const key of Object.keys(ship.wcool)) {
+      if (!fitted.some(w => w.key === key)) delete ship.wcool[key];
+    }
+  }
+
+  function launch(ship, spec) {
+    const r = SHIP_R * U * (ship.sizeMul || 1);
+    const n = spec.rounds || 1;
+    for (let i = 0; i < n; i++) {
+      /* A spread is symmetrical about the nose rather than random, so a scatter
+         gun is a shape you can learn to place instead of a dice roll. */
+      const off = n > 1
+        ? (i - (n - 1) / 2) * (spec.spread || 0)
+        : 0;
+      const a = ship.a + off;
+      bullets.push({
+        owner: ship.id,
+        alt: true,
+        colour: spec.colour,
+        dmg: spec.dmg * (ship.dmgMul || 1),
+        x: ship.x + Math.cos(a) * (r + 2),
+        y: ship.y + Math.sin(a) * (r + 2),
+        vx: Math.cos(a) * BULLET_SPD * (spec.speed || 1) * U + ship.vx,
+        vy: Math.sin(a) * BULLET_SPD * (spec.speed || 1) * U + ship.vy,
+        life: (spec.life || BULLET_LIFE) * U,
+        seek: spec.seek || 0,
+        boom: spec.boom || 0,
+        punch: spec.pierce || 0,
+        big: !!(spec.boom || spec.pierce)
+      });
+    }
+    gameSound("shot", ship.x);
+    if (spec.boom || spec.pierce) addShake(2);
+  }
+
+  /* A seeker turns. It looks for whatever is nearest and closest to the way it is
+     already pointing, so it goes for the thing in front of it rather than
+     doubling back on something behind — a missile that turns round is a missile
+     that hits you. */
+  function steerSeeker(b, dt) {
+    let best = null, bd = 2600 * U;
+    const consider = (x, y) => {
+      const d = Math.hypot(x - b.x, y - b.y);
+      if (d > bd || d < 1) return;
+      const to = Math.atan2(y - b.y, x - b.x);
+      let off = to - Math.atan2(b.vy, b.vx);
+      while (off > Math.PI) off -= Math.PI * 2;
+      while (off < -Math.PI) off += Math.PI * 2;
+      // Ninety degrees either side and no further: it cannot come about.
+      if (Math.abs(off) > Math.PI / 2) return;
+      bd = d; best = { x, y };
+    };
+    if (surv) {
+      for (const d of surv.drones) consider(d.x, d.y);
+      for (const t of surv.traffic) consider(t.x, t.y);
+    }
+    for (const r of rocks) consider(r.x, r.y);
+    if (!best) return;
+    const sp = Math.hypot(b.vx, b.vy) || 1;
+    const want = Math.atan2(best.y - b.y, best.x - b.x);
+    let have = Math.atan2(b.vy, b.vx);
+    let off = want - have;
+    while (off > Math.PI) off -= Math.PI * 2;
+    while (off < -Math.PI) off += Math.PI * 2;
+    have += Math.max(-b.seek * dt, Math.min(b.seek * dt, off));
+    b.vx = Math.cos(have) * sp;
+    b.vy = Math.sin(have) * sp;
+  }
+
+  /* A burst charge going off. Everything inside the radius takes it, falling off
+     towards the rim so the middle of a rock cluster is worth aiming at and the
+     edge of one is not. */
+  function explode(b) {
+    const R = b.boom * U;
+    burst(b.x, b.y, b.colour, 30, R * 1.4);
+    addShake(5);
+    gameSound("boom", b.x);
+    const share = d => Math.max(0.35, 1 - d / R);
+    /* The rocks are gathered before any of them is hit. `hitRock` can split one,
+       which removes it and pushes its pieces, so walking the live list while
+       changing it is a way to read past the end of it — and the pieces of a rock
+       this charge just broke are not also inside the blast. */
+    const caught = [];
+    for (const r of rocks) {
+      const d = Math.sqrt(gap2(b.x, b.y, r.x, r.y));
+      if (d <= R + r.r) caught.push([r, d]);
+    }
+    for (const [r, d] of caught) {
+      if (!rocks.includes(r)) continue;
+      hitRock(r, { x: b.x, y: b.y, vx: b.vx, vy: b.vy,
+                   dmg: b.dmg * share(d), colour: b.colour });
+    }
+    if (!surv) return;
+    for (let i = surv.drones.length - 1; i >= 0; i--) {
+      const dr = surv.drones[i];
+      const d = Math.hypot(dr.x - b.x, dr.y - b.y);
+      if (d > R) continue;
+      dr.hp -= b.dmg * share(d);
+      dr.hit = 0.12; dr.awake = true;
+      if (dr.hp <= 0) killDrone(i); else gameSound("hit", dr.x);
+    }
+    for (let i = surv.traffic.length - 1; i >= 0; i--) {
+      const t = surv.traffic[i];
+      const d = Math.hypot(t.x - b.x, t.y - b.y);
+      if (d > R) continue;
+      t.hp -= b.dmg * share(d);
+      t.hit = 0.12;
+      if (ROLES[t.role || t.kind] && ROLES[t.role || t.kind].armed) t.angry = true;
+      if (t.hp <= 0) killTraffic(i, true); else gameSound("hit", t.x);
+    }
+    for (let i = surv.hulks.length - 1; i >= 0; i--) {
+      const h = surv.hulks[i];
+      if (Math.hypot(h.x - b.x, h.y - b.y) > R) continue;
+      hitHulk(h, i);
+    }
+  }
+
   /* A hit that doesn't break the rock chips it: a crack opens, it flashes, and
      it takes a nudge from the impact. The bullet is spent either way, so cover
      still costs the shooter ammunition. */
   function hitRock(rock, b) {
-    rock.hp--;
+    /* A round's damage counts against a rock as well as against a hull. It did
+       not before — every hit took exactly one point, so the heavy rounds a
+       pickup gives you never actually punched through anything, and a rail lance
+       would have chipped a boulder like a pistol. */
+    rock.hp -= Math.max(1, Math.round(b && b.dmg ? b.dmg : 1));
     rock.flash = 0.13;
     if (rock.hp > 0) {
       burst(b.x, b.y, "#ffcb42", 4, 120 * U);
@@ -4879,6 +5026,25 @@
       cost: 780, deep: 0.16, note: "the beam, +60% reach and a harder pull",
       eff: { tractor: 1, reach: 0.6, pull: 0.5 } },
 
+    /* ── weapons ──────────────────────────────────────────────────────────
+       Each fires on the trigger you already have, at its own rate, on top of the
+       cannon. See `WEAPONS` for what each one does. */
+    { key: "scattergun", name: "SCATTER GUN", cat: "weapon", rarity: "common",
+      cost: 420, deep: 0, note: "three rounds at once, none of them go far",
+      eff: { weapon: "scatter" } },
+    { key: "seekerrack", name: "SEEKER RACK", cat: "weapon", rarity: "uncommon",
+      cost: 940, deep: 0.14,
+      note: "a missile that turns after whatever is nearest",
+      eff: { weapon: "seeker" } },
+    { key: "burstcharge", name: "BURST CHARGE", cat: "weapon", rarity: "rare",
+      cost: 1800, deep: 0.38,
+      note: "goes off where it lands and takes the neighbours",
+      eff: { weapon: "burster" } },
+    { key: "raillance", name: "RAIL LANCE", cat: "weapon", rarity: "exotic",
+      cost: 3600, deep: 0.62,
+      note: "one heavy slug, straight through three things",
+      eff: { weapon: "lance" } },
+
     /* ── the odd ones ─────────────────────────────────────────────────────
        Rare, strange, and only sold a long way out. These are the reason to keep
        going rather than to keep grinding: each one changes a rule rather than a
@@ -4895,6 +5061,60 @@
     const m = moduleSpec(key);
     return m ? FIT_TIME[m.rarity] || FIT_TIME.common : 0;
   };
+
+  /* ── weapons are parts too ────────────────────────────────────────────────
+     Firepower used to be one number on the refit page. It is four things you can
+     bolt on now, and each one takes a slot — so arming up costs the room you
+     would have given to a tractor beam or a bigger scanner. That trade is the
+     point: a weapon that costs only money is a stat.
+
+     Every one of them fires on **the trigger you already have**. No second fire
+     button, on a keyboard or a thumb: hold fire and the cannon runs at the
+     cannon's rate while whatever else is fitted runs at its own, much slower.
+     A launcher with its own key would be a control a phone has nowhere to put
+     and a thing to remember in the middle of a fight; a launcher that answers the
+     trigger is just your ship hitting harder.
+
+     The cannon never goes away. It is how a rock becomes materials, and the whole
+     economy hangs off that — a slot you had to spend to be able to mine would not
+     be a choice, it would be a tax.
+
+     `cool` is seconds between rounds, and all of them are slow: these are shots
+     you aim rather than a stream you sweep. */
+  const WEAPONS = {
+    scatter: {
+      name: "SCATTER GUN", cool: 0.9, dmg: 1, spread: 0.26, rounds: 3,
+      speed: 0.78, life: 0.5, colour: "#ffd36b",
+      note: "three rounds at once, and none of them go far"
+    },
+    seeker: {
+      name: "SEEKER RACK", cool: 2.4, dmg: 2, rounds: 1, seek: 2.6,
+      speed: 0.62, life: 3.4, colour: "#ff8f77",
+      note: "a missile that turns after whatever is nearest"
+    },
+    burster: {
+      name: "BURST CHARGE", cool: 2.8, dmg: 2, rounds: 1, boom: 190,
+      speed: 0.7, life: 2.2, colour: "#ffb347",
+      note: "goes off where it lands and takes the neighbours"
+    },
+    lance: {
+      name: "RAIL LANCE", cool: 3.6, dmg: 6, rounds: 1, pierce: 3,
+      speed: 1.9, life: 1.1, colour: "#87d8ff",
+      note: "one heavy slug, straight through three things"
+    }
+  };
+  const weaponSpec = key => WEAPONS[key] || null;
+  // What is bolted on and finished fitting, in slot order.
+  function weaponsFitted() {
+    if (!surv || !surv.slots) return [];
+    const out = [];
+    surv.slots.forEach((sl, i) => {
+      if (!sl || sl.fit > 0) return;
+      const m = moduleSpec(sl.key);
+      if (m && m.eff && m.eff.weapon) out.push({ slot: i, key: m.eff.weapon });
+    });
+    return out;
+  }
 
   const MOD_CATS = [
     { key: "engine",   name: "ENGINE" },
@@ -7789,7 +8009,13 @@
           }
         }
       }
-      if (spent) bullets.splice(bi, 1);
+      if (spent) {
+        if (b.boom) explode(b);
+        // A lance goes through. It does not get to hit the same hull twice, but
+        // the next thing behind it is fair game.
+        if (b.punch > 1) { b.punch--; continue; }
+        bullets.splice(bi, 1);
+      }
     }
   }
 
@@ -11091,6 +11317,11 @@
         continue;
       }
 
+      /* Whatever is bolted on, on the same trigger as the cannon. It runs before
+         the cannon's own logic and independently of it — the burst counter and
+         the magazine cap belong to the cannon and a launcher is not one. */
+      fireWeapons(ship, dt, !!k.f);
+
       if (mode.campaign && ship.human && DIFFICULTY[campaignDifficulty].autoFire) {
         // On Easy the campaign pilot fires continuously — hold the trigger for a
         // steady stream, no burst and no recovery pause, only the round-in-the-air
@@ -11156,12 +11387,16 @@
       // back round there is no cover and no safe angle: a shot goes round and
       // is still yours when it comes back, until it simply runs out of life.
       if (mode.wrap) {
-        if (b.life <= 0) { bullets.splice(i, 1); continue; }
+        if (b.life <= 0) { if (b.boom) explode(b); bullets.splice(i, 1); continue; }
         wrapInBounds(b);
       } else if (b.life <= 0 ||
                  b.x < bounds.x0 || b.x > bounds.x1 ||
                  b.y < bounds.y0 || b.y > bounds.y1) {
         if (b.life > 0) burst(b.x, b.y, b.colour, 2, 70 * U);
+        /* A charge that reaches the end of its run still goes off. That is what a
+           charge is, and it means a round fired at nothing is a round you can
+           still place — which is most of what makes it worth a slot. */
+        else if (b.boom) explode(b);
         bullets.splice(i, 1);
         continue;
       }
@@ -11172,6 +11407,9 @@
         bullets.splice(i, 1);
         continue;
       }
+
+      // A seeker turns while it flies; nothing else does.
+      if (b.seek) steerSeeker(b, dt);
 
       let spent = false;
 
@@ -11191,7 +11429,14 @@
         }
       }
 
-      if (spent) bullets.splice(i, 1);
+      if (spent) {
+        /* Two reasons a round might not be finished with. A burst charge goes off
+           where it stopped and takes the neighbours; a lance keeps going, minus a
+           punch, until it has been through everything it is good for. */
+        if (b.boom) explode(b);
+        if (b.punch > 1) { b.punch--; continue; }
+        bullets.splice(i, 1);
+      }
     }
 
     for (let i = rocks.length - 1; i >= 0; i--) {
@@ -12176,13 +12421,43 @@
     }
   }
 
+  /* A round has to say what it is at a glance. The cannon is a short streak and
+     always was; the parts you bolt on are told apart by shape rather than by
+     colour alone, because colour is the one thing a player cannot rely on and
+     because four kinds of firepower on one screen is four things to read at
+     speed.
+
+     A seeker trails, so you can see it turn. A charge is a fat head — the thing
+     that is about to go off. A lance is a long hard bar. */
   function drawBullet(b) {
-    glow(b.colour, 2.6, 1, () => {
+    const tail = b.seek ? 0.02 : b.punch ? 0.018 : 0.008;
+    glow(b.colour, b.big ? 3.4 : 2.6, 1, () => {
       ctx.beginPath();
       ctx.moveTo(b.x, b.y);
-      ctx.lineTo(b.x - b.vx * 0.008, b.y - b.vy * 0.008);
+      ctx.lineTo(b.x - b.vx * tail, b.y - b.vy * tail);
       ctx.stroke();
+      if (b.boom) {
+        // The head, drawn as a ring so it reads as a charge rather than a shot.
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 5 * U, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      if (b.punch) {
+        // Doubled, a hair off the line, so a lance is visibly heavier.
+        const n = Math.hypot(b.vx, b.vy) || 1;
+        const nx = -b.vy / n * 2 * U, ny = b.vx / n * 2 * U;
+        ctx.beginPath();
+        ctx.moveTo(b.x + nx, b.y + ny);
+        ctx.lineTo(b.x - b.vx * tail + nx, b.y - b.vy * tail + ny);
+        ctx.moveTo(b.x - nx, b.y - ny);
+        ctx.lineTo(b.x - b.vx * tail - nx, b.y - b.vy * tail - ny);
+        ctx.stroke();
+      }
     });
+    // A seeker leaves smoke, which is most of how you tell it is tracking.
+    if (b.seek && Math.random() < 0.5) {
+      burst(b.x - b.vx * 0.01, b.y - b.vy * 0.01, b.colour, 1, 30 * U);
+    }
   }
 
   function drawBits() {
@@ -14821,6 +15096,9 @@
                                        rarity: m.rarity, cost: m.cost,
                                        deep: m.deep, secs: fitSeconds(m.key) })),
       scanRange: () => scanRange(),
+      // A real rock, built the way the sector builds them. A hand-rolled one
+      // with a made-up size breaks the splitter the moment it is destroyed.
+      makeRock: (size, x, y) => makeRock(size, x, y),
       /* Re-measure the screen against the stage. The screen takes the shape of
          the device now, so a harness that wants to check a layout at a phone's
          proportions has to be able to say "the window changed" without a real

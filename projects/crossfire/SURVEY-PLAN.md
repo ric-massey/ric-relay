@@ -1009,12 +1009,72 @@ The reason it matters: the hull you left home in is the hull you are stuck with
 out there, which is most of what makes choosing one a decision rather than a
 preference.
 
-### 5.3 Weapons are parts too
+### 5.3 Weapons are parts too  ·  **DONE**
 
-Firepower stops being one number. Heat-seeking missiles, something that explodes,
-whatever comes after — each an actual part in an actual slot, so arming up costs
-the room you would have given to a tractor beam or a bigger scanner. That trade is
-the point; a weapon that costs only money is a stat.
+Firepower stops being one number. Four weapons, each an actual part in an actual
+slot, so arming up costs the room you would have given to a tractor beam or a
+bigger scanner. That trade is the point; a weapon that costs only money is a stat.
+
+| | | |
+|---|---|---|
+| **SCATTER GUN** | common | three rounds in a fan, none of them go far |
+| **SEEKER RACK** | uncommon | a missile that turns after whatever is nearest |
+| **BURST CHARGE** | rare | goes off where it lands, or where it runs out, and takes the neighbours |
+| **RAIL LANCE** | exotic | one heavy slug, straight through three things |
+
+**All of them fire on the trigger you already have.** No second fire button, on a
+keyboard or a thumb: hold fire and the cannon runs at the cannon's rate while
+whatever is bolted on runs at its own, much slower one. A launcher with its own key
+would be a control a phone has nowhere to put and a thing to remember mid-fight; a
+launcher that answers the trigger is just your ship hitting harder.
+
+**The cannon never goes away and never needs a slot.** It is how a rock becomes
+materials and the whole economy hangs off that — a slot you had to spend before you
+could mine would not be a choice, it would be a tax. A launcher's rounds are marked
+`alt` and stay out of the cannon's six-in-the-air magazine for the same reason.
+
+Two bugs fell out of building it, both of which had been quietly true for a while:
+
+- **`hitRock` ignored a round's damage.** Every hit took exactly one point, so the
+  heavy rounds a pickup gives you never actually punched through anything despite
+  the comment saying they did, and a rail lance would have chipped a boulder like a
+  pistol. Damage counts against a rock now.
+- **A burst charge that ran out of life vanished.** It goes off where it stops now,
+  which is what a charge *is* and what makes a round fired at nothing still a round
+  you can place.
+
+### The arrows that point off screen  ·  **DONE**
+
+> *"The arrow for the scan. Like for finding things needs to be easier to see. And
+> not behind anything on the UI. It should be on the edge of the screen but not on
+> top of or behind anything of the UI."*
+
+Three things point off the edge: the objective, the returns from a scan, and a
+waypoint. All three picked their own spot and two picked badly — the objective's
+arrows rode an ellipse inset by a flat 74 and 62, which put the ones pointing up
+and right underneath the panel chart and the ones pointing down through the hull
+bar, and the waypoint's clamped its `x` against the panel column while leaving its
+`y` to land wherever it liked.
+
+There is one answer now. A **rectangle** inset from the screen, a ray from the
+middle, and the point where the ray leaves it — a rectangle rather than an ellipse
+because an arrow on a rectangle is genuinely at the edge instead of floating a
+third of the way in at the corners. Plus a list of the boxes the interface has
+already taken; an arrow that lands in one **walks around the ring** until it is
+clear, trying both directions and taking the nearer answer.
+
+Easier to see, too: half again the size, a solid head rather than an outline, a
+tail, a pulse, never dimmer than about two thirds, and the range printed *inboard*
+so the label cannot fall off the edge the arrow is sitting on.
+
+And a scan's returns get arrows at all now — an off-screen return used to be a dot
+on the panel chart and nothing else, which made the scan a thing you read rather
+than a thing you fly by. Each one wears its own kind's colour and is smaller than
+the objective, because it is a suggestion rather than the plan.
+
+*Tested as geometry rather than as drawing:* every bearing round the compass, 384
+placements, checked against the boxes the HUD itself reports. The one thing a
+screenshot cannot tell you is whether something is underneath something.
 
 ### 5.4 Crafting, kept at Minecraft depth
 
