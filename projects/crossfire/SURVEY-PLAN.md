@@ -842,7 +842,7 @@ the same jobs. Every one of those is a menu pretending to be depth.
 > doing. Reading that as price variation rather than as "this station only does
 > shipyards" keeps both. Nothing about what a station *does* should vary.
 
-### 5.2 Parts, slots, and time to install
+### 5.2 Parts, slots, and time to install  ·  **DONE**
 
 **Every ship, no exceptions, gets exactly four attachment slots.**
 
@@ -892,7 +892,7 @@ What are currently refit *tiers* and almanac *verbs* both become parts. Hull and
 drive staying buyable is fine; what changes is that it reads as buying a part and
 having it installed rather than a number going up on a list.
 
-### 5.2a Installing takes time — but you can do it anywhere
+### 5.2a Installing takes time — but you can do it anywhere  ·  **DONE**
 
 This replaces the earlier line, which said you *cannot* swap a part mid-fight.
 You can. It just costs you.
@@ -942,6 +942,64 @@ rule this would just be a loading screen.
 
 *The point of all of it: loadout stops being a menu you visit between trips and
 becomes a decision you can make badly, at speed, with something shooting at you.*
+
+### What 5.2 actually landed
+
+**Twelve parts** across six categories, spanning the four rarities. Engines
+(DRIVE SPAR, OVERBURNER), thrusters (VERNIER SET, REVERSE THRUSTERS), scanners
+(PULSE COIL, DEEP EAR), armour (LAYERED PLATE, ABLATIVE SHELL), tractor gear
+(TRACTOR RIG, HEAVY RIG) and two odd ones (STAR SIPHON, COLD LARDER). Weapons are
+5.3 and are not here yet.
+
+**Rarity does two jobs and only two**: how long a fit takes, and how far out a
+station has to be before anybody stocks it. It is not a quality ladder — a common
+vernier set is the best thing in the game if what you needed was to turn faster.
+Near home a station stocks five of the twelve; a station in the abyss stocks all
+of them, which is the danger curve finally paying something back.
+
+**The LOADOUT page**, on the navigation strip and live: four slot boxes, what you
+own, and — when docked — a shelf to buy from. A slot mid-fit shows a countdown
+that is genuinely counting and a bar; a finished one says WORKING. The foot of the
+page totals what you are *actually* flying with, with anything still fitting left
+out, because it is not helping you yet. `G` opens it, and it scrolls by wheel and
+by thumb like the almanac.
+
+**Reverse thrusters** are a fixed Survey key (`S` / down arrow) rather than a
+bindable action, the same as the scan and the light drive — the part gives your
+ship a verb it did not have. *Owed: a touch control for it.* A phone can fit the
+part and cannot use it yet.
+
+**One of a kind on the ship.** Two pulse coils in two slots would be a way to
+spend slots rather than to choose between them, and the choosing is the whole of
+it.
+
+**Two things the chart gained on the way**, both from playing it:
+
+- The chart was the **only page in the mode without the navigation strip** —
+  opening the map and wanting your storage meant closing the map, flying, and
+  pressing another key. Its own band moved up a row and the strip took the bottom.
+- The strip **computes its widths** now instead of hard-coding them. It grew a
+  seventh tab for the loadout, and a fixed width meant every future page was a
+  collision waiting to happen.
+
+**Still on the refit page, unchanged:** hull plating, drive and scanner tiers. Per
+the note above, hull and drive staying buyable at a station is fine — a station
+fits instantly, so those already read as buying a part and having it installed.
+
+### Ships stay at your home station  ·  **DONE**  ·  *and it is now tested*
+
+> *"If you buy a ship it stays at your home station. You can't change ships at any
+> stations only at your home one."*
+
+Already the rule, in `buyShip` and in `flyShip`, both gated on `atHomeStation()`.
+What was missing was a test for the *swap* — buying was covered and changing was
+not — so a refactor could have quietly let you change hulls at any shop. It is
+covered now: you cannot swap in open space, you cannot swap at an ordinary
+station, and you can swap at home.
+
+The reason it matters: the hull you left home in is the hull you are stuck with
+out there, which is most of what makes choosing one a decision rather than a
+preference.
 
 ### 5.3 Weapons are parts too
 

@@ -2128,6 +2128,17 @@
         state = "playing"; return;
       }
       if (code === "KeyL") { state = "almanac"; return; }
+      if (code === "KeyG") { state = "loadout"; surveyHUD && surveyHUD.loadoutOpened(); return; }
+      if (code === "KeyM") {
+        state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
+      }
+    } else if (state === "loadout") {
+      /* Back to the sector, because the loadout is a thing you do *while*
+         flying — the world has been running the whole time you were in here. */
+      if (code === "Escape" || code === "KeyG") { state = "playing"; return; }
+      if (code === "Backspace") { state = "inventory"; return; }
+      if (code === "KeyI") { state = "inventory"; return; }
+      if (code === "KeyL") { state = "almanac"; return; }
       if (code === "KeyM") {
         state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
       }
@@ -2243,6 +2254,11 @@
         // yard is the thing you came back for.
         if (code === "KeyE" && surv && surv.landed) { state = "landed"; return; }
         if (code === "KeyI") { state = "inventory"; return; }
+        // The loadout. `G` for gear: the four slots are a page you open while
+        // flying, and every other letter near it was already spoken for.
+        if (code === "KeyG") {
+          state = "loadout"; surveyHUD && surveyHUD.loadoutOpened(); return;
+        }
         // The light drive, if you have one. `R` for run: nothing else uses it,
         // and the three page keys are already spoken for.
         if (code === "KeyR" && surv && surv.hasLight) {
@@ -4579,6 +4595,122 @@
       note: "hold thrust off and sentries lose you" }
   ];
 
+  /* ── parts, and the four slots they go in ─────────────────────────────────
+     Every ship, no exceptions, gets exactly four attachment slots. Not four on
+     the starter and a spread across the rest — four on all twenty-five. The
+     hulls already differ by cargo, speed, handling and size; varying the slot
+     count on top of that stacks a second balancing axis onto ships that did not
+     need one, and the two fight — a hauler that is roomier *and* better equipped
+     is not a trade, it is strictly better. Four everywhere makes the question
+     "which four do I want this trip" rather than "which hull carries more gear",
+     and the first of those survives the whole game.
+
+     A part is a thing you found or bought and bolted on. It is not a tier on a
+     list: it takes up one of your four, and putting it there costs you time.
+
+     Rarity is the only axis that decides *fitting time* and *where it is sold*.
+     It is not a quality ladder — a common vernier set is the best thing in the
+     game if what you needed was to turn faster. */
+  const SLOTS = 4;
+  // How hard reverse thrusters push, against the engine's own figure. Enough to
+  // get you out of something, not enough to fly backwards across a sector.
+  const REVERSE_THRUST = 0.55;
+
+  /* How long a fit takes out in space, by rarity. 180 seconds is the ceiling and
+     nothing goes past it. At a station every one of these is instant. */
+  const FIT_TIME = { common: 20, uncommon: 45, rare: 90, exotic: 180 };
+
+  /* `deep` is how far out a station has to be before it stocks one — which is
+     the danger curve finally paying something out. The odd ones at the bottom
+     are the reason to go a long way. */
+  const MODULES = [
+    // ── engines: how fast ──────────────────────────────────────────────────
+    { key: "sparthruster", name: "DRIVE SPAR", cat: "engine", rarity: "common",
+      cost: 220, deep: 0, note: "+14% top speed",
+      eff: { speed: 0.14 } },
+    { key: "overburner", name: "OVERBURNER", cat: "engine", rarity: "rare",
+      cost: 1450, deep: 0.34, note: "+34% top speed, +20% off the mark",
+      eff: { speed: 0.34, thrust: 0.2 } },
+
+    // ── thrusters: how it handles ──────────────────────────────────────────
+    { key: "vernier", name: "VERNIER SET", cat: "thruster", rarity: "common",
+      cost: 240, deep: 0, note: "+22% turn rate",
+      eff: { turn: 0.22 } },
+    { key: "reverser", name: "REVERSE THRUSTERS", cat: "thruster",
+      rarity: "uncommon", cost: 620, deep: 0.12,
+      note: "back off a rock without turning round",
+      eff: { reverse: 1 } },
+
+    // ── scanners: how far a pulse reaches ─────────────────────────────────
+    { key: "pulsecoil", name: "PULSE COIL", cat: "scanner", rarity: "common",
+      cost: 260, deep: 0, note: "+70% scan range",
+      eff: { scan: 0.7 } },
+    { key: "deepear", name: "DEEP EAR", cat: "scanner", rarity: "rare",
+      cost: 1600, deep: 0.4, note: "+190% scan range",
+      eff: { scan: 1.9 } },
+
+    // ── armour: how many hits ─────────────────────────────────────────────
+    { key: "layerplate", name: "LAYERED PLATE", cat: "armour", rarity: "common",
+      cost: 300, deep: 0, note: "+2 hull",
+      eff: { hull: 2 } },
+    { key: "ablativeshell", name: "ABLATIVE SHELL", cat: "armour",
+      rarity: "rare", cost: 1700, deep: 0.36, note: "+5 hull",
+      eff: { hull: 5 } },
+
+    // ── tractor gear: the beam, and better beams ──────────────────────────
+    { key: "tractorrig", name: "TRACTOR RIG", cat: "tractor", rarity: "common",
+      cost: 340, deep: 0, note: "the beam itself, if you have not found it",
+      eff: { tractor: 1 } },
+    { key: "heavyrig", name: "HEAVY RIG", cat: "tractor", rarity: "uncommon",
+      cost: 780, deep: 0.16, note: "the beam, +60% reach and a harder pull",
+      eff: { tractor: 1, reach: 0.6, pull: 0.5 } },
+
+    /* ── the odd ones ─────────────────────────────────────────────────────
+       Rare, strange, and only sold a long way out. These are the reason to keep
+       going rather than to keep grinding: each one changes a rule rather than a
+       number. */
+    { key: "starsiphon", name: "STAR SIPHON", cat: "odd", rarity: "rare",
+      cost: 1500, deep: 0.42, note: "an atmosphere fills the tank half again as fast",
+      eff: { skim: 0.6 } },
+    { key: "coldlarder", name: "COLD LARDER", cat: "odd", rarity: "exotic",
+      cost: 3200, deep: 0.6, note: "water and food last a third longer",
+      eff: { life: -0.25 } }
+  ];
+  const moduleSpec = key => MODULES.find(m => m.key === key) || null;
+  const fitSeconds = key => {
+    const m = moduleSpec(key);
+    return m ? FIT_TIME[m.rarity] || FIT_TIME.common : 0;
+  };
+
+  const MOD_CATS = [
+    { key: "engine",   name: "ENGINE" },
+    { key: "thruster", name: "THRUSTER" },
+    { key: "scanner",  name: "SCANNER" },
+    { key: "armour",   name: "ARMOUR" },
+    { key: "tractor",  name: "TRACTOR" },
+    { key: "weapon",   name: "WEAPON" },
+    { key: "odd",      name: "ODD" }
+  ];
+
+  /* Everything the four slots add up to. A slot still fitting contributes
+     nothing — that is the whole cost of swapping out in space, and it is the one
+     rule this function must never get wrong. */
+  function mods() {
+    const out = { hull: 0, speed: 0, thrust: 0, turn: 0, scan: 0,
+                  tractor: 0, reach: 0, pull: 0, reverse: 0, skim: 0, life: 0 };
+    if (!surv || !surv.slots) return out;
+    for (const sl of surv.slots) {
+      if (!sl || sl.fit > 0) continue;
+      const m = moduleSpec(sl.key);
+      if (!m) continue;
+      for (const k of Object.keys(m.eff)) out[k] = (out[k] || 0) + m.eff[k];
+    }
+    return out;
+  }
+  const modFitted = key =>
+    !!(surv && surv.slots &&
+       surv.slots.some(sl => sl && sl.key === key && sl.fit <= 0));
+
   /* ── the almanac ──────────────────────────────────────────────────────────
      Twenty-five entries, and the split between them is deliberate: seventeen
      are conditions on telemetry the simulation already computes every frame,
@@ -5028,6 +5160,9 @@
         carrying: [...surv.carrying],
         built: [...surv.built],
         pins: surv.pins,
+        // What is bolted on, mid-fit and all, and what is in the crate.
+        slots: surv.slots.map(sl => sl && { key: sl.key, fit: Math.round(sl.fit) }),
+        store: surv.store,
         // A battle you watched end stays ended, and one you were remembered to
         // stays remembered.
         battleAge: surv.battleAge,
@@ -5923,6 +6058,29 @@
       partSites: [], partAt: new Map(), parts: [], fields: [],
       carrying: new Set(carried ? book.carrying : []),
       built: new Set(carried ? book.built : []),
+      /* The four slots, and the parts you own but are not flying. A slot is
+         `null`, or `{ key, fit }` where `fit` is the seconds of installation
+         left — zero means it is working. */
+      slots: (() => {
+        const out = [null, null, null, null];
+        const saved = carried && Array.isArray(book.slots) ? book.slots : [];
+        for (let i = 0; i < SLOTS; i++) {
+          const sl = saved[i];
+          if (sl && moduleSpec(sl.key)) {
+            out[i] = { key: sl.key, fit: Math.max(0, +sl.fit || 0) };
+          }
+        }
+        return out;
+      })(),
+      store: (() => {
+        const out = {};
+        const saved = (carried && book.store) || {};
+        for (const m of MODULES) {
+          const n = Math.max(0, Math.round(+saved[m.key] || 0));
+          if (n) out[m.key] = n;
+        }
+        return out;
+      })(),
       contacts: [],
       scan: { charge: 1, reach: 0, flash: 0 },
       echoes: [],
@@ -6572,8 +6730,10 @@
     const me = ships[0];
     if (!me.alive || surv.death) return;
 
-    surv.water = Math.max(0, surv.water - dt);
-    surv.food  = Math.max(0, surv.food  - dt);
+    // A cold larder does not give you more; it makes what you have go further.
+    const drain = dt * (1 + mods().life);
+    surv.water = Math.max(0, surv.water - drain);
+    surv.food  = Math.max(0, surv.food  - drain);
 
     /* Empty starts a clock. Getting anything at all back into the tank stops it
        — it does not have to be a full tank, which matters because skimming an
@@ -6779,7 +6939,8 @@
   /* How far a pulse reaches. This is the only thing the scanner track buys, and
      it is the only thing it ever claimed to buy that could be felt. */
   const SCAN_BASE = 2100;
-  const scanRange = () => SCAN_BASE * (1 + tier("scanner") * 0.85);
+  const scanRange = () =>
+    SCAN_BASE * (1 + tier("scanner") * 0.85 + mods().scan);
   const ECHO_LIFE = 20;        // seconds a return stays on the chart
 
   /* The hull's own numbers and the refit tiers on top of them. The refit scales
@@ -6788,11 +6949,13 @@
      better ship and buying a better engine can both stay worth doing. */
   function applyRefit(ship) {
     const sh = shipSpec(surv ? surv.ship : "skiff");
+    // What is bolted on, on top of what the hull came with and what was bought.
+    const m = mods();
     ship.spec      = sh;
-    ship.maxHull   = sh.hull + tier("hull") * 2;
-    ship.thrustMul = sh.speed * (1 + tier("thrust") * 0.22);
-    ship.speedMul  = sh.speed * (1 + tier("thrust") * 0.15);
-    ship.turnMul   = sh.turn;
+    ship.maxHull   = sh.hull + tier("hull") * 2 + m.hull;
+    ship.thrustMul = sh.speed * (1 + tier("thrust") * 0.22 + m.thrust + m.speed);
+    ship.speedMul  = sh.speed * (1 + tier("thrust") * 0.15 + m.speed);
+    ship.turnMul   = sh.turn * (1 + m.turn);
     ship.dmgMul    = sh.dmg;
     ship.rateMul   = sh.rate;
     ship.sizeMul   = sh.size;
@@ -6917,7 +7080,11 @@
        breaking the rock was the game, and threading a mote afterwards is not —
        so the pickup is wider than the hull rather than exactly it. */
     const reach = shipRadius() + 30 * U;
-    const beam = unlocked("tractor") ? SURVEY_TRACTOR * U : 0;
+    /* The beam is either found in the almanac or bolted on as a part — either
+       route gives you one, and a better rig gives you a longer, harder one. */
+    const m = mods();
+    const beam = (unlocked("tractor") || m.tractor)
+      ? SURVEY_TRACTOR * (1 + m.reach) * U : 0;
     for (let i = surv.motes.length - 1; i >= 0; i--) {
       const m = surv.motes[i];
       m.life -= dt;
@@ -6927,7 +7094,7 @@
       if (me.alive && beam) {
         const d = Math.hypot(me.x - m.x, me.y - m.y);
         if (d < beam && d > 1) {
-          const grab = (1 - d / beam) * TRACTOR_PULL * U;
+          const grab = (1 - d / beam) * TRACTOR_PULL * (1 + m.pull) * U;
           m.vx += ((me.x - m.x) / d) * grab * dt;
           m.vy += ((me.y - m.y) / d) * grab * dt;
           surv.tractorLit = 0.18;
@@ -7295,6 +7462,9 @@
     for (const st of surv.stations) {
       if (dist2(me.x, me.y, st.x, st.y) < SURVEY_DOCK * SURVEY_DOCK) {
         surv.docked = st;
+        // A station fits parts instantly, so coming in mid-fit lands it rather
+        // than leaving you sitting in the shop waiting for your own slot.
+        stationFinishesFits();
         break;
       }
     }
@@ -7334,7 +7504,8 @@
     const me = ships[0];
     if (!me.alive) return;
     if (surv.water >= WATER_FULL) return;
-    surv.water = Math.min(WATER_FULL, surv.water + dt * SKIM_RATE);
+    surv.water = Math.min(WATER_FULL, surv.water + dt * SKIM_RATE *
+                                      (1 + mods().skim));
     surv.skimming = 0.2;
   }
 
@@ -7701,6 +7872,131 @@
 
   /* Opinions drift back toward nothing on their own, from either direction — so
      being loved fades too, and nothing about you is permanent. */
+  /* ── fitting a part ───────────────────────────────────────────────────────
+     You can change a part anywhere, including in the middle of a fight. What it
+     costs is the slot: pull the old one, put the new one in, and that slot does
+     nothing until the fit finishes. A four-slot ship mid-swap is a three-slot
+     ship, and swapping your weapon while somebody is shooting at you means
+     fighting without it until it lands.
+
+     That is a better rule than a ban. The call is yours, and the call can be
+     wrong.
+
+     At a station it is instant — no timer, no dead slot — which is a reason to
+     fly back to one that has nothing to do with selling. And all of it only
+     works because the storage page does not pause the world: start a fit, close
+     the page, keep flying, and it runs while you fly. */
+  function surveyFitting(dt) {
+    let landed = false;
+    for (const sl of surv.slots) {
+      if (!sl || sl.fit <= 0) continue;
+      sl.fit = Math.max(0, sl.fit - dt);
+      if (sl.fit <= 0) {
+        landed = true;
+        chatter(moduleSpec(sl.key).name + " is online.", CASH);
+        gameSound("win");
+      }
+    }
+    if (landed) { applyRefit(ships[0]); saveSurveyBook(); }
+  }
+
+  /* How far out the station you are standing in is, which is the only thing
+     that decides what it stocks. A shop near home sells what everyone sells; the
+     strange things are a long way out, which is the danger curve finally paying
+     something back. */
+  const stationDepth = () =>
+    surv && surv.docked ? dangerAt(surv.docked.x, surv.docked.y) : 0;
+
+  function buyModule(key) {
+    const m = moduleSpec(key);
+    if (!m || !surv.docked) { gameSound("hit"); return false; }
+    if (m.deep > stationDepth()) {
+      chatter("Nobody this close to home stocks one.", "#ff8f77");
+      gameSound("hit");
+      return false;
+    }
+    if (surv.cash < m.cost) { gameSound("hit"); return false; }
+    surv.cash -= m.cost;
+    storeAdd(key, 1);
+    surv.t.refitted = true;
+    gameSound("start");
+    chatter(m.name + " bought \u2014 " + m.cost + " cash. Fit it when you like.",
+            CASH);
+    saveSurveyBook();
+    return true;
+  }
+
+  /* Anything you own and are not flying. Kept as counts rather than as a list,
+     because two pulse coils are two pulse coils and nothing about one of them
+     is different from the other. */
+  const storeCount = key => (surv && surv.store && surv.store[key]) || 0;
+  function storeAdd(key, n) {
+    if (!moduleSpec(key)) return false;
+    surv.store[key] = Math.max(0, storeCount(key) + (n === undefined ? 1 : n));
+    if (!surv.store[key]) delete surv.store[key];
+    return true;
+  }
+
+  /* Taking one off. Pulling is quick — it is putting one *in* that takes the
+     time — so the slot is simply empty afterwards and the part is back in the
+     crate. A part pulled while it was still fitting is a part you never got:
+     the progress is lost, which is what makes starting a fit a decision. */
+  function pullModule(i) {
+    const sl = surv.slots[i];
+    if (!sl) return false;
+    surv.slots[i] = null;
+    storeAdd(sl.key, 1);
+    applyRefit(ships[0]);
+    gameSound("hit");
+    chatter(moduleSpec(sl.key).name + (sl.fit > 0 ? " — fit abandoned" : " removed"),
+            sl.fit > 0 ? "#ff8f77" : NEBULA);
+    saveSurveyBook();
+    return true;
+  }
+
+  function fitModule(i, key) {
+    if (i < 0 || i >= SLOTS) return false;
+    const m = moduleSpec(key);
+    if (!m || storeCount(key) <= 0) { gameSound("hit"); return false; }
+    // The slot has to be free. Swapping is two actions, and it should be: the
+    // second one is the one that costs you.
+    if (surv.slots[i]) { gameSound("hit"); return false; }
+    /* One of a kind, on the ship. Two pulse coils in two slots would be a way
+       to spend slots rather than choose between them, and the choosing is the
+       whole of it. */
+    if (surv.slots.some(sl => sl && sl.key === key)) {
+      chatter("One of those is already fitted.", "#ff8f77");
+      gameSound("hit");
+      return false;
+    }
+    storeAdd(key, -1);
+    const instant = !!surv.docked;
+    surv.slots[i] = { key, fit: instant ? 0 : fitSeconds(key) };
+    applyRefit(ships[0]);
+    gameSound(instant ? "win" : "start");
+    chatter(instant
+      ? m.name + " fitted."
+      : m.name + " — " + fitSeconds(key) + "s to fit, and that slot is dead " +
+        "until it lands.", instant ? CASH : "#ffcb42");
+    surv.t.fitted = true;
+    saveSurveyBook();
+    return true;
+  }
+
+  /* Arriving at a station finishes whatever was in progress, because a station
+     is instant. Coming in mid-fit should land it, not restart it. */
+  function stationFinishesFits() {
+    let any = false;
+    for (const sl of surv.slots) {
+      if (sl && sl.fit > 0) { sl.fit = 0; any = true; }
+    }
+    if (any) {
+      applyRefit(ships[0]);
+      chatter("The yard hands finished what you started.", CASH);
+      saveSurveyBook();
+    }
+  }
+
   /* ── battles have an end ─────────────────────────────────────────────────
      A battle you have never seen is still being fought — it has been going on
      for as long as you were not looking, which is why finding one is worth
@@ -8146,7 +8442,14 @@
   function coilJump() {
     const me = ships[0];
     const from = Math.hypot(me.x, me.y) || 1;
+    /* Where you were, and how far away the new spot has to be. A random bearing
+       at a random distance can land you a few hundred units from where you were
+       standing — technically random, and it reads as the thing not working. So
+       the draw has a floor on it: wherever it puts you, it is somewhere else. */
+    const wasX = me.x, wasY = me.y;
+    const leap = from * 0.4;
     const clear = (x, y) => {
+      if (Math.hypot(x - wasX, y - wasY) < leap) return false;
       for (const h of hazards) {
         if (dist2(x, y, h.x, h.y) < (h.kill * 2.4 + 900) ** 2) return false;
       }
@@ -8610,6 +8913,7 @@
     surveyShots(dt);
     surveyBullets();
     surveyTraffic(dt);
+    surveyFitting(dt);
     surveyBattles(dt);
     surveyHeat(dt);
     surveyCaches(dt);
@@ -9137,7 +9441,8 @@
       const me = ships[0];
       glow(CASH, 1, 0.22, () => {
         ctx.beginPath();
-        ctx.arc(me.x, me.y, SURVEY_TRACTOR * U, 0, Math.PI * 2);
+        ctx.arc(me.x, me.y, SURVEY_TRACTOR * (1 + mods().reach) * U,
+                0, Math.PI * 2);
         ctx.stroke();
       });
     }
@@ -9318,6 +9623,39 @@
                                cost: refitCost(r.key) })),
       unlocks: UNLOCKS.map(u => ({ key: u.key, name: u.name, note: u.note,
                                    at: u.at, have: unlocked(u.key) })),
+      /* The four slots, what is in them, and how long until it works. Every
+         ship has four; that never varies and the page should never suggest it
+         might. */
+      slots: surv.slots.map(sl => {
+        if (!sl) return null;
+        const m = moduleSpec(sl.key);
+        return { key: sl.key, name: m.name, cat: m.cat, rarity: m.rarity,
+                 note: m.note, fit: sl.fit, of: fitSeconds(sl.key) };
+      }),
+      // What you own and are not flying, one row a kind.
+      store: MODULES.filter(m => storeCount(m.key) > 0).map(m => ({
+        key: m.key, name: m.name, cat: m.cat, rarity: m.rarity, note: m.note,
+        n: storeCount(m.key), secs: fitSeconds(m.key),
+        fitted: surv.slots.some(sl => sl && sl.key === m.key)
+      })),
+      /* What this station has on the shelf. Rarity decides how far out you have
+         to be before anybody stocks it, which is the danger curve paying out. */
+      forSale: surv.docked ? MODULES.filter(m => m.deep <= stationDepth()).map(m => ({
+        key: m.key, name: m.name, cat: m.cat, rarity: m.rarity, note: m.note,
+        cost: m.cost, secs: fitSeconds(m.key), owned: storeCount(m.key),
+        fitted: surv.slots.some(sl => sl && sl.key === m.key)
+      })) : [],
+      /* What each part actually does, so the page can total up what you are
+         flying with rather than keeping its own copy of the numbers. A second
+         copy of a balance table is a second table to get wrong. */
+      effects: (() => {
+        const out = {};
+        for (const m of MODULES) out[m.key] = m.eff;
+        return out;
+      })(),
+      onFit: (i, key) => fitModule(i, key),
+      onPull: i => pullModule(i),
+      onBuyPart: key => buyModule(key),
       objective: objective(),
       fix: objectiveFix(),
       /* Flattened for the panel: the minimap draws these as dots for as long as
@@ -9430,6 +9768,7 @@
       onChart: () => { state = "chart"; surveyHUD.chartOpened(surveyState()); },
       onAlmanac: () => { state = "almanac"; },
       onInventory: () => { state = "inventory"; },
+      onLoadout: () => { state = "loadout"; },
       // The nav strip's own destination for the station itself.
       onStation: () => { if (surv.docked) { state = "refit"; surveyHUD && surveyHUD.refitOpened(); } },
       onMissions: () => { state = "missions"; },
@@ -9671,7 +10010,12 @@
      A station stops the clock, because you are docked and doing business, and so
      does the pause key, because that is what a pause key is for. And the death
      page stops it because there is nothing left to run. */
-  const SURVEY_LIVE_PAGES = { chart: 1, inventory: 1, missions: 1, almanac: 1 };
+  /* The pages the world keeps running behind. The loadout is on this list on
+     purpose and the whole of 5.2 depends on it: fitting a part takes time out in
+     space, and a page that paused the clock would turn that cost into a loading
+     screen you wait out rather than a risk you take. */
+  const SURVEY_LIVE_PAGES = { chart: 1, inventory: 1, missions: 1, almanac: 1,
+                              loadout: 1 };
   const surveyLive = () =>
     mode && mode.survey && surv && !surv.death && SURVEY_LIVE_PAGES[state];
   const worldRunning = () => state === "playing" || surveyLive() || onlineMenuOpen();
@@ -10164,7 +10508,10 @@
   const DRAG_SLOP = 7;          // screen units before a press becomes a drag
 
   const scrollingPage = () =>
-    state === "almanac" || state === "chart" || state === "hangar";
+    state === "almanac" || state === "chart" || state === "hangar" ||
+    state === "loadout";
+  // How many rows the shelf on the loadout page has to scroll through.
+  const shelfRows = () => (surv && surv.docked ? MODULES.length : 0);
 
   canvas.addEventListener("wheel", e => {
     if (!surv || !surveyHUD) return;
@@ -10177,6 +10524,9 @@
       e.preventDefault();
     } else if (state === "hangar") {
       surveyHUD.hangarDragBy(px, SHIPS.length);
+      e.preventDefault();
+    } else if (state === "loadout") {
+      surveyHUD.loadoutDragBy(px, shelfRows());
       e.preventDefault();
     } else if (state === "chart") {
       // On a map the wheel is zoom, not pan — that is what every map does.
@@ -10193,6 +10543,7 @@
     // Content follows the finger: drag down and you see what was above.
     if (state === "almanac") surveyHUD.almanacDragBy(-dy, SURVEY_TOTAL);
     else if (state === "hangar") surveyHUD.hangarDragBy(-dy, SHIPS.length);
+    else if (state === "loadout") surveyHUD.loadoutDragBy(-dy, shelfRows());
     else if (state === "chart") surveyHUD.chartDragBy(dx, dy);
     pageDrag.x = p.x; pageDrag.y = p.y;
     e.preventDefault();
@@ -10281,6 +10632,18 @@
       s.input.r = held(k.right);
       s.input.th = held(k.thrust);
       s.input.f = held(k.fire);
+      s.input.rev = false;
+    }
+
+    /* Reverse. Not a bindable action — a Survey verb, like the scan and the
+       light drive, on a fixed key, and only there at all if the part is bolted
+       on and finished fitting. Backing off a rock without turning round is a
+       thing your ship can suddenly do, which is what a part is supposed to
+       feel like. */
+    if (mode && mode.survey && modFitted("reverser")) {
+      const rev = held(["KeyS", "ArrowDown"]);
+      const me0 = ships[localSeat()];
+      if (me0 && me0.localKeys) me0.input.rev = rev;
     }
 
     // Thumb controls drive whichever ship belongs to this machine, on top of
@@ -10397,6 +10760,19 @@
                    (lightDriveOn() ? LIGHT_TURN : 1);
       if (k.l) ship.a -= turn * dt;
       if (k.r) ship.a += turn * dt;
+
+      /* Reverse thrust: weaker than the engine and pointed the other way, so
+         it is a way out of somewhere rather than a second gear. It cannot be
+         used with the light drive on, which is not a manoeuvre. */
+      if (k.rev && !k.th && !lightDriveOn()) {
+        const back = THRUST * (ship.thrustMul || 1) * REVERSE_THRUST * U * dt;
+        ship.vx -= Math.cos(ship.a) * back;
+        ship.vy -= Math.sin(ship.a) * back;
+        if (Math.random() < 0.5) {
+          burst(ship.x + Math.cos(ship.a) * shipR,
+                ship.y + Math.sin(ship.a) * shipR, "#87d8ff", 1, 44 * U);
+        }
+      }
 
       ship.thrusting = k.th;
       if (ship.thrusting) {
@@ -12782,6 +13158,9 @@
     if (state === "inventory" && surv && surveyHUD) {
       surveyHUD.drawInventory(surveyState(), dt || 0); return;
     }
+    if (state === "loadout" && surv && surveyHUD) {
+      surveyHUD.drawLoadout(surveyState(), dt || 0); return;
+    }
     if (state === "yard" && surv && surveyHUD) {
       surveyHUD.drawYardPage(surveyState(), dt || 0); return;
     }
@@ -14161,6 +14540,14 @@
       // leave to a look.
       buyShip: key => buyShip(key),
       flyShip: key => flyShip(key),
+      // The parts catalogue and the two numbers a test has to read off it.
+      parts: () => MODULES.map(m => ({ key: m.key, name: m.name, cat: m.cat,
+                                       rarity: m.rarity, cost: m.cost,
+                                       deep: m.deep, secs: fitSeconds(m.key) })),
+      scanRange: () => scanRange(),
+      // Arriving at a station, without having to fly to one: the same call the
+      // docking check makes when a real station comes into range.
+      dock: () => stationFinishesFits(),
       shipNow: () => ({ key: surv.ship, owned: [...surv.owned],
                         spec: shipSpec(surv.ship),
                         zoom: shipZoomFactor(), cap: holdCap() }),

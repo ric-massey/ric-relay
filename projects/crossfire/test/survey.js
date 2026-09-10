@@ -2837,6 +2837,20 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(cf.buyShip("ossuary") === true, "could not buy a ship with the money for it");
   check(surv.cash === 500, "the ship cost " + (big.cost + 500 - surv.cash));
 
+  /* And a ship you already own is still only swappable at home. A hull bought
+     stays at the home station; you cannot change what you are flying at an
+     ordinary one, which is the whole reason choosing a hull is a decision
+     rather than a preference. */
+  const first = surv.ship;
+  surv.docked = { x: 180000, y: -90000 };
+  check(cf.flyShip(first) === false, "swapped ships at an ordinary station");
+  surv.docked = null;
+  check(cf.flyShip(first) === false, "swapped ships in open space");
+  surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
+  check(cf.flyShip(first) === true, "could not swap ships at the home station");
+  check(surv.ship === first, "the swap did not take");
+  cf.flyShip("ossuary");
+
   /* And the numbers reach the ship. Each of the five is checked against the
      hull's own entry rather than against a constant. */
   check(me.maxHull === big.hull, "hull reads " + me.maxHull + ", roster says " + big.hull);
@@ -3480,8 +3494,14 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
   /* And you are not where you were. Not a nudge — somewhere else. */
   const moved = Math.hypot(me.x - site.x, me.y - site.y);
-  check(moved > 8000,
-        "the coil moved you " + Math.round(moved) + " units; that is not a jump");
+  const home = Math.hypot(site.x, site.y);
+  /* Wherever it puts you it has to be somewhere else. The draw has a floor on
+     it for exactly this reason: a random bearing at a random distance can
+     otherwise land you a few hundred units from where you were standing, which
+     reads as the thing not working. */
+  check(moved > home * 0.4,
+        "the coil moved you " + Math.round(moved) + " units from " +
+        Math.round(home) + " out; that is not a jump");
   check(Math.hypot(me.vx, me.vy) < 1,
         "you came out of the jump still travelling");
   check(me.alive, "the jump put you somewhere you could not survive arriving");
@@ -3525,6 +3545,163 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   console.log("  coil       picking it up fires it \u00b7 thrown " +
               Math.round(moved / 1000) + "k units, momentum gone \u00b7 " +
               "never into a world or a well \u00b7 a different spot every time");
+}
+
+// ── four slots, on every hull, and a fit that costs you one ──────────────
+/* Phase 5.2. Every ship, no exceptions, gets exactly four attachment slots —
+   not four on the starter and a spread across the rest. And a part can be
+   changed anywhere, including mid-fight; what it costs is the slot, which is
+   dead until the fit lands. At a station it is instant.
+
+   The thing that can rot silently here is the *cost*: a slot that quietly
+   counted while it was still fitting would make swapping free, and free is the
+   one thing this must not be. */
+{
+  const { cf } = boot("?debug=1&seed=414141");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 5; surv.water = 900; surv.food = 900;
+      now += 1000 / 60; cf.step();
+    }
+  };
+  const view = () => cf.surveyView();
+
+  // Four, and four on every hull in the roster.
+  check(view().slots.length === 4,
+        "the ship has " + view().slots.length + " slots, not 4");
+  const hulls = view().ships || [];
+  for (const h of hulls) {
+    surv.owned.add(h.key);
+    surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
+    cf.flyShip(h.key);
+    check(view().slots.length === 4,
+          h.name + " has " + view().slots.length + " slots, not 4");
+  }
+  /* Out of the home station's reach, or every fit below would be instant and
+     the whole cost this section is about would never appear. */
+  surv.docked = null;
+  me.x = 260000; me.y = 140000; me.vx = me.vy = 0;
+  step(2);
+  check(!surv.docked, "the test ship is still standing in a station");
+
+  /* Fitting out in space takes time, and the slot does nothing until it lands.
+     Measured on the stat the part is supposed to move. */
+  surv.store.layerplate = 1;
+  const hull0 = me.maxHull;
+  check(view().onFit(0, "layerplate") === true, "could not fit a part in space");
+  step(2);
+  check(view().slots[0].fit > 0, "a fit out in space was instant");
+  check(me.maxHull === hull0,
+        "a part that is still fitting is already working (" + hull0 +
+        " -> " + me.maxHull + ")");
+  const secs = view().slots[0].of;
+  check(secs === 20, "a common part takes " + secs + "s, not 20");
+
+  // Run it out. Now, and only now, does it do anything.
+  step(secs * 60 + 30);
+  check(view().slots[0].fit === 0, "the fit never finished");
+  check(me.maxHull === hull0 + 2,
+        "the fitted plate gave " + (me.maxHull - hull0) + " hull, not 2");
+
+  /* Rarity decides the time, and nothing goes past 180 seconds. */
+  const cat = cf.parts();
+  check(cat.every(m => m.secs <= 180), "a part in the catalogue fits slower than the ceiling");
+  check(cat.some(m => m.rarity === "exotic") && cat.some(m => m.rarity === "common"),
+        "the catalogue does not span the rarities");
+  surv.store.deepear = 1;
+  view().onFit(1, "deepear");
+  check(view().slots[1].of === 90,
+        "a rare part takes " + view().slots[1].of + "s, not 90");
+  surv.store.coldlarder = 1;
+  view().onFit(2, "coldlarder");
+  check(view().slots[2].of === 180,
+        "an exotic part takes " + view().slots[2].of + "s, not 180");
+  check(view().slots.every(sl => !sl || sl.of <= 180),
+        "something takes longer than the ceiling to fit");
+
+  /* Pulling a part mid-fit loses the progress and gives the part back. That is
+     what makes starting one a decision rather than a free trial. */
+  const owned0 = view().store.find(e => e.key === "deepear");
+  view().onPull(1);
+  check(view().slots[1] === null, "pulling left something in the slot");
+  const owned1 = view().store.find(e => e.key === "deepear");
+  check(owned1 && owned1.n === 1, "the pulled part did not come back to the crate");
+  check(!owned0, "it was in the crate while it was on the ship");
+
+  /* At a station it is instant — no timer, no dead slot. `surv.docked` is set
+     directly and read without stepping: a step runs `surveyStations`, which
+     re-derives docking from the real station list and would wipe it. */
+  surv.docked = { x: 180000, y: -90000 };
+  check(view().slots[2].fit > 0, "the exotic fit finished on its own");
+  cf.dock();
+  check(view().slots[2].fit === 0,
+        "arriving at a station did not finish the fit in progress");
+  view().onFit(1, "deepear");
+  check(view().slots[1].fit === 0, "a fit at a station was not instant");
+  check(cf.scanRange() > 2100 * 2,
+        "the scanner fitted at a station is not working");
+
+  /* One of a kind on the ship: two of the same part in two slots would be a way
+     to spend slots rather than to choose between them. */
+  surv.store.deepear = 1;
+  check(view().onFit(3, "deepear") === false, "fitted the same part twice");
+  // And a slot that is full has to be emptied first; swapping is two acts.
+  check(view().onFit(1, "layerplate") === false, "fitted into an occupied slot");
+  // Nor can you fit what you do not own.
+  check(view().onFit(3, "overburner") === false, "fitted a part you never bought");
+
+  /* Buying. What a station stocks depends on how far out it is, which is the
+     danger curve paying something back. */
+  surv.cash = 99999;
+  surv.docked = { x: 2000, y: 0 };
+  const nearShelf = view().forSale.length;
+  surv.docked = { x: 2600000, y: 1400000 };
+  const deepShelf = view().forSale.length;
+  check(deepShelf > nearShelf,
+        "a station in the deep stocks " + deepShelf + ", one near home " +
+        nearShelf + "; the deep one should stock more");
+  check(nearShelf > 0, "a station near home stocks nothing at all");
+  const rare = view().forSale.find(e => e.rarity === "exotic");
+  check(!!rare, "nowhere sells the strange ones");
+
+  const cash0 = surv.cash;
+  check(view().onBuyPart("overburner") === true, "could not buy a part with cash");
+  check(surv.cash < cash0, "the part was free");
+  check(view().store.some(e => e.key === "overburner"),
+        "the bought part is not in the crate");
+
+  /* The world keeps running behind the page, which is the only reason a timer
+     is a cost rather than a loading screen. */
+  surv.docked = null;
+  surv.store.pulsecoil = 1;
+  surv.slots[3] = null;
+  view().onFit(3, "pulsecoil");
+  cf.screen("loadout");
+  const was = view().slots[3].fit;
+  const x0 = me.x;
+  me.vx = 200;
+  step(60);
+  check(view().slots[3].fit < was, "the fit stopped while the page was open");
+  check(Math.abs(me.x - x0) > 100, "the world paused behind the loadout page");
+  cf.screen("playing");
+
+  // And all of it survives the tab.
+  cf.leave();
+  const book = JSON.parse(store["crossfire.survey.v3"]);
+  check(Array.isArray(book.slots) && book.slots.length === 4,
+        "the book saved no slots");
+  check(book.slots[0] && book.slots[0].key === "layerplate",
+        "the book forgot what was bolted on");
+  check(book.store && book.store.overburner === 1,
+        "the book forgot what was in the crate");
+
+  console.log("  slots      four on every hull \u00b7 a fit out here takes " +
+              "20/45/90/180s and the slot is dead until it lands \u00b7 " +
+              "instant at a station \u00b7 one of a kind \u00b7 the deep " +
+              "stocks " + deepShelf + " where home stocks " + nearShelf);
 }
 
 if (problems.length) {

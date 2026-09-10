@@ -413,33 +413,43 @@
      A destination you cannot reach from here is dimmed rather than removed —
      the strip has to be in the same order and the same places on every page, or
      it stops being navigation and becomes six different rows of buttons. */
+  /* The row of tabs along the foot of every page, and the close button that
+     shares it. The widths are computed rather than fixed: the row grew a seventh
+     tab when parts got slots, and a hard-coded width meant every new page was a
+     collision waiting to happen. Now adding one narrows them all evenly and
+     `fitText` handles the type. */
+  const NAV_CLOSE_W = 150;
+  const NAV_Y = h => h - 30;
+
   function pageNav(st, here) {
-    const { SCREEN_H } = api;
+    const { SCREEN_W, SCREEN_H } = api;
     const docked = !!st.docked;
     const tabs = [
       { key: "refit",     name: "STATION",  live: docked, act: st.onStation },
       { key: "hangar",    name: "HANGAR",   live: !!st.atHome, act: st.onHangar },
+      { key: "loadout",   name: "LOADOUT",  live: true,   act: st.onLoadout },
       { key: "inventory", name: "STORAGE",  live: true,   act: st.onInventory },
       { key: "missions",  name: "MISSIONS", live: true,   act: st.onMissions },
       { key: "almanac",   name: "ALMANAC",  live: true,   act: st.onAlmanac },
       { key: "chart",     name: "CHART",    live: true,   act: st.onChart }
     ];
-    // Wide enough for MISSIONS at the module's own type without ellipsis, and
-    // narrow enough that six of them clear the close button on the right.
-    const w = 116, gap = 9;
+    const gap = 7;
+    const span = SCREEN_W - PAGE.EDGE * 2 - NAV_CLOSE_W - 16;
+    const w = Math.floor((span - gap * (tabs.length - 1)) / tabs.length);
     tabs.forEach((t, i) => {
       const cx = PAGE.EDGE + w / 2 + i * (w + gap);
       const on = t.key === here;
-      button(t.name, cx, SCREEN_H - 30, w, 38,
+      button(t.name, cx, NAV_Y(SCREEN_H), w, 38,
              on ? VIOLET : t.live ? VIOLET_DIM : VIOLET_LOW,
-             on || !t.live ? null : t.act, on, t.live && !on, "0.06em");
+             on || !t.live ? null : t.act, on, t.live && !on, "0.04em");
     });
   }
 
   function closeButton(act) {
     const { SCREEN_W, SCREEN_H } = api;
     button(api.touchOnly ? "CLOSE" : "CLOSE  [ESC]",
-           SCREEN_W - 124, SCREEN_H - 30, 180, 38, VIOLET, act);
+           SCREEN_W - PAGE.EDGE - NAV_CLOSE_W / 2, NAV_Y(SCREEN_H),
+           NAV_CLOSE_W, 38, VIOLET, act);
   }
 
   /* ═══ THE PANEL ═══════════════════════════════════════════════════════════
@@ -1536,17 +1546,23 @@
               "SEED " + (st.seed || 0) +
               (st.world ? "  ·  " + st.world.name : "") +
               "  ·  " + fmtCells(HUD.charted()) + " CELLS CHARTED",
-              /* Short, because the footer shares its line with the buttons
-                 below the rule and the long version ran through all of them.
-                 The touch one names no keys at all: a phone has none, and the
-                 zoom and recentre buttons are right there saying it better. */
-              api.touchOnly ? "" : "ARROWS PAN  ·  ± ZOOM  ·  C");
+              /* No footer any more: that line belongs to the navigation strip
+                 now, the same as on every other page. The keys it used to name
+                 are on the title line instead, where nothing else is. */
+              "");
+
 
     /* The band under the map used to be 56px holding five things — a hint, a
        zoom readout, six palette buttons, the footer and CLOSE — all inside
-       each other. The map gives up a row so each of them gets its own. */
+       each other. The map gives up a row so each of them gets its own.
+
+       It gives up a second one now, because the chart was the only page in the
+       mode without the navigation strip: opening the map and wanting your
+       storage meant closing the map, flying, and pressing another key. Its own
+       three buttons moved up a row and the strip took the bottom, so the map is
+       a page you can leave the way you leave every other one. */
     const view = { x: PAGE.EDGE, y: PAGE.TOP,
-                   w: SCREEN_W - PAGE.EDGE * 2, h: SCREEN_H - PAGE.TOP - 118 };
+                   w: SCREEN_W - PAGE.EDGE * 2, h: SCREEN_H - PAGE.TOP - 162 };
     const mx = wx => view.x + view.w / 2 + (wx - chart.x) * chart.scale;
     const my = wy => view.y + view.h / 2 + (wy - chart.y) * chart.scale;
 
@@ -1630,7 +1646,7 @@
           : chart.mark
             ? verb + " ANYWHERE TO SET THE WAYPOINT"
             : verb + " THE MAP TO PIN  ·  " + verb + " A PIN TO LIFT IT",
-          34, SCREEN_H - 104, SIZE.cap,
+          34, SCREEN_H - 148, SIZE.cap,
           chart.jump ? CASH : chart.mark ? WAYPOINT : VIOLET_LOW, "left", 0.8);
 
     /* Which step you are on, and how wide the view actually is. Zoom without a
@@ -1641,13 +1657,13 @@
         ? k : a, 0);
     label("ZOOM " + (step + 1) + "/" + ZOOMS.length + "   ·   " +
           fmtCells(Math.round(SCREEN_W / chart.scale)) + " UNITS ACROSS",
-          SCREEN_W - 34, SCREEN_H - 104, SIZE.cap, VIOLET_DIM, "right", 0.8);
+          SCREEN_W - 34, SCREEN_H - 148, SIZE.cap, VIOLET_DIM, "right", 0.8);
 
     /* The palette. Which kind of note the next tap leaves — a row to itself, so
        nothing is drawn through it and nothing steals its taps, and on the page's
        own six columns so it lines up with the map above it rather than floating
        centred in the middle of nowhere. */
-    const py = SCREEN_H - 94;
+    const py = SCREEN_H - 138;
     PIN_KINDS.forEach((k, i) => {
       const on = i === chart.pin && !chart.jump;
       const c = COL(PIN_KINDS.length, i);
@@ -1673,9 +1689,11 @@
        swatches, and CLOSE on top of its last — and taps go to whatever was
        drawn last, so those pin kinds could not be chosen on a phone at all. */
     if (api.touchOnly) {
-      button("−", 60, SCREEN_H - 30, 46, 38, VIOLET, () => zoomChart(-1));
-      button("+", 114, SCREEN_H - 30, 46, 38, VIOLET, () => zoomChart(1));
-      button("RECENTRE", 220, SCREEN_H - 30, 140, 38, VIOLET,
+      // On the row above the navigation strip, with the chart's own actions —
+      // the strip owns the bottom line on every page now, this one included.
+      button("−", 60, SCREEN_H - 74, 46, 38, VIOLET, () => zoomChart(-1));
+      button("+", 114, SCREEN_H - 74, 46, 38, VIOLET, () => zoomChart(1));
+      button("RECENTRE", 220, SCREEN_H - 74, 140, 38, VIOLET,
              () => HUD.chartOpened(st));
     }
     /* The manmade wormhole, which is what the yard was for. Six parts carried
@@ -1687,8 +1705,16 @@
        three are optional and any combination can be up at once, so the places are
        fixed rather than packed: a button that moves depending on what else is
        there is a button you have to look for. */
+    const actY = SCREEN_H - 74;
+    /* The keys, on the actions row rather than the footer — the footer line is
+       the navigation strip's now. On a phone this row holds the zoom cluster
+       instead, and a phone has no keys to name. */
+    if (!api.touchOnly) {
+      label("ARROWS PAN  ·  ± ZOOM  ·  C", PAGE.EDGE, actY + 6, SIZE.cap,
+            VIOLET_LOW, "left", 0.7);
+    }
     if (st.waypoint && !chart.mark) {
-      button("CLEAR", 450, SCREEN_H - 30, 96, 38, VIOLET_DIM,
+      button("CLEAR", 450, actY, 96, 38, VIOLET_DIM,
                     () => { if (st.onWaypoint) st.onWaypoint(null); });
     }
     /* Somewhere to go. Pins are notes and there can be two hundred of them; a
@@ -1696,15 +1722,16 @@
        at it. Armed the same way the wormhole is, because that gesture is already
        learned by the time anyone has a wormhole. */
     button(chart.mark ? "CANCEL" : st.waypoint ? "MOVE  ▸" : "WAYPOINT  ▸",
-                  560, SCREEN_H - 30, 130, 38, chart.mark ? WARN : WAYPOINT,
+                  560, actY, 130, 38, chart.mark ? WARN : WAYPOINT,
                   () => { chart.mark = !chart.mark; chart.jump = false; },
                   chart.mark);
     if (canJump) {
       button(chart.jump ? "CANCEL" : "WORMHOLE  ▸",
-                    700, SCREEN_H - 30, 140, 38, chart.jump ? WARN : CASH,
+                    700, actY, 140, 38, chart.jump ? WARN : CASH,
                     () => { chart.jump = !chart.jump; chart.mark = false; },
                     chart.jump);
     }
+    pageNav(st, "chart");
     closeButton(st.onClose || (() => {}));
   };
 
@@ -2645,6 +2672,237 @@
      across three screens and one of them you had to fly somewhere to open.
 
      Reached from a button under the panel chart, or on `I`. */
+  /* ═══ THE LOADOUT ═════════════════════════════════════════════════════════
+     Four slots, the same four on every hull, and the parts that go in them.
+
+     This page is live — the world keeps running behind it — and the whole of the
+     slot system depends on that. Fitting a part out in space takes time and the
+     slot is dead until it lands; a page that paused the clock would turn that
+     cost into a loading screen you wait out instead of a risk you take. So the
+     page shows a countdown that is genuinely counting, and you can close it and
+     keep flying while it does.
+
+     At a station every fit is instant, which is why the page reads differently
+     when you are docked: no timers, and a shelf to buy from. */
+  const RARITY = {
+    common:   { name: "COMMON",   colour: VIOLET_DIM },
+    uncommon: { name: "UNCOMMON", colour: ICE },
+    rare:     { name: "RARE",     colour: CASH },
+    exotic:   { name: "EXOTIC",   colour: AMBER }
+  };
+  const rarity = k => RARITY[k] || RARITY.common;
+
+  /* A list that scrolls with no sign it scrolls is a list people think is four
+     items long. Three pixels of track and a thumb on it is enough to say so. */
+  function scrollHint(x, y, h, t) {
+    const { ctx } = api;
+    const knob = Math.max(24, h * 0.4);
+    ctx.save();
+    ctx.fillStyle = VIOLET_LOW;
+    ctx.globalAlpha = 0.5;
+    ctx.fillRect(x, y, 3, h);
+    ctx.fillStyle = VIOLET;
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(x, y + Math.max(0, Math.min(1, t)) * (h - knob), 3, knob);
+    ctx.restore();
+  }
+  let loadout = { slot: -1, scroll: 0 };
+  HUD.loadoutOpened = function () { loadout.slot = -1; };
+  HUD.loadoutDragBy = function (dy, rows) {
+    const max = Math.max(0, rows - LOAD_ROWS);
+    loadout.scroll = Math.max(0, Math.min(max, loadout.scroll + dy / PAGE.STEP));
+  };
+  HUD.loadoutCanScroll = rows => rows > LOAD_ROWS;
+  const LOAD_ROWS = 9;
+
+  /* One entry in a parts list: what it is, what it does, and the one thing you
+     can do about it. Everything is on a single row because a part is a single
+     decision — the note is the only part that has to shrink. */
+  function partRow(x, w, y, e, action) {
+    const r = rarity(e.rarity);
+    const nameW = 168;
+    label(e.name, x + PAGE.PAD, y, SIZE.cap, r.colour, "left", 0.95);
+    fitText(e.note, x + PAGE.PAD + nameW, y, SIZE.cap, VIOLET_DIM, "left", 0.62,
+            w - PAGE.PAD * 2 - nameW - 118);
+    if (action) {
+      button(action.text, x + w - PAGE.PAD - 46, y - 5, 92, 22,
+             action.colour, action.act, false, action.live !== false, "0.06em");
+    }
+  }
+
+  HUD.drawLoadout = function (st, dt) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    st = st || {};
+    const slots = st.slots || [null, null, null, null];
+    const docked = !!st.docked;
+
+    pageFrame("LOADOUT",
+              (st.shipName || "") + "  \u00b7  FOUR SLOTS, EVERY HULL",
+              "");
+
+    /* ── the four ──────────────────────────────────────────────────────────
+       Always four boxes, always the same four boxes. A hull with fewer would
+       make "which ship" and "which parts" the same question, and they are not. */
+      const slotH = PANEL_H(3);
+    for (let i = 0; i < 4; i++) {
+      const { x, w } = COL(4, i);
+      const sl = slots[i];
+      const fitting = !!sl && sl.fit > 0;
+      const col = !sl ? VIOLET_LOW : fitting ? AMBER_DIM : rarity(sl.rarity).colour;
+      const picked = loadout.slot === i;
+      panel(x, PAGE.TOP, w, slotH, picked ? VIOLET : col,
+            "SLOT " + (i + 1), sl ? "PULL" : picked ? "CHOSEN" : "EMPTY");
+
+      if (!sl) {
+        label("EMPTY", x + PAGE.PAD, ROW(PAGE.TOP, 0) + 4, SIZE.val,
+              picked ? VIOLET : VIOLET_LOW, "left", picked ? 0.9 : 0.6);
+        fitText(picked ? "pick a part below" : "tap to choose this slot",
+                x + PAGE.PAD, ROW(PAGE.TOP, 1) + 2, SIZE.cap, VIOLET_DIM,
+                "left", 0.55, w - PAGE.PAD * 2);
+      } else {
+        fitText(sl.name, x + PAGE.PAD, ROW(PAGE.TOP, 0) + 4, SIZE.val, col,
+                "left", 1, w - PAGE.PAD * 2);
+        fitText(sl.note, x + PAGE.PAD, ROW(PAGE.TOP, 1) + 2, SIZE.cap,
+                VIOLET_DIM, "left", 0.6, w - PAGE.PAD * 2);
+        if (fitting) {
+          /* The cost, shown as a cost. A slot that is dead has to look dead, or
+             the first time it matters is the time you needed it. */
+          label("FITTING  " + Math.ceil(sl.fit) + "s", x + PAGE.PAD,
+                ROW(PAGE.TOP, 2) + 2, SIZE.cap, AMBER_DIM, "left", 1, "0.1em");
+          barAt(x + PAGE.PAD, ROW(PAGE.TOP, 2) + 8, w - PAGE.PAD * 2, 5,
+                1 - sl.fit / Math.max(1, sl.of), AMBER_DIM);
+        } else {
+          label("WORKING", x + PAGE.PAD, ROW(PAGE.TOP, 2) + 2, SIZE.cap,
+                CASH, "left", 0.9, "0.14em");
+        }
+      }
+      api.addTap({ x, y: PAGE.TOP, w, h: slotH, act: () => {
+        if (sl) { if (st.onPull) st.onPull(i); }
+        else loadout.slot = loadout.slot === i ? -1 : i;
+      } });
+    }
+
+    /* ── what you have, and what is on the shelf ───────────────────────────
+       Where a fit goes: the slot you picked, or the first empty one, so the
+       common case is one tap and the deliberate case is two. */
+    const target = () => {
+      if (loadout.slot >= 0 && !slots[loadout.slot]) return loadout.slot;
+      for (let i = 0; i < 4; i++) if (!slots[i]) return i;
+      return -1;
+    };
+    const listY = PAGE.TOP + slotH + PAGE.GUTTER;
+    const listH = PANEL_H(LOAD_ROWS);
+    const L = COL(2, 0), R = COL(2, 1);
+
+    const crate = st.store || [];
+    const free = target() >= 0;
+    panel(L.x, listY, L.w, listH, CASH, "IN THE CRATE",
+          crate.length ? crate.length + " KIND" + (crate.length > 1 ? "S" : "") : "EMPTY");
+    if (!crate.length) {
+      fitText("Nothing to fit. Stations sell parts; the strange ones are a long " +
+              "way out.", L.x + PAGE.PAD, ROW(listY, 0) + 4, SIZE.cap,
+              VIOLET_DIM, "left", 0.6, L.w - PAGE.PAD * 2);
+    }
+    crate.slice(0, LOAD_ROWS).forEach((e, i) => {
+      const y = ROW(listY, i) + 4;
+      const can = free && !e.fitted;
+      partRow(L.x, L.w, y, e, {
+        text: e.fitted ? "ON SHIP" : docked ? "FIT" : "FIT " + e.secs + "s",
+        colour: e.fitted ? VIOLET_LOW : CASH,
+        live: can,
+        act: () => { const t = target(); if (t >= 0 && st.onFit) st.onFit(t, e.key); }
+      });
+      if (e.n > 1) {
+        label("\u00d7" + e.n, L.x + L.w - PAGE.PAD - 104, y, SIZE.cap,
+              VIOLET_DIM, "right", 0.7);
+      }
+    });
+
+    /* The shelf. Only when docked, because a shop you can shop at from anywhere
+       is not a place. What it stocks depends on how far out it is. */
+    const shelf = st.forSale || [];
+    if (docked) {
+      const rows = Math.max(0, shelf.length - LOAD_ROWS);
+      panel(R.x, listY, R.w, listH, AMBER, "ON THE SHELF",
+            (st.cash || 0) + " CASH" + (rows ? "   \u00b7  " +
+              (Math.floor(loadout.scroll) + 1) + "\u2013" +
+              Math.min(shelf.length, Math.floor(loadout.scroll) + LOAD_ROWS) +
+              " OF " + shelf.length : ""));
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(R.x + 1, listY + PAGE.HEAD - 6, R.w - 2, listH - PAGE.HEAD + 2);
+      ctx.clip();
+      const first = Math.floor(loadout.scroll);
+      shelf.slice(first, first + LOAD_ROWS + 1).forEach((e, k) => {
+        const i = first + k;
+        const y = ROW(listY, i - loadout.scroll) + 4;
+        const afford = (st.cash || 0) >= e.cost;
+        partRow(R.x, R.w, y, e, {
+          text: e.cost + "",
+          colour: afford ? AMBER : VIOLET_LOW,
+          live: afford,
+          act: () => st.onBuyPart && st.onBuyPart(e.key)
+        });
+        if (e.owned) {
+          label("\u00d7" + e.owned, R.x + R.w - PAGE.PAD - 104, y, SIZE.cap,
+                CASH_DIM, "right", 0.8);
+        }
+      });
+      ctx.restore();
+      if (rows) scrollHint(R.x + R.w - 8, listY + PAGE.HEAD, listH - PAGE.HEAD - 8,
+                           loadout.scroll / rows);
+    } else {
+      panel(R.x, listY, R.w, listH, VIOLET_DIM, "WHERE PARTS COME FROM", "");
+      [
+        "Stations sell them. What a station stocks depends",
+        "on how far out it is \u2014 the strange ones are a long",
+        "way from home, which is what the danger curve is",
+        "for.",
+        "",
+        "Out here a fit takes time and the slot is dead",
+        "until it lands. At a station it is instant.",
+        "So changing your mind out here has a price, and",
+        "planning ahead does not."
+      ].forEach((ln, i) => {
+        if (!ln) return;
+        fitText(ln, R.x + PAGE.PAD, ROW(listY, i) + 4, SIZE.cap, VIOLET_DIM,
+                "left", 0.6, R.w - PAGE.PAD * 2);
+      });
+    }
+
+    /* ── what the four add up to ───────────────────────────────────────────
+       The only number on the page, and it is a summary rather than a stat: this
+       is what you are flying with right now, with anything still fitting left
+       out of it, because it is not helping you yet. */
+    const sum = [];
+    const add = (v, txt) => { if (v) sum.push(txt); };
+    let hull = 0, speed = 0, turn = 0, scan = 0, tract = false, rev = false;
+    for (const sl of slots) {
+      if (!sl || sl.fit > 0) continue;
+      const e = st.effects && st.effects[sl.key];
+      if (!e) continue;
+      hull += e.hull || 0; speed += e.speed || 0; turn += e.turn || 0;
+      scan += e.scan || 0;
+      if (e.tractor) tract = true;
+      if (e.reverse) rev = true;
+    }
+    add(hull, "+" + hull + " HULL");
+    add(speed, "+" + Math.round(speed * 100) + "% SPEED");
+    add(turn, "+" + Math.round(turn * 100) + "% TURN");
+    add(scan, "+" + Math.round(scan * 100) + "% SCAN");
+    if (tract) sum.push("TRACTOR BEAM");
+    if (rev) sum.push("REVERSE  [S]");
+    label("FLYING WITH", PAGE.EDGE, listY + listH + 34, SIZE.cap, VIOLET_DIM,
+          "left", 0.55, "0.18em");
+    fitText(sum.length ? sum.join("   \u00b7   ") : "four empty slots",
+            PAGE.EDGE + 168, listY + listH + 34, SIZE.cap,
+            sum.length ? CASH : VIOLET_LOW, "left", sum.length ? 0.9 : 0.5,
+            SCREEN_W - PAGE.EDGE * 2 - 176);
+
+    pageNav(st, "loadout");
+    closeButton(st.onClose);
+  };
+
   HUD.drawInventory = function (st, dt) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
