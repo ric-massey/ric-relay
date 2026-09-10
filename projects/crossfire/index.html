@@ -706,6 +706,12 @@
   const TURN         = 3.2;    // rad/s — not scaled; turning rate is ergonomic
   const THRUST       = 380;
   const DRAG         = 0.42;
+  /* What a ship loses a second while it is coasting faster than its own engine
+     could push it — thrown by a well, or still carrying the light drive's speed
+     after cutting it. Much gentler than DRAG, because DRAG is the resistance an
+     engine works against and there is no engine involved in being thrown. */
+  const COAST_DRAG   = 0.13;
+  const THROWN_CEILING = 4;    // times your top speed, however deep the well
   const MAX_SPEED    = 360;
   const SHIP_R       = 12;
   const BULLET_SPD   = 520;
@@ -2053,6 +2059,26 @@
       if (code === "KeyM") {
         state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
       }
+    } else if (state === "missions") {
+      /* Back to the inventory rather than to the sector: it was opened from
+         there, and a page that drops you two levels out is a page you stop
+         opening. Escape closes the lot, which is what Escape means everywhere. */
+      if (code === "Backspace") { state = "inventory"; return; }
+      if (code === "Escape" || code === "KeyI") { state = "playing"; return; }
+      if (code === "KeyL") { state = "almanac"; return; }
+      if (code === "KeyM") {
+        state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
+      }
+    } else if (state === "landed") {
+      if (code === "Escape" || code === "Backspace" || code === "KeyE") {
+        state = "playing"; return;
+      }
+    } else if (state === "died") {
+      /* One way on, and it is not Escape. A death screen you can dismiss with
+         the key you dismiss everything else with is a death screen you skip
+         past without reading, and this one is the only place the run's numbers
+         are ever stated. */
+      if (code === "Enter" || code === "Space") { surveyRespawn(); return; }
     } else if (state === "yard") {
       if (code === "Escape" || code === "Backspace" || code === "KeyE") {
         state = "playing"; return;
@@ -2137,7 +2163,15 @@
           state = "refit"; surveyHUD && surveyHUD.refitOpened(); return;
         }
         if (code === "KeyE" && surv && surv.atYard) { state = "yard"; return; }
+        // Last of the three, because a station does more than a world does and a
+        // yard is the thing you came back for.
+        if (code === "KeyE" && surv && surv.landed) { state = "landed"; return; }
         if (code === "KeyI") { state = "inventory"; return; }
+        // The light drive, if you have one. `R` for run: nothing else uses it,
+        // and the three page keys are already spoken for.
+        if (code === "KeyR" && surv && surv.hasLight) {
+          toggleLightDrive(); return;
+        }
       }
       if (code === "KeyP" || code === "Escape") {
         state = state === "playing" ? (net.on ? "menu" : "paused") : "playing";
@@ -2464,18 +2498,36 @@
   /* ── deaths ──────────────────────────────────────────────────────────── */
   function damageShip(ship, cause, shooter, dmg = 1) {
     const twoHitCause = cause === "shot" || cause === "rock";
-    /* Survey has a five-point hull that a star puts back, and running out of it
-       is a recovery rather than a death: nothing here counts stocks, awards a
-       kill or ends a match, so `killShip` is never the right call. */
+    /* Survey's hull runs down to zero and *stops* there. It used to reset — a
+       hull loss put you back to full and cost you half your hold, so the mode
+       had no fail state and no stakes, which is the thing this phase reverses.
+
+       Zero is survivable and is meant to be terrifying: you can still fly, you
+       can still get to a star and mend, and the next thing that touches you
+       kills you. That single point of grace is what makes it a decision rather
+       than an ambush. See SURVEY-PLAN.md phase 2.1. */
     if (mode.survey) {
-      if (twoHitCause && ship.hull > 1) {
+      // Anything that touches you drops the drive: you cannot run at light with
+      // something scraping down the side of the hull.
+      if (surv.lightRun > 0) {
+        surv.lightRun = 0;
+        surv.lightHit = null;
+        chatter("Light drive cut.", "#ff8f77");
+      }
+      if (ship.hull > 0) {
         ship.hull -= dmg;
+        if (ship.hull < 0) ship.hull = 0;
         ship.invuln = Math.max(ship.invuln, HIT_SHIELD);
-        burst(ship.x, ship.y, ship.colour, 10, 150 * U);
+        burst(ship.x, ship.y, ship.hull > 0 ? ship.colour : "#ff8f77",
+              ship.hull > 0 ? 10 : 22, (ship.hull > 0 ? 150 : 260) * U);
         gameSound("hit", ship.x);
+        if (ship.hull === 0) {
+          addShake(7);
+          chatter("Hull gone. The next one kills you — find a star.", "#ff8f77");
+        }
         return false;
       }
-      surveyRecover(ship);
+      surveyDie(cause);
       return false;
     }
     if (mode.campaign) {
@@ -2658,7 +2710,7 @@
     /* A broken rock pays, which is what turns the standing field from scenery
        you dodge into the sector's small change. Only the last break pays, so a
        big rock is worth the same however carefully it is taken apart. */
-    if (mode.survey && !next) dropMote(rock.x, rock.y, YIELD.rock, 26);
+    if (mode.survey && !next) dropMote(rock.x, rock.y, YIELD.rock, 26, "rock");
     burst(rock.x, rock.y, "#ffcb42", rock.size === "big" ? 16 : 10, 170 * U);
     gameSound("rock", rock.x);
     const i = rocks.indexOf(rock);
@@ -2675,8 +2727,34 @@
     }
   }
 
+  /* Rock against rock. Royale had this because its wall herds the field into a
+     heap; Survey never did, so an asteroid belt was a set of sprites occupying
+     the same space and passing through each other. A field you can shoulder
+     your way through, and whose pieces shove each other into a well, is worth
+     flying into rather than around. */
+  /* Broken by a well rather than by a shot. Deliberately not `splitRock`: that
+     one scores, pays out and can log the prospector entry, and none of those
+     should happen because gravity did the work. The pieces are thrown outward
+     from the rock's own centre so the break reads as a break, and then the well
+     has them too. */
+  function shatterInWell(rock, i, well) {
+    const spec = rockSpec(rock.size);
+    const colour = well.kind === "star" ? "#ffd76d" : "#a08cff";
+    burst(rock.x, rock.y, colour, rock.size === "big" ? 18 : 10, 200 * U);
+    if (Math.random() < 0.3) gameSound("rock", rock.x);
+    rocks.splice(i, 1);
+    if (!spec.next) return;
+    for (let k = 0; k < 2; k++) {
+      const piece = makeRock(spec.next, rock.x, rock.y);
+      const a = Math.random() * Math.PI * 2;
+      piece.vx = rock.vx + Math.cos(a) * 90 * U;
+      piece.vy = rock.vy + Math.sin(a) * 90 * U;
+      rocks.push(piece);
+    }
+  }
+
   function resolveRockCollisions() {
-    if (!mode.closing || rocks.length < 2) return;
+    if ((!mode.closing && !mode.survey) || rocks.length < 2) return;
     for (let i = 0; i < rocks.length; i++) {
       for (let j = i + 1; j < rocks.length; j++) {
         const a = rocks[i], b = rocks[j];
@@ -2758,7 +2836,15 @@
      Radio chatter is a small scrolling log under the pilots; screen shake and a
      brief slow-motion mark the biggest beats. All three are campaign-only and
      decay on their own, so nothing here leaks into Survival or Battle Royale. */
+  /* Radio. In Survey it goes to the interface's own notification stack, top
+     right, along with everything else that has just happened — three separate
+     feeds in three corners was most of why the screen was never quiet. Other
+     modes keep the line above the hull bar, which is the only place they have. */
   function chatter(text, colour) {
+    if (mode && mode.survey && surveyHUD) {
+      surveyHUD.notify(text, "", colour || "#ffcb42", 6);
+      return;
+    }
     comms.unshift({ text, colour: colour || "#ffcb42", until: clock + 6 });
     comms.length = Math.min(comms.length, 4);
   }
@@ -3867,14 +3953,47 @@
   const SURVEY_STORE  = "crossfire.survey.v3";
   const CHUNK         = 2600;   // world units a side
   const CHUNK_LOAD    = 2;      // chunks kept either side of the ship: a 5×5 block
+  /* Wider, and shifted forward, while the light drive is running. The box has to
+     reach past the five-second impact horizon — about seven chunks at full
+     speed — and it has to keep the ship inside itself, so it grows as well as
+     moves. It costs 13×13 chunks instead of 5×5 for as long as the run lasts. */
+  const LIGHT_LOAD    = 6;
+  const LIGHT_LEAD    = 4;
   const SURVEY_SIGHT  = 700;    // charted either side of the ship as it flies
   const SURVEY_SCAN   = 9;      // seconds to recharge the pulse
   const SURVEY_REPAIR = 0.55;   // hull points a second, in a star's light
   const SURVEY_ROCKS  = 90;     // rocks kept around the ship
   const SURVEY_ROCK_R = 3200;   // how far out they are kept
   const SURVEY_HULL   = 5;
+  /* Where the first station stands, and therefore where you come back to. One
+     constant, because the generator and the respawn both need it and a respawn
+     into empty space beside a station that moved would be the worst possible
+     bug to find. */
+  const HOME_STATION  = { x: 620, y: 300 };
+
+  /* ── life support ─────────────────────────────────────────────────────────
+     Two clocks that are always running, and they are the reason range is a
+     supply problem rather than only a danger problem. Water goes about twice as
+     fast as food, which is both true and useful: it means the two meters
+     separate over a long trip instead of moving as one, so there is a decision
+     in which of them you spend money on.
+
+     Neither kills you the instant it empties. Empty starts a countdown you can
+     still act on — a meter that goes from "fine" to "dead" with no interval is
+     an ambush, and the whole of phase 1 was about not doing that. The grace is
+     generous enough to reach a station you already know about and not generous
+     enough to carry on exploring. */
+  const WATER_FULL   = 720;    // seconds of water in a full tank — twelve minutes
+  const FOOD_FULL    = 1500;   // and twenty-five of food
+  const THIRST_GRACE = 75;     // then it kills you
+  const HUNGER_GRACE = 120;
+  // What a full tank costs at a station. Water is cheap and constant; food is
+  // dearer, which is what makes a long haul something you provision for.
+  const WATER_PRICE  = 45;
+  const FOOD_PRICE   = 95;
   const NEBULA        = "#a08cff";
   const WRECK         = "#7d8596";
+  const ICE_C         = "#87d8ff";   // the interface calls this ICE; same colour
   const CASH          = "#6dffbf";
   const DRONE_COLOUR  = "#ff6d8f";
 
@@ -3883,15 +4002,246 @@
      screensaver. A world is a place that pushes back: things you hit, things
      you can go inside, things that object to you being there, and somewhere for
      what you take to go. */
-  const SURVEY_HOLD    = 60;    // cash carried before the hold is full
-  const SURVEY_TRACTOR = 620;   // reach of the beam, once it is unlocked
+  const SURVEY_HOLD    = 60;    // units of material the hold takes before it is full
+  /* Reach of the beam, once it is unlocked. It used to be 620 units pulling at
+     900, which swept a broken rock clean at full burn — so the beam did not
+     change how you fly, it removed the only decision salvage ever asked for.
+     Short and weak enough that a cloud has to be flown *slowly* through: the
+     pull has to beat your own speed to close the gap, so the trade is time
+     against cargo, which is the trade the whole mode is made of. */
+  const SURVEY_TRACTOR = 340;   // reach of the beam, once it is unlocked
+  const TRACTOR_PULL   = 380;   // and how hard it draws at the rim
   const SURVEY_DOCK    = 260;   // how close is docked
+  const PLANET_DOCK    = 190;   // and how far above a world's surface counts
   const GATE_R         = 150;   // the mouth of a wormhole
   const DRONE_WAKE     = 1500;  // a sentry notices you this far out
   const DRONE_LEASH    = 2600;  // and gives up this far from its post
 
-  /* Salvage is one number and the hold is one number, so the whole economy is
-     legible at a glance: what a thing is worth, and whether you can carry it. */
+  /* ── worlds ───────────────────────────────────────────────────────────────
+     Planets were the most common thing in the sector after rocks and the least
+     interesting: one in six chunks held one, every one of them 110–200 units
+     across, every one of them the same blue, and none of them called anything.
+     Four of the things a landmark must not be, all at once — so a world was
+     something you flew past without ever once looking at it.
+
+     Now: far fewer, far bigger, an order of magnitude apart in size, each with
+     its own palette and its own banding, each with a name, and about one in
+     twenty inhabited and saying so. Everything here is a pure function of where
+     the world is, so a world keeps its face and its name forever. */
+  const WORLD_KINDS = [
+    { key: "rust",   disc: "#e0885c", band: "#b05f3c", halo: "#ff9d6b" },
+    { key: "ice",    disc: "#bfe8ff", band: "#7fb8d8", halo: "#e6f7ff" },
+    { key: "ocean",  disc: "#6fa8e6", band: "#3f74b4", halo: "#9ad0ff" },
+    { key: "ember",  disc: "#ff8f77", band: "#c2523f", halo: "#ffb59d" },
+    { key: "jade",   disc: "#7fd8a8", band: "#3f9d78", halo: "#a8f0c8" },
+    { key: "ash",    disc: "#9aa0ad", band: "#666c78", halo: "#c4cad6" },
+    { key: "amber",  disc: "#ffd76d", band: "#c2a03f", halo: "#ffeaa8" },
+    { key: "violet", disc: "#b79aff", band: "#7a5fc4", halo: "#d6c4ff" }
+  ];
+
+  /* Gibberish, and deliberately so: a made-up name is a name, and a coordinate
+     is not. Two or three syllables from a table that cannot produce anything
+     unpronounceable, sometimes with a numeral after it so a system reads as a
+     system. Seeded off the position, so it is the same name every time you
+     come back and the same name on somebody else's screen. */
+  const SYL_HEAD = ["ka", "tor", "vel", "mir", "zan", "hel", "dra", "ost", "sev",
+                    "bra", "nul", "ith", "tem", "lor", "pha", "gri", "umb", "cas",
+                    "ryn", "aln", "khe", "vor", "sil", "dun", "ere", "yph"];
+  const SYL_TAIL = ["ara", "is", "on", "eth", "ux", "ai", "or", "ys", "en", "um",
+                    "ea", "ir", "os", "ane", "ul", "yx", "ia", "esh", "ov", "at"];
+  const ROMAN = ["II", "III", "IV", "V", "VI", "VII", "IX", "XI"];
+  /* A supermassive well is the biggest thing in a sector and it was called
+     nothing at all, which made the one you have to plan a route around
+     indistinguishable on the chart from the one you passed an hour ago. They are
+     named in their own register — a place, not a world — so a chart with both on
+     it reads as two kinds of thing. */
+  const HOLE_WORDS = ["DEEP", "ABYSS", "MAW", "THROAT", "WELL", "DARK", "DRAIN"];
+
+  function holeName(x, y) {
+    const R = seeded(hash2(Math.round(x), Math.round(y)) ^ 0x71c3f9a5);
+    let n = SYL_HEAD[Math.floor(R() * SYL_HEAD.length)];
+    if (R() < 0.4) n += SYL_HEAD[Math.floor(R() * SYL_HEAD.length)];
+    n += SYL_TAIL[Math.floor(R() * SYL_TAIL.length)];
+    return n.toUpperCase() + " " + HOLE_WORDS[Math.floor(R() * HOLE_WORDS.length)];
+  }
+
+  // What counts as supermassive: the scale at which the warning calls it one.
+  const SUPERMASSIVE = 1.8;
+
+  function worldName(x, y) {
+    const R = seeded(hash2(Math.round(x), Math.round(y)) ^ 0x2f9a7c31);
+    let n = SYL_HEAD[Math.floor(R() * SYL_HEAD.length)];
+    if (R() < 0.45) n += SYL_HEAD[Math.floor(R() * SYL_HEAD.length)];
+    n += SYL_TAIL[Math.floor(R() * SYL_TAIL.length)];
+    n = n.toUpperCase();
+    if (R() < 0.34) n += " " + ROMAN[Math.floor(R() * ROMAN.length)];
+    return n;
+  }
+
+  /* ── where a world may stand ──────────────────────────────────────────────
+     Worlds cannot be rolled per chunk any more. A chunk is pure — it cannot see
+     what its neighbours built — and that was harmless while a planet was 190
+     units across inside a 2,600-unit chunk. At up to 3,600 units across it is
+     not: measured over six seeds, one world in twenty-four overlapped another,
+     and the worst case had a small world sitting entirely inside a large one.
+     Two intersecting solid bodies also make a pocket you can get wedged in.
+
+     So worlds get their own lattice, exactly five chunks to a cell, and each
+     cell holds at most one. A world is inset from its cell's edges by its own
+     radius and then some, which means two worlds in neighbouring cells are
+     always at least `r1 + r2 + 1200` apart — they cannot touch, and the proof is
+     arithmetic rather than a hope about the random numbers.
+
+     A cell is five chunks square, so a chunk lies in exactly one of them and
+     this costs one memoised roll. */
+  const WORLD_CELL = CHUNK * 5;          // 13,000 units — wider than any world
+  const WORLD_INSET = 600;               // clear air between two neighbours
+  let worldCache = new Map();
+
+  function worldIn(lx, ly) {
+    const key = lx + "," + ly;
+    const had = worldCache.get(key);
+    if (had !== undefined) return had;
+    const R = seeded(chunkSeed(lx * 3571 + 11, ly * 51043 + 29) ^ 0x6d2b79f5);
+    const roll = R();
+    let out = null;
+    if (roll < 0.55 * Math.max(0.05, abund("planets"))) {
+      // The radius first, because the box it may stand in depends on it.
+      const t = Math.pow(R(), 2.2);
+      const r = Math.round(340 * Math.pow(10.6, t));
+      const pad = r + WORLD_INSET;
+      const room = WORLD_CELL - pad * 2;
+      const x = lx * WORLD_CELL + pad + (room > 0 ? R() * room : 0);
+      const y = ly * WORLD_CELL + pad + (room > 0 ? R() * room : 0);
+      const w = makeWorld(x, y, R, r);
+      out = worldBlocked(w.x, w.y, w.r) ? null : w;
+    }
+    worldCache.set(key, out);
+    return out;
+  }
+
+  /* A world's whole face, from its position. Size runs 340 to about 3,600 on a
+     curve that keeps most of them modest and lets a few be enormous — the point
+     of the spread is that "that one is *huge*" has to be a thing you can say,
+     which needs the ordinary ones to be smaller than it. */
+  function makeWorld(x, y, R, radius) {
+    const t = Math.pow(R(), 2.2);
+    const r = radius || Math.round(340 * Math.pow(10.6, t));
+    const kind = WORLD_KINDS[Math.floor(R() * WORLD_KINDS.length)];
+    // Bands: how many, and where. A world with three fat bands and one with
+    // seven fine ones do not read as the same paint.
+    const n = 2 + Math.floor(R() * 6);
+    const bands = [];
+    for (let i = 0; i < n; i++) {
+      bands.push((i + 1) / (n + 1) * 2 - 1 + (R() - 0.5) * 0.14);
+    }
+    /* Who lives here. Commoner near home and rare in the deep, which is what
+       turns range into a supply problem rather than only a danger problem: the
+       further out you go, the further you are from anywhere that sells you
+       water. About one in twenty overall, but one in nine near the origin and
+       one in fifty at the far end.
+
+       Air is separate, and commoner: a world with an atmosphere can be skimmed
+       for water by anybody, slowly and for nothing, which is the poor pilot's
+       option and costs time instead of money. */
+    const deep = dangerAt(x, y);
+    return { x, y, r, kind: kind.key, bands,
+             ring: R() < 0.22 ? 1.25 + R() * 0.5 : 0,
+             tilt: (R() - 0.5) * 0.9,
+             inhabited: R() < 0.11 * (1 - deep * 0.85),
+             air: R() < 0.62,
+             name: worldName(x, y) };
+  }
+
+  const worldKind = k => WORLD_KINDS.find(w => w.key === k) || WORLD_KINDS[2];
+
+  /* Somewhere a world is not allowed to be. Worlds are solid and can now be
+     3,600 units across, so one rolled on top of a manifest part or a landmark
+     does not obscure it — it *encloses* it, and the thing inside cannot be
+     reached at all. That is the same bug the jump coil's gate had, arriving from
+     a different direction, and it ends a run rather than spoiling a view.
+
+     Both lists are small — six parts and eight landmarks — so this is exact
+     rather than approximate, and it is checked against the world's real radius
+     rather than a guess at one. */
+  function worldBlocked(x, y, r) {
+    if (!surv) return false;
+    for (const pt of surv.partSites) {
+      if (dist2(x, y, pt.x, pt.y) < (r + pt.r + 420) ** 2) return true;
+    }
+    for (const lm of surv.landmarks) {
+      if (dist2(x, y, lm.x, lm.y) < (r + lm.r + 300) ** 2) return true;
+    }
+    // Nor over the yard, which is the one place you always have to be able to
+    // reach, nor over the origin you start at.
+    if (dist2(x, y, YARD.x, YARD.y) < (r + 1200) ** 2) return true;
+    if (dist2(x, y, 0, 0) < (r + 1200) ** 2) return true;
+    return false;
+  }
+
+  /* ── what you are carrying ────────────────────────────────────────────────
+     Salvage used to be one number, and that number was both the cargo in the
+     hold and the money in the bank. It made the whole economy legible at a
+     glance and it made it mean nothing: everything you broke was worth the
+     same, everywhere was worth the same, and there was no reason to carry a
+     load anywhere except back to the nearest shop.
+
+     So the two are split. **Materials** are the cargo — four kinds, worth
+     different money, coming out of different things — and they are what the
+     hold's capacity limits. **Cash** is what you get for selling them, it is
+     not carried and cannot be spilled, and it is what buys a refit today and
+     ships, food and water later.
+
+     Four rather than a dozen: each one has to be recognisable by its colour in
+     a cloud of drifting motes at speed, and be worth saying out loud when you
+     find a seam of it. */
+  const MATERIALS = [
+    { key: "ice",     name: "ICE",     colour: "#87d8ff", value: 1,
+      note: "common, cheap, and one day it is water" },
+    { key: "iron",    name: "IRON",    colour: "#c0a487", value: 3,
+      note: "what most rocks are made of" },
+    { key: "alloy",   name: "ALLOY",   colour: "#ffcb42", value: 9,
+      note: "refined — it comes out of things that were built" },
+    { key: "iridium", name: "IRIDIUM", colour: "#a08cff", value: 22,
+      note: "deep, dense and rare; the reason to go out that far" }
+  ];
+  const matSpec = k => MATERIALS.find(m => m.key === k) || MATERIALS[1];
+  const freshHold = () => ({ ice: 0, iron: 0, alloy: 0, iridium: 0 });
+
+  /* Where a kind of material comes from. A rock is mostly ice and iron; a thing
+     somebody built is mostly alloy; a guarded cache is where the iridium is.
+     Depth slides every table toward the rare end, which is most of what makes a
+     long haul worth the fuel. */
+  const MAT_TABLE = {
+    rock:  { ice: 46, iron: 44, alloy: 6,  iridium: 4 },
+    hulk:  { ice: 4,  iron: 33, alloy: 58, iridium: 5 },
+    drone: { ice: 2,  iron: 24, alloy: 68, iridium: 6 },
+    wreck: { ice: 5,  iron: 38, alloy: 52, iridium: 5 },
+    cache: { ice: 5,  iron: 20, alloy: 40, iridium: 35 }
+  };
+
+  function rollMaterial(source, deep) {
+    const table = MAT_TABLE[source] || MAT_TABLE.rock;
+    // Depth is a thumb on the scale, not a different table: the same places
+    // give the same things further out, just richer.
+    const lean = 1 + (deep || 0) * 3.5;
+    let total = 0;
+    const weights = MATERIALS.map(m => {
+      const w = (table[m.key] || 0) *
+                (m.value >= 9 ? lean : m.value <= 1 ? 1 / lean : 1);
+      total += w;
+      return w;
+    });
+    let r = Math.random() * total;
+    for (let i = 0; i < MATERIALS.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return MATERIALS[i].key;
+    }
+    return "iron";
+  }
+
+  /* How many units a thing drops. Bigger than the old yields because a unit is
+     no longer worth one cash — it is worth whatever it turns out to be. */
   const YIELD = { rock: 3, wreck: 9, cache: 34, drone: 7, hulk: 16 };
 
   /* ── how far out you are ──────────────────────────────────────────────────
@@ -3939,15 +4289,19 @@
      rather than verbs: a refit makes the ship you have better, and the almanac
      is what hands you things the ship could not do at all. Costs climb steeply
      enough that a full ship is an expedition's worth of work, not an errand. */
+  /* Priced in cash, which is now a thing you get by selling rather than a thing
+     you pick up. A full sixty-unit hold of ordinary rock sells near home for
+     something like 250, so the first tier of anything is a run or two out and
+     back, and the third tier of everything is a long way past that. */
   const REFIT = [
     { key: "hull",    name: "HULL PLATING",  note: "+2 hull a tier",
-      cost: [40, 95, 190] },
+      cost: [160, 380, 760] },
     { key: "thrust",  name: "DRIVE",         note: "faster, and quicker to it",
-      cost: [35, 85, 170] },
-    { key: "hold",    name: "CARGO HOLD",    note: "+45 cash carried",
-      cost: [30, 70, 150] },
+      cost: [140, 340, 680] },
+    { key: "hold",    name: "STORAGE BAY",   note: "+45 units carried",
+      cost: [120, 280, 600] },
     { key: "scanner", name: "SCANNER",       note: "how far a pulse reaches",
-      cost: [45, 110, 220] }
+      cost: [180, 440, 880] }
   ];
   const REFIT_TIERS = 3;
 
@@ -4018,7 +4372,7 @@
     { key: "rogue", name: "ROGUE", note: "a planet with no star" },
     { key: "last-transmission", name: "LAST TRANSMISSION", note: "still broadcasting" },
     { key: "pale-dot", name: "PALE DOT", note: "one pixel, until it wasn't" },
-    { key: "the-wall", name: "THE WALL", note: "markers around an empty square",
+    { key: "the-wall", name: "THE WALL", note: "a wormhole somebody failed to open",
       secret: true },
     { key: "supernebula", name: "THE SUPERNEBULA", note: "you found the big one" },
     { key: "node-01", name: "NODE 01", note: "somebody else's terminal", secret: true },
@@ -4092,12 +4446,44 @@
      into a place you can move around in, and makes every station you stumble
      across on the way worth noting. The reward for mapping is that the map
      starts working for you. */
+  /* What the six parts make. It was called a "light drive", which was simply the
+     wrong name for it: it does not drive you anywhere at speed, it opens a mouth
+     at one end and puts you out of another — it is a wormhole, and one that
+     somebody built. The Wall is a *failed* attempt at exactly this, which is why
+     the jump coil is found wound around a gate, and calling this what it is makes
+     the two of them the same story told twice. A real light drive is a separate
+     thing you build afterwards; see LIGHT_DRIVE below. */
   const YARD_BUILDS = {
-    name: "LIGHT DRIVE",
-    does: "jump to any station you have charted, from the chart",
-    blurb: "Six parts, and none of them are near each other. What you get for " +
-           "it is the end of long flights home."
+    name: "MANMADE WORMHOLE",
+    does: "open a mouth to any station you have charted, from the chart",
+    blurb: "Six parts, and none of them are near each other. Somebody tried this " +
+           "before, on a frame a mile across, and it did not open."
   };
+
+  /* ── the light drive ──────────────────────────────────────────────────────
+     The yard's second project, and the only one you buy rather than fetch: the
+     wormhole moves you between places you have already been, and this moves you
+     *through* the places you have not.
+
+     Connect to it and you run in one direction at eight times what the drive can
+     do. You cannot manoeuvre at that speed and you are not meant to — the whole
+     of it is a commitment. Asteroids are nothing at that velocity; the only two
+     things in the sector big enough to matter are a massive world and a
+     supermassive well, and the drive says so five seconds before you arrive,
+     which is the same bargain phase 1.2 struck with the gravity warning. */
+  const LIGHT_DRIVE = {
+    name: "LIGHT DRIVE",
+    cost: 2400,
+    does: "run in one direction at eight times your drive",
+    blurb: "No turning, no stopping short. Worlds and supermassive wells will " +
+           "still kill you, and it will tell you five seconds out."
+  };
+  const LIGHT_MULT   = 8;      // times your own top speed
+  const LIGHT_SPOOL  = 1.6;    // seconds to wind up to it
+  const LIGHT_TURN   = 0.22;   // how much steering is left, as a fraction
+  const LIGHT_WARN   = 5;      // seconds of impact warning
+  // What is big enough to be worth warning about at that speed.
+  const LIGHT_MIN_WORLD = 700;
 
   /* ── the landmarks ────────────────────────────────────────────────────────
      The seven entries that are places rather than conditions, at increasing
@@ -4206,7 +4592,9 @@
   const freshRefit = () => ({ hull: 0, thrust: 0, hold: 0, scanner: 0 });
 
   function loadSurveyBook() {
-    const empty = { seed: 0, found: [], fog: "", trail: "", cash: 0,
+    const empty = { seed: 0, found: [], fog: "", cash: 0, deaths: 0, waypoint: null,
+                    water: WATER_FULL, food: FOOD_FULL,
+                    hold: freshHold(),
                     refit: freshRefit(), opened: [], stripped: [],
                     carrying: [], built: [], pins: [], known: [] };
     try {
@@ -4226,15 +4614,52 @@
         seed: Number(b.seed) || 0,
         found: strs(b.found),
         fog: typeof b.fog === "string" ? b.fog : "",
-        trail: typeof b.trail === "string" ? b.trail : "",
+
         /* Written as `cash` since the rename; `salvage` is read as a
            fallback so a survey started before it is not quietly emptied. */
-        cash: Math.max(0, Math.floor(Number(b.cash != null ? b.cash : b.salvage)) || 0),
+        /* The old single number was cargo, capped by the hold and spent on
+           refits. Read back as cargo — iron, the staple — rather than as money:
+           it is what it actually was, and selling it buys about what it used to
+           buy directly, where reading it as cash would have quietly devalued
+           everybody's hold on the day this shipped. */
+        cash: b.hold === undefined
+          ? 0                        // it was cargo, and it is read back as iron
+          : Math.max(0, Math.floor(Number(b.cash)) || 0),
+        deaths: Math.max(0, Math.floor(Number(b.deaths)) || 0),
+        light: !!b.light,
+        waypoint: b.waypoint && Number.isFinite(b.waypoint.x) &&
+                  Number.isFinite(b.waypoint.y)
+          ? { x: Math.round(b.waypoint.x), y: Math.round(b.waypoint.y) } : null,
+        /* Clamped both ways. A book written before life support existed has no
+           tanks at all and must resume full rather than resume dying, and a
+           hand-edited one must not hand out an infinite tank. */
+        water: b.water == null ? WATER_FULL
+          : Math.max(0, Math.min(WATER_FULL, Number(b.water) || 0)),
+        food: b.food == null ? FOOD_FULL
+          : Math.max(0, Math.min(FOOD_FULL, Number(b.food) || 0)),
+        hold: (() => {
+          const h = freshHold();
+          const src = b.hold && typeof b.hold === "object" ? b.hold : null;
+          if (src) {
+            for (const m of MATERIALS) {
+              h[m.key] = Math.max(0, Math.min(9999, Math.floor(Number(src[m.key])) || 0));
+            }
+            return h;
+          }
+          const legacy = Math.floor(Number(b.cash != null ? b.cash : b.salvage)) || 0;
+          h.iron = Math.max(0, Math.min(9999, legacy));
+          return h;
+        })(),
         refit,
         opened: strs(b.opened),
         stripped: strs(b.stripped),
-        carrying: strs(b.carrying),
-        built: strs(b.built),
+        /* Filtered against the manifest rather than merely checked for being
+           strings. `objective()` looks every carried key up in BUILD and reads
+           a name off the result, so one unknown key — a save from a build with
+           a different manifest, or a hand-edited one — threw on the first frame
+           and took the whole mode with it before anything could be drawn. */
+        carrying: strs(b.carrying).filter(k => BUILD.some(x => x.key === k)),
+        built: strs(b.built).filter(k => BUILD.some(x => x.key === k)),
         pins: Array.isArray(b.pins)
           ? b.pins.filter(q => q && Number.isFinite(q.x) && Number.isFinite(q.y) &&
                                typeof q.kind === "string").slice(0, 200)
@@ -4242,6 +4667,9 @@
         known: Array.isArray(b.known)
           ? b.known.filter(q => q && typeof q.k === "string" &&
                                 Number.isFinite(q.x) && Number.isFinite(q.y))
+                   .map(q => ({ k: q.k, x: q.x, y: q.y,
+                                name: typeof q.name === "string" ? q.name : "",
+                                r: Math.max(0, Math.floor(Number(q.r)) || 0) }))
                    .slice(0, 600)
           : []
       };
@@ -4255,12 +4683,18 @@
         seed: surv.seed,
         found: [...surv.found],
         fog: surveyHUD ? surveyHUD.exportFog() : "",
-        trail: surveyHUD ? surveyHUD.exportTrail() : "",
+
         cash: Math.round(surv.cash),
+        hold: surv.hold,
+        deaths: surv.deaths || 0,
+        light: !!surv.hasLight,
+        waypoint: surv.waypoint,
+        water: Math.round(surv.water),
+        food: Math.round(surv.food),
         refit: surv.refit,
         /* Only what has been taken, and taking is rare — a sector you have
            worked over for an hour is a few hundred short strings, which is well
-           inside what the fog and the trail already cost. */
+           inside what the fog already costs. */
         opened: [...surv.opened],
         stripped: [...surv.stripped],
         // The manifest is the spine of the mode; losing it to a closed tab
@@ -4345,6 +4779,116 @@
 
   const chunkKey = (cx, cy) => cx + "," + cy;
 
+  /* Like `chunkSeed` but on a position rather than a chunk index, for the things
+     that belong to a *place* and must keep their identity however the chunk
+     around them is rolled — a world's name, most of all. */
+  function hash2(a, b) {
+    let h = (surv ? surv.seed : 0) >>> 0;
+    h = Math.imul(h ^ ((a | 0) + 0x7f4a7c15), 0x2545f491) >>> 0;
+    h = Math.imul(h ^ ((b | 0) + 0x94d049bb), 0x9e3779b1) >>> 0;
+    h ^= h >>> 16;
+    return h >>> 0;
+  }
+
+  /* ── the gate lattice ─────────────────────────────────────────────────────
+     A wormhole used to be one mouth with a destination: you fell in, you came
+     out in open space, and there was nothing behind you. A one-way throw into
+     an endless sector is not a route — it is a thing that happens to you — and
+     the way back was however many hours you had just skipped.
+
+     So the *link* is the object now, not the mouth. A link has two ends and
+     both of them are real gates, each pointing at the other, so a gate you go
+     through is a gate you can come back through.
+
+     The trouble is that a chunk is pure: it may not look at anything already
+     loaded, and the far mouth of a link rolled here lands up to 46,000 units
+     away, in a chunk that has no way of knowing this one exists. The fix is to
+     roll links on a coarser lattice than chunks. A link cell is wider than the
+     longest throw, so a chunk need only ask the nine cells around it which
+     mouths land inside it — and both ends of every link are found the same way
+     from either side. Cells are memoised, so this costs one roll each and then
+     nothing. */
+  const LINK_CELL  = 48000;     // wider than the longest throw, so ±1 cell does
+  const LINK_SLOTS = 16;        // candidate links a cell, rolled independently
+  const GATE_NEAR  = 14000, GATE_FAR = 46000;
+  const COIL_GATE_GAP = 360;    // room to pick the coil up before the gate takes you
+  let linkCache = new Map();
+
+  function linksIn(lx, ly) {
+    const key = lx + "," + ly;
+    const had = linkCache.get(key);
+    if (had) return had;
+    // Its own corner of the seed: a cell must not shift because the chunk
+    // hasher happened to be asked for the same numbers somewhere else.
+    const R = seeded(chunkSeed(lx * 7919 + 31, ly * 104729 + 17) ^ 0x5f356495);
+    /* Rare on purpose. A gate that goes both ways is a route, and a route is
+       worth far more than the one-way throw this used to be — so there should
+       be many fewer of them. At 0.11 a slot it works out near one link, which
+       is two mouths, every two hundred chunks: novel rather than impossible.
+
+       The floor is what guarantees the "SEALED" world still has any at all. The
+       jump coil's gate is placed by hand and is not rolled here, so finding the
+       coil is how most players will meet their first one whatever this says. */
+    const p = 0.11 * Math.max(0.05, abund("gates"));
+    const out = [];
+    for (let i = 0; i < LINK_SLOTS; i++) {
+      const roll = R();
+      const ax = lx * LINK_CELL + R() * LINK_CELL;
+      const ay = ly * LINK_CELL + R() * LINK_CELL;
+      const a  = R() * Math.PI * 2;
+      const d  = GATE_NEAR + R() * (GATE_FAR - GATE_NEAR);
+      const pa = R() * Math.PI * 2, pb = R() * Math.PI * 2;
+      if (roll >= p) continue;          // rolled after, so a skip costs no drift
+      out.push({ ax, ay, bx: ax + Math.cos(a) * d, by: ay + Math.sin(a) * d,
+                 pa, pb });
+    }
+    linkCache.set(key, out);
+    return out;
+  }
+
+  /* Both mouths of every link that lands in this chunk, each aimed at its own
+     far end. Called from `buildChunk`, so it must stay pure. */
+  function gatesInChunk(cx, cy) {
+    const ox = cx * CHUNK, oy = cy * CHUNK;
+    const inside = (x, y) => x >= ox && x < ox + CHUNK && y >= oy && y < oy + CHUNK;
+    const lx = Math.floor(ox / LINK_CELL), ly = Math.floor(oy / LINK_CELL);
+    const out = [];
+    for (let j = ly - 1; j <= ly + 1; j++) {
+      for (let i = lx - 1; i <= lx + 1; i++) {
+        for (const L of linksIn(i, j)) {
+          if (inside(L.ax, L.ay)) {
+            out.push({ x: L.ax, y: L.ay, phase: L.pa, tx: L.bx, ty: L.by });
+          }
+          if (inside(L.bx, L.by)) {
+            out.push({ x: L.bx, y: L.by, phase: L.pb, tx: L.ax, ty: L.ay });
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  /* The jump coil's gate is placed by hand at its landmark rather than rolled,
+     so its far mouth has to be derived from the site itself — the same numbers
+     from either end, computed at setup to register the exit's chunk and again
+     when that chunk is built. */
+  function coilLink(site) {
+    const R = seeded(chunkSeed(Math.round(site.x / 97), Math.round(site.y / 97))
+                     ^ 0x1d872b41);
+    const a = R() * Math.PI * 2, d = GATE_NEAR + R() * (GATE_FAR - GATE_NEAR);
+    /* Beside the part, not on it. The mouth used to sit exactly where the jump
+       coil lay, and a gate swallows you at 82 units where a part is picked up
+       at about 60 — so flying to the coil threw you across the sector every
+       single time and the part could not be collected at all. The clue is still
+       "a gate": it is right there, you just arrive next to it. */
+    const off = R() * Math.PI * 2;
+    const gx = site.x + Math.cos(off) * COIL_GATE_GAP;
+    const gy = site.y + Math.sin(off) * COIL_GATE_GAP;
+    return { ax: gx, ay: gy,
+             bx: gx + Math.cos(a) * d, by: gy + Math.sin(a) * d,
+             pa: R() * Math.PI * 2, pb: R() * Math.PI * 2 };
+  }
+
   /* Wells come in sizes now. `k` scales the geometry and the mass together, but
      not at the same rate: radius goes as k and mass as k^2.6, so a big well is
      not merely a wide one — the pull at its edge climbs faster than its reach
@@ -4353,6 +4897,13 @@
 
      Sizes are handed out by band, so the abyss has wells that will take a stock
      ship off the board and home never does. */
+  /* How far a well's pull is felt. Supermassive ones reach half again as far as
+     their size alone would give them: the warning system exists to tell you
+     about a thing you have to plan a route around, and a region you can be
+     surprised by at the last second is not one you can plan around. The extra
+     reach is all warning — the killing radius is untouched. */
+  const REACH_BONUS = 1.5;
+
   function wellScale(deep, R) {
     /* A spread at every range, sliding upward. The ramp is steep on purpose:
        the plan puts supermassive wells — ones a stock drive cannot climb out of
@@ -4367,17 +4918,23 @@
     const s = HAZARD.star;
     k = k || 1;
     const m = Math.pow(k, 2.6);
-    return { kind: "star", x, y, kill: s.kill * k, reach: s.reach * k,
+    return { kind: "star", x, y, kill: s.kill * k,
+             reach: s.reach * k * (k >= SUPERMASSIVE ? REACH_BONUS : 1),
              mass: s.mass * m, soft: s.soft * k, fill: s.fill, size: "sun",
+             name: k >= SUPERMASSIVE ? holeName(x, y) : "",
              k, phase: R() * Math.PI * 2 };
   }
   function makeHole(x, y, big, R, k) {
     const s = big ? HAZARD.hole.large : HAZARD.hole.small;
     k = k || 1;
     const m = Math.pow(k, 2.6);
-    return { kind: "hole", x, y, kill: s.kill * k, reach: s.reach * k,
+    return { kind: "hole", x, y, kill: s.kill * k,
+             reach: s.reach * k * (k >= SUPERMASSIVE ? REACH_BONUS : 1),
              mass: s.mass * m, soft: s.soft * k, fill: null,
-             size: big ? "large" : "small", k, phase: R() * Math.PI * 2 };
+             size: big ? "large" : "small", k, phase: R() * Math.PI * 2,
+             // Only the ones worth naming: a small well is a nuisance and a
+             // supermassive one is a region of the map you plan around.
+             name: k >= SUPERMASSIVE ? holeName(x, y) : "" };
   }
 
   /* ── one chunk ────────────────────────────────────────────────────────────
@@ -4392,12 +4949,15 @@
      pair, and both entries are always somewhere ahead of you. */
   function buildChunk(cx, cy) {
     const R = seeded(chunkSeed(cx, cy));
+    // Gates come off the link lattice rather than out of this chunk's roll, so
+    // that whatever lands here has a twin somewhere that points back at it.
+    const latticeGates = gatesInChunk(cx, cy);
     const ox = cx * CHUNK, oy = cy * CHUNK;
     const rnd = (a, b) => a + R() * (b - a);
     const spot = (m) => ({ x: ox + rnd(m, CHUNK - m), y: oy + rnd(m, CHUNK - m) });
     const out = { hazards: [], planets: [], wrecks: [], nebulae: [], marks: [],
-                  gates: [], caches: [], stations: [], hulks: [], parts: [],
-                  fields: [] };
+                  gates: latticeGates, caches: [], stations: [], hulks: [],
+                  parts: [], fields: [] };
 
     // Where you start is quiet: an opening spawn inside a well is a death you
     // could not have avoided, and the first thing this mode asks you to do is
@@ -4409,11 +4969,25 @@
        no thresholds, so there is no visible seam anywhere in the sector. */
     const deep = dangerAt(ox + CHUNK / 2, oy + CHUNK / 2);
 
+    // The far end of the jump coil's gate, if it lands in this chunk.
+    const exit = surv && surv.coilExitAt && surv.coilExitAt.get(chunkKey(cx, cy));
+    if (exit) {
+      out.gates.push({ x: exit.bx, y: exit.by, phase: exit.pb,
+                       tx: exit.ax, ty: exit.ay });
+    }
+
     if (!home) {
-      /* Roughly a fifth of chunks carry a well, where it used to be three in
+      /* Roughly a sixth of chunks carry a well, where it used to be three in
          five. They were dense enough to read as scenery you steer around all
          day; a hazard you meet constantly is terrain, and terrain does not
-         frighten anybody. Rare and enormous beats frequent and survivable. */
+         frighten anybody. Rare and enormous beats frequent and survivable.
+
+         Black holes are cut harder than stars — down to about a third of what
+         they were. A star is a place: it lights the sector, it mends your hull
+         if you sit in it, and it gives a chunk a middle. A hole only takes, so
+         a sector full of them is a sector of identical detours, and the one you
+         actually have to plan around stops being remarkable. Stars stay put and
+         the holes thin out around them. */
       const roll = R() / Math.max(0.05, abund("wells"));
       const k = () => wellScale(deep, R);
       if (roll < 0.025) {
@@ -4421,21 +4995,25 @@
         const kk = k();
         out.hazards.push(makeStar(p.x - 190 * kk, p.y, R, kk),
                          makeStar(p.x + 190 * kk, p.y, R, kk));
-      } else if (roll < 0.045) {
+      } else if (roll < 0.032) {
         const p = spot(1000 * (1 + deep));
         const kk = k();
         out.hazards.push(makeHole(p.x - 250 * kk, p.y - 70 * kk, true, R, kk),
                          makeHole(p.x + 250 * kk, p.y + 70 * kk, true, R, kk));
-      } else if (roll < 0.135) {
+      } else if (roll < 0.122) {
         const p = spot(600);
         out.hazards.push(makeStar(p.x, p.y, R, k()));
-      } else if (roll < 0.21) {
+      } else if (roll < 0.152) {
         const p = spot(700);
         out.hazards.push(makeHole(p.x, p.y, R() < 0.45, R, k()));
       }
-      if (R() < 0.16 * abund("planets")) {
-        const p = spot(420);
-        out.planets.push({ x: p.x, y: p.y, r: rnd(110, 200) });
+      /* Far fewer, and off the world lattice rather than out of this chunk's
+         roll. A world is a landmark now — it is enormous, it has a name, and it
+         may be somewhere you can put down — and a landmark you meet every ninety
+         seconds is not one. */
+      const w = worldIn(Math.floor(ox / WORLD_CELL), Math.floor(oy / WORLD_CELL));
+      if (w && w.x >= ox && w.x < ox + CHUNK && w.y >= oy && w.y < oy + CHUNK) {
+        out.planets.push(w);
       }
       /* Ambient cloud. There used to be exactly one nebula in a sector, at the
          supernebula landmark, so a "clouded" world had nothing to show for it. */
@@ -4448,19 +5026,6 @@
         const p = spot(300);
         out.wrecks.push({ x: p.x, y: p.y, a: R() * Math.PI * 2,
                           spin: rnd(-0.05, 0.05), size: rnd(0.8, 1.7) });
-      }
-
-      /* A gate every twenty-odd chunks. Its far side is a pure function of this
-         chunk, so a gate always goes to the same place — a wormhole you cannot
-         rely on is a random teleport, and a random teleport is not a route. The
-         throw is long enough to be worth taking and never so long that it
-         strands a stock ship past anywhere it can refit. */
-      if (R() < 0.045 * abund("gates")) {
-        const p = spot(GATE_R + 260);
-        const a = R() * Math.PI * 2;
-        const d = rnd(14000, 46000);
-        out.gates.push({ x: p.x, y: p.y, phase: R() * Math.PI * 2,
-                         tx: p.x + Math.cos(a) * d, ty: p.y + Math.sin(a) * d });
       }
 
       /* A cache and its sentries. The guard is the point: salvage lying loose
@@ -4511,7 +5076,8 @@
          is "go and look", and it should not be "go and look for the shop" —
          seeing one early is also what teaches that salvage is worth picking up
          at all. */
-      out.stations.push({ x: ox + 620, y: oy + 300, r: 132, phase: 0 });
+      out.stations.push({ x: HOME_STATION.x, y: HOME_STATION.y, r: 132,
+                          phase: 0, home: true });
     }
 
     const lm = surv.landmarkAt.get(chunkKey(cx, cy));
@@ -4543,11 +5109,18 @@
                        makeStar(site.x + 340 * bk, site.y + 90 * bk, R, bk));
     } else if (site.key === "lens") {
       out.hazards.length = 0;                 // a rogue world has no sun, ever
-      out.planets.push({ x: site.x + 300, y: site.y, r: 190, rogue: true });
+      /* Clear of the part by its own radius and then some. It used to be pushed
+         300 units away, which was fine when a planet was 190 across; at 620 the
+         world simply contained the lens, and a solid body around a part is a
+         part that cannot be collected. */
+      const lensR = 620;
+      out.planets.push(Object.assign(
+        makeWorld(site.x + lensR + 520, site.y, R),
+        { r: lensR, rogue: true, ring: 0, inhabited: false, air: false }));
     } else if (site.key === "coil") {
-      const a = R() * Math.PI * 2, d = rnd(15000, 40000);
-      out.gates.push({ x: site.x, y: site.y, phase: R() * Math.PI * 2,
-                       tx: site.x + Math.cos(a) * d, ty: site.y + Math.sin(a) * d });
+      // Both ends, so the coil's gate goes back the way every other one does.
+      const L = coilLink(site);
+      out.gates.push({ x: L.ax, y: L.ay, phase: L.pa, tx: L.bx, ty: L.by });
     } else if (site.key === "beacon") {
       out.wrecks.push({ x: site.x, y: site.y, a: R() * Math.PI * 2, spin: 0.02,
                         size: 2.2, beacon: true });
@@ -4575,22 +5148,75 @@
       // A planet with no star, and the chunk's own roll is overruled so it
       // stays that way — the entry is the absence, not the planet.
       out.hazards.length = 0;
-      out.planets.push({ x: lm.x, y: lm.y, r: 175, rogue: true });
+      /* Sized and named by hand. Both of these entries *are* their size — a
+         rogue is a world with nothing warming it and the pale dot is a world you
+         nearly miss — so neither may be handed the ordinary roll. They still
+         want a face and a name, or they would be the only two anonymous worlds
+         in the sector. */
+      /* Sat on the landmark on purpose: arriving *is* finding it, and a landmark
+         is found by being within `lm.r` of it — which for the rogue is 760,
+         comfortably outside this. */
+      out.planets.push(Object.assign(makeWorld(lm.x, lm.y, R), {
+        r: 420, kind: "ash", rogue: true, ring: 0, inhabited: false, air: false
+      }));
     } else if (lm.key === "pale-dot") {
-      out.planets.push({ x: lm.x, y: lm.y, r: 26, pale: true });
+      out.planets.push(Object.assign(makeWorld(lm.x, lm.y, R), {
+        r: 26, kind: "ice", pale: true, ring: 0, bands: [], inhabited: false,
+        air: false
+      }));
     } else if (lm.key === "supernebula") {
       out.nebulae.push({ x: lm.x, y: lm.y, r: 1250, phase: R() * Math.PI * 2 });
     } else if (lm.key === "leviathan") {
       buildLeviathan(lm, out, R, rnd);
     } else if (lm.key === "the-wall") {
-      /* Battle Royale's wall stops at a fifth of its arena. Out here there is
-         no arena and no wall, so what is left is the shape of one: four markers
-         around an empty square, exactly that size, in the middle of nowhere. */
+      /* This used to be four markers around an empty square and nothing else —
+         Battle Royale's wall at the size it stops at, sitting in the middle of
+         nowhere as a joke about a mode that has no wall. It was the weakest
+         entry in the book: you flew a long way to a place where there was
+         genuinely nothing, so finding it was an anticlimax and the almanac's
+         promise of something to look at was a lie.
+
+         So the square has a reason now. Somebody tried to *make* a wormhole
+         here, on a frame that size, and it did not open. What is left is the
+         frame's four anchors, the yards that built it collapsed against them,
+         and a mouth at the middle that never finished forming — a dead gate that
+         does not take you anywhere, because that is the whole point of it.
+
+         The square stays exactly the size it was: it is the entry's silhouette,
+         and it is also now the answer to "why is it square". */
       const half = (MODES.royale.arena.w * CLOSE_TO) / 2;
       const halfY = (MODES.royale.arena.h * CLOSE_TO) / 2;
-      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+      for (const [sx, sy] of corners) {
         out.marks.push({ x: lm.x + sx * half, y: lm.y + sy * halfY });
+        // The construction yard at each anchor, wrecked where it stood.
+        for (let i = 0; i < 3; i++) {
+          out.wrecks.push({
+            x: lm.x + sx * half + rnd(-320, 320),
+            y: lm.y + sy * halfY + rnd(-320, 320),
+            a: R() * Math.PI * 2, spin: rnd(-0.04, 0.04), size: rnd(1.1, 2.1)
+          });
+        }
       }
+      /* Debris strung along the frame's edges — what was being assembled into
+         it. Placed on the lines between the anchors rather than scattered, so
+         the shape reads as a structure and not as a mess. */
+      for (let i = 0; i < 14; i++) {
+        const t = R();
+        const side = Math.floor(R() * 4);
+        const ax = corners[side][0] * half,        ay = corners[side][1] * halfY;
+        const bx = corners[(side + 1) % 4][0] * half,
+              by = corners[(side + 1) % 4][1] * halfY;
+        out.wrecks.push({
+          x: lm.x + ax + (bx - ax) * t + rnd(-140, 140),
+          y: lm.y + ay + (by - ay) * t + rnd(-140, 140),
+          a: R() * Math.PI * 2, spin: rnd(-0.06, 0.06), size: rnd(0.7, 1.5)
+        });
+      }
+      // The mouth that never opened. `dead` means exactly that: it is drawn as a
+      // gate coming apart and `surveyGates` refuses to transit it.
+      out.gates.push({ x: lm.x, y: lm.y, phase: R() * Math.PI * 2,
+                       tx: lm.x, ty: lm.y, dead: true });
     }
   }
 
@@ -4682,21 +5308,54 @@
      times a second. */
   function streamChunks(force) {
     const me = ships[0];
-    const cx = Math.floor(me.x / CHUNK), cy = Math.floor(me.y / CHUNK);
-    const centre = chunkKey(cx, cy);
+    /* Centred ahead of the ship while the light drive is running. At eight times
+       drive speed the ship crosses a chunk about once a second and the five-second
+       impact warning has to see 18,000 units down the track — further than the
+       loaded box reaches from the middle of it. Shifting the box forward covers
+       the horizon without loading five times as many chunks, and what falls off
+       the back is behind you at three kilometres a second.
+
+       The key includes the offset, so moving the box counts as a change. */
+    const running = surv.lightRun > 0;
+    const load = running ? LIGHT_LOAD : CHUNK_LOAD;
+    const lead = running ? CHUNK * LIGHT_LEAD : 0;
+    const ox = me.x + Math.cos(me.a) * lead;
+    const oy = me.y + Math.sin(me.a) * lead;
+    const cx = Math.floor(ox / CHUNK), cy = Math.floor(oy / CHUNK);
+    const centre = chunkKey(cx, cy) + "|" + load;
     if (!force && centre === surv.centre) return;
     surv.centre = centre;
 
+    /* Sentries you are *fighting* have to survive this. `surv.drones` is rebuilt
+       from chunk data every time the ship crosses a chunk line — which at 2,600
+       units to a chunk happens every few seconds — so a sentry that had taken a
+       hit was handed a fresh hull, put back on its post and sent to sleep, over
+       and over, in the middle of a fight. It was not a reset you could see
+       coming and it made the guards unkillable by accident.
+
+       Every guard has a stable id now, and one that is still loaded is carried
+       across the rebuild as the same object rather than made again. */
+    const liveGuards = new Map();
+    for (const d of surv.drones) if (d.id) liveGuards.set(d.id, d);
+
     const want = new Set();
-    for (let y = cy - CHUNK_LOAD; y <= cy + CHUNK_LOAD; y++) {
-      for (let x = cx - CHUNK_LOAD; x <= cx + CHUNK_LOAD; x++) {
+    for (let y = cy - load; y <= cy + load; y++) {
+      for (let x = cx - load; x <= cx + load; x++) {
         const k = chunkKey(x, y);
         want.add(k);
         if (!surv.chunks.has(k)) surv.chunks.set(k, buildChunk(x, y));
       }
     }
     for (const k of [...surv.chunks.keys()]) {
-      if (!want.has(k)) surv.chunks.delete(k);
+      if (want.has(k)) continue;
+      surv.chunks.delete(k);
+      /* A post that has gone out of range is manned again when you come back —
+         that was always the rule, and it is the reason a guard is not written
+         into the book the way an opened cache is. So the memory of which guards
+         are dead only lasts as long as their chunk is loaded. */
+      for (const id of [...surv.deadGuards]) {
+        if (id.startsWith(k + "c")) surv.deadGuards.delete(id);
+      }
     }
 
     hazards = [];
@@ -4736,14 +5395,23 @@
         /* Sentries are made when the chunk streams in and forgotten when it
            streams out. Leaving a fight and coming back finds the post manned
            again — the cache is what you are taking, so the cache is what is
-           remembered, and a guard is only ever the price of it. */
-        for (const g of cache.guards) {
+           remembered, and a guard is only ever the price of it.
+
+           But "streams out" means its chunk left the loaded set, not "the ship
+           moved". One that is still loaded is the same sentry it was a frame
+           ago: its hull, its position and whether it has noticed you all carry
+           over, and only its `home` is rebound to the freshly built cache. */
+        cache.guards.forEach((g, gi) => {
+          const gid = id + "g" + gi;
+          if (surv.deadGuards.has(gid)) return;
+          const was = liveGuards.get(gid);
+          if (was) { was.home = cache; surv.drones.push(was); return; }
           surv.drones.push({
-            x: g.x, y: g.y, vx: 0, vy: 0, a: g.a, home: cache,
+            id: gid, x: g.x, y: g.y, vx: 0, vy: 0, a: g.a, home: cache,
             post: { x: g.x, y: g.y }, hp: 2, cool: rand(0.4, 1.6),
             awake: false, hit: 0
           });
-        }
+        });
       });
     }
     seedMotes();
@@ -4784,7 +5452,11 @@
         x = me.x + Math.cos(a) * d;
         y = me.y + Math.sin(a) * d;
       }
-      if (hazards.some(h => dist2(x, y, h.x, h.y) < (h.kill + 260) ** 2)) continue;
+      // Clear of the killing radius, but no longer held a long way off it: a
+      // field that cannot drift into a well is a field a well never touches.
+      if (hazards.some(h => dist2(x, y, h.x, h.y) < (h.kill + 90) ** 2)) continue;
+      // And never inside a world, which is now big enough to swallow a field.
+      if (surv.planets.some(pl => dist2(x, y, pl.x, pl.y) < (pl.r + 60) ** 2)) continue;
       const r = makeRock(randomRoyaleRockSize(), x, y);
       // One rock in sixty has something in it, and cracking it open is the only
       // way to find out which. Stops once the entry is logged.
@@ -4795,6 +5467,8 @@
 
   function setupSurvey() {
     const seed = surveySeed();
+    linkCache = new Map();      // both lattices belong to a seed, not to a tab
+    worldCache = new Map();
     const book = loadSurveyBook();
     const R = seeded(seed ^ 0x5bf03635);
 
@@ -4809,6 +5483,7 @@
       found: new Set(carried ? book.found : []),
       chunks: new Map(), centre: null,
       planets: [], wrecks: [], nebulae: [], marks: [],
+      coilExitAt: new Map(),
       gates: [], caches: [], stations: [], hulks: [], drones: [],
       leviathan: null,
       shots: [],                 // what the sentries fire; see `surveyShots`
@@ -4837,11 +5512,41 @@
          are therefore not stored at all: an unlock is a fact about the almanac,
          so deriving it every time is the only way the two can never disagree. */
       cash: carried ? book.cash : 0,
+      hold: carried ? book.hold : freshHold(),
       refit: carried ? book.refit : freshRefit(),
+      // Guards killed while their post is still in range. Not in the book: a
+      // post you have left and come back to is manned again by design.
+      deadGuards: new Set(),
       opened: new Set(carried ? book.opened : []),
       stripped: new Set(carried ? book.stripped : []),
       docked: null,
       atYard: false,
+      landed: null,        // an inhabited world within reach
+      overAir: null,       // an atmosphere to draw water from
+      // What a death reads off, and what it is measured against. `death` is the
+      // page's whole content while it is non-null, and non-null *is* being dead.
+      death: null,
+      deaths: carried ? book.deaths : 0,
+      runStart: 0,
+      lastObjective: null,        // so a change can be told apart from a repeat
+      /* Somewhere you have decided to go. Pins are notes — six kinds, as many as
+         you like, and none of them point anywhere. A waypoint is the other thing:
+         one at a time, and the flight HUD holds a bearing to it, because "I want
+         to go there" is a different act from "something happened here". */
+      waypoint: carried && book.waypoint ? { ...book.waypoint } : null,
+      // The light drive: whether it is built, whether it is running, and what is
+      // in the way if anything is.
+      hasLight: carried ? !!book.light : false,
+      lightRun: 0,
+      lightHit: null,
+      /* Seconds left, not a fraction: a fraction has to be multiplied by
+         something to mean anything, and "four minutes of water" is a decision
+         where "0.31" is a number. Resumed from the book, so closing the tab
+         mid-haul does not hand you a full tank. */
+      water: carried ? book.water : WATER_FULL,
+      food:  carried ? book.food  : FOOD_FULL,
+      thirst: 0, hunger: 0,        // how long each has been empty
+      skimming: 0,                 // lit while an atmosphere is being drawn from
       tractorLit: 0,
       warpCool: 0,
       quiet: 0,
@@ -4852,7 +5557,7 @@
         stars: 0, holes: 0, eclipse: false, stopped: false,
         nearStar: false, leftHole: false, slung: false, threaded: false,
         skimmed: false, inWell: null, entrySpeed: 0,
-        struck: false, warped: false, laden: false, refitted: false,
+        struck: false, warped: false, laden: false, refitted: false, sold: false,
         looted: false
       }
     };
@@ -4912,6 +5617,14 @@
       surv.partSites.push(site);
       surv.partAt.set(
         chunkKey(Math.floor(site.x / CHUNK), Math.floor(site.y / CHUNK)), site);
+      /* The coil's gate is the one gate not rolled off the lattice, so the
+         chunk holding its far mouth has to be told to expect it — nothing else
+         in an endless sector could know it was there. */
+      if (B.key === "coil") {
+        const L = coilLink(site);
+        surv.coilExitAt.set(
+          chunkKey(Math.floor(L.bx / CHUNK), Math.floor(L.by / CHUNK)), L);
+      }
     });
 
     /* No arena, so `bounds` is only here to keep the code that reads it from
@@ -4923,6 +5636,7 @@
     me.x = 0; me.y = 0; me.vx = me.vy = 0; me.a = -Math.PI / 2;
     applyRefit(me);
     me.hull = me.maxHull;
+    surv.runStart = clock;
     me.invuln = INVULN;
     cam.x = 0; cam.y = 0;
 
@@ -4934,7 +5648,7 @@
       surveyHUD.reset();
       if (book.seed === seed) {
         if (book.fog) surveyHUD.importFog(book.fog);
-        if (book.trail) surveyHUD.importTrail(book.trail);
+
       }
     }
 
@@ -4990,15 +5704,19 @@
      all. It belongs on the HUD, permanently, next to the clue that says what
      you are looking for — see `objective`. A button you have to press to be
      told what you are doing is a button that is doing the interface's job. */
+  /* What a scan can return, and — since the returns go on the minimap now —
+     whether each one is a thing you want or a thing that wants you. A sentry and
+     a station cannot read as the same dot; that distinction is the entire value
+     of a scan you can see at a glance. */
   const ECHO_KINDS = {
-    part:    { name: "COMPONENT", colour: CASH },
-    cache:   { name: "CACHE",     colour: CASH },
-    sealed:  { name: "GUARDED",   colour: DRONE_COLOUR },
-    station: { name: "STATION",   colour: CASH },
-    gate:    { name: "GATE",      colour: "#5ce1ff" },
-    hulk:    { name: "HULK",      colour: WRECK },
-    salvage: { name: "CASH",   colour: CASH },
-    drone:   { name: "SENTRY",    colour: DRONE_COLOUR }
+    part:    { name: "COMPONENT", colour: CASH,          bad: false },
+    cache:   { name: "CACHE",     colour: CASH,          bad: false },
+    sealed:  { name: "GUARDED",   colour: DRONE_COLOUR,  bad: true },
+    station: { name: "STATION",   colour: CASH,          bad: false },
+    gate:    { name: "GATE",      colour: "#5ce1ff",     bad: false },
+    hulk:    { name: "HULK",      colour: WRECK,         bad: false },
+    salvage: { name: "CASH",      colour: CASH,          bad: false },
+    drone:   { name: "SENTRY",    colour: DRONE_COLOUR,  bad: true }
   };
 
   function surveyScan() {
@@ -5011,8 +5729,16 @@
     const reach = scanRange();
     const r2 = reach * reach;
     const found = [];
-    const add = (kind, x, y) => {
-      if (dist2(x, y, me.x, me.y) <= r2) found.push({ kind, x, y, t: ECHO_LIFE });
+    /* `ref` is for the things that move. A scan of a sentry used to record where
+       it was and then sit there while the sentry flew off — so the one echo you
+       most want to be accurate was the one guaranteed to be wrong within a
+       second, and it read as sentries "not showing up right". An echo with a
+       reference reads its position every frame instead, and disappears when the
+       thing it is following does. */
+    const add = (kind, x, y, ref) => {
+      if (dist2(x, y, me.x, me.y) <= r2) {
+        found.push({ kind, x, y, t: ECHO_LIFE, ref: ref || null });
+      }
     };
 
     for (const pt of surv.parts) add("part", pt.x, pt.y);
@@ -5020,7 +5746,7 @@
     for (const st of surv.stations) add("station", st.x, st.y);
     for (const g of surv.gates) add("gate", g.x, g.y);
     for (const h of surv.hulks) add("hulk", h.x, h.y);
-    for (const d of surv.drones) add("drone", d.x, d.y);
+    for (const d of surv.drones) add("drone", d.x, d.y, d);
     /* Loose salvage is clustered by nature — a broken rock is twenty motes — so
        it is reported as one echo per cluster rather than twenty on top of each
        other, which would bury everything else on the chart. */
@@ -5061,30 +5787,293 @@
      the mode has no fail state to protect and inventing one would only punish
      going and looking. Falling into a well is the exception: it puts you back
      at the edge of it, since the alternative is dying again immediately. */
-  function surveyRecover(ship, well) {
-    burst(ship.x, ship.y, NEBULA, 22, 260 * U);
-    if (well) {
-      const a = Math.atan2(ship.y - well.y, ship.x - well.x) || 0;
-      ship.x = well.x + Math.cos(a) * (well.reach + 240);
-      ship.y = well.y + Math.sin(a) * (well.reach + 240);
+  /* ── running at light ─────────────────────────────────────────────────────
+     Engaged and disengaged by the player, and dropped for them the moment
+     anything is about to matter. Three things end a run: pressing again, taking
+     a hit, and arriving.
+
+     The impact check looks along the heading rather than at what is nearby,
+     because at eight times drive speed "nearby" is behind you. It only ever
+     looks for the two things worth stopping for. */
+  function lightDriveOn() { return !!(surv && surv.lightRun > 0); }
+
+  function toggleLightDrive() {
+    if (!surv || !surv.hasLight || surv.death) return false;
+    const me = ships[0];
+    if (!me || !me.alive) return false;
+    if (surv.lightRun > 0) {
+      surv.lightRun = 0;
+      surv.lightHit = null;
+      /* Dropped to something you can steer, rather than left coasting at eight
+         times drive speed for the next twenty seconds. Cutting the drive is a
+         decision you made; a slingshot is something that happened to you, and
+         only the second one is momentum worth keeping. */
+      const ordinary = MAX_SPEED * (me.speedMul || 1) * U;
+      const sp = Math.hypot(me.vx, me.vy);
+      const to = ordinary * 1.6;
+      if (sp > to) { me.vx *= to / sp; me.vy *= to / sp; }
+      // Left with an allowance to spend, so it glides down rather than stopping
+      // dead the frame the drive goes off.
+      me.boost = Math.max(0, Math.min(sp, to) - ordinary);
+      chatter("Light drive disengaged.", ICE_C);
+      return true;
     }
-    /* Half the hold spills where you lost it. Survey still has no fail state —
-       nothing ends, nothing is taken away for good — but a hold you can drop is
-       what gives a long haul home its nerve, and flying back to the wreck to
-       pick your own salvage up again is the best kind of second chance: one you
-       can blow twice. */
-    const spill = Math.floor(surv.cash / 2);
-    if (spill > 0) {
-      surv.cash -= spill;
-      dropMote(ship.x, ship.y, spill, 130);
+    // Not from inside a well: the drive cannot outrun one and pretending it can
+    // would make the gravity warning a lie.
+    if (surv.warn && surv.warn.ratio >= 0.5) {
+      gameSound("hit");
+      chatter("Too deep in a well to run.", "#ff8f77");
+      return false;
     }
+    surv.lightRun = 0.0001;
+    surv.lightHit = null;
+    gameSound("win", me.x);
+    chatter("Light drive engaged — hold your heading.", ICE_C);
+    return true;
+  }
+
+  /* What is in the way, and how long until it is not in the way any more. Only
+     massive worlds and supermassive wells: everything else at this speed is
+     either harmless or already behind you. */
+  function lightObstacle(me, speed) {
+    if (speed < 1) return null;
+    /* The heading is the nose, not the velocity divided by whatever speed was
+       passed in. Normalising by the reference speed rather than by the actual
+       velocity gave a heading vector shorter than unit length, which shrank every
+       projection along it — so a world 18,000 units ahead read as 2,000 and the
+       "five-second" warning arrived with eight-tenths of a second to spare.
+       The drive pushes along `a`, so `a` is the direction of travel by
+       construction and there is nothing to divide. */
+    const hx = Math.cos(me.a), hy = Math.sin(me.a);
+    const range = speed * (LIGHT_WARN + 1.5);
+    let best = null;
+    const consider = (x, y, r, what, name) => {
+      const dx = x - me.x, dy = y - me.y;
+      const along = dx * hx + dy * hy;
+      if (along <= 0 || along > range) return;          // behind, or too far
+      const off = Math.abs(dx * hy - dy * hx);
+      if (off > r) return;                              // it will pass to a side
+      const eta = (along - r) / speed;
+      if (!best || eta < best.eta) best = { eta: Math.max(0, eta), what, name, x, y, r };
+    };
+    for (const pl of surv.planets) {
+      if (pl.r < LIGHT_MIN_WORLD) continue;
+      consider(pl.x, pl.y, pl.r, "world", pl.name || "A WORLD");
+    }
+    for (const h of hazards) {
+      if (h.k < SUPERMASSIVE) continue;
+      consider(h.x, h.y, h.kill, h.kind === "hole" ? "hole" : "star",
+               h.name || (h.kind === "hole" ? "A BLACK HOLE" : "A STAR"));
+    }
+    return best;
+  }
+
+  function surveyLightDrive(dt) {
+    const me = ships[0];
+    if (!surv.lightRun) { surv.lightHit = null; return; }
+    if (!me.alive || surv.death) { surv.lightRun = 0; surv.lightHit = null; return; }
+
+    surv.lightRun = Math.min(LIGHT_SPOOL, surv.lightRun + dt);
+    const wind = surv.lightRun / LIGHT_SPOOL;
+
+    /* Pushed along the heading rather than by the engine, so the speed cap the
+       rest of the game applies is not in the way — and the heading is the ship's
+       nose, so the small amount of steering that is left still points it. */
+    const top = MAX_SPEED * (me.speedMul || 1) * U;
+    const want = top * (1 + (LIGHT_MULT - 1) * wind);
+    me.vx = Math.cos(me.a) * want;
+    me.vy = Math.sin(me.a) * want;
+
+    /* Checked against the speed the drive is *going* to be doing, not the speed
+       it is doing now. While it is still winding up the closing rate rises, so an
+       eta worked out from the current speed was optimistic — measured, a warning
+       that said 5.9 seconds arrived 2.4 seconds before impact, which is the one
+       way a five-second warning can be worse than none. */
+    surv.lightHit = lightObstacle(me, top * LIGHT_MULT);
+    if (surv.lightHit && surv.lightHit.eta <= 0) {
+      // Arrived. The obstacle does the rest: a world is solid and a well kills.
+      surv.lightRun = 0;
+      addShake(10);
+      chatter("Light drive cut — " + surv.lightHit.name, "#ff8f77");
+      surv.lightHit = null;
+      return;
+    }
+  }
+
+  /* Called every frame the world is running. The tanks are the only thing in
+     Survey that gets worse while you do nothing, which is what makes sitting
+     still a choice rather than a rest. */
+  function surveyLifeSupport(dt) {
+    const me = ships[0];
+    if (!me.alive || surv.death) return;
+
+    surv.water = Math.max(0, surv.water - dt);
+    surv.food  = Math.max(0, surv.food  - dt);
+
+    /* Empty starts a clock. Getting anything at all back into the tank stops it
+       — it does not have to be a full tank, which matters because skimming an
+       atmosphere trickles, and a trickle has to be able to save you. */
+    if (surv.water > 0) surv.thirst = 0;
+    else {
+      if (surv.thirst === 0) {
+        chatter("Water out. You have minutes, not hours.", "#87d8ff");
+        gameSound("lose");
+      }
+      surv.thirst += dt;
+      if (surv.thirst >= THIRST_GRACE) { surveyDie("thirst"); return; }
+    }
+
+    if (surv.food > 0) surv.hunger = 0;
+    else {
+      if (surv.hunger === 0) {
+        chatter("Food out. Find somewhere with people on it.", "#ffcb42");
+        gameSound("lose");
+      }
+      surv.hunger += dt;
+      if (surv.hunger >= HUNGER_GRACE) { surveyDie("hunger"); return; }
+    }
+
+    surv.skimming = Math.max(0, surv.skimming - dt);
+  }
+
+  /* The objective, as news. It used to be three lines painted across the top of
+     the screen every frame forever, which is a lot of furniture for a sentence
+     that changes about twice an hour — and the clue is the interesting half, so
+     burying it in permanent chrome was the worst place to put it.
+
+     Fired on change only, and never on the first frame of a resumed sector: being
+     told what you are looking for is useful when it becomes true, and a
+     notification you did not cause is one you learn to ignore. */
+  function surveyObjectiveNote() {
+    const o = objective();
+    if (!o) return;
+    const key = o.text + "|" + (o.sub || "");
+    if (surv.lastObjective === key) return;
+    const first = surv.lastObjective == null;
+    surv.lastObjective = key;
+    if (first || !surveyHUD) return;
+    surveyHUD.notify(o.text, o.sub || "", o.colour || NEBULA, 8);
+  }
+
+  /* Buying supplies. Priced on what is missing rather than a flat fee for a
+     full tank, so topping off before a long trip is not a rip-off and limping
+     in on empty is not free. */
+  function buySupply(kind) {
+    const full  = kind === "water" ? WATER_FULL : FOOD_FULL;
+    const price = kind === "water" ? WATER_PRICE : FOOD_PRICE;
+    const have  = surv[kind];
+    if (!surv.docked && !surv.landed) { gameSound("hit"); return false; }
+    if (have >= full) { gameSound("hit"); return false; }
+    const cost = Math.max(1, Math.ceil((1 - have / full) * price));
+    if (surv.cash < cost) { gameSound("hit"); return false; }
+    surv.cash -= cost;
+    surv[kind] = full;
+    gameSound("start");
+    chatter((kind === "water" ? "Water" : "Food") + " aboard — " + cost + " cash",
+            kind === "water" ? "#87d8ff" : "#ffcb42");
+    saveSurveyBook();
+    return true;
+  }
+
+  const supplyCost = kind => {
+    const full  = kind === "water" ? WATER_FULL : FOOD_FULL;
+    const price = kind === "water" ? WATER_PRICE : FOOD_PRICE;
+    if (surv[kind] >= full) return null;              // nothing to sell you
+    return Math.max(1, Math.ceil((1 - surv[kind] / full) * price));
+  };
+
+  /* ── dying ────────────────────────────────────────────────────────────────
+     Survey's original promise was that nothing ends your run. This reverses it
+     on purpose: a survival game where the worst case is a wasted trip is not a
+     survival game, it is a commute with scenery.
+
+     What a death costs, and what it deliberately does not:
+
+       lost    the hold, outright. Not spilled where you fell — motes live
+               ninety seconds and you respawn at the origin, so "go and get it
+               back" would be a mechanic that reads as one and is not.
+       kept    the almanac, the yard's fitted parts, the parts you were carrying,
+               the chart, your pins, the refit, and the cash. All of those are
+               things you *learned* or *built*, and taking them would make dying
+               a punishment for playing rather than a reason to be careful.
+
+     The cash staying is the same rule as before: money already banked is not
+     aboard the ship. What is aboard the ship is what you lose. */
+  const DEATH_CAUSE = {
+    rock:   "flew into an asteroid",
+    shot:   "shot down by a sentry",
+    ff:     "shot down",
+    hole:   "swallowed by a black hole",
+    star:   "burned up in a star",
+    thirst: "died of thirst",
+    hunger: "starved"
+  };
+
+  function surveyDie(cause) {
+    if (!surv || surv.death) return;            // one death at a time
+    const ship = ships[0];
+    let lost = 0;
+    for (const m of MATERIALS) {
+      lost += surv.hold[m.key] || 0;
+    }
+    surv.death = {
+      cause: cause || "rock",
+      reason: DEATH_CAUSE[cause] || "lost with all hands",
+      dist: Math.round(Math.hypot(ship.x, ship.y)),
+      band: bandAt(ship.x, ship.y).name,
+      lasted: Math.max(0, clock - surv.runStart),
+      lost,
+      hold: MATERIALS.map(m => ({ key: m.key, name: m.name, colour: m.colour,
+                                  n: surv.hold[m.key] || 0 })),
+      worth: MATERIALS.reduce((t, m) => t + (surv.hold[m.key] || 0) * m.value, 0),
+      cash: Math.floor(surv.cash),
+      charted: surveyHUD ? surveyHUD.charted() : 0,
+      found: surv.found.size
+    };
+    surv.deaths = (surv.deaths || 0) + 1;
+    surv.lightRun = 0;
+    surv.lightHit = null;
+    for (const m of MATERIALS) surv.hold[m.key] = 0;
+    burst(ship.x, ship.y, "#ff8f77", 40, 420 * U);
+    addShake(12);
+    gameSound("lose", ship.x);
     ship.vx = ship.vy = 0;
+    ship.alive = false;
+    state = "died";
+    saveSurveyBook();
+  }
+
+  /* Back at the home station, which is the one place in an endless sector that
+     is always where you left it. Everything the run *earned* comes with you. */
+  function surveyRespawn() {
+    if (!surv) return;
+    const ship = ships[0];
+    surv.death = null;
+    ship.x = HOME_STATION.x + 260;
+    ship.y = HOME_STATION.y + 180;
+    ship.vx = ship.vy = 0;
+    ship.a = -Math.PI / 2;
+    ship.alive = true;
     ship.hull = ship.maxHull;
     ship.invuln = INVULN;
+    /* Resupplied. The station you come back to is the one place that would
+       obviously do it, and sending you straight back out on the empty tanks that
+       just killed you would be a loop rather than a setback. */
+    surv.water = WATER_FULL;
+    surv.food = FOOD_FULL;
+    surv.thirst = 0;
+    surv.hunger = 0;
+    surv.runStart = clock;
+    surv.docked = null;
+    surv.atYard = false;
+    surv.warpCool = 1.2;
     surv.t.inWell = null;
-    chatter(spill > 0 ? "Hull gone — the hold went with it. It is still out there."
-                      : "Hull gone — systems back up. Take it slower.", "#ff8f77");
-    gameSound("lose", ship.x);
+    cam.x = ship.x; cam.y = ship.y;
+    streamChunks(true);
+    streamRocks();
+    state = "playing";
+    chatter("Back at the station. The hold went down with the last one.", CASH);
+    saveSurveyBook();
   }
 
   /* ═══ THE WORLD ═══════════════════════════════════════════════════════════
@@ -5160,24 +6149,78 @@
      One number, one cap. A full hold is not a failure state — it just means the
      next thing you break is left where it lies, which is the sector telling you
      to go and spend. */
-  function addCash(n) {
-    const room = holdCap() - surv.cash;
+  // Everything in the hold, as one number: the cap is on how much you carry,
+  // not on how much any one kind of it is worth.
+  const holdUsed = () =>
+    MATERIALS.reduce((t, m) => t + (surv.hold[m.key] || 0), 0);
+
+  /* Taking one unit aboard. The hold fills as a whole, so a hold full of ice is
+     a hold with no room for iridium — which is the decision the four materials
+     exist to create. */
+  function addMaterial(key, n) {
+    const room = holdCap() - holdUsed();
     if (room <= 0) { surv.t.laden = true; return 0; }
     const took = Math.min(room, n);
-    surv.cash += took;
-    if (surv.cash >= holdCap()) surv.t.laden = true;
+    surv.hold[key] = (surv.hold[key] || 0) + took;
+    if (holdUsed() >= holdCap()) surv.t.laden = true;
     return took;
   }
 
-  function dropMote(x, y, n, spread) {
+  /* What comes off a thing you broke. `source` picks the table and `deep` leans
+     it toward the rare end, so where you were when you broke it matters as much
+     as what it was. Each mote carries its own kind: they are collected one at a
+     time and drift apart on the way, so a broken rock is a little cloud of
+     mixed colour rather than a single lot. */
+  function dropMote(x, y, n, spread, source) {
+    const deep = dangerAt(x, y);
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
       const sp = rand(20, 90) * U;
       surv.motes.push({ x: x + Math.cos(a) * rand(0, spread || 30),
                         y: y + Math.sin(a) * rand(0, spread || 30),
                         vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
-                        spin: rand(0, 6.28), life: 90 });
+                        spin: rand(0, 6.28), life: 90,
+                        mat: rollMaterial(source || "rock", deep) });
     }
+  }
+
+  /* ── selling ──────────────────────────────────────────────────────────────
+     A station buys what you are carrying, and what it pays is its own business.
+     Two things move the price: how far out the station is, because a long haul
+     has to be worth taking, and the station's own taste, which is a pure
+     function of where it stands so a good buyer stays a good buyer and is worth
+     writing on the chart. Home sits at the origin with no depth bonus at all,
+     which is what makes the first other station you find worth finding. */
+  function stationPrices(st) {
+    const out = {};
+    if (!st) return out;
+    const band = 1 + dangerAt(st.x, st.y) * 1.1;
+    for (const m of MATERIALS) {
+      const R = seeded(chunkSeed(Math.round(st.x / 11) + m.key.length * 7919,
+                                 Math.round(st.y / 11) - m.key.charCodeAt(0) * 131));
+      out[m.key] = Math.max(1, Math.round(m.value * band * (0.78 + R() * 0.64)));
+    }
+    return out;
+  }
+
+  function sellHold() {
+    if (!surv.docked) return 0;
+    const prices = stationPrices(surv.docked);
+    let got = 0, units = 0;
+    for (const m of MATERIALS) {
+      const n = surv.hold[m.key] || 0;
+      if (!n) continue;
+      got += n * (prices[m.key] || m.value);
+      units += n;
+      surv.hold[m.key] = 0;
+    }
+    if (!units) { gameSound("hit"); return 0; }
+    surv.cash += got;
+    surv.t.sold = true;
+    gameSound("win");
+    chatter(units + " units sold — " + got + " cash", CASH);
+    saveSurveyBook();
+    return got;
   }
 
   /* Loose salvage drifts, and is collected by touching it — or, once the beam
@@ -5201,18 +6244,29 @@
       if (me.alive && beam) {
         const d = Math.hypot(me.x - m.x, me.y - m.y);
         if (d < beam && d > 1) {
-          const grab = (1 - d / beam) * 900 * U;
+          const grab = (1 - d / beam) * TRACTOR_PULL * U;
           m.vx += ((me.x - m.x) / d) * grab * dt;
           m.vy += ((me.y - m.y) / d) * grab * dt;
           surv.tractorLit = 0.18;
         }
       }
+      /* Gravity takes the salvage too. A well used to pull ships, rocks and
+         bullets and leave the motes hanging in it — so the middle of a black
+         hole was a cloud of untouched cargo, which is the opposite of what the
+         warning system is warning you about. Everything that can move gets
+         pulled now, and what reaches the middle is gone. */
+      applyGravity(m, dt);
       m.x += m.vx * dt; m.y += m.vy * dt;
-      m.vx *= Math.exp(-0.7 * dt); m.vy *= Math.exp(-0.7 * dt);
+      m.vx *= Math.exp(-0.55 * dt); m.vy *= Math.exp(-0.55 * dt);
+      if (hazardAt(m.x, m.y, 0)) {
+        burst(m.x, m.y, matSpec(m.mat).colour, 2, 60 * U);
+        surv.motes.splice(i, 1);
+        continue;
+      }
 
       if (me.alive && dist2(m.x, m.y, me.x, me.y) < reach * reach) {
-        if (addCash(1)) {
-          burst(m.x, m.y, CASH, 3, 90 * U);
+        if (addMaterial(m.mat || "iron", 1)) {
+          burst(m.x, m.y, matSpec(m.mat).colour, 3, 90 * U);
           if (Math.random() < 0.25) gameSound("start", m.x);
           surv.motes.splice(i, 1);
         }
@@ -5309,7 +6363,18 @@
   function surveyGates() {
     const me = ships[0];
     if (!me.alive || surv.warpCool > 0) return;
+    /* Never over a part. Moving the coil's mouth off its site fixes the one
+       case this actually happened in, but nothing stops the lattice dropping a
+       gate on any of the other five, and a manifest part you cannot reach is a
+       run that cannot be finished. A gate is a shortcut; a part is the game. */
+    const grab = shipRadius();
+    if (surv.parts.some(pt => dist2(me.x, me.y, pt.x, pt.y) <
+                              (pt.r + grab + GATE_R) ** 2)) return;
     for (const g of surv.gates) {
+      // The Wall's mouth never finished forming. Flying into it is meant to be
+      // the anticlimax the entry is about, so it is the one gate that does
+      // nothing at all.
+      if (g.dead) continue;
       if (dist2(me.x, me.y, g.x, g.y) > (GATE_R * 0.55) ** 2) continue;
 
       let tx = g.tx, ty = g.ty, tuned = false;
@@ -5330,7 +6395,16 @@
 
       burst(me.x, me.y, NEBULA, 26, 300 * U);
       gameSound("lose", me.x);
-      me.x = tx; me.y = ty;
+      /* Out of the far side, not on top of it. Every gate now has a twin
+         standing at its exit, and landing dead centre on that twin would mean
+         being swallowed again the moment the cooldown lapsed — so you are set
+         down a mouth's width beyond it, still travelling the way you went in,
+         with the way home behind you. */
+      const sp = Math.hypot(me.vx, me.vy);
+      const hx = sp > 1 ? me.vx / sp : Math.cos(me.a);
+      const hy = sp > 1 ? me.vy / sp : Math.sin(me.a);
+      me.x = tx + hx * GATE_R * 1.25;
+      me.y = ty + hy * GATE_R * 1.25;
       // Keep the speed, lose the certainty: you come out flying, which is what
       // makes a gate feel like a throw rather than a menu.
       me.vx *= 0.4; me.vy *= 0.4;
@@ -5391,7 +6465,17 @@
         d.vy -= ((gy - d.y) / gd) * 90 * U * dt;
       }
       d.vx *= Math.exp(-1.1 * dt); d.vy *= Math.exp(-1.1 * dt);
+      // A well outpulls a sentry's little station-keeping thruster, and one that
+      // reaches the middle is gone the same way anything else is. Nothing in the
+      // sector gets to hover inside a black hole.
+      applyGravity(d, dt);
       d.x += d.vx * dt; d.y += d.vy * dt;
+      if (hazardAt(d.x, d.y, 12 * U)) {
+        burst(d.x, d.y, DRONE_COLOUR, 12, 180 * U);
+        if (d.id) surv.deadGuards.add(d.id);
+        surv.drones.splice(i, 1);
+        continue;
+      }
       d.a = Math.atan2(me.y - d.y, me.x - d.x);
 
       d.cool -= dt;
@@ -5417,7 +6501,10 @@
     const d = surv.drones[i];
     burst(d.x, d.y, DRONE_COLOUR, 14, 200 * U);
     gameSound("boom", d.x);
-    dropMote(d.x, d.y, YIELD.drone, 40);
+    dropMote(d.x, d.y, YIELD.drone, 40, "drone");
+    // Remembered for as long as its chunk stays loaded, or the next re-stream
+    // would put it straight back on its post with a full hull.
+    if (d.id) surv.deadGuards.add(d.id);
     surv.drones.splice(i, 1);
   }
 
@@ -5453,7 +6540,7 @@
       burst(c.x, c.y, CASH, 26, 260 * U);
       gameSound("win", c.x);
       addShake(5);
-      dropMote(c.x, c.y, worth, 90);
+      dropMote(c.x, c.y, worth, 90, "cache");
       spawnPickup(c.x, c.y, PICKUP_KINDS[Math.floor(Math.random() * PICKUP_KINDS.length)]);
       surv.opened.add(c.id || ("lev" + i));
       surv.caches.splice(i, 1);
@@ -5472,14 +6559,54 @@
     const me = ships[0];
     surv.docked = null;
     surv.atYard = false;
+    surv.landed = null;
+    surv.overAir = null;
     if (!me.alive) return;
     if (dist2(me.x, me.y, YARD.x, YARD.y) < (YARD_R * 1.4) ** 2) surv.atYard = true;
     for (const st of surv.stations) {
       if (dist2(me.x, me.y, st.x, st.y) < SURVEY_DOCK * SURVEY_DOCK) {
         surv.docked = st;
-        return;
+        break;
       }
     }
+
+    /* ── worlds you can put down on ─────────────────────────────────────────
+       Two different things a planet can offer, and a world can be either, both
+       or neither:
+
+         inhabited   somebody lives here and will sell you water and food. This
+                     is the supply line, and it is thin in the deep on purpose.
+         air         there is an atmosphere to fly through, and it can be skimmed
+                     for water — slowly, and for nothing. The poor pilot's
+                     option, which costs time instead of money.
+
+       "Close to" a world means just above its surface, measured off the radius,
+       because a world is 340 to 3,600 units across and a fixed docking distance
+       would mean standing on one and being nowhere near another. */
+    for (const pl of surv.planets) {
+      const d2 = dist2(me.x, me.y, pl.x, pl.y);
+      const skin = (pl.r + PLANET_DOCK) ** 2;
+      if (d2 > skin) continue;
+      if (pl.inhabited && !surv.landed) surv.landed = pl;
+      if (pl.air && !surv.overAir) surv.overAir = pl;
+    }
+  }
+
+  /* Drawing water out of an atmosphere. Deliberately slow: it is about a tenth
+     of what a station hands you in one press, so it is the thing you do when you
+     cannot afford the alternative or there is no alternative to afford — and it
+     is never worth doing if a station is in reach.
+
+     It only ever fills water. Nothing you can scoop out of the sky is food, and
+     an atmosphere that fed you would make the inhabited worlds pointless. */
+  const SKIM_RATE = 3.4;        // seconds of water a second of skimming
+  function surveySkim(dt) {
+    if (!surv.overAir || surv.death) return;
+    const me = ships[0];
+    if (!me.alive) return;
+    if (surv.water >= WATER_FULL) return;
+    surv.water = Math.min(WATER_FULL, surv.water + dt * SKIM_RATE);
+    surv.skimming = 0.2;
   }
 
   /* Stripping a dead hull. Four rounds and it comes apart — the same verb the
@@ -5492,7 +6619,7 @@
     if (h.hp > 0) return;
     burst(h.x, h.y, WRECK, 20, 240 * U);
     gameSound("boom", h.x);
-    dropMote(h.x, h.y, YIELD.hulk, 70);
+    dropMote(h.x, h.y, YIELD.hulk, 70, "hulk");
     surv.stripped.add(h.id);
     surv.hulks.splice(i, 1);
     saveSurveyBook();
@@ -5562,6 +6689,21 @@
     saveSurveyBook();
     return true;
   }
+  /* Bought at the yard rather than fetched, and only once the wormhole is done —
+     the yard has to have finished something before it can start something else,
+     and the wormhole is what teaches you the yard is worth going back to. */
+  function buildLightDrive() {
+    if (!surv || surv.hasLight) return false;
+    if (!yardDone()) { gameSound("hit"); return false; }
+    if (surv.cash < LIGHT_DRIVE.cost) { gameSound("hit"); return false; }
+    surv.cash -= LIGHT_DRIVE.cost;
+    surv.hasLight = true;
+    gameSound("win");
+    chatter("Light drive fitted. Point it somewhere and hold on.", ICE_C);
+    saveSurveyBook();
+    return true;
+  }
+
   const nextPart = () =>
     BUILD.find(b => !surv.built.has(b.key) && !surv.carrying.has(b.key)) || null;
   const yardDone = () => surv.built.size >= BUILD.length;
@@ -5596,9 +6738,15 @@
                colour: CASH };
     }
     if (surv.carrying.size) {
-      const names = [...surv.carrying].map(k => partSpec(k).name).join("  ·  ");
-      return { text: "CARRYING " + names, sub: "bring it back to the yard",
-               colour: CASH };
+      // Belt as well as braces: the store is filtered on the way in, and this
+      // skips anything that still is not a part rather than reading a name off
+      // undefined. A HUD line is not worth a crash.
+      const names = [...surv.carrying]
+        .map(k => partSpec(k)).filter(Boolean).map(b => b.name).join("  ·  ");
+      if (names) {
+        return { text: "CARRYING " + names, sub: "bring it back to the yard",
+                 colour: CASH };
+      }
     }
     const n = nextPart();
     return { text: "FIND THE " + n.name, sub: n.clue, colour: NEBULA };
@@ -5684,11 +6832,17 @@
   const knownId = (k, x, y) =>
     k + ":" + Math.round(x / 60) + "," + Math.round(y / 60);
 
-  function noteKnown(k, x, y, name) {
+  /* `r` is the thing's real size in world units, and the chart needs it: a world
+     can be 340 units across or 3,600, and drawing both as the same five-pixel
+     glyph threw away the only fact about a world that matters for navigating by
+     it. Zero means "no size worth drawing" — a station, a gate — and those keep
+     their glyph. */
+  function noteKnown(k, x, y, name, r) {
     const id = knownId(k, x, y);
     if (surv.known.has(id)) return false;
     if (surv.known.size >= KNOWN_CAP) return false;
-    surv.known.set(id, { k, x: Math.round(x), y: Math.round(y), name: name || "" });
+    surv.known.set(id, { k, x: Math.round(x), y: Math.round(y),
+                         name: name || "", r: Math.round(r || 0) });
     return true;
   }
 
@@ -5715,15 +6869,31 @@
         added += noteKnown("part", pt.x, pt.y, pt.name);
       }
     }
+    /* Wells are worth knowing from further out — they are the thing you plan a
+       route around, and a big one is visible from a long way anyway. A named one
+       (supermassive, and only those) is worth knowing from further still, and it
+       is written down *with* its name.
+
+       One loop, and that matters: there were two, an anonymous one and a named
+       one, and the anonymous one ran first. `noteKnown` refuses to overwrite an
+       id it already has, so every supermassive well in the sector was charted as
+       an unnamed glyph and the named pass could never get a word in. */
     for (const h of hazards) {
-      // Wells are worth knowing from further out — they are the thing you plan
-      // a route around, and a big one is visible from a long way anyway.
-      if (dist2(h.x, h.y, me.x, me.y) < (sight + h.reach) ** 2) {
-        added += noteKnown(h.kind === "hole" ? "hole" : "star", h.x, h.y);
+      const far = h.name ? sight * 3 : sight;
+      if (dist2(h.x, h.y, me.x, me.y) < (far + h.reach) ** 2) {
+        /* A well is recorded at its *reach* rather than its killing radius. The
+           killing radius is a dot; the reach is the piece of the sector you have
+           to plan a route around, which is the only reason to draw it. */
+        added += noteKnown(h.kind === "hole" ? "hole" : "star", h.x, h.y,
+                           h.name || "", h.reach);
       }
     }
     for (const pl of surv.planets) {
-      if (dist2(pl.x, pl.y, me.x, me.y) < s2) added += noteKnown("planet", pl.x, pl.y);
+      // A world's own name goes into the gazetteer with it: the chart is the
+      // record, and a record of "a world, here" is most of a record.
+      if (dist2(pl.x, pl.y, me.x, me.y) < s2) {
+        added += noteKnown("planet", pl.x, pl.y, pl.name || "", pl.r);
+      }
     }
     if (surv.leviathan &&
         dist2(surv.leviathan.x, surv.leviathan.y, me.x, me.y) < (sight * 3) ** 2) {
@@ -5771,10 +6941,24 @@
     if (!level) { surv.warn = null; return; }
     surv.warn = {
       text: level[1], colour: level[2], ratio,
-      kind: worst.h.kind, big: worst.h.k >= 1.8,
+      kind: worst.h.kind, big: worst.h.k >= SUPERMASSIVE,
+      name: worst.h.name || "",
       x: worst.h.x, y: worst.h.y, r: worst.h.reach,
       bearing: bearingTo(me, worst.h)
     };
+  }
+
+  /* A named well, named on the world. Drawn with the hazards rather than with
+     the warning, because it is a fact about the place and not about your
+     situation — you should be able to read the name off one you are nowhere near
+     and are not in any danger from. */
+  function drawWellNames() {
+    for (const h of hazards) {
+      if (!h.name) continue;
+      if (!onScreen(h.x, h.y, h.reach)) continue;
+      label3(h.name, h.x, h.y - h.kill - 34,
+             h.kind === "hole" ? "#ff8f77" : "#ffd76d", 20);
+    }
   }
 
   /* The warning, on the world: a ring round the thing doing it, so the words on
@@ -5917,11 +7101,12 @@
 
   // A small world-space caption. The menus have `text`, but that draws in
   // screen space and everything here is under the camera transform.
-  function label3(str, x, y, colour) {
+  function label3(str, x, y, colour, size) {
     ctx.save();
     ctx.globalAlpha = 0.85;
     ctx.fillStyle = colour;
-    ctx.font = '13px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+    ctx.font = (size || 13) +
+      'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
     ctx.textAlign = "center";
     ctx.fillText(str, x, y);
     ctx.restore();
@@ -5977,7 +7162,15 @@
     // Echoes fade. A scan is a snapshot of a moment, not a permanent overlay —
     // the sector moves, and a chart full of hour-old returns is a lie.
     for (let i = surv.echoes.length - 1; i >= 0; i--) {
-      if ((surv.echoes[i].t -= dt) <= 0) surv.echoes.splice(i, 1);
+      const e = surv.echoes[i];
+      /* A tracked echo follows its object and goes out with it: a sentry you
+         killed must not leave a contact behind, and one that chased you must not
+         leave one where it started. */
+      if (e.ref) {
+        if (!surv.drones.includes(e.ref)) { surv.echoes.splice(i, 1); continue; }
+        e.x = e.ref.x; e.y = e.ref.y;
+      }
+      if ((e.t -= dt) <= 0) surv.echoes.splice(i, 1);
     }
 
     /* The objective is recomputed every frame rather than cached, because
@@ -6002,7 +7195,15 @@
     surveyParts(dt);
     surveyMotes(dt);
     surveyStations();
+    // After stations, so landing somewhere this frame counts against this
+    // frame's drain rather than the next one's — and the skim before the drain,
+    // so sitting in an atmosphere on an empty tank stops the countdown on the
+    // same frame rather than one frame later.
+    surveySkim(dt);
+    surveyLightDrive(dt);
+    surveyLifeSupport(dt);
     surveyWarning();
+    surveyObjectiveNote();
     recordSurroundings();
     updatePickups(dt);
 
@@ -6019,7 +7220,8 @@
 
     if (surveyHUD) {
       surveyHUD.reveal(me.x, me.y, SURVEY_SIGHT);
-      surveyHUD.track(me.x, me.y);
+      // The trail is gone from the chart, so there is nothing to track for.
+      // See SURVEY-PLAN.md, "Next up — the places", item E.
       t.charted = surveyHUD.charted();
     }
 
@@ -6173,6 +7375,7 @@
 
   function drawGate(g) {
     if (!onScreen(g.x, g.y, GATE_R + 60)) return;
+    if (g.dead) return drawDeadGate(g);
     const spin = reduceMotion ? 0 : clock * 0.6 + g.phase;
     ctx.save();
     ctx.translate(g.x, g.y);
@@ -6189,6 +7392,40 @@
     glow("#5ce1ff", 2.6, 0.9, () => {
       ctx.beginPath();
       ctx.ellipse(0, 0, GATE_R * 0.2, GATE_R * 0.16, spin, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  /* The Wall's mouth. A live gate is rings falling inward and a bright centre;
+     this is the same figure with the motion taken out of it and the rings broken
+     — arcs with gaps, drifting apart rather than falling in, and nothing at the
+     middle. It has to read as *the same kind of object* as a working gate, or
+     the Wall stops being a wormhole that failed and becomes unrelated scenery. */
+  function drawDeadGate(g) {
+    const drift = reduceMotion ? 0 : Math.sin(clock * 0.4 + g.phase) * 0.12;
+    ctx.save();
+    ctx.translate(g.x, g.y);
+    ctx.rotate(g.phase + drift);
+    for (let i = 0; i < 4; i++) {
+      const r = GATE_R * (0.42 + i * 0.2);
+      // Two opposing arcs a ring, with the gaps rotating between rings, so the
+      // whole figure looks unfinished rather than merely dashed.
+      glow(WRECK, 1.8, 0.5 - i * 0.08, () => {
+        for (const a0 of [0.35 + i * 0.7, Math.PI + 0.15 + i * 0.7]) {
+          ctx.beginPath();
+          ctx.ellipse(0, 0, r, r * 0.82, 0, a0, a0 + 1.5 + i * 0.12);
+          ctx.stroke();
+        }
+      });
+    }
+    // A collapsed centre: two struts across where the throat should be.
+    glow("#ff8f77", 1.6, 0.4 + 0.2 * Math.abs(Math.sin(clock * 0.9)), () => {
+      ctx.beginPath();
+      ctx.moveTo(-GATE_R * 0.16, -GATE_R * 0.13);
+      ctx.lineTo(GATE_R * 0.16, GATE_R * 0.13);
+      ctx.moveTo(GATE_R * 0.16, -GATE_R * 0.13);
+      ctx.lineTo(-GATE_R * 0.16, GATE_R * 0.13);
       ctx.stroke();
     });
     ctx.restore();
@@ -6362,17 +7599,31 @@
      thing the whole economy is made of was invisible. */
   function drawCash() {
     const lit = surv.tractorLit > 0;
-    glow(CASH, 1.6, 1, () => {
+    /* One pass a material rather than one pass for the lot: the colour is the
+       only thing telling you whether the cloud you are flying into is ice or
+       iridium, and `glow` sets the stroke once for a whole batch. Sorted so the
+       rare ones are painted last and read over the common ones. */
+    for (const spec of MATERIALS) {
+      let any = false;
       for (const m of surv.motes) {
-        if (!onScreen(m.x, m.y, 18)) continue;
-        const r = 4 * U + Math.sin(m.spin) * U;
-        ctx.beginPath();
-        ctx.moveTo(m.x - r, m.y); ctx.lineTo(m.x, m.y - r);
-        ctx.lineTo(m.x + r, m.y); ctx.lineTo(m.x, m.y + r);
-        ctx.closePath();
-        ctx.stroke();
+        if ((m.mat || "iron") === spec.key) { any = true; break; }
       }
-    });
+      if (!any) continue;
+      glow(spec.colour, 1.6, 1, () => {
+        for (const m of surv.motes) {
+          if ((m.mat || "iron") !== spec.key) continue;
+          if (!onScreen(m.x, m.y, 18)) continue;
+          // A denser material draws a little bigger, so a seam of the good
+          // stuff is visible before you are close enough to read a colour.
+          const r = (3.4 + spec.value * 0.06) * U + Math.sin(m.spin) * U;
+          ctx.beginPath();
+          ctx.moveTo(m.x - r, m.y); ctx.lineTo(m.x, m.y - r);
+          ctx.lineTo(m.x + r, m.y); ctx.lineTo(m.x, m.y + r);
+          ctx.closePath();
+          ctx.stroke();
+        }
+      });
+    }
     // The beam is drawn only while it is pulling something, so it is a fact
     // about the world rather than a permanent decoration on the ship.
     if (lit) {
@@ -6449,6 +7700,7 @@
     for (const n of surv.nebulae) drawNebula(n);
     for (const g of surv.gates) drawGate(g);
     for (const p of surv.planets) drawPlanet(p);
+    drawWellNames();
     if (surv.leviathan) drawLeviathan(surv.leviathan);
     for (const h of surv.hulks) drawHulk(h);
     for (const w of surv.wrecks) drawWreck(w);
@@ -6480,8 +7732,62 @@
          and the next price so the station screen never has to do arithmetic,
          and `unlocks` carries `have` so the almanac can show a locked verb as a
          thing you are working towards rather than hiding it. */
-      salvage: Math.floor(surv.cash), hold: holdCap(),
+      /* `cash`, not `salvage`. The rename went through the store and through
+         the interface and then stopped here, on the one line that joins them —
+         so the panel, the station and the inventory all read a field that was
+         not there, fell back to zero, and the mode's whole economy showed as
+         empty while the hold behind it filled up and stopped taking motes. */
+      cash: Math.floor(surv.cash), hold: holdCap(), carried: holdUsed(),
+      /* The hold, itemised, with what the station you are standing in would
+         pay for each — the price is the whole reason there is more than one
+         station, so it travels with the goods rather than living in the shop. */
+      materials: MATERIALS.map(m => ({
+        key: m.key, name: m.name, colour: m.colour, note: m.note,
+        value: m.value, n: surv.hold[m.key] || 0,
+        price: surv.docked ? stationPrices(surv.docked)[m.key] : null
+      })),
+      worth: (() => {
+        if (!surv.docked) return 0;
+        const pr = stationPrices(surv.docked);
+        return MATERIALS.reduce((t, m) => t + (surv.hold[m.key] || 0) * pr[m.key], 0);
+      })(),
+      onSell: sellHold,
+      /* Life support. Seconds rather than fractions, and the fraction alongside,
+         because the bar wants one and the readout wants the other. */
+      water: { left: surv.water, full: WATER_FULL,
+               frac: surv.water / WATER_FULL,
+               countdown: surv.water <= 0 ? Math.max(0, THIRST_GRACE - surv.thirst) : 0,
+               cost: supplyCost("water") },
+      food:  { left: surv.food, full: FOOD_FULL,
+               frac: surv.food / FOOD_FULL,
+               countdown: surv.food <= 0 ? Math.max(0, HUNGER_GRACE - surv.hunger) : 0,
+               cost: supplyCost("food") },
+      skimming: surv.skimming > 0,
+      onBuySupply: buySupply,
+      /* The world under you, if it is one you can do anything with. Two separate
+         facts: somebody lives here, and there is air here. A world can be either
+         or both, and the two of them are the difference between buying water and
+         working for it. */
+      landed: surv.landed && {
+        name: surv.landed.name, kind: surv.landed.kind, r: surv.landed.r,
+        colour: worldKind(surv.landed.kind).disc,
+        air: !!surv.landed.air,
+        dist: Math.round(Math.hypot(surv.landed.x, surv.landed.y)),
+        band: bandAt(surv.landed.x, surv.landed.y).name
+      },
+      overAir: surv.overAir && { name: surv.overAir.name },
+      onLand: () => { if (surv.landed) state = "landed"; },
+      // Dying, and coming back from it.
+      death: surv.death,
+      deaths: surv.deaths || 0,
+      critical: !!(ships[0] && ships[0].hull <= 0 && !surv.death),
+      lasted: Math.max(0, clock - surv.runStart),
+      onRespawn: surveyRespawn,
       docked: !!surv.docked,
+      /* Being at the yard is not being docked at a station, and the panel has
+         to be told which — without this the yard button never drew, and a
+         phone, which has no `E`, had no way into the yard page at all. */
+      atYard: !!surv.atYard,
       scanTier: tier("scanner"),
       refit: REFIT.map(r => ({ key: r.key, name: r.name, note: r.note,
                                tier: tier(r.key), max: REFIT_TIERS,
@@ -6490,7 +7796,16 @@
                                    at: u.at, have: unlocked(u.key) })),
       objective: objective(),
       fix: objectiveFix(),
-      echoes: surv.echoes,
+      /* Flattened for the panel: the minimap draws these as dots for as long as
+         they last, which is the half of a scan that used to be missing. Anything
+         a scan reaches is up to 3,885 units away and the view is about 700
+         across, so before this the returns from a scan were almost all off
+         screen and the button's whole answer was a line of text. */
+      echoes: surv.echoes.map(e => {
+        const spec = ECHO_KINDS[e.kind] || ECHO_KINDS.salvage;
+        return { kind: e.kind, x: e.x, y: e.y, t: e.t, life: ECHO_LIFE,
+                 name: spec.name, colour: spec.colour, bad: !!spec.bad };
+      }),
       scanReach: scanRange(),
       pins: surv.pins,
       world: surv.world,
@@ -6520,8 +7835,43 @@
       onBuy: buyRefit,
       onUndock: () => { state = "playing"; },
       builds: YARD_BUILDS,
-      lightDrive: yardDone(),
+      // The wormhole, which is what the six parts make.
+      wormhole: yardDone(),
       onJump: (x, y) => lightJump(x, y),
+      /* The light drive. `run` is how far it has wound up, 0 to 1, so the panel
+         can show it spooling rather than snapping on. */
+      light: {
+        have: !!surv.hasLight,
+        cost: LIGHT_DRIVE.cost,
+        name: LIGHT_DRIVE.name, does: LIGHT_DRIVE.does, blurb: LIGHT_DRIVE.blurb,
+        buildable: yardDone() && !surv.hasLight,
+        afford: surv.cash >= LIGHT_DRIVE.cost,
+        run: surv.lightRun ? Math.min(1, surv.lightRun / LIGHT_SPOOL) : 0,
+        hit: surv.lightHit && { eta: surv.lightHit.eta, name: surv.lightHit.name,
+                                what: surv.lightHit.what },
+        warnAt: LIGHT_WARN
+      },
+      onLight: toggleLightDrive,
+      onBuildLight: buildLightDrive,
+      /* The waypoint, and the two numbers the flight HUD needs to point at it.
+         Bearing is in the same degrees the gravity warning uses, so the two
+         readouts on the same screen cannot mean different things. */
+      waypoint: surv.waypoint && (() => {
+        const me = ships[0];
+        const dx = surv.waypoint.x - me.x, dy = surv.waypoint.y - me.y;
+        return { x: surv.waypoint.x, y: surv.waypoint.y,
+                 dist: Math.round(Math.hypot(dx, dy)),
+                 bearing: bearingTo(me, surv.waypoint) };
+      })(),
+      onWaypoint: (x, y) => {
+        if (x == null) { surv.waypoint = null; chatter("Waypoint cleared.", NEBULA); }
+        else {
+          surv.waypoint = { x: Math.round(x), y: Math.round(y) };
+          chatter("Waypoint set.", NEBULA);
+        }
+        gameSound("start");
+        saveSurveyBook();
+      },
       onRefit: () => {
         if (surv.docked) { state = "refit"; surveyHUD && surveyHUD.refitOpened(); }
       },
@@ -6531,6 +7881,7 @@
       onChart: () => { state = "chart"; surveyHUD.chartOpened(surveyState()); },
       onAlmanac: () => { state = "almanac"; },
       onInventory: () => { state = "inventory"; },
+      onMissions: () => { state = "missions"; },
       onYard: () => { if (surv.atYard) state = "yard"; },
       onClose: () => { state = "playing"; }
     };
@@ -6539,16 +7890,10 @@
   function drawSurveyPanel(dt) {
     if (!surv || !surveyHUD) return;
     surveyHUD.drawPanel(surveyState(), dt);
-
-    /* Radio lines go just above the status strip rather than bottom-left where
-       the campaign puts them: bottom-left is under a thumb on a phone. The
-       interface module stays out of this — comms belong to the game. */
-    const live = comms.filter(c => c.until > clock);
-    live.slice(0, 2).forEach((c, i) => {
-      const a = Math.min(1, (c.until - clock) * 0.8);
-      text(c.text, SCREEN_W / 2, SCREEN_H - (touchOnly ? 96 : 88) + i * 22,
-           13, c.colour, "center", a * 0.85);
-    });
+    /* Radio used to be drawn here, on two lines above the status strip. It is in
+       the notification stack now — see `chatter` — so there is nothing left for
+       this function to add and the bottom of the screen is the hull bar and
+       nothing else. */
   }
 
   /* The title row says where you got to, if you have been before. A mode that
@@ -6566,6 +7911,13 @@
     // Respawning inside a gravity well is a death sentence you didn't earn.
     if (hazards.some(h => hazardActive(h) &&
                         dist2(x, y, h.x, h.y) < (h.kill + 220) ** 2)) return false;
+    /* Nor inside a world. This never mattered while a planet was 200 units
+       across and there was no reason to spawn near one; a planet can be 3,600
+       units across now, and appearing inside one is appearing inside a wall. */
+    if (mode.survey && surv &&
+        surv.planets.some(pl => dist2(x, y, pl.x, pl.y) < (pl.r + r + 200) ** 2)) {
+      return false;
+    }
     return x > bounds.x0 + r && x < bounds.x1 - r &&
            y > bounds.y0 + r && y < bounds.y1 - r;
   }
@@ -7461,8 +8813,14 @@
       }
 
       const k = ship.input;
-      if (k.l) ship.a -= TURN * dt;
-      if (k.r) ship.a += TURN * dt;
+      /* Barely any steering while the light drive is running. It is a commitment
+         by design — the whole trade is that you cover an enormous distance and
+         give up the ability to react while you do — but locking the nose solid
+         would mean the five-second impact warning was information you could do
+         nothing with, and a warning you cannot act on is decoration. */
+      const turn = TURN * (lightDriveOn() ? LIGHT_TURN : 1);
+      if (k.l) ship.a -= turn * dt;
+      if (k.r) ship.a += turn * dt;
 
       ship.thrusting = k.th;
       if (ship.thrusting) {
@@ -7481,15 +8839,63 @@
       // is a fighter, so this is the same call it always was.
       const pull = (mode.campaign && ship.radius) ? 0 : applyGravity(ship, dt);
 
-      const damp = Math.exp(-DRAG * dt);
+      /* ── being thrown, and keeping it ────────────────────────────────────
+         Two things are allowed past your engine's top speed, and for the same
+         reason: neither of them is your engine. Gravity throws you, and the light
+         drive carries you.
+
+         What used to happen next was the bug. The ordinary limit came back the
+         instant a well's pull fell below one, and the excess was taken away in a
+         single frame — so a slingshot round a star gave you speed right up until
+         you cleared the rim, and then confiscated it. Momentum arrived and left
+         again in the same second, which made the one genuinely clever thing you
+         can do with a gravity well worth nothing at all.
+
+         So above your own top speed the ship is *coasting*, and coasting bleeds
+         slowly: the engine's drag is what an engine fights, and nothing you were
+         thrown by is your engine. The excess decays over several seconds instead
+         of over one frame, which is long enough to be worth aiming for and short
+         enough that you are not permanently faster than the game. The hard
+         ceiling stays, far above the ordinary limit, so a deep well still cannot
+         accelerate you without bound. */
+      const ordinary = MAX_SPEED * (ship.speedMul || 1) * U;
+      const runningLight = mode.survey && surv && surv.lightRun > 0 &&
+                           ship === ships[0];
+      const before = Math.hypot(ship.vx, ship.vy);
+
+      /* `boost` is how much speed above your own limit you are currently allowed
+         to be carrying, and it is the whole of the fix. Gravity raises it; it
+         decays on its own; your engine can never add to it.
+
+         Two wrong versions came before this one and both are worth writing down.
+         The first raised the ceiling for every ship in Survey, which quietly gave
+         the mode four times its stated top speed — full burn ran to 1,138 against
+         a MAX_SPEED of 360 and nothing anywhere said so. The second raised it
+         whenever the ship was already above the limit, which latches: thrust
+         pushes you over, being over raises the ceiling, the higher ceiling lets
+         thrust push you further. An allowance that only gravity can grant and
+         only time can spend cannot do either. */
+      if (mode.survey && !runningLight) {
+        ship.boost = Math.max(0, (ship.boost || 0) * Math.exp(-COAST_DRAG * dt));
+        const excess = before - ordinary;
+        if (pull > 0.05 && excess > ship.boost) {
+          ship.boost = Math.min(excess, ordinary * (THROWN_CEILING - 1));
+        }
+      } else if (!mode.survey) {
+        ship.boost = 0;
+      }
+
+      /* Coasting above your own limit bleeds gently: the engine's drag is what an
+         engine fights, and nothing you were thrown by is your engine. Below it,
+         the ordinary drag the whole game is built on. */
+      const coasting = before > ordinary * 1.01 && !runningLight;
+      const damp = Math.exp(-(coasting ? COAST_DRAG : DRAG) * dt);
       ship.vx *= damp; ship.vy *= damp;
 
       const sp = Math.hypot(ship.vx, ship.vy);
-      // Gravity is allowed to throw you past your own engine's top speed —
-      // being unable to pull out of a well is the whole threat of one. Clear of
-      // any well, the ordinary limit applies again, so Survival flies
-      // exactly as they did before hazards existed.
-      const max = MAX_SPEED * (ship.speedMul || 1) * U * (pull > 1 ? 1.9 : 1);
+      const max = runningLight ? ordinary * (LIGHT_MULT + 0.5)
+                : mode.survey ? ordinary + (ship.boost || 0)
+                : ordinary * (pull > 1 ? 1.9 : 1);
       if (sp > max) { ship.vx *= max / sp; ship.vy *= max / sp; }
 
       ship.x += ship.vx * dt; ship.y += ship.vy * dt;
@@ -7502,7 +8908,10 @@
         // The core of a well still kills in Survey — it just costs the trip
         // back rather than the run, so the risk stays real and the punishment
         // does not end anything.
-        if (mode.survey) { surveyRecover(ship, swallowed); continue; }
+        // A well does not chip you. Phase 1 gave supermassive wells a warning
+        // with room to act in precisely so that this could be fatal and fair.
+        if (mode.survey) { surveyDie(swallowed.kind === "hole" ? "hole" : "star");
+                           continue; }
         killShip(ship, swallowed.kind === "hole" ? "hole" : "star", null);
         if (!worldRunning()) return;
         continue;
@@ -7621,33 +9030,51 @@
       if (!mode.survey && (!mode.closing || clock <= CLOSE_DELAY)) {
         edgeOf(r, r.r, ROCK_BOUNCE);
       }
-      // A rock that falls in is gone — which is how the wells slowly sweep the
-      // map clean around themselves.
-      if (hazardAt(r.x, r.y, r.r * 0.5)) {
-        burst(r.x, r.y, "#ffcb42", 10, 150 * U);
-        rocks.splice(i, 1);
-      }
+      /* A rock that reaches a well comes apart in it. It used to simply be
+         deleted, which meant the one thing in the sector that visibly *does*
+         something to the terrain did it invisibly — a rock vanished at the rim
+         and you never saw why. Now it shatters the way a shot rock does, and
+         the pieces carry on falling, so a star grinding a field down is
+         something you can sit and watch. Nothing is left to collect: what falls
+         in is burned, which is the well taking money off you as well as time. */
+      const well = hazardAt(r.x, r.y, r.r * 0.5);
+      if (well) shatterInWell(r, i, well);
     }
 
     resolveRockCollisions();
 
+    /* Running at light, a rock is nothing. That is the whole promise of the
+       drive: the only two things in the sector big enough to matter at that
+       speed are a massive world and a supermassive well, and those are the only
+       two the impact warning looks for. So an asteroid in the way is destroyed
+       and the ship goes through it without being touched or slowed — which is
+       also why a rock must not cut the drive, and it used to, about a second
+       after the warning fired. */
+    const throughRocks = mode.survey && surv && surv.lightRun > 0;
     for (const s of ships) {
       // The convoy transport is on a rails-steady course down a cleared lane;
       // a stray drifting asteroid neither knocks it nor chips it.
       if (!s.alive || s.invuln > 0 || s.kinematic) continue;
-      for (const r of rocks) {
-        if (gap2(s.x, s.y, r.x, r.y) < (r.r + shipR * 0.75) ** 2) {
-          // Push a damaged ship clear so one overlap cannot become both hits as
-          // soon as the brief impact shield expires.
-          let dx = sepX(s.x, r.x), dy = sepY(s.y, r.y);
-          const d = Math.hypot(dx, dy) || 1;
-          dx /= d; dy /= d;
-          s.vx += dx * 180 * U;
-          s.vy += dy * 180 * U;
-          damageShip(s, "rock", null);
-          if (!worldRunning()) return;
-          break;
+      const light = throughRocks && s === ships[0];
+      for (let ri = rocks.length - 1; ri >= 0; ri--) {
+        const r = rocks[ri];
+        if (gap2(s.x, s.y, r.x, r.y) >= (r.r + shipR * 0.75) ** 2) continue;
+        if (light) {
+          burst(r.x, r.y, "#ffcb42", 12, 260 * U);
+          if (Math.random() < 0.25) gameSound("rock", r.x);
+          rocks.splice(ri, 1);
+          continue;                       // and keep going; there may be more
         }
+        // Push a damaged ship clear so one overlap cannot become both hits as
+        // soon as the brief impact shield expires.
+        let dx = sepX(s.x, r.x), dy = sepY(s.y, r.y);
+        const d = Math.hypot(dx, dy) || 1;
+        dx /= d; dy /= d;
+        s.vx += dx * 180 * U;
+        s.vy += dy * 180 * U;
+        damageShip(s, "rock", null);
+        if (!worldRunning()) return;
+        break;
       }
     }
 
@@ -8071,33 +9498,82 @@
     ctx.restore();
   }
 
-  // The convoy's destination: a banded planet with a soft halo, sitting at the
-  // far side of the map so "home" is a place you can see the whole way there.
+  /* A world. The campaign's convoy planet comes through here too and has none
+     of Survey's fields on it, so every one of them has a default and the old
+     blue banded disc is what you get without them.
+
+     The bands are drawn tilted, which is most of what stops eight worlds in a
+     row reading as one piece of art: a horizontal line across a circle is a
+     diagram, and the same line at nine degrees is a planet turning. */
   function drawPlanet(pl) {
-    if (!onScreen(pl.x, pl.y, pl.r + 40)) return;
+    if (!onScreen(pl.x, pl.y, pl.r * (pl.ring || 1) + 60)) return;
     const R = pl.r;
+    const kind = pl.kind ? worldKind(pl.kind)
+                         : { disc: "#9ad0ff", band: "#6fa8e6", halo: "#7fb4ff" };
+    const bands = pl.bands || [-0.55, -0.2, 0.2, 0.55];
+    // A rogue has nothing warming it, so it keeps its outline and loses its
+    // light: the entry is the absence, and the drawing has to say so.
+    const dim = pl.rogue ? 0.45 : 1;
+
     ctx.save();
     ctx.translate(pl.x, pl.y);
-    glow("#7fb4ff", 3, 0.5 + 0.15 * Math.sin(clock * 1.5), () => {
+
+    if (!pl.rogue) {
+      glow(kind.halo, 3, (0.42 + 0.14 * Math.sin(clock * 1.5)) * dim, () => {
+        ctx.beginPath();
+        ctx.arc(0, 0, R * 1.06, 0, Math.PI * 2);       // atmosphere
+        ctx.stroke();
+      });
+    }
+    glow(kind.disc, 2.4, dim, () => {
       ctx.beginPath();
-      ctx.arc(0, 0, R * 1.12, 0, Math.PI * 2);       // atmosphere halo
+      ctx.arc(0, 0, R, 0, Math.PI * 2);                // the disc
       ctx.stroke();
     });
-    glow("#9ad0ff", 2.4, 1, () => {
-      ctx.beginPath();
-      ctx.arc(0, 0, R, 0, Math.PI * 2);              // the disc
-      ctx.stroke();
-    });
-    // A few latitude bands, clipped to the disc, so it reads as a world.
-    glow("#6fa8e6", 1.3, 0.65, () => {
-      for (const f of [-0.55, -0.2, 0.2, 0.55]) {
+
+    ctx.save();
+    ctx.rotate(pl.tilt || 0);
+    glow(kind.band, 1.3, 0.6 * dim, () => {
+      for (const f of bands) {
         const yy = f * R, half = Math.sqrt(Math.max(0, R * R - yy * yy));
+        if (half < 2) continue;
         ctx.beginPath();
         ctx.moveTo(-half, yy); ctx.lineTo(half, yy);
         ctx.stroke();
       }
     });
     ctx.restore();
+
+    // A ring, on about one world in five. Drawn as an ellipse across the tilt,
+    // so a ringed world is unmistakable from a long way off.
+    if (pl.ring) {
+      ctx.save();
+      ctx.rotate((pl.tilt || 0) * 1.6);
+      glow(kind.halo, 1.4, 0.5, () => {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, R * pl.ring, R * pl.ring * 0.26, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+    ctx.restore();
+
+    /* The words. A world says what it is called, and says whether anybody is
+       home — floating beside it in world space rather than in a HUD label,
+       because the name belongs to the place and not to the interface. Placed at
+       the rim rather than the centre, or a big world would print its name
+       across its own middle. */
+    if (pl.name) {
+      /* Bigger than the ordinary world-space tag. This text lives inside the
+         camera transform, so 13px arrives at about nine screen pixels at
+         Survey's 0.72 zoom — enough for a label you glance at and not enough for
+         a name you are meant to read and remember. */
+      const off = R + 34;
+      label3(pl.name, pl.x, pl.y - off, kind.disc, 22);
+      if (pl.inhabited) {
+        label3("INHABITED", pl.x, pl.y - off + 24, CASH, 17);
+      }
+    }
   }
 
   function drawRock(r) {
@@ -9655,6 +11131,15 @@
     if (state === "yard" && surv && surveyHUD) {
       surveyHUD.drawYardPage(surveyState(), dt || 0); return;
     }
+    if (state === "missions" && surv && surveyHUD) {
+      surveyHUD.drawMissions(surveyState(), dt || 0); return;
+    }
+    if (state === "landed" && surv && surveyHUD) {
+      surveyHUD.drawLanded(surveyState(), dt || 0); return;
+    }
+    if (state === "died" && surv && surveyHUD) {
+      surveyHUD.drawDeath(surveyState(), dt || 0); return;
+    }
 
     if (state === "title") { drawTitle(dt); return; }
     if (state === "modes") { drawModes(dt); return; }
@@ -10987,7 +12472,42 @@
       cycleZoom: () => cycleSurveyZoom(),
       resetSurvey: () => resetSurveyProgress(),
       resetArmed: () => surveyResetArmed(),
-      hud: () => surveyHUD
+      hud: () => surveyHUD,
+      /* The material tables and the hull-loss spill. Both are pure arithmetic
+         over a table, which is exactly the kind of thing that rots without a
+         sound: a weight typed wrong makes one of the four unreachable and the
+         game carries on looking correct. */
+      rollMaterial: (source, deep) => rollMaterial(source, deep),
+      prices: st => stationPrices(st || surv.docked),
+      sell: () => sellHold(),
+      /* Dying, driven directly. There is no bot to fly you into a black hole and
+         a harness cannot wait for one, but the *consequences* of a death are the
+         whole of phase 2 and they are all arithmetic. */
+      die: cause => surveyDie(cause || "rock"),
+      // One hit, through the real damage path, so the hull's own arithmetic is
+      // what the harness is testing rather than a poke at `ship.hull`.
+      hurt: cause => damageShip(ships[0], cause || "rock", null),
+      // Life support, so a harness can run a tank down without waiting twelve
+      // real minutes for it.
+      tanks: () => ({ water: surv.water, food: surv.food,
+                      thirst: surv.thirst, hunger: surv.hunger }),
+      setTanks: (w, f) => { if (w != null) surv.water = w;
+                            if (f != null) surv.food = f; },
+      buySupply: kind => buySupply(kind),
+      // Where you are, as the supply system sees it.
+      light: () => ({ have: surv.hasLight, run: surv.lightRun,
+                      hit: surv.lightHit }),
+      buildLight: () => buildLightDrive(),
+      toggleLight: () => toggleLightDrive(),
+      places: () => ({ docked: !!surv.docked, atYard: surv.atYard,
+                       landed: surv.landed && surv.landed.name,
+                       overAir: surv.overAir && surv.overAir.name,
+                       skimming: surv.skimming > 0 }),
+      respawn: () => surveyRespawn(),
+      home: () => ({ x: HOME_STATION.x, y: HOME_STATION.y }),
+      // The stated top speed, so a harness can check the engine against its own
+      // number rather than against a constant it has copied.
+      topSpeed: () => MAX_SPEED * (ships[0].speedMul || 1) * U
     };
   }
 

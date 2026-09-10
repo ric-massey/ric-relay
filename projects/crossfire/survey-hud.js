@@ -81,8 +81,7 @@
 
   let api = null;
   let fog = new Set();
-  let trail = [];            // where you have been, for the chart
-  let toasts = [];
+  let notes = [];            // the top-right stack; see HUD.notify
   let pulse = 0;
   let padGuard = { right: 0, bottom: 0 };
 
@@ -94,7 +93,9 @@
      all, so every fresh survey started with no pin kind selected and an almanac
      that could not remember which card was open. One source, so they cannot
      disagree again. */
-  const freshChart = () => ({ x: 0, y: 0, scale: 0.0232, follow: true, pin: 0 });
+  const freshChart = () =>
+    ({ x: 0, y: 0, scale: 0.0232, follow: true, pin: 0, jump: false,
+       mark: false });
   const freshAlmanac = () => ({ scroll: 0, pick: 0, open: -1 });
 
   let chart = freshChart();
@@ -146,8 +147,7 @@
 
   HUD.reset = function () {
     fog = new Set();
-    trail = [];
-    toasts = [];
+    notes = [];
     pulse = 0;
     chart = freshChart();
     almanac = freshAlmanac();
@@ -174,17 +174,13 @@
   HUD.seen = (x, y) =>
     fog.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)));
 
-  /* Where you have been. Sampled by distance rather than by frame so the line
-     is the same shape whether you flew it fast or slow, and capped so a very
-     long survey cannot grow the save without limit — the oldest leg is the one
-     you are least likely to be looking for. */
-  const TRAIL_STEP = 900, TRAIL_MAX = 900;
-  HUD.track = function (x, y) {
-    const last = trail[trail.length - 1];
-    if (last && Math.hypot(x - last[0], y - last[1]) < TRAIL_STEP) return;
-    trail.push([Math.round(x), Math.round(y)]);
-    if (trail.length > TRAIL_MAX) trail.splice(0, trail.length - TRAIL_MAX);
-  };
+  /* There used to be a trail here — every leg you had flown, kept and drawn on
+     the chart as a line. It has gone. The chart already carried a grid, an
+     origin cross, the fog lattice, typed marks, pins and a legend, and the
+     trail was the line that tipped it from a map into a diagram — and it was
+     saying something the fog said already, because the fog *is* the shape of
+     where you have been. Two drawings of one fact, and the page was the thing
+     that paid for it. See SURVEY-PLAN.md, "Next up — the places", item E. */
 
   /* ── keeping the chart ────────────────────────────────────────────────────
      Run-length encoded by row before packing. A survey's charted cells are the
@@ -227,15 +223,6 @@
     return true;
   };
 
-  HUD.exportTrail = () => packInts(trail.flat());
-  HUD.importTrail = function (s) {
-    const flat = unpackInts(s);
-    if (!flat || flat.length % 2 !== 0) return false;
-    trail = [];
-    for (let i = 0; i < flat.length; i += 2) trail.push([flat[i], flat[i + 1]]);
-    return true;
-  };
-
   function packInts(arr) {
     if (!arr || !arr.length) return "";
     const buf = new ArrayBuffer(arr.length * 4);
@@ -259,13 +246,34 @@
     return Array.from(new Int32Array(bytes.buffer));
   }
 
-  /* Two entries can tick at once — a slingshot out of a binary — so toasts
-     stack rather than replace, capped because three cards is a celebration and
-     six is a wall. */
+  /* ── notifications ────────────────────────────────────────────────────────
+     One stack, top right, for everything that has just happened: an almanac
+     entry logged, a new thing to go and find, a cache opened, a tank filled,
+     radio. They used to be three separate systems in three places — cards top
+     centre, an objective band across the top, radio lines above the hull bar —
+     and between them the screen was never quiet.
+
+     Top right, under the chart, because that is where the eye already goes for
+     the chart and because it is the one corner nothing else needs. Right-aligned
+     so a long line grows away from the middle of the screen rather than across
+     it, and capped, because four is news and eight is a wall.
+
+     A repeat refreshes the line it is already on instead of stacking a second
+     copy — the same scan pressed twice should not read as two events. */
+  HUD.notify = function (text, sub, colour, life) {
+    if (!text) return;
+    const span = life || 5.5;
+    const had = notes.find(n => n.text === text && n.sub === (sub || ""));
+    if (had) { had.t = span; had.life = span; return; }
+    notes.unshift({ text: String(text), sub: sub ? String(sub) : "",
+                    colour: colour || VIOLET, t: span, life: span });
+    if (notes.length > 4) notes.length = 4;
+  };
+
   HUD.logged = function (entry) {
-    toasts.unshift({ name: entry.name, note: entry.note || "",
-                     n: entry.n || 0, of: entry.of || 25, t: 4.2 });
-    if (toasts.length > 3) toasts.length = 3;
+    HUD.notify(entry.name,
+               "LOGGED  " + String(entry.n || 0).padStart(2, "0") + " / " +
+               (entry.of || 25), AMBER, 6);
   };
 
   HUD.ping = function () { pulse = 1.6; };
@@ -367,19 +375,26 @@
     if (!api) return;
     st = st || {};
     if (pulse > 0) pulse = Math.max(0, pulse - (dt || 0));
-    for (const t of toasts) t.t -= (dt || 0);
-    toasts = toasts.filter(t => t.t > 0);
+    for (const n of notes) n.t -= (dt || 0);
+    notes = notes.filter(n => n.t > 0);
 
     if (st.ship) {
       if (pulse > 0) drawPulse();
       drawContacts(st);
     }
+    // Drawn under everything else: at zero hull the whole frame is edged in the
+    // warning colour, so the state is visible without looking anywhere in
+    // particular. The gravity band uses the same figure for the same reason.
+    if (st.critical) drawCriticalEdge(!!st.inStar);
+    else if ((st.water && st.water.countdown > 0) ||
+             (st.food && st.food.countdown > 0)) drawCriticalEdge(false);
+    if (st.ship) drawWaypointArrow(st);
+    drawSector(st);
     drawPanelChart(st);
     drawCounters(st);
-    drawObjective(st);
     drawWarnBand(st);
     drawStrip(st);
-    drawToasts();
+    drawNotes(st);
   };
 
   /* ── what you are doing ───────────────────────────────────────────────────
@@ -426,44 +441,115 @@
 
     const y = SCREEN_H / 2 - 132;
     label(w.text, SCREEN_W / 2, y, SIZE.head, w.colour, "center", beat, "0.16em");
-    label((w.big ? "SUPERMASSIVE " : "") +
-          (w.kind === "hole" ? "BLACK HOLE" : "STAR") +
-          "   ·   BEARING " + String(w.bearing).padStart(3, "0"),
-          SCREEN_W / 2, y + 24, SIZE.cap, w.colour, "center", 0.85, "0.1em");
+    /* Named where it has a name. "SUPERMASSIVE BLACK HOLE" is a category and
+       "TORIS MAW" is a place — and the whole point of naming them was that the
+       one you have to plan around becomes a thing you can talk about. */
+    fitText((w.name ? w.name + "   ·   " : "") +
+            (w.big ? "SUPERMASSIVE " : "") +
+            (w.kind === "hole" ? "BLACK HOLE" : "STAR") +
+            "   ·   BEARING " + String(w.bearing).padStart(3, "0"),
+            SCREEN_W / 2, y + 24, SIZE.cap, w.colour, "center", 0.85,
+            SCREEN_W - 120, "0.1em");
     if (w.ratio >= 1) {
       label("BURN AWAY — YOUR DRIVE WILL NOT LIFT YOU OUT",
             SCREEN_W / 2, y + 46, SIZE.cap, w.colour, "center", beat);
     }
   }
 
-  function drawObjective(st) {
-    const o = st.objective;
-    if (!o) return;
-    const { SCREEN_W } = api;
-    const cx = SCREEN_W / 2;
-    const wide = SCREEN_W - 420;          // clear of the counters and the chart
-
-    fitText(o.text, cx, 40, SIZE.val, o.colour || VIOLET, "center", 1, wide, "0.1em");
-    if (o.sub) {
-      fitText(o.sub, cx, 62, SIZE.cap, AMBER_DIM, "center", 0.8, wide);
+  /* The same closing border the gravity warning uses, in the hull's colour. It
+     is not competing with that warning: a well warns about the next four
+     seconds and this warns about the whole rest of the run, so the hull edge is
+     thinner, slower and never covers the middle of the screen. */
+  function drawCriticalEdge(mending) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    const beat = 0.5 + 0.5 * Math.abs(Math.sin(Date.now() / (mending ? 520 : 300)));
+    ctx.save();
+    ctx.strokeStyle = mending ? SOLAR : WARN;
+    for (let i = 0; i < 4; i++) {
+      ctx.globalAlpha = (0.1 + beat * 0.16) * (1 - i / 4);
+      ctx.lineWidth = 3;
+      const inset = 2 + i * 6;
+      ctx.strokeRect(inset, inset, SCREEN_W - inset * 2, SCREEN_H - inset * 2);
     }
-    /* There used to be a "BEARING 191 · a long way out" line here. It was two
-       pieces of jargon stacked on the busiest part of the screen, and neither
-       told you anything you could act on — a compass bearing means nothing
-       without a compass, and "a long way out" is not a distance. The direction
-       lives on the chart, where directions belong. */
-    if (st.needs) {
-      // The tally, small, at the top right of the band — it is a progress bar
-      // for the whole mode and it should never be the loudest thing on screen.
-      label("YARD " + st.built + " / " + st.needs, cx + wide / 2, 40, SIZE.cap,
-            st.built >= st.needs ? CASH : VIOLET_DIM, "right", 0.75, "0.14em");
-    }
+    ctx.restore();
   }
 
+  /* ── running at light ─────────────────────────────────────────────────────
+     Two things to draw and they are not the same job. The run itself is a state:
+     streaks along the direction of travel, so the speed is legible without a
+     number. The impact is an event with a deadline, and it gets the middle of the
+     screen and a count, because five seconds is the whole of what you have and a
+     player reading a corner of the HUD will spend two of them finding it. */
+  function drawLightRun(st) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    const L = st.light;
+    const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
+
+    if (!api.reduceMotion) {
+      ctx.save();
+      ctx.strokeStyle = ICE;
+      ctx.lineWidth = 1.4;
+      for (let i = 0; i < 22; i++) {
+        // Deterministic per streak, so they read as motion rather than as noise.
+        const a = (i / 22) * Math.PI * 2 + (Date.now() / 900) % (Math.PI * 2);
+        const spread = 120 + ((i * 137) % 220);
+        const len = (60 + ((i * 91) % 180)) * L.run;
+        const x0 = cx + Math.cos(a) * spread, y0 = cy + Math.sin(a) * spread;
+        ctx.globalAlpha = 0.10 + 0.22 * L.run;
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x0 + Math.cos(a) * len, y0 + Math.sin(a) * len);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    label("LIGHT DRIVE  ·  " + Math.round(L.run * 100) + "%", cx, 44, SIZE.cap,
+          ICE, "center", 0.6 + 0.4 * L.run, "0.2em");
+
+    const hit = L.hit;
+    if (!hit) return;
+    /* The five-second warning. It counts, it names the thing, and it says what
+       to do about it — which is the one instruction that works at this speed. */
+    const t = Math.max(0, hit.eta);
+    const close = t < 2;
+    const beat = 0.55 + 0.45 * Math.abs(Math.sin(Date.now() / (close ? 130 : 260)));
+    const colour = close ? WARN : "#ffcb42";
+    ctx.save();
+    ctx.strokeStyle = colour;
+    for (let i = 0; i < 6; i++) {
+      ctx.globalAlpha = (0.16 + beat * 0.2) * (1 - i / 6) * 0.85;
+      ctx.lineWidth = 3;
+      const inset = 2 + i * 7;
+      ctx.strokeRect(inset, inset, SCREEN_W - inset * 2, SCREEN_H - inset * 2);
+    }
+    ctx.restore();
+
+    const y = cy - 150;
+    label("IMPACT IN " + t.toFixed(1) + "s", cx, y, SIZE.big, colour, "center",
+          beat, "0.16em");
+    fitText(hit.name, cx, y + 30, SIZE.head, colour, "center", 0.95,
+            SCREEN_W - 200, "0.1em");
+    label("TURN, OR CUT THE DRIVE" + (api.touchOnly ? "" : "  —  [R]"),
+          cx, y + 58, SIZE.cap, colour, "center", beat, "0.14em");
+  }
+
+  /* There used to be an objective band across the top of the screen: the part
+     the yard wants, its clue, and a YARD n/6 tally, all drawn every frame
+     forever. It was the busiest thing on the HUD and it was answering a question
+     nobody asks twice — "what am I looking for" is a thing you check when it
+     changes and then not again for twenty minutes.
+
+     So it is a notification now, fired when it changes, and the whole manifest
+     lives on a page you can open. See `HUD.notify` and `HUD.drawMissions`. */
+
+  /* The chart sits below the sector readout rather than at the very top, so the
+     right-hand column reads downward as one thing: where you are, the map around
+     you, the way in to everything else, and then whatever just happened. */
   function panelBox() {
     const W = api.SCREEN_W;
     const w = api.touchOnly ? 158 : 196;
-    return { x: W - w - 18 - padGuard.right, y: 18, w, h: w * 0.7 };
+    return { x: W - w - 18 - padGuard.right, y: 74, w, h: w * 0.7 };
   }
 
   /* The panel chart is a window on the lattice around the ship, not the whole
@@ -488,8 +574,10 @@
     ctx.fillStyle = "rgba(0,0,0,0.62)";
     ctx.fillRect(b.x, b.y, b.w, b.h);
     paintFog(mx, my, ship.x, ship.y, PANEL_SPAN, sx, sy, 0.30);
-    paintMarks(st, mx, my, false);
+    paintMarks(st, mx, my, false, sx);
+    paintEchoes(st, mx, my, false);
     drawPins(st, mx, my, false);
+    drawWaypoint(st, mx, my, false);
     ctx.restore();
 
     ctx.save();
@@ -529,7 +617,58 @@
     }
   }
 
+  /* ── what a scan came back with ───────────────────────────────────────────
+     A scan reaches 2,100 units and 3,885 once the scanner is refitted; the view
+     is about 700 across. So almost everything a scan found was off screen, and
+     the only answer the button gave you was a line of text — the returns were
+     drawn in world space and nowhere else.
+
+     They go on the chart now, for as long as they last, and hostile returns are
+     drawn differently rather than merely in a different colour: a sentry gets a
+     ring and a cross, everything else gets a filled dot. Shape first, because a
+     player who cannot tell the two greens apart on a phone in daylight still has
+     to be able to tell a shop from a gun. */
+  function paintEchoes(st, mx, my, big) {
+    const list = st.echoes || [];
+    if (!list.length) return;
+    const { ctx } = api;
+    const R = big ? 5 : 3.4;
+    ctx.save();
+    for (const e of list) {
+      // Fades out over its last quarter, so a stale contact reads as stale.
+      const a = Math.min(1, (e.t / Math.max(1, e.life)) * 4);
+      const x = mx(e.x), y = my(e.y);
+      ctx.globalAlpha = a * 0.95;
+      ctx.strokeStyle = e.colour;
+      ctx.fillStyle = e.colour;
+      if (e.bad) {
+        ctx.lineWidth = big ? 2 : 1.4;
+        ctx.beginPath();
+        ctx.arc(x, y, R + 1.5, 0, Math.PI * 2);
+        ctx.stroke();
+        const k = R * 0.8;
+        ctx.beginPath();
+        ctx.moveTo(x - k, y - k); ctx.lineTo(x + k, y + k);
+        ctx.moveTo(x + k, y - k); ctx.lineTo(x - k, y + k);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.arc(x, y, R, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
   const fmtCells = n => n >= 10000 ? (n / 1000).toFixed(1) + "K" : String(n);
+
+  /* Minutes and seconds, and never an hour: a tank is measured in minutes and a
+     countdown in seconds, and both want the same shape so the readout does not
+     change format under you as it empties. */
+  const fmtSecs = n => {
+    const t = Math.max(0, Math.round(n));
+    return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0");
+  };
 
   /* Charted cells, drawn as cells. The blockiness is the instrument reading —
      a scanned grid — not an artefact to smooth away, and it makes the count an
@@ -609,6 +748,7 @@
         break;
       default:                              // star
         ctx.beginPath(); ctx.arc(x, y, r * 0.85, 0, Math.PI * 2); ctx.fill();
+        break;
     }
   }
 
@@ -616,7 +756,9 @@
      that thing" — the live lists below only ever knew about the five chunks
      either side of the ship, so the map used to forget a station the moment you
      left it behind. */
-  function paintKnown(st, mx, my, big) {
+  const SIZED = { planet: 1, hole: 1, star: 1 };
+
+  function paintKnown(st, mx, my, big, scale) {
     const { ctx } = api;
     const R = big ? 5 : 3;
     ctx.save();
@@ -624,21 +766,66 @@
     for (const q of (st.known || [])) {
       const spec = CHART_MARKS[q.k];
       if (!spec) continue;
-      // The panel is small; only the things you navigate by go on it.
-      if (!big && q.k !== "station" && q.k !== "gate" && q.k !== "part") continue;
+      /* Worlds and wells go on the panel now as well as the full chart. They
+         were filtered out of it — only stations, gates and parts were "things
+         you navigate by" — which was written when a planet was 190 units across
+         and nothing to steer around. A world can be 3,600 across and solid, and a
+         supermassive well's reach is a piece of the sector you have to plan a
+         route through; both of those are exactly what a minimap is for. */
+      if (!big && q.k !== "station" && q.k !== "gate" && q.k !== "part" &&
+          !SIZED[q.k]) continue;
+
+      /* Drawn to scale where the thing has a scale. Every world used to be the
+         same five-pixel circle whatever its size, so the chart could not tell you
+         the one fact about a world you navigate by. The glyph size is a floor,
+         not the size: something genuinely small still has to be findable. */
+      const scaled = SIZED[q.k] && q.r && scale ? q.r * scale : 0;
+      const gr = Math.max(R, scaled);
+
       ctx.strokeStyle = spec.colour;
       ctx.fillStyle = spec.colour;
-      ctx.globalAlpha = 0.9;
-      markGlyph(ctx, q.k, mx(q.x), my(q.y), R);
+      ctx.globalAlpha = scaled > R * 1.5 ? 0.75 : 0.9;
+      markGlyph(ctx, q.k, mx(q.x), my(q.y), gr);
+      /* A big one gets its own dot in the middle as well, so a world drawn as a
+         wide ring still has a point you can aim at and still reads as a mark
+         rather than as a stray circle on the grid. */
+      if (scaled > R * 2.5) {
+        ctx.globalAlpha = 0.95;
+        ctx.beginPath();
+        ctx.arc(mx(q.x), my(q.y), big ? 2 : 1.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      /* Its name, if it has one. Worlds and supermassive wells are the two kinds
+         of thing in the sector that are *called* something, and a chart that knew
+         the name and drew an anonymous glyph was throwing away the only reason
+         the naming exists. Held back at the two widest zooms, where a sector's
+         worth of labels would be a solid block of type rather than a map. */
+      if (big && q.name && chart.scale >= 0.006) {
+        ctx.globalAlpha = 1;
+        label(q.name, mx(q.x) + R + 7, my(q.y) + 4, SIZE.cap, spec.colour,
+              "left", 0.8);
+        ctx.globalAlpha = 0.9;
+      }
+      // Armed for a jump, the stations are the only things you can hit, so
+      // they are the only things drawn as though you could.
+      if (big && chart.jump && q.k === "station") {
+        ctx.strokeStyle = CASH;
+        ctx.globalAlpha = 0.9;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(mx(q.x), my(q.y), R + 7, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.lineWidth = big ? 1.6 : 1;
+      }
     }
     ctx.restore();
   }
 
-  function paintMarks(st, mx, my, big) {
+  function paintMarks(st, mx, my, big, scale) {
     const { ctx } = api;
     const R = big ? 1.7 : 1;
 
-    paintKnown(st, mx, my, big);
+    paintKnown(st, mx, my, big, scale);
 
     // The yard is the one fixed place in the sector and the thing you keep
     // coming back to, so it is always on the chart whether or not it is loaded.
@@ -719,45 +906,95 @@
      it is a keybinding that does not exist. Naming the key next to the number
      is the whole fix, and making the number tappable is what makes it true on a
      phone as well. */
+  /* ── the left column ──────────────────────────────────────────────────────
+     What you have, and what is running out. Four readouts and nothing else.
+
+     The almanac count used to head this column and it has gone: it is a *total*,
+     it changes about once every ten minutes, and there is a page for it — which
+     is exactly the description of something that does not belong on a flight
+     HUD. It lives on the inventory now, as a button, next to the missions.
+
+     Water and food are percentages rather than minutes. Minutes were the more
+     informative reading and that turned out to be the wrong trade: two m:ss
+     clocks and their bars took four lines and a lot of width to say something a
+     player checks with a glance, and a glance is all a percentage needs. */
   function drawCounters(st) {
     const { ctx } = api;
-    const found = st.found || 0, total = st.total || 25;
-    const key = api.touchOnly ? "" : "  [L]";
-    label("ALMANAC" + key, 24, 36, SIZE.cap, VIOLET, "left", 0.7, "0.18em");
-    label(String(found).padStart(2, "0") + " / " + total, 24, 62,
-          SIZE.head, found >= total ? AMBER : VIOLET, "left");
-    api.addTap({ x: 14, y: 18, w: 150, h: 56, act: st.onAlmanac || (() => {}) });
 
-    /* How far out you are, as a word. The curve behind it is smooth and has no
-       thresholds, so this is the only place the sector is ever banded — and it
-       is banded here because "UNSETTLED" is a thing you can decide about and
-       0.47 is not. */
-    if (st.dangerBand) {
-      label("SECTOR", 24, 168, SIZE.cap, VIOLET_DIM, "left", 0.65, "0.18em");
-      label(st.dangerBand.name, 24, 192, SIZE.val, st.dangerBand.colour, "left", 0.95);
-      const bw = 108;
-      ctx.save();
-      ctx.strokeStyle = VIOLET_LOW;
-      ctx.globalAlpha = 0.6;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(24, 200, bw, 5);
-      ctx.fillStyle = st.dangerBand.colour;
-      ctx.globalAlpha = 0.85;
-      ctx.fillRect(25, 201, Math.max(1, (bw - 2) * (st.danger || 0)), 3);
-      ctx.restore();
-    }
+    /* Money, then cargo — different things, and the panel used to show one
+       number pretending to be both. Cash has no ceiling; the hold is a fraction
+       of one, and the fraction is the part you make decisions about. */
+    label("CASH", 24, 36, SIZE.cap, CASH_DIM, "left", 0.7, "0.18em");
+    label(String(st.cash || 0), 24, 62, SIZE.head, CASH, "left");
 
+    /* "STORAGE", not "hold". A hold is a part of a ship and this is the stuff in
+       it, which is the thing you are actually reading — and there is a page
+       called STORAGE now for the same reason. */
     if (st.hold) {
-      const salv = st.cash || 0, cap = st.hold;
-      const full = salv >= cap;
-      label("CASH", 24, 96, SIZE.cap, CASH_DIM, "left", 0.7, "0.18em");
-      label(salv + " / " + cap, 24, 122, SIZE.head,
-            full ? WARN : CASH, "left");
+      const used = st.carried || 0, cap = st.hold;
+      const full = used >= cap;
+      label("STORAGE", 24, 92, SIZE.cap, VIOLET_DIM, "left", 0.7, "0.18em");
+      label(used + " / " + cap, 24, 114, SIZE.val, full ? WARN : VIOLET, "left");
       if (full) {
-        label("HOLD FULL — FIND A STATION", 24, 144, SIZE.cap, WARN, "left",
+        label("FULL — SELL IT", 24, 136, SIZE.cap, WARN, "left",
               0.55 + 0.45 * Math.abs(Math.sin(Date.now() / 400)));
       }
     }
+
+    /* Life support: a name and a percentage. There were bars here and they have
+       gone, along with the one under storage — a bar is a second drawing of a
+       number that was already on the line beside it, and four of them made a
+       corner that had to be read rather than glanced at. The percentage is the
+       whole reading; the colour carries "getting low".
+
+       An emptied tank is the exception: it says how long you have left instead,
+       because 0% is the same picture whether you have a minute or a second. */
+    ["water", "food"].forEach((key, i) => {
+      const m = st[key];
+      if (!m) return;
+      const y = 172 + i * 26;
+      const out = m.countdown > 0;
+      const low = !out && m.frac < 0.2;
+      const colour = out ? WARN : low ? "#ffcb42" : (key === "water" ? ICE : AMBER_DIM);
+      const beat = out ? 0.5 + 0.5 * Math.abs(Math.sin(Date.now() / 220)) : 1;
+
+      label(key.toUpperCase(), 24, y, SIZE.cap, colour, "left",
+            out ? beat : 0.7, "0.14em");
+      label(out ? fmtSecs(m.countdown) + " LEFT"
+                : Math.round(m.frac * 100) + "%",
+            108, y, out ? SIZE.cap : SIZE.val, colour, "left", out ? beat : 0.95);
+    });
+
+    if (st.skimming) {
+      label("SKIMMING", 24, 250, SIZE.cap, ICE, "left",
+            0.5 + 0.5 * Math.abs(Math.sin(Date.now() / 260)), "0.14em");
+    }
+  }
+
+  /* ── where you are ────────────────────────────────────────────────────────
+     Top right, above the chart, because it is the same question the chart
+     answers and the two belong together. The curve behind it is smooth and has
+     no thresholds, so this is the only place the sector is ever banded — and it
+     is banded here because "UNSETTLED" is something you can make a decision
+     about and 0.47 is not. */
+  function drawSector(st) {
+    if (!st.dangerBand) return;
+    const { ctx } = api;
+    const b = panelBox();
+    const right = b.x + b.w;
+    label("SECTOR", right, 28, SIZE.cap, VIOLET_DIM, "right", 0.65, "0.18em");
+    label(st.dangerBand.name, right, 52, SIZE.val, st.dangerBand.colour,
+          "right", 0.95);
+    const bw = 108;
+    ctx.save();
+    ctx.strokeStyle = VIOLET_LOW;
+    ctx.globalAlpha = 0.6;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(right - bw, 58, bw, 5);
+    ctx.fillStyle = st.dangerBand.colour;
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(right - bw + 1, 59, Math.max(1, (bw - 2) * (st.danger || 0)), 3);
+    ctx.restore();
   }
 
   /* Bottom centre: the one band a thumb never covers on a phone and a player
@@ -772,6 +1009,7 @@
     const w = 210, h = 9;
     const frac = Math.max(0, Math.min(1, ship.hull / (ship.maxHull || 1)));
     const lit = !!st.inStar;
+    const critical = !!st.critical;
 
     // In a star's light the hull bar is the repair readout too, so there is one
     // thing to look at rather than two.
@@ -785,8 +1023,10 @@
     ctx.fillRect(cx - w / 2 + 1, y - h + 1, Math.max(0, (w - 2) * frac), h - 2);
     ctx.restore();
 
-    label(lit ? "SOLAR — HULL RECOVERING" : "HULL", cx, y + 20, SIZE.cap,
-          lit ? SOLAR : AMBER_DIM, "center", lit ? 0.95 : 0.6);
+    label(lit ? "SOLAR — HULL RECOVERING" : critical ? "HULL GONE" : "HULL",
+          cx, y + 20, SIZE.cap,
+          lit ? SOLAR : critical ? WARN : AMBER_DIM, "center",
+          lit || critical ? 0.95 : 0.6);
 
     const ready = st.scan && st.scan.charge >= 1;
     label(ready ? (api.touchOnly ? "SCAN" : "SCAN  [F]") : "CHARGING",
@@ -814,19 +1054,70 @@
                    act: st.onScan || (() => {}) });
     }
 
-    /* Docked. The prompt is the only thing on the strip that comes and goes, so
-       it gets the position the eye is already on and the mode's one loud
-       colour — a station you flew past without noticing was worth flying to. */
-    if (st.docked) {
+    /* The line above the bar, which holds one thing at a time. Three things want
+       it and they are in a strict order of importance: one hit from death beats
+       a shop you are parked at, and a shop you are parked at beats a reminder of
+       what M does. Anything else here would be two of them overlapping, which is
+       what happened the first time the warning was put below the bar and landed
+       on the scanner readout. */
+    /* Four things want this line, in a strict order of importance. One hit from
+       death beats a tank running out, a tank running out beats a shop you are
+       parked at, and all three beat a reminder of what M does. */
+    const dry = st.water && st.water.countdown > 0 ? st.water : null;
+    const starving = st.food && st.food.countdown > 0 ? st.food : null;
+    if (critical) {
+      const beat = 0.55 + 0.45 * Math.abs(Math.sin(Date.now() / (lit ? 480 : 170)));
+      fitText(lit ? "MENDING — STAY IN THE LIGHT"
+                  : "THE NEXT HIT KILLS YOU",
+              cx, y - 30, SIZE.val, lit ? SOLAR : WARN, "center", beat,
+              SCREEN_W - 380, "0.08em");
+    } else if (dry || starving) {
+      const m = dry || starving;
+      const beat = 0.55 + 0.45 * Math.abs(Math.sin(Date.now() / 200));
+      fitText((dry ? "NO WATER" : "NO FOOD") + " — " + fmtSecs(m.countdown) +
+              " LEFT", cx, y - 30, SIZE.val, WARN, "center", beat,
+              SCREEN_W - 380, "0.08em");
+    } else if (st.docked) {
       const beat = 0.6 + 0.4 * Math.sin(clockish() * 4);
       label(api.touchOnly ? "DOCKED — TAP TO REFIT" : "DOCKED — [E] REFIT",
             cx, y - 30, SIZE.val, CASH, "center", beat, "0.1em");
-      api.addTap({ x: cx - 130, y: y - 58, w: 260, h: 40,
+      /* Stops exactly where the scan button starts. The prompt's box used to run
+         to `y - 18`, which reached into the scan target on a phone — and taps go
+         to whatever was registered last, so pressing the right-hand end of
+         "DOCKED" scanned instead of docking. */
+      api.addTap({ x: cx - 130, y: y - 62, w: 260, h: 36,
                    act: st.onRefit || (() => {}) });
+    } else if (st.landed) {
+      // Somebody lives on the thing you are resting against, and they will sell
+      // you water. Named, because the name is the point of naming them.
+      const beat = 0.6 + 0.4 * Math.sin(clockish() * 4);
+      fitText(st.landed.name + (api.touchOnly ? " — TAP TO TRADE" : " — [E] TRADE"),
+              cx, y - 30, SIZE.val, st.landed.colour || CASH, "center", beat,
+              SCREEN_W - 380, "0.08em");
+      api.addTap({ x: cx - 160, y: y - 62, w: 320, h: 36,
+                   act: st.onLand || (() => {}) });
+    } else if (st.light && st.light.have && st.light.run <= 0) {
+      // Offered, quietly, whenever there is nothing more urgent to say. A drive
+      // you have to remember you own is a drive you never use.
+      label(api.touchOnly ? "LIGHT DRIVE READY" : "LIGHT DRIVE READY  —  [R]",
+            cx, y - 30, SIZE.cap, ICE, "center", 0.55, "0.14em");
+      if (api.touchOnly) {
+        api.addTap({ x: cx - 130, y: y - 62, w: 260, h: 36,
+                     act: st.onLight || (() => {}) });
+      }
     } else if (!api.touchOnly) {
       // The mode's three keys, stated once, quietly, where a new player is
       // already looking. Survey has no tutorial and should not need one.
-      label("M CHART   ·   L ALMANAC   ·   F SCAN NEARBY", cx, y + 38, SIZE.cap,
+      /* Above the bar, in the slot the docked prompt uses — the two are
+         already mutually exclusive. It used to be drawn at `y + 38`, which is
+         712 on a 700-tall canvas: the one line that tells a cold player what
+         the mode's keys are had never been on screen at all. */
+      /* Three keys, and they are the three doors: the chart, the page that holds
+         every other page, and the scan. The almanac used to be named here and is
+         not any more — it is a button inside the inventory now, so naming it
+         alongside `I` would be pointing at the same door twice. `L` still opens
+         it for anyone who already knows. */
+      label("M CHART   ·   I INVENTORY   ·   F SCAN", cx, y - 30, SIZE.cap,
             VIOLET_LOW, "center", 0.8, "0.1em");
     }
   }
@@ -868,6 +1159,65 @@
     }
   }
 
+  /* ── the way to the waypoint ──────────────────────────────────────────────
+     The whole point of setting one. An arrow at the edge of the screen pointing
+     at it and the range beside it — the same figure the scan's contacts use,
+     because it is the same question, and in the same colour the chart drew it
+     in so the two are obviously one thing.
+
+     Through the camera's rotation, like the contacts: the main view is
+     player-up, and an arrow that ignored that would point at the wrong sky. */
+  function drawWaypointArrow(st) {
+    const w = st.waypoint;
+    if (!w) return;
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    const cam = st.cam || { x: st.ship.x, y: st.ship.y, rot: 0, scale: 1 };
+    const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
+    const wx = w.x - cam.x, wy = w.y - cam.y;
+    const cos = Math.cos(-cam.rot), sin = Math.sin(-cam.rot);
+    const sx = wx * cos - wy * sin, sy = wx * sin + wy * cos;
+    const px = cx + sx * cam.scale, py = cy + sy * cam.scale;
+
+    // On screen already: mark the spot rather than pointing off at it.
+    const here = px > 30 && px < SCREEN_W - 30 && py > 30 && py < SCREEN_H - 30;
+    if (here) {
+      ctx.save();
+      ctx.strokeStyle = ICE;
+      ctx.globalAlpha = 0.55 + 0.25 * Math.abs(Math.sin(Date.now() / 480));
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(px, py, 16, 0, Math.PI * 2);
+      ctx.moveTo(px - 26, py); ctx.lineTo(px - 8, py);
+      ctx.moveTo(px + 8, py); ctx.lineTo(px + 26, py);
+      ctx.moveTo(px, py - 26); ctx.lineTo(px, py - 8);
+      ctx.moveTo(px, py + 8); ctx.lineTo(px, py + 26);
+      ctx.stroke();
+      ctx.restore();
+      label(fmtCells(w.dist) + "u", px, py + 42, SIZE.cap, ICE, "center", 0.8);
+      return;
+    }
+
+    /* Held clear of the right-hand column. The arrow rides an ellipse inset from
+       the screen edge, and on a phone the panel chart is pushed left to leave the
+       pause button room — so the arrow's range label landed on the INVENTORY
+       button. The column's own left edge is the bound. */
+    const ang = Math.atan2(sy, sx);
+    const bound = panelBox().x - 30;
+    const ex = Math.min(cx + Math.cos(ang) * (cx - 92), bound);
+    const ey = cy + Math.sin(ang) * (cy - 78);
+    ctx.save();
+    ctx.translate(ex, ey);
+    ctx.rotate(ang);
+    api.glow(ICE, 2, 0.85, () => {
+      ctx.beginPath();
+      ctx.moveTo(-9, -10); ctx.lineTo(9, 0); ctx.lineTo(-9, 10);
+      ctx.closePath();
+      ctx.stroke();
+    });
+    ctx.restore();
+    label(fmtCells(w.dist) + "u", ex, ey + 30, SIZE.cap, ICE, "center", 0.85);
+  }
+
   /* The pulse has no gameplay effect — the contacts are already in the list —
      but without it pressing the key feels like nothing happened, and this mode
      has no gunfire to confirm an input with. */
@@ -887,27 +1237,36 @@
 
   /* The only moment the interface is allowed to be loud, and it is over in four
      seconds. Top centre, where the banner already lives. */
-  function drawToasts() {
-    if (!toasts.length) return;
-    const { ctx, SCREEN_W } = api;
-    toasts.forEach((t, i) => {
-      const a = Math.min(1, t.t * 1.6) * Math.min(1, (4.2 - t.t) * 5);
-      const y = 126 + i * 62, w = 360, x = SCREEN_W / 2 - w / 2;
+  /* Drawn under the right-hand column, growing downward. Each line is a rule on
+     its left edge and two rows of type — the same figure the logged cards used,
+     because that one worked; it is only in a different corner and doing more. */
+  function drawNotes(st) {
+    if (!notes.length) return;
+    const { ctx } = api;
+    const b = panelBox();
+    const right = b.x + b.w;
+    // Below the chart, its label and the buttons under it, whichever are there.
+    let y = b.y + b.h + 30 + 30 + (st && st.atYard ? 36 : 0) + 34;
+    for (const n of notes) {
+      const a = Math.min(1, n.t * 2.2) * Math.min(1, (n.life - n.t) * 6);
+      if (a <= 0.01) { y += n.sub ? 44 : 28; continue; }
+      const h = n.sub ? 40 : 24;
       ctx.save();
-      ctx.globalAlpha = a;
-      ctx.fillStyle = "rgba(0,0,0,0.55)";
-      ctx.fillRect(x, y - 30, w, 54);
-      ctx.strokeStyle = VIOLET;
-      ctx.globalAlpha = a * 0.85;
+      ctx.globalAlpha = a * 0.9;
+      ctx.strokeStyle = n.colour;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(x, y - 30); ctx.lineTo(x, y + 24);      // one edge, not a box
+      ctx.moveTo(right, y - 14); ctx.lineTo(right, y - 14 + h);
       ctx.stroke();
       ctx.restore();
-      label("LOGGED  " + String(t.n).padStart(2, "0") + " / " + t.of,
-            SCREEN_W / 2, y - 10, SIZE.cap, VIOLET, "center", a * 0.75, "0.16em");
-      label(t.name, SCREEN_W / 2, y + 16, SIZE.head, AMBER, "center", a);
-    });
+      fitText(n.text, right - 12, y, SIZE.cap, n.colour, "right", a, b.w + 120,
+              "0.08em");
+      if (n.sub) {
+        fitText(n.sub, right - 12, y + 20, SIZE.cap, VIOLET_DIM, "right",
+                a * 0.8, b.w + 120);
+      }
+      y += h + 10;
+    }
   }
 
   /* ═══ THE CHART PAGE ══════════════════════════════════════════════════════
@@ -927,6 +1286,30 @@
      tight enough to pick one wreck out of a field. */
   const ZOOMS = [0.00145, 0.0029, 0.0058, 0.0116, 0.0232,
                  0.0464, 0.0696, 0.0928, 0.12];
+
+  /* The waypoint, on a chart. A ring with a cross through it and a stem — not any
+     of the six pin shapes, because it is not a note about somewhere you have
+     been; it is the one place you are going. */
+  function drawWaypoint(st, mx, my, big) {
+    const w = st.waypoint;
+    if (!w) return;
+    const { ctx } = api;
+    const x = mx(w.x), y = my(w.y), r = big ? 9 : 5;
+    ctx.save();
+    ctx.strokeStyle = ICE;
+    ctx.globalAlpha = 0.95;
+    ctx.lineWidth = big ? 2 : 1.5;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.moveTo(x - r * 1.7, y); ctx.lineTo(x + r * 1.7, y);
+    ctx.moveTo(x, y - r * 1.7); ctx.lineTo(x, y + r * 1.7);
+    ctx.stroke();
+    ctx.restore();
+    if (big) {
+      label("WAYPOINT  " + fmtCells(w.dist) + "u", x, y + r * 2.6 + 12,
+            SIZE.cap, ICE, "center", 0.8);
+    }
+  }
 
   function drawPins(st, mx, my, big) {
     const { ctx } = api;
@@ -967,7 +1350,10 @@
 
     const w = 148, rowH = 19, pad = 10;
     const h = kinds.length * rowH + pad * 2;
-    const x = view.x + view.w - w - 12, y = view.y + 12;
+    /* Below the readout, which shares this corner and is painted after the
+       legend — so the sector coordinate and the range home used to print
+       straight across the legend's first two rows. */
+    const x = view.x + view.w - w - 12, y = view.y + 62;
 
     ctx.save();
     ctx.fillStyle = "rgba(5,5,10,0.78)";
@@ -1019,7 +1405,11 @@
     if (code === "Equal" || code === "NumpadAdd")      { zoomChart(1); return true; }
     if (code === "Minus" || code === "NumpadSubtract") { zoomChart(-1); return true; }
     if (code === "KeyC") { HUD.chartOpened(st); return true; }
-    if (code === "KeyP") { chart.pin = (chart.pin + 1) % PIN_KINDS.length; return true; }
+    if (code === "KeyP") {
+      chart.pin = (chart.pin + 1) % PIN_KINDS.length;
+      chart.jump = false;
+      return true;
+    }
     return false;
   };
 
@@ -1045,10 +1435,16 @@
               "SEED " + (st.seed || 0) +
               (st.world ? "  ·  " + st.world.name : "") +
               "  ·  " + fmtCells(HUD.charted()) + " CELLS CHARTED",
-              api.touchOnly ? "DRAG TO PAN  ·  ± ZOOM  ·  C RECENTRE"
-                            : "DRAG OR ARROWS PAN  ·  ± ZOOM  ·  C RECENTRE  ·  P PIN KIND");
+              /* Short, because the footer shares its line with the buttons
+                 below the rule and the long version ran through all of them.
+                 The touch one names no keys at all: a phone has none, and the
+                 zoom and recentre buttons are right there saying it better. */
+              api.touchOnly ? "" : "ARROWS PAN  ·  ± ZOOM  ·  C");
 
-    const view = { x: 34, y: 86, w: SCREEN_W - 68, h: SCREEN_H - 86 - 70 };
+    /* The band under the map used to be 56px holding five things — a hint, a
+       zoom readout, six palette buttons, the footer and CLOSE — all inside
+       each other. The map gives up a row so each of them gets its own. */
+    const view = { x: 34, y: 86, w: SCREEN_W - 68, h: SCREEN_H - 86 - 124 };
     const mx = wx => view.x + view.w / 2 + (wx - chart.x) * chart.scale;
     const my = wy => view.y + view.h / 2 + (wy - chart.y) * chart.scale;
 
@@ -1062,9 +1458,10 @@
 
     drawChartGrid(view, mx, my);
     paintFog(mx, my, chart.x, chart.y, span, chart.scale, chart.scale, 0.26);
-    drawTrail(mx, my);
-    paintMarks(st, mx, my, true);
+    paintMarks(st, mx, my, true, chart.scale);
+    paintEchoes(st, mx, my, true);
     drawPins(st, mx, my, true);
+    drawWaypoint(st, mx, my, true);
 
     ctx.restore();
 
@@ -1106,42 +1503,33 @@
        A tap here is a tap and not a drag: the page holds a press until release
        and only calls this if the pointer barely moved, so panning the chart
        never leaves a trail of pins behind it. */
+    const canJump = !!st.wormhole && typeof st.onJump === "function";
+    if (!canJump) chart.jump = false;
+    if (chart.jump) chart.mark = false;
+
     api.addTap({
       x: view.x, y: view.y, w: view.w, h: view.h,
       act: (sx, sy) => {
-        if (sx == null || !st.onPin) return;
+        if (sx == null) return;
         const wx = chart.x + (sx - (view.x + view.w / 2)) / chart.scale;
         const wy = chart.y + (sy - (view.y + view.h / 2)) / chart.scale;
         // Fourteen screen pixels' worth of world, so lifting a pin is as easy
         // zoomed out as zoomed in.
-        st.onPin(wx, wy, PIN_KINDS[chart.pin].key, 14 / chart.scale);
+        HUD.chartTapAt(st, wx, wy, 14 / chart.scale);
       }
     });
 
-    // The palette. Which kind of note the next tap leaves.
-    const pw = 96, pgap = 6;
-    const total = PIN_KINDS.length * pw + (PIN_KINDS.length - 1) * pgap;
-    let px0 = (SCREEN_W - total) / 2;
-    PIN_KINDS.forEach((k, i) => {
-      const on = i === chart.pin;
-      const bx = px0 + i * (pw + pgap);
-      ctx.save();
-      ctx.fillStyle = k.colour;
-      ctx.globalAlpha = on ? 0.20 : 0.06;
-      ctx.fillRect(bx, SCREEN_H - 48, pw, 34);
-      ctx.strokeStyle = k.colour;
-      ctx.globalAlpha = on ? 1 : 0.4;
-      ctx.lineWidth = on ? 2 : 1;
-      ctx.strokeRect(bx, SCREEN_H - 48, pw, 34);
-      ctx.restore();
-      fitText(k.name, bx + pw / 2, SCREEN_H - 26, SIZE.cap, k.colour, "center",
-              on ? 1 : 0.6, pw - 12);
-      api.addTap({ x: bx, y: SCREEN_H - 48, w: pw, h: 34,
-                   act: () => { chart.pin = i; } });
-    });
-    label(api.touchOnly ? "TAP THE MAP TO PIN  ·  TAP A PIN TO LIFT IT"
-                        : "CLICK THE MAP TO PIN  ·  CLICK A PIN TO LIFT IT",
-          SCREEN_W / 2, SCREEN_H - 56, SIZE.cap, VIOLET_LOW, "center", 0.75);
+    /* What the next tap on the map will do. Left and right rather than one
+       centred line and one right-aligned one on the same baseline, which is
+       what they were: the two overlapped at every zoom step. */
+    const verb = api.touchOnly ? "TAP" : "CLICK";
+    label(chart.jump
+            ? verb + " A STATION TO JUMP TO IT"
+          : chart.mark
+            ? verb + " ANYWHERE TO SET THE WAYPOINT"
+            : verb + " THE MAP TO PIN  ·  " + verb + " A PIN TO LIFT IT",
+          34, SCREEN_H - 104, SIZE.cap,
+          chart.jump ? CASH : chart.mark ? ICE : VIOLET_LOW, "left", 0.8);
 
     /* Which step you are on, and how wide the view actually is. Zoom without a
        readout is a control you cannot tell is working — especially at the wide
@@ -1151,16 +1539,109 @@
         ? k : a, 0);
     label("ZOOM " + (step + 1) + "/" + ZOOMS.length + "   ·   " +
           fmtCells(Math.round(SCREEN_W / chart.scale)) + " UNITS ACROSS",
-          SCREEN_W - 34, SCREEN_H - 56, SIZE.cap, VIOLET_DIM, "right", 0.8);
+          SCREEN_W - 34, SCREEN_H - 104, SIZE.cap, VIOLET_DIM, "right", 0.8);
 
+    // The palette. Which kind of note the next tap leaves. A row to itself, so
+    // nothing is drawn through it and nothing steals its taps.
+    const pw = 96, pgap = 6, py = SCREEN_H - 94;
+    const total = PIN_KINDS.length * pw + (PIN_KINDS.length - 1) * pgap;
+    let px0 = (SCREEN_W - total) / 2;
+    PIN_KINDS.forEach((k, i) => {
+      const on = i === chart.pin && !chart.jump;
+      const bx = px0 + i * (pw + pgap);
+      ctx.save();
+      ctx.globalAlpha = chart.jump ? 0.35 : 1;
+      ctx.fillStyle = k.colour;
+      ctx.globalAlpha *= on ? 0.20 : 0.06;
+      ctx.fillRect(bx, py, pw, 34);
+      ctx.strokeStyle = k.colour;
+      ctx.globalAlpha = (chart.jump ? 0.35 : 1) * (on ? 1 : 0.4);
+      ctx.lineWidth = on ? 2 : 1;
+      ctx.strokeRect(bx, py, pw, 34);
+      ctx.restore();
+      fitText(k.name, bx + pw / 2, py + 22, SIZE.cap, k.colour, "center",
+              (chart.jump ? 0.35 : 1) * (on ? 1 : 0.6), pw - 12);
+      api.addTap({ x: bx, y: py, w: pw, h: 34,
+                   act: () => { chart.pin = i; chart.jump = false; } });
+    });
+
+    /* Below the rule: the buttons, each with its own stretch of the line. The
+       zoom pair and RECENTRE used to sit on top of the palette's first two
+       swatches, and CLOSE on top of its last — and taps go to whatever was
+       drawn last, so those pin kinds could not be chosen on a phone at all. */
     if (api.touchOnly) {
       api.tapButton("−", 60, SCREEN_H - 30, 46, 38, VIOLET, () => zoomChart(-1));
       api.tapButton("+", 114, SCREEN_H - 30, 46, 38, VIOLET, () => zoomChart(1));
       api.tapButton("RECENTRE", 220, SCREEN_H - 30, 140, 38, VIOLET,
                     () => HUD.chartOpened(st));
     }
+    /* The manmade wormhole, which is what the yard was for. Six parts carried
+       home for a reward that was wired up in the engine and never reached the
+       interface — `onJump` existed, nothing called it. It arms here, and the
+       next tap on a charted station opens the mouth. */
+    /* Three buttons share the span between the footer on the left — or the zoom
+       cluster, on a phone — and CLOSE on the right, which is 400 to 775. All
+       three are optional and any combination can be up at once, so the places are
+       fixed rather than packed: a button that moves depending on what else is
+       there is a button you have to look for. */
+    if (st.waypoint && !chart.mark) {
+      api.tapButton("CLEAR", 450, SCREEN_H - 30, 96, 38, VIOLET_DIM,
+                    () => { if (st.onWaypoint) st.onWaypoint(null); });
+    }
+    /* Somewhere to go. Pins are notes and there can be two hundred of them; a
+       waypoint is the one place you have decided on, and the flight HUD points
+       at it. Armed the same way the wormhole is, because that gesture is already
+       learned by the time anyone has a wormhole. */
+    api.tapButton(chart.mark ? "CANCEL" : st.waypoint ? "MOVE  ▸" : "WAYPOINT  ▸",
+                  560, SCREEN_H - 30, 130, 38, chart.mark ? WARN : ICE,
+                  () => { chart.mark = !chart.mark; chart.jump = false; },
+                  chart.mark);
+    if (canJump) {
+      api.tapButton(chart.jump ? "CANCEL" : "WORMHOLE  ▸",
+                    700, SCREEN_H - 30, 140, 38, chart.jump ? WARN : CASH,
+                    () => { chart.jump = !chart.jump; chart.mark = false; },
+                    chart.jump);
+    }
     closeButton(st.onClose || (() => {}));
   };
+
+  /* What a press on the map means, in world coordinates. A function rather
+     than a closure inside the tap so the harness can drive the same body the
+     pointer does — the jump was unreachable for a release precisely because
+     nothing but a pointer could ever have reached it. */
+  HUD.chartTapAt = function (st, wx, wy, snap) {
+    if (chart.jump) { jumpNear(st, wx, wy, snap); return; }
+    if (chart.mark) {
+      chart.mark = false;
+      if (st && st.onWaypoint) st.onWaypoint(wx, wy);
+      return;
+    }
+    if (st && st.onPin) st.onPin(wx, wy, PIN_KINDS[chart.pin].key, snap);
+  };
+  HUD.chartJumpArm = function (on) { chart.jump = !!on; };
+  HUD.chartJumpArmed = () => !!chart.jump;
+
+  /* Jumping to a place already written down. Stations only — this is fast
+     travel across ground you have covered, never a way to skip covering it —
+     and the nearest one inside the same finger-width the pins use, so the
+     gesture is the one the page has already taught. */
+  function jumpNear(st, wx, wy, snap) {
+    let best = null, bestD = snap * snap;
+    for (const q of (st.known || [])) {
+      if (q.k !== "station") continue;
+      const d = (q.x - wx) * (q.x - wx) + (q.y - wy) * (q.y - wy);
+      if (d > bestD) continue;
+      bestD = d; best = q;
+    }
+    // A miss leaves the arm on. Cancelling because a finger landed two pixels
+    // wide of a station would be the page punishing you for its own tolerance.
+    if (!best) return;
+    chart.jump = false;
+    if (st.onJump(best.x, best.y) !== false) {
+      chart.x = best.x; chart.y = best.y; chart.follow = true;
+      if (st.onClose) st.onClose();
+    }
+  }
 
   /* A grid you can navigate by. Lines every chunk, and the coordinate is the
      chunk index rather than raw units — a number small enough to say out loud
@@ -1206,23 +1687,6 @@
               SIZE.cap, VIOLET_DIM, "left", 0.5);
       }
     }
-  }
-
-  /* The line you actually flew. It is the difference between a chart of a
-     place and a chart of your time in it. */
-  function drawTrail(mx, my) {
-    if (trail.length < 2) return;
-    const { ctx } = api;
-    ctx.save();
-    ctx.strokeStyle = AMBER;
-    ctx.globalAlpha = 0.34;
-    ctx.lineWidth = 1.5;
-    ctx.lineJoin = "round";
-    ctx.beginPath();
-    ctx.moveTo(mx(trail[0][0]), my(trail[0][1]));
-    for (let i = 1; i < trail.length; i++) ctx.lineTo(mx(trail[i][0]), my(trail[i][1]));
-    ctx.stroke();
-    ctx.restore();
   }
 
   function drawScaleBar(view) {
@@ -1729,10 +2193,31 @@
         });
         break;
       case "the-wall":
+        /* A frame with a mouth that never opened. It used to be the dashed box
+           and four dots and nothing else, which was an honest picture of an
+           entry with nothing in it — the entry has something in it now, so the
+           picture says what. Anchors at the corners, the frame between them, and
+           a broken ring at the middle. */
         dashBox();
         for (const [dx, dy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-          disc(cx + dx * r, cy + dy * r, 2.4, WARN);
+          disc(cx + dx * r, cy + dy * r, 3, WARN);
         }
+        stroke(WRECKC, 1.4, () => {
+          for (const a0 of [0.5, Math.PI + 0.3]) {
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 0.42, a0, a0 + 1.7);
+            ctx.stroke();
+          }
+          ctx.beginPath();
+          ctx.arc(cx, cy, r * 0.66, 2.4, 2.4 + 1.3);
+          ctx.stroke();
+        });
+        stroke(WARN, 1.3, () => {
+          ctx.beginPath();
+          ctx.moveTo(cx - r * 0.15, cy - r * 0.15); ctx.lineTo(cx + r * 0.15, cy + r * 0.15);
+          ctx.moveTo(cx + r * 0.15, cy - r * 0.15); ctx.lineTo(cx - r * 0.15, cy + r * 0.15);
+          ctx.stroke();
+        });
         break;
       /* The six the world grew. Each one is the *shape of the thing*, not a
          symbol for it — a picture tells you what to go and look for, and a
@@ -1890,6 +2375,7 @@
 
   HUD.refitKey = function (code, st) {
     const rows = (st && st.refit) || [];
+    if (code === "KeyS") { if (st && st.onSell) st.onSell(); return true; }
     if (!rows.length) return false;
     if (code === "ArrowUp")        refit.pick = (refit.pick + rows.length - 1) % rows.length;
     else if (code === "ArrowDown") refit.pick = (refit.pick + 1) % rows.length;
@@ -1904,28 +2390,87 @@
     const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
     const rows = st.refit || [];
-    const salv = st.cash || 0, cap = st.hold || 1;
+    const salv = st.cash || 0;
 
     pageFrame("STATION",
-              "CASH " + salv + " / " + cap,
-              api.touchOnly ? "TAP TO BUY  ·  UNDOCK BELOW"
-                            : "ARROWS MOVE  ·  ENTER BUYS  ·  E OR ESC UNDOCKS");
+              "CASH " + salv,
+              api.touchOnly ? "TAP TO BUY  ·  SELL AND UNDOCK BELOW"
+                            : "ARROWS MOVE  ·  ENTER BUYS  ·  S SELLS  ·  E OR ESC UNDOCKS");
 
-    // The hold, as a bar. One number in two forms, because "can I afford the
-    // next tier" is read off a length faster than off a pair of digits.
-    const bw = SCREEN_W - 68, by = 92;
+    /* ── the buyer ──────────────────────────────────────────────────────────
+       What this station pays, and what your hold is worth to it. This is the
+       whole of the selling half of the economy and it belongs at the top of the
+       page, because it is the thing you came here to do — a shop that shows you
+       prices before it shows you its stock is a shop you can make a decision
+       in. The prices are this station's own, so the row is also the argument
+       for carrying a load somewhere further out next time. */
+    const carriedNow = st.carried || 0;
+    const worth = st.worth || 0;
+    const mats = (st.materials || []);
+    const bw = SCREEN_W - 68, by = 88, bh = 62;
     ctx.save();
-    ctx.strokeStyle = CASH_DIM;
-    ctx.globalAlpha = 0.8;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(34, by, bw, 12);
     ctx.fillStyle = CASH;
-    ctx.globalAlpha = 0.9;
-    ctx.fillRect(35, by + 1, Math.max(0, (bw - 2) * Math.min(1, salv / cap)), 10);
+    ctx.globalAlpha = 0.035;
+    ctx.fillRect(34, by, bw, bh);
+    ctx.strokeStyle = CASH_DIM;
+    ctx.globalAlpha = 0.7;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(34, by, bw, bh);
     ctx.restore();
 
+    label("THIS STATION BUYS", 48, by + 20, SIZE.cap, CASH_DIM, "left", 0.8, "0.16em");
+    // Four columns across the width the SELL button leaves, wide enough that the
+    // longest name and its price cannot meet in the middle.
+    const colStep = 172;
+    mats.forEach((m, i) => {
+      const mx = 48 + i * colStep;
+      label(m.name, mx, by + 44, SIZE.cap, m.colour, "left",
+            m.n ? 1 : 0.45, "0.08em");
+      // The price, then how many of it you have — the price first, because it is
+      // what differs between this station and the next one.
+      label((m.price == null ? m.value : m.price) + "  ×" + m.n,
+            mx + 156, by + 44, SIZE.cap, m.n ? CASH : VIOLET_LOW, "right",
+            m.n ? 0.95 : 0.45);
+    });
+
+    const sellable = carriedNow > 0;
+    api.tapButton(sellable ? "SELL ALL   " + worth : "NOTHING TO SELL",
+                  SCREEN_W - 148, by + bh / 2, 200, 40,
+                  sellable ? CASH : VIOLET_LOW,
+                  sellable ? (st.onSell || (() => {})) : null,
+                  false, sellable);
+
+    /* ── the chandler ───────────────────────────────────────────────────────
+       Water and food, which is the other half of what a station is for now. The
+       price is what is *missing* rather than a flat fee, so topping off before a
+       long trip is never a rip-off — and the button says the number, because a
+       shop that makes you press to find out the price is a shop you do not use
+       when you are down to four minutes of water. */
+    const sy = by + bh + 12, sh = 46;
+    ctx.save();
+    ctx.strokeStyle = ICE;
+    ctx.globalAlpha = 0.35;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(34, sy, SCREEN_W - 68, sh);
+    ctx.restore();
+    label("SUPPLIES", 48, sy + 28, SIZE.cap, ICE, "left", 0.8, "0.16em");
+
+    [["water", "WATER", ICE], ["food", "FOOD", AMBER_DIM]].forEach(([k, name, col], i) => {
+      const m = st[k] || {};
+      const full = m.cost == null;
+      const afford = !full && (st.cash || 0) >= m.cost;
+      const bxx = 250 + i * 250;
+      label(name + "  " + fmtSecs(m.left || 0), bxx - 88, sy + 28, SIZE.cap,
+            m.countdown > 0 ? WARN : col, "left", 0.9, "0.08em");
+      api.tapButton(full ? "FULL" : "FILL  " + m.cost,
+                    bxx + 108, sy + sh / 2, 130, 32,
+                    full ? VIOLET_LOW : afford ? col : WARN,
+                    full ? null : () => st.onBuySupply && st.onBuySupply(k),
+                    false, !full && afford);
+    });
+
     const left = 34, colW = SCREEN_W * 0.56 - 44;
-    const top = 128, rowH = 76, gap = 12;
+    const top = 244, rowH = 62, gap = 8;
 
     rows.forEach((r, i) => {
       const y = top + i * (rowH + gap);
@@ -1942,9 +2487,9 @@
       ctx.strokeRect(left, y, colW, rowH);
       ctx.restore();
 
-      label(r.name, left + 16, y + 28, SIZE.val, maxed ? AMBER : CASH, "left",
+      label(r.name, left + 16, y + 26, SIZE.val, maxed ? AMBER : CASH, "left",
             1, "0.08em");
-      label(r.note, left + 16, y + 50, SIZE.cap, VIOLET_DIM, "left", 0.8);
+      label(r.note, left + 16, y + 46, SIZE.cap, VIOLET_DIM, "left", 0.8);
 
       // Tier pips: three boxes, filled for what is bought. A tier count is a
       // small number and a row of boxes is read without counting.
@@ -1959,7 +2504,7 @@
         ctx.restore();
       }
       label(maxed ? "MAX" : String(r.cost),
-            left + colW - 20, y + 56, SIZE.cap,
+            left + colW - 20, y + 50, SIZE.cap,
             maxed ? AMBER_DIM : (afford ? CASH : WARN), "right",
             maxed ? 0.7 : 1);
 
@@ -1974,21 +2519,23 @@
     label("EARNED, NOT BOUGHT", rx, top - 18, SIZE.cap, VIOLET, "left", 0.75, "0.18em");
 
     (st.unlocks || []).forEach((u, i) => {
-      const y = top + i * 82;
+      const y = top + i * 70;
       ctx.save();
       ctx.strokeStyle = u.have ? VIOLET : VIOLET_LOW;
       ctx.globalAlpha = u.have ? 0.9 : 0.5;
       ctx.lineWidth = 1;
-      ctx.strokeRect(rx, y, rw, 68);
+      ctx.strokeRect(rx, y, rw, 58);
       ctx.restore();
-      label(u.have ? u.name : "LOCKED", rx + 14, y + 26, SIZE.val,
+      label(u.have ? u.name : "LOCKED", rx + 14, y + 24, SIZE.val,
             u.have ? VIOLET : VIOLET_LOW, "left", u.have ? 1 : 0.8, "0.08em");
-      label(u.have ? u.note : (u.at + " almanac entries"), rx + 14, y + 48,
+      label(u.have ? u.note : (u.at + " almanac entries"), rx + 14, y + 44,
             SIZE.cap, u.have ? VIOLET_DIM : VIOLET_LOW, "left", 0.85);
     });
 
-    label("the almanac pays in verbs · the hold pays in numbers",
-          SCREEN_W - 34, SCREEN_H - 30, SIZE.cap, VIOLET_LOW, "right", 0.8);
+    // Above the rule, not on the footer line: at SCREEN_H - 30 it ran into the
+    // key hints on a desk and sat across the UNDOCK button on a phone.
+    label("the almanac pays in verbs · storage pays in numbers",
+          SCREEN_W - 34, SCREEN_H - 70, SIZE.cap, VIOLET_LOW, "right", 0.8);
 
     if (api.touchOnly) {
       api.tapButton("UNDOCK", SCREEN_W / 2, SCREEN_H - 30, 200, 40, VIOLET,
@@ -2016,35 +2563,86 @@
     const colW = (SCREEN_W - 68 - 20) / 2;
     const left = 34, right = left + colW + 20;
 
-    // ── the hold ──────────────────────────────────────────────────────────
-    panel(left, 92, colW, 118, CASH, "THE HOLD");
-    label(cash + " / " + cap, left + 18, 148, SIZE.big,
-          cash >= cap ? WARN : CASH, "left");
-    label("CASH", left + 18, 170, SIZE.cap, CASH_DIM, "left", 0.8, "0.18em");
-    barAt(left + 18, 182, colW - 36, 9, cash / cap, CASH, cash >= cap);
+    /* ── the two pages, at the top ─────────────────────────────────────────
+       The almanac was a line of small type in a corner of a panel further down
+       this page, and the manifest was a panel that only ever showed you what it
+       already knew. Both are pages, so both are doors, and doors go at the top
+       where they are the first thing you see and big enough to be obviously
+       pressable. Everything below them is a readout. */
+    const doors = [
+      { title: "ALMANAC", val: (st.found || 0) + " / " + (st.total || 0),
+        sub: "what is out there, and what you have seen",
+        key: api.touchOnly ? "" : "L", colour: VIOLET,
+        act: st.onAlmanac },
+      { title: "MISSIONS", val: (st.built || 0) + " / " + (st.needs || 6),
+        sub: "what the yard wants, and where to look",
+        key: "", colour: CASH,
+        act: st.onMissions }
+    ];
+    doors.forEach((d, i) => {
+      const x = i === 0 ? left : right;
+      const y = 90, h = 96;
+      const hot = true;
+      ctx.save();
+      ctx.fillStyle = d.colour;
+      ctx.globalAlpha = 0.07;
+      ctx.fillRect(x, y, colW, h);
+      ctx.strokeStyle = d.colour;
+      ctx.globalAlpha = 0.85;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, colW, h);
+      ctx.restore();
+      label(d.title + (d.key ? "   [" + d.key + "]" : ""), x + 20, y + 32,
+            SIZE.val, d.colour, "left", 1, "0.16em");
+      label(d.val, x + colW - 20, y + 36, SIZE.big, d.colour, "right", 1);
+      fitText(d.sub, x + 20, y + 62, SIZE.cap, VIOLET_DIM, "left", 0.75,
+              colW - 40);
+      // The arrow says it opens; the whole panel is the target.
+      label(api.touchOnly ? "TAP TO OPEN  ▸" : "OPEN  ▸", x + 20, y + 82,
+            SIZE.cap, d.colour, "left", 0.7, "0.14em");
+      api.addTap({ x, y, w: colW, h, act: d.act || (() => {}) });
+    });
 
-    // ── what you are carrying ─────────────────────────────────────────────
-    const held = (st.manifest || []).filter(m => m.carrying);
-    panel(left, 226, colW, 132, VIOLET, "CARRYING");
-    if (!held.length) {
-      label("nothing but cash", left + 18, 268, SIZE.val, VIOLET_LOW, "left", 0.8);
-      label("Components go straight to the yard.", left + 18, 292, SIZE.cap,
+    /* ── the bank, and the hold ────────────────────────────────────────────
+       Two panels where there used to be one, because they were one number doing
+       two jobs. Cash has no capacity and cannot be dropped; the hold has both,
+       and what is in it is worth knowing kind by kind — a hold of ice and a
+       hold of iridium are the same weight and nothing like the same trip. */
+    panel(left, 208, colW, 76, CASH, "CASH");
+    label(String(cash), left + 18, 266, SIZE.big, CASH, "left");
+    label("buys refits, food and water",
+          left + 18 + widthOf(String(cash), SIZE.big) + 16, 266, SIZE.cap,
+          CASH_DIM, "left", 0.6);
+
+    const used = st.carried || 0;
+    const mats = st.materials || [];
+    panel(left, 300, colW, 174, VIOLET, "STORAGE   " + used + " / " + cap);
+    barAt(left + 18, 332, colW - 36, 9, cap ? used / cap : 0, VIOLET, used >= cap);
+    mats.forEach((m, i) => {
+      const y = 366 + i * 26;
+      ctx.save();
+      ctx.fillStyle = m.colour;
+      ctx.globalAlpha = m.n ? 0.9 : 0.25;
+      ctx.fillRect(left + 18, y - 9, 9, 9);
+      ctx.restore();
+      fitText(m.name, left + 34, y, SIZE.cap, m.colour, "left",
+              m.n ? 0.95 : 0.4, colW - 130, "0.08em");
+      label(String(m.n), left + colW - 66, y, SIZE.cap,
+            m.n ? m.colour : VIOLET_LOW, "right", m.n ? 1 : 0.4);
+      label("@" + m.value, left + colW - 18, y, SIZE.cap, VIOLET_DIM, "right", 0.55);
+    });
+    if (!used) {
+      label("empty — go and break something", left + 34, 470, SIZE.cap,
             VIOLET_LOW, "left", 0.7);
-    } else {
-      held.forEach((m, i) => {
-        label("▲  " + m.name, left + 18, 268 + i * 24, SIZE.val, CASH, "left");
-      });
-      label("Take them to the yard.", left + 18, 268 + held.length * 24 + 12,
-            SIZE.cap, CASH_DIM, "left", 0.8);
     }
 
     // ── the ship ──────────────────────────────────────────────────────────
-    panel(left, 374, colW, 176, AMBER, "THE SHIP");
+    panel(right, 208, colW, 166, AMBER, "THE SHIP");
     (st.refit || []).forEach((r, i) => {
-      const y = 414 + i * 34;
-      fitText(r.name, left + 18, y, SIZE.cap, AMBER_DIM, "left", 0.9, colW - 130);
+      const y = 248 + i * 32;
+      fitText(r.name, right + 18, y, SIZE.cap, AMBER_DIM, "left", 0.9, colW - 130);
       for (let t = 0; t < r.max; t++) {
-        const px = left + colW - 24 - (r.max - t) * 18;
+        const px = right + colW - 24 - (r.max - t) * 18;
         ctx.save();
         ctx.strokeStyle = CASH_DIM;
         ctx.globalAlpha = 0.9;
@@ -2055,30 +2653,10 @@
       }
     });
 
-    // ── the manifest ──────────────────────────────────────────────────────
-    const done = st.built || 0, need = st.needs || 6;
-    panel(right, 92, colW, 266, VIOLET, "THE YARD   " + done + " / " + need);
-    (st.manifest || []).forEach((m, i) => {
-      const y = 130 + i * 38;
-      const on = m.have;
-      label(on ? "✓" : (m.carrying ? "▲" : "·"), right + 18, y, SIZE.val,
-            on ? CASH : (m.carrying ? CASH : VIOLET_LOW), "left");
-      fitText(m.name, right + 40, y, SIZE.cap, on ? CASH : VIOLET,
-              "left", on ? 0.75 : 1, colW - 60);
-      if (!on && !m.carrying) {
-        fitText(m.where, right + 40, y + 17, SIZE.cap, AMBER_DIM, "left", 0.7,
-                colW - 60);
-      }
-    });
-
     // ── what the almanac has bought ───────────────────────────────────────
-    panel(right, 374, colW, 176, VIOLET, "EARNED");
-    label("ALMANAC  " + (st.found || 0) + " / " + (st.total || 0),
-          right + 18, 412, SIZE.val, VIOLET, "left");
-    api.addTap({ x: right, y: 374, w: colW, h: 52,
-                 act: st.onAlmanac || (() => {}) });
+    panel(right, 390, colW, 122, VIOLET, "EARNED, NOT BOUGHT");
     (st.unlocks || []).forEach((u, i) => {
-      const y = 444 + i * 30;
+      const y = 430 + i * 28;
       label(u.have ? "✓" : "·", right + 18, y, SIZE.cap,
             u.have ? CASH : VIOLET_LOW, "left");
       fitText(u.have ? u.name : "locked — " + u.at + " entries",
@@ -2086,9 +2664,10 @@
               u.have ? 0.95 : 0.6, colW - 60);
     });
 
-    /* Food and water belong on this page and are not here yet — they arrive
-       with the survival phase, and a meter that does not move is worse than an
-       honest gap. See SURVEY-PLAN.md, phase 2. */
+    /* Food and water are on this page as of phase 2 — as a percentage each on
+       the flight panel, and as time on whichever shop you are standing in. They
+       are not repeated here: the two numbers that matter about a tank are how
+       full it is and what a fill costs, and neither of those is an inventory. */
 
     closeButton(st.onClose || (() => {}));
   };
@@ -2125,6 +2704,13 @@
      which six things it is still short of — with the clue for each one you have
      not brought in yet. The clue is the whole navigation system, so this is the
      page you come back to when you do not know where to go next. */
+  /* One page, two ways in. Docking at the yard opens it because that is where the
+     parts go; the inventory opens it because "what am I looking for" is a
+     question you ask a long way from the yard, and the answer used to be a
+     permanent band across the top of the flight screen. `atYard` is the only
+     difference: the same content, and a footer that names the key you arrived by. */
+  HUD.drawMissions = function (st, dt) { HUD.drawYardPage(st, dt); };
+
   HUD.drawYardPage = function (st, dt) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
@@ -2132,9 +2718,10 @@
     const done = st.built || 0, need = st.needs || 6;
     const finished = done >= need;
 
-    pageFrame("THE YARD",
+    pageFrame(st.atYard ? "THE YARD" : "MISSIONS",
               done + " OF " + need + " FITTED",
-              api.touchOnly ? "CLOSE BELOW" : "E OR ESC LEAVES");
+              api.touchOnly ? "CLOSE BELOW"
+                            : st.atYard ? "E OR ESC LEAVES" : "ESC OR I CLOSES");
 
     label(finished ? b.name + " — BUILT" : "BUILDING:  " + b.name,
           SCREEN_W / 2, 118, SIZE.big, finished ? CASH : VIOLET, "center", 1, "0.1em");
@@ -2147,7 +2734,7 @@
 
     // Progress as the thing itself: a ring that fills a segment per part, the
     // same shape the yard draws out in the world.
-    const cx = SCREEN_W / 2, cy = 236, r = 34;
+    const cx = SCREEN_W / 2, cy = 214, r = 30;
     ctx.save();
     ctx.strokeStyle = VIOLET_LOW;
     ctx.lineWidth = 1;
@@ -2161,7 +2748,10 @@
       });
     }
 
-    const top = 296, rowH = 56;
+    /* Tightened to leave a row for the light drive underneath. Six manifest rows
+       at 56 apiece ran to y 624, and the panel below them landed on the footer
+       and straight through the CLOSE button. */
+    const top = 262, rowH = 46;
     const left = 60, w = SCREEN_W - 120;
     (st.manifest || []).forEach((m, i) => {
       const y = top + i * rowH;
@@ -2175,19 +2765,258 @@
       ctx.strokeRect(left, y, w, rowH - 8);
       ctx.restore();
 
-      label(m.have ? "✓" : m.carrying ? "▲" : "·", left + 18, y + 30,
+      label(m.have ? "✓" : m.carrying ? "▲" : "·", left + 18, y + 25,
             SIZE.val, colour, "left");
-      fitText(m.name, left + 44, y + 24, SIZE.val, colour, "left",
-              m.have ? 0.6 : 1, w - 220);
+      fitText(m.name, left + 44, y + 19, SIZE.cap, colour, "left",
+              m.have ? 0.6 : 1, w - 220, "0.06em");
       fitText(m.have ? "fitted" : m.carrying ? "aboard — drop it here" : m.clue,
-              left + 44, y + 42, SIZE.cap,
+              left + 44, y + 34, SIZE.cap,
               m.have ? CASH_DIM : m.carrying ? CASH : AMBER_DIM, "left",
               m.have ? 0.5 : 0.85, w - 220);
-      label(state.toUpperCase(), left + w - 18, y + 30, SIZE.cap, colour,
+      label(state.toUpperCase(), left + w - 18, y + 25, SIZE.cap, colour,
             "right", m.have ? 0.5 : 0.8, "0.14em");
     });
 
+    /* The yard's second project, and the only one you buy rather than fetch.
+       Shown only once the first is finished: offering it alongside six parts you
+       have not found yet would make the page a list of two things you cannot
+       have, and the wormhole is what teaches you the yard is worth coming back
+       to at all. */
+    const L = st.light;
+    if (finished && L) {
+      const by = top + (st.manifest || []).length * rowH + 10;
+      ctx.save();
+      ctx.fillStyle = ICE;
+      ctx.globalAlpha = L.have ? 0.05 : 0.03;
+      ctx.fillRect(left, by, w, 62);
+      ctx.strokeStyle = ICE;
+      ctx.globalAlpha = L.have ? 0.85 : 0.5;
+      ctx.lineWidth = L.have ? 2 : 1;
+      ctx.strokeRect(left, by, w, 62);
+      ctx.restore();
+      label(L.have ? L.name + " — FITTED" : L.name, left + 18, by + 26,
+            SIZE.val, ICE, "left", 1, "0.1em");
+      fitText(L.have ? L.does : L.blurb, left + 18, by + 48, SIZE.cap,
+              L.have ? ICE : VIOLET_DIM, "left", 0.8, w - 260);
+      if (!L.have) {
+        api.tapButton("BUILD IT   " + L.cost, left + w - 120, by + 31, 190, 38,
+                      L.afford ? ICE : WARN,
+                      L.afford ? (st.onBuildLight || (() => {})) : null,
+                      false, !!L.afford);
+      } else {
+        label(api.touchOnly ? "READY" : "READY  ·  [R] TO RUN",
+              left + w - 18, by + 36, SIZE.cap, ICE, "right", 0.8, "0.14em");
+      }
+    }
+
     closeButton(st.onClose || (() => {}));
+  };
+
+  /* ═══ YOU DIED ════════════════════════════════════════════════════════════
+     The one page in the mode that is about what just happened rather than what
+     to do next, and the only place a run's numbers are ever stated. It gets the
+     whole screen and one way off it.
+
+     Four facts, in the order you want them: what killed you, where you were,
+     how long you had been out, and what went down with the ship. The last of
+     those is the one that stings, so it is itemised — "you lost 43 units" is a
+     number and "you lost 19 iridium" is a memory. */
+  HUD.drawDeath = function (st, dt) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    st = st || {};
+    const d = st.death;
+    if (!d) return;
+
+    ctx.save();
+    ctx.fillStyle = INK;
+    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    ctx.restore();
+
+    // A border, closing in, the way the warning that failed to save you did.
+    const beat = 0.5 + 0.5 * Math.abs(Math.sin(Date.now() / 900));
+    ctx.save();
+    ctx.strokeStyle = WARN;
+    for (let i = 0; i < 5; i++) {
+      ctx.globalAlpha = (0.06 + beat * 0.08) * (1 - i / 5);
+      ctx.lineWidth = 3;
+      const inset = 2 + i * 8;
+      ctx.strokeRect(inset, inset, SCREEN_W - inset * 2, SCREEN_H - inset * 2);
+    }
+    ctx.restore();
+
+    const cx = SCREEN_W / 2;
+    label("YOU DIED", cx, 148, SIZE.huge, WARN, "center", 1, "0.3em");
+    fitText(d.reason, cx, 186, SIZE.val, AMBER, "center", 0.95, SCREEN_W - 200);
+
+    /* The run, as three numbers on one line. Where, how far, how long — the
+       three things you will want to say out loud about it. */
+    const cols = [
+      { cap: "HOW FAR OUT", val: fmtCells(d.dist) + " UNITS", colour: VIOLET },
+      { cap: "SECTOR",      val: d.band,                      colour: VIOLET },
+      { cap: "LASTED",      val: fmtClock(d.lasted),          colour: VIOLET }
+    ];
+    const cw = 260;
+    cols.forEach((c, i) => {
+      const x = cx + (i - 1) * cw;
+      label(c.cap, x, 250, SIZE.cap, VIOLET_DIM, "center", 0.7, "0.18em");
+      fitText(c.val, x, 282, SIZE.head, c.colour, "center", 1, cw - 24);
+    });
+
+    /* Two columns, and they are the whole argument of the screen: this is what
+       it cost, and this is what you still have. A death screen that lists only
+       losses reads as a wipe, and this is not one — the almanac, the yard, the
+       chart and the money all survive, and saying so is the difference between
+       "start again" and "go back out".
+
+       Each column gets its own half and neither may reach into the other, which
+       is not a stylistic point: the worth line used to be right-aligned to the
+       box's far edge and printed straight through the right column. */
+    const bw = 780, bx = cx - bw / 2, by = 320, bh = 196;
+    const half = bw / 2;
+    const lx = bx + 22, rx = bx + half + 22, colW = half - 44;
+    ctx.save();
+    ctx.fillStyle = WARN;
+    ctx.globalAlpha = 0.03;
+    ctx.fillRect(bx, by, half, bh);
+    ctx.fillStyle = CASH;
+    ctx.fillRect(bx + half, by, half, bh);
+    ctx.globalAlpha = 0.4;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = WARN;
+    ctx.strokeRect(bx, by, half, bh);
+    ctx.strokeStyle = CASH_DIM;
+    ctx.strokeRect(bx + half, by, half, bh);
+    ctx.restore();
+
+    label("LOST WITH THE SHIP", lx, by + 26, SIZE.cap, WARN, "left", 0.85, "0.16em");
+    const carried = (d.hold || []).filter(m => m.n);
+    if (!carried.length) {
+      fitText("empty storage — the one mercy", lx, by + 68, SIZE.val,
+              VIOLET_LOW, "left", 0.8, colW);
+    } else {
+      carried.forEach((m, i) => {
+        const y = by + 60 + i * 26;
+        ctx.save();
+        ctx.fillStyle = m.colour;
+        ctx.globalAlpha = 0.85;
+        ctx.fillRect(lx, y - 9, 9, 9);
+        ctx.restore();
+        fitText(m.name, lx + 16, y, SIZE.cap, m.colour, "left", 0.9,
+                colW - 80, "0.08em");
+        label(String(m.n), lx + colW, y, SIZE.cap, m.colour, "right", 1);
+      });
+      // On its own line under the list, never beside it.
+      fitText("worth about " + d.worth + " cash", lx, by + bh - 22, SIZE.cap,
+              WARN, "left", 0.7, colW);
+    }
+
+    label("STILL YOURS", rx, by + 26, SIZE.cap, CASH_DIM, "left", 0.85, "0.16em");
+    const keeps = [
+      d.cash + " CASH",
+      d.found + " ALMANAC " + (d.found === 1 ? "ENTRY" : "ENTRIES"),
+      fmtCells(d.charted) + " CELLS CHARTED",
+      "the yard and everything fitted"
+    ];
+    keeps.forEach((k, i) => {
+      fitText("·  " + k, rx, by + 60 + i * 26, SIZE.cap, CASH_DIM, "left",
+              0.8, colW);
+    });
+
+    if (st.deaths > 1) {
+      label("DEATH " + st.deaths, cx, by + bh + 30, SIZE.cap, VIOLET_LOW,
+            "center", 0.6, "0.2em");
+    }
+
+    api.tapButton(api.touchOnly ? "BACK TO THE STATION"
+                                : "BACK TO THE STATION   [ENTER]",
+                  cx, SCREEN_H - 44, 420, 46, CASH, st.onRespawn || (() => {}));
+  };
+
+  /* ═══ A WORLD YOU CAN LAND ON ═════════════════════════════════════════════
+     About one world in twenty has somebody on it, and what they have is water
+     and food. Deliberately not a station: no cargo bought, no refits sold, no
+     almanac verbs — a station is a shipyard and this is a village with a well.
+     Keeping the two apart is what makes finding a station matter.
+
+     The page is small on purpose. It answers "can I fill up here, and what will
+     it cost", and then it gets out of the way. */
+  HUD.drawLanded = function (st, dt) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    st = st || {};
+    const w = st.landed;
+    if (!w) return;
+    const colour = w.colour || CASH;
+
+    pageFrame(w.name,
+              w.band + "  ·  " + fmtCells(w.dist) + " UNITS FROM ORIGIN",
+              api.touchOnly ? "CLOSE BELOW" : "E OR ESC LEAVES");
+
+    label("INHABITED", SCREEN_W / 2, 132, SIZE.head, colour, "center", 1, "0.24em");
+    fitText(w.air ? "there is air here, and people in it"
+                  : "airless, and lived in anyway",
+            SCREEN_W / 2, 162, SIZE.cap, VIOLET_DIM, "center", 0.8, SCREEN_W - 200);
+
+    /* The world itself, drawn at the size the page has room for rather than the
+       size it is — you are standing on it, so a to-scale drawing would be a
+       straight line across the screen. */
+    const cx = SCREEN_W / 2, cy = 268, r = 62;
+    ctx.save();
+    api.glow(colour, 2.4, 0.9, () => {
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    });
+    if (w.air) {
+      api.glow(colour, 2, 0.3, () => {
+        ctx.beginPath(); ctx.arc(cx, cy, r * 1.12, 0, Math.PI * 2); ctx.stroke();
+      });
+    }
+    api.glow(colour, 1.2, 0.5, () => {
+      for (const f of [-0.5, -0.15, 0.2, 0.55]) {
+        const yy = f * r, half = Math.sqrt(Math.max(0, r * r - yy * yy));
+        ctx.beginPath();
+        ctx.moveTo(cx - half, cy + yy); ctx.lineTo(cx + half, cy + yy);
+        ctx.stroke();
+      }
+    });
+    ctx.restore();
+
+    // ── the well and the market ────────────────────────────────────────────
+    label("CASH  " + (st.cash || 0), SCREEN_W / 2, 372, SIZE.val, CASH,
+          "center", 1, "0.1em");
+
+    [["water", "WATER", ICE], ["food", "FOOD", AMBER_DIM]].forEach(([k, name, col], i) => {
+      const m = st[k] || {};
+      const full = m.cost == null;
+      const afford = !full && (st.cash || 0) >= m.cost;
+      const x = SCREEN_W / 2 + (i === 0 ? -180 : 180);
+      label(name, x, 424, SIZE.cap, m.countdown > 0 ? WARN : col, "center",
+            0.85, "0.18em");
+      label(m.countdown > 0 ? fmtSecs(m.countdown) : fmtSecs(m.left || 0),
+            x, 456, SIZE.head, m.countdown > 0 ? WARN : col, "center", 1);
+      barAt(x - 90, 470, 180, 9, m.frac || 0, col, m.countdown > 0);
+      api.tapButton(full ? "FULL" : "FILL  " + m.cost,
+                    x, 516, 200, 40,
+                    full ? VIOLET_LOW : afford ? col : WARN,
+                    full ? null : () => st.onBuySupply && st.onBuySupply(k),
+                    false, !full && afford);
+    });
+
+    /* The free option, stated where it is relevant. A player who cannot afford
+       the water needs to be told there is another way, and this is the only
+       screen that knows both facts at once. */
+    if (w.air) {
+      fitText("or fly through the atmosphere and skim it for nothing — " +
+              "it is slow, and it is free",
+              SCREEN_W / 2, 566, SIZE.cap, ICE, "center", 0.7, SCREEN_W - 160);
+    }
+
+    closeButton(st.onClose || (() => {}));
+  };
+
+  const fmtClock = s => {
+    const t = Math.max(0, Math.round(s));
+    const m = Math.floor(t / 60);
+    if (m >= 60) return Math.floor(m / 60) + "h " + (m % 60) + "m";
+    return m + "m " + String(t % 60).padStart(2, "0") + "s";
   };
 
   window.CrossfireSurveyHUD = HUD;

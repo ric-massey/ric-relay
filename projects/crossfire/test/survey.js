@@ -238,7 +238,20 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const { cf } = boot("?debug=1&seed=20260909");
   cf.start("survey", 1);
   cf.hold("KeyW", true);
-  for (let i = 0; i < 21600; i++) { now += 1000 / 60; cf.step(); }
+  const me = cf.live().ships[0];
+  /* Held invulnerable and provisioned for the whole run, deliberately. This test
+     is about the *world* — that space keeps being generated, that nothing clamps
+     or snaps back, that there is no wall — and since phase 2 a ship flying flat
+     out through six minutes of asteroids will die somewhere in the middle of it.
+     A dead ship stops moving, and the test then failed as "only reached 35,000
+     units", which measures the pilot and says nothing whatever about the edge of
+     the map. Survival is checked in its own blocks; this one checks the sector. */
+  for (let i = 0; i < 21600; i++) {
+    now += 1000 / 60;
+    me.invuln = Math.max(me.invuln, 1);
+    cf.setTanks(600, 1200);
+    cf.step();
+  }
   const s = cf.live().ships[0];
   const far = Math.hypot(s.x, s.y);
   check(far > 60000, "six minutes of full burn only reached " + Math.round(far) + " units");
@@ -247,6 +260,8 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
         "the rock field did not follow the ship out: " + cf.live().rocks.length + " left");
   const near = cf.live().hazards.some(h => Math.hypot(h.x - s.x, h.y - s.y) < 20000);
   check(near, "no hazards generated " + Math.round(far) + " units out — space ran out");
+  check(cf.peek().state === "playing",
+        "six minutes of held-invulnerable flight still ended on a page");
   console.log("  endless    " + Math.round(far) + " units out in six minutes · " +
               cf.live().hazards.length + " hazards and " + cf.live().rocks.length +
               " rocks still around the ship · no wall");
@@ -284,8 +299,8 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   // drives the ship directly: full burn, turning steadily, which sweeps a
   // wide arc of the sector and walks it into whatever is out there.
   const MAX = 14400;                     // four minutes of world time
-  let frames = 0, everDead = false, nonFinite = false;
-  let maxSpeed = 0, recoveries = 0, lastHull = me.hull;
+  let frames = 0, nonFinite = false;
+  let maxSpeed = 0, recoveries = 0, lastHull = me.hull, deaths = 0, reached = 0;
   const chartAt = [];
   while (frames < MAX) {
     now += 1000 / 60;
@@ -312,12 +327,21 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     if (frames % 400 === 0) cf.draw();      // the panel must survive the real path
 
     const s = cf.live().ships[0];
-    if (s.dead) everDead = true;
+    /* `s.dead` is the multiplayer flag and Survey never sets it; death here is a
+       state, and it is handled below by going back out. */
     if (!Number.isFinite(s.x) || !Number.isFinite(s.y) ||
         !Number.isFinite(s.vx) || !Number.isFinite(s.vy)) nonFinite = true;
     maxSpeed = Math.max(maxSpeed, Math.hypot(s.vx, s.vy));
     if (s.hull > lastHull + 0.9) recoveries++;      // a jump back to full
     lastHull = s.hull;
+    /* Flying this recklessly for four minutes now kills you, which it did not
+       before phase 2 — so the harness does what a player does and goes back out.
+       Without this the ship dies at about the ninety-second mark, `step()` stops
+       moving a dead ship, and the charting simply plateaus: the test failed as
+       "charted only 127 cells", which is a true statement about a symptom and
+       says nothing at all about the cause. */
+    if (cf.peek().state === "died") { deaths++; cf.respawn(); }
+    reached = Math.max(reached, Math.hypot(s.x - startedAt.x, s.y - startedAt.y));
     if (frames % 1800 === 0) chartAt.push(hud.charted());
     frames++;
   }
@@ -326,8 +350,11 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   // and the catalogue never run under step() alone, and neither does the pause
   // menu sitting over a live sector.
   const chartedAfter = hud.charted();
-  const travelled = Math.hypot(cf.live().ships[0].x - startedAt.x,
-                               cf.live().ships[0].y - startedAt.y);
+  /* How far it ever got, not where it finished. Respawning puts you back at the
+     home station, so end-to-end displacement is near zero after any death —
+     which failed this check about one run in four and had nothing whatever to do
+     with what the check is for. */
+  const travelled = reached;
 
   /* Every screen Survey can reach has to draw. The chart and the almanac are
      their own pages now, so they never run under step() alone — and neither
@@ -352,16 +379,23 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(cf.live().ships.length === 1,
         "Survey fielded " + cf.live().ships.length + " ships when asked for four");
 
-  check(!everDead, "a ship died in Survey — the mode has no death");
   check(!nonFinite, "a ship's position or velocity went non-finite");
   check(chartedAfter > 250,
         "four minutes of flying charted only " + chartedAfter + " cells");
-  check(travelled > 8000, "the ship never got anywhere: " + Math.round(travelled) + " units");
+  check(travelled > 8000,
+        "the ship never got further than " + Math.round(travelled) + " units out");
   check(surv.found.size > 0, "four minutes of flying found no catalogue entry at all");
+  /* Death is a real state now, so the thing worth asserting is that it is
+     *survivable* end to end: however many times this walk kills itself, the
+     mode has to come back from every one of them and still be flying. A run
+     that could not recover would show up here as a plateau. */
+  check(cf.live().ships[0].alive, "the mode never came back from a death");
+  check(cf.peek().state === "playing", "four minutes ended stuck on a page");
   console.log("  flying     " + frames + " frames · charted " +
               chartAt.join(" → ") + " cells (" + chartedAfter + " final) · found " +
-              surv.found.size + "/" +
-              cf.catalogue().length + " · " + recoveries + " recoveries · no death");
+              surv.found.size + "/" + cf.catalogue().length + " · " +
+              deaths + (deaths === 1 ? " death" : " deaths") +
+              ", recovered from every one · reached " + Math.round(travelled) + "u");
 }
 
 // ── 4. every entry can actually fire ──────────────────────────────────────
@@ -437,8 +471,6 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(charted > 0.01, "nothing to save — the ship charted nothing");
   const packed = hud.exportFog();
   check(packed.length > 0, "the fog did not export");
-  const packedTrail = hud.exportTrail();
-  check(packedTrail.length > 0, "the trail did not export");
 
   // Round-trip through the same path local storage uses.
   hud.reset();
@@ -446,7 +478,10 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(hud.importFog(packed) === true, "the fog did not import back");
   check(Math.abs(hud.charted() - charted) < 1e-9,
         "the chart changed across a save: " + charted + " → " + hud.charted());
-  check(hud.importTrail(packedTrail) === true, "the trail did not import back");
+  /* There is no trail any more — it was the same fact the fog already carries,
+     drawn a second time on a page that had run out of room for it. The book
+     must not still be writing one, or every save carries a dead field. */
+  check(typeof hud.exportTrail !== "function", "the trail export is still there");
   check(hud.importFog("nonsense~~") === false, "a corrupt chart was accepted");
   check(hud.importFog("") === false, "an empty chart was accepted");
   check(hud.importFog("AAA") === false, "a truncated chart was accepted");
@@ -463,6 +498,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     const book = JSON.parse(raw);
     check(book.seed === 5150, "the book saved the wrong seed: " + book.seed);
     check(typeof book.fog === "string" && book.fog.length > 0, "the book saved no chart");
+    check(book.trail === undefined, "the book is still writing a trail");
     const again = bootKeepingStorage("?debug=1&seed=5150");
     again.cf.start("survey", 1);
     check(again.cf.hud().charted() > chartedBefore * 0.99,
@@ -539,59 +575,239 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               Math.round(deepest) + " units)");
 }
 
-// ── 8. cash, the hold, and the refit ──────────────────────────────────────
-/* The numbers track, end to end: cash goes in, the hold caps it, the station
-   spends it, and the ship that comes out is measurably better than the one that
-   went in. Each step is checked rather than the total, because a progression
-   that silently stops paying out is the failure players actually hit. */
+// ── 8. materials, the hold, selling, and the refit ────────────────────────
+/* The loop, end to end, in the order a player meets it: break something, carry
+   what came out, find a station, sell it, spend the money. Every step is
+   checked rather than the total, because a progression that silently stops
+   paying out is the failure players actually hit.
+
+   The two halves are deliberately separate now. Material is cargo: it is capped
+   by the hold, it spills when the hull goes, and it cannot buy anything. Cash
+   is money: it is uncapped, it survives a hull strike, and it is the only thing
+   a station takes. Conflating them was the old design, and it made every rock
+   in the sector worth exactly the same as every other. */
 {
   const { cf } = boot("?debug=1&seed=99");
   cf.start("survey", 1);
   const surv = cf.survey();
   const lv = cf.live();
   const me = lv.ships[0];
+  const KINDS = ["ice", "iron", "alloy", "iridium"];
+  const total = () => KINDS.reduce((t, k) => t + (surv.hold[k] || 0), 0);
 
-  check(surv.cash === 0, "a fresh sector started with cash in the hold");
+  check(surv.cash === 0, "a fresh sector started with money in the bank");
+  check(total() === 0, "a fresh sector started with cargo in the hold");
+
+  // Every material has to be reachable, or a kind that cannot be found is a
+  // kind that is a lie on the inventory page.
+  const seen = new Set();
+  for (let i = 0; i < 4000; i++) seen.add(cf.rollMaterial("rock", 0.2));
+  for (let i = 0; i < 4000; i++) seen.add(cf.rollMaterial("cache", 0.9));
+  for (const k of KINDS) check(seen.has(k), "no source ever yields " + k);
+
+  /* Depth has to actually move the table. Not "sometimes richer" — measurably
+     richer, or the whole reason to fly a long way is decoration. */
+  const richness = deep => {
+    let v = 0;
+    for (let i = 0; i < 6000; i++) {
+      const k = cf.rollMaterial("rock", deep);
+      v += k === "iridium" ? 22 : k === "alloy" ? 9 : k === "iron" ? 3 : 1;
+    }
+    return v / 6000;
+  };
+  const home = richness(0), abyss = richness(1);
+  check(abyss > home * 1.5,
+        "deep rock is only " + (abyss / home).toFixed(2) + "x home rock");
 
   // Fill the hold past its cap and prove it stops rather than overflowing.
-  const before = surv.cash;
   for (let i = 0; i < 400; i++) {
-    surv.motes.push({ x: me.x, y: me.y, vx: 0, vy: 0, spin: 0, life: 90 });
+    surv.motes.push({ x: me.x, y: me.y, vx: 0, vy: 0, spin: 0, life: 90,
+                      mat: KINDS[i % 4] });
     now += 1000 / 60; cf.step();
   }
-  check(surv.cash > before, "collecting cash did not add any");
+  check(total() > 0, "collecting motes put nothing in the hold");
   check(surv.t.laden === true, "a full hold did not register");
-  const capped = surv.cash;
+  check(surv.cash === 0, "picking material up paid out cash directly");
+  const cap = cf.surveyView().hold;
+  check(total() === cap, "the hold holds " + total() + " against a cap of " + cap);
 
-  surv.motes.push({ x: me.x, y: me.y, vx: 0, vy: 0, spin: 0, life: 90 });
+  surv.motes.push({ x: me.x, y: me.y, vx: 0, vy: 0, spin: 0, life: 90, mat: "iron" });
   now += 1000 / 60; cf.step();
-  check(surv.cash === capped,
-        "the hold took " + (surv.cash - capped) + " past its own cap");
+  check(total() === cap, "the hold took " + (total() - cap) + " past its own cap");
 
-  // The refit: it must cost, and it must change the ship.
+  // Selling. It needs a station, it empties the hold, and it pays by kind —
+  // a hold of iridium must be worth more than the same hold of ice.
+  check(cf.surveyView().onSell() === 0, "sold a hold with no station to sell it to");
+  surv.docked = { x: 0, y: 0 };
+  const carried = total();
+  const got = cf.surveyView().onSell();
+  check(got > 0, "a station bought a full hold for nothing");
+  check(total() === 0, "selling left " + total() + " units aboard");
+  check(surv.cash === got, "the money did not arrive: " + surv.cash + " vs " + got);
+  check(got > carried, "a mixed hold sold for less than one cash a unit");
+  check(surv.t.sold === true, "selling did not register");
+
+  /* Price by place. Home is at the origin with no depth behind it, so a station
+     a long way out has to pay better for the same rock — that difference is the
+     only reason to carry a load past the first shop you see. */
+  const priceAt = (x, y) => {
+    surv.docked = { x, y };
+    return cf.surveyView().materials.find(m => m.key === "iridium").price;
+  };
+  const atHome = priceAt(0, 0), atDeep = priceAt(210000, 0);
+  check(atDeep > atHome,
+        "deep space pays " + atDeep + " for iridium where home pays " + atHome);
+  surv.docked = { x: 0, y: 0 };
+
+  // The refit: it must cost cash, and it must change the ship.
   const hullBefore = me.maxHull, thrustBefore = me.thrustMul || 1;
+  surv.cash = 5000;
   const purse = surv.cash;
-  check(purse >= 40, "the hold cap is too small to buy anything — test is stale");
-  check(cf.buy("hull") === true, "could not buy a hull tier with a full hold");
+  check(cf.buy("hull") === true, "could not buy a hull tier with money in hand");
   check(surv.cash < purse, "buying a tier did not spend any cash");
+  check(total() === 0, "buying a tier took material out of the hold");
   check(me.maxHull > hullBefore,
         "a hull tier did not raise max hull (" + hullBefore + " → " + me.maxHull + ")");
-  surv.cash = 500;                    // top the hold up between purchases
   check(cf.buy("thrust") === true, "could not buy a drive tier");
   check((me.thrustMul || 1) > thrustBefore, "a drive tier did not raise thrust");
   check(surv.t.refitted === true, "refitting did not register");
 
-  // And it must refuse when the hold is empty.
+  // And it must refuse when the money is gone — a full hold is not money.
   surv.cash = 0;
-  check(cf.buy("hull") === false, "bought a tier with an empty hold");
+  surv.hold.iridium = 60;
+  check(cf.buy("hull") === false, "a hold full of iridium bought a tier by itself");
+  surv.hold.iridium = 0;
 
   // A track runs out at its last tier rather than taking money forever.
-  surv.cash = 100000;
+  surv.cash = 1000000;
   let bought = 0;
   while (cf.buy("hold")) bought++;
   check(bought <= 3, "the cargo track sold " + bought + " tiers past its cap");
   check(cf.buy("hold") === false, "a maxed track kept selling");
-  console.log("  economy    hold caps · a refit costs and lands · maxed tracks stop selling");
+  console.log("  economy    4 materials, all reachable · deep rock " +
+              (abyss / home).toFixed(1) + "x richer · hold caps at " + cap +
+              " · a hold sold for " + got + " · refits cost cash, not cargo");
+}
+
+// ── 8b. the hull runs down, and zero is the last warning ──────────────────
+/* Phase 2.1. The hull used to reset at zero and cost you half your hold, so the
+   worst thing in the mode was a wasted trip. Now it runs to zero and *stops*,
+   which is survivable and is meant to be terrifying, and the next thing that
+   touches you kills you. Both halves are checked, because a hull that kills at
+   zero instead of at minus-one is a mode with no grace in it, and a hull that
+   never kills at all is the old one. */
+{
+  const { cf } = boot("?debug=1&seed=4242");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const full = me.maxHull;
+  check(full >= 5, "a stock survey hull is only " + full);
+
+  // Every point of it, one hit at a time, and none of them may be fatal.
+  for (let i = 0; i < full; i++) {
+    me.invuln = 0;
+    cf.hurt("rock");
+    check(surv.death === null,
+          "died with " + me.hull + " of " + full + " hull left");
+  }
+  check(me.hull === 0, "the hull bottomed out at " + me.hull + ", not 0");
+  check(cf.surveyView().critical === true,
+        "an empty hull did not read as critical to the panel");
+  check(cf.peek().state === "playing", "zero hull ended the run by itself");
+
+  // And the next one does it.
+  me.invuln = 0;
+  cf.hurt("rock");
+  check(surv.death !== null, "a hit at zero hull did not kill");
+  check(cf.peek().state === "died", "dying did not open the death page");
+  console.log("  hull       " + full + " points, one a hit · zero survives and " +
+              "warns · the next hit kills");
+}
+
+// ── 8c. what a death costs, and what it must not ──────────────────────────
+/* The rule the phase turns on. A death has to hurt enough to make a long haul
+   home worth being nervous about, and it must never take anything you *learned*
+   or *built* — an almanac or a yard you can lose is a mode that punishes you for
+   playing it. Cash stays for the same reason it survived a hull strike before:
+   money already banked is not aboard the ship. */
+{
+  const { cf } = boot("?debug=1&seed=4242");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+
+  surv.hold.ice = 20; surv.hold.iridium = 8;
+  surv.cash = 900;
+  for (const e of cf.catalogue().slice(0, 9)) surv.found.add(e.key);
+  const parts = cf.surveyView().manifest;
+  surv.built.add(parts[0].key);
+  surv.carrying.add(parts[1].key);
+  surv.pins.push({ x: 4000, y: -2000, kind: "cache" });
+  me.x = 148000; me.y = -96000;
+
+  for (let i = 0; i < 400; i++) { now += 1000 / 60; cf.step(); }
+  const lastedBefore = cf.surveyView().lasted;
+  check(lastedBefore > 5, "the run clock is not running: " + lastedBefore);
+  /* Read *after* the flying, not before: six seconds at 148,000 units out logs
+     deep-space entries of its own, and the point of the check is that dying
+     takes none — not that the number happens to be nine. */
+  const foundBefore = surv.found.size;
+  const chartedNow = cf.hud().charted();
+
+  cf.die("hole");
+  const d = surv.death;
+  check(!!d, "the ship did not die");
+
+  // The page has to be able to say all four things.
+  check(/black hole/.test(d.reason), "the cause did not survive: " + d.reason);
+  check(d.dist > 140000, "the death recorded " + d.dist + " units out");
+  check(typeof d.band === "string" && d.band.length > 0, "no band was recorded");
+  check(Math.abs(d.lasted - lastedBefore) < 1,
+        "the run length was not recorded: " + d.lasted + " vs " + lastedBefore);
+  check(d.lost === 28, "it recorded " + d.lost + " units lost, not 28");
+  check(d.worth > 100, "28 units including iridium were valued at " + d.worth);
+
+  // Gone: the hold, and only the hold.
+  check(["ice", "iron", "alloy", "iridium"]
+          .every(k => surv.hold[k] === 0),
+        "the hold survived a death: " + JSON.stringify(surv.hold));
+  // Kept: everything the run earned.
+  check(surv.cash === 900, "dying took " + (900 - surv.cash) + " cash");
+  check(surv.found.size === foundBefore,
+        "dying took almanac entries: " + foundBefore + " → " + surv.found.size);
+  check(surv.built.has(parts[0].key), "dying unfitted a yard part");
+  check(surv.carrying.has(parts[1].key), "dying dropped a part you were carrying");
+  check(surv.pins.length === 1, "dying wiped the pins");
+  check(cf.hud().charted() >= chartedNow, "dying wiped the chart");
+  check(surv.deaths === 1, "the death was not counted: " + surv.deaths);
+
+  // Coming back: at the home station, whole, with the clock restarted.
+  cf.respawn();
+  const home = cf.home();
+  check(cf.peek().state === "playing", "respawning did not resume the game");
+  check(surv.death === null, "respawning left the death record in place");
+  check(Math.hypot(me.x - home.x, me.y - home.y) < 900,
+        "respawned " + Math.round(Math.hypot(me.x - home.x, me.y - home.y)) +
+        " units from the home station");
+  check(me.hull === me.maxHull, "respawned on " + me.hull + " hull");
+  check(me.alive === true, "respawned dead");
+  check(cf.surveyView().lasted < 1,
+        "the run clock did not restart: " + cf.surveyView().lasted);
+
+  // The home station has to actually be there, or you respawn into nothing.
+  const CH = 2600;
+  const there = cf.chunk(Math.floor(home.x / CH), Math.floor(home.y / CH))
+    .stations.some(q => Math.hypot(q.x - home.x, q.y - home.y) < 1);
+  check(there, "there is no station at the place a death sends you back to");
+
+  // A death has to survive the tab, or the tally is decoration.
+  cf.leave();
+  const book = JSON.parse(store["crossfire.survey.v3"]);
+  check(book.deaths === 1, "the book saved " + book.deaths + " deaths");
+  console.log("  death      cause, range, run length and cargo all recorded · " +
+              "hold lost · almanac, yard, chart, pins and cash kept · " +
+              "back at the station");
 }
 
 // ── 9. the verbs are earned, never bought ─────────────────────────────────
@@ -729,6 +945,105 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(surv.chunks.size > 0, "arriving through a gate streamed nothing in");
   console.log("  gates      one throw of " + Math.round(jump) +
               " units, and the far side was built on arrival");
+}
+
+// ── 11b. every wormhole has two ends ──────────────────────────────────────
+/* A gate used to be one mouth and a destination: you fell in, came out in open
+   space, and the way back was however many hours you had just skipped. Both
+   ends are real gates now, each aimed at the other, and that is only true if
+   the link lattice is symmetric — the far mouth is rolled by a *different*
+   chunk, which has no way of knowing this one exists, so a mistake here shows
+   up as a one-way trip and nothing else.
+
+   Checked by sweeping a slab of chunks, collecting every mouth, and asking the
+   chunk at the far end whether it built the twin. */
+{
+  const { cf } = boot("?debug=1&seed=717");
+  cf.start("survey", 1);
+  const CH = 2600;
+  const mouths = [];
+  for (let cx = -12; cx <= 12; cx++) {
+    for (let cy = -12; cy <= 12; cy++) {
+      for (const g of cf.chunk(cx, cy).gates) mouths.push(g);
+    }
+  }
+  check(mouths.length > 4,
+        "only " + mouths.length + " gates in 625 chunks — the lattice is empty");
+
+  let paired = 0;
+  for (const g of mouths) {
+    const far = cf.chunk(Math.floor(g.tx / CH), Math.floor(g.ty / CH)).gates
+      .find(o => Math.hypot(o.x - g.tx, o.y - g.ty) < 1);
+    if (far && Math.hypot(far.tx - g.x, far.ty - g.y) < 1) paired++;
+  }
+  check(paired === mouths.length,
+        (mouths.length - paired) + " of " + mouths.length +
+        " gates are one-way — you could not come back through them");
+
+  // Purity: the lattice must not shift when the same cell is asked twice.
+  const again = cf.chunk(3, -5).gates.map(g => [g.x, g.y, g.tx, g.ty].join());
+  const once  = cf.chunk(3, -5).gates.map(g => [g.x, g.y, g.tx, g.ty].join());
+  check(again.join("|") === once.join("|"), "a chunk's gates moved between builds");
+  console.log("  gates·pair " + mouths.length +
+              " mouths over 625 chunks, every one of them two-way");
+}
+
+// ── 11c. no gate may stand on a manifest part ─────────────────────────────
+/* The jump coil could not be collected at all: its gate mouth sat exactly where
+   the part lay, and a gate takes you at 82 units where a part is picked up at
+   about 60 — so flying to the coil threw you across the sector, every time,
+   forever. The mouth is offset now, and the transit refuses outright while you
+   are over any uncollected part, because the lattice can drop a gate on any of
+   the other five sites by luck and a part you cannot reach is a run that cannot
+   be finished. Both halves are checked. */
+{
+  const GATE_R = 150;
+  for (const seed of [11, 909, 20260909, 4242]) {
+    const { cf } = boot("?debug=1&seed=" + seed);
+    cf.start("survey", 1);
+    const surv = cf.survey();
+    const CH = 2600;
+
+    // The coil's own mouth must be clear of the coil's own site.
+    const coil = surv.partSites.find(p => p.key === "coil");
+    check(!!coil, "seed " + seed + ": no jump coil site");
+    const near = [];
+    for (let cx = -1; cx <= 1; cx++) {
+      for (let cy = -1; cy <= 1; cy++) {
+        const c = cf.chunk(Math.floor(coil.x / CH) + cx, Math.floor(coil.y / CH) + cy);
+        for (const g of c.gates) near.push(g);
+      }
+    }
+    check(near.length > 0, "seed " + seed + ": the coil has no gate beside it");
+    const closest = Math.min(...near.map(g => Math.hypot(g.x - coil.x, g.y - coil.y)));
+    check(closest > GATE_R * 0.55 + coil.r + 20,
+          "seed " + seed + ": a gate mouth is " + Math.round(closest) +
+          " units from the coil — it swallows you before you can grab it");
+    check(closest < 4000,
+          "seed " + seed + ": the nearest gate is " + Math.round(closest) +
+          " units away, so the coil's clue no longer describes where it is");
+
+    /* And the guard: park on a part with a gate right on top of it and the gate
+       must not fire. This is the case the offset does not cover. */
+    const me = cf.live().ships[0];
+    // A real manifest key: the objective line looks it up by name, and an
+    // invented one would be testing the crash rather than the guard.
+    const spare = surv.partSites.find(p => p.key !== "coil") || coil;
+    const site = { key: spare.key, name: spare.name, x: me.x, y: me.y, r: 40 };
+    surv.carrying.delete(spare.key);
+    surv.parts.push(site);
+    surv.gates.push({ x: me.x, y: me.y, phase: 0, tx: me.x + 30000, ty: me.y });
+    surv.warpCool = 0;
+    const was = { x: me.x, y: me.y };
+    now += 1000 / 60; cf.step();
+    check(Math.hypot(me.x - was.x, me.y - was.y) < 500,
+          "seed " + seed + ": a gate sitting on a part still threw the ship " +
+          Math.round(Math.hypot(me.x - was.x, me.y - was.y)) + " units");
+    check(surv.carrying.has(spare.key),
+          "seed " + seed + ": the part under the gate was never picked up");
+  }
+  console.log("  gates·part the coil's mouth stands clear of it · " +
+              "a gate over a part never fires");
 }
 
 // ── 12. the screen stops shaking ─────────────────────────────────────────
@@ -987,28 +1302,36 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
      home outweighed a whole hostile ring. Dedupe, then compare per-chunk. */
   function sample(ring) {
     const seen = new Set();
+    /* A band of chunks rather than a circle of them. Walking a thin ring at
+       small radii lands on the same twenty chunks over and over, so what came
+       back was one chunk's luck rather than the rule — the old version of this
+       compared a twenty-chunk sample against a forty-chunk one and passed or
+       failed on which seed it happened to be handed. A filled annulus two
+       chunks deep gives hundreds of distinct chunks at every radius. */
     let guards = 0, hulks = 0, fields = 0;
-    for (let i = 0; i < ring * 12; i++) {
-      const a = (i / (ring * 12)) * Math.PI * 2;
-      const cx = Math.round(Math.cos(a) * ring), cy = Math.round(Math.sin(a) * ring);
-      const k = cx + "," + cy;
-      if (seen.has(k)) continue;
-      seen.add(k);
-      const c = cf.chunk(cx, cy);
-      for (const cache of c.caches) guards += cache.guards.length;
-      hulks += c.hulks.length;
-      fields += c.fields.length;
+    for (let cx = -ring - 2; cx <= ring + 2; cx++) {
+      for (let cy = -ring - 2; cy <= ring + 2; cy++) {
+        const d = Math.hypot(cx, cy);
+        if (d < ring - 2 || d > ring + 2) continue;
+        const k = cx + "," + cy;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const c = cf.chunk(cx, cy);
+        for (const cache of c.caches) guards += cache.guards.length;
+        hulks += c.hulks.length;
+        fields += c.fields.length;
+      }
     }
-    const n = seen.size;
+    const n = seen.size || 1;
     return { guards: guards / n, hulks: hulks / n, fields: fields / n, chunks: n };
   }
 
-  const near = sample(4);      // ~10,000 units out
-  const far  = sample(32);     // ~83,000 units out
+  const near = sample(6);      // ~16,000 units out
+  const far  = sample(60);     // ~156,000 units out
 
-  check(far.guards > near.guards,
+  check(far.guards > near.guards * 1.3,
         "the deep sector posts no more sentries than home (" +
-        near.guards + " → " + far.guards + ")");
+        near.guards.toFixed(3) + " → " + far.guards.toFixed(3) + ")");
   check(far.hulks >= near.hulks,
         "the deep sector is no thicker with wrecks (" +
         near.hulks + " → " + far.hulks + ")");
@@ -1019,7 +1342,8 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   // And home has to stay quiet, or the curve is a wall rather than a slope.
   check(near.fields === 0, "an asteroid field spawned in the home ring");
   check(cf.chunk(0, 0).hazards.length === 0, "the home chunk grew a hazard");
-  console.log("  danger     per chunk — home " + near.guards.toFixed(2) + " sentries / " +
+  console.log("  danger     " + near.chunks + " + " + far.chunks +
+              " chunks — home " + near.guards.toFixed(2) + " sentries / " +
               near.fields.toFixed(2) + " fields · deep " + far.guards.toFixed(2) +
               " / " + far.fields.toFixed(2));
 }
@@ -1400,6 +1724,993 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(hud.almanacDetailOpen() === false,
         "a fresh almanac thinks a card is already open");
   console.log("  defaults   chart and almanac survive a reset with every field intact");
+}
+
+// ── the panel is handed everything it reads ───────────────────────────────
+/* The one test that would have caught the `salvage` → `cash` rename. Every
+   field the interface reads off the state object is spelled somewhere in
+   survey-hud.js as `st.something`; every field the game hands it is a key on
+   `surveyView()`. When those two lists agreed the mode worked, and when they
+   quietly stopped agreeing nothing failed — the panel read `undefined`, fell
+   back to zero, and drew a hold that was empty while the real one filled up
+   and stopped taking motes. `atYard` went the same way and took the yard page
+   with it on any device without an `E` key.
+
+   Neither is visible from a screenshot and neither breaks a frame, which is
+   exactly the shape of bug this file exists for. */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const st = cf.surveyView();
+  const reads = [...new Set(
+    [...hudSrc.matchAll(/\bst\.([a-zA-Z][a-zA-Z0-9]*)/g)].map(m => m[1])
+  )].sort();
+  const missing = reads.filter(k => !(k in st));
+  check(missing.length === 0,
+        "the panel reads fields the game never sends: " + missing.join(", "));
+  // And the two that were actually lost, by name, so a rename cannot pass by
+  // deleting the reader instead of fixing the writer.
+  check(typeof st.cash === "number", "surveyView() must carry `cash`");
+  check(typeof st.atYard === "boolean", "surveyView() must carry `atYard`");
+  console.log("  wiring     " + reads.length +
+              " fields read by the panel, all of them sent");
+}
+
+// ── the yard's reward is reachable ────────────────────────────────────────
+/* The light drive was built, `onJump` was exposed, and nothing in the whole
+   interface ever called it — six parts carried home for a prize that could not
+   be collected. It is reached from the chart, so that is where this drives it
+   from: arm it, click a charted station, and end up there. */
+{
+  const { cf } = boot("?debug=1&seed=616161");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const hud = cf.hud();
+  const me = cf.live().ships[0];
+
+  check(cf.surveyView().wormhole === false,
+        "the wormhole is finished before a single part is fitted");
+  for (const b of cf.surveyView().manifest) surv.built.add(b.key);
+  check(cf.surveyView().wormhole === true,
+        "the yard is complete and the wormhole still is not");
+
+  const far = { k: "station", x: 52000, y: -31000 };
+  surv.known.set("far", far);
+  const st = cf.surveyView();
+  hud.chartOpened(st);
+  hud.chartDragBy((hud.chartView().x - far.x) * hud.chartView().scale,
+                  (hud.chartView().y - far.y) * hud.chartView().scale);
+
+  // Armed, the map's tap jumps instead of pinning — and a tap nowhere near a
+  // station must do neither.
+  hud.chartJumpArm(true);
+  const pins = surv.pins.length;
+  hud.chartTapAt(st, far.x + 900000, far.y, 400);
+  check(surv.pins.length === pins, "an armed jump dropped a pin instead");
+  check(Math.hypot(me.x, me.y) < 40000, "a miss jumped somewhere anyway");
+
+  hud.chartTapAt(st, far.x + 60, far.y - 60, 400);
+  check(Math.round(me.x) === far.x && Math.round(me.y) === far.y,
+        "the light drive did not arrive: " + Math.round(me.x) + "," + Math.round(me.y));
+  check(hud.chartJumpArmed() === false, "the jump stayed armed after arriving");
+  console.log("  wormhole   six parts fitted · armed from the chart · " +
+              "a miss does nothing · a station jumps " +
+              Math.round(Math.hypot(far.x, far.y)) + " units");
+}
+
+// ── 8d. water and food ────────────────────────────────────────────────────
+/* Phase 2.2. Two clocks that are always running, and the thing that makes range
+   a supply problem rather than only a danger problem.
+
+   The part worth testing hardest is the grace. Empty must not kill: it must
+   start a countdown you can still act on, and *anything* going back into the
+   tank must stop that countdown — not a full tank, because skimming an
+   atmosphere trickles and a trickle has to be able to save you. A meter that
+   went from "fine" straight to "dead" would undo the whole of phase 1. */
+{
+  const { cf } = boot("?debug=1&seed=771");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const v = () => cf.surveyView();
+
+  // Fresh tanks, and water has to be the faster of the two.
+  check(v().water.left > 300, "a fresh water tank is only " + v().water.left + "s");
+  check(v().food.left > v().water.left * 1.4,
+        "food (" + v().food.left + "s) does not outlast water (" +
+        v().water.left + "s) by enough to be a different clock");
+
+  // They drain while you fly, and water drains faster.
+  const w0 = surv.water, f0 = surv.food;
+  for (let i = 0; i < 600; i++) { now += 1000 / 60; cf.step(); }
+  check(surv.water < w0 - 5, "water did not drain: " + w0 + " → " + surv.water);
+  check(surv.food < f0 - 5, "food did not drain: " + f0 + " → " + surv.food);
+  check(v().water.frac < v().food.frac,
+        "after ten minutes' flying the two tanks are at the same level");
+
+  // Empty starts a countdown and does not kill.
+  cf.setTanks(1, 1200);
+  for (let i = 0; i < 120; i++) { now += 1000 / 60; cf.step(); }
+  check(surv.water === 0, "the tank did not empty");
+  check(v().water.countdown > 0, "an empty tank started no countdown");
+  check(surv.death === null, "an empty tank killed instantly");
+  check(me.alive, "an empty tank killed instantly");
+  const grace = v().water.countdown;
+
+  // A trickle stops it. One second of water is enough to reset the clock.
+  cf.setTanks(1, 1200);
+  now += 1000 / 60; cf.step();
+  check(v().water.countdown === 0,
+        "a refilled tank left the countdown running at " + v().water.countdown);
+
+  // And running it all the way down does kill, with the right reason.
+  /* Held invulnerable while the clock runs down. Two minutes of sitting still is
+     long enough for a sentry to find you, and a test for what thirst does must
+     not be able to pass or fail on whether something shot you first — this
+     failed once as "hunger killed with: shot down by a sentry", which is a true
+     sentence about the wrong thing. */
+  const starve = () => {
+    let n = 0;
+    while (cf.peek().state !== "died" && n < 60 * 400) {
+      now += 1000 / 60;
+      me.invuln = Math.max(me.invuln, 1);
+      cf.step();
+      n++;
+    }
+    return n;
+  };
+  cf.setTanks(0, 1200);
+  let frames = starve();
+  check(cf.peek().state === "died", "an empty tank never killed at all");
+  check(/thirst/.test(surv.death.reason), "thirst killed with: " + surv.death.reason);
+  check(frames / 60 > grace * 0.7 && frames / 60 < grace * 1.4,
+        "thirst took " + Math.round(frames / 60) + "s against a stated " +
+        Math.round(grace) + "s");
+
+  // Food does it too, and says something different.
+  cf.respawn();
+  check(surv.water === v().water.full && surv.food === v().food.full,
+        "respawning did not resupply the ship");
+  cf.setTanks(1200, 0);
+  frames = starve();
+  check(/starv/.test(surv.death.reason), "hunger killed with: " + surv.death.reason);
+
+  // Buying. It needs somewhere to buy from, it costs what is missing, and it
+  // must refuse when the money is not there.
+  cf.respawn();
+  cf.setTanks(100, 200);
+  check(cf.buySupply("water") === false, "bought water in open space");
+  surv.docked = { x: 0, y: 0 };
+  surv.cash = 0;
+  check(cf.buySupply("water") === false, "bought water with no money");
+  surv.cash = 500;
+  const cost = v().water.cost;
+  check(cost > 0, "a near-empty tank costs " + cost + " to fill");
+  check(cf.buySupply("water") === true, "could not buy water at a station");
+  check(surv.water === v().water.full, "buying water did not fill the tank");
+  check(surv.cash === 500 - cost, "the fill cost " + (500 - surv.cash) + ", not " + cost);
+  check(v().water.cost === null, "a full tank is still for sale");
+  check(cf.buySupply("water") === false, "sold water into a full tank");
+  // A nearly-full tank must be cheaper than an empty one.
+  cf.setTanks(v().water.full - 60, 200);
+  check(v().water.cost < cost,
+        "topping off costs the same as filling from empty");
+
+  // And the tanks have to survive the tab, or a long haul resets by reloading.
+  cf.setTanks(321, 654);
+  cf.leave();
+  const book = JSON.parse(store["crossfire.survey.v3"]);
+  check(Math.abs(book.water - 321) < 2 && Math.abs(book.food - 654) < 2,
+        "the book saved water " + book.water + " food " + book.food);
+  const again = bootKeepingStorage("?debug=1&seed=771");
+  again.cf.start("survey", 1);
+  check(Math.abs(again.cf.tanks().water - 321) < 2,
+        "a resumed run got a fresh tank: " + again.cf.tanks().water);
+  console.log("  life       water " + Math.round(v().water.full / 60) + "m / food " +
+              Math.round(v().food.full / 60) + "m · empty gives " +
+              Math.round(grace) + "s of grace · a trickle resets it · " +
+              "thirst and hunger both kill · tanks survive the tab");
+}
+
+// ── worlds: fewer, far bigger, all different, none on top of anything ─────
+/* Planets were the most common thing in the sector after rocks and the least
+   interesting — one in six chunks, all 110–200 units across, all the same blue,
+   none of them called anything. Every one of those is checked here, and so are
+   the two things that made the rework dangerous:
+
+     · A world is *solid* and can now be 3,600 units across, so one rolled on a
+       manifest part does not obscure it, it encloses it — and the part cannot be
+       collected at all. That is a run that cannot be finished, and it is
+       invisible until somebody flies eight minutes to find out.
+     · Chunks are pure and cannot see their neighbours, so per-chunk placement
+       let two worlds overlap. Measured before the fix: one world in twenty-four
+       intersected another, worst case one wholly inside the other.
+
+   Both are arithmetic, so both are checked as arithmetic rather than looked at. */
+{
+  const seeds = [1, 515, 8675309, 20260909, 4242, 909];
+  let all = 0, chunks = 0, inhabited = 0, ringed = 0;
+  let minR = Infinity, maxR = 0, overlaps = 0, onSomething = 0;
+  const kinds = new Set(), bandCounts = new Set(), names = new Set();
+
+  for (const seed of seeds) {
+    const { cf } = boot("?debug=1&seed=" + seed);
+    cf.start("survey", 1);
+    const surv = cf.survey();
+    const worlds = [];
+    for (let cx = -22; cx <= 22; cx++) {
+      for (let cy = -22; cy <= 22; cy++) {
+        chunks++;
+        for (const p of cf.chunk(cx, cy).planets) worlds.push(p);
+      }
+    }
+    all += worlds.length;
+
+    for (const w of worlds) {
+      check(Number.isFinite(w.r) && w.r > 0, "seed " + seed + ": a world with no radius");
+      check(typeof w.name === "string" && w.name.length > 1,
+            "seed " + seed + ": a world with no name");
+      minR = Math.min(minR, w.r); maxR = Math.max(maxR, w.r);
+      kinds.add(w.kind);
+      bandCounts.add((w.bands || []).length);
+      names.add(w.name);
+      if (w.inhabited) inhabited++;
+      if (w.ring) ringed++;
+
+      /* Nothing you have to reach may be inside a world. The landmark worlds are
+         exempt from the parts check only in the sense that they are *at* their
+         own landmark, which is where you are meant to fly — so the check is
+         against parts and the yard, which you must always be able to touch. */
+      for (const pt of surv.partSites) {
+        if (Math.hypot(w.x - pt.x, w.y - pt.y) < w.r + pt.r + 60) {
+          onSomething++;
+          check(false, "seed " + seed + ": a world encloses the " + pt.key +
+                       " — that part can never be collected");
+        }
+      }
+      if (Math.hypot(w.x, w.y) < w.r + 400) {
+        check(false, "seed " + seed + ": a world sits on the origin you spawn at");
+      }
+    }
+
+    // No two worlds may intersect. Both are solid, and two intersecting solids
+    // make a pocket a ship can be wedged inside.
+    for (let i = 0; i < worlds.length; i++) {
+      for (let j = i + 1; j < worlds.length; j++) {
+        const d = Math.hypot(worlds[i].x - worlds[j].x, worlds[i].y - worlds[j].y);
+        if (d < worlds[i].r + worlds[j].r) {
+          overlaps++;
+          check(false, "seed " + seed + ": two worlds overlap by " +
+                       Math.round(worlds[i].r + worlds[j].r - d) + " units");
+        }
+      }
+    }
+  }
+
+  const per = all / chunks;
+  check(per < 0.06, "worlds are still " + per.toFixed(3) +
+                    "/chunk — they were meant to get much rarer than 0.16");
+  check(per > 0.012, "worlds are down to " + per.toFixed(3) +
+                     "/chunk, which is rare enough to never see one");
+  check(maxR / minR > 8, "world sizes only span " + (maxR / minR).toFixed(1) +
+                         "x — they were meant to differ by a lot");
+  check(maxR > 2400, "the biggest world is only " + maxR + " units across");
+  check(kinds.size >= 6, "only " + kinds.size + " kinds of world ever appear");
+  check(bandCounts.size >= 4,
+        "every world has the same banding (" + [...bandCounts].join(",") + ")");
+  check(names.size > all * 0.9,
+        "only " + names.size + " distinct names across " + all + " worlds");
+
+  check(ringed > 0, "no world ever has a ring");
+
+  // A world's face and name are a pure function of where it is.
+  {
+    const { cf } = boot("?debug=1&seed=515");
+    cf.start("survey", 1);
+    const shape = () => cf.chunk(6, -9).planets
+      .concat(cf.chunk(-13, 4).planets)
+      .map(p => [p.name, p.r, p.kind, p.inhabited, (p.bands || []).length].join()).join("|");
+    check(shape() === shape(), "a world changed between two builds of its chunk");
+  }
+
+  console.log("  planets    " + all + " over " + chunks + " chunks = " +
+              per.toFixed(3) + "/chunk (was 0.16) · " + minR + "–" + maxR +
+              " units (" + Math.round(maxR / minR) + "x) · " + kinds.size +
+              " kinds · no overlaps, none on a part");
+}
+
+// ── who lives out there, and where ────────────────────────────────────────
+/* Phase 2.4. Inhabited worlds are the supply line, so *where* they are is the
+   mechanic: commoner near home and rare in the deep is what turns range into a
+   supply problem rather than only a danger problem. A flat rate would mean the
+   abyss is exactly as survivable as the home band, which is the opposite of the
+   point.
+
+   Sampled as annuli rather than as one lump, because the overall rate can be
+   right while the gradient is missing entirely — and the gradient is the part
+   that matters. */
+{
+  const rings = [[8, 20], [20, 40], [40, 70], [70, 110]];
+  const acc = rings.map(() => ({ n: 0, inh: 0, air: 0 }));
+  for (const seed of [1, 515, 8675309, 20260909, 4242, 909]) {
+    const { cf } = boot("?debug=1&seed=" + seed);
+    cf.start("survey", 1);
+    rings.forEach(([lo, hi], i) => {
+      for (let cx = -hi; cx <= hi; cx++) {
+        for (let cy = -hi; cy <= hi; cy++) {
+          const d = Math.hypot(cx, cy);
+          if (d < lo || d > hi) continue;
+          for (const p of cf.chunk(cx, cy).planets) {
+            acc[i].n++;
+            if (p.inhabited) acc[i].inh++;
+            if (p.air) acc[i].air++;
+          }
+        }
+      }
+    });
+  }
+  const rate = a => a.inh / Math.max(1, a.n);
+  const total = acc.reduce((t, a) => ({ n: t.n + a.n, inh: t.inh + a.inh,
+                                        air: t.air + a.air }),
+                           { n: 0, inh: 0, air: 0 });
+  for (const a of acc) check(a.n > 40, "a ring sampled only " + a.n + " worlds");
+
+  const near = rate(acc[0]), deep = rate(acc[acc.length - 1]);
+  check(near > deep * 1.6,
+        "inhabited worlds are as common in the deep as near home (1 in " +
+        (1 / near).toFixed(1) + " → 1 in " + (1 / deep).toFixed(1) + ")");
+  check(deep > 0, "nowhere in the deep is inhabited at all — no supply line");
+
+  const oneIn = total.n / Math.max(1, total.inh);
+  check(oneIn > 14 && oneIn < 30,
+        "inhabited worlds are 1 in " + oneIn.toFixed(1) + " overall, not about 1 in 20");
+
+  // Air is what makes the free option possible, so it has to be commonplace.
+  const airFrac = total.air / total.n;
+  check(airFrac > 0.4 && airFrac < 0.85,
+        "only " + Math.round(airFrac * 100) + "% of worlds have an atmosphere");
+
+  console.log("  inhabited  1 in " + (1 / near).toFixed(0) + " near home → 1 in " +
+              (1 / deep).toFixed(0) + " in the deep · 1 in " + oneIn.toFixed(0) +
+              " overall · " + Math.round(airFrac * 100) + "% have air");
+}
+
+// ── landing on one, and skimming a sky ────────────────────────────────────
+/* The two ways to fill a tank that are not a station, and they are deliberately
+   different in kind: an inhabited world sells you water and food for money, and
+   any world with air gives you water for time. The second exists so that being
+   broke in the deep is a slow problem rather than a dead end — so what it must
+   never be is fast, and what it must never do is feed you.
+
+   Driven against *generated* worlds rather than hand-placed ones. An injected
+   planet is wiped by `streamChunks` the moment the ship crosses a chunk line —
+   and streaming runs inside the step, before `surveyStations` looks for
+   somewhere to land — so the first version of this failed about one run in three
+   with a spray of nonsense about skimming being broken. A real world is put back
+   by the streamer every time, so there is nothing to fight. */
+{
+  const { cf } = boot("?debug=1&seed=90210");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  // Find a real world of each kind: one with people and air, and one airless.
+  let shop = null, airless = null;
+  for (let cx = -40; cx <= 40 && !(shop && airless); cx++) {
+    for (let cy = -40; cy <= 40 && !(shop && airless); cy++) {
+      for (const p of cf.chunk(cx, cy).planets) {
+        if (p.inhabited && p.air && !shop) shop = p;
+        if (!p.air && !p.rogue && !p.pale && !airless) airless = p;
+      }
+    }
+  }
+  check(!!shop, "no inhabited world with air anywhere in 6,500 chunks");
+  check(!!airless, "no airless world anywhere in 6,500 chunks");
+
+  /* Held against the surface. A world is solid, so resting on one is a shove
+     every frame; pinning the position keeps the ship inside the skin that counts
+     as landed and keeps the chunk index still, which is what stops the streamer
+     from running at all. */
+  let hold = { x: 0, y: 0 };
+  const park = pl => ({ x: pl.x + pl.r + 150, y: pl.y });
+  hold = park(shop);
+  /* Restarted at the world rather than teleported to it, so the streamer builds
+     its chunk the ordinary way. `surv` and the ship are rebound because starting
+     again replaces both. */
+  cf.leave();
+  cf.start("survey", 1);
+  const surv2 = cf.survey();
+  const me2 = cf.live().ships[0];
+  me2.x = hold.x; me2.y = hold.y;
+  /* Held invulnerable as well as pinned. A ship parked against a world still has
+     asteroids drifting into it, and once the hull ran out the mode went to the
+     death page — at which point the world stops ticking entirely and every check
+     below reported nonsense: skimming filling nothing, no atmosphere, a thirst
+     countdown frozen at its starting value. None of which is about landing. */
+  const step2 = () => {
+    now += 1000 / 60;
+    me2.x = hold.x; me2.y = hold.y;
+    me2.vx = me2.vy = 0;
+    me2.invuln = 3;
+    cf.step();
+  };
+  step2();
+
+  const at = cf.places();
+  check(at.landed === shop.name,
+        "resting on " + shop.name + " reported " + at.landed);
+  check(at.overAir === shop.name, "its atmosphere did not register");
+  check(at.docked === false, "a world counted as a station");
+
+  // It sells. And it is not a station: it must not buy cargo.
+  cf.setTanks(60, 120);
+  surv2.cash = 400;
+  check(cf.buySupply("water") === true, "an inhabited world would not sell water");
+  check(cf.buySupply("food") === true, "an inhabited world would not sell food");
+  check(surv2.cash < 400, "the supplies were free");
+  surv2.hold.iron = 20;
+  check(cf.surveyView().onSell() === 0, "a world bought cargo like a station");
+  check(surv2.hold.iron === 20, "a world took the cargo anyway");
+  surv2.hold.iron = 0;
+
+  /* Skimming. Slow, free, water only. */
+  cf.setTanks(0, 600);
+  step2();
+  const foodBefore = surv2.food;
+  const cash = surv2.cash;
+  let secs = 0;
+  while (surv2.water < 200 && secs < 60 * 400) { step2(); secs++; }
+  check(surv2.water >= 200, "skimming never filled anything");
+  check(cf.places().skimming === true, "skimming did not light up");
+  check(surv2.cash === cash, "skimming cost money");
+  check(surv2.food < foodBefore, "skimming fed the pilot as well");
+  const rate = 200 / (secs / 60);
+  check(rate > 1.2 && rate < 8,
+        "skimming runs at " + rate.toFixed(1) + " seconds of water a second — " +
+        "it is meant to be slow but not useless");
+
+  /* A tank already counting down must be rescued by it. Started out of reach of
+     the sky, since parked in an atmosphere the tank never empties at all. */
+  hold = { x: shop.x + shop.r + 900, y: shop.y };
+  cf.setTanks(0, 600);
+  for (let i = 0; i < 90; i++) { step2(); }
+  check(cf.places().overAir == null, "still in the atmosphere 900 units off");
+  const running = cf.surveyView().water.countdown;
+  check(running > 0 && running < 75,
+        "the countdown is not counting out in open space: " + running);
+
+  hold = park(shop);
+  for (let i = 0; i < 8; i++) { step2(); }
+  check(cf.places().overAir === shop.name, "did not arrive back in the atmosphere");
+  check(cf.surveyView().water.countdown === 0,
+        "skimming did not stop a countdown that was already running");
+  check(surv2.water > 0, "the tank is still empty after skimming");
+
+  // An airless world gives nothing, however long you sit on it.
+  hold = park(airless);
+  cf.setTanks(60, 600);
+  for (let i = 0; i < 4; i++) { step2(); }
+  check(cf.places().overAir == null,
+        "the airless world " + airless.name + " reported an atmosphere");
+  const dry = surv2.water;
+  for (let i = 0; i < 60; i++) { step2(); }
+  check(surv2.water < dry, "an airless world was skimmed for water anyway");
+  console.log("  landing    " + shop.name + " sells water and food and buys no " +
+              "cargo · air skims at " + rate.toFixed(1) +
+              "s/s, free, water only · " + airless.name + " gives nothing");
+}
+
+// ── a scan you can see, and sentries that stay where they are ─────────────
+/* Two bugs in one system. The returns were drawn in world space and nowhere
+   else, so a scan reaching 2,100 units — 3,885 refitted — put almost all of its
+   answers off a screen about 700 across, and the button's whole visible output
+   was a line of text. And a sentry echo recorded where the sentry *was*, which
+   is the one contact guaranteed to be wrong within a second, because sentries
+   are the only thing in a scan that moves.
+
+   Both are about the contract the panel reads, so both are checkable. */
+{
+  const { cf } = boot("?debug=1&seed=5150");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const echoes = () => cf.surveyView().echoes;
+
+  // A hostile and a friendly return, side by side under the ship.
+  const cache = { x: me.x + 700, y: me.y, r: 46, guards: [], phase: 0, id: "e-c" };
+  const drone = { x: me.x + 820, y: me.y, vx: 0, vy: 0, a: 0, home: cache,
+                  post: { x: me.x + 820, y: me.y }, hp: 3, awake: false,
+                  cool: 0, hit: 0 };
+  surv.caches.push(cache);
+  surv.drones.push(drone);
+  // Pinned, because the ship keeps flying: `me.x - 600` is a different place on
+  // every frame, and comparing against it later measured the pilot.
+  const shopAt = { x: me.x - 600, y: me.y };
+  surv.stations.push({ x: shopAt.x, y: shopAt.y, r: 132, phase: 0 });
+  cf.scan();
+
+  const all = echoes();
+  check(all.length >= 3, "a scan over three things returned " + all.length);
+  /* Every return has to carry what a dot needs: a colour, a name and whether it
+     is a thing that wants you. A scan that reported only positions could not be
+     drawn as anything but identical dots. */
+  for (const e of all) {
+    check(typeof e.colour === "string" && e.colour, e.kind + " echo has no colour");
+    check(typeof e.name === "string" && e.name, e.kind + " echo has no name");
+    check(typeof e.bad === "boolean", e.kind + " echo does not say if it is hostile");
+    check(e.t > 0 && e.life > 0, e.kind + " echo has no life left to fade over");
+  }
+  const sentry = all.find(e => e.kind === "drone");
+  const shop = all.find(e => e.kind === "station");
+  check(!!sentry && sentry.bad === true, "a sentry did not come back as hostile");
+  check(!!shop && shop.bad === false, "a station came back as hostile");
+  check(sentry.colour !== shop.colour, "a sentry and a station are the same colour");
+
+  // The sentry moves, and its contact goes with it.
+  drone.x += 1500; drone.y -= 800;
+  now += 1000 / 60; cf.step();
+  const moved = echoes().find(e => e.kind === "drone");
+  check(!!moved, "the sentry contact disappeared when the sentry moved");
+  check(Math.abs(moved.x - drone.x) < 1 && Math.abs(moved.y - drone.y) < 1,
+        "the sentry contact stayed at " + Math.round(moved.x) + "," +
+        Math.round(moved.y) + " while the sentry flew to " +
+        Math.round(drone.x) + "," + Math.round(drone.y));
+
+  // And it goes out with it: a sentry you killed must leave no contact behind.
+  surv.drones.splice(surv.drones.indexOf(drone), 1);
+  now += 1000 / 60; cf.step();
+  check(!echoes().some(e => e.kind === "drone"),
+        "killing a sentry left its contact on the chart");
+  // The things that do not move must not have moved either.
+  /* Matched by where it is, not by kind: the home station stands at (620, 300)
+     and the ship starts at the origin, so a scan near home returns *two* station
+     echoes and picking "the station one" picked whichever came first. */
+  const still = echoes().find(e => e.kind === "station" &&
+                                   Math.hypot(e.x - shopAt.x, e.y - shopAt.y) < 2);
+  check(!!still, "the station's contact wandered off its station");
+
+  // They fade rather than vanishing, and they do eventually go.
+  const before = echoes().length;
+  for (let i = 0; i < 60 * 25; i++) { now += 1000 / 60; cf.step(); }
+  check(before > 0 && echoes().length === 0,
+        "contacts never expire: " + echoes().length + " still up after 25s");
+  console.log("  scan·dots  every return carries a colour, a name and hostility · " +
+              "sentries tracked, and cleared when killed · all fade out");
+}
+
+// ── the screen went quiet ─────────────────────────────────────────────────
+/* The HUD carried three separate feeds in three corners — logged cards top
+   centre, an objective band across the top, radio above the hull bar — plus an
+   almanac tally and a sector readout on the left. It is one notification stack
+   top right now, and the objective is news rather than furniture.
+
+   What is worth testing is the behaviour, not the pixels: that the stack
+   collapses repeats instead of growing, that it caps, that it empties, and that
+   the objective fires when it *changes* and not on the frame you arrive. */
+{
+  const { cf } = boot("?debug=1&seed=8181");
+  cf.start("survey", 1);
+  const hud = cf.hud();
+  const surv = cf.survey();
+
+  check(typeof hud.notify === "function", "there is no notification stack");
+  check(typeof hud.drawMissions === "function", "there is no missions page");
+
+  // Opening the sector must not immediately notify you of anything.
+  for (let i = 0; i < 30; i++) { now += 1000 / 60; cf.step(); }
+  cf.screen("playing");
+  cf.draw();                                   // must not throw with an empty stack
+
+  // A repeat refreshes rather than stacking, and the cap holds.
+  hud.notify("SAME THING", "", "#fff", 4);
+  hud.notify("SAME THING", "", "#fff", 4);
+  hud.notify("SAME THING", "", "#fff", 4);
+  cf.draw();
+  for (let i = 0; i < 9; i++) hud.notify("THING " + i, "sub " + i, "#fff", 4);
+  cf.draw();                                   // eight over the cap must still draw
+
+  /* The objective is fired on change. Picking a part up changes it — from "find
+     the X" to "carrying X" — so that is the event, and it must not also fire on
+     every frame after it. */
+  const parts = cf.surveyView().manifest;
+  const first = cf.surveyView().objective.text;
+  check(/FIND THE/.test(first), "the opening objective is " + JSON.stringify(first));
+  surv.carrying.add(parts[0].key);
+  now += 1000 / 60; cf.step();
+  const second = cf.surveyView().objective.text;
+  check(second !== first, "carrying a part did not change the objective");
+  check(/CARRYING/.test(second), "the objective is " + JSON.stringify(second));
+  for (let i = 0; i < 120; i++) { now += 1000 / 60; cf.step(); }
+  cf.draw();
+
+  /* And the missions page is reachable from the inventory rather than only by
+     docking at the yard — which is the whole reason the objective could stop
+     being permanent. */
+  cf.surveyView().onMissions();
+  check(cf.peek().state === "missions", "the inventory's missions door goes nowhere");
+  cf.draw();
+  cf.key("Backspace");
+  check(cf.peek().state === "inventory", "backing out of missions left the inventory");
+  cf.key("Escape");
+  check(cf.peek().state === "playing", "escape from the inventory did not fly on");
+  console.log("  quiet      one notification stack, repeats collapse and it caps · " +
+              "objective fires on change · missions opens from the inventory");
+}
+
+// ── named places, and a chart that knows what they are called ─────────────
+/* Worlds got names and supermassive wells did not, and neither of them reached
+   the gazetteer — so the chart drew an anonymous glyph for the one thing in the
+   sector you would want to write down. Both are named now and both are recorded
+   with their name when you have been near them. */
+{
+  const { cf } = boot("?debug=1&seed=606060");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const CH = 2600;
+
+  // Supermassive wells are named; small ones deliberately are not.
+  let big = null, small = null, world = null;
+  for (let cx = -60; cx <= 60 && !(big && small && world); cx++) {
+    for (let cy = -60; cy <= 60 && !(big && small && world); cy++) {
+      const c = cf.chunk(cx, cy);
+      for (const h of c.hazards) {
+        if (h.k >= 1.8 && !big) big = h;
+        if (h.k < 1.8 && !small) small = h;
+      }
+      for (const p of c.planets) if (!world && p.name) world = p;
+    }
+  }
+  check(!!big, "no supermassive well anywhere in 14,000 chunks");
+  check(!!world, "no named world anywhere in 14,000 chunks");
+  check(typeof big.name === "string" && big.name.length > 3,
+        "a supermassive well is called " + JSON.stringify(big.name));
+  if (small) {
+    check(!small.name,
+          "an ordinary well was named too (" + small.name + ") — only the ones " +
+          "you plan a route around are worth a name");
+  }
+  // A supermassive well reaches further than its size alone would give it,
+  // because the warning has to arrive with room to act.
+  check(big.reach > big.kill * 3,
+        "a supermassive well only reaches " + Math.round(big.reach) +
+        " against a killing radius of " + Math.round(big.kill));
+
+  /* Flying past one writes it into the gazetteer *with its name*, which is the
+     part that was missing: a record of "a well, here" is not a record. */
+  const near = (x, y) => {
+    me.x = x; me.y = y; me.vx = me.vy = 0;
+    for (let i = 0; i < 4; i++) { now += 1000 / 60; cf.step(); }
+  };
+  near(world.x + world.r + 300, world.y);
+  const knownWorld = [...surv.known.values()]
+    .find(q => q.k === "planet" && Math.hypot(q.x - world.x, q.y - world.y) < 4);
+  check(!!knownWorld, "flying up to " + world.name + " did not chart it");
+  check(knownWorld.name === world.name,
+        "the chart recorded the world as " + JSON.stringify(knownWorld.name));
+
+  near(big.x + big.reach * 0.9, big.y);
+  const knownWell = [...surv.known.values()]
+    .find(q => q.k === big.kind && Math.hypot(q.x - big.x, q.y - big.y) < 4);
+  check(!!knownWell, "flying up to " + big.name + " did not chart it");
+  check(knownWell.name === big.name,
+        "the chart recorded the well as " + JSON.stringify(knownWell.name));
+
+  /* And a supermassive well takes everything, not only ships. It used to pull
+     ships, rocks and bullets and leave the salvage hanging in it, so the middle
+     of a black hole was a cloud of untouched cargo. */
+  me.x = big.x + big.reach * 0.5; me.y = big.y;
+  me.vx = me.vy = 0;
+  surv.motes.length = 0;
+  for (let k = 0; k < 20; k++) {
+    surv.motes.push({ x: big.x + big.kill * 1.6 + k * 4, y: big.y,
+                      vx: 0, vy: 0, spin: 0, life: 90, mat: "iron" });
+  }
+  const held = surv.motes.length;
+  for (let i = 0; i < 60 * 20; i++) { me.invuln = 2; now += 1000 / 60; cf.step(); }
+  check(surv.motes.length < held,
+        "a supermassive well did not swallow any of the " + held +
+        " motes sitting beside it");
+  console.log("  named      supermassive wells and worlds both named and charted " +
+              "with their names · ordinary wells stay anonymous · a well " +
+              "swallows loose salvage");
+}
+
+// ── the light drive ───────────────────────────────────────────────────────
+/* The yard's second project, and a different thing from the wormhole the six
+   parts make — the wormhole moves you between places you have been, this moves
+   you through places you have not.
+
+   Four things have to hold, and the last two are the whole bargain: it is fast,
+   it barely steers, asteroids are nothing to it, and it tells you five seconds
+   before it kills you. A warning that arrives late, or one that fires for a
+   rock, would make the drive either a trap or a nuisance. */
+{
+  const { cf } = boot("?debug=1&seed=717171");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const step = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.step(); } };
+  const L = () => cf.surveyView().light;
+
+  // Not for sale until the yard has finished the wormhole.
+  check(L().have === false, "the light drive was fitted from the start");
+  check(L().buildable === false, "the drive was for sale before the wormhole");
+  surv.cash = 100000;
+  check(cf.buildLight() === false, "money alone bought the drive");
+  for (const b of cf.surveyView().manifest) surv.built.add(b.key);
+  check(L().buildable === true, "the wormhole is done and the drive is not offered");
+  surv.cash = 10;
+  check(cf.buildLight() === false, "the drive was free");
+  surv.cash = L().cost + 50;
+  check(cf.buildLight() === true, "could not buy the drive with the money for it");
+  check(surv.cash === 50, "the drive cost " + (L().cost + 50 - surv.cash));
+  check(L().have === true, "buying the drive did not fit it");
+
+  // It runs, and it is genuinely fast.
+  me.x = 0; me.y = 0; me.a = 0; me.vx = me.vy = 0;
+  step(20);
+  const cruise = Math.hypot(me.vx, me.vy);
+  check(cf.toggleLight() === true, "the drive would not engage");
+  step(180);
+  const running = Math.hypot(me.vx, me.vy);
+  check(running > 1500,
+        "running at light only reaches " + Math.round(running) + " a second");
+  check(L().run > 0.9, "the drive never wound up: " + L().run.toFixed(2));
+
+  /* And it actually *moves* you that fast. The velocity was set correctly from
+     the first version and clamped back down by the global speed cap before it
+     was integrated, so the panel said eight times and the ship went one. */
+  const x0 = me.x;
+  step(300);
+  const covered = me.x - x0;
+  check(covered > running * 4,
+        "five seconds at " + Math.round(running) + "/s covered only " +
+        Math.round(covered) + " units");
+
+  // It barely steers.
+  const a0 = me.a;
+  cf.hold("KeyA", true); step(60); cf.hold("KeyA", false);
+  const turned = Math.abs(me.a - a0);
+  check(turned > 0.2, "the drive locks the nose solid — the warning would be useless");
+  check(turned < 1.6, "a second of turning moved " + turned.toFixed(2) +
+                      " rad; it is meant to be a commitment");
+
+  /* Asteroids are nothing to it: they must not damage, slow or cut the drive.
+     Put one directly on the ship rather than flying about hoping to meet one — at
+     forty-eight units a frame the ship tunnels straight through most of them
+     without ever overlapping one on a sampled frame, so "fly for ten seconds and
+     count the hits" measured nothing and came back zero. */
+  const hull = me.hull;
+  me.invuln = 0;
+  // A line of them down the track, because a single rock is a coin flip: the ship
+  // covers forty-eight units a frame and can tunnel clean through one without
+  // ever overlapping it on a sampled frame.
+  const rocksNow = cf.live().rocks.length;
+  const proto = cf.live().rocks[0];
+  for (let k = 1; k <= 40; k++) {
+    cf.live().rocks.push(Object.assign({}, proto, {
+      x: me.x + Math.cos(me.a) * k * 40,
+      y: me.y + Math.sin(me.a) * k * 40,
+      vx: 0, vy: 0
+    }));
+  }
+  step(40);
+  check(me.hull === hull,
+        "asteroids took " + (hull - me.hull) + " hull off a ship at light speed");
+  check(L().run > 0, "an asteroid cut the drive");
+  check(cf.live().rocks.length < rocksNow + 40,
+        "the ship went through forty asteroids and destroyed none of them");
+
+  /* The five-second warning, against the one thing it is for. Aimed at a big
+     world from far enough out that the warning has to arrive on its own. */
+  cf.toggleLight();
+  let world = null;
+  for (let cx = -40; cx <= 40 && !world; cx++) {
+    for (let cy = -40; cy <= 40 && !world; cy++) {
+      for (const p of cf.chunk(cx, cy).planets) if (p.r > 1400) { world = p; break; }
+    }
+  }
+  check(!!world, "no world big enough to be worth a warning");
+  const ang = Math.atan2(world.y, world.x);
+  me.x = world.x - Math.cos(ang) * 30000;
+  me.y = world.y - Math.sin(ang) * 30000;
+  me.a = ang; me.vx = me.vy = 0;
+  step(6);
+  check(L().hit == null, "warned about something 30,000 units away");
+  cf.toggleLight();
+
+  let first = null, cut = null;
+  for (let i = 0; i < 60 * 40; i++) {
+    step(1);
+    if (L().hit && !first) {
+      const rim = Math.hypot(world.x - me.x, world.y - me.y) - world.r;
+      const sp = Math.hypot(me.vx, me.vy) || 1;
+      first = { eta: L().hit.eta, name: L().hit.name, i, truth: rim / sp };
+    }
+    if (first && L().run === 0) { cut = i; break; }
+    if (cf.peek().state === "died") { cut = i; break; }
+  }
+  check(!!first, "the drive never warned about a world dead ahead");
+  check(first.eta >= 4 && first.eta <= 8,
+        "the warning arrived " + first.eta.toFixed(1) + "s out, not about 5");
+  check(first.name === world.name,
+        "the warning named " + JSON.stringify(first.name) + ", not " + world.name);
+
+  /* The number has to be *true*, which is the whole of whether a five-second
+     warning is worth having. Checked as arithmetic at the moment it fired —
+     stated seconds against the real distance to the rim over the real speed —
+     rather than by waiting to see how long it took. Waiting measures something
+     else: the drive cuts on whichever obstacle reaches zero first, and out there
+     something nearer often does, so "time until the drive cut" is not "time
+     until the thing it named". */
+  check(Math.abs(first.eta - first.truth) < 0.35,
+        "the warning said " + first.eta.toFixed(2) + "s and the real time to " +
+        world.name + " was " + first.truth.toFixed(2) + "s");
+  check(cut != null, "the drive ran on for forty seconds without ever cutting");
+  console.log("  lightdrive " + Math.round(running) + "/s (" +
+              Math.round(covered) + "u in 5s) · steers " + turned.toFixed(2) +
+              " rad/s · ploughs asteroids unharmed · warned " +
+              first.eta.toFixed(1) + "s out about " + first.name +
+              ", true to " + Math.abs(first.eta - first.truth).toFixed(2) + "s");
+}
+
+// ── a slingshot is worth taking ───────────────────────────────────────────
+/* The one genuinely clever thing you can do with a gravity well is come out of
+   it faster than your engine could ever push you. That used to be worth nothing:
+   the ordinary speed limit came back the instant the well's pull fell below one
+   and the excess was taken off in a single frame, so the momentum arrived and
+   left again at the rim, every time.
+
+   Speed above your own limit is an *allowance* now — `ship.boost` — that only
+   gravity can grant, that decays on its own, and that your engine can never add
+   to. All three of those matter, and two earlier versions of this got it wrong
+   in ways only arithmetic catches: one gave every ship in Survey four times its
+   stated top speed, and the other latched, because being over the limit was what
+   raised the limit. */
+{
+  const { cf } = boot("?debug=1&seed=828282");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const step = n => {
+    for (let i = 0; i < n; i++) { me.invuln = 3; now += 1000 / 60; cf.step(); }
+  };
+  const speed = () => Math.hypot(me.vx, me.vy);
+
+  /* Your engine's own limit, and it must be the stated one. This is the check
+     that caught the mode quietly running at four times MAX_SPEED. */
+  me.x = 60000; me.y = -60000; me.vx = me.vy = 0;
+  step(4);
+  cf.hold("KeyW", true);
+  step(300);
+  cf.hold("KeyW", false);
+  const top = speed();
+  const stated = cf.topSpeed();
+  check(Math.abs(top - stated) < stated * 0.06,
+        "full burn tops out at " + Math.round(top) + " against a stated " +
+        Math.round(stated));
+  check((me.boost || 0) < 1,
+        "flying under your own power earned a boost of " + Math.round(me.boost));
+
+  /* Given an allowance, the ship keeps it through the frame it arrives in —
+     which is precisely what the old clamp did not do — and spends it over
+     seconds. */
+  me.vx = stated * 2.2; me.vy = 0;
+  me.boost = stated * 1.2;
+  const thrown = speed();
+  step(1);
+  check(speed() > thrown * 0.97,
+        "one frame after being thrown, " + Math.round(thrown - speed()) +
+        " of " + Math.round(thrown) + " was taken straight back off");
+  step(120);
+  check(speed() > stated * 1.25,
+        "two seconds on, a thrown ship is down to " + Math.round(speed()) +
+        " against a top speed of " + Math.round(stated));
+  step(60 * 20);
+  check(speed() < stated * 1.05,
+        "twenty-two seconds on, the ship is still doing " + Math.round(speed()));
+  check((me.boost || 0) < stated * 0.1,
+        "the allowance never ran out: " + Math.round(me.boost));
+
+  /* And gravity really does grant one. Dropped toward a supermassive well, the
+     ship has to end up both faster than its engine can go and holding an
+     allowance to explain why. */
+  let well = null;
+  for (let cx = -70; cx <= 70 && !well; cx++) {
+    for (let cy = -70; cy <= 70 && !well; cy++) {
+      for (const h of cf.chunk(cx, cy).hazards) if (h.k >= 2) { well = h; break; }
+    }
+  }
+  check(!!well, "no supermassive well to fall into");
+  me.x = well.x - well.reach * 1.3; me.y = well.y - well.kill * 3;
+  me.vx = stated; me.vy = 0; me.a = 0;
+  me.boost = 0;
+  let fastest = 0, bestBoost = 0;
+  for (let i = 0; i < 60 * 40 && cf.peek().state === "playing"; i++) {
+    step(1);
+    fastest = Math.max(fastest, speed());
+    bestBoost = Math.max(bestBoost, me.boost || 0);
+  }
+  check(fastest > stated * 1.3,
+        "falling into a supermassive well only reached " + Math.round(fastest) +
+        " against a top speed of " + Math.round(stated));
+  check(bestBoost > stated * 0.2,
+        "gravity granted an allowance of only " + Math.round(bestBoost));
+
+  // The ceiling holds: no well may accelerate a ship without bound.
+  check(fastest < stated * 4.2,
+        "a well threw the ship to " + Math.round(fastest) +
+        ", past the ceiling of " + Math.round(stated * 4));
+  console.log("  slingshot  engine tops out at " + Math.round(stated) +
+              " · gravity granted " + Math.round(bestBoost) + " and reached " +
+              Math.round(fastest) + " · kept through the frame it arrives in, " +
+              "spent over seconds, ceiling holds");
+}
+
+// ── a waypoint is somewhere you decided to go ─────────────────────────────
+/* Pins are notes: six kinds, two hundred of them, and not one of them points
+   anywhere. A waypoint is the other thing — one at a time, and the flight HUD
+   holds a bearing to it — so the two must not be the same gesture, and setting
+   one must not quietly drop a pin instead. */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const hud = cf.hud();
+  const me = cf.live().ships[0];
+
+  check(cf.surveyView().waypoint == null, "a fresh survey started with a waypoint");
+
+  // Unarmed, a tap on the map is still a pin. That is the default and it stays.
+  hud.chartTapAt(cf.surveyView(), 9000, -4000, 400);
+  check(surv.pins.length === 1, "an unarmed tap did not drop a pin");
+  check(cf.surveyView().waypoint == null, "an unarmed tap set a waypoint");
+  hud.chartTapAt(cf.surveyView(), 9000, -4000, 400);   // the same tap lifts it
+  check(surv.pins.length === 0, "the pin did not lift again");
+
+  // Armed from the chart's own button, and then the map sets it.
+  cf.screen("chart");
+  cf.draw();
+  const arm = cf.live().taps.find(t => t.w === 130 && t.h === 38);
+  check(!!arm, "there is no waypoint button on the chart");
+  arm.act();
+  hud.chartTapAt(cf.surveyView(), 12000, -6000, 400);
+  const w = cf.surveyView().waypoint;
+  check(!!w, "an armed tap set no waypoint");
+  check(Math.round(w.x) === 12000 && Math.round(w.y) === -6000,
+        "the waypoint landed at " + Math.round(w.x) + "," + Math.round(w.y));
+  check(surv.pins.length === 0, "setting a waypoint dropped a pin as well");
+
+  /* The two numbers the flight HUD points with. A waypoint with no range and no
+     bearing is a mark on a map, which is what pins are already for. */
+  const truth = Math.hypot(12000 - me.x, -6000 - me.y);
+  check(Math.abs(w.dist - truth) < 2,
+        "the range reads " + w.dist + " against a real " + Math.round(truth));
+  check(Number.isFinite(w.bearing) && w.bearing >= 0 && w.bearing < 360,
+        "the bearing is " + w.bearing);
+
+  // Only ever one: setting another moves it rather than collecting them.
+  arm.act();
+  hud.chartTapAt(cf.surveyView(), -3000, 8000, 400);
+  const moved = cf.surveyView().waypoint;
+  check(Math.round(moved.x) === -3000 && Math.round(moved.y) === 8000,
+        "setting a second waypoint did not move the first");
+
+  // And it survives the tab, or it is a note you have to write down twice.
+  cf.leave();
+  const book = JSON.parse(store["crossfire.survey.v3"]);
+  check(book.waypoint && book.waypoint.x === -3000,
+        "the book saved " + JSON.stringify(book.waypoint));
+  const again = bootKeepingStorage("?debug=1&seed=515151");
+  again.cf.start("survey", 1);
+  const back = again.cf.surveyView().waypoint;
+  check(back && Math.round(back.x) === -3000 && Math.round(back.y) === 8000,
+        "a resumed sector lost its waypoint");
+
+  // Cleared on purpose, and then it is gone.
+  again.cf.surveyView().onWaypoint(null);
+  check(again.cf.surveyView().waypoint == null, "clearing left the waypoint up");
+  console.log("  waypoint   armed from the chart, set by a tap, one at a time · " +
+              "range and bearing to it · pins still work · survives the tab");
 }
 
 if (problems.length) {

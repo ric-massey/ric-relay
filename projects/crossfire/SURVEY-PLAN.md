@@ -45,6 +45,32 @@ Done and tested, as of this file being written:
 - Guarded caches, sentries, wormhole gates, a parallax starfield.
 - Danger scaling with distance from the origin.
 
+## Bugs found and fixed since this file was written
+
+Kept because two of them were the kind that render perfectly and rot silently,
+which is the class rule 2 below exists for.
+
+- **The economy read zero everywhere.** The `salvage` → `cash` rename went
+  through the store and the interface and stopped on the one line joining them,
+  so every readout fell back to zero while the hold behind it filled up and
+  quietly stopped taking motes. HOLD FULL could never fire. There is now a test
+  that cross-references every field the panel reads against every field the game
+  sends.
+- **The yard button never drew,** because `atYard` was never sent — so a phone,
+  which has no `E` key, had no way into the yard page at all.
+- **The light drive did nothing.** Six parts carried home for a reward that was
+  wired up in the engine and never reached the interface: `onJump` existed and
+  nothing ever called it. It arms from the chart now.
+- **The jump coil could not be picked up.** Its gate mouth sat exactly where the
+  part lay, and a gate swallows you at 82 units where a part is collected at
+  about 60 — so flying to the coil threw you across the sector every time. The
+  mouth stands beside the site now, and no gate may take you while you are over
+  any uncollected part.
+- **The mode's three keys were drawn 12px below the bottom of the canvas** and
+  had therefore never once been visible.
+- Five overlapping-text and dead-tap-target bugs across the chart, the station,
+  the inventory and the objective band.
+
 ## What is wrong with it right now
 
 - **No stakes.** Losing your hull costs a trip, not a run. Survival needs death.
@@ -155,24 +181,127 @@ than an honest gap.
 part of the screen and told you nothing you could act on. Direction lives on the
 chart, where directions belong.
 
-## Phase 2 — survival
+---
+
+## The places  ·  **DONE**
+
+Everything below came out of playing it. The theme is one thing: the sector is
+full of objects you fly past without ever looking at, and a place you do not
+look at is scenery. Each item is a way of making one of them worth a second
+glance — or of removing it, which is the same fix from the other side.
+
+### A. Planets  ·  *fewer, far bigger, and named*  ·  done
+
+Planets are currently small, numerous, identical and anonymous, which is three
+of the four things a landmark must not be.
+
+- **Far fewer.** They are the most common thing in the sector after rocks and
+  they are the least interesting. Cut hard.
+- **Massive.** A planet should fill a good part of the screen at survey zoom.
+  A world you can mistake for a big asteroid is not a world.
+- **Sizes that differ by a lot.** Not a 110–200 spread. Something an order of
+  magnitude across, so "that one is *enormous*" is a thing you can say.
+- **Different colours, and different surface lines.** Banding, terminators,
+  ring lines — whatever it takes that two planets never read as the same paint.
+- **Names.** Gibberish is fine and probably better; a pure function of position
+  so a world keeps its name. Floating in words around the planet, not in a HUD
+  label.
+- **Inhabited, about one in twenty.** Says so, in those floating words. This is
+  also the hook Phase 2.4 needs — an inhabited planet is where water and food
+  will be bought — so the flag wants to exist before that phase starts.
+
+### B. Wormholes  ·  *rare enough to be an event*  ·  done
+
+Gates are two-way now, which makes them a route rather than a thing that happens
+to you. That makes them much more useful, so there should be far fewer.
+
+- **Way down.** A gate should be novel — not impossible to find, but not
+  something you trip over on an ordinary flight.
+- **One at the jump coil, guaranteed.** Already true and it should stay true:
+  the coil's clue is "a gate", so finding the coil is how most players will meet
+  their first one.
+
+### C. The Wall  ·  *give it a reason to exist*  ·  done
+
+The almanac entry is four corner brackets around an empty square. It is the
+weakest thing in the book: there is nothing there, so finding it is an
+anticlimax and the entry is a lie about there being something to see.
+
+- Make it **a historic attempt at a wormhole that went wrong** — Ric's idea and
+  the right one. That gives it wreckage, a reason for the geometry, a reason it
+  is enormous and square, and something to read in the almanac note.
+- The other landmarks should get the same test applied to them: is there
+  anything *there*, or only a marker saying there is.
+
+### D. The tractor beam  ·  *weaker, and shorter*  ·  done
+
+It currently sweeps up a broken rock at full burn, which removes the only
+decision salvage ever asked for.
+
+- **Less reach** and **less pull**, so holding a cloud of motes means slowing
+  down for it. The trade should be time against cargo.
+
+### E. The chart  ·  *fewer lines*  ·  done
+
+The chart has grid lines, an origin cross, the fog grid, the trail, marks, pins
+and a legend, and it has become hard to read.
+
+- **Drop the trail.** Where you have been is already said by the fog you
+  revealed walking it; drawing it twice is what tipped the page over.
+
+### What this actually landed
+
+- **Worlds are on their own lattice, one to a five-chunk cell**, and inset from
+  the cell's edges by their own radius plus 600 — so two of them are always at
+  least `r1 + r2 + 1200` apart and *cannot* overlap. That mattered: per-chunk
+  placement had one world in twenty-four intersecting another, worst case one
+  wholly inside the other, because a chunk is pure and cannot see its
+  neighbours. Measured after: 0 overlaps across 490 worlds and six seeds.
+- Density **0.16 → 0.030 a chunk**. Radius **26 to 3,502** — 135× — with the
+  curve keeping most near 600 so the giants read as giants. Eight palettes,
+  banding from 2 to 7 lines drawn on a per-world tilt, a ring on about one in
+  five, gibberish names that are pure functions of position (365 worlds, 363
+  distinct names), and **inhabited 1 in 19**, said in words floating at the rim.
+- **A world may not stand on anything you have to reach.** It is solid and can
+  be 3,600 across, so one rolled onto a manifest part does not obscure it — it
+  encloses it, and the run cannot be finished. This bit immediately: the ranging
+  lens's own decorative world swallowed the lens the moment planets got bigger.
+  Guarded against every part site, every landmark, the yard and the origin.
+- **Gates cut from 22 mouths per 625 chunks to 7** — roughly one round trip every
+  180 chunks. The coil's gate is still placed by hand, so finding the coil is
+  still how most players meet their first one.
+- **The Wall** is a wormhole somebody failed to open: the frame's four anchors,
+  the construction yards wrecked against them, debris strung along the lines
+  between, and a mouth at the middle that never formed. The dead mouth is drawn
+  as the same figure as a working gate with the motion taken out and the rings
+  broken, and `surveyGates` refuses to transit it — the anticlimax is the entry.
+  The almanac picture and note were rewritten to match.
+- **Tractor beam 620 → 340 reach, 900 → 380 pull.** It collects up close and
+  does nothing at 900 units, so a cloud has to be flown slowly through.
+- **The trail is gone from the chart**, and gone from the save with it. It was
+  saying what the fog already says — the fog *is* the shape of where you have
+  been — and it was the line that tipped the page from a map into a diagram.
+
+---
+
+## Phase 2 — survival  ·  **DONE**
 
 This is the phase that changes what Survey *is*. It reverses the mode's original
 promise that nothing ends your run, deliberately.
 
-### 2.1 Hull, and dying
+### 2.1 Hull, and dying  ·  done
 
 - Hull works as now, but at zero it does not reset. **At zero hull the next hit
   kills you.** The HUD has to make "one more hit" unmistakable.
 
-### 2.2 Water and food
+### 2.2 Water and food  ·  done
 
 - Two meters, draining slowly on different clocks. Water faster than food.
 - Running either to empty starts a countdown, not an instant death — a warning
   you can still act on.
 - Empty for too long kills you.
 
-### 2.3 Death
+### 2.3 Death  ·  done
 
 - A **YOU DIED** screen. What killed you, how far out you were, how long you
   lasted, what you were carrying.
@@ -180,7 +309,7 @@ promise that nothing ends your run, deliberately.
   You lose the hold, and you lose whatever you were carrying that was not a
   yard part.
 
-### 2.4 Planets you can dock at
+### 2.4 Planets you can dock at  ·  done
 
 - Some planets are **inhabited** — you can dock, and buy water and food.
 - Uninhabited ones with atmosphere can be **skimmed** for water, slowly and for
@@ -188,20 +317,173 @@ promise that nothing ends your run, deliberately.
 - Inhabited planets are commoner near home and rare in deep space, which is what
   makes range a supply problem rather than only a danger problem.
 
+### What Phase 2 actually landed
+
+- **The hull runs to zero and stops there.** Five points, one a hit, and zero is
+  survivable — you can still fly, you can still reach a star and mend, and the
+  next thing that touches you kills you. That single point of grace is what makes
+  it a decision rather than an ambush. A well does not chip you: being swallowed
+  is fatal outright, which is what phase 1.2's warning-with-room-to-act was for.
+- **Two clocks, always running.** Twelve minutes of water, twenty-five of food,
+  shown as *time* rather than as a percentage — "4:20 of water" is a decision and
+  "36%" is a number you have to convert first. Empty starts a countdown (75s for
+  thirst, 120s for hunger) and *anything* going back into the tank stops it, which
+  matters because skimming trickles and a trickle has to be able to save you.
+- **A YOU DIED page** stating what killed you, how far out, how long you lasted,
+  and — itemised — what went down with the ship, because "you lost 43 units" is a
+  number and "you lost 19 iridium" is a memory. Beside it, deliberately, what did
+  *not*: the cash, the almanac, the chart, the pins, the yard and the parts you
+  were carrying. A death screen that lists only losses reads as a wipe.
+- **Respawn at the home station**, which is now one constant both the generator
+  and the respawn read, so they cannot drift. Resupplied on arrival — sending you
+  back out on the empty tanks that just killed you is a loop, not a setback.
+- **Inhabited worlds sell water and food**, about one in twenty overall but 1 in
+  10 near home against 1 in 27 in the deep. They are deliberately *not* stations:
+  no cargo bought, no refits, no verbs — a station is a shipyard and this is a
+  village with a well, and keeping them apart is what makes a station matter.
+- **Any world with air can be skimmed**, at 2.4 seconds of water a second, free,
+  water only. 62% of worlds have air. Nothing you scoop out of a sky is food, or
+  the inhabited worlds would be pointless.
+
+> **Worth knowing before phase 3.** Measured from five distances out to 300,000
+> units, the nearest place that sells water is *never more than a minute of flight
+> away* — so supply is not yet the constraint 2.4 describes. The tension that does
+> exist is informational rather than physical: you have twelve minutes of water and
+> you do not know where the nearest station is until you have charted it. The
+> levers, when it wants tightening, are the station roll (currently ~1 in 20
+> chunks, plus one given at home) and the tank sizes. Left alone rather than tuned
+> blind, because it is a feel decision and 3.3's twenty-five ships will change the
+> travel budget it depends on.
+
+---
+
+## The quiet screen, and the drive  ·  **DONE**
+
+A second pass over everything the HUD had accumulated, plus two systems that came
+out of playing it.
+
+### The screen
+
+- **The objective band is gone.** Three lines painted across the top of the screen
+  every frame forever, answering a question nobody asks twice. It is a
+  notification now, fired when it changes.
+- **One notification stack, top right.** There were three feeds in three corners —
+  logged cards top centre, the objective band, radio above the hull bar. All of it
+  goes to one right-aligned stack under the chart; a repeat refreshes the line it
+  is already on rather than stacking a second copy, and it caps at four.
+- **The almanac tally is off the flight HUD.** It is a total that changes once
+  every ten minutes and it has a page, which is the definition of something that
+  does not belong on a flight readout. **SECTOR** takes the top right, above the
+  chart, so the right-hand column reads downward: where you are, the map, the way
+  in, then what just happened.
+- **Water and food are percentages**, one line each, and **the bars are gone** —
+  from those and from storage. A bar is a second drawing of a number already on
+  the line beside it, and four of them made a corner you had to read rather than
+  glance at. An emptied tank shows its countdown instead, because 0% looks the
+  same whether you have a minute or a second.
+- **"Hold" is "storage"** everywhere it is the stuff rather than the ship.
+- **The inventory leads with two doors** — ALMANAC and MISSIONS — at the top,
+  panel-sized and obviously pressable. Missions is the yard page, reachable from
+  the inventory as well as by docking, which is what let the objective stop being
+  permanent furniture.
+
+### Named places
+
+- **Supermassive wells have names**, in their own register (`TORIS MAW`, not a
+  world name), and ordinary ones deliberately do not — a name is for the thing
+  you plan a route around. Both they and worlds are **written into the gazetteer
+  with their names** and drawn with them on the chart, held back at the two widest
+  zooms where a sector of labels would be a block of type rather than a map. The
+  gravity warning names the well too.
+- **A supermassive well takes everything.** It pulled ships, rocks and bullets and
+  left the salvage hanging in it, so the middle of a black hole was a cloud of
+  untouched cargo. Motes and sentries are pulled now and consumed at the middle,
+  and a supermassive well reaches half again as far as its size alone would give
+  it — all of the extra is warning, the killing radius is untouched.
+
+### The wormhole, and the light drive
+
+- **The six parts make a MANMADE WORMHOLE**, not a "light drive". It opens a mouth
+  at one end and puts you out of another; it does not drive you anywhere at speed.
+  The Wall is a *failed* attempt at exactly this, which is why the jump coil is
+  found wound around a gate — naming it correctly makes the two the same story.
+- **The light drive is the yard's second project**, and the only one you buy
+  rather than fetch (2,400 cash, offered once the wormhole is done). Engage it
+  with `R` and you run in one direction at **eight times drive speed** — measured
+  2,880/s, 14,341 units in five seconds — with steering cut to a fifth, because
+  locking the nose solid would make the impact warning information you could not
+  act on.
+- **Asteroids are nothing to it.** They neither damage you, slow you, nor cut the
+  drive; the ship destroys them going through. The only two things big enough to
+  matter are a massive world and a supermassive well, and **the drive warns five
+  seconds out**, names the thing, and says what to do. The warning is exact:
+  tested against the real rim distance over the real speed, it is true to 0.00s.
+- Streaming widens and shifts forward while the drive runs (13×13 chunks, four
+  ahead), because the warning horizon is further than the loaded box reaches and
+  at that speed you outrun the sector otherwise.
+
+### And a bug that had been there a while
+
+**Sentries reset mid-fight.** `surv.drones` was rebuilt from chunk data every time
+the ship crossed a chunk line — every few seconds at 2,600 units to a chunk — so a
+sentry that had taken a hit was handed a fresh hull, put back on its post and sent
+to sleep, over and over. Guards have stable ids now and a loaded one is carried
+across the rebuild as the same object. A guard killed while its post is in range
+stays dead; leave and come back and the post is manned again, which was always the
+rule.
+
+## Since, from playing it
+
+- **A slingshot is worth taking.** Speed above your own limit is an allowance that
+  only gravity grants, decays on its own, and your engine can never add to. It
+  used to be confiscated in a single frame the moment a well's pull fell below
+  one — momentum arrived and left again at the rim, every time. Two wrong versions
+  came before the right one and both are in the comment: one gave the whole mode
+  four times its stated top speed (full burn ran to 1,138 against a MAX_SPEED of
+  360 and nothing said so), the other latched, because being over the limit was
+  what raised the limit.
+- **Worlds are drawn to scale on both charts**, and appear on the minimap at all —
+  they were filtered off it as "not something you navigate by", which was written
+  when a planet was 190 units across. A well is charted at its *reach*, because
+  that is the piece of the sector you plan a route around. The gazetteer keeps
+  sizes now, and so does the book.
+- **Waypoints.** One at a time, armed from the chart and set by a tap, with an
+  edge arrow and a range on the flight HUD. Pins are notes — six kinds, two
+  hundred of them, none of them pointing anywhere — and a waypoint is the other
+  thing entirely.
+
 ---
 
 ## Phase 3 — the economy and the ships
 
-### 3.1 Metals
+### 3.1 Metals  ·  **DONE**
 
 Salvage becomes typed. Four or five metals, each worth different money, each
 found in different places — so "what is this rock worth" becomes a question.
 
-### 3.2 Selling
+**What landed.** Four materials — ICE 1, IRON 3, ALLOY 9, IRIDIUM 22 — and the
+split the top of this file promised: material is *cargo*, capped by the hold and
+spilled when the hull goes; cash is *money*, uncapped, safe from a hull strike,
+and the only thing a station takes. Each source has its own table (a rock is ice
+and iron, a thing that was built is alloy, a guarded cache is where the iridium
+is) and depth leans every table toward the rare end — measured at 2.5× the value
+per unit in the abyss against home. Motes carry their own kind and are drawn in
+their own colour and size, so a seam of the good stuff is visible before you are
+close enough to read a word. Refit prices moved up roughly four-fold to match.
+
+### 3.2 Selling  ·  **DONE**
 
 Stations buy metal. Prices vary by station and by band, so a long haul out can
 be worth it. Your home station is never the best price, which is the whole
 reason to find another one.
+
+**What landed.** A station's price for each material is a pure function of where
+it stands — its own taste, times a depth bonus — so a good buyer stays a good
+buyer and is worth writing on the chart. Home sits at the origin with no depth
+behind it and is therefore never the best price. The station page leads with what
+it pays and what your hold is worth to it, and sells the lot on one button or
+`S`. A realistic hold of ordinary rock is worth about 250 near home, which is
+about one tier of one refit.
 
 ### 3.3 Twenty-five ships
 
