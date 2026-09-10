@@ -4508,6 +4508,120 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "and the new materials all survive the tab");
 }
 
+// ── a unit of anything is a whole unit ───────────────────────────────────
+/* The ice melter's first cut took a *fraction* of a unit of ice every frame,
+   which looked like a rounding nicety and was not. A hold of 9.5875 ice printed
+   itself into the interface as `ICE x9.58750000000001`, made the cargo count a
+   fraction of a unit, and paid out 19.175 cash when it was sold — one wrong
+   decision leaking into three places that had every right to assume a material
+   is a whole thing.
+
+   So: the hold is integers, always, and money is money. */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const view = () => cf.surveyView();
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 5; surv.food = 900; now += 1000 / 60; cf.step();
+    }
+  };
+
+  surv.docked = null;
+  me.x = 220000; me.y = 120000; me.vx = me.vy = 0;
+  step(2);
+  surv.store.icemelter = 1;
+  view().onFit(0, "icemelter");
+  surv.slots[0].fit = 0;
+  for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
+  surv.hold.ice = 12;
+  surv.water = 30;
+
+  const whole = v => v === Math.round(v);
+  let melted = 0;
+  for (let f = 0; f < 60 * 40; f++) {
+    step(1);
+    for (const k of Object.keys(surv.hold)) {
+      check(whole(surv.hold[k]),
+            "the hold went fractional: " + k + " = " + surv.hold[k]);
+      if (!whole(surv.hold[k])) { f = 1e9; break; }
+    }
+    for (const m of view().materials) {
+      check(whole(m.n), "the page shows " + m.name + " as " + m.n);
+      if (!whole(m.n)) { f = 1e9; break; }
+    }
+    check(whole(view().carried), "cargo used reads " + view().carried);
+    if (surv.hold.ice < 12) melted = 12 - surv.hold.ice;
+  }
+  check(melted > 0, "the melter never took a single unit in forty seconds");
+  check(surv.water > 30, "the melter took ice and made no water");
+
+  /* And money. Selling a hold has to pay a whole number of cash — a fractional
+     purse is one that can buy something for exactly its own price and fail. */
+  surv.docked = { x: 220000, y: 120000 };
+  for (const k of Object.keys(surv.hold)) surv.hold[k] = 3;
+  surv.cash = 0;
+  view().onSell();
+  check(whole(surv.cash), "selling paid " + surv.cash);
+  check(surv.cash > 0, "selling six kinds of material paid nothing");
+  check(view().worth === 0, "the page still offers to sell an empty hold");
+
+  console.log("  units      the hold stays whole through forty seconds of " +
+              "melting \u00b7 " + melted + " ice became water \u00b7 selling " +
+              "pays a whole number");
+}
+
+// ── the coil goes off once ───────────────────────────────────────────────
+/* Picking the coil off the gate discharges it and throws you across the sector.
+   It used to do that *every time it was picked up* — so dying with it and going
+   back for it fired it again, which turned "go and get your part back" into a
+   random throw, and on a bad roll into a chase you could not finish.
+
+   It is a spent component after the first time. */
+{
+  const { cf } = boot("?debug=1&seed=606060");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 5; surv.water = 900; surv.food = 900;
+      now += 1000 / 60; cf.step();
+    }
+  };
+
+  const site = surv.partSites.find(p => p.key === "coil");
+  me.x = site.x; me.y = site.y; me.vx = me.vy = 0;
+  step(3);
+  check(surv.carrying.has("coil"), "the coil was not picked up");
+  const thrownTo = { x: me.x, y: me.y };
+  check(Math.hypot(me.x - site.x, me.y - site.y) > 1000,
+        "the coil did not fire the first time");
+
+  // Die with it, and go back for it.
+  cf.die("rock");
+  const left = surv.dropped.find(d => d.key === "coil");
+  check(!!left, "the coil was not left where you died");
+  cf.surveyView().onRespawn();
+  me.x = left.x; me.y = left.y; me.vx = me.vy = 0;
+  step(4);
+  check(surv.carrying.has("coil"), "the dropped coil could not be picked up again");
+  check(Math.hypot(me.x - left.x, me.y - left.y) < 600,
+        "recovering the coil fired it again and threw you " +
+        Math.round(Math.hypot(me.x - left.x, me.y - left.y)) + " units");
+
+  // And it stays spent across the tab.
+  cf.leave();
+  const book = JSON.parse(store["crossfire.survey.v3"]);
+  check(book.coilFired === true, "the book forgot that the coil has fired");
+
+  console.log("  coil once  it fires when it comes off the gate and never again " +
+              "\u00b7 recovering it is a pickup, not a throw \u00b7 spent " +
+              "across the tab");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

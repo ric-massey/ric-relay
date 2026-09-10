@@ -5583,7 +5583,7 @@
                     refit: freshRefit(), opened: [], stripped: [],
                     carrying: [], built: [], pins: [], known: [],
                     slots: [], store: {}, battleAge: {}, memorials: [],
-                    dropped: [] };
+                    dropped: [], coilFired: false };
     try {
       const raw = localStorage.getItem(SURVEY_STORE);
       if (!raw) return empty;
@@ -5711,6 +5711,7 @@
           return out;
         })(),
         memorials: strs(b.memorials).slice(0, 400),
+        coilFired: !!b.coilFired,
         dropped: Array.isArray(b.dropped)
           ? b.dropped.filter(d => d && typeof d.key === "string" &&
                                   BUILD.some(x => x.key === d.key) &&
@@ -5752,6 +5753,7 @@
         carrying: [...surv.carrying],
         built: [...surv.built],
         dropped: surv.dropped,
+        coilFired: !!surv.coilFired,
         pins: surv.pins,
         // What is bolted on, mid-fit and all, and what is in the crate.
         slots: surv.slots.map(sl => sl && { key: sl.key, fit: Math.round(sl.fit) }),
@@ -6669,6 +6671,8 @@
       partSites: [], partAt: new Map(), parts: [], fields: [],
       carrying: new Set(carried ? book.carrying : []),
       built: new Set(carried ? book.built : []),
+      // The coil goes off once, when it comes off the gate. See `surveyParts`.
+      coilFired: !!(carried && book.coilFired),
       /* Parts you were carrying when you died. They sit where you died until you
          go back for them, and they are written into the book because a part you
          have to fetch is worthless if closing the tab loses it. */
@@ -6771,6 +6775,7 @@
       thirst: 0, hunger: 0,        // how long each has been empty
       skimming: 0,                 // lit while an atmosphere is being drawn from
       melting: 0,                  // and while the melter is turning ice to water
+      meltClock: 0,                // how long it has been running toward the next unit
       meltSaid: false,
       tractorLit: 0,
       warpCool: 0,
@@ -7775,6 +7780,9 @@
       surv.hold[m.key] = 0;
     }
     if (!units) { gameSound("hit"); return 0; }
+    // Rounded here rather than only where it is printed: a fractional purse is a
+    // purse that can buy something for exactly its own price and fail.
+    got = Math.round(got);
     surv.cash += got;
     surv.t.sold = true;
     gameSound("win");
@@ -8764,28 +8772,49 @@
      the melter only runs when the tank has room, so it never quietly eats the
      hold you were going to sell. */
   const MELT_SECONDS = 26;      // of water, per unit of ice
-  const MELT_RATE = 0.55;       // units of ice a second, at full tilt
+  const MELT_EVERY = 1.8;       // seconds of running per unit of ice taken
 
+  /* A unit of ice is a unit. The first cut of this took a *fraction* of one every
+     frame, which is the sort of bug that looks like a rounding nicety and is not:
+     a hold of 9.5875 ice printed itself into the interface as `ICE x9.5875`, made
+     the cargo count a fraction of a unit, and paid out fractional cash when it was
+     sold — one wrong decision leaking into three places that had every right to
+     assume a material is a whole thing.
+
+     So the clock is on the melter rather than on the hold. It runs, and every
+     `MELT_EVERY` seconds it takes exactly one unit and puts exactly one unit's
+     worth of water in the tank. */
   function surveyMelt(dt) {
-    if (!mods().melt) return;
+    if (!mods().melt) { surv.meltClock = 0; return; }
     const me = ships[0];
     if (!me.alive || surv.death) return;
     if (surv.water >= WATER_FULL) return;
     if ((surv.hold.ice || 0) <= 0) return;
 
-    const room = (WATER_FULL - surv.water) / MELT_SECONDS;   // in units of ice
-    const take = Math.min(surv.hold.ice, MELT_RATE * dt, room);
-    if (take <= 0) return;
-    surv.hold.ice -= take;
-    surv.water = Math.min(WATER_FULL, surv.water + take * MELT_SECONDS);
+    surv.meltClock = (surv.meltClock || 0) + dt;
     surv.melting = 0.3;
+    if (surv.meltClock < MELT_EVERY) {
+      // Running, but nothing has come out of it yet.
+      if (!surv.meltSaid) {
+        surv.meltSaid = true;
+        chatter("Melter running \u2014 the ice is worth more as water.", "#87d8ff");
+      }
+      return;
+    }
+    surv.meltClock = 0;
+    surv.hold.ice -= 1;
+    surv.water = Math.min(WATER_FULL, surv.water + MELT_SECONDS);
     /* Said once when it starts rather than every frame it runs: a line of chatter
        a second is not information. */
     if (!surv.meltSaid) {
       surv.meltSaid = true;
       chatter("Melter running \u2014 the ice is worth more as water.", "#87d8ff");
     }
-    if (surv.hold.ice <= 0.001) {
+    /* Written when it stops rather than on every unit. A unit is 1.8 seconds, and
+       a localStorage write every 1.8 seconds for the whole of a long haul is a
+       cost with nothing to show for it — losing the last unit to a closed tab is
+       not a loss anybody would notice. */
+    if (surv.hold.ice <= 0) {
       surv.hold.ice = 0;
       surv.meltSaid = false;
       chatter("Out of ice.", NEBULA);
@@ -9389,8 +9418,17 @@
          gate it was wound around discharges the thing, and the sector folds:
          you are somewhere else, and you do not get to say where. It is the one
          moment in the mode that happens *to* you, and it is why the coil is
-         worth finding rather than merely worth collecting. */
-      if (pt.key === "coil") coilJump();
+         worth finding rather than merely worth collecting.
+
+         **Once.** It discharges when you take it off the gate; after that it is a
+         spent component like any other. Dying with it and going back for it used
+         to fire it again every single time, which turned "go and get your part
+         back" into a random throw across the sector — and, if you were unlucky,
+         into a chase you could not finish. */
+      if (pt.key === "coil" && !surv.coilFired) {
+        surv.coilFired = true;
+        coilJump();
+      }
       saveSurveyBook();
     }
 

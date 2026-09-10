@@ -1365,6 +1365,47 @@ writes must be a key the loader reads.*
 
 ---
 
+### A bug hunt over everything Phase 5 added  ·  **DONE**
+
+Four real ones, found by pointing the audits at the new systems rather than by
+waiting for them to show up in play.
+
+**A unit of anything is a whole unit.** The ice melter's first cut took a
+*fraction* of a unit of ice every frame. That looked like a rounding nicety and
+was not: a hold of 9.5875 ice printed itself into the interface as
+`ICE x9.58750000000001`, made the cargo count a fraction of a unit, and paid out
+19.175 cash when it was sold. One wrong decision leaking into three places that
+had every right to assume a material is a whole thing. The clock is on the melter
+now — it runs, and every 1.8 seconds it takes exactly one unit and puts exactly
+one unit's worth of water in the tank. Selling rounds too, because a fractional
+purse is one that can buy something for exactly its own price and fail.
+
+**The jump coil fired every time you picked it up.** It is meant to discharge when
+you pull it off the gate and throw you across the sector — once. Dying with it and
+going back for it fired it again, which turned "go and get your part back" into a
+random throw and, on a bad roll, a chase you could not finish. It is a spent
+component after the first time, and the book remembers that.
+
+**Six materials did not fit the station.** The hold went from four kinds to six in
+5.4, and the station's buy row divided one line by however many there are — at six
+the cells fell to 96px and REACTOR CORE printed straight through its own price.
+It is three across and as many rows as that takes.
+
+**And the row that grew pushed the page's bottom through itself.** The hangar door
+was placed by flowing down from the panels above it, so a panel gaining a row put
+the door's caption on top of the line of keys at the foot of the page. The door is
+anchored to the bottom now — growth above must not be able to reach the bottom of
+a page — and the caption folded into the button, because the right column is
+genuinely out of room and both facts were short enough to live in the label.
+
+Everything else came back clean: a long randomised run in the deep with every part
+fitted and the pages opening and closing behind it, weapons fired at full burn and
+inside a well's reach and while dead and into the middle of a battle, all three
+other game modes at both screen widths, and every page with a full hold of all six
+materials.
+
+---
+
 ## Phase 6 — possibility multiplication
 
 Ric's brief, and it is a different *kind* of instruction from everything above.

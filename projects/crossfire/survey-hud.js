@@ -2700,15 +2700,22 @@
        differs between here and the next station. */
     const mats = st.materials || [];
     const carried = st.carried || 0;
-    const buyH = PANEL_H(1);
+    /* Three across, and as many rows as that takes. It was one row of however
+       many materials there are, which was fine at four and broke at six: the
+       cells fell to 96px and REACTOR CORE printed straight through its own
+       price. Three is the widest that leaves a material's name room to be read
+       rather than abbreviated. */
+    const perRow = 3;
+    const matRows = Math.max(1, Math.ceil(mats.length / perRow));
+    const buyH = PANEL_H(matRows);
     panel(full.x, PAGE.TOP, full.w, buyH, CASH, "THIS STATION BUYS",
           carried ? carried + " UNITS ABOARD" : "NOTHING ABOARD");
-    const cellW = (full.w - PAGE.PAD * 2 - 230) / Math.max(1, mats.length);
+    const cellW = (full.w - PAGE.PAD * 2 - 230) / perRow;
     mats.forEach((m, i) => {
-      const x = full.x + PAGE.PAD + i * cellW;
-      const yy = ROW(PAGE.TOP, 0);
+      const x = full.x + PAGE.PAD + (i % perRow) * cellW;
+      const yy = ROW(PAGE.TOP, Math.floor(i / perRow));
       fitText(m.name, x, yy, SIZE.cap, m.colour, "left", m.n ? 1 : 0.4,
-              cellW - 78, "0.06em");
+              cellW - 96, "0.06em");
       label((m.price == null ? m.value : m.price) + "  \u00d7" + m.n,
             x + cellW - 22, yy, SIZE.cap, m.n ? CASH : VIOLET_LOW, "right",
             m.n ? 0.95 : 0.4);
@@ -2829,18 +2836,27 @@
     /* "HANGAR \u25b8 SKIFF" told you nothing: a SKIFF is a word you have never
        seen, and the button read as though the hangar were called one. It says
        what it is for, and what you are in, in that order. */
-    const doorY = colY + earnH + PAGE.STEP + 10;
+    /* Anchored to the foot of the page rather than flowed from the panels above
+       it. It used to be `colY + earnH + STEP + 10`, so the moment the buys panel
+       grew a second row — which it did when the hold went from four materials to
+       six — the door and its caption were pushed down through the line of keys at
+       the bottom. Growth above must not be able to reach the bottom of a page. */
+    const doorY = Math.max(colY + earnH + PAGE.STEP + 10, SCREEN_H - 132);
     const home = !!st.atHome;
-    button(home ? "HANGAR  \u25b8    BUY A SHIP" : "HANGAR  \u00b7  HOME STATION ONLY",
+    /* One line, not two. The caption under it said what you fly and where ships
+       change hands; below the button it printed through the row of keys along the
+       bottom of the page, and above it printed through the panel over it — the
+       right column is simply out of room. Both facts are short enough to be *in*
+       the button, which is also where somebody looking at a door about ships
+       would read them. */
+    const ship = st.shipName || "SKIFF";
+    button(home ? "HANGAR  \u25b8    FLYING THE " + ship
+                : "HOME STATION ONLY  \u00b7  FLYING THE " + ship,
            R.x + R.w / 2, doorY, R.w, 44, home ? VIOLET : VIOLET_LOW,
            home ? (st.onHangar || (() => {})) : null, false, home);
-    label(home ? "you fly the " + (st.shipName || "SKIFF")
-               : "you fly the " + (st.shipName || "SKIFF") +
-                 "  \u00b7  ships change hands at home",
-          R.x + R.w / 2, doorY + 40, SIZE.cap, VIOLET_DIM, "center", 0.6);
 
     label("ARROWS MOVE  \u00b7  ENTER BUYS  \u00b7  S SELLS  \u00b7  E UNDOCKS",
-          SCREEN_W - PAGE.EDGE, SCREEN_H - 70, SIZE.cap, VIOLET_LOW, "right", 0.55);
+          SCREEN_W - PAGE.EDGE, SCREEN_H - 66, SIZE.cap, VIOLET_LOW, "right", 0.55);
 
     pageNav(st, "refit");
     closeButton(st.onUndock || st.onClose || (() => {}));
