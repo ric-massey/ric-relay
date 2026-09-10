@@ -1692,6 +1692,94 @@ one rule it must keep is the one it already keeps — an authored thing sits *in
 the procedural sector rather than replacing a piece of it, so finding one is an
 accident of where you flew.
 
+### 6.7 The almanac is a twenty-hour book, and it is a two-hour book
+
+> *"All the almanac stuff I did too fast — maybe two hours of gameplay and all of
+> it is done. Roughly the last 3 should be extremely difficult to find. The last
+> 10 should be pretty hard, maybe 20 hours, more maybe. The first 5 should be in
+> the first 10 minutes, and the next 5 between half an hour and two hours. Some of
+> that stuff should be special — like you've seen everything else in the game and
+> then you see that and you think **wtf**."*
+
+**Why it happens, measured rather than guessed.** Ten minutes of holding the
+throttle reaches **344,617 units** from home. The furthest landmark in the game —
+the Leviathan, which is the finale, the thing the whole manifest is pointing at —
+sits at **112,000**. The entire ladder is inside three minutes of flying. Nothing
+about the *entries* is wrong; the sector they are hidden in is a thirtieth of the
+size it needs to be.
+
+#### The shape it should have
+
+| tier | entries | when | where |
+|---|---|---|---|
+| **1 — the first sitting** | 5 | first 10 minutes | at home, or inside 5,000 |
+| **2 — the first evening** | 5 | 0.5–2 hours | 20,000–120,000 |
+| **3 — the long middle** | ~16 | 2–20 hours | 150,000–2,000,000 |
+| **4 — the far end** | ~10 | 20 hours plus | 2,000,000–12,000,000 |
+| **5 — the ones nobody expects** | 3 | further, and harder than far | 15,000,000+, and gated on more than distance |
+
+**The ladder stretches; the entries mostly stay.** The eight landmarks currently
+run 13,000 to 112,000 and should run 13,000 to about 9,000,000 — the near ones
+barely move and the far ones move by two orders of magnitude. That alone converts
+"two hours" into most of the curve above, because the twenty-two telemetry entries
+are already spread across the things you do on the way.
+
+**Water is what makes distance cost something.** Twenty minutes of water and
+forty-five of food mean you cannot simply point at the abyss and hold W: at
+900,000 units an hour you are four hours from the far tier, and that is a supply
+problem. Which is the good news — the **ice melter**, inhabited worlds and cargo
+capacity are already the answer, so the far end of the almanac is gated behind the
+middle of the crafting tree without a single new lock being invented. A player
+reaching tier 4 has *built* their way there.
+
+#### What tier 5 has to be
+
+Not "the same thing, further away". The last three are the payoff for Phase 6.6 —
+**authored, rare, and different in kind** — and they only work if the rest of the
+game has trained you first:
+
+- It should be **unmistakably not procedural.** Everything out there is generated
+  from a seed; these three should read as *placed*, by someone, on purpose.
+- It should **break a rule the game has spent twenty hours teaching you.** The
+  Wall is the existing example and the weakest one: a wormhole that does nothing.
+  The bar is higher than that.
+- It should be **findable but not stumbled on** — a rumour, a clue in another
+  entry, a signal you can only hear with a deep scanner, a place that is only
+  there under some condition.
+- And when you find it, the correct reaction is *"what the hell is that"* rather
+  than *"ah, number thirty-four"*.
+
+Candidates, none of them committed, all of them the right *shape*: something that
+is still transmitting and answers when you talk to it; a structure far larger than
+the Leviathan that is clearly still under construction; a sector where the
+generation itself is wrong and the rules of flight change; something that is
+already charted on your own map before you get there.
+
+**What this is not.** It is not more entries. Thirty-four is a good number and
+the book is well made — the pictures are the best thing in the mode. This is
+entirely about *where* they sit and how long the sector takes to cross.
+
+### Where Phase 6 actually stands
+
+Nothing in it has been *built as Phase 6* — it is a filter, not a queue — but four
+of the seven have moved, some of them a long way, as a side effect of the work
+since. Measured rather than remembered:
+
+| | | |
+|---|---|---|
+| **6.1** NPC wants | **not started** | Ships have a `role` and a `faction` and a temperament. None of them has a *want*: a freighter walks a line it was born with, and a pirate is hostile rather than acquisitive — it does not prefer the loaded hauler to the empty one. |
+| **6.2** a reacting economy | **not started** | Prices vary by *place* — the deep pays more, a deep station stocks the strange parts, repairs cost more far out. Nothing varies by *event*, and nothing that happens near a station changes anything about it. |
+| **6.3** universal rules | **most of the way** | The big one this session. Rocks break on worlds and part from each other; traffic and sentries go round worlds and round the Leviathan; stations and inhabited worlds deflect; an asteroid is a solid object rather than a damage event; gravity was already universal and friendly fire already destroys other traffic. **The gap left: NPCs cannot run out of anything, and a well does not kill them.** A hauler dragged into a star in front of you is still the accident this rule is for. |
+| **6.4** verbs not percentages | **eight of seventeen** | Counted: eight parts are verbs — three weapons, two tractor rigs, reverse thrusters, the ice melter — and nine are still numbers. The rule from here is written into 5.2: a new part has to add a verb or it does not get made. |
+| **6.5** consequences persist | **three of them** | Battles end and about one in three leaves a named memorial on the chart. Reputation persists per power. And a part you die carrying now stays where you fell and goes on the chart until you fetch it. Still forgotten: a rescued ship, a pirate that got away, a station that suffered. |
+| **6.6** authored mysteries | **eight places** | Where the brief asks for dozens. Highest ceiling, least code, and 6.7 below is now the concrete plan for it. |
+| **6.7** the almanac's curve | **diagnosed, not fixed** | Ten minutes of throttle reaches 344,617 units and the finale sits at 112,000. The ladder is a thirtieth of the size it needs to be. |
+
+The honest summary: **6.3 has largely happened, 6.4 is a third of the way, 6.5 has
+started, and 6.1, 6.2 and 6.6 are untouched.** The next one worth doing on its own
+merits is **6.7**, because it is a handful of numbers and it converts two hours of
+game into twenty.
+
 ### How to read Phase 6
 
 It is a **filter**, not a queue. Nothing in it is next; everything in it is a
