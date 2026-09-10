@@ -2926,7 +2926,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
         "traffic is as common in the deep as near home (" + home.toFixed(3) +
         " → " + deep.toFixed(3) + ")");
   check(deep < 0.05, "the abyss still has " + deep.toFixed(3) + " traffic a chunk");
-  check(kinds.has("hauler") && kinds.has("patrol") && kinds.has("distress"),
+  check(kinds.has("freight") && kinds.has("patrol") && kinds.has("distress"),
         "only these kinds ever appear: " + [...kinds].join(", "));
 
   /* Robbing one. It is meant to be possible — "you can rob it" is half of what
@@ -2939,7 +2939,8 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     const me = cf.live().ships[0];
     surv.traffic.length = 0;
     surv.motes.length = 0;
-    const hauler = { id: "t-test", kind: "hauler", hull: "drayman",
+    const hauler = { id: "t-test", kind: "freight", role: "freight",
+                     faction: "free", hull: "drayman",
                      x: me.x + 300, y: me.y, a: 0,
                      from: { x: me.x + 300, y: me.y }, to: { x: me.x + 4000, y: me.y },
                      leg: 1, speed: 80, hp: 6, maxHp: 6,
@@ -2993,7 +2994,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     surv.drones.length = 0;                    // the rescue, done the only way
     now += 1000 / 60; cf.step();
     check(surv.cash > 0, "clearing the sentries paid nothing");
-    check(ship.kind === "hauler",
+    check(ship.kind === "freight",
           "a rescued ship is still flagged " + ship.kind + " — it should get on " +
           "with its day");
     check(surv.t.rescued === true, "the rescue did not register");
@@ -3144,7 +3145,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
         "an angry patrol never fired a round that could hit you");
 
   // A hauler is unarmed and stays that way.
-  const hauler = put("hauler", "drayman");
+  const hauler = put("freight", "drayman");
   shoot(hauler);
   check(!hauler.angry, "a hauler grew a temper");
   for (let i = 0; i < 180; i++) { me.invuln = 3; now += 1000 / 60; cf.step(); }
@@ -3153,13 +3154,15 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "a hauler cannot and does not");
 }
 
-// ── what the sector thinks of you ─────────────────────────────────────────
-/* Phase 5.1. The more innocent people you kill, the more ships want to kill you —
-   and the player must never see the number. What is testable is everything the
-   number *does*: that it goes up for the right things and not the wrong ones,
-   that each step changes how a patrol behaves, that ships eventually come looking,
-   that it cools on its own, that pulling somebody out of trouble works it off, and
-   that it survives the tab. */
+// ── reputation, per flag, in a galaxy already at war ──────────────────────
+/* Phase 5.1, rebuilt. Not one ladder — three powers with their own opinions, a
+   war between two of them, pirates who are nobody's and independents who are
+   their own. The player never sees a figure; what is testable is everything the
+   figures *do*.
+
+   The war is the part that makes this more than a reputation bar: hurting one
+   side is a favour to the other, so piracy is a side you take rather than a
+   thing you are punished for. */
 {
   const { cf } = boot("?debug=1&seed=770077");
   cf.start("survey", 1);
@@ -3168,14 +3171,34 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const step = n => {
     for (let i = 0; i < n; i++) { me.invuln = 3; now += 1000 / 60; cf.step(); }
   };
-  const standing = () => cf.surveyView().standing.name;
+  const flags = () => cf.surveyView().standings;
+  const of = k => flags().find(f => f.key === k);
 
-  const put = (kind, hp) => {
+  // Three powers, and never a number in what the interface can see.
+  check(flags().length === 3, "there are " + flags().length + " powers, not 3");
+  for (const f of flags()) {
+    check(typeof f.standing === "string" && f.standing.length,
+          f.short + " has no standing");
+    check(typeof f.says === "string", f.short + " has nothing to say");
+  }
+  const raw = JSON.stringify(cf.surveyView());
+  check(raw.indexOf('"rep"') < 0, "the raw reputation numbers reach the interface");
+  check(flags().every(f => f.standing === "NEUTRAL"),
+        "a fresh sector already has an opinion of you");
+
+  /* One pair is at war and the third is watching, and it belongs to the world. */
+  const atWar = flags().filter(f => f.enemy);
+  check(atWar.length === 2, atWar.length + " powers are at war; it should be 2");
+  check(atWar[0].enemy === atWar[1].short && atWar[1].enemy === atWar[0].short,
+        "the war is not mutual: " + atWar.map(f => f.short + "->" + f.enemy).join(", "));
+
+  const put = (faction, role, hp) => {
     surv.traffic.length = 0;
-    const t = { id: null, kind, hull: "drayman", x: me.x + 300, y: me.y, a: 0,
-                from: { x: me.x, y: me.y }, to: { x: me.x + 900, y: me.y }, leg: 1,
-                speed: 80, hp, maxHp: 6, cargo: [], cool: 1, doom: 40,
-                guards: 0, phase: 0 };
+    const t = { id: null, kind: role, role, faction, hull: "drayman",
+                x: me.x + 300, y: me.y, a: 0,
+                from: { x: me.x, y: me.y }, to: { x: me.x + 900, y: me.y },
+                leg: 1, speed: 80, hp, maxHp: 6, cargo: [], cool: 1,
+                doom: 40, guards: 0, space: 0, trades: false, phase: 0 };
     surv.traffic.push(t);
     return t;
   };
@@ -3185,87 +3208,323 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     step(1);
   };
 
-  check(standing() === "UNREMARKABLE", "a fresh sector already has a reputation");
-  check(cf.surveyView().standing.name !== undefined, "standing has no name");
-  // It is a word, never a figure. Nothing the interface can read is a number.
-  check(typeof cf.surveyView().standing.note === "string",
-        "standing has no plain-language note");
-  check(!("heat" in cf.surveyView()), "the raw number is exposed to the interface");
+  /* Killing one power's freighters cools that power — and warms whoever they
+     are fighting, which is the whole point of the war being there. */
+  const victim = atWar[0].key, rival = atWar[1].key;
+  const bystander = flags().find(f => !f.enemy).key;
+  for (let i = 0; i < 3; i++) shoot(put(victim, "freight", 0.5));
+  check(of(victim).standing === "WATCHED" || of(victim).standing === "WANTED",
+        "three of their freighters left them " + of(victim).standing);
+  check(of(rival).standing === "NEUTRAL" || of(rival).standing === "WELCOME",
+        "their enemy did not warm to you at all");
+  check(of(bystander).standing === "NEUTRAL",
+        "a power with no stake in it took a view anyway");
 
-  /* Killing people raises it, and the steps arrive in order. */
-  for (let i = 0; i < 2; i++) shoot(put("hauler", 0.5));
-  check(standing() === "WATCHED",
-        "two unarmed freighters left you " + standing());
-  for (let i = 0; i < 3; i++) shoot(put("hauler", 0.5));
-  check(standing() === "WANTED", "five left you " + standing());
-  for (let i = 0; i < 3; i++) shoot(put("hauler", 0.5));
-  check(standing() === "HUNTED", "eight left you " + standing());
+  // Pirates are nobody's, so shooting one is a small favour to everybody.
+  const beforeAll = flags().map(f => f.standing).join();
+  shoot(put("pirate", "pirate", 0.5));
+  check(true, "shooting a pirate did not throw");
 
-  /* WANTED means a patrol does not wait for you to shoot first. It has to become
-     hostile without being touched, which is the whole of the second step. */
-  const patrol = put("patrol", 40);
-  patrol.x = me.x + 400; patrol.y = me.y;
-  check(!patrol.angry, "the patrol arrived angry");
+  /* WANTED means an armed ship of that flag does not wait to be shot at. */
+  for (let i = 0; i < 4; i++) shoot(put(victim, "freight", 0.5));
+  check(of(victim).standing === "WANTED" || of(victim).standing === "HUNTED",
+        "seven freighters left them " + of(victim).standing);
+  const guard = put(victim, "patrol", 40);
+  guard.x = me.x + 400; guard.y = me.y;
+  check(!guard.angry, "the patrol arrived angry");
   step(4);
-  check(patrol.angry === true,
-        "at HUNTED a patrol still waited to be shot at first");
+  check(guard.angry === true, "a patrol of a power that wants you waited politely");
 
-  /* And ships come looking. They are spawned rather than generated, because a
-     chunk may not know how many people you have shot. */
-  let hunters = 0;
-  for (let i = 0; i < 60 * 120 && !hunters; i++) {
-    step(1);
-    hunters = surv.traffic.filter(t => t.kind === "hunter").length;
-  }
-  check(hunters > 0, "nothing came looking for you at HUNTED");
-  const hunter = surv.traffic.find(t => t.kind === "hunter");
-  check(hunter.angry === true, "the hunter that came for you is not hostile");
-  check(hunter.id == null, "a hunter was given a chunk id and will be re-streamed");
-
-  /* Killing the thing that came for you settles nothing either way — otherwise
-     the only way out of being hunted would be to become worse. */
-  const at = surv.heat;
-  hunter.hp = 0.5;
-  shootAtHunter: {
-    cf.live().bullets.push({ owner: 0, colour: "#fff", dmg: 1,
-                             x: hunter.x, y: hunter.y, vx: 0, vy: 0, life: 1 });
-    step(1);
-  }
-  check(Math.abs(surv.heat - at) < 1,
-        "killing a hunter moved your standing by " + Math.round(surv.heat - at));
-
-  /* It cools on its own — a state, not a verdict on the save file. */
-  const hot = surv.heat;
-  step(60 * 200);
-  check(surv.heat < hot - 10,
-        "four minutes cooled it by only " + Math.round(hot - surv.heat));
-
-  /* And pulling somebody out of trouble works it off, which is the shortcut. */
-  const owed = surv.heat;
-  surv.traffic.length = 0; surv.drones.length = 0;
-  const sos = put("distress", 5);
-  sos.doom = 40; sos.guards = 1;
-  surv.drones.push({ id: null, x: sos.x + 200, y: sos.y, vx: 0, vy: 0, a: 0,
-                     home: null, prey: sos, post: { x: sos.x, y: sos.y },
-                     hp: 2, cool: 1, awake: true, hit: 0 });
-  step(30);
-  surv.drones.length = 0;                       // the rescue, done the only way
+  // A ship of the power that likes you does not.
+  const friend = put(rival, "patrol", 40);
+  friend.x = me.x + 400; friend.y = me.y;
   step(4);
-  check(surv.heat < owed - 20,
-        "saving a ship worked off only " + Math.round(owed - surv.heat));
+  check(!friend.angry, "a patrol of a friendly power turned on you");
 
-  // It survives the tab: a reputation you can reload away is not one.
-  surv.heat = 120;
+  /* Personal space: some of them want room, and they say so once before they do
+     anything about it. */
+  surv.traffic.length = 0;
+  const nervous = put(bystander, "escort", 40);
+  nervous.space = 600;
+  nervous.x = me.x + 400; nervous.y = me.y;
+  step(3);
+  check(nervous.warned === 1, "flying inside its bubble drew no warning");
+  check(!nervous.angry, "it went straight to hostile without a word");
+  nervous.x = me.x + 120; nervous.y = me.y;
+  step(3);
+  check(nervous.angry === true, "ignoring the warning cost nothing");
+
+  /* And the war is not scenery: two powers' ships shoot each other. */
+  surv.traffic.length = 0; surv.drones.length = 0; surv.shots.length = 0;
+  const a1 = put(victim, "patrol", 40);
+  // Well outside the range at which either of them can see you, so what happens
+  // next is their war and not yours.
+  a1.x = me.x + 9000; a1.y = me.y + 4000; a1.cool = 0;
+  const b1 = { id: null, kind: "freight", role: "freight", faction: rival,
+               hull: "drayman", x: a1.x + 300, y: a1.y, a: 0,
+               from: { x: a1.x, y: a1.y }, to: { x: a1.x + 900, y: a1.y },
+               leg: 1, speed: 60, hp: 40, maxHp: 40, cargo: [], cool: 1,
+               doom: 0, guards: 0, space: 0, trades: false, phase: 0 };
+  surv.traffic.push(b1);
+  const hp0 = b1.hp;
+  for (let i = 0; i < 240; i++) { me.invuln = 3; now += 1000 / 60; cf.step(); }
+  check(b1.hp < hp0,
+        "two powers at war flew past each other without a shot fired");
+
+  // It survives the tab.
   cf.leave();
   const book = JSON.parse(store["crossfire.survey.v3"]);
-  check(book.heat === 120, "the book saved a standing of " + book.heat);
+  check(book.rep && typeof book.rep === "object", "the book saved no reputation");
   const again = bootKeepingStorage("?debug=1&seed=770077");
   again.cf.start("survey", 1);
-  check(again.cf.surveyView().standing.name === "WANTED",
-        "a resumed sector forgot what you did");
-  console.log("  standing   unremarkable \u2192 watched \u2192 wanted \u2192 hunted \u00b7 " +
-              "patrols shadow then shoot first \u00b7 hunters come \u00b7 cools on its " +
-              "own \u00b7 a rescue works it off \u00b7 never a number");
+  const back = again.cf.surveyView().standings.find(f => f.key === victim);
+  check(back.standing !== "NEUTRAL", "a resumed sector forgot what you did");
+  console.log("  reputation 3 powers, one war, pirates and independents \u00b7 " +
+              "hurting one warms its enemy \u00b7 patrols read their flag \u00b7 " +
+              "personal space warns once \u00b7 the war is fought without you");
+}
+
+// ── the war has a size, and battles have an end ──────────────────────────
+/* Two powers can be trading shots over a border or throwing fleets at each
+   other, and the difference has to be something you feel rather than read. And
+   a fight you find is a fight in progress: leave it, come back, and it may be
+   over, with nothing there but wrecks and — sometimes — a name.
+
+   A battle that waited for you would be a set piece. One that finishes without
+   you is a war, and that is the only reason any of this is here. */
+{
+  // Every scale has to be reachable, or the roll is decoration.
+  const seen = new Map();
+  for (let i = 0; i < 200; i++) {
+    const { cf } = boot("?debug=1&seed=" + (91000 + i * 7));
+    cf.start("survey", 1);
+    const w = cf.survey().world;
+    seen.set(w.scale.key, (seen.get(w.scale.key) || 0) + 1);
+    cf.leave();
+  }
+  check(seen.size === 4,
+        "only " + [...seen.keys()].join(", ") + " wars are ever rolled");
+  const border = seen.get("border") || 0, total = seen.get("total") || 0;
+  check(border > total * 2,
+        "a total war (" + total + ") is as common as a border one (" + border + ")");
+  check(total > 0, "a total war never happens");
+
+  /* A hotter war puts more of the belligerents' hulls in the sky. Measured over
+     the same chunks in two sectors that differ only in how big the war is. */
+  const armedShare = key => {
+    let hits = 0, seedsTried = 0, armed = 0, all = 0;
+    for (let sd = 0; sd < 400 && hits < 6; sd++) {
+      const { cf } = boot("?debug=1&seed=" + (300000 + sd * 13));
+      cf.start("survey", 1);
+      const surv = cf.survey();
+      if (surv.world.scale.key !== key) { cf.leave(); continue; }
+      hits++;
+      const bel = surv.world.belligerents;
+      for (let cx = -6; cx <= 6; cx++) {
+        for (let cy = -6; cy <= 6; cy++) {
+          for (const t of cf.chunk(cx, cy).traffic) {
+            all++;
+            if (bel.indexOf(t.faction) >= 0) armed++;
+          }
+        }
+      }
+      cf.leave();
+    }
+    return all ? armed / all : 0;
+  };
+  const cold = armedShare("border"), hot = armedShare("total");
+  check(hot > cold,
+        "a total war (" + hot.toFixed(2) + " belligerent) is no busier than a " +
+        "border skirmish (" + cold.toFixed(2) + ")");
+
+  /* And the battles themselves. One sector, flown to a fight. */
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  /* Held alive and watered: the clock behind a battle is the same clock that
+     stops when you die, and a test that starves halfway through would be
+     measuring life support rather than the war. */
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 5; surv.water = 900; surv.food = 900;
+      now += 1000 / 60; cf.step();
+    }
+  };
+
+  /* Find one the way the sector makes them: walk out until a chunk carries a
+     battle, then stand next to it. */
+  let found = null;
+  for (let ring = 1; ring < 40 && !found; ring++) {
+    for (let cx = -ring; cx <= ring && !found; cx++) {
+      for (let cy = -ring; cy <= ring && !found; cy++) {
+        if (Math.max(Math.abs(cx), Math.abs(cy)) !== ring) continue;
+        const c = cf.chunk(cx, cy);
+        if (c.battles && c.battles.length) found = c.battles[0];
+      }
+    }
+  }
+  check(!!found, "no battle anywhere in forty rings of a sector at war");
+  if (found) {
+    check(found.sides.length === 2 && found.sides[0] !== found.sides[1],
+          "a battle with only one side in it");
+    check(found.fleet >= 2, "a battle of " + found.fleet + " ships a side");
+    check(found.life > 60, "a battle lasting " + Math.round(found.life) + "s");
+
+    me.x = found.x + 300; me.y = found.y;
+    me.vx = me.vy = 0;
+    step(4);
+
+    const live = surv.battles.find(b => Math.abs(b.x - found.x) < 1);
+    check(!!live, "the battle did not stream in when flown to");
+    check(live && live.seen === true, "standing in it did not count as finding it");
+    const ships0 = surv.traffic.filter(t => t.battle === (live && live.id)).length;
+    check(ships0 >= 4, "the battle put " + ships0 + " ships in the sky, not a fleet");
+    const sides = new Set(surv.traffic.filter(t => t.battle === live.id)
+                                      .map(t => t.faction));
+    check(sides.size === 2, "both sides did not turn up");
+    check(cf.surveyView().known.some(q => q.k === "battle"),
+          "finding a battle put nothing on the chart");
+
+    // It is not about you: nobody in it goes for the player unprovoked.
+    step(120);
+    check(!surv.traffic.some(t => t.battle === live.id && t.angry),
+          "a battle you flew into turned on you");
+
+    /* And it ends. The clock runs whether you watch or not, so the test flies
+       away and lets it. */
+    const id = live.id;
+    me.x = found.x + 400000; me.y = found.y + 400000;
+    step(2);
+    const before = surv.battleAge[id];
+    check(before > 0 && before < found.life,
+          "the clock did not start when the battle was found");
+    for (let i = 0; i < 60 * 60 * 12 && surv.battleAge[id] > 0; i++) step(1);
+    check(surv.battleAge[id] === 0,
+          "the battle was still going twelve minutes after it was found");
+
+    // Come back: no ships, and wrecks worth the trip.
+    me.x = found.x + 300; me.y = found.y;
+    me.vx = me.vy = 0;
+    step(4);
+    const after = surv.battles.find(b => b.id === id);
+    check(after && after.over === true, "coming back found the fight still on");
+    check(!surv.traffic.some(t => t.battle === id),
+          "the ships were still there after it ended");
+    const wrecks = surv.hulks.filter(h => h.id && h.id.indexOf(id + "w") === 0);
+    check(wrecks.length >= 2,
+          "an old battle left " + wrecks.length + " wrecks behind");
+
+    // And it stays over across the tab.
+    cf.leave();
+    const book = JSON.parse(store["crossfire.survey.v3"]);
+    check(book.battleAge && book.battleAge[id] === 0,
+          "the book forgot that the fight was over");
+  }
+
+  /* Remembrance. Not every fight gets a stone, but some do, and the ones that
+     do are named after somewhere and go on the chart. */
+  let named = 0, plain = 0;
+  for (let sd = 0; sd < 30; sd++) {
+    const { cf } = boot("?debug=1&seed=" + (770000 + sd * 11));
+    cf.start("survey", 1);
+    for (let cx = -5; cx <= 5; cx++) {
+      for (let cy = -5; cy <= 5; cy++) {
+        for (const b of (cf.chunk(cx, cy).battles || [])) {
+          if (b.memorial) named++; else plain++;
+          check(/^THE [A-Z ]+ [A-Z]+$/.test(b.name),
+                'a battle called "' + b.name + '"');
+        }
+      }
+    }
+    cf.leave();
+  }
+  check(named > 0 && plain > 0,
+        "battles are " + named + " remembered and " + plain + " forgotten; " +
+        "it should be some of each");
+  check(named < plain,
+        "more battles are remembered (" + named + ") than forgotten (" + plain + ")");
+
+  console.log("  war        four sizes, weighted \u00b7 a hot war fills the lanes \u00b7 " +
+              "battles are found in progress, ignore you, and end whether you " +
+              "watch or not \u00b7 " + named + " of " + (named + plain) +
+              " leave a name");
+}
+
+// ── the coil goes off in your hands ──────────────────────────────────────
+/* The jump coil is wound around a gate, and pulling it off discharges it. You
+   keep the part; you lose where you were. It is the one moment in the mode that
+   happens *to* you rather than because you steered into it, and the point of it
+   is that you do not get to choose where you come out. */
+{
+  const { cf } = boot("?debug=1&seed=606060");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 5; surv.water = 900; surv.food = 900;
+      now += 1000 / 60; cf.step();
+    }
+  };
+
+  const site = surv.partSites.find(p => p.key === "coil");
+  check(!!site, "the sector has no jump coil in it");
+
+  // Stand on it. The part is picked up by touching it, like any other.
+  me.x = site.x; me.y = site.y; me.vx = me.vy = 0;
+  step(3);
+  const part = surv.parts.find(p => p.key === "coil");
+  check(!part, "standing on the coil did not pick it up");
+  check(surv.carrying.has("coil"), "the coil was not aboard afterwards");
+
+  /* And you are not where you were. Not a nudge — somewhere else. */
+  const moved = Math.hypot(me.x - site.x, me.y - site.y);
+  check(moved > 8000,
+        "the coil moved you " + Math.round(moved) + " units; that is not a jump");
+  check(Math.hypot(me.vx, me.vy) < 1,
+        "you came out of the jump still travelling");
+  check(me.alive, "the jump put you somewhere you could not survive arriving");
+
+  // Wherever it dropped you, the sector is real there: chunks, not a void.
+  check(surv.chunks.size > 0, "the jump arrived somewhere with nothing built");
+
+  /* Not inside anything. The point that is drawn is rejected and redrawn until
+     it is one you can arrive at, and the check is run again after the chunks
+     around it exist — a chunk that was not built yet knows things the first
+     check could not. */
+  for (const pl of surv.planets) {
+    check(Math.hypot(me.x - pl.x, me.y - pl.y) > pl.r,
+          "the jump put you inside " + (pl.name || "a world"));
+  }
+  for (const h of cf.live().hazards || []) {
+    check(Math.hypot(me.x - h.x, me.y - h.y) > h.kill,
+          "the jump put you inside a well");
+  }
+
+  /* It is random, so two runs of the same seed land in different places — and
+     that is the whole of it: the coil is the one thing the seed does not
+     decide. */
+  const seenAt = [];
+  for (let t = 0; t < 6; t++) {
+    const b = boot("?debug=1&seed=606060");
+    b.cf.start("survey", 1);
+    const s2 = b.cf.survey(), m2 = b.cf.live().ships[0];
+    const st = s2.partSites.find(p => p.key === "coil");
+    m2.x = st.x; m2.y = st.y; m2.vx = m2.vy = 0;
+    for (let i = 0; i < 3; i++) {
+      m2.invuln = 5; s2.water = 900; s2.food = 900;
+      now += 1000 / 60; b.cf.step();
+    }
+    seenAt.push(Math.round(m2.x) + "," + Math.round(m2.y));
+    b.cf.leave();
+  }
+  check(new Set(seenAt).size > 1,
+        "the coil throws you to the same spot every time");
+
+  console.log("  coil       picking it up fires it \u00b7 thrown " +
+              Math.round(moved / 1000) + "k units, momentum gone \u00b7 " +
+              "never into a world or a well \u00b7 a different spot every time");
 }
 
 if (problems.length) {

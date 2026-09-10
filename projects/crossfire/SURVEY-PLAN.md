@@ -694,19 +694,92 @@ The next phase. Everything here came out of playing it, and the shape of it is
 that the mode currently rewards going farther but does not yet make going farther
 *change* anything about how the sector treats you.
 
-### 5.1 A reputation, and no number for it  ·  **DONE**
+### 5.1 Reputation, in a galaxy already at war  ·  **DONE**
 
-The more innocent people you kill, the more ships want to kill you.
+> *"I want it more like real life. There are some people that are defensive and
+> pirates. But others that are traveling or escorted. Some don't want you within a
+> certain distance others don't care. Some are part of an alliance or faction.
+> This should be a galaxy that is actually at war. And you're just a guy exploring
+> in the middle of it."*
 
-**What landed.** A number the player never sees, and three steps they read off
-the world instead:
+The first cut of this was one ladder — UNREMARKABLE → WATCHED → WANTED → HUNTED —
+and one ladder is wrong, because it makes the whole sector agree about you. It was
+replaced.
 
-| | what it does |
+**Three powers**, each with its own opinion of you, plus **pirates** (nobody's) and
+**independents** (their own). **Two of the three are at war**, rolled per world, so
+which pair is fighting is something you learn by flying rather than something you
+are told. Hurting one power is a **favour to whoever they are fighting**, which is
+what makes piracy a side you take rather than a thing you are punished for. The
+third power is a bystander and takes no view.
+
+**Flag and temperament are separate**, which is the point: `faction` is who they
+fly for, `role` is what they are doing. A freighter, a trader, an escort, a patrol,
+a pirate, a distress call, a hunter. Some are armed and some are not. Some want a
+**personal space bubble** kept — rolled per ship, so two escorts of the same flag
+are not the same to fly past — and they **warn you once** before they do anything
+about it. Unarmed ships that dislike you **run** rather than fight.
+
+Reputation is still a number the player never sees, and still read off the world:
+a patrol of a power that wants you does not wait to be shot at; one of a power
+that likes you does not care. It is stated as **one word per power** at the foot
+of the inventory, under the heading REPUTATION, with who each is at war with under
+it — because your standing with one power only means something next to who they
+are fighting.
+
+### 5.1a How big the war is  ·  **DONE**
+
+> *"The wars should range from small skirmishes. To massive wars."*
+
+Rolled per world, weighted so the big ones are a seed you remember:
+
+| | |
 |---|---|
-| **UNREMARKABLE** | nobody out here is looking for you |
-| **WATCHED** | a patrol near you stops walking its beat and *follows*, at a distance, without firing |
-| **WANTED** | patrols do not wait for you to shoot first any more |
-| **HUNTED** | ships come out specifically to find you, and keep coming |
+| **BORDER SKIRMISH** | shots traded over a line neither side can hold |
+| **RAIDING WAR** | convoys hunted, lanes unsafe, nothing declared |
+| **OPEN WAR** | fleets in the open and no pretence left |
+| **TOTAL WAR** | everything either side has, thrown at everything else |
+
+It is a multiplier, not a label. A hot war puts more of the belligerents' hulls in
+the lanes, leaves less room for anybody's own business, and throws far more
+**battles** into the sector.
+
+### 5.1b Battles, and that they end  ·  **DONE**
+
+> *"Battles can finish so if you find a battle. Going there later it might be over
+> and there is no ships. Sometimes remembrance of the battle."*
+
+Two fleets, facing each other, having it out properly — you can fly into the middle
+of one. The ships are ordinary traffic, angry at each other, so everything that
+already makes two powers shoot at one another works here with no second system for
+it. Nobody in a battle minds how close you fly; they have other things on.
+
+A battle you have **never seen is still being fought** — it has been going on for
+as long as you were not looking, and finding one is the point. From the moment you
+*do* see it, it has a clock, and **the clock runs whether you stay or not**. Fly off
+for ten minutes and come back: no ships, and a field of hulks worth stripping. It
+also ends early if one side is simply wiped out.
+
+About **one battle in three is remembered**: a name (THE STAND AT ITHTORUX, THE LOSS
+AT VERRAK), a stone floating where it happened, and a mark on the chart. The rest
+leave their wrecks and nothing else, which is its own kind of true.
+
+*A fight that waited for you would be a set piece. One that finishes without you is
+a war.*
+
+### 5.1c The coil goes off in your hands  ·  **DONE**
+
+> *"Make it so when you get the jump drive it teleports you to a random spot."*
+
+The jump coil is wound around a gate, and pulling it off discharges it. You keep
+the part; you lose where you were — a random bearing and a distance that can be a
+good deal closer to home than you are, or a long way past it. Momentum does not
+come with you. The spot is redrawn until it is one you can arrive at alive, and
+checked again after the sector around it is built.
+
+It is the one moment in the mode that happens **to** you.
+
+### The old ladder, for the record
 
 Killing an unarmed freighter costs about twice what killing a patrol does, and
 one that was already being taken apart costs most of all. Killing a **hunter**
@@ -860,6 +933,26 @@ on Ric's four-item list of what a station is for, and it is a small piece of wor
   5.2's "only found very far away" parts are the first instalment.
 - **Food from somewhere other than a station** — the ice melter answers water.
   Food has no equivalent yet.
+- **Trading with ships** — *"You should be able trade with friendly ships as well.
+  So get close hit E. Or tap them if on mobile and have a UI for trading goods. Or
+  buying goods from them. They may be more pricey then stations."* The `trades`
+  flag is on the traders already and the roles that carry cargo carry real cargo;
+  what is missing is the approach, the prompt, and the page. **Next up.**
+
+### Settings, per game mode  ·  **DONE**
+
+> *"If you're on survey. Only the survey settings should pop up. If you're on the
+> other game modes only those settings should pop up. Or there should be different
+> pages for each game mode in settings."*
+
+The settings page shows **one mode's options at a time**. Opened from a match it is
+that match's page, with no tabs to wander off into; opened from the front page the
+four tabs are how you reach the others. Survey has zoom, camera and reset; Battle
+Royale and Campaign have a camera; Survival has friendly fire. Both the keyboard
+page and the phone page draw the same band.
+
+The rotating camera used to be **one flag worn by three modes**. It is now four
+separate answers, so turning it on for a duel does not turn it on for a long haul.
 
 ### The five long-term tracks
 

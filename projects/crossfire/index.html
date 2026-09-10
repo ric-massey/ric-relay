@@ -1036,6 +1036,19 @@
   const settingsScreen = () =>
     (touchOnly || document.body.classList.contains("touch")) ? "thumb" : "controls";
 
+  /* Opening the settings from inside a match shows that match's page and only
+     that page: you are in Survey, so the camera and zoom you are looking at are
+     Survey's, and Battle Royale's are not your problem right now. From the
+     front page there is no match to be in, so all four are offered as tabs. */
+  let settingsLocked = false;
+  function openSettings(from) {
+    backFrom = from;
+    const here = settingsPageFor(mode);
+    settingsLocked = !!here && from !== "title" && from !== "modes";
+    if (here) settingsPage = here;
+    return settingsScreen();
+  }
+
   const ACTIONS = [
     { field: "left",   name: "TURN LEFT",  short: "turn left" },
     { field: "right",  name: "TURN RIGHT", short: "turn right" },
@@ -1090,14 +1103,51 @@
   const boundKeys = new Set();
 
   const KEY_STORE = "crossfire.keys.v1";
-  const CAMERA_STORE = "crossfire.camera.v1";
+  const CAMERA_STORE = "crossfire.camera.v2";
   const SOUND_STORE = "crossfire.sound.v1";
-  let royaleCameraRotates = false;
+
+  /* ── settings that belong to a mode ──────────────────────────────────────
+     Most of the settings page is the game's: the keys, the sound, the screen.
+     These are not. How far the camera sits back is a question about Survey and
+     means nothing in a Battle Royale; whether the view turns with the ship is a
+     question you answer differently for a duel than for a long haul. So each
+     mode keeps its own answers and the settings page shows you one mode at a
+     time — the one you are in, if you opened it from a match, and otherwise
+     whichever tab you pick.
+
+     `SETTINGS_PAGES` is that list, and `settingsPageFor` is the one place that
+     decides which page a running mode belongs to. */
+  const SETTINGS_PAGES = [
+    { key: "survey",   name: "SURVEY",        colour: "#a08cff" },
+    { key: "royale",   name: "BATTLE ROYALE", colour: "#ffe56d" },
+    { key: "campaign", name: "CAMPAIGN",      colour: "#5fd0a0" },
+    { key: "survival", name: "SURVIVAL",      colour: "#6dc8ff" }
+  ];
+  const settingsPageFor = m =>
+    !m ? null : m.survey ? "survey" : m.campaign ? "campaign"
+      : m.closing ? "royale" : "survival";
+  let settingsPage = "survey";   // which mode's page the settings screen shows
+
+  /* The rotating camera, once one flag for every mode with a camera, now one
+     answer per mode. Survival is absent because it has no camera to turn — the
+     whole arena is on the screen. */
+  const cameraRotates = { royale: false, campaign: false, survey: false };
+  /* The camera in play follows the mode being played and nothing else — the
+     settings page can be sitting on another mode's tab while you are paused in
+     this one, and the view behind it must not swing about because of it. */
+  const camRotKey = () => settingsPageFor(mode);
+  const camRotates = () => !!cameraRotates[camRotKey()];
   let soundEnabled = true;
   let audioCtx = null, audioMaster = null, audioNoise = null;
 
   try {
-    royaleCameraRotates = localStorage.getItem(CAMERA_STORE) === "rotating";
+    const saved = JSON.parse(localStorage.getItem(CAMERA_STORE) || "null");
+    if (saved && typeof saved === "object") {
+      for (const k of Object.keys(cameraRotates)) cameraRotates[k] = !!saved[k];
+    } else if (localStorage.getItem("crossfire.camera.v1") === "rotating") {
+      // One flag became three; whoever had it on had it on for the shooters.
+      cameraRotates.royale = cameraRotates.campaign = true;
+    }
     soundEnabled = localStorage.getItem(SOUND_STORE) !== "off";
   } catch (_) {}
 
@@ -1240,14 +1290,17 @@
 
   addEventListener("pointerdown", audioUnlock, { passive: true });
 
-  function toggleRoyaleCamera() {
-    royaleCameraRotates = !royaleCameraRotates;
-    try {
-      localStorage.setItem(CAMERA_STORE, royaleCameraRotates ? "rotating" : "fixed");
-    } catch (_) {}
+  /* Toggles the camera for one mode — the one you are playing if you are
+     playing one, and otherwise the page you are looking at. */
+  function toggleModeCamera(key) {
+    const k = key || camRotKey();
+    if (!(k in cameraRotates)) return;
+    cameraRotates[k] = !cameraRotates[k];
+    try { localStorage.setItem(CAMERA_STORE, JSON.stringify(cameraRotates)); }
+    catch (_) {}
     // Switching back to the original view should be immediate, including
     // while the match is paused on this screen.
-    if (!royaleCameraRotates && mode && mode.closing) cam.rot = 0;
+    if (!cameraRotates[k] && mode && settingsPageFor(mode) === k) cam.rot = 0;
   }
 
   // What has to be true whenever the table changes, or is first read in.
@@ -1391,7 +1444,7 @@
     }
     if (code === "KeyR") { resetKeys(); note("back to the keys it came with"); return; }
     if (code === "KeyT") { state = "thumb"; return; }
-    if (code === "KeyV") { toggleRoyaleCamera(); return; }
+    if (code === "KeyV") { toggleModeCamera(); return; }
     if (code === "Backspace" || code === "Delete") {
       // Emptying an action is allowed: two people at one keyboard may want
       // fewer keys in play, not more.
@@ -1940,7 +1993,7 @@
       : SCREEN_W / arena.w;
     if (mode.camera) {
       cam.x = ships[0].x; cam.y = ships[0].y;
-      cam.rot = royaleCameraRotates ? -Math.PI / 2 - ships[0].a : 0;
+      cam.rot = camRotates() ? -Math.PI / 2 - ships[0].a : 0;
       clampCam();
     } else {
       cam.x = arena.w / 2; cam.y = arena.h / 2; cam.rot = 0;
@@ -2034,7 +2087,7 @@
       // O still opens the lobby from the front page. It was a shortcut before
       // the menu was rebuilt and somebody's fingers already know it.
       if (code === "KeyO") openLobby();
-      if (code === "KeyC") { backFrom = "title"; state = settingsScreen(); }
+      if (code === "KeyC") { state = openSettings("title"); }
     } else if (state === "modes") {
       const rows = laneRows();
       if (code === "Escape" || code === "Backspace") { state = "title"; return; }
@@ -2049,7 +2102,7 @@
         modeHover = -1;
       }
       if (code === "Enter" || code === "Space") playCard(rows[openCard()]);
-      if (code === "KeyC") { backFrom = "modes"; state = settingsScreen(); }
+      if (code === "KeyC") { state = openSettings("modes"); }
     } else if (state === "levels") {
       if (code === "Escape" || code === "Backspace") { state = "title"; return; }
       const d = digit(code);
@@ -2131,7 +2184,7 @@
         state = backFrom || "title";
       }
     } else if (state === "count") {
-      if (code === "KeyC") { backFrom = "count"; state = settingsScreen(); return; }
+      if (code === "KeyC") { state = openSettings("count"); return; }
       const d = digit(code);
       if (code === "ArrowLeft" || code === "ArrowUp") {
         selectHumanCount((countPick + humanMax() - 1) % humanMax() + 1);
@@ -2208,7 +2261,7 @@
         }
       }
       if (state === "paused" || state === "menu") {
-        if (code === "KeyC") { backFrom = state; state = settingsScreen(); return; }
+        if (code === "KeyC") { state = openSettings(state); return; }
         if (code === "KeyQ") { leaveMatch(); return; }
       }
       // Squad command: one key orders the whole allied wing. Mission-only, and
@@ -2278,8 +2331,8 @@
     cam.y = s.y;
 
     // The original north-up view is the default. Rotating ship-up view is a
-    // Battle Royale-only preference, local to this screen.
-    if (!royaleCameraRotates) { cam.rot = 0; return; }
+    // per-mode preference, local to this screen.
+    if (!camRotates()) { cam.rot = 0; return; }
 
     // Taking the shortest angular route prevents a full spin at +/-PI.
     const targetRot = -Math.PI / 2 - s.a;
@@ -3106,7 +3159,7 @@
       chatter("Command sent +" + camp.carriedReserve + " reserve", "#5fd0a0");
 
     cam.x = ships[0].x; cam.y = ships[0].y;
-    cam.rot = royaleCameraRotates ? -Math.PI / 2 - ships[0].a : 0;
+    cam.rot = camRotates() ? -Math.PI / 2 - ships[0].a : 0;
     clampCam();
   }
 
@@ -4742,6 +4795,28 @@
     { key: "caches",   lo: "PICKED OVER", hi: "HOARDED" }
   ];
 
+  /* ── how big the war is ──────────────────────────────────────────────────
+     `heat` is the multiplier everything else reads: how much of the traffic
+     flies a belligerent's flag, how much of it is armed, and how often you fly
+     into a battle already in progress. `fleet` is how many hulls a side brings
+     to one of those.
+
+     A border skirmish is two patrols and a grudge. A total war is fleets, and
+     the wrecks of fleets, and long stretches where the only ships you meet are
+     the ones fighting. */
+  const WAR_SCALES = [
+    { key: "border", name: "BORDER SKIRMISH", heat: 0.45, fleet: 2,
+      note: "shots traded over a line neither side can hold" },
+    { key: "raids",  name: "RAIDING WAR",     heat: 0.8,  fleet: 3,
+      note: "convoys hunted, lanes unsafe, nothing declared" },
+    { key: "open",   name: "OPEN WAR",        heat: 1.15, fleet: 5,
+      note: "fleets in the open and no pretence left" },
+    { key: "total",  name: "TOTAL WAR",       heat: 1.7,  fleet: 8,
+      note: "everything either side has, thrown at everything else" }
+  ];
+  const warScale = () =>
+    (surv && surv.world && surv.world.scale) || WAR_SCALES[1];
+
   function rollWorld(seed) {
     const R = seeded((seed ^ 0x1d872b41) >>> 0);
     const spread = 0.55 + R() * 1.55;      // the whole ladder, near or far
@@ -4762,8 +4837,28 @@
     if (spread > 1.55) ranked.push("SPRAWLING");
     else if (spread < 0.75) ranked.push("COMPACT");
 
+    /* Whose war this is. One pair of the three powers is fighting and the third
+       is watching, and which pair belongs to the world — so a sector has a
+       politics you learn by flying in it rather than one handed to you. */
+    const powers = FACTIONS.map(f => f.key);
+    const p0 = Math.floor(R() * 3);
+    const p1 = (p0 + 1 + Math.floor(R() * 2)) % 3;
+    const war = {};
+    war[powers[p0]] = powers[p1];
+    war[powers[p1]] = powers[p0];
+
+    /* And how big it is. Two powers can be trading shots over a line neither
+       side can hold, or throwing whole fleets at each other, and that is the
+       difference between a sector you barely notice is at war and one you have
+       to plan a route through. Weighted down the list, so a total war is a
+       seed you remember rather than a Tuesday. */
+    const wr = R();
+    const scale = WAR_SCALES[wr < 0.42 ? 0 : wr < 0.74 ? 1 : wr < 0.93 ? 2 : 3];
+
     return {
-      spread, d,
+      spread, d, war, scale,
+      belligerents: [powers[p0], powers[p1]],
+      bystander: powers.find(k => k !== powers[p0] && k !== powers[p1]),
       name: ranked.length ? ranked.slice(0, 2).join(" · ") : "ORDINARY",
       /* A shuffled dealing of the ladder's rungs. The Leviathan is held back to
          the last rung; everything else takes whatever is left. */
@@ -4801,7 +4896,7 @@
 
   function loadSurveyBook() {
     const empty = { seed: 0, found: [], fog: "", cash: 0, deaths: 0, waypoint: null,
-                    heat: 0,
+                    rep: {},
                     ship: "skiff", owned: ["skiff"], taught: [],
                     water: WATER_FULL, food: FOOD_FULL,
                     hold: freshHold(),
@@ -4836,7 +4931,14 @@
           ? 0                        // it was cargo, and it is read back as iron
           : Math.max(0, Math.floor(Number(b.cash)) || 0),
         deaths: Math.max(0, Math.floor(Number(b.deaths)) || 0),
-        heat: Math.max(0, Math.min(240, Number(b.heat) || 0)),
+        rep: (() => {
+          const out = {};
+          const src = b.rep && typeof b.rep === "object" ? b.rep : {};
+          for (const f of FACTIONS) {
+            out[f.key] = Math.max(-240, Math.min(240, Number(src[f.key]) || 0));
+          }
+          return out;
+        })(),
         light: !!b.light,
         /* Validated against the roster: a hull that is not in it would be a ship
            with no stats and no shape, and every read of it downstream would be
@@ -4909,7 +5011,7 @@
         deaths: surv.deaths || 0,
         light: !!surv.hasLight,
         waypoint: surv.waypoint,
-        heat: Math.round(surv.heat || 0),
+        rep: surv.rep || {},
         ship: surv.ship,
         owned: [...surv.owned],
         taught: [...surv.taught],
@@ -4926,6 +5028,10 @@
         carrying: [...surv.carrying],
         built: [...surv.built],
         pins: surv.pins,
+        // A battle you watched end stays ended, and one you were remembered to
+        // stays remembered.
+        battleAge: surv.battleAge,
+        memorials: [...surv.memorials],
         known: [...surv.known.values()]
       }));
     } catch (_) { /* private browsing; the run still plays, it just won't keep */ }
@@ -5181,7 +5287,7 @@
     const spot = (m) => ({ x: ox + rnd(m, CHUNK - m), y: oy + rnd(m, CHUNK - m) });
     const out = { hazards: [], planets: [], wrecks: [], nebulae: [], marks: [],
                   gates: latticeGates, caches: [], stations: [], hulks: [],
-                  parts: [], fields: [], traffic: [] };
+                  parts: [], fields: [], traffic: [], battles: [] };
 
     // Where you start is quiet: an opening spawn inside a well is a death you
     // could not have avoided, and the first thing this mode asks you to do is
@@ -5247,6 +5353,7 @@
                            phase: R() * Math.PI * 2 });
       }
       buildTraffic(cx, cy, R, rnd, deep, out);
+      buildBattle(cx, cy, R, rnd, deep, out);
       if (R() < 0.05 * abund("wrecks")) {
         const p = spot(300);
         out.wrecks.push({ x: p.x, y: p.y, a: R() * Math.PI * 2,
@@ -5597,7 +5704,7 @@
     surv.planets = []; surv.wrecks = []; surv.nebulae = []; surv.marks = [];
     surv.gates = []; surv.caches = []; surv.stations = []; surv.hulks = [];
     surv.drones = []; surv.leviathan = null; surv.parts = []; surv.fields = [];
-    surv.traffic = [];
+    surv.traffic = []; surv.battles = [];
     for (const [k, c] of surv.chunks) {
       for (const h of c.hazards) hazards.push(h);
       for (const p of c.planets) surv.planets.push(p);
@@ -5644,6 +5751,65 @@
             post: { x: t.x, y: t.y }, hp: 2, cool: rand(0.2, 1),
             awake: true, hit: 0
           });
+        }
+      });
+      /* ── the battles ────────────────────────────────────────────────────
+         The shape of a fight comes out of the chunk; whether it is still being
+         fought does not. A battle you have not watched yet is still going —
+         that is what makes finding one worth doing — and one you sat and
+         watched to the end is over for good, with whatever is left of it still
+         drifting there.
+
+         The ships are ordinary traffic, angry at each other, which is the whole
+         trick: everything that already makes two powers shoot at one another
+         works here without a second system for it. */
+      c.battles.forEach((b, bi) => {
+        const id = k + "b" + bi;
+        const live = Object.assign({}, b, { id });
+        surv.battles.push(live);
+        const left = surv.battleAge[id];
+        live.left = left;
+        live.seen = left != null;
+        live.over = left != null && left <= 0;
+        const BR = seeded(b.seed >>> 0);
+        if (live.over) {
+          /* What is left. Hulks are the mode's own salvage, so an old battle is
+             worth flying to even once the shooting has stopped — and a fleet
+             action leaves more of it than a border scuffle. */
+          for (const w of battleWrecks(live)) {
+            if (surv.stripped.has(w.id)) continue;
+            surv.hulks.push(w);
+          }
+          // A remembered one stays on the chart even if the record was trimmed.
+          if (surv.memorials.has(id)) noteKnown("memorial", b.x, b.y, b.name);
+        } else {
+          for (let side = 0; side < 2; side++) {
+            for (let j = 0; j < b.fleet; j++) {
+              const tid = id + "s" + side + "_" + j;
+              if (surv.goneTraffic.has(tid)) continue;
+              const was = liveTraffic.get(tid);
+              if (was) { surv.traffic.push(was); continue; }
+              /* Two lines facing each other, loosely — a fight has a shape, and
+                 a ring of ships around a point does not read as one. */
+              const spread = b.r * 0.7;
+              const along = (j - (b.fleet - 1) / 2) / Math.max(1, b.fleet) * spread * 2;
+              const face = side ? Math.PI : 0;
+              const off = side ? spread * 0.8 : -spread * 0.8;
+              const hull = b.hull[side];
+              surv.traffic.push({
+                id: tid, kind: "patrol", role: "patrol",
+                faction: b.sides[side], hull, battle: id,
+                x: b.x + off, y: b.y + along, a: face,
+                from: { x: b.x + off, y: b.y + along },
+                to: { x: b.x - off, y: b.y + along },
+                leg: 1, speed: 130 + BR() * 60,
+                hp: TRAFFIC_HP.patrol, maxHp: TRAFFIC_HP.patrol,
+                cargo: [], cool: BR() * 1.2, doom: 0, guards: 0,
+                // Nobody in a battle has time to mind how close you are flying.
+                space: 0, trades: false, phase: BR() * Math.PI * 2
+              });
+            }
+          }
         }
       });
       c.caches.forEach((cache, i) => {
@@ -5744,6 +5910,11 @@
       planets: [], wrecks: [], nebulae: [], marks: [],
       coilExitAt: new Map(),
       traffic: [],
+      /* Battles are the one thing out there with a clock on it. `battleAge` is
+         how long each has been fought while you were near enough to see it, and
+         it is written into the book — a battle you watched end has ended. */
+      battles: [], battleAge: (carried && book.battleAge) || {},
+      memorials: new Set(carried && book.memorials ? book.memorials : []),
       gates: [], caches: [], stations: [], hulks: [], drones: [],
       leviathan: null,
       shots: [],                 // what the sentries fire; see `surveyShots`
@@ -5779,10 +5950,10 @@
       deadGuards: new Set(),
       // Traffic that has been destroyed, remembered only while its chunk is up.
       goneTraffic: new Set(),
-      /* What the sector thinks of you. A number the player never sees — see
-         `addHeat` — and the thing that decides whether a patrol follows you,
-         shoots at you, or comes looking. */
-      heat: carried ? book.heat : 0,
+      /* What each power thinks of you. Numbers the player never sees — see
+         `addRep` — and the thing that decides whether a ship follows you, shoots
+         at you, or comes looking. */
+      rep: carried && book.rep ? Object.assign({}, book.rep) : {},
       huntCool: 20,
       opened: new Set(carried ? book.opened : []),
       stripped: new Set(carried ? book.stripped : []),
@@ -6138,13 +6309,13 @@
              with its day — which is a better ending than a thank-you and a
              despawn, because you can pass it again later. */
           t.saved = true;
-          t.kind = "hauler";
+          t.kind = "freight"; t.role = "freight";
           t.hp = t.maxHp;
           surv.cash += DISTRESS_PAY;
           surv.t.rescued = true;
           // Worth about a hauler, in the other direction. Being able to work it
           // off is what keeps this a state rather than a verdict on the save.
-          addHeat(HEAT.RESCUE);
+          addRep(t.faction, REP.RESCUE);
           chatter("They made it. " + DISTRESS_PAY + " cash, and their thanks.", CASH);
           gameSound("win", t.x);
           saveSurveyBook();
@@ -6154,28 +6325,44 @@
 
       /* A route, walked end to end. `leg` is which way along it, so a ship met
          twice is the same ship going about its day rather than a new one. */
-      /* What a patrol does about you, in three steps. WANTED makes it hostile on
-         sight — it does not wait for you to shoot first any more — and WATCHED
-         makes it *follow* without firing, which is the whole of the first step:
-         somebody is keeping an eye on you and you can see them doing it.
-
-         A hunter is angry by construction and skips all of this. */
+      /* What this ship makes of you, which is three separate questions: what its
+         flag thinks, what it personally thinks, and whether you are standing too
+         close. Only armed ships act on any of it — a freighter's opinion of you
+         is that it would like to be somewhere else. */
       const near = Math.hypot(me.x - t.x, me.y - t.y);
-      if (t.kind === "patrol" && me.alive && near < 2600 * U) {
-        const lvl = heatLevel();
-        if (lvl >= 2) t.angry = true;
-        else if (lvl >= 1) t.shadow = true;
+      const armed = ROLES[t.role || t.kind] && ROLES[t.role || t.kind].armed;
+      if (me.alive && near < 2600 * U && t.role !== "hunter") {
+        if (armed && shipHostile(t)) t.angry = true;
+        else if (armed && repOf(t.faction) <= -30) t.shadow = true;
+
+        /* Personal space. Some of them want room and will say so once before
+           they do anything about it — which is the difference between a warning
+           and an ambush, and the reason the bubble is worth having at all. */
+        if (t.space && near < t.space * U && !t.angry) {
+          if (!t.warned) {
+            t.warned = 1;
+            chatter(factionOf(t.faction).short + " — that is close enough.",
+                    factionOf(t.faction).colour);
+          } else if (near < t.space * 0.55 * U) {
+            t.angry = true;
+            chatter(factionOf(t.faction).short + " — they told you once.",
+                    "#ff8f77");
+          }
+        }
       }
+      /* A freighter that does not like you runs rather than fights. */
+      const fleeing = !armed && me.alive && shipHostile(t) && near < 1800 * U;
       /* Shadowing sits off your shoulder rather than closing: near enough that
          you notice, far enough that it is not a threat yet. */
       const tailing = t.shadow && !t.angry && me.alive;
       const goal = (t.angry && me.alive) ? { x: me.x, y: me.y }
+                 : fleeing ? { x: t.x + (t.x - me.x), y: t.y + (t.y - me.y) }
                  : tailing ? { x: me.x - Math.cos(t.a) * 700 * U,
                                y: me.y - Math.sin(t.a) * 700 * U }
                  : t.leg > 0 ? t.to : t.from;
       const dx = goal.x - t.x, dy = goal.y - t.y;
       const d = Math.hypot(dx, dy) || 1;
-      if (d < 220) { if (!t.angry && !tailing) t.leg = -t.leg; continue; }
+      if (d < 220) { if (!t.angry && !tailing && !fleeing) t.leg = -t.leg; continue; }
       const want = Math.atan2(dy, dx);
       let diff = want - t.a;
       while (diff > Math.PI) diff -= Math.PI * 2;
@@ -6187,11 +6374,16 @@
       /* A patrol shoots at sentries. It is the one thing that tells you these
          are on your side without a word being said — and it means a guarded
          cache near a station is a fight you can arrive in the middle of. */
-      if (t.kind === "patrol" || t.kind === "hunter") {
+      if (armed) {
         t.cool -= dt;
         if (t.cool <= 0) {
           /* Angry, it comes for you and its rounds are live. Otherwise it looks
-             for the nearest sentry, and its rounds cannot touch you at all. */
+             for something it is at war with — a sentry, or a ship of whichever
+             power its own is fighting — and those rounds cannot touch you.
+
+             That last clause is the war. Two powers' ships shoot each other on
+             sight, in front of you, about something that has nothing to do with
+             you, and you can sit and watch or pick a side. */
           let tx = null, ty = null, live = false;
           if (t.angry && me.alive) {
             const dd = Math.hypot(me.x - t.x, me.y - t.y);
@@ -6203,6 +6395,11 @@
               const dd = Math.hypot(dr.x - t.x, dr.y - t.y);
               if (dd < bd) { bd = dd; best = dr; }
             }
+            for (const o of surv.traffic) {
+              if (o === t || !atWar(t.faction, o.faction)) continue;
+              const dd = Math.hypot(o.x - t.x, o.y - t.y);
+              if (dd < bd) { bd = dd; best = o; t.duel = o; }
+            }
             if (best) { tx = best.x; ty = best.y; }
           }
           if (tx != null) {
@@ -6211,7 +6408,7 @@
             surv.shots.push({
               x: t.x + Math.cos(a) * 20 * U, y: t.y + Math.sin(a) * 20 * U,
               vx: Math.cos(a) * 360 * U, vy: Math.sin(a) * 360 * U,
-              life: 2.2, friendly: !live
+              life: 2.2, friendly: !live, from: t
             });
             gameSound("shot", t.x);
           } else t.cool = 1.2;
@@ -6225,7 +6422,7 @@
      failing to save one a thing that costs somebody else rather than you. */
   function killTraffic(i, byYou) {
     const t = surv.traffic[i];
-    burst(t.x, t.y, TRAFFIC_COLOUR[t.kind] || WRECK, 26, 300 * U);
+    burst(t.x, t.y, trafficColour(t), 26, 300 * U);
     gameSound("boom", t.x);
     addShake(4);
     for (const key of t.cargo) dropKnownMote(t.x, t.y, key, 90);
@@ -6237,8 +6434,8 @@
       surv.t.robbed = true;
       /* The cost of it, and it is not the cargo. A hunter is the exception —
          it came for you, and killing it settles nothing in either direction. */
-      addHeat(HEAT[t.kind] || 0);
-      if (t.kind === "hauler" || t.kind === "distress") {
+      repForKill(t);
+      if (!ROLES[t.role || t.kind] || !ROLES[t.role || t.kind].armed) {
         chatter("They were not armed.", "#ff8f77");
       }
     }
@@ -7018,16 +7215,31 @@
          who they are allowed to hit — and a neutral whose fire could clip you
          would stop being a neutral the first time it did. */
       if (b.friendly) {
-        for (let k = surv.drones.length - 1; k >= 0; k--) {
+        let spent = false;
+        for (let k = surv.drones.length - 1; k >= 0 && !spent; k--) {
           const d = surv.drones[k];
           if (dist2(b.x, b.y, d.x, d.y) > (18 * U) ** 2) continue;
+          spent = true;
           surv.shots.splice(i, 1);
           d.hp -= 1;
           d.hit = 0.12;
           d.awake = true;
           burst(b.x, b.y, DRONE_COLOUR, 5, 120 * U);
           if (d.hp <= 0) killDrone(k); else gameSound("hit", d.x);
-          break;
+        }
+        /* And it can hit somebody else's ship, which is what makes the war
+           visible: hulls actually come apart out there without you. */
+        for (let k = surv.traffic.length - 1; k >= 0 && !spent; k--) {
+          const o = surv.traffic[k];
+          if (o === b.from) continue;     // a ship does not shoot itself in the nose
+          const rr = 22 * U * (shipSpec(o.hull).size || 1);
+          if (dist2(b.x, b.y, o.x, o.y) > rr * rr) continue;
+          spent = true;
+          surv.shots.splice(i, 1);
+          o.hp -= 1;
+          o.hit = 0.12;
+          burst(b.x, b.y, trafficColour(o), 5, 120 * U);
+          if (o.hp <= 0) killTraffic(k, false); else gameSound("hit", o.x);
         }
         continue;
       }
@@ -7174,7 +7386,7 @@
            to defend itself is not the same thing as not wanting to fight. Anger
            does not wear off: you started it, and it has a long memory. */
         if (t.kind === "patrol") t.angry = true;
-        burst(b.x, b.y, TRAFFIC_COLOUR[t.kind] || WRECK, 5, 120 * U);
+        burst(b.x, b.y, trafficColour(t), 5, 120 * U);
         if (t.hp <= 0) killTraffic(i, true); else gameSound("hit", t.x);
       }
       for (let i = surv.hulks.length - 1; i >= 0 && !spent; i--) {
@@ -7297,11 +7509,11 @@
      ever made a sector feel like anywhere. Three kinds, and each is a different
      answer to "what is somebody else doing out here":
 
-       hauler      a freighter on a route between two points, carrying material
+       freight     a freighter on a route between two points, carrying material
                    and minding its own business
        patrol      an armed ship holding a circuit near a station, which will
                    shoot at a sentry and never at you
-       distress    a hauler being taken apart by sentries, with a clock on it
+       distress    a freighter being taken apart by sentries, with a clock on it
 
      Density falls with distance, hard. Near home you are never alone for long;
      past the Hostile band you can fly for an hour and see nobody, and that
@@ -7311,15 +7523,78 @@
      They fly the same twenty-five hulls you can buy, which is most of what makes
      the roster feel like a world rather than a shop: the Drayman that passes you
      on a route is the Drayman in the hangar. */
-  const TRAFFIC_HULLS = {
-    hauler:   ["drayman", "coffer", "pannier", "runner", "windlass", "carrack"],
-    patrol:   ["lance", "harrier", "wedge", "spur", "bastion"],
-    distress: ["drayman", "pannier", "stride", "coffer"]
+  /* ═══ A GALAXY THAT IS ALREADY AT WAR ═════════════════════════════════════
+     The first version of this was a single ladder: one hidden number, and the
+     whole sector agreed about you at once. That is not a galaxy, it is a
+     reputation bar with the numbers filed off — everyone had the same opinion
+     and it was always about you.
+
+     So: three powers, a war between two of them, pirates who are nobody's, and
+     independents who are their own. You are a man exploring in the middle of
+     somebody else's argument, and almost nothing out here is about you at all.
+
+       · Standing is *per flag*. Shooting the Cordon's freighters makes the
+         Cordon cold and makes whoever the Cordon is fighting rather warmer.
+         Piracy against one side is diplomacy with the other.
+       · Ships have a temperament on top of their flag. A freighter is not an
+         escort is not a pirate, and two ships of the same power can be
+         completely different to meet.
+       · Some want room. Fly inside a nervous escort's bubble and it tells you
+         to back off before it does anything about it.
+       · The war is not scenery: ships of warring powers shoot each other on
+         sight, and you can watch it and stay out of it.
+       · A trader will trade. Pull alongside and deal. */
+  const FACTIONS = [
+    { key: "cordon", name: "THE CORDON",      short: "CORDON",
+      colour: "#6dffbf", note: "keeps the lanes open, and says so a lot" },
+    { key: "hallow", name: "THE HALLOW LINE", short: "HALLOW",
+      colour: "#87d8ff", note: "older than the lanes, and less interested" },
+    { key: "morrow", name: "MORROW COMPACT",  short: "MORROW",
+      colour: "#b79aff", note: "a trading compact with guns, in that order" }
+  ];
+  const UNALIGNED = { key: "free",   name: "UNALIGNED", short: "FREE",
+                      colour: "#8fb4d8", note: "flying for themselves" };
+  const PIRATE    = { key: "pirate", name: "NO COLOURS", short: "PIRATE",
+                      colour: "#ff6b6b", note: "nobody's, and everybody's problem" };
+  const factionOf = k => FACTIONS.find(f => f.key === k) ||
+                         (k === "pirate" ? PIRATE : UNALIGNED);
+
+  const warPairs = () => (surv && surv.world && surv.world.war) || {};
+  function atWar(a, b) {
+    if (!a || !b || a === b) return false;
+    if (a === "pirate" || b === "pirate") return true;
+    if (a === "free" || b === "free") return false;
+    const w = warPairs();
+    return w[a] === b || w[b] === a;
+  }
+
+  /* `role` is temperament and job; `faction` is the flag, and the two are
+     independent — which is the point. `space` is how much room it wants; zero
+     means it does not care who flies past. */
+  const ROLES = {
+    freight:  { armed: false, trades: false, space: 0 },
+    trader:   { armed: false, trades: true,  space: 0 },
+    escort:   { armed: true,  trades: false, space: 620 },
+    patrol:   { armed: true,  trades: false, space: 340 },
+    pirate:   { armed: true,  trades: false, space: 0 },
+    distress: { armed: false, trades: false, space: 0 },
+    hunter:   { armed: true,  trades: false, space: 0 }
   };
-  const TRAFFIC_COLOUR = { hauler: "#8fb4d8", patrol: "#6dffbf", distress: "#ffcb42",
-                           // A hunter is the one that is not on your side.
-                           hunter: "#ff6b6b" };
-  const TRAFFIC_HP     = { hauler: 6, patrol: 8, distress: 5, hunter: 8 };
+
+  const TRAFFIC_HULLS = {
+    freight:  ["drayman", "coffer", "pannier", "runner", "windlass", "carrack"],
+    trader:   ["pannier", "runner", "stride", "carrack", "coffer"],
+    escort:   ["lance", "harrier", "wedge", "spur"],
+    patrol:   ["lance", "harrier", "wedge", "spur", "bastion"],
+    pirate:   ["needle", "vane", "harrier", "louvre", "spur", "reprisal"],
+    distress: ["drayman", "pannier", "stride", "coffer"],
+    hunter:   ["harrier", "lance", "spur", "bastion", "reprisal"]
+  };
+  const TRAFFIC_HP = { freight: 6, trader: 6, escort: 8, patrol: 8,
+                       pirate: 7, distress: 5, hunter: 8 };
+  // A ship is drawn in its flag's colour; a pirate flies none and gets the one
+  // that means it.
+  const trafficColour = t => factionOf(t.faction).colour;
   const DISTRESS_PAY   = 260;    // for clearing the sentries off one
   const TRAFFIC_TALK   = 2600;   // how close before it says anything
 
@@ -7345,97 +7620,210 @@
      It cools on its own, slowly, and faster if you pull somebody out of trouble.
      Being able to work it off is what keeps it a *state* rather than a verdict on
      the save file. */
-  const HEAT = {
-    hauler:   26,    // an unarmed freighter, going about its day
-    distress: 34,    // one that was already being taken apart
-    patrol:   14,    // armed, and still on your side
-    hunter:   0,     // came for you; killing it settles nothing either way
-    RESCUE:  -30,    // pulling one out is worth about a hauler
-    COOL:     0.075, // a second — a single hauler fades in about six minutes
-    MAX:      240,
-    WATCHED:  30,
-    WANTED:   90,
-    HUNTED:  150
+  /* ── standing, per flag ───────────────────────────────────────────────────
+     Each power has its own opinion of you, and because two of them are at war,
+     hurting one is a favour to the other: shoot the Cordon's freighters and
+     Hallow warms to you by half what the Cordon cools. That is the whole reason
+     to have a war in the background — it turns piracy from a thing you are
+     punished for into a side you are taking.
+
+     Pirates have no opinion to change. They are hostile already and nothing you
+     do alters it, which makes them the one flag you can shoot without politics.
+
+     The player never sees a figure. What they get is a word per power, on one
+     page, and the sector behaving differently. */
+  const REP = {
+    freight:  -26,   // an unarmed freighter going about its day
+    trader:   -26,
+    distress: -34,   // one that was already being taken apart
+    escort:   -16,
+    patrol:   -14,   // armed, and still not looking for a fight
+    pirate:     6,   // everybody's problem; killing one is a small favour
+    hunter:     0,   // came for you, and settles nothing either way
+    RESCUE:    30,
+    SPITE:      0.5, // of a loss, credited to whoever they are fighting
+    COOL:       0.075,
+    MAX:        240,
+    WANTED:    -90,
+    HUNTED:   -150
   };
+  const repOf = key => (surv && surv.rep && surv.rep[key]) || 0;
 
-  /* The three steps, as words. Used for the lines it says and for the one
-     qualitative readout on the inventory — never as a number anywhere. */
-  function heatLevel() {
-    const h = surv ? surv.heat : 0;
-    return h >= HEAT.HUNTED ? 3 : h >= HEAT.WANTED ? 2 : h >= HEAT.WATCHED ? 1 : 0;
+  const STANDING = [
+    { at: -150, name: "HUNTED",  note: "sending ships to find you" },
+    { at:  -90, name: "WANTED",  note: "will shoot without waiting" },
+    { at:  -30, name: "WATCHED", note: "keeping an eye on you" },
+    { at:   40, name: "NEUTRAL", note: "no opinion worth having" },
+    { at:  110, name: "WELCOME", note: "glad to see you" },
+    { at: 1e9,  name: "TRUSTED", note: "you are one of theirs" }
+  ];
+  function standingOf(key) {
+    const v = repOf(key);
+    for (const st of STANDING) if (v <= st.at) return st;
+    return STANDING[STANDING.length - 1];
   }
-  const HEAT_WORDS = [
-    { name: "UNREMARKABLE", note: "nobody out here is looking for you" },
-    { name: "WATCHED",      note: "patrols have started keeping an eye on you" },
-    { name: "WANTED",       note: "patrols do not wait for you to shoot first" },
-    { name: "HUNTED",       note: "ships are coming out specifically to find you" }
-  ];
-  /* Said when it changes, and only when it changes. Rumour rather than a score:
-     what somebody out here would actually say about you. */
-  const HEAT_RISING = [
-    "",
-    "Someone saw that.",
-    "Word travels out here. They are not waiting for you to shoot first.",
-    "There are ships out looking for you now."
-  ];
-  const HEAT_FALLING = [
-    "Whatever they heard about you, they have stopped repeating it.",
-    "The patrols have lost interest in you.",
-    "They are still watching, but they have stopped hunting.",
-    ""
-  ];
+  const hostileTo = key => repOf(key) <= REP.WANTED;
 
-  function addHeat(n) {
-    if (!surv) return;
-    const was = heatLevel();
-    surv.heat = Math.max(0, Math.min(HEAT.MAX, (surv.heat || 0) + n));
-    const now2 = heatLevel();
+  /* What one ship makes of you: its flag's opinion, unless it is a pirate — a
+     pirate's opinion is fixed and it is bad — or unless you have personally
+     annoyed this one, which outranks everything. */
+  function shipHostile(t) {
+    if (t.angry) return true;
+    if (t.faction === "pirate") return true;
+    if (t.faction === "free" || !t.faction) return false;
+    return hostileTo(t.faction);
+  }
+
+  function addRep(key, n) {
+    if (!surv || !key || key === "pirate" || key === "free" || !n) return;
+    if (!surv.rep) surv.rep = {};
+    const was = standingOf(key).name;
+    surv.rep[key] = Math.max(-REP.MAX, Math.min(REP.MAX, repOf(key) + n));
+    const now2 = standingOf(key).name;
     if (now2 === was) return;
-    const line = now2 > was ? HEAT_RISING[now2] : HEAT_FALLING[now2];
-    if (line) chatter(line, now2 > was ? "#ff8f77" : NEBULA);
+    const f = factionOf(key);
+    chatter(f.short + " — " + now2.toLowerCase(), n < 0 ? "#ff8f77" : f.colour);
     saveSurveyBook();
   }
 
-  /* Cooling, and the hunters. Both belong to the same idea: how much the sector
-     is thinking about you, and what it does about it. */
+  /* A loss for one side is a gain for whoever they are fighting — at half
+     value, because helping by accident is worth less than helping on purpose. */
+  function repForKill(t) {
+    const n = REP[t.role || t.kind] || 0;
+    if (t.faction === "pirate") {
+      for (const f of FACTIONS) addRep(f.key, REP.pirate);
+      return;
+    }
+    addRep(t.faction, n);
+    const enemy = warPairs()[t.faction];
+    if (enemy && n < 0) addRep(enemy, -n * REP.SPITE);
+  }
+
+  /* Opinions drift back toward nothing on their own, from either direction — so
+     being loved fades too, and nothing about you is permanent. */
+  /* ── battles have an end ─────────────────────────────────────────────────
+     A battle you have never seen is still being fought — it has been going on
+     for as long as you were not looking, which is why finding one is worth
+     doing. From the moment you *do* see it, it has a clock, and the clock runs
+     whether you stay and watch or not. Fly off for ten minutes and come back
+     and it is over: wrecks, no ships, and sometimes a name.
+
+     That is the whole point of it. A fight that waited for you would be a set
+     piece; one that finishes without you is a war. */
+  function surveyBattles(dt) {
+    if (!surv.battles) return;
+    const me = ships[0];
+
+    /* The clock runs on every battle you have found, loaded or not — so the one
+       two sectors behind you is ending while you are somewhere else. */
+    let ended = null;
+    for (const id of Object.keys(surv.battleAge)) {
+      if (surv.battleAge[id] <= 0) continue;
+      surv.battleAge[id] -= dt;
+      if (surv.battleAge[id] <= 0) {
+        surv.battleAge[id] = 0;
+        ended = ended || [];
+        ended.push(id);
+      }
+    }
+
+    for (const b of surv.battles) {
+      if (b.over) continue;
+      const near = dist2(me.x, me.y, b.x, b.y);
+
+      /* Finding one. Close enough to see what is going on, and it is announced
+         as somebody else's business, because it is. */
+      if (!b.seen && near < (SURVEY_SIGHT * 1.5 + b.r) ** 2) {
+        b.seen = true;
+        surv.battleAge[b.id] = b.life;
+        const a = factionOf(b.sides[0]), c = factionOf(b.sides[1]);
+        chatter(a.short + " and " + c.short + " are at it out here \u2014 " +
+                warScale().name.toLowerCase(), "#ff8f77");
+        noteKnown("battle", b.x, b.y, b.name);
+        saveSurveyBook();
+      }
+
+      /* And ending. Either the clock ran out, or one side is simply gone —
+         both are the fight being over, and both leave the same field of wrecks. */
+      const left = surv.traffic.filter(t => t.battle === b.id);
+      const alive = [0, 1].map(i =>
+        left.filter(t => t.faction === b.sides[i]).length);
+      const done = (ended && ended.indexOf(b.id) >= 0) ||
+                   (b.seen && (!alive[0] || !alive[1]));
+      if (!done) continue;
+      endBattle(b, left);
+    }
+  }
+
+  /* Over. The ships that are left break off and are gone; what they were
+     fighting over is a field of hulks and, sometimes, a name. */
+  function endBattle(b, left) {
+    b.over = true;
+    surv.battleAge[b.id] = 0;
+    for (let i = surv.traffic.length - 1; i >= 0; i--) {
+      if (surv.traffic[i].battle === b.id) surv.traffic.splice(i, 1);
+    }
+    for (const w of battleWrecks(b)) {
+      if (surv.stripped.has(w.id)) continue;
+      surv.hulks.push(w);
+    }
+    /* Not every fight is remembered. The ones that are get a name, and the name
+       goes on the chart — which makes a sector you have flown for an hour read
+       as somewhere things have happened rather than somewhere things are. */
+    // Whatever the chart said was a fight is not a fight any more.
+    surv.known.delete(knownId("battle", b.x, b.y));
+    if (b.memorial) {
+      surv.memorials.add(b.id);
+      noteKnown("memorial", b.x, b.y, b.name);
+      chatter(b.name + " \u2014 it is over", "#a08cff");
+    } else {
+      chatter("The shooting has stopped out there.", NEBULA);
+    }
+    saveSurveyBook();
+  }
+
   function surveyHeat(dt) {
     const me = ships[0];
     if (!surv || surv.death) return;
-    if (surv.heat > 0) addHeat(-HEAT.COOL * dt);
+    if (!surv.rep) surv.rep = {};
+    for (const f of FACTIONS) {
+      const v = repOf(f.key);
+      if (!v) continue;
+      const step = Math.min(Math.abs(v), REP.COOL * dt);
+      surv.rep[f.key] = v > 0 ? v - step : v + step;
+    }
 
-    if (heatLevel() < 3 || !me.alive) return;
-    /* Hunters. Spawned rather than generated, which is the only honest way to do
-       this: a chunk is a pure function of its coordinates and may not know how
-       many people you have shot. They arrive from off screen, come for you, and
-       are ordinary traffic in every other respect — you can outrun one, kill it,
-       or lead it into a well.
+    // Whoever hates you most is who sends people.
+    let worst = null;
+    for (const f of FACTIONS) {
+      if (repOf(f.key) <= REP.HUNTED &&
+          (!worst || repOf(f.key) < repOf(worst))) worst = f.key;
+    }
+    if (!worst || !me.alive) return;
 
-       The rate scales past HUNTED, and there is a hard cap: three at once is a
-       situation and six is a firing squad. */
     surv.huntCool -= dt;
     if (surv.huntCool > 0) return;
-    const over = (surv.heat - HEAT.HUNTED) / (HEAT.MAX - HEAT.HUNTED);
+    const over = (-repOf(worst) - 150) / (REP.MAX - 150);
     surv.huntCool = 26 - over * 14;
-    const out = surv.traffic.filter(t => t.kind === "hunter").length;
-    if (out >= 3) return;
-    const a = Math.random() * Math.PI * 2;
+    if (surv.traffic.filter(t => t.role === "hunter").length >= 3) return;
+
+    /* Spawned rather than generated: a chunk is a pure function of its
+       coordinates and has no business knowing whose freighters you have shot. */
+    const a2 = Math.random() * Math.PI * 2;
     const d = 2600 + Math.random() * 1400;
-    const hulls = ["harrier", "lance", "spur", "bastion", "reprisal"];
+    const hulls = TRAFFIC_HULLS.hunter;
     const hull = hulls[Math.min(hulls.length - 1,
                                 Math.floor(over * hulls.length + Math.random()))];
+    const hp = TRAFFIC_HP.hunter + Math.round(over * 6);
     surv.traffic.push({
-      id: null,                       // not a chunk's, so it is never re-streamed
-      kind: "hunter", hull,
-      x: me.x + Math.cos(a) * d, y: me.y + Math.sin(a) * d, a: a + Math.PI,
+      id: null, kind: "hunter", role: "hunter", faction: worst, hull,
+      x: me.x + Math.cos(a2) * d, y: me.y + Math.sin(a2) * d, a: a2 + Math.PI,
       from: { x: me.x, y: me.y }, to: { x: me.x, y: me.y }, leg: 1,
-      speed: 150 + over * 60,
-      hp: TRAFFIC_HP.patrol + Math.round(over * 6),
-      maxHp: TRAFFIC_HP.patrol + Math.round(over * 6),
-      cargo: trafficCargo("patrol", dangerAt(me.x, me.y), Math.random),
-      cool: 1.4, doom: 0, guards: 0, phase: Math.random() * 6.28,
-      angry: true, hunter: true
+      speed: 150 + over * 60, hp, maxHp: hp,
+      cargo: [], cool: 1.4, doom: 0, guards: 0, space: 0, trades: false,
+      phase: Math.random() * 6.28, angry: true
     });
-    chatter("Contact — and it is not a patrol.", "#ff8f77");
+    chatter(factionOf(worst).short + " sent somebody.", "#ff8f77");
   }
 
   /* What one is carrying, and therefore what robbing it pays. A hauler carries
@@ -7443,7 +7831,9 @@
      than a fortune, and shooting the thing that makes the sector feel inhabited
      is a decision with a price rather than a free lunch. */
   function trafficCargo(kind, deep, R) {
-    const n = kind === "patrol" ? 4 : Math.round(10 + R() * 22 + deep * 14);
+    const n = kind === "patrol" || kind === "escort" ? 4
+            : kind === "trader" ? Math.round(16 + R() * 26 + deep * 18)
+            : Math.round(10 + R() * 22 + deep * 14);
     const out = [];
     for (let i = 0; i < n; i++) {
       const roll = R();
@@ -7464,9 +7854,37 @@
     const near = Math.pow(1 - Math.min(1, deep), 2);
     if (R() > 0.34 * near + 0.012) return;
 
+    /* Whose, and what sort. Pirates thicken with distance — the lanes are kept
+       near home and nobody is keeping anything out in the deep — and the two
+       powers actually fighting put more hulls in the sky than the one watching. */
     const roll = R();
-    const kind = roll < 0.58 ? "hauler" : roll < 0.86 ? "patrol" : "distress";
-    const hulls = TRAFFIC_HULLS[kind];
+    /* How hot the war is decides how much of what you meet is fighting it: a
+       border skirmish leaves the lanes mostly to the haulers, and a total war
+       means the next four ships you pass are all somebody's navy. */
+    const heat = warScale().heat;
+    let faction, role;
+    if (roll < 0.06 + (1 - near) * 0.3) {
+      faction = "pirate"; role = "pirate";
+    } else {
+      const powers = FACTIONS.map(f => f.key);
+      const w = surv && surv.world ? surv.world : null;
+      const pick = R();
+      // A hot war leaves less room for anybody's own business.
+      if (pick < 0.24 / heat) faction = "free";
+      else if (w && w.belligerents && pick < 0.24 / heat + 0.34 * heat) {
+        faction = w.belligerents[R() < 0.5 ? 0 : 1];
+      } else faction = powers[Math.floor(R() * powers.length)];
+
+      const r2 = R() / Math.min(1.35, heat);
+      if (faction === "free") role = r2 < 0.55 ? "trader" : "freight";
+      else if (r2 < 0.3) role = "patrol";
+      else if (r2 < 0.46) role = "escort";
+      else if (r2 < 0.72) role = "trader";
+      else if (r2 < 0.92) role = "freight";
+      else role = "distress";
+    }
+    const kind = role;
+    const hulls = TRAFFIC_HULLS[role];
     const hull = hulls[Math.floor(R() * hulls.length)];
     const x = ox + rnd(300, CHUNK - 300), y = oy + rnd(300, CHUNK - 300);
 
@@ -7474,21 +7892,101 @@
        the ends, which is what makes meeting one twice feel like the same ship
        going about its day rather than a spawn. */
     const a = R() * Math.PI * 2;
-    const len = kind === "patrol" ? rnd(900, 2200) : rnd(4000, 14000);
+    const spec = ROLES[role];
+    const len = spec.armed ? rnd(900, 2600) : rnd(4000, 14000);
     const to = { x: x + Math.cos(a) * len, y: y + Math.sin(a) * len };
 
     out.traffic.push({
-      kind, hull, x, y, a,
+      kind, role, faction, hull, x, y, a,
       from: { x, y }, to, leg: 1,
-      speed: kind === "patrol" ? rnd(120, 190) : rnd(70, 130),
-      hp: TRAFFIC_HP[kind], maxHp: TRAFFIC_HP[kind],
-      cargo: trafficCargo(kind, deep, R),
+      speed: spec.armed ? rnd(120, 190) : rnd(70, 130),
+      hp: TRAFFIC_HP[role], maxHp: TRAFFIC_HP[role],
+      cargo: trafficCargo(role, deep, R),
       cool: rnd(0.3, 1.4),
+      /* How much room it wants, rolled per ship inside its role's range — so two
+         escorts of the same flag are not the same to fly past: one may not mind
+         you at all and the next will tell you to keep your distance. */
+      space: spec.space ? Math.round(spec.space * (0.5 + R())) : 0,
+      trades: spec.trades,
       // A distress call has a clock on it. Long enough to be worth turning
       // around for, short enough that turning around has to be a decision.
-      doom: kind === "distress" ? rnd(38, 62) : 0,
-      guards: kind === "distress" ? 1 + Math.floor(R() * 2) : 0,
+      doom: role === "distress" ? rnd(38, 62) : 0,
+      guards: role === "distress" ? 1 + Math.floor(R() * 2) : 0,
       phase: R() * Math.PI * 2
+    });
+  }
+
+  /* What one leaves behind, laid out from the battle's own seed so the field of
+     wrecks is the same field every time you come back to it. */
+  function battleWrecks(b) {
+    const R = seeded(b.seed >>> 0);
+    // The bigger the fight, the more of it is still out there. Hulks are the
+    // mode's own salvage, so an old battle is worth the trip even cold.
+    const n = Math.max(2, Math.round(b.fleet * 1.1));
+    const out = [];
+    for (let j = 0; j < n; j++) {
+      const a = R() * Math.PI * 2, d = R() * b.r;
+      out.push({ id: b.id + "w" + j,
+                 x: b.x + Math.cos(a) * d, y: b.y + Math.sin(a) * d,
+                 a: R() * Math.PI * 2, spin: (R() - 0.5) * 0.05,
+                 size: 1 + R() * 1.2, battle: true });
+    }
+    return out;
+  }
+
+  /* ── a battle, in progress ────────────────────────────────────────────────
+     Two powers at war do not only pass each other in the lanes; somewhere out
+     there they are having it out properly, and you can fly into the middle of
+     it. What is rolled here is only the shape of the fight — where, who, how
+     many, and how long it lasts. Whether it is still going when you get there
+     is a live question, and `surv.battleAge` is the only part of it that is not
+     a pure function of the seed.
+
+     A battle you have never seen is always still going: it has been fought for
+     as long as you have not been looking, and finding one is the point. What
+     you cannot do is leave one and come back to find it exactly as you left it. */
+  // The same syllables the worlds are named from, so a battle is named after
+  // somewhere rather than after nothing.
+  function battlePlace(R) {
+    let n = SYL_HEAD[Math.floor(R() * SYL_HEAD.length)];
+    if (R() < 0.4) n += SYL_HEAD[Math.floor(R() * SYL_HEAD.length)];
+    n += SYL_TAIL[Math.floor(R() * SYL_TAIL.length)];
+    return n.toUpperCase();
+  }
+
+  const BATTLE_NAMES = [
+    "THE STAND AT", "THE LOSS AT", "THE ACTION AT", "THE BREAK AT",
+    "THE HOLDING AT", "THE ROUT AT", "THE LAST HOUR AT"
+  ];
+
+  function buildBattle(cx, cy, R, rnd, deep, out) {
+    const w = surv && surv.world ? surv.world : null;
+    if (!w || !w.belligerents) return;
+    const sc = warScale();
+    /* Battles thicken away from home — the powers keep the near lanes open
+       because they both need them — and with how big the war is. */
+    if (R() > (0.012 + deep * 0.05) * sc.heat) return;
+
+    const p = { x: cx * CHUNK + rnd(900, CHUNK - 900),
+                y: cy * CHUNK + rnd(900, CHUNK - 900) };
+    const fleet = Math.max(2, Math.round(sc.fleet * (0.6 + R() * 0.9)));
+    out.battles.push({
+      x: p.x, y: p.y,
+      r: 700 + fleet * 130,
+      sides: R() < 0.5 ? w.belligerents.slice() : w.belligerents.slice().reverse(),
+      fleet,
+      // Long enough to be a place you can go and watch, short enough that
+      // coming back later is a different sector.
+      life: rnd(150, 240) + fleet * 26,
+      /* Not every fight is remembered. The ones that are get a name and a stone,
+         and the name is the only thing in this mode that is about something
+         that happened rather than something that is there. */
+      memorial: R() < 0.34,
+      name: BATTLE_NAMES[Math.floor(R() * BATTLE_NAMES.length)] + " " +
+            battlePlace(R),
+      hull: [TRAFFIC_HULLS.patrol[Math.floor(R() * TRAFFIC_HULLS.patrol.length)],
+             TRAFFIC_HULLS.escort[Math.floor(R() * TRAFFIC_HULLS.escort.length)]],
+      seed: Math.floor(R() * 1e9)
     });
   }
 
@@ -7636,6 +8134,54 @@
     };
   }
 
+  /* Where the coil throws you: a random bearing, and a distance that can be a
+     good deal closer to home than you are or a long way past it — which is what
+     makes it a jump rather than a lift. You keep the part and lose everything
+     else about where you were, including your speed.
+
+     The spot is redrawn until it is one you can arrive at alive: not inside a
+     world, not inside a well's killing radius. The sector is rebuilt around
+     wherever it settles on, and then checked again — a chunk that did not exist
+     when the point was picked knows things the check could not. */
+  function coilJump() {
+    const me = ships[0];
+    const from = Math.hypot(me.x, me.y) || 1;
+    const clear = (x, y) => {
+      for (const h of hazards) {
+        if (dist2(x, y, h.x, h.y) < (h.kill * 2.4 + 900) ** 2) return false;
+      }
+      for (const pl of surv.planets) {
+        if (dist2(x, y, pl.x, pl.y) < (pl.r + 900) ** 2) return false;
+      }
+      return true;
+    };
+    for (let tries = 0; tries < 24; tries++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = from * (0.35 + Math.random() * 1.9);
+      const x = Math.cos(a) * d, y = Math.sin(a) * d;
+      me.x = x; me.y = y;
+      me.vx = 0; me.vy = 0;
+      me.a = a;
+      me.boost = 0;
+      me.invuln = Math.max(me.invuln, 2.4);
+      surv.warpCool = 2.5;
+      cam.x = x; cam.y = y;
+      streamChunks(true);
+      streamRocks();
+      if (!clear(x, y) && tries < 23) continue;
+      burst(x, y, "#a08cff", 40, 420 * U);
+      addShake(11);
+      gameSound("lose", x);
+      banner = { text: "THE COIL FIRED", t: 4.2, colour: "#a08cff",
+                 sub: "you are somewhere else" };
+      chatter("It went off in your hands — " + Math.round(d / 1000) +
+              "k from home, and you did not choose it.", "#a08cff");
+      surv.t.warped = true;
+      return true;
+    }
+    return false;
+  }
+
   /* Picking one up and handing it over. A part is not salvage: it does not go
      in the hold, it cannot be sold, and losing your hull does not drop it —
      the manifest is the spine of the mode and a part lost in deep space would
@@ -7655,6 +8201,12 @@
       addShake(5);
       chatter(pt.name + " recovered — take it home", CASH);
       surveyFind("salvor");
+      /* The coil is not a component until it is bolted down. Pulling it off the
+         gate it was wound around discharges the thing, and the sector folds:
+         you are somewhere else, and you do not get to say where. It is the one
+         moment in the mode that happens *to* you, and it is why the coil is
+         worth finding rather than merely worth collecting. */
+      if (pt.key === "coil") coilJump();
       saveSurveyBook();
     }
 
@@ -8058,6 +8610,7 @@
     surveyShots(dt);
     surveyBullets();
     surveyTraffic(dt);
+    surveyBattles(dt);
     surveyHeat(dt);
     surveyCaches(dt);
     surveyParts(dt);
@@ -8367,6 +8920,32 @@
     }
   }
 
+  /* A battle that is over and remembered. A stone and a name, floating where it
+     happened — the only thing in the sector that is about something that
+     happened rather than something that is there. Battles nobody remembered
+     leave their wrecks and nothing else, which is its own kind of true. */
+  function drawBattle(b) {
+    if (!b.over || !surv.memorials.has(b.id)) return;
+    if (!onScreen(b.x, b.y, 400)) return;
+    const t = clock * 0.5 + (b.phase || 0);
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    glow("#a08cff", 1.6, 0.55 + Math.sin(t) * 0.1, () => {
+      // A slab, standing on nothing.
+      ctx.beginPath();
+      ctx.moveTo(-26, 46); ctx.lineTo(-16, -52); ctx.lineTo(16, -52);
+      ctx.lineTo(26, 46); ctx.closePath();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-40, 46); ctx.lineTo(40, 46);
+      ctx.stroke();
+    });
+    ctx.restore();
+    label3(b.name, b.x, b.y - 78, "#a08cff", 20);
+    label3(factionOf(b.sides[0]).short + "  \u2020  " +
+           factionOf(b.sides[1]).short, b.x, b.y + 82, "#6d5fa8", 15);
+  }
+
   function drawHulk(h) {
     if (!onScreen(h.x, h.y, h.r + 40)) return;
     ctx.save();
@@ -8404,7 +8983,7 @@
     const spec = shipSpec(t.hull);
     const r = SHIP_R * U * spec.size;
     if (!onScreen(t.x, t.y, r * 2.5 + 80)) return;
-    const colour = TRAFFIC_COLOUR[t.kind] || WRECK;
+    const colour = trafficColour(t);
     const hit = t.hit > 0;
     ctx.save();
     ctx.translate(t.x, t.y);
@@ -8632,6 +9211,7 @@
     for (const t of surv.traffic) drawTraffic(t);
     if (surv.leviathan) drawLeviathan(surv.leviathan);
     for (const h of surv.hulks) drawHulk(h);
+    for (const b of surv.battles) drawBattle(b);
     for (const w of surv.wrecks) drawWreck(w);
     for (const st of surv.stations) drawStation(st);
     for (const c of surv.caches) drawCache(c);
@@ -8685,7 +9265,14 @@
          ever stated, it is never a figure, and it lives on a page you open rather
          than on the flight HUD — a meter in the corner would turn a reputation
          into a score to manage. */
-      standing: HEAT_WORDS[heatLevel()],
+      /* Where you stand with each power, as words, and who is fighting whom.
+         The only place any of this is ever stated, and never as a figure. */
+      standings: FACTIONS.map(f => ({
+        key: f.key, name: f.name, short: f.short, colour: f.colour,
+        note: f.note, standing: standingOf(f.key).name,
+        says: standingOf(f.key).note,
+        enemy: warPairs()[f.key] ? factionOf(warPairs()[f.key]).short : ""
+      })),
       // Who is out there, and whether any of them has decided about you.
       traffic: surv.traffic.map(t => ({ kind: t.kind, hull: t.hull,
                                         x: t.x, y: t.y, angry: !!t.angry })),
@@ -9311,7 +9898,7 @@
       ? (mode.survey ? surveyZoom * shipZoomFactor() : 1)
       : SCREEN_W / arena.w;
     cam.x = ships[net.seat].x; cam.y = ships[net.seat].y;
-    cam.rot = mode.camera && royaleCameraRotates
+    cam.rot = mode.camera && camRotates()
       ? -Math.PI / 2 - ships[net.seat].a
       : 0;
     clampCam();
@@ -11420,7 +12007,7 @@
     tapButton(fullscreenLabel(), 520, 590, 210, 36, "#ffe56d",
               toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
     tapButton("SETTINGS", 740, 590, 210, 36, "#ffe56d",
-              () => { backFrom = "title"; state = settingsScreen(); });
+              () => { state = openSettings("title"); });
 
     text(touchOnly
            ? "one player per phone · up to five online, a screen each"
@@ -11655,7 +12242,85 @@
               () => { state = isCamp ? "levels" : "title"; });
     tapButton(touchOnly ? "PHONE SETTINGS" : "CONTROL SETTINGS",
               650, 650, 240, 44, "#ffe56d",
-              () => { backFrom = "count"; state = settingsScreen(); });
+              () => { state = openSettings("count"); });
+  }
+
+  /* ── the mode's own settings ─────────────────────────────────────────────
+     One mode's page at a time, drawn the same on a keyboard and on a phone.
+     Opened from a match it is that match's page, with no tabs to wander off
+     into; opened from the front page the tabs are how you reach the others.
+
+     `notes` is off on the phone, where the space under a button belongs to the
+     next button. */
+  function modeSettingsBand(tabY, optY, notes) {
+    const page = SETTINGS_PAGES.find(p => p.key === settingsPage) ||
+                 SETTINGS_PAGES[0];
+    if (settingsLocked) {
+      text(page.name + " SETTINGS", SCREEN_W / 2, tabY, 17, page.colour,
+           "center", 0.9);
+    } else {
+      const tw = 224, gap = 10;
+      const x0 = SCREEN_W / 2 - (SETTINGS_PAGES.length * (tw + gap) - gap) / 2;
+      SETTINGS_PAGES.forEach((p, i) => {
+        const cx = x0 + i * (tw + gap) + tw / 2;
+        tapButton(p.name, cx, tabY, tw, 32, p.colour,
+                  () => { settingsPage = p.key; }, p.key === settingsPage);
+      });
+    }
+
+    /* Whatever this mode has to offer, spread across the band. Modes differ in
+       how many settings they have, so the row is laid out from the list rather
+       than from fixed coordinates. */
+    const opts = [];
+    if (page.key === "survey") {
+      opts.push({ label: "ZOOM: " + surveyZoomName(),
+                  note: "How far back the camera sits.",
+                  colour: page.colour, act: cycleSurveyZoom });
+    }
+    if (page.key in cameraRotates) {
+      const on = cameraRotates[page.key];
+      opts.push({ label: "CAMERA: " + (on ? "ROTATING" : "FIXED"),
+                  note: on ? "Ship stays pointed up." : "Map stays north-up.",
+                  colour: page.colour, act: () => toggleModeCamera(page.key) });
+    }
+    if (page.key === "survival") {
+      opts.push({ label: "FRIENDLY FIRE: " + (survivalFriendlyFire ? "ON" : "OFF"),
+                  note: survivalFriendlyFire
+                    ? "Your shots hurt your side."
+                    : "Only the wave hurts you.",
+                  colour: survivalFriendlyFire ? "#ff8f77" : "#6dffbf",
+                  act: toggleFriendlyFire, on: survivalFriendlyFire });
+    }
+    if (page.key === "survey") {
+      opts.push({ label: surveyResetLabel(),
+                  note: "Wipes the sector for good.",
+                  colour: surveyResetArmed() ? "#ff8f77" : "#a08cff",
+                  act: resetSurveyProgress, on: surveyResetArmed() });
+    }
+
+    if (!opts.length) {
+      text("Nothing to set here \u2014 this one plays the same either way.",
+           SCREEN_W / 2, optY + 2, 16, "#ffcb42", "center", 0.7);
+      return optY + 24;
+    }
+    const bw = opts.length > 2 ? 300 : 360;
+    const span = opts.length * (bw + 16) - 16;
+    /* A note is wrapped to its own button's width rather than trusted to fit:
+       three across leaves about thirty characters, and text laid out against a
+       guess is text that spills off the side of the page on somebody else's
+       browser. Whatever the wrapping costs in height, the heading below is
+       moved down by — which is what this returns. */
+    let lines = 0;
+    opts.forEach((o, i) => {
+      const cx = SCREEN_W / 2 - span / 2 + i * (bw + 16) + bw / 2;
+      tapButton(o.label, cx, optY, bw, 42, o.colour, o.act, o.on);
+      if (!notes) return;
+      const ls = wrapText(o.note, 14, bw - 12);
+      lines = Math.max(lines, ls.length);
+      ls.forEach((ln, k) =>
+        text(ln, cx, optY + 38 + k * 17, 14, "#ffcb42", "center", 0.75));
+    });
+    return optY + 30 + Math.max(1, lines) * 17;
   }
 
   /* The controls screen is the settings screen: every key on it is a control
@@ -11665,18 +12330,9 @@
     text("Click a key box, then press the new key.",
          SCREEN_W / 2, 84, 16, "#ffcb42");
 
-    tapButton("BATTLE ROYALE CAMERA: " +
-              (royaleCameraRotates ? "ROTATING" : "FIXED"),
-              300, 132, 380, 46, "#ffe56d", toggleRoyaleCamera);
-    text(royaleCameraRotates ? "Ship stays pointed up." : "Map stays north-up.",
-         300, 170, 16, "#ffcb42");
+    const headY = modeSettingsBand(112, 158, true);
 
-    tapButton("SURVEY ZOOM: " + surveyZoomName(),
-              700, 132, 380, 46, "#a08cff", cycleSurveyZoom);
-    text("How far back the camera sits out there.",
-         700, 170, 16, "#ffcb42");
-
-    text("KEYBOARD CONTROLS", SCREEN_W / 2, 218, 18, "#ffe56d");
+    text("KEYBOARD CONTROLS", SCREEN_W / 2, Math.max(220, headY), 18, "#ffe56d");
 
     ACTIONS.forEach((a, ai) => {
       text(a.name, cellBox(0, ai).cx, 246, 16, "#ffcb42", "center", 0.9);
@@ -11759,13 +12415,10 @@
               toggleSound, soundEnabled);
     tapButton(fullscreenLabel(), 680, 530, 280, 42, "#ffe56d",
               toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
-    tapButton("PHONE CONTROLS", 330, 584, 340, 44, "#ffe56d", () => {
+    tapButton("PHONE CONTROLS", SCREEN_W / 2, 584, 340, 44, "#ffe56d", () => {
       binder.listening = false;
       state = "thumb";
     });
-    tapButton(surveyResetLabel(), 690, 584, 300, 44,
-              surveyResetArmed() ? "#ff8f77" : "#a08cff",
-              resetSurveyProgress, surveyResetArmed());
     tapButton("BACK", SCREEN_W / 2, 642, 320, 44, "#ffcb42", () => {
       binder.listening = false;
       state = backFrom || "title";
@@ -11836,17 +12489,12 @@
       padApply(); padSave();
     });
 
-    tapButton("BATTLE ROYALE CAMERA: " +
-              (royaleCameraRotates ? "ROTATING" : "FIXED"),
-              300, 410, 380, 40, "#ffe56d", toggleRoyaleCamera);
-    tapButton("SURVEY ZOOM: " + surveyZoomName(),
-              700, 410, 380, 40, "#a08cff", cycleSurveyZoom);
+    // Everything above this line is the pad; everything below it belongs to
+    // whichever game you are setting up.
+    modeSettingsBand(410, 458, false);
 
-    tapButton("SWAP SIDES", 300, 458, 280, 40, "#ffe56d", padMirror);
-    tapButton("RESET PHONE CONTROLS", 700, 458, 280, 40, "#ffcb42", padReset);
-    tapButton(surveyResetLabel(), SCREEN_W / 2, 574, 420, 40,
-              surveyResetArmed() ? "#ff8f77" : "#a08cff",
-              resetSurveyProgress, surveyResetArmed());
+    tapButton("SWAP SIDES", 300, 574, 280, 40, "#ffe56d", padMirror);
+    tapButton("RESET PHONE CONTROLS", 700, 574, 280, 40, "#ffcb42", padReset);
     tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
               300, 516, 280, 40, soundEnabled ? "#ffe56d" : "#ffcb42",
               toggleSound, soundEnabled);
@@ -12011,8 +12659,7 @@
       localPause = false;
     });
     tapText("[C]  SETTINGS", SCREEN_W / 2, mid + 66, 22, "#ffe56d", () => {
-      backFrom = online ? "menu" : "paused";
-      state = settingsScreen();
+      state = openSettings(online ? "menu" : "paused");
     });
     tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
               350, mid + 116, 260, 40, soundEnabled ? "#ffe56d" : "#ffcb42",
@@ -13428,7 +14075,8 @@
                      // collision, pickup and drawing all read this one.
                      shipR: mode.survey ? shipRadius() : SHIP_R * U,
                      pickups, comms, shake,
-                     cameraMode: royaleCameraRotates ? "rotating" : "fixed" }),
+                     cameraMode: camRotates() ? "rotating" : "fixed",
+                     cameraModes: { ...cameraRotates }, settingsPage }),
       step: () => tick(performance.now(), true),
       // Start a match straight from a harness, skipping the menus, read the
       // campaign controller, force a screen, and draw one frame. Behind ?debug=1

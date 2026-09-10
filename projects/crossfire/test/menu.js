@@ -404,6 +404,72 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   }
 }
 
+// ── the settings page belongs to one mode at a time ───────────────────────
+/* How far the camera sits back is a question about Survey and nonsense in a
+   Battle Royale; whether the view turns with the ship is answered differently
+   for a duel than for a long haul. So the settings page shows one mode's
+   options, and — this is the part that is easy to break silently — the camera
+   is now four separate answers rather than one flag wearing four hats. */
+{
+  const { cf } = boot("?debug=1");
+  const TABS = ["SURVEY", "BATTLE ROYALE", "CAMPAIGN", "SURVIVAL"];
+  const W = 1000;
+  const tabX = i => W / 2 - (4 * 234 - 10) / 2 + i * 234 + 112;
+
+  const openTab = (i, y) => {
+    cf.draw();
+    const t = cf.live().taps.find(t => tabX(i) >= t.x && tabX(i) <= t.x + t.w &&
+                                       y >= t.y && y <= t.y + t.h);
+    check(!!t, "no settings tab where " + TABS[i] + " should be");
+    if (t) t.act();
+    cf.draw();
+  };
+  // What the band is showing, read off the drawn frame rather than assumed.
+  const band = (lo, hi) => cf.live().taps
+    .filter(t => t.y > lo && t.y < hi).length;
+
+  cf.screen("controls");
+  for (let i = 0; i < TABS.length; i++) openTab(i, 112);
+  check(true, "the four settings tabs are all reachable");
+
+  /* Each page offers different things, or the tabs are decoration. */
+  const opts = [];
+  for (let i = 0; i < TABS.length; i++) {
+    openTab(i, 112);
+    opts.push(band(135, 182));
+  }
+  check(opts[0] === 3, "the survey page offers " + opts[0] + " settings, not 3");
+  check(opts[1] === 1 && opts[2] === 1,
+        "the shooter pages offer " + opts[1] + "/" + opts[2] + " settings, not 1 each");
+  check(opts[3] === 1, "the survival page offers " + opts[3] + " settings, not 1");
+
+  /* And the camera is genuinely per mode: turning it on for Battle Royale must
+     leave Survey alone, which the one shared flag could not do. */
+  openTab(1, 112);
+  const camBtn = () => {
+    cf.draw();
+    return cf.live().taps.find(t => t.y > 135 && t.y < 182);
+  };
+  camBtn().act();
+  check(cf.live().cameraModes.royale === true,
+        "turning the royale camera on did nothing");
+  check(cf.live().cameraModes.survey === false,
+        "the royale camera setting leaked into Survey");
+  check(!("survival" in cf.live().cameraModes),
+        "survival grew a camera setting it has no camera for");
+
+  // It survives the tab, one mode at a time.
+  const again = bootKeepingStorage("?debug=1");
+  again.cf.screen("controls");
+  again.cf.draw();
+  check(again.cf.live().cameraModes.royale === true &&
+        again.cf.live().cameraModes.survey === false,
+        "a reload came back with the wrong modes' cameras");
+
+  console.log("  settings   one page per mode \u00b7 survey 3, royale 1, campaign 1, " +
+              "survival 1 \u00b7 the camera is four answers, not one");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE menu checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

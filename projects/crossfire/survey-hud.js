@@ -786,7 +786,10 @@
     leviathan: { name: "LEVIATHAN", colour: "#7d8596" },
     star:      { name: "STAR",     colour: "#ffd76d" },
     hole:      { name: "BLACK HOLE", colour: "#ff8f77" },
-    planet:    { name: "WORLD",    colour: "#87d8ff" }
+    planet:    { name: "WORLD",    colour: "#87d8ff" },
+    // Two powers having it out, and where two powers finished having it out.
+    battle:    { name: "BATTLE",   colour: "#ff8f77" },
+    memorial:  { name: "MEMORIAL", colour: "#a08cff" }
   };
 
   function markGlyph(ctx, k, x, y, r) {
@@ -817,6 +820,20 @@
         ctx.moveTo(x - r * 1.6, y - r * 0.5); ctx.lineTo(x + r * 1.2, y - r * 0.5);
         ctx.lineTo(x + r * 1.7, y); ctx.lineTo(x + r * 1.2, y + r * 0.5);
         ctx.lineTo(x - r * 1.6, y + r * 0.5); ctx.closePath(); ctx.stroke();
+        break;
+      case "battle":
+        // Crossed, because that is what it is.
+        ctx.beginPath();
+        ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r);
+        ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r);
+        ctx.stroke();
+        break;
+      case "memorial":
+        // A stone.
+        ctx.beginPath();
+        ctx.moveTo(x - r * 0.6, y + r); ctx.lineTo(x - r * 0.4, y - r);
+        ctx.lineTo(x + r * 0.4, y - r); ctx.lineTo(x + r * 0.6, y + r);
+        ctx.closePath(); ctx.stroke();
         break;
       case "hole":
         ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -2734,19 +2751,31 @@
               SIZE.cap, VIOLET_DIM, "right", u.have ? 0.6 : 0.5, 190);
     });
 
-    /* What the sector makes of you, in one line and no numbers. It sits at the
-       foot of the page rather than in a panel of its own because it is not a
-       resource you manage — it is a fact about the world you can go and read, the
-       way you would read a room. */
-    const st8 = st.standing;
-    if (st8) {
-      const lvl = st8.name === "UNREMARKABLE" ? 0 : st8.name === "WATCHED" ? 1
-                : st8.name === "WANTED" ? 2 : 3;
-      const col = lvl === 0 ? VIOLET_LOW : lvl === 1 ? AMBER_DIM : WARN;
-      label(st8.name, PAGE.EDGE, SCREEN_H - 76, SIZE.cap, col, "left",
-            lvl ? 0.9 : 0.55, "0.18em");
-      fitText(st8.note, PAGE.EDGE + 180, SCREEN_H - 76, SIZE.cap, VIOLET_DIM,
-              "left", 0.6, SCREEN_W - 260);
+    /* Reputation, one line, three flags, no numbers anywhere. It sits at the foot
+       of the page rather than in a panel of its own because it is not a resource
+       you manage — it is a fact about the world you go and read, the way you
+       would read a room. Who is fighting whom sits under it, because your
+       reputation with one power only means something next to who they are
+       fighting. */
+    const flags = st.standings || [];
+    if (flags.length) {
+      label("REPUTATION", PAGE.EDGE, SCREEN_H - 92, SIZE.cap, VIOLET_DIM,
+            "left", 0.55, "0.18em");
+      const cw = (SCREEN_W - PAGE.EDGE * 2) / flags.length;
+      flags.forEach((f, i) => {
+        const x = PAGE.EDGE + i * cw;
+        const bad = f.standing === "HUNTED" || f.standing === "WANTED";
+        const warm = f.standing === "WELCOME" || f.standing === "TRUSTED";
+        fitText(f.short, x, SCREEN_H - 70, SIZE.cap, f.colour, "left",
+                0.85, cw * 0.42, "0.12em");
+        fitText(f.standing, x + cw * 0.44, SCREEN_H - 70, SIZE.cap,
+                bad ? WARN : warm ? CASH : VIOLET_DIM, "left", bad ? 1 : 0.8,
+                cw * 0.52, "0.1em");
+        if (f.enemy) {
+          fitText("at war with " + f.enemy, x, SCREEN_H - 54, SIZE.cap,
+                  VIOLET_LOW, "left", 0.5, cw - 16);
+        }
+      });
     }
 
     pageNav(st, "inventory");
