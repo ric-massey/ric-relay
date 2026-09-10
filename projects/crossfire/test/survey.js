@@ -3704,6 +3704,104 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "stocks " + deepShelf + " where home stocks " + nearShelf);
 }
 
+// ── reverse thrusters, on a keyboard and on a thumb ──────────────────────
+/* Reverse thrusters are a part, not something the ship comes with. That means
+   the control has to come and go with the part — and it means a phone had a
+   problem the keyboard did not: you could buy the part, fit it, watch the slot
+   say WORKING, and have no way at all to use it.
+
+   So the button on the pad is checked here as carefully as the key: present only
+   when the part is fitted and *finished* fitting, gone when it is pulled, and
+   actually pushing the ship backwards when it is held. */
+{
+  const { cf } = boot("?debug=1&seed=323232");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 5; surv.water = 900; surv.food = 900;
+      now += 1000 / 60; cf.step();
+    }
+  };
+  const shown = () => cf.live().padShown || [];
+
+  // Away from the station, or the fit below would be instant.
+  surv.docked = null;
+  me.x = 260000; me.y = 140000; me.vx = me.vy = 0;
+  step(2);
+
+  // No part, no button.
+  check(shown().indexOf("rev") < 0,
+        "the reverse button is on the pad without the part");
+
+  /* And no button while it is still going in, which is the point of the rule:
+     a control that does nothing for the next forty-five seconds is worse than
+     no control. */
+  surv.store.reverser = 1;
+  check(cf.surveyView().onFit(0, "reverser") === true, "could not fit the reverser");
+  step(4);
+  check(surv.slots[0].fit > 0, "the reverser fit was instant out in space");
+  check(shown().indexOf("rev") < 0,
+        "the reverse button appeared while the part was still fitting");
+
+  // `of` is on the view rather than on the raw slot: the engine keeps the time
+  // remaining, and how long it takes in the first place is a fact about the part.
+  step(Math.ceil(cf.surveyView().slots[0].of) * 60 + 30);
+  check(surv.slots[0].fit === 0, "the reverser never finished fitting");
+  check(shown().indexOf("rev") >= 0,
+        "the part is fitted and there is still no reverse button: " +
+        shown().join(", "));
+
+  /* Held, it pushes you backwards. Measured on velocity along the nose rather
+     than on position, because a well could move the ship either way. */
+  me.a = 0; me.vx = 0; me.vy = 0;
+  cf.live().touch.rev = true;
+  step(20);
+  check(me.vx < -1,
+        "holding the pad's reverse button gave " + me.vx.toFixed(1) +
+        " along the nose; it should be negative");
+  cf.live().touch.rev = false;
+
+  // The key does the same thing, and neither is the only way.
+  me.vx = 0; me.vy = 0;
+  cf.hold("KeyS", true);
+  step(20);
+  check(me.vx < -1, "the reverse key did nothing");
+  cf.hold("KeyS", false);
+
+  /* Reverse is weaker than the engine. It is a way out of somewhere, not a
+     second gear pointed the other way. */
+  me.vx = 0; me.vy = 0;
+  cf.live().touch.rev = true;
+  step(30);
+  const back = Math.abs(me.vx);
+  cf.live().touch.rev = false;
+  me.vx = 0; me.vy = 0;
+  cf.hold("KeyW", true);
+  step(30);
+  cf.hold("KeyW", false);
+  const fwd = Math.abs(me.vx);
+  check(back < fwd,
+        "reverse (" + back.toFixed(0) + ") is as strong as the engine (" +
+        fwd.toFixed(0) + ")");
+  check(back > fwd * 0.3,
+        "reverse (" + back.toFixed(0) + ") is too weak to get you out of anything");
+
+  // Pull the part and the button goes with it, unheld.
+  cf.live().touch.rev = true;
+  cf.surveyView().onPull(0);
+  step(2);
+  check(shown().indexOf("rev") < 0,
+        "the reverse button outlived the part");
+  check(cf.live().touch.rev === false,
+        "a button that vanished under a thumb stayed held");
+
+  console.log("  reverse    a part, so the pad button comes and goes with it \u00b7 " +
+              "absent while it fits \u00b7 key or thumb, either will do \u00b7 " +
+              Math.round(back / fwd * 100) + "% of the engine, pointed the other way");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

@@ -284,7 +284,7 @@
   #padStick.down { border-color: var(--phosphor-dim); }
   #padStick.down .knob { background: rgba(255, 194, 51, 0.4); }
 
-  #padFire, #padGas, #padAccel, #padLeft, #padRight {
+  #padFire, #padGas, #padAccel, #padLeft, #padRight, #padRev {
     width: calc(5rem * var(--u));
     height: calc(5rem * var(--u));
     font-size: calc(0.9rem * var(--u));
@@ -546,6 +546,12 @@
           hidden><span class="g">▲</span>gas</button>
   <button id="padAccel" class="ctl" type="button" data-hold="th" data-tag="ACCELERATE"
           hidden><span class="g">▲</span>accelerate</button>
+  <!-- Reverse thrusters are a part rather than a control the ship comes with,
+       so this is the one pad button that is not always there: it appears when
+       the part is fitted and finished fitting, and goes away with it. A phone
+       that could buy the part and not use it was the whole complaint. -->
+  <button id="padRev" class="ctl" type="button" data-hold="rev" data-tag="REVERSE"
+          hidden><span class="g">▼</span>reverse</button>
   <button id="padFire" class="ctl" type="button" data-hold="f" data-tag="FIRE">
     <span class="g">◉</span>fire</button>
   <button id="padPause" class="ctl" type="button" data-tag="PAUSE"
@@ -1011,6 +1017,9 @@
       accel: { x: 0.86, y: 0.78 },
       gas:   { x: 0.71, y: 0.58 },
       fire:  { x: 0.88, y: 0.78 },
+      // Above the fire button and inboard of it: a thumb that is already there
+      // can reach it, and nothing else wants that spot.
+      rev:   { x: 0.70, y: 0.80 },
       pause: { x: 0.95, y: 0.08 }
     }
   };
@@ -1033,11 +1042,12 @@
   const rightEl  = document.getElementById("padRight");
   const gasEl    = document.getElementById("padGas");
   const accelEl  = document.getElementById("padAccel");
+  const revEl    = document.getElementById("padRev");
   const fireEl   = document.getElementById("padFire");
   const pauseEl  = document.getElementById("padPause");
 
   const PAD_PARTS = [["stick", stickEl], ["left", leftEl], ["right", rightEl],
-                     ["accel", accelEl], ["gas", gasEl],
+                     ["accel", accelEl], ["gas", gasEl], ["rev", revEl],
                      ["fire", fireEl], ["pause", pauseEl]];
 
   let arranging = false;      // true only on the thumb-controls screen
@@ -1087,6 +1097,15 @@
              y: Math.min(Math.max(y, my), Math.max(my, 1 - my)) };
   }
 
+  /* Whether there is a reverse button at all. Reverse thrusters are a part, not
+     something the ship comes with, so this is the one control on the pad that
+     comes and goes — and it is deliberately gated on the fit having *finished*,
+     because a button that does nothing for the next forty-five seconds is worse
+     than no button. */
+  const revAvailable = () =>
+    !!(mode && mode.survey && typeof modFitted === "function" &&
+       modFitted("reverser"));
+
   function padApply() {
     padEl.style.setProperty("--u", padCfg.size);
     const arrows = padCfg.scheme === "arrows";
@@ -1097,6 +1116,13 @@
     accelEl.hidden = !arrows;
     gasEl.hidden = arrows || !padCfg.gas;
     fireEl.hidden = arrows || padCfg.auto;
+    // In both schemes: backing off a rock is as useful with arrows as with a
+    // stick, and the part paid for it either way.
+    revEl.hidden = !revAvailable();
+    /* A button that goes away under a thumb has to let go of it. Pulling the
+       part mid-press would otherwise leave the ship reversing on a control that
+       is no longer on the screen. */
+    if (revEl.hidden) { touch.rev = false; revEl.classList.remove("down"); }
     for (const [key, el] of PAD_PARTS) {
       if (!el.hidden) padCfg.pos[key] = padClamp(el, padCfg.pos[key].x, padCfg.pos[key].y);
       el.style.left = (padCfg.pos[key].x * 100) + "%";
@@ -8085,7 +8111,7 @@
         gameSound("win");
       }
     }
-    if (landed) { applyRefit(ships[0]); saveSurveyBook(); }
+    if (landed) { applyRefit(ships[0]); padApply(); saveSurveyBook(); }
   }
 
   /* How far out the station you are standing in is, which is the only thing
@@ -8135,6 +8161,9 @@
     surv.slots[i] = null;
     storeAdd(sl.key, 1);
     applyRefit(ships[0]);
+    // A part can bring a control with it, and pulling it has to take the
+    // control away in the same breath — see `revAvailable`.
+    padApply();
     gameSound("hit");
     chatter(moduleSpec(sl.key).name + (sl.fit > 0 ? " — fit abandoned" : " removed"),
             sl.fit > 0 ? "#ff8f77" : NEBULA);
@@ -8161,6 +8190,7 @@
     const instant = !!surv.docked;
     surv.slots[i] = { key, fit: instant ? 0 : fitSeconds(key) };
     applyRefit(ships[0]);
+    padApply();
     gameSound(instant ? "win" : "start");
     chatter(instant
       ? m.name + " fitted."
@@ -8180,6 +8210,7 @@
     }
     if (any) {
       applyRefit(ships[0]);
+      padApply();
       chatter("The yard hands finished what you started.", CASH);
       saveSurveyBook();
     }
@@ -10629,7 +10660,7 @@
   /* ── pointer and touch ───────────────────────────────────────────────────
      Mouse clicks operate menus only. Touch controls feed the same four
      booleans as the keyboard, so physics never needs a separate mobile path. */
-  const touch = { l: false, r: false, th: false, f: false };
+  const touch = { l: false, r: false, th: false, f: false, rev: false };
 
   /* A gun that runs on its own is the whole point of the setting: with it on
      there is no fire button to hold, which is what makes one-thumbed flying
@@ -10829,9 +10860,12 @@
        thing your ship can suddenly do, which is what a part is supposed to
        feel like. */
     if (mode && mode.survey && modFitted("reverser")) {
-      const rev = held(["KeyS", "ArrowDown"]);
       const me0 = ships[localSeat()];
-      if (me0 && me0.localKeys) me0.input.rev = rev;
+      // A key on a keyboard, a button on the pad, and either will do — the same
+      // rule the turn and the throttle already follow.
+      if (me0 && me0.localKeys) {
+        me0.input.rev = held(["KeyS", "ArrowDown"]) || touch.rev;
+      }
     }
 
     // Thumb controls drive whichever ship belongs to this machine, on top of
@@ -13346,6 +13380,10 @@
       // moment anything can be checked against the edges it must stay inside.
       if (laying) padApply();
     }
+    /* The reverse button appears with the part and goes with it. Fitting and
+       pulling call `padApply` themselves; this is the backstop for every other
+       way the answer can change — a hull swap, a resumed sector, a reset. */
+    if (revEl.hidden === revAvailable()) padApply();
   }
 
   function render(dt) {
@@ -13656,7 +13694,7 @@
   // The hold buttons, and the pause — which is on the pad rather than on
   // the canvas because the canvas corner it used to live in is now somewhere a
   // player is entitled to have put their gun.
-  for (const el of [leftEl, rightEl, accelEl, gasEl, fireEl]) {
+  for (const el of [leftEl, rightEl, accelEl, gasEl, revEl, fireEl]) {
     el.addEventListener("pointerdown", e => {
       if (arranging) return;
       touch[el.dataset.hold] = true;
@@ -14678,6 +14716,11 @@
       live: () => ({ ships, rocks, hazards, bullets, net, binder,
                      players: PLAYERS, taps,
                      pad: padCfg, stick, arranging, camera: cam, bounds, arena,
+                     // What the thumbs are holding, and which pad buttons are
+                     // on screen for them to hold.
+                     touch,
+                     padShown: PAD_PARTS.filter(([, el]) => !el.hidden)
+                                        .map(([k]) => k),
                      clock,
                      // The hull you are actually flying, not the stock constant:
                      // collision, pickup and drawing all read this one.
