@@ -4691,6 +4691,121 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "empty space does not");
 }
 
+// ── a bigger ship carries more food ──────────────────────────────────────
+/* A pantry is space, and space is the thing a bigger hull has. Water is not: a
+   tank is a tank, and making both scale would turn "which ship" into one number
+   twice. So the hull decides the food and nothing else, which is a reason to own
+   more than one ship that is not "it is faster". */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const view = () => cf.surveyView();
+  const list = view().ships;
+  surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
+
+  const pantry = key => { cf.flyShip(key); return view().food.full; };
+  const small = list.reduce((a, b) => (b.cargo < a.cargo ? b : a));
+  const big = list.reduce((a, b) => (b.cargo > a.cargo ? b : a));
+  for (const sh of [small, big]) surv.owned.add(sh.key);
+
+  const p0 = pantry("skiff");
+  check(p0 === 2700, "the starting hull's pantry is " + p0 + "s, not 45 minutes");
+  const ps = pantry(small.key), pb = pantry(big.key);
+  check(pb > ps,
+        big.name + " (" + big.cargo + " hold) carries " + pb + "s of food and " +
+        small.name + " (" + small.cargo + ") carries " + ps + "s");
+  /* Softened rather than taken straight: cargo runs 50x across the roster and a
+     hull that could be away for thirty-seven hours would make every other one
+     pointless. */
+  check(pb / ps < 12,
+        "the biggest hull carries " + (pb / ps).toFixed(1) + "x the smallest's " +
+        "food; that is the hold's spread, not a pantry");
+  // Water does not scale. A tank is a tank.
+  check(view().water.full === 1200, "the water tank moved with the hull");
+
+  /* Downsizing leaves what will not fit on the dock, the same as the cargo. */
+  cf.flyShip(big.key);
+  surv.food = view().food.full;
+  const wasFull = surv.food;
+  cf.flyShip(small.key);
+  check(surv.food <= view().food.full,
+        "a smaller hull kept " + Math.round(surv.food) + "s of food in a " +
+        view().food.full + "s pantry");
+  check(wasFull > surv.food, "downsizing cost nothing at all");
+
+  // And buying food fills the hull's pantry, not the starting one.
+  cf.flyShip(big.key);
+  surv.cash = 99999;
+  surv.food = 10;
+  view().onBuySupply("food");
+  check(surv.food === view().food.full,
+        "buying food filled to " + Math.round(surv.food) + " of " + view().food.full);
+
+  console.log("  pantry     water is 20m on every hull \u00b7 food is 45m on the " +
+              "starting one \u00b7 " + small.name + " " + Math.round(ps / 60) +
+              "m to " + big.name + " " + Math.round(pb / 60) + "m \u00b7 " +
+              "downsizing leaves the rest on the dock");
+}
+
+// ── the beam has to actually collect ─────────────────────────────────────
+/* The tractor beam is how a broken rock becomes cargo, so it is the single most
+   load-bearing thing in the mode: everything downstream of it — selling,
+   crafting, the melter, the whole economy — assumes salvage inside the ring
+   arrives.
+
+   It stopped arriving. The beam's strength read a field off the wrong object —
+   the totals were named `m` and the loop names the *mote* `m`, so inside the loop
+   the shadow won — and every grab came out NaN. A mote caught in the ring had its
+   velocity set to NaN, its position followed, and it was never picked up and
+   never seen again: salvage vanished inside the one thing meant to collect it.
+
+   Checked on all three routes to a beam, because they are three different code
+   paths through the same line. */
+{
+  for (const route of ["almanac", "tractorrig", "heavyrig"]) {
+    const { cf } = boot("?debug=1&seed=515151");
+    cf.start("survey", 1);
+    const surv = cf.survey();
+    const me = cf.live().ships[0];
+    const step = n => {
+      for (let i = 0; i < n; i++) {
+        me.invuln = 999; surv.water = 900; surv.food = 900;
+        now += 1000 / 60; cf.step();
+      }
+    };
+    surv.docked = null;
+    me.x = 200000; me.y = 100000; me.vx = me.vy = 0;
+    step(2);
+    if (route === "almanac") {
+      for (const e of cf.catalogue()) surv.found.add(e.key);
+    } else {
+      surv.store[route] = 1;
+      cf.surveyView().onFit(0, route);
+      surv.slots[0].fit = 0;
+    }
+    for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
+    surv.motes.length = 0;
+    // Ten of them, in a ring well inside the beam and not on top of the ship.
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      surv.motes.push({ x: me.x + Math.cos(a) * 220, y: me.y + Math.sin(a) * 220,
+                        vx: 0, vy: 0, spin: 0, life: 90, mat: "iron" });
+    }
+    step(240);
+    const held = Object.keys(surv.hold).reduce((t, k) => t + surv.hold[k], 0);
+    check(held === 10,
+          route + ": ten motes inside the beam and " + held + " arrived");
+    check(surv.motes.every(m => Number.isFinite(m.x) && Number.isFinite(m.y)),
+          route + ": a mote's position went non-finite in the beam");
+    check(surv.motes.length === 0,
+          route + ": " + surv.motes.length + " motes were left circling");
+  }
+  console.log("  beam       ten motes in the ring, ten aboard \u00b7 from the " +
+              "almanac, from a rig and from a heavy rig \u00b7 none lost, none " +
+              "non-finite");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

@@ -1406,6 +1406,85 @@ materials.
 
 ---
 
+## Phase 7 — the interface, properly
+
+Everything below came from playing it. Phases 1–6 built systems and hung a page
+off each one; the result is eight pages that each make sense alone and do not add
+up to something you can hold in your head. This phase is about the whole, and the
+rule under all of it is Ric's: **simple, and showing exactly what is needed** — on
+a phone and on a desktop, both.
+
+### 7.1 Navigation lives at the top  ·  *not started*
+
+Every button that changes page moves to the **top** of the screen. The strip is at
+the foot at the moment, which on a phone is where a thumb rests and where the
+system gesture bar lives.
+
+And the pages themselves collapse:
+
+- **STORAGE and LOADOUT become one page** you scroll.
+- **The ALMANAC stops being a page.** It becomes a **book icon inside loadout**.
+- **The CHART gets the strip too**, so the map is not a dead end.
+
+### 7.2 The station is a market  ·  *not started*
+
+> *"There should be a trade thing that takes up most of the room and has
+> everything that this station has, and you can buy it. Think of it like a market
+> or a website you order from."*
+
+- The **market takes most of the page**: everything this station sells, in one
+  list, with prices, and you buy from it.
+- It shows **your money, your food, and a way to view your inventory**.
+- **The bars beside water and food go**, and you can **buy units** of them rather
+  than only filling to the top.
+- **"EARNED, NOT BOUGHT" goes entirely.** The almanac's unlocks do not belong on a
+  shop page.
+- **"HANGAR" becomes "SHIPS"**, and it does not need to name the hull you are in.
+
+### 7.3 Craft, reworked  ·  *not started*
+
+- It is called **CRAFT**, not BUILD.
+- **Top right: every material you have.** Under it, **every part you have**, at the
+  station or aboard.
+- **Every craftable thing gets a picture in a box.** Drag and drop is coming, and
+  boxes with pictures in them are what you drag.
+- **A recipe does not show its ingredients until you click it.** Clicking opens it
+  and reveals a **CRAFT** button.
+- **Not everything in the game is craftable.** Some parts are found only.
+
+### 7.4 The chart is too crowded  ·  *not started*
+
+- **Filters, top right.** Turn off whatever you do not want to see.
+- **A PIN button on the right.** Click it, then click the map, and it drops a pin
+  you can **name**.
+- **A WAYPOINT button that works the same way**, and only ever one waypoint.
+
+### 7.5 Reputation, explained  ·  *not started*
+
+Its own small box **in loadout**. It explains the factions a little, and it is
+easy to understand — at the moment it is three words at the foot of a page and it
+assumes you know who these people are.
+
+### 7.6 Smaller things  ·  *not started*
+
+- **Cash** stays top left and stays small.
+- **Thirst is a 20-minute clock; food is 45 minutes.**
+- **A bigger ship carries more food** — the hull decides the pantry, as it decides
+  the hold.
+- **The scan button has to look like a button** on a phone.
+
+### 7.7 Things that fly through each other  ·  *not started*
+
+Two solid objects that are not solid to each other:
+
+- **Asteroids sit inside planets, and inside each other.** A rock has a radius and
+  a world has a radius and neither has ever been asked about the other.
+- **Ships fly straight through the Leviathan.** The player's hull collides with
+  its plates; the traffic does not, so a hauler will cross the one authored object
+  in the sector as though it were a picture.
+
+---
+
 ## Phase 6 — possibility multiplication
 
 Ric's brief, and it is a different *kind* of instruction from everything above.

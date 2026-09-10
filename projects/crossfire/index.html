@@ -4641,8 +4641,18 @@
      an ambush, and the whole of phase 1 was about not doing that. The grace is
      generous enough to reach a station you already know about and not generous
      enough to carry on exploring. */
-  const WATER_FULL   = 720;    // seconds of water in a full tank — twelve minutes
-  const FOOD_FULL    = 1500;   // and twenty-five of food
+  /* Twenty minutes of water and forty-five of food. They were twelve and
+     twenty-five, which made every trip a question about the tank rather than
+     about where you were going — a long haul out and back is most of an hour, and
+     spending it watching a bar is not the game.
+
+     Food is the one the hull decides. A pantry is space, and space is the thing a
+     bigger ship has: `FOOD_FULL` is what the Skiff carries, and every other hull
+     carries it scaled by its hold. So a Cathedral can be away for a very long
+     time and a Needle cannot, which is a reason to own more than one ship that is
+     not "it is faster". */
+  const WATER_FULL   = 1200;   // seconds of water in a full tank — twenty minutes
+  const FOOD_FULL    = 2700;   // and forty-five of food, on the ship it starts in
   const THIRST_GRACE = 75;     // then it kills you
   const HUNGER_GRACE = 120;
   // What a full tank costs at a station. Water is cheap and constant; food is
@@ -5638,8 +5648,12 @@
            hand-edited one must not hand out an infinite tank. */
         water: b.water == null ? WATER_FULL
           : Math.max(0, Math.min(WATER_FULL, Number(b.water) || 0)),
+        /* Clamped to the biggest pantry any hull has rather than to the Skiff's,
+           because the book does not know which ship it will be read onto — a
+           Cathedral's tank would otherwise be cut to a Skiff's on every load. The
+           ship's own cap is applied where it is used. */
         food: b.food == null ? FOOD_FULL
-          : Math.max(0, Math.min(FOOD_FULL, Number(b.food) || 0)),
+          : Math.max(0, Math.min(FOOD_FULL * 4, Number(b.food) || 0)),
         hold: (() => {
           const h = freshHold();
           const src = b.hold && typeof b.hold === "object" ? b.hold : null;
@@ -7410,7 +7424,7 @@
      full tank, so topping off before a long trip is not a rip-off and limping
      in on empty is not free. */
   function buySupply(kind) {
-    const full  = kind === "water" ? WATER_FULL : FOOD_FULL;
+    const full  = kind === "water" ? WATER_FULL : foodCap();
     const price = kind === "water" ? WATER_PRICE : FOOD_PRICE;
     const have  = surv[kind];
     if (!surv.docked && !surv.landed) { gameSound("hit"); return false; }
@@ -7468,7 +7482,7 @@
   }
 
   const supplyCost = kind => {
-    const full  = kind === "water" ? WATER_FULL : FOOD_FULL;
+    const full  = kind === "water" ? WATER_FULL : foodCap();
     const price = kind === "water" ? WATER_PRICE : FOOD_PRICE;
     if (surv[kind] >= full) return null;              // nothing to sell you
     return Math.max(1, Math.ceil((1 - surv[kind] / full) * price));
@@ -7604,7 +7618,7 @@
        obviously do it, and sending you straight back out on the empty tanks that
        just killed you would be a loop rather than a setback. */
     surv.water = WATER_FULL;
-    surv.food = FOOD_FULL;
+    surv.food = foodCap();
     surv.thirst = 0;
     surv.hunger = 0;
     surv.runStart = clock;
@@ -7654,6 +7668,16 @@
      spread across the roster mean less than it should. Cargo is a reason to buy
      a different ship now, and nothing else changes it. */
   const holdCap = () => (surv ? shipSpec(surv.ship).cargo : SURVEY_HOLD);
+
+  /* How much food this hull can carry, against the Skiff's sixty units of hold.
+     Softened with a square root rather than taken straight: cargo runs 50x across
+     the roster and a hull that could be away for thirty-seven hours would make
+     every other one pointless. This runs about 0.6x to 3.4x instead. */
+  const foodCap = () => {
+    if (!surv) return FOOD_FULL;
+    const cargo = shipSpec(surv.ship).cargo || SURVEY_HOLD;
+    return Math.round(FOOD_FULL * Math.sqrt(cargo / 60));
+  };
 
   /* How far a pulse reaches. This is the only thing the scanner track buys, and
      it is the only thing it ever claimed to buy that could be felt. */
@@ -7803,10 +7827,17 @@
        so the pickup is wider than the hull rather than exactly it. */
     const reach = shipRadius() + 30 * U;
     /* The beam is either found in the almanac or bolted on as a part — either
-       route gives you one, and a better rig gives you a longer, harder one. */
-    const m = mods();
-    const beam = (unlocked("tractor") || m.tractor)
-      ? SURVEY_TRACTOR * (1 + m.reach) * U : 0;
+       route gives you one, and a better rig gives you a longer, harder one.
+
+       Named `mod`, and it matters: this was `m`, and the loop below names the
+       *mote* `m` as well. Inside the loop the shadow won, so the beam's strength
+       read `m.pull` off a mote — `undefined` — and every grab came out NaN. A
+       mote caught in the ring had its velocity set to NaN, its position followed,
+       and it was never picked up and never seen again. Salvage vanished inside
+       the one thing meant to collect it. */
+    const mod = mods();
+    const beam = (unlocked("tractor") || mod.tractor)
+      ? SURVEY_TRACTOR * (1 + mod.reach) * U : 0;
     for (let i = surv.motes.length - 1; i >= 0; i--) {
       const m = surv.motes[i];
       m.life -= dt;
@@ -7816,7 +7847,7 @@
       if (me.alive && beam) {
         const d = Math.hypot(me.x - m.x, me.y - m.y);
         if (d < beam && d > 1) {
-          const grab = (1 - d / beam) * TRACTOR_PULL * (1 + m.pull) * U;
+          const grab = (1 - d / beam) * TRACTOR_PULL * (1 + mod.pull) * U;
           m.vx += ((me.x - m.x) / d) * grab * dt;
           m.vy += ((me.y - m.y) / d) * grab * dt;
           surv.tractorLit = 0.18;
@@ -9237,6 +9268,9 @@
       surv.hold[m.key] -= take;
       over -= take;
     }
+    // And neither does the pantry. A smaller hull has a smaller one, and what
+    // will not fit in it is left on the dock with the cargo.
+    surv.food = Math.min(surv.food, foodCap());
     // The camera is set at startup and by the Settings control, and a swap is
     // the third thing that changes it — without this you walked out of the
     // hangar in a Cathedral still looking through a Skiff's window.
@@ -10516,8 +10550,8 @@
                frac: surv.water / WATER_FULL,
                countdown: surv.water <= 0 ? Math.max(0, THIRST_GRACE - surv.thirst) : 0,
                cost: supplyCost("water") },
-      food:  { left: surv.food, full: FOOD_FULL,
-               frac: surv.food / FOOD_FULL,
+      food:  { left: surv.food, full: foodCap(),
+               frac: surv.food / Math.max(1, foodCap()),
                countdown: surv.food <= 0 ? Math.max(0, HUNGER_GRACE - surv.hunger) : 0,
                cost: supplyCost("food") },
       /* The hull, on the same panel as the water and the food, because it is the
