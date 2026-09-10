@@ -67,9 +67,17 @@ function stubEl() {
     requestPointerLock: noop, setPointerCapture: noop, releasePointerCapture: noop,
     querySelector: () => stubEl(), querySelectorAll: () => [],
     hidden: false, value: "", textContent: "", width: 1000, height: 700,
+    /* The stage's box is what the game sizes its screen against — the screen is
+       as wide as the device now rather than a fixed thousand — so the stub has
+       to report one, and the suite can change it to test a shape. */
+    get clientWidth() { return STAGE.w; },
+    get clientHeight() { return STAGE.h; },
     dataset: {}, children: [], parentNode: null
   };
 }
+// The viewport the stubbed stage reports. A landscape phone by default, because
+// that is the shape this game is hardest to lay out for.
+const STAGE = { w: 1200, h: 800 };
 const store = {};
 const documentStub = {
   getElementById: () => stubEl(), querySelector: () => stubEl(),
@@ -232,10 +240,15 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
           "the row drew " + taps.length + " cards, expected " + rows.length);
     if (taps.length !== rows.length) continue;
 
+    /* Measured against the screen, whatever width the device made it. The row
+       is laid out from `SCREEN_W`, so the margin it has to stay inside is a
+       fraction of the screen rather than a number of pixels. */
+    const W = cf.live().screenW;
     const first = taps[0], last = taps[taps.length - 1];
-    check(first.x >= 39, "the row starts off the left edge at x=" + first.x);
-    check(last.x + last.w <= 961,
-          "the row ends at " + Math.round(last.x + last.w) + ", past the right margin");
+    check(first.x >= 34, "the row starts off the left edge at x=" + Math.round(first.x));
+    check(last.x + last.w <= W - 34,
+          "the row ends at " + Math.round(last.x + last.w) +
+          ", past the right margin at " + (W - 34));
 
     // No overlaps, and no gaps beyond the gutter.
     for (let i = 1; i < taps.length; i++) {
@@ -468,6 +481,95 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
   console.log("  settings   one page per mode \u00b7 survey 3, royale 1, campaign 1, " +
               "survival 1 \u00b7 the camera is four answers, not one");
+}
+
+// ── the screen is the shape of the device ────────────────────────────────
+/* Crossfire was laid out in a fixed 1000x700 box. A phone held sideways is
+   about 19.5:9, and the difference used to come out as a third of the screen in
+   black bars down either side — which on a phone reads as the game not working
+   rather than as a design decision.
+
+   The height is fixed and the width follows the glass now. What can rot silently
+   is the layout: a control laid out against a literal `700` sits two thirds of
+   the way across a 1000-wide screen and a little under half of a 1519-wide one,
+   so it drifts out of its row without anything erroring. Every tappable thing on
+   every menu is therefore checked against the screen it was drawn on. */
+{
+  const { cf } = boot("?debug=1");
+
+  const shapes = [
+    { name: "a squarish laptop", w: 1000, h: 800, wide: false },
+    { name: "a widescreen monitor", w: 1920, h: 1080, wide: true },
+    { name: "a phone held sideways", w: 844, h: 390, wide: true },
+    { name: "a very wide phone", w: 2400, h: 1080, wide: true }
+  ];
+  const screens = ["title", "modes", "controls", "thumb", "paused"];
+
+  for (const sh of shapes) {
+    STAGE.w = sh.w; STAGE.h = sh.h;
+    const W = cf.resize();
+    check(W >= 1000, sh.name + " gave a screen only " + W + " wide");
+    check(W <= 1680, sh.name + " gave a screen " + W + " wide; 1680 is the cap");
+    if (sh.wide) {
+      check(W > 1000,
+            sh.name + " (" + sh.w + "x" + sh.h + ") still got a 1000-wide screen");
+    } else {
+      check(W === 1000,
+            sh.name + " widened to " + W + " when it did not need to");
+    }
+    // The picture must never be wider than the shape it is being fitted into.
+    check(Math.abs(W / 700 - Math.min(1680 / 700, Math.max(1000 / 700, sh.w / sh.h))) < 0.02,
+          sh.name + ": the screen is " + (W / 700).toFixed(2) +
+          ":1 in a " + (sh.w / sh.h).toFixed(2) + ":1 window");
+
+    for (const st of screens) {
+      cf.screen(st);
+      for (let i = 0; i < 3; i++) cf.draw();
+      const taps = cf.live().taps;
+      check(taps.length > 0, sh.name + "/" + st + " drew nothing you can press");
+      for (const t of taps) {
+        check(t.x >= 0 && t.x + t.w <= W,
+              sh.name + "/" + st + ": a control runs from " + Math.round(t.x) +
+              " to " + Math.round(t.x + t.w) + " on a screen " + W + " wide");
+        check(t.y >= 0 && t.y + t.h <= 700,
+              sh.name + "/" + st + ": a control runs off the top or bottom");
+      }
+      /* And nothing is huddled on the left. On a wide screen a row that was
+         written against literals stays put while everything relative moves, so
+         the giveaway is a right-hand margin much larger than the left.
+
+         Not on the pause overlay: half its controls are disabled in a harness
+         with no fullscreen API, a disabled control registers no tap at all, and
+         the gap it leaves is not a layout fault. */
+      if (taps.length > 2 && st !== "paused") {
+        const left = Math.min(...taps.map(t => t.x));
+        const right = W - Math.max(...taps.map(t => t.x + t.w));
+        check(right < left + 120,
+              sh.name + "/" + st + ": " + Math.round(left) + " clear on the left " +
+              "and " + Math.round(right) + " on the right — the row is not centred");
+      }
+    }
+  }
+
+  /* The key grid is the one thing on any menu with its own coordinate system,
+     and it has to stay under the headings above it. */
+  STAGE.w = 2400; STAGE.h = 1080;
+  const wide = cf.resize();
+  cf.screen("controls");
+  cf.draw();
+  const g = cf.keyGrid();
+  const gl = g.x0 - g.cellW / 2;
+  const gr = wide - (g.x0 + (g.cols - 1) * g.colW + g.cellW / 2);
+  check(Math.abs(gl - gr) < 4,
+        "the key grid sits " + Math.round(gl) + " from the left and " +
+        Math.round(gr) + " from the right on a " + wide + "-wide screen");
+  check(gl > 0, "the key grid starts off the left edge");
+
+  STAGE.w = 1200; STAGE.h = 800;
+  cf.resize();
+  console.log("  screen     1000 wide on a squarish window, " + wide +
+              " on a wide one, capped at 1680 \u00b7 every control on every " +
+              "menu stays on it and stays centred \u00b7 the key grid too");
 }
 
 if (problems.length) {

@@ -1098,6 +1098,58 @@ on Ric's four-item list of what a station is for, and it is a small piece of wor
   flag is on the traders already and the roles that carry cargo carry real cargo;
   what is missing is the approach, the prompt, and the page. **Next up.**
 
+### It has to be a proper mobile game  ·  **DONE**
+
+> *"Make it so mobile when pulled up is full screen. And it tells you to rotate
+> your phone. It needs to be a nice mobile game. It needs to fill up the entire
+> phone screen."*
+
+Four separate things were wrong and all four are fixed.
+
+**The screen is the shape of the device now.** Crossfire was laid out in a fixed
+1000×700 box. A phone held sideways is about 19.5:9, the picture is 10:7, and the
+difference came out as a third of the screen in black bars — which reads as the
+game not working rather than as a decision. The height is still 700; the width
+follows the glass, from 1000 on anything squarer than 10:7 out to a cap of 1680
+(about 2.4:1, past which the extra is a strip of sky). A wide screen gets **more
+sector**, not a stretched one.
+
+Almost everything already adapted — the menus centre on `SCREEN_W / 2`, the survey
+pages sit on a grid measured from the edges — and the dozen or so controls that
+carried a literal like `700` (written when 700 *was* 0.7 of the width) now say so:
+`COLS(n, i)`, `LEFT`, `RIGHT`. The key grid centres itself. The fixed-camera modes
+fit the arena by whichever axis is tighter instead of by width alone, so the whole
+map is still on screen. Every tappable rectangle goes through one function, because
+a control drawn 260px right with its tap box left behind is unpressable and looks
+perfectly fine.
+
+**Fullscreen from the first touch.** It used to be asked for when a match started
+— the right gesture, the wrong moment, since the menus are where a phone spends
+its first half-minute and it spent it inside a browser with a toolbar top and
+bottom. It is asked for on the first touch anywhere now, once, and never again if
+refused or dismissed.
+
+**Portrait is answered rather than accommodated.** A 1000×700 picture in a
+portrait phone is a slot across the middle of the glass and no amount of scaling
+fixes a shape. So: a full-bleed overlay, a turning-phone glyph, one sentence, and
+the game waits. It is DOM rather than canvas so it works before the game is
+running and dismisses on rotation with no frame in between.
+
+**EXIT GAME, and the pill is gone.**
+
+> *"It needs to say exit game in setting somewhere. And that pushes you back to
+> my website. Remove the little button that says Ric's terminal for crossfire."*
+
+Crossfire no longer loads `relay-return.js`. Every other project on the site gets
+the floating "Ric's Terminal" pill from it, and a game wants neither that — fixed
+bottom-left is exactly where a thumb lives — nor the site's ambient effects layer
+painting over a full-screen canvas. The way back is **EXIT GAME**, on both settings
+screens, armed before it fires like the survey reset: one stray tap should not end
+a run and close the game. It saves the survey book on the way out.
+
+*Still owed: a touch control for the reverse thrusters (5.2), which are on a
+keyboard-only key.*
+
 ### Settings, per game mode  ·  **DONE**
 
 > *"If you're on survey. Only the survey settings should pop up. If you're on the

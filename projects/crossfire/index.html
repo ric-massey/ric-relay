@@ -15,7 +15,15 @@
 <meta property="og:title" content="CROSSFIRE">
 <meta property="og:description" content="Two modes for 1–5 ships. Survive the rocks together with optional friendly fire, or be the last ship flying in a no-time-limit Battle Royale.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230a0a0a'/><path d='M76 50 L34 72 L44 50 L34 28 Z' fill='none' stroke='%23ffc233' stroke-width='6' stroke-linejoin='round'/></svg>">
-<script src="../relay-return.js" data-home="../../index.html" defer></script>
+<!-- No `relay-return.js`. Every other project on the site gets the floating
+     "Ric's Terminal" pill and the site's ambient effects from it; a game does
+     not want either. The pill sits at a z-index nothing can win, bottom-left,
+     which on a phone is exactly where a thumb lives — and the effects layer is
+     a second thing painting over a full-screen canvas.
+
+     The way back to the site is EXIT GAME, in the settings, where you go
+     looking for it rather than where it can be hit by accident. `HOME_URL`
+     below is the same address the pill used. -->
 <script src="net.js"></script>
 <script src="survey-hud.js"></script>
 <script src="menu.js"></script>
@@ -134,6 +142,56 @@
     box-shadow: 0 0 60px rgba(255, 176, 0, 0.07) inset;
     touch-action: none;
   }
+
+  /* ── turn it sideways ──────────────────────────────────────────────────
+     A 1000x700 screen in a portrait phone is a postage stamp, and no amount of
+     scaling fixes that — the picture is the wrong shape for the glass. Rather
+     than shrink it and hope, the game says so and waits. Landscape gets the
+     whole screen; portrait gets one sentence and an arrow.
+
+     It is a DOM overlay rather than a canvas screen because it has to work
+     before the game is running and while it is paused, and because turning the
+     phone must dismiss it with no frame in between. */
+  #rotate {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: var(--bg);
+    color: var(--phosphor);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.4rem;
+    padding: 2rem;
+    text-align: center;
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+  }
+  #rotate .glyph {
+    width: 92px; height: 92px;
+    border: 2px solid var(--phosphor);
+    border-radius: 12px;
+    animation: turnit 2.6s ease-in-out infinite;
+  }
+  #rotate small {
+    color: var(--phosphor-dim);
+    letter-spacing: 0.06em;
+    font-size: 0.85rem;
+    max-width: 22rem;
+    line-height: 1.7;
+  }
+  @keyframes turnit {
+    0%, 34% { transform: rotate(0deg) scale(1); }
+    62%, 100% { transform: rotate(-90deg) scale(1.18); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #rotate .glyph { animation: none; transform: rotate(-90deg); }
+  }
+  body.turnme #rotate { display: flex; }
+  /* Nothing else is worth drawing while it is the wrong way up, and the pad in
+     particular must not sit on top of the message eating taps. */
+  body.turnme #pad, body.turnme #stage { visibility: hidden; }
 
   /* The whole game is people at one keyboard. Say so rather than shipping
      thumb controls that can't work for a second player on a 375px screen. */
@@ -471,6 +529,13 @@
   <canvas id="game" aria-label="CROSSFIRE game screen"></canvas>
 </div>
 
+<div id="rotate" role="status" aria-live="polite">
+  <div class="glyph" aria-hidden="true"></div>
+  <div>TURN YOUR PHONE SIDEWAYS</div>
+  <small>Crossfire is a wide game. Landscape gives you the whole sector
+    instead of a slot of it.</small>
+</div>
+
 <div id="pad" aria-hidden="true">
   <div id="padStick" class="ctl" data-tag="STICK"><div class="knob"></div></div>
   <button id="padLeft" class="ctl" type="button" data-hold="l" data-tag="LEFT"
@@ -585,13 +650,51 @@
   const stage = document.getElementById("stage");
 
   /* ── Two coordinate spaces ────────────────────────────────────────────────
-     SCREEN is a fixed 1000×700 box that the HUD and menus are laid out in, so
-     text is the same size whatever arena you're in. WORLD is the arena, which
-     is a different size per mode. Both are 10:7, so the arena always fits the
-     screen exactly and the whole map is visible at once — with up to five
-     people at one keyboard, nobody can have their own camera. A bigger arena
-     therefore means smaller ships, not a scrolling view. */
-  const SCREEN_W = 1000, SCREEN_H = 700;
+     SCREEN is the box the HUD and menus are laid out in, so text is the same
+     size whatever arena you're in. WORLD is the arena, which is a different
+     size per mode.
+
+     SCREEN used to be a fixed 1000×700. On a phone held sideways that is the
+     wrong shape for the glass: a modern handset is about 19.5:9, the picture is
+     10:7, and the difference came out as a third of the screen in black bars
+     down either side. So the height is fixed and the *width follows the
+     device* — 1000 on anything squarer than 10:7, out to 1680 on the widest
+     phone. A wide screen gets more sector, not a stretched one.
+
+     Two things fall out of that and both are handled below:
+
+       · Everything laid out on this screen is laid out *against* it. Almost all
+         of it already was — the menus centre on `SCREEN_W / 2` and the survey
+         pages sit on a grid measured from the edges — and the dozen or so places
+         that carried a literal like `700` were written when 700 was 0.7 of the
+         width and now say so: `COLS(3, 2)` and friends below.
+       · The fixed-camera modes used to fit the arena by width alone, because
+         width and height agreed. They fit by whichever is tighter now, so the
+         whole map is still visible at once — with up to five people at one
+         keyboard, nobody can have their own camera. */
+  let SCREEN_W = 1000;
+  const SCREEN_H = 700;
+  // 1000 is the shape everything was designed at and the floor it never goes
+  // below; 1680 is about 2.4:1, past which the extra is a strip of sky.
+  const SCREEN_W_MIN = 1000, SCREEN_W_MAX = 1680;
+
+  /* Menu geometry, as fractions rather than pixels. `COLS(n, i)` is the centre
+     of the i-th of n evenly spaced columns across the usable width, which is
+     what almost every row of menu buttons actually wanted. `INSET` is the margin
+     the corner buttons sit in. */
+  const MENU_INSET = 34;
+  const COLS = (n, i) => MENU_INSET +
+    ((SCREEN_W - MENU_INSET * 2) / n) * (i + 0.5);
+  const LEFT = x => MENU_INSET + x;
+  const RIGHT = x => SCREEN_W - MENU_INSET - x;
+  /* Every tappable rectangle goes through here. One door rather than four
+     `taps.push` calls: a rectangle that drifts from the thing it is under is a
+     control that cannot be pressed, and nothing about it looks wrong on the
+     screen. */
+  function pushTap(rect) {
+    taps.push(rect);
+    return rect;
+  }
   let viewScale = 1;   // SCREEN units → device pixels
   let wScale = 1;      // WORLD units → SCREEN units (1 while drawing the HUD)
 
@@ -601,6 +704,15 @@
     const dpr = window.devicePixelRatio || 1;
     const availW = stage.clientWidth - 2;
     const availH = stage.clientHeight - 2;
+    /* The screen takes the shape of the glass. Anything squarer than 10:7 keeps
+       the 1000-wide box and letterboxes as it always did; anything wider gets a
+       wider box instead of black bars, up to a limit — past about 2.4:1 the
+       extra is a strip of sky rather than anything you can use, and the menus'
+       centred column would start to look marooned. */
+    if (availW > 0 && availH > 0) {
+      SCREEN_W = Math.max(SCREEN_W_MIN,
+                          Math.min(SCREEN_W_MAX, Math.round(SCREEN_H * availW / availH)));
+    }
     const s = Math.max(0.2, Math.min(availW / SCREEN_W, availH / SCREEN_H));
     canvas.style.width = Math.round(SCREEN_W * s) + "px";
     canvas.style.height = Math.round(SCREEN_H * s) + "px";
@@ -1290,6 +1402,76 @@
 
   addEventListener("pointerdown", audioUnlock, { passive: true });
 
+  /* ── the whole glass, from the first touch ────────────────────────────────
+     Fullscreen used to be asked for when a match started, which is the right
+     gesture and the wrong moment: the menus are where a phone spends its first
+     half-minute, and they spent it inside a browser with a toolbar top and
+     bottom. A browser only grants fullscreen inside a user gesture, and the
+     first touch anywhere is one, so that is where this goes.
+
+     Once is enough. If it is refused, or the player leaves fullscreen on
+     purpose, it is not asked again — a game that keeps grabbing the screen back
+     is a game people close. */
+  let askedFullscreen = false;
+  addEventListener("pointerdown", () => {
+    if (askedFullscreen) return;
+    askedFullscreen = true;
+    enterPlayFullscreen();
+  }, { passive: true });
+
+  /* ── which way up the phone is ────────────────────────────────────────────
+     Crossfire is a 1000x700 picture. In a portrait phone that is a slot across
+     the middle of the glass with nothing above or below it, and scaling does not
+     fix a shape. So portrait is answered rather than accommodated: one sentence,
+     an arrow, and the game waits.
+
+     Only on a touch device, and only while it is actually portrait — a desktop
+     window that happens to be tall is somebody deliberately making it tall. */
+  const rotateEl = document.getElementById("rotate");
+  function checkOrientation() {
+    const touch = document.body.classList.contains("touch") || touchOnly;
+    const portrait = window.innerHeight > window.innerWidth;
+    const turn = !!(touch && portrait);
+    document.body.classList.toggle("turnme", turn);
+    if (rotateEl) rotateEl.setAttribute("aria-hidden", turn ? "false" : "true");
+    /* Sideways again means the canvas has a different box to fill, and the
+       resize that reports it can land before the class comes off. */
+    if (!turn) resize();
+  }
+  addEventListener("resize", checkOrientation);
+  addEventListener("orientationchange", () => {
+    requestAnimationFrame(() => requestAnimationFrame(checkOrientation));
+  });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", checkOrientation);
+  }
+
+  /* ── the way out ──────────────────────────────────────────────────────────
+     Back to the site, from the settings, deliberately. This is the address the
+     floating "Ric's Terminal" pill used to point at; the pill is gone because a
+     fixed button at the bottom-left corner of a phone is a button under a thumb,
+     and a game does not want one. Leaving a game is a thing you go and do.
+
+     Armed before it fires, like the survey reset: one stray tap should not end a
+     run and close the game. */
+  const HOME_URL = /^https?:$/.test(location.protocol)
+    ? "../../" : "../../index.html";
+  let exitArm = 0;
+  const exitArmed = () => performance.now() < exitArm;
+  const exitLabel = () => exitArmed() ? "SURE? LEAVE THE GAME" : "EXIT GAME";
+  function exitToSite() {
+    if (!exitArmed()) {
+      exitArm = performance.now() + 3200;
+      gameSound("hit");
+      return;
+    }
+    exitArm = 0;
+    // Whatever the run was, it is written down already — the survey book saves
+    // on every event that changes it, so leaving costs nothing but the flight.
+    try { if (surv) saveSurveyBook(); } catch (_) {}
+    location.href = HOME_URL;
+  }
+
   /* Toggles the camera for one mode — the one you are playing if you are
      playing one, and otherwise the page you are looking at. */
   function toggleModeCamera(key) {
@@ -1380,10 +1562,16 @@
      The grid is five rows of four cells laid out in SCREEN units, and both the
      pointer and the drawing read the same boxes out of `cellBox`, so what you
      click is exactly what you can see. */
-  const GRID = { x0: 372, colW: 150, cellW: 128, cellH: 42, y0: 270, rowH: 60 };
+  /* The key grid, centred rather than pinned. `x0` was 372 when the screen was
+     always a thousand wide; it is four columns of 150 centred in whatever the
+     screen is now, which keeps the player labels down its left side in the same
+     place relative to it. */
+  const GRID = { colW: 150, cellW: 128, cellH: 42, y0: 270, rowH: 60 };
+  const gridX0 = () =>
+    Math.round(SCREEN_W / 2 - (ACTIONS.length - 1) * GRID.colW / 2);
 
   function cellBox(pi, ai) {
-    const cx = GRID.x0 + ai * GRID.colW, cy = GRID.y0 + pi * GRID.rowH;
+    const cx = gridX0() + ai * GRID.colW, cy = GRID.y0 + pi * GRID.rowH;
     return { cx, cy, x: cx - GRID.cellW / 2, y: cy - GRID.cellH / 2,
              w: GRID.cellW, h: GRID.cellH };
   }
@@ -1990,7 +2178,7 @@
     // in from the corner of the map.
     cam.scale = mode.camera
       ? (mode.survey ? surveyZoom * shipZoomFactor() : 1)
-      : SCREEN_W / arena.w;
+      : Math.min(SCREEN_W / arena.w, SCREEN_H / arena.h);
     if (mode.camera) {
       cam.x = ships[0].x; cam.y = ships[0].y;
       cam.rot = camRotates() ? -Math.PI / 2 - ships[0].a : 0;
@@ -10240,7 +10428,7 @@
     watching = net.seat;
     cam.scale = mode.camera
       ? (mode.survey ? surveyZoom * shipZoomFactor() : 1)
-      : SCREEN_W / arena.w;
+      : Math.min(SCREEN_W / arena.w, SCREEN_H / arena.h);
     cam.x = ships[net.seat].x; cam.y = ships[net.seat].y;
     cam.rot = mode.camera && camRotates()
       ? -Math.PI / 2 - ships[net.seat].a
@@ -12005,7 +12193,7 @@
     const w = ctx.measureText(str).width;      // text() left the font set
     const left = align === "center" ? x - w / 2 : align === "right" ? x - w : x;
     // Generous vertically: a fingertip is wider than a line of 13px type.
-    taps.push({ x: left - 14, y: y - size, w: w + 28, h: size + 20, act });
+    pushTap({ x: left - 14, y: y - size, w: w + 28, h: size + 20, act });
   }
 
   function tapButton(label, x, y, w, h, colour, act, selected = false,
@@ -12021,7 +12209,7 @@
     ctx.restore();
     text(label, x, y + 7, 18, colour, "center", enabled ? 1 : 0.38);
     if (enabled && typeof act === "function") {
-      taps.push({ x: x - w / 2, y: y - h / 2, w, h, act });
+      pushTap({ x: x - w / 2, y: y - h / 2, w, h, act });
     }
   }
 
@@ -12324,6 +12512,26 @@
      card is the only place in this game with a paragraph in it, and a paragraph
      laid out against a guess at the character width is a paragraph that spills
      out of its box on somebody else's browser. */
+  /* One line, made to fit. The menus have a handful of captions that sit inside
+     a card and are a shade wider than it — a line of type crossing the border it
+     belongs inside is the kind of error you only see in a screenshot, and it does
+     not stop being one when the card changes width. Shrinks rather than clips,
+     and never below the readable floor: if it cannot fit at 16px it wraps
+     instead, which is `wrapText`'s job. */
+  function fitLine(str, x, y, size, colour, align, alpha, maxW) {
+    let sz = size;
+    while (sz > 10) {
+      ctx.font = readableTextSize(sz) +
+        'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+      // A context that cannot measure gets the line at its stated size rather
+      // than an exception: this is a drawing helper, not a layout check.
+      const m = ctx.measureText && ctx.measureText(str);
+      if (!m || m.width <= maxW) break;
+      sz -= 1;
+    }
+    text(str, x, y, sz, colour, align, alpha);
+  }
+
   function wrapText(str, size, maxW) {
     ctx.save();
     ctx.font = readableTextSize(size) +
@@ -12345,7 +12553,11 @@
     text("asteroids — open space, a closing wall, or a war to fight",
          SCREEN_W / 2, 154, 15, "#ffcb42");
 
-    const w = 380, h = 300, gap = 40, y = 210;
+    /* The cards were 380 wide when the screen was always a thousand. They take
+       their share of whatever it is now, capped so a very wide screen gets two
+       generous cards rather than two billboards. */
+    const gap = 40, h = 300, y = 210;
+    const w = Math.round(Math.min(440, (SCREEN_W - MENU_INSET * 2 - gap) / 2));
     const x0 = SCREEN_W / 2 - w - gap / 2;
 
     LANE_KEYS.forEach((key, i) => {
@@ -12367,11 +12579,12 @@
 
       if (menuArt) menuArt.preview(L.art, x + 14, y - lift + 14, w - 28, 150, clock);
       text(L.name, x + w / 2, y - lift + 208, 30, L.colour);
-      text(L.line, x + w / 2, y - lift + 238, 14, "#ffcb42", "center", 0.85);
+      fitLine(L.line, x + w / 2, y - lift + 238, 14, "#ffcb42", "center", 0.85,
+              w - 26);
       text(L.rows.length + " MODES", x + w / 2, y - lift + 270, 13, L.colour,
            "center", 0.6);
 
-      taps.push({ x, y: y - lift, w, h, act: () => openLane(key) });
+      pushTap({ x, y: y - lift, w, h, act: () => openLane(key) });
     });
 
     text("CLICK ONE  ·  OR ARROWS + ENTER", SCREEN_W / 2, 540, 13, "#ffcb42",
@@ -12380,9 +12593,9 @@
     tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
               300, 590, 210, 36, soundEnabled ? "#ffe56d" : "#ffcb42",
               toggleSound, soundEnabled);
-    tapButton(fullscreenLabel(), 520, 590, 210, 36, "#ffe56d",
+    tapButton(fullscreenLabel(), COLS(4, 2), 590, 210, 36, "#ffe56d",
               toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
-    tapButton("SETTINGS", 740, 590, 210, 36, "#ffe56d",
+    tapButton("SETTINGS", COLS(4, 3), 590, 210, 36, "#ffe56d",
               () => { state = openSettings("title"); });
 
     text(touchOnly
@@ -12460,7 +12673,10 @@
 
       const who = modeLane === "solo" ? c.solo : c.multi;
       if (who) {
-        text(who, x + w / 2, nameY + 24, 12, "#ffcb42", "center", 0.75);
+        // Inside the card, whatever the card's width happens to be this frame.
+        const lines = wrapText(who, 12, w - 26);
+        lines.forEach((ln, k) =>
+          text(ln, x + w / 2, nameY + 24 + k * 18, 12, "#ffcb42", "center", 0.75));
       }
 
       // The paragraph belongs to the open card alone; on a closed one there is
@@ -12476,7 +12692,7 @@
       /* One tap opens a card and the next one plays it. On a desk the hover has
          already opened it, so the first click plays — which is what a mouse
          user expects and what a thumb cannot do. */
-      taps.push({ x, y: top, w, h, card: i, act: () => {
+      pushTap({ x, y: top, w, h, card: i, act: () => {
         if (!touchOnly || modePick === i) { modePick = i; playCard(key); }
         else { modePick = i; modeHover = -1; }
       } });
@@ -12614,7 +12830,7 @@
            : "more than two? play online — one screen each",
          SCREEN_W / 2, controlsY + 46 + most * 32, 13, "#ffcb42");
 
-    tapButton("BACK", 350, 650, 240, 44, "#ffcb42",
+    tapButton("BACK", SCREEN_W / 2, 650, 240, 44, "#ffcb42",
               () => { state = isCamp ? "levels" : "title"; });
     tapButton(touchOnly ? "PHONE SETTINGS" : "CONTROL SETTINGS",
               650, 650, 240, 44, "#ffe56d",
@@ -12778,23 +12994,27 @@
       text("Select a box to change it.", SCREEN_W / 2, sayY, 14, "#ffcb42");
     }
 
-    tapButton("RESET ALL KEYS", 320, 458, 280, 44, "#ffe56d", () => {
+    tapButton("RESET ALL KEYS", COLS(2, 0), 458, 280, 44, "#ffe56d", () => {
       resetKeys(); note("Keys reset.");
     });
-    tapButton("CLEAR SELECTED KEY", 680, 458, 280, 44, "#ffcb42", () => {
+    tapButton("CLEAR SELECTED KEY", COLS(2, 1), 458, 280, 44, "#ffcb42", () => {
       PLAYERS[binder.p][ACTIONS[binder.a].field] = [];
       keysChanged();
       note("Selected key cleared.");
     });
     tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
-              320, 530, 280, 42, soundEnabled ? "#ffe56d" : "#ffcb42",
+              COLS(2, 0), 530, 280, 42, soundEnabled ? "#ffe56d" : "#ffcb42",
               toggleSound, soundEnabled);
-    tapButton(fullscreenLabel(), 680, 530, 280, 42, "#ffe56d",
+    tapButton(fullscreenLabel(), COLS(2, 1), 530, 280, 42, "#ffe56d",
               toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
-    tapButton("PHONE CONTROLS", SCREEN_W / 2, 584, 340, 44, "#ffe56d", () => {
+    tapButton("PHONE CONTROLS", COLS(2, 0), 584, 340, 44, "#ffe56d", () => {
       binder.listening = false;
       state = "thumb";
     });
+    // The way back to the site. Armed before it fires: one stray click should
+    // not close the game.
+    tapButton(exitLabel(), COLS(2, 1), 584, 300, 44,
+              exitArmed() ? "#ff8f77" : "#ffcb42", exitToSite, exitArmed());
     tapButton("BACK", SCREEN_W / 2, 642, 320, 44, "#ffcb42", () => {
       binder.listening = false;
       state = backFrom || "title";
@@ -12815,10 +13035,10 @@
     text("PHONE SETTINGS", SCREEN_W / 2, 56, 34, "#ffe56d");
     text("Drag the controls on this screen to move them.",
          SCREEN_W / 2, 84, 16, "#ffcb42");
-    tapButton("BACK", 100, 54, 140, 42, "#ffcb42",
+    tapButton("BACK", LEFT(70), 54, 140, 42, "#ffcb42",
               () => { state = backFrom || "title"; });
     if (!touchOnly) {
-      tapButton("KEYBOARD", 900, 54, 140, 42, "#ffe56d",
+      tapButton("KEYBOARD", RIGHT(70), 54, 140, 42, "#ffe56d",
                 () => { state = "controls"; });
     }
 
@@ -12869,12 +13089,14 @@
     // whichever game you are setting up.
     modeSettingsBand(410, 458, false);
 
-    tapButton("SWAP SIDES", 300, 574, 280, 40, "#ffe56d", padMirror);
-    tapButton("RESET PHONE CONTROLS", 700, 574, 280, 40, "#ffcb42", padReset);
+    tapButton("SWAP SIDES", COLS(3, 0), 574, 240, 40, "#ffe56d", padMirror);
+    tapButton("RESET PHONE CONTROLS", COLS(3, 1), 574, 280, 40, "#ffcb42", padReset);
+    tapButton(exitLabel(), COLS(3, 2), 574, 280, 40,
+              exitArmed() ? "#ff8f77" : "#ffcb42", exitToSite, exitArmed());
     tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
-              300, 516, 280, 40, soundEnabled ? "#ffe56d" : "#ffcb42",
+              COLS(2, 0), 516, 280, 40, soundEnabled ? "#ffe56d" : "#ffcb42",
               toggleSound, soundEnabled);
-    tapButton(fullscreenLabel(), 700, 516, 280, 40, "#ffe56d",
+    tapButton(fullscreenLabel(), COLS(2, 1), 516, 280, 40, "#ffe56d",
               toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
 
   }
@@ -13014,9 +13236,9 @@
     const replayable = canPlayAgain();
     const replayLabel = net.role === "guest" ? "WAITING FOR HOST"
       : replayable ? "PLAY AGAIN" : "NEED ANOTHER PLAYER";
-    tapButton(replayLabel, 350, actionY, 260, 44, "#ffe56d",
+    tapButton(replayLabel, COLS(2, 0), actionY, 260, 44, "#ffe56d",
               playAgain, false, replayable);
-    tapButton("MAIN MENU", 650, actionY, 260, 44, "#ffcb42", leaveMatch);
+    tapButton("MAIN MENU", COLS(2, 1), actionY, 260, 44, "#ffcb42", leaveMatch);
   }
 
   /* Paused is where you end up when something needs sorting out, so it is
@@ -13038,9 +13260,9 @@
       state = openSettings(online ? "menu" : "paused");
     });
     tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
-              350, mid + 116, 260, 40, soundEnabled ? "#ffe56d" : "#ffcb42",
+              COLS(2, 0), mid + 116, 260, 40, soundEnabled ? "#ffe56d" : "#ffcb42",
               toggleSound, soundEnabled);
-    tapButton(fullscreenLabel(), 650, mid + 116, 260, 40, "#ffe56d",
+    tapButton(fullscreenLabel(), COLS(2, 1), mid + 116, 260, 40, "#ffe56d",
               toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
     tapText("[Q]  QUIT TO MENU", SCREEN_W / 2, mid + 170, 22, "#ffcb42", leaveMatch);
     if (net.on) {
@@ -13386,7 +13608,14 @@
      or a touchscreen laptop works the same, and pointer capture means sliding
      your thumb off a button still releases it. */
   addEventListener("pointerdown", e => {
-    if (e.pointerType === "touch") document.body.classList.add("touch");
+    if (e.pointerType === "touch") {
+      const first = !document.body.classList.contains("touch");
+      document.body.classList.add("touch");
+      // The first touch is also how a laptop with a touchscreen becomes a
+      // phone as far as the layout is concerned, so the question of which way
+      // up it is has to be asked again here.
+      if (first) checkOrientation();
+    }
   }, { once: false });
 
   /* The stick. The knob follows your thumb out to the edge of the ring and no
@@ -14455,6 +14684,10 @@
                      shipR: mode.survey ? shipRadius() : SHIP_R * U,
                      pickups, comms, shake,
                      cameraMode: camRotates() ? "rotating" : "fixed",
+                     /* The screen is as wide as the device now, so anything
+                        checking a layout has to be able to ask how wide it
+                        actually is rather than assuming a thousand. */
+                     screenW: SCREEN_W, screenH: SCREEN_H,
                      cameraModes: { ...cameraRotates }, settingsPage }),
       step: () => tick(performance.now(), true),
       // Start a match straight from a harness, skipping the menus, read the
@@ -14545,6 +14778,15 @@
                                        rarity: m.rarity, cost: m.cost,
                                        deep: m.deep, secs: fitSeconds(m.key) })),
       scanRange: () => scanRange(),
+      /* Re-measure the screen against the stage. The screen takes the shape of
+         the device now, so a harness that wants to check a layout at a phone's
+         proportions has to be able to say "the window changed" without a real
+         resize event. */
+      resize: () => { resize(); checkOrientation(); return SCREEN_W; },
+      // The key grid draws its own boxes rather than registering buttons, so
+      // where it sits is not visible in the tap list.
+      keyGrid: () => ({ x0: gridX0(), colW: GRID.colW, cellW: GRID.cellW,
+                        cols: ACTIONS.length }),
       // Arriving at a station, without having to fly to one: the same call the
       // docking check makes when a real station comes into range.
       dock: () => stationFinishesFits(),
@@ -14577,16 +14819,26 @@
   padLoad();
   padApply();
   resize();
+  // Which way up it is, before the first frame rather than after the first
+  // rotation: a phone opened in portrait should be told immediately.
+  checkOrientation();
   /* The survey panel is a separate file and gets the drawing primitives handed
      to it here, after resize() so it can measure the canvas against the
      viewport. `addTap` is a function rather than the `taps` array itself
      because that array is rebuilt every frame. */
   if (surveyHUD) {
     surveyHUD.init({
-      ctx, canvas, SCREEN_W, SCREEN_H, arena,
+      ctx, canvas,
+      /* Getters, not values. The screen is as wide as the device now and the
+         pages lay themselves out against it every frame; handing over a number
+         once would have frozen every page at 1000 wide on the first load and
+         left a strip of nothing down the side of a phone. */
+      get SCREEN_W() { return SCREEN_W; },
+      get SCREEN_H() { return SCREEN_H; },
+      get arena() { return arena; },
       touchOnly, reduceMotion,
       text, glow, tapButton, shipPip,
-      addTap: rect => taps.push(rect)
+      addTap: rect => pushTap(rect)
     });
   }
   if (menuArt) menuArt.init({ ctx, glow });
