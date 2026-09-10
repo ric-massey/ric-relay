@@ -821,6 +821,10 @@ find or build and fit to a ship. A **material** is a thing you carry and spend.
 There is no third noun, and anything that wants to be one has to earn it by the
 game demonstrably needing it.
 
+That still holds after 5.4 allowed a recipe to consume a finished part. A part
+made from a part is **still two nouns** — no subcomponent was invented, nothing
+exists solely to be an ingredient. It is the same part you could have flown.
+
 **Explicitly not building:** research trees. Reverse-engineering. Components
 inside components. A second currency. Stations that each do a different subset of
 the same jobs. Every one of those is a menu pretending to be depth.
@@ -954,16 +958,42 @@ Flat recipes. Ingredients in, part out, one step:
 3 alloy + 2 electronics + 1 reactor core  →  Mk II Engine
 ```
 
-No engineering UI. No components inside components *unless the game eventually
-proves it needs that* — and it has not. Recipes mix **materials** you carry with
-**parts** you found, which is the only nesting there is and it is one level deep.
+No engineering UI. This implies a couple more material-or-part kinds than the
+current four — `electronics` and `reactor core` in Ric's own example. They are
+found, not mined.
 
-This implies a couple more material-or-part kinds than the current four —
-`electronics` and `reactor core` in Ric's own example. They are found, not mined.
+**Some parts need other parts.** This revises the earlier constraint, which said
+no components inside components *unless the game eventually proves it needs that*.
+Ric has called it: a recipe may list a **finished part** as an ingredient, and it
+is consumed like any other.
+
+```
+1 Mk II Engine + 4 alloy + 1 exotic coupling  →  Mk III Engine
+```
+
+That is the good version of depth — the better engine is visibly *built out of*
+the one you have been flying — and it gives the far-out rare parts something to be
+for besides sitting in a slot. What it must not turn into is the research tree
+that was already rejected, so it is fenced:
+
+- **Two steps, not a tree.** A part may be made from a part. That part may not
+  itself need a third crafted part. If a recipe ever wants three levels, the
+  middle one is wrong and should be a material.
+- **A crafted ingredient must also be findable or buyable.** Nesting is a
+  *shortcut*, never a gate. If the only route to a part is crafting the one below
+  it, the chain has become a tech tree with extra steps.
+- **The whole chain is on one screen.** A recipe shows what it needs, what you
+  have, and — for an ingredient you could make right now — an option to make that
+  one too, in the same action. Nobody should have to hold a chain in their head.
+- **Still no subcomponents.** Parts are made of materials and, sometimes, one
+  finished part. Nothing is made of a thing that only exists to be made of.
 
 Still needed before there are many recipes: a way to ask *where do I find this*
 and be pointed at it. The waypoint system is already the answer to "take me
-there"; the missing half is a recipe page that can set one.
+there"; the missing half is a recipe page that can set one. With nesting in, that
+page also has to answer *what is this an ingredient for* — the reverse lookup,
+which is the thing that makes a strange part found far out feel like a lead
+rather than a curiosity.
 
 ### 5.5 Cargo crates, and towing
 
