@@ -5842,7 +5842,7 @@
 
   function loadSurveyBook() {
     const empty = { seed: 0, found: [], fog: "", cash: 0, deaths: 0, waypoint: null,
-                    rep: {},
+                    rep: {}, selected: null,
                     ship: "skiff", owned: ["skiff"], taught: [],
                     water: WATER_FULL, food: FOOD_FULL,
                     hold: freshHold(),
@@ -5894,6 +5894,13 @@
         waypoint: b.waypoint && Number.isFinite(b.waypoint.x) &&
                   Number.isFinite(b.waypoint.y)
           ? { x: Math.round(b.waypoint.x), y: Math.round(b.waypoint.y) } : null,
+        // The one thing you are keeping an eye on, which is a decision like the
+        // waypoint and is kept for the same reason.
+        selected: b.selected && Number.isFinite(b.selected.x) &&
+                  Number.isFinite(b.selected.y)
+          ? { x: Math.round(b.selected.x), y: Math.round(b.selected.y),
+              k: String(b.selected.k || "").slice(0, 20),
+              name: String(b.selected.name || "").slice(0, 40) } : null,
         /* Clamped both ways. A book written before life support existed has no
            tanks at all and must resume full rather than resume dying, and a
            hand-edited one must not hand out an infinite tank. */
@@ -6059,6 +6066,7 @@
         deaths: surv.deaths || 0,
         light: !!surv.hasLight,
         waypoint: surv.waypoint,
+        selected: surv.selected,
         rep: surv.rep || {},
         ship: surv.ship,
         owned: [...surv.owned],
@@ -6113,6 +6121,15 @@
       if (typeof el.remove === "function") el.remove();
       else if (el.parentNode && el.parentNode.removeChild) el.parentNode.removeChild(el);
     } catch (_) {}
+  }
+
+  /* What colour a kind of pin is. The interface owns the palette — it is the
+     thing that draws them — so the engine asks it, and falls back to a neutral
+     if the panel is not up yet. */
+  function pinColour(kind) {
+    const list = surveyHUD && surveyHUD.pinKinds ? surveyHUD.pinKinds() : [];
+    const hit = list.find(k => k.key === kind);
+    return hit ? hit.colour : "#6dffbf";
   }
 
   function askName(prompt, value, done) {
@@ -7259,7 +7276,13 @@
         return out;
       })(),
       contacts: [],
-      scan: { charge: 1, reach: 0, flash: 0 },
+      /* `lit` is how long the scan's arrows stay up: a scan is a *pulse*, and
+         what it turned up should fade with it rather than sitting on the edge of
+         the screen for the rest of the run. The only marks that outlive it are
+         the ones you chose — a waypoint, or a feature you picked off the chart. */
+      scan: { charge: 1, reach: 0, flash: 0, lit: 0 },
+      // Something you tapped on the map to keep an eye on. See `onSelect`.
+      selected: carried ? book.selected : null,
       echoes: [],
       target: null,
       warn: null,
@@ -7591,6 +7614,9 @@
     surv.echoes = found;
     surv.scan.reach = reach;
     surv.scan.flash = 1;
+    // And the arrows are up, for as long as the returns are.
+    surv.scan.lit = ECHO_LIFE;
+    surv.t.scanned = true;
 
     if (!found.length) {
       chatter("Nothing within " + Math.round(reach) + " units.", NEBULA);
@@ -11550,6 +11576,7 @@
       }
       if ((e.t -= dt) <= 0) surv.echoes.splice(i, 1);
     }
+    surv.scan.lit = Math.max(0, surv.scan.lit - dt);
 
     /* The objective is recomputed every frame rather than cached, because
        picking a part up or handing it over changes it and there is no single
@@ -12273,6 +12300,14 @@
       contacts: surv.contacts,
       found: surv.found.size, total: SURVEY_TOTAL,
       inStar: surv.inStar, scan: surv.scan,
+      /* Whether the scan has ever been pressed, so the panel can say how — and
+         stop saying it the moment you do. A control nobody has been told about is
+         a control that does not exist. */
+      scanTaught: !!surv.t.scanned,
+      /* A feature picked off the chart. One at a time, it keeps its arrow until
+         you pick another or clear it, and it is the only thing besides a waypoint
+         that does. */
+      selected: surv.selected,
 
       /* The two tracks, flattened for the interface. `refit` carries the tier
          and the next price so the station screen never has to do arithmetic,
@@ -12610,9 +12645,35 @@
         saveSurveyBook();
         return true;
       },
+      /* Tapping a charted thing with nothing armed: keep an eye on it. The
+         arrow it gets is permanent — that is the whole difference between this
+         and a scan return, which is a pulse and fades like one. Tapping the same
+         one again lets it go. */
+      onSelect: (x, y, snap) => {
+        let best = null, bd = (snap || 400) ** 2;
+        for (const q of surv.known.values()) {
+          const d = dist2(q.x, q.y, x, y);
+          if (d > bd) continue;
+          bd = d; best = q;
+        }
+        if (!best) return false;
+        const same = surv.selected &&
+                     Math.abs(surv.selected.x - best.x) < 2 &&
+                     Math.abs(surv.selected.y - best.y) < 2;
+        surv.selected = same ? null
+          : { x: best.x, y: best.y, k: best.k,
+              name: best.name || String(best.k || "").toUpperCase() };
+        gameSound("start");
+        saveSurveyBook();
+        return true;
+      },
       onPin: (x, y, kind, snap) => {
         if (surv.pins.length >= 200) { gameSound("hit"); return; }
-        const pin = { x, y, kind, name: "" };
+        /* The colour travels *with* the pin rather than being looked up from its
+           kind later. A palette that is edited one day would otherwise repaint
+           every pin anybody had ever dropped, and a mark on a map whose colour
+           changes under you is a mark you stop trusting. */
+        const pin = { x, y, kind, name: "", colour: pinColour(kind) };
         surv.pins.push(pin);
         gameSound("start");
         saveSurveyBook();
@@ -16325,7 +16386,13 @@
        The one exception is the chart: it is a map, and a map you read through an
        asteroid field is a map you squint at. */
     if (surveyHUD) surveyHUD.pageGhost = false;
-    if (surveyPage() && state !== "chart") {
+    /* The chart included. It was the one page drawn on a solid ground, on the
+       reasoning that a map read through an asteroid field is a map you squint at
+       — which is true, and beside the point: the chart is the page people sit in
+       longest, and a page you cannot see past is a page you drift into a star
+       behind. It is the map's own panel that goes translucent, not the marks on
+       it, so the reading stays as good and the sector is visible through it. */
+    if (surveyPage()) {
       drawSurveyBehind(dt);
       if (surveyHUD) surveyHUD.pageGhost = true;
     }

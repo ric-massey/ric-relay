@@ -4329,6 +4329,9 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     ];
     surv.waypoint = { x: me.x + Math.cos(a + 2.6) * R,
                       y: me.y + Math.sin(a + 2.6) * R };
+    // The scan's arrows are a pulse now, so this holds the pulse open while it
+    // measures where they land.
+    surv.scan.lit = 20;
     cf.draw();
     const blocks = hud.hudBlocks(cf.surveyView());
     check(blocks.length >= 3, "the HUD claims " + blocks.length + " occupied boxes");
@@ -4343,6 +4346,42 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
       }
     }
   }
+  /* ── and what is still there when the scan has gone cold ─────────────────
+     A scan is a pulse: what it turns up fades with it. An arrow that is always
+     on the ring stops being information and becomes furniture, and the two that
+     are allowed to stay are the two you *chose* — a waypoint, and a feature you
+     tapped on the chart. */
+  surv.scan.lit = 0;
+  cf.draw();
+  const cold = hud.arrows.slice();
+  check(cold.length > 0, "the waypoint's arrow went out with the scan");
+  check(cold.every(q => q.colour === "#ffd23f"),
+        "something other than the waypoint survived the scan going cold");
+
+  // A feature picked off the chart is the other one that stays.
+  const mark = [...surv.known.values()][0];
+  check(!!mark, "nothing charted to select");
+  if (mark) {
+    check(cf.surveyView().onSelect(mark.x, mark.y, 4000) === true,
+          "tapping a charted thing did not select it");
+    /* Far enough away that it is off screen, and stepped so the *camera* is
+       there too: the arrows are computed from the camera, not from the ship, so
+       teleporting the hull and drawing immediately points them from where you
+       were a frame ago. */
+    me.x = mark.x + 60000; me.y = mark.y; me.vx = me.vy = 0;
+    for (let i = 0; i < 40; i++) { me.invuln = 5; now += 1000 / 60; cf.step(); }
+    surv.scan.lit = 0;
+    cf.draw();
+    check(hud.arrows.length > cold.length,
+          "a selected feature has no arrow with the scan cold");
+    check(hud.arrows.some(q => q.colour === "#5fd8ff"),
+          "the selected feature's arrow is not the blue one");
+    // And tapping it again lets it go.
+    check(cf.surveyView().onSelect(mark.x, mark.y, 4000) === true,
+          "tapping it again did nothing");
+    check(!cf.survey().selected, "it stayed selected");
+  }
+
   surv.target = null; surv.echoes = []; surv.waypoint = null;
 
   check(total > 300, "only " + total + " arrows were drawn across 96 bearings");
@@ -4361,6 +4400,12 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(seen.size >= 3,
         "the arrows come in " + seen.size + " colours; the objective, the scan " +
         "and the waypoint should each be their own");
+  // The scan hint says how to scan until you have, and then stops saying it.
+  check(cf.surveyView().scanTaught === false,
+        "the game thinks the scan has been pressed before it has");
+  cf.scan();
+  check(cf.surveyView().scanTaught === true, "pressing scan did not register");
+  check(cf.survey().scan.lit > 0, "scanning did not light the arrows");
 
   console.log("  arrows     " + total + " placements over 96 bearings \u00b7 " +
               "none under the interface, none off screen \u00b7 " + slid +

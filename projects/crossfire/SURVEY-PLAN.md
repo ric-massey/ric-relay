@@ -1874,6 +1874,47 @@ reputation and parts. The catch now says what went wrong under `?debug=1`.
 
 ---
 
+### Pins, arrows and the scan  ·  **DONE**
+
+**A named pin said CASH.** Naming worked the whole time — the dialogue opened, the
+name was saved, the book kept it — and the chart drew the name of the pin's *kind*
+instead. The first kind in the table is called CASH, so every pin anybody ever
+dropped said CASH, including the ones they had carefully typed a name into. It
+wears its own name now, cut on a word boundary when it is too long: "THE IRIDIUM
+FIELD" becomes "THE IRIDIUM…" rather than "THE IRIDIU…", because a cut on a word
+is a name and a cut mid-word is a typo.
+
+**And you choose its colour.** There were six kinds and the only way to change
+which one you were placing was a keyboard shortcut nothing mentioned — so on a
+phone every pin in the game came out the same colour. Six swatches in the rail;
+the colour travels *with* the pin rather than being looked up from its kind later,
+so editing the palette one day cannot repaint marks somebody made a month ago.
+
+**The chart is see-through**, like every other page. It was the one exception, on
+the reasoning that a map read through an asteroid field is a map you squint at —
+true, and beside the point, because the chart is the page people sit in longest.
+
+**The arrows are a pulse.** The blue objective arrow sat on the edge of the screen
+permanently, which stops being information and becomes furniture. It comes up when
+you scan and goes down with the returns. Exactly two things outlive a scan, and
+both are things you *chose*: a **waypoint**, and a **feature you tapped on the
+chart** — a station you will need later, the well you are routing around, the
+memorial you mean to come back to.
+
+**The arrows you steer by are Vs.** Two strokes meeting at a point, open behind,
+with a second smaller chevron trailing it — the shape every heads-up display uses
+for "this way". It reads as a direction before it is read at all, and it does not
+put a solid blob of colour over the edge of the screen. The barbed solid stays on
+the quieter arrows: a scan return is a dot with a direction, and eight solid
+chevrons round the ring would shout.
+
+**And the mode says how to scan.** Survey has no tutorial, the scan is the verb
+the whole mode is built on, and a player who never presses it flies an empty
+sector wondering what the point is. One line, on the band the eye is already on,
+that stops the moment you press it.
+
+---
+
 ## At the end of Phase 7: go back to Phase 6
 
 **Read this before starting anything new.**

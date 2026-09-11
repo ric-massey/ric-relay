@@ -653,7 +653,11 @@
     if (st.critical) drawCriticalEdge(!!st.inStar && !!st.solar);
     else if ((st.water && st.water.countdown > 0) ||
              (st.food && st.food.countdown > 0)) drawCriticalEdge(false);
-    if (st.ship) { drawEchoArrows(st); drawWaypointArrow(st); }
+    if (st.ship) {
+      drawEchoArrows(st);
+      drawWaypointArrow(st);
+      drawSelectedArrow(st);
+    }
     drawSector(st);
     drawPanelChart(st);
     drawCounters(st);
@@ -1540,6 +1544,17 @@
       label(api.touchOnly ? "LIGHT DRIVE READY" : "LIGHT DRIVE READY  —  [R]",
             cx, y - 30, SIZE.cap, ICE, "center", 0.55, "0.14em");
       if (api.touchOnly) promptTap(st.onLight);
+    } else if (!st.scanTaught) {
+      /* The one control nobody would guess. Survey has no tutorial, the scan is
+         the verb the whole mode is built on, and a player who never presses it
+         flies an empty sector wondering what the point is. So it is said, once,
+         on the line the eye is already on — and it stops being said the moment you
+         press it, because a hint that outlives its usefulness is clutter. */
+      const beat = 0.6 + 0.4 * Math.sin(clockish() * 2.6);
+      fitText(api.touchOnly ? "PRESS SCAN TO SEE WHAT IS OUT THERE"
+                            : "PRESS  F  TO SCAN — IT IS HOW YOU FIND ANYTHING",
+              cx, y - 54, SIZE.val, VIOLET, "center", beat,
+              SCREEN_W - 380, "0.08em");
     } else if (!api.touchOnly) {
       // The mode's three keys, stated once, quietly, where a new player is
       // already looking. Survey has no tutorial and should not need one.
@@ -1655,12 +1670,36 @@
     ctx.translate(at.p.x, at.p.y);
     ctx.rotate(ang);
     api.glow(colour, 2.4, (o.alpha === undefined ? 1 : o.alpha) * beat, () => {
-      /* Jagged rather than a plain triangle. A smooth arrowhead at the edge of a
-         screen full of smooth circles is one more smooth thing; a barbed one is
-         read as a *direction* before it is read at all. Two barbs swept back off
-         a long point, with the notch between them deep enough to see at the size
-         this is actually drawn. */
       const S = scale;
+      /* A **V**, for the arrows you actually steer by. Two strokes meeting at a
+         point and open behind, which is the shape every heads-up display in the
+         world uses for "this way" — it reads as a direction at a glance and at a
+         size, and it does not fill in a solid blob of colour over whatever it is
+         sitting on at the edge of the screen.
+
+         The barbed solid below is still what the quieter arrows use: a scan
+         return is a dot with a direction, not something you are flying at, and
+         eight solid chevrons round the ring would be a much louder thing than
+         eight small darts. */
+      if (o.vee) {
+        ctx.lineWidth = Math.max(2.5, 3.4 * S);
+        ctx.lineJoin = "miter";
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(-9 * S, -12 * S);
+        ctx.lineTo(15 * S, 0);
+        ctx.lineTo(-9 * S, 12 * S);
+        ctx.stroke();
+        // A second, smaller one behind it, so the shape has depth and reads as
+        // motion rather than as a static tick.
+        ctx.globalAlpha *= 0.5;
+        ctx.beginPath();
+        ctx.moveTo(-18 * S, -9 * S);
+        ctx.lineTo(-3 * S, 0);
+        ctx.lineTo(-18 * S, 9 * S);
+        ctx.stroke();
+        return;
+      }
       ctx.beginPath();
       ctx.moveTo(16 * S, 0);            // the point
       ctx.lineTo(2 * S, -6 * S);
@@ -1698,8 +1737,24 @@
      uses. */
   const OBJECTIVE = "#5fd8ff";
 
+  /* A scan is a *pulse*. What it turns up should fade with it rather than
+     sitting on the edge of the screen for the rest of the run — an arrow that is
+     always there stops being information and becomes furniture, and the one
+     thing this ring must never become is furniture.
+
+     So the objective's arrow comes up when you press scan and goes down when the
+     returns do. The two things that outlive it are the two you *chose*: a
+     waypoint, and a feature you tapped on the chart. */
+  function scanLit(st) {
+    const lit = (st.scan && st.scan.lit) || 0;
+    if (lit <= 0) return 0;
+    return Math.max(0, Math.min(1, lit / 3));     // the last three seconds fade
+  }
+
   function drawContacts(st) {
     const { SCREEN_W, SCREEN_H } = api;
+    const lit = scanLit(st);
+    if (!lit) return;
     const cam = st.cam || { x: st.ship.x, y: st.ship.y, rot: 0, scale: 1 };
     const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
     /* `+rot`, not `-rot`. The world is drawn with `ctx.rotate(cam.rot)`, so a
@@ -1721,7 +1776,7 @@
       const ang = Math.atan2(sy, sx);
       const dist = Math.round(Math.hypot(wx, wy));
       edgeArrow(st, ang, OBJECTIVE, fmtCells(dist) + "u",
-                { scale: 1.35, beat: true });
+                { scale: 1.35, beat: true, vee: true, alpha: lit });
     }
   }
 
@@ -1746,7 +1801,8 @@
       n++;
       // Fading with the return itself, so the ring empties as the scan goes cold
       // rather than all at once.
-      const fade = Math.max(0.55, Math.min(1, (e.t || 0) / 4));
+      const fade = Math.max(0.55, Math.min(1, (e.t || 0) / 4)) * scanLit(st);
+      if (fade <= 0.02) continue;
       edgeArrow(st, Math.atan2(sy, sx), e.colour || VIOLET, null,
                 { scale: 0.85, alpha: fade, inset: 74 });
     }
@@ -1800,7 +1856,47 @@
        panel column and leave its `y` to land wherever it liked, which put it
        under the hull bar every time the waypoint was behind you. */
     edgeArrow(st, Math.atan2(sy, sx), WAYPOINT, fmtCells(w.dist) + "u",
-              { scale: 1.35, beat: true });
+              { scale: 1.35, beat: true, vee: true });
+  }
+
+  /* ── something you picked off the chart ───────────────────────────────────
+     The other arrow that stays. A waypoint is "I am going there"; this is "I want
+     to know where that is" — a station you will need later, the well you are
+     routing around, the memorial you mean to come back to. One at a time, in the
+     blue the objective used to own outright, and it keeps its arrow until you
+     pick another or tap it again to let it go.
+
+     Together with the waypoint that is the whole of what is allowed to sit on the
+     ring permanently. Everything else there is a pulse and fades like one. */
+  function drawSelectedArrow(st) {
+    const sel = st.selected;
+    if (!sel || !st.ship) return;
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    const cam = st.cam || { x: st.ship.x, y: st.ship.y, rot: 0, scale: 1 };
+    const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
+    const wx = sel.x - cam.x, wy = sel.y - cam.y;
+    const cos = Math.cos(cam.rot), sin = Math.sin(cam.rot);
+    const sx = wx * cos - wy * sin, sy = wx * sin + wy * cos;
+    const px = cx + sx * cam.scale, py = cy + sy * cam.scale;
+    const dist = Math.round(Math.hypot(wx, wy));
+    const name = shortName(sel.name || "", 14);
+
+    if (px > 30 && px < SCREEN_W - 30 && py > 30 && py < SCREEN_H - 30) {
+      // In front of you: say what it is rather than pointing at it.
+      ctx.save();
+      ctx.strokeStyle = OBJECTIVE;
+      ctx.globalAlpha = 0.5 + 0.25 * Math.abs(Math.sin(Date.now() / 520));
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(px, py, 13, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      label(name, px, py - 22, SIZE.cap, OBJECTIVE, "center", 0.85);
+      return;
+    }
+    edgeArrow(st, Math.atan2(sy, sx), OBJECTIVE,
+              (name ? name + "  " : "") + fmtCells(dist) + "u",
+              { scale: 1.2, vee: true, inset: 58 });
   }
 
   /* The pulse has no gameplay effect — the contacts are already in the list —
@@ -1909,14 +2005,27 @@
     }
   }
 
+  /* A name long enough to be useful is too long to write across a chart, so it
+     is cut to something that still reads as the same place. Word-wise first —
+     "THE IRIDIUM FIELD" becomes "THE IRIDIUM…" rather than "THE IRIDIU…" —
+     because a cut on a word boundary is a name and a cut mid-word is a typo. */
+  function shortName(name, max) {
+    const n = String(name || "").trim();
+    if (n.length <= max) return n;
+    const cut = n.slice(0, max);
+    const sp = cut.lastIndexOf(" ");
+    return (sp > max * 0.5 ? cut.slice(0, sp) : cut).replace(/[ ,.:;-]+$/, "") + "…";
+  }
+
   function drawPins(st, mx, my, big) {
     const { ctx } = api;
     for (const q of (st.pins || [])) {
       const spec = pinSpec(q.kind);
+      const colour = q.colour || spec.colour;
       const x = mx(q.x), y = my(q.y);
       const r = big ? 7 : 4;
       ctx.save();
-      ctx.strokeStyle = spec.colour;
+      ctx.strokeStyle = colour;
       ctx.globalAlpha = 0.95;
       ctx.lineWidth = big ? 2 : 1.4;
       // A dropped pin: a ring on a stem, so it reads as sitting on the map
@@ -1928,7 +2037,13 @@
       ctx.stroke();
       ctx.restore();
       if (big) {
-        label(spec.name, x, y + r * 3.4, SIZE.cap, spec.colour, "center", 0.7);
+        /* **Its own name**, if you gave it one. It used to draw the name of its
+           *kind*, and the first kind in the list is called CASH — so every pin
+           anybody ever dropped said CASH on the chart, including the ones they
+           had carefully typed a name into. The kind is the fallback for a pin
+           that was never named, not the label. */
+        label(shortName(q.name || spec.name, 14), x, y + r * 3.4, SIZE.cap,
+              colour, "center", q.name ? 0.9 : 0.65);
       }
     }
   }
@@ -2074,7 +2189,12 @@
     ctx.clip();
 
     ctx.fillStyle = "#07070e";
+    /* Not quite opaque, so the sector shows through the map the way it shows
+       through every other page. A chart you cannot see past is still a screen you
+       can drift into a star behind. */
+    ctx.globalAlpha = HUD.pageGhost ? 0.86 : 1;
     ctx.fillRect(view.x, view.y, view.w, view.h);
+    ctx.globalAlpha = 1;
 
     drawChartGrid(view, mx, my);
     paintFog(mx, my, chart.x, chart.y, span, chart.scale, chart.scale, 0.26);
@@ -2158,12 +2278,50 @@
     /* The two things you can put on the map. Each is armed by its own button and
        placed by the next tap — which is one gesture, learned once, and the same
        for both. A waypoint replaces itself, because there is only ever one. */
-    button(chart.pinning ? "CANCEL" : "PIN  \u25b8",
+    button(chart.pinning ? "CANCEL" : "PIN  ▸",
            rail.x + rail.w / 2, ry + 19, rail.w, 38,
-           chart.pinning ? WARN : VIOLET,
+           chart.pinning ? WARN : pinSpec(PIN_KINDS[chart.pin].key).colour,
            () => { chart.pinning = !chart.pinning; chart.mark = false; chart.jump = false; },
            chart.pinning);
-    ry += 46;
+    ry += 42;
+
+    /* ── what colour ────────────────────────────────────────────────────────
+       Six swatches, and the one you pick is the colour the next pin is drawn in.
+       There were six *kinds* before and the only way to change kind was a keyboard
+       shortcut nothing mentioned — so on a phone every pin in the game was the
+       first kind in the list, which is why they all came out the same colour with
+       the same word under them.
+
+       A colour rather than a category, because that is what it is for. The names
+       stay as the fallback label for a pin nobody got round to naming, but what
+       you are choosing here is how it looks on your map: this lot are ore, that
+       lot are trouble, and you decide which is which. */
+    const sw = Math.floor((rail.w - 5 * 4) / 6);
+    PIN_KINDS.forEach((k, i) => {
+      const bx = rail.x + i * (sw + 4);
+      const on = chart.pin === i;
+      ctx.save();
+      ctx.fillStyle = k.colour;
+      ctx.globalAlpha = on ? 0.95 : 0.4;
+      ctx.fillRect(bx, ry, sw, 18);
+      if (on) {
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(bx - 1.5, ry - 1.5, sw + 3, 21);
+      }
+      ctx.restore();
+      tap({ x: bx - 2, y: ry - 4, w: sw + 4, h: 26,
+            act: () => { chart.pin = i; } });
+    });
+    /* Clear of the swatches by the height of a line, not by a guess: the selected
+       one is outlined a pixel and a half proud of its box, and 16px type puts its
+       ascent twelve pixels above the baseline — so the first version of this had
+       the word sitting inside the bottom of the colour it was naming. */
+    ry += 34;
+    label(PIN_KINDS[chart.pin].name, rail.x, ry, SIZE.cap,
+          PIN_KINDS[chart.pin].colour, "left", 0.8, "0.1em");
+    ry += 16;
     button(chart.mark ? "CANCEL" : st.waypoint ? "MOVE WAYPOINT" : "WAYPOINT  \u25b8",
            rail.x + rail.w / 2, ry + 19, rail.w, 38,
            chart.mark ? WARN : WAYPOINT,
@@ -2249,10 +2407,19 @@
        existing pin still lifts it, armed or not, because an eraser mode for one
        gesture would be a mode too many. */
     if (st && st.onPinNear && st.onPinNear(wx, wy, snap)) return;
-    if (!chart.pinning) return;
+    if (!chart.pinning) {
+      /* Nothing armed and no pin under the finger: you are pointing at something
+         charted. Keeping an eye on it is the other thing that earns a permanent
+         arrow, and it is the natural meaning of tapping a mark on a map. */
+      if (st && st.onSelect) st.onSelect(wx, wy, snap);
+      return;
+    }
     chart.pinning = false;
     if (st && st.onPin) st.onPin(wx, wy, PIN_KINDS[chart.pin].key, snap);
   };
+  // The palette, so the engine can stamp a pin with its colour when it is made.
+  HUD.pinKinds = () => PIN_KINDS.map(k => ({ ...k }));
+  HUD.chartPinKind = i => { if (i >= 0 && i < PIN_KINDS.length) chart.pin = i; };
   HUD.chartJumpArm = function (on) { chart.jump = !!on; };
   HUD.chartJumpArmed = () => !!chart.jump;
 
@@ -3543,13 +3710,12 @@
          one Ric asked for by name: some you buy, some you build, some you can
          only find — and a part that is none of the three does not exist. */
       const ways = [];
-      if (p.buyable) ways.push({ t: "BUY  " + money(p.cost), c: CASH });
-      if (p.craftable) {
-        ways.push({ t: p.rarity === "common" ? "BUILD ANYWHERE" : "BUILD AT A STATION",
-                    c: AMBER });
-      }
-      if (!p.craftable) ways.push({ t: "UNCRAFTABLE", c: VIOLET_LOW });
-      if (p.findable) ways.push({ t: "FOUND OUT THERE", c: ICE });
+      ways.push(p.buyable ? { t: "BUY  " + money(p.cost), c: CASH }
+                          : { t: "NO ONE SELLS THIS", c: VIOLET_LOW });
+      ways.push(p.craftable
+        ? { t: p.rarity === "common" ? "BUILD ANYWHERE" : "BUILD AT A STATION",
+            c: AMBER }
+        : { t: "UNCRAFTABLE", c: VIOLET_LOW });
       let wx = full.x + PAGE.PAD;
       const wy = ROW(pickY, 2) + 2;
       for (const w of ways) {
@@ -3558,7 +3724,8 @@
         label(w.t, wx, wy, SIZE.cap, w.c, "left", 0.9, "0.1em");
         wx += ww;
       }
-      // And for a find-only part, where to look — the whole of its content.
+      // And where to look, for the ones you can only find — with nobody selling
+      // it and no recipe for it, that line is the whole of how you get one.
       if (!p.buyable && !p.craftable && p.where) {
         fitText(p.where, full.x + PAGE.PAD, ROW(pickY, 3) + 2, SIZE.cap,
                 ICE, "left", 0.7, inner - 190);
