@@ -665,7 +665,10 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     surv.docked = { x, y };
     return cf.surveyView().materials.find(m => m.key === "iridium").price;
   };
-  const atHome = priceAt(0, 0), atDeep = priceAt(210000, 0);
+  // Two thirds of the way along the danger curve, wherever that is — 210,000 was
+  // written when the curve topped out at 320,000 and is now shallow water.
+  const atHome = priceAt(0, 0),
+        atDeep = priceAt(cf.sectorSpan().full * 0.66, 0);
   check(atDeep > atHome,
         "deep space pays " + atDeep + " for iridium where home pays " + atHome);
   surv.docked = { x: 0, y: 0 };
@@ -1358,8 +1361,13 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     return { guards: guards / n, hulks: hulks / n, fields: fields / n, chunks: n };
   }
 
-  const near = sample(6);      // ~16,000 units out
-  const far  = sample(60);     // ~156,000 units out
+  /* Rings measured against the danger curve rather than in a remembered number
+     of chunks. These were 6 and 60 — sixteen thousand and a hundred and
+     fifty-six thousand — which straddled the whole curve when it topped out at
+     320,000 and now both sit inside its first tenth. */
+  const DEEP_RING = Math.round(cf.sectorSpan().full / cf.sectorSpan().chunk);
+  const near = sample(6);
+  const far  = sample(DEEP_RING);
 
   check(far.guards > near.guards * 1.3,
         "the deep sector posts no more sentries than home (" +
@@ -1397,13 +1405,15 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   // The curve must rise the whole way and never flatten at the last band, or
   // the abyss is just the deep with a different word on it.
   let prev = -1;
-  for (const d of [0, 5e3, 2e4, 6e4, 1.4e5, 3.2e5, 6e5, 2e6]) {
+  const FULL = cf.sectorSpan().full;
+  for (const d of [0, FULL * 0.01, FULL * 0.06, FULL * 0.2, FULL * 0.45,
+                   FULL, FULL * 2, FULL * 6]) {
     const v = cf.dangerAt(d, 0);
     check(v > prev, "the danger curve stopped rising at " + d);
     prev = v;
   }
-  check(cf.dangerAt(3.2e5, 0) >= 1, "the curve does not reach 1 by the deep band");
-  check(cf.dangerAt(2e6, 0) > cf.dangerAt(3.2e5, 0),
+  check(cf.dangerAt(FULL, 0) >= 1, "the curve does not reach 1 by the deep band");
+  check(cf.dangerAt(FULL * 6, 0) > cf.dangerAt(FULL, 0),
         "the abyss is no worse than the deep");
   console.log("  bands      home→abyssal named at the right ranges · curve never flattens");
 }
@@ -1440,7 +1450,14 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   for (const seed of [445566, 1, 2, 999, 31337, 8675309]) {
     const w = boot("?debug=1&seed=" + seed);
     w.cf.start("survey", 1);
-    const near = survey(w.cf, 4), far = survey(w.cf, 60);
+    /* Sampled against the curve rather than at a remembered number of chunks.
+       "The deep" is 1.8 million units out now — it was 320,000 — so a ring of 60
+       chunks that used to sit at the far end of the danger curve now sits a
+       tenth of the way along it, and two samples from the same band prove
+       nothing. `deepRing` is wherever the curve actually tops out. */
+    const span = w.cf.sectorSpan();
+    const deepRing = Math.round(span.full / span.chunk);
+    const near = survey(w.cf, 4), far = survey(w.cf, deepRing);
     nearPer += near.per; nearReach += near.avgReach; farReach += far.avgReach;
     farBig += far.big; nearBig += near.big; n++;
     check(far.avgReach > near.avgReach * 1.2,
@@ -2065,7 +2082,15 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
    right while the gradient is missing entirely — and the gradient is the part
    that matters. */
 {
-  const rings = [[8, 20], [20, 40], [40, 70], [70, 110]];
+  /* Four rings across the whole danger curve. These were [8,20] to [70,110] —
+     twenty thousand to two hundred and eighty thousand — which spanned the curve
+     when it topped out at 320,000 and now all four sit inside its first sixth,
+     so "near home" and "the deep" were two samples of the same place. */
+  const DEEP_R = Math.round(1800000 / 2600);
+  const rings = [[8, 20],
+                 [Math.round(DEEP_R * 0.08), Math.round(DEEP_R * 0.16)],
+                 [Math.round(DEEP_R * 0.34), Math.round(DEEP_R * 0.5)],
+                 [Math.round(DEEP_R * 0.8), DEEP_R]];
   const acc = rings.map(() => ({ n: 0, inh: 0, air: 0 }));
   for (const seed of [1, 515, 8675309, 20260909, 4242, 909]) {
     const { cf } = boot("?debug=1&seed=" + seed);
@@ -2388,10 +2413,18 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const me = cf.live().ships[0];
   const CH = 2600;
 
-  // Supermassive wells are named; small ones deliberately are not.
+  /* Supermassive wells are named; small ones deliberately are not.
+
+     Searched outward rather than over a fixed square of chunks. The sector is
+     three and a half million units across now and the danger curve runs to 1.8
+     million, so a supermassive well does not appear until about 320,000 out —
+     the old ±60 chunks was 156,000 and found none at all, which reads as "they
+     do not exist" rather than "you have not gone far enough". */
   let big = null, small = null, world = null;
-  for (let cx = -60; cx <= 60 && !(big && small && world); cx++) {
-    for (let cy = -60; cy <= 60 && !(big && small && world); cy++) {
+  for (let ring = 0; ring < 420 && !(big && small && world); ring += 3) {
+    for (let k = 0; k < 24 && !(big && small && world); k++) {
+      const a = (k / 24) * Math.PI * 2;
+      const cx = Math.round(Math.cos(a) * ring), cy = Math.round(Math.sin(a) * ring);
       const c = cf.chunk(cx, cy);
       for (const h of c.hazards) {
         if (h.k >= 1.8 && !big) big = h;
@@ -2704,13 +2737,52 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   /* And gravity really does grant one. Dropped toward a supermassive well, the
      ship has to end up both faster than its engine can go and holding an
      allowance to explain why. */
-  let well = null;
-  for (let cx = -70; cx <= 70 && !well; cx++) {
-    for (let cy = -70; cy <= 70 && !well; cy++) {
-      for (const h of cf.chunk(cx, cy).hazards) if (h.k >= 2) { well = h; break; }
+  /* Searched outward. A supermassive well does not appear until about 320,000
+     units now that the sector runs to three and a half million, and a square of
+     ±70 chunks is 180,000 — it found none and read as "gravity grants nothing". */
+  /* Searched outward, and the *heaviest* one found rather than the first. A
+     supermassive well does not appear until about 320,000 units now that the
+     sector runs to three and a half million — a square of ±70 chunks is 180,000
+     and found none at all — and the size roll is wide, so the first one over the
+     threshold is often only just over it. What is under test is that gravity can
+     throw you past your own engine, which wants a well that can. */
+  /* A supermassive well with room to fall into it.
+
+     Two things had to change here. It searched a square of ±70 chunks — 180,000
+     units — and a supermassive well does not appear until about 320,000 now that
+     the sector runs to three and a half million, so it found none at all and read
+     as "gravity grants nothing". And the first well over the threshold is not
+     necessarily one you can *reach*: in one seed the approach ran straight into a
+     world, the ship stopped dead on its surface 2,341 units short, and the
+     measurement was of a parked ship.
+
+     So: collect the heavy ones, and take the first whose approach is clear. */
+  const heavy = [];
+  for (let ring = 30; ring < 520 && heavy.length < 40; ring += 3) {
+    for (let k = 0; k < 24; k++) {
+      const a = (k / 24) * Math.PI * 2;
+      const cx = Math.round(Math.cos(a) * ring), cy = Math.round(Math.sin(a) * ring);
+      for (const h of cf.chunk(cx, cy).hazards) if (h.k >= 2) heavy.push({ h, cx, cy });
     }
   }
-  check(!!well, "no supermassive well to fall into");
+  check(heavy.length > 0, "no supermassive well anywhere in the sector");
+  heavy.sort((a, b) => b.h.mass - a.h.mass);
+
+  let well = null;
+  for (const cand of heavy) {
+    const h = cand.h;
+    // Nothing solid within the run-up, in the chunks the approach crosses.
+    let clear = true;
+    for (let dx = -2; dx <= 2 && clear; dx++) {
+      for (let dy = -2; dy <= 2 && clear; dy++) {
+        for (const p of cf.chunk(cand.cx + dx, cand.cy + dy).planets) {
+          if (Math.hypot(p.x - h.x, p.y - h.y) < h.reach * 2.2 + p.r) clear = false;
+        }
+      }
+    }
+    if (clear) { well = h; break; }
+  }
+  check(!!well, "every supermassive well in the sector has a world in the way");
   me.x = well.x - well.reach * 1.3; me.y = well.y - well.kill * 3;
   me.vx = stated; me.vy = 0; me.a = 0;
   me.boost = 0;
@@ -2956,7 +3028,13 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
    home and empty far out is most of what makes distance feel like distance, and
    a flat density would make the abyss exactly as lively as the home band. */
 {
-  const rings = [[2, 8], [10, 24], [40, 70], [90, 120]];
+  /* Four rings across the whole curve, not across its first tenth. The last one
+     is where the danger curve tops out; a fixed [90, 120] used to be the abyss
+     and is now a fifth of the way out. */
+  const DEEP_R = Math.round(1800000 / 2600);
+  const rings = [[2, 8], [Math.round(DEEP_R * 0.06), Math.round(DEEP_R * 0.14)],
+                 [Math.round(DEEP_R * 0.3), Math.round(DEEP_R * 0.45)],
+                 [Math.round(DEEP_R * 0.8), DEEP_R]];
   const acc = rings.map(() => ({ chunks: 0, n: 0 }));
   const kinds = new Set();
   for (const seed of [11, 515, 8675309, 4242]) {
@@ -3763,9 +3841,13 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   cf.start("survey", 1);
   const surv = cf.survey();
   const me = cf.live().ships[0];
+  /* Rocks cleared: an asteroid is a solid object now and collides whatever the
+     impact shield is doing, so a ship measuring its own thrust against its own
+     reverse would be measuring whatever it bounced off on the way. */
   const step = n => {
     for (let i = 0; i < n; i++) {
       me.invuln = 5; surv.water = 900; surv.food = 900;
+      cf.live().rocks.length = 0;
       now += 1000 / 60; cf.step();
     }
   };
@@ -5024,6 +5106,90 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
   console.log("  colours    five flags, closest pair " + Math.round(worst.d) +
               " apart \u00b7 none of them amber \u00b7 each says who they are");
+}
+
+// ── the book is a long book ──────────────────────────────────────────────
+/* Ric finished the almanac in about two hours. The reason, measured rather than
+   guessed: **ten minutes of holding the throttle reaches 344,617 units** and the
+   Leviathan — the finale, the thing the whole manifest points at — stood at
+   112,000. The entire ladder was inside three minutes of flying.
+
+   Nothing about the entries was wrong; the sector they are hidden in was a
+   thirtieth of the size it needed to be. This pins the new shape, because the one
+   way it can silently come back is somebody tuning a distance down. */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const span = cf.sectorSpan();
+
+  /* How far ten minutes of flying actually goes, from the game's own top speed
+     rather than from a number written in a comment. */
+  const reach10 = cf.topSpeed() * 600;
+  check(reach10 > 200000,
+        "ten minutes of flight covers only " + Math.round(reach10) + " units");
+
+  // The far rung has to be an expedition against that, not an errand.
+  check(span.far > reach10 * 8,
+        "the furthest landmark is " + Math.round(span.far) + " units out and ten " +
+        "minutes of flying covers " + Math.round(reach10) + " — the whole ladder " +
+        "is " + (span.far / reach10).toFixed(1) + " times a ten-minute flight");
+
+  /* And the danger curve has to be as long as the ladder. If it tops out before
+     the far rungs, everything past that point is one flat band — identically
+     dangerous for most of the game. */
+  check(span.full > span.far * 0.35,
+        "the danger curve tops out at " + Math.round(span.full) + " but the " +
+        "ladder runs to " + Math.round(span.far));
+
+  /* The shape, across seeds: a first rung you can reach on an early flight and a
+     last rung that is hours away, with the rungs spread rather than bunched. */
+  let nearest = Infinity, furthest = 0, worstRatio = Infinity;
+  for (const seed of [1, 2, 4242, 515151, 8675309, 99999]) {
+    const w = boot("?debug=1&seed=" + seed);
+    w.cf.start("survey", 1);
+    const ds = w.cf.survey().landmarks
+      .map(l => Math.hypot(l.x, l.y)).sort((a, b) => a - b);
+    nearest = Math.min(nearest, ds[0]);
+    furthest = Math.max(furthest, ds[ds.length - 1]);
+    // Geometric: every rung a decent step past the one below it.
+    for (let k = 1; k < ds.length; k++) {
+      worstRatio = Math.min(worstRatio, ds[k] / ds[k - 1]);
+    }
+    check(ds[ds.length - 1] / ds[0] > 60,
+          "seed " + seed + ": the ladder spans only " +
+          (ds[ds.length - 1] / ds[0]).toFixed(0) + "x from first rung to last");
+    w.cf.leave();
+  }
+  check(nearest < 40000,
+        "the nearest landmark in any seed is " + Math.round(nearest) +
+        " units out — nothing is reachable in a first sitting");
+  check(furthest > 2000000,
+        "the furthest landmark in any seed is only " + Math.round(furthest));
+  check(worstRatio > 1.15,
+        "two rungs sit " + worstRatio.toFixed(2) + "x apart — the ladder bunches");
+
+  /* The manifest is the main arc rather than the whole book, so it has to be
+     finishable well inside the ladder — the jump gate is a thing you build on the
+     way out, not the last thing you do. */
+  const parts = cf.surveyView().manifest;
+  check(parts.length === 6, "the manifest is " + parts.length + " parts");
+
+  /* And the chart has to be able to show it. A map that cannot be zoomed out far
+     enough to contain the thing it is charting is not a chart of it. */
+  const hud = cf.hud();
+  let widest = Infinity;
+  for (let i = 0; i < 40; i++) hud.chartZoomBy(-1);
+  widest = hud.chartSpan ? hud.chartSpan() : null;
+  if (widest != null) {
+    check(widest > furthest * 2,
+          "the widest chart zoom shows " + Math.round(widest) +
+          " units and the sector runs to " + Math.round(furthest));
+  }
+
+  console.log("  ladder     first rung " + Math.round(nearest / 1000) + "k, last " +
+              Math.round(furthest / 1000) + "k \u00b7 " +
+              (span.far / reach10).toFixed(0) + " ten-minute flights to the far " +
+              "one \u00b7 the curve runs to " + Math.round(span.full / 1000) + "k");
 }
 
 if (problems.length) {

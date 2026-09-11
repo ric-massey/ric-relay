@@ -1692,7 +1692,7 @@ one rule it must keep is the one it already keeps — an authored thing sits *in
 the procedural sector rather than replacing a piece of it, so finding one is an
 accident of where you flew.
 
-### 6.7 The almanac is a twenty-hour book, and it is a two-hour book
+### 6.7 The almanac is a twenty-hour book  ·  **DONE** (the ladder; tier 5 is 6.6)
 
 > *"All the almanac stuff I did too fast — maybe two hours of gameplay and all of
 > it is done. Roughly the last 3 should be extremely difficult to find. The last
@@ -1758,6 +1758,40 @@ already charted on your own map before you get there.
 **What this is not.** It is not more entries. Thirty-four is a good number and
 the book is well made — the pictures are the best thing in the mode. This is
 entirely about *where* they sit and how long the sector takes to cross.
+
+#### What landed
+
+**The ladder runs 13,000 to 3,400,000** as a base, and a sector's own `spread`
+takes the far rung past five and a half million in a wide seed. Measured against
+the game's own top speed that is **sixteen ten-minute flights** to the Leviathan,
+where it used to be less than one. The near rungs barely moved, because the first
+hour should feel the way it did.
+
+**The danger curve had to stretch with it.** It topped out at 320,000 — which was
+past the old last landmark, so it never mattered — and leaving it there would have
+put nine tenths of the new sector in one flat band, identically dangerous. Seven
+bands now, running to 1,800,000, with a seventh called **THE LONG DARK** past it.
+Supermassive wells consequently start around 320,000 rather than 140,000.
+
+**The manifest stretched less**, to 9,000–280,000: the jump gate is the main arc,
+a thing you build on the way out, not the last thing you do.
+
+**And the chart can show it.** The widest zoom was 690,000 units across — fine for
+a 112,000-unit ladder and useless for a five-million-unit one. Six more steps at
+the wide end; the widest now shows about forty million.
+
+**Six tests moved from absolute distances to fractions of the curve.** Every one
+of them sampled "near home" against "the deep" using numbers written when the
+curve topped out at 320,000, and every one of them was quietly comparing two
+points in the same band. They ask the game how big the sector is now. Two of them
+were finding *nothing* — no supermassive well exists inside ±70 chunks any more —
+and reading that as "gravity grants nothing" rather than "you have not gone far
+enough".
+
+One real bug fell out of that: the slingshot test picked the first heavy well it
+found, and in one seed the approach ran into a world, so the ship stopped dead on
+a surface 2,341 units short and the measurement was of a parked ship. It picks a
+well with a clear run-up now.
 
 ### Where Phase 6 actually stands
 

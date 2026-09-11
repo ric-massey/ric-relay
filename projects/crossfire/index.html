@@ -4945,15 +4945,24 @@
      It runs to 320,000 units and then keeps going: abyssal space returns more
      than 1, so everything downstream that multiplies by it gets worse forever
      rather than flattening out at the edge of the table. */
+  /* Seven bands rather than six, and they run as far as the ladder does. They
+     used to top out at 320,000 — which was past the last landmark, so it never
+     mattered — and stretching the sector to three and a half million would have
+     left everything beyond the fifth rung sitting in one flat band, identically
+     dangerous for nine tenths of the game.
+
+     The near bands are unchanged, because the first hour should feel the way it
+     did. */
   const BANDS = [
-    { to:   6000, name: "HOME",      colour: "#6dffbf" },
-    { to:  25000, name: "OPEN",      colour: "#ffe56d" },
-    { to:  60000, name: "UNSETTLED", colour: "#ffcb42" },
-    { to: 140000, name: "HOSTILE",   colour: "#ff9d5c" },
-    { to: 320000, name: "DEEP",      colour: "#ff6d8f" },
-    { to: Infinity, name: "ABYSSAL", colour: "#ff4d6d" }
+    { to:     6000, name: "HOME",      colour: "#6dffbf" },
+    { to:    25000, name: "OPEN",      colour: "#ffe56d" },
+    { to:    60000, name: "UNSETTLED", colour: "#ffcb42" },
+    { to:   180000, name: "HOSTILE",   colour: "#ff9d5c" },
+    { to:   600000, name: "DEEP",      colour: "#ff6d8f" },
+    { to:  1800000, name: "ABYSSAL",   colour: "#ff4d6d" },
+    { to: Infinity, name: "THE LONG DARK", colour: "#c9407f" }
   ];
-  const DANGER_FULL = 320000;
+  const DANGER_FULL = 1800000;
   // Soft-capped rather than clamped: past the last band it keeps climbing, just
   // slowly, so the abyss is always worse than the deep.
   function dangerAt(x, y) {
@@ -5370,16 +5379,16 @@
     { key: "spar", name: "DRIVE SPAR", dist: 9000,
       clue: "Among the dead. Somewhere a lot of ships stopped at once.",
       where: "a wreck field" },
-    { key: "core", name: "FUSION CORE", dist: 17000,
+    { key: "core", name: "FUSION CORE", dist: 24000,
       clue: "In the light of two suns, where nothing is ever dark.",
       where: "a binary pair" },
-    { key: "lens", name: "RANGING LENS", dist: 26000,
+    { key: "lens", name: "RANGING LENS", dist: 55000,
       clue: "On a world nobody warms. Look for a planet with no star.",
       where: "a rogue world" },
-    { key: "coil", name: "JUMP COIL", dist: 38000,
+    { key: "coil", name: "JUMP COIL", dist: 120000,
       clue: "Wound around a mouth that goes somewhere else.",
       where: "a gate" },
-    { key: "beacon", name: "SIGNAL BEACON", dist: 54000,
+    { key: "beacon", name: "SIGNAL BEACON", dist: 280000,
       clue: "Still calling, long after anyone stopped listening.",
       where: "a transmitting wreck" },
     { key: "plate", name: "ABLATIVE PLATE", dist: 0,
@@ -5443,18 +5452,35 @@
      01 is out past anywhere you would go by accident. A scan returns a bearing
      to the nearest one you have not found, at any range — direction only — so
      there is always somewhere to go and never a map that gives it away. */
+  /* ── the ladder, and how long it is ───────────────────────────────────────
+     These ran 13,000 to 112,000, and the whole book could be finished in about
+     two hours. The reason, measured: **ten minutes of holding the throttle
+     reaches 344,617 units**. The Leviathan — the finale, the thing the entire
+     manifest points at — sat at 112,000, which is three minutes of flying. The
+     entries were never the problem; the sector they were hidden in was a
+     thirtieth of the size it needed to be.
+
+     It is geometric now, roughly x2.3 a rung, from an afternoon's flight to an
+     expedition. The near rungs barely move — the first hour should still feel
+     the way it did — and the far ones move by a factor of thirty.
+
+     Water is what makes the distance cost something. Twenty minutes of tank at
+     900,000 units an hour means the far rungs are a supply problem before they
+     are a navigation one, which puts them behind the ice melter, cargo capacity
+     and inhabited worlds without inventing a single new lock. A pilot standing at
+     the Leviathan *built* their way there. */
   const LANDMARKS = [
-    { key: "graveyard",         name: "GRAVEYARD",     dist: 13000, r: 620 },
-    { key: "rogue",             name: "ROGUE",         dist: 20000, r: 520 },
-    { key: "last-transmission", name: "TRANSMISSION",  dist: 27000, r: 430 },
-    { key: "pale-dot",          name: "PALE DOT",      dist: 36000, r: 330 },
-    { key: "the-wall",          name: "THE WALL",      dist: 48000, r: 760 },
-    { key: "supernebula",       name: "SUPERNEBULA",   dist: 64000, r: 1150 },
-    { key: "node-01",           name: "NODE 01",       dist: 88000, r: 400 },
+    { key: "graveyard",         name: "GRAVEYARD",     dist:   13000, r: 620 },
+    { key: "rogue",             name: "ROGUE",         dist:   30000, r: 520 },
+    { key: "last-transmission", name: "TRANSMISSION",  dist:   70000, r: 430 },
+    { key: "pale-dot",          name: "PALE DOT",      dist:  160000, r: 330 },
+    { key: "the-wall",          name: "THE WALL",      dist:  360000, r: 760 },
+    { key: "supernebula",       name: "SUPERNEBULA",   dist:  780000, r: 1150 },
+    { key: "node-01",           name: "NODE 01",       dist: 1700000, r: 400 },
     /* The Leviathan is last and furthest because it is the only landmark that
        is a *place you go inside*. Its radius is the logging trigger, not the
        hull — the hull is built in `buildLeviathan` and is several times this. */
-    { key: "leviathan",         name: "LEVIATHAN",     dist: 112000, r: 1700 }
+    { key: "leviathan",         name: "LEVIATHAN",     dist: 3400000, r: 1700 }
   ];
 
   /* ── what kind of sector this is ──────────────────────────────────────────
@@ -15847,6 +15873,13 @@
       survey: () => surv,
       catalogue: () => ALMANAC,
       chunk: (cx, cy) => buildChunk(cx, cy),
+      chunkSize: () => CHUNK,
+      /* How long the sector is. Anything sampling "near home" against "the deep"
+         has to ask rather than assume: these numbers moved by a factor of six
+         when the almanac's ladder was stretched, and a test with 320,000 written
+         into it silently starts sampling two points in the same band. */
+      sectorSpan: () => ({ full: DANGER_FULL, chunk: CHUNK,
+                           far: LANDMARKS[LANDMARKS.length - 1].dist }),
       leave: () => leaveMatch(),
       find: key => surveyFind(key),
       /* Press and release a key the way a player does. `readLocalInput` rebuilds

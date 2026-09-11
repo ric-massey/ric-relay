@@ -1535,7 +1535,20 @@
      Nine steps now, from 690,000 units across down to 8,300. The widest fits
      any world this generator can roll with room to spare, and the closest is
      tight enough to pick one wreck out of a field. */
-  const ZOOMS = [0.00145, 0.0029, 0.0058, 0.0116, 0.0232,
+  /* The zoom ladder, and it has to reach as far as the sector does. The widest
+     step was 0.00145, which shows about 690,000 units across — fine when the
+     furthest landmark stood at 112,000 and useless now that the ladder runs to
+     three and a half million and worlds are generated past seven. A chart that
+     cannot be zoomed out far enough to contain the thing it is charting is not a
+     chart of it.
+
+     Six more steps at the wide end, each half the last, so the widest shows about
+     forty million units. That is deliberately more than the sector needs: a
+     world's distance is stretched by its sector's own `spread`, which runs to
+     2.1, so the furthest landmark in the widest seed measured lands past seven
+     million and the chart has to hold all of it with room to spare. */
+  const ZOOMS = [0.000025, 0.00005, 0.0001, 0.0002, 0.0004, 0.0008,
+                 0.00145, 0.0029, 0.0058, 0.0116, 0.0232,
                  0.0464, 0.0696, 0.0928, 0.12];
 
   /* The waypoint, on a chart. A ring with a cross through it and a stem — not any
@@ -1642,6 +1655,10 @@
     chart.y -= dy / chart.scale;
     chart.follow = false;
   };
+  // How many units the chart is showing across, for anything checking that the
+  // map can contain the sector it is a map of.
+  HUD.chartSpan = () => api.SCREEN_W / chart.scale;
+
   HUD.chartZoomBy = function (dir) { zoomChart(dir); };
   HUD.chartView = () => ({ x: Math.round(chart.x), y: Math.round(chart.y),
                            scale: chart.scale, follow: chart.follow,
