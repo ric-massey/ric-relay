@@ -267,8 +267,31 @@
 
      A repeat refreshes the line it is already on instead of stacking a second
      copy — the same scan pressed twice should not read as two events. */
+  /* ── the log ──────────────────────────────────────────────────────────────
+     Every line the sector says scrolls past the corner of the screen and is gone.
+     Look away for ten seconds and whatever happened is unrecoverable — a bad deal
+     in a mode where the interesting events are things somebody else did while you
+     were reading a page.
+
+     So it is kept. Forty lines, newest first, on the ship's page where the rest
+     of the run's record already lives. */
+  let logLines = [];
+  const LOG_KEEP = 40;
+  HUD.log = () => logLines;
+  HUD.logAdd = function (text, colour) {
+    if (!text) return;
+    const last = logLines[0];
+    // The same line twice running is one line with a count on it.
+    if (last && last.text === text) { last.n = (last.n || 1) + 1; return; }
+    logLines.unshift({ text: String(text), colour: colour || VIOLET_DIM, n: 1 });
+    if (logLines.length > LOG_KEEP) logLines.length = LOG_KEEP;
+  };
+  HUD.logClear = function () { logLines = []; };
+
   HUD.notify = function (text, sub, colour, life) {
     if (!text) return;
+    // Everything that is said is also written down.
+    HUD.logAdd(sub ? text + " \u2014 " + sub : text, colour);
     const span = life || 5.5;
     const had = notes.find(n => n.text === text && n.sub === (sub || ""));
     if (had) { had.t = span; had.life = span; return; }
@@ -1249,10 +1272,48 @@
           lit ? SOLAR : critical ? WARN : AMBER_DIM, "center",
           lit || critical ? 0.95 : 0.6);
 
+    /* ── the scan ──────────────────────────────────────────────────────────
+       On a phone this was a word beside the hull bar with an invisible rectangle
+       over it, which is not a button: nothing about it said it could be pressed,
+       and a word on a HUD is usually a readout. It is drawn as a button now — a
+       box, a border, and a ring inside it that fills as the scanner charges, so
+       "charging" is the same object rather than a different word somewhere else.
+
+       On a keyboard it stays a label, because `F` is right there and a button
+       nobody clicks is furniture. */
     const ready = st.scan && st.scan.charge >= 1;
-    label(ready ? (api.touchOnly ? "SCAN" : "SCAN  [F]") : "CHARGING",
-          cx + w / 2 + 16, y, SIZE.cap, ready ? VIOLET : VIOLET_DIM,
-          "left", ready ? 1 : 0.5);
+    const chg = st.scan ? Math.max(0, Math.min(1, st.scan.charge)) : 0;
+    if (api.touchOnly) {
+      const bw = 104, bh = 46;
+      const bx = cx + w / 2 + 18, by = y - 8;
+      ctx.save();
+      ctx.fillStyle = ready ? VIOLET : VIOLET_LOW;
+      ctx.globalAlpha = ready ? 0.22 : 0.1;
+      ctx.fillRect(bx, by - bh / 2, bw, bh);
+      ctx.strokeStyle = ready ? VIOLET : VIOLET_DIM;
+      ctx.globalAlpha = ready ? 1 : 0.55;
+      ctx.lineWidth = ready ? 2 : 1;
+      ctx.strokeRect(bx, by - bh / 2, bw, bh);
+      ctx.restore();
+      ctx.save();
+      ctx.strokeStyle = ready ? VIOLET : VIOLET_DIM;
+      ctx.globalAlpha = ready ? 0.9 : 0.6;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.arc(bx + 23, by, 11, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * chg);
+      ctx.stroke();
+      ctx.restore();
+      label(ready ? "SCAN" : "WAIT", bx + 44, by + 6, SIZE.cap,
+            ready ? VIOLET : VIOLET_DIM, "left", ready ? 1 : 0.6, "0.1em");
+      if (ready) {
+        tap({ x: bx, y: by - bh / 2, w: bw, h: bh,
+              act: st.onScan || (() => {}) });
+      }
+    } else {
+      label(ready ? "SCAN  [F]" : "CHARGING",
+            cx + w / 2 + 16, y, SIZE.cap, ready ? VIOLET : VIOLET_DIM,
+            "left", ready ? 1 : 0.5);
+    }
     // Saying the radius is what makes the scanner refit legible: the number
     // goes up when you buy a tier, and that is the whole purchase.
     if (ready && st.scanReach && !api.touchOnly) {
@@ -1270,10 +1331,6 @@
       ctx.stroke();
       ctx.restore();
     }
-    if (api.touchOnly && ready) {
-      tap({ x: cx + w / 2 + 2, y: y - 26, w: 108, h: 52,
-                   act: st.onScan || (() => {}) });
-    }
 
     /* The line above the bar, which holds one thing at a time. Three things want
        it and they are in a strict order of importance: one hit from death beats
@@ -1284,36 +1341,39 @@
     /* Four things want this line, in a strict order of importance. One hit from
        death beats a tank running out, a tank running out beats a shop you are
        parked at, and all three beat a reminder of what M does. */
+    /* Above the scan button rather than beside it. The button is a real box now
+       and it sits off the hull bar's right shoulder, so a line fitted to most of
+       the screen's width ran straight through its edge. */
     const dry = st.water && st.water.countdown > 0 ? st.water : null;
     const starving = st.food && st.food.countdown > 0 ? st.food : null;
     if (critical) {
       const beat = 0.55 + 0.45 * Math.abs(Math.sin(Date.now() / (lit ? 480 : 170)));
       fitText(lit ? "MENDING — STAY IN THE LIGHT"
                   : "THE NEXT HIT KILLS YOU",
-              cx, y - 30, SIZE.val, lit ? SOLAR : WARN, "center", beat,
+              cx, y - 54, SIZE.val, lit ? SOLAR : WARN, "center", beat,
               SCREEN_W - 380, "0.08em");
     } else if (dry || starving) {
       const m = dry || starving;
       const beat = 0.55 + 0.45 * Math.abs(Math.sin(Date.now() / 200));
       fitText((dry ? "NO WATER" : "NO FOOD") + " — " + fmtSecs(m.countdown) +
-              " LEFT", cx, y - 30, SIZE.val, WARN, "center", beat,
+              " LEFT", cx, y - 54, SIZE.val, WARN, "center", beat,
               SCREEN_W - 380, "0.08em");
     } else if (st.docked) {
       const beat = 0.6 + 0.4 * Math.sin(clockish() * 4);
       label(api.touchOnly ? "DOCKED — TAP TO REFIT" : "DOCKED — [E] REFIT",
-            cx, y - 30, SIZE.val, CASH, "center", beat, "0.1em");
+            cx, y - 54, SIZE.val, CASH, "center", beat, "0.1em");
       /* Stops exactly where the scan button starts. The prompt's box used to run
          to `y - 18`, which reached into the scan target on a phone — and taps go
          to whatever was registered last, so pressing the right-hand end of
          "DOCKED" scanned instead of docking. */
-      tap({ x: cx - 130, y: y - 62, w: 260, h: 36,
+      tap({ x: cx - 130, y: y - 86, w: 260, h: 36,
                    act: st.onRefit || (() => {}) });
     } else if (st.landed) {
       // Somebody lives on the thing you are resting against, and they will sell
       // you water. Named, because the name is the point of naming them.
       const beat = 0.6 + 0.4 * Math.sin(clockish() * 4);
       fitText(st.landed.name + (api.touchOnly ? " — TAP TO TRADE" : " — [E] TRADE"),
-              cx, y - 30, SIZE.val, st.landed.colour || CASH, "center", beat,
+              cx, y - 54, SIZE.val, st.landed.colour || CASH, "center", beat,
               SCREEN_W - 380, "0.08em");
       tap({ x: cx - 160, y: y - 62, w: 320, h: 36,
                    act: st.onLand || (() => {}) });
@@ -1323,7 +1383,7 @@
       label(api.touchOnly ? "LIGHT DRIVE READY" : "LIGHT DRIVE READY  —  [R]",
             cx, y - 30, SIZE.cap, ICE, "center", 0.55, "0.14em");
       if (api.touchOnly) {
-        tap({ x: cx - 130, y: y - 62, w: 260, h: 36,
+        tap({ x: cx - 130, y: y - 86, w: 260, h: 36,
                      act: st.onLight || (() => {}) });
       }
     } else if (!api.touchOnly) {
@@ -3703,6 +3763,27 @@
     tap({ x: full.x, y, w: full.w, h: bookH,
                  act: st.onAlmanac || (() => {}) });
     y += bookH + gap;
+
+    /* ── what has happened ───────────────────────────────────────────────
+       The log. Everything the sector said, newest first, because it scrolled
+       past the corner of the screen and was gone — and the interesting lines are
+       usually about something somebody else did while you were reading a page. */
+    const log = (api.logOf && api.logOf()) || HUD.log();
+    const logRows = Math.min(10, Math.max(1, log.length));
+    const logH = PANEL_H(logRows);
+    panel(full.x, y, full.w, logH, VIOLET_DIM, "WHAT HAPPENED",
+          log.length ? log.length + " LINES" : "QUIET SO FAR");
+    if (!log.length) {
+      fitText("Nothing has been said yet.", full.x + PAGE.PAD, ROW(y, 0) + 2,
+              SIZE.cap, VIOLET_LOW, "left", 0.6, full.w - PAGE.PAD * 2);
+    }
+    log.slice(0, logRows).forEach((n, i) => {
+      const yy = ROW(y, i) + 2;
+      fitText(n.text + (n.n > 1 ? "   \u00d7" + n.n : ""),
+              full.x + PAGE.PAD, yy, SIZE.cap, n.colour, "left", 0.85,
+              full.w - PAGE.PAD * 2);
+    });
+    y += logH + gap;
 
     /* ── the yard, as a door ─────────────────────────────────────────────── */
     const doorH = PANEL_H(1);

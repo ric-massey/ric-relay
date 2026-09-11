@@ -5916,6 +5916,56 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "you arm it \u00b7 arming is spent by the placing");
 }
 
+// ── what was said is written down ────────────────────────────────────────
+/* Phase 7.9, the half of it that is about being able to read back. Every line the
+   sector says scrolled past the corner of the screen and was gone — look away for
+   ten seconds and whatever happened was unrecoverable, which is a bad deal in a
+   mode where the interesting events are things somebody else did while you were
+   reading a page.
+
+   And a button that the phone could not tell was a button: the scan. */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const hud = cf.hud();
+  const me = cf.live().ships[0];
+
+  check(typeof hud.log === "function", "there is no log to read back");
+  hud.logClear();
+  check(hud.log().length === 0, "a cleared log is not empty");
+
+  // Everything the sector says is kept.
+  hud.notify("A thing happened", "", "#fff", 4);
+  hud.notify("Another thing", "with a detail", "#fff", 4);
+  const log = hud.log();
+  check(log.length === 2, "two lines were said and " + log.length + " kept");
+  check(log[0].text.indexOf("Another thing") === 0,
+        "the newest line is not at the top");
+  check(log[0].text.indexOf("with a detail") > 0,
+        "the detail was dropped on its way into the log");
+
+  // The same line twice running is one line with a count, not two lines.
+  hud.notify("Another thing", "with a detail", "#fff", 4);
+  check(hud.log().length === 2, "a repeat made a second line");
+  check(hud.log()[0].n === 2, "a repeat was not counted");
+
+  // It does not grow without bound.
+  for (let i = 0; i < 80; i++) hud.notify("line " + i, "", "#fff", 4);
+  check(hud.log().length <= 40,
+        "the log grew to " + hud.log().length + " lines");
+
+  /* And it is on the ship's page, where the rest of the run's record lives. */
+  cf.screen("inventory");
+  hud.shipOpened();
+  cf.draw();
+  check(hud.shipHeight > 900,
+        "the ship page is " + Math.round(hud.shipHeight) + "px — the log is not on it");
+
+  console.log("  log        every line kept, newest first \u00b7 repeats counted " +
+              "rather than repeated \u00b7 capped at 40 \u00b7 on the ship's page");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

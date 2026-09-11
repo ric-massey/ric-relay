@@ -1547,12 +1547,16 @@ assumes you know who these people are.
 
 ### 7.6 Smaller things
 
-- **Cash** stays top left and stays small.  ·  *not started*
+- **Cash** stays top left and stays small.  ·  **DONE** — it was already there,
+  and it is on every page's title line rather than in a panel of its own.
 - **Thirst is a 20-minute clock; food is 45 minutes.**  ·  **DONE**
 - **A bigger ship carries more food** — the hull decides the pantry, as it decides
   the hold.  ·  **DONE** (37 minutes in a Mote, 260 in an Ossuary; water does not
   scale, because a tank is a tank)
-- **The scan button has to look like a button** on a phone.  ·  *not started*
+- **The scan button has to look like a button** on a phone.  ·  **DONE**: a box,
+  a border, and a ring inside it that fills as the scanner charges, so "charging"
+  is the same object rather than a different word. On a keyboard it stays a label,
+  because `F` is right there and a button nobody clicks is furniture.
 
 ### 7.13 The tanks say when they are low  ·  **DONE**
 
@@ -1631,7 +1635,7 @@ The sector prints names on things now — memorials, worlds, wells, the jump gat
 and a name with no way to ask about it is a tease. Walk up, press **E** (or tap
 it), and get a card: what it is, what happened here, what it is worth going near.
 
-### 7.9 The notifications need somewhere to live  ·  *not started*
+### 7.9 The notifications need somewhere to live  ·  **HALF DONE**
 
 > *"I don't know what 'they made it, 260 cash' was. You need to be able to see
 > notifications somewhere else too."*
@@ -1642,7 +1646,12 @@ Two problems in one.
   thanks."* assumes you know a distress call was the thing you just cleared. Every
   line of chatter has to make sense to somebody who looked away for ten seconds.
 - **They scroll past and are gone.** There is nowhere to read back what happened.
-  A log — on a page, scrollable, with the last few dozen lines.
+  A log — on a page, scrollable, with the last few dozen lines.  ·  **DONE**:
+  WHAT HAPPENED, on the ship's page, forty lines newest-first, with a repeat
+  counted rather than repeated.
+
+*Still owed: the wording itself.* "They made it. 260 cash, and their thanks."
+still assumes you know that a distress call was the thing you just cleared.
 
 ### 7.10 The three powers need three colours  ·  **DONE**
 
@@ -1704,6 +1713,47 @@ reflection, and cannot trap anything.
 ---
 
 
+
+## At the end of Phase 7: go back to Phase 6
+
+**Read this before starting anything new.**
+
+Phase 7 is the interface. It was worth doing in one run because the pages only
+make sense against each other — moving the strip changed every page, merging two
+pages changed what the others had to link to, and the market could not be a market
+while the shortage from 6.2 had nowhere to show.
+
+**What is left of 7**, and it is small:
+
+- **7.8** — press `E` on anything with a name and be told what it is. The sector
+  prints names on memorials, worlds, wells and the jump gate, and a name with no
+  way to ask about it is a tease.
+- **7.9's other half** — the *wording*. The log exists; the lines in it still
+  assume you were watching.
+- **The touch control for reverse thrusters** is done; nothing else on the mobile
+  list is outstanding.
+
+**Then go back to 6, and in this order:**
+
+1. **6.6 — authored mysteries.** Eight places where the brief asks for dozens, and
+   it is the track with the highest ceiling and the least code: a name, a shape, an
+   almanac entry and a reason. It is also where 6.7's **tier five** lives — the
+   three entries that should make somebody say *what the hell is that* — so the
+   almanac's far end is blocked on this and nothing else.
+2. **6.4 — verbs, not percentages.** Eight of seventeen parts are verbs. The rule
+   is written into 5.2 and the backlog is Ric's own list: decoy, grapple, mine
+   layer, emergency jump, cloak, EMP, cargo ejector.
+3. **6.5 — consequences that persist.** Three kinds of memory so far. The cheap
+   wins are named: a ship you saved keeps its name and comes back, a pirate that
+   escaped is respawned rather than re-rolled, a convoy you destroyed leaves a
+   wreck field.
+4. **6.3's last gap** — NPCs cannot run out of anything and a well does not kill
+   them. A hauler dragged into a star in front of you is the accident that rule
+   exists for.
+
+The filter still applies to all of it: *what three other systems does this touch?*
+
+---
 
 ## Phase 6 — possibility multiplication
 
