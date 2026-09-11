@@ -1476,7 +1476,7 @@ And the shortage from 6.2 shows: a material this station is short of is marked
 **WANTED** and priced accordingly, so "why is iron worth more here" has an answer
 on the page rather than in the player's memory.
 
-### 7.3 Craft, reworked  ·  *not started*
+### 7.3 Craft, reworked  ·  **DONE**
 
 - It is called **CRAFT**, not BUILD.
 - **Top right: every material you have.** Under it, **every part you have**, at the
@@ -1486,6 +1486,29 @@ on the page rather than in the player's memory.
 - **A recipe does not show its ingredients until you click it.** Clicking opens it
   and reveals a **CRAFT** button.
 - **Not everything in the game is craftable.** Some parts are found only.
+
+**What landed.** The page is a **grid of boxes with pictures in them**, because a
+box with a picture is a thing you can point at — and because drag and drop is
+coming, and what you drag is a box with a picture. One picture per *category*
+rather than per part: seventeen drawings would be seventeen things to get wrong,
+and what the grid has to answer at a glance is *what kind of thing is this*.
+
+**A recipe says nothing until you pick it.** A wall of ingredient lists is a
+spreadsheet, and the first question this page answers is "what can I make", not
+"what does everything cost". Picking one opens a panel under the grid with what it
+wants and a **CRAFT** button — or **CRAFT BOTH**, when the step below it is
+something you could make from what is left.
+
+**The right-hand column is what you have**: every material at the top, every part
+you own under it. "Can I make this" is answered by looking up, and the answer is
+in the same place every time.
+
+**And the rule that decides every part added after this one: if it is the best in
+its category, it is not craftable.** The ladder up to it is; the top of it is not.
+Seven parts — one per category — are found or bought and never built, which is
+what keeps a shelf in the deep worth flying to. A game where everything is
+craftable is a game where the sector is a materials pile and going anywhere is
+optional; the only question left is how long you are willing to grind.
 
 ### 7.4 The chart is too crowded  ·  *not started*
 

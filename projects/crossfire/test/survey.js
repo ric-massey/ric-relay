@@ -4312,7 +4312,10 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const byKey = k => parts.find(p => p.key === k);
 
   const recipes = view().recipes;
-  check(recipes.length >= 12, "only " + recipes.length + " recipes");
+  /* Ten, not twelve. Seven parts stopped being craftable when the rule landed
+     that the best of each category is found or bought rather than built — see the
+     block further down that holds that rule. */
+  check(recipes.length >= 9, "only " + recipes.length + " recipes");
 
   /* ── the three fences ────────────────────────────────────────────────── */
   const nested = recipes.filter(r => r.part);
@@ -5729,6 +5732,75 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   console.log("  market     " + rows.length + " things in one list \u00b7 " +
               "supply, repair, part and refit \u00b7 water by the quarter, half " +
               "or the lot \u00b7 never more than the tank has room for");
+}
+
+// ── not everything can be made ───────────────────────────────────────────
+/* Phase 7.3's last rule, and the one that is about the game rather than the page:
+   a game where everything is craftable is a game where the sector is a materials
+   pile and going anywhere is optional — the only question left is how long you
+   are willing to grind.
+
+   So the top of each category is found or bought and never built. The rule for
+   anything added later: **if it is the best in its category, it is not
+   craftable.** The ladder up to it is; the top of it is not. */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const parts = cf.parts();
+  const recipes = cf.surveyView().recipes;
+  const madeable = new Set(recipes.map(r => r.key));
+
+  check(parts.length > madeable.size,
+        "every one of the " + parts.length + " parts can be built — the sector " +
+        "is a materials pile");
+
+  /* The best of each category is the find-only one. Checked per category rather
+     than by name, so adding a part cannot quietly make the rule untrue. */
+  const cats = {};
+  for (const p of parts) (cats[p.cat] = cats[p.cat] || []).push(p);
+  const order = { common: 0, uncommon: 1, rare: 2, exotic: 3 };
+  let findOnly = 0;
+  for (const cat of Object.keys(cats)) {
+    const list = cats[cat].slice().sort((a, b) => order[a.rarity] - order[b.rarity]);
+    const best = list[list.length - 1];
+    if (list.length < 2) continue;
+    check(!madeable.has(best.key),
+          best.name + " is the best " + cat + " in the game and can be built — " +
+          "the top of a category has to be found or bought");
+    if (!madeable.has(best.key)) findOnly++;
+    // And the ladder up to it is buildable, or the category is just a shop.
+    check(list.slice(0, -1).some(p => madeable.has(p.key)),
+          "nothing in the " + cat + " category can be built at all");
+  }
+  check(findOnly >= 3,
+        "only " + findOnly + " categories keep their best part out of the " +
+        "workbench");
+
+  // A find-only part is still reachable: it has to be on some shelf.
+  const surv = cf.survey();
+  surv.docked = { x: 9000000, y: 9000000 };
+  const shelf = new Set(cf.surveyView().market.filter(r => r.kind === "part")
+                          .map(r => r.key));
+  for (const p of parts) {
+    if (madeable.has(p.key)) continue;
+    check(shelf.has(p.key),
+          p.name + " can neither be built nor bought anywhere — it does not exist");
+  }
+  surv.docked = null;
+
+  /* And the page does not spend the player's attention before it has to: a recipe
+     says what it wants only once it has been picked. */
+  const hud = cf.hud();
+  hud.craftOpened();
+  cf.screen("craft");
+  cf.draw();
+  check(typeof hud.craftHeight === "number" && hud.craftHeight > hud.craftView,
+        "the recipe grid fits on one screen — it is not a grid");
+
+  console.log("  findonly   " + madeable.size + " of " + parts.length +
+              " parts are craftable \u00b7 " + findOnly + " categories keep " +
+              "their best one out of the workbench \u00b7 every one of those is " +
+              "on a shelf somewhere");
 }
 
 if (problems.length) {

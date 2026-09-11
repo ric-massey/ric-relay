@@ -3045,9 +3045,10 @@
   let craftPg = { scroll: 0, pick: -1 };
   const CRAFT_ROWS = 8;
   HUD.craftOpened = function () { craftPg.pick = -1; };
-  HUD.craftDragBy = function (dy, n) {
-    const max = Math.max(0, n - CRAFT_ROWS);
-    craftPg.scroll = Math.max(0, Math.min(max, craftPg.scroll + dy / (PAGE.STEP * 2)));
+  /* Pixels now rather than rows: the grid is boxes, and a box is not a row. */
+  HUD.craftDragBy = function (dy) {
+    const max = Math.max(0, (HUD.craftHeight || 0) - (HUD.craftView || 1));
+    craftPg.scroll = Math.max(0, Math.min(max, craftPg.scroll + dy));
   };
 
   HUD.drawCraft = function (st, dt) {
@@ -3055,121 +3056,258 @@
     st = st || {};
     const recipes = st.recipes || [];
     const hold = st.materials || [];
+    const crate = st.store || [];
+    const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
 
-    pageFrame("WORKBENCH",
-              (st.carried || 0) + " / " + (st.hold || 0) + " ABOARD",
-              "");
+    pageFrame("CRAFT", (st.carried || 0) + " / " + (st.hold || 0) + " ABOARD", "");
 
-    const L = COL(3, 0), M = COL(3, 1), R = COL(3, 2);
-    const listX = L.x, listW = L.w + M.w + PAGE.GUTTER;
+    /* ── the right-hand column: what you have ──────────────────────────────
+       Materials at the top, then the parts you own — at the station or aboard —
+       because "can I make this" is answered by looking up, and the answer should
+       be in the same place every time you look. */
+    const railW = Math.min(300, SCREEN_W * 0.28);
+    const railX = full.x + full.w - railW;
+    const matH = PANEL_H(Math.ceil(hold.length / 2));
+    panel(railX, PAGE.TOP, railW, matH, VIOLET, "MATERIALS", "");
+    const mw = (railW - PAGE.PAD * 2) / 2;
+    hold.forEach((m, i) => {
+      const col = i % 2, row = Math.floor(i / 2);
+      const mx = railX + PAGE.PAD + col * mw;
+      const yy = ROW(PAGE.TOP, row) + 2;
+      ctx.save();
+      ctx.fillStyle = m.colour;
+      ctx.globalAlpha = m.n ? 0.85 : 0.25;
+      ctx.fillRect(mx, yy - 9, 8, 8);
+      ctx.restore();
+      fitText(m.name, mx + 14, yy, SIZE.cap, m.colour, "left", m.n ? 0.95 : 0.4,
+              mw - 56, "0.04em");
+      label(String(m.n), mx + mw - 12, yy, SIZE.cap,
+            m.n ? m.colour : VIOLET_LOW, "right", m.n ? 1 : 0.4);
+    });
 
-    /* ── what you can build ────────────────────────────────────────────────
-       Two rows a recipe: the part above, the ingredients below, coloured green
-       where you have enough and red where you are short. A row you can build is
-       lit; a row you cannot tells you what is missing without being asked. */
-    const listH = PANEL_H(CRAFT_ROWS * 2);
-    const ready = recipes.filter(r => r.ready).length;
-    const over = Math.max(0, recipes.length - CRAFT_ROWS);
-    panel(listX, PAGE.TOP, listW, listH, CASH, "RECIPES",
-          ready ? ready + " YOU CAN BUILD NOW" : "NOTHING YOU CAN BUILD YET");
+    const partY = PAGE.TOP + matH + PAGE.STEP;
+    const partH = SCREEN_H - partY - 22;
+    panel(railX, partY, railW, partH, CASH, "PARTS",
+          crate.length ? crate.length + " KINDS" : "NONE");
+    if (!crate.length) {
+      fitText("Nothing built or bought yet.", railX + PAGE.PAD,
+              ROW(partY, 0) + 2, SIZE.cap, VIOLET_DIM, "left", 0.6,
+              railW - PAGE.PAD * 2);
+    }
+    crate.slice(0, Math.floor((partH - PAGE.HEAD) / PAGE.STEP)).forEach((e, i) => {
+      const yy = ROW(partY, i) + 2;
+      fitText(e.name, railX + PAGE.PAD, yy, SIZE.cap, rarity(e.rarity).colour,
+              "left", 0.95, railW - PAGE.PAD * 2 - 40, "0.04em");
+      label((e.fitted ? "FITTED" : "\u00d7" + e.n), railX + railW - PAGE.PAD, yy,
+            SIZE.cap, e.fitted ? VIOLET_DIM : CASH_DIM, "right", 0.85);
+    });
 
+    /* ── the grid of things you can make ───────────────────────────────────
+       Boxes with pictures in them, because a box with a picture is a thing you
+       can point at — and because drag and drop is coming, and what you drag is a
+       box with a picture in it. A recipe does not say what it wants until you
+       pick it: a wall of ingredient lists is a spreadsheet, and the question this
+       page answers first is "what can I make", not "what does everything cost". */
+    const gridW = full.w - railW - PAGE.GUTTER;
+    const cols = api.touchOnly ? 3 : 4;
+    const cell = Math.floor((gridW - PAGE.PAD * 2 - (cols - 1) * 10) / cols);
+    const pickH = PANEL_H(4);
+    const gridH = SCREEN_H - PAGE.TOP - pickH - PAGE.STEP - 22;
+    panel(full.x, PAGE.TOP, gridW, gridH, CASH, "RECIPES",
+          recipes.filter(r => r.ready).length + " YOU CAN MAKE");
+
+    const gTop = PAGE.TOP + PAGE.HEAD - 4;
     ctx.save();
     ctx.beginPath();
-    ctx.rect(listX + 1, PAGE.TOP + PAGE.HEAD - 8, listW - 2, listH - PAGE.HEAD + 4);
+    ctx.rect(full.x + 1, gTop, gridW - 2, gridH - PAGE.HEAD + 2);
     ctx.clip();
-    tapClip({ x: listX, y: PAGE.TOP + PAGE.HEAD - 8,
-              w: listW, h: listH - PAGE.HEAD + 4 });
-    const first = Math.floor(craftPg.scroll);
-    recipes.slice(first, first + CRAFT_ROWS + 1).forEach((r, k) => {
-      const i = first + k;
-      const yTop = ROW(PAGE.TOP, (i - craftPg.scroll) * 2);
-      const yBot = ROW(PAGE.TOP, (i - craftPg.scroll) * 2 + 1) - 6;
+    tapClip({ x: full.x, y: gTop, w: gridW, h: gridH - PAGE.HEAD + 2 });
+
+    recipes.forEach((r, i) => {
+      const col = i % cols, row = Math.floor(i / cols);
+      const bx = full.x + PAGE.PAD + col * (cell + 10);
+      const by = gTop + 8 + row * (cell + 26) - craftPg.scroll;
+      if (by > gTop + gridH || by + cell < gTop - 30) return;
+      const on = craftPg.pick === i;
       const rar = rarity(r.rarity);
-      if (r.ready) {
-        ctx.save();
-        ctx.fillStyle = CASH;
-        ctx.globalAlpha = 0.06;
-        ctx.fillRect(listX + 1, yTop - 18, listW - 2, PAGE.STEP * 2);
-        ctx.restore();
-      }
-      fitText(r.name, listX + PAGE.PAD, yTop, SIZE.cap,
-              r.ready ? CASH : rar.colour, "left", r.ready ? 1 : 0.75,
-              listW - 260, "0.08em");
-      // What it is, in three words, so the list is readable without the catalogue.
-      fitText(r.note, listX + PAGE.PAD + 210, yTop, SIZE.cap, VIOLET_DIM,
-              "left", 0.55, listW - 470);
 
-      /* The ingredients, as have/want pairs. Red is the only signal needed for
-         "you are short", so there is no other. */
-      let ix = listX + PAGE.PAD;
-      const parts = [];
-      if (r.part) {
-        parts.push({ name: r.part.name, have: r.part.have ? 1 : 0, want: 1,
-                     colour: r.part.have ? CASH : r.part.makeable ? AMBER : WARN });
-      }
-      for (const row of r.rows) {
-        parts.push({ name: row.name, have: row.have, want: row.want,
-                     colour: row.have >= row.want ? CASH_DIM : WARN });
-      }
-      for (const p of parts) {
-        const txt = p.name + " " + Math.min(p.have, p.want) + "/" + p.want;
-        label(txt, ix, yBot, SIZE.cap, p.colour, "left",
-              p.have >= p.want ? 0.85 : 1);
-        ix += txt.length * 9.4 + 16;
-      }
+      ctx.save();
+      ctx.fillStyle = r.ready ? CASH : rar.colour;
+      ctx.globalAlpha = on ? 0.16 : r.ready ? 0.08 : 0.03;
+      ctx.fillRect(bx, by, cell, cell);
+      ctx.strokeStyle = on ? CASH : r.ready ? rar.colour : VIOLET_LOW;
+      ctx.globalAlpha = on ? 1 : r.ready ? 0.8 : 0.4;
+      ctx.lineWidth = on ? 2 : 1;
+      ctx.strokeRect(bx, by, cell, cell);
+      ctx.restore();
 
-      /* One button, and it says which of the three things it is about to do:
-         build it, build the step below it first, or nothing. */
-      const can = r.ready || (r.part && !r.part.have && r.part.makeable &&
-                              !r.rows.some(x => x.have < x.want));
-      const label2 = r.ready ? "BUILD"
-                   : (r.part && r.part.makeable) ? "BUILD BOTH"
-                   : "SHORT";
-      /* Only on a row that is actually in the list. A half-scrolled row's text is
-         cut off by the clip, but a button is a tap target as well as a drawing —
-         one riding up into the title band would be a control you cannot see and
-         can still press. */
-      /* No hand-rolled visibility test any more: the tap window above trims
-         anything that is not in the list, the same as every other scrolling
-         page. */
-      button(label2, listX + listW - PAGE.PAD - 54, yTop + 6, 116, 26,
-             can ? CASH : VIOLET_LOW,
-             can ? () => st.onCraft && st.onCraft(r.key) : null, false, can);
+      // The picture. One per category, so a glance sorts the grid into kinds.
+      drawPartIcon(r.cat, bx + cell / 2, by + cell / 2, cell * 0.3,
+                   r.ready ? rar.colour : WRECKC, r.ready ? 1 : 0.55);
+      fitText(r.name, bx + cell / 2, by + cell + 15, SIZE.cap,
+              r.ready ? rar.colour : VIOLET_LOW, "center",
+              r.ready ? 0.95 : 0.6, cell + 8, "0.04em");
+
+      tap({ x: bx, y: by, w: cell, h: cell + 18,
+            act: () => { craftPg.pick = craftPg.pick === i ? -1 : i; } });
     });
     ctx.restore();
     tapClipOff();
-    if (over) {
-      scrollHint(listX + listW - 8, PAGE.TOP + PAGE.HEAD,
-                 listH - PAGE.HEAD - 8, craftPg.scroll / over);
+
+    const rows = Math.ceil(recipes.length / cols);
+    const gridTotal = rows * (cell + 26) + 16;
+    HUD.craftHeight = gridTotal;
+    HUD.craftView = gridH - PAGE.HEAD;
+    if (gridTotal > HUD.craftView) {
+      scrollHint(full.x + gridW - 10, gTop + 4, gridH - PAGE.HEAD - 8,
+                 craftPg.scroll / Math.max(1, gridTotal - HUD.craftView));
     }
 
-    /* ── what you are carrying, and what it is for ─────────────────────────
-       The reverse lookup. A material with nothing to spend it on says so, which
-       is how you learn that ice is for the melter and cores are for the things a
-       long way out. */
-    const holdH = PANEL_H(hold.length * 2);
-    panel(R.x, PAGE.TOP, R.w, holdH, VIOLET, "IN THE HOLD", "AND WHAT IT IS FOR");
-    hold.forEach((m, i) => {
-      const yTop = ROW(PAGE.TOP, i * 2), yBot = ROW(PAGE.TOP, i * 2 + 1) - 6;
-      label(m.name, R.x + PAGE.PAD, yTop, SIZE.cap, m.colour, "left",
-            m.n ? 1 : 0.4, "0.08em");
-      label(String(m.n), R.x + R.w - PAGE.PAD, yTop, SIZE.cap,
-            m.n ? m.colour : VIOLET_LOW, "right", m.n ? 0.95 : 0.4);
-      const uses = (st.usedIn && st.usedIn[m.key]) || [];
-      fitText(uses.length ? uses.slice(0, 3).join(", ").toLowerCase() +
-                            (uses.length > 3 ? ", …" : "")
-                          : "nothing takes it — sell it",
-              R.x + PAGE.PAD, yBot, SIZE.cap, VIOLET_DIM, "left", 0.55,
-              R.w - PAGE.PAD * 2);
-    });
-
-    label("BUILT PARTS GO IN THE CRATE  \u00b7  FIT THEM ON THE LOADOUT PAGE",
-          PAGE.EDGE, PAGE.TOP + listH + 34, SIZE.cap, VIOLET_LOW, "left", 0.55,
-          "0.1em");
+    /* ── and the one you picked ────────────────────────────────────────────
+       Only now does it say what it wants, and only now is there a button. */
+    const pickY = PAGE.TOP + gridH + PAGE.STEP;
+    const r = recipes[craftPg.pick] || null;
+    panel(full.x, pickY, gridW, pickH, r ? rarity(r.rarity).colour : VIOLET_LOW,
+          r ? r.name : "PICK ONE",
+          r ? r.rarity.toUpperCase() : "");
+    if (!r) {
+      fitText(api.touchOnly ? "Tap something in the grid to see what it takes."
+                            : "Click something in the grid to see what it takes.",
+              full.x + PAGE.PAD, ROW(pickY, 0) + 2, SIZE.cap, VIOLET_DIM,
+              "left", 0.6, gridW - PAGE.PAD * 2);
+    } else {
+      fitText(r.note, full.x + PAGE.PAD, ROW(pickY, 0) + 2, SIZE.cap,
+              VIOLET_DIM, "left", 0.7, gridW - PAGE.PAD * 2 - 180);
+      let ix = full.x + PAGE.PAD;
+      const bits = [];
+      if (r.part) {
+        bits.push({ name: r.part.name, have: r.part.have ? 1 : 0, want: 1,
+                    colour: r.part.have ? CASH : r.part.makeable ? AMBER : WARN });
+      }
+      for (const row of r.rows) {
+        bits.push({ name: row.name, have: row.have, want: row.want,
+                    colour: row.have >= row.want ? CASH_DIM : WARN });
+      }
+      for (const b of bits) {
+        const txt = b.name + "  " + Math.min(b.have, b.want) + "/" + b.want;
+        label(txt, ix, ROW(pickY, 1) + 4, SIZE.cap, b.colour, "left",
+              b.have >= b.want ? 0.85 : 1);
+        ix += txt.length * 9.6 + 18;
+      }
+      const can = r.ready || (r.part && !r.part.have && r.part.makeable &&
+                              !r.rows.some(x => x.have < x.want));
+      button(r.ready ? "CRAFT" : (r.part && r.part.makeable) ? "CRAFT BOTH"
+                                                             : "SHORT",
+             full.x + gridW - PAGE.PAD - 80, ROW(pickY, 2) + 6, 170, 34,
+             can ? CASH : VIOLET_LOW,
+             can ? () => st.onCraft && st.onCraft(r.key) : null, false, can);
+      if (r.owned) {
+        label("\u00d7" + r.owned + " IN THE CRATE", full.x + PAGE.PAD,
+              ROW(pickY, 2) + 6, SIZE.cap, CASH_DIM, "left", 0.8);
+      }
+    }
 
     pageNav(st, "craft");
     closeButton(st.onClose);
   };
+
+  /* One picture per category of part. Not one per part: seventeen drawings would
+     be seventeen things to get wrong, and what the grid has to answer at a glance
+     is *what kind of thing is this* — an engine, a gun, a scanner. The rarity's
+     colour carries the rest. */
+  function drawPartIcon(cat, cx, cy, r, colour, alpha) {
+    const { ctx } = api;
+    ctx.save();
+    ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+    ctx.strokeStyle = colour;
+    ctx.fillStyle = colour;
+    ctx.lineWidth = 1.7;
+    ctx.lineJoin = "round";
+    const line = (x1, y1, x2, y2) => {
+      ctx.beginPath();
+      ctx.moveTo(cx + x1 * r, cy + y1 * r);
+      ctx.lineTo(cx + x2 * r, cy + y2 * r);
+      ctx.stroke();
+    };
+    switch (cat) {
+      case "engine":
+        // A bell and a flame.
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.2, cy - r * 0.8);
+        ctx.lineTo(cx + r * 0.5, cy - r * 0.8);
+        ctx.lineTo(cx + r * 0.9, cy);
+        ctx.lineTo(cx + r * 0.5, cy + r * 0.8);
+        ctx.lineTo(cx - r * 0.2, cy + r * 0.8);
+        ctx.closePath();
+        ctx.stroke();
+        line(-0.25, -0.4, -0.9, -0.15);
+        line(-0.25, 0, -1, 0);
+        line(-0.25, 0.4, -0.9, 0.15);
+        break;
+      case "thruster":
+        // Two small nozzles facing opposite ways.
+        ctx.beginPath();
+        ctx.rect(cx - r * 0.85, cy - r * 0.45, r * 0.7, r * 0.9);
+        ctx.rect(cx + r * 0.15, cy - r * 0.45, r * 0.7, r * 0.9);
+        ctx.stroke();
+        line(-0.15, 0, 0.15, 0);
+        break;
+      case "scanner":
+        // A dish and its beam.
+        ctx.beginPath();
+        ctx.arc(cx - r * 0.1, cy, r * 0.75, -1.1, 1.1);
+        ctx.stroke();
+        line(-0.1, 0, -0.9, 0);
+        ctx.beginPath();
+        ctx.arc(cx + r * 0.55, cy, r * 0.16, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case "armour":
+        // A plate, layered.
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * 0.9);
+        ctx.lineTo(cx + r * 0.8, cy - r * 0.3);
+        ctx.lineTo(cx + r * 0.55, cy + r * 0.85);
+        ctx.lineTo(cx - r * 0.55, cy + r * 0.85);
+        ctx.lineTo(cx - r * 0.8, cy - r * 0.3);
+        ctx.closePath();
+        ctx.stroke();
+        line(-0.45, 0.1, 0.45, 0.1);
+        break;
+      case "tractor":
+        // A cone of pull.
+        line(-0.85, -0.7, 0.85, -0.2);
+        line(-0.85, 0.7, 0.85, 0.2);
+        ctx.beginPath();
+        ctx.arc(cx + r * 0.75, cy, r * 0.28, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+      case "weapon":
+        // A barrel and a round leaving it.
+        ctx.beginPath();
+        ctx.rect(cx - r * 0.9, cy - r * 0.28, r * 1.15, r * 0.56);
+        ctx.stroke();
+        line(0.35, 0, 0.95, 0);
+        ctx.beginPath();
+        ctx.arc(cx + r * 0.95, cy, r * 0.14, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      default:
+        // Odd: a shape that is not quite any of the others.
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+          const rr = r * (i % 2 ? 0.5 : 0.9);
+          const px = cx + Math.cos(a) * rr, py = cy + Math.sin(a) * rr;
+          i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        break;
+    }
+    ctx.restore();
+  }
+
 
   HUD.drawLoadout = function (st, dt) {
     const { ctx, SCREEN_W, SCREEN_H } = api;

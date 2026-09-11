@@ -5215,30 +5215,40 @@
     { out: "icemelter",  need: { iron: 6, alloy: 6, electronics: 4 } },
 
     // ── the middle: a core, so it is a trip rather than an afternoon ───────
-    { out: "reverser",   need: { alloy: 8, electronics: 5, core: 1 } },
     { out: "seekerrack", need: { alloy: 9, electronics: 7, core: 1 } },
     { out: "sparthruster", need: { iron: 9, alloy: 7, electronics: 3 } },
 
     /* ── built out of what you were flying ────────────────────────────────
        Each of these eats the part below it. That is the whole of the nesting and
        it stops here: none of the ingredients below is itself made from a part. */
-    { out: "heavyrig",   part: "tractorrig",
-      need: { alloy: 8, electronics: 4, iridium: 2 } },
-    { out: "deepear",    part: "pulsecoil",
-      need: { alloy: 7, electronics: 9, iridium: 3, core: 1 } },
-    { out: "ablativeshell", part: "layerplate",
-      need: { iron: 14, alloy: 12, iridium: 3 } },
-    { out: "overburner", part: "sparthruster",
-      need: { alloy: 12, electronics: 6, iridium: 4, core: 1 } },
+
+
     { out: "burstcharge", part: "scattergun",
       need: { alloy: 10, electronics: 8, iridium: 3, core: 1 } },
 
     // ── the far end: iridium and cores, which are a reason to go out ───────
-    { out: "starsiphon", need: { ice: 6, alloy: 10, electronics: 8,
-                                 iridium: 6, core: 2 } },
-    { out: "raillance",  need: { alloy: 14, electronics: 10, iridium: 9, core: 3 } },
-    { out: "coldlarder", need: { ice: 10, alloy: 12, electronics: 12,
-                                 iridium: 11, core: 3 } }
+    /* Built out of the melter you have been running, which is the good version
+       of depth: the better thing is visibly made from the thing you know. */
+    { out: "starsiphon", part: "icemelter",
+      need: { ice: 6, alloy: 10, electronics: 8, iridium: 6, core: 2 } }
+
+    /* ── and the ones with no recipe at all ────────────────────────────────
+       One rule, and it is worth stating as a rule because it decides every part
+       added after this one: **if it is the best in its category, it is not
+       craftable.** The ladder up to it is; the top of it is not.
+
+       So the OVERBURNER, the REVERSE THRUSTERS, the DEEP EAR, the ABLATIVE SHELL,
+       the HEAVY RIG, the RAIL LANCE and the COLD LARDER are found or bought and
+       never built — one from each of the seven categories.
+
+       A game where everything is craftable is a game where the sector is a
+       materials pile and going anywhere is optional — the only question left is
+       how long you are willing to grind. Some things have to be *found* or
+       *bought from somewhere far away*, so that a shelf in the deep is worth
+       flying to and a part you are carrying is worth carrying.
+
+       The rule for anything added later: **if it is the best in its category, it
+       is not craftable.** The ladder up to it is; the top of it is not. */
   ];
   const recipeFor = key => RECIPES.find(r => r.out === key) || null;
 
@@ -12332,7 +12342,7 @@
                              surveyHUD.shipView || 1);
       e.preventDefault();
     } else if (state === "craft") {
-      surveyHUD.craftDragBy(px, RECIPES.length);
+      surveyHUD.craftDragBy(px);
       e.preventDefault();
     } else if (state === "refit") {
       surveyHUD.marketScrollBy(px, surveyHUD.marketHeight || 0,
@@ -12357,7 +12367,7 @@
       surveyHUD.shipScrollBy(-dy, surveyHUD.shipHeight || 0,
                              surveyHUD.shipView || 1);
     }
-    else if (state === "craft") surveyHUD.craftDragBy(-dy, RECIPES.length);
+    else if (state === "craft") surveyHUD.craftDragBy(-dy);
     else if (state === "refit") {
       surveyHUD.marketScrollBy(-dy, surveyHUD.marketHeight || 0,
                                surveyHUD.marketView || 1);
