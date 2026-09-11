@@ -5527,6 +5527,109 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "rotating one");
 }
 
+// ── the pages, rearranged ────────────────────────────────────────────────
+/* Phase 7.1. The strip that changes page was along the bottom, which on a phone
+   is where a thumb rests and where the system's own gesture bar lives — you
+   cannot put the way between pages under the operating system's swipe. It is
+   along the top now.
+
+   And there are fewer pages. Storage and the loadout were two pages about the
+   same object, so they are one scrolling page; the almanac stopped being a tab at
+   all and became a book you open from it. */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const hud = cf.hud();
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 999; surv.water = 9e5; surv.food = 9e5;
+      now += 1000 / 60; cf.step();
+    }
+  };
+  step(20);
+  const H = cf.live().screenH;
+
+  /* Every page's strip is at the top, and nothing at all is in the bottom
+     eighth of the screen where a thumb lives. */
+  for (const pg of ["inventory", "craft", "missions", "almanac", "chart"]) {
+    cf.screen(pg);
+    if (pg === "chart") hud.chartOpened(cf.surveyView());
+    if (pg === "inventory") hud.shipOpened();
+    cf.draw();
+    const taps = cf.live().taps;
+    check(taps.length > 4, pg + " drew only " + taps.length + " things to press");
+    const nav = taps.filter(t => t.h === 38 && t.y < 60);
+    check(nav.length >= 6,
+          pg + ": the navigation strip is not at the top (" + nav.length +
+          " buttons above y=60)");
+    for (const t of taps) {
+      check(t.y + t.h <= H,
+            pg + ": something you can press runs off the bottom of the screen");
+    }
+  }
+
+  /* Six tabs, not eight, and the two that went are the two that merged.
+     Counted from the almanac, which is deliberately *not* a tab any more — on a
+     page that is one of the tabs, that tab registers no press, and STATION and
+     SHIPS only offer themselves where they can be used. */
+  surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
+  cf.screen("almanac");
+  cf.draw();
+  const strip = cf.live().taps.filter(t => t.h === 38 && t.y < 60);
+  check(strip.length === 7,
+        "the strip has " + strip.length + " buttons; it should be six tabs and " +
+        "a close");
+  surv.docked = null;
+
+  /* The ship page carries all four things it merged, and it is taller than the
+     screen — which is the point of it scrolling. */
+  const view = cf.surveyView();
+  check(Array.isArray(view.slots) && view.slots.length === 4,
+        "the ship page has no slots to show");
+  check(Array.isArray(view.materials) && view.materials.length === 6,
+        "the ship page has no hold to show");
+  check(Array.isArray(view.standings) && view.standings.length === 3,
+        "the ship page has no reputation to show");
+  check(typeof view.found === "number", "the ship page cannot count the almanac");
+  check(hud.shipHeight > hud.shipView,
+        "the ship page is " + Math.round(hud.shipHeight) + "px in a " +
+        Math.round(hud.shipView) + "px window — it does not need to scroll");
+
+  /* Scrolling it does not leave anything pressable outside the window. This is
+     the bug the whole page could have shipped with: a row scrolled up under the
+     heading is invisible and still pressable, which is the worst kind of
+     control. */
+  const top = PAGEish => PAGEish;
+  for (let k = 0; k < 12; k++) {
+    hud.shipScrollBy(120, hud.shipHeight, hud.shipView);
+    cf.draw();
+    for (const t of cf.live().taps) {
+      const isNav = t.h === 38 && t.y < 60;
+      if (isNav) continue;
+      check(t.y >= 90 && t.y + t.h <= H,
+            "scrolled " + (k * 120) + "px: something pressable is at y=" +
+            Math.round(t.y) + ".." + Math.round(t.y + t.h) +
+            ", outside the page's own window");
+    }
+  }
+
+  /* The almanac is reachable from the ship page rather than from the strip — at
+     the foot of it, so you scroll to it the way you would reach for a book on a
+     shelf. */
+  cf.screen("inventory");
+  hud.shipOpened();
+  for (let k = 0; k < 20; k++) hud.shipScrollBy(120, hud.shipHeight, hud.shipView);
+  cf.draw();
+  const book = cf.live().taps.find(t => t.act && t.h > 60 && t.w > 600);
+  check(!!book, "the ship page has nothing large enough to be the book");
+
+  console.log("  pages      strip at the top, six tabs and a close \u00b7 storage " +
+              "and loadout are one page of " + Math.round(hud.shipHeight) +
+              "px \u00b7 nothing pressable outside its window at any scroll");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

@@ -353,7 +353,13 @@
      each other rather than each inventing a width. */
   const PAGE = {
     EDGE: 34,      // outer margin — the same one `pageFrame` rules to
-    TOP: 92,       // first row of content, clear of the title rule at 70
+    /* First row of content, clear of the navigation strip *and* the title rule
+       under it. The strip used to be along the bottom, which on a phone is where
+       a thumb rests and where the system gesture bar lives — you cannot put the
+       way between pages under the operating system's own swipe. It is along the
+       top now, so this moved down by sixteen and the whole of the old footer came
+       back as content room. */
+    TOP: 112,
     GUTTER: 22,    // between columns
     PAD: 20,       // inside a panel, on every side
     STEP: 26,      // the vertical unit: one list row, one gap
@@ -378,6 +384,32 @@
      nothing behind them and stay solid. */
   HUD.pageGhost = false;
 
+  /* ── where a tap is allowed to land ───────────────────────────────────────
+     A scrolling list clips its *drawing* to its own window, and until now nothing
+     clipped its *taps*. A row scrolled up under the page heading was invisible
+     and still pressable — which is the worst kind of control, because nothing
+     about the screen says it is there.
+
+     So every rectangle in this module goes through `tap`, and a page that scrolls
+     sets a window first. Outside it the rectangle is dropped; straddling it, the
+     rectangle is trimmed to the part you can actually see. */
+  let tapWindow = null;
+  const tapClip = r => { tapWindow = r; };
+  const tapClipOff = () => { tapWindow = null; };
+
+  function tap(rect) {
+    if (tapWindow) {
+      const y0 = Math.max(rect.y, tapWindow.y);
+      const y1 = Math.min(rect.y + rect.h, tapWindow.y + tapWindow.h);
+      const x0 = Math.max(rect.x, tapWindow.x);
+      const x1 = Math.min(rect.x + rect.w, tapWindow.x + tapWindow.w);
+      if (y1 - y0 < 6 || x1 - x0 < 6) return;     // nothing worth pressing
+      rect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0, act: rect.act,
+               card: rect.card };
+    }
+    api.addTap(rect);
+  }
+
   function pageFrame(title, sub, footer) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
     ctx.save();
@@ -386,18 +418,17 @@
     ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
     ctx.restore();
 
-    label(title, 34, 54, SIZE.head, VIOLET, "left", 1, "0.22em");
-    if (sub) label(sub, SCREEN_W - 34, 54, SIZE.cap, AMBER_DIM, "right", 0.7);
+    // Under the navigation strip: the title says where you are, and the strip
+    // above it is how you leave.
+    label(title, 34, 84, SIZE.head, VIOLET, "left", 1, "0.22em");
+    if (sub) label(sub, SCREEN_W - 34, 84, SIZE.cap, AMBER_DIM, "right", 0.7);
 
     ctx.save();
     ctx.strokeStyle = VIOLET_LOW;
     ctx.globalAlpha = 0.9;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(34, 70); ctx.lineTo(SCREEN_W - 34, 70);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(34, SCREEN_H - 56); ctx.lineTo(SCREEN_W - 34, SCREEN_H - 56);
+    ctx.moveTo(34, 96); ctx.lineTo(SCREEN_W - 34, 96);
     ctx.stroke();
     ctx.restore();
 
@@ -427,19 +458,23 @@
      collision waiting to happen. Now adding one narrows them all evenly and
      `fitText` handles the type. */
   const NAV_CLOSE_W = 150;
-  const NAV_Y = h => h - 30;
+  // Along the top. See `PAGE.TOP`.
+  const NAV_Y = () => 30;
 
   function pageNav(st, here) {
     const { SCREEN_W, SCREEN_H } = api;
     const docked = !!st.docked;
+    /* Six, not eight. Storage and the loadout were two pages about the same
+       object — your ship — and reading one while deciding the other meant leaving
+       and coming back; they are one scrolling page now. The almanac stopped being
+       a tab at all: it is a book, and it lives on the shelf of the ship that is
+       carrying it. */
     const tabs = [
       { key: "refit",     name: "STATION",  live: docked, act: st.onStation },
-      { key: "hangar",    name: "HANGAR",   live: !!st.atHome, act: st.onHangar },
-      { key: "craft",     name: "BUILD",    live: true,   act: st.onCraftPage },
-      { key: "loadout",   name: "LOADOUT",  live: true,   act: st.onLoadout },
-      { key: "inventory", name: "STORAGE",  live: true,   act: st.onInventory },
+      { key: "hangar",    name: "SHIPS",    live: !!st.atHome, act: st.onHangar },
+      { key: "craft",     name: "CRAFT",    live: true,   act: st.onCraftPage },
+      { key: "inventory", name: "SHIP",     live: true,   act: st.onInventory },
       { key: "missions",  name: "MISSIONS", live: true,   act: st.onMissions },
-      { key: "almanac",   name: "ALMANAC",  live: true,   act: st.onAlmanac },
       { key: "chart",     name: "CHART",    live: true,   act: st.onChart }
     ];
     const gap = 7;
@@ -448,7 +483,7 @@
     tabs.forEach((t, i) => {
       const cx = PAGE.EDGE + w / 2 + i * (w + gap);
       const on = t.key === here;
-      button(t.name, cx, NAV_Y(SCREEN_H), w, 38,
+      button(t.name, cx, NAV_Y(), w, 38,
              on ? VIOLET : t.live ? VIOLET_DIM : VIOLET_LOW,
              on || !t.live ? null : t.act, on, t.live && !on, "0.04em");
     });
@@ -457,7 +492,7 @@
   function closeButton(act) {
     const { SCREEN_W, SCREEN_H } = api;
     button(api.touchOnly ? "CLOSE" : "CLOSE  [ESC]",
-           SCREEN_W - PAGE.EDGE - NAV_CLOSE_W / 2, NAV_Y(SCREEN_H),
+           SCREEN_W - PAGE.EDGE - NAV_CLOSE_W / 2, NAV_Y(),
            NAV_CLOSE_W, 38, VIOLET, act);
   }
 
@@ -690,7 +725,7 @@
     label(fmtCells(HUD.charted()) + " CHARTED", b.x + b.w, b.y + b.h + 20,
           SIZE.cap, VIOLET, "right", 0.8);
 
-    api.addTap({ x: b.x, y: b.y, w: b.w, h: b.h, act: st.onChart || (() => {}) });
+    tap({ x: b.x, y: b.y, w: b.w, h: b.h, act: st.onChart || (() => {}) });
 
     /* Under the chart, where the eye already is once it has looked at the map.
        It is the way in to everything the flight HUD has no room for. */
@@ -703,7 +738,7 @@
     ctx.restore();
     label(api.touchOnly ? "INVENTORY" : "INVENTORY  [I]", b.x + b.w / 2, iy + 20,
           SIZE.cap, VIOLET, "center", 0.95, "0.12em");
-    api.addTap({ x: b.x, y: iy, w: b.w, h: 30, act: st.onInventory || (() => {}) });
+    tap({ x: b.x, y: iy, w: b.w, h: 30, act: st.onInventory || (() => {}) });
 
     if (st.atYard) {
       ctx.save();
@@ -714,7 +749,7 @@
       ctx.restore();
       label(api.touchOnly ? "JUMP GATE" : "JUMP GATE  [E]", b.x + b.w / 2, iy + 56,
             SIZE.cap, CASH, "center", 1, "0.12em");
-      api.addTap({ x: b.x, y: iy + 36, w: b.w, h: 30, act: st.onYard || (() => {}) });
+      tap({ x: b.x, y: iy + 36, w: b.w, h: 30, act: st.onYard || (() => {}) });
     }
   }
 
@@ -1228,7 +1263,7 @@
       ctx.restore();
     }
     if (api.touchOnly && ready) {
-      api.addTap({ x: cx + w / 2 + 2, y: y - 26, w: 108, h: 52,
+      tap({ x: cx + w / 2 + 2, y: y - 26, w: 108, h: 52,
                    act: st.onScan || (() => {}) });
     }
 
@@ -1263,7 +1298,7 @@
          to `y - 18`, which reached into the scan target on a phone — and taps go
          to whatever was registered last, so pressing the right-hand end of
          "DOCKED" scanned instead of docking. */
-      api.addTap({ x: cx - 130, y: y - 62, w: 260, h: 36,
+      tap({ x: cx - 130, y: y - 62, w: 260, h: 36,
                    act: st.onRefit || (() => {}) });
     } else if (st.landed) {
       // Somebody lives on the thing you are resting against, and they will sell
@@ -1272,7 +1307,7 @@
       fitText(st.landed.name + (api.touchOnly ? " — TAP TO TRADE" : " — [E] TRADE"),
               cx, y - 30, SIZE.val, st.landed.colour || CASH, "center", beat,
               SCREEN_W - 380, "0.08em");
-      api.addTap({ x: cx - 160, y: y - 62, w: 320, h: 36,
+      tap({ x: cx - 160, y: y - 62, w: 320, h: 36,
                    act: st.onLand || (() => {}) });
     } else if (st.light && st.light.have && st.light.run <= 0) {
       // Offered, quietly, whenever there is nothing more urgent to say. A drive
@@ -1280,7 +1315,7 @@
       label(api.touchOnly ? "LIGHT DRIVE READY" : "LIGHT DRIVE READY  —  [R]",
             cx, y - 30, SIZE.cap, ICE, "center", 0.55, "0.14em");
       if (api.touchOnly) {
-        api.addTap({ x: cx - 130, y: y - 62, w: 260, h: 36,
+        tap({ x: cx - 130, y: y - 62, w: 260, h: 36,
                      act: st.onLight || (() => {}) });
       }
     } else if (!api.touchOnly) {
@@ -1859,7 +1894,7 @@
     if (!canJump) chart.jump = false;
     if (chart.jump) chart.mark = false;
 
-    api.addTap({
+    tap({
       x: view.x, y: view.y, w: view.w, h: view.h,
       act: (sx, sy) => {
         if (sx == null) return;
@@ -1914,7 +1949,7 @@
       ctx.restore();
       fitText(k.name, bx + pw / 2, py + 22, SIZE.cap, k.colour, "center",
               (chart.jump ? 0.35 : 1) * (on ? 1 : 0.6), pw - 12);
-      api.addTap({ x: bx, y: py, w: pw, h: 34,
+      tap({ x: bx, y: py, w: pw, h: 34,
                    act: () => { chart.pin = i; chart.jump = false; } });
     });
 
@@ -2277,7 +2312,7 @@
 
     label(api.touchOnly ? "TAP TO CLOSE" : "CLICK, OR ESC, TO CLOSE",
           x + w / 2, y + h - 22, SIZE.cap, VIOLET_LOW, "center", 0.8);
-    api.addTap({ x: 0, y: 0, w: SCREEN_W, h: SCREEN_H,
+    tap({ x: 0, y: 0, w: SCREEN_W, h: SCREEN_H,
                  act: () => { almanac.open = -1; } });
   }
 
@@ -2329,7 +2364,7 @@
        made every card in the book look like a button that did nothing —
        and the picture, which is the point of the almanac, was stuck at
        thumbnail size with no way to see it properly. */
-    api.addTap({ x, y, w, h, act: () => {
+    tap({ x, y, w, h, act: () => {
       almanac.open = (almanac.open === index) ? -1 : index;
       almanac.pick = index;
     } });
@@ -2919,7 +2954,7 @@
             SIZE.cap, maxed ? AMBER_DIM : afford ? CASH : WARN, "right",
             maxed ? 0.6 : 1);
       if (!maxed) {
-        api.addTap({ x: L.x, y: yTop - 18, w: L.w, h: PAGE.STEP * 2,
+        tap({ x: L.x, y: yTop - 18, w: L.w, h: PAGE.STEP * 2,
                      act: () => { refit.pick = i; if (st.onBuy) st.onBuy(r.key); } });
       }
     });
@@ -3092,6 +3127,8 @@
     ctx.beginPath();
     ctx.rect(listX + 1, PAGE.TOP + PAGE.HEAD - 8, listW - 2, listH - PAGE.HEAD + 4);
     ctx.clip();
+    tapClip({ x: listX, y: PAGE.TOP + PAGE.HEAD - 8,
+              w: listW, h: listH - PAGE.HEAD + 4 });
     const first = Math.floor(craftPg.scroll);
     recipes.slice(first, first + CRAFT_ROWS + 1).forEach((r, k) => {
       const i = first + k;
@@ -3142,14 +3179,15 @@
          cut off by the clip, but a button is a tap target as well as a drawing —
          one riding up into the title band would be a control you cannot see and
          can still press. */
-      const vis = i - craftPg.scroll;
-      if (vis >= -0.15 && vis <= CRAFT_ROWS - 0.85) {
-        button(label2, listX + listW - PAGE.PAD - 54, yTop + 6, 116, 26,
-               can ? CASH : VIOLET_LOW,
-               can ? () => st.onCraft && st.onCraft(r.key) : null, false, can);
-      }
+      /* No hand-rolled visibility test any more: the tap window above trims
+         anything that is not in the list, the same as every other scrolling
+         page. */
+      button(label2, listX + listW - PAGE.PAD - 54, yTop + 6, 116, 26,
+             can ? CASH : VIOLET_LOW,
+             can ? () => st.onCraft && st.onCraft(r.key) : null, false, can);
     });
     ctx.restore();
+    tapClipOff();
     if (over) {
       scrollHint(listX + listW - 8, PAGE.TOP + PAGE.HEAD,
                  listH - PAGE.HEAD - 8, craftPg.scroll / over);
@@ -3229,7 +3267,7 @@
                 CASH, "left", 0.9, "0.14em");
         }
       }
-      api.addTap({ x, y: PAGE.TOP, w, h: slotH, act: () => {
+      tap({ x, y: PAGE.TOP, w, h: slotH, act: () => {
         if (sl) { if (st.onPull) st.onPull(i); }
         else loadout.slot = loadout.slot === i ? -1 : i;
       } });
@@ -3360,142 +3398,259 @@
     closeButton(st.onClose);
   };
 
+  /* ═══ THE SHIP ════════════════════════════════════════════════════════════
+     Storage and the loadout were two pages about the same object, and reading one
+     while deciding the other meant leaving and coming back. They are one page
+     now, and it scrolls — which is the only honest way to fit four slots, a hold,
+     a purse, three powers' opinions of you and a book on a phone.
+
+     The order is deliberate and it is the order you ask the questions in:
+
+       what am I flying      the four slots, and what is fitted in them
+       what have I got       cash, storage, and what each thing is worth
+       who am I to them      the three powers, explained
+       what have I seen      the almanac, as a book you open
+
+     Everything is a band the full width of the page rather than two columns,
+     because a column that has to be read against another column is two things to
+     read and a phone has room for one. */
+  let shipPg = { scroll: 0 };
+  HUD.shipScrollBy = function (dy, total, view) {
+    const max = Math.max(0, total - view);
+    shipPg.scroll = Math.max(0, Math.min(max, shipPg.scroll + dy));
+  };
+  HUD.shipOpened = function () { shipPg.scroll = 0; };
+
   HUD.drawInventory = function (st, dt) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
     const cash = st.cash || 0, cap = st.hold || 1;
-    const L = COL(2, 0), R = COL(2, 1);
+    const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
+    const slots = st.slots || [null, null, null, null];
+    const mats = st.materials || [];
+    const flags = st.standings || [];
+    const others = st.others || [];
 
-    pageFrame("INVENTORY",
-              (st.world ? st.world.name + "  \u00b7  " : "") + "SEED " + (st.seed || 0),
-              "");
+    pageFrame("YOUR SHIP",
+              (st.shipName || "") + "   \u00b7   " + cash + " CASH", "");
 
-    /* ── the two doors ─────────────────────────────────────────────────────
-       The almanac was a line of small type in the corner of a panel further down
-       this page, and the manifest was a panel that only ever showed what it
-       already knew. Both are pages, so both are doors, and doors go at the top
-       where they are the first thing you see and unmistakably pressable. */
-    const doorH = PANEL_H(2);
-    [{ title: "ALMANAC", val: (st.found || 0) + " / " + (st.total || 0),
-       sub: "what is out there, and what you have seen",
-       key: api.touchOnly ? "" : "L", colour: VIOLET, act: st.onAlmanac, col: L },
-     { title: "MISSIONS", val: (st.built || 0) + " / " + (st.needs || 6),
-       sub: "what the gate wants, and where to look",
-       key: "", colour: CASH, act: st.onMissions, col: R }
-    ].forEach(d => {
-      const { x, w } = d.col;
-      panel(x, PAGE.TOP, w, doorH, d.colour,
-            d.title + (d.key ? "   [" + d.key + "]" : ""),
-            api.touchOnly ? "TAP" : "OPEN  \u25b8");
-      label(d.val, x + PAGE.PAD, ROW(PAGE.TOP, 0) + 6, SIZE.big, d.colour, "left");
-      fitText(d.sub, x + PAGE.PAD, ROW(PAGE.TOP, 1) + 8, SIZE.cap, VIOLET_DIM,
-              "left", 0.7, w - PAGE.PAD * 2);
-      api.addTap({ x, y: PAGE.TOP, w, h: doorH, act: d.act || (() => {}) });
-    });
+    /* The window the page scrolls inside. Everything below is drawn against a
+       running `y` and clipped to this, so adding a band never has to be balanced
+       against the height of the screen. */
+    const viewTop = PAGE.TOP - 4;
+    const viewH = SCREEN_H - viewTop - 16;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, viewTop, SCREEN_W, viewH);
+    ctx.clip();
+    // And the same window for what can be pressed. See `tap`.
+    tapClip({ x: 0, y: viewTop, w: SCREEN_W, h: viewH });
 
-    /* Cash gets its own panel and its own line: it is the one number on this
-       page with no ceiling and no second half. Everything else here is a
-       fraction of something. */
-    const y2 = PAGE.TOP + doorH + PAGE.STEP;
-    const cashH = PANEL_H(1);
-    panel(L.x, y2, L.w, cashH, CASH, "CASH");
-    label(String(cash), L.x + PAGE.PAD, ROW(y2, 0) + 6, SIZE.big, CASH, "left");
-    label("refits, supplies and ships", L.x + L.w - PAGE.PAD, ROW(y2, 0) + 4,
-          SIZE.cap, CASH_DIM, "right", 0.55);
+    let y = PAGE.TOP - shipPg.scroll;
+    const gap = PAGE.STEP;
 
-    // ── the ship, as four tracks of pips ──────────────────────────────────
-    panel(R.x, y2, R.w, cashH, AMBER, "THE SHIP", st.shipName || "");
-    const tracks = st.refit || [];
-    tracks.forEach((r, i) => {
-      const bw = (R.w - PAGE.PAD * 2 - 12 * (tracks.length - 1)) / tracks.length;
-      const bx = R.x + PAGE.PAD + i * (bw + 12);
-      const yy = ROW(y2, 0) - 2;
-      fitText(r.name.split(" ")[0], bx, yy, SIZE.cap, AMBER_DIM, "left", 0.8,
-              bw, "0.06em");
-      for (let t = 0; t < r.max; t++) {
-        const pw = (bw - (r.max - 1) * 4) / r.max;
-        ctx.save();
-        ctx.fillStyle = t < r.tier ? CASH : VIOLET_LOW;
-        ctx.globalAlpha = t < r.tier ? 0.9 : 0.4;
-        ctx.fillRect(bx + t * (pw + 4), yy + 8, pw, 6);
-        ctx.restore();
+    /* ── the four slots ──────────────────────────────────────────────────── */
+    const slotH = PANEL_H(3);
+    panel(full.x, y, full.w, slotH, VIOLET, "FITTED",
+          "FOUR SLOTS, EVERY HULL");
+    const sw = (full.w - PAGE.PAD * 2) / 4;
+    for (let i = 0; i < 4; i++) {
+      const sl = slots[i];
+      const sx = full.x + PAGE.PAD + i * sw;
+      const fitting = !!sl && sl.fit > 0;
+      const col = !sl ? VIOLET_LOW : fitting ? AMBER_DIM : rarity(sl.rarity).colour;
+      fitText(sl ? sl.name : "EMPTY", sx, ROW(y, 0) + 2, SIZE.cap, col, "left",
+              sl ? 1 : 0.5, sw - 14, "0.06em");
+      fitText(sl ? (fitting ? "FITTING  " + Math.ceil(sl.fit) + "s" : sl.note)
+                 : "nothing bolted on",
+              sx, ROW(y, 1) + 2, SIZE.cap, fitting ? AMBER_DIM : VIOLET_DIM,
+              "left", fitting ? 1 : 0.6, sw - 14);
+      if (fitting) {
+        barAt(sx, ROW(y, 2) - 4, sw - 20, 5,
+              1 - sl.fit / Math.max(1, sl.of), AMBER_DIM);
+      } else if (sl) {
+        label("WORKING", sx, ROW(y, 2) + 2, SIZE.cap, CASH, "left", 0.85, "0.12em");
+      }
+      if (sl) {
+        tap({ x: sx - 6, y: y + PAGE.HEAD - 8, w: sw, h: slotH - PAGE.HEAD,
+                     act: () => st.onPull && st.onPull(i) });
+      }
+    }
+    label(api.touchOnly ? "TAP A SLOT TO PULL THE PART"
+                        : "CLICK A SLOT TO PULL THE PART  \u00b7  [G]",
+          full.x + full.w - PAGE.PAD, y + slotH - 8, SIZE.cap, VIOLET_LOW,
+          "right", 0.5);
+    y += slotH + gap;
+
+    /* ── what you own and are not flying ─────────────────────────────────── */
+    const crate = st.store || [];
+    const crateRows = Math.max(1, crate.length);
+    const crateH = PANEL_H(crateRows);
+    const freeSlot = slots.findIndex(x => !x);
+    panel(full.x, y, full.w, crateH, CASH, "IN THE CRATE",
+          crate.length ? "TAP TO FIT" : "EMPTY");
+    if (!crate.length) {
+      fitText("Nothing spare. Stations sell parts; the strange ones are a long " +
+              "way out.", full.x + PAGE.PAD, ROW(y, 0) + 2, SIZE.cap,
+              VIOLET_DIM, "left", 0.6, full.w - PAGE.PAD * 2);
+    }
+    crate.forEach((e, i) => {
+      const yy = ROW(y, i) + 2;
+      const can = freeSlot >= 0 && !e.fitted;
+      partRow(full.x, full.w, yy, e, {
+        text: e.fitted ? "ON SHIP" : st.docked ? "FIT" : "FIT " + e.secs + "s",
+        colour: e.fitted ? VIOLET_LOW : CASH,
+        live: can,
+        act: () => can && st.onFit && st.onFit(freeSlot, e.key)
+      });
+      if (e.n > 1) {
+        label("\u00d7" + e.n, full.x + full.w - PAGE.PAD - 104, yy, SIZE.cap,
+              VIOLET_DIM, "right", 0.7);
       }
     });
+    y += crateH + gap;
 
-    /* ── storage ───────────────────────────────────────────────────────────
-       One row a material, on the same rhythm as every other list in the mode: a
-       swatch, a name, a count, and what it is worth apiece. */
-    const y3 = y2 + cashH + PAGE.STEP;
+    /* ── the hold ────────────────────────────────────────────────────────── */
     const used = st.carried || 0;
-    const mats = st.materials || [];
-    const storeH = PANEL_H(mats.length + 1);
-    panel(L.x, y3, L.w, storeH, VIOLET, "STORAGE", used + " / " + cap);
-    barAt(L.x + PAGE.PAD, y3 + PAGE.HEAD + 2, L.w - PAGE.PAD * 2, 8,
-          cap ? used / cap : 0, VIOLET, used >= cap);
+    const storeH = PANEL_H(mats.length);
+    panel(full.x, y, full.w, storeH, VIOLET, "STORAGE", used + " / " + cap);
+    const half = (full.w - PAGE.PAD * 2) / 2;
     mats.forEach((m, i) => {
-      const yy = ROW(y3, i + 1) - 4;
+      const col = i % 2, row = Math.floor(i / 2);
+      const mx = full.x + PAGE.PAD + col * half;
+      const yy = ROW(y, row) + 2;
       ctx.save();
       ctx.fillStyle = m.colour;
-      ctx.globalAlpha = m.n ? 0.9 : 0.22;
-      ctx.fillRect(L.x + PAGE.PAD, yy - 9, 9, 9);
+      ctx.globalAlpha = m.n ? 0.85 : 0.25;
+      ctx.fillRect(mx, yy - 9, 9, 9);
       ctx.restore();
-      fitText(m.name, L.x + PAGE.PAD + 18, yy, SIZE.cap, m.colour, "left",
-              m.n ? 0.95 : 0.35, L.w - 200, "0.06em");
-      label(String(m.n), L.x + L.w - PAGE.PAD - 58, yy, SIZE.cap,
-            m.n ? m.colour : VIOLET_LOW, "right", m.n ? 1 : 0.35);
-      label("@" + m.value, L.x + L.w - PAGE.PAD, yy, SIZE.cap, VIOLET_DIM,
-            "right", 0.5);
-    });
-    if (!used) {
-      label("empty \u2014 go and break something", L.x + PAGE.PAD,
-            ROW(y3, mats.length + 1) - 6, SIZE.cap, VIOLET_LOW, "left", 0.6);
-    }
-
-    // ── what the almanac has bought ───────────────────────────────────────
-    const unlocks = st.unlocks || [];
-    panel(R.x, y3, R.w, storeH, VIOLET, "EARNED, NOT BOUGHT",
-          (st.found || 0) + " LOGGED");
-    unlocks.forEach((u, i) => {
-      const yy = ROW(y3, i);
-      label(u.have ? "\u2713" : "\u00b7", R.x + PAGE.PAD, yy, SIZE.cap,
-            u.have ? CASH : VIOLET_LOW, "left", u.have ? 1 : 0.5);
-      fitText(u.have ? u.name : "locked", R.x + PAGE.PAD + 20, yy, SIZE.cap,
-              u.have ? VIOLET : VIOLET_LOW, "left", u.have ? 0.95 : 0.5,
-              R.w - 220, "0.06em");
-      fitText(u.have ? u.note : u.at + " entries", R.x + R.w - PAGE.PAD, yy,
-              SIZE.cap, VIOLET_DIM, "right", u.have ? 0.6 : 0.5, 190);
-    });
-
-    /* Reputation, one line, three flags, no numbers anywhere. It sits at the foot
-       of the page rather than in a panel of its own because it is not a resource
-       you manage — it is a fact about the world you go and read, the way you
-       would read a room. Who is fighting whom sits under it, because your
-       reputation with one power only means something next to who they are
-       fighting. */
-    const flags = st.standings || [];
-    if (flags.length) {
-      label("REPUTATION", PAGE.EDGE, SCREEN_H - 92, SIZE.cap, VIOLET_DIM,
-            "left", 0.55, "0.18em");
-      const cw = (SCREEN_W - PAGE.EDGE * 2) / flags.length;
-      flags.forEach((f, i) => {
-        const x = PAGE.EDGE + i * cw;
-        const bad = f.standing === "HUNTED" || f.standing === "WANTED";
-        const warm = f.standing === "WELCOME" || f.standing === "TRUSTED";
-        fitText(f.short, x, SCREEN_H - 70, SIZE.cap, f.colour, "left",
-                0.85, cw * 0.42, "0.12em");
-        fitText(f.standing, x + cw * 0.44, SCREEN_H - 70, SIZE.cap,
-                bad ? WARN : warm ? CASH : VIOLET_DIM, "left", bad ? 1 : 0.8,
-                cw * 0.52, "0.1em");
-        if (f.enemy) {
-          fitText("at war with " + f.enemy, x, SCREEN_H - 54, SIZE.cap,
-                  VIOLET_LOW, "left", 0.5, cw - 16);
+      fitText(m.name, mx + 18, yy, SIZE.cap, m.colour, "left", m.n ? 1 : 0.4,
+              half - 190, "0.06em");
+      label(String(m.n), mx + half - 128, yy, SIZE.cap,
+            m.n ? m.colour : VIOLET_LOW, "right", m.n ? 1 : 0.4);
+      // What it is worth here, and whether here is short of it.
+      if (m.price != null) {
+        label(m.price + " EA", mx + half - 62, yy, SIZE.cap,
+              m.shortage > 0.25 ? CASH : CASH_DIM, "right",
+              m.shortage > 0.25 ? 1 : 0.7);
+        if (m.shortage > 0.25) {
+          label("WANTED", mx + half - 14, yy, SIZE.cap, CASH, "right", 0.9, "0.1em");
         }
-      });
+      }
+    });
+    if (mats.length % 2) { /* an odd count leaves its last cell empty, which is fine */ }
+    y += storeH + gap;
+
+    /* ── who you are to them ─────────────────────────────────────────────── */
+    const repH = PANEL_H(flags.length * 2 + others.length);
+    panel(full.x, y, full.w, repH, VIOLET, "REPUTATION",
+          st.war ? st.war.a + " AT WAR WITH " + st.war.b : "NO WAR HERE");
+    flags.forEach((f, i) => {
+      const yTop = ROW(y, i * 2) + 2, yBot = ROW(y, i * 2 + 1) - 4;
+      const bad = f.standing === "HUNTED" || f.standing === "WANTED";
+      const warm = f.standing === "WELCOME" || f.standing === "TRUSTED";
+      // Its own colour, which is the colour its ships are painted — so the board
+      // and the sky agree about who is who.
+      ctx.save();
+      ctx.fillStyle = f.colour;
+      ctx.globalAlpha = 0.9;
+      ctx.fillRect(full.x + PAGE.PAD, yTop - 9, 9, 9);
+      ctx.restore();
+      fitText(f.name, full.x + PAGE.PAD + 18, yTop, SIZE.cap, f.colour, "left",
+              1, 260, "0.08em");
+      label(f.standing, full.x + PAGE.PAD + 300, yTop, SIZE.cap,
+            bad ? WARN : warm ? CASH : VIOLET_DIM, "left", bad ? 1 : 0.85, "0.1em");
+      fitText(f.enemy ? "at war with " + f.enemy : "not fighting anybody",
+              full.x + full.w - PAGE.PAD, yTop, SIZE.cap,
+              f.enemy ? WARN : VIOLET_LOW, "right", f.enemy ? 0.85 : 0.5, 260);
+      fitText(f.long || f.note, full.x + PAGE.PAD + 18, yBot, SIZE.cap,
+              VIOLET_DIM, "left", 0.62, full.w - PAGE.PAD * 2 - 24);
+    });
+    others.forEach((f, i) => {
+      const yy = ROW(y, flags.length * 2 + i) + 2;
+      ctx.save();
+      ctx.fillStyle = f.colour;
+      ctx.globalAlpha = 0.9;
+      ctx.fillRect(full.x + PAGE.PAD, yy - 9, 9, 9);
+      ctx.restore();
+      fitText(f.short, full.x + PAGE.PAD + 18, yy, SIZE.cap, f.colour, "left",
+              0.95, 120, "0.08em");
+      fitText(f.long || f.note, full.x + PAGE.PAD + 146, yy, SIZE.cap,
+              VIOLET_DIM, "left", 0.6, full.w - PAGE.PAD * 2 - 160);
+    });
+    y += repH + gap;
+
+    /* ── the book ────────────────────────────────────────────────────────── */
+    const bookH = PANEL_H(2);
+    panel(full.x, y, full.w, bookH, AMBER, "THE ALMANAC",
+          (st.found || 0) + " / " + (st.total || 0) + " LOGGED");
+    drawBookMark(full.x + PAGE.PAD + 22, y + PAGE.HEAD + 20, 20, AMBER);
+    label("OPEN THE BOOK" + (api.touchOnly ? "" : "   [L]"),
+          full.x + PAGE.PAD + 62, ROW(y, 0) + 2, SIZE.val, AMBER, "left");
+    fitText("every strange thing you have seen, and the ones you have not",
+            full.x + PAGE.PAD + 62, ROW(y, 1) + 2, SIZE.cap, VIOLET_DIM,
+            "left", 0.6, full.w - PAGE.PAD * 2 - 80);
+    tap({ x: full.x, y, w: full.w, h: bookH,
+                 act: st.onAlmanac || (() => {}) });
+    y += bookH + gap;
+
+    /* ── the yard, as a door ─────────────────────────────────────────────── */
+    const doorH = PANEL_H(1);
+    panel(full.x, y, full.w, doorH, CASH, "THE JUMP GATE",
+          (st.built || 0) + " / " + (st.needs || 6) + " FITTED");
+    fitText("what it still wants, and where to look",
+            full.x + PAGE.PAD, ROW(y, 0) + 2, SIZE.cap, VIOLET_DIM, "left",
+            0.65, full.w - PAGE.PAD * 2);
+    tap({ x: full.x, y, w: full.w, h: doorH,
+                 act: st.onMissions || (() => {}) });
+    y += doorH + gap;
+
+    ctx.restore();
+    tapClipOff();
+
+    /* How far it can scroll, measured from what was actually laid out rather than
+       from a number somebody has to keep in step with the bands above. */
+    const total = (y + shipPg.scroll) - PAGE.TOP;
+    shipPg.scroll = Math.max(0, Math.min(Math.max(0, total - viewH),
+                                         shipPg.scroll));
+    HUD.shipHeight = total;
+    HUD.shipView = viewH;
+    if (total > viewH) {
+      scrollHint(SCREEN_W - 14, viewTop + 6, viewH - 12,
+                 shipPg.scroll / Math.max(1, total - viewH));
     }
 
     pageNav(st, "inventory");
     closeButton(st.onClose || (() => {}));
   };
+
+  /* A little closed book, for the panel that opens the almanac. Drawn rather than
+     set as a glyph, for the same reason the warning triangle is. */
+  function drawBookMark(cx, cy, r, colour) {
+    const { ctx } = api;
+    ctx.save();
+    ctx.strokeStyle = colour;
+    ctx.globalAlpha = 0.9;
+    ctx.lineWidth = 1.6;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(cx - r * 0.7, cy - r * 0.8);
+    ctx.lineTo(cx + r * 0.7, cy - r * 0.8);
+    ctx.lineTo(cx + r * 0.7, cy + r * 0.8);
+    ctx.lineTo(cx - r * 0.7, cy + r * 0.8);
+    ctx.closePath();
+    ctx.stroke();
+    // A spine and two lines of type.
+    ctx.beginPath();
+    ctx.moveTo(cx - r * 0.34, cy - r * 0.8);
+    ctx.lineTo(cx - r * 0.34, cy + r * 0.8);
+    ctx.moveTo(cx - r * 0.1, cy - r * 0.3);
+    ctx.lineTo(cx + r * 0.45, cy - r * 0.3);
+    ctx.moveTo(cx - r * 0.1, cy + r * 0.1);
+    ctx.lineTo(cx + r * 0.45, cy + r * 0.1);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   function panel(x, y, w, h, colour, title, right) {
     const { ctx } = api;
@@ -3540,7 +3695,7 @@
     fitText(text, cx, cy + 6, SIZE.cap, colour, "center",
             enabled ? 1 : 0.35, w - 18, track === undefined ? "0.12em" : track);
     if (enabled && typeof act === "function") {
-      api.addTap({ x: cx - w / 2, y: cy - h / 2, w, h, act });
+      tap({ x: cx - w / 2, y: cy - h / 2, w, h, act });
     }
   }
 
@@ -4010,6 +4165,7 @@
     ctx.beginPath();
     ctx.rect(0, viewTop, SCREEN_W, viewH);
     ctx.clip();
+    tapClip({ x: 0, y: viewTop, w: SCREEN_W, h: viewH });
 
     for (let i = first; i < last; i++) {
       const sh = list[i];
@@ -4046,18 +4202,17 @@
               c.x + c.w - PAGE.PAD, y + 96, SIZE.cap,
               sh.flying ? CASH : sh.owned ? VIOLET_DIM : sh.afford ? CASH_DIM : WARN,
               "right", 0.85, c.w * 0.5);
-      /* Only a card that is actually in the list. A half-scrolled one is cut off
-         by the clip, but a tap rectangle is not clipped — one riding up under the
-         page heading would be a ship you cannot see and can still buy. */
-      if (y >= viewTop - 2 && y + cardH <= viewTop + viewH + 2) {
-        api.addTap({ x: c.x, y, w: c.w, h: cardH, act: () => {
-          if (hangar.pick === i && reach) {
-            if (st.onBuyShip) st.onBuyShip(sh.key);
-          } else hangar.pick = i;
-        } });
-      }
+      /* The tap window trims this to whatever is inside the list — a card riding
+         up under the page heading would be a ship you cannot see and can still
+         buy, and `tap` is where that is decided now. */
+      tap({ x: c.x, y, w: c.w, h: cardH, act: () => {
+        if (hangar.pick === i && reach) {
+          if (st.onBuyShip) st.onBuyShip(sh.key);
+        } else hangar.pick = i;
+      } });
     }
     ctx.restore();
+    tapClipOff();
 
     const rowsAll = Math.ceil(list.length / cols);
     if (rowsAll > SHIP_ROWS) {

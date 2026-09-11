@@ -1414,17 +1414,31 @@ up to something you can hold in your head. This phase is about the whole, and th
 rule under all of it is Ric's: **simple, and showing exactly what is needed** — on
 a phone and on a desktop, both.
 
-### 7.1 Navigation lives at the top  ·  *not started*
+### 7.1 Navigation lives at the top  ·  **DONE**
 
-Every button that changes page moves to the **top** of the screen. The strip is at
-the foot at the moment, which on a phone is where a thumb rests and where the
-system gesture bar lives.
+Every button that changes page is at the **top** now. It was along the foot, which
+on a phone is where a thumb rests and where the system's own gesture bar lives —
+you cannot put the way between pages under the operating system's swipe. Moving it
+also handed the whole of the old footer back as content room.
 
-And the pages themselves collapse:
+And the pages collapsed from eight tabs to six:
 
-- **STORAGE and LOADOUT become one page** you scroll.
-- **The ALMANAC stops being a page.** It becomes a **book icon inside loadout**.
-- **The CHART gets the strip too**, so the map is not a dead end.
+- **STORAGE and LOADOUT are one scrolling page**, called SHIP. They were two pages
+  about the same object, and reading one while deciding the other meant leaving
+  and coming back. The order on it is the order you ask the questions in: what am
+  I flying, what have I got, who am I to them, what have I seen.
+- **The ALMANAC is not a tab.** It is a book, at the foot of the ship's page, so
+  you reach for it the way you reach for a book on a shelf.
+- **The CHART has the strip**, so the map is not a dead end.
+- **HANGAR is SHIPS** and **BUILD is CRAFT**.
+
+**One bug this could have shipped with.** A scrolling list clips its *drawing* to
+its own window and nothing clipped its *taps* — so a row scrolled up under the
+page heading was invisible and still pressable, which is the worst kind of
+control, because nothing about the screen says it is there. Every rectangle in the
+module goes through one door now, and a page that scrolls sets a window: outside
+it a rectangle is dropped, straddling it, trimmed. The workbench and the ships
+page had hand-rolled versions of that test; both now use the one door.
 
 ### 7.2 The station is a market  ·  *not started*
 

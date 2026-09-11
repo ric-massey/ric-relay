@@ -833,7 +833,9 @@
   const MAX_SPEED    = 360;
   const SHIP_R       = 12;
   const BULLET_SPD   = 520;
-  const BULLET_LIFE  = 1.05;
+  /* A quarter further than it was. Range is life times speed, and the speed is
+     what makes a shot feel like a shot — so the reach comes out of the clock. */
+  const BULLET_LIFE  = 1.31;
   const BURST_SIZE   = 3;
   const BURST_GAP    = 0.12;
   const FIRE_GAP     = 0.62;  // recovery after the third round
@@ -2338,32 +2340,28 @@
       if (code === "KeyL") { state = "almanac"; return; }
       if (surveyHUD) surveyHUD.chartKey(code, surveyState());
     } else if (state === "inventory") {
-      if (code === "Escape" || code === "Backspace" || code === "KeyI") {
+      if (code === "Escape" || code === "Backspace" ||
+          code === "KeyI" || code === "KeyG") {
         state = "playing"; return;
       }
       if (code === "KeyL") { state = "almanac"; return; }
-      if (code === "KeyG") { state = "loadout"; surveyHUD && surveyHUD.loadoutOpened(); return; }
+      if (code === "KeyB") {
+        state = "craft"; surveyHUD && surveyHUD.craftOpened(); return;
+      }
       if (code === "KeyM") {
         state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
       }
+      /* The page scrolls, so the arrows move it — a phone drags and a keyboard
+         has these, and the page is taller than the screen on both. */
+      if (code === "ArrowDown") { surveyHUD.shipScrollBy(60, surveyHUD.shipHeight, surveyHUD.shipView); return; }
+      if (code === "ArrowUp") { surveyHUD.shipScrollBy(-60, surveyHUD.shipHeight, surveyHUD.shipView); return; }
     } else if (state === "craft") {
       /* Back to the sector: building is a thing you do while flying, and the
          world has been running the whole time you were in here. */
       if (code === "Escape" || code === "KeyB") { state = "playing"; return; }
-      if (code === "Backspace" || code === "KeyG") {
-        state = "loadout"; surveyHUD && surveyHUD.loadoutOpened(); return;
+      if (code === "Backspace" || code === "KeyG" || code === "KeyI") {
+        state = "inventory"; surveyHUD && surveyHUD.shipOpened(); return;
       }
-      if (code === "KeyI") { state = "inventory"; return; }
-      if (code === "KeyL") { state = "almanac"; return; }
-      if (code === "KeyM") {
-        state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
-      }
-    } else if (state === "loadout") {
-      /* Back to the sector, because the loadout is a thing you do *while*
-         flying — the world has been running the whole time you were in here. */
-      if (code === "Escape" || code === "KeyG") { state = "playing"; return; }
-      if (code === "Backspace") { state = "inventory"; return; }
-      if (code === "KeyI") { state = "inventory"; return; }
       if (code === "KeyL") { state = "almanac"; return; }
       if (code === "KeyM") {
         state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
@@ -2479,11 +2477,11 @@
         // Last of the three, because a station does more than a world does and a
         // yard is the thing you came back for.
         if (code === "KeyE" && surv && surv.landed) { state = "landed"; return; }
-        if (code === "KeyI") { state = "inventory"; return; }
-        // The loadout. `G` for gear: the four slots are a page you open while
-        // flying, and every other letter near it was already spoken for.
-        if (code === "KeyG") {
-          state = "loadout"; surveyHUD && surveyHUD.loadoutOpened(); return;
+        // Your ship: the slots, the crate, the hold, who you are to the powers,
+        // and the book. `I` and `G` both reach it because it is both of the pages
+        // it used to be.
+        if (code === "KeyI" || code === "KeyG") {
+          state = "inventory"; surveyHUD && surveyHUD.shipOpened(); return;
         }
         // `B` for build. The workbench is you and your hold, so it opens
         // anywhere — a bench you had to dock at could not be the answer to
@@ -11453,8 +11451,9 @@
       onScan: surveyScan,
       onChart: () => { state = "chart"; surveyHUD.chartOpened(surveyState()); },
       onAlmanac: () => { state = "almanac"; },
-      onInventory: () => { state = "inventory"; },
-      onLoadout: () => { state = "loadout"; },
+      onInventory: () => { state = "inventory"; surveyHUD && surveyHUD.shipOpened(); },
+      // Storage and the loadout are one page now — see `drawInventory`.
+      onLoadout: () => { state = "inventory"; surveyHUD && surveyHUD.shipOpened(); },
       onCraftPage: () => { state = "craft"; surveyHUD && surveyHUD.craftOpened(); },
       // The nav strip's own destination for the station itself.
       onStation: () => { if (surv.docked) { state = "refit"; surveyHUD && surveyHUD.refitOpened(); } },
@@ -11722,7 +11721,7 @@
      space, and a page that paused the clock would turn that cost into a loading
      screen you wait out rather than a risk you take. */
   const SURVEY_LIVE_PAGES = { chart: 1, inventory: 1, missions: 1, almanac: 1,
-                              loadout: 1, craft: 1 };
+                              craft: 1 };
   const surveyLive = () =>
     mode && mode.survey && surv && !surv.death && SURVEY_LIVE_PAGES[state];
   const worldRunning = () => state === "playing" || surveyLive() || onlineMenuOpen();
@@ -12216,7 +12215,7 @@
 
   const scrollingPage = () =>
     state === "almanac" || state === "chart" || state === "hangar" ||
-    state === "loadout" || state === "craft";
+    state === "inventory" || state === "craft";
   // How many rows the shelf on the loadout page has to scroll through.
   const shelfRows = () => (surv && surv.docked ? MODULES.length : 0);
 
@@ -12232,8 +12231,9 @@
     } else if (state === "hangar") {
       surveyHUD.hangarDragBy(px, SHIPS.length);
       e.preventDefault();
-    } else if (state === "loadout") {
-      surveyHUD.loadoutDragBy(px, shelfRows());
+    } else if (state === "inventory") {
+      surveyHUD.shipScrollBy(px, surveyHUD.shipHeight || 0,
+                             surveyHUD.shipView || 1);
       e.preventDefault();
     } else if (state === "craft") {
       surveyHUD.craftDragBy(px, RECIPES.length);
@@ -12253,7 +12253,10 @@
     // Content follows the finger: drag down and you see what was above.
     if (state === "almanac") surveyHUD.almanacDragBy(-dy, SURVEY_TOTAL);
     else if (state === "hangar") surveyHUD.hangarDragBy(-dy, SHIPS.length);
-    else if (state === "loadout") surveyHUD.loadoutDragBy(-dy, shelfRows());
+    else if (state === "inventory") {
+      surveyHUD.shipScrollBy(-dy, surveyHUD.shipHeight || 0,
+                             surveyHUD.shipView || 1);
+    }
     else if (state === "craft") surveyHUD.craftDragBy(-dy, RECIPES.length);
     else if (state === "chart") surveyHUD.chartDragBy(dx, dy);
     pageDrag.x = p.x; pageDrag.y = p.y;
@@ -15008,7 +15011,8 @@
       surveyHUD.drawInventory(surveyState(), dt || 0); return;
     }
     if (state === "loadout" && surv && surveyHUD) {
-      surveyHUD.drawLoadout(surveyState(), dt || 0); return;
+      // Anything still asking for the old page gets the one that replaced it.
+      state = "inventory";
     }
     if (state === "craft" && surv && surveyHUD) {
       surveyHUD.drawCraft(surveyState(), dt || 0); return;
