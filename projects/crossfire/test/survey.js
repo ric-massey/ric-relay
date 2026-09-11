@@ -2474,14 +2474,22 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   me.x = big.x + big.reach * 0.5; me.y = big.y;
   me.vx = me.vy = 0;
   surv.motes.length = 0;
+  /* Marked, and counted by identity rather than by how many motes exist. Moving
+     the ship to the well restreams the chunks, and streaming seeds fresh debris
+     around every hazard it loads — so `motes.length` goes *up* while these
+     particular twenty are being swallowed, and a length comparison reads that as
+     "the well took nothing". */
+  const mine = [];
   for (let k = 0; k < 20; k++) {
-    surv.motes.push({ x: big.x + big.kill * 1.6 + k * 4, y: big.y,
-                      vx: 0, vy: 0, spin: 0, life: 90, mat: "iron" });
+    const m = { x: big.x + big.kill * 1.6 + k * 4, y: big.y,
+                vx: 0, vy: 0, spin: 0, life: 90, mat: "iron" };
+    surv.motes.push(m);
+    mine.push(m);
   }
-  const held = surv.motes.length;
   for (let i = 0; i < 60 * 20; i++) { me.invuln = 2; now += 1000 / 60; cf.step(); }
-  check(surv.motes.length < held,
-        "a supermassive well did not swallow any of the " + held +
+  const left = mine.filter(m => surv.motes.indexOf(m) >= 0).length;
+  check(left < mine.length,
+        "a supermassive well did not swallow any of the " + mine.length +
         " motes sitting beside it");
   console.log("  named      supermassive wells and worlds both named and charted " +
               "with their names · ordinary wells stay anonymous · a well " +
@@ -5281,6 +5289,150 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   console.log("  lowtank    half a tank shouts twice, ten seconds each, then the " +
               "triangle stays \u00b7 steps every 15% after \u00b7 both tanks " +
               "\u00b7 the lessons survive the tab");
+}
+
+// ── wants that collide, and an economy that hears about it ───────────────
+/* Phase 6.1 and 6.2, and they are one test because they are one idea. Nothing out
+   here needs to be clever; it needs a goal that can collide with somebody else's.
+   A trader wants to reach a station with its cargo. A pirate wants that cargo. An
+   escort wants its client alive. A patrol wants whatever is causing trouble. A
+   scavenger wants wreckage — including the wreckage you were going to strip.
+
+   Put three of those in one piece of sky and you get a situation nobody scripted.
+   And when one of them fails, the *station* hears about it: a convoy that does
+   not arrive is a shortage, a shortage is a price, and a price is a reason for
+   somebody else to fly out there. */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const view = () => cf.surveyView();
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 999; surv.water = 9e5; surv.food = 9e5;
+      now += 1000 / 60; cf.step();
+    }
+  };
+  me.x = 40000; me.y = 24000;
+  step(30);
+
+  // Every role has a want, and none of them is "fly a line and nothing else".
+  const roles = cf.roles();
+  for (const r of Object.keys(roles)) {
+    check(typeof roles[r].want === "string" && roles[r].want.length,
+          r + " has no want at all");
+  }
+  check(!!roles.scavenger, "there is no scavenger role");
+
+  const mk = (role, faction, x, y, cargo) => {
+    const t = { id: null, kind: role, role, faction, hull: "drayman",
+                x, y, a: 0, from: { x, y }, to: { x: x + 9000, y },
+                leg: 1, speed: 100, baseSpeed: 100, hp: 9, maxHp: 9,
+                cargo: cargo || [], cool: 1, doom: 0, guards: 0, space: 0,
+                trades: false, phase: 0 };
+    surv.traffic.push(t);
+    return t;
+  };
+  const alive = o => surv.traffic.indexOf(o) >= 0;
+
+  /* ── the collision ────────────────────────────────────────────────────── */
+  surv.traffic.length = 0;
+  const hauler = mk("freight", "cordon", me.x + 1200, me.y, ["iron", "iron", "alloy"]);
+  const empty  = mk("freight", "cordon", me.x + 1400, me.y + 2200, []);
+  const pirate = mk("pirate", "pirate", me.x + 3000, me.y + 600);
+  const escort = mk("escort", "cordon", me.x + 900, me.y + 300);
+  const patrol = mk("patrol", "hallow", me.x + 200, me.y - 900);
+  step(240);
+
+  check(pirate.mark === hauler,
+        "the pirate went for " + (pirate.mark === empty ? "the empty hauler" :
+          "something that was not the laden one") + " — it wants the cargo");
+  check((hauler.hunted || 0) > 0, "the hauler does not know it is being hunted");
+  check(escort.angryAt === pirate,
+        "the escort did not turn on the pirate going for its client");
+  check(patrol.mark === pirate || patrol.angryAt === pirate,
+        "the patrol did not respond to a pirate in the open");
+
+  step(60 * 25);
+  check(!alive(pirate), "the pirate survived an escort and a patrol both on it");
+  check(alive(hauler), "the hauler did not survive being defended");
+
+  /* ── a scavenger wants the wreck you wanted ───────────────────────────── */
+  surv.traffic.length = 0;
+  surv.hulks.length = 0;
+  const hulk = { id: "test-hulk", x: me.x + 1500, y: me.y + 400, a: 0, spin: 0,
+                 r: 60, size: 1.2 };
+  surv.hulks.push(hulk);
+  const scav = mk("scavenger", "free", me.x + 2600, me.y + 900);
+  step(60 * 40);
+  check(scav.mark === hulk || surv.hulks.indexOf(hulk) < 0,
+        "a scavenger ignored a wreck 1,100 units away");
+  check(surv.hulks.indexOf(hulk) < 0,
+        "the scavenger reached the wreck and did not take it");
+
+  /* ── the economy hears about it ───────────────────────────────────────── */
+  // Back where there is a station: a shortage belongs to a place, so there has
+  // to be a place.
+  me.x = cf.home().x + 900; me.y = cf.home().y;
+  step(20);
+  const st = surv.stations[0];
+  check(!!st, "no station loaded to trade with");
+  surv.traffic.length = 0;
+  surv.hulks.length = 0;
+
+  const priceOf = key => {
+    surv.docked = st;
+    const m = view().materials.find(x => x.key === key);
+    surv.docked = null;
+    return m;
+  };
+
+  // A station is short of something from the moment it exists — a fresh sector
+  // already has somewhere that pays well for one thing.
+  surv.docked = st;
+  const anyShort = view().materials.some(m => m.shortage > 0.2);
+  surv.docked = null;
+  check(anyShort, "a station is short of nothing at all — prices never vary by want");
+
+  /* A convoy destroyed at the door deepens the shortage of what it was carrying,
+     and the price follows. This is the whole of 6.2: pirates make prices. */
+  const before = priceOf("iridium");
+  const doomed = mk("freight", "cordon", st.x + 500, st.y, ["iridium", "iridium", "iridium"]);
+  doomed.hp = 0.5;
+  cf.live().bullets.push({ owner: 0, colour: "#fff", dmg: 9,
+                           x: doomed.x, y: doomed.y, vx: 0, vy: 0, life: 1 });
+  step(4);
+  check(!alive(doomed), "the convoy was not destroyed");
+  const after = priceOf("iridium");
+  check(after.shortage > before.shortage + 0.1,
+        "a convoy of iridium was destroyed at the door and the station is no " +
+        "shorter of iridium (" + before.shortage.toFixed(2) + " -> " +
+        after.shortage.toFixed(2) + ")");
+  check(after.price > before.price,
+        "the shortage did not move the price (" + before.price + " -> " +
+        after.price + ")");
+
+  /* And a convoy that gets through eases it. A want fulfilled is the only good
+     news the economy ever gets apart from time passing. */
+  surv.traffic.length = 0;
+  const runner = mk("freight", "cordon", st.x + 1400, st.y + 300, ["iridium", "iridium"]);
+  runner.speed = runner.baseSpeed = 260;
+  step(60 * 30);
+  check((runner.delivered || 0) > 0,
+        "a freighter beside a station never delivered anything");
+  const eased = priceOf("iridium");
+  check(eased.shortage < after.shortage,
+        "the convoy got through and the station is just as short (" +
+        after.shortage.toFixed(2) + " -> " + eased.shortage.toFixed(2) + ")");
+  check(eased.price < after.price,
+        "delivering did not bring the price down (" + after.price + " -> " +
+        eased.price + ")");
+
+  console.log("  wants      pirate takes the laden one, escort breaks off, patrol " +
+              "answers, pirate dies \u00b7 a scavenger beats you to a wreck \u00b7 " +
+              "a convoy lost puts iridium " + before.price + " to " + after.price +
+              " and one through brings it back to " + eased.price);
 }
 
 if (problems.length) {

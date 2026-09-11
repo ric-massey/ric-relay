@@ -6529,6 +6529,9 @@
         const was = liveTraffic.get(tid);
         if (was) { surv.traffic.push(was); return; }
         const made = Object.assign({}, t, { id: tid, cargo: t.cargo.slice() });
+        // Its own cruising speed, kept so a ship that runs from something can
+        // stop running afterwards rather than sprinting for the rest of its life.
+        made.baseSpeed = made.speed;
         surv.traffic.push(made);
         /* A distress call brings its own attackers. They are drones like any
            other so they behave like any other, and they are posted on the ship
@@ -6841,6 +6844,10 @@
       /* Battles are the one thing out there with a clock on it. `battleAge` is
          how long each has been fought while you were near enough to see it, and
          it is written into the book — a battle you watched end has ended. */
+      /* What each station is short of. Keyed by station rather than by chunk,
+         because a shortage is a thing that happened to a place and the chunk is
+         rebuilt every time you fly away from it. */
+      market: {},
       battles: [], battleAge: (carried && book.battleAge) || {},
       memorials: new Set(carried && book.memorials ? book.memorials : []),
       gates: [], caches: [], stations: [], hulks: [], drones: [],
@@ -7308,6 +7315,31 @@
          is that it would like to be somewhere else. */
       const near = Math.hypot(me.x - t.x, me.y - t.y);
       const armed = ROLES[t.role || t.kind] && ROLES[t.role || t.kind].armed;
+      t.hunted = Math.max(0, (t.hunted || 0) - dt);
+
+      /* An escort whose client is being hunted turns on whoever is doing it. This
+         is the collision the whole phase is for: the pirate wants the cargo, the
+         escort wants the client alive, and neither of them has been told about
+         the other — they simply both want something involving the same hauler. */
+      if (t.client && surv.traffic.indexOf(t.client) >= 0 && !t.angryAt) {
+        for (const o of surv.traffic) {
+          if (o.faction !== "pirate") continue;
+          if (Math.hypot(o.x - t.client.x, o.y - t.client.y) > 2200 * U) continue;
+          t.angryAt = o;
+          t.mark = o; t.markKind = "ship"; t.think = 3;
+          if (dist2(t.x, t.y, me.x, me.y) < (TRAFFIC_TALK * 1.2) ** 2) {
+            chatter(factionOf(t.faction).short + " escort breaking off \u2014 " +
+                    "they have a pirate on the convoy.", factionOf(t.faction).colour);
+          }
+          break;
+        }
+      }
+      // And whatever it was angry at, once that is gone, it stops being angry.
+      if (t.angryAt && surv.traffic.indexOf(t.angryAt) < 0) t.angryAt = null;
+
+      /* Something being hunted runs, whoever is hunting it. */
+      if (t.hunted > 0 && !armed) t.speed = t.baseSpeed * 1.3;
+      else if (t.baseSpeed) t.speed = t.baseSpeed;
       if (me.alive && near < 2600 * U && t.role !== "hunter") {
         if (armed && shipHostile(t)) t.angry = true;
         else if (armed && repOf(t.faction) <= -30) t.shadow = true;
@@ -7332,14 +7364,22 @@
       /* Shadowing sits off your shoulder rather than closing: near enough that
          you notice, far enough that it is not a threat yet. */
       const tailing = t.shadow && !t.angry && me.alive;
+      /* What it is actually trying to do, which is the whole of 6.1. You are
+         only one of the answers — most of the time a ship out here is busy with
+         somebody else, and the interesting frames are the ones where two of these
+         wants are pointed at the same place. */
       const goal = (t.angry && me.alive) ? { x: me.x, y: me.y }
                  : fleeing ? { x: t.x + (t.x - me.x), y: t.y + (t.y - me.y) }
                  : tailing ? { x: me.x - Math.cos(t.a) * 700 * U,
                                y: me.y - Math.sin(t.a) * 700 * U }
-                 : t.leg > 0 ? t.to : t.from;
+                 : wantOf(t, dt);
       const dx = goal.x - t.x, dy = goal.y - t.y;
       const d = Math.hypot(dx, dy) || 1;
-      if (d < 220) { if (!t.angry && !tailing && !fleeing) t.leg = -t.leg; continue; }
+      if (d < 220) {
+        arrived(t, goal);
+        if (!t.angry && !tailing && !fleeing) t.leg = -t.leg;
+        continue;
+      }
       const want = Math.atan2(dy, dx);
       let diff = want - t.a;
       while (diff > Math.PI) diff -= Math.PI * 2;
@@ -7367,6 +7407,22 @@
           if (t.angry && me.alive) {
             const dd = Math.hypot(me.x - t.x, me.y - t.y);
             if (dd < 1800 * U) { tx = me.x; ty = me.y; live = true; }
+          }
+          /* What it *wants* to shoot, which is usually not you. A pirate fires on
+             the hauler it is chasing; an escort fires on whoever is chasing its
+             client; a patrol fires on the pirate it came for. None of that needed
+             a new system — the want already picked the target, and this is the
+             gun pointed at it. */
+          if (tx == null && t.angryAt && surv.traffic.indexOf(t.angryAt) >= 0) {
+            const o = t.angryAt;
+            if (Math.hypot(o.x - t.x, o.y - t.y) < 1600 * U) { tx = o.x; ty = o.y; }
+            else t.angryAt = null;
+          }
+          if (tx == null && t.markKind === "ship" && t.mark &&
+              surv.traffic.indexOf(t.mark) >= 0 &&
+              ROLES[t.role || t.kind] && ROLES[t.role || t.kind].hunts) {
+            const o = t.mark;
+            if (Math.hypot(o.x - t.x, o.y - t.y) < 1400 * U) { tx = o.x; ty = o.y; }
           }
           if (tx == null) {
             let best = null, bd = 1500 * U;
@@ -7396,6 +7452,171 @@
     }
   }
 
+  /* ── a want, turned into somewhere to be ──────────────────────────────────
+     One function, one answer per role, and none of them is longer than a few
+     lines — that is the point of wants over behaviour. Everything re-picks its
+     target on a slow clock rather than every frame, so a pirate does not
+     dither between two haulers and a scavenger does not turn round the moment
+     something closer appears. */
+  function wantOf(t, dt) {
+    t.think = (t.think || 0) - dt;
+    const spec = ROLES[t.role || t.kind] || ROLES.freight;
+
+    /* Whatever it decided last time, while that thing still exists. A target
+       that has been destroyed drops the want back to the route. */
+    if (t.mark && t.markKind) {
+      const live = t.markKind === "ship" ? surv.traffic.indexOf(t.mark) >= 0
+                 : t.markKind === "hulk" ? surv.hulks.indexOf(t.mark) >= 0
+                 : true;
+      if (!live) { t.mark = null; t.markKind = ""; t.think = 0; }
+    }
+    if (t.think > 0 && t.mark) return t.mark;
+
+    t.think = 1.4 + Math.random() * 1.6;
+
+    switch (spec.want) {
+      case "deliver": {
+        /* A station, and it prefers one that is short of what it is carrying —
+           which is the join between 6.1 and 6.2. A hauler is not wandering; it is
+           taking iron to the place that wants iron. */
+        let best = null, score = -1;
+        for (const st of surv.stations) {
+          const d = Math.hypot(st.x - t.x, st.y - t.y);
+          if (d < 400) continue;
+          let s2 = 1 / (1 + d / 9000);
+          for (const key of t.cargo) s2 += shortageOf(st, key) * 1.6;
+          if (s2 > score) { score = s2; best = st; }
+        }
+        if (best) { t.mark = best; t.markKind = "station"; return best; }
+        break;
+      }
+      case "rob": {
+        /* The loaded one. A pirate that took the nearest ship regardless of what
+           it had would be an enemy with a flight path; wanting the *cargo* is
+           what makes a laden hauler a worse place to be than an empty one. */
+        let best = null, score = 0;
+        for (const o of surv.traffic) {
+          if (o === t || o.faction === "pirate") continue;
+          if (ROLES[o.role || o.kind] && ROLES[o.role || o.kind].armed) continue;
+          const d = Math.hypot(o.x - t.x, o.y - t.y);
+          if (d > 5200 * U) continue;
+          const worth = o.cargo.reduce((a, k) => a + matSpec(k).value, 0) + 1;
+          const s2 = worth / (1 + d / 1400);
+          if (s2 > score) { score = s2; best = o; }
+        }
+        if (best) {
+          t.mark = best; t.markKind = "ship";
+          best.hunted = 2.5;            // and it knows about it
+          return best;
+        }
+        break;
+      }
+      case "guard": {
+        /* Its client: the nearest unarmed ship of its own flag. An escort with
+           nobody to escort goes back to walking its line, which is what an escort
+           with nobody to escort would do. */
+        let best = null, bd = 6000 * U;
+        for (const o of surv.traffic) {
+          if (o === t || o.faction !== t.faction) continue;
+          const r = ROLES[o.role || o.kind];
+          if (!r || r.armed) continue;
+          const d = Math.hypot(o.x - t.x, o.y - t.y);
+          if (d < bd) { bd = d; best = o; }
+        }
+        if (best) {
+          t.mark = best; t.markKind = "ship";
+          t.client = best;
+          // Off its shoulder rather than on top of it.
+          return { x: best.x - Math.cos(best.a) * 260 * U,
+                   y: best.y - Math.sin(best.a) * 260 * U };
+        }
+        break;
+      }
+      case "police": {
+        /* Trouble. A pirate in the open first, then anything being hunted, then
+           the station with the deepest shortage — because a station nobody can
+           supply is where trouble is going to be. */
+        let pirate = null, pd = 7000 * U;
+        for (const o of surv.traffic) {
+          if (o.faction !== "pirate") continue;
+          const d = Math.hypot(o.x - t.x, o.y - t.y);
+          if (d < pd) { pd = d; pirate = o; }
+        }
+        if (pirate) {
+          t.mark = pirate; t.markKind = "ship";
+          t.angryAt = pirate;
+          return pirate;
+        }
+        let worst = null, worstShort = 0.45;
+        for (const st of surv.stations) {
+          const m = marketOf(st);
+          if (!m) continue;
+          const s2 = Math.max(...Object.keys(m.want).map(k => m.want[k]), 0);
+          if (s2 > worstShort) { worstShort = s2; worst = st; }
+        }
+        if (worst) { t.mark = worst; t.markKind = "station"; return worst; }
+        break;
+      }
+      case "salvage": {
+        /* Wreckage — and yes, the same wreckage you were going to strip. A
+           scavenger racing you to a hulk is competition that nobody had to write
+           as competition. */
+        let best = null, bd = 6000 * U;
+        for (const h of surv.hulks) {
+          const d = Math.hypot(h.x - t.x, h.y - t.y);
+          if (d < bd) { bd = d; best = h; }
+        }
+        if (best) { t.mark = best; t.markKind = "hulk"; return best; }
+        break;
+      }
+      case "survive": {
+        // Anywhere that is not here, preferring a station.
+        let best = null, bd = Infinity;
+        for (const st of surv.stations) {
+          const d = Math.hypot(st.x - t.x, st.y - t.y);
+          if (d < bd) { bd = d; best = st; }
+        }
+        if (best) { t.mark = best; t.markKind = "station"; return best; }
+        break;
+      }
+    }
+    // Nothing to want: walk the line it was born with.
+    t.mark = null; t.markKind = "";
+    return t.leg > 0 ? t.to : t.from;
+  }
+
+  /* Getting there. Most wants are satisfied by arriving, and what arriving *does*
+     is where the economy hears about any of it. */
+  function arrived(t, goal) {
+    const spec = ROLES[t.role || t.kind] || ROLES.freight;
+    if (spec.want === "deliver" && t.markKind === "station" && t.cargo.length) {
+      /* A convoy got through. Whatever it was carrying, this station is that much
+         less short of — which is 6.2's good news, and the only way a shortage
+         ever eases apart from time. */
+      for (const key of t.cargo) moveMarket(t.mark, key, -0.3);
+      t.cargo = [];
+      t.delivered = (t.delivered || 0) + 1;
+      if (dist2(t.x, t.y, ships[0].x, ships[0].y) < (TRAFFIC_TALK * 1.4) ** 2) {
+        chatter(factionOf(t.faction).short + " convoy unloading.", NEBULA);
+      }
+      t.think = 0;
+      saveSurveyBook();
+    }
+    if (spec.want === "salvage" && t.markKind === "hulk") {
+      // It takes the wreck. You were too slow.
+      const i = surv.hulks.indexOf(t.mark);
+      if (i >= 0) {
+        burst(t.mark.x, t.mark.y, WRECK, 12, 200 * U);
+        if (t.mark.id) surv.stripped.add(t.mark.id);
+        surv.hulks.splice(i, 1);
+        if (dist2(t.x, t.y, ships[0].x, ships[0].y) < (TRAFFIC_TALK * 1.4) ** 2) {
+          chatter("A scavenger got to that one first.", "#ff8f77");
+        }
+      }
+      t.mark = null; t.markKind = ""; t.think = 0;
+    }
+  }
+
   /* Destroyed, by you or by somebody else. What it was carrying ends up on the
      floor either way — which is what makes robbing one a thing you can do, and
      failing to save one a thing that costs somebody else rather than you. */
@@ -7405,6 +7626,19 @@
     gameSound("boom", t.x);
     addShake(4);
     for (const key of t.cargo) dropKnownMote(t.x, t.y, key, 90);
+    /* A convoy that did not get through. Whatever it was carrying, the station
+       that was expecting it is now shorter of it — and the shortage is a price, so
+       the next thing that happens is that somebody else finds it worth the trip.
+       This is the whole of 6.2 in four lines: pirates make prices. */
+    if (t.cargo && t.cargo.length) {
+      let near = null, nd = 26000;
+      for (const st of surv.stations) {
+        const d = Math.hypot(st.x - t.x, st.y - t.y);
+        if (d < nd) { nd = d; near = st; }
+      }
+      const aim = t.markKind === "station" && t.mark ? t.mark : near;
+      if (aim) for (const key of t.cargo) moveMarket(aim, key, 0.22);
+    }
     if (t.id) surv.goneTraffic.add(t.id);
     surv.traffic.splice(i, 1);
     // Its attackers have nothing left to attack.
@@ -8020,6 +8254,78 @@
      function of where it stands so a good buyer stays a good buyer and is worth
      writing on the chart. Home sits at the origin with no depth bonus at all,
      which is what makes the first other station you find worth finding. */
+  /* ── a station that wants something ───────────────────────────────────────
+     Phase 6.2. Prices varied by *place* and never by *event*: nothing that
+     happened near a station changed anything about it, so a convoy being taken
+     apart outside the window was scenery.
+
+     A station is short of one or two materials. Being short raises what it pays
+     for them, which is the only signal the system needs — a shortage is a price,
+     and a price is a reason to fly somewhere. Three things move it:
+
+       a convoy arrives    carrying what it wanted, and the shortage eases
+       a convoy is killed   anywhere near it, and the shortage deepens
+       time                 passes, and it drifts back toward its own baseline
+
+     The baseline is rolled from the station's position, so a fresh sector already
+     has somewhere that pays well for iron. Everything after that is something
+     that happened. */
+  const SHORT_MAX = 1.4;        // how far a price can be pushed up
+  const SHORT_EASE = 0.012;     // per second, back toward the baseline
+
+  const stationId = st =>
+    st && (st.id || (st.id = "s" + Math.round(st.x) + "," + Math.round(st.y)));
+
+  function marketOf(st) {
+    if (!st) return null;
+    const id = stationId(st);
+    let m = surv.market[id];
+    if (!m) {
+      /* Its baseline: one material it is habitually short of, rolled from where
+         it is. A station in the deep wants the cheap bulk it cannot get; one near
+         home wants the rare things nobody brings in. */
+      const R = seeded(chunkSeed(Math.round(st.x / 7) ^ 0x51ed2701,
+                                 Math.round(st.y / 7) ^ 0x1b873f05));
+      const deep = dangerAt(st.x, st.y);
+      const pool = deep > 0.5
+        ? MATERIALS.filter(x => x.value <= 3)
+        : MATERIALS.filter(x => x.value >= 9);
+      const pick = pool[Math.floor(R() * pool.length)] || MATERIALS[1];
+      m = surv.market[id] = { base: pick.key, want: {}, seen: 0 };
+      m.want[pick.key] = 0.35 + R() * 0.4;
+    }
+    return m;
+  }
+
+  // How short it is of one thing, 0 to 1.
+  const shortageOf = (st, key) => {
+    const m = marketOf(st);
+    return m ? Math.max(0, Math.min(1, m.want[key] || 0)) : 0;
+  };
+
+  /* Something happened. `d` is how much, positive to deepen a shortage and
+     negative to ease it — a convoy arriving eases, one being destroyed deepens. */
+  function moveMarket(st, key, d) {
+    const m = marketOf(st);
+    if (!m || !key) return;
+    m.want[key] = Math.max(0, Math.min(1, (m.want[key] || 0) + d));
+  }
+
+  /* Every station you can see drifts back toward its baseline. Only the loaded
+     ones: a station nobody has been near has no story to tell yet, and its
+     baseline is what it would have drifted to anyway. */
+  function surveyMarkets(dt) {
+    for (const st of surv.stations) {
+      const m = marketOf(st);
+      if (!m) continue;
+      for (const key of Object.keys(m.want)) {
+        const home = key === m.base ? 0.4 : 0;
+        const gap = home - m.want[key];
+        m.want[key] += Math.sign(gap) * Math.min(Math.abs(gap), SHORT_EASE * dt);
+      }
+    }
+  }
+
   function stationPrices(st) {
     const out = {};
     if (!st) return out;
@@ -8027,7 +8333,10 @@
     for (const m of MATERIALS) {
       const R = seeded(chunkSeed(Math.round(st.x / 11) + m.key.length * 7919,
                                  Math.round(st.y / 11) - m.key.charCodeAt(0) * 131));
-      out[m.key] = Math.max(1, Math.round(m.value * band * (0.78 + R() * 0.64)));
+      // What it is short of, it pays more for. That is the whole signal.
+      const want = 1 + shortageOf(st, m.key) * SHORT_MAX;
+      out[m.key] = Math.max(1, Math.round(m.value * band * want *
+                                          (0.78 + R() * 0.64)));
     }
     return out;
   }
@@ -8775,19 +9084,35 @@
   /* `role` is temperament and job; `faction` is the flag, and the two are
      independent — which is the point. `space` is how much room it wants; zero
      means it does not care who flies past. */
+  /* ── what each of them wants ──────────────────────────────────────────────
+     Phase 6.1. Nothing out here needs to be clever; it needs a *goal that can
+     collide with somebody else's*. A trader wants to reach a station with its
+     cargo. A pirate wants that cargo. An escort wants its client alive. A patrol
+     responds to whatever is happening. A scavenger wants wreckage — including the
+     wreckage you were about to strip.
+
+     Put three of those in the same piece of sky and you get a situation nobody
+     scripted: the pirate closes on the hauler, the escort turns to meet it, the
+     patrol hears the shooting and comes, and you arrive in the middle of it with
+     a choice to make. That is the whole of this phase — no behaviour trees, no
+     states, just wants and the fact that they are incompatible.
+
+     `want` is the verb. `hunts` is whether the want involves chasing somebody. */
   const ROLES = {
-    freight:  { armed: false, trades: false, space: 0 },
-    trader:   { armed: false, trades: true,  space: 0 },
-    escort:   { armed: true,  trades: false, space: 620 },
-    patrol:   { armed: true,  trades: false, space: 340 },
-    pirate:   { armed: true,  trades: false, space: 0 },
-    distress: { armed: false, trades: false, space: 0 },
-    hunter:   { armed: true,  trades: false, space: 0 }
+    freight:  { armed: false, trades: false, space: 0,   want: "deliver" },
+    trader:   { armed: false, trades: true,  space: 0,   want: "deliver" },
+    escort:   { armed: true,  trades: false, space: 620, want: "guard" },
+    patrol:   { armed: true,  trades: false, space: 340, want: "police" },
+    pirate:   { armed: true,  trades: false, space: 0,   want: "rob", hunts: 1 },
+    scavenger:{ armed: false, trades: true,  space: 0,   want: "salvage" },
+    distress: { armed: false, trades: false, space: 0,   want: "survive" },
+    hunter:   { armed: true,  trades: false, space: 0,   want: "you", hunts: 1 }
   };
 
   const TRAFFIC_HULLS = {
     freight:  ["drayman", "coffer", "pannier", "runner", "windlass", "carrack"],
     trader:   ["pannier", "runner", "stride", "carrack", "coffer"],
+    scavenger:["stride", "runner", "pannier", "louvre", "vane"],
     escort:   ["lance", "harrier", "wedge", "spur"],
     patrol:   ["lance", "harrier", "wedge", "spur", "bastion"],
     pirate:   ["needle", "vane", "harrier", "louvre", "spur", "reprisal"],
@@ -8795,7 +9120,7 @@
     hunter:   ["harrier", "lance", "spur", "bastion", "reprisal"]
   };
   const TRAFFIC_HP = { freight: 6, trader: 6, escort: 8, patrol: 8,
-                       pirate: 7, distress: 5, hunter: 8 };
+                       pirate: 7, distress: 5, hunter: 8, scavenger: 5 };
   // A ship is drawn in its flag's colour; a pirate flies none and gets the one
   // that means it.
   const trafficColour = t => factionOf(t.faction).colour;
@@ -9372,11 +9697,15 @@
       } else faction = powers[Math.floor(R() * powers.length)];
 
       const r2 = R() / Math.min(1.35, heat);
-      if (faction === "free") role = r2 < 0.55 ? "trader" : "freight";
+      if (faction === "free") {
+        // The independents are the ones with time to pick over a wreck.
+        role = r2 < 0.42 ? "trader" : r2 < 0.72 ? "freight" : "scavenger";
+      }
       else if (r2 < 0.3) role = "patrol";
       else if (r2 < 0.46) role = "escort";
-      else if (r2 < 0.72) role = "trader";
-      else if (r2 < 0.92) role = "freight";
+      else if (r2 < 0.68) role = "trader";
+      else if (r2 < 0.88) role = "freight";
+      else if (r2 < 0.95) role = "scavenger";
       else role = "distress";
     }
     const kind = role;
@@ -10155,6 +10484,7 @@
     surveyShots(dt);
     surveyBullets();
     surveyTraffic(dt);
+    surveyMarkets(dt);
     surveyRockSolids();
     surveyFitting(dt);
     surveyMelt(dt);
@@ -10845,6 +11175,11 @@
       materials: MATERIALS.map(m => ({
         key: m.key, name: m.name, colour: m.colour, note: m.note,
         value: m.value, n: surv.hold[m.key] || 0,
+        /* How short this station is of it, 0 to 1. A shortage is a price and a
+           price is a reason to fly somewhere, so the number that moved the price
+           travels with it — the shop can say WANTED rather than leaving you to
+           notice that iron is dearer here than it was yesterday. */
+        shortage: surv.docked ? shortageOf(surv.docked, m.key) : 0,
         price: surv.docked ? stationPrices(surv.docked)[m.key] : null
       })),
       worth: (() => {
@@ -16002,6 +16337,10 @@
       catalogue: () => ALMANAC,
       chunk: (cx, cy) => buildChunk(cx, cy),
       chunkSize: () => CHUNK,
+      // What a station is short of, for anything watching the economy react.
+      market: st => marketOf(st || surv.docked),
+      // What every kind of ship out there is trying to do.
+      roles: () => JSON.parse(JSON.stringify(ROLES)),
       /* How long the sector is. Anything sampling "near home" against "the deep"
          has to ask rather than assume: these numbers moved by a factor of six
          when the almanac's ladder was stretched, and a test with 320,000 written
