@@ -53,21 +53,41 @@
      ties to the site's exploration room, but the chrome stays amber: this is
      still Crossfire's interface, not a different game's. */
   const VIOLET     = "#a08cff";
-  const VIOLET_DIM = "#6f5cc4";
-  const VIOLET_LOW = "#3d3470";
+  /* Lifted, both of them. The dim and the low were chosen against a bright
+     monitor in a dark room; on a phone in daylight `#3d3470` on `#07070e` is
+     about a 2:1 contrast ratio, which is not a colour, it is a rumour — and half
+     the interface's secondary type was drawn in them at 0.5 alpha on top of that.
+     Nothing in here should be hard to read. */
+  const VIOLET_DIM = "#9d8ce0";
+  const VIOLET_LOW = "#6f63a8";
   const AMBER      = "#ffe56d";
   const AMBER_DIM  = "#ffcb42";
   const RULE       = "#9a7a1f";
   const WARN       = "#ff8f77";
   const ICE        = "#87d8ff";
   const SOLAR      = "#ffd76d";
-  const WRECKC     = "#7d8596";
+  const WRECKC     = "#99a2b5";
   const CASH       = "#6dffbf";
-  const CASH_DIM   = "#3f9d78";
+  const CASH_DIM   = "#5fc79b";
   const INK        = "#05050a";
 
   /* Real steps only — anything below 16 is a lie on a phone. */
-  const SIZE = { cap: 16, val: 19, head: 23, big: 30, huge: 40 };
+  /* Type sizes, and they are bigger on a phone. The same 16px caption that reads
+     comfortably on a monitor at arm's length is being looked at on a screen four
+     inches wide held at the same distance, and it is the size *everything*
+     secondary in this interface is drawn at.
+
+     A function rather than a constant because the panel is built once and the
+     device is known by then; every call site already reads `SIZE.cap` and gets
+     the right number without knowing why. */
+  const TOUCH_TYPE = 1.18;
+  const SIZE = {
+    get cap()  { return api && api.touchOnly ? 19 : 16; },
+    get val()  { return api && api.touchOnly ? 22 : 19; },
+    get head() { return api && api.touchOnly ? 26 : 23; },
+    get big()  { return api && api.touchOnly ? 34 : 30; },
+    get huge() { return api && api.touchOnly ? 44 : 40; }
+  };
 
   /* ── the lattice ──────────────────────────────────────────────────────────
      480 units a cell: coarse enough that revealing one is visible progress on
@@ -604,7 +624,7 @@
      `fitText` handles the type. */
   const NAV_CLOSE_W = 150;
   // Along the top. See `PAGE.TOP`.
-  const NAV_Y = () => 30;
+  const NAV_Y = () => 32;
 
   function pageNav(st, here) {
     const { SCREEN_W, SCREEN_H } = api;
@@ -622,13 +642,15 @@
       { key: "missions",  name: "MISSIONS", live: true,   act: st.onMissions },
       { key: "chart",     name: "CHART",    live: true,   act: st.onChart }
     ];
-    const gap = 7;
+    const gap = api.touchOnly ? 5 : 7;
     const span = SCREEN_W - PAGE.EDGE * 2 - NAV_CLOSE_W - 16;
     const w = Math.floor((span - gap * (tabs.length - 1)) / tabs.length);
     tabs.forEach((t, i) => {
       const cx = PAGE.EDGE + w / 2 + i * (w + gap);
       const on = t.key === here;
-      button(t.name, cx, NAV_Y(), w, 38,
+      // Six tabs across a phone is the tightest row in the game; it gets the
+      // height back that the width cannot give it.
+      button(t.name, cx, NAV_Y(), w, api.touchOnly ? 46 : 38,
              on ? VIOLET : t.live ? VIOLET_DIM : VIOLET_LOW,
              on || !t.live ? null : t.act, on, t.live && !on, "0.04em");
     });
@@ -1519,6 +1541,44 @@
       tap({ x: left, y: y - 72, w: Math.max(120, right - left), h: 36,
             act: act || (() => {}) });
     };
+
+    /* ── the station is the door ────────────────────────────────────────────
+       Docking is a keypress, and on a phone the keypress is the prompt on this
+       line — which four other things can outrank. At one hull point the line
+       reads THE NEXT HIT KILLS YOU, correctly, and a phone was left with no way
+       into the shop at exactly the moment it needed one most: you are docked, you
+       are one hit from dead, the repair is twenty feet away and there is nothing
+       to press.
+
+       So the station itself is pressable whenever you are close enough to dock.
+       It is where you are already looking, it is the thing you want, and it can
+       never be crowded out by something more urgent because it is not on this
+       line at all. */
+    if (st.docked && st.dockAt && st.cam && st.ship) {
+      const cam = st.cam;
+      const cos = Math.cos(cam.rot), sin = Math.sin(cam.rot);
+      const dx = st.dockAt.x - cam.x, dy = st.dockAt.y - cam.y;
+      const px = SCREEN_W / 2 + (dx * cos - dy * sin) * cam.scale;
+      const py = SCREEN_H / 2 + (dx * sin + dy * cos) * cam.scale;
+      const rr = 74;
+      if (px > -rr && px < SCREEN_W + rr && py > -rr && py < SCREEN_H + rr) {
+        const beat = 0.45 + 0.3 * Math.sin(clockish() * 3);
+        ctx.save();
+        ctx.strokeStyle = CASH;
+        ctx.globalAlpha = beat;
+        ctx.lineWidth = 2;
+        ctx.setLineDash && ctx.setLineDash([7, 6]);
+        ctx.beginPath();
+        ctx.arc(px, py, rr, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash && ctx.setLineDash([]);
+        ctx.restore();
+        label(api.touchOnly ? "TAP TO DOCK" : "DOCK  [E]", px, py + rr + 20,
+              SIZE.cap, CASH, "center", 0.9, "0.1em");
+        tap({ x: px - rr, y: py - rr, w: rr * 2, h: rr * 2,
+              act: st.onRefit || (() => {}) });
+      }
+    }
 
     const dry = st.water && st.water.countdown > 0 ? st.water : null;
     const starving = st.food && st.food.countdown > 0 ? st.food : null;
@@ -2416,7 +2476,7 @@
        one is outlined a pixel and a half proud of its box, and 16px type puts its
        ascent twelve pixels above the baseline — so the first version of this had
        the word sitting inside the bottom of the colour it was naming. */
-    ry += 34;
+    ry += 42;
     label(PIN_KINDS[chart.pin].name, rail.x, ry, SIZE.cap,
           PIN_KINDS[chart.pin].colour, "left", 0.8, "0.1em");
     ry += 16;
@@ -2482,7 +2542,7 @@
         ? k : a, 0);
     fitText(fmtCells(Math.round(SCREEN_W / chart.scale)) + " ACROSS  \u00b7  " +
             (step + 1) + "/" + ZOOMS.length,
-            rail.x, ry + 8, SIZE.cap, VIOLET_DIM, "left", 0.7, rail.w);
+            rail.x, ry + 20, SIZE.cap, VIOLET_DIM, "left", 0.7, rail.w);
 
     pageNav(st, "chart");
     closeButton(st.onClose || (() => {}));
@@ -3733,8 +3793,12 @@
        So this is the catalogue. Each box says what kind of thing it is and
        whether you have one; picking it says what it does and, the part nobody
        could find out before, **how you get one**. */
+    /* Four across on a phone, not three. Three made each box a third of the grid
+       — enormous squares with a small icon marooned in the middle of each, three
+       parts visible at a time out of twenty-odd, and a scroll for the rest. The
+       grid is a catalogue: what it has to do is let you see a lot of it at once. */
     const gridW = full.w - railW - PAGE.GUTTER;
-    const cols = api.touchOnly ? 3 : 4;
+    const cols = api.touchOnly ? 4 : 4;
     const cell = Math.floor((gridW - PAGE.PAD * 2 - (cols - 1) * 10) / cols);
     const pickH = PANEL_H(5);
     const gridH = SCREEN_H - PAGE.TOP - pickH - PAGE.STEP - 22;
@@ -4718,20 +4782,35 @@
      draws its label at a hard 18px, which sat a pixel off every heading on every
      page — two "medium" sizes doing one job, one of them from a different file.
      Same rectangle, same tap registration, the pages' own scale. */
+  /* Every button in the mode goes through here, so this is the one place that
+     can make all of them a thumb-sized target at once. A phone gets a quarter
+     more height and a wider tap box than the drawn one — the box you press is
+     allowed to be bigger than the box you see, and on a phone it should be. */
   function button(text, cx, cy, w, h, colour, act, on, live, track) {
     const { ctx } = api;
     const enabled = live === undefined ? true : !!live;
+    /* Only buttons that have room to grow. A phone needs bigger targets, but the
+       market is a list of rows 30 apart with a 26-high button on each, and
+       inflating those made every row's target overlap the one below it — a
+       target that overlaps its neighbour is worse than a small one, because now
+       the press lands on the wrong thing instead of on nothing.
+
+       The width is left alone for the same reason: six navigation tabs are laid
+       out to fill the row exactly, so widening each one by six per cent makes
+       every tab overlap both its neighbours. */
+    if (api.touchOnly && h >= 30) h = Math.round(h * 1.2);
     ctx.save();
     ctx.fillStyle = colour;
     ctx.globalAlpha = enabled ? (on ? 0.18 : 0.06) : 0.02;
     ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
     ctx.strokeStyle = colour;
-    ctx.globalAlpha = enabled ? (on ? 1 : 0.45) : 0.16;
-    ctx.lineWidth = on ? 2 : 1;
+    // A 0.45 border is a suggestion of a button. It is a button.
+    ctx.globalAlpha = enabled ? (on ? 1 : 0.8) : 0.3;
+    ctx.lineWidth = on ? 2.5 : 1.5;
     ctx.strokeRect(cx - w / 2, cy - h / 2, w, h);
     ctx.restore();
     fitText(text, cx, cy + 6, SIZE.cap, colour, "center",
-            enabled ? 1 : 0.35, w - 18, track === undefined ? "0.12em" : track);
+            enabled ? 1 : 0.5, w - 18, track === undefined ? "0.12em" : track);
     if (enabled && typeof act === "function") {
       tap({ x: cx - w / 2, y: cy - h / 2, w, h, act });
     }

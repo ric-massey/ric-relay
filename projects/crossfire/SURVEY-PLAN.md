@@ -2004,6 +2004,87 @@ sort of thing a sector names. Measured at **2.0 ms a tick** with 67 ships loaded
 
 ---
 
+### A bug sweep from the cockpit  ·  **DONE**
+
+Ten things, most of them mine, several of them the same mistake in different
+clothes: *the sector was full of objects that were not quite objects.*
+
+**Far too many ships, and none at home.** The region layer gave settled space
+1.9× traffic and home counted as settled — so the busiest place in the sector was
+the two chunks around the one station you cannot avoid. Home is ordinary space
+now and the few chunks around the start get a quarter of the usual chance:
+**one ship at spawn instead of twelve**, and thirteen at the peak of ninety
+seconds' flying instead of thirty. Somebody docking and leaving, not a rush hour.
+
+**You could fly through every ship in the sector.** Ships bounce off each other —
+that code has been there since the first mode — but traffic is not in the `ships`
+array, so nothing ever asked whether your nose was inside a freighter. A neutral
+you can occupy the same space as is a painting.
+
+**Other people's bullets went through asteroids.** Every round fired by anything
+out here ignored every rock, which is the same mistake again — and it is also
+cover: a rock between you and a patrol was worth nothing while their fire ignored
+it.
+
+**Ships stopped and did nothing.** The reserve drained whenever a ship was inside
+*any* gravity well's reach, which is a large fraction of the sector and most of it
+harmless — so ordinary haulers burned their water crossing a star's outskirts and
+stopped dead everywhere. Only a well that is actually beating the ship's engine
+counts now. Plus a watchdog: anything that has not moved for eight seconds thinks
+again, which is cheaper than finding every way a ship can wedge itself.
+
+**Ships left hulks.** They did, for 6.5's sake, and it was wrong in the sky: a
+hulk is a big dead hull you strip for salvage, and a fighter you shot turning into
+one made the sector read as though hulks came out of ships. They do not. Battles
+still lay out their own field of wrecks, which is the version that was always
+right — a battle is an event and a single kill is not. The persistent wreck list
+that existed to carry them is gone with them.
+
+**Paid for rescues you had nothing to do with.** A distress call paid the moment
+its last attacker died, whoever killed it — a patrol clearing the post while you
+flew past put 260 in your pocket for watching. It pays for damage *you* dealt now,
+and it pays **what that power thinks you are worth**: 1.35× if they trust you,
+0.35× if you are wanted. Never nothing — that they pay badly is the information.
+
+**An escort that got there too late to matter.** It reacted to a pirate within
+2,200 units of its client, which is after the pirate has already made its
+approach; measured, the hauler died before the escort closed. 3,400 now.
+
+**Ships flew at the wrong speed.** A Needle in a pirate's hands did 120–190 and a
+Needle in yours does 360 × 1.44. The roster meant one thing when you bought a hull
+and something else when you met one, and *"can I outrun that"* had no answer you
+could work out from the thing you were looking at. Every ship out there now flies
+its own hull's advertised multiplier, cruising rather than flat out.
+
+**Nothing spawns in a wall.** Every system that picks a point in space was written
+when the only solid things were a planet and a small derelict. A rock loose in a
+corridor can never get out; a hunter in a hull cannot be reached or escaped; a
+drive part dropped in a bulkhead is on the chart, named, and gone for good.
+
+**And on a phone:** the station itself is now the door — at one hull point the
+prompt line correctly reads THE NEXT HIT KILLS YOU and a phone was left with no
+way into the shop at the moment it needed one most. Buttons are a fifth taller
+where they have room (dense list rows are left alone: a target that overlaps its
+neighbour is worse than a small one). Type is 19px rather than 16. The two dim
+violets were about 2:1 against the background — a rumour, not a colour — and are
+lifted. And the parts grid is four across rather than three, because a catalogue's
+job is to let you see a lot of it at once.
+
+### And the harness stopped being random
+
+The simulation uses `Math.random` for everything that is not world generation, so
+the suite was non-deterministic — a check that fails one run in four is worse than
+no check, because it trains you to re-run until it passes. One seeded generator
+per boot: the same fight every time, and a failure is a fact rather than a mood.
+
+It immediately turned a flake into a finding. "The hauler did not survive being
+defended" had been failing intermittently; pinned down, it was a scenario that gave
+every ship in it the same speed — so the hauler could not run, the escort could not
+catch up, and the pirate sat in firing range forever. That is not a test of
+escorting. It is also what turned up the escort's reaction radius above.
+
+---
+
 ## At the end of Phase 7: go back to Phase 6
 
 **Read this before starting anything new.**

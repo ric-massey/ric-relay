@@ -3232,6 +3232,9 @@
       if (d > R) continue;
       dr.hp -= b.dmg * share(d);
       dr.hit = 0.12; dr.awake = true;
+      // Your round, on something taking a ship apart: that is what being owed for
+      // a rescue means. See the distress branch in `surveyTraffic`.
+      if (dr.prey) dr.prey.helped = true;
       if (dr.hp <= 0) killDrone(i); else gameSound("hit", dr.x);
     }
     for (let i = surv.traffic.length - 1; i >= 0; i--) {
@@ -5916,7 +5919,7 @@
       rocks: 1, style: "rough", scan: 1, traffic: 1, ice: 1, d: {} },
 
     { key: "reach", name: "SETTLED REACH", colour: "#6dffbf", weight: 3,
-      rocks: 0.7, style: "rough", scan: 1, traffic: 1.9, ice: 1,
+      rocks: 0.7, style: "rough", scan: 1, traffic: 1.2, ice: 1,
       d: { stations: 2.6, planets: 1.7, wells: 0.6, fields: 0.4, wrecks: 0.7 } },
     { key: "belt", name: "THE BELT", colour: "#c0a487", weight: 3,
       rocks: 2.6, style: "rough", scan: 1, traffic: 0.7, ice: 1.2,
@@ -5950,14 +5953,14 @@
       rocks: 1.9, style: "round", scan: 1, traffic: 0.6, ice: 6,
       d: { fields: 2.4, wells: 0.6, stations: 0.5, planets: 0.7 } },
     { key: "lanes", name: "THE LANES", colour: "#ffcb42", weight: 1.6,
-      rocks: 0.8, style: "rough", scan: 1, traffic: 2.6, ice: 1,
+      rocks: 0.8, style: "rough", scan: 1, traffic: 1.5, ice: 1,
       d: { stations: 1.7, gates: 1.8, wrecks: 1.3, fields: 0.5 } },
 
     /* ── the two rare ones ──────────────────────────────────────────────────
        Both are about one crossing in a hundred, and both should be a story
        somebody tells afterwards rather than a place on a route. */
     { key: "city", name: "THE WORKS", colour: "#ffe56d", weight: 0.4,
-      rocks: 0.5, style: "rough", scan: 1, traffic: 4.5, ice: 0.8,
+      rocks: 0.5, style: "rough", scan: 1, traffic: 2.1, ice: 0.8,
       d: { stations: 7, planets: 2.4, gates: 2, wells: 0.3, fields: 0.2 } },
     /* See BIOMES.md. Nothing here, for a very long way, with no explanation and
        no label — and it is one of the two rarest things in the galaxy, because
@@ -6025,7 +6028,10 @@
      into the middle of a well cluster would be a different game. */
   const HOME_REACH = REGION_CELL * 0.34;
   function regionOf(x, y) {
-    if (x * x + y * y < HOME_REACH * HOME_REACH) return REGIONS[1];
+    // Home is *ordinary* space, not a busy one. It used to return the settled
+    // region, which put nearly twice the usual traffic around the one station
+    // you cannot avoid.
+    if (x * x + y * y < HOME_REACH * HOME_REACH) return REGIONS[0];
     return regionAt(x, y);
   }
 
@@ -6058,7 +6064,7 @@
                     opened: [], stripped: [],
                     carrying: [], built: [], pins: [], known: [],
                     slots: [], store: {}, battleAge: {}, memorials: [],
-                    dropped: [], coilFired: false, wrecked: [],
+                    dropped: [], coilFired: false,
                     friends: [], grudges: [],
                     alert: { water: { taught: 0 }, food: { taught: 0 } } };
     try {
@@ -6201,21 +6207,6 @@
           }
           return out;
         })(),
-        /* Wrecks that are *events* rather than scenery. A chunk's own hulks come
-           back out of its seed every time you fly into it; one that is there
-           because something died in front of you cannot, so it is written down.
-           Bounded, because a long run kills a lot of things — see `WRECK_KEEP`. */
-        wrecked: Array.isArray(b.wrecked)
-          ? b.wrecked.filter(w => w && typeof w.id === "string" &&
-                                  Number.isFinite(w.x) && Number.isFinite(w.y))
-                     .map(w => ({ id: w.id.slice(0, 64),
-                                  x: Math.round(w.x), y: Math.round(w.y),
-                                  r: Math.max(30, Math.min(140, Number(w.r) || 60)),
-                                  a: Number(w.a) || 0,
-                                  spin: Math.max(-0.3, Math.min(0.3, Number(w.spin) || 0)),
-                                  hp: Math.max(1, Math.min(9, Math.floor(Number(w.hp)) || 4)) }))
-                     .slice(0, 80)
-          : [],
         /* Who owes you one, and who owes you the other thing. Both are short,
            both are validated on the way in like everything else in here, and both
            are the difference between a sector that has a history and a sector that
@@ -6292,7 +6283,6 @@
         carrying: [...surv.carrying],
         built: [...surv.built],
         dropped: surv.dropped,
-        wrecked: surv.wrecked,
         friends: surv.friends,
         grudges: surv.grudges,
         coilFired: !!surv.coilFired,
@@ -7442,7 +7432,7 @@
                 x: b.x + off, y: b.y + along, a: face,
                 from: { x: b.x + off, y: b.y + along },
                 to: { x: b.x - off, y: b.y + along },
-                leg: 1, speed: 130 + BR() * 60,
+                leg: 1, speed: MAX_SPEED * shipSpec(hull).speed * (0.6 + BR() * 0.16),
                 hp: TRAFFIC_HP.patrol, maxHp: TRAFFIC_HP.patrol,
                 cargo: [], cool: BR() * 1.2, doom: 0, guards: 0,
                 // Nobody in a battle has time to mind how close you are flying.
@@ -7484,15 +7474,6 @@
        chunk, because it does not belong to one — it belongs to the run, and it
        has to be there when you come back whether its chunk happens to be loaded
        or not. It never drifts and it never expires. */
-    /* And the wrecks of things that died here. Same rule as the parts: not out
-       of a chunk, because they do not belong to one, and only the ones near
-       enough to matter. A stripped one is gone for good. */
-    for (const w of surv.wrecked) {
-      if (surv.stripped.has(w.id)) continue;
-      if (Math.abs(w.x - ships[0].x) > CHUNK * 3 ||
-          Math.abs(w.y - ships[0].y) > CHUNK * 3) continue;
-      surv.hulks.push(w);
-    }
     for (const d of surv.dropped) {
       if (Math.abs(d.x - ships[0].x) > CHUNK * 3 ||
           Math.abs(d.y - ships[0].y) > CHUNK * 3) continue;
@@ -7558,6 +7539,42 @@
     return hit;
   }
 
+  /* ── is this point inside something built ────────────────────────────────
+     The easiest thing in the world to miss, and the reason to write it down once
+     rather than at every spawn: **nothing may appear inside a wall.**
+
+     It did not matter much when the only structures were a 2,700-unit derelict
+     and a planet. There are two things you fly inside now, one of them nine
+     thousand units long with a hundred and seventy walls in it, and everything
+     that picks a point in space — the rock streamer, a hunter arriving, a ship
+     respawning, a part dropped where you died — was picking that point with no
+     idea either of them existed. A rock spawning in a corridor is a rock that can
+     never get out; a hunter spawning in a hull is a hunter you cannot reach and
+     cannot escape; a drive part dropped in a bulkhead is the manifest broken.
+
+     Asked about the **footprint**, not about the walls. Inside the corridor is
+     technically clear of every disc and is still not somewhere to put a drifting
+     rock, and the difference between the two is the difference between a check
+     that passes and a check that works. */
+  function inBuilt(x, y, pad) {
+    if (!surv) return false;
+    const p = pad || 0;
+    const lev = surv.leviathan;
+    if (lev && dist2(x, y, lev.x, lev.y) < (lev.len * 0.8) ** 2) {
+      const dx = x - lev.x, dy = y - lev.y;
+      const u = dx * lev.ca + dy * lev.sa, v = -dx * lev.sa + dy * lev.ca;
+      if (Math.abs(u) < lev.len / 2 + p &&
+          Math.abs(v) < lev.flank + 900 + p) return true;
+    }
+    const vt = surv.vault;
+    if (vt && dist2(x, y, vt.x, vt.y) < (vt.r * 2) ** 2) {
+      const dx = x - vt.x, dy = y - vt.y;
+      const u = dx * vt.ca + dy * vt.sa, v = -dx * vt.sa + dy * vt.ca;
+      if (Math.abs(u) < vt.r + p && Math.abs(v) < vt.r + p) return true;
+    }
+    return false;
+  }
+
   /* ── a rock is solid to more than your hull ───────────────────────────────
      A rock had a radius and a world had a radius and nothing had ever asked one
      about the other, so asteroids sat inside planets and inside each other —
@@ -7588,6 +7605,16 @@
       if (pl.inhabited) shield.push({ x: pl.x, y: pl.y, r: pl.r + 700 });
     }
     for (const st of surv.stations) shield.push({ x: st.x, y: st.y, r: 900 });
+    /* And the two built things turn rocks away at their outline, for the same
+       reason a station does: an anchorage that got hit by the field it is
+       anchored in would not be one, and a derelict full of drifting rock is a
+       derelict you cannot fly. Nothing spawns inside them; this is for the one
+       that wanders in from outside. */
+    const lev = surv.leviathan;
+    if (lev) shield.push({ x: lev.x, y: lev.y, r: lev.len * 0.56 });
+    if (surv.vault) {
+      shield.push({ x: surv.vault.x, y: surv.vault.y, r: surv.vault.r * 1.45 });
+    }
 
     for (let i = rocks.length - 1; i >= 0; i--) {
       const r = rocks[i];
@@ -7691,6 +7718,9 @@
       if (hazards.some(h => dist2(x, y, h.x, h.y) < (h.kill + 90) ** 2)) continue;
       // And never inside a world, which is now big enough to swallow a field.
       if (surv.planets.some(pl => dist2(x, y, pl.x, pl.y) < (pl.r + 60) ** 2)) continue;
+      // Nor inside the Leviathan or the Vault: a rock loose in a corridor is a
+      // rock that can never get out of it.
+      if (inBuilt(x, y, 90)) continue;
       const r = makeRock(randomRoyaleRockSize(), x, y, undefined,
                          regionOf(x, y).style);
       // One rock in sixty has something in it, and cracking it open is the only
@@ -7740,15 +7770,6 @@
       built: new Set(carried ? book.built : []),
       // The coil goes off once, when it comes off the gate. See `surveyParts`.
       coilFired: !!(carried && book.coilFired),
-      /* Wrecks left by things that died while you were there. Kept outside the
-         chunks for the same reason the dropped parts are: `surv.hulks` is emptied
-         and rebuilt from the seed every time you cross a chunk boundary, so a
-         hull that is there because of something that *happened* has nowhere to
-         live unless it lives here. This is the spine of 6.5 — a consequence you
-         can fly back to is a consequence you remember. */
-      wrecked: (carried && Array.isArray(book.wrecked) ? book.wrecked : [])
-        .filter(w => w && typeof w.id === "string" &&
-                     Number.isFinite(w.x) && Number.isFinite(w.y)),
       /* Ships that owe you something, and ships that owe you the other thing.
          See `rememberFriend` and `rememberGrudge`. */
       friends: (carried && Array.isArray(book.friends) ? book.friends : []).slice(0, 12),
@@ -8231,21 +8252,41 @@
           /* Saved. It pays, and then it becomes an ordinary hauler and gets on
              with its day — which is a better ending than a thank-you and a
              despawn, because you can pass it again later. */
+          /* Saved — and *by whom*. It used to pay the moment the last attacker
+             died, whoever killed it: a patrol clearing the post while you flew
+             past put two hundred and sixty in your pocket for watching. Money for
+             nothing is worse than no money, because it teaches you that the number
+             on the screen is not about anything you did.
+
+             So it pays for damage you actually dealt to the ships taking it apart.
+             `helped` is set in the bullet path by your rounds and nothing else.
+
+             And it pays *what they think you are worth*. A power that trusts you
+             settles up properly; one that has you on a watch list is paying off an
+             obligation to somebody it would rather not owe, and pays like it. It
+             is never nothing — that they pay badly is the information. */
           t.saved = true;
           t.kind = "freight"; t.role = "freight";
           t.hp = t.maxHp;
-          surv.cash += DISTRESS_PAY;
-          surv.t.rescued = true;
-          /* And it is somebody now. A ship you pulled out of trouble that goes
-             back to being an anonymous freighter is a thank-you and a despawn —
-             see `rememberFriend`. */
-          rememberFriend(t, "saved");
-          // Worth about a hauler, in the other direction. Being able to work it
-          // off is what keeps this a state rather than a verdict on the save.
-          addRep(t.faction, REP.RESCUE);
-          chatter("They made it — that distress call is under way again. " +
-                  money(DISTRESS_PAY) + " and their thanks.", CASH);
-          gameSound("win", t.x);
+          if (t.helped) {
+            const pay = Math.round(DISTRESS_PAY * standingPay(t.faction));
+            surv.cash += pay;
+            surv.t.rescued = true;
+            /* And it is somebody now. A ship you pulled out of trouble that goes
+               back to being an anonymous freighter is a thank-you and a despawn —
+               see `rememberFriend`. */
+            rememberFriend(t, "saved");
+            // Worth about a hauler, in the other direction. Being able to work it
+            // off is what keeps this a state rather than a verdict on the save.
+            addRep(t.faction, REP.RESCUE);
+            chatter("They made it — that distress call is under way again. " +
+                    money(pay) + " and their thanks.", CASH, t);
+            gameSound("win", t.x);
+          } else {
+            // Somebody else cleared it. You get to watch them leave.
+            chatter("Somebody got there first. That hauler is under way again.",
+                    NEBULA, t);
+          }
           saveSurveyBook();
         }
         continue;
@@ -8270,7 +8311,12 @@
       if (t.client && surv.traffic.indexOf(t.client) >= 0 && !t.angryAt) {
         for (const o of surv.traffic) {
           if (o.faction !== "pirate") continue;
-          if (Math.hypot(o.x - t.client.x, o.y - t.client.y) > 2200 * U) continue;
+          /* 3,400, not 2,200. An escort that notices a pirate two thousand units
+             from its client notices it after the pirate has already made its
+             approach — measured, the hauler died before the escort closed. An
+             escort that gets there too late to matter is decoration, and the
+             number that decides whether it is decoration is this one. */
+          if (Math.hypot(o.x - t.client.x, o.y - t.client.y) > 3400 * U) continue;
           t.angryAt = o;
           t.mark = o; t.markKind = "ship"; t.think = 3;
           if (dist2(t.x, t.y, me.x, me.y) < (TRAFFIC_TALK * 1.2) ** 2) {
@@ -8317,7 +8363,17 @@
          haulers. Burns while it is in trouble, refills while it is not, and at
          zero the ship stops being a ship and becomes a situation. */
       if (t.tank != null && t.tank >= 0) {
-        const chased = t.hunted > 0 || fleeing || t.hit > 0 || pull > 0;
+        /* **Not `pull > 0`.** That was true of any ship anywhere inside any
+           gravity well's reach, which is a large fraction of the sector and most
+           of it harmless — so ordinary haulers going about their day burned their
+           reserve crossing a star's outskirts and stopped dead all over the
+           sector. A drifting hauler is supposed to be evidence that something
+           happened here; a hundred of them are evidence of a bug.
+
+           Only a well that is actually beating the ship's engine counts now, which
+           is the same test the player's own warning uses. */
+        const dragged = pull > 0 && pull > t.speed * U * 0.6;
+        const chased = t.hunted > 0 || fleeing || t.hit > 0 || dragged;
         t.tank += chased ? -dt : dt * 0.25;
         if (t.tank > t.tankFull) t.tank = t.tankFull;
         if (t.tank <= 0) {
@@ -8351,6 +8407,24 @@
          not have chosen, and a hauler that kept calmly steering round the star
          while being shot at was a hauler that could never have the accident this
          rule exists for. */
+      /* ── a watchdog ─────────────────────────────────────────────────────
+         Anything that has not moved for eight seconds has got itself wedged —
+         against a wall, against its own arrival radius, against a want it is
+         already standing on — and the cheapest correct answer is to make it
+         think again rather than to find every way that can happen. */
+      const moved2 = (t.x - (t.wasX === undefined ? t.x : t.wasX)) ** 2 +
+                     (t.y - (t.wasY === undefined ? t.y : t.wasY)) ** 2;
+      if (moved2 > (4 * U) ** 2) { t.wasX = t.x; t.wasY = t.y; t.stuck = 0; }
+      else {
+        t.stuck = (t.stuck || 0) + dt;
+        if (t.stuck > 8) {
+          t.stuck = 0; t.wasX = t.x; t.wasY = t.y;
+          t.mark = null; t.markKind = ""; t.think = 0;
+          t.leg = -t.leg;
+          t.a += (Math.random() - 0.5) * 2.2;
+        }
+      }
+
       const aim = (t.angry || fleeing || t.hunted > 0) ? goal : dodgeWells(t, goal);
       const dx = aim.x - t.x, dy = aim.y - t.y;
       const d = Math.hypot(dx, dy) || 1;
@@ -8363,6 +8437,29 @@
       t.y += Math.sin(t.a) * t.speed * U * dt;
       // A world and a dead hull are solid to everybody, not only to you.
       solidBounce(t, 22 * U * (shipSpec(t.hull).size || 1));
+
+      /* ── a hull is a hull ───────────────────────────────────────────────
+         You could fly straight through every ship in the sector. Ships bounce off
+         each other — that code has been there since the first mode — but *traffic*
+         is not in the `ships` array, so nothing ever asked whether your nose was
+         inside a freighter. A neutral you can occupy the same space as is a
+         painting, and it is the single loudest thing that says "this is not a
+         real object" about everything else out here.
+
+         The same shove the arena uses, with the mass on the bigger hull: you
+         bounce off a hauler and a hauler barely notices. */
+      if (me.alive && near < (22 * U * (shipSpec(t.hull).size || 1)) + shipRadius()) {
+        const min = (22 * U * (shipSpec(t.hull).size || 1)) + shipRadius();
+        let dx = me.x - t.x, dy = me.y - t.y;
+        let d = Math.hypot(dx, dy);
+        if (d < 0.001) { dx = 1; dy = 0; d = 1; }
+        const nx = dx / d, ny = dy / d;
+        me.x = t.x + nx * min; me.y = t.y + ny * min;
+        const into = me.vx * nx + me.vy * ny;
+        if (into < 0) { me.vx -= into * nx * 1.6; me.vy -= into * ny * 1.6; }
+        // And it gets out of the way, which is what a person would do.
+        t.x -= nx * 12 * U; t.y -= ny * 12 * U;
+      }
 
       /* A patrol shoots at sentries. It is the one thing that tells you these
          are on your side without a word being said — and it means a guarded
@@ -8417,7 +8514,8 @@
             surv.shots.push({
               x: t.x + Math.cos(a) * 20 * U, y: t.y + Math.sin(a) * 20 * U,
               vx: Math.cos(a) * 360 * U, vy: Math.sin(a) * 360 * U,
-              life: 2.2, friendly: !live, from: t
+              // `dmg`, so a rock takes the same point from them it takes from you.
+              life: 2.2, dmg: 1, friendly: !live, from: t
             });
             gameSound("shot", t.x);
           } else t.cool = 1.2;
@@ -8672,11 +8770,17 @@
       const aim = t.markKind === "station" && t.mark ? t.mark : near;
       if (aim) for (const key of t.cargo) moveMarket(aim, key, 0.22);
     }
-    /* And the hull. Not one that went into a well — that is inside a black hole
-       now — and not one that died in a battle, because a battle lays out its own
-       field of wrecks when it ends and doubling them would bury the sector in
-       metal. Everything else leaves something to come back to. */
-    if (!swallowed && !t.battle) leaveWreck(t);
+    /* **A ship does not leave a hulk.** It used to, for 6.5's sake — a convoy
+       you destroyed leaving a wreck field is exactly the kind of consequence that
+       phase is about — and it was wrong in the sky: a hulk is a big dead hull, the
+       thing you strip for salvage, and a fighter you shot turning into one made
+       the sector read as though hulks came out of ships. They do not. A hulk is
+       something that died a long time ago.
+
+       What a kill leaves is what it always left: the burst, and whatever it was
+       carrying. Battles still lay out their own field of wrecks when they end,
+       which is the version of this that was always right, because a battle is an
+       event and a single kill is not. */
     if (t.id) surv.goneTraffic.add(t.id);
     surv.traffic.splice(i, 1);
     // Its attackers have nothing left to attack.
@@ -8690,30 +8794,6 @@
         chatter("They were not armed.", "#ff8f77");
       }
     }
-  }
-
-  /* What a ship leaves when it dies somewhere you were watching. Not every
-     death: a ship swallowed by a well leaves nothing, because it is inside a
-     black hole. Anything else leaves a hull you can come back and strip, and the
-     coming back is the point — a fight you had an hour ago should still be there
-     as a thing in the sky rather than as a memory.
-
-     Capped. A twenty-hour run kills a great many ships and every one of them
-     would otherwise be a line in the save file forever; the oldest go first,
-     which is also the ones furthest behind you. */
-  const WRECK_KEEP = 60;
-  function leaveWreck(t) {
-    const id = "w:" + (t.id || Math.round(t.x) + ":" + Math.round(t.y));
-    if (surv.stripped.has(id)) return null;
-    if (surv.wrecked.some(w => w.id === id)) return null;
-    const size = shipSpec(t.hull) ? (shipSpec(t.hull).size || 1) : 1;
-    const w = { id, x: Math.round(t.x), y: Math.round(t.y),
-                r: Math.round(46 + size * 22), a: t.a || 0,
-                spin: rand(-0.1, 0.1), hp: 4 };
-    surv.wrecked.push(w);
-    if (surv.wrecked.length > WRECK_KEEP) surv.wrecked.shift();
-    surv.hulks.push(w);
-    return w;
   }
 
   /* One mote of a known kind. Traffic drops what it was actually carrying rather
@@ -9160,6 +9240,12 @@
           if (dist2(px, py, pl.x, pl.y) < (pl.r + 300) ** 2) { clear = false; break; }
         }
       }
+      /* And not in a wall. Dying inside the Leviathan is a normal way to die —
+         it is full of sentries and it is the last thing the manifest asks of you
+         — and the part you were carrying must not be left in a bulkhead where it
+         is on the chart, drawn, named, and unreachable forever. The spiral walks
+         out of the hull on its own; it just has to be told the hull is there. */
+      if (clear && inBuilt(px, py, 200)) clear = false;
       if (clear) return { x: Math.round(px), y: Math.round(py) };
     }
     return { x: Math.round(x), y: Math.round(y) };
@@ -9745,6 +9831,27 @@
       const b = surv.shots[i];
       b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
       if (b.life <= 0) { surv.shots.splice(i, 1); continue; }
+
+      /* ── somebody else's rounds hit rock too ──────────────────────────────
+         They did not. Every round fired by anything out here passed straight
+         through every asteroid in the sector, which is the same class of mistake
+         as a ship you could fly through: a sector where only *your* bullets are
+         real is a sector where nothing anyone else does is happening in the same
+         world you are in.
+
+         It matters more than it sounds, because it is also cover. A rock between
+         you and a patrol is a thing you can put there on purpose — and it was
+         worth nothing at all while their fire ignored it. */
+      let stopped = false;
+      for (let k = rocks.length - 1; k >= 0; k--) {
+        const rk = rocks[k];
+        if (dist2(b.x, b.y, rk.x, rk.y) > rk.r * rk.r) continue;
+        surv.shots.splice(i, 1);
+        hitRock(rk, b);
+        stopped = true;
+        break;
+      }
+      if (stopped) continue;
       /* A patrol's rounds go the other way. They are in the same list because
          they are the same object and the same drawing; the only difference is
          who they are allowed to hit — and a neutral whose fire could clip you
@@ -9971,8 +10078,12 @@
     g.cool -= dt;
     if (g.cool > 0) return;
     surv.grudges.shift();
-    const a = Math.random() * Math.PI * 2;
-    const d = 2400 + Math.random() * 1200;
+    let a = Math.random() * Math.PI * 2, d = 2400 + Math.random() * 1200;
+    for (let t = 0; t < 8; t++) {
+      if (!inBuilt(me.x + Math.cos(a) * d, me.y + Math.sin(a) * d, 260)) break;
+      a = Math.random() * Math.PI * 2;
+      d = 2400 + Math.random() * 1200;
+    }
     surv.traffic.push({
       id: null, kind: "hunter", role: "hunter", faction: "pirate",
       hull: g.hull, name: g.name, grudge: true,
@@ -9981,7 +10092,8 @@
       /* The hull points it got away with, and no more. It ran because it was
          losing, and it has not been anywhere to get that back — which means the
          rematch is one you are favoured to win and it is coming anyway. */
-      speed: 165, hp: g.hp, maxHp: Math.max(g.hp, TRAFFIC_HP.pirate),
+      speed: MAX_SPEED * shipSpec(g.hull).speed * 0.78,
+      hp: g.hp, maxHp: Math.max(g.hp, TRAFFIC_HP.pirate),
       cargo: [], cool: 1.2, doom: 0, guards: 0, space: 0, trades: false,
       phase: Math.random() * 6.28, angry: true
     });
@@ -10383,14 +10495,6 @@
     gameSound("boom", h.x);
     dropMote(h.x, h.y, YIELD.hulk, 70, "hulk");
     surv.stripped.add(h.id);
-    /* A wreck that was an event is *forgotten* once it has been stripped rather
-       than remembered as stripped: the `stripped` set is what stops a chunk's own
-       hulks coming back, and this one has no chunk to come back out of. Dropping
-       it here is what keeps the list bounded in a long run. */
-    if (surv.wrecked.length) {
-      const w = surv.wrecked.findIndex(q => q.id === h.id);
-      if (w >= 0) surv.wrecked.splice(w, 1);
-    }
     surv.hulks.splice(i, 1);
     saveSurveyBook();
   }
@@ -10407,6 +10511,8 @@
         if (dist2(b.x, b.y, d.x, d.y) > (18 * U) ** 2) continue;
         spent = true;
         d.hp -= (b.dmg || 1);
+        // Your round on something taking a ship apart. See the distress branch.
+        if (d.prey) d.prey.helped = true;
         d.hit = 0.12;
         d.awake = true;
         burst(b.x, b.y, DRONE_COLOUR, 5, 120 * U);
@@ -10771,6 +10877,18 @@
     return STANDING[STANDING.length - 1];
   }
   const hostileTo = key => repOf(key) <= REP.WANTED;
+
+  /* What a power's gratitude is worth in cash, which is not the same figure for
+     everybody. Never zero: they still pay, and the fact that they pay *badly* is
+     the information. */
+  function standingPay(key) {
+    const v = repOf(key);
+    if (v >= 110) return 1.35;        // TRUSTED, and they say so
+    if (v >= 40)  return 1.15;        // WELCOME
+    if (v >= -30) return 1;           // NEUTRAL — the ordinary rate
+    if (v >= -90) return 0.6;         // WATCHED
+    return 0.35;                      // WANTED or HUNTED
+  }
 
   /* What one ship makes of you: its flag's opinion, unless it is a pirate — a
      pirate's opinion is fixed and it is bad — or unless you have personally
@@ -11232,8 +11350,13 @@
 
     /* Spawned rather than generated: a chunk is a pure function of its
        coordinates and has no business knowing whose freighters you have shot. */
-    const a2 = Math.random() * Math.PI * 2;
-    const d = 2600 + Math.random() * 1400;
+    // Somewhere it could actually have flown in from. See `inBuilt`.
+    let a2 = Math.random() * Math.PI * 2, d = 2600 + Math.random() * 1400;
+    for (let t = 0; t < 8; t++) {
+      if (!inBuilt(me.x + Math.cos(a2) * d, me.y + Math.sin(a2) * d, 260)) break;
+      a2 = Math.random() * Math.PI * 2;
+      d = 2600 + Math.random() * 1400;
+    }
     const hulls = TRAFFIC_HULLS.hunter;
     const hull = hulls[Math.min(hulls.length - 1,
                                 Math.floor(over * hulls.length + Math.random()))];
@@ -11242,7 +11365,7 @@
       id: null, kind: "hunter", role: "hunter", faction: worst, hull,
       x: me.x + Math.cos(a2) * d, y: me.y + Math.sin(a2) * d, a: a2 + Math.PI,
       from: { x: me.x, y: me.y }, to: { x: me.x, y: me.y }, leg: 1,
-      speed: 150 + over * 60, hp, maxHp: hp,
+      speed: MAX_SPEED * shipSpec(hull).speed * (0.72 + over * 0.12), hp, maxHp: hp,
       cargo: [], cool: 1.4, doom: 0, guards: 0, space: 0, trades: false,
       phase: Math.random() * 6.28, angry: true
     });
@@ -11275,10 +11398,18 @@
     // Common at home, gone by the deep. Squared, so the falloff is felt rather
     // than merely present.
     const near = Math.pow(1 - Math.min(1, deep), 2);
-    // How busy this piece of sky is. The Works is thick with traffic; the Empty
-    // has essentially none, which is most of what makes it feel wrong.
+    /* How busy this piece of sky is. The Works is thick with traffic; the Empty
+       has essentially none, which is most of what makes it feel wrong.
+
+       And **home is quiet**. The falloff is `(1 - deep)²`, which is near its
+       maximum at the origin — so the busiest place in the sector was the two
+       chunks around the one station you cannot avoid, which is both the wrong
+       feeling and the wrong first impression. A handful of chunks around the
+       start get a quarter of the usual chance: somebody docking and leaving every
+       so often, rather than a rush hour you spawn into. */
     const busy = abund("traffic", ox + CHUNK / 2, oy + CHUNK / 2);
-    if (R() > (0.34 * near + 0.012) * busy) return;
+    const atHome = Math.abs(cx) <= 2 && Math.abs(cy) <= 2;
+    if (R() > (0.34 * near + 0.012) * busy * (atHome ? 0.25 : 1)) return;
 
     /* Whose, and what sort. Pirates thicken with distance — the lanes are kept
        near home and nobody is keeping anything out in the deep — and the two
@@ -11329,7 +11460,18 @@
     out.traffic.push({
       kind, role, faction, hull, x, y, a,
       from: { x, y }, to, leg: 1,
-      speed: spec.armed ? rnd(120, 190) : rnd(70, 130),
+      /* **The hull's own speed**, not a number rolled from its job. A Needle in a
+         pirate's hands was doing 120–190 and a Needle in yours does 360 × 1.44; an
+         Ossuary hauling freight was doing 70–130 and in yours does 360 × 0.7. The
+         roster meant one thing when you bought a hull and something else entirely
+         when you met one, and "can I outrun that" had no answer you could work out
+         from the thing you were looking at.
+
+         A hull is a hull now. The multiplier is the one the shipyard advertises,
+         against the same top speed your own engine is measured by, with a little
+         either way for the pilot — traffic cruises rather than running flat out,
+         which is what leaves you the option of catching one. */
+      speed: MAX_SPEED * shipSpec(hull).speed * rnd(0.62, 0.78),
       hp: TRAFFIC_HP[role], maxHp: TRAFFIC_HP[role],
       cargo: trafficCargo(role, deep, R),
       cool: rnd(0.3, 1.4),
@@ -13155,6 +13297,11 @@
       lasted: Math.max(0, clock - surv.runStart),
       onRespawn: surveyRespawn,
       docked: !!surv.docked,
+      /* Where the station is, so the panel can make the station itself the door.
+         At one hull point the prompt line is taken by "THE NEXT HIT KILLS YOU" —
+         which is the right thing for it to say and left a phone with no way into
+         the shop at exactly the moment it needed one most. */
+      dockAt: surv.docked ? { x: surv.docked.x, y: surv.docked.y } : null,
       /* Being at the yard is not being docked at a station, and the panel has
          to be told which — without this the yard button never drew, and a
          phone, which has no `E`, had no way into the yard page at all. */
@@ -13469,6 +13616,8 @@
         surv.planets.some(pl => dist2(x, y, pl.x, pl.y) < (pl.r + r + 200) ** 2)) {
       return false;
     }
+    // Nor inside anything somebody built. See `inBuilt`.
+    if (mode.survey && inBuilt(x, y, r + 200)) return false;
     return x > bounds.x0 + r && x < bounds.x1 - r &&
            y > bounds.y0 + r && y < bounds.y1 - r;
   }
@@ -18470,6 +18619,19 @@
          see BIOMES.md. A harness has to be able to ask, or the one layer whose
          whole design is to be invisible is also the one layer nothing can check. */
       regionProbe: (x, y) => regionOf(x, y),
+      /* A round of yours into a sentry, through the real path. Clearing a
+         distress call's attackers *by deleting them* is not the same event as
+         clearing them by shooting them — the first pays nothing now, correctly —
+         so a harness needs the second. */
+      hurtDrone: (i, dmg) => {
+        const d = surv.drones[i];
+        if (!d) return false;
+        d.hp -= dmg || 1;
+        d.hit = 0.12; d.awake = true;
+        if (d.prey) d.prey.helped = true;
+        if (d.hp <= 0) killDrone(i);
+        return true;
+      },
       // Every region site over a block of the lattice, for measuring the mix —
       // sampling along a line visits far too few of them to say anything.
       regionCensus: (n) => {

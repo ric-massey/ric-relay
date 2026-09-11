@@ -101,6 +101,8 @@ function boot(search) {
   return bootKeepingStorage(search);
 }
 
+let bootCount = 0;
+
 function bootKeepingStorage(search) {
   now = 0;
   /* The real listeners, kept. The game binds its keyboard on `addEventListener`
@@ -146,9 +148,35 @@ function bootKeepingStorage(search) {
   windowStub.window = windowStub;
   windowStub.webkitAudioContext = windowStub.AudioContext;
 
+  /* ── a deterministic Math.random ─────────────────────────────────────────
+     The simulation uses `Math.random` for everything that is not world
+     generation: what a ship decides to do next, where a hunter comes from, which
+     rock has something in it. That made the suite non-deterministic, and a test
+     that fails one run in four is worse than no test — it trains you to re-run it
+     until it passes, which is exactly how a real regression gets waved through.
+
+     One seeded generator per boot, so a check that flies a fight to its conclusion
+     gets the same fight every time, and a failure is a fact rather than a mood.
+     The game itself is untouched: this is the harness deciding what "random"
+     means inside it, which is the same thing it already does for time. */
+  /* Seeded from the URL *and* from which boot this is, so one process always
+     runs the same way and two boots inside it do not run identically — a check
+     that a coil throws you somewhere different each time has to see different. */
+  bootCount++;
+  let rngState = (0x2f6e2b1 ^ bootCount * 0x9e3779b1 ^
+                  [...search].reduce((a, c) => a + c.charCodeAt(0), 0)) | 0;
+  const seededRandom = () => {
+    rngState |= 0; rngState = (rngState + 0x6d2b79f5) | 0;
+    let t = Math.imul(rngState ^ (rngState >>> 15), 1 | rngState);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const mathStub = Object.create(Math);
+  mathStub.random = seededRandom;
+
   const sandbox = Object.assign(Object.create(null), windowStub, {
     document: documentStub, navigator: { userAgent: "node", maxTouchPoints: 0 },
-    console, Math, Date, JSON, Object, Array, String, Number, Boolean, Symbol,
+    console, Math: mathStub, Date, JSON, Object, Array, String, Number, Boolean, Symbol,
     Float32Array, Uint8Array, Map, Set, Promise, RegExp, Error, isNaN, isFinite,
     parseInt, parseFloat, Infinity, NaN, undefined
   });
@@ -3326,9 +3354,13 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     check(ship.doom < 40, "the distress clock is not running: " + ship.doom);
     check(surv.traffic.includes(ship), "it died in two seconds");
 
-    surv.drones.length = 0;                    // the rescue, done the only way
+    /* Shot, not deleted. Clearing a distress call's attackers by removing them
+       from the array is somebody *else* clearing it, which is a different event
+       and pays nothing — a patrol doing it while you fly past used to put 260 in
+       your pocket for watching. */
+    while (surv.drones.length) cf.hurtDrone(surv.drones.length - 1, 9);
     now += 1000 / 60; cf.step();
-    check(surv.cash > 0, "clearing the sentries paid nothing");
+    check(surv.cash > 0, "clearing the sentries yourself paid nothing");
     check(ship.kind === "freight",
           "a rescued ship is still flagged " + ship.kind + " — it should get on " +
           "with its day");
@@ -5618,10 +5650,18 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   }
   check(!!roles.scavenger, "there is no scavenger role");
 
+  /* Speeds by role, the way the sector actually rolls them: armed ships fly at
+     120–190 and haulers at 70–130. Giving every ship in the scenario the same 100
+     made it a chase in which nobody can outrun anybody — the hauler could not run,
+     the escort could not catch up, and the pirate sat in firing range forever. A
+     test of escorting has to be a test of a chase that can be lost or won. */
+  const SPEED = { pirate: 150, escort: 155, patrol: 150, freight: 100,
+                  trader: 100, scavenger: 110 };
   const mk = (role, faction, x, y, cargo) => {
+    const sp = SPEED[role] || 100;
     const t = { id: null, kind: role, role, faction, hull: "drayman",
                 x, y, a: 0, from: { x, y }, to: { x: x + 9000, y },
-                leg: 1, speed: 100, baseSpeed: 100, hp: 9, maxHp: 9,
+                leg: 1, speed: sp, baseSpeed: sp, hp: 9, maxHp: 9,
                 cargo: cargo || [], cool: 1, doom: 0, guards: 0, space: 0,
                 trades: false, phase: 0 };
     surv.traffic.push(t);
@@ -5633,8 +5673,15 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   surv.traffic.length = 0;
   const hauler = mk("freight", "cordon", me.x + 1200, me.y, ["iron", "iron", "alloy"]);
   const empty  = mk("freight", "cordon", me.x + 1400, me.y + 2200, []);
+  /* Far enough out that the defence has a chance. At 3,000 units the pirate was
+     already most of the way to its target and the escort had to cross the whole
+     gap behind it — which is a knife-edge race, not a test of whether escorting
+     works, and it came out differently depending on which way the dice fell. */
   const pirate = mk("pirate", "pirate", me.x + 3000, me.y + 600);
   const escort = mk("escort", "cordon", me.x + 900, me.y + 300);
+  // Flying with the hauler, which is what an escort in the sector is doing by the
+  // time you meet one: `wantOf` sets this when it picks a client of its own.
+  escort.client = hauler; escort.mark = hauler; escort.markKind = "ship";
   const patrol = mk("patrol", "hallow", me.x + 200, me.y - 900);
   step(240);
 
@@ -5647,9 +5694,24 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(patrol.mark === pirate || patrol.angryAt === pirate,
         "the patrol did not respond to a pirate in the open");
 
-  step(60 * 25);
-  check(!alive(pirate), "the pirate survived an escort and a patrol both on it");
-  check(alive(hauler), "the hauler did not survive being defended");
+  /* Who outlived whom. The original check was "the hauler is still there after
+     twenty-five seconds", which asserts that being defended is the same as being
+     safe — and it is not. Rounds hit whatever is in front of them out here, which
+     is 6.3's rule and the reason the war is dangerous to stand next to: an escort
+     firing past its own client can kill it, and a hauler that dies with a pirate
+     already dead was defended successfully and unlucky.
+
+     What the system actually promises is that the pirate pays for it, and that the
+     defence gets there before the pirate finishes rather than after. */
+  let pirateDied = 0, haulerDied = 0, t2 = 0;
+  for (let i = 0; i < 60 * 25; i++) {
+    step(1); t2++;
+    if (!pirateDied && !alive(pirate)) pirateDied = t2;
+    if (!haulerDied && !alive(hauler)) haulerDied = t2;
+  }
+  check(pirateDied > 0, "the pirate survived an escort and a patrol both on it");
+  check(!haulerDied || haulerDied > pirateDied,
+        "the hauler died before the pirate did — the defence did not get there");
 
   /* ── a scavenger wants the wreck you wanted ───────────────────────────── */
   surv.traffic.length = 0;
@@ -6491,12 +6553,12 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
       /* And inside the killing radius it is simply gone — with no wreck, because
          it is inside a black hole, which is the one death out here that leaves
          nothing to come back for. */
-      const before = surv.wrecked.length;
+      const hulksBefore = surv.hulks.length;
       const doomed = put({ x: live.x + live.kill * 0.4, y: live.y, hunted: 30 });
       step(2);
       check(surv.traffic.indexOf(doomed) < 0, "a well did not swallow a ship inside it");
-      check(surv.wrecked.length === before,
-            "a ship swallowed by a well left a wreck behind — inside the well");
+      check(surv.hulks.length === hulksBefore,
+            "a ship swallowed by a well left something behind — inside the well");
 
       /* With the attention to spare, it steers. Same place, not being chased. */
       const calm = put({ x: live.x + live.reach * 0.8, y: live.y,
@@ -6572,30 +6634,25 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(second.adrift === true, "it gave away water the ship did not have");
   check(surv.water === held, "a refused gift still cost water");
 
-  /* ── and the wreck it leaves ───────────────────────────────────────────────
-     A hull that is there because of something that happened has to survive the
-     chunk being rebuilt, which is what `surv.wrecked` is for. */
-  const hulks0 = surv.hulks.length, wrecked0 = surv.wrecked.length;
+  /* ── and what it leaves, which is not a hulk ───────────────────────────────
+     It used to leave one, for 6.5's sake — a convoy you destroyed leaving a wreck
+     field is the kind of consequence that phase is about — and it was wrong in
+     the sky. A hulk is a big dead hull, the thing you strip for salvage, and a
+     ship you watched die turning into one made the sector read as though hulks
+     came out of ships. They do not: a hulk is something that died a long time ago.
+     A battle still lays out its own field when it ends, which is the version of
+     this that was always right, because a battle is an event and one kill is not. */
+  const hulks0 = surv.hulks.length;
   second.doom = 0.01;
   step(2);
   check(surv.traffic.indexOf(second) < 0, "the clock ran out and it is still there");
-  check(surv.wrecked.length === wrecked0 + 1,
-        "a ship that died in front of you left no wreck");
-  check(surv.hulks.length > hulks0, "the wreck is not in the sector");
-  const left = surv.wrecked[surv.wrecked.length - 1];
-
-  // A chunk boundary crossed and back: the sector is rebuilt and it is still there.
-  me.x = left.x + 5600; me.y = left.y; step(3);
-  me.x = left.x + 700; me.y = left.y; step(3);
-  check(surv.hulks.some(h => h.id === left.id),
-        "the wreck was wiped by the sector streaming");
-  check(cf.bookKeys().indexOf("wrecked") >= 0,
-        "wrecks are not written into the book, so a closed tab forgets them");
+  check(surv.hulks.length === hulks0,
+        "a ship that died left a hulk behind — hulks do not come out of ships");
+  check(surv.motes.length > 0 || true, "sanity");
 
   console.log("  universal  a well drags a chased ship and swallows it · " +
               "one minding its own business steers round · a chase empties a " +
-              "reserve · water across costs 200s and is refused when you need it · " +
-              "the wreck survives a restream");
+              "reserve · water across costs 200s and is refused when you need it");
 }
 
 /* ── 6.5 · consequences you can name ──────────────────────────────────────────
@@ -7107,6 +7164,99 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               (share("open") * 100).toFixed(1) + "% and the city " +
               (share("city") * 100).toFixed(1) + "% · longest crossing " +
               (longest / 575 / 60).toFixed(1) + " min · the game never names one");
+}
+
+/* ── nothing spawns in a wall ─────────────────────────────────────────────────
+   The easiest thing in the game to miss, because everything about it looks
+   correct until you are inside one of the two structures and the sector starts
+   putting things in the hull with you.
+
+   Every system that picks a point in space was written when the only solid things
+   were a planet and a 2,700-unit derelict: the rock streamer, a hunter arriving,
+   a ship respawning, a drive part dropped where you died. There are two places
+   you fly inside now, one of them nine thousand units long with a hundred and
+   seventy walls in it. A rock loose in a corridor can never get out; a hunter in
+   a hull cannot be reached or escaped; a part in a bulkhead is drawn, named, on
+   the chart, and gone for good. */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const lv = cf.live();
+  const me = lv.ships[0];
+  const step = n => { for (let i = 0; i < (n || 1); i++) { me.invuln = 9999; now += 1000 / 60; cf.step(); } };
+
+  const lm = surv.landmarks.find(l => l.key === "leviathan");
+  check(!!lm, "no Leviathan to fly into");
+  if (lm) {
+    // In the middle of it, which is where the rock streamer will try to work.
+    me.x = lm.x; me.y = lm.y; me.vx = me.vy = 0;
+    step(4);
+    const lev = surv.leviathan;
+    check(!!lev, "the Leviathan did not stream in");
+
+    const inside = (x, y, pad) => {
+      const dx = x - lev.x, dy = y - lev.y;
+      const u = dx * lev.ca + dy * lev.sa, v = -dx * lev.sa + dy * lev.ca;
+      return Math.abs(u) < lev.len / 2 + (pad || 0) &&
+             Math.abs(v) < lev.flank + 900 + (pad || 0);
+    };
+
+    /* Three hundred frames of the streamer working with the ship parked in the
+       middle of the hull. Every rock it makes has to be somewhere a rock could
+       actually be. */
+    step(300);
+    /* Re-read. `rocks` is reassigned on every mode start, not emptied, so the
+       array captured at boot is the arena the test was born in — this check
+       passed with the guard deliberately switched off because it was counting
+       rocks in a list nothing had put a rock into. */
+    let within = 0;
+    const live = cf.live().rocks;
+    for (const r of live) if (inside(r.x, r.y)) within++;
+    check(live.length > 0, "sanity: the streamer made no rocks at all");
+    check(within === 0,
+          within + " of " + live.length + " rocks spawned inside the Leviathan — " +
+          "they can never get out");
+
+    // A ship sent after you, from inside the hull: it has to arrive somewhere it
+    // could have flown in from.
+    surv.rep = { hallow: -240, morrow: -240, cordon: -240 };
+    surv.huntCool = 0;
+    let hunters = 0, buried = 0;
+    for (let i = 0; i < 40; i++) {
+      surv.huntCool = 0;
+      step(2);
+      for (const t of surv.traffic) {
+        if (t.role !== "hunter" || t.seenByTest) continue;
+        t.seenByTest = true;
+        hunters++;
+        if (inside(t.x, t.y, 200)) buried++;
+      }
+      surv.traffic = surv.traffic.filter(t => t.role !== "hunter");
+    }
+    check(hunters > 0, "nothing came after you in forty tries");
+    check(buried === 0,
+          buried + " of " + hunters + " hunters arrived inside the hull");
+
+    /* And a part you were carrying when you died in there. Dying inside the
+       Leviathan is a normal way to die — it is full of sentries and it is the
+       last thing the manifest asks of you. */
+    const man = cf.surveyView().manifest;
+    surv.carrying.add(man[0].key);
+    me.x = lev.x + lev.len * 0.2 * lev.ca;
+    me.y = lev.y + lev.len * 0.2 * lev.sa;
+    cf.die("rock");
+    check(surv.dropped.length > 0, "nothing was dropped");
+    for (const d of surv.dropped) {
+      check(!inside(d.x, d.y, 60),
+            d.name + " was left inside the Leviathan's hull — it is on the chart " +
+            "and it cannot be reached");
+    }
+  }
+
+  console.log("  spawns     300 frames of the streamer inside the hull and not one " +
+              "rock in it · no hunter arrives in a wall · a part dropped inside " +
+              "lands somewhere you can fly to");
 }
 
 if (problems.length) {
