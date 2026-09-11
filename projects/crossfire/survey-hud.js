@@ -314,7 +314,7 @@
 
   HUD.logged = function (entry) {
     HUD.notify(entry.name,
-               "LOGGED  " + String(entry.n || 0).padStart(2, "0") + " / " +
+               "LOGGED  " + String(entry.n || 0).padStart(2, "0") + "   " +
                (entry.of || 25), AMBER, 6);
   };
 
@@ -872,6 +872,16 @@
     ctx.strokeRect(b.x, b.y, b.w, b.h);
     ctx.restore();
 
+    /* And what kind of space this is — which the instrument does not know, and
+       says so. It is one line and it is the whole of the biome interface: it
+       tells you there *is* such a thing as the kind of space you are in and
+       refuses to say which, so finding out is flying.
+
+       Under the chart rather than above it. Above it is where the depth readout
+       and its bar live, and the only gap left up there was inside the chart's own
+       box — the audit found the line drawn straight through the map. */
+    fitText("REGION  UNKNOWN", b.x + b.w, b.y + b.h + 38, SIZE.cap, VIOLET_LOW,
+            "right", 0.42, b.w + 30, "0.12em");
     label(fmtCells(HUD.charted()) + " CHARTED", b.x + b.w, b.y + b.h + 20,
           SIZE.cap, VIOLET, "right", 0.8);
 
@@ -879,7 +889,9 @@
 
     /* Under the chart, where the eye already is once it has looked at the map.
        It is the way in to everything the flight HUD has no room for. */
-    const iy = b.y + b.h + 30;
+    // Eight pixels lower than it was, for the one line above it: see the region
+    // readout in `drawPanelChart`, which is where the button used to start.
+    const iy = b.y + b.h + 52;
     ctx.save();
     ctx.strokeStyle = VIOLET;
     ctx.globalAlpha = 0.55;
@@ -1358,18 +1370,25 @@
     const { ctx } = api;
     const b = panelBox();
     const right = b.x + b.w;
+    /* Where you are, which is now two facts rather than one: how dangerous this
+       depth is, and *what kind of place this is*. The second is the new one and it
+       gets the larger type, because it is the one that changes what you are
+       looking at out of the window. */
     label("SECTOR", right, 28, SIZE.cap, VIOLET_DIM, "right", 0.65, "0.18em");
     label(st.dangerBand.name, right, 52, SIZE.val, st.dangerBand.colour,
           "right", 0.95);
+
     const bw = 108;
     ctx.save();
     ctx.strokeStyle = VIOLET_LOW;
     ctx.globalAlpha = 0.6;
     ctx.lineWidth = 1;
-    ctx.strokeRect(right - bw, 58, bw, 5);
+    const barY = 58;
+    ctx.strokeRect(right - bw, barY, bw, 5);
     ctx.fillStyle = st.dangerBand.colour;
     ctx.globalAlpha = 0.85;
-    ctx.fillRect(right - bw + 1, 59, Math.max(1, (bw - 2) * (st.danger || 0)), 3);
+    ctx.fillRect(right - bw + 1, barY + 1,
+                 Math.max(1, (bw - 2) * (st.danger || 0)), 3);
     ctx.restore();
   }
 
@@ -1957,7 +1976,11 @@
     const right = b.x + b.w;
     const wide = NOTE_W();
     // Below the chart, its label and the buttons under it, whichever are there.
-    let y = b.y + b.h + 30 + 30 + (st && st.atYard ? 36 : 0) + 34;
+    /* Below the chart, the region readout, the inventory button and the yard
+       button, whichever are there. The 52 is the button's own top — it moved down
+       when the region line took a row above it, and this has to move with it or
+       the first notification's target sits on top of the button's. */
+    let y = b.y + b.h + 52 + 30 + (st && st.atYard ? 36 : 0) + 34;
     for (const n of notes) {
       /* An open note is at full strength whatever its clock says — it is not
          fading, it is being read. */
@@ -2264,6 +2287,13 @@
     ctx.fillRect(view.x, view.y, view.w, view.h);
     ctx.globalAlpha = 1;
 
+    /* The chart draws no regions. It knows where you have *been* — the fog, the
+       marks, the pins — and nothing about what kind of space any of it was. An
+       empty region already reads as empty on it, because there is nothing in it
+       to draw, and that is the only honest record there should be.
+
+       Players name these places themselves, and the mechanism for it already
+       exists: a pin, in a colour you chose, with a name you typed. */
     drawChartGrid(view, mx, my);
     paintFog(mx, my, chart.x, chart.y, span, chart.scale, chart.scale, 0.26);
     paintMarks(st, mx, my, true, chart.scale);
@@ -2690,7 +2720,7 @@
     almanac.scroll = Math.max(0, Math.min(almanac.scroll, Math.max(0, totalRows - L.rows)));
 
     pageFrame("ALMANAC",
-              found + " OF " + entries.length + " LOGGED" +
+              found + " LOGGED" +
               (totalRows > L.rows ? (api.touchOnly ? "  ·  DRAG TO SCROLL"
                                                    : "  ·  SCROLL OR ARROWS") : ""),
               "");   // the nav strip has the footer line
@@ -3065,6 +3095,20 @@
         });
         disc(cx, cy, r * 0.3, VIOLET);
         ring(cx, cy, r * 0.46, VIOLET, 1.2);
+        break;
+      case "vault":
+        /* A sealed box with a ring inside it and one way in. The picture has to
+           say "somebody built this and locked it", which is a square, a ring and
+           a gap — not a wreck and not a rock. */
+        ctx.strokeRect(cx - r * 0.85, cy - r * 0.85, r * 1.7, r * 1.7);
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 0.44, 0.5, 0.5 + Math.PI * 1.72);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx + r * 0.85, cy - r * 0.2);
+        ctx.lineTo(cx + r * 0.85, cy + r * 0.2);
+        ctx.stroke();
+        disc(cx, cy, r * 0.14, on ? AMBER : VIOLET_LOW);
         break;
       case "node-01":
         stroke(AMBER, 1.6, () => { ctx.strokeRect(cx - r, cy - r * 0.8, r * 2, r * 1.6); });
@@ -3586,6 +3630,10 @@
   HUD.slotBoxes = () => slotBoxes.map(b => ({ ...b }));
   HUD.storeRows = () => storeRows.map(r => ({ ...r }));
   HUD.craftPick = i => { craftPg.pick = i; };
+  // What the parts grid actually drew, which is not the same as what the game
+  // sent: the anomalies are kept out of it until you have one.
+  let partsShown = [];
+  HUD.partsShown = () => partsShown.slice();
   HUD.cancelCarry = () => { carry = null; };
 
   /* What is in your hand, drawn last so it is over everything. Deliberately a
@@ -3621,7 +3669,15 @@
     const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
     const recipes = st.recipes || [];
-    const all = st.parts || [];
+    /* Every part in the game **except the exotic ones you have not found**.
+       The page lists everything on purpose — you cannot plan towards something
+       you have never been told exists — and that argument holds for ordinary
+       technology and breaks for the strange things. An exotic is the late-game
+       anomaly, and a catalogue entry for one turns it from something you run into
+       into a line item you are waiting on. Find one and it appears, with
+       everything the page knows about it. */
+    const all = (st.parts || []).filter(p => p.rarity !== "exotic" || p.owned || p.fitted);
+    partsShown = all;
     const hold = st.materials || [];
     const crate = st.store || [];
     const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
@@ -3707,19 +3763,25 @@
       const rec = recipeFor(p.key);
       const ready = !!(rec && rec.ready);
 
+      /* Four states, and they have to be four states you can tell apart across a
+         grid at arm's length: picked, owned, buildable now, and neither. They were
+         all the same wash — fills of 0.03 to 0.18 over borders of 0.35 to 1 — so
+         the grid read as one colour with a couple of slightly brighter squares in
+         it. The fills are three times what they were and the borders are at full
+         strength, which is enough for the answer to be a glance instead of a
+         comparison. */
       ctx.save();
-      ctx.fillStyle = have ? CASH : ready ? rar.colour : rar.colour;
-      ctx.globalAlpha = on ? 0.18 : have ? 0.12 : ready ? 0.08 : 0.03;
+      ctx.fillStyle = have ? CASH : rar.colour;
+      ctx.globalAlpha = on ? 0.42 : have ? 0.3 : ready ? 0.22 : 0.1;
       ctx.fillRect(bx, by, cell, cell);
-      ctx.strokeStyle = on ? CASH : have ? CASH_DIM : ready ? rar.colour : VIOLET_LOW;
-      ctx.globalAlpha = on ? 1 : have ? 0.9 : ready ? 0.7 : 0.35;
-      ctx.lineWidth = on ? 2 : 1;
+      ctx.strokeStyle = on ? "#ffffff" : have ? CASH : rar.colour;
+      ctx.globalAlpha = on ? 1 : have ? 1 : ready ? 0.95 : 0.5;
+      ctx.lineWidth = on ? 3 : have ? 2 : 1.4;
       ctx.strokeRect(bx, by, cell, cell);
       ctx.restore();
 
       drawPartIcon(p.cat, bx + cell / 2, by + cell / 2, cell * 0.3,
-                   have ? CASH : ready ? rar.colour : WRECKC,
-                   have ? 1 : ready ? 0.9 : 0.5);
+                   have ? CASH : rar.colour, have ? 1 : ready ? 1 : 0.65);
       // Owned ones say so on the box: the grid is also the answer to "what have
       // I actually got", and opening four boxes to find out is not an answer.
       if (have) {
@@ -4536,7 +4598,7 @@
     /* ── the book ────────────────────────────────────────────────────────── */
     const bookH = PANEL_H(2);
     panel(full.x, y, full.w, bookH, AMBER, "THE ALMANAC",
-          (st.found || 0) + " / " + (st.total || 0) + " LOGGED");
+          (st.found || 0) + " LOGGED");
     drawBookMark(full.x + PAGE.PAD + 22, y + PAGE.HEAD + 20, 20, AMBER);
     label("OPEN THE BOOK" + (api.touchOnly ? "" : "   [L]"),
           full.x + PAGE.PAD + 62, ROW(y, 0) + 2, SIZE.val, AMBER, "left");

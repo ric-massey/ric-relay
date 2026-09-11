@@ -436,7 +436,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const { cf } = boot("?debug=1&seed=31337");
   cf.start("survey", 1);
   const cat = cf.catalogue();
-  check(cat.length === 34, "the catalogue must have 34 entries, has " + cat.length);
+  check(cat.length === 35, "the catalogue must have 35 entries, has " + cat.length);
   check(new Set(cat.map(e => e.key)).size === cat.length, "duplicate catalogue keys");
   for (const e of cat) {
     check(!!e.name && !!e.key, "a catalogue entry is missing a name or key");
@@ -6941,6 +6941,172 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
   console.log("  notices    yours always · nearby said · far written down only · " +
               "texture never said · press one to read it, press again to close");
+}
+
+/* ── the book does not name its own ceiling, and the strange things are not
+      in the catalogue ────────────────────────────────────────────────────────
+   Two places the interface was quietly telling you how much game was left.
+
+   The almanac said 31 / 34, which tells a player at the far end of twenty hours
+   that exactly three strange things remain — and the whole design of that last
+   tier is that they break rules the game spent twenty hours teaching. A
+   countdown turns them into a checklist to finish.
+
+   And the parts page listed every part in the game, which is right for ordinary
+   technology — you cannot plan towards something you have never been told exists
+   — and wrong for the anomalies. An exotic you have not found is not in the
+   catalogue. Find one and it appears, with everything the page knows. */
+{
+  const { cf } = boot("?debug=1&seed=343434");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const hud = cf.hud();
+
+  // Nowhere in the interface's own source does the book divide by its total.
+  check(!/\bof\b[^\n]*entries\.length[^\n]*LOGGED/.test(hudSrc),
+        "the almanac still reports its own total");
+
+  const all = cf.surveyView().parts;
+  const exotics = all.filter(p => p.rarity === "exotic");
+  check(exotics.length > 0, "there are no exotic parts to hide");
+
+  // The page's own list, which is what the player sees.
+  hud.craftOpened();
+  cf.screen("craft");
+  cf.draw();
+  const shown = () => {
+    // Rebuilt every draw from the state, so this is the list the grid drew.
+    cf.draw();
+    return hud.partsShown();
+  };
+  const before = shown();
+  for (const p of exotics) {
+    check(!before.some(q => q.key === p.key),
+          p.name + " is exotic, unfound, and on the parts page anyway");
+  }
+  for (const p of all) {
+    if (p.rarity === "exotic") continue;
+    check(before.some(q => q.key === p.key),
+          p.name + " is ordinary technology and is missing from the catalogue");
+  }
+
+  // Find one, and it is there — with everything the page knows about it.
+  surv.store[exotics[0].key] = 1;
+  const after = shown();
+  check(after.some(q => q.key === exotics[0].key),
+        "an exotic you own is still not in the catalogue");
+  check(after.length === before.length + 1,
+        "owning one exotic changed the list by " + (after.length - before.length));
+
+  console.log("  secrets    the book says how many, never out of how many · " +
+              exotics.length + " exotic parts kept out of the catalogue until " +
+              "you find one");
+}
+
+/* ── regions, which the game never names ──────────────────────────────────────
+   See BIOMES.md. A biome is an invisible ruleset: the chart stops knowing what
+   kind of space you are in and the player learns what that means by being there.
+   Two things therefore have to be true and neither is visible from a screenshot —
+   that the *rules* really do change from place to place, and that the interface
+   never says so.
+
+   And the Empty has to stay rare. At one in eleven a third of the sampled sky
+   came back empty, which is not a frightening place, it is a galaxy that is mostly
+   nothing: the whole effect depends on hours of ordinary space first, so that the
+   absence reads as wrong rather than as normal. */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+
+  /* ── the mix ─────────────────────────────────────────────────────────────
+     Counted over the lattice itself rather than along a line. A diagonal across
+     three million units visits about fifteen region sites, and the first version
+     of this check estimated a one-per-cent category from sixty of them — it
+     reported the rarest biome in the game at 8.6% and the second rarest at zero,
+     from the same run. Twelve thousand sites is an answer; sixty is a rumour. */
+  const tally = {};
+  let n = 0;
+  for (const key of cf.regionCensus(22)) { tally[key] = (tally[key] || 0) + 1; n++; }
+  const share = k => (tally[k] || 0) / n;
+  const kinds = Object.keys(tally).length;
+  check(kinds >= 10 && kinds <= 15,
+        kinds + " kinds of space — the brief is ten to fifteen");
+
+  /* **Ordinary space is the commonest thing in the galaxy**, and it has to be or
+     none of the rest reads as unusual. */
+  const ranked = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+  check(ranked[0][0] === "normal",
+        "the commonest kind of space is " + ranked[0][0] + ", not ordinary space");
+  check(share("normal") > 0.25,
+        "ordinary space is only " + (share("normal") * 100).toFixed(0) + "% of the sky");
+
+  // And the two that have to be rare are the two rarest.
+  const rarest = ranked.slice(-2).map(r => r[0]).sort().join(",");
+  check(rarest === "city,open",
+        "the two rarest kinds are " + rarest + " — they should be the empty one " +
+        "and the city one");
+  check(share("open") < 0.04,
+        "the Empty is " + (share("open") * 100).toFixed(1) + "% of the sky — it " +
+        "has to be rare enough that crossing one is an event");
+  check(share("city") < 0.04,
+        "the city is " + (share("city") * 100).toFixed(1) + "% of the sky");
+
+  /* ── how long one takes to cross ─────────────────────────────────────────
+     Five to twenty minutes at cruise, which is 170,000 to 690,000 units. A
+     minute of anything is a stretch of scenery; it is not a place, and it is
+     certainly not somewhere you could start wondering whether the generator had
+     broken. */
+  let run = 0, longest = 0, cur = null;
+  for (let d = 0; d < 3000000; d += 5000) {
+    const r = cf.regionProbe(d, d * 0.37);
+    if (r.key === cur) run += 5000;
+    else { longest = Math.max(longest, run); cur = r.key; run = 5000; }
+  }
+  longest = Math.max(longest, run);
+  check(longest > 170000,
+        "the longest unbroken crossing is " + Math.round(longest / 1000) + "k units, " +
+        (longest / 575 / 60).toFixed(1) + " minutes — a region has to be a place");
+
+  /* The rules really do differ. Two regions of different kinds must disagree
+     about what is in them, or the layer is a colour scheme. */
+  /* Over a block of the lattice rather than along a line, for the same reason
+     the census is: a single diagonal misses a one-per-cent region entirely about
+     half the time, and a test that cannot find the thing it is checking is a test
+     that passes for the wrong reason. */
+  const byKey = {};
+  for (let j = -14; j <= 14; j++) {
+    for (let i = -14; i <= 14; i++) {
+      const r = cf.regionProbe(i * 200000 + 90000, j * 200000 + 90000);
+      byKey[r.key] = r;
+    }
+  }
+  const belt = byKey.belt, empty = byKey.open, murk = byKey.murk, rime = byKey.rime;
+  check(!!belt && !!empty, "could not find a belt and an empty to compare");
+  if (belt && empty) {
+    check(belt.rocks > empty.rocks * 8,
+          "a belt and an empty have nearly the same amount of rock in them");
+    check(empty.traffic < 0.2, "the Empty has traffic in it");
+  }
+  // Two of them change a *rule* rather than a quantity, which is the whole point.
+  if (murk) check(murk.scan < 0.6, "the murk does not shorten the scan");
+  if (rime) check(rime.ice > 3, "the rime is not full of ice");
+
+  /* And nothing in the interface says any of it. This is the rule the first
+     version broke: the panel named the region and the chart washed itself in
+     region colours with the names written across it, which is the Minecraft
+     SNOW BIOME label in a different font. */
+  check(cf.surveyView().region === null,
+        "the game is still handing the panel a region to name");
+  check(/REGION  UNKNOWN/.test(hudSrc),
+        "the panel does not say it cannot tell what kind of space this is");
+  check(!/st\.regionAt|st\.regionSites/.test(hudSrc),
+        "the chart is still colouring itself by region");
+
+  console.log("  regions    " + kinds + " kinds of space · ordinary is " +
+              (share("normal") * 100).toFixed(0) + "% · the Empty " +
+              (share("open") * 100).toFixed(1) + "% and the city " +
+              (share("city") * 100).toFixed(1) + "% · longest crossing " +
+              (longest / 575 / 60).toFixed(1) + " min · the game never names one");
 }
 
 if (problems.length) {

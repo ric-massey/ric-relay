@@ -2090,12 +2090,27 @@
 
   let rockSeq = 0;
 
-  function rockLooks(id, size) {
+  /* What a rock is shaped like, and it is the loudest thing a region says. Every
+     rock in the game was the same lumpy polygon with its radii jittered between
+     0.72 and 1.24 — so a field in one place looked exactly like a field in
+     another, whatever else was different about them.
+
+     `shard` alternates long spikes and deep notches: angular silhouettes with
+     edges you can see a turn around. `round` flattens the jitter to almost
+     nothing: smooth circles, broad curved channels between them, and a sky that
+     is unmistakably somewhere else. The collision radius is untouched by either,
+     so what a rock *does* is the same everywhere and only what it looks like
+     changes. */
+  function rockLooks(id, size, style) {
     const spec = rockSpec(size);
     const rnd = seeded(id * 977 + spec.verts);
     const pick = (a, b) => a + rnd() * (b - a);
     const shape = [];
-    for (let i = 0; i < spec.verts; i++) shape.push(pick(0.72, 1.24));
+    for (let i = 0; i < spec.verts; i++) {
+      shape.push(style === "shard" ? (i % 2 ? pick(0.44, 0.62) : pick(1.18, 1.42))
+               : style === "round" ? pick(0.97, 1.03)
+               : pick(0.72, 1.24));
+    }
     // One crack per hit it can take, drawn as it wears down.
     const cracks = [];
     for (let i = 0; i < spec.hp; i++) {
@@ -2108,12 +2123,12 @@
     return { shape, cracks };
   }
 
-  function makeRock(size, x, y, id) {
+  function makeRock(size, x, y, id, style) {
     const spec = rockSpec(size);
     const dir = rand(0, Math.PI * 2);
     const spd = rand(spec.spd[0], spec.spd[1]) * U * (mode.closing ? 1 : waveSpeed());
     if (id === undefined) id = ++rockSeq;
-    const looks = rockLooks(id, size);
+    const looks = rockLooks(id, size, style);
     return {
       id, size, x, y,
       vx: Math.cos(dir) * spd,
@@ -4889,7 +4904,8 @@
     const R = seeded(chunkSeed(lx * 3571 + 11, ly * 51043 + 29) ^ 0x6d2b79f5);
     const roll = R();
     let out = null;
-    if (roll < 0.55 * Math.max(0.05, abund("planets"))) {
+    if (roll < 0.55 * Math.max(0.05,
+          abund("planets", (lx + 0.5) * WORLD_CELL, (ly + 0.5) * WORLD_CELL))) {
       // The radius first, because the box it may stand in depends on it.
       const t = Math.pow(R(), 2.2);
       const r = Math.round(340 * Math.pow(10.6, t));
@@ -5018,15 +5034,21 @@
     cache: { ice: 5,  iron: 18, alloy: 32, iridium: 30, electronics: 11, core: 4 }
   };
 
-  function rollMaterial(source, deep) {
+  function rollMaterial(source, deep, where) {
     const table = MAT_TABLE[source] || MAT_TABLE.rock;
+    /* And what the *place* is made of. A rime is small ice bodies as far as the
+       scan reaches, which turns water — the thing that decides how far you can
+       go — into a non-question for anybody carrying a melter. The same ship goes
+       twice as far from there, which is what a region is for. */
+    const iceBias = where ? (regionOf(where.x, where.y).ice || 1) : 1;
     // Depth is a thumb on the scale, not a different table: the same places
     // give the same things further out, just richer.
     const lean = 1 + (deep || 0) * 3.5;
     let total = 0;
     const weights = MATERIALS.map(m => {
       const w = (table[m.key] || 0) *
-                (m.value >= 9 ? lean : m.value <= 1 ? 1 / lean : 1);
+                (m.value >= 9 ? lean : m.value <= 1 ? 1 / lean : 1) *
+                (m.key === "ice" ? iceBias : 1);
       total += w;
       return w;
     });
@@ -5590,6 +5612,8 @@
       secret: true },
     { key: "supernebula", name: "THE SUPERNEBULA", note: "you found the big one" },
     { key: "node-01", name: "NODE 01", note: "somebody else's terminal", secret: true },
+    { key: "vault", name: "THE VAULT", note: "somebody locked this and left",
+      secret: true },
     { key: "leviathan", name: "THE LEVIATHAN", note: "it was a ship, once", secret: true },
 
     /* The five that are about doing rather than arriving. They are last because
@@ -5735,6 +5759,10 @@
     { key: "pale-dot",          name: "PALE DOT",      dist:  160000, r: 330 },
     { key: "the-wall",          name: "THE WALL",      dist:  360000, r: 760 },
     { key: "supernebula",       name: "SUPERNEBULA",   dist:  780000, r: 1150 },
+    /* The second thing in the game you fly *inside*. See `buildVault` — and see
+       the Leviathan, which proved the shape is worth having and is the reason
+       there is now a second one. */
+    { key: "vault",             name: "THE VAULT",     dist: 1250000, r: 900 },
     { key: "node-01",           name: "NODE 01",       dist: 1700000, r: 400 },
     /* The Leviathan is last and furthest because it is the only landmark that
        is a *place you go inside*. Its radius is the logging trigger, not the
@@ -5856,9 +5884,162 @@
     };
   }
 
-  // How abundant a thing is in this world. 1 anywhere a world has not been
-  // rolled yet, so nothing has to check whether one exists.
-  const abund = key => (surv && surv.world ? surv.world.d[key] : 1);
+  /* ── regions ──────────────────────────────────────────────────────────────
+     What was wrong: a sector's variety came from exactly two things — one roll of
+     abundances for the *whole world*, and a danger curve that rises with distance
+     from home. So density changed as you flew out and **shape never did**. Every
+     piece of sky was the same piece of sky with more or less in it.
+
+     That was survivable when the furthest landmark was 112,000 units out. It
+     stopped being survivable when 6.7 stretched the ladder to 3,400,000 — sixteen
+     ten-minute flights to the finale — because the stretch bought twenty hours of
+     game by asking you to cross more space, and crossing homogeneous space is
+     commuting.
+
+     A region is a *place*: a stretch of sky tens of thousands of units across
+     with its own character. It multiplies the world's abundances rather than
+     replacing them, so a world that is short of wells is still short of them in
+     its well-riddled regions — the world says what kind of world it is and the
+     region says what kind of *here* this is.
+
+     It is a **pure function of position**, like the danger band, which is the
+     whole reason it is affordable: nothing is stored, nothing can desync, a chunk
+     stays a pure function of its coordinates, and flying away and back finds the
+     same place. */
+  const REGIONS = [
+    /* **Ordinary space is the commonest thing in the galaxy**, and it has to be,
+       or none of the rest reads as unusual. A third of the sky is this: the
+       world's own abundances, untouched, and a sky that looks the way the sky
+       looks. Everything below is a deviation from it and is only legible as one
+       because this exists. */
+    { key: "normal", name: "ORDINARY SPACE", colour: "#8a93a8", weight: 10,
+      rocks: 1, style: "rough", scan: 1, traffic: 1, ice: 1, d: {} },
+
+    { key: "reach", name: "SETTLED REACH", colour: "#6dffbf", weight: 3,
+      rocks: 0.7, style: "rough", scan: 1, traffic: 1.9, ice: 1,
+      d: { stations: 2.6, planets: 1.7, wells: 0.6, fields: 0.4, wrecks: 0.7 } },
+    { key: "belt", name: "THE BELT", colour: "#c0a487", weight: 3,
+      rocks: 2.6, style: "rough", scan: 1, traffic: 0.7, ice: 1.2,
+      d: { fields: 3.4, wrecks: 1.2, stations: 0.5, planets: 0.6 } },
+    { key: "shards", name: "SHARD FIELD", colour: "#bfe8ff", weight: 2,
+      rocks: 2.1, style: "shard", scan: 1, traffic: 0.6, ice: 1,
+      d: { fields: 2.6, wells: 0.7, planets: 0.5, stations: 0.4 } },
+    { key: "rounds", name: "THE ROUNDS", colour: "#ffd76d", weight: 1.4,
+      rocks: 1.7, style: "round", scan: 1, traffic: 0.6, ice: 1,
+      d: { fields: 2.2, wells: 0.5, planets: 0.4, stations: 0.3, caches: 1.4 } },
+    /* Cloud and murk both cut what you can see; they differ in what it costs.
+       A cloud is thick and full of things, and a murk is thin and *lies to your
+       instruments* — the scan comes back short, so you fly it by eye. */
+    { key: "cloud", name: "THE VIOLET CLOUD", colour: "#a08cff", weight: 2,
+      rocks: 1.2, style: "rough", scan: 0.75, traffic: 0.7, ice: 1,
+      d: { nebulae: 7, wrecks: 1.6, stations: 0.5, caches: 1.5 } },
+    { key: "murk", name: "THE MURK", colour: "#5f6b7d", weight: 1.5,
+      rocks: 0.9, style: "rough", scan: 0.35, traffic: 0.6, ice: 1,
+      d: { nebulae: 3, stations: 0.4, caches: 1.3, wrecks: 1.4 } },
+    { key: "bones", name: "THE BONEYARD", colour: "#7d8596", weight: 1.5,
+      rocks: 1.1, style: "shard", scan: 1, traffic: 0.5, ice: 0.8,
+      d: { wrecks: 4.5, caches: 1.8, stations: 0.4, planets: 0.5 } },
+    { key: "maw", name: "THE WELLS", colour: "#b79aff", weight: 1.5,
+      rocks: 0.9, style: "rough", scan: 1, traffic: 0.4, ice: 1,
+      d: { wells: 3.6, planets: 0.5, stations: 0.3, fields: 0.6 } },
+    /* Water stops being the thing that limits you. A region of small ice bodies
+       turns range into a non-question for anybody carrying a melter, which is a
+       rule change rather than a decoration: the same ship can go twice as far
+       from here. */
+    { key: "rime", name: "THE RIME", colour: "#bfe8ff", weight: 1.5,
+      rocks: 1.9, style: "round", scan: 1, traffic: 0.6, ice: 6,
+      d: { fields: 2.4, wells: 0.6, stations: 0.5, planets: 0.7 } },
+    { key: "lanes", name: "THE LANES", colour: "#ffcb42", weight: 1.6,
+      rocks: 0.8, style: "rough", scan: 1, traffic: 2.6, ice: 1,
+      d: { stations: 1.7, gates: 1.8, wrecks: 1.3, fields: 0.5 } },
+
+    /* ── the two rare ones ──────────────────────────────────────────────────
+       Both are about one crossing in a hundred, and both should be a story
+       somebody tells afterwards rather than a place on a route. */
+    { key: "city", name: "THE WORKS", colour: "#ffe56d", weight: 0.4,
+      rocks: 0.5, style: "rough", scan: 1, traffic: 4.5, ice: 0.8,
+      d: { stations: 7, planets: 2.4, gates: 2, wells: 0.3, fields: 0.2 } },
+    /* See BIOMES.md. Nothing here, for a very long way, with no explanation and
+       no label — and it is one of the two rarest things in the galaxy, because
+       the whole effect depends on hours of ordinary space first. */
+    { key: "open", name: "THE LONG EMPTY", colour: "#4a5266", weight: 0.5,
+      rocks: 0.04, style: "rough", scan: 1, traffic: 0.05, ice: 1,
+      d: { wells: 0.1, planets: 0.15, wrecks: 0.08, gates: 0.4, stations: 0.1,
+           nebulae: 0.12, fields: 0.02, caches: 0.15 } }
+  ];
+  /* **How long it takes to cross one.** Ric's number is five to twenty minutes,
+     and at cruise that is 170,000 to 690,000 units — so a region cell is 200,000
+     across and the Voronoi makes them uneven, which puts a straight crossing
+     somewhere between three and fifteen minutes depending on where you enter and
+     whether the next one along is the same kind.
+
+     It was 31,200, which is a minute. A minute of anything is a stretch of
+     scenery; it is not a *place*, and it certainly is not somewhere you could
+     start wondering whether the generator had broken. */
+  const REGION_CELL = 200000;
+  const regionCache = new Map();
+
+  /* Nearest jittered site among the nine cells around a point. A plain grid would
+     make regions square and the boundaries axis-aligned, which reads as a
+     chessboard the moment you see two of them meet; jittering the site inside its
+     cell and taking the nearest makes the borders irregular and the shapes
+     unequal, which is what a region of space should look like. */
+  function regionAt(x, y) {
+    const cx = Math.floor(x / REGION_CELL), cy = Math.floor(y / REGION_CELL);
+    const key = cx + "," + cy;
+    let near = regionCache.get(key);
+    if (!near) {
+      near = [];
+      for (let j = -1; j <= 1; j++) {
+        for (let i = -1; i <= 1; i++) {
+          near.push(regionSite(cx + i, cy + j));
+        }
+      }
+      if (regionCache.size > 400) regionCache.clear();
+      regionCache.set(key, near);
+    }
+    let best = near[0], bd = Infinity;
+    for (const st of near) {
+      const d = (st.x - x) * (st.x - x) + (st.y - y) * (st.y - y);
+      if (d < bd) { bd = d; best = st; }
+    }
+    return best.region;
+  }
+
+  /* Where a region cell's middle actually sits, and which region it is. Seeded
+     off the sector, so two sectors do not lay their regions out the same way. */
+  function regionSite(cx, cy) {
+    const seed = (surv && surv.seed) || 1;
+    const R = seeded(chunkSeed(cx * 7919 + 13, cy * 104729 - 7) ^ (seed >>> 0) ^ 0x51a3d7);
+    const pool = REGIONS.filter(r => r.weight > 0);
+    const total = pool.reduce((t, r) => t + r.weight, 0);
+    let roll = R() * total, pick = pool[0];
+    for (const r of pool) { roll -= r.weight; if (roll <= 0) { pick = r; break; } }
+    return { x: (cx + 0.18 + R() * 0.64) * REGION_CELL,
+             y: (cy + 0.18 + R() * 0.64) * REGION_CELL,
+             region: pick, cx, cy };
+  }
+
+  /* Home is always settled. The first two minutes are the same promise in every
+     sector — the same reason the home band stays quiet — and dropping a new pilot
+     into the middle of a well cluster would be a different game. */
+  const HOME_REACH = REGION_CELL * 0.34;
+  function regionOf(x, y) {
+    if (x * x + y * y < HOME_REACH * HOME_REACH) return REGIONS[1];
+    return regionAt(x, y);
+  }
+
+  // How abundant a thing is *here*. The world's own roll, multiplied by what this
+  // region does to it. 1 anywhere a world has not been rolled yet.
+  function abund(key, x, y) {
+    const w = (surv && surv.world ? surv.world.d[key] : 1);
+    if (x === undefined) return w;
+    const reg = regionOf(x, y);
+    // `traffic` is the region's own, not one of the world's traits.
+    if (key === "traffic") return reg.traffic === undefined ? 1 : reg.traffic;
+    const r = reg.d[key];
+    return w * (r === undefined ? 1 : r);
+  }
 
   let surv = null;
 
@@ -6313,7 +6494,8 @@
        The floor is what guarantees the "SEALED" world still has any at all. The
        jump coil's gate is placed by hand and is not rolled here, so finding the
        coil is how most players will meet their first one whatever this says. */
-    const p = 0.11 * Math.max(0.05, abund("gates"));
+    const p = 0.11 * Math.max(0.05,
+      abund("gates", (lx + 0.5) * LINK_CELL, (ly + 0.5) * LINK_CELL));
     const out = [];
     for (let i = 0; i < LINK_SLOTS; i++) {
       const roll = R();
@@ -6444,10 +6626,38 @@
     const latticeGates = gatesInChunk(cx, cy);
     const ox = cx * CHUNK, oy = cy * CHUNK;
     const rnd = (a, b) => a + R() * (b - a);
-    const spot = (m) => ({ x: ox + rnd(m, CHUNK - m), y: oy + rnd(m, CHUNK - m) });
+    /* Somewhere in this chunk that is not inside something built. The two places
+       you can fly into — the Leviathan and the Vault — are large enough to cover
+       most of a chunk each, so the sector's own furniture could be rolled *inside*
+       them: a cache in a wall, a station in a corridor, an asteroid field in a
+       hold. That was survivable while the Leviathan was 2,700 units and one chunk;
+       at 9,200 units and four chunks it is a certainty.
+
+       Eight tries, then give up and let the caller skip. Re-rolling consumes the
+       chunk's own stream either way, so this stays a pure function of the
+       coordinates — the same chunk gives the same answer, blocked or not. */
+    const keepOut = lm => lm.key === "leviathan" ? LEV_LEN * 0.58
+                        : lm.key === "vault" ? VAULT_R * 1.35
+                        : lm.r;
+    const built = (x, y, m) => (surv && surv.landmarks || []).some(lm =>
+      dist2(x, y, lm.x, lm.y) < (keepOut(lm) + m) ** 2);
+    const spot = (m) => {
+      for (let i = 0; i < 8; i++) {
+        const x = ox + rnd(m, CHUNK - m), y = oy + rnd(m, CHUNK - m);
+        if (!built(x, y, m)) return { x, y };
+      }
+      return null;
+    };
     const out = { hazards: [], planets: [], wrecks: [], nebulae: [], marks: [],
                   gates: latticeGates, caches: [], stations: [], hulks: [],
                   parts: [], fields: [], traffic: [], battles: [] };
+    /* Everything this chunk rolls asks *where it is* as well as what world it is
+       in. `mx, my` is the chunk's middle, so one region decides the whole chunk
+       rather than each object landing in whichever region its own corner is in —
+       a chunk straddling a border would otherwise be half one place and half
+       another, which is not what a border looks like from the cockpit. */
+    const mx = ox + CHUNK / 2, my = oy + CHUNK / 2;
+    const ab = key => abund(key, mx, my);
 
     // Where you start is quiet: an opening spawn inside a well is a death you
     // could not have avoided, and the first thing this mode asks you to do is
@@ -6478,24 +6688,32 @@
          a sector full of them is a sector of identical detours, and the one you
          actually have to plan around stops being remarkable. Stars stay put and
          the holes thin out around them. */
-      const roll = R() / Math.max(0.05, abund("wells"));
+      const roll = R() / Math.max(0.05, ab("wells"));
       const k = () => wellScale(deep, R);
       if (roll < 0.025) {
         const p = spot(900 * (1 + deep));
-        const kk = k();
-        out.hazards.push(makeStar(p.x - 190 * kk, p.y, R, kk),
-                         makeStar(p.x + 190 * kk, p.y, R, kk));
+        if (p) {
+          const kk = k();
+          out.hazards.push(makeStar(p.x - 190 * kk, p.y, R, kk),
+                           makeStar(p.x + 190 * kk, p.y, R, kk));
+        }
       } else if (roll < 0.032) {
         const p = spot(1000 * (1 + deep));
-        const kk = k();
-        out.hazards.push(makeHole(p.x - 250 * kk, p.y - 70 * kk, true, R, kk),
-                         makeHole(p.x + 250 * kk, p.y + 70 * kk, true, R, kk));
+        if (p) {
+          const kk = k();
+          out.hazards.push(makeHole(p.x - 250 * kk, p.y - 70 * kk, true, R, kk),
+                           makeHole(p.x + 250 * kk, p.y + 70 * kk, true, R, kk));
+        }
       } else if (roll < 0.122) {
         const p = spot(600);
-        out.hazards.push(makeStar(p.x, p.y, R, k()));
+        if (p) {
+          out.hazards.push(makeStar(p.x, p.y, R, k()));
+        }
       } else if (roll < 0.152) {
         const p = spot(700);
-        out.hazards.push(makeHole(p.x, p.y, R() < 0.45, R, k()));
+        if (p) {
+          out.hazards.push(makeHole(p.x, p.y, R() < 0.45, R, k()));
+        }
       }
       /* Far fewer, and off the world lattice rather than out of this chunk's
          roll. A world is a landmark now — it is enormous, it has a name, and it
@@ -6507,61 +6725,73 @@
       }
       /* Ambient cloud. There used to be exactly one nebula in a sector, at the
          supernebula landmark, so a "clouded" world had nothing to show for it. */
-      if (R() < 0.035 * abund("nebulae")) {
+      if (R() < 0.035 * ab("nebulae")) {
         const p = spot(700);
-        out.nebulae.push({ x: p.x, y: p.y, r: rnd(420, 900),
-                           phase: R() * Math.PI * 2 });
+        if (p) {
+          out.nebulae.push({ x: p.x, y: p.y, r: rnd(420, 900),
+                             phase: R() * Math.PI * 2 });
+        }
       }
       buildTraffic(cx, cy, R, rnd, deep, out);
       buildBattle(cx, cy, R, rnd, deep, out);
-      if (R() < 0.05 * abund("wrecks")) {
+      if (R() < 0.05 * ab("wrecks")) {
         const p = spot(300);
-        out.wrecks.push({ x: p.x, y: p.y, a: R() * Math.PI * 2,
-                          spin: rnd(-0.05, 0.05), size: rnd(0.8, 1.7) });
+        if (p) {
+          out.wrecks.push({ x: p.x, y: p.y, a: R() * Math.PI * 2,
+                            spin: rnd(-0.05, 0.05), size: rnd(0.8, 1.7) });
+        }
       }
 
       /* A cache and its sentries. The guard is the point: salvage lying loose
          in open space is scenery, and salvage behind something that shoots is a
          decision. Two or three drones, posted rather than roaming — they hold
          station over the cache and go back to it when you leave. */
-      if (R() < (0.05 + deep * 0.05) * abund("caches")) {
+      if (R() < (0.05 + deep * 0.05) * ab("caches")) {
         const p = spot(520);
-        // One sentry near home, up to five at the far end.
-        const n = 1 + Math.round(deep * 3) + (R() < 0.4 ? 1 : 0);
-        const guards = [];
-        for (let i = 0; i < n; i++) {
-          const a = (i / n) * Math.PI * 2 + R();
-          guards.push({ x: p.x + Math.cos(a) * 300, y: p.y + Math.sin(a) * 300,
-                        a });
+        if (p) {
+          // One sentry near home, up to five at the far end.
+          const n = 1 + Math.round(deep * 3) + (R() < 0.4 ? 1 : 0);
+          const guards = [];
+          for (let i = 0; i < n; i++) {
+            const a = (i / n) * Math.PI * 2 + R();
+            guards.push({ x: p.x + Math.cos(a) * 300, y: p.y + Math.sin(a) * 300,
+                          a });
+          }
+          // And they are worth more for it, or nobody would ever leave home.
+          out.caches.push({ x: p.x, y: p.y, r: 46, guards, opened: false,
+                            rich: deep > 0.55 && R() < deep,
+                            phase: R() * Math.PI * 2 });
         }
-        // And they are worth more for it, or nobody would ever leave home.
-        out.caches.push({ x: p.x, y: p.y, r: 46, guards, opened: false,
-                          rich: deep > 0.55 && R() < deep,
-                          phase: R() * Math.PI * 2 });
       }
 
       /* Somewhere to spend it. Rare enough that finding one matters and common
          enough that a full hold is never a long walk home — and one is planted
          at the origin besides, so the first refit does not need luck. */
-      if (R() < 0.032 * abund("stations")) {
+      if (R() < 0.032 * ab("stations")) {
         const p = spot(420);
-        out.stations.push({ x: p.x, y: p.y, r: 132, phase: R() * Math.PI * 2 });
+        if (p) {
+          out.stations.push({ x: p.x, y: p.y, r: 132, phase: R() * Math.PI * 2 });
+        }
       }
 
       // A drifting dead hull, big enough to hit and worth stripping.
-      if (R() < (0.06 + deep * 0.07) * abund("wrecks")) {
+      if (R() < (0.06 + deep * 0.07) * ab("wrecks")) {
         const p = spot(360);
-        out.hulks.push({ x: p.x, y: p.y, r: rnd(52, 96), a: R() * Math.PI * 2,
-                         spin: rnd(-0.12, 0.12), hp: 4 });
+        if (p) {
+          out.hulks.push({ x: p.x, y: p.y, r: rnd(52, 96), a: R() * Math.PI * 2,
+                           spin: rnd(-0.12, 0.12), hp: 4 });
+        }
       }
       /* Asteroid fields, out where the sector stops being tidy. Standing rock
          is the oldest hazard this game has and Survey only ever had a thin
          drifting population of it; a real field is somewhere you have to fly
          *through* rather than past. */
-      if (deep > 0.2 && R() < deep * 0.3 * abund("fields")) {
+      if (deep > 0.2 && R() < deep * 0.3 * ab("fields")) {
         const p = spot(700);
-        out.fields.push({ x: p.x, y: p.y, r: rnd(500, 900),
-                          n: Math.round(rnd(10, 16 + deep * 14)) });
+        if (p) {
+          out.fields.push({ x: p.x, y: p.y, r: rnd(500, 900),
+                            n: Math.round(rnd(10, 16 + deep * 14)) });
+        }
       }
     } else {
       /* The first station is given rather than found. The mode's opening move
@@ -6660,6 +6890,8 @@
       out.nebulae.push({ x: lm.x, y: lm.y, r: 1250, phase: R() * Math.PI * 2 });
     } else if (lm.key === "leviathan") {
       buildLeviathan(lm, out, R, rnd);
+    } else if (lm.key === "vault") {
+      buildVault(lm, out, R, rnd);
     } else if (lm.key === "the-wall") {
       /* This used to be four markers around an empty square and nothing else —
          Battle Royale's wall at the size it stops at, sitting in the middle of
@@ -6892,6 +7124,135 @@
     }
   }
 
+  /* ── the Vault ────────────────────────────────────────────────────────────
+     The second place you fly into, and deliberately not a second Leviathan. The
+     Leviathan is a *wreck*: a thing that died and is being picked over, and its
+     inside is a corridor with rooms off it. The Vault is a thing somebody **built
+     to keep people out**, and its inside is a problem.
+
+     A square hull with one way in, and inside it a ring corridor around a core.
+     The ring has four spokes running inward and three of them are blind: they end
+     in a wall, and the fourth is the way into the core. Which one is the real one
+     changes with the sector, so nobody can be told the answer.
+
+     Built from the same `wall` primitive the Leviathan uses, for the same reason:
+     the discs are the physics, the line list is the drawing, and there is only one
+     of them so they cannot disagree. That primitive existing is most of why this
+     was an afternoon rather than a week, which is the argument for authored places
+     in 6.6 — the second one is cheap once the first has paid for the machinery. */
+  const VAULT_R  = 2300;    // half the width of the box
+  const VAULT_SEG = 150;
+
+  function buildVault(lm, out, R, rnd) {
+    const a = R() * Math.PI * 2;
+    const ca = Math.cos(a), sa = Math.sin(a);
+    const wx = (u, v) => lm.x + u * ca - v * sa;
+    const wy = (u, v) => lm.y + u * sa + v * ca;
+    const segs = [], walls = [];
+    const wall = (u0, v0, u1, v1) => {
+      const dx = u1 - u0, dy = v1 - v0;
+      const len = Math.hypot(dx, dy);
+      const n = Math.max(1, Math.ceil(len / (VAULT_SEG * 1.15)));
+      for (let i = 0; i <= n; i++) {
+        segs.push({ x: wx(u0 + dx * (i / n), v0 + dy * (i / n)),
+                    y: wy(u0 + dx * (i / n), v0 + dy * (i / n)), r: VAULT_SEG });
+      }
+      walls.push({ u0, v0, u1, v1 });
+    };
+
+    const S = VAULT_R;                 // the outer shell
+    const RING = S * 0.55;             // the inner shell, making the ring corridor
+    const CORE = S * 0.26;             // the vault itself
+    const MOUTH = 330;                 // half the width of the one way in
+
+    // ── the shell, with one gate in the middle of one side ─────────────────
+    const door = Math.floor(R() * 4);  // which side it is on
+    const side = (k, cut) => {
+      // k: 0 top, 1 right, 2 bottom, 3 left, in local coordinates.
+      const pts = [[-S, -S, S, -S], [S, -S, S, S], [S, S, -S, S], [-S, S, -S, -S]][k];
+      if (!cut) { wall(pts[0], pts[1], pts[2], pts[3]); return; }
+      const mu = (pts[0] + pts[2]) / 2, mv = (pts[1] + pts[3]) / 2;
+      const dx = pts[2] - pts[0], dy = pts[3] - pts[1];
+      const L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+      wall(pts[0], pts[1], mu - ux * MOUTH, mv - uy * MOUTH);
+      wall(mu + ux * MOUTH, mv + uy * MOUTH, pts[2], pts[3]);
+    };
+    for (let k = 0; k < 4; k++) side(k, k === door);
+
+    /* ── the inner shell, and the four spokes ──────────────────────────────
+       The ring between the two shells is the corridor. Each spoke is a pair of
+       walls running inward from the inner shell with a gap in the shell behind
+       it; three of them end in a wall and one opens into the core. */
+    const real = Math.floor(R() * 4);
+    const SPOKE = 260;                 // half the width of a spoke
+    for (let k = 0; k < 4; k++) {
+      const ang = (k / 4) * Math.PI * 2 + Math.PI / 4;
+      const nx = Math.cos(ang), ny = Math.sin(ang);
+      const tx = -ny, ty = nx;         // across the spoke
+      // The inner shell, in four arcs with a gap at each spoke.
+      const A0 = ang - Math.PI / 4 + 0.14, A1 = ang + Math.PI / 4 - 0.14;
+      let pu = Math.cos(A0) * RING, pv = Math.sin(A0) * RING;
+      for (let t = 1; t <= 8; t++) {
+        const aa = A0 + (A1 - A0) * (t / 8);
+        const qu = Math.cos(aa) * RING, qv = Math.sin(aa) * RING;
+        wall(pu, pv, qu, qv);
+        pu = qu; pv = qv;
+      }
+      // The spoke's two walls, from the inner shell down to the core.
+      for (const sgn of [-1, 1]) {
+        wall(nx * RING + tx * SPOKE * sgn, ny * RING + ty * SPOKE * sgn,
+             nx * CORE + tx * SPOKE * sgn, ny * CORE + ty * SPOKE * sgn);
+      }
+      // And the cap at the bottom of it — on every spoke but the real one.
+      if (k !== real) {
+        wall(nx * CORE - tx * SPOKE, ny * CORE - ty * SPOKE,
+             nx * CORE + tx * SPOKE, ny * CORE + ty * SPOKE);
+      }
+    }
+
+    /* ── the core wall ─────────────────────────────────────────────────────
+       A ring around the middle, open only where the real spoke meets it. */
+    const realAng = (real / 4) * Math.PI * 2 + Math.PI / 4;
+    let cu = null, cv = null, first = null;
+    for (let t = 0; t <= 48; t++) {
+      const aa = (t / 48) * Math.PI * 2;
+      let d = aa - realAng;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      const open = Math.abs(d) < 0.30;
+      const qu = Math.cos(aa) * CORE, qv = Math.sin(aa) * CORE;
+      if (!open && cu !== null) wall(cu, cv, qu, qv);
+      cu = open ? null : qu; cv = open ? null : qv;
+      if (t === 0) first = [qu, qv];
+    }
+
+    out.vault = { x: lm.x, y: lm.y, a, ca, sa, segs, walls, r: S, ring: RING,
+                  core: CORE, door, real, phase: R() * Math.PI * 2 };
+
+    /* What is in it. The core holds the best sealed hold in the sector; the ring
+       holds two more behind their own sentries, so the trip is worth making even
+       if you never work out which spoke is the real one. */
+    const put = (u, v, rich) => {
+      const px = wx(u, v), py = wy(u, v);
+      const n = rich ? 5 : 2;
+      const guards = [];
+      for (let g = 0; g < n; g++) {
+        const ga = (g / n) * Math.PI * 2;
+        guards.push({ x: px + Math.cos(ga) * 200, y: py + Math.sin(ga) * 200, a: ga });
+      }
+      out.caches.push({ x: px, y: py, r: 46, guards, opened: false, rich,
+                        phase: R() * Math.PI * 2 });
+    };
+    put(0, 0, true);
+    const ringAt = k => {
+      const aa = (k / 4) * Math.PI * 2;          // between the spokes
+      return [Math.cos(aa) * (RING + (S - RING) * 0.5),
+              Math.sin(aa) * (RING + (S - RING) * 0.5)];
+    };
+    put(...ringAt(1), false);
+    put(...ringAt(3), false);
+  }
+
   /* ── streaming ────────────────────────────────────────────────────────────
      Chunks within CHUNK_LOAD of the ship are built and kept; everything else is
      dropped. The flat lists the rest of the engine reads — `hazards` above all
@@ -6968,7 +7329,8 @@
     hazards = [];
     surv.planets = []; surv.wrecks = []; surv.nebulae = []; surv.marks = [];
     surv.gates = []; surv.caches = []; surv.stations = []; surv.hulks = [];
-    surv.drones = []; surv.leviathan = null; surv.parts = []; surv.fields = [];
+    surv.drones = []; surv.leviathan = null; surv.vault = null;
+    surv.parts = []; surv.fields = [];
     surv.traffic = []; surv.battles = [];
     for (const [k, c] of surv.chunks) {
       for (const h of c.hazards) hazards.push(h);
@@ -6986,6 +7348,7 @@
         surv.parts.push(pt);
       }
       if (c.leviathan) surv.leviathan = c.leviathan;
+      if (c.vault) surv.vault = c.vault;
 
       /* A chunk is rebuilt from its seed every time you come back to it, so
          anything you *changed* about one has to be remembered outside it or
@@ -7187,6 +7550,11 @@
     if (lev && dist2(o.x, o.y, lev.x, lev.y) < (lev.len * 0.75) ** 2) {
       for (const g of lev.segs) clear(g.x, g.y, g.r);
     }
+    // And the Vault, on the same terms: one bounding check, then its walls.
+    const vault = surv.vault;
+    if (vault && dist2(o.x, o.y, vault.x, vault.y) < (vault.r * 1.6) ** 2) {
+      for (const g of vault.segs) clear(g.x, g.y, g.r);
+    }
     return hit;
   }
 
@@ -7289,9 +7657,13 @@
     for (let i = rocks.length - 1; i >= 0; i--) {
       if (dist2(rocks[i].x, rocks[i].y, me.x, me.y) > far) rocks.splice(i, 1);
     }
-    // Thicker further out, and thicker again inside a field.
+    /* Thicker further out, thicker again inside a field — and now thicker or
+       thinner because of *where you are*. A belt is rock as far as the scan
+       reaches; the Long Empty has almost none, which is the whole of what makes
+       it worth flying into. */
     const deep = dangerAt(me.x, me.y);
-    const want = Math.round(SURVEY_ROCKS * (1 + deep * 0.7));
+    const reg = regionOf(me.x, me.y);
+    const want = Math.round(SURVEY_ROCKS * (1 + deep * 0.7) * reg.rocks);
     const near = surv.fields.filter(f =>
       dist2(f.x, f.y, me.x, me.y) < (SURVEY_ROCK_R * 1.4) ** 2);
     let guard = 60;
@@ -7319,7 +7691,8 @@
       if (hazards.some(h => dist2(x, y, h.x, h.y) < (h.kill + 90) ** 2)) continue;
       // And never inside a world, which is now big enough to swallow a field.
       if (surv.planets.some(pl => dist2(x, y, pl.x, pl.y) < (pl.r + 60) ** 2)) continue;
-      const r = makeRock(randomRoyaleRockSize(), x, y);
+      const r = makeRock(randomRoyaleRockSize(), x, y, undefined,
+                         regionOf(x, y).style);
       // One rock in sixty has something in it, and cracking it open is the only
       // way to find out which. Stops once the entry is logged.
       if (!surv.found.has("prospector") && Math.random() < 1 / 60) r.core = true;
@@ -7358,6 +7731,7 @@
       memorials: new Set(carried && book.memorials ? book.memorials : []),
       gates: [], caches: [], stations: [], hulks: [], drones: [],
       leviathan: null,
+      vault: null,             // the other thing with an inside; see `buildVault`
       shots: [],                 // what the sentries fire; see `surveyShots`
       motes: [],                 // loose salvage, drifting
       landmarks: [], landmarkAt: new Map(),
@@ -8865,8 +9239,16 @@
   /* How far a pulse reaches. This is the only thing the scanner track buys, and
      it is the only thing it ever claimed to buy that could be felt. */
   const SCAN_BASE = 2100;
-  // Every hull scans the same distance. What changes it is what you bolted on.
-  const scanRange = () => SCAN_BASE * (1 + mods().scan);
+  /* Every hull scans the same distance; what changes it is what you bolted on —
+     and *where you are*. Some regions lie to instruments, and in one of them the
+     scan comes back at about a third of its range, so you fly it by eye. That is
+     a rule change rather than a decoration: a scanner build is excellent in thick
+     clutter and nearly useless in a murk. */
+  const scanRange = () => {
+    const me = ships[0];
+    const here = me ? regionOf(me.x, me.y).scan : 1;
+    return SCAN_BASE * (1 + mods().scan) * (here === undefined ? 1 : here);
+  };
   const ECHO_LIFE = 20;        // seconds a return stays on the chart
 
   /* The hull's own numbers, and the parts bolted to it. Nothing else — a hull is
@@ -9723,6 +10105,16 @@
       "answering something, and the something is not you, and it has been " +
       "answering for a while.",
       "NODE 01 is not a name anybody gave it. It is what it calls itself."
+    ],
+    vault: [
+      "Somebody built this to keep people out of it.",
+      "A sealed box two and a half thousand units across, one gate in one wall, " +
+      "and inside it a ring corridor around a core. Four spokes run in from the " +
+      "ring and three of them are blind — they end in a wall, and which one is " +
+      "the real one is different in every sector, so nobody can be told the answer.",
+      "There is no flag on it and no wreckage around it. Whatever is in the " +
+      "middle, it was worth this much concrete to somebody who is not here " +
+      "any more."
     ],
     leviathan: [
       "It was a ship, once.",
@@ -10883,7 +11275,10 @@
     // Common at home, gone by the deep. Squared, so the falloff is felt rather
     // than merely present.
     const near = Math.pow(1 - Math.min(1, deep), 2);
-    if (R() > 0.34 * near + 0.012) return;
+    // How busy this piece of sky is. The Works is thick with traffic; the Empty
+    // has essentially none, which is most of what makes it feel wrong.
+    const busy = abund("traffic", ox + CHUNK / 2, oy + CHUNK / 2);
+    if (R() > (0.34 * near + 0.012) * busy) return;
 
     /* Whose, and what sort. Pirates thicken with distance — the lanes are kept
        near home and nobody is keeping anything out in the deep — and the two
@@ -12440,6 +12835,53 @@
     });
   }
 
+  /* A box somebody sealed. Drawn from its own wall list, like the Leviathan, so
+     what you can see is what you hit — and lit from the inside so the one gate in
+     the shell reads as a way in rather than as a gap somebody left. */
+  function drawVault(v) {
+    if (!onScreen(v.x, v.y, v.r * 1.6)) return;
+    const wx = (u, vv) => v.x + u * v.ca - vv * v.sa;
+    const wy = (u, vv) => v.y + u * v.sa + vv * v.ca;
+
+    ctx.save();
+    ctx.fillStyle = "#06080e";
+    ctx.beginPath();
+    const c = [[-v.r, -v.r], [v.r, -v.r], [v.r, v.r], [-v.r, v.r]];
+    c.forEach((pt, i) => (i ? ctx.lineTo(wx(pt[0], pt[1]), wy(pt[0], pt[1]))
+                            : ctx.moveTo(wx(pt[0], pt[1]), wy(pt[0], pt[1]))));
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    glow("#7a86a0", 2.2, 0.9, () => {
+      for (const w of v.walls) {
+        ctx.beginPath();
+        ctx.moveTo(wx(w.u0, w.v0), wy(w.u0, w.v0));
+        ctx.lineTo(wx(w.u1, w.v1), wy(w.u1, w.v1));
+        ctx.stroke();
+      }
+    });
+
+    /* A flag on the shell, because somebody built this and the sector should be
+       able to say so without a word. It is the only thing out here wearing a
+       marking that big. */
+    const beat = 0.35 + 0.65 * Math.abs(Math.sin(clock * 0.5 + v.phase));
+    glow(NEBULA, 1.8, 0.2 + beat * 0.3, () => {
+      ctx.beginPath();
+      ctx.arc(v.x, v.y, v.core * 0.55, 0, Math.PI * 2);
+      ctx.stroke();
+      for (let k = 0; k < 4; k++) {
+        const a2 = (k / 4) * Math.PI * 2 + Math.PI / 4;
+        ctx.beginPath();
+        ctx.moveTo(wx(Math.cos(a2) * v.core * 0.7, Math.sin(a2) * v.core * 0.7),
+                   wy(Math.cos(a2) * v.core * 0.7, Math.sin(a2) * v.core * 0.7));
+        ctx.lineTo(wx(Math.cos(a2) * v.ring * 0.92, Math.sin(a2) * v.ring * 0.92),
+                   wy(Math.cos(a2) * v.ring * 0.92, Math.sin(a2) * v.ring * 0.92));
+        ctx.stroke();
+      }
+    });
+  }
+
   function drawSurveyWorld() {
     if (!surv) return;
     drawSky();
@@ -12449,6 +12891,7 @@
     drawWellNames();
     for (const t of surv.traffic) drawTraffic(t);
     if (surv.leviathan) drawLeviathan(surv.leviathan);
+    if (surv.vault) drawVault(surv.vault);
     for (const h of surv.hulks) drawHulk(h);
     for (const b of surv.battles) drawBattle(b);
     for (const w of surv.wrecks) drawWreck(w);
@@ -12803,6 +13246,21 @@
       yard: { x: YARD.x, y: YARD.y, built: surv.built.size, needs: BUILD.length },
       danger: dangerAt(ships[0] ? ships[0].x : 0, ships[0] ? ships[0].y : 0),
       dangerBand: bandAt(ships[0] ? ships[0].x : 0, ships[0] ? ships[0].y : 0),
+      /* Which region you are in, and the means to ask about anywhere else. The
+         chart needs the second one: a map that cannot colour itself by region is
+         a map that cannot show you that regions exist. It is a pure function of
+         position, so handing it over costs nothing and cannot go stale. */
+      /* **Not** which region you are in. See BIOMES.md, which is the directive
+         this obeys: a biome is an invisible ruleset, not a labelled zone. The
+         chart simply stops knowing what kind of space this is, and the player
+         learns what it means by being there.
+
+         The first version of this handed the panel a name and the chart a colour
+         wash, which is the Minecraft SNOW BIOME label in a different font — it
+         tells you in two seconds what the sector should take an hour to teach
+         you, and it makes an enormous empty region a warning instead of a
+         discovery. The instrument is honest about its own ignorance instead. */
+      region: null,
       warn: surv.warn,
       /* `snap` is a world-space radius the chart works out from its own zoom —
          the same finger-width on screen is a very different distance when the
@@ -12989,7 +13447,12 @@
   function surveyBlurb() {
     const b = loadSurveyBook();
     if (!b.seed || !b.found.length) return MODES.survey.blurb.toUpperCase();
-    return b.found.length + " / " + SURVEY_TOTAL + " LOGGED · CONTINUE THE SECTOR";
+    /* How many, never out of how many. The book used to say 31 / 34, which
+       tells a player at the far end of twenty hours that there are exactly three
+       strange things left — and the whole design of the last tier is that those
+       three break rules the game spent twenty hours teaching. A countdown to them
+       makes them a checklist to finish rather than something to run into. */
+    return b.found.length + " LOGGED \u00b7 CONTINUE THE SECTOR";
   }
 
   function spotIsClear(x, y) {
@@ -18003,6 +18466,19 @@
          a field written and not listed here is thrown away silently — this is how
          a test can check the two lists agree. */
       bookKeys: () => Object.keys(loadSurveyBook()),
+      /* What kind of space a point is, which the *game* never tells the player —
+         see BIOMES.md. A harness has to be able to ask, or the one layer whose
+         whole design is to be invisible is also the one layer nothing can check. */
+      regionProbe: (x, y) => regionOf(x, y),
+      // Every region site over a block of the lattice, for measuring the mix —
+      // sampling along a line visits far too few of them to say anything.
+      regionCensus: (n) => {
+        const out = [];
+        for (let j = -n; j <= n; j++) {
+          for (let i = -n; i <= n; i++) out.push(regionSite(i, j).region.key);
+        }
+        return out;
+      },
       // Say something, through the real path, so the earshot rule can be tested.
       say: (text, colour, where) => chatter(text, colour, where),
       /* Recompute the ship from its slots. The game does this whenever a part
