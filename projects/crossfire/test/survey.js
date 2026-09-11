@@ -5966,6 +5966,165 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "rather than repeated \u00b7 capped at 40 \u00b7 on the ship's page");
 }
 
+/* ── 7.8 · anything with a name answers for itself ────────────────────────────
+   The sector prints names on things — a stone that says THE ACTION AT MULANE, a
+   world that says EREIA V, a hole heavy enough to have been given a word. A name
+   with no way to ask about it is a tease.
+
+   Three things to prove, and the third is the one that rots quietly: that
+   standing next to a named thing offers the question, that pressing `E` answers
+   it, and that the answer has words in it. An info screen with no information on
+   it looks completely correct from the outside — it opens, it frames, it closes —
+   and the only way to catch it is to count the words. */
+{
+  const { cf } = boot("?debug=1&seed=818181");
+  cf.start("survey", 1);
+  const lv = cf.live();
+  const surv = cf.survey();
+  const me = lv.ships[0];
+
+  /* Every landmark in the sector, visited, and every one of them answers in its
+     own voice. Two of them are worlds — the rogue and the pale dot — and the
+     world used to win the question at the exact point they share, so the
+     hand-written card you crossed the sector for was unreachable and the generic
+     one answered under a generated name. One coincidence is allowed: a battle or
+     a well can legitimately turn up on top of a landmark and legitimately win. */
+  let asked = 0, own = 0;
+  const thin = [];
+  for (const lm of surv.landmarks) {
+    me.x = lm.x; me.y = lm.y; me.vx = me.vy = 0;
+    now += 1000 / 60; cf.step();
+    const near = cf.surveyView().near;
+    if (!near) { thin.push(lm.key + ": nothing offered"); continue; }
+    asked++;
+    const words = (near.lines || []).join(" ").split(/\s+/).length;
+    if (words < 30) thin.push(lm.key + ": only " + words + " words");
+    if (!near.kind || !near.name) thin.push(lm.key + ": no kind or no name");
+    if (!near.colour) thin.push(lm.key + ": no colour");
+    if (near.name === lm.name) own++;
+  }
+  check(own >= surv.landmarks.length - 1,
+        "only " + own + " of " + surv.landmarks.length +
+        " landmarks answered in their own name");
+  check(asked === surv.landmarks.length,
+        asked + " of " + surv.landmarks.length + " landmarks answered when stood on");
+  check(thin.length === 0, "cards with nothing on them: " + thin.join(", "));
+
+  /* Pressing the key. The same `E` that docks, and it comes last in that chain,
+     so a station still wins it. */
+  const lm = surv.landmarks.find(l => l.key === "supernebula") || surv.landmarks[0];
+  me.x = lm.x; me.y = lm.y; me.vx = me.vy = 0;
+  now += 1000 / 60; cf.step();
+  const offered = cf.surveyView().near;
+  check(!!offered, "nothing offered while standing on " + lm.key);
+  cf.key("KeyE");
+  check(cf.peek().state === "lore",
+        "E beside a named thing left the state at " + cf.peek().state);
+  const card = cf.surveyView().lore;
+  check(!!card && card.name === offered.name,
+        "the card opened is not the thing the panel offered");
+
+  // It draws, and it has something to press — the whole screen closes it.
+  cf.draw();
+  // Re-read: the engine replaces the tap list every frame rather than emptying
+  // it, so a reference held from before the draw is last frame's screen.
+  check(cf.live().taps.length > 0, "the card has nothing pressable on it at all");
+
+  /* The world does not stop. This is the only page you open *at* something,
+     usually while moving and sometimes while being pulled, so a card that froze
+     the clock would be a way to stop time next to a star. */
+  const clock0 = cf.live().clock;
+  now += 1000 / 60; cf.step();
+  check(cf.live().clock > clock0, "the world stopped while a card was open");
+
+  // And the card itself holds still while the world moves under it.
+  check(cf.surveyView().lore === card, "the card rewrote itself while being read");
+
+  cf.key("Escape");
+  check(cf.peek().state === "playing",
+        "Escape left the card open (state " + cf.peek().state + ")");
+
+  /* Empty space offers nothing, and `E` in empty space opens nothing. A card
+     about nothing is worse than no card: it teaches you the key does not work. */
+  let empty = false;
+  for (let k = 1; k <= 60 && !empty; k++) {
+    me.x = k * 4100; me.y = -k * 3300; me.vx = me.vy = 0;
+    now += 1000 / 60; cf.step();
+    empty = !cf.surveyView().near;
+  }
+  check(empty, "nowhere in sixty samples was clear of everything named");
+  if (empty) {
+    cf.key("KeyE");
+    check(cf.peek().state === "playing",
+          "E in empty space opened a card about nothing");
+  }
+}
+
+/* The other kinds of card, on the two things in the sector that are named by the
+   generator rather than by hand: a supermassive well and a world. Both are found
+   by searching outward, the same way the gazetteer test finds them. */
+{
+  const { cf } = boot("?debug=1&seed=606060");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+
+  let big = null, world = null;
+  for (let ring = 0; ring < 420 && !(big && world); ring += 3) {
+    for (let k = 0; k < 24 && !(big && world); k++) {
+      const a = (k / 24) * Math.PI * 2;
+      const c = cf.chunk(Math.round(Math.cos(a) * ring), Math.round(Math.sin(a) * ring));
+      for (const h of c.hazards) if (h.k >= 1.8 && !big) big = h;
+      for (const p of c.planets) if (!world && p.name) world = p;
+    }
+  }
+  check(!!big && !!world, "no named well or no named world to ask about");
+
+  if (world) {
+    me.x = world.x + world.r + 400; me.y = world.y; me.vx = me.vy = 0;
+    now += 1000 / 60; cf.step();
+    const card = cf.surveyView().near;
+    check(!!card && card.name === world.name,
+          "standing off " + world.name + " offered " +
+          (card ? JSON.stringify(card.name) : "nothing"));
+    if (card) {
+      const said = (card.lines || []).join(" ");
+      check(/units across/.test(said), "a world's card does not say how big it is");
+      check(/atmosphere|air/.test(said), "a world's card does not say whether it has air");
+    }
+  }
+
+  if (big) {
+    me.x = big.x + big.reach * 0.95; me.y = big.y; me.vx = me.vy = 0;
+    now += 1000 / 60; cf.step();
+    const card = cf.surveyView().near;
+    check(!!card && card.name === big.name,
+          "sitting in the reach of " + big.name + " offered " +
+          (card ? JSON.stringify(card.name) : "nothing"));
+    if (card) {
+      check(/SUPERMASSIVE/.test(card.kind), "a named well is not called supermassive");
+      check(/units/.test((card.lines || []).join(" ")),
+            "a well's card does not say how far its pull reaches");
+    }
+  }
+
+  /* The six drive parts are named and lying in space, and the clue that sent you
+     after one is the thing you want read back when you are standing on it. */
+  const part = surv.parts[0];
+  if (part) {
+    me.x = part.x + 300; me.y = part.y; me.vx = me.vy = 0;
+    now += 1000 / 60; cf.step();
+    const card = cf.surveyView().near;
+    check(!!card && card.name === part.name,
+          "standing beside " + part.name + " offered " +
+          (card ? JSON.stringify(card.name) : "nothing"));
+  }
+
+  console.log("  named      every landmark answers · worlds give size and air · " +
+              "wells give their reach · the clock keeps running · " +
+              "empty space says nothing");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

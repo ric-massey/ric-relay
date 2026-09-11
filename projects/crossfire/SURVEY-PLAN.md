@@ -1625,7 +1625,7 @@ either. And the head is barbed now rather than a plain triangle: a smooth
 arrowhead on a screen full of smooth circles is one more smooth thing, and a
 barbed one reads as a *direction* before it is read at all.
 
-### 7.8 Anything with a name can be asked about  ·  *not started*
+### 7.8 Anything with a name can be asked about  ·  **DONE**
 
 > *"Anything we run into in the world that has words — like THE ACTION AT MULANE —
 > needs to be clickable, or go up and press E, and an info thing pops up telling
@@ -1634,6 +1634,28 @@ barbed one reads as a *direction* before it is read at all.
 The sector prints names on things now — memorials, worlds, wells, the jump gate —
 and a name with no way to ask about it is a tease. Walk up, press **E** (or tap
 it), and get a card: what it is, what happened here, what it is worth going near.
+
+**Done.** Seven kinds of card: the eight landmarks (hand-written, three
+paragraphs each), a battle either remembered or happening, a named well, a world,
+a piece of the drive, and a gate. The generated ones read their own facts — a
+world states its diameter, its band, whether anyone lives there and whether there
+is air; a well states the reach you have to plan around; a memorial states which
+two powers fought and how cold the metal is.
+
+Three decisions worth keeping:
+
+- **It is a card, not a page.** No tabs, no navigation, nothing to do on it.
+  You asked a question; anything you press closes the answer.
+- **The world keeps running behind it**, at the same 0.88 the other pages use.
+  This is the only page you open *at* something, usually while moving and
+  sometimes while being pulled, so freezing the clock would make "what is this"
+  a way to stop time next to a star.
+- **The card is snapshotted on the keypress**, not read live. The world moves
+  while you read, and a card that rewrote itself as you drifted would be worse
+  than no card.
+
+`E` is the same key as docking and comes last in that chain, so a station, the
+yard and a world you can land on all still win it.
 
 ### 7.9 The notifications need somewhere to live  ·  **HALF DONE**
 
@@ -1725,13 +1747,15 @@ while the shortage from 6.2 had nowhere to show.
 
 **What is left of 7**, and it is small:
 
-- **7.8** — press `E` on anything with a name and be told what it is. The sector
-  prints names on memorials, worlds, wells and the jump gate, and a name with no
-  way to ask about it is a tease.
 - **7.9's other half** — the *wording*. The log exists; the lines in it still
-  assume you were watching.
-- **The touch control for reverse thrusters** is done; nothing else on the mobile
-  list is outstanding.
+  assume you were watching. "They made it. 260 cash, and their thanks." is the
+  example: it is the only line of Phase 7 still owed, and it is an afternoon of
+  rereading every `chatter()` in the file and asking whether somebody who looked
+  away for ten seconds could parse it.
+
+Everything else in 7 is done: the pages, the market, the chart's rail, the four
+slots, the scan button, the log, the info card, and the touch control for the
+reverse thrusters.
 
 **Then go back to 6, and in this order:**
 

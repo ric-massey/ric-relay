@@ -2432,6 +2432,12 @@
       if (code === "Escape" || code === "Backspace" || code === "KeyE") {
         state = "playing"; return;
       }
+    } else if (state === "lore") {
+      // It is a card, not a page. Anything that means "done" closes it.
+      if (code === "Escape" || code === "Backspace" || code === "KeyE" ||
+          code === "Enter" || code === "Space") {
+        state = "playing"; return;
+      }
     } else if (state === "died") {
       /* One way on, and it is not Escape. A death screen you can dismiss with
          the key you dismiss everything else with is a death screen you skip
@@ -2525,6 +2531,17 @@
         // Last of the three, because a station does more than a world does and a
         // yard is the thing you came back for.
         if (code === "KeyE" && surv && surv.landed) { state = "landed"; return; }
+        /* Anything else with a name on it. Last of the `E` doors, because a
+           station, the yard and a world you can land on are all things you went
+           there for, and this is a question you ask on the way past.
+
+           The card is *snapshotted* rather than read live. The world does not
+           stop while a page is open, so a live card would rewrite itself as you
+           drifted — and the one thing worse than not being told what something
+           is, is being told and then having it change. */
+        if (code === "KeyE" && surv && surv.near) {
+          surv.lore = surv.near; state = "lore"; return;
+        }
         // Your ship: the slots, the crate, the hold, who you are to the powers,
         // and the book. `I` and `G` both reach it because it is both of the pages
         // it used to be.
@@ -8933,6 +8950,257 @@
     }
   }
 
+  /* ── asking what a thing is ───────────────────────────────────────────────
+     The sector writes names on things. THE ACTION AT MULANE on a stone floating
+     where a fight happened, EREIA V on a world, a hole-word on a well you should
+     not be this close to. A name with no way to ask about it is a tease: it says
+     there is something to know and then offers no way to know it.
+
+     So anything with a name answers for itself. Go up to it, press `E`, and get a
+     card — what it is, what happened here, and whether being this close is a good
+     idea. The same key as docking, because it is the same gesture: walking up to
+     something and asking it a question. The two can never collide, since a
+     station is a station and none of this is.
+
+     Candidates are ranked by *fraction of their own reach* rather than by
+     distance, which is the only ranking that works when they run from a
+     twenty-six-unit pale dot to a two-thousand-seven-hundred-unit derelict: a
+     drive part twenty units off your nose beats the derelict you are flying
+     inside, because you are nearer to it in the only sense that matters.
+
+     The world does not stop while you read. Nothing in this mode stops. If you
+     ask a supermassive well what it is while sitting inside its reach, it will
+     tell you, and it will go on pulling. */
+  const LANDMARK_LORE = {
+    graveyard: [
+      "A raid ended here, and nobody came back for the hulls.",
+      "Seven of them, still roughly in the formation they died in — which tells " +
+      "you they never saw it coming, and tells you something out here can do " +
+      "that to seven ships at once.",
+      "They break for metal. They have been here a long time and they are not " +
+      "going anywhere."
+    ],
+    rogue: [
+      "A world with no star.",
+      "Nothing threw it out here — there is nothing out here to throw it — so " +
+      "what left was the star, and there is no crater where a sun used to be.",
+      "The ash on it is old. Whatever it was once warm enough for happened a " +
+      "very long time ago."
+    ],
+    "last-transmission": [
+      "One ship, still broadcasting.",
+      "The beacon runs on a loop with no words in it: a carrier, a gap, a " +
+      "carrier. Somebody set it going and never came back to say what for.",
+      "It is louder than a beacon that size has any business being. Something " +
+      "is helping it."
+    ],
+    "pale-dot": [
+      "Twenty-six units across, and you very nearly flew past it.",
+      "At any range worth mentioning it is one pixel of reflected nothing, " +
+      "which is the whole reason it is in the book: you had to be looking.",
+      "Ice all the way through. There is no story on it, and that is the story."
+    ],
+    "the-wall": [
+      "Somebody tried to open a wormhole here, on a frame two thousand units " +
+      "square, and it did not open.",
+      "Four anchors, the construction yards collapsed against them where they " +
+      "stood, and a mouth at the centre that never finished forming.",
+      "It will not take you anywhere. That is what a failed gate is."
+    ],
+    supernebula: [
+      "The big one.",
+      "Every cloud you have flown through so far was weather. This is the thing " +
+      "the weather comes off.",
+      "It hides nothing and it harms nothing. It is simply the largest object in " +
+      "the sector that is not a star, and it was worth the flight."
+    ],
+    "node-01": [
+      "Somebody else's terminal, running in the dark.",
+      "The hull around it is a wreck and the machine inside it is not. It is " +
+      "answering something, and the something is not you, and it has been " +
+      "answering for a while.",
+      "NODE 01 is not a name anybody gave it. It is what it calls itself."
+    ],
+    leviathan: [
+      "It was a ship, once.",
+      "Two thousand seven hundred units stem to stern, twenty-six hull sections, " +
+      "and a corridor down the middle wide enough to fly. Nothing out here " +
+      "builds at this scale. Nothing out here ever did.",
+      "The stern is open, and something is in the last of it."
+    ]
+  };
+
+  /* Each card is built only for the thing that won, so the prose is assembled
+     once on a keypress rather than nine times a frame for everything in sight. */
+  function battleCard(b, stone) {
+    const A = factionOf(b.sides[0]), B = factionOf(b.sides[1]);
+    const age = surv.battleAge[b.id] || 0;
+    const size = b.fleet <= 4 ? "a skirmish"
+               : b.fleet <= 9 ? "a real fight"
+               : "a battle, by any standard out here";
+    return stone ? {
+      kind: "A BATTLE, REMEMBERED", name: b.name, colour: NEBULA,
+      lines: [
+        "It is over.",
+        A.name + " and " + B.name + " fought here over something neither of " +
+        "them is still around to explain. It was " + size + ".",
+        age < 180 ? "The metal is still warm. You missed it by very little."
+        : age < 1200 ? "The metal has gone cold. Recent, but not just now."
+        : "Old cold metal. Whatever this was about was settled a long time ago.",
+        "The hulks can be stripped, and nobody is left to object."
+      ]
+    } : {
+      kind: "A BATTLE, HAPPENING NOW", name: b.name, colour: "#ff8f77",
+      lines: [
+        A.name + " against " + B.name + ". " + b.fleet + " hulls, and " + size + ".",
+        "Everything in it has a gun and neither side will stop to work out " +
+        "whose side you are on. Getting between one of them and what it is " +
+        "shooting at is how this kills you.",
+        "It will not last. Come back later and this is a field of wrecks, or " +
+        "nothing at all — not every fight is remembered."
+      ]
+    };
+  }
+
+  function wellCard(h) {
+    const hole = h.kind === "hole";
+    return {
+      kind: hole ? "A SUPERMASSIVE WELL" : "A SUPERMASSIVE STAR",
+      name: h.name, colour: hole ? "#b79aff" : "#ffd76d",
+      lines: [
+        hole ? "A hole heavy enough to have its own name."
+             : "A star heavy enough to have its own name.",
+        "Its pull reaches about " + Math.round(h.reach).toLocaleString() +
+        " units. That is not the part that kills you — the part that kills you " +
+        "is a dot at the middle — but it is the part you have to plan a route " +
+        "around, and it is drawn on the chart at that size for exactly that reason.",
+        "Whether you can leave from where you are standing depends on your " +
+        "engine, which is why the warning knows your ship and not just the well.",
+        hole ? "Going in and coming back out again is in the book. Coming back " +
+               "out is the hard half."
+             : "Close enough to a star mends a hull. Closer than that is how " +
+               "you stop having one."
+      ]
+    };
+  }
+
+  function worldCard(pl) {
+    /* Two of the landmarks *are* worlds — the rogue with no star, and the pale
+       dot you nearly flew past — and a world always beat its own landmark to the
+       question, because they sit at the same point and the planet is offered
+       first. So the entry you crossed the sector for answered in the generic
+       voice, under a generated name, and the hand-written card for it could
+       never be reached from anywhere.
+
+       Answered here rather than by reordering the candidates, because the
+       ordering only decides the tie at dead centre: a thousand units off the
+       rogue, the landmark is already out of its own reach and the world is not,
+       and the card would have changed its mind about what you were looking at
+       as you closed on it. */
+    if (pl.rogue || pl.pale) {
+      const lm = surv.landmarks.find(l => l.key === (pl.rogue ? "rogue" : "pale-dot"));
+      if (lm && LANDMARK_LORE[lm.key]) return landmarkCard(lm);
+    }
+    const k = worldKind(pl.kind);
+    const lines = [
+      "A world, " + Math.round(pl.r * 2).toLocaleString() + " units across, in " +
+      bandAt(pl.x, pl.y).name + "."
+    ];
+    if (pl.rogue) lines.push("Nothing warms it. There is no star in this whole chunk.");
+    if (pl.inhabited) {
+      lines.push("Somebody lives here, and they will sell you water and food. " +
+                 "About one world in twenty has anybody on it, and fewer than " +
+                 "that out in the deep — so this is a supply line, and it is " +
+                 "worth writing down.");
+    } else {
+      lines.push("Nobody lives here. There is nothing to buy.");
+    }
+    lines.push(pl.air
+      ? "There is air. You can fly through it and skim water out of it for " +
+        "nothing, slowly — the option for when you cannot afford the other one."
+      : "No atmosphere. Nothing to skim.");
+    lines.push("It is solid, and it will break a rock that hits it, and it will " +
+               "break you.");
+    return { kind: pl.inhabited ? "AN INHABITED WORLD" : "A WORLD",
+             name: pl.name, colour: k.disc, lines };
+  }
+
+  function partCard(pt) {
+    const spec = partSpec(pt.key);
+    const lines = [];
+    if (spec) {
+      lines.push("One of the six pieces the yard is asking for.");
+      lines.push("The clue was: “" + spec.clue + "”  And here it is, in " +
+                 spec.where + ".");
+    }
+    if (pt.dropped) {
+      lines.push("You were carrying this when you died. It stayed where you " +
+                 "left it, and it will stay there — it does not drift and it " +
+                 "does not expire.");
+    }
+    lines.push("Fly into it to pick it up. Then take it to the yard.");
+    return { kind: "A PIECE OF THE DRIVE", name: pt.name, colour: CASH, lines };
+  }
+
+  function gateCard(g) {
+    return {
+      kind: "A GATE", name: "JUMP GATE", colour: "#b79aff",
+      lines: [
+        "A mouth that goes somewhere else in this sector.",
+        "Fly into it and you come out of its pair, which may be a long way from " +
+        "here and is not somewhere you chose. A gate is a shortcut somebody else " +
+        "laid out; the light drive is the one you get to aim.",
+        "It is free, it is instant, and there is no way to know which end you " +
+        "are about to arrive at until you have used this one once."
+      ]
+    };
+  }
+
+  function landmarkCard(lm) {
+    return { kind: "A LANDMARK", name: lm.name, colour: ICE_C,
+             lines: LANDMARK_LORE[lm.key].slice() };
+  }
+
+  /* What you are close enough to ask about, or null. Recomputed every frame
+     because the prompt on the flight panel has to be honest about the moment. */
+  function lookNear() {
+    const me = ships[0];
+    if (!me || !me.alive || surv.death) return null;
+    let best = null;
+    const offer = (x, y, reach, make) => {
+      const f = dist2(x, y, me.x, me.y) / (reach * reach);
+      if (f > 1) return;
+      if (!best || f < best.f) best = { f, make };
+    };
+
+    for (const b of surv.battles) {
+      const stone = !!(b.over && surv.memorials.has(b.id));
+      if (!stone && b.over) continue;
+      offer(b.x, b.y, b.r + 1100, () => battleCard(b, stone));
+    }
+    for (const h of hazards) {
+      if (!h.name) continue;
+      offer(h.x, h.y, h.reach * 1.25, () => wellCard(h));
+    }
+    for (const pl of surv.planets) {
+      if (!pl.name) continue;
+      offer(pl.x, pl.y, pl.r + 2200, () => worldCard(pl));
+    }
+    for (const pt of surv.parts) offer(pt.x, pt.y, 1000, () => partCard(pt));
+    for (const lm of surv.landmarks) {
+      if (!LANDMARK_LORE[lm.key]) continue;
+      offer(lm.x, lm.y, lm.r * 1.7, () => landmarkCard(lm));
+    }
+    /* The dead gate at THE WALL is deliberately skipped: it is the landmark's
+       whole point and the landmark's own card says so. Being told twice, once
+       wrongly, is worse than not being told. */
+    for (const g of surv.gates) {
+      if (g.dead) continue;
+      offer(g.x, g.y, 1000, () => gateCard(g));
+    }
+    return best ? best.make() : null;
+  }
+
   /* Drawing water out of an atmosphere. Deliberately slow: it is about a tenth
      of what a station hands you in one press, so it is the thing you do when you
      cannot afford the alternative or there is no alternative to afford — and it
@@ -10641,6 +10909,10 @@
     surveyObjectiveNote();
     surveyOpening();
     recordSurroundings();
+    /* What is close enough to be asked about. Every frame, because the prompt on
+       the panel has to be true at the moment you press the key — a prompt for a
+       stone you drifted past two seconds ago would open the wrong card. */
+    surv.near = lookNear();
     updatePickups(dt);
 
     surv.scan.charge = Math.min(1, surv.scan.charge + dt / SURVEY_SCAN);
@@ -11474,6 +11746,12 @@
         band: bandAt(surv.landed.x, surv.landed.y).name
       },
       overAir: surv.overAir && { name: surv.overAir.name },
+      /* The named thing in reach, and the card for the one you asked about.
+         `near` is what the panel offers; `lore` is what the page draws, and they
+         are two fields rather than one so the card holds still while you read it. */
+      near: surv.near || null,
+      lore: surv.lore || null,
+      onLook: () => { if (surv.near) { surv.lore = surv.near; state = "lore"; } },
       onLand: () => { if (surv.landed) state = "landed"; },
       // Dying, and coming back from it.
       death: surv.death,
@@ -11943,8 +12221,11 @@
      purpose and the whole of 5.2 depends on it: fitting a part takes time out in
      space, and a page that paused the clock would turn that cost into a loading
      screen you wait out rather than a risk you take. */
+  /* `lore` is live for a reason of its own: it is the only page you open *at*
+     something, usually while moving, sometimes while being pulled — so freezing
+     the world would turn "what is this" into a way to stop time next to a star. */
   const SURVEY_LIVE_PAGES = { chart: 1, inventory: 1, missions: 1, almanac: 1,
-                              craft: 1 };
+                              craft: 1, lore: 1 };
   const surveyLive = () =>
     mode && mode.survey && surv && !surv.death && SURVEY_LIVE_PAGES[state];
   const worldRunning = () => state === "playing" || surveyLive() || onlineMenuOpen();
@@ -15256,6 +15537,9 @@
     }
     if (state === "missions" && surv && surveyHUD) {
       surveyHUD.drawMissions(surveyState(), dt || 0); return;
+    }
+    if (state === "lore" && surv && surveyHUD) {
+      surveyHUD.drawLore(surveyState(), dt || 0); return;
     }
     if (state === "landed" && surv && surveyHUD) {
       surveyHUD.drawLanded(surveyState(), dt || 0); return;

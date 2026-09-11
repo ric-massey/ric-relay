@@ -351,6 +351,28 @@
     return px;
   }
 
+  /* ── prose ────────────────────────────────────────────────────────────────
+     `fitText` shrinks one line until it fits. This is the other case: a
+     paragraph, which has to break rather than shrink, because prose at 16px on a
+     phone is already at the floor and there is nowhere smaller to go.
+
+     Greedy word wrap, and it respects the floor by simply taking as many words as
+     fit — a word longer than the whole column goes on its own line and overhangs,
+     which cannot happen here and would still be more readable than a word cut in
+     half. */
+  function wrapLines(str, size, maxW, track) {
+    const words = String(str).split(" ");
+    const out = [];
+    let line = "";
+    for (const word of words) {
+      const next = line ? line + " " + word : word;
+      if (line && widthOf(next, size, track) > maxW) { out.push(line); line = word; }
+      else line = next;
+    }
+    if (line) out.push(line);
+    return out;
+  }
+
   function widthOf(str, size, track) {
     const ctx = api.ctx;
     ctx.save();
@@ -1377,6 +1399,17 @@
               SCREEN_W - 380, "0.08em");
       tap({ x: cx - 160, y: y - 62, w: 320, h: 36,
                    act: st.onLand || (() => {}) });
+    } else if (st.near) {
+      /* Something with a name on it, in reach. Above the light drive and above
+         the key hints because it is the only line here that is about *where you
+         are* — the drive will still be ready in a minute and this stone will be
+         behind you. */
+      const beat = 0.65 + 0.35 * Math.sin(clockish() * 3);
+      fitText(st.near.name + (api.touchOnly ? " — TAP" : " — [E]"),
+              cx, y - 54, SIZE.val, st.near.colour || VIOLET, "center", beat,
+              SCREEN_W - 380, "0.08em");
+      tap({ x: cx - 160, y: y - 62, w: 320, h: 36,
+                   act: st.onLook || (() => {}) });
     } else if (st.light && st.light.have && st.light.run <= 0) {
       // Offered, quietly, whenever there is nothing more urgent to say. A drive
       // you have to remember you own is a drive you never use.
@@ -4144,6 +4177,82 @@
     button(api.touchOnly ? "BACK TO THE STATION"
                         : "BACK TO THE STATION   [ENTER]",
            cx, SCREEN_H - 44, 420, 46, CASH, st.onRespawn || (() => {}));
+  };
+
+  /* ═══ WHAT IS THIS ════════════════════════════════════════════════════════
+     The card you get for pressing `E` on something with a name. The one page in
+     this mode that is only words, and it is deliberately only words: the thing
+     itself is out there on the screen behind it, drawn at the size it really is,
+     so a picture of it here would be a worse copy of something you are already
+     looking at.
+
+     It is a card rather than a page — no navigation strip, no tabs, nothing to do
+     on it. You asked a question and this is the answer, and anything you press
+     closes it. A card with buttons on it is a page, and a page is a place you
+     have to leave rather than something that gets out of your way.
+
+     The world keeps running behind it, and at 0.88 alpha you can see it doing so.
+     That is on purpose: this is read in flight, and a screen that hid the rock
+     coming at you while it explained a monument would be a trap. */
+  HUD.drawLore = function (st, dt) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    st = st || {};
+    const card = st.lore;
+    if (!card) return;
+    const colour = card.colour || VIOLET;
+
+    pageFrame(card.name, card.kind,
+              api.touchOnly ? "TAP ANYWHERE TO CLOSE" : "E, OR ESC, CLOSES");
+
+    /* One column, left-aligned, no wider than about seventy characters. Centred
+       prose reads as a poem and full-width prose on a 1,680-wide screen is a line
+       your eye loses its place in on the way back. */
+    const colW = Math.min(SCREEN_W - PAGE.EDGE * 2, 860);
+    const x = Math.round((SCREEN_W - colW) / 2);
+
+    // The kind, stated once in its own colour, so the card is identifiable in
+    // half a second by something other than reading it.
+    label(card.kind, x, 150, SIZE.head, colour, "left", 1, "0.2em");
+    ctx.save();
+    ctx.strokeStyle = colour;
+    ctx.globalAlpha = 0.4;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, 166); ctx.lineTo(x + colW, 166);
+    ctx.stroke();
+    ctx.restore();
+
+    /* The first line of any card is the one-sentence answer — what this thing
+       *is* — so it is drawn bigger than the rest. Everything after it is why you
+       might care, and it reads at caption size like the rest of the interface.
+
+       The whole block is measured before it is drawn and then floated in the
+       space between the rule and the footer, because these cards run from three
+       lines to eleven and a fixed top would leave the short ones stranded against
+       the ceiling. */
+    const lead = SIZE.head, body = SIZE.val;
+    const leadStep = 30, bodyStep = 26, gap = 16;
+    const blocks = (card.lines || []).map((t, i) => ({
+      lines: wrapLines(t, i === 0 ? lead : body, colW),
+      size: i === 0 ? lead : body,
+      step: i === 0 ? leadStep : bodyStep
+    }));
+    const tall = blocks.reduce((h, b) => h + b.lines.length * b.step + gap, 0) - gap;
+    const top = 196;
+    const room = SCREEN_H - 76 - top;
+    let y = top + Math.max(0, Math.round((room - tall) / 2)) + blocks[0].step;
+
+    blocks.forEach((b, i) => {
+      for (const line of b.lines) {
+        label(line, x, y, b.size, i === 0 ? colour : VIOLET,
+              "left", i === 0 ? 1 : 0.88);
+        y += b.step;
+      }
+      y += gap;
+    });
+
+    // Anything at all. It is an answer, not a form.
+    tap({ x: 0, y: 0, w: SCREEN_W, h: SCREEN_H, act: st.onClose || (() => {}) });
   };
 
   /* ═══ A WORLD YOU CAN LAND ON ═════════════════════════════════════════════
