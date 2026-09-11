@@ -5192,6 +5192,97 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "one \u00b7 the curve runs to " + Math.round(span.full / 1000) + "k");
 }
 
+// ── the low-tank warning teaches, then gets out of the way ───────────────
+/* A tank quietly dropping is a tank you do not notice until it is a countdown.
+   So it says so — loudly the first couple of times, and then quietly, because a
+   warning that shouts every time is a warning you learn to ignore.
+
+   The rule, exactly: the **first two times a tank falls past half** — on two
+   separate trips — the word WARNING appears beside the readout for ten seconds,
+   and then the word goes and the triangle slides in next to the number. After
+   those two, the triangle simply appears at each further step, and the steps are
+   every fifteen per cent. */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const step = n => {
+    for (let i = 0; i < n; i++) { me.invuln = 999; now += 1000 / 60; cf.step(); }
+  };
+  const warn = k => cf.surveyView()[k].warn;
+
+  for (const key of ["water", "food"]) {
+    const full = cf.surveyView()[key].full;
+    const fill = f => { surv[key] = full * f; step(3); };
+
+    // A full tank says nothing at all.
+    fill(1);
+    check(warn(key).lit === false, key + ": a full tank is already marked");
+
+    /* First trip past half: the mark lights and the word shouts. */
+    fill(0.49);
+    check(warn(key).lit === true, key + ": half a tank raised no mark");
+    check(warn(key).shout > 0.9, key + ": the first warning did not shout");
+    check(surv.alert[key].taught === 1,
+          key + ": the first lesson was not counted");
+
+    // Ten seconds later the word is gone and the mark is not.
+    step(60 * 11);
+    check(warn(key).shout === 0, key + ": the word is still up after ten seconds");
+    check(warn(key).lit === true, key + ": the mark went with the word");
+
+    /* The next step down is fifteen per cent, and it does not shout — the second
+       lesson belongs to the second *half-tank*, not to the same trip. */
+    fill(0.34);
+    check(warn(key).step === 2, key + ": 34% is step " + warn(key).step + ", not 2");
+    check(warn(key).shout === 0, key + ": the 35% step shouted");
+    check(surv.alert[key].taught === 1,
+          key + ": the 35% step used up the second lesson");
+
+    // Refilling clears the mark, and the next trip shouts once more.
+    fill(1);
+    check(warn(key).lit === false, key + ": refilling left the mark up");
+    fill(0.49);
+    check(warn(key).shout > 0.9, key + ": the second trip did not shout");
+    check(surv.alert[key].taught === 2, key + ": the second lesson was not counted");
+
+    // And the third trip is quiet. Two lessons is two lessons.
+    step(60 * 11);
+    fill(1);
+    fill(0.49);
+    check(warn(key).lit === true, key + ": the third trip raised no mark at all");
+    check(warn(key).shout === 0, key + ": the third trip still shouts");
+    check(surv.alert[key].taught === 2, key + ": a third lesson was given");
+
+    // The steps keep coming as it falls: 50, 35, 20, 5.
+    fill(0.19);
+    check(warn(key).step === 3, key + ": 19% is step " + warn(key).step);
+    fill(0.04);
+    check(warn(key).step === 4, key + ": 4% is step " + warn(key).step);
+  }
+
+  /* And the count is kept in the book — "the first two times" has to mean the
+     first two times, not the first two this session. */
+  cf.leave();
+  const book = JSON.parse(store["crossfire.survey.v3"]);
+  check(book.alert && book.alert.water.taught === 2,
+        "the book forgot that the tank has already warned you twice");
+  const again = bootKeepingStorage("?debug=1&seed=515151");
+  again.cf.start("survey", 1);
+  const s2 = again.cf.survey(), m2 = again.cf.live().ships[0];
+  s2.water = again.cf.surveyView().water.full * 0.49;
+  for (let i = 0; i < 4; i++) { m2.invuln = 999; now += 1000 / 60; again.cf.step(); }
+  check(again.cf.surveyView().water.warn.lit === true,
+        "a resumed sector does not mark a half-empty tank");
+  check(again.cf.surveyView().water.warn.shout === 0,
+        "a resumed sector shouts a lesson it has already given twice");
+
+  console.log("  lowtank    half a tank shouts twice, ten seconds each, then the " +
+              "triangle stays \u00b7 steps every 15% after \u00b7 both tanks " +
+              "\u00b7 the lessons survive the tab");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

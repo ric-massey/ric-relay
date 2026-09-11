@@ -5619,7 +5619,8 @@
                     refit: freshRefit(), opened: [], stripped: [],
                     carrying: [], built: [], pins: [], known: [],
                     slots: [], store: {}, battleAge: {}, memorials: [],
-                    dropped: [], coilFired: false };
+                    dropped: [], coilFired: false,
+                    alert: { water: { taught: 0 }, food: { taught: 0 } } };
     try {
       const raw = localStorage.getItem(SURVEY_STORE);
       if (!raw) return empty;
@@ -5752,6 +5753,15 @@
         })(),
         memorials: strs(b.memorials).slice(0, 400),
         coilFired: !!b.coilFired,
+        alert: (() => {
+          const out = {};
+          const src = b.alert && typeof b.alert === "object" ? b.alert : {};
+          for (const k of ["water", "food"]) {
+            const n = Math.floor(Number((src[k] || {}).taught)) || 0;
+            out[k] = { taught: Math.max(0, Math.min(9, n)) };
+          }
+          return out;
+        })(),
         dropped: Array.isArray(b.dropped)
           ? b.dropped.filter(d => d && typeof d.key === "string" &&
                                   BUILD.some(x => x.key === d.key) &&
@@ -5794,6 +5804,8 @@
         built: [...surv.built],
         dropped: surv.dropped,
         coilFired: !!surv.coilFired,
+        alert: { water: { taught: surv.alert.water.taught },
+                 food:  { taught: surv.alert.food.taught } },
         pins: surv.pins,
         // What is bolted on, mid-fit and all, and what is in the crate.
         slots: surv.slots.map(sl => sl && { key: sl.key, fit: Math.round(sl.fit) }),
@@ -6941,6 +6953,19 @@
       water: carried ? book.water : WATER_FULL,
       food:  carried ? book.food  : FOOD_FULL,
       thirst: 0, hunger: 0,        // how long each has been empty
+      /* What each tank has warned about. `taught` is how many times the loud
+         version has been shown and is kept in the book; `step` is how far down it
+         has already warned this trip; `shout` is the seconds left on the word. */
+      alert: (() => {
+        const saved = (carried && book.alert) || {};
+        const out = {};
+        for (const k of ["water", "food"]) {
+          const src = saved[k] || {};
+          out[k] = { taught: Math.max(0, Math.min(9, Math.floor(+src.taught) || 0)),
+                     step: 0, shout: 0, lit: false };
+        }
+        return out;
+      })(),
       skimming: 0,                 // lit while an atmosphere is being drawn from
       melting: 0,                  // and while the melter is turning ice to water
       meltClock: 0,                // how long it has been running toward the next unit
@@ -7522,6 +7547,63 @@
   /* Called every frame the world is running. The tanks are the only thing in
      Survey that gets worse while you do nothing, which is what makes sitting
      still a choice rather than a rest. */
+  /* ── the low-tank warning ─────────────────────────────────────────────────
+     A tank quietly dropping is a tank you do not notice until it is a countdown.
+     So it says so — loudly the first couple of times, and then quietly, because a
+     warning that shouts every time is a warning you learn to ignore.
+
+     `WARN_LOUD` is how many times a resource gets the full treatment: the word
+     WARNING beside the readout for ten seconds, and then the word goes and the
+     triangle slides in next to the number and stays while the tank is low. After
+     those two, the triangle simply appears at each step with no shouting.
+
+     The steps: half a tank, and then every fifteen per cent below it. The count
+     is kept in the book, so "the first two times" means the first two times, not
+     the first two this session. */
+  const WARN_LOUD = 2;
+  const WARN_FIRST = 0.5;
+  const WARN_STEP = 0.15;
+  const WARN_SHOUT = 10;        // seconds the word stays up
+
+  // Which step a fraction has fallen past: 0 above half, 1 at half, 2 at 35%...
+  const warnStep = frac => {
+    if (frac > WARN_FIRST) return 0;
+    return 1 + Math.floor((WARN_FIRST - frac) / WARN_STEP + 1e-9);
+  };
+
+  function lifeWarnings(dt) {
+    for (const key of ["water", "food"]) {
+      const full = key === "water" ? WATER_FULL : foodCap();
+      const a = surv.alert[key];
+      const frac = Math.max(0, Math.min(1, surv[key] / Math.max(1, full)));
+      const step = warnStep(frac);
+
+      a.shout = Math.max(0, (a.shout || 0) - dt);
+
+      /* Refilled past the trigger: forget where it got to, so the next trip out
+         warns again. The taught count is not forgotten — that is the whole point
+         of it. */
+      if (step === 0) { a.step = 0; a.lit = false; continue; }
+      if (step <= (a.step || 0)) continue;
+
+      a.step = step;
+      a.lit = true;
+      /* Loud only at the half-tank mark, and only while it is still teaching you
+         what the triangle means. The two lessons are the first two times a tank
+         falls past half — on two separate trips out — rather than the first two
+         warnings of any kind, or the second lesson would be spent on the 35% step
+         of the same trip and you would never see it happen twice. */
+      if (step === 1 && (a.taught || 0) < WARN_LOUD) {
+        a.taught = (a.taught || 0) + 1;
+        a.shout = WARN_SHOUT;
+        chatter((key === "water" ? "Water" : "Food") + " is down to half.",
+                key === "water" ? ICE_C : "#ffcb42");
+        gameSound("hit");
+        saveSurveyBook();
+      }
+    }
+  }
+
   function surveyLifeSupport(dt) {
     const me = ships[0];
     if (!me.alive || surv.death) return;
@@ -7556,6 +7638,7 @@
 
     surv.skimming = Math.max(0, surv.skimming - dt);
     surv.melting = Math.max(0, (surv.melting || 0) - dt);
+    lifeWarnings(dt);
   }
 
   /* The objective, as news. It used to be three lines painted across the top of
@@ -10351,6 +10434,41 @@
     });
     ctx.restore();
 
+    /* The name, painted around the inside of the ring and turning with it. Every
+       station in the sector says STATION; the one you left home from says YOUR
+       STATION, because after ten hours out there the only thing you need to know
+       at a glance is whether this is the one with your hangar in it.
+
+       Set on the curve letter by letter rather than written across the middle: a
+       ring with writing on it reads as a built thing, and a word laid flat over
+       it reads as a label stuck to the screen. It turns with the station for the
+       same reason — it is painted on. */
+    const word = st.home ? "YOUR STATION" : "STATION";
+    const rad = st.r * 0.47;
+    // Letters are spaced by angle, so the word occupies the same arc whatever
+    // the station's size, and a long word simply sets tighter.
+    const arc = Math.min(Math.PI * 1.5, word.length * 0.145);
+    const size = Math.max(9, Math.min(15, st.r * 0.1));
+    ctx.save();
+    ctx.translate(st.x, st.y);
+    ctx.rotate(spin * 0.72);          // slower than the ring, so it reads
+    ctx.globalAlpha = st.home ? 0.9 : 0.62;
+    ctx.fillStyle = CASH;
+    ctx.font = size + 'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (let i = 0; i < word.length; i++) {
+      const t = word.length > 1 ? i / (word.length - 1) - 0.5 : 0;
+      const a = t * arc - Math.PI / 2;
+      ctx.save();
+      ctx.rotate(a);
+      // Baseline on the circle, feet outward, so it reads round the inside.
+      ctx.translate(0, -rad);
+      ctx.fillText(word[i], 0, 0);
+      ctx.restore();
+    }
+    ctx.restore();
+
     // The dock ring, drawn only when you are close enough for it to mean
     // something — a permanent one would be a second circle round every station.
     const me = ships[0];
@@ -10774,11 +10892,21 @@
       water: { left: surv.water, full: WATER_FULL,
                frac: surv.water / WATER_FULL,
                countdown: surv.water <= 0 ? Math.max(0, THIRST_GRACE - surv.thirst) : 0,
-               cost: supplyCost("water") },
+               cost: supplyCost("water"),
+               /* The low-tank mark. `lit` is whether the triangle is showing at
+                  all, `shout` is how much of its ten seconds of WARNING is left,
+                  0 to 1, which the panel uses to slide the mark from beside the
+                  word to beside the number. */
+               warn: { lit: surv.alert.water.lit,
+                       shout: Math.max(0, surv.alert.water.shout / 10),
+                       step: surv.alert.water.step } },
       food:  { left: surv.food, full: foodCap(),
                frac: surv.food / Math.max(1, foodCap()),
                countdown: surv.food <= 0 ? Math.max(0, HUNGER_GRACE - surv.hunger) : 0,
-               cost: supplyCost("food") },
+               cost: supplyCost("food"),
+               warn: { lit: surv.alert.food.lit,
+                       shout: Math.max(0, surv.alert.food.shout / 10),
+                       step: surv.alert.food.step } },
       /* The hull, on the same panel as the water and the food, because it is the
          same question: what does this station have to sell me before I go back
          out. `cost` is null when there is nothing to mend. */

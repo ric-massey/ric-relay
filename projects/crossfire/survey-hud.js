@@ -1081,6 +1081,35 @@
       label(out ? fmtSecs(m.countdown) + " LEFT"
                 : Math.round(m.frac * 100) + "%",
             108, y, out ? SIZE.cap : SIZE.val, colour, "left", out ? beat : 0.95);
+
+      /* ── the low mark ───────────────────────────────────────────────────
+         A tank quietly dropping is a tank you do not notice until it is a
+         countdown. So it says so: the first couple of times a tank falls past
+         half, the word WARNING appears beside it for ten seconds — and then the
+         word goes and the triangle *slides in next to the number* and stays
+         there while the tank is low.
+
+         The slide is the point. It teaches what the mark means by showing them
+         together, then leaves you the mark. After two lessons there is no word
+         at all, just the triangle at each step down. */
+      const w = m.warn;
+      if (w && w.lit && !out) {
+        const shout = w.shout || 0;
+        /* Where the mark sits: out beside the word while it is shouting, tucked
+           against the number once it is done. Eased, so it reads as one thing
+           moving rather than two things blinking. */
+        const numW = String(Math.round(m.frac * 100) + "%").length * 11 + 6;
+        const home = 108 + numW;
+        const away = 214;
+        const t = shout > 0 ? shout * shout : 0;      // slow at first, then quick
+        const mx = home + (away - home) * t;
+        warnMark(mx, y - 5, 8, colour, out ? beat : 1);
+        if (shout > 0) {
+          label("WARNING", away + 18, y, SIZE.cap, WARN, "left",
+                Math.min(1, shout * 4) *
+                (0.6 + 0.4 * Math.abs(Math.sin(Date.now() / 260))), "0.16em");
+        }
+      }
     });
 
     /* Two ways water arrives that are not a shop, and both say so in the same
@@ -1090,6 +1119,34 @@
       label(st.skimming ? "SKIMMING" : "MELTING ICE", 24, 250, SIZE.cap, ICE,
             "left", 0.5 + 0.5 * Math.abs(Math.sin(Date.now() / 260)), "0.14em");
     }
+  }
+
+  /* A warning triangle, drawn rather than typed. A glyph would be at the mercy of
+     whatever the device has installed; this is the same hairline vector as
+     everything else on the screen and it is the same shape at every size. */
+  function warnMark(cx, cy, r, colour, alpha) {
+    const { ctx } = api;
+    ctx.save();
+    ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+    ctx.strokeStyle = colour;
+    ctx.fillStyle = colour;
+    ctx.lineWidth = 1.6;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - r);
+    ctx.lineTo(cx + r * 0.92, cy + r * 0.72);
+    ctx.lineTo(cx - r * 0.92, cy + r * 0.72);
+    ctx.closePath();
+    ctx.stroke();
+    // The bang inside it: a stroke and a dot, both well clear of the edges.
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - r * 0.34);
+    ctx.lineTo(cx, cy + r * 0.16);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy + r * 0.44, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   /* ── where you are ────────────────────────────────────────────────────────

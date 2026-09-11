@@ -1474,6 +1474,44 @@ assumes you know who these people are.
   scale, because a tank is a tank)
 - **The scan button has to look like a button** on a phone.  ·  *not started*
 
+### 7.13 The tanks say when they are low  ·  **DONE**
+
+> *"The first and second time that food and water hits 50%, a WARNING! with a
+> warning triangle pops up next to it. The warning disappears after 10 seconds and
+> the triangle slides next to the number. After the first two times it's every
+> 15%."*
+
+A teaching device that gets out of the way. The first two times a tank falls past
+half — on two separate trips, not twice on the same one — the word WARNING appears
+beside the readout for ten seconds; then the word goes and the **triangle slides in
+next to the number** and stays while the tank is low. The slide is the point: it
+shows you the word and the mark together, then leaves you the mark.
+
+After those two there is no word at all, just the triangle at each step down, and
+the steps are every fifteen per cent: half, 35%, 20%, 5%. Refilling past half
+clears the mark so the next trip warns again; the *lesson count* is kept in the
+book, because "the first two times" has to mean the first two times and not the
+first two this session.
+
+The triangle is drawn rather than typed — a glyph would be at the mercy of
+whatever font the device has, and this is the same hairline vector as everything
+else on the screen.
+
+### 7.14 Stations say what they are  ·  **DONE**
+
+> *"I want the word STATION floating in a rotation around the inner loop of all
+> the stations. And yours says YOUR STATION."*
+
+Set letter by letter around the inside of the ring and turning with it, a little
+slower than the ring itself so it stays readable. Every station says **STATION**;
+the one you left home from says **YOUR STATION** — after ten hours out there the
+only thing you need to know at a glance is whether this is the one with your
+hangar in it.
+
+On the curve rather than written across the middle, because a ring with writing on
+it reads as a built thing and a word laid flat over one reads as a label stuck to
+the screen.
+
 ### 7.8 Anything with a name can be asked about  ·  *not started*
 
 > *"Anything we run into in the world that has words — like THE ACTION AT MULANE —
