@@ -1800,6 +1800,80 @@ a set of riddles rather than a shopping list with a delivery address.
 
 ---
 
+### Every trick is a part  ·  **DONE**
+
+Ric's rule, and it turned out to be the biggest single change in the mode:
+
+> *A ship without that stuff is a normal ship. No tricks or anything. All the
+> tricks are the parts you attach yourself. So they know what they are.*
+
+**Two whole systems were removed** because they broke it.
+
+*The refit track* — three lines, hull, drive and scanner, three tiers each,
+bought with cash at a station — was a second upgrade system saying exactly what
+the parts already say. LAYERED PLATE is +2 hull; so was a tier of hull plating.
+One of them had to be the answer to "how do I make this ship better", and a part
+is the better answer for one reason: **a part is a thing you can point at.** It
+sits in a slot, it cost you one of four, you can pull it off and sell it. A tier
+was invisible — two identical hulls could fly completely differently with nothing
+on either of them to say why.
+
+*The almanac's three verbs* — six entries bought a tractor beam, twelve a warp
+tuner, eighteen running dark — were wrong twice. They made the ship do things
+nothing on the ship explained, and they made the field guide a shop. What the
+almanac is worth now is what it should always have been: the record of what you
+have seen.
+
+**Four new parts**, one for each trick the hull used to do for free:
+
+- **SOLAR PANELS** — a star mends your hull. This was true of every ship in the
+  game whether you knew it or not, which made the best mechanic in the mode read
+  as a property of the universe. Without panels the flight bar says *IN THE LIGHT
+  — NO PANELS*, and you carry your damage home.
+- **TRACTOR RIG** — found in caches and buildable, never sold. The commonest find
+  out there and the one that changes an ordinary flight most.
+- **WARP TUNER** and **RUNNING DARK** — find-only, deep caches, nobody sells them
+  and nobody knows how to make one.
+
+**Three ways to get a part, and the page says which.** Some you buy, some you
+build, some you can only find — and a find-only part has to say *where to look*,
+or it is a rumour rather than content. A part with none of the three cannot exist:
+the test refuses it.
+
+**Crafting is gated by where you are.** Common parts are scrap and patience and
+can be built anywhere. Anything above common wants a berth and somebody else's
+tools, so it wants a station. That is what stops the workbench and the shop
+competing, and gives the deep a reason to send you home.
+
+**CRAFT became PARTS**, and it lists *every part in the game* rather than only the
+ones with a recipe — you cannot plan towards something you have never been told
+exists. Each box says what kind of thing it is and whether you own one; picking it
+says what it does, how to get one, and **UNCRAFTABLE** when there is no recipe.
+Descriptions wrap inside their panel and the ingredient line is measured rather
+than guessed at — it used to advance a cursor by `text.length * 9.6` and walk
+straight out of the right-hand edge.
+
+**Storage, and the squares.** "The crate" is **STORAGE**; the materials are the
+**CARGO HOLD**. The four slots are drawn as four squares — an empty one was the
+word EMPTY, which is a label where the interface needed a *place* — and a part
+gets there by being **dragged out of storage and dropped into one**. Clicking still
+fits it, so nobody has to learn a new gesture to do what they already did.
+
+**Materials have pictures.** Six identical coloured squares is a bad primary key:
+two of them are within a hue of each other on a dim phone, colour-blind players
+get nothing, and a swatch says *a material* rather than *which* one. Ice is a
+crystal, iron is rough ore, alloy is a milled bar, iridium is a cut gem,
+electronics is a board with legs, a core is a ring around something lit.
+
+**A bug worth recording.** Removing the refit track left one line in the save
+loader naming a variable that no longer existed. The loader is wrapped in a
+`try/catch` that turns any failure into a *fresh sector*, which is right for a
+hand-edited save and a catastrophe for a typo: **every resume in the game silently
+started over**, and the test suite reported it as four unrelated failures about
+reputation and parts. The catch now says what went wrong under `?debug=1`.
+
+---
+
 ## At the end of Phase 7: go back to Phase 6
 
 **Read this before starting anything new.**

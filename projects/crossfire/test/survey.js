@@ -702,37 +702,29 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
         "deep space pays " + atDeep + " for iridium where home pays " + atHome);
   surv.docked = { x: 0, y: 0 };
 
-  // The refit: it must cost cash, and it must change the ship.
-  const hullBefore = me.maxHull, thrustBefore = me.thrustMul || 1;
+  /* Buying a part: it costs cash, it goes into storage, and it changes nothing
+     about the ship until you fit it. There was a refit track here once — three
+     tiers each of hull, drive and scanner, bought at a station — and it is gone,
+     because it said exactly what the parts say while being invisible on the ship.
+     A part is a thing you can point at; a tier was a number in a save file. */
+  const hullBefore = me.maxHull;
   surv.cash = 5000;
   const purse = surv.cash;
-  check(cf.buy("hull") === true, "could not buy a hull tier with money in hand");
-  check(surv.cash < purse, "buying a tier did not spend any cash");
-  check(total() === 0, "buying a tier took material out of the hold");
-  check(me.maxHull > hullBefore,
-        "a hull tier did not raise max hull (" + hullBefore + " → " + me.maxHull + ")");
-  check(cf.buy("thrust") === true, "could not buy a drive tier");
-  check((me.thrustMul || 1) > thrustBefore, "a drive tier did not raise thrust");
-  check(surv.t.refitted === true, "refitting did not register");
+  check(cf.buyPart("layerplate") === true, "could not buy a part with money in hand");
+  check(surv.cash < purse, "buying a part did not spend any cash");
+  check(total() === 0, "buying a part took material out of the hold");
+  check(me.maxHull === hullBefore,
+        "a part in storage changed the ship before it was fitted");
 
   // And it must refuse when the money is gone — a full hold is not money.
   surv.cash = 0;
   surv.hold.iridium = 60;
-  check(cf.buy("hull") === false, "a hold full of iridium bought a tier by itself");
+  check(cf.buyPart("layerplate") === false,
+        "a hold full of iridium bought a part by itself");
   surv.hold.iridium = 0;
-
-  /* A track runs out at its last tier rather than taking money forever. Checked
-     on the scanner, since the cargo track has gone — how much you can carry is
-     the ship's and nothing you buy changes it. */
-  surv.cash = 1000000;
-  let bought = 0;
-  while (cf.buy("scanner")) bought++;
-  check(bought <= 3, "the scanner track sold " + bought + " tiers past its cap");
-  check(cf.buy("scanner") === false, "a maxed track kept selling");
-  check(cf.buy("hold") === false, "storage is still for sale as a refit");
   console.log("  economy    4 materials, all reachable · deep rock " +
               (abyss / home).toFixed(1) + "x richer · hold caps at " + cap +
-              " · a hold sold for " + got + " · refits cost cash, not cargo");
+              " · a hold sold for " + got + " · parts cost cash, not cargo");
 }
 
 // ── 8b. the hull runs down, and zero is the last warning ──────────────────
@@ -867,30 +859,87 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "back at the station");
 }
 
-// ── 9. the verbs are earned, never bought ─────────────────────────────────
+// ── 9. every trick is a part, and the ship itself has none ────────────────
+/* The rule, in Ric's words: *a ship without that stuff is a normal ship. No
+   tricks. All the tricks are the parts you attach yourself, so they know what
+   they are.*
+
+   Three of these used to be bought by *reading*: six almanac entries handed you a
+   tractor beam, twelve a warp tuner, eighteen running dark. One of them was
+   simply true of every hull in the game whether you knew it or not — sitting in a
+   star's light mended you. None of them was anything you could point at. */
 {
   const { cf } = boot("?debug=1&seed=1234");
   cf.start("survey", 1);
   const surv = cf.survey();
-  check(cf.unlocked("tractor") === false, "the beam was unlocked on a blank almanac");
-  check(cf.unlocked("warp") === false, "warp was unlocked on a blank almanac");
+  const me = cf.live().ships[0];
+  const parts = cf.surveyView().parts;
 
-  // Log entries until each threshold, and prove the verb arrives exactly there.
-  const keys = cf.catalogue().map(e => e.key);
-  for (const key of keys) {
-    const had = cf.unlocked("tractor");
-    cf.find(key);
-    if (!had && cf.unlocked("tractor")) {
-      check(surv.found.size === 6,
-            "the beam arrived at " + surv.found.size + " entries, not 6");
+  // Reading the whole book hands over nothing at all.
+  for (const e of cf.catalogue()) cf.find(e.key);
+  check(surv.found.size >= 30, "the catalogue did not fill");
+  check(!cf.surveyView().tractor, "a full almanac still switched on a beam");
+  for (const sl of surv.slots) check(!sl, "reading the book bolted something on");
+
+  /* Each of the four is a real part with a real way to get one. */
+  for (const key of ["solarwing", "tractorrig", "warptuner", "runningdark"]) {
+    const p = parts.find(q => q.key === key);
+    check(!!p, key + " is not a part at all");
+    if (!p) continue;
+    check(p.buyable || p.craftable || p.findable,
+          p.name + " cannot be bought, built or found — it does not exist");
+  }
+
+  // The two strange ones are found and nothing else: no shelf, no recipe.
+  for (const key of ["warptuner", "runningdark"]) {
+    const p = parts.find(q => q.key === key);
+    check(p && p.findable && !p.buyable && !p.craftable,
+          key + " is supposed to be find-only");
+    check(p && p.where.length > 20,
+          key + " is find-only and does not say where to look");
+  }
+
+  /* A star mends you only if you are carrying panels. This is the clearest case
+     of the whole rule: it was the best mechanic in the mode and nothing on the
+     ship explained it. */
+  /* A star, searched for the way everything else in this file searches — the
+     hazards near the origin are whatever the home chunks happened to roll, and
+     "the first one in the list" is not a star at all on most seeds. */
+  let star = null;
+  for (let ring = 0; ring < 60 && !star; ring += 2) {
+    for (let k = 0; k < 12 && !star; k++) {
+      const ang = (k / 12) * Math.PI * 2;
+      const c = cf.chunk(Math.round(Math.cos(ang) * ring), Math.round(Math.sin(ang) * ring));
+      for (const h of c.hazards) if (h.kind !== "hole" && !star) star = h;
     }
   }
-  check(cf.unlocked("tractor") && cf.unlocked("warp") && cf.unlocked("cloak"),
-        "a full almanac did not hand over every verb");
-  // No amount of cash buys one.
-  surv.cash = 1e6;
-  check(!cf.buy("tractor"), "a verb was purchasable at a station");
-  console.log("  verbs      three unlocks, at 6/12/18 entries, none for sale");
+  check(!!star, "no star to sit in");
+  if (star) {
+    const sit = () => {
+      me.x = star.x + star.reach * 0.35; me.y = star.y;
+      me.vx = me.vy = 0; me.invuln = 9999;
+      me.hull = 1;
+      for (let i = 0; i < 90; i++) { now += 1000 / 60; cf.step(); me.invuln = 9999; }
+      return me.hull;
+    };
+    surv.slots[0] = null;
+    const bare = sit();
+    check(bare <= 1.01, "a bare hull mended itself in a star (" + bare + ")");
+    surv.slots[0] = { key: "solarwing", fit: 0 };
+    const panelled = sit();
+    check(panelled > 1.5, "solar panels did not mend the hull (" + panelled + ")");
+    surv.slots[0] = null;
+  }
+
+  // And nothing hands you a beam except a rig on the hull.
+  check(!cf.surveyView().tractor, "there is a beam with nothing fitted");
+  surv.slots[0] = { key: "tractorrig", fit: 0 };
+  check(cf.surveyView().tractor > 0, "a fitted rig gave no beam");
+  surv.slots[0] = null;
+
+  console.log("  notricks   a bare hull mends nothing, pulls nothing and hides " +
+              "from nobody · the whole book hands over none of it · " +
+              "four tricks, four parts");
 }
 
 // ── 10. guarded caches, and the Leviathan's inside ────────────────────────
@@ -1312,13 +1361,13 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   for (let i = 0; i < 60 * 25; i++) { now += 1000 / 60; cf.step(); }
   check(surv.echoes.length === 0, "scan returns never faded");
 
-  // And the refit reaches further.
-  surv.cash = 5000;
-  check(cf.buy("scanner") === true, "could not buy a scanner tier");
+  // And a coil on the hull reaches further. Every hull scans the same distance;
+  // the only thing that changes it is what is bolted on.
+  surv.slots[0] = { key: "deepear", fit: 0 };
   check(cf.scanReach() > reach0,
-        "a scanner tier did not extend the scan (" + reach0 + " → " + cf.scanReach() + ")");
+        "a scanner part did not extend the scan (" + reach0 + " → " + cf.scanReach() + ")");
   console.log("  scan       " + Math.round(reach0) + "u sweep · reports only what is inside · " +
-              "fades · reaches " + Math.round(cf.scanReach()) + "u refitted");
+              "fades · reaches " + Math.round(cf.scanReach()) + "u with a deep ear on");
 }
 
 // ── 17. pins ─────────────────────────────────────────────────────────────
@@ -1547,8 +1596,9 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   // A better drive escapes what a stock one cannot, so the same well is less
   // frightening to a refitted ship. Buy the whole track and check it eased.
   const before = surv.warn ? surv.warn.ratio : 0;
-  surv.cash = 100000;
-  while (cf.buy("thrust")) { /* every tier */ }
+  surv.slots[0] = { key: "overburner", fit: 0 };
+  surv.slots[1] = { key: "sparthruster", fit: 0 };
+  cf.applyParts();
   now += 1000 / 60; cf.step();
   const after = surv.warn ? surv.warn.ratio : 0;
   check(after < before,
@@ -3512,6 +3562,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const again = bootKeepingStorage("?debug=1&seed=770077");
   again.cf.start("survey", 1);
   const back = again.cf.surveyView().standings.find(f => f.key === victim);
+  if (back.standing === "NEUTRAL") console.log("DBG rep", JSON.stringify(book.rep), "seed", book.seed, "again", again.cf.survey().seed, again.cf.survey().rep);
   check(back.standing !== "NEUTRAL", "a resumed sector forgot what you did");
   console.log("  reputation 3 powers, one war, pirates and independents \u00b7 " +
               "hurting one warms its enemy \u00b7 patrols read their flag \u00b7 " +
@@ -3848,8 +3899,8 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   view().onPull(1);
   check(view().slots[1] === null, "pulling left something in the slot");
   const owned1 = view().store.find(e => e.key === "deepear");
-  check(owned1 && owned1.n === 1, "the pulled part did not come back to the crate");
-  check(!owned0, "it was in the crate while it was on the ship");
+  check(owned1 && owned1.n === 1, "the pulled part did not come back to storage");
+  check(!owned0, "it was in storage while it was on the ship");
 
   /* At a station it is instant — no timer, no dead slot. `surv.docked` is set
      directly and read without stepping: a step runs `surveyStations`, which
@@ -3891,7 +3942,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(view().onBuyPart("overburner") === true, "could not buy a part with cash");
   check(surv.cash < cash0, "the part was free");
   check(view().store.some(e => e.key === "overburner"),
-        "the bought part is not in the crate");
+        "the bought part is not in storage");
 
   /* The world keeps running behind the page, which is the only reason a timer
      is a cost rather than a loading screen. */
@@ -3916,7 +3967,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(book.slots[0] && book.slots[0].key === "layerplate",
         "the book forgot what was bolted on");
   check(book.store && book.store.overburner === 1,
-        "the book forgot what was in the crate");
+        "the book forgot what was in storage");
 
   console.log("  slots      four on every hull \u00b7 a fit out here takes " +
               "20/45/90/180s and the slot is dead until it lands \u00b7 " +
@@ -4452,15 +4503,46 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
         "the exact materials are not enough to build " + flat.name);
   check(view().onCraft(flat.key) === true, "could not build " + flat.name);
   check(view().store.some(e => e.key === flat.key),
-        "the built part is not in the crate");
+        "the built part is not in storage");
   // It spent them, and spent exactly them.
   for (const row of need.rows) {
     check((surv.hold[row.key] || 0) === 0,
           "building left " + surv.hold[row.key] + " " + row.name + " behind");
   }
 
+  /* ── where a thing can be built ──────────────────────────────────────────
+     Common parts are scrap and patience: you can do it on the back of the ship
+     with what is in the hold. Anything above common wants a berth and somebody
+     else's tools, so it wants a station — which is what stops the workbench and
+     the shop competing, and gives the deep a reason to send you home. */
+  const dear = recipes.find(r => {
+    const m = byKey(r.key);
+    return m && m.rarity !== "common";
+  });
+  check(!!dear, "every recipe in the game is for a common part");
+  if (dear) {
+    const rows = view().recipes.find(r => r.key === dear.key).rows;
+    surv.store = {};
+    for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
+    for (const row of rows) surv.hold[row.key] = row.want * 2;
+    if (view().recipes.find(r => r.key === dear.key).part) {
+      const below = view().recipes.find(r => r.key === dear.key).part.key;
+      surv.store[below] = 1;
+    }
+    surv.docked = null;
+    check(view().onCraft(dear.key) === false,
+          dear.name + " was built out in open space — only common parts can be");
+    check((surv.store[dear.key] || 0) === 0, "it was built anyway");
+    surv.docked = { x: 0, y: 0 };
+    check(view().onCraft(dear.key) === true,
+          dear.name + " could not be built at a station either");
+    surv.docked = null;
+  }
+
   /* ── the step below, in one action ───────────────────────────────────── */
   const deep = recipes.find(r => r.part);
+  // At a station: this chain ends in a rare part, and rare wants a berth.
+  surv.docked = { x: 0, y: 0 };
   for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
   surv.store = {};
   const both = view().recipes.find(r => r.key === deep.key);
@@ -4475,9 +4557,10 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(view().recipes.find(r => r.key === deep.key).part.makeable === true,
         "with the materials for both, the ingredient still cannot be made");
   check(view().onCraft(deep.key) === true, "could not build " + deep.name + " and its part");
-  check((surv.store[deep.key] || 0) === 1, "the finished part is not in the crate");
+  check((surv.store[deep.key] || 0) === 1, "the finished part is not in storage");
   check((surv.store[belowR] || 0) === 0,
         "the ingredient part was not eaten by the thing built out of it");
+  surv.docked = null;
 
   /* ── the reverse lookup ──────────────────────────────────────────────── */
   const uses = view().usedIn;
@@ -4613,7 +4696,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   /* Go back for it. Standing on it picks it up, the same as any part. */
   const m2 = again.cf.live().ships[0];
   const target = s2.dropped[0];
-  if (!target) throw new Error("nothing was left behind to go back for");
+  if (!target) { console.log("DEBUG book.dropped", JSON.stringify(book.dropped), "seed", book.seed, "problems", problems.slice(-6)); throw new Error("nothing was left behind to go back for"); }
   const key = target.key;
   m2.x = target.x; m2.y = target.y; m2.vx = m2.vy = 0;
   for (let i = 0; i < 6; i++) {
@@ -4703,7 +4786,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(s2.slots[0] && s2.slots[0].key === "pulsecoil",
         "a fitted part did not survive the tab");
   check((s2.store.pulsecoil || 0) === 1 && (s2.store.layerplate || 0) === 1,
-        "the crate did not survive the tab: " + JSON.stringify(s2.store));
+        "storage did not survive the tab: " + JSON.stringify(s2.store));
   check(s2.battleAge["c1b0"] === 0 && Math.abs(s2.battleAge["c2b0"] - 41.5) < 1,
         "the battle clocks did not survive the tab");
   check(s2.memorials.has("c1b0"), "a memorial did not survive the tab");
@@ -4984,7 +5067,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
    Checked on all three routes to a beam, because they are three different code
    paths through the same line. */
 {
-  for (const route of ["almanac", "tractorrig", "heavyrig"]) {
+  for (const route of ["tractorrig", "heavyrig"]) {
     const { cf } = boot("?debug=1&seed=515151");
     cf.start("survey", 1);
     const surv = cf.survey();
@@ -4998,13 +5081,9 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     surv.docked = null;
     me.x = 200000; me.y = 100000; me.vx = me.vy = 0;
     step(2);
-    if (route === "almanac") {
-      for (const e of cf.catalogue()) surv.found.add(e.key);
-    } else {
-      surv.store[route] = 1;
-      cf.surveyView().onFit(0, route);
-      surv.slots[0].fit = 0;
-    }
+    surv.store[route] = 1;
+    cf.surveyView().onFit(0, route);
+    surv.slots[0].fit = 0;
     for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
     surv.motes.length = 0;
     // Ten of them, in a ring well inside the beam and not on top of the ship.
@@ -5759,8 +5838,15 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const rows = view().market;
   const kinds = new Set(rows.map(r => r.kind));
   check(rows.length > 12, "a deep station offers only " + rows.length + " things");
-  for (const k of ["supply", "repair", "part", "refit"]) {
+  for (const k of ["supply", "repair", "part"]) {
     check(kinds.has(k), "the market has no " + k + " rows");
+  }
+  // And nothing a station cannot actually sell you: the find-only parts are not
+  // on anybody's shelf, greyed out or otherwise.
+  const shelf = new Set(rows.filter(r => r.kind === "part").map(r => r.key));
+  for (const p of view().parts) {
+    if (p.buyable) continue;
+    check(!shelf.has(p.key), p.name + " is on a shelf and is not for sale");
   }
   // Every row says what it is and what it costs, because that is what a list is.
   for (const r of rows) {
@@ -5865,15 +5951,26 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
         "only " + findOnly + " categories keep their best part out of the " +
         "workbench");
 
-  // A find-only part is still reachable: it has to be on some shelf.
+  /* Every part is reachable by *one of the three ways*, and the parts page is
+     what tells you which. A part with no way to get it is not content, it is a
+     line in a table. */
   const surv = cf.survey();
   surv.docked = { x: 9000000, y: 9000000 };
   const shelf = new Set(cf.surveyView().market.filter(r => r.kind === "part")
                           .map(r => r.key));
-  for (const p of parts) {
-    if (madeable.has(p.key)) continue;
-    check(shelf.has(p.key),
-          p.name + " can neither be built nor bought anywhere — it does not exist");
+  for (const p of cf.surveyView().parts) {
+    const ways = (p.buyable ? 1 : 0) + (p.craftable ? 1 : 0) + (p.findable ? 1 : 0);
+    check(ways > 0,
+          p.name + " can neither be built, bought nor found — it does not exist");
+    // What the page claims and what the shop does have to be the same claim.
+    check(!p.buyable || shelf.has(p.key),
+          p.name + " says it is for sale and the deepest station does not stock it");
+    check(p.craftable === madeable.has(p.key),
+          p.name + " disagrees with the recipe book about whether it can be built");
+    // And a part you can only find has to say where to look.
+    if (!p.buyable && !p.craftable) {
+      check(p.where.length > 20, p.name + " is find-only and says nothing about where");
+    }
   }
   surv.docked = null;
 
@@ -6556,6 +6653,87 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
   console.log("  heldkeys   a cleared held set is restored by the repeat your hand " +
               "is already sending · a repeat never counts as a second press");
+}
+
+/* ── the parts page is a catalogue, and storage drops into a slot ─────────────
+   Two things the interface could not do. It could not tell you a part existed
+   unless you could already build it — the page was the recipe book, so the parts
+   you can only find or only buy appeared nowhere until one happened to be on a
+   shelf in front of you, and you cannot plan towards something you have never
+   been told about. And an empty slot was the word EMPTY: a label where there
+   needed to be a place to put something. */
+{
+  const { cf } = boot("?debug=1&seed=424242");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const hud = cf.hud();
+  const view = () => cf.surveyView();
+
+  // Every part in the game is on the page, and each says how you get one.
+  const all = view().parts;
+  const recipes = view().recipes;
+  check(all.length > recipes.length,
+        "the parts page lists " + all.length + " and the recipe book " +
+        recipes.length + " — it is still just the recipe book");
+  for (const p of all) {
+    check(typeof p.name === "string" && p.name.length, "a part with no name");
+    check(p.note.length > 24, p.name + " does not say what it does");
+    check(p.buyable || p.craftable || p.findable, p.name + " cannot be got at all");
+  }
+
+  /* It draws, and the text stays inside its box. The recipe line used to advance
+     a cursor by `text.length * 9.6` and hope, which is not a measurement — a long
+     ingredient list walked straight out of the right-hand edge. */
+  hud.craftOpened();
+  cf.screen("craft");
+  for (let i = 0; i < all.length; i++) {
+    hud.craftPick(i);
+    cf.draw();
+  }
+  check(true, "the parts page drew every part without throwing");
+
+  /* ── the four squares, and dragging into one ───────────────────────────── */
+  cf.screen("inventory");
+  hud.shipOpened();
+  surv.store = { layerplate: 1 };
+  surv.slots[0] = null;
+  cf.draw();
+
+  const boxes = hud.slotBoxes();
+  check(boxes.length === 4, "there are " + boxes.length + " slot squares, not 4");
+  for (const b of boxes) check(b.w > 20 && b.h > 20, "a slot square is too small to drop into");
+
+  const rows = hud.storeRows();
+  check(rows.length === 1, "storage offered " + rows.length + " parts to pick up");
+  const row = rows[0];
+
+  // Pressing a part picks it up; the page does not scroll while it is in hand.
+  check(hud.grabAt(row.x + 40, row.y + 8) === true,
+        "pressing a part in storage did not pick it up");
+  check(hud.carrying() === false, "a press with no movement is already a drag");
+  hud.carryTo(boxes[0].x + boxes[0].w / 2, boxes[0].y + boxes[0].h / 2);
+  check(hud.carrying() === true, "moving to a slot is not a drag");
+  cf.draw();
+  check(hud.dropAt(view(), boxes[0].x + boxes[0].w / 2,
+                   boxes[0].y + boxes[0].h / 2) === true,
+        "dropping on a slot did nothing");
+  check(surv.slots[0] && surv.slots[0].key === "layerplate",
+        "the part did not land in the slot it was dropped on");
+
+  // And dropping on nothing puts it back rather than losing it.
+  surv.slots[0] = null;
+  surv.store = { layerplate: 1 };
+  cf.draw();
+  const r2 = hud.storeRows()[0];
+  hud.grabAt(r2.x + 40, r2.y + 8);
+  hud.carryTo(10, 600);
+  hud.dropAt(view(), 10, 600);
+  check(!surv.slots[0], "dropping on nothing fitted it anyway");
+  check((surv.store.layerplate || 0) === 1, "a part dropped on nothing was lost");
+
+  console.log("  catalogue  all " + all.length + " parts on one page, each saying " +
+              "how to get one · four squares to drop into · a part dragged from " +
+              "storage lands in the slot it was dropped on");
 }
 
 if (problems.length) {

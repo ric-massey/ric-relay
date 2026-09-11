@@ -605,7 +605,7 @@
     const tabs = [
       { key: "refit",     name: "STATION",  live: docked, act: st.onStation },
       { key: "hangar",    name: "SHIPS",    live: !!st.atHome, act: st.onHangar },
-      { key: "craft",     name: "CRAFT",    live: true,   act: st.onCraftPage },
+      { key: "craft",     name: "PARTS",    live: true,   act: st.onCraftPage },
       { key: "inventory", name: "SHIP",     live: true,   act: st.onInventory },
       { key: "missions",  name: "MISSIONS", live: true,   act: st.onMissions },
       { key: "chart",     name: "CHART",    live: true,   act: st.onChart }
@@ -650,7 +650,7 @@
     // Drawn under everything else: at zero hull the whole frame is edged in the
     // warning colour, so the state is visible without looking anywhere in
     // particular. The gravity band uses the same figure for the same reason.
-    if (st.critical) drawCriticalEdge(!!st.inStar);
+    if (st.critical) drawCriticalEdge(!!st.inStar && !!st.solar);
     else if ((st.water && st.water.countdown > 0) ||
              (st.food && st.food.countdown > 0)) drawCriticalEdge(false);
     if (st.ship) { drawEchoArrows(st); drawWaypointArrow(st); }
@@ -1298,7 +1298,6 @@
     ctx.save();
     ctx.globalAlpha = alpha === undefined ? 1 : alpha;
     ctx.strokeStyle = colour;
-    ctx.fillStyle = colour;
     ctx.lineWidth = 1.6;
     ctx.lineJoin = "round";
     ctx.beginPath();
@@ -1307,13 +1306,26 @@
     ctx.lineTo(cx - r * 0.92, cy + r * 0.72);
     ctx.closePath();
     ctx.stroke();
-    // The bang inside it: a stroke and a dot, both well clear of the edges.
+    /* The bang inside it is always red, and always beating — whatever colour the
+       triangle is drawn in. The triangle takes the colour of the thing it is
+       warning about, which is the right way round for telling water from food at
+       a glance and the wrong way round for being alarming: an amber bang inside
+       an amber triangle is a symbol, and this needs to be an alarm. So the mark
+       keeps the tank's colour and the bang does not.
+
+       It beats on wall-clock time rather than on anything the simulation owns, so
+       it goes on flashing on a page that has stopped the world. */
+    const beat = 0.45 + 0.55 * Math.abs(Math.sin(Date.now() / 260));
+    ctx.globalAlpha = (alpha === undefined ? 1 : alpha) * beat;
+    ctx.strokeStyle = WARN;
+    ctx.fillStyle = WARN;
+    ctx.lineWidth = Math.max(1.8, r * 0.19);
     ctx.beginPath();
     ctx.moveTo(cx, cy - r * 0.34);
     ctx.lineTo(cx, cy + r * 0.16);
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(cx, cy + r * 0.44, 1.2, 0, Math.PI * 2);
+    ctx.arc(cx, cy + r * 0.46, Math.max(1.3, r * 0.11), 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -1355,7 +1367,11 @@
     const y = SCREEN_H - (api.touchOnly ? 34 : 26);
     const w = 210, h = 9;
     const frac = Math.max(0, Math.min(1, ship.hull / (ship.maxHull || 1)));
-    const lit = !!st.inStar;
+    /* Standing in a star's light, *and* carrying something that can drink it.
+       The two are separate facts now — the light is where you are, the panels are
+       what you own — and the bar must not promise a repair the ship cannot do. */
+    const lit = !!st.inStar && !!st.solar;
+    const unlit = !!st.inStar && !st.solar;
     const critical = !!st.critical;
 
     // In a star's light the hull bar is the repair readout too, so there is one
@@ -1370,10 +1386,12 @@
     ctx.fillRect(cx - w / 2 + 1, y - h + 1, Math.max(0, (w - 2) * frac), h - 2);
     ctx.restore();
 
-    label(lit ? "SOLAR — HULL RECOVERING" : critical ? "HULL GONE" : "HULL",
+    label(lit ? "SOLAR — HULL RECOVERING"
+              : unlit ? "IN THE LIGHT — NO PANELS"
+              : critical ? "HULL GONE" : "HULL",
           cx, y + 20, SIZE.cap,
-          lit ? SOLAR : critical ? WARN : AMBER_DIM, "center",
-          lit || critical ? 0.95 : 0.6);
+          lit ? SOLAR : unlit ? VIOLET_DIM : critical ? WARN : AMBER_DIM,
+          "center", lit || critical ? 0.95 : unlit ? 0.7 : 0.6);
 
     /* ── the scan ──────────────────────────────────────────────────────────
        On a phone this was a word beside the hull bar with an invisible rectangle
@@ -3035,15 +3053,19 @@
 
   HUD.refitOpened = function () { refit.pick = 0; };
 
+  /* The keyboard on the market page. It walks the shop's own list — there used
+     to be a separate array of upgrade tiers for the arrows to walk,
+     and the tiers are gone, so the arrows walk the thing that is actually on the
+     screen. */
   HUD.refitKey = function (code, st) {
-    const rows = (st && st.refit) || [];
+    const rows = (st && st.market) || [];
     if (code === "KeyS") { if (st && st.onSell) st.onSell(); return true; }
     if (!rows.length) return false;
     if (code === "ArrowUp")        refit.pick = (refit.pick + rows.length - 1) % rows.length;
     else if (code === "ArrowDown") refit.pick = (refit.pick + 1) % rows.length;
     else if (code === "Enter" || code === "Space") {
       const row = rows[refit.pick];
-      if (row && st.onBuy) st.onBuy(row.key);
+      if (row && st.onBuyRow) st.onBuyRow(row.kind, row.key, row.frac);
     } else return false;
     return true;
   };
@@ -3149,8 +3171,6 @@
       const said = r.kind === "supply" ? r.have + "% aboard  \u00b7  buys " +
                                         r.adds + "% more"
                  : r.kind === "repair" ? r.have + " hull"
-                 : r.kind === "refit" ? "tier " + r.tier + " of " + r.max +
-                                        "  \u00b7  " + r.note
                  : r.kind === "ships" ? r.note
                  : (r.owned ? "\u00d7" + r.owned + "  \u00b7  " : "") + r.note;
       fitText(said, full.x + PAGE.PAD + 268, y, SIZE.cap, VIOLET_DIM, "left",
@@ -3262,6 +3282,98 @@
          you have that part, and offers to build it in the same action when you
          could. Nobody should have to work a chain out by hand. */
   let craftPg = { scroll: 0, pick: -1 };
+
+  /* ── carrying a part from storage to a slot ───────────────────────────────
+     Drag and drop, on a canvas, with no DOM to help. Three pieces:
+
+       `slotBoxes`  where the four squares were drawn this frame
+       `storeRows`  where each fittable row of storage was drawn this frame
+       `carry`      what is in your hand, and where your hand is
+
+     Both lists are rebuilt by the draw, which is the only way the thing you can
+     drop onto stays the same rectangle as the thing you can see. A hit test
+     against remembered geometry that the layout has since moved is the classic
+     canvas bug, and the fix is never to remember it for longer than a frame.
+
+     The gesture deliberately takes over the page while it is running: press on a
+     part and the page stops scrolling until you let go. Anywhere else on the page
+     still scrolls, and there is plenty of anywhere else. A press that never moves
+     is still a tap, so the old click-to-fit keeps working and nobody has to learn
+     a new gesture to do the thing they already did. */
+  let slotBoxes = [];
+  let storeRows = [];
+  let carry = null;
+  const DRAG_MIN = 6;          // screen units before a press becomes a drag
+
+  const inBox = (b, x, y) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+
+  /* Picked up, if there is anything under the point. Returns true when it took
+     the gesture, so the page knows not to scroll with it. */
+  HUD.grabAt = function (x, y) {
+    for (const r of storeRows) {
+      if (!inBox(r, x, y)) continue;
+      carry = { key: r.key, name: r.name, cat: r.cat, rarity: r.rarity,
+                x, y, from: { x, y }, moved: false, over: -1 };
+      return true;
+    }
+    return false;
+  };
+
+  HUD.carryTo = function (x, y) {
+    if (!carry) return false;
+    carry.x = x; carry.y = y;
+    if (Math.abs(x - carry.from.x) + Math.abs(y - carry.from.y) > DRAG_MIN) {
+      carry.moved = true;
+    }
+    carry.over = -1;
+    for (const b of slotBoxes) if (inBox(b, x, y)) carry.over = b.i;
+    return true;
+  };
+
+  /* Let go. Over a slot it fits there; over nothing it goes back, which is the
+     correct answer to a drag somebody changed their mind about. A press that
+     never moved is a tap and is left to the ordinary tap handling. */
+  HUD.dropAt = function (st, x, y) {
+    if (!carry) return false;
+    const held = carry;
+    carry = null;
+    if (!held.moved) return false;
+    for (const b of slotBoxes) {
+      if (!inBox(b, x, y)) continue;
+      if (st && st.onFit) st.onFit(b.i, held.key);
+      return true;
+    }
+    return true;      // dropped on nothing: the gesture is spent, nothing fitted
+  };
+
+  HUD.carrying = () => !!(carry && carry.moved);
+  // What was drawn where, so a harness can press the same rectangles a thumb does.
+  HUD.slotBoxes = () => slotBoxes.map(b => ({ ...b }));
+  HUD.storeRows = () => storeRows.map(r => ({ ...r }));
+  HUD.craftPick = i => { craftPg.pick = i; };
+  HUD.cancelCarry = () => { carry = null; };
+
+  /* What is in your hand, drawn last so it is over everything. Deliberately a
+     small thing under the finger rather than a full-size row: on a phone the
+     hand is already covering most of what is underneath it. */
+  function drawCarry() {
+    if (!carry || !carry.moved) return;
+    const { ctx } = api;
+    const col = rarity(carry.rarity).colour;
+    const w = 150, h = 34;
+    const x = carry.x - w / 2, yy = carry.y - h - 14;
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle = INK;
+    ctx.fillRect(x, yy, w, h);
+    ctx.strokeStyle = carry.over >= 0 ? CASH : col;
+    ctx.lineWidth = carry.over >= 0 ? 2 : 1.4;
+    ctx.strokeRect(x, yy, w, h);
+    ctx.restore();
+    drawPartIcon(carry.cat, x + 20, yy + h / 2, 10, col, 1);
+    fitText(carry.name, x + 38, yy + h / 2 + 5, SIZE.cap, col, "left", 1, w - 46,
+            "0.04em");
+  }
   const CRAFT_ROWS = 8;
   HUD.craftOpened = function () { craftPg.pick = -1; };
   /* Pixels now rather than rows: the grid is boxes, and a box is not a row. */
@@ -3274,16 +3386,18 @@
     const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
     const recipes = st.recipes || [];
+    const all = st.parts || [];
     const hold = st.materials || [];
     const crate = st.store || [];
     const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
+    const owned = all.filter(p => p.owned || p.fitted).length;
 
-    pageFrame("CRAFT", (st.carried || 0) + " / " + (st.hold || 0) + " ABOARD", "");
+    pageFrame("PARTS", owned + " OF " + all.length + " OWNED", "");
 
     /* ── the right-hand column: what you have ──────────────────────────────
-       Materials at the top, then the parts you own — at the station or aboard —
-       because "can I make this" is answered by looking up, and the answer should
-       be in the same place every time you look. */
+       Materials at the top, then the parts you own — because "can I make this"
+       is answered by looking up, and the answer should be in the same place
+       every time you look. */
     const railW = Math.min(300, SCREEN_W * 0.28);
     const railX = full.x + full.w - railW;
     const matH = PANEL_H(Math.ceil(hold.length / 2));
@@ -3293,23 +3407,20 @@
       const col = i % 2, row = Math.floor(i / 2);
       const mx = railX + PAGE.PAD + col * mw;
       const yy = ROW(PAGE.TOP, row) + 2;
-      ctx.save();
-      ctx.fillStyle = m.colour;
-      ctx.globalAlpha = m.n ? 0.85 : 0.25;
-      ctx.fillRect(mx, yy - 9, 8, 8);
-      ctx.restore();
-      fitText(m.name, mx + 14, yy, SIZE.cap, m.colour, "left", m.n ? 0.95 : 0.4,
-              mw - 56, "0.04em");
+      // Its own picture rather than a coloured square: see `drawMatIcon`.
+      drawMatIcon(m.key, mx + 8, yy - 5, 8, m.colour, m.n ? 0.95 : 0.3);
+      fitText(m.name, mx + 22, yy, SIZE.cap, m.colour, "left", m.n ? 0.95 : 0.4,
+              mw - 64, "0.04em");
       label(String(m.n), mx + mw - 12, yy, SIZE.cap,
             m.n ? m.colour : VIOLET_LOW, "right", m.n ? 1 : 0.4);
     });
 
     const partY = PAGE.TOP + matH + PAGE.STEP;
     const partH = SCREEN_H - partY - 22;
-    panel(railX, partY, railW, partH, CASH, "PARTS",
+    panel(railX, partY, railW, partH, CASH, "IN STORAGE",
           crate.length ? crate.length + " KINDS" : "NONE");
     if (!crate.length) {
-      fitText("Nothing built or bought yet.", railX + PAGE.PAD,
+      fitText("Nothing spare yet.", railX + PAGE.PAD,
               ROW(partY, 0) + 2, SIZE.cap, VIOLET_DIM, "left", 0.6,
               railW - PAGE.PAD * 2);
     }
@@ -3317,23 +3428,27 @@
       const yy = ROW(partY, i) + 2;
       fitText(e.name, railX + PAGE.PAD, yy, SIZE.cap, rarity(e.rarity).colour,
               "left", 0.95, railW - PAGE.PAD * 2 - 40, "0.04em");
-      label((e.fitted ? "FITTED" : "\u00d7" + e.n), railX + railW - PAGE.PAD, yy,
+      label((e.fitted ? "FITTED" : "×" + e.n), railX + railW - PAGE.PAD, yy,
             SIZE.cap, e.fitted ? VIOLET_DIM : CASH_DIM, "right", 0.85);
     });
 
-    /* ── the grid of things you can make ───────────────────────────────────
-       Boxes with pictures in them, because a box with a picture is a thing you
-       can point at — and because drag and drop is coming, and what you drag is a
-       box with a picture in it. A recipe does not say what it wants until you
-       pick it: a wall of ingredient lists is a spreadsheet, and the question this
-       page answers first is "what can I make", not "what does everything cost". */
+    /* ── every part in the game ────────────────────────────────────────────
+       *Every* one, not only the ones with a recipe. The page used to be the
+       recipe book, which meant the parts you cannot build — which is most of the
+       interesting ones — appeared nowhere in the interface until the day one
+       happened to be on a shelf in front of you. You could not plan towards
+       something you had never been told existed.
+
+       So this is the catalogue. Each box says what kind of thing it is and
+       whether you have one; picking it says what it does and, the part nobody
+       could find out before, **how you get one**. */
     const gridW = full.w - railW - PAGE.GUTTER;
     const cols = api.touchOnly ? 3 : 4;
     const cell = Math.floor((gridW - PAGE.PAD * 2 - (cols - 1) * 10) / cols);
-    const pickH = PANEL_H(4);
+    const pickH = PANEL_H(5);
     const gridH = SCREEN_H - PAGE.TOP - pickH - PAGE.STEP - 22;
-    panel(full.x, PAGE.TOP, gridW, gridH, CASH, "RECIPES",
-          recipes.filter(r => r.ready).length + " YOU CAN MAKE");
+    panel(full.x, PAGE.TOP, gridW, gridH, CASH, "EVERY PART",
+          recipes.filter(r => r.ready).length + " YOU CAN BUILD NOW");
 
     const gTop = PAGE.TOP + PAGE.HEAD - 4;
     ctx.save();
@@ -3342,30 +3457,43 @@
     ctx.clip();
     tapClip({ x: full.x, y: gTop, w: gridW, h: gridH - PAGE.HEAD + 2 });
 
-    recipes.forEach((r, i) => {
+    // What the page knows about each part, in one place so the box and the
+    // detail panel below can never disagree about it.
+    const recipeFor = key => recipes.find(r => r.key === key) || null;
+
+    all.forEach((p, i) => {
       const col = i % cols, row = Math.floor(i / cols);
       const bx = full.x + PAGE.PAD + col * (cell + 10);
       const by = gTop + 8 + row * (cell + 26) - craftPg.scroll;
       if (by > gTop + gridH || by + cell < gTop - 30) return;
       const on = craftPg.pick === i;
-      const rar = rarity(r.rarity);
+      const rar = rarity(p.rarity);
+      const have = p.owned > 0 || p.fitted;
+      const rec = recipeFor(p.key);
+      const ready = !!(rec && rec.ready);
 
       ctx.save();
-      ctx.fillStyle = r.ready ? CASH : rar.colour;
-      ctx.globalAlpha = on ? 0.16 : r.ready ? 0.08 : 0.03;
+      ctx.fillStyle = have ? CASH : ready ? rar.colour : rar.colour;
+      ctx.globalAlpha = on ? 0.18 : have ? 0.12 : ready ? 0.08 : 0.03;
       ctx.fillRect(bx, by, cell, cell);
-      ctx.strokeStyle = on ? CASH : r.ready ? rar.colour : VIOLET_LOW;
-      ctx.globalAlpha = on ? 1 : r.ready ? 0.8 : 0.4;
+      ctx.strokeStyle = on ? CASH : have ? CASH_DIM : ready ? rar.colour : VIOLET_LOW;
+      ctx.globalAlpha = on ? 1 : have ? 0.9 : ready ? 0.7 : 0.35;
       ctx.lineWidth = on ? 2 : 1;
       ctx.strokeRect(bx, by, cell, cell);
       ctx.restore();
 
-      // The picture. One per category, so a glance sorts the grid into kinds.
-      drawPartIcon(r.cat, bx + cell / 2, by + cell / 2, cell * 0.3,
-                   r.ready ? rar.colour : WRECKC, r.ready ? 1 : 0.55);
-      fitText(r.name, bx + cell / 2, by + cell + 15, SIZE.cap,
-              r.ready ? rar.colour : VIOLET_LOW, "center",
-              r.ready ? 0.95 : 0.6, cell + 8, "0.04em");
+      drawPartIcon(p.cat, bx + cell / 2, by + cell / 2, cell * 0.3,
+                   have ? CASH : ready ? rar.colour : WRECKC,
+                   have ? 1 : ready ? 0.9 : 0.5);
+      // Owned ones say so on the box: the grid is also the answer to "what have
+      // I actually got", and opening four boxes to find out is not an answer.
+      if (have) {
+        label(p.fitted ? "ON SHIP" : "×" + p.owned, bx + cell - 5, by + 14,
+              SIZE.cap, CASH_DIM, "right", 0.85);
+      }
+      fitText(p.name, bx + cell / 2, by + cell + 15, SIZE.cap,
+              have ? CASH : ready ? rar.colour : VIOLET_LOW, "center",
+              have ? 1 : ready ? 0.95 : 0.6, cell + 8, "0.04em");
 
       tap({ x: bx, y: by, w: cell, h: cell + 18,
             act: () => { craftPg.pick = craftPg.pick === i ? -1 : i; } });
@@ -3373,7 +3501,7 @@
     ctx.restore();
     tapClipOff();
 
-    const rows = Math.ceil(recipes.length / cols);
+    const rows = Math.ceil(all.length / cols);
     const gridTotal = rows * (cell + 26) + 16;
     HUD.craftHeight = gridTotal;
     HUD.craftView = gridH - PAGE.HEAD;
@@ -3383,47 +3511,105 @@
     }
 
     /* ── and the one you picked ────────────────────────────────────────────
-       Only now does it say what it wants, and only now is there a button. */
+       What it does, how you get one, and — only if there is one — a button.
+
+       Everything in here is measured against the panel's own width before it is
+       drawn. The old version advanced a cursor by `text.length * 9.6` and hoped,
+       which is not a measurement: an ingredient list with long names walked
+       straight out of the right-hand edge of the box and kept going. */
     const pickY = PAGE.TOP + gridH + PAGE.STEP;
-    const r = recipes[craftPg.pick] || null;
-    panel(full.x, pickY, gridW, pickH, r ? rarity(r.rarity).colour : VIOLET_LOW,
-          r ? r.name : "PICK ONE",
-          r ? r.rarity.toUpperCase() : "");
-    if (!r) {
-      fitText(api.touchOnly ? "Tap something in the grid to see what it takes."
-                            : "Click something in the grid to see what it takes.",
+    const p = all[craftPg.pick] || null;
+    const rec = p ? recipeFor(p.key) : null;
+    const inner = gridW - PAGE.PAD * 2;
+    panel(full.x, pickY, gridW, pickH, p ? rarity(p.rarity).colour : VIOLET_LOW,
+          p ? p.name : "PICK ONE",
+          p ? p.rarity.toUpperCase() + (p.fitted ? "  ·  ON SHIP"
+                                      : p.owned ? "  ·  ×" + p.owned + " IN STORAGE"
+                                      : "") : "");
+    if (!p) {
+      fitText(api.touchOnly ? "Tap any part to see what it does and how to get one."
+                            : "Click any part to see what it does and how to get one.",
               full.x + PAGE.PAD, ROW(pickY, 0) + 2, SIZE.cap, VIOLET_DIM,
-              "left", 0.6, gridW - PAGE.PAD * 2);
+              "left", 0.6, inner);
     } else {
-      fitText(r.note, full.x + PAGE.PAD, ROW(pickY, 0) + 2, SIZE.cap,
-              VIOLET_DIM, "left", 0.7, gridW - PAGE.PAD * 2 - 180);
-      let ix = full.x + PAGE.PAD;
-      const bits = [];
-      if (r.part) {
-        bits.push({ name: r.part.name, have: r.part.have ? 1 : 0, want: 1,
-                    colour: r.part.have ? CASH : r.part.makeable ? AMBER : WARN });
+      // What it does, wrapped to the box rather than trimmed to one line.
+      const said = wrapLines(p.note, SIZE.cap, inner - 190);
+      said.slice(0, 2).forEach((line, i) => {
+        label(line, full.x + PAGE.PAD, ROW(pickY, i) + 2, SIZE.cap,
+              VIOLET_DIM, "left", 0.75);
+      });
+
+      /* How you get one. The question the interface has never answered, and the
+         one Ric asked for by name: some you buy, some you build, some you can
+         only find — and a part that is none of the three does not exist. */
+      const ways = [];
+      if (p.buyable) ways.push({ t: "BUY  " + money(p.cost), c: CASH });
+      if (p.craftable) {
+        ways.push({ t: p.rarity === "common" ? "BUILD ANYWHERE" : "BUILD AT A STATION",
+                    c: AMBER });
       }
-      for (const row of r.rows) {
-        bits.push({ name: row.name, have: row.have, want: row.want,
-                    colour: row.have >= row.want ? CASH_DIM : WARN });
+      if (!p.craftable) ways.push({ t: "UNCRAFTABLE", c: VIOLET_LOW });
+      if (p.findable) ways.push({ t: "FOUND OUT THERE", c: ICE });
+      let wx = full.x + PAGE.PAD;
+      const wy = ROW(pickY, 2) + 2;
+      for (const w of ways) {
+        const ww = widthOf(w.t, SIZE.cap, "0.1em") + 18;
+        if (wx + ww > full.x + gridW - PAGE.PAD - 190) break;
+        label(w.t, wx, wy, SIZE.cap, w.c, "left", 0.9, "0.1em");
+        wx += ww;
       }
-      for (const b of bits) {
-        const txt = b.name + "  " + Math.min(b.have, b.want) + "/" + b.want;
-        label(txt, ix, ROW(pickY, 1) + 4, SIZE.cap, b.colour, "left",
-              b.have >= b.want ? 0.85 : 1);
-        ix += txt.length * 9.6 + 18;
+      // And for a find-only part, where to look — the whole of its content.
+      if (!p.buyable && !p.craftable && p.where) {
+        fitText(p.where, full.x + PAGE.PAD, ROW(pickY, 3) + 2, SIZE.cap,
+                ICE, "left", 0.7, inner - 190);
+      } else if (rec) {
+        /* The recipe, laid out with real measurements and wrapped onto a second
+           row if it needs one. */
+        const bits = [];
+        if (rec.part) {
+          bits.push({ name: rec.part.name, have: rec.part.have ? 1 : 0, want: 1,
+                      colour: rec.part.have ? CASH
+                            : rec.part.makeable ? AMBER : WARN });
+        }
+        for (const row of rec.rows) {
+          bits.push({ name: row.name, have: row.have, want: row.want,
+                      colour: row.have >= row.want ? CASH_DIM : WARN });
+        }
+        let ix = full.x + PAGE.PAD, line = 0;
+        const right = full.x + gridW - PAGE.PAD - 190;
+        for (const b of bits) {
+          const txt = b.name + " " + Math.min(b.have, b.want) + "/" + b.want;
+          const w = widthOf(txt, SIZE.cap) + 16;
+          if (ix + w > right) {
+            if (line >= 1) {
+              label("…", ix, ROW(pickY, 3 + line) + 2, SIZE.cap,
+                    VIOLET_DIM, "left", 0.7);
+              break;
+            }
+            line++; ix = full.x + PAGE.PAD;
+          }
+          label(txt, ix, ROW(pickY, 3 + line) + 2, SIZE.cap, b.colour, "left",
+                b.have >= b.want ? 0.85 : 1);
+          ix += w;
+        }
       }
-      const can = r.ready || (r.part && !r.part.have && r.part.makeable &&
-                              !r.rows.some(x => x.have < x.want));
-      button(r.ready ? "CRAFT" : (r.part && r.part.makeable) ? "CRAFT BOTH"
-                                                             : "SHORT",
-             full.x + gridW - PAGE.PAD - 80, ROW(pickY, 2) + 6, 170, 34,
+
+      /* The button, and what it says when it cannot be pressed. A part with no
+         recipe says so rather than showing a dead CRAFT — "there is no way to
+         build this" is information, and a greyed button is a puzzle. */
+      const canHere = rec && (p.rarity === "common" || st.docked);
+      const can = !!(rec && canHere &&
+                     (rec.ready || (rec.part && !rec.part.have &&
+                                    rec.part.makeable &&
+                                    !rec.rows.some(x => x.have < x.want))));
+      const word = !rec ? "NO RECIPE"
+                 : !canHere ? "NEEDS A STATION"
+                 : rec.ready ? "CRAFT"
+                 : (rec.part && rec.part.makeable) ? "CRAFT BOTH"
+                 : "SHORT";
+      button(word, full.x + gridW - PAGE.PAD - 88, ROW(pickY, 2) + 10, 180, 34,
              can ? CASH : VIOLET_LOW,
-             can ? () => st.onCraft && st.onCraft(r.key) : null, false, can);
-      if (r.owned) {
-        label("\u00d7" + r.owned + " IN THE CRATE", full.x + PAGE.PAD,
-              ROW(pickY, 2) + 6, SIZE.cap, CASH_DIM, "left", 0.8);
-      }
+             can ? () => st.onCraft && st.onCraft(p.key) : null, false, can);
     }
 
     pageNav(st, "craft");
@@ -3434,6 +3620,108 @@
      be seventeen things to get wrong, and what the grid has to answer at a glance
      is *what kind of thing is this* — an engine, a gun, a scanner. The rarity's
      colour carries the rest. */
+  /* ── what a material looks like ───────────────────────────────────────────
+     Six of them, and they were six identical squares in six colours. Colour
+     alone is a bad primary key: two of these are within a hue of each other on a
+     dim phone screen, colour-blind players get nothing at all, and a swatch tells
+     you it is *a material* rather than *which* one.
+
+     So each gets a shape that says what it is — ice is a crystal, iron is rough
+     ore, alloy is a milled bar, iridium is a cut gem, electronics is a board with
+     legs, a core is a ring around a hot centre. Shape reads at any size and
+     survives being drawn in the wrong colour. */
+  function drawMatIcon(key, cx, cy, r, colour, alpha) {
+    const { ctx } = api;
+    ctx.save();
+    ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+    ctx.strokeStyle = colour;
+    ctx.fillStyle = colour;
+    ctx.lineWidth = Math.max(1, r * 0.16);
+    ctx.lineJoin = "round";
+    const poly = (pts, fill) => {
+      ctx.beginPath();
+      pts.forEach((pt, i) => (i ? ctx.lineTo(cx + pt[0] * r, cy + pt[1] * r)
+                                : ctx.moveTo(cx + pt[0] * r, cy + pt[1] * r)));
+      ctx.closePath();
+      fill ? ctx.fill() : ctx.stroke();
+    };
+    switch (key) {
+      case "ice":
+        // A crystal: a tall six-sided shard with a highlight down it.
+        poly([[0, -1], [0.62, -0.4], [0.62, 0.45], [0, 1], [-0.62, 0.45],
+              [-0.62, -0.4]]);
+        ctx.globalAlpha *= 0.6;
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.2, cy - r * 0.55);
+        ctx.lineTo(cx - r * 0.2, cy + r * 0.5);
+        ctx.stroke();
+        break;
+      case "iron":
+        // Rough ore: a lump with a fracture across it.
+        poly([[-0.85, -0.2], [-0.35, -0.85], [0.5, -0.75], [0.9, -0.05],
+              [0.55, 0.8], [-0.4, 0.85], [-0.9, 0.35]]);
+        ctx.globalAlpha *= 0.55;
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.45, cy + r * 0.1);
+        ctx.lineTo(cx + r * 0.1, cy - r * 0.25);
+        ctx.lineTo(cx + r * 0.5, cy + r * 0.35);
+        ctx.stroke();
+        break;
+      case "alloy":
+        // A milled bar, drawn in perspective so it reads as a solid ingot.
+        poly([[-0.9, 0.1], [-0.55, -0.5], [0.9, -0.5], [0.55, 0.1]]);
+        poly([[-0.9, 0.1], [0.55, 0.1], [0.55, 0.72], [-0.9, 0.72]]);
+        break;
+      case "iridium":
+        // A cut gem: a table and facets under it.
+        poly([[-0.5, -0.55], [0.5, -0.55], [0.95, -0.05], [0, 0.95],
+              [-0.95, -0.05]]);
+        ctx.globalAlpha *= 0.6;
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.95, cy - r * 0.05);
+        ctx.lineTo(cx + r * 0.95, cy - r * 0.05);
+        ctx.moveTo(cx - r * 0.5, cy - r * 0.55);
+        ctx.lineTo(cx, cy + r * 0.95);
+        ctx.moveTo(cx + r * 0.5, cy - r * 0.55);
+        ctx.lineTo(cx, cy + r * 0.95);
+        ctx.stroke();
+        break;
+      case "electronics":
+        // A board with legs down both sides.
+        ctx.strokeRect(cx - r * 0.55, cy - r * 0.55, r * 1.1, r * 1.1);
+        ctx.beginPath();
+        for (let i = -1; i <= 1; i++) {
+          ctx.moveTo(cx - r * 0.55, cy + i * r * 0.34);
+          ctx.lineTo(cx - r * 0.95, cy + i * r * 0.34);
+          ctx.moveTo(cx + r * 0.55, cy + i * r * 0.34);
+          ctx.lineTo(cx + r * 0.95, cy + i * r * 0.34);
+        }
+        ctx.stroke();
+        ctx.globalAlpha *= 0.7;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 0.2, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+      default:
+        // A reactor core: a containment ring with something lit inside it.
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 0.9, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 0.34, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha *= 0.55;
+        ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+          ctx.moveTo(cx + Math.cos(a) * r * 0.46, cy + Math.sin(a) * r * 0.46);
+          ctx.lineTo(cx + Math.cos(a) * r * 0.88, cy + Math.sin(a) * r * 0.88);
+        }
+        ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function drawPartIcon(cat, cx, cy, r, colour, alpha) {
     const { ctx } = api;
     ctx.save();
@@ -3510,6 +3798,24 @@
         ctx.beginPath();
         ctx.arc(cx + r * 0.95, cy, r * 0.14, 0, Math.PI * 2);
         ctx.fill();
+        break;
+      case "solar":
+        /* Panels: two wings off a spine, with a sun's rays falling on them. The
+           one part in the game whose picture has to say *what it feeds on*. */
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * 0.85); ctx.lineTo(cx, cy + r * 0.85);
+        ctx.stroke();
+        for (const side of [-1, 1]) {
+          ctx.strokeRect(cx + side * r * 0.2, cy - r * 0.6,
+                         side * r * 0.7, r * 1.2);
+        }
+        ctx.globalAlpha *= 0.55;
+        ctx.beginPath();
+        for (let i = -1; i <= 1; i++) {
+          ctx.moveTo(cx - r * 0.9, cy + i * r * 0.5);
+          ctx.lineTo(cx + r * 0.9, cy + i * r * 0.5);
+        }
+        ctx.stroke();
         break;
       default:
         // Odd: a shape that is not quite any of the others.
@@ -3594,7 +3900,7 @@
 
     const crate = st.store || [];
     const free = target() >= 0;
-    panel(L.x, listY, L.w, listH, CASH, "IN THE CRATE",
+    panel(L.x, listY, L.w, listH, CASH, "STORAGE",
           crate.length ? crate.length + " KIND" + (crate.length > 1 ? "S" : "") : "EMPTY");
     if (!crate.length) {
       fitText("Nothing to fit. Stations sell parts; the strange ones are a long " +
@@ -3756,35 +4062,81 @@
     let y = PAGE.TOP - shipPg.scroll;
     const gap = PAGE.STEP;
 
-    /* ── the four slots ──────────────────────────────────────────────────── */
-    const slotH = PANEL_H(3);
+    /* ── the four slots, as four squares ─────────────────────────────────────
+       They were four columns of text, and an empty one said EMPTY in grey — which
+       is a *label* where the interface needed a *place*. A square is a place: it
+       has an edge, you can see how many there are without counting words, and you
+       can drop something into it. Which is the point, because a part now travels
+       from storage to a slot by being dragged there.
+
+       The squares are remembered in `slotBoxes` so the drop can find them: what
+       you can drag onto has to be the same rectangle you can see, and the only
+       way to guarantee that is for one of them to be computed from the other. */
+    const slotH = PANEL_H(4);
     panel(full.x, y, full.w, slotH, VIOLET, "FITTED",
           "FOUR SLOTS, EVERY HULL");
     const sw = (full.w - PAGE.PAD * 2) / 4;
+    const box = Math.min(sw - 16, slotH - PAGE.HEAD - 34);
+    slotBoxes.length = 0;
     for (let i = 0; i < 4; i++) {
       const sl = slots[i];
       const sx = full.x + PAGE.PAD + i * sw;
+      const bx = sx + (sw - box) / 2 - 6, by = y + PAGE.HEAD - 2;
       const fitting = !!sl && sl.fit > 0;
       const col = !sl ? VIOLET_LOW : fitting ? AMBER_DIM : rarity(sl.rarity).colour;
-      fitText(sl ? sl.name : "EMPTY", sx, ROW(y, 0) + 2, SIZE.cap, col, "left",
-              sl ? 1 : 0.5, sw - 14, "0.06em");
+      const over = carry && carry.over === i;
+      slotBoxes.push({ x: bx, y: by, w: box, h: box, i });
+
+      ctx.save();
+      ctx.globalAlpha = over ? 0.22 : sl ? 0.1 : 0.04;
+      ctx.fillStyle = over ? CASH : col;
+      ctx.fillRect(bx, by, box, box);
+      ctx.globalAlpha = over ? 1 : sl ? 0.85 : 0.45;
+      ctx.strokeStyle = over ? CASH : col;
+      ctx.lineWidth = over ? 2.5 : sl ? 1.5 : 1;
+      // An empty slot is drawn as a dashed outline: an opening rather than a box
+      // with nothing in it.
+      if (!sl && ctx.setLineDash) ctx.setLineDash([5, 4]);
+      ctx.strokeRect(bx, by, box, box);
+      if (ctx.setLineDash) ctx.setLineDash([]);
+      ctx.restore();
+
+      if (sl) {
+        drawPartIcon(sl.cat, bx + box / 2, by + box / 2, box * 0.28,
+                     fitting ? AMBER_DIM : col, fitting ? 0.6 : 1);
+      } else {
+        // A plus, quietly: this is somewhere a thing goes.
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.strokeStyle = VIOLET_LOW;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(bx + box / 2 - 8, by + box / 2);
+        ctx.lineTo(bx + box / 2 + 8, by + box / 2);
+        ctx.moveTo(bx + box / 2, by + box / 2 - 8);
+        ctx.lineTo(bx + box / 2, by + box / 2 + 8);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      fitText(sl ? sl.name : "EMPTY", sx + sw / 2 - 6, by + box + 18, SIZE.cap,
+              col, "center", sl ? 1 : 0.5, sw - 10, "0.06em");
       fitText(sl ? (fitting ? "FITTING  " + Math.ceil(sl.fit) + "s" : sl.note)
-                 : "nothing bolted on",
-              sx, ROW(y, 1) + 2, SIZE.cap, fitting ? AMBER_DIM : VIOLET_DIM,
-              "left", fitting ? 1 : 0.6, sw - 14);
+                 : "drag a part here",
+              sx + sw / 2 - 6, by + box + 38, SIZE.cap,
+              fitting ? AMBER_DIM : VIOLET_DIM, "center", fitting ? 1 : 0.6,
+              sw - 10);
       if (fitting) {
-        barAt(sx, ROW(y, 2) - 4, sw - 20, 5,
+        barAt(sx + 4, by + box + 46, sw - 26, 5,
               1 - sl.fit / Math.max(1, sl.of), AMBER_DIM);
-      } else if (sl) {
-        label("WORKING", sx, ROW(y, 2) + 2, SIZE.cap, CASH, "left", 0.85, "0.12em");
       }
       if (sl) {
-        tap({ x: sx - 6, y: y + PAGE.HEAD - 8, w: sw, h: slotH - PAGE.HEAD,
-                     act: () => st.onPull && st.onPull(i) });
+        tap({ x: bx, y: by, w: box, h: box,
+              act: () => st.onPull && st.onPull(i) });
       }
     }
-    label(api.touchOnly ? "TAP A SLOT TO PULL THE PART"
-                        : "CLICK A SLOT TO PULL THE PART  \u00b7  [G]",
+    label(api.touchOnly ? "TAP A FITTED SLOT TO PULL THE PART"
+                        : "CLICK A FITTED SLOT TO PULL THE PART  ·  [G]",
           full.x + full.w - PAGE.PAD, y + slotH - 8, SIZE.cap, VIOLET_LOW,
           "right", 0.5);
     y += slotH + gap;
@@ -3794,16 +4146,29 @@
     const crateRows = Math.max(1, crate.length);
     const crateH = PANEL_H(crateRows);
     const freeSlot = slots.findIndex(x => !x);
-    panel(full.x, y, full.w, crateH, CASH, "IN THE CRATE",
-          crate.length ? "TAP TO FIT" : "EMPTY");
+    panel(full.x, y, full.w, crateH, CASH, "STORAGE",
+          crate.length ? (api.touchOnly ? "DRAG ONE INTO A SLOT"
+                                        : "DRAG ONE INTO A SLOT, OR CLICK IT")
+                       : "EMPTY");
     if (!crate.length) {
       fitText("Nothing spare. Stations sell parts; the strange ones are a long " +
               "way out.", full.x + PAGE.PAD, ROW(y, 0) + 2, SIZE.cap,
               VIOLET_DIM, "left", 0.6, full.w - PAGE.PAD * 2);
     }
+    storeRows.length = 0;
     crate.forEach((e, i) => {
       const yy = ROW(y, i) + 2;
       const can = freeSlot >= 0 && !e.fitted;
+      // Where this row is, so a press on it can pick the part up. Only rows you
+      // could actually fit are draggable: dragging something already on the ship
+      // to a slot it is already in is a gesture with no meaning.
+      if (can) {
+        storeRows.push({ x: full.x, y: yy - 16, w: full.w, h: PAGE.STEP,
+                         key: e.key, name: e.name, cat: e.cat,
+                         rarity: e.rarity });
+      }
+      // Dragged out of its row, it should not also be drawn sitting in it.
+      if (carry && carry.key === e.key && carry.moved) return;
       partRow(full.x, full.w, yy, e, {
         text: e.fitted ? "ON SHIP" : st.docked ? "FIT" : "FIT " + e.secs + "s",
         colour: e.fitted ? VIOLET_LOW : CASH,
@@ -3820,7 +4185,10 @@
     /* ── the hold ────────────────────────────────────────────────────────── */
     const used = st.carried || 0;
     const storeH = PANEL_H(mats.length);
-    panel(full.x, y, full.w, storeH, VIOLET, "STORAGE", used + " / " + cap);
+    /* The materials are the *hold* and the parts are *storage*, and they used to
+       be called the other way round with "the crate" doing duty for the parts.
+       Two panels on one page both called STORAGE would be worse than either. */
+    panel(full.x, y, full.w, storeH, VIOLET, "CARGO HOLD", used + " / " + cap);
     const half = (full.w - PAGE.PAD * 2) / 2;
     mats.forEach((m, i) => {
       const col = i % 2, row = Math.floor(i / 2);
@@ -3993,6 +4361,8 @@
 
     pageNav(st, "inventory");
     closeButton(st.onClose || (() => {}));
+    // Whatever is in your hand goes on top of all of it, outside the scroll clip.
+    drawCarry();
   };
 
   /* A little closed book, for the panel that opens the almanac. Drawn rather than

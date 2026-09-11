@@ -1789,6 +1789,8 @@
   });
 
   const held = k => Array.isArray(k) ? k.some(c => keys.has(c)) : keys.has(k);
+  // `?debug=1`: the harness hooks, and the one place a swallowed error speaks up.
+  const debugOn = new URLSearchParams(location.search).get("debug") === "1";
   const digit = code => {
     const m = /^(?:Digit|Numpad)([1-9])$/.exec(code);
     return m ? +m[1] : 0;
@@ -5070,28 +5072,40 @@
      you pick up. A full sixty-unit hold of ordinary rock sells near home for
      something like 250, so the first tier of anything is a run or two out and
      back, and the third tier of everything is a long way past that. */
-  const REFIT = [
-    { key: "hull",    name: "HULL PLATING",  note: "+2 hull a tier",
-      cost: [160, 380, 760] },
-    { key: "thrust",  name: "DRIVE",         note: "faster, and quicker to it",
-      cost: [140, 340, 680] },
-    { key: "scanner", name: "SCANNER",       note: "how far a pulse reaches",
-      cost: [180, 440, 880] }
-  ];
-  const REFIT_TIERS = 3;
+  /* There used to be a refit track here: three lines — hull, drive, scanner —
+     three tiers each, bought with cash at a station, quietly scaling the ship you
+     were flying. It is gone, and this note is what is left of it.
 
-  /* ── the verbs ────────────────────────────────────────────────────────────
-     What the almanac buys. These are not bigger numbers — they are things the
-     ship simply could not do before, which is why they are gated behind looking
-     rather than behind money. Each one changes how the sector is crossed. */
-  const UNLOCKS = [
-    { key: "tractor", at: 6,  name: "TRACTOR BEAM",
-      note: "loose salvage comes to you, out to " + SURVEY_TRACTOR + " units" },
-    { key: "warp",    at: 12, name: "WARP TUNING",
-      note: "a gate drops you at the nearest thing you have not logged" },
-    { key: "cloak",   at: 18, name: "RUNNING DARK",
-      note: "hold thrust off and sentries lose you" }
-  ];
+     It had to go because it was a *second* upgrade system saying the same things
+     as the first. LAYERED PLATE is +2 hull; so was a tier of hull plating. DRIVE
+     SPAR is +14% speed; so was a tier of drive. PULSE COIL is +70% scan; so was a
+     tier of scanner. One of the two had to be the answer to "how do I make this
+     ship better", and the parts are the better answer for one reason: a part is
+     a thing you can point at. It sits in a slot, it cost you one of four, you can
+     take it off and sell it, and the ship tells you what it can do by what is
+     bolted to it.
+
+     A tier was invisible. Nothing on the ship said "this hull has had 380 spent
+     on it", and two identical hulls could fly completely differently with no way
+     to see why. Worse, it made the ship you own quietly better over time, which
+     is exactly the thing Ric's rule forbids:
+
+         *A ship without that stuff is a normal ship. No tricks. All the tricks
+         are the parts you attach yourself, so they know what they are.* */
+
+  /* And there used to be three verbs here that the *almanac* handed out: six
+     entries bought you a tractor beam, twelve bought a warp tuner, eighteen
+     bought running dark. They are parts now — TRACTOR RIG, WARP TUNER, RUNNING
+     DARK — found in caches out in the dark.
+
+     The old version was wrong in two ways at once. It made the ship do things
+     nothing on the ship explained: your beam turned on one day because you had
+     looked at enough of the sector, and there was nothing to point at. And it
+     made the almanac a shop, which is the one thing a field guide must not be —
+     a book about looking should not be a currency.
+
+     What the almanac is worth now is what it always should have been: it is the
+     record of what you have seen. */
 
   /* ── parts, and the four slots they go in ─────────────────────────────────
      Every ship, no exceptions, gets exactly four attachment slots. Not four on
@@ -5121,65 +5135,104 @@
   /* `deep` is how far out a station has to be before it stocks one — which is
      the danger curve finally paying something out. The odd ones at the bottom
      are the reason to go a long way. */
+  /* ── how you get one ──────────────────────────────────────────────────────
+     Three ways, and most parts have exactly one of them. This is the whole of
+     what makes a part feel like a part rather than a line in a shop:
+
+       buy    it is on a shelf somewhere. `deep` says how far out that shelf is.
+       craft  there is a recipe for it. See `RECIPES`.
+       find   it is out there in the dark and that is the only way. Never sold,
+              never built — you open a cache a long way from anywhere and there
+              it is.
+
+     A part with no `get` at all would be unobtainable, so the parts page checks
+     for that and the test suite refuses to let one exist.
+
+     `where` is the line the parts page prints for a find-only part. A part you
+     cannot buy and cannot build has to at least tell you where to look, or it is
+     not content, it is a rumour. */
   const MODULES = [
     // ── engines: how fast ──────────────────────────────────────────────────
     { key: "sparthruster", name: "DRIVE SPAR", cat: "engine", rarity: "common",
-      cost: 220, deep: 0, note: "+14% top speed",
+      cost: 220, deep: 0, get: ["buy", "craft"],
+      note: "a longer spar and a wider throat: +14% top speed",
       eff: { speed: 0.14 } },
     { key: "overburner", name: "OVERBURNER", cat: "engine", rarity: "rare",
-      cost: 1450, deep: 0.34, note: "+34% top speed, +20% off the mark",
+      cost: 1450, deep: 0.34, get: ["buy"],
+      note: "runs the drive past what it was rated for: +34% top speed and " +
+            "+20% off the mark",
       eff: { speed: 0.34, thrust: 0.2 } },
 
     // ── thrusters: how it handles ──────────────────────────────────────────
     { key: "vernier", name: "VERNIER SET", cat: "thruster", rarity: "common",
-      cost: 240, deep: 0, note: "+22% turn rate",
+      cost: 240, deep: 0, get: ["buy", "craft"],
+      note: "little jets at the nose and tail: +22% turn rate",
       eff: { turn: 0.22 } },
     { key: "reverser", name: "REVERSE THRUSTERS", cat: "thruster",
-      rarity: "uncommon", cost: 620, deep: 0.12,
-      note: "back off a rock without turning round",
+      rarity: "uncommon", cost: 620, deep: 0.12, get: ["buy"],
+      note: "thrust out of the front of the ship — back straight off a rock " +
+            "without turning round first  [S]",
       eff: { reverse: 1 } },
 
     // ── scanners: how far a pulse reaches ─────────────────────────────────
     { key: "pulsecoil", name: "PULSE COIL", cat: "scanner", rarity: "common",
-      cost: 260, deep: 0, note: "+70% scan range",
+      cost: 260, deep: 0, get: ["buy", "craft"],
+      note: "a louder pulse: the scan reaches 70% further",
       eff: { scan: 0.7 } },
     { key: "deepear", name: "DEEP EAR", cat: "scanner", rarity: "rare",
-      cost: 1600, deep: 0.4, note: "+190% scan range",
+      cost: 1600, deep: 0.4, get: ["buy"],
+      note: "hears the returns a pulse coil throws away: the scan reaches " +
+            "190% further",
       eff: { scan: 1.9 } },
 
     // ── armour: how many hits ─────────────────────────────────────────────
     { key: "layerplate", name: "LAYERED PLATE", cat: "armour", rarity: "common",
-      cost: 300, deep: 0, note: "+2 hull",
+      cost: 300, deep: 0, get: ["buy", "craft"],
+      note: "scrap plate welded over the hull: +2 hull",
       eff: { hull: 2 } },
     { key: "ablativeshell", name: "ABLATIVE SHELL", cat: "armour",
-      rarity: "rare", cost: 1700, deep: 0.36, note: "+5 hull",
+      rarity: "rare", cost: 1700, deep: 0.36, get: ["buy"],
+      note: "a shell that burns away instead of you: +5 hull",
       eff: { hull: 5 } },
 
     // ── tractor gear: the beam, and better beams ──────────────────────────
+    /* The beam. Without one of these you have to fly into every single piece of
+       salvage you want, one at a time, at the speed a hull can be aimed — which
+       is the whole of the early game and exactly why the first rig you get your
+       hands on changes the mode more than any other part in the list. */
     { key: "tractorrig", name: "TRACTOR RIG", cat: "tractor", rarity: "common",
-      cost: 340, deep: 0, note: "the beam itself, if you have not found it",
+      cost: 340, deep: 0, get: ["find", "craft"],
+      where: "in caches — the commonest part out there, and the first one that " +
+             "changes how you play",
+      note: "a grapple field on the nose. Loose salvage inside " +
+            SURVEY_TRACTOR + " units is drawn in and stowed on its own, so a " +
+            "broken rock is one pass instead of nine",
       eff: { tractor: 1 } },
     { key: "heavyrig", name: "HEAVY RIG", cat: "tractor", rarity: "uncommon",
-      cost: 780, deep: 0.16, note: "the beam, +60% reach and a harder pull",
+      cost: 780, deep: 0.16, get: ["buy"],
+      note: "the same field, run hot: 60% further out and a harder pull, so a " +
+            "field of debris comes in while you are still crossing it",
       eff: { tractor: 1, reach: 0.6, pull: 0.5 } },
 
     /* ── weapons ──────────────────────────────────────────────────────────
        Each fires on the trigger you already have, at its own rate, on top of the
        cannon. See `WEAPONS` for what each one does. */
     { key: "scattergun", name: "SCATTER GUN", cat: "weapon", rarity: "common",
-      cost: 420, deep: 0, note: "three rounds at once, none of them go far",
+      cost: 420, deep: 0, get: ["buy", "craft"],
+      note: "three rounds at once on the same trigger, none of them go far",
       eff: { weapon: "scatter" } },
     { key: "seekerrack", name: "SEEKER RACK", cat: "weapon", rarity: "uncommon",
-      cost: 940, deep: 0.14,
-      note: "a missile that turns after whatever is nearest",
+      cost: 940, deep: 0.14, get: ["buy", "craft"],
+      note: "a missile that turns after whatever is nearest — fire it and look " +
+            "somewhere else",
       eff: { weapon: "seeker" } },
     { key: "burstcharge", name: "BURST CHARGE", cat: "weapon", rarity: "rare",
-      cost: 1800, deep: 0.38,
-      note: "goes off where it lands and takes the neighbours",
+      cost: 1800, deep: 0.38, get: ["buy", "craft"],
+      note: "goes off where it lands and takes whatever was standing next to it",
       eff: { weapon: "burster" } },
     { key: "raillance", name: "RAIL LANCE", cat: "weapon", rarity: "exotic",
-      cost: 3600, deep: 0.62,
-      note: "one heavy slug, straight through three things",
+      cost: 3600, deep: 0.62, get: ["buy"],
+      note: "one heavy slug, straight through three things and out the far side",
       eff: { weapon: "lance" } },
 
     /* ── the odd ones ─────────────────────────────────────────────────────
@@ -5187,12 +5240,54 @@
        going rather than to keep grinding: each one changes a rule rather than a
        number. */
     { key: "starsiphon", name: "STAR SIPHON", cat: "odd", rarity: "rare",
-      cost: 1500, deep: 0.42, note: "an atmosphere fills the tank half again as fast",
+      cost: 1500, deep: 0.42, get: ["buy", "craft"],
+      note: "a wider throat on the intake: skimming an atmosphere fills the " +
+            "tank half again as fast",
       eff: { skim: 0.6 } },
     { key: "coldlarder", name: "COLD LARDER", cat: "odd", rarity: "exotic",
-      cost: 3200, deep: 0.6, note: "water and food last a third longer",
+      cost: 3200, deep: 0.6, get: ["buy"],
+      note: "keeps what you are carrying cold: water and food both last a " +
+            "third longer",
       eff: { life: -0.25 } }
   ];
+
+  /* ── the tricks that used to be built into the hull ───────────────────────
+     Four things this mode used to hand you for free, or for reading a book, and
+     none of them should have been free. A ship is a ship: it flies, it turns, it
+     shoots, it carries. *Everything else is a part you found and bolted on*, so
+     that you can point at the thing on your hull that is doing it.
+
+     Three of these were almanac rewards — you read your way to a tractor beam —
+     and one was simply true of every hull in the game whether you knew it or not:
+     sitting in a star's light mended you. That last one is the clearest case. It
+     is the best mechanic in the mode and nothing on the ship explained it, so it
+     read as a property of the universe rather than as something you own. Now it
+     is a panel somebody bolted to your ship, and a ship without one takes its
+     damage home. */
+  MODULES.push(
+    { key: "solarwing", name: "SOLAR PANELS", cat: "solar", rarity: "uncommon",
+      cost: 900, deep: 0.1, get: ["buy", "craft"],
+      note: "wings that drink a star. Sit in the light of a sun and the hull " +
+            "knits itself back together — without them, damage is permanent " +
+            "until you pay somebody to beat it out",
+      eff: { solar: 1 } },
+    { key: "warptuner", name: "WARP TUNER", cat: "odd", rarity: "rare",
+      cost: 0, deep: 0, get: ["find"],
+      where: "in deep caches, a long way out — nobody sells one and nobody " +
+             "knows how to make one",
+      note: "reads a gate's mouth on the way through and leans on it. You come " +
+            "out beside the nearest thing you have never logged instead of " +
+            "wherever the gate was pointed",
+      eff: { warp: 1 } },
+    { key: "runningdark", name: "RUNNING DARK", cat: "odd", rarity: "rare",
+      cost: 0, deep: 0, get: ["find"],
+      where: "in deep caches — it was never manufactured, it was improvised, " +
+             "and the ones out there were all made by somebody hiding",
+      note: "damps the hull's signature when the engine is off. Cut the drive " +
+            "and sentries lose you, which turns a guarded cache into a choice " +
+            "between shooting your way in and drifting in cold",
+      eff: { quiet: 1 } }
+  );
   /* ── the ice melter ───────────────────────────────────────────────────────
      Phase 5.6, and it lives here because it is a part like any other. Water is
      bought at a station, and that was the only way — which makes a long haul a
@@ -5204,12 +5299,46 @@
      the first thing worth crafting rather than buying: see `RECIPES`. */
   MODULES.push({
     key: "icemelter", name: "ICE MELTER", cat: "odd", rarity: "uncommon",
-    cost: 1100, deep: 0.2,
-    note: "turns ice in the hold into water in the tank",
+    cost: 1100, deep: 0.2, get: ["buy", "craft"],
+    note: "a heated hopper in the hold: ice you are carrying becomes water in " +
+          "the tank, a unit at a time, for nothing",
     eff: { melt: 1 }
   });
 
   const moduleSpec = key => MODULES.find(m => m.key === key) || null;
+
+  /* How you get a given part, asked of the part itself rather than of three
+     different lists that could disagree. `get` is the intent; these are the
+     three readings of it, and the shop, the workbench, the cache and the parts
+     page all go through them, so there is exactly one answer per part. */
+  const has = (m, way) => !!m && Array.isArray(m.get) && m.get.indexOf(way) >= 0;
+  const sellsIt  = m => has(m, "buy");
+  const craftsIt = m => has(m, "craft");
+  const findsIt  = m => has(m, "find");
+
+  /* What a cache out in the dark might be holding. Only the find-only parts:
+     something you could have bought at the last station is a disappointment in a
+     sealed hold two hundred thousand units from anywhere.
+
+     Rarer the shallower you are, so the tractor rig turns up early and often and
+     the two strange ones do not — and `deep` is the sector's own danger curve, so
+     the further out you open one, the better the odds. */
+  function cachePart(deep, rich) {
+    const pool = MODULES.filter(m => findsIt(m) && !sellsIt(m));
+    if (!pool.length) return null;
+    const chance = (rich ? 0.5 : 0.16) + deep * 0.34;
+    if (Math.random() > chance) return null;
+    /* Weighted: the common one is what a shallow cache has, and the rare ones
+       only really turn up a long way out. */
+    const weighted = [];
+    for (const m of pool) {
+      const w = m.rarity === "common" ? 6 - deep * 3
+              : m.rarity === "uncommon" ? 3
+              : 1 + deep * 4;
+      for (let i = 0; i < Math.max(1, Math.round(w)); i++) weighted.push(m);
+    }
+    return weighted[Math.floor(Math.random() * weighted.length)];
+  }
   const fitSeconds = key => {
     const m = moduleSpec(key);
     return m ? FIT_TIME[m.rarity] || FIT_TIME.common : 0;
@@ -5304,6 +5433,10 @@
 
     // ── the middle: a core, so it is a trip rather than an afternoon ───────
     { out: "seekerrack", need: { alloy: 9, electronics: 7, core: 1 } },
+    /* Panels. Built rather than only bought, because the thing they do — a star
+       mends your hull — is the answer to being a long way from a station, and
+       being a long way from a station is exactly when you cannot buy one. */
+    { out: "solarwing",  need: { alloy: 8, electronics: 6, iridium: 2 } },
     { out: "sparthruster", need: { iron: 9, alloy: 7, electronics: 3 } },
 
     /* ── built out of what you were flying ────────────────────────────────
@@ -5355,7 +5488,9 @@
      rule this function must never get wrong. */
   function mods() {
     const out = { hull: 0, speed: 0, thrust: 0, turn: 0, scan: 0,
-                  tractor: 0, reach: 0, pull: 0, reverse: 0, skim: 0, life: 0 };
+                  tractor: 0, reach: 0, pull: 0, reverse: 0, skim: 0, life: 0,
+                  // The four that used to be the hull's own, or the book's.
+                  solar: 0, warp: 0, quiet: 0, melt: 0 };
     if (!surv || !surv.slots) return out;
     for (const sl of surv.slots) {
       if (!sl || sl.fit > 0) continue;
@@ -5438,7 +5573,7 @@
       test: t => t.warped },
     { key: "laden", name: "LADEN", note: "a hold with no room left in it",
       test: t => t.laden },
-    { key: "refit", name: "REFIT", note: "traded what you found for what you fly",
+    { key: "refit", name: "REFIT", note: "bolted something on and flew with it",
       test: t => t.refitted },
     { key: "grave-robber", name: "GRAVE ROBBER", note: "took what was being guarded",
       test: t => t.looted },
@@ -5704,7 +5839,6 @@
      chart you made of it and the line you flew. Both of the big ones are packed
      and run-length encoded by the interface module rather than written as JSON;
      see `exportFog` there for why. */
-  const freshRefit = () => ({ hull: 0, thrust: 0, scanner: 0 });
 
   function loadSurveyBook() {
     const empty = { seed: 0, found: [], fog: "", cash: 0, deaths: 0, waypoint: null,
@@ -5712,7 +5846,7 @@
                     ship: "skiff", owned: ["skiff"], taught: [],
                     water: WATER_FULL, food: FOOD_FULL,
                     hold: freshHold(),
-                    refit: freshRefit(), opened: [], stripped: [],
+                    opened: [], stripped: [],
                     carrying: [], built: [], pins: [], known: [],
                     slots: [], store: {}, battleAge: {}, memorials: [],
                     dropped: [], coilFired: false, wrecked: [],
@@ -5724,13 +5858,6 @@
       const b = JSON.parse(raw);
       if (!b || typeof b !== "object") return empty;
       const strs = v => Array.isArray(v) ? v.filter(k => typeof k === "string") : [];
-      const refit = freshRefit();
-      if (b.refit && typeof b.refit === "object") {
-        for (const r of REFIT) {
-          const n = Math.floor(Number(b.refit[r.key]));
-          refit[r.key] = Math.max(0, Math.min(REFIT_TIERS, n || 0));
-        }
-      }
       return {
         seed: Number(b.seed) || 0,
         found: strs(b.found),
@@ -5791,7 +5918,6 @@
           h.iron = Math.max(0, Math.min(9999, legacy));
           return h;
         })(),
-        refit,
         opened: strs(b.opened),
         stripped: strs(b.stripped),
         /* Filtered against the manifest rather than merely checked for being
@@ -5904,7 +6030,20 @@
                      .slice(0, BUILD.length)
           : []
       };
-    } catch (_) { return empty; }
+    } catch (err) {
+      /* A book that cannot be read is a *fresh sector* — the right behaviour for
+         a save file somebody has hand-edited, and a catastrophe when the reason is
+         a typo of mine. This catch swallowed a `ReferenceError` for an entire
+         refactor: one line of the returned object still named a variable that had
+         been deleted, so every resume in the game silently started over and the
+         tests reported it as four unrelated failures about reputation and parts.
+
+         So it says so, when anybody is looking. Only under `?debug=1`, because a
+         player whose save is genuinely corrupt should get a new sector and not a
+         console full of somebody else's problem. */
+      if (debugOn) console.warn("survey: the book would not read — " + err.message);
+      return empty;
+    }
   }
 
   function saveSurveyBook() {
@@ -5926,7 +6065,6 @@
         taught: [...surv.taught],
         water: Math.round(surv.water),
         food: Math.round(surv.food),
-        refit: surv.refit,
         /* Only what has been taken, and taking is rare — a sector you have
            worked over for an hour is a few hundred short strings, which is well
            inside what the fog already costs. */
@@ -7137,11 +7275,11 @@
 
       /* The two progression tracks. `salvage` and `refit` are the numbers one —
          found, spent, and kept in the book. The verbs come off `found.size` and
-         are therefore not stored at all: an unlock is a fact about the almanac,
+         are therefore not stored at all: what you have found is a fact about the
+         almanac,
          so deriving it every time is the only way the two can never disagree. */
       cash: carried ? book.cash : 0,
       hold: carried ? book.hold : freshHold(),
-      refit: carried ? book.refit : freshRefit(),
       // Guards killed while their post is still in range. Not in the book: a
       // post you have left and come back to is manned again by design.
       deadGuards: new Set(),
@@ -7353,18 +7491,6 @@
                          n: surv.found.size, of: SURVEY_TOTAL });
     }
     gameSound("win", ships[0] ? ships[0].x : 0);
-
-    /* Crossing a threshold is the only moment a verb arrives, so it is
-       announced here rather than discovered by noticing the ship does something
-       new. `at` is compared to the count *after* the entry went in. */
-    for (const u of UNLOCKS) {
-      if (surv.found.size === u.at) {
-        chatter(u.name + " — " + u.note, CASH);
-        if (surveyHUD) surveyHUD.logged({ name: u.name, note: u.note,
-                                          n: surv.found.size, of: SURVEY_TOTAL,
-                                          unlock: true });
-      }
-    }
     saveSurveyBook();
   }
 
@@ -8560,13 +8686,6 @@
      Kept apart on purpose: one rewards working a sector over, the other rewards
      going somewhere you have not been, and a mode about looking should never
      let the first one buy its way past the second. */
-  function tier(key) { return (surv && surv.refit[key]) || 0; }
-
-  function unlocked(key) {
-    if (!surv) return false;
-    const u = UNLOCKS.find(x => x.key === key);
-    return !!u && surv.found.size >= u.at;
-  }
 
   /* How much you can carry is the *ship's*, full stop. It used to have a refit
      track on top of it, which made two different things — which hull you fly and
@@ -8588,22 +8707,21 @@
   /* How far a pulse reaches. This is the only thing the scanner track buys, and
      it is the only thing it ever claimed to buy that could be felt. */
   const SCAN_BASE = 2100;
-  const scanRange = () =>
-    SCAN_BASE * (1 + tier("scanner") * 0.85 + mods().scan);
+  // Every hull scans the same distance. What changes it is what you bolted on.
+  const scanRange = () => SCAN_BASE * (1 + mods().scan);
   const ECHO_LIFE = 20;        // seconds a return stays on the chart
 
-  /* The hull's own numbers and the refit tiers on top of them. The refit scales
-     what the hull already has rather than adding a flat bonus, so a tier of drive
-     is worth more on a fast hull than on a barge — which is the only way buying a
-     better ship and buying a better engine can both stay worth doing. */
+  /* The hull's own numbers, and the parts bolted to it. Nothing else — a hull is
+     exactly what the shipyard said it was, for as long as you own it, and every
+     difference between two of the same hull is a difference you can see in the
+     four slots. */
   function applyRefit(ship) {
     const sh = shipSpec(surv ? surv.ship : "skiff");
-    // What is bolted on, on top of what the hull came with and what was bought.
     const m = mods();
     ship.spec      = sh;
-    ship.maxHull   = sh.hull + tier("hull") * 2 + m.hull;
-    ship.thrustMul = sh.speed * (1 + tier("thrust") * 0.22 + m.thrust + m.speed);
-    ship.speedMul  = sh.speed * (1 + tier("thrust") * 0.15 + m.speed);
+    ship.maxHull   = sh.hull + m.hull;
+    ship.thrustMul = sh.speed * (1 + m.thrust + m.speed);
+    ship.speedMul  = sh.speed * (1 + m.speed);
     ship.turnMul   = sh.turn * (1 + m.turn);
     ship.dmgMul    = sh.dmg;
     ship.rateMul   = sh.rate;
@@ -8611,34 +8729,6 @@
     if (ship.hull > ship.maxHull) ship.hull = ship.maxHull;
   }
 
-  /* `null` means "not for sale", which covers both a maxed track and a key that
-     is not a track at all — the almanac's verbs reach this function by name if
-     anything ever asks a station for one, and the answer has to be no rather
-     than a crash. */
-  function refitCost(key) {
-    const r = REFIT.find(x => x.key === key);
-    if (!r) return null;
-    const t = tier(key);
-    return t >= REFIT_TIERS ? null : r.cost[t];
-  }
-
-  /* Buying is the only thing that spends salvage, so it is the only place the
-     hold can go down — which keeps "what have I got" a single number in a
-     single place. */
-  function buyRefit(key) {
-    const cost = refitCost(key);
-    if (cost == null || surv.cash < cost) { gameSound("hit"); return false; }
-    if (!(key in surv.refit)) return false;
-    surv.cash -= cost;
-    surv.refit[key]++;
-    surv.t.refitted = true;
-    applyRefit(ships[0]);
-    if (key === "hull") ships[0].hull = ships[0].maxHull;
-    gameSound("start");
-    chatter(REFIT.find(x => x.key === key).name + " — TIER " + surv.refit[key], CASH);
-    saveSurveyBook();
-    return true;
-  }
 
   /* ── salvage ──────────────────────────────────────────────────────────────
      One number, one cap. A full hold is not a failure state — it just means the
@@ -8797,10 +8887,10 @@
   }
 
   /* Loose salvage drifts, and is collected by touching it — or, once the beam
-     is unlocked, by being near it. The tractor is the first verb the almanac
-     hands over because it is the one that changes an ordinary flight: before
-     it, every mote is a manoeuvre; after it, a pass over a broken rock is one
-     movement instead of six. */
+     is fitted, by being near it. The tractor rig is the part most runs find
+     first and the one that changes an ordinary flight most: before it, every
+     mote is a manoeuvre; after it, a pass over a broken rock is one movement
+     instead of six. */
   function surveyMotes(dt) {
     const me = ships[0];
     /* A forgiving grab. Salvage is the reward for work you have already done —
@@ -8817,8 +8907,8 @@
        and it was never picked up and never seen again. Salvage vanished inside
        the one thing meant to collect it. */
     const mod = mods();
-    const beam = (unlocked("tractor") || mod.tractor)
-      ? SURVEY_TRACTOR * (1 + mod.reach) * U : 0;
+    // A beam is a part on the nose, and nothing else gives you one.
+    const beam = mod.tractor ? SURVEY_TRACTOR * (1 + mod.reach) * U : 0;
     for (let i = surv.motes.length - 1; i >= 0; i--) {
       const m = surv.motes[i];
       m.life -= dt;
@@ -8962,7 +9052,7 @@
       if (dist2(me.x, me.y, g.x, g.y) > (GATE_R * 0.55) ** 2) continue;
 
       let tx = g.tx, ty = g.ty, tuned = false;
-      if (unlocked("warp")) {
+      if (mods().warp) {
         const want = surv.landmarks.filter(l => !l.found)
           .sort((a, b) => Math.hypot(a.x - me.x, a.y - me.y) -
                           Math.hypot(b.x - me.x, b.y - me.y))[0];
@@ -9017,7 +9107,7 @@
      the engine and they lose you, which turns every cache into a choice between
      shooting your way in and drifting in cold. */
   function cloaked(me) {
-    return unlocked("cloak") && !me.thrusting && surv.quiet > 1.2;
+    return !!mods().quiet && !me.thrusting && surv.quiet > 1.2;
   }
 
   function surveyDrones(dt) {
@@ -9176,6 +9266,17 @@
       addShake(5);
       dropMote(c.x, c.y, worth, 90, "cache");
       spawnPickup(c.x, c.y, PICKUP_KINDS[Math.floor(Math.random() * PICKUP_KINDS.length)]);
+      /* And sometimes a part. This is the only way the find-only ones exist —
+         the beam, the warp tuner, running dark — so a sealed hold a long way out
+         is the difference between a ship that can do things and one that cannot.
+         It goes straight into storage rather than onto the floor: you opened it,
+         it is yours, and fishing a part out of a cloud of its own salvage would
+         be a worse moment than being told. */
+      const got = cachePart(dangerAt(c.x, c.y), !!c.rich);
+      if (got) {
+        storeAdd(got.key, 1);
+        chatter(got.name + " — in the hold, and nobody sells these.", "#a08cff");
+      }
       surv.opened.add(c.id || ("lev" + i));
       surv.caches.splice(i, 1);
       surv.t.looted = true;
@@ -9895,8 +9996,8 @@
       colour: CASH },
     { key: "spend",
       when: () => surv.cash >= 200 && surv.docked,
-      text: "YOU CAN AFFORD A REFIT",
-      sub: "the station fits them — and it sells ships",
+      text: "YOU CAN AFFORD A PART",
+      sub: "the station sells them, and fits them on the spot",
       colour: CASH }
   ];
 
@@ -10259,9 +10360,28 @@
 
   /* The step itself: take the materials, take the part if there is one, hand over
      the thing. Nothing here recurses. */
+  /* Where a thing can be built. A common part is scrap and patience — you can do
+     it on the back of the ship with what is in the hold. Anything above common
+     wants a berth, a gantry and somebody else's tools, so it wants a station.
+
+     This is the rule that makes the workbench and the shop stop competing: out in
+     the dark you can keep yourself in plate and coils and guns indefinitely, and
+     the good things are a reason to go back in. */
+  function craftHere(key) {
+    const m = moduleSpec(key);
+    if (!m) return false;
+    return m.rarity === "common" || !!surv.docked;
+  }
+
   function craftOne(key) {
     const r = recipeFor(key);
     if (!r || !canMake(key)) { gameSound("hit"); return false; }
+    if (!craftHere(key)) {
+      chatter(moduleSpec(key).name + " needs a station — only common parts can " +
+              "be built out here.", "#ff8f77");
+      gameSound("hit");
+      return false;
+    }
     for (const k of Object.keys(r.need)) surv.hold[k] -= r.need[k];
     if (r.part) storeAdd(r.part, -1);
     storeAdd(key, 1);
@@ -11536,10 +11656,16 @@
       t.inWell = null;
     }
 
-    // In a star's light the hull comes back. The only repair in the mode, and
-    // the reason a sun is a destination rather than only a hazard.
+    /* In a star's light the hull comes back — *if you are carrying panels*. This
+       was true of every hull in the game and nothing on the ship said so, which
+       made the best mechanic in the mode read as a property of the universe
+       rather than as something you own. It is a part now, and a ship without one
+       carries its damage home.
+
+       `inStar` stays true either way: standing in the light is a fact about where
+       you are, and the panel decides what to say about it. */
     surv.inStar = !!lit;
-    if (lit && me.hull < me.maxHull) {
+    if (lit && mods().solar && me.hull < me.maxHull) {
       me.hull = Math.min(me.maxHull, me.hull + SURVEY_REPAIR * dt);
     }
 
@@ -12150,8 +12276,8 @@
 
       /* The two tracks, flattened for the interface. `refit` carries the tier
          and the next price so the station screen never has to do arithmetic,
-         and `unlocks` carries `have` so the almanac can show a locked verb as a
-         thing you are working towards rather than hiding it. */
+         and every part carries how you would get one, so the parts page can show
+         something you cannot build yet as a thing to work towards. */
       /* `cash`, not `salvage`. The rename went through the store and through
          the interface and then stopped here, on the one line that joins them —
          so the panel, the station and the inventory all read a field that was
@@ -12299,19 +12425,16 @@
                       have: Math.round(ships[0].hull) + " / " +
                             Math.round(ships[0].maxHull) });
         }
+        /* Only the ones somebody sells. A part you can only find is not on
+           anybody's shelf — that is what "only find" means — and listing it here
+           greyed out would be a shop advertising something it will not sell you. */
         for (const m of MODULES) {
+          if (!sellsIt(m)) continue;
           if (m.deep > stationDepth()) continue;
           rows.push({ kind: "part", key: m.key, name: m.name,
                       colour: "#a08cff", label: "BUY", cost: m.cost,
                       cat: m.cat, rarity: m.rarity, note: m.note,
                       owned: storeCount(m.key) });
-        }
-        for (const r of REFIT) {
-          const cost = refitCost(r.key);
-          if (cost == null) continue;
-          rows.push({ kind: "refit", key: r.key, name: r.name,
-                      colour: "#6dffbf", label: "FIT", cost,
-                      note: r.note, tier: tier(r.key), max: REFIT_TIERS });
         }
         return rows;
       })() : [],
@@ -12319,7 +12442,6 @@
         if (kind === "supply") return buySupply(key, frac);
         if (kind === "repair") return buyRepair();
         if (kind === "part") return buyModule(key);
-        if (kind === "refit") return buyRefit(key);
         if (kind === "ships") {
           if (!atHomeStation()) return false;
           state = "hangar";
@@ -12384,12 +12506,26 @@
          to be told which — without this the yard button never drew, and a
          phone, which has no `E`, had no way into the yard page at all. */
       atYard: !!surv.atYard,
-      scanTier: tier("scanner"),
-      refit: REFIT.map(r => ({ key: r.key, name: r.name, note: r.note,
-                               tier: tier(r.key), max: REFIT_TIERS,
-                               cost: refitCost(r.key) })),
-      unlocks: UNLOCKS.map(u => ({ key: u.key, name: u.name, note: u.note,
-                                   at: u.at, have: unlocked(u.key) })),
+      /* What the ship can actually do right now, read off the four slots. The
+         panel and the pages both used to ask the almanac; there is nothing to ask
+         any more, and one of these is the difference between salvage that comes
+         to you and salvage you have to chase one piece at a time. */
+      tractor: mods().tractor ? SURVEY_TRACTOR * (1 + mods().reach) : 0,
+      solar: !!mods().solar,
+      warpTuned: !!mods().warp,
+      canRunDark: !!mods().quiet,
+      /* Every part in the game, with how you get one and whether you have it.
+         The parts page lists all of them — a catalogue with holes in it is a
+         catalogue you cannot plan from — so it needs the whole table, not only
+         the buildable end of it. */
+      parts: MODULES.map(m => ({
+        key: m.key, name: m.name, cat: m.cat, rarity: m.rarity, note: m.note,
+        cost: m.cost, deep: m.deep, secs: fitSeconds(m.key),
+        get: m.get.slice(), where: m.where || "",
+        buyable: sellsIt(m), craftable: craftsIt(m), findable: findsIt(m),
+        owned: storeCount(m.key),
+        fitted: surv.slots.some(sl => sl && sl.key === m.key)
+      })),
       /* The four slots, what is in them, and how long until it works. Every
          ship has four; that never varies and the page should never suggest it
          might. */
@@ -12493,7 +12629,6 @@
                                   have: surv.built.has(b.key),
                                   carrying: surv.carrying.has(b.key) })),
       built: surv.built.size, needs: BUILD.length,
-      onBuy: buyRefit,
       onUndock: () => { state = "playing"; },
       builds: YARD_BUILDS,
       // The wormhole, which is what the six parts make.
@@ -13355,6 +13490,10 @@
      keeps firing on the way down, where it belongs. */
   let pageDrag = null;
   const DRAG_SLOP = 7;          // screen units before a press becomes a drag
+  /* A part being carried from storage to a slot. While one is in hand the page
+     does not scroll — the gesture belongs to the part — and letting go over a
+     square fits it. See `HUD.grabAt`. */
+  let carrying = false;
 
   const scrollingPage = () =>
     state === "almanac" || state === "chart" || state === "hangar" ||
@@ -13397,6 +13536,15 @@
     const p = screenPoint(e.clientX, e.clientY);
     const dx = p.x - pageDrag.x, dy = p.y - pageDrag.y;
     pageDrag.moved += Math.abs(dx) + Math.abs(dy);
+    // Carrying a part: the gesture belongs to the part, and the page holds still
+    // under it. Scrolling the list out from under the slot you were aiming at
+    // would make the drop a moving target.
+    if (carrying) {
+      surveyHUD.carryTo(p.x, p.y);
+      pageDrag.x = p.x; pageDrag.y = p.y;
+      e.preventDefault();
+      return;
+    }
     // Content follows the finger: drag down and you see what was above.
     if (state === "almanac") surveyHUD.almanacDragBy(-dy, SURVEY_TOTAL);
     else if (state === "hangar") surveyHUD.hangarDragBy(-dy, SHIPS.length);
@@ -13418,6 +13566,20 @@
     if (!pageDrag || (e && e.pointerId !== pageDrag.id)) return;
     const d = pageDrag;
     pageDrag = null;
+    /* Letting go of a part. Over a slot it is fitted; over anything else it goes
+       back where it came from. `dropAt` answers whether the gesture was a drag at
+       all — a press that never moved falls through to the ordinary tap below,
+       which is the click-to-fit that was there before any of this. */
+    if (carrying) {
+      carrying = false;
+      if (surveyHUD) {
+        const took = act && e
+          ? surveyHUD.dropAt(surveyState(), screenPoint(e.clientX, e.clientY).x,
+                             screenPoint(e.clientX, e.clientY).y)
+          : (surveyHUD.cancelCarry(), true);
+        if (took) return;
+      }
+    }
     /* A press that never travelled was a tap all along. The release point goes
        with it, because a tap on a map means "here" and an `act` with no
        coordinates cannot know where here was. */
@@ -13443,6 +13605,20 @@
 
     // Everything else on a menu screen registered itself while being drawn.
     const hit = tapAt(p.x, p.y);
+
+    /* A part being picked up out of storage. Asked before the page decides to
+       scroll, because the same press means two different things depending on
+       what is under it: on a part it is a carry, anywhere else it is a scroll.
+       The tap that was already registered is kept, so a press that never moves
+       is still the click-to-fit it always was. */
+    if (state === "inventory" && surveyHUD && surveyHUD.grabAt &&
+        surveyHUD.grabAt(p.x, p.y)) {
+      carrying = true;
+      pageDrag = { id: e.pointerId, x: p.x, y: p.y, moved: 0, hit };
+      try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+      e.preventDefault();
+      return;
+    }
 
     if (scrollingPage()) {
       pageDrag = { id: e.pointerId, x: p.x, y: p.y, moved: 0, hit };
@@ -17456,7 +17632,7 @@
 
   // Opt-in diagnostics for local browser tests. Production pages do not expose
   // mutable game state unless they were deliberately opened with ?debug=1.
-  if (new URLSearchParams(location.search).get("debug") === "1") {
+  if (debugOn) {
     window.__cf = {
       peek: () => ({ state, mode: mode.name, lives, clock: +clock.toFixed(1),
                      rocks: rocks.length,
@@ -17552,8 +17728,13 @@
       scan: () => surveyScan(),
       // The refit, driven the way the station screen drives it, so a harness
       // can prove salvage actually turns into a better ship.
-      buy: key => buyRefit(key),
-      unlocked: key => unlocked(key),
+      // Buying one off a shelf, the way the market row does it.
+      buyPart: key => buyModule(key),
+      // What a part is worth reaching for, and how you would get one.
+      partWays: key => {
+        const m = moduleSpec(key);
+        return m ? { buy: sellsIt(m), craft: craftsIt(m), find: findsIt(m) } : null;
+      },
       // The yard and the scan, as the interface sees them.
       objective: () => objective(),
       scanReach: () => scanRange(),
@@ -17580,6 +17761,10 @@
          a field written and not listed here is thrown away silently — this is how
          a test can check the two lists agree. */
       bookKeys: () => Object.keys(loadSurveyBook()),
+      /* Recompute the ship from its slots. The game does this whenever a part
+         goes on or comes off; a harness that writes `surv.slots` directly is not
+         going through either path, so it has to say when it is done. */
+      applyParts: () => applyRefit(ships[0]),
       // One hit, through the real damage path, so the hull's own arithmetic is
       // what the harness is testing rather than a poke at `ship.hull`.
       hurt: cause => damageShip(ships[0], cause || "rock", null),
