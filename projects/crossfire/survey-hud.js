@@ -2241,14 +2241,15 @@
       ctx.lineTo(x, y + r * 1.2);
       ctx.stroke();
       ctx.restore();
-      if (big) {
-        /* **Its own name**, if you gave it one. It used to draw the name of its
-           *kind*, and the first kind in the list is called CASH — so every pin
-           anybody ever dropped said CASH on the chart, including the ones they
-           had carefully typed a name into. The kind is the fallback for a pin
-           that was never named, not the label. */
-        label(shortName(q.name || spec.name, 14), x, y + r * 3.4, SIZE.cap,
-              colour, "center", q.name ? 0.9 : 0.65);
+      /* **Its own name, or nothing.** It used to draw the name of its *kind* —
+         and the first kind in the list is called CASH, so every pin anybody ever
+         dropped said CASH on the chart, including the ones they had carefully
+         typed a name into. A kind is not a label: a pin you did not name is a
+         mark, and a mark with a word under it that you did not choose is worse
+         than a mark with no word under it. */
+      if (big && q.name) {
+        label(shortName(q.name, 14), x, y + r * 3.4, SIZE.cap, colour,
+              "center", 0.9);
       }
     }
   }
@@ -2478,62 +2479,38 @@
     // What the next tap will leave, said once and in the colour of the thing.
     const verb = api.touchOnly ? "TAP" : "CLICK";
     const armed = chart.jump ? "jump" : chart.mark ? "mark" : chart.pinning ? "pin" : "";
-    label(armed === "jump" ? verb + " A STATION"
-        : armed === "mark" ? verb + " ANYWHERE"
-        : armed === "pin"  ? verb + " ANYWHERE"
-        : verb + " A PIN TO LIFT IT",
-          rail.x, ry + 6, SIZE.cap,
-          armed === "jump" ? CASH : armed === "mark" ? WAYPOINT
-        : armed === "pin" ? VIOLET : VIOLET_LOW, "left", 0.85, "0.06em");
-    ry += 20;
+    /* Wrapped to the rail rather than written across the map. These lines got
+       longer when the pin gained a second meaning, and a `label` does not know
+       how wide its column is — on a phone they ran clean off the right-hand edge
+       of the screen. */
+    const says = armed === "jump" ? verb + " A STATION"
+               : armed === "mark" ? verb + " ANYWHERE"
+               : armed === "pin"  ? verb + " ANYWHERE, OR A PIN TO REMOVE IT"
+               : verb + " SOMETHING TO WATCH";
+    const saysCol = armed === "jump" ? CASH : armed === "mark" ? WAYPOINT
+                  : armed === "pin" ? VIOLET : VIOLET_LOW;
+    const saysLines = wrapLines(says, SIZE.cap, rail.w, "0.06em");
+    saysLines.slice(0, 2).forEach((line, i) => {
+      label(line, rail.x, ry + 6 + i * 18, SIZE.cap, saysCol, "left", 0.85,
+            "0.06em");
+    });
+    ry += 20 + (saysLines.length > 1 ? 18 : 0);
 
     /* The two things you can put on the map. Each is armed by its own button and
        placed by the next tap — which is one gesture, learned once, and the same
        for both. A waypoint replaces itself, because there is only ever one. */
     button(chart.pinning ? "CANCEL" : "PIN  ▸",
            rail.x + rail.w / 2, ry + 19, rail.w, 38,
-           chart.pinning ? WARN : pinSpec(PIN_KINDS[chart.pin].key).colour,
+           chart.pinning ? WARN : VIOLET,
            () => { chart.pinning = !chart.pinning; chart.mark = false; chart.jump = false; },
            chart.pinning);
-    ry += 42;
+    ry += 46;
 
-    /* ── what colour ────────────────────────────────────────────────────────
-       Six swatches, and the one you pick is the colour the next pin is drawn in.
-       There were six *kinds* before and the only way to change kind was a keyboard
-       shortcut nothing mentioned — so on a phone every pin in the game was the
-       first kind in the list, which is why they all came out the same colour with
-       the same word under them.
-
-       A colour rather than a category, because that is what it is for. The names
-       stay as the fallback label for a pin nobody got round to naming, but what
-       you are choosing here is how it looks on your map: this lot are ore, that
-       lot are trouble, and you decide which is which. */
-    const sw = Math.floor((rail.w - 5 * 4) / 6);
-    PIN_KINDS.forEach((k, i) => {
-      const bx = rail.x + i * (sw + 4);
-      const on = chart.pin === i;
-      ctx.save();
-      ctx.fillStyle = k.colour;
-      ctx.globalAlpha = on ? 0.95 : 0.4;
-      ctx.fillRect(bx, ry, sw, 18);
-      if (on) {
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(bx - 1.5, ry - 1.5, sw + 3, 21);
-      }
-      ctx.restore();
-      tap({ x: bx - 2, y: ry - 4, w: sw + 4, h: 26,
-            act: () => { chart.pin = i; } });
-    });
-    /* Clear of the swatches by the height of a line, not by a guess: the selected
-       one is outlined a pixel and a half proud of its box, and 16px type puts its
-       ascent twelve pixels above the baseline — so the first version of this had
-       the word sitting inside the bottom of the colour it was naming. */
-    ry += 42;
-    label(PIN_KINDS[chart.pin].name, rail.x, ry, SIZE.cap,
-          PIN_KINDS[chart.pin].colour, "left", 0.8, "0.1em");
-    ry += 16;
+    /* The colour used to be six swatches here, chosen *before* you placed
+       anything — which is deciding what a mark will mean before you have seen
+       where it is going, and on a phone it mostly meant every pin came out the
+       first colour in the list. The prompt that opens when you place one asks
+       for the colour and the name together, at the moment you know both. */
     button(chart.mark ? "CANCEL" : st.waypoint ? "MOVE WAYPOINT" : "WAYPOINT  \u25b8",
            rail.x + rail.w / 2, ry + 19, rail.w, 38,
            chart.mark ? WARN : WAYPOINT,
@@ -2613,12 +2590,23 @@
       if (st && st.onWaypoint) st.onWaypoint(wx, wy);
       return;
     }
-    /* Placing a pin is armed by the PIN button, the same as the waypoint — the
-       map used to drop one on any tap at all, so panning with a finger left a
-       trail of them and every press was a decision you had not made. Tapping an
-       existing pin still lifts it, armed or not, because an eraser mode for one
-       gesture would be a mode too many. */
-    if (st && st.onPinNear && st.onPinNear(wx, wy, snap)) return;
+    /* ── the whole of pinning, in one order ──────────────────────────────────
+       Arm with PIN. The next tap on the map either lands on a pin you already
+       have — in which case it asks whether to remove it, and takes a check mark
+       for an answer — or it is somewhere new, and the prompt that opens asks for
+       a name and a colour before anything is placed.
+
+       Removal used to happen on *any* tap that landed near a pin, armed or not,
+       which is an eraser you cannot switch off: panning a crowded map with a
+       finger deleted your own marks, silently, with nothing to undo it. Now it
+       takes arming the tool and then confirming, which is two deliberate acts for
+       the one operation in the mode that destroys something you made. */
+    if (chart.pinning) {
+      chart.pinning = false;
+      if (st && st.onPinNear && st.onPinNear(wx, wy, snap)) return;
+      if (st && st.onPin) st.onPin(wx, wy, PIN_KINDS[chart.pin].key, snap);
+      return;
+    }
     if (!chart.pinning) {
       /* Nothing armed and no pin under the finger: you are pointing at something
          charted. Keeping an eye on it is the other thing that earns a permanent
@@ -2626,8 +2614,6 @@
       if (st && st.onSelect) st.onSelect(wx, wy, snap);
       return;
     }
-    chart.pinning = false;
-    if (st && st.onPin) st.onPin(wx, wy, PIN_KINDS[chart.pin].key, snap);
   };
   // The palette, so the engine can stamp a pin with its colour when it is made.
   HUD.pinKinds = () => PIN_KINDS.map(k => ({ ...k }));
@@ -4556,43 +4542,81 @@
           "right", 0.5);
     y += slotH + gap;
 
-    /* ── what you own and are not flying ─────────────────────────────────── */
+    /* ── what you own and are not flying ──────────────────────────────────────
+       Boxes with pictures in them, laid out like the parts page, rather than a
+       list of rows. Two reasons, and the second is the one that matters:
+
+       A row is a *label*. The four slots above are squares with a picture in
+       each, so the thing you are dragging and the place you are dragging it to
+       were drawn in two completely different languages — you had to work out that
+       the line of text and the empty square were the same kind of object.
+
+       And a box is a thing you can pick up. A row with a button on the end of it
+       says "press the button"; a tile with a picture on it says "this is an
+       object, take it". The gesture was already there and nothing about the
+       drawing invited it. */
     const crate = st.store || [];
-    const crateRows = Math.max(1, crate.length);
-    const crateH = PANEL_H(crateRows);
     const freeSlot = slots.findIndex(x => !x);
+    const cw = api.touchOnly ? 4 : 6;
+    const cCell = Math.floor((full.w - PAGE.PAD * 2 - (cw - 1) * 10) / cw);
+    const cRows = Math.max(1, Math.ceil(crate.length / cw));
+    const crateH = PAGE.HEAD + cRows * (cCell + 26) + 10;
     panel(full.x, y, full.w, crateH, CASH, "STORAGE",
           crate.length ? (api.touchOnly ? "DRAG ONE INTO A SLOT"
                                         : "DRAG ONE INTO A SLOT, OR CLICK IT")
                        : "EMPTY");
     if (!crate.length) {
       fitText("Nothing spare. Stations sell parts; the strange ones are a long " +
-              "way out.", full.x + PAGE.PAD, ROW(y, 0) + 2, SIZE.cap,
-              VIOLET_DIM, "left", 0.6, full.w - PAGE.PAD * 2);
+              "way out.", full.x + PAGE.PAD, y + PAGE.HEAD + 18, SIZE.cap,
+              VIOLET_DIM, "left", 0.7, full.w - PAGE.PAD * 2);
     }
     storeRows.length = 0;
     crate.forEach((e, i) => {
-      const yy = ROW(y, i) + 2;
+      const col = i % cw, row = Math.floor(i / cw);
+      const bx = full.x + PAGE.PAD + col * (cCell + 10);
+      const by = y + PAGE.HEAD + 4 + row * (cCell + 26);
       const can = freeSlot >= 0 && !e.fitted;
-      // Where this row is, so a press on it can pick the part up. Only rows you
-      // could actually fit are draggable: dragging something already on the ship
-      // to a slot it is already in is a gesture with no meaning.
+      const rar = rarity(e.rarity);
+
+      /* Where this tile is, so a press on it can pick the part up. Only ones you
+         could actually fit are draggable: dragging something already on the ship
+         to a slot it is already in is a gesture with no meaning. */
       if (can) {
-        storeRows.push({ x: full.x, y: yy - 16, w: full.w, h: PAGE.STEP,
+        storeRows.push({ x: bx, y: by, w: cCell, h: cCell + 18,
                          key: e.key, name: e.name, cat: e.cat,
                          rarity: e.rarity });
       }
-      // Dragged out of its row, it should not also be drawn sitting in it.
+      // Dragged out of its box, it should not also be drawn sitting in it.
       if (carry && carry.key === e.key && carry.moved) return;
-      partRow(full.x, full.w, yy, e, {
-        text: e.fitted ? "ON SHIP" : st.docked ? "FIT" : "FIT " + e.secs + "s",
-        colour: e.fitted ? VIOLET_LOW : CASH,
-        live: can,
-        act: () => can && st.onFit && st.onFit(freeSlot, e.key)
-      });
+
+      ctx.save();
+      ctx.fillStyle = e.fitted ? VIOLET_LOW : rar.colour;
+      ctx.globalAlpha = e.fitted ? 0.08 : 0.22;
+      ctx.fillRect(bx, by, cCell, cCell);
+      ctx.strokeStyle = e.fitted ? VIOLET_LOW : rar.colour;
+      ctx.globalAlpha = e.fitted ? 0.5 : 0.95;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(bx, by, cCell, cCell);
+      ctx.restore();
+
+      drawPartIcon(e.cat, bx + cCell / 2, by + cCell / 2, cCell * 0.3,
+                   e.fitted ? VIOLET_LOW : rar.colour, e.fitted ? 0.5 : 1);
       if (e.n > 1) {
-        label("\u00d7" + e.n, full.x + full.w - PAGE.PAD - 104, yy, SIZE.cap,
-              VIOLET_DIM, "right", 0.7);
+        label("×" + e.n, bx + cCell - 5, by + 16, SIZE.cap, CASH_DIM,
+              "right", 0.9);
+      }
+      if (e.fitted) {
+        label("ON SHIP", bx + cCell / 2, by + cCell - 8, SIZE.cap, VIOLET_LOW,
+              "center", 0.8);
+      }
+      fitText(e.name, bx + cCell / 2, by + cCell + 15, SIZE.cap,
+              e.fitted ? VIOLET_LOW : rar.colour, "center",
+              e.fitted ? 0.6 : 0.95, cCell + 8, "0.04em");
+
+      // Clicking still fits it into the first free slot, as it always did.
+      if (can) {
+        tap({ x: bx, y: by, w: cCell, h: cCell + 18,
+              act: () => st.onFit && st.onFit(freeSlot, e.key) });
       }
     });
     y += crateH + gap;

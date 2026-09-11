@@ -175,6 +175,24 @@
   }
   .ask input:focus { outline: none; border-color: var(--phosphor); }
   .ask div { display: flex; gap: 0.6rem; }
+  /* The colour row inside the pin prompt. Big enough for a thumb, and the one
+     you picked is the one with a ring around it — a swatch that only differs by
+     being slightly brighter is not a selection anybody can see. */
+  .ask .swatches { gap: 0.5rem; }
+  .ask .swatch {
+    flex: 1 1 auto;
+    height: 2.6rem;
+    border: 2px solid transparent;
+    border-radius: 2px;
+    cursor: pointer;
+    opacity: 0.55;
+    padding: 0;
+  }
+  .ask .swatch.on {
+    opacity: 1;
+    border-color: #fff;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6) inset;
+  }
   .ask button {
     flex: 1 1 auto;
     background: rgba(255, 194, 51, 0.14);
@@ -6390,6 +6408,100 @@
     const list = surveyHUD && surveyHUD.pinKinds ? surveyHUD.pinKinds() : [];
     const hit = list.find(k => k.key === kind);
     return hit ? hit.colour : "#6dffbf";
+  }
+
+  /* ── naming a pin, and choosing what colour it is ─────────────────────────
+     One prompt rather than two decisions in two places. The colour used to be
+     picked from a palette in the chart's rail *before* you placed anything,
+     which meant choosing what a mark would mean before you had seen where it was
+     going — and on a phone, where the palette is six small squares in a column
+     of buttons, it mostly meant every pin in the game came out the same colour.
+
+     Now: tap PIN, tap the map, and the thing that opens asks both questions at
+     the moment you have the answer to them. */
+  /* The dialogue that is open, if one is. Two things read it: the harness, which
+     has no way to click a DOM button, and anything that needs to know the game is
+     waiting on a person. */
+  let pendingAsk = null;
+
+  function askPin(kinds, done) {
+    drop(askEl);
+    let pick = 0;
+    const wrap = document.createElement("div");
+    wrap.className = "ask";
+    wrap.innerHTML =
+      '<label>Name this pin</label>' +
+      '<input type="text" maxlength="24" autocomplete="off" placeholder="what is here?">' +
+      '<div class="swatches"></div>' +
+      '<div><button type="button" data-ok>SAVE</button>' +
+      '<button type="button" class="quiet" data-no>CANCEL</button></div>';
+    /* The buttons are kept as we make them rather than read back off the parent.
+       Reading `row.children` assumes `appendChild` actually appended, which is
+       true in a browser and not true of every DOM — and the failure mode is a
+       crash inside the one dialogue the whole feature depends on. */
+    const row = wrap.querySelector(".swatches");
+    const swatches = kinds.map((k, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "swatch";
+      if (b.style) b.style.background = k.colour;
+      b.title = k.name;
+      b.addEventListener("click", () => {
+        pick = i;
+        swatches.forEach((c, j) => c.classList.toggle("on", j === pick));
+      });
+      row.appendChild(b);
+      return b;
+    });
+    if (swatches[0]) swatches[0].classList.add("on");
+
+    const input = wrap.querySelector("input");
+    const close = ok => {
+      const v = input.value;
+      drop(wrap);
+      askEl = null;
+      pendingAsk = null;
+      done(ok ? { name: v, kind: kinds[pick].key } : null);
+    };
+    pendingAsk = { type: "pin", kinds: kinds.map(k => k.key), submit: a => {
+      drop(wrap);
+      askEl = null;
+      pendingAsk = null;
+      done(a ? { name: a.name || "", kind: a.kind || kinds[0].key } : null);
+    } };
+    wrap.querySelector("[data-ok]").addEventListener("click", () => close(true));
+    wrap.querySelector("[data-no]").addEventListener("click", () => close(false));
+    input.addEventListener("keydown", ev => {
+      ev.stopPropagation();
+      if (ev.key === "Enter") close(true);
+      if (ev.key === "Escape") close(false);
+    });
+    document.body.appendChild(wrap);
+    askEl = wrap;
+    setTimeout(() => { try { input.focus(); } catch (_) {} }, 0);
+  }
+
+  /* And the only way a pin ever comes off the chart. It used to vanish on any
+     tap that landed near one, which is an eraser you cannot turn off: panning a
+     crowded map with a finger deleted your own marks and there was nothing to
+     undo it with. */
+  function askYesNo(prompt, done) {
+    drop(askEl);
+    const wrap = document.createElement("div");
+    wrap.className = "ask";
+    wrap.innerHTML =
+      '<label></label>' +
+      '<div><button type="button" data-ok>\\u2713</button>' +
+      '<button type="button" class="quiet" data-no>\\u2715</button></div>';
+    wrap.querySelector("label").textContent = prompt;
+    const close = ok => {
+      drop(wrap); askEl = null; pendingAsk = null; if (ok) done();
+    };
+    pendingAsk = { type: "confirm", submit: ok => close(!!ok) };
+    wrap.querySelector("[data-ok]").addEventListener("click", () => close(true));
+    wrap.querySelector("[data-no]").addEventListener("click", () => close(false));
+    document.body.appendChild(wrap);
+    askEl = wrap;
   }
 
   function askName(prompt, value, done) {
@@ -13526,9 +13638,15 @@
         const near = surv.pins.findIndex(q =>
           dist2(q.x, q.y, x, y) < (snap || 400) ** 2);
         if (near < 0) return false;
-        surv.pins.splice(near, 1);
-        gameSound("start");
-        saveSurveyBook();
+        const pin = surv.pins[near];
+        askYesNo("Remove " + (pin.name ? "“" + pin.name + "”" : "this pin") +
+                 "?", () => {
+          const i = surv.pins.indexOf(pin);
+          if (i < 0) return;
+          surv.pins.splice(i, 1);
+          gameSound("start");
+          saveSurveyBook();
+        });
         return true;
       },
       /* Tapping a charted thing with nothing armed: keep an eye on it. The
@@ -13555,19 +13673,22 @@
       },
       onPin: (x, y, kind, snap) => {
         if (surv.pins.length >= 200) { gameSound("hit"); return; }
-        /* The colour travels *with* the pin rather than being looked up from its
-           kind later. A palette that is edited one day would otherwise repaint
-           every pin anybody had ever dropped, and a mark on a map whose colour
-           changes under you is a mark you stop trusting. */
-        const pin = { x, y, kind, name: "", colour: pinColour(kind) };
-        surv.pins.push(pin);
-        gameSound("start");
-        saveSurveyBook();
-        /* And then you name it. Endless space has no place names — the only way
-           anywhere out here gets one is if you say so, and a pin you cannot name
-           is a dot you will not remember the reason for. */
-        askName("Name this pin", "", v => {
-          pin.name = String(v || "").slice(0, 24);
+        /* Nothing is placed until the prompt is answered. It used to drop the pin
+           first and ask afterwards, so cancelling left an unnamed dot behind —
+           and "cancel" has to mean nothing happened.
+
+           Endless space has no place names. The only way anywhere out here gets
+           one is if you say so, and the colour travels *with* the pin rather than
+           being looked up from its kind later: a palette edited one day would
+           otherwise repaint every mark anybody had ever made, and a mark whose
+           colour changes under you is a mark you stop trusting. */
+        const kinds = surveyHUD && surveyHUD.pinKinds ? surveyHUD.pinKinds() : [];
+        askPin(kinds, answer => {
+          if (!answer) return;
+          surv.pins.push({ x, y, kind: answer.kind,
+                           name: String(answer.name || "").slice(0, 24),
+                           colour: pinColour(answer.kind) });
+          gameSound("start");
           saveSurveyBook();
         });
       },
@@ -18728,6 +18849,12 @@
          see BIOMES.md. A harness has to be able to ask, or the one layer whose
          whole design is to be invisible is also the one layer nothing can check. */
       regionProbe: (x, y) => regionOf(x, y),
+      /* The dialogue the game is waiting on, and a way to answer it. A harness
+         cannot click a DOM button, and the pin flow is now three deliberate acts
+         — arm, tap, answer — of which the third is the only one that commits
+         anything. Untestable otherwise. */
+      ask: () => pendingAsk && pendingAsk.type,
+      answer: a => { if (pendingAsk) pendingAsk.submit(a); },
       // How deep into its region a point is, and what that does to the scan.
       regionAtDepth: (x, y) => ({ depth: regionDepth(x, y), scan: regionScan(x, y) }),
       /* A round of yours into a sentry, through the real path. Clearing a

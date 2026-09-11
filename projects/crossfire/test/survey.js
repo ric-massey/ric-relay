@@ -1483,7 +1483,11 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const st = cf.surveyView();
 
   check(Array.isArray(surv.pins) && surv.pins.length === 0, "a fresh sector had pins");
+  /* Placing one is a question now, not an action: `onPin` opens the prompt that
+     asks for a name and a colour, and nothing is on the chart until it is
+     answered. See the chart-rail block for the whole gesture. */
   st.onPin(4000, -2500, "cache", 400);
+  cf.answer({ name: "", kind: "cache" });
   check(surv.pins.length === 1, "dropping a pin did not add one");
   check(typeof surv.pins[0].name === "string",
         "a pin cannot carry a name — endless space has no place names except " +
@@ -1493,11 +1497,13 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   // Tapping a pin lifts it, which is a different call from placing one now that
   // placing has to be armed.
   st.onPinNear(4050, -2520, 400);
-  check(surv.pins.length === 0, "tapping a pin did not lift it");
+  check(cf.ask() === "confirm", "removing a pin did not ask first");
+  cf.answer(true);
+  check(surv.pins.length === 0, "confirming did not remove it");
 
   // Different kinds coexist, and they survive the book.
-  st.onPin(1000, 1000, "danger", 400);
-  st.onPin(-9000, 400, "part", 400);
+  st.onPin(1000, 1000, "danger", 400); cf.answer({ name: "", kind: "danger" });
+  st.onPin(-9000, 400, "part", 400); cf.answer({ name: "", kind: "part" });
   check(surv.pins.length === 2, "two pins of different kinds did not both stick");
   cf.leave();
   const raw = store["crossfire.survey.v3"];
@@ -1953,6 +1959,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   // The proof that matters: a pin dropped straight after a reset has a kind.
   hud.chartOpened(st);
   st.onPin(3000, 3000, "cache", 400);
+  cf.answer({ name: "", kind: "cache" });
   check(surv.pins.length === 1, "no pin was dropped");
   check(typeof surv.pins[0].kind === "string" && surv.pins[0].kind,
         "a pin dropped on a fresh survey has no kind: " + surv.pins[0].kind);
@@ -3030,14 +3037,17 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   cf.draw();
   const WW = cf.live().screenW;
   const railFirst = cf.live().taps
-    .filter(t => t.h === 38 && t.x > WW * 0.7 && t.y > 120)
+    .filter(t => t.h >= 36 && t.h <= 60 && t.x > WW * 0.7 && t.y > 120)
     .sort((a, b) => a.y - b.y)[0];
   check(!!railFirst, "there is no PIN button in the chart's rail");
   railFirst.act();
   hud.chartTapAt(cf.surveyView(), 9000, -4000, 400);
+  cf.answer({ name: "", kind: "cache" });
   check(surv.pins.length === 1, "an armed tap did not drop a pin");
   check(cf.surveyView().waypoint == null, "an unarmed tap set a waypoint");
-  hud.chartTapAt(cf.surveyView(), 9000, -4000, 400);   // the same tap lifts it
+  railFirst.act();                                    // arm it again to remove
+  hud.chartTapAt(cf.surveyView(), 9000, -4000, 400);
+  cf.answer(true);
   check(surv.pins.length === 0, "the pin did not lift again");
 
   /* Armed from the chart's own button, and then the map sets it. The button is
@@ -6231,25 +6241,68 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(surv.pins.length === 0, "an unarmed tap on the map dropped a pin");
 
   cf.draw();
-  const pinBtn = cf.live().taps.filter(t => t.h === 38 && t.x > W * 0.7 && t.y > 120)
+  const pinBtn = cf.live().taps.filter(t => t.h >= 36 && t.h <= 60 &&
+                                            t.x > W * 0.7 && t.y > 120)
                    .sort((a, b) => a.y - b.y)[0];
+  check(!!pinBtn, "there is no PIN button in the rail");
+
+  /* ── three deliberate acts, and only the third commits anything ───────────
+     Arm with PIN, tap the map, then answer the prompt that asks for a name and a
+     colour. Nothing is placed before the answer: it used to drop the pin first
+     and ask afterwards, so cancelling left an unnamed dot on the chart, and
+     "cancel" has to mean nothing happened. */
   pinBtn.act();
   hud.chartTapAt(cf.surveyView(), 30000, 30000, 400);
-  check(surv.pins.length === 1, "an armed tap did not place a pin");
-  check(typeof surv.pins[0].name === "string", "the pin cannot hold a name");
+  check(cf.ask() === "pin", "an armed tap did not ask what the pin is");
+  check(surv.pins.length === 0, "the pin was placed before it was answered");
+
+  cf.answer(null);                               // cancelled
+  check(surv.pins.length === 0, "cancelling the prompt left a pin behind");
+  check(!cf.ask(), "the prompt is still open after cancelling");
+
+  pinBtn.act();
+  hud.chartTapAt(cf.surveyView(), 30000, 30000, 400);
+  cf.answer({ name: "THE IRIDIUM FIELD", kind: "danger" });
+  check(surv.pins.length === 1, "answering the prompt did not place a pin");
+  check(surv.pins[0].name === "THE IRIDIUM FIELD", "it did not take the name");
+  check(surv.pins[0].kind === "danger", "it did not take the colour you chose");
+  check(typeof surv.pins[0].colour === "string" && surv.pins[0].colour.length > 3,
+        "the colour did not travel with the pin");
 
   // And arming is spent by the placing: the next tap is nothing again.
   hud.chartTapAt(cf.surveyView(), 60000, 60000, 400);
-  check(surv.pins.length === 1,
-        "the pin button stayed armed and dropped a second one");
+  check(!cf.ask(), "the pin button stayed armed and asked about a second one");
+  check(surv.pins.length === 1, "it dropped a second pin unasked");
 
-  // Tapping an existing pin lifts it, armed or not.
+  /* ── the only way one ever comes off ─────────────────────────────────────
+     Unarmed, a tap near a pin does nothing to it. It used to remove it on any tap
+     that landed close, armed or not — an eraser you cannot switch off, so panning
+     a crowded map with a finger silently deleted your own marks. */
   hud.chartTapAt(cf.surveyView(), 30050, 30050, 400);
-  check(surv.pins.length === 0, "tapping a pin did not lift it");
+  check(surv.pins.length === 1, "an unarmed tap removed a pin");
+  check(!cf.ask(), "an unarmed tap on a pin asked about removing it");
 
-  console.log("  chartrail  " + toggles.length + " filters and " + buttons.length +
-              " things to place, all in the rail \u00b7 a tap does nothing until " +
-              "you arm it \u00b7 arming is spent by the placing");
+  pinBtn.act();
+  hud.chartTapAt(cf.surveyView(), 30050, 30050, 400);
+  check(cf.ask() === "confirm", "an armed tap on a pin did not ask to remove it");
+  cf.answer(false);
+  check(surv.pins.length === 1, "declining still removed it");
+
+  pinBtn.act();
+  hud.chartTapAt(cf.surveyView(), 30050, 30050, 400);
+  cf.answer(true);
+  check(surv.pins.length === 0, "confirming did not remove it");
+
+  /* A pin you did not name has no word under it. It used to draw the name of its
+     *kind*, and the first kind in the list is called CASH — so every pin anybody
+     ever dropped said CASH, including the ones with a name typed into them. */
+  check(!/q\.name \|\| spec\.name/.test(hudSrc),
+        "an unnamed pin is still labelled with the name of its kind");
+
+  console.log("  chartrail  " + toggles.length + " filters, a pin and a waypoint " +
+              "· arm, tap, then name it and pick its colour · nothing " +
+              "is placed until you answer · removing one takes arming and a " +
+              "check mark");
 }
 
 // ── what was said is written down ────────────────────────────────────────
