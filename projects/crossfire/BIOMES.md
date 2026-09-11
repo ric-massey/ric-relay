@@ -207,6 +207,22 @@ Measured over twelve thousand sites across six sectors:
 
 The two rare ones are the two rarest, which is the whole of Ric's instruction.
 
+**And the Empty is empty.** Not "almost" — the first version was a set of small
+multipliers, 0.04 of the rock and a twentieth of the traffic, which is a thin
+scattering of everything rather than an absence, and a thin scattering reads as an
+ordinary quiet stretch. `nothing: true` is a hard switch on the region rather than
+a multiplier, because a floor elsewhere in the generator can quietly turn a zero
+back into a trickle — two of them already did, since the well roll and the gate
+roll both clamp abundance to a minimum so that a "SEALED" world still has gates.
+Nothing multiplied by anything is still something when somebody puts a `Math.max`
+in the way.
+
+Measured: **zero objects in the entire streamed sector** — rocks, wells, worlds,
+stations, traffic, hulks, caches, clouds, fields, gates, wrecks, sentries — across
+forty seconds of flat-out flying. The landmarks are deliberately outside the
+switch: an authored thing alone in an ocean of nothing is the best possible use of
+an ocean of nothing.
+
 **Two of them change a rule rather than a quantity**, which is the test this
 document sets. The **murk** cuts the scan to a third of its range, so you fly it by
 eye and a scanner build is worth nothing there. The **rime** is small ice bodies as

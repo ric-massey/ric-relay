@@ -4907,8 +4907,9 @@
     const R = seeded(chunkSeed(lx * 3571 + 11, ly * 51043 + 29) ^ 0x6d2b79f5);
     const roll = R();
     let out = null;
-    if (roll < 0.55 * Math.max(0.05,
-          abund("planets", (lx + 0.5) * WORLD_CELL, (ly + 0.5) * WORLD_CELL))) {
+    const wcx = (lx + 0.5) * WORLD_CELL, wcy = (ly + 0.5) * WORLD_CELL;
+    if (regionOf(wcx, wcy).nothing) { worldCache.set(key, null); return null; }
+    if (roll < 0.55 * Math.max(0.05, abund("planets", wcx, wcy))) {
       // The radius first, because the box it may stand in depends on it.
       const t = Math.pow(R(), 2.2);
       const r = Math.round(340 * Math.pow(10.6, t));
@@ -5966,9 +5967,23 @@
        no label — and it is one of the two rarest things in the galaxy, because
        the whole effect depends on hours of ordinary space first. */
     { key: "open", name: "THE LONG EMPTY", colour: "#4a5266", weight: 0.5,
-      rocks: 0.04, style: "rough", scan: 1, traffic: 0.05, ice: 1,
-      d: { wells: 0.1, planets: 0.15, wrecks: 0.08, gates: 0.4, stations: 0.1,
-           nebulae: 0.12, fields: 0.02, caches: 0.15 } }
+      /* **Nothing.** Not "almost nothing" — the first version of this was a set
+         of small multipliers, 0.04 of the rock and a twentieth of the traffic,
+         which is a thin scattering of everything rather than an absence. A thin
+         scattering reads as an ordinary quiet stretch; the thing that makes
+         somebody wonder whether the generator has broken is finding *not one
+         single object* for six minutes.
+
+         `nothing` is a hard switch rather than a multiplier, because a floor
+         somewhere else in the generator can quietly turn a zero back into a
+         trickle — two of them already did: the well roll and the gate roll both
+         clamp the abundance to a minimum of 0.05 so that a "SEALED" world still
+         has gates. Nothing multiplied by anything is still something if somebody
+         puts a `Math.max` in the way. */
+      nothing: true,
+      rocks: 0, style: "rough", scan: 1, traffic: 0, ice: 1,
+      d: { wells: 0, planets: 0, wrecks: 0, gates: 0, stations: 0,
+           nebulae: 0, fields: 0, caches: 0 } }
   ];
   /* **How long it takes to cross one.** Ric's number is five to twenty minutes,
      and at cruise that is 170,000 to 690,000 units — so a region cell is 200,000
@@ -6648,6 +6663,12 @@
        another, which is not what a border looks like from the cockpit. */
     const mx = ox + CHUNK / 2, my = oy + CHUNK / 2;
     const ab = key => abund(key, mx, my);
+    /* Some places have nothing in them at all. One check rather than trusting a
+       dozen multipliers to be zero — see `nothing` on the region table. The
+       landmarks are deliberately outside this: they are placed on their own
+       ladder and an authored thing sitting alone in the middle of an ocean of
+       nothing is the best possible use of an ocean of nothing. */
+    const barren = !!regionOf(mx, my).nothing;
 
     // Where you start is quiet: an opening spawn inside a well is a death you
     // could not have avoided, and the first thing this mode asks you to do is
@@ -6666,7 +6687,20 @@
                        tx: exit.ax, ty: exit.ay });
     }
 
-    if (!home) {
+    /* `if (home)` first, and that ordering is a bug I wrote and then found by
+       counting. It used to read `if (!home) { ...everything... } else { the home
+       station }`, and adding `&& !barren` to the front of it sent every empty
+       chunk down the *else* — so the emptiest region in the galaxy came out with
+       one copy of the home station in every chunk. Twenty-five of them, one per
+       loaded chunk, which is exactly the shape of number that tells you what
+       happened. */
+    if (home) {
+      /* The first station is given rather than found. The mode's opening move is
+         "go and look", and it should not be "go and look for the shop" — seeing
+         one early is also what teaches that salvage is worth picking up at all. */
+      out.stations.push({ x: HOME_STATION.x, y: HOME_STATION.y, r: 132,
+                          phase: 0, home: true });
+    } else if (!barren) {
       /* Roughly a sixth of chunks carry a well, where it used to be three in
          five. They were dense enough to read as scenery you steer around all
          day; a hazard you meet constantly is terrain, and terrain does not
@@ -6783,13 +6817,6 @@
                             n: Math.round(rnd(10, 16 + deep * 14)) });
         }
       }
-    } else {
-      /* The first station is given rather than found. The mode's opening move
-         is "go and look", and it should not be "go and look for the shop" —
-         seeing one early is also what teaches that salvage is worth picking up
-         at all. */
-      out.stations.push({ x: HOME_STATION.x, y: HOME_STATION.y, r: 132,
-                          phase: 0, home: true });
     }
 
     const lm = surv.landmarkAt.get(chunkKey(cx, cy));
@@ -6832,7 +6859,12 @@
     } else if (site.key === "coil") {
       // Both ends, so the coil's gate goes back the way every other one does.
       const L = coilLink(site);
-      out.gates.push({ x: L.ax, y: L.ay, phase: L.pa, tx: L.bx, ty: L.by });
+      // Asked about where the mouth actually is, not about the middle of a
+      // 48,000-unit lattice cell: a link can reach from ordinary space into an
+      // empty one, and nothing goes in there.
+      if (!regionOf(L.ax, L.ay).nothing) {
+        out.gates.push({ x: L.ax, y: L.ay, phase: L.pa, tx: L.bx, ty: L.by });
+      }
     } else if (site.key === "beacon") {
       out.wrecks.push({ x: site.x, y: site.y, a: R() * Math.PI * 2, spin: 0.02,
                         size: 2.2, beacon: true });
@@ -11408,6 +11440,7 @@
        start get a quarter of the usual chance: somebody docking and leaving every
        so often, rather than a rush hour you spawn into. */
     const busy = abund("traffic", ox + CHUNK / 2, oy + CHUNK / 2);
+    if (!busy) return;                // nobody flies through an empty region
     const atHome = Math.abs(cx) <= 2 && Math.abs(cy) <= 2;
     if (R() > (0.34 * near + 0.012) * busy * (atHome ? 0.25 : 1)) return;
 

@@ -7124,6 +7124,59 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
         "the longest unbroken crossing is " + Math.round(longest / 1000) + "k units, " +
         (longest / 575 / 60).toFixed(1) + " minutes — a region has to be a place");
 
+  /* ── literally nothing ───────────────────────────────────────────────────
+     Not "almost nothing". A thin scattering of everything reads as an ordinary
+     quiet stretch; the thing that makes somebody wonder whether the generator has
+     broken is finding *not one single object* for six minutes.
+
+     Counted as a total over everything the sector streams, because the failure
+     this catches is never the one you predicted. The first version of the hard
+     switch sent every empty chunk down the `else` of `if (!home)` — which is the
+     branch that builds the home station — so the emptiest region in the galaxy
+     came out with twenty-five copies of it, one per loaded chunk. No multiplier
+     was wrong; the control flow was. */
+  let empty = null;
+  for (let j = -14; j <= 14 && !empty; j++) {
+    for (let i = -14; i <= 14 && !empty; i++) {
+      const x = i * 200000 + 90000, y = j * 200000 + 90000;
+      if (cf.regionProbe(x, y).key === "open") empty = { x, y };
+    }
+  }
+  check(!!empty, "no empty region anywhere in a 29x29 block of the lattice");
+  if (empty) {
+    const surv2 = cf.survey();
+    const me2 = cf.live().ships[0];
+    me2.x = empty.x; me2.y = empty.y; me2.vx = me2.vy = 0;
+    for (let i = 0; i < 10; i++) {
+      me2.invuln = 9999; surv2.water = 9e5; surv2.food = 9e5;
+      now += 1000 / 60; cf.step();
+    }
+    const total = () => {
+      const lvv = cf.live();
+      return lvv.rocks.length + lvv.hazards.length + surv2.planets.length +
+             surv2.stations.length + surv2.traffic.length + surv2.hulks.length +
+             surv2.caches.length + surv2.nebulae.length + surv2.fields.length +
+             surv2.gates.length + surv2.wrecks.length + surv2.drones.length;
+    };
+    check(total() === 0,
+          "an empty region has " + total() + " things in it — it is supposed to " +
+          "have none at all");
+    // And it stays empty while you cross it, which is where the streamer gets to
+    // have its own opinion.
+    cf.hold("KeyW", true);
+    let worst = 0;
+    for (let i = 0; i < 1800; i++) {
+      me2.invuln = 9999; surv2.water = 9e5; surv2.food = 9e5;
+      now += 1000 / 60; cf.step();
+      if (i % 120 === 0 && cf.regionProbe(me2.x, me2.y).key === "open") {
+        worst = Math.max(worst, total());
+      }
+    }
+    cf.hold("KeyW", false);
+    check(worst === 0,
+          "crossing an empty region turned up " + worst + " things");
+  }
+
   /* The rules really do differ. Two regions of different kinds must disagree
      about what is in them, or the layer is a colour scheme. */
   /* Over a block of the lattice rather than along a line, for the same reason
@@ -7137,12 +7190,13 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
       byKey[r.key] = r;
     }
   }
-  const belt = byKey.belt, empty = byKey.open, murk = byKey.murk, rime = byKey.rime;
-  check(!!belt && !!empty, "could not find a belt and an empty to compare");
-  if (belt && empty) {
-    check(belt.rocks > empty.rocks * 8,
+  const belt = byKey.belt, barren = byKey.open, murk = byKey.murk, rime = byKey.rime;
+  check(!!belt && !!barren, "could not find a belt and an empty to compare");
+  if (belt && barren) {
+    check(belt.rocks > 0.4 && barren.rocks === 0,
           "a belt and an empty have nearly the same amount of rock in them");
-    check(empty.traffic < 0.2, "the Empty has traffic in it");
+    check(barren.traffic === 0, "the Empty has traffic in it");
+    check(barren.nothing === true, "the Empty is not flagged as empty");
   }
   // Two of them change a *rule* rather than a quantity, which is the whole point.
   if (murk) check(murk.scan < 0.6, "the murk does not shorten the scan");
