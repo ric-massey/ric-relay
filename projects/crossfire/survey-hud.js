@@ -95,7 +95,14 @@
      disagree again. */
   const freshChart = () =>
     ({ x: 0, y: 0, scale: 0.0232, follow: true, pin: 0, jump: false,
-       mark: false });
+       mark: false,
+       // Armed by the PIN button; the next tap on the map places one.
+       pinning: false,
+       /* Which kinds of mark are turned off. An hour into a sector the chart has
+          several hundred things on it and most of them are not what you are
+          looking for — turning a kind off is the difference between a map and a
+          record of everything that has ever happened. */
+       hide: {} });
   const freshAlmanac = () => ({ scroll: 0, pick: 0, open: -1 });
 
   let chart = freshChart();
@@ -919,6 +926,7 @@
     for (const q of (st.known || [])) {
       const spec = CHART_MARKS[q.k];
       if (!spec) continue;
+      if (chart.hide[q.k]) continue;          // turned off in the rail
       /* Worlds and wells go on the panel now as well as the full chart. They
          were filtered out of it — only stations, gates and parts were "things
          you navigate by" — which was written when a planet was 190 units across
@@ -1830,8 +1838,19 @@
        storage meant closing the map, flying, and pressing another key. Its own
        three buttons moved up a row and the strip took the bottom, so the map is
        a page you can leave the way you leave every other one. */
+    /* The map gives up a column on the right rather than a band at the bottom.
+       Everything that decides *what the map does* lives in it — the filters, the
+       two things you can place, the zoom — which is the difference between a map
+       with controls and a map with a control panel underneath it that you have to
+       look away from the map to read.
+
+       It also means the map is as tall as the page, which on a phone held
+       sideways is the whole of the screen. */
+    const railW = Math.min(230, Math.max(170, SCREEN_W * 0.17));
     const view = { x: PAGE.EDGE, y: PAGE.TOP,
-                   w: SCREEN_W - PAGE.EDGE * 2, h: SCREEN_H - PAGE.TOP - 162 };
+                   w: SCREEN_W - PAGE.EDGE * 2 - railW - PAGE.GUTTER,
+                   h: SCREEN_H - PAGE.TOP - 26 };
+    const rail = { x: view.x + view.w + PAGE.GUTTER, w: railW };
     const mx = wx => view.x + view.w / 2 + (wx - chart.x) * chart.scale;
     const my = wy => view.y + view.h / 2 + (wy - chart.y) * chart.scale;
 
@@ -1906,100 +1925,95 @@
       }
     });
 
-    /* What the next tap on the map will do. Left and right rather than one
-       centred line and one right-aligned one on the same baseline, which is
-       what they were: the two overlapped at every zoom step. */
-    const verb = api.touchOnly ? "TAP" : "CLICK";
-    label(chart.jump
-            ? verb + " A STATION TO JUMP TO IT"
-          : chart.mark
-            ? verb + " ANYWHERE TO SET THE WAYPOINT"
-            : verb + " THE MAP TO PIN  ·  " + verb + " A PIN TO LIFT IT",
-          34, SCREEN_H - 148, SIZE.cap,
-          chart.jump ? CASH : chart.mark ? WAYPOINT : VIOLET_LOW, "left", 0.8);
+    /* ── the rail ──────────────────────────────────────────────────────────
+       What the map does, beside the map. */
+    let ry = view.y;
 
-    /* Which step you are on, and how wide the view actually is. Zoom without a
-       readout is a control you cannot tell is working — especially at the wide
-       end, where a sector of empty space looks much the same at two scales. */
+    // What the next tap will leave, said once and in the colour of the thing.
+    const verb = api.touchOnly ? "TAP" : "CLICK";
+    const armed = chart.jump ? "jump" : chart.mark ? "mark" : chart.pinning ? "pin" : "";
+    label(armed === "jump" ? verb + " A STATION"
+        : armed === "mark" ? verb + " ANYWHERE"
+        : armed === "pin"  ? verb + " ANYWHERE"
+        : verb + " A PIN TO LIFT IT",
+          rail.x, ry + 6, SIZE.cap,
+          armed === "jump" ? CASH : armed === "mark" ? WAYPOINT
+        : armed === "pin" ? VIOLET : VIOLET_LOW, "left", 0.85, "0.06em");
+    ry += 20;
+
+    /* The two things you can put on the map. Each is armed by its own button and
+       placed by the next tap — which is one gesture, learned once, and the same
+       for both. A waypoint replaces itself, because there is only ever one. */
+    button(chart.pinning ? "CANCEL" : "PIN  \u25b8",
+           rail.x + rail.w / 2, ry + 19, rail.w, 38,
+           chart.pinning ? WARN : VIOLET,
+           () => { chart.pinning = !chart.pinning; chart.mark = false; chart.jump = false; },
+           chart.pinning);
+    ry += 46;
+    button(chart.mark ? "CANCEL" : st.waypoint ? "MOVE WAYPOINT" : "WAYPOINT  \u25b8",
+           rail.x + rail.w / 2, ry + 19, rail.w, 38,
+           chart.mark ? WARN : WAYPOINT,
+           () => { chart.mark = !chart.mark; chart.pinning = false; chart.jump = false; },
+           chart.mark);
+    ry += 46;
+    if (st.waypoint && !chart.mark) {
+      button("CLEAR WAYPOINT", rail.x + rail.w / 2, ry + 16, rail.w, 32,
+             VIOLET_DIM, () => { if (st.onWaypoint) st.onWaypoint(null); });
+      ry += 40;
+    }
+    if (canJump) {
+      button(chart.jump ? "CANCEL" : "WORMHOLE  \u25b8",
+             rail.x + rail.w / 2, ry + 19, rail.w, 38,
+             chart.jump ? WARN : CASH,
+             () => { chart.jump = !chart.jump; chart.mark = false; chart.pinning = false; },
+             chart.jump);
+      ry += 46;
+    }
+
+    /* ── the filters ───────────────────────────────────────────────────────
+       An hour into a sector the chart has several hundred things on it and most
+       of them are not what you are looking for. Turning a kind off is the
+       difference between a map and a record of everything that has ever happened.
+
+       One row per kind, in the kind's own colour and with its own glyph, so the
+       list and the map say the same thing. */
+    ry += 6;
+    const kinds = Object.keys(CHART_MARKS);
+    const filtH = PAGE.HEAD + kinds.length * 22 + 14;
+    panel(rail.x, ry, rail.w, filtH, VIOLET, "SHOW", "");
+    kinds.forEach((k, i) => {
+      const spec = CHART_MARKS[k];
+      const on = !chart.hide[k];
+      const fy = ry + PAGE.HEAD + 6 + i * 22;
+      ctx.save();
+      ctx.globalAlpha = on ? 1 : 0.3;
+      ctx.strokeStyle = spec.colour;
+      ctx.fillStyle = spec.colour;
+      ctx.lineWidth = 1.2;
+      markGlyph(ctx, k, rail.x + PAGE.PAD + 5, fy - 4, 5);
+      ctx.restore();
+      fitText(spec.name, rail.x + PAGE.PAD + 20, fy, SIZE.cap, spec.colour,
+              "left", on ? 0.95 : 0.35, rail.w - 80, "0.04em");
+      label(on ? "ON" : "OFF", rail.x + rail.w - PAGE.PAD, fy, SIZE.cap,
+            on ? CASH_DIM : VIOLET_LOW, "right", on ? 0.85 : 0.5);
+      tap({ x: rail.x, y: fy - 16, w: rail.w, h: 22,
+            act: () => { chart.hide[k] = !chart.hide[k]; } });
+    });
+    ry += filtH + 8;
+
+    // Zoom, and how wide the view is, under the filters.
+    button("\u2212", rail.x + 26, ry + 17, 44, 34, VIOLET, () => zoomChart(-1));
+    button("+", rail.x + 76, ry + 17, 44, 34, VIOLET, () => zoomChart(1));
+    button("RECENTRE", rail.x + rail.w - 62, ry + 17, 112, 34, VIOLET,
+           () => HUD.chartOpened(st));
+    ry += 42;
     const step = ZOOMS.reduce((a, z, k) =>
       Math.abs(Math.log(z / chart.scale)) < Math.abs(Math.log(ZOOMS[a] / chart.scale))
         ? k : a, 0);
-    label("ZOOM " + (step + 1) + "/" + ZOOMS.length + "   ·   " +
-          fmtCells(Math.round(SCREEN_W / chart.scale)) + " UNITS ACROSS",
-          SCREEN_W - 34, SCREEN_H - 148, SIZE.cap, VIOLET_DIM, "right", 0.8);
+    fitText(fmtCells(Math.round(SCREEN_W / chart.scale)) + " ACROSS  \u00b7  " +
+            (step + 1) + "/" + ZOOMS.length,
+            rail.x, ry + 8, SIZE.cap, VIOLET_DIM, "left", 0.7, rail.w);
 
-    /* The palette. Which kind of note the next tap leaves — a row to itself, so
-       nothing is drawn through it and nothing steals its taps, and on the page's
-       own six columns so it lines up with the map above it rather than floating
-       centred in the middle of nowhere. */
-    const py = SCREEN_H - 138;
-    PIN_KINDS.forEach((k, i) => {
-      const on = i === chart.pin && !chart.jump;
-      const c = COL(PIN_KINDS.length, i);
-      const bx = c.x, pw = c.w;
-      ctx.save();
-      ctx.globalAlpha = chart.jump ? 0.35 : 1;
-      ctx.fillStyle = k.colour;
-      ctx.globalAlpha *= on ? 0.20 : 0.06;
-      ctx.fillRect(bx, py, pw, 34);
-      ctx.strokeStyle = k.colour;
-      ctx.globalAlpha = (chart.jump ? 0.35 : 1) * (on ? 1 : 0.4);
-      ctx.lineWidth = on ? 2 : 1;
-      ctx.strokeRect(bx, py, pw, 34);
-      ctx.restore();
-      fitText(k.name, bx + pw / 2, py + 22, SIZE.cap, k.colour, "center",
-              (chart.jump ? 0.35 : 1) * (on ? 1 : 0.6), pw - 12);
-      tap({ x: bx, y: py, w: pw, h: 34,
-                   act: () => { chart.pin = i; chart.jump = false; } });
-    });
-
-    /* Below the rule: the buttons, each with its own stretch of the line. The
-       zoom pair and RECENTRE used to sit on top of the palette's first two
-       swatches, and CLOSE on top of its last — and taps go to whatever was
-       drawn last, so those pin kinds could not be chosen on a phone at all. */
-    if (api.touchOnly) {
-      // On the row above the navigation strip, with the chart's own actions —
-      // the strip owns the bottom line on every page now, this one included.
-      button("−", 60, SCREEN_H - 74, 46, 38, VIOLET, () => zoomChart(-1));
-      button("+", 114, SCREEN_H - 74, 46, 38, VIOLET, () => zoomChart(1));
-      button("RECENTRE", 220, SCREEN_H - 74, 140, 38, VIOLET,
-             () => HUD.chartOpened(st));
-    }
-    /* The manmade wormhole, which is what the yard was for. Six parts carried
-       home for a reward that was wired up in the engine and never reached the
-       interface — `onJump` existed, nothing called it. It arms here, and the
-       next tap on a charted station opens the mouth. */
-    /* Three buttons share the span between the footer on the left — or the zoom
-       cluster, on a phone — and CLOSE on the right, which is 400 to 775. All
-       three are optional and any combination can be up at once, so the places are
-       fixed rather than packed: a button that moves depending on what else is
-       there is a button you have to look for. */
-    const actY = SCREEN_H - 74;
-    /* The keys, on the actions row rather than the footer — the footer line is
-       the navigation strip's now. On a phone this row holds the zoom cluster
-       instead, and a phone has no keys to name. */
-    if (!api.touchOnly) {
-      label("ARROWS PAN  ·  ± ZOOM  ·  C", PAGE.EDGE, actY + 6, SIZE.cap,
-            VIOLET_LOW, "left", 0.7);
-    }
-    if (st.waypoint && !chart.mark) {
-      button("CLEAR", 450, actY, 96, 38, VIOLET_DIM,
-                    () => { if (st.onWaypoint) st.onWaypoint(null); });
-    }
-    /* Somewhere to go. Pins are notes and there can be two hundred of them; a
-       waypoint is the one place you have decided on, and the flight HUD points
-       at it. Armed the same way the wormhole is, because that gesture is already
-       learned by the time anyone has a wormhole. */
-    button(chart.mark ? "CANCEL" : st.waypoint ? "MOVE  ▸" : "WAYPOINT  ▸",
-                  560, actY, 130, 38, chart.mark ? WARN : WAYPOINT,
-                  () => { chart.mark = !chart.mark; chart.jump = false; },
-                  chart.mark);
-    if (canJump) {
-      button(chart.jump ? "CANCEL" : "WORMHOLE  ▸",
-                    700, actY, 140, 38, chart.jump ? WARN : CASH,
-                    () => { chart.jump = !chart.jump; chart.mark = false; },
-                    chart.jump);
-    }
     pageNav(st, "chart");
     closeButton(st.onClose || (() => {}));
   };
@@ -2015,6 +2029,14 @@
       if (st && st.onWaypoint) st.onWaypoint(wx, wy);
       return;
     }
+    /* Placing a pin is armed by the PIN button, the same as the waypoint — the
+       map used to drop one on any tap at all, so panning with a finger left a
+       trail of them and every press was a decision you had not made. Tapping an
+       existing pin still lifts it, armed or not, because an eraser mode for one
+       gesture would be a mode too many. */
+    if (st && st.onPinNear && st.onPinNear(wx, wy, snap)) return;
+    if (!chart.pinning) return;
+    chart.pinning = false;
     if (st && st.onPin) st.onPin(wx, wy, PIN_KINDS[chart.pin].key, snap);
   };
   HUD.chartJumpArm = function (on) { chart.jump = !!on; };

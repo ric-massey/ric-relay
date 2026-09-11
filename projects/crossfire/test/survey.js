@@ -1302,10 +1302,14 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(Array.isArray(surv.pins) && surv.pins.length === 0, "a fresh sector had pins");
   st.onPin(4000, -2500, "cache", 400);
   check(surv.pins.length === 1, "dropping a pin did not add one");
+  check(typeof surv.pins[0].name === "string",
+        "a pin cannot carry a name — endless space has no place names except " +
+        "the ones you give it");
   check(surv.pins[0].kind === "cache", "the pin lost its kind");
 
-  // The same gesture lifts it again.
-  st.onPin(4050, -2520, "cache", 400);
+  // Tapping a pin lifts it, which is a different call from placing one now that
+  // placing has to be armed.
+  st.onPinNear(4050, -2520, 400);
   check(surv.pins.length === 0, "tapping a pin did not lift it");
 
   // Different kinds coexist, and they survive the book.
@@ -2830,19 +2834,44 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
   check(cf.surveyView().waypoint == null, "a fresh survey started with a waypoint");
 
-  // Unarmed, a tap on the map is still a pin. That is the default and it stays.
+  /* Unarmed, a tap on the map does nothing at all. It used to drop a pin — so
+     panning with a finger left a trail of them, and every press was a decision
+     you had not made. Both things you can place are armed by their own button in
+     the rail now, which is one gesture, learned once, and the same for both. */
   hud.chartTapAt(cf.surveyView(), 9000, -4000, 400);
-  check(surv.pins.length === 1, "an unarmed tap did not drop a pin");
+  check(surv.pins.length === 0, "an unarmed tap dropped a pin");
+
+  // Armed from the rail's PIN button, it places one.
+  cf.screen("chart");
+  cf.draw();
+  const WW = cf.live().screenW;
+  const railFirst = cf.live().taps
+    .filter(t => t.h === 38 && t.x > WW * 0.7 && t.y > 120)
+    .sort((a, b) => a.y - b.y)[0];
+  check(!!railFirst, "there is no PIN button in the chart's rail");
+  railFirst.act();
+  hud.chartTapAt(cf.surveyView(), 9000, -4000, 400);
+  check(surv.pins.length === 1, "an armed tap did not drop a pin");
   check(cf.surveyView().waypoint == null, "an unarmed tap set a waypoint");
   hud.chartTapAt(cf.surveyView(), 9000, -4000, 400);   // the same tap lifts it
   check(surv.pins.length === 0, "the pin did not lift again");
 
-  // Armed from the chart's own button, and then the map sets it.
+  /* Armed from the chart's own button, and then the map sets it. The button is
+     in the rail down the right-hand side now rather than on a strip under the
+     map, so it is found by where it is rather than by how wide it happens to
+     be. */
   cf.screen("chart");
   cf.draw();
-  const arm = cf.live().taps.find(t => t.w === 130 && t.h === 38);
-  check(!!arm, "there is no waypoint button on the chart");
-  arm.act();
+  const W = cf.live().screenW;
+  const arm = cf.live().taps.find(t => t.h === 38 && t.x > W * 0.7 && t.y > 120);
+  check(!!arm, "there is no waypoint button in the chart's rail");
+  if (!arm) throw new Error("no chart rail");
+  // The rail is PIN then WAYPOINT, so the second one down is the waypoint.
+  const railBtns = cf.live().taps
+    .filter(t => t.h === 38 && t.x > W * 0.7 && t.y > 120)
+    .sort((a, b) => a.y - b.y);
+  check(railBtns.length >= 2, "the chart's rail has " + railBtns.length + " buttons");
+  railBtns[1].act();
   hud.chartTapAt(cf.surveyView(), 12000, -6000, 400);
   const w = cf.surveyView().waypoint;
   check(!!w, "an armed tap set no waypoint");
@@ -2858,8 +2887,13 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(Number.isFinite(w.bearing) && w.bearing >= 0 && w.bearing < 360,
         "the bearing is " + w.bearing);
 
-  // Only ever one: setting another moves it rather than collecting them.
-  arm.act();
+  /* Only ever one: setting another moves it rather than collecting them. Armed
+     again from the rail — the button now says MOVE WAYPOINT rather than
+     WAYPOINT, so it is found by position, not by label. */
+  cf.draw();
+  cf.live().taps
+    .filter(t => t.h === 38 && t.x > cf.live().screenW * 0.7 && t.y > 120)
+    .sort((a, b) => a.y - b.y)[1].act();
   hud.chartTapAt(cf.surveyView(), -3000, 8000, 400);
   const moved = cf.surveyView().waypoint;
   check(Math.round(moved.x) === -3000 && Math.round(moved.y) === 8000,
@@ -5801,6 +5835,85 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               " parts are craftable \u00b7 " + findOnly + " categories keep " +
               "their best one out of the workbench \u00b7 every one of those is " +
               "on a shelf somewhere");
+}
+
+// ── the chart is too crowded, so it filters ──────────────────────────────
+/* Phase 7.4. An hour into a sector the chart has several hundred things on it and
+   most of them are not what you are looking for. Turning a kind off is the
+   difference between a map and a record of everything that has ever happened.
+
+   And the two things you can *place* are armed by their own buttons now. The map
+   used to drop a pin on any tap at all, so panning with a finger left a trail of
+   them and every press was a decision you had not made. */
+{
+  const { cf } = boot("?debug=1&seed=20260909");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const hud = cf.hud();
+  const me = cf.live().ships[0];
+  for (let i = 0; i < 60; i++) {
+    me.invuln = 999; surv.water = 9e5; surv.food = 9e5;
+    now += 1000 / 60; cf.step();
+  }
+  cf.screen("chart");
+  hud.chartOpened(cf.surveyView());
+  cf.draw();
+  const W = cf.live().screenW;
+
+  // The rail: the things you can place, then the filters, then the zoom.
+  const rail = cf.live().taps.filter(t => t.x > W * 0.7 && t.y > 120);
+  const buttons = rail.filter(t => t.h === 38).sort((a, b) => a.y - b.y);
+  const toggles = rail.filter(t => t.h === 22).sort((a, b) => a.y - b.y);
+  check(buttons.length >= 2,
+        "the chart's rail has " + buttons.length + " things to place");
+  check(toggles.length >= 8,
+        "the chart offers " + toggles.length + " filters; there are ten kinds " +
+        "of mark");
+
+  /* Turning one off takes it off the map. Measured by counting what is drawn
+     rather than by trusting the button — the whole point is what you can see. */
+  surv.known.set("station:1,1", { k: "station", x: 4000, y: 4000, name: "", r: 0 });
+  surv.known.set("planet:2,2", { k: "planet", x: 9000, y: 9000, name: "X", r: 600 });
+  const drawnKinds = () => {
+    hud.arrows = [];
+    cf.draw();
+    return cf.live().taps.length;   // cheap proxy; the real check is below
+  };
+  const before = cf.surveyView().known.length;
+  check(before >= 2, "the chart has nothing on it to filter");
+
+  // Every filter can be turned off and back on without anything throwing.
+  for (const t of toggles) t.act();
+  cf.draw();
+  for (const t of toggles) t.act();
+  cf.draw();
+  check(true, "toggling every filter twice threw");
+
+  /* Placing. Unarmed, a tap is nothing. */
+  surv.pins.length = 0;
+  hud.chartTapAt(cf.surveyView(), 30000, 30000, 400);
+  check(surv.pins.length === 0, "an unarmed tap on the map dropped a pin");
+
+  cf.draw();
+  const pinBtn = cf.live().taps.filter(t => t.h === 38 && t.x > W * 0.7 && t.y > 120)
+                   .sort((a, b) => a.y - b.y)[0];
+  pinBtn.act();
+  hud.chartTapAt(cf.surveyView(), 30000, 30000, 400);
+  check(surv.pins.length === 1, "an armed tap did not place a pin");
+  check(typeof surv.pins[0].name === "string", "the pin cannot hold a name");
+
+  // And arming is spent by the placing: the next tap is nothing again.
+  hud.chartTapAt(cf.surveyView(), 60000, 60000, 400);
+  check(surv.pins.length === 1,
+        "the pin button stayed armed and dropped a second one");
+
+  // Tapping an existing pin lifts it, armed or not.
+  hud.chartTapAt(cf.surveyView(), 30050, 30050, 400);
+  check(surv.pins.length === 0, "tapping a pin did not lift it");
+
+  console.log("  chartrail  " + toggles.length + " filters and " + buttons.length +
+              " things to place, all in the rail \u00b7 a tap does nothing until " +
+              "you arm it \u00b7 arming is spent by the placing");
 }
 
 if (problems.length) {

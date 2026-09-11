@@ -143,6 +143,54 @@
     touch-action: none;
   }
 
+  /* The one dialogue this game has: a prompt, a field and two buttons, laid over
+     the page. Styled like everything else on the site rather than like a browser
+     prompt, and sized for a thumb. */
+  .ask {
+    position: fixed;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 70;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    min-width: min(90vw, 22rem);
+    padding: 1.1rem 1.2rem;
+    border: 1px solid var(--phosphor);
+    background: rgba(5, 5, 10, 0.97);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  }
+  .ask label {
+    color: var(--phosphor);
+    font-size: 0.95rem;
+    letter-spacing: 0.1em;
+  }
+  .ask input {
+    background: #000;
+    border: 1px solid var(--phosphor-faint);
+    color: var(--phosphor);
+    font: inherit;
+    font-size: 1rem;
+    padding: 0.6rem 0.7rem;
+  }
+  .ask input:focus { outline: none; border-color: var(--phosphor); }
+  .ask div { display: flex; gap: 0.6rem; }
+  .ask button {
+    flex: 1 1 auto;
+    background: rgba(255, 194, 51, 0.14);
+    border: 1px solid var(--phosphor);
+    color: var(--phosphor);
+    font: inherit;
+    letter-spacing: 0.08em;
+    padding: 0.7rem 0.5rem;
+    cursor: pointer;
+  }
+  .ask button.quiet {
+    background: none;
+    border-color: var(--phosphor-faint);
+    color: var(--phosphor-dim);
+  }
+
   /* ── turn it sideways ──────────────────────────────────────────────────
      A 1000x700 screen in a portrait phone is a postage stamp, and no amount of
      scaling fixes that — the picture is the wrong shape for the glass. Rather
@@ -5827,6 +5875,58 @@
     } catch (_) { /* private browsing; the run still plays, it just won't keep */ }
   }
 
+  /* ── asking for a word ────────────────────────────────────────────────────
+     The one place this game needs text out of a player. A canvas cannot take
+     typing and a phone needs its own keyboard raised, so this is a real input
+     laid over the page for as long as the question is open — the same way the
+     lobby asks for a room code.
+
+     Cancelled leaves whatever was there, which for a fresh pin is no name at all:
+     a pin without a name is still a pin. */
+  let askEl = null;
+  /* Taking an element off the page, on any DOM. `remove` is the obvious call and
+     it is also the one a minimal document does not always have — this runs under
+     a headless harness as well as a browser, and a dialogue that throws while
+     closing would take the run with it. */
+  function drop(el) {
+    if (!el) return;
+    try {
+      if (typeof el.remove === "function") el.remove();
+      else if (el.parentNode && el.parentNode.removeChild) el.parentNode.removeChild(el);
+    } catch (_) {}
+  }
+
+  function askName(prompt, value, done) {
+    drop(askEl);
+    const wrap = document.createElement("div");
+    wrap.className = "ask";
+    wrap.innerHTML =
+      '<label></label><input type="text" maxlength="24" autocomplete="off">' +
+      '<div><button type="button" data-ok>NAME IT</button>' +
+      '<button type="button" class="quiet" data-no>SKIP</button></div>';
+    wrap.querySelector("label").textContent = prompt;
+    const input = wrap.querySelector("input");
+    input.value = value || "";
+    const close = ok => {
+      const v = input.value;
+      drop(wrap);
+      askEl = null;
+      if (ok) done(v);
+    };
+    wrap.querySelector("[data-ok]").addEventListener("click", () => close(true));
+    wrap.querySelector("[data-no]").addEventListener("click", () => close(false));
+    input.addEventListener("keydown", e => {
+      // The game is listening for every key while this is open, so the input
+      // has to keep its own to itself.
+      e.stopPropagation();
+      if (e.key === "Enter") close(true);
+      if (e.key === "Escape") close(false);
+    });
+    document.body.appendChild(wrap);
+    askEl = wrap;
+    setTimeout(() => { try { input.focus(); input.select(); } catch (_) {} }, 0);
+  }
+
   /* Set by a reset and consumed by the next setup. It has to beat the URL as
      well as the book: someone who opened a `?seed=` link and then asked for a
      new world means it, and handing them the same sector back would look like
@@ -11464,14 +11564,31 @@
          the same finger-width on screen is a very different distance when the
          map is zoomed out, and the interface is the only thing that knows the
          scale. */
-      onPin: (x, y, kind, snap) => {
-        // Dropping one on top of another lifts it instead, so the same gesture
-        // both marks and unmarks and there is no eraser mode to be in.
-        const near = surv.pins.findIndex(q => dist2(q.x, q.y, x, y) < (snap || 400) ** 2);
-        if (near >= 0) surv.pins.splice(near, 1);
-        else if (surv.pins.length < 200) surv.pins.push({ x, y, kind });
+      /* Lifting one, which is a separate question from placing one now that
+         placing has to be armed by a button. Returns whether it found one to
+         lift, so the chart knows whether the tap was spent. */
+      onPinNear: (x, y, snap) => {
+        const near = surv.pins.findIndex(q =>
+          dist2(q.x, q.y, x, y) < (snap || 400) ** 2);
+        if (near < 0) return false;
+        surv.pins.splice(near, 1);
         gameSound("start");
         saveSurveyBook();
+        return true;
+      },
+      onPin: (x, y, kind, snap) => {
+        if (surv.pins.length >= 200) { gameSound("hit"); return; }
+        const pin = { x, y, kind, name: "" };
+        surv.pins.push(pin);
+        gameSound("start");
+        saveSurveyBook();
+        /* And then you name it. Endless space has no place names — the only way
+           anywhere out here gets one is if you say so, and a pin you cannot name
+           is a dot you will not remember the reason for. */
+        askName("Name this pin", "", v => {
+          pin.name = String(v || "").slice(0, 24);
+          saveSurveyBook();
+        });
       },
       manifest: BUILD.map(b => ({ key: b.key, name: b.name, clue: b.clue,
                                   where: b.where,

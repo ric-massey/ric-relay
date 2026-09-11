@@ -1510,12 +1510,34 @@ what keeps a shelf in the deep worth flying to. A game where everything is
 craftable is a game where the sector is a materials pile and going anywhere is
 optional; the only question left is how long you are willing to grind.
 
-### 7.4 The chart is too crowded  ·  *not started*
+### 7.4 The chart is too crowded  ·  **DONE**
 
 - **Filters, top right.** Turn off whatever you do not want to see.
 - **A PIN button on the right.** Click it, then click the map, and it drops a pin
   you can **name**.
 - **A WAYPOINT button that works the same way**, and only ever one waypoint.
+
+**What landed.** The map gave up a **column down the right** rather than a band
+along the bottom, and everything that decides what the map *does* lives in it —
+the filters, the two things you can place, the zoom. That is the difference
+between a map with controls and a map with a control panel underneath that you
+have to look away from the map to read. It also makes the map as tall as the page,
+which on a phone held sideways is the whole screen.
+
+**Ten filters**, one per kind of mark, each in its own colour with its own glyph
+so the list and the map say the same thing.
+
+**PIN and WAYPOINT are armed by their own buttons**, and the next tap places one.
+That is one gesture, learned once, and the same for both. It also fixes something
+that was quietly wrong: the map used to drop a pin on *any* tap, so panning with a
+finger left a trail of them and every press was a decision you had not made.
+Arming is spent by the placing. Tapping an existing pin still lifts it, armed or
+not, because an eraser mode for one gesture would be a mode too many.
+
+**And a pin can be named.** Endless space has no place names — the only way
+anywhere out here gets one is if you say so, and a pin you cannot name is a dot
+you will not remember the reason for. Naming uses the one dialogue this game has:
+a real input laid over the page, so a phone raises its own keyboard.
 
 ### 7.5 Reputation, explained  ·  *not started*
 
