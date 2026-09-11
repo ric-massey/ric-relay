@@ -314,6 +314,11 @@
      having where the browser supports it. Guarded, because it is ignored
      silently on the ones that don't rather than throwing. */
   function label(str, x, y, size, colour, align, alpha, track) {
+    str = String(str);
+    // A money string carries the mark as a sentinel; see `markedLabel`.
+    if (str.indexOf(CASH_MARK) >= 0) {
+      return markedLabel(str, x, y, size, colour, align, alpha, track);
+    }
     const ctx = api.ctx;
     ctx.save();
     ctx.globalAlpha = alpha === undefined ? 1 : alpha;
@@ -373,8 +378,84 @@
     return out;
   }
 
+  /* ── money ────────────────────────────────────────────────────────────────
+     Every number in this interface that is cash is marked as cash. There were four
+     different conventions — a bare number, a number with CASH after it, a number
+     with "cash" after it, and a number with nothing at all — so on any given page
+     you had to work out from context whether 1,450 was a price, a distance, a
+     count of rounds or a number of seconds. A currency mark answers that before
+     you have finished reading the number.
+
+     Grouped, too: 3600 and 36000 are the same shape at a glance, and 3,600 and
+     36,000 are not — and the difference between them is most of a run.
+
+     The mark is *drawn*, not typed. A character would have to exist in whatever
+     monospace font the browser picked, and the failure mode when it does not is a
+     hollow box — which is very nearly the mark itself, which is the worst possible
+     way to be wrong. So the string carries a sentinel codepoint that is never
+     rendered as text, and `label` swaps it for a path: a box with a C in it and a
+     line struck through. One glyph, the same everywhere, at any size, in any font,
+     including the one line of chatter that says what something cost. */
+  const CASH_MARK = "¤";
+  const money = n => CASH_MARK + Math.round(Number(n) || 0).toLocaleString("en-US");
+  // How wide the mark is at a given type size, gap included.
+  const markWidth = px => px * 0.82 + px * 0.14;
+
+  function cashGlyph(x, y, size, colour, alpha) {
+    const ctx = api.ctx;
+    const s = size * 0.82;
+    const top = y - s * 0.9;
+    ctx.save();
+    ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = Math.max(1, size * 0.07);
+    ctx.lineJoin = "miter";
+    // The box.
+    ctx.beginPath();
+    ctx.rect(x + s * 0.05, top, s * 0.9, s * 0.9);
+    ctx.stroke();
+    // The C inside it — an arc with its opening on the right.
+    ctx.beginPath();
+    ctx.arc(x + s * 0.52, top + s * 0.45, s * 0.24, 0.7, -0.7);
+    ctx.stroke();
+    // And struck through, corner to corner.
+    ctx.beginPath();
+    ctx.moveTo(x + s * 0.2, top + s * 0.74);
+    ctx.lineTo(x + s * 0.78, top + s * 0.16);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* A line with money in it: the text either side, and the mark drawn in the gap.
+     Alignment is computed from the whole assembled width, which is why the mark
+     cannot simply be a prefix somebody draws first — a right-aligned price has to
+     know how wide its own mark is before it knows where to start. */
+  function markedLabel(str, x, y, size, colour, align, alpha, track) {
+    const px = Math.max(16, size);
+    const gw = markWidth(px);
+    const parts = str.split(CASH_MARK);
+    const widths = parts.map(piece => (piece ? widthOf(piece, px, track) : 0));
+    const total = widths.reduce((a, b) => a + b, 0) + gw * (parts.length - 1);
+    let left = align === "right" ? x - total
+             : align === "center" ? x - total / 2 : x;
+    parts.forEach((piece, i) => {
+      if (i) { cashGlyph(left, y, px, colour, alpha); left += gw; }
+      if (piece) {
+        label(piece, left, y, px, colour, "left", alpha, track);
+        left += widths[i];
+      }
+    });
+  }
+
   function widthOf(str, size, track) {
     const ctx = api.ctx;
+    // The mark is a drawn box, not a character: measure it as one.
+    if (str.indexOf(CASH_MARK) >= 0) {
+      const parts = String(str).split(CASH_MARK);
+      const px = Math.max(16, size);
+      return parts.reduce((w, p) => w + (p ? widthOf(p, size, track) : 0), 0) +
+             markWidth(px) * (parts.length - 1);
+    }
     ctx.save();
     ctx.font = Math.max(16, size) +
       'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
@@ -1131,7 +1212,7 @@
        number pretending to be both. Cash has no ceiling; the hold is a fraction
        of one, and the fraction is the part you make decisions about. */
     label("CASH", 24, 36, SIZE.cap, CASH_DIM, "left", 0.7, "0.18em");
-    label(String(st.cash || 0), 24, 62, SIZE.head, CASH, "left");
+    label(money(st.cash), 24, 62, SIZE.head, CASH, "left");
 
     /* "STORAGE", not "hold". A hold is a part of a ship and this is the stuff in
        it, which is the thing you are actually reading — and there is a page
@@ -3065,7 +3146,8 @@
               1, 240, "0.06em");
       /* The second column says what you would be buying: how full the tank
          already is, what the part does, which tier you are on. */
-      const said = r.kind === "supply" ? r.have + "% aboard"
+      const said = r.kind === "supply" ? r.have + "% aboard  \u00b7  buys " +
+                                        r.adds + "% more"
                  : r.kind === "repair" ? r.have + " hull"
                  : r.kind === "refit" ? "tier " + r.tier + " of " + r.max +
                                         "  \u00b7  " + r.note
@@ -3074,7 +3156,7 @@
       fitText(said, full.x + PAGE.PAD + 268, y, SIZE.cap, VIOLET_DIM, "left",
               0.62, full.w - 268 - 230);
 
-      button(r.cost ? r.label + "   " + r.cost : r.label,
+      button(r.cost ? r.label + "   " + money(r.cost) : r.label,
              full.x + full.w - PAGE.PAD - 76, y - 5, 162, 26,
              afford ? r.colour : VIOLET_LOW,
              afford ? () => st.onBuyRow && st.onBuyRow(r.kind, r.key, r.frac)
@@ -3657,7 +3739,7 @@
     const others = st.others || [];
 
     pageFrame("YOUR SHIP",
-              (st.shipName || "") + "   \u00b7   " + cash + " CASH", "");
+              (st.shipName || "") + "   \u00b7   " + money(cash), "");
 
     /* The window the page scrolls inside. Everything below is drawn against a
        running `y` and clipped to this, so adding a band never has to be balanced
@@ -4022,7 +4104,7 @@
     const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
 
     pageFrame(st.atYard ? "THE JUMP GATE" : "MISSIONS",
-              done + " OF " + need + " FITTED",
+              done + " OF " + need + " PARTS FITTED",
               "");
 
     /* ── what is being built ───────────────────────────────────────────────
@@ -4062,10 +4144,21 @@
        what lets an eye track a clue back to its name across 900 pixels. */
     const listY = PAGE.TOP + headH + PAGE.STEP;
     const man = st.manifest || [];
-    panel(full.x, listY, full.w, PANEL_H(man.length), VIOLET, "THE MANIFEST",
-          finished ? "COMPLETE" : (need - done) + " TO FIND");
+    /* It says *parts*, in as many places as it takes. The page listed six names
+       and six clues and never once said what the six things were or what you were
+       supposed to do with them — so the manifest read as a set of riddles rather
+       than as a shopping list with a delivery address. */
+    panel(full.x, listY, full.w, PANEL_H(man.length + 1), VIOLET, "THE MANIFEST",
+          finished ? "ALL SIX PARTS FITTED"
+                   : (need - done) + " PARTS STILL OUT THERE");
+    fitText(finished
+              ? "every part is in. nothing left to fetch."
+              : "six parts, scattered across the sector. find one, fly it home to " +
+                "the yard, and it goes into the gate.",
+            full.x + PAGE.PAD, ROW(listY, 0) + 2, SIZE.cap, VIOLET_DIM, "left",
+            0.7, full.w - PAGE.PAD * 2);
     man.forEach((m, i) => {
-      const y = ROW(listY, i);
+      const y = ROW(listY, i + 1);
       const have = m.have, aboard = m.carrying;
       const colour = have ? CASH_DIM : aboard ? CASH : VIOLET;
       if (i % 2 === 1) {
@@ -4093,15 +4186,15 @@
        of two things you cannot have. */
     const L = st.light;
     if (finished && L) {
-      const ly = listY + PANEL_H(man.length) + PAGE.STEP;
+      const ly = listY + PANEL_H(man.length + 1) + PAGE.STEP;
       panel(full.x, ly, full.w, PANEL_H(2), ICE,
             L.have ? L.name + " \u2014 FITTED" : L.name,
             L.have ? (api.touchOnly ? "READY" : "READY  \u00b7  [R] TO RUN")
-                   : L.cost + " CASH");
+                   : money(L.cost));
       fitText(L.have ? L.does : L.blurb, full.x + PAGE.PAD, ROW(ly, 0) + 2,
               SIZE.cap, L.have ? ICE : VIOLET_DIM, "left", 0.85, full.w - 280);
       if (!L.have) {
-        button("BUILD IT   " + L.cost, full.x + full.w - PAGE.PAD - 100,
+        button("BUILD IT   " + money(L.cost), full.x + full.w - PAGE.PAD - 100,
                ly + PANEL_H(2) / 2, 200, 40, L.afford ? ICE : WARN,
                L.afford ? (st.onBuildLight || (() => {})) : null,
                false, !!L.afford);
@@ -4201,7 +4294,7 @@
                 0.9, L.w - 160, "0.08em");
         label(String(m.n), L.x + L.w - PAGE.PAD, y, SIZE.cap, m.colour, "right", 1);
       });
-      fitText("worth about " + d.worth + " cash", L.x + PAGE.PAD,
+      fitText("worth about " + money(d.worth), L.x + PAGE.PAD,
               ROW(by, carried.length), SIZE.cap, WARN, "left", 0.65,
               L.w - PAGE.PAD * 2);
     }
@@ -4368,7 +4461,7 @@
     ctx.restore();
 
     // ── the well and the market ────────────────────────────────────────────
-    label("CASH  " + (st.cash || 0), SCREEN_W / 2, 372, SIZE.val, CASH,
+    label(money(st.cash), SCREEN_W / 2, 372, SIZE.val, CASH,
           "center", 1, "0.1em");
 
     [["water", "WATER", ICE], ["food", "FOOD", AMBER_DIM]].forEach(([k, name, col], i) => {
@@ -4381,7 +4474,7 @@
       label(m.countdown > 0 ? fmtSecs(m.countdown) : fmtSecs(m.left || 0),
             x, 456, SIZE.head, m.countdown > 0 ? WARN : col, "center", 1);
       barAt(x - 90, 470, 180, 9, m.frac || 0, col, m.countdown > 0);
-      button(full ? "FULL" : "FILL  " + m.cost, x, 516, 200, 40,
+      button(full ? "FULL" : "FILL  " + money(m.cost), x, 516, 200, 40,
              full ? VIOLET_LOW : afford ? col : WARN,
              full ? null : () => st.onBuySupply && st.onBuySupply(k),
              false, !full && afford);
@@ -4503,7 +4596,7 @@
     hangar.pick = Math.max(0, Math.min(list.length - 1, hangar.pick));
 
     pageFrame("HANGAR",
-              "YOUR SHIP: " + (st.shipName || "SKIFF") + "  \u00b7  CASH  " + (st.cash || 0),
+              "YOUR SHIP: " + (st.shipName || "SKIFF") + "  \u00b7  " + money(st.cash),
               "");
 
     /* A catalogue, laid out like the almanac for the same reason the almanac is
@@ -4563,7 +4656,7 @@
               reach ? 1 : 0.45, c.w - PAGE.PAD * 2 - 8, "0.08em");
       fitText(sh.cls, c.x + PAGE.PAD, y + 96, SIZE.cap, VIOLET_LOW, "left",
               0.6, c.w * 0.5, "0.12em");
-      fitText(sh.flying ? "FLYING" : sh.owned ? "OWNED" : sh.cost + " CASH",
+      fitText(sh.flying ? "FLYING" : sh.owned ? "OWNED" : money(sh.cost),
               c.x + c.w - PAGE.PAD, y + 96, SIZE.cap,
               sh.flying ? CASH : sh.owned ? VIOLET_DIM : sh.afford ? CASH_DIM : WARN,
               "right", 0.85, c.w * 0.5);
@@ -4634,7 +4727,7 @@
     });
 
     const reach = sh.owned || sh.afford;
-    button(sh.flying ? "FLYING IT" : sh.owned ? "FLY IT" : "BUY   " + sh.cost,
+    button(sh.flying ? "FLYING IT" : sh.owned ? "FLY IT" : "BUY   " + money(sh.cost),
            SCREEN_W - PAGE.EDGE - 110, dy + detailH - 34, 200, 40,
            sh.flying ? VIOLET_LOW : reach ? CASH : WARN,
            sh.flying || !reach ? null

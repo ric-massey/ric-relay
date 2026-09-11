@@ -59,8 +59,9 @@ function stubCtx() {
     set: (t, k, v) => (t[k] = v, true)
   });
 }
-function stubEl() {
+function stubEl(id) {
   return {
+    id: id || "",
     style: { setProperty: noop, getPropertyValue: () => "", removeProperty: noop },
     classList: { add: noop, remove: noop, toggle: noop, contains: () => false },
     addEventListener: noop, removeEventListener: noop, appendChild: noop,
@@ -69,14 +70,26 @@ function stubEl() {
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 700 }),
     requestPointerLock: noop, setPointerCapture: noop, releasePointerCapture: noop,
     querySelector: () => stubEl(), querySelectorAll: () => [],
-    hidden: false, value: "", textContent: "", width: 1000, height: 700,
+    /* The lobby starts hidden in the real markup, and that matters more than it
+       looks: the keydown handler bails out early while the lobby is up, because
+       you are typing a password and a stray space must not fire a gun. A stub that
+       reported it visible made the entire keyboard path unreachable — every test
+       that needed a key used `cf.hold`, which writes the held set directly, so
+       nobody noticed the handler was never running. */
+    hidden: (id || "") === "lobby", value: "", textContent: "",
+    width: 1000, height: 700,
     dataset: {}, children: [], parentNode: null
   };
 }
 const store = {};
+/* Elements are kept rather than minted fresh on every lookup. Two lookups of the
+   same id used to hand back two different objects, so anything the game *set* on
+   an element — hidden, a value, a class — was thrown away between calls. */
+const els = {};
 const documentStub = {
-  getElementById: () => stubEl(), querySelector: () => stubEl(),
-  querySelectorAll: () => [], createElement: () => stubEl(),
+  getElementById: id => (els[id] || (els[id] = stubEl(id))),
+  querySelector: () => stubEl(),
+  querySelectorAll: () => [], createElement: tag => stubEl(tag),
   addEventListener: noop, removeEventListener: noop,
   body: stubEl(), documentElement: stubEl(),
   hidden: false, visibilityState: "visible",
@@ -90,8 +103,18 @@ function boot(search) {
 
 function bootKeepingStorage(search) {
   now = 0;
+  /* The real listeners, kept. The game binds its keyboard on `addEventListener`
+     and the stub used to throw those away — which meant the one part of input
+     handling that has actually shipped a bug (what happens to a key you are still
+     holding when the held set is cleared) was the one part no test could reach. */
+  const listeners = {};
   const windowStub = {
-    addEventListener: noop, removeEventListener: noop,
+    addEventListener: (kind, fn) => { (listeners[kind] = listeners[kind] || []).push(fn); },
+    removeEventListener: (kind, fn) => {
+      const list = listeners[kind] || [];
+      const i = list.indexOf(fn);
+      if (i >= 0) list.splice(i, 1);
+    },
     requestAnimationFrame: noop, cancelAnimationFrame: noop,
     matchMedia: () => ({ matches: false, addEventListener: noop, addListener: noop }),
     localStorage: {
@@ -138,10 +161,16 @@ function bootKeepingStorage(search) {
   // `window` inside the sandbox is the stub, not the sandbox object itself, so
   // anything the game hangs off window lands there — the same reason
   // test/campaign.js looks in both places.
+  /* Dispatch a real keyboard event at the real handler, repeat flag and all. */
+  const fire = (kind, code, repeat) => {
+    for (const fn of listeners[kind] || []) {
+      fn({ code, repeat: !!repeat, preventDefault: noop });
+    }
+  };
   const cf = windowStub.__cf || sandbox.__cf;
   assert.ok(cf && cf.start && cf.survey, "?debug=1 must expose the survey hooks");
   assert.ok(windowStub.CrossfireSurveyHUD, "the HUD module must have registered");
-  return { cf, sandbox, windowStub };
+  return { cf, sandbox, windowStub, fire, listeners };
 }
 
 
@@ -3252,30 +3281,56 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 }
 
 // ── which pages stop the clock ────────────────────────────────────────────
-/* A page that pauses the world is a page you can hide in, and the chart and the
-   storage manifest are precisely the two anyone would hide in — two tanks are
-   draining and there are things out there that move. So the world keeps running
-   behind the chart, storage, missions and the almanac, and stops at a station,
-   which is where you are docked and doing business. */
+/* A page that pauses the world is a page you can hide in, and out in space the
+   chart and the storage manifest are precisely the two anyone would hide in — two
+   tanks are draining and there are things out there that move. 5.2 needs the same
+   rule for its own reason: fitting a part takes real seconds, and a page that
+   stopped the clock would turn that cost into a loading screen.
+
+   *Parked* is the other half, and it is where the clock stops: at a station, at
+   your own yard, or sitting on somebody's world. All three are places you have
+   stopped, so the sector waits — and a station fits parts instantly anyway, so
+   the two rules never disagree.
+
+   The one page that keeps running even parked is the info card, because it is
+   asked *at* something and stopping time next to a star would be an exploit. */
 {
   const { cf } = boot("?debug=1&seed=515152");
   cf.start("survey", 1);
   const surv = cf.survey();
   const me = cf.live().ships[0];
-  const runs = (page, docked) => {
-    surv.docked = docked ? { x: 0, y: 0 } : null;
+  /* Actually flown away, not merely un-flagged. `surveyStations` recomputes
+     docked, the yard and whatever world you are resting on from your position
+     every single tick — so poking `surv.docked = null` while the ship is still
+     sitting on the home station is a line that does nothing, and the old version
+     of this test was passing because the rule used to ignore all three. */
+  /* Parked means *on the station*, found rather than assumed: the home station is
+     near the origin but not at it, so a test that parks at 0,0 is a test of open
+     space with a station in the window. */
+  now += 1000 / 60; cf.step();
+  const home = surv.stations[0];
+  check(!!home, "there is no station near the start to park at");
+  const runs = (page, parked) => {
+    if (parked) { me.x = home.x; me.y = home.y; }
+    else { me.x = 260000; me.y = -180000; }
+    me.vx = me.vy = 0;
+    now += 1000 / 60; cf.step();
+    if (parked) check(!!surv.docked, "the ship did not dock for the " + page + " check");
     cf.screen(page);
     const w0 = surv.water, x0 = me.x;
     me.vx = 200; me.vy = 0;
     for (let i = 0; i < 120; i++) { me.invuln = 3; now += 1000 / 60; cf.step(); }
     return Math.abs(me.x - x0) > 20 || (w0 - surv.water) > 1;
   };
-  for (const p of ["chart", "inventory", "missions", "almanac"]) {
-    check(runs(p, false), "the world stops behind the " + p + " page");
+  for (const p of ["chart", "inventory", "missions", "almanac", "craft"]) {
+    check(runs(p, false), "the world stops behind the " + p + " page out in space");
   }
-  for (const p of ["refit", "hangar"]) {
+  // Parked, every page stops — including the four that keep running out there.
+  for (const p of ["refit", "hangar", "craft", "inventory", "missions", "chart"]) {
     check(!runs(p, true), "the world keeps running at a station (" + p + ")");
   }
+  check(runs("lore", true),
+        "the info card stopped the clock while parked — it is the one that must not");
   check(runs("playing", false), "the world stops while you are flying it");
 
   // And a dead ship stops it whatever page is up.
@@ -6447,6 +6502,60 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   console.log("  memory     a ship you saved is named, written down, comes back " +
               "and pays once · a pirate you hurt and let go is remembered " +
               "with the damage you did and returns as itself");
+}
+
+/* ── a key you are still holding ──────────────────────────────────────────────
+   Reported from the cockpit as "I couldn't shoot until I released W and pressed it
+   again", which is the signature of a held key the game has stopped seeing.
+
+   `keys` is emptied wholesale in four places — losing focus, standing down,
+   pausing, starting a match — and a key you are physically still holding sends
+   nothing afterwards but auto-repeat events. Those used to return before the key
+   was put back into the held set, so the only cure was to let go.
+
+   Driven through the real keydown handler rather than through `cf.hold`, because
+   the bug was entirely in the ordering of two lines inside that handler and every
+   other path in the game was innocent. */
+{
+  const { cf, fire } = boot("?debug=1&seed=616161");
+  cf.start("survey", 1);
+  const lv = cf.live();
+  const me = lv.ships[0];
+  const heldNow = () => ({ th: me.input.th, f: me.input.f });
+
+  fire("keydown", "KeyW", false);
+  fire("keydown", "Space", false);
+  now += 1000 / 60; cf.step();
+  check(heldNow().th && heldNow().f, "a plain press of thrust and fire did nothing");
+
+  // Whatever clears the held set — this is what losing focus does to it.
+  cf.hold("KeyW", false);
+  cf.hold("Space", false);
+  now += 1000 / 60; cf.step();
+  check(!heldNow().th && !heldNow().f, "sanity: clearing the held set let go");
+
+  /* Your hand has not moved, so what arrives next is a repeat of both. */
+  fire("keydown", "KeyW", true);
+  fire("keydown", "Space", true);
+  now += 1000 / 60; cf.step();
+  check(heldNow().th, "thrust stayed dead through an auto-repeat");
+  check(heldNow().f, "the trigger stayed dead through an auto-repeat");
+
+  /* And a repeat is still not a press: it must never fire a menu action twice,
+     which is the reason the early return was there in the first place. */
+  cf.screen("playing");
+  fire("keydown", "KeyI", false);
+  check(cf.peek().state === "inventory", "I did not open the ship page");
+  cf.screen("playing");
+  let opens = 0;
+  for (let i = 0; i < 8; i++) {
+    fire("keydown", "KeyI", true);
+    if (cf.peek().state !== "playing") { opens++; cf.screen("playing"); }
+  }
+  check(opens === 0, "an auto-repeat fired the page open " + opens + " times");
+
+  console.log("  heldkeys   a cleared held set is restored by the repeat your hand " +
+              "is already sending · a repeat never counts as a second press");
 }
 
 if (problems.length) {

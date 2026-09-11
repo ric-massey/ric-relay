@@ -1746,8 +1746,21 @@
     if (binder.listening || SWALLOW.has(e.code) || boundKeys.has(e.code)) {
       e.preventDefault();
     }
-    if (e.repeat) return;
+    /* The held set is written *before* the auto-repeat is dropped, and that
+       ordering is the whole of a bug.
+
+       `keys` is emptied wholesale in four places — losing focus, standing down,
+       pausing, and starting a match — and a key you are still physically holding
+       sends nothing but `repeat` events after that. Those used to return before
+       `keys.add`, so the key was never put back: you were left holding something
+       the game could not see, and the only cure was to let go and press it again.
+       Which is exactly what it looked like from the cockpit — thrust or the
+       trigger dead until you released it and pressed it once more.
+
+       A repeat still does not reach `menuKey`, because that is one action per
+       press and always was. It only re-asserts what your hand is doing. */
     keys.add(e.code);
+    if (e.repeat) return;
     menuKey(e.code);
   });
   addEventListener("keyup", e => keys.delete(e.code));
@@ -7572,7 +7585,8 @@
           // Worth about a hauler, in the other direction. Being able to work it
           // off is what keeps this a state rather than a verdict on the save.
           addRep(t.faction, REP.RESCUE);
-          chatter("They made it. " + DISTRESS_PAY + " cash, and their thanks.", CASH);
+          chatter("They made it — that distress call is under way again. " +
+                  money(DISTRESS_PAY) + " and their thanks.", CASH);
           gameSound("win", t.x);
           saveSurveyBook();
         }
@@ -8314,7 +8328,7 @@
     surv[kind] = Math.min(full, have + take * full);
     gameSound("start");
     chatter((kind === "water" ? "Water" : "Food") + " aboard \u2014 " +
-            Math.round(take * 100) + "% for " + cost + " cash",
+            Math.round(take * 100) + "% of the tank for " + money(cost),
             kind === "water" ? "#87d8ff" : "#ffcb42");
     saveSurveyBook();
     return true;
@@ -8368,7 +8382,7 @@
     me.hull = me.maxHull;
     surv.t.repaired = true;
     gameSound("win");
-    chatter("Hull made good \u2014 " + cost + " cash", CASH);
+    chatter("Hull made good \u2014 " + money(cost), CASH);
     saveSurveyBook();
     return true;
   }
@@ -8777,7 +8791,7 @@
     surv.cash += got;
     surv.t.sold = true;
     gameSound("win");
-    chatter(units + " units sold — " + got + " cash", CASH);
+    chatter(units + " units sold \u2014 " + money(got), CASH);
     saveSurveyBook();
     return got;
   }
@@ -9374,7 +9388,7 @@
     surv.t.watered = true;
     rememberFriend(t, "water");
     chatter("Water across. They can make the next station. " +
-            WATER_THANKS + " cash.", CASH);
+            money(WATER_THANKS) + ".", CASH);
     gameSound("win", t.x);
     saveSurveyBook();
     return true;
@@ -9976,6 +9990,13 @@
                       colour: "#ff5555", note: "nobody's, and everybody's problem",
                       long: "Nobody's. They want what you are carrying and " +
                             "everyone else wants them gone." };
+  /* Money, said the same way everywhere. The interface has its own copy of this
+     for the pages it draws; this is the one the sector speaks with. */
+  /* The same sentinel the interface draws its currency mark for — see `money` and
+     `cashGlyph` in the panel module. A line of chatter that says what something
+     cost gets the mark too, because it is the same number said out loud. */
+  const money = n => "\u00A4" + Math.round(Number(n) || 0).toLocaleString("en-US");
+
   const factionOf = k => FACTIONS.find(f => f.key === k) ||
                          (k === "pirate" ? PIRATE : UNALIGNED);
 
@@ -10285,7 +10306,7 @@
     storeAdd(key, 1);
     surv.t.refitted = true;
     gameSound("start");
-    chatter(m.name + " bought \u2014 " + m.cost + " cash. Fit it when you like.",
+    chatter(m.name + " bought \u2014 " + money(m.cost) + ". Fit it when you like.",
             CASH);
     saveSurveyBook();
     return true;
@@ -10783,7 +10804,7 @@
       if (surv.cash < sh.cost) { gameSound("hit"); return false; }
       surv.cash -= sh.cost;
       surv.owned.add(key);
-      chatter(sh.name + " bought — " + sh.cost + " cash", CASH);
+      chatter(sh.name + " bought \u2014 " + money(sh.cost), CASH);
     }
     return flyShip(key);
   }
@@ -12250,11 +12271,24 @@
         for (const [kind, name, colour] of [["water", "WATER", ICE_C],
                                             ["food", "FOOD", "#ffcb42"]]) {
           const full = kind === "water" ? WATER_FULL : foodCap();
+          /* Three slices, and only the ones that mean something. A quarter, a
+             half and a fill are priced pro rata — they always were — but every
+             slice is also clamped to the room in the tank, so on a tank that is
+             four fifths full all three of them bought the same 20% for the same
+             money and the shop read as though the small ones were a rip-off.
+
+             So a slice bigger than the room is simply not offered. What is left is
+             always cheaper than the next one up, and the last row says how much of
+             the tank you are actually buying rather than leaving you to work out
+             why FILL costs less than it did yesterday. */
+          const room = (full - surv[kind]) / full;
           for (const [frac, label] of [[0.25, "QUARTER"], [0.5, "HALF"], [1, "FILL"]]) {
+            if (frac > room + 0.001 && frac !== 1) continue;
             const cost = supplySlice(kind, frac);
             if (cost == null) continue;
+            const part = Math.round(Math.min(frac, room) * 100);
             rows.push({ kind: "supply", key: kind, name, colour, label,
-                        frac, cost,
+                        frac, cost, adds: part,
                         have: Math.round(surv[kind] / full * 100) });
           }
         }
@@ -12807,13 +12841,32 @@
      purpose and the whole of 5.2 depends on it: fitting a part takes time out in
      space, and a page that paused the clock would turn that cost into a loading
      screen you wait out rather than a risk you take. */
-  /* `lore` is live for a reason of its own: it is the only page you open *at*
-     something, usually while moving, sometimes while being pulled — so freezing
-     the world would turn "what is this" into a way to stop time next to a star. */
-  const SURVEY_LIVE_PAGES = { chart: 1, inventory: 1, missions: 1, almanac: 1,
-                              craft: 1, lore: 1 };
+  /* Every page in the mode. Two separate questions are asked of this list and
+     they used to be one, which is why both answers were wrong somewhere:
+
+       *is the sector drawn behind this page* — yes, always, for all of them. A
+       menu you cannot see past is a menu you die behind, and the pages you are
+       most likely to be sitting in are the shop and the shipyard.
+
+       *does the clock keep running* — only when you are not parked. That is the
+       rule 5.2 needs (fitting a part out in space costs real time, so a page
+       that stopped the clock would turn the cost into a loading screen) and it is
+       also the rule a player expects (a station is somewhere you stop). A station
+       fits parts instantly anyway, so the two never disagree. */
+  const SURVEY_PAGES = { chart: 1, inventory: 1, missions: 1, almanac: 1,
+                         craft: 1, lore: 1, refit: 1, hangar: 1, yard: 1,
+                         landed: 1 };
+  const surveyPage = () =>
+    !!(mode && mode.survey && surv && !surv.death && SURVEY_PAGES[state]);
+  /* Parked: at a station, at your own yard, or sitting on somebody's world. All
+     three are places you have stopped, and the sector waits for you at all three.
+     `lore` is the one page that keeps running even parked — it is asked *at*
+     something, usually while moving, sometimes while being pulled, and a card that
+     stopped time next to a star would be an exploit rather than an answer. */
+  const surveyParked = () =>
+    !!(surv && (surv.docked || surv.atYard || surv.landed));
   const surveyLive = () =>
-    mode && mode.survey && surv && !surv.death && SURVEY_LIVE_PAGES[state];
+    surveyPage() && (state === "lore" || !surveyParked());
   const worldRunning = () => state === "playing" || surveyLive() || onlineMenuOpen();
 
   function sharedMatchState() {
@@ -16082,16 +16135,21 @@
        without you and you could not see any of it, so a rock arriving while your
        storage was open was a rock that hit you out of a black screen.
 
-       So the live pages get the world drawn underneath and a ground that is very
+       So every page gets the world drawn underneath and a ground that is very
        nearly opaque over the top of it — enough to read type on, thin enough that
        an asteroid coming at you or a star you are drifting into is visible
-       through it. The pages that stop the clock stay solid, because there is
-       nothing behind them to see.
+       through it.
+
+       *Every* page, now, not only the ones that keep the clock running. The shop
+       and the shipyard were solid on the reasoning that a stopped world has
+       nothing to show — which is wrong twice over: you can still see where you
+       are parked and what is around you, and the rock that was already on its way
+       is still on its way when you close the page.
 
        The one exception is the chart: it is a map, and a map you read through an
        asteroid field is a map you squint at. */
     if (surveyHUD) surveyHUD.pageGhost = false;
-    if (surveyLive() && state !== "chart") {
+    if (surveyPage() && state !== "chart") {
       drawSurveyBehind(dt);
       if (surveyHUD) surveyHUD.pageGhost = true;
     }

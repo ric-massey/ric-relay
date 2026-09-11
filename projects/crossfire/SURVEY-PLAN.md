@@ -1736,6 +1736,70 @@ reflection, and cannot trap anything.
 
 
 
+### Four things from the cockpit  ·  **DONE**
+
+Reported while Phase 6 was in progress, and all four are the kind of thing only
+somebody actually flying it would find.
+
+**A key you were still holding stopped working.** *"I couldn't shoot until I
+released W and pressed it again."* The held-key set is emptied wholesale in four
+places — losing focus, standing down, pausing, starting a match — and a key you
+are physically still holding sends nothing afterwards but auto-repeat events. The
+handler returned on `e.repeat` *before* putting the key back, so the only cure was
+to let go. Two lines swapped. A repeat still never counts as a second press.
+
+Finding it needed a harness change worth keeping: the test stub threw away every
+listener the game registered, and reported the lobby element as *visible* — which
+makes the keydown handler bail out on its first line, because while the lobby is up
+you are typing a password and a stray space must not fire a gun. So the entire
+keyboard path was unreachable from any test, and every test that needed a key wrote
+the held set directly and never went near the handler. The stub now keeps the
+listeners, reports the lobby hidden as the real markup does, and hands back the
+*same* element for the same id twice — it used to mint a fresh one per lookup, so
+anything the game set on an element was silently discarded.
+
+**Every menu is see-through now, not only the live ones.** The shop and the
+shipyard were solid on the reasoning that a stopped world has nothing to show.
+Wrong twice over: you can still see where you are parked and what is around you,
+and the rock that was already on its way is still on its way when you close the
+page.
+
+**And the clock stops when you are parked.** At a station, at your own yard, or
+sitting on somebody's world — all three are places you have *stopped*. Out in space
+the chart, the ship page, missions and craft all keep running, which is what 5.2
+needs (fitting a part costs real seconds, and a page that froze would turn that
+cost into a loading screen) and what a player expects. A station fits parts
+instantly anyway, so the two rules never disagree. The info card is the one page
+that runs even parked: it is asked *at* something, and stopping time next to a star
+would be an exploit rather than an answer.
+
+**Money is marked as money.** There were four conventions — a bare number, a
+number with CASH after it, one with "cash" after it, and one with nothing — so you
+had to work out from context whether 1,450 was a price, a distance, a count of
+rounds or a number of seconds. Everything that takes cash now carries a currency
+mark, and the figures are grouped, because 3600 and 36000 are the same shape at a
+glance and 3,600 and 36,000 are not.
+
+The mark is **drawn, not typed**: a box with a C in it, struck through. A character
+would have to exist in whatever monospace font the browser picked, and the failure
+mode when it does not is a hollow box — which is very nearly the mark itself, which
+is the worst possible way to be wrong. So money strings carry a sentinel codepoint
+that is never rendered as text and the text layer swaps it for a path, at any size,
+in any font, including the line of chatter that says what something cost.
+
+**Half and quarter fills.** They always *were* priced pro rata — but every slice is
+also clamped to the room in the tank, so on a tank four fifths full all three
+bought the same 20% for the same money, and the small ones read as a rip-off. A
+slice bigger than the room is simply not offered any more, so what is left is
+always cheaper than the next one up, and each row says how much of the tank it
+actually buys.
+
+**And the missions page says *parts*.** It listed six names and six clues and never
+once said what the six things were or what to do with them, so the manifest read as
+a set of riddles rather than a shopping list with a delivery address.
+
+---
+
 ## At the end of Phase 7: go back to Phase 6
 
 **Read this before starting anything new.**
