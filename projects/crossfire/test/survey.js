@@ -6781,6 +6781,86 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "storage lands in the slot it was dropped on");
 }
 
+/* ── what is worth interrupting you for, and reading it afterwards ────────────
+   Survey says a great deal and it was saying all of it at the same volume from
+   any distance — a convoy unloading four sectors away, a battle ending somewhere
+   you have never been. A feed that is always talking is a feed you stop reading,
+   which costs you the three lines that actually matter.
+
+   And a notification is a line squeezed into a column and shrunk until it fits,
+   so the ones worth reading were exactly the ones that got cut. Pressing one
+   opens it. */
+{
+  const { cf } = boot("?debug=1&seed=929292");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const hud = cf.hud();
+  const me = cf.live().ships[0];
+  me.x = 0; me.y = 0;
+
+  hud.logClear();
+  hud.reset();
+
+  // About you: always said, wherever you are.
+  cf.say("Water out. You have minutes, not hours.", "#87d8ff");
+  check(hud.notes().length === 1, "a line about your own ship was not said");
+
+  // Out there and close: said.
+  cf.say("Close by", "#fff", { x: 900, y: 0 });
+  check(hud.notes().length === 2, "something happening beside you was not said");
+
+  // Out there and far: written down, never shown.
+  const before = hud.log().length;
+  cf.say("Miles away", "#fff", { x: 400000, y: 0 });
+  check(hud.notes().length === 2,
+        "something four sectors away interrupted you anyway");
+  check(hud.log().length > before, "and it was not written down either");
+  check(hud.log()[0].text.indexOf("Miles away") === 0,
+        "the far line is not at the top of the log");
+
+  // Texture: written down, never shown, whatever the distance.
+  cf.say("A convoy is unloading", "#fff", false);
+  check(hud.notes().length === 2, "a line marked as texture was announced");
+
+  /* ── pressing one opens it ─────────────────────────────────────────────── */
+  hud.reset();
+  const long = "They made it — that distress call is under way again, and they " +
+               "are telling anyone who will listen what happened out here.";
+  cf.say(long, "#fff");
+  cf.screen("playing");
+  cf.draw();
+  const box = cf.live().taps.find(t => t.note);
+  check(!!box, "a notification cannot be pressed");
+  /* Found by what it *says*, not by where it is in the stack: the sector goes on
+     talking while you read, and new lines arrive at the top. The first version of
+     this checked `notes()[0]` and was reading somebody else's line within a
+     second — which is the same mistake the interface itself was making when it
+     truncated the stack to four without caring which one was open. */
+  const mine = () => hud.notes().find(n => n.text === long);
+  check(mine() && mine().open !== true, "it started open");
+  if (box) {
+    box.act();
+    check(mine() && mine().open === true, "pressing it did not open it");
+    cf.draw();
+    // An open one does not run down under you while you are reading it — nor get
+    // pushed off the bottom by whatever happens next.
+    const left = mine().t;
+    for (let i = 0; i < 240; i++) { now += 1000 / 60; cf.step(); }
+    check(!!mine(), "it expired while it was open");
+    check(mine() && Math.abs(mine().t - left) < 0.01,
+          "its clock kept running while it was being read");
+    // And pressing it again puts it away.
+    cf.draw();
+    const again = cf.live().taps.filter(t => t.note);
+    check(again.length > 0, "an open notification cannot be pressed to close it");
+    for (const t of again) t.act();
+    check(mine() && mine().open === false, "pressing it again did not close it");
+  }
+
+  console.log("  notices    yours always · nearby said · far written down only · " +
+              "texture never said · press one to read it, press again to close");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

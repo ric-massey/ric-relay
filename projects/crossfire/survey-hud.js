@@ -287,6 +287,9 @@
     if (logLines.length > LOG_KEEP) logLines.length = LOG_KEEP;
   };
   HUD.logClear = function () { logLines = []; };
+  // The live stack, so a harness can see what was said rather than only what was
+  // written down — the two are deliberately not the same list.
+  HUD.notes = () => notes;
 
   HUD.notify = function (text, sub, colour, life) {
     if (!text) return;
@@ -297,7 +300,16 @@
     if (had) { had.t = span; had.life = span; return; }
     notes.unshift({ text: String(text), sub: sub ? String(sub) : "",
                     colour: colour || VIOLET, t: span, life: span });
-    if (notes.length > 4) notes.length = 4;
+    /* Four at a time, and the one being *read* is never the one dropped. Blind
+       truncation meant that opening a line and then having three more things
+       happen took it off the bottom of the stack mid-sentence — which is the
+       interface deciding you had finished with it. */
+    while (notes.length > 4) {
+      let cut = -1;
+      for (let i = notes.length - 1; i >= 0; i--) if (!notes[i].open) { cut = i; break; }
+      if (cut < 0) break;                 // all four are open: leave them alone
+      notes.splice(cut, 1);
+    }
   };
 
   HUD.logged = function (entry) {
@@ -538,7 +550,7 @@
       const x1 = Math.min(rect.x + rect.w, tapWindow.x + tapWindow.w);
       if (y1 - y0 < 6 || x1 - x0 < 6) return;     // nothing worth pressing
       rect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0, act: rect.act,
-               card: rect.card };
+               card: rect.card, note: rect.note };
     }
     api.addTap(rect);
   }
@@ -640,8 +652,9 @@
     st = st || {};
     HUD.arrows = [];
     if (pulse > 0) pulse = Math.max(0, pulse - (dt || 0));
-    for (const n of notes) n.t -= (dt || 0);
-    notes = notes.filter(n => n.t > 0);
+    // An open one is being read, so its clock waits. See `drawNotes`.
+    for (const n of notes) if (!n.open) n.t -= (dt || 0);
+    notes = notes.filter(n => n.t > 0 || n.open);
 
     if (st.ship) {
       if (pulse > 0) drawPulse();
@@ -1921,16 +1934,66 @@
   /* Drawn under the right-hand column, growing downward. Each line is a rule on
      its left edge and two rows of type — the same figure the logged cards used,
      because that one worked; it is only in a different corner and doing more. */
+  /* Press one to open it. Press it again to put it away.
+
+     A notification is a line squeezed into the width of a column and shrunk until
+     it fits, which is fine for "Cache open" and is a lie for anything with a
+     sentence in it — `fitText` will take type down to the 16px floor and then cut
+     it with an ellipsis, so the lines that were worth reading were exactly the
+     ones you could not. Opening one wraps it properly on a ground you can read it
+     against, and shows the detail line that the collapsed form has to abbreviate.
+
+     An open one **stops counting down**. If you pressed it to read it, having it
+     fade out from under you would be the interface taking it away mid-sentence —
+     so it holds until you close it, and its clock starts again when you do.
+     Everything below it shuffles down to make room, which is the same behaviour
+     the stack already has when a new line arrives. */
+  const NOTE_W = () => panelBox().w + 120;
+
   function drawNotes(st) {
     if (!notes.length) return;
     const { ctx } = api;
     const b = panelBox();
     const right = b.x + b.w;
+    const wide = NOTE_W();
     // Below the chart, its label and the buttons under it, whichever are there.
     let y = b.y + b.h + 30 + 30 + (st && st.atYard ? 36 : 0) + 34;
     for (const n of notes) {
-      const a = Math.min(1, n.t * 2.2) * Math.min(1, (n.life - n.t) * 6);
+      /* An open note is at full strength whatever its clock says — it is not
+         fading, it is being read. */
+      const a = n.open ? 1
+              : Math.min(1, n.t * 2.2) * Math.min(1, (n.life - n.t) * 6);
       if (a <= 0.01) { y += n.sub ? 44 : 28; continue; }
+
+      if (n.open) {
+        const lines = wrapLines(n.text, SIZE.cap, wide - 24, "0.08em");
+        const subs = n.sub ? wrapLines(n.sub, SIZE.cap, wide - 24) : [];
+        const h = 16 + lines.length * 20 + (subs.length ? subs.length * 18 + 6 : 0);
+        const x = right - wide;
+        ctx.save();
+        ctx.globalAlpha = 0.9;
+        ctx.fillStyle = INK;
+        ctx.fillRect(x, y - 18, wide, h);
+        ctx.strokeStyle = n.colour;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y - 18, wide, h);
+        ctx.restore();
+        let ly = y;
+        for (const line of lines) {
+          label(line, x + 12, ly, SIZE.cap, n.colour, "left", 1, "0.08em");
+          ly += 20;
+        }
+        if (subs.length) ly += 6;
+        for (const line of subs) {
+          label(line, x + 12, ly, SIZE.cap, VIOLET_DIM, "left", 0.85);
+          ly += 18;
+        }
+        tap({ x, y: y - 18, w: wide, h, note: true,
+              act: () => { n.open = false; } });
+        y += h + 12;
+        continue;
+      }
+
       const h = n.sub ? 40 : 24;
       ctx.save();
       ctx.globalAlpha = a * 0.9;
@@ -1940,12 +2003,17 @@
       ctx.moveTo(right, y - 14); ctx.lineTo(right, y - 14 + h);
       ctx.stroke();
       ctx.restore();
-      fitText(n.text, right - 12, y, SIZE.cap, n.colour, "right", a, b.w + 120,
+      fitText(n.text, right - 12, y, SIZE.cap, n.colour, "right", a, wide,
               "0.08em");
       if (n.sub) {
         fitText(n.sub, right - 12, y + 20, SIZE.cap, VIOLET_DIM, "right",
-                a * 0.8, b.w + 120);
+                a * 0.8, wide);
       }
+      /* The whole line is the target, out to the full width the text is allowed
+         to use — a right-aligned short line would otherwise be a two-word target
+         floating in a column of empty space. */
+      tap({ x: right - wide, y: y - 16, w: wide + 6, h: h + 4, note: true,
+            act: () => { n.open = true; } });
       y += h + 10;
     }
   }

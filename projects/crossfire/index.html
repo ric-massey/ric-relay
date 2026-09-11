@@ -3401,9 +3401,37 @@
      right, along with everything else that has just happened — three separate
      feeds in three corners was most of why the screen was never quiet. Other
      modes keep the line above the hull bar, which is the only place they have. */
-  function chatter(text, colour) {
+  /* ── what is worth interrupting you for ───────────────────────────────────
+     Survey says a great deal, and it was saying all of it at the same volume and
+     from any distance. A convoy unloading four sectors away, a battle ending
+     somewhere you have never been, a scavenger taking a wreck you could not see —
+     all of it arrived as a notification, so the stack was almost always full and
+     almost never about anything you could act on. A feed that is always talking
+     is a feed you stop reading, which costs you the three lines a year that
+     actually matter.
+
+     One rule, in one place, instead of six ad-hoc distance checks with three
+     different radii scattered through the file:
+
+       `chatter(text, colour)`              about *you* — your ship, your tanks,
+                                            your money, your parts. Always shown.
+       `chatter(text, colour, {x, y})`      about something out there. Shown only
+                                            if it happened within earshot.
+       `chatter(text, colour, false)`       texture. Written down, never shown.
+
+     Everything reaches the log either way, so nothing is lost — the ones that did
+     not interrupt you are in WHAT HAPPENED on the ship's page if you want them. */
+  const EARSHOT = 4200;      // about twice as far as anybody will talk to you
+
+  function chatter(text, colour, where) {
     if (mode && mode.survey && surveyHUD) {
-      surveyHUD.notify(text, "", colour || "#ffcb42", 6);
+      const me = ships[0];
+      const near = where === false ? false
+                 : (where && me)
+                   ? dist2(where.x, where.y, me.x, me.y) < EARSHOT * EARSHOT
+                   : true;
+      if (near) surveyHUD.notify(text, "", colour || "#ffcb42", 6);
+      else surveyHUD.logAdd(text, colour || "#ffcb42");
       return;
     }
     comms.unshift({ text, colour: colour || "#ffcb42", until: clock + 6 });
@@ -7664,11 +7692,10 @@
 
            Said out loud if you are near enough to have seen it, because an
            accident nobody mentions is indistinguishable from a despawn. */
-        if (me.alive && dist2(t.x, t.y, me.x, me.y) < (TRAFFIC_TALK * 1.6) ** 2) {
-          chatter(factionOf(t.faction).short + " " + (t.role || t.kind) +
-                  " — " + (took.name || (took.kind === "hole" ? "a well" : "a star")) +
-                  " has it.", took.kind === "hole" ? "#b79aff" : "#ffd76d");
-        }
+        chatter(factionOf(t.faction).short + " " + (t.role || t.kind) + " — " +
+                (took.name || (took.kind === "hole" ? "a well" : "a star")) +
+                " has it.",
+                took.kind === "hole" ? "#b79aff" : "#ffd76d", t);
         killTraffic(i, false, true);
         continue;
       }
@@ -7692,12 +7719,10 @@
             dist2(t.x, t.y, me.x, me.y) < TRAFFIC_TALK ** 2) {
           t.pleaded = true;
           chatter(factionOf(t.faction).short + " hauler — out of water, " +
-                  "drifting. They are asking anyone.", "#ffcb42");
+                  "drifting. They are asking anyone.", "#ffcb42", t);
         }
         if (t.doom <= 0) {
-          if (me.alive && dist2(t.x, t.y, me.x, me.y) < (TRAFFIC_TALK * 1.4) ** 2) {
-            chatter("That hauler is not answering any more.", WRECK);
-          }
+          chatter("That hauler is not answering any more.", WRECK, t);
           killTraffic(i, false);
           continue;
         }
@@ -7719,7 +7744,8 @@
           solidBounce(t, 22 * U * (shipSpec(t.hull).size || 1));
           if (!t.called && dist2(me.x, me.y, t.x, t.y) < TRAFFIC_TALK ** 2) {
             t.called = true;
-            chatter("Distress call — they are being taken apart out here.", "#ffcb42");
+            chatter("Distress call — they are being taken apart out here.",
+                    "#ffcb42", t);
           }
         } else if (!t.saved) {
           /* Saved. It pays, and then it becomes an ordinary hauler and gets on
@@ -7769,7 +7795,8 @@
           t.mark = o; t.markKind = "ship"; t.think = 3;
           if (dist2(t.x, t.y, me.x, me.y) < (TRAFFIC_TALK * 1.2) ** 2) {
             chatter(factionOf(t.faction).short + " escort breaking off \u2014 " +
-                    "they have a pirate on the convoy.", factionOf(t.faction).colour);
+                    "they have a pirate on the convoy.",
+                    factionOf(t.faction).colour, t);
           }
           break;
         }
@@ -8123,9 +8150,10 @@
       for (const key of t.cargo) moveMarket(t.mark, key, -0.3);
       t.cargo = [];
       t.delivered = (t.delivered || 0) + 1;
-      if (dist2(t.x, t.y, ships[0].x, ships[0].y) < (TRAFFIC_TALK * 1.4) ** 2) {
-        chatter(factionOf(t.faction).short + " convoy unloading.", NEBULA);
-      }
+      // Written down, not announced: a shortage easing somewhere is a fact about
+      // a price, and a price is something you look up rather than something that
+      // should interrupt you.
+      chatter(factionOf(t.faction).short + " convoy unloading.", NEBULA, false);
       t.think = 0;
       saveSurveyBook();
     }
@@ -8136,9 +8164,7 @@
         burst(t.mark.x, t.mark.y, WRECK, 12, 200 * U);
         if (t.mark.id) surv.stripped.add(t.mark.id);
         surv.hulks.splice(i, 1);
-        if (dist2(t.x, t.y, ships[0].x, ships[0].y) < (TRAFFIC_TALK * 1.4) ** 2) {
-          chatter("A scavenger got to that one first.", "#ff8f77");
-        }
+        chatter("A scavenger got to that one first.", "#ff8f77", t);
       }
       t.mark = null; t.markKind = ""; t.think = 0;
     }
@@ -10633,7 +10659,7 @@
         surv.battleAge[b.id] = b.life;
         const a = factionOf(b.sides[0]), c = factionOf(b.sides[1]);
         chatter(a.short + " and " + c.short + " are at it out here \u2014 " +
-                warScale().name.toLowerCase(), "#ff8f77");
+                warScale().name.toLowerCase(), "#ff8f77", b);
         noteKnown("battle", b.x, b.y, b.name);
         saveSurveyBook();
       }
@@ -10670,9 +10696,9 @@
     if (b.memorial) {
       surv.memorials.add(b.id);
       noteKnown("memorial", b.x, b.y, b.name);
-      chatter(b.name + " \u2014 it is over", "#a08cff");
+      chatter(b.name + " \u2014 it is over", "#a08cff", b);
     } else {
-      chatter("The shooting has stopped out there.", NEBULA);
+      chatter("The shooting has stopped out there.", NEBULA, b);
     }
     saveSurveyBook();
   }
@@ -17828,6 +17854,8 @@
          a field written and not listed here is thrown away silently — this is how
          a test can check the two lists agree. */
       bookKeys: () => Object.keys(loadSurveyBook()),
+      // Say something, through the real path, so the earshot rule can be tested.
+      say: (text, colour, where) => chatter(text, colour, where),
       /* Recompute the ship from its slots. The game does this whenever a part
          goes on or comes off; a harness that writes `surv.slots` directly is not
          going through either path, so it has to say when it is done. */

@@ -1663,7 +1663,7 @@ Three decisions worth keeping:
 `E` is the same key as docking and comes last in that chain, so a station, the
 yard and a world you can land on all still win it.
 
-### 7.9 The notifications need somewhere to live  ·  **HALF DONE**
+### 7.9 The notifications need somewhere to live  ·  **DONE**
 
 > *"I don't know what 'they made it, 260 cash' was. You need to be able to see
 > notifications somewhere else too."*
@@ -1678,8 +1678,41 @@ Two problems in one.
   WHAT HAPPENED, on the ship's page, forty lines newest-first, with a repeat
   counted rather than repeated.
 
-*Still owed: the wording itself.* "They made it. 260 cash, and their thanks."
-still assumes you know that a distress call was the thing you just cleared.
+**And two more things that were wrong with the feed, both from the cockpit.**
+
+*It was saying everything at the same volume from any distance.* A convoy
+unloading four sectors away, a battle ending somewhere you have never been, a
+scavenger taking a wreck you could not see — all of it arrived as a notification,
+so the stack was almost always full and almost never about anything you could act
+on. **A feed that is always talking is a feed you stop reading**, which costs you
+the three lines a year that actually matter.
+
+One rule now, in one place, replacing six ad-hoc distance checks with three
+different radii scattered through the file:
+
+| | |
+|---|---|
+| `chatter(text, colour)` | about **you** — your ship, your tanks, your money, your parts. Always said. |
+| `chatter(text, colour, {x, y})` | about something **out there**. Said only if it happened within earshot. |
+| `chatter(text, colour, false)` | **texture**. Written down, never said. |
+
+Everything still reaches the log, so nothing is lost — the lines that did not
+interrupt you are in WHAT HAPPENED if you want them.
+
+*And you could not read the long ones.* A notification is a line squeezed into a
+column and shrunk until it fits, so `fitText` took it to the 16px floor and then
+cut it with an ellipsis — the lines worth reading were exactly the ones you could
+not. **Press one and it opens**: wrapped properly, on a ground you can read it
+against, with the detail line the collapsed form has to drop. Press it again and
+it goes away.
+
+An open one **stops counting down**, and is never the one dropped when the stack
+overflows. If you pressed it to read it, having it fade or get shoved off the
+bottom mid-sentence is the interface deciding you had finished with it.
+
+*The wording pass is still owed*: "They made it. 260 cash, and their thanks."
+assumes you know a distress call was the thing you just cleared. That line is
+fixed; the rest of the file has not been read through with that question in mind.
 
 ### 7.10 The three powers need three colours  ·  **DONE**
 
