@@ -3805,6 +3805,49 @@
     });
     y += repH + gap;
 
+    /* ── who knows you by name ───────────────────────────────────────────────
+       Almost nothing out here is named. Two kinds of ship earn one: the ones you
+       pulled out of trouble, and the ones you shot and did not finish. This is
+       where you read them back, because "a consequence you can name is a
+       consequence you remember" is only true if you can still find the name.
+
+       Never a count of anything. A tally would turn both lists into scores. */
+    const friends = (st.whoKnows && st.whoKnows.friends) || [];
+    const grudges = (st.whoKnows && st.whoKnows.grudges) || [];
+    const knownRows = Math.max(1, friends.length + grudges.length);
+    const knownH = PANEL_H(knownRows);
+    panel(full.x, y, full.w, knownH, CASH, "WHO KNOWS YOU",
+          grudges.length ? "SOMEBODY IS LOOKING FOR YOU" : "");
+    if (!friends.length && !grudges.length) {
+      fitText("nobody out here knows you by name yet — help somebody, " +
+              "or let somebody get away",
+              full.x + PAGE.PAD, ROW(y, 0) + 2, SIZE.cap, VIOLET_LOW, "left",
+              0.6, full.w - PAGE.PAD * 2);
+    }
+    friends.forEach((f, i) => {
+      const yy = ROW(y, i) + 2;
+      fitText(f.name, full.x + PAGE.PAD, yy, SIZE.cap, CASH, "left", 0.95, 280,
+              "0.06em");
+      label(f.faction, full.x + PAGE.PAD + 300, yy, SIZE.cap, VIOLET_DIM,
+            "left", 0.7, "0.08em");
+      fitText(f.why === "water" ? (f.repaid ? "you gave them water · squared"
+                                            : "you gave them water")
+                                : (f.repaid ? "you got them out of it · squared"
+                                            : "you got them out of it"),
+              full.x + full.w - PAGE.PAD, yy, SIZE.cap,
+              f.repaid ? VIOLET_LOW : CASH, "right", f.repaid ? 0.5 : 0.8, 300);
+    });
+    grudges.forEach((g, i) => {
+      const yy = ROW(y, friends.length + i) + 2;
+      fitText(g.name, full.x + PAGE.PAD, yy, SIZE.cap, WARN, "left", 1, 280,
+              "0.06em");
+      label("PIRATE", full.x + PAGE.PAD + 300, yy, SIZE.cap, VIOLET_DIM,
+            "left", 0.7, "0.08em");
+      fitText("got away from you · coming back", full.x + full.w - PAGE.PAD, yy,
+              SIZE.cap, WARN, "right", 0.85, 300);
+    });
+    y += knownH + gap;
+
     /* ── the book ────────────────────────────────────────────────────────── */
     const bookH = PANEL_H(2);
     panel(full.x, y, full.w, bookH, AMBER, "THE ALMANAC",

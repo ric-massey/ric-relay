@@ -1927,6 +1927,39 @@ The cheap wins, in order: a ship you saved or spared **keeps its name and comes
 back**; a pirate that escaped is re-spawned rather than re-rolled; a convoy you
 destroyed leaves a wreck field where it died.
 
+**All three done**, on one rule: *a consequence you can name is a consequence you
+remember.* If you can say which ship it was, it happened; if you cannot, it was
+weather. So almost nothing out here is named — a sector where every freighter
+introduces itself is a cast rather than a place — and a name is what a ship earns
+by being part of something.
+
+**A ship you saved keeps its name.** It gets one the moment you save it, whether
+you cleared the sentries off a distress call or handed water to a hauler that had
+run dry. It goes in the book. Later, a freighter of the same flag can *be* it —
+tagged as it streams in rather than spawned, because a chunk is a pure function of
+its coordinates and has no business knowing whose distress call you answered. One
+in four of the matching ones, at most one on screen at a time: the point is a face
+you recognise, not a cast of characters.
+
+And it pays the favour back **in water** — the only repayment that means anything
+in a mode where water is what limits how far you can go. Once per ship, and only
+when you are under a quarter of a tank, so it cannot be farmed.
+
+**A pirate that got away comes back for you.** Hurt one and it is marked as yours
+and given a handle on the spot. If it leaves the loaded window alive, that moment —
+the only moment at which "it got away" is a fact rather than a guess — writes it
+down with the hull points you left it. It returns as a hunter: not a fresh pirate
+of the same class, *that one*, with its hull and its damage. You are favoured to
+win the rematch; it knows that and comes anyway.
+
+**A convoy you destroyed leaves a wreck field**, via the persistent wreck list
+built for 6.3. And all three are readable on one panel on the ship's page — **WHO
+KNOWS YOU** — which is two short lists of names and never a count of anything. A
+tally would turn both of them into scores.
+
+They are also askable: stand next to one and press `E`, and 7.8's card tells you
+what you did and what is still owed.
+
 ### 6.6 Handcrafted mysteries should sit on top of the simulation
 
 > **This is important.** Pure procedural generation eventually shows its seams.
@@ -2065,7 +2098,7 @@ since. Measured rather than remembered:
 | **6.2** a reacting economy | **DONE** | A station is short of one or two things, rolled from where it is and then moved by what happens. A convoy through eases it; a convoy destroyed near it deepens it; time drifts it back. A shortage is a price and a price is a reason to fly somewhere — measured, killing an iridium convoy at the door took iridium from 23 to 44, and one getting through brought it back. **Pirates make prices.** |
 | **6.3** universal rules | **DONE** | Rocks break on worlds and part from each other; traffic and sentries go round worlds and round the Leviathan; stations and inhabited worlds deflect; an asteroid is a solid object rather than a damage event; friendly fire destroys other traffic. And now: **gravity is universal in the sky as well as in the code** — traffic carries a drift, steers round wells when it has the attention to spare, gets no dodge while it is being chased, and is swallowed if it loses. **Ships run out of water** when something goes wrong for them, and a drifting hauler is a situation you can spend your own tank on or strip four minutes later. |
 | **6.4** verbs not percentages | **eight of seventeen** | Counted: eight parts are verbs — three weapons, two tractor rigs, reverse thrusters, the ice melter — and nine are still numbers. The rule from here is written into 5.2: a new part has to add a verb or it does not get made. |
-| **6.5** consequences persist | **three of them** | Battles end and about one in three leaves a named memorial on the chart. Reputation persists per power. And a part you die carrying now stays where you fell and goes on the chart until you fetch it. Still forgotten: a rescued ship, a pirate that got away, a station that suffered. |
+| **6.5** consequences persist | **DONE** | Battles end and one in three leaves a named memorial. Reputation persists per power. A part you die carrying stays where you fell. Anything that dies in front of you leaves a hull you can come back and strip, written into the book rather than into a chunk. **A ship you saved keeps its name, comes back, and repays you in water once.** **A pirate you hurt and let go is remembered with the damage you did and returns as itself.** All of it readable on WHO KNOWS YOU, and all of it askable with `E`. |
 | **6.6** authored mysteries | **eight places** | Where the brief asks for dozens. Highest ceiling, least code, and 6.7 below is now the concrete plan for it. |
 | **6.7** the almanac's curve | **diagnosed, not fixed** | Ten minutes of throttle reaches 344,617 units and the finale sits at 112,000. The ladder is a thirtieth of the size it needs to be. |
 

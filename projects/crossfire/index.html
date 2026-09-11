@@ -2532,8 +2532,15 @@
         // yard is the thing you came back for.
         if (code === "KeyE" && surv && surv.landed) { state = "landed"; return; }
         /* Somebody drifting, before anything with a name on it: a ship with four
-           minutes left beats a monument that has been there a thousand years. */
-        if (code === "KeyE" && surv && surv.helping) { giveWater(); return; }
+           minutes left beats a monument that has been there a thousand years.
+
+           Only when you can actually help, though. If your own tank is too low the
+           key falls through to the card instead, which explains what you are
+           looking at and what happens if you leave it — a key that does nothing
+           but print a refusal is a key you stop pressing. */
+        if (code === "KeyE" && surv && surv.helping && canGiveWater()) {
+          giveWater(); return;
+        }
         /* Anything else with a name on it. Last of the `E` doors, because a
            station, the yard and a world you can land on are all things you went
            there for, and this is a question you ask on the way past.
@@ -5696,6 +5703,7 @@
                     carrying: [], built: [], pins: [], known: [],
                     slots: [], store: {}, battleAge: {}, memorials: [],
                     dropped: [], coilFired: false, wrecked: [],
+                    friends: [], grudges: [],
                     alert: { water: { taught: 0 }, food: { taught: 0 } } };
     try {
       const raw = localStorage.getItem(SURVEY_STORE);
@@ -5853,6 +5861,28 @@
                                   hp: Math.max(1, Math.min(9, Math.floor(Number(w.hp)) || 4)) }))
                      .slice(0, 80)
           : [],
+        /* Who owes you one, and who owes you the other thing. Both are short,
+           both are validated on the way in like everything else in here, and both
+           are the difference between a sector that has a history and a sector that
+           merely has events. */
+        friends: Array.isArray(b.friends)
+          ? b.friends.filter(f => f && typeof f.name === "string" &&
+                                  typeof f.faction === "string")
+                     .map(f => ({ name: f.name.slice(0, 40),
+                                  faction: f.faction.slice(0, 20),
+                                  hull: String(f.hull || "drayman").slice(0, 20),
+                                  why: String(f.why || "").slice(0, 20),
+                                  repaid: !!f.repaid }))
+                     .slice(0, 12)
+          : [],
+        grudges: Array.isArray(b.grudges)
+          ? b.grudges.filter(g => g && typeof g.name === "string")
+                     .map(g => ({ name: g.name.slice(0, 40),
+                                  hull: String(g.hull || "needle").slice(0, 20),
+                                  hp: Math.max(1, Math.min(20, Math.floor(Number(g.hp)) || 5)),
+                                  cool: Math.max(0, Math.min(900, Number(g.cool) || 0)) }))
+                     .slice(0, 6)
+          : [],
         dropped: Array.isArray(b.dropped)
           ? b.dropped.filter(d => d && typeof d.key === "string" &&
                                   BUILD.some(x => x.key === d.key) &&
@@ -5895,6 +5925,8 @@
         built: [...surv.built],
         dropped: surv.dropped,
         wrecked: surv.wrecked,
+        friends: surv.friends,
+        grudges: surv.grudges,
         coilFired: !!surv.coilFired,
         alert: { water: { taught: surv.alert.water.taught },
                  food:  { taught: surv.alert.food.taught } },
@@ -6606,6 +6638,11 @@
     // ship crossed a chunk line would be scenery, not company.
     const liveTraffic = new Map();
     for (const t of surv.traffic) if (t.id) liveTraffic.set(t.id, t);
+    /* Everything alive before the rebuild, so afterwards we can tell who did not
+       come back. A pirate you shot and did not finish leaves the loaded window at
+       some point, and that moment — the only moment at which "it got away" is a
+       fact rather than a guess — is the difference between a grudge and nothing. */
+    const wasHurt = surv.traffic.filter(t => t.hurtBy && t.hp > 0);
 
     const want = new Set();
     for (let y = cy - load; y <= cy + load; y++) {
@@ -6679,6 +6716,8 @@
         // And what a full reserve was, so one that got out of trouble can fill
         // back up to where it started rather than to some new number.
         made.tankFull = made.tank;
+        // And it may be a ship you have met before. See `adoptFriend`.
+        if (surv.friends.length) adoptFriend(made);
         surv.traffic.push(made);
         /* A distress call brings its own attackers. They are drones like any
            other so they behave like any other, and they are posted on the ship
@@ -6802,6 +6841,15 @@
       if (!spec) continue;
       surv.parts.push({ key: d.key, name: spec.name, x: d.x, y: d.y, r: 40,
                         dropped: true });
+    }
+
+    /* And who did not come back. A pirate you shot and did not finish is only
+       "the one that got away" at the moment the sector stops holding it — before
+       that it is still a fight, and after that it is a memory. This is that
+       moment, and it is the only place in the file that can tell. */
+    for (const t of wasHurt) {
+      if (surv.traffic.indexOf(t) >= 0) continue;
+      rememberGrudge(t);
     }
 
     seedMotes();
@@ -7025,6 +7073,10 @@
       wrecked: (carried && Array.isArray(book.wrecked) ? book.wrecked : [])
         .filter(w => w && typeof w.id === "string" &&
                      Number.isFinite(w.x) && Number.isFinite(w.y)),
+      /* Ships that owe you something, and ships that owe you the other thing.
+         See `rememberFriend` and `rememberGrudge`. */
+      friends: (carried && Array.isArray(book.friends) ? book.friends : []).slice(0, 12),
+      grudges: (carried && Array.isArray(book.grudges) ? book.grudges : []).slice(0, 6),
       /* Parts you were carrying when you died. They sit where you died until you
          go back for them, and they are written into the book because a part you
          have to fetch is worthless if closing the tab loses it. */
@@ -7513,6 +7565,10 @@
           t.hp = t.maxHp;
           surv.cash += DISTRESS_PAY;
           surv.t.rescued = true;
+          /* And it is somebody now. A ship you pulled out of trouble that goes
+             back to being an anonymous freighter is a thank-you and a despawn —
+             see `rememberFriend`. */
+          rememberFriend(t, "saved");
           // Worth about a hauler, in the other direction. Being able to work it
           // off is what keeps this a state rather than a verdict on the save.
           addRep(t.faction, REP.RESCUE);
@@ -7530,6 +7586,8 @@
          close. Only armed ships act on any of it — a freighter's opinion of you
          is that it would like to be somewhere else. */
       const near = Math.hypot(me.x - t.x, me.y - t.y);
+      // Somebody you have met before, if this is one of them.
+      if (t.friend && me.alive) friendMeeting(t, near);
       const armed = ROLES[t.role || t.kind] && ROLES[t.role || t.kind].armed;
       t.hunted = Math.max(0, (t.hunted || 0) - dt);
 
@@ -9168,6 +9226,115 @@
     }
   }
 
+  /* ── remembering ──────────────────────────────────────────────────────────
+     6.5, and the rule it is built on: *a consequence you can name is a consequence
+     you remember.* A rescued freighter that becomes an anonymous freighter again
+     is a thank-you and a despawn — it happened to nobody. So the two kinds of
+     thing that ought to leave a mark leave one, and both of them come back.
+
+     **A ship you saved keeps its name.** It gets one at the moment you save it,
+     it is written into the book, and a later freighter of the same flag can *be*
+     it — tagged rather than spawned, because a chunk is a pure function of its
+     coordinates and has no business knowing whose distress call you answered.
+     When it passes you it says so. And once, if it finds you nearly dry, it hands
+     water back — which is the only repayment that matters in a mode where water is
+     the thing that limits how far you can go. It cannot be farmed: it happens once
+     per ship and only when you are under a quarter of a tank.
+
+     **A pirate that got away comes back for you.** Hurt one and let it out of
+     range and it is written down with its name and the damage you did. It returns
+     as a hunter — not a fresh pirate of the same class, *that one*, with the hull
+     it had and the hull points it had left — and it says what it is there for. */
+  const FRIEND_KEEP = 12;
+  const GRUDGE_KEEP = 6;
+
+  function rememberFriend(t, why) {
+    if (!t.name) t.name = shipName(false);
+    if (surv.friends.some(f => f.name === t.name)) return;
+    surv.friends.push({ name: t.name, faction: t.faction,
+                        hull: t.hull, why: why || "saved", repaid: false });
+    if (surv.friends.length > FRIEND_KEEP) surv.friends.shift();
+  }
+
+  function rememberGrudge(t) {
+    if (!t.name) t.name = shipName(true);
+    if (surv.grudges.some(g => g.name === t.name)) return;
+    surv.grudges.push({ name: t.name, hull: t.hull,
+                        hp: Math.max(1, Math.round(t.hp)),
+                        // Long enough that it is not the next thing that happens.
+                        cool: rand(90, 260) });
+    if (surv.grudges.length > GRUDGE_KEEP) surv.grudges.shift();
+    saveSurveyBook();
+  }
+
+  /* Whether a freighter streaming in *is* one of the ships you saved. One in
+     four of the ones that match the flag, at most one friend on the screen at a
+     time — the point is a face you recognise, and three of them at once is a
+     cast. */
+  function adoptFriend(t) {
+    if (t.name || t.friend) return;
+    if (t.role !== "freight" && t.role !== "trader") return;
+    if (surv.traffic.some(o => o.friend)) return;
+    if (Math.random() > 0.25) return;
+    const pick = surv.friends.filter(f => f.faction === t.faction);
+    if (!pick.length) return;
+    const f = pick[Math.floor(Math.random() * pick.length)];
+    t.friend = f;
+    t.name = f.name;
+  }
+
+  /* What a ship you saved does when it meets you again. It says your name is
+     worth something to it, and it pays the favour back in the one currency this
+     mode is short of — once, and only if you actually need it. */
+  const REPAY_WATER = 240;
+  function friendMeeting(t, near) {
+    if (!t.friend) return;
+    if (!t.greeted && near < TRAFFIC_TALK) {
+      t.greeted = true;
+      chatter(t.name + " — they know you. " +
+              (t.friend.why === "water" ? "You gave them water once."
+                                        : "You got them out of trouble once."),
+              CASH);
+    }
+    if (!t.friend.repaid && near < 700 * U && surv.water < WATER_FULL * 0.25) {
+      t.friend.repaid = true;
+      surv.water = Math.min(WATER_FULL, surv.water + REPAY_WATER);
+      chatter(t.name + " — they saw your tank. Water across, and they are " +
+              "square with you.", ICE_C);
+      gameSound("win", t.x);
+      saveSurveyBook();
+    }
+  }
+
+  /* And the one that got away, coming back. Spawned rather than generated, for
+     the same reason the hunters are: the chunk does not know what you did. */
+  function grudgeVisit(dt) {
+    const me = ships[0];
+    if (!surv.grudges.length || !me.alive || surv.death) return;
+    if (surv.traffic.some(t => t.grudge)) return;
+    const g = surv.grudges[0];
+    g.cool -= dt;
+    if (g.cool > 0) return;
+    surv.grudges.shift();
+    const a = Math.random() * Math.PI * 2;
+    const d = 2400 + Math.random() * 1200;
+    surv.traffic.push({
+      id: null, kind: "hunter", role: "hunter", faction: "pirate",
+      hull: g.hull, name: g.name, grudge: true,
+      x: me.x + Math.cos(a) * d, y: me.y + Math.sin(a) * d, a: a + Math.PI,
+      from: { x: me.x, y: me.y }, to: { x: me.x, y: me.y }, leg: 1,
+      /* The hull points it got away with, and no more. It ran because it was
+         losing, and it has not been anywhere to get that back — which means the
+         rematch is one you are favoured to win and it is coming anyway. */
+      speed: 165, hp: g.hp, maxHp: Math.max(g.hp, TRAFFIC_HP.pirate),
+      cargo: [], cool: 1.2, doom: 0, guards: 0, space: 0, trades: false,
+      phase: Math.random() * 6.28, angry: true
+    });
+    chatter(g.name + " — the one that got away. It found you.", "#ff8f77");
+    gameSound("alarm", me.x);
+    saveSurveyBook();
+  }
+
   /* ── handing water across ─────────────────────────────────────────────────
      The one thing you can do for a ship that has run out, and it costs the only
      resource in this mode that is genuinely scarce: your own water. Not cash,
@@ -9205,6 +9372,7 @@
        the sector treats it as one. */
     addRep(t.faction, REP.RESCUE * 0.6);
     surv.t.watered = true;
+    rememberFriend(t, "water");
     chatter("Water across. They can make the next station. " +
             WATER_THANKS + " cash.", CASH);
     gameSound("win", t.x);
@@ -9404,6 +9572,57 @@
     return { kind: "A PIECE OF THE DRIVE", name: pt.name, colour: CASH, lines };
   }
 
+  /* A ship with a name on it, which out here means one of exactly two things. */
+  function shipCard(t) {
+    if (t.grudge) {
+      return {
+        kind: "THE ONE THAT GOT AWAY", name: t.name, colour: "#ff8f77",
+        lines: [
+          "You shot this ship and did not finish it.",
+          "It left the sector you were in with " + Math.max(1, Math.round(t.hp)) +
+          " hull points and it has not been anywhere to get them back. It has " +
+          "come to find you rather than to rob anybody, which makes it the only " +
+          "ship out here with a reason.",
+          "You are favoured to win the rematch. It knows that and it came anyway."
+        ]
+      };
+    }
+    if (t.friend) {
+      return {
+        kind: "A SHIP YOU HELPED", name: t.name, colour: CASH,
+        lines: [
+          t.friend.why === "water"
+            ? "You gave this ship water when it was drifting."
+            : "You got this ship out of trouble once.",
+          "It is going about its day again, under " +
+          factionOf(t.faction).name + ", and it knows you by sight. Almost " +
+          "nothing out here is named — a name means you were part of what " +
+          "happened to it.",
+          t.friend.repaid
+            ? "It has already squared the favour with you. Nothing is owed in " +
+              "either direction now."
+            : "It has not paid the favour back yet. If it finds you nearly dry, " +
+              "it will."
+        ]
+      };
+    }
+    return {
+      kind: "A HAULER, ADRIFT", name: factionOf(t.faction).short + " HAULER",
+      colour: ICE_C,
+      lines: [
+        "It has run out of water and it is not flying anywhere.",
+        "A ship out here burns its reserve when something goes wrong for it — " +
+        "being chased, being shot at, fighting a well. So this one is evidence: " +
+        "something happened in this piece of sky.",
+        "You can hand two hundred seconds of your own tank across, which is a " +
+        "sixth of how long you can stay out. They pay, their flag remembers it, " +
+        "and they finish the run.",
+        "Or you can wait. In " + Math.max(0, Math.round(t.doom)) + " seconds it " +
+        "stops answering, and then it is a hull you can strip."
+      ]
+    };
+  }
+
   function gateCard(g) {
     return {
       kind: "A GATE", name: "JUMP GATE", colour: "#b79aff",
@@ -9449,6 +9668,12 @@
       offer(pl.x, pl.y, pl.r + 2200, () => worldCard(pl));
     }
     for (const pt of surv.parts) offer(pt.x, pt.y, 1000, () => partCard(pt));
+    /* The ships with names on them. Close range, because a hull is a small thing
+       in a sector this size and asking about one means being alongside it. */
+    for (const t of surv.traffic) {
+      if (!t.friend && !t.grudge && !t.adrift) continue;
+      offer(t.x, t.y, 1100, () => shipCard(t));
+    }
     for (const lm of surv.landmarks) {
       if (!LANDMARK_LORE[lm.key]) continue;
       offer(lm.x, lm.y, lm.r * 1.7, () => landmarkCard(lm));
@@ -9537,6 +9762,14 @@
            to defend itself is not the same thing as not wanting to fight. Anger
            does not wear off: you started it, and it has a long memory. */
         if (t.kind === "patrol") t.angry = true;
+        /* Marked as *yours*. If this one gets out of range alive it goes in the
+           book with the damage you did to it — see `rememberGrudge`. A name is
+           given at the moment it is hurt rather than when it escapes, because it
+           needs to be the same ship either way. */
+        if (t.faction === "pirate" && !t.hurtBy) {
+          t.hurtBy = true;
+          if (!t.name) t.name = shipName(true);
+        }
         burst(b.x, b.y, trafficColour(t), 5, 120 * U);
         if (t.hp <= 0) killTraffic(i, true); else gameSound("hit", t.x);
       }
@@ -10458,6 +10691,39 @@
     return n.toUpperCase();
   }
 
+  /* ── a ship with a name ───────────────────────────────────────────────────
+     Almost nothing out here is named, on purpose: a sector where every freighter
+     introduces itself is a sector of characters rather than a place. A name is
+     what a ship earns by being *part of something* — you pulled it out of
+     trouble, or it got away from you — and it is the whole mechanism of 6.5. If
+     you can say which ship it was, it happened; if you cannot, it was weather.
+
+     Two registers, because the two kinds of memory should not sound alike. A
+     hauler you saved gets a hull name, the way a working ship would have one.
+     A pirate that got away gets a handle. */
+  const SHIP_WORDS = ["STAR", "LANTERN", "PROMISE", "PATIENCE", "LONG WAY",
+                      "GOOD RETURN", "OWL", "SPARROW", "KETTLE", "CANDLE",
+                      "MERCY", "SECOND WIND", "WHISTLE", "FAIR TRADE"];
+  const PIRATE_WORDS = ["THE JACKAL", "SPLIT LIP", "KNIFE", "GRIN", "ASHES",
+                        "NINE FINGERS", "THE CROW", "RUST", "HALF MOON",
+                        "TALLOW", "BAD PENNY", "THE WIDOW"];
+  function shipName(pirate) {
+    const R = Math.random;
+    if (pirate) {
+      const w = PIRATE_WORDS[Math.floor(R() * PIRATE_WORDS.length)];
+      return R() < 0.4 ? w : w + " OF " + place().toUpperCase();
+    }
+    const w = SHIP_WORDS[Math.floor(R() * SHIP_WORDS.length)];
+    return (R() < 0.45 ? "THE " : place().toUpperCase() + " ") + w;
+  }
+  // A word that sounds like it came off this sector's own gazetteer.
+  function place() {
+    const R = Math.random;
+    let n = SYL_HEAD[Math.floor(R() * SYL_HEAD.length)];
+    n += SYL_TAIL[Math.floor(R() * SYL_TAIL.length)];
+    return n;
+  }
+
   const BATTLE_NAMES = [
     "THE STAND AT", "THE LOSS AT", "THE ACTION AT", "THE BREAK AT",
     "THE HOLDING AT", "THE ROUT AT", "THE LAST HOUR AT"
@@ -11169,6 +11435,7 @@
     surveyMelt(dt);
     surveyBattles(dt);
     surveyHeat(dt);
+    grudgeVisit(dt);
     surveyCaches(dt);
     surveyParts(dt);
     surveyMotes(dt);
@@ -11630,7 +11897,25 @@
         ctx.arc(t.x, t.y, r * 1.7 + beat * 8, 0, Math.PI * 2);
         ctx.stroke();
       });
-      label3("HUNTER", t.x, t.y - r * 2 - 10, colour, 17);
+      label3(t.grudge ? t.name : "HUNTER", t.x, t.y - r * 2 - 10, colour, 17);
+    }
+    /* A name, for the two kinds of ship that have earned one. Everything else out
+       here is deliberately anonymous — a sector where every freighter introduces
+       itself is a cast rather than a place — so a name over a hull means *this is
+       one you have met*, and that is the whole of 6.5 stated on the screen without
+       a page to open. */
+    if (t.friend) {
+      label3(t.name, t.x, t.y - r * 2 - 10, CASH, 16);
+      label3("YOU HELPED THEM", t.x, t.y + r * 2 + 20, CASH, 13);
+    } else if (t.adrift) {
+      const beat = 0.5 + 0.5 * Math.sin(clock * 3 + t.phase);
+      glow(ICE_C, 2, 0.25 + beat * 0.4, () => {
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, r * 1.7 + beat * 10, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      label3("ADRIFT  " + Math.max(0, Math.round(t.doom)) + "s",
+             t.x, t.y - r * 2.2 - 14, ICE_C, 17);
     }
   }
 
@@ -12031,6 +12316,22 @@
         cost: GIVE_WATER, can: canGiveWater()
       },
       onWater: () => { giveWater(); },
+      /* Who out here knows you by name, which is 6.5 made readable. Two short
+         lists and never a number: a ship you helped, and a ship that got away.
+         If you can say which ship it was, it happened.
+
+         Not called `known` — that name was already taken by the gazetteer, the
+         chart's list of everything you have charted, forty lines further down this
+         same object. A duplicate key in an object literal is not an error in
+         JavaScript; the second one simply wins, silently, and the chart or this
+         board goes blank depending which way round they were written. */
+      whoKnows: {
+        friends: (surv.friends || []).map(f => ({
+          name: f.name, faction: factionOf(f.faction).short,
+          why: f.why, repaid: !!f.repaid
+        })),
+        grudges: (surv.grudges || []).map(g => ({ name: g.name, hp: g.hp }))
+      },
       /* The named thing in reach, and the card for the one you asked about.
          `near` is what the panel offers; `lore` is what the page draws, and they
          are two fields rather than one so the card holds still while you read it. */
@@ -17224,6 +17525,20 @@
       // One hit, through the real damage path, so the hull's own arithmetic is
       // what the harness is testing rather than a poke at `ship.hull`.
       hurt: cause => damageShip(ships[0], cause || "rock", null),
+      /* Shooting a passing ship, through the path a round takes: the marking, the
+         naming and the grudge all hang off this one moment and a harness has no
+         way to fire a bullet at a ship it placed itself. */
+      hurtTraffic: (t, dmg) => {
+        t.hp -= dmg || 1;
+        t.hit = 0.12;
+        if (t.faction === "pirate" && !t.hurtBy) {
+          t.hurtBy = true;
+          if (!t.name) t.name = shipName(true);
+        }
+        return t.hp;
+      },
+      // And `adoptFriend`, which is a roll: a harness drives it rather than waits.
+      adopt: t => { adoptFriend(t); return t; },
       // Life support, so a harness can run a tank down without waiting twelve
       // real minutes for it.
       tanks: () => ({ water: surv.water, food: surv.food,

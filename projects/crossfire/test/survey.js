@@ -6319,6 +6319,136 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "the wreck survives a restream");
 }
 
+/* ── 6.5 · consequences you can name ──────────────────────────────────────────
+   "A rescued distress call becomes an anonymous freighter" was the whole problem:
+   it happened to nobody, so there was nothing to remember. Two ledgers now, both
+   in the book, and the rule behind them is that a consequence you can *name* is a
+   consequence you remember.
+
+   The hard part to test is that both of them come back — a friend by being tagged
+   onto a freighter that streams in, a pirate by being spawned as itself. */
+{
+  const { cf } = boot("?debug=1&seed=717171");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const flag = cf.surveyView().standings[0].key;
+  const step = (n) => { for (let i = 0; i < (n || 1); i++) { now += 1000 / 60; cf.step(); } };
+
+  me.x = 30000; me.y = -22000; me.invuln = 999; surv.water = 1200;
+  step(2);
+
+  /* Saving one writes it down, with a name. */
+  const t = {
+    id: "f1", kind: "freight", role: "freight", faction: flag, hull: "drayman",
+    x: me.x + 400, y: me.y, a: 0, from: { x: me.x + 400, y: me.y },
+    to: { x: me.x + 9000, y: me.y }, leg: 1, speed: 100, baseSpeed: 100,
+    hp: 6, maxHp: 6, cargo: [], cool: 1, guards: 0, space: 0, trades: false,
+    phase: 0, tank: 0, tankFull: 90, adrift: true, doom: 200
+  };
+  surv.traffic.push(t);
+  step(2);
+  cf.key("KeyE");
+  check(surv.friends.length === 1, "saving a ship wrote nothing down");
+  const friend = surv.friends[0];
+  check(!!friend && typeof friend.name === "string" && friend.name.length > 3,
+        "the ship you saved has no name");
+  check(friend.why === "water", "it does not remember what you did for it");
+  check(cf.bookKeys().indexOf("friends") >= 0,
+        "the ships that know you are not in the book");
+  check(cf.bookKeys().indexOf("grudges") >= 0,
+        "the ships that want you are not in the book");
+
+  // It is readable somewhere other than in a passing line of chatter.
+  const known = cf.surveyView().whoKnows;
+  check(known && known.friends.length === 1 && known.friends[0].name === friend.name,
+        "the ship you saved is not on the page anywhere");
+
+  /* And it can come back. `adoptFriend` tags a freighter of the same flag as it
+     streams in, which is a one-in-four roll on at most one ship at a time — so
+     this drives the function rather than waiting for the dice. */
+  surv.traffic.length = 0;
+  let met = null;
+  for (let k = 0; k < 400 && !met; k++) {
+    const fresh = {
+      id: "x" + k, kind: "freight", role: "freight", faction: flag,
+      hull: "drayman", x: me.x + 8000, y: me.y, a: 0,
+      from: { x: me.x + 8000, y: me.y }, to: { x: me.x + 9000, y: me.y },
+      leg: 1, speed: 100, baseSpeed: 100, hp: 6, maxHp: 6, cargo: [],
+      cool: 1, guards: 0, space: 0, trades: false, phase: 0,
+      tank: 90, tankFull: 90
+    };
+    cf.adopt(fresh);
+    if (fresh.friend) met = fresh;
+  }
+  check(!!met, "a ship you saved never turned up again in 400 chances");
+  if (met) {
+    check(met.name === friend.name, "it came back under a different name");
+
+    /* And it pays the favour back in the only currency that matters out here —
+       once, and only when you actually need it, so it cannot be farmed. */
+    surv.traffic.push(met);
+    met.x = me.x + 300; met.y = me.y;
+    surv.water = 1200;
+    step(3);
+    check(surv.water > 1100, "a full tank was topped up by a favour");
+    surv.water = 200;
+    met.x = me.x + 300; met.y = me.y;
+    step(3);
+    check(surv.water > 300, "a ship you saved did not help when you were dry");
+    const after = surv.water;
+    surv.water = 200;
+    met.x = me.x + 300; met.y = me.y;
+    step(3);
+    check(surv.water < 260, "the favour was paid twice — it can be farmed");
+    check(after > 300, "sanity: the first payment happened");
+  }
+
+  /* ── the one that got away ─────────────────────────────────────────────────
+     Shot, not finished, and out of range: that last moment is the only one at
+     which "it got away" is a fact rather than a guess. */
+  surv.traffic.length = 0;
+  surv.grudges.length = 0;
+  const pirate = {
+    id: "p1", kind: "pirate", role: "pirate", faction: "pirate", hull: "needle",
+    x: me.x + 500, y: me.y, a: 0, from: { x: me.x + 500, y: me.y },
+    to: { x: me.x + 2000, y: me.y }, leg: 1, speed: 150, baseSpeed: 150,
+    hp: 7, maxHp: 7, cargo: [], cool: 1, guards: 0, space: 0, trades: false,
+    phase: 0
+  };
+  surv.traffic.push(pirate);
+  cf.hurtTraffic(pirate, 3);
+  check(pirate.hurtBy === true, "shooting a pirate did not mark it as yours");
+  check(typeof pirate.name === "string" && pirate.name.length > 2,
+        "a pirate you hurt was never given a name");
+  const handle = pirate.name;
+
+  // Out of range: cross enough chunks that its own is unloaded.
+  me.x += 2600 * 6; step(4);
+  check(surv.traffic.indexOf(pirate) < 0, "it is somehow still loaded");
+  check(surv.grudges.length === 1,
+        "a pirate you shot and let go left no grudge (" + surv.grudges.length + ")");
+  const grudge = surv.grudges[0];
+  check(grudge.name === handle, "it came back under a different name");
+  check(grudge.hp === 4, "it healed on the way out (" + grudge.hp + " of 4)");
+
+  // And it comes back — as itself, with the damage you did.
+  grudge.cool = 0;
+  step(3);
+  const back = surv.traffic.find(q => q.grudge);
+  check(!!back, "the one that got away never came back");
+  if (back) {
+    check(back.name === handle, "something else came back instead");
+    check(back.hp === 4, "it came back at full strength");
+    check(back.role === "hunter", "it came back to rob somebody rather than for you");
+    check(surv.grudges.length === 0, "it is still owed as well as here");
+  }
+
+  console.log("  memory     a ship you saved is named, written down, comes back " +
+              "and pays once · a pirate you hurt and let go is remembered " +
+              "with the damage you did and returns as itself");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);
