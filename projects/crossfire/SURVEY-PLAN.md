@@ -1539,11 +1539,17 @@ anywhere out here gets one is if you say so, and a pin you cannot name is a dot
 you will not remember the reason for. Naming uses the one dialogue this game has:
 a real input laid over the page, so a phone raises its own keyboard.
 
-### 7.5 Reputation, explained  ·  *not started*
+### 7.5 Reputation, explained  ·  **DONE**  ·  *the status here was stale*
 
 Its own small box **in loadout**. It explains the factions a little, and it is
 easy to understand — at the moment it is three words at the foot of a page and it
 assumes you know who these people are.
+
+**Done**, and it had been for a while — this entry simply never got updated. The
+REPUTATION panel on the ship's page gives each power its own row: a swatch in the
+colour its ships are actually painted, its name, where you stand with it as a
+*word* and never a figure, who it is at war with, and a line saying who they are.
+Below it, WHO KNOWS YOU carries the two lists of named ships from 6.5.
 
 ### 7.6 Smaller things
 
