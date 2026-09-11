@@ -1440,7 +1440,7 @@ module goes through one door now, and a page that scrolls sets a window: outside
 it a rectangle is dropped, straddling it, trimmed. The workbench and the ships
 page had hand-rolled versions of that test; both now use the one door.
 
-### 7.2 The station is a market  ·  *not started*
+### 7.2 The station is a market  ·  **DONE**
 
 > *"There should be a trade thing that takes up most of the room and has
 > everything that this station has, and you can buy it. Think of it like a market
@@ -1454,6 +1454,27 @@ page had hand-rolled versions of that test; both now use the one door.
 - **"EARNED, NOT BOUGHT" goes entirely.** The almanac's unlocks do not belong on a
   shop page.
 - **"HANGAR" becomes "SHIPS"**, and it does not need to name the hull you are in.
+
+**What landed.** It is a list, the way a market or a page you order from is a
+list: one row per thing, a swatch saying what kind of thing it is, what it costs,
+and a button. Supplies, repairs, parts and refit tiers are all in it, because they
+are all the same act — the old page had them in four separate panels and finding
+out what a station would do for you meant reading all four.
+
+**Water and food by the quarter, half or the lot.** Filling to the brim was the
+only option, which made stopping an all-or-nothing decision priced against a tank
+you might not want to fill; five minutes of water to reach the next station is a
+perfectly sensible purchase and there was no way to make it. It never offers more
+than the tank has room for.
+
+**The bars are gone**, and so is EARNED, NOT BOUGHT — the almanac's unlocks are
+the almanac's business and they live with the almanac now. **The shipyard is a row
+in the list** rather than a door floating beside the title, because it is a thing
+this station offers.
+
+And the shortage from 6.2 shows: a material this station is short of is marked
+**WANTED** and priced accordingly, so "why is iron worth more here" has an answer
+on the page rather than in the player's memory.
 
 ### 7.3 Craft, reworked  ·  *not started*
 

@@ -2830,180 +2830,130 @@
     return true;
   };
 
+  /* ═══ THE MARKET ══════════════════════════════════════════════════════════
+     A station is a shop, so it looks like one. It was four panels — a sell strip,
+     a supplies row, a refit column and a column of almanac unlocks that had
+     nothing to do with buying anything — and finding out what this place would
+     do for you meant reading all four.
+
+     It is a list now, the way a market or a page you order from is a list: one
+     row per thing, what it is, what it costs, and a button. Water and food by the
+     quarter, half or the lot, because filling to the brim was the only option and
+     five minutes of water to reach the next station is a perfectly sensible
+     purchase. Repairs, parts and refits in the same list, because they are the
+     same act.
+
+     What is *not* here any more: the bars beside water and food, which were a
+     second drawing of a number already on the line; and EARNED, NOT BOUGHT, which
+     is the almanac's business and belongs with the almanac. */
+  let mkt = { scroll: 0 };
+  HUD.marketOpened = function () { mkt.scroll = 0; };
+  HUD.marketScrollBy = function (dy, total, view) {
+    mkt.scroll = Math.max(0, Math.min(Math.max(0, total - view), mkt.scroll + dy));
+  };
+
   HUD.drawRefit = function (st, dt) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
-    const rows = st.refit || [];
     const cash = st.cash || 0;
     const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
-    const L = COL(2, 0), R = COL(2, 1);
-
-    pageFrame("STATION", "CASH  " + cash,
-              "");   // the nav strip has the footer line
-
-    /* ── what it pays ──────────────────────────────────────────────────────
-       The selling half leads the page because it is what you came here to do.
-       The price comes before the count, because the price is the half that
-       differs between here and the next station. */
+    const rows = st.market || [];
     const mats = st.materials || [];
     const carried = st.carried || 0;
-    /* Three across, and as many rows as that takes. It was one row of however
-       many materials there are, which was fine at four and broke at six: the
-       cells fell to 96px and REACTOR CORE printed straight through its own
-       price. Three is the widest that leaves a material's name room to be read
-       rather than abbreviated. */
-    const perRow = 3;
-    const matRows = Math.max(1, Math.ceil(mats.length / perRow));
-    const buyH = PANEL_H(matRows);
-    panel(full.x, PAGE.TOP, full.w, buyH, CASH, "THIS STATION BUYS",
+
+    pageFrame("MARKET", (st.dangerBand ? st.dangerBand.name + "   \u00b7   " : "") +
+                        cash + " CASH", "");
+
+    /* ── what it buys off you ───────────────────────────────────────────────
+       At the top, because it is what you came in with, and one line: the things
+       you are carrying that this place wants, and a button. */
+    const sellH = PANEL_H(Math.max(1, Math.ceil(mats.length / 3)));
+    panel(full.x, PAGE.TOP, full.w, sellH, CASH, "IT BUYS",
           carried ? carried + " UNITS ABOARD" : "NOTHING ABOARD");
-    const cellW = (full.w - PAGE.PAD * 2 - 230) / perRow;
+    const third = (full.w - PAGE.PAD * 2 - 210) / 3;
     mats.forEach((m, i) => {
-      const x = full.x + PAGE.PAD + (i % perRow) * cellW;
-      const yy = ROW(PAGE.TOP, Math.floor(i / perRow));
-      fitText(m.name, x, yy, SIZE.cap, m.colour, "left", m.n ? 1 : 0.4,
-              cellW - 96, "0.06em");
+      const col = i % 3, row = Math.floor(i / 3);
+      const mx = full.x + PAGE.PAD + col * third;
+      const yy = ROW(PAGE.TOP, row) + 2;
+      fitText(m.name, mx, yy, SIZE.cap, m.colour, "left", m.n ? 1 : 0.35,
+              third - 104, "0.06em");
       label((m.price == null ? m.value : m.price) + "  \u00d7" + m.n,
-            x + cellW - 22, yy, SIZE.cap, m.n ? CASH : VIOLET_LOW, "right",
-            m.n ? 0.95 : 0.4);
+            mx + third - 26, yy, SIZE.cap,
+            m.shortage > 0.25 ? CASH : m.n ? CASH_DIM : VIOLET_LOW, "right",
+            m.n ? 0.95 : 0.35);
+      // A shortage is the reason this station pays more than the last one.
+      if (m.shortage > 0.25) {
+        label("WANTED", mx + third - 26, yy + 13, SIZE.cap, CASH, "right",
+              0.75, "0.08em");
+      }
     });
-    /* Centred on the content row rather than on the panel, and short enough to
-       clear the title band above it. Centred on the panel it sat 9px too high and
-       its top edge ran straight through "N UNITS ABOARD". */
     button(carried ? "SELL ALL   " + (st.worth || 0) : "NOTHING TO SELL",
-           full.x + full.w - 114, ROW(PAGE.TOP, 0) - 4, 200, 32,
+           full.x + full.w - PAGE.PAD - 88, ROW(PAGE.TOP, 0) - 2, 186, 34,
            carried ? CASH : VIOLET_LOW, st.onSell, false, !!carried);
 
-    /* ── the chandler ──────────────────────────────────────────────────────
-       Priced on what is missing rather than a flat fee, and the button says the
-       number: a shop that makes you press to find the price is a shop you do not
-       use when you are down to four minutes of water. */
-    const supY = PAGE.TOP + buyH + PAGE.STEP;
-    panel(full.x, supY, full.w, buyH, ICE, "SUPPLIES");
-    /* Two halves of the panel's inside width rather than a hard 300 apart. At 300
-       the water block's FILL button ran to x 359 and the food block began at 354,
-       so the button's edge was drawn through the word FOOD. Halves cannot
-       overlap, whatever the panel is doing. */
-    /* Three things a station tops up, on thirds of the panel's inside width. The
-       hull is here rather than on the refit column on purpose: mending is the same
-       question as filling a tank — what does this place sell me before I go back
-       out — and it is not an upgrade. */
-    const supIn = full.w - PAGE.PAD * 2, supThird = supIn / 3;
-    const sup = [
-      { k: "water", name: "WATER", col: ICE, verb: "FILL" },
-      { k: "food", name: "FOOD", col: AMBER_DIM, verb: "FILL" },
-      { k: "repair", name: "HULL", col: WARN, verb: "MEND" }
-    ];
-    sup.forEach((row, i) => {
-      const k = row.k, col = row.col;
-      const m = st[k] || {};
-      const done = m.cost == null;
-      const afford = !done && cash >= m.cost;
-      const x = full.x + PAGE.PAD + i * supThird;
-      const yy = ROW(supY, 0);
-      // A hull is read as points rather than as a percentage: "2 / 7" is a
-      // number of hits and "29%" is not.
-      const reading = k === "repair"
-        ? Math.round(m.hull || 0) + " / " + Math.round(m.max || 0)
-        : m.countdown > 0 ? fmtSecs(m.countdown)
-                          : Math.round((m.frac || 0) * 100) + "%";
-      const hurt = k === "repair" ? !done : m.countdown > 0;
-      label(row.name, x, yy, SIZE.cap, hurt ? WARN : col, "left", 0.9, "0.14em");
-      label(reading, x + 68, yy, SIZE.cap, hurt ? WARN : col, "left", 0.95);
-      barAt(x + 150, yy - 9, 62, 8, m.frac || 0, col, hurt);
-      button(done ? (k === "repair" ? "WHOLE" : "FULL") : row.verb + "  " + m.cost,
-             x + supThird - 66, yy - 4, 118, 32,
-             done ? VIOLET_LOW : afford ? col : WARN,
-             done ? null
-                  : k === "repair" ? () => st.onRepair && st.onRepair()
-                                   : () => st.onBuySupply && st.onBuySupply(k),
-             false, !done && afford);
-    });
+    /* ── and what it sells ──────────────────────────────────────────────── */
+    const listY = PAGE.TOP + sellH + PAGE.STEP;
+    const listH = SCREEN_H - listY - 22;
+    panel(full.x, listY, full.w, listH, AMBER, "IT SELLS",
+          rows.length + (rows.length === 1 ? " THING" : " THINGS"));
 
-    /* ── the two tracks ────────────────────────────────────────────────────
-       Two rows of the grid apiece: what it is and what it does above, the tier
-       pips and the price below. */
-    const colY = supY + buyH + PAGE.STEP;
-    const refitH = PANEL_H(rows.length * 2);
-    panel(L.x, colY, L.w, refitH, CASH, "REFIT", "PAID IN CASH");
+    const rowH = 30;
+    const inner = { x: full.x + 1, y: listY + PAGE.HEAD - 8,
+                    w: full.w - 2, h: listH - PAGE.HEAD + 2 };
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(inner.x, inner.y, inner.w, inner.h);
+    ctx.clip();
+    tapClip(inner);
+
+    if (!rows.length) {
+      fitText("This one has nothing you need.", full.x + PAGE.PAD,
+              inner.y + 28, SIZE.cap, VIOLET_DIM, "left", 0.6, full.w - 60);
+    }
+
     rows.forEach((r, i) => {
-      const yTop = ROW(colY, i * 2), yBot = ROW(colY, i * 2 + 1) - 6;
-      const sel = i === refit.pick;
-      const maxed = r.cost == null;
-      const afford = !maxed && cash >= r.cost;
-      if (sel) {
-        ctx.save();
-        ctx.fillStyle = CASH;
-        ctx.globalAlpha = 0.07;
-        ctx.fillRect(L.x + 1, yTop - 18, L.w - 2, PAGE.STEP * 2);
-        ctx.restore();
-      }
-      fitText(r.name, L.x + PAGE.PAD, yTop, SIZE.cap, maxed ? AMBER : CASH,
-              "left", 1, L.w - 200, "0.08em");
-      fitText(r.note, L.x + PAGE.PAD, yBot, SIZE.cap, VIOLET_DIM, "left", 0.7,
-              L.w - 200);
-      for (let t = 0; t < r.max; t++) {
-        const px = L.x + L.w - PAGE.PAD - (r.max - t) * 16;
-        ctx.save();
-        ctx.fillStyle = t < r.tier ? CASH : VIOLET_LOW;
-        ctx.globalAlpha = t < r.tier ? 0.9 : 0.35;
-        ctx.fillRect(px, yTop - 9, 11, 9);
-        ctx.restore();
-      }
-      label(maxed ? "MAX" : String(r.cost), L.x + L.w - PAGE.PAD, yBot,
-            SIZE.cap, maxed ? AMBER_DIM : afford ? CASH : WARN, "right",
-            maxed ? 0.6 : 1);
-      if (!maxed) {
-        tap({ x: L.x, y: yTop - 18, w: L.w, h: PAGE.STEP * 2,
-                     act: () => { refit.pick = i; if (st.onBuy) st.onBuy(r.key); } });
-      }
+      const y = inner.y + 22 + i * rowH - mkt.scroll;
+      if (y < inner.y - rowH || y > inner.y + inner.h + rowH) return;
+      // A door costs nothing and is always affordable; everything else is money.
+      const afford = r.kind === "ships" || cash >= r.cost;
+
+      // A swatch, so a glance down the list sorts it into kinds.
+      ctx.save();
+      ctx.fillStyle = r.colour;
+      ctx.globalAlpha = 0.8;
+      ctx.fillRect(full.x + PAGE.PAD, y - 9, 9, 9);
+      ctx.restore();
+
+      fitText(r.name, full.x + PAGE.PAD + 18, y, SIZE.cap, r.colour, "left",
+              1, 240, "0.06em");
+      /* The second column says what you would be buying: how full the tank
+         already is, what the part does, which tier you are on. */
+      const said = r.kind === "supply" ? r.have + "% aboard"
+                 : r.kind === "repair" ? r.have + " hull"
+                 : r.kind === "refit" ? "tier " + r.tier + " of " + r.max +
+                                        "  \u00b7  " + r.note
+                 : r.kind === "ships" ? r.note
+                 : (r.owned ? "\u00d7" + r.owned + "  \u00b7  " : "") + r.note;
+      fitText(said, full.x + PAGE.PAD + 268, y, SIZE.cap, VIOLET_DIM, "left",
+              0.62, full.w - 268 - 230);
+
+      button(r.cost ? r.label + "   " + r.cost : r.label,
+             full.x + full.w - PAGE.PAD - 76, y - 5, 162, 26,
+             afford ? r.colour : VIOLET_LOW,
+             afford ? () => st.onBuyRow && st.onBuyRow(r.kind, r.key, r.frac)
+                    : null,
+             false, afford);
     });
+    ctx.restore();
+    tapClipOff();
 
-    const unlocks = st.unlocks || [];
-    const earnH = PANEL_H(unlocks.length * 2);
-    panel(R.x, colY, R.w, earnH, VIOLET, "EARNED, NOT BOUGHT", "PAID IN LOOKING");
-    unlocks.forEach((u, i) => {
-      const yTop = ROW(colY, i * 2), yBot = ROW(colY, i * 2 + 1) - 6;
-      /* A locked one says its own name. Three rows all reading "LOCKED" told you
-         there were three of something and nothing about what — and the only
-         reason to show them at all is that they are a reason to go and look. */
-      fitText(u.name, R.x + PAGE.PAD, yTop, SIZE.cap,
-              u.have ? VIOLET : VIOLET_LOW, "left", u.have ? 1 : 0.55, R.w - 140,
-              "0.08em");
-      fitText(u.have ? u.note : "locked — find " + u.at + " almanac entries",
-              R.x + PAGE.PAD, yBot, SIZE.cap, VIOLET_DIM, "left",
-              u.have ? 0.75 : 0.5, R.w - 60);
-      label(u.have ? "\u2713" : "\u00b7", R.x + R.w - PAGE.PAD, yTop, SIZE.cap,
-            u.have ? CASH : VIOLET_LOW, "right", u.have ? 1 : 0.5);
-    });
-
-    /* The shipyard. A door rather than a panel: the hull is the bigger decision
-       by an order of magnitude — a tier of drive costs a hundred and forty and a
-       Cathedral costs a hundred and twelve thousand. */
-    /* "HANGAR \u25b8 SKIFF" told you nothing: a SKIFF is a word you have never
-       seen, and the button read as though the hangar were called one. It says
-       what it is for, and what you are in, in that order. */
-    /* Anchored to the foot of the page rather than flowed from the panels above
-       it. It used to be `colY + earnH + STEP + 10`, so the moment the buys panel
-       grew a second row — which it did when the hold went from four materials to
-       six — the door and its caption were pushed down through the line of keys at
-       the bottom. Growth above must not be able to reach the bottom of a page. */
-    const doorY = Math.max(colY + earnH + PAGE.STEP + 10, SCREEN_H - 132);
-    const home = !!st.atHome;
-    /* One line, not two. The caption under it said what you fly and where ships
-       change hands; below the button it printed through the row of keys along the
-       bottom of the page, and above it printed through the panel over it — the
-       right column is simply out of room. Both facts are short enough to be *in*
-       the button, which is also where somebody looking at a door about ships
-       would read them. */
-    const ship = st.shipName || "SKIFF";
-    button(home ? "HANGAR  \u25b8    FLYING THE " + ship
-                : "HOME STATION ONLY  \u00b7  FLYING THE " + ship,
-           R.x + R.w / 2, doorY, R.w, 44, home ? VIOLET : VIOLET_LOW,
-           home ? (st.onHangar || (() => {})) : null, false, home);
-
-    label("ARROWS MOVE  \u00b7  ENTER BUYS  \u00b7  S SELLS  \u00b7  E UNDOCKS",
-          SCREEN_W - PAGE.EDGE, SCREEN_H - 66, SIZE.cap, VIOLET_LOW, "right", 0.55);
+    const total = rows.length * rowH + 30;
+    HUD.marketHeight = total;
+    HUD.marketView = inner.h;
+    if (total > inner.h) {
+      scrollHint(full.x + full.w - 10, inner.y + 6, inner.h - 12,
+                 mkt.scroll / Math.max(1, total - inner.h));
+    }
 
     pageNav(st, "refit");
     closeButton(st.onUndock || st.onClose || (() => {}));

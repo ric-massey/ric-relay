@@ -5630,6 +5630,107 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "px \u00b7 nothing pressable outside its window at any scroll");
 }
 
+// ── the station is a market ──────────────────────────────────────────────
+/* Phase 7.2. It was four panels — a sell strip, a supplies row with bars on it, a
+   refit column, and a column of almanac unlocks that had nothing to do with
+   buying anything — and finding out what a station would do for you meant reading
+   all four.
+
+   It is a list now, the way a market is a list: one row per thing, what it is,
+   what it costs, and a button. And you can buy a *bit* of water, which was the
+   thing the old page could not do at all. */
+{
+  const { cf } = boot("?debug=1&seed=20260909");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const view = () => cf.surveyView();
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 999; surv.water = 9e5; surv.food = 9e5;
+      now += 1000 / 60; cf.step();
+    }
+  };
+  step(20);
+
+  // Undocked there is no market at all: a shop you can shop at from anywhere is
+  // not a place.
+  surv.docked = null;
+  check(view().market.length === 0, "a station's shelves are readable from space");
+
+  surv.cash = 48250;
+  me.hull = Math.max(1, me.maxHull - 3);
+  surv.water = view().water.full * 0.25;
+  surv.food = view().food.full * 0.5;
+  surv.docked = { x: 2400000, y: 900000 };          // deep, so it stocks plenty
+
+  const rows = view().market;
+  const kinds = new Set(rows.map(r => r.kind));
+  check(rows.length > 12, "a deep station offers only " + rows.length + " things");
+  for (const k of ["supply", "repair", "part", "refit"]) {
+    check(kinds.has(k), "the market has no " + k + " rows");
+  }
+  // Every row says what it is and what it costs, because that is what a list is.
+  for (const r of rows) {
+    check(typeof r.name === "string" && r.name.length, "a market row with no name");
+    check(r.kind === "ships" || r.cost > 0, r.name + " costs nothing");
+    check(typeof r.label === "string" && r.label.length, r.name + " has no button");
+  }
+
+  /* ── you can buy a bit ─────────────────────────────────────────────────
+     Filling to the brim was the only option, which made stopping for supplies an
+     all-or-nothing decision priced against a tank you might not want to fill. */
+  const slices = rows.filter(r => r.kind === "supply" && r.key === "water");
+  check(slices.length === 3,
+        "water is offered in " + slices.length + " sizes, not three");
+  const quarter = slices.find(r => r.frac === 0.25);
+  const whole = slices.find(r => r.frac === 1);
+  check(quarter.cost < whole.cost,
+        "a quarter tank costs " + quarter.cost + " and a full one " + whole.cost);
+
+  const full = view().water.full;
+  const before = surv.water;
+  check(view().onBuyRow("supply", "water", 0.25) === true,
+        "could not buy a quarter tank of water");
+  const took = surv.water - before;
+  check(Math.abs(took - full * 0.25) < full * 0.02,
+        "a quarter tank put " + Math.round(took) + " in a " + full + " tank");
+  check(surv.cash === 48250 - quarter.cost,
+        "the quarter tank cost " + (48250 - surv.cash) + ", not " + quarter.cost);
+
+  // And it never sells you more than the tank has room for.
+  surv.water = full * 0.95;
+  const left = view().market.filter(r => r.kind === "supply" && r.key === "water");
+  for (const r of left) {
+    const was = surv.water;
+    view().onBuyRow("supply", r.key, r.frac);
+    check(surv.water <= full + 0.001,
+          "buying " + r.label + " overfilled the tank to " + Math.round(surv.water));
+    surv.water = was;
+  }
+  surv.water = full;
+  check(!view().market.some(r => r.kind === "supply" && r.key === "water"),
+        "a full tank is still being offered water");
+
+  /* Repairs and parts are in the same list, because they are the same act. */
+  const fix = view().market.find(r => r.kind === "repair");
+  check(!!fix, "a damaged hull is not on the market's list");
+  check(view().onBuyRow("repair", "hull") === true, "could not buy a repair");
+  check(me.hull === me.maxHull, "the repair did not mend the hull");
+  check(!view().market.some(r => r.kind === "repair"),
+        "a whole hull is still being offered a repair");
+
+  const part = view().market.find(r => r.kind === "part");
+  const owned = part.owned || 0;
+  check(view().onBuyRow("part", part.key) === true, "could not buy a part");
+  check(view().store.some(e => e.key === part.key && e.n === owned + 1),
+        "the bought part did not reach the crate");
+
+  console.log("  market     " + rows.length + " things in one list \u00b7 " +
+              "supply, repair, part and refit \u00b7 water by the quarter, half " +
+              "or the lot \u00b7 never more than the tank has room for");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

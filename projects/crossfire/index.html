@@ -7895,21 +7895,49 @@
   /* Buying supplies. Priced on what is missing rather than a flat fee for a
      full tank, so topping off before a long trip is not a rip-off and limping
      in on empty is not free. */
-  function buySupply(kind) {
+  /* You can buy a *bit*. Filling to the brim was the only option, which made
+     stopping for supplies an all-or-nothing decision priced against a tank you
+     might not want to fill — five minutes of water to reach the next station is a
+     perfectly sensible purchase and there was no way to make it.
+
+     `frac` is how much of a full tank to take, so a market row can offer a
+     quarter, a half and the lot at three honest prices. */
+  const supplyUnit = kind => kind === "water" ? WATER_PRICE : FOOD_PRICE;
+
+  function buySupply(kind, frac) {
     const full  = kind === "water" ? WATER_FULL : foodCap();
-    const price = kind === "water" ? WATER_PRICE : FOOD_PRICE;
+    const price = supplyUnit(kind);
     const have  = surv[kind];
     if (!surv.docked && !surv.landed) { gameSound("hit"); return false; }
     if (have >= full) { gameSound("hit"); return false; }
-    const cost = Math.max(1, Math.ceil((1 - have / full) * price));
+
+    // Never more than the tank has room for, whatever was asked for.
+    const room = (full - have) / full;
+    const take = Math.max(0, Math.min(room, frac === undefined ? room : frac));
+    if (take <= 0) { gameSound("hit"); return false; }
+
+    const cost = Math.max(1, Math.ceil(take * price));
     if (surv.cash < cost) { gameSound("hit"); return false; }
     surv.cash -= cost;
-    surv[kind] = full;
+    surv[kind] = Math.min(full, have + take * full);
     gameSound("start");
-    chatter((kind === "water" ? "Water" : "Food") + " aboard — " + cost + " cash",
+    chatter((kind === "water" ? "Water" : "Food") + " aboard \u2014 " +
+            Math.round(take * 100) + "% for " + cost + " cash",
             kind === "water" ? "#87d8ff" : "#ffcb42");
     saveSurveyBook();
     return true;
+  }
+
+  /* What a given slice would cost, so the button can say the number. `null` when
+     the tank has no room for that much — a market that offers you something it
+     cannot sell you is a market you stop trusting. */
+  function supplySlice(kind, frac) {
+    const full = kind === "water" ? WATER_FULL : foodCap();
+    const room = (full - surv[kind]) / full;
+    if (room <= 0.001) return null;
+    const take = Math.min(room, frac);
+    if (take <= 0.001) return null;
+    return Math.max(1, Math.ceil(take * supplyUnit(kind)));
   }
 
   /* ── repairs ──────────────────────────────────────────────────────────────
@@ -11262,6 +11290,68 @@
       skimming: surv.skimming > 0,
       melting: surv.melting > 0,
       onBuySupply: buySupply,
+      /* The shop's own shelves, priced and ready to draw. Everything this station
+         will sell you in one list, because that is what a market is — the player
+         should be reading a list of things and prices, not hunting four panels
+         for the four different ways this place takes money. */
+      market: surv.docked ? (() => {
+        const rows = [];
+        /* The shipyard, as the first row. It is a thing this station offers, so
+           it belongs in the list of things this station offers — and a door
+           floating beside the page title had nowhere to sit that was not already
+           somebody's. */
+        if (atHomeStation()) {
+          rows.push({ kind: "ships", key: "", name: "THE SHIPYARD",
+                      colour: "#a08cff", label: "OPEN", cost: 0,
+                      note: "twenty-five hulls, and you keep every one you buy" });
+        }
+        for (const [kind, name, colour] of [["water", "WATER", ICE_C],
+                                            ["food", "FOOD", "#ffcb42"]]) {
+          const full = kind === "water" ? WATER_FULL : foodCap();
+          for (const [frac, label] of [[0.25, "QUARTER"], [0.5, "HALF"], [1, "FILL"]]) {
+            const cost = supplySlice(kind, frac);
+            if (cost == null) continue;
+            rows.push({ kind: "supply", key: kind, name, colour, label,
+                        frac, cost,
+                        have: Math.round(surv[kind] / full * 100) });
+          }
+        }
+        const fix = repairCost();
+        if (fix != null) {
+          rows.push({ kind: "repair", key: "hull", name: "HULL REPAIR",
+                      colour: "#ff8f77", label: "MEND", cost: fix,
+                      have: Math.round(ships[0].hull) + " / " +
+                            Math.round(ships[0].maxHull) });
+        }
+        for (const m of MODULES) {
+          if (m.deep > stationDepth()) continue;
+          rows.push({ kind: "part", key: m.key, name: m.name,
+                      colour: "#a08cff", label: "BUY", cost: m.cost,
+                      cat: m.cat, rarity: m.rarity, note: m.note,
+                      owned: storeCount(m.key) });
+        }
+        for (const r of REFIT) {
+          const cost = refitCost(r.key);
+          if (cost == null) continue;
+          rows.push({ kind: "refit", key: r.key, name: r.name,
+                      colour: "#6dffbf", label: "FIT", cost,
+                      note: r.note, tier: tier(r.key), max: REFIT_TIERS });
+        }
+        return rows;
+      })() : [],
+      onBuyRow: (kind, key, frac) => {
+        if (kind === "supply") return buySupply(key, frac);
+        if (kind === "repair") return buyRepair();
+        if (kind === "part") return buyModule(key);
+        if (kind === "refit") return buyRefit(key);
+        if (kind === "ships") {
+          if (!atHomeStation()) return false;
+          state = "hangar";
+          surveyHUD && surveyHUD.hangarOpened && surveyHUD.hangarOpened(surveyState());
+          return true;
+        }
+        return false;
+      },
       /* The world under you, if it is one you can do anything with. Two separate
          facts: somebody lives here, and there is air here. A world can be either
          or both, and the two of them are the difference between buying water and
@@ -11456,7 +11546,13 @@
       onLoadout: () => { state = "inventory"; surveyHUD && surveyHUD.shipOpened(); },
       onCraftPage: () => { state = "craft"; surveyHUD && surveyHUD.craftOpened(); },
       // The nav strip's own destination for the station itself.
-      onStation: () => { if (surv.docked) { state = "refit"; surveyHUD && surveyHUD.refitOpened(); } },
+      onStation: () => {
+        if (surv.docked) {
+          state = "refit";
+          surveyHUD && surveyHUD.refitOpened();
+          surveyHUD && surveyHUD.marketOpened();
+        }
+      },
       onMissions: () => { state = "missions"; },
       onYard: () => { if (surv.atYard) state = "yard"; },
       onClose: () => { state = "playing"; }
@@ -12215,7 +12311,7 @@
 
   const scrollingPage = () =>
     state === "almanac" || state === "chart" || state === "hangar" ||
-    state === "inventory" || state === "craft";
+    state === "inventory" || state === "craft" || state === "refit";
   // How many rows the shelf on the loadout page has to scroll through.
   const shelfRows = () => (surv && surv.docked ? MODULES.length : 0);
 
@@ -12238,6 +12334,10 @@
     } else if (state === "craft") {
       surveyHUD.craftDragBy(px, RECIPES.length);
       e.preventDefault();
+    } else if (state === "refit") {
+      surveyHUD.marketScrollBy(px, surveyHUD.marketHeight || 0,
+                               surveyHUD.marketView || 1);
+      e.preventDefault();
     } else if (state === "chart") {
       // On a map the wheel is zoom, not pan — that is what every map does.
       surveyHUD.chartZoomBy(px > 0 ? -1 : 1);
@@ -12258,6 +12358,10 @@
                              surveyHUD.shipView || 1);
     }
     else if (state === "craft") surveyHUD.craftDragBy(-dy, RECIPES.length);
+    else if (state === "refit") {
+      surveyHUD.marketScrollBy(-dy, surveyHUD.marketHeight || 0,
+                               surveyHUD.marketView || 1);
+    }
     else if (state === "chart") surveyHUD.chartDragBy(dx, dy);
     pageDrag.x = p.x; pageDrag.y = p.y;
     e.preventDefault();
