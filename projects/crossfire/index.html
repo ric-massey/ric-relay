@@ -4630,6 +4630,13 @@
      Drawn rather than described, because a hauler has to be unmistakable from a
      fighter at a glance and a paragraph of stats cannot do that. */
   const SHIPS = [
+    /* ── what is drawn on a hull ────────────────────────────────────────────
+       `guns` are hardpoints: a short barrel at each, so a two-gun hull looks like
+       one from across the screen. `ribs` are lines across the inside of the
+       silhouette — plating, spars, the shape of a hold — which is what makes a big
+       ship read as a *structure* rather than a big arrowhead. Neither changes what
+       a ship does; both are how you tell one from another at the range you
+       actually meet them, which until now was "a triangle, but bigger". */
     // ── skiffs and scouts: fast, thin, and carrying almost nothing ──────────
     { key: "skiff", name: "SKIFF", cls: "SCOUT", cost: 0,
       hull: 5, dmg: 1, rate: 1, cargo: 60, speed: 1, turn: 1, size: 1,
@@ -4662,17 +4669,20 @@
     { key: "lance", name: "LANCE", cls: "FIGHTER", cost: 3400,
       hull: 7, dmg: 1.4, rate: 1.1, cargo: 65, speed: 1.06, turn: 1.04, size: 1.05,
       note: "a gun with somewhere to sit",
+      guns: [[6, 5], [6, -5]], ribs: [[[2, 6], [2, -6]]],
       art: [[18, 0], [-8, 7], [-4, 0], [-8, -7]],
       fins: [[[6, 3], [4, 9]], [[6, -3], [4, -9]]] },
 
     { key: "wedge", name: "WEDGE", cls: "FIGHTER", cost: 5200,
       hull: 8, dmg: 1.5, rate: 1.05, cargo: 75, speed: 1.02, turn: 0.98, size: 1.1,
       note: "nothing clever, nothing wrong",
+      guns: [[4, 7], [4, -7]], ribs: [[[-2, 8], [-2, -8]]],
       art: [[16, 0], [-2, 10], [-11, 8], [-7, 0], [-11, -8], [-2, -10]] },
 
     { key: "harrier", name: "HARRIER", cls: "FIGHTER", cost: 7600,
       hull: 8, dmg: 1.6, rate: 1.25, cargo: 70, speed: 1.12, turn: 1.12, size: 1.06,
       note: "quick on the trigger and quick away",
+      guns: [[8, 4], [8, -4]],
       art: [[18, 0], [4, 6], [-6, 9], [-10, 4], [-6, 0], [-10, -4], [-6, -9], [4, -6]] },
 
     { key: "cradle", name: "CRADLE", cls: "FIGHTER", cost: 9800,
@@ -4686,6 +4696,7 @@
     { key: "louvre", name: "LOUVRE", cls: "FIGHTER", cost: 13500,
       hull: 9, dmg: 1.9, rate: 1.3, cargo: 55, speed: 1.16, turn: 1.24, size: 1.14,
       note: "two panels and an argument",
+      guns: [[5, 6], [5, -6], [-1, 9], [-1, -9]],
       art: [[9, 0], [3, 5], [-7, 5], [-7, -5], [3, -5]],
       fins: [[[1, 5], [1, 15]], [[1, -5], [1, -15]],
              [[-6, 15], [8, 15]], [[-6, -15], [8, -15]],
@@ -4694,6 +4705,7 @@
     { key: "spur", name: "SPUR", cls: "FIGHTER", cost: 17000,
       hull: 12, dmg: 2.1, rate: 1.15, cargo: 90, speed: 1.08, turn: 1.06, size: 1.22,
       note: "the last small ship worth buying",
+      guns: [[7, 5], [7, -5]],
       art: [[20, 0], [8, 5], [-4, 8], [-10, 5], [-6, 0], [-10, -5], [-4, -8], [8, -5]],
       fins: [[[8, 5], [14, 10]], [[8, -5], [14, -10]]] },
 
@@ -4719,46 +4731,57 @@
     { key: "carrack", name: "CARRACK", cls: "COURIER", cost: 31000,
       hull: 13, dmg: 1.1, rate: 0.9, cargo: 470, speed: 1.06, turn: 0.82, size: 1.62,
       note: "the long haul, done properly",
+      ribs: [[[0, 9], [0, -9]]],
       art: [[17, 0], [11, 7], [-6, 11], [-16, 8], [-11, 0], [-16, -8], [-6, -11], [11, -7]] },
 
     // ── haulers: everything, slowly ─────────────────────────────────────────
     { key: "drayman", name: "DRAYMAN", cls: "HAULER", cost: 15000,
       hull: 16, dmg: 0.7, rate: 0.7, cargo: 420, speed: 0.82, turn: 0.7, size: 1.7,
       note: "slow, and it does not care",
+      ribs: [[[2, 9], [2, -9]], [[-6, 8], [-6, -8]]],
       art: [[13, 0], [9, 10], [-14, 12], [-10, 0], [-14, -12], [9, -10]] },
 
     { key: "coffer", name: "COFFER", cls: "HAULER", cost: 26000,
       hull: 19, dmg: 0.7, rate: 0.7, cargo: 620, speed: 0.78, turn: 0.64, size: 1.88,
       note: "a safe with a drive",
+      ribs: [[[0, 11], [0, -11]], [[-8, 9], [-8, -9]]],
       art: [[12, 0], [10, 9], [10, 13], [-15, 13], [-15, -13], [10, -13], [10, -9]] },
 
     { key: "windlass", name: "WINDLASS", cls: "HAULER", cost: 42000,
       hull: 22, dmg: 0.9, rate: 0.75, cargo: 820, speed: 0.8, turn: 0.6, size: 2.05,
       note: "built round the winch",
+      ribs: [[[3, 10], [3, -10]], [[-7, 10], [-7, -10]]],
       art: [[14, 0], [8, 8], [8, 14], [-16, 12], [-12, 0], [-16, -12], [8, -14], [8, -8]],
       fins: [[[-4, 14], [-4, -14]], [[2, 13], [2, -13]]] },
 
     { key: "granary", name: "GRANARY", cls: "HAULER", cost: 63000,
       hull: 26, dmg: 0.8, rate: 0.7, cargo: 1150, speed: 0.74, turn: 0.54, size: 2.3,
       note: "you will not fill it in one trip",
+      ribs: [[[4, 13], [4, -13]], [[-6, 13], [-6, -13]]],
       art: [[13, 0], [11, 11], [-4, 16], [-18, 13], [-14, 0], [-18, -13], [-4, -16], [11, -11]] },
 
     // ── gunships: the guns get their own hull ───────────────────────────────
     { key: "bastion", name: "BASTION", cls: "GUNSHIP", cost: 24000,
       hull: 20, dmg: 2.4, rate: 1, cargo: 150, speed: 0.9, turn: 0.76, size: 1.66,
       note: "it shoots back harder than you do",
+      guns: [[4, 9], [4, -9], [-4, 11], [-4, -11]],
+      ribs: [[[0, 10], [0, -10]], [[-8, 8], [-8, -8]]],
       art: [[17, 0], [12, 8], [-4, 11], [-13, 7], [-9, 0], [-13, -7], [-4, -11], [12, -8]],
       fins: [[[12, 8], [17, 13]], [[12, -8], [17, -13]]] },
 
     { key: "reprisal", name: "REPRISAL", cls: "GUNSHIP", cost: 38000,
       hull: 23, dmg: 2.8, rate: 1.1, cargo: 180, speed: 0.94, turn: 0.8, size: 1.74,
       note: "the answer to a guarded cache",
+      guns: [[6, 8], [6, -8], [-2, 12], [-2, -12]],
+      ribs: [[[-6, 10], [-6, -10]]],
       art: [[20, 0], [13, 6], [13, 12], [-6, 14], [-14, 8], [-10, 0],
             [-14, -8], [-6, -14], [13, -12], [13, -6]] },
 
     { key: "ironmonger", name: "IRONMONGER", cls: "GUNSHIP", cost: 58000,
       hull: 28, dmg: 3.2, rate: 0.95, cargo: 260, speed: 0.86, turn: 0.66, size: 1.98,
       note: "a foundry that flies",
+      guns: [[2, 12], [2, -12], [-6, 14], [-6, -14]],
+      ribs: [[[-2, 13], [-2, -13]], [[-10, 10], [-10, -10]]],
       art: [[18, 0], [14, 10], [0, 15], [-16, 12], [-12, 0], [-16, -12], [0, -15], [14, -10]],
       fins: [[[14, 10], [20, 8]], [[14, -10], [20, -8]], [[0, 15], [0, -15]]] },
 
@@ -4766,6 +4789,8 @@
     { key: "revenant", name: "REVENANT", cls: "CAPITAL", cost: 86000,
       hull: 34, dmg: 3.4, rate: 0.9, cargo: 700, speed: 0.8, turn: 0.5, size: 2.6,
       note: "you will hear it before you see it",
+      guns: [[0, 16], [0, -16], [-10, 18], [-10, -18]],
+      ribs: [[[6, 12], [6, -12]], [[-4, 17], [-4, -17]], [[-14, 14], [-14, -14]]],
       art: [[22, 0], [16, 9], [2, 14], [-14, 16], [-20, 9], [-16, 0],
             [-20, -9], [-14, -16], [2, -14], [16, -9]],
       fins: [[[2, 14], [2, -14]], [[-8, 16], [-8, -16]]] },
@@ -4773,6 +4798,8 @@
     { key: "cathedral", name: "CATHEDRAL", cls: "CAPITAL", cost: 112000,
       hull: 40, dmg: 3.6, rate: 0.85, cargo: 1400, speed: 0.72, turn: 0.44, size: 3,
       note: "a hold you could hold a service in",
+      guns: [[-2, 18], [-2, -18]],
+      ribs: [[[8, 12], [8, -12]], [[0, 18], [0, -18]], [[-10, 16], [-10, -16]]],
       art: [[24, 0], [18, 8], [10, 17], [-12, 19], [-22, 10], [-18, 0],
             [-22, -10], [-12, -19], [10, -17], [18, -8]],
       fins: [[[10, 17], [10, -17]], [[-2, 19], [-2, -19]], [[18, 8], [18, -8]]] },
@@ -4780,6 +4807,7 @@
     { key: "ossuary", name: "OSSUARY", cls: "CAPITAL", cost: 168000,
       hull: 48, dmg: 4, rate: 0.9, cargo: 2000, speed: 0.7, turn: 0.38, size: 3.5,
       note: "the last thing anyone builds",
+      ribs: [[[6, 14], [6, -14]], [[-2, 18], [-2, -18]], [[-12, 15], [-12, -15]]],
       art: [[26, 0], [20, 10], [12, 20], [-10, 23], [-24, 14], [-20, 0],
             [-24, -14], [-10, -23], [12, -20], [20, -10]],
       fins: [[[12, 20], [12, -20]], [[0, 22], [0, -22]], [[-12, 22], [-12, -22]],
@@ -4975,10 +5003,25 @@
        for water by anybody, slowly and for nothing, which is the poor pilot's
        option and costs time instead of money. */
     const deep = dangerAt(x, y);
+    const lived = R() < 0.11 * (1 - deep * 0.85);
+    /* ── what an inhabited world is *for* ───────────────────────────────────
+       It sold water and food and that was the whole of it, which made every
+       settlement in the sector the same settlement — a well with a shop sign.
+       A place people live is a place that *produces something*, so each one has
+       a trade: the one thing it digs, refines or strips, sold cheaper than a
+       station would and in quantity.
+
+       It is the other half of the economy the stations already have. A station
+       is where you *sell* what you found; a world is where you can buy what you
+       need for a recipe without flying to find a rock that has it in. */
+    const trades = lived ? MATERIALS[Math.floor(R() * MATERIALS.length)].key : "";
     return { x, y, r, kind: kind.key, bands,
              ring: R() < 0.22 ? 1.25 + R() * 0.5 : 0,
              tilt: (R() - 0.5) * 0.9,
-             inhabited: R() < 0.11 * (1 - deep * 0.85),
+             inhabited: lived,
+             trades,
+             // How much of it they have to sell, and what they want for it.
+             stock: lived ? 20 + Math.floor(R() * 60) : 0,
              air: R() < 0.62,
              name: worldName(x, y) };
   }
@@ -5286,7 +5329,7 @@
        salvage you want, one at a time, at the speed a hull can be aimed — which
        is the whole of the early game and exactly why the first rig you get your
        hands on changes the mode more than any other part in the list. */
-    { key: "tractorrig", name: "TRACTOR RIG", cat: "tractor", rarity: "common",
+    { key: "tractorrig", name: "TRACTOR BEAM", cat: "tractor", rarity: "common",
       cost: 340, deep: 0, get: ["find", "craft"],
       where: "in caches — the commonest part out there, and the first one that " +
              "changes how you play",
@@ -5294,7 +5337,7 @@
             SURVEY_TRACTOR + " units is drawn in and stowed on its own, so a " +
             "broken rock is one pass instead of nine",
       eff: { tractor: 1 } },
-    { key: "heavyrig", name: "HEAVY RIG", cat: "tractor", rarity: "uncommon",
+    { key: "heavyrig", name: "HEAVY BEAM", cat: "tractor", rarity: "uncommon",
       cost: 780, deep: 0.16, get: ["buy"],
       note: "the same field, run hot: 60% further out and a harder pull, so a " +
             "field of debris comes in while you are still crossing it",
@@ -5698,19 +5741,29 @@
      there. The distances interleave with the landmark ladder, so filling the
      manifest walks you outward past most of the almanac on the way. */
   const BUILD = [
-    { key: "spar", name: "DRIVE SPAR", dist: 9000,
+    /* **The manifest is the tutorial.** Six parts, and it is the only thread in
+       the mode that says "go there, then there" — so it has to be walkable in an
+       evening rather than an expedition, because the thing it is really teaching
+       is how to fly, scan, salvage, sell and come home. It ran to 280,000 units
+       for the fifth part, which is most of an hour of flying for somebody who has
+       not yet learned why they would want to.
+
+       Five of the six are inside 52,000 now, which is ten minutes of flying end to
+       end. The sixth is still the Leviathan, and it is supposed to be a long way
+       away: by the time you are looking for it you have been taught. */
+    { key: "spar", name: "DRIVE SPAR", dist: 7000,
       clue: "Among the dead. Somewhere a lot of ships stopped at once.",
       where: "a wreck field" },
-    { key: "core", name: "FUSION CORE", dist: 24000,
+    { key: "core", name: "FUSION CORE", dist: 13000,
       clue: "In the light of two suns, where nothing is ever dark.",
       where: "a binary pair" },
-    { key: "lens", name: "RANGING LENS", dist: 55000,
+    { key: "lens", name: "RANGING LENS", dist: 21000,
       clue: "On a world nobody warms. Look for a planet with no star.",
       where: "a rogue world" },
-    { key: "coil", name: "JUMP COIL", dist: 120000,
+    { key: "coil", name: "JUMP COIL", dist: 34000,
       clue: "Wound around a mouth that goes somewhere else.",
       where: "a gate" },
-    { key: "beacon", name: "SIGNAL BEACON", dist: 280000,
+    { key: "beacon", name: "SIGNAL BEACON", dist: 52000,
       clue: "Still calling, long after anyone stopped listening.",
       where: "a transmitting wreck" },
     { key: "plate", name: "ABLATIVE PLATE", dist: 0,
@@ -6977,6 +7030,22 @@
       }
     }
 
+    /* ── a station is somewhere ships pass through ──────────────────────────
+       Not somewhere they collect. A chunk with a station in it is exactly the
+       chunk most likely to have rolled traffic, so every shop in the sector had a
+       permanent crowd loitering outside it doing nothing — which is both the
+       wrong feeling and the thing that made the sector look busy everywhere that
+       mattered.
+
+       Thinned here rather than in the roll, because traffic is built before the
+       stations are and cannot know yet. Keyed off the chunk's coordinates rather
+       than off `R()`, so it takes nothing out of the chunk's random stream and
+       every other thing in the sector is generated exactly as it was. */
+    if (out.stations.length && out.traffic.length > 1) {
+      const keep = 1 + (hash2(cx * 31, cy * 17) % 2);
+      out.traffic.length = Math.min(out.traffic.length, keep);
+    }
+
     const lm = surv.landmarkAt.get(chunkKey(cx, cy));
     if (lm) buildLandmark(lm, out, R, rnd);
 
@@ -7420,8 +7489,12 @@
         const ga = (g / n) * Math.PI * 2;
         guards.push({ x: px + Math.cos(ga) * 200, y: py + Math.sin(ga) * 200, a: ga });
       }
+      /* `quiet` on the core's post: its sentries do not wake up for somebody
+         walking the ring. They wake when you come down a spoke for the middle,
+         which is the moment the place stops being a curiosity and starts being a
+         robbery — and you are told, once, before it happens. */
       out.caches.push({ x: px, y: py, r: 46, guards, opened: false, rich,
-                        phase: R() * Math.PI * 2 });
+                        quiet: rich, phase: R() * Math.PI * 2 });
     };
     put(0, 0, true);
     const ringAt = k => {
@@ -7475,6 +7548,18 @@
     // ship crossed a chunk line would be scenery, not company.
     const liveTraffic = new Map();
     for (const t of surv.traffic) if (t.id) liveTraffic.set(t.id, t);
+    /* **Ships that were not born in a chunk.** Hunters, the one that got away,
+       anything spawned at you — they carry `id: null`, and the rebuild below only
+       re-adds ships it can find in a chunk. So every time you crossed a chunk
+       boundary, which is every few seconds of flying, the ship chasing you
+       silently stopped existing. That is the "ships near me randomly disappear"
+       bug, and it also meant a hunter could never follow you anywhere.
+
+       They are carried across by hand. Only while they are still near enough to
+       be real: one that is three chunks behind you has genuinely lost you. */
+    const spawned = surv.traffic.filter(t => !t.id &&
+      Math.abs(t.x - ships[0].x) < CHUNK * 3 &&
+      Math.abs(t.y - ships[0].y) < CHUNK * 3);
     /* Everything alive before the rebuild, so afterwards we can tell who did not
        come back. A pirate you shot and did not finish leaves the loaded window at
        some point, and that moment — the only moment at which "it got away" is a
@@ -7681,6 +7766,9 @@
       if (surv.traffic.indexOf(t) >= 0) continue;
       rememberGrudge(t);
     }
+
+    // The ones that were spawned rather than generated, put back. See `spawned`.
+    for (const t of spawned) surv.traffic.push(t);
 
     seedMotes();
   }
@@ -8373,6 +8461,7 @@
       const t = surv.traffic[i];
 
       t.hit = Math.max(0, (t.hit || 0) - dt);
+      t.bumped = Math.max(0, (t.bumped || 0) - dt);
 
       /* Gravity first, because it applies whatever else this ship is doing —
          including being a distress call that is not flying at all. */
@@ -8617,7 +8706,18 @@
         }
       }
 
-      const aim = (t.angry || fleeing || t.hunted > 0) ? goal : dodgeWells(t, goal);
+      let aim = (t.angry || fleeing || t.hunted > 0) ? goal : dodgeWells(t, goal);
+      /* And they steer round *you*. Nothing out here made any attempt to avoid
+         the player, so a freighter on a route that happens to cross where you are
+         parked flew into you and kept flying into you. Anything not actively
+         coming for you gives way — which is also what makes the ones that do not
+         give way read as a threat. */
+      if (!t.angry && me.alive && near < 900 * U) {
+        const away = Math.atan2(t.y - me.y, t.x - me.x);
+        const push = (900 * U - near) * 1.4;
+        aim = { x: aim.x + Math.cos(away) * push,
+                y: aim.y + Math.sin(away) * push };
+      }
       const dx = aim.x - t.x, dy = aim.y - t.y;
       const d = Math.hypot(dx, dy) || 1;
       const want = Math.atan2(dy, dx);
@@ -8642,6 +8742,19 @@
          bounce off a hauler and a hauler barely notices. */
       if (me.alive && near < (22 * U * (shipSpec(t.hull).size || 1)) + shipRadius()) {
         const min = (22 * U * (shipSpec(t.hull).size || 1)) + shipRadius();
+        /* And it costs you. Two hulls meeting at a closing speed is the oldest
+           hazard in this game and it was the one thing out here that could touch
+           you and did not — you could ram a freighter all afternoon. Only a real
+           impact: brushing past at walking pace is a scrape, and the ship you hit
+           takes it too. */
+        const closing = Math.hypot(me.vx - (t.dvx || 0), me.vy - (t.dvy || 0));
+        if (me.invuln <= 0 && closing > 120 * U && !t.bumped) {
+          t.bumped = 0.8;
+          damageShip(me, "rock", null);
+          t.hp -= 1;
+          t.hit = 0.12;
+          if (t.hp <= 0) killTraffic(i, true);
+        }
         let dx = me.x - t.x, dy = me.y - t.y;
         let d = Math.hypot(dx, dy);
         if (d < 0.001) { dx = 1; dy = 0; d = 1; }
@@ -8666,10 +8779,35 @@
              That last clause is the war. Two powers' ships shoot each other on
              sight, in front of you, about something that has nothing to do with
              you, and you can sit and watch or pick a side. */
+          /* What it is shooting at, and — the part that was missing — *where
+             that thing will be*. Every ship out here fired at the position its
+             target occupied at the instant it pulled the trigger, so anything
+             moving across its nose was never hit by anything, ever. The bots in
+             the other modes have led their shots since the first version of this
+             game; the sector's own ships did not, which is the whole of why they
+             felt like scenery with a gun on it.
+
+             Solved the honest way: the time the round needs to cross the gap, and
+             the target's own velocity over that time. Traffic carries no velocity
+             of its own — it flies on a heading — so its speed along its heading is
+             what gets led. */
+          const SHOT_V = 360 * U;
+          const leadOf = (o, ovx, ovy) => {
+            const dd = Math.hypot(o.x - t.x, o.y - t.y);
+            const tt = dd / SHOT_V;
+            return { x: o.x + (ovx || 0) * tt, y: o.y + (ovy || 0) * tt };
+          };
+          const leadShip = o => leadOf(o,
+            Math.cos(o.a) * o.speed * U + (o.dvx || 0),
+            Math.sin(o.a) * o.speed * U + (o.dvy || 0));
+
           let tx = null, ty = null, live = false;
           if (t.angry && me.alive) {
             const dd = Math.hypot(me.x - t.x, me.y - t.y);
-            if (dd < 1800 * U) { tx = me.x; ty = me.y; live = true; }
+            if (dd < 1800 * U) {
+              const p = leadOf(me, me.vx, me.vy);
+              tx = p.x; ty = p.y; live = true;
+            }
           }
           /* What it *wants* to shoot, which is usually not you. A pirate fires on
              the hauler it is chasing; an escort fires on whoever is chasing its
@@ -8678,14 +8816,17 @@
              gun pointed at it. */
           if (tx == null && t.angryAt && surv.traffic.indexOf(t.angryAt) >= 0) {
             const o = t.angryAt;
-            if (Math.hypot(o.x - t.x, o.y - t.y) < 1600 * U) { tx = o.x; ty = o.y; }
-            else t.angryAt = null;
+            if (Math.hypot(o.x - t.x, o.y - t.y) < 1600 * U) {
+              const p = leadShip(o); tx = p.x; ty = p.y;
+            } else t.angryAt = null;
           }
           if (tx == null && t.markKind === "ship" && t.mark &&
               surv.traffic.indexOf(t.mark) >= 0 &&
               ROLES[t.role || t.kind] && ROLES[t.role || t.kind].hunts) {
             const o = t.mark;
-            if (Math.hypot(o.x - t.x, o.y - t.y) < 1400 * U) { tx = o.x; ty = o.y; }
+            if (Math.hypot(o.x - t.x, o.y - t.y) < 1400 * U) {
+              const p = leadShip(o); tx = p.x; ty = p.y;
+            }
           }
           if (tx == null) {
             let best = null, bd = 1500 * U;
@@ -8698,11 +8839,33 @@
               const dd = Math.hypot(o.x - t.x, o.y - t.y);
               if (dd < bd) { bd = dd; best = o; t.duel = o; }
             }
-            if (best) { tx = best.x; ty = best.y; }
+            if (best) {
+              const p = best.speed !== undefined ? leadShip(best)
+                      : leadOf(best, best.vx, best.vy);
+              tx = p.x; ty = p.y;
+            }
           }
           if (tx != null) {
-            t.cool = t.angry ? 0.42 : 0.5;
             const a = Math.atan2(ty - t.y, tx - t.x);
+            /* Check the line first. Rounds hit whatever is in front of them out
+               here — which is the rule that makes a war dangerous to stand next
+               to — and it also means a ship in a firing line will happily empty
+               its magazine into the back of its own escort. Anybody competent
+               holds fire. Three samples down the barrel is enough: this runs for
+               every armed ship every half-second. */
+            let blocked = false;
+            for (let k = 1; k <= 3 && !blocked; k++) {
+              const px = t.x + Math.cos(a) * 280 * U * k;
+              const py = t.y + Math.sin(a) * 280 * U * k;
+              for (const o of surv.traffic) {
+                if (o === t || atWar(t.faction, o.faction)) continue;
+                if (o.faction === "pirate" && t.faction !== "pirate") continue;
+                const rr = 22 * U * (shipSpec(o.hull).size || 1);
+                if (dist2(px, py, o.x, o.y) < rr * rr) { blocked = true; break; }
+              }
+            }
+            if (blocked) { t.cool = 0.25; continue; }
+            t.cool = t.angry ? 0.42 : 0.5;
             surv.shots.push({
               x: t.x + Math.cos(a) * 20 * U, y: t.y + Math.sin(a) * 20 * U,
               vx: Math.cos(a) * 360 * U, vy: Math.sin(a) * 360 * U,
@@ -9722,7 +9885,7 @@
   }
 
   /* Loose salvage drifts, and is collected by touching it — or, once the beam
-     is fitted, by being near it. The tractor rig is the part most runs find
+     is fitted, by being near it. The tractor beam is the part most runs find
      first and the one that changes an ordinary flight most: before it, every
      mote is a manoeuvre; after it, a pass over a broken rock is one movement
      instead of six. */
@@ -9857,6 +10020,18 @@
         }
       }
     }
+    /* And the Vault, which had every one of its walls stamped as discs and drawn
+       from the same list — and was not in this function, so the player flew
+       through all of it. Traffic already bounced off it; you did not. A structure
+       whose walls stop everything except you is not a structure. */
+    const vt = surv.vault;
+    if (vt && dist2(me.x, me.y, vt.x, vt.y) < (vt.r * 2) ** 2) {
+      for (const g of vt.segs) {
+        if (dist2(me.x, me.y, g.x, g.y) < (g.r + 300) ** 2) {
+          strike(me, g.x, g.y, g.r, true);
+        }
+      }
+    }
   }
 
   /* ── gates ────────────────────────────────────────────────────────────────
@@ -9954,8 +10129,25 @@
       const toMe = Math.hypot(me.x - d.x, me.y - d.y);
       const fromPost = Math.hypot(d.post.x - d.x, d.post.y - d.y);
 
+      /* A post that is `quiet` does not wake for somebody in the building. It
+         wakes when you come for the thing it is standing on — which for the
+         Vault's core means down a spoke and inside the ring, and is the moment
+         the visit stops being a look round and becomes a robbery.
+
+         You are told once, before it happens, because a room full of guns that
+         opens fire without warning is a trap and a room full of guns that says
+         "not past here" is a decision. */
+      const post = d.home && d.home.quiet;
+      const wakeAt = post ? DRONE_WAKE * 0.42 : DRONE_WAKE;
       if (hidden) d.awake = false;
-      else if (toMe < DRONE_WAKE * U) d.awake = true;
+      else if (toMe < wakeAt * U) {
+        if (post && !d.home.warned) {
+          d.home.warned = true;
+          chatter("Something in here just woke up. It does not want you any " +
+                  "closer.", "#ff8f77", { x: d.x, y: d.y });
+        }
+        d.awake = true;
+      }
       if (d.awake && (toMe > DRONE_LEASH * U || fromPost > DRONE_LEASH * U)) {
         d.awake = false;
       }
@@ -10067,6 +10259,22 @@
          would stop being a neutral the first time it did. */
       if (b.friendly) {
         let spent = false;
+        /* **A stray round is a real round.** Somebody else's fire used to pass
+           straight through you: it was flagged friendly, friendly meant "cannot
+           touch the player", and the practical effect was that a fleet action was
+           a firework display you could park inside. Standing in a war is
+           dangerous — that is 6.3's rule, the same one that lets their rounds
+           break rock and kill each other — so it hits you too.
+
+           It does not make the shooter your enemy. Nobody aimed at you; you were
+           in the way, which is a different thing and must not cost them their
+           standing with you. */
+        if (me.alive && me.invuln <= 0 && b.from !== me &&
+            dist2(b.x, b.y, me.x, me.y) < R * R) {
+          surv.shots.splice(i, 1);
+          damageShip(me, "shot", null);
+          continue;
+        }
         for (let k = surv.drones.length - 1; k >= 0 && !spent; k--) {
           const d = surv.drones[k];
           if (dist2(b.x, b.y, d.x, d.y) > (18 * U) ** 2) continue;
@@ -11785,7 +11993,11 @@
     const sc = warScale();
     /* Battles thicken away from home — the powers keep the near lanes open
        because they both need them — and with how big the war is. */
-    if (R() > (0.012 + deep * 0.05) * sc.heat) return;
+    /* Rare. A battle you meet every few minutes is weather; one you come across
+       twice in an evening is a thing that happened. This was one chunk in eighty
+       near home and one in twenty in the deep, which at a chunk every few seconds
+       of flying is *constant* — the sky was never quiet. A quarter of that. */
+    if (R() > (0.003 + deep * 0.012) * sc.heat) return;
 
     const p = { x: cx * CHUNK + rnd(900, CHUNK - 900),
                 y: cy * CHUNK + rnd(900, CHUNK - 900) };
@@ -12478,6 +12690,7 @@
       if ((e.t -= dt) <= 0) surv.echoes.splice(i, 1);
     }
     surv.scan.lit = Math.max(0, surv.scan.lit - dt);
+    surv.selectFlash = Math.max(0, (surv.selectFlash || 0) - dt * 1.6);
 
     /* The objective is recomputed every frame rather than cached, because
        picking a part up or handing it over changes it and there is no single
@@ -12952,6 +13165,47 @@
         ctx.stroke();
       });
     }
+    // The same hardpoints and plating the player's hull gets. A ship is a ship.
+    if (spec.guns) {
+      glow(colour, 1.1 * (12 / r), 0.85, () => {
+        ctx.beginPath();
+        for (const g of spec.guns) {
+          ctx.moveTo(g[0], g[1]);
+          ctx.lineTo(g[0] + 5, g[1]);
+        }
+        ctx.stroke();
+      });
+    }
+    if (spec.ribs) {
+      glow(colour, 1 * (12 / r), 0.4, () => {
+        ctx.beginPath();
+        for (const b of spec.ribs) {
+          ctx.moveTo(b[0][0], b[0][1]);
+          ctx.lineTo(b[1][0], b[1][1]);
+        }
+        ctx.stroke();
+      });
+    }
+    /* ── what a working engine looks like ───────────────────────────────────
+       Your ship trails burning dust and nothing else in the sector did, which is
+       most of why other ships read as cut-outs sliding across the screen rather
+       than as things under power. A hull big enough to need more than one engine
+       gets more than one: a scout has a single throat, a hauler two, a capital
+       three, spaced across its stern. Inside the ship's own transform, so they
+       sit where the engines are whichever way it is pointing. */
+    const throats = spec.size >= 1.5 ? 3 : spec.size >= 1.1 ? 2 : 1;
+    const burn = 0.55 + 0.45 * Math.abs(Math.sin(clock * 7 + (t.phase || 0)));
+    if (!t.adrift) {
+      glow("#ffcb42", 1.4 * (12 / r), 0.3 + burn * 0.35, () => {
+        for (let k = 0; k < throats; k++) {
+          const off = throats === 1 ? 0 : (k - (throats - 1) / 2) * 6.5;
+          ctx.beginPath();
+          ctx.moveTo(-9, off);
+          ctx.lineTo(-9 - 4 - burn * 5, off);
+          ctx.stroke();
+        }
+      });
+    }
     ctx.restore();
 
     if (t.kind === "distress") {
@@ -13282,10 +13536,11 @@
          stop saying it the moment you do. A control nobody has been told about is
          a control that does not exist. */
       scanTaught: !!surv.t.scanned,
-      /* A feature picked off the chart. One at a time, it keeps its arrow until
-         you pick another or clear it, and it is the only thing besides a waypoint
-         that does. */
+      /* A feature picked off the chart. One at a time, and it keeps its arrow
+         until you pick another. */
       selected: surv.selected,
+      // Counts down after a selection, for the flash on the chart.
+      selectFlash: surv.selectFlash || 0,
 
       /* The two tracks, flattened for the interface. `refit` carries the tier
          and the next price so the station screen never has to do arithmetic,
@@ -13471,6 +13726,16 @@
         name: surv.landed.name, kind: surv.landed.kind, r: surv.landed.r,
         colour: worldKind(surv.landed.kind).disc,
         air: !!surv.landed.air,
+        /* What they dig here, what is left of it, and what they want for it.
+           Cheaper than a station sells the same thing for, because you came to
+           them — and finite, because a world is a place rather than a tap. */
+        trades: surv.landed.trades ? (() => {
+          const m = matSpec(surv.landed.trades);
+          return { key: m.key, name: m.name, colour: m.colour, note: m.note,
+                   left: Math.max(0, Math.round(surv.landed.stock || 0)),
+                   price: Math.max(1, Math.round(m.value * 1.5 *
+                                   (1 + dangerAt(surv.landed.x, surv.landed.y)))) };
+        })() : null,
         dist: Math.round(Math.hypot(surv.landed.x, surv.landed.y)),
         band: bandAt(surv.landed.x, surv.landed.y).name
       },
@@ -13508,6 +13773,28 @@
       lore: surv.lore || null,
       onLook: () => { if (surv.near) { surv.lore = surv.near; state = "lore"; } },
       onLand: () => { if (surv.landed) state = "landed"; },
+      /* Buying off a world. Ten at a time, or whatever is left of the hold or of
+         their stock — three taps to fill a hold beats thirty, and a world that
+         runs out is a world you have to find another of. */
+      onBuyLocal: () => {
+        const w = surv.landed;
+        if (!w || !w.trades || w.stock <= 0) { gameSound("hit"); return false; }
+        const m = matSpec(w.trades);
+        const price = Math.max(1, Math.round(m.value * 1.5 *
+                                (1 + dangerAt(w.x, w.y))));
+        const room = holdCap() - holdUsed();
+        const want = Math.min(10, room, w.stock,
+                              Math.floor(surv.cash / price));
+        if (want <= 0) { gameSound("hit"); return false; }
+        surv.cash -= want * price;
+        w.stock -= want;
+        addMaterial(m.key, want);
+        gameSound("start");
+        chatter(want + " " + m.name.toLowerCase() + " aboard — " +
+                money(want * price), CASH);
+        saveSurveyBook();
+        return true;
+      },
       // Dying, and coming back from it.
       death: surv.death,
       deaths: surv.deaths || 0,
@@ -13655,6 +13942,15 @@
          one again lets it go. */
       onSelect: (x, y, snap) => {
         let best = null, bd = (snap || 400) ** 2;
+        /* Your own pins first, then anything charted. A pin is a place you
+           decided mattered — the *most* likely thing you meant when you tapped
+           there — and it used to be the one kind of mark on the chart you could
+           not point the ship at. */
+        for (const q of surv.pins) {
+          const d = dist2(q.x, q.y, x, y);
+          if (d > bd) continue;
+          bd = d; best = { x: q.x, y: q.y, k: "pin", name: q.name || "PIN" };
+        }
         for (const q of surv.known.values()) {
           const d = dist2(q.x, q.y, x, y);
           if (d > bd) continue;
@@ -13667,6 +13963,8 @@
         surv.selected = same ? null
           : { x: best.x, y: best.y, k: best.k,
               name: best.name || String(best.k || "").toUpperCase() };
+        // It flashes where you touched it, so the chart answers the tap.
+        surv.selectFlash = same ? 0 : 1;
         gameSound("start");
         saveSurveyBook();
         return true;
@@ -15358,6 +15656,30 @@
         for (const f of spec.fins) {
           ctx.moveTo(f[0][0], f[0][1]);
           ctx.lineTo(f[1][0], f[1][1]);
+        }
+        ctx.stroke();
+      });
+    }
+    /* Hardpoints and plating. See the roster: a gun is a stub of barrel at a
+       point on the hull and a rib is a line across the inside of it. A two-gun
+       ship should look like a two-gun ship from across the screen, and a capital
+       should read as a structure rather than as a very large arrowhead. */
+    if (spec && spec.guns) {
+      glow(s.colour, 1.1 * (12 / r), alpha * 0.9, () => {
+        ctx.beginPath();
+        for (const g of spec.guns) {
+          ctx.moveTo(g[0], g[1]);
+          ctx.lineTo(g[0] + 5, g[1]);
+        }
+        ctx.stroke();
+      });
+    }
+    if (spec && spec.ribs) {
+      glow(s.colour, 1 * (12 / r), alpha * 0.45, () => {
+        ctx.beginPath();
+        for (const b of spec.ribs) {
+          ctx.moveTo(b[0][0], b[0][1]);
+          ctx.lineTo(b[1][0], b[1][1]);
         }
         ctx.stroke();
       });

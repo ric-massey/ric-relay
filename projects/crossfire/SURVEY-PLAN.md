@@ -2085,6 +2085,85 @@ escorting. It is also what turned up the escort's reaction radius above.
 
 ---
 
+### A long list from the cockpit  ·  **DONE**
+
+Most of it one complaint wearing different clothes: **the things out there were
+not quite real.** You could fly through them, their fire could not touch you, and
+they could not hit anything that was moving.
+
+**A hull is solid, and hitting one costs.** Two ships meeting at speed is the
+oldest hazard this game has and it was the one thing out here that could touch you
+and did not.
+
+**A stray round is a real round.** Somebody else's fire was flagged friendly,
+friendly meant "cannot touch the player", and the practical effect was that a
+fleet action was a firework display you could park inside. It does not make the
+shooter your enemy — nobody aimed at you, you were in the way.
+
+**They aim where you are going to be.** Every ship out here fired at the position
+its target occupied at the instant it pulled the trigger, so anything crossing its
+nose was never hit by anything, ever. The bots in the other modes have led their
+shots since the first version of this game. And they check the line first: a ship
+in a firing line used to empty its magazine into the back of its own escort.
+
+**They steer round you** unless they are coming for you — which is also what makes
+the ones that do not give way read as a threat.
+
+**Ships stopped evaporating.** Anything spawned *at* you carries no chunk id, and
+the streamer only re-adds ships it can find in a chunk — so every time you crossed
+a chunk boundary, which is every few seconds of flying, the ship chasing you
+silently stopped existing.
+
+**The Vault's lines are walls.** Every one of them was stamped as collision discs
+and drawn from the same list, and the Vault was simply missing from the function
+that stops the *player* — traffic bounced off it and you did not. Its core post
+also sleeps now until you come down a spoke for the middle, and says so once
+before it wakes.
+
+**Battles are rare.** One chunk in eighty near home is *constant* at a chunk every
+few seconds of flying; the sky was never quiet. A quarter of that — measured, 100
+battles in a 61×61 block became 14.
+
+**Stations are places ships pass through**, not places they collect: a chunk with
+a station in it is exactly the chunk most likely to have rolled traffic, so every
+shop had a permanent crowd outside it. One ship at spawn, twelve at the peak of
+ninety seconds' flying.
+
+**The manifest is the tutorial.** It ran to 280,000 units for the fifth part,
+which is most of an hour of flying for somebody who has not yet learned why they
+would want to. Five of the six are inside 52,000 now — ten minutes end to end —
+and the sixth is still the Leviathan, which is supposed to be a long way away.
+
+**Ships look like ships.** Everything else in the sector was a cut-out sliding
+across the screen: no engines. Hulls burn now, and one big enough to need more
+than one engine has more than one. And sixteen hulls carry **hardpoints and
+plating** — a two-gun ship looks like a two-gun ship from across the screen, and a
+capital reads as a structure rather than as a very large arrowhead.
+
+**Interface:** the market says **SELL** and **PURCHASE** rather than "IT BUYS" and
+"IT SELLS", which described the station's side of the transaction and differed by
+one letter in the middle of a word. Parts on the shelves carry their pictures. The
+parts grid is five across on a phone. **TRACTOR RIG → TRACTOR BEAM**, **HEAVY RIG →
+HEAVY BEAM**.
+
+**The ship page is INVENTORY**, and the cargo hold is the first thing on it — it
+used to be third, under two panels a player checks once a trip, below the one
+number they check on every dock. Storage is tiles with pictures, counts in the
+corner, and **pressing one opens a card** saying what it does, because a picture
+can say what kind of thing something is and cannot say "+34% scan range".
+
+**The chart answers a tap.** Selecting something rings it and blooms a flash where
+your finger went, and pins can be selected too — they were the one kind of mark on
+the chart you could not point the ship at.
+
+**Worlds sell what they dig.** An inhabited world sold water and food and nothing
+else, which made every settlement the same settlement. Each has a material it
+produces, cheaper than a station, and finite — a place rather than a tap.
+
+**And the static is louder**, on Ric's call.
+
+---
+
 ## At the end of Phase 7: go back to Phase 6
 
 **Read this before starting anything new.**

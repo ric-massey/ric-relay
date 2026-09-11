@@ -790,9 +790,9 @@
   function drawStatic(amount) {
     if (!amount || api.reduceMotion) return;
     const { ctx, SCREEN_W, SCREEN_H } = api;
-    const n = Math.round(90 + amount * 620);
+    const n = Math.round(140 + amount * 1100);
     ctx.save();
-    ctx.globalAlpha = 0.05 + amount * 0.3;
+    ctx.globalAlpha = 0.07 + amount * 0.46;
     ctx.fillStyle = "#c8d4e8";
     for (let i = 0; i < n; i++) {
       // A cheap integer hash rather than Math.random: the same crawl every frame
@@ -811,7 +811,7 @@
         grainSeed = (grainSeed * 1664525 + 1013904223) >>> 0;
         const ty = (grainSeed >>> 7) % SCREEN_H;
         const th = 2 + ((grainSeed >>> 3) & 7);
-        ctx.globalAlpha = 0.05 + amount * 0.12;
+        ctx.globalAlpha = 0.06 + amount * 0.2;
         ctx.fillRect(0, ty, SCREEN_W, th);
       }
     }
@@ -2415,6 +2415,30 @@
     paintEchoes(st, mx, my, true);
     drawPins(st, mx, my, true);
     drawWaypoint(st, mx, my, true);
+    /* What you are watching, and a flash when you pick it. A tap that changes
+       something off in the corner of a map is a tap you are not sure landed; a
+       ring that blooms where your finger went is the map saying yes. */
+    if (st.selected) {
+      const sx2 = mx(st.selected.x), sy2 = my(st.selected.y);
+      const f = st.selectFlash || 0;
+      ctx.save();
+      ctx.strokeStyle = OBJECTIVE;
+      ctx.globalAlpha = 0.55 + 0.35 * Math.abs(Math.sin(clockish() * 3));
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(sx2, sy2, 13, 0, Math.PI * 2);
+      ctx.stroke();
+      if (f > 0) {
+        ctx.globalAlpha = f * 0.8;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(sx2, sy2, 13 + (1 - f) * 46, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+      label(shortName(st.selected.name || "", 16), sx2, sy2 - 22, SIZE.cap,
+            OBJECTIVE, "center", 0.9);
+    }
 
     ctx.restore();
 
@@ -3487,7 +3511,11 @@
        At the top, because it is what you came in with, and one line: the things
        you are carrying that this place wants, and a button. */
     const sellH = PANEL_H(Math.max(1, Math.ceil(mats.length / 3)));
-    panel(full.x, PAGE.TOP, full.w, sellH, CASH, "IT BUYS",
+    /* "SELL" and "PURCHASE", not "IT BUYS" and "IT SELLS". The old pair
+       described the *station's* side of the transaction, which is one mental flip
+       away from the thing the player is doing, and the two headings differed by a
+       single letter in the middle of the word. */
+    panel(full.x, PAGE.TOP, full.w, sellH, CASH, "SELL",
           carried ? carried + " UNITS ABOARD" : "NOTHING ABOARD");
     const third = (full.w - PAGE.PAD * 2 - 210) / 3;
     mats.forEach((m, i) => {
@@ -3513,7 +3541,7 @@
     /* ── and what it sells ──────────────────────────────────────────────── */
     const listY = PAGE.TOP + sellH + PAGE.STEP;
     const listH = SCREEN_H - listY - 22;
-    panel(full.x, listY, full.w, listH, AMBER, "IT SELLS",
+    panel(full.x, listY, full.w, listH, AMBER, "PURCHASE",
           rows.length + (rows.length === 1 ? " THING" : " THINGS"));
 
     const rowH = 30;
@@ -3536,14 +3564,21 @@
       // A door costs nothing and is always affordable; everything else is money.
       const afford = r.kind === "ships" || cash >= r.cost;
 
-      // A swatch, so a glance down the list sorts it into kinds.
-      ctx.save();
-      ctx.fillStyle = r.colour;
-      ctx.globalAlpha = 0.8;
-      ctx.fillRect(full.x + PAGE.PAD, y - 9, 9, 9);
-      ctx.restore();
+      /* A part gets its own picture; everything else gets a swatch. A shelf of
+         twenty-odd identical coloured squares is a list you read word by word,
+         and the parts page had already taught the icons — so the shop should be
+         speaking the same language the catalogue does. */
+      if (r.kind === "part" && r.cat) {
+        drawPartIcon(r.cat, full.x + PAGE.PAD + 6, y - 5, 9, r.colour, 0.95);
+      } else {
+        ctx.save();
+        ctx.fillStyle = r.colour;
+        ctx.globalAlpha = 0.8;
+        ctx.fillRect(full.x + PAGE.PAD, y - 9, 9, 9);
+        ctx.restore();
+      }
 
-      fitText(r.name, full.x + PAGE.PAD + 18, y, SIZE.cap, r.colour, "left",
+      fitText(r.name, full.x + PAGE.PAD + 20, y, SIZE.cap, r.colour, "left",
               1, 240, "0.06em");
       /* The second column says what you would be buying: how full the tank
          already is, what the part does, which tier you are on. */
@@ -3682,6 +3717,11 @@
   let slotBoxes = [];
   let storeRows = [];
   let carry = null;
+  /* The part whose bubble is open on the inventory page, and where it was. A
+     tile with a picture on it says *what kind* of thing it is; it cannot say what
+     the thing does, and "+34% scan range" is the reason you own one. So pressing
+     a tile opens a small card beside it, and pressing anywhere closes it. */
+  let bubble = null;
   const DRAG_MIN = 6;          // screen units before a press becomes a drag
 
   const inBox = (b, x, y) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
@@ -3838,7 +3878,10 @@
        parts visible at a time out of twenty-odd, and a scroll for the rest. The
        grid is a catalogue: what it has to do is let you see a lot of it at once. */
     const gridW = full.w - railW - PAGE.GUTTER;
-    const cols = api.touchOnly ? 4 : 4;
+    // Five across on a phone. Four made each box a quarter of the grid, which is
+    // a big square with a small picture marooned in it; a catalogue's job is to
+    // let you see a lot of it at once.
+    const cols = api.touchOnly ? 5 : 4;
     const cell = Math.floor((gridW - PAGE.PAD * 2 - (cols - 1) * 10) / cols);
     const pickH = PANEL_H(5);
     const gridH = SCREEN_H - PAGE.TOP - pickH - PAGE.STEP - 22;
@@ -4445,7 +4488,7 @@
     const flags = st.standings || [];
     const others = st.others || [];
 
-    pageFrame("YOUR SHIP",
+    pageFrame("INVENTORY",
               (st.shipName || "") + "   \u00b7   " + money(cash), "");
 
     /* The window the page scrolls inside. Everything below is drawn against a
@@ -4462,6 +4505,41 @@
 
     let y = PAGE.TOP - shipPg.scroll;
     const gap = PAGE.STEP;
+
+    /* ── the hold, at the top ─────────────────────────────────────────────
+       What you are carrying is the first thing on the page. It used to be third,
+       under the slots and storage, which put the one number a player checks on
+       every single dock — how full am I — below two panels they check once a
+       trip. The page is the ship's inventory; the inventory opens on the cargo. */
+    const used = st.carried || 0;
+    const storeH = PANEL_H(mats.length);
+    /* The materials are the *hold* and the parts are *storage*, and they used to
+       be called the other way round with "the crate" doing duty for the parts.
+       Two panels on one page both called STORAGE would be worse than either. */
+    panel(full.x, y, full.w, storeH, VIOLET, "CARGO HOLD", used + " / " + cap);
+    const half = (full.w - PAGE.PAD * 2) / 2;
+    mats.forEach((m, i) => {
+      const col = i % 2, row = Math.floor(i / 2);
+      const mx = full.x + PAGE.PAD + col * half;
+      const yy = ROW(y, row) + 2;
+      // Its own picture, the same one the parts page and the market use.
+      drawMatIcon(m.key, mx + 7, yy - 5, 8, m.colour, m.n ? 0.95 : 0.3);
+      fitText(m.name, mx + 20, yy, SIZE.cap, m.colour, "left", m.n ? 1 : 0.4,
+              half - 190, "0.06em");
+      label(String(m.n), mx + half - 128, yy, SIZE.cap,
+            m.n ? m.colour : VIOLET_LOW, "right", m.n ? 1 : 0.4);
+      // What it is worth here, and whether here is short of it.
+      if (m.price != null) {
+        label(m.price + " EA", mx + half - 62, yy, SIZE.cap,
+              m.shortage > 0.25 ? CASH : CASH_DIM, "right",
+              m.shortage > 0.25 ? 1 : 0.7);
+        if (m.shortage > 0.25) {
+          label("WANTED", mx + half - 14, yy, SIZE.cap, CASH, "right", 0.9, "0.1em");
+        }
+      }
+    });
+    if (mats.length % 2) { /* an odd count leaves its last cell empty, which is fine */ }
+    y += storeH + gap;
 
     /* ── the four slots, as four squares ─────────────────────────────────────
        They were four columns of text, and an empty one said EMPTY in grey — which
@@ -4613,47 +4691,61 @@
               e.fitted ? VIOLET_LOW : rar.colour, "center",
               e.fitted ? 0.6 : 0.95, cCell + 8, "0.04em");
 
-      // Clicking still fits it into the first free slot, as it always did.
-      if (can) {
-        tap({ x: bx, y: by, w: cCell, h: cCell + 18,
-              act: () => st.onFit && st.onFit(freeSlot, e.key) });
-      }
+      /* Pressing a tile says what it is. Fitting it is the *drag* — which is the
+         gesture the four squares above are asking for — so a press is free to
+         mean "tell me about this", which is the question a picture cannot answer
+         on its own. */
+      tap({ x: bx, y: by, w: cCell, h: cCell + 18,
+            act: () => {
+              bubble = (bubble && bubble.key === e.key)
+                ? null
+                : { key: e.key, x: bx + cCell / 2, y: by, e };
+            } });
     });
+
+    /* And the bubble itself, drawn after the tiles so it sits over them. Above
+       the tile when there is room and below it when there is not, because a card
+       that runs off the top of a scrolling page is a card nobody reads. */
+    if (bubble && crate.some(q => q.key === bubble.key)) {
+      const e2 = crate.find(q => q.key === bubble.key);
+      const bw2 = Math.min(360, full.w - PAGE.PAD * 2);
+      const lines = wrapLines(e2.note || "", SIZE.cap, bw2 - 24);
+      const bh2 = 44 + lines.length * 20 + 20;
+      const bx2 = Math.max(full.x + PAGE.PAD,
+                    Math.min(bubble.x - bw2 / 2, full.x + full.w - PAGE.PAD - bw2));
+      const above = bubble.y - bh2 - 10 > PAGE.TOP;
+      const by2 = above ? bubble.y - bh2 - 10 : bubble.y + cCell + 30;
+      const rar2 = rarity(e2.rarity);
+      ctx.save();
+      ctx.globalAlpha = 0.96;
+      ctx.fillStyle = INK;
+      ctx.fillRect(bx2, by2, bw2, bh2);
+      ctx.strokeStyle = rar2.colour;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx2, by2, bw2, bh2);
+      ctx.restore();
+      fitText(e2.name, bx2 + 12, by2 + 24, SIZE.val, rar2.colour, "left", 1,
+              bw2 - 120, "0.06em");
+      label(e2.rarity.toUpperCase(), bx2 + bw2 - 12, by2 + 24, SIZE.cap,
+            rar2.colour, "right", 0.8, "0.1em");
+      lines.forEach((line, i) => {
+        label(line, bx2 + 12, by2 + 48 + i * 20, SIZE.cap, VIOLET_DIM, "left", 0.9);
+      });
+      label(e2.fitted ? "ON SHIP"
+                      : "DRAG IT INTO A SLOT" + (st.docked ? "" : "  ·  " +
+                        e2.secs + "s TO FIT"),
+            bx2 + 12, by2 + bh2 - 12, SIZE.cap, e2.fitted ? VIOLET_LOW : CASH,
+            "left", 0.85, "0.08em");
+      /* The card itself closes it, and so does pressing the tile again. Not a
+         full-screen rectangle: the tap list is last-drawn-first-served, so a
+         catch-all registered after the tiles would swallow every press on them
+         and pressing a second part would close the first card instead of opening
+         the second. */
+      tap({ x: bx2, y: by2, w: bw2, h: bh2, act: () => { bubble = null; } });
+    }
     y += crateH + gap;
 
-    /* ── the hold ────────────────────────────────────────────────────────── */
-    const used = st.carried || 0;
-    const storeH = PANEL_H(mats.length);
-    /* The materials are the *hold* and the parts are *storage*, and they used to
-       be called the other way round with "the crate" doing duty for the parts.
-       Two panels on one page both called STORAGE would be worse than either. */
-    panel(full.x, y, full.w, storeH, VIOLET, "CARGO HOLD", used + " / " + cap);
-    const half = (full.w - PAGE.PAD * 2) / 2;
-    mats.forEach((m, i) => {
-      const col = i % 2, row = Math.floor(i / 2);
-      const mx = full.x + PAGE.PAD + col * half;
-      const yy = ROW(y, row) + 2;
-      ctx.save();
-      ctx.fillStyle = m.colour;
-      ctx.globalAlpha = m.n ? 0.85 : 0.25;
-      ctx.fillRect(mx, yy - 9, 9, 9);
-      ctx.restore();
-      fitText(m.name, mx + 18, yy, SIZE.cap, m.colour, "left", m.n ? 1 : 0.4,
-              half - 190, "0.06em");
-      label(String(m.n), mx + half - 128, yy, SIZE.cap,
-            m.n ? m.colour : VIOLET_LOW, "right", m.n ? 1 : 0.4);
-      // What it is worth here, and whether here is short of it.
-      if (m.price != null) {
-        label(m.price + " EA", mx + half - 62, yy, SIZE.cap,
-              m.shortage > 0.25 ? CASH : CASH_DIM, "right",
-              m.shortage > 0.25 ? 1 : 0.7);
-        if (m.shortage > 0.25) {
-          label("WANTED", mx + half - 14, yy, SIZE.cap, CASH, "right", 0.9, "0.1em");
-        }
-      }
-    });
-    if (mats.length % 2) { /* an odd count leaves its last cell empty, which is fine */ }
-    y += storeH + gap;
+
 
     /* ── who you are to them ─────────────────────────────────────────────── */
     const repH = PANEL_H(flags.length * 2 + others.length);
@@ -5304,13 +5396,40 @@
              false, !full && afford);
     });
 
+    /* ── what they dig here ──────────────────────────────────────────────────
+       The other half of the economy. A station is where you sell what you found;
+       a world is where you can buy the one thing this particular rock is made of,
+       cheaper than a station would, without flying around looking for an asteroid
+       that happens to contain it. */
+    if (w.trades) {
+      const tr = w.trades;
+      const gone = tr.left <= 0;
+      /* One row. Two left no room between the bottom of the panel and the line
+         about skimming, which the audit found running straight through it — and
+         everything this panel has to say fits on a line anyway: what they dig,
+         how much is left, what it costs, and a button. */
+      const trY = 552;
+      panel(SCREEN_W / 2 - 300, trY, 600, PANEL_H(1), tr.colour,
+            "THEY DIG " + tr.name, gone ? "NOTHING LEFT" : tr.left + " LEFT");
+      drawMatIcon(tr.key, SCREEN_W / 2 - 276, ROW(trY, 0) - 4, 10, tr.colour,
+                  gone ? 0.35 : 1);
+      fitText(money(tr.price) + " each — " + tr.note,
+              SCREEN_W / 2 - 258, ROW(trY, 0) + 2, SIZE.cap, VIOLET_DIM,
+              "left", 0.8, 310);
+      button(gone ? "NONE LEFT" : "BUY TEN   " + money(tr.price * 10),
+             SCREEN_W / 2 + 185, ROW(trY, 0) + 2, 200, 34,
+             gone ? VIOLET_LOW : tr.colour,
+             gone ? null : () => st.onBuyLocal && st.onBuyLocal(), false, !gone);
+    }
+
     /* The free option, stated where it is relevant. A player who cannot afford
        the water needs to be told there is another way, and this is the only
        screen that knows both facts at once. */
     if (w.air) {
       fitText("or fly through the atmosphere and skim it for nothing — " +
               "it is slow, and it is free",
-              SCREEN_W / 2, 566, SIZE.cap, ICE, "center", 0.7, SCREEN_W - 160);
+              SCREEN_W / 2, w.trades ? 654 : 566, SIZE.cap, ICE, "center",
+              0.7, SCREEN_W - 160);
     }
 
     closeButton(st.onClose || (() => {}));

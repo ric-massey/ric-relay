@@ -7403,6 +7403,137 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "lands somewhere you can fly to");
 }
 
+/* ── a sector that pushes back ────────────────────────────────────────────────
+   A sweep of things reported from the cockpit, all of them the same complaint in
+   different clothes: the things out there were not quite real. You could fly
+   through them, their bullets could not touch you, and they could not hit
+   anything that was moving. */
+{
+  const { cf } = boot("?debug=1&seed=246813");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const lv = cf.live();
+  const me = lv.ships[0];
+  const flag = cf.surveyView().standings[0].key;
+  const step = n => { for (let i = 0; i < (n || 1); i++) { now += 1000 / 60; cf.step(); } };
+
+  me.x = 180000; me.y = -90000; me.vx = me.vy = 0; me.invuln = 9999;
+  step(3);
+
+  const put = over => {
+    const t = Object.assign({
+      id: null, kind: "patrol", role: "patrol", faction: flag, hull: "lance",
+      x: me.x + 500, y: me.y, a: 0, from: { x: me.x, y: me.y },
+      to: { x: me.x + 9000, y: me.y }, leg: 1, speed: 150, baseSpeed: 150,
+      hp: 8, maxHp: 8, cargo: [], cool: 1, doom: 0, guards: 0, space: 0,
+      trades: false, phase: 0
+    }, over || {});
+    surv.traffic.push(t);
+    return t;
+  };
+
+  /* ── a hull is solid, and hitting one costs ────────────────────────────── */
+  surv.traffic.length = 0;
+  const wall = put({ x: me.x + 300, y: me.y, speed: 0, baseSpeed: 0 });
+  me.x = wall.x - 40; me.y = wall.y; me.vx = 400; me.vy = 0; me.invuln = 0;
+  const hull0 = me.hull;
+  step(4);
+  const apart = Math.hypot(me.x - wall.x, me.y - wall.y);
+  check(apart > 30, "the ship passed straight through another hull");
+  check(me.hull < hull0, "ramming a ship at speed cost nothing");
+
+  /* ── somebody else's round can hit you ─────────────────────────────────── */
+  surv.traffic.length = 0;
+  me.x = 180000; me.y = -90000; me.vx = me.vy = 0; me.invuln = 0;
+  me.hull = me.maxHull;
+  const before = me.hull;
+  surv.shots.push({ x: me.x - 300, y: me.y, vx: 900, vy: 0, life: 3, dmg: 1,
+                    friendly: true, from: null });
+  step(40);
+  check(me.hull < before,
+        "a stray round from somebody else's fight passed straight through you");
+
+  /* ── they aim where you are going to be ────────────────────────────────── */
+  surv.traffic.length = 0;
+  surv.shots.length = 0;
+  me.x = 180000; me.y = -90000; me.invuln = 9999;
+  me.vx = 0; me.vy = 320;                       // crossing its nose at speed
+  const gunner = put({ x: me.x + 900, y: me.y, angry: true, cool: 0 });
+  step(6);
+  const shot = surv.shots.find(b => b.from === gunner);
+  check(!!shot, "an angry patrol did not fire at all");
+  if (shot) {
+    /* Fired straight at where you were, the round crosses behind you. Led, it is
+       aimed off to the side you are moving toward — which is the whole of what
+       made these ships feel like scenery with a gun on it. */
+    const aimed = Math.atan2(shot.vy, shot.vx);
+    const at = Math.atan2(me.y - gunner.y, me.x - gunner.x);
+    let off = aimed - at;
+    while (off > Math.PI) off -= Math.PI * 2;
+    while (off < -Math.PI) off += Math.PI * 2;
+    check(Math.abs(off) > 0.08,
+          "the shot went at where you were, not where you are going (" +
+          off.toFixed(3) + " rad of lead)");
+    /* Aimed at where you *will* be, checked against the prediction rather than
+       against a guess at which way the angle should move: the sign depends on
+       where the shooter is standing, and reasoning about that in the test is how
+       you end up asserting the geometry you assumed instead of the one you have. */
+    const flight = Math.hypot(me.x - gunner.x, me.y - gunner.y) / (360 * 8);
+    const lead = Math.atan2(me.y + me.vy * flight - gunner.y,
+                            me.x + me.vx * flight - gunner.x);
+    let miss = aimed - lead;
+    while (miss > Math.PI) miss -= Math.PI * 2;
+    while (miss < -Math.PI) miss += Math.PI * 2;
+    check(Math.abs(miss) < Math.abs(off),
+          "the shot is no closer to where you are going than to where you were");
+  }
+
+  /* ── a ship spawned at you does not evaporate ──────────────────────────── */
+  surv.traffic.length = 0;
+  me.invuln = 9999;
+  const chaser = put({ x: me.x + 1400, y: me.y + 600, angry: true });
+  me.x += 2600 * 2; me.y += 2600;               // two chunks: the sector restreams
+  step(4);
+  check(surv.traffic.indexOf(chaser) >= 0,
+        "a ship that was spawned at you vanished when the sector restreamed — " +
+        "which is every few seconds of flying");
+
+  /* ── and a world sells what it digs ────────────────────────────────────── */
+  /* Swept over a block rather than along rings. About one world in nine near home
+     has anybody on it and worlds themselves are not in every chunk, so a dozen
+     bearings is a sample that finds nothing about half the time — and a test that
+     cannot find the thing it is checking passes for the wrong reason. */
+  let world = null;
+  for (let j = -60; j <= 60 && !world; j++) {
+    for (let i = -60; i <= 60 && !world; i++) {
+      for (const pl of cf.chunk(i, j).planets) {
+        if (pl.inhabited && !world) world = pl;
+      }
+    }
+  }
+  check(!!world, "no inhabited world anywhere near home");
+  if (world) {
+    check(!!world.trades, "an inhabited world has nothing to sell");
+    me.x = world.x + world.r + 60; me.y = world.y; me.vx = me.vy = 0;
+    me.invuln = 9999;
+    step(4);
+    const v = cf.surveyView();
+    check(v.landed && v.landed.trades, "standing on it, it offers nothing");
+    if (v.landed && v.landed.trades) {
+      surv.cash = 9000;
+      for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
+      const key = v.landed.trades.key, cash0 = surv.cash;
+      v.onBuyLocal();
+      check((surv.hold[key] || 0) > 0, "buying from a world put nothing in the hold");
+      check(surv.cash < cash0, "it cost nothing");
+    }
+  }
+
+  console.log("  solid      a hull stops you and hurts · a stray round hits you · " +
+              "they lead their shots · a ship spawned at you survives a restream · " +
+              "a world sells what it digs");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);
