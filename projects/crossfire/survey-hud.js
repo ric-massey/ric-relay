@@ -685,6 +685,8 @@
     // Drawn under everything else: at zero hull the whole frame is edged in the
     // warning colour, so the state is visible without looking anywhere in
     // particular. The gravity band uses the same figure for the same reason.
+    // Under everything the panel draws, over everything the world drew.
+    drawStatic(st.grain || 0);
     if (st.critical) drawCriticalEdge(!!st.inStar && !!st.solar);
     else if ((st.water && st.water.countdown > 0) ||
              (st.food && st.food.countdown > 0)) drawCriticalEdge(false);
@@ -768,6 +770,54 @@
      is not competing with that warning: a well warns about the next four
      seconds and this warns about the whole rest of the run, so the hull edge is
      thinner, slower and never covers the middle of the screen. */
+  /* ── static ───────────────────────────────────────────────────────────────
+     A region that interferes with sensors should *look* like it, and the thing
+     that is being interfered with is the interface — so the interface is what
+     goes wrong. Grain over the whole screen, thicker the deeper in you are, plus
+     the occasional horizontal tear, which is what a picture does when it is not
+     being received properly.
+
+     Drawn with rectangles rather than per-pixel image data, because this runs
+     every frame on a phone: a few hundred small blocks at random positions reads
+     as noise at a glance and costs almost nothing. The count scales with how bad
+     it is, so at the edge of a murk it is a faint crawl and in the middle of one
+     it is most of what you can see.
+
+     `reduceMotion` turns it off entirely — flickering noise across a whole screen
+     is exactly what that setting exists for — and the region still cuts the scan,
+     so the rule is intact for anybody who cannot look at this. */
+  let grainSeed = 1;
+  function drawStatic(amount) {
+    if (!amount || api.reduceMotion) return;
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    const n = Math.round(90 + amount * 620);
+    ctx.save();
+    ctx.globalAlpha = 0.05 + amount * 0.3;
+    ctx.fillStyle = "#c8d4e8";
+    for (let i = 0; i < n; i++) {
+      // A cheap integer hash rather than Math.random: the same crawl every frame
+      // would read as a texture, and this is meant to be alive.
+      grainSeed = (grainSeed * 1664525 + 1013904223) >>> 0;
+      const x = (grainSeed >>> 9) % SCREEN_W;
+      grainSeed = (grainSeed * 1664525 + 1013904223) >>> 0;
+      const y = (grainSeed >>> 9) % SCREEN_H;
+      const w = 1 + ((grainSeed >>> 4) & 3);
+      ctx.fillRect(x, y, w, 1 + ((grainSeed >>> 6) & 1));
+    }
+    // And a tear or two, which is what a picture does when it is not arriving.
+    if (amount > 0.35) {
+      const tears = Math.round(amount * 3);
+      for (let i = 0; i < tears; i++) {
+        grainSeed = (grainSeed * 1664525 + 1013904223) >>> 0;
+        const ty = (grainSeed >>> 7) % SCREEN_H;
+        const th = 2 + ((grainSeed >>> 3) & 7);
+        ctx.globalAlpha = 0.05 + amount * 0.12;
+        ctx.fillRect(0, ty, SCREEN_W, th);
+      }
+    }
+    ctx.restore();
+  }
+
   function drawCriticalEdge(mending) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
     const beat = 0.5 + 0.5 * Math.abs(Math.sin(Date.now() / (mending ? 520 : 300)));
@@ -1444,12 +1494,16 @@
     ctx.fillRect(cx - w / 2 + 1, y - h + 1, Math.max(0, (w - 2) * frac), h - 2);
     ctx.restore();
 
-    label(lit ? "SOLAR — HULL RECOVERING"
+    /* Bounded to the hull bar's own width. This line sits under the bar and the
+       scan button sits off the bar's right shoulder, so a caption wider than the
+       bar runs into it — which is what the bigger phone type did to "IN THE LIGHT
+       — NO PANELS" the moment it was introduced. */
+    fitText(lit ? "SOLAR — HULL RECOVERING"
               : unlit ? "IN THE LIGHT — NO PANELS"
               : critical ? "HULL GONE" : "HULL",
           cx, y + 20, SIZE.cap,
-          lit ? SOLAR : unlit ? VIOLET_DIM : critical ? WARN : AMBER_DIM,
-          "center", lit || critical ? 0.95 : unlit ? 0.7 : 0.6);
+            lit ? SOLAR : unlit ? VIOLET_DIM : critical ? WARN : AMBER_DIM,
+            "center", lit || critical ? 0.95 : unlit ? 0.8 : 0.6, w + 26);
 
     /* ── the scan ──────────────────────────────────────────────────────────
        On a phone this was a word beside the hull bar with an invisible rectangle

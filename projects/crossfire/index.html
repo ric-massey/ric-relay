@@ -4567,7 +4567,15 @@
   const LIGHT_LOAD    = 6;
   const LIGHT_LEAD    = 4;
   const SURVEY_SIGHT  = 700;    // charted either side of the ship as it flies
-  const SURVEY_SCAN   = 9;      // seconds to recharge the pulse
+  /* Seconds to recharge the pulse. Nine was the figure for years; it is twelve
+     now — thirty per cent longer — because a scan you can press again almost
+     immediately is a button rather than a decision, and the whole mode is built
+     around the moment you choose where to point it.
+
+     The thirty per cent is buyable back. See COOLANT LOOP in `MODULES`: it takes
+     one of your four slots to get the old rate, which is exactly the kind of
+     question the slots exist to ask. */
+  const SURVEY_SCAN   = 12;     // seconds to recharge the pulse
   const SURVEY_REPAIR = 0.55;   // hull points a second, in a star's light
   const SURVEY_ROCKS  = 76;     // rocks kept around the ship (was 90)
   const SURVEY_ROCK_R = 3200;   // how far out they are kept
@@ -5233,6 +5241,12 @@
       cost: 260, deep: 0, get: ["buy", "craft"],
       note: "a louder pulse: the scan reaches 70% further",
       eff: { scan: 0.7 } },
+    { key: "coolantloop", name: "COOLANT LOOP", cat: "scanner",
+      rarity: "uncommon", cost: 700, deep: 0.14, get: ["buy", "craft"],
+      note: "the scanner sheds its heat instead of waiting to. Recharges in " +
+            "nine seconds rather than twelve — the rate it ran at before " +
+            "anybody worked out what was slowing it down",
+      eff: { recharge: 0.25 } },
     { key: "deepear", name: "DEEP EAR", cat: "scanner", rarity: "rare",
       cost: 1600, deep: 0.4, get: ["buy"],
       note: "hears the returns a pulse coil throws away: the scan reaches " +
@@ -5491,6 +5505,7 @@
        mends your hull — is the answer to being a long way from a station, and
        being a long way from a station is exactly when you cannot buy one. */
     { out: "solarwing",  need: { alloy: 8, electronics: 6, iridium: 2 } },
+    { out: "coolantloop", need: { ice: 8, iron: 5, electronics: 4 } },
     { out: "sparthruster", need: { iron: 9, alloy: 7, electronics: 3 } },
 
     /* ── built out of what you were flying ────────────────────────────────
@@ -5544,7 +5559,9 @@
     const out = { hull: 0, speed: 0, thrust: 0, turn: 0, scan: 0,
                   tractor: 0, reach: 0, pull: 0, reverse: 0, skim: 0, life: 0,
                   // The four that used to be the hull's own, or the book's.
-                  solar: 0, warp: 0, quiet: 0, melt: 0 };
+                  solar: 0, warp: 0, quiet: 0, melt: 0,
+                  // How much of the scanner's cooldown is bought back, 0 to 1.
+                  recharge: 0 };
     if (!surv || !surv.slots) return out;
     for (const sl of surv.slots) {
       if (!sl || sl.fit > 0) continue;
@@ -5935,10 +5952,13 @@
        A cloud is thick and full of things, and a murk is thin and *lies to your
        instruments* — the scan comes back short, so you fly it by eye. */
     { key: "cloud", name: "THE VIOLET CLOUD", colour: "#a08cff", weight: 2,
-      rocks: 1.2, style: "rough", scan: 0.75, traffic: 0.7, ice: 1,
+      rocks: 1.2, style: "rough", scan: 0.55, traffic: 0.7, ice: 1,
       d: { nebulae: 7, wrecks: 1.6, stations: 0.5, caches: 1.5 } },
     { key: "murk", name: "THE MURK", colour: "#5f6b7d", weight: 1.5,
-      rocks: 0.9, style: "rough", scan: 0.35, traffic: 0.6, ice: 1,
+      /* A tenth of the scan at the middle of one. That is 210 units, which is
+         not scanning — it is confirming that something is directly in front of
+         you — and it is the point: in here you fly on your eyes. */
+      rocks: 0.9, style: "rough", scan: 0.1, traffic: 0.6, ice: 1,
       d: { nebulae: 3, stations: 0.4, caches: 1.3, wrecks: 1.4 } },
     { key: "bones", name: "THE BONEYARD", colour: "#7d8596", weight: 1.5,
       rocks: 1.1, style: "shard", scan: 1, traffic: 0.5, ice: 0.8,
@@ -5950,9 +5970,15 @@
        turns range into a non-question for anybody carrying a melter, which is a
        rule change rather than a decoration: the same ship can go twice as far
        from here. */
+    /* **Nothing but ice.** Small bodies as far as the scan reaches and almost
+       nothing else in it — no wrecks worth the name, few worlds, hardly anybody
+       living there. What it has instead is water, which is the thing that decides
+       how far you can go, so a ship with a melter can treat it as a place to
+       refill rather than a place to cross. */
     { key: "rime", name: "THE RIME", colour: "#bfe8ff", weight: 1.5,
-      rocks: 1.9, style: "round", scan: 1, traffic: 0.6, ice: 6,
-      d: { fields: 2.4, wells: 0.6, stations: 0.5, planets: 0.7 } },
+      rocks: 2.4, style: "round", scan: 1, traffic: 0.35, ice: 40,
+      d: { fields: 3, wells: 0.3, stations: 0.2, planets: 0.25,
+           wrecks: 0.1, caches: 0.4, nebulae: 0.3 } },
     { key: "lanes", name: "THE LANES", colour: "#ffcb42", weight: 1.6,
       rocks: 0.8, style: "rough", scan: 1, traffic: 1.5, ice: 1,
       d: { stations: 1.7, gates: 1.8, wrecks: 1.3, fields: 0.5 } },
@@ -6036,6 +6062,26 @@
     return { x: (cx + 0.18 + R() * 0.64) * REGION_CELL,
              y: (cy + 0.18 + R() * 0.64) * REGION_CELL,
              region: pick, cx, cy };
+  }
+
+  /* How deep into its own region a point is: 0 at a border and 1 at the site in
+     the middle. The Voronoi already knows — the nearest site and the second
+     nearest are the two it compared — so this is the ratio between them, and it
+     is what lets a region get *worse* the further in you go rather than switching
+     on at a line. A rule that steps at a border is a rule you can see the edge
+     of; one that deepens is one you notice happening to you. */
+  function regionDepth(x, y) {
+    const cx = Math.floor(x / REGION_CELL), cy = Math.floor(y / REGION_CELL);
+    let d1 = Infinity, d2 = Infinity;
+    for (let j = -1; j <= 1; j++) {
+      for (let i = -1; i <= 1; i++) {
+        const st = regionSite(cx + i, cy + j);
+        const d = Math.hypot(st.x - x, st.y - y);
+        if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d;
+      }
+    }
+    if (!isFinite(d2) || d2 <= 0) return 1;
+    return Math.max(0, Math.min(1, 1 - d1 / d2));
   }
 
   /* Home is always settled. The first two minutes are the same promise in every
@@ -7755,6 +7801,8 @@
       if (inBuilt(x, y, 90)) continue;
       const r = makeRock(randomRoyaleRockSize(), x, y, undefined,
                          regionOf(x, y).style);
+      // What it is made of, which is what it is drawn as. A rime is ice.
+      r.ice = regionOf(x, y).ice >= 20;
       // One rock in sixty has something in it, and cracking it open is the only
       // way to find out which. Stops once the entry is logged.
       if (!surv.found.has("prospector") && Math.random() < 1 / 60) r.core = true;
@@ -9362,10 +9410,27 @@
      scan comes back at about a third of its range, so you fly it by eye. That is
      a rule change rather than a decoration: a scanner build is excellent in thick
      clutter and nearly useless in a murk. */
+  /* How far a pulse reaches. The hull never changes it; what you bolted on does,
+     and so does where you are.
+
+     In a region that lies to instruments the scan does not simply come back
+     short, it comes back *shorter the further in you go* — down to a tenth of
+     normal at the middle. At the edge you notice the numbers drifting; in the
+     middle you are flying on your eyes. */
+  function regionScan(x, y) {
+    const reg = regionOf(x, y);
+    const s = reg.scan === undefined ? 1 : reg.scan;
+    if (s >= 1) return 1;
+    /* Straight from ordinary at the border to the region's own worst value at the
+       middle. The first version scaled the interpolation by `(1 - s)` as well as
+       by the depth, which is the same factor applied twice: a region whose floor
+       was a tenth bottomed out at four tenths instead, and the deepest murk in the
+       galaxy was barely worse than its own edge. */
+    return 1 + (s - 1) * regionDepth(x, y);
+  }
   const scanRange = () => {
     const me = ships[0];
-    const here = me ? regionOf(me.x, me.y).scan : 1;
-    return SCAN_BASE * (1 + mods().scan) * (here === undefined ? 1 : here);
+    return SCAN_BASE * (1 + mods().scan) * (me ? regionScan(me.x, me.y) : 1);
   };
   const ECHO_LIFE = 20;        // seconds a return stays on the chart
 
@@ -12349,7 +12414,8 @@
     surv.near = lookNear();
     updatePickups(dt);
 
-    surv.scan.charge = Math.min(1, surv.scan.charge + dt / SURVEY_SCAN);
+    surv.scan.charge = Math.min(1, surv.scan.charge +
+                                dt / (SURVEY_SCAN * (1 - mods().recharge)));
     surv.save -= dt;
     if (surv.save <= 0) { surv.save = 15; saveSurveyBook(); }
 
@@ -13093,6 +13159,13 @@
       contacts: surv.contacts,
       found: surv.found.size, total: SURVEY_TOTAL,
       inStar: surv.inStar, scan: surv.scan,
+      /* How much this piece of sky is interfering, 0 to 1. The panel draws it as
+         static: the *interface* is the instrument, so the instrument is what
+         should look broken. Nothing else in the game asks for this and it is not
+         a state — it is a fact about where you are, recomputed every frame. */
+      grain: ships[0]
+        ? Math.max(0, Math.min(1, (1 - regionScan(ships[0].x, ships[0].y)) / 0.9))
+        : 0,
       /* Whether the scan has ever been pressed, so the panel can say how — and
          stop saying it the moment you do. A control nobody has been told about is
          a control that does not exist. */
@@ -15527,7 +15600,10 @@
     ctx.rotate(r.a);
 
     const hit = r.flash > 0;
-    glow(hit ? "#fff2bf" : "#ffcb42", hit ? 2 : 1.5, 1, () => {
+    // A rime's bodies are ice, and they look like it. The one region whose
+    // contents are a single material should be obvious from the window.
+    const body = r.ice ? "#bfe8ff" : "#ffcb42";
+    glow(hit ? "#fff2bf" : body, hit ? 2 : 1.5, 1, () => {
       ctx.beginPath();
       for (let i = 0; i < r.shape.length; i++) {
         const t = (i / r.shape.length) * Math.PI * 2;
@@ -18652,6 +18728,8 @@
          see BIOMES.md. A harness has to be able to ask, or the one layer whose
          whole design is to be invisible is also the one layer nothing can check. */
       regionProbe: (x, y) => regionOf(x, y),
+      // How deep into its region a point is, and what that does to the scan.
+      regionAtDepth: (x, y) => ({ depth: regionDepth(x, y), scan: regionScan(x, y) }),
       /* A round of yours into a sentry, through the real path. Clearing a
          distress call's attackers *by deleting them* is not the same event as
          clearing them by shooting them — the first pays nothing now, correctly —

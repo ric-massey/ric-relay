@@ -224,11 +224,30 @@ switch: an authored thing alone in an ocean of nothing is the best possible use 
 an ocean of nothing.
 
 **Two of them change a rule rather than a quantity**, which is the test this
-document sets. The **murk** cuts the scan to a third of its range, so you fly it by
-eye and a scanner build is worth nothing there. The **rime** is small ice bodies as
-far as the scan reaches, so water — the thing that decides how far you can go —
-stops being the question for anybody carrying a melter, and the same ship goes
-twice as far from there.
+document sets — and both **deepen toward the middle** rather than switching on at a
+line. A rule that steps at a border is a rule you can see the edge of; one that
+deepens is one you notice happening to you.
+
+**The murk** cuts the scan from ordinary at its border to **a tenth of normal at
+its middle** — 307 units, which is not scanning, it is confirming something is
+directly in front of you. And the *interface* goes wrong with it, because the
+interface is the instrument being interfered with: grain over the whole screen,
+thicker the deeper in you are, with the occasional horizontal tear. At the worst
+of one it is most of what you can see. `reduceMotion` turns the noise off and
+leaves the rule, because flickering static across a whole screen is exactly what
+that setting is for.
+
+**The rime** is small ice bodies as far as the scan reaches and almost nothing
+else — no wrecks worth the name, few worlds, hardly anybody living there. Every
+rock in it is drawn ice-blue, so what it is made of is a fact about the window
+rather than something you learn from the hold. Water is the thing that decides how
+far you can go, so a ship with a melter can treat it as somewhere to refill rather
+than somewhere to cross.
+
+**And the scan is a decision again.** It recharged in nine seconds, which is a
+button rather than a choice; it is twelve now. The thirty per cent is buyable back
+— the **COOLANT LOOP** takes one of your four slots to restore the old rate, which
+is exactly the question the slots exist to ask.
 
 ## Not built
 

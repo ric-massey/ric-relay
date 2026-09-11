@@ -7198,9 +7198,46 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     check(barren.traffic === 0, "the Empty has traffic in it");
     check(barren.nothing === true, "the Empty is not flagged as empty");
   }
-  // Two of them change a *rule* rather than a quantity, which is the whole point.
-  if (murk) check(murk.scan < 0.6, "the murk does not shorten the scan");
-  if (rime) check(rime.ice > 3, "the rime is not full of ice");
+  /* Two of them change a *rule* rather than a quantity, which is the whole point
+     — and both deepen toward the middle rather than switching on at a line. A
+     rule that steps at a border is a rule you can see the edge of; one that
+     deepens is one you notice happening to you. */
+  if (murk) {
+    check(murk.scan <= 0.15, "the murk does not shorten the scan enough");
+    // The worst of it, found rather than assumed: the region's site is jittered
+    // inside its cell, so the middle of a cell is not the middle of a region.
+    let worst = 1, edge = 0;
+    for (let j = -14; j <= 14; j++) {
+      for (let i = -14; i <= 14; i++) {
+        for (let a = 0; a < 5; a++) {
+          for (let c = 0; c < 5; c++) {
+            const x = i * 200000 + a * 50000, y = j * 200000 + c * 50000;
+            if (cf.regionProbe(x, y).key !== "murk") continue;
+            const d = cf.regionAtDepth(x, y);
+            worst = Math.min(worst, d.scan);
+            edge = Math.max(edge, d.scan);
+          }
+        }
+      }
+    }
+    check(worst < 0.2,
+          "the deepest murk only cuts the scan to " + worst.toFixed(2) +
+          " — it is supposed to bottom out around a tenth");
+    check(edge > 0.6,
+          "even the edge of a murk cuts the scan to " + edge.toFixed(2) +
+          " — it should come on gradually, not at a line");
+  }
+  if (rime) {
+    check(rime.ice > 20, "the rime is not made of ice");
+    check(rime.d.wrecks < 0.3 && rime.d.stations < 0.3,
+          "the rime has things other than ice in it");
+  }
+
+  /* The scan is a decision, not a button: twelve seconds, and a part buys the old
+     nine back out of one of your four slots. */
+  const cool = cf.surveyView().parts.find(p2 => p2.key === "coolantloop");
+  check(!!cool, "there is no part that shortens the scanner's cooldown");
+  check(cool && cool.craftable, "the coolant loop cannot be built");
 
   /* And nothing in the interface says any of it. This is the rule the first
      version broke: the panel named the region and the chart washed itself in
