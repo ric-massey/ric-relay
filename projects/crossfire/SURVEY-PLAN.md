@@ -1954,6 +1954,56 @@ that stops the moment you press it.
 
 ---
 
+### The Leviathan is a place now, and some battles are fleets  ·  **DONE**
+
+**The Leviathan.** It was a box with one straight corridor: in at the stern, fly
+a straight line, take three caches off the spine, turn round at the far wall.
+Eight seconds of decisions, in the thing the whole manifest points at.
+
+It is **9,200 units** now — three and a half times longer, about three chunks, and
+too long to see both ends of at once, which is the first thing that makes it read
+as a place rather than an object. From the stern forwards:
+
+- **the throat** — a wide mouth at the open stern quarter, on one flank
+- **five bulkheads** across the spine, each with one doorway, and the doorways
+  **alternate port and starboard** — so the way in is a weave and you are always
+  looking for the next gap
+- **six bays** — side chambers off the spine, alternating sides, each behind its
+  own short throat. Three hold a cache and its sentries. The route to the bow goes
+  through none of them, so every one is a decision to spend time
+- **the hold** — past the last bulkhead, a wide chamber with the richest cache,
+  four sentries and the ablative plate
+
+**Every wall is both the drawing and the physics.** The old one hand-drew three
+plates and separately hand-placed its collision discs — two descriptions of one
+object, which is exactly the arrangement that lets a wall you can see quietly stop
+being a wall you hit. A wall is a line in local space now; the discs are stamped
+along it and the renderer strokes the same list. They cannot disagree because
+there is only one of them.
+
+**And the test is a flood fill.** The old check walked the centreline and asserted
+it was clear, which is right for a straight corridor and useless for a place —
+the centreline is now *supposed* to be blocked. The question worth asking of
+anything you fly into is whether the inside is **reachable**: can a ship of this
+size get from the door to the hold at all? It caught the thing a centreline walk
+never could have — the first version of the new layout laid the flanks down solid
+and put the bays outside them, so all six side chambers drew perfectly, had caches
+in them, and had no way in.
+
+Two things keep it cheap: one bounding check before testing 213 discs, and the
+spine light, which steps across to each doorway in turn and is the only thing
+inside telling you which way is forward. Measured at **3.9 ms a tick** standing in
+the middle of it.
+
+**Fleet actions.** Battles were two to twelve hulls a side. Rarely — about one in
+thirty near home, up to one in ten in the deep in a bigger war — the two powers
+now put **twenty-five to thirty-nine hulls a side** in the same piece of sky: two
+lines five thousand units apart, and enough wreckage afterwards to be a landmark.
+A fleet action is almost always remembered (85% against 34%), because that is the
+sort of thing a sector names. Measured at **2.0 ms a tick** with 67 ships loaded.
+
+---
+
 ## At the end of Phase 7: go back to Phase 6
 
 **Read this before starting anything new.**

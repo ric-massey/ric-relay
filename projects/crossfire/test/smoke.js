@@ -43,8 +43,12 @@ function checkSyntax() {
     "index.html must load survey-hud.js");
   assert.ok(html.indexOf('src="survey-hud.js"') < html.indexOf("<script>"),
     "survey-hud.js must be loaded before the inline game script");
-  assert.match(html, /blurb: "no enemies · endless space · chart it and fill the almanac"/,
-    "Survey must advertise that nothing out there fights back");
+  /* The one line the mode gets to introduce itself with, on the menu card. It
+     used to say "no enemies · endless space · chart it and fill the almanac",
+     which stopped being true somewhere around the pirates and was outright wrong
+     by the time there were fleet actions in it. */
+  assert.match(html, /blurb: "explore a fictional galaxy that evolves on its own"/,
+    "Survey's menu card must say what the mode actually is");
 
   /* The menu's dioramas are a separate file for the same reason the survey
      panel is, and they are captured by the same boot, so they carry the same

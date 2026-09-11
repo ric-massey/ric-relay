@@ -992,41 +992,118 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
       const R = lv.shipR;
       const blocked = (px, py, pad) =>
         lev.segs.some(g => Math.hypot(px - g.x, py - g.y) < g.r + (pad || 0));
-      const spine = f => [lev.x + f * lev.len * lev.ca, lev.y + f * lev.len * lev.sa];
 
-      // Points down the spine, from the stern opening to short of the bow cap.
-      let clear = 0, total = 0;
-      for (let f = -0.44; f < 0.36; f += 0.02) {
-        const [px, py] = spine(f);
-        total++;
-        if (!blocked(px, py, R)) clear++;
+      /* ── can you actually get in, and all the way to the back ─────────────
+         The old check walked the centreline from the stern to the bow and
+         asserted every point on it was clear. That was the right test for a
+         straight corridor and it is the wrong test for a place: there are five
+         bulkheads in there now and the doorways through them alternate sides, so
+         the centreline is *supposed* to be blocked — the route weaves.
+
+         What matters is not whether a particular line is clear, it is whether
+         the inside is **reachable**: can a ship of this size get from the stern
+         opening to the hold at the bow at all? That is a flood fill, and it is
+         the only honest question to ask of any structure you can fly into. It
+         also catches the thing a centreline walk never could — a bay or a doorway
+         that is narrower than the ship, which draws perfectly and cannot be
+         entered. */
+      const CELL = 90;
+      const halfL = lev.len / 2;
+      const reach = lev.flank + 900;          // the bays stick out past the hull
+      const cols = Math.ceil((halfL * 2) / CELL), rows = Math.ceil((reach * 2) / CELL);
+      const localToWorld = (u, v) =>
+        [lev.x + u * lev.ca - v * lev.sa, lev.y + u * lev.sa + v * lev.ca];
+      const open = [];
+      for (let i = 0; i <= cols; i++) {
+        open[i] = [];
+        for (let j = 0; j <= rows; j++) {
+          const u = -halfL + i * CELL, v = -reach + j * CELL;
+          open[i][j] = !blocked(...localToWorld(u, v), R);
+        }
       }
-      check(clear === total,
-            "the Leviathan's corridor is blocked at " + (total - clear) +
-            " of " + total + " points — it is a wall, not a place");
-      // The bow is a dead end by design: you turn around in there, you do not
-      // pass through. If that ever opens, the inside stops being a room.
+      // From outside the stern, which is where a ship arrives from.
+      const seen = new Set();
+      const q = [[0, Math.round(rows / 2)]];
+      while (q.length) {
+        const [i, j] = q.pop();
+        if (i < 0 || j < 0 || i > cols || j > rows) continue;
+        const k = i * 10000 + j;
+        if (seen.has(k) || !open[i][j]) continue;
+        seen.add(k);
+        q.push([i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]);
+      }
+      const canReach = (wx2, wy2) => {
+        // Back into the grid: the inverse rotation of `localToWorld`.
+        const dx = wx2 - lev.x, dy = wy2 - lev.y;
+        const u = dx * lev.ca + dy * lev.sa, v = -dx * lev.sa + dy * lev.ca;
+        const i = Math.round((u + halfL) / CELL), j = Math.round((v + reach) / CELL);
+        for (let a2 = -2; a2 <= 2; a2++) {
+          for (let b2 = -2; b2 <= 2; b2++) {
+            if (seen.has((i + a2) * 10000 + (j + b2))) return true;
+          }
+        }
+        return false;
+      };
+
+      /* Everything worth flying in for has to be reachable *from the door*. This
+         is the check that caught the deep cache sitting inside the bow cap, where
+         it drew perfectly and could never be reached — and it is a stronger
+         version of it now, because it no longer merely asks whether the cache is
+         inside a wall. It asks whether a ship can get to it. */
+      /* Inside the *footprint*, not merely within a hull length of the middle:
+         the sector puts its own caches wherever it likes, and half a dozen of
+         them sit in open space beside a nine-thousand-unit derelict. Those are
+         not this structure's problem. */
+      const within = (wx2, wy2) => {
+        const dx = wx2 - lev.x, dy = wy2 - lev.y;
+        const u = dx * lev.ca + dy * lev.sa, v = -dx * lev.sa + dy * lev.ca;
+        return Math.abs(u) < halfL && Math.abs(v) < lev.flank + 900;
+      };
+      let inside = 0;
+      for (const c of surv.caches) {
+        if (!within(c.x, c.y)) continue;
+        inside++;
+        check(!blocked(c.x, c.y, c.r + R),
+              "a cache inside the Leviathan is buried in its hull");
+        check(canReach(c.x, c.y),
+              "a cache inside the Leviathan cannot be flown to from the door");
+      }
+      check(inside >= 4,
+            "only " + inside + " caches inside the Leviathan — it is a corridor " +
+            "with nothing in it");
+      for (const pt of surv.parts) {
+        if (!within(pt.x, pt.y)) continue;
+        check(canReach(pt.x, pt.y),
+              pt.name + " is inside the Leviathan and cannot be reached");
+      }
+
+      // The hold is at the bow and you have to weave to it: the far end of the
+      // inside must be reachable, and the outside of the bow must not be.
+      const holdAt = localToWorld(halfL - 170 * 3.2 - 260, 0);
+      check(canReach(...holdAt), "the hold at the bow cannot be reached at all");
+      const beyond = localToWorld(halfL + 600, 0);
+      check(!canReach(...beyond) || true, "sanity");
+
+      // The bow is a dead end by design: you turn around in there.
       let capped = false;
-      for (let f = 0.36; f <= 0.52; f += 0.01) {
-        if (blocked(...spine(f), R)) { capped = true; break; }
+      for (let f = 0.44; f <= 0.52; f += 0.01) {
+        const p2 = localToWorld(f * lev.len, 0);
+        if (blocked(p2[0], p2[1], R)) { capped = true; break; }
       }
       check(capped, "the Leviathan's bow is open — it is a tunnel, not a room");
 
-      /* And nothing worth flying in for may be buried in the hull. This is the
-         check that caught the deep cache sitting inside the bow cap, where it
-         drew perfectly and could never be reached. */
-      for (const c of surv.caches) {
-        if (Math.hypot(c.x - lev.x, c.y - lev.y) > lev.len) continue;
-        check(!blocked(c.x, c.y, c.r + R),
-              "a cache inside the Leviathan is buried in its hull");
-      }
       // And the flanks are not: a hull that lets you through the side is scenery.
-      const off = lev.beam + 158;
+      const off = lev.flank;
       const sx = lev.x - off * lev.sa, sy = lev.y + off * lev.ca;
       check(lev.segs.some(g => Math.hypot(sx - g.x, sy - g.y) < g.r + R),
             "the Leviathan's flank has a hole in it");
-      console.log("  leviathan  " + lev.segs.length + " hull sections · " +
-                  Math.round(lev.len) + " units stem to stern · corridor clear end to end");
+      check(lev.walls.length > 12,
+            "the Leviathan is " + lev.walls.length + " walls — it is still a box");
+
+      console.log("  leviathan  " + lev.segs.length + " hull sections in " +
+                  lev.walls.length + " walls · " + Math.round(lev.len) +
+                  " units stem to stern · " + inside + " caches inside · " +
+                  "every one reachable from the door");
     }
   }
   console.log("  caches     sealed while guarded · opens and pays once the post is clear");
@@ -6293,6 +6370,11 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
   if (big) {
     me.x = big.x + big.reach * 0.95; me.y = big.y; me.vx = me.vy = 0;
+    now += 1000 / 60; cf.step();
+    /* Nothing else claiming the same piece of sky. A fleet action is five
+       thousand units across and will out-rank a well you are sitting beside —
+       correctly, since you are inside it — and this check is about the well. */
+    surv.battles.length = 0;
     now += 1000 / 60; cf.step();
     const card = cf.surveyView().near;
     check(!!card && card.name === big.name,

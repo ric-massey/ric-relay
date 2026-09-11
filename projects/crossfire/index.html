@@ -853,7 +853,7 @@
        catalogue, and two people at one keyboard cannot both be looking. */
     survey: {
       name: "SURVEY",
-      blurb: "no enemies · endless space · chart it and fill the almanac",
+      blurb: "explore a fictional galaxy that evolves on its own",
       /* There is no arena. Survey generates space in chunks as you reach it and
          never bounces you off anything, so this box exists only to keep the
          camera and the code that reads `arena` in ordinary numbers — nothing in
@@ -6724,53 +6724,154 @@
 
      Deep inside, past its sentries, is the best salvage in the sector — which
      is the whole argument for flying 112,000 units to look at it. */
-  const LEV_LEN  = 2700;    // stem to stern
-  const LEV_BEAM = 340;     // half the width of the corridor
-  const LEV_SEG  = 158;     // radius of one hull disc
+  /* Nine thousand units stem to stern, which is three and a half times what it
+     was and about the length of three chunks. At that size you cannot see both
+     ends of it at once, which is the first thing that makes it read as a place
+     rather than an object. */
+  const LEV_LEN  = 9200;    // stem to stern
+  const LEV_BEAM = 520;     // half the width of the spine corridor
+  const LEV_SEG  = 170;     // radius of one hull disc
 
+  /* ── the Leviathan ────────────────────────────────────────────────────────
+     The only landmark with an inside, and now the only one with an inside you
+     can get lost in.
+
+     It used to be a box with one straight corridor down the middle: you went in
+     the stern, flew in a straight line, took three caches off the spine and
+     turned around at the far wall. Eight seconds of decisions. The thing the
+     whole manifest points at, and the best you could say about it was that it
+     was long.
+
+     What it is now, from the stern forwards:
+
+       the throat     a wide mouth at the open stern quarter, on one flank
+       five bulkheads across the spine, each with one doorway, and the doorways
+                      alternate port and starboard — so the way in is a weave and
+                      you always have to look for the next gap
+       six bays       side chambers off the spine, alternating sides, each behind
+                      its own short throat. Three of them hold something
+       the hold       past the last bulkhead: a wide chamber at the bow with the
+                      deepest cache, four sentries and the ablative plate
+
+     **Every wall is both the drawing and the physics.** The old version hand-drew
+     three plates and separately hand-placed the collision discs, which is two
+     descriptions of one object and exactly the arrangement that lets a wall you
+     can see stop being a wall you hit. A wall is a line in local space now; the
+     discs are stamped along it and the renderer strokes the same list. They
+     cannot disagree because there is only one of them. */
   function buildLeviathan(lm, out, R, rnd) {
     const a = R() * Math.PI * 2;
     const ca = Math.cos(a), sa = Math.sin(a);
-    // Local (along the spine, across it) into world.
+    // Local (u along the spine, v across it) into world.
     const wx = (u, v) => lm.x + u * ca - v * sa;
     const wy = (u, v) => lm.y + u * sa + v * ca;
 
     const segs = [];
+    const walls = [];
     const half = LEV_LEN / 2;
-    const step = LEV_SEG * 1.25;
-    for (let u = -half + step; u <= half - step; u += step) {
-      // The stern quarter of the flank is left open on one side: that gap is
-      // the way in, and it is on the same side every time so the ship has a
-      // door rather than a lottery.
-      const sternGap = u < -half * 0.42;
-      for (const v of [-1, 1]) {
-        if (sternGap && v === 1) continue;
-        segs.push({ x: wx(u, v * (LEV_BEAM + LEV_SEG * 0.6)),
-                    y: wy(u, v * (LEV_BEAM + LEV_SEG * 0.6)), r: LEV_SEG });
+    const flank = LEV_BEAM + LEV_SEG * 0.6;
+
+    /* A run of hull along a line, in local coordinates. The discs overlap by a
+       fifth so there is no gap for a nose to find, and the line is kept so the
+       renderer can stroke exactly what was stamped. */
+    const wall = (u0, v0, u1, v1) => {
+      const dx = u1 - u0, dy = v1 - v0;
+      const len = Math.hypot(dx, dy);
+      const n = Math.max(1, Math.ceil(len / (LEV_SEG * 1.15)));
+      for (let i = 0; i <= n; i++) {
+        const u = u0 + dx * (i / n), v = v0 + dy * (i / n);
+        segs.push({ x: wx(u, v), y: wy(u, v), r: LEV_SEG });
       }
+      walls.push({ u0, v0, u1, v1 });
+    };
+
+    /* ── the bays, decided first ────────────────────────────────────────────
+       Where they are has to be known before the flanks are built, because a bay
+       is a hole in a flank and the flank is what has to be built around it. The
+       first version of this laid the flanks down solid and then put the bays
+       outside them, which produced six side chambers with no way in: they drew
+       correctly, they had caches in them, and the caches were unreachable. The
+       flood-fill test is what found it — a centreline walk never could have. */
+    const bays = [];
+    const BAY_D = 760;                     // how far a bay reaches out
+    const BAY_W = 430;                     // half its width
+    const MOUTH = 300;                     // half the width of the way into one
+    for (let i = 0; i < 6; i++) {
+      const u = -half * 0.5 + (i / 6) * (half * 1.5) + 180;
+      const side = i % 2 ? 1 : -1;
+      bays.push({ u, v: side * (flank + BAY_D * 0.55), side });
     }
-    // The bow cap — a wall at the far end of the corridor, so the inside is a
-    // dead end you have to turn around in rather than a tunnel you pass through.
-    for (let v = -LEV_BEAM; v <= LEV_BEAM; v += LEV_SEG) {
-      segs.push({ x: wx(half - LEV_SEG, v), y: wy(half - LEV_SEG, v), r: LEV_SEG * 0.9 });
+
+    // ── the flanks, with a mouth cut for every bay ─────────────────────────
+    // The stern quarter of the starboard flank is the way in, and it is on the
+    // same side every time so the ship has a door rather than a lottery.
+    const door0 = -half, door1 = -half * 0.62;
+    const flankRun = (side, from, to) => {
+      // Every bay on this side takes a bite out of the run.
+      const cuts = bays.filter(b => b.side === side && b.u > from && b.u < to)
+                       .sort((a, b) => a.u - b.u);
+      let u = from;
+      for (const b of cuts) {
+        if (b.u - MOUTH > u) wall(u, side * flank, b.u - MOUTH, side * flank);
+        u = b.u + MOUTH;
+      }
+      if (to > u) wall(u, side * flank, to, side * flank);
+    };
+    flankRun(-1, -half, half);
+    flankRun(1, door1, half);
+
+    // ── the bulkheads, and the doorways through them ───────────────────────
+    /* Five walls across the corridor, each with one gap. The gaps alternate
+       sides, so getting to the bow is a weave rather than a straight line — and
+       so a ship that is bigger than the gap has to be flown, not aimed. */
+    const GAP = 300;                       // clear half-width of a doorway
+    const bulk = [];
+    for (let i = 0; i < 5; i++) {
+      const u = -half * 0.36 + (i / 5) * (half * 1.22);
+      const side = i % 2 ? 1 : -1;         // which flank the gap is against
+      const gapMid = side * (flank - GAP - LEV_SEG);
+      bulk.push({ u, gapMid });
+      wall(u, -flank, u, gapMid - GAP);
+      wall(u, gapMid + GAP, u, flank);
     }
 
-    out.leviathan = { x: lm.x, y: lm.y, a, ca, sa, segs, len: LEV_LEN,
-                      beam: LEV_BEAM, phase: R() * Math.PI * 2 };
+    /* ── the bays themselves ────────────────────────────────────────────────
+       Six side chambers, three a side, each a short throat off the spine opening
+       into a room. They are the reason to slow down: the way to the bow does not
+       go through any of them, so every one is a decision to spend time. */
+    for (const b of bays) {
+      const outer = b.side * (flank + BAY_D);
+      // The two sides of the bay, from the flank outward, and its end wall.
+      wall(b.u - BAY_W, b.side * flank, b.u - BAY_W, outer);
+      wall(b.u + BAY_W, b.side * flank, b.u + BAY_W, outer);
+      wall(b.u - BAY_W, outer, b.u + BAY_W, outer);
+    }
 
-    /* What is inside. Three caches down the spine, each with its own sentries,
-       and the deepest is worth the other two together — the reward for going all
-       the way in rather than reaching through the door.
+    // ── the hold, at the bow ───────────────────────────────────────────────
+    // Past the last bulkhead, and wider than the corridor: the room the whole
+    // flight was for.
+    const holdU = half - LEV_SEG * 3.2;
+    wall(half - LEV_SEG, -flank, half - LEV_SEG, flank);
 
-       The fractions stop well short of the bow cap on purpose. The cap sits at
-       `half - LEV_SEG` and is a disc, so it reaches back nearly 300 units into
-       the corridor; a cache placed by eye at the far end lands *inside* the
-       wall, where it can be seen and never reached. The test that walks the
-       spine is what caught it. */
-    const spots = [-0.22, 0.02, 0.28];
-    spots.forEach((f, i) => {
-      const u = f * LEV_LEN, deep = i === spots.length - 1;
-      const cx2 = wx(u, 0), cy2 = wy(u, 0);
+    out.leviathan = { x: lm.x, y: lm.y, a, ca, sa, segs, walls,
+                      len: LEV_LEN, beam: LEV_BEAM, flank,
+                      door: [door0, door1], bulk, bays,
+                      phase: R() * Math.PI * 2 };
+
+    /* What is inside. Three of the six bays hold a cache with its own sentries,
+       and the hold at the bow holds the richest one — the reward for going all
+       the way through the weave rather than reaching through the door.
+
+       Placed from the layout rather than by eye. The old version put its caches
+       at hand-picked fractions of the length and one of them landed *inside* the
+       bow cap, where it could be seen and never reached; the test that walks the
+       inside is what caught it. Nothing here is a guess: a bay's cache sits at
+       the middle of that bay, which is a place the geometry says is open. */
+    const spots = [bays[0], bays[3], bays[4],
+                   { u: holdU, v: 0, deep: true }];
+    spots.forEach((spot, i) => {
+      const deep = i === spots.length - 1;
+      const cx2 = wx(spot.u, spot.v), cy2 = wy(spot.u, spot.v);
       const n = deep ? 4 : 2;
       const guards = [];
       for (let g = 0; g < n; g++) {
@@ -6781,13 +6882,12 @@
                         rich: deep, phase: R() * Math.PI * 2 });
     });
 
-    // The last part of the manifest, at the far end of the corridor, behind
-    // four sentries. It is the only one that is not a flight but a raid.
+    // The last part of the manifest, in the hold, behind four sentries. It is
+    // the only one that is not a flight but a raid.
     const plate = BUILD.find(b => b.inside === "leviathan");
     if (plate && !surv.built.has(plate.key) && !surv.carrying.has(plate.key)) {
       out.parts.push({ key: plate.key, name: plate.name, r: 40,
-                       x: wx(spots[spots.length - 1] * LEV_LEN, 0),
-                       y: wy(spots[spots.length - 1] * LEV_LEN, 0),
+                       x: wx(holdU - 260, 0), y: wy(holdU - 260, 0),
                        phase: R() * Math.PI * 2 });
     }
   }
@@ -7079,8 +7179,14 @@
       o.a = along + (Math.sin(o.a - along) >= 0 ? 1.35 : -1.35) + turn * 0;
     };
     for (const pl of surv.planets) clear(pl.x, pl.y, pl.r);
+    /* The Leviathan is a hundred and seventy discs now rather than twenty-six,
+       and every ship in the sector was being tested against all of them every
+       frame. One bounding check first: if you are not within a hull length of it,
+       none of its walls can possibly be in reach. */
     const lev = surv.leviathan;
-    if (lev) for (const g of lev.segs) clear(g.x, g.y, g.r);
+    if (lev && dist2(o.x, o.y, lev.x, lev.y) < (lev.len * 0.75) ** 2) {
+      for (const g of lev.segs) clear(g.x, g.y, g.r);
+    }
     return hit;
   }
 
@@ -10658,8 +10764,12 @@
         b.seen = true;
         surv.battleAge[b.id] = b.life;
         const a = factionOf(b.sides[0]), c = factionOf(b.sides[1]);
-        chatter(a.short + " and " + c.short + " are at it out here \u2014 " +
-                warScale().name.toLowerCase(), "#ff8f77", b);
+        chatter(b.big
+                  ? a.short + " and " + c.short + " have put fleets in the same " +
+                    "piece of sky \u2014 " + b.fleet + " hulls a side"
+                  : a.short + " and " + c.short + " are at it out here \u2014 " +
+                    warScale().name.toLowerCase(),
+                "#ff8f77", b);
         noteKnown("battle", b.x, b.y, b.name);
         saveSurveyBook();
       }
@@ -10932,9 +11042,24 @@
 
     const p = { x: cx * CHUNK + rnd(900, CHUNK - 900),
                 y: cy * CHUNK + rnd(900, CHUNK - 900) };
-    const fleet = Math.max(2, Math.round(sc.fleet * (0.6 + R() * 0.9)));
+
+    /* Most fights are a handful of hulls trading shots over a line — and they
+       should be, because that is what a war looks like most of the time and it
+       is what makes the rare thing rare.
+
+       The rare thing is a **fleet action**: twenty-five or more a side, two lines
+       of ships a mile long, and enough wreckage afterwards to be a landmark. It
+       has to stay uncommon or it stops being an event; one in fifteen or so near
+       home, better odds in the deep and in a bigger war, which is also where the
+       powers would actually commit a fleet. */
+    const big = R() < (0.035 + deep * 0.05) * sc.heat;
+    const fleet = big ? Math.round(25 + R() * 14)
+                      : Math.max(2, Math.round(sc.fleet * (0.6 + R() * 0.9)));
     out.battles.push({
       x: p.x, y: p.y,
+      big,
+      // Room for both lines to be lines. A fleet action is 5,000 units across,
+      // which is most of a chunk and reads as a front rather than a brawl.
       r: 700 + fleet * 130,
       sides: R() < 0.5 ? w.belligerents.slice() : w.belligerents.slice().reverse(),
       fleet,
@@ -10944,7 +11069,10 @@
       /* Not every fight is remembered. The ones that are get a name and a stone,
          and the name is the only thing in this mode that is about something
          that happened rather than something that is there. */
-      memorial: R() < 0.34,
+      /* Not every fight is remembered — but a fleet action is. Twenty-five hulls
+         a side is the sort of thing a sector names afterwards, and the stone is
+         how you find out it happened at all if you arrived late. */
+      memorial: R() < (big ? 0.85 : 0.34),
       name: BATTLE_NAMES[Math.floor(R() * BATTLE_NAMES.length)] + " " +
             battlePlace(R),
       hull: [TRAFFIC_HULLS.patrol[Math.floor(R() * TRAFFIC_HULLS.patrol.length)],
@@ -12242,51 +12370,72 @@
     const half = lev.len / 2, seg = LEV_SEG;
     const wx = (u, v) => lev.x + u * lev.ca - v * lev.sa;
     const wy = (u, v) => lev.y + u * lev.sa + v * lev.ca;
-    const outer = lev.beam + seg * 1.6, inner = lev.beam - seg * 0.4;
+    const outer = lev.flank + seg;
 
-    const plate = (u0, u1, v0, v1) => {
+    /* The body, as a dark ground so the inside reads as inside rather than as
+       lines drawn over the starfield. Drawn as the hull box plus a bump for each
+       bay, which is the silhouette its walls actually make. */
+    ctx.save();
+    ctx.fillStyle = "#05070c";
+    const box = (u0, v0, u1, v1) => {
       ctx.beginPath();
       ctx.moveTo(wx(u0, v0), wy(u0, v0));
       ctx.lineTo(wx(u1, v0), wy(u1, v0));
       ctx.lineTo(wx(u1, v1), wy(u1, v1));
       ctx.lineTo(wx(u0, v1), wy(u0, v1));
       ctx.closePath();
+      ctx.fill();
     };
-
-    ctx.save();
-    ctx.fillStyle = "#05070c";
-    plate(-half, half - seg * 1.9, -outer, -inner); ctx.fill();
-    plate(-half * 0.42, half - seg * 1.9, inner, outer); ctx.fill();
-    plate(half - seg * 1.9, half, -outer, outer); ctx.fill();
+    box(-half, -outer, half, outer);
+    for (const b of lev.bays) {
+      box(b.u - 470, b.side * lev.flank, b.u + 470, b.v + b.side * 430);
+    }
     ctx.restore();
 
+    /* And every wall, stroked from the same list the collision discs were
+       stamped along. What you see is exactly what you hit — not because somebody
+       kept two descriptions in step, but because there is only one description.
+
+       The old version drew three plates by hand and placed its discs separately,
+       which is the arrangement that lets a wall you can see quietly stop being a
+       wall you hit. */
     glow(WRECK, 2.2, 0.92, () => {
-      plate(-half, half - seg * 1.9, -outer, -inner); ctx.stroke();
-      plate(-half * 0.42, half - seg * 1.9, inner, outer); ctx.stroke();
-      plate(half - seg * 1.9, half, -outer, outer); ctx.stroke();
+      for (const w of lev.walls) {
+        ctx.beginPath();
+        ctx.moveTo(wx(w.u0, w.v0), wy(w.u0, w.v0));
+        ctx.lineTo(wx(w.u1, w.v1), wy(w.u1, w.v1));
+        ctx.stroke();
+      }
     });
 
-    // Rib detail down both flanks, and a lit spine inside the corridor so the
-    // way in reads as a way in.
-    glow("#4d5666", 1.1, 0.7, () => {
-      for (let u = -half + seg; u < half - seg * 2; u += seg * 1.9) {
-        ctx.beginPath();
-        ctx.moveTo(wx(u, -outer), wy(u, -outer));
-        ctx.lineTo(wx(u, -inner), wy(u, -inner));
-        ctx.stroke();
-        if (u > -half * 0.42) {
+    // Ribs down the flanks, so the hull has a scale you can read as you pass it.
+    glow("#4d5666", 1.1, 0.55, () => {
+      for (let u = -half + seg; u < half - seg; u += seg * 2.6) {
+        for (const side of [-1, 1]) {
+          if (side > 0 && u < lev.door[1]) continue;   // the open stern quarter
           ctx.beginPath();
-          ctx.moveTo(wx(u, inner), wy(u, inner));
-          ctx.lineTo(wx(u, outer), wy(u, outer));
+          ctx.moveTo(wx(u, side * lev.flank), wy(u, side * lev.flank));
+          ctx.lineTo(wx(u, side * outer), wy(u, side * outer));
           ctx.stroke();
         }
       }
     });
+
+    /* The spine light, and it is the navigation. Nine thousand units of dark
+       corridor with five offset doorways in it is a place you get lost; a lit
+       line that steps across to each doorway in turn is a place you *read*. It
+       is the only thing in the interior that tells you which way is forward. */
     const beat = 0.4 + 0.6 * Math.sin(clock * 0.9 + lev.phase);
-    glow(NEBULA, 1.6, 0.2 + beat * 0.35, () => {
+    glow(NEBULA, 1.6, 0.18 + beat * 0.3, () => {
       ctx.beginPath();
-      ctx.moveTo(wx(-half * 0.42, 0), wy(-half * 0.42, 0));
-      ctx.lineTo(wx(half - seg * 2.2, 0), wy(half - seg * 2.2, 0));
+      let pu = lev.door[1], pv = 0;
+      ctx.moveTo(wx(pu, pv), wy(pu, pv));
+      for (const b of lev.bulk) {
+        ctx.lineTo(wx(b.u - 200, b.gapMid), wy(b.u - 200, b.gapMid));
+        ctx.lineTo(wx(b.u + 200, b.gapMid), wy(b.u + 200, b.gapMid));
+        pu = b.u; pv = b.gapMid;
+      }
+      ctx.lineTo(wx(half - seg * 3.4, 0), wy(half - seg * 3.4, 0));
       ctx.stroke();
     });
   }
