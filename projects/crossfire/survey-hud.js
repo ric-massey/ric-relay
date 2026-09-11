@@ -1398,20 +1398,26 @@
     ctx.translate(at.p.x, at.p.y);
     ctx.rotate(ang);
     api.glow(colour, 2.4, (o.alpha === undefined ? 1 : o.alpha) * beat, () => {
-      // A solid head, so it is a shape rather than an outline at a distance.
+      /* Jagged rather than a plain triangle. A smooth arrowhead at the edge of a
+         screen full of smooth circles is one more smooth thing; a barbed one is
+         read as a *direction* before it is read at all. Two barbs swept back off
+         a long point, with the notch between them deep enough to see at the size
+         this is actually drawn. */
+      const S = scale;
       ctx.beginPath();
-      ctx.moveTo(13 * scale, 0);
-      ctx.lineTo(-9 * scale, -10 * scale);
-      ctx.lineTo(-4 * scale, 0);
-      ctx.lineTo(-9 * scale, 10 * scale);
+      ctx.moveTo(16 * S, 0);            // the point
+      ctx.lineTo(2 * S, -6 * S);
+      ctx.lineTo(-4 * S, -13 * S);      // the upper barb, swept back
+      ctx.lineTo(-6 * S, -5 * S);
+      ctx.lineTo(-13 * S, -7 * S);      // and a second, further back again
+      ctx.lineTo(-8 * S, 0);
+      ctx.lineTo(-13 * S, 7 * S);
+      ctx.lineTo(-6 * S, 5 * S);
+      ctx.lineTo(-4 * S, 13 * S);
+      ctx.lineTo(2 * S, 6 * S);
       ctx.closePath();
       ctx.fillStyle = colour;
       ctx.fill();
-      ctx.stroke();
-      // And a stub of tail pointing back the way you would turn from.
-      ctx.beginPath();
-      ctx.moveTo(-10 * scale, 0);
-      ctx.lineTo(-20 * scale, 0);
       ctx.stroke();
     });
     ctx.restore();
@@ -1428,11 +1434,25 @@
   /* What you are looking for, and which way it is. This is the arrow you fly by
      when the objective is off screen, so it is the loudest thing on the ring: full
      alpha, half again the size, and a range beside it. */
+  /* The objective's own colour. It was VIOLET, which is the colour of every
+     panel, every border and half the interface — the one arrow you are actually
+     flying by should not be the same colour as the furniture, and it should not
+     be a warning colour either. A light blue nothing else on the flight screen
+     uses. */
+  const OBJECTIVE = "#5fd8ff";
+
   function drawContacts(st) {
     const { SCREEN_W, SCREEN_H } = api;
     const cam = st.cam || { x: st.ship.x, y: st.ship.y, rot: 0, scale: 1 };
     const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
-    const cos = Math.cos(-cam.rot), sin = Math.sin(-cam.rot);
+    /* `+rot`, not `-rot`. The world is drawn with `ctx.rotate(cam.rot)`, so a
+       world vector at angle t appears on screen at t + rot; rotating by -rot is
+       the screen-to-world direction and points every arrow the wrong way round
+       the compass. It could never show while this module was being handed a
+       camera of `rot: 0` — which it was, always, because the state never sent
+       one — so the sign has been wrong since the arrows were written and this is
+       the first frame it has ever mattered. */
+    const cos = Math.cos(cam.rot), sin = Math.sin(cam.rot);
     let n = 0;
     for (const c of (st.contacts || [])) {
       if (c.resolved || n >= 4) continue;
@@ -1443,7 +1463,7 @@
       n++;
       const ang = Math.atan2(sy, sx);
       const dist = Math.round(Math.hypot(wx, wy));
-      edgeArrow(st, ang, VIOLET, fmtCells(dist) + "u",
+      edgeArrow(st, ang, OBJECTIVE, fmtCells(dist) + "u",
                 { scale: 1.35, beat: true });
     }
   }
@@ -1458,7 +1478,7 @@
     if (!st.ship) return;
     const cam = st.cam || { x: st.ship.x, y: st.ship.y, rot: 0, scale: 1 };
     const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
-    const cos = Math.cos(-cam.rot), sin = Math.sin(-cam.rot);
+    const cos = Math.cos(cam.rot), sin = Math.sin(cam.rot);
     let n = 0;
     for (const e of (st.echoes || [])) {
       if (n >= 8) break;
@@ -1495,7 +1515,7 @@
     const cam = st.cam || { x: st.ship.x, y: st.ship.y, rot: 0, scale: 1 };
     const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
     const wx = w.x - cam.x, wy = w.y - cam.y;
-    const cos = Math.cos(-cam.rot), sin = Math.sin(-cam.rot);
+    const cos = Math.cos(cam.rot), sin = Math.sin(cam.rot);
     const sx = wx * cos - wy * sin, sy = wx * sin + wy * cos;
     const px = cx + sx * cam.scale, py = cy + sy * cam.scale;
 

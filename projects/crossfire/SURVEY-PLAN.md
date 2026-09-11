@@ -1512,6 +1512,35 @@ On the curve rather than written across the middle, because a ring with writing 
 it reads as a built thing and a word laid flat over one reads as a label stuck to
 the screen.
 
+### 7.15 The arrows, again  ·  **DONE**
+
+> *"When you switch views from fixed to rotating in this mode it messes up the
+> waypoints and the purple arrow. Also the purple arrow needs to be a different
+> colour, not red — maybe a light blue. And it needs to be more jagged."*
+
+Two bugs under one report, and the second could not have been found without
+fixing the first.
+
+**`surveyState()` never sent the camera.** Every arrow that points off the edge
+converts a world position into a screen one, and to do that it needs the camera's
+rotation and scale. With neither, the module fell back to `rot: 0, scale: 1` — so
+in the rotating view every arrow pointed at the wrong sky, and in *both* views the
+"is it already on screen" test ran at 1:1 when Survey draws at about 0.72.
+
+**And then the rotation had the wrong sign.** The world is drawn with
+`ctx.rotate(cam.rot)`, so a world vector at angle *t* appears on screen at
+*t + rot*; the arrows rotated by *−rot*, which is the screen-to-world direction.
+That has been wrong since the arrows were written and had never once mattered,
+because the module was always being handed `rot: 0`. Fixing the first bug is what
+made the second one visible.
+
+**Light blue, and jagged.** The objective arrow was VIOLET, which is the colour of
+every panel, every border and half the interface — the one arrow you actually fly
+by should not be the colour of the furniture, and should not be a warning colour
+either. And the head is barbed now rather than a plain triangle: a smooth
+arrowhead on a screen full of smooth circles is one more smooth thing, and a
+barbed one reads as a *direction* before it is read at all.
+
 ### 7.8 Anything with a name can be asked about  ·  *not started*
 
 > *"Anything we run into in the world that has words — like THE ACTION AT MULANE —

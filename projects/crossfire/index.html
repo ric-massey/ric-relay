@@ -11172,6 +11172,16 @@
       /* The hold, itemised, with what the station you are standing in would
          pay for each — the price is the whole reason there is more than one
          station, so it travels with the goods rather than living in the shop. */
+      /* The camera, which the panel needs and has never been given. Every arrow
+         that points off the edge of the screen converts a world position into a
+         screen one, and to do that it needs the camera's rotation and scale —
+         with neither, the module fell back to `rot: 0, scale: 1`.
+
+         So in the rotating view every one of them pointed at the wrong sky, and
+         in *both* views the "is it already on screen" test was computed at 1:1
+         when Survey actually draws at about 0.72. Switching the camera from fixed
+         to rotating appeared to break the waypoint because it did. */
+      cam: { x: cam.x, y: cam.y, rot: cam.rot, scale: cam.scale },
       materials: MATERIALS.map(m => ({
         key: m.key, name: m.name, colour: m.colour, note: m.note,
         value: m.value, n: surv.hold[m.key] || 0,
@@ -16341,6 +16351,14 @@
       market: st => marketOf(st || surv.docked),
       // What every kind of ship out there is trying to do.
       roles: () => JSON.parse(JSON.stringify(ROLES)),
+      /* Set a mode's camera preference directly, the way the settings page's
+         button does — so a harness can check that switching the view does not
+         break what is drawn over it. */
+      setCamera: (key, on) => {
+        if (!(key in cameraRotates)) return false;
+        if (!!cameraRotates[key] !== !!on) toggleModeCamera(key);
+        return cameraRotates[key];
+      },
       /* How long the sector is. Anything sampling "near home" against "the deep"
          has to ask rather than assume: these numbers moved by a factor of six
          when the almanac's ladder was stretched, and a test with 320,000 written

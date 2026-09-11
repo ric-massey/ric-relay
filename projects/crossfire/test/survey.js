@@ -5435,6 +5435,98 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               " and one through brings it back to " + eased.price);
 }
 
+// ── an arrow points at the thing, in either view ─────────────────────────
+/* `surveyState()` never sent the camera, so every edge arrow fell back to
+   `rot: 0, scale: 1`. In the rotating view that means each of them pointed at the
+   wrong sky — switching the camera from fixed to rotating appeared to break the
+   waypoint because it did — and in *both* views the "is it already on screen"
+   test was computed at 1:1 when Survey draws at about 0.72.
+
+   Checked as geometry: put a target at a known bearing, and read back where the
+   HUD actually put the arrow. In the fixed view it should sit in that direction
+   from the middle of the screen; in the rotating view it should sit in that
+   direction *turned by the camera*, which is the whole point of a rotating view. */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const hud = cf.hud();
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 999; surv.water = 9e5; surv.food = 9e5;
+      now += 1000 / 60; cf.step();
+    }
+  };
+  step(20);
+
+  check(!!cf.surveyView().cam, "the panel is not sent the camera at all");
+  check(typeof cf.surveyView().cam.rot === "number",
+        "the camera reaches the panel without a rotation");
+  check(Math.abs(cf.surveyView().cam.scale - 1) > 0.01,
+        "the camera reaches the panel at 1:1 — Survey does not draw at 1:1");
+
+  /* The bearing the waypoint's arrow is *aiming at*, which is what the camera
+     maths produces. Its position on the ring is not the same thing: an arrow that
+     would land under a panel is slid around the ring until it is clear, so
+     reading its x and y measures the avoidance rather than the aim.
+
+     Picked by colour, because three kinds of arrow share the ring and the first
+     one drawn is usually a scan return. */
+  const arrowAt = () => {
+    hud.arrows = [];
+    cf.draw();
+    const a = hud.arrows.find(q => q.colour === "#ffd23f");
+    return a ? a.ang : null;
+  };
+  const wrap = v => {
+    while (v > Math.PI) v -= Math.PI * 2;
+    while (v < -Math.PI) v += Math.PI * 2;
+    return v;
+  };
+
+  for (const worldAng of [0, 1.1, 2.4, -2.0, -0.7]) {
+    const R = 90000;
+    surv.waypoint = { x: Math.round(me.x + Math.cos(worldAng) * R),
+                      y: Math.round(me.y + Math.sin(worldAng) * R) };
+    // Nothing else on the ring, so the one being read is the one being tested.
+    surv.target = null;
+    surv.echoes = [];
+
+    // Fixed: the screen is the world, so the arrow's bearing is the world's.
+    cf.setCamera("survey", false);
+    step(40);
+    const fixed = arrowAt();
+    check(fixed !== null, "no arrow was drawn for a waypoint 90,000 units away");
+    if (fixed !== null) {
+      check(Math.abs(wrap(fixed - worldAng)) < 0.25,
+            "fixed view: a waypoint at " + worldAng.toFixed(2) +
+            " drew its arrow at " + fixed.toFixed(2));
+    }
+
+    /* Rotating: the view turns with the ship, so the arrow has to turn with it.
+       An arrow that ignored the camera would sit at the world bearing and point
+       at empty space. */
+    cf.setCamera("survey", true);
+    step(120);                         // let the camera settle on the new angle
+    const rot = cf.surveyView().cam.rot;
+    const spun = arrowAt();
+    check(spun !== null, "no arrow in the rotating view");
+    if (spun !== null) {
+      check(Math.abs(wrap(spun - (worldAng + rot))) < 0.3,
+            "rotating view: a waypoint at " + worldAng.toFixed(2) + " with the " +
+            "camera at " + rot.toFixed(2) + " drew its arrow at " +
+            spun.toFixed(2) + ", not " + wrap(worldAng + rot).toFixed(2));
+    }
+    cf.setCamera("survey", false);
+  }
+  surv.waypoint = null;
+
+  console.log("  aim        the panel gets the real camera \u00b7 arrows point at " +
+              "the thing in the fixed view and turn with the ship in the " +
+              "rotating one");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);
