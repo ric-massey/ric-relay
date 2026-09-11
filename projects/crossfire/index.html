@@ -2531,6 +2531,9 @@
         // Last of the three, because a station does more than a world does and a
         // yard is the thing you came back for.
         if (code === "KeyE" && surv && surv.landed) { state = "landed"; return; }
+        /* Somebody drifting, before anything with a name on it: a ship with four
+           minutes left beats a monument that has been there a thousand years. */
+        if (code === "KeyE" && surv && surv.helping) { giveWater(); return; }
         /* Anything else with a name on it. Last of the `E` doors, because a
            station, the yard and a world you can land on are all things you went
            there for, and this is a question you ask on the way past.
@@ -5692,7 +5695,7 @@
                     refit: freshRefit(), opened: [], stripped: [],
                     carrying: [], built: [], pins: [], known: [],
                     slots: [], store: {}, battleAge: {}, memorials: [],
-                    dropped: [], coilFired: false,
+                    dropped: [], coilFired: false, wrecked: [],
                     alert: { water: { taught: 0 }, food: { taught: 0 } } };
     try {
       const raw = localStorage.getItem(SURVEY_STORE);
@@ -5835,6 +5838,21 @@
           }
           return out;
         })(),
+        /* Wrecks that are *events* rather than scenery. A chunk's own hulks come
+           back out of its seed every time you fly into it; one that is there
+           because something died in front of you cannot, so it is written down.
+           Bounded, because a long run kills a lot of things — see `WRECK_KEEP`. */
+        wrecked: Array.isArray(b.wrecked)
+          ? b.wrecked.filter(w => w && typeof w.id === "string" &&
+                                  Number.isFinite(w.x) && Number.isFinite(w.y))
+                     .map(w => ({ id: w.id.slice(0, 64),
+                                  x: Math.round(w.x), y: Math.round(w.y),
+                                  r: Math.max(30, Math.min(140, Number(w.r) || 60)),
+                                  a: Number(w.a) || 0,
+                                  spin: Math.max(-0.3, Math.min(0.3, Number(w.spin) || 0)),
+                                  hp: Math.max(1, Math.min(9, Math.floor(Number(w.hp)) || 4)) }))
+                     .slice(0, 80)
+          : [],
         dropped: Array.isArray(b.dropped)
           ? b.dropped.filter(d => d && typeof d.key === "string" &&
                                   BUILD.some(x => x.key === d.key) &&
@@ -5876,6 +5894,7 @@
         carrying: [...surv.carrying],
         built: [...surv.built],
         dropped: surv.dropped,
+        wrecked: surv.wrecked,
         coilFired: !!surv.coilFired,
         alert: { water: { taught: surv.alert.water.taught },
                  food:  { taught: surv.alert.food.taught } },
@@ -6657,6 +6676,9 @@
         // Its own cruising speed, kept so a ship that runs from something can
         // stop running afterwards rather than sprinting for the rest of its life.
         made.baseSpeed = made.speed;
+        // And what a full reserve was, so one that got out of trouble can fill
+        // back up to where it started rather than to some new number.
+        made.tankFull = made.tank;
         surv.traffic.push(made);
         /* A distress call brings its own attackers. They are drones like any
            other so they behave like any other, and they are posted on the ship
@@ -6764,6 +6786,15 @@
        chunk, because it does not belong to one — it belongs to the run, and it
        has to be there when you come back whether its chunk happens to be loaded
        or not. It never drifts and it never expires. */
+    /* And the wrecks of things that died here. Same rule as the parts: not out
+       of a chunk, because they do not belong to one, and only the ones near
+       enough to matter. A stripped one is gone for good. */
+    for (const w of surv.wrecked) {
+      if (surv.stripped.has(w.id)) continue;
+      if (Math.abs(w.x - ships[0].x) > CHUNK * 3 ||
+          Math.abs(w.y - ships[0].y) > CHUNK * 3) continue;
+      surv.hulks.push(w);
+    }
     for (const d of surv.dropped) {
       if (Math.abs(d.x - ships[0].x) > CHUNK * 3 ||
           Math.abs(d.y - ships[0].y) > CHUNK * 3) continue;
@@ -6985,6 +7016,15 @@
       built: new Set(carried ? book.built : []),
       // The coil goes off once, when it comes off the gate. See `surveyParts`.
       coilFired: !!(carried && book.coilFired),
+      /* Wrecks left by things that died while you were there. Kept outside the
+         chunks for the same reason the dropped parts are: `surv.hulks` is emptied
+         and rebuilt from the seed every time you cross a chunk boundary, so a
+         hull that is there because of something that *happened* has nowhere to
+         live unless it lives here. This is the spine of 6.5 — a consequence you
+         can fly back to is a consequence you remember. */
+      wrecked: (carried && Array.isArray(book.wrecked) ? book.wrecked : [])
+        .filter(w => w && typeof w.id === "string" &&
+                     Number.isFinite(w.x) && Number.isFinite(w.y)),
       /* Parts you were carrying when you died. They sit where you died until you
          go back for them, and they are written into the book because a part you
          have to fetch is worthless if closing the tab loses it. */
@@ -7396,6 +7436,57 @@
 
       t.hit = Math.max(0, (t.hit || 0) - dt);
 
+      /* Gravity first, because it applies whatever else this ship is doing —
+         including being a distress call that is not flying at all. */
+      const pull = trafficDrift(t, dt);
+      const took = pull > 0 ? hazardAt(t.x, t.y, 16 * U) : null;
+      if (took) {
+        /* Gone. Not a wreck: it is inside a star. The salvage it was carrying
+           falls in after it, which is correct and is also the best argument for
+           why you do not chase a hauler past one of these.
+
+           Said out loud if you are near enough to have seen it, because an
+           accident nobody mentions is indistinguishable from a despawn. */
+        if (me.alive && dist2(t.x, t.y, me.x, me.y) < (TRAFFIC_TALK * 1.6) ** 2) {
+          chatter(factionOf(t.faction).short + " " + (t.role || t.kind) +
+                  " — " + (took.name || (took.kind === "hole" ? "a well" : "a star")) +
+                  " has it.", took.kind === "hole" ? "#b79aff" : "#ffd76d");
+        }
+        killTraffic(i, false, true);
+        continue;
+      }
+
+      /* ── out of water, and drifting ────────────────────────────────────────
+         "Ships can run out of something" is the half of 6.3 that was missing, and
+         the interesting question was never the clock — it is *why* a hauler runs
+         dry. A background timer would put dead ships all over the sector and mean
+         nothing. A reserve that only burns when the ship is in trouble means a
+         drifting hauler is evidence: something happened here.
+
+         So the tank drains while it is being chased, while it is running from you,
+         while it is being shot at, and while it is fighting a well — and refills
+         slowly while it is getting on with its day. Three systems strand a ship:
+         pirates, gravity, and you. */
+      if (t.adrift) {
+        t.doom -= dt;
+        // Drifting means drifting. Whatever gravity is doing to it still is.
+        solidBounce(t, 22 * U * (shipSpec(t.hull).size || 1));
+        if (!t.pleaded && me.alive &&
+            dist2(t.x, t.y, me.x, me.y) < TRAFFIC_TALK ** 2) {
+          t.pleaded = true;
+          chatter(factionOf(t.faction).short + " hauler — out of water, " +
+                  "drifting. They are asking anyone.", "#ffcb42");
+        }
+        if (t.doom <= 0) {
+          if (me.alive && dist2(t.x, t.y, me.x, me.y) < (TRAFFIC_TALK * 1.4) ** 2) {
+            chatter("That hauler is not answering any more.", WRECK);
+          }
+          killTraffic(i, false);
+          continue;
+        }
+        continue;
+      }
+
       if (t.kind === "distress") {
         /* The clock. Its attackers are drones posted on it, so "are they dead"
            is a question about the drone list — and clearing them is the rescue,
@@ -7489,6 +7580,22 @@
       /* Shadowing sits off your shoulder rather than closing: near enough that
          you notice, far enough that it is not a threat yet. */
       const tailing = t.shadow && !t.angry && me.alive;
+
+      /* The reserve. Only unarmed ships carry one — a patrol is not going to
+         drift into your path out of thirst, and the ones this is about are the
+         haulers. Burns while it is in trouble, refills while it is not, and at
+         zero the ship stops being a ship and becomes a situation. */
+      if (t.tank != null && t.tank >= 0) {
+        const chased = t.hunted > 0 || fleeing || t.hit > 0 || pull > 0;
+        t.tank += chased ? -dt : dt * 0.25;
+        if (t.tank > t.tankFull) t.tank = t.tankFull;
+        if (t.tank <= 0) {
+          t.tank = 0;
+          t.adrift = true;
+          t.doom = rand(200, 320);
+          t.mark = null; t.markKind = ""; t.angryAt = null;
+        }
+      }
       /* What it is actually trying to do, which is the whole of 6.1. You are
          only one of the answers — most of the time a ship out here is busy with
          somebody else, and the interesting frames are the ones where two of these
@@ -7498,13 +7605,24 @@
                  : tailing ? { x: me.x - Math.cos(t.a) * 700 * U,
                                y: me.y - Math.sin(t.a) * 700 * U }
                  : wantOf(t, dt);
-      const dx = goal.x - t.x, dy = goal.y - t.y;
-      const d = Math.hypot(dx, dy) || 1;
-      if (d < 220) {
+      /* Arrival is judged against where it was *going*, not against where the
+         wells have pushed the aim — otherwise a station on the far side of a well
+         can never be reached, because the dodge always holds the ship 200 units
+         off the only point that counts as arriving. */
+      if (Math.hypot(goal.x - t.x, goal.y - t.y) < 220) {
         arrived(t, goal);
         if (!t.angry && !tailing && !fleeing) t.leg = -t.leg;
         continue;
       }
+      /* Three states get no dodge: angry, running from you, and *being hunted by
+         somebody else*. The last was missing and it is the one that matters —
+         a pirate on a hauler is the commonest reason a ship is somewhere it would
+         not have chosen, and a hauler that kept calmly steering round the star
+         while being shot at was a hauler that could never have the accident this
+         rule exists for. */
+      const aim = (t.angry || fleeing || t.hunted > 0) ? goal : dodgeWells(t, goal);
+      const dx = aim.x - t.x, dy = aim.y - t.y;
+      const d = Math.hypot(dx, dy) || 1;
       const want = Math.atan2(dy, dx);
       let diff = want - t.a;
       while (diff > Math.PI) diff -= Math.PI * 2;
@@ -7575,6 +7693,66 @@
         }
       }
     }
+  }
+
+  /* ── gravity, for everybody ───────────────────────────────────────────────
+     "Gravity affects everyone" was true of every object in the game that had a
+     velocity — the player, rocks, bullets, salvage, debris — and traffic was the
+     one class that did not have one. A ship out here flies on a heading and a
+     speed, so a hauler could cross a supermassive well's reach on a dead straight
+     line while you were fighting the same well two hundred units away. The rule
+     was universal in the code and not in the sky, which is the worst of both.
+
+     So they carry a drift: a velocity nothing but gravity ever writes, added to
+     wherever the engine was taking them, and bled off once they are clear. A ship
+     under power out-flies a shallow pull and cannot out-fly a deep one — the same
+     arithmetic the warning already does for you, with the same answer. */
+  const DRIFT_BLEED = 0.6;         // per second, once clear of every well
+  function trafficDrift(t, dt) {
+    let pull = 0;
+    t.dvx = t.dvx || 0; t.dvy = t.dvy || 0;
+    for (const h of hazards) {
+      if (!hazardActive(h)) continue;
+      const dx = h.x - t.x, dy = h.y - t.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > h.reach * h.reach) continue;
+      const d = Math.sqrt(d2) || 0.001;
+      const a = h.mass / (d2 + h.soft * h.soft);
+      t.dvx += (dx / d) * a * dt;
+      t.dvy += (dy / d) * a * dt;
+      pull += a;
+    }
+    if (!pull) {
+      // Clear of it: it gets back on course rather than coasting off into the
+      // dark for the rest of the run on gravity it met ten minutes ago.
+      const k = Math.max(0, 1 - DRIFT_BLEED * dt);
+      t.dvx *= k; t.dvy *= k;
+    }
+    t.x += t.dvx * dt;
+    t.y += t.dvy * dt;
+    return pull;
+  }
+
+  /* And they steer round the things they can see. Not cleverly — a push away from
+     anything whose reach they are inside, added to wherever they were going, which
+     is enough to make the lanes bend around a well the way you would expect.
+
+     Only when they have the attention to spare. A ship running for its life, or
+     one with somebody in its sights, gets no dodge at all — which is precisely
+     why a chase past a star is how one of these dies, and why that death is an
+     accident rather than a scripted event. */
+  function dodgeWells(t, goal) {
+    let ox = 0, oy = 0;
+    for (const h of hazards) {
+      if (!hazardActive(h)) continue;
+      const dx = t.x - h.x, dy = t.y - h.y;
+      const d = Math.hypot(dx, dy) || 1;
+      if (d > h.reach * 1.15) continue;
+      const push = (h.reach * 1.2 - d) * 1.5;
+      ox += (dx / d) * push;
+      oy += (dy / d) * push;
+    }
+    return (ox || oy) ? { x: goal.x + ox, y: goal.y + oy } : goal;
   }
 
   /* ── a want, turned into somewhere to be ──────────────────────────────────
@@ -7745,7 +7923,7 @@
   /* Destroyed, by you or by somebody else. What it was carrying ends up on the
      floor either way — which is what makes robbing one a thing you can do, and
      failing to save one a thing that costs somebody else rather than you. */
-  function killTraffic(i, byYou) {
+  function killTraffic(i, byYou, swallowed) {
     const t = surv.traffic[i];
     burst(t.x, t.y, trafficColour(t), 26, 300 * U);
     gameSound("boom", t.x);
@@ -7764,6 +7942,11 @@
       const aim = t.markKind === "station" && t.mark ? t.mark : near;
       if (aim) for (const key of t.cargo) moveMarket(aim, key, 0.22);
     }
+    /* And the hull. Not one that went into a well — that is inside a black hole
+       now — and not one that died in a battle, because a battle lays out its own
+       field of wrecks when it ends and doubling them would bury the sector in
+       metal. Everything else leaves something to come back to. */
+    if (!swallowed && !t.battle) leaveWreck(t);
     if (t.id) surv.goneTraffic.add(t.id);
     surv.traffic.splice(i, 1);
     // Its attackers have nothing left to attack.
@@ -7777,6 +7960,30 @@
         chatter("They were not armed.", "#ff8f77");
       }
     }
+  }
+
+  /* What a ship leaves when it dies somewhere you were watching. Not every
+     death: a ship swallowed by a well leaves nothing, because it is inside a
+     black hole. Anything else leaves a hull you can come back and strip, and the
+     coming back is the point — a fight you had an hour ago should still be there
+     as a thing in the sky rather than as a memory.
+
+     Capped. A twenty-hour run kills a great many ships and every one of them
+     would otherwise be a line in the save file forever; the oldest go first,
+     which is also the ones furthest behind you. */
+  const WRECK_KEEP = 60;
+  function leaveWreck(t) {
+    const id = "w:" + (t.id || Math.round(t.x) + ":" + Math.round(t.y));
+    if (surv.stripped.has(id)) return null;
+    if (surv.wrecked.some(w => w.id === id)) return null;
+    const size = shipSpec(t.hull) ? (shipSpec(t.hull).size || 1) : 1;
+    const w = { id, x: Math.round(t.x), y: Math.round(t.y),
+                r: Math.round(46 + size * 22), a: t.a || 0,
+                spin: rand(-0.1, 0.1), hp: 4 };
+    surv.wrecked.push(w);
+    if (surv.wrecked.length > WRECK_KEEP) surv.wrecked.shift();
+    surv.hulks.push(w);
+    return w;
   }
 
   /* One mote of a known kind. Traffic drops what it was actually carrying rather
@@ -8948,6 +9155,61 @@
       if (pl.inhabited && !surv.landed) surv.landed = pl;
       if (pl.air && !surv.overAir) surv.overAir = pl;
     }
+
+    /* And anybody drifting close enough to hand water across to. Nearest rather
+       than first: two dead haulers in one piece of sky is exactly the situation
+       this produces, and you should be helping the one you are next to. */
+    surv.helping = null;
+    let hd = HELP_NEAR * HELP_NEAR;
+    for (const t of surv.traffic) {
+      if (!t.adrift) continue;
+      const d2 = dist2(me.x, me.y, t.x, t.y);
+      if (d2 < hd) { hd = d2; surv.helping = t; }
+    }
+  }
+
+  /* ── handing water across ─────────────────────────────────────────────────
+     The one thing you can do for a ship that has run out, and it costs the only
+     resource in this mode that is genuinely scarce: your own water. Not cash,
+     which you have plenty of by the deep, and not cargo, which is fungible —
+     twenty minutes is the whole tank, so two hundred seconds is a sixth of how
+     long you can stay out.
+
+     Which is the point. It touches three things at once: the tank that decides
+     how far you can go, the standing that decides who shoots at you, and the
+     lane that ship was going to finish. Refuse and it dies, and you can strip it
+     later, and the station it was carrying to goes short. That is the trade, and
+     it is a real one in both directions. */
+  const HELP_NEAR    = 900;    // how close before you can pass it across
+  const GIVE_WATER   = 200;    // seconds out of your tank
+  const WATER_KEEP   = 240;    // and what you must still have left afterwards
+  const WATER_THANKS = 190;
+  const canGiveWater = () => !!(surv && surv.helping &&
+                                surv.water >= GIVE_WATER + WATER_KEEP);
+  function giveWater() {
+    const t = surv && surv.helping;
+    if (!t || !t.adrift) return false;
+    if (!canGiveWater()) {
+      chatter("Not with what is in your own tank.", "#ff8f77");
+      return false;
+    }
+    surv.water -= GIVE_WATER;
+    t.adrift = false;
+    t.tank = t.tankFull || 90;
+    t.doom = 0;
+    t.pleaded = false;
+    t.saved = true;
+    surv.cash += WATER_THANKS;
+    /* Worth rather less than pulling one out of a sentry attack, because this
+       cost you a tank rather than a fight — but it is the same kind of act and
+       the sector treats it as one. */
+    addRep(t.faction, REP.RESCUE * 0.6);
+    surv.t.watered = true;
+    chatter("Water across. They can make the next station. " +
+            WATER_THANKS + " cash.", CASH);
+    gameSound("win", t.x);
+    saveSurveyBook();
+    return true;
   }
 
   /* ── asking what a thing is ───────────────────────────────────────────────
@@ -9231,6 +9493,14 @@
     gameSound("boom", h.x);
     dropMote(h.x, h.y, YIELD.hulk, 70, "hulk");
     surv.stripped.add(h.id);
+    /* A wreck that was an event is *forgotten* once it has been stripped rather
+       than remembered as stripped: the `stripped` set is what stops a chunk's own
+       hulks coming back, and this one has no chunk to come back out of. Dropping
+       it here is what keeps the list bounded in a long run. */
+    if (surv.wrecked.length) {
+      const w = surv.wrecked.findIndex(q => q.id === h.id);
+      if (w >= 0) surv.wrecked.splice(w, 1);
+    }
     surv.hulks.splice(i, 1);
     saveSurveyBook();
   }
@@ -10140,6 +10410,11 @@
       // A distress call has a clock on it. Long enough to be worth turning
       // around for, short enough that turning around has to be a decision.
       doom: role === "distress" ? rnd(38, 62) : 0,
+      /* What it has in reserve, in seconds of trouble. Unarmed ships only: a
+         patrol is not going to drift into your path out of thirst, and the ships
+         this is about are the haulers. Rolled per ship, so two freighters in the
+         same lane are not equally close to the edge. */
+      tank: spec.armed || role === "distress" ? null : rnd(50, 130),
       guards: role === "distress" ? 1 + Math.floor(R() * 2) : 0,
       phase: R() * Math.PI * 2
     });
@@ -11746,6 +12021,16 @@
         band: bandAt(surv.landed.x, surv.landed.y).name
       },
       overAir: surv.overAir && { name: surv.overAir.name },
+      /* A ship that has run out, near enough to do something about. The panel
+         needs to say who it is, what it would cost, and whether you can afford
+         it — a prompt you cannot act on has to look like one. */
+      helping: surv.helping && {
+        flag: factionOf(surv.helping.faction).short,
+        colour: factionOf(surv.helping.faction).colour,
+        left: Math.max(0, Math.round(surv.helping.doom)),
+        cost: GIVE_WATER, can: canGiveWater()
+      },
+      onWater: () => { giveWater(); },
       /* The named thing in reach, and the card for the one you asked about.
          `near` is what the panel offers; `lore` is what the page draws, and they
          are two fields rather than one so the card holds still while you read it. */

@@ -1366,6 +1366,25 @@
     /* Above the scan button rather than beside it. The button is a real box now
        and it sits off the hull bar's right shoulder, so a line fitted to most of
        the screen's width ran straight through its edge. */
+    /* ── one target for every prompt on this line ──────────────────────────
+       There are four of them — docked, landed, somebody adrift, something with a
+       name — they are mutually exclusive, they all draw at `y - 54`, and every
+       one of them has to stop short of the scan button on its right. They had
+       drifted into three different rectangles: 320 wide at `y - 62`, 260 wide at
+       `y - 86`, and one that reached 37px into the scan target on a phone. Taps
+       go to whoever registered last, so pressing the right-hand end of a prompt
+       scanned instead.
+
+       So: one function. It is bounded by where the scan button starts, which this
+       function already knows, rather than by a number somebody hoped was small
+       enough — and it sits *on* the words rather than above them. */
+    const promptTap = (act) => {
+      const right = cx + w / 2 + 10;
+      const left = Math.max(PAGE.EDGE, cx - 170);
+      tap({ x: left, y: y - 72, w: Math.max(120, right - left), h: 36,
+            act: act || (() => {}) });
+    };
+
     const dry = st.water && st.water.countdown > 0 ? st.water : null;
     const starving = st.food && st.food.countdown > 0 ? st.food : null;
     if (critical) {
@@ -1384,12 +1403,7 @@
       const beat = 0.6 + 0.4 * Math.sin(clockish() * 4);
       label(api.touchOnly ? "DOCKED — TAP TO REFIT" : "DOCKED — [E] REFIT",
             cx, y - 54, SIZE.val, CASH, "center", beat, "0.1em");
-      /* Stops exactly where the scan button starts. The prompt's box used to run
-         to `y - 18`, which reached into the scan target on a phone — and taps go
-         to whatever was registered last, so pressing the right-hand end of
-         "DOCKED" scanned instead of docking. */
-      tap({ x: cx - 130, y: y - 86, w: 260, h: 36,
-                   act: st.onRefit || (() => {}) });
+      promptTap(st.onRefit);
     } else if (st.landed) {
       // Somebody lives on the thing you are resting against, and they will sell
       // you water. Named, because the name is the point of naming them.
@@ -1397,8 +1411,20 @@
       fitText(st.landed.name + (api.touchOnly ? " — TAP TO TRADE" : " — [E] TRADE"),
               cx, y - 54, SIZE.val, st.landed.colour || CASH, "center", beat,
               SCREEN_W - 380, "0.08em");
-      tap({ x: cx - 160, y: y - 62, w: 320, h: 36,
-                   act: st.onLand || (() => {}) });
+      promptTap(st.onLand);
+    } else if (st.helping) {
+      /* Somebody out there has stopped. Above the name of a monument and above
+         the drive, because it is the only line on this panel with a clock
+         running on it — and the clock is stated, because "four minutes" is the
+         difference between a decision and a thing you noticed too late. */
+      const beat = 0.6 + 0.4 * Math.sin(clockish() * 5);
+      fitText(st.helping.flag + " HAULER ADRIFT — " + fmtSecs(st.helping.left) +
+              (st.helping.can
+                 ? (api.touchOnly ? " — TAP: WATER" : " — [E] GIVE WATER")
+                 : " — NOT ENOUGH WATER"),
+              cx, y - 54, SIZE.val, st.helping.can ? ICE : WARN, "center", beat,
+              SCREEN_W - 380, "0.06em");
+      if (st.helping.can) promptTap(st.onWater);
     } else if (st.near) {
       /* Something with a name on it, in reach. Above the light drive and above
          the key hints because it is the only line here that is about *where you
@@ -1408,17 +1434,13 @@
       fitText(st.near.name + (api.touchOnly ? " — TAP" : " — [E]"),
               cx, y - 54, SIZE.val, st.near.colour || VIOLET, "center", beat,
               SCREEN_W - 380, "0.08em");
-      tap({ x: cx - 160, y: y - 62, w: 320, h: 36,
-                   act: st.onLook || (() => {}) });
+      promptTap(st.onLook);
     } else if (st.light && st.light.have && st.light.run <= 0) {
       // Offered, quietly, whenever there is nothing more urgent to say. A drive
       // you have to remember you own is a drive you never use.
       label(api.touchOnly ? "LIGHT DRIVE READY" : "LIGHT DRIVE READY  —  [R]",
             cx, y - 30, SIZE.cap, ICE, "center", 0.55, "0.14em");
-      if (api.touchOnly) {
-        tap({ x: cx - 130, y: y - 86, w: 260, h: 36,
-                     act: st.onLight || (() => {}) });
-      }
+      if (api.touchOnly) promptTap(st.onLight);
     } else if (!api.touchOnly) {
       // The mode's three keys, stated once, quietly, where a new player is
       // already looking. Survey has no tutorial and should not need one.

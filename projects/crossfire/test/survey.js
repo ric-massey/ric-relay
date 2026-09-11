@@ -6125,6 +6125,200 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "empty space says nothing");
 }
 
+/* ── 6.3 · gravity is universal, and ships can run out ────────────────────────
+   Two gaps in "world objects obey universal rules". Gravity applied to every
+   object in the game that had a *velocity* — the player, rocks, bullets, salvage,
+   debris — and traffic was the one class flying on a heading instead, so a hauler
+   crossed a black hole's reach dead straight while you fought the same well two
+   hundred units away. And nothing out here could run out of anything.
+
+   Both are tested against synthetic ships rather than found ones: the whole point
+   of the reserve is that it only burns when a ship is in trouble, so waiting for
+   one to happen would be waiting for a pirate to find a freighter near a star. */
+{
+  const { cf } = boot("?debug=1&seed=313131");
+  cf.start("survey", 1);
+  const lv = cf.live();
+  const surv = cf.survey();
+  const me = lv.ships[0];
+  const flag = cf.surveyView().standings[0].key;
+
+  const put = (over) => {
+    const t = Object.assign({
+      id: "test" + Math.random(), kind: "freight", role: "freight",
+      faction: flag, hull: "drayman", x: me.x + 600, y: me.y, a: 0,
+      from: { x: me.x + 600, y: me.y }, to: { x: me.x + 9000, y: me.y },
+      leg: 1, speed: 100, baseSpeed: 100, hp: 6, maxHp: 6, cargo: [],
+      cool: 1, doom: 0, guards: 0, space: 0, trades: false, phase: 0,
+      tank: 90, tankFull: 90
+    }, over || {});
+    surv.traffic.push(t);
+    return t;
+  };
+  const step = (n) => { for (let i = 0; i < (n || 1); i++) { now += 1000 / 60; cf.step(); } };
+
+  /* A well, and a ship that has no say in the matter. Placed inside the reach and
+     pointed straight along its route: if gravity is universal its track bends,
+     and if it is not, it does not. */
+  let well = null;
+  for (let ring = 3; ring < 420 && !well; ring += 3) {
+    for (let k = 0; k < 24 && !well; k++) {
+      const a = (k / 24) * Math.PI * 2;
+      const c = cf.chunk(Math.round(Math.cos(a) * ring), Math.round(Math.sin(a) * ring));
+      for (const h of c.hazards) if (h.k >= 1.8) well = h;
+    }
+  }
+  check(!!well, "no supermassive well to drag anything into");
+
+  if (well) {
+    // Stand off it, clear of the killing radius, and let its chunk stream in.
+    me.x = well.x + well.reach * 1.05; me.y = well.y; me.vx = me.vy = 0;
+    me.invuln = 999; step(3);
+    // Re-read: streaming replaces the hazard array rather than emptying it, so
+    // a reference taken at boot points at the sector you started in.
+    const live = cf.live().hazards.find(h => Math.hypot(h.x - well.x, h.y - well.y) < 4);
+    check(!!live, "the well did not stream in");
+
+    if (live) {
+      /* Deep in, engine pointed straight out, and chased so it gets no dodge.
+         The claim is the same one the warning makes to the player: a ship under
+         power out-flies a shallow pull and cannot out-fly a deep one. So this one
+         loses ground while flying away from the thing, which is the only shape of
+         this test that means anything —
+
+         measuring distance-from-well on a ship crossing *tangentially* proves
+         nothing at all, because it gets further away by geometry while being bent
+         hard inward, and the first version of this check read that as "gravity did
+         nothing". */
+      const t = put({ x: live.x + live.kill * 2.2, y: live.y, a: 0,
+                      from: { x: live.x + live.kill * 2.2, y: live.y },
+                      to: { x: live.x + live.reach * 4, y: live.y },
+                      hunted: 30 });
+      const d0 = Math.hypot(t.x - live.x, t.y - live.y);
+      const pull0 = Math.hypot(t.dvx || 0, t.dvy || 0);
+      step(1);
+      // The drift a well writes points at the well, and nowhere else.
+      const towards = ((live.x - t.x) * (t.dvx || 0) + (live.y - t.y) * (t.dvy || 0));
+      check(towards > 0 && Math.hypot(t.dvx, t.dvy) > pull0,
+            "the ship carries no drift toward the well it is sitting in");
+      step(180);
+      const gone = surv.traffic.indexOf(t) < 0;
+      const d1 = gone ? 0 : Math.hypot(t.x - live.x, t.y - live.y);
+      check(gone || d1 < d0,
+            "a ship flying away from the middle of a well out-ran it (" +
+            Math.round(d0) + " → " + Math.round(d1) + ")");
+      if (!gone) surv.traffic.splice(surv.traffic.indexOf(t), 1);
+
+      /* And inside the killing radius it is simply gone — with no wreck, because
+         it is inside a black hole, which is the one death out here that leaves
+         nothing to come back for. */
+      const before = surv.wrecked.length;
+      const doomed = put({ x: live.x + live.kill * 0.4, y: live.y, hunted: 30 });
+      step(2);
+      check(surv.traffic.indexOf(doomed) < 0, "a well did not swallow a ship inside it");
+      check(surv.wrecked.length === before,
+            "a ship swallowed by a well left a wreck behind — inside the well");
+
+      /* With the attention to spare, it steers. Same place, not being chased. */
+      const calm = put({ x: live.x + live.reach * 0.8, y: live.y,
+                         to: { x: live.x + live.reach * 0.8, y: live.y + 90000 } });
+      const c0 = Math.hypot(calm.x - live.x, calm.y - live.y);
+      step(120);
+      const alive = surv.traffic.indexOf(calm) >= 0;
+      check(alive, "a ship minding its own business flew into a well anyway");
+      if (alive) {
+        const c1 = Math.hypot(calm.x - live.x, calm.y - live.y);
+        check(c1 > c0, "it did not steer away from the well (" +
+              Math.round(c0) + " → " + Math.round(c1) + ")");
+        surv.traffic.splice(surv.traffic.indexOf(calm), 1);
+      }
+    }
+  }
+
+  /* ── the reserve ───────────────────────────────────────────────────────────
+     Clear of everything, so the only thing burning the tank is the chase. */
+  me.x = 0; me.y = 0; me.vx = me.vy = 0;
+  me.invuln = 999; surv.water = 1200; surv.food = 2700;
+  step(2);
+  /* Synthetic traffic has no chunk to be rebuilt from, so crossing a chunk
+     boundary loses it — everything below moves the *ship* rather than the player
+     until the wreck, which is the one thing that is supposed to survive that. */
+  const quiet = put({ x: me.x + 700, y: me.y + 700, tank: 60, tankFull: 90,
+                      from: { x: me.x + 700, y: me.y + 700 },
+                      to: { x: me.x + 1400, y: me.y + 700 } });
+  step(60);
+  check(quiet.tank > 60,
+        "a ship going about its day did not refill its reserve (" +
+        quiet.tank.toFixed(1) + ")");
+  check(quiet.tank <= quiet.tankFull, "a reserve filled past full");
+
+  quiet.hunted = 30; quiet.tank = 2;
+  step(150);
+  check(quiet.adrift === true, "a ship that ran its reserve out is still flying");
+  const wasAt = { x: quiet.x, y: quiet.y };
+  step(60);
+  check(Math.hypot(quiet.x - wasAt.x, quiet.y - wasAt.y) < 2,
+        "a ship with nothing left still moved " +
+        Math.round(Math.hypot(quiet.x - wasAt.x, quiet.y - wasAt.y)) + " units");
+
+  /* ── handing water across ─────────────────────────────────────────────────
+     It costs the one resource in this mode that is actually scarce. */
+  quiet.x = me.x + 400; quiet.y = me.y;
+  me.invuln = 999; surv.water = 1200;
+  step(2);
+  const view = cf.surveyView();
+  check(!!view.helping, "standing beside a drifting ship offered nothing");
+  check(view.helping && view.helping.can === true,
+        "a full tank was not enough to help with");
+  const cash0 = surv.cash, water0 = surv.water;
+  cf.key("KeyE");
+  check(!quiet.adrift, "giving them water did not get them moving again");
+  check(surv.water < water0, "handing water across cost nothing");
+  check(surv.water === water0 - 200, "it cost " + (water0 - surv.water) + "s, not 200");
+  check(surv.cash > cash0, "they did not pay for it");
+  check(cf.peek().state === "playing", "handing water across opened a page");
+
+  // And you cannot give away what you need yourself.
+  quiet.adrift = false; quiet.tank = quiet.tankFull;
+  quiet.x = me.x + 9000;      // out of the way, so it is not the one offered
+  const second = put({ x: me.x + 300, y: me.y, adrift: true, doom: 200, tank: 0 });
+  surv.water = 300;
+  step(2);
+  check(cf.surveyView().helping && cf.surveyView().helping.can === false,
+        "a nearly empty tank was still offered as something to give away");
+  // Read on the frame it is pressed: the tank drains every frame, so anything
+  // measured across a step is measuring life support as well.
+  const held = surv.water;
+  cf.key("KeyE");
+  check(second.adrift === true, "it gave away water the ship did not have");
+  check(surv.water === held, "a refused gift still cost water");
+
+  /* ── and the wreck it leaves ───────────────────────────────────────────────
+     A hull that is there because of something that happened has to survive the
+     chunk being rebuilt, which is what `surv.wrecked` is for. */
+  const hulks0 = surv.hulks.length, wrecked0 = surv.wrecked.length;
+  second.doom = 0.01;
+  step(2);
+  check(surv.traffic.indexOf(second) < 0, "the clock ran out and it is still there");
+  check(surv.wrecked.length === wrecked0 + 1,
+        "a ship that died in front of you left no wreck");
+  check(surv.hulks.length > hulks0, "the wreck is not in the sector");
+  const left = surv.wrecked[surv.wrecked.length - 1];
+
+  // A chunk boundary crossed and back: the sector is rebuilt and it is still there.
+  me.x = left.x + 5600; me.y = left.y; step(3);
+  me.x = left.x + 700; me.y = left.y; step(3);
+  check(surv.hulks.some(h => h.id === left.id),
+        "the wreck was wiped by the sector streaming");
+  check(cf.bookKeys().indexOf("wrecked") >= 0,
+        "wrecks are not written into the book, so a closed tab forgets them");
+
+  console.log("  universal  a well drags a chased ship and swallows it · " +
+              "one minding its own business steers round · a chase empties a " +
+              "reserve · water across costs 200s and is refused when you need it · " +
+              "the wreck survives a restream");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

@@ -1851,6 +1851,45 @@ The gaps: **NPCs cannot run out of anything** — no fuel, no water, no ammuniti
 and a well does not kill them the way it kills you. A hauler dragged into a star
 in front of you would be exactly the accident this rule is for.
 
+**Both closed.**
+
+*Gravity was universal in the code and not in the sky.* It applied to everything
+with a velocity — you, rocks, bullets, salvage, the debris falling into a well —
+and traffic was the one class that flies on a heading and a speed instead. So a
+hauler crossed a black hole's reach dead straight while you fought the same well
+two hundred units away. Traffic carries a **drift** now: a velocity nothing but
+gravity ever writes, added to wherever its engine was taking it, bled off once it
+is clear. A ship under power out-flies a shallow pull and cannot out-fly a deep
+one — the same arithmetic the warning already does for you, and the same answer.
+
+And they **steer round** what they can see, which is what makes the deaths mean
+something. Three states get no dodge: angry, running from you, and being hunted by
+somebody else. So a lane bends politely around a star, and a chase goes straight
+through it. **The accident is now the consequence of the chase**, not of a die
+roll — and a ship swallowed leaves nothing, because it is inside a black hole.
+
+*Running out.* The interesting question was never the clock, it was **why** a
+hauler runs dry. A background timer would put dead ships all over the sector and
+mean nothing. So the reserve only burns while the ship is in trouble — chased,
+running, being shot at, fighting a well — and refills while it is getting on with
+its day. **Three systems can strand a ship: pirates, gravity, and you.** A
+drifting hauler is therefore evidence that something happened here.
+
+What you can do about it is the part that touches three more. **Hand water
+across** — two hundred seconds out of your own tank, which is a sixth of how long
+you can stay out. They pay, their flag warms to you, and they finish their run.
+Refuse and it dies in about four minutes, leaves a hull you can strip, and the
+station it was carrying to goes short — which moves the price, which is 6.2
+answering. You cannot give away water you need yourself, and the prompt says so
+rather than going quiet.
+
+*And the spine underneath both:* a **persistent wreck list**. `surv.hulks` is
+emptied and rebuilt from the seed every time you cross a chunk boundary, so
+anything that died because of something that *happened* had nowhere to live. It
+lives in `surv.wrecked` now, is written into the book, survives the tab, and is
+forgotten when stripped. Sixty of them, oldest dropped — which is also the first
+half of 6.5.
+
 ### 6.4 Parts should create verbs rather than percentages
 
 > A **+12% engine** eventually becomes boring. A decoy, grapple, mine layer,
@@ -2024,7 +2063,7 @@ since. Measured rather than remembered:
 |---|---|---|
 | **6.1** NPC wants | **DONE** | Every role has a want and none of them is longer than a few lines. A trader wants a station that is short of what it carries. A pirate wants the *laden* one. An escort wants its client alive. A patrol wants whatever is causing trouble. A scavenger — a new role — wants wreckage, including the wreckage you were going to strip. Put three in one piece of sky and the pirate closes, the escort breaks off, the patrol answers, and you arrive in the middle of something nobody scripted. |
 | **6.2** a reacting economy | **DONE** | A station is short of one or two things, rolled from where it is and then moved by what happens. A convoy through eases it; a convoy destroyed near it deepens it; time drifts it back. A shortage is a price and a price is a reason to fly somewhere — measured, killing an iridium convoy at the door took iridium from 23 to 44, and one getting through brought it back. **Pirates make prices.** |
-| **6.3** universal rules | **most of the way** | The big one this session. Rocks break on worlds and part from each other; traffic and sentries go round worlds and round the Leviathan; stations and inhabited worlds deflect; an asteroid is a solid object rather than a damage event; gravity was already universal and friendly fire already destroys other traffic. **The gap left: NPCs cannot run out of anything, and a well does not kill them.** A hauler dragged into a star in front of you is still the accident this rule is for. |
+| **6.3** universal rules | **DONE** | Rocks break on worlds and part from each other; traffic and sentries go round worlds and round the Leviathan; stations and inhabited worlds deflect; an asteroid is a solid object rather than a damage event; friendly fire destroys other traffic. And now: **gravity is universal in the sky as well as in the code** — traffic carries a drift, steers round wells when it has the attention to spare, gets no dodge while it is being chased, and is swallowed if it loses. **Ships run out of water** when something goes wrong for them, and a drifting hauler is a situation you can spend your own tank on or strip four minutes later. |
 | **6.4** verbs not percentages | **eight of seventeen** | Counted: eight parts are verbs — three weapons, two tractor rigs, reverse thrusters, the ice melter — and nine are still numbers. The rule from here is written into 5.2: a new part has to add a verb or it does not get made. |
 | **6.5** consequences persist | **three of them** | Battles end and about one in three leaves a named memorial on the chart. Reputation persists per power. And a part you die carrying now stays where you fell and goes on the chart until you fetch it. Still forgotten: a rescued ship, a pirate that got away, a station that suffered. |
 | **6.6** authored mysteries | **eight places** | Where the brief asks for dozens. Highest ceiling, least code, and 6.7 below is now the concrete plan for it. |
