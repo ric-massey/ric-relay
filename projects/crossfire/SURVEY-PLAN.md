@@ -2164,6 +2164,27 @@ produces, cheaper than a station, and finite — a place rather than a tap.
 
 ---
 
+### The waypoint is gone  ·  **DONE**
+
+There were two things you could place on the chart. There is one.
+
+The waypoint went because the thing that replaced it does the same job strictly
+better. **Tap anything on the chart and the ship points at it.** A waypoint was a
+coordinate dropped by hand at a spot you were trying to hit by eye — you could not
+put one *on* a station, or a well, or a memorial, because the gesture had no idea
+what was under your finger. Selecting does, so the arrow on the flight screen is
+aimed at the thing rather than near it, and it carries the thing's name.
+
+Pins are the other half and do the other job: a waypoint could not be named, kept,
+coloured, or have a second one.
+
+What went with it: the yellow arrow, the chart glyph, the panel-chart glyph, the
+WAYPOINT / MOVE WAYPOINT / CLEAR WAYPOINT buttons, the arming mode, the state
+export, and the field in the save file. The chart's rail is one button and ten
+filters.
+
+---
+
 ## At the end of Phase 7: go back to Phase 6
 
 **Read this before starting anything new.**

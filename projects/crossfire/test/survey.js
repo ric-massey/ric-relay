@@ -3011,11 +3011,17 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "spent over seconds, ceiling holds");
 }
 
-// ── a waypoint is somewhere you decided to go ─────────────────────────────
-/* Pins are notes: six kinds, two hundred of them, and not one of them points
-   anywhere. A waypoint is the other thing — one at a time, and the flight HUD
-   holds a bearing to it — so the two must not be the same gesture, and setting
-   one must not quietly drop a pin instead. */
+// ── the one thing you point the ship at ──────────────────────────────────
+/* There were two, and the waypoint is gone. It went because the thing that
+   replaced it does the same job strictly better: **tap anything on the chart and
+   the ship points at it.** A waypoint was a coordinate placed by hand at a spot
+   you were trying to hit by eye — you could not put one *on* a station, or a
+   well, or a memorial, because the gesture had no idea what was under your
+   finger. Selecting does, so the arrow is aimed at the thing rather than near it,
+   and it can carry the thing's name.
+
+   Pins are the other half and do the other job: a waypoint could not be named,
+   kept, coloured, or have a second one. */
 {
   const { cf } = boot("?debug=1&seed=515151");
   cf.start("survey", 1);
@@ -3023,92 +3029,51 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const hud = cf.hud();
   const me = cf.live().ships[0];
 
-  check(cf.surveyView().waypoint == null, "a fresh survey started with a waypoint");
+  check(cf.surveyView().selected == null, "a fresh survey is already watching something");
+  check(!/onWaypoint|st\.waypoint/.test(hudSrc),
+        "the interface still reads a waypoint off the state");
 
-  /* Unarmed, a tap on the map does nothing at all. It used to drop a pin — so
-     panning with a finger left a trail of them, and every press was a decision
-     you had not made. Both things you can place are armed by their own button in
-     the rail now, which is one gesture, learned once, and the same for both. */
-  hud.chartTapAt(cf.surveyView(), 9000, -4000, 400);
-  check(surv.pins.length === 0, "an unarmed tap dropped a pin");
+  // Something charted, and a tap on it.
+  for (let i = 0; i < 30; i++) { me.invuln = 9999; now += 1000 / 60; cf.step(); }
+  const mark = [...surv.known.values()][0];
+  check(!!mark, "nothing charted to point at");
+  if (mark) {
+    check(cf.surveyView().onSelect(mark.x, mark.y, 4000) === true,
+          "tapping a charted thing did not select it");
+    const sel = cf.surveyView().selected;
+    check(!!sel, "nothing is being watched");
+    check(sel && Math.abs(sel.x - mark.x) < 2,
+          "it is watching somewhere near the thing rather than the thing");
+    check(sel && typeof sel.name === "string" && sel.name.length > 0,
+          "what it is watching has no name — which is the whole reason this " +
+          "replaced a bare coordinate");
+    check(cf.surveyView().selectFlash > 0, "the chart did not flash when tapped");
 
-  // Armed from the rail's PIN button, it places one.
-  cf.screen("chart");
-  cf.draw();
-  const WW = cf.live().screenW;
-  const railFirst = cf.live().taps
-    .filter(t => t.h >= 36 && t.h <= 60 && t.x > WW * 0.7 && t.y > 120)
-    .sort((a, b) => a.y - b.y)[0];
-  check(!!railFirst, "there is no PIN button in the chart's rail");
-  railFirst.act();
-  hud.chartTapAt(cf.surveyView(), 9000, -4000, 400);
-  cf.answer({ name: "", kind: "cache" });
-  check(surv.pins.length === 1, "an armed tap did not drop a pin");
-  check(cf.surveyView().waypoint == null, "an unarmed tap set a waypoint");
-  railFirst.act();                                    // arm it again to remove
-  hud.chartTapAt(cf.surveyView(), 9000, -4000, 400);
-  cf.answer(true);
-  check(surv.pins.length === 0, "the pin did not lift again");
+    // And tapping it again lets it go, which is how you clear one.
+    cf.surveyView().onSelect(mark.x, mark.y, 4000);
+    check(cf.surveyView().selected == null, "tapping it again did not let it go");
+  }
 
-  /* Armed from the chart's own button, and then the map sets it. The button is
-     in the rail down the right-hand side now rather than on a strip under the
-     map, so it is found by where it is rather than by how wide it happens to
-     be. */
-  cf.screen("chart");
-  cf.draw();
-  const W = cf.live().screenW;
-  const arm = cf.live().taps.find(t => t.h === 38 && t.x > W * 0.7 && t.y > 120);
-  check(!!arm, "there is no waypoint button in the chart's rail");
-  if (!arm) throw new Error("no chart rail");
-  // The rail is PIN then WAYPOINT, so the second one down is the waypoint.
-  const railBtns = cf.live().taps
-    .filter(t => t.h === 38 && t.x > W * 0.7 && t.y > 120)
-    .sort((a, b) => a.y - b.y);
-  check(railBtns.length >= 2, "the chart's rail has " + railBtns.length + " buttons");
-  railBtns[1].act();
-  hud.chartTapAt(cf.surveyView(), 12000, -6000, 400);
-  const w = cf.surveyView().waypoint;
-  check(!!w, "an armed tap set no waypoint");
-  check(Math.round(w.x) === 12000 && Math.round(w.y) === -6000,
-        "the waypoint landed at " + Math.round(w.x) + "," + Math.round(w.y));
-  check(surv.pins.length === 0, "setting a waypoint dropped a pin as well");
+  /* A pin can be pointed at too — it was the one kind of mark on the chart you
+     could not aim the ship at. */
+  cf.surveyView().onPin(30000, 12000, "cache", 400);
+  cf.answer({ name: "THE QUIET ONE", kind: "cache" });
+  check(surv.pins.length === 1, "no pin to point at");
+  cf.surveyView().onSelect(30000, 12000, 900);
+  const onPin = cf.surveyView().selected;
+  check(onPin && onPin.name === "THE QUIET ONE",
+        "tapping a pin did not start watching it");
 
-  /* The two numbers the flight HUD points with. A waypoint with no range and no
-     bearing is a mark on a map, which is what pins are already for. */
-  const truth = Math.hypot(12000 - me.x, -6000 - me.y);
-  check(Math.abs(w.dist - truth) < 2,
-        "the range reads " + w.dist + " against a real " + Math.round(truth));
-  check(Number.isFinite(w.bearing) && w.bearing >= 0 && w.bearing < 360,
-        "the bearing is " + w.bearing);
-
-  /* Only ever one: setting another moves it rather than collecting them. Armed
-     again from the rail — the button now says MOVE WAYPOINT rather than
-     WAYPOINT, so it is found by position, not by label. */
-  cf.draw();
-  cf.live().taps
-    .filter(t => t.h === 38 && t.x > cf.live().screenW * 0.7 && t.y > 120)
-    .sort((a, b) => a.y - b.y)[1].act();
-  hud.chartTapAt(cf.surveyView(), -3000, 8000, 400);
-  const moved = cf.surveyView().waypoint;
-  check(Math.round(moved.x) === -3000 && Math.round(moved.y) === 8000,
-        "setting a second waypoint did not move the first");
-
-  // And it survives the tab, or it is a note you have to write down twice.
+  // It survives the tab, because it is a decision.
   cf.leave();
   const book = JSON.parse(store["crossfire.survey.v3"]);
-  check(book.waypoint && book.waypoint.x === -3000,
-        "the book saved " + JSON.stringify(book.waypoint));
-  const again = bootKeepingStorage("?debug=1&seed=515151");
-  again.cf.start("survey", 1);
-  const back = again.cf.surveyView().waypoint;
-  check(back && Math.round(back.x) === -3000 && Math.round(back.y) === 8000,
-        "a resumed sector lost its waypoint");
+  check(book.selected && book.selected.name === "THE QUIET ONE",
+        "what you were watching was not written down");
+  check(!("waypoint" in book), "the book still carries a waypoint");
 
-  // Cleared on purpose, and then it is gone.
-  again.cf.surveyView().onWaypoint(null);
-  check(again.cf.surveyView().waypoint == null, "clearing left the waypoint up");
-  console.log("  waypoint   armed from the chart, set by a tap, one at a time · " +
-              "range and bearing to it · pins still work · survives the tab");
+  console.log("  watching   tap a charted thing or a pin and the ship points at " +
+              "it, by name · it flashes · tapping again lets it go · survives " +
+              "the tab · the waypoint is gone");
 }
 
 // ── twenty-five ships ─────────────────────────────────────────────────────
@@ -4446,8 +4411,9 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
       { kind: "cache", x: me.x + Math.cos(a - 1.4) * R,
         y: me.y + Math.sin(a - 1.4) * R, t: 20 }
     ];
-    surv.waypoint = { x: me.x + Math.cos(a + 2.6) * R,
-                      y: me.y + Math.sin(a + 2.6) * R };
+    surv.selected = { x: me.x + Math.cos(a + 2.6) * R,
+                      y: me.y + Math.sin(a + 2.6) * R, k: "station",
+                      name: "SOMEWHERE" };
     // The scan's arrows are a pulse now, so this holds the pulse open while it
     // measures where they land.
     surv.scan.lit = 20;
@@ -4473,9 +4439,12 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   surv.scan.lit = 0;
   cf.draw();
   const cold = hud.arrows.slice();
-  check(cold.length > 0, "the waypoint's arrow went out with the scan");
-  check(cold.every(q => q.colour === "#ffd23f"),
-        "something other than the waypoint survived the scan going cold");
+  check(cold.length > 0, "the arrow for what you are watching went out with the scan");
+  check(cold.every(q => q.colour === "#5fd8ff"),
+        "something other than what you are watching survived the scan going cold");
+  // Cleared, so the next part is measuring against nothing rather than against
+  // the mark this loop left behind.
+  surv.selected = null;
 
   // A feature picked off the chart is the other one that stays.
   const mark = [...surv.known.values()][0];
@@ -4491,7 +4460,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     for (let i = 0; i < 40; i++) { me.invuln = 5; now += 1000 / 60; cf.step(); }
     surv.scan.lit = 0;
     cf.draw();
-    check(hud.arrows.length > cold.length,
+    check(hud.arrows.length > 0,
           "a selected feature has no arrow with the scan cold");
     check(hud.arrows.some(q => q.colour === "#5fd8ff"),
           "the selected feature's arrow is not the blue one");
@@ -4501,7 +4470,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     check(!cf.survey().selected, "it stayed selected");
   }
 
-  surv.target = null; surv.echoes = []; surv.waypoint = null;
+  surv.target = null; surv.echoes = []; surv.selected = null;
 
   check(total > 300, "only " + total + " arrows were drawn across 96 bearings");
   check(buried === 0, buried + " of " + total + " arrows sat underneath the interface");
@@ -4516,9 +4485,13 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
         "in the wrong place");
   // Three kinds, three colours: an objective, a scan return and a waypoint must
   // not be the same arrow wearing one colour.
-  check(seen.size >= 3,
-        "the arrows come in " + seen.size + " colours; the objective, the scan " +
-        "and the waypoint should each be their own");
+  /* The scan's returns are drawn in the colour of the thing they found, so a
+     ring full of arrows is a ring you can read without reading it. Two is the
+     floor: what you are watching, and at least one kind of return. It was three
+     when the waypoint had a colour of its own. */
+  check(seen.size >= 2,
+        "the arrows come in " + seen.size + " colours; what you are watching and " +
+        "what the scan found must not look the same");
   // The scan hint says how to scan until you have, and then stops saying it.
   check(cf.surveyView().scanTaught === false,
         "the game thinks the scan has been pressed before it has");
@@ -4936,10 +4909,11 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
   /* The hold goes in after the death, because dying empties it — the point here
      is that the two *new* materials round-trip like the old four, not that they
-     survive a death they are not supposed to survive. Setting a waypoint is the
-     cheapest thing in the mode that writes the book. */
+     survive a death they are not supposed to survive. Something has to write the
+     book, and a pin is the cheapest thing in the mode that does. */
   surv.hold.iron = 7; surv.hold.electronics = 3; surv.hold.core = 2;
-  view().onWaypoint(1000, 2000);
+  view().onPin(1000, 2000, "cache", 400);
+  cf.answer({ name: "", kind: "cache" });
 
   cf.leave();
   const again = bootKeepingStorage("?debug=1&seed=135791");
@@ -5841,7 +5815,9 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const arrowAt = () => {
     hud.arrows = [];
     cf.draw();
-    const a = hud.arrows.find(q => q.colour === "#ffd23f");
+    // The one arrow that stays on the ring is what you are watching, and it is
+    // drawn in the objective's blue now that the waypoint's yellow has gone.
+    const a = hud.arrows.find(q => q.colour === "#5fd8ff");
     return a ? a.ang : null;
   };
   const wrap = v => {
@@ -5852,7 +5828,8 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
   for (const worldAng of [0, 1.1, 2.4, -2.0, -0.7]) {
     const R = 90000;
-    surv.waypoint = { x: Math.round(me.x + Math.cos(worldAng) * R),
+    surv.selected = { k: "station", name: "SOMEWHERE",
+                      x: Math.round(me.x + Math.cos(worldAng) * R),
                       y: Math.round(me.y + Math.sin(worldAng) * R) };
     // Nothing else on the ring, so the one being read is the one being tested.
     surv.target = null;
@@ -5862,10 +5839,10 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     cf.setCamera("survey", false);
     step(40);
     const fixed = arrowAt();
-    check(fixed !== null, "no arrow was drawn for a waypoint 90,000 units away");
+    check(fixed !== null, "no arrow was drawn for something 90,000 units away");
     if (fixed !== null) {
       check(Math.abs(wrap(fixed - worldAng)) < 0.25,
-            "fixed view: a waypoint at " + worldAng.toFixed(2) +
+            "fixed view: a mark at " + worldAng.toFixed(2) +
             " drew its arrow at " + fixed.toFixed(2));
     }
 
@@ -5879,13 +5856,13 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     check(spun !== null, "no arrow in the rotating view");
     if (spun !== null) {
       check(Math.abs(wrap(spun - (worldAng + rot))) < 0.3,
-            "rotating view: a waypoint at " + worldAng.toFixed(2) + " with the " +
+            "rotating view: a mark at " + worldAng.toFixed(2) + " with the " +
             "camera at " + rot.toFixed(2) + " drew its arrow at " +
             spun.toFixed(2) + ", not " + wrap(worldAng + rot).toFixed(2));
     }
     cf.setCamera("survey", false);
   }
-  surv.waypoint = null;
+  surv.selected = null;
 
   console.log("  aim        the panel gets the real camera \u00b7 arrows point at " +
               "the thing in the fixed view and turn with the ship in the " +
@@ -6208,9 +6185,14 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
   // The rail: the things you can place, then the filters, then the zoom.
   const rail = cf.live().taps.filter(t => t.x > W * 0.7 && t.y > 120);
-  const buttons = rail.filter(t => t.h === 38).sort((a, b) => a.y - b.y);
+  const buttons = rail.filter(t => t.h >= 36 && t.h <= 60).sort((a, b) => a.y - b.y);
   const toggles = rail.filter(t => t.h === 22).sort((a, b) => a.y - b.y);
-  check(buttons.length >= 2,
+  /* One thing you place, where there were two. The waypoint is gone: tapping
+     anything on the chart points the ship at it, which is the same job done
+     better — a waypoint was a coordinate dropped by hand at a spot you were
+     trying to hit by eye, and it could not be put *on* a station or a well
+     because the gesture had no idea what was under your finger. */
+  check(buttons.length >= 1,
         "the chart's rail has " + buttons.length + " things to place");
   check(toggles.length >= 8,
         "the chart offers " + toggles.length + " filters; there are ten kinds " +
@@ -6299,7 +6281,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(!/q\.name \|\| spec\.name/.test(hudSrc),
         "an unnamed pin is still labelled with the name of its kind");
 
-  console.log("  chartrail  " + toggles.length + " filters, a pin and a waypoint " +
+  console.log("  chartrail  " + toggles.length + " filters and a pin " +
               "· arm, tap, then name it and pick its colour · nothing " +
               "is placed until you answer · removing one takes arming and a " +
               "check mark");

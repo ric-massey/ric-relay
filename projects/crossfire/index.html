@@ -6188,7 +6188,7 @@
      see `exportFog` there for why. */
 
   function loadSurveyBook() {
-    const empty = { seed: 0, found: [], fog: "", cash: 0, deaths: 0, waypoint: null,
+    const empty = { seed: 0, found: [], fog: "", cash: 0, deaths: 0,
                     rep: {}, selected: null,
                     ship: "skiff", owned: ["skiff"], taught: [],
                     water: WATER_FULL, food: FOOD_FULL,
@@ -6238,11 +6238,7 @@
           .filter(k => SHIPS.some(sh => sh.key === k))
           .concat("skiff")
           .filter((k, i, a) => a.indexOf(k) === i),
-        waypoint: b.waypoint && Number.isFinite(b.waypoint.x) &&
-                  Number.isFinite(b.waypoint.y)
-          ? { x: Math.round(b.waypoint.x), y: Math.round(b.waypoint.y) } : null,
-        // The one thing you are keeping an eye on, which is a decision like the
-        // waypoint and is kept for the same reason.
+        // The one thing you are keeping an eye on. A decision, so it is kept.
         selected: b.selected && Number.isFinite(b.selected.x) &&
                   Number.isFinite(b.selected.y)
           ? { x: Math.round(b.selected.x), y: Math.round(b.selected.y),
@@ -6397,7 +6393,6 @@
         hold: surv.hold,
         deaths: surv.deaths || 0,
         light: !!surv.hasLight,
-        waypoint: surv.waypoint,
         selected: surv.selected,
         rep: surv.rep || {},
         ship: surv.ship,
@@ -8088,7 +8083,7 @@
       /* `lit` is how long the scan's arrows stay up: a scan is a *pulse*, and
          what it turned up should fade with it rather than sitting on the edge of
          the screen for the rest of the run. The only marks that outlive it are
-         the ones you chose — a waypoint, or a feature you picked off the chart. */
+         the one you chose: a feature you picked off the chart. */
       scan: { charge: 1, reach: 0, flash: 0, lit: 0 },
       // Something you tapped on the map to keep an eye on. See `onSelect`.
       selected: carried ? book.selected : null,
@@ -8137,11 +8132,6 @@
       // Which of the opening's beats have already fired. Kept in the book, so a
       // sector you have played is a sector that has stopped explaining itself.
       taught: new Set(carried ? book.taught : []),
-      /* Somewhere you have decided to go. Pins are notes — six kinds, as many as
-         you like, and none of them point anywhere. A waypoint is the other thing:
-         one at a time, and the flight HUD holds a bearing to it, because "I want
-         to go there" is a different act from "something happened here". */
-      waypoint: carried && book.waypoint ? { ...book.waypoint } : null,
       /* Which hull you are flying, and which ones you have bought. Owning is
          kept as well as flying, because a ship you paid sixty thousand for and
          then swapped out of should still be in the hangar when you come back —
@@ -13563,7 +13553,7 @@
          So in the rotating view every one of them pointed at the wrong sky, and
          in *both* views the "is it already on screen" test was computed at 1:1
          when Survey actually draws at about 0.72. Switching the camera from fixed
-         to rotating appeared to break the waypoint because it did. */
+         to rotating appeared to break every arrow because it did. */
       cam: { x: cam.x, y: cam.y, rot: cam.rot, scale: cam.scale },
       materials: MATERIALS.map(m => ({
         key: m.key, name: m.name, colour: m.colour, note: m.note,
@@ -13966,6 +13956,9 @@
         // It flashes where you touched it, so the chart answers the tap.
         surv.selectFlash = same ? 0 : 1;
         gameSound("start");
+        chatter(surv.selected
+                  ? "Watching " + surv.selected.name + "."
+                  : "Not watching anything now.", NEBULA);
         saveSurveyBook();
         return true;
       },
@@ -14039,25 +14032,6 @@
         if (!atHomeStation()) return;
         state = "hangar";
         surveyHUD && surveyHUD.hangarOpened && surveyHUD.hangarOpened(surveyState());
-      },
-      /* The waypoint, and the two numbers the flight HUD needs to point at it.
-         Bearing is in the same degrees the gravity warning uses, so the two
-         readouts on the same screen cannot mean different things. */
-      waypoint: surv.waypoint && (() => {
-        const me = ships[0];
-        const dx = surv.waypoint.x - me.x, dy = surv.waypoint.y - me.y;
-        return { x: surv.waypoint.x, y: surv.waypoint.y,
-                 dist: Math.round(Math.hypot(dx, dy)),
-                 bearing: bearingTo(me, surv.waypoint) };
-      })(),
-      onWaypoint: (x, y) => {
-        if (x == null) { surv.waypoint = null; chatter("Waypoint cleared.", NEBULA); }
-        else {
-          surv.waypoint = { x: Math.round(x), y: Math.round(y) };
-          chatter("Waypoint set.", NEBULA);
-        }
-        gameSound("start");
-        saveSurveyBook();
       },
       onRefit: () => {
         if (surv.docked) { state = "refit"; surveyHUD && surveyHUD.refitOpened(); }

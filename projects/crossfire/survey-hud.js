@@ -692,7 +692,6 @@
              (st.food && st.food.countdown > 0)) drawCriticalEdge(false);
     if (st.ship) {
       drawEchoArrows(st);
-      drawWaypointArrow(st);
       drawSelectedArrow(st);
     }
     drawSector(st);
@@ -935,7 +934,6 @@
     paintMarks(st, mx, my, false, sx);
     paintEchoes(st, mx, my, false);
     drawPins(st, mx, my, false);
-    drawWaypoint(st, mx, my, false);
     ctx.restore();
 
     ctx.save();
@@ -1730,7 +1728,7 @@
      Every arrow that points off screen used to pick its own spot, and both of
      them picked badly. The scan's arrows rode an ellipse inset by a flat 74 and
      62, which put the ones pointing up-and-right underneath the panel chart and
-     the ones pointing down through the hull bar; the waypoint's clamped its `x`
+     the ones pointing down through the hull bar; one of them clamped its `x`
      against the panel and left its `y` to land wherever it liked.
 
      So there is one answer to "where does an edge arrow go" now. A rectangle
@@ -1890,7 +1888,7 @@
 
      So the objective's arrow comes up when you press scan and goes down when the
      returns do. The two things that outlive it are the two you *chose*: a
-     waypoint, and a feature you tapped on the chart. */
+     a feature you tapped on the chart. */
   function scanLit(st) {
     const lit = (st.scan && st.scan.lit) || 0;
     if (lit <= 0) return 0;
@@ -1954,66 +1952,13 @@
     }
   }
 
-  /* ── the way to the waypoint ──────────────────────────────────────────────
-     The whole point of setting one. An arrow at the edge of the screen pointing
-     at it and the range beside it — the same figure the scan's contacts use,
-     because it is the same question, and in the same colour the chart drew it
-     in so the two are obviously one thing.
-
-     Through the camera's rotation, like the contacts: the main view is
-     player-up, and an arrow that ignored that would point at the wrong sky. */
-  /* Yellow, on Ric's call, and it is the right choice: nothing else on the
-     flight screen is this colour, so the one thing that means "you decided to go
-     there" cannot be confused with a scan return, a material or a warning. */
-  const WAYPOINT = "#ffd23f";
-
-  function drawWaypointArrow(st) {
-    const w = st.waypoint;
-    if (!w) return;
-    const { ctx, SCREEN_W, SCREEN_H } = api;
-    const cam = st.cam || { x: st.ship.x, y: st.ship.y, rot: 0, scale: 1 };
-    const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
-    const wx = w.x - cam.x, wy = w.y - cam.y;
-    const cos = Math.cos(cam.rot), sin = Math.sin(cam.rot);
-    const sx = wx * cos - wy * sin, sy = wx * sin + wy * cos;
-    const px = cx + sx * cam.scale, py = cy + sy * cam.scale;
-
-    // On screen already: mark the spot rather than pointing off at it.
-    const here = px > 30 && px < SCREEN_W - 30 && py > 30 && py < SCREEN_H - 30;
-    if (here) {
-      ctx.save();
-      ctx.strokeStyle = WAYPOINT;
-      ctx.globalAlpha = 0.55 + 0.25 * Math.abs(Math.sin(Date.now() / 480));
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.arc(px, py, 16, 0, Math.PI * 2);
-      ctx.moveTo(px - 26, py); ctx.lineTo(px - 8, py);
-      ctx.moveTo(px + 8, py); ctx.lineTo(px + 26, py);
-      ctx.moveTo(px, py - 26); ctx.lineTo(px, py - 8);
-      ctx.moveTo(px, py + 8); ctx.lineTo(px, py + 26);
-      ctx.stroke();
-      ctx.restore();
-      label(fmtCells(w.dist) + "u", px, py + 42, SIZE.cap, WAYPOINT, "center", 0.8);
-      return;
-    }
-
-    /* On the same ring as everything else that points off screen, and clear of
-       the interface for the same reason: this used to clamp its `x` against the
-       panel column and leave its `y` to land wherever it liked, which put it
-       under the hull bar every time the waypoint was behind you. */
-    edgeArrow(st, Math.atan2(sy, sx), WAYPOINT, fmtCells(w.dist) + "u",
-              { scale: 1.35, beat: true, vee: true });
-  }
 
   /* ── something you picked off the chart ───────────────────────────────────
-     The other arrow that stays. A waypoint is "I am going there"; this is "I want
-     to know where that is" — a station you will need later, the well you are
-     routing around, the memorial you mean to come back to. One at a time, in the
-     blue the objective used to own outright, and it keeps its arrow until you
-     pick another or tap it again to let it go.
-
-     Together with the waypoint that is the whole of what is allowed to sit on the
-     ring permanently. Everything else there is a pulse and fades like one. */
+     **The** arrow that stays, and the only one. "I want to know where that is" —
+     a station you will need later, the well you are routing around, the memorial
+     you mean to come back to. One at a time, in the blue the objective used to own
+     outright, and it keeps its arrow until you pick another or tap it again to let
+     it go. Everything else on the ring is a pulse and fades like one. */
   function drawSelectedArrow(st) {
     const sel = st.selected;
     if (!sel || !st.ship) return;
@@ -2186,29 +2131,6 @@
                  0.00145, 0.0029, 0.0058, 0.0116, 0.0232,
                  0.0464, 0.0696, 0.0928, 0.12];
 
-  /* The waypoint, on a chart. A ring with a cross through it and a stem — not any
-     of the six pin shapes, because it is not a note about somewhere you have
-     been; it is the one place you are going. */
-  function drawWaypoint(st, mx, my, big) {
-    const w = st.waypoint;
-    if (!w) return;
-    const { ctx } = api;
-    const x = mx(w.x), y = my(w.y), r = big ? 9 : 5;
-    ctx.save();
-    ctx.strokeStyle = WAYPOINT;
-    ctx.globalAlpha = 0.95;
-    ctx.lineWidth = big ? 2 : 1.5;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.moveTo(x - r * 1.7, y); ctx.lineTo(x + r * 1.7, y);
-    ctx.moveTo(x, y - r * 1.7); ctx.lineTo(x, y + r * 1.7);
-    ctx.stroke();
-    ctx.restore();
-    if (big) {
-      label("WAYPOINT  " + fmtCells(w.dist) + "u", x, y + r * 2.6 + 12,
-            SIZE.cap, WAYPOINT, "center", 0.8);
-    }
-  }
 
   /* A name long enough to be useful is too long to write across a chart, so it
      is cut to something that still reads as the same place. Word-wise first —
@@ -2414,7 +2336,6 @@
     paintMarks(st, mx, my, true, chart.scale);
     paintEchoes(st, mx, my, true);
     drawPins(st, mx, my, true);
-    drawWaypoint(st, mx, my, true);
     /* What you are watching, and a flash when you pick it. A tap that changes
        something off in the corner of a map is a tap you are not sure landed; a
        ring that blooms where your finger went is the map saying yes. */
@@ -2482,7 +2403,6 @@
        never leaves a trail of pins behind it. */
     const canJump = !!st.wormhole && typeof st.onJump === "function";
     if (!canJump) chart.jump = false;
-    if (chart.jump) chart.mark = false;
 
     tap({
       x: view.x, y: view.y, w: view.w, h: view.h,
@@ -2502,16 +2422,15 @@
 
     // What the next tap will leave, said once and in the colour of the thing.
     const verb = api.touchOnly ? "TAP" : "CLICK";
-    const armed = chart.jump ? "jump" : chart.mark ? "mark" : chart.pinning ? "pin" : "";
+    const armed = chart.jump ? "jump" : chart.pinning ? "pin" : "";
     /* Wrapped to the rail rather than written across the map. These lines got
        longer when the pin gained a second meaning, and a `label` does not know
        how wide its column is — on a phone they ran clean off the right-hand edge
        of the screen. */
     const says = armed === "jump" ? verb + " A STATION"
-               : armed === "mark" ? verb + " ANYWHERE"
                : armed === "pin"  ? verb + " ANYWHERE, OR A PIN TO REMOVE IT"
                : verb + " SOMETHING TO WATCH";
-    const saysCol = armed === "jump" ? CASH : armed === "mark" ? WAYPOINT
+    const saysCol = armed === "jump" ? CASH
                   : armed === "pin" ? VIOLET : VIOLET_LOW;
     const saysLines = wrapLines(says, SIZE.cap, rail.w, "0.06em");
     saysLines.slice(0, 2).forEach((line, i) => {
@@ -2520,13 +2439,22 @@
     });
     ry += 20 + (saysLines.length > 1 ? 18 : 0);
 
-    /* The two things you can put on the map. Each is armed by its own button and
-       placed by the next tap — which is one gesture, learned once, and the same
-       for both. A waypoint replaces itself, because there is only ever one. */
+    /* ── the one thing you place ─────────────────────────────────────────────
+       There were two. The waypoint is gone, and it went because the thing that
+       replaced it is strictly better at the same job: **tap anything on the chart
+       and the ship points at it.** A waypoint was a coordinate you had to place
+       by hand at a spot you were trying to hit by eye — you could not put one
+       *on* a station, or a well, or a memorial, because the gesture had no idea
+       what was under your finger. Selecting does, so the arrow on the flight
+       screen is aimed at the thing rather than at somewhere near it, and it can
+       carry the thing's name.
+
+       A pin is the other half and does the other job: the waypoint could not be
+       named, kept, coloured, or have a second one. */
     button(chart.pinning ? "CANCEL" : "PIN  ▸",
            rail.x + rail.w / 2, ry + 19, rail.w, 38,
            chart.pinning ? WARN : VIOLET,
-           () => { chart.pinning = !chart.pinning; chart.mark = false; chart.jump = false; },
+           () => { chart.pinning = !chart.pinning; chart.jump = false; },
            chart.pinning);
     ry += 46;
 
@@ -2535,22 +2463,11 @@
        where it is going, and on a phone it mostly meant every pin came out the
        first colour in the list. The prompt that opens when you place one asks
        for the colour and the name together, at the moment you know both. */
-    button(chart.mark ? "CANCEL" : st.waypoint ? "MOVE WAYPOINT" : "WAYPOINT  \u25b8",
-           rail.x + rail.w / 2, ry + 19, rail.w, 38,
-           chart.mark ? WARN : WAYPOINT,
-           () => { chart.mark = !chart.mark; chart.pinning = false; chart.jump = false; },
-           chart.mark);
-    ry += 46;
-    if (st.waypoint && !chart.mark) {
-      button("CLEAR WAYPOINT", rail.x + rail.w / 2, ry + 16, rail.w, 32,
-             VIOLET_DIM, () => { if (st.onWaypoint) st.onWaypoint(null); });
-      ry += 40;
-    }
     if (canJump) {
       button(chart.jump ? "CANCEL" : "WORMHOLE  \u25b8",
              rail.x + rail.w / 2, ry + 19, rail.w, 38,
              chart.jump ? WARN : CASH,
-             () => { chart.jump = !chart.jump; chart.mark = false; chart.pinning = false; },
+             () => { chart.jump = !chart.jump; chart.pinning = false; },
              chart.jump);
       ry += 46;
     }
@@ -2609,11 +2526,7 @@
      nothing but a pointer could ever have reached it. */
   HUD.chartTapAt = function (st, wx, wy, snap) {
     if (chart.jump) { jumpNear(st, wx, wy, snap); return; }
-    if (chart.mark) {
-      chart.mark = false;
-      if (st && st.onWaypoint) st.onWaypoint(wx, wy);
-      return;
-    }
+
     /* ── the whole of pinning, in one order ──────────────────────────────────
        Arm with PIN. The next tap on the map either lands on a pin you already
        have — in which case it asks whether to remove it, and takes a check mark
