@@ -4813,7 +4813,10 @@
      question the slots exist to ask. */
   const SURVEY_SCAN   = 12;     // seconds to recharge the pulse
   const SURVEY_REPAIR = 0.55;   // hull points a second, in a star's light
-  const SURVEY_ROCKS  = 76;     // rocks kept around the ship (was 90)
+  // Rocks kept around the ship. 90 first, cut to 76 when the sector was made
+  // legible, and up a tenth to 84 on Ric's call — the field reads a little
+  // thicker without going back to the clutter 76 was chosen to end.
+  const SURVEY_ROCKS  = 84;
   const SURVEY_ROCK_R = 3200;   // how far out they are kept
   const SURVEY_HULL   = 5;
   /* Where the first station stands, and therefore where you come back to. One
@@ -8089,6 +8092,45 @@
            LEV_SEG * 0.55, "tear");
     }
 
+    /* ── what came off her ──────────────────────────────────────────────────
+       Pieces of the ship, loose, inside and out. A wreck with a clean hole in it
+       and nothing around it is a hull with a hole in it; the debris is what says
+       something *happened* here — and it is the first thing on this structure
+       that moves, which after nine thousand units of perfectly still metal is
+       most of the effect.
+
+       They drift rather than fly: each piece swings a little way along its own
+       axis and turns at its own rate, driven straight off the clock. No state,
+       no list to update, nothing to stream — a fragment is a function of time,
+       so it costs the same whether you are looking at it or not and it cannot
+       drift out of the sector while you are away.
+
+       Not solid, deliberately. A tumbling shard that could seal a corridor is a
+       room the flood fill would have to argue with every frame, and the one
+       thing worse than a wreck with no debris is a wreck you cannot get into. */
+    const debris = [];
+    if (wrecked) {
+      const pieces = 26;
+      for (let i = 0; i < pieces; i++) {
+        const inside = i % 3 !== 0;          // two thirds of it still aboard
+        const u = rnd(-half * 0.95, half * 0.62);
+        const room = beamAt(u);
+        const v = inside
+          ? rnd(-room * 0.72, room * 0.72)
+          : (R() < 0.5 ? -1 : 1) * rnd(room + 90 * LEV_S, room + 780 * LEV_S);
+        debris.push({
+          u, v,
+          len: rnd(40, 190) * LEV_S,         // a shard, not a plate
+          a: R() * Math.PI * 2,
+          spin: rnd(-0.5, 0.5),
+          amp: rnd(18, 70) * LEV_S,          // how far it wanders
+          w: rnd(0.08, 0.26),                // and how slowly
+          phase: R() * Math.PI * 2,
+          heavy: R() < 0.3                   // a few are big enough to read
+        });
+      }
+    }
+
     /* Just aft of the chine. On a delta the whole forward third is a spike —
        at 0.72 of the half-length the hull is 162 units across and a cache placed
        there is *inside the plates*, which is exactly what the "buried in its
@@ -8118,7 +8160,7 @@
 
     out.leviathan = { x: lm.x, y: lm.y, a, ca, sa, segs, walls, outline,
                       len: LEV_LEN, beam: LEV_BEAM, flank, transom, hold: holdU,
-                      wrecked,
+                      wrecked, debris,
                       engine: { hw: ENG_HW, out: ENG_OUT, at: transom * 0.58 },
                       door: [door0, door1], bulk, bays,
                       phase: R() * Math.PI * 2 };
@@ -15024,6 +15066,31 @@
         }
       }
     });
+
+    /* The loose pieces. Drawn after the hull so they read as being in front of
+       it and behind it rather than as part of it, and dimmer than the plates
+       they came off — a shard catches less light than a hull. Position is a
+       function of the clock, so this is the one thing on the Leviathan that
+       moves. */
+    if (lev.debris && lev.debris.length) {
+      ctx.save();
+      ctx.lineCap = "butt";
+      for (const d of lev.debris) {
+        const sw = Math.sin(clock * d.w + d.phase) * d.amp;
+        const u = d.u + sw, v = d.v + Math.cos(clock * d.w * 0.7 + d.phase) * d.amp * 0.5;
+        const a2 = d.a + clock * d.spin;
+        const hx = Math.cos(a2) * d.len * 0.5, hy = Math.sin(a2) * d.len * 0.5;
+        if (!onScreen(wx(u, v), wy(u, v), d.len)) continue;
+        ctx.strokeStyle = d.heavy ? "#6c7a92" : "#4a5568";
+        ctx.globalAlpha = d.heavy ? 0.8 : 0.55;
+        ctx.lineWidth = d.heavy ? seg * 0.5 : seg * 0.28;
+        ctx.beginPath();
+        ctx.moveTo(wx(u - hx, v - hy), wy(u - hx, v - hy));
+        ctx.lineTo(wx(u + hx, v + hy), wy(u + hx, v + hy));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
 
     /* There used to be a violet line threaded down the spine here — a lit
        route that stepped across to each doorway in turn. It is gone on Ric's

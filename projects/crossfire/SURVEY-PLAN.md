@@ -2376,7 +2376,12 @@ two engine throats, and a builder that can produce her whole or wrecked. She is
 scale factor so every proportion held. That is the model. None of the rest
 exists, including the ability to move.
 
-**1 · A live Leviathan, flying, in a faction's colours.** The one out at 40,000
+**1 · A live Leviathan, flying, in a faction's colours.** **Rare**, and *less
+rare in the city* — THE WORKS is where they are built and where a capital ship
+is an ordinary sight, so seeing one out in open space should be an event and
+seeing one over the city should not. Nothing of this exists yet: the only
+Leviathan in the game is the single derelict landmark, and it does not fly, does
+not belong to anybody and cannot appear in a battle. The one out at 40,000
 is a derelict and stays grey; a *live* one is the same geometry in its owner's
 colour, under power, going somewhere. The renderer takes one hardcoded grey today
 and needs a colour off the flag, with the wreck keeping the grey it has. This is

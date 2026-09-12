@@ -253,6 +253,21 @@
     // No centreline hairline: a bright line up the middle of a plate is a third
     // edge on a two-edged thing, and it reads as a pipe rather than as armour.
 
+    // What came off her, where it is sitting at this instant. On the page it is
+    // frozen; in the game each piece drifts and turns off the clock.
+    if (lev.debris && lev.debris.length) {
+      ctx.lineCap = "butt";
+      for (const d of lev.debris) {
+        const hx = Math.cos(d.a) * d.len * 0.5, hy = Math.sin(d.a) * d.len * 0.5;
+        ctx.strokeStyle = d.heavy ? "#6c7a92" : "#4a5568";
+        ctx.lineWidth = Math.max(1, (d.heavy ? 0.5 : 0.28) * segR * 2 * k);
+        ctx.beginPath();
+        ctx.moveTo(px(d.u - hx), py(d.v - hy));
+        ctx.lineTo(px(d.u + hx), py(d.v + hy));
+        ctx.stroke();
+      }
+    }
+
     // The way in, at the open stern quarter of the starboard flank.
     ctx.strokeStyle = "#6dffbf";
     ctx.lineWidth = 3;
