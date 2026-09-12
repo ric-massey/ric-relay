@@ -21689,7 +21689,15 @@
       // The parts catalogue and the two numbers a test has to read off it.
       parts: () => MODULES.map(m => ({ key: m.key, name: m.name, cat: m.cat,
                                        rarity: m.rarity, cost: m.cost,
-                                       deep: m.deep, secs: fitSeconds(m.key) })),
+                                       deep: m.deep, secs: fitSeconds(m.key),
+                                       /* The ways in, and whether a cache can
+                                          really hold one. Needed by the audit
+                                          that checks every part can actually be
+                                          got hold of rather than merely claiming
+                                          a way to be. */
+                                       get: [...(m.get || [])],
+                                       inCachePool: findsIt(m) && !sellsIt(m) })),
+      allRecipes: () => RECIPES.map(r => ({ out: r.out, need: { ...r.need } })),
       scanRange: () => scanRange(),
       // The five flags a ship can fly, for anything checking they are telling
       // themselves apart.

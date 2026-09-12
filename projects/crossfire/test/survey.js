@@ -6333,6 +6333,123 @@ const storeOf = (cf, key) => {
               "on a shelf somewhere");
 }
 
+// ── every part can actually be got hold of ──────────────────────
+/* The check above proves every part *claims* a way in: a `get` list with
+   something in it, a `where` line long enough to read. It does not prove any of
+   those claims is true, and all three can be false in a way that renders
+   perfectly:
+
+     · **buy** is depth-gated. A station only stocks parts whose `deep` is at or
+       below the danger where that station stands, so a part pitched deeper than
+       any station can generate is on no shelf in the galaxy.
+     · **craft** needs a recipe that exists and whose ingredients exist.
+     · **find** means a cache can hold one, and the cache pool is not "everything
+       findable" — it is findable *and not buyable*. A part marked find-and-buy is
+       in no cache at all.
+
+   So this measures the sector rather than reading the catalogue, and the station
+   depth is sampled from real chunks rather than assumed. */
+{
+  const { cf } = boot("?debug=1&seed=606060");
+  cf.start("survey", 1);
+  const parts = cf.parts();
+  const recipes = cf.allRecipes();
+  const made = new Set(recipes.map(r => r.out));
+
+  /* How deep a shop actually gets. Sampled along rays rather than over a full
+     grid: a station is a 3.2% roll per chunk, so what this needs is many chunks
+     spread across the whole danger curve, not every chunk near the middle. */
+  let deepestShop = 0, shops = 0, chunks = 0;
+  const CH = cf.sectorSpan().chunk;
+  for (const seed of [606060, 99999, 31337]) {
+    const w = boot("?debug=1&seed=" + seed);
+    w.cf.start("survey", 1);
+    for (let ring = 2; ring <= 620; ring += 13) {
+      for (let a = 0; a < 32; a++) {
+        const th = (a / 32) * Math.PI * 2 + ring;
+        const cx = Math.round(Math.cos(th) * ring);
+        const cy = Math.round(Math.sin(th) * ring);
+        const c = w.cf.chunk(cx, cy);
+        chunks++;
+        for (const st of c.stations) {
+          shops++;
+          deepestShop = Math.max(deepestShop, w.cf.dangerAt(st.x, st.y));
+        }
+      }
+    }
+  }
+  check(shops > 40, "only " + shops + " stations in " + chunks +
+        " chunks — not enough to say anything about how deep they go");
+
+  /* Every part, against what the sector can really do. A part with no true way
+     in is content nobody can ever reach, and it is worse than missing content:
+     it is on the page, with a price and a description, promising something. */
+  const stranded = [];
+  for (const p of parts) {
+    const ways = [];
+    if (p.get.indexOf("buy") >= 0 && p.deep <= deepestShop) ways.push("buy");
+    if (p.get.indexOf("craft") >= 0 && made.has(p.key)) ways.push("craft");
+    if (p.get.indexOf("find") >= 0 && p.inCachePool) ways.push("find");
+    if (!ways.length) {
+      stranded.push(p.name + " (" + p.get.join("+") + ", deep " + p.deep + ")");
+    }
+  }
+  check(stranded.length === 0,
+        "parts nothing in the sector can hand you: " + stranded.join("; "));
+
+  /* A recipe has to want things that exist. An ingredient nobody can carry is a
+     part that is craftable on the page and uncraftable at the bench. */
+  const holdKinds = Object.keys(cf.survey().hold);
+  const badNeed = [];
+  for (const r of recipes) {
+    for (const k of Object.keys(r.need)) {
+      if (holdKinds.indexOf(k) < 0) badNeed.push(r.out + " wants " + k);
+    }
+  }
+  check(badNeed.length === 0,
+        "recipes want materials the hold has no room for: " + badNeed.join("; "));
+
+  // Every craftable part must have a recipe, and every recipe must make a part.
+  const keys = new Set(parts.map(p => p.key));
+  const orphanRecipe = recipes.filter(r => !keys.has(r.out)).map(r => r.out);
+  check(orphanRecipe.length === 0,
+        "recipes for parts that do not exist: " + orphanRecipe.join(", "));
+
+  /* How far out a part's shelf actually is. `deep` is a danger figure and danger
+     is a curve against distance, so the number on the part means nothing to a
+     player until it is turned back into units — and that is the number worth
+     knowing, because it is how far they have to fly before the thing exists. */
+  const distFor = want => {
+    let lo = 0, hi = 3e6;
+    for (let i = 0; i < 40; i++) {
+      const mid = (lo + hi) / 2;
+      if (cf.dangerAt(mid, 0) < want) lo = mid; else hi = mid;
+    }
+    return Math.round(hi / 1000) * 1000;
+  };
+  const deepest = parts.slice().sort((a, b) => b.deep - a.deep)[0];
+  const reach = distFor(deepest.deep);
+
+  /* Buy-only parts, and how far out the nearest shelf that stocks one is. Worth
+     printing rather than only asserting: a part that is reachable in principle
+     and sits a million units past the last named band is a different problem
+     from an unreachable one, and it is invisible unless somebody says the
+     number out loud. */
+  const far = parts.filter(p => p.get.length === 1 && p.get[0] === "buy" && p.deep > 0)
+                   .sort((a, b) => b.deep - a.deep)
+                   .map(p => p.name + " " + (distFor(p.deep) / 1000) + "k");
+  console.log("  buyonly    " + far.join(" · "));
+
+  const byWay = { buy: 0, craft: 0, find: 0 };
+  for (const p of parts) for (const w of p.get) if (w in byWay) byWay[w]++;
+  console.log("  reachable  all " + parts.length + " parts have a real way in · " +
+              byWay.buy + " on a shelf, " + byWay.craft + " at the bench, " +
+              byWay.find + " out there · " + shops + " stations across " +
+              chunks + " chunks, deepest at danger " + deepestShop.toFixed(2) +
+              " · " + deepest.name + " needs " + deepest.deep.toFixed(2) +
+              ", about " + (reach / 1000) + "k units out");
+}
+
 // ── the chart is too crowded, so it filters ──────────────────────────────
 /* Phase 7.4. An hour into a sector the chart has several hundred things on it and
    most of them are not what you are looking for. Turning a kind off is the
