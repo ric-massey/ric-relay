@@ -1313,13 +1313,14 @@
     label("CASH", 24, 36, SIZE.cap, CASH_DIM, "left", 0.7, "0.18em");
     label(money(st.cash), 24, 62, SIZE.head, CASH, "left");
 
-    /* "STORAGE", not "hold". A hold is a part of a ship and this is the stuff in
-       it, which is the thing you are actually reading — and there is a page
-       called STORAGE now for the same reason. */
+    /* "CARGO HOLD", the same words the page uses, because it is now the same
+       thing: parts you are not flying ride in the hold and weigh against this
+       number. It read STORAGE while there were two of them, and two names for
+       one number is how a player ends up believing there are two. */
     if (st.hold) {
       const used = st.carried || 0, cap = st.hold;
       const full = used >= cap;
-      label("STORAGE", 24, 92, SIZE.cap, VIOLET_DIM, "left", 0.7, "0.18em");
+      label("CARGO HOLD", 24, 92, SIZE.cap, VIOLET_DIM, "left", 0.7, "0.18em");
       label(used + " / " + cap, 24, 114, SIZE.val, full ? WARN : VIOLET, "left");
       if (full) {
         label("FULL — SELL IT", 24, 136, SIZE.cap, WARN, "left",
@@ -1792,11 +1793,23 @@
      the ones pointing down through the hull bar; one of them clamped its `x`
      against the panel and left its `y` to land wherever it liked.
 
-     So there is one answer to "where does an edge arrow go" now. A rectangle
-     inset from the screen, a ray from the middle, and the point where the ray
-     leaves the rectangle — a rectangle rather than an ellipse because an arrow
-     on a rectangle is actually at the edge of the screen rather than floating a
-     third of the way in at the corners.
+     So there is one answer to "where does an edge arrow go" now: **a ring**. A
+     circle centred on the ship, one radius for every bearing, and the arrow sits
+     where the bearing crosses it.
+
+     It was a rectangle first, on the argument that an arrow on a rectangle is
+     actually at the edge of the screen where an ellipse floats a third of the
+     way in at the corners. That argument was about *where the pixels are* and it
+     cost the thing the arrow is for. On a rectangle an arrow's distance from the
+     middle depends on its bearing — a corner is 1.6 times further out than
+     straight up — so an arrow **slides and jumps as you turn** even though the
+     thing it points at has not moved, it crowds into the four corners, which is
+     where the HUD lives, and every fix for one of those made another worse.
+
+     A ring has none of that. The arrow moves at a constant rate as the ship
+     turns, it is the same size and the same distance out wherever it is, and the
+     four corners are left to the interface. It reads as an instrument rather
+     than as something stuck to the window.
 
      And a list of the places the HUD has already taken. If the point lands in
      one, it walks around the ring until it is clear, rather than being drawn
@@ -1824,14 +1837,12 @@
   function edgePoint(ang, inset) {
     const { SCREEN_W, SCREEN_H } = api;
     const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
-    const hx = cx - inset, hy = cy - inset;
-    const c = Math.cos(ang), s = Math.sin(ang);
-    /* Where the ray leaves the box: whichever axis it reaches first. This is the
-       whole reason for a box instead of an ellipse — at 45 degrees an ellipse
-       puts the arrow 30% of the way into the picture. */
-    const t = Math.min(Math.abs(c) < 1e-6 ? Infinity : hx / Math.abs(c),
-                       Math.abs(s) < 1e-6 ? Infinity : hy / Math.abs(s));
-    return { x: cx + c * t, y: cy + s * t };
+    /* The radius is set by the *shorter* half of the screen, so the ring is a
+       circle on every shape of window rather than an ellipse that stretches on a
+       wide one — the whole point is that a bearing means the same distance out
+       whichever way it is pointing. */
+    const r = Math.max(40, Math.min(cx, cy) - inset);
+    return { x: cx + Math.cos(ang) * r, y: cy + Math.sin(ang) * r };
   }
 
   /* The arrow's spot, dragged around the ring until it is out from under the
@@ -3560,7 +3571,11 @@
                                         r.adds + "% more"
                  : r.kind === "repair" ? r.have + " hull"
                  : r.kind === "ships" ? r.note
-                 : (r.owned ? "\u00d7" + r.owned + "  \u00b7  " : "") + r.note;
+                 /* A part says what it will cost the hold before it says what
+                    it does. Buying one is a decision about room now, not only
+                    about money, and the shelf is where that decision is made. */
+                 : (r.weight ? r.weight + " OF HOLD  \u00b7  " : "") +
+                   (r.owned ? "\u00d7" + r.owned + "  \u00b7  " : "") + r.note;
       fitText(said, full.x + PAGE.PAD + 268, y, SIZE.cap, VIOLET_DIM, "left",
               0.62, full.w - 268 - 230);
 
@@ -4503,12 +4518,27 @@
        under the slots and storage, which put the one number a player checks on
        every single dock — how full am I — below two panels they check once a
        trip. The page is the ship's inventory; the inventory opens on the cargo. */
+    /* **One hold.** There were two panels here — a CARGO HOLD with a cap on it
+       and a STORAGE crate of spare parts with no cap at all — and the second one
+       made the first one a lie: you could be full to the brim and still be
+       carrying six spare engines in a pocket nobody could see. They are the same
+       thing now, on one panel, under one number, and a part weighs something.
+
+       Materials first because they are what the number moves on every trip, then
+       the parts, in the same frame, because what they cost you to carry is the
+       fact that used to be missing. */
     const used = st.carried || 0;
-    const storeH = PANEL_H(mats.length);
-    /* The materials are the *hold* and the parts are *storage*, and they used to
-       be called the other way round with "the crate" doing duty for the parts.
-       Two panels on one page both called STORAGE would be worse than either. */
-    panel(full.x, y, full.w, storeH, VIOLET, "CARGO HOLD", used + " / " + cap);
+    const crate = st.store || [];
+    const freeSlot = slots.findIndex(x => !x);
+    const cw = api.touchOnly ? 4 : 6;
+    const cCell = Math.floor((full.w - PAGE.PAD * 2 - (cw - 1) * 10) / cw);
+    const cRows = Math.max(1, Math.ceil(crate.length / cw));
+    const matsH = PANEL_H(mats.length);
+    const crateH = 30 + cRows * (cCell + 26) + 10;
+    const holdH = matsH + crateH;
+    const full3 = Math.min(1, used / Math.max(1, cap));
+    panel(full.x, y, full.w, holdH, full3 > 0.92 ? AMBER : VIOLET, "CARGO HOLD",
+          used + " / " + cap);
     const half = (full.w - PAGE.PAD * 2) / 2;
     mats.forEach((m, i) => {
       const col = i % 2, row = Math.floor(i / 2);
@@ -4531,7 +4561,157 @@
       }
     });
     if (mats.length % 2) { /* an odd count leaves its last cell empty, which is fine */ }
-    y += storeH + gap;
+
+    /* ── what you own and are not flying ──────────────────────────────────────
+       Boxes with pictures in them, laid out like the parts page, rather than a
+       list of rows. Two reasons, and the second is the one that matters:
+
+       A row is a *label*. The four slots above are squares with a picture in
+       each, so the thing you are dragging and the place you are dragging it to
+       were drawn in two completely different languages — you had to work out that
+       the line of text and the empty square were the same kind of object.
+
+       And a box is a thing you can pick up. A row with a button on the end of it
+       says "press the button"; a tile with a picture on it says "this is an
+       object, take it". The gesture was already there and nothing about the
+       drawing invited it. */
+    /* A rule across the panel rather than a second frame: the parts are in the
+       same hold, and two frames would say they were not. */
+    const partsY = y + matsH;
+    ctx.save();
+    ctx.strokeStyle = VIOLET_LOW;
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    ctx.moveTo(full.x + PAGE.PAD, partsY + 2);
+    ctx.lineTo(full.x + full.w - PAGE.PAD, partsY + 2);
+    ctx.stroke();
+    ctx.restore();
+    label("PARTS ABOARD", full.x + PAGE.PAD, partsY + 20, SIZE.cap, CASH,
+          "left", 0.8, "0.14em");
+    /* What they are costing you, which is the whole reason they are on this
+       panel. Not a count — a count is what the tiles already are. */
+    label(crate.length
+      ? (st.partWeight || 0) + " OF HOLD  \u00b7  " +
+        (api.touchOnly ? "DRAG ONE INTO A SLOT"
+                       : "DRAG ONE INTO A SLOT, OR CLICK IT")
+      : "NOTHING SPARE",
+      full.x + full.w - PAGE.PAD, partsY + 20, SIZE.cap,
+      crate.length ? CASH_DIM : VIOLET_LOW, "right", 0.75, "0.08em");
+    if (!crate.length) {
+      fitText("A part you are not flying rides in the hold and weighs " +
+              "something. Stations sell them; the strange ones are a long way " +
+              "out.", full.x + PAGE.PAD, partsY + 46, SIZE.cap,
+              VIOLET_DIM, "left", 0.7, full.w - PAGE.PAD * 2);
+    }
+    storeRows.length = 0;
+    crate.forEach((e, i) => {
+      const col = i % cw, row = Math.floor(i / cw);
+      const bx = full.x + PAGE.PAD + col * (cCell + 10);
+      const by = partsY + 30 + row * (cCell + 26);
+      const can = freeSlot >= 0 && !e.fitted;
+      const rar = rarity(e.rarity);
+
+      /* Where this tile is, so a press on it can pick the part up. Only ones you
+         could actually fit are draggable: dragging something already on the ship
+         to a slot it is already in is a gesture with no meaning. */
+      if (can) {
+        storeRows.push({ x: bx, y: by, w: cCell, h: cCell + 18,
+                         key: e.key, name: e.name, cat: e.cat,
+                         rarity: e.rarity });
+      }
+      // Dragged out of its box, it should not also be drawn sitting in it.
+      if (carry && carry.key === e.key && carry.moved) return;
+
+      ctx.save();
+      ctx.fillStyle = e.fitted ? VIOLET_LOW : rar.colour;
+      ctx.globalAlpha = e.fitted ? 0.08 : 0.22;
+      ctx.fillRect(bx, by, cCell, cCell);
+      ctx.strokeStyle = e.fitted ? VIOLET_LOW : rar.colour;
+      ctx.globalAlpha = e.fitted ? 0.5 : 0.95;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(bx, by, cCell, cCell);
+      ctx.restore();
+
+      drawPartIcon(e.cat, bx + cCell / 2, by + cCell / 2, cCell * 0.3,
+                   e.fitted ? VIOLET_LOW : rar.colour, e.fitted ? 0.5 : 1);
+      if (e.n > 1) {
+        label("×" + e.n, bx + cCell - 5, by + 16, SIZE.cap, CASH_DIM,
+              "right", 0.9);
+      }
+      // What one of them costs the hold, bottom-left, opposite the count.
+      if (e.weight) {
+        label(String(e.weight), bx + 5, by + cCell - 5, SIZE.cap, VIOLET_DIM,
+              "left", 0.75);
+      }
+      if (e.fitted) {
+        label("ON SHIP", bx + cCell / 2, by + cCell - 8, SIZE.cap, VIOLET_LOW,
+              "center", 0.8);
+      }
+      fitText(e.name, bx + cCell / 2, by + cCell + 15, SIZE.cap,
+              e.fitted ? VIOLET_LOW : rar.colour, "center",
+              e.fitted ? 0.6 : 0.95, cCell + 8, "0.04em");
+
+      /* Pressing a tile says what it is. Fitting it is the *drag* — which is the
+         gesture the four squares above are asking for — so a press is free to
+         mean "tell me about this", which is the question a picture cannot answer
+         on its own. */
+      tap({ x: bx, y: by, w: cCell, h: cCell + 18,
+            act: () => {
+              bubble = (bubble && bubble.key === e.key)
+                ? null
+                : { key: e.key, x: bx + cCell / 2, y: by, e };
+            } });
+    });
+
+    /* And the bubble itself, drawn after the tiles so it sits over them. Above
+       the tile when there is room and below it when there is not, because a card
+       that runs off the top of a scrolling page is a card nobody reads. */
+    if (bubble && crate.some(q => q.key === bubble.key)) {
+      const e2 = crate.find(q => q.key === bubble.key);
+      const bw2 = Math.min(360, full.w - PAGE.PAD * 2);
+      const lines = wrapLines(e2.note || "", SIZE.cap, bw2 - 24);
+      const bh2 = 44 + lines.length * 20 + 20;
+      const bx2 = Math.max(full.x + PAGE.PAD,
+                    Math.min(bubble.x - bw2 / 2, full.x + full.w - PAGE.PAD - bw2));
+      const above = bubble.y - bh2 - 10 > PAGE.TOP;
+      const by2 = above ? bubble.y - bh2 - 10 : bubble.y + cCell + 30;
+      const rar2 = rarity(e2.rarity);
+      ctx.save();
+      ctx.globalAlpha = 0.96;
+      ctx.fillStyle = INK;
+      ctx.fillRect(bx2, by2, bw2, bh2);
+      ctx.strokeStyle = rar2.colour;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx2, by2, bw2, bh2);
+      ctx.restore();
+      fitText(e2.name, bx2 + 12, by2 + 24, SIZE.val, rar2.colour, "left", 1,
+              bw2 - 120, "0.06em");
+      label(e2.rarity.toUpperCase(), bx2 + bw2 - 12, by2 + 24, SIZE.cap,
+            rar2.colour, "right", 0.8, "0.1em");
+      lines.forEach((line, i) => {
+        label(line, bx2 + 12, by2 + 48 + i * 20, SIZE.cap, VIOLET_DIM, "left", 0.9);
+      });
+      label(e2.fitted ? "ON SHIP"
+                      : "DRAG IT INTO A SLOT" + (st.docked ? "" : "  ·  " +
+                        e2.secs + "s TO FIT"),
+            bx2 + 12, by2 + bh2 - 12, SIZE.cap, e2.fitted ? VIOLET_LOW : CASH,
+            "left", 0.85, "0.08em");
+      /* And what it weighs, on the same line at the other end. This is the one
+         card a player opens while deciding whether to keep carrying the thing,
+         so it is the one place the number has to be. */
+      if (e2.weight) {
+        label(e2.weight + " OF HOLD" + (e2.n > 1 ? "  ·  " + e2.held + " ALL TOLD" : ""),
+              bx2 + bw2 - 12, by2 + bh2 - 12, SIZE.cap, VIOLET_DIM,
+              "right", 0.8, "0.08em");
+      }
+      /* The card itself closes it, and so does pressing the tile again. Not a
+         full-screen rectangle: the tap list is last-drawn-first-served, so a
+         catch-all registered after the tiles would swallow every press on them
+         and pressing a second part would close the first card instead of opening
+         the second. */
+      tap({ x: bx2, y: by2, w: bw2, h: bh2, act: () => { bubble = null; } });
+    }
+    y += holdH + gap;
 
     /* ── the four slots, as four squares ─────────────────────────────────────
        They were four columns of text, and an empty one said EMPTY in grey — which
@@ -4544,8 +4724,18 @@
        you can drag onto has to be the same rectangle you can see, and the only
        way to guarantee that is for one of them to be computed from the other. */
     const slotH = PANEL_H(4);
+    /* The hint lives on the panel's own header line. It used to be drawn along
+       the bottom edge, which is exactly where the captions under the four boxes
+       land — so on any hull with an empty slot it was printed straight through
+       the word EMPTY. The header has room and nothing else wants it: when
+       nothing is fitted there is nothing to pull and the line says what the
+       panel is instead. */
+    const anyFitted = slots.some(x => !!x);
     panel(full.x, y, full.w, slotH, VIOLET, "FITTED",
-          "FOUR SLOTS, EVERY HULL");
+          anyFitted
+            ? (api.touchOnly ? "TAP ONE TO PULL IT"
+                             : "CLICK ONE TO PULL IT  \u00b7  [G]")
+            : "FOUR SLOTS, EVERY HULL");
     const sw = (full.w - PAGE.PAD * 2) / 4;
     const box = Math.min(sw - 16, slotH - PAGE.HEAD - 34);
     slotBoxes.length = 0;
@@ -4606,136 +4796,7 @@
               act: () => st.onPull && st.onPull(i) });
       }
     }
-    label(api.touchOnly ? "TAP A FITTED SLOT TO PULL THE PART"
-                        : "CLICK A FITTED SLOT TO PULL THE PART  ·  [G]",
-          full.x + full.w - PAGE.PAD, y + slotH - 8, SIZE.cap, VIOLET_LOW,
-          "right", 0.5);
     y += slotH + gap;
-
-    /* ── what you own and are not flying ──────────────────────────────────────
-       Boxes with pictures in them, laid out like the parts page, rather than a
-       list of rows. Two reasons, and the second is the one that matters:
-
-       A row is a *label*. The four slots above are squares with a picture in
-       each, so the thing you are dragging and the place you are dragging it to
-       were drawn in two completely different languages — you had to work out that
-       the line of text and the empty square were the same kind of object.
-
-       And a box is a thing you can pick up. A row with a button on the end of it
-       says "press the button"; a tile with a picture on it says "this is an
-       object, take it". The gesture was already there and nothing about the
-       drawing invited it. */
-    const crate = st.store || [];
-    const freeSlot = slots.findIndex(x => !x);
-    const cw = api.touchOnly ? 4 : 6;
-    const cCell = Math.floor((full.w - PAGE.PAD * 2 - (cw - 1) * 10) / cw);
-    const cRows = Math.max(1, Math.ceil(crate.length / cw));
-    const crateH = PAGE.HEAD + cRows * (cCell + 26) + 10;
-    panel(full.x, y, full.w, crateH, CASH, "STORAGE",
-          crate.length ? (api.touchOnly ? "DRAG ONE INTO A SLOT"
-                                        : "DRAG ONE INTO A SLOT, OR CLICK IT")
-                       : "EMPTY");
-    if (!crate.length) {
-      fitText("Nothing spare. Stations sell parts; the strange ones are a long " +
-              "way out.", full.x + PAGE.PAD, y + PAGE.HEAD + 18, SIZE.cap,
-              VIOLET_DIM, "left", 0.7, full.w - PAGE.PAD * 2);
-    }
-    storeRows.length = 0;
-    crate.forEach((e, i) => {
-      const col = i % cw, row = Math.floor(i / cw);
-      const bx = full.x + PAGE.PAD + col * (cCell + 10);
-      const by = y + PAGE.HEAD + 4 + row * (cCell + 26);
-      const can = freeSlot >= 0 && !e.fitted;
-      const rar = rarity(e.rarity);
-
-      /* Where this tile is, so a press on it can pick the part up. Only ones you
-         could actually fit are draggable: dragging something already on the ship
-         to a slot it is already in is a gesture with no meaning. */
-      if (can) {
-        storeRows.push({ x: bx, y: by, w: cCell, h: cCell + 18,
-                         key: e.key, name: e.name, cat: e.cat,
-                         rarity: e.rarity });
-      }
-      // Dragged out of its box, it should not also be drawn sitting in it.
-      if (carry && carry.key === e.key && carry.moved) return;
-
-      ctx.save();
-      ctx.fillStyle = e.fitted ? VIOLET_LOW : rar.colour;
-      ctx.globalAlpha = e.fitted ? 0.08 : 0.22;
-      ctx.fillRect(bx, by, cCell, cCell);
-      ctx.strokeStyle = e.fitted ? VIOLET_LOW : rar.colour;
-      ctx.globalAlpha = e.fitted ? 0.5 : 0.95;
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(bx, by, cCell, cCell);
-      ctx.restore();
-
-      drawPartIcon(e.cat, bx + cCell / 2, by + cCell / 2, cCell * 0.3,
-                   e.fitted ? VIOLET_LOW : rar.colour, e.fitted ? 0.5 : 1);
-      if (e.n > 1) {
-        label("×" + e.n, bx + cCell - 5, by + 16, SIZE.cap, CASH_DIM,
-              "right", 0.9);
-      }
-      if (e.fitted) {
-        label("ON SHIP", bx + cCell / 2, by + cCell - 8, SIZE.cap, VIOLET_LOW,
-              "center", 0.8);
-      }
-      fitText(e.name, bx + cCell / 2, by + cCell + 15, SIZE.cap,
-              e.fitted ? VIOLET_LOW : rar.colour, "center",
-              e.fitted ? 0.6 : 0.95, cCell + 8, "0.04em");
-
-      /* Pressing a tile says what it is. Fitting it is the *drag* — which is the
-         gesture the four squares above are asking for — so a press is free to
-         mean "tell me about this", which is the question a picture cannot answer
-         on its own. */
-      tap({ x: bx, y: by, w: cCell, h: cCell + 18,
-            act: () => {
-              bubble = (bubble && bubble.key === e.key)
-                ? null
-                : { key: e.key, x: bx + cCell / 2, y: by, e };
-            } });
-    });
-
-    /* And the bubble itself, drawn after the tiles so it sits over them. Above
-       the tile when there is room and below it when there is not, because a card
-       that runs off the top of a scrolling page is a card nobody reads. */
-    if (bubble && crate.some(q => q.key === bubble.key)) {
-      const e2 = crate.find(q => q.key === bubble.key);
-      const bw2 = Math.min(360, full.w - PAGE.PAD * 2);
-      const lines = wrapLines(e2.note || "", SIZE.cap, bw2 - 24);
-      const bh2 = 44 + lines.length * 20 + 20;
-      const bx2 = Math.max(full.x + PAGE.PAD,
-                    Math.min(bubble.x - bw2 / 2, full.x + full.w - PAGE.PAD - bw2));
-      const above = bubble.y - bh2 - 10 > PAGE.TOP;
-      const by2 = above ? bubble.y - bh2 - 10 : bubble.y + cCell + 30;
-      const rar2 = rarity(e2.rarity);
-      ctx.save();
-      ctx.globalAlpha = 0.96;
-      ctx.fillStyle = INK;
-      ctx.fillRect(bx2, by2, bw2, bh2);
-      ctx.strokeStyle = rar2.colour;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(bx2, by2, bw2, bh2);
-      ctx.restore();
-      fitText(e2.name, bx2 + 12, by2 + 24, SIZE.val, rar2.colour, "left", 1,
-              bw2 - 120, "0.06em");
-      label(e2.rarity.toUpperCase(), bx2 + bw2 - 12, by2 + 24, SIZE.cap,
-            rar2.colour, "right", 0.8, "0.1em");
-      lines.forEach((line, i) => {
-        label(line, bx2 + 12, by2 + 48 + i * 20, SIZE.cap, VIOLET_DIM, "left", 0.9);
-      });
-      label(e2.fitted ? "ON SHIP"
-                      : "DRAG IT INTO A SLOT" + (st.docked ? "" : "  ·  " +
-                        e2.secs + "s TO FIT"),
-            bx2 + 12, by2 + bh2 - 12, SIZE.cap, e2.fitted ? VIOLET_LOW : CASH,
-            "left", 0.85, "0.08em");
-      /* The card itself closes it, and so does pressing the tile again. Not a
-         full-screen rectangle: the tap list is last-drawn-first-served, so a
-         catch-all registered after the tiles would swallow every press on them
-         and pressing a second part would close the first card instead of opening
-         the second. */
-      tap({ x: bx2, y: by2, w: bw2, h: bh2, act: () => { bubble = null; } });
-    }
-    y += crateH + gap;
 
 
 

@@ -214,6 +214,12 @@ const ICON_CASES = new Set(
 const problems = [];
 const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
+// How many of a part are in the hold, read the way the page reads it.
+const storeOf = (cf, key) => {
+  const row = (cf.surveyView().store || []).find(e => e.key === key);
+  return row ? row.n : 0;
+};
+
 // ── 1. generation is pure, and the ladder is complete ────────────────────
 /* An endless sector cannot be checked by enumerating it. What can be checked is
    that a chunk is a pure function of its coordinates — fly away and back and
@@ -261,10 +267,20 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     check(byDist[byDist.length - 1].d > 45000,
           "seed " + seed + ": the furthest landmark is only " +
           Math.round(byDist[byDist.length - 1].d) + " units out");
-    check(byDist[byDist.length - 1].key === "leviathan",
-          "seed " + seed + ": the Leviathan is not the last rung, " +
-          byDist[byDist.length - 1].key + " is");
+    /* The Leviathan is the one landmark that is *not* on the ladder. It stands
+       at a fixed distance in every sector, because the manifest's sixth part is
+       inside it and the manifest is the tutorial — on the last rung it was
+       millions of units out and the one step that sends you inside something was
+       the one step nobody reached. Checked as a band rather than a number: it
+       carries a jitter so two sectors are not identical. */
+    const levD = byDist.find(b => b.key === "leviathan").d;
+    check(levD > 30000 && levD < 50000,
+          "seed " + seed + ": the Leviathan is " + Math.round(levD) +
+          " units out; it is meant to be about 40,000 in every sector");
     for (let k = 1; k < byDist.length; k++) {
+      /* The Leviathan is placed off the ladder, so it is allowed to land beside
+         a rung — the no-folding rule is about the dealt ones. */
+      if (byDist[k].key === "leviathan" || byDist[k - 1].key === "leviathan") continue;
       check(byDist[k].d > byDist[k - 1].d * 1.02,
             "seed " + seed + ": two rungs sit on top of each other");
     }
@@ -4912,6 +4928,10 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
      survive a death they are not supposed to survive. Something has to write the
      book, and a pin is the cheapest thing in the mode that does. */
   surv.hold.iron = 7; surv.hold.electronics = 3; surv.hold.core = 2;
+  /* And the spares go back in for the same reason. Parts ride in the hold now,
+     so a death puts them on the floor where you fell — which is the rule being
+     tested two blocks up, not the one being tested here. */
+  surv.store.pulsecoil = 1; surv.store.layerplate = 1;
   view().onPin(1000, 2000, "cache", 400);
   cf.answer({ name: "", kind: "cache" });
 
@@ -5464,7 +5484,12 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   for (const seed of [1, 2, 4242, 515151, 8675309, 99999]) {
     const w = boot("?debug=1&seed=" + seed);
     w.cf.start("survey", 1);
+    /* The dealt ones only. The Leviathan stands at a fixed 40,000 in every
+       sector and is not a rung — measuring the ladder's shape through it would
+       be measuring something that is deliberately not part of the shape, and it
+       would report a bunched ladder every time it happened to land beside one. */
     const ds = w.cf.survey().landmarks
+      .filter(l => l.key !== "leviathan")
       .map(l => Math.hypot(l.x, l.y)).sort((a, b) => a - b);
     nearest = Math.min(nearest, ds[0]);
     furthest = Math.max(furthest, ds[ds.length - 1]);
@@ -5472,7 +5497,7 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     for (let k = 1; k < ds.length; k++) {
       worstRatio = Math.min(worstRatio, ds[k] / ds[k - 1]);
     }
-    check(ds[ds.length - 1] / ds[0] > 60,
+    check(ds[ds.length - 1] / ds[0] > 40,
           "seed " + seed + ": the ladder spans only " +
           (ds[ds.length - 1] / ds[0]).toFixed(0) + "x from first rung to last");
     w.cf.leave();
@@ -7812,6 +7837,151 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   console.log("  devices    four verbs on the four slots · a key each and rebindable · " +
               "a sentry and a seeker take the decoy · a pirate takes the cargo · " +
               "a mine does not care whose it is · the jump is a long way and a cold scanner");
+}
+
+// ── one hold ─────────────────────────────────────────────────────────────
+/* There were two places to put things: a cargo hold with a cap on it, and a
+   crate of spare parts with no cap at all. The second made the first a lie — a
+   hauler could be full to the brim and still be carrying six spare engines in a
+   pocket nobody could see.
+
+   They are one thing now, so the checks are about the one number: that a part
+   is on it, that every way a part gets aboard respects it, and that the ways a
+   part can leave the hold put it somewhere you can go and get it rather than
+   deleting it. */
+{
+  const { cf } = boot("?debug=1&seed=771177");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const lv = cf.live();
+  const me = lv.ships[0];
+  const view = () => cf.surveyView();
+  const step = n => {
+    for (let i = 0; i < (n || 1); i++) {
+      surv.water = 900; surv.food = 900; me.invuln = 9999;
+      now += 1000 / 60; cf.step();
+    }
+  };
+  const clearHold = () => {
+    for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
+    surv.store = {};
+  };
+
+  /* ── a part weighs, and the weight is on the one number ───────────────── */
+  clearHold();
+  check(view().carried === 0, "a cleared hold does not read empty");
+  const cap = view().hold;
+  surv.store = { layerplate: 1 };
+  const plate = view().store.find(e => e.key === "layerplate");
+  check(!!plate && plate.weight > 0,
+        "a spare part is not telling the page what it weighs");
+  check(view().carried === plate.weight,
+        "a spare part weighing " + plate.weight + " moved the hold to " +
+        view().carried);
+  surv.store = { layerplate: 3 };
+  check(view().carried === plate.weight * 3,
+        "three of them weigh " + view().carried);
+  check(view().partWeight === plate.weight * 3,
+        "the page is not told what the parts alone are costing");
+
+  /* And a fitted part weighs nothing: it is bolted to the outside of the ship
+     rather than lying in the hold, which is the reason to use the four slots. */
+  clearHold();
+  surv.store = { layerplate: 1 };
+  const carriedWeight = view().carried;
+  view().onFit(0, "layerplate");
+  cf.applyParts();
+  check(view().carried === 0,
+        "fitting a part left " + view().carried + " in the hold; fitted is not carried");
+  check(carriedWeight > 0, "the part weighed nothing to begin with");
+
+  /* ── the materials and the parts share the cap ────────────────────────── */
+  clearHold();
+  surv.slots[0] = null; cf.applyParts();
+  surv.hold.iron = cap - 2;
+  surv.store = {};
+  check(view().carried === cap - 2, "the hold is not counting materials");
+  // Two units of room and a part that needs more than two: it does not fit.
+  const heavy = view().parts.find(p => p.weight > 2 && p.buyable);
+  surv.cash = 99999;
+  surv.docked = { x: 0, y: 0 };
+  check(cf.buyPart(heavy.key) === false,
+        heavy.name + " (" + heavy.weight + ") was bought into 2 units of room");
+  check(view().carried === cap - 2, "the refused purchase changed the hold");
+  check(surv.cash === 99999, "the refused purchase still took the money");
+  // Make room and it goes aboard.
+  surv.hold.iron = cap - heavy.weight;
+  check(cf.buyPart(heavy.key) === true, "it would not buy with room for it");
+  check(view().carried === cap, "the hold does not add up after the purchase");
+
+  /* ── pulling a part off a slot is putting it in the hold ──────────────── */
+  clearHold();
+  surv.store = { layerplate: 1 };
+  view().onFit(0, "layerplate");
+  cf.applyParts();
+  surv.hold.iron = cap;                     // full of rock, nothing fitted-out
+  check(view().onPull(0) === false,
+        "a part was pulled into a hold with no room for it");
+  check(!!surv.slots[0], "the refused pull emptied the slot anyway");
+  surv.hold.iron = cap - plate.weight;
+  check(view().onPull(0) === true, "it would not pull with room for it");
+  check(!surv.slots[0], "the slot is still full after a pull");
+
+  /* ── dying: the materials are gone and the spares are on the floor ────── */
+  clearHold();
+  surv.slots[0] = null; cf.applyParts();
+  surv.hold.iron = 10;
+  surv.store = { pulsecoil: 1, layerplate: 2 };
+  me.x = 40000; me.y = -20000;
+  const spares = 3;
+  cf.die("rock");
+  check(view().carried === 0, "the hold survived a death");
+  check(Object.keys(surv.store).length === 0, "the spares survived a death");
+  const floor = surv.dropped.filter(d => d.mod);
+  check(floor.length === spares,
+        spares + " spares went down and " + floor.length + " are on the floor");
+  check(floor.every(d => Math.hypot(d.x - me.x, d.y - me.y) < 4000),
+        "a spare was dropped a long way from where you died");
+  check(new Set(floor.map(d => d.id)).size === spares,
+        "two spares on the floor share an id — picking one up would take both");
+
+  /* And they come back. Through the real path: the streamer puts them in the
+     world and flying into one picks it up. */
+  cf.respawn();
+  const back = surv.dropped.filter(d => d.mod)[0];
+  const me2 = cf.live().ships[0];
+  me2.x = back.x; me2.y = back.y; me2.vx = me2.vy = 0;
+  step(4);
+  check(storeOf(cf, back.key) > 0,
+        "flew onto a dropped spare and it is not in the hold");
+  check(surv.dropped.filter(d => d.id === back.id).length === 0,
+        "it was picked up and is still on the floor");
+  check(surv.dropped.filter(d => d.mod).length === spares - 1,
+        "picking one spare up took the others with it");
+
+  /* ── and the book remembers them ──────────────────────────────────────── */
+  const saved = cf.bookKeys();
+  check(saved.indexOf("dropped") >= 0, "the book does not keep what is on the floor");
+
+  /* ── a cache does not open onto a full hold ───────────────────────────── */
+  clearHold();
+  surv.hold.iron = cap;
+  surv.caches.length = 0;
+  const c = { x: me2.x + 40, y: me2.y, r: 46, guards: [], opened: false,
+              rich: true, part: "tractorrig", phase: 0 };
+  surv.caches.push(c);
+  step(3);
+  check(surv.caches.indexOf(c) >= 0,
+        "a full hold opened a cache with a part in it and lost the part");
+  surv.hold.iron = 0;
+  step(3);
+  check(surv.caches.indexOf(c) < 0, "the cache would not open with room for it");
+  check(storeOf(cf, "tractorrig") > 0, "the cache opened and the part is nowhere");
+
+  console.log("  onehold    a part weighs and the weight is on the hold · " +
+              "fitted weighs nothing · buying, pulling and a cache all " +
+              "respect the cap · a death puts the spares on the floor by " +
+              "name and they come back one at a time");
 }
 
 if (problems.length) {

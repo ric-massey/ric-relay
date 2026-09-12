@@ -1208,7 +1208,9 @@ Sitting in a star is still the free answer and still costs you the time.
 
 - **Better station storage** — somewhere to leave what you are not carrying, so a
   full hold stops being the end of a trip. A ship you are not flying is also
-  storage — including the four parts left fitted to it.
+  storage — including the four parts left fitted to it. **Sharper now than when
+  it was written**: the crate of spare parts used to be the escape hatch, and
+  merging it into the hold closed it. There is nowhere to leave anything.
 - **Stranger things farther out** — the danger curve has promised this since Phase
   1 and not paid it. The abyss is *harder* than the home band, not yet *stranger*.
   5.2's "only found very far away" parts are the first instalment.
@@ -2209,6 +2211,103 @@ What went with it: the yellow arrow, the chart glyph, the panel-chart glyph, the
 WAYPOINT / MOVE WAYPOINT / CLEAR WAYPOINT buttons, the arming mode, the state
 export, and the field in the save file. The chart's rail is one button and ten
 filters.
+
+---
+
+### One hold, and a part weighs something  ·  **DONE**
+
+> *"cargo hold and storage need to be the same thing. if that makes sense all
+> that info needs to be in there parts cost weight too."*
+
+There were **two places to put things** — a CARGO HOLD with a cap on it and a
+STORAGE crate of spare parts with no cap at all — and the second one made the
+first one a lie: you could be full to the brim, unable to pick up one more unit
+of ice, and still be carrying six spare engines in a pocket nobody could see.
+
+One panel now, one number, and a part you are not flying **weighs**. The weight
+is by **category** rather than by rarity: armour is plate at 10, an engine 8, a
+beam or a gun 6, panels 5, a device or an odd one 4, a scanner or a thruster 3.
+Rarity already decides how long a fit takes and how far out a part is sold, and
+it is deliberately not a quality ladder — making it a weight ladder as well would
+turn it into one. Category is the honest axis anyway: the difference between a
+plate and a dish is a fact about the thing, not about how hard it was to find.
+
+Measured against the holds they go in, the starting skiff carries 60, so a spare
+plate is a sixth of it and four spares is most of a trip's salvage. The big
+haulers run past 800 and can carry a workshop.
+
+**A fitted part weighs nothing**, and that is the point rather than an oversight:
+it is bolted to the outside of the ship rather than lying in the hold. The four
+slots are now the cheapest place to keep a part, which is the right pressure —
+*use it or carry it*.
+
+**Every way a part gets aboard respects the cap.** Bought, built, pulled off a
+slot, found in a cache. Two of those are worth saying out loud:
+
+- **Pulling a part off a slot can be refused**, because a fitted part weighs
+  nothing and a carried one does not. The alternative is a hold reading 64/60,
+  which is a cap that is not a cap.
+- **A cache does not open onto a full hold.** A cache is the only place the
+  find-only parts exist, so opening one, spraying its salvage and dropping the
+  one thing worth the flight would be the worst moment in the mode. It checks
+  first, says what is inside, and keeps.
+
+**And dying does to a spare what it already did to a manifest part.** The hold is
+lost, so the materials are gone — but a part has never simply vanished in this
+mode and it does not start now. Every spare is set down where you fell, on the
+chart, by name, and the trip back for it is a trip you have to make. Each one
+carries an id, so two of the same part on the floor are two objects rather than
+one that duplicates itself when you collect it. Downsizing to a smaller hull does
+the same thing at the yard: the materials that will not fit are left on the dock,
+and the parts are set down outside for you to come back out and collect.
+
+### The arrow rides a ring  ·  **DONE**
+
+> *"that arrow needs to be lined to a circle instead of the outside of the page.
+> there are just too many bugs with it."*
+
+Every edge arrow — the objective, the scan's returns, the thing you picked off
+the chart — used to sit where a ray from the middle left a **rectangle** inset
+from the screen. The argument for that was about where the pixels are: an arrow
+on a rectangle is at the edge of the screen, where an ellipse floats a third of
+the way in at the corners.
+
+It was the wrong thing to optimise, and the bugs all came out of the same place.
+On a rectangle an arrow's distance from the middle **depends on its bearing** — a
+corner is 1.6 times further out than straight up — so an arrow slides and jumps
+as the ship turns even though the thing it points at has not moved, and it
+crowds into the four corners, which is exactly where the HUD lives.
+
+It is a **circle** now, radius set by the shorter half of the screen so it stays a
+circle on any window. One radius for every bearing: the arrow moves at a constant
+rate as you turn, it is the same distance out wherever it is, and the corners are
+left to the interface. The logic that walks an arrow around the ring when it
+lands under a panel is unchanged; it now walks around an actual ring.
+
+### The Leviathan comes in to 40,000  ·  **DONE**
+
+> *"the last part is wayyyy too far out..... so bring that one in to like 40k"*
+
+The manifest's sixth part is inside the Leviathan, and the Leviathan stood on the
+ladder's **last rung** — which 6.7 stretched to 3,400,000 nominal and which a
+seed could put past five million. So the one step of the tutorial that asks you to
+go *inside* something was the one step nobody ever reached.
+
+It is **not a rung any more**. It stands at a fixed 40,000 in every sector, with a
+jitter of about ±15% and no `spread` — measured over forty seeds, 34,600 to
+45,600, median 39,000.
+
+Its old rung did **not** leave with it, and that is the part worth writing down.
+The ladder is eight landmarks over eight rungs now, and the top rung — 3,400,000 —
+stayed where it was, moved down one row onto the entry below. 6.7 stretched the
+ladder to buy twenty hours of game, and letting the far end halve because the
+Leviathan moved would have spent that on nothing. Measured over forty seeds: the
+nearest landmark lands between 7,600 and 28,900, and the furthest between two and
+seven million.
+
+The trade, stated: **the Leviathan is no longer the sector's finale.** It is the
+end of the tutorial instead, which is what its part being inside it always made
+it. The last rung now goes to whichever landmark is dealt it.
 
 ---
 

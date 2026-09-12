@@ -5410,6 +5410,43 @@
      nothing goes past it. At a station every one of these is instant. */
   const FIT_TIME = { common: 20, uncommon: 45, rare: 90, exotic: 180 };
 
+  /* ── what a part weighs ───────────────────────────────────────────────────
+     **The hold is the hold.** There used to be two places to put things — a
+     cargo hold with a cap on it, and a crate of spare parts with no cap at all —
+     and the second one made the first one a lie: a hauler could be full to the
+     brim and still be carrying six spare engines in a pocket nobody could see.
+
+     So a part you are not flying takes up room like everything else, and the one
+     number on the page is the true one.
+
+     By **category**, not by rarity. Rarity already decides two things — how long
+     a fit takes and how far out it is sold — and it is deliberately not a
+     quality ladder; making it a weight ladder as well would turn it into one. A
+     category is the honest axis anyway: armour is plate, a scanner is a dish and
+     a box, and the difference between them is a fact about the thing rather than
+     about how hard it was to find.
+
+     Measured against the holds they go in: the starting skiff carries 60, so a
+     spare plate is a sixth of it and four spares is most of a trip's salvage.
+     The big haulers run past 800 and can carry a workshop. That spread is the
+     point — "which four do I want fitted" is the question the slots ask, and
+     "what can I afford to carry spare" is the one the hold asks back. */
+  const PART_WEIGHT = {
+    armour:   10,     // plate. The heaviest thing you can bolt on
+    engine:    8,
+    tractor:   6,
+    weapon:    6,
+    solar:     5,     // wings fold, but there is a lot of wing
+    device:    4,
+    odd:       4,
+    scanner:   3,
+    thruster:  3      // little jets and their plumbing
+  };
+  const partWeight = key => {
+    const m = moduleSpec(key);
+    return m ? (PART_WEIGHT[m.cat] || 4) : 0;
+  };
+
   /* `deep` is how far out a station has to be before it stocks one — which is
      the danger curve finally paying something out. The odd ones at the bottom
      are the reason to go a long way. */
@@ -6067,8 +6104,13 @@
        not yet learned why they would want to.
 
        Five of the six are inside 52,000 now, which is ten minutes of flying end to
-       end. The sixth is still the Leviathan, and it is supposed to be a long way
-       away: by the time you are looking for it you have been taught. */
+       end.
+
+       And so is the sixth. It is inside the Leviathan, which used to stand on the
+       ladder's last rung — millions of units out once 6.7 stretched the ladder —
+       so the one step of the tutorial that asks you to go *inside* something was
+       the one step nobody ever reached. The Leviathan stands at a fixed 40,000
+       now, in every sector, and takes no rung with it. */
     { key: "spar", name: "DRIVE SPAR", dist: 7000,
       clue: "Among the dead. Somewhere a lot of ships stopped at once.",
       where: "a wreck field" },
@@ -6173,11 +6215,32 @@
        the Leviathan, which proved the shape is worth having and is the reason
        there is now a second one. */
     { key: "vault",             name: "THE VAULT",     dist: 1250000, r: 900 },
-    { key: "node-01",           name: "NODE 01",       dist: 1700000, r: 400 },
+    /* The far rung. It was 1,700,000 and the Leviathan stood on 3,400,000 above
+       it; the Leviathan came off the ladder to sit at a fixed 40,000, and the
+       ladder must not lose its far end with it — 6.7 stretched it to buy twenty
+       hours of game, and half a ladder is half of that. So the top rung stays
+       where it was and this row now holds it.
+
+       Which landmark stands here is still dealt per world. The number is the
+       ladder's shape, not this entry's address. */
+    { key: "node-01",           name: "NODE 01",       dist: 3400000, r: 400 },
     /* The Leviathan is last and furthest because it is the only landmark that
        is a *place you go inside*. Its radius is the logging trigger, not the
        hull — the hull is built in `buildLeviathan` and is several times this. */
-    { key: "leviathan",         name: "LEVIATHAN",     dist: 3400000, r: 1700 }
+    /* **Not a rung.** Every other landmark is dealt a rung of the ladder and
+       stretched by the world's spread; the Leviathan is placed at this distance
+       in every sector, and its old rung — 3,400,000, the far end of the ladder —
+       left with it.
+
+       It was the finale, and the finale is what it stopped being able to be. The
+       manifest's sixth part is inside it, the manifest is the tutorial, and a
+       tutorial whose last step is sixteen ten-minute flights away is a tutorial
+       nobody finishes. Five of the six sit inside 52,000; this is the sixth, and
+       it is the only one that asks you to go *inside* something, which is the
+       best moment the manifest has. It is worth having at the end of an evening
+       rather than at the end of a month. */
+    { key: "leviathan",         name: "LEVIATHAN",     dist:   40000, r: 1700,
+      fixed: true }
   ];
 
   /* ── what kind of sector this is ──────────────────────────────────────────
@@ -6273,15 +6336,16 @@
       belligerents: [powers[p0], powers[p1]],
       bystander: powers.find(k => k !== powers[p0] && k !== powers[p1]),
       name: ranked.length ? ranked.slice(0, 2).join(" · ") : "ORDINARY",
-      /* A shuffled dealing of the ladder's rungs. The Leviathan is held back to
-         the last rung; everything else takes whatever is left. */
+      /* A shuffled dealing of the ladder's rungs, over the landmarks that take
+         one. The Leviathan is not in here at all any more — it stands at its own
+         fixed distance in every sector, so it is neither dealt nor stretched. */
       order: (() => {
-        const rest = LANDMARKS.filter(l => l.key !== "leviathan").map(l => l.key);
+        const rest = LANDMARKS.filter(l => !l.fixed).map(l => l.key);
         for (let i = rest.length - 1; i > 0; i--) {
           const j = Math.floor(R() * (i + 1));
           [rest[i], rest[j]] = [rest[j], rest[i]];
         }
-        return rest.concat(["leviathan"]);
+        return rest;
       })(),
       partOrder: (() => {
         const rest = BUILD.filter(b => !b.inside).map(b => b.key);
@@ -7922,7 +7986,9 @@
         /* A part that has been dropped is not also still at its landmark — the
            sector generated one and there is one, wherever it happens to be. */
         if (surv.built.has(pt.key) || surv.carrying.has(pt.key)) continue;
-        if (surv.dropped.some(d => d.key === pt.key)) continue;
+        // A manifest part, and only a manifest part: a spare on the floor with
+        // the same key would otherwise cancel a site it has nothing to do with.
+        if (surv.dropped.some(d => !d.mod && d.key === pt.key)) continue;
         surv.parts.push(pt);
       }
       if (c.leviathan) surv.leviathan = c.leviathan;
@@ -8065,10 +8131,10 @@
     for (const d of surv.dropped) {
       if (Math.abs(d.x - ships[0].x) > CHUNK * 3 ||
           Math.abs(d.y - ships[0].y) > CHUNK * 3) continue;
-      const spec = partSpec(d.key);
+      const spec = droppedSpec(d);
       if (!spec) continue;
       surv.parts.push({ key: d.key, name: spec.name, x: d.x, y: d.y, r: 40,
-                        dropped: true });
+                        dropped: true, mod: !!d.mod, id: d.id });
     }
 
     /* And who did not come back. A pirate you shot and did not finish is only
@@ -8377,9 +8443,15 @@
       /* Parts you were carrying when you died. They sit where you died until you
          go back for them, and they are written into the book because a part you
          have to fetch is worthless if closing the tab loses it. */
+      /* Two kinds now: a manifest part, and a spare you were carrying when you
+         died. `mod` says which, and it decides which catalogue the key is looked
+         up in — a whitelist that only knows about one of them throws the other
+         away silently, which is the bug class this file has already shipped
+         twice. */
       dropped: (carried && Array.isArray(book.dropped) ? book.dropped : [])
-        .filter(d => d && partSpec(d.key))
-        .map(d => ({ key: d.key, name: partSpec(d.key).name,
+        .filter(d => d && droppedSpec(d))
+        .map(d => ({ key: d.key, name: droppedSpec(d).name,
+                     mod: !!d.mod, id: d.id || dropId(),
                      x: Math.round(+d.x || 0), y: Math.round(+d.y || 0) })),
       /* The four slots, and the parts you own but are not flying. A slot is
          `null`, or `{ key, fit }` where `fit` is the seconds of installation
@@ -8520,16 +8592,15 @@
        which is dealt per world, and the whole ladder is stretched or squeezed
        by the world's spread. So the distances are still a sensible progression
        and the *route through them* is different every seed. */
-    const rungs = LANDMARKS.map(L => L.dist);
+    /* The rungs belong to the landmarks that are dealt one. A landmark with
+       `fixed` on it stands at its own distance in every sector and takes no rung
+       with it — see the Leviathan. */
+    const rungs = LANDMARKS.filter(L => !L.fixed).map(L => L.dist);
     /* Jitter is applied per rung, and the gaps between rungs are as small as
        1.27 — so two neighbours can swing past each other and land in the wrong
-       order, or on top of one another. That matters more than it sounds: the
-       Leviathan has to stand on the last rung, because it is the finale and the
-       yard's final part is inside it, and a shuffled ladder that lets the rung
-       below overtake it puts the ending in the middle of the game.
-
-       So each distance is held above the one before it. The ladder is still
-       dealt and still stretched; it just cannot fold. */
+       order, or on top of one another. Each distance is therefore held above the
+       one before it: the ladder is still dealt and still stretched, it just
+       cannot fold. */
     let floorD = 0;
     surv.world.order.forEach((key, i) => {
       const L = LANDMARKS.find(l => l.key === key);
@@ -8537,6 +8608,23 @@
       const d = Math.max(floorD * 1.14,
                          rungs[i] * surv.world.spread * (0.85 + R() * 0.3));
       floorD = d;
+      const lm = { key: L.key, name: L.name, r: L.r,
+                   x: Math.cos(a) * d, y: Math.sin(a) * d,
+                   found: surv.found.has(L.key) };
+      surv.landmarks.push(lm);
+      surv.landmarkAt.set(
+        chunkKey(Math.floor(lm.x / CHUNK), Math.floor(lm.y / CHUNK)), lm);
+    });
+
+    /* And the ones that stand at their own distance. A bearing off the end of
+       the same set of slices, so it cannot land on top of a rung, and a modest
+       jitter on the distance so two sectors are not identical — but no `spread`,
+       because the whole point of a fixed landmark is that the seed cannot put it
+       out of reach. */
+    LANDMARKS.filter(L => L.fixed).forEach((L, k) => {
+      const a = a0 + (surv.world.order.length + k) * slice +
+                (R() - 0.5) * slice * 0.6;
+      const d = L.dist * (0.86 + R() * 0.28);
       const lm = { key: L.key, name: L.name, r: L.r,
                    x: Math.cos(a) * d, y: Math.sin(a) * d,
                    found: surv.found.has(L.key) };
@@ -9911,6 +9999,37 @@
       });
       surv.death.dropped = left.map(k => partSpec(k).name);
     }
+
+    /* ── and the spares, now that they are in the hold ─────────────────────
+       The hold is lost when you die. Parts are in the hold now, so they are lost
+       with it — except that a part has never simply vanished in this mode, and
+       it should not start: the rule from the manifest is that it *stays where
+       you died*, on the chart, by name, and the trip back for it is a trip you
+       have to make.
+
+       So the same thing happens to a spare rail lance as happens to the jump
+       coil. The materials are gone; the parts are somewhere, and that somewhere
+       is the worst place in the sector, because it is the place that killed you.
+
+       Fitted parts are untouched. They are bolted to a ship that is being handed
+       back to you, not cargo. */
+    const spares = [];
+    for (const key of Object.keys(surv.store || {})) {
+      for (let n = storeCount(key); n > 0; n--) spares.push(key);
+    }
+    if (spares.length) {
+      surv.store = {};
+      spares.forEach((key, i) => {
+        const m = moduleSpec(key);
+        const a = (i / spares.length) * Math.PI * 2 + 0.4;
+        const spot = safeDrop(ship.x + Math.cos(a) * (140 + 90 * i),
+                              ship.y + Math.sin(a) * (140 + 90 * i));
+        surv.dropped.push({ key, name: m.name, x: spot.x, y: spot.y,
+                            mod: true, id: dropId() });
+        noteKnown("part", spot.x, spot.y, m.name);
+      });
+      surv.death.spares = spares.map(k => moduleSpec(k).name);
+    }
     burst(ship.x, ship.y, "#ff8f77", 40, 420 * U);
     addShake(12);
     gameSound("lose", ship.x);
@@ -10076,8 +10195,33 @@
      to go and spend. */
   // Everything in the hold, as one number: the cap is on how much you carry,
   // not on how much any one kind of it is worth.
+  /* **Parts included.** A spare part is a thing in the hold, so it is on this
+     number — see `PART_WEIGHT`. Everything that asks "is there room" asks this
+     one function, so that is the whole of making the two the same thing. A part
+     that is *fitted* weighs nothing here, and that is not an oversight: it is
+     bolted to the outside of the ship rather than lying in the hold, and it is
+     the reason to use the four slots rather than to hoard. */
+  const storeWeight = () =>
+    Object.keys(surv.store || {})
+      .reduce((t, k) => t + partWeight(k) * storeCount(k), 0);
   const holdUsed = () =>
-    MATERIALS.reduce((t, m) => t + (surv.hold[m.key] || 0), 0);
+    MATERIALS.reduce((t, m) => t + (surv.hold[m.key] || 0), 0) + storeWeight();
+
+  /* Is there room for one more of this part? Asked before every one of the four
+     ways a part reaches the hold — bought, built, pulled off a slot, found in a
+     cache — because a hold with a cap that only some things respect is a cap
+     nobody believes. */
+  const roomForPart = key => holdCap() - holdUsed() >= partWeight(key);
+  /* And the line to print when there is not. Named rather than repeated: the
+     four refusals should say the same thing in the same words, because they are
+     the same refusal. */
+  function noRoomFor(key) {
+    const m = moduleSpec(key);
+    chatter("No room for " + (m ? m.name : "it") + " \u2014 it needs " +
+            partWeight(key) + " of hold and you have " +
+            Math.max(0, holdCap() - holdUsed()) + ".", "#ff8f77");
+    gameSound("hit");
+  }
 
   /* Taking one unit aboard. The hold fills as a whole, so a hold full of ice is
      a hold with no room for iridium — which is the decision the four materials
@@ -10976,6 +11120,27 @@
       if (c.sealed) continue;
       if (dist2(me.x, me.y, c.x, c.y) > (c.r + shipRadius()) ** 2) continue;
 
+      /* What is inside, decided once and remembered on the cache, so the answer
+         cannot change between one frame and the next while you are sitting on
+         top of it deciding whether to make room. */
+      if (c.part === undefined) {
+        const roll = cachePart(dangerAt(c.x, c.y), !!c.rich);
+        c.part = roll ? roll.key : null;
+      }
+      /* And the refusal comes *before* the cache opens rather than after. A part
+         in here is the only part in the game nobody sells, so a full hold must
+         not open it, spill its salvage and drop the one thing worth the flight.
+         Said once, because this runs every frame you are touching it. */
+      if (c.part && !roomForPart(c.part)) {
+        if (!c.said) {
+          c.said = true;
+          chatter(moduleSpec(c.part).name + " is in there and the hold is " +
+                  "full. It keeps \u2014 come back with room.", "#ff8f77");
+          gameSound("hit");
+        }
+        continue;
+      }
+
       const worth = c.rich ? YIELD.cache * 2 : YIELD.cache;
       burst(c.x, c.y, CASH, 26, 260 * U);
       gameSound("win", c.x);
@@ -10988,10 +11153,10 @@
          It goes straight into storage rather than onto the floor: you opened it,
          it is yours, and fishing a part out of a cloud of its own salvage would
          be a worse moment than being told. */
-      const got = cachePart(dangerAt(c.x, c.y), !!c.rich);
-      if (got) {
-        storeAdd(got.key, 1);
-        chatter(got.name + " — in the hold, and nobody sells these.", "#a08cff");
+      if (c.part) {
+        storeAdd(c.part, 1);
+        chatter(moduleSpec(c.part).name +
+                " \u2014 in the hold, and nobody sells these.", "#a08cff");
       }
       surv.opened.add(c.id || ("lev" + i));
       surv.caches.splice(i, 1);
@@ -11651,6 +11816,17 @@
 
   const partSpec = key => BUILD.find(b => b.key === key);
 
+  /* Anything lying on the floor of the sector needs an identity of its own.
+     A manifest part never needed one — there is exactly one jump coil — but two
+     spare pulse coils dropped by the same death are two objects, and matching
+     them by key would make picking one up delete both. */
+  let dropSeq = 0;
+  const dropId = () => "d" + (++dropSeq) + "." + Math.floor(Math.random() * 1e6);
+
+  // What a dropped thing is, whichever kind it is.
+  const droppedSpec = d =>
+    d && d.mod ? moduleSpec(d.key) : partSpec(d && d.key);
+
   /* Jumping. Only to somewhere already written down, and only once the drive is
      built — this is fast travel across ground you have covered, never a way to
      skip covering it. */
@@ -12119,6 +12295,15 @@
       gameSound("hit");
       return false;
     }
+    /* Room for what comes out, counted against the hold *after* the materials
+       it eats have left it — building something is usually a net saving, and
+       refusing a build that would have made room is the wrong answer. */
+    const frees = Object.keys(r.need).reduce((t, k) => t + r.need[k], 0) +
+                  (r.part ? partWeight(r.part) : 0);
+    if (holdCap() - holdUsed() + frees < partWeight(key)) {
+      noRoomFor(key);
+      return false;
+    }
     for (const k of Object.keys(r.need)) surv.hold[k] -= r.need[k];
     if (r.part) storeAdd(r.part, -1);
     storeAdd(key, 1);
@@ -12159,6 +12344,8 @@
       return false;
     }
     if (surv.cash < m.cost) { gameSound("hit"); return false; }
+    // Bought is still carried: there is nowhere else for it to go.
+    if (!roomForPart(key)) { noRoomFor(key); return false; }
     surv.cash -= m.cost;
     storeAdd(key, 1);
     surv.t.refitted = true;
@@ -12249,6 +12436,11 @@
   function pullModule(i) {
     const sl = surv.slots[i];
     if (!sl) return false;
+    /* A fitted part weighs nothing and a carried one weighs something, so taking
+       one off is the one move in the game that can *fill* a hold. Refused rather
+       than allowed to overflow — the alternative is a hold reading 64/60, which
+       is a cap that is not a cap. */
+    if (!roomForPart(sl.key)) { noRoomFor(sl.key); return false; }
     surv.slots[i] = null;
     storeAdd(sl.key, 1);
     applyRefit(ships[0]);
@@ -12732,8 +12924,15 @@
        to you; handing it over pre-damaged would be a rule nobody could guess. */
     me.hull = me.maxHull;
     me.invuln = Math.max(me.invuln, 1.5);
-    // The hold does not come with you if the new one is smaller. What will not
-    // fit is left on the dock, which is the cost of downsizing.
+    /* The hold does not come with you if the new one is smaller. What will not
+       fit is left on the dock, which is the cost of downsizing.
+
+       Materials first, and they are simply gone — that was always the rule and
+       it is the cheap half of a hold. Parts are the other half now that they
+       have a weight, and a part is never destroyed in this mode: what will not
+       fit is set down beside the yard, on the chart, by name, for you to come
+       back out and collect. It is a hundred units away, which is the right size
+       of inconvenience for a decision you made on purpose. */
     const cap = holdCap();
     let over = holdUsed() - cap;
     for (const m of MATERIALS) {
@@ -12741,6 +12940,33 @@
       const take = Math.min(over, surv.hold[m.key] || 0);
       surv.hold[m.key] -= take;
       over -= take;
+    }
+    if (over > 0) {
+      const left = [];
+      for (const k of Object.keys(surv.store)) {
+        for (let n = storeCount(k); n > 0 && over > 0; n--) {
+          storeAdd(k, -1);
+          over -= partWeight(k);
+          left.push(k);
+        }
+        if (over <= 0) break;
+      }
+      left.forEach((k, i) => {
+        const spec = moduleSpec(k);
+        const a = (i / left.length) * Math.PI * 2;
+        const spot = safeDrop(me.x + Math.cos(a) * (160 + 70 * i),
+                              me.y + Math.sin(a) * (160 + 70 * i));
+        surv.dropped.push({ key: k, name: spec.name, x: spot.x, y: spot.y,
+                            mod: true, id: dropId() });
+        noteKnown("part", spot.x, spot.y, spec.name);
+      });
+      if (left.length) {
+        chatter(left.length === 1
+          ? moduleSpec(left[0]).name + " would not fit the new hold \u2014 it is " +
+            "on the dock outside."
+          : left.length + " parts would not fit the new hold. They are on the " +
+            "dock outside.", "#ff8f77");
+      }
     }
     // And neither does the pantry. A smaller hull has a smaller one, and what
     // will not fit in it is left on the dock with the cargo.
@@ -12906,12 +13132,25 @@
     for (let i = surv.parts.length - 1; i >= 0; i--) {
       const pt = surv.parts[i];
       if (dist2(me.x, me.y, pt.x, pt.y) > (pt.r + R) ** 2) continue;
+      /* A spare takes room, so it can be refused — and being refused must leave
+         it lying there rather than quietly deleting it. Said once a pass, by the
+         same words every other full-hold refusal uses. */
+      if (pt.mod && !roomForPart(pt.key)) {
+        if (!pt.said) { pt.said = true; noRoomFor(pt.key); }
+        continue;
+      }
       surv.parts.splice(i, 1);
-      surv.carrying.add(pt.key);
+      if (pt.mod) storeAdd(pt.key, 1); else surv.carrying.add(pt.key);
       /* If this is one you dropped when you died, it stops being dropped — the
          list is what makes it exist out here, so leaving it on would put a second
-         copy in the sky the next time the chunks stream. */
-      const back = surv.dropped.findIndex(d => d.key === pt.key);
+         copy in the sky the next time the chunks stream.
+
+         By `id` where there is one: two spare coils from the same death are two
+         objects, and matching them by key would take both off the floor for one
+         pickup. */
+      const back = pt.id
+        ? surv.dropped.findIndex(d => d.id === pt.id)
+        : surv.dropped.findIndex(d => d.key === pt.key);
       if (back >= 0) {
         surv.dropped.splice(back, 1);
         surv.known.delete(knownId("part", pt.x, pt.y));
@@ -12919,8 +13158,13 @@
       burst(pt.x, pt.y, CASH, 26, 260 * U);
       gameSound("win", pt.x);
       addShake(5);
-      chatter(pt.name + (back >= 0 ? " back aboard \u2014 take it home"
-                                   : " recovered \u2014 take it home"), CASH);
+      /* "Take it home" is the manifest's instruction and it is wrong for a
+         spare: nobody is waiting for your second pulse coil at the yard. A spare
+         is simply back in the hold. */
+      chatter(pt.mod
+        ? pt.name + " back in the hold."
+        : pt.name + (back >= 0 ? " back aboard \u2014 take it home"
+                               : " recovered \u2014 take it home"), CASH);
       surveyFind("salvor");
       /* The coil is not a component until it is bolted down. Pulling it off the
          gate it was wound around discharges the thing, and the sector folds:
@@ -14421,6 +14665,7 @@
           rows.push({ kind: "part", key: m.key, name: m.name,
                       colour: "#a08cff", label: "BUY", cost: m.cost,
                       cat: m.cat, rarity: m.rarity, note: m.note,
+                      weight: partWeight(m.key),
                       owned: storeCount(m.key) });
         }
         return rows;
@@ -14545,6 +14790,7 @@
       parts: MODULES.map(m => ({
         key: m.key, name: m.name, cat: m.cat, rarity: m.rarity, note: m.note,
         cost: m.cost, deep: m.deep, secs: fitSeconds(m.key),
+        weight: partWeight(m.key),
         get: m.get.slice(), where: m.where || "",
         buyable: sellsIt(m), craftable: craftsIt(m), findable: findsIt(m),
         owned: storeCount(m.key),
@@ -14571,17 +14817,24 @@
         return { key: sl.key, name: m.name, cat: m.cat, rarity: m.rarity,
                  note: m.note, fit: sl.fit, of: fitSeconds(sl.key) };
       }),
-      // What you own and are not flying, one row a kind.
+      /* What you own and are not flying, one row a kind — and what it is
+         costing you to carry, because that is the half of the page that used to
+         be invisible. `weight` is per one of them; `held` is what this row is
+         taking out of the hold in total. */
       store: MODULES.filter(m => storeCount(m.key) > 0).map(m => ({
         key: m.key, name: m.name, cat: m.cat, rarity: m.rarity, note: m.note,
         n: storeCount(m.key), secs: fitSeconds(m.key),
+        weight: partWeight(m.key), held: partWeight(m.key) * storeCount(m.key),
         fitted: surv.slots.some(sl => sl && sl.key === m.key)
       })),
+      // What the parts in the hold weigh, all told. The materials are the rest.
+      partWeight: storeWeight(),
       /* What this station has on the shelf. Rarity decides how far out you have
          to be before anybody stocks it, which is the danger curve paying out. */
       forSale: surv.docked ? MODULES.filter(m => m.deep <= stationDepth()).map(m => ({
         key: m.key, name: m.name, cat: m.cat, rarity: m.rarity, note: m.note,
         cost: m.cost, secs: fitSeconds(m.key), owned: storeCount(m.key),
+        weight: partWeight(m.key),
         fitted: surv.slots.some(sl => sl && sl.key === m.key)
       })) : [],
       /* What each part actually does, so the page can total up what you are
@@ -19858,8 +20111,14 @@
          has to ask rather than assume: these numbers moved by a factor of six
          when the almanac's ladder was stretched, and a test with 320,000 written
          into it silently starts sampling two points in the same band. */
+      /* `far` is the far end of the *ladder*, which is the furthest rung a
+         landmark can be dealt — not simply the last row of the table. The
+         Leviathan sits at the bottom of that table and is no longer on the
+         ladder at all, so reading the last row now reports 40,000 and makes the
+         sector look like a village. */
       sectorSpan: () => ({ full: DANGER_FULL, chunk: CHUNK,
-                           far: LANDMARKS[LANDMARKS.length - 1].dist }),
+                           far: Math.max(...LANDMARKS.filter(L => !L.fixed)
+                                                     .map(L => L.dist)) }),
       leave: () => leaveMatch(),
       find: key => surveyFind(key),
       /* Press and release a key the way a player does. `readLocalInput` rebuilds
