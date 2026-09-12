@@ -191,10 +191,38 @@ it, and name it whatever they like — "dead zone", "blackwater". That is the
 feature this document asks for and it shipped before the document existed.
 
 **Thirteen kinds, and ordinary space is the commonest.** A region cell is
-**200,000 units** across — five to twenty minutes at cruise is 170,000 to 690,000,
-and the Voronoi makes the cells uneven, so a straight crossing measures between
-about four and sixteen minutes. It was 31,200, which is a minute: a minute of
-anything is a stretch of scenery, not a place.
+**93,000 units** across, which measures out at about **100,000 across a patch**
+and three minutes to cross one.
+
+It has been three numbers, and the history is the argument:
+
+- **31,200 — a minute.** A minute of anything is a stretch of scenery, not a
+  place, and certainly not somewhere you start wondering whether the generator
+  has broken.
+- **200,000 — six minutes.** Sized from five-to-twenty minutes at cruise, which
+  is 170,000 to 690,000 units. It made a patch unmistakably a place. It also
+  made a sector *monotonous at the scale anybody plays it*, and that only became
+  visible once `test/biomes.js` measured one instead of trusting the arithmetic:
+  a run out to the abyssal boundary passed through six to nine of the thirteen
+  kinds, four of them had no example inside 700,000 units, and the first two
+  hundred thousand of every world were one thing.
+- **93,000 — three minutes**, which is what is here. Long enough that a patch is
+  still a place; short enough that the thing biomes exist for — noticing the
+  rules changed — happens more than a handful of times in a run.
+
+What that bought, measured on one sector across seventy-two bearings: the median
+distance before the rules change for the first time fell to **33,000 units**,
+which is just outside the home bubble, and fifty-one of seventy-two bearings meet
+something that is not ordinary space inside 100,000. Inside the abyssal boundary
+a run now meets **eleven to thirteen** of the thirteen kinds rather than six to
+nine.
+
+The home bubble is a fixed **30,000 units** of guaranteed ordinary space and is
+no longer a fraction of the cell. The two numbers answer different questions —
+one is "how far does the opening need to be predictable for", the other is "how
+big is a place" — and tying them together meant shrinking the patches silently
+halved the opening as a side effect. 30,000 covers the Home and Open bands,
+which is where the opening happens and where the first two yard parts are.
 
 Measured over twelve thousand sites across six sectors:
 

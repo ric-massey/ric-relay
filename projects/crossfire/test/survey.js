@@ -7570,10 +7570,15 @@ const storeOf = (cf, key) => {
         "the city is " + (share("city") * 100).toFixed(1) + "% of the sky");
 
   /* ── how long one takes to cross ─────────────────────────────────────────
-     Five to twenty minutes at cruise, which is 170,000 to 690,000 units. A
-     minute of anything is a stretch of scenery; it is not a place, and it is
-     certainly not somewhere you could start wondering whether the generator had
-     broken. */
+     A minute of anything is a stretch of scenery; it is not a place. That is the
+     floor and it has not moved.
+
+     The ceiling has. This asked for five minutes, from a lattice sized at
+     200,000 — and measured, that made a sector monotonous at the scale anybody
+     plays it: eleven of the thirteen kinds sat past the abyssal boundary and the
+     first two hundred thousand units of every world were one thing. The lattice
+     is 93,000 now, which is about three minutes across a patch, and the number
+     below is what that is worth rather than what the old one was. */
   let run = 0, longest = 0, cur = null;
   for (let d = 0; d < 3000000; d += 5000) {
     const r = cf.regionProbe(d, d * 0.37);
@@ -7581,7 +7586,7 @@ const storeOf = (cf, key) => {
     else { longest = Math.max(longest, run); cur = r.key; run = 5000; }
   }
   longest = Math.max(longest, run);
-  check(longest > 170000,
+  check(longest > 90000,
         "the longest unbroken crossing is " + Math.round(longest / 1000) + "k units, " +
         (longest / 575 / 60).toFixed(1) + " minutes — a region has to be a place");
 
@@ -7596,14 +7601,23 @@ const storeOf = (cf, key) => {
      branch that builds the home station — so the emptiest region in the galaxy
      came out with twenty-five copies of it, one per loaded chunk. No multiplier
      was wrong; the control flow was. */
+  /* The *middle* of one, not merely a point inside one. This used to walk a grid
+     of its own and take the first point that came back empty, which was fine
+     while a patch was 200,000 across and is not now: the point can land near an
+     edge, and the streamer loads a five-by-five block of chunks around the ship,
+     so a ship parked near the rim of an empty region has half its loaded space
+     in the region next door — which is full of things, correctly.
+
+     A site's position is the middle of its patch by construction, so ask the
+     lattice instead of hunting for one. */
   let empty = null;
-  for (let j = -14; j <= 14 && !empty; j++) {
-    for (let i = -14; i <= 14 && !empty; i++) {
-      const x = i * 200000 + 90000, y = j * 200000 + 90000;
-      if (cf.regionProbe(x, y).key === "open") empty = { x, y };
-    }
+  {
+    const reach = Math.ceil(1400000 / cf.regionCell());
+    const open = cf.regionSites(reach).filter(q => q.key === "open");
+    open.sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y));
+    if (open.length) empty = { x: open[0].x, y: open[0].y };
   }
-  check(!!empty, "no empty region anywhere in a 29x29 block of the lattice");
+  check(!!empty, "no empty region anywhere within 1.4 million units");
   if (empty) {
     const surv2 = cf.survey();
     const me2 = cf.live().ships[0];
@@ -7629,8 +7643,18 @@ const storeOf = (cf, key) => {
     for (let i = 0; i < 1800; i++) {
       me2.invuln = 9999; surv2.water = 9e5; surv2.food = 9e5;
       now += 1000 / 60; cf.step();
-      if (i % 120 === 0 && cf.regionProbe(me2.x, me2.y).key === "open") {
-        worst = Math.max(worst, total());
+      /* Counted only while the whole *loaded block* is inside the empty region.
+         The streamer keeps two chunks either side of the ship, so being just
+         inside the boundary yourself means half of what is built around you
+         belongs to the region next door — and that region is supposed to have
+         things in it. The margin is the block's own half-width. */
+      if (i % 120 === 0) {
+        const m = cf.sectorSpan().chunk * 2.5;
+        const allOpen = [[0, 0], [m, 0], [-m, 0], [0, m], [0, -m],
+                         [m, m], [-m, -m], [m, -m], [-m, m]]
+          .every(([dx, dy]) =>
+            cf.regionProbe(me2.x + dx, me2.y + dy).key === "open");
+        if (allOpen) worst = Math.max(worst, total());
       }
     }
     cf.hold("KeyW", false);

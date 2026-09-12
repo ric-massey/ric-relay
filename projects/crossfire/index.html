@@ -6660,16 +6660,27 @@
       d: { wells: 0, planets: 0, wrecks: 0, gates: 0, stations: 0,
            nebulae: 0, fields: 0, caches: 0 } }
   ];
-  /* **How long it takes to cross one.** Ric's number is five to twenty minutes,
-     and at cruise that is 170,000 to 690,000 units — so a region cell is 200,000
-     across and the Voronoi makes them uneven, which puts a straight crossing
-     somewhere between three and fifteen minutes depending on where you enter and
-     whether the next one along is the same kind.
+  /* **How long it takes to cross one.** This has been set three times and the
+     history is the argument, so it is kept:
 
-     It was 31,200, which is a minute. A minute of anything is a stretch of
-     scenery; it is not a *place*, and it certainly is not somewhere you could
-     start wondering whether the generator had broken. */
-  const REGION_CELL = 200000;
+       · **31,200 — a minute.** A minute of anything is a stretch of scenery. It
+         is not a *place*, and it is certainly not somewhere you could start
+         wondering whether the generator had broken.
+       · **200,000 — six minutes.** Sized from five-to-twenty minutes at cruise,
+         which is 170,000 to 690,000 units. It made every patch unmistakably a
+         place. What it also did was make a sector *monotonous at the scale
+         anybody actually plays it*: measured, a run reaching the abyssal
+         boundary passed through six to nine of the thirteen kinds, and the first
+         two hundred thousand units of every world were one thing.
+       · **93,000 — three minutes**, which is here. Long enough that a patch is
+         still somewhere rather than scenery, short enough that the thing the
+         biomes exist for — noticing that the rules changed — happens more than
+         a handful of times in a run.
+
+     `test/biomes.js` measures what this actually produces rather than trusting
+     the arithmetic: the Voronoi jitters and neighbours of a kind merge, so the
+     patch you fly across is never exactly the cell. */
+  const REGION_CELL = 93000;
   const regionCache = new Map();
 
   /* Nearest jittered site among the nine cells around a point. A plain grid would
@@ -6735,8 +6746,15 @@
 
   /* Home is always settled. The first two minutes are the same promise in every
      sector — the same reason the home band stays quiet — and dropping a new pilot
-     into the middle of a well cluster would be a different game. */
-  const HOME_REACH = REGION_CELL * 0.34;
+     into the middle of a well cluster would be a different game.
+
+     A distance rather than a fraction of the region cell, which is what it used
+     to be. The two numbers answer different questions — this one is "how far does
+     the opening need to be predictable for", and the cell is "how big is a place"
+     — and tying them together meant that shrinking the patches silently halved
+     the opening as a side effect. 30,000 covers the Home and Open bands, which
+     is where the opening happens and where the first two yard parts are. */
+  const HOME_REACH = 30000;
   function regionOf(x, y) {
     // Home is *ordinary* space, not a busy one. It used to return the settled
     // region, which put nearly twice the usual traffic around the one station

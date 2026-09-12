@@ -166,9 +166,22 @@ cf.start("survey", 1);
 const surv = cf.survey();
 
 const CELL = cf.regionCell();
-// Far enough out to cover everything the danger curve still climbs through.
-const N = 9;                                  // (2N+1)^2 cells
+
+/* Two views of the lattice, because the two questions want different things.
+
+   How big a patch is, is a *local* measurement: it needs every neighbour of a
+   site sampled finely, and it does not care what is happening a million units
+   away. How far out a kind's nearest example is wants the opposite — a wide net
+   and no sampling at all, because a site's position is exact.
+
+   Doing both from one grid is what made the first run of this report claim the
+   same patch count for 1200k and 1800k: the grid stopped at 791k, so every
+   number past that was the edge of the sample rather than the edge of anything
+   in the sector. */
+const N = 9;                                   // fine and local, for patch sizes
 const sites = cf.regionSites(N);
+const WIDE = Math.ceil(1800000 / CELL) + 1;    // coarse and wide, for distances
+const wide = cf.regionSites(WIDE);
 
 const KINDS = [...new Set(sites.map(s => s.key))];
 const dist = s => Math.hypot(s.x, s.y);
@@ -240,12 +253,12 @@ for (const lim of [60000, 140000, 320000, 600000, 1200000, 1800000]) {
       const th = (a / ring) * Math.PI * 2;
       const x = Math.cos(th) * r, y = Math.sin(th) * r;
       let best = null, bd = Infinity;
-      for (const st of sites) {
+      for (const st of wide) {
         const d = (st.x - x) ** 2 + (st.y - y) ** 2;
         if (d < bd) { bd = d; best = st; }
       }
-      touch.add(idx.get(best));
-      // Home is forced ordinary inside 68k whatever the lattice says.
+      touch.add(best.cx + "," + best.cy);
+      // Home is forced ordinary near the origin whatever the lattice says.
       kinds.add(cf.regionProbe(x, y).key);
     }
   }
@@ -267,8 +280,9 @@ for (const key of KINDS) {
   if (!across.length) continue;
   const mid = across[Math.floor(across.length / 2)];
   const big = across[across.length - 1];
-  const ds = mine.map(o => dist(o.s)).sort((a, b) => a - b);
-  rows.push({ name: mine[0].s.name, n: mine.length, mid, big,
+  // How far out, from the wide net — the fine one stops well short of the abyss.
+  const ds = wide.filter(q => q.key === key).map(dist).sort((a, b) => a - b);
+  rows.push({ name: mine[0].s.name, n: ds.length, mid, big,
               near: ds[0], far: ds[ds.length - 1] });
 }
 rows.sort((a, b) => a.near - b.near);
@@ -279,8 +293,10 @@ for (const r of rows) {
 }
 console.log("");
 console.log("  TYPICAL/BIGGEST are how far across one patch is.");
-console.log("  NEAREST/FARTHEST are the distance from home of the nearest and");
-console.log("  farthest patch of that kind, measured to " + k(reach) + " out.");
+console.log("  N and NEAREST/FARTHEST count every patch of that kind in a " +
+            k(CELL * WIDE * 2) + " square, so FARTHEST reaches its corners.");
+console.log("  TYPICAL/BIGGEST are measured on the " + sites.length +
+            " patches nearest home.");
 console.log("");
 
 // ── what you actually fly through ─────────────────────────────────────────
@@ -312,12 +328,24 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 /* Home is ordinary space, whatever the lattice rolled underneath it. The first
    two minutes are the same promise in every sector — see `regionOf` — and a
    pilot dropped into the middle of the Wells would be playing a different game
-   from one dropped into the Settled Reach. */
-for (let a = 0; a < 16; a++) {
-  const th = (a / 16) * Math.PI * 2;
-  const r = cf.regionProbe(Math.cos(th) * 40000, Math.sin(th) * 40000);
-  check(r.key === "normal",
-        "home is " + r.name + " at 40k out — it has to be ordinary space");
+   from one dropped into the Settled Reach.
+
+   Checked against **what the opening needs** rather than against whatever
+   `HOME_REACH` currently is, which is the mistake the first version of this made:
+   it probed at 40k because the bubble was 68k at the time, so when the bubble
+   changed the test failed without anything being wrong. The opening lives in the
+   Home and Open bands — the station, the water, the yard, and the first two yard
+   parts — and those end at 25,000. That is the requirement. */
+const OPENING_ENDS = 25000;
+for (let ring = 4000; ring <= OPENING_ENDS; ring += 3000) {
+  for (let a = 0; a < 24; a++) {
+    const th = (a / 24) * Math.PI * 2;
+    const r = cf.regionProbe(Math.cos(th) * ring, Math.sin(th) * ring);
+    check(r.key === "normal",
+          "home is " + r.name + " at " + k(ring) + " out — everything inside " +
+          k(OPENING_ENDS) + " has to be ordinary space, because that is where " +
+          "the opening happens");
+  }
 }
 
 /* Enough different kinds within reach to be worth the system existing, and not
@@ -333,9 +361,11 @@ for (let r = 20000; r <= 320000; r += 10000) {
 check(kinds320.size >= 4,
       "only " + kinds320.size + " kinds of space inside 320k — this world is " +
       "one thing all the way out");
-check(kinds320.size <= 11,
-      kinds320.size + " kinds inside 320k — a world should not be a sampler " +
-      "of the whole set before the abyss");
+/* There used to be a ceiling here — a world should not be a sampler of the whole
+   set before the abyss — and it was a rule about the *old* geography, where a
+   patch was 200k across and a run met six to nine kinds on the way out. At 93k
+   a run meets eleven to thirteen, and that is the point of the change rather
+   than a regression of it. What is worth keeping is the floor. */
 
 /* And a patch has to be a place. The lattice is one site per 200k cell, so a
    typical patch runs about a cell across; anything much under that is a stripe
