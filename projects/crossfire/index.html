@@ -360,6 +360,27 @@
     height: calc(5.8rem * var(--u));
     font-size: calc(0.75rem * var(--u));
   }
+  /* A device button carries its own cooldown: the sweep is the button's
+     background, so "not yet" is the thing you are pressing rather than a number
+     somewhere else on the screen. `--cd` is how much of the wait is left. */
+  #pad .ctl.dev {
+    width: calc(4.3rem * var(--u));
+    height: calc(4.3rem * var(--u));
+    font-size: calc(0.52rem * var(--u));
+    --cd: 0;
+    background:
+      conic-gradient(rgba(10, 10, 10, 0.8) calc(var(--cd) * 360deg),
+                     rgba(160, 140, 255, 0.22) 0);
+    border-color: #a08cff;
+    color: #d8c9ff;
+  }
+  #pad .ctl.dev .g {
+    font-size: calc(1rem * var(--u));
+    opacity: 0.75;
+  }
+  #pad .ctl.dev .dt { letter-spacing: 0.04em; }
+  #pad .ctl.dev.cooling { color: rgba(216, 201, 255, 0.55); }
+
   #padPause {
     width: calc(3rem * var(--u));
     height: calc(3rem * var(--u));
@@ -620,6 +641,19 @@
           hidden><span class="g">▼</span>reverse</button>
   <button id="padFire" class="ctl" type="button" data-hold="f" data-tag="FIRE">
     <span class="g">◉</span>fire</button>
+  <!-- One per slot, and each one appears only when that slot is holding a
+       device that has finished fitting. They are pressed rather than held: a
+       decoy is one act, not a thing you lean on. Laid out beside the gun by
+       default because that is the thumb that is free, and draggable anywhere
+       from the phone-controls screen like everything else on the pad. -->
+  <button id="padDev0" class="ctl dev" type="button" data-dev="0" data-tag="SURVEY SLOT 1"
+          hidden><span class="g">1</span><span class="dt">DEVICE</span></button>
+  <button id="padDev1" class="ctl dev" type="button" data-dev="1" data-tag="SURVEY SLOT 2"
+          hidden><span class="g">2</span><span class="dt">DEVICE</span></button>
+  <button id="padDev2" class="ctl dev" type="button" data-dev="2" data-tag="SURVEY SLOT 3"
+          hidden><span class="g">3</span><span class="dt">DEVICE</span></button>
+  <button id="padDev3" class="ctl dev" type="button" data-dev="3" data-tag="SURVEY SLOT 4"
+          hidden><span class="g">4</span><span class="dt">DEVICE</span></button>
   <button id="padPause" class="ctl" type="button" data-tag="PAUSE"
           aria-label="pause"><span class="g">‖</span></button>
 </div>
@@ -1088,6 +1122,14 @@
       // Above the fire button and inboard of it: a thumb that is already there
       // can reach it, and nothing else wants that spot.
       rev:   { x: 0.70, y: 0.80 },
+      /* The four device buttons, in a block above the gun. Four of them is the
+         most a ship can ever have and most ships have one, so they are stacked
+         in slot order from the one nearest the thumb — and every one of them can
+         be dragged somewhere else, like the rest of the pad. */
+      dev0:  { x: 0.80, y: 0.62 },
+      dev1:  { x: 0.93, y: 0.62 },
+      dev2:  { x: 0.80, y: 0.46 },
+      dev3:  { x: 0.93, y: 0.46 },
       pause: { x: 0.95, y: 0.08 }
     }
   };
@@ -1113,10 +1155,13 @@
   const revEl    = document.getElementById("padRev");
   const fireEl   = document.getElementById("padFire");
   const pauseEl  = document.getElementById("padPause");
+  const devEls   = [0, 1, 2, 3].map(i => document.getElementById("padDev" + i));
 
   const PAD_PARTS = [["stick", stickEl], ["left", leftEl], ["right", rightEl],
                      ["accel", accelEl], ["gas", gasEl], ["rev", revEl],
-                     ["fire", fireEl], ["pause", pauseEl]];
+                     ["fire", fireEl],
+                     ...devEls.map((el, i) => ["dev" + i, el]),
+                     ["pause", pauseEl]];
 
   let arranging = false;      // true only on the thumb-controls screen
   let padDrag = null;
@@ -1173,6 +1218,33 @@
   const revAvailable = () =>
     !!(mode && mode.survey && typeof modFitted === "function" &&
        modFitted("reverser"));
+
+  /* What is in each of the four slots, as the pad sees it: a button per fitted
+     device, named after what is in the slot, dark while it is cooling.
+
+     Called every frame from `padStage` rather than only when something changes,
+     because three of the four things it draws *do* change every frame — the
+     cooldown sweeps, a part finishes fitting, a part is pulled off at a station
+     — and a button that lies about being ready is worse than no button. It is
+     four elements and an early exit; it is not worth a change-detection scheme.
+
+     On the laying-out screen every one of them shows, whatever the ship has
+     fitted: you cannot drag a button that is not there, and where the device
+     buttons live is a decision you make before the trip, not during it. */
+  function padDevices() {
+    const laying = arranging;
+    const fitted = (mode && mode.survey && surv) ? devicesFitted() : [];
+    devEls.forEach((el, i) => {
+      const d = fitted.find(f => f.slot === i);
+      const show = laying || !!d;
+      if (el.hidden === show) el.hidden = !show;
+      const tag = el.querySelector(".dt");
+      if (tag) tag.textContent = d ? d.dev.tag : "SLOT " + (i + 1);
+      const cd = d ? Math.max(0, Math.min(1, d.cd / d.dev.cool)) : 0;
+      el.style.setProperty("--cd", cd.toFixed(3));
+      el.classList.toggle("cooling", cd > 0);
+    });
+  }
 
   function padApply() {
     padEl.style.setProperty("--u", padCfg.size);
@@ -1264,6 +1336,41 @@
 
   // Taken before anything can be rebound, so [R] always has somewhere to go.
   const DEFAULT_KEYS = PLAYERS.map(p => ACTIONS.map(a => p[a.field].slice()));
+
+  /* ── the four slots, as keys ──────────────────────────────────────────────
+     Survey's devices are pressed rather than held, and which one you are
+     pressing is a *slot* rather than a named action: what is in slot two is
+     whatever you bolted there this morning, so the key is named after the slot
+     and the interface says what is in it.
+
+     They are their own row on the controls grid rather than four more columns
+     on everybody's, because they belong to one mode and to one seat. Nothing
+     outside Survey ever reads them.
+
+     Digits by default, in slot order, which is the one arrangement nobody has
+     to be told. */
+  const DEVICE_KEYS = [["Digit1"], ["Digit2"], ["Digit3"], ["Digit4"]];
+  const DEFAULT_DEVICE_KEYS = DEVICE_KEYS.map(k => k.slice());
+  const DEV_KEY_STORE = "crossfire.devkeys.v1";
+
+  /* The grid is the two seats *and* the device row, and every one of the five
+     things that walk it — drawing, hit-testing, binding, clearing, resetting —
+     goes through these rather than reaching into `PLAYERS`. That is the whole
+     trick to adding a row that is not a player: there is one way to ask a cell
+     what keys it holds and one way to tell it. */
+  const GRID_ROWS = () => KEYBOARD_MAX + 1;
+  const isDevRow = pi => pi >= KEYBOARD_MAX;
+  const cellKeys = (pi, ai) =>
+    isDevRow(pi) ? DEVICE_KEYS[ai] : PLAYERS[pi][ACTIONS[ai].field];
+  const setCellKeys = (pi, ai, codes) => {
+    if (isDevRow(pi)) DEVICE_KEYS[ai] = codes;
+    else PLAYERS[pi][ACTIONS[ai].field] = codes;
+  };
+  const cellWho = (pi, ai) =>
+    isDevRow(pi) ? "SLOT " + (ai + 1) + " device"
+                 : PLAYERS[pi].label + " " + ACTIONS[ai].short;
+  const rowLabel = pi => (isDevRow(pi) ? "SLOTS" : PLAYERS[pi].label);
+  const rowColour = pi => (isDevRow(pi) ? "#a08cff" : PLAYERS[pi].colour);
 
   /* ── key names ────────────────────────────────────────────────────────────
      `event.code` is a position on the keyboard, not a letter, which is what a
@@ -1587,6 +1694,9 @@
     for (const p of keyRows()) {
       for (const a of ACTIONS) for (const c of p[a.field]) boundKeys.add(c);
     }
+    // The device keys too, or a slot rebound to "/" opens the browser's find
+    // bar every time you drop a decoy.
+    for (const row of DEVICE_KEYS) for (const c of row) boundKeys.add(c);
   }
 
   function keysChanged() {
@@ -1596,6 +1706,10 @@
     try {
       localStorage.setItem(KEY_STORE,
         JSON.stringify(PLAYERS.map(p => ACTIONS.map(a => p[a.field]))));
+      /* Kept in their own key rather than appended to that array. An older
+         build reads the same store, and a row it does not recognise on the end
+         of the players list is a row it would try to read as a player. */
+      localStorage.setItem(DEV_KEY_STORE, JSON.stringify(DEVICE_KEYS));
     } catch (_) {}
   }
 
@@ -1619,12 +1733,26 @@
           .slice(0, 4);
       });
     });
+    let devRaw = null;
+    try { devRaw = localStorage.getItem(DEV_KEY_STORE); } catch (_) { return; }
+    if (!devRaw) return;
+    let dev;
+    try { dev = JSON.parse(devRaw); } catch (_) { return; }
+    if (!Array.isArray(dev)) return;
+    DEVICE_KEYS.forEach((_, i) => {
+      const codes = dev[i];
+      if (!Array.isArray(codes)) return;
+      DEVICE_KEYS[i] = codes
+        .filter(c => typeof c === "string" && /^[A-Za-z0-9]{1,24}$/.test(c))
+        .slice(0, 4);
+    });
   }
 
   function resetKeys() {
     PLAYERS.forEach((p, i) => {
       ACTIONS.forEach((a, k) => { p[a.field] = DEFAULT_KEYS[i][k].slice(); });
     });
+    DEFAULT_DEVICE_KEYS.forEach((codes, i) => { DEVICE_KEYS[i] = codes.slice(); });
     keysChanged();
   }
 
@@ -1633,13 +1761,19 @@
      would be a bug you'd only find mid-match. */
   function bindTo(pi, ai, code) {
     const taken = [];
-    keyRows().forEach((p, j) => ACTIONS.forEach((a, k) => {
-      if (j === pi && k === ai) return;
-      if (!p[a.field].includes(code)) return;
-      p[a.field] = p[a.field].filter(c => c !== code);
-      taken.push(p.label + " " + a.short);
-    }));
-    PLAYERS[pi][ACTIONS[ai].field] = [code];
+    /* Every row, the device row included. A key that meant "thrust" and now
+       means "slot two" has to stop meaning thrust, or the first decoy you drop
+       also burns the engine. */
+    for (let j = 0; j < GRID_ROWS(); j++) {
+      for (let k = 0; k < ACTIONS.length; k++) {
+        if (j === pi && k === ai) continue;
+        const codes = cellKeys(j, k);
+        if (!codes.includes(code)) continue;
+        setCellKeys(j, k, codes.filter(c => c !== code));
+        taken.push(cellWho(j, k));
+      }
+    }
+    setCellKeys(pi, ai, [code]);
     keysChanged();
     return taken;
   }
@@ -1664,14 +1798,18 @@
   const gridX0 = () =>
     Math.round(SCREEN_W / 2 - (ACTIONS.length - 1) * GRID.colW / 2);
 
+  /* The device row sits a little below the seats, because it is not one of
+     them: the gap is the only thing saying the rule changes there. */
+  const DEV_GAP = 12;
   function cellBox(pi, ai) {
-    const cx = gridX0() + ai * GRID.colW, cy = GRID.y0 + pi * GRID.rowH;
+    const cx = gridX0() + ai * GRID.colW;
+    const cy = GRID.y0 + pi * GRID.rowH + (isDevRow(pi) ? DEV_GAP : 0);
     return { cx, cy, x: cx - GRID.cellW / 2, y: cy - GRID.cellH / 2,
              w: GRID.cellW, h: GRID.cellH };
   }
 
   function cellAt(sx, sy) {
-    for (let pi = 0; pi < KEYBOARD_MAX; pi++) {
+    for (let pi = 0; pi < GRID_ROWS(); pi++) {
       for (let ai = 0; ai < ACTIONS.length; ai++) {
         const b = cellBox(pi, ai);
         if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) {
@@ -1707,7 +1845,7 @@
     }
     const taken = bindTo(binder.p, binder.a, code);
     binder.listening = false;
-    const who = PLAYERS[binder.p].label + " " + ACTIONS[binder.a].short;
+    const who = cellWho(binder.p, binder.a);
     note(taken.length
       ? keyLabel(code) + " is now " + who + ", taken off " + taken.join(" and ")
       : who + " is now " + keyLabel(code));
@@ -1730,16 +1868,16 @@
     if (code === "Backspace" || code === "Delete") {
       // Emptying an action is allowed: two people at one keyboard may want
       // fewer keys in play, not more.
-      PLAYERS[binder.p][ACTIONS[binder.a].field] = [];
+      setCellKeys(binder.p, binder.a, []);
       keysChanged();
-      note(PLAYERS[binder.p].label + " " + ACTIONS[binder.a].short + " has no key now");
+      note(cellWho(binder.p, binder.a) + " has no key now");
       return;
     }
     const move = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1],
                    ArrowRight: [0, 1], KeyW: [-1, 0], KeyS: [1, 0],
                    KeyA: [0, -1], KeyD: [0, 1] }[code];
     if (move) {
-      binder.p = (binder.p + move[0] + KEYBOARD_MAX) % KEYBOARD_MAX;
+      binder.p = (binder.p + move[0] + GRID_ROWS()) % GRID_ROWS();
       binder.a = (binder.a + move[1] + ACTIONS.length) % ACTIONS.length;
     }
   }
@@ -2564,6 +2702,12 @@
       // Survey's three keys, and they come first so the pause handler never
       // sees a press that was meant for the panel.
       if (mode && mode.survey && state === "playing") {
+        /* The four slots, before anything else, because a device is the one
+           thing on this list you press while something is shooting at you.
+           Bound rather than fixed — see `DEVICE_KEYS` — so a player who wants
+           them under their left hand can have them there. */
+        const slot = DEVICE_KEYS.findIndex(codes => codes.indexOf(code) >= 0);
+        if (slot >= 0) { useDevice(slot); return; }
         if (code === "KeyF") { surveyScan(); return; }
         if (code === "KeyM") {
           state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
@@ -3204,6 +3348,17 @@
       bd = d; best = { x, y };
     };
     if (surv) {
+      /* Decoys first, and they cheat. A missile is the easiest thing out here
+         to lie to, so a decoy anywhere in the cone beats anything genuinely
+         nearer: once one has been taken, the radius is closed to nothing and
+         the passes below cannot outbid it. */
+      let fooled = false;
+      for (const dc of surv.decoys) {
+        const before = best;
+        consider(dc.x, dc.y);
+        if (best !== before) fooled = true;
+      }
+      if (fooled) bd = 1;
       for (const d of surv.drones) consider(d.x, d.y);
       for (const t of surv.traffic) consider(t.x, t.y);
     }
@@ -5434,6 +5589,151 @@
     eff: { melt: 1 }
   });
 
+  /* ── devices: the parts you press ─────────────────────────────────────────
+     Phase 6.4, and the rule it was written to answer:
+
+         *A +12% engine eventually becomes boring. A decoy, a grapple, a mine
+         layer, an emergency jump, a cloak, an EMP, a cargo ejector changes what
+         you can do.*
+
+     Seventeen parts and most of them were numbers. A number is bought once and
+     never thought about again; a device is a decision made while something is
+     shooting at you, which is a different kind of thing to own.
+
+     A device is a part like any other — it takes one of the four, it is bought
+     or built or found, it takes time to fit, it can be pulled off and sold —
+     with two things added: a **cooldown**, and a **button**. The cooldown is
+     what makes it a rhythm rather than a switch. The button is per *slot*,
+     because the slot is the thing the player is already pointing at: the parts
+     page says what is in slot two, so slot two is what the key and the thumb
+     button are named after.
+
+     `blocked` is the honest refusal. A device that quietly does nothing when you
+     press it is a device you stop trusting — anything that can refuse says why,
+     in one line, once.
+
+     Cooldowns are deliberately **not** in the book. A cooldown that survived
+     closing the tab would be a rule nobody could see and nobody would guess, and
+     the most it can cost is one free press after a reload. */
+  const DECOY_LIFE = 14;        // seconds a decoy reads as a ship
+  const DECOY_HOLD = 1500;      // and how far its lie carries, in units
+  const MINE_LIFE  = 75;        // how long a mine sits there
+  const MINE_ARM   = 1.6;       // and how long before it will go off at all
+  const MINE_BOOM  = 170;       // its blast radius, in units
+  const MINE_MAX   = 10;        // live mines at once; the oldest fizzles
+
+  const DEVICES = {
+    /* The one that makes a fight escapable without making you stronger. It does
+       not *attract* attention — it steals what is already pointed at you, which
+       is the version that cannot be used to start a fight from a safe distance.
+       Sentries fly at it, an angry ship shoots it, and a seeker turns onto it. */
+    decoy: {
+      key: "decoy", name: "DECOY LAUNCHER", tag: "DECOY", cool: 22,
+      use(me) {
+        const a = me.a + Math.PI + rand(-0.35, 0.35);
+        surv.decoys.push({
+          x: me.x - Math.cos(me.a) * 26 * U,
+          y: me.y - Math.sin(me.a) * 26 * U,
+          vx: me.vx * 0.45 + Math.cos(a) * 120 * U,
+          vy: me.vy * 0.45 + Math.sin(a) * 120 * U,
+          life: DECOY_LIFE, full: DECOY_LIFE, spin: rand(0, 6.28)
+        });
+        burst(me.x, me.y, "#ffe56d", 8, 140 * U);
+        gameSound("start", me.x);
+        chatter("Decoy away \u2014 it is you for the next " + DECOY_LIFE +
+                " seconds.", "#ffe56d");
+      }
+    },
+
+    /* Something behind you that the thing chasing you hits. It is armed on a
+       delay and it does not know whose side it is on: fly back over your own
+       and it takes the hull point it would have taken off anybody else. That is
+       the cost, and it is what stops a mine being a free turret. */
+    mine: {
+      key: "mine", name: "MINE LAYER", tag: "MINE", cool: 5,
+      use(me) {
+        if (surv.mines.length >= MINE_MAX) {
+          const old = surv.mines.shift();
+          burst(old.x, old.y, WRECK, 4, 70 * U);
+        }
+        surv.mines.push({
+          x: me.x - Math.cos(me.a) * 30 * U,
+          y: me.y - Math.sin(me.a) * 30 * U,
+          vx: me.vx * 0.3, vy: me.vy * 0.3,
+          life: MINE_LIFE, arm: MINE_ARM, spin: rand(0, 6.28),
+          /* Whether it has stopped being *yours*. A mine is laid thirty units
+             off your own tail, well inside the radius it goes off in, so one
+             dropped while you were drifting would arm underneath you and take a
+             hull point for nothing — a gotcha rather than a cost. It ignores
+             you until you have been outside its radius once. After that it does
+             not care whose it is, which is the cost, and it is a cost you can
+             see coming, because the ring is drawn. */
+          clear: false
+        });
+        gameSound("shot", me.x);
+      }
+    },
+
+    /* The hold, over the side. It is the answer to HOLD FULL two hundred
+       thousand units from a shop, and it is the answer to a pirate: they came
+       for the cargo, and cargo in space is cargo they do not have to shoot you
+       for. See `baitPirates`. */
+    eject: {
+      key: "eject", name: "CARGO EJECTOR", tag: "EJECT", cool: 4,
+      blocked: () => holdUsed() ? "" : "The hold is already empty.",
+      use(me) {
+        const n = ejectHold(me);
+        addShake(3);
+        gameSound("rock", me.x);
+        chatter(n + " units over the side.", CASH);
+        baitPirates(me.x, me.y);
+      }
+    },
+
+    /* The panic button, and it is deliberately not a good one. It throws you
+       somewhere down the way you were pointing and leaves you there: no speed,
+       no scan, and a sector you have not charted. It is the difference between
+       dying here and being lost somewhere else, which is exactly what an
+       emergency jump should be worth. */
+    jump: {
+      key: "jump", name: "EMERGENCY JUMP", tag: "JUMP", cool: 150,
+      use(me) { emergencyJump(me); }
+    }
+  };
+
+  const deviceSpec = key => DEVICES[key] || null;
+
+  /* The four of them, as parts. They are their own category because a verb is a
+     different kind of thing to own from a percentage, and the parts page should
+     say so before you have read a word of the description. */
+  MODULES.push(
+    { key: "ejector", name: "CARGO EJECTOR", cat: "device", rarity: "common",
+      cost: 320, deep: 0, get: ["buy", "craft"],
+      note: "a hopper that opens on the hold. Everything you are carrying goes " +
+            "out of the back at once \u2014 the answer to a full hold a long way " +
+            "from a shop, and to somebody who only ever wanted the cargo",
+      eff: { device: "eject" } },
+    { key: "decoylauncher", name: "DECOY LAUNCHER", cat: "device",
+      rarity: "uncommon", cost: 880, deep: 0.18, get: ["buy", "craft"],
+      note: "a shell that burns like a hull and lies about being one. It does " +
+            "not draw attention \u2014 it takes what is already on you: sentries " +
+            "fly at it, an angry ship shoots at it, and a missile turns onto it",
+      eff: { device: "decoy" } },
+    { key: "minelayer", name: "MINE LAYER", cat: "device", rarity: "uncommon",
+      cost: 1020, deep: 0.24, get: ["buy", "craft"],
+      note: "drops something behind you that goes off when anything comes near " +
+            "it. It arms a second and a half after it leaves the rack, and " +
+            "once you have flown clear of it, it stops knowing whose side " +
+            "it is on",
+      eff: { device: "mine" } },
+    { key: "jumpcore", name: "EMERGENCY JUMP", cat: "device", rarity: "rare",
+      cost: 2800, deep: 0.46, get: ["buy"],
+      note: "one hard throw down the way you are pointing, tens of thousands " +
+            "of units, and nothing about where you land is chosen. You arrive " +
+            "stopped, blind and somewhere else \u2014 which beats not arriving",
+      eff: { device: "jump" } }
+  );
+
   const moduleSpec = key => MODULES.find(m => m.key === key) || null;
 
   /* How you get a given part, asked of the part itself rather than of three
@@ -5560,6 +5860,13 @@
        to a long haul is something you build, not something you buy. */
     { out: "icemelter",  need: { iron: 6, alloy: 6, electronics: 4 } },
 
+    /* Three of the four devices. The emergency jump is not here, and that is
+       the rule from the bottom of this list rather than an oversight: it is the
+       best thing in its category, so it is bought and never built. */
+    { out: "ejector",    need: { iron: 7, alloy: 4 } },
+    { out: "decoylauncher", need: { iron: 5, alloy: 6, electronics: 5 } },
+    { out: "minelayer",  need: { iron: 8, alloy: 7, electronics: 4 } },
+
     // ── the middle: a core, so it is a trip rather than an afternoon ───────
     { out: "seekerrack", need: { alloy: 9, electronics: 7, core: 1 } },
     /* Panels. Built rather than only bought, because the thing they do — a star
@@ -5610,6 +5917,9 @@
     { key: "armour",   name: "ARMOUR" },
     { key: "tractor",  name: "TRACTOR" },
     { key: "weapon",   name: "WEAPON" },
+    /* Not "the ones you press" \u2014 a category name is read in a grid of eight
+       boxes and has to be a noun. See `DEVICES`. */
+    { key: "device",   name: "DEVICE" },
     { key: "odd",      name: "ODD" }
   ];
 
@@ -5628,7 +5938,15 @@
       if (!sl || sl.fit > 0) continue;
       const m = moduleSpec(sl.key);
       if (!m) continue;
-      for (const k of Object.keys(m.eff)) out[k] = (out[k] || 0) + m.eff[k];
+      /* Numbers only. Two effects name a thing rather than add to one \u2014
+         `weapon` and `device` \u2014 and adding a string to zero gives you
+         "0scatter", which is a value nothing can use and every reader has to
+         work out. What is fitted is asked of the slots directly, by
+         `weaponsFitted` and `devicesFitted`. */
+      for (const k of Object.keys(m.eff)) {
+        if (typeof m.eff[k] !== "number") continue;
+        out[k] = (out[k] || 0) + m.eff[k];
+      }
     }
     return out;
   }
@@ -8039,6 +8357,13 @@
       vault: null,             // the other thing with an inside; see `buildVault`
       shots: [],                 // what the sentries fire; see `surveyShots`
       motes: [],                 // loose salvage, drifting
+      /* What the devices leave behind them. Both are things in the world rather
+         than states of the ship \u2014 a decoy is somewhere, a mine is somewhere,
+         and everything else out here has to be able to run into them. Neither is
+         in the book: they are seconds long, and a mine that was still sitting
+         there a week later is a trap you set and forgot. */
+      decoys: [],
+      mines: [],
       landmarks: [], landmarkAt: new Map(),
       partSites: [], partAt: new Map(), parts: [], fields: [],
       carrying: new Set(carried ? book.carrying : []),
@@ -8658,7 +8983,22 @@
          only one of the answers — most of the time a ship out here is busy with
          somebody else, and the interesting frames are the ones where two of these
          wants are pointed at the same place. */
-      const goal = (t.angry && me.alive) ? { x: me.x, y: me.y }
+      /* Cargo somebody dumped, which outranks everything a pirate wants
+         including you. It runs on a clock: forty seconds of going for it, and
+         then it has either got there or decided it was a trick. */
+      if (t.baitFor > 0) {
+        t.baitFor -= dt;
+        if (t.baitFor <= 0) { t.bait = null; t.baitFor = 0; }
+      }
+      const bait = t.bait && t.baitFor > 0 ? t.bait : null;
+      if (bait && Math.hypot(bait.x - t.x, bait.y - t.y) < 300) takeJetsam(t);
+      /* And a decoy, which is a lie about where you are. Only to something that
+         is already angry with you: a decoy does not make anybody angry, it makes
+         somebody who already is point the wrong way. */
+      const fake = t.angry && me.alive ? decoyFor(t.x, t.y) : null;
+      const goal = bait ? bait
+                 : (t.angry && fake) ? { x: fake.x, y: fake.y }
+                 : (t.angry && me.alive) ? { x: me.x, y: me.y }
                  : fleeing ? { x: t.x + (t.x - me.x), y: t.y + (t.y - me.y) }
                  : tailing ? { x: me.x - Math.cos(t.a) * 700 * U,
                                y: me.y - Math.sin(t.a) * 700 * U }
@@ -8792,7 +9132,14 @@
             Math.sin(o.a) * o.speed * U + (o.dvy || 0));
 
           let tx = null, ty = null, live = false;
-          if (t.angry && me.alive) {
+          /* The decoy first, and `live` stays false for it: a round aimed at a
+             decoy is aimed somewhere you are not, so it must not be flagged as
+             fire meant for the player. */
+          if (t.angry && fake && Math.hypot(fake.x - t.x, fake.y - t.y) < 1800 * U) {
+            const p = leadOf(fake, fake.vx, fake.vy);
+            tx = p.x; ty = p.y;
+          }
+          if (tx == null && t.angry && me.alive) {
             const dd = Math.hypot(me.x - t.x, me.y - t.y);
             if (dd < 1800 * U) {
               const p = leadOf(me, me.vx, me.vy);
@@ -9501,7 +9848,8 @@
     hole:   "swallowed by a black hole",
     star:   "burned up in a star",
     thirst: "died of thirst",
-    hunger: "starved"
+    hunger: "starved",
+    mine:   "flew back over your own mine"
   };
 
   function surveyDie(cause) {
@@ -10110,6 +10458,290 @@
     return !!mods().quiet && !me.thrusting && surv.quiet > 1.2;
   }
 
+  /* ── the devices, driven ──────────────────────────────────────────────────
+     One entry point for all four: the keyboard, the thumb button and anything
+     else that ever wants to press one go through `useDevice`, so there is one
+     answer to "can I" and one place the cooldown is set. See `DEVICES`. */
+
+  // What is fitted, finished fitting, and a device — in slot order, because the
+  // slot is what the player presses.
+  function devicesFitted() {
+    if (!surv || !surv.slots) return [];
+    const out = [];
+    surv.slots.forEach((sl, i) => {
+      if (!sl || sl.fit > 0) return;
+      const m = moduleSpec(sl.key);
+      const dev = m && m.eff && m.eff.device ? deviceSpec(m.eff.device) : null;
+      if (dev) out.push({ slot: i, key: m.key, dev, cd: sl.cd || 0 });
+    });
+    return out;
+  }
+
+  function useDevice(i) {
+    if (!mode || !mode.survey || !surv || state !== "playing") return false;
+    const me = ships[0];
+    if (!me || !me.alive) return false;
+    const sl = surv.slots[i];
+    if (!sl) return false;
+    /* Three refusals, and only one of them is silent. Nothing in the slot and
+       nothing happens, because there is no button on screen to have pressed. A
+       part still going on says so, because the forty-five seconds is the cost of
+       having fitted it out here and you are entitled to be told you are paying
+       it. A cooldown says nothing: you can see it running down. */
+    const m = moduleSpec(sl.key);
+    const dev = m && m.eff && m.eff.device ? deviceSpec(m.eff.device) : null;
+    if (!dev) return false;
+    if (sl.fit > 0) {
+      chatter(m.name + " \u2014 still fitting, " + Math.ceil(sl.fit) +
+              " seconds.", "#ffcb42");
+      return false;
+    }
+    if ((sl.cd || 0) > 0) return false;
+    const why = dev.blocked ? dev.blocked(me) : "";
+    if (why) { chatter(why, "#ffcb42"); return false; }
+    dev.use(me);
+    sl.cd = dev.cool;
+    return true;
+  }
+
+  /* The hold, over the side. Behind the ship and spread across its wake rather
+     than dropped on the spot, so what you dumped is a trail you can come back
+     along \u2014 and so the tractor beam does not simply inhale it again before
+     you have finished turning. */
+  function ejectHold(me) {
+    let n = 0;
+    const back = me.a + Math.PI;
+    for (const mat of MATERIALS) {
+      let have = surv.hold[mat.key] || 0;
+      while (have > 0) {
+        const a = back + rand(-0.6, 0.6);
+        const sp = rand(60, 190) * U;
+        surv.motes.push({
+          x: me.x + Math.cos(a) * rand(20, 90) * U,
+          y: me.y + Math.sin(a) * rand(20, 90) * U,
+          vx: me.vx * 0.5 + Math.cos(a) * sp,
+          vy: me.vy * 0.5 + Math.sin(a) * sp,
+          spin: rand(0, 6.28), life: 240, mat: mat.key,
+          /* Jettisoned, and it matters to exactly one other system: a pirate
+             wants cargo, and cargo lying in space is cargo nobody has to be shot
+             for. See `baitPirates`. */
+          jetsam: true
+        });
+        have--; n++;
+      }
+      surv.hold[mat.key] = 0;
+    }
+    burst(me.x, me.y, CASH, 12, 200 * U);
+    return n;
+  }
+
+  /* What the ejector is actually for. A pirate is not angry with you \u2014 it
+     wants what you are carrying, which is a want that can be satisfied without
+     either of you dying. Anything hunting you inside this radius breaks off and
+     goes for the cargo instead; a hunter does not, because a hunter came for
+     you and cargo is not what it was sent for. */
+  const BAIT_REACH = 3200;
+  function baitPirates(x, y) {
+    let took = 0;
+    for (const t of surv.traffic) {
+      if (!t.angry) continue;
+      if ((t.role || t.kind) === "hunter") continue;
+      const role = ROLES[t.role || t.kind];
+      if (!role || role.want !== "rob") continue;
+      if (Math.hypot(t.x - x, t.y - y) > BAIT_REACH * U) continue;
+      t.angry = false;
+      t.angryAt = null;
+      t.bait = { x, y };
+      t.baitFor = 40;
+      took++;
+    }
+    if (took) {
+      chatter(took === 1 ? "They have turned off you and gone for the cargo."
+                         : took + " of them have turned off you and gone for " +
+                           "the cargo.", CASH);
+    }
+  }
+
+  // And what they do when they get there: they take it, which is the whole of
+  // the transaction. Fourteen units is a hold's worth to a small ship.
+  function takeJetsam(t) {
+    let got = 0;
+    for (let i = surv.motes.length - 1; i >= 0 && got < 14; i--) {
+      const m = surv.motes[i];
+      if (Math.hypot(m.x - t.x, m.y - t.y) > 420 * U) continue;
+      burst(m.x, m.y, matSpec(m.mat).colour, 3, 90 * U);
+      surv.motes.splice(i, 1);
+      got++;
+    }
+    t.bait = null;
+    t.baitFor = 0;
+    if (got) chatter("They have what they came for.", CASH, t);
+  }
+
+  /* One hard throw down the way you are pointing. Nothing about where you land
+     is chosen, and that is the part that makes it an emergency rather than a
+     shortcut: it gets you out of here at the price of not knowing where here
+     becomes.
+
+     Two things have to be true on arrival and neither is free. The chunks under
+     the destination do not exist until you are there, so what is in them cannot
+     be checked beforehand \u2014 the sector is streamed in first and the ship is
+     pushed clear of anything it landed inside afterwards. */
+  function emergencyJump(me) {
+    const a = me.a + rand(-0.5, 0.5);
+    const d = rand(14000, 34000);
+    burst(me.x, me.y, ICE_C, 30, 340 * U);
+    addShake(8);
+    gameSound("lose", me.x);
+    me.x += Math.cos(a) * d;
+    me.y += Math.sin(a) * d;
+    // You arrive stopped. A jump that kept your speed would be a way of going
+    // fast, and this is a way of not being there any more.
+    me.vx = 0; me.vy = 0;
+    me.invuln = Math.max(me.invuln, 2.2);
+    surv.warpCool = Math.max(surv.warpCool, 2.5);
+    cam.x = me.x; cam.y = me.y;
+    streamChunks(true);
+    streamRocks();
+    /* Out of whatever was waiting there. Pushed clear of a well's whole reach
+       rather than of the radius that kills, because arriving stopped inside the
+       outer half of a supermassive is arriving dead a few seconds later. */
+    for (let k = 0; k < 6; k++) {
+      const h = hazardAt(me.x, me.y, 700 * U);
+      if (!h) break;
+      const dx = me.x - h.x, dy = me.y - h.y;
+      const dd = Math.hypot(dx, dy) || 1;
+      me.x = h.x + (dx / dd) * (h.reach + 500 * U);
+      me.y = h.y + (dy / dd) * (h.reach + 500 * U);
+      cam.x = me.x; cam.y = me.y;
+      streamChunks(true);
+      streamRocks();
+    }
+    solidBounce(me, shipRadius());
+    // Blind on arrival. The scanner is the mode's one verb and taking it away
+    // for a minute is what makes the landing somewhere rather than nowhere.
+    surv.scan.charge = 0;
+    burst(me.x, me.y, ICE_C, 30, 340 * U);
+    chatter("Emergency jump \u2014 a long way from where you were, and the " +
+            "scanner is cold.", ICE_C);
+  }
+
+  // The nearest decoy to a point, if one is close enough to be believed.
+  function decoyFor(x, y, reach) {
+    if (!surv || !surv.decoys.length) return null;
+    let best = null, bd = (reach || DECOY_HOLD) * U;
+    for (const dc of surv.decoys) {
+      const d = Math.hypot(dc.x - x, dc.y - y);
+      if (d < bd) { bd = d; best = dc; }
+    }
+    return best;
+  }
+
+  /* A mine going off. It does not ask whose it is \u2014 everything inside the
+     radius takes it, including the ship that laid it, which is the cost that
+     stops a mine being a free turret you tow around behind you. */
+  function mineOff(i) {
+    const mn = surv.mines[i];
+    if (!mn) return;
+    surv.mines.splice(i, 1);
+    burst(mn.x, mn.y, "#ffcb42", 26, MINE_BOOM * U * 1.3);
+    addShake(5);
+    gameSound("boom", mn.x);
+    const R = MINE_BOOM * U;
+    for (let j = surv.drones.length - 1; j >= 0; j--) {
+      const d = surv.drones[j];
+      if (Math.hypot(d.x - mn.x, d.y - mn.y) > R) continue;
+      d.hp -= 3; d.hit = 0.12;
+      if (d.hp <= 0) killDrone(j);
+    }
+    for (let j = surv.traffic.length - 1; j >= 0; j--) {
+      const t = surv.traffic[j];
+      if (Math.hypot(t.x - mn.x, t.y - mn.y) > R) continue;
+      t.hp -= 3; t.hit = 0.12;
+      /* Yours. A mine is something you left there on purpose, so what it kills
+         is killed by you \u2014 reputation, grudges and all. */
+      if (t.hp <= 0) killTraffic(j, true);
+    }
+    /* And rock. Gathered before any of it is hit, for the same reason the burst
+       charge gathers first: breaking one removes it and pushes its pieces, and
+       the pieces of a rock this mine just broke are not also inside the blast. */
+    const caught = [];
+    for (const r of rocks) {
+      const d = Math.sqrt(gap2(mn.x, mn.y, r.x, r.y));
+      if (d <= R + r.r) caught.push(r);
+    }
+    for (const r of caught) {
+      if (!rocks.includes(r)) continue;
+      hitRock(r, { x: mn.x, y: mn.y, vx: 0, vy: 0, dmg: 2, colour: "#ffcb42" });
+    }
+    const me = ships[0];
+    if (mn.clear && me.alive && me.invuln <= 0 &&
+        Math.hypot(me.x - mn.x, me.y - mn.y) < R) {
+      damageShip(me, "mine", null);
+    }
+  }
+
+  function surveyDevices(dt) {
+    const me = ships[0];
+
+    // Every cooldown, whatever is in the slot. A slot that stops being a device
+    // takes its cooldown with it, so this is harmless on the others.
+    for (const sl of surv.slots) {
+      if (sl && sl.cd > 0) sl.cd = Math.max(0, sl.cd - dt);
+    }
+
+    /* Decoys. They drift, they burn for fourteen seconds, and gravity has them
+       like it has everything else \u2014 a decoy dropped over a well goes down
+       the well, which is a place not to drop one. */
+    for (let i = surv.decoys.length - 1; i >= 0; i--) {
+      const dc = surv.decoys[i];
+      dc.life -= dt;
+      dc.spin += dt * 5;
+      applyGravity(dc, dt);
+      dc.x += dc.vx * dt; dc.y += dc.vy * dt;
+      dc.vx *= Math.exp(-0.5 * dt); dc.vy *= Math.exp(-0.5 * dt);
+      if (dc.life <= 0 || hazardAt(dc.x, dc.y, 0)) {
+        burst(dc.x, dc.y, "#ffe56d", 6, 110 * U);
+        surv.decoys.splice(i, 1);
+      }
+    }
+
+    /* Mines. Armed on a delay, and then anything inside the blast sets one off:
+       a sentry, a passing hauler, or you. */
+    for (let i = surv.mines.length - 1; i >= 0; i--) {
+      const mn = surv.mines[i];
+      mn.life -= dt;
+      mn.arm = Math.max(0, mn.arm - dt);
+      mn.spin += dt * 2;
+      applyGravity(mn, dt);
+      mn.x += mn.vx * dt; mn.y += mn.vy * dt;
+      mn.vx *= Math.exp(-0.8 * dt); mn.vy *= Math.exp(-0.8 * dt);
+      if (mn.life <= 0 || hazardAt(mn.x, mn.y, 0)) {
+        burst(mn.x, mn.y, WRECK, 4, 80 * U);
+        surv.mines.splice(i, 1);
+        continue;
+      }
+      const trip = MINE_BOOM * 0.62 * U;
+      // Out of its own radius once, and it stops being yours. See `clear`.
+      if (!me.alive || Math.hypot(me.x - mn.x, me.y - mn.y) > trip * 1.15) {
+        mn.clear = true;
+      }
+      if (mn.arm > 0) continue;
+      let set = false;
+      for (const d of surv.drones) {
+        if (Math.hypot(d.x - mn.x, d.y - mn.y) < trip) { set = true; break; }
+      }
+      if (!set) {
+        for (const t of surv.traffic) {
+          if (Math.hypot(t.x - mn.x, t.y - mn.y) < trip) { set = true; break; }
+        }
+      }
+      if (!set && mn.clear && me.alive && me.invuln <= 0 &&
+          Math.hypot(me.x - mn.x, me.y - mn.y) < trip) set = true;
+      if (set) mineOff(i);
+    }
+  }
+
   function surveyDrones(dt) {
     const me = ships[0];
     const hidden = !me.alive || cloaked(me);
@@ -10145,8 +10777,15 @@
       // Toward the player when awake, back to the post when not — or onto the
       // thing it is taking apart, which outranks both.
       const onPrey = d.prey && surv.traffic.includes(d.prey);
-      const gx = onPrey ? d.prey.x : d.awake ? me.x : d.post.x;
-      const gy = onPrey ? d.prey.y : d.awake ? me.y : d.post.y;
+      /* Or onto a decoy, which outranks *you* and nothing else. A sentry already
+         taking a freighter apart is busy with something real and is not fooled;
+         one that is awake and coming for you is holding a picture of a hull, and
+         the decoy is a better one. It cannot wake anything: `d.awake` is the
+         test, so a decoy dropped over a sleeping post is a flare in an empty
+         room. */
+      const lure = !onPrey && d.awake ? decoyFor(d.x, d.y) : null;
+      const gx = onPrey ? d.prey.x : lure ? lure.x : d.awake ? me.x : d.post.x;
+      const gy = onPrey ? d.prey.y : lure ? lure.y : d.awake ? me.y : d.post.y;
       const gd = Math.hypot(gx - d.x, gy - d.y) || 1;
       const want = d.awake ? 520 * U : 0;      // stand off rather than ram
       if (gd > want) {
@@ -10178,21 +10817,23 @@
          watch it happen from a long way off and decide whether to turn. */
       const prey = d.prey && surv.traffic.includes(d.prey) ? d.prey : null;
       if (prey) { d.prey = prey; } else if (d.prey) { d.prey = null; }
-      const at = prey || me;
+      const at = prey || lure || me;
       d.a = Math.atan2(at.y - d.y, at.x - d.x);
 
       d.cool -= dt;
-      const toTarget = prey ? Math.hypot(prey.x - d.x, prey.y - d.y) : toMe;
-      if ((prey || (d.awake && me.alive)) && d.cool <= 0 && toTarget < 1000 * U) {
+      const toTarget = prey || lure
+        ? Math.hypot(at.x - d.x, at.y - d.y) : toMe;
+      if ((prey || lure || (d.awake && me.alive)) && d.cool <= 0 &&
+          toTarget < 1000 * U) {
         d.cool = rand(1.1, 1.9);
         const sp = 420 * U;
         surv.shots.push({ x: d.x + Math.cos(d.a) * 20 * U,
                           y: d.y + Math.sin(d.a) * 20 * U,
                           vx: Math.cos(d.a) * sp, vy: Math.sin(d.a) * sp,
                           life: 2.4,
-                          // Aimed at a freighter, not at you: it must not clip
-                          // the player on its way past.
-                          atPrey: !!prey });
+                          // Aimed at a freighter or at a decoy, not at you: it
+                          // must not clip the player on its way past.
+                          atPrey: !!(prey || lure) });
         gameSound("shot", d.x);
       }
 
@@ -10292,6 +10933,23 @@
         }
         continue;
       }
+      /* A decoy eats what is fired at it. It is a hull as far as everything
+         out here is concerned, and a round passing through the thing it was
+         aimed at would be the same "not quite real" complaint the rest of the
+         sector has already had answered. Each hit costs it two of its fourteen
+         seconds, so a decoy in a crossfire does not last its full life \u2014
+         which is the right way round. */
+      let ate = false;
+      for (let k = surv.decoys.length - 1; k >= 0; k--) {
+        const dc = surv.decoys[k];
+        if (dist2(b.x, b.y, dc.x, dc.y) > (20 * U) ** 2) continue;
+        surv.shots.splice(i, 1);
+        dc.life -= 2;
+        burst(b.x, b.y, "#ffe56d", 4, 110 * U);
+        ate = true;
+        break;
+      }
+      if (ate) continue;
       if (b.atPrey) continue;      // meant for the freighter, not for you
       if (me.alive && me.invuln <= 0 && dist2(b.x, b.y, me.x, me.y) < R * R) {
         surv.shots.splice(i, 1);
@@ -12697,6 +13355,9 @@
     // hit them, then let what is left shoot at it.
     surveySolids(dt);
     surveyGates();
+    // Before the sentries and the traffic, because a decoy dropped this frame
+    // is a thing they are allowed to be fooled by this frame.
+    surveyDevices(dt);
     surveyDrones(dt);
     surveyShots(dt);
     surveyBullets();
@@ -13265,6 +13926,69 @@
     }
   }
 
+  /* ── what the devices leave in the world ──────────────────────────────────
+     Both have to be legible from further away than they are dangerous, which is
+     the only rule that matters here. A mine you cannot see until you are inside
+     its radius is not a hazard, it is a dice roll; a decoy you cannot tell from
+     your own ship is a decoy you cannot use on purpose.
+
+     So a mine is a dark thing with a pip that beats faster the moment it arms,
+     and a decoy is drawn as the lie it is: a ship-sized flare, burning, with a
+     ring that shrinks as its fourteen seconds run out. */
+  function drawDevices() {
+    for (const mn of surv.mines) {
+      if (!onScreen(mn.x, mn.y, 60)) continue;
+      const live = mn.arm <= 0;
+      const beat = 0.35 + 0.65 * Math.abs(Math.sin(clock * (live ? 5 : 1.6)));
+      glow(live ? "#ffcb42" : WRECK, 1.6, live ? 0.9 : 0.5, () => {
+        ctx.beginPath();
+        for (let k = 0; k < 6; k++) {
+          const a = mn.spin + k * Math.PI / 3;
+          const r = 9 * U;
+          if (k) ctx.lineTo(mn.x + Math.cos(a) * r, mn.y + Math.sin(a) * r);
+          else ctx.moveTo(mn.x + Math.cos(a) * r, mn.y + Math.sin(a) * r);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      });
+      glow(live ? "#ff8f77" : WRECK, 1.2, beat * (live ? 0.8 : 0.3), () => {
+        ctx.beginPath();
+        ctx.arc(mn.x, mn.y, 3.2 * U, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      /* The radius, faint — and drawn while it is still arming too, because the
+         second and a half before it arms is exactly when you need to know how
+         far away to be. Brighter once it is live and yours to worry about. */
+      glow("#ffcb42", 1, live && mn.clear ? 0.18 : 0.09, () => {
+        ctx.beginPath();
+        ctx.arc(mn.x, mn.y, MINE_BOOM * 0.62 * U, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+    }
+    for (const dc of surv.decoys) {
+      if (!onScreen(dc.x, dc.y, 90)) continue;
+      const left = Math.max(0, dc.life / (dc.full || DECOY_LIFE));
+      const flick = 0.6 + 0.4 * Math.sin(clock * 22 + dc.spin);
+      glow("#ffe56d", 2.2, Math.min(1, left * 1.4) * flick, () => {
+        ctx.beginPath();
+        ctx.arc(dc.x, dc.y, 13 * U, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        for (let k = 0; k < 4; k++) {
+          const a = dc.spin + k * Math.PI / 2;
+          ctx.moveTo(dc.x + Math.cos(a) * 16 * U, dc.y + Math.sin(a) * 16 * U);
+          ctx.lineTo(dc.x + Math.cos(a) * 26 * U, dc.y + Math.sin(a) * 26 * U);
+        }
+        ctx.stroke();
+      });
+      glow("#ffe56d", 1, 0.3 * left, () => {
+        ctx.beginPath();
+        ctx.arc(dc.x, dc.y, 13 * U + 34 * U * left, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+    }
+  }
+
   /* A scan's returns, on the world. Each one is a ring with a word on it, so
      what came back is legible without opening anything — the point of the
      rewrite was that a scan should show you something. */
@@ -13499,6 +14223,7 @@
     drawYard();
     for (const pt of surv.parts) drawPart(pt);
     for (const p of pickups) if (onScreen(p.x, p.y, 30)) drawPickup(p);
+    drawDevices();
     drawCash();
     drawWarning();
     drawEchoes();
@@ -13821,6 +14546,18 @@
         owned: storeCount(m.key),
         fitted: surv.slots.some(sl => sl && sl.key === m.key)
       })),
+      /* The devices fitted, in slot order: what they are, which key or thumb
+         button answers to them, and how much of the wait is left. The panel
+         draws one chip each — see `drawDevices` — and the chip is the only place
+         a cooldown is ever stated, because it is the only place it is ever
+         acted on. */
+      devices: devicesFitted().map(d => ({
+        slot: d.slot, key: d.key, name: d.dev.name, tag: d.dev.tag,
+        cd: d.cd, cool: d.dev.cool, ready: d.cd <= 0,
+        hint: DEVICE_KEYS[d.slot] && DEVICE_KEYS[d.slot].length
+          ? keyLabel(DEVICE_KEYS[d.slot][0]) : ""
+      })),
+      onDevice: i => useDevice(i),
       /* The four slots, what is in them, and how long until it works. Every
          ship has four; that never varies and the page should never suggest it
          might. */
@@ -17238,13 +17975,24 @@
 
     ACTIONS.forEach((a, ai) => {
       text(a.name, cellBox(0, ai).cx, 246, 16, "#ffcb42", "center", 0.9);
+      // And what the same column means on the bottom row.
+      text("SLOT " + (ai + 1), cellBox(KEYBOARD_MAX, ai).cx,
+           cellBox(KEYBOARD_MAX, 0).y - 8, 13, "#a08cff", "center", 0.75);
     });
 
     const now = performance.now();
 
-    keyRows().forEach((p, pi) => {
+    for (let pi = 0; pi < GRID_ROWS(); pi++) {
       const home = cellBox(pi, 0);
-      text(p.label, home.x - 18, home.cy + 6, 17, p.colour, "right");
+      const colour = rowColour(pi);
+      text(rowLabel(pi), home.x - 18, home.cy + 6, 17, colour, "right");
+      /* The device row is a different kind of row and says so once, under its
+         own label: the columns above it are TURN LEFT and FIRE, and these four
+         are slots whose meaning is whatever you bolted into them. */
+      if (isDevRow(pi)) {
+        text("survey devices", home.x - 18, home.cy + 22, 12, colour,
+             "right", 0.7);
+      }
 
       ACTIONS.forEach((a, ai) => {
         const b = cellBox(pi, ai);
@@ -17254,25 +18002,25 @@
           (binder.hover && binder.hover.p === pi && binder.hover.a === ai);
 
         if (hot) {
-          ctx.fillStyle = p.colour;
+          ctx.fillStyle = colour;
           ctx.globalAlpha = live ? 0.24 : 0.12;
           ctx.fillRect(b.x, b.y, b.w, b.h);
         }
-        ctx.strokeStyle = hot ? p.colour : "#ffcb42";
+        ctx.strokeStyle = hot ? colour : "#ffcb42";
         ctx.globalAlpha = live ? 1 : hot ? 0.9 : 0.35;
         ctx.lineWidth = picked ? 2 : 1;
         ctx.strokeRect(b.x, b.y, b.w, b.h);
         ctx.globalAlpha = 1;
         ctx.lineWidth = 1;
 
-        const codes = p[a.field];
+        const codes = cellKeys(pi, ai);
         if (live) {
           // Blinking, because at this moment the game is waiting on you and
           // nothing else on the screen is.
           const on = Math.floor(now / 400) % 2 === 0;
-          text("PRESS A KEY", b.cx, b.cy + 5, 13, p.colour, "center", on ? 1 : 0.3);
+          text("PRESS A KEY", b.cx, b.cy + 5, 13, colour, "center", on ? 1 : 0.3);
         } else {
-          text(keysOf(p, a.field)[0], b.cx, b.cy + 6, 16,
+          text(codes.length ? keyLabel(codes[0]) : "\u2014", b.cx, b.cy + 6, 16,
                codes.length ? "#ffe56d" : "#ff8f77");
           // Spares for the same action are a count here and a list below, or
           // four fire keys would need four cells.
@@ -17282,11 +18030,13 @@
           }
         }
       });
-    });
+    }
 
-    const sayY = 392;
+    // Under the device row rather than under the seats, which is what moved it
+    // — and everything below it moved with it.
+    const sayY = 440;
 
-    const sel = PLAYERS[binder.p][ACTIONS[binder.a].field];
+    const sel = cellKeys(binder.p, binder.a);
     const fresh = binder.note && now < binder.noteUntil;
     // A refused key has to say so while it is still listening, or pressing
     // ESC looks like the only thing that ever happens.
@@ -17304,28 +18054,28 @@
       text("Select a box to change it.", SCREEN_W / 2, sayY, 14, "#ffcb42");
     }
 
-    tapButton("RESET ALL KEYS", COLS(2, 0), 458, 280, 44, "#ffe56d", () => {
+    tapButton("RESET ALL KEYS", COLS(2, 0), 470, 280, 44, "#ffe56d", () => {
       resetKeys(); note("Keys reset.");
     });
-    tapButton("CLEAR SELECTED KEY", COLS(2, 1), 458, 280, 44, "#ffcb42", () => {
-      PLAYERS[binder.p][ACTIONS[binder.a].field] = [];
+    tapButton("CLEAR SELECTED KEY", COLS(2, 1), 470, 280, 44, "#ffcb42", () => {
+      setCellKeys(binder.p, binder.a, []);
       keysChanged();
       note("Selected key cleared.");
     });
     tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
-              COLS(2, 0), 530, 280, 42, soundEnabled ? "#ffe56d" : "#ffcb42",
+              COLS(2, 0), 542, 280, 42, soundEnabled ? "#ffe56d" : "#ffcb42",
               toggleSound, soundEnabled);
-    tapButton(fullscreenLabel(), COLS(2, 1), 530, 280, 42, "#ffe56d",
+    tapButton(fullscreenLabel(), COLS(2, 1), 542, 280, 42, "#ffe56d",
               toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
-    tapButton("PHONE CONTROLS", COLS(2, 0), 584, 340, 44, "#ffe56d", () => {
+    tapButton("PHONE CONTROLS", COLS(2, 0), 596, 340, 44, "#ffe56d", () => {
       binder.listening = false;
       state = "thumb";
     });
     // The way back to the site. Armed before it fires: one stray click should
     // not close the game.
-    tapButton(exitLabel(), COLS(2, 1), 584, 300, 44,
+    tapButton(exitLabel(), COLS(2, 1), 596, 300, 44,
               exitArmed() ? "#ff8f77" : "#ffcb42", exitToSite, exitArmed());
-    tapButton("BACK", SCREEN_W / 2, 642, 320, 44, "#ffcb42", () => {
+    tapButton("BACK", SCREEN_W / 2, 654, 320, 44, "#ffcb42", () => {
       binder.listening = false;
       state = backFrom || "title";
     });
@@ -17660,6 +18410,8 @@
        pulling call `padApply` themselves; this is the backstop for every other
        way the answer can change — a hull swap, a resumed sector, a reset. */
     if (revEl.hidden === revAvailable()) padApply();
+    // And the device buttons, which change on their own every frame.
+    padDevices();
   }
 
   function render(dt) {
@@ -18017,6 +18769,26 @@
     el.addEventListener("pointerup", off);
     el.addEventListener("pointercancel", off);
   }
+  /* The device buttons. A press, not a hold — and it fires on `pointerdown`
+     rather than on a click, because every other control on this pad answers the
+     moment the thumb lands and a device that waited for the lift would feel
+     broken beside them. */
+  for (const el of devEls) {
+    el.addEventListener("pointerdown", e => {
+      if (arranging) return;
+      const i = +el.dataset.dev;
+      if (useDevice(i)) {
+        el.classList.add("down");
+        setTimeout(() => el.classList.remove("down"), 140);
+      }
+      grab(el, e.pointerId);
+      e.preventDefault();
+    });
+    const off = () => el.classList.remove("down");
+    el.addEventListener("pointerup", off);
+    el.addEventListener("pointercancel", off);
+  }
+
   pauseEl.addEventListener("click", e => {
     if (arranging) return;
     pauseHere();
@@ -19106,6 +19878,20 @@
       hover: i => { modeHover = i; if (i >= 0) modePick = i; },
       lane: key => openLane(key),
       scan: () => surveyScan(),
+      /* The devices: the list as the interface sees it, a press through the
+         real path, and the two things they leave in the world. A device is the
+         one part in the game whose whole point is what it does to *other*
+         systems, so a harness has to be able to press one and then look at the
+         sentries. */
+      devices: () => devicesFitted().map(d => ({
+        slot: d.slot, key: d.key, device: d.dev.key, name: d.dev.name,
+        cd: d.cd, cool: d.dev.cool })),
+      useDevice: i => useDevice(i),
+      decoys: () => surv.decoys,
+      mines: () => surv.mines,
+      // The key table for the four slots, so a rebind can be checked against
+      // what the game actually reads.
+      deviceKeys: () => DEVICE_KEYS.map(k => k.slice()),
       // The refit, driven the way the station screen drives it, so a harness
       // can prove salvage actually turns into a better ship.
       // Buying one off a shelf, the way the market row does it.

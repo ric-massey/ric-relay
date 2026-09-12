@@ -2213,9 +2213,11 @@ reverse thrusters.
    almanac entry and a reason. It is also where 6.7's **tier five** lives — the
    three entries that should make somebody say *what the hell is that* — so the
    almanac's far end is blocked on this and nothing else.
-2. **6.4 — verbs, not percentages.** Eight of seventeen parts are verbs. The rule
-   is written into 5.2 and the backlog is Ric's own list: decoy, grapple, mine
-   layer, emergency jump, cloak, EMP, cargo ejector.
+2. ~~**6.4 — verbs, not percentages.**~~ **Done**, four of the seven: the cargo
+   ejector, the decoy launcher, the mine layer and the emergency jump, on a
+   device layer with a cooldown, a rebindable key per slot and a thumb button
+   per slot. See *What 6.4 landed*. Left: **grapple** (which is 5.5 wearing a
+   different name), **cloak** and **EMP**.
 3. **6.5 — consequences that persist.** Three kinds of memory so far. The cheap
    wins are named: a ship you saved keeps its name and comes back, a pirate that
    escaped is respawned rather than re-rolled, a convoy you destroyed leaves a
@@ -2346,18 +2348,83 @@ half of 6.5.
 > alien drive changes what you can *do*. Noita's possibility space comes largely
 > from **recombining capabilities**, not from increasing damage numbers.
 
-*Where it stands.* Leaning the right way and not far enough — and this is the one
-place the plan should be honest that 5.2 partly went the wrong direction. Of the
-seventeen parts, most are numbers: +14% speed, +2 hull, +70% scan. The ones that
-are genuinely verbs are the good ones: **reverse thrusters** (a movement you did
-not have), the **ice melter** (a supply line you did not have), the **seeker**,
-the **charge** and the **lance** (three different ways to solve a rock).
+*Where it stands.* **Four of the seven built.** What was here before was the
+honest admission that 5.2 had partly gone the wrong way: most of the parts were
+numbers — +14% speed, +2 hull, +70% scan — and the handful that were verbs were
+the good ones.
 
-The rule from here: **a new part has to add a verb or it does not get made.**
-Ric's own list is the backlog — decoy, grapple, mine layer, emergency jump,
-cloak, EMP, cargo ejector, and something genuinely strange from a long way out.
-The four-slot rule is what makes them interesting, because it forces them to
-compete.
+### What 6.4 landed  ·  **DONE**
+
+**A device is a part you press.** That is the whole of the new machinery and it
+is deliberately thin: a part with a `device` effect takes one of the four slots
+like anything else, is bought or built or found like anything else, takes its
+rarity's fitting time like anything else — and adds two things. A **cooldown**,
+which is what makes it a rhythm rather than a switch. And a **button**, which is
+per *slot*, because the slot is the thing the player is already pointing at: the
+parts page says what is in slot two, so slot two is what the key and the thumb
+button are named after.
+
+**CARGO EJECTOR** — the hold over the side, in one press. It is the answer to a
+full hold two hundred thousand units from a shop, and it is the answer to a
+pirate: *they came for the cargo*, and cargo lying in space is cargo nobody has
+to be shot for. Anything hunting you that wants to rob you breaks off and goes
+for it — and takes it, which is the transaction actually completing rather than a
+distraction that costs them nothing. A **hunter** does not: it came for you.
+
+**DECOY LAUNCHER** — a shell that burns like a hull and lies about being one. It
+does **not** attract attention, which is the version that could be used to start
+a fight from a safe distance; it *steals what is already pointed at you*.
+Sentries that are awake fly at it and shoot at it, an angry ship shoots at it,
+and a seeker turns onto it. A decoy dropped over a sleeping post is a flare in an
+empty room. It is solid to a round, too, and each hit costs it two of its
+fourteen seconds — a decoy in a crossfire does not last its full life.
+
+**MINE LAYER** — something behind you that the thing chasing you hits. Armed a
+second and a half after it leaves the rack, and then **it stops knowing whose
+side it is on**: fly back over your own and it takes the hull point it would
+have taken off anybody else. That is the cost, and it is the only thing stopping
+a mine being a free turret towed behind the ship. It ignores *you* until you have
+been outside its radius once, though — a mine is laid thirty units off your own
+tail, well inside the radius it goes off in, so without that rule one dropped
+while you were drifting would arm underneath you and take a hull point for
+nothing, which is a gotcha rather than a cost. The ring is drawn from the moment
+it lands, so the cost is one you can see coming. Ten live at once; the oldest
+fizzles.
+
+**EMERGENCY JUMP** — the panic button, and deliberately not a good one. It throws
+you fourteen to thirty-four thousand units down the way you were pointing and
+leaves you there: **no speed, no scanner, and a sector you have not charted.** It
+is the difference between dying here and being lost somewhere else, which is what
+an emergency jump should be worth. The chunks under the destination do not exist
+until you arrive, so what is in them cannot be checked beforehand — the sector is
+streamed in first and the ship is pushed clear of anything it landed inside
+afterwards, out past a well's whole reach rather than out of the radius that
+kills.
+
+**The controls screen grew a row.** The four slots are keys, they are `1`–`4` to
+begin with, and they are **rebindable like everything else** — a third row on the
+key grid, under the two seats and separated from them, because they belong to one
+mode and to one seat. Taking a key off a slot and giving it to thrust works in
+both directions; boundKeys covers them, so a slot rebound to `/` does not open the
+browser's find bar every time you drop a decoy.
+
+**And the phone got four more buttons** — one per slot, appearing with the part
+and going with it the way the reverse thruster's does, laid out beside the gun by
+default and **draggable anywhere** from the phone-controls screen like the rest of
+the pad. Each one carries its own cooldown as a sweep across its face, so "not
+yet" is the thing you are pressing rather than a number somewhere else on the
+screen. The flight panel mirrors them off the hull bar's left shoulder — a chip
+each, the key on a desk and the slot number on a phone — opposite the scan
+button, because the two are the same kind of thing: a verb with a wait on it.
+
+**Three of the four are craftable and the best one is not**, which is the rule
+from the bottom of the recipe list applying to a new category rather than an
+exception being made for it.
+
+*The rule from here is unchanged:* **a new part has to add a verb or it does not
+get made.** What is left of Ric's list is **grapple**, **cloak** and **EMP** —
+and the grapple is really 5.5, because a grapple with nothing to tow is a tractor
+beam with a longer description.
 
 ### 6.5 Consequences should persist enough for the player to remember them
 
@@ -2546,15 +2613,16 @@ since. Measured rather than remembered:
 | **6.1** NPC wants | **DONE** | Every role has a want and none of them is longer than a few lines. A trader wants a station that is short of what it carries. A pirate wants the *laden* one. An escort wants its client alive. A patrol wants whatever is causing trouble. A scavenger — a new role — wants wreckage, including the wreckage you were going to strip. Put three in one piece of sky and the pirate closes, the escort breaks off, the patrol answers, and you arrive in the middle of something nobody scripted. |
 | **6.2** a reacting economy | **DONE** | A station is short of one or two things, rolled from where it is and then moved by what happens. A convoy through eases it; a convoy destroyed near it deepens it; time drifts it back. A shortage is a price and a price is a reason to fly somewhere — measured, killing an iridium convoy at the door took iridium from 23 to 44, and one getting through brought it back. **Pirates make prices.** |
 | **6.3** universal rules | **DONE** | Rocks break on worlds and part from each other; traffic and sentries go round worlds and round the Leviathan; stations and inhabited worlds deflect; an asteroid is a solid object rather than a damage event; friendly fire destroys other traffic. And now: **gravity is universal in the sky as well as in the code** — traffic carries a drift, steers round wells when it has the attention to spare, gets no dodge while it is being chased, and is swallowed if it loses. **Ships run out of water** when something goes wrong for them, and a drifting hauler is a situation you can spend your own tank on or strip four minutes later. |
-| **6.4** verbs not percentages | **eight of seventeen** | Counted: eight parts are verbs — three weapons, two tractor rigs, reverse thrusters, the ice melter — and nine are still numbers. The rule from here is written into 5.2: a new part has to add a verb or it does not get made. |
+| **6.4** verbs not percentages | **twelve of twenty-five** | Eight were verbs — three weapons, two tractor rigs, reverse thrusters, the ice melter. Four more were built as a device layer: **cargo ejector, decoy launcher, mine layer, emergency jump**, each with a cooldown, a rebindable key on its slot and a thumb button on its slot. Every one of them is a verb by the three-systems test: the ejector moves pirates, the decoy moves sentries and seekers, the mine moves collision, the jump moves the danger curve. Left of Ric's list: grapple, cloak, EMP. |
 | **6.5** consequences persist | **DONE** | Battles end and one in three leaves a named memorial. Reputation persists per power. A part you die carrying stays where you fell. Anything that dies in front of you leaves a hull you can come back and strip, written into the book rather than into a chunk. **A ship you saved keeps its name, comes back, and repays you in water once.** **A pirate you hurt and let go is remembered with the damage you did and returns as itself.** All of it readable on WHO KNOWS YOU, and all of it askable with `E`. |
 | **6.6** authored mysteries | **eight places** | Where the brief asks for dozens. Highest ceiling, least code, and 6.7 below is now the concrete plan for it. |
 | **6.7** the almanac's curve | **diagnosed, not fixed** | Ten minutes of throttle reaches 344,617 units and the finale sits at 112,000. The ladder is a thirtieth of the size it needs to be. |
 
-The honest summary: **6.3 has largely happened, 6.4 is a third of the way, 6.5 has
-started, and 6.1, 6.2 and 6.6 are untouched.** The next one worth doing on its own
-merits is **6.7**, because it is a handful of numbers and it converts two hours of
-game into twenty.
+The honest summary: **6.3 has largely happened, 6.4 is most of the way there, 6.5
+has started, and 6.1, 6.2 and 6.6 are untouched.** The next one worth doing on its
+own merits is **6.7**, because it is a handful of numbers and it converts two
+hours of game into twenty — and **6.6** is still the one with the highest ceiling
+and the least code, and still the only thing blocking the almanac's far end.
 
 ### How to read Phase 6
 

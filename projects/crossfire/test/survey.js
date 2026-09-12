@@ -7516,6 +7516,304 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
               "a world sells what it digs");
 }
 
+// ── the parts you press ──────────────────────────────────────────────────
+/* Phase 6.4. Four parts that are verbs rather than percentages, and the whole
+   of what makes one worth testing is that it *changes another system*: a decoy
+   is only a decoy if a sentry believes it, an ejector is only an ejector if a
+   pirate takes the bait. Every check below is written against the thing the
+   device is supposed to have changed, never against the device itself.
+
+   The other half is the cooldown and the button. A cooldown is a state machine
+   and a button that lies about being ready is the exact class of bug rule 2 in
+   SURVEY-PLAN.md exists for — both render perfectly. */
+{
+  const { cf, fire } = boot("?debug=1&seed=606040");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const lv = cf.live();
+  const me = lv.ships[0];
+  const flag = cf.surveyView().standings[0].key;
+  const step = n => {
+    for (let i = 0; i < (n || 1); i++) {
+      surv.water = 900; surv.food = 900;
+      now += 1000 / 60; cf.step();
+    }
+  };
+  const fit = (i, key, secs) => {
+    surv.slots[i] = { key, fit: secs || 0 };
+    cf.applyParts();
+    return surv.slots[i];
+  };
+  const put = over => {
+    const t = Object.assign({
+      id: null, kind: "pirate", role: "pirate", faction: "pirate",
+      hull: "lance", x: me.x + 600, y: me.y, a: 0,
+      from: { x: me.x, y: me.y }, to: { x: me.x + 9000, y: me.y }, leg: 1,
+      speed: 150, baseSpeed: 150, hp: 8, maxHp: 8, cargo: [], cool: 1,
+      doom: 0, guards: 0, space: 0, trades: false, phase: 0
+    }, over || {});
+    surv.traffic.push(t);
+    return t;
+  };
+  const park = (x, y) => {
+    me.x = x; me.y = y; me.vx = me.vy = 0; me.a = 0;
+    me.invuln = 9999;
+    surv.traffic.length = 0; surv.drones.length = 0;
+    surv.decoys.length = 0; surv.mines.length = 0;
+    surv.motes.length = 0; surv.shots.length = 0;
+  };
+
+  /* ── every device is a part, and every device part is reachable ───────── */
+  const parts = cf.parts();
+  const devParts = parts.filter(p => cf.surveyView().effects[p.key] &&
+                                     cf.surveyView().effects[p.key].device);
+  check(devParts.length >= 4,
+        "6.4 asked for four verbs and there are " + devParts.length);
+  for (const p of devParts) {
+    const ways = cf.partWays(p.key);
+    check(ways.buy || ways.craft || ways.find,
+          p.name + " cannot be bought, built or found");
+    check(p.cat === "device",
+          p.name + " is a device and is filed under " + p.cat);
+  }
+
+  /* ── a slot, a key, and a cooldown ────────────────────────────────────── */
+  park(90000, 30000);
+  fit(0, "decoylauncher");
+  const keys0 = cf.deviceKeys();
+  check(keys0.length === 4, "there are not four device keys");
+  const list = cf.devices();
+  check(list.length === 1 && list[0].slot === 0 && list[0].device === "decoy",
+        "a fitted device is not showing up in slot order");
+  check(list[0].cool > 0, "a device with no cooldown is a button you hold down");
+
+  // Through the real keyboard path, bindings and all.
+  fire("keydown", keys0[0][0]);
+  check(surv.decoys.length === 1,
+        "pressing the slot's own key did not fire the device in it");
+  const cd = cf.devices()[0].cd;
+  check(cd > 0, "firing a device left it ready to fire again");
+  fire("keydown", keys0[0][0]);
+  check(surv.decoys.length === 1, "a device fired again while it was cooling");
+  step(60);
+  check(cf.devices()[0].cd < cd, "the cooldown is not running down");
+
+  // Somebody else's key does nothing, and a rebind moves it.
+  surv.decoys.length = 0;
+  surv.slots[0].cd = 0;
+  fire("keydown", "KeyZ");
+  check(surv.decoys.length === 0, "an unbound key fired a device");
+  cf.live().binder.p = 2;              // the device row of the controls grid
+  cf.live().binder.a = 0;
+  cf.screen("controls");
+  cf.live().binder.listening = true;
+  fire("keydown", "KeyZ");
+  cf.screen("playing");
+  check(cf.deviceKeys()[0].indexOf("KeyZ") >= 0,
+        "rebinding slot 1 did not take: " + JSON.stringify(cf.deviceKeys()[0]));
+  fire("keydown", "KeyZ");
+  check(surv.decoys.length === 1, "the rebound key does not fire the device");
+  check(cf.deviceKeys()[0].indexOf(keys0[0][0]) < 0,
+        "the old key still works as well as the new one");
+
+  /* ── a part still fitting is not a device yet ─────────────────────────── */
+  park(90000, 30000);
+  fit(0, "decoylauncher", 30);
+  check(cf.devices().length === 0, "a part half installed is already pressable");
+  check(cf.useDevice(0) === false, "pressing it did something anyway");
+  check(surv.decoys.length === 0, "and it dropped a decoy");
+
+  /* ── the decoy: a sentry believes it ──────────────────────────────────── */
+  park(90000, 30000);
+  fit(0, "decoylauncher");
+  const drone = { id: "t-dev-g0", x: me.x + 700, y: me.y + 60, vx: 0, vy: 0,
+                  a: 0, home: null, prey: null, post: { x: me.x + 700, y: me.y },
+                  hp: 3, cool: 0.2, awake: true, hit: 0 };
+  surv.drones.push(drone);
+  step(20);
+  const wasTo = Math.atan2(me.y - drone.y, me.x - drone.x);
+  check(Math.abs(drone.a - wasTo) < 0.4,
+        "an awake sentry is not pointed at you to begin with");
+  check(cf.useDevice(0) === true, "the decoy would not fire");
+  /* Inside the sentry's own range — eight hundred units off its beam, on a
+     bearing nothing like yours — and the rounds it has already fired at you are
+     cleared, so what is counted below is only what it did after it was lied
+     to. */
+  surv.decoys[0].x = drone.x; surv.decoys[0].y = drone.y + 840;
+  surv.decoys[0].vx = surv.decoys[0].vy = 0;
+  surv.decoys[0].life = 99;
+  surv.shots.length = 0;
+  step(150);          // long enough for its cooldown to come round again
+  const toDecoy = Math.atan2(surv.decoys[0].y - drone.y,
+                             surv.decoys[0].x - drone.x);
+  let off = drone.a - toDecoy;
+  while (off > Math.PI) off -= Math.PI * 2;
+  while (off < -Math.PI) off += Math.PI * 2;
+  check(Math.abs(off) < 0.4,
+        "the sentry is still pointed at you with a decoy burning beside it");
+  check(surv.shots.length > 0,
+        "the sentry never fired at the decoy at all, so nothing was tested");
+  check(surv.shots.every(b => b.atPrey),
+        "it is firing at the decoy and the rounds are still flagged for you");
+
+  // And a decoy does not wake anything: it steals attention, it does not call it.
+  park(90000, 30000);
+  fit(0, "decoylauncher");
+  const asleep = { id: "t-dev-g1", x: me.x + 2400, y: me.y, vx: 0, vy: 0, a: 0,
+                   home: null, prey: null, post: { x: me.x + 2400, y: me.y },
+                   hp: 3, cool: 1, awake: false, hit: 0 };
+  surv.drones.push(asleep);
+  cf.useDevice(0);
+  surv.decoys[0].x = asleep.x - 200; surv.decoys[0].y = asleep.y;
+  step(30);
+  check(!asleep.awake, "a decoy woke a sleeping post up");
+
+  /* ── and a missile turns onto it ──────────────────────────────────────── */
+  park(90000, 30000);
+  fit(0, "decoylauncher");
+  cf.useDevice(0);
+  const dc = surv.decoys[0];
+  dc.x = me.x + 600; dc.y = me.y + 240; dc.vx = dc.vy = 0;
+  const seeker = { owner: 0, colour: "#fff", dmg: 2, seek: 2.6,
+                   x: me.x, y: me.y, vx: 600, vy: 0, life: 3 };
+  lv.bullets.push(seeker);
+  step(18);
+  check(seeker.vy > 40,
+        "a seeker flew straight past a decoy sitting inside its cone");
+
+  /* ── the ejector: the hold goes over the side ─────────────────────────── */
+  park(90000, 30000);
+  fit(0, "ejector");
+  for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
+  surv.hold.iron = 9; surv.hold.ice = 5;
+  const held = 14;
+  check(cf.useDevice(0) === true, "the ejector would not fire with a full hold");
+  const dumped = surv.motes.filter(m => m.jetsam).length;
+  check(dumped === held,
+        "dumped " + dumped + " units of a " + held + "-unit hold");
+  check(Object.keys(surv.hold).every(k => surv.hold[k] === 0),
+        "the hold still has something in it after an ejection");
+  surv.slots[0].cd = 0;
+  check(cf.useDevice(0) === false, "an empty hold ejected anyway");
+
+  /* ── and a pirate takes the bait ──────────────────────────────────────── */
+  park(90000, 30000);
+  fit(0, "ejector");
+  surv.hold.iron = 8;
+  const robber = put({ x: me.x + 900, y: me.y, angry: true });
+  cf.useDevice(0);
+  check(!robber.angry, "a pirate watched the cargo go past and stayed on you");
+  check(!!robber.bait, "it is not going anywhere in particular either");
+  const motes0 = surv.motes.length;
+  robber.x = me.x + 40; robber.y = me.y + 40;       // it gets there
+  /* And you are far enough off not to be collecting your own cargo back — but
+     not so far that the streamer unloads the chunk the pirate is standing in,
+     which takes the pirate with it. */
+  me.x += 1500; me.y += 1500;
+  step(3);
+  check(surv.motes.length < motes0,
+        "it reached the cargo and did not pick any of it up");
+
+  // A hunter came for you and is not interested in the cargo.
+  park(90000, 30000);
+  fit(0, "ejector");
+  surv.hold.iron = 8;
+  const hunter = put({ kind: "hunter", role: "hunter", angry: true,
+                       x: me.x + 900, y: me.y });
+  cf.useDevice(0);
+  check(hunter.angry, "a hunter was bought off with a hold of iron");
+
+  /* ── the mine: it goes off, on a delay, on anybody ────────────────────── */
+  park(90000, 30000);
+  fit(0, "minelayer");
+  cf.useDevice(0);
+  check(surv.mines.length === 1, "the mine layer laid nothing");
+  const mine = surv.mines[0];
+  mine.vx = mine.vy = 0;
+  const victim = put({ x: mine.x + 20, y: mine.y, speed: 0, baseSpeed: 0,
+                       hp: 2, maxHp: 2 });
+  step(1);
+  check(surv.mines.length === 1 && victim.hp === 2,
+        "a mine went off before it had armed");
+  step(200);
+  check(surv.mines.length === 0, "a ship sat on an armed mine and nothing happened");
+  check(surv.traffic.indexOf(victim) < 0 || victim.hp < 2,
+        "the mine went off and the ship on top of it was untouched");
+
+  /* Including you — *once you have left it*. A mine is laid thirty units off
+     your own tail, inside the radius it goes off in, so one dropped while you
+     were drifting would arm underneath you: the ignore-the-layer rule is what
+     makes it a cost rather than a gotcha, and both halves of it are checked. */
+  park(90000, 30000);
+  fit(0, "minelayer");
+  cf.useDevice(0);
+  const own = surv.mines[0];
+  own.vx = own.vy = 0;
+  own.arm = 0;
+  me.invuln = 0;
+  me.hull = me.maxHull;
+  step(4);
+  check(me.hull === me.maxHull,
+        "a mine dropped under a drifting ship went off in its own face");
+  me.x = own.x + 4000; me.y = own.y;      // you fly off
+  step(2);
+  me.x = own.x; me.y = own.y;             // and come back over it
+  step(2);
+  check(me.hull < me.maxHull, "flying back over your own armed mine cost nothing");
+
+  /* ── the emergency jump ───────────────────────────────────────────────── */
+  park(60000, 20000);
+  fit(0, "jumpcore");
+  surv.scan.charge = 1;
+  const from = { x: me.x, y: me.y };
+  me.vx = 300; me.vy = 0;
+  check(cf.useDevice(0) === true, "the jump would not fire");
+  const went = Math.hypot(me.x - from.x, me.y - from.y);
+  check(went > 12000, "an emergency jump moved you " + Math.round(went) + " units");
+  check(Math.hypot(me.vx, me.vy) < 1, "you arrived still travelling");
+  check(surv.scan.charge < 0.1, "you arrived with the scanner still charged");
+  check(isFinite(me.x) && isFinite(me.y), "the jump put the ship nowhere");
+  const into = lv.hazards.find(h =>
+    Math.hypot(h.x - me.x, h.y - me.y) < h.kill * 1.2);
+  check(!into, "the jump dropped you inside a well");
+  step(6);
+  check(cf.peek().state === "playing", "the jump ended the run");
+
+  /* ── the thumb button appears with the part and goes with it ──────────── */
+  park(90000, 30000);
+  surv.slots[0] = null; surv.slots[1] = null;
+  cf.applyParts();
+  cf.draw();
+  check(cf.live().padShown.indexOf("dev0") < 0,
+        "an empty slot has a device button on the pad");
+  fit(1, "decoylauncher");
+  cf.draw();
+  check(cf.live().padShown.indexOf("dev1") >= 0,
+        "a fitted device has no button on the pad to press");
+  check(cf.live().padShown.indexOf("dev0") < 0,
+        "the wrong slot's button came up");
+  fit(1, "layerplate");
+  cf.draw();
+  check(cf.live().padShown.indexOf("dev1") < 0,
+        "the button outlived the part");
+
+  /* ── and the panel says what is fitted, and how cold it is ────────────── */
+  fit(2, "minelayer");
+  cf.useDevice(2);
+  const view = cf.surveyView();
+  const chip = (view.devices || []).find(d => d.slot === 2);
+  check(!!chip, "the panel is not told what is in the slots");
+  if (chip) {
+    check(chip.cd > 0 && !chip.ready, "the panel thinks a cooling device is ready");
+    check(!!chip.tag && chip.tag.length <= 8,
+          "the chip's word is " + JSON.stringify(chip.tag));
+  }
+
+  console.log("  devices    four verbs on the four slots · a key each and rebindable · " +
+              "a sentry and a seeker take the decoy · a pirate takes the cargo · " +
+              "a mine does not care whose it is · the jump is a long way and a cold scanner");
+}
+
 if (problems.length) {
   console.error("\nCROSSFIRE survey checks FAILED");
   for (const p of problems.slice(0, 40)) console.error("  · " + p);

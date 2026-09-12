@@ -1545,6 +1545,11 @@
             cx + w / 2 + 16, y, SIZE.cap, ready ? VIOLET : VIOLET_DIM,
             "left", ready ? 1 : 0.5);
     }
+    /* The devices, off the bar's other shoulder — see `drawDevices`. Above the
+       caption line rather than beside the bar: that line runs to within 190 of
+       each edge and a chip at the bar's own height sits underneath it. */
+    drawDevices(st, cx - w / 2 - 18, y - 92);
+
     // Saying the radius is what makes the scanner refit legible: the number
     // goes up when you buy a tier, and that is the whole purchase.
     if (ready && st.scanReach && !api.touchOnly) {
@@ -1714,6 +1719,62 @@
       label("M CHART   ·   I INVENTORY   ·   F SCAN", cx, y - 30, SIZE.cap,
             VIOLET_LOW, "center", 0.8, "0.1em");
     }
+  }
+
+  /* ── the devices, on the flight panel ─────────────────────────────────────
+     A chip a device, off the left shoulder of the hull bar, mirroring the scan
+     button on the right — the two are the same kind of thing, a verb with a
+     wait on it, and they should not be in two different places.
+
+     Each chip is the whole state: what it is, which key or slot it answers to,
+     and a bar that fills as the cooldown runs out, so "not yet" is the chip
+     rather than a number somewhere else. Stacked upward in slot order, because
+     the parts page lists them in slot order and nothing should renumber itself
+     between two pages.
+
+     It is a readout and not a button. On a phone the device buttons live on the
+     thumb pad where the player put them, and a second live target up here would
+     be a control nobody chose the position of. */
+  function drawDevices(st, right, y) {
+    const list = st.devices || [];
+    if (!list.length) return;
+    const { ctx } = api;
+    const w = api.touchOnly ? 92 : 116, h = 28, gap = 6;
+    list.forEach((d, i) => {
+      const x = right - w;
+      /* Slot one at the top. The stack grows upward from the anchor, so the
+         index has to be counted from the far end or the four would read
+         4-3-2-1 down the screen while every other page lists them 1-2-3-4. */
+      const cy = y - (list.length - 1 - i) * (h + gap);
+      const ready = d.cd <= 0;
+      const done = d.cool > 0 ? 1 - Math.max(0, Math.min(1, d.cd / d.cool)) : 1;
+
+      ctx.save();
+      ctx.fillStyle = VIOLET_LOW;
+      ctx.globalAlpha = ready ? 0.18 : 0.1;
+      ctx.fillRect(x, cy - h / 2, w, h);
+      // The wait, as the chip filling back up rather than as a number.
+      if (!ready) {
+        ctx.fillStyle = VIOLET;
+        ctx.globalAlpha = 0.22;
+        ctx.fillRect(x, cy - h / 2, w * done, h);
+      }
+      ctx.strokeStyle = ready ? VIOLET : VIOLET_DIM;
+      ctx.globalAlpha = ready ? 0.9 : 0.5;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, cy - h / 2, w, h);
+      ctx.restore();
+
+      /* The key on a keyboard, the slot number on a phone. They are the same
+         fact — which of the four this is — said in whichever way the player can
+         act on: a phone has no [1] to press, and a desk has no thumb button. */
+      const mark = api.touchOnly ? String(d.slot + 1) : (d.hint || "\u2014");
+      label(mark, x + 9, cy + 5, SIZE.cap, ready ? VIOLET : VIOLET_DIM,
+            "left", ready ? 0.95 : 0.55, "0.06em");
+      fitText(d.tag, x + w - 8, cy + 5, SIZE.cap,
+              ready ? VIOLET : VIOLET_DIM, "right", ready ? 0.95 : 0.55,
+              w - 34);
+    });
   }
 
   // The panel has no clock of its own and does not need a precise one.
@@ -4172,6 +4233,24 @@
           ctx.moveTo(cx - r * 0.9, cy + i * r * 0.5);
           ctx.lineTo(cx + r * 0.9, cy + i * r * 0.5);
         }
+        ctx.stroke();
+        break;
+      case "device":
+        /* A button under a cover, with the press coming off it. A device is the
+           one class of part whose picture has to say *you do something with
+           this* rather than what it is made of. */
+        ctx.beginPath();
+        ctx.arc(cx, cy + r * 0.1, r * 0.52, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy + r * 0.1, r * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha *= 0.6;
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.95, cy - r * 0.55);
+        ctx.lineTo(cx - r * 0.35, cy - r * 0.55);
+        ctx.moveTo(cx + r * 0.95, cy - r * 0.55);
+        ctx.lineTo(cx + r * 0.35, cy - r * 0.55);
         ctx.stroke();
         break;
       default:
