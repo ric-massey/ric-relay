@@ -185,8 +185,11 @@ def fetch_profile(account: dict, key: str) -> dict:
     params = {
         "platform": account["platform"],
         "version": 5,
-        # Combine trackers of the same type before we read them, so a legend
-        # carrying two kill trackers reports one number.
+        # `merge` asks ALS to normalise tracker keys, but it *adds* the plain
+        # key alongside the seasonal one rather than replacing it, so every
+        # tracker comes back twice. canonical_key() below is what actually
+        # de-duplicates them; this stays on because the plain alias is the
+        # name we want to store under.
         "merge": 1,
     }
     if account.get("uid"):
@@ -225,6 +228,22 @@ def number(value):
         return None
 
 
+# ALS labels one tracker two ways depending on which seasonal variant of it was
+# equipped: "kills" on one legend, "specialEvent_kills" on the next, same
+# display name and same number. Left alone they are stored as two trackers and
+# the page prints every line twice, so fold the variants onto one key.
+EVENT_PREFIX = "specialEvent_"
+
+
+def canonical_key(key):
+    """The single key a tracker is stored under, whatever ALS called it today."""
+    if not isinstance(key, str) or not key:
+        return None
+    if key.startswith(EVENT_PREFIX):
+        return key[len(EVENT_PREFIX):] or None
+    return key
+
+
 def merge_trackers(old: list, seen: list, today: str) -> list:
     """Keep the highest value ever recorded for each tracker.
 
@@ -232,9 +251,19 @@ def merge_trackers(old: list, seen: list, today: str) -> list:
     caught a stale upstream cache, not that Ric un-killed anybody. A manual
     value stays manual until the API beats it.
     """
-    merged = {t["key"]: dict(t) for t in old if t.get("key")}
+    merged = {}
+    for tracker in old:
+        key = canonical_key(tracker.get("key"))
+        if not key:
+            continue
+        # Old files predate the folding and may hold both variants; the higher
+        # of the two is the one that survives the migration.
+        kept = merged.get(key)
+        if kept is None or (number(tracker.get("value")) or 0) > (number(kept.get("value")) or 0):
+            merged[key] = dict(tracker, key=key)
+
     for tracker in seen:
-        key = tracker.get("key")
+        key = canonical_key(tracker.get("key"))
         value = number(tracker.get("value"))
         if not key or value is None:
             continue
@@ -330,7 +359,11 @@ def build(existing: dict, profile: dict, account: dict) -> dict:
             "name": rank.get("rankName"),
             "div": number(rank.get("rankDiv")),
             "score": number(rank.get("rankScore")),
-            "ladderPos": number(rank.get("ladderPosPlatform")),
+            # ALS uses -1 for "not placed on the ladder", which is everything
+            # below Master. Store that as unknown rather than as a position.
+            "ladderPos": (lambda v: v if isinstance(v, (int, float)) and v > 0 else None)(
+                number(rank.get("ladderPosPlatform"))
+            ),
         },
         "legends": legends,
         "career": career,

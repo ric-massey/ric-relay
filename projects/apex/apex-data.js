@@ -6,54 +6,136 @@
 // panel, which no API exposes (source "manual"). pull-apex.py preserves the
 // manual block on every run.
 window.APEX_DATA = {
- "generated": "2026-07-30T00:00:00Z",
- "source": "seed",
- "live": false,
+ "generated": "2026-08-20T04:06:17Z",
+ "source": "pull-apex.py",
+ "live": true,
  "account": {
   "name": "RicGoneCrazy",
-  "uid": null,
+  "uid": "2535464424730600",
   "platform": "X1",
-  "level": null,
-  "prestige": null,
-  "toNextLevelPercent": null
+  "level": 117,
+  "prestige": 2,
+  "toNextLevelPercent": 34
  },
  "status": {
-  "online": false,
+  "online": true,
   "inGame": false,
-  "text": null,
-  "selectedLegend": null,
-  "checked": null
+  "text": "In lobby",
+  "selectedLegend": "Caustic",
+  "checked": "2026-08-20T04:06:17Z"
  },
  "rank": {
-  "name": null,
-  "div": null,
-  "score": null,
+  "name": "Platinum",
+  "div": 3,
+  "score": 9423,
   "ladderPos": null
  },
  "legends": {
   "Alter": {
    "trackers": [
     {
+     "key": "damage",
+     "name": "BR Damage",
+     "value": 740675,
+     "source": "api",
+     "asOf": "2026-08-20"
+    },
+    {
      "key": "kills",
-     "name": "Kills",
-     "value": 3500,
-     "source": "manual",
-     "asOf": "2026-07-30",
-     "approx": true
+     "name": "BR Kills",
+     "value": 1272,
+     "source": "api",
+     "asOf": "2026-08-20"
     }
    ],
    "equipped": true,
-   "lastSeen": "2026-07-30"
+   "lastSeen": "2026-08-20"
+  },
+  "Gibraltar": {
+   "trackers": [
+    {
+     "key": "damage",
+     "name": "BR Damage",
+     "value": 175287,
+     "source": "api",
+     "asOf": "2026-08-20"
+    },
+    {
+     "key": "kills",
+     "name": "BR Kills",
+     "value": 464,
+     "source": "api",
+     "asOf": "2026-08-20"
+    },
+    {
+     "key": "wins",
+     "name": "BR Wins",
+     "value": 31,
+     "source": "api",
+     "asOf": "2026-08-20"
+    }
+   ],
+   "lastSeen": "2026-08-20",
+   "equipped": true
+  },
+  "Caustic": {
+   "trackers": [
+    {
+     "key": "kills",
+     "name": "BR Kills",
+     "value": 91,
+     "source": "api",
+     "asOf": "2026-08-20"
+    },
+    {
+     "key": "wins",
+     "name": "BR Wins",
+     "value": 1,
+     "source": "api",
+     "asOf": "2026-08-20"
+    }
+   ],
+   "lastSeen": "2026-08-20",
+   "equipped": true
+  },
+  "Axle": {
+   "trackers": [
+    {
+     "key": "damage",
+     "name": "BR Damage",
+     "value": 236041,
+     "source": "api",
+     "asOf": "2026-08-20"
+    },
+    {
+     "key": "kills",
+     "name": "BR Kills",
+     "value": 570,
+     "source": "api",
+     "asOf": "2026-08-20"
+    }
+   ],
+   "lastSeen": "2026-08-20",
+   "equipped": true
   }
  },
  "career": {
-  "kills": null,
+  "kills": 3500,
   "wins": null,
   "games": null,
   "kd": null,
   "bestKills": null,
-  "asOf": null,
-  "source": "manual"
+  "asOf": "2026-07-30",
+  "source": "manual",
+  "approx": true
  },
- "history": []
+ "history": [
+  {
+   "d": "2026-08-20",
+   "trackedKills": 2397,
+   "careerKills": 3500,
+   "rp": 9423,
+   "level": 117
+  }
+ ]
 };
