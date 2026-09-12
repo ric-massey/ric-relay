@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Daily Apex sync. Install with:
+
+      cp projects/apex/apex-sync.plist ~/Library/LaunchAgents/com.ricmassey.apex-sync.plist
+      launchctl bootstrap gui/$UID ~/Library/LaunchAgents/com.ricmassey.apex-sync.plist
+
+  Remove with:
+
+      launchctl bootout gui/$UID/com.ricmassey.apex-sync
+      rm ~/Library/LaunchAgents/com.ricmassey.apex-sync.plist
+
+  Run it right now without waiting for tomorrow:
+
+      launchctl kickstart -p gui/$UID/com.ricmassey.apex-sync
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ricmassey.apex-sync</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/ricmassey/RicsWebsite/projects/apex/apex-sync-daily.sh</string>
+  </array>
+
+  <!-- Late morning, after a night's play has landed on the banner. If the Mac
+       is asleep, launchd runs it on the next wake — which is what keeps the
+       one-reading-per-day slope intact. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>10</integer>
+    <key>Minute</key><integer>40</integer>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>

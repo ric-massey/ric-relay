@@ -266,12 +266,19 @@ file — copy the example block, edit, done.
 These notes used to be printed on the live pages, where family could read them. They
 belong here.
 
-- **Apex** (`apex.html`) shows hand-read seed numbers until the daily pull is connected.
-  It needs a free API key from apexlegendsapi.com stored in the macOS Keychain under
-  `apex-als`, plus a gamertag in `projects/apex/apex-account.json` (gitignored). Rank and
-  RP arrive with the key; the ladder can also be lit up early by typing a `rank` block
-  into `projects/apex/apex-data.js`. Career kills are account-wide and no API returns
-  them — they're typed into the `career` block by hand and `pull-apex.py` preserves them.
+- **Apex** (`apex.html`) is live. It reads a free API key from apexlegendsapi.com stored
+  in the macOS Keychain under `apex-als`, plus a gamertag in
+  `projects/apex/apex-account.json` (gitignored, and where the resolved UID is cached so
+  later runs skip the name lookup). `pull-apex.py` takes one snapshot per run;
+  `projects/apex/apex-sync.plist` runs it daily and commits `apex-data.js` when that is
+  the only thing that changed. It never pushes. Install it with:
+
+      cp projects/apex/apex-sync.plist ~/Library/LaunchAgents/com.ricmassey.apex-sync.plist
+      launchctl bootstrap gui/$UID ~/Library/LaunchAgents/com.ricmassey.apex-sync.plist
+
+  Career kills are account-wide and no API returns them — they're typed into the `career`
+  block by hand, marked `approx` so the page renders them with a `~`, and `pull-apex.py`
+  preserves them on every run. Nothing else in that file should be edited by hand.
 - **Training** (`training.html`) is live: the plan is generated, ticks and notes are
   stored in a Cloudflare Worker, and runs push themselves in from Strava the moment a
   watch syncs — the run session planned for that date ticks itself off. The route is
