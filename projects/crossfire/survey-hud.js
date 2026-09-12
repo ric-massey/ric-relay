@@ -2575,18 +2575,43 @@
     });
     ry += filtH + 8;
 
-    // Zoom, and how wide the view is, under the filters.
-    button("\u2212", rail.x + 26, ry + 17, 44, 34, VIOLET, () => zoomChart(-1));
-    button("+", rail.x + 76, ry + 17, 44, 34, VIOLET, () => zoomChart(1));
-    button("RECENTRE", rail.x + rail.w - 62, ry + 17, 112, 34, VIOLET,
-           () => HUD.chartOpened(st));
-    ry += 42;
+    /* Zoom, and how wide the view is, under the filters.
+
+       The three of them used to be laid out against fixed offsets — the two
+       zooms from the left, RECENTRE from the right — on the assumption that the
+       rail was always wide enough to keep them apart. On a thousand-wide screen,
+       which is most of them, the rail is 170 and it is not: RECENTRE's 112
+       started at 848 and the `+` sat at 850, wholly underneath it. Tap targets
+       are checked back to front, so the later rectangle won every press — you
+       could not zoom the chart in at all, and nothing about the picture looked
+       wrong, because both buttons drew perfectly.
+
+       So it is measured. Three across while three fit, and RECENTRE drops to its
+       own row when they do not. */
+    const zoomW = 44, zoomGap = 6, recW = 112;
+    const oneRow = rail.w >= 26 - zoomW / 2 + zoomW * 2 + zoomGap + recW + 12;
+    button("\u2212", rail.x + 26, ry + 17, zoomW, 34, VIOLET, () => zoomChart(-1));
+    button("+", rail.x + 26 + zoomW + zoomGap, ry + 17, zoomW, 34, VIOLET,
+           () => zoomChart(1));
+    if (oneRow) {
+      button("RECENTRE", rail.x + rail.w - 62, ry + 17, recW, 34, VIOLET,
+             () => HUD.chartOpened(st));
+      ry += 42;
+    } else {
+      button("RECENTRE", rail.x + rail.w / 2, ry + 17 + 40, rail.w - 12, 34,
+             VIOLET, () => HUD.chartOpened(st));
+      ry += 82;
+    }
     const step = ZOOMS.reduce((a, z, k) =>
       Math.abs(Math.log(z / chart.scale)) < Math.abs(Math.log(ZOOMS[a] / chart.scale))
         ? k : a, 0);
-    fitText(fmtCells(Math.round(SCREEN_W / chart.scale)) + " ACROSS  \u00b7  " +
-            (step + 1) + "/" + ZOOMS.length,
-            rail.x, ry + 20, SIZE.cap, VIOLET_DIM, "left", 0.7, rail.w);
+    /* Two facts, so two labels — one from each end of the rail. As one string
+       fitted to 170 pixels it came out as "21.6K ACROSS · …", which drops the
+       half a reader actually wants: which of the five steps they are on. */
+    fitText(fmtCells(Math.round(SCREEN_W / chart.scale)) + " ACROSS",
+            rail.x, ry + 20, SIZE.cap, VIOLET_DIM, "left", 0.7, rail.w - 46);
+    label((step + 1) + "/" + ZOOMS.length, rail.x + rail.w - PAGE.PAD, ry + 20,
+          SIZE.cap, VIOLET_DIM, "right", 0.7);
 
     pageNav(st, "chart");
     closeButton(st.onClose || (() => {}));
@@ -5453,6 +5478,12 @@
       size: i === 0 ? lead : body,
       step: i === 0 ? leadStep : bodyStep
     }));
+    /* A card with nothing to say draws its heading and stops. Every builder in
+       the game supplies lines, so this is not reachable today — but the next one
+       that forgets would not draw a short card, it would throw out of the render
+       loop on `blocks[0]` and take the whole frame with it. A black screen is a
+       long way to fall for a missing sentence. */
+    if (!blocks.length) { closeButton(st.onClose); return; }
     const tall = blocks.reduce((h, b) => h + b.lines.length * b.step + gap, 0) - gap;
     const top = 196;
     const room = SCREEN_H - 76 - top;

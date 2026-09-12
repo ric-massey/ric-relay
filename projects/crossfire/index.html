@@ -21697,6 +21697,13 @@
         return t ? { x: Math.round(t.x), y: Math.round(t.y),
                      w: Math.round(t.w), h: Math.round(t.h) } : null;
       },
+      /* Every pressable rectangle on the screen as it stands. What this is for
+         is the audits that cannot be done by looking: a control off the bottom
+         of the canvas, one too small for a thumb, one drawn at NaN. All three
+         render as "nothing happened when I pressed it". */
+      taps: () => taps.map(t => ({ x: Math.round(t.x), y: Math.round(t.y),
+                                   w: Math.round(t.w), h: Math.round(t.h),
+                                   live: typeof t.act === "function" })),
       tapHit: (x, y) => {
         const t = tapAt(x, y);
         if (t && typeof t.act === "function") { t.act(); return true; }

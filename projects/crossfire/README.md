@@ -655,6 +655,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `test/campaign.js` | Headless play-through of all three missions to a verdict |
 | `test/survey.js` | Headless survey: chunk purity, endless space, almanac reachability, chart persistence, solidity, the economy, the Leviathan's corridor |
 | `test/menu.js` | The two lanes, the card row's arithmetic, and that every card starts what it advertises |
+| `test/ui.js` | Every control on every page, at four shapes of glass, on a desk and on a phone: on the screen, big enough to press, and not buried under something drawn later |
 
 The game intentionally remains self-contained. Do not add a framework, bundler or
 runtime dependency for changes that fit the existing static architecture.
@@ -666,6 +667,7 @@ node projects/crossfire/test/smoke.js
 node projects/crossfire/test/campaign.js
 node projects/crossfire/test/survey.js
 node projects/crossfire/test/menu.js
+node projects/crossfire/test/ui.js
 ```
 
 The closing wall and the spawn rules cannot be checked by looking at them. With
