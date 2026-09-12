@@ -19,7 +19,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23070c14'/><path d='M50 18 76 78H24Z' fill='none' stroke='%23e8422f' stroke-width='9'/></svg>">
   <style>
     :root{
-      /* the arena: deep navy plate, cyan holo stands, amber floor, Apex red */
+      /* the arena: near-black plate, cyan honeycomb, amber level bar, Apex red */
       --void:#05080f;
       --void-2:#0a111c;
       --plate:#0e1725;
@@ -30,7 +30,7 @@
       --amber:#ffc228;
       --amber-hot:#ffe07a;
       --red:#e8422f;
-      --red-hot:#ff6a4d;
+      --red-hot:#ff7a5c;
       --magenta:#ff3ea5;
       --text:#f2f5f8;
       --dim:#8ea3b8;
@@ -62,21 +62,25 @@
     @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}
       html{scroll-behavior:auto}}
 
-    /* ══ arena backdrop ═══════════════════════════════════════════ */
-    .arena{position:relative;overflow:hidden;
+    /* ══ arena backdrop ═══════════════════════════════════════════
+       One honeycomb, lit from behind the middle and falling away to nothing at
+       the edges. The lobby's background is an environment with a focal point,
+       not a pattern: what makes it read as depth is that the lattice is
+       brightest in a ring around where the legend stands and unreadable in the
+       corners, so the eye lands in the middle and stays there. */
+    .arena{position:relative;overflow:hidden;background:#070d16}
+    .lattice{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+    /* The light behind the legend. Everything else is darker than this. */
+    .spot{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);
+      width:min(880px,88%);aspect-ratio:1.35;pointer-events:none;
+      background:radial-gradient(closest-side,rgba(58,142,178,.32),rgba(20,58,84,.14) 52%,transparent 78%)}
+    /* Corners fall away, so nothing competes with the middle. */
+    .vignette{position:absolute;inset:0;pointer-events:none;
       background:
-        radial-gradient(120% 78% at 50% 4%,rgba(65,211,232,.20),transparent 60%),
-        radial-gradient(96% 62% at 50% 100%,rgba(255,194,40,.15),transparent 62%),
-        linear-gradient(180deg,#06101a 0%,#0a1524 48%,#05080f 100%);
-    }
-    .stands{position:absolute;top:-30px;left:50%;transform:translateX(-50%);
-      width:160%;max-width:1900px;height:440px;pointer-events:none;opacity:.72}
-    .floor{position:absolute;left:50%;bottom:-30px;transform:translateX(-50%);
-      width:200%;max-width:2300px;height:400px;pointer-events:none;
-      -webkit-mask-image:linear-gradient(180deg,transparent,#000 40%,#000);
-      mask-image:linear-gradient(180deg,transparent,#000 40%,#000)}
-    .fog{position:absolute;inset:auto 0 0;height:200px;pointer-events:none;
-      background:linear-gradient(180deg,transparent,rgba(9,19,32,.72) 62%,var(--void))}
+        radial-gradient(130% 108% at 50% 44%,transparent 34%,rgba(4,8,14,.62) 78%,rgba(4,8,14,.9) 100%),
+        linear-gradient(180deg,rgba(4,8,14,.72),transparent 22%)}
+    .fog{position:absolute;inset:auto 0 0;height:190px;pointer-events:none;
+      background:linear-gradient(180deg,transparent,rgba(7,13,22,.78) 58%,var(--void))}
 
     /* ══ brand + room nav (the lobby tab bar) ═════════════════════ */
     .masthead{position:relative;z-index:6;
@@ -154,94 +158,129 @@
     .seasonrow .season .cap b{display:block;color:var(--text);font-size:11px;letter-spacing:.13em}
     nav.subtabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
     nav.subtabs::-webkit-scrollbar{display:none}
-    nav.subtabs a{display:flex;align-items:center;padding:0 clamp(8px,1.4vw,14px);
+    nav.subtabs{align-self:stretch}
+    nav.subtabs a{display:flex;align-items:center;align-self:stretch;
+      min-height:42px;padding:0 clamp(8px,1.4vw,14px);
       white-space:nowrap;text-decoration:none;font-size:11px;letter-spacing:.19em;
       text-transform:uppercase;color:var(--dimmer);transition:color .15s}
     nav.subtabs a:hover{color:var(--text)}
     nav.subtabs a.on{color:var(--amber)}
 
-    /* ══ the stage: gamertag plate + three banner cards ═══════════ */
-    .stage{position:relative;z-index:4;max-width:1240px;margin:0 auto;
-      padding:clamp(22px,4.4vw,46px) var(--gut) 0}
-    .idplate{text-align:center;margin-bottom:clamp(14px,2.6vw,26px)}
-    .idplate .levelhex{display:block;margin:0 auto 7px}
-    .idplate .tag{margin:0;font-family:var(--display);font-weight:700;text-transform:uppercase;
-      font-size:clamp(19px,3.4vw,32px);letter-spacing:.16em;color:#fff;
-      text-shadow:0 2px 18px rgba(0,0,0,.9)}
-    .idplate .meta{font-size:11px;letter-spacing:.22em;text-transform:uppercase;
-      color:var(--dim);margin-top:3px}
-    .idplate .meta .live{color:var(--red-hot)}
+    /* ══ the lobby ════════════════════════════════════════════════
+       A ring of HUD around an empty middle with the legend standing in it:
+       level and squad top-left, count top-right, rank bottom-left, sync
+       bottom-right. Nothing is centred except the legend.
 
-    .cards{display:grid;grid-template-columns:1fr 1.24fr 1fr;
-      gap:clamp(8px,1.7vw,22px);align-items:end}
-    .card{position:relative}
-    .card .namebar{text-align:center;margin-bottom:9px;min-height:34px}
-    .card .who{font-family:var(--display);font-weight:700;text-transform:uppercase;
-      font-size:clamp(11.5px,1.5vw,16px);letter-spacing:.15em;color:#fff;
-      text-shadow:0 2px 10px rgba(0,0,0,.9)}
-    .card .role{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+       There is no legend art to use here, so the plinth holds the thing this
+       page is actually about — the number on that legend's banner. And there
+       is no READY button: in the game it starts matchmaking, and here it would
+       be the shape of an action with no action behind it.
 
-    .plate{position:relative;overflow:hidden;height:clamp(158px,25vw,250px);
-      border:1px solid rgba(255,255,255,.16);
-      clip-path:polygon(0 0,100% 0,100% calc(100% - 24px),calc(100% - 24px) 100%,
-                        24px 100%,0 calc(100% - 24px));
-      background:linear-gradient(180deg,rgba(255,62,165,.26),rgba(65,211,232,.12) 54%,rgba(5,10,18,.92));
-      box-shadow:0 0 0 1px rgba(0,0,0,.6),0 16px 44px rgba(0,0,0,.5);
-      transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s,border-color .22s}
-    .card.hero .plate{height:clamp(196px,31vw,308px);border-color:rgba(255,255,255,.38);
-      background:
-        radial-gradient(120% 70% at 50% 0%,rgba(255,140,60,.5),transparent 62%),
-        linear-gradient(180deg,rgba(232,66,47,.62),rgba(180,40,30,.28) 42%,rgba(5,10,18,.96));
-      box-shadow:0 0 0 1px rgba(0,0,0,.6),0 0 56px rgba(232,66,47,.34),0 22px 60px rgba(0,0,0,.6)}
-    .card:hover .plate{transform:translateY(-5px);border-color:rgba(255,255,255,.55)}
-    .plate .beam{position:absolute;left:50%;top:-8%;bottom:14%;width:46%;
-      transform:translateX(-50%);filter:blur(9px);
-      background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,.05) 62%,transparent)}
-    .plate .scan{position:absolute;inset:0;opacity:.42;
-      background-image:linear-gradient(rgba(255,255,255,.075) 1px,transparent 1px);
-      background-size:100% 12px}
-    .plate .figure{position:absolute;inset:auto 0 0;padding:0 12px 13px;text-align:center}
-    .plate .figure .n{font-family:var(--display);font-weight:700;letter-spacing:-.01em;
-      font-size:clamp(34px,6.6vw,66px);line-height:.9;font-variant-numeric:tabular-nums;
-      color:#fff;text-shadow:0 3px 24px rgba(0,0,0,.9)}
-    .card.hero .plate .figure .n{font-size:clamp(42px,8vw,84px)}
-    .plate .figure .n .tilde{font-size:.38em;vertical-align:.5em;color:rgba(255,255,255,.55)}
-    .plate .figure .lb{font-size:11px;letter-spacing:.24em;text-transform:uppercase;
-      color:rgba(255,255,255,.74);margin-top:2px}
-    .plate .extra{position:absolute;top:11px;left:0;right:0;padding:0 13px;display:grid;gap:5px}
-    .plate .extra li{list-style:none;display:flex;justify-content:space-between;gap:9px;
-      font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.8)}
-    .plate .extra li b{font-family:var(--display);font-size:13px;font-variant-numeric:tabular-nums}
+       What keeps the real screen calm is how little of it is boxed — the HUD
+       is mostly type sitting straight on the backdrop, held by a hairline or
+       an accent rule. So there is exactly one bordered panel down here. */
+    .lobby{position:relative;z-index:4;max-width:1240px;margin:0 auto;
+      padding:clamp(18px,3vw,34px) var(--gut) clamp(20px,3.4vw,36px);
+      display:grid;gap:clamp(14px,2.4vw,28px);
+      grid-template-columns:minmax(0,272px) minmax(0,1fr) minmax(0,272px);
+      grid-template-areas:
+        "tl  stage  tr"
+        "bl  stage  br";
+      align-items:start;min-height:clamp(430px,60vh,580px)}
 
-    .card.empty .plate{border-style:dashed;border-color:rgba(255,255,255,.17);box-shadow:none;
-      background:linear-gradient(180deg,rgba(19,32,51,.55),rgba(5,10,18,.75))}
-    .card.empty .plate:hover{transform:none}
-    .card.empty .slot{position:absolute;inset:0 0 34px;display:grid;place-items:center}
-    .card.empty .slotnote{position:absolute;inset:auto 0 0;padding:0 13px 12px;text-align:center;
-      font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--dimmer);line-height:1.7}
+    .hud{min-width:0}
+    .hud.tl{grid-area:tl;display:grid;gap:clamp(13px,2vw,20px);align-content:start}
+    .hud.tr{grid-area:tr;justify-self:end;text-align:right}
+    .hud.bl{grid-area:bl;align-self:end}
+    .hud.br{grid-area:br;align-self:end}
 
-    /* ══ sync box + READY ═════════════════════════════════════════ */
-    .lower{position:relative;z-index:4;max-width:1240px;margin:0 auto;
-      padding:clamp(18px,3.4vw,30px) var(--gut) clamp(24px,4.6vw,42px);
-      display:grid;grid-template-columns:minmax(0,352px) 1fr;gap:16px;align-items:end}
-    .syncbox{border:1px solid var(--line-hot);background:rgba(7,14,24,.86);
-      clip-path:polygon(0 0,calc(100% - 13px) 0,100% 13px,100% 100%,0 100%)}
-    .syncbox .hd{display:flex;align-items:center;gap:8px;padding:7px 12px;
-      border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.2em;
+    /* ── top-left: who you are, then who is carrying a tracker ──── */
+    .lvlrow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 11px;
+      align-items:center}
+    .lvlrow .hex{grid-column:1;grid-row:1;display:flex}
+    .lvlrow .tag{grid-column:2;grid-row:1;margin:0;
+      font-family:var(--display);font-weight:700;text-transform:uppercase;
+      font-size:clamp(17px,2.2vw,24px);letter-spacing:.1em;color:#fff;line-height:1.1;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+      text-shadow:0 2px 16px rgba(0,0,0,.85)}
+    .lvlrow .meta{grid-column:1/-1;grid-row:2;font-size:11px;letter-spacing:.16em;
+      text-transform:uppercase;color:var(--dim);margin-top:2px}
+    .lvlrow .meta .live{color:var(--red-hot)}
+    .lvlrow .lvlbar{grid-column:1/-1;grid-row:3;margin-top:9px}
+    .lvlbar .track{height:3px;background:rgba(255,255,255,.13);overflow:hidden}
+    .lvlbar .fill{display:block;height:100%;background:var(--amber);
+      box-shadow:0 0 9px rgba(255,194,40,.75)}
+    .lvlbar .cap{display:flex;justify-content:space-between;gap:8px;margin-top:5px;
+      font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+    .lvlbar .cap b{color:var(--amber);font-weight:700}
+
+    /* A squad row: an accent rule, a name, a number. No box — six boxes in one
+       corner is what made this feel like a dashboard instead of a lobby. */
+    .squad{display:grid}
+    .slot{display:flex;align-items:center;gap:11px;padding:9px 0 9px 11px;
+      border-top:1px solid rgba(255,255,255,.09);position:relative;
+      text-decoration:none;transition:padding-left .18s cubic-bezier(.2,.8,.2,1)}
+    .squad .slot:last-child{border-bottom:1px solid rgba(255,255,255,.09)}
+    .slot::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:2px;
+      background:var(--accent,rgba(255,255,255,.16));
+      box-shadow:0 0 9px var(--accent,transparent)}
+    a.slot:hover{padding-left:16px}
+    .slot .nm{font-family:var(--display);font-weight:700;text-transform:uppercase;
+      font-size:14px;letter-spacing:.11em;color:#fff;line-height:1.2}
+    .slot .sub{display:block;font-size:11px;letter-spacing:.15em;
       text-transform:uppercase;color:var(--dim)}
-    .syncbox .hd .dot{width:7px;height:7px;border-radius:50%;background:var(--dimmer);flex:0 0 auto}
+    .slot .fig{margin-left:auto;text-align:right;flex:0 0 auto}
+    .slot .fig b{display:block;font-family:var(--display);font-weight:700;font-size:17px;
+      color:#fff;font-variant-numeric:tabular-nums;line-height:1}
+    .slot .fig span{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim)}
+    .slot.vacant .nm{color:var(--dim)}
+    .slot.vacant::before{background:rgba(255,255,255,.14);box-shadow:none}
+
+    /* ── top-right: the count this page argues about ───────────── */
+    .seasonplate .k{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+    .seasonplate .v{font-family:var(--display);font-weight:700;
+      font-size:clamp(21px,2.8vw,32px);letter-spacing:.05em;color:#fff;line-height:1.1;
+      font-variant-numeric:tabular-nums;text-shadow:0 2px 16px rgba(0,0,0,.85)}
+
+    /* ── centre stage ──────────────────────────────────────────── */
+    .stagecentre{grid-area:stage;position:relative;display:grid;place-items:center;
+      min-height:clamp(260px,36vh,380px);padding:clamp(8px,1.6vw,18px) 0}
+    .stagecentre .ring{position:absolute;top:50%;left:50%;
+      width:clamp(290px,36vw,440px);aspect-ratio:1;transform:translate(-50%,-52%);
+      pointer-events:none}
+    .stagecentre .plinth{position:absolute;left:50%;bottom:0;transform:translateX(-50%);
+      width:clamp(240px,32vw,400px);height:clamp(42px,6vw,74px);pointer-events:none}
+    .hero{position:relative;text-align:center;padding:0 clamp(12px,2vw,22px)}
+    .hero .who{font-family:var(--display);font-weight:700;text-transform:uppercase;
+      font-size:clamp(18px,2.6vw,31px);letter-spacing:.24em;color:#fff;line-height:1.1;
+      text-indent:.24em;text-shadow:0 0 30px var(--glow,transparent),0 3px 20px rgba(0,0,0,.92)}
+    .hero .n{font-family:var(--display);font-weight:700;letter-spacing:-.015em;
+      font-size:clamp(62px,11.5vw,140px);line-height:.84;margin-top:clamp(8px,1.4vw,14px);
+      font-variant-numeric:tabular-nums;color:#fff;
+      text-shadow:0 0 46px var(--glow,transparent),0 6px 32px rgba(0,0,0,.95)}
+    .hero .n .tilde{font-size:.32em;vertical-align:.56em;color:rgba(255,255,255,.6)}
+    .hero .lb{font-size:11px;letter-spacing:.32em;text-transform:uppercase;
+      color:rgba(255,255,255,.8);margin-top:8px;text-indent:.32em}
+    .hero .empty{font-size:11px;letter-spacing:.15em;text-transform:uppercase;
+      color:var(--dim);line-height:1.9;max-width:32ch;margin:12px auto 0}
+
+    /* ── bottom-left: rank ─────────────────────────────────────── */
+    .rankcard{padding-left:12px;border-left:2px solid var(--tint,var(--red));display:grid;gap:2px}
+    .rankcard .k{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+    .rankcard .v{font-family:var(--display);font-weight:700;text-transform:uppercase;
+      font-size:clamp(16px,2.1vw,23px);letter-spacing:.12em;line-height:1.15}
+    .rankcard .rp{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim)}
+
+    /* ── bottom-right: the one panel in the room ───────────────── */
+    .syncbox{border:1px solid rgba(255,255,255,.12);background:rgba(6,11,19,.72)}
+    .syncbox .hd{display:flex;align-items:center;gap:8px;padding:7px 12px;
+      border-bottom:1px solid rgba(255,255,255,.09);font-size:11px;letter-spacing:.19em;
+      text-transform:uppercase;color:var(--dim)}
+    .syncbox .hd .dot{width:6px;height:6px;border-radius:50%;background:var(--dim);flex:0 0 auto}
     .syncbox.on .hd .dot{background:var(--holo);box-shadow:0 0 9px var(--holo)}
-    .syncbox .bd{padding:10px 12px;font-size:11.5px;color:var(--dim);line-height:1.65}
+    .syncbox .bd{padding:9px 12px;font-size:11.5px;color:var(--dim);line-height:1.65}
     .syncbox .bd b{color:var(--text)}
-    .syncbox .bd code{font-size:11px;color:var(--holo)}
-    .ready{display:block;text-align:center;font-family:var(--display);font-weight:700;
-      text-transform:uppercase;font-size:clamp(18px,3.2vw,29px);letter-spacing:.22em;
-      padding:13px 20px;color:#0b0a06;
-      background:linear-gradient(180deg,var(--amber-hot),var(--amber));
-      clip-path:polygon(19px 0,calc(100% - 19px) 0,100% 100%,0 100%);
-      box-shadow:0 0 34px rgba(255,194,40,.32)}
-    .ready.waiting{background:linear-gradient(180deg,#28405c,#182a3e);color:var(--dim);
-      box-shadow:none;border:1px solid var(--line-hot)}
+
 
     /* ══ sections ═════════════════════════════════════════════════ */
     section{max-width:1240px;margin:0 auto;padding:0 var(--gut);scroll-margin-top:104px}
@@ -288,10 +327,10 @@
       clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
     .lg .top{display:flex;align-items:center;gap:11px;padding:11px 14px;
       border-bottom:1px solid var(--line);
-      background:linear-gradient(90deg,rgba(232,66,47,.17),transparent 74%)}
+      background:linear-gradient(90deg,var(--wash,rgba(232,66,47,.17)),transparent 74%)}
     .lg .nm{font-family:var(--display);font-weight:700;text-transform:uppercase;
       font-size:16px;letter-spacing:.12em;line-height:1.2}
-    .lg .sb{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer)}
+    .lg .sb{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
     .lg ul{list-style:none;padding:11px 14px;display:grid;gap:8px}
     .lg li{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
     .lg .t{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
@@ -307,6 +346,7 @@
     .tile .v{font-family:var(--display);font-weight:700;font-size:27px;line-height:1.2;
       font-variant-numeric:tabular-nums;margin-top:2px}
     .tile .v.none{color:var(--dimmer);font-size:19px}
+    .tile .v .tilde{font-size:.55em;vertical-align:.32em;color:var(--dimmer)}
 
     .slope{border:1px solid var(--line);background:var(--plate);padding:15px 18px;
       display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center;
@@ -342,19 +382,19 @@
       .navwrap{order:3;flex-basis:100%;border-top:1px solid rgba(30,50,71,.7)}
       nav.lobbytabs a,nav.lobbytabs .here{padding:9px 12px;font-size:13px}
     }
+    /* A ring of HUD only works while there is a middle to ring. Below this the
+       lobby stops pretending and becomes one column, in the order you would
+       read it: who you are, the legend on the plinth, the rest of the squad,
+       rank, READY, sync. */
     @media (max-width:900px){
-      .cards{grid-template-columns:1fr;gap:12px}
-      /* stacked, the featured legend leads instead of an empty slot */
-      .card.hero{order:-1}
-      /* one placeholder makes the point; two is just scrolling */
-      .cards .card.empty:last-child{display:none}
-      .plate,.card.hero .plate{height:auto;min-height:0}
-      .plate .extra{position:static;padding:12px 14px 0}
-      .plate .figure{position:static;padding:8px 14px 14px}
-      .card.empty .slot{position:static;padding:22px 0 4px}
-      .card.empty .slotnote{position:static;padding:0 14px 13px}
-      .card .namebar{min-height:0}
-      .lower{grid-template-columns:1fr}
+      .lobby{grid-template-columns:minmax(0,1fr);min-height:0;
+        grid-template-areas:"tl" "stage" "tr" "bl" "br"}
+      .hud.tr{justify-self:start;text-align:left}
+      /* "Xbox · In lobby · Prestige 2" is one line's worth of information and
+         reads as such; at .16em it was breaking after the second separator. */
+      .lvlrow .meta{letter-spacing:.1em}
+      .hud.tr,.hud.tl,.hud.bl,.hud.br{justify-items:stretch;justify-self:stretch}
+      .stagecentre{min-height:clamp(210px,40vh,290px)}
       .tiles{grid-template-columns:repeat(2,1fr)}
       .slope{grid-template-columns:1fr}
       .brandbox .t{display:none}
@@ -368,8 +408,10 @@
 <body>
 
 <div class="arena">
-  <svg class="stands" id="stands" viewBox="0 0 1200 440" preserveAspectRatio="none" aria-hidden="true"></svg>
-  <svg class="floor" id="floor" viewBox="0 0 1200 400" preserveAspectRatio="none" aria-hidden="true"></svg>
+  <svg class="lattice" id="lattice" viewBox="0 0 1440 760"
+       preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+  <div class="spot"></div>
+  <div class="vignette"></div>
   <div class="fog"></div>
 
   <div class="masthead">
@@ -390,6 +432,7 @@
           <a href="climbing.html">climbing</a>
           <a href="training.html">training</a>
           <a href="exploration.html">exploration</a>
+          <a href="gaming.html">gaming</a>
           <a href="workbench.html">workbench</a>
           <a href="captures.html">captures</a>
         </nav>
@@ -416,25 +459,43 @@
     </div>
   </div>
 
-  <main class="stage" id="lobby">
-    <!-- The gamertag is this page's title, so it's the <h1> — and it's in the
-         markup, not built by JS, so the document has a heading even if the data
+  <main class="lobby" id="lobby">
+    <!-- top-left: level, gamertag, then the squad slots. The gamertag is this
+         page's title so it stays the <h1>, and it sits in the markup rather
+         than being built by JS, so the document has a heading even if the data
          file never loads. -->
-    <div class="idplate" id="idplate">
-      <span id="idhex"></span>
-      <h1 class="tag" id="idtag">Apex Legends</h1>
-      <div class="meta" id="idmeta"></div>
+    <div class="hud tl">
+      <div class="lvlrow">
+        <span class="hex" id="idhex"></span>
+        <h1 class="tag" id="idtag">Apex Legends</h1>
+        <div class="meta" id="idmeta"></div>
+        <div class="lvlbar" id="lvlbar"></div>
+      </div>
+      <div class="squad" id="squad"></div>
     </div>
-    <div class="cards" id="cards"></div>
+
+    <!-- top-right: the count this page is an argument about -->
+    <div class="hud tr"><div class="seasonplate" id="seasonplate"></div></div>
+
+    <!-- centre stage: where the legend stands -->
+    <div class="stagecentre">
+      <svg class="ring" id="ring" viewBox="0 0 300 300" aria-hidden="true"></svg>
+      <svg class="plinth" id="plinth" viewBox="0 0 370 72" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <div class="hero" id="hero"></div>
+    </div>
+
+    <!-- bottom-left: rank -->
+    <div class="hud bl"><div class="rankcard" id="rankcard" hidden></div></div>
+
+    <!-- bottom-right: the sync panel -->
+    <div class="hud br">
+      <div class="syncbox" id="syncbox">
+        <div class="hd"><span class="dot"></span><span id="syncstate">Not connected</span></div>
+        <div class="bd" id="syncbody"></div>
+      </div>
+    </div>
   </main>
 
-  <div class="lower">
-    <div class="syncbox" id="syncbox">
-      <div class="hd"><span class="dot"></span><span id="syncstate">Not connected</span></div>
-      <div class="bd" id="syncbody"></div>
-    </div>
-    <div class="ready waiting" id="ready">Awaiting sync</div>
-  </div>
 </div>
 
 <section id="ranked">
@@ -487,42 +548,59 @@
   const el = (id) => document.getElementById(id);
   const num = (n) => (typeof n === "number" && isFinite(n)) ? n.toLocaleString("en-US") : null;
 
-  /* ══ backdrop: holo stands + lit hex floor ═══════════════════ */
+  /* ══ backdrop: one lit honeycomb ════════════════════════════
+     Pointy-top hexes on a real offset lattice, so the seams line up the way a
+     honeycomb's do instead of reading as a grid of unrelated shapes. Each
+     cell's weight comes from how far it sits from the light behind the middle,
+     and that falloff is what gives the wall depth. A scattering of cells carry
+     a faint fill: a perfectly even lattice reads as wallpaper. */
   (() => {
-    let out = "";
-    for (let i = 0; i < 10; i++) {
-      out += `<ellipse cx="600" cy="160" rx="${520 + i * 78}" ry="${118 + i * 27}" fill="none"
-        stroke="#41d3e8" stroke-opacity="${(0.34 - i * 0.029).toFixed(3)}" stroke-width="1.4"/>`;
-    }
-    for (let i = 0; i <= 24; i++) {
-      const t = i / 24, x = 30 + t * 1140, dip = Math.sin(t * Math.PI) * 98;
-      out += `<line x1="${x.toFixed(1)}" y1="${(160 - dip).toFixed(1)}" x2="${x.toFixed(1)}" y2="6"
-        stroke="#41d3e8" stroke-opacity=".16" stroke-width="1"/>`;
-    }
-    el("stands").innerHTML = out;
+    // A wall designed at desktop width and sliced to cover a phone shows about
+    // three cells across, which reads as giant shapes rather than a honeycomb.
+    // Size the viewBox and the cell together so the density holds either way.
+    const narrow = window.matchMedia("(max-width:760px)").matches;
+    const W = narrow ? 560 : 1440, H = 760, R = narrow ? 34 : 54;
+    const hw = Math.sqrt(3) * R;                   // hex width, flat to flat
+    const vs = R * 1.5;                            // row pitch
+    const cx = W * 0.5, cy = H * 0.44;             // where the light is
+    const reach = Math.hypot(W * 0.52, H * 0.52);
 
-    const rows = 11, cols = 15;
-    const lit = new Set(["4,7","5,6","5,8","6,7","7,5","7,7","7,9",
-                         "8,4","8,7","8,10","9,6","9,8","10,7"]);
-    let g = "";
-    for (let r = 0; r < rows; r++) {
-      const depth = r / (rows - 1);
-      const y = 30 + Math.pow(depth, 1.7) * 350;
-      const h = 15 + depth * 40, w = 32 + depth * 74;
-      const cx0 = 600 - (cols / 2) * w;
-      for (let c = 0; c < cols; c++) {
-        const x = cx0 + c * w + (r % 2 ? w / 2 : 0);
-        const pts = [[x + w * .25, y], [x + w * .75, y], [x + w, y + h / 2],
-                     [x + w * .75, y + h], [x + w * .25, y + h], [x, y + h / 2]]
-          .map(([px, py]) => `${px.toFixed(1)},${py.toFixed(1)}`).join(" ");
-        const hot = lit.has(`${r},${c}`);
-        g += `<polygon points="${pts}" fill="${hot ? "#ffc228" : "none"}"
-          fill-opacity="${hot ? (0.16 + depth * 0.32).toFixed(2) : 0}"
-          stroke="#ffc228" stroke-opacity="${(0.09 + depth * 0.50).toFixed(2)}"
-          stroke-width="${(0.8 + depth * 0.8).toFixed(2)}"/>`;
+    // A fixed shuffle, so the panelled cells land in the same places every
+    // load. A backdrop that reshuffles on refresh is a backdrop you notice.
+    let seed = 20260820;
+    const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+
+    const hexPath = (x, y) => {
+      let d = "";
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI / 180) * (60 * i - 90);
+        d += `${i ? "L" : "M"}${(x + Math.cos(a) * R).toFixed(1)} ${(y + Math.sin(a) * R).toFixed(1)}`;
+      }
+      return d + "Z";
+    };
+
+    let out = "";
+    for (let row = -1; row * vs < H + R * 2; row++) {
+      const y = row * vs;
+      const stagger = (row % 2) ? hw / 2 : 0;
+      for (let col = -1; col * hw + stagger < W + hw; col++) {
+        const x = col * hw + stagger;
+        const r = rnd();
+        // 0 at the light, 1 out at the far corner. The vertical term is scaled
+        // so the falloff follows the shape of the room rather than a circle.
+        const d = Math.min(1, Math.hypot(x - cx, (y - cy) * 1.22) / reach);
+        const near = Math.pow(1 - d, 2.1);
+        const stroke = 0.05 + near * 0.30;
+        if (stroke < 0.075) continue;              // don't draw what won't show
+        const filled = r > 0.89 && d < 0.62;       // one cell in nine, in the light
+        out += `<path d="${hexPath(x, y)}" fill="${filled ? "#3fa9d8" : "none"}"` +
+               `${filled ? ` fill-opacity="${(0.04 + near * 0.10).toFixed(3)}"` : ""}` +
+               ` stroke="#4fbde0" stroke-opacity="${stroke.toFixed(3)}"` +
+               ` stroke-width="${(0.9 + near * 0.9).toFixed(2)}"/>`;
       }
     }
-    el("floor").innerHTML = g;
+    el("lattice").setAttribute("viewBox", `0 0 ${W} ${H}`);
+    el("lattice").innerHTML = out;
   })();
 
   /* ══ read the data ══════════════════════════════════════════ */
@@ -554,9 +632,35 @@
   el("seasoncap").innerHTML =
     `${PLATFORMS[acct.platform] || "Apex Legends"}<b>${D.live ? "Live" : "Seed data"}</b>`;
 
-  /* ══ the gamertag plate ═════════════════════════════════════ */
+  /* ══ legend colour ══════════════════════════════════════════
+     Every legend in Apex has a colour you know it by, and its banner is that
+     colour over black. Naming the ones Ric actually plays is worth more than a
+     generated palette; anything unnamed gets a stable hue off its own name so
+     a new legend never lands on grey. */
+  const LEGEND_HUE = {
+    Alter: 276, Ash: 320, Axle: 22, Ballistic: 44, Bangalore: 84, Bloodhound: 6,
+    Catalyst: 288, Caustic: 96, Conduit: 186, Crypto: 128, Fuse: 30, Gibraltar: 202,
+    Horizon: 172, Lifeline: 52, "Mad Maggie": 14, Mirage: 46, Newcastle: 214,
+    Octane: 108, Pathfinder: 190, Rampart: 330, Revenant: 350, Seer: 160,
+    Valkyrie: 208, Vantage: 196, Wattson: 58, Wraith: 258, Loba: 300,
+  };
+  const hueOf = (name) => {
+    if (LEGEND_HUE[name] !== undefined) return LEGEND_HUE[name];
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+    return h;
+  };
+  // Three strengths, because they back different things: --accent is a hairline,
+  // --glow sits behind a 132px number, --wash sits behind 11px label text.
+  const accentOf = (name) => {
+    const h = hueOf(name);
+    return `--accent:hsl(${h} 82% 60%);--glow:hsl(${h} 86% 52% / .46);` +
+           `--wash:hsl(${h} 86% 52% / .16)`;
+  };
+
+  /* ══ the level plate ════════════════════════════════════════ */
   const levelHex = (inner, tint, dashed) => `
-    <svg class="levelhex" width="${inner ? 50 : 42}" height="${inner ? 45 : 38}"
+    <svg class="levelhex" width="${inner ? 46 : 40}" height="${inner ? 41 : 36}"
          viewBox="0 0 50 45" aria-hidden="true">
       <path d="M25 1.5 46.5 12.6v20.8L25 43.5 3.5 33.4V12.6Z"
             fill="${dashed ? "none" : "rgba(5,10,18,.85)"}" stroke="${tint}" stroke-width="1.6"
@@ -573,73 +677,139 @@
   el("idtag").textContent = acct.name || "Gamertag pending";
   el("idmeta").innerHTML =
     `${PLATFORMS[acct.platform] || "Apex Legends"} ·
-     <span class="${D.live && (status.online || status.inGame) ? "live" : ""}">${stateText}</span>`;
+     <span class="${D.live && (status.online || status.inGame) ? "live" : ""}">${stateText}</span>${
+       typeof acct.prestige === "number" && acct.prestige > 0
+         ? ` · Prestige ${acct.prestige}` : ""}`;
 
-  /* ══ the three banner cards ═════════════════════════════════ */
-  const bannerCard = (name, info, isHero) => {
+  /* The lobby puts an XP bar under your name, and the API hands us the
+     percentage for free — it was being thrown away. */
+  const pct = acct.toNextLevelPercent;
+  if (typeof pct === "number" && typeof acct.level === "number") {
+    const clamped = Math.max(0, Math.min(100, pct));
+    el("lvlbar").innerHTML = `
+      <div class="track"><span class="fill" style="width:${clamped}%"></span></div>
+      <div class="cap"><span>Level ${num(acct.level)}</span>
+        <span><b>${clamped}%</b> to ${num(acct.level + 1)}</span></div>`;
+  }
+
+  /* ══ the top-right plate ════════════════════════════════════
+     The lobby keeps counts in this corner. The platform and the live/seed
+     state already have a home in the strip above, so this holds the number the
+     whole page is an argument about. */
+  el("seasonplate").innerHTML =
+    `<div class="k">Tracked kills</div>
+     <div class="v">${anyApprox && trackedKills ? "~" : ""}${num(trackedKills) || "0"}</div>`;
+
+  /* ══ centre stage ═══════════════════════════════════════════
+     The lobby is a ring of HUD around a legend standing on a lit plinth. There
+     is no legend art to put there, so the plinth carries the number that
+     legend's banner is carrying. */
+  (() => {
+    el("ring").innerHTML = `
+      <defs><radialGradient id="rg" cx="50%" cy="50%">
+        <stop offset="0" stop-color="#07101c" stop-opacity=".92"/>
+        <stop offset="62" stop-color="#07101c" stop-opacity=".72"/>
+        <stop offset="1" stop-color="#07101c" stop-opacity="0"/></radialGradient></defs>
+      <circle cx="150" cy="150" r="146" fill="url(#rg)"/>
+      <circle cx="150" cy="150" r="132" fill="none" stroke="#5fd0e8"
+              stroke-opacity=".26" stroke-width="1.3"/>
+      <circle cx="150" cy="150" r="132" fill="none" stroke="#5fd0e8"
+              stroke-opacity=".5" stroke-width="1.3"
+              stroke-dasharray="72 320" stroke-dashoffset="36"/>`;
+
+    // The lit disc a legend stands on: three rings, a soft centre, and tick
+    // marks around the rim.
+    let g = `<defs><radialGradient id="pg" cx="50%" cy="50%">
+        <stop offset="0" stop-color="#ffc228" stop-opacity=".34"/>
+        <stop offset="1" stop-color="#ffc228" stop-opacity="0"/></radialGradient></defs>
+      <ellipse cx="185" cy="40" rx="150" ry="27" fill="url(#pg)"/>`;
+    [[150, 27, .42], [112, 20, .26], [66, 12, .5]].forEach(([rx, ry, op]) => {
+      g += `<ellipse cx="185" cy="40" rx="${rx}" ry="${ry}" fill="none"
+        stroke="#ffc228" stroke-opacity="${op}" stroke-width="1.2"/>`;
+    });
+    for (let i = 0; i < 20; i++) {
+      const a = (i / 20) * Math.PI * 2;
+      const x0 = 185 + Math.cos(a) * 150, y0 = 40 + Math.sin(a) * 27;
+      const x1 = 185 + Math.cos(a) * 141, y1 = 40 + Math.sin(a) * 25.4;
+      g += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}"
+        y2="${y1.toFixed(1)}" stroke="#ffc228" stroke-opacity=".34" stroke-width="1.1"/>`;
+    }
+    el("plinth").innerHTML = g;
+  })();
+
+  const featured = ordered[0];
+  if (featured) {
+    const info = legends[featured];
     const trackers = (info.trackers || []).filter((t) => typeof t.value === "number");
     const kills = killsOf(info);
-    const others = trackers.filter((t) => t.key !== "kills").slice(0, 2);
     const lead = kills !== null ? kills : (trackers[0] ? trackers[0].value : null);
     const leadLabel = kills !== null ? "Kills"
       : trackers[0] ? (trackers[0].name || trackers[0].key) : "No tracker";
     const approx = trackers.some((t) => t.approx);
-    return `<div class="card${isHero ? " hero" : ""}">
-      <div class="namebar">
-        <div class="who">${name}</div>
-        <div class="role">${info.equipped ? "tracker equipped" : "seen"}${
-          trackers.some((t) => t.source === "manual") ? " · hand-read" : ""}</div>
-      </div>
-      <div class="plate">
-        <div class="beam"></div><div class="scan"></div>
-        ${others.length ? `<ul class="extra">${others.map((t) =>
-          `<li><span>${t.name || t.key}</span><b>${num(t.value)}</b></li>`).join("")}</ul>` : ""}
-        <div class="figure">
-          <div class="n">${lead === null ? "—"
-            : `${approx ? '<span class="tilde">~</span>' : ""}${num(lead)}`}</div>
-          <div class="lb">${leadLabel}</div>
-        </div>
-      </div>
-    </div>`;
+    const stage = el("hero");
+    stage.setAttribute("style", accentOf(featured));
+    stage.innerHTML = `
+      <div class="who">${featured}</div>
+      <div class="n">${lead === null ? "—"
+        : `${approx ? '<span class="tilde">~</span>' : ""}${num(lead)}`}</div>
+      <div class="lb">${leadLabel}${
+        trackers.some((t) => t.source === "manual") ? " · hand-read" : ""}</div>`;
+  } else {
+    el("hero").innerHTML = `<div class="who" style="color:var(--dimmer)">No legend on the plinth</div>
+      <div class="empty">A legend appears here the first time it is seen carrying a
+      tracker. Without one it is invisible to the API.</div>`;
+  }
+
+  /* ══ the squad slots ════════════════════════════════════════
+     Three slots, the way the lobby stacks them — the ones with nobody in them
+     are the point, so they are drawn rather than hidden. */
+  const slotFor = (name) => {
+    const info = legends[name];
+    const trackers = (info.trackers || []).filter((t) => typeof t.value === "number");
+    const kills = killsOf(info);
+    const lead = kills !== null ? kills : (trackers[0] ? trackers[0].value : null);
+    const label = kills !== null ? "kills"
+      : trackers[0] ? (trackers[0].name || trackers[0].key) : "";
+    return `<a class="slot" href="#legends" style="${accentOf(name)}">
+      <span><span class="nm">${name}</span>
+        <span class="sub">${info.equipped ? "equipped" : "seen"}</span></span>
+      ${lead === null ? "" : `<span class="fig"><b>${num(lead)}</b><span>${label}</span></span>`}
+    </a>`;
   };
+  const vacant = `<div class="slot vacant">
+    <span><span class="nm">Empty slot</span>
+      <span class="sub">no tracker</span></span></div>`;
+  const squadNames = ordered.slice(1, 4);
+  el("squad").innerHTML =
+    (squadNames.map(slotFor).join("") + vacant.repeat(Math.max(0, 3 - squadNames.length)));
 
-  const emptyCard = (note) => `<div class="card empty">
-    <div class="namebar">
-      <div class="who" style="color:var(--dimmer)">Empty slot</div>
-      <div class="role">no tracker</div>
-    </div>
-    <div class="plate">
-      <div class="slot">
-        <svg width="50" height="50" viewBox="0 0 54 54" aria-hidden="true">
-          <path d="M27 2 52 27 27 52 2 27Z" fill="none" stroke="#ff3ea5" stroke-opacity=".5" stroke-width="1.5"/>
-          <path d="M27 17v20M17 27h20" stroke="#ff3ea5" stroke-opacity=".78" stroke-width="2.6"/>
-        </svg>
-      </div>
-      <div class="slotnote">${note}</div>
-    </div>
-  </div>`;
+  /* ══ the rank card ══════════════════════════════════════════ */
+  if (rank.name) {
+    const TIER = { Rookie: "--t-rookie", Bronze: "--t-bronze", Silver: "--t-silver",
+      Gold: "--t-gold", Platinum: "--t-platinum", Diamond: "--t-diamond",
+      Master: "--t-master", "Apex Predator": "--t-predator" };
+    const tint = `var(${TIER[rank.name] || "--holo"})`;
+    const div = rank.div ? ` ${["", "I", "II", "III", "IV"][rank.div] || rank.div}` : "";
+    const card = el("rankcard");
+    card.hidden = false;
+    card.style.setProperty("--tint", tint);
+    card.innerHTML =
+      `<div class="k">Ranked</div>
+       <div class="v" style="color:${tint}">${rank.name}${div}</div>
+       <div class="rp">${num(rank.score) || "—"} RP${
+         rank.ladderPos > 0 ? ` · #${num(rank.ladderPos)} on ${PLATFORMS[acct.platform] || "platform"}` : ""}</div>`;
+  }
 
-  // Apex puts the featured legend center stage, squadmates either side.
-  el("cards").innerHTML = [ordered[1], ordered[0], ordered[2]].map((name, i) => {
-    if (name) return bannerCard(name, legends[name], i === 1);
-    return emptyCard(i === 1
-      ? "Equip a kills tracker and the legend takes center stage"
-      : "A legend without a tracker is invisible to the API");
-  }).join("");
-
-  /* ══ sync box + READY ═══════════════════════════════════════ */
+  /* ══ sync panel ════════════════════════════════════════════ */
   if (D.live) {
     el("syncbox").classList.add("on");
     el("syncstate").textContent = stateText;
     el("syncbody").innerHTML = `Polled <b>${(D.generated || "")
       .replace("T", " ").replace("Z", " UTC")}</b> through the Apex Legends Status API.
       ${names.length} legend${names.length === 1 ? "" : "s"} on record.`;
-    el("ready").textContent = "Ready";
-    el("ready").classList.remove("waiting");
   } else {
-    // Visitor-facing: says what they're looking at, not how Ric wires it up.
     // The setup steps live in README.md — filenames and credential stores are
-    // not something a family member should be reading off the page.
+    // not something a visitor needs read out to them.
     el("syncbody").innerHTML = `Showing hand-read numbers. The daily automatic pull
       isn't connected yet, so these are read off the in-game banner.`;
   }
@@ -677,7 +847,9 @@
     const tint = css.getPropertyValue(entry[1]).trim();
     const bits = [];
     if (typeof rank.score === "number") bits.push(`<b>${num(rank.score)}</b> RP`);
-    if (rank.ladderPos) bits.push(`#${num(rank.ladderPos)} on ${PLATFORMS[acct.platform] || "platform"}`);
+    // ALS sends -1 for "not placed on the ladder", which is most of the time
+    // below Master. Only a real position is worth printing.
+    if (rank.ladderPos > 0) bits.push(`#${num(rank.ladderPos)} on ${PLATFORMS[acct.platform] || "platform"}`);
     el("rankline").innerHTML = `<span class="cur">Your current rank is</span>
       <span class="val" style="color:${tint}">${rank.name}${
         rank.div ? " " + (ROMAN[rank.div] || rank.div) : ""}</span>
@@ -698,12 +870,16 @@
         const trackers = (info.trackers || []).filter((t) => typeof t.value === "number");
         const free = 3 - trackers.length;
         const initials = name.replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase();
-        return `<div class="lg">
+        // Same hue the legend wears on its lobby banner — one legend, one
+        // colour, wherever it shows up on the page.
+        const h = hueOf(name);
+        const rim = `hsl(${h} 82% 60%)`, ink = `hsl(${h} 90% 72%)`;
+        return `<div class="lg" style="${accentOf(name)}">
           <div class="top">
             <svg width="34" height="34" viewBox="0 0 36 36" aria-hidden="true" style="flex:0 0 34px">
               <path d="M18 1.5 33 10v16L18 34.5 3 26V10Z" fill="rgba(5,10,18,.6)"
-                    stroke="#e8422f" stroke-width="1.4"/>
-              <text x="18" y="23" text-anchor="middle" fill="#ff6a4d"
+                    stroke="${rim}" stroke-width="1.4"/>
+              <text x="18" y="23" text-anchor="middle" fill="${ink}"
                     font-family="Arial Narrow,Impact,sans-serif" font-weight="700"
                     font-size="14">${initials}</text></svg>
             <div><div class="nm">${name}</div>
@@ -724,8 +900,11 @@
     ["games", "Games played"], ["kd", "K/D"],
   ].map(([key, label]) => {
     const v = career[key], shown = (typeof v === "number") ? num(v) : null;
+    // A hand-read career figure is an estimate and says so, exactly like the
+    // banner cards do — this page's whole argument is that it never pretends.
+    const tilde = (shown && career.approx) ? '<span class="tilde">~</span>' : "";
     return `<div class="tile"><div class="k">${label}</div>
-      <div class="v${shown ? "" : " none"}">${shown || "not read"}</div></div>`;
+      <div class="v${shown ? "" : " none"}">${shown ? tilde + shown : "not read"}</div></div>`;
   }).join("");
 
   /* ══ the slope ══════════════════════════════════════════════ */
