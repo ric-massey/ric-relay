@@ -21738,6 +21738,22 @@
       },
       // Every region site over a block of the lattice, for measuring the mix —
       // sampling along a line visits far too few of them to say anything.
+      /* Where every region actually is, not just which ones exist. A biome is a
+         Voronoi cell around a site, so the sites are the honest description of
+         a sector's geography — how many there are inside a distance, how far out
+         each kind's nearest example is, and how big any of them get. */
+      regionSites: (n) => {
+        const out = [];
+        for (let j = -n; j <= n; j++) {
+          for (let i = -n; i <= n; i++) {
+            const st = regionSite(i, j);
+            out.push({ x: st.x, y: st.y, cx: i, cy: j,
+                       key: st.region.key, name: st.region.name });
+          }
+        }
+        return out;
+      },
+      regionCell: () => REGION_CELL,
       regionCensus: (n) => {
         const out = [];
         for (let j = -n; j <= n; j++) {
