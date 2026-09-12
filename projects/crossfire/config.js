@@ -20,6 +20,6 @@
  * in this file — that one bypasses every policy.
  */
 window.CROSSFIRE_CLOUD = {
-  url: "",
-  anonKey: ""
+  url: "https://zsmrcptmyvndrskrciil.supabase.co",
+  anonKey: "sb_publishable_tkcvBQipD1_PQgo7khYhWQ_YqvvtcSO"
 };

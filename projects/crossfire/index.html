@@ -20965,10 +20965,16 @@
      Failure is silence. No network, a paused project, a rotated token: the game
      plays on the local book, which is what it did before any of this existed. */
   async function catchUp() {
-    if (!cloud || !cloud.enabled() || !cloud.session()) return;
+    /* Silent in the ordinary case and noisy under `?debug=1`, because every way
+       this can fail is a way it fails *invisibly* — the player simply gets the
+       sector they had, which is exactly what a working game looks like. */
+    const why = m => { if (debugOn) console.warn("crossfire: catch-up " + m); };
+    if (!cloud || !cloud.enabled()) return why("skipped — no account service");
+    if (!cloud.session()) return why("skipped — nobody signed in");
     let remote = null;
-    try { remote = await cloud.pull(); } catch (_) { return; }
-    if (!remote || !remote.book) return;
+    try { remote = await cloud.pull(); }
+    catch (err) { return why("could not read the account: " + err.message); }
+    if (!remote || !remote.book) return why("found nothing on the account");
 
     const local = bookStore.read();
     if (local === remote.book) return;
@@ -21466,6 +21472,8 @@
       saveBook: () => saveSurveyBook(),
       // The account panel, without having to find the pause screen first.
       account: () => openAccount(),
+      // The boot-time pull, on demand, so a harness can drive it.
+      catchUp: () => catchUp(),
       /* What kind of space a point is, which the *game* never tells the player —
          see BIOMES.md. A harness has to be able to ask, or the one layer whose
          whole design is to be invisible is also the one layer nothing can check. */

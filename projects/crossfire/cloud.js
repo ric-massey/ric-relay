@@ -35,9 +35,12 @@
 (() => {
   "use strict";
 
-  /* Filled in by config.js, which is not in the repository — see config.sample.js.
-     Absent is the normal state for anyone who has cloned this and not made a
-     project of their own, and it has to be survivable rather than an error. */
+  /* Filled in by config.js, which is committed: the publishable key is designed
+     to sit in public JavaScript and row-level security on `public.saves` is what
+     actually keeps one player's save away from another's.
+
+     Blank is a normal state, not an error — it is what anyone who has cloned
+     this without making a project of their own will have, and it has to play. */
   const CFG = window.CROSSFIRE_CLOUD || {};
   const URL_BASE = String(CFG.url || "").replace(/\/+$/, "");
   const ANON = String(CFG.anonKey || "");
@@ -59,7 +62,7 @@
   let sess = (() => {
     try {
       const s = JSON.parse(readLocal(SESSION_KEY) || "null");
-      if (s && s.access && s.refresh && s.userId) return s;
+      if (s && s.access && s.refresh) return s;
     } catch (_) {}
     return null;
   })();
@@ -133,6 +136,7 @@
   let refreshing = null;
   async function fresh() {
     if (!sess) throw new Error("Not signed in.");
+    await knowWho();
     if (Date.now() < sess.expires) return;
     if (!refreshing) {
       refreshing = (async () => {
@@ -152,13 +156,82 @@
     return refreshing;
   }
 
+  /* Who this is. A session that came from a link in an email carries tokens and
+     no user, and every row here is addressed by user id — so without this a
+     recovered session asks for `user_id=eq.` and is told, correctly, about
+     nothing. Asked once and remembered; a failure leaves the id empty and the
+     caller fails on its own terms rather than on a second, stranger error. */
+  let asking = null;
+  async function knowWho() {
+    if (!sess || sess.userId) return;
+    if (!asking) {
+      asking = call("/auth/v1/user")
+        .then(u => {
+          if (sess && u && u.id) {
+            setSession(Object.assign({}, sess, { userId: u.id, email: u.email || "" }));
+          }
+        })
+        .catch(() => {})
+        .finally(() => { asking = null; });
+    }
+    return asking;
+  }
+
+  /* Where a link in an email should land. Supabase sends confirmation and
+     password-reset links through its own `/verify` endpoint and then bounces the
+     browser to whatever `redirect_to` says — and if nobody says, it uses the
+     project's Site URL, which on a fresh project is `http://localhost:3000` and
+     is therefore a dead end for every player in the world.
+
+     Asked for explicitly, from wherever the game is actually running, so the
+     same build works on the live site and on a laptop. The project still has to
+     allow the URL — Authentication → URL Configuration → Redirect URLs — or
+     Supabase ignores this and falls back to the Site URL. */
+  function backHere() {
+    try { return location.origin + location.pathname; } catch (_) { return ""; }
+  }
+  const withRedirect = path => {
+    const to = backHere();
+    return to ? path + (path.includes("?") ? "&" : "?") +
+                "redirect_to=" + encodeURIComponent(to) : path;
+  };
+
+  /* ── coming back from an email ────────────────────────────────────────────
+     A confirmation or reset link lands here with the session in the URL
+     fragment. Picking it up is what makes both of those journeys end somewhere:
+     without it the player arrives at a game that does not know who they are,
+     which for a password reset means the link did nothing at all.
+
+     The fragment is scrubbed afterwards. A URL carrying a live token is one that
+     goes into browser history, gets copied into a message, and signs somebody
+     else in. */
+  function takeSessionFromURL() {
+    let h = "";
+    try { h = location.hash || ""; } catch (_) { return false; }
+    if (h.length < 2 || h.indexOf("access_token=") < 0) return false;
+    const q = new URLSearchParams(h.slice(1));
+    const access = q.get("access_token"), refresh = q.get("refresh_token");
+    if (!access || !refresh) return false;
+    setSession({
+      access, refresh,
+      userId: "", email: "",
+      expires: Date.now() + Math.max(0, (Number(q.get("expires_in")) || 3600) - 60) * 1000
+    });
+    try {
+      history.replaceState(null, "", location.pathname + location.search);
+    } catch (_) {}
+    // The fragment carries no user, so who this is has to be asked for.
+    knowWho();
+    return true;
+  }
+
   /* ── signing in ───────────────────────────────────────────────────────────
      Supabase can be set to confirm addresses by email before it will hand out a
      session. When it is, a signup returns a user and no tokens — which is not a
      failure and must not read like one, so it is reported as its own outcome
      and the panel says to go and click the link. */
   async function signUp(email, password) {
-    const j = await call("/auth/v1/signup", {
+    const j = await call(withRedirect("/auth/v1/signup"), {
       method: "POST", auth: false, body: { email, password }
     });
     if (j && j.access_token) { setSession(fromAuth(j)); return { signedIn: true }; }
@@ -174,7 +247,8 @@
   }
 
   async function resetPassword(email) {
-    await call("/auth/v1/recover", { method: "POST", auth: false, body: { email } });
+    await call(withRedirect("/auth/v1/recover"),
+               { method: "POST", auth: false, body: { email } });
   }
 
   /* Local first, then tell the server. The other order leaves somebody signed
@@ -294,6 +368,9 @@
       if (document.visibilityState === "hidden") last();
     });
   }
+
+  // Before anything else asks whether somebody is signed in.
+  if (enabled()) { try { takeSessionFromURL(); } catch (_) {} }
 
   window.CrossfireCloud = {
     enabled,
