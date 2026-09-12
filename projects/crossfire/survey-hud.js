@@ -3667,8 +3667,8 @@
   }
 
   /* ═══ THE WORKBENCH ═══════════════════════════════════════════════════════
-     Flat recipes. Ingredients in, part out, one step. No engineering interface,
-     no nested trees to hold in your head — a row per recipe, what it wants,
+     Flat builds. Ingredients in, part out, one step. No engineering interface,
+     no nested trees to hold in your head — a row per build, what it wants,
      what you have of it, and one button.
 
      It works anywhere, which is the whole point: the ice melter's reason to
@@ -3676,15 +3676,19 @@
      units, and a workbench you have to dock at cannot be that. So the page is
      live, like the loadout, and the world keeps going behind it.
 
-     The two things it must answer that a list of recipes does not:
+     The two things it must answer that a list of builds does not:
 
        · **what is this for** — the reverse lookup. You are carrying three
          reactor cores and no idea why until something tells you, so every
          material in the hold says what it is an ingredient for.
-       · **the one step down** — a recipe that eats a finished part says whether
+       · **the one step down** — a build that eats a finished part says whether
          you have that part, and offers to build it in the same action when you
          could. Nobody should have to work a chain out by hand. */
-  let craftPg = { scroll: 0, pick: -1 };
+  /* `pick` is a part *key*, not a row in the grid. The grid sorts what you can
+     build right now to the front, and that order changes the moment a rock is
+     cracked — so an index would sit still while the part under it changed, and
+     the panel would be describing something you never clicked. */
+  let craftPg = { scroll: 0, pick: null, mat: null };
 
   /* ── carrying a part from storage to a slot ───────────────────────────────
      Drag and drop, on a canvas, with no DOM to help. Three pieces:
@@ -3758,7 +3762,7 @@
   // What was drawn where, so a harness can press the same rectangles a thumb does.
   HUD.slotBoxes = () => slotBoxes.map(b => ({ ...b }));
   HUD.storeRows = () => storeRows.map(r => ({ ...r }));
-  HUD.craftPick = i => { craftPg.pick = i; };
+  HUD.craftPick = key => { craftPg.pick = key || null; };
   // What the parts grid actually drew, which is not the same as what the game
   // sent: the anomalies are kept out of it until you have one.
   let partsShown = [];
@@ -3787,7 +3791,7 @@
             "0.04em");
   }
   const CRAFT_ROWS = 8;
-  HUD.craftOpened = function () { craftPg.pick = -1; };
+  HUD.craftOpened = function () { craftPg.pick = null; craftPg.mat = null; };
   /* Pixels now rather than rows: the grid is boxes, and a box is not a row. */
   HUD.craftDragBy = function (dy) {
     const max = Math.max(0, (HUD.craftHeight || 0) - (HUD.craftView || 1));
@@ -3797,15 +3801,42 @@
   HUD.drawCraft = function (st, dt) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
-    const recipes = st.recipes || [];
-    /* Every part in the game **except the exotic ones you have not found**.
-       The page lists everything on purpose — you cannot plan towards something
-       you have never been told exists — and that argument holds for ordinary
-       technology and breaks for the strange things. An exotic is the late-game
-       anomaly, and a catalogue entry for one turns it from something you run into
-       into a line item you are waiting on. Find one and it appears, with
-       everything the page knows about it. */
-    const all = (st.parts || []).filter(p => p.rarity !== "exotic" || p.owned || p.fitted);
+    const crafts = st.crafts || [];
+    /* What belongs on a workbench: **everything you can build, plus everything
+       you have met.** Nothing else.
+
+       This page used to list all twenty-five parts, on the argument that you
+       cannot plan towards something you have never been told exists. That is
+       true of the things you can build, and it is the wrong shape for the rest:
+       a bench listing ten parts it will never make turns "what can I do" into a
+       catalogue you have to read past, and a part you have never seen, cannot
+       build and cannot afford is not a plan — it is a line item you are waiting
+       on. The exotics were already carved out for exactly that reason; this is
+       the same rule applied to all of them rather than to the two strangest.
+
+       So a part appears here if it is craftable, or if you have laid eyes on
+       one — held it, or stood at a shelf that stocks it. See `markSeen`. The
+       ones that arrive that way say UNCRAFTABLE, which is the honest answer to
+       why they are on a bench. */
+    const canBuildNow = key => {
+      const r = (st.crafts || []).find(x => x.key === key);
+      return !!(r && r.ready);
+    };
+    /* What you can build *right now* comes first. The page used to count them
+       into the heading — "4 YOU CAN BUILD NOW" — which is a number you have to
+       go and look for, then scan the grid to find out which four. Sorting them
+       to the front and lighting them up answers the same question without
+       saying anything: the things you can act on are the things at the top, and
+       they are the brightest squares on the page.
+
+       Stable within each half, so the grid does not otherwise reshuffle itself —
+       the only movement is a part crossing into buildable, which is movement
+       worth noticing. */
+    const all = (st.parts || [])
+      .filter(p => p.craftable || p.seen || p.owned || p.fitted)
+      .map((p, i) => ({ p, i, now: canBuildNow(p.key) }))
+      .sort((a, b) => (b.now - a.now) || (a.i - b.i))
+      .map(e => e.p);
     partsShown = all;
     const hold = st.materials || [];
     const crate = st.store || [];
@@ -3827,13 +3858,23 @@
       const col = i % 2, row = Math.floor(i / 2);
       const mx = railX + PAGE.PAD + col * mw;
       const yy = ROW(PAGE.TOP, row) + 2;
+      const openHere = craftPg.mat === m.key;
       // Its own picture rather than a coloured square: see `drawMatIcon`.
       drawMatIcon(m.key, mx + 8, yy - 5, 8, m.colour, m.n ? 0.95 : 0.3);
-      fitText(m.name, mx + 22, yy, SIZE.cap, m.colour, "left", m.n ? 0.95 : 0.4,
-              mw - 64, "0.04em");
+      fitText(m.name, mx + 22, yy, SIZE.cap, m.colour, "left",
+              openHere ? 1 : m.n ? 0.95 : 0.4, mw - 64, "0.04em");
       label(String(m.n), mx + mw - 12, yy, SIZE.cap,
             m.n ? m.colour : VIOLET_LOW, "right", m.n ? 1 : 0.4);
+      /* A row you can ask. "How do I get one of these" was answerable nowhere:
+         the parts page says what a build wants and the hold says what you have,
+         and between them there was no line saying that electronics never come
+         out of a rock — which is the single most useful thing to know here, and
+         the one thing a player can only learn by mining for an hour and failing.
+         Same toggle as a part: press it again to put it away. */
+      tap({ x: mx, y: yy - 14, w: mw, h: 22,
+            act: () => { craftPg.mat = openHere ? null : m.key; } });
     });
+
 
     const partY = PAGE.TOP + matH + PAGE.STEP;
     const partH = SCREEN_H - partY - 22;
@@ -3853,8 +3894,8 @@
     });
 
     /* ── every part in the game ────────────────────────────────────────────
-       *Every* one, not only the ones with a recipe. The page used to be the
-       recipe book, which meant the parts you cannot build — which is most of the
+       *Every* one, not only the ones with a build. The page used to be the
+       build book, which meant the parts you cannot build — which is most of the
        interesting ones — appeared nowhere in the interface until the day one
        happened to be on a shelf in front of you. You could not plan towards
        something you had never been told existed.
@@ -3872,10 +3913,18 @@
     // let you see a lot of it at once.
     const cols = api.touchOnly ? 5 : 4;
     const cell = Math.floor((gridW - PAGE.PAD * 2 - (cols - 1) * 10) / cols);
-    const pickH = PANEL_H(5);
-    const gridH = SCREEN_H - PAGE.TOP - pickH - PAGE.STEP - 22;
-    panel(full.x, PAGE.TOP, gridW, gridH, CASH, "EVERY PART",
-          recipes.filter(r => r.ready).length + " YOU CAN BUILD NOW");
+    /* The panel below is only there when something is open, so the grid gets
+       that space back when nothing is. It used to be permanent, holding the
+       words PICK ONE over an empty box for the whole time you were not using
+       it — five rows of the page spent saying "click something". */
+    const showPick = !!craftPg.pick && (st.parts || []).some(q => q.key === craftPg.pick);
+    const pickH = showPick ? PANEL_H(5) : 0;
+    const gridH = SCREEN_H - PAGE.TOP - (showPick ? pickH + PAGE.STEP : 0) - 22;
+    /* Just PARTS. It said EVERY PART, which stopped being true the day the list
+       stopped being every part — a heading that lies about its own contents is
+       worse than a plain one, because it tells you not to go looking for the
+       rest. */
+    panel(full.x, PAGE.TOP, gridW, gridH, CASH, "PARTS", "");
 
     const gTop = PAGE.TOP + PAGE.HEAD - 4;
     ctx.save();
@@ -3886,17 +3935,17 @@
 
     // What the page knows about each part, in one place so the box and the
     // detail panel below can never disagree about it.
-    const recipeFor = key => recipes.find(r => r.key === key) || null;
+    const craftFor = key => crafts.find(r => r.key === key) || null;
 
     all.forEach((p, i) => {
       const col = i % cols, row = Math.floor(i / cols);
       const bx = full.x + PAGE.PAD + col * (cell + 10);
       const by = gTop + 8 + row * (cell + 26) - craftPg.scroll;
       if (by > gTop + gridH || by + cell < gTop - 30) return;
-      const on = craftPg.pick === i;
+      const on = craftPg.pick === p.key;
       const rar = rarity(p.rarity);
       const have = p.owned > 0 || p.fitted;
-      const rec = recipeFor(p.key);
+      const rec = craftFor(p.key);
       const ready = !!(rec && rec.ready);
 
       /* Four states, and they have to be four states you can tell apart across a
@@ -3906,18 +3955,25 @@
          it. The fills are three times what they were and the borders are at full
          strength, which is enough for the answer to be a glance instead of a
          comparison. */
+      /* Buildable *now* is the state this page exists to advertise, so it is the
+         loudest thing on it short of the one you have open: a fill you can see
+         from across the room, a full-strength border and a thicker one. The
+         heading used to carry that information as a number; it carries none now,
+         and this has to be doing the work instead — a part you can make should
+         be the thing your eye lands on without being told to look. */
       ctx.save();
-      ctx.fillStyle = have ? CASH : rar.colour;
-      ctx.globalAlpha = on ? 0.42 : have ? 0.3 : ready ? 0.22 : 0.1;
+      ctx.fillStyle = ready ? AMBER : have ? CASH : rar.colour;
+      ctx.globalAlpha = on ? 0.42 : ready ? 0.34 : have ? 0.3 : 0.08;
       ctx.fillRect(bx, by, cell, cell);
-      ctx.strokeStyle = on ? "#ffffff" : have ? CASH : rar.colour;
-      ctx.globalAlpha = on ? 1 : have ? 1 : ready ? 0.95 : 0.5;
-      ctx.lineWidth = on ? 3 : have ? 2 : 1.4;
+      ctx.strokeStyle = on ? "#ffffff" : ready ? AMBER : have ? CASH : rar.colour;
+      ctx.globalAlpha = on ? 1 : ready ? 1 : have ? 1 : 0.42;
+      ctx.lineWidth = on ? 3 : ready ? 2.4 : have ? 2 : 1.2;
       ctx.strokeRect(bx, by, cell, cell);
       ctx.restore();
 
       drawPartIcon(p.cat, bx + cell / 2, by + cell / 2, cell * 0.3,
-                   have ? CASH : rar.colour, have ? 1 : ready ? 1 : 0.65);
+                   ready ? AMBER : have ? CASH : rar.colour,
+                   ready || have ? 1 : 0.55);
       // Owned ones say so on the box: the grid is also the answer to "what have
       // I actually got", and opening four boxes to find out is not an answer.
       if (have) {
@@ -3925,11 +3981,13 @@
               SIZE.cap, CASH_DIM, "right", 0.85);
       }
       fitText(p.name, bx + cell / 2, by + cell + 15, SIZE.cap,
-              have ? CASH : ready ? rar.colour : VIOLET_LOW, "center",
-              have ? 1 : ready ? 0.95 : 0.6, cell + 8, "0.04em");
+              ready ? AMBER : have ? CASH : VIOLET_LOW, "center",
+              ready || have ? 1 : 0.55, cell + 8, "0.04em");
 
       tap({ x: bx, y: by, w: cell, h: cell + 18,
-            act: () => { craftPg.pick = craftPg.pick === i ? -1 : i; } });
+            // Clicking the one already open closes it, which is what makes the
+            // panel something you open rather than something that is always on.
+            act: () => { craftPg.pick = craftPg.pick === p.key ? null : p.key; } });
     });
     ctx.restore();
     tapClipOff();
@@ -3951,20 +4009,14 @@
        which is not a measurement: an ingredient list with long names walked
        straight out of the right-hand edge of the box and kept going. */
     const pickY = PAGE.TOP + gridH + PAGE.STEP;
-    const p = all[craftPg.pick] || null;
-    const rec = p ? recipeFor(p.key) : null;
+    const p = showPick ? all.find(q => q.key === craftPg.pick) || null : null;
+    const rec = p ? craftFor(p.key) : null;
     const inner = gridW - PAGE.PAD * 2;
-    panel(full.x, pickY, gridW, pickH, p ? rarity(p.rarity).colour : VIOLET_LOW,
-          p ? p.name : "PICK ONE",
-          p ? p.rarity.toUpperCase() + (p.fitted ? "  ·  ON SHIP"
-                                      : p.owned ? "  ·  ×" + p.owned + " IN STORAGE"
-                                      : "") : "");
-    if (!p) {
-      fitText(api.touchOnly ? "Tap any part to see what it does and how to get one."
-                            : "Click any part to see what it does and how to get one.",
-              full.x + PAGE.PAD, ROW(pickY, 0) + 2, SIZE.cap, VIOLET_DIM,
-              "left", 0.6, inner);
-    } else {
+    if (p) {
+      panel(full.x, pickY, gridW, pickH, rarity(p.rarity).colour, p.name,
+            p.rarity.toUpperCase() + (p.fitted ? "  ·  ON SHIP"
+                                    : p.owned ? "  ·  ×" + p.owned + " IN STORAGE"
+                                    : ""));
       // What it does, wrapped to the box rather than trimmed to one line.
       const said = wrapLines(p.note, SIZE.cap, inner - 190);
       said.slice(0, 2).forEach((line, i) => {
@@ -3978,10 +4030,14 @@
       const ways = [];
       ways.push(p.buyable ? { t: "BUY  " + money(p.cost), c: CASH }
                           : { t: "NO ONE SELLS THIS", c: VIOLET_LOW });
-      ways.push(p.craftable
-        ? { t: p.rarity === "common" ? "BUILD ANYWHERE" : "BUILD AT A STATION",
-            c: AMBER }
-        : { t: "UNCRAFTABLE", c: VIOLET_LOW });
+      /* Only when it *can* be built. A part that cannot says so on the button,
+         which is where the eye goes, and saying UNCRAFTABLE twice in one panel —
+         once as a tag and again on the button four inches to the right — reads
+         as two different facts rather than one said twice. */
+      if (p.craftable) {
+        ways.push({ t: p.rarity === "common" ? "BUILD ANYWHERE"
+                                             : "BUILD AT A STATION", c: AMBER });
+      }
       let wx = full.x + PAGE.PAD;
       const wy = ROW(pickY, 2) + 2;
       for (const w of ways) {
@@ -3991,12 +4047,12 @@
         wx += ww;
       }
       // And where to look, for the ones you can only find — with nobody selling
-      // it and no recipe for it, that line is the whole of how you get one.
+      // it and no build for it, that line is the whole of how you get one.
       if (!p.buyable && !p.craftable && p.where) {
         fitText(p.where, full.x + PAGE.PAD, ROW(pickY, 3) + 2, SIZE.cap,
                 ICE, "left", 0.7, inner - 190);
       } else if (rec) {
-        /* The recipe, laid out with real measurements and wrapped onto a second
+        /* The build, laid out with real measurements and wrapped onto a second
            row if it needs one. */
         const bits = [];
         if (rec.part) {
@@ -4027,15 +4083,15 @@
         }
       }
 
-      /* The button, and what it says when it cannot be pressed. A part with no
-         recipe says so rather than showing a dead CRAFT — "there is no way to
+      /* The button, and what it says when it cannot be pressed. A part nothing
+         can build says so rather than showing a dead CRAFT — "there is no way to
          build this" is information, and a greyed button is a puzzle. */
       const canHere = rec && (p.rarity === "common" || st.docked);
       const can = !!(rec && canHere &&
                      (rec.ready || (rec.part && !rec.part.have &&
                                     rec.part.makeable &&
                                     !rec.rows.some(x => x.have < x.want))));
-      const word = !rec ? "NO RECIPE"
+      const word = !rec ? "UNCRAFTABLE"
                  : !canHere ? "NEEDS A STATION"
                  : rec.ready ? "CRAFT"
                  : (rec.part && rec.part.makeable) ? "CRAFT BOTH"
@@ -4043,6 +4099,39 @@
       button(word, full.x + gridW - PAGE.PAD - 88, ROW(pickY, 2) + 10, 180, 34,
              can ? CASH : VIOLET_LOW,
              can ? () => st.onCraft && st.onCraft(p.key) : null, false, can);
+    }
+
+    /* The bubble, drawn last of everything on the page. It used to sit where
+       it was built — inside the materials block — which put it *underneath* the
+       storage panel drawn next, so it came out as a box you could read the page
+       through. Last drawn is on top, and last drawn also wins the tap. It hangs off the row it belongs to, and is pushed
+       back up the page when it would run off the bottom — a bubble explaining
+       the last material is otherwise drawn into the floor. */
+    const askedMat = craftPg.mat && hold.find(m => m.key === craftPg.mat);
+    if (askedMat && askedMat.where) {
+      const bw = railW - 16;
+      const lines = wrapLines(askedMat.where, SIZE.cap, bw - 20);
+      const bh = 26 + lines.length * 15;
+      const mi = hold.indexOf(askedMat);
+      let byy = ROW(PAGE.TOP, Math.floor(mi / 2)) + 14;
+      byy = Math.min(byy, SCREEN_H - 22 - bh);
+      const bxx = railX + 8;
+      ctx.save();
+      ctx.fillStyle = "#05060a";
+      ctx.globalAlpha = 0.97;
+      ctx.fillRect(bxx, byy, bw, bh);
+      ctx.strokeStyle = askedMat.colour;
+      ctx.globalAlpha = 0.9;
+      ctx.lineWidth = 1.4;
+      ctx.strokeRect(bxx, byy, bw, bh);
+      ctx.restore();
+      label(askedMat.name, bxx + 10, byy + 15, SIZE.cap, askedMat.colour,
+            "left", 1, "0.08em");
+      lines.forEach((ln, k) =>
+        label(ln, bxx + 10, byy + 30 + k * 15, SIZE.cap, VIOLET_DIM, "left", 0.85));
+      // Anywhere on the bubble closes it, so it is never something you are stuck
+      // with — and it is on top, so this wins over the row underneath.
+      tap({ x: bxx, y: byy, w: bw, h: bh, act: () => { craftPg.mat = null; } });
     }
 
     pageNav(st, "craft");

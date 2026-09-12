@@ -1023,7 +1023,7 @@ const storeOf = (cf, key) => {
           p.name + " cannot be bought, built or found — it does not exist");
   }
 
-  // The two strange ones are found and nothing else: no shelf, no recipe.
+  // The two strange ones are found and nothing else: no shelf, no build.
   for (const key of ["warptuner", "runningdark"]) {
     const p = parts.find(q => q.key === key);
     check(p && p.findable && !p.buyable && !p.craftable,
@@ -4739,8 +4739,8 @@ const storeOf = (cf, key) => {
 }
 
 // ── crafting, kept at Minecraft depth ────────────────────────────────────
-/* Phase 5.4 and 5.6. Flat recipes: ingredients in, part out, one step. The one
-   piece of depth is that a recipe may consume a **finished part**, and that is
+/* Phase 5.4 and 5.6. Flat builds: ingredients in, part out, one step. The one
+   piece of depth is that a build may consume a **finished part**, and that is
    fenced by three rules the plan states and this block holds — because the whole
    risk with nesting is that it quietly becomes the research tree that was
    already rejected. */
@@ -4752,18 +4752,18 @@ const storeOf = (cf, key) => {
   const parts = cf.parts();
   const byKey = k => parts.find(p => p.key === k);
 
-  const recipes = view().recipes;
+  const crafts = view().crafts;
   /* Ten, not twelve. Seven parts stopped being craftable when the rule landed
      that the best of each category is found or bought rather than built — see the
      block further down that holds that rule. */
-  check(recipes.length >= 9, "only " + recipes.length + " recipes");
+  check(crafts.length >= 9, "only " + crafts.length + " crafts");
 
   /* ── the three fences ────────────────────────────────────────────────── */
-  const nested = recipes.filter(r => r.part);
-  check(nested.length > 0, "no recipe is built out of a finished part");
+  const nested = crafts.filter(r => r.part);
+  check(nested.length > 0, "no build is built out of a finished part");
   for (const r of nested) {
     // Two steps, never a tree.
-    const below = recipes.find(x => x.key === r.part.key);
+    const below = crafts.find(x => x.key === r.part.key);
     check(!below || !below.part,
           r.name + " is made from " + r.part.name + ", which is itself made " +
           "from a part — that is three levels and a tree");
@@ -4778,29 +4778,29 @@ const storeOf = (cf, key) => {
     const spec = byKey(r.part.key);
     check(!!spec, r.part.key + " is an ingredient and not a part");
   }
-  // And every recipe makes something real.
-  for (const r of recipes) {
-    check(!!byKey(r.key), r.key + " is a recipe for something that is not a part");
+  // And every build makes something real.
+  for (const r of crafts) {
+    check(!!byKey(r.key), r.key + " is a build for something that is not a part");
   }
 
-  /* Recipes want the found materials, not just the mined ones. A part you can
+  /* Builds want the found materials, not just the mined ones. A part you can
      build out of four units of iron is a part you buy by flying in circles. */
   const wants = new Set();
-  for (const r of recipes) for (const row of r.rows) wants.add(row.key);
+  for (const r of crafts) for (const row of r.rows) wants.add(row.key);
   check(wants.has("electronics") && wants.has("core"),
-        "no recipe asks for electronics or a reactor core");
+        "no build asks for electronics or a reactor core");
   check(wants.has("ice") || true, "");
 
   /* ── building one ────────────────────────────────────────────────────── */
-  const flat = recipes.find(r => !r.part);
+  const flat = crafts.find(r => !r.part);
   for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
-  check(view().recipes.find(r => r.key === flat.key).ready === false,
+  check(view().crafts.find(r => r.key === flat.key).ready === false,
         "an empty hold can still build " + flat.name);
   check(view().onCraft(flat.key) === false, "built something out of nothing");
 
-  const need = view().recipes.find(r => r.key === flat.key);
+  const need = view().crafts.find(r => r.key === flat.key);
   for (const row of need.rows) surv.hold[row.key] = row.want;
-  check(view().recipes.find(r => r.key === flat.key).ready === true,
+  check(view().crafts.find(r => r.key === flat.key).ready === true,
         "the exact materials are not enough to build " + flat.name);
   check(view().onCraft(flat.key) === true, "could not build " + flat.name);
   check(view().store.some(e => e.key === flat.key),
@@ -4816,18 +4816,18 @@ const storeOf = (cf, key) => {
      with what is in the hold. Anything above common wants a berth and somebody
      else's tools, so it wants a station — which is what stops the workbench and
      the shop competing, and gives the deep a reason to send you home. */
-  const dear = recipes.find(r => {
+  const dear = crafts.find(r => {
     const m = byKey(r.key);
     return m && m.rarity !== "common";
   });
-  check(!!dear, "every recipe in the game is for a common part");
+  check(!!dear, "every build in the game is for a common part");
   if (dear) {
-    const rows = view().recipes.find(r => r.key === dear.key).rows;
+    const rows = view().crafts.find(r => r.key === dear.key).rows;
     surv.store = {};
     for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
     for (const row of rows) surv.hold[row.key] = row.want * 2;
-    if (view().recipes.find(r => r.key === dear.key).part) {
-      const below = view().recipes.find(r => r.key === dear.key).part.key;
+    if (view().crafts.find(r => r.key === dear.key).part) {
+      const below = view().crafts.find(r => r.key === dear.key).part.key;
       surv.store[below] = 1;
     }
     surv.docked = null;
@@ -4841,21 +4841,21 @@ const storeOf = (cf, key) => {
   }
 
   /* ── the step below, in one action ───────────────────────────────────── */
-  const deep = recipes.find(r => r.part);
+  const deep = crafts.find(r => r.part);
   // At a station: this chain ends in a rare part, and rare wants a berth.
   surv.docked = { x: 0, y: 0 };
   for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
   surv.store = {};
-  const both = view().recipes.find(r => r.key === deep.key);
+  const both = view().crafts.find(r => r.key === deep.key);
   check(both.part.have === false, "the ingredient part is already aboard");
   check(both.part.makeable === false,
         "an empty hold can already make the ingredient");
   // Enough for both halves of the chain.
-  const belowR = view().recipes.find(r => r.key === deep.key).part.key;
-  const lower = view().recipes.find(r => r.key === belowR);
+  const belowR = view().crafts.find(r => r.key === deep.key).part.key;
+  const lower = view().crafts.find(r => r.key === belowR);
   for (const row of lower.rows) surv.hold[row.key] = (surv.hold[row.key] || 0) + row.want;
   for (const row of both.rows) surv.hold[row.key] = (surv.hold[row.key] || 0) + row.want;
-  check(view().recipes.find(r => r.key === deep.key).part.makeable === true,
+  check(view().crafts.find(r => r.key === deep.key).part.makeable === true,
         "with the materials for both, the ingredient still cannot be made");
   check(view().onCraft(deep.key) === true, "could not build " + deep.name + " and its part");
   check((surv.store[deep.key] || 0) === 1, "the finished part is not in storage");
@@ -4873,7 +4873,7 @@ const storeOf = (cf, key) => {
   /* ── the ice melter ──────────────────────────────────────────────────── */
   const melter = byKey("icemelter");
   check(!!melter, "there is no ice melter");
-  check(!!view().recipes.find(r => r.key === "icemelter"),
+  check(!!view().crafts.find(r => r.key === "icemelter"),
         "the ice melter cannot be built, only bought");
 
   const me = cf.live().ships[0];
@@ -4909,9 +4909,9 @@ const storeOf = (cf, key) => {
   step(60);
   check(surv.hold.ice === ice1, "the melter kept melting into a full tank");
 
-  console.log("  crafting   " + recipes.length + " recipes \u00b7 " +
+  console.log("  crafting   " + crafts.length + " crafts \u00b7 " +
               nested.length + " built out of a part, two steps and never three " +
-              "\u00b7 one tap builds the step below \u00b7 the hold says what " +
+              "\u00b7 one tap crafts the step below \u00b7 the hold says what " +
               "each material is for \u00b7 the melter turns ice into water and " +
               "stops at a full tank");
 }
@@ -6266,8 +6266,8 @@ const storeOf = (cf, key) => {
   const { cf } = boot("?debug=1&seed=515151");
   cf.start("survey", 1);
   const parts = cf.parts();
-  const recipes = cf.surveyView().recipes;
-  const madeable = new Set(recipes.map(r => r.key));
+  const crafts = cf.surveyView().crafts;
+  const madeable = new Set(crafts.map(r => r.key));
 
   check(parts.length > madeable.size,
         "every one of the " + parts.length + " parts can be built — the sector " +
@@ -6306,11 +6306,19 @@ const storeOf = (cf, key) => {
     const ways = (p.buyable ? 1 : 0) + (p.craftable ? 1 : 0) + (p.findable ? 1 : 0);
     check(ways > 0,
           p.name + " can neither be built, bought nor found — it does not exist");
-    // What the page claims and what the shop does have to be the same claim.
+    /* What the page claims and what the shop does have to be the same claim —
+       **both ways round**. This used to check one direction only, and the other
+       one was false: the shelf listed every part shallow enough regardless of
+       whether anybody sold it, so the home station stocked the tractor beam, the
+       warp tuner and running dark — two of the three almanac verbs, at a price
+       of nothing, because a part nobody sells has no price to quote. A one-way
+       check on a two-way agreement is half a test. */
     check(!p.buyable || shelf.has(p.key),
           p.name + " says it is for sale and the deepest station does not stock it");
+    check(p.buyable || !shelf.has(p.key),
+          p.name + " is on the shelf and nobody is supposed to sell it");
     check(p.craftable === madeable.has(p.key),
-          p.name + " disagrees with the recipe book about whether it can be built");
+          p.name + " disagrees with the build book about whether it can be built");
     // And a part you can only find has to say where to look.
     if (!p.buyable && !p.craftable) {
       check(p.where.length > 20, p.name + " is find-only and says nothing about where");
@@ -6318,14 +6326,14 @@ const storeOf = (cf, key) => {
   }
   surv.docked = null;
 
-  /* And the page does not spend the player's attention before it has to: a recipe
+  /* And the page does not spend the player's attention before it has to: a build
      says what it wants only once it has been picked. */
   const hud = cf.hud();
   hud.craftOpened();
   cf.screen("craft");
   cf.draw();
   check(typeof hud.craftHeight === "number" && hud.craftHeight > hud.craftView,
-        "the recipe grid fits on one screen — it is not a grid");
+        "the build grid fits on one screen — it is not a grid");
 
   console.log("  findonly   " + madeable.size + " of " + parts.length +
               " parts are craftable \u00b7 " + findOnly + " categories keep " +
@@ -6342,7 +6350,7 @@ const storeOf = (cf, key) => {
      · **buy** is depth-gated. A station only stocks parts whose `deep` is at or
        below the danger where that station stands, so a part pitched deeper than
        any station can generate is on no shelf in the galaxy.
-     · **craft** needs a recipe that exists and whose ingredients exist.
+     · **craft** needs a build that exists and whose ingredients exist.
      · **find** means a cache can hold one, and the cache pool is not "everything
        findable" — it is findable *and not buyable*. A part marked find-and-buy is
        in no cache at all.
@@ -6353,8 +6361,8 @@ const storeOf = (cf, key) => {
   const { cf } = boot("?debug=1&seed=606060");
   cf.start("survey", 1);
   const parts = cf.parts();
-  const recipes = cf.allRecipes();
-  const made = new Set(recipes.map(r => r.out));
+  const crafts = cf.allCrafts();
+  const made = new Set(crafts.map(r => r.out));
 
   /* How deep a shop actually gets. Sampled along rays rather than over a full
      grid: a station is a 3.2% roll per chunk, so what this needs is many chunks
@@ -6397,23 +6405,23 @@ const storeOf = (cf, key) => {
   check(stranded.length === 0,
         "parts nothing in the sector can hand you: " + stranded.join("; "));
 
-  /* A recipe has to want things that exist. An ingredient nobody can carry is a
+  /* A build has to want things that exist. An ingredient nobody can carry is a
      part that is craftable on the page and uncraftable at the bench. */
   const holdKinds = Object.keys(cf.survey().hold);
   const badNeed = [];
-  for (const r of recipes) {
+  for (const r of crafts) {
     for (const k of Object.keys(r.need)) {
       if (holdKinds.indexOf(k) < 0) badNeed.push(r.out + " wants " + k);
     }
   }
   check(badNeed.length === 0,
-        "recipes want materials the hold has no room for: " + badNeed.join("; "));
+        "crafts want materials the hold has no room for: " + badNeed.join("; "));
 
-  // Every craftable part must have a recipe, and every recipe must make a part.
+  // Every craftable part must have a build, and every build must make a part.
   const keys = new Set(parts.map(p => p.key));
-  const orphanRecipe = recipes.filter(r => !keys.has(r.out)).map(r => r.out);
-  check(orphanRecipe.length === 0,
-        "recipes for parts that do not exist: " + orphanRecipe.join(", "));
+  const orphanBuild = crafts.filter(r => !keys.has(r.out)).map(r => r.out);
+  check(orphanBuild.length === 0,
+        "build entries for parts that do not exist: " + orphanBuild.join(", "));
 
   /* How far out a part's shelf actually is. `deep` is a danger figure and danger
      is a curve against distance, so the number on the part means nothing to a
@@ -7166,7 +7174,7 @@ const storeOf = (cf, key) => {
 
 /* ── the parts page is a catalogue, and storage drops into a slot ─────────────
    Two things the interface could not do. It could not tell you a part existed
-   unless you could already build it — the page was the recipe book, so the parts
+   unless you could already build it — the page was the build book, so the parts
    you can only find or only buy appeared nowhere until one happened to be on a
    shelf in front of you, and you cannot plan towards something you have never
    been told about. And an empty slot was the word EMPTY: a label where there
@@ -7178,25 +7186,25 @@ const storeOf = (cf, key) => {
   const hud = cf.hud();
   const view = () => cf.surveyView();
 
-  // Every part in the game is on the page, and each says how you get one.
+  // Every part in the game is known to the mode, and each says how you get one.
   const all = view().parts;
-  const recipes = view().recipes;
-  check(all.length > recipes.length,
-        "the parts page lists " + all.length + " and the recipe book " +
-        recipes.length + " — it is still just the recipe book");
+  const crafts = view().crafts;
+  check(all.length > crafts.length,
+        "the mode knows " + all.length + " parts and " + crafts.length +
+        " ways to build one — the catalogue is still just the bench");
   for (const p of all) {
     check(typeof p.name === "string" && p.name.length, "a part with no name");
     check(p.note.length > 24, p.name + " does not say what it does");
     check(p.buyable || p.craftable || p.findable, p.name + " cannot be got at all");
   }
 
-  /* It draws, and the text stays inside its box. The recipe line used to advance
+  /* It draws, and the text stays inside its box. The build line used to advance
      a cursor by `text.length * 9.6` and hope, which is not a measurement — a long
      ingredient list walked straight out of the right-hand edge. */
   hud.craftOpened();
   cf.screen("craft");
-  for (let i = 0; i < all.length; i++) {
-    hud.craftPick(i);
+  for (const p of all) {
+    hud.craftPick(p.key);
     cf.draw();
   }
   check(true, "the parts page drew every part without throwing");
@@ -7334,10 +7342,14 @@ const storeOf = (cf, key) => {
    tier is that they break rules the game spent twenty hours teaching. A
    countdown turns them into a checklist to finish.
 
-   And the parts page listed every part in the game, which is right for ordinary
-   technology — you cannot plan towards something you have never been told exists
-   — and wrong for the anomalies. An exotic you have not found is not in the
-   catalogue. Find one and it appears, with everything the page knows. */
+   And the bench lists **what you can build, plus what you have met** — nothing
+   else. It used to list all twenty-five parts on the argument that you cannot
+   plan towards something you have never been told exists, which is true of the
+   things you can build and the wrong shape for the rest: a bench listing ten
+   parts it will never make is a catalogue you have to read past. The exotics
+   were already carved out for that reason; this is the same rule applied to all
+   of them. Meet one — hold it, or stand at a shelf that stocks it — and it
+   appears, saying UNCRAFTABLE, which is the honest answer to why it is there. */
 {
   const { cf } = boot("?debug=1&seed=343434");
   cf.start("survey", 1);
@@ -7362,27 +7374,151 @@ const storeOf = (cf, key) => {
     return hud.partsShown();
   };
   const before = shown();
-  for (const p of exotics) {
-    check(!before.some(q => q.key === p.key),
-          p.name + " is exotic, unfound, and on the parts page anyway");
-  }
+
+  /* Everything you can build is there, always — that is the half of the old
+     argument that still holds, and it is what makes the page a workbench rather
+     than a list of what happens to be in the hold. */
   for (const p of all) {
-    if (p.rarity === "exotic") continue;
+    if (!p.craftable) continue;
     check(before.some(q => q.key === p.key),
-          p.name + " is ordinary technology and is missing from the catalogue");
+          p.name + " can be built and is not on the bench");
   }
 
-  // Find one, and it is there — with everything the page knows about it.
-  surv.store[exotics[0].key] = 1;
-  const after = shown();
-  check(after.some(q => q.key === exotics[0].key),
-        "an exotic you own is still not in the catalogue");
-  check(after.length === before.length + 1,
-        "owning one exotic changed the list by " + (after.length - before.length));
+  /* And nothing you can neither build nor have met. A part that is only for
+     sale two hundred thousand units away is not a plan. */
+  for (const q of before) {
+    const p = all.find(x => x.key === q.key);
+    check(p.craftable || p.seen || p.owned || p.fitted,
+          p.name + " is on the bench and is neither buildable nor met");
+  }
+  const unmet = all.filter(p => !p.craftable && !p.seen && !p.owned && !p.fitted);
+  check(unmet.length > 0,
+        "every part is already buildable or met — this proves nothing");
 
-  console.log("  secrets    the book says how many, never out of how many · " +
-              exotics.length + " exotic parts kept out of the catalogue until " +
-              "you find one");
+  // Meet one and it appears, with everything the page knows about it.
+  const met = unmet[0];
+  surv.seen.add(met.key);
+  const after = shown();
+  check(after.some(q => q.key === met.key),
+        met.name + " has been met and is still not on the bench");
+  check(after.length === before.length + 1,
+        "meeting one part changed the list by " + (after.length - before.length));
+
+  /* Docking is the other way of meeting one: a shelf you are standing at is a
+     set of parts you now know exist. Every part the station stocks, and no
+     part it does not. */
+  const fresh = boot("?debug=1&seed=343434");
+  fresh.cf.start("survey", 1);
+  const fs = fresh.cf.survey();
+  const shelfBefore = new Set(fs.seen);
+  const me = fresh.cf.live().ships[0];
+  const st0 = fs.stations[0];
+  me.x = st0.x; me.y = st0.y; me.vx = me.vy = 0;
+  for (let i = 0; i < 4; i++) { now += 1000 / 60; fresh.cf.step(); }
+  check(fs.docked, "the test never docked, so it proves nothing about shelves");
+  const stocked = fresh.cf.surveyView().forSale.map(r => r.key);
+  check(stocked.length > 0, "the station this docked at stocks nothing");
+  for (const k of stocked) {
+    check(fs.seen.has(k), k + " is on the shelf in front of you and unmet");
+  }
+  const learned = [...fs.seen].filter(k => !shelfBefore.has(k));
+  check(learned.every(k => stocked.indexOf(k) >= 0),
+        "docking taught parts the station does not stock: " +
+        learned.filter(k => stocked.indexOf(k) < 0).join(", "));
+
+  /* ── the page says it by arranging itself ──────────────────────────────
+     It used to count the buildable ones into the heading — "4 YOU CAN BUILD
+     NOW" — which is a number you read and then scan the grid to cash in. They
+     come first and they are the brightest things on the page instead, so the
+     answer is where your eye already is. Nothing is said. */
+  {
+    const g = boot("?debug=1&seed=343434");
+    g.cf.start("survey", 1);
+    const gs = g.cf.survey();
+    for (const k of Object.keys(gs.hold)) gs.hold[k] = 40;
+    const gh = g.cf.hud();
+    gh.craftOpened();
+    g.cf.screen("craft");
+    g.cf.draw();
+
+    const list = gh.partsShown();
+    const ready = new Set(g.cf.surveyView().crafts.filter(r => r.ready)
+                          .map(r => r.key));
+    check(ready.size > 1, "a full hold builds nothing — this proves nothing");
+    let seenNotReady = false, outOfOrder = null;
+    for (const q of list) {
+      if (ready.has(q.key)) { if (seenNotReady) outOfOrder = q.name; }
+      else seenNotReady = true;
+    }
+    check(!outOfOrder,
+          outOfOrder + " can be built now and sits below one that cannot");
+
+    // Nothing on the page counts them out loud any more.
+    check(!/"[^"]*YOU CAN BUILD NOW[^"]*"\s*\)/.test(hudSrc),
+          "the page still draws a count of what you can build");
+
+    /* And the detail panel is a thing you open. It used to be permanent, holding
+       the words PICK ONE over an empty box for the whole time you were not
+       using it — five rows of the page spent saying "click something". */
+    /* The literal as it would be *drawn*, not the words — both of these survive
+       in the comments that explain why they went, and a check that cannot tell
+       a comment from a label is a check that can only ever fail. */
+    check(!/"PICK ONE"/.test(hudSrc), "the empty PICK ONE box is still drawn");
+    const shut = gh.craftHeight !== undefined ? g.cf.surveyView() : null;
+    gh.craftPick(list[0].key);
+    g.cf.draw();
+    const openView = gh.craftView;
+    gh.craftPick(null);
+    g.cf.draw();
+    check(gh.craftView > openView,
+          "closing the panel did not give the grid its space back (" +
+          openView + " → " + gh.craftView + ")");
+
+    /* ── a material you can ask ────────────────────────────────────────────
+       "How do I get one of these" was answerable nowhere. The parts page says
+       what a build wants and the hold says what you have, and between them
+       nothing said that electronics never come out of a rock — the single most
+       useful fact on the page, and one you could otherwise only learn by mining
+       for an hour and failing. */
+    for (const m of g.cf.surveyView().materials) {
+      check(m.where && m.where.length > 30,
+            m.name + " does not say how to get one");
+    }
+
+    /* And the row is actually pressable, which is the half that looks perfect in
+       a screenshot when it is wrong. `tapAt` exists for exactly this: five dead
+       tap targets have shipped in this mode. */
+    const W = 1000;
+    let rowHit = null;
+    for (let y = 110; y < 260 && !rowHit; y += 3) {
+      if (g.cf.tapAt(W - 160, y)) rowHit = y;
+    }
+    check(rowHit !== null, "no material row can be pressed at all");
+    /* Told apart from the row underneath it by width: a material row is half the
+       rail, the bubble is all of it. Asking "is anything pressable here" is not
+       enough — once the bubble shuts, the row below it answers yes. */
+    const wide = y => {
+      const t = g.cf.tapAt(W - 160, y);
+      return !!(t && t.w > 200);
+    };
+    g.cf.tapHit(W - 160, rowHit);
+    g.cf.draw();
+    check(wide(rowHit + 46), "pressing a material opened no bubble");
+    // And pressing it again puts it away.
+    g.cf.tapHit(W - 160, rowHit + 46);
+    g.cf.draw();
+    check(!wide(rowHit + 46), "the material bubble will not close");
+
+    console.log("  buildnow   " + ready.size + " buildable sorted to the front " +
+                "and lit · nothing counts them out loud · the panel is a thing " +
+                "you open and close · every material says how to get one, in a " +
+                "bubble that opens and shuts");
+  }
+
+  console.log("  bench      " + before.length + " of " + all.length +
+              " parts on it — everything buildable, plus what you have met · " +
+              exotics.length + " exotic kept off it until then · a shelf you " +
+              "dock at teaches exactly what it stocks");
 }
 
 /* ── regions, which the game never names ──────────────────────────────────────

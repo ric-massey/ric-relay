@@ -5347,7 +5347,7 @@
 
        It is the other half of the economy the stations already have. A station
        is where you *sell* what you found; a world is where you can buy what you
-       need for a recipe without flying to find a rock that has it in. */
+       need for a build without flying to find a rock that has it in. */
     const trades = lived ? MATERIALS[Math.floor(R() * MATERIALS.length)].key : "";
     return { x, y, r, kind: kind.key, bands,
              ring: R() < 0.22 ? 1.25 + R() * 0.5 : 0,
@@ -5402,24 +5402,41 @@
      Four rather than a dozen: each one has to be recognisable by its colour in
      a cloud of drifting motes at speed, and be worth saying out loud when you
      find a seam of it. */
+  /* `where` is the answer to "how do I get one of these", and it is written from
+     `MAT_TABLE` below rather than from an impression — the odds quoted are the
+     odds in that table, so a change to the drop rates has one other line to fix
+     and it is directly underneath. Depth leans every table toward the dear end,
+     which is why each of these ends with the same promise. */
   const MATERIALS = [
     { key: "ice",     name: "ICE",     colour: "#87d8ff", value: 1,
-      note: "common, cheap, and one day it is water" },
+      note: "common, cheap, and one day it is water",
+      where: "Break rocks — nearly half of what they give is ice. A rime field " +
+             "is made of it, and a melter turns it into water." },
     { key: "iron",    name: "IRON",    colour: "#c0a487", value: 3,
-      note: "what most rocks are made of" },
+      note: "what most rocks are made of",
+      where: "Break rocks. It is the other half of what a field gives, and " +
+             "every build wants some." },
     { key: "alloy",   name: "ALLOY",   colour: "#ffcb42", value: 9,
-      note: "refined — it comes out of things that were built" },
+      note: "refined — it comes out of things that were built",
+      where: "Strip hulks, wrecks and dead drones — about half of what comes " +
+             "out of anything built is alloy. Rocks almost never have it." },
     { key: "iridium", name: "IRIDIUM", colour: "#a08cff", value: 22,
-      note: "deep, dense and rare; the reason to go out that far" },
+      note: "deep, dense and rare; the reason to go out that far",
+      where: "Guarded caches, which are a third iridium. Rocks give a little, " +
+             "and everything gives more the further out you are." },
     /* Two things you cannot mine. A rock is rock — these come out of what
        somebody else built, which is what makes a hulk or a guarded cache worth
        stopping for even when your hold is nearly full of ore. They are the
-       ingredients the recipes are short of, on purpose: a part you can build
+       ingredients the builds are short of, on purpose: a part you can build
        from four units of iron is a part you buy by flying in circles. */
     { key: "electronics", name: "ELECTRONICS", colour: "#6dffbf", value: 16,
-      note: "pulled out of things that were wired; never out of a rock" },
+      note: "pulled out of things that were wired; never out of a rock",
+      where: "Strip drones and hulks. Never a rock — no amount of mining will " +
+             "find one, and the builds that want them are why you stop." },
     { key: "core", name: "REACTOR CORE", colour: "#ff8f77", value: 48,
-      note: "the heart of something that used to run; rare and always salvage" }
+      note: "the heart of something that used to run; rare and always salvage",
+      where: "The rarest thing there is: a few in a hundred from a cache, a " +
+             "hulk or a drone, and never from a rock." }
   ];
   const matSpec = k => MATERIALS.find(m => m.key === k) || MATERIALS[1];
   const freshHold = () =>
@@ -5432,7 +5449,7 @@
   /* Electronics and cores are absent from `rock` and present everywhere else,
      which is the whole of "found, not mined": the only way to get them is to take
      apart something that was made. A core is rarer than iridium anywhere it
-     appears, because one recipe wanting one is a reason to go and look. */
+     appears, because one build wanting one is a reason to go and look. */
   const MAT_TABLE = {
     rock:  { ice: 46, iron: 44, alloy: 6,  iridium: 4 },
     hulk:  { ice: 4,  iron: 30, alloy: 46, iridium: 5, electronics: 13, core: 2 },
@@ -5634,7 +5651,7 @@
      what makes a part feel like a part rather than a line in a shop:
 
        buy    it is on a shelf somewhere. `deep` says how far out that shelf is.
-       craft  there is a recipe for it. See `RECIPES`.
+       craft  there is a build for it. See `CRAFTS`.
        find   it is out there in the dark and that is the only way. Never sold,
               never built — you open a cache a long way from anywhere and there
               it is.
@@ -5796,7 +5813,7 @@
      This melts ICE, the cheapest thing in the game and the thing nobody wants to
      buy, straight into the tank. It is the honest use for a hold full of the
      stuff, it answers "what if there is no station for 200,000 units", and it is
-     the first thing worth crafting rather than buying: see `RECIPES`. */
+     the first thing worth crafting rather than buying: see `CRAFTS`. */
   MODULES.push({
     key: "icemelter", name: "ICE MELTER", cat: "odd", rarity: "uncommon",
     cost: 1100, deep: 0.2, get: ["buy", "craft"],
@@ -6043,13 +6060,13 @@
     return out;
   }
 
-  /* ── recipes ──────────────────────────────────────────────────────────────
+  /* ── builds ──────────────────────────────────────────────────────────────
      Flat. Ingredients in, part out, one step, no engineering interface:
 
          3 alloy + 2 electronics + 1 reactor core  ->  Mk II Engine
 
      `part` is the one piece of depth there is, and it is deliberately fenced. A
-     recipe may consume **one finished part** — the better engine is visibly built
+     build may consume **one finished part** — the better engine is visibly built
      out of the one you have been flying, which is the good version of depth and
      gives the strange things found a long way out something to be for besides
      sitting in a slot.
@@ -6059,12 +6076,12 @@
 
        · two steps, never a tree. A part made from a part may not itself need a
          third crafted part.
-       · anything a recipe eats must also be buyable, so nesting is a shortcut
+       · anything a build eats must also be buyable, so nesting is a shortcut
          rather than a gate. Every module is on some station's shelf, so this
          holds by construction — and the test checks it anyway.
        · nothing exists only to be an ingredient. Every ingredient is a part you
          could have flown. */
-  const RECIPES = [
+  const CRAFTS = [
     // ── the cheap end: things worth building rather than buying ────────────
     { out: "layerplate", need: { iron: 8, alloy: 3 } },
     { out: "vernier",    need: { iron: 5, alloy: 4, electronics: 2 } },
@@ -6106,7 +6123,7 @@
     { out: "starsiphon", part: "icemelter",
       need: { ice: 6, alloy: 10, electronics: 8, iridium: 6, core: 2 } }
 
-    /* ── and the ones with no recipe at all ────────────────────────────────
+    /* ── and the ones with no build at all ────────────────────────────────
        One rule, and it is worth stating as a rule because it decides every part
        added after this one: **if it is the best in its category, it is not
        craftable.** The ladder up to it is; the top of it is not.
@@ -6124,7 +6141,7 @@
        The rule for anything added later: **if it is the best in its category, it
        is not craftable.** The ladder up to it is; the top of it is not. */
   ];
-  const recipeFor = key => RECIPES.find(r => r.out === key) || null;
+  const craftFor = key => CRAFTS.find(r => r.out === key) || null;
 
   const MOD_CATS = [
     { key: "engine",   name: "ENGINE" },
@@ -6799,7 +6816,7 @@
                     ship: "skiff", owned: ["skiff"], taught: [],
                     water: WATER_FULL, food: FOOD_FULL,
                     hold: freshHold(),
-                    opened: [], stripped: [],
+                    opened: [], stripped: [], seen: [],
                     carrying: [], built: [], pins: [], known: [],
                     slots: [], store: {}, battleAge: {}, memorials: [],
                     dropped: [], coilFired: false,
@@ -6888,6 +6905,7 @@
         })(),
         opened: strs(b.opened),
         stripped: strs(b.stripped),
+        seen: strs(b.seen),
         /* Filtered against the manifest rather than merely checked for being
            strings. `objective()` looks every carried key up in BUILD and reads
            a name off the result, so one unknown key — a save from a build with
@@ -7044,6 +7062,7 @@
            inside what the fog already costs. */
         opened: [...surv.opened],
         stripped: [...surv.stripped],
+        seen: [...surv.seen],
         // The manifest is the spine of the mode; losing it to a closed tab
         // would be losing the run itself.
         carrying: [...surv.carrying],
@@ -9184,6 +9203,12 @@
       huntCool: 20,
       opened: new Set(carried ? book.opened : []),
       stripped: new Set(carried ? book.stripped : []),
+      /* Parts you have laid eyes on. The workbench lists what you can build;
+         this is what lets it also list what you have *met* and cannot build — so
+         a gun you saw on a shelf two hundred thousand units ago is still a thing
+         you know exists and can plan a trip towards. Anything craftable is on
+         the page whether or not it is in here. */
+      seen: new Set(carried ? book.seen : []),
       docked: null,
       atYard: false,
       landed: null,        // an inhabited world within reach
@@ -11935,6 +11960,7 @@
      past is a shop you learn to avoid. */
   function surveyStations() {
     const me = ships[0];
+    const wasDocked = surv.docked;
     surv.docked = null;
     surv.atYard = false;
     surv.landed = null;
@@ -11949,6 +11975,17 @@
         stationFinishesFits();
         break;
       }
+    }
+    /* Arriving is the moment the shelf is read, not every frame you sit on it —
+       this whole block runs per frame and clears `docked` at the top, so without
+       the comparison this would be a set rebuilt sixty times a second. */
+    if (surv.docked && surv.docked !== wasDocked) {
+      let news = false;
+      for (const m of MODULES) {
+        if (sellsIt(m) && m.deep <= stationDepth() && markSeen(m.key)) news = true;
+      }
+      // Written once, for the whole shelf.
+      if (news) saveSurveyBook();
     }
 
     /* ── worlds you can put down on ─────────────────────────────────────────
@@ -12974,12 +13011,12 @@
      entire reason to exist is being the answer when there is no station for two
      hundred thousand units, and a workbench you have to dock at cannot be that.
 
-     What a recipe wants and what you have, as one object, so the page can draw
+     What a build wants and what you have, as one object, so the page can draw
      the answer instead of working it out itself. `canMake` is the short version
      and `chainable` is the interesting one — whether an ingredient part is
      something you could build right now out of what is left. */
-  function recipeState(key) {
-    const r = recipeFor(key);
+  function craftState(key) {
+    const r = craftFor(key);
     if (!r) return null;
     const rows = Object.keys(r.need).map(k => ({
       key: k, name: matSpec(k).name, colour: matSpec(k).colour,
@@ -12994,16 +13031,16 @@
                /* The nested case, answered rather than left to the player: if you
                   do not have the part but could build it out of what is left over,
                   the page offers to do both in one action. */
-               makeable: !held && !!recipeFor(r.part) && canMake(r.part, r.need) };
+               makeable: !held && !!craftFor(r.part) && canMake(r.part, r.need) };
     }
     return { out: key, rows, short: short.length, part,
              ready: !short.length && (!part || part.have) };
   }
 
-  /* Whether a recipe can be met, optionally with some of the hold already
-     spoken for by the recipe above it. `reserve` is that claim. */
+  /* Whether a build can be met, optionally with some of the hold already
+     spoken for by the build above it. `reserve` is that claim. */
   function canMake(key, reserve) {
-    const r = recipeFor(key);
+    const r = craftFor(key);
     if (!r) return false;
     if (r.part && storeCount(r.part) <= 0) return false;
     for (const k of Object.keys(r.need)) {
@@ -13014,9 +13051,9 @@
   }
 
   function craft(key) {
-    const st = recipeState(key);
+    const st = craftState(key);
     if (!st) { gameSound("hit"); return false; }
-    const r = recipeFor(key);
+    const r = craftFor(key);
 
     /* One tap builds the ingredient too, when the ingredient is one step down and
        you have the materials for both. Nobody should have to hold a chain in
@@ -13049,7 +13086,7 @@
   }
 
   function craftOne(key) {
-    const r = recipeFor(key);
+    const r = craftFor(key);
     if (!r || !canMake(key)) { gameSound("hit"); return false; }
     if (!craftHere(key)) {
       chatter(moduleSpec(key).name + " needs a station — only common parts can " +
@@ -13085,13 +13122,13 @@
      curiosity — you have three reactor cores and no idea why until something
      tells you. */
   const usedIn = matKey => {
-    const out = RECIPES
+    const out = CRAFTS
       .filter(r => r.need[matKey])
       .map(r => moduleSpec(r.out))
       .filter(Boolean)
       .map(m => m.name);
     /* Ice is the exception, and it is the important one. Nothing is *built* out
-       of it — the melter drinks it, which is a use the recipe table cannot see
+       of it — the melter drinks it, which is a use the build table cannot see
        and the whole reason to keep a hold full of the cheapest thing there is. */
     if (matKey === "ice") out.unshift("THE MELTER DRINKS IT");
     return out;
@@ -13100,6 +13137,15 @@
   function buyModule(key) {
     const m = moduleSpec(key);
     if (!m || !surv.docked) { gameSound("hit"); return false; }
+    /* Nobody sells a find-only part, and until this line nothing said so: the
+       shelf listed them and this took the money — or took nothing, since a part
+       with no buyer has no price. */
+    if (!sellsIt(m)) {
+      chatter("Nobody sells one of those. " + m.name + " has to be found.",
+              "#ff8f77");
+      gameSound("hit");
+      return false;
+    }
     if (m.deep > stationDepth()) {
       chatter("Nobody this close to home stocks one.", "#ff8f77");
       gameSound("hit");
@@ -13184,8 +13230,18 @@
      because two pulse coils are two pulse coils and nothing about one of them
      is different from the other. */
   const storeCount = key => (surv && surv.store && surv.store[key]) || 0;
+  /* Something you now know exists. Returns whether this was news, so a caller
+     marking a whole shelf can write the book once rather than thirty times. */
+  function markSeen(key) {
+    if (!surv || !moduleSpec(key) || surv.seen.has(key)) return false;
+    surv.seen.add(key);
+    return true;
+  }
+
   function storeAdd(key, n) {
     if (!moduleSpec(key)) return false;
+    // Holding one is the strongest possible way of having met it.
+    markSeen(key);
     surv.store[key] = Math.max(0, storeCount(key) + (n === undefined ? 1 : n));
     if (!surv.store[key]) delete surv.store[key];
     return true;
@@ -15450,6 +15506,8 @@
       cam: { x: cam.x, y: cam.y, rot: cam.rot, scale: cam.scale },
       materials: MATERIALS.map(m => ({
         key: m.key, name: m.name, colour: m.colour, note: m.note,
+        // How you get one, for the bubble the materials panel opens.
+        where: m.where || "",
         value: m.value, n: surv.hold[m.key] || 0,
         /* How short this station is of it, 0 to 1. A shortage is a price and a
            price is a reason to fly somewhere, so the number that moved the price
@@ -15713,6 +15771,9 @@
         weight: partWeight(m.key),
         get: m.get.slice(), where: m.where || "",
         buyable: sellsIt(m), craftable: craftsIt(m), findable: findsIt(m),
+        // Whether you have met one. See `markSeen` — it is what puts a part you
+        // cannot build onto the workbench page at all.
+        seen: surv.seen.has(m.key),
         owned: storeCount(m.key),
         fitted: surv.slots.some(sl => sl && sl.key === m.key)
       })),
@@ -15751,7 +15812,14 @@
       partWeight: storeWeight(),
       /* What this station has on the shelf. Rarity decides how far out you have
          to be before anybody stocks it, which is the danger curve paying out. */
-      forSale: surv.docked ? MODULES.filter(m => m.deep <= stationDepth()).map(m => ({
+      /* `sellsIt` as well as the depth, and the missing half of that condition
+         put three find-only parts on the first shelf in the game — the tractor
+         beam at 340, and the warp tuner and running dark at *nothing*, because a
+         part nobody sells has no price to quote. Two of the three almanac verbs,
+         free, on turn one. The shelf and `buyModule` both check now: a list that
+         offers what the action refuses is the same bug written twice. */
+      forSale: surv.docked
+        ? MODULES.filter(m => sellsIt(m) && m.deep <= stationDepth()).map(m => ({
         key: m.key, name: m.name, cat: m.cat, rarity: m.rarity, note: m.note,
         cost: m.cost, secs: fitSeconds(m.key), owned: storeCount(m.key),
         weight: partWeight(m.key),
@@ -15765,13 +15833,13 @@
         for (const m of MODULES) out[m.key] = m.eff;
         return out;
       })(),
-      /* The recipe book, already answered. Every recipe with what it wants, what
+      /* The build book, already answered. Every build with what it wants, what
          you have of it, whether the part it eats is aboard, and — the reverse
          lookup — what each material you are carrying is an ingredient for, which
          is what turns three reactor cores from a curiosity into a lead. */
-      recipes: RECIPES.map(r => {
+      crafts: CRAFTS.map(r => {
         const m = moduleSpec(r.out);
-        const rs = recipeState(r.out);
+        const rs = craftState(r.out);
         return { key: r.out, name: m.name, cat: m.cat, rarity: m.rarity,
                  note: m.note, cost: m.cost, secs: fitSeconds(r.out),
                  owned: storeCount(r.out),
@@ -21008,8 +21076,11 @@
        this can fail is a way it fails *invisibly* — the player simply gets the
        sector they had, which is exactly what a working game looks like. */
     const why = m => { if (debugOn) console.warn("crossfire: catch-up " + m); };
-    if (!cloud || !cloud.enabled()) return why("skipped — no account service");
-    if (!cloud.session()) return why("skipped — nobody signed in");
+    /* Silent when there is nothing configured and nobody signed in. Those are
+       the *normal* states — every test boot and every guest is one — and a
+       warning for them is a warning nobody reads, which is how the one that
+       matters gets missed. */
+    if (!cloud || !cloud.enabled() || !cloud.session()) return;
     let remote = null;
     try { remote = await cloud.pull(); }
     catch (err) { return why("could not read the account: " + err.message); }
@@ -21616,6 +21687,21 @@
       saveBook: () => saveSurveyBook(),
       // The account panel, without having to find the pause screen first.
       account: () => openAccount(),
+      /* Whether anything is pressable at a point, and pressing it. There was no
+         way to ask this, which is why "the button drew and nothing was under it"
+         is a bug this mode has shipped five times — a dead tap target looks
+         perfect in a screenshot. Coordinates are SCREEN space, the same space
+         the interface lays itself out in. */
+      tapAt: (x, y) => {
+        const t = tapAt(x, y);
+        return t ? { x: Math.round(t.x), y: Math.round(t.y),
+                     w: Math.round(t.w), h: Math.round(t.h) } : null;
+      },
+      tapHit: (x, y) => {
+        const t = tapAt(x, y);
+        if (t && typeof t.act === "function") { t.act(); return true; }
+        return false;
+      },
       // The boot-time pull, on demand, so a harness can drive it.
       catchUp: () => catchUp(),
       /* What kind of space a point is, which the *game* never tells the player —
@@ -21697,7 +21783,7 @@
                                           a way to be. */
                                        get: [...(m.get || [])],
                                        inCachePool: findsIt(m) && !sellsIt(m) })),
-      allRecipes: () => RECIPES.map(r => ({ out: r.out, need: { ...r.need } })),
+      allCrafts: () => CRAFTS.map(r => ({ out: r.out, need: { ...r.need } })),
       scanRange: () => scanRange(),
       // The five flags a ship can fly, for anything checking they are telling
       // themselves apart.

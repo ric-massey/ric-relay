@@ -67,7 +67,7 @@ function checkSyntax() {
   );
   assert.ok(scenes.size >= 5, "menu.js should define a scene per mode, found " + scenes.size);
   /* `\b` matters: without it this also matched the tail of `part: "tractorrig"`
-     in the recipe table and demanded a diorama for a tractor rig. */
+     in the build table and demanded a diorama for a tractor rig. */
   const arts = [...html.matchAll(/\bart: "([a-z0-9]+)"/g)].map(m => m[1]);
   assert.ok(arts.length >= 7, "expected every lane and card to name a diorama");
   for (const art of new Set(arts)) {
