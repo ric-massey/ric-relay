@@ -7678,9 +7678,15 @@
      was and about the length of three chunks. At that size you cannot see both
      ends of it at once, which is the first thing that makes it read as a place
      rather than an object. */
-  const LEV_LEN  = 9200;    // stem to stern
-  const LEV_BEAM = 1060;    // half the beam at its widest, amidships
-  const LEV_SEG  = 170;     // radius of one hull disc
+  /* Down 35% on Ric's call — she was 9,200 stem to stern and is 5,980. Every
+     number in the builder is scaled by `LEV_S` off the same call rather than
+     retyped, so the proportions are untouched: the mouths, the doorways, the
+     jambs, the wings and the engines are all still the same fractions of her
+     that they were, and one edit here moves the whole ship. */
+  const LEV_S    = 0.65;
+  const LEV_LEN  = Math.round(9200 * LEV_S);   // stem to stern
+  const LEV_BEAM = Math.round(1060 * LEV_S);   // half the beam at its widest
+  const LEV_SEG  = Math.round(170 * LEV_S);    // radius of one hull disc
 
   /* ── the shape of it ───────────────────────────────────────────────────
      It did not look like a ship, and the plan view says why in one line: it was
@@ -7818,13 +7824,13 @@
        looks like a mistake. */
     const bays = [
       // The hangars: long roots, hard sweep, and the reason the silhouette works.
-      { at: -0.66, side: -1, hw: 760, depth: 1240, rake: 0.62 },
-      { at: -0.66, side:  1, hw: 760, depth: 1240, rake: 0.62 },
+      { at: -0.66, side: -1, hw: 760 * LEV_S, depth: 1240 * LEV_S, rake: 0.62 },
+      { at: -0.66, side:  1, hw: 760 * LEV_S, depth: 1240 * LEV_S, rake: 0.62 },
       // And a forward pair that is not a smaller copy of them: short, tucked in
       // against the hull, barely swept — they read as sponsons rather than wings,
       // which is what stops the four of them looking like a repeated stamp.
-      { at: -0.08, side: -1, hw: 380, depth: 560, rake: 0.12 },
-      { at: -0.08, side:  1, hw: 380, depth: 560, rake: 0.12 }
+      { at: -0.08, side: -1, hw: 380 * LEV_S, depth: 560 * LEV_S, rake: 0.12 },
+      { at: -0.08, side:  1, hw: 380 * LEV_S, depth: 560 * LEV_S, rake: 0.12 }
     ].map(b => {
       const u = b.at * half;
       const root = beamAt(u);
@@ -7837,7 +7843,9 @@
                rake: b.rake === undefined ? 0.3 : b.rake,
                v: b.side * (root + b.depth * 0.38) };
     });
-    const MOUTH = 300;                     // half the width of the way into one
+    // The same rule: a mouth is only a mouth if it is wider than the plates it
+    // is cut between. See `STERN_GAP`.
+    const MOUTH = Math.max(300 * LEV_S, LEV_SEG * 1.25 + 120);                     // half the width of the way into one
 
     /* ── the flanks ──────────────────────────────────────────────────────
        **One plate per facet.** A run is broken only where the hull actually has
@@ -7857,7 +7865,7 @@
        intact plate on both sides of a wound to know it is a wound. */
     const wrecked = !LEV_INTACT;
     const scar = wrecked
-      ? { u: -half * 0.34 + rnd(-260, 260), side: -1, hw: 260 }
+      ? { u: -half * 0.34 + rnd(-260, 260) * LEV_S, side: -1, hw: 260 * LEV_S }
       : { u: 0, side: 0, hw: 0 };          // she is whole: nothing is missing
     const flankRun = (side, from, to) => {
       /* Every corner of the hull between the ends, and every bay mouth, is a
@@ -7911,7 +7919,7 @@
        fill found it: the port one became unreachable. A hatch gets a hatch's
        lip. Thinner than a frame, too: a jamb is a finishing piece, not
        structure, and a fat one eats the opening it is supposed to describe. */
-    const JAMB = 250;
+    const JAMB = 250 * LEV_S;
     const jamb = (u, v, du, dv) => wall(u, v, u + du, v + dv, LEV_SEG * 0.55, "jamb");
     for (const b of bays) {
       const len = Math.min(JAMB, b.depth * 0.22);
@@ -7941,7 +7949,17 @@
        nobody ever built flat — the corners return forward into the flank, which
        is what gives a stern its shoulders, and in plan it is the difference
        between a ship and a slab. */
-    const STERN_GAP = 300, STEP_IN = 300, STEP_UP = 260;
+    /* An opening has to be measured against the **plate**, not against the
+       ship. Scaling the whole hull by 0.65 took this gap from 300 to 195 while
+       the transom plate it is cut into stayed 122 across its radius — so the
+       clear way through went from 113 a side to 73, and the stern stopped being
+       a way in at all. The flood fill said so immediately: nothing inside was
+       reachable, at the first size where the two numbers crossed.
+
+       So the gap is whichever is larger, the proportional figure or one wide
+       enough to actually fly through. */
+    const STERN_GAP = Math.max(300 * LEV_S, LEV_SEG * 1.1 + 140);
+    const STEP_IN = 300 * LEV_S, STEP_UP = 260 * LEV_S;
     // The lips of the way through the transom, finished like every other opening.
     jamb(-half, STERN_GAP, JAMB, 0);
     jamb(-half, -STERN_GAP, JAMB, 0);
@@ -7961,7 +7979,7 @@
        the flood fill never started, so the whole interior was unreachable from
        the one direction anybody arrives from. Two big bells either side of an
        open throat is the better shape anyway. */
-    const ENG_HW = 190, ENG_OUT = 620;
+    const ENG_HW = 190 * LEV_S, ENG_OUT = 620 * LEV_S;
     for (const k of [-1, 1]) {
       const v0 = k * transom * 0.56;
       wall(-half, v0 - ENG_HW, -half - ENG_OUT, v0 - ENG_HW, RIB, "engine");
@@ -7987,7 +8005,7 @@
        So the gap is placed inside the hull it is actually crossing, and where
        the hull is too narrow to hold a wall and a doorway at all, there is no
        bulkhead — a ship's frames stop before the stem for the same reason. */
-    const GAP = 300;                       // clear half-width of a doorway
+    const GAP = 300 * LEV_S;                       // clear half-width of a doorway
     const bulk = [];
     for (let i = 0; i < 5; i++) {
       const u = -half * 0.36 + (i / 5) * (half * 1.22);
@@ -8064,9 +8082,11 @@
     if (wrecked) {
       const b0 = beamAt(scar.u - scar.hw), b1 = beamAt(scar.u + scar.hw);
       wall(scar.u - scar.hw, scar.side * b0,
-           scar.u - scar.hw - 250, scar.side * (b0 + 430), LEV_SEG * 0.55, "tear");
+           scar.u - scar.hw - 250 * LEV_S, scar.side * (b0 + 430 * LEV_S),
+           LEV_SEG * 0.55, "tear");
       wall(scar.u + scar.hw, scar.side * b1,
-           scar.u + scar.hw + 180, scar.side * (b1 + 300), LEV_SEG * 0.55, "tear");
+           scar.u + scar.hw + 180 * LEV_S, scar.side * (b1 + 300 * LEV_S),
+           LEV_SEG * 0.55, "tear");
     }
 
     /* Just aft of the chine. On a delta the whole forward third is a spike —
@@ -9149,8 +9169,9 @@
     if (levBuilt) {
       const L = surv.leviathan;
       const nx = -L.sa, ny = L.ca;          // square on to the long axis
-      me.x = L.x + nx * (L.flank + 1400);
-      me.y = L.y + ny * (L.flank + 1400);
+      const off = L.flank + L.len * 0.15;    // scales with her, not with a guess
+      me.x = L.x + nx * off;
+      me.y = L.y + ny * off;
       me.a = Math.atan2(L.y - me.y, L.x - me.x);
       me.vx = me.vy = 0;
       cam.x = me.x; cam.y = me.y;

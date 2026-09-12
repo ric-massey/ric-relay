@@ -2371,8 +2371,10 @@ all of this possible — but everything below is *unbuilt*, and the order matter
 because each item is load-bearing for the next.
 
 **What it already has.** The shape, the plates, the interior, the collision, the
-two engine throats, and a builder that can produce her whole or wrecked. That is
-the model. None of the rest exists.
+two engine throats, and a builder that can produce her whole or wrecked. She is
+**5,980 stem to stern** — cut 35% from 9,200 on Ric's call, through a single
+scale factor so every proportion held. That is the model. None of the rest
+exists, including the ability to move.
 
 **1 · A live Leviathan, flying, in a faction's colours.** The one out at 40,000
 is a derelict and stays grey; a *live* one is the same geometry in its owner's
@@ -2407,7 +2409,14 @@ place in the sector with the industry to sell you a capital ship, which also giv
 the city a reason to exist beyond scenery. The price should be the longest
 number in the game.
 
-**6 · Flying it.** Slow to move, slower to turn, and the camera has to pull back
+**6 · Flying it — and it has to move at all.** Today she is scenery: a landmark
+pinned to a chunk with her collision discs computed once, in world coordinates,
+at build time. Nothing about her can move, which is the first thing that has to
+change and the one that touches the most — a hull that moves means discs that are
+rebuilt or offset every frame, and everything that asks "what is solid here" has
+to keep up.
+
+Slow to move, slower to turn, and the camera has to pull back
 a long way — the empty room's two extra zoom steps (FAR, THE WHOLE HULL) stop
 being a debugging tool and become this ship's ordinary camera. The engines throw
 sparks when they burn, which is the one piece of this that is pure drawing.
