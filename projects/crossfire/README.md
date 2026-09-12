@@ -347,6 +347,51 @@ survey's charted cells are the shape of the path that made them, so long
 horizontal runs compress hard — and written both when an entry ticks and every
 fifteen seconds of flying.
 
+### Coming back
+
+A survey is kept in one key — the book — and resuming reads it: the sector's
+seed, the chart, the almanac, the hold, the refit, the manifest, the pins, and
+**where you were**.
+
+That last one is new, and it took something away. Survey used to resume at the
+origin whatever you had done, which read as tidy and was in fact the cheapest
+ride home in the game: fly to the abyss with a full hold, close the tab, open it
+next door to the shop. Coming back where you actually were is what a save is
+for, and it makes the light drive and the gates the ways home rather than the
+reload. Two places are exempt, and both resume at the origin as every book used
+to: a book written while you were dead, and a book from a different seed.
+
+### An account, which is optional
+
+Survey saves to this browser whether anybody signs in or not, and that has not
+changed. What an account adds is a *second* copy: the same book in a row of a
+table, so the sector charted on the laptop is the sector that opens on the
+phone, and clearing site data stops meaning an afternoon is gone.
+
+It is a mirror and never the source. The run reads and writes local storage at
+full speed; the account is told afterwards, and the game never waits for a
+network to draw a frame. Writes are coalesced — Survey saves every fifteen
+seconds and at about thirty events besides, and a row written that often would
+spend the free tier's budget on a number that changed by one — so the newest
+book goes up at most every twenty-five seconds, plus whenever the tab is hidden,
+the player signs out, or the SAVE button is pressed.
+
+Two saves that disagree are never resolved silently. Both sides are somebody's
+hours, and the panel says what each one is — sector, cash, catalogue, when and
+from what — and lets the player pick.
+
+`cloud.js` talks to Supabase over plain HTTP with no SDK: sign in, refresh, read
+a row, write a row is the whole of it, and 120 KB of CDN script to make four
+fetches would cost the game its two actual properties — no build step and no
+third-party script on the page. `config.js` holds the project URL and the
+publishable key; blank there means no accounts, no request is ever made, and
+everything else works exactly as before. `supabase/schema.sql` is the one table
+and its policies, every one of which names `auth.uid()`.
+
+The save button is not what keeps a run — autosaving already does that. It is
+for the two things autosaving cannot do: send it to the account *now* rather
+than at the end of the coalescing window, and say out loud that it worked.
+
 ### Where it lives
 
 `index.html` is already 8,000 lines, and a fourth mode's interface — a fog chart,
@@ -580,6 +625,9 @@ eligible, and the backend cannot be changed after the namespace is created.
 |---|---|
 | `index.html` | UI, settings, simulation, rendering, bots, campaign, survey and match rules |
 | `net.js` | WebRTC links and compact session-description encoding |
+| `cloud.js` | The account, and the book kept in it. No SDK, no request until asked |
+| `config.js` | The account service's URL and publishable key. Blank means no accounts |
+| `supabase/schema.sql` | The one save table and its policies. Run once in the SQL editor |
 | `survey-hud.js` | Survey's interface: the flight panel, the chart page, the illustrated almanac, the station |
 | `menu.js` | The mode cards' moving pictures — five dioramas, drawn rather than filmed |
 | `server/rooms-core.mjs` | The room service: every rule, no plumbing |

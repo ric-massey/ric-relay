@@ -2894,6 +2894,83 @@ until it is a system multiplied.
 
 ---
 
+## Coming back to where you were, and an account to come back on
+
+Two things, and only the second one needed a server.
+
+### The place  ·  **DONE**
+
+The book saved everything about a run except the one fact a player would name
+first if you asked them what a save is: where they were. `setupSurvey` put every
+resumed survey at the origin, with a comment saying that was where a resumed
+survey should start.
+
+It was not. It was the cheapest ride home in the game — fly to the abyss with a
+full hold, close the tab, reopen it next door to the shop — and it meant the
+light drive, the gates and the whole question of *getting back* were optional in
+a mode built around distance being expensive. The book carries `at` now: the
+position, the heading, and nothing else, because a survey that resumes at the
+speed the tab closed at is a survey that resumes in a wall.
+
+Two exemptions, both resuming at the origin the way every book used to:
+
+- **A book written while you were dead.** The death page is a position you must
+  never come back into, and a respawn puts you at the station regardless.
+- **A book from a different seed.** It describes a place in a world that no
+  longer exists.
+
+This makes the mode harder and it is meant to. Every way home is now a way home
+you have to have built or found.
+
+### The account  ·  **DONE**  ·  *optional, and it stays optional*
+
+Playing without one saves exactly as it always has, to this browser, which is
+more fragile than most people realise — one cleared history and six hours are
+gone with no warning. The pause screen now says so in one line rather than
+nagging: *kept on this device only — an account keeps it if this browser
+forgets.*
+
+Signing in adds a second copy and changes nothing else. The run reads and writes
+local storage at full speed and the account is told afterwards; nothing in the
+game ever waits for a network. The seam that makes that true is `bookStore` —
+the one thing that knows where the book goes — and it is also what the Steam
+build will need, because on Steam there is no sign-in at all: the player is
+already signed into Steam, and Auto-Cloud syncs a declared folder with no code
+from the game. Three destinations, one book:
+
+| | where the book lives | sign-in |
+|---|---|---|
+| Browser | `localStorage` | none |
+| Browser + account | a row in `public.saves` | email and password |
+| Steam | a file in the Auto-Cloud folder | Steam already did it |
+
+**Two saves that disagree are never resolved silently.** Last-change-wins is
+right for settings and wrong for this: both sides are somebody's hours, and the
+newer one is not reliably the one they care about — a run made on a plane with
+no signal is older than the one a phone uploaded from the sofa. So the panel
+says what each save is, in the terms that identify it — sector, cash, catalogue
+size, when, and from what device — and the player picks.
+
+**No SDK.** The whole of what a save needs is four HTTP calls against plain
+REST. Pulling in 120 KB of CDN script to make them would cost the game the two
+things it actually has — no build step and no third-party script on the page —
+and would put loading somebody's save at the mercy of a CDN and of whatever
+version that CDN decided `@2` meant this morning.
+
+**Its own Supabase project, not ATLAS's.** ATLAS grants reads with `for select
+to authenticated` and no crew check, so its privacy rests entirely on signup
+being switched off in its dashboard — and a public game needs signup switched
+on. Every policy on `public.saves` names `auth.uid()` instead, so a stranger
+with an account sees their own row and nothing else whatever the dashboard says.
+
+**What is still open:** password reset needs SMTP the project does not have yet,
+and a player who cannot get back into an account cannot get back to their save —
+which is the exact failure the feature exists to prevent. Until that is wired
+up, the local copy is the one that matters and the panel is careful never to
+suggest otherwise.
+
+---
+
 ## Rules for building this
 
 1. **One item at a time.** Finished, tested, committed, before the next starts.

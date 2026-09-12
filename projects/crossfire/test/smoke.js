@@ -115,10 +115,15 @@ function checkSyntax() {
     /\bhtml\s*{[^}]*-webkit-touch-callout:\s*none;/s,
     "a held thumb must not raise the iOS copy callout"
   );
+  /* The page turns text selection off everywhere so a held thumb does not start
+     selecting the canvas, which means every real input has to turn it back on —
+     and an input that cannot be selected into is one nobody can correct a typo
+     in. Both panels: the account panel's email and password boxes are the ones
+     where a typo is most expensive. */
   assert.match(
     html,
-    /#lobby input\s*{[^}]*user-select:\s*text;/s,
-    "lobby name and password fields must stay editable"
+    /#lobby input,\s*#account input\s*{[^}]*user-select:\s*text;/s,
+    "the lobby and account text fields must stay editable"
   );
 
   /* The three things that make a phone browser give the game its whole screen.

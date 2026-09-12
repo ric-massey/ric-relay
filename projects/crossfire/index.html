@@ -26,6 +26,12 @@
      below is the same address the pill used. -->
 <script src="net.js"></script>
 <script src="survey-hud.js"></script>
+<!-- The account service, and the module that talks to it. Both optional: with
+     no config.js, or one still holding the blanks it ships with, the game never
+     makes a request and Survey saves to this browser exactly as it always has.
+     config.js must come first — cloud.js reads it at load. -->
+<script src="config.js"></script>
+<script src="cloud.js"></script>
 <script src="menu.js"></script>
 <style>
   :root {
@@ -90,7 +96,7 @@
     touch-action: manipulation;
   }
 
-  #lobby input {
+  #lobby input, #account input {
     -webkit-user-select: text;
     user-select: text;
     -webkit-touch-callout: default;
@@ -423,7 +429,7 @@
      Real HTML rather than canvas, because this screen is a list, some text
      fields and a password, and the browser already does all of that
      properly — including on a phone keyboard. */
-  #lobby {
+  #lobby, #account {
     position: fixed;
     inset: 0;
     z-index: 50;
@@ -434,9 +440,9 @@
     background: rgba(0, 0, 0, 0.86);
     overflow-y: auto;
   }
-  #lobby[hidden] { display: none; }
+  #lobby[hidden], #account[hidden] { display: none; }
 
-  #lobby .panel {
+  #lobby .panel, #account .panel {
     /* A column, because the panel is a short sequence you work down: who you
        are, then the lobbies, then who is here. `order` puts the pieces in it. */
     display: flex;
@@ -455,7 +461,7 @@
     overflow-y: auto;
   }
 
-  #lobby h2 {
+  #lobby h2, #account h2 {
     font-size: 1.35rem;
     font-weight: 400;
     letter-spacing: 0.12em;
@@ -463,16 +469,16 @@
     margin-bottom: 0.3rem;
   }
 
-  #lobby p { color: var(--phosphor-dim); font-size: 0.95rem; margin-bottom: 0.9rem; }
+  #lobby p, #account p { color: var(--phosphor-dim); font-size: 0.95rem; margin-bottom: 0.9rem; }
   #lobby .host-rule {
     color: var(--alarm);
     font-size: 0.95rem;
     margin: 0.25rem 0 0.6rem;
   }
-  #lobby .step { color: var(--phosphor); font-size: 0.9rem; letter-spacing: 0.08em;
+  #lobby .step, #account .step { color: var(--phosphor); font-size: 0.9rem; letter-spacing: 0.08em;
                  display: block; margin: 1rem 0 0.35rem; }
 
-  #lobby button {
+  #lobby button, #account button {
     font: inherit;
     font-size: 0.9rem;
     color: var(--phosphor);
@@ -483,22 +489,23 @@
     cursor: pointer;
     min-height: 44px;
   }
-  #lobby button:hover, #lobby button:focus-visible {
+  #lobby button:hover, #lobby button:focus-visible,
+  #account button:hover, #account button:focus-visible {
     background: rgba(255, 176, 0, 0.12);
     outline: none;
   }
-  #lobby button[disabled] { opacity: 0.4; cursor: default; }
+  #lobby button[disabled], #account button[disabled] { opacity: 0.4; cursor: default; }
 
   #lobby .you { border-bottom: 1px solid var(--phosphor-faint); padding-bottom: 0.9rem; }
-  #lobby .note { color: var(--phosphor-dim); font-size: 0.9rem; margin: 0.5rem 0 0; }
-  #lobby button.quiet {
+  #lobby .note, #account .note { color: var(--phosphor-dim); font-size: 0.9rem; margin: 0.5rem 0 0; }
+  #lobby button.quiet, #account button.quiet {
     border-color: var(--phosphor-faint);
     color: var(--phosphor-dim);
     font-size: 0.9rem;
     min-height: 0;
     padding: 0.4rem 0.7rem;
   }
-  #lobby input[type="text"] {
+  #lobby input[type="text"], #account input[type="text"] {
     width: min(100%, 15rem);
     background: #060606;
     color: var(--phosphor);
@@ -510,8 +517,8 @@
     padding: 0.5rem 0.6rem;
     margin-bottom: 0.6rem;
   }
-  #lobby input[type="text"]:focus { outline: 2px solid var(--phosphor-dim); outline-offset: 1px; }
-  #lobby input::placeholder { color: var(--phosphor-faint); letter-spacing: 0.06em; }
+  #lobby input[type="text"]:focus, #account input[type="text"]:focus { outline: 2px solid var(--phosphor-dim); outline-offset: 1px; }
+  #lobby input::placeholder, #account input::placeholder { color: var(--phosphor-faint); letter-spacing: 0.06em; }
 
   #lobby .seats { font-size: 0.9rem; }
   #lobby .seats .row {
@@ -572,14 +579,49 @@
     box-shadow: inset 0 0 0 1px currentColor;
     background: rgba(255, 176, 0, 0.1);
   }
-  #lobby label.lock { display: flex; align-items: center; gap: 0.45rem;
+  #lobby label.lock, #account label.lock { display: flex; align-items: center; gap: 0.45rem;
                       color: var(--phosphor-dim); font-size: 0.9rem;
                       margin: 0.5rem 0; cursor: pointer; }
   #lobby .seats .tick { color: var(--phosphor); font-size: 0.85rem;
                         letter-spacing: 0.08em; }
 
-  #lobby .status { color: var(--phosphor); font-size: 0.9rem; min-height: 1.3em; }
-  #lobby .status.bad { color: var(--alarm); }
+  #lobby .status, #account .status { color: var(--phosphor); font-size: 0.9rem; min-height: 1.3em; }
+  #lobby .status.bad, #account .status.bad { color: var(--alarm); }
+
+  /* ── the account panel ────────────────────────────────────────────────────
+     Shares the lobby's panel styling above; these are the parts it does not
+     have. An email and a password are not `type="text"` — which is the whole
+     point of them, since the browser will not offer to fill a text box and a
+     phone will not raise the right keyboard for one — so they need the same
+     look applied to their own types. And never uppercased: an address is
+     case-sensitive after the @ and a password is case-sensitive throughout, so
+     the lobby's `text-transform` would be actively wrong here. */
+  #account input[type="email"], #account input[type="password"] {
+    width: min(100%, 20rem);
+    display: block;
+    background: #060606;
+    color: var(--phosphor);
+    border: 1px solid var(--phosphor-dim);
+    font: inherit;
+    font-size: 0.95rem;
+    letter-spacing: 0.06em;
+    padding: 0.55rem 0.6rem;
+    margin-bottom: 0.6rem;
+  }
+  #account input[type="email"]:focus, #account input[type="password"]:focus {
+    outline: 2px solid var(--phosphor-dim);
+    outline-offset: 1px;
+  }
+  #account .status.good { color: var(--phosphor); }
+  /* The signed-in line, and what it says about the save. Separated from the
+     form by a rule, because they answer different questions. */
+  #account .who {
+    border-bottom: 1px solid var(--phosphor-faint);
+    padding-bottom: 0.9rem;
+    margin-bottom: 0.4rem;
+  }
+  #account .who .addr { color: var(--phosphor); letter-spacing: 0.06em; }
+  #account .warn { color: var(--alarm); font-size: 0.9rem; margin: 0.6rem 0 0; }
   #lobby .modes { margin-top: 1rem; border-top: 1px solid var(--phosphor-faint);
                   padding-top: 0.7rem; }
 </style>
@@ -738,6 +780,63 @@
     </div>
 
     <div class="modes" id="rowClose"><button id="btnLobbyClose" type="button">back to the menu</button></div>
+  </div>
+</div>
+
+<div id="account" hidden role="dialog" aria-modal="true" aria-labelledby="accountTitle">
+  <div class="panel">
+    <h2 id="accountTitle">YOUR ACCOUNT</h2>
+
+    <!-- Signed out. The point of the panel is made before the form, because
+         "why would I type my email into a game" is the question a player
+         actually has and a heading does not answer it. -->
+    <div id="acctOut" hidden>
+      <p id="acctPitch">
+        Survey already saves on this device. An account keeps the same sector on
+        every device you play on — and keeps it if this browser forgets.
+      </p>
+
+      <span class="step">your email</span>
+      <input id="acctEmail" type="email" autocomplete="email" spellcheck="false"
+             maxlength="120" placeholder="you@example.com" aria-label="your email">
+      <span class="step">a password</span>
+      <input id="acctPass" type="password" autocomplete="current-password"
+             maxlength="72" placeholder="at least 8 characters" aria-label="a password">
+
+      <div>
+        <button id="btnAcctIn" type="button">sign in</button>
+        <button id="btnAcctUp" type="button">make an account</button>
+      </div>
+      <button id="btnAcctForgot" type="button" class="quiet">forgotten the password</button>
+    </div>
+
+    <!-- Signed in. -->
+    <div id="acctIn" hidden>
+      <div class="who">
+        <p>Signed in as <span class="addr" id="acctWho"></span></p>
+        <p class="note" id="acctSync"></p>
+      </div>
+      <div>
+        <button id="btnAcctSave" type="button">save to my account now</button>
+        <button id="btnAcctOut" type="button" class="quiet">sign out</button>
+      </div>
+    </div>
+
+    <!-- Two saves that disagree. Never resolved silently: both sides are
+         somebody's hours, and the only honest thing is to say what each one is
+         and let them pick. -->
+    <div id="acctClash" hidden>
+      <p class="warn">This account already has a survey on it.</p>
+      <p class="note" id="acctClashWhat"></p>
+      <div>
+        <button id="btnAcctTakeCloud" type="button">use the saved one</button>
+        <button id="btnAcctTakeLocal" type="button">use the one on this device</button>
+      </div>
+    </div>
+
+    <p class="status" id="acctStatus" role="status"></p>
+
+    <div class="modes"><button id="btnAcctClose" type="button">back</button></div>
   </div>
 </div>
 
@@ -6635,8 +6734,53 @@
      and run-length encoded by the interface module rather than written as JSON;
      see `exportFog` there for why. */
 
+  /* ── where the book is kept ───────────────────────────────────────────────
+     The book is one JSON string, and this is the only thing in the game that
+     knows where that string goes. Everything else calls `read` and `write` and
+     stays out of it.
+
+     The seam exists because the destination is the part that changes and the
+     book is the part that does not:
+
+       · in a browser, local storage, which is what it has always been;
+       · signed into an account, local storage *and* a row in a table, so the
+         same sector opens on the phone;
+       · on Steam, a file in the folder Steam has been told to sync — Auto-Cloud
+         needs no code from the game at all, only a game that writes a file.
+
+     `read` and `write` are deliberately synchronous, and local. A game that
+     waits on a network before it can draw a frame is a game that stutters on a
+     bad train, and Survey autosaves every fifteen seconds. So the local copy is
+     always the one the run uses, and anything slower is a `mirror`: told about
+     every write, never waited for. See `cloud` below for the one that exists. */
+  const bookStore = (() => {
+    /* A wrapper — Electron for Steam, say — can put its own store here before
+       the game script runs, and nothing below this line has to know. It only has
+       to answer `read`, `write` and `wipe`. */
+    const host = window.CROSSFIRE_BOOK_STORE;
+    if (host && typeof host.read === "function") return host;
+    return {
+      read() {
+        try { return localStorage.getItem(SURVEY_STORE); } catch (_) { return null; }
+      },
+      /* False when it did not keep — private browsing, or a full quota. The
+         caller is the save button, which has to be able to say so rather than
+         claiming a save that never happened. */
+      write(s) {
+        try { localStorage.setItem(SURVEY_STORE, s); return true; }
+        catch (_) { return false; }
+      },
+      wipe() { try { localStorage.removeItem(SURVEY_STORE); } catch (_) {} }
+    };
+  })();
+
+  /* Anything slower than local storage that also wants the book. Set by the
+     account layer once somebody signs in; null the rest of the time, which is
+     the state every existing player is in and stays in. */
+  let bookMirror = null;
+
   function loadSurveyBook() {
-    const empty = { seed: 0, found: [], fog: "", cash: 0, deaths: 0,
+    const empty = { seed: 0, at: null, savedAt: 0, found: [], fog: "", cash: 0, deaths: 0,
                     rep: {}, selected: null,
                     ship: "skiff", owned: ["skiff"], taught: [],
                     water: WATER_FULL, food: FOOD_FULL,
@@ -6648,13 +6792,25 @@
                     friends: [], grudges: [],
                     alert: { water: { taught: 0 }, food: { taught: 0 } } };
     try {
-      const raw = localStorage.getItem(SURVEY_STORE);
+      const raw = bookStore.read();
       if (!raw) return empty;
       const b = JSON.parse(raw);
       if (!b || typeof b !== "object") return empty;
       const strs = v => Array.isArray(v) ? v.filter(k => typeof k === "string") : [];
       return {
         seed: Number(b.seed) || 0,
+        /* Where the run left off. Validated like everything else in here: a book
+           is a file on somebody's disk, and a hand-edited one must not be able to
+           put the ship somewhere the streamer cannot build. `bounds` is a ten
+           million unit box, so anything outside it is a corruption and not a
+           place — and a missing `at` is simply an older book, which resumes at
+           the origin the way every book used to. */
+        at: b.at && Number.isFinite(b.at.x) && Number.isFinite(b.at.y) &&
+            Math.abs(b.at.x) < 1e7 && Math.abs(b.at.y) < 1e7
+          ? { x: Math.round(b.at.x), y: Math.round(b.at.y),
+              a: Number.isFinite(b.at.a) ? Number(b.at.a) : -Math.PI / 2 }
+          : null,
+        savedAt: Math.max(0, Math.floor(Number(b.savedAt)) || 0),
         found: strs(b.found),
         fog: typeof b.fog === "string" ? b.fog : "",
 
@@ -6829,11 +6985,32 @@
     }
   }
 
-  function saveSurveyBook() {
-    if (!surv) return;
-    try {
-      localStorage.setItem(SURVEY_STORE, JSON.stringify({
+  /* The book as an object. Kept apart from writing it because the account layer
+     uploads the same thing the store keeps, and two definitions of what a save
+     *is* would be two things to forget to update. */
+  function surveyBook() {
+    const me = ships && ships[0];
+    /* Where you were, and which way you were pointed. Survey used to resume at
+       the origin unconditionally — see `setupSurvey` — which read as tidy and
+       was in fact a free ride home from anywhere in the sector: fly to the
+       abyss, close the tab, open it at the station with a full hold.
+
+       Not written while you are dead. The death page is a position you must
+       never resume into, and a respawn puts you at the station anyway, so a
+       book written mid-death resumes the way it always did. */
+    const at = me && !surv.death &&
+               Number.isFinite(me.x) && Number.isFinite(me.y) && Number.isFinite(me.a)
+      ? { x: Math.round(me.x), y: Math.round(me.y), a: +me.a.toFixed(3) }
+      : null;
+    return {
         seed: surv.seed,
+        at,
+        /* When. Two saves of the same sector — this browser's and the one on
+           the account — can only be told apart by which is newer, and the
+           row's own `updated_at` cannot answer it: that is when the book was
+           *uploaded*, which for a save made offline is a different moment and
+           sometimes a much later one. */
+        savedAt: Date.now(),
         found: [...surv.found],
         fog: surveyHUD ? surveyHUD.exportFog() : "",
 
@@ -6872,8 +7049,19 @@
         battleAge: surv.battleAge,
         memorials: [...surv.memorials],
         known: [...surv.known.values()]
-      }));
-    } catch (_) { /* private browsing; the run still plays, it just won't keep */ }
+    };
+  }
+
+  /* True when it actually kept. Private browsing and a full quota both fail
+     here, and the save button has to be able to say so rather than reporting a
+     save that never happened. */
+  function saveSurveyBook() {
+    if (!surv) return false;
+    const s = JSON.stringify(surveyBook());
+    const kept = bookStore.write(s);
+    // Told, never waited for. See `bookStore`.
+    if (bookMirror) bookMirror.push(s);
+    return kept;
   }
 
   /* ── asking for a word ────────────────────────────────────────────────────
@@ -7075,7 +7263,8 @@
       return;
     }
     surveyResetArm = 0;
-    try { localStorage.removeItem(SURVEY_STORE); } catch (_) { /* private mode */ }
+    bookStore.wipe();
+    if (bookMirror) bookMirror.wipe();
     nextSurveySeed = (Math.random() * 0xffffffff) >>> 0;
 
     // In the sector already? Then the new one starts now rather than next time.
@@ -9151,10 +9340,22 @@
        there, you cannot leave without noticing the shop, and the tanks are low
        enough that the first thing you want is the first thing it sells.
 
-       A resumed survey starts where a resumed survey should — at the origin,
-       having already been taught all of this — so the opening is something that
-       happens once rather than every time the tab is reopened. */
+       A resumed survey starts where it left off, stopped and pointed the way it
+       was pointed, having already been taught all of this — so the opening is
+       something that happens once rather than every time the tab is reopened.
+
+       It used to resume at the origin unconditionally, which read as tidy and
+       was in fact the cheapest way home in the game: fly to the abyss with a
+       full hold, close the tab, open it next door to the shop. Coming back to
+       where you actually were is the whole point of a save, and it makes the
+       light drive and the gates the ways home rather than the reload.
+
+       A book written before this resumes at the origin, as does one written
+       while its owner was dead — see `surveyBook`. */
     const opening = !carried;
+    /* Only this sector's. A book left over from a different seed still has an
+       `at` in it, and it describes a place in a world that no longer exists. */
+    const resumedAt = carried ? book.at : null;
     if (opening) {
       me.x = HOME_STATION.x - 210;
       me.y = HOME_STATION.y + 130;
@@ -9163,6 +9364,8 @@
       // reason to press the button you are parked in front of.
       surv.water = WATER_FULL * 0.3;
       surv.food = FOOD_FULL * 0.55;
+    } else if (resumedAt) {
+      me.x = resumedAt.x; me.y = resumedAt.y; me.a = resumedAt.a;
     } else {
       me.x = 0; me.y = 0; me.a = -Math.PI / 2;
     }
@@ -9196,8 +9399,12 @@
     // The camera starts where the run starts. It has always started at the
     // origin, which is right for an ordinary sector because that is where you
     // are; the empty room begins forty thousand units away from it.
-    cam.x = levLM ? me.x : 0;
-    cam.y = levLM ? me.y : 0;
+    /* Where the ship is, which used to be the same thing as the origin for
+       every resumed run and is not any more. Getting this wrong is not subtle:
+       the camera lerps, so the whole sector slides past for a second before it
+       catches up with a ship that was never at the origin. */
+    cam.x = (levLM || resumedAt) ? me.x : 0;
+    cam.y = (levLM || resumedAt) ? me.y : 0;
 
     rocks = [];
     streamChunks(true);
@@ -18898,6 +19105,13 @@
            SCREEN_W / 2, optY + 2, 16, "#ffcb42", "center", 0.7);
       return optY + 24;
     }
+    /* Three across is the ceiling, and it is a hard one: the keyboard grid on
+       the controls screen starts at a fixed y a little below this band, so a
+       second row would be drawn straight through it, and `tapButton` draws its
+       label at a fixed 18px, so a narrower button does not make SURE? THIS
+       WIPES IT ALL fit inside one. A fourth setting here needs the screen
+       rearranged, not another column — which is why the account lives on the
+       pause screen instead. */
     const bw = opts.length > 2 ? 300 : 360;
     const span = opts.length * (bw + 16) - 16;
     /* A note is wrapped to its own button's width rather than trusted to fit:
@@ -19280,9 +19494,23 @@
               toggleSound, soundEnabled);
     tapButton(fullscreenLabel(), COLS(2, 1), mid + 116, 260, 40, "#ffe56d",
               toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
-    tapText("[Q]  QUIT TO MENU", SCREEN_W / 2, mid + 170, 22, "#ffcb42", leaveMatch);
+    /* Survey's own row. The pause screen is where somebody goes when they are
+       about to stop playing, which is exactly the moment a save button is for —
+       and the line under it is the only place the game says where the save
+       actually lives. The quit row moves down to make room rather than the row
+       being squeezed in beside something. */
+    let quitY = mid + 170;
+    if (mode && mode.survey && surv) {
+      tapButton(saveLabel(), COLS(2, 0), quitY, 260, 40, "#a08cff", surveySaveNow);
+      tapButton(accountLabel(), COLS(2, 1), quitY, 260, 40, "#a08cff", openAccount);
+      const n = saveNote();
+      if (n) text(n, SCREEN_W / 2, quitY + 34, 13, "#ffcb42", "center", 0.75);
+      quitY += 78;
+    }
+
+    tapText("[Q]  QUIT TO MENU", SCREEN_W / 2, quitY, 22, "#ffcb42", leaveMatch);
     if (net.on) {
-      text("quitting drops the others too", SCREEN_W / 2, mid + 198, 13,
+      text("quitting drops the others too", SCREEN_W / 2, quitY + 28, 13,
            "#ffcb42", "center", 0.75);
     }
   }
@@ -20690,6 +20918,351 @@
     lobby.hidden = true;
   }
 
+  /* ── the account ──────────────────────────────────────────────────────────
+     Optional, always. Survey saves to this browser whether anybody signs in or
+     not, and everything below is about the *second* copy: the one on an account,
+     which is what makes the sector you charted on the laptop the sector that
+     opens on the phone.
+
+     Nothing here can stop somebody playing. With no configuration the panel
+     says so and offers nothing; with a dead network every call fails into a
+     sentence about the save still being on this device, which is true. */
+  const cloud = window.CrossfireCloud || null;
+  const accountEl = el("account");
+
+  function acctSay(msg, bad) {
+    el("acctStatus").textContent = msg || "";
+    el("acctStatus").classList.toggle("bad", !!bad);
+  }
+
+  /* Two books that disagree, held while the player decides. Never resolved on
+     their behalf: both sides are somebody's hours, and picking the newer one
+     automatically is how you throw away the run somebody made on a plane. */
+  let clash = null;
+
+  /* What Survey writes goes to the account too, once there is an account to
+     write to. This is the `bookMirror` the store talks to — see `bookStore`. */
+  function syncMirror() {
+    const on = !!(cloud && cloud.enabled() && cloud.session());
+    bookMirror = on ? {
+      push: str => cloud.push(str),
+      wipe: () => { cloud.wipeRow().catch(() => {}); }
+    } : null;
+  }
+  if (cloud) { syncMirror(); cloud.onChange(() => { syncMirror(); paintAccount(); }); }
+
+  /* Already signed in from a previous visit? Then the account's copy should be
+     here before anybody presses play. The whole promise is that the sector you
+     left on the laptop is the one that opens on the phone, and that promise is
+     not kept by a panel somebody has to go and find first.
+
+     Never destructive. A book already on this device is only replaced when there
+     is nothing to replace — the copy sitting here might be the newer one, made
+     on a plane with no signal, and deciding that on somebody's behalf is how you
+     throw away the run they care most about. Two that disagree are held for the
+     panel and nothing is lost either way.
+
+     Failure is silence. No network, a paused project, a rotated token: the game
+     plays on the local book, which is what it did before any of this existed. */
+  async function catchUp() {
+    if (!cloud || !cloud.enabled() || !cloud.session()) return;
+    let remote = null;
+    try { remote = await cloud.pull(); } catch (_) { return; }
+    if (!remote || !remote.book) return;
+
+    const local = bookStore.read();
+    if (local === remote.book) return;
+
+    if (!local) {
+      /* Nothing here to lose. `adoptCloud` rather than a bare write, because the
+         pull can land after the player has already started a fresh sector — and
+         a book written under a running Survey does nothing until the tab is
+         closed, which looks exactly like the feature not working. */
+      adoptCloud(remote.book, true);
+      note("Your saved survey is here.");
+      return;
+    }
+
+    clash = { remote, local };
+    paintAccount();
+    note("This device and your account have different surveys — " +
+         "pause and open ACCOUNT to pick one.");
+  }
+  catchUp();
+
+  /* Enough of a book to tell two of them apart, without opening the sector. A
+     seed is the sector's only name, so it is given in the same hex the `?seed=`
+     link uses and can be recognised. */
+  function describeBook(str) {
+    let b = null;
+    try { b = JSON.parse(str); } catch (_) {}
+    if (!b || !b.seed) return "an empty survey";
+    const bits = ["sector " + (b.seed >>> 0).toString(16).toUpperCase()];
+    if (b.cash) bits.push(Math.round(b.cash).toLocaleString() + " cash");
+    if (Array.isArray(b.found) && b.found.length) {
+      bits.push(b.found.length + " catalogue " +
+                (b.found.length === 1 ? "entry" : "entries"));
+    }
+    if (b.savedAt) bits.push("saved " + howLongAgo(b.savedAt));
+    return bits.join(" · ");
+  }
+
+  function howLongAgo(ms) {
+    const s = Math.max(0, Date.now() - ms) / 1000;
+    if (s < 90) return "just now";
+    if (s < 3600) return Math.round(s / 60) + " minutes ago";
+    if (s < 86400) return Math.round(s / 3600) + " hours ago";
+    return Math.round(s / 86400) + " days ago";
+  }
+
+  function paintAccount() {
+    if (!accountEl || accountEl.hidden) return;
+    const up = !!(cloud && cloud.enabled());
+    const who = up ? cloud.session() : null;
+
+    show("acctClash", !!clash);
+    show("acctOut", up && !who && !clash);
+    show("acctIn", up && !!who && !clash);
+
+    if (!up) {
+      acctSay("No account service is set up for this copy of the game. " +
+              "Survey still saves on this device.");
+      return;
+    }
+    if (who) {
+      el("acctWho").textContent = who.email;
+      const last = cloud.lastSync();
+      const err = cloud.lastError();
+      el("acctSync").textContent = err
+        ? "Last sync failed: " + err
+        : last ? "Saved to your account " + howLongAgo(last) + "."
+               : "Nothing sent yet this session.";
+    }
+    if (clash) {
+      el("acctClashWhat").textContent =
+        "On the account: " + describeBook(clash.remote.book) +
+        (clash.remote.wrote ? ", from " + clash.remote.wrote : "") + ".\n" +
+        "On this device: " + describeBook(clash.local) + ".";
+    }
+  }
+
+  function openAccount() {
+    if (!accountEl) return;
+    accountEl.hidden = false;
+    acctSay("");
+    paintAccount();
+  }
+  function closeAccount() { if (accountEl) accountEl.hidden = true; }
+
+  /* Signing in is the easy half. The hard half is the two saves that may now
+     both exist, and which of them the player meant. */
+  async function afterSignIn() {
+    syncMirror();
+    acctSay("Signed in. Looking for a saved survey…");
+    let remote = null;
+    try {
+      remote = await cloud.pull();
+    } catch (err) {
+      paintAccount();
+      return acctSay("Signed in, but the saved survey could not be read: " +
+                     err.message, true);
+    }
+    const local = bookStore.read();
+
+    // Nothing up there yet: this device's survey becomes the account's.
+    if (!remote || !remote.book) {
+      if (local) {
+        cloud.push(local);
+        const r = await cloud.flush();
+        paintAccount();
+        return acctSay(r.synced
+          ? "Signed in. This device's survey is now on your account."
+          : "Signed in, but the upload failed: " + r.reason, !r.synced);
+      }
+      paintAccount();
+      return acctSay("Signed in. Your survey will be saved to the account from now on.");
+    }
+
+    // Nothing here, or the same thing: no decision to make.
+    if (!local || local === remote.book) {
+      if (!local) adoptCloud(remote.book, true);
+      paintAccount();
+      return acctSay(local
+        ? "Signed in. This device is already up to date."
+        : "Signed in. Your saved survey has been brought down to this device.");
+    }
+
+    clash = { remote, local };
+    paintAccount();
+    acctSay("");
+  }
+
+  /* Taking the account's copy. The book is written to the store and then the
+     mode is rebuilt around it — a running Survey is holding the old sector in
+     memory, and leaving it there would show the old world over the new save
+     until the tab was closed. */
+  function adoptCloud(book, quiet) {
+    bookStore.write(book);
+    if (mode && mode.survey && surv) {
+      surv = null;
+      startGame("survey", 1, 0);
+      state = "playing";
+    }
+    if (!quiet) note("Your saved survey is loaded.");
+  }
+
+  el("btnAcctClose").addEventListener("click", closeAccount);
+
+  el("btnAcctIn").addEventListener("click", async () => {
+    const email = el("acctEmail").value.trim();
+    const pass = el("acctPass").value;
+    if (!email || !pass) return acctSay("An email and a password, please.", true);
+    acctSay("Signing in…");
+    try {
+      await cloud.signIn(email, pass);
+      el("acctPass").value = "";
+      await afterSignIn();
+    } catch (err) {
+      acctSay(err.status === 400
+        ? "That email and password do not match an account."
+        : err.message, true);
+    }
+  });
+
+  el("btnAcctUp").addEventListener("click", async () => {
+    const email = el("acctEmail").value.trim();
+    const pass = el("acctPass").value;
+    if (!email || !pass) return acctSay("An email and a password, please.", true);
+    /* Checked here as well as by the server, because the server's version of
+       this message is "Password should be at least 6 characters" and the player
+       would rather be told before they wait for a round trip. */
+    if (pass.length < 8) {
+      return acctSay("Make the password at least 8 characters.", true);
+    }
+    acctSay("Making the account…");
+    try {
+      const r = await cloud.signUp(email, pass);
+      el("acctPass").value = "";
+      if (r.confirm) {
+        paintAccount();
+        return acctSay("Account made. Check your email for a link to confirm it, " +
+                       "then sign in.");
+      }
+      await afterSignIn();
+    } catch (err) {
+      acctSay(err.message, true);
+    }
+  });
+
+  el("btnAcctForgot").addEventListener("click", async () => {
+    const email = el("acctEmail").value.trim();
+    if (!email) return acctSay("Put your email in first.", true);
+    try {
+      await cloud.resetPassword(email);
+      /* Said the same way whether or not the address has an account. The other
+         version of this message tells anybody who asks which addresses are
+         registered. */
+      acctSay("If that address has an account, a reset link is on its way.");
+    } catch (err) {
+      acctSay(err.message, true);
+    }
+  });
+
+  el("btnAcctOut").addEventListener("click", async () => {
+    /* The unsent book goes up first. Signing out with a save still waiting in
+       the coalescing window would lose whatever happened in the last few
+       seconds — silently, which is the worst way to lose anything. */
+    if (cloud.pendingWrite()) {
+      acctSay("Saving before signing out…");
+      await cloud.flush();
+    }
+    await cloud.signOut();
+    syncMirror();
+    paintAccount();
+    /* Said plainly, because it is the one thing about this that surprises
+       people: the survey does not go anywhere. */
+    acctSay("Signed out. Your survey is still on this device.");
+  });
+
+  el("btnAcctSave").addEventListener("click", async () => {
+    if (mode && mode.survey && surv) saveSurveyBook();
+    else { const b = bookStore.read(); if (b) cloud.push(b); }
+    acctSay("Saving…");
+    const r = await cloud.flush();
+    paintAccount();
+    acctSay(r.synced ? "Saved to your account." : "Could not save: " + r.reason,
+            !r.synced);
+  });
+
+  el("btnAcctTakeCloud").addEventListener("click", () => {
+    adoptCloud(clash.remote.book);
+    clash = null;
+    paintAccount();
+    acctSay("Loaded the survey from your account.");
+  });
+
+  el("btnAcctTakeLocal").addEventListener("click", async () => {
+    const keep = clash.local;
+    clash = null;
+    cloud.push(keep);
+    acctSay("Uploading this device's survey…");
+    const r = await cloud.flush();
+    paintAccount();
+    acctSay(r.synced ? "This device's survey is now the one on your account."
+                     : "Could not upload: " + r.reason, !r.synced);
+  });
+
+  /* ── the save button ──────────────────────────────────────────────────────
+     Survey has always saved on its own, every fifteen seconds and at about
+     thirty events besides, so this button is not what keeps a run. What it is
+     for is the two things autosaving cannot do: send it to the account *now*
+     rather than at the end of the coalescing window, and say out loud that it
+     worked — which is the whole reason anybody asks for a save button. */
+  let saveSaid = 0;          // when the button last reported
+  let saveWord = "";
+
+  /* What the button into the panel says, which is the shortest true answer to
+     "is my survey safe anywhere but here". */
+  function accountLabel() {
+    if (!cloud || !cloud.enabled()) return "ACCOUNT: NONE";
+    const who = cloud.session();
+    return who ? "ACCOUNT: ON" : "SIGN IN";
+  }
+
+  function saveLabel() {
+    return performance.now() < saveSaid ? saveWord : "SAVE";
+  }
+  function saveNote() {
+    if (performance.now() < saveSaid) return "";
+    if (cloud && cloud.enabled() && cloud.session()) {
+      return "Kept on this device and on your account.";
+    }
+    /* The honest version. A save that lives in one browser is one cleared
+       history away from gone, and somebody who has played for six hours is
+       entitled to know that before it happens rather than after. */
+    return cloud && cloud.enabled()
+      ? "Kept on this device only — an account keeps it if this browser forgets."
+      : "Kept on this device only.";
+  }
+
+  function surveySaveNow() {
+    const kept = saveSurveyBook();
+    saveSaid = performance.now() + 2600;
+    saveWord = kept ? "SAVED" : "COULD NOT SAVE";
+    if (!kept) {
+      note("This browser will not let the game save — private browsing, or the " +
+           "storage is full.");
+      return;
+    }
+    if (cloud && cloud.enabled() && cloud.session()) {
+      cloud.flush().then(r => {
+        saveSaid = performance.now() + 2600;
+        saveWord = r.synced ? "SAVED" : "SAVED HERE ONLY";
+        if (!r.synced) note("Saved on this device. The account copy failed: " + r.reason);
+      });
+    }
+  }
+
   el("onlineFriendlyFire").addEventListener("click", toggleFriendlyFire);
 
   el("btnStart").addEventListener("click", () => {
@@ -20889,6 +21462,10 @@
          a field written and not listed here is thrown away silently — this is how
          a test can check the two lists agree. */
       bookKeys: () => Object.keys(loadSurveyBook()),
+      // Write the book now rather than waiting out the fifteen-second autosave.
+      saveBook: () => saveSurveyBook(),
+      // The account panel, without having to find the pause screen first.
+      account: () => openAccount(),
       /* What kind of space a point is, which the *game* never tells the player —
          see BIOMES.md. A harness has to be able to ask, or the one layer whose
          whole design is to be invisible is also the one layer nothing can check. */

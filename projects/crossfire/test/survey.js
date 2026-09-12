@@ -634,8 +634,51 @@ const storeOf = (cf, key) => {
           "a new sector inherited " + other.cf.survey().found.size + " entries from the old one");
     check(other.cf.hud().charted() === 0, "a new sector inherited the old chart");
   }
+  /* How big a save actually is, where there is a real chart in it. The account
+     row caps `book` at half a megabyte and that ceiling has to come from a
+     measurement — one set below what a long run writes is a save that starts
+     failing only for the people who have played the most.
+
+     The fog is the only part that grows without limit, and it is run-length
+     encoded by row: three int32s a run, sixteen base64 characters, so the
+     ceiling is somewhere around thirty thousand separate horizontal runs. */
+  const bytes = raw ? raw.length : 0;
+  const fogBytes = raw ? JSON.parse(raw).fog.length : 0;
+  check(bytes < 512 * 1024, "a book of " + bytes + " bytes is over the account ceiling");
   console.log("  persistence chart round-trips exactly · resumes on the same seed · " +
-              "a new seed starts clean · corrupt input rejected");
+              "a new seed starts clean · corrupt input rejected · " +
+              hud.charted() + " cells charted is a " + bytes + "-byte book (" +
+              Math.round(fogBytes / bytes * 100) + "% of it chart), against the " +
+              "512 KB the account row allows");
+
+  /* And the ceiling itself, against a chart far larger than a real run makes.
+     Six cells proves the round trip and proves nothing about size.
+
+     The shape matters more than the distance. The fog is run-length encoded by
+     row, so a solid blob is almost free — one run a row however wide it is —
+     and the expensive shape is a *fragmented* row, which is exactly what Survey
+     produces: you fly out to a landmark and come home, out to the next one and
+     come home, and every one of those spokes crosses the same rows at a
+     different x. Twenty round trips to the edge of the abyss is a run longer
+     than anyone will play, and it is the pattern that costs the most. */
+  {
+    const big = hud;
+    const SPOKES = 20, REACH = 300000;
+    for (let sp = 0; sp < SPOKES; sp++) {
+      const a = sp / SPOKES * Math.PI * 2 + 0.31;
+      for (let d = 0; d < REACH; d += 300) {
+        big.reveal(Math.cos(a) * d, Math.sin(a) * d, 900);
+      }
+    }
+    const huge = big.exportFog().length;
+    check(huge < 512 * 1024,
+          "a " + big.charted() + "-cell chart exports " + huge +
+          " bytes, past what the account row will take");
+    console.log("  chartsize  " + big.charted() + " cells — twenty round trips to " +
+                "the abyss — packs to " + Math.round(huge / 1024) + " KB, " +
+                Math.round(huge / (512 * 1024) * 100) + "% of the account ceiling");
+  }
+
 }
 
 // ── 6. the other modes are untouched ──────────────────────────────────────
@@ -3481,20 +3524,58 @@ const storeOf = (cf, key) => {
   check(surv.taught.size <= seen + 2, "the opening is repeating itself");
 
   /* And a sector you have played stops explaining itself: the beats are in the
-     book, and a resumed survey starts at the origin rather than in the shop. */
+     book, and a resumed survey does not run the opening again.
+
+     It also comes back *where it was*. Flying somewhere real before closing the
+     tab is the whole test — the mode used to resume at the origin whatever you
+     did, which meant closing the tab was the cheapest ride home in the game. */
+  const flown = cf.live().ships[0];
+  surv.docked = null;
+  flown.x = 48000; flown.y = -31000; flown.a = 1.2;
+  cf.saveBook();
   cf.leave();
   const book = JSON.parse(store["crossfire.survey.v3"]);
   check(book.taught.includes("thirst"), "the book forgot the opening");
+  check(book.at && Math.abs(book.at.x - 48000) < 2 &&
+        Math.abs(book.at.y + 31000) < 2, "the book forgot where you were");
   const again = bootKeepingStorage("?debug=1&seed=606061");
   again.cf.start("survey", 1);
   const back = again.cf.live().ships[0];
-  check(Math.hypot(back.x, back.y) < 400,
-        "a resumed survey did not start at the origin");
+  check(Math.hypot(back.x - 48000, back.y + 31000) < 2,
+        "a resumed survey did not come back where it left off: " +
+        Math.round(back.x) + ", " + Math.round(back.y));
+  check(Math.abs(back.a - 1.2) < 0.01, "a resumed survey lost its heading");
+  // Stopped, not still travelling at whatever speed closed the tab.
+  check(back.vx === 0 && back.vy === 0, "a resumed survey came back moving");
+  // And the camera is on it, or the whole sector slides past for a second.
+  check(Math.hypot(again.cf.live().camera.x - back.x,
+                   again.cf.live().camera.y - back.y) < 2,
+        "the camera resumed at the origin while the ship did not");
   check(again.cf.survey().taught.has("thirst"),
         "a resumed survey would teach it all again");
+
+  /* A book from a *different* sector describes a place that does not exist.
+     Same store, new seed: the opening runs and the stale position is ignored. */
+  const elsewhere = bootKeepingStorage("?debug=1&seed=909091");
+  elsewhere.cf.start("survey", 1);
+  const fresh = elsewhere.cf.live().ships[0];
+  check(Math.hypot(fresh.x - 48000, fresh.y + 31000) > 1000,
+        "a new sector placed the ship where the old one left off");
+
+  /* Dying is the one position you must never resume into. The death page is up,
+     the book is written, and it carries no place at all — so it resumes the way
+     every book used to, and a respawn puts you at the station regardless. */
+  const dying = bootKeepingStorage("?debug=1&seed=606061");
+  dying.cf.start("survey", 1);
+  dying.cf.survey().death = { cause: "test" };
+  dying.cf.saveBook();
+  check(JSON.parse(store["crossfire.survey.v3"]).at === null,
+        "the book wrote the place you died as the place to come back to");
   console.log("  opening    starts docked at the station on a " +
               Math.round(v.water.frac * 100) + "% tank · water, then the yard, " +
-              "then what it is worth · each beat once · a resumed sector is quiet");
+              "then what it is worth · each beat once · a resumed sector is quiet " +
+              "and comes back where it was · never where you died · never another " +
+              "sector's place");
 }
 
 // ── which pages stop the clock ────────────────────────────────────────────
