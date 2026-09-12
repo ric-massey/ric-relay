@@ -1214,6 +1214,33 @@ Sitting in a star is still the free answer and still costs you the time.
   5.2's "only found very far away" parts are the first instalment.
 - **Food from somewhere other than a station** — the ice melter answers water.
   Food has no equivalent yet.
+- **A price belongs to whoever runs the shop** — *"it should be based off of
+  factions eventually. and stuff that isn't in factions is expensive. maybe one
+  faction is cheap or something."* Everything a station sells is priced off two
+  things today: how far out it is, and what it is short of. Neither of them is
+  *who runs it*. The missing piece is small and it is first: **a station has no
+  flag at all** — it is an x, a y and a phase — so before any of this there is a
+  faction on the station and a colour on the dock.
+
+  After that the ladder is already built. `standingPay` is a five-rung table
+  that turns your standing with a power into a multiplier, and it is currently
+  read by exactly one thing: what a rescue pays. The same table should decide
+  what that power's yards *charge* — TRUSTED mends a hull for less than NEUTRAL
+  does, WANTED pays a surcharge for the privilege of being served at all — so
+  reputation stops being a thing you read on a page and becomes the number on
+  the button. **UNALIGNED is dearer than any of them**, because a place with no
+  power behind it has no reason to do anybody a favour, and it is the honest
+  cost of a station out where the three of them do not reach. And **one power
+  runs cheap**, rolled as a trait of the world the way the war scale and the
+  eight abundances already are, so "the Morrow yards are cheap in this sector"
+  is a fact about where you have ended up rather than a constant.
+
+  It touches five things at once, which is the Phase 6 test passing: the mend
+  price, the water, the food, the parts on the shelf, and the question of which
+  station is worth flying to — because the nearer one is no longer automatically
+  the cheaper one. It also gives reputation a cost you feel every dock rather
+  than only when somebody shoots at you.
+
 - **Trading with ships** — *"You should be able trade with friendly ships as well.
   So get close hit E. Or tap them if on mobile and have a UI for trading goods. Or
   buying goods from them. They may be more pricey then stations."* The `trades`
