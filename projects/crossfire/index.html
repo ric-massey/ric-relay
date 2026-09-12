@@ -1999,6 +1999,33 @@
      It is a setting rather than a constant because how far back you want to sit
      is a preference and not a fact — and because ship size is going to feed
      into this later, so the number needs a home either way. */
+  /* ── the empty room ───────────────────────────────────────────────────────
+     `?leviathan=1` builds a sector with **nothing in it but the Leviathan**, and
+     parks you off its bow.
+
+     It is a looking tool, not a game mode. The Leviathan is nine thousand units
+     of authored hull and the only way to judge it — the proportions, the way the
+     plates read at distance, whether the corridors are legible from outside —
+     is to fly around it with nothing else on the screen. In an ordinary sector
+     it is forty thousand units away with wells, rock, traffic and a war between
+     you and it.
+
+     Three things it deliberately does:
+
+       · **it cannot touch your sector.** It writes to its own key, so the run
+         you are half way through is not overwritten by an afternoon of looking
+         at a hull.
+       · **nothing else is generated.** Not thinned — generated and then emptied,
+         chunk by chunk, before the landmark is built, so the Leviathan's own
+         furniture survives and everything else in that chunk never existed.
+       · **nothing is trying to kill you**, including the clock: no hunters, no
+         battles, no grudges, and the tanks do not drain. You are looking at a
+         model, and a model should not starve you. */
+  const LEV_ONLY = (() => {
+    try { return new URLSearchParams(location.search).has("leviathan"); }
+    catch (_) { return false; }
+  })();
+
   const SURVEY_ZOOMS = [
     { s: 1.00, name: "CLOSE" },
     { s: 0.86, name: "NEAR" },
@@ -2006,7 +2033,17 @@
     { s: 0.58, name: "WIDE" },
     { s: 0.46, name: "DISTANT" }
   ];
-  let surveyZoom = 0.72;
+  /* The empty room gets two steps nobody else does. At the widest the game
+     allows, the window is about 2,200 units across and the Leviathan is 9,200
+     long — a quarter of it at a time, which is the right amount for flying
+     through and the wrong amount for looking at the shape of the thing. These
+     two are no use in a real sector, where a rock you cannot see is a rock you
+     fly into; in a sector with nothing in it they cost nothing. */
+  if (LEV_ONLY) {
+    SURVEY_ZOOMS.push({ s: 0.34, name: "FAR" },
+                      { s: 0.20, name: "THE WHOLE HULL" });
+  }
+  let surveyZoom = LEV_ONLY ? 0.20 : 0.72;
 
   /* ── 3.4, and the open question in the plan ───────────────────────────────
      A bigger ship pulls the camera back. Ric flagged this himself as something
@@ -4730,7 +4767,8 @@
   // its diorama is a card, and the menu still works.
   const menuArt = window.CrossfireMenu || null;
 
-  const SURVEY_STORE  = "crossfire.survey.v3";
+  const SURVEY_STORE  = LEV_ONLY ? "crossfire.survey.levlab"
+                                 : "crossfire.survey.v3";
   const CHUNK         = 2600;   // world units a side
   const CHUNK_LOAD    = 2;      // chunks kept either side of the ship: a 5×5 block
   /* Wider, and shifted forward, while the light drive is running. The box has to
@@ -7423,15 +7461,44 @@
       out.traffic.length = Math.min(out.traffic.length, keep);
     }
 
+    /* The empty room. Emptied *here* — after the chunk has rolled and before
+       its landmark is built — so the roll stays a pure function of the
+       coordinates and the Leviathan still gets its own furniture. `gates` is
+       replaced rather than truncated, because it arrives as the lattice's own
+       array and truncating it would empty the lattice. See `LEV_ONLY`. */
+    if (LEV_ONLY) {
+      for (const k of ["hazards", "planets", "wrecks", "nebulae", "marks",
+                       "caches", "stations", "hulks", "parts", "fields",
+                       "traffic", "battles"]) {
+        out[k].length = 0;
+      }
+      out.gates = [];
+    }
+
     const lm = surv.landmarkAt.get(chunkKey(cx, cy));
-    if (lm) buildLandmark(lm, out, R, rnd);
+    if (lm && (!LEV_ONLY || lm.key === "leviathan")) {
+      buildLandmark(lm, out, R, rnd);
+      /* Its holds stay and their **guards** do not. The caches are part of the
+         authored interior — they are the reason the corridors go where they go,
+         and hollowing them out would leave you looking at a shell of the thing
+         rather than at the thing. The sentries posted on them are the other
+         case: they are not structure, they are what would be shooting at you
+         from a bulkhead while you were trying to look at the shape of it.
+
+         Emptied at generation rather than swept up every frame, so no drone is
+         ever posted in the first place — and it is the guard list that is
+         cleared rather than the drones, because the streamer builds one from
+         the other every time the chunk comes back. */
+      if (LEV_ONLY) for (const c of out.caches) c.guards.length = 0;
+    }
 
     /* A part brings the place its clue describes. Without this the clue would
        be decoration over whatever the chunk happened to roll, and "in the light
        of two suns" would be a lie about half the time. The scenery is forced,
        not hoped for. */
     const site = surv.partAt.get(chunkKey(cx, cy));
-    if (site && !surv.built.has(site.key) && !surv.carrying.has(site.key)) {
+    if (!LEV_ONLY && site && !surv.built.has(site.key) &&
+        !surv.carrying.has(site.key)) {
       buildPartSite(site, out, R, rnd);
     }
     return out;
@@ -8337,6 +8404,9 @@
      edge of it, the way Battle Royale tops up its field. */
   function streamRocks() {
     const me = ships[0];
+    // The empty room means empty. Rocks are streamed around the ship rather
+    // than rolled into chunks, so they have to be turned off separately.
+    if (LEV_ONLY) { rocks.length = 0; return; }
     const far = (SURVEY_ROCK_R * 1.7) ** 2;
     for (let i = rocks.length - 1; i >= 0; i--) {
       if (dist2(rocks[i].x, rocks[i].y, me.x, me.y) > far) rocks.splice(i, 1);
@@ -8687,16 +8757,63 @@
     } else {
       me.x = 0; me.y = 0; me.a = -Math.PI / 2;
     }
+    /* The empty room opens where the only thing in it is. Off the bow at two
+       and a half thousand units — far enough out that the whole nine thousand
+       of it is on the screen at once, pointed at it, stopped. See `LEV_ONLY`. */
+    const levLM = LEV_ONLY && surv.landmarks.find(l => l.key === "leviathan");
+    if (levLM) {
+      /* Three thousand out and pointed at it. The distance is not aesthetic: the
+         streamer only builds chunks within `CHUNK_LOAD` of the ship, so a spawn
+         far enough away to frame the whole nine thousand units of it is a spawn
+         where it has not been built yet — which is a sector containing nothing
+         at all. Three thousand is comfortably inside one chunk of separation in
+         any alignment.
+
+         It will not fit on the screen from here and it is not supposed to. The
+         view is about 1,400 units across and the hull is 9,200 long; the only way
+         to see this thing is to fly along it, which is the whole point of the
+         room. */
+      me.x = levLM.x - 3000;
+      me.y = levLM.y - 900;
+      me.a = Math.atan2(levLM.y - me.y, levLM.x - me.x);
+      surv.water = WATER_FULL;
+      surv.food = FOOD_FULL;
+    }
     me.vx = me.vy = 0;
     applyRefit(me);
     me.hull = me.maxHull;
     surv.runStart = clock;
     me.invuln = INVULN;
-    cam.x = 0; cam.y = 0;
+    // The camera starts where the run starts. It has always started at the
+    // origin, which is right for an ordinary sector because that is where you
+    // are; the empty room begins forty thousand units away from it.
+    cam.x = levLM ? me.x : 0;
+    cam.y = levLM ? me.y : 0;
 
     rocks = [];
     streamChunks(true);
     streamRocks();
+
+    /* And then put exactly where it wants to be, now that the thing exists.
+       Which way the Leviathan lies is decided by the chunk it lives in, and that
+       chunk does not exist until the line above — so the spawn before it is only
+       close enough to make the streamer build it, and this is the real one:
+       square on to the flank, fourteen hundred units off the plates, at the
+       midships, pointed at it. That distance is set by the camera rather than by
+       taste: the empty room opens at a zoom that shows about 5,000 units across,
+       so this puts the whole beam of it in the window with the bow and the stern
+       running off both edges. */
+    const levBuilt = levLM && surv.leviathan;
+    if (levBuilt) {
+      const L = surv.leviathan;
+      const nx = -L.sa, ny = L.ca;          // square on to the long axis
+      me.x = L.x + nx * (L.flank + 1400);
+      me.y = L.y + ny * (L.flank + 1400);
+      me.a = Math.atan2(L.y - me.y, L.x - me.x);
+      me.vx = me.vy = 0;
+      cam.x = me.x; cam.y = me.y;
+      streamChunks(true);
+    }
 
     if (surveyHUD) {
       surveyHUD.reset();
@@ -13614,9 +13731,13 @@
     surveyRockSolids();
     surveyFitting(dt);
     surveyMelt(dt);
-    surveyBattles(dt);
-    surveyHeat(dt);
-    grudgeVisit(dt);
+    // In the empty room none of these have anything to work with, and two of
+    // them would put a ship in a sector that is meant to have none. See `LEV_ONLY`.
+    if (!LEV_ONLY) {
+      surveyBattles(dt);
+      surveyHeat(dt);
+      grudgeVisit(dt);
+    }
     surveyCaches(dt);
     surveyParts(dt);
     surveyMotes(dt);
@@ -13627,7 +13748,8 @@
     // same frame rather than one frame later.
     surveySkim(dt);
     surveyLightDrive(dt);
-    surveyLifeSupport(dt);
+    if (LEV_ONLY) { surv.water = WATER_FULL; surv.food = foodCap(); }
+    else surveyLifeSupport(dt);
     surveyWarning();
     surveyObjectiveNote();
     surveyOpening();
@@ -20335,6 +20457,9 @@
     });
   }
   if (menuArt) menuArt.init({ ctx, glow });
+  // The Leviathan lab is a destination, not another menu choice. Opening its
+  // private URL should put the pilot in the empty sector immediately.
+  if (LEV_ONLY) startGame("survey", 1, 0);
   requestAnimationFrame(frame);
 })();
 </script>

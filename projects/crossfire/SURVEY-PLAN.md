@@ -2284,6 +2284,47 @@ rate as you turn, it is the same distance out wherever it is, and the corners ar
 left to the interface. The logic that walks an arrow around the ring when it
 lands under a panel is unchanged; it now walks around an actual ring.
 
+### The empty room  ·  **DONE**  ·  *a looking tool, not a mode*
+
+> *"make a run of a map that has nothing except the leviathan so i can fly
+> around it and see it"*
+
+`index.html?leviathan=1` builds a sector with **nothing in it but the
+Leviathan**, and parks you square on to its flank.
+
+The Leviathan is nine thousand units of authored hull and the only way to judge
+it — the proportions, how the plates read at distance, whether the corridors are
+legible from outside — is to fly around it with nothing else on the screen. In an
+ordinary sector it is forty thousand units away with wells, rock, traffic and a
+war in between.
+
+Four things it does deliberately:
+
+- **It cannot touch your sector.** It writes to its own key, so an afternoon of
+  looking at a hull does not overwrite the run you are half way through.
+- **Nothing else is generated.** Not thinned — each chunk rolls normally and is
+  then emptied *before* its landmark is built, so the roll stays a pure function
+  of its coordinates and the Leviathan keeps its own furniture. Rocks are
+  streamed around the ship rather than rolled into chunks, so they are turned off
+  separately.
+- **Nothing is trying to kill you**, including the clock: no hunters, no
+  battles, no grudges, and no sentries. The holds inside it stay — they are part
+  of the authored interior and the reason the corridors go where they go — but
+  their **guard lists are emptied at generation**, so no sentry is ever posted.
+  A cache is structure; a sentry shooting at you from a bulkhead is not looking
+  at a hull. The tanks do not drain either.
+- **Two extra zoom steps**, FAR and THE WHOLE HULL, which exist only in this
+  room. The widest the game allows shows about 2,200 units and the hull is 9,200
+  long; a quarter of it at a time is the right amount for flying through and the
+  wrong amount for looking at the shape of it. In a real sector a camera that
+  wide is a rock you cannot see coming, which is why they are not offered there.
+
+The spawn is in two steps, and the reason is worth keeping: the streamer only
+builds chunks near the ship, so the first placement is simply *close enough to
+make the Leviathan exist* — three thousand units — and the real one happens after
+the sector has streamed, when which way the hull lies is finally a thing that can
+be read.
+
 ### The Leviathan comes in to 40,000  ·  **DONE**
 
 > *"the last part is wayyyy too far out..... so bring that one in to like 40k"*

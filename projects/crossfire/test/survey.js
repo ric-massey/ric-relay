@@ -220,6 +220,32 @@ const storeOf = (cf, key) => {
   return row ? row.n : 0;
 };
 
+// ── the Leviathan lab is exactly one empty room ──────────────────────────
+{
+  const { cf } = boot("?debug=1&leviathan=1&seed=771177");
+  const surv = cf.survey();
+  const live = cf.live();
+
+  check(cf.peek().state === "playing" && cf.peek().mode === "SURVEY",
+        "the Leviathan lab did not open directly into the map");
+  check(!!surv && !!surv.leviathan,
+        "the Leviathan lab opened without the Leviathan");
+  check(live.ships.length === 1,
+        "the Leviathan lab should contain one player ship, saw " + live.ships.length);
+  check(live.rocks.length === 0 && live.hazards.length === 0,
+        "the Leviathan lab generated rocks or gravity wells");
+
+  const furniture = ["planets", "wrecks", "nebulae", "marks", "gates",
+                     "stations", "hulks", "fields", "traffic", "battles"];
+  for (const key of furniture) {
+    check(surv[key].length === 0,
+          "the Leviathan lab generated " + surv[key].length + " " + key);
+  }
+  check(cf.zoom() === 0.20,
+        "the Leviathan lab did not open at the whole-hull zoom");
+  console.log("  leviathan  direct entry · one pilot · empty space · whole-hull zoom");
+}
+
 // ── 1. generation is pure, and the ladder is complete ────────────────────
 /* An endless sector cannot be checked by enumerating it. What can be checked is
    that a chunk is a pure function of its coordinates — fly away and back and
