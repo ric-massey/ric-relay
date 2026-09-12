@@ -186,6 +186,34 @@ document is about, so it is gone. The panel reads `REGION — UNKNOWN`; the char
 says nothing at all. What you charted is the only record of where you have been,
 and an empty region reads as empty on it because there is nothing in it.
 
+## What a region looks like
+
+Nothing about a region is ever said. What some of them do is *look* slightly
+different, which is a different thing from a label: a tint is something you
+notice and then have to work out, where a name is something you read.
+
+Four of these were here before the fifth was added, and it is worth listing them
+together because the rule they follow is the same — **the visual reinforces a
+mechanical fact rather than decorating a name.**
+
+| | what you see | the fact underneath |
+|---|---|---|
+| **the Rime** | the asteroids are pale blue | they are ice, and a melter turns them into range |
+| **the Murk** | static across the interface, heavier the further in you go | the scan is down to a tenth: the instrument is what should look broken |
+| **the Violet Cloud** | nebulae everywhere | it is thick, and you can see about half as far |
+| **the Belt, Shards, Rounds** | rocks are lumpy, sharp or round | three different mining grounds |
+| **the Long Empty** | the starfield itself thins out | the one region where even the backdrop has nothing to offer |
+
+And a **tint on the starfield** for six of them — the Rime pale blue, the Cloud
+violet, the Murk grey, the Works gold, the Boneyard cold grey, the Long Empty
+dull. A third of the region's colour at the middle of a patch, faded in by
+`regionDepth` so it arrives over a few thousand units instead of switching on
+across a line.
+
+Small on purpose. This must never become a label: a sky you could read a name
+off is the Minecraft biome banner in a different font, and the whole design is
+that you learn what somewhere is by being in it.
+
 **And the naming mechanism already exists**: pins. A player can drop one, colour
 it, and name it whatever they like — "dead zone", "blackwater". That is the
 feature this document asks for and it shipped before the document existed.
