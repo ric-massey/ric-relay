@@ -52,6 +52,7 @@
   <input id="seed" value="771177" inputmode="numeric">
   <button id="go">DRAW</button>
   <button id="roll">ANOTHER</button>
+  <button id="whole" aria-pressed="true">AS BUILT</button>
   <button id="discs" aria-pressed="false">COLLISION DISCS</button>
   <button id="labels" aria-pressed="true">LABELS</button>
 </div>
@@ -69,6 +70,9 @@
   const errEl = document.getElementById("err");
   const factsEl = document.getElementById("facts");
   let showDiscs = false, showLabels = true, lev = null, frame = null;
+  /* The ship comes first: this page opens on her as built, and the wreck is
+     that ship plus what happened to it. */
+  let whole = true;
 
   const say = m => { errEl.hidden = !m; errEl.textContent = m || ""; };
 
@@ -79,7 +83,8 @@
     say("");
     if (frame) frame.remove();
     frame = document.createElement("iframe");
-    frame.src = "index.html?debug=1&leviathan=1&seed=" + encodeURIComponent(seed);
+    frame.src = "index.html?debug=1&leviathan=1" + (whole ? "&intact=1" : "") +
+                "&seed=" + encodeURIComponent(seed);
     document.body.appendChild(frame);
     let tries = 0;
     const poll = () => {
@@ -160,17 +165,28 @@
     const segR = lev.segs.length ? lev.segs[0].r : 150;
     ctx.lineCap = "butt";
     ctx.lineJoin = "miter";
-    const run = () => {
-      ctx.beginPath();
-      for (const w of lev.walls) {
-        ctx.moveTo(px(w.u0), py(w.v0));
-        ctx.lineTo(px(w.u1), py(w.v1));
+    // Each plate at its own thickness: armour, frame and wing are different
+    // things and the plan view is where that has to be legible.
+    const byWeight = new Map();
+    for (const w of lev.walls) {
+      const t = w.r || segR;
+      if (!byWeight.has(t)) byWeight.set(t, []);
+      byWeight.get(t).push(w);
+    }
+    const run = (extra, flat) => {
+      for (const [t, list] of byWeight) {
+        ctx.lineWidth = flat ? flat : t * 2 * k + (extra || 0);
+        ctx.beginPath();
+        for (const w of list) {
+          ctx.moveTo(px(w.u0), py(w.v0));
+          ctx.lineTo(px(w.u1), py(w.v1));
+        }
+        ctx.stroke();
       }
-      ctx.stroke();
     };
-    ctx.strokeStyle = "#8a97ae"; ctx.lineWidth = segR * 2 * k + 3; run();
-    ctx.strokeStyle = "#39424f"; ctx.lineWidth = segR * 2 * k;     run();
-    ctx.strokeStyle = "#7d8596"; ctx.lineWidth = 1.4;              run();
+    ctx.strokeStyle = "#8a97ae"; run(3);
+    ctx.strokeStyle = "#39424f"; run(0);
+    ctx.strokeStyle = "#7d8596"; run(0, 1.4);
 
     // The way in, at the open stern quarter of the starboard flank.
     ctx.strokeStyle = "#6dffbf";
@@ -218,11 +234,15 @@
     factsEl.innerHTML =
       "<div>LENGTH <b>" + n(lev.len) + "</b></div>" +
       "<div>BEAM <b>" + n(lev.flank * 2) + "</b></div>" +
-      "<div>PLATE <b>" + n(segR * 2) + " thick</b></div>" +
+      "<div>PLATE <b>" + n(Math.min(...lev.walls.map(w => (w.r || segR) * 2))) +
+        "\u2013" + n(Math.max(...lev.walls.map(w => (w.r || segR) * 2))) +
+        "</b> thick</div>" +
       "<div>HULL SECTIONS <b>" + lev.segs.length + "</b> in <b>" +
         lev.walls.length + "</b> plates</div>" +
       "<div>BAYS <b>" + lev.bays.length + "</b></div>" +
-      "<div>BULKHEADS <b>" + lev.bulk.length + "</b></div>";
+      "<div>BULKHEADS <b>" + lev.bulk.length + "</b></div>" +
+      "<div><b>" + (lev.wrecked ? "AS FOUND — breached, one sponson sheared"
+                                : "AS BUILT — whole") + "</b></div>";
   }
 
   document.getElementById("go").onclick = () => load(seedEl.value.trim() || "1");
@@ -233,6 +253,12 @@
   const toggle = (id, get, set) => {
     const el = document.getElementById(id);
     el.onclick = () => { set(!get()); el.setAttribute("aria-pressed", String(get())); draw(); };
+  };
+  document.getElementById("whole").onclick = () => {
+    whole = !whole;
+    document.getElementById("whole").setAttribute("aria-pressed", String(whole));
+    document.getElementById("whole").textContent = whole ? "AS BUILT" : "AS FOUND";
+    load(seedEl.value.trim() || "1");
   };
   toggle("discs", () => showDiscs, v => { showDiscs = v; });
   toggle("labels", () => showLabels, v => { showLabels = v; });

@@ -2021,6 +2021,22 @@
        · **nothing is trying to kill you**, including the clock: no hunters, no
          battles, no grudges, and the tanks do not drain. You are looking at a
          model, and a model should not starve you. */
+  /* ── whole, or wrecked ────────────────────────────────────────────────────
+     **The ship comes first and the wreck is made out of it.** This hull is going
+     to be something you can fly one day, so the intact one is the real object
+     and the derelict is that object plus what happened to it — never the other
+     way round, or the damage ends up load-bearing and the ship can never be
+     un-wrecked.
+
+     So everything below builds her whole, and the two injuries are applied at
+     the end, behind this flag. `?intact=1` turns them off and hands back the
+     ship as she left the yard, which is what the plan view's INTACT button
+     asks for. */
+  const LEV_INTACT = (() => {
+    try { return new URLSearchParams(location.search).has("intact"); }
+    catch (_) { return false; }
+  })();
+
   const LEV_ONLY = (() => {
     try { return new URLSearchParams(location.search).has("leviathan"); }
     catch (_) { return false; }
@@ -7756,16 +7772,29 @@
     /* A run of hull along a line, in local coordinates. The discs overlap by a
        fifth so there is no gap for a nose to find, and the line is kept so the
        renderer can stroke exactly what was stamped. */
-    const wall = (u0, v0, u1, v1) => {
+    /* A run of hull along a line. `r` is how thick the plate is, and it is not
+       one number any more: every wall on the ship used to be the same 340 across,
+       which is why the interior frames read as the same object as the bow armour
+       and the whole thing looked stamped out rather than built. Armour is heavy
+       where it is hit, structure is light where it is not, and the discs are the
+       plate — so this is the collision as well as the drawing. */
+    const wall = (u0, v0, u1, v1, r) => {
+      const t = r || LEV_SEG;
       const dx = u1 - u0, dy = v1 - v0;
       const len = Math.hypot(dx, dy);
-      const n = Math.max(1, Math.ceil(len / (LEV_SEG * 1.15)));
+      const n = Math.max(1, Math.ceil(len / (t * 1.15)));
       for (let i = 0; i <= n; i++) {
         const u = u0 + dx * (i / n), v = v0 + dy * (i / n);
-        segs.push({ x: wx(u, v), y: wy(u, v), r: LEV_SEG });
+        segs.push({ x: wx(u, v), y: wy(u, v), r: t });
       }
-      walls.push({ u0, v0, u1, v1 });
+      walls.push({ u0, v0, u1, v1, r: t });
     };
+    /* How thick the shell is at a station. Heaviest at the stem, where anything
+       this ship ever met was in front of it; lightest at the tail, which is all
+       engine and nothing worth armouring. */
+    const shell = u => LEV_SEG * (0.82 + 0.5 * Math.max(0, u / half + 0.35));
+    const FRAME = LEV_SEG * 0.62;          // an internal bulkhead
+    const RIB   = LEV_SEG * 0.72;          // a wing
 
     /* ── the bays, decided first ────────────────────────────────────────────
        Where they are has to be known before the flanks are built, because a bay
@@ -7783,10 +7812,14 @@
        because that is where the hull is narrowing and a box hanging off a taper
        looks like a mistake. */
     const bays = [
-      { at: -0.70, side: -1, hw: 620, depth: 1150 },
-      { at: -0.70, side:  1, hw: 620, depth: 1150 },
-      { at: -0.14, side: -1, hw: 420, depth: 700 },
-      { at: -0.14, side:  1, hw: 420, depth: 700 }
+      // The hangars: long roots, hard sweep, and the reason the silhouette works.
+      { at: -0.66, side: -1, hw: 760, depth: 1240, rake: 0.62 },
+      { at: -0.66, side:  1, hw: 760, depth: 1240, rake: 0.62 },
+      // And a forward pair that is not a smaller copy of them: short, tucked in
+      // against the hull, barely swept — they read as sponsons rather than wings,
+      // which is what stops the four of them looking like a repeated stamp.
+      { at: -0.08, side: -1, hw: 380, depth: 560, rake: 0.12 },
+      { at: -0.08, side:  1, hw: 380, depth: 560, rake: 0.12 }
     ].map(b => {
       const u = b.at * half;
       const root = beamAt(u);
@@ -7796,6 +7829,7 @@
          hull" failure. A third of the way out, on the bay's own centreline, is
          open in any rake. */
       return { u, side: b.side, hw: b.hw, depth: b.depth, root,
+               rake: b.rake === undefined ? 0.3 : b.rake,
                v: b.side * (root + b.depth * 0.38) };
     });
     const MOUTH = 300;                     // half the width of the way into one
@@ -7811,6 +7845,15 @@
        The stern quarter of the starboard flank is the way in, and it is on the
        same side every time so the ship has a door rather than a lottery. */
     const door0 = -half, door1 = -half * 0.62;
+    // Where the shell is torn open. Decided here because the flank run has to
+    // leave the hole; the torn plates themselves are stamped further down.
+    /* 260 either side, not 430. At 860 across it stopped reading as a hole and
+       started reading as a section of hull nobody had built — the eye needs
+       intact plate on both sides of a wound to know it is a wound. */
+    const wrecked = !LEV_INTACT;
+    const scar = wrecked
+      ? { u: -half * 0.34 + rnd(-260, 260), side: -1, hw: 260 }
+      : { u: 0, side: 0, hw: 0 };          // she is whole: nothing is missing
     const flankRun = (side, from, to) => {
       /* Every corner of the hull between the ends, and every bay mouth, is a
          break in the run. Sorted and walked once: between two consecutive breaks
@@ -7821,9 +7864,12 @@
         if (u > from && u < to) breaks.push(u);
       }
       const skip = [];
-      for (const b of bays) {
-        if (b.side !== side) continue;
-        const a0 = b.u - MOUTH, a1 = b.u + MOUTH;
+      const gaps = bays.filter(b => b.side === side)
+                       .map(b => [b.u - MOUTH, b.u + MOUTH]);
+      // And the breach, which is a hole in the shell rather than a door in it.
+      if (scar.side === side) gaps.push([scar.u - scar.hw, scar.u + scar.hw]);
+      for (const g of gaps) {
+        const a0 = g[0], a1 = g[1];
         if (a1 <= from || a0 >= to) continue;
         skip.push([Math.max(from, a0), Math.min(to, a1)]);
         if (a0 > from && a0 < to) breaks.push(a0);
@@ -7835,7 +7881,7 @@
         if (u1 - u0 < 1) continue;
         const mid = (u0 + u1) / 2;
         if (skip.some(sk => mid > sk[0] && mid < sk[1])) continue;   // a mouth
-        wall(u0, side * beamAt(u0), u1, side * beamAt(u1));
+        wall(u0, side * beamAt(u0), u1, side * beamAt(u1), shell(mid));
       }
     };
     flankRun(-1, -half, half);
@@ -7857,9 +7903,16 @@
        approaches from, which the flood-fill test caught on the first run. So the
        transom is a face with a hole in the middle of it, between the engines,
        and the starboard quarter is still the obvious door. */
-    const STERN_GAP = 300;
-    wall(-half, -transom, -half, -STERN_GAP);
-    wall(-half, STERN_GAP, -half, transom);
+    /* Stepped. A single flat wall across the back is the one part of a hull
+       nobody ever built flat — the corners return forward into the flank, which
+       is what gives a stern its shoulders, and in plan it is the difference
+       between a ship and a slab. */
+    const STERN_GAP = 300, STEP_IN = 300, STEP_UP = 260;
+    for (const side of [-1, 1]) {
+      wall(-half, side * STERN_GAP, -half, side * (transom - STEP_UP), LEV_SEG * 1.1);
+      wall(-half, side * (transom - STEP_UP),
+           -half + STEP_IN, side * transom, LEV_SEG * 1.1);
+    }
     /* **Two, not three.** The third sat on the centreline, and its own walls
        closed the gap in the transom that the centreline exists to be — measured,
        not guessed: the cell at the middle of the stern face came back blocked and
@@ -7869,9 +7922,9 @@
     const ENG_HW = 190, ENG_OUT = 620;
     for (const k of [-1, 1]) {
       const v0 = k * transom * 0.56;
-      wall(-half, v0 - ENG_HW, -half - ENG_OUT, v0 - ENG_HW);
-      wall(-half, v0 + ENG_HW, -half - ENG_OUT, v0 + ENG_HW);
-      wall(-half - ENG_OUT, v0 - ENG_HW, -half - ENG_OUT, v0 + ENG_HW);
+      wall(-half, v0 - ENG_HW, -half - ENG_OUT, v0 - ENG_HW, RIB);
+      wall(-half, v0 + ENG_HW, -half - ENG_OUT, v0 + ENG_HW, RIB);
+      wall(-half - ENG_OUT, v0 - ENG_HW, -half - ENG_OUT, v0 + ENG_HW, RIB);
     }
 
     /* ── the bulkheads, and the doorways through them ───────────────────────
@@ -7902,12 +7955,12 @@
          while `-b < gapMid - GAP`, which works out at `b > GAP + SEG/2`. A
          rounder, larger number looked safe and quietly deleted four of the five
          frames — the whole weave — so it is the arithmetic. */
-      if (b < GAP + LEV_SEG * 0.8) continue;     // too fine forward for a frame
+      if (b < GAP + FRAME * 1.3) continue;       // too fine forward for a frame
       const gapMid = side * (b - GAP - LEV_SEG);
       bulk.push({ u, gapMid });
       const lo = gapMid - GAP, hi = gapMid + GAP;
-      if (lo > -b) wall(u, -b, u, lo);
-      if (hi < b) wall(u, hi, u, b);
+      if (lo > -b) wall(u, -b, u, lo, FRAME);
+      if (hi < b) wall(u, hi, u, b, FRAME);
     }
 
     /* ── the bays themselves ────────────────────────────────────────────────
@@ -7919,12 +7972,21 @@
        four fins are most of what makes the silhouette look like it was going
        somewhere. The trailing edge stays square to the hull so the room inside
        is still a room you can turn round in. */
+    const sheared = wrecked ? bays[3] : null;   // the starboard forward sponson
     for (const b of bays) {
       const outer = b.side * (b.root + b.depth);
-      const tip = b.u + b.hw * 0.3;                 // the swept forward corner
-      wall(b.u - b.hw, b.side * b.root, b.u - b.hw, outer);   // trailing edge
-      wall(b.u + b.hw, b.side * b.root, tip, outer);          // leading edge, raked
-      wall(b.u - b.hw, outer, tip, outer);                    // the outboard face
+      const tip = b.u + b.hw * b.rake;              // the swept forward corner
+      if (b === sheared) {
+        // Torn off at the root: a trailing edge, and a bitten stump of the face.
+        const stub = b.side * (b.root + b.depth * 0.34);
+        wall(b.u - b.hw, b.side * b.root, b.u - b.hw, stub, RIB);
+        wall(b.u - b.hw, stub, b.u - b.hw * 0.2,
+             b.side * (b.root + b.depth * 0.16), LEV_SEG * 0.5);
+        continue;
+      }
+      wall(b.u - b.hw, b.side * b.root, b.u - b.hw, outer, RIB);   // trailing edge
+      wall(b.u + b.hw, b.side * b.root, tip, outer, RIB);          // leading, raked
+      wall(b.u - b.hw, outer, tip, outer, RIB);                    // outboard face
     }
 
     /* ── the hold ───────────────────────────────────────────────────────────
@@ -7933,6 +7995,35 @@
        across — which was fine when the hull was a rectangle and every point on
        it was the same width. It sits where the forward body is still most of
        full beam instead. */
+    /* ── what killed it ────────────────────────────────────────────────────
+       Everything above builds a ship that is intact, symmetrical and fine, and
+       the one thing this ship indisputably is, is **dead**. A derelict that is
+       perfect down both sides is a model of a ship; the damage is what makes it
+       a wreck, and it is the cheapest character in the whole structure.
+
+       Two injuries, both structural rather than drawn, so they are things you
+       can fly into and through rather than marks on a picture:
+
+         the breach   a span of the port flank forward of the hangar is simply
+                      gone, with two torn plates splayed out of the hole. It is a
+                      second way in, which is the good kind of damage: it changes
+                      how the place is used rather than only how it looks.
+         the stub     the starboard forward sponson is sheared off at the root.
+                      What is left is its trailing edge and a bitten-off stump,
+                      and the asymmetry that buys is worth more than the sponson
+                      was.
+
+       Where the breach falls comes off the seed, so one sector's wreck is not
+       another's — but *that there is one* does not, because a hull that is
+       sometimes intact is a hull with no story. */
+    if (wrecked) {
+      const b0 = beamAt(scar.u - scar.hw), b1 = beamAt(scar.u + scar.hw);
+      wall(scar.u - scar.hw, scar.side * b0,
+           scar.u - scar.hw - 250, scar.side * (b0 + 430), LEV_SEG * 0.55);
+      wall(scar.u + scar.hw, scar.side * b1,
+           scar.u + scar.hw + 180, scar.side * (b1 + 300), LEV_SEG * 0.55);
+    }
+
     /* Just aft of the chine. On a delta the whole forward third is a spike —
        at 0.72 of the half-length the hull is 162 units across and a cache placed
        there is *inside the plates*, which is exactly what the "buried in its
@@ -7962,6 +8053,7 @@
 
     out.leviathan = { x: lm.x, y: lm.y, a, ca, sa, segs, walls, outline,
                       len: LEV_LEN, beam: LEV_BEAM, flank, transom, hold: holdU,
+                      wrecked,
                       engine: { hw: ENG_HW, out: ENG_OUT, at: transom * 0.58 },
                       door: [door0, door1], bulk, bays,
                       phase: R() * Math.PI * 2 };
@@ -7979,7 +8071,11 @@
        index bays 0, 3 and 4 of six; there are four now, and an index into a list
        whose length is a design decision is a bug waiting for the next edit — so
        it takes every bay but the second and adds the hold. */
-    const spots = bays.filter((b, i) => i !== 1)
+    /* Every bay that is still a room, and the hold. The sheared sponson is not
+       one — a cache in a chamber that is open to space is the same class of
+       mistake as the one in the bow cap, and this time the geometry says so up
+       front rather than leaving the flood fill to find it. */
+    const spots = bays.filter(b => b !== sheared)
                       .concat([{ u: holdU, v: 0, deep: true }]);
     spots.forEach((spot, i) => {
       const deep = i === spots.length - 1;
@@ -14721,13 +14817,26 @@
        at the lab's opening zoom. A round, 2×radius stroke is the same capsule
        those overlapping discs make. The narrow outer pass gives the plate a
        readable edge against the dark deck. */
-    const strokeWalls = () => {
-      ctx.beginPath();
-      for (const w of lev.walls) {
-        ctx.moveTo(wx(w.u0, w.v0), wy(w.u0, w.v0));
-        ctx.lineTo(wx(w.u1, w.v1), wy(w.u1, w.v1));
+    /* Grouped by thickness. A plate carries its own `r` now — bow armour is
+       heavier than a bulkhead, a wing is lighter than either — so one stroke at
+       one width would draw every one of them as the same object, which is the
+       whole thing this pass is undoing. */
+    const byWeight = new Map();
+    for (const w of lev.walls) {
+      const t = w.r || seg;
+      if (!byWeight.has(t)) byWeight.set(t, []);
+      byWeight.get(t).push(w);
+    }
+    const strokeWalls = (extra) => {
+      for (const [t, list] of byWeight) {
+        ctx.lineWidth = t * 2 + (extra || 0);
+        ctx.beginPath();
+        for (const w of list) {
+          ctx.moveTo(wx(w.u0, w.v0), wy(w.u0, w.v0));
+          ctx.lineTo(wx(w.u1, w.v1), wy(w.u1, w.v1));
+        }
+        ctx.stroke();
       }
-      ctx.stroke();
     };
     /* **A plate is not black.** The body was `#111722` on a `#05070c` deck —
        six points of brightness apart — so a wall was a black slab with a hairline
@@ -14749,12 +14858,10 @@
     ctx.lineCap = "butt";
     ctx.strokeStyle = "#8a97ae";
     ctx.globalAlpha = 0.95;
-    ctx.lineWidth = seg * 2 + 18;
-    strokeWalls();
+    strokeWalls(18);
     ctx.strokeStyle = "#39424f";
     ctx.globalAlpha = 1;
-    ctx.lineWidth = seg * 2;
-    strokeWalls();
+    strokeWalls(0);
     ctx.restore();
 
     /* The seam keeps the old wreck-light running through the middle of each
