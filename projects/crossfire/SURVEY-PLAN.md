@@ -2352,6 +2352,82 @@ it. The last rung now goes to whichever landmark is dealt it.
 
 ---
 
+### The Leviathan is a ship you can buy  ·  *the brief, not yet built*
+
+> *"this ship should be flyable. it moves kinda slow. has 4 attatchments. it
+> should have like 5 guns on it and the engines need to spout out small pixels
+> when being used. these ships need to be collored unless they are distroid like
+> the first one you find. but they can also be in wars and battles. so you can
+> accidentaly run into actual ones that have even extra turrets. if your really
+> on the good side of the team you can fly in it if your nuetral you cant fly in
+> it without them shooting you adn if ur wanted they will try to shoot you down.
+> i want this ship to be playable by the player as well and purchasable. maybe
+> can only be baught at the city biome. also when you controll it you obviosly
+> are going to have to zoom out. i want it to turn slow too but its health to be
+> enormous. if its in a battle i want you to still be able to destroy it."*
+
+The hull now exists as real geometry rather than as scenery, which is what makes
+all of this possible — but everything below is *unbuilt*, and the order matters
+because each item is load-bearing for the next.
+
+**What it already has.** The shape, the plates, the interior, the collision, the
+two engine throats, and a builder that can produce her whole or wrecked. That is
+the model. None of the rest exists.
+
+**1 · A live Leviathan, flying, in a faction's colours.** The one out at 40,000
+is a derelict and stays grey; a *live* one is the same geometry in its owner's
+colour, under power, going somewhere. The renderer takes one hardcoded grey today
+and needs a colour off the flag, with the wreck keeping the grey it has. This is
+the cheapest item and it unlocks the three below, because "a Leviathan" stops
+being one object in one place.
+
+**2 · Guns, and turrets on the live ones.** Five, built into the hull rather than
+fitted — and that is a *stated exception* to "every trick is a part", because a
+capital's main battery is part of the ship the way its engines are. The four
+slots still apply and still mean what they mean. A live one carries extra
+turrets on top, which is where the campaign's turret code earns a second use.
+
+**3 · Standing decides what happens when you approach.** The ladder exists —
+`standingOf` already turns reputation into five rungs — and this is the first
+thing in the mode to read it as *permission* rather than as price:
+
+  - **TRUSTED / WELCOME** — you can fly inside. The door is a door.
+  - **NEUTRAL** — you cannot, and going in anyway is what starts it.
+  - **WANTED / HUNTED** — it comes after you, and it is nine thousand units of
+    ship that wants you dead.
+
+**4 · Destroyable.** It has to be able to die in a battle in front of you, which
+means hull points on a structure that is currently indestructible scenery, and a
+death that is a set-piece rather than a despawn. Enormous health, and enormous is
+a number that has to be chosen against how much damage a player can actually put
+out in a minute.
+
+**5 · Buyable, and only at the city.** THE WORKS is the biome for it — the one
+place in the sector with the industry to sell you a capital ship, which also gives
+the city a reason to exist beyond scenery. The price should be the longest
+number in the game.
+
+**6 · Flying it.** Slow to move, slower to turn, and the camera has to pull back
+a long way — the empty room's two extra zoom steps (FAR, THE WHOLE HULL) stop
+being a debugging tool and become this ship's ordinary camera. The engines throw
+sparks when they burn, which is the one piece of this that is pure drawing.
+
+#### The hard part, stated up front
+
+**Everything in Survey assumes the player's ship is small.** A Leviathan is 9,200
+units long; a chunk is 2,600, a station's docking ring is 260, a gate's mouth is
+smaller than that, and the streamer keeps a 5×5 block of chunks around you. A ship
+four chunks long cannot dock, cannot take a gate, cannot be held by the streamer's
+box, and cannot be drawn by a camera that assumes it fits on the screen.
+
+So this is not "add a hull to the list". It is that, plus a pass over docking,
+gates, streaming, the chart and the camera to stop them assuming a size. The
+honest options are a **scaled-down capital** that plays by the existing rules, or
+**the real thing** with those systems taught about size — and the second is the
+one worth doing, because the whole feeling being asked for here is the size.
+
+---
+
 ## At the end of Phase 7: go back to Phase 6
 
 **Read this before starting anything new.**
