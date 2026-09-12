@@ -201,24 +201,57 @@
       }
       return m;
     };
+    /* Plates chained end to end before they are stroked. A square-ended plate
+       drawn as its own path gets a butt cap at each end, and `lineJoin` only
+       applies *within* a path — so every chine had a wedge of nothing at the
+       outside of the angle. Walking the shared vertices lets the join close the
+       corner, and close it to a point. */
+    const chainUp = list => {
+      const runs = [], left = list.slice();
+      const near = (ax, ay, bx, by) =>
+        Math.abs(ax - bx) < 0.5 && Math.abs(ay - by) < 0.5;
+      while (left.length) {
+        const w = left.shift();
+        const run = [[w.u0, w.v0], [w.u1, w.v1]];
+        let grew = true;
+        while (grew) {
+          grew = false;
+          for (let i = 0; i < left.length; i++) {
+            const c = left[i], head = run[0], tail = run[run.length - 1];
+            if (near(c.u0, c.v0, tail[0], tail[1])) run.push([c.u1, c.v1]);
+            else if (near(c.u1, c.v1, tail[0], tail[1])) run.push([c.u0, c.v0]);
+            else if (near(c.u1, c.v1, head[0], head[1])) run.unshift([c.u0, c.v0]);
+            else if (near(c.u0, c.v0, head[0], head[1])) run.unshift([c.u1, c.v1]);
+            else continue;
+            left.splice(i, 1); grew = true; break;
+          }
+        }
+        runs.push(run);
+      }
+      return runs;
+    };
     const pass = (set, colour, extra, flat) => {
       ctx.strokeStyle = colour;
+      ctx.miterLimit = 24;
       for (const [t, list] of set) {
         ctx.lineWidth = flat || t * 2 * k + (extra || 0);
         ctx.beginPath();
-        for (const w of list) {
-          ctx.moveTo(px(w.u0), py(w.v0));
-          ctx.lineTo(px(w.u1), py(w.v1));
+        for (const run of chainUp(list)) {
+          run.forEach((pt, i) => {
+            const x = px(pt[0]), y = py(pt[1]);
+            i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+          });
         }
         ctx.stroke();
       }
     };
-    const SHELL = ["shell", "wing", "engine", "tear"];
+    const SHELL = ["shell", "wing", "engine", "tear", "jamb"];
     pass(only(["frame"]), "#252f3d", 0);        // frames, sunk into the body
     pass(only(["frame"]), "#3d4b63", 0, 1);     // with a hairline down each
     pass(only(SHELL), "#8fa0ba", 4);            // the shell, and its lit edge
     pass(only(SHELL), "#3f4859", 0);
-    pass(only(["shell"]), "#cbd8ee", 0, 1.6);   // the outermost line of all
+    // No centreline hairline: a bright line up the middle of a plate is a third
+    // edge on a two-edged thing, and it reads as a pipe rather than as armour.
 
     // The way in, at the open stern quarter of the starboard flank.
     ctx.strokeStyle = "#6dffbf";

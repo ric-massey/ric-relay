@@ -7892,6 +7892,35 @@
     flankRun(-1, -half, half);
     flankRun(1, door1, half);
 
+    /* ── every opening gets a jamb ──────────────────────────────────────────
+       A run of plate that simply stops in mid-air reads as a line somebody cut,
+       not as a way in. Real structure finishes its edges: a hangar mouth has a
+       lip, a doorway has a post, a hatch has a frame — and the eye knows the
+       difference immediately even when it could not say why.
+
+       So every deliberate opening is closed off with a short plate turned
+       inboard. It is geometry rather than decoration, so the jamb is something
+       you can scrape your hull on, which is what an opening in a real ship does
+       to you.
+
+       The **tears** are pointedly left ragged. A wound is the one place on this
+       ship where an unfinished edge is the correct edge, and the contrast is
+       what tells you which openings were built and which were made. */
+    /* Sized to what it is framing. One 250-unit lip on everything choked the
+       small forward sponsons — their whole chamber is 560 deep — and the flood
+       fill found it: the port one became unreachable. A hatch gets a hatch's
+       lip. Thinner than a frame, too: a jamb is a finishing piece, not
+       structure, and a fat one eats the opening it is supposed to describe. */
+    const JAMB = 250;
+    const jamb = (u, v, du, dv) => wall(u, v, u + du, v + dv, LEV_SEG * 0.55, "jamb");
+    for (const b of bays) {
+      const len = Math.min(JAMB, b.depth * 0.22);
+      jamb(b.u - MOUTH, b.side * beamAt(b.u - MOUTH), 0, -b.side * len);
+      jamb(b.u + MOUTH, b.side * beamAt(b.u + MOUTH), 0, -b.side * len);
+    }
+    // The forward post of the door, and the two edges of the stern opening.
+    jamb(door1, beamAt(door1), 0, -JAMB);
+
     /* ── the transom, and the engines hanging off it ───────────────────────
        A ship has a back. The old one simply stopped, which is most of why it
        read as a length of corridor rather than as a vessel — and it left the
@@ -7913,11 +7942,18 @@
        is what gives a stern its shoulders, and in plan it is the difference
        between a ship and a slab. */
     const STERN_GAP = 300, STEP_IN = 300, STEP_UP = 260;
+    // The lips of the way through the transom, finished like every other opening.
+    jamb(-half, STERN_GAP, JAMB, 0);
+    jamb(-half, -STERN_GAP, JAMB, 0);
     for (const side of [-1, 1]) {
       wall(-half, side * STERN_GAP, -half, side * (transom - STEP_UP),
            LEV_SEG * 1.1, "shell");
+      /* Landing exactly where the flank is, not at the transom's own width.
+         The two differ by 25 units at that station and the mismatch is the kink
+         above the engine — a corner that looks like a mistake because it is
+         one. */
       wall(-half, side * (transom - STEP_UP),
-           -half + STEP_IN, side * transom, LEV_SEG * 1.1, "shell");
+           -half + STEP_IN, side * beamAt(-half + STEP_IN), LEV_SEG * 1.1, "shell");
     }
     /* **Two, not three.** The third sat on the centreline, and its own walls
        closed the gap in the transom that the centreline exists to be — measured,
@@ -7967,6 +8003,9 @@
       const lo = gapMid - GAP, hi = gapMid + GAP;
       if (lo > -b) wall(u, -b, u, lo, FRAME, "frame");
       if (hi < b) wall(u, hi, u, b, FRAME, "frame");
+      // A door in a bulkhead has posts, the same as one in the shell does.
+      if (lo > -b) jamb(u, lo, JAMB * 0.7, 0);
+      if (hi < b) jamb(u, hi, -JAMB * 0.7, 0);
     }
 
     /* ── the bays themselves ────────────────────────────────────────────────
@@ -14823,10 +14862,44 @@
        at the lab's opening zoom. A round, 2×radius stroke is the same capsule
        those overlapping discs make. The narrow outer pass gives the plate a
        readable edge against the dark deck. */
-    /* Grouped by thickness. A plate carries its own `r` now — bow armour is
-       heavier than a bulkhead, a wing is lighter than either — so one stroke at
-       one width would draw every one of them as the same object, which is the
-       whole thing this pass is undoing. */
+    /* ── plates joined into runs ───────────────────────────────────────────
+       Grouped by thickness first — a plate carries its own `r`, and bow armour
+       is heavier than a bulkhead — and then **chained end to end**.
+
+       The chaining is what closes the corners. A square-ended plate drawn as its
+       own little path gets a butt cap at each end, and `lineJoin` only ever
+       applies *within* one path — so every chine on the ship had a wedge of
+       nothing at the outside of the angle, which is the gap you can see at every
+       corner. Walking the shared vertices and stroking each run as a single path
+       lets the join do its job: the corner closes, and it closes to a point
+       rather than to a blob, which is the whole reason for square ends. */
+    const chainUp = list => {
+      const runs = [];
+      const left = list.slice();
+      const near = (ax, ay, bx, by) => Math.abs(ax - bx) < 0.5 && Math.abs(ay - by) < 0.5;
+      while (left.length) {
+        const w = left.shift();
+        const run = [[w.u0, w.v0], [w.u1, w.v1]];
+        let grew = true;
+        while (grew) {
+          grew = false;
+          for (let i = 0; i < left.length; i++) {
+            const c = left[i];
+            const head = run[0], tail = run[run.length - 1];
+            if (near(c.u0, c.v0, tail[0], tail[1])) run.push([c.u1, c.v1]);
+            else if (near(c.u1, c.v1, tail[0], tail[1])) run.push([c.u0, c.v0]);
+            else if (near(c.u1, c.v1, head[0], head[1])) run.unshift([c.u0, c.v0]);
+            else if (near(c.u0, c.v0, head[0], head[1])) run.unshift([c.u1, c.v1]);
+            else continue;
+            left.splice(i, 1);
+            grew = true;
+            break;
+          }
+        }
+        runs.push(run);
+      }
+      return runs;
+    };
     const byWeight = new Map();
     for (const w of lev.walls) {
       const t = w.r || seg;
@@ -14881,17 +14954,20 @@
     const stroke = (set, colour, extra, alpha) => {
       ctx.strokeStyle = colour;
       ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+      ctx.miterLimit = 24;                 // the stem is a very sharp angle
       for (const [t, list] of set) {
         ctx.lineWidth = t * 2 + (extra || 0);
         ctx.beginPath();
-        for (const w of list) {
-          ctx.moveTo(wx(w.u0, w.v0), wy(w.u0, w.v0));
-          ctx.lineTo(wx(w.u1, w.v1), wy(w.u1, w.v1));
+        for (const run of chainUp(list)) {
+          run.forEach((pt, i) => {
+            const x = wx(pt[0], pt[1]), y = wy(pt[0], pt[1]);
+            i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+          });
         }
         ctx.stroke();
       }
     };
-    const SHELL = ["shell", "wing", "engine", "tear"];
+    const SHELL = ["shell", "wing", "engine", "tear", "jamb"];
     stroke(kinds(["frame"]), "#5d6a80", 10, 0.55);   // a frame's faint edge
     stroke(kinds(["frame"]), "#222b38", 0, 1);       // and its body, sunk in
     stroke(kinds(SHELL), "#8fa0ba", 18, 0.95);       // the shell's lit rim
@@ -14899,16 +14975,10 @@
     ctx.globalAlpha = 1;
     ctx.restore();
 
-    /* The seam keeps the old wreck-light running through the middle of each
-       plate, now as surface detail rather than a misleading collision edge. */
-    glow(WRECK, 2.2, 0.92, () => {
-      for (const w of lev.walls) {
-        ctx.beginPath();
-        ctx.moveTo(wx(w.u0, w.v0), wy(w.u0, w.v0));
-        ctx.lineTo(wx(w.u1, w.v1), wy(w.u1, w.v1));
-        ctx.stroke();
-      }
-    });
+    /* There used to be a lit seam down the centreline of every plate here. It
+       is gone on Ric's call: with the shell drawn as a solid plate with its own
+       rim, a bright line up the middle of it is a third edge on a two-edged
+       thing, and it read as a pipe rather than as armour. */
 
     /* Ribs down the flanks, so the hull has a scale you can read as you pass
        it — and they have to follow the beam now rather than a constant, or they
