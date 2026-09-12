@@ -7464,7 +7464,12 @@
          is the oldest hazard this game has and Survey only ever had a thin
          drifting population of it; a real field is somewhere you have to fly
          *through* rather than past. */
-      if (deep > 0.2 && R() < deep * 0.3 * ab("fields")) {
+      /* And a tenth more of them, the other half of "more asteroids everywhere".
+         `SURVEY_ROCKS` is the drifting population the streamer keeps around the
+         ship, which is the map-wide density; this is how often a chunk holds a
+         standing field, which is where the rock actually piles up. Moving only
+         the first would have thickened the thin stuff and left the belts alone. */
+      if (deep > 0.2 && R() < deep * 0.33 * ab("fields")) {
         const p = spot(700);
         if (p) {
           out.fields.push({ x: p.x, y: p.y, r: rnd(500, 900),
