@@ -9791,7 +9791,11 @@
      It is not cheap. A hull is the thing standing between you and losing the
      hold, so mending one should be felt; sitting in a star is still the free
      answer and still costs you the time. */
-  const REPAIR_PRICE = 130;      // per point of hull, near home
+  /* Per point of hull, near home. 130 put a full skiff hull at 650, which is
+     most of a hold of ordinary rock for the thing you do after every bad
+     trip; 50 puts it at 250. Still felt, still dearer in the deep, and still
+     beaten by sitting in a star for free if you have the time. */
+  const REPAIR_PRICE = 50;       // per point of hull, near home
 
   const repairCost = () => {
     const me = ships[0];
