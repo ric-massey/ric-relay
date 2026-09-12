@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THE LEVIATHAN — plan view</title>
+<meta name="robots" content="noindex">
+<style>
+  :root { --ink: #05070c; --rule: #2a3342; --dim: #5d6a80; --lit: #a08cff;
+          --plate: #8a97ae; --seam: #7d8596; --cash: #6dffbf; --warn: #ff8f77; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #000; color: #c8d4e8;
+               font: 14px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  header { padding: 18px 20px 10px; border-bottom: 1px solid var(--rule); }
+  h1 { margin: 0; font-size: 17px; letter-spacing: 0.22em; font-weight: 400;
+       color: var(--lit); }
+  header p { margin: 6px 0 0; color: var(--dim); max-width: 78ch; }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+         padding: 12px 20px; border-bottom: 1px solid var(--rule); }
+  button, input {
+    font: inherit; color: inherit; background: #0b0f16;
+    border: 1px solid var(--rule); padding: 6px 12px; letter-spacing: 0.08em;
+  }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--lit); color: #fff; }
+  button[aria-pressed="true"] { border-color: var(--lit); color: var(--lit); }
+  input { width: 11ch; }
+  .bar span { color: var(--dim); letter-spacing: 0.1em; }
+  #wrap { padding: 16px 20px 28px; }
+  canvas { display: block; width: 100%; height: auto; background: var(--ink);
+           border: 1px solid var(--rule); }
+  #facts { display: flex; flex-wrap: wrap; gap: 26px; padding: 12px 20px 0;
+           color: var(--dim); }
+  #facts b { color: #c8d4e8; font-weight: 400; }
+  #err { padding: 14px 20px; color: var(--warn); }
+  iframe { position: fixed; left: -10000px; top: 0; width: 1000px; height: 700px;
+           border: 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>THE LEVIATHAN — PLAN VIEW</h1>
+  <p>Drawn from the game's own geometry, not from a copy of it: this page boots
+     Crossfire in the background, reads the hull the generator actually built for
+     the seed below, and lays it flat with the spine horizontal. What you see is
+     what you hit — the plate width is the width of the collision discs.</p>
+</header>
+
+<div class="bar">
+  <span>SEED</span>
+  <input id="seed" value="771177" inputmode="numeric">
+  <button id="go">DRAW</button>
+  <button id="roll">ANOTHER</button>
+  <button id="discs" aria-pressed="false">COLLISION DISCS</button>
+  <button id="labels" aria-pressed="true">LABELS</button>
+</div>
+
+<div id="facts"></div>
+<div id="err" hidden></div>
+<div id="wrap"><canvas id="plan" width="2200" height="1100"></canvas></div>
+
+<script>
+(() => {
+  "use strict";
+  const cv = document.getElementById("plan");
+  const ctx = cv.getContext("2d");
+  const seedEl = document.getElementById("seed");
+  const errEl = document.getElementById("err");
+  const factsEl = document.getElementById("facts");
+  let showDiscs = false, showLabels = true, lev = null, frame = null;
+
+  const say = m => { errEl.hidden = !m; errEl.textContent = m || ""; };
+
+  /* The geometry comes out of the real game. `?leviathan=1` is the empty room —
+     a sector with nothing in it but this — so the hull is built and streamed the
+     moment it opens, and `?debug=1` is what exposes the hooks to read it with. */
+  function load(seed) {
+    say("");
+    if (frame) frame.remove();
+    frame = document.createElement("iframe");
+    frame.src = "index.html?debug=1&leviathan=1&seed=" + encodeURIComponent(seed);
+    document.body.appendChild(frame);
+    let tries = 0;
+    const poll = () => {
+      let cf = null;
+      try { cf = frame.contentWindow && frame.contentWindow.__cf; } catch (e) {}
+      const surv = cf && cf.survey && cf.survey();
+      if (surv && surv.leviathan) { lev = surv.leviathan; draw(); return; }
+      if (cf && cf.start && surv === null) { try { cf.start("survey", 1); } catch (e) {} }
+      if (++tries > 120) { say("The game did not hand over a hull. Reload."); return; }
+      setTimeout(poll, 50);
+    };
+    setTimeout(poll, 60);
+  }
+
+  // World (u along the spine, v across it) is what we draw in — so the ship's
+  // random bearing is undone and every seed is drawn the same way up.
+  const toLocal = (x, y) => {
+    const dx = x - lev.x, dy = y - lev.y;
+    return { u: dx * lev.ca + dy * lev.sa, v: -dx * lev.sa + dy * lev.ca };
+  };
+
+  function draw() {
+    if (!lev) return;
+    const W = cv.width, H = cv.height;
+    const half = lev.len / 2;
+    // Reach: the bays stick out furthest, so measure rather than assume.
+    let maxV = lev.flank;
+    for (const b of lev.bays) {
+      maxV = Math.max(maxV, (b.root || lev.flank) + (b.depth || 430));
+    }
+    const pad = 90;
+    const k = Math.min((W - pad * 2) / lev.len, (H - pad * 2) / (maxV * 2.3));
+    const px = u => W / 2 + u * k;
+    const py = v => H / 2 + v * k;
+
+    ctx.fillStyle = "#05070c";
+    ctx.fillRect(0, 0, W, H);
+
+    // The deck, from the outline the builder made — never a guess at the shape.
+    ctx.fillStyle = "#0a0f18";
+    if (lev.outline && lev.outline.length) {
+      ctx.beginPath();
+      lev.outline.forEach((pt, i) => {
+        const x = px(pt.u), y = py(pt.v);
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      });
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillRect(px(-half), py(-lev.flank), lev.len * k, lev.flank * 2 * k);
+    }
+    for (const b of lev.bays) {
+      const hw = b.hw || 470, root = b.root === undefined ? lev.flank : b.root;
+      const v0 = b.side * root, v1 = b.v + b.side * (b.depth || 430) * 0.45;
+      ctx.fillRect(px(b.u - hw), py(Math.min(v0, v1)),
+                   hw * 2 * k, Math.abs(v1 - v0) * k);
+    }
+    if (lev.engine) {
+      for (const kk of [-1, 0, 1]) {
+        const v0 = kk * lev.engine.at;
+        ctx.fillRect(px(-half - lev.engine.out), py(v0 - lev.engine.hw),
+                     lev.engine.out * k, lev.engine.hw * 2 * k);
+      }
+    }
+
+    // The collision discs, if asked: the literal thing the ship hits.
+    if (showDiscs) {
+      ctx.fillStyle = "rgba(160,140,255,0.16)";
+      for (const s of lev.segs) {
+        const p = toLocal(s.x, s.y);
+        ctx.beginPath();
+        ctx.arc(px(p.u), py(p.v), s.r * k, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // The plates, at the width the discs actually make.
+    const segR = lev.segs.length ? lev.segs[0].r : 150;
+    ctx.lineCap = "butt";
+    ctx.lineJoin = "miter";
+    const run = () => {
+      ctx.beginPath();
+      for (const w of lev.walls) {
+        ctx.moveTo(px(w.u0), py(w.v0));
+        ctx.lineTo(px(w.u1), py(w.v1));
+      }
+      ctx.stroke();
+    };
+    ctx.strokeStyle = "#8a97ae"; ctx.lineWidth = segR * 2 * k + 3; run();
+    ctx.strokeStyle = "#39424f"; ctx.lineWidth = segR * 2 * k;     run();
+    ctx.strokeStyle = "#7d8596"; ctx.lineWidth = 1.4;              run();
+
+    // The way in, at the open stern quarter of the starboard flank.
+    ctx.strokeStyle = "#6dffbf";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(px(lev.door[0]), py(lev.flank));
+    ctx.lineTo(px(lev.door[1]), py(lev.flank));
+    ctx.stroke();
+
+    if (showLabels) {
+      ctx.fillStyle = "#5d6a80";
+      ctx.font = "22px ui-monospace, Menlo, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("STERN", px(-half) + 60, py(-maxV) - 24);
+      ctx.fillText("BOW", px(half) - 44, py(-maxV) - 24);
+      ctx.fillStyle = "#6dffbf";
+      ctx.fillText("THE WAY IN", px((lev.door[0] + lev.door[1]) / 2),
+                   py(lev.flank) + 42);
+      ctx.fillStyle = "#5d6a80";
+      lev.bays.forEach((b, i) => {
+        const mid = b.side * ((b.root || lev.flank) + (b.depth || 430) * 0.55);
+        ctx.fillText("BAY " + (i + 1), px(b.u), py(mid));
+      });
+      ctx.fillStyle = "#a08cff";
+      // Where the builder actually put it, not where the old bow cap used to be.
+      ctx.fillText("THE HOLD", px(lev.hold === undefined ? half - segR * 4.6 : lev.hold),
+                   py(0) + 8);
+
+      // A scale bar, because a plan view without one is a picture.
+      const unit = 1000;
+      const x0 = px(-half), y0 = py(maxV) + 56;
+      ctx.strokeStyle = "#5d6a80";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0); ctx.lineTo(x0 + unit * k, y0);
+      ctx.moveTo(x0, y0 - 8); ctx.lineTo(x0, y0 + 8);
+      ctx.moveTo(x0 + unit * k, y0 - 8); ctx.lineTo(x0 + unit * k, y0 + 8);
+      ctx.stroke();
+      ctx.fillStyle = "#5d6a80";
+      ctx.textAlign = "left";
+      ctx.fillText("1,000 units", x0 + unit * k + 14, y0 + 8);
+    }
+
+    const n = (x) => Math.round(x).toLocaleString("en-GB");
+    factsEl.innerHTML =
+      "<div>LENGTH <b>" + n(lev.len) + "</b></div>" +
+      "<div>BEAM <b>" + n(lev.flank * 2) + "</b></div>" +
+      "<div>PLATE <b>" + n(segR * 2) + " thick</b></div>" +
+      "<div>HULL SECTIONS <b>" + lev.segs.length + "</b> in <b>" +
+        lev.walls.length + "</b> plates</div>" +
+      "<div>BAYS <b>" + lev.bays.length + "</b></div>" +
+      "<div>BULKHEADS <b>" + lev.bulk.length + "</b></div>";
+  }
+
+  document.getElementById("go").onclick = () => load(seedEl.value.trim() || "1");
+  document.getElementById("roll").onclick = () => {
+    seedEl.value = String(Math.floor(Math.random() * 9e6) + 1000);
+    load(seedEl.value);
+  };
+  const toggle = (id, get, set) => {
+    const el = document.getElementById(id);
+    el.onclick = () => { set(!get()); el.setAttribute("aria-pressed", String(get())); draw(); };
+  };
+  toggle("discs", () => showDiscs, v => { showDiscs = v; });
+  toggle("labels", () => showLabels, v => { showLabels = v; });
+  load(seedEl.value);
+})();
+</script>
+</body>
+</html>

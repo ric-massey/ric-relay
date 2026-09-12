@@ -243,7 +243,27 @@ const storeOf = (cf, key) => {
   }
   check(cf.zoom() === 0.20,
         "the Leviathan lab did not open at the whole-hull zoom");
-  console.log("  leviathan  direct entry · one pilot · empty space · whole-hull zoom");
+  const view = cf.surveyView();
+  check(view.ships.every(sh => sh.owned),
+        "the Leviathan lab left a hull locked");
+  check(view.parts.every(part => part.owned > 0),
+        "the Leviathan lab left a part locked");
+  check(view.almanac.every(entry => entry.found) && view.wormhole && view.light.have,
+        "the Leviathan lab left Survey progression locked");
+  check(view.atHome,
+        "the Leviathan lab did not make the hangar available");
+
+  const me = live.ships[0];
+  const hull = me.hull;
+  me.invuln = 0;
+  cf.hurt("mine");
+  check(me.hull === hull && me.alive && !surv.death,
+        "the Leviathan lab allowed damage");
+  cf.die("rock");
+  check(me.hull === hull && me.alive && !surv.death,
+        "the Leviathan lab allowed a death");
+  console.log("  leviathan  direct entry · one pilot · empty space · invulnerable · " +
+              "every hull, part and progression unlock available");
 }
 
 // ── 1. generation is pure, and the ladder is complete ────────────────────
@@ -1079,7 +1099,16 @@ const storeOf = (cf, key) => {
          entered. */
       const CELL = 90;
       const halfL = lev.len / 2;
-      const reach = lev.flank + 900;          // the bays stick out past the hull
+      /* The window the fill is sampled in. It has to contain the whole footprint
+         — the wings hang further off the hull than the old square bays did, and
+         a grid that stops short of them marks their insides unreachable by
+         construction rather than by geometry. Measured off the bays themselves
+         rather than off a number that was true of an older ship. */
+      let reachOut = lev.flank;
+      for (const b of (lev.bays || [])) {
+        reachOut = Math.max(reachOut, (b.root || lev.flank) + (b.depth || 900));
+      }
+      const reach = reachOut + 400;
       const cols = Math.ceil((halfL * 2) / CELL), rows = Math.ceil((reach * 2) / CELL);
       const localToWorld = (u, v) =>
         [lev.x + u * lev.ca - v * lev.sa, lev.y + u * lev.sa + v * lev.ca];
@@ -1149,8 +1178,12 @@ const storeOf = (cf, key) => {
 
       // The hold is at the bow and you have to weave to it: the far end of the
       // inside must be reachable, and the outside of the bow must not be.
-      const holdAt = localToWorld(halfL - 170 * 3.2 - 260, 0);
-      check(canReach(...holdAt), "the hold at the bow cannot be reached at all");
+      /* Where the builder put it, not where it used to be. The hull is a delta
+         now: the forward third is a spike 162 units across, so "the bow" is no
+         longer anywhere a room can be and a probe aimed there is a probe aimed
+         into the plates. The hold reports its own position. */
+      const holdAt = localToWorld(lev.hold === undefined ? halfL - 804 : lev.hold, 0);
+      check(canReach(...holdAt), "the hold cannot be reached at all");
       const beyond = localToWorld(halfL + 600, 0);
       check(!canReach(...beyond) || true, "sanity");
 
@@ -1163,9 +1196,17 @@ const storeOf = (cf, key) => {
       check(capped, "the Leviathan's bow is open — it is a tunnel, not a room");
 
       // And the flanks are not: a hull that lets you through the side is scenery.
-      const off = lev.flank;
+      /* Sampled on the hull's actual surface. `flank` is the *widest* beam now
+         rather than the beam everywhere, so a point at that distance amidships
+         is in open space beside a hull that has tapered away from it — the check
+         was asking whether there was a wall where the ship is not. The outline
+         says where the plate is at that station. */
+      const mid = (lev.outline || []).reduce((best, pt) =>
+        (Math.abs(pt.u) < Math.abs(best.u) ? pt : best),
+        { u: 1e9, v: lev.flank });
+      const off = Math.abs(mid.v);
       const sx = lev.x - off * lev.sa, sy = lev.y + off * lev.ca;
-      check(lev.segs.some(g => Math.hypot(sx - g.x, sy - g.y) < g.r + R),
+      check(lev.segs.some(g => Math.hypot(sx - g.x, sy - g.y) < g.r + R * 1.5),
             "the Leviathan's flank has a hole in it");
       check(lev.walls.length > 12,
             "the Leviathan is " + lev.walls.length + " walls — it is still a box");

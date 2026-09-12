@@ -3124,6 +3124,15 @@
   /* ── deaths ──────────────────────────────────────────────────────────── */
   function damageShip(ship, cause, shooter, dmg = 1) {
     const twoHitCause = cause === "shot" || cause === "rock";
+    /* The Leviathan lab is a playtest bench. Damage feedback is useful in the
+       game; losing the ship while inspecting geometry is not. Keep the hull at
+       full strength and leave every destructive path below untouched for the
+       real Survey save. */
+    if (mode.survey && LEV_ONLY) {
+      ship.hull = ship.maxHull;
+      ship.alive = true;
+      return false;
+    }
     /* Survey's hull runs down to zero and *stops* there. It used to reset — a
        hull loss put you back to full and cost you half your hold, so the mode
        had no fail state and no stakes, which is the thing this phase reverses.
@@ -7654,8 +7663,53 @@
      ends of it at once, which is the first thing that makes it read as a place
      rather than an object. */
   const LEV_LEN  = 9200;    // stem to stern
-  const LEV_BEAM = 520;     // half the width of the spine corridor
+  const LEV_BEAM = 1060;    // half the beam at its widest, amidships
   const LEV_SEG  = 170;     // radius of one hull disc
+
+  /* ── the shape of it ───────────────────────────────────────────────────
+     It did not look like a ship, and the plan view says why in one line: it was
+     **a rectangle**. Two dead-straight flanks nine thousand units long, flat at
+     both ends, with six identical square bays alternating down it — 7.4 to 1,
+     with no bow, no stern and no taper. In plan that reads as a comb.
+
+     The first pass at fixing it went too far the other way: a ten-point curve
+     sampled into forty short plates, which came out smooth — and smooth in plan
+     view is **a submarine**. This is a spacecraft, and it should look cut rather
+     than moulded.
+
+     So the hull is a **delta** — a dart, drawn from Ric's own sketch over the
+     plan view: widest at the transom, narrowing the whole way forward, and
+     finishing at a point. Four corners a side, each pair one long straight plate,
+     and every meeting a hard chine you can see from a thousand units away. There
+     is no waist and no shoulder; there is a broad square back end, one shallow
+     run forward off it, a chine where the taper steepens, and a long dagger to
+     the stem.
+
+     The widest point being the *back* is most of what makes it read as going
+     somewhere. A hull that bulges amidships is a boat.
+
+     Fractions of `LEV_BEAM`, from the stern at -1 to the stem at +1. Keep them
+     few. Every corner added here is a facet lost, and the facets are the
+     design. */
+  const LEV_HULL = [
+    [-1.00, 1.00],          // the transom, and it is the widest part of the ship
+    [-0.52, 0.82],          // a shallow run forward off the stern quarter
+    [ 0.16, 0.46],          // the chine: where the taper steepens into the bow
+    [ 1.00, 0.00]           // and one straight run from there to the stem
+  ];
+  // Half the beam at a point along the spine, `t` from -1 at the stern to +1.
+  // Linear between corners, which is what makes each run a flat facet.
+  function levBeam(t) {
+    const P = LEV_HULL;
+    if (t <= P[0][0]) return LEV_BEAM * P[0][1];
+    for (let i = 1; i < P.length; i++) {
+      if (t <= P[i][0]) {
+        const f = (t - P[i - 1][0]) / (P[i][0] - P[i - 1][0]);
+        return LEV_BEAM * (P[i - 1][1] + (P[i][1] - P[i - 1][1]) * f);
+      }
+    }
+    return LEV_BEAM * P[P.length - 1][1];
+  }
 
   /* ── the Leviathan ────────────────────────────────────────────────────────
      The only landmark with an inside, and now the only one with an inside you
@@ -7694,7 +7748,10 @@
     const segs = [];
     const walls = [];
     const half = LEV_LEN / 2;
-    const flank = LEV_BEAM + LEV_SEG * 0.6;
+    // The widest half-beam, amidships. Everything that asks "how far across is
+    // this thing" still gets one number, and it is the biggest one.
+    const flank = LEV_BEAM;
+    const beamAt = u => levBeam(u / half);
 
     /* A run of hull along a line, in local coordinates. The discs overlap by a
        fifth so there is no gap for a nose to find, and the line is kept so the
@@ -7716,70 +7773,196 @@
        first version of this laid the flanks down solid and then put the bays
        outside them, which produced six side chambers with no way in: they drew
        correctly, they had caches in them, and the caches were unreachable. The
-       flood-fill test is what found it — a centreline walk never could have. */
-    const bays = [];
-    const BAY_D = 760;                     // how far a bay reaches out
-    const BAY_W = 430;                     // half its width
-    const MOUTH = 300;                     // half the width of the way into one
-    for (let i = 0; i < 6; i++) {
-      const u = -half * 0.5 + (i / 6) * (half * 1.5) + 180;
-      const side = i % 2 ? 1 : -1;
-      bays.push({ u, v: side * (flank + BAY_D * 0.55), side });
-    }
+       flood-fill test is what found it — a centreline walk never could have.
 
-    // ── the flanks, with a mouth cut for every bay ─────────────────────────
-    // The stern quarter of the starboard flank is the way in, and it is on the
-    // same side every time so the ship has a door rather than a lottery.
+       **Four, in two opposed pairs — wings, not a comb.** Six identical squares
+       alternating down a straight hull is what made the thing read as a zip
+       fastener. A pair of big swept wings off the broad after quarter and a
+       smaller pair further forward is a shape with an axis: symmetrical, raked,
+       and unmistakably pointing somewhere. Nothing goes forward of the chine,
+       because that is where the hull is narrowing and a box hanging off a taper
+       looks like a mistake. */
+    const bays = [
+      { at: -0.70, side: -1, hw: 620, depth: 1150 },
+      { at: -0.70, side:  1, hw: 620, depth: 1150 },
+      { at: -0.14, side: -1, hw: 420, depth: 700 },
+      { at: -0.14, side:  1, hw: 420, depth: 700 }
+    ].map(b => {
+      const u = b.at * half;
+      const root = beamAt(u);
+      /* The cache goes *inboard* of the middle. A wing is swept, so its forward
+         half is cut away by the raked leading edge — a spot at the geometric
+         centre of the box can be inside a plate, which is the "buried in its
+         hull" failure. A third of the way out, on the bay's own centreline, is
+         open in any rake. */
+      return { u, side: b.side, hw: b.hw, depth: b.depth, root,
+               v: b.side * (root + b.depth * 0.38) };
+    });
+    const MOUTH = 300;                     // half the width of the way into one
+
+    /* ── the flanks ──────────────────────────────────────────────────────
+       **One plate per facet.** A run is broken only where the hull actually has
+       a corner in it, or where a bay takes a bite out of it — never into even
+       steps, because a facet chopped into a dozen short plates with a rounded
+       cap on each is how the first attempt at this came out looking like a
+       submarine. A plate is what the renderer strokes and what the ship hits, so
+       a long flat one is a long flat surface.
+
+       The stern quarter of the starboard flank is the way in, and it is on the
+       same side every time so the ship has a door rather than a lottery. */
     const door0 = -half, door1 = -half * 0.62;
     const flankRun = (side, from, to) => {
-      // Every bay on this side takes a bite out of the run.
-      const cuts = bays.filter(b => b.side === side && b.u > from && b.u < to)
-                       .sort((a, b) => a.u - b.u);
-      let u = from;
-      for (const b of cuts) {
-        if (b.u - MOUTH > u) wall(u, side * flank, b.u - MOUTH, side * flank);
-        u = b.u + MOUTH;
+      /* Every corner of the hull between the ends, and every bay mouth, is a
+         break in the run. Sorted and walked once: between two consecutive breaks
+         the hull is a straight line, which is exactly one plate. */
+      const breaks = [from, to];
+      for (const c of LEV_HULL) {
+        const u = c[0] * half;
+        if (u > from && u < to) breaks.push(u);
       }
-      if (to > u) wall(u, side * flank, to, side * flank);
+      const skip = [];
+      for (const b of bays) {
+        if (b.side !== side) continue;
+        const a0 = b.u - MOUTH, a1 = b.u + MOUTH;
+        if (a1 <= from || a0 >= to) continue;
+        skip.push([Math.max(from, a0), Math.min(to, a1)]);
+        if (a0 > from && a0 < to) breaks.push(a0);
+        if (a1 > from && a1 < to) breaks.push(a1);
+      }
+      breaks.sort((x, y) => x - y);
+      for (let i = 1; i < breaks.length; i++) {
+        const u0 = breaks[i - 1], u1 = breaks[i];
+        if (u1 - u0 < 1) continue;
+        const mid = (u0 + u1) / 2;
+        if (skip.some(sk => mid > sk[0] && mid < sk[1])) continue;   // a mouth
+        wall(u0, side * beamAt(u0), u1, side * beamAt(u1));
+      }
     };
     flankRun(-1, -half, half);
     flankRun(1, door1, half);
 
-    // ── the bulkheads, and the doorways through them ───────────────────────
-    /* Five walls across the corridor, each with one gap. The gaps alternate
+    /* ── the transom, and the engines hanging off it ───────────────────────
+       A ship has a back. The old one simply stopped, which is most of why it
+       read as a length of corridor rather than as a vessel — and it left the
+       whole stern face open, so the "door" was not a door, it was one of two
+       ways in.
+
+       Three throats stand aft of it. They are structure, so they are walls like
+       everything else, and in plan they are the one silhouette nobody mistakes
+       for anything else. */
+    const transom = beamAt(-half);
+    /* With a gap on the centreline. A ship arrives at this thing from astern and
+       the stern is where it looks for a way in — sealing the transom outright
+       made the whole interior unreachable from the only direction anybody
+       approaches from, which the flood-fill test caught on the first run. So the
+       transom is a face with a hole in the middle of it, between the engines,
+       and the starboard quarter is still the obvious door. */
+    const STERN_GAP = 300;
+    wall(-half, -transom, -half, -STERN_GAP);
+    wall(-half, STERN_GAP, -half, transom);
+    /* **Two, not three.** The third sat on the centreline, and its own walls
+       closed the gap in the transom that the centreline exists to be — measured,
+       not guessed: the cell at the middle of the stern face came back blocked and
+       the flood fill never started, so the whole interior was unreachable from
+       the one direction anybody arrives from. Two big bells either side of an
+       open throat is the better shape anyway. */
+    const ENG_HW = 190, ENG_OUT = 620;
+    for (const k of [-1, 1]) {
+      const v0 = k * transom * 0.56;
+      wall(-half, v0 - ENG_HW, -half - ENG_OUT, v0 - ENG_HW);
+      wall(-half, v0 + ENG_HW, -half - ENG_OUT, v0 + ENG_HW);
+      wall(-half - ENG_OUT, v0 - ENG_HW, -half - ENG_OUT, v0 + ENG_HW);
+    }
+
+    /* ── the bulkheads, and the doorways through them ───────────────────────
+       Five walls across the corridor, each with one gap. The gaps alternate
        sides, so getting to the bow is a weave rather than a straight line — and
-       so a ship that is bigger than the gap has to be flown, not aimed. */
+       so a ship that is bigger than the gap has to be flown, not aimed.
+
+       Cut to the local beam rather than to a constant, so the forward ones are
+       short and the after ones are long — which is what makes the inside feel
+       like a hull narrowing towards a stem. */
+    /* **A bulkhead may never seal the ship.** The doorway used to be placed at
+       `beam - GAP - SEG` and clamped up to a floor — which on a hull that
+       narrows means the two arithmetic ends cross over, and the wall either side
+       of the "gap" is then stamped *backwards across it*. The result draws as a
+       doorway and is solid, and every cache forward of it becomes unreachable:
+       the flood-fill test found four at once.
+
+       So the gap is placed inside the hull it is actually crossing, and where
+       the hull is too narrow to hold a wall and a doorway at all, there is no
+       bulkhead — a ship's frames stop before the stem for the same reason. */
     const GAP = 300;                       // clear half-width of a doorway
     const bulk = [];
     for (let i = 0; i < 5; i++) {
       const u = -half * 0.36 + (i / 5) * (half * 1.22);
       const side = i % 2 ? 1 : -1;         // which flank the gap is against
-      const gapMid = side * (flank - GAP - LEV_SEG);
+      const b = beamAt(u);
+      /* The real floor, derived rather than guessed: the inboard wall exists
+         while `-b < gapMid - GAP`, which works out at `b > GAP + SEG/2`. A
+         rounder, larger number looked safe and quietly deleted four of the five
+         frames — the whole weave — so it is the arithmetic. */
+      if (b < GAP + LEV_SEG * 0.8) continue;     // too fine forward for a frame
+      const gapMid = side * (b - GAP - LEV_SEG);
       bulk.push({ u, gapMid });
-      wall(u, -flank, u, gapMid - GAP);
-      wall(u, gapMid + GAP, u, flank);
+      const lo = gapMid - GAP, hi = gapMid + GAP;
+      if (lo > -b) wall(u, -b, u, lo);
+      if (hi < b) wall(u, hi, u, b);
     }
 
     /* ── the bays themselves ────────────────────────────────────────────────
-       Six side chambers, three a side, each a short throat off the spine opening
-       into a room. They are the reason to slow down: the way to the bow does not
-       go through any of them, so every one is a decision to spend time. */
+       Side chambers off the spine, each a short throat opening into a room. They
+       are the reason to slow down: the way to the bow does not go through any of
+       them, so every one is a decision to spend time. */
+    /* Swept, not square. A box hanging off the side is a box hanging off the
+       side; the same chamber with its leading edge raked aft reads as a fin, and
+       four fins are most of what makes the silhouette look like it was going
+       somewhere. The trailing edge stays square to the hull so the room inside
+       is still a room you can turn round in. */
     for (const b of bays) {
-      const outer = b.side * (flank + BAY_D);
-      // The two sides of the bay, from the flank outward, and its end wall.
-      wall(b.u - BAY_W, b.side * flank, b.u - BAY_W, outer);
-      wall(b.u + BAY_W, b.side * flank, b.u + BAY_W, outer);
-      wall(b.u - BAY_W, outer, b.u + BAY_W, outer);
+      const outer = b.side * (b.root + b.depth);
+      const tip = b.u + b.hw * 0.3;                 // the swept forward corner
+      wall(b.u - b.hw, b.side * b.root, b.u - b.hw, outer);   // trailing edge
+      wall(b.u + b.hw, b.side * b.root, tip, outer);          // leading edge, raked
+      wall(b.u - b.hw, outer, tip, outer);                    // the outboard face
     }
 
-    // ── the hold, at the bow ───────────────────────────────────────────────
-    // Past the last bulkhead, and wider than the corridor: the room the whole
-    // flight was for.
-    const holdU = half - LEV_SEG * 3.2;
-    wall(half - LEV_SEG, -flank, half - LEV_SEG, flank);
+    /* ── the hold ───────────────────────────────────────────────────────────
+       Past the last bulkhead and *behind the taper*: the space the whole flight
+       was for has to be a room, and 170×3.2 from the stem is a wedge 265 units
+       across — which was fine when the hull was a rectangle and every point on
+       it was the same width. It sits where the forward body is still most of
+       full beam instead. */
+    /* Just aft of the chine. On a delta the whole forward third is a spike —
+       at 0.72 of the half-length the hull is 162 units across and a cache placed
+       there is *inside the plates*, which is exactly what the "buried in its
+       hull" check reported. This is the forward end of the part of the ship that
+       is a room rather than an edge. */
+    const holdU = half * 0.12;
 
-    out.leviathan = { x: lm.x, y: lm.y, a, ca, sa, segs, walls,
-                      len: LEV_LEN, beam: LEV_BEAM, flank,
+    /* ── the outline, as data ───────────────────────────────────────────────
+       Both the renderer and the plan-view page need the silhouette, and neither
+       of them may guess it. It used to be guessed — the drawing filled a
+       rectangle from stern to stem at a constant beam, which was true of a
+       rectangle and is a lie about a hull. So the shape is built here, once, and
+       everything that needs it reads it.
+
+       Port side stern-to-stem, then starboard back, so it closes as one polygon.
+       The bays are not in it: they are drawn from their own boxes, because a
+       sponson is a thing stuck on the side rather than part of the waterline. */
+    const outline = [];
+    for (let i = 0; i <= 48; i++) {
+      const u = -half + (LEV_LEN * i) / 48;
+      outline.push({ u, v: -beamAt(u) });
+    }
+    for (let i = 48; i >= 0; i--) {
+      const u = -half + (LEV_LEN * i) / 48;
+      outline.push({ u, v: beamAt(u) });
+    }
+
+    out.leviathan = { x: lm.x, y: lm.y, a, ca, sa, segs, walls, outline,
+                      len: LEV_LEN, beam: LEV_BEAM, flank, transom, hold: holdU,
+                      engine: { hw: ENG_HW, out: ENG_OUT, at: transom * 0.58 },
                       door: [door0, door1], bulk, bays,
                       phase: R() * Math.PI * 2 };
 
@@ -7792,8 +7975,12 @@
        bow cap, where it could be seen and never reached; the test that walks the
        inside is what caught it. Nothing here is a guess: a bay's cache sits at
        the middle of that bay, which is a place the geometry says is open. */
-    const spots = [bays[0], bays[3], bays[4],
-                   { u: holdU, v: 0, deep: true }];
+    /* One in all but one of the bays, and the richest in the hold. It used to
+       index bays 0, 3 and 4 of six; there are four now, and an index into a list
+       whose length is a design decision is a bug waiting for the next edit — so
+       it takes every bay but the second and adds the hold. */
+    const spots = bays.filter((b, i) => i !== 1)
+                      .concat([{ u: holdU, v: 0, deep: true }]);
     spots.forEach((spot, i) => {
       const deep = i === spots.length - 1;
       const cx2 = wx(spot.u, spot.v), cy2 = wy(spot.u, spot.v);
@@ -8650,6 +8837,20 @@
       }
     };
 
+    /* ── sandbox loadout ───────────────────────────────────────────────────
+       This URL is a workbench, not a second progression save. Everything that
+       can be earned or bought in Survey is available here on every load, while
+       the separate `SURVEY_STORE` above keeps all of it out of the real run. */
+    if (LEV_ONLY) {
+      surv.found = new Set(ALMANAC.map(e => e.key));
+      surv.built = new Set(BUILD.map(b => b.key));
+      surv.owned = new Set(SHIPS.map(sh => sh.key));
+      surv.hasLight = true;
+      surv.coilFired = true;
+      surv.cash = 9999999;
+      for (const m of MODULES) surv.store[m.key] = 1;
+    }
+
     /* The landmarks, one to each equal slice of the compass with a little play
        inside its own slice. The golden angle was the first thing tried and it
        is the wrong tool here: over seven items it wraps, and a wrap can drop two
@@ -8823,9 +9024,12 @@
       }
     }
 
-    banner = { text: "SURVEY", t: 3.8, colour: NEBULA,
-               sub: carried ? "SEED " + seed + "  ·  " + surv.world.name
-                            : "you are docked  ·  " + surv.world.name };
+    banner = LEV_ONLY
+      ? { text: "LEVIATHAN LAB", t: 4.2, colour: CASH,
+          sub: "invulnerable · every hull and part unlocked" }
+      : { text: "SURVEY", t: 3.8, colour: NEBULA,
+          sub: carried ? "SEED " + seed + "  ·  " + surv.world.name
+                       : "you are docked  ·  " + surv.world.name };
   }
 
   /* ── finding things ───────────────────────────────────────────────────────
@@ -10062,6 +10266,16 @@
   };
 
   function surveyDie(cause) {
+    if (LEV_ONLY) {
+      const ship = ships[0];
+      if (ship) {
+        ship.alive = true;
+        ship.dead = false;
+        ship.hull = ship.maxHull;
+      }
+      if (surv) surv.death = null;
+      return;
+    }
     if (!surv || surv.death) return;            // one death at a time
     const ship = ships[0];
     let lost = 0;
@@ -10243,7 +10457,8 @@
      how much you have spent — both answer the same question, and made the 50×
      spread across the roster mean less than it should. Cargo is a reason to buy
      a different ship now, and nothing else changes it. */
-  const holdCap = () => (surv ? shipSpec(surv.ship).cargo : SURVEY_HOLD);
+  const holdCap = () => LEV_ONLY ? 9999
+    : (surv ? shipSpec(surv.ship).cargo : SURVEY_HOLD);
 
   /* How much food this hull can carry, against the Skiff's sixty units of hold.
      Softened with a square root rather than taken straight: cargo runs 50x across
@@ -12587,7 +12802,7 @@
       return false;
     }
     storeAdd(key, -1);
-    const instant = !!surv.docked;
+    const instant = LEV_ONLY || !!surv.docked;
     surv.slots[i] = { key, fit: instant ? 0 : fitSeconds(key) };
     applyRefit(ships[0]);
     padApply();
@@ -13014,7 +13229,7 @@
      are stuck with out there, which is most of what makes choosing one a
      decision rather than a preference. */
   const atHomeStation = () =>
-    !!(surv && surv.docked && surv.docked.home);
+    LEV_ONLY || !!(surv && surv.docked && surv.docked.home);
 
   function buyShip(key) {
     if (!surv || !atHomeStation()) { gameSound("hit"); return false; }
@@ -14459,8 +14674,10 @@
     const outer = lev.flank + seg;
 
     /* The body, as a dark ground so the inside reads as inside rather than as
-       lines drawn over the starfield. Drawn as the hull box plus a bump for each
-       bay, which is the silhouette its walls actually make. */
+       lines drawn over the starfield. **From the outline the builder made**, not
+       from a box: the hull is a shape now — broad at the transom, full through
+       the after body, drawn out to a stem — and filling a rectangle over it
+       painted deck across two thousand units of open space at the bow. */
     ctx.save();
     ctx.fillStyle = "#05070c";
     const box = (u0, v0, u1, v1) => {
@@ -14472,19 +14689,76 @@
       ctx.closePath();
       ctx.fill();
     };
-    box(-half, -outer, half, outer);
+    if (lev.outline && lev.outline.length) {
+      ctx.beginPath();
+      lev.outline.forEach((pt, i) => {
+        const x = wx(pt.u, pt.v), y = wy(pt.u, pt.v);
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      });
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      box(-half, -outer, half, outer);
+    }
+    // The sponsons, each from its own size rather than from two numbers that
+    // used to be true of all six.
     for (const b of lev.bays) {
-      box(b.u - 470, b.side * lev.flank, b.u + 470, b.v + b.side * 430);
+      const hw = b.hw || 470, root = b.root === undefined ? lev.flank : b.root;
+      box(b.u - hw, b.side * root, b.u + hw, b.v + b.side * (b.depth || 430) * 0.45);
+    }
+    // And the engine throats, aft of the transom.
+    if (lev.engine) {
+      for (const k of [-1, 0, 1]) {
+        const v0 = k * lev.engine.at;
+        box(-half - lev.engine.out, v0 - lev.engine.hw, -half, v0 + lev.engine.hw);
+      }
     }
     ctx.restore();
 
-    /* And every wall, stroked from the same list the collision discs were
-       stamped along. What you see is exactly what you hit — not because somebody
-       kept two descriptions in step, but because there is only one description.
+    /* Paint the full physical plate before its centre seam. Collision is a row
+       of `LEV_SEG`-radius discs, so a hairline on the row's centre leaves 170
+       units of solid hull invisible on either side — thirty-four screen pixels
+       at the lab's opening zoom. A round, 2×radius stroke is the same capsule
+       those overlapping discs make. The narrow outer pass gives the plate a
+       readable edge against the dark deck. */
+    const strokeWalls = () => {
+      ctx.beginPath();
+      for (const w of lev.walls) {
+        ctx.moveTo(wx(w.u0, w.v0), wy(w.u0, w.v0));
+        ctx.lineTo(wx(w.u1, w.v1), wy(w.u1, w.v1));
+      }
+      ctx.stroke();
+    };
+    /* **A plate is not black.** The body was `#111722` on a `#05070c` deck —
+       six points of brightness apart — so a wall was a black slab with a hairline
+       rim, indistinguishable from the hole beside it and from the space outside
+       the hull. Every other structure in the sector strokes its walls in a light
+       grey and reads instantly; this one was painting the plate the colour of the
+       gap.
 
-       The old version drew three plates by hand and placed its discs separately,
-       which is the arrangement that lets a wall you can see quietly stop being a
-       wall you hit. */
+       Three passes, light to dark, and the middle one is the plate: a rim you can
+       see against the deck, a solid mid-grey body at exactly the width the
+       collision discs make, and the lit seam below. */
+    /* Square ends, mitred corners. A round cap puts a half-circle on the end
+       of every plate, which at a chine is a blob where the design wants an
+       angle — and the whole complaint about the old hull was that nothing on
+       it was sharp. The discs underneath are still round; what is drawn is the
+       plate they add up to. */
+    ctx.save();
+    ctx.lineJoin = "miter";
+    ctx.lineCap = "butt";
+    ctx.strokeStyle = "#8a97ae";
+    ctx.globalAlpha = 0.95;
+    ctx.lineWidth = seg * 2 + 18;
+    strokeWalls();
+    ctx.strokeStyle = "#39424f";
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = seg * 2;
+    strokeWalls();
+    ctx.restore();
+
+    /* The seam keeps the old wreck-light running through the middle of each
+       plate, now as surface detail rather than a misleading collision edge. */
     glow(WRECK, 2.2, 0.92, () => {
       for (const w of lev.walls) {
         ctx.beginPath();
@@ -14494,36 +14768,34 @@
       }
     });
 
-    // Ribs down the flanks, so the hull has a scale you can read as you pass it.
+    /* Ribs down the flanks, so the hull has a scale you can read as you pass
+       it — and they have to follow the beam now rather than a constant, or they
+       stand out in space where the hull has narrowed away from them. */
+    const beamHere = u => {
+      const o = lev.outline;
+      if (!o || !o.length) return lev.flank;
+      const t = Math.max(0, Math.min(1, (u + half) / lev.len));
+      const i = Math.min(o.length / 2 - 1, Math.round(t * (o.length / 2 - 1)));
+      return Math.abs(o[i].v);
+    };
     glow("#4d5666", 1.1, 0.55, () => {
       for (let u = -half + seg; u < half - seg; u += seg * 2.6) {
+        const b = beamHere(u);
+        if (b < seg) continue;                        // up in the stem there is no flank
         for (const side of [-1, 1]) {
           if (side > 0 && u < lev.door[1]) continue;   // the open stern quarter
           ctx.beginPath();
-          ctx.moveTo(wx(u, side * lev.flank), wy(u, side * lev.flank));
-          ctx.lineTo(wx(u, side * outer), wy(u, side * outer));
+          ctx.moveTo(wx(u, side * b), wy(u, side * b));
+          ctx.lineTo(wx(u, side * (b + seg)), wy(u, side * (b + seg)));
           ctx.stroke();
         }
       }
     });
 
-    /* The spine light, and it is the navigation. Nine thousand units of dark
-       corridor with five offset doorways in it is a place you get lost; a lit
-       line that steps across to each doorway in turn is a place you *read*. It
-       is the only thing in the interior that tells you which way is forward. */
-    const beat = 0.4 + 0.6 * Math.sin(clock * 0.9 + lev.phase);
-    glow(NEBULA, 1.6, 0.18 + beat * 0.3, () => {
-      ctx.beginPath();
-      let pu = lev.door[1], pv = 0;
-      ctx.moveTo(wx(pu, pv), wy(pu, pv));
-      for (const b of lev.bulk) {
-        ctx.lineTo(wx(b.u - 200, b.gapMid), wy(b.u - 200, b.gapMid));
-        ctx.lineTo(wx(b.u + 200, b.gapMid), wy(b.u + 200, b.gapMid));
-        pu = b.u; pv = b.gapMid;
-      }
-      ctx.lineTo(wx(half - seg * 3.4, 0), wy(half - seg * 3.4, 0));
-      ctx.stroke();
-    });
+    /* There used to be a violet line threaded down the spine here — a lit
+       route that stepped across to each doorway in turn. It is gone on Ric's
+       call: the hull is the thing worth looking at, and a glowing dashed line
+       drawn over it is a diagram laid on top of a ship. */
   }
 
   /* A box somebody sealed. Drawn from its own wall list, like the Leviathan, so
