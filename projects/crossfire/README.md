@@ -361,6 +361,23 @@ for, and it makes the light drive and the gates the ways home rather than the
 reload. Two places are exempt, and both resume at the origin as every book used
 to: a book written while you were dead, and a book from a different seed.
 
+### The door
+
+Survey opens on the account question rather than straight into a sector,
+because it only has a good answer *beforehand*. Asked after two hours, either
+answer is bad news: sign in and there are two surveys to reconcile, stay a guest
+and you have already built something one cleared history will take.
+
+Three ways through it — **sign in**, **create account**, **play as a guest** —
+and a fourth that goes back to the modes having started nothing. It is asked
+once: sign in and you are signed in, choose guest and that is remembered and the
+door stops appearing. Both are reversible from SETTINGS, where SIGN IN and SIGN
+OUT sit beside SOUND and FULLSCREEN, because an account is a setting of *you*
+rather than of a mode. Signing out puts the question back.
+
+A guest who later signs up keeps their run: the survey on the device goes up to
+the new account.
+
 ### An account, which is optional
 
 Survey saves to this browser whether anybody signs in or not, and that has not

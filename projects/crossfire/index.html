@@ -805,9 +805,22 @@
 
       <div>
         <button id="btnAcctIn" type="button">sign in</button>
-        <button id="btnAcctUp" type="button">make an account</button>
+        <button id="btnAcctUp" type="button">create account</button>
       </div>
       <button id="btnAcctForgot" type="button" class="quiet">forgotten the password</button>
+
+      <!-- Only at the door, and deliberately last: an account is the better
+           answer and the page should say so first. But it is a full-width,
+           ordinary button and not a line of small print, because refusing to
+           sign up must not feel like the awkward option. -->
+      <div id="acctGuestRow" hidden>
+        <span class="step">or don't</span>
+        <button id="btnAcctGuest" type="button">play as a guest</button>
+        <p class="note">
+          Your survey saves on this device only. You can sign in later from
+          SETTINGS and bring it with you.
+        </p>
+      </div>
     </div>
 
     <!-- Signed in. -->
@@ -817,6 +830,7 @@
         <p class="note" id="acctSync"></p>
       </div>
       <div>
+        <button id="btnAcctPlay" type="button" hidden>fly</button>
         <button id="btnAcctSave" type="button">save to my account now</button>
         <button id="btnAcctOut" type="button" class="quiet">sign out</button>
       </div>
@@ -18920,7 +18934,15 @@
      has one answer, so it is not asked. */
   function playCard(key) {
     if (key === "online") { openLobby(); return; }
-    if (key === "survey") { startGame("survey", 1, 0); return; }
+    /* Survey asks about the account before it builds a sector. The question only
+       has a good answer beforehand — see `openAccount` — and this is the one
+       moment every player passes through. Nobody else gets asked: an account
+       does nothing for the modes that keep no progress. */
+    if (key === "survey") {
+      const fly = () => startGame("survey", 1, 0);
+      if (needsDoor()) openAccount(fly); else fly();
+      return;
+    }
     if (key === "campaign") { levelPick = 0; state = "levels"; return; }
     if (modeLane === "solo") {
       // One human. Battle Royale needs opponents to be a match at all, so it
@@ -19232,11 +19254,28 @@
       keysChanged();
       note("Selected key cleared.");
     });
+    /* Three across when there is an account button to fit, two when there is
+       not — the row is laid out from what is actually in it rather than from a
+       constant, because the constant is what put a fourth survey setting half
+       off the screen the first time this was tried. */
+    const gCols = window.CrossfireCloud ? 3 : 2;
     tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
-              COLS(2, 0), 542, 280, 42, soundEnabled ? "#ffe56d" : "#ffcb42",
+              COLS(gCols, 0), 542, 280, 42, soundEnabled ? "#ffe56d" : "#ffcb42",
               toggleSound, soundEnabled);
-    tapButton(fullscreenLabel(), COLS(2, 1), 542, 280, 42, "#ffe56d",
+    tapButton(fullscreenLabel(), COLS(gCols, 1), 542, 280, 42, "#ffe56d",
               toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
+    /* The way in and the way back out, for somebody who chose guest at the door
+       and has changed their mind — or who wants off this account. It sits with
+       SOUND and FULLSCREEN rather than on a mode's own page because an account
+       is not a setting of Survey, it is a setting of you. */
+    if (window.CrossfireCloud) {
+      const inAlready = !!(cloud && cloud.enabled() && cloud.session());
+      tapButton(inAlready ? "SIGN OUT" : "SIGN IN", COLS(3, 2), 542, 280, 42,
+                "#a08cff",
+                inAlready
+                  ? () => signOutNow(m => note(m))
+                  : () => openAccount());
+    }
     tapButton("PHONE CONTROLS", COLS(2, 0), 596, 340, 44, "#ffe56d", () => {
       binder.listening = false;
       state = "thumb";
@@ -21030,11 +21069,25 @@
     show("acctOut", up && !who && !clash);
     show("acctIn", up && !!who && !clash);
 
+    /* At the door the panel is answering "shall I sign in before I start"; from
+       a menu it is answering "what is the state of my account". Same controls,
+       different question, so the heading and the way out both change. */
+    el("accountTitle").textContent = gate ? "BEFORE YOU FLY" : "YOUR ACCOUNT";
+    el("btnAcctClose").textContent = gate ? "back to the modes" : "back";
+    show("acctGuestRow", !!gate && up && !who && !clash);
+    el("btnAcctPlay").hidden = !gate;
+    el("acctPitch").textContent = gate
+      ? "Sign in and your sector follows you to any device — and survives this " +
+        "browser forgetting it. Without one it saves here, and only here."
+      : "Survey already saves on this device. An account keeps the same sector " +
+        "on every device you play on — and keeps it if this browser forgets.";
+
     if (!up) {
       acctSay("No account service is set up for this copy of the game. " +
               "Survey still saves on this device.");
       return;
     }
+
     if (who) {
       el("acctWho").textContent = who.email;
       const last = cloud.lastSync();
@@ -21052,13 +21105,67 @@
     }
   }
 
-  function openAccount() {
+  /* ── the door ─────────────────────────────────────────────────────────────
+     Survey opens on this panel rather than straight into a sector, because the
+     account question only has a good answer *before* somebody has played. Ask it
+     after two hours and either answer is bad news: sign in and you have two
+     surveys to reconcile, stay a guest and you have already built something that
+     one cleared history will take.
+
+     Asked once. Sign in and you are signed in; choose guest and that is
+     remembered, and the door stops appearing. Both are reversible from SETTINGS,
+     and signing out puts the question back. */
+  const GUEST_KEY = "crossfire.account.guest";
+  const guestChosen = () => {
+    try { return localStorage.getItem(GUEST_KEY) === "yes"; } catch (_) { return true; }
+  };
+  const chooseGuest = on => {
+    try {
+      if (on) localStorage.setItem(GUEST_KEY, "yes");
+      else localStorage.removeItem(GUEST_KEY);
+    } catch (_) {}
+  };
+
+  /* Whether the panel is standing in the doorway or was opened from a menu. In
+     the doorway it has a `then` to run, and every way out of it runs that — a
+     door you can close onto nothing is a mode that cannot be started. */
+  let gate = null;
+
+  /* Nobody signed in and nobody has said they would rather not be. With no
+     account service at all there is nothing to ask, so there is no door. */
+  const needsDoor = () =>
+    !!(cloud && cloud.enabled() && !cloud.session() && !guestChosen());
+
+  function openAccount(then) {
     if (!accountEl) return;
+    gate = typeof then === "function" ? { then } : null;
     accountEl.hidden = false;
     acctSay("");
     paintAccount();
   }
-  function closeAccount() { if (accountEl) accountEl.hidden = true; }
+
+  /* Two ways out of the door and they are different things, which is why there
+     is no third: `closeAccount` is an answer — sign in, make one, or say you
+     would rather not — and it flies. `cancelAccount` is "I did not mean to click
+     Survey" and it goes back to the cards having started nothing.
+
+     There was briefly a "not now, just fly" here as well, which played without
+     remembering the answer. It sat next to "play as a guest" looking like the
+     same button, and the difference between them — whether you get asked again —
+     is not something anybody should have to work out from two labels. */
+  function closeAccount() {
+    if (!accountEl) return;
+    accountEl.hidden = true;
+    const g = gate;
+    gate = null;
+    if (g) g.then();
+  }
+
+  function cancelAccount() {
+    if (!accountEl) return;
+    accountEl.hidden = true;
+    gate = null;
+  }
 
   /* Signing in is the easy half. The hard half is the two saves that may now
      both exist, and which of them the player meant. */
@@ -21103,6 +21210,23 @@
     acctSay("");
   }
 
+  /* Signing in is also an answer to "would you rather not": choosing guest and
+     then signing in should not leave the guest flag standing, or signing out
+     later would drop straight back into the sector with no door. */
+  function nowSignedIn() {
+    chooseGuest(false);
+    doorAnswered();
+  }
+
+  /* Signing in answers the door's question, so it closes the door. Not
+     instantly: "signed in, and here is what became of your two saves" is worth a
+     second on the screen before a sector arrives over it. A clash is the
+     exception — that is a question, and it must not be flown past. */
+  function doorAnswered() {
+    if (!gate || clash) return;
+    setTimeout(() => { if (gate && !clash) closeAccount(); }, 1600);
+  }
+
   /* Taking the account's copy. The book is written to the store and then the
      mode is rebuilt around it — a running Survey is holding the old sector in
      memory, and leaving it there would show the old world over the new save
@@ -21117,7 +21241,15 @@
     if (!quiet) note("Your saved survey is loaded.");
   }
 
-  el("btnAcctClose").addEventListener("click", closeAccount);
+  el("btnAcctClose").addEventListener("click", () => {
+    if (gate) cancelAccount(); else closeAccount();
+  });
+  el("btnAcctPlay").addEventListener("click", closeAccount);
+
+  el("btnAcctGuest").addEventListener("click", () => {
+    chooseGuest(true);
+    closeAccount();
+  });
 
   el("btnAcctIn").addEventListener("click", async () => {
     const email = el("acctEmail").value.trim();
@@ -21128,6 +21260,7 @@
       await cloud.signIn(email, pass);
       el("acctPass").value = "";
       await afterSignIn();
+      nowSignedIn();
     } catch (err) {
       acctSay(err.status === 400
         ? "That email and password do not match an account."
@@ -21155,6 +21288,7 @@
                        "then sign in.");
       }
       await afterSignIn();
+      nowSignedIn();
     } catch (err) {
       acctSay(err.message, true);
     }
@@ -21174,21 +21308,29 @@
     }
   });
 
-  el("btnAcctOut").addEventListener("click", async () => {
-    /* The unsent book goes up first. Signing out with a save still waiting in
-       the coalescing window would lose whatever happened in the last few
-       seconds — silently, which is the worst way to lose anything. */
+  /* Signing out costs nothing and that is the point: the book stays on this
+     device *and* stays on the account, so this is a reversible button and can be
+     pressed directly rather than through a confirmation nobody needs. The one
+     thing it must not do is drop a save still sitting in the coalescing window —
+     losing the last few seconds silently is the worst way to lose anything. */
+  async function signOutNow(say) {
+    if (!cloud || !cloud.session()) return;
     if (cloud.pendingWrite()) {
-      acctSay("Saving before signing out…");
+      if (say) say("Saving before signing out…");
       await cloud.flush();
     }
     await cloud.signOut();
+    /* The door comes back. Somebody who has just signed out has not said they
+       want to be a guest — they have said they do not want to be *this*
+       account, which is a different answer and a question worth asking again. */
+    chooseGuest(false);
     syncMirror();
     paintAccount();
-    /* Said plainly, because it is the one thing about this that surprises
-       people: the survey does not go anywhere. */
-    acctSay("Signed out. Your survey is still on this device.");
-  });
+    // Said plainly, because it is the thing about this that surprises people.
+    if (say) say("Signed out. Your survey is still on this device.");
+  }
+
+  el("btnAcctOut").addEventListener("click", () => signOutNow(acctSay));
 
   el("btnAcctSave").addEventListener("click", async () => {
     if (mode && mode.survey && surv) saveSurveyBook();
@@ -21205,6 +21347,7 @@
     clash = null;
     paintAccount();
     acctSay("Loaded the survey from your account.");
+    doorAnswered();
   });
 
   el("btnAcctTakeLocal").addEventListener("click", async () => {
@@ -21216,6 +21359,7 @@
     paintAccount();
     acctSay(r.synced ? "This device's survey is now the one on your account."
                      : "Could not upload: " + r.reason, !r.synced);
+    doorAnswered();
   });
 
   /* ── the save button ──────────────────────────────────────────────────────
