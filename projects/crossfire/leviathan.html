@@ -123,59 +123,88 @@
     ctx.fillStyle = "#05070c";
     ctx.fillRect(0, 0, W, H);
 
-    // The deck, from the outline the builder made — never a guess at the shape.
-    ctx.fillStyle = "#0a0f18";
-    if (lev.outline && lev.outline.length) {
-      ctx.beginPath();
-      lev.outline.forEach((pt, i) => {
-        const x = px(pt.u), y = py(pt.v);
-        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-      });
-      ctx.closePath();
-      ctx.fill();
-    } else {
-      ctx.fillRect(px(-half), py(-lev.flank), lev.len * k, lev.flank * 2 * k);
-    }
-    for (const b of lev.bays) {
-      const hw = b.hw || 470, root = b.root === undefined ? lev.flank : b.root;
-      const v0 = b.side * root, v1 = b.v + b.side * (b.depth || 430) * 0.45;
-      ctx.fillRect(px(b.u - hw), py(Math.min(v0, v1)),
-                   hw * 2 * k, Math.abs(v1 - v0) * k);
-    }
-    if (lev.engine) {
-      for (const kk of [-1, 0, 1]) {
-        const v0 = kk * lev.engine.at;
-        ctx.fillRect(px(-half - lev.engine.out), py(v0 - lev.engine.hw),
-                     lev.engine.out * k, lev.engine.hw * 2 * k);
+    /* ── figure and ground ────────────────────────────────────────────────
+       It was drawn as a bundle of grey pipes, and that is a drawing mistake
+       rather than a shape one: the body was painted almost the colour of space
+       and every wall — outer shell, internal frame, wing rib — was stroked at
+       the same bright grey. So what the eye found was the *walls*, and a ship
+       read as plumbing.
+
+       Three passes, in the order a ship is actually seen. The **body**, filled
+       in a real hull tone so the silhouette is a solid object before it is
+       anything else. The **inside**, thin and dark, sitting in the body rather
+       than on top of it. The **shell** last, bright and heavy, because the edge
+       of the ship is what the eye should land on. */
+    const bodyShapes = () => {
+      if (lev.outline && lev.outline.length) {
+        ctx.beginPath();
+        lev.outline.forEach((pt, i) => {
+          const x = px(pt.u), y = py(pt.v);
+          i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+        });
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.fillRect(px(-half), py(-lev.flank), lev.len * k, lev.flank * 2 * k);
       }
-    }
+      // A wing is the trapezoid its own three plates enclose, not a box.
+      for (const w of lev.bays) {
+        const hw = w.hw || 470;
+        const root = w.root === undefined ? lev.flank : w.root;
+        const rake = w.rake === undefined ? 0.3 : w.rake;
+        const outer = w.side * (root + (w.depth || 430));
+        ctx.beginPath();
+        ctx.moveTo(px(w.u - hw), py(w.side * root));
+        ctx.lineTo(px(w.u - hw), py(outer));
+        ctx.lineTo(px(w.u + hw * rake), py(outer));
+        ctx.lineTo(px(w.u + hw), py(w.side * root));
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (lev.engine) {
+        for (const kk of [-1, 1]) {
+          const v0 = kk * lev.engine.at;
+          ctx.fillRect(px(-half - lev.engine.out), py(v0 - lev.engine.hw),
+                       lev.engine.out * k, lev.engine.hw * 2 * k);
+        }
+      }
+    };
+    ctx.fillStyle = "#1b2330";
+    bodyShapes();
 
     // The collision discs, if asked: the literal thing the ship hits.
     if (showDiscs) {
       ctx.fillStyle = "rgba(160,140,255,0.16)";
-      for (const s of lev.segs) {
-        const p = toLocal(s.x, s.y);
+      for (const seg of lev.segs) {
+        const q = toLocal(seg.x, seg.y);
         ctx.beginPath();
-        ctx.arc(px(p.u), py(p.v), s.r * k, 0, Math.PI * 2);
+        ctx.arc(px(q.u), py(q.v), seg.r * k, 0, Math.PI * 2);
         ctx.fill();
       }
     }
 
-    // The plates, at the width the discs actually make.
+    // The plates, each at the width its own discs make.
     const segR = lev.segs.length ? lev.segs[0].r : 150;
     ctx.lineCap = "butt";
     ctx.lineJoin = "miter";
-    // Each plate at its own thickness: armour, frame and wing are different
-    // things and the plan view is where that has to be legible.
     const byWeight = new Map();
     for (const w of lev.walls) {
       const t = w.r || segR;
       if (!byWeight.has(t)) byWeight.set(t, []);
       byWeight.get(t).push(w);
     }
-    const run = (extra, flat) => {
+    const only = kinds => {
+      const m = new Map();
       for (const [t, list] of byWeight) {
-        ctx.lineWidth = flat ? flat : t * 2 * k + (extra || 0);
+        const f = list.filter(w => kinds.indexOf(w.k || "shell") >= 0);
+        if (f.length) m.set(t, f);
+      }
+      return m;
+    };
+    const pass = (set, colour, extra, flat) => {
+      ctx.strokeStyle = colour;
+      for (const [t, list] of set) {
+        ctx.lineWidth = flat || t * 2 * k + (extra || 0);
         ctx.beginPath();
         for (const w of list) {
           ctx.moveTo(px(w.u0), py(w.v0));
@@ -184,9 +213,12 @@
         ctx.stroke();
       }
     };
-    ctx.strokeStyle = "#8a97ae"; run(3);
-    ctx.strokeStyle = "#39424f"; run(0);
-    ctx.strokeStyle = "#7d8596"; run(0, 1.4);
+    const SHELL = ["shell", "wing", "engine", "tear"];
+    pass(only(["frame"]), "#252f3d", 0);        // frames, sunk into the body
+    pass(only(["frame"]), "#3d4b63", 0, 1);     // with a hairline down each
+    pass(only(SHELL), "#8fa0ba", 4);            // the shell, and its lit edge
+    pass(only(SHELL), "#3f4859", 0);
+    pass(only(["shell"]), "#cbd8ee", 0, 1.6);   // the outermost line of all
 
     // The way in, at the open stern quarter of the starboard flank.
     ctx.strokeStyle = "#6dffbf";

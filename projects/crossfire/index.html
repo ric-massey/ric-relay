@@ -7778,7 +7778,12 @@
        and the whole thing looked stamped out rather than built. Armour is heavy
        where it is hit, structure is light where it is not, and the discs are the
        plate — so this is the collision as well as the drawing. */
-    const wall = (u0, v0, u1, v1, r) => {
+    /* `k` is what this plate *is* — shell, frame, wing, engine, tear. The
+       drawing needs it more than the physics does: every wall being stroked at
+       the same weight is why the ship read as a bundle of grey pipes instead of
+       as a body with structure inside it. The shell is the silhouette and gets
+       the light; a bulkhead is furniture and belongs behind it. */
+    const wall = (u0, v0, u1, v1, r, k) => {
       const t = r || LEV_SEG;
       const dx = u1 - u0, dy = v1 - v0;
       const len = Math.hypot(dx, dy);
@@ -7787,7 +7792,7 @@
         const u = u0 + dx * (i / n), v = v0 + dy * (i / n);
         segs.push({ x: wx(u, v), y: wy(u, v), r: t });
       }
-      walls.push({ u0, v0, u1, v1, r: t });
+      walls.push({ u0, v0, u1, v1, r: t, k: k || "shell" });
     };
     /* How thick the shell is at a station. Heaviest at the stem, where anything
        this ship ever met was in front of it; lightest at the tail, which is all
@@ -7881,7 +7886,7 @@
         if (u1 - u0 < 1) continue;
         const mid = (u0 + u1) / 2;
         if (skip.some(sk => mid > sk[0] && mid < sk[1])) continue;   // a mouth
-        wall(u0, side * beamAt(u0), u1, side * beamAt(u1), shell(mid));
+        wall(u0, side * beamAt(u0), u1, side * beamAt(u1), shell(mid), "shell");
       }
     };
     flankRun(-1, -half, half);
@@ -7909,9 +7914,10 @@
        between a ship and a slab. */
     const STERN_GAP = 300, STEP_IN = 300, STEP_UP = 260;
     for (const side of [-1, 1]) {
-      wall(-half, side * STERN_GAP, -half, side * (transom - STEP_UP), LEV_SEG * 1.1);
+      wall(-half, side * STERN_GAP, -half, side * (transom - STEP_UP),
+           LEV_SEG * 1.1, "shell");
       wall(-half, side * (transom - STEP_UP),
-           -half + STEP_IN, side * transom, LEV_SEG * 1.1);
+           -half + STEP_IN, side * transom, LEV_SEG * 1.1, "shell");
     }
     /* **Two, not three.** The third sat on the centreline, and its own walls
        closed the gap in the transom that the centreline exists to be — measured,
@@ -7922,9 +7928,9 @@
     const ENG_HW = 190, ENG_OUT = 620;
     for (const k of [-1, 1]) {
       const v0 = k * transom * 0.56;
-      wall(-half, v0 - ENG_HW, -half - ENG_OUT, v0 - ENG_HW, RIB);
-      wall(-half, v0 + ENG_HW, -half - ENG_OUT, v0 + ENG_HW, RIB);
-      wall(-half - ENG_OUT, v0 - ENG_HW, -half - ENG_OUT, v0 + ENG_HW, RIB);
+      wall(-half, v0 - ENG_HW, -half - ENG_OUT, v0 - ENG_HW, RIB, "engine");
+      wall(-half, v0 + ENG_HW, -half - ENG_OUT, v0 + ENG_HW, RIB, "engine");
+      wall(-half - ENG_OUT, v0 - ENG_HW, -half - ENG_OUT, v0 + ENG_HW, RIB, "engine");
     }
 
     /* ── the bulkheads, and the doorways through them ───────────────────────
@@ -7959,8 +7965,8 @@
       const gapMid = side * (b - GAP - LEV_SEG);
       bulk.push({ u, gapMid });
       const lo = gapMid - GAP, hi = gapMid + GAP;
-      if (lo > -b) wall(u, -b, u, lo, FRAME);
-      if (hi < b) wall(u, hi, u, b, FRAME);
+      if (lo > -b) wall(u, -b, u, lo, FRAME, "frame");
+      if (hi < b) wall(u, hi, u, b, FRAME, "frame");
     }
 
     /* ── the bays themselves ────────────────────────────────────────────────
@@ -7979,14 +7985,14 @@
       if (b === sheared) {
         // Torn off at the root: a trailing edge, and a bitten stump of the face.
         const stub = b.side * (b.root + b.depth * 0.34);
-        wall(b.u - b.hw, b.side * b.root, b.u - b.hw, stub, RIB);
+        wall(b.u - b.hw, b.side * b.root, b.u - b.hw, stub, RIB, "wing");
         wall(b.u - b.hw, stub, b.u - b.hw * 0.2,
-             b.side * (b.root + b.depth * 0.16), LEV_SEG * 0.5);
+             b.side * (b.root + b.depth * 0.16), LEV_SEG * 0.5, "tear");
         continue;
       }
-      wall(b.u - b.hw, b.side * b.root, b.u - b.hw, outer, RIB);   // trailing edge
-      wall(b.u + b.hw, b.side * b.root, tip, outer, RIB);          // leading, raked
-      wall(b.u - b.hw, outer, tip, outer, RIB);                    // outboard face
+      wall(b.u - b.hw, b.side * b.root, b.u - b.hw, outer, RIB, "wing");
+      wall(b.u + b.hw, b.side * b.root, tip, outer, RIB, "wing");
+      wall(b.u - b.hw, outer, tip, outer, RIB, "wing");
     }
 
     /* ── the hold ───────────────────────────────────────────────────────────
@@ -8019,9 +8025,9 @@
     if (wrecked) {
       const b0 = beamAt(scar.u - scar.hw), b1 = beamAt(scar.u + scar.hw);
       wall(scar.u - scar.hw, scar.side * b0,
-           scar.u - scar.hw - 250, scar.side * (b0 + 430), LEV_SEG * 0.55);
+           scar.u - scar.hw - 250, scar.side * (b0 + 430), LEV_SEG * 0.55, "tear");
       wall(scar.u + scar.hw, scar.side * b1,
-           scar.u + scar.hw + 180, scar.side * (b1 + 300), LEV_SEG * 0.55);
+           scar.u + scar.hw + 180, scar.side * (b1 + 300), LEV_SEG * 0.55, "tear");
     }
 
     /* Just aft of the chine. On a delta the whole forward third is a spike —
@@ -14856,12 +14862,41 @@
     ctx.save();
     ctx.lineJoin = "miter";
     ctx.lineCap = "butt";
-    ctx.strokeStyle = "#8a97ae";
-    ctx.globalAlpha = 0.95;
-    strokeWalls(18);
-    ctx.strokeStyle = "#39424f";
+    /* Shell and structure, drawn as two different things — which is the whole
+       of why this stopped reading as a bundle of pipes. A frame is furniture
+       inside the body and gets a dark, thin treatment; the outer shell is the
+       ship's edge and gets the light.
+
+       The deck underneath stays near-black on purpose, unlike the plan view's:
+       you fly *inside* this one, and a corridor painted hull-grey is a corridor
+       you cannot see your own ship against. */
+    const kinds = ks => {
+      const m = new Map();
+      for (const [t, list] of byWeight) {
+        const f = list.filter(w => ks.indexOf(w.k || "shell") >= 0);
+        if (f.length) m.set(t, f);
+      }
+      return m;
+    };
+    const stroke = (set, colour, extra, alpha) => {
+      ctx.strokeStyle = colour;
+      ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+      for (const [t, list] of set) {
+        ctx.lineWidth = t * 2 + (extra || 0);
+        ctx.beginPath();
+        for (const w of list) {
+          ctx.moveTo(wx(w.u0, w.v0), wy(w.u0, w.v0));
+          ctx.lineTo(wx(w.u1, w.v1), wy(w.u1, w.v1));
+        }
+        ctx.stroke();
+      }
+    };
+    const SHELL = ["shell", "wing", "engine", "tear"];
+    stroke(kinds(["frame"]), "#5d6a80", 10, 0.55);   // a frame's faint edge
+    stroke(kinds(["frame"]), "#222b38", 0, 1);       // and its body, sunk in
+    stroke(kinds(SHELL), "#8fa0ba", 18, 0.95);       // the shell's lit rim
+    stroke(kinds(SHELL), "#39424f", 0, 1);           // and the plate itself
     ctx.globalAlpha = 1;
-    strokeWalls(0);
     ctx.restore();
 
     /* The seam keeps the old wreck-light running through the middle of each
