@@ -6420,8 +6420,13 @@
             "A way out of a well that is not a bigger engine, and the fastest " +
             "way down a tunnel",
       eff: { device: "grapple" } },
-    { key: "silentrig", name: "SILENT RUNNING", cat: "device", rarity: "rare",
-      cost: 3400, deep: 0.52, get: ["buy", "craft"],
+    /* Exotic, and bought rather than built — which is the rule from the bottom
+       of the build list applied to the category it now tops: the best thing in
+       a category is found or bought, the ladder up to it is built, and the top
+       of it never is. Ten seconds of not being there is the most a device has
+       ever changed about a fight, so it is the top and it costs a trip. */
+    { key: "silentrig", name: "SILENT RUNNING", cat: "device", rarity: "exotic",
+      cost: 4200, deep: 0.62, get: ["buy"],
       note: "ten seconds of not being there. Sentries lose you, whoever is " +
             "chasing you forgets, and a missile in the air goes looking " +
             "somewhere else. Fire once and it is over",
@@ -6572,12 +6577,11 @@
 
     // ── the middle: a core, so it is a trip rather than an afternoon ───────
     { out: "seekerrack", need: { alloy: 9, electronics: 7, core: 1 } },
-    /* Both of the late devices take a core, which is what puts them on the far
-       side of a trip: a burst that stops a room and ten seconds of not being
-       there are the two things that most change what a fight is, and neither
-       should be an afternoon's mining. */
+    /* The burst takes two cores, which is what puts it on the far side of a
+       trip: a thing that stops a room should not be an afternoon's mining.
+       SILENT RUNNING is not here — it is the best device in the game and the
+       best of a category is never built. */
     { out: "empcharge",  need: { alloy: 10, electronics: 9, core: 2 } },
-    { out: "silentrig",  need: { iridium: 6, electronics: 11, core: 2 } },
     /* Panels. Built rather than only bought, because the thing they do — a star
        mends your hull — is the answer to being a long way from a station, and
        being a long way from a station is exactly when you cannot buy one. */

@@ -8576,8 +8576,24 @@ const storeOf = (cf, key) => {
      exactly at it, and it will not hook what is behind you. */
   park(120000, 40000);
   fit(0, "grappleline");
-  step(4);
+  step(120);                        // let the streamer build the sky here
   {
+    /* A ring of anchors, made out of the streamer's own rocks rather than out
+       of object literals: a rock has a silhouette, a spin and a size, and a
+       hand-rolled one that only has an x and a y is a rock the renderer throws
+       on. Moved rather than invented — the field is a thousand units further
+       out than the line carries, which is correct and useless to test with. */
+    const real = cf.live().rocks;
+    check(real.length >= 8, "the streamer built " + real.length + " rocks");
+    for (let k = 0; k < 8 && k < real.length; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      real[k].x = me.x + Math.cos(a) * 900;
+      real[k].y = me.y + Math.sin(a) * 900;
+      real[k].vx = real[k].vy = 0;
+    }
+    const inReach = real.filter(
+      r => Math.hypot(r.x - me.x, r.y - me.y) < 1500).length;
+    check(inReach > 0, "nothing came within the line's reach to hook");
     let fired = 0, offBy = 0, outsideCone = 0, tooFar = 0;
     for (let k = 0; k < 24; k++) {
       surv.slots[0].cd = 0;
