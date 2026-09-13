@@ -62,10 +62,11 @@
 <script src="projects/climbing/climbs-data.js"></script>
 <script src="projects/climbing/climb-vocab.js?v=2"></script>
 <script src="projects/climbing/climb-parse.js?v=2"></script>
-<script src="projects/climbing/web-trips.js?v=3"></script>
-<script src="projects/climbing/climb-media.js?v=3"></script>
-<script src="projects/climbing/climb-ui.js?v=1"></script>
-<script src="projects/climbing/web-todo.js?v=2"></script>
+<script src="projects/climbing/climb-host.js?v=1"></script>
+<script src="projects/climbing/web-trips.js?v=4"></script>
+<script src="projects/climbing/climb-media.js?v=4"></script>
+<script src="projects/climbing/climb-ui.js?v=2"></script>
+<script src="projects/climbing/web-todo.js?v=3"></script>
 <script>
 (async () => {
   /* Both at once: one asks the log service what was climbed, the other what was
@@ -78,37 +79,13 @@
 
   const DATA = window.CLIMBING_DATA;
   const $ = id => document.getElementById(id);
-  const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => (
-    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const esc = ClimbUI.esc;
   if (!DATA) return;
 
-  /* ── grade bands ──
-     The densest token on the page, and until now every grade was the same grey
-     pill — so a 5.9 and a 5.14 looked identical in a list you scan by grade.
-     Light to dark as it gets harder, which needs no key next to it. */
-  function band(g) {
-    if (!g) return "easy";
-    let m = /^5\.(\d+)/.exec(g);
-    if (m) {
-      const n = +m[1];
-      return n >= 14 ? "g14" : n >= 13 ? "g13" : n >= 12 ? "g12"
-           : n >= 11 ? "g11" : n >= 10 ? "g10" : "easy";
-    }
-    m = /^[Vv](\d+)/.exec(g);
-    if (m) {
-      const n = +m[1];
-      return n >= 8 ? "g13" : n >= 6 ? "g12" : n >= 4 ? "g11" : n >= 3 ? "g10" : "easy";
-    }
-    return "easy";
-  }
-  const grade = g => g ? `<span class="g ${band(g)}">${esc(g)}</span>` : "";
-
-  const MONTH = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  function fmt(iso, long) {
-    const [y, m, d] = String(iso).split("-").map(Number);
-    if (!y) return esc(iso);
-    return long ? `${d} ${MONTH[m - 1]} ${y}` : `${d} ${MONTH[m - 1]}`;
-  }
+  /* band, fmt and esc were written out again here before this page loaded
+     climb-ui.js. Two copies of a grade band is how the room page and the log
+     page end up disagreeing about what colour a 5.12 is. */
+  const { band, fmt } = ClimbUI;
 
   /* ── the hero ─────────────────────────────────────────
      Four numbers, one of them the lead. The old ledger put seven equal cells in

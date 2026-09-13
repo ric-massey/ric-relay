@@ -10,26 +10,9 @@
        await WebTodo.merge(window.CLIMBING_DATA);
 */
 (function (global) {
-  const LIVE = 'https://training-log.rmbuster82.workers.dev';
-  const LOCAL = global.location.origin.includes('localhost');
-  /* Same rule as web-trips.js: a static dev server answers /todo with a 404,
-     and treating that as "the list is empty" is how local preview spent months
-     showing a stale page that looked finished. */
-  let HOST = LOCAL ? global.location.origin : LIVE;
-
-  async function fetchFrom(path, init) {
-    if (!LOCAL) return fetch(LIVE + path, init);
-    try {
-      const r = await fetch(global.location.origin + path, init);
-      if (r.ok) { HOST = global.location.origin; return r; }
-    } catch (e) { /* no local Worker */ }
-    HOST = LIVE;
-    return fetch(LIVE + path, init);
-  }
-
   async function fetchItems() {
     try {
-      const r = await fetchFrom('/todo', { cache: 'no-store' });
+      const r = await ClimbHost.fetch('/todo', { cache: 'no-store' });
       if (!r.ok) return {};
       return (await r.json()).items || {};
     } catch (e) {
@@ -110,16 +93,7 @@
     return fresh.length;
   }
 
-  /* `host()` is only right after something has actually asked — before the
-     first fetch it is still the guess. Anything that needs the answer up front
-     (sign-in posts /auth at it) awaits this instead, which probes once and
-     gives every later caller the same resolved origin. */
-  let probing = null;
-  async function resolved() {
-    if (!LOCAL) return LIVE;
-    if (!probing) probing = fetchItems().then(() => HOST);
-    return probing;
-  }
-
-  global.WebTodo = { merge, fetchItems, shape, slug, host: () => HOST, resolved };
+    /* host/resolved kept as names so callers need not know they moved. */
+  global.WebTodo = { merge, fetchItems, shape, slug,
+                     host: ClimbHost.origin, resolved: ClimbHost.resolved };
 })(window);

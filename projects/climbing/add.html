@@ -304,9 +304,10 @@
   <script src="climbs-data.js"></script>
   <script src="climb-vocab.js?v=2"></script>
   <script src="climb-parse.js?v=2"></script>
-  <script src="climb-media.js?v=3"></script>
-  <script src="climb-ui.js?v=1"></script>
-  <script src="web-todo.js?v=2"></script>
+  <script src="climb-host.js?v=1"></script>
+  <script src="climb-media.js?v=4"></script>
+  <script src="climb-ui.js?v=2"></script>
+  <script src="web-todo.js?v=3"></script>
   <script>
   /* LOG A DAY
      ──────────────────────────────────────────────────────────────────────────
@@ -638,16 +639,6 @@
       if (out) await listRoutes(); else b.disabled = false;
     });
 
-    /* Ranked here, where the vocabulary lives, so a route added from a phone
-       sorts next to one out of todo.md instead of falling to the bottom. */
-    function routeRank(g) {
-      let m = /^5\.(\d+)([a-d])?/.exec(g || '');
-      if (m) return Math.round(20 + (+m[1]) * 2 + (m[2] ? 'abcd'.indexOf(m[2]) * 0.4 : 0));
-      m = /^[Vv](\d+)/.exec(g || '');
-      if (m) return Math.round(40 + (+m[1]) * 2);
-      return 0;
-    }
-
     $('#routeform').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = $('#r-name').value.trim();
@@ -659,8 +650,11 @@
       $('#r-save').textContent = 'Adding…';
       const out = await Owner.post('/todo', {
         name, grade,
-        gradeKind: grade ? (boulder ? 'boulder' : 'rope') : null,
-        gradeRank: routeRank(grade),
+        gradeKind: grade ? ClimbUI.kindOf(grade) : null,
+        /* ClimbUI.rank is build-data.py's formula. A private copy here had
+           5.14b at 48 against the archive's 57, and V6 at 52 against 6 —
+           so anything added through this form sorted on its own scale. */
+        gradeRank: ClimbUI.rank(grade),
         style: $('#r-style').value || (boulder ? 'Boulder' : null),
         crag: $('#r-crag').value.trim(),
         wall: $('#r-wall').value.trim(),

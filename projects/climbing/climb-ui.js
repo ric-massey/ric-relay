@@ -45,6 +45,39 @@
       grade(o.grade, o.sent) + `</div>`;
   }
 
+
+  /* ── ranking ──
+     build-data.py is the authority and this has to agree with it exactly, or a
+     route added through the form sorts against the archive on a different
+     scale. Two separate scales, deliberately:
+
+         rope     5.12b -> 12 * 4 + 1 = 49
+         boulder  V6    -> 6
+
+     They are NOT comparable. A V9 ranks 9 and a 5.3 ranks 12, so anything that
+     sorts a mixed pile by this number puts every rope above every boulder —
+     which is what the to-do page and the stats page were both doing. Use
+     kindOf() to keep them apart before you sort. */
+  function rank(raw) {
+    const g = String(raw || '').trim().replace(/,/g, '.').replace(/\s+/g, '');
+    if (/^[Vv]/.test(g)) {
+      const m = /^[Vv](\d+)/.exec(g);
+      return m ? +m[1] : 0;
+    }
+    const y = /^(\d+[a-dA-D])/.test(g) ? '5.' + g : g;      // bare "10a" is 5.10a
+    const m = /^5\.(\d+)\s*([a-dA-D])?/.exec(y);
+    if (!m) return 0;
+    return (+m[1]) * 4 + (m[2] ? m[2].toLowerCase().charCodeAt(0) - 97 : 0);
+  }
+
+  function kindOf(raw) {
+    const g = String(raw || '').trim();
+    if (!g) return 'other';
+    if (/^[Vv]\d/.test(g)) return 'boulder';
+    if (/^5[.,]\d/.test(g) || /^\d+[a-dA-D]/.test(g)) return 'rope';
+    return 'other';
+  }
+
   const MONTH = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   function fmt(iso, long) {
     const [y, m, d] = String(iso || "").split("-").map(Number);
@@ -73,5 +106,5 @@
     return t;
   }
 
-  global.ClimbUI = { esc, band, grade, row, fmt, crag };
+  global.ClimbUI = { esc, band, grade, row, fmt, crag, rank, kindOf };
 })(window);

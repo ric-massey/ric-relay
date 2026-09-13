@@ -16,30 +16,12 @@
    where the password lives — and the Worker is what actually refuses one, so
    nothing here is a security boundary. */
 (function (global) {
-  const LIVE = 'https://training-log.rmbuster82.workers.dev';
-  const LOCAL = global.location.origin.includes('localhost');
-  /* On localhost the Worker may be running locally, so try that first — but a
-     plain static dev server answers /climb and /media with a 404, and for a
-     long time that silently meant every day logged from a phone was invisible
-     in local preview. The page looked finished and was months out of date.
-     So localhost is a preference, not a rule: if it has no answer, ask the
-     live Worker. `HOST` stays the resolved origin so URL building is unchanged. */
-  let HOST = LOCAL ? global.location.origin : LIVE;
-
-  async function fetchFrom(path, init) {
-    if (!LOCAL) return fetch(LIVE + path, init);
-    try {
-      const r = await fetch(global.location.origin + path, init);
-      if (r.ok) { HOST = global.location.origin; return r; }
-    } catch (e) { /* no local Worker; fall through */ }
-    HOST = LIVE;
-    return fetch(LIVE + path, init);
-  }
-
   /* The Worker hands back a PATH, not a URL — it has no reliable idea of its own
      public name, and under the dev server its origin is one no browser can
      reach. The page knows the host; the page builds the URL. */
-  const url = rec => HOST + rec.path;
+  /* The Worker hands back a PATH; the page builds the URL, off whichever
+     origin climb-host.js found was answering. */
+  const url = rec => ClimbHost.origin() + rec.path;
 
   let days = {};
   let loaded = null;
@@ -48,7 +30,7 @@
     if (loaded && !force) return days;
     loaded = (async () => {
       try {
-        const r = await fetchFrom('/media', { cache: 'no-store' });
+        const r = await ClimbHost.fetch('/media', { cache: 'no-store' });
         if (!r.ok) return {};
         const body = await r.json();
         return body.days || {};
@@ -84,7 +66,7 @@
       if (opts.caption) q.set('caption', opts.caption);
 
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${HOST}/media/${date}?${q}`);
+      xhr.open('POST', `${ClimbHost.origin()}/media/${date}?${q}`);
       xhr.setRequestHeader('authorization', 'Bearer ' + token);
       /* The type decides the extension and whether it is a photo or a video, so
          it has to be the real one. Phones sometimes hand over a blank type for
@@ -152,5 +134,5 @@
                  'video/mp4,video/quicktime,video/webm,video/x-m4v,.jpg,.jpeg,.png,.heic,.mov,.mp4,.m4v,.webm';
   const MAX_BYTES = 100 * 1024 * 1024;
 
-  global.ClimbMedia = { HOST, load, of, has, feature, upload, remove, label, url, ACCEPT, MAX_BYTES, byExtension };
+  global.ClimbMedia = { host: ClimbHost.origin, load, of, has, feature, upload, remove, label, url, ACCEPT, MAX_BYTES, byExtension };
 })(window);

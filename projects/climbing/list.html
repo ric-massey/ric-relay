@@ -34,8 +34,9 @@
 <script src="climbs-data.js"></script>
 <script src="climb-vocab.js?v=2"></script>
 <script src="climb-parse.js?v=2"></script>
-<script src="climb-ui.js?v=1"></script>
-<script src="web-todo.js?v=2"></script>
+<script src="climb-ui.js?v=2"></script>
+<script src="climb-host.js?v=1"></script>
+<script src="web-todo.js?v=3"></script>
 <script>
 (async () => {
   await WebTodo.merge(window.CLIMBING_DATA);
@@ -113,11 +114,19 @@
     });
 
     const groupHTML = ([c, items]) => {
-      /* Hardest first. Easiest-first read like a warm-up order, which is not
-         what this page is for — the thing you want off it most is the thing
-         you came to look at. Ungraded rows fall to the bottom rather than
-         ranking as zero and leading. */
-      items.sort((a, b) => (b.t.gradeRank || 0) - (a.t.gradeRank || 0));
+      /* Hardest first — but ropes and boulders never sorted against each
+         other. The two rank scales are unrelated (a V9 ranks 9, a 5.3 ranks
+         12), so one mixed sort by rank put every rope above every boulder and
+         called it difficulty. Ropes run first, hardest down; boulders after,
+         hardest down; ungraded last rather than ranking zero and leading. */
+      const ord = { rope: 0, boulder: 1, other: 2 };
+      items.sort((a, b) => {
+        const ka = ClimbUI.kindOf(a.t.grade), kb = ClimbUI.kindOf(b.t.grade);
+        if (ka !== kb) return ord[ka] - ord[kb];
+        const ra = a.t.gradeRank || ClimbUI.rank(a.t.grade);
+        const rb = b.t.gradeRank || ClimbUI.rank(b.t.grade);
+        return rb - ra;
+      });
       return `<div class="grp"><div class="crag">${esc(c)} <i>· ${items.length}</i></div>` +
         items.map(({ t, wall }) => {
           const d = t.tried && t.tried.days;
