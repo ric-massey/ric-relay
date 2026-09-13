@@ -32,9 +32,25 @@
 
    Needs climb-vocab.js and climb-parse.js loaded first. */
 (function (global) {
-  const HOST = global.location.origin.includes('localhost')
-    ? global.location.origin
-    : 'https://training-log.rmbuster82.workers.dev';
+  const LIVE = 'https://training-log.rmbuster82.workers.dev';
+  const LOCAL = global.location.origin.includes('localhost');
+  /* On localhost the Worker may be running locally, so try that first — but a
+     plain static dev server answers /climb and /media with a 404, and for a
+     long time that silently meant every day logged from a phone was invisible
+     in local preview. The page looked finished and was months out of date.
+     So localhost is a preference, not a rule: if it has no answer, ask the
+     live Worker. `HOST` stays the resolved origin so URL building is unchanged. */
+  let HOST = LOCAL ? global.location.origin : LIVE;
+
+  async function fetchFrom(path, init) {
+    if (!LOCAL) return fetch(LIVE + path, init);
+    try {
+      const r = await fetch(global.location.origin + path, init);
+      if (r.ok) { HOST = global.location.origin; return r; }
+    } catch (e) { /* no local Worker; fall through */ }
+    HOST = LIVE;
+    return fetch(LIVE + path, init);
+  }
 
   /* Days written before the page kept its markdown. They carry a name, a grade
      and an outcome and nothing else — so rather than reading them a second,
@@ -71,7 +87,7 @@
 
   async function fetchDays() {
     try {
-      const r = await fetch(HOST + '/climb', { cache: 'no-store' });
+      const r = await fetchFrom('/climb', { cache: 'no-store' });
       if (!r.ok) return [];
       return Object.values((await r.json()).days || {}).map(shape).filter(Boolean);
     } catch (e) {

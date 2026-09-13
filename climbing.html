@@ -41,7 +41,7 @@
 
   <section>
     <div class="head">
-      <h2>Last day out</h2>
+      <h2>Last days out</h2>
       <a class="more" href="projects/climbing/index.html" id="alldays">All days &rarr;</a>
     </div>
     <div id="lastday"></div>
@@ -62,8 +62,9 @@
 <script src="projects/climbing/climbs-data.js"></script>
 <script src="projects/climbing/climb-vocab.js?v=2"></script>
 <script src="projects/climbing/climb-parse.js?v=2"></script>
-<script src="projects/climbing/web-trips.js?v=2"></script>
-<script src="projects/climbing/climb-media.js?v=2"></script>
+<script src="projects/climbing/web-trips.js?v=3"></script>
+<script src="projects/climbing/climb-media.js?v=3"></script>
+<script src="projects/climbing/climb-ui.js?v=1"></script>
 <script>
 (async () => {
   /* Both at once: one asks the log service what was climbed, the other what was
@@ -134,7 +135,11 @@
   /* The crags he actually goes to, biggest first — not a hand-typed list that
      goes stale the first time he climbs somewhere new. */
   const areaCount = {};
-  DATA.trips.forEach(t => { if (t.area) areaCount[t.area] = (areaCount[t.area] || 0) + 1; });
+  /* The phone sends "Obed" and "Ijams crag"; climbs.md says "The Obed" and
+     "Ijams Crag". Unfolded, the same crag counts twice and the page shows
+     whichever spelling that day happened to use. */
+  const where = t => t.area ? ClimbUI.crag(t.area) : null;
+  DATA.trips.forEach(t => { const a = where(t); if (a) areaCount[a] = (areaCount[a] || 0) + 1; });
   const areas = Object.entries(areaCount).sort((a, b) => b[1] - a[1]);
   $("kicker").textContent = areas.slice(0, 4).map(a => a[0]).join(" · ");
 
@@ -162,54 +167,80 @@
     }
   } catch (e) { /* No plan file, no card. The page is correct either way. */ }
 
-  /* ── the last day out ─────────────────────────────────
-     The media is HIS, off that day, from the log service — the page used to
-     show a stock photo next to a day it had nothing to do with. */
-  const latest = DATA.trips.find(t => t.date);
-  if (latest) {
+  /* ── the last three days out ──────────────────────────
+     One day was too thin a slice of a log this size: come back a fortnight
+     later and the page looked identical. Three reads as a run of days.
+
+     The newest gets the full treatment with its own media beside it — his
+     clip, off that day, from the log service. The two behind it are compact,
+     because their job is to say what the last couple of weeks looked like, not
+     to be read in full; the log is one click away for that. */
+  const recent = DATA.trips.filter(t => t.date).slice(0, 3);
+  if (recent.length) {
     $("alldays").textContent = `All ${s.trips} →`;
 
-    const media = ClimbMedia.feature(latest.date);
+    /* Guidebook lines: name left, leader dots, grade hard right. The outcome
+       rides on the grade itself — filled sent, outline been on it — rather
+       than a third word racing the other two to the right edge. */
+    const routesHTML = (trip, withWalls) => {
+      let wall = null;
+      return trip.routes.map(r => {
+        const head = [r.region, r.wall].filter(Boolean).join(" · ");
+        const bar = withWalls && head && head !== wall
+          ? (wall = head, `<div class="crag">${esc(head)}</div>`) : "";
+        const cls = band(r.grade) + (r.outcome === "sent" ? "" : " try");
+        return bar +
+          `<div class="rt"><span class="nm">${r.star ? '<span class="fav">★</span> ' : ""}` +
+          `${esc(r.name)}</span><span class="dot"></span>` +
+          (r.repeats > 1 ? `<span class="meta">×${r.repeats}</span>` : "") +
+          (r.grade ? `<span class="g ${cls}">${esc(r.grade)}</span>` : "") + `</div>`;
+      }).join("");
+    };
+
+    const noteOf = t => {
+      /* climbs.md hands back an array of note lines; a day logged from the
+         phone hands back one string. Both arrive here. */
+      const raw = t.notes;
+      return Array.isArray(raw) ? raw.filter(Boolean).join(" ") : (raw || "");
+    };
+
+    const head = recent[0];
+    const media = ClimbMedia.feature(head.date);
     /* Phone clips are portrait. Cropped into a wide frame you got rock and sky
-       and no climber, so the frame follows the media, not the other way round. */
+       and no climber, so the frame follows the media, not the reverse. */
     const figure = media
       ? `<figure>${media.kind === "video"
           ? `<video src="${esc(media.src)}" autoplay muted loop playsinline
-                    aria-label="Clip from ${esc(fmt(latest.date, true))}"></video>`
-          : `<img src="${esc(media.src)}" alt="From ${esc(fmt(latest.date, true))}">`}
-         <figcaption>${esc(fmt(latest.date))} &middot; ${esc(latest.area || "")}</figcaption></figure>`
+                    aria-label="Clip from ${esc(fmt(head.date, true))}"></video>`
+          : `<img src="${esc(media.src)}" alt="From ${esc(fmt(head.date, true))}">`}
+         <figcaption>${esc(fmt(head.date))} &middot; ${esc(where(head) || "")}</figcaption></figure>`
       : "";
+    const note = noteOf(head);
 
-    /* Guidebook lines: name left, leader dots, grade hard right. The outcome
-       rides on the grade itself — filled sent, outline been on it — instead of
-       a third word racing the other two to the right edge. */
-    let wall = null;
-    const rows = latest.routes.map(r => {
-      const head = [r.region, r.wall].filter(Boolean).join(" · ");
-      const bar = head && head !== wall ? (wall = head,
-        `<div class="crag">${esc(head)}</div>`) : "";
-      const cls = band(r.grade) + (r.outcome === "sent" ? "" : " try");
-      return bar +
-        `<div class="rt"><span class="nm">${r.star ? '<span class="fav">★</span> ' : ""}` +
-        `${esc(r.name)}</span><span class="dot"></span>` +
-        (r.repeats > 1 ? `<span class="meta">×${r.repeats}</span>` : "") +
-        (r.grade ? `<span class="g ${cls}">${esc(r.grade)}</span>` : "") + `</div>`;
+    const rest = recent.slice(1).map(t => {
+      const n = noteOf(t);
+      const shots = ClimbMedia.of(t.date).length;
+      return `<article class="pastday">` +
+        `<div class="when">${esc(fmt(t.date, true))}` +
+          (shots ? ` · ${shots} clip${shots === 1 ? "" : "s"}` : "") + `</div>` +
+        `<h4><a href="projects/climbing/index.html#trip-${esc(t.date)}">${esc(where(t) || "Out")}</a></h4>` +
+        (t.people.length ? `<div class="with">${esc(t.people.join(", "))}</div>` : "") +
+        `<div class="routes">${routesHTML(t, false)}</div>` +
+        (n ? `<p class="pastnote">${esc(n)}</p>` : "") +
+      `</article>`;
     }).join("");
 
-    /* climbs.md hands back an array of note lines; a day logged from the phone
-       hands back one string. Both arrive here, so both are handled. */
-    const raw = latest.notes;
-    const note = Array.isArray(raw) ? raw.filter(Boolean).join(" ") : (raw || "");
     $("lastday").innerHTML =
       `<div class="day"><div>` +
-        `<div class="when">${esc(fmt(latest.date, true))}</div>` +
-        `<h3>${esc(latest.area || "Out")}</h3>` +
-        (latest.people.length ? `<div class="with">${esc(latest.people.join(", "))}</div>` : "") +
-        `<div class="routes">${rows}</div>` +
+        `<div class="when">${esc(fmt(head.date, true))}</div>` +
+        `<h3>${esc(where(head) || "Out")}</h3>` +
+        (head.people.length ? `<div class="with">${esc(head.people.join(", "))}</div>` : "") +
+        `<div class="routes">${routesHTML(head, true)}</div>` +
         (note ? `<p style="margin-top:1.2rem">${esc(note)}</p>` : "") +
-        `<p style="margin-top:1rem"><a href="projects/climbing/index.html#trip-${esc(latest.date)}">` +
+        `<p style="margin-top:1rem"><a href="projects/climbing/index.html#trip-${esc(head.date)}">` +
         `See this day in the log →</a></p>` +
-      `</div>${figure}</div>`;
+      `</div>${figure}</div>` +
+      (rest ? `<div class="pastdays">${rest}</div>` : "");
   }
 
   /* ── the photo band ───────────────────────────────────

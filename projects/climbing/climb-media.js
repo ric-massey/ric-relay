@@ -16,9 +16,25 @@
    where the password lives — and the Worker is what actually refuses one, so
    nothing here is a security boundary. */
 (function (global) {
-  const HOST = global.location.origin.includes('localhost')
-    ? global.location.origin
-    : 'https://training-log.rmbuster82.workers.dev';
+  const LIVE = 'https://training-log.rmbuster82.workers.dev';
+  const LOCAL = global.location.origin.includes('localhost');
+  /* On localhost the Worker may be running locally, so try that first — but a
+     plain static dev server answers /climb and /media with a 404, and for a
+     long time that silently meant every day logged from a phone was invisible
+     in local preview. The page looked finished and was months out of date.
+     So localhost is a preference, not a rule: if it has no answer, ask the
+     live Worker. `HOST` stays the resolved origin so URL building is unchanged. */
+  let HOST = LOCAL ? global.location.origin : LIVE;
+
+  async function fetchFrom(path, init) {
+    if (!LOCAL) return fetch(LIVE + path, init);
+    try {
+      const r = await fetch(global.location.origin + path, init);
+      if (r.ok) { HOST = global.location.origin; return r; }
+    } catch (e) { /* no local Worker; fall through */ }
+    HOST = LIVE;
+    return fetch(LIVE + path, init);
+  }
 
   /* The Worker hands back a PATH, not a URL — it has no reliable idea of its own
      public name, and under the dev server its origin is one no browser can
@@ -32,7 +48,7 @@
     if (loaded && !force) return days;
     loaded = (async () => {
       try {
-        const r = await fetch(HOST + '/media', { cache: 'no-store' });
+        const r = await fetchFrom('/media', { cache: 'no-store' });
         if (!r.ok) return {};
         const body = await r.json();
         return body.days || {};
