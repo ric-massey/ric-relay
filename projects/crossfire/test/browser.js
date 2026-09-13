@@ -276,8 +276,32 @@ async function main() {
     const held = H.carrying();
     c.dispatchEvent(new PointerEvent("pointerup", pt(t.x, t.y)));
     await frame(); await frame();
-    return { rows: rows.length, boxes: boxes.length, held,
-             fitted: s.slots[0] && s.slots[0].key, kept: s.store.layerplate || 0 };
+    const fitted = s.slots[0] && s.slots[0].key;
+
+    /* And back off. The same gesture the other way round: a filled square is a
+       thing you take hold of, not a button that ejects one. Room first — a
+       fitted part weighs nothing and a carried one weighs something, so this is
+       the one move that can fill a hold, and it is refused rather than allowed
+       to overflow. */
+    for (const k of Object.keys(s.hold)) s.hold[k] = 0;
+    const tray = H.trayBox();
+    const box = H.slotBoxes().find(b => b.key);
+    if (box && tray) {
+      const f2 = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+      const t2 = { x: tray.x + tray.w / 2, y: tray.y + tray.h / 2 };
+      c.dispatchEvent(new PointerEvent("pointerdown", pt(f2.x, f2.y)));
+      await frame();
+      for (let i = 1; i <= 6; i++) {
+        c.dispatchEvent(new PointerEvent("pointermove",
+          pt(f2.x + (t2.x - f2.x) * i / 6, f2.y + (t2.y - f2.y) * i / 6)));
+        await frame();
+      }
+      c.dispatchEvent(new PointerEvent("pointerup", pt(t2.x, t2.y)));
+      await frame(); await frame();
+    }
+    return { rows: rows.length, boxes: boxes.length, held, fitted,
+             pulled: (s.slots[0] && s.slots[0].key) || null,
+             back: s.store.layerplate || 0 };
   });
   check(dragged.rows > 0 && dragged.boxes === 4,
         "the ship page drew " + dragged.rows + " draggable parts and " +
@@ -285,8 +309,11 @@ async function main() {
   check(dragged.held === true, "moving a pressed part across the page is not a drag");
   check(dragged.fitted === "layerplate",
         "a part dragged onto a slot landed as " + JSON.stringify(dragged.fitted));
-  console.log("  drags      a part picked up off the spares tray and dropped " +
-              "into a slot, by pointer events alone");
+  check(dragged.pulled === null && dragged.back === 1,
+        "dragging it back off the ship left the slot as " +
+        JSON.stringify(dragged.pulled) + " and the tray holding " + dragged.back);
+  console.log("  drags      a part off the tray into a slot and back off again, " +
+              "by pointer events alone");
 
   // ── it comes back ─────────────────────────────────────────────────────────
   /* A real origin, a real reload, a real local storage. The headless suites

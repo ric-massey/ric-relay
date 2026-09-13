@@ -9528,8 +9528,13 @@
         if (surv.slots.some(sl => sl && sl.key === m.key)) continue;
         if (roomForPart(m.key)) storeAdd(m.key, 1);
       }
-      // Whatever room is left, spread over the six materials.
-      const each = Math.floor(Math.max(0, holdCap() - holdUsed()) / MATERIALS.length);
+      /* And *not* to the brim. Two thirds of what is left, spread over the six
+         materials, because a hold filled to 59 of 60 cannot take a part back
+         off the ship — `pullModule` refuses rather than let the cap be a cap
+         that is not one — so a fixture that fills it completely is a fixture
+         that cannot be used to check the one page it exists for. */
+      const spare = Math.max(0, holdCap() - holdUsed());
+      const each = Math.floor(spare * 0.66 / MATERIALS.length);
       for (const m of MATERIALS) surv.hold[m.key] = each;
       surv.cash = 250000;
       surv.water = WATER_FULL * 0.8;

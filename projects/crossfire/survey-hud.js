@@ -4221,6 +4221,11 @@
      a new gesture to do the thing they already did. */
   let slotBoxes = [];
   let storeRows = [];
+  /* Where the spares tray's window is, so a part dragged off the ship has
+     somewhere to be dropped. The four squares were the only drop target and the
+     gesture only ran one way: parts went on by dragging and came off by
+     pressing, which are two different ideas about what a slot is. */
+  let trayBox = null;
   let carry = null;
   /* The part whose bubble is open on the inventory page, and where it was. A
      tile with a picture on it says *what kind* of thing it is; it cannot say what
@@ -4257,7 +4262,18 @@
     for (const r of storeRows) {
       if (!inBox(r, x, y)) continue;
       carry = { key: r.key, name: r.name, cat: r.cat, rarity: r.rarity,
-                x, y, from: { x, y }, moved: false, over: -1 };
+                x, y, from: { x, y }, moved: false, over: -1, slot: -1 };
+      return true;
+    }
+    /* And off the ship. A slot with something in it is as much a thing you can
+       take hold of as a tile is, and the gesture reads the same in both
+       directions — which is the point: a slot is a place a part *is*, not a
+       button that ejects one. Pressing it without moving is still the pull it
+       always was, because a press that never travels is a tap. */
+    for (const b of slotBoxes) {
+      if (!b.key || !inBox(b, x, y)) continue;
+      carry = { key: b.key, name: b.name, cat: b.cat, rarity: b.rarity,
+                x, y, from: { x, y }, moved: false, over: -1, slot: b.i };
       return true;
     }
     return false;
@@ -4270,7 +4286,13 @@
       carry.moved = true;
     }
     carry.over = -1;
-    for (const b of slotBoxes) if (inBox(b, x, y)) carry.over = b.i;
+    for (const b of slotBoxes) {
+      // Not the one it came out of: dropping a part back where it started is
+      // the cancel, and lighting that square up would call it a destination.
+      if (b.i !== carry.slot && inBox(b, x, y)) carry.over = b.i;
+    }
+    // And the tray, which is where a part comes off to.
+    carry.overTray = carry.slot >= 0 && !!trayBox && inBox(trayBox, x, y);
     return true;
   };
 
@@ -4282,6 +4304,15 @@
     const held = carry;
     carry = null;
     if (!held.moved) return false;
+
+    /* Off the ship. Dropped anywhere in the tray it comes off; dropped anywhere
+       else — the hull, the page, the square it started in — it stays where it
+       was, which is the right answer to a drag somebody thought better of. */
+    if (held.slot >= 0) {
+      if (trayBox && inBox(trayBox, x, y) && st && st.onPull) st.onPull(held.slot);
+      return true;
+    }
+
     for (const b of slotBoxes) {
       if (!inBox(b, x, y)) continue;
       if (st && st.onFit) st.onFit(b.i, held.key);
@@ -4306,11 +4337,15 @@
   HUD.forgetCarryGeometry = function () {
     slotBoxes.length = 0;
     storeRows.length = 0;
+    trayBox = null;
   };
 
   HUD.carrying = () => !!(carry && carry.moved);
   // What was drawn where, so a harness can press the same rectangles a thumb does.
   HUD.slotBoxes = () => slotBoxes.map(b => ({ ...b }));
+  // Where a part dragged off the ship may be let go. Exposed for the same
+  // reason the other two are: a harness should press the rectangles a thumb does.
+  HUD.trayBox = () => (trayBox ? { ...trayBox } : null);
   HUD.storeRows = () => storeRows.map(r => ({ ...r }));
   HUD.craftPick = key => { craftPg.pick = key || null; };
   // What the parts grid actually drew, which is not the same as what the game
@@ -5039,7 +5074,12 @@
 
     slotBoxes.length = 0;
     for (let i = 0; i < 4; i++) {
-      const sl = slots[i];
+      const real = slots[i];
+      /* Lifted out of its square, it should not also be drawn sitting in it —
+         the same rule the tray's tiles follow while one is in hand. Only the
+         drawing sees the slot as empty; `slotBoxes` keeps the truth. */
+      const lifting = !!(carry && carry.moved && carry.slot === i);
+      const sl = lifting ? null : real;
       const bx = cxShip + seats[i][0] - SBOX / 2;
       const by = cyShip + seats[i][1];
       const fitting = !!sl && sl.fit > 0;
@@ -5050,7 +5090,13 @@
          weight as "unavailable", four of them read as four refusals. */
       const col = !sl ? VIOLET_DIM : fitting ? AMBER_DIM : rarity(sl.rarity).colour;
       const over = carry && carry.over === i;
-      slotBoxes.push({ x: bx, y: by, w: SBOX, h: SBOX, i });
+      /* What is in it travels with the rectangle, because a slot is now
+         something you can pick *up* as well as drop onto — `grabAt` has to know
+         what it would be taking hold of. */
+      slotBoxes.push({ x: bx, y: by, w: SBOX, h: SBOX, i,
+                       key: real ? real.key : null, name: real ? real.name : "",
+                       cat: real ? real.cat : null,
+                       rarity: real ? real.rarity : null });
 
       // The lead in to the hull, so a slot reads as part of the ship and not as
       // a box that happens to be near one.
@@ -5186,6 +5232,8 @@
     ctx.rect(0, viewTop, SCREEN_W, viewH);
     ctx.clip();
     tapClip({ x: 0, y: viewTop, w: SCREEN_W, h: viewH });
+    // Where a part dragged off the ship can be dropped. See `dropAt`.
+    trayBox = { x: 0, y: viewTop, w: SCREEN_W, h: viewH };
 
     const partsY = headY - shipPg.scroll;
     y = partsY;

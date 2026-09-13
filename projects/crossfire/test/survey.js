@@ -7428,6 +7428,54 @@ const storeOf = (cf, key) => {
   check(surv.slots[0] && surv.slots[0].key === "layerplate",
         "the part did not land in the slot it was dropped on");
 
+  /* ── and back off again ───────────────────────────────────────────────────
+     The gesture only ran one way. Parts went *on* by dragging and came *off* by
+     pressing, which are two different ideas about what a slot is — and the one
+     the page draws is a place a part sits, not a button that ejects one. A
+     filled square is now as much a thing you can take hold of as a tile is.
+
+     Room first: a fitted part weighs nothing and a carried one weighs
+     something, so taking one off is the one move in the game that can fill a
+     hold, and `pullModule` refuses rather than let the cap stop being a cap.
+     A test run against a full hold measures that refusal and nothing else. */
+  surv.slots[0] = { key: "layerplate", fit: 0 };
+  surv.store = {};
+  for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
+  cf.draw();
+
+  const filled = hud.slotBoxes().find(b => b.key);
+  check(!!filled && filled.key === "layerplate",
+        "the slot boxes do not say what is in them, so nothing can be lifted out");
+  const tray = hud.trayBox();
+  check(!!tray, "there is no tray to drop a part into");
+  if (filled && tray) {
+    check(hud.grabAt(filled.x + filled.w / 2, filled.y + filled.h / 2) === true,
+          "pressing a fitted part did not pick it up");
+    hud.carryTo(tray.x + tray.w / 2, tray.y + tray.h / 2);
+    check(hud.carrying() === true, "moving a fitted part to the tray is not a drag");
+    cf.draw();
+    hud.dropAt(view(), tray.x + tray.w / 2, tray.y + tray.h / 2);
+    check(!surv.slots[0], "a part dragged off the ship is still on it");
+    check((surv.store.layerplate || 0) === 1,
+          "a part dragged off the ship did not arrive in the tray");
+
+    /* And a drag that ends somewhere else leaves it where it was. Dropping a
+       part on the hull is somebody changing their mind, not an instruction. */
+    surv.slots[0] = { key: "layerplate", fit: 0 };
+    surv.store = {};
+    cf.draw();
+    const f2 = hud.slotBoxes().find(b => b.key);
+    hud.grabAt(f2.x + f2.w / 2, f2.y + f2.h / 2);
+    hud.carryTo(f2.x + f2.w / 2, tray.y - 40);
+    cf.draw();
+    hud.dropAt(view(), f2.x + f2.w / 2, tray.y - 40);
+    check(surv.slots[0] && surv.slots[0].key === "layerplate",
+          "a part dropped short of the tray came off the ship anyway");
+  }
+  surv.slots[0] = null;
+  surv.store = { layerplate: 1 };
+  cf.draw();
+
   // And dropping on nothing puts it back rather than losing it.
   surv.slots[0] = null;
   surv.store = { layerplate: 1 };
