@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Add — Climbing</title>
   <meta name="robots" content="noindex">
-  <meta name="description" content="Add a day out, or a route to the tick list.">
+  <meta name="description" content="Add a day out, or a route to the to-do list.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%233a5a40'/><text y='.85em' font-size='64' x='18'>🧗</text></svg>">
   <style>
     :root {
@@ -137,12 +137,12 @@
            page, one sign-in, two things it can take. -->
       <div class="addpick" role="tablist" aria-label="What are you adding">
         <button type="button" role="tab" id="pick-day" aria-selected="true">A day out</button>
-        <button type="button" role="tab" id="pick-route" aria-selected="false">A route to the list</button>
+        <button type="button" role="tab" id="pick-route" aria-selected="false">A route to the to-do list</button>
       </div>
       <p class="lede" id="blurb-day">Goes straight to the climbing log and the training page.
         If the date matches a training day, the link between them appears on its own.</p>
       <p class="lede" id="blurb-route" hidden>Something you want to get on. It lands on
-        <a href="list.html">the list</a>, grouped under its crag.</p>
+        <a href="list.html">the to-do list</a>, grouped under its crag.</p>
     </div>
 
     <div class="card" id="signin"></div>
@@ -279,15 +279,15 @@
         </div>
       </div>
 
-      <button type="submit" class="btn wide" id="r-save">Add it to the list</button>
+      <button type="submit" class="btn wide" id="r-save">Add it to the to-do list</button>
       <div class="msg" id="r-msg" role="status"></div>
     </form>
 
     <div class="card" id="routecard" hidden>
-      <label>Routes you've added here</label>
+      <label>Routes you've added to the to-do list</label>
       <div class="routes" id="routemine"></div>
       <p class="lede" style="margin-top:0.6rem">These live in the log service. Routes from
-        <code>todo.md</code> aren't listed &mdash; they show on the list all the same.</p>
+        <code>todo.md</code> aren't listed &mdash; they show on the to-do list all the same.</p>
     </div>
 
     <div class="card" id="recentcard" hidden>
@@ -669,10 +669,10 @@
         note: $('#r-note').value.trim(),
       });
       $('#r-save').disabled = false;
-      $('#r-save').textContent = 'Add it to the list';
+      $('#r-save').textContent = 'Add it to the to-do list';
 
       if (!out) { say('Could not reach the log service. Nothing was saved.', false); return; }
-      say(`${name} is on the list.`, true);
+      say(`${name} is on the to-do list.`, true);
       /* The crag and the wall stay: adding three routes off one wall is the
          normal case, and retyping "PMRP, The Motherload" each time is how the
          spellings drifted in the first place. */

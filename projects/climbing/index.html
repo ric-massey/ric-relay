@@ -807,9 +807,9 @@
             <span class="style${t.done ? "" : " attempt"}">${t.done ? esc(t.result || "done") : ""}</span>
           </div>`).join("")}</div>`;
 
-      countEl.textContent = `${open.length} still on the list · ${done.length} done`;
+      countEl.textContent = `${open.length} still on the to-do list · ${done.length} done`;
       view.innerHTML = (block(open, "Still dreaming") + block(done, "Done")) ||
-        '<p class="empty">Nothing on the list matches that.</p>';
+        '<p class="empty">Nothing on the to-do list matches that.</p>';
     }
 
     const VIEWS = { trips: tripsView, routes: routesView, people: peopleView, todo: todoView };

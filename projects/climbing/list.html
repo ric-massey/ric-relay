@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>The List — Climbing</title>
-  <meta name="description" content="Ric's climbing tick list — what he wants to get on, by crag.">
+  <title>To-do list — Climbing</title>
+  <meta name="description" content="Ric's climbing to-do list — what he wants to get on, by crag.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%233a5a40'/><text y='.85em' font-size='68' x='16'>🧗</text></svg>">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
@@ -16,10 +16,10 @@
 <script src="../../assets/climbing-nav.js" data-nav="list"></script>
 
 <div class="wrap">
-  <h1 class="ph">The list</h1>
+  <h1 class="ph">To-do list</h1>
 
   <input type="search" class="search" id="search" autocomplete="off"
-         aria-label="Search the list" placeholder="Route, crag, grade…">
+         aria-label="Search the to-do list" placeholder="Route, crag, grade…">
   <div class="filters" id="filters"></div>
 
   <div id="view"></div>
@@ -80,7 +80,7 @@
       [t.name, t.grade, t.location, t.style].join(" ").toLowerCase().includes(q));
 
     if (!rows.length) {
-      view.innerHTML = '<p class="empty">Nothing on the list matches that.</p>';
+      view.innerHTML = '<p class="empty">Nothing on the to-do list matches that.</p>';
       return;
     }
 
@@ -151,7 +151,7 @@
   Owner.init({ host: WebTodo.host(), onChange: paintOwner });
   function paintOwner() {
     document.getElementById("ownerlinks").innerHTML =
-      Owner.on() ? '<a href="add.html#route">+ Add a route to the list →</a>' : "";
+      Owner.on() ? '<a href="add.html#route">+ Add a route to the to-do list →</a>' : "";
   }
   paintOwner();
 })();

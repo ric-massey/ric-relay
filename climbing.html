@@ -130,7 +130,7 @@
     [s.trips, "days out", true],
     [s.sends, "sends", false],
     [hardest || "—", "hardest", false],
-    [todoOpen, "on the list", false],
+    [todoOpen, "on the to-do list", false],
   ].map(([n, l, lead]) =>
     `<div${lead ? ' class="lead"' : ""}><b>${esc(n)}</b><span>${esc(l)}</span></div>`).join("");
 
