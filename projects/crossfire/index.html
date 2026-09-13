@@ -3639,6 +3639,11 @@
   }
 
   function fire(ship) {
+    /* And it ends a cloak. Put here rather than on the trigger, because this is
+       where a round actually leaves the ship — a trigger held against a cooldown
+       is not a shot, and a cloak that dropped on the *key* would end the moment
+       a thumb rested on the pad. */
+    if (ship.human && surv && surv.cloak > 0) dropCloak();
     // The cannon's own rounds only. Six in the air has always been the cannon's
     // limit and a missile must not spend one of them.
     const mine = bullets.reduce(
@@ -3694,6 +3699,8 @@
   }
 
   function launch(ship, spec) {
+    // The parts fire through here rather than through `fire`; same rule.
+    if (ship.human && surv && surv.cloak > 0) dropCloak();
     const r = SHIP_R * U * (ship.sizeMul || 1);
     const n = spec.rounds || 1;
     for (let i = 0; i < n; i++) {
@@ -6080,6 +6087,102 @@
      Cooldowns are deliberately **not** in the book. A cooldown that survived
      closing the tab would be a rule nobody could see and nobody would guess, and
      the most it can cost is one free press after a reload. */
+  /* ── the grapple ──────────────────────────────────────────────────────────
+     A line that pulls *you*, which is the half of "pull" the tractor rig does
+     not do. The rig brings loose salvage in; this throws you at something too
+     big to move, and the difference is the whole part: one is a convenience and
+     the other is a way to travel.
+
+     What it multiplies:
+
+       · **flight** — a way to move that is not the engine, so a dead drive or an
+         empty approach angle stops being the end of the sentence;
+       · **gravity** — anchor to a rock outside a well and haul yourself out of
+         it, which is the first answer to a well that is not "have a bigger
+         engine";
+       · **the Warrens** — a tunnel is a corridor of anchors, and hauling along
+         one is faster and quieter than flying it.
+
+     It is not free and it is not safe: it throws you *at* a solid thing at
+     speed, and what happens when you arrive is your problem. That is the
+     decision — the button does not ask whether you have thought about the
+     landing. */
+  /* ── the cloak ────────────────────────────────────────────────────────────
+     There is already a part that hides you: RUNNING DARK, which damps the hull
+     when the engine is off and takes you off a *sentry's* list. It is passive,
+     it is conditional, and it is about one kind of watcher.
+
+     This is the other shape of the idea — a button, ten seconds, and it works
+     on everything that is *looking* for you: a sentry, a pirate that has you,
+     a patrol shadowing you, a seeker already in the air. What it does not do is
+     let you fight from inside it. Firing ends it, immediately and always.
+
+     That one rule is what keeps it honest. A cloak you can shoot out of is an
+     ambush, and an ambush makes every fight in the sector yours to start on
+     your terms; a cloak you can only leave by becoming visible is an escape,
+     and an escape is a thing you spend rather than a thing you exploit. */
+  const CLOAK_TIME = 10;        // seconds of it, and the cooldown is 75
+
+  /* Ended early, and it says so. Called from both places a round leaves the
+     ship — see `fire` and `launch`. */
+  function dropCloak() {
+    if (!surv || surv.cloak <= 0) return;
+    surv.cloak = 0;
+    chatter("You fired. They can see you.", "#ffcb42");
+  }
+
+  /* ── the EMP ──────────────────────────────────────────────────────────────
+     One burst, and everything electric inside it stops. Sentries go limp,
+     seekers fall out of the air, mines fizzle, and an armed ship loses its
+     engine and its guns for a few seconds — which is long enough to leave, or
+     to board something you could not otherwise have got near.
+
+     **It takes your own hull with it.** Every device in your four slots goes to
+     a full cooldown and the scan goes down for as long as the stun lasts. That
+     is the decision: the room is clear and you are holding nothing, and whether
+     that trade is worth it depends on what you were about to do next. A burst
+     with no cost is a button you press on entering every room. */
+  const EMP_REACH = 1100;       // units the burst carries
+  const EMP_STUN  = 6;          // seconds of nothing, for everything it touches
+
+  const GRAPPLE_REACH = 1500;   // how far the line carries, in units
+  const GRAPPLE_PULL  = 620;    // and what it adds toward the anchor, a second
+  const GRAPPLE_CONE  = 1.15;   // radians either side of the nose it will fire
+
+  /* The best thing to hook, which is the nearest solid surface inside the cone.
+     Measured to the *surface* rather than the middle, so a world four thousand
+     units across is grappled at its edge like everything else.
+
+     Everything solid in the sector is a candidate, because the alternative is a
+     list that has to be updated every time something solid is added — and the
+     last three things this mode gained were all solid. */
+  function grappleAnchor(me) {
+    let best = null, bd = GRAPPLE_REACH * U;
+    const consider = (x, y, r, what) => {
+      const d = Math.hypot(x - me.x, y - me.y) - r;
+      if (d < 12 * U || d > bd) return;      // already on it, or out of reach
+      let off = Math.atan2(y - me.y, x - me.x) - me.a;
+      while (off > Math.PI) off -= Math.PI * 2;
+      while (off < -Math.PI) off += Math.PI * 2;
+      if (Math.abs(off) > GRAPPLE_CONE) return;
+      bd = d; best = { x, y, r, what };
+    };
+    for (const r of rocks) consider(r.x, r.y, r.r, "rock");
+    if (surv) {
+      for (const p of surv.planets) consider(p.x, p.y, p.r, p.name || "a world");
+      for (const h of surv.hulks) consider(h.x, h.y, h.r, "a dead hull");
+      for (const w of surv.wrecks) consider(w.x, w.y, w.r || 40, "a wreck");
+      for (const st of surv.stations) consider(st.x, st.y, st.r, "the station");
+      const lev = surv.leviathan;
+      if (lev) for (const g of lev.segs) consider(g.x, g.y, g.r, "the Leviathan");
+      const vault = surv.vault;
+      if (vault) for (const g of vault.segs) consider(g.x, g.y, g.r, "the Vault");
+      // And the rock of the Warrens, which is the place this is most useful.
+      for (const g of caveNear(me.x, me.y)) consider(g.x, g.y, g.r, "the rock");
+    }
+    return best;
+  }
+
   const DECOY_LIFE = 14;        // seconds a decoy reads as a ship
   const DECOY_HOLD = 1500;      // and how far its lie carries, in units
   const MINE_LIFE  = 75;        // how long a mine sits there
@@ -6163,8 +6266,115 @@
     jump: {
       key: "jump", name: "EMERGENCY JUMP", tag: "JUMP", cool: 150,
       use(me) { emergencyJump(me); }
+    },
+
+    /* The line. Refuses out loud when there is nothing to hook, because a
+       grapple that fires into empty space and says nothing is a grapple you
+       press twice and then stop carrying. */
+    grapple: {
+      key: "grapple", name: "GRAPPLE LINE", tag: "GRAPPLE", cool: 9,
+      blocked: me => grappleAnchor(me)
+        ? "" : "Nothing in front of you to hook.",
+      use(me) {
+        const a = grappleAnchor(me);
+        if (!a) return;
+        const d = Math.hypot(a.x - me.x, a.y - me.y) || 1;
+        me.vx += ((a.x - me.x) / d) * GRAPPLE_PULL * U;
+        me.vy += ((a.y - me.y) / d) * GRAPPLE_PULL * U;
+        surv.grappleTo = { x: a.x, y: a.y, t: 0.45 };
+        addShake(2);
+        gameSound("thrust", me.x);
+        chatter("Line away — " + a.what + ".", NEBULA);
+      }
+    },
+
+    /* Ten seconds of not being there. It drops the instant you fire, which is
+       the only rule it has and the one that keeps it an escape rather than an
+       ambush: you cannot shoot from inside it, so it cannot start a fight. */
+    cloak: {
+      key: "cloak", name: "SILENT RUNNING", tag: "CLOAK", cool: 75,
+      use(me) {
+        surv.cloak = CLOAK_TIME;
+        gameSound("start", me.x);
+        chatter("Dark. Ten seconds, and firing ends it.", "#87d8ff");
+      }
+    },
+
+    /* The burst. Everything with something electric in it, inside the radius,
+       stops — and that includes the four things on your own hull, which is what
+       makes pressing it a decision rather than a free clear-the-room. */
+    emp: {
+      key: "emp", name: "EMP CHARGE", tag: "EMP", cool: 60,
+      use(me) { empBurst(me); }
     }
   };
+
+  /* Everything electric inside the radius, stopped — including yours.
+
+     The order matters and is the argument for the part: it clears the *air*
+     first (a seeker in flight is the thing you most want gone), then the things
+     on the ground, then your own hull. A burst that spared the player would be
+     a room-clearing button with no cost, which is a percentage wearing a verb's
+     clothes. */
+  function empBurst(me) {
+    const R2 = (EMP_REACH * U) ** 2;
+    let hit = 0;
+
+    /* Not the rounds in the air. A shot already fired is a lump of metal going
+       somewhere and an electromagnetic pulse has nothing to say to it — and the
+       only guided thing in this sector is the seeker rack, which is *yours*, so
+       a burst that cleared the air would mostly clear your own missiles. It
+       stops the things doing the shooting instead, which is the better answer
+       to being shot at anyway.
+
+       Mines first: they are a trigger and a charge, and this takes the
+       trigger. */
+    for (let i = surv.mines.length - 1; i >= 0; i--) {
+      const mn = surv.mines[i];
+      if (dist2(mn.x, mn.y, me.x, me.y) > R2) continue;
+      burst(mn.x, mn.y, "#87d8ff", 6, 110 * U);
+      surv.mines.splice(i, 1);
+      hit++;
+    }
+
+    // Sentries: asleep, and off your list for as long as it lasts.
+    for (const d of surv.drones) {
+      if (dist2(d.x, d.y, me.x, me.y) > R2) continue;
+      d.stun = EMP_STUN;
+      d.awake = false;
+      burst(d.x, d.y, "#87d8ff", 8, 140 * U);
+      hit++;
+    }
+
+    /* Ships: no engine and no guns. Not damage — a ship you EMP and leave is a
+       ship that comes round and remembers it, which is the half of this that
+       makes it a decision rather than a weapon. */
+    for (const t of surv.traffic) {
+      if (dist2(t.x, t.y, me.x, me.y) > R2) continue;
+      t.stun = EMP_STUN;
+      burst(t.x, t.y, "#87d8ff", 8, 140 * U);
+      hit++;
+    }
+
+    /* And you. Every device goes to a full cooldown and the scan goes down —
+       this one included, which is why the cooldown is set here rather than by
+       `useDevice` afterwards. */
+    for (const sl of surv.slots) {
+      if (!sl) continue;
+      const m = moduleSpec(sl.key);
+      const dev = m && m.eff && m.eff.device ? deviceSpec(m.eff.device) : null;
+      if (dev) sl.cd = Math.max(sl.cd || 0, dev.cool);
+    }
+    surv.empSelf = EMP_STUN;
+    surv.scan.charge = 0;
+
+    burst(me.x, me.y, "#87d8ff", 26, EMP_REACH * 0.5 * U);
+    addShake(6);
+    gameSound("hit", me.x);
+    chatter(hit ? "Burst — " + hit + " dead in the water, and so are you."
+                : "Burst — nothing out there to stop, and your own kit is down.",
+            "#87d8ff");
+  }
 
   const deviceSpec = key => DEVICES[key] || null;
 
@@ -6196,7 +6406,32 @@
       note: "one hard throw down the way you are pointing, tens of thousands " +
             "of units, and nothing about where you land is chosen. You arrive " +
             "stopped, blind and somewhere else \u2014 which beats not arriving",
-      eff: { device: "jump" } }
+      eff: { device: "jump" } },
+
+    /* The last three on the list this whole layer was written from: a grapple,
+       a cloak and an EMP. Each of them is a verb by the three-systems test —
+       the line moves you, gravity and the cave; the cloak moves sentries,
+       hunting ships and a seeker in the air; the burst moves sentries, mines
+       and every engine in reach, your own included. */
+    { key: "grappleline", name: "GRAPPLE LINE", cat: "device", rarity: "common",
+      cost: 540, deep: 0, get: ["buy", "craft"],
+      note: "a line and a winch. It does not pull things to you \u2014 it " +
+            "pulls you to them, hard, at whatever is in front of the nose. " +
+            "A way out of a well that is not a bigger engine, and the fastest " +
+            "way down a tunnel",
+      eff: { device: "grapple" } },
+    { key: "silentrig", name: "SILENT RUNNING", cat: "device", rarity: "rare",
+      cost: 3400, deep: 0.52, get: ["buy", "craft"],
+      note: "ten seconds of not being there. Sentries lose you, whoever is " +
+            "chasing you forgets, and a missile in the air goes looking " +
+            "somewhere else. Fire once and it is over",
+      eff: { device: "cloak" } },
+    { key: "empcharge", name: "EMP CHARGE", cat: "device", rarity: "rare",
+      cost: 2600, deep: 0.4, get: ["buy", "craft"],
+      note: "one burst, and everything electric inside it stops \u2014 " +
+            "sentries, mines, and the engines and guns of every ship in reach. " +
+            "Your own four slots and your scanner go down with them",
+      eff: { device: "emp" } }
   );
 
   const moduleSpec = key => MODULES.find(m => m.key === key) || null;
@@ -6325,15 +6560,24 @@
        to a long haul is something you build, not something you buy. */
     { out: "icemelter",  need: { iron: 6, alloy: 6, electronics: 4 } },
 
-    /* Three of the four devices. The emergency jump is not here, and that is
+    /* Six of the seven devices. The emergency jump is not here, and that is
        the rule from the bottom of this list rather than an oversight: it is the
        best thing in its category, so it is bought and never built. */
     { out: "ejector",    need: { iron: 7, alloy: 4 } },
     { out: "decoylauncher", need: { iron: 5, alloy: 6, electronics: 5 } },
     { out: "minelayer",  need: { iron: 8, alloy: 7, electronics: 4 } },
+    /* A line and a winch: iron and a little wiring, and the cheapest verb in
+       the game. It is meant to be the one a new pilot builds first. */
+    { out: "grappleline", need: { iron: 9, alloy: 3 } },
 
     // ── the middle: a core, so it is a trip rather than an afternoon ───────
     { out: "seekerrack", need: { alloy: 9, electronics: 7, core: 1 } },
+    /* Both of the late devices take a core, which is what puts them on the far
+       side of a trip: a burst that stops a room and ten seconds of not being
+       there are the two things that most change what a fight is, and neither
+       should be an afternoon's mining. */
+    { out: "empcharge",  need: { alloy: 10, electronics: 9, core: 2 } },
+    { out: "silentrig",  need: { iridium: 6, electronics: 11, core: 2 } },
     /* Panels. Built rather than only bought, because the thing they do — a star
        mends your hull — is the answer to being a long way from a station, and
        being a long way from a station is exactly when you cannot buy one. */
@@ -9280,6 +9524,12 @@
       tractorLit: 0,
       warpCool: 0,
       quiet: 0,
+      /* The three verbs that leave something running behind them. None of them
+         is in the book, for the reason the cooldowns are not: a cloak that
+         survived closing the tab is a rule nobody can see. */
+      cloak: 0,          // seconds of it left; see DEVICES.cloak
+      empSelf: 0,        // your own kit, down, after your own burst
+      grappleTo: null,   // the line, for as long as it is worth drawing
       bumpCool: 0,
 
       t: {
@@ -9606,6 +9856,14 @@
 
   function surveyScan() {
     if (!surv || surv.scan.charge < 1) return;
+    /* Not while your own burst is still ringing. The EMP takes your four slots
+       and the scanner with them, and the scanner is the one a player is most
+       likely to reach for next — see `empBurst`. */
+    if (surv.empSelf > 0) {
+      chatter("The scanner is still down \u2014 " +
+              Math.ceil(surv.empSelf) + " seconds.", "#ffcb42");
+      return;
+    }
     surv.scan.charge = 0;
     if (surveyHUD) surveyHUD.ping();
     gameSound("shot", ships[0].x);
@@ -9820,11 +10078,43 @@
          flag thinks, what it personally thinks, and whether you are standing too
          close. Only armed ships act on any of it — a freighter's opinion of you
          is that it would like to be somewhere else. */
+      /* Stunned by a burst: no engine, no guns, and no opinion about anybody.
+         It carries its momentum and its gravity, because both are things that
+         happen *to* a ship rather than things it does — a hauler EMP'd over a
+         well still falls into the well, which is a consequence worth having. */
+      if (t.stun > 0) {
+        t.stun = Math.max(0, t.stun - dt);
+        t.cool = Math.max(t.cool || 0, 0.4);
+        t.vx *= Math.exp(-0.35 * dt); t.vy *= Math.exp(-0.35 * dt);
+        t.x += (t.vx || 0) * dt; t.y += (t.vy || 0) * dt;
+        solidBounce(t, 22 * U * (shipSpec(t.hull).size || 1));
+        continue;
+      }
+
       const near = Math.hypot(me.x - t.x, me.y - t.y);
       // Somebody you have met before, if this is one of them.
       if (t.friend && me.alive) friendMeeting(t, near);
       const armed = ROLES[t.role || t.kind] && ROLES[t.role || t.kind].armed;
       t.hunted = Math.max(0, (t.hunted || 0) - dt);
+
+      /* Cloaked, and nobody who was looking for you can find you. This is the
+         one thing SILENT RUNNING does that RUNNING DARK never did: a sentry was
+         always the only thing the passive part hid you from, and the ships are
+         the half of the sector that actually chases.
+
+         **Forgotten, not paused.** A pirate that comes out the other side of ten
+         seconds still on your tail has not lost you, it has blinked — so the
+         anger goes rather than being held, and it has to be earned again when
+         you turn up on a screen. A hunter came into the sector angry and is the
+         clearest case: it arrived specifically to find you, and for ten seconds
+         it cannot. */
+      const unseen = me.alive && cloaked(me);
+      if (unseen) {
+        t.angry = false;
+        t.shadow = false;
+        t.warned = 0;
+        if (t.mark === me || t.markKind === "you") { t.mark = null; t.markKind = ""; }
+      }
 
       /* An escort whose client is being hunted turns on whoever is doing it. This
          is the collision the whole phase is for: the pirate wants the cargo, the
@@ -9855,7 +10145,7 @@
       /* Something being hunted runs, whoever is hunting it. */
       if (t.hunted > 0 && !armed) t.speed = t.baseSpeed * 1.3;
       else if (t.baseSpeed) t.speed = t.baseSpeed;
-      if (me.alive && near < 2600 * U && t.role !== "hunter") {
+      if (me.alive && !unseen && near < 2600 * U && t.role !== "hunter") {
         if (armed && shipHostile(t)) t.angry = true;
         else if (armed && repOf(t.faction) <= -30) t.shadow = true;
 
@@ -9875,7 +10165,8 @@
         }
       }
       /* A freighter that does not like you runs rather than fights. */
-      const fleeing = !armed && me.alive && shipHostile(t) && near < 1800 * U;
+      const fleeing = !armed && me.alive && !unseen && shipHostile(t) &&
+                      near < 1800 * U;
       /* Shadowing sits off your shoulder rather than closing: near enough that
          you notice, far enough that it is not a threat yet. */
       const tailing = t.shadow && !t.angry && me.alive;
@@ -11739,7 +12030,16 @@
      Running dark is the almanac's third verb and the counter to all of it: cut
      the engine and they lose you, which turns every cache into a choice between
      shooting your way in and drifting in cold. */
+  /* Two ways to be unseen, and they are different parts.
+
+     RUNNING DARK is passive and conditional: cut the engine, stay cut, and a
+     sentry loses you. SILENT RUNNING is a button and ten seconds of it, and it
+     works whether you are under power or not — see `DEVICES.cloak`.
+
+     One predicate, because everything that looks for you should ask the same
+     question however you came to be hidden. */
   function cloaked(me) {
+    if (surv && surv.cloak > 0) return true;
     return !!mods().quiet && !me.thrusting && surv.quiet > 1.2;
   }
 
@@ -12033,6 +12333,18 @@
     for (let i = surv.drones.length - 1; i >= 0; i--) {
       const d = surv.drones[i];
       d.hit = Math.max(0, d.hit - dt);
+      /* Stunned by a burst: it drifts, and it is not looking for anybody. It
+         still falls into wells and still bounces off rock, because those happen
+         *to* it rather than being things it is doing. See `empBurst`. */
+      if (d.stun > 0) {
+        d.stun = Math.max(0, d.stun - dt);
+        d.awake = false;
+        d.vx *= Math.exp(-0.6 * dt); d.vy *= Math.exp(-0.6 * dt);
+        applyGravity(d, dt);
+        d.x += d.vx * dt; d.y += d.vy * dt;
+        solidBounce(d, 16 * U);
+        continue;
+      }
       const toMe = Math.hypot(me.x - d.x, me.y - d.y);
       const fromPost = Math.hypot(d.post.x - d.x, d.post.y - d.y);
 
@@ -14789,6 +15101,19 @@
        than off the key, so a tap of thrust lights you up again and holding
        course does not. */
     surv.quiet = me.thrusting ? 0 : surv.quiet + dt;
+    /* The three verbs that leave something running. The cloak is the only one
+       with a rule attached: firing ends it, and `me.firedAt` is set by the
+       trigger rather than read from the key, so a shot from any weapon counts
+       and a held trigger cannot outlast it. */
+    if (surv.cloak > 0) {
+      surv.cloak = Math.max(0, surv.cloak - dt);
+      if (!surv.cloak) chatter("Back on somebody's screen.", "#87d8ff");
+    }
+    surv.empSelf = Math.max(0, surv.empSelf - dt);
+    if (surv.grappleTo) {
+      surv.grappleTo.t -= dt;
+      if (surv.grappleTo.t <= 0) surv.grappleTo = null;
+    }
     surv.warpCool = Math.max(0, surv.warpCool - dt);
     surv.bumpCool = Math.max(0, surv.bumpCool - dt);
     surv.scan.flash = Math.max(0, surv.scan.flash - dt * 0.7);
@@ -15411,6 +15736,27 @@
      and a decoy is drawn as the lie it is: a ship-sized flare, burning, with a
      ring that shrinks as its fourteen seconds run out. */
   function drawDevices() {
+    /* The line, for the half-second it is worth drawing. It is gone by the time
+       you arrive, which is right: the winch is instantaneous and what you are
+       being shown is *what happened*, not a rope you are hanging from. */
+    if (surv.grappleTo) {
+      const me = ships[0];
+      const g = surv.grappleTo;
+      const fade = Math.max(0, g.t / 0.45);
+      glow(NEBULA, 1.4, fade * 0.9, () => {
+        ctx.beginPath();
+        ctx.moveTo(me.x, me.y);
+        ctx.lineTo(g.x, g.y);
+        ctx.stroke();
+      });
+      // The bite, at the far end, opening as the line goes slack.
+      glow(NEBULA, 1.2, fade, () => {
+        ctx.beginPath();
+        ctx.arc(g.x, g.y, (5 + (1 - fade) * 10) * U, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+    }
+
     for (const mn of surv.mines) {
       if (!onScreen(mn.x, mn.y, 60)) continue;
       const live = mn.arm <= 0;
@@ -18270,7 +18616,14 @@
     }
     // Blink while the respawn shield is up so nobody wastes shots on a ghost.
     const blink = s.invuln > 0 && Math.floor(s.invuln * 10) % 2 === 0;
-    const alpha = s.invuln > 0 ? (blink ? 0.35 : 0.9) : 1;
+    let alpha = s.invuln > 0 ? (blink ? 0.35 : 0.9) : 1;
+    /* And thin while you are running silent. It is the only way the state is
+       visible from the cockpit — a cloak with no tell is a button you press and
+       then cannot tell whether it worked, and the last second of it going back
+       to solid is the warning that it is about to end. */
+    if (s.human && surv && surv.cloak > 0) {
+      alpha *= 0.3 + 0.25 * Math.max(0, 1 - surv.cloak / CLOAK_TIME);
+    }
     const r = SHIP_R * U * (s.sizeMul || 1);
     /* The hull's own outline. Every other mode flies the stock triangle and
        always will; Survey draws whichever of the twenty-five you bought, from the

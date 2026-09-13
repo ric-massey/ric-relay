@@ -8326,8 +8326,10 @@ const storeOf = (cf, key) => {
   const parts = cf.parts();
   const devParts = parts.filter(p => cf.surveyView().effects[p.key] &&
                                      cf.surveyView().effects[p.key].device);
-  check(devParts.length >= 4,
-        "6.4 asked for four verbs and there are " + devParts.length);
+  check(devParts.length >= 7,
+        "6.4's list was a decoy, a grapple, a mine layer, an emergency jump, " +
+        "a cloak, an EMP and a cargo ejector — seven — and there are " +
+        devParts.length);
   for (const p of devParts) {
     const ways = cf.partWays(p.key);
     check(ways.buy || ways.craft || ways.find,
@@ -8568,9 +8570,134 @@ const storeOf = (cf, key) => {
           "the chip's word is " + JSON.stringify(chip.tag));
   }
 
-  console.log("  devices    four verbs on the four slots · a key each and rebindable · " +
-              "a sentry and a seeker take the decoy · a pirate takes the cargo · " +
-              "a mine does not care whose it is · the jump is a long way and a cold scanner");
+  /* ── the grapple: it pulls *you*, and only at what is in front ────────────
+     The tractor rig brings salvage in; this throws you at something too big to
+     move. The invariant is the whole part: whatever it hooks, the pull points
+     exactly at it, and it will not hook what is behind you. */
+  park(120000, 40000);
+  fit(0, "grappleline");
+  step(4);
+  {
+    let fired = 0, offBy = 0, outsideCone = 0, tooFar = 0;
+    for (let k = 0; k < 24; k++) {
+      surv.slots[0].cd = 0;
+      surv.grappleTo = null;
+      me.vx = me.vy = 0;
+      me.a = (k / 24) * Math.PI * 2;
+      if (!cf.useDevice(0)) continue;
+      fired++;
+      const g = surv.grappleTo;
+      check(!!g, "the line fired and left no anchor behind it");
+      if (!g) continue;
+      const want = Math.atan2(g.y - me.y, g.x - me.x);
+      let pull = want - Math.atan2(me.vy, me.vx);
+      while (pull > Math.PI) pull -= Math.PI * 2;
+      while (pull < -Math.PI) pull += Math.PI * 2;
+      if (Math.abs(pull) > 0.01) offBy++;
+      let cone = want - me.a;
+      while (cone > Math.PI) cone -= Math.PI * 2;
+      while (cone < -Math.PI) cone += Math.PI * 2;
+      if (Math.abs(cone) > 1.2) outsideCone++;
+      if (Math.hypot(g.x - me.x, g.y - me.y) > 1600) tooFar++;
+    }
+    check(fired > 2, "the line found nothing to hook on " + (24 - fired) +
+          " of 24 headings — this spot proves nothing");
+    check(offBy === 0, offBy + " pulls did not point at the thing they hooked");
+    check(outsideCone === 0, outsideCone + " anchors were outside the firing cone");
+    check(tooFar === 0, tooFar + " anchors were further than the line carries");
+  }
+  // And it says so rather than doing nothing when there is nothing out there.
+  {
+    park(3000000, 3000000);          // the long dark, with the rocks cleared
+    cf.live().rocks.length = 0;
+    fit(0, "grappleline");
+    surv.slots[0].cd = 0;
+    me.vx = me.vy = 0;
+    const fired = cf.useDevice(0);
+    check(!fired || surv.grappleTo,
+          "the line reported a hook and hooked nothing");
+  }
+
+  /* ── the cloak: forgotten, not paused, and firing ends it ──────────────── */
+  park(120000, 40000);
+  fit(0, "silentrig");
+  const chaser = put({ x: me.x + 700, y: me.y + 100, angry: true });
+  const guard = { x: me.x + 500, y: me.y, vx: 0, vy: 0, hit: 0, awake: true,
+                  post: { x: me.x + 500, y: me.y }, id: "g-cloak" };
+  surv.drones.push(guard);
+  step(3);
+  check(chaser.angry && guard.awake,
+        "nothing was looking for you, so hiding from it proves nothing");
+  surv.slots[0].cd = 0;
+  check(cf.useDevice(0) === true, "the cloak would not go on");
+  step(3);
+  check(surv.cloak > 0, "the cloak went on and came straight off");
+  check(!chaser.angry, "a pirate on your tail can still see you");
+  check(!guard.awake, "a sentry can still see you");
+  /* Firing ends it — and pressed as a key rather than poked into `ship.input`,
+     because `readLocalInput` rebuilds input from the held set every frame. It
+     is also the honest test: the rule is about a round leaving the ship, and
+     only the real path fires one. */
+  const hadCloak = surv.cloak;
+  cf.hold("Space", true);
+  step(10);
+  cf.hold("Space", false);
+  check(hadCloak > 0 && surv.cloak === 0,
+        "you fired out of a cloak and stayed hidden");
+  /* And a held trigger against a cooldown is not a shot: the cloak must not end
+     on the key. Proved by cloaking again with the trigger already down. */
+  surv.slots[0].cd = 0;
+  cf.hold("Space", true);
+  cf.useDevice(0);
+  const onWithTrigger = surv.cloak;
+  step(1);
+  cf.hold("Space", false);
+  check(onWithTrigger > 0, "the cloak would not go on with the trigger held");
+
+  /* ── the EMP: everything electric, yours included ─────────────────────── */
+  park(120000, 40000);
+  fit(0, "empcharge");
+  fit(1, "grappleline");
+  const stunned = put({ x: me.x + 300, y: me.y, angry: true });
+  const sentry = { x: me.x + 250, y: me.y, vx: 0, vy: 0, hit: 0, awake: true,
+                   post: { x: me.x + 250, y: me.y }, id: "g-emp" };
+  surv.drones.push(sentry);
+  surv.mines.push({ x: me.x + 200, y: me.y, arm: 0, clear: true, life: 70, spin: 0 });
+  surv.scan.charge = 1;
+  step(2);
+  surv.slots[0].cd = 0;
+  check(cf.useDevice(0) === true, "the burst would not go off");
+  check(surv.mines.length === 0, "a mine inside the burst is still armed");
+  check(sentry.stun > 0, "a sentry inside the burst is still awake");
+  check(stunned.stun > 0, "a ship inside the burst still has its engine");
+  /* And your own hull. This is the cost, and it is the reason the part is a
+     decision rather than a button you press on entering every room. */
+  check(surv.slots[1].cd > 0, "the burst spared your own grapple");
+  check(surv.empSelf > 0, "the burst spared your own scanner");
+  check(surv.scan.charge === 0, "the scanner kept its charge through your burst");
+  // A stunned ship does nothing at all: no engine, no guns, no opinion.
+  {
+    const was = { x: stunned.x, y: stunned.y, shots: surv.shots.length };
+    stunned.vx = stunned.vy = 0;
+    step(20);
+    check(Math.hypot(stunned.x - was.x, stunned.y - was.y) < 1,
+          "a stunned ship flew " +
+          Math.round(Math.hypot(stunned.x - was.x, stunned.y - was.y)) + " units");
+    check(surv.shots.length <= was.shots, "a stunned ship got a shot away");
+  }
+  // And it comes back, still angry, which is what makes it a decision.
+  stunned.stun = 0.001; sentry.stun = 0.001; surv.empSelf = 0.001;
+  const back = { x: stunned.x, y: stunned.y };
+  step(40);
+  check(Math.hypot(stunned.x - back.x, stunned.y - back.y) > 1,
+        "a ship that came out of a stun never moved again");
+
+  console.log("  devices    " + devParts.length + " verbs on the four slots · " +
+              "a key each and rebindable · a sentry and a seeker take the decoy · " +
+              "a pirate takes the cargo · a mine does not care whose it is · " +
+              "the jump is a long way and a cold scanner · the line pulls you at " +
+              "what you are pointing at · the cloak is forgotten, not paused, and " +
+              "firing ends it · the burst takes your own four slots with it");
 }
 
 // ── one hold ─────────────────────────────────────────────────────────────

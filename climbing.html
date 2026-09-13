@@ -65,12 +65,14 @@
 <script src="projects/climbing/web-trips.js?v=3"></script>
 <script src="projects/climbing/climb-media.js?v=3"></script>
 <script src="projects/climbing/climb-ui.js?v=1"></script>
+<script src="projects/climbing/web-todo.js?v=1"></script>
 <script>
 (async () => {
   /* Both at once: one asks the log service what was climbed, the other what was
      filmed. In sequence the page waited for the sum of two round trips. */
   await Promise.all([
     WebTrips.merge(window.CLIMBING_DATA),
+    WebTodo.merge(window.CLIMBING_DATA),
     ClimbMedia.load()
   ]);
 

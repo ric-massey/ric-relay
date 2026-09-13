@@ -595,6 +595,87 @@ export class TrainingLog {
        Climbing days added from the web, as opposed to the ones built from
        climbs.md. Both end up on the climbing page; these are the ones that can
        be written from a phone at the crag. Public to read, token to write. */
+    /* ── /todo ──
+       The tick list. It was the last thing on the site still kept by hand: 80
+       routes typed into todo.md, which is why the same crag arrives spelled
+       PMRP, PMPR and PRMP and why adding a route meant opening an editor.
+
+       Shaped like /climb deliberately — GET for everyone, POST behind the same
+       token, `remove: true` to delete — so the client merge is the one
+       web-trips.js already does for days, and there is no second idea of how
+       writing to this service works.
+
+       The key is a slug of the name rather than a date, because a wish has no
+       date. Two routes can share a name at different crags, so the crag is in
+       the slug too. */
+    if (parts[0] === 'todo') {
+      const id = parts[1];
+
+      if (request.method === 'GET') {
+        const all = await this.state.storage.list({ prefix: 't:' });
+        const out = {};
+        for (const [k, v] of all) out[k.slice(2)] = v;
+        return json({ items: out }, 200, origin, { 'cache-control': 'public, max-age=30' });
+      }
+
+      if (request.method === 'POST') {
+        if (!authed()) return json({ error: 'nope' }, 401, origin);
+
+        let body;
+        try { body = await request.json(); } catch { return json({ error: 'body must be JSON' }, 400, origin); }
+
+        if (body.remove === true) {
+          if (!id) return json({ error: 'POST needs an id to remove' }, 400, origin);
+          await this.state.storage.delete('t:' + id);
+          return json({ ok: true, removed: id }, 200, origin);
+        }
+
+        const name = String(body.name || '').trim().slice(0, 160);
+        if (!name) return json({ error: 'a route needs a name' }, 400, origin);
+
+        const crag = String(body.crag || '').trim().slice(0, 120);
+        /* Same slug rule on both ends, so saving an edit lands on the row it
+           came from instead of quietly creating a second one. */
+        const slug = (id || (name + '-' + crag))
+          .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 120);
+        if (!slug) return json({ error: 'a route needs a name' }, 400, origin);
+
+        const num = (v, max) => {
+          const n = Math.floor(Number(v));
+          return Number.isFinite(n) && n > 0 ? Math.min(n, max) : null;
+        };
+        const existing = await this.state.storage.get('t:' + slug);
+        const entry = {
+          id: slug,
+          name,
+          grade: String(body.grade || '').slice(0, 24),
+          gradeKind: ['rope', 'boulder', 'other'].includes(body.gradeKind) ? body.gradeKind : null,
+          gradeRank: num(body.gradeRank, 999) || 0,
+          style: ['Sport', 'Trad', 'Boulder', 'Mixed', 'Aid'].includes(body.style) ? body.style : null,
+          crag,
+          wall: String(body.wall || '').trim().slice(0, 120),
+          pitches: num(body.pitches, 99),
+          lengthFt: num(body.lengthFt, 9999),
+          note: String(body.note || '').slice(0, 500),
+          done: body.done === true,
+          /* Set once, when it is first ticked — re-saving a done route must not
+             move the date it was done on. */
+          tickDate: body.done === true
+            ? (String(body.tickDate || '').slice(0, 10) || (existing && existing.tickDate) ||
+               new Date().toISOString().slice(0, 10))
+            : null,
+          result: ['onsight', 'flash', 'redpoint', 'sent'].includes(body.result) ? body.result : null,
+          added: (existing && existing.added) || new Date().toISOString(),
+          source: 'web',
+          updated: new Date().toISOString()
+        };
+        await this.state.storage.put('t:' + slug, entry);
+        return json({ ok: true, item: entry }, 200, origin);
+      }
+
+      return json({ error: 'method not allowed' }, 405, origin);
+    }
+
     if (parts[0] === 'climb') {
       if (date && !DAY.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400, origin);
 
@@ -914,7 +995,7 @@ function mediaRecord(obj) {
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo']);
 
 export default {
   async fetch(request, env, ctx) {

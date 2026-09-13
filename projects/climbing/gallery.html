@@ -56,7 +56,7 @@
   await Promise.all([WebTrips.merge(window.CLIMBING_DATA), ClimbMedia.load()]);
 
   const DATA = window.CLIMBING_DATA || {};
-  const { esc, fmt } = ClimbUI;
+  const { esc, fmt, crag } = ClimbUI;
   const view = document.getElementById("view");
 
   /* -- what counts as a climbing photo --
@@ -87,7 +87,7 @@
          off the same afternoon — a guess, repeated, and wrong three times. The
          crag is the thing actually known. */
       route: p.route || null,
-      where: p.area || (day && day.area) || null,
+      where: crag(p.area || (day && day.area) || "") || null,
       caption: p.caption || null,
     });
   });
@@ -98,7 +98,7 @@
     ClimbMedia.of(t.date).forEach(m => items.push({
       kind: m.kind === "video" ? "video" : "photo",
       src: m.src, date: t.date,
-      route: m.route || null, where: t.area || null, caption: m.caption || null,
+      route: m.route || null, where: crag(t.area || "") || null, caption: m.caption || null,
     }));
   });
 
@@ -110,6 +110,10 @@
     ["photo", "Photos", i => i.kind === "photo"],
   ];
   let filter = "all";
+  /* What the arrows walk. Prev/Next used to step through every item rather
+     than the ones on screen, so from "Video" the next tile was a photo the
+     filter had just hidden. */
+  let shownNow = items;
 
   const label = i => [fmt(i.date), i.route || i.where].filter(Boolean).join(" · ");
 
@@ -119,6 +123,7 @@
       `${esc(t)} ${items.filter(fn).length}</button>`).join("");
 
     const shown = items.filter((FILTERS.find(f => f[0] === filter) || FILTERS[0])[2]);
+    shownNow = shown;
     if (!shown.length) { view.innerHTML = '<p class="empty">Nothing here yet.</p>'; return; }
 
     /* Grouped by year, newest first, with repo photos and phone clips in one
@@ -135,7 +140,7 @@
       `<div class="head" style="margin-top:2.2rem"><h2>${esc(y)}</h2>` +
       `<span class="more" style="color:var(--soft)">${list.length}</span></div>` +
       `<div class="tiles">` + list.map(i => {
-        const n = items.indexOf(i);
+        const n = shown.indexOf(i);
         const inner = i.kind === "video"
           ? `<video src="${esc(i.src)}" preload="metadata" muted loop playsinline></video>` +
             `<span class="play" aria-hidden="true"></span>`
@@ -155,8 +160,8 @@
   let at = 0;
 
   function open(n) {
-    at = (n + items.length) % items.length;
-    const i = items[at];
+    at = (n + shownNow.length) % shownNow.length;
+    const i = shownNow[at];
     vmedia.innerHTML = i.kind === "video"
       ? `<video src="${esc(i.src)}" controls autoplay playsinline></video>`
       : `<img src="${esc(i.src)}" alt="${esc(label(i))}">`;

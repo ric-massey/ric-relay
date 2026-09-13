@@ -162,6 +162,51 @@ console.log('\nRULE  climbing days are public to read and token-gated to write')
   ok((await call('GET', '/climb/2026-08-16')).body === null, 'and it is gone');
 }
 
+console.log('\nRULE  the tick list is public to read and token-gated to write');
+{
+  const route = { name: 'Cobra Crack', grade: '5.14b', style: 'Trad',
+                  crag: 'Squamish', wall: 'Cirque of the Uncrackables', lengthFt: 100 };
+  ok((await call('POST', '/todo', route)).status === 401, 'a visitor cannot add to the list');
+
+  const w = await call('POST', '/todo', route, TOKEN);
+  ok(w.status === 200 && w.body.item.id === 'cobra-crack-squamish',
+     'the owner can, and the id is a slug of the name and the crag');
+
+  const all = await call('GET', '/todo');
+  ok(all.status === 200 && all.body.items['cobra-crack-squamish'].grade === '5.14b',
+     'and anyone can read the list back');
+  ok(all.body.items['cobra-crack-squamish'].source === 'web',
+     'tagged as web-added so it can be told from todo.md');
+
+  /* Two crags can have a route of the same name, so the crag is in the key. */
+  const other = await call('POST', '/todo',
+    { name: 'Cobra Crack', grade: '5.11', crag: 'Ijams Crag' }, TOKEN);
+  ok(other.body.item.id === 'cobra-crack-ijams-crag', 'the same name at another crag is its own row');
+  ok(Object.keys((await call('GET', '/todo')).body.items).length === 2, 'so both are on the list');
+
+  /* Saving an edit has to land on the row it came from rather than making a
+     second one — which is what a slug recomputed from an edited name would do. */
+  const edit = await call('POST', '/todo/cobra-crack-squamish',
+    { name: 'Cobra Crack', grade: '5.14', crag: 'Squamish' }, TOKEN);
+  ok(edit.body.item.id === 'cobra-crack-squamish' && edit.body.item.grade === '5.14',
+     'an edit posted to an id stays on that id');
+  ok(Object.keys((await call('GET', '/todo')).body.items).length === 2, 'and does not fork the row');
+
+  const tick = await call('POST', '/todo/cobra-crack-squamish',
+    { name: 'Cobra Crack', crag: 'Squamish', done: true, result: 'redpoint' }, TOKEN);
+  ok(tick.body.item.done === true && /^\d{4}-\d{2}-\d{2}$/.test(tick.body.item.tickDate),
+     'ticking one dates it');
+  const again = await call('POST', '/todo/cobra-crack-squamish',
+    { name: 'Cobra Crack', crag: 'Squamish', done: true, tickDate: '' }, TOKEN);
+  ok(again.body.item.tickDate === tick.body.item.tickDate,
+     'and re-saving it does not move the day it was done on');
+
+  ok((await call('POST', '/todo', { name: '' }, TOKEN)).status === 400, 'a nameless route is refused');
+  ok((await call('POST', '/todo/cobra-crack-squamish', { remove: true }, TOKEN)).status === 200,
+     'the owner can remove one');
+  ok(!(await call('GET', '/todo')).body.items['cobra-crack-squamish'], 'and it is gone');
+}
+
 console.log('\nRULE  guessing gets throttled, and the right password still works before that');
 {
   const t = fresh();
