@@ -238,15 +238,39 @@
     return packInts(runs);
   };
 
+  /* The most cells an import may expand to. A measured twenty round trips to
+     the abyss charts about 46,000, so this is twenty times the largest chart
+     anybody has actually made — it exists to stop a corrupt or hostile payload
+     asking for a set with a hundred million entries in it, not to limit play. */
+  const MAX_FOG_CELLS = 1e6;
+
+  /* Decoded into a temporary set and only swapped in once the whole payload has
+     passed. It used to clear `fog` on the first line and fill it as it went, so
+     a payload whose third run was corrupt returned `false` having already wiped
+     the chart the player was looking at — the failure path destroyed the thing
+     it was refusing to replace.
+
+     The bounds are checked too. Only `len` was, so a run could name a row
+     outside the lattice `cellKey` can address, and a few short runs could still
+     ask for more cells than there is memory to hold. */
   HUD.importFog = function (s) {
     const runs = unpackInts(s);
     if (!runs || runs.length % 3 !== 0) return false;
-    fog = new Set();
+    const next = new Set();
+    let total = 0;
     for (let i = 0; i < runs.length; i += 3) {
       const cy = runs[i], start = runs[i + 1], len = runs[i + 2];
-      if (!Number.isFinite(len) || len < 1 || len > 1e6) return false;
-      for (let k = 0; k < len; k++) fog.add(cellKey(start + k, cy));
+      if (!Number.isInteger(cy) || !Number.isInteger(start) ||
+          !Number.isInteger(len) || len < 1 ||
+          cy < -KEY_BASE || cy > KEY_BASE ||
+          start < -KEY_BASE || start + len > KEY_BASE) {
+        return false;
+      }
+      total += len;
+      if (total > MAX_FOG_CELLS) return false;
+      for (let k = 0; k < len; k++) next.add(cellKey(start + k, cy));
     }
+    fog = next;
     return true;
   };
 
