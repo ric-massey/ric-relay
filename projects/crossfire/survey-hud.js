@@ -4403,10 +4403,16 @@
     const recOf = k => crafts.find(c => c.key === k) || null;
     const ready = p => { const r = recOf(p.key); return !!(r && r.ready); };
 
-    /* A part is on this bench if it can be built or if you have laid eyes on
-       one. One you have never seen and cannot build is not a plan. */
+    /* A part is on this bench if it can be *built*. Nothing else.
+
+       It used to carry anything you had laid eyes on as well, so a page called
+       CRAFTING listed a dozen things it then had to explain you could not
+       craft — "bought at a station", "found out there, not made". That is a
+       catalogue wearing a workbench's name, and it makes the page a thing you
+       read rather than a thing you use: every tile on it is now a plan, and the
+       only question a tile can raise is whether you have the materials yet. */
     const shown = (st.parts || [])
-      .filter(p => p.craftable || p.seen || p.owned || p.fitted)
+      .filter(p => p.craftable)
       .map((p, i) => ({ p, i }))
       .sort((x, z) => (ready(z.p) - ready(x.p)) || (x.i - z.i))
       .map(e => e.p);
@@ -4543,11 +4549,13 @@
                 "right", enough ? 0.85 : 1);
         });
       } else {
-        fitText(pick.buyable ? "bought at a station — " + money(pick.cost)
-                             : (pick.where || "found out there, not made"),
+        /* Unreachable while the grid is only craftable parts, and kept as a
+           guard rather than deleted: `crafts` and `parts` are two lists built
+           from the same table, and the frame where they disagree should draw a
+           line of explanation rather than an empty card. */
+        fitText(pick.where || "not made here",
                 full.x + PAGE.PAD, cy + PAGE.HEAD + 46, SIZE.cap,
-                pick.buyable ? CASH_DIM : ICE, "left", 0.8,
-                full.w - PAGE.PAD * 2 - 210);
+                ICE, "left", 0.8, full.w - PAGE.PAD * 2 - 210);
       }
 
       // One button, and it says what it is rather than sitting there greyed.

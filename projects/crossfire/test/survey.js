@@ -7653,14 +7653,19 @@ const storeOf = (cf, key) => {
    tier is that they break rules the game spent twenty hours teaching. A
    countdown turns them into a checklist to finish.
 
-   And the bench lists **what you can build, plus what you have met** — nothing
-   else. It used to list all twenty-five parts on the argument that you cannot
-   plan towards something you have never been told exists, which is true of the
-   things you can build and the wrong shape for the rest: a bench listing ten
-   parts it will never make is a catalogue you have to read past. The exotics
-   were already carved out for that reason; this is the same rule applied to all
-   of them. Meet one — hold it, or stand at a shelf that stocks it — and it
-   appears, saying UNCRAFTABLE, which is the honest answer to why it is there. */
+   And the bench lists **what you can build**. Nothing else.
+
+   It listed all twenty-five parts once, on the argument that you cannot plan
+   towards something you have never been told exists — true of the things you
+   can build and the wrong shape for the rest. Then it listed the buildable ones
+   plus whatever you had met, which was better and still wrong: a page called
+   CRAFTING carrying a dozen tiles it has to explain you cannot craft is a
+   catalogue wearing a workbench's name, and you read past it either way.
+
+   Every tile is a plan now. The only question one can raise is whether you have
+   the materials yet, which is a question the page answers by arranging itself.
+   Meeting a part you cannot build puts it in the almanac and in the hold, where
+   it belongs — not here. */
 {
   const { cf } = boot("?debug=1&seed=343434");
   cf.start("survey", 1);
@@ -7695,25 +7700,30 @@ const storeOf = (cf, key) => {
           p.name + " can be built and is not on the bench");
   }
 
-  /* And nothing you can neither build nor have met. A part that is only for
-     sale two hundred thousand units away is not a plan. */
+  /* And **nothing else**. The bench used to carry anything you had laid eyes
+     on as well, so a page called CRAFTING listed a dozen things it then had to
+     explain you could not craft — "bought at a station", "found out there, not
+     made". That is a catalogue wearing a workbench's name. Every tile is a plan
+     now, and the only question a tile can raise is whether you have the
+     materials yet. */
   for (const q of before) {
     const p = all.find(x => x.key === q.key);
-    check(p.craftable || p.seen || p.owned || p.fitted,
-          p.name + " is on the bench and is neither buildable nor met");
+    check(p.craftable, p.name + " is on the bench and cannot be built");
   }
-  const unmet = all.filter(p => !p.craftable && !p.seen && !p.owned && !p.fitted);
-  check(unmet.length > 0,
-        "every part is already buildable or met — this proves nothing");
+  const cannot = all.filter(p => !p.craftable);
+  check(cannot.length > 0, "every part is craftable — this proves nothing");
 
-  // Meet one and it appears, with everything the page knows about it.
-  const met = unmet[0];
+  /* Meeting one does not put it there any more, and neither does owning one.
+     Both used to. */
+  const met = cannot[0];
   surv.seen.add(met.key);
+  surv.store[met.key] = 1;
   const after = shown();
-  check(after.some(q => q.key === met.key),
-        met.name + " has been met and is still not on the bench");
-  check(after.length === before.length + 1,
-        "meeting one part changed the list by " + (after.length - before.length));
+  check(!after.some(q => q.key === met.key),
+        met.name + " cannot be built and arrived on the bench anyway");
+  check(after.length === before.length,
+        "meeting a part changed the bench by " + (after.length - before.length));
+  delete surv.store[met.key];
 
   /* Docking is the other way of meeting one: a shelf you are standing at is a
      set of parts you now know exist. Every part the station stocks, and no
@@ -7815,7 +7825,7 @@ const storeOf = (cf, key) => {
   }
 
   console.log("  bench      " + before.length + " of " + all.length +
-              " parts on it — everything buildable, plus what you have met · " +
+              " parts on it — everything buildable and nothing else · " +
               exotics.length + " exotic kept off it until then · a shelf you " +
               "dock at teaches exactly what it stocks");
 }
