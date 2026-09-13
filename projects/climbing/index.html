@@ -359,7 +359,47 @@
       .topbar .up { margin-left: 0; }
       .media .m { width: 96px; height: 72px; }
     }
-  </style>
+  
+    /* ── the day rows, tightened ──
+       Every day was a white card with a border, a radius and 1.1rem of padding,
+       so 74 of them ran to about 9,500px — the archive was mostly whitespace
+       between days. A day is a row now: a rule under it, the date and the crag
+       on one line, and the peek kept to one line so the rows stay the same
+       height and the eye can run down them. The card only comes back when a
+       day is open, which is the one time it is a card. */
+    .trip {
+      background: transparent; border: 0; border-radius: 0; box-shadow: none;
+      border-bottom: 1px solid var(--line); padding: .1rem 0; margin: 0;
+    }
+    /* Centred, not baseline-aligned: the pitch tally is a smaller face, and on
+       a baseline the rows carrying one stood taller than the rows without, so
+       the run of days had a stutter in it. */
+    .trip > header.tophead {
+      padding: .62rem .25rem; gap: .55rem; flex-wrap: nowrap;
+      align-items: center; min-height: 2.9rem;
+    }
+    /* One fixed height for every shut day, so the run of them has no stutter
+       whatever a row happens to carry. */
+    .trip:not(.opened) > header.tophead { height: 3.1rem; overflow: hidden; }
+    .trip > header.tophead:hover { background: #faf8f2; }
+    .trip .date { font-size: .95rem; white-space: nowrap; }
+    .trip .area { white-space: nowrap; }
+    .trip .peek {
+      flex: 1 1 0; min-width: 0; margin: 0 .4rem 0 .5rem; color: var(--soft);
+      font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .trip .tally { margin-left: 0; white-space: nowrap; }
+    .trip .caret { margin-left: 0; }
+    .trip.opened {
+      background: var(--card); border: 1px solid var(--line); border-radius: 4px;
+      box-shadow: 0 0 0 3px rgba(58,90,64,.10); margin: .5rem 0; padding: .2rem .9rem .9rem;
+    }
+    .trip.opened > header.tophead { padding-left: 0; padding-right: 0; }
+    @media (max-width: 620px) {
+      .trip > header.tophead { flex-wrap: wrap; }
+      .trip .peek { flex-basis: 100%; margin: .15rem 0 0; }
+    }
+</style>
   <link rel="stylesheet" href="../../assets/climbing-nav.css">
   <link rel="stylesheet" href="../../assets/climbing.css">
 </head>

@@ -3,346 +3,209 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Climbing Gallery — Ric's Terminal</title>
-  <meta name="description" content="Photos and video from Ric's climbing trips, dated and tied to the route.">
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Ric's Terminal">
-  <meta property="og:title" content="Climbing Gallery — Ric's Terminal">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%233a5a40'/><text y='.85em' font-size='68' x='16'>🧗</text></svg>">
-  <style>
-    :root {
-      --bar: #3a5a40; --bg: #f4f1e9; --card: #fff; --ink: #26241f;
-      --soft: #6f6a5f; --line: #e2ddd0; --clay: #b14f2a; --star: #e0a021;
-    }
-    * { box-sizing: border-box; margin: 0; }
-    body {
-      background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.55;
-      font-family: "Helvetica Neue", Arial, sans-serif; padding-bottom: 5rem;
-    }
-    a { color: var(--clay); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-
-    .topbar { background: var(--bar); color: #eef3ee; }
-    .topbar .inner {
-      max-width: 1100px; margin: 0 auto; padding: .7rem 1.25rem;
-      display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
-    }
-    .topbar .brand { color: #fff; font-weight: 800; letter-spacing: .16em; font-size: .85rem; }
-    .topbar .brand:hover { text-decoration: none; color: #d7e6d7; }
-    .topbar .wing { color: #b8ccbb; font-size: .85rem; letter-spacing: .16em; }
-    .topbar .links { margin-left: auto; display: flex; gap: .15rem; }
-    .topbar .links a { color: #cfe0d1; font-size: .78rem; padding: .28rem .7rem; border-radius: 5px; }
-    .topbar .links a:hover { color: #fff; background: rgba(255,255,255,.12); text-decoration: none; }
-
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 1.6rem 1.25rem 3rem; }
-    .breadcrumb { color: var(--soft); font-size: .85rem; margin-bottom: .5rem; }
-    .breadcrumb a { color: var(--soft); }
-    h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: -.01em; }
-    .lede { color: var(--soft); margin: .3rem 0 1.2rem; }
-
-    .controls { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: .3rem; }
-    .search {
-      flex: 1; min-width: 220px; padding: .6rem .8rem; font: inherit; color: var(--ink);
-      background: var(--card); border: 1px solid var(--line); border-radius: 7px;
-    }
-    .search:focus { outline: 2px solid var(--bar); outline-offset: 1px; border-color: var(--bar); }
-    .chips { display: flex; gap: .3rem; flex-wrap: wrap; margin: .55rem 0; }
-    .chip {
-      font: inherit; font-size: .74rem; cursor: pointer; padding: .22rem .65rem;
-      border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--soft);
-    }
-    .chip:hover { border-color: var(--clay); color: var(--clay); }
-    .chip[aria-pressed="true"] { background: var(--clay); border-color: var(--clay); color: #fff; }
-    .count { color: var(--soft); font-size: .78rem; margin: .5rem 0 .8rem; }
-
-    .grid { display: grid; gap: .7rem; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
-    .shot {
-      position: relative; display: block; padding: 0; border: 1px solid var(--line);
-      border-radius: 8px; overflow: hidden; background: #ddd8cc; cursor: zoom-in;
-      aspect-ratio: 3 / 2; font: inherit; color: inherit; text-align: left;
-    }
-    .shot img, .shot video { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .shot .meta {
-      position: absolute; inset: auto 0 0 0; padding: .8rem .6rem .45rem;
-      color: #fff; font-size: .76rem; line-height: 1.3;
-      background: linear-gradient(transparent, rgba(20,18,14,.82));
-    }
-    .shot .meta b { display: block; font-size: .82rem; }
-    .shot .meta span { opacity: .82; font-size: .72rem; }
-    .shot .flag {
-      position: absolute; top: .45rem; right: .45rem; padding: .1rem .45rem;
-      border-radius: 999px; font-size: 0.69rem; font-weight: 700; letter-spacing: .06em;
-      text-transform: uppercase; background: rgba(20,18,14,.72); color: #fff;
-    }
-    .shot .flag.todo { background: #b14f2a; }
-    .shot:hover { border-color: var(--bar); }
-    .shot:focus-visible { outline: 2px solid var(--bar); outline-offset: 2px; }
-
-    .empty {
-      padding: 2.5rem 1.5rem; text-align: center; color: var(--soft);
-      background: var(--card); border: 1px dashed var(--line); border-radius: 8px;
-    }
-    .empty code { background: var(--bg); padding: .1rem .35rem; border-radius: 4px; }
-
-    /* lightbox */
-    dialog.viewer {
-      border: none; border-radius: 10px; padding: 0; max-width: min(94vw, 1000px);
-      max-height: 92vh; background: var(--card); color: var(--ink);
-    }
-    dialog.viewer::backdrop { background: rgba(20,18,14,.82); }
-    dialog.viewer img, dialog.viewer video { display: block; max-width: 100%; max-height: 70vh; margin: 0 auto; background: #000; }
-    dialog.viewer .info { padding: .9rem 1.1rem; border-top: 1px solid var(--line); }
-    dialog.viewer .info h2 { font-size: 1.05rem; }
-    dialog.viewer .info p { color: var(--soft); font-size: .85rem; margin-top: .2rem; }
-    dialog.viewer .did { margin-top: .5rem; font-size: .8rem; color: var(--soft); }
-    dialog.viewer .close {
-      position: absolute; top: .5rem; right: .6rem; font: inherit; cursor: pointer;
-      border: none; border-radius: 999px; width: 2rem; height: 2rem;
-      background: rgba(20,18,14,.62); color: #fff;
-    }
-    footer { margin-top: 2.5rem; color: var(--soft); font-size: .8rem; border-top: 1px solid var(--line); padding-top: 1rem; }
-    @media (max-width: 620px) { .topbar .links { margin-left: 0; } }
-  </style>
+  <title>Media — Climbing</title>
+  <meta name="description" content="Photos and video from Ric's days out, newest first.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%233a5a40'/><text y='.85em' font-size='68' x='16'>&#129503;</text></svg>">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../assets/climbing-nav.css">
+  <link rel="stylesheet" href="../../assets/climbing.css">
+  <style>
+    dialog.viewer{border:0;padding:0;background:var(--card);color:var(--ink);position:relative;
+      max-width:min(94vw,900px);border-radius:5px;box-shadow:0 30px 80px -30px rgba(20,18,14,.7)}
+    dialog.viewer::backdrop{background:rgba(20,18,14,.86)}
+    dialog.viewer img,dialog.viewer video{display:block;max-width:100%;max-height:74vh;margin:0 auto;background:#000}
+    dialog.viewer .info{padding:.85rem 1.1rem;border-top:1px solid var(--line);
+      display:flex;gap:.8rem;align-items:baseline;flex-wrap:wrap}
+    dialog.viewer .info b{font-size:1rem}
+    dialog.viewer .info span{color:var(--soft);font-size:.86rem}
+    dialog.viewer .close{position:absolute;top:.4rem;right:.55rem;border:0;cursor:pointer;
+      background:rgba(20,18,14,.6);color:#fff;font-size:1.3rem;line-height:1;
+      width:2rem;height:2rem;border-radius:50%}
+    dialog.viewer nav{margin-left:auto;display:flex;gap:.3rem}
+    dialog.viewer nav button{font:inherit;font-size:.85rem;cursor:pointer;background:var(--bg);
+      border:1px solid var(--line);border-radius:4px;padding:.25rem .7rem;color:var(--ink)}
+  </style>
 </head>
 <body>
-  <script src="../../assets/climbing-nav.js" data-nav="media"></script>
 
-  <div class="wrap">
-    <div class="breadcrumb"><a href="../../climbing.html">Climbing</a> &rsaquo; <a href="index.html">The Log</a> &rsaquo; Gallery</div>
-    <h1>Gallery</h1>
-    <p class="lede">Photos and video from the days out — each one tied to a climb, and to the
-      route where I know which one.</p>
+<script src="../../assets/climbing-nav.js" data-nav="media"></script>
 
-    <div class="controls">
-      <input type="search" class="search" id="search" autocomplete="off"
-             aria-label="Search the gallery"
-             placeholder="Search a route, a crag, a caption or a year">
-    </div>
-    <div class="chips" id="chips"></div>
-    <p class="count" id="count"></p>
-    <div id="grid" class="grid"></div>
+<div class="wrap">
+  <h1 class="ph">Media</h1>
+  <div class="filters" id="filters"></div>
+  <div id="view"></div>
+  <footer id="foot"></footer>
+</div>
 
-    <footer>Captions live in <code>photos.md</code> — run <code>import-photos.py</code> after adding files.
-      A photo joins the gallery once it has a route, or a date that lands on a day in the log.</footer>
-  </div>
+<dialog class="viewer" id="viewer" aria-label="Media viewer">
+  <button class="close" id="vclose" aria-label="Close">&times;</button>
+  <div id="vmedia"></div>
+  <div class="info" id="vinfo"></div>
+</dialog>
 
-  <dialog class="viewer" id="viewer">
-    <button class="close" id="close" aria-label="Close">✕</button>
-    <div id="viewer-media"></div>
-    <div class="info" id="viewer-info"></div>
-  </dialog>
+<script src="climbs-data.js"></script>
+<script src="photos-data.js"></script>
+<script src="climb-vocab.js?v=2"></script>
+<script src="climb-parse.js?v=2"></script>
+<script src="web-trips.js?v=2"></script>
+<script src="climb-media.js?v=2"></script>
+<script src="climb-ui.js?v=1"></script>
+<script>
+(async () => {
+  await Promise.all([WebTrips.merge(window.CLIMBING_DATA), ClimbMedia.load()]);
 
-  <script src="climbs-data.js"></script>
-  <script src="photos-data.js"></script>
-  <script src="climb-vocab.js?v=2"></script>
-  <script src="climb-parse.js?v=2"></script>
-  <script src="web-trips.js?v=2"></script>
-  <script src="climb-media.js?v=2"></script>
-  <script src="../relay-return.js" data-home="../../index.html"></script>
-  <script>
-  (async () => {
-    const grid = document.getElementById("grid");
-    const countEl = document.getElementById("count");
-    const chipsEl = document.getElementById("chips");
-    const searchEl = document.getElementById("search");
-    const viewer = document.getElementById("viewer");
+  const DATA = window.CLIMBING_DATA || {};
+  const { esc, fmt } = ClimbUI;
+  const view = document.getElementById("view");
 
-    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    const fmtDate = (iso) => {
-      if (!iso) return "Undated";
-      const [y, m, d] = iso.split("-").map(Number);
-      return `${MONTHS[m - 1]} ${d}, ${y}`;
-    };
-    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => (
-      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]
-    ));
+  /* -- what counts as a climbing photo --
+     photos/ holds 38 files named climbing-NN.jpg, and several of them are a
+     lake, a snowy road, a view from a trailhead: pictures taken on the same
+     phone on the same weekend, not pictures of climbing. Nothing in the file
+     says which is which, so the test is the one thing actually known -- the
+     media is tied to a day in the log. Anything that goes up through the add
+     form is tied to a day by construction, and a repo photo qualifies once its
+     date lands on a day he logged, or it names a route.
 
-    /* ── two piles of pictures, one gallery ──
-       photos-data.js is the imported set: files dropped into photos/, captioned
-       in photos.md, committed. The other pile is whatever went up from a phone
-       at the crag, which lives in R2 behind the log service and never touches
-       this repo.
+     Showing the whole folder instead is how a climbing gallery ends up leading
+     with a picture of a lake. */
+  const byDate = {};
+  (DATA.trips || []).forEach(t => { if (t.date) byDate[t.date] = t; });
 
-       This page was the last climbing page that couldn't see the second pile.
-       Every other one already merged them — the room shows the newest day's
-       clip, the deep log puts them on the day card — so the gallery, the page
-       whose entire job is "show me the pictures", was the one place a video you
-       shot that afternoon was missing from. It reads the same two sources they
-       do, and softly: no service, no uploads, and the imported set renders
-       exactly as it did before.
+  const items = [];
+  let loose = 0;
 
-       An upload arrives with no route and no caption — nothing at a crag asks
-       for them — so it lands under "Needs a label", which is what that filter
-       has always been for. */
-    async function uploaded() {
-      if (!window.ClimbMedia) return [];
-      const DATA = window.CLIMBING_DATA;
-      if (DATA && window.WebTrips) await WebTrips.merge(DATA);
-      const trips = (DATA && DATA.trips) || [];
-      const days = await ClimbMedia.load();
-      return Object.keys(days).flatMap((date) => {
-        const trip = trips.find((t) => t.date === date) || null;
-        return ClimbMedia.of(date).map((m) => ({
-          file: m.name || m.id,
-          src: m.src,
-          type: m.kind === "video" ? "video" : "photo",
-          date,
-          route: m.route || null,
-          caption: m.caption || null,
-          area: trip ? trip.area : null,
-          tripDate: trip ? trip.date : null,
-          approx: false,
-          /* What else went down that day — the gallery searches on it, so a
-             clip finds itself by the name of the route next to it. */
-          tripRoutes: trip ? trip.routes.map((r) => r.name).filter(Boolean) : [],
-          fromWeb: true
-        }));
-      });
-    }
+  (window.CLIMBING_PHOTOS || []).forEach(p => {
+    const day = p.tripDate && byDate[p.tripDate];
+    if (!day && !p.route) { loose++; return; }
+    items.push({
+      kind: p.type === "video" ? "video" : "photo",
+      src: p.src, date: p.tripDate || p.date,
+      /* Only a route the photo itself names. Falling back to the day's first
+         route labelled four different photos "Bathtub Mary" because they came
+         off the same afternoon — a guess, repeated, and wrong three times. The
+         crag is the thing actually known. */
+      route: p.route || null,
+      where: p.area || (day && day.area) || null,
+      caption: p.caption || null,
+    });
+  });
 
-    /* Newest first, undated last — the order photos-data.js already comes in,
-       kept for the merged list so nothing jumps about. */
-    const PHOTOS = [...(window.CLIMBING_PHOTOS || []), ...await uploaded()]
-      .sort((a, b) => (a.date ? 0 : 1) - (b.date ? 0 : 1) ||
-        String(b.date || "").localeCompare(String(a.date || "")));
+  /* Everything the phone sent up, which is attached to a day already. */
+  (DATA.trips || []).forEach(t => {
+    if (!t.date) return;
+    ClimbMedia.of(t.date).forEach(m => items.push({
+      kind: m.kind === "video" ? "video" : "photo",
+      src: m.src, date: t.date,
+      route: m.route || null, where: t.area || null, caption: m.caption || null,
+    }));
+  });
 
-    /* ── a climbing gallery, not a camera roll ──
-       A picture earns its place by being attached to a climb: a route named in
-       photos.md, or a date that lands on a day in the log — which means the
-       crag and everything climbed that day are known, and the search can find
-       the shot by the name of the route next to it.
+  items.sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
-       Everything else is a picture that happens to live in photos/. It isn't
-       deleted and it isn't hidden for good: the last chip brings the loose pile
-       up on its own, which is how you find the file that needs a line in
-       photos.md. But it is not what the gallery opens on, because a gallery of
-       climbing that is mostly undated snapshots is a camera roll. */
-    const linked = (p) => Boolean(p.route || p.tripDate);
-    const LINKED = PHOTOS.filter(linked);
-    const LOOSE = PHOTOS.filter((p) => !linked(p));
+  const FILTERS = [
+    ["all", "Everything", () => true],
+    ["video", "Video", i => i.kind === "video"],
+    ["photo", "Photos", i => i.kind === "photo"],
+  ];
+  let filter = "all";
 
-    if (!LINKED.length && !LOOSE.length) {
-      countEl.textContent = "";
-      grid.outerHTML = `<div class="empty">
-        <p>No photos registered yet.</p>
-        <p style="margin-top:.5rem">Drop files into <code>projects/climbing/photos/</code>
-        and run <code>python3 projects/climbing/import-photos.py</code>.</p></div>`;
-      return;
-    }
+  const label = i => [fmt(i.date), i.route || i.where].filter(Boolean).join(" · ");
 
-    let state = { q: "", year: null, area: null, only: null, loose: false };
-    const base = () => (state.loose ? LOOSE : LINKED);
+  function render() {
+    document.getElementById("filters").innerHTML = FILTERS.map(([id, t, fn]) =>
+      `<button data-f="${id}"${filter === id ? ' class="on"' : ""}>` +
+      `${esc(t)} ${items.filter(fn).length}</button>`).join("");
 
-    /* Off the pile actually on screen. A year chip that filters to nothing is
-       worse than no chip — and the loose pile's years are not the log's. */
-    function renderChips() {
-      const pile = base();
-      const years = [...new Set(pile.map((p) => p.date && p.date.slice(0, 4)).filter(Boolean))].sort().reverse();
-      const areas = [...new Set(pile.map((p) => p.area).filter(Boolean))].sort();
-      const chip = (label, key, value) =>
-        `<button class="chip" data-key="${key}" data-value="${esc(value)}" aria-pressed="${state[key] === value}">${esc(label)}</button>`;
-      chipsEl.innerHTML = [
-        ...years.map((y) => chip(y, "year", y)),
-        ...areas.map((a) => chip(a, "area", a)),
-        pile.some((p) => p.type === "video") ? chip("Video", "only", "video") : "",
-        state.loose ? "" : chip("No route yet", "only", "unnamed"),
-        LOOSE.length ? `<button class="chip" data-key="loose" data-value="1"
-          aria-pressed="${state.loose}">Not tied to a climb (${LOOSE.length})</button>` : "",
-      ].join("");
-    }
+    const shown = items.filter((FILTERS.find(f => f[0] === filter) || FILTERS[0])[2]);
+    if (!shown.length) { view.innerHTML = '<p class="empty">Nothing here yet.</p>'; return; }
 
-    function matches(p) {
-      const q = state.q.trim().toLowerCase();
-      if (state.year && (!p.date || p.date.slice(0, 4) !== state.year)) return false;
-      if (state.area && p.area !== state.area) return false;
-      if (state.only === "unnamed" && p.route) return false;
-      if (state.only === "video" && p.type !== "video") return false;
-      if (!q) return true;
-      return [p.route, p.caption, p.area, p.date, p.file, p.tripRoutes.join(" ")]
-        .filter(Boolean).join(" ").toLowerCase().includes(q);
-    }
-
-    function render() {
-      renderChips();
-      const pile = base();
-      const shown = pile.filter(matches);
-      const anyNamed = pile.some((p) => p.route);
-      countEl.textContent = state.loose
-        ? `${shown.length} of ${LOOSE.length} in photos/ with nothing to tie them to — ` +
-          `give one a route, or a date that matches a day out, in photos.md`
-        : `${shown.length} of ${LINKED.length} — ${
-            LINKED.filter((p) => p.route).length} named to a route, the rest to the day they were shot`;
-
-      grid.innerHTML = shown.map((p) => {
-        const i = PHOTOS.indexOf(p);
-        /* `#t=0.1` is what makes a video tile a picture. A poster-less <video>
-           parked at 0 s paints nothing — the send clips came through as blank
-           grey rectangles with a VIDEO badge on them — so the media fragment
-           seeks a tenth of a second in and the browser draws that frame. Same
-           trick the deep log uses on its thumbnails, and the same reason:
-           `preload="metadata"` gets a frame without pulling the whole clip,
-           which is the difference between a gallery opening and a gallery
-           downloading a hundred megabytes of .mov. */
-        const media = p.type === "video"
-          ? `<video src="${esc(p.src)}#t=0.1" muted playsinline preload="metadata"></video>`
-          : `<img src="${esc(p.src)}" alt="${esc(p.route || p.caption || "Climbing photo")}" loading="lazy">`;
-        const title = p.route || (p.area ? p.area : "Unlabelled");
-        const sub = [p.date ? fmtDate(p.date) : "no date yet", p.route ? p.area : null]
-          .filter(Boolean).join(" · ");
-        /* The badge only appears once it means something. With nothing yet
-           named in photos.md every single tile carried it, which is a gallery
-           that looks broken rather than a gallery with a job to do. */
-        const flag = p.type === "video" ? '<span class="flag">video</span>'
-          : (!p.route && anyNamed) ? '<span class="flag todo">no route yet</span>' : "";
-        return `<button class="shot" data-i="${i}">
-          ${media}${flag}
-          <span class="meta"><b>${esc(title)}</b><span>${esc(sub)}</span></span>
-        </button>`;
-      }).join("") || `<div class="empty">${state.loose
-        ? "Nothing matches that."
-        : "Nothing here yet — a photo joins the gallery once it has a route in " +
-          "<code>photos.md</code>, or a date that lands on a day in the log."}</div>`;
-    }
-
-    grid.addEventListener("click", (e) => {
-      const btn = e.target.closest(".shot");
-      if (!btn) return;
-      const p = PHOTOS[Number(btn.dataset.i)];
-      document.getElementById("viewer-media").innerHTML = p.type === "video"
-        ? `<video src="${esc(p.src)}" controls playsinline></video>`
-        : `<img src="${esc(p.src)}" alt="${esc(p.route || p.caption || "Climbing photo")}">`;
-      document.getElementById("viewer-info").innerHTML = `
-        <h2>${esc(p.route || "Not labelled yet")}</h2>
-        <p>${esc([p.date ? fmtDate(p.date) : "No date", p.area].filter(Boolean).join(" · "))}${
-          p.approx ? " <em>(date approximate)</em>" : ""}</p>
-        ${p.caption ? `<p>${esc(p.caption)}</p>` : ""}
-        ${p.tripRoutes.length ? `<div class="did">That day: ${esc(p.tripRoutes.join(" · "))}</div>` : ""}
-        ${!p.route ? `<div class="did">Add a route and caption for <code>${esc(p.file)}</code> in photos.md.</div>` : ""}`;
-      viewer.showModal();
+    /* Grouped by year, newest first, with repo photos and phone clips in one
+       grid -- which bucket a file lives in is not something anyone looking at
+       the page should have to think about. */
+    const years = [];
+    shown.forEach(i => {
+      const y = String(i.date).slice(0, 4);
+      const last = years[years.length - 1];
+      if (last && last.y === y) last.items.push(i); else years.push({ y, items: [i] });
     });
 
-    document.getElementById("close").addEventListener("click", () => viewer.close());
-    viewer.addEventListener("click", (e) => { if (e.target === viewer) viewer.close(); });
-    viewer.addEventListener("close", () => { document.getElementById("viewer-media").innerHTML = ""; });
+    view.innerHTML = years.map(({ y, items: list }) =>
+      `<div class="head" style="margin-top:2.2rem"><h2>${esc(y)}</h2>` +
+      `<span class="more" style="color:var(--soft)">${list.length}</span></div>` +
+      `<div class="tiles">` + list.map(i => {
+        const n = items.indexOf(i);
+        const inner = i.kind === "video"
+          ? `<video src="${esc(i.src)}" preload="metadata" muted loop playsinline></video>` +
+            `<span class="play" aria-hidden="true"></span>`
+          : `<img src="${esc(i.src)}" loading="lazy" alt="${esc(label(i))}">`;
+        return `<figure class="tile${i.kind === "video" ? " vid" : ""}" data-i="${n}" tabindex="0">` +
+               `${inner}<figcaption>${esc(label(i))}</figcaption></figure>`;
+      }).join("") + `</div>`).join("");
+  }
 
-    chipsEl.addEventListener("click", (e) => {
-      const chip = e.target.closest("[data-key]");
-      if (!chip) return;
-      const { key, value } = chip.dataset;
-      if (key === "loose") {
-        /* The two piles don't share a year or a crag, so carrying the other
-           set's filters across would land on an empty grid. */
-        state = { ...state, loose: !state.loose, year: null, area: null, only: null };
-      } else {
-        state[key] = state[key] === value ? null : value;
-      }
-      render();
-    });
-    searchEl.addEventListener("input", () => { state.q = searchEl.value; render(); });
+  /* -- the viewer --
+     One dialog reused by every tile rather than one per thumbnail: a page of
+     <video> elements all holding a connection is how a gallery with a few
+     years in it becomes unopenable on a phone. */
+  const dlg = document.getElementById("viewer");
+  const vmedia = document.getElementById("vmedia");
+  const vinfo = document.getElementById("vinfo");
+  let at = 0;
 
-    render();
-  })();
-  </script>
+  function open(n) {
+    at = (n + items.length) % items.length;
+    const i = items[at];
+    vmedia.innerHTML = i.kind === "video"
+      ? `<video src="${esc(i.src)}" controls autoplay playsinline></video>`
+      : `<img src="${esc(i.src)}" alt="${esc(label(i))}">`;
+    vinfo.innerHTML =
+      `<b>${esc(i.route || i.where || fmt(i.date, true))}</b>` +
+      `<span>${esc([fmt(i.date, true), i.route ? i.where : null, i.caption]
+        .filter(Boolean).join(" · "))}</span>` +
+      `<nav><button data-step="-1">&lsaquo; Prev</button>` +
+      `<button data-step="1">Next &rsaquo;</button></nav>`;
+    if (!dlg.open) dlg.showModal();
+  }
+
+  view.addEventListener("click", e => {
+    const t = e.target.closest("[data-i]");
+    if (t) open(+t.dataset.i);
+  });
+  view.addEventListener("keydown", e => {
+    const t = e.target.closest("[data-i]");
+    if (t && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); open(+t.dataset.i); }
+  });
+  vinfo.addEventListener("click", e => {
+    const b = e.target.closest("[data-step]");
+    if (b) open(at + +b.dataset.step);
+  });
+  document.getElementById("vclose").addEventListener("click", () => dlg.close());
+  /* Stop the clip when the dialog goes, or it plays on out of sight. */
+  dlg.addEventListener("close", () => { vmedia.innerHTML = ""; });
+  dlg.addEventListener("keydown", e => {
+    if (e.key === "ArrowRight") { e.preventDefault(); open(at + 1); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); open(at - 1); }
+  });
+
+  document.getElementById("filters").addEventListener("click", e => {
+    const b = e.target.closest("[data-f]");
+    if (b) { filter = b.dataset.f; render(); }
+  });
+
+  render();
+
+  document.getElementById("foot").innerHTML =
+    "Everything here is tied to a day in the log. " +
+    (loose > 0
+      ? `${loose} file${loose === 1 ? "" : "s"} in <code>photos/</code> ` +
+        `${loose === 1 ? "is" : "are"} not — no date, or a date that lands on no day out — ` +
+        `so ${loose === 1 ? "it stays" : "they stay"} off the page. ` +
+        `Attaching one to a day in <a href="add.html">the add form</a> brings it in.`
+      : "");
+})();
+</script>
+
 </body>
 </html>
