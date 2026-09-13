@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>To-do list — Climbing</title>
-  <meta name="description" content="Ric's climbing to-do list — what he wants to get on, by crag.">
+  <title>To-do — Climbing</title>
+  <meta name="description" content="Ric's climbing to-do — what he wants to get on, by crag.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%233a5a40'/><text y='.85em' font-size='68' x='16'>🧗</text></svg>">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
@@ -16,17 +16,17 @@
 <script src="../../assets/climbing-nav.js" data-nav="list"></script>
 
 <div class="wrap">
-  <h1 class="ph">To-do list</h1>
+  <h1 class="ph">To-do</h1>
 
   <input type="search" class="search" id="search" autocomplete="off"
-         aria-label="Search the to-do list" placeholder="Route, crag, grade…">
+         aria-label="Search the to-do" placeholder="Route, crag, grade…">
   <div class="filters" id="filters"></div>
 
   <div id="view"></div>
   <p class="count" id="ownerlinks"></p>
 
   <footer>
-    Built from <code>todo.md</code>. Crags that are spelled more than one way are folded together.
+    Hardest first. Crags spelled more than one way are folded together.
   </footer>
 </div>
 
@@ -80,7 +80,7 @@
       [t.name, t.grade, t.location, t.style].join(" ").toLowerCase().includes(q));
 
     if (!rows.length) {
-      view.innerHTML = '<p class="empty">Nothing on the to-do list matches that.</p>';
+      view.innerHTML = '<p class="empty">Nothing on the to-do matches that.</p>';
       return;
     }
 
@@ -113,7 +113,11 @@
     });
 
     const groupHTML = ([c, items]) => {
-      items.sort((a, b) => (a.t.gradeRank || 0) - (b.t.gradeRank || 0));
+      /* Hardest first. Easiest-first read like a warm-up order, which is not
+         what this page is for — the thing you want off it most is the thing
+         you came to look at. Ungraded rows fall to the bottom rather than
+         ranking as zero and leading. */
+      items.sort((a, b) => (b.t.gradeRank || 0) - (a.t.gradeRank || 0));
       return `<div class="grp"><div class="crag">${esc(c)} <i>· ${items.length}</i></div>` +
         items.map(({ t, wall }) => {
           const d = t.tried && t.tried.days;
@@ -151,7 +155,7 @@
   Owner.init({ host: WebTodo.host(), onChange: paintOwner });
   function paintOwner() {
     document.getElementById("ownerlinks").innerHTML =
-      Owner.on() ? '<a href="add.html#route">+ Add a route to the to-do list →</a>' : "";
+      Owner.on() ? '<a href="add.html#route">+ Add a route →</a>' : "";
   }
   paintOwner();
 })();

@@ -21,7 +21,7 @@
   const TABS = [
     ['home',  'Home',     'climbing.html'],
     ['log',   'Log',      'projects/climbing/index.html'],
-    ['list',  'To-do list', 'projects/climbing/list.html'],
+    ['list',  'To-do',    'projects/climbing/list.html'],
     ['stats', 'Stats',    'projects/climbing/stats.html'],
     ['media', 'Media',    'projects/climbing/gallery.html'],
     ['board', 'Woodshed', 'projects/climbing/board.html'],
