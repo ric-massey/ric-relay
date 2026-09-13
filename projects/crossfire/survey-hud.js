@@ -709,7 +709,12 @@
 
   function closeButton(act, tone) {
     const { SCREEN_W, SCREEN_H } = api;
-    button(api.touchOnly ? "CLOSE" : "CLOSE  [ESC]",
+    /* "CLOSE", both platforms. It was "CLOSE  [ESC]" on a desk, and 150 wide
+       leaves `fitText` 132 to say it in — the label needs about 138, so every
+       page in the mode carried "CLOSE  [ES…" in the top right. The key still
+       works; it just does not need announcing on a button that says what it
+       does. */
+    button("CLOSE",
            SCREEN_W - PAGE.EDGE - NAV_CLOSE_W / 2, NAV_Y(),
            NAV_CLOSE_W, 38, (tone || PLACE_TONE).bright, act);
   }
@@ -3667,7 +3672,11 @@
     });
 
     const bodyY = TAB_Y + TAB_H / 2 + PAGE.STEP;
-    const bodyH = SCREEN_H - bodyY - 22;
+    /* A page with a footer keeps its last row clear of it. Only a world has
+       one — "the atmosphere can be skimmed for water" — and it was drawn along
+       the bottom edge straight through SELL ALL CARGO, which is a collision
+       that could only ever appear on a planet. */
+    const bodyH = SCREEN_H - bodyY - (footer ? 44 : 22);
 
     if (shopTab === "sell") {
       /* ── what they will take off you ──────────────────────────────────────
