@@ -5099,8 +5099,19 @@
   // its diorama is a card, and the menu still works.
   const menuArt = window.CrossfireMenu || null;
 
+  /* ── where the book lives ─────────────────────────────────────────────────
+     `v4` is the first format that says its own version inside the file. `v3` is
+     read once, migrated and left alone — an old build opened after a new one
+     should still find the save it wrote, so the old key is never deleted.
+
+     The backup is the last book that parsed *and* validated. It is written on
+     the way past, before the primary is replaced, so a save that goes wrong
+     leaves one good book behind rather than none. */
   const SURVEY_STORE  = LEV_ONLY ? "crossfire.survey.levlab"
-                                 : "crossfire.survey.v3";
+                                 : "crossfire.survey.v4";
+  const SURVEY_BACKUP = SURVEY_STORE + ".backup";
+  const SURVEY_LEGACY = LEV_ONLY ? null : "crossfire.survey.v3";
+  const SAVE_VERSION  = 4;
   const CHUNK         = 2600;   // world units a side
   const CHUNK_LOAD    = 2;      // chunks kept either side of the ship: a 5×5 block
   /* Wider, and shifted forward, while the light drive is running. The box has to
@@ -7052,6 +7063,18 @@
       read() {
         try { return localStorage.getItem(SURVEY_STORE); } catch (_) { return null; }
       },
+      // The last book that parsed and validated, and the one the old key holds.
+      readBackup() {
+        try { return localStorage.getItem(SURVEY_BACKUP); } catch (_) { return null; }
+      },
+      readLegacy() {
+        if (!SURVEY_LEGACY) return null;
+        try { return localStorage.getItem(SURVEY_LEGACY); } catch (_) { return null; }
+      },
+      writeBackup(s) {
+        try { localStorage.setItem(SURVEY_BACKUP, s); return true; }
+        catch (_) { return false; }
+      },
       /* False when it did not keep — private browsing, or a full quota. The
          caller is the save button, which has to be able to say so rather than
          claiming a save that never happened. */
@@ -7059,7 +7082,10 @@
         try { localStorage.setItem(SURVEY_STORE, s); return true; }
         catch (_) { return false; }
       },
-      wipe() { try { localStorage.removeItem(SURVEY_STORE); } catch (_) {} }
+      wipe() {
+        try { localStorage.removeItem(SURVEY_STORE); } catch (_) {}
+        try { localStorage.removeItem(SURVEY_BACKUP); } catch (_) {}
+      }
     };
   })();
 
@@ -7068,8 +7094,34 @@
      the state every existing player is in and stays in. */
   let bookMirror = null;
 
-  function loadSurveyBook() {
-    const empty = { seed: 0, at: null, savedAt: 0, found: [], fog: "", cash: 0, deaths: 0,
+  /* ── what a save is, in four pieces ───────────────────────────────────────
+     Reading a book used to be one function that parsed, migrated, validated,
+     invented defaults and talked to storage, all inside one `try`. That shape
+     has a specific failure: a `ReferenceError` in the validator — a programmer's
+     bug — comes out of the same catch as a hand-edited file, and the game
+     answers both by starting a fresh survey. Somebody's afternoon and a typo of
+     mine are not the same event and must not have the same consequence.
+
+     So: `parseSurveyBook` turns text into an object, `migrateSurveyBook` brings
+     an older one up to the current version, `validateSurveyBook` turns an
+     object into a book this game will run, and `loadSurveyBook` decides what to
+     do when one of them says no. Each throws a `SaveError` for the failures a
+     *file* can have. Anything else is mine and is allowed to escape. */
+  const SAVE_INVALID_JSON       = "SAVE_INVALID_JSON";
+  const SAVE_INVALID_SCHEMA     = "SAVE_INVALID_SCHEMA";
+  const SAVE_UNSUPPORTED_VERSION = "SAVE_UNSUPPORTED_VERSION";
+
+  class SaveError extends Error {
+    constructor(code, why) {
+      super(why || code);
+      this.name = "SaveError";
+      this.code = code;
+    }
+  }
+
+  function freshBook() {
+    return { version: SAVE_VERSION,
+             seed: 0, at: null, savedAt: 0, found: [], fog: "", cash: 0, deaths: 0,
                     rep: {}, selected: null,
                     ship: "skiff", owned: ["skiff"], taught: [],
                     water: WATER_FULL, food: FOOD_FULL,
@@ -7079,14 +7131,50 @@
                     slots: [], store: {}, battleAge: {}, memorials: [],
                     dropped: [], coilFired: false,
                     friends: [], grudges: [],
-                    alert: { water: { taught: 0 }, food: { taught: 0 } } };
-    try {
-      const raw = bookStore.read();
-      if (!raw) return empty;
-      const b = JSON.parse(raw);
-      if (!b || typeof b !== "object") return empty;
+             alert: { water: { taught: 0 }, food: { taught: 0 } } };
+  }
+
+  function parseSurveyBook(raw) {
+    let b;
+    try { b = JSON.parse(raw); }
+    catch (err) { throw new SaveError(SAVE_INVALID_JSON, err.message); }
+    if (!b || typeof b !== "object" || Array.isArray(b)) {
+      throw new SaveError(SAVE_INVALID_SCHEMA, "a book must be an object");
+    }
+    return b;
+  }
+
+  /* One step a version, written out rather than inferred from which fields
+     happen to be missing. A book with no `version` is a v3 — every book written
+     before the field existed — and v3 to v4 is a rename of the storage key and
+     nothing else, so the migration is a stamp. Later steps go here in the same
+     shape, and each one is a place to put a test fixture.
+
+     A version this build has never heard of is refused rather than guessed at:
+     a newer game may have written fields this one would quietly drop, and
+     dropping them is how a save gets smaller every time an old build opens it. */
+  function migrateSurveyBook(b) {
+    let v = Number.isFinite(b.version) ? Math.floor(b.version) : 3;
+    if (v > SAVE_VERSION) {
+      throw new SaveError(SAVE_UNSUPPORTED_VERSION,
+                          "book is version " + v + ", this build reads " +
+                          SAVE_VERSION);
+    }
+    if (v < 3) {
+      throw new SaveError(SAVE_UNSUPPORTED_VERSION, "book is version " + v);
+    }
+    if (v === 3) { b = { ...b, version: 4 }; v = 4; }
+    return b;
+  }
+
+  /* Every field, checked. A book is a file on somebody's disk and a hand-edited
+     one must not be able to put the ship somewhere the streamer cannot build. */
+  function validateSurveyBook(b) {
+    const empty = freshBook();
+    {
       const strs = v => Array.isArray(v) ? v.filter(k => typeof k === "string") : [];
       return {
+        version: SAVE_VERSION,
         seed: Number(b.seed) || 0,
         /* Where the run left off. Validated like everything else in here: a book
            is a file on somebody's disk, and a hand-edited one must not be able to
@@ -7272,20 +7360,62 @@
                      .slice(0, 64)
           : []
       };
-    } catch (err) {
-      /* A book that cannot be read is a *fresh sector* — the right behaviour for
-         a save file somebody has hand-edited, and a catastrophe when the reason is
-         a typo of mine. This catch swallowed a `ReferenceError` for an entire
-         refactor: one line of the returned object still named a variable that had
-         been deleted, so every resume in the game silently started over and the
-         tests reported it as four unrelated failures about reputation and parts.
-
-         So it says so, when anybody is looking. Only under `?debug=1`, because a
-         player whose save is genuinely corrupt should get a new sector and not a
-         console full of somebody else's problem. */
-      if (debugOn) console.warn("survey: the book would not read — " + err.message);
-      return empty;
     }
+  }
+
+  /* The last book known to be readable — the one that loaded at boot, or the
+     one this session last wrote. It becomes the backup on the way past, so the
+     copy kept is always one that parsed and validated rather than whatever
+     happened to be in the slot. */
+  let lastGoodBook = null;
+
+  const readSurveyBook = raw =>
+    validateSurveyBook(migrateSurveyBook(parseSurveyBook(raw)));
+
+  /* The loader reads through this rather than calling `readSurveyBook` by name.
+     One seam, and it exists for one reason: the guarantee that matters most in
+     here — that a bug in the reader is not treated as a corrupt save — is
+     otherwise impossible to stage, because staging it means having the bug. A
+     harness can replace `read` with something that throws the way a mistake of
+     mine throws, and watch it come back out. */
+  const bookHooks = { read: readSurveyBook };
+
+  /* ── loading one ──────────────────────────────────────────────────────────
+     Primary, then the backup, then the book an older build left under the old
+     key. A fresh survey is the last answer, not the first.
+
+     The distinction that matters is in the catch: a `SaveError` is something
+     wrong with a *file* and the next candidate gets a turn. Anything else is a
+     bug in this file and is rethrown — it used to be swallowed here, and it
+     swallowed a `ReferenceError` for an entire refactor, during which every
+     resume in the game silently started a new sector and the tests reported it
+     as four unrelated failures about reputation and parts. A save that looks
+     lost because of a typo of mine is the worst outcome this function has. */
+  function loadSurveyBook() {
+    const tries = [
+      ["the save",    () => bookStore.read()],
+      ["the backup",  () => bookStore.readBackup && bookStore.readBackup()],
+      ["the v3 save", () => bookStore.readLegacy && bookStore.readLegacy()]
+    ];
+    for (const [what, get] of tries) {
+      let raw = null;
+      try { raw = get(); } catch (_) { raw = null; }
+      if (!raw) continue;
+      try {
+        const book = bookHooks.read(raw);
+        lastGoodBook = raw;
+        return book;
+      } catch (err) {
+        if (!(err instanceof SaveError)) throw err;
+        /* Only under `?debug=1`: a player whose save is genuinely corrupt should
+           get a new sector, not a console full of somebody else's problem. */
+        if (debugOn) {
+          console.warn("survey: " + what + " would not read — " +
+                       err.code + " — " + err.message);
+        }
+      }
+    }
+    return freshBook();
   }
 
   /* The book as an object. Kept apart from writing it because the account layer
@@ -7306,6 +7436,10 @@
       ? { x: Math.round(me.x), y: Math.round(me.y), a: +me.a.toFixed(3) }
       : null;
     return {
+        /* The format, said out loud. Before this, a book's version had to be
+           inferred from which fields were missing — which works right up to the
+           first change that adds nothing and removes nothing. */
+        version: SAVE_VERSION,
         seed: surv.seed,
         at,
         /* When. Two saves of the same sector — this browser's and the one on
@@ -7362,9 +7496,20 @@
   function saveSurveyBook() {
     if (!surv) return false;
     const s = JSON.stringify(surveyBook());
+    /* Keep the one that is about to be replaced. `lastGoodBook` is a book that
+       has already parsed and validated — never whatever happens to be sitting
+       in the slot — because copying a corrupt primary into the backup turns one
+       bad save into two and leaves nothing to fall back to. */
+    if (lastGoodBook && lastGoodBook !== s && bookStore.writeBackup) {
+      bookStore.writeBackup(lastGoodBook);
+    }
     const kept = bookStore.write(s);
     // Told, never waited for. See `bookStore`.
     if (bookMirror) bookMirror.push(s);
+    /* Valid by construction: it is this session's own live state, serialised.
+       Only once the store actually kept it — a write that failed on quota has
+       not replaced anything, so the previous book is still the primary. */
+    if (kept) lastGoodBook = s;
     return kept;
   }
 
@@ -23059,6 +23204,20 @@
          than a place a ship ends up, so a harness needs to be able to read it
          and to press both of the mode's buttons. */
       survey: () => surv,
+      /* The save pipeline, in the four pieces it is made of, so a harness can
+         drive each one on a fixture instead of through a whole game. */
+      book: {
+        parse: parseSurveyBook,
+        migrate: migrateSurveyBook,
+        validate: validateSurveyBook,
+        read: readSurveyBook,
+        hooks: bookHooks,
+        load: loadSurveyBook,
+        fresh: freshBook,
+        version: SAVE_VERSION,
+        keys: { store: SURVEY_STORE, backup: SURVEY_BACKUP, legacy: SURVEY_LEGACY },
+        isSaveError: e => e instanceof SaveError
+      },
       // Which places deal in find-only parts. See `takesExotics`.
       exotics: (x, y) => takesExotics(x, y),
       partResale: (key, place) => partResale(moduleSpec(key), place),
