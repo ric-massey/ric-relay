@@ -657,6 +657,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `test/menu.js` | The two lanes, the card row's arithmetic, and that every card starts what it advertises |
 | `test/ui.js` | Every control on every page, at four shapes of glass, on a desk and on a phone: on the screen, big enough to press, and not buried under something drawn later |
 | `test/biomes.js` | The geography of a sector, measured: how many patches are in reach, how big one is, and what a line out of home crosses. Takes a seed |
+| `test/rocks.js` | Which rocks might be touching: the real broad-phase finder lifted out of the game and run against all-pairs on the same fields. Counts, never milliseconds |
 | `test/save.js` | The book: parse, migrate, validate and the loader that decides what to do when one says no. An old save lands where a new one does, a future one is refused, a corrupt primary falls back to the backup, and a bug in the reader is not a corrupt save |
 | `test/fog.js` | The chart's round trip through storage, on its own and in milliseconds: a refused import may not damage the chart it declined to replace |
 | `test/warrens.js` | The cave region: that its rock agrees with itself across a chunk line, that the passages join up, and that nothing — the ship included — is ever left inside solid rock. Takes a seed |
@@ -673,6 +674,7 @@ node projects/crossfire/test/survey.js
 node projects/crossfire/test/menu.js
 node projects/crossfire/test/ui.js
 node projects/crossfire/test/biomes.js
+node projects/crossfire/test/rocks.js
 node projects/crossfire/test/save.js
 node projects/crossfire/test/fog.js
 node projects/crossfire/test/warrens.js

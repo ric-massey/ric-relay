@@ -3874,15 +3874,66 @@
     }
   }
 
+  /* ── which rocks might be touching ────────────────────────────────────────
+     Finding the pairs used to be every rock against every other rock, which is
+     n(n-1)/2 comparisons: fine for the few dozen a Battle Royale arena holds,
+     and quadratic in a Survey field that keeps growing. Most of those pairs are
+     rocks that are nowhere near one another.
+
+     So the rocks go into a grid first and only near neighbours are offered up.
+     The cell is two of the largest radius in the set, which is the thing that
+     makes this exact rather than approximate: two rocks can only overlap if
+     they are within `ra + rb` of each other, that is at most `2 * maxR`, that
+     is at most one cell — so a pair that is really touching is always in the
+     same cell or an adjacent one, and can never be missed.
+
+     Pairs are visited by index, `j` only ever greater than `i`, so a pair that
+     two cells both offer is still resolved once. The collision maths below is
+     untouched; this changes only which pairs it is asked about.
+
+     `HUD` debug counts what it considered, so the saving is a measurement
+     rather than a claim — see `__cf.rockPairs`. */
+  let rockCandidates = 0;
+  function forEachRockPair(list, visit) {
+    const n = list.length;
+    if (n < 2) return;
+    let maxR = 0;
+    for (let i = 0; i < n; i++) if (list[i].r > maxR) maxR = list[i].r;
+    const cell = Math.max(1, maxR * 2);
+    const buckets = new Map();
+    for (let i = 0; i < n; i++) {
+      const k = Math.floor(list[i].x / cell) + "," + Math.floor(list[i].y / cell);
+      const b = buckets.get(k);
+      if (b) b.push(i); else buckets.set(k, [i]);
+    }
+    for (let i = 0; i < n; i++) {
+      const a = list[i];
+      const cx = Math.floor(a.x / cell), cy = Math.floor(a.y / cell);
+      for (let ox = -1; ox <= 1; ox++) {
+        for (let oy = -1; oy <= 1; oy++) {
+          const b = buckets.get((cx + ox) + "," + (cy + oy));
+          if (!b) continue;
+          for (let m = 0; m < b.length; m++) {
+            const j = b[m];
+            // Each unordered pair once, and never a rock with itself.
+            if (j <= i) continue;
+            rockCandidates++;
+            visit(i, j);
+          }
+        }
+      }
+    }
+  }
+
   function resolveRockCollisions() {
     if ((!mode.closing && !mode.survey) || rocks.length < 2) return;
-    for (let i = 0; i < rocks.length; i++) {
-      for (let j = i + 1; j < rocks.length; j++) {
+    forEachRockPair(rocks, (i, j) => {
+      {
         const a = rocks[i], b = rocks[j];
         const min = a.r + b.r;
         let dx = b.x - a.x, dy = b.y - a.y;
         const d2 = dx * dx + dy * dy;
-        if (d2 >= min * min) continue;
+        if (d2 >= min * min) return;
         let d = Math.sqrt(d2);
         if (d < 0.001) {
           dx = (a.id < b.id ? 1 : -1);
@@ -3904,7 +3955,7 @@
           b.vx += nx * impulse; b.vy += ny * impulse;
         }
       }
-    }
+    });
   }
 
   // Whose shots can hurt whom. Survival reads its setup toggle; Battle Royale
@@ -5111,7 +5162,7 @@
                                  : "crossfire.survey.v4";
   const SURVEY_BACKUP = SURVEY_STORE + ".backup";
   const SURVEY_LEGACY = LEV_ONLY ? null : "crossfire.survey.v3";
-  const SAVE_VERSION  = 4;
+  const SAVE_VERSION  = 5;
   const CHUNK         = 2600;   // world units a side
   const CHUNK_LOAD    = 2;      // chunks kept either side of the ship: a 5×5 block
   /* Wider, and shifted forward, while the light drive is running. The box has to
@@ -7119,6 +7170,75 @@
     }
   }
 
+  /* ── what a run has permanently changed ───────────────────────────────────
+     Survey's world is a function of its seed, so anything you *consume* has to
+     be remembered outside the chunk or flying away would restock the sector
+     behind you. Two sets do it: caches opened and hulks stripped, each id a
+     chunk and an index — "-43,18c0", "-43,18h2".
+
+     As a list of those strings, the save grows without bound and repeats the
+     chunk key once per object: four things looted in one chunk wrote the
+     coordinates four times. Per chunk instead, with the indices as numbers, so
+     the key is written once however much of that chunk you empty.
+
+     Truncating the list was never an option. A dropped id is a cache that
+     refills or a hulk that comes back — the sector quietly un-remembering what
+     you did to it — so this is a change of shape and nothing is discarded.
+
+     The runtime keeps the flat Sets. They are asked `has(id)` for every object
+     of every chunk that streams in, and a nested lookup there would be paying
+     in the hot path for a saving that belongs in the file. */
+  const MUT_ID = /^(-?\d+,-?\d+)([ch])(\d+)$/;
+
+  function packMutations(opened, stripped) {
+    const cells = {};
+    // Ids that are not chunk-and-index: the Leviathan's holds are "lev0" and
+    // belong to a thing rather than to a place. Kept verbatim rather than
+    // dropped, which is the whole rule here.
+    const odd = { c: [], h: [] };
+    const put = (set, field) => {
+      for (const id of set || []) {
+        const m = MUT_ID.exec(id);
+        if (!m) { odd[field].push(id); continue; }
+        const cell = cells[m[1]] || (cells[m[1]] = {});
+        (cell[field] || (cell[field] = [])).push(+m[3]);
+      }
+    };
+    put(opened, "c");
+    put(stripped, "h");
+    for (const k of Object.keys(cells)) {
+      for (const f of ["c", "h"]) {
+        if (cells[k][f]) cells[k][f].sort((a, b) => a - b);
+      }
+    }
+    const out = { cells };
+    if (odd.c.length || odd.h.length) out.odd = odd;
+    return out;
+  }
+
+  function unpackMutations(mut) {
+    const opened = [], stripped = [];
+    if (!mut || typeof mut !== "object") return { opened, stripped };
+    const cells = mut.cells && typeof mut.cells === "object" ? mut.cells : {};
+    for (const k of Object.keys(cells)) {
+      if (!/^-?\d+,-?\d+$/.test(k)) continue;
+      const cell = cells[k];
+      if (!cell || typeof cell !== "object") continue;
+      for (const [field, into] of [["c", opened], ["h", stripped]]) {
+        const list = Array.isArray(cell[field]) ? cell[field] : [];
+        for (const i of list) {
+          if (Number.isInteger(i) && i >= 0 && i < 4096) into.push(k + field + i);
+        }
+      }
+    }
+    const odd = mut.odd && typeof mut.odd === "object" ? mut.odd : {};
+    for (const [field, into] of [["c", opened], ["h", stripped]]) {
+      const list = Array.isArray(odd[field]) ? odd[field] : [];
+      for (const id of list) if (typeof id === "string") into.push(id.slice(0, 40));
+    }
+    return { opened, stripped };
+  }
+
   function freshBook() {
     return { version: SAVE_VERSION,
              seed: 0, at: null, savedAt: 0, found: [], fog: "", cash: 0, deaths: 0,
@@ -7164,6 +7284,16 @@
       throw new SaveError(SAVE_UNSUPPORTED_VERSION, "book is version " + v);
     }
     if (v === 3) { b = { ...b, version: 4 }; v = 4; }
+    /* v4 kept every looted cache and stripped hulk as its own string, chunk key
+       and all. v5 keeps them per chunk. Nothing is dropped — a lost id is a
+       cache that refills. */
+    if (v === 4) {
+      b = { ...b, version: 5,
+            mutations: packMutations(b.opened || [], b.stripped || []) };
+      delete b.opened;
+      delete b.stripped;
+      v = 5;
+    }
     return b;
   }
 
@@ -7249,8 +7379,13 @@
           h.iron = Math.max(0, Math.min(9999, legacy));
           return h;
         })(),
-        opened: strs(b.opened),
-        stripped: strs(b.stripped),
+        /* Unpacked back into flat ids, because that is what the streamer asks
+           `has()` for on every object of every chunk it builds. The compaction
+           is the file's business, not the runtime's. */
+        ...(() => {
+          const m = unpackMutations(b.mutations);
+          return { opened: m.opened, stripped: m.stripped };
+        })(),
         seen: strs(b.seen),
         /* Filtered against the manifest rather than merely checked for being
            strings. `objective()` looks every carried key up in BUILD and reads
@@ -7465,8 +7600,8 @@
         /* Only what has been taken, and taking is rare — a sector you have
            worked over for an hour is a few hundred short strings, which is well
            inside what the fog already costs. */
-        opened: [...surv.opened],
-        stripped: [...surv.stripped],
+        // Per chunk rather than one string an object. See `packMutations`.
+        mutations: packMutations(surv.opened, surv.stripped),
         seen: [...surv.seen],
         // The manifest is the spine of the mode; losing it to a closed tab
         // would be losing the run itself.
@@ -9872,17 +10007,18 @@
       }
     }
 
-    /* And each other. One pass, each pair once — a few dozen rocks around the
-       ship is a few hundred comparisons, which is nothing next to what the
-       renderer is doing on the same frame. */
-    for (let i = 0; i < rocks.length; i++) {
-      const a = rocks[i];
-      for (let j = i + 1; j < rocks.length; j++) {
+    /* And each other. Each pair once, and only pairs that are near enough to be
+       worth asking about — see `forEachRockPair`. A Survey field is not a few
+       dozen rocks and every rock against every other rock is quadratic in a
+       number that grows. */
+    forEachRockPair(rocks, (i, j) => {
+      {
+        const a = rocks[i];
         const b = rocks[j];
         const dx = b.x - a.x, dy = b.y - a.y;
         const min = a.r + b.r;
         const d2 = dx * dx + dy * dy;
-        if (d2 >= min * min || d2 < 1) continue;
+        if (d2 >= min * min || d2 < 1) return;
         const d = Math.sqrt(d2);
         const nx = dx / d, ny = dy / d;
         /* Parted along the line between them, each giving way in proportion to
@@ -9896,7 +10032,7 @@
         a.vx -= nx * push * (mb / tot); a.vy -= ny * push * (mb / tot);
         b.vx += nx * push * (ma / tot); b.vy += ny * push * (ma / tot);
       }
-    }
+    });
   }
 
   /* Rocks are not part of a chunk. They drift, so a chunk that regenerated them
@@ -23204,6 +23340,21 @@
          than a place a ship ends up, so a harness needs to be able to read it
          and to press both of the mode's buttons. */
       survey: () => surv,
+      /* What the broad phase actually looked at, against what all-pairs would
+         have. A count, not a stopwatch: CI timing is noise and this is the
+         number the change is really about. */
+      rockPairs: () => {
+        const n = rocks.length;
+        rockCandidates = 0;
+        let real = 0;
+        forEachRockPair(rocks, (i, j) => {
+          const a = rocks[i], b = rocks[j];
+          const dx = b.x - a.x, dy = b.y - a.y, min = a.r + b.r;
+          if (dx * dx + dy * dy < min * min) real++;
+        });
+        return { rocks: n, allPairs: n * (n - 1) / 2,
+                 considered: rockCandidates, touching: real };
+      },
       /* The save pipeline, in the four pieces it is made of, so a harness can
          drive each one on a fixture instead of through a whole game. */
       book: {
@@ -23216,7 +23367,9 @@
         fresh: freshBook,
         version: SAVE_VERSION,
         keys: { store: SURVEY_STORE, backup: SURVEY_BACKUP, legacy: SURVEY_LEGACY },
-        isSaveError: e => e instanceof SaveError
+        isSaveError: e => e instanceof SaveError,
+        pack: packMutations,
+        unpack: unpackMutations
       },
       // Which places deal in find-only parts. See `takesExotics`.
       exotics: (x, y) => takesExotics(x, y),

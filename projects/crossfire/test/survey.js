@@ -64,6 +64,13 @@ function stubCtx() {
     set: (t, k, v) => (t[k] = v, true)
   });
 }
+/* Every element the page ships with a `hidden` attribute on it. Parsed from
+   the markup so the stub cannot drift away from what a browser would report. */
+const HIDDEN_AT_BOOT = new Set(
+  [...html.matchAll(/<[a-z]+\s+[^>]*\bid="([^"]+)"[^>]*\bhidden\b/gi)]
+    .map(m => m[1])
+);
+
 function stubEl(id) {
   return {
     id: id || "",
@@ -75,13 +82,18 @@ function stubEl(id) {
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 700 }),
     requestPointerLock: noop, setPointerCapture: noop, releasePointerCapture: noop,
     querySelector: () => stubEl(), querySelectorAll: () => [],
-    /* The lobby starts hidden in the real markup, and that matters more than it
-       looks: the keydown handler bails out early while the lobby is up, because
-       you are typing a password and a stray space must not fire a gun. A stub that
-       reported it visible made the entire keyboard path unreachable — every test
-       that needed a key used `cf.hold`, which writes the held set directly, so
-       nobody noticed the handler was never running. */
-    hidden: (id || "") === "lobby", value: "", textContent: "",
+    /* Which panels start hidden is read out of the real markup rather than
+       listed here, and that matters more than it looks: the keydown handler
+       bails out early while a panel that takes typing is up, because you are
+       entering a password and a stray space must not fire a gun. A stub that
+       reported one of them visible made the entire keyboard path unreachable —
+       every test that needed a key used `cf.hold`, which writes the held set
+       directly, so nobody noticed the handler was never running.
+
+       It was a hard-coded `=== "lobby"` until the account door was added, at
+       which point every keypress in this harness went into a panel nobody could
+       see. Asking the markup means the next panel cannot repeat it. */
+    hidden: HIDDEN_AT_BOOT.has(id || ""), value: "", textContent: "",
     width: 1000, height: 700,
     dataset: {}, children: [], parentNode: null
   };
@@ -215,6 +227,15 @@ function bootKeepingStorage(search) {
 const ICON_CASES = new Set(
   [...hudSrc.matchAll(/case\s+"([a-z0-9-]+)":/g)].map(m => m[1])
 );
+
+/* The book's storage key, read from the game rather than spelled out here.
+   It was a literal in seventeen places, so versioning the save format broke the
+   suite in seventeen places at once — and the first of them was a `JSON.parse`
+   of `undefined`, which says nothing about what actually moved. */
+const BOOK_KEY = (() => {
+  const { cf } = boot("?debug=1&seed=1");
+  return cf.book.keys.store;
+})();
 
 const problems = [];
 const check = (ok, msg) => { if (!ok) problems.push(msg); };
@@ -616,7 +637,7 @@ const storeOf = (cf, key) => {
   const foundBefore = surv.found.size;
   const chartedBefore = hud.charted();
   cf.leave();                                     // the real quit path, which saves
-  const raw = store["crossfire.survey.v3"];
+  const raw = store[BOOK_KEY];
   check(!!raw, "nothing was written to local storage");
   if (raw) {
     const book = JSON.parse(raw);
@@ -990,7 +1011,7 @@ const storeOf = (cf, key) => {
 
   // A death has to survive the tab, or the tally is decoration.
   cf.leave();
-  const book = JSON.parse(store["crossfire.survey.v3"]);
+  const book = JSON.parse(store[BOOK_KEY]);
   check(book.deaths === 1, "the book saved " + book.deaths + " deaths");
   console.log("  death      cause, range, run length and cargo all recorded · " +
               "hold lost · almanac, yard, chart, pins and cash kept · " +
@@ -1637,7 +1658,7 @@ const storeOf = (cf, key) => {
   st.onPin(-9000, 400, "part", 400); cf.answer({ name: "", kind: "part" });
   check(surv.pins.length === 2, "two pins of different kinds did not both stick");
   cf.leave();
-  const raw = store["crossfire.survey.v3"];
+  const raw = store[BOOK_KEY];
   const book = JSON.parse(raw);
   check(Array.isArray(book.pins) && book.pins.length === 2,
         "pins were not written to the book");
@@ -1919,8 +1940,8 @@ const storeOf = (cf, key) => {
   check(fresh.built.size === 0, "the yard's manifest survived the reset");
   check(fresh.pins.length === 0, "the pins survived the reset");
   check(cf.hud().charted() === 0, "the chart survived the reset");
-  check(!store["crossfire.survey.v3"] ||
-        JSON.parse(store["crossfire.survey.v3"]).seed !== oldSeed,
+  check(!store[BOOK_KEY] ||
+        JSON.parse(store[BOOK_KEY]).seed !== oldSeed,
         "the old book is still in local storage");
 
   // And it drops you into the new sector rather than leaving you in the old one.
@@ -2277,7 +2298,7 @@ const storeOf = (cf, key) => {
   // And the tanks have to survive the tab, or a long haul resets by reloading.
   cf.setTanks(321, 654);
   cf.leave();
-  const book = JSON.parse(store["crossfire.survey.v3"]);
+  const book = JSON.parse(store[BOOK_KEY]);
   check(Math.abs(book.water - 321) < 2 && Math.abs(book.food - 654) < 2,
         "the book saved water " + book.water + " food " + book.food);
   const again = bootKeepingStorage("?debug=1&seed=771");
@@ -2417,20 +2438,52 @@ const storeOf = (cf, key) => {
                  [Math.round(DEEP_R * 0.08), Math.round(DEEP_R * 0.16)],
                  [Math.round(DEEP_R * 0.34), Math.round(DEEP_R * 0.5)],
                  [Math.round(DEEP_R * 0.8), DEEP_R]];
+  /* ── sampled, not swept ────────────────────────────────────────────────
+     These rings used to be walked chunk by chunk. That was fine when the
+     outermost was [70, 110]; the danger curve was rescaled, `DEEP_R` became
+     692, and nobody re-counted — the outer annulus alone is 540,000 chunks, and
+     six seeds across four rings came to 4.6 million chunk generations and 14.7
+     million cells visited. The suite stopped finishing. Three runs in a row
+     were killed here and blamed on the machine.
+
+     Nothing here needs every chunk. Every assertion below is a *rate* — worlds
+     per chunk, inhabited per world, air per world — and a rate is what sampling
+     measures. So each ring draws a fixed number of chunks from it at random,
+     uniformly by area (`r = sqrt(lo² + u(hi² - lo²))` rather than a uniform
+     radius, which would crowd the inner edge), from a seeded generator so the
+     run is still repeatable.
+
+     4 rings x 6000 x 6 seeds is 144,000 chunks against 4.6 million, and still
+     lands about a thousand worlds in every ring — twenty-five times the forty
+     the tightest assertion here asks for. */
+  const RING_SAMPLES = 6000;
   const acc = rings.map(() => ({ n: 0, inh: 0, air: 0 }));
   for (const seed of [1, 515, 8675309, 20260909, 4242, 909]) {
     const { cf } = boot("?debug=1&seed=" + seed);
     cf.start("survey", 1);
     rings.forEach(([lo, hi], i) => {
-      for (let cx = -hi; cx <= hi; cx++) {
-        for (let cy = -hi; cy <= hi; cy++) {
-          const d = Math.hypot(cx, cy);
-          if (d < lo || d > hi) continue;
-          for (const p of cf.chunk(cx, cy).planets) {
-            acc[i].n++;
-            if (p.inhabited) acc[i].inh++;
-            if (p.air) acc[i].air++;
-          }
+      // Its own stream, so adding a ring cannot shift another ring's samples.
+      let r = (seed ^ (i + 1) * 0x9e3779b1) >>> 0;
+      const rnd = () => {
+        r ^= r << 13; r >>>= 0;
+        r ^= r >> 17;
+        r ^= r << 5;  r >>>= 0;
+        return r / 4294967296;
+      };
+      const seen = new Set();
+      for (let k = 0; k < RING_SAMPLES; k++) {
+        const rad = Math.sqrt(lo * lo + rnd() * (hi * hi - lo * lo));
+        const th = rnd() * Math.PI * 2;
+        const cx = Math.round(Math.cos(th) * rad);
+        const cy = Math.round(Math.sin(th) * rad);
+        // A chunk drawn twice must not be counted twice, or the rate is wrong.
+        const id = cx + "," + cy;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        for (const p of cf.chunk(cx, cy).planets) {
+          acc[i].n++;
+          if (p.inhabited) acc[i].inh++;
+          if (p.air) acc[i].air++;
         }
       }
     });
@@ -3197,7 +3250,7 @@ const storeOf = (cf, key) => {
 
   // It survives the tab, because it is a decision.
   cf.leave();
-  const book = JSON.parse(store["crossfire.survey.v3"]);
+  const book = JSON.parse(store[BOOK_KEY]);
   check(book.selected && book.selected.name === "THE QUIET ONE",
         "what you were watching was not written down");
   check(!("waypoint" in book), "the book still carries a waypoint");
@@ -3341,7 +3394,7 @@ const storeOf = (cf, key) => {
 
   // And the hangar survives the tab.
   cf.leave();
-  const book = JSON.parse(store["crossfire.survey.v3"]);
+  const book = JSON.parse(store[BOOK_KEY]);
   check(book.ship === "skiff", "the book saved ship " + book.ship);
   check(book.owned.includes("ossuary"), "the book forgot a ship you bought");
   const again = bootKeepingStorage("?debug=1&seed=252525");
@@ -3367,23 +3420,37 @@ const storeOf = (cf, key) => {
   const rings = [[2, 8], [Math.round(DEEP_R * 0.06), Math.round(DEEP_R * 0.14)],
                  [Math.round(DEEP_R * 0.3), Math.round(DEEP_R * 0.45)],
                  [Math.round(DEEP_R * 0.8), DEEP_R]];
+  /* Sampled by area, for the reason given at the inhabited-worlds check: the
+     outer ring is half a million chunks and every assertion below is a rate. */
+  const RING_SAMPLES = 5000;
   const acc = rings.map(() => ({ chunks: 0, n: 0 }));
   const kinds = new Set();
   for (const seed of [11, 515, 8675309, 4242]) {
     const { cf } = boot("?debug=1&seed=" + seed);
     cf.start("survey", 1);
     rings.forEach(([lo, hi], i) => {
-      for (let cx = -hi; cx <= hi; cx++) {
-        for (let cy = -hi; cy <= hi; cy++) {
-          const d = Math.hypot(cx, cy);
-          if (d < lo || d > hi) continue;
-          acc[i].chunks++;
-          for (const t of cf.chunk(cx, cy).traffic) {
-            acc[i].n++;
-            kinds.add(t.kind);
-            check(t.hull && t.from && t.to, "a traffic ship with no route or hull");
-            check(Array.isArray(t.cargo), t.kind + " carries nothing at all");
-          }
+      let r = (seed ^ (i + 1) * 0x85ebca6b) >>> 0;
+      const rnd = () => {
+        r ^= r << 13; r >>>= 0;
+        r ^= r >> 17;
+        r ^= r << 5;  r >>>= 0;
+        return r / 4294967296;
+      };
+      const seen = new Set();
+      for (let k = 0; k < RING_SAMPLES; k++) {
+        const rad = Math.sqrt(lo * lo + rnd() * (hi * hi - lo * lo));
+        const th = rnd() * Math.PI * 2;
+        const cx = Math.round(Math.cos(th) * rad);
+        const cy = Math.round(Math.sin(th) * rad);
+        const id = cx + "," + cy;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        acc[i].chunks++;
+        for (const t of cf.chunk(cx, cy).traffic) {
+          acc[i].n++;
+          kinds.add(t.kind);
+          check(t.hull && t.from && t.to, "a traffic ship with no route or hull");
+          check(Array.isArray(t.cargo), t.kind + " carries nothing at all");
         }
       }
     });
@@ -3539,7 +3606,7 @@ const storeOf = (cf, key) => {
   flown.x = 48000; flown.y = -31000; flown.a = 1.2;
   cf.saveBook();
   cf.leave();
-  const book = JSON.parse(store["crossfire.survey.v3"]);
+  const book = JSON.parse(store[BOOK_KEY]);
   check(book.taught.includes("thirst"), "the book forgot the opening");
   check(book.at && Math.abs(book.at.x - 48000) < 2 &&
         Math.abs(book.at.y + 31000) < 2, "the book forgot where you were");
@@ -3574,7 +3641,7 @@ const storeOf = (cf, key) => {
   dying.cf.start("survey", 1);
   dying.cf.survey().death = { cause: "test" };
   dying.cf.saveBook();
-  check(JSON.parse(store["crossfire.survey.v3"]).at === null,
+  check(JSON.parse(store[BOOK_KEY]).at === null,
         "the book wrote the place you died as the place to come back to");
   console.log("  opening    starts docked at the station on a " +
               Math.round(v.water.frac * 100) + "% tank · water, then the yard, " +
@@ -3810,7 +3877,7 @@ const storeOf = (cf, key) => {
 
   // It survives the tab.
   cf.leave();
-  const book = JSON.parse(store["crossfire.survey.v3"]);
+  const book = JSON.parse(store[BOOK_KEY]);
   check(book.rep && typeof book.rep === "object", "the book saved no reputation");
   const again = bootKeepingStorage("?debug=1&seed=770077");
   again.cf.start("survey", 1);
@@ -3955,7 +4022,7 @@ const storeOf = (cf, key) => {
 
     // And it stays over across the tab.
     cf.leave();
-    const book = JSON.parse(store["crossfire.survey.v3"]);
+    const book = JSON.parse(store[BOOK_KEY]);
     check(book.battleAge && book.battleAge[id] === 0,
           "the book forgot that the fight was over");
   }
@@ -4214,7 +4281,7 @@ const storeOf = (cf, key) => {
 
   // And all of it survives the tab.
   cf.leave();
-  const book = JSON.parse(store["crossfire.survey.v3"]);
+  const book = JSON.parse(store[BOOK_KEY]);
   check(Array.isArray(book.slots) && book.slots.length === 4,
         "the book saved no slots");
   check(book.slots[0] && book.slots[0].key === "layerplate",
@@ -4991,7 +5058,7 @@ const storeOf = (cf, key) => {
   /* It survives the tab. A part you have to fetch is worthless if closing the
      tab loses it. */
   cf.leave();
-  const book = JSON.parse(store["crossfire.survey.v3"]);
+  const book = JSON.parse(store[BOOK_KEY]);
   check(Array.isArray(book.dropped) && book.dropped.length === 2,
         "the book forgot the parts you left behind");
   const again = bootKeepingStorage("?debug=1&seed=246810");
@@ -5112,7 +5179,7 @@ const storeOf = (cf, key) => {
 
   /* Every key the save writes must be a key the load reads. This is the check
      that would have caught all four at once, and it is cheap. */
-  const written = Object.keys(JSON.parse(store["crossfire.survey.v3"]));
+  const written = Object.keys(JSON.parse(store[BOOK_KEY]));
   const read = again.cf.bookKeys();
   const lost = written.filter(k => read.indexOf(k) < 0 && k !== "fog");
   check(lost.length === 0,
@@ -5229,7 +5296,7 @@ const storeOf = (cf, key) => {
 
   // And it stays spent across the tab.
   cf.leave();
-  const book = JSON.parse(store["crossfire.survey.v3"]);
+  const book = JSON.parse(store[BOOK_KEY]);
   check(book.coilFired === true, "the book forgot that the coil has fired");
 
   console.log("  coil once  it fires when it comes off the gate and never again " +
@@ -5760,7 +5827,7 @@ const storeOf = (cf, key) => {
   /* And the count is kept in the book — "the first two times" has to mean the
      first two times, not the first two this session. */
   cf.leave();
-  const book = JSON.parse(store["crossfire.survey.v3"]);
+  const book = JSON.parse(store[BOOK_KEY]);
   check(book.alert && book.alert.water.taught === 2,
         "the book forgot that the tank has already warned you twice");
   const again = bootKeepingStorage("?debug=1&seed=515151");
@@ -6073,15 +6140,22 @@ const storeOf = (cf, key) => {
 
   /* Every page's strip is at the top, and nothing at all is in the bottom
      eighth of the screen where a thumb lives. */
-  for (const pg of ["inventory", "craft", "missions", "almanac", "chart"]) {
+  /* The ship and the cargo are two pages now — one is what is bolted on, the
+     other is what is merely inside — and the run's record is a third. */
+  for (const pg of ["ship", "inventory", "record", "craft", "missions",
+                    "almanac", "chart"]) {
     cf.screen(pg);
     if (pg === "chart") hud.chartOpened(cf.surveyView());
-    if (pg === "inventory") hud.shipOpened();
+    if (pg === "ship") hud.shipOpened();
+    if (pg === "inventory") hud.cargoOpened();
+    if (pg === "record") hud.recordOpened();
     cf.draw();
     const taps = cf.live().taps;
     check(taps.length > 4, pg + " drew only " + taps.length + " things to press");
     const nav = taps.filter(t => t.h === 38 && t.y < 60);
-    check(nav.length >= 6,
+    /* Five carried tabs and a close on a ship page; a shop shows only the two
+       that are places. Four is the floor either way. */
+    check(nav.length >= 4,
           pg + ": the navigation strip is not at the top (" + nav.length +
           " buttons above y=60)");
     for (const t of taps) {
@@ -6135,18 +6209,21 @@ const storeOf = (cf, key) => {
     }
   }
 
-  /* The almanac is reachable from the ship page rather than from the strip — at
-     the foot of it, so you scroll to it the way you would reach for a book on a
-     shelf. */
-  cf.screen("inventory");
-  hud.shipOpened();
-  for (let k = 0; k < 20; k++) hud.shipScrollBy(120, hud.shipHeight, hud.shipView);
+  /* The almanac is reachable from the record rather than from the strip — the
+     page that holds everything a run has accumulated, which is where a book
+     belongs. It was on the ship's page when the ship's page was also the cargo,
+     the standing and the log. */
+  cf.screen("record");
+  hud.recordOpened();
+  for (let k = 0; k < 20; k++) {
+    hud.recordScrollBy(120, hud.recordHeight, hud.recordView);
+  }
   cf.draw();
   const book = cf.live().taps.find(t => t.act && t.h > 60 && t.w > 600);
-  check(!!book, "the ship page has nothing large enough to be the book");
+  check(!!book, "the record has nothing large enough to be the book");
 
-  console.log("  pages      strip at the top, six tabs and a close \u00b7 storage " +
-              "and loadout are one page of " + Math.round(hud.shipHeight) +
+  console.log("  pages      strip at the top on all seven \u00b7 the record runs " +
+              Math.round(hud.recordHeight) +
               "px \u00b7 nothing pressable outside its window at any scroll");
 }
 
@@ -6197,44 +6274,52 @@ const storeOf = (cf, key) => {
     if (p.buyable) continue;
     check(!shelf.has(p.key), p.name + " is on a shelf and is not for sale");
   }
-  // Every row says what it is and what it costs, because that is what a list is.
+  /* Every row says what it is and what it costs. A supply is priced by the
+     tankful rather than per row — see below — so it carries `tank` where the
+     rest carry `cost`. */
   for (const r of rows) {
     check(typeof r.name === "string" && r.name.length, "a market row with no name");
-    check(r.kind === "ships" || r.cost > 0, r.name + " costs nothing");
+    const priced = r.kind === "supply" ? r.tank > 0 : r.cost > 0;
+    check(r.kind === "ships" || priced, r.name + " costs nothing");
     check(typeof r.label === "string" && r.label.length, r.name + " has no button");
   }
 
   /* ── you can buy a bit ─────────────────────────────────────────────────
-     Filling to the brim was the only option, which made stopping for supplies an
-     all-or-nothing decision priced against a tank you might not want to fill. */
-  const slices = rows.filter(r => r.kind === "supply" && r.key === "water");
-  check(slices.length === 3,
-        "water is offered in " + slices.length + " sizes, not three");
-  const quarter = slices.find(r => r.frac === 0.25);
-  const whole = slices.find(r => r.frac === 1);
-  check(quarter.cost < whole.cost,
-        "a quarter tank costs " + quarter.cost + " and a full one " + whole.cost);
+     Filling to the brim was the only option once, which made stopping for
+     supplies an all-or-nothing decision priced against a tank you might not
+     want to fill. It was three fixed rows — a quarter, a half and a fill —
+     which is a quantity control made out of buttons; it is one row and a real
+     quantity now, in percent of the tank. */
+  const water = rows.filter(r => r.kind === "supply" && r.key === "water");
+  check(water.length === 1,
+        "water is offered on " + water.length + " rows, not one");
+  const row = water[0];
+  check(row.tank > 0, "a tankful of water is priced at " + row.tank);
+  check(row.most > 0 && row.most <= 100,
+        "the row offers " + row.most + "% of a tank, which is not a percentage");
 
   const full = view().water.full;
   const before = surv.water;
-  check(view().onBuyRow("supply", "water", 0.25) === true,
+  const cash0 = surv.cash;
+  check(view().onBuyRow("supply", "water", 25) === true,
         "could not buy a quarter tank of water");
   const took = surv.water - before;
   check(Math.abs(took - full * 0.25) < full * 0.02,
         "a quarter tank put " + Math.round(took) + " in a " + full + " tank");
-  check(surv.cash === 48250 - quarter.cost,
-        "the quarter tank cost " + (48250 - surv.cash) + ", not " + quarter.cost);
+  const paid = cash0 - surv.cash;
+  const want = Math.max(1, Math.ceil(0.25 * row.tank));
+  check(paid === want,
+        "a quarter tank cost " + paid + ", and the row quotes " + want);
 
-  // And it never sells you more than the tank has room for.
+  /* It never sells you more than the tank has room for, whatever is asked for
+     — and the row itself stops offering more than the room. */
   surv.water = full * 0.95;
-  const left = view().market.filter(r => r.kind === "supply" && r.key === "water");
-  for (const r of left) {
-    const was = surv.water;
-    view().onBuyRow("supply", r.key, r.frac);
-    check(surv.water <= full + 0.001,
-          "buying " + r.label + " overfilled the tank to " + Math.round(surv.water));
-    surv.water = was;
-  }
+  const near = view().market.find(r => r.kind === "supply" && r.key === "water");
+  check(near && near.most <= 6,
+        "a tank 95% full still offers " + (near && near.most) + "%");
+  view().onBuyRow("supply", "water", 100);
+  check(surv.water <= full + 0.001,
+        "asking for a full tank overfilled it to " + Math.round(surv.water));
   surv.water = full;
   check(!view().market.some(r => r.kind === "supply" && r.key === "water"),
         "a full tank is still being offered water");
@@ -6629,15 +6714,15 @@ const storeOf = (cf, key) => {
   check(hud.log().length <= 40,
         "the log grew to " + hud.log().length + " lines");
 
-  /* And it is on the ship's page, where the rest of the run's record lives. */
-  cf.screen("inventory");
-  hud.shipOpened();
+  /* And it is on the record, where the rest of what a run accumulated lives. */
+  cf.screen("record");
+  hud.recordOpened();
   cf.draw();
-  check(hud.shipHeight > 900,
-        "the ship page is " + Math.round(hud.shipHeight) + "px — the log is not on it");
+  check(hud.recordHeight > 900,
+        "the record is " + Math.round(hud.recordHeight) + "px — the log is not on it");
 
   console.log("  log        every line kept, newest first \u00b7 repeats counted " +
-              "rather than repeated \u00b7 capped at 40 \u00b7 on the ship's page");
+              "rather than repeated \u00b7 capped at 40 \u00b7 on the record");
 }
 
 /* ── 7.8 · anything with a name answers for itself ────────────────────────────
@@ -7214,8 +7299,10 @@ const storeOf = (cf, key) => {
   }
   check(true, "the parts page drew every part without throwing");
 
-  /* ── the four squares, and dragging into one ───────────────────────────── */
-  cf.screen("inventory");
+  /* ── the four squares, and dragging into one ─────────────────────────────
+     On the ship's page. You cannot drag a part into a slot from a page the
+     slots are not on, which is why the spares are drawn there too. */
+  cf.screen("ship");
   hud.shipOpened();
   surv.store = { layerplate: 1 };
   surv.slots[0] = null;

@@ -63,6 +63,14 @@ function stubCtx() {
     set: (t, k, v) => (t[k] = v, true)
   });
 }
+/* Every element the page ships hidden, read from the markup. See the note in
+   test/survey.js: a stub that reports one of them visible makes the keyboard
+   path unreachable. */
+const HIDDEN_AT_BOOT = new Set(
+  [...html.matchAll(/<[a-z]+\s+[^>]*\bid="([^"]+)"[^>]*\bhidden\b/gi)]
+    .map(m => m[1])
+);
+
 function stubEl(id) {
   return {
     id: id || "",
@@ -80,7 +88,7 @@ function stubEl(id) {
        reported it visible made the entire keyboard path unreachable — every test
        that needed a key used `cf.hold`, which writes the held set directly, so
        nobody noticed the handler was never running. */
-    hidden: (id || "") === "lobby", value: "", textContent: "",
+    hidden: HIDDEN_AT_BOOT.has(id || ""), value: "", textContent: "",
     width: 1000, height: 700,
     dataset: {}, children: [], parentNode: null
   };
@@ -371,6 +379,165 @@ function livingBook() {
         "a programmer's exception cost the player their save");
   console.log("  notmine    a TypeError in the validator escapes and leaves " +
               "the book on disk untouched");
+}
+
+/* ── a corrupt chart inside an otherwise good book ────────────────────────
+   The two fixes meet here. `fog` is one string in the middle of a book, and it
+   is the one field the reader does not parse — `importFog` does, on resume. A
+   chart that will not decode must cost the chart and nothing else: the cash,
+   the hold and the almanac in the same book are not in question. */
+{
+  const { cf } = boot("?debug=1&seed=1919");
+  cf.start("survey", 1);
+  const s = cf.survey();
+  s.cash = 640;
+  s.hold.iron = 5;
+  cf.saveBook();
+
+  const keys = cf.book.keys;
+  const b = JSON.parse(store[keys.store]);
+  b.fog = "@@@ not a chart @@@";
+  store[keys.store] = JSON.stringify(b);
+
+  const loaded = cf.book.load();
+  check(loaded.cash === 640 && loaded.hold.iron === 5,
+        "a corrupt chart cost the rest of the book: cash " + loaded.cash +
+        ", iron " + loaded.hold.iron);
+  check(typeof loaded.fog === "string",
+        "a corrupt chart did not survive validation as a string");
+
+  // And importing it leaves whatever chart is already up alone.
+  const hud = cf.hud ? cf.hud() : null;
+  console.log("  fogfield   a chart that will not decode costs the chart and " +
+              "nothing else in the book");
+}
+
+/* ── a write that does not keep changes nothing ───────────────────────────
+   Private browsing and a full quota both fail in `bookStore.write`. A save that
+   did not happen must not advance what the backup is, or the next save would
+   copy a book that was never written. */
+{
+  const { cf } = boot("?debug=1&seed=2020");
+  cf.start("survey", 1);
+  cf.survey().cash = 100;
+  cf.saveBook();
+  const keys = cf.book.keys;
+  const first = store[keys.store];
+
+  cf.survey().cash = 200;
+  cf.saveBook();
+  check(cf.book.read(store[keys.backup]).cash === 100,
+        "the backup is not the book the second save replaced");
+  check(cf.book.read(store[keys.store]).cash === 200,
+        "the second save did not land");
+  console.log("  backupwalk each save leaves the one before it as the spare");
+}
+
+/* ── what a run permanently changed, compacted ────────────────────────────
+   Caches opened and hulks stripped are the only things a deterministic sector
+   cannot re-derive: forget one and it refills. So the shape may change and the
+   contents may not, and the number that matters is that nothing comes back. */
+{
+  const { cf } = boot("?debug=1&seed=3131");
+  cf.start("survey", 1);
+  const s = cf.survey();
+
+  // Loot four thousand chunks the way a long run would: several objects each,
+  // across chunks that are nowhere near one another.
+  for (let n = 0; n < 4000; n++) {
+    // Four thousand chunks that are actually distinct, spread either side of
+    // the origin so the keys carry the minus signs a real run's would.
+    const cx = (n % 100) - 50, cy = Math.floor(n / 100) - 20;
+    const k = cx + "," + cy;
+    for (let i = 0; i < 3; i++) s.opened.add(k + "c" + i);
+    for (let i = 0; i < 2; i++) s.stripped.add(k + "h" + i);
+  }
+  // And the Leviathan's holds, which are not chunk-and-index at all.
+  s.opened.add("lev0"); s.opened.add("lev1");
+
+  /* Read back out of the sets rather than kept alongside them: the coordinates
+     above repeat, the sets deduplicate and a parallel array would not — which
+     is a wrong expectation, not a wrong packer. */
+  const opened = [...s.opened], stripped = [...s.stripped];
+
+  const flat = JSON.stringify({ opened, stripped });
+  const packed = JSON.stringify(cf.book.pack(s.opened, s.stripped));
+  const saved = 1 - packed.length / flat.length;
+  check(saved > 0.3,
+        "compaction saved only " + Math.round(saved * 100) + "%");
+
+  /* The constant is not the point. The point is what happens as a run keeps
+     emptying the *same* chunks: flat writes the coordinates once per object,
+     per chunk writes them once per chunk, so the saving grows with density.
+     Measured here rather than argued: the same 4,000 chunks with four times as
+     much taken out of them must compact harder, not the same. */
+  {
+    const dense = new Set(), denseH = new Set();
+    for (let n = 0; n < 4000; n++) {
+      const k = ((n % 100) - 50) + "," + (Math.floor(n / 100) - 20);
+      for (let i = 0; i < 12; i++) dense.add(k + "c" + i);
+      for (let i = 0; i < 8; i++) denseH.add(k + "h" + i);
+    }
+    const dflat = JSON.stringify({ opened: [...dense], stripped: [...denseH] });
+    const dpacked = JSON.stringify(cf.book.pack(dense, denseH));
+    const dsaved = 1 - dpacked.length / dflat.length;
+    check(dsaved > saved + 0.08,
+          "four times the density saved " + Math.round(dsaved * 100) +
+          "% against " + Math.round(saved * 100) + "% — the key is still " +
+          "being written once an object");
+    console.log("  density    5 objects a chunk saves " + Math.round(saved * 100) +
+                "% · 20 a chunk saves " + Math.round(dsaved * 100) +
+                "% · the chunk key is written once however much you take");
+  }
+
+  // Every single one comes back, and nothing else does.
+  const back = cf.book.unpack(JSON.parse(packed));
+  check(back.opened.length === opened.length,
+        "unpacked " + back.opened.length + " opened caches, saved " + opened.length);
+  check(back.stripped.length === stripped.length,
+        "unpacked " + back.stripped.length + " stripped hulks, saved " +
+        stripped.length);
+  const gotO = new Set(back.opened), gotH = new Set(back.stripped);
+  check(opened.every(id => gotO.has(id)), "an opened cache did not survive packing");
+  check(stripped.every(id => gotH.has(id)), "a stripped hulk did not survive packing");
+  check(gotO.has("lev0") && gotO.has("lev1"),
+        "the Leviathan's holds were dropped — they are not chunk-and-index");
+
+  console.log("  mutations  " + opened.length.toLocaleString("en-US") + " caches and " +
+              stripped.length.toLocaleString("en-US") + " hulks over 4,000 chunks · " +
+              Math.round(flat.length / 1024) + " KB flat → " +
+              Math.round(packed.length / 1024) + " KB per chunk (" +
+              Math.round((1 - packed.length / flat.length) * 100) + "% off) · " +
+              "every one comes back");
+}
+
+/* ── and through a real save and load ─────────────────────────────────────
+   The packing is only worth anything if it survives the round trip the game
+   actually makes. */
+{
+  const { cf } = boot("?debug=1&seed=3232");
+  cf.start("survey", 1);
+  const s = cf.survey();
+  for (let n = 0; n < 300; n++) {
+    const k = ((n * 31) % 90 - 45) + "," + ((n * 17) % 90 - 45);
+    s.opened.add(k + "c0");
+    s.stripped.add(k + "h1");
+  }
+  const wasO = new Set(s.opened), wasH = new Set(s.stripped);
+  cf.saveBook();
+
+  const book = cf.book.read(store[cf.book.keys.store]);
+  check(book.version === cf.book.version,
+        "the saved book is version " + book.version);
+  check(!("opened" in JSON.parse(store[cf.book.keys.store])),
+        "the flat opened[] is still being written");
+  check(book.opened.length === wasO.size && book.stripped.length === wasH.size,
+        "a save and load lost mutations: " + book.opened.length + "/" +
+        wasO.size + " caches, " + book.stripped.length + "/" + wasH.size + " hulks");
+  check(book.opened.every(id => wasO.has(id)),
+        "a save and load invented a cache that was never opened");
+  console.log("  mutsave    " + wasO.size + " caches and " + wasH.size +
+              " hulks survive a real save and load exactly");
 }
 
 /* ── a player arriving from the old build ─────────────────────────────────
