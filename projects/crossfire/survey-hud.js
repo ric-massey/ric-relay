@@ -4270,6 +4270,24 @@
     return true;      // dropped on nothing: the gesture is spent, nothing fitted
   };
 
+  /* Both lists are emptied at the top of every frame, the way the tap list is,
+     and refilled only by the page that actually draws slots and a spares tray.
+
+     They used to be cleared inside that page's own draw, which meant they went
+     stale the moment you left it — the remembered rectangles stayed grabbable
+     on a page that was not showing them, which is the bug the note above this
+     block warns about in so many words. It also made the caller gate the
+     gesture on a page name, and that list of names is what broke when the
+     pages were split: the slots moved to SHIP and the grab was still asking
+     for `inventory`, so nothing could be dragged into a slot at all.
+
+     Emptied here, the rule needs no list. Whatever drew a rectangle this frame
+     is what you can pick up this frame. */
+  HUD.forgetCarryGeometry = function () {
+    slotBoxes.length = 0;
+    storeRows.length = 0;
+  };
+
   HUD.carrying = () => !!(carry && carry.moved);
   // What was drawn where, so a harness can press the same rectangles a thumb does.
   HUD.slotBoxes = () => slotBoxes.map(b => ({ ...b }));
@@ -4958,11 +4976,25 @@
     const used = st.carried || 0;
     const crate = st.store || [];
     const freeSlot = slots.findIndex(x => !x);
-    const cw = api.touchOnly ? 4 : 6;
+    /* The column count comes from the longest name in the tray, not from a
+       constant. A name is centred under its picture and one word cannot be
+       wrapped, so a fixed six columns cut REVERSE THRUSTERS to "REVERSE
+       THRUS…" — and `fitText` will not go below 16px, so shrinking it was
+       never on the table. Fewer, wider tiles instead: the same rule the cargo
+       grid uses, for the same reason. */
+    const longest = crate.reduce((w, e) => Math.max(w,
+      String(e.name).split(" ").reduce(
+        (m, word) => Math.max(m, widthOf(word, SIZE.cap, "0.04em")), 0)), 0);
+    const want = Math.max(api.touchOnly ? 90 : 84, Math.ceil(longest) + 12);
+    const cw = Math.max(2, Math.min(api.touchOnly ? 4 : 6,
+                        Math.floor((full.w - PAGE.PAD * 2 + 10) / (want + 10))));
     const cCell = Math.floor((full.w - PAGE.PAD * 2 - (cw - 1) * 10) / cw);
     const cRows = Math.max(1, Math.ceil(crate.length / cw));
     const matsH = 0;
-    const holdH = 30 + cRows * (cCell + 26) + 10 + PAGE.HEAD;
+    /* 42 below a tile, not 26: a two-word name wraps onto a second line now
+       rather than being cut, and the row has to make room for the line. */
+    const NAME_H = 42;
+    const holdH = 30 + cRows * (cCell + NAME_H) + 10 + PAGE.HEAD;
 
     /* ── the ship ─────────────────────────────────────────────────────────
        The page is a picture of the thing it is about. It used to be three
@@ -5099,10 +5131,14 @@
           "left", 0.8, "0.14em");
     /* What they are costing you, which is the whole reason they are on this
        panel. Not a count — a count is what the tiles already are. */
+    /* "OR CLICK IT" was still here, on the desktop half of the line only, from
+       when a press fitted the part. A press opens the tile's description now —
+       see the tap below — so the line was promising a thing the page does not
+       do, and somebody following it presses a tile, gets a card, and concludes
+       the page is broken. One instruction, true on both. */
     label(crate.length
       ? (st.partWeight || 0) + " OF " + (st.hold || 0) + " CARGO SLOTS  \u00b7  " +
-        (api.touchOnly ? "DRAG ONE INTO A SLOT"
-                       : "DRAG ONE INTO A SLOT, OR CLICK IT")
+        "DRAG ONE INTO A SLOT"
       : "NONE",
       full.x + full.w - PAGE.PAD, partsY + 20, SIZE.cap,
       crate.length ? CASH_DIM : VIOLET_LOW, "right", 0.75, "0.08em");
@@ -5110,7 +5146,7 @@
     crate.forEach((e, i) => {
       const col = i % cw, row = Math.floor(i / cw);
       const bx = full.x + PAGE.PAD + col * (cCell + 10);
-      const by = partsY + 30 + row * (cCell + 26);
+      const by = partsY + 30 + row * (cCell + NAME_H);
       const can = freeSlot >= 0 && !e.fitted;
       const rar = rarity(e.rarity);
 
@@ -5118,7 +5154,7 @@
          could actually fit are draggable: dragging something already on the ship
          to a slot it is already in is a gesture with no meaning. */
       if (can) {
-        storeRows.push({ x: bx, y: by, w: cCell, h: cCell + 18,
+        storeRows.push({ x: bx, y: by, w: cCell, h: cCell + NAME_H - 8,
                          key: e.key, name: e.name, cat: e.cat,
                          rarity: e.rarity });
       }
@@ -5150,15 +5186,23 @@
         label("ON SHIP", bx + cCell / 2, by + cCell - 8, SIZE.cap, VIOLET_LOW,
               "center", 0.8);
       }
-      fitText(e.name, bx + cCell / 2, by + cCell + 15, SIZE.cap,
-              e.fitted ? VIOLET_LOW : rar.colour, "center",
-              e.fitted ? 0.6 : 0.95, cCell + 8, "0.04em");
+      /* Wrapped, not cut. REVERSE THRUSTERS came out "REVERSE THRUS…" —
+         `fitText` will not go below 16px, so a name too wide for its tile could
+         only ever lose its end, and the end is the half that says which one it
+         is. The tile is sized above to hold the longest single word; this puts
+         the second word on its own line. */
+      wrapLines(e.name, SIZE.cap, cCell + 8, "0.04em").slice(0, 2)
+        .forEach((ln, k) => {
+          label(ln, bx + cCell / 2, by + cCell + 15 + k * 17, SIZE.cap,
+                e.fitted ? VIOLET_LOW : rar.colour, "center",
+                e.fitted ? 0.6 : 0.95, "0.04em");
+        });
 
       /* Pressing a tile says what it is. Fitting it is the *drag* — which is the
          gesture the four squares above are asking for — so a press is free to
          mean "tell me about this", which is the question a picture cannot answer
          on its own. */
-      tap({ x: bx, y: by, w: cCell, h: cCell + 18,
+      tap({ x: bx, y: by, w: cCell, h: cCell + NAME_H - 8,
             act: () => {
               bubble = (bubble && bubble.key === e.key)
                 ? null

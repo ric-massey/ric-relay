@@ -9499,6 +9499,43 @@
       }
     }
 
+    /* `?debug=1&stock=1` — a hold with something in it, for looking at the
+       pages that show one. The cargo grid, the ship's slots and the spares
+       tray all draw nothing worth checking on a fresh run, and flying out and
+       mining a full hold to see whether a caption fits is not a way to check
+       a caption. Debug only, and never any part of a played run.
+
+       Two fitted and a spread of spares, because "attached" and "aboard" are
+       drawn differently and the difference is the thing worth looking at. */
+    if (debugOn && new URLSearchParams(location.search).get("stock") === "1") {
+      /* Cleared first. `storeAdd` adds to what is there, and a resumed run
+         already has a hold — so stocking one twice stacked, and the second
+         look at the page was 117 of 60 with no room left for a single unit of
+         ice. The flag describes a hold rather than adding to one.
+
+         And filled to just under the cap, not past it: an impossible hold puts
+         the page into its over-capacity state, and every look at it is then a
+         look at an alarm rather than at the ordinary page, full. */
+      surv.store = {};
+      surv.slots = [null, null, null, null];
+      for (const m of MATERIALS) surv.hold[m.key] = 0;
+
+      surv.slots[0] = { key: MODULES[0].key, fit: 0 };
+      surv.slots[1] = { key: MODULES[1].key, fit: 0 };
+      // Two fitted and a spread of spares: "attached" and "aboard" are drawn
+      // differently and the difference is the thing worth looking at.
+      for (const m of MODULES.slice(0, 12)) {
+        if (surv.slots.some(sl => sl && sl.key === m.key)) continue;
+        if (roomForPart(m.key)) storeAdd(m.key, 1);
+      }
+      // Whatever room is left, spread over the six materials.
+      const each = Math.floor(Math.max(0, holdCap() - holdUsed()) / MATERIALS.length);
+      for (const m of MATERIALS) surv.hold[m.key] = each;
+      surv.cash = 250000;
+      surv.water = WATER_FULL * 0.8;
+      surv.food = foodCap() * 0.8;
+    }
+
     banner = LEV_ONLY
       ? { text: "LEVIATHAN LAB", t: 4.2, colour: CASH,
           sub: "invulnerable · every hull and part unlocked" }
@@ -17554,8 +17591,12 @@
        what is under it: on a part it is a carry, anywhere else it is a scroll.
        The tap that was already registered is kept, so a press that never moves
        is still the click-to-fit it always was. */
-    if (state === "inventory" && surveyHUD && surveyHUD.grabAt &&
-        surveyHUD.grabAt(p.x, p.y)) {
+    /* No page name here. `grabAt` answers from the rectangles drawn this frame
+       and there are none on a page without a spares tray, so asking it is both
+       the check and the answer. The name that used to be here was `inventory`,
+       and when the pages were split the tray moved to SHIP — so the gesture
+       went looking for a page that no longer has one. */
+    if (surveyHUD && surveyHUD.grabAt && surveyHUD.grabAt(p.x, p.y)) {
       carrying = true;
       pageDrag = { id: e.pointerId, x: p.x, y: p.y, moved: 0, hit };
       try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
@@ -20405,6 +20446,9 @@
     // Collected fresh: a menu line that isn't drawn this frame isn't tappable
     // this frame either, which is what keeps the two from drifting apart.
     taps = [];
+    // And the same rule for the rectangles you can pick a part up from or drop
+    // one onto. See `HUD.forgetCarryGeometry`.
+    if (surveyHUD && surveyHUD.forgetCarryGeometry) surveyHUD.forgetCarryGeometry();
     ctx.setTransform(viewScale, 0, 0, viewScale, 0, 0);
     ctx.clearRect(0, 0, SCREEN_W, SCREEN_H);
     ctx.fillStyle = "#000";

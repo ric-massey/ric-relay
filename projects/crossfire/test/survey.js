@@ -7439,6 +7439,22 @@ const storeOf = (cf, key) => {
   check(!surv.slots[0], "dropping on nothing fitted it anyway");
   check((surv.store.layerplate || 0) === 1, "a part dropped on nothing was lost");
 
+  /* And the rectangles do not outlive the page that drew them. They used to be
+     cleared inside the ship page's own draw, so leaving it left them behind —
+     a press at the same coordinates on the cargo page still found a part to
+     pick up, out of a tray that was not on the screen. They are emptied every
+     frame now, the way the tap list is, and only the page that draws a tray
+     refills one. */
+  cf.screen("inventory");
+  cf.draw();
+  check(hud.storeRows().length === 0 && hud.slotBoxes().length === 0,
+        "the ship page's drag rectangles are still there on the cargo page");
+  check(hud.grabAt(row.x + 40, row.y + 8) === false,
+        "a part could be picked up off a page with no spares tray on it");
+  hud.cancelCarry();
+  cf.screen("ship");
+  cf.draw();
+
   console.log("  catalogue  all " + all.length + " parts on one page, each saying " +
               "how to get one · four squares to drop into · a part dragged from " +
               "storage lands in the slot it was dropped on");

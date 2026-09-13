@@ -237,6 +237,57 @@ async function main() {
   console.log("  scrolls    the record page runs " + scrolled.h + "px in a " +
               scrolled.v + "px window, and the wheel moves it");
 
+  // ── it takes a drag ───────────────────────────────────────────────────────
+  /* The gesture, end to end, through the browser's own pointer events. The
+     headless suite drives `grabAt`/`carryTo`/`dropAt` straight and so has
+     always passed — which is exactly how a press on the ship page stopped
+     reaching any of them: the dispatch in index.html still asked for a page
+     called `inventory`, and the spares tray had moved to SHIP. Nothing could
+     be dragged into a slot at all, and every test said it could. */
+  const dragged = await page.evaluate(async () => {
+    const cf = window.__cf, H = window.CrossfireSurveyHUD, s = cf.survey();
+    const c = document.getElementById("game");
+    const r = c.getBoundingClientRect();
+    const scale = r.width / 1000;                       // SCREEN_W
+    const pt = (x, y) => ({ clientX: r.left + x * scale, clientY: r.top + y * scale,
+                            pointerId: 9, bubbles: true, cancelable: true,
+                            pointerType: "mouse", isPrimary: true });
+    const frame = () => new Promise(res => requestAnimationFrame(res));
+
+    s.docked = s.stations[0];
+    s.store = { layerplate: 1 };
+    s.slots = [null, null, null, null];
+    cf.screen("ship");
+    if (H.shipOpened) H.shipOpened();
+    await frame(); await frame();
+
+    const rows = H.storeRows(), boxes = H.slotBoxes();
+    if (!rows.length || !boxes.length) return { rows: rows.length, boxes: boxes.length };
+    const f = { x: rows[0].x + rows[0].w / 2, y: rows[0].y + rows[0].h / 2 };
+    const t = { x: boxes[0].x + boxes[0].w / 2, y: boxes[0].y + boxes[0].h / 2 };
+
+    c.dispatchEvent(new PointerEvent("pointerdown", pt(f.x, f.y)));
+    await frame();
+    for (let i = 1; i <= 6; i++) {
+      c.dispatchEvent(new PointerEvent("pointermove",
+        pt(f.x + (t.x - f.x) * i / 6, f.y + (t.y - f.y) * i / 6)));
+      await frame();
+    }
+    const held = H.carrying();
+    c.dispatchEvent(new PointerEvent("pointerup", pt(t.x, t.y)));
+    await frame(); await frame();
+    return { rows: rows.length, boxes: boxes.length, held,
+             fitted: s.slots[0] && s.slots[0].key, kept: s.store.layerplate || 0 };
+  });
+  check(dragged.rows > 0 && dragged.boxes === 4,
+        "the ship page drew " + dragged.rows + " draggable parts and " +
+        dragged.boxes + " slots");
+  check(dragged.held === true, "moving a pressed part across the page is not a drag");
+  check(dragged.fitted === "layerplate",
+        "a part dragged onto a slot landed as " + JSON.stringify(dragged.fitted));
+  console.log("  drags      a part picked up off the spares tray and dropped " +
+              "into a slot, by pointer events alone");
+
   // ── it comes back ─────────────────────────────────────────────────────────
   /* A real origin, a real reload, a real local storage. The headless suites
      drive a Map standing in for one. */

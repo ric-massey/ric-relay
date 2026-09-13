@@ -686,7 +686,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `test/save.js` | The book: parse, migrate, validate and the loader that decides what to do when one says no. An old save lands where a new one does, a future one is refused, a corrupt primary falls back to the backup, and a bug in the reader is not a corrupt save |
 | `test/fog.js` | The chart's round trip through storage, on its own and in milliseconds: a refused import may not damage the chart it declined to replace |
 | `test/warrens.js` | The cave region: that its rock agrees with itself across a chunk line, that the passages join up, and that nothing — the ship included — is ever left inside solid rock. Takes a seed |
-| `test/browser.js` | The only suite that needs a browser, and it asks only what one can answer: does the page load its own modules, does the canvas draw, does the account panel take typing, does the wheel move a page, does a run survive a real reload, and does it lay out on a phone. Needs Playwright — see below |
+| `test/browser.js` | The only suite that needs a browser, and it asks only what one can answer: does the page load its own modules, does the canvas draw, does the account panel take typing, does the wheel move a page, does a part drag into a slot, does a run survive a real reload, and does it lay out on a phone. Needs Playwright — see below |
 
 The game intentionally remains self-contained. Do not add a framework, bundler or
 runtime dependency for changes that fit the existing static architecture. That
@@ -712,6 +712,15 @@ canvas left at its intrinsic 300×150 because `inset: 0` does not stretch a
 replaced element, and a keydown handler that took `a`, `w`, space and Tab
 straight out of the account panel's email and password fields as they were
 typed. All three are invisible to a stub and obvious in a browser.
+
+The other half of the gap is **dispatch**. A headless check reaches for the
+interface's own methods — `grabAt`, `recordScrollBy` — and so proves the
+interface works while saying nothing about whether any gesture reaches it. Both
+of the bugs found the day this suite was written were of that shape: splitting
+Survey's pages left the wheel and the drag routed to a page name that no longer
+existed, so the record page could not be scrolled and nothing could be dragged
+into a slot, and every headless suite passed throughout. What is checked here is
+always the gesture, never the method.
 
 ## Verification
 
