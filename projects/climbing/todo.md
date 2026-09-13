@@ -342,8 +342,8 @@ Ijams Crag
 Boulder
 Yosemite, Big Colombia Boulder
 
-# Cobra Crack - 5.14 Trad
-1 pitch
+# Cobra Crack - 5.14b Trad
+1 pitch - 100ft
 Squamish, Cirque of the Uncrackables
 
 #

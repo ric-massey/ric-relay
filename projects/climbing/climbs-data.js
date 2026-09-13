@@ -6464,15 +6464,15 @@ window.CLIMBING_DATA = {
   },
   {
    "name": "Cobra Crack",
-   "grade": "5.14",
+   "grade": "5.14b",
    "gradeKind": "rope",
-   "gradeRank": 56,
+   "gradeRank": 57,
    "style": "Trad",
    "done": false,
    "tickDate": null,
    "result": null,
    "pitches": 1,
-   "lengthFt": null,
+   "lengthFt": 100,
    "location": "Squamish, Cirque of the Uncrackables",
    "note": "Trad",
    "tried": null
