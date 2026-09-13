@@ -6461,6 +6461,21 @@ window.CLIMBING_DATA = {
    "location": "Yosemite, Big Colombia Boulder",
    "note": null,
    "tried": null
+  },
+  {
+   "name": "Cobra Crack",
+   "grade": "5.14",
+   "gradeKind": "rope",
+   "gradeRank": 56,
+   "style": "Trad",
+   "done": false,
+   "tickDate": null,
+   "result": null,
+   "pitches": 1,
+   "lengthFt": null,
+   "location": "Squamish, Cirque of the Uncrackables",
+   "note": "Trad",
+   "tried": null
   }
  ],
  "index": {
@@ -9638,7 +9653,7 @@ window.CLIMBING_DATA = {
   "sends": 207,
   "people": 46,
   "areas": 9,
-  "todoOpen": 79,
+  "todoOpen": 80,
   "todoDone": 6
  }
 };
