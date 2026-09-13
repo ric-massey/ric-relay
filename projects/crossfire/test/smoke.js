@@ -36,13 +36,16 @@ function checkSyntax() {
   assert.equal(scripts.length, 1, "expected one inline game script");
   new vm.Script(scripts[0][1], { filename: "index.inline.js" });
 
-  /* The survey panel is a separate file, and the inline script captures its
-     global once at boot — so it has to be loaded before, not after. Loading it
-     late is silent: the mode plays with no chart and no catalogue readout. */
-  assert.match(html, /<script src="survey-hud\.js"><\/script>/,
-    "index.html must load survey-hud.js");
-  assert.ok(html.indexOf('src="survey-hud.js"') < html.indexOf("<script>"),
-    "survey-hud.js must be loaded before the inline game script");
+  /* Survey's three modules are separate files, and the inline script captures
+     each global once at boot — so every one of them has to be loaded before,
+     not after. Loading one late is silent: the mode plays with no chart and no
+     catalogue readout, or it does not boot at all. */
+  const inlineAt = html.search(/<script(?![^>]*\bsrc=)/i);
+  for (const mod of ["survey-world.js", "survey-save.js", "survey-hud.js"]) {
+    const at = html.indexOf('src="' + mod + '"');
+    assert.ok(at > 0, "index.html must load " + mod);
+    assert.ok(at < inlineAt, mod + " must be loaded before the inline game script");
+  }
   /* The one line the mode gets to introduce itself with, on the menu card. It
      used to say "no enemies · endless space · chart it and fill the almanac",
      which stopped being true somewhere around the pirates and was outright wrong
@@ -55,7 +58,7 @@ function checkSyntax() {
      ordering rule. A card with no picture is the failure this catches. */
   assert.match(html, /<script src="menu\.js"><\/script>/,
     "index.html must load menu.js");
-  assert.ok(html.indexOf('src="menu.js"') < html.indexOf("<script>"),
+  assert.ok(html.indexOf('src="menu.js"') < inlineAt,
     "menu.js must be loaded before the inline game script");
 
   /* Every mode card names a scene, and every named scene must exist. A card

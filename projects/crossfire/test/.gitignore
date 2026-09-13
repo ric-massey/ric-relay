@@ -1,0 +1,6 @@
+# Playwright and its browsers are a test-time dependency, installed with
+# `npm run setup` in this directory. Neither belongs in a Pages repo: the
+# browsers alone are a couple of hundred megabytes, and the game ships as
+# static files that depend on none of it.
+node_modules/
+package-lock.json

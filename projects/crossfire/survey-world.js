@@ -34,6 +34,13 @@ window.CrossfireSurveyWorld = function (env) {
   const seeded = env.seeded;
   const seed  = () => env.seed();
   const world = () => env.world();
+  /* The Warrens needs three more things from the run: whether one has
+     started at all, the block of rock the streamer has built around the
+     ship, and how wide a chunk is. The rock is live state and stays the
+     runtime's — this only reads the index. */
+  const running  = () => !!env.running();
+  const caveGrid = () => env.caveGrid();
+  const CHUNK    = env.CHUNK;
 
 /* One seed and one pair of chunk coordinates make one number, and that number
    makes one chunk. Mixed rather than added so neighbouring chunks are not
@@ -380,6 +387,321 @@ function abund(key, x, y) {
   return w * (r === undefined ? 1 : r);
 }
 
+/* ══ THE WARRENS ═══════════════════════════════════════════════════════════
+   A region that is *made of rock*, with tunnels bored through it.
+
+   ── the thing this got wrong twice ──
+   The first two versions thresholded noise: open space by default, with masses
+   of rock in it. However it was shaded and however the discs were jittered, it
+   came out as **bubbles** — because that is what it was. A field of separate
+   blobs seen from outside is a field of blobs; nothing about the drawing can
+   make it a tunnel, because the player was never inside anything.
+
+   It is the other way round. **Rock is everywhere, and the passage is the
+   hole.** Then the only edge you ever see is the wall of the tunnel you are
+   in, which is a winding line rather than a row of circles, and the shape of
+   the space is something you are *in* rather than something you are among.
+
+   ── how a tunnel can be chunk-pure ──
+   Chunks are 2,600 units, built independently from `(seed, cx, cy)` with no
+   knowledge of their neighbours, so nothing may be carved by walking a path
+   and remembering where it has been. Instead the network is a lattice: a node
+   per coarse cell at a hashed position, joined to the node east of it and,
+   more often than not, the node south of it. Any point can ask which segments
+   could possibly reach it by looking at the handful of nodes around it, and
+   two chunks either side of a line get the same answer because they are asking
+   about the same nodes.
+
+   ── what makes it feel like a cave rather than a pipe ──
+   Three things, all hashed off the nodes so they cost nothing and repeat
+   exactly:
+
+     · **the width changes.** Each node has its own bore, from a squeeze you
+       have to line up for to a chamber several times the ship's length, and
+       the passage lerps between them along its run.
+     · **the walls are rough in some places and smooth in others.** Each node
+       carries a roughness, and where it is high the wall is bitten into by a
+       high-frequency wobble; where it is low the wall is a clean curve.
+     · **there are rooms.** One node in seven opens out into a chamber, which
+       is where the caches are and where a fight has somewhere to happen. */
+const CAVE_CELL = 150;        // the lattice the rock is stamped on
+const TUNNEL_CELL = 2200;     // one node of the network
+const BORE_MIN = 95;          // a squeeze
+const BORE_MAX = 260;         // an ordinary passage
+const ROOM_BORE = 620;        // and a chamber
+
+function caveHash(gx, gy, salt) {
+  let h = (seed() || 1) ^ (salt * 0x9e3779b1);
+  h = Math.imul(h ^ (gx + 0x7f4a7c15), 0x85ebca6b) >>> 0;
+  h = Math.imul(h ^ (gy + 0x165667b1), 0xc2b2ae35) >>> 0;
+  h ^= h >>> 15;
+  return (h >>> 8) / 0x1000000;
+}
+
+/* Value noise, one call, used only to rough the walls up. The rock itself is
+   not noise any more — it is everything the tunnels have not taken. */
+function caveOctave(x, y, scale, salt) {
+  const fx = x / scale, fy = y / scale;
+  const x0 = Math.floor(fx), y0 = Math.floor(fy);
+  const tx = fx - x0, ty = fy - y0;
+  const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+  const a = caveHash(x0, y0, salt), b = caveHash(x0 + 1, y0, salt);
+  const c = caveHash(x0, y0 + 1, salt), d = caveHash(x0 + 1, y0 + 1, salt);
+  const top = a + (b - a) * sx, bot = c + (d - c) * sx;
+  return top + (bot - top) * sy;
+}
+
+/* A node: where it is, how wide the passage is there, and how rough its walls
+   are. All three from the same cell's hashes, so a node is a fact about its
+   coordinates and nothing else. */
+function tunnelNode(nx, ny) {
+  const jx = caveHash(nx, ny, 1), jy = caveHash(nx, ny, 2);
+  const w = caveHash(nx, ny, 3), rough = caveHash(nx, ny, 4);
+  const room = caveHash(nx, ny, 5) < 0.14;
+  return {
+    x: (nx + 0.18 + jx * 0.64) * TUNNEL_CELL,
+    y: (ny + 0.18 + jy * 0.64) * TUNNEL_CELL,
+    // Cubed, so most of the network is ordinary and a squeeze is a real event.
+    bore: room ? ROOM_BORE : BORE_MIN + (BORE_MAX - BORE_MIN) * w * w * w,
+    rough, room
+  };
+}
+
+/* ── a passage bends ──────────────────────────────────────────────────────
+   A link drawn straight from one node to the next is a corridor in a building,
+   not a tunnel in rock: it runs dead straight for a whole screen and reads as
+   architecture. So every link bows, by a hashed amount to a hashed side, and
+   the bow is taken from the pair of nodes so both ends agree about it without
+   either knowing the other exists.
+
+   Returned as a short list of points rather than as a curve, because the
+   collision and the renderer both walk it and neither may have its own idea of
+   where a passage goes. */
+const LINK_STEPS = 3;
+function linkPath(a, b, nx, ny, salt) {
+  const bow = (caveHash(nx, ny, salt) - 0.5) * 0.44;
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const cx = mx - dy * bow, cy = my + dx * bow;
+  const pts = [];
+  for (let i = 0; i <= LINK_STEPS; i++) {
+    const t = i / LINK_STEPS, u = 1 - t;
+    pts.push({
+      x: u * u * a.x + 2 * u * t * cx + t * t * b.x,
+      y: u * u * a.y + 2 * u * t * cy + t * t * b.y,
+      t
+    });
+  }
+  return pts;
+}
+
+function segDist2(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const L = dx * dx + dy * dy;
+  let t = L > 0 ? ((px - ax) * dx + (py - ay) * dy) / L : 0;
+  t = Math.max(0, Math.min(1, t));
+  const qx = ax + dx * t, qy = ay + dy * t;
+  return { d2: (px - qx) * (px - qx) + (py - qy) * (py - qy), t };
+}
+
+/* How much of the region's rock exists here at all. Zero at the border and
+   full inside, so you are never met by the outside of a hundred thousand
+   units of wall — the rock closes in as you go rather than starting as a
+   cliff. Same `regionDepth` ramp as the Murk's static and the sky tint. */
+function caveFillAt(x, y) {
+  if (!running()) return 0;
+  const reg = regionOf(x, y);
+  if (!reg || !reg.cave) return 0;
+  const t = regionDepth(x, y);
+  const u = Math.max(0, Math.min(1, (t - 0.04) / 0.30));
+  return u * u * (3 - 2 * u);
+}
+
+/* Inside a passage. Returns how far in, 0 at the wall and 1 at the middle, so
+   the caller can tell a squeeze from a chamber — and so the wall can be
+   roughened by an amount that fades to nothing rather than switching. */
+/* The nearest passage spine: how far away it is and how wide it is there.
+   Raw — the warp is applied by `caveEdge`, so this stays the cheap half and
+   can be reused. */
+function tunnelNear(x, y) {
+  const nx = Math.floor(x / TUNNEL_CELL), ny = Math.floor(y / TUNNEL_CELL);
+  let bd = Infinity, bb = 0;
+  /* Three by three, not four by four. A node sits inside its own cell and its
+     links run one cell east and one south; the bow pushes a link off the
+     straight line by at most 0.44 of its length, and the widest chamber is a
+     quarter of a cell. So nothing further than one cell away can reach a
+     point — and the extra ring was 16 nodes where 9 do, which is 40% of the
+     cost of every solidity test in the region, paid at chunk-build time. */
+  for (let j = -1; j <= 1; j++) {
+    for (let i = -1; i <= 1; i++) {
+      const gx = nx + i, gy = ny + j;
+      const a = tunnelNode(gx, gy);
+      const links = [[tunnelNode(gx + 1, gy), 12]];
+      if (caveHash(gx, gy, 6) < 0.58) links.push([tunnelNode(gx, gy + 1), 13]);
+      for (const [b, salt] of links) {
+        const pts = linkPath(a, b, gx, gy, salt);
+        for (let k = 0; k < pts.length - 1; k++) {
+          const p = pts[k], q = pts[k + 1];
+          const { d2, t } = segDist2(x, y, p.x, p.y, q.x, q.y);
+          const along = p.t + (q.t - p.t) * t;
+          const d = Math.sqrt(d2);
+          if (d < bd) { bd = d; bb = a.bore + (b.bore - a.bore) * along; }
+        }
+      }
+    }
+  }
+  return bd === Infinity ? null : { d: bd, bore: bb };
+}
+
+/* ── why there is a warp ───────────────────────────────────────────────────
+   "Inside a passage" was `distance to the centreline < bore`, and that makes a
+   **tube**: a constant cross-section with two walls that are mirror images and
+   ends that are circles. It is the shape of a pipe, and no amount of shading
+   turns a pipe into a cave, because the thing that makes a cave a cave is that
+   the two walls have nothing to do with each other. One bulges into an alcove
+   while the other runs straight past it.
+
+   So the boundary is displaced by noise sampled *in the world*, not along the
+   passage. A point on the left wall and the point opposite it on the right ask
+   different places and get different answers, so the walls stop agreeing —
+   which is the whole of it. Three octaves: one that opens chambers and closes
+   throats, one that puts bays and buttresses in, and one that roughens.
+
+   `caveEdge` is negative inside the passage and positive in rock, and it is
+   the only definition of where the wall is. Collision reads it, the streamer
+   reads it, and the renderer traces it. */
+function caveWarp(x, y) {
+  return (caveOctave(x, y, 860, 21) - 0.5) * 2 * 0.62 +
+         (caveOctave(x, y, 330, 22) - 0.5) * 2 * 0.27 +
+         (caveOctave(x, y, 118, 23) - 0.5) * 2 * 0.11;
+}
+
+function caveEdge(x, y) {
+  const t = tunnelNear(x, y);
+  if (!t) return 1e6;
+  // The warp moves the wall by up to about two thirds of the passage's width,
+  // which is the difference between an irregular passage and a wobbly pipe.
+  return t.d - (t.bore * (1 + caveWarp(x, y) * 0.66));
+}
+
+// Rock is everything the region claims and the passages have not taken.
+const caveSolidAt = (x, y) =>
+  caveFillAt(x, y) > 0.35 && caveEdge(x, y) > 0;
+
+/* Somewhere open, near a point. Nothing may ever be left inside rock — a hull
+   dropped into a mass cannot fly out of it, because collision pushes it off
+   each disc in turn and there is always another one behind. A gate mouth, a
+   jump or a respawn all come through here. */
+function outOfRock(x, y) {
+  const clear = (px, py) => caveFillAt(px, py) <= 0.35 ||
+                            caveEdge(px, py) < -CAVE_CELL * 0.9;
+  if (clear(x, y)) return { x, y };
+  const step = CAVE_CELL * 1.5;
+  for (let ring = 1; ring <= 40; ring++) {
+    const n = ring * 8;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + ring * 0.37;
+      const px = x + Math.cos(a) * ring * step;
+      const py = y + Math.sin(a) * ring * step;
+      if (clear(px, py)) return { x: px, y: py };
+    }
+  }
+  return { x, y };
+}
+
+/* The rock of one chunk, as collision discs. A cell belongs to the chunk that
+   contains it and the arithmetic has to say so exactly once — `ceil` at both
+   ends does; `ceil` then `floor` left the cell sitting on the line built by
+   neither chunk, which is a missing column of rock at every boundary in the
+   region and a gap in the wall from the inside. */
+function caveSegsIn(cx, cy) {
+  const ox = cx * CHUNK, oy = cy * CHUNK;
+  if (caveFillAt(ox + CHUNK / 2, oy + CHUNK / 2) <= 0.35 &&
+      caveFillAt(ox, oy) <= 0.35 &&
+      caveFillAt(ox + CHUNK, oy + CHUNK) <= 0.35) return [];
+  const segs = [];
+  const g0 = Math.ceil(ox / CAVE_CELL), g1 = Math.ceil((ox + CHUNK) / CAVE_CELL);
+  const h0 = Math.ceil(oy / CAVE_CELL), h1 = Math.ceil((oy + CHUNK) / CAVE_CELL);
+  for (let gx = g0; gx < g1; gx++) {
+    for (let gy = h0; gy < h1; gy++) {
+      const x = gx * CAVE_CELL, y = gy * CAVE_CELL;
+      if (!caveSolidAt(x, y)) continue;
+      /* Only the *surface*. A disc buried inside a mass can never be touched
+         by anything, and there are four or five of those for every one on the
+         wall — carrying them costs a collision test per frame each and buys
+         nothing. A cell with a neighbour in open space is on the wall; a cell
+         surrounded by rock is not.
+
+         All **eight** neighbours, not four. With only the orthogonal ones, a
+         cell whose open neighbour is diagonal gets no disc — and a diagonal
+         gap between two surface discs is a gap something can fly through.
+         Measured: 5 of 24 probes driven flat at a wall got inside it through
+         exactly that corner. */
+      let buried = true;
+      for (let ox2 = -1; ox2 <= 1 && buried; ox2++) {
+        for (let oy2 = -1; oy2 <= 1; oy2++) {
+          if (!ox2 && !oy2) continue;
+          if (!caveSolidAt(x + ox2 * CAVE_CELL, y + oy2 * CAVE_CELL)) {
+            buried = false; break;
+          }
+        }
+      }
+      if (buried) continue;
+      /* Big enough that neighbours overlap across the corner — under about
+         0.71 of a cell the mass falls apart into separate circles, which is
+         the bubble this whole system was rebuilt to stop being. There is no
+         jitter: the rock is a solid field now and its only visible edge is the
+         tunnel wall, whose shape comes from the bore and the roughness. */
+      segs.push({ x, y, r: CAVE_CELL * 0.78 });
+    }
+  }
+  return segs;
+}
+
+/* Rock near a point, out of the index built by `streamChunks`. Returns an
+   empty list anywhere there is no cave, which is almost everywhere. */
+const CAVE_GRID_CELL = 420;
+const NO_ROCK = [];
+function caveNear(x, y) {
+  const grid = caveGrid();
+  if (!grid) return NO_ROCK;
+  const gx = Math.floor(x / CAVE_GRID_CELL), gy = Math.floor(y / CAVE_GRID_CELL);
+  const out = [];
+  for (let j = -1; j <= 1; j++) {
+    for (let i = -1; i <= 1; i++) {
+      const cell = grid.get((gx + i) + "," + (gy + j));
+      if (cell) for (const g of cell) out.push(g);
+    }
+  }
+  return out;
+}
+
+/* ── what colour this cave is ──────────────────────────────────────────────
+   Bright, and a different one per cave system, hashed off the region site's
+   own cell. The first version drew the walls in a dim brown that agreed with
+   the sky tint, which was tasteful and nearly invisible — and the one thing
+   you must be able to see at a glance in here is where the rock is. */
+const CAVE_TINTS = [
+  "#6dffbf", "#87d8ff", "#ffcb42", "#ff8f77",
+  "#a08cff", "#6dffff", "#ffe56d", "#ff6dd8"
+];
+
+function caveTint(x, y) {
+  const cx = Math.floor(x / REGION_CELL), cy = Math.floor(y / REGION_CELL);
+  let best = null, bd = Infinity;
+  for (let j = -1; j <= 1; j++) {
+    for (let i = -1; i <= 1; i++) {
+      const st = regionSite(cx + i, cy + j);
+      const d = (st.x - x) * (st.x - x) + (st.y - y) * (st.y - y);
+      if (d < bd) { bd = d; best = st; }
+    }
+  }
+  if (!best) return CAVE_TINTS[0];
+  const h = Math.abs(Math.round(caveHash(best.cx, best.cy, 11) * 1024));
+  return CAVE_TINTS[h % CAVE_TINTS.length];
+}
+
+
   /* A new sector is a new lattice. `setupSurvey` calls this; both caches
      memoise pure functions of a cell and the sector seed, so carrying one
      across a reset would lay the old sector's places over the new one. */
@@ -393,6 +715,11 @@ function abund(key, x, y) {
     BANDS, DANGER_FULL, dangerAt, bandAt,
     REGIONS, REGION_CELL, HOME_REACH,
     regionAt, regionSite, regionDepth, regionOf, abund,
+    /* The Warrens: a region that is made of rock, with tunnels bored through
+       it. It lives here because it is terrain of a region and reads the same
+       lattice — `regionOf`, `regionDepth` — that decides where it exists. */
+    CAVE_CELL, CAVE_GRID_CELL, caveHash, caveFillAt, caveEdge, caveWarp,
+    caveSolidAt, outOfRock, caveSegsIn, caveNear, caveTint,
     clearCaches
   };
 };

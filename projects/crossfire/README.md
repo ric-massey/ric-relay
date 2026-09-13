@@ -411,15 +411,37 @@ than at the end of the coalescing window, and say out loud that it worked.
 
 ### Where it lives
 
-`index.html` is already 8,000 lines, and a fourth mode's interface — a fog chart,
-an illustrated almanac, contact bearings, a station screen — is not a small
-tenant. `survey-hud.js` is loaded the way `net.js` is and handed the engine's
-drawing primitives at boot. `menu.js` is loaded the same way for the same reason.
+`index.html` was already 8,000 lines when Survey arrived, and a fourth mode's
+interface — a fog chart, an illustrated almanac, contact bearings, a station
+screen — was not a small tenant. Three pieces of the mode live outside it now,
+each loaded the way `net.js` is:
 
-Both must be loaded **before** the inline script, which captures each global
-once. Loading either late is silent: the mode would play with no chart and no
-almanac, and the menu would draw cards with nothing moving inside them. Both
-orderings are asserted in `test/smoke.js`.
+| Module | What it is | What it needs from the game |
+|---|---|---|
+| `survey-world.js` | Chunk identity, the danger curve, the region lattice, the Warrens | `seeded`, the chunk size, and calls that read the run's seed and world |
+| `survey-save.js` | The book, and everywhere it is kept | Constants, five content tables, an empty hold |
+| `survey-hud.js` | The interface | The engine's drawing primitives |
+
+Each is a factory handed exactly what it needs, and the list is the point of the
+split as much as the file is. A dependency you can read is a dependency you can
+argue with — and one of them was a trap the shared closure had been hiding:
+`index.html` declares `FACTIONS` six thousand lines *below* the book, which
+never mattered while the validator read it at load time out of a shared scope.
+Reading it at construction stopped the game booting. The content tables go in as
+getters.
+
+What did **not** move is the runtime: streaming, the ships, the devices, the
+flight loop and the state the interface is handed all still live in the inline
+script, because they are woven through the shared engine that the other three
+modes use too. Pulling them out is a different job from moving a pure function.
+
+`menu.js` is loaded the same way for the same reason.
+
+All of them must be loaded **before** the inline script, which captures each
+global once. Loading one late is silent: the mode would play with no chart and
+no almanac, and the menu would draw cards with nothing moving inside them. The
+ordering is asserted in `test/smoke.js`, and `test/browser.js` checks the real
+graph — the one the browser resolved, not the one a test read out of the markup.
 
 ## Controls
 
@@ -645,12 +667,15 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `cloud.js` | The account, and the book kept in it. No SDK, no request until asked |
 | `config.js` | The account service's URL and publishable key. Blank means no accounts |
 | `supabase/schema.sql` | The one save table and its policies. Run once in the SQL editor |
+| `survey-world.js` | Where you are and what that means: chunk identity, the danger curve, the region lattice and the Warrens' rock. Pure functions of a seed and a pair of coordinates |
+| `survey-save.js` | The book: where it is kept, the four pieces a read is made of, and the write |
 | `survey-hud.js` | Survey's interface: the flight panel, the chart page, the illustrated almanac, the station |
 | `menu.js` | The mode cards' moving pictures — five dioramas, drawn rather than filmed |
 | `server/rooms-core.mjs` | The room service: every rule, no plumbing |
 | `server/worker.mjs` | Runs it on Cloudflare, in one Durable Object |
 | `server/rooms.js` | Runs it on a laptop, with nothing installed |
 | `server/wrangler.jsonc` | Deploy configuration |
+| `test/page.js` | Not a suite. What the page loads, in the page's order, so a new module reaches every harness without editing one |
 | `test/smoke.js` | Dependency-free syntax, transport and service checks |
 | `test/campaign.js` | Headless play-through of all three missions to a verdict |
 | `test/survey.js` | Headless survey: chunk purity, endless space, almanac reachability, chart persistence, solidity, the economy, the Leviathan's corridor |
@@ -661,9 +686,32 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `test/save.js` | The book: parse, migrate, validate and the loader that decides what to do when one says no. An old save lands where a new one does, a future one is refused, a corrupt primary falls back to the backup, and a bug in the reader is not a corrupt save |
 | `test/fog.js` | The chart's round trip through storage, on its own and in milliseconds: a refused import may not damage the chart it declined to replace |
 | `test/warrens.js` | The cave region: that its rock agrees with itself across a chunk line, that the passages join up, and that nothing — the ship included — is ever left inside solid rock. Takes a seed |
+| `test/browser.js` | The only suite that needs a browser, and it asks only what one can answer: does the page load its own modules, does the canvas draw, does the account panel take typing, does the wheel move a page, does a run survive a real reload, and does it lay out on a phone. Needs Playwright — see below |
 
 The game intentionally remains self-contained. Do not add a framework, bundler or
-runtime dependency for changes that fit the existing static architecture.
+runtime dependency for changes that fit the existing static architecture. That
+rule is about **the game**: what gets served is still static HTML, CSS and
+JavaScript, with no build step and no third-party script on the page.
+
+`test/browser.js` is the one exception and it is not a runtime one. Playwright
+is a test-time dependency, installed inside `test/` and ignored by git, and
+nothing the browser downloads depends on it. It is skipped with a message
+rather than failing when it is not installed, because the fast suites are the
+ones that have to run everywhere:
+
+```sh
+cd projects/crossfire/test && npm run setup
+```
+
+It exists because the nine headless suites share one blind spot. They run the
+game inside `vm` with a hand-built window and a canvas context whose every
+method is a no-op — which is what makes them fast enough to run on every change,
+and it means the thing that is wrong can be the very thing being stubbed. Three
+bugs shipped through that gap: a module the page loaded in the wrong order, a
+canvas left at its intrinsic 300×150 because `inset: 0` does not stretch a
+replaced element, and a keydown handler that took `a`, `w`, space and Tab
+straight out of the account panel's email and password fields as they were
+typed. All three are invisible to a stub and obvious in a browser.
 
 ## Verification
 
@@ -678,6 +726,7 @@ node projects/crossfire/test/rocks.js
 node projects/crossfire/test/save.js
 node projects/crossfire/test/fog.js
 node projects/crossfire/test/warrens.js
+node projects/crossfire/test/browser.js   # needs Playwright; skips without it
 ```
 
 The closing wall and the spawn rules cannot be checked by looking at them. With
