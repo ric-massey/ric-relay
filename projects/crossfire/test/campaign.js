@@ -15,11 +15,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-const INDEX = path.join(__dirname, "..", "index.html");
-const html = fs.readFileSync(INDEX, "utf8");
-const script = [...html.matchAll(
-  /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi
-)][0][1];
+const page = require("./page.js");
 
 // ── a browser, reduced to the parts the game reaches for ──────────────────
 let now = 0;                       // the clock the harness controls
@@ -121,7 +117,8 @@ sandbox.CrossfireNet = undefined;
 
 vm.createContext(sandbox);
 try {
-  vm.runInContext(script, sandbox, { filename: "index.inline.js" });
+  // The page's own modules, in the page's own order. See test/page.js.
+  page.boot(sandbox);
 } catch (e) {
   console.error("game script threw while booting:", e);
   process.exit(1);
