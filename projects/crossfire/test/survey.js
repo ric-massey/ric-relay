@@ -29,19 +29,18 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-const DIR = path.join(__dirname, "..");
-const html = fs.readFileSync(path.join(DIR, "index.html"), "utf8");
-const inline = [...html.matchAll(
-  /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi
-)][0][1];
-const hudSrc = fs.readFileSync(path.join(DIR, "survey-hud.js"), "utf8");
+const page = require("./page.js");
+const DIR = page.DIR;
+const html = page.page().html;
+const hudSrc = page.source("survey-hud.js");
 
-// The page loads survey-hud.js before the inline script, and the inline script
-// captures the global once at boot — so the harness must load them in the same
-// order or it would be testing the null-HUD path by accident.
+/* The load order is the page's now rather than a copy of it — see
+   test/page.js — but the fact it protects is still worth saying out
+   loud: the inline script captures `window.CrossfireSurveyHUD` once at
+   boot, so a HUD loaded after it would test the null-HUD path. */
 assert.ok(
   html.indexOf('src="survey-hud.js"') > 0 &&
-  html.indexOf('src="survey-hud.js"') < html.indexOf("<script>"),
+  html.indexOf('src="survey-hud.js"') < html.search(/<script(?![^>]*\bsrc=)/i),
   "survey-hud.js must be loaded before the inline game script"
 );
 
@@ -201,8 +200,8 @@ function bootKeepingStorage(search) {
   sandbox.self = sandbox;
   sandbox.CrossfireNet = undefined;
   vm.createContext(sandbox);
-  vm.runInContext(hudSrc, sandbox, { filename: "survey-hud.js" });
-  vm.runInContext(inline, sandbox, { filename: "index.inline.js" });
+  // The page's own modules, in the page's own order. See test/page.js.
+  page.boot(sandbox);
   // `window` inside the sandbox is the stub, not the sandbox object itself, so
   // anything the game hangs off window lands there — the same reason
   // test/campaign.js looks in both places.

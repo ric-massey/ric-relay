@@ -9910,6 +9910,22 @@
       if (!worst) break;
       clear(worst.x, worst.y, worst.r);
     }
+
+    /* The discs are an approximation of the cave and the cave is a field, so
+       the two disagree in the margins: there are pockets the field calls rock
+       that no disc quite covers. The player has always been dug out of one —
+       see the `caveSolidAt` guard beside the hull's own collision — and nothing
+       else was, so a freighter could drift through a piece of wall you can see.
+       That is the asymmetry this whole function was written to end.
+
+       The field is the last word, then, for everybody. Reached only when the
+       discs found nothing, which is the rare case, so the cost is a couple of
+       samples on the frames it matters. */
+    if (!hit && surv.cave && surv.cave.length && caveSolidAt(o.x, o.y)) {
+      const out = outOfRock(o.x, o.y);
+      o.x = out.x; o.y = out.y;
+      hit = true;
+    }
     return hit;
   }
 
