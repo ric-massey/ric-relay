@@ -52,6 +52,11 @@ function stubCtx() {
   return new Proxy({}, {
     get: (t, k) => {
       if (k === "measureText") return str => ({ width: String(str).length * 8 });
+      // Likewise the gradient makers: the menus fade a card's picture into its
+      // words with one, and a no-op returning `undefined` turns drawing a card
+      // into "cannot read properties of undefined (reading 'addColorStop')".
+      if (k === "createLinearGradient" || k === "createRadialGradient" ||
+          k === "createPattern") return () => ({ addColorStop: noop });
       return k in t ? t[k] : (t[k] = noop);
     },
     set: (t, k, v) => (t[k] = v, true)

@@ -570,12 +570,28 @@
       const x1 = Math.min(rect.x + rect.w, tapWindow.x + tapWindow.w);
       if (y1 - y0 < 6 || x1 - x0 < 6) return;     // nothing worth pressing
       rect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0, act: rect.act,
-               card: rect.card, note: rect.note };
+               card: rect.card, note: rect.note, hold: rect.hold };
     }
     api.addTap(rect);
   }
 
-  function pageFrame(title, sub, footer) {
+  /* ── two kinds of page ────────────────────────────────────────────────────
+     A shop and a shipyard are somewhere you docked at. Your hold, your bench,
+     your jobs and your chart are aboard the thing you flew there in. They were
+     identical furniture, so a page about your own ship and a page about
+     somebody else's shop could only be told apart by reading the title.
+
+     They take different accents now, and the palette already had the right
+     answer in it: Survey's violet is the mode — out there, somewhere you
+     arrived — and Crossfire's amber is the chrome, which is yours. Violet is a
+     place. Amber is your ship. */
+  const PLACE_TABS = ["refit", "hangar"];
+  const SHIP_TABS  = ["ship", "inventory", "record", "craft", "chart"];
+  const SHIP_TONE  = { bright: AMBER, dim: AMBER_DIM, low: RULE };
+  const PLACE_TONE = { bright: VIOLET, dim: VIOLET_DIM, low: VIOLET_LOW };
+
+  function pageFrame(title, sub, footer, tone) {
+    tone = tone || PLACE_TONE;
     const { ctx, SCREEN_W, SCREEN_H } = api;
     ctx.save();
     ctx.fillStyle = INK;
@@ -585,11 +601,11 @@
 
     // Under the navigation strip: the title says where you are, and the strip
     // above it is how you leave.
-    label(title, 34, 84, SIZE.head, VIOLET, "left", 1, "0.22em");
-    if (sub) label(sub, SCREEN_W - 34, 84, SIZE.cap, AMBER_DIM, "right", 0.7);
+    label(title, 34, 84, SIZE.head, tone.bright, "left", 1, "0.22em");
+    if (sub) label(sub, SCREEN_W - 34, 84, SIZE.cap, tone.dim, "right", 0.7);
 
     ctx.save();
-    ctx.strokeStyle = VIOLET_LOW;
+    ctx.strokeStyle = tone.low;
     ctx.globalAlpha = 0.9;
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -597,7 +613,7 @@
     ctx.stroke();
     ctx.restore();
 
-    if (footer) label(footer, 34, SCREEN_H - 30, SIZE.cap, VIOLET_DIM, "left", 0.75);
+    if (footer) label(footer, 34, SCREEN_H - 30, SIZE.cap, tone.dim, "left", 0.75);
   }
 
   /* One way out, the same shape on both platforms: a key that is already muscle
@@ -626,41 +642,76 @@
   // Along the top. See `PAGE.TOP`.
   const NAV_Y = () => 32;
 
-  function pageNav(st, here) {
+  function pageNav(st, here, only, tone) {
+    tone = tone || PLACE_TONE;
     const { SCREEN_W, SCREEN_H } = api;
-    const docked = !!st.docked;
-    /* Six, not eight. Storage and the loadout were two pages about the same
-       object — your ship — and reading one while deciding the other meant leaving
-       and coming back; they are one scrolling page now. The almanac stopped being
-       a tab at all: it is a book, and it lives on the shelf of the ship that is
-       carrying it. */
-    const tabs = [
-      { key: "refit",     name: "STATION",  live: docked, act: st.onStation },
+    /* Three, and it used to be six. The strip is for the pages you carry with
+       you — the bench, the jobs and the chart are yours wherever you are, and
+       they belong on every page because there is no other way to reach them on
+       a phone.
+
+       A *place* is not one of those. The station is somewhere you flew to and
+       docked at, and your ship's hold is somewhere you are standing; putting
+       them a tab apart made the station feel like a page of your ship rather
+       than a place you had arrived at. They come off the strip, and each keeps
+       the way in it already had:
+
+         STATION  docking — `E`, or "DOCKED — TAP TO REFIT" on a phone
+         SHIP     `I` or `G`, or the INVENTORY button on the flight panel
+         SHIPS    a row in the home station's own market, where a hull is a
+                  thing you buy rather than a page you visit
+
+       So nothing became unreachable by thumb, which is the only reason the
+       strip exists at all. */
+    const all = [
+      { key: "refit",     name: "SHOP",     live: !!(st.docked || st.landed),
+        act: st.onStation },
       { key: "hangar",    name: "SHIPS",    live: !!st.atHome, act: st.onHangar },
-      { key: "craft",     name: "PARTS",    live: true,   act: st.onCraftPage },
-      { key: "inventory", name: "SHIP",     live: true,   act: st.onInventory },
-      { key: "missions",  name: "MISSIONS", live: true,   act: st.onMissions },
-      { key: "chart",     name: "CHART",    live: true,   act: st.onChart }
+      /* Two pages, because they are two jobs. The ship is what you are flying
+         and what is bolted to it; the cargo is everything that is merely inside
+         it. They were one page called INVENTORY that did both and named one. */
+      { key: "ship",      name: "SHIP",     live: true, act: st.onShip },
+      { key: "inventory", name: "CARGO",    live: true, act: st.onInventory },
+      { key: "record",    name: "RECORD",   live: true, act: st.onRecord },
+      { key: "craft",     name: "CRAFTING", live: true, act: st.onCraftPage },
+      { key: "missions",  name: "MISSIONS", live: true, act: st.onMissions },
+      { key: "chart",     name: "MAP",      live: true, act: st.onChart }
     ];
+    /* `only` narrows the strip for a page that should not be offering all of it.
+       The shop is the one that should not: a jobs board and a star chart are
+       things you read on your own ship, not things the counter you are standing
+       at hands you — and a place with three doors out of it stops feeling like
+       somewhere you went to. */
+    const tabs = only ? all.filter(t => only.indexOf(t.key) >= 0) : all;
+    if (!tabs.length) return;
     const gap = api.touchOnly ? 5 : 7;
     const span = SCREEN_W - PAGE.EDGE * 2 - NAV_CLOSE_W - 16;
-    const w = Math.floor((span - gap * (tabs.length - 1)) / tabs.length);
+    /* Capped, so a short strip is a row of buttons and not one banner stretched
+       across the page. At three it divides to 250 and the cap changes nothing;
+       at one it is still a button. */
+    const w = Math.min(250,
+      Math.floor((span - gap * (tabs.length - 1)) / tabs.length));
     tabs.forEach((t, i) => {
       const cx = PAGE.EDGE + w / 2 + i * (w + gap);
       const on = t.key === here;
       // Six tabs across a phone is the tightest row in the game; it gets the
       // height back that the width cannot give it.
+      /* `live` stays true on the tab you are standing on. In `button` it means
+         "enabled", not "pressable" — passing `!on` drew the current page with a
+         disabled fill and half-strength type, so the page you were *not* on came
+         out brighter than the one you were. It hid while the strip had three
+         similar tabs; with two it is the first thing you see. */
       button(t.name, cx, NAV_Y(), w, api.touchOnly ? 46 : 38,
-             on ? VIOLET : t.live ? VIOLET_DIM : VIOLET_LOW,
-             on || !t.live ? null : t.act, on, t.live && !on, "0.04em");
+             on ? tone.bright : t.live ? tone.dim : tone.low,
+             on || !t.live ? null : t.act, on, on || t.live, "0.04em");
     });
   }
 
-  function closeButton(act) {
+  function closeButton(act, tone) {
     const { SCREEN_W, SCREEN_H } = api;
     button(api.touchOnly ? "CLOSE" : "CLOSE  [ESC]",
            SCREEN_W - PAGE.EDGE - NAV_CLOSE_W / 2, NAV_Y(),
-           NAV_CLOSE_W, 38, VIOLET, act);
+           NAV_CLOSE_W, 38, (tone || PLACE_TONE).bright, act);
   }
 
   /* ═══ THE PANEL ═══════════════════════════════════════════════════════════
@@ -1701,8 +1752,8 @@
          on the line the eye is already on — and it stops being said the moment you
          press it, because a hint that outlives its usefulness is clutter. */
       const beat = 0.6 + 0.4 * Math.sin(clockish() * 2.6);
-      fitText(api.touchOnly ? "PRESS SCAN TO SEE WHAT IS OUT THERE"
-                            : "PRESS  F  TO SCAN — IT IS HOW YOU FIND ANYTHING",
+      fitText(api.touchOnly ? "PRESS SCAN"
+                            : "PRESS  F  TO SCAN",
               cx, y - 54, SIZE.val, VIOLET, "center", beat,
               SCREEN_W - 380, "0.08em");
     } else if (!api.touchOnly) {
@@ -2348,10 +2399,11 @@
     if (chart.follow && st.ship) { chart.x = st.ship.x; chart.y = st.ship.y; }
 
     const span = SCREEN_W / chart.scale;
-    pageFrame("SECTOR CHART",
+    pageFrame("SECTOR MAP",
               "SEED " + (st.seed || 0) +
               (st.world ? "  ·  " + st.world.name : "") +
               "  ·  " + fmtCells(HUD.charted()) + " CELLS CHARTED",
+              undefined, SHIP_TONE,
               /* No footer any more: that line belongs to the navigation strip
                  now, the same as on every other page. The keys it used to name
                  are on the title line instead, where nothing else is. */
@@ -2613,7 +2665,7 @@
     label((step + 1) + "/" + ZOOMS.length, rail.x + rail.w - PAGE.PAD, ry + 20,
           SIZE.cap, VIOLET_DIM, "right", 0.7);
 
-    pageNav(st, "chart");
+    pageNav(st, "chart", SHIP_TABS, SHIP_TONE);
     closeButton(st.onClose || (() => {}));
   };
 
@@ -2857,6 +2909,7 @@
               found + " LOGGED" +
               (totalRows > L.rows ? (api.touchOnly ? "  ·  DRAG TO SCROLL"
                                                    : "  ·  SCROLL OR ARROWS") : ""),
+              undefined, SHIP_TONE,
               "");   // the nav strip has the footer line
 
     const viewH = L.rows * (L.cardH + L.gap) - L.gap;
@@ -2898,7 +2951,7 @@
     if (almanac.open >= 0 && entries[almanac.open]) {
       drawEntryDetail(entries[almanac.open], st);
     } else {
-      pageNav(st, "almanac");
+      pageNav(st, "almanac", SHIP_TABS, SHIP_TONE);
     closeButton(st.onClose || (() => {}));
     }
   };
@@ -3464,7 +3517,14 @@
      staring at a price list is exactly the player who should be able to see
      what looking would buy instead. */
 
-  HUD.refitOpened = function () { refit.pick = 0; };
+  /* A shop opens on whichever half you need, not on whichever you left it on
+     last time. Called wherever a shop is entered — a station or a world. */
+  HUD.shopOpened = function () {
+    shopTab = null; mkt.scroll = 0;
+    sellQty = {}; sellEdit = null; sellPick = {};
+    buyQty = {}; buyPick = {}; buyOpen = {};
+  };
+  HUD.refitOpened = function () { refit.pick = 0; HUD.shopOpened(); };
 
   /* The keyboard on the market page. It walks the shop's own list — there used
      to be a separate array of upgrade tiers for the arrows to walk,
@@ -3505,116 +3565,485 @@
     mkt.scroll = Math.max(0, Math.min(Math.max(0, total - view), mkt.scroll + dy));
   };
 
-  HUD.drawRefit = function (st, dt) {
+  /* ── a place that trades ──────────────────────────────────────────────
+     One page, two kinds of place. A station and an inhabited world are the same
+     proposition from the cockpit — somewhere with people in it that will take
+     what you are carrying and sell you what you are short of — and they used to
+     be two entirely different screens, one a market and one a picture of a globe
+     with two fill buttons under it. The globe was the nicer drawing and the
+     worse page: you could not see what a world would pay you, because it would
+     not pay you anything.
+
+     So both are this, and what differs between them is the rows rather than the
+     furniture. What a station has that a world has not — the shipyard, the hull
+     repair, a shelf of parts — is simply absent from the list, the same way a
+     station with nothing on its shelf shows an empty one. */
+  /* Which half of the shop is open. A shop is two jobs — getting rid of what you
+     are carrying, and picking up what you are not — and they used to be stacked
+     on one page. That gave the selling a two-row grid with a single
+     all-or-nothing button in the corner, and the buying whatever was left below
+     it. Each is a tab now and each gets the page.
+
+     `null` means "not chosen yet", and the first frame picks: you arrive at a
+     shop with a full hold far more often than with an empty one, so a full hold
+     opens on SELL and an empty one on BUY. */
+  let shopTab = null;
+
+  /* How many of each row is on the counter. Keyed by kind and key, so a material
+     and a part of the same name could never share one. Cleared with the shop,
+     because a quantity you set last time you docked is not a quantity you meant
+     this time. */
+  let sellQty = {};
+  const qtyOf = (id, most) =>
+    Math.max(1, Math.min(most, Math.floor(sellQty[id] || 1)));
+
+  /* Typing a quantity. A keyboard says "60" in two presses where the stepper
+     wants a lean on the plus, so the number is a field rather than a caption:
+     click it and type. Desk only — a phone has no keys to offer, and the
+     stepper's hold is the answer there.
+
+     Nothing about it is modal. Enter puts the digits away, Escape abandons
+     them, and pressing anything else on the row commits what has been typed so
+     far, because a half-typed number that silently vanished would be worse than
+     one that simply took. */
+  let sellEdit = null;
+
+  /* What is ticked to go. Separate from the quantity, because "none of it" and
+     "one of it" are different answers and a quantity of zero cannot say the
+     first one. */
+  let sellPick = {};
+
+  // The same two, for the other half of the shop.
+  let buyQty = {}, buyPick = {}, buyOpen = {};
+  const buyQtyOf = (id, most) =>
+    Math.max(1, Math.min(most, Math.floor(buyQty[id] || 1)));
+
+  HUD.shopKey = function (code) {
+    if (!sellEdit) return false;
+    const d = /^(?:Digit|Numpad)([0-9])$/.exec(code);
+    if (d) {
+      if (sellEdit.text.length < 4) sellEdit.text += d[1];
+      return true;
+    }
+    if (code === "Backspace") {
+      sellEdit.text = sellEdit.text.slice(0, -1);
+      return true;
+    }
+    if (code === "Enter" || code === "NumpadEnter") {
+      const v = parseInt(sellEdit.text, 10);
+      if (v > 0) sellQty[sellEdit.id] = v;
+      sellEdit = null;
+      return true;
+    }
+    if (code === "Escape") { sellEdit = null; return true; }
+    return false;
+  };
+
+  function marketPage(st, title, sub, footer, here, closeAct, only) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
-    st = st || {};
     const cash = st.cash || 0;
     const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
     const rows = st.market || [];
     const mats = st.materials || [];
     const carried = st.carried || 0;
+    const held = mats.filter(m => m.n > 0);
 
-    pageFrame("MARKET", (st.dangerBand ? st.dangerBand.name + "   \u00b7   " : "") +
-                        cash + " CASH", "");
+    pageFrame(title, sub, footer || "");
 
-    /* ── what it buys off you ───────────────────────────────────────────────
-       At the top, because it is what you came in with, and one line: the things
-       you are carrying that this place wants, and a button. */
-    const sellH = PANEL_H(Math.max(1, Math.ceil(mats.length / 3)));
-    /* "SELL" and "PURCHASE", not "IT BUYS" and "IT SELLS". The old pair
-       described the *station's* side of the transaction, which is one mental flip
-       away from the thing the player is doing, and the two headings differed by a
-       single letter in the middle of the word. */
-    panel(full.x, PAGE.TOP, full.w, sellH, CASH, "SELL",
-          carried ? carried + " UNITS ABOARD" : "NOTHING ABOARD");
-    const third = (full.w - PAGE.PAD * 2 - 210) / 3;
-    mats.forEach((m, i) => {
-      const col = i % 3, row = Math.floor(i / 3);
-      const mx = full.x + PAGE.PAD + col * third;
-      const yy = ROW(PAGE.TOP, row) + 2;
-      fitText(m.name, mx, yy, SIZE.cap, m.colour, "left", m.n ? 1 : 0.35,
-              third - 104, "0.06em");
-      label((m.price == null ? m.value : m.price) + "  \u00d7" + m.n,
-            mx + third - 26, yy, SIZE.cap,
-            m.shortage > 0.25 ? CASH : m.n ? CASH_DIM : VIOLET_LOW, "right",
-            m.n ? 0.95 : 0.35);
-      // A shortage is the reason this station pays more than the last one.
-      if (m.shortage > 0.25) {
-        label("WANTED", mx + third - 26, yy + 13, SIZE.cap, CASH, "right",
-              0.75, "0.08em");
-      }
+    if (!shopTab) shopTab = carried ? "sell" : "buy";
+
+    /* ── the two halves ─────────────────────────────────────────────────────
+       In the page's own colours rather than the strip's: buying is amber and
+       selling is the colour money is, everywhere else in this mode. */
+    const TAB_W = 180, TAB_H = 34, TAB_Y = PAGE.TOP + 4;
+    [["buy", "BUY", AMBER], ["sell", "SELL", CASH]].forEach(([k, name, col], i) => {
+      const on = shopTab === k;
+      /* `live` stays true on the open one. In `button` it means "enabled", not
+         "pressable", and passing `!on` drew the tab you are looking at with a
+         disabled fill and half-strength type — the shut half of the shop came
+         out brighter than the open half. */
+      button(name, full.x + TAB_W / 2 + i * (TAB_W + 8), TAB_Y, TAB_W, TAB_H,
+             col, on ? null : () => { shopTab = k; mkt.scroll = 0; }, on, true);
     });
-    button(carried ? "SELL ALL   " + (st.worth || 0) : "NOTHING TO SELL",
-           full.x + full.w - PAGE.PAD - 88, ROW(PAGE.TOP, 0) - 2, 186, 34,
-           carried ? CASH : VIOLET_LOW, st.onSell, false, !!carried);
 
-    /* ── and what it sells ──────────────────────────────────────────────── */
-    const listY = PAGE.TOP + sellH + PAGE.STEP;
-    const listH = SCREEN_H - listY - 22;
-    panel(full.x, listY, full.w, listH, AMBER, "PURCHASE",
+    const bodyY = TAB_Y + TAB_H / 2 + PAGE.STEP;
+    const bodyH = SCREEN_H - bodyY - 22;
+
+    if (shopTab === "sell") {
+      /* ── what they will take off you ──────────────────────────────────────
+         Everything aboard that anybody will buy, in one list: the hold, the
+         tanks and the crate of spare parts. It used to be a grid of all six
+         materials whatever you were carrying — four fifths of it greyed-out
+         rows for things you had not got — with parts missing entirely and the
+         tanks unsellable, which made a topped-up tank the one thing aboard you
+         could not turn back into money.
+
+         You tick what is going and set how much of it, and one button at the
+         bottom does the selling. A SELL on every row put a button next to every
+         number and made a page of eight things a page of eight decisions; this
+         way the decisions are ticks and the transaction is one press. */
+      const supplies = [["water", "WATER", ICE], ["food", "FOOD", AMBER_DIM]]
+        .map(([k, name, col]) => {
+          const t = st[k] || {};
+          return { kind: "supply", id: "s:" + k, key: k, name, colour: col,
+                   n: Math.floor((t.frac || 0) * 100), tank: t.sellFull || 0 };
+        })
+        .filter(r => r.n > 0 && r.tank > 0);
+
+      const list = held.map(m => ({
+        kind: "mat", id: "m:" + m.key, key: m.key, name: m.name,
+        colour: m.colour, n: m.n,
+        /* Nought when this place does not deal in it. The row already knows how
+           to say so — it is the same line the find-only parts get. */
+        each: m.buys === false ? 0
+            : m.price == null ? m.value : m.price,
+        base: m.value
+      })).concat(supplies).concat(
+        (st.store || []).filter(e => e.n > 0).map(e => ({
+          kind: "part", id: "p:" + e.key, key: e.key, name: e.name,
+          colour: VIOLET, n: e.n, each: e.sell || 0, base: e.sell || 0,
+          cat: e.cat
+        })));
+
+      panel(full.x, bodyY, full.w, bodyH, CASH, "SELL",
+            carried ? carried + " UNITS ABOARD" : "NOTHING ABOARD");
+
+      if (!list.length) {
+        fitText("Nothing aboard to sell.", full.x + PAGE.PAD,
+                bodyY + PAGE.HEAD + 20, SIZE.cap, VIOLET_DIM, "left", 0.6,
+                full.w - 60);
+      }
+
+      const x0 = full.x + PAGE.PAD;
+      const right = full.x + full.w - PAGE.PAD;
+      const going = [];          // what the SELL SELECTED button would do
+      let takings = 0;
+
+      list.forEach((r, i) => {
+        const y = bodyY + PAGE.HEAD + 18 + i * 38;
+        if (y > bodyY + bodyH - 74) return;    // the two buttons' room
+
+        // Nothing anybody buys: said once, and the row stops there.
+        const dud = r.kind !== "supply" && !r.each;
+        const picked = !dud && !!sellPick[r.id];
+
+        /* Each thing wears the picture it wears everywhere else: a material its
+           own mark, a part the icon its catalogue uses. A column of identical
+           coloured squares is a list you have to read word by word. */
+        const iconA = dud ? 0.4 : picked ? 1 : 0.7;
+        if (r.kind === "part" && r.cat) {
+          drawPartIcon(r.cat, x0 + 32, y - 5, 9, r.colour, iconA);
+        } else if (r.kind === "mat") {
+          drawMatIcon(r.key, x0 + 31, y - 4, 9, r.colour, iconA);
+        } else {
+          ctx.save();
+          ctx.fillStyle = r.colour;
+          ctx.globalAlpha = iconA;
+          ctx.fillRect(x0 + 26, y - 9, 9, 9);
+          ctx.restore();
+        }
+
+        // The tick. Filled when it is going, an empty box when it is not.
+        if (!dud) {
+          ctx.save();
+          ctx.strokeStyle = CASH;
+          ctx.globalAlpha = picked ? 1 : 0.45;
+          ctx.lineWidth = picked ? 2 : 1;
+          ctx.strokeRect(x0, y - 14, 15, 15);
+          if (picked) {
+            ctx.fillStyle = CASH;
+            ctx.globalAlpha = 0.9;
+            ctx.fillRect(x0 + 4, y - 10, 7, 7);
+          }
+          ctx.restore();
+        }
+
+        fitText(r.name, x0 + 46, y, SIZE.cap, r.colour, "left",
+                dud ? 0.4 : picked ? 1 : 0.75, 170, "0.06em");
+
+        // A tank is a percentage of itself; everything else is a count.
+        label(r.kind === "supply" ? r.n + "%" : "×" + r.n,
+              x0 + 232, y, SIZE.cap, VIOLET_DIM, "left", dud ? 0.4 : 0.8);
+
+        if (dud) {
+          label("this place doesn't buy these", x0 + 310, y, SIZE.cap, VIOLET_LOW,
+                "left", 0.6);
+          return;
+        }
+
+        /* Gold when this place is paying over the odds, dim when it is paying
+           the usual. No tag: the number is the message, and a word you have to
+           learn before it means anything is worse than a colour you only have
+           to notice. */
+        const over = r.kind === "mat" && r.each > r.base;
+        label(r.kind === "supply" ? money(r.tank) + " a tankful"
+                                  : money(r.each) + " each",
+              x0 + 310, y, SIZE.cap, over ? CASH : CASH_DIM, "left",
+              over ? 1 : 0.7);
+
+        /* ── how much of it ──────────────────────────────────────────────────
+           Minus, a number, plus. Both steppers repeat while held, so a hundred
+           of something is a lean rather than a hundred presses — and on a desk
+           the number is a field you can click and type into. */
+        const editing = !!(sellEdit && sellEdit.id === r.id);
+        const typed = editing && sellEdit.text
+          ? parseInt(sellEdit.text, 10) : null;
+        const q = typed > 0 ? Math.max(1, Math.min(r.n, typed))
+                            : qtyOf(r.id, r.n);
+        const commit = () => {
+          if (!editing) return;
+          if (typed > 0) sellQty[r.id] = q;
+          sellEdit = null;
+        };
+        const total = r.kind === "supply"
+          ? Math.max(1, Math.round(q / 100 * r.tank))
+          : q * r.each;
+        if (picked) { going.push({ r, q }); takings += total; }
+
+        const stepW = 38, boxW = 54;
+        const plusCx = right - stepW / 2;
+        const boxCx = plusCx - stepW / 2 - 6 - boxW / 2;
+        const minusCx = boxCx - boxW / 2 - 6 - stepW / 2;
+        const bump = d => () => {
+          commit();
+          sellQty[r.id] = Math.max(1, Math.min(r.n, qtyOf(r.id, r.n) + d));
+          sellPick[r.id] = true;   // touching the number means you want it
+        };
+        button("−", minusCx, y - 5, stepW, 26, CASH,
+               q > 1 ? bump(-1) : null, false, q > 1, "0.02em", true);
+        button("+", plusCx, y - 5, stepW, 26, CASH,
+               q < r.n ? bump(1) : null, false, q < r.n, "0.02em", true);
+
+        // The number itself, in a box, so it reads as a field and not a caption.
+        ctx.save();
+        ctx.strokeStyle = CASH;
+        ctx.globalAlpha = editing ? 1 : picked ? 0.7 : 0.4;
+        ctx.lineWidth = editing ? 2 : 1;
+        ctx.strokeRect(boxCx - boxW / 2, y - 18, boxW, 26);
+        ctx.restore();
+        label(editing ? (sellEdit.text || "") + "_" : String(q),
+              boxCx, y, SIZE.cap, CASH, "center", picked ? 1 : 0.65);
+        if (!api.touchOnly) {
+          tap({ x: boxCx - boxW / 2, y: y - 18, w: boxW, h: 26,
+                act: () => { sellEdit = { id: r.id, text: "" };
+                             sellPick[r.id] = true; } });
+        }
+
+        /* The whole left of the row is the tick. A 15-pixel box is a mouse
+           target and not a thumb one, and there is nothing else along there to
+           press by accident. */
+        tap({ x: x0 - 6, y: y - 20, w: minusCx - stepW / 2 - 12 - (x0 - 6), h: 30,
+              act: () => {
+                sellPick[r.id] = !sellPick[r.id];
+                // Ticking a row means all of it unless you say otherwise.
+                if (sellPick[r.id] && !sellQty[r.id]) sellQty[r.id] = r.n;
+              } });
+      });
+
+      /* Two ways out of a full hold: the things you chose, or the cargo in one
+         press. "CARGO", not "EVERYTHING" — it empties the hold of materials and
+         leaves the tanks and the crate alone, because a button that sold the
+         spare engine you went four sectors for would be the worst thing on this
+         page. Anything beyond the materials goes through the ticks. */
+      const btnY = bodyY + bodyH - 32;
+      button(going.length ? "SELL SELECTED   " + money(takings)
+                          : "NOTHING SELECTED",
+             full.x + full.w / 2 - 156, btnY, 300, 36,
+             going.length ? CASH : VIOLET_LOW,
+             going.length ? () => {
+               sellEdit = null;
+               for (const g of going) {
+                 if (g.r.kind === "mat") st.onSellOne && st.onSellOne(g.r.key, g.q);
+                 else if (g.r.kind === "part") st.onSellPart && st.onSellPart(g.r.key, g.q);
+                 else st.onSellSupply && st.onSellSupply(g.r.key, g.q / 100);
+                 delete sellQty[g.r.id];
+                 delete sellPick[g.r.id];
+               }
+             } : null, false, !!going.length);
+
+      button(carried ? "SELL ALL CARGO   " + money(st.worth || 0)
+                     : "NOTHING TO SELL",
+             full.x + full.w / 2 + 156, btnY, 300, 36,
+             carried ? CASH : VIOLET_LOW, carried ? st.onSell : null,
+             false, !!carried);
+
+      // Nothing to scroll: six materials, two tanks and a crate is the most.
+      HUD.marketHeight = 0;
+      HUD.marketView = 1;
+      pageNav(st, here, only);
+      closeButton(closeAct);
+      return;
+    }
+
+    /* ── and what they will sell you ─────────────────────────────────────────
+       Built the same way as the SELL tab, because it is the same act in the
+       other direction: tick what is going in the hold, say how much of it, and
+       one button at the bottom does the buying. It was a list with a button on
+       every row and three rows a tank — QUARTER, HALF and FILL — which was a
+       quantity control made out of buttons, next to a page that had a real one. */
+    panel(full.x, bodyY, full.w, bodyH, AMBER, "BUY",
           rows.length + (rows.length === 1 ? " THING" : " THINGS"));
 
-    const rowH = 30;
-    const inner = { x: full.x + 1, y: listY + PAGE.HEAD - 8,
-                    w: full.w - 2, h: listH - PAGE.HEAD + 2 };
+    if (!rows.length) {
+      fitText("This one has nothing you need.", full.x + PAGE.PAD,
+              bodyY + PAGE.HEAD + 20, SIZE.cap, VIOLET_DIM, "left", 0.6,
+              full.w - 60);
+    }
+
+    const bx0 = full.x + PAGE.PAD;
+    const bRight = full.x + full.w - PAGE.PAD;
+    const basket = [];
+    let bill = 0;
+
+    const inner = { x: full.x + 1, y: bodyY + PAGE.HEAD - 8,
+                    w: full.w - 2, h: bodyH - PAGE.HEAD - 46 };
     ctx.save();
     ctx.beginPath();
     ctx.rect(inner.x, inner.y, inner.w, inner.h);
     ctx.clip();
     tapClip(inner);
 
-    if (!rows.length) {
-      fitText("This one has nothing you need.", full.x + PAGE.PAD,
-              inner.y + 28, SIZE.cap, VIOLET_DIM, "left", 0.6, full.w - 60);
-    }
-
-    rows.forEach((r, i) => {
-      const y = inner.y + 22 + i * rowH - mkt.scroll;
+    /* Rows are laid out one after another rather than at `i * 34`, because an
+       open description makes its row taller. `rowTop` is where the next one
+       starts and `listH` is what the whole thing came to, which is what the
+       scrollbar needs. */
+    let rowTop = inner.y + 12;
+    rows.forEach(r => {
+      const id = r.id || r.kind + ":" + r.key;
+      const open = !!buyOpen[id] && !!r.note;
+      const noteLines = open
+        ? wrapLines(r.note, SIZE.cap, full.w - PAGE.PAD * 2 - 60, "0.04em") : [];
+      const rowH = 34 + (open ? noteLines.length * 20 + 8 : 0);
+      const y = rowTop + 14 - mkt.scroll;
+      rowTop += rowH;
       if (y < inner.y - rowH || y > inner.y + inner.h + rowH) return;
-      // A door costs nothing and is always affordable; everything else is money.
-      const afford = r.kind === "ships" || cash >= r.cost;
+
+      const most = Math.max(1, r.most || 1);
+      const picked = !!buyPick[id];
 
       /* A part gets its own picture; everything else gets a swatch. A shelf of
-         twenty-odd identical coloured squares is a list you read word by word,
-         and the parts page had already taught the icons — so the shop should be
-         speaking the same language the catalogue does. */
+         twenty-odd identical coloured squares is a list you read word by word. */
+      const iconA = picked ? 1 : 0.7;
       if (r.kind === "part" && r.cat) {
-        drawPartIcon(r.cat, full.x + PAGE.PAD + 6, y - 5, 9, r.colour, 0.95);
+        drawPartIcon(r.cat, bx0 + 32, y - 5, 9, r.colour, iconA);
+      } else if (r.kind === "local") {
+        drawMatIcon(r.key, bx0 + 31, y - 4, 9, r.colour, iconA);
       } else {
         ctx.save();
         ctx.fillStyle = r.colour;
-        ctx.globalAlpha = 0.8;
-        ctx.fillRect(full.x + PAGE.PAD, y - 9, 9, 9);
+        ctx.globalAlpha = iconA;
+        ctx.fillRect(bx0 + 26, y - 9, 9, 9);
         ctx.restore();
       }
 
-      fitText(r.name, full.x + PAGE.PAD + 20, y, SIZE.cap, r.colour, "left",
-              1, 240, "0.06em");
-      /* The second column says what you would be buying: how full the tank
-         already is, what the part does, which tier you are on. */
-      const said = r.kind === "supply" ? r.have + "% aboard  \u00b7  buys " +
-                                        r.adds + "% more"
-                 : r.kind === "repair" ? r.have + " hull"
-                 : r.kind === "ships" ? r.note
-                 /* A part says what it will cost the hold before it says what
-                    it does. Buying one is a decision about room now, not only
-                    about money, and the shelf is where that decision is made. */
-                 : (r.weight ? r.weight + " OF HOLD  \u00b7  " : "") +
-                   (r.owned ? "\u00d7" + r.owned + "  \u00b7  " : "") + r.note;
-      fitText(said, full.x + PAGE.PAD + 268, y, SIZE.cap, VIOLET_DIM, "left",
-              0.62, full.w - 268 - 230);
+      // The tick.
+      ctx.save();
+      ctx.strokeStyle = AMBER;
+      ctx.globalAlpha = picked ? 1 : 0.45;
+      ctx.lineWidth = picked ? 2 : 1;
+      ctx.strokeRect(bx0, y - 14, 15, 15);
+      if (picked) {
+        ctx.fillStyle = AMBER;
+        ctx.globalAlpha = 0.9;
+        ctx.fillRect(bx0 + 4, y - 10, 7, 7);
+      }
+      ctx.restore();
 
-      button(r.cost ? r.label + "   " + money(r.cost) : r.label,
-             full.x + full.w - PAGE.PAD - 76, y - 5, 162, 26,
-             afford ? r.colour : VIOLET_LOW,
-             afford ? () => st.onBuyRow && st.onBuyRow(r.kind, r.key, r.frac)
-                    : null,
-             false, afford);
+      fitText(r.name, bx0 + 46, y, SIZE.cap, r.colour, "left",
+              picked ? 1 : 0.75, 170, "0.06em");
+
+      /* What this row is, in numbers: what it weighs, how many of it they have
+         left. The *words* are in the description, which drops down — a note
+         written to fit a column is a note written twice, once for the column
+         and once for the truth. */
+      const said = r.kind === "supply" ? r.have + "% aboard"
+                 : r.kind === "repair" ? r.have + " hull"
+                 : r.kind === "local" ? r.left + " left"
+                 /* "8 CARGO SLOTS", not "8 OF HOLD": the old wording named the
+                    thing it came out of but never said what the number counted,
+                    and read as though "hold" were a unit. The full phrase every
+                    time, because this ship also has four *slots* for the parts
+                    it is flying, and those are a different thing entirely. */
+                 : (r.weight ? r.weight + " CARGO SLOTS  ·  " : "") +
+                   (r.left != null ? r.left + " left" : "");
+
+      // How much one of it costs, in the same shape the sell side uses.
+      const unit = r.kind === "supply" ? money(r.tank) + " a tankful"
+                 : r.kind === "repair" ? money(r.cost)
+                 : money(r.cost) + " each";
+
+      const qty = r.kind === "repair" ? 1 : buyQtyOf(id, most);
+      /* `ceil`, because `buySupply` charges `ceil` — quoting a rounded price
+         and taking a ceiled one is a button that lies by a credit. */
+      const cost = r.kind === "supply"
+        ? Math.max(1, Math.ceil(qty / 100 * r.tank))
+        : r.kind === "repair" ? r.cost : qty * r.cost;
+      if (picked) { basket.push({ r, id, qty }); bill += cost; }
+
+      const stepW = 38, boxW = 54;
+      const plusCx = bRight - stepW / 2;
+      const boxCx = plusCx - stepW / 2 - 6 - boxW / 2;
+      const minusCx = boxCx - boxW / 2 - 6 - stepW / 2;
+
+      // The chevron says there is more to read, and is the thing you press.
+      if (r.note) {
+        label(open ? "▾" : "▸", bx0 + 232, y, SIZE.cap, AMBER_DIM,
+              "left", open ? 0.95 : 0.6);
+      }
+      fitText(said, bx0 + 250, y, SIZE.cap, VIOLET_DIM, "left", 0.62,
+              minusCx - stepW / 2 - 186 - (bx0 + 250));
+      label(unit, minusCx - stepW / 2 - 16, y, SIZE.cap, AMBER_DIM, "right",
+            picked ? 0.95 : 0.7);
+
+      /* Repairing a hull is one price for one job — there is no "how much of a
+         mend" — so it keeps the row and loses the stepper. */
+      if (r.kind !== "repair") {
+        const bump = d => () => {
+          buyQty[id] = Math.max(1, Math.min(most, buyQtyOf(id, most) + d));
+          buyPick[id] = true;
+        };
+        button("−", minusCx, y - 5, stepW, 26, AMBER,
+               qty > 1 ? bump(-1) : null, false, qty > 1, "0.02em", true);
+        button("+", plusCx, y - 5, stepW, 26, AMBER,
+               qty < most ? bump(1) : null, false, qty < most, "0.02em", true);
+        ctx.save();
+        ctx.strokeStyle = AMBER;
+        ctx.globalAlpha = picked ? 0.7 : 0.4;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(boxCx - boxW / 2, y - 18, boxW, 26);
+        ctx.restore();
+        label(String(qty) + (r.kind === "supply" ? "%" : ""),
+              boxCx, y, SIZE.cap, AMBER, "center", picked ? 1 : 0.65);
+      }
+
+      // The name end of the row ticks it; the middle opens what it is.
+      tap({ x: bx0 - 6, y: y - 20, w: 232, h: 30,
+            act: () => {
+              buyPick[id] = !buyPick[id];
+              if (buyPick[id] && !buyQty[id]) {
+                // A tank fills; everything else starts at one.
+                buyQty[id] = r.kind === "supply" ? most : 1;
+              }
+            } });
+      if (r.note) {
+        tap({ x: bx0 + 228, y: y - 20,
+              w: minusCx - stepW / 2 - 12 - (bx0 + 228), h: 30,
+              act: () => { buyOpen[id] = !buyOpen[id]; } });
+      }
+
+      // ── and what it actually does, once you have asked ──────────────────
+      if (open) {
+        noteLines.forEach((ln, k) => {
+          label(ln, bx0 + 250, y + 22 + k * 20, SIZE.cap, AMBER_DIM, "left",
+                0.85, "0.04em");
+        });
+      }
     });
     ctx.restore();
     tapClipOff();
 
-    const total = rows.length * rowH + 30;
+    // What the list actually came to, open descriptions included.
+    const total = (rowTop - inner.y) + 34;
     HUD.marketHeight = total;
     HUD.marketView = inner.h;
     if (total > inner.h) {
@@ -3622,8 +4051,33 @@
                  mkt.scroll / Math.max(1, total - inner.h));
     }
 
-    pageNav(st, "refit");
-    closeButton(st.onUndock || st.onClose || (() => {}));
+    /* One press, and it says what it will cost before you make it. Red and dead
+       when the purse will not cover it: a button that takes your money and buys
+       you three of the five things you ticked is a button that lied. */
+    const canPay = bill > 0 && cash >= bill;
+    button(!basket.length ? "NOTHING SELECTED"
+             : canPay ? "BUY SELECTED   " + money(bill)
+             : "NOT ENOUGH CASH   " + money(bill),
+           full.x + full.w / 2, bodyY + bodyH - 32, 320, 36,
+           !basket.length ? VIOLET_LOW : canPay ? AMBER : WARN,
+           canPay ? () => {
+             for (const b of basket) {
+               st.onBuyRow && st.onBuyRow(b.r.kind, b.r.key, b.qty);
+               delete buyQty[b.id];
+               delete buyPick[b.id];
+             }
+           } : null, false, canPay);
+
+    pageNav(st, here, only);
+    closeButton(closeAct);
+  }
+
+  HUD.drawRefit = function (st, dt) {
+    st = st || {};
+    marketPage(st, "SHOP",
+               (st.dangerBand ? st.dangerBand.name + "   \u00b7   " : "") +
+               (st.cash || 0) + " CASH", "", "refit",
+               st.onUndock || st.onClose || (() => {}), PLACE_TABS);
   };
 
   /* ═══ THE INVENTORY ═══════════════════════════════════════════════════════
@@ -3823,343 +4277,184 @@
     craftPg.scroll = Math.max(0, Math.min(max, craftPg.scroll + dy));
   };
 
+  /* ═══ THE BENCH ═══════════════════════════════════════════════════════════
+     A wall of parts, the ones you can build lit and the rest down at a whisper.
+     What you can make is the whole question and it is answered before you touch
+     anything — by light, not by sentences.
+
+     It was a list once, with every ingredient spelled out on every row and a
+     SHORT button on each. That answered the question and buried it: fifteen
+     rows of sums is a page you read rather than a page you glance at. The sums
+     are still here, for one part at a time, in the panel underneath — which is
+     the only place any of it has to be, because you only build one thing at a
+     time and you have already chosen it by then. */
   HUD.drawCraft = function (st, dt) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
-    const crafts = st.crafts || [];
-    /* What belongs on a workbench: **everything you can build, plus everything
-       you have met.** Nothing else.
-
-       This page used to list all twenty-five parts, on the argument that you
-       cannot plan towards something you have never been told exists. That is
-       true of the things you can build, and it is the wrong shape for the rest:
-       a bench listing ten parts it will never make turns "what can I do" into a
-       catalogue you have to read past, and a part you have never seen, cannot
-       build and cannot afford is not a plan — it is a line item you are waiting
-       on. The exotics were already carved out for exactly that reason; this is
-       the same rule applied to all of them rather than to the two strangest.
-
-       So a part appears here if it is craftable, or if you have laid eyes on
-       one — held it, or stood at a shelf that stocks it. See `markSeen`. The
-       ones that arrive that way say UNCRAFTABLE, which is the honest answer to
-       why they are on a bench. */
-    const canBuildNow = key => {
-      const r = (st.crafts || []).find(x => x.key === key);
-      return !!(r && r.ready);
-    };
-    /* What you can build *right now* comes first. The page used to count them
-       into the heading — "4 YOU CAN BUILD NOW" — which is a number you have to
-       go and look for, then scan the grid to find out which four. Sorting them
-       to the front and lighting them up answers the same question without
-       saying anything: the things you can act on are the things at the top, and
-       they are the brightest squares on the page.
-
-       Stable within each half, so the grid does not otherwise reshuffle itself —
-       the only movement is a part crossing into buildable, which is movement
-       worth noticing. */
-    const all = (st.parts || [])
-      .filter(p => p.craftable || p.seen || p.owned || p.fitted)
-      .map((p, i) => ({ p, i, now: canBuildNow(p.key) }))
-      .sort((a, b) => (b.now - a.now) || (a.i - b.i))
-      .map(e => e.p);
-    partsShown = all;
-    const hold = st.materials || [];
-    const crate = st.store || [];
     const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
-    const owned = all.filter(p => p.owned || p.fitted).length;
+    const crafts = st.crafts || [];
+    const hold = st.materials || [];
+    const recOf = k => crafts.find(c => c.key === k) || null;
+    const ready = p => { const r = recOf(p.key); return !!(r && r.ready); };
 
-    pageFrame("PARTS", owned + " OF " + all.length + " OWNED", "");
+    /* A part is on this bench if it can be built or if you have laid eyes on
+       one. One you have never seen and cannot build is not a plan. */
+    const shown = (st.parts || [])
+      .filter(p => p.craftable || p.seen || p.owned || p.fitted)
+      .map((p, i) => ({ p, i }))
+      .sort((x, z) => (ready(z.p) - ready(x.p)) || (x.i - z.i))
+      .map(e => e.p);
+    partsShown = shown;
 
-    /* ── the right-hand column: what you have ──────────────────────────────
-       Materials at the top, then the parts you own — because "can I make this"
-       is answered by looking up, and the answer should be in the same place
-       every time you look. */
-    const railW = Math.min(300, SCREEN_W * 0.28);
-    const railX = full.x + full.w - railW;
-    const matH = PANEL_H(Math.ceil(hold.length / 2));
-    panel(railX, PAGE.TOP, railW, matH, VIOLET, "MATERIALS", "");
-    const mw = (railW - PAGE.PAD * 2) / 2;
+    pageFrame("CRAFTING", "", "", SHIP_TONE);
+
+    /* What you are carrying, as marks and numbers. No names: six of them across
+       the top is a caption, not a sentence, and every name is a click away on
+       the part that wants it. */
+    const mwide = Math.min(150, full.w / Math.max(1, hold.length));
     hold.forEach((m, i) => {
-      const col = i % 2, row = Math.floor(i / 2);
-      const mx = railX + PAGE.PAD + col * mw;
-      const yy = ROW(PAGE.TOP, row) + 2;
-      const openHere = craftPg.mat === m.key;
-      // Its own picture rather than a coloured square: see `drawMatIcon`.
-      drawMatIcon(m.key, mx + 8, yy - 5, 8, m.colour, m.n ? 0.95 : 0.3);
-      fitText(m.name, mx + 22, yy, SIZE.cap, m.colour, "left",
-              openHere ? 1 : m.n ? 0.95 : 0.4, mw - 64, "0.04em");
-      label(String(m.n), mx + mw - 12, yy, SIZE.cap,
-            m.n ? m.colour : VIOLET_LOW, "right", m.n ? 1 : 0.4);
-      /* A row you can ask. "How do I get one of these" was answerable nowhere:
-         the parts page says what a build wants and the hold says what you have,
-         and between them there was no line saying that electronics never come
-         out of a rock — which is the single most useful thing to know here, and
-         the one thing a player can only learn by mining for an hour and failing.
-         Same toggle as a part: press it again to put it away. */
-      tap({ x: mx, y: yy - 14, w: mw, h: 22,
-            act: () => { craftPg.mat = openHere ? null : m.key; } });
+      const mx = full.x + i * mwide;
+      drawMatIcon(m.key, mx + 8, PAGE.TOP - 1, 9, m.colour, m.n ? 0.95 : 0.25);
+      label(String(m.n), mx + 24, PAGE.TOP + 4, SIZE.cap,
+            m.n ? m.colour : VIOLET_LOW, "left", m.n ? 1 : 0.3);
     });
 
+    const pick = shown.find(p => p.key === craftPg.pick) || null;
+    const CARD = pick ? 132 : 0;
+    const gTop = PAGE.TOP + 22;
+    const gH = SCREEN_H - gTop - CARD - (pick ? PAGE.STEP : 0) - 20;
 
-    const partY = PAGE.TOP + matH + PAGE.STEP;
-    const partH = SCREEN_H - partY - 22;
-    panel(railX, partY, railW, partH, CASH, "IN STORAGE",
-          crate.length ? crate.length + " KINDS" : "NONE");
-    if (!crate.length) {
-      fitText("Nothing spare yet.", railX + PAGE.PAD,
-              ROW(partY, 0) + 2, SIZE.cap, VIOLET_DIM, "left", 0.6,
-              railW - PAGE.PAD * 2);
-    }
-    crate.slice(0, Math.floor((partH - PAGE.HEAD) / PAGE.STEP)).forEach((e, i) => {
-      const yy = ROW(partY, i) + 2;
-      fitText(e.name, railX + PAGE.PAD, yy, SIZE.cap, rarity(e.rarity).colour,
-              "left", 0.95, railW - PAGE.PAD * 2 - 40, "0.04em");
-      label((e.fitted ? "FITTED" : "×" + e.n), railX + railW - PAGE.PAD, yy,
-            SIZE.cap, e.fitted ? VIOLET_DIM : CASH_DIM, "right", 0.85);
-    });
+    /* The tile is a fixed size and the *columns* follow the width, not the
+       other way round. Six across a 932-wide screen is right; six across a
+       landscape phone at 1519 made them 245 square and fitted a row and a half
+       on the page. A tile has to be big enough to hold a part's name — seven
+       across a desk came out "LAYERED PL…" — and no bigger than a thumb needs. */
+    const WANT = api.touchOnly ? 170 : 150;
+    const CG = 10;
+    const cols = Math.max(api.touchOnly ? 4 : 5, Math.round(full.w / WANT));
+    const cell = Math.floor((full.w - (cols - 1) * CG) / cols);
 
-    /* ── every part in the game ────────────────────────────────────────────
-       *Every* one, not only the ones with a build. The page used to be the
-       build book, which meant the parts you cannot build — which is most of the
-       interesting ones — appeared nowhere in the interface until the day one
-       happened to be on a shelf in front of you. You could not plan towards
-       something you had never been told existed.
-
-       So this is the catalogue. Each box says what kind of thing it is and
-       whether you have one; picking it says what it does and, the part nobody
-       could find out before, **how you get one**. */
-    /* Four across on a phone, not three. Three made each box a third of the grid
-       — enormous squares with a small icon marooned in the middle of each, three
-       parts visible at a time out of twenty-odd, and a scroll for the rest. The
-       grid is a catalogue: what it has to do is let you see a lot of it at once. */
-    const gridW = full.w - railW - PAGE.GUTTER;
-    // Five across on a phone. Four made each box a quarter of the grid, which is
-    // a big square with a small picture marooned in it; a catalogue's job is to
-    // let you see a lot of it at once.
-    const cols = api.touchOnly ? 5 : 4;
-    const cell = Math.floor((gridW - PAGE.PAD * 2 - (cols - 1) * 10) / cols);
-    /* The panel below is only there when something is open, so the grid gets
-       that space back when nothing is. It used to be permanent, holding the
-       words PICK ONE over an empty box for the whole time you were not using
-       it — five rows of the page spent saying "click something". */
-    const showPick = !!craftPg.pick && (st.parts || []).some(q => q.key === craftPg.pick);
-    const pickH = showPick ? PANEL_H(5) : 0;
-    const gridH = SCREEN_H - PAGE.TOP - (showPick ? pickH + PAGE.STEP : 0) - 22;
-    /* Just PARTS. It said EVERY PART, which stopped being true the day the list
-       stopped being every part — a heading that lies about its own contents is
-       worse than a plain one, because it tells you not to go looking for the
-       rest. */
-    panel(full.x, PAGE.TOP, gridW, gridH, CASH, "PARTS", "");
-
-    const gTop = PAGE.TOP + PAGE.HEAD - 4;
     ctx.save();
     ctx.beginPath();
-    ctx.rect(full.x + 1, gTop, gridW - 2, gridH - PAGE.HEAD + 2);
+    ctx.rect(0, gTop, SCREEN_W, gH);
     ctx.clip();
-    tapClip({ x: full.x, y: gTop, w: gridW, h: gridH - PAGE.HEAD + 2 });
+    tapClip({ x: 0, y: gTop, w: SCREEN_W, h: gH });
 
-    // What the page knows about each part, in one place so the box and the
-    // detail panel below can never disagree about it.
-    const craftFor = key => crafts.find(r => r.key === key) || null;
-
-    all.forEach((p, i) => {
+    shown.forEach((p, i) => {
       const col = i % cols, row = Math.floor(i / cols);
-      const bx = full.x + PAGE.PAD + col * (cell + 10);
-      const by = gTop + 8 + row * (cell + 26) - craftPg.scroll;
-      if (by > gTop + gridH || by + cell < gTop - 30) return;
+      const bx = full.x + col * (cell + CG);
+      const by = gTop + 6 + row * (cell + CG) - craftPg.scroll;
+      if (by > gTop + gH || by + cell < gTop) return;
+      const can = ready(p);
       const on = craftPg.pick === p.key;
       const rar = rarity(p.rarity);
-      const have = p.owned > 0 || p.fitted;
-      const rec = craftFor(p.key);
-      const ready = !!(rec && rec.ready);
+      const mine = p.fitted || p.owned > 0;
+      const tint = can ? AMBER : rar.colour;
 
-      /* Four states, and they have to be four states you can tell apart across a
-         grid at arm's length: picked, owned, buildable now, and neither. They were
-         all the same wash — fills of 0.03 to 0.18 over borders of 0.35 to 1 — so
-         the grid read as one colour with a couple of slightly brighter squares in
-         it. The fills are three times what they were and the borders are at full
-         strength, which is enough for the answer to be a glance instead of a
-         comparison. */
-      /* Buildable *now* is the state this page exists to advertise, so it is the
-         loudest thing on it short of the one you have open: a fill you can see
-         from across the room, a full-strength border and a thicker one. The
-         heading used to carry that information as a number; it carries none now,
-         and this has to be doing the work instead — a part you can make should
-         be the thing your eye lands on without being told to look. */
       ctx.save();
-      ctx.fillStyle = ready ? AMBER : have ? CASH : rar.colour;
-      ctx.globalAlpha = on ? 0.42 : ready ? 0.34 : have ? 0.3 : 0.08;
+      ctx.fillStyle = tint;
+      ctx.globalAlpha = on ? 0.2 : can ? 0.12 : 0.03;
       ctx.fillRect(bx, by, cell, cell);
-      ctx.strokeStyle = on ? "#ffffff" : ready ? AMBER : have ? CASH : rar.colour;
-      ctx.globalAlpha = on ? 1 : ready ? 1 : have ? 1 : 0.42;
-      ctx.lineWidth = on ? 3 : ready ? 2.4 : have ? 2 : 1.2;
+      ctx.strokeStyle = tint;
+      ctx.globalAlpha = on ? 1 : can ? 0.85 : 0.28;
+      ctx.lineWidth = on ? 2.5 : can ? 1.5 : 1;
       ctx.strokeRect(bx, by, cell, cell);
       ctx.restore();
 
-      drawPartIcon(p.cat, bx + cell / 2, by + cell / 2, cell * 0.3,
-                   ready ? AMBER : have ? CASH : rar.colour,
-                   ready || have ? 1 : 0.55);
-      // Owned ones say so on the box: the grid is also the answer to "what have
-      // I actually got", and opening four boxes to find out is not an answer.
-      if (have) {
-        label(p.fitted ? "ON SHIP" : "×" + p.owned, bx + cell - 5, by + 14,
+      drawPartIcon(p.cat, bx + cell / 2, by + cell / 2 - 14, cell * 0.2, tint,
+                   can ? 1 : 0.45);
+      /* Wrapped, not shrunk. `fitText` clamps to 16px whatever size it is
+         handed — so asking for 12 changed nothing and "DECOY LAUNCHER" came out
+         "DECOY LAUNC…". A name you cannot read is a tile you have to press. */
+      wrapLines(p.name, SIZE.cap, cell - 10, "0.02em").slice(0, 2)
+        .forEach((ln, k, a) => {
+          label(ln, bx + cell / 2, by + cell - 26 + k * 17 + (a.length === 1 ? 9 : 0),
+                SIZE.cap, tint, "center", can ? 1 : 0.5, "0.02em");
+        });
+      // One mark for one fact: it is already yours.
+      if (mine) {
+        label(p.fitted ? "●" : "×" + p.owned, bx + cell - 6, by + 15,
               SIZE.cap, CASH_DIM, "right", 0.85);
       }
-      fitText(p.name, bx + cell / 2, by + cell + 15, SIZE.cap,
-              ready ? AMBER : have ? CASH : VIOLET_LOW, "center",
-              ready || have ? 1 : 0.55, cell + 8, "0.04em");
 
-      tap({ x: bx, y: by, w: cell, h: cell + 18,
-            // Clicking the one already open closes it, which is what makes the
-            // panel something you open rather than something that is always on.
-            act: () => { craftPg.pick = craftPg.pick === p.key ? null : p.key; } });
+      tap({ x: bx, y: by, w: cell, h: cell,
+            act: () => { craftPg.pick = on ? null : p.key; } });
     });
+
     ctx.restore();
     tapClipOff();
 
-    const rows = Math.ceil(all.length / cols);
-    const gridTotal = rows * (cell + 26) + 16;
-    HUD.craftHeight = gridTotal;
-    HUD.craftView = gridH - PAGE.HEAD;
-    if (gridTotal > HUD.craftView) {
-      scrollHint(full.x + gridW - 10, gTop + 4, gridH - PAGE.HEAD - 8,
-                 craftPg.scroll / Math.max(1, gridTotal - HUD.craftView));
+    const rows = Math.ceil(shown.length / cols);
+    const total = rows * (cell + CG) + 12;
+    craftPg.scroll = Math.max(0, Math.min(Math.max(0, total - gH), craftPg.scroll));
+    HUD.craftHeight = total;
+    HUD.craftView = gH;
+    if (total > gH) {
+      scrollHint(SCREEN_W - 14, gTop + 6, gH - 12,
+                 craftPg.scroll / Math.max(1, total - gH));
     }
 
-    /* ── and the one you picked ────────────────────────────────────────────
-       What it does, how you get one, and — only if there is one — a button.
+    /* ── the one you picked ───────────────────────────────────────────────
+       What it is, what it takes, and one button. Everything the grid does not
+       say lives here, and it only has to say it about a single part. */
+    if (pick) {
+      const rec = recOf(pick.key);
+      const cy = SCREEN_H - CARD - 20;
+      const rar = rarity(pick.rarity);
+      panel(full.x, cy, full.w, CARD, rar.colour, pick.name,
+            pick.fitted ? "ON SHIP"
+            : pick.owned ? "×" + pick.owned + " ABOARD" : "");
+      fitText(pick.note || "", full.x + PAGE.PAD, cy + PAGE.HEAD + 12,
+              SIZE.cap, VIOLET_DIM, "left", 0.85, full.w - PAGE.PAD * 2 - 210);
 
-       Everything in here is measured against the panel's own width before it is
-       drawn. The old version advanced a cursor by `text.length * 9.6` and hoped,
-       which is not a measurement: an ingredient list with long names walked
-       straight out of the right-hand edge of the box and kept going. */
-    const pickY = PAGE.TOP + gridH + PAGE.STEP;
-    const p = showPick ? all.find(q => q.key === craftPg.pick) || null : null;
-    const rec = p ? craftFor(p.key) : null;
-    const inner = gridW - PAGE.PAD * 2;
-    if (p) {
-      panel(full.x, pickY, gridW, pickH, rarity(p.rarity).colour, p.name,
-            p.rarity.toUpperCase() + (p.fitted ? "  ·  ON SHIP"
-                                    : p.owned ? "  ·  ×" + p.owned + " IN STORAGE"
-                                    : ""));
-      // What it does, wrapped to the box rather than trimmed to one line.
-      const said = wrapLines(p.note, SIZE.cap, inner - 190);
-      said.slice(0, 2).forEach((line, i) => {
-        label(line, full.x + PAGE.PAD, ROW(pickY, i) + 2, SIZE.cap,
-              VIOLET_DIM, "left", 0.75);
-      });
-
-      /* How you get one. The question the interface has never answered, and the
-         one Ric asked for by name: some you buy, some you build, some you can
-         only find — and a part that is none of the three does not exist. */
-      const ways = [];
-      ways.push(p.buyable ? { t: "BUY  " + money(p.cost), c: CASH }
-                          : { t: "NO ONE SELLS THIS", c: VIOLET_LOW });
-      /* Only when it *can* be built. A part that cannot says so on the button,
-         which is where the eye goes, and saying UNCRAFTABLE twice in one panel —
-         once as a tag and again on the button four inches to the right — reads
-         as two different facts rather than one said twice. */
-      if (p.craftable) {
-        ways.push({ t: p.rarity === "common" ? "BUILD ANYWHERE"
-                                             : "BUILD AT A STATION", c: AMBER });
-      }
-      let wx = full.x + PAGE.PAD;
-      const wy = ROW(pickY, 2) + 2;
-      for (const w of ways) {
-        const ww = widthOf(w.t, SIZE.cap, "0.1em") + 18;
-        if (wx + ww > full.x + gridW - PAGE.PAD - 190) break;
-        label(w.t, wx, wy, SIZE.cap, w.c, "left", 0.9, "0.1em");
-        wx += ww;
-      }
-      // And where to look, for the ones you can only find — with nobody selling
-      // it and no build for it, that line is the whole of how you get one.
-      if (!p.buyable && !p.craftable && p.where) {
-        fitText(p.where, full.x + PAGE.PAD, ROW(pickY, 3) + 2, SIZE.cap,
-                ICE, "left", 0.7, inner - 190);
-      } else if (rec) {
-        /* The build, laid out with real measurements and wrapped onto a second
-           row if it needs one. */
+      if (rec) {
+        // Named in full here, where there is room for it — this is the page's
+        // one place for words.
         const bits = [];
         if (rec.part) {
-          bits.push({ name: rec.part.name, have: rec.part.have ? 1 : 0, want: 1,
-                      colour: rec.part.have ? CASH
-                            : rec.part.makeable ? AMBER : WARN });
+          const sub = (st.parts || []).find(q => q.key === rec.part.key);
+          bits.push({ part: true, cat: sub ? sub.cat : "odd", name: rec.part.name,
+                      colour: VIOLET, have: rec.part.have ? 1 : 0, want: 1 });
         }
-        for (const row of rec.rows) {
-          bits.push({ name: row.name, have: row.have, want: row.want,
-                      colour: row.have >= row.want ? CASH_DIM : WARN });
+        for (const r of rec.rows) {
+          bits.push({ key: r.key, name: r.name, colour: r.colour,
+                      have: r.have, want: r.want });
         }
-        let ix = full.x + PAGE.PAD, line = 0;
-        const right = full.x + gridW - PAGE.PAD - 190;
-        for (const b of bits) {
-          const txt = b.name + " " + Math.min(b.have, b.want) + "/" + b.want;
-          const w = widthOf(txt, SIZE.cap) + 16;
-          if (ix + w > right) {
-            if (line >= 1) {
-              label("…", ix, ROW(pickY, 3 + line) + 2, SIZE.cap,
-                    VIOLET_DIM, "left", 0.7);
-              break;
-            }
-            line++; ix = full.x + PAGE.PAD;
-          }
-          label(txt, ix, ROW(pickY, 3 + line) + 2, SIZE.cap, b.colour, "left",
-                b.have >= b.want ? 0.85 : 1);
-          ix += w;
-        }
+        const each = Math.min(190, (full.w - PAGE.PAD * 2 - 210) /
+                                   Math.max(1, bits.length));
+        bits.forEach((bit, i) => {
+          const bxi = full.x + PAGE.PAD + i * each;
+          const yy = cy + PAGE.HEAD + 46;
+          const enough = bit.have >= bit.want;
+          if (bit.part) drawPartIcon(bit.cat, bxi + 7, yy - 4, 8,
+                                     enough ? bit.colour : WARN, 1);
+          else drawMatIcon(bit.key, bxi + 7, yy - 4, 8,
+                           enough ? bit.colour : WARN, enough ? 0.9 : 1);
+          fitText(bit.name, bxi + 21, yy, SIZE.cap, enough ? CASH_DIM : WARN,
+                  "left", enough ? 0.8 : 1, each - 66, "0.04em");
+          label(Math.min(bit.have, bit.want) + "/" + bit.want,
+                bxi + each - 16, yy, SIZE.cap, enough ? CASH_DIM : WARN,
+                "right", enough ? 0.85 : 1);
+        });
+      } else {
+        fitText(pick.buyable ? "bought at a station — " + money(pick.cost)
+                             : (pick.where || "found out there, not made"),
+                full.x + PAGE.PAD, cy + PAGE.HEAD + 46, SIZE.cap,
+                pick.buyable ? CASH_DIM : ICE, "left", 0.8,
+                full.w - PAGE.PAD * 2 - 210);
       }
 
-      /* The button, and what it says when it cannot be pressed. A part nothing
-         can build says so rather than showing a dead CRAFT — "there is no way to
-         build this" is information, and a greyed button is a puzzle. */
-      const canHere = rec && (p.rarity === "common" || st.docked);
-      const can = !!(rec && canHere &&
-                     (rec.ready || (rec.part && !rec.part.have &&
-                                    rec.part.makeable &&
-                                    !rec.rows.some(x => x.have < x.want))));
-      const word = !rec ? "UNCRAFTABLE"
-                 : !canHere ? "NEEDS A STATION"
-                 : rec.ready ? "CRAFT"
-                 : (rec.part && rec.part.makeable) ? "CRAFT BOTH"
-                 : "SHORT";
-      button(word, full.x + gridW - PAGE.PAD - 88, ROW(pickY, 2) + 10, 180, 34,
-             can ? CASH : VIOLET_LOW,
-             can ? () => st.onCraft && st.onCraft(p.key) : null, false, can);
+      // One button, and it says what it is rather than sitting there greyed.
+      const canHere = rec && (pick.rarity === "common" || st.docked);
+      const can = !!(rec && rec.ready && canHere);
+      button(!rec ? "NOT BUILT HERE" : !canHere ? "AT A STATION"
+               : rec.ready ? "BUILD IT" : "SHORT",
+             full.x + full.w - PAGE.PAD - 95, cy + CARD / 2, 190, 40,
+             can ? AMBER : VIOLET_LOW,
+             can ? () => st.onCraft && st.onCraft(pick.key) : null, false, can);
     }
 
-    /* The bubble, drawn last of everything on the page. It used to sit where
-       it was built — inside the materials block — which put it *underneath* the
-       storage panel drawn next, so it came out as a box you could read the page
-       through. Last drawn is on top, and last drawn also wins the tap. It hangs off the row it belongs to, and is pushed
-       back up the page when it would run off the bottom — a bubble explaining
-       the last material is otherwise drawn into the floor. */
-    const askedMat = craftPg.mat && hold.find(m => m.key === craftPg.mat);
-    if (askedMat && askedMat.where) {
-      const bw = railW - 16;
-      const lines = wrapLines(askedMat.where, SIZE.cap, bw - 20);
-      const bh = 26 + lines.length * 15;
-      const mi = hold.indexOf(askedMat);
-      let byy = ROW(PAGE.TOP, Math.floor(mi / 2)) + 14;
-      byy = Math.min(byy, SCREEN_H - 22 - bh);
-      const bxx = railX + 8;
-      ctx.save();
-      ctx.fillStyle = "#05060a";
-      ctx.globalAlpha = 0.97;
-      ctx.fillRect(bxx, byy, bw, bh);
-      ctx.strokeStyle = askedMat.colour;
-      ctx.globalAlpha = 0.9;
-      ctx.lineWidth = 1.4;
-      ctx.strokeRect(bxx, byy, bw, bh);
-      ctx.restore();
-      label(askedMat.name, bxx + 10, byy + 15, SIZE.cap, askedMat.colour,
-            "left", 1, "0.08em");
-      lines.forEach((ln, k) =>
-        label(ln, bxx + 10, byy + 30 + k * 15, SIZE.cap, VIOLET_DIM, "left", 0.85));
-      // Anywhere on the bubble closes it, so it is never something you are stuck
-      // with — and it is on top, so this wins over the row underneath.
-      tap({ x: bxx, y: byy, w: bw, h: bh, act: () => { craftPg.mat = null; } });
-    }
-
-    pageNav(st, "craft");
+    pageNav(st, "craft", SHIP_TABS, SHIP_TONE);
     closeButton(st.onClose);
   };
 
@@ -4407,7 +4702,7 @@
 
     pageFrame("LOADOUT",
               (st.shipName || "") + "  \u00b7  FOUR SLOTS, EVERY HULL",
-              "");
+              "", SHIP_TONE);
 
     /* ── the four ──────────────────────────────────────────────────────────
        Always four boxes, always the same four boxes. A hull with fewer would
@@ -4572,7 +4867,7 @@
             sum.length ? CASH : VIOLET_LOW, "left", sum.length ? 0.9 : 0.5,
             SCREEN_W - PAGE.EDGE * 2 - 176);
 
-    pageNav(st, "loadout");
+    pageNav(st, "loadout", SHIP_TABS, SHIP_TONE);
     closeButton(st.onClose);
   };
 
@@ -4599,83 +4894,145 @@
   };
   HUD.shipOpened = function () { shipPg.scroll = 0; };
 
-  HUD.drawInventory = function (st, dt) {
+  /* ═══ THE SHIP ════════════════════════════════════════════════════════════
+     What you are flying and what is bolted to it. Nothing else: no ore, no ice,
+     none of the things that are merely *in* it. This page is one job — putting
+     parts on a ship — and everything on it serves that job, which is why the
+     spares are here too. You cannot drag a part into a slot from a page the
+     slots are not on. */
+  HUD.drawShip = function (st, dt) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
     const cash = st.cash || 0, cap = st.hold || 1;
     const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
     const slots = st.slots || [null, null, null, null];
-    const mats = st.materials || [];
-    const flags = st.standings || [];
-    const others = st.others || [];
 
-    pageFrame("INVENTORY",
-              (st.shipName || "") + "   \u00b7   " + money(cash), "");
+    /* The hull's own name, where the word INVENTORY used to be. This page is
+       about one particular ship and which one is the first thing it should
+       say — and it is no longer the page the cargo lives on. */
+    pageFrame(st.shipName || "SHIP", money(cash), "", SHIP_TONE);
 
-    /* The window the page scrolls inside. Everything below is drawn against a
-       running `y` and clipped to this, so adding a band never has to be balanced
-       against the height of the screen. */
     const viewTop = PAGE.TOP - 4;
     const viewH = SCREEN_H - viewTop - 16;
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, viewTop, SCREEN_W, viewH);
     ctx.clip();
-    // And the same window for what can be pressed. See `tap`.
     tapClip({ x: 0, y: viewTop, w: SCREEN_W, h: viewH });
 
     let y = PAGE.TOP - shipPg.scroll;
     const gap = PAGE.STEP;
-
-    /* ── the hold, at the top ─────────────────────────────────────────────
-       What you are carrying is the first thing on the page. It used to be third,
-       under the slots and storage, which put the one number a player checks on
-       every single dock — how full am I — below two panels they check once a
-       trip. The page is the ship's inventory; the inventory opens on the cargo. */
-    /* **One hold.** There were two panels here — a CARGO HOLD with a cap on it
-       and a STORAGE crate of spare parts with no cap at all — and the second one
-       made the first one a lie: you could be full to the brim and still be
-       carrying six spare engines in a pocket nobody could see. They are the same
-       thing now, on one panel, under one number, and a part weighs something.
-
-       Materials first because they are what the number moves on every trip, then
-       the parts, in the same frame, because what they cost you to carry is the
-       fact that used to be missing. */
     const used = st.carried || 0;
     const crate = st.store || [];
     const freeSlot = slots.findIndex(x => !x);
     const cw = api.touchOnly ? 4 : 6;
     const cCell = Math.floor((full.w - PAGE.PAD * 2 - (cw - 1) * 10) / cw);
     const cRows = Math.max(1, Math.ceil(crate.length / cw));
-    const matsH = PANEL_H(mats.length);
-    const crateH = 30 + cRows * (cCell + 26) + 10;
-    const holdH = matsH + crateH;
-    const full3 = Math.min(1, used / Math.max(1, cap));
-    panel(full.x, y, full.w, holdH, full3 > 0.92 ? AMBER : VIOLET, "CARGO HOLD",
-          used + " / " + cap);
-    const half = (full.w - PAGE.PAD * 2) / 2;
-    mats.forEach((m, i) => {
-      const col = i % 2, row = Math.floor(i / 2);
-      const mx = full.x + PAGE.PAD + col * half;
-      const yy = ROW(y, row) + 2;
-      // Its own picture, the same one the parts page and the market use.
-      drawMatIcon(m.key, mx + 7, yy - 5, 8, m.colour, m.n ? 0.95 : 0.3);
-      fitText(m.name, mx + 20, yy, SIZE.cap, m.colour, "left", m.n ? 1 : 0.4,
-              half - 190, "0.06em");
-      label(String(m.n), mx + half - 128, yy, SIZE.cap,
-            m.n ? m.colour : VIOLET_LOW, "right", m.n ? 1 : 0.4);
-      // What it is worth here, and whether here is short of it.
-      if (m.price != null) {
-        label(m.price + " EA", mx + half - 62, yy, SIZE.cap,
-              m.shortage > 0.25 ? CASH : CASH_DIM, "right",
-              m.shortage > 0.25 ? 1 : 0.7);
-        if (m.shortage > 0.25) {
-          label("WANTED", mx + half - 14, yy, SIZE.cap, CASH, "right", 0.9, "0.1em");
-        }
-      }
-    });
-    if (mats.length % 2) { /* an odd count leaves its last cell empty, which is fine */ }
+    const matsH = 0;
+    const holdH = 30 + cRows * (cCell + 26) + 10 + PAGE.HEAD;
 
+    /* ── the ship ─────────────────────────────────────────────────────────
+       The page is a picture of the thing it is about. It used to be three
+       stacked panels of rows — the same furniture the shop is built out of — so
+       the one page that is unmistakably *yours* was laid out exactly like a page
+       about somebody else's counter, and the only way to tell them apart was to
+       read the title.
+
+       The hull is drawn in the middle at whatever size the band has room for,
+       with its four slots hung around it and a lead running from each one in. A
+       slot stops being the fourth column of a table and becomes a place on the
+       ship — which is what it always was, since you fit a part by dragging it
+       there. The boxes are still remembered in `slotBoxes`, so what you can drop
+       onto is the same rectangle you can see. */
+    const cxShip = SCREEN_W / 2;
+    const BAND = 244, SBOX = 72, ARM = 232;
+    const cyShip = y + 118;
+    const seats = [[-ARM, -112], [ARM, -112], [-ARM, 28], [ARM, 28]];
+    const anyFitted = slots.some(x => !!x);
+
+    slotBoxes.length = 0;
+    for (let i = 0; i < 4; i++) {
+      const sl = slots[i];
+      const bx = cxShip + seats[i][0] - SBOX / 2;
+      const by = cyShip + seats[i][1];
+      const fitting = !!sl && sl.fit > 0;
+      const col = !sl ? VIOLET_LOW : fitting ? AMBER_DIM : rarity(sl.rarity).colour;
+      const over = carry && carry.over === i;
+      slotBoxes.push({ x: bx, y: by, w: SBOX, h: SBOX, i });
+
+      // The lead in to the hull, so a slot reads as part of the ship and not as
+      // a box that happens to be near one.
+      ctx.save();
+      ctx.strokeStyle = sl ? col : VIOLET_LOW;
+      ctx.globalAlpha = sl ? 0.4 : 0.22;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(bx + (seats[i][0] < 0 ? SBOX : 0), by + SBOX / 2);
+      ctx.lineTo(cxShip + (seats[i][0] < 0 ? -52 : 52), cyShip);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = over ? 0.22 : sl ? 0.1 : 0.04;
+      ctx.fillStyle = over ? CASH : col;
+      ctx.fillRect(bx, by, SBOX, SBOX);
+      ctx.globalAlpha = over ? 1 : sl ? 0.85 : 0.45;
+      ctx.strokeStyle = over ? CASH : col;
+      ctx.lineWidth = over ? 2.5 : sl ? 1.5 : 1;
+      // An empty slot is a dashed outline: an opening, rather than a box with
+      // nothing in it.
+      if (!sl && ctx.setLineDash) ctx.setLineDash([5, 4]);
+      ctx.strokeRect(bx, by, SBOX, SBOX);
+      if (ctx.setLineDash) ctx.setLineDash([]);
+      ctx.restore();
+
+      if (sl) {
+        drawPartIcon(sl.cat, bx + SBOX / 2, by + SBOX / 2, SBOX * 0.28,
+                     fitting ? AMBER_DIM : col, fitting ? 0.6 : 1);
+      } else {
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.strokeStyle = VIOLET_LOW;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(bx + SBOX / 2 - 8, by + SBOX / 2);
+        ctx.lineTo(bx + SBOX / 2 + 8, by + SBOX / 2);
+        ctx.moveTo(bx + SBOX / 2, by + SBOX / 2 - 8);
+        ctx.lineTo(bx + SBOX / 2, by + SBOX / 2 + 8);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      fitText(sl ? sl.name : "EMPTY", bx + SBOX / 2, by + SBOX + 18, SIZE.cap,
+              col, "center", sl ? 1 : 0.5, ARM - 30, "0.06em");
+      if (fitting) {
+        fitText("FITTING  " + Math.ceil(sl.fit) + "s", bx + SBOX / 2,
+                by + SBOX + 36, SIZE.cap, AMBER_DIM, "center", 1, ARM - 30);
+        barAt(bx - 10, by + SBOX + 44, SBOX + 20, 5,
+              1 - sl.fit / Math.max(1, sl.of), AMBER_DIM);
+      }
+      if (sl) {
+        tap({ x: bx, y: by, w: SBOX, h: SBOX,
+              act: () => st.onPull && st.onPull(i) });
+      }
+    }
+
+    // The hull last, over the leads.
+    const flying = (st.ships || []).find(sh => sh.flying);
+    if (flying) drawHull(flying, cxShip, cyShip, 50, AMBER, 0.95);
+    /* One line, in the gap between the two lower slots. It has the width of
+       that gap and no more, so it says one thing: the longer version ran out of
+       room and ended in an ellipsis, which is the worst way for a hint to
+       arrive. */
+    fitText(anyFitted ? (api.touchOnly ? "TAP A SLOT TO PULL IT"
+                                       : "CLICK A SLOT TO PULL IT")
+                      : "DRAG A PART INTO A SLOT",
+            cxShip, cyShip + 84, SIZE.cap, AMBER_DIM, "center", 0.6, ARM * 1.6);
+    y += BAND;
+
+
+    // The tray draws its own heading and rule; a panel round it was a second
+    // one saying the same words directly above.
     /* ── what you own and are not flying ──────────────────────────────────────
        Boxes with pictures in them, laid out like the parts page, rather than a
        list of rows. Two reasons, and the second is the one that matters:
@@ -4705,7 +5062,7 @@
     /* What they are costing you, which is the whole reason they are on this
        panel. Not a count — a count is what the tiles already are. */
     label(crate.length
-      ? (st.partWeight || 0) + " OF HOLD  \u00b7  " +
+      ? (st.partWeight || 0) + " OF " + (st.hold || 0) + " CARGO SLOTS  \u00b7  " +
         (api.touchOnly ? "DRAG ONE INTO A SLOT"
                        : "DRAG ONE INTO A SLOT, OR CLICK IT")
       : "NOTHING SPARE",
@@ -4814,7 +5171,8 @@
          card a player opens while deciding whether to keep carrying the thing,
          so it is the one place the number has to be. */
       if (e2.weight) {
-        label(e2.weight + " OF HOLD" + (e2.n > 1 ? "  ·  " + e2.held + " ALL TOLD" : ""),
+        label(e2.weight + " CARGO SLOTS" +
+              (e2.n > 1 ? "  ·  " + e2.held + " ALL TOLD" : ""),
               bx2 + bw2 - 12, by2 + bh2 - 12, SIZE.cap, VIOLET_DIM,
               "right", 0.8, "0.08em");
       }
@@ -4825,94 +5183,278 @@
          the second. */
       tap({ x: bx2, y: by2, w: bw2, h: bh2, act: () => { bubble = null; } });
     }
-    y += holdH + gap;
 
-    /* ── the four slots, as four squares ─────────────────────────────────────
-       They were four columns of text, and an empty one said EMPTY in grey — which
-       is a *label* where the interface needed a *place*. A square is a place: it
-       has an edge, you can see how many there are without counting words, and you
-       can drop something into it. Which is the point, because a part now travels
-       from storage to a slot by being dragged there.
+    y += holdH - PAGE.HEAD + gap;
 
-       The squares are remembered in `slotBoxes` so the drop can find them: what
-       you can drag onto has to be the same rectangle you can see, and the only
-       way to guarantee that is for one of them to be computed from the other. */
-    const slotH = PANEL_H(4);
-    /* The hint lives on the panel's own header line. It used to be drawn along
-       the bottom edge, which is exactly where the captions under the four boxes
-       land — so on any hull with an empty slot it was printed straight through
-       the word EMPTY. The header has room and nothing else wants it: when
-       nothing is fitted there is nothing to pull and the line says what the
-       panel is instead. */
-    const anyFitted = slots.some(x => !!x);
-    panel(full.x, y, full.w, slotH, VIOLET, "FITTED",
-          anyFitted
-            ? (api.touchOnly ? "TAP ONE TO PULL IT"
-                             : "CLICK ONE TO PULL IT  \u00b7  [G]")
-            : "FOUR SLOTS, EVERY HULL");
-    const sw = (full.w - PAGE.PAD * 2) / 4;
-    const box = Math.min(sw - 16, slotH - PAGE.HEAD - 34);
-    slotBoxes.length = 0;
-    for (let i = 0; i < 4; i++) {
-      const sl = slots[i];
-      const sx = full.x + PAGE.PAD + i * sw;
-      const bx = sx + (sw - box) / 2 - 6, by = y + PAGE.HEAD - 2;
-      const fitting = !!sl && sl.fit > 0;
-      const col = !sl ? VIOLET_LOW : fitting ? AMBER_DIM : rarity(sl.rarity).colour;
-      const over = carry && carry.over === i;
-      slotBoxes.push({ x: bx, y: by, w: box, h: box, i });
+    ctx.restore();
+    tapClipOff();
+
+    const total = (y + shipPg.scroll) - PAGE.TOP;
+    shipPg.scroll = Math.max(0, Math.min(Math.max(0, total - viewH), shipPg.scroll));
+    HUD.shipHeight = total;
+    HUD.shipView = viewH;
+    if (total > viewH) {
+      scrollHint(SCREEN_W - 14, viewTop + 6, viewH - 12,
+                 shipPg.scroll / Math.max(1, total - viewH));
+    }
+
+    pageNav(st, "ship", SHIP_TABS, SHIP_TONE);
+    closeButton(st.onClose || (() => {}));
+    drawCarry();
+  };
+
+  /* ═══ THE CARGO ═══════════════════════════════════════════════════════════
+     Everything aboard, in one grid of squares. A cell is a thing: its picture,
+     how many of it, and what it is called. Ore and parts in the same frame,
+     because they are in the same hold and weigh against the same number — that
+     was settled a long time ago and the rows kept pretending otherwise.
+
+     A part bolted to the ship is here too, and greyed, marked ATTACHED. It
+     costs no room — fitting one takes it out of the hold — but leaving it off
+     this page meant the only view of everything you own was missing the four
+     things you chose most carefully. */
+  let cargoPg = { scroll: 0 };
+  /* Which cell is open, and where it was drawn so the card can sit against it.
+     Matched back by `id` every frame rather than held as a reference: the hold
+     changes under you — a mote picked up, a part fitted — and a card holding a
+     stale object would go on describing something you no longer have. */
+  let cargoPick = null;
+  HUD.cargoOpened = function () { cargoPg.scroll = 0; cargoPick = null; };
+  HUD.cargoScrollBy = function (dy, total, view) {
+    const max = Math.max(0, total - view);
+    cargoPg.scroll = Math.max(0, Math.min(max, cargoPg.scroll + dy));
+  };
+
+  HUD.drawInventory = function (st, dt) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    st = st || {};
+    const cash = st.cash || 0, cap = st.hold || 1;
+    const used = st.carried || 0;
+    const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
+    const mats = (st.materials || []).filter(m => m.n > 0);
+    const crate = (st.store || []).filter(e => e.n > 0);
+    const slots = st.slots || [];
+
+    pageFrame("CARGO", (st.shipName || "") + "   ·   " + money(cash), "",
+              SHIP_TONE);
+
+    // How full, as a bar. "41 / 60" is a fact; this is the feeling of it.
+    const frac = Math.min(1, used / Math.max(1, cap));
+    label(used + " / " + cap + "  CARGO SLOTS", full.x, PAGE.TOP + 8, SIZE.cap,
+          frac > 0.92 ? AMBER : AMBER_DIM, "left", 0.9, "0.1em");
+    barAt(full.x, PAGE.TOP + 18, full.w, 8, frac,
+          frac > 0.92 ? AMBER : CASH, frac > 0.92);
+
+    /* One list, three kinds of thing, in the order they matter: what you dug
+       up, what you are carrying spare, and what is already on the ship. */
+    const cells = mats.map(m => ({
+      kind: "mat", id: "m:" + m.key, key: m.key, name: m.name,
+      colour: m.colour, n: m.n, note: m.note, where: m.where,
+      value: m.value, price: m.price, buys: m.buys
+    })).concat(crate.map(e => ({
+      kind: "part", id: "p:" + e.key, key: e.key, name: e.name, cat: e.cat,
+      colour: rarity(e.rarity).colour, n: e.n, note: e.note,
+      rarity: e.rarity, weight: e.weight, held: e.held, secs: e.secs
+    }))).concat(slots.filter(sl => !!sl).map(sl => ({
+      kind: "fitted", id: "f:" + sl.key, key: sl.key, name: sl.name,
+      cat: sl.cat, colour: rarity(sl.rarity).colour, n: 1, note: sl.note,
+      rarity: sl.rarity, attached: true, fit: sl.fit
+    })));
+
+    const viewTop = PAGE.TOP + 34;
+    const viewH = SCREEN_H - viewTop - 20;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, viewTop, SCREEN_W, viewH);
+    ctx.clip();
+    tapClip({ x: 0, y: viewTop, w: SCREEN_W, h: viewH });
+
+    const CELL = api.touchOnly ? 104 : 96, CGAP = 8;
+    const cols = Math.max(1, Math.floor((full.w + CGAP) / (CELL + CGAP)));
+    const lead = full.x + (full.w - (cols * CELL + (cols - 1) * CGAP)) / 2;
+
+    if (!cells.length) {
+      fitText("The hold is empty.", full.x, viewTop + 34, SIZE.cap,
+              VIOLET_DIM, "left", 0.6, full.w);
+    }
+
+    cells.forEach((c, i) => {
+      const col = i % cols, row = Math.floor(i / cols);
+      const bx = lead + col * (CELL + CGAP);
+      const by = viewTop + 10 + row * (CELL + CGAP) - cargoPg.scroll;
+      if (by > viewTop + viewH || by + CELL < viewTop) return;
+      const on = c.kind === "fitted";
 
       ctx.save();
-      ctx.globalAlpha = over ? 0.22 : sl ? 0.1 : 0.04;
-      ctx.fillStyle = over ? CASH : col;
-      ctx.fillRect(bx, by, box, box);
-      ctx.globalAlpha = over ? 1 : sl ? 0.85 : 0.45;
-      ctx.strokeStyle = over ? CASH : col;
-      ctx.lineWidth = over ? 2.5 : sl ? 1.5 : 1;
-      // An empty slot is drawn as a dashed outline: an opening rather than a box
-      // with nothing in it.
-      if (!sl && ctx.setLineDash) ctx.setLineDash([5, 4]);
-      ctx.strokeRect(bx, by, box, box);
-      if (ctx.setLineDash) ctx.setLineDash([]);
+      ctx.fillStyle = c.colour;
+      ctx.globalAlpha = on ? 0.05 : 0.12;
+      ctx.fillRect(bx, by, CELL, CELL);
+      ctx.strokeStyle = c.colour;
+      ctx.globalAlpha = on ? 0.4 : 0.8;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(bx, by, CELL, CELL);
       ctx.restore();
 
-      if (sl) {
-        drawPartIcon(sl.cat, bx + box / 2, by + box / 2, box * 0.28,
-                     fitting ? AMBER_DIM : col, fitting ? 0.6 : 1);
+      /* Bolted on rather than stowed. Its own word along the top, so the cell
+         can still say *which* part it is — the name is the thing you are
+         looking for and ATTACHED is the thing you need to know about it. */
+      if (on) {
+        label("ATTACHED", bx + CELL / 2, by + 15, 11, VIOLET_LOW, "center",
+              0.9, "0.1em");
+      }
+
+      // The picture, the way it is drawn everywhere else in the mode.
+      if (c.kind === "mat") {
+        drawMatIcon(c.key, bx + CELL / 2, by + CELL / 2 - 8, 13, c.colour,
+                    on ? 0.4 : 1);
       } else {
-        // A plus, quietly: this is somewhere a thing goes.
-        ctx.save();
-        ctx.globalAlpha = 0.35;
-        ctx.strokeStyle = VIOLET_LOW;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(bx + box / 2 - 8, by + box / 2);
-        ctx.lineTo(bx + box / 2 + 8, by + box / 2);
-        ctx.moveTo(bx + box / 2, by + box / 2 - 8);
-        ctx.lineTo(bx + box / 2, by + box / 2 + 8);
-        ctx.stroke();
-        ctx.restore();
+        drawPartIcon(c.cat, bx + CELL / 2, by + CELL / 2 - 8, 13, c.colour,
+                     on ? 0.4 : 1);
       }
 
-      fitText(sl ? sl.name : "EMPTY", sx + sw / 2 - 6, by + box + 18, SIZE.cap,
-              col, "center", sl ? 1 : 0.5, sw - 10, "0.06em");
-      fitText(sl ? (fitting ? "FITTING  " + Math.ceil(sl.fit) + "s" : sl.note)
-                 : "drag a part here",
-              sx + sw / 2 - 6, by + box + 38, SIZE.cap,
-              fitting ? AMBER_DIM : VIOLET_DIM, "center", fitting ? 1 : 0.6,
-              sw - 10);
-      if (fitting) {
-        barAt(sx + 4, by + box + 46, sw - 26, 5,
-              1 - sl.fit / Math.max(1, sl.of), AMBER_DIM);
+      // The count, in the corner a stack count goes in.
+      if (c.n > 1) {
+        label("×" + c.n, bx + CELL - 7, by + CELL - 24, SIZE.cap,
+              c.colour, "right", on ? 0.5 : 1);
       }
-      if (sl) {
-        tap({ x: bx, y: by, w: box, h: box,
-              act: () => st.onPull && st.onPull(i) });
+      /* Wrapped onto a second line rather than shrunk: `fitText` will not go
+         below 16px, so a long name inside a square can only ever be cut. */
+      wrapLines(c.name, SIZE.cap, CELL - 10, "0.02em").slice(0, 2)
+        .forEach((ln, k, a) => {
+          label(ln, bx + CELL / 2, by + CELL - 24 + k * 17 + (a.length === 1 ? 9 : 0),
+                SIZE.cap, on ? VIOLET_LOW : c.colour, "center",
+                on ? 0.7 : 0.9, "0.02em");
+        });
+
+      /* Press it to find out what it is. A grid of pictures is only readable
+         if the pictures can be asked what they mean — and the one place a
+         player decides whether a thing is worth the room it takes is looking
+         straight at it. */
+      tap({ x: bx, y: by, w: CELL, h: CELL,
+            act: () => {
+              cargoPick = cargoPick && cargoPick.id === c.id
+                ? null : { id: c.id, x: bx, y: by + cargoPg.scroll };
+            } });
+    });
+
+    ctx.restore();
+    tapClipOff();
+
+    /* ── what it is ───────────────────────────────────────────────────────
+       Outside the scroll clip, so a card opened on the bottom row is not cut
+       in half by the window its cell lives in. */
+    const open = cargoPick && cells.find(c => c.id === cargoPick.id);
+    if (open) {
+      const rar = open.kind === "mat" ? null : rarity(open.rarity);
+      const tint = rar ? rar.colour : open.colour;
+      const bw = Math.min(440, full.w - PAGE.PAD * 2);
+      const lines = wrapLines(open.note || "", SIZE.cap, bw - 24);
+      const extra = open.kind === "mat" && open.where
+        ? wrapLines("Found: " + open.where, SIZE.cap, bw - 24) : [];
+      const bh = 46 + (lines.length + extra.length) * 20 + 26;
+      const cardX = Math.max(full.x, Math.min(cargoPick.x + CELL / 2 - bw / 2,
+                                              full.x + full.w - bw));
+      const anchorY = cargoPick.y - cargoPg.scroll;
+      const below = anchorY + CELL + 8 + bh < SCREEN_H - 16;
+      const cardY = below ? anchorY + CELL + 8 : Math.max(PAGE.TOP, anchorY - bh - 8);
+
+      ctx.save();
+      ctx.globalAlpha = 0.97;
+      ctx.fillStyle = INK;
+      ctx.fillRect(cardX, cardY, bw, bh);
+      ctx.strokeStyle = tint;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cardX, cardY, bw, bh);
+      ctx.restore();
+
+      fitText(open.name, cardX + 12, cardY + 26, SIZE.val, tint, "left", 1,
+              bw - 130, "0.06em");
+      label(open.kind === "mat" ? "ORE" : (open.rarity || "").toUpperCase(),
+            cardX + bw - 12, cardY + 26, SIZE.cap, tint, "right", 0.8, "0.1em");
+      lines.concat(extra).forEach((ln, i) => {
+        label(ln, cardX + 12, cardY + 50 + i * 20, SIZE.cap, VIOLET_DIM,
+              "left", 0.9);
+      });
+
+      /* The bottom line is the one a player is actually here for: what it is
+         worth, or what it is costing to carry. */
+      const foot = open.kind === "mat"
+        ? (open.buys === false ? "this place doesn't buy these"
+           : (open.price == null ? open.value : open.price) + " each" +
+             (open.price != null && open.price > open.value ? "  ·  over the odds" : ""))
+        : open.kind === "fitted"
+          ? (open.fit > 0 ? "FITTING  " + Math.ceil(open.fit) + "s"
+                          : "on the ship  ·  takes no room")
+          : open.weight + " CARGO SLOTS" +
+            (open.n > 1 ? "  ·  " + open.held + " ALL TOLD" : "");
+      label(foot, cardX + 12, cardY + bh - 13, SIZE.cap,
+            open.kind === "fitted" ? VIOLET_LOW : CASH, "left", 0.9, "0.06em");
+      if (open.n > 1) {
+        label("×" + open.n, cardX + bw - 12, cardY + bh - 13, SIZE.cap,
+              open.colour, "right", 0.85);
       }
+      // The card closes itself; so does pressing its cell again.
+      tap({ x: cardX, y: cardY, w: bw, h: bh, act: () => { cargoPick = null; } });
     }
-    y += slotH + gap;
 
+    const rows = Math.ceil(cells.length / cols);
+    const total = rows * (CELL + CGAP) + 20;
+    cargoPg.scroll = Math.max(0, Math.min(Math.max(0, total - viewH),
+                                          cargoPg.scroll));
+    HUD.cargoHeight = total;
+    HUD.cargoView = viewH;
+    if (total > viewH) {
+      scrollHint(SCREEN_W - 14, viewTop + 6, viewH - 12,
+                 cargoPg.scroll / Math.max(1, total - viewH));
+    }
 
+    pageNav(st, "inventory", SHIP_TABS, SHIP_TONE);
+    closeButton(st.onClose || (() => {}));
+  };
+
+  /* ═══ THE RECORD ══════════════════════════════════════════════════════════
+     Everything the run has *accumulated*, as against everything it is carrying.
+     These five bands used to sit under the cargo and the slots on one page,
+     which made the inventory eight panels deep and buried the two numbers a
+     player checks on every dock under four they read once a trip.
+
+     They are one page now and they belong together: who you are to the powers,
+     who knows your name, the book, what has happened, and the gate you are
+     building. None of it is in the hold. */
+  let recPg = { scroll: 0 };
+  HUD.recordOpened = function () { recPg.scroll = 0; };
+  HUD.recordScrollBy = function (dy, total, view) {
+    const max = Math.max(0, total - view);
+    recPg.scroll = Math.max(0, Math.min(max, recPg.scroll + dy));
+  };
+
+  HUD.drawRecord = function (st, dt) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    st = st || {};
+    const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
+    const flags = st.standings || [];
+    const others = st.others || [];
+
+    pageFrame("RECORD",
+              (st.shipName || "") + "   \u00b7   " + money(st.cash || 0), "",
+              SHIP_TONE);
+
+    const viewTop = PAGE.TOP - 4;
+    const viewH = SCREEN_H - viewTop - 16;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, viewTop, SCREEN_W, viewH);
+    ctx.clip();
+    tapClip({ x: 0, y: viewTop, w: SCREEN_W, h: viewH });
+
+    let y = PAGE.TOP - recPg.scroll;
+    const gap = PAGE.STEP;
+
+    /* What you are building comes first. It is the only thing on this page you
+       can act on — the rest is a record of what has already happened — and it
+       used to be a door at the bottom of the scroll saying only that it was
+       there. */
+    y = missionBands(st, full, y) + gap;
 
     /* ── who you are to them ─────────────────────────────────────────────── */
     const repH = PANEL_H(flags.length * 2 + others.length);
@@ -5031,36 +5573,22 @@
     });
     y += logH + gap;
 
-    /* ── the yard, as a door ─────────────────────────────────────────────── */
-    const doorH = PANEL_H(1);
-    panel(full.x, y, full.w, doorH, CASH, "THE JUMP GATE",
-          (st.built || 0) + " / " + (st.needs || 6) + " FITTED");
-    fitText("what it still wants, and where to look",
-            full.x + PAGE.PAD, ROW(y, 0) + 2, SIZE.cap, VIOLET_DIM, "left",
-            0.65, full.w - PAGE.PAD * 2);
-    tap({ x: full.x, y, w: full.w, h: doorH,
-                 act: st.onMissions || (() => {}) });
-    y += doorH + gap;
+
 
     ctx.restore();
     tapClipOff();
 
-    /* How far it can scroll, measured from what was actually laid out rather than
-       from a number somebody has to keep in step with the bands above. */
-    const total = (y + shipPg.scroll) - PAGE.TOP;
-    shipPg.scroll = Math.max(0, Math.min(Math.max(0, total - viewH),
-                                         shipPg.scroll));
-    HUD.shipHeight = total;
-    HUD.shipView = viewH;
+    const total = (y + recPg.scroll) - PAGE.TOP;
+    recPg.scroll = Math.max(0, Math.min(Math.max(0, total - viewH), recPg.scroll));
+    HUD.recordHeight = total;
+    HUD.recordView = viewH;
     if (total > viewH) {
       scrollHint(SCREEN_W - 14, viewTop + 6, viewH - 12,
-                 shipPg.scroll / Math.max(1, total - viewH));
+                 recPg.scroll / Math.max(1, total - viewH));
     }
 
-    pageNav(st, "inventory");
+    pageNav(st, "record", SHIP_TABS, SHIP_TONE);
     closeButton(st.onClose || (() => {}));
-    // Whatever is in your hand goes on top of all of it, outside the scroll clip.
-    drawCarry();
   };
 
   /* A little closed book, for the panel that opens the almanac. Drawn rather than
@@ -5123,7 +5651,7 @@
      can make all of them a thumb-sized target at once. A phone gets a quarter
      more height and a wider tap box than the drawn one — the box you press is
      allowed to be bigger than the box you see, and on a phone it should be. */
-  function button(text, cx, cy, w, h, colour, act, on, live, track) {
+  function button(text, cx, cy, w, h, colour, act, on, live, track, hold) {
     const { ctx } = api;
     const enabled = live === undefined ? true : !!live;
     /* Only buttons that have room to grow. A phone needs bigger targets, but the
@@ -5149,7 +5677,9 @@
     fitText(text, cx, cy + 6, SIZE.cap, colour, "center",
             enabled ? 1 : 0.5, w - 18, track === undefined ? "0.12em" : track);
     if (enabled && typeof act === "function") {
-      tap({ x: cx - w / 2, y: cy - h / 2, w, h, act });
+      // `hold` makes it fire on the press and keep firing. See `startHold` in
+      // the game: it is how + and - reach a hundred without a hundred presses.
+      tap({ x: cx - w / 2, y: cy - h / 2, w, h, act, hold: !!hold });
     }
   }
 
@@ -5178,17 +5708,17 @@
      difference: the same content, and a footer that names the key you arrived by. */
   HUD.drawMissions = function (st, dt) { HUD.drawYardPage(st, dt); };
 
-  HUD.drawYardPage = function (st, dt) {
+  /* ── the gate, as bands ───────────────────────────────────────────────────
+     Drawn against a `y` you hand it rather than against the top of a page, so
+     the same three panels can be the whole of the yard's page and the first
+     thing on the record. They were one page and a door to it, which meant the
+     one list telling you where to go next lived behind a panel that said only
+     that it existed. Returns where it finished. */
+  function missionBands(st, full, y0) {
     const { ctx, SCREEN_W } = api;
-    st = st || {};
     const b = st.builds || { name: "THE JUMP GATE", does: "", blurb: "" };
     const done = st.built || 0, need = st.needs || 6;
     const finished = done >= need;
-    const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
-
-    pageFrame(st.atYard ? "THE JUMP GATE" : "MISSIONS",
-              done + " OF " + need + " PARTS FITTED",
-              "");
 
     /* ── what is being built ───────────────────────────────────────────────
        The ring stays: it is the same shape the yard draws out in the world, one
@@ -5196,16 +5726,16 @@
        picture of the thing rather than a bar. It sits at the end of the header
        row rather than in the middle of the page, so the words lead. */
     const headH = PANEL_H(2);
-    panel(full.x, PAGE.TOP, full.w, headH, finished ? CASH : VIOLET,
+    panel(full.x, y0, full.w, headH, finished ? CASH : VIOLET,
           finished ? "BUILT" : "BUILDING", done + " / " + need);
-    fitText(b.name, full.x + PAGE.PAD, ROW(PAGE.TOP, 0) + 4, SIZE.head,
+    fitText(b.name, full.x + PAGE.PAD, ROW(y0, 0) + 4, SIZE.head,
             finished ? CASH : VIOLET, "left", 1, full.w - 320, "0.12em");
-    fitText(finished ? b.does : b.blurb, full.x + PAGE.PAD, ROW(PAGE.TOP, 1) + 6,
+    fitText(finished ? b.does : b.blurb, full.x + PAGE.PAD, ROW(y0, 1) + 6,
             SIZE.cap, finished ? CASH_DIM : VIOLET_DIM, "left", 0.8,
             full.w - 320);
 
     const rx = full.x + full.w - PAGE.PAD - 34;
-    const ry = PAGE.TOP + headH / 2, rr = 28;
+    const ry = y0 + headH / 2, rr = 28;
     ctx.save();
     ctx.strokeStyle = VIOLET_LOW;
     ctx.globalAlpha = 0.6;
@@ -5225,7 +5755,7 @@
        is the whole navigation system, so it gets the width — everything else on
        the line is as short as it can be. Alternate rows are banded, which is
        what lets an eye track a clue back to its name across 900 pixels. */
-    const listY = PAGE.TOP + headH + PAGE.STEP;
+    const listY = y0 + headH + PAGE.STEP;
     const man = st.manifest || [];
     /* It says *parts*, in as many places as it takes. The page listed six names
        and six clues and never once said what the six things were or what you were
@@ -5284,7 +5814,27 @@
       }
     }
 
-    pageNav(st, "missions");
+
+    const tail = (finished && st.light)
+      ? listY + PANEL_H(man.length + 1) + PAGE.STEP + PANEL_H(2)
+      : listY + PANEL_H(man.length + 1);
+    return tail;
+  }
+
+  HUD.drawYardPage = function (st, dt) {
+    const { ctx, SCREEN_W } = api;
+    st = st || {};
+    const b = st.builds || { name: "THE JUMP GATE", does: "", blurb: "" };
+    const done = st.built || 0, need = st.needs || 6;
+    const finished = done >= need;
+    const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
+
+    pageFrame(st.atYard ? "THE JUMP GATE" : "MISSIONS",
+              done + " OF " + need + " PARTS FITTED",
+              "", SHIP_TONE);
+
+    missionBands(st, full, PAGE.TOP);
+    pageNav(st, "missions", SHIP_TABS, SHIP_TONE);
     closeButton(st.onClose || (() => {}));
   };
 
@@ -5510,102 +6060,23 @@
 
      The page is small on purpose. It answers "can I fill up here, and what will
      it cost", and then it gets out of the way. */
+  /* An inhabited world is a market with weather. Same page as a station, and
+     deliberately so: what you want to know on arriving anywhere with people in
+     it is what they will give you for the hold and what they have on the shelf.
+
+     What the globe and the two fill buttons used to say is all still here, as
+     rows — the water, the food, and the one thing this rock is made of — and the
+     free option is the footer, because a player who cannot afford the water is
+     the only one who needs it and they need one line, not a paragraph. */
   HUD.drawLanded = function (st, dt) {
-    const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
     const w = st.landed;
     if (!w) return;
-    const colour = w.colour || CASH;
-
-    pageFrame(w.name,
-              w.band + "  ·  " + fmtCells(w.dist) + " UNITS FROM ORIGIN",
-              api.touchOnly ? "CLOSE BELOW" : "E OR ESC LEAVES");
-
-    label("INHABITED", SCREEN_W / 2, 132, SIZE.head, colour, "center", 1, "0.24em");
-    fitText(w.air ? "there is air here, and people in it"
-                  : "airless, and lived in anyway",
-            SCREEN_W / 2, 162, SIZE.cap, VIOLET_DIM, "center", 0.8, SCREEN_W - 200);
-
-    /* The world itself, drawn at the size the page has room for rather than the
-       size it is — you are standing on it, so a to-scale drawing would be a
-       straight line across the screen. */
-    const cx = SCREEN_W / 2, cy = 268, r = 62;
-    ctx.save();
-    api.glow(colour, 2.4, 0.9, () => {
-      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-    });
-    if (w.air) {
-      api.glow(colour, 2, 0.3, () => {
-        ctx.beginPath(); ctx.arc(cx, cy, r * 1.12, 0, Math.PI * 2); ctx.stroke();
-      });
-    }
-    api.glow(colour, 1.2, 0.5, () => {
-      for (const f of [-0.5, -0.15, 0.2, 0.55]) {
-        const yy = f * r, half = Math.sqrt(Math.max(0, r * r - yy * yy));
-        ctx.beginPath();
-        ctx.moveTo(cx - half, cy + yy); ctx.lineTo(cx + half, cy + yy);
-        ctx.stroke();
-      }
-    });
-    ctx.restore();
-
-    // ── the well and the market ────────────────────────────────────────────
-    label(money(st.cash), SCREEN_W / 2, 372, SIZE.val, CASH,
-          "center", 1, "0.1em");
-
-    [["water", "WATER", ICE], ["food", "FOOD", AMBER_DIM]].forEach(([k, name, col], i) => {
-      const m = st[k] || {};
-      const full = m.cost == null;
-      const afford = !full && (st.cash || 0) >= m.cost;
-      const x = SCREEN_W / 2 + (i === 0 ? -180 : 180);
-      label(name, x, 424, SIZE.cap, m.countdown > 0 ? WARN : col, "center",
-            0.85, "0.18em");
-      label(m.countdown > 0 ? fmtSecs(m.countdown) : fmtSecs(m.left || 0),
-            x, 456, SIZE.head, m.countdown > 0 ? WARN : col, "center", 1);
-      barAt(x - 90, 470, 180, 9, m.frac || 0, col, m.countdown > 0);
-      button(full ? "FULL" : "FILL  " + money(m.cost), x, 516, 200, 40,
-             full ? VIOLET_LOW : afford ? col : WARN,
-             full ? null : () => st.onBuySupply && st.onBuySupply(k),
-             false, !full && afford);
-    });
-
-    /* ── what they dig here ──────────────────────────────────────────────────
-       The other half of the economy. A station is where you sell what you found;
-       a world is where you can buy the one thing this particular rock is made of,
-       cheaper than a station would, without flying around looking for an asteroid
-       that happens to contain it. */
-    if (w.trades) {
-      const tr = w.trades;
-      const gone = tr.left <= 0;
-      /* One row. Two left no room between the bottom of the panel and the line
-         about skimming, which the audit found running straight through it — and
-         everything this panel has to say fits on a line anyway: what they dig,
-         how much is left, what it costs, and a button. */
-      const trY = 552;
-      panel(SCREEN_W / 2 - 300, trY, 600, PANEL_H(1), tr.colour,
-            "THEY DIG " + tr.name, gone ? "NOTHING LEFT" : tr.left + " LEFT");
-      drawMatIcon(tr.key, SCREEN_W / 2 - 276, ROW(trY, 0) - 4, 10, tr.colour,
-                  gone ? 0.35 : 1);
-      fitText(money(tr.price) + " each — " + tr.note,
-              SCREEN_W / 2 - 258, ROW(trY, 0) + 2, SIZE.cap, VIOLET_DIM,
-              "left", 0.8, 310);
-      button(gone ? "NONE LEFT" : "BUY TEN   " + money(tr.price * 10),
-             SCREEN_W / 2 + 185, ROW(trY, 0) + 2, 200, 34,
-             gone ? VIOLET_LOW : tr.colour,
-             gone ? null : () => st.onBuyLocal && st.onBuyLocal(), false, !gone);
-    }
-
-    /* The free option, stated where it is relevant. A player who cannot afford
-       the water needs to be told there is another way, and this is the only
-       screen that knows both facts at once. */
-    if (w.air) {
-      fitText("or fly through the atmosphere and skim it for nothing — " +
-              "it is slow, and it is free",
-              SCREEN_W / 2, w.trades ? 654 : 566, SIZE.cap, ICE, "center",
-              0.7, SCREEN_W - 160);
-    }
-
-    closeButton(st.onClose || (() => {}));
+    marketPage(st, w.name,
+               w.band + "   \u00b7   " + (st.cash || 0) + " CASH",
+               w.air ? "the atmosphere can be skimmed for water \u2014 slow, and free"
+                     : "airless, and lived in anyway",
+               "refit", st.onClose || (() => {}), PLACE_TABS);
   };
 
   /* ═══ THE HANGAR ══════════════════════════════════════════════════════════
@@ -5850,7 +6321,7 @@
              : () => st.onBuyShip && st.onBuyShip(sh.key),
            false, !sh.flying && reach);
 
-    pageNav(st, "hangar");
+    pageNav(st, "hangar", PLACE_TABS, PLACE_TONE);
     closeButton(st.onClose || (() => {}));
   };
 

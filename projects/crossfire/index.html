@@ -44,6 +44,9 @@
     --phosphor-faint: #9a7a1f;
     --p2: #6dffbf;
     --alarm: #ff8f77;
+    /* Survey's violet, the same one its card and its diorama are drawn in. */
+    --survey: #a08cff;
+    --survey-dim: #cfc4ff;
   }
 
   * { box-sizing: border-box; margin: 0; }
@@ -615,6 +618,136 @@
   #account .status.good { color: var(--phosphor); }
   /* The signed-in line, and what it says about the save. Separated from the
      form by a rule, because they answer different questions. */
+  /* ── Survey's door ────────────────────────────────────────────────────
+     The account panel is two screens wearing one set of controls. Opened from
+     SETTINGS it is a settings page and stays amber. Standing in Survey's
+     doorway it is the first screen of that mode, and a mode's first screen
+     should look like the mode — so `.door` gives it Survey's violet, centres it
+     the way every canvas page in this game is centred, and puts a star field
+     behind it instead of a black veil over the cards it came from.
+
+     Only the paint changes. The markup, the controls and the order they come in
+     are the same either way, because they are the same job. */
+  #account .stars {
+    position: fixed;
+    inset: 0;
+    /* A canvas is a replaced element: `inset: 0` alone leaves it at its
+       intrinsic 300×150 in the corner rather than stretching it. */
+    width: 100%;
+    height: 100%;
+    display: none;
+    pointer-events: none;
+  }
+  #account.door .stars { display: block; }
+  #account.door { background: #000; }
+
+  #account.door .panel {
+    position: relative;
+    z-index: 1;
+    /* One column width for every control in the door. The boxes, the button
+       rows and the guest button are all exactly this wide, which is the whole
+       trick: a stack of things that share an edge reads as built, and a stack
+       of things that each size to their own content reads as a form that
+       happened. */
+    --door-w: min(100%, 20.5rem);
+    width: min(100%, 430px);
+    align-items: center;
+    text-align: center;
+    border-color: rgba(160, 140, 255, 0.4);
+    /* Well short of opaque: the field carries on behind the panel rather than
+       stopping at its edge, which is what makes it a window and not a sticker.
+       The stars are dim and sparse enough at this alpha that nothing has to be
+       read through one. */
+    background: rgba(6, 4, 16, 0.55);
+  }
+  #account.door h2 {
+    font-size: 2.6rem;
+    letter-spacing: 0.18em;
+    color: var(--survey);
+    margin: 0.4rem 0 0.1rem;
+  }
+  /* The labels above the boxes and the "or don't" above the guest button are
+     all `.step`s, and all three say what the thing under them already says. */
+  #account.door .step, #account.door #acctPitch { display: none; }
+
+  #account.door input[type="email"],
+  #account.door input[type="password"] {
+    width: var(--door-w);
+    text-align: center;
+    letter-spacing: 0.12em;
+    padding: 0.8rem;
+    margin: 0 0 0.5rem;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(160, 140, 255, 0.38);
+    color: var(--survey-dim);
+  }
+  #account.door input::placeholder {
+    color: rgba(207, 196, 255, 0.45);
+    letter-spacing: 0.16em;
+  }
+  #account.door input[type="email"]:focus,
+  #account.door input[type="password"]:focus {
+    outline: none;
+    border-color: var(--survey);
+    box-shadow: 0 0 0 1px rgba(160, 140, 255, 0.4);
+  }
+  /* The door is a centred column, so each section inside it is one too, and the
+     button rows inside those are centred rows.
+
+     `:not([hidden])` on every one of them, because these selectors carry two ids
+     and beat a bare `[hidden]` — without it `display: flex` shows the signed-in
+     block and the clash block at the same time as the form. That is exactly what
+     it did: one panel with every state on it at once. */
+  #account.door .panel > div:not([hidden]),
+  #account.door #acctGuestRow:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+  #account.door .row:not([hidden]) {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    width: var(--door-w);
+    gap: 0.5rem;
+  }
+  /* Two buttons sharing one column width rather than each taking what its own
+     label happens to need. `nowrap` because a label that folds onto a second
+     line makes its button taller than the one beside it, and two buttons in a
+     row that are not the same height look like a mistake. */
+  #account.door .row button {
+    flex: 1 1 0;
+    margin: 0;
+    white-space: nowrap;
+    padding: 0.65rem 0.4rem;
+  }
+  #account.door button {
+    border-color: rgba(160, 140, 255, 0.45);
+    color: var(--survey-dim);
+  }
+  #account.door button:hover, #account.door button:focus-visible {
+    background: rgba(160, 140, 255, 0.14);
+    border-color: var(--survey);
+    color: #fff;
+  }
+  #account.door button.quiet { border-color: rgba(160, 140, 255, 0.22); }
+  #account.door h2 { margin: 0.2rem 0 1.6rem; }
+  #account.door #btnAcctForgot,
+  #account.door #btnAcctGuest {
+    width: var(--door-w);
+    margin: 0.45rem 0 0;
+  }
+  #account.door #btnAcctGuest { margin-top: 1.5rem; }
+  #account.door .note {
+    margin-top: 0.55rem;
+    font-size: 0.8rem;
+    color: var(--survey-dim);
+    opacity: 0.55;
+  }
+  #account.door .modes { margin-top: 1.2rem; }
+  #account.door .modes button { margin: 0; padding: 0.5rem 1.6rem; }
+
   #account .who {
     border-bottom: 1px solid var(--phosphor-faint);
     padding-bottom: 0.9rem;
@@ -784,6 +917,7 @@
 </div>
 
 <div id="account" hidden role="dialog" aria-modal="true" aria-labelledby="accountTitle">
+  <canvas class="stars" id="acctStars" aria-hidden="true"></canvas>
   <div class="panel">
     <h2 id="accountTitle">YOUR ACCOUNT</h2>
 
@@ -791,10 +925,7 @@
          "why would I type my email into a game" is the question a player
          actually has and a heading does not answer it. -->
     <div id="acctOut" hidden>
-      <p id="acctPitch">
-        Survey already saves on this device. An account keeps the same sector on
-        every device you play on — and keeps it if this browser forgets.
-      </p>
+      <p id="acctPitch">Keeps the same sector on every device you play on.</p>
 
       <span class="step">your email</span>
       <input id="acctEmail" type="email" autocomplete="email" spellcheck="false"
@@ -803,11 +934,11 @@
       <input id="acctPass" type="password" autocomplete="current-password"
              maxlength="72" placeholder="at least 8 characters" aria-label="a password">
 
-      <div>
+      <div class="row">
         <button id="btnAcctIn" type="button">sign in</button>
         <button id="btnAcctUp" type="button">create account</button>
       </div>
-      <button id="btnAcctForgot" type="button" class="quiet">forgotten the password</button>
+      <button id="btnAcctForgot" type="button" class="quiet">forgot password</button>
 
       <!-- Only at the door, and deliberately last: an account is the better
            answer and the page should say so first. But it is a full-width,
@@ -816,10 +947,7 @@
       <div id="acctGuestRow" hidden>
         <span class="step">or don't</span>
         <button id="btnAcctGuest" type="button">play as a guest</button>
-        <p class="note">
-          Your survey saves on this device only. You can sign in later from
-          SETTINGS and bring it with you.
-        </p>
+        <p class="note">Saves on this device only.</p>
       </div>
     </div>
 
@@ -829,7 +957,7 @@
         <p>Signed in as <span class="addr" id="acctWho"></span></p>
         <p class="note" id="acctSync"></p>
       </div>
-      <div>
+      <div class="row">
         <button id="btnAcctPlay" type="button" hidden>fly</button>
         <button id="btnAcctSave" type="button">save to my account now</button>
         <button id="btnAcctOut" type="button" class="quiet">sign out</button>
@@ -842,7 +970,7 @@
     <div id="acctClash" hidden>
       <p class="warn">This account already has a survey on it.</p>
       <p class="note" id="acctClashWhat"></p>
-      <div>
+      <div class="row">
         <button id="btnAcctTakeCloud" type="button">use the saved one</button>
         <button id="btnAcctTakeLocal" type="button">use the one on this device</button>
       </div>
@@ -2004,12 +2132,36 @@
     "Tab", "Escape", "KeyP" // keep camera switching and menus inside the game
   ]);
 
+  /* A panel with a field in it owns the keyboard, and so does a focused field
+     anywhere. The online lobby was given the first half of that rule when it was
+     written; the account door was not, and the difference was a bug nobody could
+     see from the outside. `SWALLOW` and `boundKeys` together cover Space, A, D,
+     W, P, Slash, Tab, Enter and the digits 1–4 — so the `preventDefault` below
+     was taking those characters straight out of the email and password fields
+     as they were typed. A password with a space in it could not be entered at
+     all, and neither could most email addresses. It read as "the password only
+     accepts certain characters", which is precisely what it was.
+
+     Asked of the focused element rather than of a list of panel ids, so the next
+     panel with an input in it is born working instead of inheriting this. */
+  const typingInField = () => {
+    const a = document.activeElement;
+    if (!a) return false;
+    if (a.isContentEditable) return true;
+    const t = a.tagName;
+    return t === "INPUT" || t === "TEXTAREA" || t === "SELECT";
+  };
+
   addEventListener("keydown", e => {
     audioUnlock();
-    // While the online panel is up the keyboard belongs to it — you're typing
-    // a name or a password, and a stray space shouldn't fire a gun.
+    // While a panel that takes typing is up the keyboard belongs to it — you're
+    // entering a name, an email or a password, and a stray space shouldn't fire
+    // a gun or vanish out of the box you typed it into.
     const lob = document.getElementById("lobby");
     if (lob && !lob.hidden) return;
+    const acct = document.getElementById("account");
+    if (acct && !acct.hidden) return;
+    if (typingInField()) return;
     // While a key is being listened for, the whole keyboard is ours: the point
     // is to catch the key itself, not what the browser would rather do with it.
     if (binder.listening || SWALLOW.has(e.code) || boundKeys.has(e.code)) {
@@ -2739,10 +2891,37 @@
       }
       if (code === "KeyL") { state = "almanac"; return; }
       if (surveyHUD) surveyHUD.chartKey(code, surveyState());
-    } else if (state === "inventory") {
-      if (code === "Escape" || code === "Backspace" ||
-          code === "KeyI" || code === "KeyG") {
+    } else if (state === "record") {
+      if (code === "Escape" || code === "Backspace") { state = "playing"; return; }
+      if (code === "KeyI" || code === "KeyG") {
+        state = "inventory"; surveyHUD && surveyHUD.shipOpened(); return;
+      }
+      if (code === "KeyL") { state = "almanac"; return; }
+      if (code === "KeyM") {
+        state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
+      }
+    } else if (state === "ship") {
+      if (code === "Escape" || code === "Backspace" || code === "KeyG") {
         state = "playing"; return;
+      }
+      if (code === "KeyI") {
+        state = "inventory";
+        surveyHUD && surveyHUD.cargoOpened && surveyHUD.cargoOpened();
+        return;
+      }
+      if (code === "KeyL") { state = "almanac"; return; }
+      if (code === "KeyB") {
+        state = "craft"; surveyHUD && surveyHUD.craftOpened(); return;
+      }
+      if (code === "KeyM") {
+        state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
+      }
+    } else if (state === "inventory") {
+      if (code === "Escape" || code === "Backspace" || code === "KeyI") {
+        state = "playing"; return;
+      }
+      if (code === "KeyG") {
+        state = "ship"; surveyHUD && surveyHUD.shipOpened(); return;
       }
       if (code === "KeyL") { state = "almanac"; return; }
       if (code === "KeyB") {
@@ -2781,6 +2960,10 @@
         state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
       }
     } else if (state === "landed") {
+      /* The shop's quantity field first: while it has the keyboard, Backspace
+         deletes a digit rather than closing the page, and Escape abandons the
+         number rather than leaving the world. */
+      if (surveyHUD && surveyHUD.shopKey && surveyHUD.shopKey(code)) return;
       if (code === "Escape" || code === "Backspace" || code === "KeyE") {
         state = "playing"; return;
       }
@@ -2801,6 +2984,8 @@
         state = "playing"; return;
       }
     } else if (state === "refit") {
+      // See the note on `landed`: a field with the keyboard keeps it.
+      if (surveyHUD && surveyHUD.shopKey && surveyHUD.shopKey(code)) return;
       if (code === "Escape" || code === "Backspace" || code === "KeyE") {
         state = "playing"; return;
       }
@@ -2888,7 +3073,11 @@
         if (code === "KeyE" && surv && surv.atYard) { state = "yard"; return; }
         // Last of the three, because a station does more than a world does and a
         // yard is the thing you came back for.
-        if (code === "KeyE" && surv && surv.landed) { state = "landed"; return; }
+        if (code === "KeyE" && surv && surv.landed) {
+          state = "landed";
+          surveyHUD && surveyHUD.shopOpened && surveyHUD.shopOpened();
+          return;
+        }
         /* Somebody drifting, before anything with a name on it: a ship with four
            minutes left beats a monument that has been there a thousand years.
 
@@ -2913,8 +3102,13 @@
         // Your ship: the slots, the crate, the hold, who you are to the powers,
         // and the book. `I` and `G` both reach it because it is both of the pages
         // it used to be.
-        if (code === "KeyI" || code === "KeyG") {
-          state = "inventory"; surveyHUD && surveyHUD.shipOpened(); return;
+        if (code === "KeyI") {
+          state = "inventory";
+          surveyHUD && surveyHUD.cargoOpened && surveyHUD.cargoOpened();
+          return;
+        }
+        if (code === "KeyG") {
+          state = "ship"; surveyHUD && surveyHUD.shipOpened(); return;
         }
         // `B` for build. The workbench is you and your hold, so it opens
         // anywhere — a bench you had to dock at could not be the answer to
@@ -6634,6 +6828,25 @@
       sky: { tint: "#bfe8ff", stars: 1 },
       d: { fields: 3, wells: 0.3, stations: 0.2, planets: 0.25,
            wrecks: 0.1, caches: 0.4, nebulae: 0.3 } },
+    /* ── the one you fly *through* ──────────────────────────────────────────
+       Every other region is a rule about what space contains. This one is a rule
+       about the shape of the space itself: it is made of rock, and what you do
+       in it is thread passages.
+
+       Almost nothing else is allowed in. A world inside a cave system makes no
+       sense, a station in one has no way to trade, and an asteroid field is rock
+       inside rock. What it has instead is what you would actually hide in a cave
+       — caches, and the ships that did not get out. Traffic is near zero on
+       purpose: nobody flies through here, so it is somewhere you are alone. */
+    { key: "warrens", name: "THE WARRENS", colour: "#b08968", weight: 1.2,
+      rocks: 0.25, style: "shard", scan: 0.7, traffic: 0.12, ice: 1,
+      // `fill` is how much of the deepest part is rock. See `caveFillAt`.
+      // `cave` is the switch; the shape is in `tunnelNode` and `caveEdge`.
+      cave: true,
+      sky: { tint: "#b08968", stars: 0.7 },
+      d: { planets: 0, wells: 0, stations: 0, fields: 0.05, nebulae: 0.2,
+           caches: 3.4, wrecks: 2.2, gates: 0.5 } },
+
     { key: "lanes", name: "THE LANES", colour: "#ffcb42", weight: 1.6,
       rocks: 0.8, style: "rough", scan: 1, traffic: 1.5, ice: 1,
       d: { stations: 1.7, gates: 1.8, wrecks: 1.3, fields: 0.5 } },
@@ -6724,16 +6937,31 @@
 
   /* Where a region cell's middle actually sits, and which region it is. Seeded
      off the sector, so two sectors do not lay their regions out the same way. */
+  /* Memoised. It is a pure function of its cell and the sector seed, and it went
+     from being asked nine times per *chunk* to nine times per solidity test the
+     day the Warrens arrived — `regionDepth` walks the nine neighbours, and the
+     rock asks `regionDepth` about every lattice cell it builds. Uncached that
+     put the survey suite from three and a half minutes past ten.
+
+     Cleared with `regionCache`, and by the same rule: a new sector is a new
+     lattice, and `setupSurvey` empties both. */
+  const siteCache = new Map();
   function regionSite(cx, cy) {
+    const ck = cx + "," + cy;
+    const had = siteCache.get(ck);
+    if (had) return had;
     const seed = (surv && surv.seed) || 1;
     const R = seeded(chunkSeed(cx * 7919 + 13, cy * 104729 - 7) ^ (seed >>> 0) ^ 0x51a3d7);
     const pool = REGIONS.filter(r => r.weight > 0);
     const total = pool.reduce((t, r) => t + r.weight, 0);
     let roll = R() * total, pick = pool[0];
     for (const r of pool) { roll -= r.weight; if (roll <= 0) { pick = r; break; } }
-    return { x: (cx + 0.18 + R() * 0.64) * REGION_CELL,
-             y: (cy + 0.18 + R() * 0.64) * REGION_CELL,
-             region: pick, cx, cy };
+    const site = { x: (cx + 0.18 + R() * 0.64) * REGION_CELL,
+                   y: (cy + 0.18 + R() * 0.64) * REGION_CELL,
+                   region: pick, cx, cy };
+    if (siteCache.size > 4000) siteCache.clear();
+    siteCache.set(ck, site);
+    return site;
   }
 
   /* How deep into its own region a point is: 0 at a border and 1 at the site in
@@ -7023,12 +7251,25 @@
                                   cool: Math.max(0, Math.min(900, Number(g.cool) || 0)) }))
                      .slice(0, 6)
           : [],
+        /* Both kinds: a manifest part, and a spare you were carrying when you
+           died. This filter knew about one of them, so every spare on the floor
+           was thrown away the next time the book was read — and the `map` below
+           it dropped `mod` and `id`, which is how the survivors lost the two
+           fields that say what they are and which one they are.
+
+           The reader further down says of itself that a whitelist knowing about
+           only one kind "is the bug class this file has already shipped twice".
+           This was the third. */
         dropped: Array.isArray(b.dropped)
           ? b.dropped.filter(d => d && typeof d.key === "string" &&
-                                  BUILD.some(x => x.key === d.key) &&
+                                  (BUILD.some(x => x.key === d.key) ||
+                                   MODULES.some(x => x.key === d.key)) &&
                                   Number.isFinite(d.x) && Number.isFinite(d.y))
-                     .map(d => ({ key: d.key, x: Math.round(d.x), y: Math.round(d.y) }))
-                     .slice(0, BUILD.length)
+                     .map(d => ({ key: d.key, mod: !!d.mod,
+                                  id: typeof d.id === "string" ? d.id.slice(0, 40) : "",
+                                  x: Math.round(d.x), y: Math.round(d.y) }))
+                     // A death can put a hold's worth of spares on the floor.
+                     .slice(0, 64)
           : []
       };
     } catch (err) {
@@ -7530,6 +7771,320 @@
      hand: an entry that needs a *configuration* cannot depend on a single lucky
      spot when there is no single sector — so roughly one chunk in eight is a
      pair, and both entries are always somewhere ahead of you. */
+  /* ══ THE WARRENS ═══════════════════════════════════════════════════════════
+     A region that is *made of rock*, with tunnels bored through it.
+
+     ── the thing this got wrong twice ──
+     The first two versions thresholded noise: open space by default, with masses
+     of rock in it. However it was shaded and however the discs were jittered, it
+     came out as **bubbles** — because that is what it was. A field of separate
+     blobs seen from outside is a field of blobs; nothing about the drawing can
+     make it a tunnel, because the player was never inside anything.
+
+     It is the other way round. **Rock is everywhere, and the passage is the
+     hole.** Then the only edge you ever see is the wall of the tunnel you are
+     in, which is a winding line rather than a row of circles, and the shape of
+     the space is something you are *in* rather than something you are among.
+
+     ── how a tunnel can be chunk-pure ──
+     Chunks are 2,600 units, built independently from `(seed, cx, cy)` with no
+     knowledge of their neighbours, so nothing may be carved by walking a path
+     and remembering where it has been. Instead the network is a lattice: a node
+     per coarse cell at a hashed position, joined to the node east of it and,
+     more often than not, the node south of it. Any point can ask which segments
+     could possibly reach it by looking at the handful of nodes around it, and
+     two chunks either side of a line get the same answer because they are asking
+     about the same nodes.
+
+     ── what makes it feel like a cave rather than a pipe ──
+     Three things, all hashed off the nodes so they cost nothing and repeat
+     exactly:
+
+       · **the width changes.** Each node has its own bore, from a squeeze you
+         have to line up for to a chamber several times the ship's length, and
+         the passage lerps between them along its run.
+       · **the walls are rough in some places and smooth in others.** Each node
+         carries a roughness, and where it is high the wall is bitten into by a
+         high-frequency wobble; where it is low the wall is a clean curve.
+       · **there are rooms.** One node in seven opens out into a chamber, which
+         is where the caches are and where a fight has somewhere to happen. */
+  const CAVE_CELL = 150;        // the lattice the rock is stamped on
+  const TUNNEL_CELL = 2200;     // one node of the network
+  const BORE_MIN = 95;          // a squeeze
+  const BORE_MAX = 260;         // an ordinary passage
+  const ROOM_BORE = 620;        // and a chamber
+
+  function caveHash(gx, gy, salt) {
+    let h = ((surv && surv.seed) || 1) ^ (salt * 0x9e3779b1);
+    h = Math.imul(h ^ (gx + 0x7f4a7c15), 0x85ebca6b) >>> 0;
+    h = Math.imul(h ^ (gy + 0x165667b1), 0xc2b2ae35) >>> 0;
+    h ^= h >>> 15;
+    return (h >>> 8) / 0x1000000;
+  }
+
+  /* Value noise, one call, used only to rough the walls up. The rock itself is
+     not noise any more — it is everything the tunnels have not taken. */
+  function caveOctave(x, y, scale, salt) {
+    const fx = x / scale, fy = y / scale;
+    const x0 = Math.floor(fx), y0 = Math.floor(fy);
+    const tx = fx - x0, ty = fy - y0;
+    const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    const a = caveHash(x0, y0, salt), b = caveHash(x0 + 1, y0, salt);
+    const c = caveHash(x0, y0 + 1, salt), d = caveHash(x0 + 1, y0 + 1, salt);
+    const top = a + (b - a) * sx, bot = c + (d - c) * sx;
+    return top + (bot - top) * sy;
+  }
+
+  /* A node: where it is, how wide the passage is there, and how rough its walls
+     are. All three from the same cell's hashes, so a node is a fact about its
+     coordinates and nothing else. */
+  function tunnelNode(nx, ny) {
+    const jx = caveHash(nx, ny, 1), jy = caveHash(nx, ny, 2);
+    const w = caveHash(nx, ny, 3), rough = caveHash(nx, ny, 4);
+    const room = caveHash(nx, ny, 5) < 0.14;
+    return {
+      x: (nx + 0.18 + jx * 0.64) * TUNNEL_CELL,
+      y: (ny + 0.18 + jy * 0.64) * TUNNEL_CELL,
+      // Cubed, so most of the network is ordinary and a squeeze is a real event.
+      bore: room ? ROOM_BORE : BORE_MIN + (BORE_MAX - BORE_MIN) * w * w * w,
+      rough, room
+    };
+  }
+
+  /* ── a passage bends ──────────────────────────────────────────────────────
+     A link drawn straight from one node to the next is a corridor in a building,
+     not a tunnel in rock: it runs dead straight for a whole screen and reads as
+     architecture. So every link bows, by a hashed amount to a hashed side, and
+     the bow is taken from the pair of nodes so both ends agree about it without
+     either knowing the other exists.
+
+     Returned as a short list of points rather than as a curve, because the
+     collision and the renderer both walk it and neither may have its own idea of
+     where a passage goes. */
+  const LINK_STEPS = 3;
+  function linkPath(a, b, nx, ny, salt) {
+    const bow = (caveHash(nx, ny, salt) - 0.5) * 0.44;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const cx = mx - dy * bow, cy = my + dx * bow;
+    const pts = [];
+    for (let i = 0; i <= LINK_STEPS; i++) {
+      const t = i / LINK_STEPS, u = 1 - t;
+      pts.push({
+        x: u * u * a.x + 2 * u * t * cx + t * t * b.x,
+        y: u * u * a.y + 2 * u * t * cy + t * t * b.y,
+        t
+      });
+    }
+    return pts;
+  }
+
+  function segDist2(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay;
+    const L = dx * dx + dy * dy;
+    let t = L > 0 ? ((px - ax) * dx + (py - ay) * dy) / L : 0;
+    t = Math.max(0, Math.min(1, t));
+    const qx = ax + dx * t, qy = ay + dy * t;
+    return { d2: (px - qx) * (px - qx) + (py - qy) * (py - qy), t };
+  }
+
+  /* How much of the region's rock exists here at all. Zero at the border and
+     full inside, so you are never met by the outside of a hundred thousand
+     units of wall — the rock closes in as you go rather than starting as a
+     cliff. Same `regionDepth` ramp as the Murk's static and the sky tint. */
+  function caveFillAt(x, y) {
+    if (!surv) return 0;
+    const reg = regionOf(x, y);
+    if (!reg || !reg.cave) return 0;
+    const t = regionDepth(x, y);
+    const u = Math.max(0, Math.min(1, (t - 0.04) / 0.30));
+    return u * u * (3 - 2 * u);
+  }
+
+  /* Inside a passage. Returns how far in, 0 at the wall and 1 at the middle, so
+     the caller can tell a squeeze from a chamber — and so the wall can be
+     roughened by an amount that fades to nothing rather than switching. */
+  /* The nearest passage spine: how far away it is and how wide it is there.
+     Raw — the warp is applied by `caveEdge`, so this stays the cheap half and
+     can be reused. */
+  function tunnelNear(x, y) {
+    const nx = Math.floor(x / TUNNEL_CELL), ny = Math.floor(y / TUNNEL_CELL);
+    let bd = Infinity, bb = 0;
+    /* Three by three, not four by four. A node sits inside its own cell and its
+       links run one cell east and one south; the bow pushes a link off the
+       straight line by at most 0.44 of its length, and the widest chamber is a
+       quarter of a cell. So nothing further than one cell away can reach a
+       point — and the extra ring was 16 nodes where 9 do, which is 40% of the
+       cost of every solidity test in the region, paid at chunk-build time. */
+    for (let j = -1; j <= 1; j++) {
+      for (let i = -1; i <= 1; i++) {
+        const gx = nx + i, gy = ny + j;
+        const a = tunnelNode(gx, gy);
+        const links = [[tunnelNode(gx + 1, gy), 12]];
+        if (caveHash(gx, gy, 6) < 0.58) links.push([tunnelNode(gx, gy + 1), 13]);
+        for (const [b, salt] of links) {
+          const pts = linkPath(a, b, gx, gy, salt);
+          for (let k = 0; k < pts.length - 1; k++) {
+            const p = pts[k], q = pts[k + 1];
+            const { d2, t } = segDist2(x, y, p.x, p.y, q.x, q.y);
+            const along = p.t + (q.t - p.t) * t;
+            const d = Math.sqrt(d2);
+            if (d < bd) { bd = d; bb = a.bore + (b.bore - a.bore) * along; }
+          }
+        }
+      }
+    }
+    return bd === Infinity ? null : { d: bd, bore: bb };
+  }
+
+  /* ── why there is a warp ───────────────────────────────────────────────────
+     "Inside a passage" was `distance to the centreline < bore`, and that makes a
+     **tube**: a constant cross-section with two walls that are mirror images and
+     ends that are circles. It is the shape of a pipe, and no amount of shading
+     turns a pipe into a cave, because the thing that makes a cave a cave is that
+     the two walls have nothing to do with each other. One bulges into an alcove
+     while the other runs straight past it.
+
+     So the boundary is displaced by noise sampled *in the world*, not along the
+     passage. A point on the left wall and the point opposite it on the right ask
+     different places and get different answers, so the walls stop agreeing —
+     which is the whole of it. Three octaves: one that opens chambers and closes
+     throats, one that puts bays and buttresses in, and one that roughens.
+
+     `caveEdge` is negative inside the passage and positive in rock, and it is
+     the only definition of where the wall is. Collision reads it, the streamer
+     reads it, and the renderer traces it. */
+  function caveWarp(x, y) {
+    return (caveOctave(x, y, 860, 21) - 0.5) * 2 * 0.62 +
+           (caveOctave(x, y, 330, 22) - 0.5) * 2 * 0.27 +
+           (caveOctave(x, y, 118, 23) - 0.5) * 2 * 0.11;
+  }
+
+  function caveEdge(x, y) {
+    const t = tunnelNear(x, y);
+    if (!t) return 1e6;
+    // The warp moves the wall by up to about two thirds of the passage's width,
+    // which is the difference between an irregular passage and a wobbly pipe.
+    return t.d - (t.bore * (1 + caveWarp(x, y) * 0.66));
+  }
+
+  // Rock is everything the region claims and the passages have not taken.
+  const caveSolidAt = (x, y) =>
+    caveFillAt(x, y) > 0.35 && caveEdge(x, y) > 0;
+
+  /* Somewhere open, near a point. Nothing may ever be left inside rock — a hull
+     dropped into a mass cannot fly out of it, because collision pushes it off
+     each disc in turn and there is always another one behind. A gate mouth, a
+     jump or a respawn all come through here. */
+  function outOfRock(x, y) {
+    const clear = (px, py) => caveFillAt(px, py) <= 0.35 ||
+                              caveEdge(px, py) < -CAVE_CELL * 0.9;
+    if (clear(x, y)) return { x, y };
+    const step = CAVE_CELL * 1.5;
+    for (let ring = 1; ring <= 40; ring++) {
+      const n = ring * 8;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + ring * 0.37;
+        const px = x + Math.cos(a) * ring * step;
+        const py = y + Math.sin(a) * ring * step;
+        if (clear(px, py)) return { x: px, y: py };
+      }
+    }
+    return { x, y };
+  }
+
+  /* The rock of one chunk, as collision discs. A cell belongs to the chunk that
+     contains it and the arithmetic has to say so exactly once — `ceil` at both
+     ends does; `ceil` then `floor` left the cell sitting on the line built by
+     neither chunk, which is a missing column of rock at every boundary in the
+     region and a gap in the wall from the inside. */
+  function caveSegsIn(cx, cy) {
+    const ox = cx * CHUNK, oy = cy * CHUNK;
+    if (caveFillAt(ox + CHUNK / 2, oy + CHUNK / 2) <= 0.35 &&
+        caveFillAt(ox, oy) <= 0.35 &&
+        caveFillAt(ox + CHUNK, oy + CHUNK) <= 0.35) return [];
+    const segs = [];
+    const g0 = Math.ceil(ox / CAVE_CELL), g1 = Math.ceil((ox + CHUNK) / CAVE_CELL);
+    const h0 = Math.ceil(oy / CAVE_CELL), h1 = Math.ceil((oy + CHUNK) / CAVE_CELL);
+    for (let gx = g0; gx < g1; gx++) {
+      for (let gy = h0; gy < h1; gy++) {
+        const x = gx * CAVE_CELL, y = gy * CAVE_CELL;
+        if (!caveSolidAt(x, y)) continue;
+        /* Only the *surface*. A disc buried inside a mass can never be touched
+           by anything, and there are four or five of those for every one on the
+           wall — carrying them costs a collision test per frame each and buys
+           nothing. A cell with a neighbour in open space is on the wall; a cell
+           surrounded by rock is not.
+
+           All **eight** neighbours, not four. With only the orthogonal ones, a
+           cell whose open neighbour is diagonal gets no disc — and a diagonal
+           gap between two surface discs is a gap something can fly through.
+           Measured: 5 of 24 probes driven flat at a wall got inside it through
+           exactly that corner. */
+        let buried = true;
+        for (let ox2 = -1; ox2 <= 1 && buried; ox2++) {
+          for (let oy2 = -1; oy2 <= 1; oy2++) {
+            if (!ox2 && !oy2) continue;
+            if (!caveSolidAt(x + ox2 * CAVE_CELL, y + oy2 * CAVE_CELL)) {
+              buried = false; break;
+            }
+          }
+        }
+        if (buried) continue;
+        /* Big enough that neighbours overlap across the corner — under about
+           0.71 of a cell the mass falls apart into separate circles, which is
+           the bubble this whole system was rebuilt to stop being. There is no
+           jitter: the rock is a solid field now and its only visible edge is the
+           tunnel wall, whose shape comes from the bore and the roughness. */
+        segs.push({ x, y, r: CAVE_CELL * 0.78 });
+      }
+    }
+    return segs;
+  }
+
+  /* Rock near a point, out of the index built by `streamChunks`. Returns an
+     empty list anywhere there is no cave, which is almost everywhere. */
+  const CAVE_GRID_CELL = 420;
+  const NO_ROCK = [];
+  function caveNear(x, y) {
+    const grid = surv && surv.caveGrid;
+    if (!grid) return NO_ROCK;
+    const gx = Math.floor(x / CAVE_GRID_CELL), gy = Math.floor(y / CAVE_GRID_CELL);
+    const out = [];
+    for (let j = -1; j <= 1; j++) {
+      for (let i = -1; i <= 1; i++) {
+        const cell = grid.get((gx + i) + "," + (gy + j));
+        if (cell) for (const g of cell) out.push(g);
+      }
+    }
+    return out;
+  }
+
+  /* ── what colour this cave is ──────────────────────────────────────────────
+     Bright, and a different one per cave system, hashed off the region site's
+     own cell. The first version drew the walls in a dim brown that agreed with
+     the sky tint, which was tasteful and nearly invisible — and the one thing
+     you must be able to see at a glance in here is where the rock is. */
+  const CAVE_TINTS = [
+    "#6dffbf", "#87d8ff", "#ffcb42", "#ff8f77",
+    "#a08cff", "#6dffff", "#ffe56d", "#ff6dd8"
+  ];
+
+  function caveTint(x, y) {
+    const cx = Math.floor(x / REGION_CELL), cy = Math.floor(y / REGION_CELL);
+    let best = null, bd = Infinity;
+    for (let j = -1; j <= 1; j++) {
+      for (let i = -1; i <= 1; i++) {
+        const st = regionSite(cx + i, cy + j);
+        const d = (st.x - x) * (st.x - x) + (st.y - y) * (st.y - y);
+        if (d < bd) { bd = d; best = st; }
+      }
+    }
+    if (!best) return CAVE_TINTS[0];
+    const h = Math.abs(Math.round(caveHash(best.cx, best.cy, 11) * 1024));
+    return CAVE_TINTS[h % CAVE_TINTS.length];
+  }
+
   function buildChunk(cx, cy) {
     const R = seeded(chunkSeed(cx, cy));
     // Gates come off the link lattice rather than out of this chunk's roll, so
@@ -7550,8 +8105,47 @@
     const keepOut = lm => lm.key === "leviathan" ? LEV_LEN * 0.58
                         : lm.key === "vault" ? VAULT_R * 1.35
                         : lm.r;
-    const built = (x, y, m) => (surv && surv.landmarks || []).some(lm =>
-      dist2(x, y, lm.x, lm.y) < (keepOut(lm) + m) ** 2);
+    /* Rock counts as built. `spot` knew about landmarks and nothing else, so in
+       the Warrens it placed caches, hulks and wrecks straight into the walls —
+       49 of 68 of them, measured. A cache inside solid rock is a cache generated
+       for nobody, and it looks perfect from every angle except the one nobody
+       can get to.
+
+       The margin is checked as well as the point, because a hulk is a wide thing
+       and its middle being clear is not the same as it fitting. */
+    const built = (x, y, m) => {
+      if ((surv && surv.landmarks || []).some(lm =>
+            dist2(x, y, lm.x, lm.y) < (keepOut(lm) + m) ** 2)) return true;
+
+      /* ── and not inside anything this chunk has already put down ──────────
+         Worlds are rolled before everything else in a chunk and can be 3,600
+         units across, so a cache, a hulk, a wreck or a station could be — and
+         was — placed inside one. A thing inside a world is drawn, named, on the
+         chart, and unreachable: worlds are solid, and the only way to it is
+         through.
+
+         Only this chunk's own furniture, because a chunk is a pure function of
+         its coordinates and may not ask a neighbour what it contains. A world
+         overlapping the line can still catch something in the chunk next door;
+         that is rarer than this was, and fixing it would cost the purity the
+         whole streamer is built on. */
+      for (const pl of out.planets) {
+        if (dist2(x, y, pl.x, pl.y) < (pl.r + m + 220) ** 2) return true;
+      }
+      for (const h of out.hulks) {
+        if (dist2(x, y, h.x, h.y) < (h.r + m + 120) ** 2) return true;
+      }
+      // A field is a cloud of asteroids; putting a station in the middle of one
+      // is putting it behind a wall that moves.
+      for (const f of out.fields) {
+        if (dist2(x, y, f.x, f.y) < (f.r + m) ** 2) return true;
+      }
+
+      if (caveSolidAt(x, y)) return true;
+      const r = Math.max(120, m);
+      return caveSolidAt(x + r, y) || caveSolidAt(x - r, y) ||
+             caveSolidAt(x, y + r) || caveSolidAt(x, y - r);
+    };
     const spot = (m) => {
       for (let i = 0; i < 8; i++) {
         const x = ox + rnd(m, CHUNK - m), y = oy + rnd(m, CHUNK - m);
@@ -7560,7 +8154,18 @@
       return null;
     };
     const out = { hazards: [], planets: [], wrecks: [], nebulae: [], marks: [],
-                  gates: latticeGates, caches: [], stations: [], hulks: [],
+                  caveSegs: caveSegsIn(cx, cy),
+                  /* A gate comes off the link lattice rather than out of this
+                     chunk's roll, so it never went through `spot` and could
+                     therefore sit inside the rock of the Warrens — a mouth
+                     nobody can reach, with a twin somewhere still pointing at
+                     it. `outOfRock` is a pure function of the position, so the
+                     nudged mouth is as deterministic as the one it replaces. */
+                  gates: latticeGates.map(g => {
+                    const o = outOfRock(g.x, g.y);
+                    return (o.x === g.x && o.y === g.y)
+                      ? g : Object.assign({}, g, { x: o.x, y: o.y });
+                  }), caches: [], stations: [], hulks: [],
                   parts: [], fields: [], traffic: [], battles: [] };
     /* Everything this chunk rolls asks *where it is* as well as what world it is
        in. `mx, my` is the chunk's middle, so one region decides the whole chunk
@@ -8687,8 +9292,12 @@
     surv.gates = []; surv.caches = []; surv.stations = []; surv.hulks = [];
     surv.drones = []; surv.leviathan = null; surv.vault = null;
     surv.parts = []; surv.fields = [];
+    surv.cave = [];
+    surv.caveGrid = null;
     surv.traffic = []; surv.battles = [];
     for (const [k, c] of surv.chunks) {
+      // The Warrens' rock. Already collision discs; see `caveSegsIn`.
+      for (const g of c.caveSegs) surv.cave.push(g);
       for (const h of c.hazards) hazards.push(h);
       for (const p of c.planets) surv.planets.push(p);
       for (const w of c.wrecks) surv.wrecks.push(w);
@@ -8838,6 +9447,36 @@
       });
     }
 
+    /* ── the rock, indexed ─────────────────────────────────────────────────
+       A streamed block of the Warrens is a couple of thousand discs, and three
+       different things want to know "is there rock near this point" every
+       frame: the hull, every ship in the sector, and every round in the air.
+       Walking the whole list for each of them is the product of three large
+       numbers and it is paid sixty times a second.
+
+       So it goes into a grid once, here, when the block changes — which is when
+       you cross a chunk line rather than every frame. A disc is filed under
+       every cell it touches, so a lookup is the nine cells around a point and
+       nothing is missed at a boundary. */
+    if (surv.cave.length) {
+      const grid = new Map();
+      for (const g of surv.cave) {
+        const x0 = Math.floor((g.x - g.r) / CAVE_GRID_CELL);
+        const x1 = Math.floor((g.x + g.r) / CAVE_GRID_CELL);
+        const y0 = Math.floor((g.y - g.r) / CAVE_GRID_CELL);
+        const y1 = Math.floor((g.y + g.r) / CAVE_GRID_CELL);
+        for (let gy = y0; gy <= y1; gy++) {
+          for (let gx = x0; gx <= x1; gx++) {
+            const k2 = gx + "," + gy;
+            let cell = grid.get(k2);
+            if (!cell) grid.set(k2, cell = []);
+            cell.push(g);
+          }
+        }
+      }
+      surv.caveGrid = grid;
+    }
+
     /* Whatever you died carrying, wherever you died carrying it. Not out of a
        chunk, because it does not belong to one — it belongs to the run, and it
        has to be there when you come back whether its chunk happens to be loaded
@@ -8876,6 +9515,43 @@
      turn its nose along it so it goes round instead of grinding into it. That
      reads as a ship avoiding a planet, which is what it is, and it cannot trap
      anything the way a reflection can. */
+  /* ── what a round runs into ───────────────────────────────────────────────
+     Anything solid stops one. Rounds went through worlds, dead hulls, the
+     Leviathan, the Vault and the Warrens alike — you could shoot a sentry
+     through the wall it was standing behind, and a planet offered no cover at
+     all. Cover is most of what makes a solid object worth flying behind, and a
+     round that ignores geometry quietly removes the reason for all of it.
+
+     Returns where it hit, or null. The caller decides what that means: an
+     ordinary round is spent, and a charge goes off. */
+  function solidHit(x, y) {
+    if (!surv) return null;
+    for (const pl of surv.planets) {
+      if (dist2(x, y, pl.x, pl.y) < pl.r * pl.r) return { x, y };
+    }
+    for (const h of surv.hulks) {
+      if (dist2(x, y, h.x, h.y) < h.r * h.r) return { x, y };
+    }
+    const lev = surv.leviathan;
+    if (lev && dist2(x, y, lev.x, lev.y) < (lev.len * 0.75) ** 2) {
+      for (const g of lev.segs) if (dist2(x, y, g.x, g.y) < g.r * g.r) return { x, y };
+    }
+    const vt = surv.vault;
+    if (vt && dist2(x, y, vt.x, vt.y) < (vt.r * 1.6) ** 2) {
+      for (const g of vt.segs) if (dist2(x, y, g.x, g.y) < g.r * g.r) return { x, y };
+    }
+    /* The Warrens, asked of the *field* rather than of the collision discs. The
+       discs sit at cell centres and the wall is a contour that cuts across them,
+       so the two disagree by up to half a cell — measured, 2 rounds in 48 flew
+       a little way past the wall they were drawn hitting before a disc caught
+       them. A ship can wear that; a round cannot, because a round stopping
+       visibly short of, or inside, a wall is the one place the difference is
+       actually watched. There are only ever a handful of rounds in the air, so
+       the exact answer is affordable here and not in the hull's collision. */
+    if (caveSolidAt(x, y)) return { x, y };
+    return null;
+  }
+
   function solidBounce(o, r) {
     if (!surv) return false;
     let hit = false;
@@ -8907,6 +9583,31 @@
     if (vault && dist2(o.x, o.y, vault.x, vault.y) < (vault.r * 1.6) ** 2) {
       for (const g of vault.segs) clear(g.x, g.y, g.r);
     }
+    /* And the Warrens. This function is what everything *except* the player uses
+       — a world and a dead hull are solid to everybody — and the cave was not in
+       it, so freighters and pirates flew through a hundred thousand units of
+       solid rock while you bounced off it. A wall that stops one kind of ship is
+       set dressing. Indexed, because a block of the Warrens is a couple of
+       thousand discs and this runs for every ship in the sector.
+
+       Resolved over several passes, and out of the *deepest* overlap each time.
+       Everything else this function pushes off is one disc thick — a hull plate,
+       a wall of the Vault — so a single pass out of each in turn settles it. A
+       cave mass is many discs thick in every direction, and one pass out of the
+       last disc in the list can land inside the one before it: measured, 18 of
+       24 probes walked straight through. Taking the worst overlap first and
+       repeating converges, and four passes is well past where it stops moving. */
+    for (let pass = 0; pass < 4; pass++) {
+      let worst = null, worstDepth = 0;
+      for (const g of caveNear(o.x, o.y)) {
+        const dx = o.x - g.x, dy = o.y - g.y;
+        const d = Math.hypot(dx, dy);
+        const depth = (g.r + r) - d;
+        if (depth > worstDepth) { worstDepth = depth; worst = g; }
+      }
+      if (!worst) break;
+      clear(worst.x, worst.y, worst.r);
+    }
     return hit;
   }
 
@@ -8930,6 +9631,14 @@
   function inBuilt(x, y, pad) {
     if (!surv) return false;
     const p = pad || 0;
+    /* Rock in the Warrens counts as built. A cache inside a wall is a cache
+       nobody can reach, and this is the function every generator already asks
+       before it places anything — the same question the Leviathan's hold and the
+       Vault's corridor made necessary. Asked of the lattice rather than of the
+       loaded list, so it is true for chunks that have not been built yet. */
+    if (caveSolidAt(x, y) ||
+        (p > 0 && (caveSolidAt(x + p, y) || caveSolidAt(x - p, y) ||
+                   caveSolidAt(x, y + p) || caveSolidAt(x, y - p)))) return true;
     const lev = surv.leviathan;
     if (lev && dist2(x, y, lev.x, lev.y) < (lev.len * 0.8) ** 2) {
       const dx = x - lev.x, dy = y - lev.y;
@@ -9108,8 +9817,10 @@
 
   function setupSurvey() {
     const seed = surveySeed();
-    linkCache = new Map();      // both lattices belong to a seed, not to a tab
+    linkCache = new Map();      // every lattice belongs to a seed, not to a tab
     worldCache = new Map();
+    regionCache.clear();
+    siteCache.clear();
     const book = loadSurveyBook();
     const R = seeded(seed ^ 0x5bf03635);
 
@@ -10641,14 +11352,23 @@
     if (!surv.docked && !surv.landed) { gameSound("hit"); return false; }
     if (have >= full) { gameSound("hit"); return false; }
 
-    // Never more than the tank has room for, whatever was asked for.
+    // Never more than the tank has room for, nor more than they have.
+    const shelf = surv.docked ? shelfOf(surv.docked) : null;
+    const onHand = shelf ? shelf[kind] : Infinity;
+    if (onHand <= 0) {
+      chatter("They have no " + kind + " to sell.", "#ff8f77");
+      gameSound("hit");
+      return false;
+    }
     const room = (full - have) / full;
-    const take = Math.max(0, Math.min(room, frac === undefined ? room : frac));
+    const take = Math.max(0, Math.min(room, onHand,
+                                      frac === undefined ? room : frac));
     if (take <= 0) { gameSound("hit"); return false; }
 
     const cost = Math.max(1, Math.ceil(take * price));
     if (surv.cash < cost) { gameSound("hit"); return false; }
     surv.cash -= cost;
+    if (shelf) shelf[kind] = Math.max(0, shelf[kind] - take);
     surv[kind] = Math.min(full, have + take * full);
     gameSound("start");
     chatter((kind === "water" ? "Water" : "Food") + " aboard \u2014 " +
@@ -11120,6 +11840,87 @@
     return m;
   }
 
+  /* ── what a place deals in, and how much of it it has ─────────────────────
+     Two facts about a place, working deliberately differently.
+
+     WHAT IT BUYS is a function of where it is and nothing else, re-derived
+     rather than stored — so it cannot go stale in a save, and a station you
+     learned the habits of is the same station a week later. Cheap bulk moves
+     nearly anywhere; the dear things are the gamble, and a hold of reactor
+     cores is a thing you carry to somebody who wants them.
+
+     WHAT IT HAS ON THE SHELF is stock, and stock is state: you can empty it.
+     It comes back on a clock — half an hour of flying — and a delivery is not
+     the last delivery, so what a station carries changes between them. That is
+     the whole reason to fly back to one rather than on to the next. */
+  const RESTOCK = 1800;              // seconds of play between deliveries
+  const MAT_SALT = {};
+  MATERIALS.forEach((m, i) => { MAT_SALT[m.key] = 9973 + i * 7919; });
+
+  function buysMaterial(place, key) {
+    const spec = matSpec(key);
+    if (!place || !spec) return false;
+    const R = seeded(chunkSeed(Math.round(place.x / 9) + MAT_SALT[key],
+                               Math.round(place.y / 9) - MAT_SALT[key]));
+    // Somebody always wants ice and iron. A reactor core needs a buyer.
+    const odds = spec.value <= 3 ? 0.93 : spec.value <= 9 ? 0.72 : 0.45;
+    return R() < odds;
+  }
+
+  /* Everything this place will take off you, with two guarantees: whatever it
+     is habitually short of is always on the list — that is what being short of
+     a thing means — and the list is never empty. A place you can fly a full
+     hold into and not sell one single thing is a trap, not a market. */
+  function placeBuys(place) {
+    const out = new Set();
+    if (!place) return out;
+    for (const m of MATERIALS) if (buysMaterial(place, m.key)) out.add(m.key);
+    if (place === surv.docked) {
+      const mk = marketOf(place);
+      if (mk && mk.base) out.add(mk.base);
+    }
+    if (!out.size) out.add(MATERIALS[0].key);
+    return out;
+  }
+
+  /* A delivery. `gen` counts them, so the shelf you clear is not the shelf that
+     replaces it — two runs to the same station a clock apart are two different
+     shops. */
+  function rollShelf(st, gen) {
+    const deep = dangerAt(st.x, st.y);
+    const R = seeded(chunkSeed(Math.round(st.x / 5) + gen * 104729,
+                               Math.round(st.y / 5) - gen * 15485863));
+    /* Water and food almost always, and plenty of both when they are there. A
+       station that cannot sell you water is a station that kills you, and
+       finding one should be bad luck rather than a normal afternoon. */
+    const out = { gen, parts: {},
+                  water: R() < 0.95 ? 3 + Math.floor(R() * 5) : 0,
+                  food:  R() < 0.95 ? 3 + Math.floor(R() * 5) : 0 };
+    for (const m of MODULES) {
+      if (!sellsIt(m) || m.deep > deep) continue;
+      // Common things are usually in. The rare ones are why you fly to a
+      // particular station instead of the nearest one.
+      const odds = m.rarity === "common" ? 0.8 : m.rarity === "uncommon" ? 0.55
+                 : m.rarity === "rare" ? 0.35 : 0.18;
+      if (R() > odds) continue;
+      out.parts[m.key] = 1 + Math.floor(R() * (m.rarity === "common" ? 3 : 2));
+    }
+    return out;
+  }
+
+  /* The shelf as it stands, restocked lazily: nothing has to tick for a station
+     nobody is standing in, and the first look after the clock runs out is the
+     delivery arriving. */
+  function shelfOf(st) {
+    const m = marketOf(st);
+    if (!m) return null;
+    if (!m.shelf || clock >= (m.restock || 0)) {
+      m.shelf = rollShelf(st, (m.gen = (m.gen || 0) + 1));
+      m.restock = clock + RESTOCK;
+    }
+    return m.shelf;
+  }
+
   // How short it is of one thing, 0 to 1.
   const shortageOf = (st, key) => {
     const m = marketOf(st);
@@ -11164,14 +11965,174 @@
     return out;
   }
 
+  /* Buying off a world. Ten at a time, or whatever is left of the hold, of
+     their stock or of your purse — three taps to fill a hold beats thirty, and a
+     world that runs out is a world you have to find another of.
+
+     A function rather than a closure on the state object, because the world's
+     shelf is now a row in the same market list a station uses and the row's
+     button calls it through `onBuyRow` — two callers, one rule. */
+  function buyLocal(n) {
+    const w = surv.landed;
+    if (!w || !w.trades || w.stock <= 0) { gameSound("hit"); return false; }
+    const m = matSpec(w.trades);
+    const price = Math.max(1, Math.round(m.value * 1.5 *
+                            (1 + dangerAt(w.x, w.y))));
+    const room = holdCap() - holdUsed();
+    const want = Math.min(Math.max(1, Math.round(n || 1)), room, w.stock,
+                          Math.floor(surv.cash / price));
+    if (want <= 0) { gameSound("hit"); return false; }
+    surv.cash -= want * price;
+    w.stock -= want;
+    addMaterial(m.key, want);
+    gameSound("start");
+    chatter(want + " " + m.name.toLowerCase() + " aboard \u2014 " +
+            money(want * price), CASH);
+    saveSurveyBook();
+    return true;
+  }
+
+  /* One material, and as much of it as was asked for. The shop's SELL tab has a
+     row per thing in the hold and one, ten or the lot on each — so the rule that
+     decides what a place pays lives here and in `sellHold`, and nowhere else.
+
+     Same rule as the whole-hold sale: a station's shortage prices, a world's
+     face value. */
+  function sellSome(key, n) {
+    if (!surv.docked && !surv.landed) return 0;
+    const m = MATERIALS.find(x => x.key === key);
+    if (!m) return 0;
+    if (!placeBuys(surv.docked || surv.landed).has(key)) {
+      gameSound("hit");
+      return 0;
+    }
+    const have = surv.hold[key] || 0;
+    const take = Math.max(0, Math.min(Math.round(n || 0), have));
+    if (!take) { gameSound("hit"); return 0; }
+    const prices = surv.docked ? stationPrices(surv.docked) : null;
+    const each = prices ? (prices[key] || m.value) : m.value;
+    const got = Math.round(take * each);
+    surv.hold[key] = have - take;
+    surv.cash += got;
+    surv.t.sold = true;
+    gameSound("win");
+    chatter(take + " " + m.name.toLowerCase() + " sold — " + money(got), CASH);
+    saveSurveyBook();
+    return got;
+  }
+
+  /* A spare part, back over the counter. Half what it costs new, which is the
+     only rate in the game that is not a shortage or a face value — a part is a
+     made thing and a shop that paid full price for one would be a shop you
+     could stand in and print money at. */
+  /* Water and food, back over the counter, at half what a tankful costs. A
+     tank you overfilled at a cheap station was money you could not get at — the
+     only thing aboard that could not be sold — and half is the same rate a part
+     goes back at, for the same reason: a shop that bought supplies back at cost
+     would be somewhere to park money rather than somewhere to buy water.
+
+     It will sell you down to nothing if that is what you asked for. Everything
+     here takes a quantity and a press, and a shop that second-guesses the
+     number you typed is worse than one that does what you said. */
+  /* ── who takes the strange ones ───────────────────────────────────────────
+     A part that is only ever found has no shelf price to halve, so until now it
+     could not be sold anywhere at all: the row said nobody buys these and meant
+     it, everywhere, forever. That made the rarest things in the game the only
+     ones with no way of turning into anything.
+
+     Some places take them. *Which* places is a fact about the place, fixed by
+     where it is, so a dealer you found once is still there when you come back
+     with the next one — and it is commoner the deeper you go, because the deep
+     is where the strange things come from and the only people who know what one
+     is worth are the people who see them.
+
+     Sampled 600 places around each of five rings, this comes out at:
+
+       home       13.5%   about one place in seven
+       near       17.3%
+       mid        20.0%
+       far        27.7%
+       abyssal    38.2%   about two in five
+
+     The coefficient is against `dangerAt`, which tops out near 0.36 rather than
+     1 — so moving the deep end takes 0.95 and not the 0.36 it looks like it
+     should.
+
+     It bites on exactly the two parts nobody stocks — the warp tuner and
+     running dark, 480 at a dealer and nothing anywhere else. The exotics that
+     *do* have a shelf price, the rail lance and the cold larder, still trade in
+     anywhere at half of it: a thing with a price has a price.
+
+     Stations and inhabited worlds both, on the same rule: a buyer is a buyer. */
+  function takesExotics(x, y) {
+    const R = seeded(chunkSeed(Math.round(x / 13) + 40213,
+                               Math.round(y / 13) - 9187));
+    return R() < 0.16 + dangerAt(x, y) * 0.95;
+  }
+
+  /* What a find-only part is worth to somebody who deals in them. By rarity,
+     because that is the only thing such a part has to be priced on — it has
+     never been on a shelf. Pitched against the shop parts it sits beside: an
+     exotic is worth more than the dearest thing a station stocks, which is why
+     you would carry one home rather than fit it and forget it. */
+  const EXOTIC_TRADE = { common: 90, uncommon: 200, rare: 480, exotic: 1100 };
+
+  /* What this place would give you for one spare part, and the only answer to
+     that question — the shelf, the sell button and the row all ask it here. */
+  function partResale(m, place) {
+    if (!m) return 0;
+    if (m.cost) return Math.max(1, Math.round(m.cost / 2));
+    if (!place || !takesExotics(place.x, place.y)) return 0;
+    return EXOTIC_TRADE[m.rarity] || 0;
+  }
+
+  function sellSupply(kind, frac) {
+    if (!surv.docked && !surv.landed) return 0;
+    if (kind !== "water" && kind !== "food") return 0;
+    const full = kind === "water" ? WATER_FULL : foodCap();
+    const take = Math.max(0, Math.min(surv[kind], (Number(frac) || 0) * full));
+    if (take <= 0) { gameSound("hit"); return 0; }
+    const got = Math.max(1, Math.round(take / full * supplyUnit(kind) / 2));
+    surv[kind] -= take;
+    surv.cash += got;
+    gameSound("win");
+    chatter(Math.round(take / full * 100) + "% of the " + kind +
+            " sold — " + money(got), CASH);
+    saveSurveyBook();
+    return got;
+  }
+
+  function sellPart(key, n) {
+    if (!surv.docked && !surv.landed) return 0;
+    const m = moduleSpec(key);
+    const each = partResale(m, surv.docked || surv.landed);
+    if (!m || !each) { gameSound("hit"); return 0; }
+    const have = storeCount(key);
+    const take = Math.max(0, Math.min(Math.round(n || 0), have));
+    if (!take) { gameSound("hit"); return 0; }
+    const got = take * each;
+    storeAdd(key, -take);
+    surv.cash += got;
+    gameSound("win");
+    chatter(take + " " + m.name.toLowerCase() + " sold — " + money(got), CASH);
+    saveSurveyBook();
+    return got;
+  }
+
   function sellHold() {
-    if (!surv.docked) return 0;
-    const prices = stationPrices(surv.docked);
+    if (!surv.docked && !surv.landed) return 0;
+    /* A station has shortages and pays for them. A world pays what the stuff is
+       worth and not a credit more — it is somewhere people live, not a market,
+       and that gap is the reason to carry a full hold home rather than selling
+       it to the first place with air. */
+    const prices = surv.docked ? stationPrices(surv.docked) : null;
+    // Only what this place takes. The rest stays in the hold for the next one.
+    const takes = placeBuys(surv.docked || surv.landed);
     let got = 0, units = 0;
     for (const m of MATERIALS) {
       const n = surv.hold[m.key] || 0;
-      if (!n) continue;
-      got += n * (prices[m.key] || m.value);
+      if (!n || !takes.has(m.key)) continue;
+      got += n * (prices ? (prices[m.key] || m.value) : m.value);
       units += n;
       surv.hold[m.key] = 0;
     }
@@ -11335,6 +12296,28 @@
         }
       }
     }
+
+    /* The Warrens. The same collision as the other two, and it has to be: the
+       whole region is a thing you fly *inside*, so a wall that stopped everything
+       except you would be scenery with a cave painted on it. Only the discs near
+       the ship are tested, which is what keeps a region of forty thousand of
+       them affordable. */
+    if (surv.cave && surv.cave.length) {
+      /* Buried rather than merely touching. Nothing should ever put a ship here
+         — every teleport goes through `outOfRock` — but this is the one failure
+         that cannot be recovered from by playing, so it is caught rather than
+         trusted. Velocity goes too: arriving somewhere new at the speed you hit
+         a wall is its own accident. */
+      if (caveSolidAt(me.x, me.y)) {
+        const out = outOfRock(me.x, me.y);
+        me.x = out.x; me.y = out.y; me.vx = me.vy = 0;
+      }
+      for (const g of caveNear(me.x, me.y)) {
+        if (dist2(me.x, me.y, g.x, g.y) < (g.r + 300) ** 2) {
+          strike(me, g.x, g.y, g.r, true);
+        }
+      }
+    }
   }
 
   /* ── gates ────────────────────────────────────────────────────────────────
@@ -11390,8 +12373,13 @@
       const sp = Math.hypot(me.vx, me.vy);
       const hx = sp > 1 ? me.vx / sp : Math.cos(me.a);
       const hy = sp > 1 ? me.vy / sp : Math.sin(me.a);
-      me.x = tx + hx * GATE_R * 1.25;
-      me.y = ty + hy * GATE_R * 1.25;
+      /* The far side of a gate is wherever the lattice put it, and that can be
+         inside a mass in the Warrens — a throw that buries you is a throw you
+         never come back from. */
+      {
+        const out = outOfRock(tx + hx * GATE_R * 1.25, ty + hy * GATE_R * 1.25);
+        me.x = out.x; me.y = out.y;
+      }
       // Keep the speed, lose the certainty: you come out flying, which is what
       // makes a gate feel like a throw rather than a menu.
       me.vx *= 0.4; me.vy *= 0.4;
@@ -12664,10 +13652,12 @@
     const me = ships[0];
     if (!me || !me.alive) return false;
     burst(me.x, me.y, CASH, 30, 320 * U);
-    me.x = x; me.y = y;
+    // Aimed by hand at a point on the chart, which may well be solid rock.
+    const land = outOfRock(x, y);
+    me.x = land.x; me.y = land.y;
     me.vx = me.vy = 0;
     me.invuln = Math.max(me.invuln, 2);
-    cam.x = x; cam.y = y;
+    cam.x = me.x; cam.y = me.y;
     streamChunks(true);
     streamRocks();
     burst(x, y, CASH, 30, 320 * U);
@@ -13181,10 +14171,17 @@
       gameSound("hit");
       return false;
     }
+    const shelf = shelfOf(surv.docked);
+    if (!shelf || !(shelf.parts[key] > 0)) {
+      chatter("They are out of those.", "#ff8f77");
+      gameSound("hit");
+      return false;
+    }
     if (surv.cash < m.cost) { gameSound("hit"); return false; }
     // Bought is still carried: there is nowhere else for it to go.
     if (!roomForPart(key)) { noRoomFor(key); return false; }
     surv.cash -= m.cost;
+    shelf.parts[key] -= 1;
     storeAdd(key, 1);
     surv.t.refitted = true;
     gameSound("start");
@@ -15458,6 +16455,129 @@
   /* A box somebody sealed. Drawn from its own wall list, like the Leviathan, so
      what you can see is what you hit — and lit from the inside so the one gate in
      the shell reads as a way in rather than as a gap somebody left. */
+  /* ── the rock of the Warrens ───────────────────────────────────────────────
+     **Traced, not stamped.** Every earlier version of this drew circles — the
+     rock as a union of discs, the passage as a stroked line with round caps —
+     and circles are what it looked like, because that is what it was. A union of
+     discs has a scalloped boundary and a stroked polyline is a pipe.
+
+     So the wall is found rather than drawn: `caveEdge` is negative inside a
+     passage and positive in rock, and this walks a grid over the visible sky
+     and follows the line where it crosses zero. That line is a contour of a
+     noise-warped field, which means it is irregular everywhere, asymmetric
+     across a passage, and has no repeated shape anywhere in it — an alcove on
+     one wall with nothing opposite it, which is what the inside of a cave
+     actually looks like.
+
+     Marching squares, sixteen cases, of which the four that matter here are the
+     corners and the two straights. Interpolated along each edge rather than cut
+     at the midpoint, so the contour is smooth rather than stepped at the grid.
+
+     Recomputed per frame over the screen only — about two thousand cells, each a
+     field lookup — rather than cached per chunk, because the zoom changes what
+     is on screen and a contour cached at one scale is the wrong resolution at
+     another. */
+  const CAVE_GRID = 34;      // how finely the wall is traced, in world units
+
+  function drawCave() {
+    if (!surv.cave || !surv.cave.length) return;
+    const halfW = (SCREEN_W / 2) / cam.scale + 90;
+    const halfH = (SCREEN_H / 2) / cam.scale + 90;
+    const x0 = Math.floor((cam.x - halfW) / CAVE_GRID) * CAVE_GRID;
+    const y0 = Math.floor((cam.y - halfH) / CAVE_GRID) * CAVE_GRID;
+    const cols = Math.ceil((halfW * 2) / CAVE_GRID) + 2;
+    const rows = Math.ceil((halfH * 2) / CAVE_GRID) + 2;
+    if (cols * rows > 12000) return;                // absurd zoom; skip it
+
+    /* One row of field values at a time, kept with the row above it, so the
+       whole grid is never held and every point is evaluated exactly once. */
+    const field = new Float32Array((cols + 1) * (rows + 1));
+    let anyRock = false, anyAir = false;
+    for (let j = 0; j <= rows; j++) {
+      const wy = y0 + j * CAVE_GRID;
+      for (let i = 0; i <= cols; i++) {
+        const wx = x0 + i * CAVE_GRID;
+        // Outside the region there is no rock at all, however the passages run.
+        const v = caveFillAt(wx, wy) <= 0.35 ? -1e5 : caveEdge(wx, wy);
+        field[j * (cols + 1) + i] = v;
+        if (v > 0) anyRock = true; else anyAir = true;
+      }
+    }
+    if (!anyRock) return;
+
+    const tint = caveTint(cam.x, cam.y);
+
+    /* The mass. Cell by cell: a cell with all four corners in rock is filled
+       whole, and a cell the wall crosses is filled up to the wall. Squares and
+       triangles — no arcs anywhere. */
+    ctx.save();
+    ctx.fillStyle = mixHex("#07090c", tint, 0.17);
+    ctx.beginPath();
+    const lerp = (ax, ay, av, bx, by, bv) => {
+      const t = av / (av - bv);
+      return [ax + (bx - ax) * t, ay + (by - ay) * t];
+    };
+    const walls = [];
+    for (let j = 0; j < rows; j++) {
+      for (let i = 0; i < cols; i++) {
+        const k = j * (cols + 1) + i;
+        const a = field[k], b = field[k + 1];
+        const c = field[k + cols + 2], d = field[k + cols + 1];
+        const ax = x0 + i * CAVE_GRID, ay = y0 + j * CAVE_GRID;
+        const bx = ax + CAVE_GRID, by = ay;
+        const cx = bx, cy = ay + CAVE_GRID;
+        const dx = ax, dy = cy;
+        const code = (a > 0 ? 8 : 0) | (b > 0 ? 4 : 0) | (c > 0 ? 2 : 0) | (d > 0 ? 1 : 0);
+        if (code === 0) continue;
+        if (code === 15) {
+          ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+          ctx.lineTo(cx, cy); ctx.lineTo(dx, dy);
+          ctx.closePath();
+          continue;
+        }
+        // The four edge crossings, where they exist.
+        const eAB = (a > 0) !== (b > 0) ? lerp(ax, ay, a, bx, by, b) : null;
+        const eBC = (b > 0) !== (c > 0) ? lerp(bx, by, b, cx, cy, c) : null;
+        const eCD = (c > 0) !== (d > 0) ? lerp(cx, cy, c, dx, dy, d) : null;
+        const eDA = (d > 0) !== (a > 0) ? lerp(dx, dy, d, ax, ay, a) : null;
+        // The rock side of the cell, as a polygon walked corner by corner.
+        const poly = [];
+        const corner = (v, px, py) => { if (v > 0) poly.push([px, py]); };
+        corner(a, ax, ay); if (eAB) poly.push(eAB);
+        corner(b, bx, by); if (eBC) poly.push(eBC);
+        corner(c, cx, cy); if (eCD) poly.push(eCD);
+        corner(d, dx, dy); if (eDA) poly.push(eDA);
+        if (poly.length > 2) {
+          ctx.moveTo(poly[0][0], poly[0][1]);
+          for (let q = 1; q < poly.length; q++) ctx.lineTo(poly[q][0], poly[q][1]);
+          ctx.closePath();
+        }
+        // And the wall itself: the segment between the two crossings.
+        const cross = [eAB, eBC, eCD, eDA].filter(Boolean);
+        if (cross.length === 2) walls.push(cross);
+        else if (cross.length === 4) { walls.push([eAB, eBC]); walls.push([eCD, eDA]); }
+      }
+    }
+    ctx.fill();
+    ctx.restore();
+
+    // The lit wall. One path of straight segments — there is not an arc in it.
+    if (walls.length) {
+      ctx.save();
+      ctx.strokeStyle = tint;
+      ctx.globalAlpha = 0.95;
+      ctx.lineWidth = 2;
+      ctx.lineCap = "butt";
+      ctx.beginPath();
+      for (const [p, q] of walls) {
+        ctx.moveTo(p[0], p[1]);
+        ctx.lineTo(q[0], q[1]);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
   function drawVault(v) {
     if (!onScreen(v.x, v.y, v.r * 1.6)) return;
     const wx = (u, vv) => v.x + u * v.ca - vv * v.sa;
@@ -15512,6 +16632,7 @@
     for (const t of surv.traffic) drawTraffic(t);
     if (surv.leviathan) drawLeviathan(surv.leviathan);
     if (surv.vault) drawVault(surv.vault);
+    drawCave();
     for (const h of surv.hulks) drawHulk(h);
     for (const b of surv.battles) drawBattle(b);
     for (const w of surv.wrecks) drawWreck(w);
@@ -15589,14 +16710,24 @@
            travels with it — the shop can say WANTED rather than leaving you to
            notice that iron is dearer here than it was yesterday. */
         shortage: surv.docked ? shortageOf(surv.docked, m.key) : 0,
-        price: surv.docked ? stationPrices(surv.docked)[m.key] : null
+        price: surv.docked ? stationPrices(surv.docked)[m.key] : null,
+        // Whether anybody here will take it. See `placeBuys`.
+        buys: placeBuys(surv.docked || surv.landed).has(m.key)
       })),
       worth: (() => {
-        if (!surv.docked) return 0;
-        const pr = stationPrices(surv.docked);
-        return MATERIALS.reduce((t, m) => t + (surv.hold[m.key] || 0) * pr[m.key], 0);
+        const at = surv.docked || surv.landed;
+        if (!at) return 0;
+        // Only what this place takes — see `placeBuys`. A total that counted
+        // cargo the shop will not touch is a number that cannot come true.
+        const takes = placeBuys(at);
+        const pr = surv.docked ? stationPrices(surv.docked) : null;
+        return MATERIALS.reduce((t, m) => takes.has(m.key)
+          ? t + (surv.hold[m.key] || 0) * (pr ? pr[m.key] : m.value) : t, 0);
       })(),
       onSell: sellHold,
+      onSellOne: sellSome,
+      onSellPart: sellPart,
+      onSellSupply: sellSupply,
       /* How the sector feels about you, as a word. This is the *only* place it is
          ever stated, it is never a figure, and it lives on a page you open rather
          than on the flight HUD — a meter in the corner would turn a reputation
@@ -15637,6 +16768,10 @@
                frac: surv.water / WATER_FULL,
                countdown: surv.water <= 0 ? Math.max(0, THIRST_GRACE - surv.thirst) : 0,
                cost: supplyCost("water"),
+               /* What a full tank fetches back, exact — the shop rounds it for
+                  display but quotes from this, so the number on the button is
+                  the number you get. See `sellSupply`. */
+               sellFull: supplyUnit("water") / 2,
                /* The low-tank mark. `lit` is whether the triangle is showing at
                   all, `shout` is how much of its ten seconds of WARNING is left,
                   0 to 1, which the panel uses to slide the mark from beside the
@@ -15648,6 +16783,7 @@
                frac: surv.food / Math.max(1, foodCap()),
                countdown: surv.food <= 0 ? Math.max(0, HUNGER_GRACE - surv.hunger) : 0,
                cost: supplyCost("food"),
+               sellFull: supplyUnit("food") / 2,
                warn: { lit: surv.alert.food.lit,
                        shout: Math.max(0, surv.alert.food.shout / 10),
                        step: surv.alert.food.step } },
@@ -15667,41 +16803,49 @@
          will sell you in one list, because that is what a market is — the player
          should be reading a list of things and prices, not hunting four panels
          for the four different ways this place takes money. */
-      market: surv.docked ? (() => {
+      market: (surv.docked || surv.landed) ? (() => {
         const rows = [];
-        /* The shipyard, as the first row. It is a thing this station offers, so
-           it belongs in the list of things this station offers — and a door
-           floating beside the page title had nowhere to sit that was not already
-           somebody's. */
-        if (atHomeStation()) {
-          rows.push({ kind: "ships", key: "", name: "THE SHIPYARD",
-                      colour: "#a08cff", label: "OPEN", cost: 0,
-                      note: "twenty-five hulls, and you keep every one you buy" });
-        }
+        /* The shipyard used to be the first row here, on the grounds that it is
+           a thing the station offers. It is a *room* the station has, though,
+           and it is a tab along the top now — beside the shop itself, where the
+           other rooms of a station live. A shelf lists things you can put in
+           the hold. */
+        /* One row a tank, not three. It used to be a QUARTER, a HALF and a
+           FILL — three rows each, priced pro rata, with any slice bigger than
+           the room in the tank left out so the shop did not offer the same 20%
+           three times at three prices. All of that was a quantity control made
+           out of buttons, and there is a quantity control now: the row says
+           what a whole tank costs and you dial in how much of one you want. */
         for (const [kind, name, colour] of [["water", "WATER", ICE_C],
                                             ["food", "FOOD", "#ffcb42"]]) {
           const full = kind === "water" ? WATER_FULL : foodCap();
-          /* Three slices, and only the ones that mean something. A quarter, a
-             half and a fill are priced pro rata — they always were — but every
-             slice is also clamped to the room in the tank, so on a tank that is
-             four fifths full all three of them bought the same 20% for the same
-             money and the shop read as though the small ones were a rip-off.
-
-             So a slice bigger than the room is simply not offered. What is left is
-             always cheaper than the next one up, and the last row says how much of
-             the tank you are actually buying rather than leaving you to work out
-             why FILL costs less than it did yesterday. */
-          const room = (full - surv[kind]) / full;
-          for (const [frac, label] of [[0.25, "QUARTER"], [0.5, "HALF"], [1, "FILL"]]) {
-            if (frac > room + 0.001 && frac !== 1) continue;
-            const cost = supplySlice(kind, frac);
-            if (cost == null) continue;
-            const part = Math.round(Math.min(frac, room) * 100);
-            rows.push({ kind: "supply", key: kind, name, colour, label,
-                        frac, cost, adds: part,
-                        have: Math.round(surv[kind] / full * 100) });
-          }
+          const room = Math.floor((full - surv[kind]) / full * 100);
+          if (room <= 0) continue;
+          /* What they have, in tankfuls, capped to the room in yours. A world
+             has no shelf and no limit — it is a planet with weather on it. */
+          const shelf = surv.docked ? shelfOf(surv.docked) : null;
+          const onHand = shelf ? Math.floor(shelf[kind] * 100) : room;
+          if (onHand <= 0) continue;
+          rows.push({ kind: "supply", key: kind, name, colour, label: "FILL",
+                      // Priced by the tankful; the row works out the slice.
+                      tank: supplyUnit(kind), most: Math.min(room, onHand),
+                      left: shelf ? Math.floor(shelf[kind] * 100) : null,
+                      have: Math.round(surv[kind] / full * 100) });
         }
+        /* What this particular rock is made of, sold by the people standing on
+           it. A world's whole shelf, and the reason to land on one. */
+        if (surv.landed && surv.landed.trades && surv.landed.stock > 0) {
+          const m = matSpec(surv.landed.trades);
+          const each = Math.max(1, Math.round(m.value * 1.5 *
+                        (1 + dangerAt(surv.landed.x, surv.landed.y))));
+          const stock = Math.max(0, Math.round(surv.landed.stock || 0));
+          rows.push({ kind: "local", key: m.key, name: m.name, colour: m.colour,
+                      label: "BUY", cost: each, each: each,
+                      most: stock, left: stock });
+        }
+        // The rest of the shelf is a station's: a world has no yard, no dry
+        // dock and no shelf of parts.
+        if (!surv.docked) return rows;
         const fix = repairCost();
         if (fix != null) {
           rows.push({ kind: "repair", key: "hull", name: "HULL REPAIR",
@@ -15712,21 +16856,39 @@
         /* Only the ones somebody sells. A part you can only find is not on
            anybody's shelf — that is what "only find" means — and listing it here
            greyed out would be a shop advertising something it will not sell you. */
+        const shelf = shelfOf(surv.docked);
         for (const m of MODULES) {
           if (!sellsIt(m)) continue;
           if (m.deep > stationDepth()) continue;
+          // Only what is actually on the shelf this delivery. See `rollShelf`.
+          const left = (shelf && shelf.parts[m.key]) || 0;
+          if (left <= 0) continue;
           rows.push({ kind: "part", key: m.key, name: m.name,
                       colour: "#a08cff", label: "BUY", cost: m.cost,
+                      most: left, left: left,
                       cat: m.cat, rarity: m.rarity, note: m.note,
                       weight: partWeight(m.key),
                       owned: storeCount(m.key) });
         }
         return rows;
       })() : [],
-      onBuyRow: (kind, key, frac) => {
-        if (kind === "supply") return buySupply(key, frac);
+      /* `qty` means whatever the row's quantity control meant: a percentage of
+         a tank, a count of parts, a count of units off a world. A door and a
+         hull repair have no quantity and ignore it. */
+      onBuyRow: (kind, key, qty) => {
+        if (kind === "supply") return buySupply(key, (qty || 0) / 100);
+        if (kind === "local") return buyLocal(qty || 1);
         if (kind === "repair") return buyRepair();
-        if (kind === "part") return buyModule(key);
+        if (kind === "part") {
+          // One at a time, because that is the call that checks the hold and
+          // the purse; the loop simply stops when one of them says no.
+          let got = false;
+          for (let i = 0; i < (qty || 1); i++) {
+            if (!buyModule(key)) break;
+            got = true;
+          }
+          return got;
+        }
         if (kind === "ships") {
           if (!atHomeStation()) return false;
           state = "hangar";
@@ -15789,29 +16951,15 @@
       near: surv.near || null,
       lore: surv.lore || null,
       onLook: () => { if (surv.near) { surv.lore = surv.near; state = "lore"; } },
-      onLand: () => { if (surv.landed) state = "landed"; },
+      onLand: () => {
+        if (!surv.landed) return;
+        state = "landed";
+        surveyHUD && surveyHUD.shopOpened && surveyHUD.shopOpened();
+      },
       /* Buying off a world. Ten at a time, or whatever is left of the hold or of
          their stock — three taps to fill a hold beats thirty, and a world that
          runs out is a world you have to find another of. */
-      onBuyLocal: () => {
-        const w = surv.landed;
-        if (!w || !w.trades || w.stock <= 0) { gameSound("hit"); return false; }
-        const m = matSpec(w.trades);
-        const price = Math.max(1, Math.round(m.value * 1.5 *
-                                (1 + dangerAt(w.x, w.y))));
-        const room = holdCap() - holdUsed();
-        const want = Math.min(10, room, w.stock,
-                              Math.floor(surv.cash / price));
-        if (want <= 0) { gameSound("hit"); return false; }
-        surv.cash -= want * price;
-        w.stock -= want;
-        addMaterial(m.key, want);
-        gameSound("start");
-        chatter(want + " " + m.name.toLowerCase() + " aboard — " +
-                money(want * price), CASH);
-        saveSurveyBook();
-        return true;
-      },
+      onBuyLocal: buyLocal,
       // Dying, and coming back from it.
       death: surv.death,
       deaths: surv.deaths || 0,
@@ -15881,7 +17029,9 @@
         key: m.key, name: m.name, cat: m.cat, rarity: m.rarity, note: m.note,
         n: storeCount(m.key), secs: fitSeconds(m.key),
         weight: partWeight(m.key), held: partWeight(m.key) * storeCount(m.key),
-        fitted: surv.slots.some(sl => sl && sl.key === m.key)
+        fitted: surv.slots.some(sl => sl && sl.key === m.key),
+        // What this place would give for one. See `partResale`.
+        sell: partResale(m, surv.docked || surv.landed)
       })),
       // What the parts in the hold weigh, all told. The materials are the rest.
       partWeight: storeWeight(),
@@ -15941,7 +17091,30 @@
       scanReach: scanRange(),
       pins: surv.pins,
       world: surv.world,
-      known: [...surv.known.values()],
+      /* The gazetteer, plus every part lying on the floor — and the second half
+         is why this is not just `surv.known`.
+
+         A part you died carrying is written to the map by `noteKnown`, and that
+         turns entries away once the gazetteer is full: `KNOWN_CAP` is 600, and a
+         well-charted run reaches it. So the one marker in the mode you cannot
+         afford to lose was the one being dropped, silently, and only on the runs
+         that had gone well enough to fill the map — which is exactly what "it
+         sometimes vanishes" looks like from the cockpit.
+
+         `surv.dropped` is the authority and it cannot overflow: it is what the
+         world spawns the part from, it survives the book, and it is a few dozen
+         entries at the very most. Deduped against the gazetteer so a marker that
+         *did* get written is not drawn twice. */
+      known: (() => {
+        const out = [...surv.known.values()];
+        for (const d of surv.dropped) {
+          if (surv.known.has(knownId("part", d.x, d.y))) continue;
+          const spec = droppedSpec(d);
+          out.push({ k: "part", x: d.x, y: d.y,
+                     name: spec ? spec.name : (d.name || ""), r: 0 });
+        }
+        return out;
+      })(),
       yard: { x: YARD.x, y: YARD.y, built: surv.built.size, needs: BUILD.length },
       danger: dangerAt(ships[0] ? ships[0].x : 0, ships[0] ? ships[0].y : 0),
       dangerBand: bandAt(ships[0] ? ships[0].x : 0, ships[0] ? ships[0].y : 0),
@@ -16098,9 +17271,20 @@
       onScan: surveyScan,
       onChart: () => { state = "chart"; surveyHUD.chartOpened(surveyState()); },
       onAlmanac: () => { state = "almanac"; },
-      onInventory: () => { state = "inventory"; surveyHUD && surveyHUD.shipOpened(); },
-      // Storage and the loadout are one page now — see `drawInventory`.
-      onLoadout: () => { state = "inventory"; surveyHUD && surveyHUD.shipOpened(); },
+      /* `I` and the flight panel's button reach the cargo; `G` and the strip
+         reach the ship. They used to be one page and one key, which is why the
+         key that meant "loadout" opened a page of ore. */
+      onInventory: () => {
+        state = "inventory";
+        surveyHUD && surveyHUD.cargoOpened && surveyHUD.cargoOpened();
+      },
+      onShip: () => { state = "ship"; surveyHUD && surveyHUD.shipOpened(); },
+      onRecord: () => {
+        state = "record";
+        surveyHUD && surveyHUD.recordOpened && surveyHUD.recordOpened();
+      },
+      // The loadout was always this page; it just had the cargo bolted to it.
+      onLoadout: () => { state = "ship"; surveyHUD && surveyHUD.shipOpened(); },
       onCraftPage: () => { state = "craft"; surveyHUD && surveyHUD.craftOpened(); },
       // The nav strip's own destination for the station itself.
       onStation: () => {
@@ -16393,6 +17577,7 @@
        also the rule a player expects (a station is somewhere you stop). A station
        fits parts instantly anyway, so the two never disagree. */
   const SURVEY_PAGES = { chart: 1, inventory: 1, missions: 1, almanac: 1,
+                         record: 1, ship: 1,
                          craft: 1, lore: 1, refit: 1, hangar: 1, yard: 1,
                          landed: 1 };
   const surveyPage = () =>
@@ -16901,7 +18086,8 @@
 
   const scrollingPage = () =>
     state === "almanac" || state === "chart" || state === "hangar" ||
-    state === "inventory" || state === "craft" || state === "refit";
+    state === "inventory" || state === "craft" || state === "refit" ||
+    state === "record" || state === "ship";
   // How many rows the shelf on the loadout page has to scroll through.
   const shelfRows = () => (surv && surv.docked ? MODULES.length : 0);
 
@@ -16966,7 +18152,39 @@
     e.preventDefault();
   });
 
+  /* ── a button you can lean on ─────────────────────────────────────────────
+     The shop's + and − step by one, and stepping to a hundred is a hundred
+     presses — which on a phone is not a control at all. A rectangle marked
+     `hold` fires on the *press* and then keeps firing, faster the longer it is
+     held, until the finger comes up.
+
+     Wall clock rather than the game clock: a shop is a page, the world behind
+     it may be parked, and a repeat that stops because the simulation stopped
+     would be a button that works in flight and not at a counter.
+
+     Because the press spends the tap, `pageDrag.hit` is left null so the
+     release does not spend it a second time. */
+  let holding = null;
+  function startHold(hit) {
+    const now = performance.now();
+    holding = { act: hit.act, next: now + 340, step: 340 };
+    hit.act();
+  }
+  function stepHold() {
+    if (!holding) return;
+    const now = performance.now();
+    // Guarded: a tab that was in the background must not come back to a
+    // thousand queued presses.
+    for (let i = 0; i < 24 && now >= holding.next; i++) {
+      holding.act();
+      holding.step = Math.max(45, holding.step * 0.7);
+      holding.next += holding.step;
+    }
+  }
+  const endHold = () => { holding = null; };
+
   function endPageDrag(e, act) {
+    endHold();
     if (!pageDrag || (e && e.pointerId !== pageDrag.id)) return;
     const d = pageDrag;
     pageDrag = null;
@@ -17009,6 +18227,15 @@
 
     // Everything else on a menu screen registered itself while being drawn.
     const hit = tapAt(p.x, p.y);
+
+    // A `hold` rectangle answers to the press and keeps answering. See `startHold`.
+    if (hit && hit.hold && typeof hit.act === "function") {
+      startHold(hit);
+      pageDrag = { id: e.pointerId, x: p.x, y: p.y, moved: 0, hit: null };
+      try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+      e.preventDefault();
+      return;
+    }
 
     /* A part being picked up out of storage. Asked before the page decides to
        scroll, because the same press means two different things depending on
@@ -17389,6 +18616,31 @@
       if (mode.wrap) {
         if (b.life <= 0) { if (b.boom) explode(b); bullets.splice(i, 1); continue; }
         wrapInBounds(b);
+      }
+
+      /* Rock, hull and world all stop a round. Tested after the step rather than
+         before it, so a round fired point-blank at a wall still leaves the nose
+         — and swept along its own travel rather than at its new position alone,
+         because a fast round covers more than a wall's thickness in one frame
+         and would otherwise pass through it without ever being inside it. */
+      if (mode.survey) {
+        const sp = Math.hypot(b.vx, b.vy) * dt;
+        const steps = Math.max(1, Math.min(6, Math.ceil(sp / 90)));
+        let struck = null;
+        for (let k = 1; k <= steps && !struck; k++) {
+          const f = k / steps;
+          struck = solidHit(b.x - b.vx * dt * (1 - f), b.y - b.vy * dt * (1 - f));
+        }
+        if (struck) {
+          burst(struck.x, struck.y, b.colour, 3, 90 * U);
+          if (b.boom) { b.x = struck.x; b.y = struck.y; explode(b); }
+          bullets.splice(i, 1);
+          continue;
+        }
+      }
+
+      if (mode.wrap) {
+        // handled above
       } else if (b.life <= 0 ||
                  b.x < bounds.x0 || b.x > bounds.x1 ||
                  b.y < bounds.y0 || b.y > bounds.y1) {
@@ -18826,44 +20078,43 @@
   };
   const LANE_KEYS = ["solo", "multi"];
 
-  /* What each card says. `long` is the mode in three sentences — what you do,
-     what makes it different, and how it ends — because a card with room for a
-     paragraph should use it rather than repeat its own name. */
+  /* What each card says. `long` is the mode in one line. It was three sentences,
+     and three did not fit: the card is 372 tall and the text starts 56 below the
+     name at 21 a line, so the fourth line is drawn below the card's own border —
+     Survey spilled onto the BACK button. A card has about two seconds of a
+     player's attention and one line is what that buys.
+
+     It is a string, or one string per lane where the mode is honestly a
+     different proposition in each: Battle Royale is bots in SOLO and the people
+     beside you in MULTIPLAYER, and a card that said "bots" in both would be
+     lying in one of them. */
   const CARDS = {
     survival: {
       name: "SURVIVAL", colour: "#ffe56d", art: "survival",
       solo: "1 PILOT", multi: "1–5 AT ONE KEYBOARD",
-      long: "Waves of asteroids in an arena that wraps at every edge. Big rocks " +
-            "break into small ones, lives are shared, and friendly fire is a " +
-            "setting rather than a rule. It gets faster until it stops."
+      long: "Endless asteroids."
     },
     royale: {
       name: "BATTLE ROYALE", colour: "#ff8f77", art: "royale",
       solo: "YOU AGAINST THE BOTS", multi: "2–5 AT ONE KEYBOARD",
-      long: "Three lives each, two-hit hulls, and gravity wells that stand still " +
-            "while everything else moves. The wall closes until there is nowhere " +
-            "left to be. No time limit — it ends when one ship is flying."
+      long: { solo:  "Up to 5 bots — last standing wins.",
+              multi: "A wall that closes in — last ship flying wins." }
     },
     campaign: {
       name: "CAMPAIGN", colour: "#6dffbf", art: "campaign",
       solo: "1 PILOT", multi: "2-PLAYER CO-OP",
-      long: "Three missions and a side to fly for: escort a transport through " +
-            "three waves, raid a convoy, then break a mothership with your fleet " +
-            "beside you. The war carries between missions and remembers who lived."
+      long: "Missions instead of endlessness."
     },
     survey: {
       name: "SURVEY", colour: "#a08cff", art: "survey",
       solo: "1 PILOT — THERE IS ONE CHART", multi: null,
-      long: "Endless space and nothing hunting you. Chart a sector, fill a " +
-            "thirty-one entry almanac, strip wrecks and guarded caches for " +
-            "salvage, refit at a station, and go further out than that."
+      long: "Exploration at its finest."
     },
     online: {
       name: "ONLINE", colour: "#87d8ff", art: "online",
       solo: null, multi: "UP TO 5, A SCREEN EACH",
-      long: "Host a lobby and hand out the code, or join one. Everybody on their " +
-            "own device in the same match, with the modes above to pick from " +
-            "once the room fills."
+      long: "Host a lobby and hand out the code, or join one, everybody on " +
+            "their own device in the same match."
     }
   };
 
@@ -18874,6 +20125,10 @@
   let laneAnim = [0, 0];
 
   function laneRows() { return LANES[modeLane].rows; }
+
+  /* A card's line, in the lane it is being read in. */
+  const cardLine = c =>
+    typeof c.long === "string" ? c.long : (c.long[modeLane] || "");
 
   /* Wrapping, measured against the font the text is actually drawn in — the
      card is the only place in this game with a paragraph in it, and a paragraph
@@ -18897,6 +20152,15 @@
       sz -= 1;
     }
     text(str, x, y, sz, colour, align, alpha);
+  }
+
+  /* `#rrggbb` at an alpha. Canvas gradient stops need the alpha inside the
+     colour — `globalAlpha` applies to the whole fill and cannot fade one end of
+     one into the other. */
+  function tint(hex, alpha) {
+    const n = parseInt(String(hex).slice(1), 16);
+    return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," +
+           (n & 255) + "," + alpha + ")";
   }
 
   function wrapText(str, size, maxW) {
@@ -18934,21 +20198,38 @@
       const x = x0 + i * (w + gap);
       const lift = laneAnim[i] * 6;
 
+      const cardTop = y - lift;
       ctx.save();
       ctx.fillStyle = L.colour;
-      ctx.globalAlpha = 0.05 + laneAnim[i] * 0.06;
-      ctx.fillRect(x, y - lift, w, h);
+      ctx.globalAlpha = 0.07 + laneAnim[i] * 0.09;
+      ctx.fillRect(x, cardTop, w, h);
+      ctx.globalAlpha = 0.55 + laneAnim[i] * 0.45;
+      ctx.fillRect(x, cardTop, w, 3);
       ctx.strokeStyle = L.colour;
-      ctx.globalAlpha = 0.4 + laneAnim[i] * 0.6;
+      ctx.globalAlpha = 0.45 + laneAnim[i] * 0.55;
       ctx.lineWidth = on ? 2 : 1;
-      ctx.strokeRect(x, y - lift, w, h);
+      ctx.strokeRect(x, cardTop, w, h);
       ctx.restore();
 
-      if (menuArt) menuArt.preview(L.art, x + 14, y - lift + 14, w - 28, 150, clock);
-      text(L.name, x + w / 2, y - lift + 208, 30, L.colour);
-      fitLine(L.line, x + w / 2, y - lift + 238, 14, "#ffcb42", "center", 0.85,
+      /* Built the same way as the mode cards this page leads to: the picture
+         takes the card, and fades into the words in the lane's own colour. Two
+         pages that are the same shape are one design; two that are nearly the
+         same shape are a page somebody forgot to finish. */
+      const pad = 10, artH = h - pad * 2 - 104, artY = cardTop + pad;
+      if (menuArt) menuArt.preview(L.art, x + pad, artY, w - pad * 2, artH, clock);
+      const fadeH = Math.min(80, artH * 0.4);
+      const fade = ctx.createLinearGradient(0, artY + artH - fadeH, 0, artY + artH);
+      fade.addColorStop(0, tint(L.colour, 0));
+      fade.addColorStop(1, tint(L.colour, 0.2 + laneAnim[i] * 0.12));
+      ctx.save();
+      ctx.fillStyle = fade;
+      ctx.fillRect(x + pad, artY + artH - fadeH, w - pad * 2, fadeH);
+      ctx.restore();
+
+      text(L.name, x + w / 2, artY + artH + 34, 30, L.colour);
+      fitLine(L.line, x + w / 2, artY + artH + 64, 14, "#ffcb42", "center", 0.85,
               w - 26);
-      text(L.rows.length + " MODES", x + w / 2, y - lift + 270, 13, L.colour,
+      text(L.rows.length + " MODES", x + w / 2, artY + artH + 96, 13, L.colour,
            "center", 0.6);
 
       pushTap({ x, y: y - lift, w, h, act: () => openLane(key) });
@@ -19019,23 +20300,48 @@
       const a = cardAnim[i];
       const isOpen = a > 0.5;
 
+      /* Each mode has a hue and the row should be able to say so at a glance.
+         When only the open card carried any, the row read as four grey boxes
+         and one picture. */
       ctx.save();
       ctx.fillStyle = c.colour;
-      ctx.globalAlpha = 0.04 + a * 0.07;
+      ctx.globalAlpha = 0.07 + a * 0.10;
       ctx.fillRect(x, top, w, h);
+      /* A bar along the top edge — the one piece of colour at full strength on
+         a closed card, and what makes the row read as five modes rather than
+         five panels. */
+      ctx.globalAlpha = 0.55 + a * 0.45;
+      ctx.fillRect(x, top, w, 3);
       ctx.strokeStyle = c.colour;
-      ctx.globalAlpha = 0.35 + a * 0.65;
+      ctx.globalAlpha = 0.45 + a * 0.55;
       ctx.lineWidth = isOpen ? 2 : 1;
       ctx.strokeRect(x, top, w, h);
       ctx.restore();
 
-      // The picture. It gets the top of every card, open or not — a collapsed
-      // card still has to be recognisable, and a still name is not.
-      const pad = 10;
-      const artH = 120 + a * 84;
-      if (menuArt) menuArt.preview(c.art, x + pad, top + pad, w - pad * 2, artH, clock);
+      /* The picture, and it takes the card. It was a 120-tall strip with a
+         hundred and fifty of empty below it, because that space was reserved
+         for a paragraph that is now one line. Every scene in `menu.js` is
+         written against the box it is handed, so a taller one costs nothing —
+         and it is the difference between a thumbnail and a window. */
+      const pad = 8;
+      const textH = 92 + a * 58;
+      const artH = h - pad * 2 - textH;
+      const artY = top + pad;
+      if (menuArt) menuArt.preview(c.art, x + pad, artY, w - pad * 2, artH, clock);
 
-      const nameY = top + pad + artH + 30;
+      /* The picture fades out into the card in the mode's own colour instead of
+         stopping at a ruled line, so the art and the words under it are one
+         object rather than a panel with a screenshot stuck on it. */
+      const fadeH = Math.min(80, artH * 0.4);
+      const fade = ctx.createLinearGradient(0, artY + artH - fadeH, 0, artY + artH);
+      fade.addColorStop(0, tint(c.colour, 0));
+      fade.addColorStop(1, tint(c.colour, 0.2 + a * 0.12));
+      ctx.save();
+      ctx.fillStyle = fade;
+      ctx.fillRect(x + pad, artY + artH - fadeH, w - pad * 2, fadeH);
+      ctx.restore();
+
+      const nameY = artY + artH + 26;
       text(c.name, x + w / 2, nameY, isOpen ? 24 : 15, c.colour);
 
       const who = modeLane === "solo" ? c.solo : c.multi;
@@ -19046,10 +20352,10 @@
           text(ln, x + w / 2, nameY + 24 + k * 18, 12, "#ffcb42", "center", 0.75));
       }
 
-      // The paragraph belongs to the open card alone; on a closed one there is
+      // The line belongs to the open card alone; on a closed one there is
       // no room for it and it would only be four columns of hyphens.
       if (a > 0.35) {
-        const lines = wrapText(c.long, 14, w - 34);
+        const lines = wrapText(cardLine(c), 14, w - 34);
         lines.forEach((ln, k) => {
           text(ln, x + w / 2, nameY + 56 + k * 21, 14, "#ffcb42", "center",
                (a - 0.35) / 0.65 * 0.95);
@@ -19781,6 +21087,8 @@
   }
 
   function render(dt) {
+    // A held + or - keeps firing while the finger is down. See `startHold`.
+    stepHold();
     padStage();
     // Collected fresh: a menu line that isn't drawn this frame isn't tappable
     // this frame either, which is what keeps the two from drifting apart.
@@ -19839,6 +21147,12 @@
     }
     if (state === "inventory" && surv && surveyHUD) {
       surveyHUD.drawInventory(surveyState(), dt || 0); return;
+    }
+    if (state === "record" && surv && surveyHUD) {
+      surveyHUD.drawRecord(surveyState(), dt || 0); return;
+    }
+    if (state === "ship" && surv && surveyHUD) {
+      surveyHUD.drawShip(surveyState(), dt || 0); return;
     }
     if (state === "loadout" && surv && surveyHUD) {
       // Anything still asking for the old page gets the one that replaced it.
@@ -21218,15 +22532,21 @@
     /* At the door the panel is answering "shall I sign in before I start"; from
        a menu it is answering "what is the state of my account". Same controls,
        different question, so the heading and the way out both change. */
-    el("accountTitle").textContent = gate ? "BEFORE YOU FLY" : "YOUR ACCOUNT";
-    el("btnAcctClose").textContent = gate ? "back to the modes" : "back";
+    accountEl.classList.toggle("door", !!gate);
+    el("accountTitle").textContent = gate ? "SURVEY" : "YOUR ACCOUNT";
+    /* At the door the boxes say what they are and the labels above them come
+       off — two words instead of six, in the only place a player is looking.
+       The `aria-label`s stay on the inputs, so a screen reader still gets the
+       long version of each. */
+    el("acctEmail").placeholder = gate ? "email" : "you@example.com";
+    el("acctPass").placeholder = gate ? "password" : "at least 8 characters";
+    el("btnAcctClose").textContent = "back";
     show("acctGuestRow", !!gate && up && !who && !clash);
     el("btnAcctPlay").hidden = !gate;
-    el("acctPitch").textContent = gate
-      ? "Sign in and your sector follows you to any device — and survives this " +
-        "browser forgetting it. Without one it saves here, and only here."
-      : "Survey already saves on this device. An account keeps the same sector " +
-        "on every device you play on — and keeps it if this browser forgets.";
+    // Hidden at the door — see the `.door` rules. The settings page keeps it,
+    // because there it is the only thing that says what an account is for.
+    el("acctPitch").textContent =
+      "Keeps the same sector on every device you play on.";
 
     if (!up) {
       acctSay("No account service is set up for this copy of the game. " +
@@ -21282,12 +22602,89 @@
   const needsDoor = () =>
     !!(cloud && cloud.enabled() && !cloud.session() && !guestChosen());
 
+  /* ── the field behind the door ────────────────────────────────────────────
+     Its own canvas, not the game's. The game's is still showing the mode cards
+     you opened this from, and the door is meant to be somewhere else rather
+     than a veil laid over somewhere you have left.
+
+     Drawn the way `menu.js` draws the Survey diorama and in the same violet, so
+     the door and the card that opened it are recognisably one mode. Stars only:
+     no rocks, no ship, nothing that implies a game is already running.
+
+     The loop runs only while the door is up, and the `.door` class is the one
+     that shows the canvas — so from SETTINGS this costs nothing at all. */
+  const starCanvas = el("acctStars");
+  const starCtx = starCanvas && starCanvas.getContext && starCanvas.getContext("2d");
+  let starRAF = 0, starClock = 0, starPrev = 0, starField = null;
+
+  /* A fixed scatter from a fixed sequence. The field is the same every time the
+     door opens, which is what makes it a place and not an effect. */
+  function makeField(n) {
+    let seed = 20260912;
+    const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      out.push({ x: rnd(), y: rnd(), depth: 0.3 + rnd() * 0.85,
+                 phase: rnd() * Math.PI * 2, rate: 0.5 + rnd() * 1.1 });
+    }
+    return out;
+  }
+
+  function paintStars(dt) {
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    const w = starCanvas.clientWidth, h = starCanvas.clientHeight;
+    if (!w || !h) return;
+    const pw = Math.round(w * ratio), ph = Math.round(h * ratio);
+    if (starCanvas.width !== pw || starCanvas.height !== ph) {
+      starCanvas.width = pw;
+      starCanvas.height = ph;
+    }
+    starCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    starCtx.clearRect(0, 0, w, h);
+    starClock += dt;
+    for (const d of starField) {
+      /* Depth does double duty: the near stars drift faster and sit brighter,
+         which is the whole of the parallax and costs one multiply. */
+      const x = (((d.x - starClock * 0.006 * d.depth) % 1) + 1) % 1;
+      const twinkle = 0.4 + 0.6 *
+        Math.abs(Math.sin(d.phase + starClock * 0.9 * d.rate));
+      starCtx.globalAlpha = (0.12 + 0.5 * d.depth) * twinkle;
+      starCtx.fillStyle = "#a08cff";
+      const size = 0.9 + d.depth * 1.3;
+      starCtx.fillRect(x * w, d.y * h, size, size);
+    }
+    starCtx.globalAlpha = 1;
+  }
+
+  function starStep(t) {
+    starRAF = requestAnimationFrame(starStep);
+    // Clamped: a tab that was in the background for a minute must not arrive
+    // back with a minute of drift to apply in one frame.
+    const dt = Math.min(0.05, Math.max(0, (t - starPrev) / 1000)) || 0;
+    starPrev = t;
+    paintStars(dt);
+  }
+
+  function startStars() {
+    if (!starCtx || starRAF) return;
+    starField = starField || makeField(260);
+    starPrev = performance.now();
+    starRAF = requestAnimationFrame(starStep);
+  }
+
+  function stopStars() {
+    if (!starRAF) return;
+    cancelAnimationFrame(starRAF);
+    starRAF = 0;
+  }
+
   function openAccount(then) {
     if (!accountEl) return;
     gate = typeof then === "function" ? { then } : null;
     accountEl.hidden = false;
     acctSay("");
     paintAccount();
+    if (gate) startStars();
   }
 
   /* Two ways out of the door and they are different things, which is why there
@@ -21302,6 +22699,7 @@
   function closeAccount() {
     if (!accountEl) return;
     accountEl.hidden = true;
+    stopStars();
     const g = gate;
     gate = null;
     if (g) g.then();
@@ -21310,6 +22708,7 @@
   function cancelAccount() {
     if (!accountEl) return;
     accountEl.hidden = true;
+    stopStars();
     gate = null;
   }
 
@@ -21660,6 +23059,9 @@
          than a place a ship ends up, so a harness needs to be able to read it
          and to press both of the mode's buttons. */
       survey: () => surv,
+      // Which places deal in find-only parts. See `takesExotics`.
+      exotics: (x, y) => takesExotics(x, y),
+      partResale: (key, place) => partResale(moduleSpec(key), place),
       catalogue: () => ALMANAC,
       chunk: (cx, cy) => buildChunk(cx, cy),
       chunkSize: () => CHUNK,
@@ -21829,6 +23231,23 @@
         return out;
       },
       regionCell: () => REGION_CELL,
+      /* The Warrens, asked directly. `caveFill` is whether the region claims
+         this point at all, `caveDepth` is how far inside a passage it is, and
+         `caveSolid` is the answer the generator acts on — all three, because
+         when a cave comes out wrong it is always one of the three and looking at
+         the picture cannot tell you which. */
+      // How far inside a passage a point is: 0 in rock, 1 in the middle of one.
+      // Negative inside a passage, positive in rock. The wall is zero.
+      caveEdge: (x, y) => caveEdge(x, y),
+      /* The two collisions everything except the player goes through, so a
+         harness can drive the same code a freighter does. `solidBounce` shoves
+         an object off anything solid and says whether it touched; `solidHit`
+         answers whether a round would be stopped here. */
+      solidBounce: (o, r) => solidBounce(o, r),
+      solidHit: (x, y) => !!solidHit(x, y),
+      caveFill: (x, y) => caveFillAt(x, y),
+      caveSolid: (x, y) => caveSolidAt(x, y),
+      caveCell: () => CAVE_CELL,
       regionCensus: (n) => {
         const out = [];
         for (let j = -n; j <= n; j++) {

@@ -28,7 +28,17 @@ function stubCtx() {
   // A 2D context whose every method is a no-op and whose every property is
   // writable. Rendering must never be what a logic test trips over.
   return new Proxy({}, {
-    get: (t, k) => (k in t ? t[k] : (t[k] = noop)),
+    get: (t, k) => {
+      /* Except the gradient makers. The menus fade a card's picture into its
+         words with one, and a no-op returning `undefined` turns drawing the
+         front page into "cannot read properties of undefined (reading
+         'addColorStop')" — which is rendering being exactly what a logic test
+         trips over. */
+      if (k === "createLinearGradient" || k === "createRadialGradient" ||
+          k === "createPattern") return () => ({ addColorStop: noop });
+      if (k === "measureText") return str => ({ width: String(str).length * 8 });
+      return k in t ? t[k] : (t[k] = noop);
+    },
     set: (t, k, v) => (t[k] = v, true)
   });
 }
