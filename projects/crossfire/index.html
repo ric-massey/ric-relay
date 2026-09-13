@@ -2892,6 +2892,14 @@
       if (code === "KeyL") { state = "almanac"; return; }
       if (surveyHUD) surveyHUD.chartKey(code, surveyState());
     } else if (state === "record") {
+      if (code === "ArrowDown") {
+        surveyHUD.recordScrollBy(60, surveyHUD.recordHeight, surveyHUD.recordView);
+        return;
+      }
+      if (code === "ArrowUp") {
+        surveyHUD.recordScrollBy(-60, surveyHUD.recordHeight, surveyHUD.recordView);
+        return;
+      }
       if (code === "Escape" || code === "Backspace") { state = "playing"; return; }
       if (code === "KeyI" || code === "KeyG") {
         state = "inventory"; surveyHUD && surveyHUD.shipOpened(); return;
@@ -2901,6 +2909,14 @@
         state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
       }
     } else if (state === "ship") {
+      if (code === "ArrowDown") {
+        surveyHUD.shipScrollBy(60, surveyHUD.shipHeight, surveyHUD.shipView);
+        return;
+      }
+      if (code === "ArrowUp") {
+        surveyHUD.shipScrollBy(-60, surveyHUD.shipHeight, surveyHUD.shipView);
+        return;
+      }
       if (code === "Escape" || code === "Backspace" || code === "KeyG") {
         state = "playing"; return;
       }
@@ -2931,9 +2947,15 @@
         state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
       }
       /* The page scrolls, so the arrows move it — a phone drags and a keyboard
-         has these, and the page is taller than the screen on both. */
-      if (code === "ArrowDown") { surveyHUD.shipScrollBy(60, surveyHUD.shipHeight, surveyHUD.shipView); return; }
-      if (code === "ArrowUp") { surveyHUD.shipScrollBy(-60, surveyHUD.shipHeight, surveyHUD.shipView); return; }
+         has these. This is the cargo; the ship and the record have their own. */
+      if (code === "ArrowDown") {
+        surveyHUD.cargoScrollBy(60, surveyHUD.cargoHeight, surveyHUD.cargoView);
+        return;
+      }
+      if (code === "ArrowUp") {
+        surveyHUD.cargoScrollBy(-60, surveyHUD.cargoHeight, surveyHUD.cargoView);
+        return;
+      }
     } else if (state === "craft") {
       /* Back to the sector: building is a thing you do while flying, and the
          world has been running the whole time you were in here. */
@@ -12036,7 +12058,7 @@
   function noRoomFor(key) {
     const m = moduleSpec(key);
     chatter("No room for " + (m ? m.name : "it") + " \u2014 it needs " +
-            partWeight(key) + " of hold and you have " +
+            partWeight(key) + " cargo slots and you have " +
             Math.max(0, holdCap() - holdUsed()) + ".", "#ff8f77");
     gameSound("hit");
   }
@@ -18384,14 +18406,22 @@
     } else if (state === "hangar") {
       surveyHUD.hangarDragBy(px, SHIPS.length);
       e.preventDefault();
-    } else if (state === "inventory") {
+    } else if (state === "ship") {
       surveyHUD.shipScrollBy(px, surveyHUD.shipHeight || 0,
                              surveyHUD.shipView || 1);
+      e.preventDefault();
+    } else if (state === "inventory") {
+      surveyHUD.cargoScrollBy(px, surveyHUD.cargoHeight || 0,
+                              surveyHUD.cargoView || 1);
+      e.preventDefault();
+    } else if (state === "record") {
+      surveyHUD.recordScrollBy(px, surveyHUD.recordHeight || 0,
+                               surveyHUD.recordView || 1);
       e.preventDefault();
     } else if (state === "craft") {
       surveyHUD.craftDragBy(px);
       e.preventDefault();
-    } else if (state === "refit") {
+    } else if (state === "refit" || state === "landed") {
       surveyHUD.marketScrollBy(px, surveyHUD.marketHeight || 0,
                                surveyHUD.marketView || 1);
       e.preventDefault();
@@ -18419,12 +18449,20 @@
     // Content follows the finger: drag down and you see what was above.
     if (state === "almanac") surveyHUD.almanacDragBy(-dy, SURVEY_TOTAL);
     else if (state === "hangar") surveyHUD.hangarDragBy(-dy, SHIPS.length);
-    else if (state === "inventory") {
+    else if (state === "ship") {
       surveyHUD.shipScrollBy(-dy, surveyHUD.shipHeight || 0,
                              surveyHUD.shipView || 1);
     }
+    else if (state === "inventory") {
+      surveyHUD.cargoScrollBy(-dy, surveyHUD.cargoHeight || 0,
+                              surveyHUD.cargoView || 1);
+    }
+    else if (state === "record") {
+      surveyHUD.recordScrollBy(-dy, surveyHUD.recordHeight || 0,
+                               surveyHUD.recordView || 1);
+    }
     else if (state === "craft") surveyHUD.craftDragBy(-dy);
-    else if (state === "refit") {
+    else if (state === "refit" || state === "landed") {
       surveyHUD.marketScrollBy(-dy, surveyHUD.marketHeight || 0,
                                surveyHUD.marketView || 1);
     }

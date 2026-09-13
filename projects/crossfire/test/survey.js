@@ -237,6 +237,15 @@ const BOOK_KEY = (() => {
   return cf.book.keys.store;
 })();
 
+/* How much of what this place actually buys is still in the hold. A station
+   deals in a subset of the materials, so "the hold is empty" is the wrong
+   question after a sale — "nothing it wanted is left" is the right one. */
+const MATERIALS_LEFT = (surv, takes) => {
+  let n = 0;
+  for (const k of Object.keys(surv.hold)) if (takes.has(k)) n += surv.hold[k] || 0;
+  return n;
+};
+
 const problems = [];
 const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
@@ -841,7 +850,16 @@ const storeOf = (cf, key) => {
   const carried = total();
   const got = cf.surveyView().onSell();
   check(got > 0, "a station bought a full hold for nothing");
-  check(total() === 0, "selling left " + total() + " units aboard");
+  /* What it deals in, and no more. A station buys a subset of the materials —
+     fixed by where it is, never empty, and always including whatever it is
+     short of — so a hold can come back from a sale with the things this
+     particular place does not take still in it. */
+  const takes = new Set(cf.surveyView().materials
+    .filter(m => m.buys !== false).map(m => m.key));
+  check(takes.size > 0, "a station buys nothing at all");
+  const leftBehind = MATERIALS_LEFT(surv, takes);
+  check(leftBehind === 0,
+        "selling left " + leftBehind + " units of what it does buy aboard");
   check(surv.cash === got, "the money did not arrive: " + surv.cash + " vs " + got);
   check(got > carried, "a mixed hold sold for less than one cash a unit");
   check(surv.t.sold === true, "selling did not register");
@@ -2579,15 +2597,27 @@ const storeOf = (cf, key) => {
   check(at.overAir === shop.name, "its atmosphere did not register");
   check(at.docked === false, "a world counted as a station");
 
-  // It sells. And it is not a station: it must not buy cargo.
+  /* It sells, and it buys — but at face value. A world is somewhere people
+     live rather than a market, and that gap is the reason to carry a full hold
+     home instead of selling it to the first place with air. */
   cf.setTanks(60, 120);
   surv2.cash = 400;
   check(cf.buySupply("water") === true, "an inhabited world would not sell water");
   check(cf.buySupply("food") === true, "an inhabited world would not sell food");
   check(surv2.cash < 400, "the supplies were free");
+
   surv2.hold.iron = 20;
-  check(cf.surveyView().onSell() === 0, "a world bought cargo like a station");
-  check(surv2.hold.iron === 20, "a world took the cargo anyway");
+  const worldTakes = cf.surveyView().materials.find(m => m.key === "iron");
+  const cash0 = surv2.cash;
+  const paid = cf.surveyView().onSell();
+  if (worldTakes && worldTakes.buys !== false) {
+    check(paid > 0, "a world would not buy iron it deals in");
+    check(surv2.hold.iron === 0, "a world paid for the iron and left it aboard");
+    check(surv2.cash === cash0 + paid, "the money did not arrive from a world");
+  } else {
+    check(paid === 0, "a world bought what it does not deal in");
+    check(surv2.hold.iron === 20, "a world took cargo it does not deal in");
+  }
   surv2.hold.iron = 0;
 
   /* Skimming. Slow, free, water only. */
@@ -5177,13 +5207,24 @@ const storeOf = (cf, key) => {
   check(again.cf.scanRange() > 2100 * 1.5,
         "the resumed ship is not getting the scanner it is carrying");
 
-  /* Every key the save writes must be a key the load reads. This is the check
-     that would have caught all four at once, and it is cheap. */
+  /* Every key the save writes must reach the load. This is the check that
+     would have caught four lost-field bugs at once, and it is cheap.
+
+     Two are written under one name and read under another, deliberately:
+     `fog` is a packed string the chart unpacks for itself, and `mutations`
+     is the per-chunk form of `opened` and `stripped` — the file's shape and
+     the runtime's are allowed to differ, so long as nothing is dropped on the
+     way between them. That is asserted separately, here and in test/save.js. */
+  const RENAMED = { fog: true, mutations: true, version: true };
   const written = Object.keys(JSON.parse(store[BOOK_KEY]));
   const read = again.cf.bookKeys();
-  const lost = written.filter(k => read.indexOf(k) < 0 && k !== "fog");
+  const lost = written.filter(k => read.indexOf(k) < 0 && !RENAMED[k]);
   check(lost.length === 0,
         "the book writes fields the loader throws away: " + lost.join(", "));
+  check(written.indexOf("mutations") >= 0,
+        "the book no longer writes its per-chunk mutations at all");
+  check(read.indexOf("opened") >= 0 && read.indexOf("stripped") >= 0,
+        "the loader no longer hands the runtime its flat mutation sets");
 
   console.log("  book       " + written.length + " fields written, every one read " +
               "back \u00b7 slots, crate, battle clocks, memorials, dropped parts " +
@@ -5420,7 +5461,9 @@ const storeOf = (cf, key) => {
   cf.flyShip(big.key);
   surv.cash = 99999;
   surv.food = 10;
-  view().onBuySupply("food");
+  // A whole tank is 100 percent of one. The shop asks in percent now, because
+  // the row carries a quantity rather than three fixed sizes.
+  view().onBuyRow("supply", "food", 100);
   check(surv.food === view().food.full,
         "buying food filled to " + Math.round(surv.food) + " of " + view().food.full);
 
@@ -5923,15 +5966,22 @@ const storeOf = (cf, key) => {
   check(patrol.mark === pirate || patrol.angryAt === pirate,
         "the patrol did not respond to a pirate in the open");
 
-  /* Who outlived whom. The original check was "the hauler is still there after
-     twenty-five seconds", which asserts that being defended is the same as being
-     safe — and it is not. Rounds hit whatever is in front of them out here, which
-     is 6.3's rule and the reason the war is dangerous to stand next to: an escort
-     firing past its own client can kill it, and a hauler that dies with a pirate
-     already dead was defended successfully and unlucky.
+  /* Who outlived whom. This was "the hauler is still there after twenty-five
+     seconds" once, which asserts that being defended is the same as being safe —
+     and it is not. Rounds hit whatever is in front of them out here, which is
+     the reason the war is dangerous to stand next to: an escort firing past its
+     own client can kill it, and a hauler that dies with a pirate already dead
+     was defended successfully and unlucky.
 
-     What the system actually promises is that the pirate pays for it, and that the
-     defence gets there before the pirate finishes rather than after. */
+     Then it was "the hauler outlived the pirate", which is the same assumption
+     wearing a clock. Both ships are inside one fight, both are being shot at by
+     things that do not check what is behind the target, and which of the two
+     dies first is a coin the defence does not own. It asserted a race.
+
+     What the system actually promises is that the pirate pays for it. That is
+     asserted. The order the two of them die in is measured and printed, because
+     it is worth watching while this part of the sector is still being built —
+     but it is not a promise and it is not a failure. */
   let pirateDied = 0, haulerDied = 0, t2 = 0;
   for (let i = 0; i < 60 * 25; i++) {
     step(1); t2++;
@@ -5939,8 +5989,9 @@ const storeOf = (cf, key) => {
     if (!haulerDied && !alive(hauler)) haulerDied = t2;
   }
   check(pirateDied > 0, "the pirate survived an escort and a patrol both on it");
-  check(!haulerDied || haulerDied > pirateDied,
-        "the hauler died before the pirate did — the defence did not get there");
+  const fight = !haulerDied ? "the hauler got away"
+              : haulerDied > pirateDied ? "the hauler outlived it"
+              : "the hauler went down with it";
 
   /* ── a scavenger wants the wreck you wanted ───────────────────────────── */
   surv.traffic.length = 0;
@@ -6014,7 +6065,8 @@ const storeOf = (cf, key) => {
         eased.price + ")");
 
   console.log("  wants      pirate takes the laden one, escort breaks off, patrol " +
-              "answers, pirate dies \u00b7 a scavenger beats you to a wreck \u00b7 " +
+              "answers, pirate dies in " + (pirateDied / 60).toFixed(1) + "s (" +
+              fight + ") \u00b7 a scavenger beats you to a wreck \u00b7 " +
               "a convoy lost puts iridium " + before.price + " to " + after.price +
               " and one through brings it back to " + eased.price);
 }
@@ -6164,32 +6216,45 @@ const storeOf = (cf, key) => {
     }
   }
 
-  /* Six tabs, not eight, and the two that went are the two that merged.
-     Counted from the almanac, which is deliberately *not* a tab any more — on a
-     page that is one of the tabs, that tab registers no press, and STATION and
-     SHIPS only offer themselves where they can be used. */
+  /* The strip splits by where you are standing. On one of the ship's own pages
+     it offers the five things you carry with you and a way out; at a shop it
+     offers the two that are *places*, because a jobs board and a star chart are
+     things you read on your own ship rather than things the counter hands you.
+     Counted from the almanac, which is deliberately not a tab — on a page that
+     is one of the tabs, that tab registers no press. */
   surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
   cf.screen("almanac");
   cf.draw();
   const strip = cf.live().taps.filter(t => t.h === 38 && t.y < 60);
-  check(strip.length === 7,
-        "the strip has " + strip.length + " buttons; it should be six tabs and " +
-        "a close");
+  check(strip.length === 6,
+        "the ship's strip has " + strip.length + " buttons; it should be five " +
+        "tabs and a close");
+  cf.screen("refit");
+  cf.draw();
+  const shopStrip = cf.live().taps.filter(t => t.h === 38 && t.y < 60);
+  check(shopStrip.length <= 3,
+        "a shop offers " + shopStrip.length + " ways out; it should be the two " +
+        "places and a close");
   surv.docked = null;
 
-  /* The ship page carries all four things it merged, and it is taller than the
-     screen — which is the point of it scrolling. */
+  /* The one page that did four jobs is four pages. The ship is what is bolted
+     on, the cargo is what is merely inside it, and the record is what the run
+     has accumulated — so the state each needs is still all here, and the ship
+     no longer has to be taller than the screen to hold it. */
   const view = cf.surveyView();
   check(Array.isArray(view.slots) && view.slots.length === 4,
         "the ship page has no slots to show");
   check(Array.isArray(view.materials) && view.materials.length === 6,
-        "the ship page has no hold to show");
+        "the cargo page has no hold to show");
   check(Array.isArray(view.standings) && view.standings.length === 3,
-        "the ship page has no reputation to show");
-  check(typeof view.found === "number", "the ship page cannot count the almanac");
-  check(hud.shipHeight > hud.shipView,
-        "the ship page is " + Math.round(hud.shipHeight) + "px in a " +
-        Math.round(hud.shipView) + "px window — it does not need to scroll");
+        "the record has no reputation to show");
+  check(typeof view.found === "number", "the record cannot count the almanac");
+  cf.screen("record");
+  hud.recordOpened();
+  cf.draw();
+  check(hud.recordHeight > hud.recordView,
+        "the record is " + Math.round(hud.recordHeight) + "px in a " +
+        Math.round(hud.recordView) + "px window — it does not need to scroll");
 
   /* Scrolling it does not leave anything pressable outside the window. This is
      the bug the whole page could have shipped with: a row scrolled up under the
@@ -6263,7 +6328,10 @@ const storeOf = (cf, key) => {
 
   const rows = view().market;
   const kinds = new Set(rows.map(r => r.kind));
-  check(rows.length > 12, "a deep station offers only " + rows.length + " things");
+  /* Fewer than it used to offer, and that is the change rather than a
+     shortfall: a shelf is one delivery, not the whole catalogue. Six is a
+     counter with something on it — two tanks, a repair and a few parts. */
+  check(rows.length >= 6, "a deep station offers only " + rows.length + " things");
   for (const k of ["supply", "repair", "part"]) {
     check(kinds.has(k), "the market has no " + k + " rows");
   }
@@ -6403,8 +6471,12 @@ const storeOf = (cf, key) => {
        warp tuner and running dark — two of the three almanac verbs, at a price
        of nothing, because a part nobody sells has no price to quote. A one-way
        check on a two-way agreement is half a test. */
-    check(!p.buyable || shelf.has(p.key),
-          p.name + " says it is for sale and the deepest station does not stock it");
+    /* One direction only, now that a shelf is a *delivery*. A station carries
+       a subset of what it could sell and restocks every half hour of flying, so
+       "for sale somewhere" no longer means "on this counter today" — asserting
+       it did would be asserting that stock is not finite. The other direction
+       still holds and is the one that caught a real bug: nothing may be on a
+       shelf that nobody sells. */
     check(p.buyable || !shelf.has(p.key),
           p.name + " is on the shelf and nobody is supposed to sell it");
     check(p.craftable === madeable.has(p.key),

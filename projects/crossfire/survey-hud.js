@@ -1393,14 +1393,14 @@
     label("CASH", 24, 36, SIZE.cap, CASH_DIM, "left", 0.7, "0.18em");
     label(money(st.cash), 24, 62, SIZE.head, CASH, "left");
 
-    /* "CARGO HOLD", the same words the page uses, because it is now the same
-       thing: parts you are not flying ride in the hold and weigh against this
-       number. It read STORAGE while there were two of them, and two names for
-       one number is how a player ends up believing there are two. */
+    /* "CARGO", the same word the page uses. It read STORAGE while there were
+       two of these, and two names for one number is how a player ends up
+       believing there are two — and then "HOLD", which is a word from a trade
+       nobody here is in. Everything a ship carries is cargo. */
     if (st.hold) {
       const used = st.carried || 0, cap = st.hold;
       const full = used >= cap;
-      label("CARGO HOLD", 24, 92, SIZE.cap, VIOLET_DIM, "left", 0.7, "0.18em");
+      label("CARGO", 24, 92, SIZE.cap, VIOLET_DIM, "left", 0.7, "0.18em");
       label(used + " / " + cap, 24, 114, SIZE.val, full ? WARN : VIOLET, "left");
       if (full) {
         label("FULL — SELL IT", 24, 136, SIZE.cap, WARN, "left",
@@ -4989,15 +4989,20 @@
       const bx = cxShip + seats[i][0] - SBOX / 2;
       const by = cyShip + seats[i][1];
       const fitting = !!sl && sl.fit > 0;
-      const col = !sl ? VIOLET_LOW : fitting ? AMBER_DIM : rarity(sl.rarity).colour;
+      /* An empty slot takes the dim violet rather than the low one. `VIOLET_LOW`
+         is for a thing you cannot use — a tab that is not live, a part nobody
+         sells — and an empty slot is the opposite of that: it is the one place
+         on this page you are being invited to put something. Drawn at the same
+         weight as "unavailable", four of them read as four refusals. */
+      const col = !sl ? VIOLET_DIM : fitting ? AMBER_DIM : rarity(sl.rarity).colour;
       const over = carry && carry.over === i;
       slotBoxes.push({ x: bx, y: by, w: SBOX, h: SBOX, i });
 
       // The lead in to the hull, so a slot reads as part of the ship and not as
       // a box that happens to be near one.
       ctx.save();
-      ctx.strokeStyle = sl ? col : VIOLET_LOW;
-      ctx.globalAlpha = sl ? 0.4 : 0.22;
+      ctx.strokeStyle = sl ? col : VIOLET_DIM;
+      ctx.globalAlpha = sl ? 0.4 : 0.34;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(bx + (seats[i][0] < 0 ? SBOX : 0), by + SBOX / 2);
@@ -5006,10 +5011,10 @@
       ctx.restore();
 
       ctx.save();
-      ctx.globalAlpha = over ? 0.22 : sl ? 0.1 : 0.04;
+      ctx.globalAlpha = over ? 0.22 : sl ? 0.1 : 0.07;
       ctx.fillStyle = over ? CASH : col;
       ctx.fillRect(bx, by, SBOX, SBOX);
-      ctx.globalAlpha = over ? 1 : sl ? 0.85 : 0.45;
+      ctx.globalAlpha = over ? 1 : sl ? 0.85 : 0.62;
       ctx.strokeStyle = over ? CASH : col;
       ctx.lineWidth = over ? 2.5 : sl ? 1.5 : 1;
       // An empty slot is a dashed outline: an opening, rather than a box with
@@ -5024,8 +5029,8 @@
                      fitting ? AMBER_DIM : col, fitting ? 0.6 : 1);
       } else {
         ctx.save();
-        ctx.globalAlpha = 0.35;
-        ctx.strokeStyle = VIOLET_LOW;
+        ctx.globalAlpha = 0.55;
+        ctx.strokeStyle = VIOLET_DIM;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(bx + SBOX / 2 - 8, by + SBOX / 2);
@@ -5037,7 +5042,7 @@
       }
 
       fitText(sl ? sl.name : "EMPTY", bx + SBOX / 2, by + SBOX + 18, SIZE.cap,
-              col, "center", sl ? 1 : 0.5, ARM - 30, "0.06em");
+              col, "center", sl ? 1 : 0.7, ARM - 30, "0.06em");
       if (fitting) {
         fitText("FITTING  " + Math.ceil(sl.fit) + "s", bx + SBOX / 2,
                 by + SBOX + 36, SIZE.cap, AMBER_DIM, "center", 1, ARM - 30);
@@ -5098,15 +5103,9 @@
       ? (st.partWeight || 0) + " OF " + (st.hold || 0) + " CARGO SLOTS  \u00b7  " +
         (api.touchOnly ? "DRAG ONE INTO A SLOT"
                        : "DRAG ONE INTO A SLOT, OR CLICK IT")
-      : "NOTHING SPARE",
+      : "NONE",
       full.x + full.w - PAGE.PAD, partsY + 20, SIZE.cap,
       crate.length ? CASH_DIM : VIOLET_LOW, "right", 0.75, "0.08em");
-    if (!crate.length) {
-      fitText("A part you are not flying rides in the hold and weighs " +
-              "something. Stations sell them; the strange ones are a long way " +
-              "out.", full.x + PAGE.PAD, partsY + 46, SIZE.cap,
-              VIOLET_DIM, "left", 0.7, full.w - PAGE.PAD * 2);
-    }
     storeRows.length = 0;
     crate.forEach((e, i) => {
       const col = i % cw, row = Math.floor(i / cw);
@@ -5302,12 +5301,26 @@
     ctx.clip();
     tapClip({ x: 0, y: viewTop, w: SCREEN_W, h: viewH });
 
-    const CELL = api.touchOnly ? 104 : 96, CGAP = 8;
+    /* The cell is square and its size is the content's, not a constant. A name
+       is one or two words centred under the picture, and a word cannot be
+       wrapped — so a cell narrower than the longest single word in the hold
+       draws that word out through its own side. ELECTRONICS and OVERBURNER
+       both did. The 16px floor is the whole module's rule and shrinking the
+       caption would only move the lie somewhere else, so the square grows
+       instead: every cell the same size, wide enough for the widest word
+       aboard, and the row wraps sooner on a narrow screen.
+
+       Squares, not just wide boxes — the grid reads as a grid. */
+    const CGAP = 8;
+    const widestWord = cells.reduce((w, c) => Math.max(w,
+      String(c.name).split(" ").reduce(
+        (m, word) => Math.max(m, widthOf(word, SIZE.cap, "0.02em")), 0)), 0);
+    const CELL = Math.max(api.touchOnly ? 104 : 96, Math.ceil(widestWord) + 14);
     const cols = Math.max(1, Math.floor((full.w + CGAP) / (CELL + CGAP)));
     const lead = full.x + (full.w - (cols * CELL + (cols - 1) * CGAP)) / 2;
 
     if (!cells.length) {
-      fitText("The hold is empty.", full.x, viewTop + 34, SIZE.cap,
+      fitText("Nothing aboard.", full.x, viewTop + 34, SIZE.cap,
               VIOLET_DIM, "left", 0.6, full.w);
     }
 
@@ -5345,13 +5358,17 @@
                      on ? 0.4 : 1);
       }
 
-      // The count, in the corner a stack count goes in.
+      /* The count, top corner. It used to sit at the foot of the cell, on the
+         same line the name starts on — so ELECTRONICS and REACTOR CORE were
+         drawn straight through their own stack count. Up here it is clear of
+         both the picture and the name however long the name runs. */
       if (c.n > 1) {
-        label("×" + c.n, bx + CELL - 7, by + CELL - 24, SIZE.cap,
+        label("×" + c.n, bx + CELL - 7, by + 16, SIZE.cap,
               c.colour, "right", on ? 0.5 : 1);
       }
       /* Wrapped onto a second line rather than shrunk: `fitText` will not go
-         below 16px, so a long name inside a square can only ever be cut. */
+         below 16px, so a long name inside a square can only ever be cut. The
+         square is sized above to hold the longest word, so this always fits. */
       wrapLines(c.name, SIZE.cap, CELL - 10, "0.02em").slice(0, 2)
         .forEach((ln, k, a) => {
           label(ln, bx + CELL / 2, by + CELL - 24 + k * 17 + (a.length === 1 ? 9 : 0),
