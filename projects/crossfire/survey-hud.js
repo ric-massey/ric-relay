@@ -4231,6 +4231,26 @@
 
   const inBox = (b, x, y) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
 
+  /* ── pressing anywhere else ───────────────────────────────────────────────
+     A card that opens over a page has to shut when you press away from it, and
+     neither of the two that do could: the ship's part bubble and the cargo
+     grid's detail card each closed only on the card itself or on the tile that
+     opened it. Everywhere else on the page did nothing, and a popup you have to
+     find the way out of is a popup you resent.
+
+     There is no full-screen rectangle *after* the page, and there cannot be: the
+     tap list is last-drawn-first-served, so a catch-all registered last would
+     swallow every press on the page under it — pressing a second part would
+     close the first card instead of opening the second. That is the note this
+     replaces, and it was right about the order and wrong about the conclusion.
+
+     Registered *first* instead. Everything the page draws after this is found
+     before it, so a tile, a slot, the strip along the top and the card itself
+     all still win; only a press that lands on nothing at all reaches here. */
+  function closeOnMiss(act) {
+    tap({ x: 0, y: 0, w: api.SCREEN_W, h: api.SCREEN_H, act });
+  }
+
   /* Picked up, if there is anything under the point. Returns true when it took
      the gesture, so the page knows not to scroll with it. */
   HUD.grabAt = function (x, y) {
@@ -4943,7 +4963,7 @@
     const max = Math.max(0, total - view);
     shipPg.scroll = Math.max(0, Math.min(max, shipPg.scroll + dy));
   };
-  HUD.shipOpened = function () { shipPg.scroll = 0; };
+  HUD.shipOpened = function () { shipPg.scroll = 0; bubble = null; };
 
   /* ═══ THE SHIP ════════════════════════════════════════════════════════════
      What you are flying and what is bolted to it. Nothing else: no ore, no ice,
@@ -4962,16 +4982,18 @@
        about one particular ship and which one is the first thing it should
        say — and it is no longer the page the cargo lives on. */
     pageFrame(st.shipName || "SHIP", money(cash), "", SHIP_TONE);
+    // Before anything else the page draws. See `closeOnMiss`.
+    if (bubble) closeOnMiss(() => { bubble = null; });
 
-    const viewTop = PAGE.TOP - 4;
-    const viewH = SCREEN_H - viewTop - 16;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, viewTop, SCREEN_W, viewH);
-    ctx.clip();
-    tapClip({ x: 0, y: viewTop, w: SCREEN_W, h: viewH });
+    /* The ship does not scroll. It is what the page is *about* — the four
+       squares you are dragging towards — and it used to slide off the top the
+       moment you reached for anything in the second row of the tray, which is
+       the one moment you need to see where you are aiming.
 
-    let y = PAGE.TOP - shipPg.scroll;
+       So the hull and its slots are drawn first, pinned, outside any clip, and
+       the tray below gets a scrolling window of its own. Scrolling this page
+       means scrolling the parts aboard and nothing else. */
+    let y = PAGE.TOP;
     const gap = PAGE.STEP;
     const used = st.carried || 0;
     const crate = st.store || [];
@@ -5100,9 +5122,50 @@
             cxShip, cyShip + 84, SIZE.cap, AMBER_DIM, "center", 0.6, ARM * 1.6);
     y += BAND;
 
-
+    /* ── the tray's heading, pinned with the ship ─────────────────────────
+       The rule, the words and the capacity all stay put. They are the label on
+       the window rather than something inside it, and a heading that scrolls
+       away takes the one number you are scrolling *because of* with it — the
+       whole question is "have I room for this", and the answer was leaving the
+       screen exactly when you started asking. */
     // The tray draws its own heading and rule; a panel round it was a second
     // one saying the same words directly above.
+    /* A rule across the panel rather than a second frame: the parts are in the
+       same hold, and two frames would say they were not. */
+    const headY = y + matsH;
+    ctx.save();
+    ctx.strokeStyle = VIOLET_LOW;
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    ctx.moveTo(full.x + PAGE.PAD, headY + 2);
+    ctx.lineTo(full.x + full.w - PAGE.PAD, headY + 2);
+    ctx.stroke();
+    ctx.restore();
+    label("PARTS ABOARD", full.x + PAGE.PAD, headY + 20, SIZE.cap, CASH,
+          "left", 0.8, "0.14em");
+    /* What they are costing you, which is the whole reason they are on this
+       panel. Not a count — a count is what the tiles already are. */
+    /* "OR CLICK IT" was still here, on the desktop half of the line only, from
+       when a press fitted the part. A press opens the tile's description now —
+       see the tap below — so the line was promising a thing the page does not
+       do, and somebody following it presses a tile, gets a card, and concludes
+       the page is broken. One instruction, true on both. */
+    label(crate.length
+      ? (st.partWeight || 0) + " OF " + (st.hold || 0) + " CARGO SLOTS  \u00b7  " +
+        "DRAG ONE INTO A SLOT"
+      : "NONE",
+      full.x + full.w - PAGE.PAD, headY + 20, SIZE.cap,
+      crate.length ? CASH_DIM : VIOLET_LOW, "right", 0.75, "0.08em");
+
+    /* ── and now the part that scrolls ────────────────────────────────────
+       The tiles, and only the tiles, in a window that starts under the heading
+       and runs to the bottom of the page.
+
+       This is what the page is for: the ship is the thing you are aiming at and
+       the tray is the thing you are looking through, so the ship stays and the
+       tray moves. It was one scroll over the whole page — reach for anything in
+       the second row and the four squares you were dragging towards slid off
+       the top, which is the one moment you need to see where you are aiming. */
     /* ── what you own and are not flying ──────────────────────────────────────
        Boxes with pictures in them, laid out like the parts page, rather than a
        list of rows. Two reasons, and the second is the one that matters:
@@ -5116,32 +5179,16 @@
        says "press the button"; a tile with a picture on it says "this is an
        object, take it". The gesture was already there and nothing about the
        drawing invited it. */
-    /* A rule across the panel rather than a second frame: the parts are in the
-       same hold, and two frames would say they were not. */
-    const partsY = y + matsH;
+    const viewTop = headY + 26;
+    const viewH = SCREEN_H - viewTop - 16;
     ctx.save();
-    ctx.strokeStyle = VIOLET_LOW;
-    ctx.globalAlpha = 0.4;
     ctx.beginPath();
-    ctx.moveTo(full.x + PAGE.PAD, partsY + 2);
-    ctx.lineTo(full.x + full.w - PAGE.PAD, partsY + 2);
-    ctx.stroke();
-    ctx.restore();
-    label("PARTS ABOARD", full.x + PAGE.PAD, partsY + 20, SIZE.cap, CASH,
-          "left", 0.8, "0.14em");
-    /* What they are costing you, which is the whole reason they are on this
-       panel. Not a count — a count is what the tiles already are. */
-    /* "OR CLICK IT" was still here, on the desktop half of the line only, from
-       when a press fitted the part. A press opens the tile's description now —
-       see the tap below — so the line was promising a thing the page does not
-       do, and somebody following it presses a tile, gets a card, and concludes
-       the page is broken. One instruction, true on both. */
-    label(crate.length
-      ? (st.partWeight || 0) + " OF " + (st.hold || 0) + " CARGO SLOTS  \u00b7  " +
-        "DRAG ONE INTO A SLOT"
-      : "NONE",
-      full.x + full.w - PAGE.PAD, partsY + 20, SIZE.cap,
-      crate.length ? CASH_DIM : VIOLET_LOW, "right", 0.75, "0.08em");
+    ctx.rect(0, viewTop, SCREEN_W, viewH);
+    ctx.clip();
+    tapClip({ x: 0, y: viewTop, w: SCREEN_W, h: viewH });
+
+    const partsY = headY - shipPg.scroll;
+    y = partsY;
     storeRows.length = 0;
     crate.forEach((e, i) => {
       const col = i % cw, row = Math.floor(i / cw);
@@ -5210,9 +5257,17 @@
             } });
     });
 
-    /* And the bubble itself, drawn after the tiles so it sits over them. Above
-       the tile when there is room and below it when there is not, because a card
-       that runs off the top of a scrolling page is a card nobody reads. */
+    y += holdH - PAGE.HEAD + gap;
+
+    ctx.restore();
+    tapClipOff();
+
+    /* ── what the part is ────────────────────────────────────────────────
+       Outside the tray's scroll clip, so a card opened on the top row is not
+       sliced off by the window its tile lives in — the same rule the cargo
+       grid's card follows, and it became necessary here the moment the tray
+       stopped being the whole page. The anchor still moves with the scroll,
+       because the tile does. */
     if (bubble && crate.some(q => q.key === bubble.key)) {
       const e2 = crate.find(q => q.key === bubble.key);
       const bw2 = Math.min(360, full.w - PAGE.PAD * 2);
@@ -5238,34 +5293,42 @@
       lines.forEach((line, i) => {
         label(line, bx2 + 12, by2 + 48 + i * 20, SIZE.cap, VIOLET_DIM, "left", 0.9);
       });
-      label(e2.fitted ? "ON SHIP"
-                      : "DRAG IT INTO A SLOT" + (st.docked ? "" : "  ·  " +
-                        e2.secs + "s TO FIT"),
-            bx2 + 12, by2 + bh2 - 12, SIZE.cap, e2.fitted ? VIOLET_LOW : CASH,
-            "left", 0.85, "0.08em");
-      /* And what it weighs, on the same line at the other end. This is the one
-         card a player opens while deciding whether to keep carrying the thing,
-         so it is the one place the number has to be. */
-      if (e2.weight) {
-        label(e2.weight + " CARGO SLOTS" +
-              (e2.n > 1 ? "  ·  " + e2.held + " ALL TOLD" : ""),
-              bx2 + bw2 - 12, by2 + bh2 - 12, SIZE.cap, VIOLET_DIM,
+      /* The foot of the card: what it costs the hold on the right, and what
+         the part is doing — or how long it would take to fit — on the left.
+
+         Two labels on one baseline in a 360-wide box, and they used to collide.
+         "DRAG IT INTO A SLOT" and "3 CARGO SLOTS" want 348 of the 336 there
+         are, so the two were drawn straight through each other. The instruction
+         went: it is already printed along the top of this panel, two lines above
+         the card, and the card's job is the things the panel cannot say. What is
+         left is short — and measured anyway, because a longer weight line would
+         put the collision back. */
+      const foot = e2.weight
+        ? e2.weight + " CARGO SLOTS" +
+          (e2.n > 1 ? "  ·  " + e2.held + " ALL TOLD" : "")
+        : "";
+      const lead = e2.fitted ? "ON SHIP"
+                 : st.docked ? "" : e2.secs + "s TO FIT";
+      if (foot) {
+        label(foot, bx2 + bw2 - 12, by2 + bh2 - 12, SIZE.cap, VIOLET_DIM,
               "right", 0.8, "0.08em");
       }
-      /* The card itself closes it, and so does pressing the tile again. Not a
-         full-screen rectangle: the tap list is last-drawn-first-served, so a
-         catch-all registered after the tiles would swallow every press on them
-         and pressing a second part would close the first card instead of opening
-         the second. */
+      if (lead && widthOf(lead, SIZE.cap, "0.08em") +
+                  widthOf(foot, SIZE.cap, "0.08em") < bw2 - 32) {
+        label(lead, bx2 + 12, by2 + bh2 - 12, SIZE.cap,
+              e2.fitted ? VIOLET_LOW : CASH, "left", 0.85, "0.08em");
+      }
+      // The card itself closes it, the tile that opened it closes it, and so
+      // does anywhere else on the page — see `closeOnMiss` at the top of this.
       tap({ x: bx2, y: by2, w: bw2, h: bh2, act: () => { bubble = null; } });
     }
 
-    y += holdH - PAGE.HEAD + gap;
-
-    ctx.restore();
-    tapClipOff();
-
-    const total = (y + shipPg.scroll) - PAGE.TOP;
+    /* Measured from the top of the *tray's* window, not the page's. It used to
+       be `- PAGE.TOP`, which was right while the whole page scrolled and is an
+       over-count of one ship band now — the scrollbar would have claimed there
+       was 244px more to see than there is, and the tray would have scrolled
+       past its own last row. */
+    const total = (y + shipPg.scroll) - viewTop;
     shipPg.scroll = Math.max(0, Math.min(Math.max(0, total - viewH), shipPg.scroll));
     HUD.shipHeight = total;
     HUD.shipView = viewH;
@@ -5313,6 +5376,8 @@
 
     pageFrame("CARGO", (st.shipName || "") + "   ·   " + money(cash), "",
               SHIP_TONE);
+    // Before anything else the page draws. See `closeOnMiss`.
+    if (cargoPick) closeOnMiss(() => { cargoPick = null; });
 
     // How full, as a bar. "41 / 60" is a fact; this is the feeling of it.
     const frac = Math.min(1, used / Math.max(1, cap));

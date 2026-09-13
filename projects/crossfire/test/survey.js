@@ -7455,6 +7455,62 @@ const storeOf = (cf, key) => {
   cf.screen("ship");
   cf.draw();
 
+  /* ── the card that opens over a part ──────────────────────────────────────
+     Pressing a tile says what the part is. The card could only be shut again by
+     pressing the card, or the same tile a second time — every other press on
+     the page did nothing at all, and a popup you have to find the way out of is
+     a popup you resent.
+
+     The three answers that have to stay separate: a press on nothing shuts it, a
+     press on a *different* tile opens that one instead of shutting this one, and
+     a press on the same tile shuts it. The middle one is the reason there is no
+     full-screen rectangle drawn last — it would swallow the tiles. */
+  surv.store = { layerplate: 1, deepear: 1 };
+  surv.slots = [null, null, null, null];
+  cf.draw();
+  const tiles = hud.storeRows();
+  /* The card, and not the rectangle that catches a press beside it. Both are
+     wide and tall; the catcher is the width of the whole screen and the card
+     never is, so the upper bound is what tells them apart. Without it this
+     would have been asking "is a bubble open" by looking at the thing that
+     only exists while one is — true, but true for the wrong reason, and it
+     would have gone on passing if the card itself stopped being drawn. */
+  const cardUp = () => cf.taps().some(t => t.live && t.w > 300 && t.w < 900 &&
+                                           t.h > 70);
+  const press = (x, y) => { cf.tapHit(x, y); cf.draw(); };
+  const mid = t => [t.x + t.w / 2, t.y + 20];
+
+  check(!cardUp(), "a card was already open before anything was pressed");
+  press(...mid(tiles[0]));
+  check(cardUp(), "pressing a part opened no card");
+  press(...mid(tiles[1]));
+  check(cardUp(), "pressing a second part shut the card instead of swapping it");
+  press(...mid(tiles[1]));
+  check(!cardUp(), "pressing the same part again did not shut its card");
+  press(...mid(tiles[0]));
+  check(cardUp(), "the card would not open a second time");
+  /* Somewhere on the page with nothing else on it. Defined without reference to
+     the catcher, which is the whole point: a point outside every *control* —
+     every tile, slot, button and the card itself. The first version of this
+     asked for a point whose topmost tap was the widest rectangle on screen,
+     which is the catcher's own description; take the catcher away and the
+     search simply found the next widest thing, pressed it, and passed. A check
+     that cannot fail when the feature is removed is not a check. */
+  const controls = () => cf.taps().filter(t => t.live && t.w < 900);
+  let miss = null;
+  for (let y = 60; y < 700 && !miss; y += 6) {
+    for (let x = 30; x < 970 && !miss; x += 30) {
+      const on = controls().some(t => x >= t.x && x <= t.x + t.w &&
+                                      y >= t.y && y <= t.y + t.h);
+      if (!on) miss = [x, y];
+    }
+  }
+  check(!!miss, "there is nowhere on the ship page that is not a control");
+  if (miss) {
+    press(miss[0], miss[1]);
+    check(!cardUp(), "pressing the page away from the card did not shut it");
+  }
+
   console.log("  catalogue  all " + all.length + " parts on one page, each saying " +
               "how to get one · four squares to drop into · a part dragged from " +
               "storage lands in the slot it was dropped on");
