@@ -360,37 +360,32 @@
       .media .m { width: 96px; height: 72px; }
     }
   </style>
+  <link rel="stylesheet" href="../../assets/climbing-nav.css">
+  <link rel="stylesheet" href="../../assets/climbing.css">
 </head>
 <body>
-  <div class="topbar">
-    <div class="inner">
-      <a class="brand" href="../../index.html">RIC'S TERMINAL</a>
-      <span class="wing">· THE LOG</span>
-      <a class="up" href="../../climbing.html">↑ climbing</a>
-    </div>
-  </div>
+  <script src="../../assets/climbing-nav.js" data-nav="log"></script>
 
   <div class="wrap">
-    <div class="breadcrumb"><a href="../../climbing.html">Climbing</a> &rsaquo; The Log</div>
-    <h1>The Climbing Log</h1>
-    <p class="lede"><a href="add.html" id="addlink" style="white-space:nowrap">Log a day &rsaquo;</a></p>
+    <h1 class="ph">The log</h1>
 
-    <!-- The tally reads first now, then the day it is counting up to. The other
-         way round, the most recent trip pushed the numbers below the fold on a
-         phone and the page opened on one day rather than on the whole log. -->
-    <div class="ledger" id="ledger"></div>
-
-    <section class="recent" id="recent" aria-label="Most recent trip"></section>
-
-    <!-- Signed out this is a password box; signed in it is a line saying so.
-         Owner mode is a rendering hint — assets/owner.js says why at length. -->
-    <div id="ownerbar"></div>
+    <!-- The tally and the most recent day used to sit here as well as on the
+         room page. They live on the room page now, and the nav bar carries the
+         link to the add form — this page is the archive and nothing else. The
+         two elements stay in the markup, empty and hidden, because the render
+         below still writes to them and an absent node would throw. -->
+    <div class="ledger" id="ledger" hidden></div>
+    <section class="recent" id="recent" aria-label="Most recent trip" hidden></section>
 
     <div class="controls">
       <input type="search" class="search" id="search" autocomplete="off"
              aria-label="Search the logbook"
              placeholder="Search a route, crag, partner, date or grade — try “Cavers”, “Lane”, “V5”, “2023”">
-      <div class="tabs" role="tablist" aria-label="Views">
+      <!-- Most climbed and People moved to the stats page, Dream routes to the
+           list. Four tabs on one page meant three of them were invisible until
+           you knew to press them; they have names in the nav bar now. The
+           element stays so the tab wiring below still finds it. -->
+      <div class="tabs" role="tablist" aria-label="Views" hidden>
         <button class="tab" role="tab" id="tab-trips" aria-selected="true">Trips</button>
         <button class="tab" role="tab" id="tab-routes" aria-selected="false">Most climbed</button>
         <button class="tab" role="tab" id="tab-people" aria-selected="false">People</button>
@@ -401,6 +396,12 @@
 
     <p class="count" id="count"></p>
     <div id="view"></div>
+
+    <!-- Signed out this is a password box; signed in it is a line saying so.
+         It used to sit third from the top, so the first thing a stranger met
+         after the numbers was a password prompt. Owner mode is a rendering
+         hint — assets/owner.js says why at length. -->
+    <div id="ownerbar"></div>
 
     <footer>
       Built from <code>climbs.md</code> — grades are opinions, memory is worse.

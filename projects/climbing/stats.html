@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stats — Climbing</title>
+  <meta name="description" content="Grades over time, crags, partners and most-climbed routes.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%233a5a40'/><text y='.85em' font-size='68' x='16'>🧗</text></svg>">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/climbing-nav.css">
+  <link rel="stylesheet" href="../../assets/climbing.css">
+</head>
+<body>
+
+<script src="../../assets/climbing-nav.js" data-nav="stats"></script>
+
+<div class="wrap">
+  <h1 class="ph">Stats</h1>
+  <div id="view"></div>
+  <footer>Built from <code>climbs.md</code> and the days logged from a phone.</footer>
+</div>
+
+<script src="climbs-data.js"></script>
+<script src="climb-vocab.js?v=2"></script>
+<script src="climb-parse.js?v=2"></script>
+<script src="web-trips.js?v=2"></script>
+<script src="climb-ui.js?v=1"></script>
+<script>
+(async () => {
+  await WebTrips.merge(window.CLIMBING_DATA);
+  const DATA = window.CLIMBING_DATA;
+  const { esc, row, fmt, crag, band } = ClimbUI;
+  const view = document.getElementById("view");
+  if (!DATA) { view.innerHTML = '<p class="empty">No data.</p>'; return; }
+
+  const s = DATA.stats;
+
+  /* Everything below is counted off the merged trips rather than read out of
+     the prebuilt index, because the index is the archive only — and the home
+     page counts the merged set. Two numbers on one site disagreeing is the
+     failure this whole section keeps tripping over. */
+  const trips = DATA.trips.filter(t => t.date);
+  const people = new Set(), areas = new Set();
+  let routes = 0, sends = 0;
+  const byYear = {}, byArea = {}, byPerson = {};
+  const tally = {};
+
+  trips.forEach(t => {
+    routes += t.routes.length;
+    const y = t.date.slice(0, 4);
+    byYear[y] = byYear[y] || { days: 0, rope: null, boulder: null };
+    byYear[y].days++;
+    /* The crag name arrives spelled differently from the phone than from
+       climbs.md — "Obed" against "The Obed" — so both sides fold first. */
+    const a = t.area ? crag(t.area) : null;
+    if (a) { areas.add(a); byArea[a] = (byArea[a] || 0) + 1; }
+    t.people.forEach(p => { people.add(p); byPerson[p] = (byPerson[p] || 0) + 1; });
+
+    t.routes.forEach(r => {
+      if (r.outcome === "sent") sends++;
+      const key = (r.name || "").toLowerCase();
+      if (key) {
+        const e = tally[key] || (tally[key] = { name: r.name, grade: r.grade, n: 0, days: new Set(), sends: 0 });
+        e.n += r.repeats || 1;
+        e.days.add(t.date);
+        if (r.outcome === "sent") e.sends++;
+      }
+      if (r.outcome !== "sent" || !r.grade) return;
+      /* Days logged from the phone arrive without gradeRank, so rank by the
+         grade text when the number is missing rather than reading it as 0 —
+         otherwise a V6 send sorts below a 5.2. */
+      const rank = r.gradeRank || rankOf(r.grade);
+      const kind = r.gradeKind || (/^[Vv]\d/.test(r.grade) ? "boulder" : "rope");
+      const slot = kind === "boulder" ? "boulder" : "rope";
+      const cur = byYear[y][slot];
+      if (!cur || rank > cur.rank) byYear[y][slot] = { g: r.grade, rank, name: r.name };
+    });
+  });
+
+  function rankOf(g) {
+    let m = /^5\.(\d+)([a-d])?/.exec(g || "");
+    if (m) return 20 + (+m[1]) * 2 + (m[2] ? "abcd".indexOf(m[2]) * 0.4 : 0);
+    m = /^[Vv](\d+)/.exec(g || "");
+    if (m) return 20 + 20 + (+m[1]) * 2;
+    return 0;
+  }
+
+  const hardestRope = Object.values(byYear).map(v => v.rope).filter(Boolean)
+    .sort((a, b) => b.rank - a.rank)[0];
+  const hardestBoulder = Object.values(byYear).map(v => v.boulder).filter(Boolean)
+    .sort((a, b) => b.rank - a.rank)[0];
+
+  /* The headline numbers come from DATA.stats and nowhere else. Counting them
+     again here got 72 days and 183 sends against the home page's 74 and 207 —
+     build-data.py and WebTrips already agree on what counts as a day and what
+     counts as a send, and a second opinion is just two numbers that disagree.
+     The tallies below are the only things computed here, because nothing
+     precomputes them. */
+  const cells = [
+    [s.trips, "days out"],
+    [s.routes, "routes"],
+    [s.sends, "sends"],
+    [s.people, "partners"],
+    [Object.keys(byArea).length, "crags"],
+    [(DATA.todo || []).filter(t => !t.done).length, "on the list"],
+  ];
+
+  const years = Object.keys(byYear).sort();
+  const peak = Math.max(...years.map(y => Math.max(
+    (byYear[y].rope || { rank: 0 }).rank, (byYear[y].boulder || { rank: 0 }).rank)));
+  const floor = Math.min(...years.map(y => Math.max(
+    (byYear[y].rope || { rank: peak }).rank, (byYear[y].boulder || { rank: peak }).rank)));
+  /* Bar height encodes the grade, because the heading says grade. The first
+     version scaled it by days out, which made the chart tell a different story
+     from its own title. */
+  const barH = r => 34 + Math.round(((r - floor) / Math.max(1, peak - floor)) * 112);
+
+  const bars = (obj, n) => {
+    const top = Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
+    const max = top.length ? top[0][1] : 1;
+    return `<div class="bars">` + top.map(([k, v]) =>
+      `<div class="bl"><span class="t">${esc(k)}</span>` +
+      `<span class="b"><i style="width:${Math.round((v / max) * 100)}%"></i></span>` +
+      `<span class="v">${v}</span></div>`).join("") + `</div>`;
+  };
+
+  const most = Object.values(tally).sort((a, b) => b.n - a.n || b.days.size - a.days.size).slice(0, 8);
+
+  view.innerHTML =
+    `<section><div class="grid">` +
+      cells.map(([n, l]) => `<div class="c"><b>${esc(n)}</b><span>${esc(l)}</span></div>`).join("") +
+    `</div></section>` +
+
+    `<section><div class="head"><h2>Hardest each year</h2></div>` +
+      `<div class="arc" style="grid-template-columns:repeat(${years.length},1fr)">` +
+      years.map(y => {
+        const best = [byYear[y].rope, byYear[y].boulder].filter(Boolean).sort((a, b) => b.rank - a.rank)[0];
+        if (!best) return `<div class="yr"><div class="days">${byYear[y].days} days</div>` +
+                          `<div class="bar" style="height:6px"></div></div>`;
+        const c = band(best.g);
+        const hot = c === "g12" || c === "g13" || c === "g14";
+        return `<div class="yr">` +
+          `<div class="peak"${hot ? ` style="color:var(--${c})"` : ""}>${esc(best.g)}</div>` +
+          `<div class="route">${esc(best.name || "")}</div>` +
+          `<div class="days">${byYear[y].days} day${byYear[y].days === 1 ? "" : "s"}</div>` +
+          `<div class="bar" style="height:${barH(best.rank)}px${hot ? `;background:var(--${c})` : ""}"></div>` +
+        `</div>`;
+      }).join("") + `</div>` +
+      `<div class="arclabels" style="grid-template-columns:repeat(${years.length},1fr)">` +
+      years.map(y => `<div class="yrlabel">${y}</div>`).join("") + `</div>` +
+    `</section>` +
+
+    `<section><div class="head"><h2>Hardest ever</h2></div><div class="routes">` +
+      [hardestRope, hardestBoulder].filter(Boolean).map(b =>
+        row({ name: esc(b.name || ""), grade: b.g })).join("") +
+    `</div></section>` +
+
+    `<section><div class="head"><h2>Where</h2></div>${bars(byArea, 8)}</section>` +
+    `<section><div class="head"><h2>Who</h2></div>${bars(byPerson, 8)}</section>` +
+
+    `<section><div class="head"><h2>Most climbed</h2>` +
+      `<a class="more" href="index.html">The log →</a></div><div class="routes">` +
+      most.map(r => row({
+        name: esc(r.name), grade: r.grade,
+        meta: `${r.n}× · ${r.days.size} day${r.days.size === 1 ? "" : "s"}`,
+        /* Outline when he has been on it plenty and never sent it. */
+        sent: r.sends > 0 ? undefined : false,
+      })).join("") +
+    `</div></section>`;
+})();
+</script>
+
+</body>
+</html>

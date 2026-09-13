@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The List — Climbing</title>
+  <meta name="description" content="Ric's climbing tick list — what he wants to get on, by crag.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%233a5a40'/><text y='.85em' font-size='68' x='16'>🧗</text></svg>">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/climbing-nav.css">
+  <link rel="stylesheet" href="../../assets/climbing.css">
+</head>
+<body>
+
+<script src="../../assets/climbing-nav.js" data-nav="list"></script>
+
+<div class="wrap">
+  <h1 class="ph">The list</h1>
+
+  <input type="search" class="search" id="search" autocomplete="off"
+         aria-label="Search the list" placeholder="Route, crag, grade…">
+  <div class="filters" id="filters"></div>
+
+  <div id="view"></div>
+
+  <footer>
+    Built from <code>todo.md</code>. Crags that are spelled more than one way are folded together.
+  </footer>
+</div>
+
+<script src="climbs-data.js"></script>
+<script src="climb-ui.js?v=1"></script>
+<script>
+(() => {
+  const DATA = window.CLIMBING_DATA;
+  const { esc, row, crag } = ClimbUI;
+  const view = document.getElementById("view");
+  const state = { q: "", filter: "all" };
+
+  if (!DATA) {
+    view.innerHTML = '<p class="empty">climbs-data.js is missing — run <code>python3 build-data.py</code>.</p>';
+    throw new Error("no data");
+  }
+
+  const ALL = DATA.todo || [];
+
+  /* The chips the old page showed on every tab did nothing on this one — the
+     tick-list view never read them. These do. */
+  const FILTERS = [
+    ["all",     "Everything", () => true],
+    ["ropes",   "Ropes",      t => t.gradeKind !== "boulder"],
+    ["boulder", "Boulders",   t => t.gradeKind === "boulder"],
+    ["trad",    "Trad",       t => /trad/i.test(t.style || "")],
+    ["tried",   "Been on it", t => !!t.tried],
+    ["done",    "Done",       t => t.done],
+  ];
+
+  function renderFilters() {
+    document.getElementById("filters").innerHTML = FILTERS.map(([id, label, fn]) => {
+      const n = ALL.filter(t => (id === "done" ? true : !t.done) && fn(t)).length;
+      return `<button data-f="${id}"${state.filter === id ? ' class="on"' : ""}>` +
+             `${esc(label)} ${n}</button>`;
+    }).join("");
+  }
+
+  function render() {
+    renderFilters();
+    const test = (FILTERS.find(f => f[0] === state.filter) || FILTERS[0])[2];
+    const q = state.q.trim().toLowerCase();
+
+    let rows = ALL.filter(t => (state.filter === "done" ? t.done : !t.done) && test(t));
+    if (q) rows = rows.filter(t =>
+      [t.name, t.grade, t.location, t.style].join(" ").toLowerCase().includes(q));
+
+    if (!rows.length) {
+      view.innerHTML = '<p class="empty">Nothing on the list matches that.</p>';
+      return;
+    }
+
+    /* Grouped by crag, easiest first inside each — so the page answers "I am at
+       the Motherload on Saturday, what do I get on", which the old flat list
+       in typed-in order could not. */
+    const groups = new Map();
+    rows.forEach(t => {
+      const parts = String(t.location || "").split(",").map(s => s.trim());
+      const c = crag(parts[0]) || "Elsewhere";
+      let wall = parts[1] || "";
+      if (/^(squamish|canada)$/i.test(wall)) wall = parts[0];
+      if (!wall && parts[0].includes(" - ")) wall = parts[0].split(" - ")[1];
+      if (!groups.has(c)) groups.set(c, []);
+      groups.get(c).push({ t, wall });
+    });
+
+    const order = [...groups.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+    const big = order.filter(g => g[1].length >= 3);
+    const small = order.filter(g => g[1].length < 3).flatMap(g => g[1]);
+    if (small.length) big.push(["Elsewhere", small]);
+
+    /* Two balanced columns on a wide screen: 80 routes in one column is a page
+       you scroll for a while, and a crag must never split across the fold. */
+    const cols = [[], []], h = [0, 0];
+    big.forEach(([c, items]) => {
+      const i = h[0] <= h[1] ? 0 : 1;
+      cols[i].push([c, items]);
+      h[i] += items.length + 1.6;
+    });
+
+    const groupHTML = ([c, items]) => {
+      items.sort((a, b) => (a.t.gradeRank || 0) - (b.t.gradeRank || 0));
+      return `<div class="grp"><div class="crag">${esc(c)} <i>· ${items.length}</i></div>` +
+        items.map(({ t, wall }) => {
+          const d = t.tried && t.tried.days;
+          const meta = d
+            ? `${d} day${d === 1 ? "" : "s"} on it`
+            : [t.style, wall, t.lengthFt ? `${t.lengthFt}ft` : null].filter(Boolean).join(" · ");
+          return row({
+            name: esc(t.name), grade: t.grade, meta,
+            /* Outline when he has been on it and not sent it. */
+            sent: t.done || !t.tried ? undefined : false,
+            star: t.done,
+          });
+        }).join("") + `</div>`;
+    };
+
+    view.innerHTML = `<p class="count">${rows.length} route${rows.length === 1 ? "" : "s"}</p>` +
+      `<div class="twocol">` +
+      cols.map(c => `<div class="col">${c.map(groupHTML).join("")}</div>`).join("") +
+      `</div>`;
+  }
+
+  document.getElementById("search").addEventListener("input", e => {
+    state.q = e.target.value; render();
+  });
+  document.getElementById("filters").addEventListener("click", e => {
+    const b = e.target.closest("[data-f]");
+    if (!b) return;
+    state.filter = b.dataset.f; render();
+  });
+
+  render();
+})();
+</script>
+
+</body>
+</html>

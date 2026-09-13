@@ -4,814 +4,227 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Climbing — Ric's Terminal</title>
-  <meta name="description" content="Ric's climbing & mountaineering ledger — projects, ticks, and objectives.">
+  <meta name="description" content="Ric's climbing ledger — days out, projects, and the tick list.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ric's Terminal">
   <meta property="og:title" content="Climbing — Ric's Terminal">
-  <meta property="og:description" content="Ric's climbing & mountaineering ledger — projects, ticks, and objectives.">
+  <meta property="og:description" content="Ric's climbing ledger — days out, projects, and the tick list.">
   <meta property="og:url" content="https://ricmassey.com/climbing.html">
   <meta property="og:image" content="https://ricmassey.com/assets/og-terminal.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Ric's Terminal — amber text on a black CRT screen">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="canonical" href="https://ricmassey.com/climbing.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%233a5a40'/><text y='.85em' font-size='68' x='16'>🧗</text></svg>">
-  <style>
-    :root {
-      --bar: #3a5a40;
-      --bar-dark: #2d4632;
-      --bg: #f4f1e9;
-      --card: #ffffff;
-      --ink: #26241f;
-      --soft: #6f6a5f;
-      --line: #e2ddd0;
-      --clay: #b14f2a;
-      /* These three set the smallest, most meaningful text on the page — the
-         star ratings and the sent/projecting tags are how you read the ledger.
-         All three were between 2.2:1 and 3.6:1 on their own backgrounds; these
-         clear AA while staying gold / green / orange. */
-      --star: #966400;
-      --sent: #217a40;
-      --proj: #9c5c00;
-      /* The fourth tag state was missed when the other three were fixed: it
-         only renders on a route with no goes on it yet, so it is off the page
-         most days and was never on screen to be caught. #7a7568 was 3.89:1 on
-         its own #efece4; #6e6a5e is 4.58:1 and still reads as the grey one
-         next to the green and the orange. */
-      --scope: #6e6a5e;
-    }
-
-    * { box-sizing: border-box; margin: 0; }
-
-    body {
-      background: var(--bg);
-      color: var(--ink);
-      font-family: "Helvetica Neue", Arial, sans-serif;
-      line-height: 1.55;
-      font-size: 15px;
-    }
-
-    a { color: var(--clay); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-
-    /* top bar */
-    .topbar { background: var(--bar); color: #eef3ee; }
-    .topbar .inner {
-      max-width: 940px; margin: 0 auto; padding: 0.7rem 1.25rem;
-      display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
-    }
-    .topbar .brand { color: #fff; font-weight: 800; letter-spacing: 0.16em; font-size: 0.85rem; text-decoration: none; }
-    .topbar .brand:hover { text-decoration: none; color: #d7e6d7; }
-    .topbar .wing { color: #b8ccbb; font-size: 0.85rem; letter-spacing: 0.16em; }
-    /* Mountain-Project-style tab bar */
-    .topbar .roomnav { margin-left: auto; display: flex; gap: 0.15rem; flex-wrap: wrap; align-items: center; }
-    .topbar .roomnav a, .topbar .roomnav .here {
-      color: #cfe0d1; font-size: 0.78rem; letter-spacing: 0.03em;
-      padding: 0.28rem 0.7rem; border-radius: 5px; text-decoration: none; white-space: nowrap;
-    }
-    .topbar .roomnav a:hover { color: #fff; background: rgba(255, 255, 255, 0.12); text-decoration: none; }
-    .topbar .roomnav .here { color: var(--bar); background: #fff; font-weight: 700; }
-
-    /* Room menu — the tab bar wrapped to three rows on a phone, eating the top
-       of the screen. effects.js injects the button; the bar keeps its own look. */
-    .roomnav-toggle { display: none; }
-    @media (max-width: 620px) {
-      .roomnav-toggle {
-        display: inline-flex; align-items: center; gap: 0.55rem;
-        min-height: 44px; padding: 0 0.8rem; margin-left: auto;
-        font: inherit; font-size: 0.78rem; letter-spacing: 0.03em;
-        color: #fff; background: rgba(255, 255, 255, 0.14);
-        border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 5px; cursor: pointer;
-      }
-      .roomnav-toggle[aria-expanded="true"] { color: var(--bar); background: #fff; border-color: #fff; font-weight: 700; }
-      .roomnav-toggle-bars {
-        position: relative; width: 15px; height: 11px;
-        border-top: 2px solid currentColor; border-bottom: 2px solid currentColor;
-      }
-      .roomnav-toggle-bars::after { content: ""; position: absolute; inset: calc(50% - 1px) 0 auto; border-top: 2px solid currentColor; }
-      .topbar .roomnav[data-roomnav] { display: none; }
-      .topbar .roomnav[data-roomnav].roomnav-open {
-        display: flex; flex-direction: column; align-items: stretch;
-        width: 100%; margin-left: 0; gap: 0.2rem; padding: 0.4rem 0 0.2rem;
-      }
-      .topbar .roomnav[data-roomnav].roomnav-open a,
-      .topbar .roomnav[data-roomnav].roomnav-open .here {
-        display: flex; align-items: center; min-height: 44px; padding: 0 0.8rem; font-size: 0.85rem;
-      }
-    }
-
-    /* rotating photo hero (area-photo banner) */
-    .hero { height: 300px; position: relative; overflow: hidden; background: #26241f; }
-    .hero .shot {
-      position: absolute; inset: 0; background-size: cover;
-      background-position: var(--focus, center);
-      opacity: 0; transition: opacity 1.4s ease;
-    }
-    .hero .shot.on { opacity: 1; }
-    .hero .label {
-      position: absolute; left: 0; bottom: 0; z-index: 2;
-      color: #fff; font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase;
-      padding: 0.4rem 0.8rem; margin: 0.9rem;
-      background: rgba(38, 36, 31, 0.55); border-radius: 5px; backdrop-filter: blur(2px);
-      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
-      border: 1px solid rgba(255,255,255,.24); font-family: inherit; cursor: pointer;
-    }
-    .hero .label:hover, .hero .label:focus-visible { background: rgba(38,36,31,.82); }
-    .hero .label:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
-    @media (max-width: 620px) {
-      .hero { height: 190px; }
-      .hero .shot { background-position: var(--focus-mobile, var(--focus, center)); }
-    }
-
-    .wrap { max-width: 940px; margin: 0 auto; padding: 1.6rem 1.25rem 4rem; }
-
-    .breadcrumb { color: var(--soft); font-size: 0.85rem; margin-bottom: 0.5rem; }
-    .breadcrumb a { color: var(--soft); }
-
-    .welcome { color: var(--soft); margin-bottom: 1.4rem; }
-
-    h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.01em; }
-
-    /* stat strip */
-    .ledger { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin: 1.2rem 0 2rem; background: var(--card); flex-wrap: wrap; }
-    .ledger .cell { flex: 1; min-width: 120px; padding: 0.7rem 1rem; border-right: 1px solid var(--line); }
-    .ledger .cell:last-child { border-right: none; }
-    .ledger .n { font-size: 1.4rem; font-weight: 700; line-height: 1.2; }
-    .ledger .sub { color: var(--ink); font-size: 0.78rem; line-height: 1.3; }
-    .ledger .sub:empty { display: none; }
-    .ledger .l { color: var(--soft); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
-
-    h2 {
-      font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.1em;
-      color: var(--bar); border-bottom: 2px solid var(--bar); padding-bottom: 0.35rem;
-      margin: 2rem 0 0.2rem;
-    }
-
-    /* ── foldable sections ──
-       Projects, dream routes and the tick list are three long lists stacked
-       under the one thing most visits actually want, which is what happened
-       most recently. They fold. <details> rather than a script, so the state
-       is the browser's problem, it works with the keyboard for free, and
-       ctrl-F still finds what is inside an open one.
-
-       The summary has to keep looking exactly like the h2 it replaces, or the
-       page grows two kinds of heading. */
-    details.fold { margin: 2rem 0 0; }
-    details.fold > summary {
-      font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.1em;
-      color: var(--bar); border-bottom: 2px solid var(--bar); padding-bottom: 0.35rem;
-      margin-bottom: 0.2rem; cursor: pointer; list-style: none;
-      display: flex; align-items: center; gap: 0.5rem; min-height: 44px;
-    }
-    details.fold > summary::-webkit-details-marker { display: none; }
-    details.fold > summary::after {
-      content: "▸"; margin-left: auto; font-size: 0.85rem; transition: transform 0.15s ease;
-    }
-    details.fold[open] > summary::after { transform: rotate(90deg); }
-    details.fold > summary:hover { color: var(--bar-dark); }
-    details.fold > summary:focus-visible { outline: 2px solid var(--bar); outline-offset: 2px; }
-    /* How many are folded away, so the heading still tells you something when
-       it is shut. */
-    details.fold > summary .fold-n {
-      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
-      color: var(--soft); text-transform: none;
-    }
-
-    /* ── next day out ──
-       Read from the training plan, which is where the answer already lives. */
-    .nextout {
-      display: flex; align-items: baseline; gap: 0.5rem 0.9rem; flex-wrap: wrap;
-      margin: 1.15rem 0; padding: 0.75rem 0.9rem;
-      background: var(--card); border: 1px solid var(--line);
-      border-left: 5px solid var(--clay); border-radius: 6px;
-    }
-    .nextout .k {
-      color: var(--clay); font-size: 0.69rem; font-weight: 800;
-      letter-spacing: 0.08em; text-transform: uppercase;
-    }
-    .nextout .when { font-weight: 700; }
-    .nextout .where { color: var(--clay); font-weight: 700; }
-    .nextout .what { color: var(--soft); font-size: 0.82rem; }
-    .nextout .away { margin-left: auto; color: var(--soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
-    @media (max-width: 620px) { .nextout .away { margin-left: 0; flex-basis: 100%; } }
-
-    /* route table */
-    .routes { background: var(--card); border: 1px solid var(--line); border-top: none; border-radius: 0 0 8px 8px; }
-    .route {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 0.6rem 1rem;
-      align-items: center;
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid var(--line);
-    }
-    .route:last-child { border-bottom: none; }
-    .route .name { font-weight: 600; }
-    .route .loc { color: var(--soft); font-size: 0.83rem; }
-    .route .stars { color: var(--star); font-size: 0.85rem; white-space: nowrap; letter-spacing: 0.05em; }
-    .route .grade {
-      font-weight: 700; font-size: 0.9rem; background: var(--bg);
-      border: 1px solid var(--line); border-radius: 5px; padding: 0.1rem 0.5rem; white-space: nowrap;
-    }
-
-    /* status tag (finished shows a different tag) */
-    .tag {
-      display: inline-block; font-size: 0.69rem; font-weight: 700;
-      letter-spacing: 0.08em; text-transform: uppercase;
-      padding: 0.12rem 0.5rem; border-radius: 999px; margin-left: 0.5rem; vertical-align: middle;
-    }
-    .tag.sent { background: #e3f4e8; color: var(--sent); border: 1px solid #bde3c8; }
-    .tag.projecting { background: #fbefd8; color: var(--proj); border: 1px solid #f0d9a8; }
-    .tag.scoping { background: #efece4; color: var(--scope); border: 1px solid #ddd7c8; }
-
-    .empty { padding: 1.1rem 1rem; color: var(--soft); font-style: italic; }
-
-    /* links down into the full log */
-    .jump { display: flex; gap: .5rem; flex-wrap: wrap; margin: 1.4rem 0 .2rem; }
-    .jump a {
-      font-size: .82rem; font-weight: 700; padding: .42rem .85rem;
-      border: 1px solid var(--line); border-radius: 999px; background: var(--card);
-    }
-    .jump a:hover { border-color: var(--bar); color: var(--bar); text-decoration: none; }
-
-    /* the day's routes, grouped under the wall they were on */
-    .route .wallname {
-      color: var(--soft); font-size: 0.69rem; text-transform: uppercase;
-      letter-spacing: .08em; margin-bottom: .15rem;
-    }
-    .route .fav { color: var(--star); }
-    .route .when { color: var(--soft); font-size: .78rem; white-space: nowrap; }
-    .daynote { padding: 0 1rem 0.85rem; color: var(--soft); font-size: .84rem; white-space: pre-wrap; }
-    .daynote:empty { display: none; }
-
-    /* the most recent day: where, then how it went, then the climbs */
-    .dayhead { padding: 0.9rem 1rem 0.85rem; border-bottom: 1px solid var(--line); background: #f8fbf7; }
-    .dayplace { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
-    .daymeta { color: var(--soft); font-size: 0.84rem; margin-top: 0.1rem; }
-    .daystory { margin-top: 0.55rem; font-size: 0.88rem; white-space: pre-wrap; }
-    .daylink { display: inline-block; margin-top: 0.6rem; font-size: 0.8rem; font-weight: 700; }
-    .dayclip { margin-top: 0.7rem; border-radius: 8px; overflow: hidden; background: #000; }
-    .dayclip video, .dayclip img { display: block; width: 100%; max-height: 58vh; object-fit: contain; }
-    .daycap { margin-top: 0.35rem; font-size: 0.8rem; color: var(--soft); }
-
-    /* Compact rows — projects and objectives are lists you scan, not read.
-       One line per route, and it has to stay one line on a phone. */
-    .routes.compact .route {
-      grid-template-columns: 1fr auto; gap: .1rem .6rem; padding: .45rem .8rem;
-    }
-    .routes.compact .route .line1 {
-      display: flex; align-items: baseline; gap: .4rem; flex-wrap: wrap; min-width: 0;
-    }
-    .routes.compact .route .name { font-size: .92rem; }
-    /* the crag sits on its own line above the route, not beside it */
-    .routes.compact .route .wallname { flex: 0 0 100%; margin: 0; }
-    .routes.compact .route .grade { font-size: .8rem; padding: .02rem .4rem; }
-    .routes.compact .route .tag { margin-left: 0; }
-    .routes.compact .route .when { font-size: .72rem; }
-
-    /* star first, and let it sit outside the name so the column stays aligned */
-    .routes.compact .route.starred { background: #fdfaf1; }
-    .routes.compact .route.starred .fav { font-size: .9rem; }
-
-    @media (max-width: 620px) {
-      /* On a phone this is a list you thumb through, so each route gets one
-         tight line for the name and one small line for where it is. */
-      .routes.compact .route { padding: .34rem .6rem; gap: 0; }
-      .routes.compact .route .line1 { gap: .32rem; line-height: 1.25; }
-      .routes.compact .route .name { font-size: .86rem; }
-      .routes.compact .route .grade { font-size: .72rem; }
-      .routes.compact .route .wallname {
-        font-size: 0.69rem; max-width: 100%;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      }
-      .routes.compact .route .tag { font-size: 0.69rem; padding: .04rem .34rem; letter-spacing: .05em; }
-      .routes.compact .route .when { display: none; }
-    }
-
-    footer { margin-top: 3rem; color: var(--soft); font-size: 0.82rem; border-top: 1px solid var(--line); padding-top: 1rem; }
-
-    /* The board log is off the menus, but the door should be easy to find. */
-    .woodshed { margin: 1.4rem 0 0; text-align: center; }
-    .woodshed a {
-      display: inline-flex; align-items: center; gap: .5rem;
-      padding: .6rem 1.15rem; border: 1px solid var(--line); border-radius: 12px;
-      background: var(--card); color: var(--bar);
-      font-size: .82rem; font-weight: 600; letter-spacing: .08em; text-transform: lowercase;
-      text-decoration: none;
-      transition: border-color .2s ease, background .2s ease, color .2s ease;
-    }
-    .woodshed a::after { content: "↗"; font-size: .9em; opacity: .7; }
-    .woodshed a:hover, .woodshed a:focus-visible {
-      border-color: var(--bar); background: var(--bar); color: var(--bg);
-    }
-    .woodshed a:hover::after, .woodshed a:focus-visible::after { opacity: 1; }
-
-    /* Hidden "send" celebration — no visible control or permanent UI. */
-    .send-celebration {
-      position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center;
-      pointer-events: none; visibility: hidden; overflow: hidden;
-    }
-    .send-celebration.go { visibility: visible; }
-    .send-word {
-      position: relative; z-index: 2; padding: .5rem 1rem; border: 2px solid rgba(255,255,255,.8);
-      border-radius: 6px; color: #fff; background: rgba(45,70,50,.86);
-      box-shadow: 0 5px 30px rgba(0,0,0,.28); font-size: clamp(1.7rem,8vw,4rem);
-      font-weight: 900; letter-spacing: .16em; text-indent: .16em; opacity: 0;
-    }
-    .send-celebration.go .send-word { animation: send-word 1.5s ease-out both; }
-    .chalk {
-      position: absolute; left: 50%; top: 50%; width: var(--size); height: var(--size);
-      border-radius: 50%; background: rgba(255,255,255,var(--alpha));
-      box-shadow: 0 0 7px rgba(255,255,255,.65); opacity: 0;
-    }
-    .send-celebration.go .chalk { animation: chalk-burst 1.25s cubic-bezier(.16,.72,.28,1) var(--delay) both; }
-    @keyframes send-word {
-      0% { opacity: 0; transform: scale(.7) rotate(-2deg); }
-      18%,72% { opacity: 1; transform: scale(1.04) rotate(0); }
-      100% { opacity: 0; transform: scale(1); }
-    }
-    @keyframes chalk-burst {
-      0% { opacity: 0; transform: translate(-50%,-50%) scale(.2); }
-      14% { opacity: .9; }
-      100% { opacity: 0; transform: translate(calc(-50% + var(--x)),calc(-50% + var(--y))) scale(1.8); }
-    }
-
-    @media (max-width: 620px) {
-      .route { grid-template-columns: 1fr auto; }
-      .route .stars { grid-column: 1 / -1; }
-      .topbar .roomnav { width: 100%; margin-left: 0; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .send-celebration.go .send-word { animation: send-word 1.5s steps(1,end) both; }
-      .send-celebration .chalk { display: none; }
-    }
-  </style>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/climbing-nav.css">
+  <link rel="stylesheet" href="assets/climbing.css">
 </head>
 <body>
-  <div class="topbar">
-    <div class="inner">
-      <a class="brand" href="index.html">RIC'S TERMINAL</a>
-      <span class="wing">· CLIMBING LEDGER</span>
-      <nav class="roomnav" aria-label="Terminal rooms">
-        <a href="index.html">terminal</a>
-        <a href="orrin.html">orrin</a>
-        <a href="psyche.html">psyche</a>
-        <span class="here" aria-current="page">climbing</span>
-        <a href="training.html">training</a>
-        <a href="exploration.html">exploration</a>
-        <a href="gaming.html">gaming</a>
-        <a href="workbench.html">workbench</a>
-        <a href="captures.html">captures</a>
-      </nav>
-    </div>
-  </div>
 
-  <div class="hero" id="hero">
-    <!-- Focal points follow Ric, rather than the geometric center of each photo. -->
-    <!-- Only the first shot carries a background-image. The other five are
-         `data-shot` and get fetched on an idle callback after the page is
-         usable — inline background-images on always-present divs made the
-         browser pull all six (2.7 MB) before anything rendered, even though
-         only one is ever visible. To swap a photo, edit the path in place. -->
-    <div class="shot on" aria-hidden="true" style="--focus:72% 52%;--focus-mobile:72% 50%;background-image:url('photos/climbing-01.jpg')"></div>
-    <div class="shot" aria-hidden="true" data-shot="photos/climbing-02.jpg" style="--focus:47% 46%;--focus-mobile:46% 44%"></div>
-    <div class="shot" aria-hidden="true" data-shot="photos/climbing-03.jpg" style="--focus:48% 50%;--focus-mobile:48% 48%"></div>
-    <div class="shot" aria-hidden="true" data-shot="photos/climbing-05.jpg" style="--focus:63% 49%;--focus-mobile:63% 47%"></div>
-    <div class="shot" aria-hidden="true" data-shot="photos/climbing-06.jpg" style="--focus:49% 51%;--focus-mobile:49% 50%"></div>
-    <div class="shot" aria-hidden="true" data-shot="photos/climbing-07.jpg" style="--focus:69% 52%;--focus-mobile:69% 50%"></div>
-    <button class="label" id="hero-toggle" type="button" aria-pressed="false" title="Pause the climbing-photo rotation">Ric on the wall · click to pause</button>
-  </div>
+<script src="assets/climbing-nav.js" data-nav="home"></script>
 
+<!-- The headline sits ON the photo rather than after it: the old page spent a
+     whole phone screen on a picture and then started the page underneath it. -->
+<header class="hero" id="hero">
   <div class="wrap">
-    <div class="breadcrumb"><a href="index.html">All Areas</a> &rsaquo; Ric's Ticks &amp; Projects</div>
-    <h1>Climbing &amp; Mountaineering</h1>
-    <p class="welcome">a record of my experiences outside!</p>
-
-    <!-- Filled from assets/crag-plan.json, which the training exporter writes.
-         Hidden until it has an answer — an empty "next day out" is worse than
-         no row at all. -->
-    <div class="nextout" id="nextout" hidden></div>
-
-    <div class="ledger">
-      <div class="cell"><div class="n" id="n-sent">—</div><div class="l">Sends logged</div></div>
-      <div class="cell"><div class="n" id="n-proj">—</div><div class="l">Active projects</div></div>
-      <div class="cell"><div class="n" id="n-obj">—</div><div class="l">Dream routes</div></div>
-      <div class="cell">
-        <div class="n" id="n-hard">—</div>
-        <div class="sub" id="n-hard-name"></div>
-        <div class="l">Hardest send</div>
-      </div>
-      <div class="cell">
-        <div class="n" id="n-days">—</div>
-        <div class="sub" id="n-days-span"></div>
-        <div class="l">Days logged outside</div>
-      </div>
-      <div class="cell">
-        <div class="n" id="n-top-route">—</div>
-        <div class="sub" id="n-top-route-name"></div>
-        <div class="l">Most climbed route</div>
-      </div>
-      <div class="cell">
-        <div class="n" id="n-top-boulder">—</div>
-        <div class="sub" id="n-top-boulder-name"></div>
-        <div class="l">Most climbed boulder</div>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════
-         This page is filled from projects/climbing/climbs-data.js,
-         which build-data.py generates from climbs.md and todo.md.
-         To add a climb, edit projects/climbing/climbs.md and run:
-             python3 projects/climbing/build-data.py
-         Don't hand-edit the route lists below — they're replaced on load.
-         ═══════════════════════════════════════════════════ -->
-
-    <div class="jump">
-      <a href="projects/climbing/index.html">Browse the full log →</a>
-      <a href="projects/climbing/gallery.html">Photos &amp; video →</a>
-    </div>
-
-    <h2>Most Recent Day Out</h2>
-    <div class="routes" id="recent"><div class="empty">Loading the ledger…</div></div>
-
-    <details class="fold" id="fold-projects">
-      <summary>Current Projects <span class="fold-n" id="fold-n-projects"></span></summary>
-      <div class="routes compact" id="projects"></div>
-    </details>
-
-    <details class="fold" id="fold-objectives">
-      <summary>Dream Routes <span class="fold-n" id="fold-n-objectives"></span></summary>
-      <div class="routes compact" id="objectives"></div>
-    </details>
-
-    <details class="fold" id="fold-ticks">
-      <summary>Recent Ticks <span class="fold-n" id="fold-n-ticks"></span></summary>
-      <div class="routes" id="ticks"></div>
-    </details>
-
-    <footer>Ric's personal climbing ledger · grades are opinions · stars are the ones that mattered</footer>
-    <p class="woodshed"><a href="projects/climbing/board.html">the woodshed</a></p>
+    <div class="kicker" id="kicker"></div>
+    <h1>Climbing</h1>
+    <div class="tally" id="tally"></div>
   </div>
+</header>
 
-  <div class="send-celebration" id="send-celebration" aria-live="polite" aria-atomic="true"></div>
+<div class="wrap">
+  <!-- Hidden until it has an answer. An empty "next out" is worse than none. -->
+  <div id="nextout"></div>
 
-  <script src="effects.js"></script>
-  <script src="projects/climbing/climbs-data.js"></script>
-  <script src="projects/climbing/climb-vocab.js?v=2"></script>
-  <script src="projects/climbing/climb-parse.js?v=2"></script>
-  <script src="projects/climbing/web-trips.js?v=2"></script>
-  <script src="projects/climbing/climb-media.js?v=2"></script>
-  <script>
-    // ── fill the ledger from climbs.md ──────────────────────────────
-    // Everything below reads projects/climbing/climbs-data.js. The deep log
-    // lives at projects/climbing/ — this page is the front of it.
-    (async () => {
-      const DATA = window.CLIMBING_DATA;
-      const el = (id) => document.getElementById(id);
-      if (!DATA) {
-        el("recent").innerHTML =
-          '<div class="empty">Ledger data missing — run <code>python3 projects/climbing/build-data.py</code>.</div>';
-        return;
-      }
+  <section>
+    <div class="head">
+      <h2>Last day out</h2>
+      <a class="more" href="projects/climbing/index.html" id="alldays">All days &rarr;</a>
+    </div>
+    <div id="lastday"></div>
+  </section>
+</div>
 
-      // Days logged from a phone, merged in before anything is drawn. This page
-      // is the front door, so "most recent day out" saying something three
-      // weeks stale is the most visible way the site can be wrong — and it was,
-      // because the merge only ever existed on the deep log page.
-      await WebTrips.merge(DATA);
-      /* What was filmed, not just what was climbed. Failing softly is the point:
-         a room page with no thumbnail is right, an error page is not. */
-      await ClimbMedia.load();
+<div class="band" id="band" hidden>
+  <div class="cap"><strong id="bandcap"></strong></div>
+</div>
 
-      /* ── the next day out ──
-         The training plan already knows: it schedules every crag day of the
-         year and names the venue. crag-plan.json is the 5 kB answer to that one
-         question, written by the training exporter, so this page does not pull
-         200 kB of sessions to read one line.
+<div class="wrap">
+  <footer>
+    Built from <code>climbs.md</code> — grades are opinions, memory is worse.
+    <span id="stamp"></span>
+  </footer>
+</div>
 
-         Deliberately quiet on failure. This is a nicety at the top of a page
-         whose actual content is the ledger below it, so if the file is missing
-         or the plan has run out of days, the row simply never appears. */
-      (async () => {
-        const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        let plan;
-        try {
-          const r = await fetch("assets/crag-plan.json", { cache: "no-cache" });
-          if (!r.ok) return;
-          plan = await r.json();
-        } catch (e) { return; }
+<script src="projects/climbing/climbs-data.js"></script>
+<script src="projects/climbing/climb-vocab.js?v=2"></script>
+<script src="projects/climbing/climb-parse.js?v=2"></script>
+<script src="projects/climbing/web-trips.js?v=2"></script>
+<script src="projects/climbing/climb-media.js?v=2"></script>
+<script>
+(async () => {
+  /* Both at once: one asks the log service what was climbed, the other what was
+     filmed. In sequence the page waited for the sum of two round trips. */
+  await Promise.all([
+    WebTrips.merge(window.CLIMBING_DATA),
+    ClimbMedia.load()
+  ]);
 
-        const today = iso(new Date());
-        const next = (plan.days || []).filter((d) => d.date >= today)[0];
-        if (!next) return;
+  const DATA = window.CLIMBING_DATA;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  if (!DATA) return;
 
-        /* "in 4 days" reads better than a date you have to count from, but the
-           date has to be there too — this is the thing you plan a week around. */
-        const days = Math.round(
-          (new Date(next.date + "T00:00:00") - new Date(today + "T00:00:00")) / 86400000);
-        const away = days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
-        const when = new Date(next.date + "T00:00:00").toLocaleDateString(undefined, {
-          weekday: "long", day: "numeric", month: "long"
-        });
-
-        const box = el("nextout");
-        box.innerHTML =
-          `<span class="k">Next day out</span>` +
-          `<span class="when">${esc(when)}</span>` +
-          `<span class="where">${esc(next.venue)}</span>` +
-          `<span class="what">${esc(next.title)}</span>` +
-          `<span class="away">${esc(away)}</span>`;
-        box.hidden = false;
-      })();
-
-      const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-      const fmtDate = (iso) => {
-        if (!iso) return "Undated";
-        const [y, m, d] = iso.split("-").map(Number);
-        return `${MONTHS[m - 1]} ${d}, ${y}`;
-      };
-      const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => (
-        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]
-      ));
-
-      // A route row in this page's Mountain-Project styling.
-      const row = ({ star, name, loc, tag, tagClass, when, grade }) => `
-        <div class="route${star ? " starred" : ""}">
-          <div class="line1">
-            ${loc ? `<div class="wallname">${esc(loc)}</div>` : ""}
-            ${star ? '<span class="fav" title="A favorite or a project">★</span>' : ""}
-            <span class="name">${esc(name)}</span>
-            ${grade ? `<span class="grade">${esc(grade)}</span>` : ""}
-            ${tag ? `<span class="tag ${tagClass}">${esc(tag)}</span>` : ""}
-          </div>
-          <span class="when">${esc(when || "")}</span>
-        </div>`;
-
-      const ranked = DATA.index.mostClimbed;
-      const sentRoutes = ranked.filter((r) => r.sends > 0);
-
-      /* A project is a route he's got on but hasn't sent.
-         The heading says CURRENT, and for a long time the list wasn't:
-         it sorted by star, then grade, then ascents, with nothing in it about
-         when. So eight things last touched in 2023 sat at the top and a 5.12
-         worked yesterday was thirty rows down, invisible. What makes a project
-         current is having been on it lately, so that leads — then the starred
-         ones, then the grade, to break the ties within a session. */
-      const projects = ranked
-        .filter((r) => r.attempts > 0 && r.sends === 0)
-        .sort((a, b) =>
-          String(b.lastDate || "").localeCompare(String(a.lastDate || "")) ||
-          Number(b.star) - Number(a.star) ||
-          b.gradeRank - a.gradeRank ||
-          b.ascents - a.ascents);
-
-      const hardestOf = (kind) => sentRoutes
-        .filter((r) => r.gradeKind === kind)
-        .reduce((best, r) => (!best || r.gradeRank > best.gradeRank ? r : best), null);
-      const hardest = hardestOf("rope");
-      const hardestBoulder = hardestOf("boulder");
-
-      el("n-sent").textContent = DATA.stats.sends;
-      el("n-proj").textContent = projects.length;
-      el("n-obj").textContent = DATA.stats.todoOpen;
-      el("n-days").textContent = DATA.stats.trips;
-
-      el("n-hard").textContent = [hardest && hardest.grade, hardestBoulder && hardestBoulder.grade]
-        .filter(Boolean).join(" · ") || "—";
-      el("n-hard-name").textContent = [hardest && hardest.name, hardestBoulder && hardestBoulder.name]
-        .filter(Boolean).join(" · ");
-
-      const dates = DATA.trips.filter((t) => t.date).map((t) => t.date).sort();
-      el("n-days-span").textContent = dates.length
-        ? `${dates[0].slice(0, 4)}–${dates[dates.length - 1].slice(0, 4)}`
-        : "";
-
-      // The route and the boulder he keeps coming back to. mostClimbed is already
-      // ranked by ascents, so the first of each kind is the answer.
-      const topOf = (kind) => ranked.find((r) => r.gradeKind === kind) || null;
-      const topRoute = topOf("rope");
-      const topBoulder = topOf("boulder");
-      const fillTop = (numId, nameId, entry) => {
-        el(numId).textContent = entry ? `${entry.ascents}×` : "—";
-        el(nameId).textContent = entry
-          ? `${entry.name}${entry.grade ? ` · ${entry.grade}` : ""}`
-          : "";
-      };
-      fillTop("n-top-route", "n-top-route-name", topRoute);
-      fillTop("n-top-boulder", "n-top-boulder-name", topBoulder);
-
-      // ── most recent day out ──
-      const latest = DATA.trips.find((t) => t.date);
-      if (latest) {
-        const routes = latest.routes.filter((r) => !r.unknown).map((r) => row({
-          star: r.star,
-          name: r.name,
-          loc: [r.region, r.wall].filter(Boolean).join(" › "),
-          tag: r.outcome === "attempt" ? "projecting" : (r.styles[0] || "sent"),
-          tagClass: r.outcome === "attempt" ? "projecting" : "sent",
-          when: r.repeats > 1 ? `×${r.repeats}` : "",
-          grade: r.grade,
-        })).join("");
-        const sent = latest.routes.filter((r) => !r.unknown && r.outcome === "sent").length;
-        const worked = latest.routes.filter((r) => !r.unknown && r.outcome === "attempt").length;
-        const summary = [
-          sent ? `${sent} sent` : "",
-          worked ? `${worked} worked` : "",
-          latest.pitches ? `${latest.pitches} pitches` : "",
-          latest.boulders ? `${latest.boulders} boulders` : "",
-        ].filter(Boolean).join(" · ");
-
-        /* ── the clip ──
-           The newest day plays its video here rather than only in the deep log,
-           because this is the page people actually land on and a send worth
-           filming is worth putting in front of them. Controls, muted, and no
-           autoplay — a page that starts making noise on its own gets closed.
-           Anything beyond the one lead clip stays in the log. */
-        function clipHTML(date) {
-          const m = ClimbMedia.feature(date);
-          if (!m) return "";
-          return `<div class="dayclip">${
-            m.kind === "video"
-              ? `<video src="${esc(m.src)}" controls playsinline preload="metadata"></video>`
-              : `<img src="${esc(m.src)}" alt="${esc(m.caption || m.route || "")}">`
-          }</div>${m.route || m.caption ? `<div class="daycap">${
-            [m.route ? `<strong>${esc(m.route)}</strong>` : "", esc(m.caption || "")].filter(Boolean).join(" — ")
-          }</div>` : ""}`;
-        }
-
-        // Where he went and how it went, then the climbs themselves.
-        el("recent").innerHTML = `
-          <div class="dayhead">
-            <div class="dayplace">${esc(latest.area || "")}</div>
-            <div class="daymeta">${esc(fmtDate(latest.date))}${
-              latest.people.length ? ` · with ${esc(latest.people.join(", "))}` : ""
-            }${summary ? ` · ${esc(summary)}` : ""}</div>
-            ${latest.notes ? `<div class="daystory">${esc(latest.notes)}</div>` : ""}
-            ${clipHTML(latest.date)}
-            <a class="daylink" href="projects/climbing/index.html#trip-${esc(latest.date)}">See this day in the log${
-              ClimbMedia.has(latest.date) ? " — and the rest of it" : ""} →</a>
-          </div>` + routes;
-      }
-
-      // ── current projects ──
-      el("projects").innerHTML = projects.slice(0, 8).map((r) => row({
-        star: r.star,
-        name: r.name,
-        loc: [r.wall, r.area].filter(Boolean).join(" · "),
-        tag: "projecting",
-        tagClass: "projecting",
-        /* "over 3 days" was the wrong second fact for a list that is now
-           ordered by recency — when you were last on it is the thing you're
-           scanning for. The number of goes stays; the day count is in the log. */
-        when: `${r.attempts} ${r.attempts === 1 ? "go" : "goes"}${
-          r.lastDate ? ` · ${fmtDate(r.lastDate)}` : ""}`,
-        grade: r.grade,
-      })).join("") || '<div class="empty">Nothing open right now.</div>';
-
-      // ── objectives, straight off the to-do list ──
-      // The ones he's already touched come first — those are the live ones.
-      const open = DATA.todo.filter((t) => !t.done)
-        .sort((a, b) =>
-          Number(Boolean(b.tried)) - Number(Boolean(a.tried)) ||
-          b.gradeRank - a.gradeRank);
-      el("objectives").innerHTML = open.slice(0, 10).map((t) => row({
-        star: Boolean(t.tried),
-        name: t.name,
-        loc: [t.style, t.location].filter(Boolean).join(" · "),
-        tag: t.tried ? "been on it" : "not yet",
-        tagClass: t.tried ? "projecting" : "scoping",
-        when: t.tried
-          ? `${t.tried.ascents} ${t.tried.ascents === 1 ? "go" : "goes"}`
-          : (t.pitches ? `${t.pitches}p` : ""),
-        grade: t.grade,
-      })).join("") + `<div class="daynote">${open.length > 10
-        ? `…and ${open.length - 10} more in <a href="projects/climbing/index.html">the dream list</a>.` : ""}</div>`;
-
-      // ── recent ticks ──
-      const ticks = [];
-      for (const trip of DATA.trips) {
-        if (!trip.date) continue;
-        for (const r of trip.routes) {
-          if (r.outcome !== "sent" || r.unknown) continue;
-          ticks.push({ ...r, date: trip.date });
-        }
-        if (ticks.length >= 12) break;
-      }
-      el("ticks").innerHTML = ticks.slice(0, 12).map((r) => row({
-        star: r.star,
-        name: r.name,
-        loc: [r.wall, r.area].filter(Boolean).join(" · "),
-        tag: r.styles[0] || "sent",
-        tagClass: "sent",
-        when: fmtDate(r.date),
-        grade: r.grade,
-      })).join("") || '<div class="empty">No sends logged yet.</div>';
-
-      /* A shut heading should still tell you how much is behind it. The counts
-         are what is actually rendered, not the totals — the lists are capped,
-         and "8" over a list of eight is honest where the full project count
-         would not be. */
-      const foldCount = (id, n) => { const e = el(id); if (e) e.textContent = n ? `(${n})` : "(none)"; };
-      foldCount("fold-n-projects", Math.min(projects.length, 8));
-      foldCount("fold-n-objectives", Math.min(open.length, 10));
-      foldCount("fold-n-ticks", Math.min(ticks.length, 12));
-    })();
-
-    // rotate the hero photos
-    const shots = document.querySelectorAll("#hero .shot");
-    const heroToggle = document.getElementById("hero-toggle");
-
-    // Pull the rest of the deck once the page is idle. The first rotation is
-    // 5s away, so they're all decoded long before anything needs them — and
-    // the initial load drops by ~2.3 MB.
-    const loadRestOfDeck = () => {
-      for (const shot of shots) {
-        if (!shot.dataset.shot) continue;
-        shot.style.backgroundImage = `url('${shot.dataset.shot}')`;
-        delete shot.dataset.shot;
-      }
-    };
-    if ("requestIdleCallback" in window) requestIdleCallback(loadRestOfDeck, { timeout: 2500 });
-    else setTimeout(loadRestOfDeck, 1200);
-
-    if (shots.length > 1) {
-      let i = 0;
-      let timer;
-      const advance = () => {
-        shots[i].classList.remove("on");
-        i = (i + 1) % shots.length;
-        shots[i].classList.add("on");
-      };
-      const start = () => { timer = window.setInterval(advance, 5000); };
-      start();
-      heroToggle.addEventListener("click", () => {
-        const paused = heroToggle.getAttribute("aria-pressed") === "true";
-        if (paused) {
-          start();
-          heroToggle.setAttribute("aria-pressed", "false");
-          heroToggle.textContent = "Ric on the wall · click to pause";
-        } else {
-          window.clearInterval(timer);
-          heroToggle.setAttribute("aria-pressed", "true");
-          heroToggle.textContent = "Gallery paused · click to resume";
-        }
-      });
+  /* ── grade bands ──
+     The densest token on the page, and until now every grade was the same grey
+     pill — so a 5.9 and a 5.14 looked identical in a list you scan by grade.
+     Light to dark as it gets harder, which needs no key next to it. */
+  function band(g) {
+    if (!g) return "easy";
+    let m = /^5\.(\d+)/.exec(g);
+    if (m) {
+      const n = +m[1];
+      return n >= 14 ? "g14" : n >= 13 ? "g13" : n >= 12 ? "g12"
+           : n >= 11 ? "g11" : n >= 10 ? "g10" : "easy";
     }
+    m = /^[Vv](\d+)/.exec(g);
+    if (m) {
+      const n = +m[1];
+      return n >= 8 ? "g13" : n >= 6 ? "g12" : n >= 4 ? "g11" : n >= 3 ? "g10" : "easy";
+    }
+    return "easy";
+  }
+  const grade = g => g ? `<span class="g ${band(g)}">${esc(g)}</span>` : "";
 
-    // Type "send" anywhere outside a form field for a little chalk cloud.
-    const sendCelebration = document.getElementById("send-celebration");
-    let sendBuffer = "";
-    let sendTimer;
-    const celebrateSend = () => {
-      window.clearTimeout(sendTimer);
-      sendCelebration.classList.remove("go");
-      sendCelebration.replaceChildren();
+  const MONTH = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function fmt(iso, long) {
+    const [y, m, d] = String(iso).split("-").map(Number);
+    if (!y) return esc(iso);
+    return long ? `${d} ${MONTH[m - 1]} ${y}` : `${d} ${MONTH[m - 1]}`;
+  }
 
-      const word = document.createElement("strong");
-      word.className = "send-word";
-      word.textContent = "SEND!";
-      sendCelebration.appendChild(word);
+  /* ── the hero ─────────────────────────────────────────
+     Four numbers, one of them the lead. The old ledger put seven equal cells in
+     one flex row: at 940px they crushed to about 130px each and "Cold Hard
+     Bitch · Slam Dunk · HARDEST SEND" became a six-line paragraph beside a
+     two-line "207 SENDS". Anything past four goes to the stats page. */
+  const s = DATA.stats;
+  const hardest = (DATA.index && DATA.index.hardest) || bestSend();
+  function bestSend() {
+    let best = null;
+    DATA.trips.forEach(t => t.routes.forEach(r => {
+      if (r.outcome !== "sent" || !r.grade || r.gradeKind === "boulder") return;
+      if (!best || (r.gradeRank || 0) > best.rank) best = { g: r.grade, rank: r.gradeRank || 0 };
+    }));
+    return best ? best.g : null;
+  }
+  const todoOpen = (DATA.todo || []).filter(t => !t.done).length;
+  $("tally").innerHTML = [
+    [s.trips, "days out", true],
+    [s.sends, "sends", false],
+    [hardest || "—", "hardest", false],
+    [todoOpen, "on the list", false],
+  ].map(([n, l, lead]) =>
+    `<div${lead ? ' class="lead"' : ""}><b>${esc(n)}</b><span>${esc(l)}</span></div>`).join("");
 
-      for (let i = 0; i < 28; i += 1) {
-        const angle = (Math.PI * 2 * i / 28) + (Math.random() - .5) * .35;
-        const distance = 90 + Math.random() * 210;
-        const particle = document.createElement("span");
-        particle.className = "chalk";
-        particle.style.setProperty("--x", `${Math.cos(angle) * distance}px`);
-        particle.style.setProperty("--y", `${Math.sin(angle) * distance}px`);
-        particle.style.setProperty("--size", `${3 + Math.random() * 10}px`);
-        particle.style.setProperty("--alpha", `${.35 + Math.random() * .55}`);
-        particle.style.setProperty("--delay", `${Math.random() * .12}s`);
-        sendCelebration.appendChild(particle);
-      }
+  /* The crags he actually goes to, biggest first — not a hand-typed list that
+     goes stale the first time he climbs somewhere new. */
+  const areaCount = {};
+  DATA.trips.forEach(t => { if (t.area) areaCount[t.area] = (areaCount[t.area] || 0) + 1; });
+  const areas = Object.entries(areaCount).sort((a, b) => b[1] - a[1]);
+  $("kicker").textContent = areas.slice(0, 4).map(a => a[0]).join(" · ");
 
-      void sendCelebration.offsetWidth;
-      sendCelebration.classList.add("go");
-      sendTimer = window.setTimeout(() => {
-        sendCelebration.classList.remove("go");
-        sendCelebration.replaceChildren();
-      }, 1700);
-    };
+  /* A hero photo that rotates is a hero photo you cannot art-direct. One shot,
+     chosen, with the focal point on him. */
+  $("hero").style.backgroundImage = "url('photos/climbing-05.jpg')";
 
-    // Type "board" to slip into the woodshed — the board log isn't in the menus.
-    let boardBuffer = "";
+  /* ── next day out ─────────────────────────────────────
+     From the crag plan, and only when there is one. */
+  try {
+    const plan = await (await fetch("assets/crag-plan.json", { cache: "no-store" })).json();
+    const next = (plan.days || []).map(d => d)
+      .filter(d => d.date >= new Date().toISOString().slice(0, 10))
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
+    if (next) {
+      const days = Math.round(
+        (new Date(next.date + "T12:00") - new Date(new Date().toDateString())) / 864e5);
+      const when = days <= 0 ? "Today" : days === 1 ? "Tomorrow"
+                 : days < 7 ? `In ${days} days` : fmt(next.date, true);
+      $("nextout").innerHTML =
+        `<div class="next"><span class="in">${esc(when)}</span>` +
+        `<span class="where">${esc(next.venue || "Out")}</span>` +
+        (next.title ? `<span class="what">${esc(next.title)}</span>` : "") +
+        `<span class="when">${esc(fmt(next.date, true))}</span></div>`;
+    }
+  } catch (e) { /* No plan file, no card. The page is correct either way. */ }
 
-    document.addEventListener("keydown", (event) => {
-      const target = event.target;
-      if (event.metaKey || event.ctrlKey || event.altKey || event.key.length !== 1 ||
-          target.matches("input, textarea, select, [contenteditable='true']")) return;
-      sendBuffer = `${sendBuffer}${event.key.toLowerCase()}`.slice(-4);
-      if (sendBuffer === "send") {
-        sendBuffer = "";
-        celebrateSend();
-      }
-      boardBuffer = `${boardBuffer}${event.key.toLowerCase()}`.slice(-5);
-      if (boardBuffer === "board") {
-        boardBuffer = "";
-        window.location.href = "projects/climbing/board.html";
-      }
-    });
-  </script>
+  /* ── the last day out ─────────────────────────────────
+     The media is HIS, off that day, from the log service — the page used to
+     show a stock photo next to a day it had nothing to do with. */
+  const latest = DATA.trips.find(t => t.date);
+  if (latest) {
+    $("alldays").textContent = `All ${s.trips} →`;
+
+    const media = ClimbMedia.feature(latest.date);
+    /* Phone clips are portrait. Cropped into a wide frame you got rock and sky
+       and no climber, so the frame follows the media, not the other way round. */
+    const figure = media
+      ? `<figure>${media.kind === "video"
+          ? `<video src="${esc(media.src)}" autoplay muted loop playsinline
+                    aria-label="Clip from ${esc(fmt(latest.date, true))}"></video>`
+          : `<img src="${esc(media.src)}" alt="From ${esc(fmt(latest.date, true))}">`}
+         <figcaption>${esc(fmt(latest.date))} &middot; ${esc(latest.area || "")}</figcaption></figure>`
+      : "";
+
+    /* Guidebook lines: name left, leader dots, grade hard right. The outcome
+       rides on the grade itself — filled sent, outline been on it — instead of
+       a third word racing the other two to the right edge. */
+    let wall = null;
+    const rows = latest.routes.map(r => {
+      const head = [r.region, r.wall].filter(Boolean).join(" · ");
+      const bar = head && head !== wall ? (wall = head,
+        `<div class="crag">${esc(head)}</div>`) : "";
+      const cls = band(r.grade) + (r.outcome === "sent" ? "" : " try");
+      return bar +
+        `<div class="rt"><span class="nm">${r.star ? '<span class="fav">★</span> ' : ""}` +
+        `${esc(r.name)}</span><span class="dot"></span>` +
+        (r.repeats > 1 ? `<span class="meta">×${r.repeats}</span>` : "") +
+        (r.grade ? `<span class="g ${cls}">${esc(r.grade)}</span>` : "") + `</div>`;
+    }).join("");
+
+    /* climbs.md hands back an array of note lines; a day logged from the phone
+       hands back one string. Both arrive here, so both are handled. */
+    const raw = latest.notes;
+    const note = Array.isArray(raw) ? raw.filter(Boolean).join(" ") : (raw || "");
+    $("lastday").innerHTML =
+      `<div class="day"><div>` +
+        `<div class="when">${esc(fmt(latest.date, true))}</div>` +
+        `<h3>${esc(latest.area || "Out")}</h3>` +
+        (latest.people.length ? `<div class="with">${esc(latest.people.join(", "))}</div>` : "") +
+        `<div class="routes">${rows}</div>` +
+        (note ? `<p style="margin-top:1.2rem">${esc(note)}</p>` : "") +
+        `<p style="margin-top:1rem"><a href="projects/climbing/index.html#trip-${esc(latest.date)}">` +
+        `See this day in the log →</a></p>` +
+      `</div>${figure}</div>`;
+  }
+
+  /* ── the photo band ───────────────────────────────────
+     One true sentence about where he actually climbs, and a picture of it. */
+  if (areas.length) {
+    const [topArea, n] = areas[0];
+    $("bandcap").textContent = `${n} of ${s.trips} days were at ${topArea}`;
+    $("band").style.backgroundImage = "url('photos/climbing-01.jpg')";
+    $("band").hidden = false;
+  }
+
+  const stamp = DATA.generated || DATA.builtAt;
+  if (stamp) $("stamp").textContent = ` Updated ${fmt(String(stamp).slice(0, 10), true)}.`;
+})();
+</script>
+
 </body>
 </html>
