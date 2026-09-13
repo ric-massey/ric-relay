@@ -186,6 +186,68 @@ document is about, so it is gone. The panel reads `REGION — UNKNOWN`; the char
 says nothing at all. What you charted is the only record of where you have been,
 and an empty region reads as empty on it because there is nothing in it.
 
+## THE WARRENS — a region you fly *inside*
+
+Every other region is a rule about what space contains. This one is a rule about
+the shape of the space itself: it is made of rock, and what you do in it is
+thread passages. Almost nothing else is allowed in — a world inside a cave makes
+no sense, a station in one has nobody to trade with, an asteroid field is rock
+inside rock. What it has instead is what you would actually hide in a cave:
+caches, and the ships that did not get out.
+
+**Rock is everywhere and the passage is the hole.** That sentence is the whole
+design and it took three attempts to arrive at, because the first two had it
+backwards — open space by default with masses of rock in it. However that was
+shaded, it came out as *bubbles*, and no drawing could fix it: a field of
+separate blobs seen from outside is a field of blobs. The player was never
+inside anything.
+
+### How a cave can be built a chunk at a time
+
+Chunks are 2,600 units, built independently from `(seed, cx, cy)` with no
+knowledge of their neighbours, so nothing can be carved by walking a path and
+remembering where it has been. The network is a **lattice** instead: a node per
+coarse cell at a hashed position, joined to the node east of it and, more often
+than not, the node south of it. Every link bows to a hashed side, so passages
+curve rather than running straight. Any point can ask which links might reach it
+by looking at the nine nodes around it, and two chunks either side of a line get
+the same answer because they are asking about the same nodes.
+
+Because the passages *are* the open space and the lattice is connected by
+construction, the region is explorable by definition — measured at 99.7%
+of open space reachable from outside, against 78% when it was noise alone.
+
+### Why there is no circle in it anywhere
+
+"Inside a passage" started as *distance to the centreline is less than the bore*.
+That makes a **tube**: a constant cross-section, two walls that are mirror images
+of each other, and ends that are literally circles. It is the shape of a pipe.
+
+The boundary is displaced by noise sampled **in the world** rather than along the
+passage, so a point on the left wall and the point opposite it ask different
+places and get different answers. The walls stop agreeing — one bulges into an
+alcove while the other runs straight past it — which is what the inside of a cave
+actually looks like.
+
+And the wall is **traced, not stamped**. Marching squares over the field, drawn
+as straight segments and flat polygons. Drawing rock as a union of discs gives a
+scalloped boundary at any scale; stroking a polyline gives round caps. Both are
+circles, and circles were the complaint.
+
+The width varies along a passage — a squeeze you have to line up for at 190
+units across, an ordinary run, and one node in seven opening into a chamber
+twelve hundred across. Each node carries its own bore and its own roughness, so
+some stretches are clean curves and others are bitten into.
+
+### The one thing that can never happen
+
+A hull dropped inside a mass cannot fly out of it: collision pushes it off each
+disc in turn and there is always another one behind. Measured before it was
+fixed — nine hundred units deep, three seconds of collision moved it
+ninety-three. Every teleport in the game now goes through `outOfRock`, and there
+is a catch-all in the collision pass besides, because it is the one failure
+nobody can play their way out of.
+
 ## What a region looks like
 
 Nothing about a region is ever said. What some of them do is *look* slightly
