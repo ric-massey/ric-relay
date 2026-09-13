@@ -112,8 +112,10 @@ below it, is what `projects`, `open <shortcut>`, `find` and the project branches
 `tree` read. Linking a project from its room is only half of shipping it — if it is not
 in `PROJECTS`, the terminal cannot see it at all. (`projects/how-big-everything-is/` is
 live and linked from Exploration and is missing from this array today; that is a bug, not
-a precedent.) The woodshed is the one deliberate exception: it stays out of `PROJECTS`
-and answers to its own `tension` / `kilter` / `woodshed` commands instead.
+(The boards page is the one deliberate exception: it stays out of `PROJECTS`
+and answers to its own `tension` / `kilter` / `boards` / `woodshed` commands instead.
+It is called Boards now; `woodshed` still works because that is what the
+easter-egg notes have told people to type for years.)
 
 
 Per-room nav treatments (class on the `<nav>`):

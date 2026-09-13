@@ -708,18 +708,24 @@ type Sydney's cat's name for a surprise!</div>
         return "shutting down signal...\nrestarting terminal.";
       },
       // ─── undocumented ───
-      // The woodshed isn't in the menus, but the boards answer to their names.
+      // The boards page isn't in the menus, but it answers to its own names.
+      // `woodshed` still works: it is what the page was called for years and
+      // it is what the easter-egg notes tell you to type.
       tension: () => {
         setTimeout(() => (location.href = "projects/climbing/board.html#tension"), 400);
-        return "opening the woodshed · Tension Board ...";
+        return "opening the boards · Tension Board ...";
       },
       kilter: () => {
         setTimeout(() => (location.href = "projects/climbing/board.html#kilter"), 400);
-        return "opening the woodshed · Kilter Board ...";
+        return "opening the boards · Kilter Board ...";
+      },
+      boards: () => {
+        setTimeout(() => (location.href = "projects/climbing/board.html"), 400);
+        return "opening the boards ...";
       },
       woodshed: () => {
         setTimeout(() => (location.href = "projects/climbing/board.html"), 400);
-        return "opening the woodshed ...";
+        return "opening the boards ...";
       },
       "404": () => {
         setTimeout(() => (location.href = "404.html?from=terminal"), 450);

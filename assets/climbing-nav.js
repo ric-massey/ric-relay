@@ -24,7 +24,7 @@
     ['list',  'To-do',    'projects/climbing/list.html'],
     ['stats', 'Stats',    'projects/climbing/stats.html'],
     ['media', 'Media',    'projects/climbing/gallery.html'],
-    ['board', 'Woodshed', 'projects/climbing/board.html'],
+    ['board', 'Boards',   'projects/climbing/board.html'],
   ];
 
   const esc = s => String(s).replace(/[&<>"]/g, c => (

@@ -38,7 +38,7 @@ static distortion treatment without the movement.
 
 - Type `send` anywhere outside a form field for a brief **SEND!** and chalk-cloud
   celebration. Reduced-motion visitors get the message without flying particles.
-- Type `board` to go straight to **the woodshed** (`projects/climbing/board.html`),
+- Type `board`, `boards` or `woodshed` to go straight to **Boards** (`projects/climbing/board.html`),
   the Kilter and Tension board log. It is kept out of every menu on purpose —
   board climbing is a thing you do in a garage, not a thing you announce. The only
   visible way in is the `the woodshed` button under the Climbing footer.
@@ -57,7 +57,7 @@ No prompt is required.
 | Siege Conductor | `66` | `COMMAND REJECTED // NICE TRY, PALPATINE` |
 | Starfield | `warp` | `NAV COMPUTER: THE SCENIC ROUTE IS FASTER` |
 | How Big Everything Is | `googol` | `THAT IS A 1 WITH A HUNDRED ZEROES // STILL NOT ON THE LADDER` |
-| The Woodshed (board log) | `beta` | `BETA RECEIVED // PULL HARDER` |
+| Boards (board log) | `beta` | `BETA RECEIVED // PULL HARDER` |
 
 ## Playful controls that are not hidden
 

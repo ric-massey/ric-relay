@@ -1212,7 +1212,9 @@
     const viewportSideInset = Math.ceil(width * .06);
     const viewportTopInset = Math.ceil(34 + height * .05);
     const viewportBottomInset = Math.ceil(height * .075);
-    const selectors = ".hero, .nextout:not([hidden]), .ledger, .routes, details.fold, .woodshed";
+    /* .ledger, details.fold and .woodshed were parts of the old climbing room
+       page and no longer exist anywhere; .tally, .next and .day replaced them. */
+    const selectors = ".hero, .next:not([hidden]), .tally, .day, .routes, .tiles, .grid";
     const features = [...document.querySelectorAll(selectors)].filter((feature) => {
       const rect = feature.getBoundingClientRect();
       return rect.width >= 140 && rect.height >= 42 && rect.bottom > 24 &&

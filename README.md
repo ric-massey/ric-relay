@@ -68,7 +68,7 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | `projects/autism-reflection.html` | Psyche | Long-form personal reflection on the DSM-5 autism criteria |
 | `projects/state-of-mind-line/` | Psyche | Animated bipolar mood-pattern visualization |
 | `projects/climbing/` | Climbing | The climbing data pipeline and the deep log: `climbs.md` → `build-data.py` → `climbs-data.js`, the full ledger at `index.html`, the photo-and-video `gallery.html`, and `add.html` for logging a day from a phone at the crag. See [`projects/climbing/readme.md`](projects/climbing/readme.md) |
-| `projects/climbing/board.html` | Climbing (unlisted) | "The Woodshed" — Kilter and Tension board logbook, pulled from the apps and drawn on the board itself |
+| `projects/climbing/board.html` | Climbing | "Boards" — Kilter and Tension board logbook, pulled from the apps and drawn on the board itself |
 | `projects/training/` | Training (room data) | Not a page — the plan exporter, the Cloudflare Worker that holds ticks, notes, runs and board ticks, and the Strava wiring. The planning app itself (`projects/training/index.html`) is **gitignored and never published**. See [`projects/training/README.md`](projects/training/README.md) |
 
 These are self-contained and may carry their own assets/fonts — that's fine; the
@@ -290,7 +290,7 @@ belong here.
   The page still bills itself as "runs, workouts and health telemetry" in its meta
   description and there is no health data anywhere — either find a source for it or stop
   claiming it.
-- **The boards** (`projects/climbing/board.html`, "the woodshed") are pulled, not
+- **The boards** (`projects/climbing/board.html`, "Boards", once "the woodshed") are pulled, not
   written. `pull-boards.py` reads the Kilter and Tension apps and writes `board-data.js`;
   usernames live in `board-accounts.json` (gitignored) and passwords in the macOS
   Keychain, never in this repo. `board-sync.plist` polls hourly and `board-tick.mjs`

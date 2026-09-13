@@ -736,7 +736,7 @@
         .then(r => r.ok ? r.json() : Promise.reject(r.status))
         .then(j => ({ days: j.days || {}, live: true }))
         .catch(() => ({ days: cachedLog() || {}, live: false }));
-      /* The board logbook, straight from the file the woodshed already reads.
+      /* The board logbook, straight from the file the Boards page already reads.
          It is a script that assigns a global rather than JSON, so it is fetched
          and the assignment sliced off — cheaper than loading 50KB of it into
          every page that only wants a few nights of it, and it keeps the
