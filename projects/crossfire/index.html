@@ -12196,9 +12196,20 @@
     /* Water and food almost always, and plenty of both when they are there. A
        station that cannot sell you water is a station that kills you, and
        finding one should be bad luck rather than a normal afternoon. */
+    /* Your own station always has both. Everywhere else it is 19 times out of
+       20, which is the "unlucky, not normal" the shelf is supposed to feel
+       like — but home is the one counter you cannot choose to walk past. You
+       start docked at it, you come back to it every time you die, and the
+       mode's opening beat sends you to it for water. One run in twenty where
+       that beat has nothing behind it is not bad luck, it is a broken start. */
+    const always = !!st.home;
+    /* The roll is drawn whether or not its answer is used, so every station
+       that is not home draws exactly what it drew before this line existed and
+       its shelf of parts is unchanged. */
+    const stocks = () => { const roll = R() < 0.95; return always || roll; };
     const out = { gen, parts: {},
-                  water: R() < 0.95 ? 3 + Math.floor(R() * 5) : 0,
-                  food:  R() < 0.95 ? 3 + Math.floor(R() * 5) : 0 };
+                  water: stocks() ? 3 + Math.floor(R() * 5) : 0,
+                  food:  stocks() ? 3 + Math.floor(R() * 5) : 0 };
     for (const m of MODULES) {
       if (!sellsIt(m) || m.deep > deep) continue;
       // Common things are usually in. The rare ones are why you fly to a
@@ -17122,7 +17133,13 @@
         for (const [kind, name, colour] of [["water", "WATER", ICE_C],
                                             ["food", "FOOD", "#ffcb42"]]) {
           const full = kind === "water" ? WATER_FULL : foodCap();
-          const room = Math.floor((full - surv[kind]) / full * 100);
+          /* Rounded up, not down. The row asks in whole percent and the tank
+             does not hold a whole number of them, so a tank 99.93% empty
+             offered 99 — and "fill it" left you 146 seconds short, every time,
+             for ever. `buySupply` clamps what it pours to the room that is
+             actually there, so asking for the extra percent can only ever
+             round the last sliver in; it cannot overfill or overcharge. */
+          const room = Math.ceil((full - surv[kind]) / full * 100);
           if (room <= 0) continue;
           /* What they have, in tankfuls, capped to the room in yours. A world
              has no shelf and no limit — it is a planet with weather on it. */

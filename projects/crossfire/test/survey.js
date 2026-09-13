@@ -887,9 +887,14 @@ const storeOf = (cf, key) => {
   const hullBefore = me.maxHull;
   surv.cash = 5000;
   const purse = surv.cash;
+  /* Measured, not assumed to be zero. A place buys a subset of the materials
+     now, so the sale above leaves whatever this station does not deal in still
+     aboard — and "the hold is empty" stopped being another way of saying
+     "buying a part does not touch the hold". */
+  const heldBefore = total();
   check(cf.buyPart("layerplate") === true, "could not buy a part with money in hand");
   check(surv.cash < purse, "buying a part did not spend any cash");
-  check(total() === 0, "buying a part took material out of the hold");
+  check(total() === heldBefore, "buying a part took material out of the hold");
   check(me.maxHull === hullBefore,
         "a part in storage changed the ship before it was fitted");
 
@@ -4289,9 +4294,16 @@ const storeOf = (cf, key) => {
   check(!!rare, "nowhere sells the strange ones");
 
   const cash0 = surv.cash;
-  check(view().onBuyPart("overburner") === true, "could not buy a part with cash");
+  /* Whatever is on this counter today. A shelf is a *delivery* now — a station
+     carries a subset of what it could sell and restocks on a clock — so naming
+     a part here and expecting to walk out with it is asserting that stock is
+     infinite. The page's own list is the only honest source. */
+  const counter = view().market.find(r => r.kind === "part");
+  check(!!counter, "a station in the deep has no part on the counter at all");
+  const bought = counter ? counter.key : "overburner";
+  check(view().onBuyPart(bought) === true, "could not buy a part with cash");
   check(surv.cash < cash0, "the part was free");
-  check(view().store.some(e => e.key === "overburner"),
+  check(view().store.some(e => e.key === bought),
         "the bought part is not in storage");
 
   /* The world keeps running behind the page, which is the only reason a timer
@@ -4316,7 +4328,7 @@ const storeOf = (cf, key) => {
         "the book saved no slots");
   check(book.slots[0] && book.slots[0].key === "layerplate",
         "the book forgot what was bolted on");
-  check(book.store && book.store.overburner === 1,
+  check(book.store && book.store[bought] >= 1,
         "the book forgot what was in storage");
 
   console.log("  slots      four on every hull \u00b7 a fit out here takes " +
@@ -5461,11 +5473,17 @@ const storeOf = (cf, key) => {
   cf.flyShip(big.key);
   surv.cash = 99999;
   surv.food = 10;
-  // A whole tank is 100 percent of one. The shop asks in percent now, because
-  // the row carries a quantity rather than three fixed sizes.
-  view().onBuyRow("supply", "food", 100);
-  check(surv.food === view().food.full,
-        "buying food filled to " + Math.round(surv.food) + " of " + view().food.full);
+  /* A whole tank is 100 percent of one — but the row says how much of one this
+     station actually has, and a station with an empty larder is bad luck rather
+     than a broken pantry. Ask the row, then take all of it. */
+  const larder = view().market.find(r => r.kind === "supply" && r.key === "food");
+  check(!!larder, "the station is selling no food at all to fill a pantry with");
+  if (larder) {
+    view().onBuyRow("supply", "food", larder.most);
+    check(surv.food >= view().food.full - 1,
+          "buying food filled to " + Math.round(surv.food) + " of " +
+          view().food.full);
+  }
 
   console.log("  pantry     water is 20m on every hull \u00b7 food is 45m on the " +
               "starting one \u00b7 " + small.name + " " + Math.round(ps / 60) +
@@ -6494,8 +6512,18 @@ const storeOf = (cf, key) => {
   hud.craftOpened();
   cf.screen("craft");
   cf.draw();
-  check(typeof hud.craftHeight === "number" && hud.craftHeight > hud.craftView,
-        "the build grid fits on one screen — it is not a grid");
+  /* It used to be a scrolling column of rows, and this asked that it overflow —
+     which was a fair proxy for "it is a grid" while a row was the only shape on
+     offer. It is a wall of square tiles now, and a wall that fits on one screen
+     is the better page, not the broken one. So ask the shape directly: square
+     tiles, more than one to a row, and the measurements taken. */
+  const tiles = cf.taps().filter(t => t.live && t.w >= 60 && Math.abs(t.w - t.h) <= 2);
+  check(tiles.length > 1, "the build page draws " + tiles.length + " build tiles");
+  const topRow = tiles.reduce((m, t) => Math.min(m, t.y), Infinity);
+  check(tiles.filter(t => t.y === topRow).length > 1,
+        "every build tile is on a row of its own — that is a list, not a grid");
+  check(hud.craftHeight > 0 && hud.craftView > 0,
+        "the build grid measured neither its height nor its window");
 
   console.log("  findonly   " + madeable.size + " of " + parts.length +
               " parts are craftable \u00b7 " + findOnly + " categories keep " +
@@ -7649,34 +7677,22 @@ const storeOf = (cf, key) => {
             m.name + " does not say how to get one");
     }
 
-    /* And the row is actually pressable, which is the half that looks perfect in
-       a screenshot when it is wrong. `tapAt` exists for exactly this: five dead
-       tap targets have shipped in this mode. */
-    const W = 1000;
-    let rowHit = null;
-    for (let y = 110; y < 260 && !rowHit; y += 3) {
-      if (g.cf.tapAt(W - 160, y)) rowHit = y;
-    }
-    check(rowHit !== null, "no material row can be pressed at all");
-    /* Told apart from the row underneath it by width: a material row is half the
-       rail, the bubble is all of it. Asking "is anything pressable here" is not
-       enough — once the bubble shuts, the row below it answers yes. */
-    const wide = y => {
-      const t = g.cf.tapAt(W - 160, y);
-      return !!(t && t.w > 200);
-    };
-    g.cf.tapHit(W - 160, rowHit);
+    /* The rail of material rows, each with a bubble you opened to read where
+       the stuff comes from, is gone: the page is a wall of tiles and one card
+       for the tile you pressed, and that card names every ingredient with what
+       you have of it beside what it wants. The fact the bubble carried is still
+       carried — the loop above proves every material says where it is found —
+       so what is checked here is that the card answers for the build you picked
+       rather than that a row somewhere can be unfolded. */
+    gh.craftPick(list[0].key);
     g.cf.draw();
-    check(wide(rowHit + 46), "pressing a material opened no bubble");
-    // And pressing it again puts it away.
-    g.cf.tapHit(W - 160, rowHit + 46);
-    g.cf.draw();
-    check(!wide(rowHit + 46), "the material bubble will not close");
+    const card = g.cf.taps().filter(t => t.live && t.w > 150 && t.h >= 30);
+    check(card.length > 0, "picking a build opened nothing to press");
 
     console.log("  buildnow   " + ready.size + " buildable sorted to the front " +
                 "and lit · nothing counts them out loud · the panel is a thing " +
-                "you open and close · every material says how to get one, in a " +
-                "bubble that opens and shuts");
+                "you open and close · every material says how to get one, on " +
+                "the card of the build that wants it");
   }
 
   console.log("  bench      " + before.length + " of " + all.length +
