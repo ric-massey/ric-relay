@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Log a climbing day — Ric's Terminal</title>
+  <title>Add — Climbing</title>
   <meta name="robots" content="noindex">
-  <meta name="description" content="Add a climbing day to the log.">
+  <meta name="description" content="Add a day out, or a route to the tick list.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%233a5a40'/><text y='.85em' font-size='64' x='18'>🧗</text></svg>">
   <style>
     :root {
@@ -34,6 +34,21 @@
     }
     textarea { min-height: 4.5rem; resize: vertical; }
     .field { margin-bottom: 0.8rem; }
+    .addpick { display: flex; gap: 0.3rem; margin: 0.2rem 0 0.8rem; }
+    .addpick button {
+      font: inherit; font-size: 0.92rem; font-weight: 700; cursor: pointer;
+      padding: 0.42rem 0.9rem; border-radius: 999px; border: 1px solid var(--line);
+      background: #fff; color: var(--soft);
+    }
+    .addpick button[aria-selected="true"] { background: var(--bar); border-color: var(--bar); color: #fff; }
+    #routemine .rt { display: flex; align-items: baseline; gap: 0.5rem; padding: 0.4rem 0;
+                     border-bottom: 1px solid var(--line); }
+    #routemine .rt .nm { font-weight: 700; }
+    #routemine .rt .dot { flex: 1; border-bottom: 1px dotted #c9c2b1; transform: translateY(-0.28em); }
+    #routemine .rt .meta { color: var(--soft); font-size: 0.8rem; }
+    #routemine .rt button { font: inherit; font-size: 0.76rem; cursor: pointer; background: transparent;
+      border: 1px solid var(--line); border-radius: 3px; padding: 0.1rem 0.5rem; color: var(--soft); }
+    #routemine .rt button:hover { color: var(--clay); border-color: var(--clay); }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
     .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.7rem; }
     @media (max-width: 520px) { .row2, .row3 { grid-template-columns: 1fr; } }
@@ -109,18 +124,25 @@
     .recent button { background: none; border: 0; color: var(--clay); font-size: 0.82rem; padding: 0.2rem 0.3rem; }
     [hidden] { display: none !important; }
   </style>
+  <link rel="stylesheet" href="../../assets/climbing-nav.css">
 </head>
 <body>
-  <div class="topbar"><div class="inner">
-    <a href="../../index.html">RIC'S TERMINAL</a>
-    <span class="wing">· LOG A DAY</span>
-  </div></div>
+  <script src="../../assets/climbing-nav.js" data-nav="add"></script>
 
   <div class="wrap">
     <div class="card">
-      <h1>Log a climbing day</h1>
-      <p class="lede">Goes straight to the climbing log and the training page. If the date
-        matches a training day, the link between them appears on its own.</p>
+      <h1>Add</h1>
+      <!-- A day out and a route you want were two separate pages, which meant
+           knowing which one you were on before you could put anything in. One
+           page, one sign-in, two things it can take. -->
+      <div class="addpick" role="tablist" aria-label="What are you adding">
+        <button type="button" role="tab" id="pick-day" aria-selected="true">A day out</button>
+        <button type="button" role="tab" id="pick-route" aria-selected="false">A route to the list</button>
+      </div>
+      <p class="lede" id="blurb-day">Goes straight to the climbing log and the training page.
+        If the date matches a training day, the link between them appears on its own.</p>
+      <p class="lede" id="blurb-route" hidden>Something you want to get on. It lands on
+        <a href="list.html">the list</a>, grouped under its crag.</p>
     </div>
 
     <div class="card" id="signin"></div>
@@ -204,6 +226,70 @@
       <div class="msg" id="msg" role="status"></div>
     </form>
 
+
+    <form class="card" id="routeform" hidden>
+      <div class="field">
+        <label for="r-name">Route</label>
+        <input type="text" id="r-name" placeholder="Cobra Crack" autocomplete="off">
+      </div>
+
+      <div class="row3">
+        <div class="field">
+          <label for="r-grade">Grade</label>
+          <input type="text" id="r-grade" placeholder="5.14b or V7" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="r-style">Style</label>
+          <select id="r-style">
+            <option value="">—</option>
+            <option>Sport</option><option>Trad</option><option>Boulder</option>
+            <option>Mixed</option><option>Aid</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="r-length">Length</label>
+          <input type="number" id="r-length" min="1" max="9999" inputmode="numeric" placeholder="ft">
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="r-crag">Crag</label>
+          <!-- A picker, not a free text box. todo.md spells PMRP four ways and
+               Northern Gorge five because every entry was typed fresh; the
+               crags he already climbs are offered so the list stops growing
+               new spellings of the same place. -->
+          <input type="text" id="r-crag" list="cragnames" placeholder="PMRP" autocomplete="off">
+          <datalist id="cragnames"></datalist>
+        </div>
+        <div class="field">
+          <label for="r-wall">Wall or sector</label>
+          <input type="text" id="r-wall" list="walls" placeholder="The Motherload" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="r-pitches">Pitches</label>
+          <input type="number" id="r-pitches" min="1" max="99" inputmode="numeric" placeholder="1">
+        </div>
+        <div class="field">
+          <label for="r-note">Note</label>
+          <input type="text" id="r-note" placeholder="Why you want it" autocomplete="off">
+        </div>
+      </div>
+
+      <button type="submit" class="btn wide" id="r-save">Add it to the list</button>
+      <div class="msg" id="r-msg" role="status"></div>
+    </form>
+
+    <div class="card" id="routecard" hidden>
+      <label>Routes you've added here</label>
+      <div class="routes" id="routemine"></div>
+      <p class="lede" style="margin-top:0.6rem">These live in the log service. Routes from
+        <code>todo.md</code> aren't listed &mdash; they show on the list all the same.</p>
+    </div>
+
     <div class="card" id="recentcard" hidden>
       <label>Days you've logged here</label>
       <div class="recent" id="recent"></div>
@@ -219,6 +305,8 @@
   <script src="climb-vocab.js?v=2"></script>
   <script src="climb-parse.js?v=2"></script>
   <script src="climb-media.js?v=3"></script>
+  <script src="climb-ui.js?v=1"></script>
+  <script src="web-todo.js?v=2"></script>
   <script>
   /* LOG A DAY
      ──────────────────────────────────────────────────────────────────────────
@@ -239,9 +327,12 @@
      markdown is on screen with a copy button under it. Both appear on the
      climbing page; the training page links to whichever exists for that date. */
   (function () {
-    const HOST = location.origin.includes('localhost')
-      ? location.origin
-      : 'https://training-log.rmbuster82.workers.dev';
+    /* WebTodo has already worked out which host actually answers — localhost
+       when a Worker is running there, the live one otherwise. Asking it beats
+       a second copy of the rule that can disagree with the first, which is
+       what left sign-in posting /auth at a static file server locally and
+       getting a 501 back. */
+    let HOST = WebTodo.host();
     const PLAN_URL = '../../assets/training-plan.json';
     const $ = s => document.querySelector(s);
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -249,7 +340,8 @@
 
     let PLAN = null;
 
-    Owner.init({ host: HOST, onChange: paint });
+    /* Probe first, then sign in against whatever answered. */
+    WebTodo.resolved().then(h => { HOST = h; Owner.init({ host: HOST, onChange: paint }); paint(); });
 
     /* Suggestions come from the log itself, so the common case is two taps
        rather than typing "Red River Gorge" on a phone keyboard — and, more to
@@ -458,10 +550,32 @@
     }
     $('#date').addEventListener('change', matchDay);
 
+    /* ── which of the two things you are adding ──
+       Signed out, neither form shows and the tab does nothing worth pressing;
+       signed in, the tab decides which pair of cards is up. Both forms live on
+       one page so there is one sign-in and one place to go, rather than a
+       choice you have to make before you can start typing. */
+    let mode = location.hash === '#route' ? 'route' : 'day';
+
+    function paintMode() {
+      const on = Owner.on();
+      const day = mode === 'day';
+      $('#pick-day').setAttribute('aria-selected', String(day));
+      $('#pick-route').setAttribute('aria-selected', String(!day));
+      $('#blurb-day').hidden = !day;
+      $('#blurb-route').hidden = day;
+      $('#form').hidden = !on || !day;
+      $('#recentcard').hidden = !on || !day;
+      $('#routeform').hidden = !on || day;
+      $('#routecard').hidden = !on || day;
+    }
+
+    $('#pick-day').onclick = () => { mode = 'day'; history.replaceState(null, '', '#day'); paint(); };
+    $('#pick-route').onclick = () => { mode = 'route'; history.replaceState(null, '', '#route'); paint(); };
+
     function paint() {
       const on = Owner.on();
-      $('#form').hidden = !on;
-      $('#recentcard').hidden = !on;
+      paintMode();
       if (on) {
         $('#signin').innerHTML = `<div class="ownerform"><span class="ownerlabel">Signed in.</span>
           <button type="button" class="btn ghost" id="out" style="margin-left:auto">sign out</button></div>`;
@@ -471,10 +585,101 @@
         matchDay();
         check();
         listRecent();
+        fillCrags();
+        listRoutes();
       } else {
         Owner.mountBox($('#signin'), { title: 'Password' });
       }
     }
+
+    /* ── a route for the list ──────────────────────────────
+       The same write /climb takes, against /todo: public to read, this token to
+       write, `remove: true` to delete. */
+    const say = (text, good) => {
+      const el = $('#r-msg');
+      el.className = 'msg' + (text ? (good ? ' good' : ' bad') : '');
+      el.textContent = text || '';
+    };
+
+    function fillCrags() {
+      if ($('#cragnames').children.length) return;
+      const D = window.CLIMBING_DATA || {};
+      const crags = new Set();
+      (D.todo || []).forEach(t => {
+        const c = String(t.location || '').split(',')[0].trim();
+        if (c) crags.add(ClimbUI.crag(c));
+      });
+      (D.trips || []).forEach(t => { if (t.area) crags.add(ClimbUI.crag(t.area)); });
+      $('#cragnames').innerHTML = [...crags].sort((a, b) => a.localeCompare(b))
+        .map(v => `<option value="${esc(v)}">`).join('');
+    }
+
+    async function listRoutes() {
+      const items = await WebTodo.fetchItems();
+      const mine = Object.values(items)
+        .sort((a, b) => String(b.added).localeCompare(String(a.added)));
+      $('#routemine').innerHTML = mine.length
+        ? mine.map(it => {
+            const meta = [it.style, it.crag, it.wall, it.lengthFt ? it.lengthFt + 'ft' : null]
+              .filter(Boolean).join(' · ');
+            return `<div class="rt"><span class="nm">${esc(it.name)}</span><span class="dot"></span>` +
+              (meta ? `<span class="meta">${esc(meta)}</span>` : '') +
+              (it.grade ? `<span class="g ${ClimbUI.band(it.grade)}">${esc(it.grade)}</span>` : '') +
+              `<button type="button" data-del="${esc(it.id)}">remove</button></div>`;
+          }).join('')
+        : '<p class="lede">Nothing added from here yet.</p>';
+    }
+
+    $('#routemine').addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-del]');
+      if (!b) return;
+      b.disabled = true;
+      const out = await Owner.post(`/todo/${b.dataset.del}`, { remove: true });
+      if (out) await listRoutes(); else b.disabled = false;
+    });
+
+    /* Ranked here, where the vocabulary lives, so a route added from a phone
+       sorts next to one out of todo.md instead of falling to the bottom. */
+    function routeRank(g) {
+      let m = /^5\.(\d+)([a-d])?/.exec(g || '');
+      if (m) return Math.round(20 + (+m[1]) * 2 + (m[2] ? 'abcd'.indexOf(m[2]) * 0.4 : 0));
+      m = /^[Vv](\d+)/.exec(g || '');
+      if (m) return Math.round(40 + (+m[1]) * 2);
+      return 0;
+    }
+
+    $('#routeform').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = $('#r-name').value.trim();
+      if (!name) { $('#r-name').focus(); return; }
+      const grade = $('#r-grade').value.trim();
+      const boulder = /^[Vv]\d/.test(grade);
+
+      $('#r-save').disabled = true;
+      $('#r-save').textContent = 'Adding…';
+      const out = await Owner.post('/todo', {
+        name, grade,
+        gradeKind: grade ? (boulder ? 'boulder' : 'rope') : null,
+        gradeRank: routeRank(grade),
+        style: $('#r-style').value || (boulder ? 'Boulder' : null),
+        crag: $('#r-crag').value.trim(),
+        wall: $('#r-wall').value.trim(),
+        pitches: $('#r-pitches').value || null,
+        lengthFt: $('#r-length').value || null,
+        note: $('#r-note').value.trim(),
+      });
+      $('#r-save').disabled = false;
+      $('#r-save').textContent = 'Add it to the list';
+
+      if (!out) { say('Could not reach the log service. Nothing was saved.', false); return; }
+      say(`${name} is on the list.`, true);
+      /* The crag and the wall stay: adding three routes off one wall is the
+         normal case, and retyping "PMRP, The Motherload" each time is how the
+         spellings drifted in the first place. */
+      ['#r-name', '#r-grade', '#r-length', '#r-pitches', '#r-note'].forEach(id => { $(id).value = ''; });
+      $('#r-name').focus();
+      await listRoutes();
+    });
 
     /* ── fixing one ──
        A stored day comes back as its markdown, so editing it is parsing that

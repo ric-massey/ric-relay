@@ -35,7 +35,7 @@
 <script src="climb-vocab.js?v=2"></script>
 <script src="climb-parse.js?v=2"></script>
 <script src="climb-ui.js?v=1"></script>
-<script src="web-todo.js?v=1"></script>
+<script src="web-todo.js?v=2"></script>
 <script>
 (async () => {
   await WebTodo.merge(window.CLIMBING_DATA);
@@ -151,7 +151,7 @@
   Owner.init({ host: WebTodo.host(), onChange: paintOwner });
   function paintOwner() {
     document.getElementById("ownerlinks").innerHTML =
-      Owner.on() ? '<a href="add-route.html">+ Add a route to the list →</a>' : "";
+      Owner.on() ? '<a href="add.html#route">+ Add a route to the list →</a>' : "";
   }
   paintOwner();
 })();

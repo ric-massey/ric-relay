@@ -110,5 +110,16 @@
     return fresh.length;
   }
 
-  global.WebTodo = { merge, fetchItems, shape, slug, host: () => HOST };
+  /* `host()` is only right after something has actually asked — before the
+     first fetch it is still the guess. Anything that needs the answer up front
+     (sign-in posts /auth at it) awaits this instead, which probes once and
+     gives every later caller the same resolved origin. */
+  let probing = null;
+  async function resolved() {
+    if (!LOCAL) return LIVE;
+    if (!probing) probing = fetchItems().then(() => HOST);
+    return probing;
+  }
+
+  global.WebTodo = { merge, fetchItems, shape, slug, host: () => HOST, resolved };
 })(window);

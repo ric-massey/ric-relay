@@ -41,6 +41,6 @@
     `<div class="climbnav"><div class="inner">` +
       `<a class="mark" href="${root}climbing.html">Climbing</a>` +
       TABS.map(tab).join('') +
-      `<a class="right" href="${root}projects/climbing/add.html">Log a day</a>` +
+      `<a class="right" href="${root}projects/climbing/add.html">Add</a>` +
     `</div></div>`);
 })();
