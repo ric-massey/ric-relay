@@ -7,8 +7,8 @@ it gets a tick and a commit hash, so the list is also the record.
 **Status key** — `[ ]` not started · `[~]` in progress · `[x]` done · `[?]` needs
 an answer before it can be built.
 
-Batch of 2026-09-13. 27 items. **23 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5 ·
-P2, P3, P1, P4 · H2, H4 · A4.
+Batch of 2026-09-13. 27 items. **24 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5 ·
+P2, P3, P1, P4 · H2, H4 · A4 · T1.
 
 ---
 
@@ -39,10 +39,12 @@ P2, P3, P1, P4 · H2, H4 · A4.
 
 ## BOTS
 
-- [ ] **T1 · Pirates and scavengers should want loot.** They pick parts and
+- [x] **T1 · Pirates and scavengers should want loot.** They pick parts and
   anything else up off the floor. When you die, they sometimes take your
   things. This is the "what three systems does it touch" test passing on its
-  own: it touches death, salvage and why you hurry back.
+  own: it touches death, salvage and why you hurry back. *One `lootNear` feeds
+  both roles' wants; a laden hauler still beats cargo on the floor and a live
+  target beats both, so "sometimes" is emergent rather than a dice roll.*
 
 ## SCANNING
 

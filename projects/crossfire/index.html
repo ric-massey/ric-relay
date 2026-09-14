@@ -11048,6 +11048,12 @@
           best.hunted = 2.5;            // and it knows about it
           return best;
         }
+        /* No ship worth the trouble. A pirate with nothing to rob will still
+           take what is lying about — which is how the thing you died holding
+           becomes something somebody else is flying towards, and why you come
+           back for it rather than at your leisure. */
+        const spoil = lootNear(t, 4200 * U);
+        if (spoil) { t.mark = spoil.it; t.markKind = spoil.kind; return spoil.it; }
         break;
       }
       case "guard": {
@@ -11105,6 +11111,13 @@
           const d = Math.hypot(h.x - t.x, h.y - t.y);
           if (d < bd) { bd = d; best = h; }
         }
+        /* And anything simply lying there, which after you die is your hold.
+           Compared against the hulk rather than checked after it: a scavenger
+           that flew past your spilled cargo to reach a wreck further away is a
+           scavenger following a priority list, and the point of these is that
+           they follow distance and worth. */
+        const loot = lootNear(t, bd);
+        if (loot) { t.mark = loot.it; t.markKind = loot.kind; return loot.it; }
         if (best) { t.mark = best; t.markKind = "hulk"; return best; }
         break;
       }
@@ -11124,6 +11137,31 @@
     return t.leg > 0 ? t.to : t.from;
   }
 
+  /* ── what is lying about ──────────────────────────────────────────────────
+     The nearest loose thing a ship could simply fly over and keep: something
+     you dropped, or a mote of salvage nobody has swept up.
+
+     Deliberately *not* the manifest's parts, and not P4's scattered ones. Those
+     sit at sites the sector regenerates, so "taking" one would either do
+     nothing or make a run unfinishable depending on which way it was written,
+     and neither is a fight anybody wants to have with a pirate. What is on the
+     floor is what somebody already lost hold of. */
+  function lootNear(t, reach) {
+    let best = null, bd = reach;
+    for (const d of surv.dropped) {
+      const dd = Math.hypot(d.x - t.x, d.y - t.y);
+      if (dd < bd) { bd = dd; best = { kind: "drop", it: d }; }
+    }
+    /* Motes are worth less and there are far more of them, so they only win
+       when they are properly closer — otherwise a scavenger spends its life
+       hoovering crumbs beside the thing you actually wanted back. */
+    for (const m of surv.motes) {
+      const dd = Math.hypot(m.x - t.x, m.y - t.y);
+      if (dd < bd * 0.55) { bd = dd; best = { kind: "mote", it: m }; }
+    }
+    return best;
+  }
+
   /* Getting there. Most wants are satisfied by arriving, and what arriving *does*
      is where the economy hears about any of it. */
   function arrived(t, goal) {
@@ -11141,6 +11179,29 @@
       chatter(factionOf(t.faction).short + " convoy unloading.", NEBULA, false);
       t.think = 0;
       saveSurveyBook();
+    }
+    /* It takes it. Both roles, one piece of code, because "a pirate took it"
+       and "a scavenger took it" are the same event with a different flag on
+       it — and said out loud by name, because the whole weight of this is you
+       hearing what you have just lost while you are still flying back for it. */
+    if (t.markKind === "drop") {
+      const i = surv.dropped.indexOf(t.mark);
+      if (i >= 0) {
+        const d = surv.dropped[i];
+        burst(d.x, d.y, "#ff8f77", 14, 210 * U);
+        surv.dropped.splice(i, 1);
+        surv.known.delete(knownId("part", d.x, d.y));
+        chatter((t.faction === "pirate" ? "A pirate has taken your "
+                                        : "A scavenger has taken your ") +
+                (d.name || "cargo") + ".", "#ff8f77", t);
+        saveSurveyBook();
+      }
+      t.mark = null; t.markKind = ""; t.think = 0;
+    }
+    if (t.markKind === "mote") {
+      const i = surv.motes.indexOf(t.mark);
+      if (i >= 0) { surv.motes.splice(i, 1); }
+      t.mark = null; t.markKind = ""; t.think = 0;
     }
     if (spec.want === "salvage" && t.markKind === "hulk") {
       // It takes the wreck. You were too slow.

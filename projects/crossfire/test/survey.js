@@ -6570,6 +6570,97 @@ const storeOf = (cf, key) => {
               "px \u00b7 nothing pressable outside its window at any scroll");
 }
 
+// ── somebody else wants what you dropped ─────────────────────────────────
+/* T1. Ric: pirates and scavengers pick things up off the floor, and when you
+   die they sometimes take your things. Three systems in one change — death,
+   salvage, and why you hurry back — which is the test it had to pass to be
+   worth building at all.
+
+   "Off the floor" is the scope, and it matters. Not the manifest's sites and
+   not P4's scattered parts: those sit at places the sector regenerates, so
+   taking one would either do nothing or make a run unfinishable depending on
+   which way it was written. What can be taken is what somebody already lost
+   hold of — your dropped hold, and loose motes. */
+{
+  const { cf } = boot("?debug=1&seed=771177");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const hud = cf.hud();
+  const me = cf.live().ships[0];
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 9e9; surv.water = 9e5; surv.food = 9e5;
+      now += 1000 / 60; cf.step();
+    }
+  };
+  step(30);
+
+  const HULL = { pirate: "needle", scavenger: "cradle", freight: "drayman",
+                 patrol: "lance", trader: "pannier" };
+  const put = (role, faction, x, y) => {
+    const hull = cf.surveyView().ships.find(sh => sh.key === HULL[role]);
+    const t = { id: null, kind: role, role, faction, hull: hull.key, x, y, a: 0,
+                from: { x, y }, to: { x: x + 9000, y }, leg: 1,
+                speed: 200, baseSpeed: 200, hp: hull.hull, maxHp: hull.hull,
+                cargo: [], cool: 1, doom: 0, guards: 0, space: 0,
+                trades: false, phase: 0 };
+    surv.traffic.push(t);
+    return t;
+  };
+
+  /* Far enough away that the ship is not simply attacking *you* instead — a
+     pirate with a live target in reach goes for the target, which is right and
+     is not what this is measuring. */
+  const trial = (role, faction, what) => {
+    surv.traffic.length = 0;
+    surv.dropped.length = 0;
+    surv.motes.length = 0;
+    const bx = me.x + 60000, by = me.y + 60000;
+    if (what === "drop") {
+      surv.dropped.push({ key: "tractorrig", name: "TRACTOR BEAM MK2",
+                          x: bx, y: by, mod: true, id: "d1" });
+    } else {
+      surv.motes.push({ x: bx, y: by, key: "iron", life: 9e9, vx: 0, vy: 0 });
+    }
+    put(role, faction, bx + 1600, by + 300);
+    const gone = () => (what === "drop" ? surv.dropped.length : surv.motes.length) === 0;
+    for (let f = 0; f < 60 * 100 && !gone(); f++) step(1);
+    return gone();
+  };
+
+  check(trial("pirate", "pirate", "drop"),
+        "a pirate flew past a dropped part for a hundred seconds and left it");
+  check(trial("scavenger", "free", "drop"),
+        "a scavenger left a dropped part lying there");
+  check(trial("pirate", "pirate", "mote"), "a pirate will not take loose salvage");
+  check(trial("scavenger", "free", "mote"), "a scavenger will not take loose salvage");
+
+  /* And only those two. A freighter that hoovers up your hold on its way past
+     is not a sector with pirates in it, it is a sector with a bug in it. */
+  for (const [role, fac] of [["freight", "free"], ["patrol", "cordon"],
+                             ["trader", "free"]]) {
+    check(!trial(role, fac, "drop"),
+          "a " + role + " took a dropped part — only pirates and scavengers loot");
+  }
+
+  /* Said out loud, by name. The whole weight of this is hearing what you have
+     just lost while you are still flying back for it, so a silent theft would
+     be indistinguishable from the thing never having been there. */
+  surv.traffic.length = 0; surv.dropped.length = 0;
+  const bx = me.x + 90000, by = me.y + 90000;
+  surv.dropped.push({ key: "tractorrig", name: "TRACTOR BEAM MK2",
+                      x: bx, y: by, mod: true, id: "d2" });
+  put("pirate", "pirate", bx + 1600, by + 300);
+  for (let f = 0; f < 60 * 100 && surv.dropped.length; f++) step(1);
+  const said = (hud.log() || []).map(l => (l && l.text) || "");
+  check(said.some(txt => /taken your TRACTOR BEAM MK2/.test(txt)),
+        "a pirate took a part and nothing anywhere said so");
+
+  console.log("  looters    pirates and scavengers take what is on the floor — " +
+              "dropped parts and loose salvage · nobody else does · and it says " +
+              "what you lost");
+}
+
 // ── after the gate, one thing is still on the board ──────────────────────
 /* P1's last piece. The manifest ends and the objective arrow used to go out
    with it, which is the right shape for "the tutorial is over" and the wrong
