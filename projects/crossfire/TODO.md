@@ -7,7 +7,7 @@ it gets a tick and a commit hash, so the list is also the record.
 **Status key** — `[ ]` not started · `[~]` in progress · `[x]` done · `[?]` needs
 an answer before it can be built.
 
-Batch of 2026-09-13. 27 items. **12 done** — B1–B8 and S1 in `8c8a93d`/`3278ffb`, C1–C3 in `06138ff`.
+Batch of 2026-09-13. 27 items. **16 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5.
 
 ---
 
@@ -49,24 +49,27 @@ Batch of 2026-09-13. 27 items. **12 done** — B1–B8 and S1 in `8c8a93d`/`3278
   was one word in the same table B8 lives in; splitting it across two pushes
   would have been ceremony.)* A scan return should say
   what the thing actually is — ICE, IRON, ALLOY — not the currency it becomes.
-- [ ] **S2 · Ships need names on a scan.** Generated per ship, stable for that
+- [x] **S2 · Ships need names on a scan.** Generated per ship, stable for that
   ship. Format Ric gave: `CARGO SHIP-114 (faction)`.
 
 ## ARROWS
 
-- [ ] **A1 · The manifest arrow should point at the *nearest* part.** Order does
+- [x] **A1 · The manifest arrow should point at the *nearest* part.** Order does
   not matter. This is what fixes the arrow bugging out when you die carrying
   one.
-- [ ] **A2 · That arrow must be a single arrow, not a double.**
+- [x] **A2 · That arrow must be a single arrow, not a double.**
 - [ ] **A3 · The Vault is a mess.** Lines, hit markers, bots flying behind the
   walls, bullets passing through them. Everything the Leviathan got right and
   this did not. Use the Leviathan as the reference implementation.
 - [ ] **A4 · Planet names should ride the planet.** The name and the word
   INHABITED move around the rim the way a station's words rotate. Bigger
   planets can carry more than one so they are easier to spot.
-- [ ] **A5 · The wormhole arrow says STATION after the gate is built.** Once
-  the gate exists there should be no arrow of that kind at all. (Later there
-  may be others — not now.)
+- [x] **A5 · The wormhole arrow says STATION after the gate is built.**
+  *Checked and could not reproduce:* once the gate is built `objectiveTarget`
+  returns null, `contacts` empties and no arrow of that kind survives —
+  verified in a running game. What Ric actually wants here is the constructive
+  half, which is **P1**: after the gate, the arrow should lead to TRACTOR BEAM
+  MK1. If a STATION arrow does still turn up, it needs a repro.
 
 ## STATION HUD
 

@@ -2096,8 +2096,14 @@
       n++;
       const ang = Math.atan2(sy, sx);
       const dist = Math.round(Math.hypot(wx, wy));
+      /* One V, not two. The double is the loud one and it belongs to the
+         arrow you *chose* — a thing picked off the chart, which you asked to
+         be shown and which stays until you let it go. The manifest's arrow is
+         the game telling you where to go next, which is a quieter thing, and
+         two of them on the ring at once said they were the same kind of
+         instruction. */
       edgeArrow(st, ang, OBJECTIVE, fmtCells(dist) + "u",
-                { scale: 1.35, beat: true, vee: true, alpha: lit });
+                { scale: 1.35, beat: true, single: true, alpha: lit });
     }
   }
 

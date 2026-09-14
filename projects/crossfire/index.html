@@ -10127,10 +10127,18 @@
       const spec = ECHO_KINDS[e.kind] || ECHO_KINDS.salvage;
       const mat = e.kind === "salvage" && e.ref && e.ref.mat
         ? matSpec(e.ref.mat) : null;
-      const flag = e.ref && e.ref.faction ? trafficColour(e.ref) : null;
-      e.name = mat ? mat.name : spec.name;
-      e.colour = mat ? mat.colour : (flag || spec.colour);
+      const ship = e.ref && e.ref.faction ? e.ref : null;
+      e.name = ship ? callsignOf(ship) : mat ? mat.name : spec.name;
+      e.colour = mat ? mat.colour
+               : ship ? trafficColour(ship) : spec.colour;
       e.bad = !!spec.bad;
+      /* What the *sentence* counts by, which is not what the ring is labelled
+         with. Every ship has its own callsign now, and tallying by the label
+         would turn "3 traffic" into three separate lines naming three
+         individual freighters — a list where a glance was wanted. The ring
+         names the ship; the sentence counts the kind. */
+      e.group = ship ? (CALLSIGNS[ship.role || ship.kind] || "SHIP")
+              : mat ? mat.name : spec.name;
     }
 
     /* A scan writes what it finds into the gazetteer. Half the value of
@@ -10163,9 +10171,15 @@
        the whole reason to fly over and look. */
     const tally = {};
     const ore = {};
+    const many = {};
     for (const e of found) {
-      tally[e.name] = (tally[e.name] || 0) + 1;
-      if (e.kind === "salvage") ore[e.name] = true;
+      tally[e.group] = (tally[e.group] || 0) + 1;
+      if (e.kind === "salvage") ore[e.group] = true;
+      /* Which words take an S. Ships are things you can count and ore is not —
+         "2 cargo ships" and "3 ice", never "3 ices". The flag is set from what
+         the return *is* rather than from a list of words, so a role added later
+         is pluralised without anybody remembering to add it. */
+      else if (e.ref && e.ref.faction) many[e.group] = true;
     }
     /* **The things you would fly to, first.** Naming each mineral means a field
        that has been worked over now reports four or five kinds of ore, and the
@@ -10176,7 +10190,8 @@
        leads. */
     const parts = Object.keys(tally)
       .sort((a, b) => (ore[a] ? 1 : 0) - (ore[b] ? 1 : 0) || tally[b] - tally[a])
-      .map(k => tally[k] + " " + k.toLowerCase())
+      .map(k => tally[k] + " " + k.toLowerCase() +
+                (tally[k] > 1 && many[k] && !/s$/i.test(k) ? "s" : ""))
       .join("  ·  ");
     chatter(parts, NEBULA);
   }
@@ -14702,6 +14717,44 @@
   const PIRATE_WORDS = ["THE JACKAL", "SPLIT LIP", "KNIFE", "GRIN", "ASHES",
                         "NINE FINGERS", "THE CROW", "RUST", "HALF MOON",
                         "TALLOW", "BAD PENNY", "THE WIDOW"];
+  /* ── what a scan calls a ship ─────────────────────────────────────────────
+     A registry mark, not a name: what kind of ship it is, a number, and whose
+     flag it flies — "CARGO SHIP-114 (CORDON)". Every return used to say
+     TRAFFIC, so a scan of a busy lane came back as the same word six times and
+     told you nothing about any of them.
+
+     The number is **hashed off the ship**, not rolled. A callsign that changed
+     every time you scanned would be worse than no callsign: the whole use of
+     one is that the freighter you passed an hour ago is the freighter you are
+     looking at now. Ships born in a chunk carry an id; the ones spawned at you
+     do not, so those fall back to where they came into the world, which is
+     just as stable and just as much theirs. */
+  const CALLSIGNS = {
+    freight:  "CARGO SHIP", trader: "TRADER",  scavenger: "SCAVENGER",
+    escort:   "ESCORT",     patrol: "PATROL",  pirate:    "RAIDER",
+    distress: "DISTRESS",   hunter: "HUNTER"
+  };
+  function callsignOf(t) {
+    if (t.callsign) return t.callsign;
+    const word = CALLSIGNS[t.role || t.kind] || "SHIP";
+    let seed = t.id
+      ? [...String(t.id)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)
+      : hash2(Math.round(t.from ? t.from.x : t.x), Math.round(t.from ? t.from.y : t.y));
+    /* Mixed, or the numbers come out in a row. Three ships born in one chunk
+       have ids differing by one character, and a plain rolling hash turns that
+       into 149, 150, 151 — which reads as a fleet list somebody typed rather
+       than as registries from all over the sector. */
+    seed = Math.imul(seed ^ (seed >>> 15), 0x2c1b3c6d) >>> 0;
+    seed = Math.imul(seed ^ (seed >>> 12), 0x297a2d39) >>> 0;
+    /* `>>> 0` on the way out. The XOR above is a *signed* operation, so the
+       last step could hand back a negative — and `-1046 % 900` is negative
+       too, which came out as "CARGO SHIP--146". */
+    seed = (seed ^ (seed >>> 15)) >>> 0;
+    t.callsign = word + "-" + (seed % 900 + 100) +
+                 " (" + factionOf(t.faction).short + ")";
+    return t.callsign;
+  }
+
   function shipName(pirate) {
     const R = Math.random;
     if (pirate) {
@@ -14891,8 +14944,39 @@
     return true;
   }
 
-  const nextPart = () =>
-    BUILD.find(b => !surv.built.has(b.key) && !surv.carrying.has(b.key)) || null;
+  /* ── the nearest one left, not the next one on the list ───────────────────
+     The manifest used to be walked in its own order: whatever came first in
+     BUILD that you had not built or picked up. Two things were wrong with it.
+
+     It made the arrow **jump**. Die carrying the fourth part and it leaves your
+     hands — so the objective falls back to the first unbuilt entry, which is
+     somewhere else entirely, and the arrow you were flying home on swings
+     across the sky. That is the "arrow bugging out" this fixes.
+
+     And the order was never worth having. The six clues do not build on each
+     other and the sites are dealt round a circle, so "first in the list" is an
+     arbitrary heading — while *nearest* is the answer to the only question the
+     arrow is being asked. Order does not matter; distance does. */
+  const nextPart = () => {
+    const left = BUILD.filter(b => !surv.built.has(b.key) &&
+                                   !surv.carrying.has(b.key));
+    if (!left.length) return null;
+    const me = ships[0];
+    if (!me || !surv.partSites.length) return left[0];
+    let best = null, bd = Infinity;
+    for (const b of left) {
+      /* The plate has no site of its own — it is inside the Leviathan, which
+         has one. A part whose place is not known yet simply does not compete,
+         and the fallback below covers the case where none of them is. */
+      const at = b.inside === "leviathan"
+        ? surv.landmarks.find(l => l.key === "leviathan")
+        : surv.partSites.find(p => p.key === b.key);
+      if (!at) continue;
+      const d = dist2(at.x, at.y, me.x, me.y);
+      if (d < bd) { bd = d; best = b; }
+    }
+    return best || left[0];
+  };
   const yardDone = () => surv.built.size >= BUILD.length;
 
   /* The one line of text that answers "what am I doing". It changes three
