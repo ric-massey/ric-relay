@@ -786,6 +786,45 @@ turns by the same angle every leg closes a polygon** and comes back to where it
 started. Both were written, both passed a `charted > 0` bar, and both were
 measuring nothing; only a walk that does not close actually crosses a sector.
 
+### Changing the generator: fingerprint it
+
+`survey-world.js` is where the sector comes from, and its cave code is the
+hottest thing in the game — a CPU profile of chunk generation put 84% of it
+inside three functions (`caveHash`, `segDist2`, `tunnelNear`). It is worth
+making fast, and it is also the one file where "it still passes" is not enough:
+a saved survey stores a *seed*, so the worlds it names have to still be there.
+Change what a seed generates and every chart, pin, almanac entry and yard site
+in every save points at terrain that no longer exists.
+
+So the bar for touching it is not the suite. It is a **fingerprint**, taken
+before and after, which has to come back byte-identical:
+
+- 4,000 chunks hashed whole — planets, hulks, caches, stations, wells, fields
+- per Warrens region, 360,000 `caveSolid` samples on the cave lattice itself,
+  20,000 samples of the continuous `caveFill` / `caveEdge` fields, and every
+  streamed disc in the 7x7 chunks around it
+- all of that across several seeds
+
+That is what made the current speed-up safe. `tunnelNode` and a cell's segment
+list are memoised, `segDist2` writes into one scratch object instead of
+allocating per segment, and `Math.sqrt` comes out of the segment loop because
+`d < bd` and `d² < bd²` choose the same segment. Chunk generation went from
+1.861 ms to 0.922 ms, `test/warrens.js` from 182s to 52s, and every hash above
+was unchanged on every seed. All four caches are pure functions of a cell and
+the sector seed, so they empty in `clearCaches` — a cache that outlived a reset
+would lay the old sector over the new one.
+
+Two traps, both of which caught this work:
+
+- **Take the fingerprint through the debug hooks, not the module.**
+  `window.CrossfireSurveyWorld` is the *factory*. Reading `caveSolidAt` off it
+  gives `undefined`, and a `typeof` guard around that turns the whole check into
+  a silent no-op that reports success. Use `cf.caveSolid`, `cf.caveFill`,
+  `cf.caveEdge`, `cf.chunk().caveSegs`.
+- **Measure with the machine to yourself.** A suite run against three other node
+  processes reported 2,469 seconds of wall clock for 348 seconds of CPU. Compare
+  `real` against `user`; if they disagree, the number is about the machine.
+
 `test/survey.js` also proves all seventeen telemetry conditions can fire and
 that none fire on an empty block, that every almanac entry has its own picture,
 that all seven landmarks are placed at distinct bearings, and that the chart and

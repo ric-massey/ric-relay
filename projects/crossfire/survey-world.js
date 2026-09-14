@@ -454,17 +454,34 @@ function caveOctave(x, y, scale, salt) {
 /* A node: where it is, how wide the passage is there, and how rough its walls
    are. All three from the same cell's hashes, so a node is a fact about its
    coordinates and nothing else. */
+/* Memoised, and the reason is `tunnelNear`: it sweeps three by three and asks
+   each cell for its own node *and* for its east and south neighbours' — so in
+   one sweep most nodes are built three times, and the sweep itself runs again
+   for every point tested in the region. A CPU profile of chunk generation put
+   54% of the whole of it inside `caveHash`, five of which are spent here per
+   call. The cache is exact rather than approximate: a node is a pure function
+   of its cell and the sector seed, which is what `clearCaches` is for. */
+const nodeCache = new Map();
 function tunnelNode(nx, ny) {
+  const key = nx + "," + ny;
+  const had = nodeCache.get(key);
+  if (had) return had;
   const jx = caveHash(nx, ny, 1), jy = caveHash(nx, ny, 2);
   const w = caveHash(nx, ny, 3), rough = caveHash(nx, ny, 4);
   const room = caveHash(nx, ny, 5) < 0.14;
-  return {
+  const node = {
     x: (nx + 0.18 + jx * 0.64) * TUNNEL_CELL,
     y: (ny + 0.18 + jy * 0.64) * TUNNEL_CELL,
     // Cubed, so most of the network is ordinary and a squeeze is a real event.
     bore: room ? ROOM_BORE : BORE_MIN + (BORE_MAX - BORE_MIN) * w * w * w,
     rough, room
   };
+  /* Same bound and same rule as `siteCache`: a sector is walked outward, so
+     the far side of a long flight is not coming back, and an unbounded map
+     over a 1.8-million-unit sector is a leak rather than a cache. */
+  if (nodeCache.size > 8000) nodeCache.clear();
+  nodeCache.set(key, node);
+  return node;
 }
 
 /* ── a passage bends ──────────────────────────────────────────────────────
@@ -478,6 +495,12 @@ function tunnelNode(nx, ny) {
    collision and the renderer both walk it and neither may have its own idea of
    where a passage goes. */
 const LINK_STEPS = 3;
+/* Not memoised, though it was for an hour. Its only caller is `cellSegs`, and
+   `cellSegs` is itself cached by cell — so every key here would be asked for
+   exactly once and a cache on it holds thousands of arrays at a hit rate of
+   zero. Worth writing down because the profile that justified caching this was
+   taken before `cellSegs` existed, and the same reasoning would justify it
+   again on a stale reading. */
 function linkPath(a, b, nx, ny, salt) {
   const bow = (caveHash(nx, ny, salt) - 0.5) * 0.44;
   const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
@@ -495,13 +518,23 @@ function linkPath(a, b, nx, ny, salt) {
   return pts;
 }
 
+/* One scratch object, not a fresh one per segment. This is called for every
+   segment of every link of all nine cells of a `tunnelNear` sweep, and it was
+   16% of chunk generation — most of that the garbage it made rather than the
+   arithmetic, which is nine lines of it. The single caller destructures the
+   result on the line it gets it and never holds it across another call, so a
+   shared object is safe; if a second caller ever appears, it has to copy what
+   it keeps, which is what this comment is here to say. */
+const segHit = { d2: 0, t: 0 };
 function segDist2(px, py, ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay;
   const L = dx * dx + dy * dy;
   let t = L > 0 ? ((px - ax) * dx + (py - ay) * dy) / L : 0;
   t = Math.max(0, Math.min(1, t));
   const qx = ax + dx * t, qy = ay + dy * t;
-  return { d2: (px - qx) * (px - qx) + (py - qy) * (py - qy), t };
+  segHit.d2 = (px - qx) * (px - qx) + (py - qy) * (py - qy);
+  segHit.t = t;
+  return segHit;
 }
 
 /* How much of the region's rock exists here at all. Zero at the border and
@@ -523,9 +556,54 @@ function caveFillAt(x, y) {
 /* The nearest passage spine: how far away it is and how wide it is there.
    Raw — the warp is applied by `caveEdge`, so this stays the cheap half and
    can be reused. */
+/* ── a cell's spines, flattened ───────────────────────────────────────────
+   Everything `tunnelNear` needs from a cell is fixed by that cell's
+   coordinates, so it is worked out once and kept as plain numbers: eight per
+   segment — the two ends, the two `t`s along the link, and the bore at each
+   node — laid end to end.
+
+   Flat numbers rather than objects because of where this sits. The version
+   below it built, on every single call and for each of nine cells, an array of
+   `[node, salt]` pairs and then destructured them in a `for…of`; at three
+   segments a link and up to two links a cell that is around thirty short-lived
+   allocations per point tested, and a point is tested for every cell of the
+   rock grid of every chunk. The arithmetic was never the cost. The garbage
+   was.
+
+   The order segments are emitted in is load-bearing and must not be tidied:
+   the caller keeps the first of an equal pair (`d < bd`, strictly), so east
+   before south, and along each link in path order, is part of the answer
+   rather than part of the style. */
+const cellCache = new Map();
+function cellSegs(gx, gy) {
+  const key = gx + "," + gy;
+  const had = cellCache.get(key);
+  if (had) return had;
+  const a = tunnelNode(gx, gy);
+  const segs = [];
+  const addLink = (b, salt) => {
+    const pts = linkPath(a, b, gx, gy, salt);
+    for (let k = 0; k < pts.length - 1; k++) {
+      const p = pts[k], q = pts[k + 1];
+      segs.push(p.x, p.y, p.t, q.x, q.y, q.t, a.bore, b.bore);
+    }
+  };
+  addLink(tunnelNode(gx + 1, gy), 12);
+  if (caveHash(gx, gy, 6) < 0.58) addLink(tunnelNode(gx, gy + 1), 13);
+  if (cellCache.size > 8000) cellCache.clear();
+  cellCache.set(key, segs);
+  return segs;
+}
+
 function tunnelNear(x, y) {
   const nx = Math.floor(x / TUNNEL_CELL), ny = Math.floor(y / TUNNEL_CELL);
-  let bd = Infinity, bb = 0;
+  /* Squared distances all the way, and one square root at the end. `d < bd`
+     and `d*d < bd*bd` pick the same segment — both sides are distances, so
+     never negative, and IEEE square root is monotonic and correctly rounded,
+     so it cannot reorder two values that its inputs already order. This ran
+     `Math.sqrt` on every one of the fifty-odd segments a sweep tests purely to
+     throw the result away for all but one of them. */
+  let bd2 = Infinity, bb = 0;
   /* Three by three, not four by four. A node sits inside its own cell and its
      links run one cell east and one south; the bow pushes a link off the
      straight line by at most 0.44 of its length, and the widest chamber is a
@@ -534,23 +612,20 @@ function tunnelNear(x, y) {
      cost of every solidity test in the region, paid at chunk-build time. */
   for (let j = -1; j <= 1; j++) {
     for (let i = -1; i <= 1; i++) {
-      const gx = nx + i, gy = ny + j;
-      const a = tunnelNode(gx, gy);
-      const links = [[tunnelNode(gx + 1, gy), 12]];
-      if (caveHash(gx, gy, 6) < 0.58) links.push([tunnelNode(gx, gy + 1), 13]);
-      for (const [b, salt] of links) {
-        const pts = linkPath(a, b, gx, gy, salt);
-        for (let k = 0; k < pts.length - 1; k++) {
-          const p = pts[k], q = pts[k + 1];
-          const { d2, t } = segDist2(x, y, p.x, p.y, q.x, q.y);
-          const along = p.t + (q.t - p.t) * t;
-          const d = Math.sqrt(d2);
-          if (d < bd) { bd = d; bb = a.bore + (b.bore - a.bore) * along; }
+      const segs = cellSegs(nx + i, ny + j);
+      for (let k = 0; k < segs.length; k += 8) {
+        const px = segs[k], py = segs[k + 1], pt = segs[k + 2];
+        const qx = segs[k + 3], qy = segs[k + 4], qt = segs[k + 5];
+        const { d2, t } = segDist2(x, y, px, py, qx, qy);
+        if (d2 < bd2) {
+          bd2 = d2;
+          const aB = segs[k + 6], bB = segs[k + 7];
+          bb = aB + (bB - aB) * (pt + (qt - pt) * t);
         }
       }
     }
   }
-  return bd === Infinity ? null : { d: bd, bore: bb };
+  return bd2 === Infinity ? null : { d: Math.sqrt(bd2), bore: bb };
 }
 
 /* ── why there is a warp ───────────────────────────────────────────────────
@@ -708,6 +783,8 @@ function caveTint(x, y) {
   function clearCaches() {
     regionCache.clear();
     siteCache.clear();
+    nodeCache.clear();
+    cellCache.clear();
   }
 
   return {
