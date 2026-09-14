@@ -132,6 +132,31 @@ function stable(v) {
 }
 const F = n => (Number.isFinite(n) ? n.toFixed(9) : String(n));
 
+/* ── what is the world, and what is only flying through it ────────────────
+   A chunk carries the traffic that starts in it, and a traffic entry carries
+   a `speed` taken from its hull's row in the ship table. That is tuning, not
+   terrain: a save stores a seed, and nothing in a save depends on how fast a
+   passing freighter cruises — the ship is gone the moment you leave the chunk
+   and is rebuilt from the table next time.
+
+   So it comes out of the hash. Everything that says *which ship is where* —
+   where it is, where it came from, where it is going, what it is, whose flag
+   it flies, what it is carrying — stays in. Re-balancing the roster should
+   not read as "you have thrown away everyone's charts", or the next person to
+   see this fire will learn to ignore it. */
+const worldOnly = (v, key) => {
+  if (Array.isArray(v)) return v.map(x => worldOnly(x, key));
+  if (v && typeof v === "object") {
+    const out = {};
+    for (const k of Object.keys(v)) {
+      if (key === "traffic" && k === "speed") continue;
+      out[k] = worldOnly(v[k], key === "traffic" ? key : k);
+    }
+    return out;
+  }
+  return v;
+};
+
 function fingerprint(seed) {
   const cf = boot(seed);
   const h = crypto.createHash("sha256");
@@ -141,7 +166,7 @@ function fingerprint(seed) {
   for (let i = 0; i < 4000; i++) {
     const a = i * 2.399963, r = 40 + i * 0.37;
     const cx = Math.round(Math.cos(a) * r), cy = Math.round(Math.sin(a) * r);
-    h.update(cx + "," + cy + "=" + stable(cf.chunk(cx, cy)));
+    h.update(cx + "," + cy + "=" + stable(worldOnly(cf.chunk(cx, cy), "")));
   }
 
   /* 2. The rock, found the way test/warrens.js finds it. */

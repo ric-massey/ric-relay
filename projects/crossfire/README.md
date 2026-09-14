@@ -800,6 +800,13 @@ So the bar for touching it is not the suite. It is a **fingerprint**, taken
 before and after, which has to come back byte-identical:
 
 - 4,000 chunks hashed whole — planets, hulks, caches, stations, wells, fields
+  — minus one field. A chunk carries the traffic that starts in it, and a
+  traffic entry's `speed` comes off its hull's row in the ship table, so
+  re-balancing the roster moved 153 of 4,000 chunk hashes while every scrap of
+  terrain stood still. That is tuning, not terrain: the ship is gone the moment
+  you leave and is rebuilt from the table next time, and nothing in a save
+  depends on it. Where a ship *is* still counts; how fast it cruises does not.
+  A gate that cries wolf over balance changes is a gate people learn to ignore
 - per Warrens region, 360,000 `caveSolid` samples on the cave lattice itself,
   20,000 samples of the continuous `caveFill` / `caveEdge` fields, and every
   streamed disc in the 7x7 chunks around it

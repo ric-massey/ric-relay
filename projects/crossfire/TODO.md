@@ -144,6 +144,23 @@ P2, P3. P1 is most of the way.
 
 ## Done alongside
 
+- **The twenty-five hulls fly differently now.** Ric flew the roster and said
+  they all felt the same. He was right, and the numbers hid it: every hull's
+  `accel` and `drag` did reach the ship, but the two were tuned in the same
+  direction and cancelled, so *time to reach your own top speed* came out
+  between 1.00s and 1.75s for all twenty-five — and inverted, with the GRANARY
+  quicker off the mark than the NEEDLE. Re-cut against what each category is
+  for, and a round's speed is the hull's now rather than one constant, so a
+  fast ship outruns a freighter's return fire and not a gunship's.
+
+  | | was | now |
+  |---|---|---|
+  | top speed | 2.21x | **4.72x** (130 → 612 u/s) |
+  | off the mark | 1.75x | **13.84x** (0.42 → 5.77s) |
+  | turn rate | 3.95x | **8.68x** (0.70 → 6.11 rad/s) |
+  | stopping | 5.69x | **10.38x** (2.0 → 20.9s) |
+  | bot round speed | flat 520 | **3.10x** (260 → 806 u/s) |
+
 - **The generator is twice as fast and makes the same worlds.** 84% of chunk
   generation was cave noise; `tunnelNode` and a cell's segments are memoised
   now, `segDist2` stopped allocating, and the square root came out of the

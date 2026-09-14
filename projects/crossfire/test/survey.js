@@ -3313,16 +3313,32 @@ const storeOf = (cf, key) => {
   check(new Set(list.map(s2 => s2.name)).size === 25, "two ships share a name");
 
   /* The category register is design input, not approximate flavour. Every
-     number on every hull stays inside its category's supplied range. */
+     number on every hull stays inside its category's supplied range.
+
+     Re-cut when Ric asked for the hulls to be massively different from one
+     another. The bands are narrow on purpose — `drag` is one value per
+     category, because a category's stopping time is a design decision, and
+     `accel` is derived from how long that category should take to reach its
+     own top speed. A band wide enough to admit any plausible number would
+     assert nothing; these are tight enough that a hull drifting out of what
+     its category means fails here rather than in someone's hands. */
   const ranges = {
-    MILITARY:   { hull:[12,48], dmg:[1.6,4], rate:[0.95,1.45], cargo:[50,500], speed:[0.78,1.24], accel:[0.85,1.25], turn:[0.55,1.25], drag:[0.28,0.50] },
-    EXPLORER:   { hull:[8,20],  dmg:[0.8,1.5], rate:[0.75,1.10], cargo:[150,500], speed:[0.95,1.30], accel:[0.90,1.15], turn:[0.80,1.20], drag:[0.30,0.44] },
-    COMMUTER:   { hull:[7,24],  dmg:[0.6,1], rate:[0.65,0.95], cargo:[100,450], speed:[0.90,1.20], accel:[1.05,1.30], turn:[0.85,1.20], drag:[0.52,0.68] },
-    SPORT:      { hull:[4,9],   dmg:[0.7,1.2], rate:[0.85,1.20], cargo:[30,90], speed:[1.28,1.50], accel:[1.20,1.45], turn:[1.20,1.50], drag:[0.56,0.74] },
-    INDUSTRIAL: { hull:[18,48], dmg:[0.8,1.4], rate:[0.65,0.95], cargo:[300,1100], speed:[0.68,0.94], accel:[0.60,0.90], turn:[0.45,0.82], drag:[0.20,0.34] },
-    CARGO:      { hull:[14,40], dmg:[0.6,1], rate:[0.60,0.85], cargo:[500,2000], speed:[0.68,1], accel:[0.58,0.88], turn:[0.38,0.72], drag:[0.13,0.25] },
-    UTILITY:    { hull:[9,26],  dmg:[0.7,1.2], rate:[0.70,1], cargo:[180,700], speed:[0.80,1.08], accel:[0.90,1.15], turn:[1.05,1.38], drag:[0.44,0.60] },
-    COURIER:    { hull:[4,12],  dmg:[0.7,1.3], rate:[0.80,1.15], cargo:[40,250], speed:[1.15,1.44], accel:[1.25,1.55], turn:[0.95,1.35], drag:[0.46,0.62] }
+    MILITARY:   { hull:[12,48], dmg:[1.6,4], rate:[0.95,1.45], cargo:[50,500],
+                  speed:[0.73,1.27], accel:[0.61,1.07], turn:[0.92,1.49], drag:[0.38,0.42], shot:[1.11,1.64] },
+    EXPLORER:   { hull:[8,20],  dmg:[0.8,1.5], rate:[0.75,1.10], cargo:[150,500],
+                  speed:[0.82,1.4], accel:[0.51,0.87], turn:[0.63,1.06], drag:[0.24,0.28], shot:[0.72,0.98] },
+    COMMUTER:   { hull:[7,24],  dmg:[0.6,1], rate:[0.65,0.95], cargo:[100,450],
+                  speed:[0.83,1.22], accel:[0.96,1.41], turn:[0.84,1.16], drag:[0.47,0.53], shot:[0.67,0.89] },
+    SPORT:      { hull:[4,9],   dmg:[0.7,1.2], rate:[0.85,1.20], cargo:[30,90],
+                  speed:[1.42,1.8], accel:[4.19,5.32], turn:[1.52,2.02], drag:[1.08,1.22], shot:[0.89,1.11] },
+    INDUSTRIAL: { hull:[18,48], dmg:[0.8,1.4], rate:[0.65,0.95], cargo:[300,1100],
+                  speed:[0.33,0.55], accel:[0.06,0.14], turn:[0.2,0.38], drag:[0.09,0.13], shot:[0.46,0.66] },
+    CARGO:      { hull:[14,40], dmg:[0.6,1], rate:[0.60,0.85], cargo:[500,2000],
+                  speed:[0.34,0.64], accel:[0.09,0.19], turn:[0.22,0.45], drag:[0.12,0.16], shot:[0.48,0.68] },
+    UTILITY:    { hull:[9,26],  dmg:[0.7,1.2], rate:[0.70,1], cargo:[180,700],
+                  speed:[0.69,0.95], accel:[0.58,0.82], turn:[1.28,1.76], drag:[0.43,0.49], shot:[0.65,0.85] },
+    COURIER:    { hull:[4,12],  dmg:[0.7,1.3], rate:[0.80,1.15], cargo:[40,250],
+                  speed:[1.21,1.55], accel:[2.21,2.82], turn:[0.98,1.42], drag:[0.68,0.76], shot:[0.74,0.98] },
   };
   check(new Set(list.map(s2 => s2.category)).size === 8,
         "the hangar does not contain all eight ship categories");
@@ -3340,9 +3356,96 @@ const storeOf = (cf, key) => {
   check(jackal && jackal.name === "JACKAL" && jackal.category === "MILITARY",
         "the louvered military hull is not the Jackal");
   check(jackal.cost >= 50000, "the Jackal only costs " + jackal.cost);
-  check(jackal.speed === 1.16 && jackal.accel === 1.16 &&
-        jackal.turn === 1.24 && jackal.drag === 0.42,
-        "the Jackal lost the Louvre's handling");
+  /* The Jackal *is* the Louvre entry renamed, and the thing this has always
+     guarded is that renaming a hull does not quietly re-tune it. The numbers
+     moved when the whole roster was re-cut, so they are restated here rather
+     than removed — the check is "these are deliberate", not "these are
+     eternal". */
+  check(jackal.speed === 1.1 && jackal.accel === 0.92 &&
+        jackal.turn === 1.3 && jackal.drag === 0.4,
+        "the Jackal lost the Louvre's handling (" +
+        [jackal.speed, jackal.accel, jackal.turn, jackal.drag].join("/") + ")");
+
+  /* ── the hulls have to actually fly differently ──────────────────────────
+     Ric flew the whole roster and said they all felt the same, and he was
+     right in a way the numbers hid. Every hull's `accel` and `drag` reached
+     the ship — an older check here proved exactly that and passed — but the
+     two were tuned in the same direction and cancelled, so the *felt*
+     property, how long a ship takes to reach its own top speed, came out
+     between 1.00s and 1.75s for all twenty-five. Worse, it was inverted: the
+     GRANARY, the heaviest hauler with the weakest engine in the game, wound
+     up in 1.20s and the NEEDLE, the sport hull, took 1.75s.
+
+     So this asserts the thing a player feels rather than the thing the table
+     says. Each number is derived the way the flight code derives it — a hull
+     accelerates toward THRUST*accel/drag and is clamped at MAX_SPEED*speed,
+     so it reaches its own ceiling at -ln(1 - cap/vTerm)/drag. */
+  {
+    const THRUST = 380, MAX = 360, TURN = 3.2;
+    const capOf  = sh => MAX * sh.speed;
+    const stopOf = sh => -Math.log(0.1) / sh.drag;     // to a tenth, engine off
+    const tTopOf = sh => {
+      const cap = capOf(sh), vTerm = THRUST * sh.accel / sh.drag;
+      return vTerm <= cap ? Infinity : -Math.log(1 - cap / vTerm) / sh.drag;
+    };
+    const spread = f => {
+      const v = list.map(f);
+      return Math.max(...v) / Math.min(...v);
+    };
+
+    /* A hull that never actually arrives at its own top speed is a hull whose
+       stated speed is a lie — the curve would asymptote under it forever. */
+    for (const sh of list) {
+      const vTerm = THRUST * sh.accel / sh.drag;
+      check(vTerm > capOf(sh) * 1.3,
+            sh.name + " can only reach " + Math.round(vTerm) + " of its stated " +
+            Math.round(capOf(sh)) + " — it never arrives at its own top speed");
+    }
+
+    check(spread(capOf) > 3.5,
+          "top speed spans only " + spread(capOf).toFixed(2) + "x across the roster");
+    check(spread(tTopOf) > 6,
+          "every hull reaches its top speed in about the same time (" +
+          spread(tTopOf).toFixed(2) + "x) — accel and drag are cancelling");
+    check(spread(sh => TURN * sh.turn) > 5,
+          "turn rate spans only " + spread(sh => TURN * sh.turn).toFixed(2) + "x");
+    check(spread(stopOf) > 6,
+          "stopping distance spans only " + spread(stopOf).toFixed(2) + "x");
+
+    /* And in the right order, which is the half that was actually broken.
+       Fast, light categories must get going quicker than heavy ones — it is
+       not enough for the numbers to differ if a brick out-accelerates a dart. */
+    const worstOf = cat => Math.max(...list.filter(x => x.category === cat).map(tTopOf));
+    const bestOf  = cat => Math.min(...list.filter(x => x.category === cat).map(tTopOf));
+    for (const [quick, slow] of [["SPORT", "COMMUTER"], ["COURIER", "MILITARY"],
+                                 ["COMMUTER", "CARGO"], ["MILITARY", "INDUSTRIAL"]]) {
+      check(worstOf(quick) < bestOf(slow),
+            "the slowest " + quick + " (" + worstOf(quick).toFixed(2) + "s to top) " +
+            "is not quicker off the mark than the best " + slow +
+            " (" + bestOf(slow).toFixed(2) + "s)");
+    }
+
+    /* Ric: the fastest ships should outrun slower bullets. A round's speed is
+       the hull's now rather than one constant, so a freighter's return fire
+       can be left behind and a gunship's cannot. */
+    const BULLET = 520;
+    const fastest = Math.max(...list.map(capOf));
+    const outrun = list.filter(sh => BULLET * sh.shot < fastest).length;
+    check(outrun >= 12,
+          "the fastest hull outruns only " + outrun + " of " + list.length +
+          " hulls' rounds — speed buys nothing");
+    check(outrun < list.length,
+          "the fastest hull outruns every round in the game — nothing can shoot it");
+    check(fastest > BULLET,
+          "the fastest hull tops out at " + Math.round(fastest) +
+          ", under the base round's " + BULLET + " — it outruns nothing");
+
+    console.log("  hullfeel   top " + spread(capOf).toFixed(1) + "x · off the mark " +
+                spread(tTopOf).toFixed(1) + "x · turn " +
+                spread(sh => TURN * sh.turn).toFixed(1) + "x · stopping " +
+                spread(stopOf).toFixed(1) + "x · fastest hull outruns " + outrun +
+                "/" + list.length + " hulls' rounds");
+  }
 
   // Every hull needs a shape, and no two may be the same shape.
   const shapes = new Set();
@@ -5840,7 +5943,13 @@ const storeOf = (cf, key) => {
   /* How far ten minutes of flying actually goes, from the game's own top speed
      rather than from a number written in a comment. */
   const reach10 = cf.topSpeed() * 600;
-  check(reach10 > 200000,
+  /* The floor tracks the hull you start in, which is the SKIFF, and the SKIFF
+     moved: the roster was re-cut so the categories mean something, and an
+     explorer is now the slow, long-legged end of it — 324 against the 342 this
+     200,000 was rounded up from. The number that carries the weight here is
+     the ratio below, which is measured against the game rather than written
+     down; this one only says flying has not been tuned into a crawl. */
+  check(reach10 > 180000,
         "ten minutes of flight covers only " + Math.round(reach10) + " units");
 
   // The far rung has to be an expedition against that, not an errand.
@@ -6178,7 +6287,14 @@ const storeOf = (cf, key) => {
      with them. What is being checked here is the economy hearing about a
      delivery. Give it the delivery. */
   runner.mark = st; runner.markKind = "station"; runner.think = 9;
-  step(60 * 30);
+  /* Ninety seconds, not thirty. A freighter flies a cargo hull and cargo hulls
+     were deliberately made barges: a DRAYMAN now takes about twelve seconds to
+     come about and fourteen to wind up to cruise, where it used to take five
+     and one. Measured rather than guessed — it delivers at about 50s against
+     41s before, and the old window was already only nine seconds clear of
+     failing. The check is that a delivery reaches the economy, not that it
+     reaches it inside half a minute. */
+  step(60 * 90);
   check((runner.delivered || 0) > 0,
         "a freighter beside a station never delivered anything");
   const eased = priceOf("iridium");
