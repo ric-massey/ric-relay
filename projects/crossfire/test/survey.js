@@ -46,12 +46,30 @@ assert.ok(
 
 let now = 0;
 const noop = () => {};
+/* ── what actually got drawn ──────────────────────────────────────────────
+   Every word the game paints, in the order it paints it, since the last time
+   anybody looked.
+
+   Worth the twelve lines. The bugs Ric finds by playing are overwhelmingly in
+   the drawing — a sentence repeated down a list, two words overlapping, a
+   heading that never appears — and until now this harness could not see a
+   single one of them: the stub swallowed `fillText` like every other method,
+   so a page that painted nothing at all passed exactly like a page that
+   painted the right thing. Tap rectangles were the only evidence, and a label
+   is not a tap. */
+const drawn = [];
+/* Reading it clears it, because every test that asks wants "what is on the
+   screen now" and not "everything since the process started". */
+function textDrawn() { const out = drawn.slice(); drawn.length = 0; return out; }
 function stubCtx() {
   // Every method a no-op and every property writable — except measureText,
   // which has to return something with a width: the menus size their own tap
   // targets from it, so a bare no-op turns drawing a menu into a TypeError.
   return new Proxy({}, {
     get: (t, k) => {
+      if (k === "fillText" || k === "strokeText") {
+        return str => { drawn.push(String(str)); };
+      }
       if (k === "measureText") return str => ({ width: String(str).length * 8 });
       // Likewise the gradient makers: the menus fade a card's picture into its
       // words with one, and a no-op returning `undefined` turns drawing a card
@@ -6531,6 +6549,179 @@ const storeOf = (cf, key) => {
   console.log("  pages      strip at the top on all seven \u00b7 the record runs " +
               Math.round(hud.recordHeight) +
               "px \u00b7 nothing pressable outside its window at any scroll");
+}
+
+// ── the counter stops at what you can afford ─────────────────────────────
+/* H4. Ric: four cash, the counter stops. It is a basket, so what one row can
+   climb to depends on what the other ticked rows have already spoken for —
+   and the rows draw one after another, so a cap read off the running total
+   would pinch the bottom of the list and let the top of it off. The ceiling is
+   worked out for every row before any of them draws.
+
+   Asked of the `+` buttons rather than of the arithmetic: a stepper is only
+   pressable while there is somewhere to step to, so counting the live ones is
+   counting the rows you are still allowed to add to. */
+{
+  const { cf } = boot("?debug=1&seed=20260909");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 999; surv.water = 9e5; surv.food = 9e5;
+      now += 1000 / 60; cf.step();
+    }
+  };
+  step(20);
+  surv.docked = { x: 2400000, y: 900000 };      // deep, so the shelf is stocked
+  for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;   // opens on BUY
+  cf.key("KeyE");
+  cf.draw();
+
+  const rows = cf.surveyView().market;
+  check(rows.length >= 6, "nothing on the shelf to try to buy");
+
+  /* The right-hand half of a stepper pair. `live` is the whole point: the
+     button is drawn either way and only does something while the quantity has
+     room to climb. */
+  const canClimb = () => {
+    cf.draw();
+    return cf.taps().filter(t => t.w === 38 && t.x > 900 && t.live).length;
+  };
+
+  surv.cash = 4;
+  check(canClimb() === 0,
+        "with four cash " + canClimb() + " rows still let the counter climb");
+
+  /* Monotonic: more money never takes away somewhere to climb to. */
+  let last = -1, seen = [];
+  for (const c of [4, 300, 700, 2000, 9000, 999999]) {
+    surv.cash = c;
+    const n = canClimb();
+    seen.push(c + ":" + n);
+    check(n >= last, "going from " + last + " to " + n +
+          " live steppers as the purse grew to " + c + " — money took one away");
+    last = n;
+  }
+  check(last > 0, "even with a fortune nothing can be added to (" + seen.join(" ") + ")");
+
+  /* And the ceiling is the shelf, not the purse: a fortune must not conjure
+     stock that is not there. */
+  surv.cash = 9e9;
+  const rich = canClimb();
+  const stocked = rows.filter(r => (r.most || 1) > 1).length;
+  check(rich <= stocked,
+        rich + " rows can be climbed but only " + stocked + " have more than one in stock");
+
+  /* The basket half. Fill the cheapest row to its limit and the others have to
+     tighten, because the money is spoken for. */
+  surv.cash = 700;
+  cf.draw();
+  const tick = cf.taps().filter(t => t.w === 232 && t.live).sort((a, b) => a.y - b.y);
+  check(tick.length > 1, "the shop drew " + tick.length + " tickable rows");
+  const before = canClimb();
+  cf.tapHit(tick[0].x + 10, tick[0].y + 15);    // tick the first row
+  cf.draw();
+  for (let n = 0; n < 8; n++) {                 // and climb it as far as it goes
+    const p = cf.taps().find(t => t.w === 38 && t.x > 900 && t.live &&
+                                  Math.abs(t.y - tick[0].y) < 26);
+    if (!p) break;
+    cf.tapHit(p.x + 19, p.y + 13);
+    cf.draw();
+  }
+  const after = canClimb();
+  check(after < before,
+        "one row was filled to its limit and the other " + before +
+        " rows can still climb as freely (" + after + ") — the basket is not sharing a purse");
+
+  console.log("  purse      the counter stops at what you can afford · " +
+              seen.join(" · ") + " · filling one row tightens the rest (" +
+              before + " → " + after + ")");
+}
+
+// ── what a place will not buy, said once ─────────────────────────────────
+/* H2. Everything a station does not deal in used to sit wherever the hold put
+   it, each row carrying "this place doesn't buy these" after its name — so the
+   sentence appeared several times down a list you were trying to read, with
+   the things you *could* sell scattered between them.
+
+   Read off what actually gets painted rather than off the row data: the whole
+   change is where words land on a page, and a check on the underlying list
+   would pass just as well with every row still carrying its own copy. */
+{
+  const { cf } = boot("?debug=1&seed=20260909");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 999; surv.water = 9e5; surv.food = 9e5;
+      now += 1000 / 60; cf.step();
+    }
+  };
+  step(20);
+  for (const m of ["iron", "alloy", "ice", "iridium", "electronics"]) surv.hold[m] = 12;
+
+  /* A station that actually refuses something, found rather than assumed.
+     What a place will not deal in is rolled, so a hard-coded dock is a test
+     that quietly stops testing anything the day the roll moves — which is
+     exactly what happened: a position picked by hand refused three things
+     under one harness and nothing at all under this one. */
+  const REFUSERS = [[2400000, 900000], [60000, -60000], [300000, 300000],
+                    [1200000, -400000], [-900000, 1500000], [5000, 5000]];
+  let sellRows = [], duds = [];
+  for (const [x, y] of REFUSERS) {
+    surv.docked = { x, y };
+    cf.draw();
+    sellRows = (cf.surveyView().materials || []).filter(r => r.n > 0);
+    duds = sellRows.filter(r => r.buys === false);
+    if (duds.length) break;
+  }
+  check(duds.length > 0,
+        "none of " + REFUSERS.length + " stations refuses anything aboard — " +
+        "the grouping cannot be tested, so this check is asserting nothing");
+
+  cf.key("KeyE");
+  cf.draw();
+  /* One frame, and nothing before it. `textDrawn` hands back everything since
+     the last read, and finding a station above drew several — so reading
+     without flushing first stacks frames on top of each other, and then
+     "painted twice" and "painted above the heading" are both about the stack
+     rather than about the page. Both fired before this line existed. */
+  textDrawn();
+  cf.draw();
+  const words = textDrawn();
+  check(words.length > 0, "the shop page painted no words at all");
+
+  const HEAD = "NOT PURCHASING TODAY";
+  const nope = words.indexOf(HEAD);
+  /* Said once. The bug being fixed is a sentence repeated down a list, so a
+     heading that got repeated the same way would be the same bug wearing a
+     hat. */
+  check(words.filter(w => w === HEAD).length <= 1,
+        "\"" + HEAD + "\" is painted " + words.filter(w => w === HEAD).length + " times");
+  check(!words.some(w => /doesn't buy these/.test(w)),
+        "a row still carries its own \"this place doesn't buy these\"");
+
+  if (duds.length) {
+    check(nope >= 0, "the station refuses " + duds.length +
+          " things and no " + HEAD + " heading was painted");
+    /* Everything it will not take is painted after the heading, and everything
+       it will take before it — which is the whole of the grouping. */
+    for (const d of duds) {
+      const at = words.indexOf(d.name);
+      check(at > nope, d.name + " is refused here but is painted above the heading");
+    }
+    for (const r of sellRows.filter(x => x.buys !== false)) {
+      const at = words.indexOf(r.name);
+      if (at >= 0) {
+        check(at < nope, r.name + " sells here but is painted below the heading");
+      }
+    }
+  }
+  console.log("  refused    " + duds.length + " things this place will not take, " +
+              "gathered under one heading at the foot of the list" +
+              (duds.length ? "" : " (none refused at this station)"));
 }
 
 // ── the station is a market ──────────────────────────────────────────────

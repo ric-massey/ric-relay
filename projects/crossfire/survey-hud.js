@@ -3688,6 +3688,29 @@
   const buyQtyOf = (id, most) =>
     Math.max(1, Math.min(most, Math.floor(buyQty[id] || 1)));
 
+  /* What a given number of a row costs. Named once because three things need
+     the same answer — the bill, the stepper's ceiling, and the quote on the
+     row — and a stepper that lets you reach a quantity the bill then refuses
+     to sell you is the bug this is here to prevent.
+
+     `ceil` on a tankful because `buySupply` charges `ceil`: quoting a rounded
+     price and taking a ceiled one is a button that lies by a credit. */
+  const buyCostOf = (r, qty) =>
+    r.kind === "supply" ? Math.max(1, Math.ceil(qty / 100 * r.tank))
+    : r.kind === "repair" ? r.cost
+    : qty * r.cost;
+
+  /* The most of this row a given purse will stretch to — the inverse of the
+     line above. Supplies are priced by the percent of a tank, everything else
+     by the unit. */
+  const buyMostFor = (r, budget) => {
+    if (r.kind === "repair") return budget >= r.cost ? 1 : 0;
+    if (r.kind === "supply") {
+      return r.tank > 0 ? Math.floor((budget * 100) / r.tank) : 0;
+    }
+    return r.cost > 0 ? Math.floor(budget / r.cost) : 0;
+  };
+
   HUD.shopKey = function (code) {
     if (!sellEdit) return false;
     const d = /^(?:Digit|Numpad)([0-9])$/.exec(code);
@@ -3793,12 +3816,45 @@
       const going = [];          // what the SELL SELECTED button would do
       let takings = 0;
 
-      list.forEach((r, i) => {
+      /* ── what this place will not take, gathered at the bottom ───────────
+         Every row a station does not deal in used to sit wherever the hold
+         happened to put it, each one carrying "this place doesn't buy these"
+         after its name — so the sentence appeared five times down a list you
+         were trying to read, and the things you *could* sell were scattered
+         between them.
+
+         They go to the end now, under one heading that says it once. Nothing
+         is hidden: an unsellable row still shows what it is and how much of it
+         you have, because what a place refuses is worth knowing — it is the
+         reason to carry it to the next one. */
+      const isDud = r => r.kind !== "supply" && !r.each;
+      const sellable = list.filter(r => !isDud(r));
+      const duds = list.filter(isDud);
+      const shown = duds.length
+        ? sellable.concat([{ kind: "heading", id: "__nope" }], duds)
+        : sellable;
+
+      shown.forEach((r, i) => {
         const y = bodyY + PAGE.HEAD + 18 + i * 38;
         if (y > bodyY + bodyH - 74) return;    // the two buttons' room
 
-        // Nothing anybody buys: said once, and the row stops there.
-        const dud = r.kind !== "supply" && !r.each;
+        if (r.kind === "heading") {
+          label("NOT PURCHASING TODAY", x0, y, SIZE.cap, VIOLET_LOW,
+                "left", 0.75, "0.18em");
+          ctx.save();
+          ctx.strokeStyle = VIOLET_LOW;
+          ctx.globalAlpha = 0.3;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x0 + 250, y - 5);
+          ctx.lineTo(right, y - 5);
+          ctx.stroke();
+          ctx.restore();
+          return;
+        }
+
+        // Nothing anybody buys: said once, at the top of the group they are in.
+        const dud = isDud(r);
         const picked = !dud && !!sellPick[r.id];
 
         /* Each thing wears the picture it wears everywhere else: a material its
@@ -3839,11 +3895,8 @@
         label(r.kind === "supply" ? r.n + "%" : "×" + r.n,
               x0 + 232, y, SIZE.cap, VIOLET_DIM, "left", dud ? 0.4 : 0.8);
 
-        if (dud) {
-          label("this place doesn't buy these", x0 + 310, y, SIZE.cap, VIOLET_LOW,
-                "left", 0.6);
-          return;
-        }
+        // The heading above says why; the row does not repeat it.
+        if (dud) return;
 
         /* Gold when this place is paying over the odds, dim when it is paying
            the usual. No tag: the number is the message, and a word you have to
@@ -3969,6 +4022,36 @@
     const basket = [];
     let bill = 0;
 
+    /* ── the counter stops at what you can afford ─────────────────────────
+       Ric: four cash, the counter stops. The catch is that this is a basket —
+       what you can afford on one row depends on what the other ticked rows
+       have already spoken for — and the rows draw one after another, so by the
+       time a row is drawn `bill` only holds the ones above it. A row near the
+       top would have been capped against an empty purse-worth of commitments
+       and a row at the bottom against nearly all of them, which is not a rule
+       anybody could learn.
+
+       So the ticked total is worked out once, before any row draws, and each
+       row is capped against the purse less *everything else* in the basket.
+       Untick a row and the others can climb again, which is the behaviour the
+       page already implies. */
+    const committed = {};
+    let ticketed = 0;
+    rows.forEach(r => {
+      const id = r.id || r.kind + ":" + r.key;
+      if (!buyPick[id]) return;
+      /* Bounded by the whole purse as well as by the stock. A stored quantity
+         can outlive the cash that justified it — tick three of something, then
+         spend — and an unbounded stale number here would quietly squeeze every
+         other row. The row itself will draw the smaller figure; this only has
+         to avoid claiming more than the purse ever held. */
+      const cap = Math.max(1, Math.min(Math.max(1, r.most || 1),
+                                       buyMostFor(r, Math.max(0, cash))));
+      const c = buyCostOf(r, buyQtyOf(id, cap));
+      committed[id] = c;
+      ticketed += c;
+    });
+
     const inner = { x: full.x + 1, y: bodyY + PAGE.HEAD - 8,
                     w: full.w - 2, h: bodyH - PAGE.HEAD - 46 };
     ctx.save();
@@ -3992,8 +4075,17 @@
       rowTop += rowH;
       if (y < inner.y - rowH || y > inner.y + inner.h + rowH) return;
 
-      const most = Math.max(1, r.most || 1);
+      const stocked = Math.max(1, r.most || 1);
       const picked = !!buyPick[id];
+      /* The purse, less what the rest of the basket has already claimed. A row
+         that is not ticked yet claims nothing, so it is capped against the
+         whole remaining purse — tick it and the others tighten, which is the
+         same arithmetic seen from the other side. */
+      const spare = cash - (ticketed - (committed[id] || 0));
+      /* Never below one: a row you cannot afford at all still shows a 1 and a
+         dead `+`, because a stepper that reads 0 looks broken rather than
+         unaffordable. The BUY button is what refuses. */
+      const most = Math.max(1, Math.min(stocked, buyMostFor(r, Math.max(0, spare))));
 
       /* A part gets its own picture; everything else gets a swatch. A shelf of
          twenty-odd identical coloured squares is a list you read word by word. */
@@ -4047,11 +4139,7 @@
                  : money(r.cost) + " each";
 
       const qty = r.kind === "repair" ? 1 : buyQtyOf(id, most);
-      /* `ceil`, because `buySupply` charges `ceil` — quoting a rounded price
-         and taking a ceiled one is a button that lies by a credit. */
-      const cost = r.kind === "supply"
-        ? Math.max(1, Math.ceil(qty / 100 * r.tank))
-        : r.kind === "repair" ? r.cost : qty * r.cost;
+      const cost = buyCostOf(r, qty);
       if (picked) { basket.push({ r, id, qty }); bill += cost; }
 
       const stepW = 38, boxW = 54;

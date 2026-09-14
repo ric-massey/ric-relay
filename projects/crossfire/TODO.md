@@ -7,8 +7,8 @@ it gets a tick and a commit hash, so the list is also the record.
 **Status key** — `[ ]` not started · `[~]` in progress · `[x]` done · `[?]` needs
 an answer before it can be built.
 
-Batch of 2026-09-13. 27 items. **18 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5 ·
-P2, P3. P1 is most of the way.
+Batch of 2026-09-13. 27 items. **20 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5 ·
+P2, P3 · H2, H4. P1 is most of the way.
 
 ---
 
@@ -80,14 +80,14 @@ P2, P3. P1 is most of the way.
   - where BUY and SELL sit, put the inventory's own tabs — SHIP, CARGO,
     RECORD, CRAFTING, MAP — in the yellow
   - below that, exactly the inventory page as it is now
-- [ ] **H2 · Group what a place will not buy.** In SELL, everything marked
+- [x] **H2 · Group what a place will not buy.** In SELL, everything marked
   "this place doesn't buy these" moves to the bottom under one heading:
   `NOT PURCHASING TODAY`.
 - [ ] **H3 · A WORMHOLE tab.** Appears beside INVENTORY once the manmade
   wormhole is built. It is a map, but *only* for teleporting between stations —
   not the chart page. Free, and any station you have **charted** is a
   destination. You still have to be docked somewhere to make the jump.
-- [ ] **H4 · Buying must stop at what you can afford.** The quantity control
+- [x] **H4 · Buying must stop at what you can afford.** The quantity control
   should refuse to climb past your purse. Four cash, the counter stops.
 
 ## PARTS
