@@ -1176,6 +1176,12 @@
   const MAX_SPEED    = 360;
   const SHIP_R       = 12;
   const BULLET_SPD   = 520;
+  /* What a bot's round travels at. It was 360 while the fastest hull in the
+     game cruises at 684, so flying away in a straight line outran the bullets —
+     which makes every gun out there decoration and every chase a formality.
+     The same speed the player's rounds get, and for the same reason: a round is
+     a round, whoever fired it. */
+  const BOT_BULLET_SPD = 520;
   /* A quarter further than it was. Range is life times speed, and the speed is
      what makes a shot feel like a shot — so the reach comes out of the clock. */
   const BULLET_LIFE  = 1.31;
@@ -3817,6 +3823,8 @@
       t.hp -= b.dmg * share(d);
       t.hit = 0.12;
       if (ROLES[t.role || t.kind] && ROLES[t.role || t.kind].armed) t.angry = true;
+      // And it may decide it has had enough of you. See `hurtBySomebody`.
+      hurtBySomebody(t, null);
       if (t.hp <= 0) killTraffic(i, true); else gameSound("hit", t.x);
     }
     for (let i = surv.hulks.length - 1; i >= 0; i--) {
@@ -5218,7 +5226,7 @@
   // thicker without going back to the clutter 76 was chosen to end.
   const SURVEY_ROCKS  = 84;
   const SURVEY_ROCK_R = 3200;   // how far out they are kept
-  const SURVEY_HULL   = 5;
+  const SURVEY_HULL   = 6;   // five for years; the sixth is Ric's call
   /* Where the first station stands, and therefore where you come back to. One
      constant, because the generator and the respawn both need it and a respawn
      into empty space beside a station that moved would be the worst possible
@@ -7888,8 +7896,13 @@
       if (R() < (0.06 + deep * 0.07) * ab("wrecks")) {
         const p = spot(360);
         if (p) {
+          /* Six, not four. They were meant to be harder work than a rock and
+             were in practice unbreakable, which read as "tough" and was a bug;
+             with the bug gone they would have been softer than they have felt
+             for weeks. Six with damage counted means the starting cannon takes
+             six hits and a rail lance takes two — a big gun should tell. */
           out.hulks.push({ x: p.x, y: p.y, r: rnd(52, 96), a: R() * Math.PI * 2,
-                           spin: rnd(-0.12, 0.12), hp: 4 });
+                           spin: rnd(-0.12, 0.12), hp: 6 });
         }
       }
       /* Asteroid fields, out where the sector stops being tidy. Standing rock
@@ -8869,6 +8882,20 @@
     surv.parts = []; surv.fields = [];
     surv.cave = [];
     surv.caveGrid = null;
+    /* ── the ships that followed you out of their own chunk ────────────────
+       `surv.traffic` is rebuilt from the loaded chunks every stream, and a ship
+       belongs to the chunk it *spawned* in. A ship that is chasing you has by
+       definition left that chunk — it is wherever you are — so the moment its
+       birthplace scrolled out of the loaded box it was dropped from the rebuild
+       and vanished. From the cockpit: the thing on your tail blinks out of
+       existence, usually just as it gets interesting.
+
+       So anything that was flying a moment ago and is still within reach comes
+       across, whether or not the chunk that made it is still loaded. It is
+       still culled — by its own distance from you, which is the honest test —
+       and a kill still removes it, because `goneTraffic` is keyed on the id it
+       carries with it. */
+    const wasFlying = surv.traffic;
     surv.traffic = []; surv.battles = [];
     for (const [k, c] of surv.chunks) {
       // The Warrens' rock. Already collision discs; see `caveSegsIn`.
@@ -9078,6 +9105,24 @@
     // The ones that were spawned rather than generated, put back. See `spawned`.
     for (const t of spawned) surv.traffic.push(t);
 
+    /* And the ones that *were* generated but whose birthplace has gone. A ship
+       chasing you is, by the time it matters, a long way from the chunk that
+       made it — so the chunk scrolls out of the loaded box, the rebuild cannot
+       find the ship in any chunk, and it is dropped while sitting on your tail.
+       Same disappearance as the spawned ships above, from the other direction,
+       and the half of it that was still there.
+
+       Carried over on the same terms: still near enough to be real, not already
+       back in the list, and not something you killed. */
+    const back = new Set(surv.traffic);
+    for (const t of wasFlying) {
+      if (back.has(t) || !t.id) continue;
+      if (surv.goneTraffic.has(t.id)) continue;
+      if (Math.abs(t.x - ships[0].x) > CHUNK * 3 ||
+          Math.abs(t.y - ships[0].y) > CHUNK * 3) continue;
+      surv.traffic.push(t);
+    }
+
     seedMotes();
   }
 
@@ -9105,8 +9150,16 @@
     for (const pl of surv.planets) {
       if (dist2(x, y, pl.x, pl.y) < pl.r * pl.r) return { x, y };
     }
-    for (const h of surv.hulks) {
-      if (dist2(x, y, h.x, h.y) < h.r * h.r) return { x, y };
+    /* A hulk is the one solid thing out here that is also a *target*, so it
+       hands itself back rather than only reporting a stop. It used to report a
+       stop and nothing else — and because this sweep runs before the survey
+       bullet pass that knows how to damage one, the round was always spent on
+       the way in. A dead hull was cover you could hide behind and could not
+       break: thirty seconds of continuous fire, four hit points, not one of
+       them taken. */
+    for (let i = 0; i < surv.hulks.length; i++) {
+      const h = surv.hulks[i];
+      if (dist2(x, y, h.x, h.y) < h.r * h.r) return { x, y, hulk: h, at: i };
     }
     const lev = surv.leviathan;
     if (lev && dist2(x, y, lev.x, lev.y) < (lev.len * 0.75) ** 2) {
@@ -9916,7 +9969,11 @@
     station: { name: "STATION",   colour: CASH,          bad: false },
     gate:    { name: "GATE",      colour: "#5ce1ff",     bad: false },
     hulk:    { name: "HULK",      colour: WRECK,         bad: false },
-    salvage: { name: "CASH",      colour: CASH,          bad: false },
+    /* Not "CASH". A scan return is a thing in the sky, and the thing is ice or
+       iron or a reactor core — cash is what it becomes at a counter two hours
+       later. The name is filled in from the mote itself; this is the fallback
+       for a return with no material on it. */
+    salvage: { name: "SALVAGE",   colour: CASH,          bad: false },
     drone:   { name: "SENTRY",    colour: DRONE_COLOUR,  bad: true },
     traffic: { name: "TRAFFIC",   colour: "#8fb4d8",     bad: false },
     patrol:  { name: "PATROL",    colour: CASH,          bad: false },
@@ -9978,7 +10035,11 @@
       if (dist2(m.x, m.y, me.x, me.y) > r2) continue;
       if (seen.some(c => dist2(c.x, c.y, m.x, m.y) < 260 * 260)) continue;
       seen.push(m);
-      found.push({ kind: "salvage", x: m.x, y: m.y, t: ECHO_LIFE });
+      /* Carrying the mote, so the return can say what it is. A cluster is
+         reported by its first member and named after it — "IRON", not "CASH",
+         and not a list of everything in the pile either, because a return is a
+         glance and a glance gets one word. */
+      found.push({ kind: "salvage", x: m.x, y: m.y, t: ECHO_LIFE, ref: m });
     }
 
     /* A scan writes what it finds into the gazetteer. Half the value of
@@ -10176,6 +10237,15 @@
         continue;
       }
 
+      /* Running, because it is losing. Outranks every other want it has — a
+         ship that has decided to leave is not also escorting, policing or
+         robbing anybody. See `hurtBySomebody`. */
+      if (t.breakOff > 0) {
+        t.breakOff = Math.max(0, t.breakOff - dt);
+        t.angry = false;
+        if (!t.breakOff) { t.fleeFrom = null; t.angryAt = null; }
+      }
+
       const near = Math.hypot(me.x - t.x, me.y - t.y);
       // Somebody you have met before, if this is one of them.
       if (t.friend && me.alive) friendMeeting(t, near);
@@ -10298,7 +10368,9 @@
          is already angry with you: a decoy does not make anybody angry, it makes
          somebody who already is point the wrong way. */
       const fake = t.angry && me.alive ? decoyFor(t.x, t.y) : null;
-      const goal = bait ? bait
+      const goal = (t.breakOff > 0 && t.fleeFrom)
+                   ? { x: t.x + (t.x - t.fleeFrom.x), y: t.y + (t.y - t.fleeFrom.y) }
+                 : bait ? bait
                  : (t.angry && fake) ? { x: fake.x, y: fake.y }
                  : (t.angry && me.alive) ? { x: me.x, y: me.y }
                  : fleeing ? { x: t.x + (t.x - me.x), y: t.y + (t.y - me.y) }
@@ -10309,7 +10381,13 @@
          wells have pushed the aim — otherwise a station on the far side of a well
          can never be reached, because the dodge always holds the ship 200 units
          off the only point that counts as arriving. */
-      if (Math.hypot(goal.x - t.x, goal.y - t.y) < 220) {
+      /* `!(t.breakOff > 0)`, not `t.breakOff <= 0`. A ship that has never been
+         hurt has no `breakOff` at all, and `undefined <= 0` is false — so the
+         first version of this stopped *every* ship in the sector from ever
+         arriving anywhere: no deliveries, no salvage taken, no routes walked.
+         Asking the positive question is the only form that is safe on a field
+         that may not exist. */
+      if (!(t.breakOff > 0) && Math.hypot(goal.x - t.x, goal.y - t.y) < 220) {
         arrived(t, goal);
         if (!t.angry && !tailing && !fleeing) t.leg = -t.leg;
         continue;
@@ -10338,7 +10416,8 @@
         }
       }
 
-      let aim = (t.angry || fleeing || t.hunted > 0) ? goal : dodgeWells(t, goal);
+      let aim = (t.angry || fleeing || t.breakOff > 0 || t.hunted > 0)
+                ? goal : dodgeWells(t, goal);
       /* And they steer round *you*. Nothing out here made any attempt to avoid
          the player, so a freighter on a route that happens to cross where you are
          parked flew into you and kept flying into you. Anything not actively
@@ -10463,7 +10542,8 @@
              the target's own velocity over that time. Traffic carries no velocity
              of its own — it flies on a heading — so its speed along its heading is
              what gets led. */
-          const SHOT_V = 360 * U;
+          // The speed the round actually leaves at, or every lead is wrong.
+          const SHOT_V = BOT_BULLET_SPD * U;
           const leadOf = (o, ovx, ovy) => {
             const dd = Math.hypot(o.x - t.x, o.y - t.y);
             const tt = dd / SHOT_V;
@@ -10553,7 +10633,12 @@
             t.cool = (t.angry ? 0.42 : 0.5) / guns.rate;
             surv.shots.push({
               x: t.x + Math.cos(a) * 20 * U, y: t.y + Math.sin(a) * 20 * U,
-              vx: Math.cos(a) * 360 * U, vy: Math.sin(a) * 360 * U,
+              /* Carrying the ship's own velocity, the way yours do. A ship
+                 now has one — see the traffic step — and a round fired from a
+                 hull closing on you should arrive faster than one fired from a
+                 hull backing away. */
+              vx: Math.cos(a) * BOT_BULLET_SPD * U + (t.vx || 0),
+              vy: Math.sin(a) * BOT_BULLET_SPD * U + (t.vy || 0),
               // `dmg`, so a rock takes the same point from them it takes from you.
               life: 2.2, dmg: guns.dmg, friendly: !live, from: t
             });
@@ -10791,12 +10876,60 @@
   /* Destroyed, by you or by somebody else. What it was carrying ends up on the
      floor either way — which is what makes robbing one a thing you can do, and
      failing to save one a thing that costs somebody else rather than you. */
+  /* Somebody has hit this ship. Two things follow, and neither of them used to.
+
+     It **turns on whoever did it** — an armed ship that is being shot at has a
+     more urgent problem than whatever it was doing, and until now the only
+     thing in the sector that could earn a ship's attention was the player.
+
+     And it **values its own life**. Below a third of its hull it breaks off and
+     runs, whoever it was fighting, for long enough to get clear. A raider that
+     presses a losing attack to the death is not a raider, it is a torpedo —
+     and the sector reads completely differently when the thing chasing you can
+     decide it has had enough. */
+  const BREAK_OFF = 9;              // seconds of running, once it has had enough
+  function hurtBySomebody(t, by) {
+    if (!t) return;
+    const armed = ROLES[t.role || t.kind] && ROLES[t.role || t.kind].armed;
+    if (by && by !== t && surv.traffic.indexOf(by) >= 0 && armed) {
+      t.angryAt = by;
+      t.mark = by; t.markKind = "ship"; t.think = 3;
+      t.angry = false;              // it has a nearer enemy than you now
+    }
+    if (t.maxHp && t.hp > 0 && t.hp <= t.maxHp * 0.34) {
+      t.breakOff = BREAK_OFF;
+      t.fleeFrom = by && by !== t
+        ? { x: by.x, y: by.y }
+        : { x: ships[0].x, y: ships[0].y };
+    }
+  }
+
   function killTraffic(i, byYou, swallowed) {
     const t = surv.traffic[i];
     burst(t.x, t.y, trafficColour(t), 26, 300 * U);
     gameSound("boom", t.x);
     addShake(4);
-    for (const key of t.cargo) dropKnownMote(t.x, t.y, key, 90);
+    let dropped = 0;
+    for (const key of t.cargo) { dropKnownMote(t.x, t.y, key, 90); dropped++; }
+    /* **Almost everything has something in it.** Three kinds of ship are pushed
+       into the sector with an empty hold — the patrols fighting a battle, the
+       hunters that come for you, and anything already robbed — so killing one
+       left nothing at all behind. A wreck with nothing in it is a kill that did
+       not happen as far as the sector is concerned, and it is indistinguishable
+       from the drop being broken.
+
+       So an empty hull still gives up its fittings nine times in ten. One in
+       ten is nothing, which is the "low percentage" this is meant to be: enough
+       that an empty wreck is a disappointment rather than a bug report. */
+    if (!dropped && Math.random() < 0.9) {
+      const n = 2 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < n; i++) {
+        const roll = Math.random();
+        dropKnownMote(t.x, t.y,
+          roll < 0.34 ? "iron" : roll < 0.62 ? "alloy"
+          : roll < 0.88 ? "ice" : "electronics", 90);
+      }
+    }
     /* A convoy that did not get through. Whatever it was carrying, the station
        that was expecting it is now shorter of it — and the shortage is a price, so
        the next thing that happens is that somebody else finds it worth the trip.
@@ -12674,6 +12807,13 @@
           surv.shots.splice(i, 1);
           o.hp -= b.dmg || 1;
           o.hit = 0.12;
+          /* And it turns on whoever did it. Rounds between two other ships used
+             to take hull off and change nothing else — so a raider being shot
+             at by a patrol carried on flying at *you* while it was taken apart,
+             which is the loudest possible way of saying nothing out here is
+             paying attention to anything but the player. A hull that is being
+             hit has a more urgent problem than you. */
+          hurtBySomebody(o, b.from);
           burst(b.x, b.y, trafficColour(o), 5, 120 * U);
           if (o.hp <= 0) killTraffic(k, false); else gameSound("hit", o.x);
         }
@@ -13330,8 +13470,13 @@
   /* Stripping a dead hull. Four rounds and it comes apart — the same verb the
      rest of the game already has for a rock, pointed at something that is worth
      more and does not drift as far. */
-  function hitHulk(h, i) {
-    h.hp--;
+  function hitHulk(h, i, b) {
+    /* The round's damage, not a flat one. A rail lance chipped a dead hull
+       exactly as fast as the starting cannon did, which made every gun in the
+       game the same gun as far as salvage was concerned — and a rock has
+       counted damage properly for years, so the two disagreed about what a
+       bullet is. */
+    h.hp -= Math.max(1, Math.round(b && b.dmg ? b.dmg : 1));
     burst(h.x, h.y, WRECK, 8, 150 * U);
     gameSound("hit", h.x);
     if (h.hp > 0) return;
@@ -13388,12 +13533,11 @@
         burst(b.x, b.y, trafficColour(t), 5, 120 * U);
         if (t.hp <= 0) killTraffic(i, true); else gameSound("hit", t.x);
       }
-      for (let i = surv.hulks.length - 1; i >= 0 && !spent; i--) {
-        const h = surv.hulks[i];
-        if (dist2(b.x, b.y, h.x, h.y) > h.r * h.r) continue;
-        spent = true;
-        hitHulk(h, i);
-      }
+      /* Hulks are not asked about here. The bullet loop's own solid sweep gets
+         to them first — it steps along the round's travel rather than sampling
+         its new position, so it catches what this misses — and two paths for
+         "did this round hit a dead hull" is how the first one came to be
+         unreachable. See `solidHit`. */
       if (!spent && surv.leviathan) {
         for (const g of surv.leviathan.segs) {
           if (dist2(b.x, b.y, g.x, g.y) < g.r * g.r) {
@@ -14319,7 +14463,10 @@
        means the next four ships you pass are all somebody's navy. */
     const heat = warScale().heat;
     let faction, role;
-    if (roll < 0.06 + (1 - near) * 0.3) {
+    /* A tenth fewer than there were. The deep was better than a third pirates
+       and it made every other role scenery between fights — and a raider is
+       only frightening while it is not the thing you expect. */
+    if (roll < 0.054 + (1 - near) * 0.27) {
       faction = "pirate"; role = "pirate";
     } else {
       const powers = FACTIONS.map(f => f.key);
@@ -15279,7 +15426,15 @@
          killed must not leave a contact behind, and one that chased you must not
          leave one where it started. */
       if (e.ref) {
-        const live = surv.drones.includes(e.ref) || surv.traffic.includes(e.ref);
+        /* Motes as well as ships and sentries. A salvage return carries the
+           mote it was taken from so it can say what the stuff *is* — and this
+           list decides whether a tracked echo is still real, so leaving motes
+           out of it would have killed every salvage return on the frame it was
+           made. A picked-up mote leaves the list and the contact goes out with
+           it, which is the same rule the other two follow. */
+        const live = surv.drones.includes(e.ref) ||
+                     surv.traffic.includes(e.ref) ||
+                     surv.motes.includes(e.ref);
         if (!live) { surv.echoes.splice(i, 1); continue; }
         e.x = e.ref.x; e.y = e.ref.y;
       }
@@ -16953,8 +17108,22 @@
          screen and the button's whole answer was a line of text. */
       echoes: surv.echoes.map(e => {
         const spec = ECHO_KINDS[e.kind] || ECHO_KINDS.salvage;
+        /* A ship's return is drawn in its flag's colour, not in the flat
+           blue-grey every ship shared. The sector has three powers, the
+           independents and the pirates, each with a colour you can already read
+           off the hull — and a scan that renders all five the same is a scan
+           that tells you less than looking out of the window.
+
+           `ref` is the object the echo is following, so this is the same
+           question `trafficColour` answers, asked of the same ship. */
+        const flag = e.ref && e.ref.faction ? trafficColour(e.ref) : null;
+        /* And a mote says what it is. See ECHO_KINDS.salvage. */
+        const mat = e.kind === "salvage" && e.ref && e.ref.mat
+          ? matSpec(e.ref.mat) : null;
         return { kind: e.kind, x: e.x, y: e.y, t: e.t, life: ECHO_LIFE,
-                 name: spec.name, colour: spec.colour, bad: !!spec.bad };
+                 name: mat ? mat.name : spec.name,
+                 colour: mat ? mat.colour : (flag || spec.colour),
+                 bad: !!spec.bad };
       }),
       scanReach: scanRange(),
       pins: surv.pins,
@@ -18526,6 +18695,8 @@
         }
         if (struck) {
           burst(struck.x, struck.y, b.colour, 3, 90 * U);
+          // A dead hull is a target as well as cover. See `solidHit`.
+          if (struck.hulk && b.owner === ships[0].id) hitHulk(struck.hulk, struck.at, b);
           if (b.boom) { b.x = struck.x; b.y = struck.y; explode(b); }
           bullets.splice(i, 1);
           continue;

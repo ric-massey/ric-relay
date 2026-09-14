@@ -3611,9 +3611,59 @@ const storeOf = (cf, key) => {
           "with its day");
     check(surv.t.rescued === true, "the rescue did not register");
   }
+  /* ── a ship on your tail stays on your tail ───────────────────────────────
+     `surv.traffic` is rebuilt from the loaded chunks every stream, and a ship
+     belongs to the chunk it *spawned* in. A ship chasing you has by definition
+     left that chunk — it is wherever you are — so the moment its birthplace
+     scrolled out of the loaded box it was dropped from the rebuild and vanished
+     off your flank. Half of this was found and fixed before, for the ships that
+     carry no chunk id at all; this is the other half, for the ones that do.
+
+     What is checked is disappearance **without a death**. A ship swallowed by a
+     star is gone for a reason and `goneTraffic` records it — that is the sector
+     working. A ship that is simply not in the list any more, with nothing
+     written down, is the sector forgetting. */
+  {
+    const g = boot("?debug=1&seed=515151");
+    g.cf.start("survey", 1);
+    const gs = g.cf.survey();
+    const gm = g.cf.live().ships[0];
+    gs.docked = null; g.cf.screen("playing");
+    gm.invuln = 9999; gm.x = 400000; gm.y = 120000; gm.vx = gm.vy = 0;
+    for (let i = 0; i < 30; i++) { now += 1000 / 60; g.cf.step(); }
+
+    gs.traffic.length = 0;
+    const chaser = { id: "0,0t9", kind: "pirate", role: "pirate",
+      faction: "pirate", hull: "needle", x: gm.x + 400, y: gm.y, a: 0,
+      angry: true, from: { x: gm.x, y: gm.y }, to: { x: gm.x, y: gm.y },
+      leg: 1, speed: 260, baseSpeed: 260, hp: 8, maxHp: 8, cargo: [],
+      cool: 9, doom: 0, guards: 0, space: 0, trades: false, phase: 0 };
+    gs.traffic.push(chaser);
+
+    let vanished = -1, crossings = 0;
+    for (let i = 0; i < 900; i++) {
+      gm.x += 30; gm.y += 12;
+      chaser.x = gm.x + 400; chaser.y = gm.y;
+      now += 1000 / 60; g.cf.step();
+      const inList = gs.traffic.indexOf(chaser) >= 0;
+      if (!inList && !gs.goneTraffic.has(chaser.id) && vanished < 0) vanished = i;
+      // Killed for a real reason — put it back and keep testing the crossings.
+      if (!inList && gs.goneTraffic.has(chaser.id)) {
+        gs.goneTraffic.delete(chaser.id);
+        chaser.hp = 8;
+        gs.traffic.push(chaser);
+        crossings++;
+      }
+    }
+    check(vanished < 0,
+          "a ship chasing you was dropped with no death recorded, at frame " +
+          vanished);
+  }
+
   console.log("  company    " + home.toFixed(2) + "/chunk at home → " +
               deep.toFixed(3) + " in the deep · haulers, patrols and distress " +
-              "calls · robbing drops what it carried · rescuing pays");
+              "calls · robbing drops what it carried · rescuing pays · a ship " +
+              "on your tail crosses chunk lines with you");
 }
 
 // ── the first two minutes ─────────────────────────────────────────────────
