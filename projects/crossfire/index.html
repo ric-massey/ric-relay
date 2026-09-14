@@ -1560,8 +1560,8 @@
   /* Which settings screen [C] means. A keyboard's is the key grid; a phone's
      is the pad. Once a screen has been touched it is a phone, whatever the
      media queries said when the page loaded. */
-  const settingsScreen = () =>
-    (touchOnly || document.body.classList.contains("touch")) ? "thumb" : "controls";
+  // …unless the player has said which kind of machine this is. See `thumbInput`.
+  const settingsScreen = () => (thumbInput() ? "thumb" : "controls");
 
   /* Opening the settings from inside a match shows that match's page and only
      that page: you are in Survey, so the camera and zoom you are looking at are
@@ -1702,6 +1702,29 @@
   let soundEnabled = true;
   let audioCtx = null, audioMaster = null, audioNoise = null;
 
+  /* ── how you are flying it ────────────────────────────────────────────────
+     Two settings, and they exist because the browser's guess is not always
+     right about either.
+
+     **Which kind of machine this is.** `touchOnly` asks the media query whether
+     there is a coarse pointer and no hover, which is a good guess and only a
+     guess: a touchscreen laptop answers yes and is being used with a keyboard,
+     and a tablet with a case-keyboard answers no and is being used with a
+     thumb. Neither person can currently tell the game it is wrong. So the guess
+     becomes a default that can be overridden, and `AUTO` keeps the behaviour
+     everybody has now.
+
+     **Flying with the mouse.** The ship turns toward the pointer and the left
+     button fires. It does *not* snap: the nose comes about at the hull's own
+     rate, the same rate the keys turn it at, so the mouse says where you want
+     to be pointed rather than where you are pointed. A ship that tracked the
+     cursor exactly would make the turn stat meaningless and every hull the
+     same hull. */
+  const INPUT_STORE = "crossfire.input.v1";
+  const MOUSEFLY_STORE = "crossfire.mousefly.v1";
+  let inputMode = "auto";          // "auto" | "keys" | "touch"
+  let mouseFly = false;
+
   try {
     const saved = JSON.parse(localStorage.getItem(CAMERA_STORE) || "null");
     if (saved && typeof saved === "object") {
@@ -1711,7 +1734,41 @@
       cameraRotates.royale = cameraRotates.campaign = true;
     }
     soundEnabled = localStorage.getItem(SOUND_STORE) !== "off";
+    const im = localStorage.getItem(INPUT_STORE);
+    if (im === "keys" || im === "touch" || im === "auto") inputMode = im;
+    mouseFly = localStorage.getItem(MOUSEFLY_STORE) === "on";
   } catch (_) {}
+
+  /* The answer the whole interface asks for. `touchOnly` is the guess; this is
+     the guess with the player's word on top of it, and everything that used to
+     read `touchOnly` for a *layout* decision reads this instead. */
+  function thumbInput() {
+    if (inputMode === "touch") return true;
+    if (inputMode === "keys") return false;
+    return touchOnly || document.body.classList.contains("touch");
+  }
+  function cycleInputMode() {
+    inputMode = inputMode === "auto" ? "keys" : inputMode === "keys" ? "touch" : "auto";
+    try { localStorage.setItem(INPUT_STORE, inputMode); } catch (_) {}
+    applyInputMode();
+  }
+  const inputModeName = () =>
+    inputMode === "keys" ? "MOUSE & KEYBOARD"
+    : inputMode === "touch" ? "TOUCHSCREEN"
+    : "AUTOMATIC";
+  function toggleMouseFly() {
+    mouseFly = !mouseFly;
+    try { localStorage.setItem(MOUSEFLY_STORE, mouseFly ? "on" : "off"); } catch (_) {}
+  }
+
+  /* The body class is what the stylesheet lays the page out from, so a choice
+     has to reach it — otherwise picking TOUCHSCREEN on a laptop changes the
+     game's mind and not the page's. */
+  function applyInputMode() {
+    if (inputMode === "touch") document.body.classList.add("touch");
+    else if (inputMode === "keys") document.body.classList.remove("touch");
+    else if (touchOnly) document.body.classList.add("touch");
+  }
 
   function audioUnlock() {
     if (!soundEnabled) return null;
@@ -1879,7 +1936,7 @@
      window that happens to be tall is somebody deliberately making it tall. */
   const rotateEl = document.getElementById("rotate");
   function checkOrientation() {
-    const touch = document.body.classList.contains("touch") || touchOnly;
+    const touch = document.body.classList.contains("touch") || thumbInput();
     const portrait = window.innerHeight > window.innerWidth;
     const turn = !!(touch && portrait);
     document.body.classList.toggle("turnme", turn);
@@ -2043,6 +2100,12 @@
      always a thousand wide; it is four columns of 150 centred in whatever the
      screen is now, which keeps the player labels down its left side in the same
      place relative to it. */
+  /* `y0` is set by `drawControls` each frame rather than fixed at 270. The
+     settings band above the grid can be one row or two depending on the mode
+     and how its notes wrap, and a grid pinned to a constant is a grid that gets
+     drawn through — which is exactly what happened the moment FLYING was added
+     above it. The click handler reads the same value, so what you press is
+     where it was last drawn. */
   const GRID = { colW: 150, cellW: 128, cellH: 42, y0: 270, rowH: 60 };
   const gridX0 = () =>
     Math.round(SCREEN_W / 2 - (ACTIONS.length - 1) * GRID.colW / 2);
@@ -3035,7 +3098,7 @@
     } else if (state === "controls") {
       controlsKey(code);
     } else if (state === "thumb") {
-      if (code === "KeyK" && !touchOnly) { state = "controls"; return; }
+      if (code === "KeyK" && !thumbInput()) { state = "controls"; return; }
       if (code === "Escape" || code === "KeyC" || code === "Backspace") {
         state = backFrom || "title";
       }
@@ -18105,8 +18168,13 @@
              y: (clientY - r.top) / r.height * SCREEN_H };
   }
 
+  /* Where the pointer is, in screen units, for as long as it is over the glass.
+     Null when it has left, so flying with the mouse stops asking the ship to
+     turn toward a cursor that is somewhere else entirely. */
+  let pointerAt = null;
   canvas.addEventListener("mousemove", e => {
     const s = screenPoint(e.clientX, e.clientY);
+    pointerAt = s;
     if (state === "controls") {
       binder.hover = cellAt(s.x, s.y);
     }
@@ -18130,7 +18198,33 @@
     canvas.style.cursor = tapAt(s.x, s.y) ||
       (state === "controls" && cellAt(s.x, s.y)) ? "pointer" : "default";
   });
-  canvas.addEventListener("mouseleave", () => { canvas.style.cursor = "default"; });
+  canvas.addEventListener("mouseleave", () => {
+    canvas.style.cursor = "default";
+    pointerAt = null;
+    mouseFiring = false;
+  });
+
+  /* ── flying it with the mouse ─────────────────────────────────────────────
+     The nose comes about toward the pointer at the hull's own rate — the same
+     `turnToward` the thumb stick uses, given the angle from the ship to the
+     cursor instead of the angle of the stick. It is deliberately not a snap: a
+     ship that tracked the cursor exactly would make the turn stat meaningless
+     and every hull in the shipyard the same hull.
+
+     The left button fires. Thrust stays on the keyboard, because a hand that is
+     aiming is not also pushing a throttle. */
+  let mouseFiring = false;
+  canvas.addEventListener("mousedown", e => {
+    if (e.button === 0) mouseFiring = true;
+  });
+  addEventListener("mouseup", e => {
+    if (e.button === 0) mouseFiring = false;
+  });
+
+  /* True while the mouse is actually flying the ship: the setting is on, this
+     is not a touch layout, and there is a pointer on the glass to fly toward. */
+  const flyingByMouse = () =>
+    mouseFly && !thumbInput() && state === "playing" && pointerAt !== null;
 
   /* A tap on a cell is the same thing as walking to it and pressing ENTER, so
      a rebind is one touch and one key on a laptop or a tablet alike. Pointer
@@ -18434,8 +18528,23 @@
            cost you a burn you actually asked for. */
         stickGas = !padCfg.gas && stick.mag > 0.55 && t.off < 1.05;
       }
+      /* The mouse, if that is how this is being flown. On top of the keys
+         rather than instead of them: turning with A and D while the pointer
+         sits somewhere is a fight nobody asked for, so the keys win — they are
+         a deliberate press and the cursor is just wherever the hand left it. */
+      if (flyingByMouse() && me.alive && !me.input.l && !me.input.r) {
+        const sx = pointerAt.x - SCREEN_W / 2;
+        const sy = pointerAt.y - SCREEN_H / 2;
+        // Far enough out to mean something: a cursor on the ship has no bearing.
+        if (Math.hypot(sx, sy) > 26) {
+          const t = turnToward(me, Math.atan2(sy, sx) - cam.rot);
+          me.input.l = t.l;
+          me.input.r = t.r;
+        }
+      }
       me.input.th = me.input.th || touch.th || stickGas;
-      me.input.f = me.input.f || touch.f || autoFire();
+      me.input.f = me.input.f || touch.f || autoFire() ||
+                   (flyingByMouse() && mouseFiring);
     }
     readSimulationInput();
   }
@@ -20348,7 +20457,7 @@
     tapButton("SETTINGS", COLS(4, 3), 590, 210, 36, "#ffe56d",
               () => { state = openSettings("title"); });
 
-    text(touchOnly
+    text(thumbInput()
            ? "one player per phone · up to five online, a screen each"
            : "two at this keyboard · up to five online · every key is yours to change",
          SCREEN_W / 2, 646, 12, "#ffcb42");
@@ -20375,7 +20484,7 @@
     const rows = laneRows();
     text(L.name, SCREEN_W / 2, 92, 44, L.colour);
     text(L.line, SCREEN_W / 2, 126, 15, "#ffcb42");
-    text(touchOnly ? "TAP A MODE TO OPEN IT  ·  TAP AGAIN TO PLAY"
+    text(thumbInput() ? "TAP A MODE TO OPEN IT  ·  TAP AGAIN TO PLAY"
                    : "HOVER TO OPEN  ·  ARROWS MOVE  ·  ENTER PLAYS",
          SCREEN_W / 2, 152, 13, "#ffcb42", "center", 0.9);
 
@@ -20468,7 +20577,7 @@
          already opened it, so the first click plays — which is what a mouse
          user expects and what a thumb cannot do. */
       pushTap({ x, y: top, w, h, card: i, act: () => {
-        if (!touchOnly || modePick === i) { modePick = i; playCard(key); }
+        if (!thumbInput() || modePick === i) { modePick = i; playCard(key); }
         else { modePick = i; modeHover = -1; }
       } });
       x += w + gap;
@@ -20538,7 +20647,7 @@
          SCREEN_W / 2, 150, 13, "#ffcb42", "center", 0.8);
 
     const most = humanMax();
-    text(touchOnly ? "ONE PLAYER ON A PHONE" : "CHOOSE LOCAL PLAYERS",
+    text(thumbInput() ? "ONE PLAYER ON A PHONE" : "CHOOSE LOCAL PLAYERS",
          SCREEN_W / 2, 188, 19, "#ffcb42");
     text("CLICK A BUTTON  ·  OR MOVE WITH ARROWS + ENTER",
          SCREEN_W / 2, 214, 12, "#ffcb42", "center", 0.8);
@@ -20608,14 +20717,14 @@
       text(p.label, SCREEN_W / 2 - 150, y, 17, p.colour, "right");
       text(hintOf(p), SCREEN_W / 2 - 130, y, 15, "#ffcb42", "left");
     });
-    text(touchOnly
+    text(thumbInput()
            ? "a stick and a fire button appear the moment you touch the screen"
            : "more than two? play online — one screen each",
          SCREEN_W / 2, controlsY + 46 + most * 32, 13, "#ffcb42");
 
     tapButton("BACK", SCREEN_W / 2, 650, 240, 44, "#ffcb42",
               () => { state = isCamp ? "levels" : "title"; });
-    tapButton(touchOnly ? "PHONE SETTINGS" : "CONTROL SETTINGS",
+    tapButton(thumbInput() ? "PHONE SETTINGS" : "CONTROL SETTINGS",
               650, 650, 240, 44, "#ffe56d",
               () => { state = openSettings("count"); });
   }
@@ -20707,17 +20816,82 @@
 
   /* The controls screen is the settings screen: every key on it is a control
      you can change, and the grid is the same one `cellBox` hands the pointer. */
+  /* A heading with a rule either side of it. The settings page was one
+     undifferentiated stack of buttons — four sizes of rectangle in six rows,
+     with no way to tell which of them belonged together — and its own note
+     said a fourth mode setting "needs the screen rearranged, not another
+     column". Two more settings arrived, so here is the rearrangement: three
+     named groups, each answering one question.
+
+       THIS MODE   what the mode you are about to play does
+       FLYING      how you drive it — the machine, the mouse, and the keys
+       THE GAME    sound, screen, account, and the way out
+
+     A rule rather than a box: a box round a group is a second frame inside a
+     framed page, and the page already has one. */
+  function section(label, y, colour) {
+    const c = colour || "#ffcb42";
+    ctx.save();
+    ctx.font = '14px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+    const tw = ctx.measureText(label).width + 26;
+    ctx.restore();
+    const x0 = MENU_INSET + 8, x1 = SCREEN_W - MENU_INSET - 8;
+    const mid = SCREEN_W / 2;
+    ctx.save();
+    ctx.strokeStyle = c;
+    ctx.globalAlpha = 0.28;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x0, y); ctx.lineTo(mid - tw / 2, y);
+    ctx.moveTo(mid + tw / 2, y); ctx.lineTo(x1, y);
+    ctx.stroke();
+    ctx.restore();
+    text(label, mid, y + 5, 14, c, "center", 0.75);
+  }
+
   function drawControls() {
-    text("SETTINGS", SCREEN_W / 2, 56, 38, "#ffe56d");
-    text("Click a key box, then press the new key.",
-         SCREEN_W / 2, 84, 16, "#ffcb42");
+    text("SETTINGS", SCREEN_W / 2, 52, 34, "#ffe56d");
 
-    const headY = modeSettingsBand(112, 158, true);
+    section("THIS MODE", 82);
+    const headY = modeSettingsBand(110, 156, true);
 
-    text("KEYBOARD CONTROLS", SCREEN_W / 2, Math.max(220, headY), 18, "#ffe56d");
+    /* ── how you drive it ───────────────────────────────────────────────────
+       The machine first, then the pointer, then the keys — narrowing from
+       "what am I playing on" to "which button does what", which is the order
+       somebody sets these up in.
+
+       Laid out from `headY` rather than from a constant, so a mode with three
+       settings and a wrapped note pushes this down instead of drawing through
+       it. That collision is what the old comment here was warning about. */
+    const flyY = Math.max(206, headY + 8);
+    section("FLYING", flyY);
+
+    tapButton("INPUT: " + inputModeName(), COLS(2, 0), flyY + 30, 300, 38,
+              "#6dc8ff", cycleInputMode);
+    tapButton("MOUSE FLYING: " + (mouseFly ? "ON" : "OFF"),
+              COLS(2, 1), flyY + 30, 300, 38,
+              mouseFly ? "#6dffbf" : "#ffcb42", toggleMouseFly, mouseFly);
+    /* One line for both, not one each. The buttons already say what they are
+       set to; what a line underneath is for is the word that does not explain
+       itself, and only AUTOMATIC needs it. */
+    text(inputMode === "auto"
+           ? "Automatic: the browser decides which kind of machine this is."
+           : inputMode === "keys" ? "Treated as a desk, whatever the screen can do."
+           : "Treated as a touchscreen, whatever the browser thinks.",
+         SCREEN_W / 2, flyY + 54, 13, "#ffcb42", "center", 0.6);
+
+    /* And now the keys, starting under all of that. Everything below reads
+       `GRID.y0`, so setting it here is what moves the whole grid — the labels,
+       the boxes and the rectangles you click.
+
+       There is no "click a key box, then press the new key" line up here any
+       more. It said the same thing as the line under the grid, it was the only
+       thing on the page said twice, and at this height it was drawn straight
+       through the column headings. One hint, under the thing it is about. */
+    GRID.y0 = flyY + 100;
 
     ACTIONS.forEach((a, ai) => {
-      text(a.name, cellBox(0, ai).cx, 246, 16, "#ffcb42", "center", 0.9);
+      text(a.name, cellBox(0, ai).cx, GRID.y0 - 22, 15, "#ffcb42", "center", 0.9);
       // And what the same column means on the bottom row.
       text("SLOT " + (ai + 1), cellBox(KEYBOARD_MAX, ai).cx,
            cellBox(KEYBOARD_MAX, 0).y - 8, 13, "#a08cff", "center", 0.75);
@@ -20777,7 +20951,13 @@
 
     // Under the device row rather than under the seats, which is what moved it
     // — and everything below it moved with it.
-    const sayY = 440;
+    /* Everything from here down hangs off the bottom of the grid rather than
+       off a constant, so the page stays assembled whatever pushed the grid
+       down. Four rows of fixed y — 440, 470, 542, 596, 654 — was the old
+       arrangement, and it is what made "a fourth setting needs the screen
+       rearranged" true. */
+    const gridEnd = cellBox(GRID_ROWS() - 1, 0).y + GRID.cellH;
+    const sayY = gridEnd + 18;
 
     const sel = cellKeys(binder.p, binder.a);
     const fresh = binder.note && now < binder.noteUntil;
@@ -20797,10 +20977,11 @@
       text("Select a box to change it.", SCREEN_W / 2, sayY, 14, "#ffcb42");
     }
 
-    tapButton("RESET ALL KEYS", COLS(2, 0), 470, 280, 44, "#ffe56d", () => {
+    const keysRow = sayY + 28;
+    tapButton("RESET ALL KEYS", COLS(2, 0), keysRow, 280, 42, "#ffe56d", () => {
       resetKeys(); note("Keys reset.");
     });
-    tapButton("CLEAR SELECTED KEY", COLS(2, 1), 470, 280, 44, "#ffcb42", () => {
+    tapButton("CLEAR SELECTED KEY", COLS(2, 1), keysRow, 280, 42, "#ffcb42", () => {
       setCellKeys(binder.p, binder.a, []);
       keysChanged();
       note("Selected key cleared.");
@@ -20809,11 +20990,13 @@
        not — the row is laid out from what is actually in it rather than from a
        constant, because the constant is what put a fourth survey setting half
        off the screen the first time this was tried. */
+    section("THE GAME", keysRow + 30);
+    const gameRow = keysRow + 60;
     const gCols = window.CrossfireCloud ? 3 : 2;
     tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
-              COLS(gCols, 0), 542, 280, 42, soundEnabled ? "#ffe56d" : "#ffcb42",
+              COLS(gCols, 0), gameRow, 280, 42, soundEnabled ? "#ffe56d" : "#ffcb42",
               toggleSound, soundEnabled);
-    tapButton(fullscreenLabel(), COLS(gCols, 1), 542, 280, 42, "#ffe56d",
+    tapButton(fullscreenLabel(), COLS(gCols, 1), gameRow, 280, 42, "#ffe56d",
               toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
     /* The way in and the way back out, for somebody who chose guest at the door
        and has changed their mind — or who wants off this account. It sits with
@@ -20821,21 +21004,21 @@
        is not a setting of Survey, it is a setting of you. */
     if (window.CrossfireCloud) {
       const inAlready = !!(cloud && cloud.enabled() && cloud.session());
-      tapButton(inAlready ? "SIGN OUT" : "SIGN IN", COLS(3, 2), 542, 280, 42,
+      tapButton(inAlready ? "SIGN OUT" : "SIGN IN", COLS(3, 2), gameRow, 280, 42,
                 "#a08cff",
                 inAlready
                   ? () => signOutNow(m => note(m))
                   : () => openAccount());
     }
-    tapButton("PHONE CONTROLS", COLS(2, 0), 596, 340, 44, "#ffe56d", () => {
+    tapButton("PHONE CONTROLS", COLS(2, 0), gameRow + 48, 340, 42, "#ffe56d", () => {
       binder.listening = false;
       state = "thumb";
     });
     // The way back to the site. Armed before it fires: one stray click should
     // not close the game.
-    tapButton(exitLabel(), COLS(2, 1), 596, 300, 44,
+    tapButton(exitLabel(), COLS(2, 1), gameRow + 48, 300, 42,
               exitArmed() ? "#ff8f77" : "#ffcb42", exitToSite, exitArmed());
-    tapButton("BACK", SCREEN_W / 2, 654, 320, 44, "#ffcb42", () => {
+    tapButton("BACK", SCREEN_W / 2, gameRow + 98, 320, 42, "#ffcb42", () => {
       binder.listening = false;
       state = backFrom || "title";
     });
@@ -20857,7 +21040,7 @@
          SCREEN_W / 2, 84, 16, "#ffcb42");
     tapButton("BACK", LEFT(70), 54, 140, 42, "#ffcb42",
               () => { state = backFrom || "title"; });
-    if (!touchOnly) {
+    if (!thumbInput()) {
       tapButton("KEYBOARD", RIGHT(70), 54, 140, 42, "#ffe56d",
                 () => { state = "controls"; });
     }
@@ -23256,6 +23439,12 @@
         slot: d.slot, key: d.key, device: d.dev.key, name: d.dev.name,
         cd: d.cd, cool: d.dev.cool })),
       useDevice: i => useDevice(i),
+      /* Flying with the mouse, for a harness. `point` puts the cursor
+         somewhere in SCREEN units — or takes it off the glass entirely with
+         `null`, which is a state the real pointer reaches every time somebody
+         reaches for the address bar and which the ship has to stop obeying. */
+      mouseFly: on => { mouseFly = !!on; },
+      point: (x, y) => { pointerAt = x === null ? null : { x, y }; },
       decoys: () => surv.decoys,
       mines: () => surv.mines,
       // The key table for the four slots, so a rebind can be checked against
@@ -23483,7 +23672,7 @@
   refreshKeys();   // reading them in is not a change worth writing back
   // A device with nothing but a touchscreen is a phone before it is touched,
   // not after: the menus should already know what they are talking to.
-  if (touchOnly) document.body.classList.add("touch");
+  applyInputMode();     // the guess, or the player's word over it
   padLoad();
   padApply();
   resize();
@@ -23504,7 +23693,12 @@
       get SCREEN_W() { return SCREEN_W; },
       get SCREEN_H() { return SCREEN_H; },
       get arena() { return arena; },
-      touchOnly, reduceMotion,
+      /* A getter, not a value. The interface sizes every caption and every tap
+         target off this, and the setting that decides it can be changed while
+         the game is running — a value read once at boot would leave the HUD
+         laid out for the machine the browser guessed at. */
+      get touchOnly() { return thumbInput(); },
+      reduceMotion,
       text, glow, tapButton, shipPip,
       addTap: rect => pushTap(rect)
     });

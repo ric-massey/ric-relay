@@ -439,19 +439,25 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     if (t) t.act();
     cf.draw();
   };
-  // What the band is showing, read off the drawn frame rather than assumed.
+  /* What the band is showing, read off the drawn frame rather than assumed.
+
+     The bounds are inclusive, and that is not fussiness: they used to be
+     exclusive and the option row's top edge landed exactly on the lower one
+     the first time the settings page was re-spaced by two pixels. A window
+     that fails when the thing inside it moves by two pixels is measuring the
+     layout, not the behaviour. */
   const band = (lo, hi) => cf.live().taps
-    .filter(t => t.y > lo && t.y < hi).length;
+    .filter(t => t.y >= lo && t.y <= hi).length;
 
   cf.screen("controls");
-  for (let i = 0; i < TABS.length; i++) openTab(i, 112);
+  for (let i = 0; i < TABS.length; i++) openTab(i, 110);
   check(true, "the four settings tabs are all reachable");
 
   /* Each page offers different things, or the tabs are decoration. */
   const opts = [];
   for (let i = 0; i < TABS.length; i++) {
-    openTab(i, 112);
-    opts.push(band(135, 182));
+    openTab(i, 110);
+    opts.push(band(130, 185));
   }
   check(opts[0] === 3, "the survey page offers " + opts[0] + " settings, not 3");
   check(opts[1] === 1 && opts[2] === 1,
@@ -460,10 +466,10 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
   /* And the camera is genuinely per mode: turning it on for Battle Royale must
      leave Survey alone, which the one shared flag could not do. */
-  openTab(1, 112);
+  openTab(1, 110);
   const camBtn = () => {
     cf.draw();
-    return cf.live().taps.find(t => t.y > 135 && t.y < 182);
+    return cf.live().taps.find(t => t.y >= 130 && t.y <= 185);
   };
   camBtn().act();
   check(cf.live().cameraModes.royale === true,

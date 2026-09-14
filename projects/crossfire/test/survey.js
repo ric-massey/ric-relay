@@ -7461,6 +7461,74 @@ const storeOf = (cf, key) => {
               "is already sending · a repeat never counts as a second press");
 }
 
+/* ── flying it with the mouse ────────────────────────────────────────────────
+   The nose comes about toward the pointer at the hull's own rate — the same
+   `turnToward` the thumb stick uses, handed the bearing to the cursor instead
+   of the angle of the stick.
+
+   Three rules, and each of them is the difference between a control and a
+   nuisance. It does **not snap**: a ship that tracked the cursor exactly would
+   make the turn stat meaningless and every hull in the shipyard the same hull.
+   A **held key wins**, because a key is a deliberate press and the cursor is
+   just wherever the hand left it. And it **stops at the edge of the glass**,
+   because a pointer that has gone to the address bar is not an instruction. */
+{
+  const { cf } = boot("?debug=1&seed=515151");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  surv.docked = null;
+  cf.screen("playing");
+  const step = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.step(); } };
+  me.invuln = 9999;
+
+  check(typeof cf.mouseFly === "function",
+        "the harness cannot reach the mouse-flying setting");
+  if (typeof cf.mouseFly === "function") {
+    cf.mouseFly(true);
+    const W = 1000, H = 700;
+
+    // Pointing up, pointer hard right: it must come about, and take time to.
+    me.a = -Math.PI / 2;
+    cf.point(W * 0.9, H / 2);
+    step(2);
+    const early = me.a;
+    check(Math.abs(early + Math.PI / 2) < 0.25,
+          "the nose snapped to the pointer instead of turning toward it");
+    step(90);
+    let off = me.a - 0;
+    while (off > Math.PI) off -= Math.PI * 2;
+    while (off < -Math.PI) off += Math.PI * 2;
+    check(Math.abs(off) < 0.2,
+          "a second and a half of turning did not reach the pointer (off by " +
+          off.toFixed(2) + ")");
+
+    // A held key beats it.
+    cf.point(W * 0.1, H / 2);
+    step(4);
+    const a0 = me.a;
+    cf.hold("KeyD", true);
+    step(30);
+    cf.hold("KeyD", false);
+    let d = me.a - a0;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    check(d > 0.1,
+          "the pointer overrode a held turn key (moved " + d.toFixed(2) + ")");
+
+    // And a pointer off the glass is not an instruction.
+    cf.point(null);
+    const a1 = me.a;
+    step(40);
+    check(Math.abs(me.a - a1) < 0.02,
+          "the ship kept turning after the pointer left the canvas");
+
+    cf.mouseFly(false);
+  }
+  console.log("  mouse      the nose turns toward the pointer at the hull's own " +
+              "rate · a held key wins · off the glass is not an instruction");
+}
+
 /* ── the parts page is a catalogue, and storage drops into a slot ─────────────
    Two things the interface could not do. It could not tell you a part existed
    unless you could already build it — the page was the build book, so the parts

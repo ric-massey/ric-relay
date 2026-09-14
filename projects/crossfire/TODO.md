@@ -7,7 +7,7 @@ it gets a tick and a commit hash, so the list is also the record.
 **Status key** — `[ ]` not started · `[~]` in progress · `[x]` done · `[?]` needs
 an answer before it can be built.
 
-Batch of 2026-09-13. 27 items. **9 done** — B1–B8 and S1, in `8c8a93d`.
+Batch of 2026-09-13. 27 items. **12 done** — B1–B8 and S1 in `8c8a93d`/`3278ffb`, C1–C3 in `06138ff`.
 
 ---
 
@@ -104,11 +104,11 @@ Batch of 2026-09-13. 27 items. **9 done** — B1–B8 and S1, in `8c8a93d`.
 
 ## SETTINGS
 
-- [ ] **C1 · Mouse control.** The ship follows the pointer and click fires. It
+- [x] **C1 · Mouse control.** The ship follows the pointer and click fires. It
   turns at the hull's own rotation rate — no snapping, no free aim.
-- [ ] **C2 · Pick your input.** Mouse-and-keyboard or touchscreen, chosen
+- [x] **C2 · Pick your input.** Mouse-and-keyboard or touchscreen, chosen
   rather than sniffed, for people on touchscreen laptops.
-- [ ] **C3 · Rebuild the settings page.** Better looking, better organised.
+- [x] **C3 · Rebuild the settings page.** Better looking, better organised.
 
 ---
 
