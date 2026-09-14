@@ -10033,13 +10033,41 @@
     const seen = [];
     for (const m of surv.motes) {
       if (dist2(m.x, m.y, me.x, me.y) > r2) continue;
-      if (seen.some(c => dist2(c.x, c.y, m.x, m.y) < 260 * 260)) continue;
+      /* Clustered **per material**. A broken rock gives ice and iron in the
+         same place, and a purely spatial cluster could only be named after
+         whichever mote happened to come first — so the other half of the pile
+         went unreported, and what *was* reported was a coin toss. Measured with
+         twelve iron motes four hundred units away: no IRON return at all,
+         because they fell inside an ICE cluster.
+
+         Two rings at nearly the same spot is the honest answer. They are two
+         different facts and you want both. */
+      if (seen.some(c => c.mat === m.mat &&
+                         dist2(c.x, c.y, m.x, m.y) < 260 * 260)) continue;
       seen.push(m);
-      /* Carrying the mote, so the return can say what it is. A cluster is
-         reported by its first member and named after it — "IRON", not "CASH",
-         and not a list of everything in the pile either, because a return is a
-         glance and a glance gets one word. */
+      // Carrying the mote, so the return can say what it is.
+      
       found.push({ kind: "salvage", x: m.x, y: m.y, t: ECHO_LIFE, ref: m });
+    }
+
+    /* ── what each return is called, decided once ──────────────────────────
+       Three different places were asking this separately — the ring drawn on
+       the world, the arrow on the panel's edge, and the sentence the scan
+       prints — so changing the answer in one of them left the other two saying
+       something else. A mote came back as ICE on the ring and "salvage" in the
+       sentence, which is worse than either being wrong on its own, because now
+       the scanner contradicts itself.
+
+       It is written on the echo. Everything downstream reads it and nothing
+       downstream decides it. */
+    for (const e of found) {
+      const spec = ECHO_KINDS[e.kind] || ECHO_KINDS.salvage;
+      const mat = e.kind === "salvage" && e.ref && e.ref.mat
+        ? matSpec(e.ref.mat) : null;
+      const flag = e.ref && e.ref.faction ? trafficColour(e.ref) : null;
+      e.name = mat ? mat.name : spec.name;
+      e.colour = mat ? mat.colour : (flag || spec.colour);
+      e.bad = !!spec.bad;
     }
 
     /* A scan writes what it finds into the gazetteer. Half the value of
@@ -10063,12 +10091,29 @@
       chatter("Nothing within " + Math.round(reach) + " units.", NEBULA);
       return;
     }
-    // A tally rather than a list: what is out there, and how much of it.
+    /* A tally rather than a list: what is out there, and how much of it.
+
+       Counted by **what the thing is**, not by the bucket the scanner files it
+       under. Every mote in the sector came back as one word — "4 salvage", and
+       before that "4 cash" — which is the scanner declining to answer the only
+       question you pressed it for. Ice is not iridium, and the difference is
+       the whole reason to fly over and look. */
     const tally = {};
-    for (const e of found) tally[e.kind] = (tally[e.kind] || 0) + 1;
+    const ore = {};
+    for (const e of found) {
+      tally[e.name] = (tally[e.name] || 0) + 1;
+      if (e.kind === "salvage") ore[e.name] = true;
+    }
+    /* **The things you would fly to, first.** Naming each mineral means a field
+       that has been worked over now reports four or five kinds of ore, and the
+       line is sorted by how much of each there is — so a station, a cache or a
+       part could be pushed off the end of a sentence that has to fit on one
+       line. Ore is the commonest thing out there and the least urgent; it goes
+       last whatever the counts say, and within each half the biggest pile still
+       leads. */
     const parts = Object.keys(tally)
-      .sort((a, b) => tally[b] - tally[a])
-      .map(k => tally[k] + " " + ECHO_KINDS[k].name.toLowerCase())
+      .sort((a, b) => (ore[a] ? 1 : 0) - (ore[b] ? 1 : 0) || tally[b] - tally[a])
+      .map(k => tally[k] + " " + k.toLowerCase())
       .join("  ·  ");
     chatter(parts, NEBULA);
   }
@@ -16155,7 +16200,7 @@
   function drawEchoes() {
     for (const e of surv.echoes) {
       if (!onScreen(e.x, e.y, 120)) continue;
-      const spec = ECHO_KINDS[e.kind] || ECHO_KINDS.salvage;
+      const spec = { name: e.name, colour: e.colour };   // see `surveyScan`
       const fade = Math.min(1, e.t / 4);           // the last four seconds dim
       const beat = 0.6 + 0.4 * Math.sin(clock * 3 + e.x * 0.01);
       glow(spec.colour, 1.6, fade * 0.75 * beat, () => {
@@ -17107,23 +17152,9 @@
          across, so before this the returns from a scan were almost all off
          screen and the button's whole answer was a line of text. */
       echoes: surv.echoes.map(e => {
-        const spec = ECHO_KINDS[e.kind] || ECHO_KINDS.salvage;
-        /* A ship's return is drawn in its flag's colour, not in the flat
-           blue-grey every ship shared. The sector has three powers, the
-           independents and the pirates, each with a colour you can already read
-           off the hull — and a scan that renders all five the same is a scan
-           that tells you less than looking out of the window.
-
-           `ref` is the object the echo is following, so this is the same
-           question `trafficColour` answers, asked of the same ship. */
-        const flag = e.ref && e.ref.faction ? trafficColour(e.ref) : null;
-        /* And a mote says what it is. See ECHO_KINDS.salvage. */
-        const mat = e.kind === "salvage" && e.ref && e.ref.mat
-          ? matSpec(e.ref.mat) : null;
+        // Named and coloured when the scan was made; see `surveyScan`.
         return { kind: e.kind, x: e.x, y: e.y, t: e.t, life: ECHO_LIFE,
-                 name: mat ? mat.name : spec.name,
-                 colour: mat ? mat.colour : (flag || spec.colour),
-                 bad: !!spec.bad };
+                 name: e.name, colour: e.colour, bad: !!e.bad };
       }),
       scanReach: scanRange(),
       pins: surv.pins,
