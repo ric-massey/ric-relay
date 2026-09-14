@@ -3296,11 +3296,11 @@ const storeOf = (cf, key) => {
 
 // ── twenty-five ships ─────────────────────────────────────────────────────
 /* Phase 3.3. Five numbers and a silhouette each, and the spread is the whole
-   point: a skiff is a bicycle with a pistol taped to it and an Ossuary is a
-   building. What has to hold is that they are genuinely different, that none of
-   them is strictly better than a cheaper one, and that every one of the five
-   numbers actually reaches the ship you are flying — a roster whose cargo column
-   is decoration would be twenty-five paint jobs. */
+   point: a Skiff is a little explorer and a Tender is a building. What has to
+   hold is that they are genuinely different, that each belongs to Ric's eight
+   categories, and that every advertised number reaches the ship you are flying
+   — a roster whose acceleration column is decoration would be twenty-five paint
+   jobs. */
 {
   const { cf } = boot("?debug=1&seed=252525");
   cf.start("survey", 1);
@@ -3311,6 +3311,38 @@ const storeOf = (cf, key) => {
   check(list.length === 25, "the roster has " + list.length + " ships, not 25");
   check(new Set(list.map(s2 => s2.key)).size === 25, "two ships share a key");
   check(new Set(list.map(s2 => s2.name)).size === 25, "two ships share a name");
+
+  /* The category register is design input, not approximate flavour. Every
+     number on every hull stays inside its category's supplied range. */
+  const ranges = {
+    MILITARY:   { hull:[12,48], dmg:[1.6,4], rate:[0.95,1.45], cargo:[50,500], speed:[0.78,1.24], accel:[0.85,1.25], turn:[0.55,1.25], drag:[0.28,0.50] },
+    EXPLORER:   { hull:[8,20],  dmg:[0.8,1.5], rate:[0.75,1.10], cargo:[150,500], speed:[0.95,1.30], accel:[0.90,1.15], turn:[0.80,1.20], drag:[0.30,0.44] },
+    COMMUTER:   { hull:[7,24],  dmg:[0.6,1], rate:[0.65,0.95], cargo:[100,450], speed:[0.90,1.20], accel:[1.05,1.30], turn:[0.85,1.20], drag:[0.52,0.68] },
+    SPORT:      { hull:[4,9],   dmg:[0.7,1.2], rate:[0.85,1.20], cargo:[30,90], speed:[1.28,1.50], accel:[1.20,1.45], turn:[1.20,1.50], drag:[0.56,0.74] },
+    INDUSTRIAL: { hull:[18,48], dmg:[0.8,1.4], rate:[0.65,0.95], cargo:[300,1100], speed:[0.68,0.94], accel:[0.60,0.90], turn:[0.45,0.82], drag:[0.20,0.34] },
+    CARGO:      { hull:[14,40], dmg:[0.6,1], rate:[0.60,0.85], cargo:[500,2000], speed:[0.68,1], accel:[0.58,0.88], turn:[0.38,0.72], drag:[0.13,0.25] },
+    UTILITY:    { hull:[9,26],  dmg:[0.7,1.2], rate:[0.70,1], cargo:[180,700], speed:[0.80,1.08], accel:[0.90,1.15], turn:[1.05,1.38], drag:[0.44,0.60] },
+    COURIER:    { hull:[4,12],  dmg:[0.7,1.3], rate:[0.80,1.15], cargo:[40,250], speed:[1.15,1.44], accel:[1.25,1.55], turn:[0.95,1.35], drag:[0.46,0.62] }
+  };
+  check(new Set(list.map(s2 => s2.category)).size === 8,
+        "the hangar does not contain all eight ship categories");
+  for (const sh of list) {
+    const cat = ranges[sh.category];
+    check(!!cat, sh.name + " has unknown category " + sh.category);
+    check(!!sh.best, sh.name + " does not say what it is best at");
+    for (const [stat, bounds] of Object.entries(cat)) {
+      check(sh[stat] >= bounds[0] && sh[stat] <= bounds[1],
+            sh.name + " has " + stat + " " + sh[stat] + " outside " +
+            sh.category + " " + bounds.join("–"));
+    }
+  }
+  const jackal = list.find(s2 => s2.key === "louvre");
+  check(jackal && jackal.name === "JACKAL" && jackal.category === "MILITARY",
+        "the louvered military hull is not the Jackal");
+  check(jackal.cost >= 50000, "the Jackal only costs " + jackal.cost);
+  check(jackal.speed === 1.16 && jackal.accel === 1.16 &&
+        jackal.turn === 1.24 && jackal.drag === 0.42,
+        "the Jackal lost the Louvre's handling");
 
   // Every hull needs a shape, and no two may be the same shape.
   const shapes = new Set();
@@ -3323,7 +3355,7 @@ const storeOf = (cf, key) => {
   }
   check(shapes.size === 25, "only " + shapes.size + " distinct silhouettes");
 
-  /* The spread. Each of the five has to differ by a lot across the roster, or
+  /* The spread. Each major axis has to differ by a lot across the roster, or
      the column is decoration. */
   const span = k => {
     const v = list.map(s2 => s2[k]);
@@ -3332,17 +3364,21 @@ const storeOf = (cf, key) => {
   check(span("hull") >= 8, "hull only spans " + span("hull").toFixed(1) + "x");
   check(span("cargo") >= 20, "cargo only spans " + span("cargo").toFixed(1) + "x");
   check(span("speed") >= 1.8, "speed only spans " + span("speed").toFixed(2) + "x");
+  check(span("accel") >= 2.5, "accel only spans " + span("accel").toFixed(2) + "x");
   check(span("turn") >= 3, "turn only spans " + span("turn").toFixed(1) + "x");
+  check(span("drag") >= 5, "drag only spans " + span("drag").toFixed(1) + "x");
   check(span("size") >= 4, "size only spans " + span("size").toFixed(1) + "x");
 
   /* Nothing is strictly better than something cheaper. A ship that beat a
-     cheaper one on all five would make the cheaper one unbuyable and the
+     cheaper one on all eight would make the cheaper one unbuyable and the
      roster that much shorter. */
   const beats = (a, b) => a.hull >= b.hull && a.cargo >= b.cargo &&
-                          a.speed >= b.speed && a.turn >= b.turn &&
+                          a.speed >= b.speed && a.accel >= b.accel &&
+                          a.turn >= b.turn && a.drag <= b.drag &&
                           a.dmg * a.rate >= b.dmg * b.rate &&
                           (a.hull > b.hull || a.cargo > b.cargo ||
-                           a.speed > b.speed || a.turn > b.turn);
+                           a.speed > b.speed || a.accel > b.accel ||
+                           a.turn > b.turn || a.drag < b.drag);
   for (const a of list) {
     for (const b of list) {
       if (a.key === b.key || a.cost > b.cost) continue;
@@ -3387,12 +3423,14 @@ const storeOf = (cf, key) => {
   check(surv.ship === first, "the swap did not take");
   cf.flyShip("ossuary");
 
-  /* And the numbers reach the ship. Each of the five is checked against the
+  /* And the numbers reach the ship. Each is checked against the
      hull's own entry rather than against a constant. */
   check(me.maxHull === big.hull, "hull reads " + me.maxHull + ", roster says " + big.hull);
   check(cf.shipNow().cap === big.cargo, "cargo reads " + cf.shipNow().cap);
   check(Math.abs(me.speedMul - big.speed) < 0.01, "speed did not reach the ship");
+  check(Math.abs(me.thrustMul - big.accel) < 0.01, "accel did not reach the ship");
   check(Math.abs(me.turnMul - big.turn) < 0.01, "turn did not reach the ship");
+  check(Math.abs(me.drag - big.drag) < 0.01, "drag did not reach the ship");
   check(Math.abs(me.dmgMul - big.dmg) < 0.01, "firepower did not reach the ship");
   check(Math.abs(me.sizeMul - big.size) < 0.01, "size did not reach the ship");
   // Size reaches the world too: collision and pickup both measure off it.
@@ -3438,7 +3476,7 @@ const storeOf = (cf, key) => {
   console.log("  ships      25 hulls, 25 silhouettes · hull " +
               span("hull").toFixed(0) + "x, cargo " + span("cargo").toFixed(0) +
               "x, size " + span("size").toFixed(1) + "x · none dominates a " +
-              "cheaper one · all five numbers reach the ship · camera follows size");
+              "cheaper one · all eight numbers reach the ship · camera follows size");
 }
 
 // ── company ───────────────────────────────────────────────────────────────
@@ -4546,7 +4584,7 @@ const storeOf = (cf, key) => {
   hold(60);
   check(launched.size > 0, "the seeker never fired");
 
-  step(180);                    // let the rack reload
+  step(240);                    // let the rack reload at this hull's fire rate
   clearAir();
   for (let i = 0; i < 6; i++) {
     live.bullets.push({ owner: me.id, colour: "#fff", dmg: 1,
@@ -4560,7 +4598,7 @@ const storeOf = (cf, key) => {
 
   /* A seeker turns after things. One target off to the side, nothing else in the
      sky at all, and the missile's heading has to bend towards it. */
-  step(180);                    // the rack again
+  step(240);                    // the rack again, at this hull's fire rate
   clearAir();
   surv.drones.length = 0;
   surv.drones.push({ id: "t", x: me.x + 2000, y: me.y + 1300, vx: 0, vy: 0, a: 0,
@@ -5525,10 +5563,13 @@ const storeOf = (cf, key) => {
     for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
     surv.motes.length = 0;
     // Ten of them, in a ring well inside the beam and not on top of the ship.
+    const ring = [];
     for (let i = 0; i < 10; i++) {
       const a = (i / 10) * Math.PI * 2;
-      surv.motes.push({ x: me.x + Math.cos(a) * 220, y: me.y + Math.sin(a) * 220,
-                        vx: 0, vy: 0, spin: 0, life: 90, mat: "iron" });
+      const m = { x: me.x + Math.cos(a) * 220, y: me.y + Math.sin(a) * 220,
+                  vx: 0, vy: 0, spin: 0, life: 90, mat: "iron", ringTest: true };
+      surv.motes.push(m);
+      ring.push(m);
     }
     step(240);
     const held = Object.keys(surv.hold).reduce((t, k) => t + surv.hold[k], 0);
@@ -5536,8 +5577,15 @@ const storeOf = (cf, key) => {
           route + ": ten motes inside the beam and " + held + " arrived");
     check(surv.motes.every(m => Number.isFinite(m.x) && Number.isFinite(m.y)),
           route + ": a mote's position went non-finite in the beam");
-    check(surv.motes.length === 0,
-          route + ": " + surv.motes.length + " motes were left circling");
+    /* The ten that were put here, not the mote list. Four minutes of a live
+       sector is long enough for something to die somewhere and leave salvage
+       of its own — measured, two arrived from eight thousand units away — and
+       asserting the list is empty was asserting that nothing else in the world
+       happened while the beam ran. What this is about is whether the ring got
+       swept, and the ring is the thing to ask about. */
+    const stillCircling = ring.filter(m => surv.motes.indexOf(m) >= 0);
+    check(stillCircling.length === 0,
+          route + ": " + stillCircling.length + " of the ten were left circling");
   }
   console.log("  beam       ten motes in the ring, ten aboard \u00b7 from the " +
               "almanac, from a rig and from a heavy rig \u00b7 none lost, none " +
@@ -5940,17 +5988,19 @@ const storeOf = (cf, key) => {
   check(!!roles.scavenger, "there is no scavenger role");
 
   /* Speeds by role, the way the sector actually rolls them: armed ships fly at
-     120–190 and haulers at 70–130. Giving every ship in the scenario the same 100
-     made it a chase in which nobody can outrun anybody — the hauler could not run,
-     the escort could not catch up, and the pirate sat in firing range forever. A
-     test of escorting has to be a test of a chase that can be lost or won. */
+     120–190 and haulers at 70–130. The hulls matter now too. Give each role the
+     kind of ship the sector spawns for it so this exercises the same hull,
+     acceleration, turn, drag, fire rate and damage rules as actual traffic. */
   const SPEED = { pirate: 150, escort: 155, patrol: 150, freight: 100,
                   trader: 100, scavenger: 110 };
+  const HULL = { pirate: "needle", escort: "louvre", patrol: "lance",
+                 freight: "drayman", trader: "pannier", scavenger: "cradle" };
   const mk = (role, faction, x, y, cargo) => {
     const sp = SPEED[role] || 100;
-    const t = { id: null, kind: role, role, faction, hull: "drayman",
+    const hull = view().ships.find(s => s.key === (HULL[role] || "skiff"));
+    const t = { id: null, kind: role, role, faction, hull: hull.key,
                 x, y, a: 0, from: { x, y }, to: { x: x + 9000, y },
-                leg: 1, speed: sp, baseSpeed: sp, hp: 9, maxHp: 9,
+                leg: 1, speed: sp, baseSpeed: sp, hp: hull.hull, maxHp: hull.hull,
                 cargo: cargo || [], cool: 1, doom: 0, guards: 0, space: 0,
                 trades: false, phase: 0 };
     surv.traffic.push(t);
@@ -8690,7 +8740,17 @@ const storeOf = (cf, key) => {
      decision rather than a button you press on entering every room. */
   check(surv.slots[1].cd > 0, "the burst spared your own grapple");
   check(surv.empSelf > 0, "the burst spared your own scanner");
-  check(surv.scan.charge === 0, "the scanner kept its charge through your burst");
+  /* Refused while the burst is ringing, and it says why. It used to take the
+     charge instead, which put the scanner out for a full twelve-second recharge
+     — longer than everything else the burst touched — and made the refusal
+     unreachable, because a scan with no charge returns before it can speak. */
+  surv.scan.charge = 1;
+  cf.scan();
+  check(surv.scan.charge === 1,
+        "the scanner fired while your own burst still had it down");
+  surv.empSelf = 0;
+  cf.scan();
+  check(surv.scan.charge < 1, "the scanner never came back after the burst");
   // A stunned ship does nothing at all: no engine, no guns, no opinion.
   {
     const was = { x: stunned.x, y: stunned.y, shots: surv.shots.length };

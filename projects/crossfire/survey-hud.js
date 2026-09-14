@@ -1626,10 +1626,31 @@
             cx + w / 2 + 16, y, SIZE.cap, ready ? VIOLET : VIOLET_DIM,
             "left", ready ? 1 : 0.5);
     }
-    /* The devices, off the bar's other shoulder — see `drawDevices`. Above the
-       caption line rather than beside the bar: that line runs to within 190 of
-       each edge and a chip at the bar's own height sits underneath it. */
-    drawDevices(st, cx - w / 2 - 18, y - 92);
+    /* ── where the device chips go ─────────────────────────────────────────
+       They were off the *left* shoulder of the hull bar, mirroring the scan
+       button on the right, on the argument that a device and a scan are the
+       same kind of thing. The argument was right and the placement was not: on
+       a desk it put them across the middle of the screen, which is where you
+       are looking when you fly, and it left the bottom-right corner — the one
+       piece of the frame nothing else uses — empty.
+
+       So: a desk stacks them into the bottom-right corner, out of the way of
+       everything and in the place a hand already goes looking for a toolbar. A
+       phone keeps them **beside the scan button**, because the scan is the one
+       control on this panel a thumb already presses and a verb with a wait on
+       it belongs next to the other verb with a wait on it. */
+    if (api.touchOnly) {
+      /* Stacked straight up from the scan button and right-aligned with it, so
+         the column of verbs and the verb they sit on read as one control. Not
+         *beside* it: three chips at their own width plus the scan button is
+         wider than a landscape phone has to the right of the hull bar, and a
+         chip half off the screen is a chip nobody can read. Clamped anyway. */
+      const bw = 104, bh = 46;
+      const right = Math.min(cx + w / 2 + 18 + bw, SCREEN_W - PAGE.EDGE - 4);
+      drawDevices(st, right, y - 8 - bh / 2 - 22);
+    } else {
+      drawDevices(st, SCREEN_W - PAGE.EDGE - 6, SCREEN_H - 26);
+    }
 
     // Saying the radius is what makes the scanner refit legible: the number
     // goes up when you buy a tier, and that is the whole purchase.
@@ -1816,11 +1837,12 @@
      It is a readout and not a button. On a phone the device buttons live on the
      thumb pad where the player put them, and a second live target up here would
      be a control nobody chose the position of. */
+  const DEV_W = 116;
   function drawDevices(st, right, y) {
     const list = st.devices || [];
     if (!list.length) return;
     const { ctx } = api;
-    const w = api.touchOnly ? 92 : 116, h = 28, gap = 6;
+    const w = DEV_W, h = 28, gap = 6;
     list.forEach((d, i) => {
       const x = right - w;
       /* Slot one at the top. The stack grows upward from the anchor, so the
@@ -6295,13 +6317,14 @@
   };
 
   /* ═══ THE HANGAR ══════════════════════════════════════════════════════════
-     Twenty-five hulls, and the only page in the mode that is a *catalogue*. It
+     Twenty-five named hulls in eight categories, and the only page in the mode
+     that is a *catalogue*. It
      is laid out like the almanac for the same reason the almanac is laid out
-     that way: the picture is the point. Five numbers tell you what a ship does
+     that way: the picture is the point. Eight numbers tell you what a ship does
      and the silhouette tells you what it is, and nobody ever picked a ship off a
      table of numbers.
 
-     One row of bars a stat, drawn against the best in the roster rather than
+     One bar a stat, drawn against the best in the roster rather than
      against an absolute — "how does this compare to everything else I could
      buy" is the only question a shipyard is ever asked. */
   let hangar = { pick: 0, scroll: 0 };
@@ -6314,26 +6337,28 @@
   };
 
   const SHIP_COLS = () => (api.touchOnly ? 2 : 4);
-  const SHIP_ROWS = 3;
+  /* Two card rows on a phone leave room for all eight stats underneath; the
+     catalogue already drags, so the other hulls remain one swipe away. */
+  const SHIP_ROWS = () => api.touchOnly ? 2 : 3;
   function keepShipVisible(n) {
     const cols = SHIP_COLS();
     const row = Math.floor(hangar.pick / cols);
     if (row < hangar.scroll) hangar.scroll = row;
-    if (row >= hangar.scroll + SHIP_ROWS) hangar.scroll = row - SHIP_ROWS + 1;
+    if (row >= hangar.scroll + SHIP_ROWS()) hangar.scroll = row - SHIP_ROWS() + 1;
     const rows = Math.ceil(n / cols);
-    hangar.scroll = Math.max(0, Math.min(Math.max(0, rows - SHIP_ROWS), hangar.scroll));
+    hangar.scroll = Math.max(0, Math.min(Math.max(0, rows - SHIP_ROWS()), hangar.scroll));
   }
 
   /* The hangar scrolls too. Twenty-five hulls, and on a phone the grid is two
-     across and three down — six visible of twenty-five, with the other nineteen
+     across and two down — four visible of twenty-five, with the other twenty-one
      reachable only by arrow keys a phone does not have. Drag and wheel both move
      it, the way they already move the almanac. */
   HUD.hangarDragBy = function (dy, n) {
     const rows = Math.ceil(n / SHIP_COLS());
-    hangar.scroll = Math.max(0, Math.min(Math.max(0, rows - SHIP_ROWS),
+    hangar.scroll = Math.max(0, Math.min(Math.max(0, rows - SHIP_ROWS()),
                                          hangar.scroll + dy / 130));
   };
-  HUD.hangarCanScroll = n => Math.ceil(n / SHIP_COLS()) > SHIP_ROWS;
+  HUD.hangarCanScroll = n => Math.ceil(n / SHIP_COLS()) > SHIP_ROWS();
 
   HUD.hangarKey = function (code, st) {
     const list = (st && st.ships) || [];
@@ -6354,7 +6379,7 @@
 
   /* One hull, drawn from the same polygon the world draws it with. Scaled to the
      box rather than to its real size, so a Skiff is not a speck beside an
-     Ossuary on a page whose job is comparing them — the size bar says which is
+     Tender on a page whose job is comparing them — the size bar says which is
      bigger, and the outline says what each one *is*. */
   function drawHull(sh, cx, cy, box, colour, alpha) {
     const { ctx } = api;
@@ -6417,9 +6442,9 @@
     const cardH = 104, pitch = cardH + PAGE.STEP;
     const firstRow = Math.floor(hangar.scroll);
     const first = firstRow * cols;
-    const last = Math.min(list.length, first + (SHIP_ROWS + 1) * cols);
+    const last = Math.min(list.length, first + (SHIP_ROWS() + 1) * cols);
     const viewTop = PAGE.TOP - 6;
-    const viewH = SHIP_ROWS * pitch - PAGE.STEP + 12;
+    const viewH = SHIP_ROWS() * pitch - PAGE.STEP + 12;
 
     ctx.save();
     ctx.beginPath();
@@ -6454,14 +6479,18 @@
       ctx.restore();
 
       drawHull(sh, c.x + c.w / 2, y + 32, 26, colour, reach ? 1 : 0.35);
+      const bestShort = sh.best === "FIRE RATE" ? "RATE" : sh.best;
+      const footW = c.w - PAGE.PAD * 2;
       fitText(sh.name, c.x + PAGE.PAD, y + 80, SIZE.cap, colour, "left",
-              reach ? 1 : 0.45, c.w - PAGE.PAD * 2 - 8, "0.08em");
-      fitText(sh.cls, c.x + PAGE.PAD, y + 96, SIZE.cap, VIOLET_LOW, "left",
-              0.6, c.w * 0.5, "0.12em");
+              reach ? 1 : 0.45, footW * 0.48, "0.08em");
+      fitText("BEST " + bestShort, c.x + c.w - PAGE.PAD, y + 80,
+              SIZE.cap, VIOLET_LOW, "right", 0.75, footW * 0.48, "0.04em");
+      fitText(sh.category, c.x + PAGE.PAD, y + 96, SIZE.cap, VIOLET_LOW,
+              "left", 0.7, footW * 0.5, "0.08em");
       fitText(sh.flying ? "FLYING" : sh.owned ? "OWNED" : money(sh.cost),
               c.x + c.w - PAGE.PAD, y + 96, SIZE.cap,
               sh.flying ? CASH : sh.owned ? VIOLET_DIM : sh.afford ? CASH_DIM : WARN,
-              "right", 0.85, c.w * 0.5);
+              "right", 0.85, footW * 0.45);
       /* The tap window trims this to whatever is inside the list — a card riding
          up under the page heading would be a ship you cannot see and can still
          buy, and `tap` is where that is decided now. */
@@ -6475,10 +6504,10 @@
     tapClipOff();
 
     const rowsAll = Math.ceil(list.length / cols);
-    if (rowsAll > SHIP_ROWS) {
-      const trackH = SHIP_ROWS * (cardH + PAGE.STEP) - PAGE.STEP;
-      const h = Math.max(26, trackH * (SHIP_ROWS / rowsAll));
-      const t = rowsAll - SHIP_ROWS ? hangar.scroll / (rowsAll - SHIP_ROWS) : 0;
+    if (rowsAll > SHIP_ROWS()) {
+      const trackH = SHIP_ROWS() * (cardH + PAGE.STEP) - PAGE.STEP;
+      const h = Math.max(26, trackH * (SHIP_ROWS() / rowsAll));
+      const t = rowsAll - SHIP_ROWS() ? hangar.scroll / (rowsAll - SHIP_ROWS()) : 0;
       ctx.save();
       ctx.fillStyle = VIOLET_LOW;
       ctx.globalAlpha = 0.4;
@@ -6490,14 +6519,16 @@
     }
 
     /* ── the one you are looking at ────────────────────────────────────────
-       Five bars against the best in the roster rather than against an absolute:
+       Eight bars against the best in the roster rather than against an absolute:
        "how does this compare to everything else on the page" is the only
        question a shipyard is ever asked. */
     const sh = list[hangar.pick];
-    const dy = PAGE.TOP + SHIP_ROWS * (cardH + PAGE.STEP);
-    const detailH = PANEL_H(4);
+    const dy = PAGE.TOP + SHIP_ROWS() * (cardH + PAGE.STEP);
+    const statCols = api.touchOnly ? 4 : 8;
+    const detailH = PANEL_H(api.touchOnly ? 7 : 5);
     panel(PAGE.EDGE, dy, SCREEN_W - PAGE.EDGE * 2, detailH,
-          sh.flying ? CASH : VIOLET, sh.name, sh.cls);
+          sh.flying ? CASH : VIOLET, sh.name,
+          sh.category + " · BEST " + sh.best);
 
     drawHull(sh, PAGE.EDGE + 70, dy + PAGE.HEAD + 44, 34,
              sh.flying ? CASH : VIOLET, 1);
@@ -6511,21 +6542,28 @@
           "left", 0.8, "0.12em");
 
     const best = k => list.reduce((m, o) => Math.max(m, o[k]), 0.0001);
-    const guns = o => o.dmg * o.rate;
+    const least = k => list.reduce((m, o) => Math.min(m, o[k]), Infinity);
     const stats = [
       ["HULL",  sh.hull / best("hull"),   String(sh.hull)],
-      ["GUNS",  guns(sh) / list.reduce((m, o) => Math.max(m, guns(o)), 0.0001),
-                guns(sh).toFixed(1) + "x"],
+      ["DAMAGE", sh.dmg / best("dmg"), sh.dmg.toFixed(2) + "x"],
+      ["FIRE RATE", sh.rate / best("rate"), sh.rate.toFixed(2) + "x"],
       ["CARGO", sh.cargo / best("cargo"), String(sh.cargo)],
       ["SPEED", sh.speed / best("speed"), sh.speed.toFixed(2) + "x"],
-      ["TURN",  sh.turn / best("turn"),   sh.turn.toFixed(2) + "x"]
+      ["ACCEL", sh.accel / best("accel"), sh.accel.toFixed(2) + "x"],
+      ["TURN",  sh.turn / best("turn"),   sh.turn.toFixed(2) + "x"],
+      ["DRAG", least("drag") / sh.drag, sh.drag.toFixed(2)]
     ];
-    const sw = 96;
+    const statX = PAGE.EDGE + PAGE.PAD;
+    const statArea = SCREEN_W - PAGE.EDGE * 2 - PAGE.PAD * 2;
+    const gap = api.touchOnly ? 8 : 12;
+    const sw = (statArea - gap * (statCols - 1)) / statCols;
     stats.forEach(([name, frac, val], i) => {
-      const x = 430 + i * (sw + 12);
-      label(name, x, ROW(dy, 0) - 4, SIZE.cap, VIOLET_DIM, "left", 0.65, "0.14em");
-      label(val, x, ROW(dy, 1) - 4, SIZE.cap, VIOLET, "left", 0.95);
-      barAt(x, ROW(dy, 1) + 4, sw, 7, frac, sh.flying ? CASH : VIOLET, false);
+      const row = Math.floor(i / statCols);
+      const x = statX + (i % statCols) * (sw + gap);
+      const y = ROW(dy, 2 + row * 2) - 4;
+      fitText(name, x, y, SIZE.cap, VIOLET_DIM, "left", 0.65, sw, "0.08em");
+      label(val, x, y + 18, SIZE.cap, VIOLET, "left", 0.95);
+      barAt(x, y + 25, sw, 7, frac, sh.flying ? CASH : VIOLET, false);
     });
 
     const reach = sh.owned || sh.afford;
