@@ -7357,7 +7357,7 @@
            worked over for an hour is a few hundred short strings, which is well
            inside what the fog already costs. */
         // Per chunk rather than one string an object. See `packMutations`.
-        mutations: packMutations(surv.opened, surv.stripped),
+        mutations: packMutations(surv.opened, surv.stripped, surv.lifted),
         seen: [...surv.seen],
         // The manifest is the spine of the mode; losing it to a closed tab
         // would be losing the run itself.
@@ -8078,9 +8078,63 @@
        of two suns" would be a lie about half the time. The scenery is forced,
        not hoped for. */
     const site = surv.partAt.get(chunkKey(cx, cy));
-    if (!LEV_ONLY && site && !surv.built.has(site.key) &&
-        !surv.carrying.has(site.key)) {
+    /* A manifest part is gone once it is built into the gate or in your hands.
+       A spare left lying out here — the tractor MK1 the arrow points at after
+       the gate, and anything P4 scattered — is gone once it has been picked
+       up, which is a different fact and a different set. Asking the site which
+       kind it is beats keeping a list of keys that are really spares. */
+    const done = site && (site.mod ? surv.lifted.has(site.id || site.key)
+                                   : (surv.built.has(site.key) ||
+                                      surv.carrying.has(site.key)));
+    if (!LEV_ONLY && site && !done) {
       buildPartSite(site, out, R, rnd);
+    }
+
+    /* ── P4: something worth buying, lying out here ───────────────────────
+       The shop's parts existed in exactly one place, which made the shop the
+       only reason to have money and money the only reason to fly. A few of
+       them are out in the dark as well now, on the same terms as anything
+       else you find: no clue, no arrow, no entry in the manifest. You come
+       across it or you do not.
+
+       **Very hard to find**, which Ric asked for and which is the whole of
+       why it is worth anything. One chunk in four hundred is a long way of
+       flying — see the `scatter` check in test/survey.js for what that comes
+       to in minutes — and a sector nobody has crossed twice will have handed
+       you two or three.
+
+       Rolled off its own stream rather than out of `R`. That matters more
+       than it looks: `R` is the chunk's one sequence and everything above
+       reads from it in order, so a roll taken from it here would shift every
+       draw after it and quietly rebuild every sector that has ever existed —
+       every chart, every pin, every yard site in every save. A separate stream
+       off the same seed takes nothing from `R`.
+
+       Measured rather than asserted: with the chance set to zero and then back,
+       thirteen chunks in four thousand differ and the only field that differs
+       in any of them is `parts`. The fingerprint does move — a chunk that now
+       holds a part is genuinely a different chunk, and a gate that stayed quiet
+       about new objects would not be worth having — but nothing *else* in it
+       does. */
+    if (!LEV_ONLY && surv && surv.lifted && (cx || cy)) {
+      const LR = seeded(chunkSeed(cx, cy) ^ 0x5ca77e2);
+      if (LR() < LOOSE_PART_CHANCE) {
+        const id = cx + "," + cy + "p0";
+        if (!surv.lifted.has(id)) {
+          const pool = MODULES.filter(sellsIt);
+          const m = pool[Math.min(pool.length - 1, Math.floor(LR() * pool.length))];
+          /* Somewhere in the chunk that is not inside something. Eight tries
+             and then nothing, the same rule everything else here follows —
+             a part sealed inside a world is a part that cannot be collected. */
+          for (let k = 0; k < 8; k++) {
+            const px = ox + LR() * CHUNK, py = oy + LR() * CHUNK;
+            if (built(px, py, 260)) continue;
+            out.parts.push({ key: m.key, name: m.name, x: px, y: py, r: 40,
+                             phase: LR() * Math.PI * 2, mod: true, site: id });
+            break;
+          }
+        }
+      }
     }
     return out;
   }
@@ -8122,7 +8176,11 @@
                         size: 2.2, beacon: true });
     }
     out.parts.push({ key: site.key, name: site.name, x: site.x, y: site.y,
-                     r: site.r, phase: R() * Math.PI * 2 });
+                     r: site.r, phase: R() * Math.PI * 2,
+                     /* A spare goes into the hold as a spare rather than onto
+                        the manifest, and carries the id its site is remembered
+                        by — see `surv.lifted`. */
+                     mod: !!site.mod, site: site.mod ? (site.id || site.key) : null });
   }
 
   /* A landmark's own furniture. Each one is a thing the engine already knows
@@ -9011,6 +9069,15 @@
       for (const f of c.fields) surv.fields.push(f);
       for (const g of c.gates) surv.gates.push(g);
       for (const pt of c.parts) {
+        /* A spare lying out in the sector answers to its site, not to the
+           manifest: you can already own three tractor beams and the fourth is
+           still out there to be found, so `built` and `carrying` — which are
+           both about the one manifest copy of a key — say nothing about it.
+           What retires it is having been picked up. */
+        if (pt.mod) {
+          if (!surv.lifted.has(pt.site || pt.key)) surv.parts.push(pt);
+          continue;
+        }
         /* A part that has been dropped is not also still at its landmark — the
            sector generated one and there is one, wherever it happens to be. */
         if (surv.built.has(pt.key) || surv.carrying.has(pt.key)) continue;
@@ -9692,6 +9759,15 @@
       huntCool: 20,
       opened: new Set(carried ? book.opened : []),
       stripped: new Set(carried ? book.stripped : []),
+      /* Loose parts already lifted off the floor. Same rule as the other two:
+         the sector is rebuilt from its seed every time, so what you have taken
+         out of it has to be remembered or it grows back.
+
+         `lifted`, not `looted`: `surv.t.looted` is already a telemetry flag
+         meaning you have stripped a wreck, and two different facts under one
+         word on two nested objects is how the almanac and the arrows both went
+         wrong before. */
+      lifted: new Set(carried ? book.lifted || [] : []),
       /* Parts you have laid eyes on. The workbench lists what you can build;
          this is what lets it also list what you have *met* and cannot build — so
          a gun you saw on a shelf two hundred thousand units ago is still a thing
@@ -9874,6 +9950,34 @@
           chunkKey(Math.floor(L.bx / CHUNK), Math.floor(L.by / CHUNK)), L);
       }
     });
+
+    /* ── what the arrow points at once the gate is open ───────────────────
+       The manifest ends and the objective arrow goes out, which is the right
+       shape for "you have finished the tutorial" and the wrong shape for the
+       ten hours after it: the mode's whole answer to *now what* was a sector
+       with nothing marked in it.
+
+       So there is one thing left on the board. TRACTOR BEAM MK1 is the bottom
+       rung of the tractor ladder and the part that changes an ordinary flight
+       more than any other — a broken rock is one pass instead of nine — so it
+       is the right first thing to want and a poor thing to be given.
+
+       Placed like a landmark rather than rolled into a chunk: an arrow needs
+       somewhere fixed to point, and a site that depends on which chunks you
+       happen to have visited is a site the arrow cannot name. Off the end of
+       the manifest's own bearings so it is not on top of a rung, and inside
+       the same 45,000 the manifest is held to — it is the next errand, not an
+       expedition. */
+    {
+      const a = pa0 - pslice * 0.5 + (R() - 0.5) * pslice * 0.4;
+      const d = 31000 * (0.9 + R() * 0.3);
+      const B = moduleSpec("tractormk1");
+      const site = { key: "tractormk1", name: B ? B.name : "TRACTOR BEAM MK1",
+                     x: Math.cos(a) * d, y: Math.sin(a) * d, r: 40, mod: true };
+      surv.mk1Site = site;
+      surv.partAt.set(
+        chunkKey(Math.floor(site.x / CHUNK), Math.floor(site.y / CHUNK)), site);
+    }
 
     /* No arena, so `bounds` is only here to keep the code that reads it from
        reading NaN — nothing in Survey ever reaches it, because `edgeOf` is
@@ -15045,8 +15149,27 @@
   /* Where the thing you are looking for is. Not shown as a position — the HUD
      only ever gets a bearing and a range out of this — but the mode needs to
      know the point to take a bearing to. */
+  /* Is the tractor MK1 still out there to be fetched? Owning one in any
+     form — in the hold, bolted on, or already lifted off its site — ends it. */
+  function mk1Wanted() {
+    const site = surv && surv.mk1Site;
+    if (!site) return false;
+    if (surv.lifted.has(site.id || site.key)) return false;
+    if (storeCount("tractormk1") > 0 || modFitted("tractormk1")) return false;
+    return true;
+  }
+
   function objectiveTarget() {
-    if (yardDone()) return null;
+    /* The manifest is finished and the arrow used to go out with it, which is
+       the right shape for "the tutorial is over" and the wrong one for the ten
+       hours after: the mode's answer to *now what* was a sector with nothing
+       marked in it. One thing stays on the board. */
+    if (yardDone()) {
+      return mk1Wanted()
+        ? { key: "tractormk1", name: surv.mk1Site.name,
+            x: surv.mk1Site.x, y: surv.mk1Site.y }
+        : null;
+    }
     if (surv.carrying.size) {
       return { key: "yard", name: "THE JUMP GATE", x: YARD.x, y: YARD.y };
     }
@@ -15065,6 +15188,12 @@
 
   function objective() {
     if (yardDone()) {
+      if (mk1Wanted()) {
+        return { text: "FIND THE " + surv.mk1Site.name,
+                 sub: "half the reach of the mark two, and the last thing " +
+                      "anybody is pointing you at",
+                 colour: NEBULA };
+      }
       return { text: "THE JUMP GATE IS OPEN", sub: "the sector is yours to wander",
                colour: CASH };
     }
@@ -15164,6 +15293,11 @@
   /* How far outside a part's own shape its ring is drawn — and therefore how
      far out you can pick it up. One number, read by the collision and by the
      drawing, so the two cannot drift. */
+  /* How often a chunk hides something you could otherwise only buy. One in
+     four hundred: rare enough that finding one is an event, common enough that
+     a long sector eventually pays for the looking. */
+  const LOOSE_PART_CHANCE = 1 / 400;
+
   const PART_RING = 30;
 
   function surveyParts(dt) {
@@ -15189,6 +15323,12 @@
       }
       surv.parts.splice(i, 1);
       if (pt.mod) storeAdd(pt.key, 1); else surv.carrying.add(pt.key);
+      /* A spare that came from a site in the sector is remembered as taken, or
+         the next time its chunk is rebuilt from the seed it grows back. Only
+         ones with a `site`: a spare you dropped when you died is remembered by
+         `surv.dropped` instead, and putting it in here as well would retire a
+         site it never came from. */
+      if (pt.mod && pt.site) surv.lifted.add(pt.site);
       /* If this is one you dropped when you died, it stops being dropped — the
          list is what makes it exist out here, so leaving it on would put a second
          copy in the sky the next time the chunks stream.

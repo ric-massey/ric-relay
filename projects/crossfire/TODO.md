@@ -7,8 +7,8 @@ it gets a tick and a commit hash, so the list is also the record.
 **Status key** — `[ ]` not started · `[~]` in progress · `[x]` done · `[?]` needs
 an answer before it can be built.
 
-Batch of 2026-09-13. 27 items. **21 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5 ·
-P2, P3 · H2, H4 · A4. P1 is most of the way.
+Batch of 2026-09-13. 27 items. **23 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5 ·
+P2, P3, P1, P4 · H2, H4 · A4.
 
 ---
 
@@ -94,15 +94,15 @@ P2, P3 · H2, H4 · A4. P1 is most of the way.
 
 ## PARTS
 
-- [~] **P1 · The tractor beam becomes a ladder: MK1 / MK2 / MK3.**
+- [x] **P1 · The tractor beam becomes a ladder: MK1 / MK2 / MK3.**
   - [x] MK1 — half the radius of today's base tractor beam (170 units)
   - [x] MK2 — today's tractor beam (340)
   - [x] MK3 — today's HEAVY BEAM, folded into the ladder (544)
   - [x] MK1 is craftable and find-only; MK3 stays bought, as the best of a
         category always is
-  - [ ] after the wormhole is built, the arrow that used to say STATION leads
-        to TRACTOR BEAM MK1 instead — needs an MK1 *site*, which is the same
-        mechanism **P4** wants, so do them together
+  - [x] after the wormhole is built, the arrow that used to say STATION leads
+        to TRACTOR BEAM MK1 instead — placed like a landmark about 33k out, and
+        it is a *spare*, so it goes into the hold rather than onto the gate
 
   *Found while building it:* a category is not exclusive and `mods()` sums
   every effect, so fitting MK1 beside MK3 reached 374 units where MK3 alone
@@ -113,9 +113,11 @@ P2, P3 · H2, H4 · A4. P1 is most of the way.
   included — must all be inside 45,000 units.
 - [x] **P3 · A part's hitbox is the outer ring, not the triangle.** Picking one
   up should not require threading the middle of it.
-- [ ] **P4 · Scatter the buyable parts too.** The ones you can buy or sell
+- [x] **P4 · Scatter the buyable parts too.** The ones you can buy or sell
   should also be findable out there, the way the wormhole parts are — but very
-  hard to find.
+  hard to find. *One chunk in ~430, fifteen different kinds, rolled off its own
+  stream so no existing sector's terrain moved. A part taken is remembered in
+  the save (`lifted`) or it grows back every time its chunk reloads.*
 
 ## SETTINGS
 

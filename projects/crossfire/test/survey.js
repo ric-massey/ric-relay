@@ -1615,10 +1615,29 @@ const storeOf = (cf, key) => {
       surv.built.add(KEYS[step]);
     }
   }
+  /* A finished manifest no longer means an empty board. The gate being built
+     hands you one more thing to want — the tractor MK1 — so "finished" is now
+     two states: the manifest is done and the arrow has moved off it, and then
+     once the MK1 is in the hold the sector really is yours to wander.
+
+     Both are checked rather than the second alone, because the thing this has
+     always guarded is that the line stops saying FIND THE <manifest part>
+     when there are none left to find. */
+  const handed = cf.objective();
+  check(!KEYS.some(k => new RegExp(k, "i").test(handed.text)),
+        "the manifest is complete and the objective still names one of its " +
+        "parts: " + handed.text);
+  check(/TRACTOR BEAM MK1|OPEN|FINISHED/.test(handed.text),
+        "a full manifest did not read as finished: " + handed.text);
+
+  surv.lifted.add(surv.mk1Site.id || surv.mk1Site.key);
+  now += 1000 / 60; cf.step();
   const done = cf.objective();
   check(/OPEN|FINISHED/.test(done.text),
-        "a full manifest did not read as finished: " + done.text);
-  console.log("  objective  states every step of the manifest, clue and all");
+        "with the gate built and the MK1 collected the sector still has an " +
+        "errand on it: " + done.text);
+  console.log("  objective  states every step of the manifest, clue and all · " +
+              "then hands you the MK1 · then lets you go");
 }
 
 // ── 16. the scan reports what is near, and the refit makes it reach ──────
@@ -6549,6 +6568,138 @@ const storeOf = (cf, key) => {
   console.log("  pages      strip at the top on all seven \u00b7 the record runs " +
               Math.round(hud.recordHeight) +
               "px \u00b7 nothing pressable outside its window at any scroll");
+}
+
+// ── after the gate, one thing is still on the board ──────────────────────
+/* P1's last piece. The manifest ends and the objective arrow used to go out
+   with it, which is the right shape for "the tutorial is over" and the wrong
+   one for the ten hours after: the mode's answer to *now what* was a sector
+   with nothing marked in it.
+
+   The tractor MK1 stays. It is placed like a landmark rather than rolled into
+   a chunk, because an arrow needs somewhere fixed to point and a site that
+   depends on which chunks you happen to have visited is a site the arrow
+   cannot name. */
+{
+  const { cf } = boot("?debug=1&seed=606061");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      const me = cf.live().ships[0];
+      me.invuln = 9e9; surv.water = 9e5; surv.food = 9e5;
+      now += 1000 / 60; cf.step();
+    }
+  };
+  step(30);
+
+  const site = surv.mk1Site;
+  check(!!site, "no TRACTOR BEAM MK1 site was placed");
+  const out = Math.hypot(site.x, site.y);
+  check(out > 4000 && out < 45000,
+        "the MK1 sits " + Math.round(out) + " units out — it is the next " +
+        "errand, not an expedition, and P2 holds this set inside 45,000");
+
+  check(!/TRACTOR/.test(cf.objective().text),
+        "the MK1 is the objective before the gate is even built");
+
+  // Build the gate.
+  for (const b of cf.surveyView().manifest || []) surv.built.add(b.key);
+  step(3);
+  check(/TRACTOR BEAM MK1/.test(cf.objective().text),
+        "with the gate open the objective is \"" + cf.objective().text +
+        "\" rather than the MK1");
+  const t = cf.objectiveTarget ? cf.objectiveTarget() : null;
+
+  /* And it is really out there, not just named. */
+  const at = (x, y) => { const me = cf.live().ships[0];
+    me.x = x; me.y = y; me.vx = 0; me.vy = 0; me.invuln = 9e9; };
+  at(site.x, site.y - 3000); step(120);
+  const there = () => (surv.parts || []).filter(p => p.key === "tractormk1");
+  check(there().length === 1,
+        there().length + " tractor MK1s are lying at the site, not one");
+  check(there()[0].mod === true,
+        "the MK1 out there is a manifest part rather than a spare — it would " +
+        "go onto the gate's build list instead of into the hold");
+
+  const had = storeOf(cf, "tractormk1");
+  at(site.x, site.y); step(20);
+  check(storeOf(cf, "tractormk1") === had + 1,
+        "flying onto the MK1 did not put one in the hold");
+  check(/JUMP GATE IS OPEN/.test(cf.objective().text),
+        "the arrow still points at the MK1 after it has been collected");
+
+  /* The sector is rebuilt from its seed every time a chunk streams, so a part
+     that is not remembered as taken grows back — which would make this an
+     infinite supply of the one part the arrow sends you for. */
+  at(site.x + 400000, site.y + 400000); step(120);
+  at(site.x, site.y - 3000); step(150);
+  check(there().length === 0,
+        "the MK1 grew back after leaving the chunk and returning");
+  check(storeOf(cf, "tractormk1") === had + 1,
+        "and a second one reached the hold");
+
+  console.log("  aftergate  the arrow leads to the MK1 " + Math.round(out) +
+              "u out · it is a spare, it goes in the hold, and it does not " +
+              "grow back");
+}
+
+// ── things worth buying, lying out in the dark ───────────────────────────
+/* P4. The shop's parts existed in exactly one place, which made the shop the
+   only reason to have money and money the only reason to fly. Very hard to
+   find, which is the whole of what makes one worth anything.
+
+   The number that matters is not the rate but what it costs `R`: the scatter
+   is rolled off its own stream, because a draw taken from the chunk's own
+   sequence would shift everything after it and rebuild every sector that has
+   ever existed. */
+{
+  const { cf } = boot("?debug=1&seed=112358");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+
+  let chunks = 0, found = 0;
+  const kinds = new Set();
+  const buyable = new Set((cf.parts() || []).filter(p => (p.get || []).includes("buy"))
+                                            .map(p => p.key));
+  for (let i = 0; i < 9000; i++) {
+    const a = i * 2.399963, r = 40 + i * 0.35;
+    const c = cf.chunk(Math.round(Math.cos(a) * r), Math.round(Math.sin(a) * r));
+    chunks++;
+    for (const p of c.parts) {
+      if (!p.mod || !p.site) continue;
+      found++;
+      kinds.add(p.key);
+      check(buyable.has(p.key),
+            p.key + " was scattered out in the sector but is not something you " +
+            "can buy — P4 is about the buyable ones");
+    }
+  }
+  const oneIn = chunks / Math.max(1, found);
+  check(found > 0, "nothing at all is scattered out there in " + chunks + " chunks");
+  /* Hard to find, and still findable. Both bounds matter: common enough and the
+     shop stops being a reason to earn anything; rare enough and the feature is
+     indistinguishable from not having shipped it. */
+  check(oneIn > 150,
+        "a scattered part turns up every " + Math.round(oneIn) +
+        " chunks — that is not hard to find");
+  check(oneIn < 1500,
+        "a scattered part turns up every " + Math.round(oneIn) +
+        " chunks — nobody will ever meet one");
+  check(kinds.size >= 5,
+        "only " + kinds.size + " kinds ever scatter, so it is always the same find");
+
+  /* A chunk is a pure function of its coordinates, and adding a roll must not
+     have broken that — build the same chunk twice and get the same part. */
+  const twice = [0, 1].map(() => {
+    const c = cf.chunk(40, 0);
+    return JSON.stringify(c.parts.map(p => [p.key, Math.round(p.x), Math.round(p.y)]));
+  });
+  check(twice[0] === twice[1], "the same chunk scattered different parts twice");
+
+  console.log("  scatter    " + found + " buyable parts in " + chunks +
+              " chunks = 1 in " + Math.round(oneIn) + " · " + kinds.size +
+              " different kinds · the same chunk always hides the same one");
 }
 
 // ── a world wears its own name ───────────────────────────────────────────

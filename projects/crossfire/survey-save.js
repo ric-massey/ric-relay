@@ -159,14 +159,22 @@ class SaveError extends Error {
    The runtime keeps the flat Sets. They are asked `has(id)` for every object
    of every chunk that streams in, and a nested lookup there would be paying
    in the hot path for a saving that belongs in the file. */
-const MUT_ID = /^(-?\d+,-?\d+)([ch])(\d+)$/;
+const MUT_ID = /^(-?\d+,-?\d+)([chp])(\d+)$/;
 
-function packMutations(opened, stripped) {
+/* `p` is the third of these: a loose part lifted off the floor. It is the same
+   kind of fact as an opened cache — a thing that was out there, is not any
+   more, and must not come back when its chunk is rebuilt from the seed.
+
+   Added without a version bump, because it is additive in both directions. A
+   book written before it simply has no `p` entries and nothing was taken; a
+   book written with them, read by a build that has never heard of them, drops
+   them and the part turns up again. Neither is a corrupt file. */
+function packMutations(opened, stripped, lifted) {
   const cells = {};
   // Ids that are not chunk-and-index: the Leviathan's holds are "lev0" and
   // belong to a thing rather than to a place. Kept verbatim rather than
   // dropped, which is the whole rule here.
-  const odd = { c: [], h: [] };
+  const odd = { c: [], h: [], p: [] };
   const put = (set, field) => {
     for (const id of set || []) {
       const m = MUT_ID.exec(id);
@@ -177,25 +185,26 @@ function packMutations(opened, stripped) {
   };
   put(opened, "c");
   put(stripped, "h");
+  put(lifted, "p");
   for (const k of Object.keys(cells)) {
-    for (const f of ["c", "h"]) {
+    for (const f of ["c", "h", "p"]) {
       if (cells[k][f]) cells[k][f].sort((a, b) => a - b);
     }
   }
   const out = { cells };
-  if (odd.c.length || odd.h.length) out.odd = odd;
+  if (odd.c.length || odd.h.length || odd.p.length) out.odd = odd;
   return out;
 }
 
 function unpackMutations(mut) {
-  const opened = [], stripped = [];
-  if (!mut || typeof mut !== "object") return { opened, stripped };
+  const opened = [], stripped = [], lifted = [];
+  if (!mut || typeof mut !== "object") return { opened, stripped, lifted };
   const cells = mut.cells && typeof mut.cells === "object" ? mut.cells : {};
   for (const k of Object.keys(cells)) {
     if (!/^-?\d+,-?\d+$/.test(k)) continue;
     const cell = cells[k];
     if (!cell || typeof cell !== "object") continue;
-    for (const [field, into] of [["c", opened], ["h", stripped]]) {
+    for (const [field, into] of [["c", opened], ["h", stripped], ["p", lifted]]) {
       const list = Array.isArray(cell[field]) ? cell[field] : [];
       for (const i of list) {
         if (Number.isInteger(i) && i >= 0 && i < 4096) into.push(k + field + i);
@@ -203,11 +212,11 @@ function unpackMutations(mut) {
     }
   }
   const odd = mut.odd && typeof mut.odd === "object" ? mut.odd : {};
-  for (const [field, into] of [["c", opened], ["h", stripped]]) {
+  for (const [field, into] of [["c", opened], ["h", stripped], ["p", lifted]]) {
     const list = Array.isArray(odd[field]) ? odd[field] : [];
     for (const id of list) if (typeof id === "string") into.push(id.slice(0, 40));
   }
-  return { opened, stripped };
+  return { opened, stripped, lifted };
 }
 
 function freshBook() {
@@ -217,7 +226,7 @@ function freshBook() {
                   ship: "skiff", owned: ["skiff"], taught: [],
                   water: WATER_FULL, food: FOOD_FULL,
                   hold: freshHold(),
-                  opened: [], stripped: [], seen: [],
+                  opened: [], stripped: [], lifted: [], seen: [],
                   carrying: [], built: [], pins: [], known: [],
                   slots: [], store: {}, battleAge: {}, memorials: [],
                   dropped: [], coilFired: false,
@@ -260,9 +269,11 @@ function migrateSurveyBook(b) {
      cache that refills. */
   if (v === 4) {
     b = { ...b, version: 5,
-          mutations: packMutations(b.opened || [], b.stripped || []) };
+          mutations: packMutations(b.opened || [], b.stripped || [],
+                                   b.lifted || []) };
     delete b.opened;
     delete b.stripped;
+    delete b.lifted;
     v = 5;
   }
   return b;
@@ -355,7 +366,7 @@ function validateSurveyBook(b) {
          is the file's business, not the runtime's. */
       ...(() => {
         const m = unpackMutations(b.mutations);
-        return { opened: m.opened, stripped: m.stripped };
+        return { opened: m.opened, stripped: m.stripped, lifted: m.lifted };
       })(),
       seen: strs(b.seen),
       /* Filtered against the manifest rather than merely checked for being
