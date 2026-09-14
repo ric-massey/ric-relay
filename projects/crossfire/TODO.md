@@ -7,7 +7,8 @@ it gets a tick and a commit hash, so the list is also the record.
 **Status key** — `[ ]` not started · `[~]` in progress · `[x]` done · `[?]` needs
 an answer before it can be built.
 
-Batch of 2026-09-13. 27 items. **16 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5.
+Batch of 2026-09-13. 27 items. **18 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5 ·
+P2, P3. P1 is most of the way.
 
 ---
 
@@ -91,15 +92,24 @@ Batch of 2026-09-13. 27 items. **16 done** — B1–B8, S1 · C1–C3 · S2, A1,
 
 ## PARTS
 
-- [ ] **P1 · The tractor beam becomes a ladder: MK1 / MK2 / MK3.**
-  - MK1 — half the radius of today's base tractor beam
-  - MK2 — today's tractor beam
-  - MK3 — today's HEAVY BEAM, folded into the ladder
-  - and after the wormhole is built, the arrow that used to say STATION leads
-    to TRACTOR BEAM MK1 instead
-- [ ] **P2 · Parts spawn too far out.** The manmade-wormhole set — MK1
+- [~] **P1 · The tractor beam becomes a ladder: MK1 / MK2 / MK3.**
+  - [x] MK1 — half the radius of today's base tractor beam (170 units)
+  - [x] MK2 — today's tractor beam (340)
+  - [x] MK3 — today's HEAVY BEAM, folded into the ladder (544)
+  - [x] MK1 is craftable and find-only; MK3 stays bought, as the best of a
+        category always is
+  - [ ] after the wormhole is built, the arrow that used to say STATION leads
+        to TRACTOR BEAM MK1 instead — needs an MK1 *site*, which is the same
+        mechanism **P4** wants, so do them together
+
+  *Found while building it:* a category is not exclusive and `mods()` sums
+  every effect, so fitting MK1 beside MK3 reached 374 units where MK3 alone
+  reaches 544 — the ladder made `reach` the first effect that can be negative.
+  Reach is now the best beam fitted rather than the total, and all eight
+  combinations are asserted in `test/survey.js`.
+- [x] **P2 · Parts spawn too far out.** The manmade-wormhole set — MK1
   included — must all be inside 45,000 units.
-- [ ] **P3 · A part's hitbox is the outer ring, not the triangle.** Picking one
+- [x] **P3 · A part's hitbox is the outer ring, not the triangle.** Picking one
   up should not require threading the middle of it.
 - [ ] **P4 · Scatter the buyable parts too.** The ones you can buy or sell
   should also be findable out there, the way the wormhole parts are — but very
@@ -131,6 +141,15 @@ Batch of 2026-09-13. 27 items. **16 done** — B1–B8, S1 · C1–C3 · S2, A1,
 1. **BUGS, B1–B8** — then push.
 2. **Controls, C1–C3** — then push.
 3. **Everything else** — BOTS, SCANNING, ARROWS, STATION HUD, PARTS.
+
+## Done alongside
+
+- **The generator is twice as fast and makes the same worlds.** 84% of chunk
+  generation was cave noise; `tunnelNode` and a cell's segments are memoised
+  now, `segDist2` stopped allocating, and the square root came out of the
+  segment loop. 1.861ms → 0.922ms a chunk, `test/warrens.js` 182s → 52s.
+  `test/fingerprint.js` is the gate that says a seed still makes the same
+  sector — run it before and after anything in `survey-world.js`.
 
 ## Notes to self
 

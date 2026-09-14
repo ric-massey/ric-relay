@@ -6170,6 +6170,14 @@ const storeOf = (cf, key) => {
   surv.traffic.length = 0;
   const runner = mk("freight", "cordon", st.x + 1400, st.y + 300, ["iridium", "iridium"]);
   runner.speed = runner.baseSpeed = 260;
+  /* Pointed at *this* station rather than left to choose. A hauler picks
+     whichever place is shortest of what it carries, and which place that is
+     moves whenever the sector's layout does — so the test was quietly about
+     pathfinding to the right station, and it broke the day the manifest's
+     sites were pulled inside 45,000 and every placement downstream shifted
+     with them. What is being checked here is the economy hearing about a
+     delivery. Give it the delivery. */
+  runner.mark = st; runner.markKind = "station"; runner.think = 9;
   step(60 * 30);
   check((runner.delivered || 0) > 0,
         "a freighter beside a station never delivered anything");
@@ -6630,6 +6638,54 @@ const storeOf = (cf, key) => {
               "on a shelf somewhere");
 }
 
+// ── a ladder's rungs do not fight each other ─────────────────────────────
+/* The tractor is three rungs of one idea — MK1 at half the base reach, MK2 at
+   the base, MK3 at 60% over it — and nothing stops you fitting two of them at
+   once, because slots are four and a category is not exclusive.
+
+   `mods()` sums every numeric effect, which was harmless while every effect was
+   a bonus. `reach` is the first one that can be negative, and summing a
+   negative means a *worse* part makes the ship worse: MK1 beside MK3 summed to
+   0.1 and reached 374 units where MK3 alone reaches 544. Bolting something on
+   must never cost you something.
+
+   Every combination rather than the two that were wrong, because the two that
+   were wrong were wrong for different reasons — one from summing a negative,
+   one from MK2 having no `reach` key at all, so a fix that collected the key
+   instead of asking the beam made MK1+MK2 reach 170. A table of all eight says
+   which of those has come back. */
+{
+  const { cf } = boot("?debug=1&seed=8080");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+
+  const beamWith = (...keys) => {
+    for (let i = 0; i < surv.slots.length; i++) surv.slots[i] = null;
+    keys.forEach((k, i) => { surv.slots[i] = { key: k, fit: 0 }; });
+    return Math.round(cf.surveyView().tractor || 0);
+  };
+
+  const MK1 = "tractormk1", MK2 = "tractorrig", MK3 = "heavyrig";
+  const one = beamWith(MK1), two = beamWith(MK2), three = beamWith(MK3);
+
+  check(beamWith() === 0, "a ship with no beam fitted still has a beam");
+  check(one > 0 && two > one && three > two,
+        "the ladder does not climb: " + one + " → " + two + " → " + three);
+  check(Math.abs(one - two / 2) <= 1,
+        "MK1 is " + one + ", which is not half of MK2's " + two);
+
+  /* The whole point: any mix reaches as far as the best rung in it. */
+  for (const mix of [[MK1, MK2], [MK1, MK3], [MK2, MK3], [MK1, MK2, MK3]]) {
+    const best = Math.max(...mix.map(k => beamWith(k)));
+    const got = beamWith(...mix);
+    check(got === best,
+          mix.join(" + ") + " reaches " + got + " where the best of them alone " +
+          "reaches " + best + " — a worse rung must not cost you reach");
+  }
+  console.log("  ladder     tractor " + one + " → " + two + " → " + three +
+              " units · every mix of rungs reaches as far as its best one");
+}
+
 // ── every part can actually be got hold of ──────────────────────
 /* The check above proves every part *claims* a way in: a `get` list with
    something in it, a `where` line long enough to read. It does not prove any of
@@ -7033,7 +7089,19 @@ const storeOf = (cf, key) => {
       const a = (k / 24) * Math.PI * 2;
       const c = cf.chunk(Math.round(Math.cos(a) * ring), Math.round(Math.sin(a) * ring));
       for (const h of c.hazards) if (h.k >= 1.8 && !big) big = h;
-      for (const p of c.planets) if (!world && p.name) world = p;
+      /* A named world with nothing else sitting on it. The first named world
+         found is not good enough: a landmark parked beside one out-ranks it
+         when you press E — correctly, since it is nearer — and then this is
+         testing which of two things is closer rather than what a world's card
+         says. Ask for one that is alone. */
+      for (const p of c.planets) {
+        if (world || !p.name) continue;
+        const crowded = (c.landmarks || []).some(
+          l => Math.hypot(l.x - p.x, l.y - p.y) < p.r + 2600) ||
+          (c.parts || []).some(
+            q => Math.hypot(q.x - p.x, q.y - p.y) < p.r + 2600);
+        if (!crowded) world = p;
+      }
     }
   }
   check(!!big && !!world, "no named well or no named world to ask about");

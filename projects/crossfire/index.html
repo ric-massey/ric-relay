@@ -6064,18 +6064,36 @@
        salvage you want, one at a time, at the speed a hull can be aimed — which
        is the whole of the early game and exactly why the first rig you get your
        hands on changes the mode more than any other part in the list. */
-    { key: "tractorrig", name: "TRACTOR BEAM", cat: "tractor", rarity: "common",
-      cost: 340, deep: 0, get: ["find", "craft"],
+    /* ── the tractor ladder ───────────────────────────────────────────────
+       Three rungs of one idea rather than two parts with different names. A
+       TRACTOR BEAM and a HEAVY BEAM were the same field at two strengths and
+       nothing said so — you had to read both descriptions to work out they were
+       the same category, and there was no bottom rung for somebody who had just
+       finished the gate and had nothing to reach for.
+
+       MK1 is half the reach: enough to make a broken rock one pass instead of
+       nine, and little enough that MK2 is a real step. MK2 is the beam as it
+       was. MK3 is the hot one, which used to be called the HEAVY BEAM. */
+    { key: "tractormk1", name: "TRACTOR BEAM MK1", cat: "tractor",
+      rarity: "common", cost: 180, deep: 0, get: ["find", "craft"],
+      where: "out in the dark, on its own \u2014 the first thing worth looking " +
+             "for once the gate is open",
+      note: "a grapple field on the nose, at half the reach of the mark two. " +
+            "Loose salvage inside " + Math.round(SURVEY_TRACTOR * 0.5) +
+            " units comes in on its own",
+      eff: { tractor: 1, reach: -0.5 } },
+    { key: "tractorrig", name: "TRACTOR BEAM MK2", cat: "tractor",
+      rarity: "common", cost: 340, deep: 0, get: ["find", "craft"],
       where: "in caches — the commonest part out there, and the first one that " +
              "changes how you play",
-      note: "a grapple field on the nose. Loose salvage inside " +
+      note: "the same field at its full reach. Loose salvage inside " +
             SURVEY_TRACTOR + " units is drawn in and stowed on its own, so a " +
             "broken rock is one pass instead of nine",
       eff: { tractor: 1 } },
-    { key: "heavyrig", name: "HEAVY BEAM", cat: "tractor", rarity: "uncommon",
-      cost: 780, deep: 0.16, get: ["buy"],
-      note: "the same field, run hot: 60% further out and a harder pull, so a " +
-            "field of debris comes in while you are still crossing it",
+    { key: "heavyrig", name: "TRACTOR BEAM MK3", cat: "tractor",
+      rarity: "uncommon", cost: 780, deep: 0.16, get: ["buy"],
+      note: "the field run hot: 60% further out than the mark two and a harder " +
+            "pull, so a field of debris comes in while you are still crossing it",
       eff: { tractor: 1, reach: 0.6, pull: 0.5 } },
 
     /* ── weapons ──────────────────────────────────────────────────────────
@@ -6693,6 +6711,9 @@
     { out: "layerplate", need: { iron: 8, alloy: 3 } },
     { out: "vernier",    need: { iron: 5, alloy: 4, electronics: 2 } },
     { out: "pulsecoil",  need: { alloy: 4, electronics: 5 } },
+    /* The ladder's first two rungs. MK3 is not here — it is the best of its
+       category, and the best of a category is bought or found, never built. */
+    { out: "tractormk1", need: { iron: 4, alloy: 2 } },
     { out: "tractorrig", need: { iron: 6, alloy: 5, electronics: 3 } },
     { out: "scattergun", need: { iron: 7, alloy: 5, electronics: 2 } },
 
@@ -6782,6 +6803,7 @@
                   // How much of the scanner's cooldown is bought back, 0 to 1.
                   recharge: 0 };
     if (!surv || !surv.slots) return out;
+    const reaches = [];
     for (const sl of surv.slots) {
       if (!sl || sl.fit > 0) continue;
       const m = moduleSpec(sl.key);
@@ -6791,11 +6813,29 @@
          "0scatter", which is a value nothing can use and every reader has to
          work out. What is fitted is asked of the slots directly, by
          `weaponsFitted` and `devicesFitted`. */
+      /* Reach is the best beam you have, not the sum of your beams. Two
+         tractors do not reach further than the better one, and since the
+         ladder arrived `reach` is the one effect that can be *negative* — MK1
+         is half the base — so adding them lets a worse rung drag a better one
+         down: MK1 beside MK3 came to 0.1, which is 374 units where MK3 alone
+         gives 544. Nothing you bolt on may make the ship worse than not
+         bolting it on.
+
+         Taken from the beam rather than from the key, and that is the part
+         worth reading twice. MK2 has no `reach` at all — it *is* the base —
+         so a version of this that collected the key found only MK1's -0.5 and
+         made MK1 beside MK2 reach 170 where MK2 alone reaches 340. A tractor
+         with nothing to say about its reach is saying zero. */
+      if (m.eff.tractor) {
+        reaches.push(typeof m.eff.reach === "number" ? m.eff.reach : 0);
+      }
       for (const k of Object.keys(m.eff)) {
         if (typeof m.eff[k] !== "number") continue;
+        if (k === "reach") continue;
         out[k] = (out[k] || 0) + m.eff[k];
       }
     }
+    if (reaches.length) out.reach = Math.max(...reaches);
     return out;
   }
   const modFitted = key =>
@@ -9804,11 +9844,22 @@
     const pslice = (Math.PI * 2) / outer.length;
     const pa0 = R() * Math.PI * 2 + pslice / 2;
     const prungs = outer.map(b => b.dist);
+    /* **The manifest is the tutorial, so it has to stay walkable.** The rungs
+       run to 52,000 and the world's own spread multiplies them, so on a wide
+       world the last part sat seventy thousand units out — most of an hour of
+       flying for somebody still learning why they would want to.
+
+       Scaled rather than clamped: clamping would pile the outer two on top of
+       each other at the cap and lose the ladder. This keeps every rung's
+       spacing and shrinks the whole thing until the furthest lands inside
+       45,000. */
+    const maxRung = Math.max(...prungs);
+    const fit = Math.min(1, 45000 / (maxRung * surv.world.spread * 1.12));
     // Dealt the same way, so which clue you chase first changes with the world.
     surv.world.partOrder.forEach((key, pi) => {
       const B = BUILD.find(b => b.key === key);
       const a = pa0 + pi * pslice + (R() - 0.5) * pslice * 0.5;
-      const d = prungs[pi] * surv.world.spread * (0.88 + R() * 0.24);
+      const d = prungs[pi] * surv.world.spread * (0.88 + R() * 0.24) * fit;
       const site = { key: B.key, name: B.name, x: Math.cos(a) * d,
                      y: Math.sin(a) * d, r: 40 };
       surv.partSites.push(site);
@@ -15101,6 +15152,11 @@
      in the hold, it cannot be sold, and losing your hull does not drop it —
      the manifest is the spine of the mode and a part lost in deep space would
      be a run you cannot finish. */
+  /* How far outside a part's own shape its ring is drawn — and therefore how
+     far out you can pick it up. One number, read by the collision and by the
+     drawing, so the two cannot drift. */
+  const PART_RING = 30;
+
   function surveyParts(dt) {
     const me = ships[0];
     if (!me.alive) return;
@@ -15108,7 +15164,13 @@
 
     for (let i = surv.parts.length - 1; i >= 0; i--) {
       const pt = surv.parts[i];
-      if (dist2(me.x, me.y, pt.x, pt.y) > (pt.r + R) ** 2) continue;
+      /* The ring, not the triangle. A part is drawn as a shape inside a ring
+         that pulses thirty units outside it, and the ring is what reads as
+         "the thing" — but the pickup was the shape, so you could fly through
+         what looked like the middle of it and collect nothing. Taking the
+         ring's resting radius rather than its widest, so the hitbox is never
+         bigger than what is on the screen at that moment. */
+      if (dist2(me.x, me.y, pt.x, pt.y) > (pt.r + PART_RING + R) ** 2) continue;
       /* A spare takes room, so it can be refused — and being refused must leave
          it lying there rather than quietly deleting it. Said once a pass, by the
          same words every other full-hold refusal uses. */
@@ -15568,7 +15630,7 @@
     // dim ones and has to win that fight from off screen.
     glow(CASH, 1.6, 0.25 + beat * 0.45, () => {
       ctx.beginPath();
-      ctx.arc(pt.x, pt.y, pt.r + 30 + beat * 18, 0, Math.PI * 2);
+      ctx.arc(pt.x, pt.y, pt.r + PART_RING + beat * 18, 0, Math.PI * 2);
       ctx.stroke();
     });
     label3(pt.name, pt.x, pt.y + pt.r + 62, CASH);
