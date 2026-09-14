@@ -7,8 +7,8 @@ it gets a tick and a commit hash, so the list is also the record.
 **Status key** — `[ ]` not started · `[~]` in progress · `[x]` done · `[?]` needs
 an answer before it can be built.
 
-Batch of 2026-09-13. 27 items. **20 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5 ·
-P2, P3 · H2, H4. P1 is most of the way.
+Batch of 2026-09-13. 27 items. **21 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5 ·
+P2, P3 · H2, H4 · A4. P1 is most of the way.
 
 ---
 
@@ -62,9 +62,11 @@ P2, P3 · H2, H4. P1 is most of the way.
 - [ ] **A3 · The Vault is a mess.** Lines, hit markers, bots flying behind the
   walls, bullets passing through them. Everything the Leviathan got right and
   this did not. Use the Leviathan as the reference implementation.
-- [ ] **A4 · Planet names should ride the planet.** The name and the word
+- [x] **A4 · Planet names should ride the planet.** The name and the word
   INHABITED move around the rim the way a station's words rotate. Bigger
-  planets can carry more than one so they are easier to spot.
+  planets can carry more than one so they are easier to spot. *One `rimWord`
+  now sets a word on a circle and the station uses it too; a world over 700
+  units wears its name twice and over 1300 three times.*
 - [x] **A5 · The wormhole arrow says STATION after the gate is built.**
   *Checked and could not reproduce:* once the gate is built `objectiveTarget`
   returns null, `contacts` empties and no arrow of that kind survives —
