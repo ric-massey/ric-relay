@@ -16008,6 +16008,51 @@
     ctx.restore();
   }
 
+  /* ── a word set around a circle ───────────────────────────────────────────
+     Letter by letter on the curve rather than written flat across the middle.
+     A ring with writing on it reads as a built thing; the same word laid over
+     it reads as a label stuck to the screen — and on anything big it reads as
+     a label stuck over the thing you were trying to look at.
+
+     `copies` repeats the word evenly round the circle, which is what makes a
+     big body easier to pick out: one name on something two thousand units
+     across is legible from exactly one bearing, and you arrive from whichever
+     bearing you arrive from.
+
+     Radius decides which way it reads. Inside the circle — a station's ring —
+     and it faces in; outside it — a world's rim — and it faces out. Both are
+     the same arithmetic, so neither is a special case. */
+  function rimWord(word, cx, cy, rad, turn, size, colour, alpha, copies) {
+    if (!word) return;
+    const n = Math.max(1, copies || 1);
+    /* Letters spaced by angle, so a word occupies the same arc whatever the
+       body's size and a long one simply sets tighter. Capped so several copies
+       cannot run into each other: each gets its share of the circle and keeps
+       a fifth of it clear. */
+    const arc = Math.min(Math.PI * 1.5, word.length * 0.145,
+                         (Math.PI * 2 / n) * 0.8);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(turn);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = colour;
+    ctx.font = size + 'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (let c = 0; c < n; c++) {
+      const base = (c / n) * Math.PI * 2;
+      for (let i = 0; i < word.length; i++) {
+        const t = word.length > 1 ? i / (word.length - 1) - 0.5 : 0;
+        ctx.save();
+        ctx.rotate(base + t * arc - Math.PI / 2);
+        ctx.translate(0, -rad);
+        ctx.fillText(word[i], 0, 0);
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+
   function drawStation(st) {
     if (!onScreen(st.x, st.y, st.r + 80)) return;
     const spin = reduceMotion ? 0 : clock * 0.22 + st.phase;
@@ -16043,30 +16088,10 @@
        it reads as a label stuck to the screen. It turns with the station for the
        same reason — it is painted on. */
     const word = st.home ? "YOUR STATION" : "STATION";
-    const rad = st.r * 0.47;
-    // Letters are spaced by angle, so the word occupies the same arc whatever
-    // the station's size, and a long word simply sets tighter.
-    const arc = Math.min(Math.PI * 1.5, word.length * 0.145);
-    const size = Math.max(9, Math.min(15, st.r * 0.1));
-    ctx.save();
-    ctx.translate(st.x, st.y);
-    ctx.rotate(spin * 0.72);          // slower than the ring, so it reads
-    ctx.globalAlpha = st.home ? 0.9 : 0.62;
-    ctx.fillStyle = CASH;
-    ctx.font = size + 'px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    for (let i = 0; i < word.length; i++) {
-      const t = word.length > 1 ? i / (word.length - 1) - 0.5 : 0;
-      const a = t * arc - Math.PI / 2;
-      ctx.save();
-      ctx.rotate(a);
-      // Baseline on the circle, feet outward, so it reads round the inside.
-      ctx.translate(0, -rad);
-      ctx.fillText(word[i], 0, 0);
-      ctx.restore();
-    }
-    ctx.restore();
+    rimWord(word, st.x, st.y, st.r * 0.47,
+            spin * 0.72,                  // slower than the ring, so it reads
+            Math.max(9, Math.min(15, st.r * 0.1)),
+            CASH, st.home ? 0.9 : 0.62, 1);
 
     // The dock ring, drawn only when you are close enough for it to mean
     // something — a permanent one would be a second circle round every station.
@@ -19616,7 +19641,14 @@
      row reading as one piece of art: a horizontal line across a circle is a
      diagram, and the same line at nine degrees is a planet turning. */
   function drawPlanet(pl) {
-    if (!onScreen(pl.x, pl.y, pl.r * (pl.ring || 1) + 60)) return;
+    /* The cull has to cover the widest thing this paints, and since the name
+       went onto the rim that is no longer the disc or its ring — the words sit
+       at `r * 1.2` plus a little, and INHABITED sits outside them again. At the
+       old margin every world over about 285 units across lost its name while
+       the world itself was still on screen, which reads as a nameless planet
+       rather than as a clipped label. */
+    const outer = Math.max(pl.r * (pl.ring || 1), pl.r * 1.2 + 60);
+    if (!onScreen(pl.x, pl.y, outer + 60)) return;
     const R = pl.r;
     const kind = pl.kind ? worldKind(pl.kind)
                          : { disc: "#9ad0ff", band: "#6fa8e6", halo: "#7fb4ff" };
@@ -19674,14 +19706,34 @@
        the rim rather than the centre, or a big world would print its name
        across its own middle. */
     if (pl.name) {
-      /* Bigger than the ordinary world-space tag. This text lives inside the
-         camera transform, so 13px arrives at about nine screen pixels at
-         Survey's 0.72 zoom — enough for a label you glance at and not enough for
-         a name you are meant to read and remember. */
-      const off = R + 34;
-      label3(pl.name, pl.x, pl.y - off, kind.disc, 22);
+      /* Round the rim, the way a station wears its own name — see `rimWord`.
+         It was set flat above the world, which put the name of a two-thousand
+         unit body a long way off the body at a zoom where you could see both,
+         and left you matching a caption to a disc. On the rim it is attached to
+         the thing.
+
+         **Repeated on anything big.** One name on a large world is legible from
+         exactly one bearing and you arrive from whichever bearing you arrive
+         from — so a world wide enough to carry the word twice carries it twice,
+         and the widest carry it three times. That is the whole of "bigger
+         planets are easier to spot": not a bigger label, more of them. */
+      const copies = R > 1300 ? 3 : R > 700 ? 2 : 1;
+      /* Slow. A station's ring turns at 0.22 and reads as machinery; a world
+         turning at anything like that reads as a spinning logo. This is about
+         a fifth of it, and `reduceMotion` stops it dead like everything else. */
+      const turn = (reduceMotion ? 0 : clock * 0.045) + (pl.tilt || 0);
+      /* Outside the disc, clear of the atmosphere ring at 1.06. Sized off the
+         world rather than fixed, so a small one is not shouting and a large one
+         is not whispering. */
+      const size = Math.max(11, Math.min(26, R * 0.045));
+      rimWord(pl.name, pl.x, pl.y, R * 1.2 + 18, turn, size,
+              kind.disc, 0.85 * dim, copies);
+      /* And whether anybody is home, on its own course further out. Same
+         rotation, so the two read as painted on the same body rather than as
+         two things that happen to be near each other. */
       if (pl.inhabited) {
-        label3("INHABITED", pl.x, pl.y - off + 24, CASH, 17);
+        rimWord("INHABITED", pl.x, pl.y, R * 1.2 + 18 + size * 1.5, turn,
+                Math.max(9, size * 0.72), CASH, 0.8 * dim, copies);
       }
     }
   }

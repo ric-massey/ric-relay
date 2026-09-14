@@ -6551,6 +6551,97 @@ const storeOf = (cf, key) => {
               "px \u00b7 nothing pressable outside its window at any scroll");
 }
 
+// ── a world wears its own name ───────────────────────────────────────────
+/* A4. The name was set flat above the world, which put the caption for a
+   two-thousand-unit body a long way off the body at any zoom where you could
+   see both, and left you matching a label to a disc. It rides the rim now, the
+   way a station wears STATION — and a world wide enough to carry the word more
+   than once carries it more than once, because one name is legible from one
+   bearing and you arrive from whichever bearing you arrive from.
+
+   Checked on what gets painted. Letters on a curve are painted one at a time,
+   so the evidence that this happened at all is that the name is *no longer*
+   drawn as a string — and the evidence that a big world repeats it is that
+   each letter arrives as many times as the world is wide enough for. */
+{
+  const { cf } = boot("?debug=1&seed=31415");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+
+  const sizes = [{ lo: 0, hi: 700, copies: 1 },
+                 { lo: 701, hi: 1300, copies: 2 },
+                 { lo: 1301, hi: 9e9, copies: 3 }];
+  const found = {};
+  for (let i = 0; i < 6000 && Object.keys(found).length < 3; i++) {
+    const a = i * 2.399963, r = 40 + i * 0.5;
+    for (const p of cf.chunk(Math.round(Math.cos(a) * r),
+                             Math.round(Math.sin(a) * r)).planets) {
+      if (!p.name) continue;
+      for (const w of sizes) {
+        if (p.r >= w.lo && p.r <= w.hi && !found[w.copies]) found[w.copies] = p;
+      }
+    }
+  }
+  check(Object.keys(found).length >= 2,
+        "only " + Object.keys(found).length + " sizes of world found — the " +
+        "copy rule cannot be tested");
+
+  const seen = [];
+  for (const w of sizes) {
+    const p = found[w.copies];
+    if (!p) continue;
+    const me = cf.live().ships[0];
+    me.x = p.x; me.y = p.y - p.r * 1.05; me.vx = 0; me.vy = 0; me.invuln = 9e9;
+    surv.water = 9e5; surv.food = 9e5;
+    for (let i = 0; i < 90; i++) { now += 1000 / 60; cf.step(); }
+    textDrawn();
+    cf.draw();
+    const painted = textDrawn();
+
+    check(!painted.includes(p.name),
+          p.name + " is still painted flat as one string rather than on the rim");
+    /* Every letter of the name, as many times as the world is wide enough
+       for. Taken as the *minimum* across letters, because a letter that also
+       occurs in something else nearby would only push a count up. */
+    const letters = p.name.replace(/ /g, "").split("");
+    const least = Math.min(...letters.map(ch =>
+      painted.filter(t => t === ch).length));
+    check(least >= w.copies,
+          p.name + " (r " + Math.round(p.r) + ") should wear its name " +
+          w.copies + " times and the rarest of its letters was painted " +
+          least);
+    seen.push(p.name + "x" + w.copies);
+  }
+
+  /* And whether anybody is home rides with it. Set on a streamed world rather
+     than hunted for: an inhabited one is roughly one world in sixteen and a
+     search for a rare roll is a test that sometimes tests nothing. */
+  const big = found[2] || found[1] || found[3];
+  const me = cf.live().ships[0];
+  me.x = big.x; me.y = big.y - big.r * 1.05; me.vx = 0; me.vy = 0; me.invuln = 9e9;
+  for (let i = 0; i < 90; i++) { now += 1000 / 60; cf.step(); }
+  const live = (surv.planets || []).find(p => p.name === big.name);
+  check(!!live, big.name + " never streamed in, so nothing was drawn");
+  const copies = big.r > 1300 ? 3 : big.r > 700 ? 2 : 1;
+
+  live.inhabited = false;
+  textDrawn(); cf.draw();
+  const quiet = textDrawn();
+  live.inhabited = true;
+  textDrawn(); cf.draw();
+  const peopled = textDrawn();
+
+  check(!peopled.includes("INHABITED"),
+        "INHABITED is still painted flat as one string");
+  check(peopled.length - quiet.length === "INHABITED".length * copies,
+        "an inhabited world painted " + (peopled.length - quiet.length) +
+        " more letters, not the " + ("INHABITED".length * copies) +
+        " that INHABITED comes to " + copies + " times over");
+
+  console.log("  worldnames names ride the rim — " + seen.join(" · ") +
+              " · INHABITED rides with them");
+}
+
 // ── the counter stops at what you can afford ─────────────────────────────
 /* H4. Ric: four cash, the counter stops. It is a basket, so what one row can
    climb to depends on what the other ticked rows have already spoken for —
