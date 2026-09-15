@@ -116,7 +116,13 @@ section{margin:3.2rem 0}
 .grid span{display:block;font-size:.85rem;color:var(--soft);margin-top:.3rem}
 .grid small{display:block;font-size:.8rem;color:var(--soft);margin-top:.15rem;font-weight:400;letter-spacing:0;text-transform:none}
 
-.arc{display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem;align-items:end;height:225px}
+/* A fixed height was the bug behind the year labels appearing INSIDE the bars:
+   the columns are taller than it — a long route name wraps to three lines on a
+   phone — and everything past it spilled out of the bottom of the chart and
+   over the row of years underneath. min-height keeps a thin year from looking
+   collapsed; the chart takes the height it actually needs, and the columns
+   still bottom-align on the same line because the grid row does that. */
+.arc{display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem;align-items:end;min-height:265px}
 .yr{display:flex;flex-direction:column;justify-content:flex-end;height:100%;text-align:center;gap:.45rem}
 .yr .bar{background:#dcd6c6;border-radius:2px 2px 0 0}
 .yr .peak{font-weight:700;font-size:1rem;font-variant-numeric:tabular-nums}
@@ -201,6 +207,12 @@ mark{background:#f6e7c6;color:inherit;border-radius:2px;padding:0 .12em}
 :root{--star:#966400}
 /* a day the log can be deep-linked to lights up when you arrive on it */
 :target{scroll-margin-top:5rem}
+/* and a section somebody linked to keeps its own heading: the nav bar is
+   sticky, so landing flush with the top of a section puts what it is called
+   underneath the bar. This applies to the scroll, not just to :target, because
+   the stats page builds its sections after the browser has given up looking
+   for the fragment and scrolls to them itself. */
+section[id]{scroll-margin-top:4.5rem}
 .d:target,.trip:target{background:#fdf6e3;box-shadow:inset 3px 0 0 var(--clay)}
 
 /* ── the two days behind the newest one ──
@@ -240,3 +252,33 @@ mark{background:#f6e7c6;color:inherit;border-radius:2px;padding:0 .12em}
 .signedin a{color:#fff;text-decoration:underline}
 .signedin button{font:inherit;font-size:.8rem;cursor:pointer;margin-left:auto;padding:.25rem .8rem;
   border:1px solid #fff;border-radius:6px;background:#fff;color:var(--bar);font-weight:700}
+
+/* ── the tally numbers go somewhere ──
+   Anchors that keep the headline's looks: a number that stays a number and a
+   label that stays a label. The cursor and a faint lift on the label are the
+   only tells, because four underlined links across the hero photo would read as
+   navigation rather than as a count of his climbing. */
+.tally a{color:inherit;text-decoration:none;cursor:pointer}
+.tally a:hover{text-decoration:none}
+.tally a:hover span{color:#efe6d8}
+.tally a:focus-visible{outline:2px solid #fff;outline-offset:4px;border-radius:3px}
+
+/* ── the year chart is a way into the log ──
+   Grade, name and bar all point at the day it happened. They inherit rather
+   than colour themselves: the grade already carries the band colour and a bar
+   that turns blue on hover stops reading as a bar. */
+.yr a{color:inherit;text-decoration:none}
+.yr a:hover{text-decoration:none}
+.yr .route{font-size:.92rem;line-height:1.25}
+.yr a.route:hover,.yr a.peak:hover{color:var(--clay)}
+.yr a.bar:hover{filter:brightness(.93)}
+.yr a.bar{display:block}
+/* the boulder of the year: its grade, and the name it went with */
+.yr .bould{display:block;font-size:.7rem;color:var(--soft)}
+.yr .bould .bn{display:block;margin-top:.15rem;font-size:.76rem;color:var(--ink);line-height:1.2}
+.yr a.bould:hover .bn{color:var(--clay)}
+
+/* a guidebook line that is a link is still a guidebook line */
+a.rt{color:inherit;text-decoration:none}
+a.rt:hover{text-decoration:none}
+a.rt:hover .nm{color:var(--clay)}

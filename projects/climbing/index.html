@@ -662,9 +662,40 @@
        Most climbed and People are the stats page now, Dream routes is the
        to-do page, and this page has one view — so the table, the tab bar it
        read and the three functions it pointed at are all gone. */
+    /* ── arriving at one day ──────────────────────────
+       A deep link — from the room page, from a bar on the stats chart, from a
+       link somebody sent — has to land you LOOKING at that day.
+
+       It used not to. openFromHash() scrolled once, at the end of setup, and
+       then the host probe came back, paintOwner() called render(), the whole
+       list was replaced under a scroll that was still animating, and the page
+       ended up back at the top with the right day open three thousand pixels
+       further down. So the scroll belongs at the end of every render, not at
+       the end of setup, and it stays there until he scrolls for himself. */
+    let wantDay = /^#trip-/.test(location.hash) ? location.hash.slice(1) : null;
+    /* His own scroll wins. Only real gestures count — scrollIntoView below
+       fires scroll events of its own, and listening for those would cancel the
+       thing that caused them. */
+    ["wheel", "touchmove", "keydown", "pointerdown"].forEach(ev =>
+      window.addEventListener(ev, () => { wantDay = null; }, { passive: true }));
+    /* pointerdown is in that list so that opening a second day does not snap
+       the page back to the one the link pointed at. A date link inside this
+       page sets a new hash straight after, and openFromHash puts the new day
+       back in wantDay — so following a link still lands, and touching anything
+       else lets go. */
+
+    function showWanted() {
+      if (!wantDay) return;
+      const el = document.getElementById(wantDay);
+      /* Instant. This is the answer to a click that already happened, and a
+         three-second glide across seventy-eight days is not an answer. */
+      if (el) el.scrollIntoView({ block: "center" });
+    }
+
     function render() {
       renderChips();
       tripsView();
+      showWanted();
     }
 
     /* ── stats + most recent trip ─────────────────────── */
@@ -923,16 +954,15 @@
 
     // Deep links (#trip-2026-07-27) come in from the sitewide "newest day out"
     // banner, and from clicking a date here.
-    function openFromHash(scroll) {
+    function openFromHash() {
       if (!/^#trip-/.test(location.hash)) return;
       /* A deep link has to expand the day it points at, not just scroll to it —
          landing on a shut row is landing on nothing. */
       state.open.add(location.hash.replace(/^#trip-/, ""));
-      render();
-      const target = document.getElementById(location.hash.slice(1));
-      if (target && scroll) target.scrollIntoView({ behavior: "smooth", block: "center" });
+      wantDay = location.hash.slice(1);
+      render();                    // which scrolls to it, and keeps doing so
     }
-    window.addEventListener("hashchange", () => openFromHash(true));
+    window.addEventListener("hashchange", openFromHash);
 
     /* The footer span has sat here empty since this page was split off. Same
        sentence as the room page now, and the same rule: check the value LOOKS
@@ -944,7 +974,7 @@
       document.getElementById("stamp").textContent = ` Updated ${fmtDate(built)}.`;
 
     paintOwner();                 // draws the header and list
-    openFromHash(true);
+    openFromHash();
   })();
   </script>
 </body>

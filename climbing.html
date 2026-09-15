@@ -113,13 +113,19 @@
     return best ? best.g : null;
   }
   const todoOpen = (DATA.todo || []).filter(t => !t.done).length;
+  /* Each number goes to the page that number came from — the three counts to
+     the stats it was taken off, the to-do to the to-do — landing on the section
+     itself rather than the top of the page. They are deliberately not dressed
+     as links: this is a headline, and four underlined words across a photo is a
+     worse hero than four numbers. The cursor is the only tell, which is enough
+     for the one person who goes looking. */
   $("tally").innerHTML = [
-    [s.trips, "days out", true],
-    [s.sends, "sends", false],
-    [hardest || "—", "hardest", false],
-    [todoOpen, "on the to-do", false],
-  ].map(([n, l, lead]) =>
-    `<div${lead ? ' class="lead"' : ""}><b>${esc(n)}</b><span>${esc(l)}</span></div>`).join("");
+    [s.trips, "days out", true, "projects/climbing/stats.html#totals"],
+    [s.sends, "sends", false, "projects/climbing/stats.html#totals"],
+    [hardest || "—", "hardest", false, "projects/climbing/stats.html#hardest"],
+    [todoOpen, "on the to-do", false, "projects/climbing/list.html"],
+  ].map(([n, l, lead, href]) =>
+    `<a href="${href}"${lead ? ' class="lead"' : ""}><b>${esc(n)}</b><span>${esc(l)}</span></a>`).join("");
 
   /* The crags he actually goes to, biggest first — not a hand-typed list that
      goes stale the first time he climbs somewhere new. */

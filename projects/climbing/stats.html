@@ -76,7 +76,10 @@
       const kind = r.gradeKind || ClimbUI.kindOf(r.grade);
       const slot = kind === "boulder" ? "boulder" : "rope";
       const cur = byYear[y][slot];
-      if (!cur || rank > cur.rank) byYear[y][slot] = { g: r.grade, rank, name: r.name };
+      /* The date rides along with the grade. Without it the chart knows a V6
+         was the year's best boulder and cannot say which day it went down,
+         which is the one thing you want next after seeing it. */
+      if (!cur || rank > cur.rank) byYear[y][slot] = { g: r.grade, rank, name: r.name, date: t.date };
     });
   });
 
@@ -122,12 +125,15 @@
 
   const most = Object.values(tally).sort((a, b) => b.n - a.n || b.days.size - a.days.size).slice(0, 8);
 
+  /* The room page's tally links straight in here — "sends" wants the numbers,
+     "hardest" wants the hardest section — so the sections it aims at are named.
+     Nothing else depends on these ids. */
   view.innerHTML =
-    `<section><div class="grid">` +
+    `<section id="totals"><div class="grid">` +
       cells.map(([n, l]) => `<div class="c"><b>${esc(n)}</b><span>${esc(l)}</span></div>`).join("") +
     `</div></section>` +
 
-    `<section><div class="head"><h2>Hardest each year</h2></div>` +
+    `<section id="peryear"><div class="head"><h2>Hardest each year</h2></div>` +
       `<div class="arc" style="grid-template-columns:repeat(${years.length},1fr)">` +
       years.map(y => {
         /* The rope, not "the best of the two". Rope ranks and boulder ranks are
@@ -141,22 +147,43 @@
                           `<div class="bar" style="height:6px"></div></div>`;
         const c = best ? band(best.g) : "easy";
         const hot = c === "g12" || c === "g13" || c === "g14";
+        /* Every piece of a column is a way into the day it came from — the
+           grade, the name and the bar itself, since the bar is the big target
+           and the obvious thing to hit. Three anchors rather than one wrapper:
+           .yr is a flex column that lays these out, and putting a box round
+           three of the five children rearranges the chart. */
+        const to = (climb, cls, inner, style) => {
+          const open = climb && climb.date
+            ? `<a class="${cls} go" href="index.html#trip-${esc(climb.date)}"` +
+              ` title="${esc(climb.name || climb.g)} — ${esc(fmt(climb.date, true))}"`
+            : `<div class="${cls}"`;
+          return `${open}${style ? ` style="${style}"` : ""}>${inner}</${climb && climb.date ? "a" : "div"}>`;
+        };
         return `<div class="yr">` +
-          `<div class="peak"${hot ? ` style="color:var(--${c})"` : ""}>${esc(best ? best.g : "—")}</div>` +
-          `<div class="route">${esc(best ? best.name || "" : "")}</div>` +
-          (boulder ? `<div class="days"><b class="g ${band(boulder.g)}">${esc(boulder.g)}</b></div>` : "") +
+          to(best, "peak", esc(best ? best.g : "—"), hot ? `color:var(--${c})` : "") +
+          to(best, "route", esc(best ? best.name || "" : "")) +
+          /* The V-grade badge stood on its own for a year and a half: the chart
+             said a V6 was the best boulder of 2026 and would not say which
+             boulder. The name goes with it, and it goes to the day. */
+          (boulder ? to(boulder, "bould",
+            `<b class="g ${band(boulder.g)}">${esc(boulder.g)}</b>` +
+            (boulder.name ? `<span class="bn">${esc(boulder.name)}</span>` : "")) : "") +
           `<div class="days">${byYear[y].days} day${byYear[y].days === 1 ? "" : "s"}</div>` +
-          `<div class="bar" style="height:${best ? barH(best.rank) : 6}px${hot ? `;background:var(--${c})` : ""}"></div>` +
+          to(best, "bar", "", `height:${best ? barH(best.rank) : 6}px${hot ? `;background:var(--${c})` : ""}`) +
         `</div>`;
       }).join("") + `</div>` +
       `<div class="arclabels" style="grid-template-columns:repeat(${years.length},1fr)">` +
       years.map(y => `<div class="yrlabel">${y}</div>`).join("") + `</div>` +
     `</section>` +
 
-    `<section><div class="head"><h2>Hardest ever</h2></div><div class="routes">` +
+    `<section id="hardest"><div class="head"><h2>Hardest ever</h2></div><div class="routes">` +
       [[hardestRope, "on a rope"], [hardestBoulder, "on a boulder"]]
         .filter(([b]) => b)
-        .map(([b, what]) => row({ name: esc(b.name || ""), grade: b.g, meta: what })).join("") +
+        .map(([b, what]) => row({
+          name: esc(b.name || ""), grade: b.g,
+          meta: b.date ? `${what} · ${fmt(b.date, true)}` : what,
+          href: b.date ? `index.html#trip-${b.date}` : null,
+        })).join("") +
     `</div></section>` +
 
     `<section><div class="head"><h2>Where</h2></div>${bars(byArea, 8)}</section>` +
@@ -171,6 +198,15 @@
         sent: r.sends > 0 ? undefined : false,
       })).join("") +
     `</div></section>`;
+
+  /* A hash in the address bar does nothing on its own here: the browser looks
+     for the target while the page is still an empty <div id="view">, gives up,
+     and you land at the top of a page you arrived at to see one section of. So
+     the jump happens after the render. No smooth scroll — this is the answer to
+     a click that already happened, and sliding it in makes it feel further
+     away, not closer. */
+  const target = location.hash && document.querySelector(location.hash);
+  if (target) target.scrollIntoView({ block: "start" });
 })();
 </script>
 

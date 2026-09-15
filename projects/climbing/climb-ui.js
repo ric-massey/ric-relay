@@ -37,12 +37,18 @@
     g ? `<span class="g ${band(g)}${sent === false ? " try" : ""}">${esc(g)}</span>` : "";
 
   /* name ······················ meta  grade */
+  /* Pass href and the line becomes a link to the day it happened — same shape,
+     same dotted leader, no blue. A guidebook line that goes somewhere should
+     not have to be a different component from one that does not. */
   function row(o) {
-    return `<div class="rt"${o.id ? ` id="${esc(o.id)}"` : ""}>` +
+    const tag = o.href ? "a" : "div";
+    return `<${tag} class="rt"${o.id ? ` id="${esc(o.id)}"` : ""}` +
+      (o.href ? ` href="${esc(o.href)}"` : "") +
+      (o.title ? ` title="${esc(o.title)}"` : "") + `>` +
       `<span class="nm">${o.star ? '<span class="fav">★</span> ' : ""}${o.name}</span>` +
       `<span class="dot"></span>` +
       (o.meta ? `<span class="meta">${esc(o.meta)}</span>` : "") +
-      grade(o.grade, o.sent) + `</div>`;
+      grade(o.grade, o.sent) + `</${tag}>`;
   }
 
 
