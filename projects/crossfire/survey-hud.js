@@ -609,12 +609,37 @@
      answer in it: Survey's violet is the mode — out there, somewhere you
      arrived — and Crossfire's amber is the chrome, which is yours. Violet is a
      place. Amber is your ship. */
-  const PLACE_TABS = ["refit", "hangar"];
+  /* The station's own rooms. `stationinv` is the inventory wearing the shop's
+     frame and `wormhole` is the gate's map; both are places you are standing in
+     rather than pages about your ship, which is why they belong on this strip
+     and not on the amber one. See `HUD.drawStationInv`. */
+  const PLACE_TABS = ["refit", "hangar", "stationinv", "wormhole"];
   const SHIP_TABS  = ["ship", "inventory", "record", "craft", "chart"];
   const SHIP_TONE  = { bright: AMBER, dim: AMBER_DIM, low: RULE };
   const PLACE_TONE = { bright: VIOLET, dim: VIOLET_DIM, low: VIOLET_LOW };
 
+  /* ── a page inside a page ─────────────────────────────────────────────────
+     H1: "a browser inside a browser". The inventory pages are drawn whole —
+     each paints its own ground, title, rule, navigation strip and close button —
+     and the station wants the *body* of one under its own frame with a second
+     row of tabs where BUY and SELL sit.
+
+     Rather than fork five pages into embedded twins, or thread a flag through
+     every one of them, the three things that draw a page's *furniture* check
+     one counter and do nothing while it is up. The station raises it, pushes
+     `PAGE.TOP` down by the height of its extra row, and calls the ordinary
+     draw function — which lays itself out against the room it is given and
+     otherwise cannot tell the difference. That is the "share rather than fork"
+     the list asked for: there is exactly one inventory page and one copy of
+     every rule in it.
+
+     A counter rather than a flag so a page that ever embedded another could not
+     half-unset it on the way back out. */
+  let embedded = 0;
+  const EMBED_BUMP = 44;
+
   function pageFrame(title, sub, footer, tone) {
+    if (embedded) return;
     tone = tone || PLACE_TONE;
     const { ctx, SCREEN_W, SCREEN_H } = api;
     ctx.save();
@@ -667,6 +692,7 @@
   const NAV_Y = () => 32;
 
   function pageNav(st, here, only, tone) {
+    if (embedded) return;
     tone = tone || PLACE_TONE;
     const { SCREEN_W, SCREEN_H } = api;
     /* Three, and it used to be six. The strip is for the pages you carry with
@@ -691,6 +717,15 @@
       { key: "refit",     name: "SHOP",     live: !!(st.docked || st.landed),
         act: st.onStation },
       { key: "hangar",    name: "SHIPS",    live: !!st.atHome, act: st.onHangar },
+      /* The station's own copy of the inventory, and the gate's map. Both are
+         live only where you are standing in the place that has them: the
+         inventory needs a counter to stand at, and a mouth needs a mooring at
+         both ends. The wormhole tab does not exist at all until the gate is
+         built — a door to a thing you have not made is not navigation. */
+      { key: "stationinv", name: "INVENTORY",
+        live: !!(st.docked || st.landed), act: st.onStationInv },
+      { key: "wormhole",  name: "WORMHOLE", live: !!(st.wormhole && st.docked),
+        act: st.onWormhole, gone: !st.wormhole },
       /* Two pages, because they are two jobs. The ship is what you are flying
          and what is bolted to it; the cargo is everything that is merely inside
          it. They were one page called INVENTORY that did both and named one. */
@@ -706,7 +741,8 @@
        things you read on your own ship, not things the counter you are standing
        at hands you — and a place with three doors out of it stops feeling like
        somewhere you went to. */
-    const tabs = only ? all.filter(t => only.indexOf(t.key) >= 0) : all;
+    const tabs = (only ? all.filter(t => only.indexOf(t.key) >= 0) : all)
+      .filter(t => !t.gone);
     if (!tabs.length) return;
     const gap = api.touchOnly ? 5 : 7;
     const span = SCREEN_W - PAGE.EDGE * 2 - NAV_CLOSE_W - 16;
@@ -732,6 +768,7 @@
   }
 
   function closeButton(act, tone) {
+    if (embedded) return;
     const { SCREEN_W, SCREEN_H } = api;
     /* "CLOSE", both platforms. It was "CLOSE  [ESC]" on a desk, and 150 wide
        leaves `fitText` 132 to say it in — the label needs about 138, so every
@@ -4247,6 +4284,176 @@
                (st.dangerBand ? st.dangerBand.name + "   \u00b7   " : "") +
                (st.cash || 0) + " CASH", "", "refit",
                st.onUndock || st.onClose || (() => {}), PLACE_TABS);
+  };
+
+  /* ═══ THE STATION'S INVENTORY ═════════════════════════════════════════════
+     H1. The inventory, wearing the shop's frame.
+
+     The strip along the top is the station's — SHOP, SHIPS, INVENTORY and, once
+     the gate is open, WORMHOLE — because those are rooms in the place you are
+     standing in. The row where BUY and SELL sit belongs to your ship, so it is
+     amber and it carries the pages the inventory already has. Below that is the
+     inventory page itself, unchanged and unforked. See `embedded`.
+
+     Why it is worth a page at all: docking used to be a dead end. You could see
+     what a station sold and what it would buy, and to find out whether you
+     already owned one you had to leave, open the inventory, and come back. */
+  const STATION_PAGES = [
+    ["ship",      "SHIP",     st => st.onShip],
+    ["inventory", "CARGO",    st => st.onInventory],
+    ["record",    "RECORD",   st => st.onRecord],
+    ["craft",     "CRAFTING", st => st.onCraftPage],
+    ["chart",     "MAP",      st => st.onChart]
+  ];
+  // Which of them the station is showing. Remembered, so leaving the shop and
+  // coming back puts you where you were rather than back at the first tab.
+  let stationTab = "ship";
+  HUD.stationTab = () => stationTab;
+  HUD.setStationTab = k => { stationTab = k; };
+
+  HUD.drawStationInv = function (st, dt) {
+    const { SCREEN_W } = api;
+    st = st || {};
+    const where = st.landed ? (st.landed.name || "SURFACE")
+                : st.docked ? (st.docked.name || "STATION") : "INVENTORY";
+    pageFrame(where, money(st.cash || 0), "", PLACE_TONE);
+
+    /* The ship's pages, in the amber, exactly where the shop puts BUY and SELL —
+       same row, same height, same width, because the whole point of the page is
+       that it is the shop's frame and a frame you have to re-learn is a
+       different frame. */
+    const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
+    const TAB_W = Math.min(180, (full.w - 32) / STATION_PAGES.length);
+    const TAB_H = 34, TAB_Y = PAGE.TOP + 4;
+    STATION_PAGES.forEach(([key, name, act], i) => {
+      const on = stationTab === key;
+      button(name, full.x + TAB_W / 2 + i * (TAB_W + 8), TAB_Y, TAB_W, TAB_H,
+             on ? AMBER : AMBER_DIM,
+             on ? null : () => { stationTab = key; }, on, true);
+    });
+
+    /* And the page itself, given the room under that row. `PAGE.TOP` is put
+       back in a `finally` because a draw that threw halfway would otherwise
+       leave every other page in the game laid out forty-four pixels low. */
+    const base = PAGE.TOP;
+    const body = { ship: HUD.drawShip, inventory: HUD.drawInventory,
+                   record: HUD.drawRecord, craft: HUD.drawCraft,
+                   chart: HUD.drawChart }[stationTab] || HUD.drawShip;
+    embedded++;
+    PAGE.TOP = base + EMBED_BUMP;
+    try { body.call(HUD, st, dt); }
+    finally { PAGE.TOP = base; embedded--; }
+
+    pageNav(st, "stationinv", PLACE_TABS);
+    closeButton(st.onUndock || st.onClose || (() => {}));
+  };
+
+  /* ═══ THE WORMHOLE ════════════════════════════════════════════════════════
+     H3. A map, and only a map for one purpose: the mouths the gate can open.
+
+     It is deliberately not the chart. The chart is where you read the sector —
+     it pans, it zooms, it carries pins and hazards and the line you flew, and
+     jumping is one armed mode among several things a tap can mean there. This
+     answers one question, has one gesture, and shows nothing that is not an
+     answer to it: every station you have charted, where it is, and how far.
+
+     It fits itself to what you know rather than panning, because a map you have
+     to navigate in order to navigate is a map with a map inside it — and the
+     whole set is never more than a few dozen marks.
+
+     Free, and any station you have *charted* counts. You still have to be
+     docked somewhere to make the jump: the gate opens a mouth between two
+     moorings, not between a patch of empty space and a mooring. */
+  HUD.drawWormhole = function (st, dt) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    st = st || {};
+    const stations = (st.known || []).filter(q => q.k === "station");
+    const me = st.ship || { x: 0, y: 0 };
+    const docked = !!(st.docked || st.landed);
+
+    pageFrame("WORMHOLE", stations.length +
+              (stations.length === 1 ? " MOORING CHARTED" : " MOORINGS CHARTED"),
+              "", PLACE_TONE);
+
+    const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
+    const top = PAGE.TOP + 6;
+    const view = { x: full.x, y: top, w: full.w, h: SCREEN_H - top - 74 };
+    panel(view.x, view.y, view.w, view.h, VIOLET, "THE MOUTHS",
+          docked ? "TAP ONE TO OPEN IT" : "YOU MUST BE DOCKED TO JUMP");
+
+    if (!stations.length) {
+      fitText("You have not charted a station yet. Fly past one and it goes " +
+              "on this map.", view.x + PAGE.PAD, view.y + PAGE.HEAD + 24,
+              SIZE.cap, VIOLET_DIM, "left", 0.7, view.w - PAGE.PAD * 2);
+      pageNav(st, "wormhole", PLACE_TABS);
+      closeButton(st.onUndock || st.onClose || (() => {}));
+      return;
+    }
+
+    /* Fitted to everything you know, including where you are standing, so the
+       jump you are about to make is always visible as a distance rather than as
+       two names. A single mooring would divide by nothing, hence the floor. */
+    const xs = stations.map(q => q.x).concat([me.x]);
+    const ys = stations.map(q => q.y).concat([me.y]);
+    const pad = 70;
+    const inner = { x: view.x + pad, y: view.y + PAGE.HEAD + pad * 0.5,
+                    w: view.w - pad * 2, h: view.h - PAGE.HEAD - pad };
+    const spanX = Math.max(1, Math.max(...xs) - Math.min(...xs));
+    const spanY = Math.max(1, Math.max(...ys) - Math.min(...ys));
+    const k = Math.min(inner.w / spanX, inner.h / spanY);
+    const midX = (Math.max(...xs) + Math.min(...xs)) / 2;
+    const midY = (Math.max(...ys) + Math.min(...ys)) / 2;
+    const px = wx => inner.x + inner.w / 2 + (wx - midX) * k;
+    const py = wy => inner.y + inner.h / 2 + (wy - midY) * k;
+
+    // Where you are, so the map has a you on it.
+    const mx = px(me.x), my = py(me.y);
+    ctx.save();
+    ctx.strokeStyle = AMBER;
+    ctx.globalAlpha = 0.9;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(mx, my, 5, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(mx - 9, my); ctx.lineTo(mx + 9, my);
+    ctx.moveTo(mx, my - 9); ctx.lineTo(mx, my + 9); ctx.stroke();
+    ctx.restore();
+
+    stations.forEach((q, i) => {
+      const x = px(q.x), y = py(q.y);
+      const away = Math.round(Math.hypot(q.x - me.x, q.y - me.y));
+      const here = away < 400;
+      const col = here ? CASH : docked ? VIOLET : VIOLET_LOW;
+      // A line back to you, so the map reads as a set of routes from where you
+      // are standing rather than as a constellation.
+      if (!here && docked) {
+        ctx.save();
+        ctx.strokeStyle = VIOLET_LOW;
+        ctx.globalAlpha = 0.28;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(x, y); ctx.stroke();
+        ctx.restore();
+      }
+      api.glow(col, 2.2, here ? 1 : 0.85, () => {
+        ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x - 4, y); ctx.lineTo(x + 4, y);
+        ctx.moveTo(x, y - 4); ctx.lineTo(x, y + 4); ctx.stroke();
+      });
+      label(here ? "YOU ARE HERE" : fmtCells(away) + "u", x, y + 24,
+            SIZE.cap, col, "center", here ? 0.95 : 0.7);
+      if (q.name) {
+        fitText(shortName(q.name, 16), x, y - 16, SIZE.cap, col, "center",
+                0.8, 150, "0.06em");
+      }
+      /* The one gesture. Nothing else on this page does anything, which is the
+         difference between it and the chart: there is no mode to be in and
+         nothing to arm first. */
+      if (!here && docked && st.onJump) {
+        tap({ x: x - 26, y: y - 26, w: 52, h: 52,
+              act: () => { if (st.onJump(q.x, q.y) !== false && st.onClose) st.onClose(); } });
+      }
+    });
+
+    pageNav(st, "wormhole", PLACE_TABS);
+    closeButton(st.onUndock || st.onClose || (() => {}));
   };
 
   /* ═══ THE INVENTORY ═══════════════════════════════════════════════════════

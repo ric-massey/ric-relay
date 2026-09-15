@@ -3959,6 +3959,108 @@ const storeOf = (cf, key) => {
           sh.name + " both shrugs off rock and flies through it — pick one");
   }
 
+  /* ── the station's two extra rooms ──────────────────────────────────────
+     H1 and H3. The inventory wearing the shop's frame, and the gate's map.
+
+     The thing worth pinning about H1 is not that the page exists — it is that
+     there is still only *one* inventory. It is drawn by the same five functions
+     that draw it on its own, under a raised `PAGE.TOP` with the furniture
+     suppressed, so a rule added to the cargo page can never be true in one
+     place and not the other. If that ever forks, this check is what says so:
+     the embedded page has to put its content below the station's second row,
+     and it has to draw exactly one navigation strip rather than two.
+
+     H3's rule is the one Ric stated: free, any station you have charted, and
+     you still have to be docked somewhere to open a mouth. */
+  {
+    const { cf } = boot("?debug=1&seed=606061");
+    cf.start("survey", 1);
+    const surv = cf.survey();
+    const view = () => cf.surveyView();
+    const hud = cf.hud();
+    const step = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.step(); } };
+    step(5);
+
+    // In open space neither room exists: they are places, not pages.
+    surv.docked = null; surv.landed = null;
+    check(view().onStationInv() !== true || cf.screenNow() !== "stationinv",
+          "the station inventory opened from open space");
+    check(cf.screenNow() !== "stationinv",
+          "the station inventory opened with nowhere to be standing in it");
+
+    surv.docked = surv.stations[0] ||
+                  { x: cf.home().x, y: cf.home().y, home: true, name: "HOME" };
+    view().onStationInv();
+    check(cf.screenNow() === "stationinv", "docking did not open the room");
+
+    /* One strip, not two. `drawn` is every word the page painted, so a page
+       that drew its own navigation under the station's would show the ship
+       tabs twice — which is exactly what forking would look like. */
+    drawn.length = 0;
+    cf.draw();
+    const saidTwice = w => drawn.filter(t => t === w).length;
+    check(saidTwice("CLOSE") === 1,
+          "the embedded page drew " + saidTwice("CLOSE") + " close buttons");
+    for (const w of ["SHOP", "SHIPS", "INVENTORY"]) {
+      check(saidTwice(w) === 1,
+            "the station strip drew " + w + " " + saidTwice(w) + " times");
+    }
+    for (const w of ["SHIP", "CARGO", "RECORD", "CRAFTING", "MAP"]) {
+      check(saidTwice(w) >= 1, "the station page never drew the " + w + " tab");
+    }
+
+    // Every sub-page draws without throwing, which is the whole risk of
+    // re-using five pages that have never been asked to lay out anywhere else.
+    for (const tab of ["ship", "inventory", "record", "craft", "chart"]) {
+      hud.setStationTab(tab);
+      drawn.length = 0;
+      cf.draw();
+      check(drawn.length > 0, "the " + tab + " tab drew nothing at all");
+      check(saidTwice("CLOSE") <= 1,
+            "the " + tab + " tab drew a second close button");
+    }
+    hud.setStationTab("ship");
+
+    /* ── the mouths ───────────────────────────────────────────────────── */
+    check(view().wormhole === false || !view().wormhole,
+          "the wormhole is offered before the gate is built");
+    view().onWormhole();
+    check(cf.screenNow() !== "wormhole",
+          "the wormhole map opened before the gate was built");
+
+    for (const b of (view().manifest || [])) surv.built.add(b.key);
+    step(2);
+    view().onWormhole();
+    check(cf.screenNow() === "wormhole", "the built gate did not open its map");
+
+    /* Charted, not visited. Ric answered this one when the item was written:
+       seeing a station on the chart is enough. */
+    const me = cf.live().ships[0];
+    surv.known.set("station:x:y", { k: "station", x: 40000, y: -25000,
+                                    name: "FAR MOORING", r: 0 });
+    step(2);
+    const there = view().known.filter(q => q.k === "station").length;
+    check(there >= 1, "the map has no moorings on it");
+
+    const from = { x: me.x, y: me.y };
+    check(view().onJump(40000, -25000) === true,
+          "a docked jump to a charted mooring was refused");
+    check(Math.hypot(me.x - 40000, me.y + 25000) < 2000,
+          "the jump did not arrive at the mooring");
+    check(Math.hypot(me.x - from.x, me.y - from.y) > 1000, "the jump went nowhere");
+
+    // And not from open space, which is the half of the rule that is a rule.
+    surv.docked = null;
+    step(2);
+    check(view().onWormhole() !== true || cf.screenNow() !== "wormhole",
+          "the wormhole map opened while adrift");
+
+    console.log("  station    the inventory wears the shop's frame and stays one " +
+                "page \u00b7 five sub-tabs, one strip, one close \u00b7 the mouths " +
+                "appear with the gate, jump to anything charted, and refuse " +
+                "from open space");
+  }
+
   // Every hull needs a shape, and no two may be the same shape.
   const shapes = new Set();
   for (const sh of list) {

@@ -7,8 +7,9 @@ it gets a tick and a commit hash, so the list is also the record.
 **Status key** — `[ ]` not started · `[~]` in progress · `[x]` done · `[?]` needs
 an answer before it can be built.
 
-Batch of 2026-09-13. 27 items. **24 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5 ·
-P2, P3, P1, P4 · H2, H4 · A4 · T1.
+Batch of 2026-09-13. 27 items. **26 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5 ·
+P2, P3, P1, P4 · H2, H4 · A4 · T1 · H1, H3.
+Only **A3 (the Vault)** is left.
 
 ---
 
@@ -78,19 +79,35 @@ P2, P3, P1, P4 · H2, H4 · A4 · T1.
 
 ## STATION HUD
 
-- [ ] **H1 · A third tab: INVENTORY.** A shrunk inventory page wearing the
+- [x] **H1 · A third tab: INVENTORY.** A shrunk inventory page wearing the
   shop's frame — "a browser inside a browser". Specifically:
   - the strip that says SHOP / HANGAR gains INVENTORY
   - where BUY and SELL sit, put the inventory's own tabs — SHIP, CARGO,
     RECORD, CRAFTING, MAP — in the yellow
   - below that, exactly the inventory page as it is now
+
+  *Built as a page inside a page rather than a fork.* The five inventory pages
+  each draw themselves whole — ground, title, rule, strip, close — so the
+  station raises a counter that makes `pageFrame`, `pageNav` and `closeButton`
+  do nothing, pushes `PAGE.TOP` down by its extra row, and calls the ordinary
+  draw function. There is still exactly one cargo page and one copy of every
+  rule in it, which is the "share rather than fork" the note asked for. The test
+  counts the words the page paints: two navigation strips would mean it had
+  forked.
 - [x] **H2 · Group what a place will not buy.** In SELL, everything marked
   "this place doesn't buy these" moves to the bottom under one heading:
   `NOT PURCHASING TODAY`.
-- [ ] **H3 · A WORMHOLE tab.** Appears beside INVENTORY once the manmade
+- [x] **H3 · A WORMHOLE tab.** Appears beside INVENTORY once the manmade
   wormhole is built. It is a map, but *only* for teleporting between stations —
   not the chart page. Free, and any station you have **charted** is a
   destination. You still have to be docked somewhere to make the jump.
+
+  *Deliberately not the chart.* The chart is where you read the sector — it
+  pans, zooms, carries pins and hazards, and a tap there can mean several
+  things. This answers one question and has one gesture: every mooring you have
+  charted, where it is, how far, and a line back to where you are standing. It
+  fits itself to what you know rather than panning, because a map you have to
+  navigate in order to navigate is a map with a map inside it.
 - [x] **H4 · Buying must stop at what you can afford.** The quantity control
   should refuse to climb past your purse. Four cash, the counter stops.
 
