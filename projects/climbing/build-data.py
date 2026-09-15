@@ -14,6 +14,7 @@ point as much as the data is — it's the list of typos worth fixing at the sour
 import json
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -768,7 +769,13 @@ def main():
         }
 
     data = {
-        "generated": "build-data.py",
+        # When, not what. This used to hold the string "build-data.py" — the name
+        # of this script — while the climbing room page read it as a date and
+        # printed "Updated ." into its footer for months. pull-boards.py already
+        # writes a timestamp under this key and the name of its generator under
+        # "source"; both generated files agree on that now.
+        "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "source": "build-data.py",
         "trips": trips,
         "todo": todo,
         "index": {

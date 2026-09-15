@@ -934,7 +934,16 @@
     }
     window.addEventListener("hashchange", () => openFromHash(true));
 
-    paintOwner();                 // draws the sign-in, then the header and list
+    /* The footer span has sat here empty since this page was split off. Same
+       sentence as the room page now, and the same rule: check the value LOOKS
+       like a date rather than merely existing. Trusting truthiness is exactly
+       how the room page came to print " Updated ." for months — the field held
+       the string "build-data.py" and every guard was happy with it. */
+    const built = String(DATA.generated || DATA.builtAt || "").slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(built))
+      document.getElementById("stamp").textContent = ` Updated ${fmtDate(built)}.`;
+
+    paintOwner();                 // draws the header and list
     openFromHash(true);
   })();
   </script>
