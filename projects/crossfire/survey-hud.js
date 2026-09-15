@@ -2102,7 +2102,14 @@
          the game telling you where to go next, which is a quieter thing, and
          two of them on the ring at once said they were the same kind of
          instruction. */
-      edgeArrow(st, ang, OBJECTIVE, fmtCells(dist) + "u",
+      /* A delivery gets a number and a search gets a band. The manifest's
+         arrow is pointing at somewhere you are *taking* something, so the
+         range is the useful fact; the book's arrow is pointing at somewhere
+         you have never been, and a bearing plus an exact range is a position —
+         which is the one thing this mode's navigation has never handed over.
+         The state says which kind it is; the ring does not guess. */
+      edgeArrow(st, ang, OBJECTIVE,
+                c.vague ? (c.band || "") : fmtCells(dist) + "u",
                 { scale: 1.35, beat: true, single: true, alpha: lit });
     }
   }
@@ -6100,7 +6107,12 @@
        the line is as short as it can be. Alternate rows are banded, which is
        what lets an eye track a clue back to its name across 900 pixels. */
     const listY = y0 + headH + PAGE.STEP;
-    const man = st.manifest || [];
+    /* Six rows that all say "fitted" is a monument, and the page has somewhere
+       better to spend two hundred pixels once the gate is open — see the long
+       list below, which is the thing that answers *what now* and needs the
+       room. The manifest collapses to the one line that is still worth reading:
+       that it is done. */
+    const man = finished ? [] : (st.manifest || []);
     /* It says *parts*, in as many places as it takes. The page listed six names
        and six clues and never once said what the six things were or what you were
        supposed to do with them — so the manifest read as a set of riddles rather
@@ -6109,7 +6121,7 @@
           finished ? "ALL SIX PARTS FITTED"
                    : (need - done) + " PARTS STILL OUT THERE");
     fitText(finished
-              ? "every part is in. nothing left to fetch."
+              ? "every part is in. that was the tutorial."
               : "six parts, scattered across the sector. find one, fly it home to " +
                 "the yard, and it goes into the gate.",
             full.x + PAGE.PAD, ROW(listY, 0) + 2, SIZE.cap, VIOLET_DIM, "left",
@@ -6149,19 +6161,70 @@
             L.have ? (api.touchOnly ? "READY" : "READY  \u00b7  [R] TO RUN")
                    : money(L.cost));
       fitText(L.have ? L.does : L.blurb, full.x + PAGE.PAD, ROW(ly, 0) + 2,
-              SIZE.cap, L.have ? ICE : VIOLET_DIM, "left", 0.85, full.w - 280);
+              SIZE.cap, L.have ? ICE : VIOLET_DIM, "left", 0.85,
+              full.w - (L.have ? 280 : 320));
       if (!L.have) {
-        button("BUILD IT   " + money(L.cost), full.x + full.w - PAGE.PAD - 100,
-               ly + PANEL_H(2) / 2, 200, 40, L.afford ? ICE : WARN,
+        /* Two hundred wide was not enough for "BUILD IT   ¤2,400" and the
+           price is the half that got cut — the button read "BUILD IT ¤2,…",
+           which is the one number on it anybody needs. Wider, and the blurb
+           beside it gives up the room. */
+        button("BUILD IT   " + money(L.cost), full.x + full.w - PAGE.PAD - 118,
+               ly + PANEL_H(2) / 2, 236, 40, L.afford ? ICE : WARN,
                L.afford ? (st.onBuildLight || (() => {})) : null,
                false, !!L.afford);
       }
     }
 
 
-    const tail = (finished && st.light)
+    let tail = (finished && st.light)
       ? listY + PANEL_H(man.length + 1) + PAGE.STEP + PANEL_H(2)
       : listY + PANEL_H(man.length + 1);
+
+    /* ── the long list ─────────────────────────────────────────────────────
+       What the manifest becomes. Six parts you were told to fetch, then eleven
+       you were never told existed: the two nobody sells and the nine kept on
+       shelves hundreds of thousands of units out. None of them is on the
+       workbench and none is on a shelf near home, so until this list there was
+       no surface in the game where a player could *meet* the best part in any
+       category — and a part you have never met is not a reason to fly anywhere.
+
+       It is not a shop and it must not read as one: no prices, no buttons,
+       nothing on it can be acted on from here. It is the same kind of object
+       the manifest is, which is a list of things that are somewhere else.
+
+       Two columns, because eleven rows down one column is two hundred and
+       eighty pixels this page has not got, and the screen is a thousand wide at
+       its narrowest. */
+    const LL = st.longList || [];
+    if (finished && LL.length) {
+      const ly = tail + PAGE.STEP;
+      const rows = Math.ceil(LL.length / 2);
+      panel(full.x, ly, full.w, PANEL_H(rows), AMBER, "NOT FOR SALE HERE",
+            LL.filter(p => p.have).length + " / " + LL.length);
+      const colW = (full.w - PAGE.PAD * 2) / 2;
+      LL.forEach((p, i) => {
+        const col = i % 2, row = (i - col) / 2;
+        const cx = full.x + PAGE.PAD + col * colW;
+        const y = ROW(ly, row);
+        /* Owning one greys it, the way a fitted manifest part greys. The row
+           stays on the list afterwards: the list is a map of the sector's far
+           shelves, and a map you delete the visited half of is a worse map. */
+        const col0 = p.have ? CASH_DIM : p.seen ? AMBER : VIOLET;
+        drawPartIcon(p.cat, cx + 6, y - 5, 8, col0, p.have ? 0.5 : 0.85);
+        /* The names are the long half of this list — TRACTOR BEAM MK3 and
+           REVERSE THRUSTERS both came out with an ellipsis at 150, and a list
+           whose whole job is telling you a part exists cannot abbreviate the
+           part. The address is the shorter half and gives the width up. */
+        fitText(p.name, cx + 20, y, SIZE.cap, col0, "left",
+                p.have ? 0.5 : 1, 196, "0.06em");
+        /* The address. A band and a distance for the nine on far shelves, and
+           for the two nobody sells, the fact that no shelf is the answer. */
+        fitText(p.at || "", cx + 208, y, SIZE.cap,
+                p.have ? CASH_DIM : AMBER_DIM, "left", p.have ? 0.4 : 0.7,
+                colW - 222);
+      });
+      tail = ly + PANEL_H(rows);
+    }
     return tail;
   }
 
@@ -6173,8 +6236,17 @@
     const finished = done >= need;
     const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
 
+    /* The subtitle counted parts, which stops being news the moment they are
+       all in — "6 OF 6 PARTS FITTED" is a page telling you about yesterday. Once
+       the gate is open it counts the thing that is still counting. */
+    const LL = st.longList || [];
     pageFrame(st.atYard ? "THE JUMP GATE" : "MISSIONS",
-              done + " OF " + need + " PARTS FITTED",
+              finished
+                ? (LL.length
+                     ? LL.filter(p => p.have).length + " OF " + LL.length +
+                       " HARD-TO-FIND PARTS"
+                     : "THE GATE IS OPEN")
+                : done + " OF " + need + " PARTS FITTED",
               "", SHIP_TONE);
 
     missionBands(st, full, PAGE.TOP);

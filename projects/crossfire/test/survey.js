@@ -1615,14 +1615,16 @@ const storeOf = (cf, key) => {
       surv.built.add(KEYS[step]);
     }
   }
-  /* A finished manifest no longer means an empty board. The gate being built
-     hands you one more thing to want — the tractor MK1 — so "finished" is now
-     two states: the manifest is done and the arrow has moved off it, and then
-     once the MK1 is in the hold the sector really is yours to wander.
+  /* A finished manifest no longer means an empty board, and it no longer means
+     an *emptying* one either. This used to end by checking the line went quiet
+     once the MK1 was collected — "then lets you go" — and that was the bug the
+     whole mode was losing people to: the one line that answers *what am I
+     doing* fell silent at the exact moment the sector opened up, and players
+     read that correctly and stopped.
 
-     Both are checked rather than the second alone, because the thing this has
-     always guarded is that the line stops saying FIND THE <manifest part>
-     when there are none left to find. */
+     So the contract is now that the line NEVER goes quiet while the book has a
+     landmark missing from it. Three states after the manifest: the MK1, then
+     the book, and only a complete book is allowed to say you are finished. */
   const handed = cf.objective();
   check(!KEYS.some(k => new RegExp(k, "i").test(handed.text)),
         "the manifest is complete and the objective still names one of its " +
@@ -1633,11 +1635,50 @@ const storeOf = (cf, key) => {
   surv.lifted.add(surv.mk1Site.id || surv.mk1Site.key);
   now += 1000 / 60; cf.step();
   const done = cf.objective();
-  check(/OPEN|FINISHED/.test(done.text),
-        "with the gate built and the MK1 collected the sector still has an " +
-        "errand on it: " + done.text);
+  check(!!done && !!done.text && !!done.sub,
+        "with the gate built and the MK1 collected the objective line went " +
+        "blank — which is what the mode used to do, and why people stopped");
+  check(!/YOURS TO WANDER|NOTHING/i.test(done.text + " " + done.sub),
+        "the post-gate line still tells the player there is nothing left: " +
+        done.text + " — " + done.sub);
+
+  /* And what it points at is the book: the nearest landmark still unlogged,
+     named unless the almanac keeps that one secret. `vague` is the promise —
+     a bearing and a band, never a range — because a bearing plus a distance is
+     a position, and no scan in this mode has ever handed one over. */
+  const lms = surv.landmarks.filter(l => !l.found);
+  check(lms.length > 0, "the seed put no unlogged landmarks in the sector");
+  const tgt = cf.objectiveTarget ? cf.objectiveTarget() : null;
+  check(!!tgt, "nothing left on the board once the gate and the MK1 are done");
+  check(tgt.vague === true,
+        "the post-gate arrow states an exact range, which is a position");
+  const near = lms.slice().sort((a, b) =>
+    Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y))[0];
+  check(Math.hypot(tgt.x - near.x, tgt.y - near.y) < 1,
+        "the arrow points at " + tgt.name + " rather than the nearest thing " +
+        "not yet in the book");
+
+  /* And what the ring is actually handed. The arrow draws `band` when `vague`
+     is set, so a contact carrying one without the other would put a blank
+     label on the edge of the screen — which is the shape of bug this mode has
+     shipped before every time two facts were kept in step by hand. */
+  const con = (surv.contacts || [])[0];
+  check(!!con, "the objective has a target and the ring was handed nothing");
+  check(con.vague === true && !!con.band,
+        "the contact the ring draws is missing the band it is meant to say " +
+        "instead of a range: " + JSON.stringify(con && { v: con.vague, b: con.band }));
+
+  /* A full book is the one state that is allowed to say you are done — and it
+     says it about the landmarks rather than about the whole almanac, because
+     most of the book is things you do rather than places you go. */
+  for (const l of surv.landmarks) l.found = true;
+  now += 1000 / 60; cf.step();
+  const full = cf.objective();
+  check(/EVERY LANDMARK/.test(full.text),
+        "with every landmark logged the line reads: " + full.text);
   console.log("  objective  states every step of the manifest, clue and all · " +
-              "then hands you the MK1 · then lets you go");
+              "then the MK1 · then the nearest thing not in the book, as a " +
+              "bearing and never a range · and only a full book is finished");
 }
 
 // ── 16. the scan reports what is near, and the refit makes it reach ──────
@@ -6717,8 +6758,13 @@ const storeOf = (cf, key) => {
   at(site.x, site.y); step(20);
   check(storeOf(cf, "tractormk1") === had + 1,
         "flying onto the MK1 did not put one in the hold");
-  check(/JUMP GATE IS OPEN/.test(cf.objective().text),
+  /* The arrow moves off the MK1 — but it moves *on* to the book rather than
+     going out. What it must not do is keep pointing at a part already in the
+     hold; what it must also not do is leave the player with a blank board. */
+  check(!/TRACTOR/.test(cf.objective().text),
         "the arrow still points at the MK1 after it has been collected");
+  check(!!cf.objective().text && !!cf.objective().sub,
+        "the board went blank once the MK1 was collected");
 
   /* The sector is rebuilt from its seed every time a chunk streams, so a part
      that is not remembered as taken grows back — which would make this an
@@ -9745,6 +9791,103 @@ const storeOf = (cf, key) => {
               "fitted weighs nothing · buying, pulling and a cache all " +
               "respect the cap · a death puts the spares on the floor by " +
               "name and they come back one at a time");
+}
+
+// ── the hours after the gate ─────────────────────────────────────────────
+/* The mode's real failure was never a shortage of content. It was that at the
+   moment the manifest finished — ten to thirty minutes in — every surface that
+   had been telling the player what to want went quiet at once: the objective
+   line said the sector was theirs to wander, the second project was behind a
+   tab at a place they had to fly back to, the opening's teaching beats had all
+   fired inside the first two minutes and never ran again, and the eleven best
+   parts in the game were on no page anywhere.
+
+   Three of those are checked above. This is the fourth: the long list, and the
+   invariant that actually matters about it — that it is exactly the set of
+   parts a player cannot meet near home. Not "eleven", which is a number that
+   will change the next time a part is added; the *rule*. */
+{
+  const { cf } = boot("?debug=1&seed=71923");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const step = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.step(); } };
+  step(5);
+
+  check((cf.surveyView().longList || []).length === 0,
+        "the long list is offered before the gate is built — two lists is no " +
+        "list at all, and the manifest is the one that matters first");
+
+  for (const b of (cf.surveyView().manifest || [])) surv.built.add(b.key);
+  step(3);
+  const LL = cf.surveyView().longList || [];
+  check(LL.length > 0, "the gate is built and the long list is still empty");
+
+  /* The rule. A part belongs here when there is nowhere near home it can be
+     met: the workbench lists everything buildable whatever you have seen, and
+     a home shelf stocks everything whose `deep` is nought. Anything else is a
+     part you could previously own only by accident. */
+  const all = cf.surveyView().parts || [];
+  const ways = k => cf.partWays(k) || {};
+  const meetable = p => { const w = ways(p.key); return w.craft || (w.buy && !p.deep); };
+  const want = all.filter(p => !meetable(p)).map(p => p.key).sort();
+  const got = LL.map(p => p.key).sort();
+  check(JSON.stringify(want) === JSON.stringify(got),
+        "the long list is not the set of parts you cannot meet near home — " +
+        "it has [" + got.join(" ") + "] and the rule says [" + want.join(" ") + "]");
+
+  // Every row has to say where, or it is a list of things you cannot act on.
+  const mute = LL.filter(p => !p.at);
+  check(!mute.length,
+        mute.length + " rows on the long list say nothing about where the part is");
+  // And the ones nobody sells must not be given a distance they do not have.
+  for (const p of LL) {
+    const w = ways(p.key);
+    if (!w.buy) check(/NEVER SOLD/.test(p.at),
+                      p.name + " is not sold anywhere and the list gives it a shelf");
+  }
+  console.log("  longlist   " + LL.length + " parts that cannot be met near " +
+              "home, each with an address · exactly the parts the workbench " +
+              "and a home shelf both leave out · empty until the gate is built");
+}
+
+/* And the opening's second act, which is the same machine as the first: a beat
+   fires once, on a pressure the player is already under, and is remembered. The
+   thing worth pinning is that the list did not simply gain four entries that
+   fire immediately — each one waits for its condition. */
+{
+  const { cf } = boot("?debug=1&seed=33417");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const step = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.step(); } };
+  step(30);
+
+  const ACT2 = ["leash", "hostile", "berth", "longlist"];
+  check(ACT2.every(k => !surv.taught.has(k)),
+        "a second-act beat fired in the opening thirty frames, at the origin, " +
+        "with a full tank: " + ACT2.filter(k => surv.taught.has(k)).join(" "));
+
+  /* Out past the Hostile band. The one beat that is only about distance. */
+  const me = cf.live().ships[0];
+  me.x = 90000; me.y = 0; me.invuln = 9e9;
+  step(4);
+  check(surv.taught.has("hostile"),
+        "flying into the Hostile band said nothing about what the bands are for");
+
+  /* And the leash: a dry tank, a long way from anywhere, is the moment the
+     melter stops being a line on the workbench and starts being the answer. */
+  surv.water = 10;
+  surv.docked = null;
+  step(4);
+  check(surv.taught.has("leash"),
+        "a dry tank ninety thousand units out never mentioned the melter");
+
+  const before = surv.taught.size;
+  step(240);
+  check(surv.taught.size === before,
+        "a beat fired a second time — the opening's whole rule is that a " +
+        "prompt you have already acted on is noise");
+  console.log("  actii      the opening teaches again after the gate · each " +
+              "beat waits for its own pressure · none of them fires twice");
 }
 
 if (problems.length) {

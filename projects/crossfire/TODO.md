@@ -174,6 +174,44 @@ P2, P3, P1, P4 · H2, H4 · A4 · T1.
   `test/fingerprint.js` is the gate that says a seed still makes the same
   sector — run it before and after anything in `survey-world.js`.
 
+## The thirty-minute wall — 2026-09-14
+
+Not from the list. Ric: *"you spawn in and the first 10-15 min is you figuring
+the game out. then 15-30 min is you bored because you got the wormhole and now
+you don't know what to do."* And the constraint: he does not want to tell people
+what to do.
+
+It was not a content problem — there is a ladder out to 3,400,000 units past the
+gate. Four surfaces went quiet at the same moment, and all four are now fixed.
+See README, "And then the hours after it".
+
+- [x] **W1 · The objective line told them it was over.** "the sector is yours to
+  wander", at the exact moment the sector opens up. It now points at the nearest
+  landmark still missing from the book, with the almanac's note as its clue, for
+  as long as the book has a hole in it. Secret entries stay secret — the line
+  reads SOMETHING UNLOGGED.
+- [x] **W2 · That arrow said a range.** A bearing plus an exact distance is a
+  position. A delivery keeps its number; a search gets a band. `vague` on the
+  target, read by the ring rather than guessed at.
+- [x] **W3 · The opening stopped teaching after two minutes.** `OPENING` gained a
+  second act on the same terms — fires once, waits for a pressure you are already
+  under, names no destination. Four beats: the tank as a leash, the Hostile band,
+  the yard's second berth at half the price, and the shelf you cannot reach.
+- [x] **W4 · Eleven parts could not be met anywhere.** The shop, the workbench and
+  the almanac each correctly refused the job and nobody picked it up, so the best
+  part in every category was something you could only own by accident. They are
+  on the missions page as NOT FOR SALE HERE, addressed off their own `deep`.
+- [x] **W5 · The gate read as a finish line.** The banner said "it was never about
+  the parts"; it says "now go somewhere you have not been". The finished manifest
+  collapses from six rows of "fitted" to one line, and the room goes to W4.
+
+*Found while building it:* `cf.objectiveTarget` was never exposed, so the check
+in `test/survey.js` that guards on it with `cf.objectiveTarget ? … : null` had
+never once run. It is exposed now and the check is live.
+
+*Fixed in passing:* the yard's BUILD IT button was 200 wide for "BUILD IT
+¤2,400" and cut the price — the one number on it anybody needs.
+
 ## Notes to self
 
 - Several of these are the same bug class this mode has shipped before: a list

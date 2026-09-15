@@ -7238,6 +7238,16 @@
   const hash2       = WORLD.hash2;
   const BANDS       = WORLD.BANDS;
   const DANGER_FULL = WORLD.DANGER_FULL;
+  /* A part's `deep` read back as a place. `deep` is a fraction of the danger
+     curve and the bands are distances along it, so the two are the same number
+     in different units — which means a shelf's depth can be stated in the
+     vocabulary a pilot already reads off the panel instead of as a decimal.
+     See `longList`. */
+  const bandForDeep = deep => {
+    const d = (deep || 0) * DANGER_FULL;
+    for (const b of BANDS) if (d < b.to) return b.name;
+    return BANDS[BANDS.length - 1].name;
+  };
   const dangerAt    = WORLD.dangerAt;
   const bandAt      = WORLD.bandAt;
   const REGIONS     = WORLD.REGIONS;
@@ -14003,11 +14013,72 @@
       when: () => surv.cash >= 200 && surv.docked,
       text: "YOU CAN AFFORD A PART",
       sub: "the station sells them, and fits them on the spot",
-      colour: CASH }
+      colour: CASH },
+
+    /* ── and the same trick again, for the hours after the gate ────────────
+       Everything above fires inside two minutes, and then this list — the one
+       piece of the mode whose whole job is making you want a thing ninety
+       seconds before you would have found it — never ran again. The manifest
+       carried the next four hours on its own, and when it finished there was
+       nothing underneath it: people got the wormhole, read a HUD line that said
+       the sector was theirs to wander, and stopped.
+
+       So there is a second act, on exactly the same terms as the first. Each
+       beat hangs on a pressure the player is already feeling rather than on a
+       clock, none of them names a destination, and every one of them is about
+       something they can already see going wrong. Four notifications over ten
+       hours, each fired once and remembered. */
+
+    /* The range problem, said the first time it is a problem. Twenty minutes of
+       tank is a leash, the far half of the ladder is outside it, and the answer
+       is a thing you build rather than a thing you buy — which is the only
+       reason the melter exists. Deliberately not fired near home: docked at the
+       origin with a dry tank you have a shop, not a problem. */
+    { key: "leash",
+      when: () => !surv.docked && !surv.landed &&
+                  surv.water < WATER_FULL * 0.25 &&
+                  Math.hypot(ships[0].x, ships[0].y) > 25000,
+      text: "YOUR TANK IS A LEASH",
+      sub: "an ice melter makes its own — the workbench can build one",
+      colour: "#87d8ff" },
+
+    /* The first time distance costs something. The bands have been there all
+       along and nothing has ever said what one is for; this says it once, at
+       the moment the player has walked into the answer. */
+    { key: "hostile",
+      when: () => Math.hypot(ships[0].x, ships[0].y) > 60000,
+      text: () => bandAt(ships[0].x, ships[0].y).name,
+      sub: "it pays better out here, and it is worse out here",
+      colour: "#ff9d5c" },
+
+    /* The second project, at the moment it stops being theoretical. Not when
+       the gate finishes — the banner is already talking then, and a price you
+       cannot pay is not an offer. Half the money is when it becomes one. */
+    { key: "berth",
+      when: () => yardDone() && !surv.hasLight &&
+                  surv.cash >= LIGHT_DRIVE.cost * 0.5,
+      text: "THE YARD HAS A SECOND BERTH",
+      sub: () => "a light drive, and you are halfway to the " +
+                 LIGHT_DRIVE.cost + " it wants",
+      colour: ICE_C },
+
+    /* And the shelf you cannot reach. Eleven parts in this game are not on the
+       workbench and not on any shelf inside the first sixty thousand units, and
+       until now there was nowhere a player could meet one — so the best part in
+       every category was something you could only get by accident. The list is
+       on the missions page; this is the once that says so. */
+    { key: "longlist",
+      when: () => yardDone() && !!surv.docked,
+      text: "SOME PARTS ARE NOT FOR SALE HERE",
+      sub: "the best of each kind is further out — the missions page lists them",
+      colour: "#a08cff" }
   ];
 
   function surveyOpening() {
-    if (!surv || surv.death || !surveyHUD) return;
+    /* The second act's beats read the ship's position — how far out you are is
+       most of what they are about — so the ship has to be there. It always is
+       while a survey is running; this is the belt to the death check's braces. */
+    if (!surv || surv.death || !surveyHUD || !ships[0]) return;
     for (const beat of OPENING) {
       if (surv.taught.has(beat.key)) continue;
       if (!beat.when()) continue;
@@ -15220,16 +15291,56 @@
     return true;
   }
 
+  /* ── what the arrow points at once the manifest is done ───────────────────
+     The nearest landmark still missing from the book. The scan has always
+     returned this bearing on demand — it is the line in the design that calls
+     itself "the whole navigation system" — and after the gate it is the only
+     thing left that can answer *where next*, so it stops being something you
+     press a key for and becomes what the HUD says.
+
+     Nearest rather than next along the ladder. The ladder is dealt per world
+     and its rungs are spread around the compass, so "next" would regularly
+     mean turning round and flying back past somewhere you had already been. */
+  function nextUnlogged() {
+    const me = ships[0];
+    if (!me || !surv || !surv.landmarks) return null;
+    let best = null, bd = Infinity;
+    for (const lm of surv.landmarks) {
+      if (lm.found) continue;
+      const d = dist2(lm.x, lm.y, me.x, me.y);
+      if (d < bd) { bd = d; best = lm; }
+    }
+    return best;
+  }
+  /* A landmark's entry in the book, which is where its clue and its redaction
+     both live. A `secret` entry keeps its redaction out here as well as in the
+     almanac: the four that hide their name do it so that arriving is how you
+     find out what they are, and a name on the edge of the screen would undo
+     that from forty thousand units away. */
+  const lmEntry = lm => (lm && ALMANAC.find(e => e.key === lm.key)) || null;
+
   function objectiveTarget() {
     /* The manifest is finished and the arrow used to go out with it, which is
        the right shape for "the tutorial is over" and the wrong one for the ten
        hours after: the mode's answer to *now what* was a sector with nothing
        marked in it. One thing stays on the board. */
     if (yardDone()) {
-      return mk1Wanted()
-        ? { key: "tractormk1", name: surv.mk1Site.name,
-            x: surv.mk1Site.x, y: surv.mk1Site.y }
-        : null;
+      if (mk1Wanted()) {
+        return { key: "tractormk1", name: surv.mk1Site.name,
+                 x: surv.mk1Site.x, y: surv.mk1Site.y };
+      }
+      /* And then the book, for as long as the book has holes in it. `vague`
+         is what keeps the promise the scan makes: a bearing and a band, never
+         a distance — a landmark's exact range is its position, and the one
+         rule this mode's navigation has never broken is that nothing hands you
+         a position. The manifest's arrow states units because a delivery is
+         not a search. */
+      const lm = nextUnlogged();
+      if (!lm) return null;
+      const e = lmEntry(lm);
+      return { key: "landmark", vague: true,
+               name: e && e.secret ? "SOMETHING UNLOGGED" : lm.name,
+               x: lm.x, y: lm.y };
     }
     if (surv.carrying.size) {
       return { key: "yard", name: "THE JUMP GATE", x: YARD.x, y: YARD.y };
@@ -15255,7 +15366,27 @@
                       "anybody is pointing you at",
                  colour: NEBULA };
       }
-      return { text: "THE JUMP GATE IS OPEN", sub: "the sector is yours to wander",
+      /* This line used to read "THE JUMP GATE IS OPEN — the sector is yours to
+         wander", and it was the mode telling the player it was over. It is the
+         one line that has answered *what am I doing* for the whole of the
+         manifest, and at the exact moment the sector opens up it said nothing.
+         People stopped playing here, and they were reading it correctly.
+
+         So it keeps answering, out of the book, for the rest of the run. */
+      const lm = nextUnlogged();
+      if (lm) {
+        const e = lmEntry(lm);
+        return { text: e && e.secret ? "SOMETHING UNLOGGED" : lm.name,
+                 sub: e && !e.secret && e.note
+                        ? e.note
+                        : "nobody has written down what is out that way",
+                 colour: NEBULA };
+      }
+      /* Every landmark logged. Not every *entry* — most of the book is things
+         you do rather than places you go — so it says which half is finished
+         rather than claiming the whole thing is. */
+      return { text: "EVERY LANDMARK LOGGED",
+               sub: "what is left in the book is doing, not going",
                colour: CASH };
     }
     if (surv.carrying.size) {
@@ -15277,6 +15408,17 @@
      range band rather than a number of units: "a long way out" is what you
      actually need to decide whether to go now, and an exact distance would make
      the clue redundant by turning the search into a countdown. */
+  /* The ladder itself, pulled out so the HUD line and the arrow on the ring
+     cannot drift apart. They are the same fact said in two places, and two
+     copies of a fact is how the arrows went wrong last time. */
+  const rangeBand = d =>
+      d > 400000 ? "most of a sector away"
+    : d > 40000  ? "a very long way out"
+    : d > 16000  ? "a long way out"
+    : d > 6000   ? "out there"
+    : d > 1200   ? "close"
+    : "right here";
+
   function objectiveFix() {
     const me = ships[0];
     if (!surv.target || !me) return null;
@@ -15284,11 +15426,7 @@
     return {
       name: surv.target.name,
       bearing: bearingTo(me, surv.target),
-      range: d > 40000 ? "a very long way out"
-           : d > 16000 ? "a long way out"
-           : d > 6000  ? "out there"
-           : d > 1200  ? "close"
-           : "right here"
+      range: rangeBand(d)
     };
   }
 
@@ -15447,8 +15585,12 @@
     addShake(9);
     if (yardDone()) {
       surveyFind("finished");
-      banner = { text: "THE JUMP GATE IS OPEN", t: 4.2, colour: CASH,
-                 sub: "it was never about the parts" };
+      /* "it was never about the parts" was a curtain line, and it landed on
+         the one moment in the run where the sector actually opens up. The
+         manifest is the tutorial; this is where the game starts. So the banner
+         faces forwards. */
+      banner = { text: "THE JUMP GATE IS OPEN", t: 4.6, colour: CASH,
+                 sub: "now go somewhere you have not been" };
     }
     saveSurveyBook();
   }
@@ -15914,6 +16056,12 @@
     surv.contacts = surv.target
       ? [{ key: surv.target.key, name: surv.target.name,
            x: surv.target.x, y: surv.target.y, resolved: false,
+           /* A search is told a band and a delivery is told a number. See
+              `objectiveTarget` — the arrow reads this rather than deciding for
+              itself, so the ring and the HUD line say the same thing. */
+           vague: !!surv.target.vague,
+           band: rangeBand(Math.hypot(surv.target.x - me.x,
+                                      surv.target.y - me.y)),
            d: Math.hypot(surv.target.x - me.x, surv.target.y - me.y) }]
       : [];
     surv.tractorLit = Math.max(0, surv.tractorLit - dt);
@@ -17730,6 +17878,55 @@
                                   have: surv.built.has(b.key),
                                   carrying: surv.carrying.has(b.key) })),
       built: surv.built.size, needs: BUILD.length,
+      /* ── the long list ────────────────────────────────────────────────────
+         The parts a player cannot meet, which turned out to be most of the good
+         ones. Three pages each correctly refused this job: the shop will not
+         advertise what it does not stock, the workbench threw out everything it
+         could not build, and the almanac is a record rather than a shop. All
+         three were right and the result was that nothing picked it up — so the
+         best part in every category was something you could only own by
+         accident, and `surv.seen`, the set whose whole purpose is "a thing you
+         know exists and can plan a trip towards", could never be told about
+         them.
+
+         The test is *can this part be met near home*: anything the workbench
+         lists is met, and anything a home shelf stocks is met. What is left is
+         eleven — the two nobody sells, and the nine whose `deep` puts them on a
+         shelf hundreds of thousands of units out. That is not a shop. It is the
+         same thing the manifest is: a list of things that are somewhere else.
+
+         Only after the gate, because before it the manifest is the list and two
+         lists is no list at all. */
+      longList: yardDone()
+        ? MODULES.filter(m => !craftsIt(m) && (!sellsIt(m) || m.deep > 0))
+            .map(m => ({
+              key: m.key, name: m.name, cat: m.cat, rarity: m.rarity,
+              note: m.note,
+              /* Where it is, twice: the prose if somebody wrote one — the two
+                 nobody sells have one — and a tag short enough to sit in a
+                 column beside the name.
+
+                 The tag is derived rather than written down, because `deep` is
+                 already an address: it is how far out a station has to be
+                 before it stocks one, so it converts straight into the band
+                 vocabulary the panel has been showing all along. A part whose
+                 depth is retuned cannot end up wearing a line that lies about
+                 it, which is the failure mode every hand-kept table in this
+                 mode has shipped at least once. */
+              where: m.where || "",
+              at: m.deep > 0
+                ? bandForDeep(m.deep) + " · " +
+                  /* Grouped properly. Rounding to thousands and bolting
+                     ",000" on the end wrote 1116,000u for the rail lance,
+                     which is the kind of number a reader stops trusting the
+                     rest of the row over. */
+                  Math.round(m.deep * DANGER_FULL / 1000)
+                    .toLocaleString("en-GB") + ",000u"
+                : "FOUND, NEVER SOLD",
+              have: storeCount(m.key) > 0 || modFitted(m.key),
+              seen: surv.seen.has(m.key)
+            }))
+        : [],
       onUndock: () => { state = "playing"; },
       builds: YARD_BUILDS,
       // The wormhole, which is what the six parts make.
@@ -23869,6 +24066,11 @@
       },
       // The yard and the scan, as the interface sees them.
       objective: () => objective(),
+      /* The point the line is about, which is a different fact from the line:
+         the harness has been reaching for this since the MK1 went in and
+         guarding the call with `cf.objectiveTarget ? … : null`, so the check
+         behind that guard has never once run. Exposed, so it does. */
+      objectiveTarget: () => objectiveTarget(),
       scanReach: () => scanRange(),
       surveyView: () => surveyState(),
       zoom: () => surveyZoom,

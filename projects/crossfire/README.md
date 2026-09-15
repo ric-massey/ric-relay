@@ -190,6 +190,52 @@ in the hold, cannot be sold, and are not dropped when your hull goes — the
 manifest is the spine of the mode, and a part lost in deep space would be a run
 you could not finish.
 
+### And then the hours after it
+
+The manifest is the tutorial, and for a long time it was also the whole game —
+not because there was nothing else, but because everything else was invisible
+from the cockpit. Ric watched people spend ten to fifteen minutes working the
+mode out, another fifteen finishing the gate, and then stop. They were not bored
+of the sector. They had been told there was nothing left in it.
+
+Four surfaces went quiet at the same moment, and all four are the same mistake:
+
+- **The objective line said so out loud.** It had answered *what am I doing* for
+  the whole manifest and then read "THE JUMP GATE IS OPEN — the sector is yours
+  to wander", which is a curtain line. It never goes blank now: once the gate is
+  built it points at the nearest landmark still missing from the book, with the
+  almanac's own note as the clue, and only a complete set of landmarks is
+  allowed to say you are finished. The four secret entries keep their redaction
+  out here too — the arrow says SOMETHING UNLOGGED and nothing more.
+- **That arrow states a band, never a range.** A delivery gets a number because
+  you are taking something somewhere; a search gets "a very long way out",
+  because a bearing plus an exact distance is a position, and no scan in this
+  mode has ever handed one over.
+- **The opening stopped teaching.** `OPENING` is the one piece of the mode whose
+  job is making you want a thing ninety seconds before you would have found it,
+  and every beat in it fired inside the first two minutes. It has a second act
+  now, on the same terms — fires once, hangs on a pressure you are already
+  under, names no destination: a dry tank a long way out introduces the ice
+  melter, crossing into the Hostile band says what the bands are for, half the
+  light drive's price mentions the yard's second berth, and docking after the
+  gate says that some parts are not sold anywhere near here.
+- **Eleven parts could not be met.** The shop will not advertise what it does not
+  stock, the workbench threw out everything it cannot build, and the almanac is a
+  record rather than a shop. All three were right, and the result was that
+  nothing picked up the job: the best part in every category, plus the two nobody
+  sells at all, existed on no page in the game. `surv.seen` — the set whose
+  entire purpose is "a thing you know exists and can plan a trip towards" —
+  could never be told about them. They are on the missions page now, under NOT
+  FOR SALE HERE, each with an address derived from its own `deep` rather than
+  hand-written. It is not a shop: no prices, no buttons, nothing on it can be
+  acted on from there. It is what the manifest was — a list of things that are
+  somewhere else.
+
+The rule underneath all four: there is a difference between *telling* a player
+what to do and *showing* them something they cannot have yet. The first two
+minutes never instructed anybody, and nobody felt instructed by a tank running
+down in a shop that sells water. The hours after the gate work the same way.
+
 ### The scan is a scan now
 
 It used to return a compass bearing to the nearest unlogged almanac entry and
