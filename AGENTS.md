@@ -209,6 +209,10 @@ That script also writes `projects/climbing/latest-climb.js`, which `index.html` 
 so the newest day out leads the "latest" banner without anyone editing a list.
 
 **A day can also be logged from a phone at the crag.** `projects/climbing/add.html`
+takes either a day out or a route for the to-do. You get to it by signing in at the
+foot of `climbing.html` — that is the only password box in the section, and the Add
+tab appears in the climbing bar beside Boards the moment it takes (`assets/climbing-nav.js`,
+`ClimbNav.refresh()`). The page
 writes the markdown block it *would* have written into `climbs.md` to the Worker;
 `web-trips.js` is the one place that fetches those days and folds them into the archive's
 shape using `climb-parse.js`, the browser port of the parser `build-data.py` uses. Both

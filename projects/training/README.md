@@ -66,9 +66,10 @@ into `training.html` as `LOG_HOST`; change it there if the subdomain differs.
 
 ## Signing in
 
-Type the password into the box at the bottom of `training.html`, or on
-`projects/climbing/add.html`. Either one signs you in on both — they share the
-same origin and the same stored key.
+Type the password into the box at the bottom of `training.html`, or the one at
+the bottom of `climbing.html`. Either one signs you in on both — they share the
+same origin and the same stored key. (`projects/climbing/add.html` still carries
+a box of its own, for landing there on a stale token at a crag.)
 
 `POST /auth` checks it the moment you type, so a wrong password says so straight
 away rather than failing silently on the first tick an hour later.

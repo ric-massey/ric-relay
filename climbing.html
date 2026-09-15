@@ -57,8 +57,18 @@
     Built from <code>climbs.md</code> — grades are opinions, memory is worse.
     <span id="stamp"></span>
   </footer>
+
+  <!-- Signing in happens here, last thing on the room page, and nowhere else in
+       the section. It was on the log before, where it met every stranger who
+       arrived from a search with a password prompt three lines under the
+       numbers. Signed in, the Add tab appears in the bar beside Boards; that is
+       the whole visible consequence, because owner mode is a rendering hint and
+       the Worker is what actually says yes — assets/owner.js says why at
+       length. -->
+  <div id="ownerbar"></div>
 </div>
 
+<script src="assets/owner.js?v=1"></script>
 <script src="projects/climbing/climbs-data.js"></script>
 <script src="projects/climbing/climb-vocab.js?v=2"></script>
 <script src="projects/climbing/climb-parse.js?v=2"></script>
@@ -233,6 +243,34 @@
 
   const stamp = DATA.generated || DATA.builtAt;
   if (stamp) $("stamp").textContent = ` Updated ${fmt(String(stamp).slice(0, 10), true)}.`;
+})();
+</script>
+
+<script>
+/* ── signing in ───────────────────────────────────────
+   Its own block, outside the async one above, because that one returns early
+   when there is no data and the password box is not something to lose along
+   with the day list. */
+(() => {
+  const bar = document.getElementById("ownerbar");
+
+  function paintOwner() {
+    if (Owner.on()) {
+      bar.innerHTML = `<div class="signedin"><strong>Signed in.</strong>
+        <span><a href="projects/climbing/add.html">Add</a> is in the bar now.</span>
+        <button type="button" id="signout">sign out</button></div>`;
+      bar.querySelector("#signout").onclick = () => Owner.signOut();
+    } else {
+      Owner.mountBox(bar, { title: "Password" });
+    }
+    /* The bar was written during parse, before any of this ran, so it has to be
+       told. Without this the tab only turns up on the next page you open. */
+    if (window.ClimbNav) ClimbNav.refresh();
+  }
+
+  /* /auth has to be posted at whichever origin actually answers, and only
+     climb-host.js knows which — and only after it has asked once. */
+  ClimbHost.resolved().then(h => { Owner.init({ host: h, onChange: paintOwner }); paintOwner(); });
 })();
 </script>
 

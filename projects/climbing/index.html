@@ -220,28 +220,6 @@
     .add .bar { flex-basis: 100%; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
     .add .bar i { display: block; height: 100%; background: var(--bar); width: 0; transition: width .15s linear; }
 
-    /* ── sign in ─────────────────────────────────────── */
-    #ownerbar { margin-bottom: 1.2rem; }
-    .ownerform { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
-    .ownerlabel { font-weight: 700; font-size: .82rem; }
-    .ownerform input {
-      font: inherit; font-size: .85rem; padding: .35rem .55rem; min-height: 40px;
-      border: 1px solid var(--line); border-radius: 7px; background: var(--card); color: var(--ink); flex: 0 1 12rem;
-    }
-    .ownerform button {
-      font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; min-height: 40px; padding: .35rem .9rem;
-      border: 1px solid var(--bar); border-radius: 7px; background: var(--bar); color: #fff;
-    }
-    .ownermsg { flex-basis: 100%; color: var(--clay); font-size: .78rem; }
-    .signedin {
-      display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
-      background: var(--bar); color: #fff; border-radius: 8px; padding: .5rem .8rem; font-size: .85rem;
-    }
-    .signedin button {
-      font: inherit; font-size: .78rem; cursor: pointer; margin-left: auto; padding: .2rem .7rem;
-      border: 1px solid #fff; border-radius: 6px; background: #fff; color: var(--bar); font-weight: 700;
-    }
-
     /* ── the player ──────────────────────────────────────
        A dark room around the clip rather than a bordered box on a beige page:
        the thing being looked at is a video, and everything else should get out
@@ -392,11 +370,11 @@
     <p class="count" id="count"></p>
     <div id="view"></div>
 
-    <!-- Signed out this is a password box; signed in it is a line saying so.
-         It used to sit third from the top, so the first thing a stranger met
-         after the numbers was a password prompt. Owner mode is a rendering
-         hint — assets/owner.js says why at length. -->
-    <div id="ownerbar"></div>
+    <!-- No password box here any more. This is the archive — the page a stranger
+         is most likely to arrive on from a search — and it used to end with a
+         prompt for a password nobody but him can have. Signing in is at the
+         foot of the room page now; being signed in still lights up the upload
+         controls on every day below. -->
 
     <footer>
       Built from <code>climbs.md</code> — grades are opinions, memory is worse.
@@ -932,20 +910,15 @@
        The gate is the Worker; this only decides whether the controls are drawn.
        assets/owner.js says why that is not a hole at length. */
     function paintOwner() {
-      const bar = document.getElementById("ownerbar");
       document.body.classList.toggle("owner-on", Owner.on());
-      if (Owner.on()) {
-        bar.innerHTML = `<div class="signedin"><strong>Signed in.</strong>
-          <span>Open a day to add photos or video to it.</span>
-          <button type="button" id="signout">sign out</button></div>`;
-        bar.querySelector("#signout").onclick = () => Owner.signOut();
-      } else {
-        Owner.mountBox(bar, { title: "Password" });
-      }
       render();
     }
-    /* Signing in has to post /auth at whichever origin actually answers, and
-       only climb-host.js knows that — and only after it has asked once. */
+    /* Owner.init still runs here — it is what reads the saved password, drains
+       the offline queue after a drive home, and decides whether each day gets
+       its upload box. It just no longer draws anything of its own; the box that
+       sets the password is on the room page. The host still has to be settled
+       first, because a queued write posts at whichever origin answers and only
+       climb-host.js knows which. */
     ClimbHost.resolved().then(h => { Owner.init({ host: h, onChange: paintOwner }); paintOwner(); });
 
     // Deep links (#trip-2026-07-27) come in from the sitewide "newest day out"

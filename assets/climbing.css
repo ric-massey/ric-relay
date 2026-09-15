@@ -218,3 +218,25 @@ mark{background:#f6e7c6;color:inherit;border-radius:2px;padding:0 .12em}
 .pastday .pastnote{font-family:var(--serif);font-size:1rem;line-height:1.5;color:#4a453c;
   margin-top:.7rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 @media(max-width:820px){.pastdays{grid-template-columns:1fr;gap:1.8rem}}
+
+/* ── the sign-in, at the foot of the room page ──
+   It used to sit on the log, which meant the archive — the page a stranger is
+   most likely to land on — ended a search result with a password prompt. It
+   lives here now, under the footer rule, last thing on the page: out of the way
+   of anyone reading, and in one known place when he needs it. Signing in is
+   what puts the Add tab in the bar, so this and ClimbNav.refresh() are two ends
+   of the same gesture. */
+#ownerbar{margin:2.4rem 0 0;padding-top:1.6rem;border-top:1px solid var(--line)}
+.ownerform{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.ownerlabel{font-weight:700;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;
+            color:var(--soft)}
+.ownerform input{font:inherit;font-size:.9rem;padding:.4rem .6rem;min-height:42px;
+  border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);flex:0 1 13rem}
+.ownerform button{font:inherit;font-size:.85rem;font-weight:700;cursor:pointer;min-height:42px;
+  padding:.4rem 1rem;border:1px solid var(--bar);border-radius:8px;background:var(--bar);color:#fff}
+.ownermsg{flex-basis:100%;color:var(--clay);font-size:.8rem;min-height:1.1em}
+.signedin{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;background:var(--bar);color:#fff;
+  border-radius:9px;padding:.6rem .9rem;font-size:.88rem}
+.signedin a{color:#fff;text-decoration:underline}
+.signedin button{font:inherit;font-size:.8rem;cursor:pointer;margin-left:auto;padding:.25rem .8rem;
+  border:1px solid #fff;border-radius:6px;background:#fff;color:var(--bar);font-weight:700}
