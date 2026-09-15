@@ -6793,7 +6793,7 @@
        question a shipyard is ever asked. */
     const sh = list[hangar.pick];
     const dy = gridTop + rowsShown * (cardH + PAGE.STEP);
-    const statCols = api.touchOnly ? 4 : 8;
+    const statCols = api.touchOnly ? 5 : 9;
     const detailH = PANEL_H(api.touchOnly ? 7 : 5);
     panel(PAGE.EDGE, dy, SCREEN_W - PAGE.EDGE * 2, detailH,
           sh.flying ? CASH : tone, sh.name,
@@ -6815,7 +6815,6 @@
           "left", 0.8, "0.12em");
 
     const best = k => list.reduce((m, o) => Math.max(m, o[k]), 0.0001);
-    const least = k => list.reduce((m, o) => Math.min(m, o[k]), Infinity);
     const stats = [
       ["HULL",  sh.hull / best("hull"),   String(sh.hull)],
       ["DAMAGE", sh.dmg / best("dmg"), sh.dmg.toFixed(2) + "x"],
@@ -6824,7 +6823,17 @@
       ["SPEED", sh.speed / best("speed"), sh.speed.toFixed(2) + "x"],
       ["ACCEL", sh.accel / best("accel"), sh.accel.toFixed(2) + "x"],
       ["TURN",  sh.turn / best("turn"),   sh.turn.toFixed(2) + "x"],
-      ["DRAG", least("drag") / sh.drag, sh.drag.toFixed(2)]
+      /* "GRIP", and the bar runs the same way as every other bar on this page.
+         It read DRAG with the fill inverted — longest for the *lowest* number —
+         which was right while drag was friction and less of it was better. It
+         is how hard the hull is glued to where you point it now, so more of it
+         is more of something, and a bar that fills backwards next to seven that
+         do not is a bar nobody reads correctly. */
+      ["GRIP", sh.drag / best("drag"), sh.drag.toFixed(2)],
+      /* What one pull of the trigger sends. Three on almost everything, so the
+         bar is nearly always full and the two hulls that send four are the only
+         thing on this row worth seeing — which is exactly what it is for. */
+      ["BURST", (sh.burst || 3) / best("burst"), String(sh.burst || 3)]
     ];
     const statX = PAGE.EDGE + PAGE.PAD;
     const statArea = SCREEN_W - PAGE.EDGE * 2 - PAGE.PAD * 2;

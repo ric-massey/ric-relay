@@ -212,6 +212,141 @@ never once run. It is exposed now and the check is live.
 *Fixed in passing:* the yard's BUILD IT button was 200 wide for "BUILD IT
 ¤2,400" and cut the price — the one number on it anybody needs.
 
+## The ships, re-cut twice — 2026-09-15
+
+Ric flew the roster again: *"the ships need to be crazy. the jackal should not
+have momentum — you go right and it goes right almost instantly."* Then, on the
+first cut: *"way closer but turning is way too fast."*
+
+- [x] **S1 · Handling was one ladder.** `drag` had seven values across
+  twenty-five hulls, one per category, and `accel` tracked it almost exactly —
+  so faster always meant twitchier and there was no third thing a hull could be.
+  Two axes now: `speed` is how fast you can eventually go, `drag` is **grip**,
+  how hard you are glued to where you point. They are deliberately uncorrelated,
+  so there are four corners instead of one line.
+- [x] **S2 · `accel` stopped being a column.** It is derived from speed and grip.
+  Headroom rises as grip falls — a flat headroom tied engine size to shortness
+  of drift, which gave every floaty hull a feeble engine and quietly stopped a
+  Drayman climbing out of a gravity well. A barge has a big engine *and*
+  enormous inertia.
+- [x] **S3 · Turn was overcooked.** The first cut ran to 10.88 rad/s. Ric flew
+  the Jackal at 8.32 and called it way too fast, so the whole roster came back
+  down — top is 6.11 rad/s again, the value it had before any of this, and the
+  Jackal sits at 4.42 against the 4.16 it used to have. **Turn is ergonomic; the
+  military feel comes from grip, not from turn.**
+- [x] **S4 · The military ladder Ric set.** LANCE is the intro, SPUR the step up,
+  BASTION a bit better than SPUR, REPRISAL the strongest, and the JACKAL off to
+  one side as the fastest and hardest-hitting. All five are glued — every
+  military hull forgets a heading inside a third of a second, and nothing
+  outside the category comes close.
+- [x] **S5 · A four-round burst on the Bastion and the Jackal.** `BURST_SIZE` was
+  a global 3 — the one thing about a gun every hull in the game agreed on. It is
+  a hull's number now, defaulting to three.
+- [x] **S6 · The hangar said DRAG and drew the bar backwards.** It says GRIP and
+  fills the way the other eight do, and there is a BURST bar beside it.
+
+*Consequence worth knowing:* a hauler caught inside a supermassive well's reach
+is now in real trouble — the inward pull accumulates across all twenty-three
+seconds of a Drayman's drift. `test/survey.js` flies the dodge check on a Lance
+now, because "the dodge runs" and "a barge can win" are two different claims.
+
+| | before | after |
+|---|---|---|
+| Jackal, heading half-life | 1.73s | **0.06s** |
+| Jackal, 0 → top | 1.51s | **0.08s** |
+| roster, off the mark | 13.8x | **73x** |
+| roster, coasting | 10.4x | **267x** |
+| Jackal coasts to a stop in | 990u | **33u** |
+
+## The seven other categories — 2026-09-15
+
+Ric's spec, category by category, after the military ladder landed.
+
+- [x] **C1 · EXPLORER.** Skiff untouched — "the skiff is perfect". Carrack and
+  Longview keep its handling *exactly* (same grip, same turn) and climb on cargo
+  and top speed only: 150 → 600 → 900, 324 → 360 → 414. One feel, three sizes.
+- [x] **C2 · CARGO.** Back with the explorers on feel — grip 0.46–0.50 against
+  the explorers' 0.55 — slower than them, and far more of everything else: up to
+  2,400 hold and 55 hull.
+- [x] **C3 · COURIER.** Nothing in the hold (22–44), the hardest acceleration in
+  the game, top speeds behind only the sport hulls, and grip well above the
+  commuters. The Runner gained hull because a Vane otherwise beat it on every
+  single number for less money.
+- [x] **C4 · COMMUTER.** Pannier inverted to be the fastest and best-turning of
+  the three. Slow to wind up, barely any slide, and a **shielded prow** that
+  pushes the drifting field aside instead of being stopped by it. Rocks only —
+  worlds, hulks and the Leviathan stay solid.
+- [x] **C5 · SPORT.** The sliders. Quickest to their own top speed of anything
+  that is not military, and then seven to nine seconds of drift. **One big
+  round** — burst of 1 on the ordinary trigger rhythm, and damage raised so the
+  single shot is worth firing.
+- [x] **C6 · INDUSTRIAL.** Tanks: 60–80 hull, 750–1,300 hold, and slow. One
+  **beam** at a time, drawn much wider with a head on it, that takes a rock of
+  any size apart in a single hit.
+- [x] **C7 · UTILITY.** Stays UTILITY. Industrial-shaped stats, and a **claw**
+  instead of a gun — no round leaves the ship, it is a reach in front of the
+  nose that crushes whatever is in it. Jaws drawn on the hull, closed at rest.
+
+**Two new axes, and why they had to exist.** Ric asked commuters to "accelerate
+extremely slow" *and* have "little sliding", and sport hulls to be "easy to get
+to speed" *and* "really slide". Both pairs are the same number — grip decides
+how fast you arrive at your top speed and how long you keep it, together — so
+neither was expressible. `spool` is how long the drive takes to wind up, and
+`punch` is how hard the engine pushes past its own ceiling. A commuter is a bus:
+slow pull-away, good brakes. A sport hull is a big engine on a slick floor.
+
+`bite` is the third: how much of the turn survives at full speed. One on
+everything but the commuters, who turn well at a dock and badly at a run.
+
+*Found while building it:* the Jackal was still carrying a comment saying its
+handling was "the old Louvre handling, kept exactly" — two re-cuts after it
+stopped being true.
+
+## The ships, and what flying them turned up — 2026-09-15
+
+Three more rounds with Ric at the stick. The numbers are in the sections above;
+these are the things the flying found that the tables could not.
+
+- [x] **S8 · Turn was overcooked, twice.** Ended at 6.11 rad/s across the roster —
+  exactly where it was before any of this. **Turn is ergonomic. The feel comes
+  from grip.**
+- [x] **S9 · Couriers and commuters own the top end** and pay for it in wind-up
+  (2.5s–4.0s to speed). Sport is the drift class, not the speed class: quickest
+  off the line and then eight to ten seconds of carrying it.
+- [x] **S10 · Bots were only half flying your stats.** Speed, accel, drag, turn
+  and firepower came off the hull; `spool`, `bite`, `burst`, `weapon` and `ram`
+  were player-only, so a bot Windlass fired a pea-shooter. All plumbed.
+- [x] **S11 · A shove ignored mass.** Bounces handed back a fixed multiple of the
+  closing speed, which was survivable until grip spanned 267x — a courier
+  clipping a Gantry put it at top speed for forty-five seconds. Ric found it:
+  *"the courier ships make the gantry go faster."* Shared by mass now.
+- [x] **S12 · Bots stopped dead.** Three `solidBounce` callers multiplied the
+  whole velocity by 0.2–0.25 — an annihilation, identical for every hull. They
+  reflect along the surface normal now.
+- [x] **S13 · `shipR` never knew what you were flying.** `SHIP_R * U`, flat, for
+  every hull — harmless with one triangle, wrong from the moment Survey drew
+  twenty-five. **Two bugs, one cause:** the exhaust came out a quarter of the way
+  back from the nose on big hulls, and the collision circle was a third of the
+  ship, so rocks passed through the visible hull. Both read the hull now.
+- [x] **S14 · The collision circle comes off the outline.** Mean corner distance
+  x 0.8, which leaves the stock hull exactly where it was (9) and stops the
+  Tender being stopped by a Skiff's circle (32 → 68).
+- [x] **S15 · Tanks are stopped by rock, not hurt by it.** Deliberately not the
+  commuters' prow: a commuter passes *through* the field, a working hull is
+  stopped and shrugs. Both exist; nothing may have both.
+- [x] **S16 · Nothing outruns its own hitbox.** Rounds and hulls are swept
+  against rocks, and a tripwire checks one frame of travel against the smallest
+  thing it must hit — it will fail the moment anything gets fast enough for this
+  to come back.
+- [x] **S17 · The front door is quiet.** A smooth bowl to ~10,000 units with a
+  floor, a live cap of two, and raiders scaled by the same bowl. Measured across
+  six sectors: 0.107 ships a chunk at the door against 0.365 in the open.
+
+*Found while fixing it:* `test/survey.js` asserted the traffic wants four
+seconds in. Real bot turn rates resolve that whole fight in under four, so the
+check was reading a later — and perfectly correct — state. It watches for the
+wants as they happen now rather than sampling once after the fact.
+
 ## Notes to self
 
 - Several of these are the same bug class this mode has shipped before: a list

@@ -3707,17 +3707,87 @@
     else if (standing.length === 0) endMatch({ kind: "draw" });
   }
 
+  /* ── the claw ─────────────────────────────────────────────────────────────
+     What the utility hulls carry instead of a gun. Ric: "instead of a bullet
+     it's like a claw that comes out and crushes the asteroids."
+
+     So it is not a round at all — nothing leaves the ship. It is a short reach
+     in front of the nose that takes whatever is in it apart, and the whole
+     character of it is that reach: an industrial can stand off and cut a rock
+     at range, and a working hull has to go and *hold* the thing. Same result,
+     completely different approach, which is what stops the two mining hulls
+     being one hull with two paint jobs.
+
+     It bites ships too. It is a pair of hydraulic jaws on the front of a
+     salvage tug; something that crushes a boulder does not politely ignore a
+     pirate. */
+  const CLAW_REACH = 2.4;      // times the hull's own radius
+  const CLAW_ARC   = 1.05;     // radians either side of the nose
+  function swingClaw(ship) {
+    const r = SHIP_R * U * (ship.sizeMul || 1);
+    const reach = r * CLAW_REACH;
+    ship.clawT = 0.22;
+    let bit = false;
+    for (let i = rocks.length - 1; i >= 0; i--) {
+      const rk = rocks[i];
+      const dx = sepX(rk.x, ship.x), dy = sepY(rk.y, ship.y);
+      if (Math.hypot(dx, dy) > reach + rk.r) continue;
+      let off = Math.atan2(dy, dx) - ship.a;
+      while (off > Math.PI) off -= Math.PI * 2;
+      while (off < -Math.PI) off += Math.PI * 2;
+      if (Math.abs(off) > CLAW_ARC) continue;
+      shatterWhole(rk);
+      bit = true;
+    }
+    /* And anything else in the jaws. The same consequences a round carries — a
+       patrol that gets bitten is a patrol that arms itself, and a pirate that
+       gets away remembers who did it — because the thing that earns a grudge is
+       being hurt by you, not the shape of what hurt you. */
+    for (let i = (surv ? surv.traffic.length : 0) - 1; i >= 0; i--) {
+      const t = surv.traffic[i];
+      const dx = sepX(t.x, ship.x), dy = sepY(t.y, ship.y);
+      const rr = 22 * U * (shipSpec(t.hull).size || 1);
+      if (Math.hypot(dx, dy) > reach + rr) continue;
+      let off = Math.atan2(dy, dx) - ship.a;
+      while (off > Math.PI) off -= Math.PI * 2;
+      while (off < -Math.PI) off += Math.PI * 2;
+      if (Math.abs(off) > CLAW_ARC) continue;
+      t.hp -= 2 * (ship.dmgMul || 1);
+      t.hit = 0.12;
+      if (t.kind === "patrol") t.angry = true;
+      if (t.faction === "pirate" && !t.hurtBy) {
+        t.hurtBy = true;
+        if (!t.name) t.name = shipName(true);
+      }
+      burst(t.x, t.y, trafficColour(t), 6, 130 * U);
+      if (t.hp <= 0) killTraffic(i, true);
+      bit = true;
+    }
+    burst(ship.x + Math.cos(ship.a) * reach * 0.7,
+          ship.y + Math.sin(ship.a) * reach * 0.7,
+          bit ? "#ffcb42" : "#a08cff", bit ? 8 : 3, 120 * U);
+    gameSound(bit ? "rock" : "shot", ship.x);
+    return true;
+  }
+
   function fire(ship) {
     /* And it ends a cloak. Put here rather than on the trigger, because this is
        where a round actually leaves the ship — a trigger held against a cooldown
        is not a shot, and a cloak that dropped on the *key* would end the moment
        a thumb rested on the pad. */
     if (ship.human && surv && surv.cloak > 0) dropCloak();
+    // A claw is a reach, not a round. Nothing is launched and nothing is capped.
+    if (ship.weapon === "claw") return swingClaw(ship);
     // The cannon's own rounds only. Six in the air has always been the cannon's
     // limit and a missile must not spend one of them.
     const mine = bullets.reduce(
       (n, b) => n + (b.owner === ship.id && !b.alt ? 1 : 0), 0);
-    const cap = (mode.campaign && ship.human) ? CAMPAIGN_SHOTS : MAX_SHOTS;
+    /* One beam in the air, and one claw swing at a time. Both are single heavy
+       strikes rather than a stream, so the cap that matters is one — and it is
+       the cap, not the burst, that makes them feel like a tool instead of a
+       gun: you commit a shot and then you wait for it. */
+    const cap = ship.weapon ? 1
+              : (mode.campaign && ship.human) ? CAMPAIGN_SHOTS : MAX_SHOTS;
     if (mine >= cap) return false;
     const r = SHIP_R * U * (ship.sizeMul || 1);
     const heavy = ship.buffHeavy > 0;
@@ -3733,7 +3803,13 @@
       // shots stay ahead of you, and ahead of anyone flying beside you.
       vx: Math.cos(ship.a) * BULLET_SPD * (ship.shotMul || 1) * U + ship.vx,
       vy: Math.sin(ship.a) * BULLET_SPD * (ship.shotMul || 1) * U + ship.vy,
-      life: BULLET_LIFE * U
+      life: BULLET_LIFE * U,
+      /* An industrial's round is a beam: it is drawn wider and it takes a rock
+         apart in one hit. Carried on the round rather than read off the firer,
+         because a round outlives the frame it was fired in and the ship that
+         fired it may have swapped hulls by the time it lands. */
+      rends: ship.weapon === "beam",
+      beam: ship.weapon === "beam"
     });
     gameSound("shot", ship.x);
     return true;
@@ -3905,6 +3981,12 @@
        not before — every hit took exactly one point, so the heavy rounds a
        pickup gives you never actually punched through anything, and a rail lance
        would have chipped a boulder like a pistol. */
+    /* A beam or a claw does not chip. It takes the rock apart in one pass,
+       whatever size it is — see `shatterWhole`, and see the industrial and
+       utility hulls, which are the only two things in the game that carry one.
+       Checked before the hp arithmetic because there is no arithmetic to do:
+       the answer is always "all of it". */
+    if (b && b.rends) { shatterWhole(rock); return; }
     rock.hp -= Math.max(1, Math.round(b && b.dmg ? b.dmg : 1));
     rock.flash = 0.13;
     if (rock.hp > 0) {
@@ -3918,6 +4000,29 @@
     }
     splitRock(rock);
   }
+
+  /* ── how hard a thing is to shove ─────────────────────────────────────────
+     A hull's mass, taken off the two numbers that already say how big it is —
+     its radius and its armour — so nothing new has to be kept in step. Only
+     ever used as a *ratio*, so the units do not matter and the scale can never
+     drift.
+
+     It exists because of the grip axis. A bounce used to hand back a fixed
+     multiple of the closing speed whatever hit what, which was survivable while
+     every hull shed speed in about the same two seconds. It stopped being
+     survivable at a 267x spread: an industrial holds a shove for forty-five
+     seconds, so a courier clipping a Gantry put the Gantry at its own top speed
+     and it stayed there for most of a minute. Ric found it from the cockpit —
+     "the courier ships make the gantry go faster" — and he was describing this
+     exactly. A shove is shared by mass now, the way it always should have been. */
+  const hullMass = spec =>
+    spec ? (spec.size || 1) * (spec.size || 1) * (1 + (spec.hull || 8) / 24) : 1;
+  /* What fraction of a collision the *first* of the two wears. Half each when
+     they match, and the lighter one wears nearly all of it when they do not. */
+  const shoveShare = (mine, theirs) => {
+    const a = hullMass(mine), b = hullMass(theirs);
+    return (2 * b) / (a + b);
+  };
 
   function splitRock(rock) {
     const spec = rockSpec(rock.size);
@@ -3974,6 +4079,33 @@
       piece.vy = rock.vy + Math.sin(a) * 90 * U;
       rocks.push(piece);
     }
+  }
+
+  /* ── taken apart in one hit ───────────────────────────────────────────────
+     What the industrial beam and the utility claw both do. Ric: it "breaks big
+     asteroids into medium into small into broken in one hit" — so rather than
+     knocking a rock down one tier and leaving two children for the next shot,
+     this runs the whole chain at once and pays out every piece the chain would
+     have produced.
+
+     It is `splitRock` all the way down rather than a special case beside it, so
+     the yield, the score, the sound and the prospector entry are the ones the
+     rest of the game already agrees on: a big rock taken apart by a beam is
+     worth exactly what a big rock taken apart by seven cannon rounds is worth.
+     The depth is bounded by the tier chain rather than by a counter, and the
+     chain is three long. */
+  function shatterWhole(rock) {
+    if (!rock) return;
+    const before = rocks.length;
+    const spec = rockSpec(rock.size);
+    splitRock(rock);
+    if (!spec.next) return;
+    /* `splitRock` removed one and pushed its children on the end, so the new
+       ones are everything past where the list used to stop being unchanged.
+       Taken by identity rather than by index, because a mote drop or a sound can
+       do anything it likes to the array in between. */
+    const kids = rocks.slice(before - 1).filter(r => r.size === spec.next);
+    for (const kid of kids) shatterWhole(kid);
   }
 
   /* ── which rocks might be touching ────────────────────────────────────────
@@ -5333,42 +5465,42 @@
     // ── explorers: range, useful holds, and no single way to travel ─────────
     { key: "skiff", name: "SKIFF", category: "EXPLORER", best: "TURN", cost: 0,
       hull: 8, dmg: 0.8, rate: 0.75, cargo: 150, speed: 0.9,
-      accel: 0.56, turn: 0.69, drag: 0.26, shot: 0.78, size: 1,
+      turn: 0.69, drag: 0.55, shot: 0.78, size: 1,
       note: "the little explorer everybody starts in",
       art: [[14, 0], [-10, 8], [-6, 0], [-10, -8]] },
 
     // ── sport: tiny holds, hot drives, and very little forgiveness ──────────
     { key: "needle", name: "NEEDLE", category: "SPORT", best: "SPEED", cost: 900,
-      hull: 4, dmg: 0.7, rate: 0.85, cargo: 30, speed: 1.7,
-      accel: 5.02, turn: 1.91, drag: 1.15, shot: 1.05, size: 0.86,
+      hull: 4, dmg: 2.4, rate: 0.85, cargo: 30, speed: 2.2,
+      turn: 1.91, drag: 0.26, punch: 7, burst: 1, shot: 1.05, size: 0.86,
       note: "quicker than it is sensible",
       art: [[17, 0], [-6, 4], [-11, 2], [-11, -2], [-6, -4]],
       fins: [[[-2, 4], [-6, 10]], [[-2, -4], [-6, -10]]] },
 
     // ── couriers: acceleration first, because late cargo is worthless ──────
     { key: "kite", name: "KITE", category: "COURIER", best: "ACCEL", cost: 1600,
-      hull: 6, dmg: 0.9, rate: 1, cargo: 40, speed: 1.46,
-      accel: 2.66, turn: 1.34, drag: 0.72, shot: 0.92, size: 0.94,
+      hull: 6, dmg: 0.9, rate: 1, cargo: 25, speed: 2.7,
+      turn: 1.55, drag: 2.6, spool: 3.4, shot: 0.92, size: 0.94,
       note: "all engine and urgent paperwork",
       art: [[15, 0], [0, 9], [-11, 5], [-7, 0], [-11, -5], [0, -9]] },
 
     { key: "vane", name: "VANE", category: "SPORT", best: "TURN", cost: 2600,
-      hull: 6, dmg: 1.2, rate: 1, cargo: 60, speed: 1.52,
-      accel: 4.49, turn: 1.63, drag: 1.15, shot: 0.95, size: 0.9,
+      hull: 6, dmg: 3.6, rate: 1, cargo: 60, speed: 1.95,
+      turn: 1.63, drag: 0.22, punch: 7, burst: 1, shot: 0.95, size: 0.9,
       note: "changes its mind before you do",
       art: [[18, 0], [2, 5], [-9, 7], [-5, 0], [-9, -7], [2, -5]],
       fins: [[[2, 5], [6, 11]], [[2, -5], [6, -11]]] },
 
     { key: "mote", name: "MOTE", category: "SPORT", best: "FIRE RATE", cost: 4200,
-      hull: 9, dmg: 0.9, rate: 1.2, cargo: 90, speed: 1.61,
-      accel: 4.76, turn: 1.77, drag: 1.15, shot: 1, size: 0.78,
+      hull: 9, dmg: 2.7, rate: 1.2, cargo: 90, speed: 2.05,
+      turn: 1.77, drag: 0.3, punch: 7, burst: 1, shot: 1, size: 0.78,
       note: "small enough to mistake for a bad idea",
       art: [[16, 0], [-4, 3], [-9, 6], [-6, 0], [-9, -6], [-4, -3]] },
 
     // ── military: armour and guns, with just enough hold for a mission ──────
-    { key: "lance", name: "LANCE", category: "MILITARY", best: "SPEED", cost: 3400,
-      hull: 12, dmg: 1.6, rate: 0.95, cargo: 50, speed: 1.2,
-      accel: 1.01, turn: 1.41, drag: 0.4, shot: 1.55, size: 1.05,
+    { key: "lance", name: "LANCE", category: "MILITARY", best: "PRICE", cost: 3400,
+      hull: 14, dmg: 1.6, rate: 0.95, cargo: 50, speed: 1,
+      turn: 1, drag: 4, shot: 1.3, size: 1.05,
       note: "a pursuit drive with a gun sight",
       guns: [[6, 5], [6, -5]], ribs: [[[2, 6], [2, -6]]],
       art: [[18, 0], [-8, 7], [-4, 0], [-8, -7]],
@@ -5376,34 +5508,38 @@
 
     // ── commuters: quick away from a dock, civil, and easy to live with ─────
     { key: "wedge", name: "HOPPER", category: "COMMUTER", best: "ACCEL", cost: 5200,
-      hull: 7, dmg: 0.6, rate: 0.75, cargo: 100, speed: 1.15,
-      accel: 1.33, turn: 1.09, drag: 0.5, shot: 0.84, size: 1.1,
+      hull: 7, dmg: 0.6, rate: 0.75, cargo: 100, speed: 1.95,
+      turn: 0.88, drag: 1.3, spool: 5.5, bite: 0.5, ram: 1, shot: 0.84, size: 1.1,
       note: "made for the short jump between stations",
       guns: [[4, 7], [4, -7]], ribs: [[[-2, 8], [-2, -8]]],
       art: [[16, 0], [-2, 10], [-11, 8], [-7, 0], [-11, -8], [-2, -10]] },
 
     { key: "harrier", name: "SWALLOW", category: "COMMUTER", best: "FIRE RATE", cost: 7600,
-      hull: 12, dmg: 0.8, rate: 0.95, cargo: 200, speed: 1.02,
-      accel: 1.18, turn: 1, drag: 0.5, shot: 0.78, size: 1.06,
+      hull: 12, dmg: 0.8, rate: 0.95, cargo: 200, speed: 2.15,
+      turn: 0.98, drag: 1.45, spool: 5, bite: 0.45, ram: 1, shot: 0.78, size: 1.06,
       note: "a fast civil hull with teeth",
       guns: [[8, 4], [8, -4]],
       art: [[18, 0], [4, 6], [-6, 9], [-10, 4], [-6, 0], [-10, -4], [-6, -9], [4, -6]] },
 
     // ── utility: manoeuvrable working hulls with room for the job ───────────
     { key: "cradle", name: "CRADLE", category: "UTILITY", best: "TURN", cost: 9800,
-      hull: 9, dmg: 0.7, rate: 0.7, cargo: 180, speed: 0.9,
-      accel: 0.77, turn: 1.66, drag: 0.46, shot: 0.8, size: 1.24,
+      hull: 40, dmg: 1, rate: 0.85, cargo: 600, speed: 0.62,
+      turn: 0.4, drag: 0.1, tough: 1, weapon: "claw", shot: 0.8, size: 1.24,
       note: "gets a work crew into awkward places",
       art: [[15, 0], [6, 9], [-9, 11], [-5, 0], [-9, -11], [6, -9]] },
 
     /* The one that reads as a TIE without being one: a slab of a cockpit between
        two flat panels, and nothing else. Straight lines only — the silhouette is
        the whole joke and any curve on it would spoil the reference. */
-    { key: "louvre", name: "JACKAL", category: "MILITARY", best: "FIRE RATE", cost: 74000,
-      hull: 18, dmg: 2.4, rate: 1.35, cargo: 75, speed: 1.1,
-      /* Its old Louvre handling, kept exactly: the same top speed and turn,
-         the old global drag, and the thrust its speed used to give it. */
-      accel: 0.92, turn: 1.3, drag: 0.4, shot: 1.46, size: 1.14,
+    { key: "louvre", name: "JACKAL", category: "MILITARY", best: "DAMAGE", cost: 74000,
+      hull: 26, dmg: 4.2, rate: 1.45, cargo: 75, speed: 1.55,
+      /* The top of the military ladder and the most glued-down hull in the
+         game. Its heading half-life is six hundredths of a second — point it
+         and it is already going that way — which is the feel Ric asked the
+         whole class to be built around. It stopped carrying "its old Louvre
+         handling, kept exactly" two re-cuts ago; the comment outlived the
+         numbers it described, which is the thing this file keeps doing. */
+      turn: 1.2, drag: 12, burst: 4, shot: 2.75, size: 1.14,
       note: "four guns between two unmistakable louvers",
       guns: [[5, 6], [5, -6], [-1, 9], [-1, -9]],
       art: [[9, 0], [3, 5], [-7, 5], [-7, -5], [3, -5]],
@@ -5411,85 +5547,85 @@
              [[-6, 15], [8, 15]], [[-6, -15], [8, -15]],
              [[-6, 15], [-6, -15]], [[8, 15], [8, -15]]] },
 
-    { key: "spur", name: "SPUR", category: "MILITARY", best: "DAMAGE", cost: 17000,
-      hull: 24, dmg: 2.8, rate: 1.15, cargo: 120, speed: 1,
-      accel: 0.84, turn: 1.2, drag: 0.4, shot: 1.38, size: 1.22,
+    { key: "spur", name: "SPUR", category: "MILITARY", best: "VALUE", cost: 17000,
+      hull: 24, dmg: 2.4, rate: 1.1, cargo: 120, speed: 1.06,
+      turn: 1.12, drag: 6, shot: 1.34, size: 1.22,
       note: "a compact strike hull built around the first shot",
       guns: [[7, 5], [7, -5]],
       art: [[20, 0], [8, 5], [-4, 8], [-10, 5], [-6, 0], [-10, -5], [-4, -8], [8, -5]],
       fins: [[[8, 5], [14, 10]], [[8, -5], [14, -10]]] },
 
     { key: "runner", name: "RUNNER", category: "COURIER", best: "CARGO", cost: 6400,
-      hull: 4, dmg: 0.7, rate: 0.8, cargo: 250, speed: 1.3,
-      accel: 2.37, turn: 1.06, drag: 0.72, shot: 0.8, size: 1.16,
+      hull: 10, dmg: 0.7, rate: 0.8, cargo: 44, speed: 2.3,
+      turn: 1.35, drag: 2.3, spool: 4.2, shot: 0.8, size: 1.16,
       note: "a parcel hold with an engine behind it",
       art: [[15, 0], [8, 6], [-12, 8], [-8, 0], [-12, -8], [8, -6]] },
 
     { key: "pannier", name: "PANNIER", category: "COMMUTER", best: "CARGO", cost: 11000,
-      hull: 24, dmg: 1, rate: 0.65, cargo: 450, speed: 0.9,
-      accel: 1.04, turn: 0.91, drag: 0.5, shot: 0.72, size: 1.34,
+      hull: 24, dmg: 0.72, rate: 0.85, cargo: 300, speed: 2.4,
+      turn: 1.1, drag: 1.6, spool: 4.5, bite: 0.4, ram: 1, shot: 0.72, size: 1.34,
       note: "two cabins, two holds, one patient crew",
       art: [[14, 0], [7, 5], [-13, 6], [-9, 0], [-13, -6], [7, -5]],
       fins: [[[4, 6], [-10, 12]], [[-10, 12], [-13, 6]],
              [[4, -6], [-10, -12]], [[-10, -12], [-13, -6]]] },
 
     { key: "stride", name: "STRIDE", category: "COURIER", best: "DAMAGE", cost: 19500,
-      hull: 12, dmg: 1.3, rate: 1.15, cargo: 180, speed: 1.38,
-      accel: 2.52, turn: 1.2, drag: 0.72, shot: 0.86, size: 1.46,
+      hull: 12, dmg: 1, rate: 0.9, cargo: 35, speed: 2.5,
+      turn: 1.45, drag: 2.45, spool: 3.8, shot: 0.86, size: 1.46,
       note: "the armed dispatch ship for difficult routes",
       art: [[18, 0], [10, 6], [-14, 9], [-10, 0], [-14, -9], [10, -6]],
       fins: [[[10, 6], [6, 13]], [[10, -6], [6, -13]]] },
 
     { key: "carrack", name: "CARRACK", category: "EXPLORER", best: "CARGO", cost: 31000,
-      hull: 18, dmg: 1, rate: 0.85, cargo: 500, speed: 1.11,
-      accel: 0.69, turn: 0.84, drag: 0.26, shot: 0.85, size: 1.62,
+      hull: 18, dmg: 1.2, rate: 0.95, cargo: 600, speed: 1.15,
+      turn: 0.69, drag: 0.55, shot: 0.85, size: 1.62,
       note: "the long survey, done properly",
       ribs: [[[0, 9], [0, -9]]],
       art: [[17, 0], [11, 7], [-6, 11], [-16, 8], [-11, 0], [-16, -8], [-6, -11], [11, -7]] },
 
     // ── cargo: holds first, with enough ship wrapped around them ────────────
     { key: "drayman", name: "DRAYMAN", category: "CARGO", best: "SPEED", cost: 15000,
-      hull: 14, dmg: 0.6, rate: 0.6, cargo: 500, speed: 0.6,
-      accel: 0.17, turn: 0.42, drag: 0.14, shot: 0.64, size: 1.7,
+      hull: 26, dmg: 0.8, rate: 0.7, cargo: 900, speed: 0.86,
+      turn: 0.6, drag: 0.5, spool: 0.6, shot: 0.64, size: 1.7,
       note: "the quick end of moving things for money",
       ribs: [[[2, 9], [2, -9]], [[-6, 8], [-6, -8]]],
       art: [[13, 0], [9, 10], [-14, 12], [-10, 0], [-14, -12], [9, -10]] },
 
     { key: "coffer", name: "COFFER", category: "CARGO", best: "DRAG", cost: 26000,
-      hull: 28, dmg: 0.8, rate: 0.7, cargo: 1200, speed: 0.49,
-      accel: 0.14, turn: 0.34, drag: 0.14, shot: 0.58, size: 1.88,
+      hull: 40, dmg: 0.9, rate: 0.75, cargo: 1500, speed: 0.76,
+      turn: 0.54, drag: 0.48, spool: 0.7, shot: 0.58, size: 1.88,
       note: "a safe with a drive and a great deal of momentum",
       ribs: [[[0, 11], [0, -11]], [[-8, 9], [-8, -9]]],
       art: [[12, 0], [10, 9], [10, 13], [-15, 13], [-15, -13], [10, -13], [10, -9]] },
 
     // ── industrial: armoured working machinery that happens to fly ─────────
     { key: "windlass", name: "WINDLASS", category: "INDUSTRIAL", best: "CARGO", cost: 42000,
-      hull: 30, dmg: 0.9, rate: 0.75, cargo: 800, speed: 0.52,
-      accel: 0.12, turn: 0.36, drag: 0.11, shot: 0.62, size: 2.05,
+      hull: 60, dmg: 1.2, rate: 0.8, cargo: 900, speed: 0.52,
+      turn: 0.3, drag: 0.058, tough: 1, weapon: "beam", shot: 0.62, size: 2.05,
       note: "built round the winch",
       ribs: [[[3, 10], [3, -10]], [[-7, 10], [-7, -10]]],
       art: [[14, 0], [8, 8], [8, 14], [-16, 12], [-12, 0], [-16, -12], [8, -14], [8, -8]],
       fins: [[[-4, 14], [-4, -14]], [[2, 13], [2, -13]]] },
 
     { key: "granary", name: "GRANARY", category: "CARGO", best: "CARGO", cost: 63000,
-      hull: 40, dmg: 1, rate: 0.85, cargo: 2000, speed: 0.38,
-      accel: 0.11, turn: 0.25, drag: 0.14, shot: 0.52, size: 2.3,
+      hull: 55, dmg: 1, rate: 0.8, cargo: 2400, speed: 0.66,
+      turn: 0.48, drag: 0.46, spool: 0.8, shot: 0.52, size: 2.3,
       note: "the largest hold on the civilian register",
       ribs: [[[4, 13], [4, -13]], [[-6, 13], [-6, -13]]],
       art: [[13, 0], [11, 11], [-4, 16], [-18, 13], [-14, 0], [-18, -13], [-4, -16], [11, -11]] },
 
-    { key: "bastion", name: "BASTION", category: "MILITARY", best: "HULL", cost: 24000,
-      hull: 48, dmg: 3.2, rate: 1, cargo: 500, speed: 0.8,
-      accel: 0.67, turn: 1, drag: 0.4, shot: 1.2, size: 1.66,
+    { key: "bastion", name: "BASTION", category: "MILITARY", best: "BURST", cost: 24000,
+      hull: 30, dmg: 2.7, rate: 1.15, cargo: 300, speed: 1.1,
+      turn: 1.18, drag: 7, burst: 4, shot: 1.38, size: 1.66,
       note: "armour first and everything else behind it",
       guns: [[4, 9], [4, -9], [-4, 11], [-4, -11]],
       ribs: [[[0, 10], [0, -10]], [[-8, 8], [-8, -8]]],
       art: [[17, 0], [12, 8], [-4, 11], [-13, 7], [-9, 0], [-13, -7], [-4, -11], [12, -8]],
       fins: [[[12, 8], [17, 13]], [[12, -8], [17, -13]]] },
 
-    { key: "reprisal", name: "REPRISAL", category: "MILITARY", best: "DAMAGE", cost: 38000,
-      hull: 32, dmg: 4, rate: 1.45, cargo: 180, speed: 0.9,
-      accel: 0.76, turn: 1.1, drag: 0.4, shot: 1.29, size: 1.74,
+    { key: "reprisal", name: "REPRISAL", category: "MILITARY", best: "HULL", cost: 38000,
+      hull: 44, dmg: 3.3, rate: 1.3, cargo: 180, speed: 1.16,
+      turn: 1.28, drag: 9.5, shot: 2.5, size: 1.74,
       note: "the answer to whatever fired first",
       guns: [[6, 8], [6, -8], [-2, 12], [-2, -12]],
       ribs: [[[-6, 10], [-6, -10]]],
@@ -5497,8 +5633,8 @@
             [-14, -8], [-6, -14], [13, -12], [13, -6]] },
 
     { key: "ironmonger", name: "IRONMONGER", category: "INDUSTRIAL", best: "HULL", cost: 58000,
-      hull: 48, dmg: 1.4, rate: 0.95, cargo: 650, speed: 0.36,
-      accel: 0.08, turn: 0.22, drag: 0.11, shot: 0.5, size: 1.98,
+      hull: 80, dmg: 1.4, rate: 0.75, cargo: 750, speed: 0.38,
+      turn: 0.24, drag: 0.045, tough: 1, weapon: "beam", shot: 0.5, size: 1.98,
       note: "a foundry that flies",
       guns: [[2, 12], [2, -12], [-6, 14], [-6, -14]],
       ribs: [[[-2, 13], [-2, -13]], [[-10, 10], [-10, -10]]],
@@ -5506,8 +5642,8 @@
       fins: [[[14, 10], [20, 8]], [[14, -10], [20, -8]], [[0, 15], [0, -15]]] },
 
     { key: "revenant", name: "LONGVIEW", category: "EXPLORER", best: "SPEED", cost: 86000,
-      hull: 20, dmg: 1.5, rate: 1.1, cargo: 300, speed: 1.32,
-      accel: 0.82, turn: 1, drag: 0.26, shot: 0.92, size: 2.6,
+      hull: 20, dmg: 1.5, rate: 1.1, cargo: 900, speed: 1.6,
+      turn: 0.69, drag: 0.55, shot: 0.92, size: 2.6,
       note: "built to make the far edge come closer",
       guns: [[0, 16], [0, -16], [-10, 18], [-10, -18]],
       ribs: [[[6, 12], [6, -12]], [[-4, 17], [-4, -17]], [[-14, 14], [-14, -14]]],
@@ -5516,8 +5652,8 @@
       fins: [[[2, 14], [2, -14]], [[-8, 16], [-8, -16]]] },
 
     { key: "cathedral", name: "GANTRY", category: "INDUSTRIAL", best: "CARGO", cost: 112000,
-      hull: 40, dmg: 1.2, rate: 0.8, cargo: 1100, speed: 0.44,
-      accel: 0.1, turn: 0.29, drag: 0.11, shot: 0.56, size: 3,
+      hull: 70, dmg: 1.3, rate: 0.78, cargo: 1300, speed: 0.46,
+      turn: 0.27, drag: 0.052, tough: 1, weapon: "beam", shot: 0.56, size: 3,
       note: "a mobile yard with engines under it",
       guns: [[-2, 18], [-2, -18]],
       ribs: [[[8, 12], [8, -12]], [[0, 18], [0, -18]], [[-10, 16], [-10, -16]]],
@@ -5526,8 +5662,13 @@
       fins: [[[10, 17], [10, -17]], [[-2, 19], [-2, -19]], [[18, 8], [18, -8]]] },
 
     { key: "ossuary", name: "TENDER", category: "UTILITY", best: "CARGO", cost: 168000,
-      hull: 26, dmg: 1.2, rate: 1, cargo: 700, speed: 0.74,
-      accel: 0.63, turn: 1.38, drag: 0.46, shot: 0.7, size: 3.5,
+      hull: 55, dmg: 1.2, rate: 0.9, cargo: 900, speed: 0.78,
+      /* Ric flew it and wanted it nearer the gunships: quicker, sharper off the
+         mark, and far less adrift. Grip 2.6 puts its heading half-life at a
+         quarter of a second — an order of magnitude tighter than the Cradle it
+         shares a category with — which is the military feel. It stops a long way
+         short of their speed on purpose; it is still a workshop. */
+      turn: 0.62, drag: 2.6, tough: 1, weapon: "claw", shot: 0.7, size: 3.5,
       note: "a fleet's workshop, stores and spare hands",
       ribs: [[[6, 14], [6, -14]], [[-2, 18], [-2, -18]], [[-12, 15], [-12, -15]]],
       art: [[26, 0], [20, 10], [12, 20], [-10, 23], [-24, 14], [-20, 0],
@@ -5535,6 +5676,100 @@
       fins: [[[12, 20], [12, -20]], [[0, 22], [0, -22]], [[-12, 22], [-12, -22]],
              [[20, 10], [20, -10]]] }
   ];
+
+  /* ── two axes, and the one number that is not written down ────────────────
+     Ric flew the roster again and the verdict was that the ships need to be
+     *crazy*, with the Jackal as the example: "you go right and it goes right
+     almost instantly". The reason nothing felt like that is visible in the
+     table it replaced — `drag` had seven values across twenty-five hulls, one
+     per category, and `accel` tracked it almost exactly. Handling was one
+     ladder with everything strung along it, so every hull was a point on the
+     same line and a category was a stretch of that line. Faster meant twitchier
+     and slower meant floatier, always, and there was no third thing a hull
+     could be.
+
+     There are two axes now and they are deliberately uncorrelated:
+
+       speed   how fast you can eventually go
+       drag    how hard the ship is *glued to where you point it*
+
+     Drag is not friction any more, it is **grip**, and it is the whole of what
+     Ric was asking for. It sets how long the old heading survives a turn: the
+     velocity decays by `exp(-drag·dt)`, so a hull's memory of where it was
+     going is 1/drag seconds long. The Jackal's is 0.08 of a second — you turn,
+     and the ship is already going the new way. A Gantry's is nineteen seconds,
+     and steering one is steering a building.
+
+     That the two axes cross is the point, and it is what the old ladder could
+     not express. A sport hull is now *fast and floaty* — enormous top speed, a
+     razor turn, and a second and a half of drift that makes every corner a
+     commitment. A courier is fast and glued. The Jackal is not especially
+     quick and it is welded to your hands. Four corners instead of one line.
+
+     `accel` is no longer a column. It is what it always actually was — the
+     thrust needed to reach this hull's own top speed against this hull's own
+     grip — so it is derived here rather than kept in step by hand, which is the
+     failure this file has shipped more than once.
+
+     Headroom is how far past its stated ceiling a hull could theoretically
+     push. Above 1 the ship truly arrives at its top speed instead of
+     asymptoting under it forever, and the margin is what the last tenth of the
+     throttle is doing.
+
+     It is not one number, and the reason is a mistake worth keeping written
+     down. A flat headroom makes thrust fall out as `cap · drag`, which ties the
+     size of a hull's engine to the shortness of its drift — so every floaty
+     hull got a feeble engine, and a Drayman that used to climb out of a
+     gravity well was quietly no longer able to. That is not what heavy means.
+     A barge has a *big* engine and enormous inertia; the engine is why it gets
+     going at all and the inertia is why it cannot stop.
+
+     So headroom rises as grip falls. The floatiest hulls push nearly three
+     times as hard past their ceiling as the gluey ones, which buys them an
+     engine that can fight gravity while leaving the long drift — the thing
+     that makes them barges — completely untouched, because drift is `drag`
+     alone and nothing here changes it. */
+  const SHIP_HEADROOM = drag => {
+    const t = Math.min(1, Math.max(0, Math.log(2 / drag) / Math.log(2 / 0.045)));
+    return 1.6 + 2.6 * t;
+  };
+  for (const sh of SHIPS) {
+    /* `punch` overrides the curve where a hull is meant to feel eager out of
+       proportion to its grip. The sport hulls are the reason it exists: Ric
+       wants them "easy to get to speed but they should really slide", and those
+       are the same number — grip decides both how fast you arrive at your top
+       speed and how long you carry it afterwards, so a slidey hull is a sluggish
+       one and there is no way round that from drag alone. A big engine is the
+       way round it. Punch 6 against a grip of 0.3 reaches the ceiling in six
+       tenths of a second and still takes eight seconds to give the speed back. */
+    sh.accel = +(sh.speed * MAX_SPEED * sh.drag / THRUST *
+                 (sh.punch || SHIP_HEADROOM(sh.drag))).toFixed(3);
+    /* Where this hull's engine and its nose actually are, in the same 12-unit
+       space the outline is drawn in. The exhaust used to come out at one ship
+       *radius* behind the middle, which is only the back of the ship for a hull
+       whose outline happens to be twelve units long — the stock triangle. The
+       Tender reaches twenty-four units back, so its flame was burning inside
+       the middle of the hull, and Ric said so: "the flame is in the wrong spot
+       for him." It comes out of the back of whatever you are flying now. */
+    const art = sh.art || [[12, 0], [-12, 0]];
+    const xs = art.map(p => p[0]);
+    sh.tailX = Math.min(...xs);
+    sh.noseX = Math.max(...xs);
+    /* And how big a circle this outline really is. Collision used a flat
+       three-quarters of the stock twelve-unit radius, which is about right for
+       the stock triangle and nowhere near right for anything drawn larger than
+       it: the Tender's outline reaches twenty-six units in the same space, so
+       even after scaling by `size` the circle stopping it covered a third of
+       the ship. Rocks went through the visible hull.
+
+       The mean distance of the outline's own corners, because a hull is not a
+       disc and the furthest corner would wrap a long thin ship in a circle it
+       never fills. The 0.8 keeps the stock hull exactly where it has always sat
+       — its mean is 11.4 and three-quarters of twelve is 9 — so nothing small
+       changes and everything large stops being a lie. */
+    const mean = art.reduce((t, pt) => t + Math.hypot(pt[0], pt[1]), 0) / art.length;
+    sh.hitR = +(mean * 0.8).toFixed(2);
+  }
 
   /* The shipyard uses the same order as the register Ric supplied. `key` stays
      stable for old saves; category and display name are the catalogue layer. */
@@ -9303,7 +9538,56 @@
       surv.traffic.push(t);
     }
 
+    capHomeTraffic();
     seedMotes();
+  }
+
+  /* ── and never a crowd at the front door ──────────────────────────────────
+     The generation bowl decides how often a ship is *made* near home; this
+     decides how many can be standing there at once. They are different
+     questions, because chunks stream independently and a run of ordinary rolls
+     can still put four ships in the same piece of sky — and Ric's rule is about
+     what you can see, not about the odds: "there shouldn't be more than 2 unless
+     there is a war or battle going on right next to you."
+
+     So two, and the exception is his as well. A battle inside the home band
+     lifts the cap entirely: a fight is the one thing worth a crowd, and thinning
+     one out would leave you watching half of something.
+
+     What goes is the *furthest* over the cap, and only ships that are nobody's
+     business yet — anything you have hurt, anything hunting you, anything in a
+     battle and anything you have a history with stays, because a ship vanishing
+     mid-chase is the bug this whole streamer keeps almost shipping. */
+  const HOME_CROWD = 2;
+  const HOME_CALM_R = CHUNK * 4;
+  function capHomeTraffic() {
+    if (!surv || !surv.traffic.length) return;
+    const inHome = t => Math.hypot(t.x, t.y) < HOME_CALM_R;
+    const here = surv.traffic.filter(inHome);
+    if (here.length <= HOME_CROWD) return;
+    // A fight near the door is allowed its crowd.
+    for (const b of (surv.battles || [])) {
+      if (Math.hypot(b.x, b.y) < HOME_CALM_R + CHUNK) return;
+    }
+    if (here.some(t => t.battle)) return;
+    const spare = here.filter(t =>
+      !t.hurtBy && !t.angry && !t.angryAt && !t.name &&
+      !t.hunted && !t.stun && t.kind !== "distress" &&
+      Math.hypot(t.x - ships[0].x, t.y - ships[0].y) > 900 * U);
+    spare.sort((a, b) =>
+      Math.hypot(b.x - ships[0].x, b.y - ships[0].y) -
+      Math.hypot(a.x - ships[0].x, a.y - ships[0].y));
+    let over = here.length - HOME_CROWD;
+    for (const t of spare) {
+      if (over <= 0) break;
+      const at = surv.traffic.indexOf(t);
+      if (at < 0) continue;
+      /* Written off rather than merely dropped, so the chunk that made it does
+         not hand it straight back on the next rebuild. */
+      if (t.id) surv.goneTraffic.add(t.id);
+      surv.traffic.splice(at, 1);
+      over--;
+    }
   }
 
   /* ── everything solid is solid to everybody ───────────────────────────────
@@ -9361,6 +9645,27 @@
     return null;
   }
 
+  /* Reflecting off whatever `solidBounce` just put you back on top of. The
+     component heading *into* the surface is reversed and damped; the component
+     along it is kept, so a glancing pass slides and a head-on stops. That is
+     the same rule the player's rock bounce follows, and it is what these three
+     call sites were missing — they scaled the whole velocity down instead, so a
+     ship that clipped a wall lost four fifths of everything it had whatever
+     hull it was flying and however much grip that hull had.
+
+     `keep` under two, always: at two the bounce is perfectly elastic and
+     anything above it hands out free speed. */
+  function bounceOff(o, keep) {
+    const nx = o.bnx, ny = o.bny;
+    if (nx === undefined) { o.vx = (o.vx || 0) * 0.5; o.vy = (o.vy || 0) * 0.5; return; }
+    const into = (o.vx || 0) * nx + (o.vy || 0) * ny;
+    if (into < 0) {
+      o.vx -= into * nx * keep;
+      o.vy -= into * ny * keep;
+    }
+    o.bnx = o.bny = undefined;
+  }
+
   function solidBounce(o, r) {
     if (!surv) return false;
     let hit = false;
@@ -9373,6 +9678,14 @@
       const nx = d > 1 ? dx / d : 1, ny = d > 1 ? dy / d : 0;
       o.x = cx + nx * min;
       o.y = cy + ny * min;
+      /* Handed back, so the caller can reflect along it instead of throwing the
+         whole velocity away. The callers used to multiply by 0.2 or 0.25 —
+         which stops a ship dead whatever it is flying, and Ric spotted it from
+         the cockpit: "some bots are still not following the rules, somehow they
+         stop instantly with ships like the stride which cant do that." A Stride
+         carries its speed for nearly a second; nothing it brushes should be
+         able to take four fifths of it in a frame. */
+      o.bnx = nx; o.bny = ny;
       // Along the surface, in whichever direction it was already going.
       const along = Math.atan2(ny, nx);
       const turn = Math.cos(o.a - along) > 0 ? 0 : Math.PI;
@@ -10520,7 +10833,7 @@
         t.vy = (t.vy || 0) * Math.exp(-0.35 * dt);
         t.x += t.vx * dt; t.y += t.vy * dt;
         if (solidBounce(t, 22 * U * (shipSpec(t.hull).size || 1))) {
-          t.vx *= 0.2; t.vy *= 0.2;
+          bounceOff(t, 1.1);
         }
         continue;
       }
@@ -10724,7 +11037,21 @@
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
       const hullSpec = shipSpec(t.hull);
-      const trafficTurn = 1.4 * hullSpec.turn;
+      /* `TURN`, the same constant your own hull turns on — not the 1.4 this
+         used to carry. That 1.4 predated hulls having their own turn numbers
+         and survived the rewrite that put acceleration and drag on the shared
+         ones, so the comment below claimed three numbers were shared while two
+         of them were: a bot turned at 44% of your rate in the same hull, which
+         is why a fast enemy could always be out-circled however good its hull
+         was on paper. Measured before and after on six hulls. */
+      /* And the turn falls off with speed the way yours does — `bite` is one on
+         everything but the commuters. A hull that handled differently depending
+         on who was holding it would undo the whole point of `samehull`. */
+      const cruiseNow = MAX_SPEED * hullSpec.speed * U;
+      const fastFrac = cruiseNow > 0
+        ? Math.min(1, Math.hypot(t.vx || 0, t.vy || 0) / cruiseNow) : 0;
+      const tBite = hullSpec.bite == null ? 1 : hullSpec.bite;
+      const trafficTurn = TURN * hullSpec.turn * (1 - (1 - tBite) * fastFrac);
       t.a += Math.max(-trafficTurn * dt, Math.min(trafficTurn * dt, diff));
 
       /* ── a hull carries what it already had ────────────────────────────
@@ -10743,15 +11070,31 @@
 
          Acceleration, turn and drag now decide whether a hull feels like a barge
          or a wasp. Those are the same three numbers for the player and the bot;
-         a different pilot no longer means different physics. */
+         a different pilot no longer means different physics — and since the
+         turn constant was brought into line, that sentence is true of all three
+         rather than of two of them.
+
+         One thing is still yours alone, and deliberately: `boost`, the
+         allowance that lets you carry speed above your own ceiling after a
+         gravity-well slingshot. Reading a well is a manoeuvre rather than a
+         stat, and it is the one the sector rewards you for knowing. */
       const size = hullSpec.size || 1;
       /* The same drive facts the player buys: acceleration pushes along the
          nose, drag keeps the old heading alive through a turn, and speed is the
          ceiling. A Jackal in somebody else's hands therefore handles like the
          Jackal in the hangar rather than like a generic role with its outline. */
       if (t.vx === undefined) { t.vx = 0; t.vy = 0; }
-      t.vx += Math.cos(t.a) * THRUST * hullSpec.accel * U * dt;
-      t.vy += Math.sin(t.a) * THRUST * hullSpec.accel * U * dt;
+      /* The drive winds up for them too. `spool` is nought on everything but
+         the commuters and the haulers, so every other hull out there gets full
+         thrust on the first frame exactly as before — and a commuter pulling
+         away from a station takes as long about it in somebody else's hands as
+         it does in yours. */
+      if (hullSpec.spool > 0) {
+        t.spun = Math.min(1, (t.spun || 0) + dt / hullSpec.spool);
+      } else t.spun = 1;
+      const wind = hullSpec.spool > 0 ? t.spun : 1;
+      t.vx += Math.cos(t.a) * THRUST * hullSpec.accel * wind * U * dt;
+      t.vy += Math.sin(t.a) * THRUST * hullSpec.accel * wind * U * dt;
       const hullDamp = Math.exp(-hullSpec.drag * dt);
       t.vx *= hullDamp; t.vy *= hullDamp;
       const engineSpeed = Math.hypot(t.vx, t.vy);
@@ -10766,7 +11109,7 @@
          the velocity goes with the push: a ship now *has* one, so without this
          it keeps driving into the surface it was just moved off and grinds
          along it until the eight-second watchdog notices. */
-      if (solidBounce(t, 22 * U * size)) { t.vx *= 0.25; t.vy *= 0.25; }
+      if (solidBounce(t, 22 * U * size)) bounceOff(t, 1.3);
 
       /* ── a hull is a hull ───────────────────────────────────────────────
          You could fly straight through every ship in the sector. Ships bounce off
@@ -10800,7 +11143,12 @@
         const nx = dx / d, ny = dy / d;
         me.x = t.x + nx * min; me.y = t.y + ny * min;
         const into = me.vx * nx + me.vy * ny;
-        if (into < 0) { me.vx -= into * nx * 1.6; me.vy -= into * ny * 1.6; }
+        if (into < 0) {
+          // Shared by mass. A Kite does not move a Gantry. See `shoveShare`.
+          const share = shoveShare(me.spec, shipSpec(t.hull));
+          me.vx -= into * nx * 1.6 * share;
+          me.vy -= into * ny * 1.6 * share;
+        }
         // And it gets out of the way, which is what a person would do.
         t.x -= nx * 12 * U; t.y -= ny * 12 * U;
       }
@@ -10922,6 +11270,11 @@
             }
             if (blocked) { t.cool = 0.25; continue; }
             const guns = shipSpec(t.hull);
+            /* A claw has no reach. The utility hulls do not carry a gun at all —
+               they carry a pair of jaws — so in somebody else's hands they do
+               not fire one either. A working tug that sniped across a sector
+               would be the roster saying one thing and the sector another. */
+            if (guns.weapon === "claw") { t.cool = 1.4; continue; }
             t.cool = (t.angry ? 0.42 : 0.5) / guns.rate;
             surv.shots.push({
               x: t.x + Math.cos(a) * 20 * U, y: t.y + Math.sin(a) * 20 * U,
@@ -10932,7 +11285,13 @@
               vx: Math.cos(a) * SHOT_V + (t.vx || 0),
               vy: Math.sin(a) * SHOT_V + (t.vy || 0),
               // `dmg`, so a rock takes the same point from them it takes from you.
-              life: 2.2, dmg: guns.dmg, friendly: !live, from: t
+              life: 2.2, dmg: guns.dmg, friendly: !live, from: t,
+              /* And a beam in somebody else's hands is a beam. An industrial
+                 hauler out there cuts rock the way yours does — which is most of
+                 what makes the sector's ships read as the same twenty-five hulls
+                 you can buy rather than as a separate species with the same
+                 silhouettes. */
+              rends: guns.weapon === "beam", beam: guns.weapon === "beam"
             });
             gameSound("shot", t.x);
           } else t.cool = 1.2;
@@ -11959,6 +12318,34 @@
        it is what lets a fast ship outrun a freighter's return fire and still be
        caught by a gunship's. */
     ship.shotMul   = sh.shot == null ? 1 : sh.shot;
+    /* How many rounds one pull of the trigger sends. Three everywhere for
+       years, and a global constant rather than a hull's business — which made
+       it the one thing about a gun that every ship in the game agreed on. The
+       Bastion and the Jackal send four. It is a bigger change than it reads:
+       the burst is what a fight is *counted* in out here, so a fourth round is
+       a third more damage inside the same window and the same recovery. */
+    ship.burstSize = sh.burst || BURST_SIZE;
+    /* ── the two axes grip could not carry ────────────────────────────────
+       `spool` is how long the drive takes to wind up to full thrust, and it is
+       the only way a hull can be slow off the line *and* refuse to slide. Grip
+       decides both of those on its own and decides them together, so a commuter
+       that does not skid is, on drag alone, a commuter that leaps away from a
+       dock — which is the opposite of what a commuter is. A bus has good brakes
+       and a slow pull-away, and this is the pull-away.
+
+       `bite` is how much of the turn survives at full speed. A commuter turns
+       well standing still and badly at a run, which is the other half of the
+       same feeling and is not something any single drag number can say. */
+    ship.spool     = sh.spool || 0;
+    ship.spun      = ship.spun || 0;
+    ship.bite      = sh.bite == null ? 1 : sh.bite;
+    /* A shielded nose. The commuters push through the drifting field instead of
+       being stopped by it — which is what makes them the hull you take between
+       stations without looking where you are going. Rocks only: a world, a dead
+       hull and the Leviathan are structures, and flying through those would make
+       the sector a backdrop again. */
+    ship.ram       = !!sh.ram;
+    ship.weapon    = sh.weapon || null;
     ship.sizeMul   = sh.size;
     if (ship.hull > ship.maxHull) ship.hull = ship.maxHull;
   }
@@ -13042,7 +13429,7 @@
       /* A sentry is solid to a world too. It has no heading of its own to turn,
          so it is put back on the surface and its velocity is taken with it —
          which reads as bumping into the thing and giving up on that direction. */
-      if (solidBounce(d, 16 * U)) { d.vx *= 0.2; d.vy *= 0.2; }
+      if (solidBounce(d, 16 * U)) bounceOff(d, 1.2);
       if (hazardAt(d.x, d.y, 12 * U)) {
         burst(d.x, d.y, DRONE_COLOUR, 12, 180 * U);
         if (d.id) surv.deadGuards.add(d.id);
@@ -14870,8 +15257,26 @@
        so often, rather than a rush hour you spawn into. */
     const busy = abund("traffic", ox + CHUNK / 2, oy + CHUNK / 2);
     if (!busy) return;                // nobody flies through an empty region
-    const atHome = Math.abs(cx) <= 2 && Math.abs(cy) <= 2;
-    if (R() > (0.34 * near + 0.012) * busy * (atHome ? 0.25 : 1)) return;
+    /* ── home is quiet, and quiet means quiet ──────────────────────────────
+       A quarter of the usual chance over a five-by-five block still left two or
+       three ships permanently within sight of the one station you cannot avoid.
+       Ric: "there should only ever be like 1 or 0 at the station. very unlikely
+       but possible 2."
+
+       A smooth bowl rather than a box, out to four chunks — about ten thousand
+       units — so there is no line you cross where the lanes switch on, and the
+       floor at the origin is a twentieth of the open rate. Over the whole bowl
+       that comes to well under one ship at a time, which is the "0 or 1, very
+       unlikely 2" he asked for, and it leaves the sector's density untouched
+       everywhere else. */
+    const fromHome = Math.hypot(cx, cy) / 4;
+    /* The floor is a trickle rather than nothing. At a twentieth the origin came
+       out genuinely dead across a whole sector's worth of seeds, and "quiet" was
+       not the ask — "maybe 1 every 10 min ish" was. An eighth leaves somebody
+       docking and leaving now and then, which is the thing that makes the home
+       station read as a place people use rather than a place people left. */
+    const calm = Math.min(1, 0.125 + 0.875 * Math.min(1, fromHome) ** 2);
+    if (R() > (0.34 * near + 0.012) * busy * calm) return;
 
     /* Whose, and what sort. Pirates thicken with distance — the lanes are kept
        near home and nobody is keeping anything out in the deep — and the two
@@ -14885,7 +15290,13 @@
     /* A tenth fewer than there were. The deep was better than a third pirates
        and it made every other role scenery between fights — and a raider is
        only frightening while it is not the thing you expect. */
-    if (roll < 0.054 + (1 - near) * 0.27) {
+    /* And a raider near home is almost unheard of. Ric: "there shouldnt really
+       ever be raiders" in the home band. The lanes here are watched; the whole
+       point of the danger curve is that it is something you fly *out* into, and
+       meeting a pirate on your first flight teaches the opposite. The same
+       `calm` bowl scales it, so it is rare rather than impossible — a raider
+       that has slipped in is a story, and one you meet every trip is a tax. */
+    if (roll < (0.054 + (1 - near) * 0.27) * calm) {
       faction = "pirate"; role = "pirate";
     } else {
       const powers = FACTIONS.map(f => f.key);
@@ -17956,6 +18367,19 @@
         note: sh.note, cost: sh.cost,
         hull: sh.hull, dmg: sh.dmg, rate: sh.rate, cargo: sh.cargo,
         speed: sh.speed, accel: sh.accel, turn: sh.turn, drag: sh.drag,
+        // Always a number here, so the page never has to know the default.
+        burst: sh.burst || BURST_SIZE,
+        // What actually stops this hull, and how far its outline reaches.
+        hitR: sh.hitR, noseX: sh.noseX, tailX: sh.tailX, tough: !!sh.tough,
+        /* The axes that are not speed and not grip. A hull that winds up slowly
+           or loses its turn at speed is doing something a stat bar cannot show,
+           and something a harness could not check at all while these lived only
+           on the ship. See `applyRefit`. */
+        spool: sh.spool || 0,
+        bite: sh.bite == null ? 1 : sh.bite,
+        punch: sh.punch || 0,
+        ram: !!sh.ram,
+        weapon: sh.weapon || null,
         shot: sh.shot, size: sh.size,
         art: sh.art, fins: sh.fins || null,
         owned: surv.owned.has(sh.key),
@@ -19157,10 +19581,27 @@
     updateWall(dt);
     updateMotes(dt);
 
+    /* The stock radius. Everything that is the same for every ship still reads
+       this; anything that depends on *which* hull is flying reads `hullR`
+       below. */
     const shipR = SHIP_R * U;
 
     for (const ship of ships) {
       if (ship.dead) continue;
+      /* ── how big this hull actually is ──────────────────────────────────
+         `shipR` is the stock twelve units and takes no account of what you are
+         flying, which was harmless while every mode flew one triangle and quietly
+         wrong from the moment Survey started drawing twenty-five hulls at up to
+         three and a half times that. A Tender is drawn seven times wider than the
+         circle that was stopping it, so rocks went straight through the visible
+         hull — Ric: "i can fly though astroids" — and the exhaust came out a
+         quarter of the way back from the nose instead of off the tail.
+
+         One number, read by the rock collision and by both thrusters, so the
+         shape that stops you and the place the fire comes out are the same hull
+         the rest of the game is drawing. Every other mode has `sizeMul` of one,
+         so nothing outside Survey moves an inch. */
+      const hullR = shipR * (ship.sizeMul || 1);
 
       if (!ship.alive) {
         ship.respawn -= dt;
@@ -19210,7 +19651,16 @@
          give up the ability to react while you do — but locking the nose solid
          would mean the five-second impact warning was information you could do
          nothing with, and a warning you cannot act on is decoration. */
-      const turn = TURN * (ship.turnMul || 1) *
+      /* `bite` is how much of the turn is left at this hull's own top speed.
+         One everywhere but the commuters, so every other ship turns exactly as
+         it always did; on a commuter it falls off with the throttle, which is
+         the half of "slow and civil" that acceleration cannot say on its own —
+         they are fine to place at a dock and a handful on the open run. */
+      const ordinaryTop = MAX_SPEED * (ship.speedMul || 1) * U;
+      const howFast = ordinaryTop > 0
+        ? Math.min(1, Math.hypot(ship.vx, ship.vy) / ordinaryTop) : 0;
+      const bite = ship.bite == null ? 1 : ship.bite;
+      const turn = TURN * (ship.turnMul || 1) * (1 - (1 - bite) * howFast) *
                    (lightDriveOn() ? LIGHT_TURN : 1);
       if (k.l) ship.a -= turn * dt;
       if (k.r) ship.a += turn * dt;
@@ -19223,20 +19673,40 @@
         ship.vx -= Math.cos(ship.a) * back;
         ship.vy -= Math.sin(ship.a) * back;
         if (Math.random() < 0.5) {
-          burst(ship.x + Math.cos(ship.a) * shipR,
-                ship.y + Math.sin(ship.a) * shipR, "#87d8ff", 1, 44 * U);
+          // And reverse thrust comes out of the nose, for the same reason.
+          const front = (ship.spec ? ship.spec.noseX : 12) * (hullR / 12);
+          burst(ship.x + Math.cos(ship.a) * front,
+                ship.y + Math.sin(ship.a) * front, "#87d8ff", 1, 44 * U);
         }
       }
 
+      /* The drive winds up and winds down. `spool` is nought on all but the
+         commuters and the haulers, so every other hull gets full thrust on the
+         first frame exactly as it always did — and `spun` falls twice as fast as
+         it climbs, because an engine you have shut off does not take three
+         seconds to stop pushing. */
+      const spool = ship.spool || 0;
+      if (spool > 0) {
+        ship.spun = k.th
+          ? Math.min(1, (ship.spun || 0) + dt / spool)
+          : Math.max(0, (ship.spun || 0) - dt / spool * 2);
+      } else {
+        ship.spun = k.th ? 1 : 0;
+      }
+      // The jaws shut on their own. See `swingClaw`.
+      if (ship.clawT > 0) ship.clawT = Math.max(0, ship.clawT - dt);
       ship.thrusting = k.th;
       if (ship.thrusting) {
         // `thrustMul` is 1 everywhere but a refitted Survey ship, so every
         // other mode accelerates exactly as it always did.
-        ship.vx += Math.cos(ship.a) * THRUST * (ship.thrustMul || 1) * U * dt;
-        ship.vy += Math.sin(ship.a) * THRUST * (ship.thrustMul || 1) * U * dt;
+        const wind = spool > 0 ? ship.spun : 1;
+        ship.vx += Math.cos(ship.a) * THRUST * (ship.thrustMul || 1) * wind * U * dt;
+        ship.vy += Math.sin(ship.a) * THRUST * (ship.thrustMul || 1) * wind * U * dt;
         if (Math.random() < 0.7) {
-          burst(ship.x - Math.cos(ship.a) * shipR,
-                ship.y - Math.sin(ship.a) * shipR, "#ffcb42", 1, 60 * U);
+          // Out of this hull's own tail. See `tailX`.
+          const back = (ship.spec ? ship.spec.tailX : -12) * (hullR / 12);
+          burst(ship.x + Math.cos(ship.a) * back,
+                ship.y + Math.sin(ship.a) * back, "#ffcb42", 1, 60 * U);
         }
       }
 
@@ -19310,7 +19780,7 @@
       // moved far enough away to be unreachable.
       if (!mode.survey) edgeOf(ship, shipR, WALL_BOUNCE);
 
-      const swallowed = hazardAt(ship.x, ship.y, shipR * 0.6);
+      const swallowed = hazardAt(ship.x, ship.y, hullR * 0.6);
       if (swallowed && ship.invuln <= 0) {
         // The core of a well still kills in Survey — it just costs the trip
         // back rather than the run, so the risk stays real and the punishment
@@ -19342,7 +19812,8 @@
         }
       } else {
         if (k.f && ship.burstLeft === 0 && ship.cool <= 0) {
-          ship.burstLeft = BURST_SIZE;
+          // The hull's, not the game's. See `applyRefit`.
+          ship.burstLeft = ship.burstSize || BURST_SIZE;
         }
         if (ship.burstLeft > 0 && ship.cool <= 0) {
           if (fire(ship)) {
@@ -19447,8 +19918,24 @@
 
       let spent = false;
 
+      /* Swept along the round's travel, the same way the world and the hulks
+         already were. A point sample at the new position was fine while the
+         fastest round in the game moved eight units a frame; a Jackal's round
+         now covers twenty-four, and a small asteroid is sixteen across — so the
+         round stepped clean over it and the rock simply did not have a hitbox
+         any more. Ric found it from the cockpit. The sweep is capped at six
+         samples, like the solid one, because a round that needs more than six
+         is a round nothing in this game fires. */
+      const bStep = Math.hypot(b.vx, b.vy) * dt;
+      const bSteps = Math.max(1, Math.min(6, Math.ceil(bStep / 12)));
       for (const r of rocks) {
-        if (gap2(b.x, b.y, r.x, r.y) < r.r * r.r) { hitRock(r, b); spent = true; break; }
+        let onIt = false;
+        for (let k = 1; k <= bSteps && !onIt; k++) {
+          const f = 1 - k / bSteps;
+          onIt = gap2(b.x - b.vx * dt * f, b.y - b.vy * dt * f, r.x, r.y) <
+                 r.r * r.r;
+        }
+        if (onIt) { hitRock(r, b); spent = true; break; }
       }
 
       if (!spent) {
@@ -19515,14 +20002,59 @@
          through the rock that hit it. */
       if (!s.alive || s.kinematic) continue;
       const light = throughRocks && s === ships[0];
+      /* How far this hull moved since the last frame, so a rock it flew *over*
+         still counts as a rock it flew into. The top speed of the roster went
+         from 612 to 972 and a small asteroid is sixteen units across: at a
+         courier's cruise you cover more than a small rock's width in a frame,
+         so a point test at the new position misses it entirely and the field
+         stops being solid exactly when you are going fast enough to care. */
+      const sStep = Math.hypot(s.vx, s.vy) * dt;
+      const sSteps = Math.max(1, Math.min(5, Math.ceil(sStep / 14)));
+      /* This hull's own size, not the stock twelve. See `hullR` in the flight
+         loop — same bug, same fix, and this is the half of it a player actually
+         runs into: a Tender is drawn three and a half times over and was being
+         stopped by a Skiff's circle. */
+      const sR = (s.spec ? s.spec.hitR : 9) * U * (s.sizeMul || 1);
       for (let ri = rocks.length - 1; ri >= 0; ri--) {
         const r = rocks[ri];
-        if (gap2(s.x, s.y, r.x, r.y) >= (r.r + shipR * 0.75) ** 2) continue;
+        const reach = (r.r + sR) ** 2;
+        let touching = gap2(s.x, s.y, r.x, r.y) < reach;
+        /* Walked backwards along the step. The first sample that is inside wins
+           and the ship is treated as being there, which is what stops a
+           glancing pass at speed reading as a miss. */
+        for (let k = 1; k <= sSteps && !touching; k++) {
+          const f = k / sSteps;
+          if (gap2(s.x - s.vx * dt * f, s.y - s.vy * dt * f,
+                   r.x, r.y) < reach) {
+            s.x -= s.vx * dt * f; s.y -= s.vy * dt * f;
+            touching = true;
+          }
+        }
+        if (!touching) continue;
         if (light) {
           burst(r.x, r.y, "#ffcb42", 12, 260 * U);
           if (Math.random() < 0.25) gameSound("rock", r.x);
           rocks.splice(ri, 1);
           continue;                       // and keep going; there may be more
+        }
+        /* A shielded nose. The commuters carry one, and it is the whole reason
+           they are the hull you take between two stations without watching the
+           sky: the drifting field stops being something you thread and becomes
+           something you push through. The rock is shoved hard aside rather than
+           destroyed — a prow parts the field, it does not vaporise it, and a
+           commuter that left a corridor of dust behind it would be a weapon.
+
+           Rocks only. A world, a dead hull and the Leviathan are structures, and
+           a ship that flew through those would undo the one thing that made this
+           sector stop feeling like a backdrop. */
+        if (s.ram) {
+          let px = sepX(r.x, s.x), py = sepY(r.y, s.y);
+          const pd = Math.hypot(px, py) || 1;
+          const shove = 200 * U / Math.max(1, r.r / 30);
+          r.vx += (px / pd) * shove;
+          r.vy += (py / pd) * shove;
+          if (Math.random() < 0.3) burst(r.x, r.y, "#87d8ff", 3, 90 * U);
+          continue;
         }
         /* A rock is solid. It used to be a hit and a shove, which meant that
            for as long as the impact shield lasted you flew *through* the thing
@@ -19536,7 +20068,7 @@
         let dx = sepX(s.x, r.x), dy = sepY(s.y, r.y);
         const d = Math.hypot(dx, dy) || 1;
         dx /= d; dy /= d;
-        const min = r.r + shipR * 0.75;
+        const min = r.r + sR;
         s.x = r.x + dx * min;
         s.y = r.y + dy * min;
         /* Along the normal, reversed and *damped*; across it, kept — so a
@@ -19549,15 +20081,31 @@
            drive's top speed. */
         const into = s.vx * dx + s.vy * dy;
         if (into < 0) {
-          s.vx -= into * dx * 1.4;
-          s.vy -= into * dy * 1.4;
+          /* Shared with the rock by mass. A boulder is heavy and shoves a light
+             ship hard; a pebble bouncing off a Gantry barely registers, which
+             is the half that was missing — and the half that mattered once a
+             heavy hull started keeping a shove for forty-five seconds. */
+          const rockMass = (r.r / 30) * (r.r / 30) * 2.4;
+          const mine = hullMass(s.spec);
+          const share = (2 * rockMass) / (mine + rockMass);
+          s.vx -= into * dx * 1.4 * share;
+          s.vy -= into * dy * 1.4 * share;
         }
         // And the rock takes some of it, because it is a rock and not a wall.
         const push = 90 * U / Math.max(1, r.r / 30);
         r.vx -= dx * push;
         r.vy -= dy * push;
-        // The hit itself, which the shield is allowed to stop.
-        if (s.invuln <= 0) {
+        /* The hit itself, which the shield is allowed to stop — and which an
+           armoured hull simply does not take. Ric, on the Tender: "shouldnt get
+           damaged from astroids but shouldnt be able to fly through them."
+
+           That is a different thing from the commuters' prow, and deliberately
+           so: a commuter *passes through* the field, a working hull is stopped
+           by it and shrugs. Both are on the tank classes for the reason Ric gave
+           them — these are the hulls "built like tanks", and a tank that loses
+           armour to gravel is not one. The bounce above has already happened, so
+           they still cannot drive through a boulder. */
+        if (s.invuln <= 0 && !(s.spec && s.spec.tough)) {
           damageShip(s, "rock", null);
           if (!worldRunning()) return;
         }
@@ -19720,6 +20268,38 @@
       ctx.closePath();
       ctx.stroke();
     });
+    /* The jaws. Drawn in the hull's own 12-unit space like everything else
+       here, so they scale with the ship rather than needing their own arithmetic
+       — and drawn closed at rest, which is what makes a utility hull readable as
+       a utility hull from across a field before it has swung at anything. They
+       open on the swing and shut again over a fifth of a second. */
+    if (spec && spec.weapon === "claw") {
+      /* Out, and open, all the time — Ric: "its claw needs to extend out and
+         you should be able to see them until you shoot". So the resting state
+         is the one that reads, and firing is the jaws *closing* on something
+         rather than opening. It was the other way round, which meant the thing
+         that names the hull was invisible until the moment you used it.
+
+         Reached off the hull's own nose so it hangs in front of whatever it is
+         bolted to instead of at a fixed distance from the middle. */
+      const shut = Math.max(0, (s.clawT || 0) / 0.22);
+      const gape = 13 - shut * 10.5;
+      const base = (spec.noseX || 12) - 3;
+      glow(s.colour, 1.7 * (12 / r), alpha * (0.75 + shut * 0.25), () => {
+        for (const side of [1, -1]) {
+          ctx.beginPath();
+          ctx.moveTo(base - 4, side * 4);
+          ctx.lineTo(base + 7, side * (4 + gape * 0.45));
+          ctx.lineTo(base + 15, side * gape);
+          ctx.stroke();
+          // The inner tooth, so a jaw reads as a jaw and not as a fin.
+          ctx.beginPath();
+          ctx.moveTo(base + 7, side * (4 + gape * 0.45));
+          ctx.lineTo(base + 12, side * (gape * 0.35));
+          ctx.stroke();
+        }
+      });
+    }
     // Loose strokes over the outline: panels, spars, the ribs of a hold. This is
     // what stops eight wide polygons reading as one wide polygon.
     if (spec && spec.fins) {
@@ -20556,8 +21136,15 @@
      A seeker trails, so you can see it turn. A charge is a fat head — the thing
      that is about to go off. A lance is a long hard bar. */
   function drawBullet(b) {
-    const tail = b.seek ? 0.02 : b.punch ? 0.018 : 0.008;
-    glow(b.colour, b.big ? 3.4 : 2.6, 1, () => {
+    /* A beam is long and it is thick, and it has to read as neither of the
+       other two heavy rounds on the screen: it is not a charge, which is a fat
+       head with nothing behind it, and it is not a lance, which is two hard
+       thin lines. It is one wide bar with a bloom on it, and at three times the
+       tail of an ordinary round it is unmistakable from across a rock field —
+       which matters, because the hulls that fire one are the hulls that cannot
+       turn round to look. */
+    const tail = b.beam ? 0.026 : b.seek ? 0.02 : b.punch ? 0.018 : 0.008;
+    glow(b.colour, b.beam ? 6.5 : b.big ? 3.4 : 2.6, 1, () => {
       ctx.beginPath();
       ctx.moveTo(b.x, b.y);
       ctx.lineTo(b.x - b.vx * tail, b.y - b.vy * tail);
@@ -20566,6 +21153,12 @@
         // The head, drawn as a ring so it reads as a charge rather than a shot.
         ctx.beginPath();
         ctx.arc(b.x, b.y, 5 * U, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      if (b.beam) {
+        // A soft head, so the leading end reads as the cutting end.
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 4.5 * U, 0, Math.PI * 2);
         ctx.stroke();
       }
       if (b.punch) {
@@ -24245,6 +24838,10 @@
       // A real rock, built the way the sector builds them. A hand-rolled one
       // with a made-up size breaks the splitter the moment it is destroyed.
       makeRock: (size, x, y) => makeRock(size, x, y),
+      // What the beam and the claw both do. See `shatterWhole`.
+      shatterWhole: rock => shatterWhole(rock),
+      // So a harness can derive what a break is worth instead of hard-coding it.
+      yields: () => Object.assign({}, YIELD),
       /* Re-measure the screen against the stage. The screen takes the shape of
          the device now, so a harness that wants to check a layout at a phone's
          proportions has to be able to say "the window changed" without a real

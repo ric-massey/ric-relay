@@ -3401,22 +3401,27 @@ const storeOf = (cf, key) => {
      assert nothing; these are tight enough that a hull drifting out of what
      its category means fails here rather than in someone's hands. */
   const ranges = {
-    MILITARY:   { hull:[12,48], dmg:[1.6,4], rate:[0.95,1.45], cargo:[50,500],
-                  speed:[0.73,1.27], accel:[0.61,1.07], turn:[0.92,1.49], drag:[0.38,0.42], shot:[1.11,1.64] },
-    EXPLORER:   { hull:[8,20],  dmg:[0.8,1.5], rate:[0.75,1.10], cargo:[150,500],
-                  speed:[0.82,1.4], accel:[0.51,0.87], turn:[0.63,1.06], drag:[0.24,0.28], shot:[0.72,0.98] },
-    COMMUTER:   { hull:[7,24],  dmg:[0.6,1], rate:[0.65,0.95], cargo:[100,450],
-                  speed:[0.83,1.22], accel:[0.96,1.41], turn:[0.84,1.16], drag:[0.47,0.53], shot:[0.67,0.89] },
-    SPORT:      { hull:[4,9],   dmg:[0.7,1.2], rate:[0.85,1.20], cargo:[30,90],
-                  speed:[1.42,1.8], accel:[4.19,5.32], turn:[1.52,2.02], drag:[1.08,1.22], shot:[0.89,1.11] },
-    INDUSTRIAL: { hull:[18,48], dmg:[0.8,1.4], rate:[0.65,0.95], cargo:[300,1100],
-                  speed:[0.33,0.55], accel:[0.06,0.14], turn:[0.2,0.38], drag:[0.09,0.13], shot:[0.46,0.66] },
-    CARGO:      { hull:[14,40], dmg:[0.6,1], rate:[0.60,0.85], cargo:[500,2000],
-                  speed:[0.34,0.64], accel:[0.09,0.19], turn:[0.22,0.45], drag:[0.12,0.16], shot:[0.48,0.68] },
-    UTILITY:    { hull:[9,26],  dmg:[0.7,1.2], rate:[0.70,1], cargo:[180,700],
-                  speed:[0.69,0.95], accel:[0.58,0.82], turn:[1.28,1.76], drag:[0.43,0.49], shot:[0.65,0.85] },
-    COURIER:    { hull:[4,12],  dmg:[0.7,1.3], rate:[0.80,1.15], cargo:[40,250],
-                  speed:[1.21,1.55], accel:[2.21,2.82], turn:[0.98,1.42], drag:[0.68,0.76], shot:[0.74,0.98] },
+    MILITARY:   { hull:[12,49], dmg:[1.5,4.45], rate:[0.89,1.54], cargo:[45,330],
+                  speed:[0.94,1.64], accel:[5.7,30], turn:[0.94,1.46], drag:[3.7,12.7], shot:[1.22,2.92] },
+    EXPLORER:   { hull:[7,22],  dmg:[0.75,1.59], rate:[0.70,1.17], cargo:[135,991],
+                  speed:[0.84,1.70], accel:[1.10,2.20], turn:[0.64,0.74], drag:[0.51,0.59], shot:[0.73,0.98] },
+    COMMUTER:   { hull:[6,27],  dmg:[0.56,0.85], rate:[0.70,1.01], cargo:[90,330],
+                  speed:[1.83,2.54], accel:[4.28,6.76], turn:[0.82,1.17], drag:[1.22,1.70], shot:[0.67,0.89] },
+    SPORT:      { hull:[3,10],  dmg:[2.26,3.82], rate:[0.79,1.27], cargo:[27,100],
+                  speed:[1.83,2.33], accel:[2.67,4.32], turn:[1.53,2.02], drag:[0.20,0.32], shot:[0.89,1.11] },
+    INDUSTRIAL: { hull:[54,88], dmg:[1.13,1.48], rate:[0.70,0.85], cargo:[675,1431],
+                  speed:[0.35,0.56], accel:[0.063,0.122], turn:[0.22,0.32], drag:[0.042,0.062], shot:[0.47,0.66] },
+    CARGO:      { hull:[23,61], dmg:[0.75,1.06], rate:[0.65,0.85], cargo:[810,2640],
+                  speed:[0.62,0.92], accel:[0.705,1.10], turn:[0.45,0.64], drag:[0.43,0.53], shot:[0.48,0.68] },
+    /* UTILITY is deliberately the widest band in this table. Ric pulled the
+       Tender toward the gunships — "less sliding, more similar to military
+       ships, just not as fast as them" — and left the Cradle where it was, so
+       the two working hulls now sit at opposite ends of the grip axis while
+       sharing a claw, a hold and a category. The band has to admit both. */
+    UTILITY:    { hull:[36,61], dmg:[0.94,1.27], rate:[0.79,0.96], cargo:[540,991],
+                  speed:[0.58,0.83], accel:[0.20,3.26], turn:[0.37,0.66], drag:[0.094,2.76], shot:[0.65,0.85] },
+    COURIER:    { hull:[5,14],  dmg:[0.65,1.06], rate:[0.75,1.06], cargo:[22,49],
+                  speed:[2.16,2.86], accel:[7.54,11.3], turn:[1.27,1.64], drag:[2.16,2.76], shot:[0.75,0.98] },
   };
   check(new Set(list.map(s2 => s2.category)).size === 8,
         "the hangar does not contain all eight ship categories");
@@ -3439,10 +3444,31 @@ const storeOf = (cf, key) => {
      moved when the whole roster was re-cut, so they are restated here rather
      than removed — the check is "these are deliberate", not "these are
      eternal". */
-  check(jackal.speed === 1.1 && jackal.accel === 0.92 &&
-        jackal.turn === 1.3 && jackal.drag === 0.4,
-        "the Jackal lost the Louvre's handling (" +
-        [jackal.speed, jackal.accel, jackal.turn, jackal.drag].join("/") + ")");
+  /* Ric, flying it: "the jackal should not have momentum — you go right and it
+     goes right almost instantly." Grip is what delivers that, so the number
+     pinned here is the felt one rather than the four raw stats: the ship's
+     memory of where it was going, 1/drag seconds, has to be under a tenth of a
+     second, and it has to be the shortest in the game by a distance. */
+  check(jackal.drag >= 10,
+        "the Jackal's grip is " + jackal.drag + " — its heading survives " +
+        (1 / jackal.drag).toFixed(2) + "s of a turn, which is momentum");
+  const grippiest = list.slice().sort((a, b) => b.drag - a.drag);
+  check(grippiest[0].key === "louvre",
+        "the Jackal is not the most glued-down hull in the game — " +
+        grippiest[0].name + " is");
+  /* It no longer has to stand a long way clear of second place. Ric: "all the
+     military ships should feel like that" — so the whole class is glued now and
+     the Jackal is the top of a ladder rather than a lone outlier. What must
+     still hold is that it is the top of it, and that the class it leads is a
+     class: every military hull forgets a heading inside a third of a second,
+     and nothing outside the category comes close. */
+  const mil = list.filter(x => x.category === "MILITARY");
+  const civ = list.filter(x => x.category !== "MILITARY");
+  check(mil.every(x => Math.log(2) / x.drag < 0.33),
+        "a military hull still carries momentum: " +
+        mil.filter(x => Math.log(2) / x.drag >= 0.33).map(x => x.name).join(" "));
+  check(Math.min(...mil.map(x => x.drag)) > Math.max(...civ.map(x => x.drag)),
+        "something outside MILITARY is as glued down as a gunship");
 
   /* ── the hulls have to actually fly differently ──────────────────────────
      Ric flew the whole roster and said they all felt the same, and he was
@@ -3480,28 +3506,140 @@ const storeOf = (cf, key) => {
             Math.round(capOf(sh)) + " — it never arrives at its own top speed");
     }
 
-    check(spread(capOf) > 3.5,
+    check(spread(capOf) > 5,
           "top speed spans only " + spread(capOf).toFixed(2) + "x across the roster");
-    check(spread(tTopOf) > 6,
+    check(spread(tTopOf) > 40,
           "every hull reaches its top speed in about the same time (" +
           spread(tTopOf).toFixed(2) + "x) — accel and drag are cancelling");
-    check(spread(sh => TURN * sh.turn) > 5,
+    check(spread(sh => TURN * sh.turn) > 7.5,
           "turn rate spans only " + spread(sh => TURN * sh.turn).toFixed(2) + "x");
-    check(spread(stopOf) > 6,
+    check(spread(stopOf) > 50,
           "stopping distance spans only " + spread(stopOf).toFixed(2) + "x");
 
-    /* And in the right order, which is the half that was actually broken.
-       Fast, light categories must get going quicker than heavy ones — it is
-       not enough for the numbers to differ if a brick out-accelerates a dart. */
-    const worstOf = cat => Math.max(...list.filter(x => x.category === cat).map(tTopOf));
-    const bestOf  = cat => Math.min(...list.filter(x => x.category === cat).map(tTopOf));
-    for (const [quick, slow] of [["SPORT", "COMMUTER"], ["COURIER", "MILITARY"],
-                                 ["COMMUTER", "CARGO"], ["MILITARY", "INDUSTRIAL"]]) {
-      check(worstOf(quick) < bestOf(slow),
-            "the slowest " + quick + " (" + worstOf(quick).toFixed(2) + "s to top) " +
-            "is not quicker off the mark than the best " + slow +
-            " (" + bestOf(slow).toFixed(2) + "s)");
+    /* And in the right order — but the order is on the axis that still has
+       one. This used to assert that light categories reach top speed quicker
+       than heavy ones, which was correct while handling was a single ladder and
+       is wrong now that grip is its own axis: a sport hull is deliberately fast
+       and *floaty*, so it takes longer to wind up than a Jackal does, and that
+       is the design rather than a brick out-accelerating a dart.
+
+       What must still hold is top speed. A hauler may be glued to your hands;
+       it may not be quick. */
+    const slowestIn = cat => Math.min(...list.filter(x => x.category === cat).map(capOf));
+    const fastestIn = cat => Math.max(...list.filter(x => x.category === cat).map(capOf));
+
+    /* ── who owns the top end ─────────────────────────────────────────────
+       Ric, after flying it: "couriers or commuters should be the fastest ships
+       but have a slow acceleration. the sport need to slide. they can be fast
+       too but its about the cool drifting with them."
+
+       So the fastest hull in the game is a courier or a commuter, both of those
+       classes out-run the sport hulls, and *both* are slow to wind up — which is
+       the trade that makes a top speed worth having rather than free. Sport
+       keeps a high ceiling and buys it back with the longest drift in the game
+       outside the mining hulls. */
+    const fastestHull = list.slice().sort((a, b) => capOf(b) - capOf(a))[0];
+    check(fastestHull.category === "COURIER" || fastestHull.category === "COMMUTER",
+          "the fastest hull in the game is a " + fastestHull.category +
+          " (" + fastestHull.name + ")");
+    for (const cat of ["COURIER", "COMMUTER"]) {
+      check(fastestIn(cat) > fastestIn("SPORT"),
+            "the fastest " + cat + " does not out-run the fastest SPORT hull");
+      check(list.filter(x => x.category === cat).every(x => (x.spool || 0) >= 2),
+            "a " + cat + " hull winds up quickly — the top speed is free");
     }
+    /* And the sliders slide. A sport hull carries its speed for longer than
+       anything that is not a mining hull, which is the whole of what Ric means
+       by "the cool drifting". */
+    const sportCoast = Math.min(...list.filter(x => x.category === "SPORT").map(stopOf));
+    const others = list.filter(x => x.category !== "SPORT" &&
+                                    x.category !== "INDUSTRIAL" &&
+                                    x.category !== "UTILITY");
+    check(sportCoast > Math.max(...others.map(stopOf)) * 1.5,
+          "a sport hull does not slide appreciably further than everything else");
+
+    for (const [quick, slow] of [["SPORT", "CARGO"], ["COURIER", "INDUSTRIAL"],
+                                 ["EXPLORER", "CARGO"], ["MILITARY", "INDUSTRIAL"]]) {
+      check(slowestIn(quick) > fastestIn(slow),
+            "the slowest " + quick + " (" + Math.round(slowestIn(quick)) + ") " +
+            "does not out-run the fastest " + slow +
+            " (" + Math.round(fastestIn(slow)) + ")");
+    }
+
+    /* And the working hulls have to be the floaty ones, because that is the half
+       of "heavy" a player can actually feel. The mining pair — INDUSTRIAL and
+       UTILITY, the two that carry a beam or a claw — drift further than anything
+       else in the game.
+
+       CARGO is deliberately not in this list any more. Ric put the haulers back
+       with the explorers on feel — "decent on speed, medium on acceleration and
+       feel like explorers" — so a Drayman handles like a fat Carrack rather than
+       like a Gantry, and only the things built to sit still and chew rock are
+       genuinely adrift. */
+    /* The mining hulls drift furthest — with one deliberate exception. The
+       Tender was pulled toward the gunships and is now the grippiest thing that
+       is not one, so the claim is about the *industrials* and the Cradle rather
+       than about both working hulls. Named rather than inferred, because an
+       exception you cannot see in the test is an exception that quietly grows. */
+    const drifters = list.filter(x => x.category === "INDUSTRIAL" ||
+                                      x.key === "cradle");
+    const rest = list.filter(x => x.category !== "INDUSTRIAL" &&
+                                  x.key !== "cradle" && x.key !== "ossuary");
+    check(Math.max(...drifters.map(x => x.drag)) < Math.min(...rest.map(x => x.drag)),
+          "a mining hull is more glued down than something that is not one");
+    /* And the Tender really did land between the two — grippier than every
+       hauler, and still short of the loosest gunship. */
+    const tender = list.find(x => x.key === "ossuary");
+    const mil = list.filter(x => x.category === "MILITARY");
+    check(tender.drag < Math.min(...mil.map(x => x.drag)),
+          "the Tender is as glued down as a gunship — it is a workshop");
+    check(capOf(tender) < Math.min(...mil.map(capOf)),
+          "the Tender out-runs a gunship");
+    /* And the haulers really do feel like explorers, which is a claim worth
+       pinning because it is the one Ric made in words. */
+    const cargoDrag = list.filter(x => x.category === "CARGO").map(x => x.drag);
+    const expDrag = list.filter(x => x.category === "EXPLORER").map(x => x.drag);
+    check(Math.min(...cargoDrag) > Math.min(...expDrag) * 0.7 &&
+          Math.max(...cargoDrag) < Math.max(...expDrag) * 1.3,
+          "the haulers do not handle like explorers");
+
+    /* ── the four corners ─────────────────────────────────────────────────
+       The thing the old ladder could not express, and the reason for the
+       re-cut: speed and grip are separate questions, so all four answers have
+       to exist. If they collapse back onto one line the roster is a ladder
+       again however wide the numbers spread, and every hull is once more a
+       point on it. */
+    /* Keyed off the roster's own spread rather than off one named hull — the
+       Kite used to be the yardstick and then the Kite got faster, which quietly
+       moved the bar past every sport hull and made the check claim there were no
+       fast floaty ships at all. The top third and the middle of the grip range
+       are what "fast" and "glued" actually mean here. */
+    const caps = list.map(capOf).sort((a, b) => a - b);
+    const fast = caps[Math.floor(caps.length * 0.6)];
+    const grips = list.map(x => x.drag).sort((a, b) => a - b);
+    const grip = grips[Math.floor(grips.length * 0.5)];
+    const corner = (isFast, isGrip) => list.filter(x =>
+      (capOf(x) >= fast) === isFast && (x.drag >= grip) === isGrip);
+    for (const [f, g, what] of [[true, false, "fast and floaty"],
+                                [true, true,  "fast and glued"],
+                                [false, false, "slow and floaty"],
+                                [false, true,  "slow and glued"]]) {
+      check(corner(f, g).length > 0, "no hull is " + what);
+    }
+
+    /* Both axes have to be doing real work, rather than one of them being a
+       relabelling of the other. Pearson across the roster, on the log of grip
+       because grip spans two and a half orders of magnitude. */
+    const xs = list.map(capOf);
+    const ys = list.map(x => Math.log(x.drag));
+    const mean = v => v.reduce((a, b) => a + b, 0) / v.length;
+    const mx = mean(xs), my = mean(ys);
+    const cov = mean(xs.map((x, i) => (x - mx) * (ys[i] - my)));
+    const sd = v => Math.sqrt(mean(v.map(z => (z - mean(v)) ** 2)));
+    const r = cov / (sd(xs) * sd(ys));
+    check(Math.abs(r) < 0.75,
+          "speed and grip correlate at r=" + r.toFixed(2) +
+          " — handling is one ladder again, not two axes");
 
     /* Ric: the fastest ships should outrun slower bullets. A round's speed is
        the hull's now rather than one constant, so a freighter's return fire
@@ -3525,6 +3663,302 @@ const storeOf = (cf, key) => {
                 "/" + list.length + " hulls' rounds");
   }
 
+  /* ── the military ladder Ric set ────────────────────────────────────────
+     "all the military ships should feel like that [the Jackal], but jackal
+     should be the fastest top speed out of the militaries do the highest
+     damage. reprisal will be the strongest, bastion will be just a bit better
+     then spur and lance should be the intro to this style."
+
+     Five hulls, one shape of statement each, so a later tune that quietly
+     inverts any of them fails here rather than in his hands. */
+  {
+    const m = k => list.find(x => x.key === k);
+    const lance = m("lance"), spur = m("spur"), bastion = m("bastion"),
+          reprisal = m("reprisal"), jackal = m("louvre");
+    const milHulls = list.filter(x => x.category === "MILITARY");
+
+    check(jackal.speed === Math.max(...milHulls.map(x => x.speed)),
+          "the Jackal is not the fastest military hull");
+    check(jackal.dmg === Math.max(...milHulls.map(x => x.dmg)),
+          "the Jackal does not hit hardest of the militaries");
+    check(reprisal.hull === Math.max(...milHulls.map(x => x.hull)),
+          "the Reprisal is not the strongest military hull");
+
+    /* Bastion a bit better than Spur — better, and not by a landslide, which is
+       what "a bit" has to mean if it is going to mean anything. Read off what
+       you actually get for the money rather than off one column. */
+    const worth = x => x.hull + x.cargo / 20 + x.dmg * x.rate * (x.burst || 3) * 3;
+    check(worth(bastion) > worth(spur),
+          "the Bastion is not better than the Spur");
+    check(worth(bastion) < worth(spur) * 1.9,
+          "the Bastion is a lot better than the Spur rather than a bit");
+
+    /* And the Lance is the way in: cheapest, and bottom of the class on the
+       numbers you would buy one for. */
+    check(lance.cost === Math.min(...milHulls.map(x => x.cost)),
+          "the Lance is not the cheapest way into the military hulls");
+    check(worth(lance) === Math.min(...milHulls.map(worth)),
+          "the Lance is not the entry point — something cheaper-feeling exists");
+    /* But it still flies like one. The whole point of it being the intro is
+       that it teaches the style, so it has to have the style. */
+    check(Math.log(2) / lance.drag < 0.33,
+          "the Lance does not fly like a military hull, so it introduces nothing");
+
+    /* The burst. Three is the default; the Bastion and the Jackal send four, and
+       the sport hulls send one big round on the same trigger rhythm. Nothing
+       else may drift off three. */
+    check(bastion.burst === 4, "the Bastion does not fire a four-round burst");
+    check(jackal.burst === 4, "the Jackal does not fire a four-round burst");
+    for (const sh of list) {
+      const want = sh.key === "bastion" || sh.key === "louvre" ? 4
+                 : sh.category === "SPORT" ? 1 : 3;
+      check((sh.burst || 3) === want,
+            sh.name + " fires a " + (sh.burst || 3) + "-round burst, not " + want);
+    }
+    /* And the single round is worth firing. Ric asked for a big one rather than
+       a third of a burst, so a sport hull's shot has to land nearer a whole
+       burst than a single round from anything else. */
+    const sport = list.filter(x => x.category === "SPORT");
+    const median = list.map(x => x.dmg).sort((a, b) => a - b)[Math.floor(list.length / 2)];
+    check(Math.min(...sport.map(x => x.dmg)) > median * 1.8,
+          "a sport hull's one round is not a big one");
+
+    console.log("  military   lance \u2192 spur \u2192 bastion \u2192 reprisal, and the " +
+                "Jackal off to one side: fastest (" + Math.round(jackal.speed * 360) +
+                ") and hardest-hitting · reprisal toughest at " + reprisal.hull +
+                " hull · four-round burst on the Bastion and the Jackal");
+  }
+
+  /* ── the two mining hulls ───────────────────────────────────────────────
+     Ric: an industrial "shoots one beam at a time that breaks big asteroids
+     into medium into small into broken in one hit", and a utility hull gets "a
+     claw that comes out and crushes the asteroids" instead of a bullet.
+
+     Both run `shatterWhole`, which is recursion over an array it is itself
+     mutating — `splitRock` removes the parent and appends two children while
+     the walk is in progress — so it is exactly the shape of thing that works on
+     a big rock and quietly leaves debris on a small one. Checked on every tier,
+     and checked for what it pays, because a mining tool that paid nothing would
+     be a mining tool nobody uses. */
+  {
+    const { cf } = boot("?debug=1&seed=515151");
+    cf.start("survey", 1);
+    const surv = cf.survey();
+    const live = cf.live();
+    const me = live.ships[0];
+    const step = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.step(); } };
+    step(4);
+
+    for (const size of ["big", "mid", "small"]) {
+      live.rocks.length = 0;
+      const rock = cf.makeRock(size, me.x + 260, me.y);
+      rock.vx = rock.vy = 0;
+      live.rocks.push(rock);
+      const cash0 = surv.cash, motes0 = (surv.motes || []).length;
+      cf.shatterWhole(rock);
+      check(live.rocks.length === 0,
+            "a beam left " + live.rocks.length + " pieces of a " + size +
+            " rock behind — the cascade stopped short");
+      check((surv.motes || []).length > motes0 || surv.cash > cash0,
+            "taking a " + size + " rock apart in one hit paid nothing");
+    }
+
+    /* A big rock pays what a big rock is worth, and not a mote more. The chain
+       is one big into two mid into four small, so four last-tier breaks pay —
+       the earlier tiers pay nothing, which is the rule that already stops a
+       careful player farming a boulder by taking it apart slowly.
+
+       Twelve cannon rounds would produce exactly the same four payouts. The
+       beam is a faster way to the same salvage, never a richer one, and that is
+       the whole reason it can be allowed to one-shot a boulder. */
+    live.rocks.length = 0;
+    const big = cf.makeRock("big", me.x + 260, me.y);
+    big.vx = big.vy = 0;
+    live.rocks.push(big);
+    const before = (surv.motes || []).length;
+    cf.shatterWhole(big);
+    const dropped = (surv.motes || []).length - before;
+    /* Derived rather than written down: four last-tier breaks at the rock
+       yield, so a change to either cannot leave a stale number here. */
+    const wantMotes = 4 * cf.yields().rock;
+    check(dropped === wantMotes,
+          "a big rock taken apart in one hit dropped " + dropped +
+          " motes rather than the " + wantMotes + " its four pieces are worth");
+
+    console.log("  mining     one beam or one claw takes a rock of any size all " +
+                "the way to broken · and pays exactly what twelve cannon rounds " +
+                "would have paid for the same rock");
+  }
+
+  /* ── nothing outruns its own hitbox ─────────────────────────────────────
+     Ric, flying it: "some hitboxes dont work". They worked; the things hitting
+     them had got faster than they were wide. A frame is a sixtieth of a second,
+     a small asteroid is thirty-two units across, and the fastest round in the
+     game now covers twenty-four units in a frame while the fastest hull covers
+     sixteen — so a point test at the new position steps clean over a small rock
+     and the field quietly stops being solid at exactly the speeds worth flying.
+
+     This is arithmetic rather than a play-test, and it is the arithmetic that
+     will break first the next time anything gets faster: for every hull and
+     every round, one frame of travel has to be smaller than what it is meant to
+     be able to hit. Sweeping is what actually fixes it — this is the tripwire
+     that says when sweeping is no longer enough. */
+  {
+    const FRAME = 1 / 60, MAX = 360, BULLET = 520;
+    // The smallest thing in the sector, and the radius a round must not skip.
+    const SMALL_R = 16;
+    // How many samples the sweeps take. See the bullet and ship rock loops.
+    const BULLET_STEPS = 6, SHIP_STEPS = 5;
+
+    for (const sh of list) {
+      const perFrame = MAX * sh.speed * FRAME;
+      check(perFrame / SHIP_STEPS < SMALL_R,
+            sh.name + " covers " + perFrame.toFixed(1) + " units a frame and " +
+            "the rock sweep takes " + SHIP_STEPS + " samples — it can still " +
+            "step over a small asteroid");
+      const round = BULLET * (sh.shot || 1) * FRAME;
+      check(round / BULLET_STEPS < SMALL_R,
+            sh.name + "'s round covers " + round.toFixed(1) + " units a frame " +
+            "against a " + BULLET_STEPS + "-sample sweep — it can miss a small " +
+            "rock it was aimed at");
+    }
+    const fastestHull = Math.max(...list.map(x => MAX * x.speed)) * FRAME;
+    const fastestRound = Math.max(...list.map(x => BULLET * (x.shot || 1))) * FRAME;
+    console.log("  hitboxes   fastest hull moves " + fastestHull.toFixed(1) +
+                "u a frame and the fastest round " + fastestRound.toFixed(1) +
+                "u · both swept against a " + (SMALL_R * 2) + "u asteroid");
+  }
+
+  /* ── the front door is quiet ────────────────────────────────────────────
+     Ric: "lower the amount of bots near your home station. there shouldnt
+     really ever be raiders... there should only ever be like 1 or 0 at the
+     station. very unlikely but possible 2. and there shouldnt be more then 2
+     unless there is a war or battle going on right next to you."
+
+     Two separate claims and both are checked, because they are enforced in two
+     different places: how often a ship is *made* near home is the generation
+     bowl, and how many can be standing there at once is the live cap. A run of
+     ordinary rolls can satisfy the first and still break the second. */
+  {
+    const { cf } = boot("?debug=1&seed=828282");
+    cf.start("survey", 1);
+    const surv = cf.survey();
+    const live = cf.live();
+    const me = live.ships[0];
+    const step = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.step(); } };
+    step(6);
+
+    /* Flown around the home band rather than sampled from a standstill: the cap
+       runs on the streamer, so it only means anything if chunks are actually
+       being brought in and thrown away. */
+    let worst = 0, pirates = 0, samples = 0;
+    const R = 2600 * 4;
+    for (let k = 0; k < 24; k++) {
+      const a = (k / 24) * Math.PI * 2;
+      me.x = Math.cos(a) * R * 0.7; me.y = Math.sin(a) * R * 0.7;
+      me.vx = me.vy = 0; me.invuln = 9e9;
+      surv.water = 9e5; surv.food = 9e5;
+      step(8);
+      const here = surv.traffic.filter(t => Math.hypot(t.x, t.y) < R);
+      const fight = (surv.battles || []).some(b => Math.hypot(b.x, b.y) < R + 2600);
+      if (!fight) {
+        worst = Math.max(worst, here.length);
+        pirates += here.filter(t => t.faction === "pirate").length;
+        samples++;
+      }
+    }
+    check(samples > 8, "the home band was never sampled without a battle in it");
+    check(worst <= 2,
+          "there were " + worst + " ships at once inside the home band with no " +
+          "battle going on — the cap is two");
+    check(pirates === 0 || pirates / samples < 0.25,
+          "raiders are common at the front door: " + pirates + " sightings over " +
+          samples + " passes");
+
+    /* And the bowl itself, counted rather than flown. Over several sectors
+       rather than one: a single seed can leave the home chunks empty by luck,
+       which reads as a pass and measures nothing — the first version of this
+       check sat on a sector that rolled nothing at the door at all and would
+       have gone on passing with the bowl deleted. */
+    const countIn = (c, r0, r1) => {
+      let n = 0, chunks = 0;
+      for (let cx = -12; cx <= 12; cx++) {
+        for (let cy = -12; cy <= 12; cy++) {
+          const d = Math.hypot(cx, cy);
+          if (d < r0 || d >= r1) continue;
+          chunks++;
+          n += c.chunk(cx, cy).traffic.length;
+        }
+      }
+      return chunks ? n / chunks : 0;
+    };
+    let door = 0, open = 0, sectors = 0, mostAtDoor = 0;
+    for (const sd of [11, 22, 33, 44, 55, 66]) {
+      const b2 = boot("?debug=1&seed=" + sd);
+      b2.cf.start("survey", 1);
+      door += countIn(b2.cf, 0, 3);
+      open += countIn(b2.cf, 8, 12);
+      mostAtDoor = Math.max(mostAtDoor, countIn(b2.cf, 0, 3) * 25);
+      sectors++;
+    }
+    door /= sectors; open /= sectors;
+    check(open > 0.1, "nowhere in any of these sectors rolls traffic at all");
+    check(door < open * 0.45,
+          "the home band rolls " + door.toFixed(3) + " ships a chunk against " +
+          open.toFixed(3) + " out in the open — that is not a quiet doorstep");
+    /* And not a graveyard either. Ric asked for "maybe 1 every 10 min ish"
+       passing through, which is a trickle rather than nothing — a home station
+       with no traffic at all reads as abandoned, and the whole point of the
+       floor under the bowl is to keep somebody docking and leaving. */
+    check(door > open * 0.06,
+          "the home band is dead rather than quiet: " + door.toFixed(3) +
+          " ships a chunk");
+    console.log("  frontdoor  " + door.toFixed(3) + " ships a chunk at the door " +
+                "against " + open.toFixed(3) + " in the open, over " + sectors +
+                " sectors · most in the band at once " + Math.round(mostAtDoor) +
+                " · live cap held at " + worst + " · " + pirates +
+                " raiders in " + samples + " passes");
+  }
+
+  /* ── the shape you can see is the shape that stops you ──────────────────
+     Survey's oldest promise about its world, and the one that had quietly
+     stopped being true for every hull drawn bigger than the stock triangle.
+     Collision used three-quarters of a flat twelve-unit radius: right for a
+     Skiff, and a third of the ship for a Tender, which is drawn three and a half
+     times over and reaches twenty-six units in its own outline on top of that.
+     Ric flew one and said "i can fly though astroids".
+
+     So the circle comes off the outline now, and this is the check that it
+     keeps doing: no hull may be drawn appreciably larger than the thing that
+     stops it. The stock hull is pinned separately, because the fix had to leave
+     every small ship exactly where it was. */
+  for (const sh of list) {
+    const half = Math.max(sh.noseX, -sh.tailX);
+    check(sh.hitR > half * 0.4,
+          sh.name + " is drawn out to " + half + " units and stops at " +
+          sh.hitR + " — rocks pass through the part you can see");
+    check(sh.hitR < half * 1.2,
+          sh.name + " stops at " + sh.hitR + " but is only drawn out to " +
+          half + " — it collides with things it is nowhere near");
+  }
+  {
+    const skiff = list.find(x => x.key === "skiff");
+    check(Math.abs(skiff.hitR - 9) < 1.2,
+          "the stock hull's collision radius moved to " + skiff.hitR +
+          " — the fix was meant to leave every small ship exactly where it was");
+  }
+  /* And the tanks shrug. Ric, on the Tender: "shouldnt get damaged from
+     astroids but shouldnt be able to fly through them" — which is a different
+     thing from the commuters' prow, and both had to exist. */
+  for (const sh of list) {
+    const tank = sh.category === "INDUSTRIAL" || sh.category === "UTILITY";
+    check(!!sh.tough === tank,
+          sh.name + (sh.tough ? " shrugs off rock and should not"
+                              : " takes rock damage and should not"));
+    check(!(sh.tough && sh.ram),
+          sh.name + " both shrugs off rock and flies through it — pick one");
+  }
+
   // Every hull needs a shape, and no two may be the same shape.
   const shapes = new Set();
   for (const sh of list) {
@@ -3544,22 +3978,28 @@ const storeOf = (cf, key) => {
   };
   check(span("hull") >= 8, "hull only spans " + span("hull").toFixed(1) + "x");
   check(span("cargo") >= 20, "cargo only spans " + span("cargo").toFixed(1) + "x");
-  check(span("speed") >= 1.8, "speed only spans " + span("speed").toFixed(2) + "x");
-  check(span("accel") >= 2.5, "accel only spans " + span("accel").toFixed(2) + "x");
-  check(span("turn") >= 3, "turn only spans " + span("turn").toFixed(1) + "x");
-  check(span("drag") >= 5, "drag only spans " + span("drag").toFixed(1) + "x");
+  check(span("speed") >= 4, "speed only spans " + span("speed").toFixed(2) + "x");
+  check(span("accel") >= 100, "accel only spans " + span("accel").toFixed(2) + "x");
+  check(span("turn") >= 7.5, "turn only spans " + span("turn").toFixed(1) + "x");
+  check(span("drag") >= 100, "drag only spans " + span("drag").toFixed(1) + "x");
   check(span("size") >= 4, "size only spans " + span("size").toFixed(1) + "x");
 
   /* Nothing is strictly better than something cheaper. A ship that beat a
      cheaper one on all eight would make the cheaper one unbuyable and the
      roster that much shorter. */
+  /* `drag` is not on this list and `accel` is not either, and both omissions
+     are the same point. Drag used to be friction, where less was strictly
+     better; it is grip now, and grip is a *character* rather than a quality —
+     the long drift that makes a hauler unwieldy is the same long drift that
+     carries it between stations on a closed throttle. There is no direction on
+     that axis a hull can be better in. And `accel` is derived from speed and
+     grip, so including it would be counting the same two numbers twice. */
   const beats = (a, b) => a.hull >= b.hull && a.cargo >= b.cargo &&
-                          a.speed >= b.speed && a.accel >= b.accel &&
-                          a.turn >= b.turn && a.drag <= b.drag &&
+                          a.speed >= b.speed &&
+                          a.turn >= b.turn &&
                           a.dmg * a.rate >= b.dmg * b.rate &&
                           (a.hull > b.hull || a.cargo > b.cargo ||
-                           a.speed > b.speed || a.accel > b.accel ||
-                           a.turn > b.turn || a.drag < b.drag);
+                           a.speed > b.speed || a.turn > b.turn);
   for (const a of list) {
     for (const b of list) {
       if (a.key === b.key || a.cost > b.cost) continue;
@@ -4586,7 +5026,16 @@ const storeOf = (cf, key) => {
   me.vx = 200;
   step(60);
   check(view().slots[3].fit < was, "the fit stopped while the page was open");
-  check(Math.abs(me.x - x0) > 100, "the world paused behind the loadout page");
+  /* How far this hull can coast in a second, rather than a flat hundred units.
+     Grip spans two and a half orders of magnitude across the roster now, and
+     the point of the grippy end is that it *cannot* coast — a Jackal at its own
+     top speed covers thirty-three units with the engine off, so a fixed bar
+     tests which hull you happen to be in rather than whether the world ran. */
+  const coastable = (200 / me.drag) * (1 - Math.exp(-me.drag));
+  check(Math.abs(me.x - x0) > coastable * 0.5,
+        "the world paused behind the loadout page (" +
+        Math.round(Math.abs(me.x - x0)) + " of a possible " +
+        Math.round(coastable) + ")");
   cf.screen("playing");
 
   // And all of it survives the tab.
@@ -6259,16 +6708,36 @@ const storeOf = (cf, key) => {
   // time you meet one: `wantOf` sets this when it picks a client of its own.
   escort.client = hauler; escort.mark = hauler; escort.markKind = "ship";
   const patrol = mk("patrol", "hallow", me.x + 200, me.y - 900);
-  step(240);
+  /* ── who wants what, watched rather than sampled ──────────────────────
+     This used to step four seconds and then look once, which was a safe way to
+     ask the question while a fight took twenty-odd seconds to resolve. It
+     stopped being safe when bot hulls got their real turn rates: the whole
+     engagement now runs its course in under four seconds, so by the time the
+     check looked, the pirate had already killed the hauler, re-marked the
+     escort, and moved on — all of it correct, and all of it after the moment
+     being asserted.
 
-  check(pirate.mark === hauler,
-        "the pirate went for " + (pirate.mark === empty ? "the empty hauler" :
-          "something that was not the laden one") + " — it wants the cargo");
-  check((hauler.hunted || 0) > 0, "the hauler does not know it is being hunted");
-  check(escort.angryAt === pirate,
-        "the escort did not turn on the pirate going for its client");
-  check(patrol.mark === pirate || patrol.angryAt === pirate,
-        "the patrol did not respond to a pirate in the open");
+     So the wants are *watched* as they happen. Each one is latched the first
+     frame it is true and the latch is what gets checked, which asks "did this
+     ever happen" rather than "is this still true four seconds later". The
+     second question has no stable answer in a fight that resolves faster than
+     the window it is measured in. */
+  let sawMark = false, sawEscort = false, sawPatrol = false, sawHunted = false;
+  for (let i = 0; i < 300; i++) {
+    step(1);
+    if (pirate.mark === hauler) sawMark = true;
+    if ((hauler.hunted || 0) > 0) sawHunted = true;
+    if (escort.angryAt === pirate) sawEscort = true;
+    if (patrol.mark === pirate || patrol.angryAt === pirate) sawPatrol = true;
+  }
+
+  check(sawMark,
+        "the pirate never went for the laden hauler — it wants the cargo");
+  check(sawHunted, "the hauler never knew it was being hunted");
+  check(sawEscort,
+        "the escort never turned on the pirate going for its client");
+  check(sawPatrol,
+        "the patrol never responded to a pirate in the open");
 
   /* Who outlived whom. This was "the hauler is still there after twenty-five
      seconds" once, which asserts that being defended is the same as being safe —
@@ -6609,6 +7078,74 @@ const storeOf = (cf, key) => {
   console.log("  pages      strip at the top on all seven \u00b7 the record runs " +
               Math.round(hud.recordHeight) +
               "px \u00b7 nothing pressable outside its window at any scroll");
+}
+
+// ── a hull flies the same in anybody's hands ─────────────────────────────
+/* Ric asked whether bots move on the same numbers he does. Acceleration, drag,
+   top speed and now round speed all came off the hull for both — but turn did
+   not: traffic steered on a hard-coded 1.4 where the player steers on `TURN`,
+   which is 3.2, so a bot turned at 44% of your rate in the same hull. That is
+   why a fast enemy could always be out-circled however good its hull looked on
+   the shipyard page, and the comment above the traffic step claimed all three
+   numbers were shared while only two of them were.
+
+   Pinned here because it is exactly the kind of thing that comes back: a
+   constant beside a formula, read by one of two call sites. */
+{
+  const { cf } = boot("?debug=1&seed=246810");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 9e9; surv.water = 9e5; surv.food = 9e5;
+      now += 1000 / 60; cf.step();
+    }
+  };
+  step(20);
+  const TURN = 3.2;
+  const SHIPS = cf.surveyView().ships;
+  const seen = [];
+
+  for (const key of ["needle", "lance", "drayman", "granary"]) {
+    const hull = SHIPS.find(sh => sh.key === key);
+    surv.traffic.length = 0;
+    const bx = me.x + 150000, by = me.y + 150000;
+    const t = { id: null, kind: "pirate", role: "pirate", faction: "pirate",
+                hull: key, x: bx, y: by, a: 0, from: { x: bx, y: by },
+                to: { x: bx + 9000, y: by }, leg: 1,
+                speed: 360 * hull.speed, baseSpeed: 360 * hull.speed,
+                hp: hull.hull, maxHp: hull.hull, cargo: [], cool: 1, doom: 0,
+                guards: 0, space: 0, trades: false, phase: 0 };
+    surv.traffic.push(t);
+
+    /* Every frame's heading change, and then a high percentile of them — not
+       the maximum. The streamer can rebuild a ship and move its heading
+       discontinuously, and a max reports that as the turn rate: it said sixty
+       radians a second for a needle. A ship steering at its cap spends many
+       frames there, so a percentile finds the cap and a one-off jump cannot. */
+    const steps = [];
+    let prev = t.a;
+    for (let f = 0; f < 60 * 60; f++) {
+      step(1);
+      if (surv.traffic.indexOf(t) < 0) break;
+      let d = t.a - prev;
+      while (d > Math.PI) d -= 2 * Math.PI;
+      while (d < -Math.PI) d += 2 * Math.PI;
+      steps.push(Math.abs(d));
+      prev = t.a;
+    }
+    check(steps.length > 600, key + " only survived " + steps.length + " frames");
+    steps.sort((a, b) => a - b);
+    const rate = steps[Math.floor(steps.length * 0.995)] * 60;
+    const want = TURN * hull.turn;
+    check(Math.abs(rate - want) < want * 0.06,
+          "a " + key + " flown by a bot turns at " + rate.toFixed(2) +
+          " rad/s where the same hull in your hands turns at " + want.toFixed(2));
+    seen.push(key + " " + rate.toFixed(1));
+  }
+  console.log("  samehull   a bot turns its hull at the rate you do — " +
+              seen.join(" · ") + " rad/s");
 }
 
 // ── somebody else wants what you dropped ─────────────────────────────────
@@ -7936,11 +8473,29 @@ const storeOf = (cf, key) => {
       check(surv.hulks.length === hulksBefore,
             "a ship swallowed by a well left something behind — inside the well");
 
-      /* With the attention to spare, it steers. Same place, not being chased. */
+      /* With the attention to spare, it steers. Same place, not being chased.
+
+         Flown by something that can fight a well, which the default hauler no
+         longer can. That is the roster change rather than a regression: grip is
+         its own axis now, a Drayman's drift is twenty-three seconds long, and a
+         well's inward pull accumulates across all of it — so a barge caught
+         inside a supermassive's reach is genuinely in trouble, which is the
+         right answer and a real change to how wells feel from a hold.
+
+         What this check is about is whether the *dodge* runs at all, so it flies
+         a hull whose engine can show it. Proving the behaviour exists and
+         proving a barge can win are two claims, and only the first one belongs
+         here. */
       const calm = put({ x: live.x + live.reach * 0.8, y: live.y,
+                         hull: "lance", speed: 300, baseSpeed: 300,
                          to: { x: live.x + live.reach * 0.8, y: live.y + 90000 } });
       const c0 = Math.hypot(calm.x - live.x, calm.y - live.y);
-      step(120);
+      /* Five seconds rather than two. This is a Drayman, and a Drayman is now
+         deliberately one of the floatiest hulls in the game — nine seconds to
+         its own top speed — so two seconds of climbing is not enough thrust to
+         show against the pull. The claim being tested is that it steers, not
+         that a hauler is nimble. */
+      step(300);
       const alive = surv.traffic.indexOf(calm) >= 0;
       check(alive, "a ship minding its own business flew into a well anyway");
       if (alive) {
