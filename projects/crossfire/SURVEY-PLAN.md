@@ -151,6 +151,106 @@ above get answered before their path is built.
 
 ---
 
+## Who holds the sky  ·  *territory replaces the danger rings*  ·  **the brief, not yet built**
+
+> *"take the danger rings off. it will instead be based by boime and who owns
+> that space."*
+
+**Why the rings go.** Danger was one number, `dangerAt`, rising in a straight
+line with distance from home, with seven named bands over it (HOME → THE LONG
+DARK) shown permanently on the HUD. Three things made the whole sector feel like
+a set of rings: the band name was the only place name the player ever saw; the
+home override (`HOME_REACH`, 30,000) cut every biome on a perfect circle — sent
+out in 120 directions from home on seed 424242, 74 of them met their first biome
+at exactly 30,000; and danger scaled rocks, wells, caches and pirates purely by
+radius, which swamped anything a biome did.
+
+And a bug the rings were hiding: 6.7 moved `DANGER_FULL` from 320,000 to
+1,800,000 and kept the band *edges*, so every near place got about 5.6x safer.
+The edge of HOSTILE went from 0.56 to 0.10; ten minutes of throttle went from
+the maximum to 0.19. This rebuild makes that moot rather than fixing it.
+
+### Ric's decisions
+
+- **Distance no longer drives danger.** The landmark ladder stays spread out by
+  distance, so going far still finds new places, but a patch next to home can
+  be deadly and one far out can be calm.
+- **Danger is personal.** Cordon space is safe if the Cordon likes you and
+  dangerous if you are WANTED by it. The same place plays differently for a
+  pirate and for a soldier.
+- **Borders move from the start.** Who is at war changes, and the land changes
+  with it.
+- **Five kinds of space**, in Ric's words:
+
+| Kind | What it is |
+|---|---|
+| **Territory** | Governments that control areas: the Cordon, the Hallow Line, Morrow. |
+| **The Frontier** | *"Far away star systems where civilization is just beginning to arrive."* |
+| **Lawless Sectors** | *"Regions between rival empires where no single group can enforce rules."* |
+| **The Deep Void** | *"Empty areas between galaxies where no stars or stations exist."* |
+| *(the front)* | Territory touching an enemy's territory: where the war is actually fought. |
+
+### Two dials, not one
+
+Danger splits in two, and the split is the rule that keeps the world a pure
+function of its seed:
+
+- **Nature belongs to the biome.** Rocks, wells, fields, worlds, caches and the
+  rarity of what is in them. Every biome gets its own danger (the Wells, the
+  Murk, the Warrens and the Boneyard are nasty; the Settled Reach and the Lanes
+  are calm). This never moves, because a world is still its seed.
+- **People belong to the owner.** Traffic, patrols, pirates, battles, who flies
+  a station's flag, prices and repairs. This is what moves when borders move and
+  what reads your standing.
+
+Rewards follow danger wherever it is, so risky space still pays better.
+
+### How the map is made
+
+Built on the region lattice the biomes already use, so a border looks like a
+biome border and never like a ring. Each power has a low-frequency influence
+field over the region cells; a cell is held by the strongest power if that power
+is strong enough and clearly ahead. Unheld cells are classified by their
+neighbours: touching two or more powers → **Lawless**; near one power →
+**Frontier**; near none → **Deep Void**. Prototyped over three seeds, the split
+comes out around 60% territory, 25% frontier, 11% lawless and 2–5% void, and
+every seed makes irregular empires with no ring anywhere. Still to tune: empires
+fragment into too many separate pieces, and the void is too rare to feel like
+the space between galaxies.
+
+**Home sits in the Frontier**: nobody's yet, calm biome, one power's territory
+within reach. A nobody starting out where civilisation is only just arriving,
+and the two-minute test stays safe.
+
+**Moving borders are stored as changes over the seeded map**, never as the map
+itself: the book keeps only the cells that have changed hands, so space stays
+endless and a save stays small.
+
+**The HUD label** that said HOSTILE says whose space you are in (CORDON SPACE,
+LAWLESS, THE FRONTIER, THE DEEP VOID). Biomes stay unnamed, per BIOMES.md.
+
+### Build order
+
+**A · The map.** Territory and the five kinds in `survey-world.js`; `BANDS` and
+the distance curve removed; the two dials wired into all ~40 places that read
+`dangerAt` today; stations fly their owner's flag (5.8's missing first piece);
+traffic drawn from the kind of space it is in; the HUD label. The fingerprint
+baseline in `test/fingerprint.js` is re-recorded **on purpose**, once: geography
+changes when distance stops shaping it.
+
+**B · Personal.** Your standing with the owner sets how dangerous their space is
+for you. `standingOf` already has the five rungs.
+
+**C · Borders move.** A war that ticks over the fronts: battles won and lost
+flip cells, what the player does pushes on them, the Frontier gets settled,
+Lawless gets claimed, and which powers are at war can change. Every change has a
+cause the player could have seen (LIVING-WORLD.md's rule: no border moves without
+an event behind it), and a crossing that changed hands says so.
+
+A and C ship to players together; nobody plays a fixed map first.
+
+---
+
 ## What already existed
 
 The state of the mode when this file was written, kept as the baseline every
