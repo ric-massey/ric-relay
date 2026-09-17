@@ -23,10 +23,12 @@ So, when you finish an item:
 
 1. **Build it.** One item at a time — see "Rules for building this".
 2. **Test it.** `node projects/crossfire/test/survey.js` end to end, plus
-   whichever narrower suite covers what you touched (`fingerprint.js` before and
-   after anything in `survey-world.js`, `warrens.js` for the cave, `save.js` for
-   the book, `vault.js` for the Vault). A thing with no test is not finished if
-   it is a number, a placement, a curve or a state machine.
+   whichever narrower suite covers what you touched — `warrens.js` for the cave,
+   `save.js` for the book, `vault.js` for the Vault, and **`fingerprint.js` after
+   anything in `survey-world.js`**, which gates on its own baseline and fails on a
+   mismatch rather than asking you to remember what it printed last time. A thing
+   with no test is not finished if it is a number, a placement, a curve or a state
+   machine.
 3. **Only when it is good:** move the item's whole section out of
    `SURVEY-PLAN.md` and into `SURVEY-DONE.md`, at the end of the phase it
    belongs to. Take the reasoning with it — the argument for *why* it is built
@@ -91,12 +93,12 @@ table with a line on each:
 | **Phase 4** company, and the first two minutes | **DONE** |
 | **The pages, on one grid** | **DONE** |
 | **Phase 5** consequence | **DONE** except 5.5 and half of 5.8, both below |
-| **Phase 7** the interface | **DONE** except one brief, below |
+| **Phase 7** the interface | **DONE** except one brief and four lines of copy, both below |
 | **Phase 6** possibility multiplication | **6 of 7** — 6.6 is below |
 | **Coming back, and an account** | **DONE** |
 | **Who holds the sky** territory | **A and C built** — B is below |
 
-What is left is the nine items in the next section. Two of them — 5.5 and the
+What is left is the ten items in the next section. Two of them — 5.5 and the
 storage half of 5.8 — are the same job at two sizes: nowhere to put what you are
 not carrying, on the ship and at the station.
 
@@ -104,7 +106,7 @@ not carrying, on the ship and at the station.
 
 ## What is left
 
-Nine things. Each one carries everything needed to build it; where a phase's
+Ten things. Each one carries everything needed to build it; where a phase's
 reasoning matters, it is named and lives in the record.
 
 ### 1 · 6.6 — authored mysteries  ·  **the biggest one**
@@ -330,12 +332,32 @@ one worth doing, because the whole feeling being asked for here is the size.
 
 ---
 
-### 7 · The panel minimap draws no borders
+### 7 · Four lines that assume you were watching  ·  *the last of 7.9*
+
+Phase 7 asked that every line of `chatter()` make sense to somebody who looked
+away for ten seconds. The example it was written from is fixed; the pass across
+the rest was never done, and the record said it had been.
+
+All 105 call sites were read on 17 September. The large majority pass — they name
+the faction, the system or the object. **Four do not**, and they are the whole of
+what is left:
+
+| the line | what it is about | what is wrong |
+|---|---|---|
+| `"They have what they came for."` | a pirate leaving with your cargo | *they* is never resolved |
+| `"<POWER> sent somebody."` | a hunter on its way | does not say it is after **you** |
+| `"Back on somebody's screen."` | silent running expiring | names the effect, not the cause |
+| `"They were not armed."` | shooting an unarmed ship | assumes you know what you shot |
+
+Each is one string in `index.html`. It is the smallest item in this file and the
+only one that needs no design decision.
+
+### 8 · The panel minimap draws no borders
 
 Only the full chart does. Small, and the one piece of "Who holds the sky" that
 did not land with the rest of A and C.
 
-### 8 and 9 · The long-term tracks, and stranger things
+### 9 and 10 · The long-term tracks, and stranger things
 
 Ric's list, and the shape of every hour after the first:
 
@@ -387,8 +409,8 @@ discovered later. Those three are not.
 
 Ric's sentence, and it carries the whole game. Every item is judged against it:
 a feature that does not sit on one of those five verbs is a feature that is
-making the game bigger rather than better. The five long-term tracks — item 8
-and 9 above — are the same sentence read as *progression* rather than as a
+making the game bigger rather than better. The five long-term tracks — items 9
+and 10 above — are the same sentence read as *progression* rather than as a
 loop.
 
 ---

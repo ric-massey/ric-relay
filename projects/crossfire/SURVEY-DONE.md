@@ -50,10 +50,44 @@ below.
 | **Phase 4** company, and the first two minutes | **DONE** | Friendly ships, and an opening that teaches |
 | **The pages, on one grid** | **DONE** | Every station and inventory page on one layout |
 | **Phase 5** consequence | **DONE** but for 5.5 and half of 5.8 | 5.1–5.4, 5.6, 5.7, the mobile pass, the jump gate |
-| **Phase 7** the interface | **DONE** but for one brief | 7.1–7.15 (no 7.7), the cockpit sessions, the devices, the empty room |
+| **Phase 7** the interface | **DONE** but for one brief and four lines of 7.9's copy | 7.1–7.15 (no 7.7), the cockpit sessions, the devices, the empty room |
 | **Phase 6** possibility multiplication | **6 of 7** | 6.1–6.5 and 6.7. 6.6 is the one left |
 | **Coming back, and an account** | **DONE** | The home station, and an optional account that stays optional |
 | **Who holds the sky** territory | **A and C built** | The map, and a war that moves the borders. B is in the plan |
+
+---
+
+## Audited — 17 September 2026
+
+Every **DONE** in this file was checked against the code rather than taken on
+trust. The headline: the finished work is in good shape. Twelve suites pass —
+smoke, menu, save, rocks, fog, biomes, warrens, ui, campaign, survey, fingerprint
+and vault — the interface suite puts **2,814 controls across 224 pages and four
+shapes of glass** on the screen and within reach of a thumb, and there is not one
+`TODO`, `FIXME` or `HACK` anywhere in the mode's source.
+
+Five things were wrong, and all five are fixed:
+
+| | |
+|---|---|
+| **The Vault was asserted nowhere.** `test/survey.js` had eight landmark keys written out by hand, twice, and the Vault was added as a ninth without them. A sector that generated no Vault, or two, would have passed — and the almanac would have carried an entry nobody could earn. | Both checks read the sector and the almanac now, not a list, so a tenth landmark needs no edit there. The 60-seed check also takes the *set* the first seed lays down and requires every later seed to match it, which a bare "at least nine" would not catch. The suite reports **nine landmarks, every one with an entry**. |
+| **`fingerprint.js` asserted nothing.** It printed three hashes and told you they "must not change" — the comparison was your eyes, and only if you remembered to run it *before* the change. This file claimed a baseline in it that was "re-recorded on purpose"; there was nothing to record to. | The hashes live in `test/fingerprint.json`, a mismatch fails, and `--record` is how you say a change to the sector was deliberate. A baseline that is *missing* a seed fails too, because a half-written one passes while that seed drifts. Both proved by hand: moving `DANGER_FLOOR` by 0.001 moved all three seeds and failed the gate, and deleting one seed from the file failed it naming that seed. |
+| **7.6 quoted a hull that does not exist.** "37 minutes in a Mote, 260 in an Ossuary" — the **Ossuary went in one of the 15 September re-cuts**, and the figures went with it. | Corrected to the measured extremes, KITE 18m to GRANARY 180m, which `test/survey.js` prints on every run. |
+| **Five code comments cited a "Cathedral" hull**, also gone in the re-cuts, as their example of a big ship. | Now the GANTRY (exactly three times a SKIFF), the GRANARY (the biggest pantry, which is what `FOOD_FULL * 4` clamps to) and the TENDER (the biggest hull at 3.5x). |
+| **7.9's wording pass was recorded as closed when it was not.** | Audited properly: all 105 `chatter()` call sites read against the rule, four of them fail it, and those four are now item 7 in [`SURVEY-PLAN.md`](SURVEY-PLAN.md). |
+
+And the sixth, which is a trap rather than a defect and is written down rather
+than changed:
+
+| | |
+|---|---|
+| **Two hull *keys* still carry the old names.** The GANTRY's key is `cathedral` and the TENDER's is `ossuary`, so the ship ladders and every test read one name while the screen shows another. | Left alone, on purpose, and written down here instead: a save book stores those keys in `owned`, so renaming them breaks every save that owns one. Grep for the key, read the `name`. |
+
+Two notes on the audit's own limits. `test/browser.js` is the one suite that did
+not run — it needs Playwright's own Chromium build and the machine it ran on had
+a different one; it is not a defect in the game. And "high quality" here means
+*checked against the code and the suites*: it is not a claim that the mode plays
+well, which is what flying it is for.
 
 ---
 
@@ -66,10 +100,12 @@ So, when you finish an item:
 
 1. **Build it.** One item at a time — see "Rules for building this".
 2. **Test it.** `node projects/crossfire/test/survey.js` end to end, plus
-   whichever narrower suite covers what you touched (`fingerprint.js` before and
-   after anything in `survey-world.js`, `warrens.js` for the cave, `save.js` for
-   the book, `vault.js` for the Vault). A thing with no test is not finished if
-   it is a number, a placement, a curve or a state machine.
+   whichever narrower suite covers what you touched — `warrens.js` for the cave,
+   `save.js` for the book, `vault.js` for the Vault, and **`fingerprint.js` after
+   anything in `survey-world.js`**, which gates on its own baseline and fails on a
+   mismatch rather than asking you to remember what it printed last time. A thing
+   with no test is not finished if it is a number, a placement, a curve or a state
+   machine.
 3. **Only when it is good:** move the item's whole section out of
    `SURVEY-PLAN.md` and into `SURVEY-DONE.md`, at the end of the phase it
    belongs to. Take the reasoning with it — the argument for *why* it is built
@@ -291,7 +327,8 @@ endless and a save stays small.
 the distance curve removed; the two dials wired into all ~40 places that read
 `dangerAt` today; stations fly their owner's flag (5.8's missing first piece);
 traffic drawn from the kind of space it is in; the HUD label. The fingerprint
-baseline in `test/fingerprint.js` is re-recorded **on purpose**, once: geography
+baseline in `test/fingerprint.json` is re-recorded **on purpose**, once
+(`node test/fingerprint.js --record`, committed with the change): geography
 changes when distance stops shaping it.
 
 **B · Personal.** Your standing with the owner sets how dangerous their space is
@@ -380,7 +417,8 @@ A and C ship to players together; nobody plays a fixed map first.
 - **Deliberately changed geography.** Every existing save's sector is rebuilt
   from its seed with the new rules, so a save made before this sees different
   stations, worlds and wells in the same places. `test/fingerprint.js` will
-  not match the old hashes, and is not meant to.
+  fail against the old hashes, and is not meant to pass — `--record` once, and
+  commit the new `test/fingerprint.json` with the change.
 
 **Still open.** B (danger that depends on your standing with the owner). The
 panel minimap draws no borders, only the full chart does.
@@ -1882,8 +1920,18 @@ Below it, WHO KNOWS YOU carries the two lists of named ships from 6.5.
   and it is on every page's title line rather than in a panel of its own.
 - **Thirst is a 20-minute clock; food is 45 minutes.**  ·  **DONE**
 - **A bigger ship carries more food** — the hull decides the pantry, as it decides
-  the hold.  ·  **DONE** (37 minutes in a Mote, 260 in an Ossuary; water does not
-  scale, because a tank is a tank)
+  the hold.  ·  **DONE**. Water does not scale, because a tank is a tank: twenty
+  minutes on every hull. Food is forty-five minutes on the hull you start in and
+  rides the hold from there — **eighteen minutes in a KITE to a hundred and
+  eighty in a GRANARY**.
+
+  > *Figures corrected 17 September 2026.* This said "37 minutes in a Mote, 260
+  > in an Ossuary". The **Ossuary is not a hull any more** — it went in one of
+  > the two roster re-cuts of 15 September — and the numbers moved with the
+  > holds when it did. The pair above are the roster's real extremes and they
+  > are *measured* rather than written down: `test/survey.js`'s `pantry` check
+  > prints them on every run, so the next re-cut updates them instead of
+  > stranding them.
 - **The scan button has to look like a button** on a phone.  ·  **DONE**: a box,
   a border, and a ring inside it that fills as the scanner charges, so "charging"
   is the same object rather than a different word. On a keyboard it stays a label,
@@ -2667,12 +2715,25 @@ while the shortage from 6.2 had nowhere to show.
   rereading every `chatter()` in the file and asking whether somebody who looked
   away for ten seconds could parse it.
 
-  > **Closed, on the evidence — checked 17 September 2026.** The line this cites
-  > now reads *"They made it — that distress call is under way again."*, which
-  > names the thing that happened instead of assuming you watched it. The rest of
-  > `chatter()` reads the same way. Nothing recorded the close, which is why the
-  > list below said Phase 6 was next while three of its four items had already
-  > landed.
+  > **Mostly closed, and the remainder is named — audited 17 September 2026.**
+  > The line this cites now reads *"They made it — that distress call is under
+  > way again."*, which names what happened instead of assuming you watched it.
+  >
+  > All **105** `chatter()` call sites were then read against the rule. The large
+  > majority pass because they name the faction, the system or the object — a
+  > hauler out of water, a convoy unloading, a gate tuned, a melter running. Four
+  > do not, and they are the whole of what is left of this item:
+  >
+  > | line | says | the problem |
+  > |---|---|---|
+  > | `"They have what they came for."` | a pirate leaving with your cargo | *they* is never resolved |
+  > | `"<POWER> sent somebody."` | a hunter is on its way | does not say it is after **you** |
+  > | `"Back on somebody's screen."` | silent running has expired | names the effect, not the cause |
+  > | `"They were not armed."` | you shot an unarmed ship | assumes you know what you shot |
+  >
+  > An earlier pass of this note said the whole file read the same way. It does
+  > not; it reads the same way *almost* everywhere, and those four are the
+  > afternoon this item actually asks for.
 
 Everything else in 7 is done: the pages, the market, the chart's rail, the four
 slots, the scan button, the log, the info card, and the touch control for the

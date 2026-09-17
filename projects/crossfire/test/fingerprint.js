@@ -38,6 +38,7 @@
    that prints a hash and proves nothing. It did, once. */
 
 const crypto = require("node:crypto");
+const fs = require("node:fs");
 const vm = require("node:vm");
 const page = require("./page.js");
 
@@ -207,22 +208,112 @@ function fingerprint(seed) {
   return { hash: h.digest("hex"), solidPct, discs, warrens: sites.length };
 }
 
+/* ── the baseline ─────────────────────────────────────────────────────────
+   For most of this file's life the workflow above was the whole of it: run it,
+   change the generator, run it again, compare two screens of hex by eye. That
+   works exactly as long as somebody remembers to run it *first* — and the
+   failure it exists to catch is silent, so the one time nobody does is the time
+   it matters. Worse, the plan claimed this file held a baseline that was
+   "re-recorded on purpose" when a change to geography was intended; there was
+   nothing here to record to.
+
+   So the hashes live beside it in `fingerprint.json` and a mismatch is a
+   failure. Changing the sector **on purpose** is still allowed and still easy —
+   it is one flag, and the flag is the record that it was deliberate:
+
+       node test/fingerprint.js              # the gate
+       node test/fingerprint.js --record     # I meant it: take the new hashes
+       node test/fingerprint.js 1 42         # other seeds, printed not gated
+
+   Only the three default seeds are baselined, and all three have to be in the
+   file — a baseline missing one passes while that seed drifts, so a gap fails
+   the same way a mismatch does. A seed of your own on the command line has
+   nothing to compare against, so the run prints and says it is not gating. */
+const BASELINE = require("node:path").join(__dirname, "fingerprint.json");
+
 const seeds = process.argv.slice(2).filter(a => /^\d+$/.test(a)).map(Number);
-const SEEDS = seeds.length ? seeds : [1, 606061, 424242];
+const record = process.argv.includes("--record");
+const DEFAULT_SEEDS = [1, 606061, 424242];
+const SEEDS = seeds.length ? seeds : DEFAULT_SEEDS;
+const gated = !seeds.length;
+
+let base = {};
+if (gated && !record) {
+  try { base = JSON.parse(fs.readFileSync(BASELINE, "utf8")).seeds || {}; }
+  catch (e) { base = null; }
+}
 
 console.log("");
 console.log("CROSSFIRE — what a seed makes");
 console.log("=".repeat(62));
 const t0 = Date.now();
+const got = {};
+let changed = [];
+let unbaselined = [];   // a default seed the baseline file does not cover
 for (const seed of SEEDS) {
   const r = fingerprint(seed);
+  got[seed] = { hash: r.hash, rock: +r.solidPct.toFixed(3), discs: r.discs };
+  const was = base && base[seed];
+  const same = was && was.hash === r.hash;
+  const mark = !gated ? "" : record ? "" : !base ? "  (no baseline)"
+             : !was ? "  ✗ NOT IN THE BASELINE"
+             : same ? "  ✓ matches" : "  ✗ CHANGED";
+  if (gated && !record && was && !same) changed.push({ seed, was, now: got[seed] });
+  if (gated && !record && base && !was) unbaselined.push(seed);
   console.log("  seed " + String(seed).padEnd(10) + r.hash.slice(0, 32) +
               (r.warrens
                 ? "  rock " + r.solidPct.toFixed(3) + "%  discs " + r.discs
-                : "  (no Warrens within 700k)"));
+                : "  (no Warrens within 700k)") + mark);
 }
 console.log("=".repeat(62));
 console.log("  " + SEEDS.length + " seeds in " +
-            ((Date.now() - t0) / 1000).toFixed(1) + "s · " +
-            "these must not change unless the sector is meant to");
-console.log("");
+            ((Date.now() - t0) / 1000).toFixed(1) + "s");
+
+if (record) {
+  fs.writeFileSync(BASELINE, JSON.stringify(
+    { note: "Written by test/fingerprint.js --record. A seed makes a sector; " +
+            "these hashes are which sector. Changing them changes every save.",
+      recorded: new Date().toISOString().slice(0, 10), seeds: got }, null, 2) + "\n");
+  console.log("  baseline recorded — " + Object.keys(got).length + " seeds. " +
+              "Commit it with the change that moved them.");
+  console.log("");
+} else if (!gated) {
+  console.log("  seeds given on the command line are printed, not gated.");
+  console.log("");
+} else if (!base) {
+  console.log("");
+  console.log("  NO BASELINE. Run `node test/fingerprint.js --record` once to make one.");
+  console.log("");
+  process.exit(1);
+} else if (unbaselined.length) {
+  /* A half-written baseline is worse than none, because the run looks green.
+     Every default seed has to be covered or this is not a gate. */
+  console.log("");
+  console.log("  THE BASELINE IS INCOMPLETE. It does not cover seed " +
+              unbaselined.join(", ") + ".");
+  console.log("  A baseline that skips a seed passes while that seed drifts.");
+  console.log("      node test/fingerprint.js --record");
+  console.log("");
+  process.exit(1);
+} else if (changed.length) {
+  console.log("");
+  console.log("  THE SECTOR MOVED. " + changed.length + " of " + SEEDS.length +
+              " seeds build something different:");
+  for (const c of changed) {
+    console.log("    seed " + c.seed);
+    console.log("      was  " + c.was.hash.slice(0, 32) +
+                "  rock " + c.was.rock + "%  discs " + c.was.discs);
+    console.log("      now  " + c.now.hash.slice(0, 32) +
+                "  rock " + c.now.rock + "%  discs " + c.now.discs);
+  }
+  console.log("");
+  console.log("  Every existing save keeps its seed and rebuilds its sector from it,");
+  console.log("  so this has thrown away the charts, pins, almanac entries and yard");
+  console.log("  sites in all of them. If that was the point, say so:");
+  console.log("      node test/fingerprint.js --record");
+  console.log("");
+  process.exit(1);
+} else {
+  console.log("  every seed builds the sector it built before.");
+  console.log("");
+}

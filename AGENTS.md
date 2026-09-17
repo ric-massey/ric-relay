@@ -441,7 +441,7 @@ list used to name it as if anyone could. `projects/training/server/test.mjs` abo
 published half. The crossfire suite has more than the three named here
 (`fingerprint.js`, `biomes.js`, `warrens.js`, `rocks.js`, `save.js`, `fog.js`, `ui.js`,
 `menu.js`, `page.js`, `browser.js`); run the one that covers what you touched, and
-**`fingerprint.js` before and after anything in `survey-world.js`.**
+**`fingerprint.js` after anything in `survey-world.js`** — it holds its own baseline and fails on a mismatch, so a generator change that would have silently invalidated every save is caught rather than eyeballed.
 
 Served from a plain static server, `/climb`, `/media`, `/log` and `/strava` all 404:
 those are Cloudflare Worker endpoints, and on `localhost` the client points at the origin

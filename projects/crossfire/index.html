@@ -2404,8 +2404,8 @@
      whatever you chose, so both can be felt together and this one can be cut
      without taking the control with it.
 
-     The curve is deliberately weaker than the size it responds to — a Cathedral
-     is three times a Skiff and gets about half again the view, not three times —
+     The curve is deliberately weaker than the size it responds to — a GANTRY
+     is three times a SKIFF and gets about half again the view, not three times —
      because a capital that showed the whole sector would make the small ships
      feel blind rather than nimble. */
   const shipZoomFactor = () => {
@@ -5821,10 +5821,10 @@
      spending it watching a bar is not the game.
 
      Food is the one the hull decides. A pantry is space, and space is the thing a
-     bigger ship has: `FOOD_FULL` is what the Skiff carries, and every other hull
-     carries it scaled by its hold. So a Cathedral can be away for a very long
-     time and a Needle cannot, which is a reason to own more than one ship that is
-     not "it is faster". */
+     bigger ship has: `FOOD_FULL` is what the SKIFF carries, and every other hull
+     carries it scaled by its hold. So a GRANARY can be away for a very long time
+     (180 minutes of food) and a KITE cannot (18), which is a reason to own more
+     than one ship that is not "it is faster". */
   const WATER_FULL   = 1200;   // seconds of water in a full tank — twenty minutes
   const FOOD_FULL    = 2700;   // and forty-five of food, on the ship it starts in
   const THIRST_GRACE = 75;     // then it kills you
@@ -12401,7 +12401,7 @@
 
   /* How big the ship you are flying actually is. Collision, the salvage pickup,
      where a round leaves the nose and how big it draws all read this, so a
-     Cathedral is a Cathedral to every one of them at once. */
+     TENDER is a TENDER to every one of them at once. */
   const shipRadius = () => SHIP_R * U * (ships[0] && ships[0].sizeMul || 1);
 
   /* ── the two tracks ───────────────────────────────────────────────────────
@@ -16134,7 +16134,7 @@
     surv.food = Math.min(surv.food, foodCap());
     // The camera is set at startup and by the Settings control, and a swap is
     // the third thing that changes it — without this you walked out of the
-    // hangar in a Cathedral still looking through a Skiff's window.
+    // hangar in a TENDER still looking through a SKIFF's window.
     if (mode && mode.survey) cam.scale = surveyZoom * shipZoomFactor();
     if (was !== key) {
       gameSound("win");

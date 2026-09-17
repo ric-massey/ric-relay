@@ -151,7 +151,7 @@ remember you.
 > does rather than what it is for.** Four other files carry the rest, and which
 > one you want depends on the question:
 >
-> - **What is left to build** — `SURVEY-PLAN.md`. Short on purpose: nine items
+> - **What is left to build** — `SURVEY-PLAN.md`. Short on purpose: ten items
 >   and the direction they are sorted by.
 > - **What got built, and how it landed** — `SURVEY-DONE.md`. Seven finished
 >   phases, every session at the stick that turned something up, and every bug
@@ -894,8 +894,23 @@ a saved survey stores a *seed*, so the worlds it names have to still be there.
 Change what a seed generates and every chart, pin, almanac entry and yard site
 in every save points at terrain that no longer exists.
 
-So the bar for touching it is not the suite. It is a **fingerprint**, taken
-before and after, which has to come back byte-identical:
+So the bar for touching it is not the suite. It is a **fingerprint**, which has
+to come back byte-identical.
+
+**It is a gate now, not an eye test.** For most of its life this was "run it,
+change the generator, run it again, compare two screens of hex" — which works
+only as long as somebody remembers the *first* run, and the failure it exists to
+catch is silent. The hashes live in `test/fingerprint.json` and a mismatch fails:
+
+```sh
+node test/fingerprint.js              # the gate
+node test/fingerprint.js --record     # I meant it — take the new hashes
+node test/fingerprint.js 1 42         # other seeds, printed rather than gated
+```
+
+Changing the sector on purpose is still one flag, and the flag is the record that
+it was deliberate; commit the new `fingerprint.json` with the change that moved
+it. What the hash covers:
 
 - 4,000 chunks hashed whole — planets, hulks, caches, stations, wells, fields
   — minus one field. A chunk carries the traffic that starts in it, and a

@@ -321,20 +321,37 @@ const storeOf = (cf, key) => {
 // ── 1. generation is pure, and the ladder is complete ────────────────────
 /* An endless sector cannot be checked by enumerating it. What can be checked is
    that a chunk is a pure function of its coordinates — fly away and back and
-   find the same stars — and that the eight landmarks are all placed, all at
+   find the same stars — and that every authored landmark is placed, all at
    different bearings, and all at the distances the ladder promises. */
 {
   const SEEDS = 60;
   let minSpread = Infinity;
+  let expectPlaces = null;   // the set the first seed laid down; every other must match
   for (let i = 0; i < SEEDS; i++) {
     const seed = 1000 + i * 7919;
     const { cf } = boot("?debug=1&seed=" + seed);
     cf.start("survey", 1);
     const surv = cf.survey();
 
+    /* Exactly one of each, in every seed. The list used to be written out here
+       and went stale the moment a ninth landmark was added, so it is taken from
+       the sector instead and adding a tenth needs no edit here. Two things are
+       asserted and they have to be separate: the *set* is the same in every
+       seed — the first one is the reference, so a landmark that goes missing in
+       seed 40 is a failure rather than a smaller list — and within a seed no key
+       appears twice. */
     const keys = surv.landmarks.map(l => l.key);
-    for (const key of ["graveyard", "rogue", "last-transmission", "pale-dot",
-                       "the-wall", "supernebula", "node-01", "leviathan"]) {
+    const places = [...new Set(keys)].sort();
+    if (expectPlaces === null) {
+      expectPlaces = places;
+      check(places.length >= 9,
+            "only " + places.length + " authored places in the sector — expected at least 9");
+    } else {
+      check(places.join(",") === expectPlaces.join(","),
+            "seed " + seed + ": a different set of landmarks than seed 1000 — " +
+            "got " + places.join(",") + ", expected " + expectPlaces.join(","));
+    }
+    for (const key of places) {
       check(keys.filter(k => k === key).length === 1,
             "seed " + seed + ": landmark " + key + " appears " +
             keys.filter(k => k === key).length + " times");
@@ -398,7 +415,8 @@ const storeOf = (cf, key) => {
           "seed " + seed + ": the home chunk has a hazard in it");
   }
   console.log("  chunks     " + SEEDS + " seeds · pure and mixing · home chunk clear · " +
-              "8 landmarks each, min bearing gap " + minSpread.toFixed(2) + " rad");
+              expectPlaces.length + " landmarks each (" + expectPlaces.join(", ") +
+              "), min bearing gap " + minSpread.toFixed(2) + " rad");
 }
 
 // ── 1b. the sector really is endless ─────────────────────────
@@ -614,15 +632,28 @@ const storeOf = (cf, key) => {
     check(ICON_CASES.has(e.key), e.key + ": no picture in the almanac");
   }
 
-  // And the eight that are places must each be somewhere to fly to.
+  /* And every entry that is a *place* must be somewhere to fly to. Taken from
+     the sector rather than from a list written here: this was eight hard-coded
+     keys, the Vault was added as a ninth and nobody updated them, so for as long
+     as it has existed the one authored place nothing asserted was the newest
+     one — an almanac entry you could never earn would have passed. */
   const lmKeys = new Set(cf.survey().landmarks.map(l => l.key));
+  const placeKeys = cat.filter(e => lmKeys.has(e.key)).map(e => e.key);
+  check(placeKeys.length === lmKeys.size,
+        "the almanac and the sector disagree about which places exist: " +
+        "almanac " + placeKeys.length + ", sector " + lmKeys.size +
+        " (" + [...lmKeys].filter(k => !placeKeys.includes(k)).join(", ") + " missing an entry)");
+  for (const key of lmKeys) {
+    check(cat.some(e => e.key === key), key + " is in the sector with no almanac entry");
+  }
   for (const key of ["rogue", "pale-dot", "supernebula", "graveyard",
-                     "last-transmission", "node-01", "the-wall", "leviathan"]) {
+                     "last-transmission", "node-01", "the-wall", "leviathan",
+                     "vault"]) {
     check(lmKeys.has(key), key + " has no landmark in the sector");
   }
   console.log("  almanac    " + cat.length + " entries · " + tested +
               " telemetry conditions all reachable and none free · " +
-              cat.length + " pictures · 8 landmarks");
+              cat.length + " pictures · " + lmKeys.size + " landmarks, every one with an entry");
 }
 
 // ── 5. the chart survives the tab ─────────────────────────────────────────

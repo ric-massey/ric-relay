@@ -346,8 +346,10 @@ function validateSurveyBook(b) {
         : Math.max(0, Math.min(WATER_FULL, Number(b.water) || 0)),
       /* Clamped to the biggest pantry any hull has rather than to the Skiff's,
          because the book does not know which ship it will be read onto — a
-         Cathedral's tank would otherwise be cut to a Skiff's on every load. The
-         ship's own cap is applied where it is used. */
+         GRANARY's tank would otherwise be cut to a SKIFF's on every load. The
+         `* 4` is that hull: the pantry rides the hold, and the Granary's is four
+         times the starting one (180 minutes against 45). The ship's own cap is
+         applied where it is used. */
       food: b.food == null ? FOOD_FULL
         : Math.max(0, Math.min(FOOD_FULL * 4, Number(b.food) || 0)),
       hold: (() => {
