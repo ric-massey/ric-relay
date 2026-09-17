@@ -9,9 +9,10 @@
        number, and that number makes one chunk. This is what "the world is its
        seed" means in practice, and nothing in the mode is allowed to be true
        of a place in any other way.
-     · **the danger curve** — distance from the origin is the difficulty dial.
-       Seven named bands over a smooth curve, so a pilot can make a decision
-       about UNSETTLED without ever seeing 0.47.
+     · **how dangerous a place is** — the biome's own danger and the kind of
+       space it is, averaged. It is deliberately *not* distance: it used to be a
+       smooth curve from the origin under seven named bands, and `dangerAt`
+       below says why that went.
      · **the regions** — a Voronoi lattice of places, each multiplying the
        world's own abundances rather than replacing them. Nothing is stored,
        nothing can desync, and flying away and back finds the same place.
@@ -115,10 +116,10 @@ function dangerAt(x, y) {
    its well-riddled regions — the world says what kind of world it is and the
    region says what kind of *here* this is.
 
-   It is a **pure function of position**, like the danger band, which is the
-   whole reason it is affordable: nothing is stored, nothing can desync, a chunk
-   stays a pure function of its coordinates, and flying away and back finds the
-   same place. */
+   It is a **pure function of position**, which is the whole reason it is
+   affordable: nothing is stored, nothing can desync, a chunk stays a pure
+   function of its coordinates, and flying away and back finds the same
+   place. */
 const REGIONS = [
   /* **Ordinary space is the commonest thing in the galaxy**, and it has to be,
      or none of the rest reads as unusual. A third of the sky is this: the
@@ -377,7 +378,7 @@ function abund(key, x, y) {
 }
 
 /* ══ WHO HOLDS THE SKY ═════════════════════════════════════════════════════
-   Territory. See "Who holds the sky" in SURVEY-PLAN.md.
+   Territory. See "Who holds the sky" in SURVEY-DONE.md.
 
    Every region cell is held by one of the three powers or by nobody, and the
    cells nobody holds are one of three kinds of nobody's, in Ric's words:

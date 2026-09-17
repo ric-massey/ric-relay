@@ -4,11 +4,11 @@
 region layer that exists in the code today was built *before* this and does not
 yet obey it; what has been brought into line is recorded at the foot.
 
-*One of Survey's seven documents — `SURVEY-PLAN.md` → "The Survey documents" says how they relate, and its "What is still open" is the one list of what is left.*
+*One of Survey's eight documents — `SURVEY-PLAN.md` → "The Survey documents" says how they relate, and its "What is left" is the one list of what is not built.*
 
 > **Partly retired, 17 September 2026.** Ric reversed the naming rule: the top
 > right now names the biome you are in, and scanning inside one puts its borders
-> on the chart. See "Who holds the sky → Seeing it" in SURVEY-PLAN.md. What
+> on the chart. See "Who holds the sky → Seeing it" in SURVEY-DONE.md. What
 > still stands: biomes are rulesets that change how space plays, and the chart
 > only knows what you have been to or scanned.
 

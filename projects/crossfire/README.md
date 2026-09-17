@@ -148,22 +148,25 @@ chart you have flown, your standing with three powers, and the ships that
 remember you.
 
 > **It is the one mode still being built, and this section describes what it
-> does rather than what it is for.** Three other files carry the rest, and which
+> does rather than what it is for.** Four other files carry the rest, and which
 > one you want depends on the question:
 >
-> - **What is built, what is left, and why** — `SURVEY-PLAN.md`. Start at its
->   "Where it stands" and "What is still open"; it is 3,300 lines and those two
->   sections exist so you do not have to read them.
+> - **What is left to build** — `SURVEY-PLAN.md`. Short on purpose: nine items
+>   and the direction they are sorted by.
+> - **What got built, and how it landed** — `SURVEY-DONE.md`. Seven finished
+>   phases, every session at the stick that turned something up, and every bug
+>   worth writing down. Nothing in it is waiting to be done.
 > - **What Ric asked for, in his words** — `TODO.md`. One item open.
 > - **Ideas not yet earned a place in the plan** — `BIOMES.md`,
 >   `WORLD-IDEAS.md`, `LIVING-WORLD.md`, `PLAYER-HISTORY.md`. Each says at the
 >   top how much of it is real; `SURVEY-PLAN.md` → "The Survey documents" is the
->   map of all seven.
+>   map of all eight.
 >
-> Where this file and the plan disagree, the split is: **this one is written from
-> the code, so it wins on what the game does**; the plan wins on what the work is
-> for and how far it got. `SURVEY-PLAN.md` → "The Survey documents" says it the
-> same way.
+> Where they disagree: **this file is written from the code, so it wins on what
+> the game does**; `SURVEY-PLAN.md` wins on what the work is for; `SURVEY-DONE.md`
+> wins on what happened. And when you finish something from the plan, the rule is
+> to move it into the record — `SURVEY-PLAN.md` → "When you finish something,
+> move it" is the procedure.
 
 ### It has no edges
 
@@ -752,6 +755,10 @@ eligible, and the backend cannot be changed after the namespace is created.
 | File | Responsibility |
 |---|---|
 | `index.html` | UI, settings, simulation, rendering, bots, campaign, survey and match rules |
+| `SURVEY-PLAN.md` | **Survey: what is left.** Nine items and the direction they are sorted by. Carries the rule for moving a finished item into the record |
+| `SURVEY-DONE.md` | **Survey: the record.** Seven finished phases and how each landed. Append-only; nothing in it is waiting to be done |
+| `TODO.md` | Ric's own list for the whole game, in his words. One item open (A3, the Vault) |
+| `BIOMES.md` · `WORLD-IDEAS.md` · `LIVING-WORLD.md` · `PLAYER-HISTORY.md` | Design briefs for Survey, each saying at its head how much of it is built |
 | `net.js` | WebRTC links and compact session-description encoding |
 | `cloud.js` | The account, and the book kept in it. No SDK, no request until asked |
 | `config.js` | The account service's URL and publishable key. Blank means no accounts |

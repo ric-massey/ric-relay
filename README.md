@@ -110,10 +110,11 @@ bought; an almanac of authored landmarks runs from 13,000 out to 3.4 million uni
 space itself has fourteen kinds of biome and a political map — three powers holding
 cells, fronts that grind, ceasefires when both sides wear out, and a chart that only
 knows what you have flown through or scanned. Progress is saved locally, or on an
-optional account. `projects/crossfire/SURVEY-PLAN.md` is the live plan and marks what
-each phase owes; `projects/crossfire/TODO.md` is Ric's own list, with one item left on
-it. `LIVING-WORLD.md`, `PLAYER-HISTORY.md` and `WORLD-IDEAS.md` in the same folder are
-briefs for work that has not been built.
+optional account. `projects/crossfire/SURVEY-PLAN.md` is the live plan — nine items
+and nothing that is finished — and `SURVEY-DONE.md` beside it is the record of
+everything that is. `projects/crossfire/TODO.md` is Ric's own list, with one item
+left on it. `LIVING-WORLD.md`, `PLAYER-HISTORY.md` and `WORLD-IDEAS.md` in the same
+folder are briefs for work that has not been built.
 
 Online play is host-authoritative WebRTC, and joining is a list of open lobbies rather
 than a code anybody copies. That list needs a room service, so online is the one part of

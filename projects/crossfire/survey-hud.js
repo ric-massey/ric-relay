@@ -207,7 +207,7 @@
      trail was the line that tipped it from a map into a diagram — and it was
      saying something the fog said already, because the fog *is* the shape of
      where you have been. Two drawings of one fact, and the page was the thing
-     that paid for it. See SURVEY-PLAN.md, "Next up — the places", item E. */
+     that paid for it. See SURVEY-DONE.md, "The places", item E. */
 
   /* ── keeping the chart ────────────────────────────────────────────────────
      Run-length encoded by row before packing. A survey's charted cells are the

@@ -1,10 +1,10 @@
 # Crossfire: Survey — Living World System
 
 **Status: a brief. Not built as this document — but the ground under it moved.**
-Written by Ric. See `SURVEY-PLAN.md` for what Survey actually has; the estimate at
+Written by Ric. See `SURVEY-DONE.md` for what Survey actually has; the estimate at
 the foot is mine, and it is now optimistic by one sweep rather than pessimistic.
 
-*One of Survey's seven documents — `SURVEY-PLAN.md` → "The Survey documents" says how they relate, and its "What is still open" is the one list of what is left.*
+*One of Survey's eight documents — `SURVEY-PLAN.md` → "The Survey documents" says how they relate, and its "What is left" is the one list of what is not built.*
 
 > **Re-checked 17 September 2026, and two things in here are out of date.**
 >
@@ -19,7 +19,7 @@ the foot is mine, and it is now optimistic by one sweep rather than pessimistic.
 >    17 September: a coarse political grid stored in the book and applied over
 >    what the seed generates, exactly the shape this document predicted, with
 >    borders that move on events the player could have seen — which is this
->    file's own rule. Read that section of `SURVEY-PLAN.md` before re-estimating
+>    file's own rule. Read that section of `SURVEY-DONE.md` before re-estimating
 >    the first sweep; most of its work is done.
 >
 > What is still unbuilt is the part this document is actually for: faction state

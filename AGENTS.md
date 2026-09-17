@@ -350,6 +350,36 @@ row-level security, migrations in `atlas/supabase/migrations/`, and a test suite
 `atlas/test/`. Read [`atlas/README.md`](atlas/README.md) before touching it, and
 remember hard rule 1: code here, places there. `map.html` is only the door.
 
+## A project's plan file, and where finished work goes
+
+Some projects carry a plan. Where one does, **it is split in two and the split is
+load-bearing**: a plan file is only read if it is short, and it only stays short
+if finished work leaves it. CROSSFIRE's Survey is the worked example —
+`projects/crossfire/SURVEY-PLAN.md` (nine open items) beside
+`projects/crossfire/SURVEY-DONE.md` (the finished phases) — and it got that way
+because the two were one 3,500-line file that nobody read either half of.
+
+So if you finish something that is in a plan file:
+
+1. **Build it, then test it.** The project's own suite, plus whatever narrower
+   one covers what you touched. A number, a placement, a curve or a state machine
+   is not finished without a test.
+2. **Only when it is good**, move the item's whole section out of the plan and
+   into the record, under the phase it belongs to. **Take the reasoning with
+   it** — the argument for why it is built that way is the most valuable thing in
+   it, and code comments all over this repo say "see the plan" and mean that
+   argument.
+3. **Write what actually landed**, with measurements. The gap between what was
+   planned and what shipped is where the next bug comes from.
+4. **Update the plan's status table** and take the item off its open list.
+
+**Never delete from the record.** Something that turned out to be wrong gets a
+dated supersede note where it stands, not a deletion — the numbers tuned against
+a bad idea are usually still in the game, and the record is where they came from.
+
+**Do not move something because it looks done.** It moves when it is tested and
+good, not when it is written.
+
 ## House style
 
 - Match the existing voice: playful, terminal/hacker flavor, easter eggs welcome

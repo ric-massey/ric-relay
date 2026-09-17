@@ -19,7 +19,7 @@ an answer before it can be built.
   ships re-cut twice (S1–S6 and S8–S17, 2026-09-15), and the seven other hull
   categories (C1–C7, 2026-09-15). 59 ticks, 1 box.
 
-The plan those batches came out of is `SURVEY-PLAN.md`; this file is Ric's own list
+Those batches are recorded in `SURVEY-DONE.md` and what is left is in `SURVEY-PLAN.md`; this file is Ric's own list
 and keeps its own record.
 
 ---

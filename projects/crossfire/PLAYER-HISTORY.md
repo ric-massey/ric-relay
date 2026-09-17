@@ -4,9 +4,9 @@
 as a companion to `WORLD-IDEAS.md` and `LIVING-WORLD.md`. It used to say nothing in
 it was implemented; that stopped being true, and what changed is recorded in
 "Where this already half-exists" at the foot, checked 17 September 2026. See
-`SURVEY-PLAN.md` for what Survey has.
+`SURVEY-DONE.md` for what Survey has.
 
-*One of Survey's seven documents — `SURVEY-PLAN.md` → "The Survey documents" says how they relate, and its "What is still open" is the one list of what is left.*
+*One of Survey's eight documents — `SURVEY-PLAN.md` → "The Survey documents" says how they relate, and its "What is left" is the one list of what is not built.*
 
 The goal is to make the universe feel like the player's universe, not just a
 simulation happening in the background.
