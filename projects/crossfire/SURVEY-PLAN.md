@@ -226,8 +226,26 @@ and the two-minute test stays safe.
 itself: the book keeps only the cells that have changed hands, so space stays
 endless and a save stays small.
 
-**The HUD label** that said HOSTILE says whose space you are in (CORDON SPACE,
-LAWLESS, THE FRONTIER, THE DEEP VOID). Biomes stay unnamed, per BIOMES.md.
+### Seeing it  ·  *Ric's call, and it overturns BIOMES.md*
+
+> *"the map needs a way to see all of this so we are going to give them some
+> more information."*
+>
+> *"i think that it should tell you what ones your in on top right and when you
+> go into a new sector or biome and scan then the borders of the sectors and
+> biomes are up"*
+
+- **Top right names both**, where the band used to be: whose space this is
+  (CORDON SPACE, THE FRONTIER, LAWLESS, THE DEEP VOID) and which biome (THE
+  MURK, THE BELT). BIOMES.md's rule that a biome is never labelled is
+  **retired** by this; the chart's `region: null` and its "draws no regions"
+  comment go with it.
+- **Borders are learned, not given.** Only where you have been or scanned. Scan
+  inside a territory or a biome you have not mapped and its borders go onto the
+  chart. The map fills in the way the fog does.
+- **A border you mapped can go stale.** When a cell changes hands after you
+  scanned it, your chart still shows the old line until you go back and scan
+  again. The chart is a record of what you saw, not a live feed.
 
 ### Build order
 

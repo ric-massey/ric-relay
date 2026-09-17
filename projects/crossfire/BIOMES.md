@@ -4,6 +4,12 @@
 region layer that exists in the code today was built *before* this and does not
 yet obey it; what has been brought into line is recorded at the foot.
 
+> **Partly retired, 17 September 2026.** Ric reversed the naming rule: the top
+> right now names the biome you are in, and scanning inside one puts its borders
+> on the chart. See "Who holds the sky → Seeing it" in SURVEY-PLAN.md. What
+> still stands: biomes are rulesets that change how space plays, and the chart
+> only knows what you have been to or scanned.
+
 ---
 
 ## The principle
