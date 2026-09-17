@@ -11457,6 +11457,14 @@
      target on a slow clock rather than every frame, so a pirate does not
      dither between two haulers and a scavenger does not turn round the moment
      something closer appears. */
+  /* Whether a ship will put in at a station. Nobody docks under the flag of the
+     power they are at war with: a hauler does not deliver to the enemy, a ship
+     running for its life does not run into the enemy's yard, and a patrol has
+     no business keeping the peace at somebody else's. */
+  const dockableBy = (st, faction) =>
+    !(st.faction && st.faction !== "free" && atWar(faction, st.faction));
+  const ownDock = (st, faction) => !!st.faction && st.faction === faction;
+
   function wantOf(t, dt) {
     t.think = (t.think || 0) - dt;
     const spec = ROLES[t.role || t.kind] || ROLES.freight;
@@ -11481,8 +11489,9 @@
         let best = null, score = -1;
         for (const st of surv.stations) {
           const d = Math.hypot(st.x - t.x, st.y - t.y);
-          if (d < 400) continue;
-          let s2 = 1 / (1 + d / 9000);
+          if (d < 400 || !dockableBy(st, t.faction)) continue;
+          // Its own side's docks first, all else being close.
+          let s2 = 1 / (1 + d / 9000) + (ownDock(st, t.faction) ? 0.35 : 0);
           for (const key of t.cargo) s2 += shortageOf(st, key) * 1.6;
           if (s2 > score) { score = s2; best = st; }
         }
@@ -11554,6 +11563,8 @@
         }
         let worst = null, worstShort = 0.45;
         for (const st of surv.stations) {
+          // Its own side's stations, and the unflagged ones nobody else watches.
+          if (st.faction && st.faction !== "free" && st.faction !== t.faction) continue;
           const m = marketOf(st);
           if (!m) continue;
           const s2 = Math.max(...Object.keys(m.want).map(k => m.want[k]), 0);
@@ -11582,9 +11593,10 @@
         break;
       }
       case "survive": {
-        // Anywhere that is not here, preferring a station.
+        // Anywhere that is not here, preferring a station that is not the enemy's.
         let best = null, bd = Infinity;
         for (const st of surv.stations) {
+          if (!dockableBy(st, t.faction)) continue;
           const d = Math.hypot(st.x - t.x, st.y - t.y);
           if (d < bd) { bd = d; best = st; }
         }
@@ -15499,7 +15511,17 @@
     }
     if (!worst || !me.alive) return;
 
-    surv.huntCool -= dt;
+    /* And where you are decides how fast they come. A power hunts you hardest
+       in its own space, less hard where it is only one flag among many, and
+       barely at all in the Deep Void or in the space of the power it is at war
+       with — getting out of somebody's territory is a way to breathe. */
+    const sky = spaceAt(me.x, me.y);
+    const reachOf = sky.owner === worst ? 1
+                  : sky.kind === "void" ? 0.2
+                  : sky.owner && atWar(worst, sky.owner) ? 0.3
+                  : sky.kind === "front" && (sky.enemy === worst) ? 0.8
+                  : 0.55;
+    surv.huntCool -= dt * reachOf;
     if (surv.huntCool > 0) return;
     const over = (-repOf(worst) - 150) / (REP.MAX - 150);
     surv.huntCool = 26 - over * 14;
@@ -15625,7 +15647,15 @@
         faction = sides[R() < 0.5 ? 0 : 1] || powers[0];
       } else if (space.owner && pick < free + 0.62) {
         faction = space.owner;
-      } else faction = powers[Math.floor(R() * powers.length)];
+      } else {
+        /* Anybody passing through — except the owner's enemies. A power at war
+           does not let the other side's haulers wander about inside its own
+           space; they meet at the front. Drawn from the same single roll either
+           way, so the stream of rolls behind it is unchanged. */
+        const foes = space.owner ? [warPairs()[space.owner]] : [];
+        const ok = powers.filter(k => foes.indexOf(k) < 0);
+        faction = ok[Math.floor(R() * ok.length)] || powers[0];
+      }
 
       const r2 = R() / Math.min(1.35, heat);
       if (faction === "free") {
@@ -25143,6 +25173,7 @@
       spaceAt: (x, y) => spaceAt(x, y),
       placeAt: (x, y) => placeAt(x, y),
       war: () => surv.war,
+      dockable: (st, faction) => dockableBy(st, faction),
       warTurn: R => surveyWarTurn(R),
       claim: (cx, cy, owner) => {
         surv.claims.set(cx + "," + cy, owner || "");

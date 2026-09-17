@@ -10845,6 +10845,67 @@ const storeOf = (cf, key) => {
   check(s2.mapped.size === mapped, "the book kept " + s2.mapped.size + " of " + mapped + " charted cells");
   check(JSON.stringify(s2.war.pairs) === pairs, "the book forgot who is at war");
 
+  /* ── and the ships follow the flags ─────────────────────────────────── */
+  {
+    const w3 = boot("?debug=1&seed=7");
+    w3.cf.start("survey", 1);
+    const s3 = w3.cf.survey(), me3 = w3.cf.live().ships[0];
+    me3.invuln = 9e9; s3.water = 9e5; s3.food = 9e5;
+    const [x, y] = s3.war.belligerents;
+    const other = ["cordon", "hallow", "morrow"].find(k => k !== x && k !== y);
+    check(!w3.cf.dockable({ faction: y }, x), "a ship will dock at its enemy's station");
+    check(w3.cf.dockable({ faction: x }, x), "a ship will not dock at its own station");
+    check(w3.cf.dockable({ faction: "free" }, x), "a ship will not dock at an unflagged station");
+    check(w3.cf.dockable({ faction: other }, x), "a ship will not dock at a bystander's station");
+
+    // Nobody's enemy wanders about inside a power's own territory.
+    let inside = 0, enemies = 0;
+    for (let gx = -30; gx <= 30; gx += 2) for (let gy = -30; gy <= 30; gy += 2) {
+      const cx = gx * 11, cy = gy * 11;
+      const sp = w3.cf.spaceAt((cx + 0.5) * 2600, (cy + 0.5) * 2600);
+      if (sp.kind !== "territory") continue;
+      const foe = s3.war.pairs[sp.owner];
+      for (const t of w3.cf.chunk(cx, cy).traffic) {
+        inside++;
+        if (foe && t.faction === foe) enemies++;
+      }
+    }
+    check(inside > 20, "only " + inside + " ships sampled in territory");
+    check(enemies === 0, enemies + " enemy ships wandering inside a power's territory");
+
+    /* A power you have angered hunts you hardest in its own space and barely in
+       the Void. Counted over the same stretch of time in each. */
+    const huntsIn = want => {
+      let spot = null;
+      for (let r = 1; r < 40 && !spot; r++) for (let a = 0; a < 32 && !spot; a++) {
+        const px = Math.cos(a / 32 * Math.PI * 2) * r * 93000;
+        const py = Math.sin(a / 32 * Math.PI * 2) * r * 93000;
+        if (want(w3.cf.spaceAt(px, py))) spot = { x: px, y: py };
+      }
+      if (!spot) return -1;
+      me3.x = spot.x; me3.y = spot.y; me3.vx = me3.vy = 0;
+      s3.rep = { cordon: 0, hallow: 0, morrow: 0 };
+      s3.rep[x] = -240;
+      s3.huntCool = 5;
+      let n = 0;
+      for (let i = 0; i < 60 * 120; i++) {
+        now += 1000 / 60; w3.cf.step();
+        n += s3.traffic.filter(t => t.role === "hunter").length;
+        s3.traffic = s3.traffic.filter(t => t.role !== "hunter");
+      }
+      return n;
+    };
+    const home3 = huntsIn(sp => sp.kind === "territory" && sp.owner === x);
+    const void3 = huntsIn(sp => sp.kind === "void");
+    check(home3 > 0, "an angry power sent nobody in two minutes in its own space");
+    check(void3 >= 0 && void3 < home3,
+          "the Void is no refuge: " + void3 + " hunters there against " + home3 +
+          " in their own space");
+    console.log("  flags      nobody docks at the enemy · no enemy ships inside a " +
+                "power's space (" + inside + " sampled) · hunters in two minutes: " +
+                home3 + " in its space, " + void3 + " in the Void");
+  }
+
   console.log("  borders    a scan charts " + (mapped > 0 ? "the patch" : "nothing") +
               " with both sides of its borders · the chart names it · an even war " +
               "moves " + even + " cells in 90 min, two-to-one " + lopsided +

@@ -313,6 +313,13 @@ A and C ship to players together; nobody plays a fixed map first.
   peace the strongest power at 1.1 or more goes to war with the neighbour it
   touches most. Measured near a front over ninety minutes: an even war moves
   12–17 cells, a two-to-one war 50–65. Home cells never change hands.
+- **Ships follow the flags.** Nobody docks at an enemy's station: haulers do
+  not deliver there, ships in trouble do not run there, and patrols only keep
+  the peace at their own side's docks and unflagged ones. A power's enemies no
+  longer turn up as passing traffic inside its territory. A power you have
+  angered hunts you at full speed in its own space, at about half elsewhere,
+  and hardly at all in the Deep Void or its enemy's space (measured over two
+  minutes: 10 hunters in its space, 2 in the Void).
 - **Stale charts.** Flying into a cell whose holder changed since you charted it
   says so: "You charted this as HALLOW SPACE. It is CORDON SPACE now."
 - **Saved:** `claims` (only the cells that changed hands), `mapped` and `war`,
