@@ -5991,7 +5991,6 @@
     /* Who lives here is a question about who holds the sky. Commonest in a
        power's own territory, thinner on the frontier and in lawless space, and
        nobody at all in the Deep Void. */
-    const deep = dangerAt(x, y);
     const lived = R() < 0.05 * spaceAt(x, y).lived;
     /* ── what an inhabited world is *for* ───────────────────────────────────
        It sold water and food and that was the whole of it, which made every
@@ -6076,9 +6075,9 @@
       where: "Strip hulks, wrecks and dead drones — about half of what comes " +
              "out of anything built is alloy. Rocks almost never have it." },
     { key: "iridium", name: "IRIDIUM", colour: "#a08cff", value: 22,
-      note: "deep, dense and rare; the reason to go out that far",
+      note: "deep, dense and rare; the reason to go somewhere bad",
       where: "Guarded caches, which are a third iridium. Rocks give a little, " +
-             "and everything gives more the further out you are." },
+             "and everything gives more where the sky is dangerous." },
     /* Two things you cannot mine. A rock is rock — these come out of what
        somebody else built, which is what makes a hulk or a guarded cache worth
        stopping for even when your hold is nearly full of ore. They are the
@@ -6415,7 +6414,7 @@
       eff: { solar: 1 } },
     { key: "warptuner", name: "WARP TUNER", cat: "odd", rarity: "rare",
       cost: 0, deep: 0, get: ["find"],
-      where: "in deep caches, a long way out — nobody sells one and nobody " +
+      where: "in guarded caches in bad sky — nobody sells one and nobody " +
              "knows how to make one",
       note: "reads a gate's mouth on the way through and leans on it. You come " +
             "out beside the nearest thing you have never logged instead of " +
@@ -6423,7 +6422,7 @@
       eff: { warp: 1 } },
     { key: "runningdark", name: "RUNNING DARK", cat: "odd", rarity: "rare",
       cost: 0, deep: 0, get: ["find"],
-      where: "in deep caches — it was never manufactured, it was improvised, " +
+      where: "in guarded caches in bad sky — it was never manufactured, it was improvised, " +
              "and the ones out there were all made by somebody hiding",
       note: "damps the hull's signature when the engine is off. Cut the drive " +
             "and sentries lose you, which turns a guarded cache into a choice " +
@@ -7516,6 +7515,15 @@
      it is lost. Stretched by this, about one station in a hundred stocks the
      best of them and one in ten the next rung down: the ones in bad sky. */
   const SHELF_REACH = 0.8;
+  /* What a place gives and how hard it guards it — salvage, caches, sentries,
+     cargo, prices — on the scale all of those were tuned against. They were
+     written when "the deep" sat at 1 and past it, and most of a long game was
+     spent there: measured over the whole ladder the old median was 1.12. The
+     biome and the owner put the median at 0.18, so read raw the late game paid
+     like the opening and guarded like it too. Stretched, the worst sky reaches
+     the old abyss (1.3) and ordinary sky stays where home always was. */
+  const DEPTH_STRETCH = 1.4;
+  const depthAt     = (x, y) => Math.min(1.3, dangerAt(x, y) * DEPTH_STRETCH);
   const shelfDepth  = (x, y) => Math.min(1, dangerAt(x, y) / SHELF_REACH);
   /* Nature alone, as 0 for ordinary sky to 1 for the Wells: what sizes a well,
      thickens rock and grows a field. The biome's half, and it never moves. */
@@ -8161,7 +8169,7 @@
        not how far out it is. `wild` is the biome's half — wells, rock, fields —
        and `deep` is the biome and the owner together, for what is guarded and
        what it is worth. See "how dangerous a place is" in survey-world.js. */
-    const deep = dangerAt(mx, my);
+    const deep = depthAt(mx, my);
     const wild = wildAt(mx, my);
     const space = spaceAt(mx, my);
 
@@ -12087,7 +12095,7 @@
     if (!me || !surv) return null;
     const gap = Math.max(0, (me.maxHull || 0) - (me.hull || 0));
     if (gap <= 0) return null;                        // nothing to sell you
-    const deep = 1 + dangerAt(me.x, me.y) * 0.8;
+    const deep = 1 + depthAt(me.x, me.y) * 0.8;
     return Math.max(1, Math.round(gap * REPAIR_PRICE * deep));
   };
 
@@ -12486,7 +12494,7 @@
      time and drift apart on the way, so a broken rock is a little cloud of
      mixed colour rather than a single lot. */
   function dropMote(x, y, n, spread, source) {
-    const deep = dangerAt(x, y);
+    const deep = depthAt(x, y);
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
       const sp = rand(20, 90) * U;
@@ -12537,7 +12545,7 @@
          home wants the rare things nobody brings in. */
       const R = seeded(chunkSeed(Math.round(st.x / 7) ^ 0x51ed2701,
                                  Math.round(st.y / 7) ^ 0x1b873f05));
-      const deep = dangerAt(st.x, st.y);
+      const deep = depthAt(st.x, st.y);
       const pool = deep > 0.5
         ? MATERIALS.filter(x => x.value <= 3)
         : MATERIALS.filter(x => x.value >= 9);
@@ -12672,7 +12680,7 @@
   function stationPrices(st) {
     const out = {};
     if (!st) return out;
-    const band = 1 + dangerAt(st.x, st.y) * 1.1;
+    const band = 1 + depthAt(st.x, st.y) * 1.1;
     for (const m of MATERIALS) {
       const R = seeded(chunkSeed(Math.round(st.x / 11) + m.key.length * 7919,
                                  Math.round(st.y / 11) - m.key.charCodeAt(0) * 131));
@@ -12696,7 +12704,7 @@
     if (!w || !w.trades || w.stock <= 0) { gameSound("hit"); return false; }
     const m = matSpec(w.trades);
     const price = Math.max(1, Math.round(m.value * 1.5 *
-                            (1 + dangerAt(w.x, w.y))));
+                            (1 + depthAt(w.x, w.y))));
     const room = holdCap() - holdUsed();
     const want = Math.min(Math.max(1, Math.round(n || 1)), room, w.stock,
                           Math.floor(surv.cash / price));
@@ -13691,7 +13699,7 @@
          cannot change between one frame and the next while you are sitting on
          top of it deciding whether to make room. */
       if (c.part === undefined) {
-        const roll = cachePart(dangerAt(c.x, c.y), !!c.rich);
+        const roll = cachePart(depthAt(c.x, c.y), !!c.rich);
         c.part = roll ? roll.key : null;
       }
       /* And the refusal comes *before* the cache opens rather than after. A part
@@ -14129,9 +14137,9 @@
     if (pl.rogue) lines.push("Nothing warms it. There is no star in this whole chunk.");
     if (pl.inhabited) {
       lines.push("Somebody lives here, and they will sell you water and food. " +
-                 "About one world in twenty has anybody on it, and fewer than " +
-                 "that out in the deep — so this is a supply line, and it is " +
-                 "worth writing down.");
+                 "About one world in twenty has anybody on it, fewer out on " +
+                 "the frontier and nobody in the Deep Void \u2014 so this is a " +
+                 "supply line, and it is worth writing down.");
     } else {
       lines.push("Nobody lives here. There is nothing to buy.");
     }
@@ -14545,7 +14553,7 @@
     { key: "longlist",
       when: () => yardDone() && !!surv.docked,
       text: "SOME PARTS ARE NOT FOR SALE HERE",
-      sub: "the best of each kind is further out — the missions page lists them",
+      sub: "the best of each kind is sold in worse sky — the missions page lists them",
       colour: "#a08cff" }
   ];
 
@@ -18310,7 +18318,7 @@
         if (surv.landed && surv.landed.trades && surv.landed.stock > 0) {
           const m = matSpec(surv.landed.trades);
           const each = Math.max(1, Math.round(m.value * 1.5 *
-                        (1 + dangerAt(surv.landed.x, surv.landed.y))));
+                        (1 + depthAt(surv.landed.x, surv.landed.y))));
           const stock = Math.max(0, Math.round(surv.landed.stock || 0));
           rows.push({ kind: "local", key: m.key, name: m.name, colour: m.colour,
                       label: "BUY", cost: each, each: each,
@@ -18386,7 +18394,7 @@
           return { key: m.key, name: m.name, colour: m.colour, note: m.note,
                    left: Math.max(0, Math.round(surv.landed.stock || 0)),
                    price: Math.max(1, Math.round(m.value * 1.5 *
-                                   (1 + dangerAt(surv.landed.x, surv.landed.y)))) };
+                                   (1 + depthAt(surv.landed.x, surv.landed.y)))) };
         })() : null,
         dist: Math.round(Math.hypot(surv.landed.x, surv.landed.y)),
         band: placeAt(surv.landed.x, surv.landed.y).space.name

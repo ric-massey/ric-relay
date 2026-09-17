@@ -5473,9 +5473,9 @@
       panel(R.x, listY, R.w, listH, VIOLET_DIM, "WHERE PARTS COME FROM", "");
       [
         "Stations sell them. What a station stocks depends",
-        "on how far out it is \u2014 the strange ones are a long",
-        "way from home, which is what the danger curve is",
-        "for.",
+        "on how dangerous its sky is \u2014 the strange ones",
+        "are sold where the biome is bad and nobody keeps",
+        "the peace.",
         "",
         "Out here a fit takes time and the slot is dead",
         "until it lands. At a station it is instant.",

@@ -293,6 +293,13 @@ A and C ship to players together; nobody plays a fixed map first.
   a thousand could stock the three 0.6+ parts, which is lost rather than rare;
   stretched, it is the stations in genuinely bad sky. The long list says where
   as CALM / ROUGH / DANGEROUS SPACE or THE WORST SPACE THERE IS.
+- **Loot, guards and prices** read `depthAt`: danger × 1.4, capped at 1.3.
+  They were tuned when most of a long game sat at the old depth of 1 or more
+  (median 1.12 across the ladder). Read raw, the new median of 0.18 made the
+  late game pay and guard like the opening, and rich caches went from 92% of
+  the sky to 6%. Salvage richness, cache parts, rich caches, sentry counts,
+  hauler cargo, sell prices, repairs and station shortages all use it. Text
+  that said "further out" now says "bad sky".
 - **Seeing it.** Top right names the space and the biome over a danger bar.
   Flying writes the cell you are in; a scan charts the whole biome patch and
   territory patch you are in, plus the first cell past each edge so both sides
