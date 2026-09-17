@@ -1059,16 +1059,9 @@
     ctx.strokeRect(b.x, b.y, b.w, b.h);
     ctx.restore();
 
-    /* And what kind of space this is — which the instrument does not know, and
-       says so. It is one line and it is the whole of the biome interface: it
-       tells you there *is* such a thing as the kind of space you are in and
-       refuses to say which, so finding out is flying.
-
-       Under the chart rather than above it. Above it is where the depth readout
-       and its bar live, and the only gap left up there was inside the chart's own
-       box — the audit found the line drawn straight through the map. */
-    fitText("REGION  UNKNOWN", b.x + b.w, b.y + b.h + 38, SIZE.cap, VIOLET_LOW,
-            "right", 0.42, b.w + 30, "0.12em");
+    /* There was a line here saying REGION UNKNOWN: the whole of the biome
+       interface, back when a biome was never named. The top right names it now,
+       so the line is gone rather than contradicting it. */
     label(fmtCells(HUD.charted()) + " CHARTED", b.x + b.w, b.y + b.h + 20,
           SIZE.cap, VIOLET, "right", 0.8);
 
@@ -1549,22 +1542,22 @@
 
   /* ── where you are ────────────────────────────────────────────────────────
      Top right, above the chart, because it is the same question the chart
-     answers and the two belong together. The curve behind it is smooth and has
-     no thresholds, so this is the only place the sector is ever banded — and it
-     is banded here because "UNSETTLED" is something you can make a decision
-     about and 0.47 is not. */
+     answers and the two belong together. It used to be a ring — HOME, OPEN,
+     HOSTILE — because danger was a distance. It is two facts now, both in
+     words: whose sky this is, and what kind of sky. Ric: *"it should tell you
+     what ones your in on top right."* The bar under them is how dangerous the
+     two are together, in the colour of whoever holds it. */
   function drawSector(st) {
-    if (!st.dangerBand) return;
+    const pl = st.place;
+    if (!pl) return;
     const { ctx } = api;
     const b = panelBox();
     const right = b.x + b.w;
-    /* Where you are, which is now two facts rather than one: how dangerous this
-       depth is, and *what kind of place this is*. The second is the new one and it
-       gets the larger type, because it is the one that changes what you are
-       looking at out of the window. */
-    label("SECTOR", right, 28, SIZE.cap, VIOLET_DIM, "right", 0.65, "0.18em");
-    label(st.dangerBand.name, right, 52, SIZE.val, st.dangerBand.colour,
-          "right", 0.95);
+    const w = b.w + 40;
+    fitText(pl.space.name, right, 30, SIZE.val, pl.space.colour || VIOLET,
+            "right", 0.95, w, "0.06em");
+    fitText(pl.biome.name, right, 50, SIZE.cap, pl.biome.colour || VIOLET_DIM,
+            "right", 0.85, w, "0.1em");
 
     const bw = 108;
     ctx.save();
@@ -1573,10 +1566,10 @@
     ctx.lineWidth = 1;
     const barY = 58;
     ctx.strokeRect(right - bw, barY, bw, 5);
-    ctx.fillStyle = st.dangerBand.colour;
+    ctx.fillStyle = pl.space.colour || VIOLET;
     ctx.globalAlpha = 0.85;
     ctx.fillRect(right - bw + 1, barY + 1,
-                 Math.max(1, (bw - 2) * (st.danger || 0)), 3);
+                 Math.max(1, (bw - 2) * (pl.danger || 0)), 3);
     ctx.restore();
   }
 
@@ -2507,6 +2500,201 @@
     chart.scale = ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, i + dir))];
   }
 
+  /* ── borders you have mapped ──────────────────────────────────────────────
+     Territory and biomes, drawn only over the region cells in `terrain.mapped`
+     — the cells you flew through, and the patches a scan charted. A cell is a
+     jittered Voronoi cell on the region lattice, so its outline is worked out
+     once by clipping a square against the bisectors of its neighbours, and each
+     edge remembers which neighbour made it. That is what lets a border be
+     drawn exactly where two *different* recorded cells meet and nowhere else.
+
+     Territory is a faint wash in its holder's colour with a solid line at its
+     edge. A biome border is a dashed line, lighter, over the top. Names sit on
+     one cell of each patch once the chart is close enough to read them. */
+  const cellShapes = new Map();
+  let cellShapesSeed = null;
+  function cellShape(T, cx, cy) {
+    const key = cx + "," + cy;
+    let shape = cellShapes.get(key);
+    if (shape) return shape;
+    const s0 = T.site(cx, cy);
+    const R = T.cell * 2;
+    let pts = [[s0.x - R, s0.y - R], [s0.x + R, s0.y - R],
+               [s0.x + R, s0.y + R], [s0.x - R, s0.y + R]];
+    let labs = [null, null, null, null];
+    for (let j = -2; j <= 2; j++) {
+      for (let i = -2; i <= 2; i++) {
+        if (!i && !j) continue;
+        const n = T.site(cx + i, cy + j);
+        const nx = n.x - s0.x, ny = n.y - s0.y;
+        const mxw = (n.x + s0.x) / 2, myw = (n.y + s0.y) / 2;
+        const inside = p => (p[0] - mxw) * nx + (p[1] - myw) * ny <= 0;
+        const nk = (cx + i) + "," + (cy + j);
+        const outP = [], outL = [];
+        for (let k = 0; k < pts.length; k++) {
+          const a = pts[k], b = pts[(k + 1) % pts.length];
+          const ia = inside(a), ib = inside(b);
+          const cut = () => {
+            const da = (a[0] - mxw) * nx + (a[1] - myw) * ny;
+            const db = (b[0] - mxw) * nx + (b[1] - myw) * ny;
+            const t = da / (da - db);
+            return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+          };
+          if (ia && ib) { outP.push(a); outL.push(labs[k]); }
+          else if (ia && !ib) { outP.push(a); outL.push(labs[k]); outP.push(cut()); outL.push(nk); }
+          else if (!ia && ib) { outP.push(cut()); outL.push(labs[k]); }
+        }
+        pts = outP; labs = outL;
+      }
+    }
+    shape = { pts, labs, x: s0.x, y: s0.y };
+    if (cellShapes.size > 12000) cellShapes.clear();
+    cellShapes.set(key, shape);
+    return shape;
+  }
+
+  function drawTerrain(st, view, mx, my) {
+    const T = st.terrain;
+    if (!T || !T.mapped || !T.mapped.size) return;
+    const { ctx } = api;
+    if (cellShapesSeed !== st.seed) { cellShapes.clear(); cellShapesSeed = st.seed; }
+    const reach = T.cell * 1.5;
+    const vis = (x, y) => mx(x + reach) >= view.x && mx(x - reach) <= view.x + view.w &&
+                          my(y + reach) >= view.y && my(y - reach) <= view.y + view.h;
+    const cellPx = T.cell * chart.scale;
+    /* Biomes change from one cell to the next far more often than owners do,
+       so their dashed edges only come in once a cell is big enough on screen
+       to be a place rather than a speck — zoomed out, the map is territory. */
+    const biomeAlpha = Math.max(0, Math.min(0.6, (cellPx - 28) / 60));
+    const todo = [];
+    for (const [key, rec] of T.mapped) {
+      const comma = key.indexOf(",");
+      const cx = +key.slice(0, comma), cy = +key.slice(comma + 1);
+      const s0 = T.site(cx, cy);
+      if (!vis(s0.x, s0.y)) continue;
+      todo.push({ key, rec, cx, cy, shape: cellShape(T, cx, cy) });
+    }
+    const path = sh => {
+      ctx.beginPath();
+      sh.pts.forEach((p, i) => (i ? ctx.lineTo(mx(p[0]), my(p[1]))
+                                  : ctx.moveTo(mx(p[0]), my(p[1]))));
+      ctx.closePath();
+    };
+
+    ctx.save();
+    // The wash. The Void is a darkening rather than a colour: it is an absence.
+    for (const c of todo) {
+      const h = T.holder(c.rec.o);
+      if (!h) continue;
+      path(c.shape);
+      ctx.globalAlpha = c.rec.o === "void" ? 0.45 : h.power ? 0.13 : 0.08;
+      ctx.fillStyle = c.rec.o === "void" ? "#000000" : h.colour;
+      ctx.fill();
+    }
+    // Edges. Each shared edge is drawn once, from the lower key.
+    for (const c of todo) {
+      const h = T.holder(c.rec.o);
+      const b = T.biome(c.rec.r);
+      const pts = c.shape.pts;
+      for (let k = 0; k < pts.length; k++) {
+        const nk = c.shape.labs[k];
+        if (!nk) continue;
+        const other = T.mapped.get(nk);
+        if (!other || nk < c.key) continue;
+        const a = pts[k], e = pts[(k + 1) % pts.length];
+        if (other.o !== c.rec.o && h) {
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 0.85;
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = h.power ? h.colour : (T.holder(other.o) || h).colour;
+          ctx.beginPath(); ctx.moveTo(mx(a[0]), my(a[1])); ctx.lineTo(mx(e[0]), my(e[1]));
+          ctx.stroke();
+        }
+        if (other.r !== c.rec.r && b && biomeAlpha > 0) {
+          ctx.setLineDash([6, 5]);
+          ctx.globalAlpha = biomeAlpha;
+          ctx.lineWidth = 1.2;
+          ctx.strokeStyle = b.colour;
+          ctx.beginPath(); ctx.moveTo(mx(a[0]), my(a[1])); ctx.lineTo(mx(e[0]), my(e[1]));
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    /* Names, once per patch, on the cell nearest the patch's middle. Patches
+       are the mapped cells joined to a neighbour with the same answer, worked
+       out again only when the record changes. Territory is named as soon as a
+       patch is a few cells big on screen; a biome only once you are close. */
+    const groups = patchesOf(T, st.seed);
+    ctx.save();
+    for (const g of groups.o) {
+      if (cellPx * Math.sqrt(g.n) < 90) continue;
+      const h = T.holder(g.v);
+      if (!h || !vis(g.x, g.y)) continue;
+      label(h.name, mx(g.x), my(g.y), SIZE.cap, h.colour, "center",
+            g.v === "void" ? 0.55 : 0.85, "0.14em");
+    }
+    if (cellPx >= 60) {
+      for (const g of groups.r) {
+        const b = T.biome(g.v);
+        if (!b || !vis(g.x, g.y)) continue;
+        label(b.name, mx(g.x), my(g.y) + 18, SIZE.cap, b.colour, "center", 0.6,
+              "0.08em");
+      }
+    }
+    ctx.restore();
+  }
+
+  let patchCache = null;
+  function patchesOf(T, seed) {
+    const stamp = seed + ":" + T.mapped.size + ":" + T.mappedStamp;
+    if (patchCache && patchCache.stamp === stamp) return patchCache;
+    const cells = [];
+    for (const [key, rec] of T.mapped) {
+      const comma = key.indexOf(",");
+      cells.push({ key, rec, cx: +key.slice(0, comma), cy: +key.slice(comma + 1) });
+    }
+    const group = field => {
+      const done = new Set(), out = [];
+      for (const c of cells) {
+        if (done.has(c.key)) continue;
+        const v = c.rec[field], members = [];
+        const queue = [c];
+        done.add(c.key);
+        while (queue.length) {
+          const q = queue.pop();
+          members.push(q);
+          for (let j = -1; j <= 1; j++) {
+            for (let i = -1; i <= 1; i++) {
+              const k = (q.cx + i) + "," + (q.cy + j);
+              if (done.has(k)) continue;
+              const r = T.mapped.get(k);
+              if (!r || r[field] !== v) continue;
+              done.add(k);
+              queue.push({ key: k, rec: r, cx: q.cx + i, cy: q.cy + j });
+            }
+          }
+        }
+        // The member whose site is closest to the patch's own middle.
+        let sx = 0, sy = 0;
+        const sites = members.map(m => T.site(m.cx, m.cy));
+        for (const p of sites) { sx += p.x; sy += p.y; }
+        sx /= sites.length; sy /= sites.length;
+        let best = sites[0], bd = Infinity;
+        for (const p of sites) {
+          const d = (p.x - sx) ** 2 + (p.y - sy) ** 2;
+          if (d < bd) { bd = d; best = p; }
+        }
+        out.push({ v, n: members.length, x: best.x, y: best.y });
+      }
+      return out;
+    };
+    patchCache = { stamp, o: group("o"), r: group("r") };
+    return patchCache;
+  }
+
   HUD.drawChart = function (st, dt) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
@@ -2562,15 +2750,13 @@
     ctx.fillRect(view.x, view.y, view.w, view.h);
     ctx.globalAlpha = 1;
 
-    /* The chart draws no regions. It knows where you have *been* — the fog, the
-       marks, the pins — and nothing about what kind of space any of it was. An
-       empty region already reads as empty on it, because there is nothing in it
-       to draw, and that is the only honest record there should be.
-
-       Players name these places themselves, and the mechanism for it already
-       exists: a pin, in a colour you chose, with a name you typed. */
+    /* The chart used to draw no regions at all — BIOMES.md kept biomes off it.
+       Ric reversed that: it draws the territory and biome borders you have
+       mapped, and only those. See `drawTerrain`. Pins are still how you name a
+       place yourself. */
     drawChartGrid(view, mx, my);
     paintFog(mx, my, chart.x, chart.y, span, chart.scale, chart.scale, 0.26);
+    drawTerrain(st, view, mx, my);
     paintMarks(st, mx, my, true, chart.scale);
     paintEchoes(st, mx, my, true);
     drawPins(st, mx, my, true);
@@ -4281,7 +4467,7 @@
   HUD.drawRefit = function (st, dt) {
     st = st || {};
     marketPage(st, "SHOP",
-               (st.dangerBand ? st.dangerBand.name + "   \u00b7   " : "") +
+               (st.place ? st.place.space.name + "   \u00b7   " : "") +
                (st.cash || 0) + " CASH", "", "refit",
                st.onUndock || st.onClose || (() => {}), PLACE_TABS);
   };

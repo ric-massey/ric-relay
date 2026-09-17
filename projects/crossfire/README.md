@@ -216,7 +216,7 @@ Four surfaces went quiet at the same moment, and all four are the same mistake:
   and every beat in it fired inside the first two minutes. It has a second act
   now, on the same terms — fires once, hangs on a pressure you are already
   under, names no destination: a dry tank a long way out introduces the ice
-  melter, crossing into the Hostile band says what the bands are for, half the
+  melter, flying into lawless space for the first time says what it means, half the
   light drive's price mentions the yard's second berth, and docking after the
   gate says that some parts are not sold anywhere near here.
 - **Eleven parts could not be met.** The shop will not advertise what it does not

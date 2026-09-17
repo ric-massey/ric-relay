@@ -44,6 +44,8 @@ window.CrossfireSurveySave = function (env) {
      it when somebody loaded a save. Destructuring here read it at boot instead
      and the game would not start. A getter each on the way in, and the binding
      stays as late as it was. */
+  // A region cell's key, "cx,cy", with both halves whole numbers.
+  const cellKeyOk = k => typeof k === "string" && /^-?\d{1,6},-?\d{1,6}$/.test(k);
   const BUILD     = () => env.BUILD;
   const MODULES   = () => env.MODULES;
   const MATERIALS = () => env.MATERIALS;
@@ -230,7 +232,7 @@ function freshBook() {
                   carrying: [], built: [], pins: [], known: [],
                   slots: [], store: {}, battleAge: {}, memorials: [],
                   dropped: [], coilFired: false,
-                  friends: [], grudges: [],
+                  friends: [], grudges: [], claims: [], mapped: [], war: null,
            alert: { water: { taught: 0 }, food: { taught: 0 } } };
 }
 
@@ -424,6 +426,41 @@ function validateSurveyBook(b) {
         return out;
       })(),
       memorials: strs(b.memorials).slice(0, 400),
+      /* Territory. `claims` is the cells that have changed hands, as
+         ["cx,cy", power-or-""]; `mapped` is what the chart saw, as
+         ["cx,cy", { r: biome, o: owner-or-kind }]. Both checked key by key
+         against the tables they name, so a hand-edited book cannot put a power
+         that does not exist on the map. */
+      claims: (Array.isArray(b.claims) ? b.claims : [])
+        .filter(e => Array.isArray(e) && cellKeyOk(e[0]) &&
+                     (e[1] === "" || FACTIONS().some(f => f.key === e[1])))
+        .slice(0, 4000)
+        .map(e => [e[0], e[1]]),
+      /* The war as it stands: who is fighting whom, and what each power has
+         left. Powers checked against the table; strengths clamped. */
+      war: (() => {
+        const w = b.war && typeof b.war === "object" ? b.war : null;
+        if (!w) return null;
+        const ok = k => FACTIONS().some(f => f.key === k);
+        const pairs = {};
+        for (const k of Object.keys(w.pairs || {})) {
+          if (ok(k) && ok(w.pairs[k]) && k !== w.pairs[k]) pairs[k] = w.pairs[k];
+        }
+        const belligerents = (Array.isArray(w.belligerents) ? w.belligerents : [])
+          .filter(ok).slice(0, 2);
+        const strength = {};
+        for (const f of FACTIONS()) {
+          const v = Number((w.strength || {})[f.key]);
+          strength[f.key] = Number.isFinite(v) ? Math.max(0.2, Math.min(1.4, v)) : 1;
+        }
+        return { pairs, belligerents: belligerents.length === 2 ? belligerents : [],
+                 strength, calm: Math.max(0, Number(w.calm) || 0) };
+      })(),
+      mapped: (Array.isArray(b.mapped) ? b.mapped : [])
+        .filter(e => Array.isArray(e) && cellKeyOk(e[0]) && e[1] &&
+                     typeof e[1].r === "string" && typeof e[1].o === "string")
+        .slice(0, 8000)
+        .map(e => [e[0], { r: e[1].r.slice(0, 16), o: e[1].o.slice(0, 16) }]),
       coilFired: !!b.coilFired,
       alert: (() => {
         const out = {};

@@ -151,7 +151,7 @@ above get answered before their path is built.
 
 ---
 
-## Who holds the sky  ·  *territory replaces the danger rings*  ·  **the brief, not yet built**
+## Who holds the sky  ·  *territory replaces the danger rings*  ·  **A and C built, B open**
 
 > *"take the danger rings off. it will instead be based by boime and who owns
 > that space."*
@@ -266,6 +266,57 @@ cause the player could have seen (LIVING-WORLD.md's rule: no border moves withou
 an event behind it), and a crossing that changed hands says so.
 
 A and C ship to players together; nobody plays a fixed map first.
+
+### What landed  ·  *17 September 2026*
+
+**A · the map, and C · borders moving, are built. B, personal danger, is not.**
+
+- **The rings are gone.** `BANDS`, `bandAt` and `DANGER_FULL` no longer exist.
+  `dangerAt` is `natureAt` (the biome's own `danger`) and `peopleAt` (the kind
+  of space) averaged, floored and scaled so calm sky is near 0. Measured on seed
+  112233: average danger 0.17 on a ring at 400k and 0.19 at 2.4M.
+- **Home is four cells, not a circle.** The cells meeting at the origin are
+  always ordinary space and always the frontier. Out of 120 bearings from home,
+  at most 11 now leave home's biome at the same distance (it was 74).
+- **The map**, measured over six seeds: roughly 40–58% territory, 21–34%
+  frontier, 4–10% lawless, 2–10% front, 7–20% deep void. A front is either a
+  power's cell with its enemy within three cells, or unheld sky between two
+  powers at war (no-man's-land). Without the second the front barely existed,
+  because the seam between two powers is unheld by construction.
+- **Generation reads it.** Wells, rock and fields read `wildAt` (nature). Traffic
+  count, pirate share and flags read the space. Battles happen at fronts.
+  Stations fly the owner's flag and none are built in the Void. Inhabited
+  worlds are 1 in 15 in territory, 1 in 23 on the frontier, none in the Void,
+  1 in 19 overall.
+- **Parts.** A part's `deep` is now compared with a station's *shelf depth*,
+  its sky's danger divided by `SHELF_REACH` (0.8). Read raw, about one station in
+  a thousand could stock the three 0.6+ parts, which is lost rather than rare;
+  stretched, it is the stations in genuinely bad sky. The long list says where
+  as CALM / ROUGH / DANGEROUS SPACE or THE WORST SPACE THERE IS.
+- **Seeing it.** Top right names the space and the biome over a danger bar.
+  Flying writes the cell you are in; a scan charts the whole biome patch and
+  territory patch you are in, plus the first cell past each edge so both sides
+  of a border are known. The chart washes territory, draws its borders solid,
+  draws biome borders dashed once zoomed in, and names each patch once.
+- **The war moves**, every 45 seconds over the cells within 12 of you. A won
+  battle hands its cell to the winner. Fronts grind toward the stronger side;
+  frontier and lawless sky get settled from next door, slowly. Strength wears
+  down while fighting (and with every ship the player kills) and mends at
+  peace. Two sides both under 0.55 declare a ceasefire; after fifteen minutes of
+  peace the strongest power at 1.1 or more goes to war with the neighbour it
+  touches most. Measured near a front over ninety minutes: an even war moves
+  12–17 cells, a two-to-one war 50–65. Home cells never change hands.
+- **Stale charts.** Flying into a cell whose holder changed since you charted it
+  says so: "You charted this as HALLOW SPACE. It is CORDON SPACE now."
+- **Saved:** `claims` (only the cells that changed hands), `mapped` and `war`,
+  all validated key by key in `survey-save.js`.
+- **Deliberately changed geography.** Every existing save's sector is rebuilt
+  from its seed with the new rules, so a save made before this sees different
+  stations, worlds and wells in the same places. `test/fingerprint.js` will
+  not match the old hashes, and is not meant to.
+
+**Still open.** B (danger that depends on your standing with the owner). The
+panel minimap draws no borders, only the full chart does.
 
 ---
 

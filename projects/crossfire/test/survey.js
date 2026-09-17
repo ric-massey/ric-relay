@@ -888,10 +888,20 @@ const storeOf = (cf, key) => {
     surv.docked = { x, y };
     return cf.surveyView().materials.find(m => m.key === "iridium").price;
   };
-  // Two thirds of the way along the danger curve, wherever that is — 210,000 was
-  // written when the curve topped out at 320,000 and is now shallow water.
+  /* The most dangerous sky within reach, wherever it is. Danger used to be a
+     distance, and this sampled two thirds of the way out; it is the biome and
+     the owner now, so the test goes and finds a bad place rather than a far one. */
+  let worst = { x: 0, y: 0, d: -1 };
+  for (let r = 1; r < 30; r++) {
+    for (let a = 0; a < 24; a++) {
+      const x = Math.cos(a / 24 * Math.PI * 2) * r * 93000;
+      const y = Math.sin(a / 24 * Math.PI * 2) * r * 93000;
+      const d = cf.dangerAt(x, y);
+      if (d > worst.d) worst = { x, y, d };
+    }
+  }
   const atHome = priceAt(0, 0),
-        atDeep = priceAt(cf.sectorSpan().full * 0.66, 0);
+        atDeep = priceAt(worst.x, worst.y);
   check(atDeep > atHome,
         "deep space pays " + atDeep + " for iridium where home pays " + atHome);
   surv.docked = { x: 0, y: 0 };
@@ -1806,61 +1816,135 @@ const storeOf = (cf, key) => {
     return { guards: guards / n, hulks: hulks / n, fields: fields / n, chunks: n };
   }
 
-  /* Rings measured against the danger curve rather than in a remembered number
-     of chunks. These were 6 and 60 — sixteen thousand and a hundred and
-     fifty-six thousand — which straddled the whole curve when it topped out at
-     320,000 and now both sit inside its first tenth. */
-  const DEEP_RING = Math.round(cf.sectorSpan().full / cf.sectorSpan().chunk);
-  const near = sample(6);
-  const far  = sample(DEEP_RING);
+  /* Calm sky against harsh sky, rather than home against far. Danger used to
+     be a distance and this compared two rings; it is the biome and the owner
+     now, so the chunks are sorted by what kind of place they are. A grid of
+     distinct chunks, sparse enough to cross many biomes and powers. */
+  const calm = { guards: 0, fields: 0, hulks: 0, n: 0 };
+  const harsh = { guards: 0, fields: 0, hulks: 0, n: 0 };
+  for (let gx = -30; gx <= 30; gx++) {
+    for (let gy = -30; gy <= 30; gy++) {
+      const cx = gx * 17, cy = gy * 17;
+      const x = (cx + 0.5) * 2600, y = (cy + 0.5) * 2600;
+      const w = cf.wildAt(x, y), d = cf.dangerAt(x, y);
+      const bin = w === 0 && d < 0.12 ? calm : w > 0.45 && d > 0.35 ? harsh : null;
+      if (!bin) continue;
+      const c = cf.chunk(cx, cy);
+      for (const cache of c.caches) bin.guards += cache.guards.length;
+      bin.fields += c.fields.length;
+      bin.hulks += c.hulks.length;
+      bin.n++;
+    }
+  }
+  const per = (b, k) => b[k] / Math.max(1, b.n);
+  check(calm.n > 40 && harsh.n > 40,
+        "not enough calm (" + calm.n + ") or harsh (" + harsh.n + ") chunks to compare");
+  check(per(harsh, "guards") > per(calm, "guards") * 1.3,
+        "harsh sky posts no more sentries than calm sky (" +
+        per(calm, "guards").toFixed(3) + " → " + per(harsh, "guards").toFixed(3) + ")");
+  check(per(harsh, "fields") > per(calm, "fields"),
+        "asteroid fields are no commoner in harsh sky");
 
-  check(far.guards > near.guards * 1.3,
-        "the deep sector posts no more sentries than home (" +
-        near.guards.toFixed(3) + " → " + far.guards.toFixed(3) + ")");
-  check(far.hulks >= near.hulks,
-        "the deep sector is no thicker with wrecks (" +
-        near.hulks + " → " + far.hulks + ")");
-  check(far.fields > near.fields,
-        "asteroid fields do not appear further out (" +
-        near.fields + " → " + far.fields + ")");
-
-  // And home has to stay quiet, or the curve is a wall rather than a slope.
-  check(near.fields === 0, "an asteroid field spawned in the home ring");
+  // And home has to stay quiet.
+  let homeFields = 0;
+  for (let cx = -4; cx <= 4; cx++) for (let cy = -4; cy <= 4; cy++) {
+    homeFields += cf.chunk(cx, cy).fields.length;
+  }
+  check(homeFields === 0, "an asteroid field spawned beside home");
   check(cf.chunk(0, 0).hazards.length === 0, "the home chunk grew a hazard");
-  console.log("  danger     " + near.chunks + " + " + far.chunks +
-              " chunks — home " + near.guards.toFixed(2) + " sentries / " +
-              near.fields.toFixed(2) + " fields · deep " + far.guards.toFixed(2) +
-              " / " + far.fields.toFixed(2));
+  console.log("  danger     " + calm.n + " calm + " + harsh.n + " harsh chunks — " +
+              "calm " + per(calm, "guards").toFixed(2) + " sentries / " +
+              per(calm, "fields").toFixed(2) + " fields · harsh " +
+              per(harsh, "guards").toFixed(2) + " / " + per(harsh, "fields").toFixed(2));
 }
 
-// ── 19. deep space is a number, and the curve keeps climbing ─────────────
+// ── 19. danger is who holds the sky and what kind of sky it is, not a ring ──
+/* Ric: "take the danger rings off. it will instead be based by boime and who
+   owns that space." Three things that would each quietly bring the rings back:
+   home's biome cut on a circle, danger that still climbs with distance, and a
+   sector where every kind of space is not actually out there to be found. */
 {
   const { cf } = boot("?debug=1&seed=112233");
   cf.start("survey", 1);
 
-  const at = d => cf.bandAt(d, 0).name;
-  check(at(0) === "HOME", "the origin is not HOME, it is " + at(0));
-  check(at(5000) === "HOME", "5k out is " + at(5000));
-  check(at(20000) === "OPEN", "20k out is " + at(20000));
-  check(at(50000) === "UNSETTLED", "50k out is " + at(50000));
-  check(at(100000) === "HOSTILE", "100k out is " + at(100000));
-  check(at(250000) === "DEEP", "250k out is " + at(250000));
-  check(at(900000) === "ABYSSAL", "900k out is " + at(900000));
+  const home = cf.placeAt(0, 0);
+  check(home.space.kind === "frontier", "home is not on the frontier: " + home.space.kind);
+  check(home.biome.key === "normal", "home is not ordinary space: " + home.biome.key);
+  check(home.danger < 0.12, "home is not calm: " + home.danger.toFixed(2));
 
-  // The curve must rise the whole way and never flatten at the last band, or
-  // the abyss is just the deep with a different word on it.
-  let prev = -1;
-  const FULL = cf.sectorSpan().full;
-  for (const d of [0, FULL * 0.01, FULL * 0.06, FULL * 0.2, FULL * 0.45,
-                   FULL, FULL * 2, FULL * 6]) {
-    const v = cf.dangerAt(d, 0);
-    check(v > prev, "the danger curve stopped rising at " + d);
-    prev = v;
+  /* No ring. Sent out along 120 bearings, the first place home's biome ends
+     used to be exactly 30,000 on 74 of them. Now it should be all over. */
+  const firstChange = [];
+  for (let a = 0; a < 120; a++) {
+    const th = a / 120 * Math.PI * 2;
+    for (let d = 1000; d < 600000; d += 1000) {
+      if (cf.placeAt(Math.cos(th) * d, Math.sin(th) * d).biome.key !== "normal") {
+        firstChange.push(d); break;
+      }
+    }
   }
-  check(cf.dangerAt(FULL, 0) >= 1, "the curve does not reach 1 by the deep band");
-  check(cf.dangerAt(FULL * 6, 0) > cf.dangerAt(FULL, 0),
-        "the abyss is no worse than the deep");
-  console.log("  bands      home→abyssal named at the right ranges · curve never flattens");
+  const counts = {};
+  for (const d of firstChange) counts[d] = (counts[d] || 0) + 1;
+  const mostAtOne = Math.max(...Object.values(counts));
+  check(mostAtOne < 12,
+        mostAtOne + " of 120 bearings leave home's biome at the same distance — a ring");
+
+  /* Danger does not climb with distance. The average danger of a ring far out
+     is within a whisker of the average of a ring nearer in. */
+  const ringDanger = r => {
+    let t = 0;
+    for (let a = 0; a < 400; a++) {
+      const th = a / 400 * Math.PI * 2;
+      t += cf.dangerAt(Math.cos(th) * r, Math.sin(th) * r);
+    }
+    return t / 400;
+  };
+  const near = ringDanger(400000), far = ringDanger(2400000);
+  check(Math.abs(far - near) < 0.12,
+        "danger still depends on distance: " + near.toFixed(2) + " at 400k, " +
+        far.toFixed(2) + " at 2.4M");
+
+  // Every kind of space is out there, across a few worlds.
+  const kinds = new Set(), owners = new Set();
+  for (const seed of [112233, 7, 99]) {
+    const w = boot("?debug=1&seed=" + seed);
+    w.cf.start("survey", 1);
+    for (let gx = -40; gx <= 40; gx += 2) for (let gy = -40; gy <= 40; gy += 2) {
+      const sp = w.cf.spaceAt(gx * 93000, gy * 93000);
+      kinds.add(sp.kind);
+      if (sp.owner) owners.add(sp.owner);
+    }
+  }
+  for (const k of ["territory", "front", "frontier", "lawless", "void"]) {
+    check(kinds.has(k), "no " + k + " anywhere in three worlds");
+  }
+  check(owners.size === 3, "only " + owners.size + " powers hold any sky");
+
+  /* A claim moves a border: the cell changes hands, the place says so, and a
+     station built there afterwards flies the new flag. */
+  let target = null;
+  for (let gx = 3; gx < 40 && !target; gx++) {
+    const sp = cf.spaceAt(gx * 93000, 0);
+    if (sp.kind === "territory") target = sp;
+  }
+  check(!!target, "no territory on the x axis to move a border in");
+  if (target) {
+    const other = ["cordon", "hallow", "morrow"].find(k => k !== target.owner);
+    cf.claim(target.cx, target.cy, other);
+    const now2 = cf.spaceAt(cf.survey ? target.cx * 93000 + 1 : 0, 0);
+    const moved = [];
+    for (let gx = 3; gx < 40; gx++) {
+      const sp = cf.spaceAt(gx * 93000, 0);
+      if (sp.cx === target.cx && sp.cy === target.cy) moved.push(sp.owner);
+    }
+    check(moved.length && moved.every(o => o === other),
+          "a claimed cell did not change hands: " + moved.join(","));
+    void now2;
+  }
+  console.log("  territory  home is the frontier in ordinary space · no ring " +
+              "(at most " + mostAtOne + " of 120 bearings agree) · danger " +
+              near.toFixed(2) + " at 400k and " + far.toFixed(2) + " at 2.4M · " +
+              "all five kinds of space in three worlds · a claim moves a border");
 }
 
 // ── 20. fewer wells, and bigger ones further out ─────────────────────────
@@ -1891,34 +1975,42 @@ const storeOf = (cf, key) => {
     return { per: wells / seen.size, big, avgReach: wells ? reach / wells : 0 };
   }
 
-  let nearPer = 0, nearReach = 0, farReach = 0, farBig = 0, nearBig = 0, n = 0;
+  /* Bigger where the sky is wild, not where it is far. Danger used to be a
+     distance and this compared a ring near home with a ring at the far end of
+     the curve; the size of a well is the biome's business now, so the samples
+     are sorted by how wild the biome is. */
+  let nearPer = 0, calmReach = 0, wildReach = 0, wildBig = 0, nearBig = 0, n = 0;
   for (const seed of [445566, 1, 2, 999, 31337, 8675309]) {
     const w = boot("?debug=1&seed=" + seed);
     w.cf.start("survey", 1);
-    /* Sampled against the curve rather than at a remembered number of chunks.
-       "The deep" is 1.8 million units out now — it was 320,000 — so a ring of 60
-       chunks that used to sit at the far end of the danger curve now sits a
-       tenth of the way along it, and two samples from the same band prove
-       nothing. `deepRing` is wherever the curve actually tops out. */
-    const span = w.cf.sectorSpan();
-    const deepRing = Math.round(span.full / span.chunk);
-    const near = survey(w.cf, 4), far = survey(w.cf, deepRing);
-    nearPer += near.per; nearReach += near.avgReach; farReach += far.avgReach;
-    farBig += far.big; nearBig += near.big; n++;
-    check(far.avgReach > near.avgReach * 1.2,
-          "seed " + seed + ": wells do not grow with range (" +
-          Math.round(near.avgReach) + " → " + Math.round(far.avgReach) + ")");
+    const near = survey(w.cf, 4);
+    let cr = 0, cn = 0, wr = 0, wn = 0, big = 0;
+    for (let gx = -25; gx <= 25; gx++) for (let gy = -25; gy <= 25; gy++) {
+      const cx = gx * 23, cy = gy * 23;
+      const wild = w.cf.wildAt((cx + 0.5) * 2600, (cy + 0.5) * 2600);
+      if (wild > 0 && wild < 0.5) continue;
+      for (const h of w.cf.chunk(cx, cy).hazards) {
+        if (wild === 0) { cr += h.reach; cn++; }
+        else { wr += h.reach; wn++; if (h.k >= 1.8) big++; }
+      }
+    }
+    nearPer += near.per; nearBig += near.big; wildBig += big; n++;
+    calmReach += cn ? cr / cn : 0; wildReach += wn ? wr / wn : 0;
+    check(wn && cn && wr / wn > (cr / cn) * 1.2,
+          "seed " + seed + ": wells are no bigger in wild sky (" +
+          Math.round(cn ? cr / cn : 0) + " → " + Math.round(wn ? wr / wn : 0) + ")");
   }
-  nearPer /= n; nearReach /= n; farReach /= n;
+  nearPer /= n; calmReach /= n; wildReach /= n;
 
   check(nearPer < 0.5,
         "home averages " + nearPer.toFixed(2) + " wells a chunk across worlds — too dense");
   check(nearPer > 0.05, "home has essentially no wells in any world");
-  check(farBig > 0, "nothing supermassive exists in any world");
+  check(wildBig > 0, "nothing supermassive exists in any world");
   check(nearBig === 0, "a supermassive well spawned near home");
   console.log("  wells      " + nearPer.toFixed(2) + "/chunk at home across " + n +
-              " worlds · reach " + Math.round(nearReach) + " → " + Math.round(farReach) +
-              " · " + farBig + " supermassive found deep, " + nearBig + " at home");
+              " worlds · reach " + Math.round(calmReach) + " calm → " +
+              Math.round(wildReach) + " wild · " + wildBig +
+              " supermassive in wild sky, " + nearBig + " at home");
 }
 
 // ── 21. a well that can hold you says so first ───────────────────────────
@@ -2558,6 +2650,8 @@ const storeOf = (cf, key) => {
      the tightest assertion here asks for. */
   const RING_SAMPLES = 6000;
   const acc = rings.map(() => ({ n: 0, inh: 0, air: 0 }));
+  // And by who holds the sky the world is in, which is what decides it now.
+  const byKind = {};
   for (const seed of [1, 515, 8675309, 20260909, 4242, 909]) {
     const { cf } = boot("?debug=1&seed=" + seed);
     cf.start("survey", 1);
@@ -2584,6 +2678,10 @@ const storeOf = (cf, key) => {
           acc[i].n++;
           if (p.inhabited) acc[i].inh++;
           if (p.air) acc[i].air++;
+          const kind = cf.spaceAt(p.x, p.y).kind;
+          const k2 = byKind[kind] || (byKind[kind] = { n: 0, inh: 0 });
+          k2.n++;
+          if (p.inhabited) k2.inh++;
         }
       }
     });
@@ -2594,11 +2692,16 @@ const storeOf = (cf, key) => {
                            { n: 0, inh: 0, air: 0 });
   for (const a of acc) check(a.n > 40, "a ring sampled only " + a.n + " worlds");
 
-  const near = rate(acc[0]), deep = rate(acc[acc.length - 1]);
-  check(near > deep * 1.6,
-        "inhabited worlds are as common in the deep as near home (1 in " +
-        (1 / near).toFixed(1) + " → 1 in " + (1 / deep).toFixed(1) + ")");
-  check(deep > 0, "nowhere in the deep is inhabited at all — no supply line");
+  /* Who lives where is a question about who holds the sky, not how far out it
+     is: commonest in a power's own territory, thinner on the frontier, and
+     nobody at all in the Deep Void. */
+  const kr = k => byKind[k] ? rate(byKind[k]) : 0;
+  const near = kr("territory"), deep = kr("frontier");
+  check(byKind.territory && byKind.frontier && near > deep * 1.3,
+        "inhabited worlds are no commoner in a power's territory than on the " +
+        "frontier (1 in " + (1 / near).toFixed(1) + " → 1 in " + (1 / deep).toFixed(1) + ")");
+  check(deep > 0, "nowhere on the frontier is inhabited at all — no supply line");
+  check(!byKind.void || byKind.void.inh === 0, "somebody lives in the Deep Void");
 
   const oneIn = total.n / Math.max(1, total.inh);
   check(oneIn > 14 && oneIn < 30,
@@ -2609,8 +2712,8 @@ const storeOf = (cf, key) => {
   check(airFrac > 0.4 && airFrac < 0.85,
         "only " + Math.round(airFrac * 100) + "% of worlds have an atmosphere");
 
-  console.log("  inhabited  1 in " + (1 / near).toFixed(0) + " near home → 1 in " +
-              (1 / deep).toFixed(0) + " in the deep · 1 in " + oneIn.toFixed(0) +
+  console.log("  inhabited  1 in " + (1 / near).toFixed(0) + " in territory → 1 in " +
+              (1 / deep).toFixed(0) + " on the frontier · none in the void · 1 in " + oneIn.toFixed(0) +
               " overall · " + Math.round(airFrac * 100) + "% have air");
 }
 
@@ -4269,6 +4372,7 @@ const storeOf = (cf, key) => {
      outer ring is half a million chunks and every assertion below is a rate. */
   const RING_SAMPLES = 5000;
   const acc = rings.map(() => ({ chunks: 0, n: 0 }));
+  const byKind = {};
   const kinds = new Set();
   for (const seed of [11, 515, 8675309, 4242]) {
     const { cf } = boot("?debug=1&seed=" + seed);
@@ -4291,8 +4395,12 @@ const storeOf = (cf, key) => {
         if (seen.has(id)) continue;
         seen.add(id);
         acc[i].chunks++;
+        const kind = cf.spaceAt((cx + 0.5) * 2600, (cy + 0.5) * 2600).kind;
+        const kk = byKind[kind] || (byKind[kind] = { chunks: 0, n: 0 });
+        kk.chunks++;
         for (const t of cf.chunk(cx, cy).traffic) {
           acc[i].n++;
+          kk.n++;
           kinds.add(t.kind);
           check(t.hull && t.from && t.to, "a traffic ship with no route or hull");
           check(Array.isArray(t.cargo), t.kind + " carries nothing at all");
@@ -4301,12 +4409,16 @@ const storeOf = (cf, key) => {
     });
   }
   const rate = a => a.n / Math.max(1, a.chunks);
-  const home = rate(acc[0]), deep = rate(acc[acc.length - 1]);
-  check(home > 0.1, "the home band only has " + home.toFixed(3) + " traffic a chunk");
-  check(home > deep * 4,
-        "traffic is as common in the deep as near home (" + home.toFixed(3) +
-        " → " + deep.toFixed(3) + ")");
-  check(deep < 0.05, "the abyss still has " + deep.toFixed(3) + " traffic a chunk");
+  /* The gradient is who holds the sky now, not distance: a power's own space
+     is busy and the Deep Void is nearly empty, wherever each of them is. */
+  const home = rate(acc[0]);
+  const held = byKind.territory ? rate(byKind.territory) : 0;
+  const deep = byKind.void ? rate(byKind.void) : 0;
+  check(home > 0.05, "the home band only has " + home.toFixed(3) + " traffic a chunk");
+  check(byKind.void && held > deep * 4,
+        "traffic is as common in the Deep Void as in a power's territory (" +
+        held.toFixed(3) + " → " + deep.toFixed(3) + ")");
+  check(deep < 0.05, "the Deep Void still has " + deep.toFixed(3) + " traffic a chunk");
   check(kinds.has("freight") && kinds.has("patrol") && kinds.has("distress"),
         "only these kinds ever appear: " + [...kinds].join(", "));
 
@@ -4928,8 +5040,18 @@ const storeOf = (cf, key) => {
   for (let sd = 0; sd < 30; sd++) {
     const { cf } = boot("?debug=1&seed=" + (770000 + sd * 11));
     cf.start("survey", 1);
-    for (let cx = -5; cx <= 5; cx++) {
-      for (let cy = -5; cy <= 5; cy++) {
+    /* Around a front, because that is where the war is fought now — home is
+       the frontier and sees almost none. */
+    let fx = 0, fy = 0;
+    search: for (let r = 1; r < 30; r++) {
+      for (let a = 0; a < 24; a++) {
+        const x = Math.cos(a / 24 * Math.PI * 2) * r * 93000;
+        const y = Math.sin(a / 24 * Math.PI * 2) * r * 93000;
+        if (cf.spaceAt(x, y).kind === "front") { fx = Math.round(x / 2600); fy = Math.round(y / 2600); break search; }
+      }
+    }
+    for (let cx = fx - 5; cx <= fx + 5; cx++) {
+      for (let cy = fy - 5; cy <= fy + 5; cy++) {
         for (const b of (cf.chunk(cx, cy).battles || [])) {
           if (b.memorial) named++; else plain++;
           check(/^THE [A-Z ]+ [A-Z]+$/.test(b.name),
@@ -5144,7 +5266,18 @@ const storeOf = (cf, key) => {
   surv.cash = 99999;
   surv.docked = { x: 2000, y: 0 };
   const nearShelf = view().forSale.length;
-  surv.docked = { x: 2600000, y: 1400000 };
+  /* The worst sky within reach rather than a far one: what a shelf stocks is
+     how dangerous its sky is, and danger is the biome and the owner now. */
+  let worstSky = { x: 0, y: 0, d: -1 };
+  for (let r = 1; r < 40; r++) {
+    for (let a = 0; a < 32; a++) {
+      const x = Math.cos(a / 32 * Math.PI * 2) * r * 93000;
+      const y = Math.sin(a / 32 * Math.PI * 2) * r * 93000;
+      const d = cf.dangerAt(x, y);
+      if (d > worstSky.d) worstSky = { x, y, d };
+    }
+  }
+  surv.docked = { x: worstSky.x, y: worstSky.y };
   const deepShelf = view().forSale.length;
   check(deepShelf > nearShelf,
         "a station in the deep stocks " + deepShelf + ", one near home " +
@@ -5158,7 +5291,10 @@ const storeOf = (cf, key) => {
      carries a subset of what it could sell and restocks on a clock — so naming
      a part here and expecting to walk out with it is asserting that stock is
      infinite. The page's own list is the only honest source. */
-  const counter = view().market.find(r => r.kind === "part");
+  /* Not the pulse coil: the next check writes one into storage by hand and
+     fits it, which would quietly spend the one just bought and make the book
+     look forgetful. */
+  const counter = view().market.find(r => r.kind === "part" && r.key !== "pulsecoil");
   check(!!counter, "a station in the deep has no part on the counter at all");
   const bought = counter ? counter.key : "overburner";
   check(view().onBuyPart(bought) === true, "could not buy a part with cash");
@@ -6637,12 +6773,9 @@ const storeOf = (cf, key) => {
         "minutes of flying covers " + Math.round(reach10) + " — the whole ladder " +
         "is " + (span.far / reach10).toFixed(1) + " times a ten-minute flight");
 
-  /* And the danger curve has to be as long as the ladder. If it tops out before
-     the far rungs, everything past that point is one flat band — identically
-     dangerous for most of the game. */
-  check(span.full > span.far * 0.35,
-        "the danger curve tops out at " + Math.round(span.full) + " but the " +
-        "ladder runs to " + Math.round(span.far));
+  /* The danger curve used to have to be as long as the ladder. There is no
+     curve now — danger is the biome and the owner — so there is nothing to
+     keep in step with it. */
 
   /* The shape, across seeds: a first rung you can reach on an early flight and a
      last rung that is hours away, with the rungs spread rather than bunched. */
@@ -6696,8 +6829,7 @@ const storeOf = (cf, key) => {
 
   console.log("  ladder     first rung " + Math.round(nearest / 1000) + "k, last " +
               Math.round(furthest / 1000) + "k \u00b7 " +
-              (span.far / reach10).toFixed(0) + " ten-minute flights to the far " +
-              "one \u00b7 the curve runs to " + Math.round(span.full / 1000) + "k");
+              (span.far / reach10).toFixed(0) + " ten-minute flights to the far one");
 }
 
 // ── the low-tank warning teaches, then gets out of the way ───────────────
@@ -8092,16 +8224,19 @@ const storeOf = (cf, key) => {
   for (const seed of [606060, 99999, 31337]) {
     const w = boot("?debug=1&seed=" + seed);
     w.cf.start("survey", 1);
-    for (let ring = 2; ring <= 620; ring += 13) {
-      for (let a = 0; a < 32; a++) {
-        const th = (a / 32) * Math.PI * 2 + ring;
+    /* Denser than it was. The best shelves are in the worst sky, and about
+       one station in a hundred sits in sky that bad — a thin sample can miss
+       every one of them and call three real parts unreachable. */
+    for (let ring = 2; ring <= 620; ring += 5) {
+      for (let a = 0; a < 64; a++) {
+        const th = (a / 64) * Math.PI * 2 + ring;
         const cx = Math.round(Math.cos(th) * ring);
         const cy = Math.round(Math.sin(th) * ring);
         const c = w.cf.chunk(cx, cy);
         chunks++;
         for (const st of c.stations) {
           shops++;
-          deepestShop = Math.max(deepestShop, w.cf.dangerAt(st.x, st.y));
+          deepestShop = Math.max(deepestShop, w.cf.shelfDepth(st.x, st.y));
         }
       }
     }
@@ -8143,30 +8278,31 @@ const storeOf = (cf, key) => {
   check(orphanBuild.length === 0,
         "build entries for parts that do not exist: " + orphanBuild.join(", "));
 
-  /* How far out a part's shelf actually is. `deep` is a danger figure and danger
-     is a curve against distance, so the number on the part means nothing to a
-     player until it is turned back into units — and that is the number worth
-     knowing, because it is how far they have to fly before the thing exists. */
-  const distFor = want => {
-    let lo = 0, hi = 3e6;
-    for (let i = 0; i < 40; i++) {
-      const mid = (lo + hi) / 2;
-      if (cf.dangerAt(mid, 0) < want) lo = mid; else hi = mid;
+  /* How rare a part's shelf actually is. `deep` is a danger figure, and danger
+     used to be a distance, so this turned it back into units. It is the biome
+     and the owner now, so the number worth knowing is how many of the sector's
+     stations sit in sky dangerous enough to stock it. */
+  const shopDangers = [];
+  for (const seed of [606060, 99999, 31337]) {
+    const w = boot("?debug=1&seed=" + seed);
+    w.cf.start("survey", 1);
+    for (let ring = 2; ring <= 620; ring += 13) {
+      for (let a = 0; a < 32; a++) {
+        const th = (a / 32) * Math.PI * 2 + ring;
+        const c = w.cf.chunk(Math.round(Math.cos(th) * ring), Math.round(Math.sin(th) * ring));
+        for (const st of c.stations) shopDangers.push(w.cf.shelfDepth(st.x, st.y));
+      }
     }
-    return Math.round(hi / 1000) * 1000;
-  };
+  }
+  const shareFor = want =>
+    shopDangers.filter(d => d >= want).length / Math.max(1, shopDangers.length);
   const deepest = parts.slice().sort((a, b) => b.deep - a.deep)[0];
-  const reach = distFor(deepest.deep);
-
-  /* Buy-only parts, and how far out the nearest shelf that stocks one is. Worth
-     printing rather than only asserting: a part that is reachable in principle
-     and sits a million units past the last named band is a different problem
-     from an unreachable one, and it is invisible unless somebody says the
-     number out loud. */
+  const reach = shareFor(deepest.deep);
   const far = parts.filter(p => p.get.length === 1 && p.get[0] === "buy" && p.deep > 0)
                    .sort((a, b) => b.deep - a.deep)
-                   .map(p => p.name + " " + (distFor(p.deep) / 1000) + "k");
+                   .map(p => p.name + " " + Math.round(shareFor(p.deep) * 100) + "%");
   console.log("  buyonly    " + far.join(" · "));
+
 
   const byWay = { buy: 0, craft: 0, find: 0 };
   for (const p of parts) for (const w of p.get) if (w in byWay) byWay[w]++;
@@ -8175,7 +8311,7 @@ const storeOf = (cf, key) => {
               byWay.find + " out there · " + shops + " stations across " +
               chunks + " chunks, deepest at danger " + deepestShop.toFixed(2) +
               " · " + deepest.name + " needs " + deepest.deep.toFixed(2) +
-              ", about " + (reach / 1000) + "k units out");
+              ", stocked by " + Math.round(reach * 100) + "% of stations");
 }
 
 // ── the chart is too crowded, so it filters ──────────────────────────────
@@ -9662,22 +9798,22 @@ const storeOf = (cf, key) => {
   check(!!cool, "there is no part that shortens the scanner's cooldown");
   check(cool && cool.craftable, "the coolant loop cannot be built");
 
-  /* And nothing in the interface says any of it. This is the rule the first
-     version broke: the panel named the region and the chart washed itself in
-     region colours with the names written across it, which is the Minecraft
-     SNOW BIOME label in a different font. */
-  check(cf.surveyView().region === null,
-        "the game is still handing the panel a region to name");
-  check(/REGION  UNKNOWN/.test(hudSrc),
-        "the panel does not say it cannot tell what kind of space this is");
-  check(!/st\.regionAt|st\.regionSites/.test(hudSrc),
-        "the chart is still colouring itself by region");
+  /* And the interface says it now. BIOMES.md kept biomes unnamed; Ric turned
+     that round — "it should tell you what ones your in on top right" — so the
+     panel is handed the biome and the chart is handed only what you mapped. */
+  const pv = cf.surveyView();
+  check(pv.place && pv.place.biome && pv.place.biome.name,
+        "the panel is not handed the biome to name");
+  check(!/REGION  UNKNOWN/.test(hudSrc),
+        "the panel still says it cannot tell what kind of space this is");
+  check(pv.terrain && pv.terrain.mapped instanceof Map,
+        "the chart is not handed the borders you have mapped");
 
   console.log("  regions    " + kinds + " kinds of space · ordinary is " +
               (share("normal") * 100).toFixed(0) + "% · the Empty " +
               (share("open") * 100).toFixed(1) + "% and the city " +
               (share("city") * 100).toFixed(1) + "% · longest crossing " +
-              (longest / 575 / 60).toFixed(1) + " min · the game never names one");
+              (longest / 575 / 60).toFixed(1) + " min · named top right");
 }
 
 /* ── nothing spawns in a wall ─────────────────────────────────────────────────
@@ -10573,12 +10709,23 @@ const storeOf = (cf, key) => {
         "a second-act beat fired in the opening thirty frames, at the origin, " +
         "with a full tank: " + ACT2.filter(k => surv.taught.has(k)).join(" "));
 
-  /* Out past the Hostile band. The one beat that is only about distance. */
+  /* Into lawless space. It used to be the one beat about distance; it is about
+     who holds the sky now, and fires the first time nobody does. */
   const me = cf.live().ships[0];
-  me.x = 90000; me.y = 0; me.invuln = 9e9;
+  let lawless = null;
+  for (let r = 1; r < 40 && !lawless; r++) {
+    for (let a = 0; a < 32 && !lawless; a++) {
+      const x = Math.cos(a / 32 * Math.PI * 2) * r * 93000;
+      const y = Math.sin(a / 32 * Math.PI * 2) * r * 93000;
+      if (cf.spaceAt(x, y).kind === "lawless") lawless = { x, y };
+    }
+  }
+  check(!!lawless, "no lawless space anywhere near home to fly into");
+  if (lawless) { me.x = lawless.x; me.y = lawless.y; }
+  me.invuln = 9e9;
   step(4);
   check(surv.taught.has("hostile"),
-        "flying into the Hostile band said nothing about what the bands are for");
+        "flying into lawless space said nothing about what it means");
 
   /* And the leash: a dry tank, a long way from anywhere, is the moment the
      melter stops being a line on the workbench and starts being the answer. */
@@ -10595,6 +10742,113 @@ const storeOf = (cf, key) => {
         "prompt you have already acted on is noise");
   console.log("  actii      the opening teaches again after the gate · each " +
               "beat waits for its own pressure · none of them fires twice");
+}
+
+// ── the chart learns the borders, and the war moves them ─────────────────
+/* Ric: "when you go into a new sector or biome and scan then the borders of the
+   sectors and biomes are up", and "their land would change too based on who is
+   at war". Five things that would each break quietly: a scan that charts
+   nothing, a border with only one side known, a book that forgets the chart or
+   the war, a war that never moves, and a peace that never ends. */
+{
+  const { cf } = boot("?debug=1&seed=7");
+  cf.start("survey", 1);
+  const surv = cf.survey(), me = cf.live().ships[0];
+  me.invuln = 9e9; surv.water = 9e5; surv.food = 9e5;
+  const step = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.step(); } };
+  step(5);
+
+  // Flying writes the cell you are in; it does not chart a whole patch.
+  check(surv.mapped.size >= 1 && surv.mapped.size < 4,
+        "sitting at home charted " + surv.mapped.size + " cells");
+
+  let front = null;
+  for (let r = 1; r < 30 && !front; r++) {
+    for (let a = 0; a < 24 && !front; a++) {
+      const x = Math.cos(a / 24 * Math.PI * 2) * r * 93000;
+      const y = Math.sin(a / 24 * Math.PI * 2) * r * 93000;
+      if (cf.spaceAt(x, y).kind === "front") front = { x, y };
+    }
+  }
+  check(!!front, "no front within thirty cells of home");
+  if (front) { me.x = front.x; me.y = front.y; me.vx = me.vy = 0; }
+  step(5);
+  const before = surv.mapped.size;
+  surv.scan.charge = 1;
+  cf.scan();
+  check(surv.mapped.size > before + 5,
+        "a scan charted " + (surv.mapped.size - before) + " cells");
+
+  // A border has both sides on the chart, or there is nothing to draw.
+  let twoSided = 0;
+  for (const [key, rec] of surv.mapped) {
+    const [cx, cy] = key.split(",").map(Number);
+    for (const [i, j] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
+      const o = surv.mapped.get((cx + i) + "," + (cy + j));
+      if (o && o.o !== rec.o) twoSided++;
+    }
+  }
+  check(twoSided > 0, "the scan charted no border with both sides known");
+
+  // The panel names both, and the chart is drawn with names on it.
+  const pv = cf.surveyView();
+  check(pv.place.space.name && pv.place.biome.name, "the panel has nothing to name");
+  cf.screen("chart");
+  const hud = cf.hud();
+  hud.chartOpened(pv);
+  for (let i = 0; i < 20; i++) hud.chartZoomBy(-1);
+  for (let i = 0; i < 6; i++) hud.chartZoomBy(1);
+  textDrawn();
+  cf.draw();
+  const words = textDrawn();
+  check(words.some(w => /SPACE$|THE FRONTIER|THE DEEP VOID|THE FRONT/.test(w)),
+        "the chart named no territory: " + words.slice(0, 12).join(" | "));
+  cf.screen("playing");
+
+  /* The war. Even, it grinds; lopsided, it moves; worn down, it stops; and a
+     peace long enough, with somebody ready, starts another. */
+  const [a, b] = surv.war.belligerents;
+  check(a && b, "the sector starts with nobody at war");
+  let even = 0;
+  for (let t = 0; t < 120; t++) {
+    surv.war.strength[a] = 1; surv.war.strength[b] = 1;
+    even += cf.warTurn();
+  }
+  surv.claims.clear();
+  let lopsided = 0;
+  for (let t = 0; t < 120; t++) {
+    surv.war.strength[a] = 1.2; surv.war.strength[b] = 0.6;
+    lopsided += cf.warTurn();
+  }
+  check(even > 0, "an even war moved no border in ninety minutes");
+  check(lopsided > even * 2,
+        "a two-to-one war moved " + lopsided + " cells and an even one " + even);
+  check(lopsided < 120, "a lopsided war moved " + lopsided + " cells in ninety minutes");
+  check(![...surv.claims.keys()].some(k => /^(-1|0),(-1|0)$/.test(k)),
+        "the war took a home cell");
+
+  surv.war.strength[a] = 0.5; surv.war.strength[b] = 0.5;
+  cf.warTurn();
+  check(surv.war.belligerents.length === 0 && !Object.keys(surv.war.pairs).length,
+        "two worn-out sides kept fighting");
+  for (let t = 0; t < 40; t++) cf.warTurn();
+  check(surv.war.belligerents.length === 2, "the peace never ended");
+
+  // And all of it survives the tab.
+  cf.saveBook();
+  const claims = surv.claims.size, mapped = surv.mapped.size;
+  const pairs = JSON.stringify(surv.war.pairs);
+  const w2 = bootKeepingStorage("?debug=1&seed=7");
+  w2.cf.start("survey", 1);
+  const s2 = w2.cf.survey();
+  check(s2.claims.size === claims, "the book kept " + s2.claims.size + " of " + claims + " claims");
+  check(s2.mapped.size === mapped, "the book kept " + s2.mapped.size + " of " + mapped + " charted cells");
+  check(JSON.stringify(s2.war.pairs) === pairs, "the book forgot who is at war");
+
+  console.log("  borders    a scan charts " + (mapped > 0 ? "the patch" : "nothing") +
+              " with both sides of its borders · the chart names it · an even war " +
+              "moves " + even + " cells in 90 min, two-to-one " + lopsided +
+              " · worn out is a ceasefire · a long peace ends · all of it saved");
 }
 
 if (problems.length) {

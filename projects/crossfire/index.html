@@ -5988,8 +5988,11 @@
        Air is separate, and commoner: a world with an atmosphere can be skimmed
        for water by anybody, slowly and for nothing, which is the poor pilot's
        option and costs time instead of money. */
+    /* Who lives here is a question about who holds the sky. Commonest in a
+       power's own territory, thinner on the frontier and in lawless space, and
+       nobody at all in the Deep Void. */
     const deep = dangerAt(x, y);
-    const lived = R() < 0.11 * (1 - deep * 0.85);
+    const lived = R() < 0.05 * spaceAt(x, y).lived;
     /* ── what an inhabited world is *for* ───────────────────────────────────
        It sold water and food and that was the whole of it, which made every
        settlement in the sector the same settlement — a well with a shop sign.
@@ -7486,6 +7489,11 @@
     seed: () => (surv ? surv.seed : 0),
     world: () => (surv ? surv.world : null),
     running: () => !!surv,
+    /* The cells that have changed hands since the sector began. The seeded map
+       is only where the war started; see "WHO HOLDS THE SKY" in the module. */
+    claims: () => (surv && surv.claims) || null,
+    // Who is at war with whom *now*. The world rolls where the war started.
+    war: () => (surv && surv.war ? surv.war.pairs : null),
     // The index the streamer builds; see `streamChunks`. Read, never written.
     caveGrid: () => (surv ? surv.caveGrid : null)
   });
@@ -7493,23 +7501,28 @@
   const chunkSeed   = WORLD.chunkSeed;
   const chunkKey    = WORLD.chunkKey;
   const hash2       = WORLD.hash2;
-  const BANDS       = WORLD.BANDS;
-  const DANGER_FULL = WORLD.DANGER_FULL;
-  /* A part's `deep` read back as a place. `deep` is a fraction of the danger
-     curve and the bands are distances along it, so the two are the same number
-     in different units — which means a shelf's depth can be stated in the
-     vocabulary a pilot already reads off the panel instead of as a decimal.
-     See `longList`. */
-  const bandForDeep = deep => {
-    const d = (deep || 0) * DANGER_FULL;
-    for (const b of BANDS) if (d < b.to) return b.name;
-    return BANDS[BANDS.length - 1].name;
-  };
+  /* A part's `deep` read back as words. `deep` is a danger figure, and danger
+     is no longer a distance — it is the biome and the owner together — so a
+     shelf's depth is said as the kind of place that stocks it rather than as a
+     band and a range. See `longList`. */
+  const dangerWords = deep =>
+    deep < 0.15 ? "CALM SPACE" : deep < 0.35 ? "ROUGH SPACE" :
+    deep < 0.55 ? "DANGEROUS SPACE" : "THE WORST SPACE THERE IS";
   const dangerAt    = WORLD.dangerAt;
-  const bandAt      = WORLD.bandAt;
+  /* How deep a station's shelf reaches, which is its sky's danger stretched a
+     little. A part's `deep` was written against a distance, where everything
+     past a million units stocked the best parts; read raw against the biome
+     and the owner, one station in a thousand did, which is not "out there",
+     it is lost. Stretched by this, about one station in a hundred stocks the
+     best of them and one in ten the next rung down: the ones in bad sky. */
+  const SHELF_REACH = 0.8;
+  const shelfDepth  = (x, y) => Math.min(1, dangerAt(x, y) / SHELF_REACH);
+  /* Nature alone, as 0 for ordinary sky to 1 for the Wells: what sizes a well,
+     thickens rock and grows a field. The biome's half, and it never moves. */
+  const wildAt      = (x, y) => Math.max(0, (WORLD.natureAt(x, y) - 0.15) / 0.65);
+  const spaceAt     = WORLD.spaceAt;
   const REGIONS     = WORLD.REGIONS;
   const REGION_CELL = WORLD.REGION_CELL;
-  const HOME_REACH  = WORLD.HOME_REACH;
   const regionAt    = WORLD.regionAt;
   const regionSite  = WORLD.regionSite;
   const regionDepth = WORLD.regionDepth;
@@ -7644,7 +7657,12 @@
         // stays remembered.
         battleAge: surv.battleAge,
         memorials: [...surv.memorials],
-        known: [...surv.known.values()]
+        known: [...surv.known.values()],
+        // Who holds the sky where it has moved, and what your chart saw of it.
+        claims: [...surv.claims],
+        mapped: [...surv.mapped],
+        war: { pairs: surv.war.pairs, belligerents: surv.war.belligerents,
+               strength: surv.war.strength, calm: Math.round(surv.war.calm) }
     };
   }
 
@@ -8139,10 +8157,13 @@
     // relax and look around.
     const home = cx === 0 && cy === 0;
 
-    /* Everything below is rolled against how far out this chunk is. `deep` runs
-       0 at the origin to 1 at the far end, and it is read rather than compared —
-       no thresholds, so there is no visible seam anywhere in the sector. */
-    const deep = dangerAt(ox + CHUNK / 2, oy + CHUNK / 2);
+    /* Everything below is rolled against *what kind of place* this chunk is,
+       not how far out it is. `wild` is the biome's half — wells, rock, fields —
+       and `deep` is the biome and the owner together, for what is guarded and
+       what it is worth. See "how dangerous a place is" in survey-world.js. */
+    const deep = dangerAt(mx, my);
+    const wild = wildAt(mx, my);
+    const space = spaceAt(mx, my);
 
     // The far end of the jump coil's gate, if it lands in this chunk.
     const exit = surv && surv.coilExitAt && surv.coilExitAt.get(chunkKey(cx, cy));
@@ -8163,7 +8184,7 @@
          "go and look", and it should not be "go and look for the shop" — seeing
          one early is also what teaches that salvage is worth picking up at all. */
       out.stations.push({ x: HOME_STATION.x, y: HOME_STATION.y, r: 132,
-                          phase: 0, home: true });
+                          phase: 0, home: true, faction: "free" });
     } else if (!barren) {
       /* Roughly a sixth of chunks carry a well, where it used to be three in
          five. They were dense enough to read as scenery you steer around all
@@ -8177,16 +8198,16 @@
          actually have to plan around stops being remarkable. Stars stay put and
          the holes thin out around them. */
       const roll = R() / Math.max(0.05, ab("wells"));
-      const k = () => wellScale(deep, R);
+      const k = () => wellScale(wild, R);
       if (roll < 0.025) {
-        const p = spot(900 * (1 + deep));
+        const p = spot(900 * (1 + wild));
         if (p) {
           const kk = k();
           out.hazards.push(makeStar(p.x - 190 * kk, p.y, R, kk),
                            makeStar(p.x + 190 * kk, p.y, R, kk));
         }
       } else if (roll < 0.032) {
-        const p = spot(1000 * (1 + deep));
+        const p = spot(1000 * (1 + wild));
         if (p) {
           const kk = k();
           out.hazards.push(makeHole(p.x - 250 * kk, p.y - 70 * kk, true, R, kk),
@@ -8220,8 +8241,8 @@
                              phase: R() * Math.PI * 2 });
         }
       }
-      buildTraffic(cx, cy, R, rnd, deep, out);
-      buildBattle(cx, cy, R, rnd, deep, out);
+      buildTraffic(cx, cy, R, rnd, deep, out, space);
+      buildBattle(cx, cy, R, rnd, deep, out, space);
       if (R() < 0.05 * ab("wrecks")) {
         const p = spot(300);
         if (p) {
@@ -8258,7 +8279,11 @@
       if (R() < 0.032 * ab("stations")) {
         const p = spot(420);
         if (p) {
-          out.stations.push({ x: p.x, y: p.y, r: 132, phase: R() * Math.PI * 2 });
+          /* A station flies the flag of whoever holds the sky it is in, or none.
+             Read off the owner rather than rolled, so moving a border is what
+             changes a dock's colours. */
+          out.stations.push({ x: p.x, y: p.y, r: 132, phase: R() * Math.PI * 2,
+                              faction: space.owner || "free" });
         }
       }
 
@@ -8284,11 +8309,11 @@
          ship, which is the map-wide density; this is how often a chunk holds a
          standing field, which is where the rock actually piles up. Moving only
          the first would have thickened the thin stuff and left the belts alone. */
-      if (deep > 0.2 && R() < deep * 0.33 * ab("fields")) {
+      if (wild > 0.2 && R() < wild * 0.33 * ab("fields")) {
         const p = spot(700);
         if (p) {
           out.fields.push({ x: p.x, y: p.y, r: rnd(500, 900),
-                            n: Math.round(rnd(10, 16 + deep * 14)) });
+                            n: Math.round(rnd(10, 16 + wild * 14)) });
         }
       }
     }
@@ -8416,7 +8441,7 @@
       }
     } else if (site.key === "core") {
       out.hazards.length = 0;
-      const bk = wellScale(dangerAt(site.x, site.y), R);
+      const bk = wellScale(wildAt(site.x, site.y), R);
       out.hazards.push(makeStar(site.x - 340 * bk, site.y - 90 * bk, R, bk),
                        makeStar(site.x + 340 * bk, site.y + 90 * bk, R, bk));
     } else if (site.key === "lens") {
@@ -9932,9 +9957,9 @@
        thinner because of *where you are*. A belt is rock as far as the scan
        reaches; the Long Empty has almost none, which is the whole of what makes
        it worth flying into. */
-    const deep = dangerAt(me.x, me.y);
+    const wild = wildAt(me.x, me.y);
     const reg = regionOf(me.x, me.y);
-    const want = Math.round(SURVEY_ROCKS * (1 + deep * 0.7) * reg.rocks);
+    const want = Math.round(SURVEY_ROCKS * (1 + wild * 0.7) * reg.rocks);
     const near = surv.fields.filter(f =>
       dist2(f.x, f.y, me.x, me.y) < (SURVEY_ROCK_R * 1.4) ** 2);
     let guard = 60;
@@ -10006,6 +10031,31 @@
       market: {},
       battles: [], battleAge: (carried && book.battleAge) || {},
       memorials: new Set(carried && book.memorials ? book.memorials : []),
+      /* Who holds the sky, as far as it has moved. The seed lays the map out;
+         this is only the cells that have changed hands since, keyed "cx,cy",
+         with "" for a cell nobody holds any more. See `WORLD.holderOf`. */
+      claims: new Map(carried && Array.isArray(book.claims) ? book.claims : []),
+      /* The war as it stands, which is not the war the world rolled once it has
+         been running a while. `strength` is each power's ability to keep
+         fighting, 1 being whole; see `surveyWar`. */
+      war: (() => {
+        const w = rollWorld(seed);
+        const saved = carried && book.war && typeof book.war === "object" ? book.war : null;
+        return {
+          pairs: saved ? Object.assign({}, saved.pairs) : Object.assign({}, w.war),
+          belligerents: saved ? (saved.belligerents || []).slice()
+                              : w.belligerents.slice(),
+          strength: Object.assign({ cordon: 1, hallow: 1, morrow: 1 },
+                                  saved ? saved.strength : {}),
+          calm: saved ? +saved.calm || 0 : 0,
+          clock: 0
+        };
+      })(),
+      /* What your chart knows about territory and biomes: per region cell, the
+         biome and whose it was *when you saw it*. Only cells you have flown
+         through or scanned. It is a record rather than a feed — a border that
+         moved after you mapped it stays where you saw it until you look again. */
+      mapped: new Map(carried && Array.isArray(book.mapped) ? book.mapped : []),
       gates: [], caches: [], stations: [], hulks: [], drones: [],
       leviathan: null,
       vault: null,             // the other thing with an inside; see `buildVault`
@@ -10189,6 +10239,9 @@
         looted: false
       }
     };
+    /* Anything that asked what kind of space a cell was while the object above
+       was being built asked it of the last sector's world, or of none. */
+    WORLD.territoryChanged();
 
     /* ── sandbox loadout ───────────────────────────────────────────────────
        This URL is a workbench, not a second progression save. Everything that
@@ -10694,6 +10747,14 @@
                 (tally[k] > 1 && many[k] && !/s$/i.test(k) ? "s" : ""))
       .join("  ·  ");
     chatter(parts, NEBULA);
+    /* And the borders of where you are, if the chart did not have them. Said
+       once, in the place's own words, so a scan in new sky is also the moment
+       you learn what the sky is called. */
+    if (scanBorders() > 0) {
+      const here = placeAt(me.x, me.y);
+      chatter("Charted the edges of " + here.biome.name + " and " +
+              here.space.name + ".", NEBULA);
+    }
   }
 
   /* A hull that runs out does not end anything. It leaves you adrift where you
@@ -12101,7 +12162,7 @@
       cause: cause || "rock",
       reason: DEATH_CAUSE[cause] || "lost with all hands",
       dist: Math.round(Math.hypot(ship.x, ship.y)),
-      band: bandAt(ship.x, ship.y).name,
+      band: placeAt(ship.x, ship.y).text,
       lasted: Math.max(0, clock - surv.runStart),
       lost,
       hold: MATERIALS.map(m => ({ key: m.key, name: m.name, colour: m.colour,
@@ -12534,7 +12595,7 @@
      replaces it — two runs to the same station a clock apart are two different
      shops. */
   function rollShelf(st, gen) {
-    const deep = dangerAt(st.x, st.y);
+    const deep = shelfDepth(st.x, st.y);
     const R = seeded(chunkSeed(Math.round(st.x / 5) + gen * 104729,
                                Math.round(st.y / 5) - gen * 15485863));
     /* Water and food almost always, and plenty of both when they are there. A
@@ -12712,9 +12773,10 @@
        far        27.7%
        abyssal    38.2%   about two in five
 
-     The coefficient is against `dangerAt`, which tops out near 0.36 rather than
-     1 — so moving the deep end takes 0.95 and not the 0.36 it looks like it
-     should.
+     Those figures were measured against distance, when `dangerAt` topped out
+     near 0.36. It is the biome and the owner now, runs the whole way to 1, and
+     is not a ring — so the coefficient is pitched to land the same spread, one
+     place in seven in calm sky to two in five in the worst of it.
 
      It bites on exactly the two parts nobody stocks — the warp tuner and
      running dark, 480 at a dealer and nothing anywhere else. The exotics that
@@ -12725,7 +12787,7 @@
   function takesExotics(x, y) {
     const R = seeded(chunkSeed(Math.round(x / 13) + 40213,
                                Math.round(y / 13) - 9187));
-    return R() < 0.16 + dangerAt(x, y) * 0.95;
+    return R() < 0.13 + dangerAt(x, y) * 0.3;
   }
 
   /* What a find-only part is worth to somebody who deals in them. By rarity,
@@ -14062,7 +14124,7 @@
     const k = worldKind(pl.kind);
     const lines = [
       "A world, " + Math.round(pl.r * 2).toLocaleString() + " units across, in " +
-      bandAt(pl.x, pl.y).name + "."
+      placeAt(pl.x, pl.y).text + "."
     ];
     if (pl.rogue) lines.push("Nothing warms it. There is no star in this whole chunk.");
     if (pl.inhabited) {
@@ -14451,12 +14513,16 @@
       sub: "an ice melter makes its own — the workbench can build one",
       colour: "#87d8ff" },
 
-    /* The first time distance costs something. The bands have been there all
-       along and nothing has ever said what one is for; this says it once, at
-       the moment the player has walked into the answer. */
+    /* The first time the sky turns on you. It used to fire at 60,000 units,
+       because danger was a distance; it is who holds the sky now, so it fires
+       the first time you fly into space nobody keeps the peace in. The key is
+       kept so a book that already heard it does not hear it again. */
     { key: "hostile",
-      when: () => Math.hypot(ships[0].x, ships[0].y) > 60000,
-      text: () => bandAt(ships[0].x, ships[0].y).name,
+      when: () => {
+        const k = spaceAt(ships[0].x, ships[0].y).kind;
+        return k === "lawless" || k === "front";
+      },
+      text: () => placeAt(ships[0].x, ships[0].y).space.name,
       sub: "it pays better out here, and it is worse out here",
       colour: "#ff9d5c" },
 
@@ -14586,7 +14652,38 @@
   const factionOf = k => FACTIONS.find(f => f.key === k) ||
                          (k === "pirate" ? PIRATE : UNALIGNED);
 
-  const warPairs = () => (surv && surv.world && surv.world.war) || {};
+  /* ── where you are, in words ──────────────────────────────────────────────
+     Two facts, and the top right says both: whose sky this is and what kind of
+     sky it is. The first used to be a ring — HOME, OPEN, HOSTILE — and the
+     second was deliberately never said at all. Ric turned both round: *"it
+     should tell you what ones your in on top right."* */
+  function placeAt(x, y) {
+    const sp = spaceAt(x, y), reg = regionOf(x, y);
+    let name = sp.name, colour = sp.colour, detail = "";
+    if (sp.kind === "territory") {
+      const f = factionOf(sp.owner);
+      name = f.short + " SPACE"; colour = f.colour;
+    } else if (sp.kind === "front") {
+      const a = sp.owner ? factionOf(sp.owner) : null, b = factionOf(sp.enemy);
+      detail = a ? a.short + " HELD \u00b7 " + b.short + " CLOSE"
+                 : "NOBODY HOLDS IT \u00b7 " + b.short + " AT WAR";
+      if (a) colour = a.colour;
+    }
+    return {
+      space: { kind: sp.kind, name, colour, detail,
+               owner: sp.owner || null, enemy: sp.enemy || null },
+      biome: { key: reg.key, name: reg.name, colour: reg.colour },
+      danger: dangerAt(x, y),
+      text: name + " \u00b7 " + reg.name
+    };
+  }
+
+  /* Who is fighting whom, now. The world rolls the war a sector starts with;
+     `surv.war` is where it has got to — a ceasefire empties it and a new war
+     fills it — and everything that asks "are these two at war" asks this. */
+  const warPairs = () =>
+    (surv && surv.war && surv.war.pairs) || (surv && surv.world && surv.world.war) || {};
+  const warSides = () => (surv && surv.war && surv.war.belligerents) || [];
   function atWar(a, b) {
     if (!a || !b || a === b) return false;
     if (a === "pirate" || b === "pirate") return true;
@@ -14749,6 +14846,8 @@
       return;
     }
     addRep(t.faction, n);
+    // Every hull lost is a little less war that side can fight.
+    weaken(t.faction, ROLES[t.role] && ROLES[t.role].armed ? 0.015 : 0.01);
     const enemy = warPairs()[t.faction];
     if (enemy && n < 0) addRep(enemy, -n * REP.SPITE);
   }
@@ -14788,7 +14887,7 @@
      strange things are a long way out, which is the danger curve finally paying
      something back. */
   const stationDepth = () =>
-    surv && surv.docked ? dangerAt(surv.docked.x, surv.docked.y) : 0;
+    surv && surv.docked ? shelfDepth(surv.docked.x, surv.docked.y) : 0;
 
   /* ── building one ─────────────────────────────────────────────────────────
      Anywhere, out of what you are carrying. Not at a station: the ice melter's
@@ -15117,6 +15216,175 @@
 
      That is the whole point of it. A fight that waited for you would be a set
      piece; one that finishes without you is a war. */
+  /* ═══ THE WAR MOVES ══════════════════════════════════════════════════════
+     Ric: *"the politicts are going to be changing so their land would change
+     too based on who is at war and stuff."*
+
+     Borders move for reasons, and every reason is something that happened:
+
+       · **a battle is won** — the side with ships left takes the ground it was
+         fought over (see `endBattle`);
+       · **the front grinds** — every so often a cell on a front goes to
+         whichever side is stronger, more often the more lopsided it is;
+       · **the frontier fills** — a power settles the unheld sky beside its own,
+         slowly, and faster the stronger it is; lawless space gets claimed the
+         same way, more slowly still;
+       · **wars end and start** — two sides worn down below half stop shooting,
+         and a power that has recovered and sat at peace long enough goes to war
+         with the neighbour it shares the most border with.
+
+     `strength` is what keeps it honest: a side that loses ships loses the
+     ability to hold ground, and it is the player's kills as well as the
+     battles that take it away. Only the sky near you is worked — about a
+     million units either way — because a war nobody can see changing is a war
+     that might as well not be changing, and the chart shows the rest as it was
+     when you last looked. */
+  const WAR_TICK = 45;           // seconds between turns of the war
+  const WAR_REACH = 12;          // region cells either side of you it works
+  const WAR_PEACE_MIN = 15 * 60; // how long a peace lasts at the least
+
+  function weaken(power, n) {
+    if (!surv || !surv.war || !surv.war.strength || !(power in surv.war.strength)) return;
+    const s = surv.war.strength;
+    s[power] = Math.max(0.2, Math.min(1.4, s[power] - n));
+  }
+
+  /* A cell changes hands. Home never does: it is the frontier in every sector,
+     so the opening stays the opening. Said out loud if it is near you; written
+     down if it is not. */
+  function claimCell(cx, cy, power, why) {
+    if (WORLD.homeCell(cx, cy)) return false;
+    const was = WORLD.holderOf(cx, cy);
+    if (was === power) return false;
+    surv.claims.set(cx + "," + cy, power || "");
+    WORLD.territoryChanged();
+    const site = WORLD.regionSite(cx, cy);
+    const f = power ? factionOf(power) : null, g = was ? factionOf(was) : null;
+    const line = why ||
+      (f && g ? f.short + " has taken ground from " + g.short
+       : f ? f.short + " has moved into unheld sky"
+       : g ? g.short + " has pulled out" : "");
+    if (line) chatter(line + ".", f ? f.colour : NEBULA,
+                      { x: site.x, y: site.y });
+    return true;
+  }
+  function takeGround(x, y, power, name) {
+    const site = WORLD.siteAt(x, y);
+    const sp = WORLD.spaceOfCell(site.cx, site.cy);
+    if (sp.kind !== "front" || sp.owner === power) return false;
+    return claimCell(site.cx, site.cy, power,
+                     factionOf(power).short + " holds " + (name || "the field") + " now");
+  }
+
+  function surveyWar(dt) {
+    const war = surv.war;
+    if (!war) return;
+    war.clock += dt;
+    if (war.clock < WAR_TICK) return;
+    war.clock -= WAR_TICK;
+    surveyWarTurn();
+  }
+
+  function surveyWarTurn(R) {
+    R = R || Math.random;
+    const war = surv.war, st = war.strength;
+    const me = ships[0];
+    const here = WORLD.siteAt(me ? me.x : 0, me ? me.y : 0);
+    const sides = war.belligerents;
+
+    // Wear and recovery. Fighting costs; not fighting mends.
+    for (const k of Object.keys(st)) {
+      if (sides.indexOf(k) >= 0) st[k] = Math.max(0.2, st[k] - 0.006);
+      else st[k] = Math.min(1.3, st[k] + (st[k] < 1 ? 0.012 : 0.004));
+    }
+
+    // The ground.
+    let moves = 0;
+    for (let j = -WAR_REACH; j <= WAR_REACH && moves < 2; j++) {
+      for (let i = -WAR_REACH; i <= WAR_REACH && moves < 2; i++) {
+        const cx = here.cx + i, cy = here.cy + j;
+        if (WORLD.homeCell(cx, cy)) continue;
+        const sp = WORLD.spaceOfCell(cx, cy);
+        if (sp.kind === "front" && sp.enemy) {
+          const holder = sp.owner;
+          const rival = holder ? sp.enemy : null;
+          if (holder && rival) {
+            /* Measured near a front over ninety minutes: an even war moves
+               somewhere between twelve and seventeen cells, a two-to-one war
+               fifty to sixty-five. Faster than that
+               and a lopsided war swallowed a power in an evening. */
+            const edge = Math.max(0.3, Math.min(2.5, st[rival] / st[holder]));
+            if (R() < 0.0015 * edge * edge && claimCell(cx, cy, rival)) moves++;
+          } else if (!holder) {
+            // No-man's-land goes to whichever side is ahead, if either is.
+            const a = sides[0], b = sides[1];
+            if (a && b && Math.abs(st[a] - st[b]) > 0.1 && R() < 0.004) {
+              if (claimCell(cx, cy, st[a] > st[b] ? a : b)) moves++;
+            }
+          }
+        } else if (sp.kind === "frontier" || sp.kind === "lawless") {
+          // Settled from next door, by whoever is next door and strongest.
+          let best = null;
+          for (let jj = -1; jj <= 1; jj++) for (let ii = -1; ii <= 1; ii++) {
+            const o = WORLD.holderOf(cx + ii, cy + jj);
+            if (o && (!best || st[o] > st[best])) best = o;
+          }
+          /* Slow. Measured over ninety minutes near a front, 0.0025 settled a
+             hundred and fifty cells — the frontier was gone in an evening. */
+          const rate = sp.kind === "frontier" ? 0.0003 : 0.00015;
+          if (best && R() < rate * st[best] && claimCell(cx, cy, best)) moves++;
+        }
+      }
+    }
+
+    // War and peace.
+    if (sides.length === 2) {
+      const [a, b] = sides;
+      if (st[a] < 0.55 && st[b] < 0.55) {
+        chatter(factionOf(a).name + " and " + factionOf(b).name +
+                " have stopped fighting \u2014 neither has the ships left to " +
+                "keep it up.", "#a08cff", false);
+        chatter("CEASEFIRE \u2014 " + factionOf(a).short + " and " +
+                factionOf(b).short, "#a08cff");
+        war.pairs = {};
+        war.belligerents = [];
+        war.calm = 0;
+      }
+    } else {
+      war.calm += WAR_TICK;
+      const ready = POWERS_BY_STRENGTH().filter(k => st[k] >= 1.1);
+      if (war.calm >= WAR_PEACE_MIN && ready.length) {
+        const a = ready[0];
+        const b = neighbourOf(a, here) ||
+                  FACTIONS.map(f => f.key).find(k => k !== a);
+        war.pairs = { [a]: b, [b]: a };
+        war.belligerents = [a, b];
+        war.calm = 0;
+        chatter(factionOf(a).name + " has gone to war with " +
+                factionOf(b).name + ".", factionOf(a).colour);
+      }
+    }
+    WORLD.territoryChanged();
+    return moves;
+  }
+  const POWERS_BY_STRENGTH = () =>
+    FACTIONS.map(f => f.key).sort((x, y) => surv.war.strength[y] - surv.war.strength[x]);
+  // The power `a` shares the most border with, around you.
+  function neighbourOf(a, here) {
+    const touch = {};
+    for (let j = -WAR_REACH; j <= WAR_REACH; j++) {
+      for (let i = -WAR_REACH; i <= WAR_REACH; i++) {
+        if (WORLD.holderOf(here.cx + i, here.cy + j) !== a) continue;
+        for (let jj = -2; jj <= 2; jj++) for (let ii = -2; ii <= 2; ii++) {
+          const o = WORLD.holderOf(here.cx + i + ii, here.cy + j + jj);
+          if (o && o !== a) touch[o] = (touch[o] || 0) + 1;
+        }
+      }
+    }
+    const best = Object.keys(touch).sort((x, y) => touch[y] - touch[x])[0];
+    return best || null;
+  }
+
   function surveyBattles(dt) {
     if (!surv.battles) return;
     const me = ships[0];
@@ -15169,6 +15437,17 @@
   /* Over. The ships that are left break off and are gone; what they were
      fighting over is a field of hulks and, sometimes, a name. */
   function endBattle(b, left) {
+    /* Who won, if anybody can tell: the side with ships still in the sky when
+       it stopped. A fight that ended off your screen has nobody loaded to count
+       and so has no winner — it moves no border, because nobody saw it do so. */
+    const alive = b.sides.map(side => (left || []).filter(t => t.faction === side).length);
+    const winner = alive[0] > alive[1] ? b.sides[0] : alive[1] > alive[0] ? b.sides[1] : null;
+    if (winner) {
+      const loser = b.sides[0] === winner ? b.sides[1] : b.sides[0];
+      weaken(loser, 0.05);
+      weaken(winner, -0.03);
+      takeGround(b.x, b.y, winner, b.name);
+    }
     b.over = true;
     surv.battleAge[b.id] = 0;
     for (let i = surv.traffic.length - 1; i >= 0; i--) {
@@ -15263,11 +15542,9 @@
      across a re-stream rather than rebuilt, because these move and a freighter
      that snapped back to its start line every few seconds would be worse than no
      freighter at all. */
-  function buildTraffic(cx, cy, R, rnd, deep, out) {
+  function buildTraffic(cx, cy, R, rnd, deep, out, space) {
     const ox = cx * CHUNK, oy = cy * CHUNK;
-    // Common at home, gone by the deep. Squared, so the falloff is felt rather
-    // than merely present.
-    const near = Math.pow(1 - Math.min(1, deep), 2);
+    space = space || spaceAt(ox + CHUNK / 2, oy + CHUNK / 2);
     /* How busy this piece of sky is. The Works is thick with traffic; the Empty
        has essentially none, which is most of what makes it feel wrong.
 
@@ -15298,7 +15575,10 @@
        docking and leaving now and then, which is the thing that makes the home
        station read as a place people use rather than a place people left. */
     const calm = Math.min(1, 0.125 + 0.875 * Math.min(1, fromHome) ** 2);
-    if (R() > (0.34 * near + 0.012) * busy * calm) return;
+    /* How many is the owner's business now, not the distance's: `busy` already
+       carries it (see `abund`), so a power's own space is busy, the frontier is
+       thin and the Deep Void has almost nobody in it wherever it is. */
+    if (R() > 0.22 * busy * calm) return;
 
     /* Whose, and what sort. Pirates thicken with distance — the lanes are kept
        near home and nobody is keeping anything out in the deep — and the two
@@ -15318,16 +15598,25 @@
        meeting a pirate on your first flight teaches the opposite. The same
        `calm` bowl scales it, so it is rare rather than impossible — a raider
        that has slipped in is a story, and one you meet every trip is a tax. */
-    if (roll < (0.054 + (1 - near) * 0.27) * calm) {
+    /* And whose. Pirates are the owner's failure: rare where a power holds the
+       sky, common where nobody can. Flags come from who holds it — a power's
+       own space is mostly its own ships, a front is the two sides of the war,
+       and the frontier and lawless space are independents and whoever passes. */
+    if (roll < space.pirates * calm) {
       faction = "pirate"; role = "pirate";
     } else {
       const powers = FACTIONS.map(f => f.key);
-      const w = surv && surv.world ? surv.world : null;
+      const w = { belligerents: warSides() };
       const pick = R();
-      // A hot war leaves less room for anybody's own business.
-      if (pick < 0.24 / heat) faction = "free";
-      else if (w && w.belligerents && pick < 0.24 / heat + 0.34 * heat) {
-        faction = w.belligerents[R() < 0.5 ? 0 : 1];
+      const free = (space.kind === "territory" ? 0.18 :
+                    space.kind === "front" ? 0.08 : 0.42) / heat;
+      if (pick < free) faction = "free";
+      else if (space.kind === "front") {
+        const sides = space.owner ? [space.owner, space.enemy]
+                    : (w.belligerents.length ? w.belligerents : powers);
+        faction = sides[R() < 0.5 ? 0 : 1] || powers[0];
+      } else if (space.owner && pick < free + 0.62) {
+        faction = space.owner;
       } else faction = powers[Math.floor(R() * powers.length)];
 
       const r2 = R() / Math.min(1.35, heat);
@@ -15506,9 +15795,11 @@
     "THE HOLDING AT", "THE ROUT AT", "THE LAST HOUR AT"
   ];
 
-  function buildBattle(cx, cy, R, rnd, deep, out) {
-    const w = surv && surv.world ? surv.world : null;
-    if (!w || !w.belligerents) return;
+  function buildBattle(cx, cy, R, rnd, deep, out, space) {
+    // No war, no battles: a ceasefire is a sky with nobody shooting in it.
+    const w = { belligerents: warSides() };
+    if (w.belligerents.length < 2) return;
+    space = space || spaceAt(cx * CHUNK + CHUNK / 2, cy * CHUNK + CHUNK / 2);
     const sc = warScale();
     /* Battles thicken away from home — the powers keep the near lanes open
        because they both need them — and with how big the war is. */
@@ -15516,7 +15807,9 @@
        twice in an evening is a thing that happened. This was one chunk in eighty
        near home and one in twenty in the deep, which at a chunk every few seconds
        of flying is *constant* — the sky was never quiet. A quarter of that. */
-    if (R() > (0.003 + deep * 0.012) * sc.heat) return;
+    /* And where. The war is fought on the front; a battle anywhere else is a
+       raid that got further than it should have. */
+    if (R() > 0.0045 * space.battles * sc.heat) return;
 
     const p = { x: cx * CHUNK + rnd(900, CHUNK - 900),
                 y: cy * CHUNK + rnd(900, CHUNK - 900) };
@@ -15530,7 +15823,7 @@
        has to stay uncommon or it stops being an event; one in fifteen or so near
        home, better odds in the deep and in a bigger war, which is also where the
        powers would actually commit a fleet. */
-    const big = R() < (0.035 + deep * 0.05) * sc.heat;
+    const big = R() < (space.kind === "front" ? 0.07 : 0.035) * sc.heat;
     const fleet = big ? Math.round(25 + R() * 14)
                       : Math.max(2, Math.round(sc.fleet * (0.6 + R() * 0.9)));
     out.battles.push({
@@ -16061,6 +16354,91 @@
     return true;
   }
 
+  /* ── mapping the sky ──────────────────────────────────────────────────────
+     Ric: *"when you go into a new sector or biome and scan then the borders of
+     the sectors and biomes are up."* Two ways a region cell gets onto the chart:
+     flying through it writes that one cell, and a scan writes every cell of the
+     biome you are in and every cell of the territory you are in, as far as
+     each patch reaches. What is written is what you saw — the biome, and who
+     held it then — so a border the war has since moved is still drawn where it
+     was until you come back and look again. */
+  const MAPPED_CAP = 8000;
+  const MAP_FLOOD = 90;           // most cells one patch reveals in one scan
+  function cellSeen(cx, cy) {
+    const site = WORLD.regionSite(cx, cy);
+    const sp = WORLD.spaceOfCell(cx, cy);
+    return { r: site.region.key, o: sp.owner || sp.kind };
+  }
+  function markMapped(cx, cy) {
+    const key = cx + "," + cy;
+    const now = cellSeen(cx, cy);
+    const had = surv.mapped.get(key);
+    if (had && had.r === now.r && had.o === now.o) return false;
+    if (!had && surv.mapped.size >= MAPPED_CAP) return false;
+    surv.mapped.set(key, now);
+    surv.mappedStamp = (surv.mappedStamp || 0) + 1;
+    return true;
+  }
+  /* The patch around a cell whose `same` answer matches its own, walked over
+     the eight neighbours and capped, because a power's territory can run on for
+     millions of units and one scan should chart a place, not a continent. */
+  function floodMap(cx, cy, same) {
+    const want = same(cx, cy);
+    const seen = new Set([cx + "," + cy]);
+    const queue = [[cx, cy]];
+    let added = 0, n = 0;
+    while (queue.length && n < MAP_FLOOD) {
+      const [x, y] = queue.shift();
+      n++;
+      if (markMapped(x, y)) added++;
+      for (let j = -1; j <= 1; j++) {
+        for (let i = -1; i <= 1; i++) {
+          const k = (x + i) + "," + (y + j);
+          if ((!i && !j) || seen.has(k)) continue;
+          seen.add(k);
+          /* The first cell past the edge is charted too, or a border would
+             have a known side and an unknown one and nothing to draw between. */
+          if (same(x + i, y + j) === want) queue.push([x + i, y + j]);
+          else if (markMapped(x + i, y + j)) added++;
+        }
+      }
+    }
+    return added;
+  }
+  function mapHere() {
+    const me = ships[0];
+    if (!me) return;
+    const site = WORLD.siteAt(me.x, me.y);
+    if (surv.mapCell === site.cx + "," + site.cy) return;
+    surv.mapCell = site.cx + "," + site.cy;
+    /* A border that moved while you were away is the war's news, and the chart
+       is how you find out: it says what you saw, and flying back in says what
+       it is now. */
+    const had = surv.mapped.get(surv.mapCell);
+    markMapped(site.cx, site.cy);
+    const now2 = surv.mapped.get(surv.mapCell);
+    if (had && now2 && had.o !== now2.o) {
+      const T = { holder: o => {
+        const f = FACTIONS.find(q => q.key === o);
+        return f ? f.short + " SPACE" : (WORLD.SPACES[o] || { name: o }).name;
+      } };
+      chatter("You charted this as " + T.holder(had.o) + ". It is " +
+              T.holder(now2.o) + " now.", "#ffcb42");
+    }
+  }
+  // What a scan charts: the biome and the territory you are standing in.
+  function scanBorders() {
+    const me = ships[0];
+    if (!me) return 0;
+    const site = WORLD.siteAt(me.x, me.y);
+    const biome = floodMap(site.cx, site.cy, (x, y) => WORLD.regionSite(x, y).region.key);
+    const space = floodMap(site.cx, site.cy, (x, y) => {
+      const sp = WORLD.spaceOfCell(x, y);
+      return sp.owner || sp.kind;
+    });
+    return biome + space;
+  }
+
   /* What is worth remembering, and from how far. A station is worth a note from
      right across the sight radius; a rock is not worth one at all. */
   function recordSurroundings() {
@@ -16431,6 +16809,8 @@
 
     streamChunks(false);
     streamRocks();
+    mapHere();
+    surveyWar(dt);
 
     /* How long the engine has been cold. Running dark reads off this rather
        than off the key, so a tap of thrust lights you up again and holding
@@ -18009,7 +18389,7 @@
                                    (1 + dangerAt(surv.landed.x, surv.landed.y)))) };
         })() : null,
         dist: Math.round(Math.hypot(surv.landed.x, surv.landed.y)),
-        band: bandAt(surv.landed.x, surv.landed.y).name
+        band: placeAt(surv.landed.x, surv.landed.y).space.name
       },
       overAir: surv.overAir && { name: surv.overAir.name },
       /* A ship that has run out, near enough to do something about. The panel
@@ -18209,23 +18589,33 @@
         return out;
       })(),
       yard: { x: YARD.x, y: YARD.y, built: surv.built.size, needs: BUILD.length },
-      danger: dangerAt(ships[0] ? ships[0].x : 0, ships[0] ? ships[0].y : 0),
-      dangerBand: bandAt(ships[0] ? ships[0].x : 0, ships[0] ? ships[0].y : 0),
-      /* Which region you are in, and the means to ask about anywhere else. The
-         chart needs the second one: a map that cannot colour itself by region is
-         a map that cannot show you that regions exist. It is a pure function of
-         position, so handing it over costs nothing and cannot go stale. */
-      /* **Not** which region you are in. See BIOMES.md, which is the directive
-         this obeys: a biome is an invisible ruleset, not a labelled zone. The
-         chart simply stops knowing what kind of space this is, and the player
-         learns what it means by being there.
-
-         The first version of this handed the panel a name and the chart a colour
-         wash, which is the Minecraft SNOW BIOME label in a different font — it
-         tells you in two seconds what the sector should take an hour to teach
-         you, and it makes an enormous empty region a warning instead of a
-         discovery. The instrument is honest about its own ignorance instead. */
-      region: null,
+      /* Where you are: whose sky, which biome, and how dangerous the two are
+         together. The panel draws the first two in words and the third as a
+         bar; see `drawSector`. */
+      place: placeAt(ships[0] ? ships[0].x : 0, ships[0] ? ships[0].y : 0),
+      /* What the chart knows about borders. BIOMES.md once kept biomes off
+         the chart entirely, and Ric turned that round: a biome and a territory
+         are named, and their borders are drawn *where you have mapped them*.
+         `mapped` is the record ("cx,cy" → the biome and holder you saw), and
+         the rest is what the chart needs to draw a cell: where its site is, and
+         what each biome and each holder is called and coloured. */
+      terrain: {
+        mapped: surv.mapped,
+        // Bumped whenever a recorded cell changes, so the chart knows to regroup.
+        mappedStamp: surv.mappedStamp || 0,
+        cell: REGION_CELL,
+        site: (cx, cy) => WORLD.regionSite(cx, cy),
+        biome: k => {
+          const r = REGIONS.find(q => q.key === k);
+          return r ? { name: r.name, colour: r.colour } : null;
+        },
+        holder: o => {
+          const f = FACTIONS.find(q => q.key === o);
+          if (f) return { name: f.short + " SPACE", colour: f.colour, power: true };
+          const sp = WORLD.SPACES[o];
+          return sp ? { name: sp.name, colour: sp.colour, power: false } : null;
+        }
+      },
       warn: surv.warn,
       /* `snap` is a world-space radius the chart works out from its own zoom —
          the same finger-width on screen is a very different distance when the
@@ -18340,22 +18730,15 @@
                  column beside the name.
 
                  The tag is derived rather than written down, because `deep` is
-                 already an address: it is how far out a station has to be
-                 before it stocks one, so it converts straight into the band
-                 vocabulary the panel has been showing all along. A part whose
-                 depth is retuned cannot end up wearing a line that lies about
-                 it, which is the failure mode every hand-kept table in this
-                 mode has shipped at least once. */
+                 already an address: it is how dangerous a station's sky has to
+                 be before it stocks one. That used to convert into a band and a
+                 range; danger is the biome and the owner now, so it converts
+                 into the kind of place instead. A part whose depth is retuned
+                 cannot end up wearing a line that lies about it, which is the
+                 failure mode every hand-kept table in this mode has shipped at
+                 least once. */
               where: m.where || "",
-              at: m.deep > 0
-                ? bandForDeep(m.deep) + " · " +
-                  /* Grouped properly. Rounding to thousands and bolting
-                     ",000" on the end wrote 1116,000u for the rail lance,
-                     which is the kind of number a reader stops trusting the
-                     rest of the row over. */
-                  Math.round(m.deep * DANGER_FULL / 1000)
-                    .toLocaleString("en-GB") + ",000u"
-                : "FOUND, NEVER SOLD",
+              at: m.deep > 0 ? dangerWords(m.deep * SHELF_REACH) : "FOUND, NEVER SOLD",
               have: storeCount(m.key) > 0 || modFitted(m.key),
               seen: surv.seen.has(m.key)
             }))
@@ -24682,7 +25065,7 @@
          Leviathan sits at the bottom of that table and is no longer on the
          ladder at all, so reading the last row now reports 40,000 and makes the
          sector look like a village. */
-      sectorSpan: () => ({ full: DANGER_FULL, chunk: CHUNK,
+      sectorSpan: () => ({ chunk: CHUNK,
                            far: Math.max(...LANDMARKS.filter(L => !L.fixed)
                                                      .map(L => L.dist)) }),
       leave: () => leaveMatch(),
@@ -24746,8 +25129,17 @@
       scanReach: () => scanRange(),
       surveyView: () => surveyState(),
       zoom: () => surveyZoom,
-      bandAt: (x, y) => bandAt(x, y),
       dangerAt: (x, y) => dangerAt(x, y),
+      shelfDepth: (x, y) => shelfDepth(x, y),
+      wildAt: (x, y) => wildAt(x, y),
+      spaceAt: (x, y) => spaceAt(x, y),
+      placeAt: (x, y) => placeAt(x, y),
+      war: () => surv.war,
+      warTurn: R => surveyWarTurn(R),
+      claim: (cx, cy, owner) => {
+        surv.claims.set(cx + "," + cy, owner || "");
+        WORLD.territoryChanged();
+      },
       cycleZoom: () => cycleSurveyZoom(),
       resetSurvey: () => resetSurveyProgress(),
       resetArmed: () => surveyResetArmed(),

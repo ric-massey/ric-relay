@@ -67,53 +67,34 @@ function hash2(a, b) {
   return h >>> 0;
 }
 
-/* ── how far out you are ──────────────────────────────────────────────────
-   The sector used to be the same everywhere. Every chunk rolled from the same
-   table however far you had flown, so 90,000 units out was the same trip as
-   900 and the only thing distance cost you was time — which makes an endless
-   map a long one rather than a deep one.
+/* ── how dangerous a place is ─────────────────────────────────────────────
+   Two dials, and neither of them is distance.
 
-   Distance from the origin is the difficulty dial now. It thickens the field,
-   posts more sentries, and pays better for all of it, so going further is a
-   decision with two sides rather than a formality. It is a smooth curve and
-   never a wall: there is no line you cross where the sector turns on you, and
-   home is always the quiet end. */
-/* Distance from the origin is the difficulty dial, and these are the numbers
-   behind it. The curve inside a band is smooth — nothing switches on, there is
-   no seam anywhere — but the bands are named, because "UNSETTLED" is something
-   a pilot can make a decision about and 0.47 is not.
+   It used to be one number rising in a straight line from home, with seven
+   named rings over it (HOME, OPEN, UNSETTLED … THE LONG DARK) and the ring's
+   name permanently in the top right. So the whole sector read as a target:
+   every biome was cut on the home circle, the only place name anybody ever
+   saw was a radius, and danger swamped everything a biome did. Ric: *"take
+   the danger rings off. it will instead be based by boime and who owns that
+   space."*
 
-   It runs to 320,000 units and then keeps going: abyssal space returns more
-   than 1, so everything downstream that multiplies by it gets worse forever
-   rather than flattening out at the edge of the table. */
-/* Seven bands rather than six, and they run as far as the ladder does. They
-   used to top out at 320,000 — which was past the last landmark, so it never
-   mattered — and stretching the sector to three and a half million would have
-   left everything beyond the fifth rung sitting in one flat band, identically
-   dangerous for nine tenths of the game.
+     · **nature** is the biome's — rock, wells, fields, the size of what lives
+       in them and the rarity of what is in its caches. It is a pure function
+       of the seed and never moves, because a world is still its seed.
+     · **people** is the owner's — traffic, pirates, battles, whose flag is on
+       the dock. It is what moves when a border moves.
 
-   The near bands are unchanged, because the first hour should feel the way it
-   did. */
-const BANDS = [
-  { to:     6000, name: "HOME",      colour: "#6dffbf" },
-  { to:    25000, name: "OPEN",      colour: "#ffe56d" },
-  { to:    60000, name: "UNSETTLED", colour: "#ffcb42" },
-  { to:   180000, name: "HOSTILE",   colour: "#ff9d5c" },
-  { to:   600000, name: "DEEP",      colour: "#ff6d8f" },
-  { to:  1800000, name: "ABYSSAL",   colour: "#ff4d6d" },
-  { to: Infinity, name: "THE LONG DARK", colour: "#c9407f" }
-];
-const DANGER_FULL = 1800000;
-// Soft-capped rather than clamped: past the last band it keeps climbing, just
-// slowly, so the abyss is always worse than the deep.
+   `dangerAt` is the two together, for the things that belong to both: what a
+   place pays, what a shelf stocks, what a find is worth. It runs 0 for the
+   calmest sky there is to 1 for a well cluster on a front line, and calm sky
+   really is near 0 — every reader of it was written against a curve whose
+   home end was nothing, and the first two minutes still are. */
+const DANGER_FLOOR = 0.15, DANGER_SPAN = 0.7;
+const natureAt = (x, y) => regionOf(x, y).danger;
+const peopleAt = (x, y) => spaceAt(x, y).people;
 function dangerAt(x, y) {
-  const d = Math.hypot(x, y) / DANGER_FULL;
-  return d <= 1 ? d : 1 + Math.min(0.5, (d - 1) * 0.35);
-}
-function bandAt(x, y) {
-  const d = Math.hypot(x, y);
-  for (const b of BANDS) if (d < b.to) return b;
-  return BANDS[BANDS.length - 1];
+  const raw = (natureAt(x, y) + peopleAt(x, y)) / 2;
+  return Math.max(0, Math.min(1, (raw - DANGER_FLOOR) / DANGER_SPAN));
 }
 
 /* ── regions ──────────────────────────────────────────────────────────────
@@ -144,29 +125,29 @@ const REGIONS = [
      world's own abundances, untouched, and a sky that looks the way the sky
      looks. Everything below is a deviation from it and is only legible as one
      because this exists. */
-  { key: "normal", name: "ORDINARY SPACE", colour: "#8a93a8", weight: 10,
+  { key: "normal", danger: 0.15, name: "ORDINARY SPACE", colour: "#8a93a8", weight: 10,
     rocks: 1, style: "rough", scan: 1, traffic: 1, ice: 1, d: {} },
 
-  { key: "reach", name: "SETTLED REACH", colour: "#6dffbf", weight: 3,
+  { key: "reach", danger: 0.1, name: "SETTLED REACH", colour: "#6dffbf", weight: 3,
     rocks: 0.7, style: "rough", scan: 1, traffic: 1.2, ice: 1,
     d: { stations: 2.6, planets: 1.7, wells: 0.6, fields: 0.4, wrecks: 0.7 } },
-  { key: "belt", name: "THE BELT", colour: "#c0a487", weight: 3,
+  { key: "belt", danger: 0.45, name: "THE BELT", colour: "#c0a487", weight: 3,
     rocks: 2.6, style: "rough", scan: 1, traffic: 0.7, ice: 1.2,
     d: { fields: 3.4, wrecks: 1.2, stations: 0.5, planets: 0.6 } },
-  { key: "shards", name: "SHARD FIELD", colour: "#bfe8ff", weight: 2,
+  { key: "shards", danger: 0.5, name: "SHARD FIELD", colour: "#bfe8ff", weight: 2,
     rocks: 2.1, style: "shard", scan: 1, traffic: 0.6, ice: 1,
     d: { fields: 2.6, wells: 0.7, planets: 0.5, stations: 0.4 } },
-  { key: "rounds", name: "THE ROUNDS", colour: "#ffd76d", weight: 1.4,
+  { key: "rounds", danger: 0.35, name: "THE ROUNDS", colour: "#ffd76d", weight: 1.4,
     rocks: 1.7, style: "round", scan: 1, traffic: 0.6, ice: 1,
     d: { fields: 2.2, wells: 0.5, planets: 0.4, stations: 0.3, caches: 1.4 } },
   /* Cloud and murk both cut what you can see; they differ in what it costs.
      A cloud is thick and full of things, and a murk is thin and *lies to your
      instruments* — the scan comes back short, so you fly it by eye. */
-  { key: "cloud", name: "THE VIOLET CLOUD", colour: "#a08cff", weight: 2,
+  { key: "cloud", danger: 0.4, name: "THE VIOLET CLOUD", colour: "#a08cff", weight: 2,
     rocks: 1.2, style: "rough", scan: 0.55, traffic: 0.7, ice: 1,
     sky: { tint: "#a08cff", stars: 0.9 },
     d: { nebulae: 7, wrecks: 1.6, stations: 0.5, caches: 1.5 } },
-  { key: "murk", name: "THE MURK", colour: "#5f6b7d", weight: 1.5,
+  { key: "murk", danger: 0.6, name: "THE MURK", colour: "#5f6b7d", weight: 1.5,
     /* A tenth of the scan at the middle of one. That is 210 units, which is
        not scanning — it is confirming that something is directly in front of
        you — and it is the point: in here you fly on your eyes. */
@@ -174,11 +155,11 @@ const REGIONS = [
     // You cannot see far in here, and the sky should not pretend otherwise.
     sky: { tint: "#5f6b7d", stars: 0.55 },
     d: { nebulae: 3, stations: 0.4, caches: 1.3, wrecks: 1.4 } },
-  { key: "bones", name: "THE BONEYARD", colour: "#7d8596", weight: 1.5,
+  { key: "bones", danger: 0.55, name: "THE BONEYARD", colour: "#7d8596", weight: 1.5,
     rocks: 1.1, style: "shard", scan: 1, traffic: 0.5, ice: 0.8,
     sky: { tint: "#7d8596", stars: 1 },
     d: { wrecks: 4.5, caches: 1.8, stations: 0.4, planets: 0.5 } },
-  { key: "maw", name: "THE WELLS", colour: "#b79aff", weight: 1.5,
+  { key: "maw", danger: 0.8, name: "THE WELLS", colour: "#b79aff", weight: 1.5,
     rocks: 0.9, style: "rough", scan: 1, traffic: 0.4, ice: 1,
     d: { wells: 3.6, planets: 0.5, stations: 0.3, fields: 0.6 } },
   /* Water stops being the thing that limits you. A region of small ice bodies
@@ -190,7 +171,7 @@ const REGIONS = [
      living there. What it has instead is water, which is the thing that decides
      how far you can go, so a ship with a melter can treat it as a place to
      refill rather than a place to cross. */
-  { key: "rime", name: "THE RIME", colour: "#bfe8ff", weight: 1.5,
+  { key: "rime", danger: 0.3, name: "THE RIME", colour: "#bfe8ff", weight: 1.5,
     rocks: 2.4, style: "round", scan: 1, traffic: 0.35, ice: 40,
     // The bodies here are already drawn as ice. The sky agrees with them.
     sky: { tint: "#bfe8ff", stars: 1 },
@@ -206,7 +187,7 @@ const REGIONS = [
      inside rock. What it has instead is what you would actually hide in a cave
      — caches, and the ships that did not get out. Traffic is near zero on
      purpose: nobody flies through here, so it is somewhere you are alone. */
-  { key: "warrens", name: "THE WARRENS", colour: "#b08968", weight: 1.2,
+  { key: "warrens", danger: 0.65, name: "THE WARRENS", colour: "#b08968", weight: 1.2,
     rocks: 0.25, style: "shard", scan: 0.7, traffic: 0.12, ice: 1,
     // `fill` is how much of the deepest part is rock. See `caveFillAt`.
     // `cave` is the switch; the shape is in `tunnelNode` and `caveEdge`.
@@ -215,21 +196,21 @@ const REGIONS = [
     d: { planets: 0, wells: 0, stations: 0, fields: 0.05, nebulae: 0.2,
          caches: 3.4, wrecks: 2.2, gates: 0.5 } },
 
-  { key: "lanes", name: "THE LANES", colour: "#ffcb42", weight: 1.6,
+  { key: "lanes", danger: 0.15, name: "THE LANES", colour: "#ffcb42", weight: 1.6,
     rocks: 0.8, style: "rough", scan: 1, traffic: 1.5, ice: 1,
     d: { stations: 1.7, gates: 1.8, wrecks: 1.3, fields: 0.5 } },
 
   /* ── the two rare ones ──────────────────────────────────────────────────
      Both are about one crossing in a hundred, and both should be a story
      somebody tells afterwards rather than a place on a route. */
-  { key: "city", name: "THE WORKS", colour: "#ffe56d", weight: 0.4,
+  { key: "city", danger: 0.25, name: "THE WORKS", colour: "#ffe56d", weight: 0.4,
     rocks: 0.5, style: "rough", scan: 1, traffic: 2.1, ice: 0.8,
     sky: { tint: "#ffe56d", stars: 1 },
     d: { stations: 7, planets: 2.4, gates: 2, wells: 0.3, fields: 0.2 } },
   /* See BIOMES.md. Nothing here, for a very long way, with no explanation and
      no label — and it is one of the two rarest things in the galaxy, because
      the whole effect depends on hours of ordinary space first. */
-  { key: "open", name: "THE LONG EMPTY", colour: "#4a5266", weight: 0.5,
+  { key: "open", danger: 0.5, name: "THE LONG EMPTY", colour: "#4a5266", weight: 0.5,
     /* **Nothing.** Not "almost nothing" — the first version of this was a set
        of small multipliers, 0.04 of the rock and a twentieth of the traffic,
        which is a thin scattering of everything rather than an absence. A thin
@@ -282,6 +263,12 @@ const regionCache = new Map();
    cell and taking the nearest makes the borders irregular and the shapes
    unequal, which is what a region of space should look like. */
 function regionAt(x, y) {
+  return siteAt(x, y).region;
+}
+/* The site itself, not only its region: the cell it belongs to is also the unit
+   of territory, so a border between two powers and a border between two biomes
+   are drawn on the same lattice and can share an edge. */
+function siteAt(x, y) {
   const cx = Math.floor(x / REGION_CELL), cy = Math.floor(y / REGION_CELL);
   const key = cx + "," + cy;
   let near = regionCache.get(key);
@@ -300,7 +287,7 @@ function regionAt(x, y) {
     const d = (st.x - x) * (st.x - x) + (st.y - y) * (st.y - y);
     if (d < bd) { bd = d; best = st; }
   }
-  return best.region;
+  return best;
 }
 
 /* Where a region cell's middle actually sits, and which region it is. Seeded
@@ -328,6 +315,13 @@ function regionSite(cx, cy) {
   const total = pool.reduce((t, r) => t + r.weight, 0);
   let roll = R() * total, pick = pool[0];
   for (const r of pool) { roll -= r.weight; if (roll <= 0) { pick = r; break; } }
+  /* Home is ordinary space, in every sector. The four cells that meet at the
+     origin, rather than a radius: a radius cut every biome around home on a
+     perfect circle, and sent out in 120 directions from home, 74 of them met
+     their first biome at exactly 30,000. Four jittered cells make a home patch
+     with an honest, crooked edge. The roll still happens first so the random
+     stream — and the site's position — is the same as it always was. */
+  if (homeCell(cx, cy)) pick = REGIONS[0];
   const site = { x: (cx + 0.18 + R() * 0.64) * REGION_CELL,
                  y: (cy + 0.18 + R() * 0.64) * REGION_CELL,
                  region: pick, cx, cy };
@@ -356,22 +350,10 @@ function regionDepth(x, y) {
   return Math.max(0, Math.min(1, 1 - d1 / d2));
 }
 
-/* Home is always settled. The first two minutes are the same promise in every
-   sector — the same reason the home band stays quiet — and dropping a new pilot
-   into the middle of a well cluster would be a different game.
-
-   A distance rather than a fraction of the region cell, which is what it used
-   to be. The two numbers answer different questions — this one is "how far does
-   the opening need to be predictable for", and the cell is "how big is a place"
-   — and tying them together meant that shrinking the patches silently halved
-   the opening as a side effect. 30,000 covers the Home and Open bands, which
-   is where the opening happens and where the first two yard parts are. */
-const HOME_REACH = 30000;
+/* The cells that meet at the origin. Home's biome and home's politics are both
+   decided by this one test, so the two can never disagree about where home is. */
+const homeCell = (cx, cy) => cx >= -1 && cx <= 0 && cy >= -1 && cy <= 0;
 function regionOf(x, y) {
-  // Home is *ordinary* space, not a busy one. It used to return the settled
-  // region, which put nearly twice the usual traffic around the one station
-  // you cannot avoid.
-  if (x * x + y * y < HOME_REACH * HOME_REACH) return REGIONS[0];
   return regionAt(x, y);
 }
 
@@ -381,11 +363,199 @@ function abund(key, x, y) {
   const w = (world() ? world().d[key] : 1);
   if (x === undefined) return w;
   const reg = regionOf(x, y);
-  // `traffic` is the region's own, not one of the world's traits.
-  if (key === "traffic") return reg.traffic === undefined ? 1 : reg.traffic;
+  /* `traffic` is the region's own, not one of the world's traits — and the
+     owner's. Who holds a piece of sky decides how many people fly through it
+     as much as what kind of sky it is: the Deep Void is nearly empty of ships
+     whatever its biome, and a front line is busy whatever its biome. */
+  if (key === "traffic") {
+    return (reg.traffic === undefined ? 1 : reg.traffic) * spaceAt(x, y).traffic;
+  }
   const r = reg.d[key];
-  return w * (r === undefined ? 1 : r);
+  const base = w * (r === undefined ? 1 : r);
+  // A station is people too. Nobody builds one in the Void.
+  return key === "stations" ? base * spaceAt(x, y).stations : base;
 }
+
+/* ══ WHO HOLDS THE SKY ═════════════════════════════════════════════════════
+   Territory. See "Who holds the sky" in SURVEY-PLAN.md.
+
+   Every region cell is held by one of the three powers or by nobody, and the
+   cells nobody holds are one of three kinds of nobody's, in Ric's words:
+
+     · **the Frontier** — far star systems where civilisation is only just
+       beginning to arrive. Home is here, always.
+     · **Lawless space** — between rival powers, where no one group can
+       enforce anything.
+     · **the Deep Void** — the empty stretches between, with no stations and
+       almost nobody in them.
+
+   And a held cell with an enemy's territory close by is **the front**, where
+   the war is actually being fought.
+
+   ── how it is laid out ──
+   Each power has a slow wave of influence over the lattice — one value-noise
+   field each, a wave about eleven cells long — and a cell belongs to whichever
+   power is strongest there, if that power is strong enough *and* clearly ahead.
+   Where two are nearly level nobody holds it, and that seam is where lawless
+   space comes from. A fourth, slower field carves the Void. Nothing here is
+   a distance from home, so nothing here is a ring.
+
+   ── how it moves ──
+   The seeded map is only the starting position. `env.claims()` is a map of the
+   cells that have changed hands since, and it wins over the seed wherever it
+   has an entry. That is the whole of what a save needs to carry: the sky is
+   endless and the changes are few. Anything that alters the claims must call
+   `territoryChanged()`, because what a cell *is* depends on its neighbours. */
+const POWERS = ["cordon", "hallow", "morrow"];
+const POWER_GRAIN = 11;       // cells per wave of a power's influence
+const POWER_FLOOR = 0.58;     // weaker than this and nobody holds it
+const POWER_LEAD  = 0.1;      // closer than this to a rival and nobody holds it
+const VOID_GRAIN  = 15.4;
+const VOID_LINE   = 0.74;
+/* How close an enemy has to be for a held cell to be the front, and how close
+   two powers have to be for an unheld one to be lawless. Manhattan, in cells. */
+const FRONT_REACH = 3;
+
+const SPACES = {
+  /* `people` is the owner's half of danger. `traffic`, `stations`, `pirates`,
+     `battles` and `lived` multiply what the sector would otherwise put there. */
+  territory: { key: "territory", name: "", colour: "",
+               people: 0.2,  traffic: 1.1,  stations: 1.3,  pirates: 0.03,
+               battles: 0.12, lived: 1.3 },
+  front:     { key: "front", name: "THE FRONT", colour: "#ff9d5c",
+               people: 0.8,  traffic: 1.2,  stations: 0.6,  pirates: 0.05,
+               battles: 4,    lived: 0.8 },
+  frontier:  { key: "frontier", name: "THE FRONTIER", colour: "#c8aa6e",
+               people: 0.25, traffic: 0.55, stations: 0.8,  pirates: 0.1,
+               battles: 0,    lived: 0.8 },
+  lawless:   { key: "lawless", name: "LAWLESS SPACE", colour: "#ff5555",
+               people: 0.75, traffic: 0.8,  stations: 0.45, pirates: 0.45,
+               battles: 0.5,  lived: 0.5 },
+  void:      { key: "void", name: "THE DEEP VOID", colour: "#4a5266",
+               people: 0.15, traffic: 0.05, stations: 0,    pirates: 0.3,
+               battles: 0,    lived: 0 }
+};
+
+/* A number per lattice point, off the sector seed and a channel `k`. */
+function latticeHash(a, b, k) {
+  let h = (seed() || 1) >>> 0;
+  h = Math.imul(h ^ ((a * 7919 + k * 31) | 0) ^ 0x2f6b1a3, 0x85ebca6b) >>> 0;
+  h = Math.imul(h ^ ((b * 104729 - k * 17) | 0) ^ 0x5bd1e995, 0x27d4eb2f) >>> 0;
+  h ^= h >>> 15;
+  h = Math.imul(h, 0x2c1b3c6d) >>> 0;
+  h ^= h >>> 12;
+  return (h >>> 0) / 4294967296;
+}
+const smoothstep = t => t * t * (3 - 2 * t);
+function valueNoise(x, y, k) {
+  const X = Math.floor(x), Y = Math.floor(y);
+  const fx = smoothstep(x - X), fy = smoothstep(y - Y);
+  const a = latticeHash(X, Y, k), b = latticeHash(X + 1, Y, k);
+  const c = latticeHash(X, Y + 1, k), d = latticeHash(X + 1, Y + 1, k);
+  return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+}
+
+/* The Void fades out towards home rather than stopping at a line — a hard stop
+   was a square hole cut in whatever void happened to cover the origin. */
+function voidCell(cx, cy) {
+  if (homeCell(cx, cy)) return false;
+  const d = Math.hypot(cx + 0.5, cy + 0.5) / 4;
+  return valueNoise(cx / VOID_GRAIN, cy / VOID_GRAIN, 9) - 0.5 * Math.exp(-d * d) >
+         VOID_LINE;
+}
+
+/* Who held a cell when the sector began. Memoised: it is a pure function of the
+   cell and the seed, and it is asked for thirteen neighbours at a time. */
+const holdCache = new Map();
+function baseHold(cx, cy) {
+  const key = cx + "," + cy;
+  if (holdCache.has(key)) return holdCache.get(key);
+  let owner = null;
+  if (!homeCell(cx, cy) && !voidCell(cx, cy)) {
+    let bk = -1, bv = -1, second = -1;
+    for (let k = 0; k < POWERS.length; k++) {
+      const v = valueNoise(cx / POWER_GRAIN, cy / POWER_GRAIN, k + 1) +
+                0.12 * valueNoise(cx / 3, cy / 3, k + 11);
+      if (v > bv) { second = bv; bv = v; bk = k; }
+      else if (v > second) second = v;
+    }
+    if (bv >= POWER_FLOOR && bv - second >= POWER_LEAD) owner = POWERS[bk];
+  }
+  if (holdCache.size > 20000) holdCache.clear();
+  holdCache.set(key, owner);
+  return owner;
+}
+
+// Who holds it now: a claim if the war has moved it, the seed if not.
+function holderOf(cx, cy) {
+  const claims = env.claims ? env.claims() : null;
+  if (claims) {
+    const k = cx + "," + cy;
+    if (claims.has(k)) return claims.get(k) || null;
+  }
+  return baseHold(cx, cy);
+}
+
+function enemiesOf(power) {
+  const w = world();
+  const live = env.war ? env.war() : null;
+  const war = live || (w && w.war ? w.war : {});
+  return war[power] ? [war[power]] : [];
+}
+
+/* What kind of space a cell is. Cached until the claims change, because the
+   answer reads up to twelve neighbours and it is asked for every mote. */
+const spaceCache = new Map();
+function spaceOfCell(cx, cy) {
+  const key = cx + "," + cy;
+  const had = spaceCache.get(key);
+  if (had) return had;
+  const owner = holderOf(cx, cy);
+  let kind, enemy = null;
+  const near = [];
+  for (let j = -FRONT_REACH; j <= FRONT_REACH; j++) {
+    for (let i = -FRONT_REACH; i <= FRONT_REACH; i++) {
+      if ((i || j) && Math.abs(i) + Math.abs(j) <= FRONT_REACH) {
+        const o = holderOf(cx + i, cy + j);
+        if (o && near.indexOf(o) < 0) near.push(o);
+      }
+    }
+  }
+  /* Two powers at war with each other both in reach of an unheld cell make it
+     no-man's-land: the front, held by neither. Without this the front almost
+     never existed — the seam between two powers is unheld by construction, so
+     warring powers were nearly always a lawless strip apart and never touching. */
+  const contested = near.find(o => enemiesOf(o).some(e => near.indexOf(e) >= 0));
+  if (owner) {
+    const foes = enemiesOf(owner);
+    enemy = near.find(o => foes.indexOf(o) >= 0) || null;
+    kind = enemy ? "front" : "territory";
+  } else if (homeCell(cx, cy)) {
+    kind = "frontier";
+  } else if (voidCell(cx, cy) && !claimsHave(cx, cy)) {
+    kind = "void";
+  } else if (contested) {
+    kind = "front";
+    enemy = enemiesOf(contested)[0];
+    // Neither side holds it; name the pair so the war it belongs to is known.
+  } else {
+    kind = near.length >= 2 ? "lawless" : "frontier";
+  }
+  const out = Object.assign({}, SPACES[kind], { kind, owner, enemy, cx, cy });
+  if (spaceCache.size > 20000) spaceCache.clear();
+  spaceCache.set(key, out);
+  return out;
+}
+function claimsHave(cx, cy) {
+  const claims = env.claims ? env.claims() : null;
+  return !!(claims && claims.has(cx + "," + cy));
+}
+const spaceAt = (x, y) => {
+  const st = siteAt(x, y);
+  return spaceOfCell(st.cx, st.cy);
+};
+// Call after anything changes hands. What a cell *is* depends on its neighbours.
+function territoryChanged() { spaceCache.clear(); }
 
 /* ══ THE WARRENS ═══════════════════════════════════════════════════════════
    A region that is *made of rock*, with tunnels bored through it.
@@ -783,15 +953,18 @@ function caveTint(x, y) {
   function clearCaches() {
     regionCache.clear();
     siteCache.clear();
+    holdCache.clear();
+    spaceCache.clear();
     nodeCache.clear();
     cellCache.clear();
   }
 
   return {
     chunkSeed, chunkKey, hash2,
-    BANDS, DANGER_FULL, dangerAt, bandAt,
-    REGIONS, REGION_CELL, HOME_REACH,
-    regionAt, regionSite, regionDepth, regionOf, abund,
+    dangerAt, natureAt, peopleAt,
+    REGIONS, REGION_CELL, homeCell,
+    regionAt, siteAt, regionSite, regionDepth, regionOf, abund,
+    POWERS, SPACES, baseHold, holderOf, spaceOfCell, spaceAt, territoryChanged,
     /* The Warrens: a region that is made of rock, with tunnels bored through
        it. It lives here because it is terrain of a region and reads the same
        lattice — `regionOf`, `regionDepth` — that decides where it exists. */
