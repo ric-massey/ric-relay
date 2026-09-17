@@ -31,6 +31,126 @@ discovered later. Those three are not.
 
 ---
 
+## What Survey is for  ·  *the direction, set 17 September 2026*
+
+**Read this before anything below it.** Everything after this section is the
+record of how the mode got here. This is where it is going, and it was set by
+Ric after a long conversation about what Survey actually wants to be.
+
+The candidates on the table were four different games — rise through the war
+(Mount & Blade), build a foothold (Terraria), survive the sector (DayZ, Project
+Zomboid), find what is out there (Outer Wilds). Ric's answer:
+
+> *"why not all 4? it sounds awesome to have a game that is dificult. you feel a
+> bit scared to adventure. you are scraping by but build out your outpost. and
+> you can even go command your own fleet."*
+
+And then the correction that turned it from a ladder into a sandbox:
+
+> *"but i want to make it so you can be whoever you want."*
+
+The reference points are **Kenshi** and **Starsector**: a nobody in a world that
+does not care about them, who can become a trader, a thief, a soldier or a power,
+and whom the world treats as whatever they have actually done.
+
+### Who you are is a path; how big you are is a scale
+
+Nobody climbs one ladder. You pick what you are climbing, by doing it, and the
+same four sizes apply whatever you picked:
+
+| Who you are | Alone | Foothold | Crew | Power |
+|---|---|---|---|---|
+| **Pirate** | picking off stragglers | a hideout in the Warrens | a raiding pack | a name the lanes fear |
+| **Trader** | hauling for a margin | a depot | your own convoys | you move the prices |
+| **Explorer** | pushing the edge | a forward base | survey ships | charting what nobody has |
+| **Soldier** | picking a side | a post in its territory | a squadron | commanding its Leviathan |
+| **Salvager** | stripping wrecks | a scrapyard | tugs and claws | picking over whole battlefields |
+
+You can switch, and you can mix. A trader who starts taking convoys is a pirate
+now, and the sector treats them like one. Discovery runs under every path: the
+strange things at the edge are always there, and every size lets you reach a
+little farther.
+
+**The loop still holds.** *Explore → find stuff → bring it home → improve your
+ship → go farther* is what the Alone column plays like on every path. The scale
+is what that loop turns into once "home" is a place you built.
+
+### The three rules
+
+1. **You are what you do, not what you picked.** No class screen. 5.1 already
+   works this way for piracy — hurting a power is a favour to its enemy — and
+   every path extends that rather than adding a choice.
+2. **Every path stands on its own.** A pirate earns, progresses, has goals and
+   has dangers without needing to trade or explore on the side. This is where
+   "be anyone" games fail: ten shallow paths and one that is actually fun. A path
+   is not added until it can be played as a life.
+3. **The world never tells you who to be.** Same rule as the thirty-minute wall
+   (TODO.md, 2026-09-14): *show* the player something they cannot have yet, never
+   instruct them.
+
+**Difficult is not the same as confusing.** The two-minute test above still
+stands. She understands what is happening inside two minutes, and she is scared
+of it by five.
+
+### Where each path really stands
+
+Ric's read from the cockpit, which overrules this file's DONE markers:
+
+- **Salvager, explorer** — *"sure im not sure."* The systems exist; whether they
+  play as a way of life is unknown until they are flown as one.
+- **Trader** — *"ive thought about it but i havent been able to go as deep as i
+  want to go."* Trading with ships is still open (5.8). **Open question:** what
+  deep means — contracts, knowing prices across stations, owning haulers,
+  working the shortages. Ask before building.
+- **Pirate** — *"the world doesnt really react... like it does. but i think its
+  because the bots are pretty random you dont really know what the bots mean."*
+  Reputation, hunters and 6.1's wants are all real in the code and invisible from
+  the cockpit, so it reads as noise. And it does not feel like a way of life.
+- **Soldier** — *"i think its a good idea its just hard to do. expecially if you
+  dont have a personal bio."* You cannot join a side. **Open question, not
+  decided:** the bio can be *your record* (WHO KNOWS YOU grown into a history a
+  power reads before it lets you enlist), or *an origin* picked at the start, as
+  Kenshi's starts are — a place to begin, never a class.
+
+### The build order
+
+Ric agreed these four, in this order. Each one is finished, flown and fun before
+the next begins.
+
+**1 · Bots you can read.** The foundation under every path. A pirate has to spot
+the laden hauler, a trader has to tell an escort from a raider, a soldier has to
+see who is winning — and today a ship shows its flag as a colour and nothing
+else until you scan it or press `E`. At a glance, from the cockpit, without
+pressing anything, a ship should answer:
+
+- whose side it is on (done — the colour),
+- what it is doing — hauling, escorting, patrolling, raiding, scavenging, fleeing,
+- whether it is carrying anything worth taking,
+- what it thinks of *you* — ignoring you, warning you off, coming for you.
+
+*The test:* someone watches thirty seconds of traffic and can narrate it. "That
+one's loaded, those two are guarding it, and that one's about to jump them." If
+they cannot, the bots are still random, however good the code underneath is.
+
+**2 · An early game that scares you.** Deliberately reverses a settled decision:
+Phase 2 pitched supply as *"a constraint on going a long way, not a difficulty
+everywhere"*, and S17 made the front door quiet. The levers are the ones named
+there — the station roll, the inhabited-world gradient, tank sizes, the
+front-door bowl, what a respawn gives back. Scraping by has to be real, without
+breaking the two-minute test.
+
+**3 · The foothold.** The biggest missing piece, and it is **one system dressed
+per path** — a pirate's hideout and a trader's depot are the same outpost. Somewhere
+you built, that stores what you are not carrying (5.8's storage is its first
+piece), that you come back to, and that can be lost. It has to be something the
+sector notices: raiders, shortages and the powers all care where you set up.
+
+**4 · Paths, one at a time.** Each made whole against rule 2 before the next is
+started. Which first is Ric's call when 1–3 are done; the two open questions
+above get answered before their path is built.
+
+---
+
 ## What already existed
 
 The state of the mode when this file was written, kept as the baseline every
