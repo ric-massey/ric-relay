@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://shape-of-harm.netlify.app/sitemap.xml
+Sitemap: https://ricmassey.com/projects/the-shape-of-harm/sitemap.xml

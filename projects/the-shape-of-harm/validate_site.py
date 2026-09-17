@@ -9,13 +9,20 @@ errors=[]
 def need(condition,message):
     if not condition: errors.append(message)
 
+# Where this is actually served. It was two Netlify hostnames before; the project
+# lives at ricmassey.com/projects/the-shape-of-harm/ and every canonical, og:url,
+# sitemap entry and version.json URL has to say so.
+CANON='https://ricmassey.com/projects/the-shape-of-harm/'
+
 # Public explorer shell and fail-open behavior.
 need('<main id="main-content"' in html,'missing main landmark')
 need('class="skip-link"' in html,'missing skip link')
 need('app-ready .view{display:none}' in html,'views are not fail-open')
 need('function validateRuntime()' in html,'missing runtime self-check')
-need('https://shape-of-harm.netlify.app/' in html,'canonical domain missing')
-need('https://the-shape-of-harm.netlify.app/' not in html,'obsolete domain remains')
+need(CANON in html,'canonical domain missing')
+# Both Netlify hosts are obsolete: the site is served from ricmassey.com, and a
+# canonical pointing at a mirror is how a mirror outranks the real page.
+need('netlify.app' not in html,'obsolete netlify domain remains')
 need(len(re.findall(r'class="refitem" id="r\d+"',html))==49,'reference markup count is not 49')
 need(len(re.findall(r'<button(?![^>]*\btype=)',html))==0,'button without type found')
 need('href="research.html"' in html,'public explorer does not link to research framework')
@@ -64,7 +71,7 @@ need(json_ref_ids==html_ref_ids==set(range(1,50)),'reference IDs differ between 
 w=json.loads((ROOT/'weighting.json').read_text(encoding='utf-8'))
 need(w.get('substance_count')==13 and w.get('cell_count')==65,'weighting.json counts differ')
 version=json.loads((ROOT/'version.json').read_text(encoding='utf-8'))
-need(version.get('canonical')=='https://shape-of-harm.netlify.app/','version canonical differs')
+need(version.get('canonical')==CANON,'version canonical differs')
 need(version.get('research_framework')=='v0.8','research framework version missing or stale')
 need(version.get('estimand_registry')=='v0.2','estimand registry version missing')
 
@@ -264,6 +271,29 @@ for page_name,page_text in [('research.html',research),('estimands.html',estiman
         if '://' in href or href.startswith('mailto:'): continue
         target=href.split('?',1)[0]
         need((ROOT/target).exists(),f'broken local link in {page_name}: {href}')
+
+# One host, everywhere. A canonical, an og:url or a sitemap entry naming a mirror
+# is how the mirror outranks the real page, and these had all named Netlify since
+# the project shipped even though it is served from ricmassey.com.
+for page_name in ['index.html','start.html','research.html','estimands.html','feasibility.html',
+                  'evidence.html','certainty.html','replication.html','launch.html','hardening.html']:
+    page_text=(ROOT/page_name).read_text(encoding='utf-8')
+    need('netlify.app' not in page_text,f'{page_name} still points at netlify')
+    canon=re.search(r'<link rel="canonical" href="([^"]+)"',page_text)
+    need(bool(canon),f'{page_name} has no canonical')
+    if canon: need(canon.group(1).startswith(CANON),f'{page_name} canonical is not on the live host: {canon.group(1)}')
+    # AGENTS.md hard rule: a standalone project page keeps a visible route home.
+    # start.html had one by hand and build_start_page.py did not emit it, so
+    # regenerating the page deleted it. Assert it on the generator too.
+    need('relay-return.js' in page_text,f'{page_name} has no route back to the terminal')
+need('relay-return.js' in (ROOT/'build_start_page.py').read_text(encoding='utf-8'),
+     'build_start_page.py would regenerate start.html without its route home')
+
+for meta_file in ['sitemap.xml','robots.txt','version.json','build_start_page.py']:
+    need('netlify.app' not in (ROOT/meta_file).read_text(encoding='utf-8'),f'{meta_file} still points at netlify')
+sitemap=(ROOT/'sitemap.xml').read_text(encoding='utf-8')
+need(f'<loc>{CANON}start.html</loc>' in sitemap,'sitemap omits the front door')
+need(all(loc.startswith(CANON) for loc in re.findall(r'<loc>([^<]+)</loc>',sitemap)),'a sitemap entry is off the live host')
 
 if errors:
     print('STRUCTURAL CHECK FAILED')

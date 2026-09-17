@@ -65,7 +65,16 @@ No prompt is required.
 | Siege Conductor | `66` | `COMMAND REJECTED // NICE TRY, PALPATINE` |
 | Starfield | `warp` | `NAV COMPUTER: THE SCENIC ROUTE IS FASTER` |
 | How Big Everything Is | `googol` | `THAT IS A 1 WITH A HUNDRED ZEROES // STILL NOT ON THE LADDER` |
+| Interstate 40 / OFFRAMP | `exit` | `EVERY RAMP PUTS YOU BACK ON I-40 // THERE IS NO WAY OFF` |
 | Boards (board log) | `beta` | `BETA RECEIVED // PULL HARDER` |
+
+Every word here has to exist in the `eggs` map in `projects/relay-return.js`, keyed by
+the page's `data-egg` value. A page can declare an egg the map doesn't have, and then it
+silently never fires — which is exactly what Interstate 40 did from the day it shipped
+until 2026-09-17. If you add a `data-egg`, add the entry and add a row here.
+
+`exit` answers on Interstate 40 and at the Terminal, with two versions of the same joke:
+there is no way off the road, and there is no way out of the terminal.
 
 ## Playful controls that are not hidden
 

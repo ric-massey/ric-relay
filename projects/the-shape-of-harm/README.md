@@ -126,10 +126,19 @@ detected settings is enough. It also:
 `history.pushState` with a path, so a `/* -> /index.html 200` rule would buy
 nothing and would hide genuine 404s.
 
-Before going live, replace the placeholder domain in the `og:url`, `og:image`,
-`twitter:image` and `canonical` tags at the top of `index.html` — they currently
-point at `shape-of-harm.netlify.app`. Social cards will not render until
-those are absolute URLs on the real domain.
+**The canonical host is `ricmassey.com`, and it is set.** This section used to say
+"before going live, replace the placeholder domain" — but the project went live at
+`https://ricmassey.com/projects/the-shape-of-harm/` and the placeholder was never
+replaced, so for months every page's `canonical`, `og:url`, `og:image` and
+`twitter:image`, the sitemap, `robots.txt` and nine URLs in `version.json` all pointed
+at `shape-of-harm.netlify.app`. A canonical naming a mirror is how the mirror outranks
+the real page. Fixed 2026-09-17, and `validate_site.py` now fails if any page, the
+sitemap, `robots.txt`, `version.json` or `build_start_page.py` mentions `netlify.app`,
+or if a canonical is off the live host.
+
+So a Netlify deploy is still fine — it just publishes as a mirror that points home. If
+this project ever gets its own domain, change `CANON` in `validate_site.py` and re-run
+it; it will name every file that still disagrees.
 
 ## What this is
 

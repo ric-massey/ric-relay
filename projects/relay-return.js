@@ -22,6 +22,13 @@
     starfield: ["warp", "NAV COMPUTER: THE SCENIC ROUTE IS FASTER"],
     board: ["beta", "BETA RECEIVED // PULL HARDER"],
     scale: ["googol", "THAT IS A 1 WITH A HUNDRED ZEROES // STILL NOT ON THE LADDER"],
+    /* `offramp` is the word `projects/offramp/index.html` has declared since it
+       shipped, with no entry here — so the page promised an egg that could never
+       fire. The word to type is `exit`, which is the joke: every ramp on that road
+       puts you back on I-40, and the terminal's own `exit` says the same thing
+       about the terminal. It deliberately avoids g, m, p, r and h, which are the
+       game's own keys (map, mute, pause, restart, horn). */
+    offramp: ["exit", "EVERY RAMP PUTS YOU BACK ON I-40 // THERE IS NO WAY OFF"],
   };
 
   function install() {

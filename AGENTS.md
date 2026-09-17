@@ -120,10 +120,11 @@ untrue. Clearing that flag and rewriting its `desc` is the fix — the room bein
 **There is a second list too: `PROJECTS`.** `ROOMS` covers the rooms; `PROJECTS`, right
 below it, is what `projects`, `open <shortcut>`, `find` and the project branches of
 `tree` read. Linking a project from its room is only half of shipping it — if it is not
-in `PROJECTS`, the terminal cannot see it at all. (`projects/how-big-everything-is/` is
-live and linked from Exploration and is still missing from this array today — checked
-2026-09-17. That is a bug, not a pattern to copy: `projects`, `find scale` and `open
-scale` all come up empty for a project the Exploration room links to.)
+in `PROJECTS`, the terminal cannot see it at all. (`projects/how-big-everything-is/`
+was live and linked from Exploration and missing from this array for months, which is
+what that costs: `projects`, `find`, `tree`, `open <shortcut>` and Tab completion were
+all blind to it. Added 2026-09-17 as `scale`, aliases `big` / `how-big` /
+`how-big-everything-is` / `size` / `zoom`.)
 
 (The boards page is the one deliberate exception: it stays out of `PROJECTS`
 and answers to its own `tension` / `kilter` / `boards` / `woodshed` commands instead.
@@ -176,9 +177,16 @@ everywhere — the navs must agree with each other *and* with the front door.
   fixed “← Ric's Terminal” control works from desktop and mobile. The optional `data-egg`
   value may add a project-themed typed easter egg — but **the value has to exist in the
   `eggs` map inside `relay-return.js`**, or the page declares an egg that silently never
-  fires. `projects/offramp/index.html` sets `data-egg="offramp"` and there is no
-  `offramp` entry, so that one is dead today. Every egg also belongs in
-  `EASTER_EGGS.md`.
+  fires. `projects/offramp/index.html` declared `data-egg="offramp"` with no `offramp`
+  entry from the day it shipped; it answers to `exit` now, and all nine declared values
+  have a map entry as of 2026-09-17. Every egg also belongs in `EASTER_EGGS.md`.
+  Pick a word that avoids the page's own keys — offramp's `exit` dodges g, m, p, r and h
+  because the game binds those to map, mute, pause, restart and horn.
+- **A generated page still needs its route home.** `start.html` in
+  `the-shape-of-harm` had `relay-return.js` added by hand while
+  `build_start_page.py` did not emit it, so regenerating the page deleted the control
+  and the egg with it. If a page is written by a script, the script is where the tag
+  belongs, and the project's own validator should assert it.
 - **Photos** go in `photos/`, web-optimized (resize to ~1600px, convert HEIC→JPG). Do
   **not** commit full-res originals — they belong in `_photo-originals/`, which is
   gitignored. `captures.html` reads a `FRAMES` array; `climbing.html` rotates a few as

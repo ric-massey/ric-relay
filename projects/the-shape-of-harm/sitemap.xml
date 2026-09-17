@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-<url><loc>https://shape-of-harm.netlify.app/</loc></url>
-<url><loc>https://shape-of-harm.netlify.app/research.html</loc></url>
-<url><loc>https://shape-of-harm.netlify.app/estimands.html</loc></url>
-<url><loc>https://shape-of-harm.netlify.app/feasibility.html</loc></url>
-<url><loc>https://shape-of-harm.netlify.app/evidence.html</loc></url>
-<url><loc>https://shape-of-harm.netlify.app/certainty.html</loc></url>
-  <url><loc>https://shape-of-harm.netlify.app/replication.html</loc></url>
-  <url><loc>https://shape-of-harm.netlify.app/launch.html</loc></url>
-  <url><loc>https://shape-of-harm.netlify.app/hardening.html</loc></url>
+<url><loc>https://ricmassey.com/projects/the-shape-of-harm/start.html</loc></url>
+<url><loc>https://ricmassey.com/projects/the-shape-of-harm/</loc></url>
+<url><loc>https://ricmassey.com/projects/the-shape-of-harm/research.html</loc></url>
+<url><loc>https://ricmassey.com/projects/the-shape-of-harm/estimands.html</loc></url>
+<url><loc>https://ricmassey.com/projects/the-shape-of-harm/feasibility.html</loc></url>
+<url><loc>https://ricmassey.com/projects/the-shape-of-harm/evidence.html</loc></url>
+<url><loc>https://ricmassey.com/projects/the-shape-of-harm/certainty.html</loc></url>
+<url><loc>https://ricmassey.com/projects/the-shape-of-harm/replication.html</loc></url>
+<url><loc>https://ricmassey.com/projects/the-shape-of-harm/launch.html</loc></url>
+<url><loc>https://ricmassey.com/projects/the-shape-of-harm/hardening.html</loc></url>
 </urlset>

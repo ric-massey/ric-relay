@@ -98,7 +98,7 @@ HTML = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Start here — The Shape of Harm</title>
 <meta name="description" content="Thirteen drugs, five kinds of harm, and what the evidence can and cannot say. Start here.">
-<link rel="canonical" href="https://shape-of-harm.netlify.app/start.html">
+<link rel="canonical" href="https://ricmassey.com/projects/the-shape-of-harm/start.html">
 <style>
 :root{{--paper:#f3eee4;--paper2:#e8dfcf;--ink:#1d2020;--muted:#66645f;--line:#cfc3b0;
 --red:#8e3127;--green:#315b4c;--blue:#345675;--gold:#986820;--shadow:0 18px 55px rgba(39,30,20,.09)}}
@@ -298,6 +298,12 @@ attribution-based outcome with very low certainty. See
 <footer class="wrap"><span>The Shape of Harm · start here</span>
 <span><a href="index.html">Ranking</a> · <a href="research.html">Framework</a> ·
 <a href="hardening.html">Method</a></span></footer>
+<!-- The way back to the terminal, and this project's typed easter egg. Every
+     standalone project page on the site carries it (AGENTS.md), and this page is
+     the project's front door — it needs it more than any other page here. It was
+     hand-added to start.html and missing from this template, so the first person
+     to regenerate the page silently deleted it. -->
+<script src="../relay-return.js" data-home="../../index.html" data-egg="shape" defer></script>
 </body></html>
 """
 
