@@ -393,6 +393,7 @@ python3 -m http.server 8912
 node projects/crossfire/test/smoke.js      # syntax, transport, room service
 node projects/crossfire/test/campaign.js   # headless play-through of all three missions
 node projects/crossfire/test/survey.js     # the Survey mode, end to end
+node projects/crossfire/test/vault.js      # the Vault, against the Leviathan
 node projects/climbing/test/parse-parity.js  # build-data.py and climb-parse.js agree
 node projects/training/server/test.mjs     # the Worker's own rules
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done

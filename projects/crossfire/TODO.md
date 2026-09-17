@@ -11,9 +11,9 @@ an answer before it can be built.
 
 - **Batch of 2026-09-13. 27 items, 26 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5 ·
   P2, P3, P1, P4 · H2, H4 · A4 · T1 · H1, H3. Only **A3 (the Vault)** is left, and it
-  is still open: the Vault is built (`buildVault` in `index.html`) but it was built
-  *before* this note and has not been rebuilt against the Leviathan since, which is
-  what A3 asks for.
+  is still open — but measured rather than assumed now: see the note under A3
+  itself. Two of its four complaints are already fixed, and what is left is
+  drawing rather than collision.
 - **Everything added since is done.** Three later batches were appended to this file
   and every item in them is ticked: the thirty-minute wall (W1–W5, 2026-09-14), the
   ships re-cut twice (S1–S6 and S8–S17, 2026-09-15), and the seven other hull
@@ -76,6 +76,40 @@ and keeps its own record.
 - [ ] **A3 · The Vault is a mess.** Lines, hit markers, bots flying behind the
   walls, bullets passing through them. Everything the Leviathan got right and
   this did not. Use the Leviathan as the reference implementation.
+
+  *Measured 2026-09-17 — `test/vault.js`, five seeds, the Leviathan as the
+  control. Two of the four complaints are already gone and the other two are
+  not where they look:*
+
+  - **Bullets do stop.** 100% of 810 points sampled along every wall, on every
+    seed, on both structures. `solidHit` knows the Vault and the bullet loop
+    sweeps along the round's travel rather than sampling its end point.
+  - **So does everything else.** `solidBounce` catches 100% of the 345 discs,
+    and the player was added to that list too — the comment at `strike` records
+    that it used to be the one thing that flew through.
+  - **"Bots behind the walls" is a draw-order bug, and it is not the Vault's.**
+    `drawSurveyWorld` paints `surv.traffic`, *then* both structures, and both
+    fill their footprint opaquely — so a ship inside either one is painted over.
+    It happens: one ship in five seeds over four seconds of sim. Caches and
+    drones paint after the fill and are fine. Fixing it is moving one line, and
+    it fixes the Leviathan at the same time.
+  - **"Hit markers" is not in the collision code either.** The Leviathan has a
+    burst of its own in `surveyBullets` (WRECK colour) and **it cannot run** —
+    `update()` sweeps and splices the round at its line 20503, and
+    `surveyTick` → `surveyBullets` is called later in the same function. So both
+    structures get the same generic burst. That is the trap the comment three
+    lines above it warns about for hulks, sprung again.
+  - **What the Leviathan really has that the Vault has not** is *drawing*: 355
+    source lines against 45, a fill taken from the hull outline its builder made
+    rather than from the bounding square, and plating, bulkheads, bays and engine
+    throats for a hit to land against. The Vault is one square fill and 90
+    stroked lines. **That is "lines".** It also has proximity logging
+    (`noteKnown("leviathan")`) and an empty-room lab (`?debug=1&leviathan=1`);
+    the Vault has neither.
+
+  So A3 is really: give the Vault an outline and some plating, move the traffic
+  draw, and either wire up a wall-hit marker or delete the dead one. The
+  collisions are already right.
 - [x] **A4 · Planet names should ride the planet.** The name and the word
   INHABITED move around the rim the way a station's words rotate. Bigger
   planets can carry more than one so they are easier to spot. *One `rimWord`

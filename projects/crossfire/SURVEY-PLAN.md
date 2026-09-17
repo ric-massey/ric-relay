@@ -1538,9 +1538,16 @@ Sitting in a star is still the free answer and still costs you the time.
   factions eventually. and stuff that isn't in factions is expensive. maybe one
   faction is cheap or something."* Everything a station sells is priced off two
   things today: how far out it is, and what it is short of. Neither of them is
-  *who runs it*. The missing piece is small and it is first: **a station has no
-  flag at all** — it is an x, a y and a phase — so before any of this there is a
-  faction on the station and a colour on the dock.
+  *who runs it*. The missing piece was small and it was first: a station used to
+  have **no flag at all** — an x, a y and a phase — so before any of this there
+  had to be a faction on the station and a colour on the dock.
+
+  **That piece landed with "Who holds the sky" on 17 September** (see its build
+  order, where it is named as 5.8's missing first piece): a station carries
+  `faction: space.owner || "free"`, flies it on the dock, and nobody docks at an
+  enemy's. So this item is unblocked and what is left of it is the ladder below,
+  not the flag. `standingPay` is still read by exactly one thing — checked
+  2026-09-17.
 
   After that the ladder is already built. `standingPay` is a five-rung table
   that turns your standing with a power into a multiplier, and it is currently

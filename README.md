@@ -337,6 +337,7 @@ python3 -m http.server 8912
 node projects/crossfire/test/smoke.js
 node projects/crossfire/test/campaign.js
 node projects/crossfire/test/survey.js          # the long one — several minutes
+node projects/crossfire/test/vault.js
 node projects/climbing/test/parse-parity.js
 node projects/training/server/test.mjs
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done

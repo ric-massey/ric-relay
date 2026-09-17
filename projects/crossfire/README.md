@@ -725,6 +725,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `test/smoke.js` | Dependency-free syntax, transport and service checks |
 | `test/campaign.js` | Headless play-through of all three missions to a verdict |
 | `test/survey.js` | Headless survey: chunk purity, endless space, almanac reachability, chart persistence, solidity, the economy, the Leviathan's corridor |
+| `test/vault.js` | The Vault, with the Leviathan as the control. A3 on `TODO.md` is four complaints in one line and the screen cannot separate them, so each is asked of the code: do rounds stop on a wall, does `solidBounce` catch every disc, does traffic ever end up inside the footprint, and what does the Leviathan have that the Vault has not. Reports rather than guesses |
 | `test/menu.js` | The two lanes, the card row's arithmetic, and that every card starts what it advertises |
 | `test/ui.js` | Every control on every page, at four shapes of glass, on a desk and on a phone: on the screen, big enough to press, and not buried under something drawn later |
 | `test/biomes.js` | The geography of a sector, measured: how many patches are in reach, how big one is, and what a line out of home crosses. Takes a seed |
@@ -774,6 +775,7 @@ always the gesture, never the method.
 node projects/crossfire/test/smoke.js
 node projects/crossfire/test/campaign.js
 node projects/crossfire/test/survey.js
+node projects/crossfire/test/vault.js
 node projects/crossfire/test/menu.js
 node projects/crossfire/test/ui.js
 node projects/crossfire/test/biomes.js
