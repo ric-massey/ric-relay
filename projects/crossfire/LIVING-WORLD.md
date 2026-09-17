@@ -1,7 +1,29 @@
 # Crossfire: Survey — Living World System
 
-**Status: a brief, not yet built.** Written by Ric. Nothing in this document is
-implemented; see `SURVEY-PLAN.md` for what is. The estimate at the foot is mine.
+**Status: a brief. Not built as this document — but the ground under it moved.**
+Written by Ric. See `SURVEY-PLAN.md` for what Survey actually has; the estimate at
+the foot is mine, and it is now optimistic by one sweep rather than pessimistic.
+
+> **Re-checked 17 September 2026, and two things in here are out of date.**
+>
+> 1. **"Nothing in this document is implemented" is no longer true.** The
+>    substrate section near the foot ("What Survey already has that this needs")
+>    was right when it was written and has since grown: reputation persists per
+>    power, stations hold shortages that convoys move, five roles have colliding
+>    wants, battles leave named memorials, ships you saved come back and pirates
+>    you hurt return as themselves. That is §15's causal chain and the bottom of
+>    §11's ladder, running.
+> 2. **Territory is no longer "genuinely new".** "Who holds the sky" landed on
+>    17 September: a coarse political grid stored in the book and applied over
+>    what the seed generates, exactly the shape this document predicted, with
+>    borders that move on events the player could have seen — which is this
+>    file's own rule. Read that section of `SURVEY-PLAN.md` before re-estimating
+>    the first sweep; most of its work is done.
+>
+> What is still unbuilt is the part this document is actually for: faction state
+> and the evaluate-act loop, distant abstract resolution, the event record with
+> importance, threads, news templates, and then laws, leaders, elections and
+> civil war creating a new faction.
 
 ## Simple first version
 
@@ -1002,8 +1024,8 @@ passes, the regions that depend on it, the commanders who refuse, the secession.
 Budget **§27 + §16 + §28 together as the target — about four to five sweeps** —
 and only then decide whether the rest is worth it.
 
-The other honest note: this competes with the rest of Phase 6. **6.4** (parts that
-are verbs) and **6.6** (authored mysteries) are the two things left there, and 6.6
-in particular is *the same idea pointed at exploration instead of politics*. If
-the living world gets built, 6.6 should probably be built inside it — §34 says so
-too.
+The other honest note: this competes with the rest of Phase 6. When that was
+written, **6.4** (parts that are verbs) and **6.6** (authored mysteries) were the
+two things left there; 6.4 has since closed, so **6.6 is the only one** — and 6.6
+is *the same idea pointed at exploration instead of politics*. If the living world
+gets built, 6.6 should probably be built inside it — §34 says so too.

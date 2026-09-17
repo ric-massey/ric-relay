@@ -188,7 +188,8 @@
   /* ══════════════════════════════════════════════════════════════════
      steering, and the section of the crash model that was rejected
 
-     CRASH-MODEL.md §8 wanted the wheel to command an ACCELERATION
+     CRASH-MODEL.md §8 (now in `archive/projects/offramp/`) wanted the
+     wheel to command an ACCELERATION
      bounded by a friction circle, on the grounds that the rate-chase
      below is asking for twenty-seven g and that no tyre can hold the
      forty-two degree slip angle LAT_MAX implies at 50 mph. Both of

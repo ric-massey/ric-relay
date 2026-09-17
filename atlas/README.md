@@ -376,10 +376,17 @@ these do I want", and that gets answered by what a button is *near*.
     Neither the name nor the picture is queued for later the way a pin is: both
     change what everybody else sees, so they either reach the server or they
     have not happened. The app says "this one needs signal" rather than
-    pretending. Until now it was whatever the invite trigger made
-    of your email address, title-cased, with no way to change it. Your sign-in
-    address and username are shown but not editable: the username is derived
-    from the address and other rows point at it. Signing out is a labelled
+    pretending. Until now the display name was whatever the invite trigger made
+    of your email address, title-cased, with no way to change it.
+
+    **The username is yours to choose too, and that came later than this
+    paragraph did.** It used to be cut off the front of your sign-in address,
+    which leaked half of everybody's email onto every byline. `set_username()`
+    is the only door — the column is not writable from the client at all — and it
+    retires the old name so nobody can ever wear it afterwards. Every complaint
+    the database can make about a name (taken, wrong shape, too soon) is written
+    for a person to read and goes on screen as it comes back. Your sign-in
+    address is still shown and still not editable. Signing out is a labelled
     button here rather than a hidden consequence of tapping your own name.
   - **home** — one town, named once, doing two jobs. It is where the map opens
     when the phone will not say where you are: off on the sofa, off indoors, off
@@ -924,10 +931,18 @@ protecting.
 
 ## Not built yet
 
-- **Groups, connections and chat** — the map for hundreds of people instead of
-  three, where a pin is visible only to the circles its finder chose. Designed
-  but not built: [`docs/audiences.md`](docs/audiences.md) has the tables, the
-  policies, the recursion trap in the middle of it, and the open questions.
+- **Connections and chat** — the map for hundreds of people instead of three,
+  where a pin is visible only to the circles its finder chose.
+  [`docs/audiences.md`](docs/audiences.md) has the tables, the policies, the
+  recursion trap in the middle of it, and the open questions, and it is the file
+  that tracks what has landed. **Groups are built** — `public.groups`,
+  `group_members`, `can_add_to_group()`, the *my groups* panel and
+  `test/groups.test.mjs` — as is "whose profile you can read"
+  (`people_i_can_draw()`, which replaced `using (true)`). What is not built is
+  the rest: connections, `pin_audience`, the picker, chat. Which means
+  `can_add_to_group()` currently answers "anybody with an account, other than
+  you" — deliberately, because there are three of us and we are brothers, and it
+  is a function so the real check lands in one place later.
 - Owner **name** in a county that publishes no parcel service at all, or
   publishes one without names on it. Some counties genuinely do not put owner
   names online, and no amount of searching invents one — that is a shape of the

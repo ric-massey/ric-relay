@@ -39,7 +39,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `map.html` | Map | The themed door into ATLAS — the private crew map. The door is public; everything behind it needs a login · *unlisted everywhere; reachable by typing `map`* |
 | `404.html` | — | On-brand "signal lost" page for mistyped URLs |
 | `atlas/` | — | ATLAS, the private crew map — a whole app in this repo, served from `ricmassey.com/atlas/`. Code only: every pin, coordinate and photo lives in Supabase behind a login. See [`atlas/README.md`](atlas/README.md) |
-| `playground/` | — | Scratch space for experiments and working design docs |
+| `archive/` | — | Working documents whose work is finished, each with a dated banner saying what shipped and where the code lives now. Mirrors the paths the files used to sit at. See [`archive/README.md`](archive/README.md) |
 | `projects/` | — | Self-contained sub-projects, each linked from a room (see below) |
 | `photos/` | — | Web-optimized images (originals stay out of git in `_photo-originals/`) |
 | `captures-data.js` | — | Generated `[filename, date]` pairs for the 1,300+ photos `captures.html` draws |
@@ -63,8 +63,8 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | `projects/apex/` | Apex (room data) | Not a page — the sync tooling and generated `apex-data.js` that `apex.html` reads |
 | `projects/the-shape-of-harm/` | Psyche | Evidence-informed interactive research framework for comparing psychoactive-substance harms |
 | `projects/siege-conductor/` | Workbench | Star Wars viewing-companion PWA (add-to-home-screen app) |
-| `projects/offramp/` | Gaming | "OFFRAMP" — Interstate 40 as an arcade cabinet. The real corridor, all 2,551 miles Barstow→Wilmington, extracted from OpenStreetMap: true geometry and curves, 1,201 real exits at their real mile markers, real lane counts (85% of I-40 is two lanes each way), and mile posts that reset at each state line the way the real ones do. Only a 20-mile window of road is built at a time and slides as you drive, because the whole thing is 2.9M stations. Built into that window: the 350 surveyed interchanges as they were walked, 234 real rest areas and truck stops, a generated diamond for every other signed exit, a cross road bridged over each one with the ramp meeting it at a signalised junction, and the I-40/I-75 wye west of Knoxville as a two-lane left exit — signed, open, and closed for construction two thirds of the way down. The generated exits are not invented: their depth and their whole lateral profile are drawn from the 349 ramps the survey walked, so an interchange reaches a median 512 px off the freeway rather than the same 268 px every time, and the travel centres that a diamond crowds out are signed on the blue panel under its guide sign, which is where a real one is advertised. Every ramp puts you back on I-40; that rule is the whole design and it is asserted, not assumed. Crashes go through one SI impulse-momentum solver (`src/impact.js`, `test/impact.test.js`, checked against published crash figures); `test/corridor.js` sweeps every window of the route for two roads sharing tarmac. `data/osm/` holds the extractor and the raw OSM; `data/i40.js` is the generated corridor. See `projects/offramp/PLAN.md` and `projects/offramp/CRASH-MODEL.md` |
-| `projects/crossfire/` | Gaming | "CROSSFIRE" — bright vector-space combat for 1–5 ships in three modes: cooperative Survival with optional friendly fire, a no-time-limit Battle Royale with three lives, two-hit hulls, a following camera, minimap, closing wall, stationary suns and black holes and randomized moving asteroids, and a three-mission **Campaign** — escort a convoy, raid a fleeing enemy, break a mothership — fought in sides rather than a free-for-all, with an allied fleet, squad orders, salvage, named aces, three difficulties, and veterans and fleet strength carried between missions. Local keyboard play, bots, synthesized sound, fullscreen, configurable phone controls and peer-to-peer online play. Online needs the room service in `projects/crossfire/server/` — a Cloudflare Worker. See [`projects/crossfire/README.md`](projects/crossfire/README.md) |
+| `projects/offramp/` | Gaming | "OFFRAMP" — Interstate 40 as an arcade cabinet. The real corridor, all 2,551 miles Barstow→Wilmington, extracted from OpenStreetMap: true geometry and curves, 1,201 real exits at their real mile markers, real lane counts (85% of I-40 is two lanes each way), and mile posts that reset at each state line the way the real ones do. Only a 20-mile window of road is built at a time and slides as you drive, because the whole thing is 2.9M stations. Built into that window: the 350 surveyed interchanges as they were walked, 234 real rest areas and truck stops, a generated diamond for every other signed exit, a cross road bridged over each one with the ramp meeting it at a signalised junction, and the I-40/I-75 wye west of Knoxville as a two-lane left exit — signed, open, and closed for construction two thirds of the way down. The generated exits are not invented: their depth and their whole lateral profile are drawn from the 349 ramps the survey walked, so an interchange reaches a median 512 px off the freeway rather than the same 268 px every time, and the travel centres that a diamond crowds out are signed on the blue panel under its guide sign, which is where a real one is advertised. Every ramp puts you back on I-40; that rule is the whole design and it is asserted, not assumed. Crashes go through one SI impulse-momentum solver (`src/impact.js`, `test/impact.test.js`, checked against published crash figures); `test/corridor.js` sweeps every window of the route for two roads sharing tarmac. `data/osm/` holds the extractor and the raw OSM; `data/i40.js` is the generated corridor. See `projects/offramp/PLAN.md` for the live plan and `archive/projects/offramp/CRASH-MODEL.md` for the crash spec, which is built |
+| `projects/crossfire/` | Gaming | "CROSSFIRE" — bright vector-space combat for 1–5 ships in four modes: cooperative Survival with optional friendly fire, a no-time-limit Battle Royale with three lives, two-hit hulls, a following camera, minimap, closing wall, stationary suns and black holes and randomized moving asteroids, and a three-mission **Campaign** — escort a convoy, raid a fleeing enemy, break a mothership — fought in sides rather than a free-for-all, with an allied fleet, squad orders, salvage, named aces, three difficulties, and veterans and fleet strength carried between missions. The fourth is **Survey**: solo survival exploration of the endless sector the other three are fought in — hull, water and food, twenty-five hulls to buy, a station market, parts that are verbs, crafting, an almanac of authored landmarks out to 3.4M units, biomes, territory that changes hands as three powers fight over it, and a save you can carry on an optional account. Local keyboard play, bots, synthesized sound, fullscreen, configurable phone controls and peer-to-peer online play. Online needs the room service in `projects/crossfire/server/` — a Cloudflare Worker. See [`projects/crossfire/README.md`](projects/crossfire/README.md), and `projects/crossfire/SURVEY-PLAN.md` for what Survey still owes |
 | `projects/autism-reflection.html` | Psyche | Long-form personal reflection on the DSM-5 autism criteria |
 | `projects/state-of-mind-line/` | Psyche | Animated bipolar mood-pattern visualization |
 | `projects/climbing/` | Climbing | The climbing data pipeline and the deep log: `climbs.md` → `build-data.py` → `climbs-data.js`, the full ledger at `index.html`, the photo-and-video `gallery.html`, and `add.html` for logging a day from a phone at the crag. See [`projects/climbing/readme.md`](projects/climbing/readme.md) |
@@ -76,8 +76,9 @@ These are self-contained and may carry their own assets/fonts — that's fine; t
 
 ### CROSSFIRE
 
-`projects/crossfire/` is a finished, dependency-free canvas game with three modes. Co-op
-**Survival** has optional friendly fire and a shared pile of lives. **Battle Royale** runs
+`projects/crossfire/` is a dependency-free canvas game with four modes — three finished
+and one still being built. Co-op **Survival** has optional friendly fire and a shared
+pile of lives. **Battle Royale** runs
 until one ship is left, with three-life two-hit-hull elimination, a following camera,
 minimap, closing wall, randomized colliding asteroids, stationary gravity hazards,
 spectator following, and complete winner-screen statistics. It supports one or two
@@ -97,6 +98,22 @@ and a difficulty (Easy / Hard / Impossible) sets both hull strength and whether 
 trigger streams or bursts. The three missions are one war: wingmates who live carry
 forward by name as veterans, and a strong showing banks fleet strength and reserve lives
 for the next mission. Survival and Battle Royale never build that ledger.
+
+The fourth mode is **Survey**, and it is the one still under construction: solo, no
+timer, and the same endless sector the other three are fought in — but as a survival
+exploration game rather than a fight. You start at a station with a hull, a water tank
+and a food tank, and you go out. Twenty-five hulls fly genuinely differently (speed and
+grip are separate axes, so there are four corners rather than one ladder); a station is a
+market with a shop, a hangar, an inventory and a wormhole tab; twenty-nine parts are
+verbs rather than percentages, and most of them can be crafted or found rather than
+bought; an almanac of authored landmarks runs from 13,000 out to 3.4 million units; and
+space itself has fourteen kinds of biome and a political map — three powers holding
+cells, fronts that grind, ceasefires when both sides wear out, and a chart that only
+knows what you have flown through or scanned. Progress is saved locally, or on an
+optional account. `projects/crossfire/SURVEY-PLAN.md` is the live plan and marks what
+each phase owes; `projects/crossfire/TODO.md` is Ric's own list, with one item left on
+it. `LIVING-WORLD.md`, `PLAYER-HISTORY.md` and `WORLD-IDEAS.md` in the same folder are
+briefs for work that has not been built.
 
 Online play is host-authoritative WebRTC, and joining is a list of open lobbies rather
 than a code anybody copies. That list needs a room service, so online is the one part of
@@ -197,8 +214,8 @@ synthesized key events and has to be driven over the Chrome DevTools Protocol.
 ## Navigation
 
 There is **no shared nav bar**. Every room has its own menu, styled to match that
-room's theme (MP tabs on climbing, a Strava underline bar on training, a synaptic
-pill switcher in Orrin, case-file tabs in Psyche, a film strip on captures, and so on). They all link to the
+room's theme (a Strava underline bar on training, a synaptic pill switcher in Orrin,
+case-file tabs in Psyche, a film strip on captures, and so on). They all link to the
 **same set of rooms with the same labels** — only the styling differs. If you add or
 rename a room, update the menu on **every** page (see `AGENTS.md`).
 
@@ -206,6 +223,13 @@ That set is `terminal · orrin · psyche · climbing · training · exploration 
 — the eight rooms the home directory lists, plus `terminal` for the way home, so the
 site says one thing about what it contains. The unlisted rooms (`apex`, `log`, `map`)
 are still reachable by URL and from the terminal's `ls` / `tree` / `find` / `open`.
+
+**Climbing is the exception, and it is deliberate.** `climbing.html` carries no room nav
+at all. It was rebuilt as the front door of a six-page section, so its bar is the
+section's own — `assets/climbing-nav.js` writes one `Home · Log · To-do · Stats · Media ·
+Boards` bar across all of them, with `↑ all rooms` as the way back out to the terminal.
+The room-nav rules below (the label set, the `.here` span, `installRoomMenu()`) apply to
+the nine pages that have one; `map.html` has none either.
 
 One label is currently out of step: the front door and `ls` call the Psyche room
 **`/mind`**, while every room nav still says **`psyche`**. Typing either works
@@ -312,11 +336,17 @@ python3 -m http.server 8912
 ```bash
 node projects/crossfire/test/smoke.js
 node projects/crossfire/test/campaign.js
-node projects/training/test/rules.js
+node projects/crossfire/test/survey.js          # the long one — several minutes
 node projects/climbing/test/parse-parity.js
+node projects/training/server/test.mjs
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done
 for t in atlas/test/*.test.mjs; do node "$t" || break; done
+(cd projects/the-shape-of-harm && python3 validate_site.py && python3 validate_launch.py && python3 validate_hardening.py)
 ```
+
+`projects/training/test/rules.js` covers the plan/tick rules and is **not in a clone** —
+it lives beside the gitignored planning app, so only Ric's machine can run it. The
+Worker's own suite (`projects/training/server/test.mjs`, above) is the published half.
 
 Served locally, the pages that talk to the Cloudflare Worker (`/climb`, `/media`, `/log`,
 `/strava`) will 404 against a plain static server. That is expected — each caller treats

@@ -1,3 +1,14 @@
+> **ARCHIVED — done, 17 September 2026.** All 15 problems in "Problems fixed"
+> are fixed, and the three validators the project now carries —
+> `validate_site.py`, `validate_launch.py`, `validate_hardening.py` — all pass
+> against the current build. The build this audit was written for
+> (`2026-07-23-evidence-audit-1`) has been superseded by
+> `2026-07-23-hardening-v0.8-1`; see `CHANGELOG.md` for v0.7 through v0.9b. Its
+> "Remaining non-code work" is research, not a website task, and lives on in the
+> page's own Known Weaknesses section. This is the one document in that project
+> safe to move: nothing links it — every other `.md` there is cited by a live
+> page or a validator, which is why they stay where they are.
+
 # Structural Audit — The Shape of Harm
 
 Build: `2026-07-23-evidence-audit-1`

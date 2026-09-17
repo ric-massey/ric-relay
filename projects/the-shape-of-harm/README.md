@@ -1,8 +1,28 @@
-# The Shape of Harm — Research Framework v0.8
+# The Shape of Harm — Research Framework v0.8, site release v0.9b
+
+Two version numbers, deliberately, because they move at different speeds. The
+**research framework** is at **v0.8** — that is what `version.json` reports and what
+`validate_site.py` checks. The **site** has had two releases since, neither of which
+changed a scientific estimate: **v0.9** (corrections) and **v0.9b** (comprehension and
+navigation). `CHANGELOG.md` is the authority on both; the newest entry is the top one.
+
+**Start here, not at `index.html`.** v0.9b added a plain-language front door,
+`start.html`, built from `scores.csv` by `build_start_page.py` so no figure on it is
+hand-copied. `index.html` is the interactive ranking behind it. `START_HERE.txt` is the
+one-screen orientation for whoever picks the project up.
 
 **Current gate:** methodological hardening before registration. The psilocybin protocol now separates randomized comparative effects from a descriptive monitored-exposure safety inventory, makes all-cause serious events primary, distinguishes confirmed zero from unreported outcomes, and adds statistical, participant/public, and AI-governance controls.
 
 See `hardening.html`, `METHODOLOGICAL_RED_TEAM_V0.8.md`, and `PSILOCYBIN_INDEPENDENT_REPLICATION_PROTOCOL_V0.3.md`.
+
+**Superseded documents stay where they are.** This was decided in v0.9 and it is not an
+oversight: live pages and the three validators still link them, so a superseded file
+carries a deprecation banner naming its successor and `document-status-register.csv`
+records the status of each. Check that register before using any `.md` in here. Two
+files are hash-locked and must not be edited at all — their status is in the register
+only. The one document that has been moved out is `STRUCTURAL_AUDIT.md`, whose fifteen
+problems are all fixed and which nothing linked; it is now in
+`archive/projects/the-shape-of-harm/`.
 
 
 Thirteen substances scored across five kinds of harm, with an interactive weighting
@@ -163,12 +183,22 @@ The deployment now fails open rather than fail closed: the article is readable b
 
 Deep links to views and individual targets are supported. URLs such as `#safety`, `#r43`, and shared `#w=...` weightings open the correct content directly and retain the exact fragment for copying and browser history.
 
-Before deploying an edit, run:
+Before deploying an edit, run all three validators — `validate_site.py` alone was what
+this said, and it does not check the launch gate or the v0.8 hash manifest:
 
 ```bash
 python3 validate_site.py
+python3 validate_launch.py
+python3 validate_hardening.py
 node --check stability-simulation.js
 ```
+
+Between them they assert that every embedded score matches `scores.csv`, that the 13
+seed records agree across the CSV, the RIS and the version metadata, that no independent
+screening decision is prepopulated, that the status register resolves with no two live
+files claiming the same role, that the hash manifest verifies, that the released estimate
+is labelled secondary, that every page reaches the front door and the current gate, and
+that a blank score is never rendered as a zero.
 
 `version.json` identifies the deployed build. Opening `/version.json` on the live site is the quickest way to confirm that Netlify is serving the intended upload.
 

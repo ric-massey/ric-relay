@@ -1,38 +1,32 @@
-SIEGE CONDUCTOR — how to put it online and send it to friends
-==============================================================
+SIEGE CONDUCTOR — how to send it to friends
+===========================================
 
-You can't text the app itself — you put it online once (free, ~2 min),
-get a LINK, and text the link. Friends tap the link and add it to their
-home screen as an app. No App Store, no warnings, nothing gets blocked.
-
-
-STEP 1 — Put it online (do this once)
--------------------------------------
-Easiest option: Netlify Drop (free, no setup)
-
-  1. Go to:  https://app.netlify.com/drop
-  2. Drag the WHOLE "siege-conductor" folder onto the page.
-     (the folder this file is in — not just one file)
-  3. Wait a few seconds. It gives you a link like:
-        https://something-random-1234.netlify.app
-  4. (Optional) Make a free account when it asks, so the link stays
-     forever and you can rename it to something nicer.
-
-That link IS the app. Open it on any phone or computer.
-
-Other free drag-and-drop hosts that work the same way:
-  - https://tiiny.host
-  - https://surge.sh  (a bit more technical)
+UPDATED 2026-09-17. This used to say "you can't text the app itself — put it
+online once with Netlify Drop and text the link." That step is done, and it
+wasn't Netlify: Siege Conductor is part of Ric's site now, so it has had a real
+link for months. You don't have to upload anything.
 
 
-STEP 2 — Send it
-----------------
-Paste the link into Messages / WhatsApp / email — anything.
-It's just a normal web link, so nothing blocks it.
+STEP 1 — Send this link
+-----------------------
+
+  https://ricmassey.com/projects/siege-conductor/
+
+That link IS the app. Paste it into Messages / WhatsApp / email — anything. It's
+a normal web link, so nothing blocks it, and it opens on any phone or computer.
+
+It's also reachable from Ric's Terminal: it's the Siege Conductor card in the
+Workbench room, and typing `siege` (or `conductor`) at the terminal prompt opens
+it.
+
+To update it: edit the files in this folder and push the site. GitHub Pages
+redeploys, and everybody's link and home-screen icon keep working — the service
+worker (`sw.js`) picks the new version up.
 
 
-STEP 3 — What your friend does (tell them this)
+STEP 2 — What your friend does (tell them this)
 -----------------------------------------------
+
 On iPhone:
   1. Tap the link (it opens in Safari).
   2. Tap the Share button (square with an arrow).
@@ -47,8 +41,23 @@ On Mac/Windows:
   - Just open the link in any browser. (Chrome/Edge also show an
     "install" icon in the address bar if they want an app window.)
 
-After the first open it works even with no internet, and it remembers
-which step you're on.
+After the first open it works even with no internet, and it remembers which
+step you're on.
+
+
+If you ever want a standalone copy
+----------------------------------
+
+Only needed if you want a version that is NOT part of ricmassey.com — a private
+copy for one group, say, or a test of an edit you don't want published.
+
+  1. Go to:  https://app.netlify.com/drop
+  2. Drag the WHOLE "siege-conductor" folder onto the page.
+  3. It gives you a link like  https://something-random-1234.netlify.app
+  4. Make a free account when it asks, so the link stays and can be renamed.
+
+Other free drag-and-drop hosts that work the same way: https://tiiny.host,
+https://surge.sh (a bit more technical).
 
 
 Notes
@@ -56,5 +65,6 @@ Notes
 - iPhone uses the "apple-touch-icon.png" for the home-screen icon.
 - The "icon-1024.png" file isn't required for the web app; it's just a
   big master copy in case you ever want it.
-- To update the app later: change the files, then re-drag the folder to
-  the same host (Netlify lets you redeploy over the same site).
+- Every path inside the app is relative, which is why the same folder works at
+  ricmassey.com/projects/siege-conductor/, at the root of a Netlify site, and
+  opened straight off the disk. Keep it that way.

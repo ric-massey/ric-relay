@@ -1,3 +1,17 @@
+> **ARCHIVED — done, 17 September 2026.** Every finding has been fixed or
+> settled, re-verified against the pages. A1 was settled the other way: the room
+> navs kept nine labels and the front door grew to match, and `training` and
+> `gaming` are listed rooms now. A2 is `installRoomMenu()` in `effects.js`. A3
+> went away entirely — the rooms no longer carry a "latest" banner, only
+> `index.html` does. A4–A9, B1–B7 and C1–C4 are all fixed: `apex` has an `<h1>`,
+> the setup notes and "Replace me" cards are off the public pages, `alt` text is
+> sentences, the climbing hero is one static photo instead of a six-photo deck,
+> both canvases read `devicePixelRatio`, `orrin` has real `<h2>`s and a
+> rate-limit message that does not tell you to refresh, and its empty events
+> section hides itself. One note reads differently now: the climbing room was
+> rebuilt after this audit and no longer carries a room nav at all — its bar is
+> `assets/climbing-nav.js`. Kept as the record of what was wrong.
+
 # Room pages audit — 2026-07-31
 
 Companion to `terminal-audit-2026-07-31.md`, which covered `index.html`. This one

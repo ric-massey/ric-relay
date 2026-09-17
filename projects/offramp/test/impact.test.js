@@ -5,7 +5,8 @@
 
    impact.js is pure — numbers in, numbers out, no DOM and no game state
    — precisely so this file can exist. Every expected figure below comes
-   from CRASH-MODEL.md §11, and every one of them is a published crash
+   from CRASH-MODEL.md §11 — the spec is built, so it now lives in
+   `archive/projects/offramp/` — and every one of them is a published crash
    figure or something derived from one, so a pass here is a pass
    against reconstruction practice rather than against how the game
    feels. Nothing gets wired into offramp.js until this is green.

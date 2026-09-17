@@ -64,6 +64,15 @@ they're out of `#dir`. Those pages still *carry* the nav (with no `.here` marked
 they aren't in it) rather than dropping it like `map.html` does — losing the way out of
 a room is worse than an unhighlighted bar.
 
+**Two pages carry no room nav at all, and both are deliberate.** `map.html` is one, and
+`climbing.html` is the other: it was rebuilt as the front door of a six-page section, so
+what it carries is the *section's* bar instead — `assets/climbing-nav.js` writes
+`Home · Log · To-do · Stats · Media · Boards` (plus `Add`, owner-only) across all six
+pages from one place, with a `↑ all rooms` link back to the terminal. So "nine navs"
+below means the nine pages that have one: orrin, psyche, training, apex, exploration,
+gaming, workbench, captures, log. Don't "fix" climbing by bolting a room nav back on; if
+the label set changes, it is those nine plus `ROOMS`, and the climbing bar is untouched.
+
 **The mobile menu is shared behaviour, not shared styling.** `installRoomMenu()` in
 `effects.js` finds `nav[aria-label="Terminal rooms"]`, injects a `.roomnav-toggle` button
 before it, and toggles `.roomnav-open` on the nav. Each page styles `.roomnav-toggle`,
@@ -83,8 +92,9 @@ With JS off nothing is injected and the nav renders exactly as it always did.
   a deployment subdirectory or domain.
 - The current room is rendered as a `<span class="here" aria-current="page">` (not a
   link), positioned in the same spot in the list as its `<a>` on other pages.
-- Each `<nav>` carries `aria-label="Terminal rooms"`.
-- `map.html` is deliberately left out of the room menus entirely.
+- Each room `<nav>` carries `aria-label="Terminal rooms"` — that string is what
+  `installRoomMenu()` looks for, so a nav without it silently gets no mobile menu.
+- `map.html` and `climbing.html` are deliberately left out of the room menus entirely.
 
 **`apex`, `log` and `map` are deliberately unlisted** — in `#dir` *and* in the room
 navs. They are the thin rooms and Ric does not want the front door advertising work
@@ -111,7 +121,10 @@ untrue. Clearing that flag and rewriting its `desc` is the fix — the room bein
 below it, is what `projects`, `open <shortcut>`, `find` and the project branches of
 `tree` read. Linking a project from its room is only half of shipping it — if it is not
 in `PROJECTS`, the terminal cannot see it at all. (`projects/how-big-everything-is/` is
-live and linked from Exploration and is missing from this array today; that is a bug, not
+live and linked from Exploration and is still missing from this array today — checked
+2026-09-17. That is a bug, not a pattern to copy: `projects`, `find scale` and `open
+scale` all come up empty for a project the Exploration room links to.)
+
 (The boards page is the one deliberate exception: it stays out of `PROJECTS`
 and answers to its own `tension` / `kilter` / `boards` / `woodshed` commands instead.
 It is called Boards now; `woodshed` still works because that is what the
@@ -124,7 +137,7 @@ Per-room nav treatments (class on the `<nav>`):
 |---|---|---|
 | orrin | synaptic pill switcher | `nav.cortex` |
 | psyche | psychological case-file tabs | `nav.case-tabs` |
-| climbing | Mountain-Project tab bar (white active pill) | `.topbar .roomnav` |
+| climbing | *no room nav* — the section's own bar, written by `assets/climbing-nav.js` | `.climbtop` / `.climbnav` |
 | training | Strava underline tabs | `.topbar .roomnav` |
 | apex | Apex lobby tab strip (scrolls sideways, red underline on the current room) | `nav.lobbytabs` |
 | exploration | star-chart waypoints | `nav.starchart` |
@@ -229,11 +242,18 @@ and Tension apps. Rules for it:
   (gitignored); passwords live in the macOS Keychain. Never ask Ric to paste a
   password into a chat, a file, or a command, and never write one anywhere.
 - `board-data.js` and `board-catalogue-*.js` are committed; `.board-venv/` and
-  `.board-cache/` are not. The catalogues are megabytes and rebuild only on
-  `--catalogue`, deliberately — don't wire them into the weekly sync.
-- It is **deliberately hidden**: no room menu entry, no `.jump` link. The way in
-  is the "the woodshed" button under the Climbing footer, or typing `board` on
-  `climbing.html`. Don't "fix" this by promoting it into the nav.
+  `.board-cache/` are not. Rebuilding a catalogue pulls megabytes and happens only on
+  `--catalogue`, deliberately — don't wire it into the weekly sync. Only Tension has
+  one; Kilter is in `NO_CATALOGUE` because its Aurora database is gone.
+- **It is out of the *room* menus, not out of the site.** This changed when the
+  climbing section was rebuilt: Boards is now a tab in the section bar
+  (`assets/climbing-nav.js`), beside Media, on all six climbing pages. What stays
+  deliberate is that it is nowhere in the room navs, nowhere in `#dir`, and out of
+  `PROJECTS` — so the front door never advertises it. The terminal still reaches it by
+  `boards` / `board` / `kilter` / `tension` / `woodshed`, none of which are in `help`.
+  The old ways in are gone: `climbing.html` no longer has "the woodshed" button under
+  its footer and no longer answers to typing `board` on the page. Don't promote Boards
+  into a room nav; don't try to re-hide it from the climbing bar either.
 - Board sessions stay out of the sitewide "latest" banner for the same reason.
 - Board grades are their own scale. Never merge them into the outdoor stats,
   pyramid or ledger — a board V6 and a Red River V6 are unrelated numbers. The
@@ -364,14 +384,25 @@ python3 -m http.server 8912
 ```sh
 node projects/crossfire/test/smoke.js      # syntax, transport, room service
 node projects/crossfire/test/campaign.js   # headless play-through of all three missions
-node projects/training/test/rules.js       # plan/tick rules
+node projects/crossfire/test/survey.js     # the Survey mode, end to end
 node projects/climbing/test/parse-parity.js  # build-data.py and climb-parse.js agree
+node projects/training/server/test.mjs     # the Worker's own rules
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done
 for t in atlas/test/*.test.mjs; do node "$t" || break; done
+(cd projects/the-shape-of-harm && python3 validate_site.py && python3 validate_launch.py \
+   && python3 validate_hardening.py)   # the framework polices itself — run all three
 ```
 
 `projects/offramp/test/motive.test.js` and `sim.test.js` take a couple of minutes each —
-they are simulations, not unit tests. Let them finish.
+they are simulations, not unit tests. So does `crossfire/test/survey.js`. Let them finish.
+
+**`projects/training/test/rules.js` is not in a clone.** It covers the plan/tick rules
+and lives beside the gitignored planning app, so only Ric's machine can run it — this
+list used to name it as if anyone could. `projects/training/server/test.mjs` above is the
+published half. The crossfire suite has more than the three named here
+(`fingerprint.js`, `biomes.js`, `warrens.js`, `rocks.js`, `save.js`, `fog.js`, `ui.js`,
+`menu.js`, `page.js`, `browser.js`); run the one that covers what you touched, and
+**`fingerprint.js` before and after anything in `survey-world.js`.**
 
 Served from a plain static server, `/climb`, `/media`, `/log` and `/strava` all 404:
 those are Cloudflare Worker endpoints, and on `localhost` the client points at the origin

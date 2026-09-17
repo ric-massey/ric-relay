@@ -1,8 +1,10 @@
 # Survey — player history + political change
 
-**Status: a brief, not yet built.** Written by Ric, as a companion to
-`WORLD-IDEAS.md` and `LIVING-WORLD.md`. Nothing in it is implemented; see
-`SURVEY-PLAN.md` for what is.
+**Status: a brief, mostly not built — but §4 is, and §1 is half.** Written by Ric,
+as a companion to `WORLD-IDEAS.md` and `LIVING-WORLD.md`. It used to say nothing in
+it was implemented; that stopped being true, and what changed is recorded in
+"Where this already half-exists" at the foot, checked 17 September 2026. See
+`SURVEY-PLAN.md` for what Survey has.
 
 The goal is to make the universe feel like the player's universe, not just a
 simulation happening in the background.
@@ -171,4 +173,11 @@ everything §3 warns about: that is the *only* chain, so every situation in the
 sector is ultimately about freight.
 
 Sections 2 and 5 need the political layer from `LIVING-WORLD.md` and are not
-started.
+started — but half of what they were waiting for arrived on 17 September. There is a
+territory map now: three powers hold cells, fronts grind toward the stronger side,
+a battle won flips a cell, ships the player kills wear a power's strength down,
+both sides declare a ceasefire when worn out, and a long peace ends in a new war.
+So "the player pushes on the same variables the factions use" (§1) has a second
+chain besides freight, and a border that moved is a thing you can fly to. What is
+still missing for §2 is *internal* politics — the pressures inside a faction, the
+laws, the leaders who refuse — which has no code at all.

@@ -2,6 +2,17 @@
 
 Design proposal, 11 September 2026. These are proposed additions, not claims about what is already implemented.
 
+> **Re-checked 17 September 2026 — one of the three ideas has largely landed.** The
+> biome idea (§2 below) is built: fourteen kinds of space, each with its own rules for
+> what spawns and how travel goes, plus the Warrens, which is a region you fly *inside*.
+> `BIOMES.md` is the directive that work was done against and records what changed,
+> including the one rule Ric reversed: biomes are **named** on the HUD now, and scanning
+> inside one puts its borders on the chart. The politics idea (§1) has its first half —
+> territory, fronts, ceasefires and wars that restart — but not the internal pressures,
+> the choices under pressure, or the bulletins. The third idea, people living with the
+> consequences and explaining them, is not built. `SURVEY-PLAN.md` is the live plan; this
+> file stays a proposal.
+
 Survey's premise stays: you are a person exploring in the middle of a much larger world. The sector is inhabited near home, stranger and lonelier farther out. Spare vector visuals, direct flight controls, a quiet screen, and rare authored discoveries carry the experience.
 
 The three ideas below belong together. A biome determines what a place provides and what makes travel difficult. Those conditions shape trade and conflict. People live with the consequences and give the player a way to understand them.

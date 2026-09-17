@@ -21,6 +21,7 @@ completion.
 | `lsd` | Turns on the fast, prismatic sitewide visual mode. It follows you into every room and project. |
 | `shrooms` | Turns on the slower, breathing sitewide visual mode. It follows you too. |
 | `sober` | Clears either visual mode and returns the site to normal. |
+| `boards` · `board` · `kilter` · `tension` · `woodshed` | All five open **Boards** (`projects/climbing/board.html`), the Kilter and Tension log. Five words for one page because it has been called all of them; `woodshed` is the oldest and these notes told people to type it for years. Kept out of `help`, out of `#dir` and out of `PROJECTS`, so the front door never advertises it. |
 
 The psychedelic modes follow normal links between rooms in the current tab. Refreshing
 any page clears the mode. Otherwise, return to the Terminal and type `sober`. There is no
@@ -36,12 +37,19 @@ static distortion treatment without the movement.
 
 ## Climbing (`climbing.html`)
 
-- Type `send` anywhere outside a form field for a brief **SEND!** and chalk-cloud
-  celebration. Reduced-motion visitors get the message without flying particles.
-- Type `board`, `boards` or `woodshed` to go straight to **Boards** (`projects/climbing/board.html`),
-  the Kilter and Tension board log. It is kept out of every menu on purpose —
-  board climbing is a thing you do in a garage, not a thing you announce. The only
-  visible way in is the `the woodshed` button under the Climbing footer.
+**Both of the climbing room's eggs are gone** — checked against the page on
+2026-09-17, and recorded here rather than quietly deleted, because this file is
+supposed to be the complete registry and two entries in it were fiction.
+
+- ~~Type `send` for a **SEND!** and a chalk cloud.~~ Removed when the climbing room
+  was rebuilt. There is no keystroke handler on `climbing.html` at all now.
+- ~~Type `board`, `boards` or `woodshed` on the page.~~ Also gone with the rebuild,
+  along with "the woodshed" button that used to sit under the footer. Boards is a
+  visible tab in the climbing bar now, beside Media, and the five typed words for it
+  still work **at the Terminal** — see the table above.
+
+Mochi still climbs this page rather than walking it, which is in
+"Playful controls that are not hidden" below.
 
 ## Project typing codes
 
@@ -63,7 +71,11 @@ No prompt is required.
 
 These are visible, but they belong in the same field guide:
 
-- The Climbing banner label pauses and resumes the rotating field-photo reel.
+- ~~The Climbing banner label pauses and resumes the rotating field-photo reel.~~
+  There is no reel any more. The rebuilt room picks one hero shot deliberately
+  (`climbing.html`: *"a hero photo that rotates is a hero photo you cannot
+  art-direct"*), and the band lower down is one picture with one sentence of stats
+  over it. Nothing to pause.
 - Starfield's throttle is proper acceleration in gravities — hold click, `W` or
   `Space` for 1 g, add `Shift` for 3 g, `S` to burn retrograde. Everything after that
   is the rocket equations: hold one gravity long enough and the sky crushes into a

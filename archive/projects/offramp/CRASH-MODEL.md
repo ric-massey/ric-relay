@@ -1,3 +1,11 @@
+> **ARCHIVED — built, 17 September 2026.** Implemented as
+> `projects/offramp/src/impact.js` (one SI impulse-momentum solver; barriers are
+> the case where the other mass is infinite) with §10's skill score in
+> `src/skill.js`, and §11's verification cases in `test/impact.test.js`. The
+> "current model" this document describes replacing — four bespoke tests with
+> four hand-tuned thresholds in `src/offramp.js` — no longer exists. Kept
+> because `src/offramp.js` and `test/impact.test.js` cite its section numbers.
+
 # OFFRAMP — crash model
 
 A build specification. This replaces the current collision and wreck code in

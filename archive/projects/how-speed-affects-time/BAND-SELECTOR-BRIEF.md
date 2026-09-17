@@ -1,3 +1,14 @@
+> **ARCHIVED — built, 17 September 2026.** The band control shipped: `BANDS` in
+> `src/exhibit.js` carries 13 real all-sky plates (2048x1024 each, fetched on
+> selection), with per-band notes, the per-band foreground of §5 in `ground.js`,
+> and `photo-sky.js` holding the plates in galactic coordinates. It went further
+> than the brief in one direction and shorter in another: there is now a
+> three-band **mixer** with a six-colour palette, which the brief did not ask
+> for, and **UV and gamma were left out** — the UV warning in §4 was right, and
+> Fermi LAT was dropped with it. The two questions in §9 were never formally
+> answered; the camera up vector is still the one in `sky.js` and the forward
+> plate is still the 4096-wide ESO panorama. Kept as the rationale for the code.
+
 # Brief: the wavelength band selector
 
 **For whoever picks this up next.** This is a spec, not a suggestion. Read all of it

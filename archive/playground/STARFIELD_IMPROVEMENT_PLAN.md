@@ -1,3 +1,21 @@
+> **ARCHIVED — built, 17 September 2026.** This shipped as
+> `projects/starfield/`, and the layout in §"Suggested layout" is the layout on
+> disk: `data/stars-near.js`, `stars-bright.js`, `deep-sky.js`, `milestones.js`
+> and the twelve `src/` modules named here all exist, plus `controls.js`,
+> `controls-ui.js` and `view.js` which the plan did not foresee. Three things
+> landed differently: the starbow's direction (§8) and the galaxy crossfade
+> distance (§10), both noted where they come up, and the shell split in two —
+> `index.html` is now a text page about how to fly and the game itself is
+> `fly.html`. The code comments assume you have read this, which is why it is
+> kept. What Starfield does *next* is not in here: see
+> `projects/starfield/docs/` for the Three.js rebuild it has not started.
+>
+> One thing to know before you follow a link: the `starfield.html:NNN` citations
+> throughout are line references into the original single file, and that file no
+> longer exists — it *became* `projects/starfield/`. They are readable as "this
+> was in the old version" and nothing more. The links to the spacetime and
+> farlight projects were repointed when this moved into `archive/`.
+
 # Starfield — from tech demo to a real flight through real space
 
 Working doc that became `projects/starfield/`. **Implemented.** Kept as the
@@ -20,7 +38,7 @@ really can cross the galaxy in twelve years of your own life. We just have to
 stop faking it.
 
 This also makes the game the playable companion to
-[The Geometry of Spacetime](../projects/spacetime/index.html) already on the
+[The Geometry of Spacetime](../../projects/spacetime/index.html) already on the
 site — that project *explains* light cones, time dilation and expansion;
 Starfield lets you fly them.
 
@@ -367,7 +385,7 @@ Same engine, real formula (`t = (c/a)·sinh(aτ/c)`), and the gap widens
 hyperbolically as you burn. Fly to Andromeda and it reads **15 years / 2.5
 million years**. Nothing else in the game will land as hard as watching those
 two numbers come apart. It also ties directly to the site's existing
-[time dilation chapter](../projects/spacetime/02-time-dilation.html).
+[time dilation chapter](../../projects/spacetime/02-time-dilation.html).
 
 Length contraction is the mirror image and worth showing too: the road ahead
 physically shortens by `1/γ` in your frame, so at γ = 87 the 4.24 ly to
@@ -669,7 +687,7 @@ accelerating expansion (`H₀ ≈ 70 km/s/Mpc`, Hubble length `c/H₀ = 14.0 Gly
 there is a comoving distance of ~16 Gly beyond which **you can never arrive,
 at any speed, ever** — the space in between grows faster than you can cross
 it. A wall that no engine can pass, made of geometry. It connects straight to
-the site's [expansion chapter](../projects/spacetime/04-expansion.html), and
+the site's [expansion chapter](../../projects/spacetime/04-expansion.html), and
 it is a real, true, quietly devastating place to end a flight.
 
 ## 14. The honesty ledger
@@ -717,7 +735,7 @@ the relativistic rocket (§6).
 
 ## 16. Sound
 
-No audio at all today. [farlight](../projects/farlight/index.html) already
+No audio at all today. [farlight](../../projects/farlight/index.html) already
 solves this pattern in-repo (`projects/farlight/index.html:240`): a lazily
 created `AudioContext` on first gesture, a hum oscillator tracking speed, and
 an `m`-key mute toggle. Reuse it rather than inventing a second approach.

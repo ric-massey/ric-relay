@@ -7,9 +7,20 @@ it gets a tick and a commit hash, so the list is also the record.
 **Status key** — `[ ]` not started · `[~]` in progress · `[x]` done · `[?]` needs
 an answer before it can be built.
 
-Batch of 2026-09-13. 27 items. **26 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5 ·
-P2, P3, P1, P4 · H2, H4 · A4 · T1 · H1, H3.
-Only **A3 (the Vault)** is left.
+**Where this stands — 17 September 2026.** One item open in the whole file.
+
+- **Batch of 2026-09-13. 27 items, 26 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5 ·
+  P2, P3, P1, P4 · H2, H4 · A4 · T1 · H1, H3. Only **A3 (the Vault)** is left, and it
+  is still open: the Vault is built (`buildVault` in `index.html`) but it was built
+  *before* this note and has not been rebuilt against the Leviathan since, which is
+  what A3 asks for.
+- **Everything added since is done.** Three later batches were appended to this file
+  and every item in them is ticked: the thirty-minute wall (W1–W5, 2026-09-14), the
+  ships re-cut twice (S1–S6 and S8–S17, 2026-09-15), and the seven other hull
+  categories (C1–C7, 2026-09-15). 59 ticks, 1 box.
+
+The plan those batches came out of is `SURVEY-PLAN.md`; this file is Ric's own list
+and keeps its own record.
 
 ---
 

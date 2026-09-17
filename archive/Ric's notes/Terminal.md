@@ -1,3 +1,11 @@
+> **ARCHIVED — superseded, 17 September 2026.** This is a transcript of the
+> front door as it read on 31 July 2026, before the two audits beside it were
+> acted on. It is not current and should not be used to check the page: the
+> typos in it (`suprise`, `philosiphy`, `writen`, `Sydney's cats name`) are
+> fixed, `/log` and `/map` came off the directory, `/training` and `/gaming`
+> went on, and the NOTIFICATION banner has moved on from the 2026-07-24
+> Starfield entry. Kept because it is the only record of the original copy.
+
 RIC-MASSEY PERSONAL TERMINAL // NODE 01
 Terminal
 Welcome to Ric’s Internet!

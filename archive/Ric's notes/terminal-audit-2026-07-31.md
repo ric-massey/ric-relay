@@ -1,3 +1,13 @@
+> **ARCHIVED — done, 17 September 2026.** Every finding in this file has been
+> fixed and re-verified against `index.html`: the four typos are gone, the five
+> hand-maintained room lists are one `ROOMS` array, `--phosphor-dim`/`-faint`
+> clear AA, there is an `og:image`, `help` scrolls to the top of its own output,
+> a bare `Tab` prints nothing, `echo`/`cat`/`open`/`cd` all answer with a usage
+> line, a room name works with a trailing word, `Tab` fills the common prefix and
+> skips `map`, and the first character typed during the boot lands in the prompt.
+> A7 (`.claude/launch.json` pointing at a dev server that does not exist) was
+> local-only and that file is gitignored. Kept as the record of what was wrong.
+
 # Terminal home page audit — 2026-07-31
 
 Scope: `index.html` (the terminal hub) plus the files it loads — `notes.js`,

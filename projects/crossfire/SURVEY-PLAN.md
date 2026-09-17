@@ -3226,16 +3226,18 @@ since. Measured rather than remembered:
 | **6.4** verbs not percentages | **DONE** · fifteen of twenty-eight | Eight were verbs — three weapons, two tractor rigs, reverse thrusters, the ice melter. Seven more are the device layer, each with a cooldown, a rebindable key on its slot and a thumb button on its slot: **cargo ejector, decoy launcher, mine layer, emergency jump**, and now the last three off Ric's own list — **grapple line, silent running, EMP charge**. Every one is a verb by the three-systems test. The ejector moves pirates, the decoy moves sentries and seekers, the mine moves collision, the jump moves the danger curve. The **line** moves *you*: it hooks anything solid in front of the nose and hauls, which is a way out of a well that is not a bigger engine and the fastest way down a Warrens tunnel. The **cloak** is ten seconds of not being there — a sentry loses you, whoever is chasing you *forgets* rather than pausing, and firing ends it, which is what keeps it an escape rather than an ambush. The **burst** stops everything electric inside 1,100 units — sentries, mines, and every engine and gun in reach — **including your own four slots and your scanner**, which is the cost that makes pressing it a decision. |
 | **6.5** consequences persist | **DONE** | Battles end and one in three leaves a named memorial. Reputation persists per power. A part you die carrying stays where you fell. Anything that dies in front of you leaves a hull you can come back and strip, written into the book rather than into a chunk. **A ship you saved keeps its name, comes back, and repays you in water once.** **A pirate you hurt and let go is remembered with the damage you did and returns as itself.** All of it readable on WHO KNOWS YOU, and all of it askable with `E`. |
 | **6.6** authored mysteries | **eight places** | Where the brief asks for dozens. Highest ceiling, least code, and 6.7 below is now the concrete plan for it. |
-| **6.7** the almanac's curve | **diagnosed, not fixed** | Ten minutes of throttle reaches 344,617 units and the finale sits at 112,000. The ladder is a thirtieth of the size it needs to be. |
+| **6.7** the almanac's curve | **DONE** | It was diagnosed here and then fixed in the section above — the ladder runs 13,000 to 3,400,000 (past five and a half million in a wide seed), the danger curve stretched to 1,800,000 with THE LONG DARK past it, the chart gained six zoom steps, and six tests moved from absolute distances to fractions of the curve. Sixteen ten-minute flights to the Leviathan where it used to be less than one. What is left of the entries themselves is tier 5, which is 6.6. |
 
-The honest summary: **6.1 through 6.5 have happened.** 6.4 was the last of them
-to close and it closed on the three parts Ric named at the start of the phase —
-a grapple, a cloak and an EMP — so the list the filter was written from is now
-empty.
+The honest summary: **6.1 through 6.5 have happened, and 6.7 with them.** 6.4 was
+the last of the first five to close and it closed on the three parts Ric named at
+the start of the phase — a grapple, a cloak and an EMP — so the list the filter was
+written from is now empty. 6.7 closed after it: the sector is thirty times the size
+it was, which is what the almanac's far end needed.
 
 What is left is **6.6**, the authored mysteries: eight places where the brief
 asks for dozens. It is still the one with the highest ceiling and the least
-code, and still the only thing blocking the almanac's far end.
+code, and now that the ladder is long enough it is the only thing left standing
+between the almanac and its twenty hours.
 
 ### How to read Phase 6
 
