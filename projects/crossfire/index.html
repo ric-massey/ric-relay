@@ -18757,10 +18757,15 @@
        that stopped the clock would turn the cost into a loading screen) and it is
        also the rule a player expects (a station is somewhere you stop). A station
        fits parts instantly anyway, so the two never disagree. */
+  /* Every page the mode has. A state missing from here is a page the world is
+     neither drawn nor ticked behind — it goes solid black and the clock stops —
+     which is how the station's two new rooms arrived: they looked right and the
+     sector had quietly gone away behind them. Both are parked pages, so the
+     clock stops anyway; what they needed was to be *pages* at all. */
   const SURVEY_PAGES = { chart: 1, inventory: 1, missions: 1, almanac: 1,
                          record: 1, ship: 1,
                          craft: 1, lore: 1, refit: 1, hangar: 1, yard: 1,
-                         landed: 1 };
+                         landed: 1, stationinv: 1, wormhole: 1 };
   const surveyPage = () =>
     !!(mode && mode.survey && surv && !surv.death && SURVEY_PAGES[state]);
   /* Parked: at a station, at your own yard, or sitting on somebody's world. All
@@ -19300,7 +19305,9 @@
     state === "almanac" || state === "chart" || state === "hangar" ||
     state === "inventory" || state === "craft" || state === "refit" ||
     state === "record" || state === "ship" ||
-    state === "stationinv" || state === "wormhole";
+    // The wormhole map is not on this list: it does not scroll, and a page that
+    // claims a drag is a page whose taps arrive as drags.
+    state === "stationinv";
   // How many rows the shelf on the loadout page has to scroll through.
   const shelfRows = () => (surv && surv.docked ? MODULES.length : 0);
 

@@ -4033,14 +4033,64 @@ const storeOf = (cf, key) => {
     view().onWormhole();
     check(cf.screenNow() === "wormhole", "the built gate did not open its map");
 
-    /* Charted, not visited. Ric answered this one when the item was written:
-       seeing a station on the chart is enough. */
+    /* ── only what you have been to, and nothing is called anything ──────
+       Ric: "Don't name the other stations and only show ones you've passed or
+       scanned at."
+
+       Both halves are properties of the gazetteer rather than of this page, and
+       that is the point: it is written by exactly two things — flying inside the
+       sight radius and a scan return — and stations go into it with no name at
+       all, because nothing out here is called anything. So the checks are on the
+       source. A third writer, or one that started passing a name, would put a
+       place name on a map the whole sector is designed not to have. */
     const me = cf.live().ships[0];
+    const far = { x: 400000, y: -250000 };
+    step(4);
+    check(!view().known.some(q => q.k === "station" &&
+                             Math.hypot(q.x - far.x, q.y - far.y) < 4000),
+          "a station on the far side of the sector is already a known mooring");
+
+    /* Flown past: that is one of the two ways, and it has to work. Against a
+       station the sector actually generated rather than one pushed into the
+       list by hand — the streamer rebuilds `surv.stations` from the chunks
+       every frame, so a planted one is gone before anything can see it. */
+    /* Back out to the sector first. The wormhole map is a *parked* page, and a
+       parked page stops the clock — so the gazetteer, which is written by the
+       survey tick, cannot record anything while it is open. Correct behaviour,
+       and it makes the check meaningless unless the page is shut. */
+    cf.screen("playing");
+    surv.known.clear();
+    step(4);
+    const real = surv.stations[0];
+    check(!!real, "no station streamed in to fly up to");
+    if (real) {
+      me.x = real.x + 120; me.y = real.y; me.vx = me.vy = 0; me.invuln = 9e9;
+      step(12);
+      const seen = view().known.filter(q => q.k === "station");
+      check(seen.length >= 1, "flying up to a station did not put it on the map");
+      check(seen.every(q => !q.name),
+            "a station went into the gazetteer carrying a name: " +
+            seen.map(q => q.name).filter(Boolean).join(", "));
+    }
+
     surv.known.set("station:x:y", { k: "station", x: 40000, y: -25000,
-                                    name: "FAR MOORING", r: 0 });
+                                    name: "", r: 0 });
     step(2);
     const there = view().known.filter(q => q.k === "station").length;
     check(there >= 1, "the map has no moorings on it");
+
+    /* And the page paints no name even if one somehow got in — the label was
+       removed rather than left dormant, so this is the check that it stays
+       removed. */
+    surv.known.set("station:named", { k: "station", x: 41000, y: -26000,
+                                      name: "PLACE NAME", r: 0 });
+    surv.docked = surv.stations[0] || { x: me.x, y: me.y, home: true };
+    view().onWormhole();
+    drawn.length = 0;
+    cf.draw();
+    check(!drawn.some(t => String(t).indexOf("PLACE NAME") >= 0),
+          "the wormhole map printed a station's name");
+    surv.known.delete("station:named");
 
     const from = { x: me.x, y: me.y };
     check(view().onJump(40000, -25000) === true,

@@ -4367,12 +4367,17 @@
   HUD.drawWormhole = function (st, dt) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
+    /* Only the ones you have been to or swept. The gazetteer is written by
+       exactly two things — flying inside the sight radius, and a scan return —
+       so reading it *is* "passed or scanned at", and there is deliberately no
+       second source: a station you have merely inferred from the shape of the
+       sector is not a mooring you know how to open a mouth onto. */
     const stations = (st.known || []).filter(q => q.k === "station");
     const me = st.ship || { x: 0, y: 0 };
     const docked = !!(st.docked || st.landed);
 
     pageFrame("WORMHOLE", stations.length +
-              (stations.length === 1 ? " MOORING CHARTED" : " MOORINGS CHARTED"),
+              (stations.length === 1 ? " MOORING KNOWN" : " MOORINGS KNOWN"),
               "", PLACE_TONE);
 
     const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
@@ -4382,9 +4387,10 @@
           docked ? "TAP ONE TO OPEN IT" : "YOU MUST BE DOCKED TO JUMP");
 
     if (!stations.length) {
-      fitText("You have not charted a station yet. Fly past one and it goes " +
-              "on this map.", view.x + PAGE.PAD, view.y + PAGE.HEAD + 24,
-              SIZE.cap, VIOLET_DIM, "left", 0.7, view.w - PAGE.PAD * 2);
+      fitText("No moorings yet. Fly past a station, or sweep one with a scan, " +
+              "and it goes on this map.", view.x + PAGE.PAD,
+              view.y + PAGE.HEAD + 24, SIZE.cap, VIOLET_DIM, "left", 0.7,
+              view.w - PAGE.PAD * 2);
       pageNav(st, "wormhole", PLACE_TABS);
       closeButton(st.onUndock || st.onClose || (() => {}));
       return;
@@ -4437,12 +4443,17 @@
         ctx.beginPath(); ctx.moveTo(x - 4, y); ctx.lineTo(x + 4, y);
         ctx.moveTo(x, y - 4); ctx.lineTo(x, y + 4); ctx.stroke();
       });
+      /* A distance, and nothing else. **Nothing out here is called anything** —
+         that is the sector's oldest rule and the reason the chart labels cells
+         by coordinate and lets you pin your own names on them. A station is
+         written into the gazetteer with an empty name for exactly that reason,
+         so this drew nothing in real play and only ever showed something when a
+         harness invented one. The lookup is gone rather than left dormant: a
+         line that would name a place if a name ever appeared is an invitation
+         to add one. You tell these apart by where they are, which is what a map
+         is for. */
       label(here ? "YOU ARE HERE" : fmtCells(away) + "u", x, y + 24,
             SIZE.cap, col, "center", here ? 0.95 : 0.7);
-      if (q.name) {
-        fitText(shortName(q.name, 16), x, y - 16, SIZE.cap, col, "center",
-                0.8, 150, "0.06em");
-      }
       /* The one gesture. Nothing else on this page does anything, which is the
          difference between it and the chart: there is no mode to be in and
          nothing to arm first. */
