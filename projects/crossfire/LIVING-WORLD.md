@@ -4,6 +4,8 @@
 Written by Ric. See `SURVEY-PLAN.md` for what Survey actually has; the estimate at
 the foot is mine, and it is now optimistic by one sweep rather than pessimistic.
 
+*One of Survey's seven documents — `SURVEY-PLAN.md` → "The Survey documents" says how they relate, and its "What is still open" is the one list of what is left.*
+
 > **Re-checked 17 September 2026, and two things in here are out of date.**
 >
 > 1. **"Nothing in this document is implemented" is no longer true.** The

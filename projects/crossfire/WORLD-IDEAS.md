@@ -2,6 +2,8 @@
 
 Design proposal, 11 September 2026. These are proposed additions, not claims about what is already implemented.
 
+*One of Survey's seven documents — `SURVEY-PLAN.md` → "The Survey documents" says how they relate, and its "What is still open" is the one list of what is left.*
+
 > **Re-checked 17 September 2026 — one of the three ideas has largely landed.** The
 > biome idea (§2 below) is built: fourteen kinds of space, each with its own rules for
 > what spawns and how travel goes, plus the Warrens, which is a region you fly *inside*.

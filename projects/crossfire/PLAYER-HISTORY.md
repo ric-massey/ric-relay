@@ -6,6 +6,8 @@ it was implemented; that stopped being true, and what changed is recorded in
 "Where this already half-exists" at the foot, checked 17 September 2026. See
 `SURVEY-PLAN.md` for what Survey has.
 
+*One of Survey's seven documents — `SURVEY-PLAN.md` → "The Survey documents" says how they relate, and its "What is still open" is the one list of what is left.*
+
 The goal is to make the universe feel like the player's universe, not just a
 simulation happening in the background.
 

@@ -4,9 +4,130 @@ Survey started as a quiet mode with no enemies and no losing. It is becoming a
 **survival exploration game**: you start at a station, you go out, it gets more
 dangerous the further you go, and things out there can kill you.
 
-This file is the whole plan, in the order it gets built. One item at a time,
-each one finished and tested before the next starts — the mode is already large
-enough that half-built systems hide each other's bugs.
+This file is the whole plan **and** the record of how the mode got here. One
+item at a time, each one finished and tested before the next starts — the mode
+is already large enough that half-built systems hide each other's bugs.
+
+It is 3,300 lines, so the next four sections exist to stop you reading them:
+how the file is laid out, where every phase stands, the complete list of what
+is still open, and which of Survey's seven documents answers what. Everything
+after those is the file as it was written.
+
+---
+
+## How the file is laid out
+
+**Not top to bottom in build order** — and knowing that saves an hour.
+
+1. **The head is the newest and the most binding.** "What Survey is for" is the
+   direction Ric set on 17 September and it overrides anything below it that
+   disagrees. "Who holds the sky" under it is the most recent work, not the
+   next. Both were written at the top because that is where a reader starts.
+2. **The middle is the record**, oldest first: what already existed, the bugs
+   found since, then Phase 1, the places, Phase 2, the screen, Phase 3, Phase 4,
+   the pages, Phase 5.
+3. **Then Phase 7, and then Phase 6** — in that order, on purpose. The interface
+   was built before the simulation phase because a mode you cannot read is a
+   mode nobody can judge. "At the end of Phase 7: go back to Phase 6" is the
+   signpost between them.
+4. **A section with a date and no number is a session**, not a plan item — "Four
+   things from the cockpit", "A long list from the cockpit", the bug sweeps.
+   They are what flying it turned up, kept because the reasons are in them.
+
+Two numbering scars, left rather than renumbered so old notes still resolve:
+**there is no 7.7**, and 5.5 sits after 5.6 because 5.6 was built first. The
+7.x sections also appear 7.1–7.6, 7.13–7.15, then 7.8–7.12.
+
+**A status is on the heading.** `**DONE**` means built, tested and pushed;
+anything else says what it is. A heading with no status is a session or a piece
+of reasoning, and there is nothing in it to finish.
+
+---
+
+## Where it stands
+
+Every phase, in the order it was actually built. Measured against the code on
+17 September 2026, and `test/survey.js` is what holds it there.
+
+| | | |
+|---|---|---|
+| **Phase 1** the sector, legible and lethal | **DONE** | Deep space has numbers, hazards are fewer and bigger and warn you, the camera follows |
+| **The places** (A–E) | **DONE** | Planets, wormholes, the Wall, the tractor beam, the chart |
+| **Phase 2** survival | **DONE** | Hull, water, food, dying, planets you can dock at |
+| **The quiet screen, and the drive** | **DONE** | The screen, named places, the light drive |
+| **Phase 3** the economy and the ships | **DONE** | Metals, selling, twenty-five hulls that fly differently, ship size and the camera |
+| **Phase 4** company, and the first two minutes | **DONE** | Friendly ships, and an opening that teaches |
+| **The pages, on one grid** | **DONE** | Every station and inventory page on one layout |
+| **Phase 5** consequence | **MOSTLY DONE** | 5.1–5.4, 5.6, 5.7 and the mobile pass are in. **5.5 (crates and towing) is untouched**; 5.8 is a loose-ends list that is now half done |
+| **Phase 7** the interface | **DONE** | 7.1–7.15 (no 7.7), the cockpit sessions, the devices, the empty room. One brief in it is unbuilt: **the Leviathan as a ship you can buy** |
+| **Phase 6** possibility multiplication | **6 of 7** | 6.1–6.5 and 6.7 have happened, several as a side effect of other work. **6.6 (authored mysteries) is the one left** and it is the highest-ceiling thing in the file |
+| **Coming back, and an account** | **DONE** | The home station, and an optional account that stays optional |
+| **Who holds the sky** territory | **A and C built, B open** | The map and the moving war are in. **B — danger that depends on your standing with the owner — is not**: `dangerAt` is nature and people averaged, with no standing term in it |
+| **What Survey is for** the four paths | **the direction, not a phase** | Kenshi and Starsector rather than one ladder. Judge new work against it |
+
+---
+
+## What is still open
+
+The whole list, in one place, so it does not have to be found by reading. Nine
+things — and 3 and 7 are the same job at two sizes: nowhere to put what you are
+not carrying, on the ship and at the station.
+
+1. **6.6 — authored mysteries.** Nine authored places — eight dealt a rung of
+   the ladder and the Leviathan off it — where the brief asks for dozens.
+   Highest ceiling, least code, and the only thing between the almanac and the
+   twenty hours 6.7 bought room for.
+2. **B — personal danger.** Your standing with a power should decide how
+   dangerous its space is for you. `standingOf` already has the five rungs;
+   `dangerAt` does not read them.
+3. **5.5 — cargo crates and towing.** Nothing of it exists. The idea Ric liked
+   best in Phase 5 and the one part of it never started.
+4. **A3 — the Vault.** The one open item on `TODO.md`, and it is now measured
+   rather than guessed at: the collisions are sound, what is wrong is the
+   drawing and a dead hit-marker path. See the note under A3 there, and
+   `test/vault.js`.
+5. **Faction pricing** (5.8). Unblocked as of 17 September — stations fly a flag
+   now — and `standingPay` is still read by exactly one thing, the rescue
+   payout. It should decide what a yard charges.
+6. **Trading with friendly ships** (5.8, marked *next up*). The `trades` flag
+   and real cargo exist; the approach, the prompt and the page do not.
+7. **Station storage, and food from somewhere other than a station** (5.8, and
+   tracks 3 and 5). There is nowhere to leave anything, and the ice melter
+   answers water with no equivalent for food.
+8. **The Leviathan as a ship you can buy.** A brief at the end of Phase 7, with
+   the hard part stated in it. Not started.
+9. **The panel minimap draws no borders** — only the full chart does. Small, and
+   the one piece of "Who holds the sky" that did not land with the rest.
+
+**Stranger things farther out** (track 5) is the one that is not a task: the
+danger curve has promised it since Phase 1 and the abyss is still only *harder*,
+not *stranger*. 6.6 is how it gets paid.
+
+---
+
+## The Survey documents
+
+Seven files, and which one to open is not obvious from any of them. This is the
+map.
+
+| File | What it is for | Authority |
+|---|---|---|
+| **`SURVEY-PLAN.md`** (this file) | The plan, the record, and every status | **Intent and status.** What is meant to happen, and how far it got |
+| `README.md` → "Survey" | What the mode *is*, for somebody who has to read the code | **Behaviour.** Written from the code, so it wins on what the game does today |
+| `TODO.md` | Ric's own list, in his words, with ticks | What Ric asked for. A3 lives here |
+| `BIOMES.md` | The directive for the biome work, Ric's note kept as written | Biomes. Partly retired 17 September — read its banner |
+| `WORLD-IDEAS.md` | A design proposal: politics, biomes, people who explain them | A proposal. The biome third of it is built |
+| `LIVING-WORLD.md` | The brief for a world that makes its own history | Unbuilt, except the substrate its own foot records |
+| `PLAYER-HISTORY.md` | The brief for the player inside that history | Unbuilt, except §4 and half of §1 |
+
+The four briefs are **not** plan items. They are where the ideas are argued out
+before any of them earns a number in here; when one does, it gets a phase in
+this file and the brief becomes the reasoning behind it.
+
+**When two of them disagree:** the code settles what the game *does*, and
+`README.md` is the written form of that. This file settles what the work is
+*for* and how far it got. A brief settles nothing — it is an argument, and the
+banner at its head says how much of it survived contact.
 
 ---
 
@@ -412,7 +533,7 @@ premise is a list of features.
 
 ## Phase 1 — make the sector legible and lethal  ·  **DONE**
 
-### 1.1 Define deep space  ·  *numbers, not vibes*  ·  done
+### 1.1 Define deep space  ·  *numbers, not vibes*  ·  **DONE**
 
 Distance from the origin is the difficulty dial. It is currently a smooth curve
 topping out at 90,000 units, which is too shallow and too short. The bands:
@@ -430,7 +551,16 @@ The curve is smooth *inside* those bands — no seams, nothing switches on — b
 the bands are named on the HUD, because "UNSETTLED" is something you can make a
 decision about and `0.47` is not.
 
-### 1.2 Fewer hazards, bigger, and they warn you  ·  done
+> **Superseded — the bands are gone, and so is distance as the dial.** This is
+> what Phase 1 built and it ran for months; "Who holds the sky" (near the top of
+> this file) replaced all of it on 17 September. `BANDS`, `bandAt` and
+> `DANGER_FULL` do not exist in the code any more — `dangerAt` is the biome's own
+> danger and the kind of space it is, averaged, and the HUD names the *place*
+> rather than a distance band. The table above is kept because every number
+> tuned against it is still in the game and this is where those numbers came
+> from.
+
+### 1.2 Fewer hazards, bigger, and they warn you  ·  **DONE**
 
 Cut the number of gravity wells hard and make the survivors matter.
 
@@ -443,7 +573,7 @@ Cut the number of gravity wells hard and make the survivors matter.
   single most important readability fix in the phase: a well that kills you
   without warning is unfair, and a well that warns you is a decision.
 
-### 1.3 Camera  ·  done
+### 1.3 Camera  ·  **DONE**
 
 - Default zoom out, so a well is visible before it is a problem.
 - A zoom control in Settings, persisted, so you can pull it in if you prefer.
@@ -454,7 +584,9 @@ Cut the number of gravity wells hard and make the survivors matter.
 ### What Phase 1 actually landed
 
 - Six bands to 320,000 units and past it; the curve keeps climbing into the
-  abyss rather than flattening at the edge of the table.
+  abyss rather than flattening at the edge of the table. *(Later stretched to
+  seven bands and 1,800,000 by 6.7, then removed outright by "Who holds the
+  sky" — there are no bands now.)*
 - Wells cut from three chunks in five to about one in five, and given sizes:
   they run near 0.85 at home and past 3 in the abyss, with mass climbing as
   `k^2.6` so a big one pulls harder at its rim rather than merely being wider.
@@ -517,7 +649,7 @@ full of objects you fly past without ever looking at, and a place you do not
 look at is scenery. Each item is a way of making one of them worth a second
 glance — or of removing it, which is the same fix from the other side.
 
-### A. Planets  ·  *fewer, far bigger, and named*  ·  done
+### A. Planets  ·  *fewer, far bigger, and named*  ·  **DONE**
 
 Planets are currently small, numerous, identical and anonymous, which is three
 of the four things a landmark must not be.
@@ -537,7 +669,7 @@ of the four things a landmark must not be.
   also the hook Phase 2.4 needs — an inhabited planet is where water and food
   will be bought — so the flag wants to exist before that phase starts.
 
-### B. Wormholes  ·  *rare enough to be an event*  ·  done
+### B. Wormholes  ·  *rare enough to be an event*  ·  **DONE**
 
 Gates are two-way now, which makes them a route rather than a thing that happens
 to you. That makes them much more useful, so there should be far fewer.
@@ -548,7 +680,7 @@ to you. That makes them much more useful, so there should be far fewer.
   the coil's clue is "a gate", so finding the coil is how most players will meet
   their first one.
 
-### C. The Wall  ·  *give it a reason to exist*  ·  done
+### C. The Wall  ·  *give it a reason to exist*  ·  **DONE**
 
 The almanac entry is four corner brackets around an empty square. It is the
 weakest thing in the book: there is nothing there, so finding it is an
@@ -560,7 +692,7 @@ anticlimax and the entry is a lie about there being something to see.
 - The other landmarks should get the same test applied to them: is there
   anything *there*, or only a marker saying there is.
 
-### D. The tractor beam  ·  *weaker, and shorter*  ·  done
+### D. The tractor beam  ·  *weaker, and shorter*  ·  **DONE**
 
 It currently sweeps up a broken rock at full burn, which removes the only
 decision salvage ever asked for.
@@ -568,7 +700,7 @@ decision salvage ever asked for.
 - **Less reach** and **less pull**, so holding a cloud of motes means slowing
   down for it. The trade should be time against cargo.
 
-### E. The chart  ·  *fewer lines*  ·  done
+### E. The chart  ·  *fewer lines*  ·  **DONE**
 
 The chart has grid lines, an origin cross, the fog grid, the trail, marks, pins
 and a legend, and it has become hard to read.
@@ -616,19 +748,19 @@ and a legend, and it has become hard to read.
 This is the phase that changes what Survey *is*. It reverses the mode's original
 promise that nothing ends your run, deliberately.
 
-### 2.1 Hull, and dying  ·  done
+### 2.1 Hull, and dying  ·  **DONE**
 
 - Hull works as now, but at zero it does not reset. **At zero hull the next hit
   kills you.** The HUD has to make "one more hit" unmistakable.
 
-### 2.2 Water and food  ·  done
+### 2.2 Water and food  ·  **DONE**
 
 - Two meters, draining slowly on different clocks. Water faster than food.
 - Running either to empty starts a countdown, not an instant death — a warning
   you can still act on.
 - Empty for too long kills you.
 
-### 2.3 Death  ·  done
+### 2.3 Death  ·  **DONE**
 
 - A **YOU DIED** screen. What killed you, how far out you were, how long you
   lasted, what you were carrying.
@@ -636,7 +768,7 @@ promise that nothing ends your run, deliberately.
   You lose the hold, and you lose whatever you were carrying that was not a
   yard part.
 
-### 2.4 Planets you can dock at  ·  done
+### 2.4 Planets you can dock at  ·  **DONE**
 
 - Some planets are **inhabited** — you can dock, and buy water and food.
 - Uninhabited ones with atmosphere can be **skimmed** for water, slowly and for
@@ -784,6 +916,11 @@ rule.
   hundred of them, none of them pointing anywhere — and a waypoint is the other
   thing entirely.
 
+  > **Superseded — there is no waypoint any more.** Selecting anything on the
+  > chart does the same job strictly better, and the waypoint went with it. See
+  > "The waypoint is gone" in Phase 7. Kept here because this is the record, but
+  > do not read it as current behaviour.
+
 ---
 
 ## Phase 3 — the economy and the ships  ·  **DONE**
@@ -892,14 +1029,14 @@ at 0.49.
 
 ## Phase 4 — company, and the first two minutes  ·  **DONE**
 
-### 4.1 Friendly ships  ·  done
+### 4.1 Friendly ships  ·  **DONE**
 
 Traffic that is not trying to kill you: haulers on a route, patrols near
 stations, wrecks-in-progress you can help or rob. The sector should feel
 inhabited near home and empty far out — that contrast is most of what makes
 distance feel like distance.
 
-### 4.2 The two-minute pass  ·  done
+### 4.2 The two-minute pass  ·  **DONE**
 
 The last item, done once everything else exists, because you cannot teach a game
 that is still changing shape. A deliberate opening: you start docked, the first
@@ -1006,7 +1143,7 @@ are the same sentence read as *progression* rather than as a loop.
 
 ---
 
-## Phase 5 — consequence, and things worth going out for
+## Phase 5 — consequence, and things worth going out for  ·  **MOSTLY DONE**  ·  *5.5 not started, 5.8 half*
 
 The next phase. Everything here came out of playing it, and the shape of it is
 that the mode currently rewards going farther but does not yet make going farther
@@ -1485,7 +1622,7 @@ arrives that are not a shop, in the same place.
 Water is answered. **Food still has no equivalent** and stays on the loose-ends
 list.
 
-### 5.5 Cargo crates, and towing
+### 5.5 Cargo crates, and towing  ·  **NOT STARTED**
 
 The idea Ric liked best, and the reason is that it is physical rather than
 administrative: **your hold fills up, so you either leave things, sell things, or
@@ -1522,7 +1659,7 @@ percentage — "2 / 7" is a number of hits and "29%" is not.
 
 Sitting in a star is still the free answer and still costs you the time.
 
-### 5.8 Loose ends, so they are not lost
+### 5.8 Loose ends, so they are not lost  ·  **PART DONE**
 
 - **Better station storage** — somewhere to leave what you are not carrying, so a
   full hold stops being the end of a trip. A ship you are not flying is also
@@ -1638,7 +1775,7 @@ page and the phone page draw the same band.
 The rotating camera used to be **one flag worn by three modes**. It is now four
 separate answers, so turning it on for a duel does not turn it on for a long haul.
 
-### The five long-term tracks
+### The five long-term tracks  ·  *tracks, not items — 1 and 4 are running, 2, 3 and 5 are not*
 
 Ric's list, and the shape of every hour after the first:
 
@@ -1760,7 +1897,7 @@ materials.
 
 ---
 
-## Phase 7 — the interface, properly
+## Phase 7 — the interface, properly  ·  **DONE**  ·  *one brief in it unbuilt*
 
 Everything below came from playing it. Phases 1–6 built systems and hung a page
 off each one; the result is eight pages that each make sense alone and do not add
@@ -1905,7 +2042,7 @@ colour its ships are actually painted, its name, where you stand with it as a
 *word* and never a figure, who it is at war with, and a line saying who they are.
 Below it, WHO KNOWS YOU carries the two lists of named ships from 6.5.
 
-### 7.6 Smaller things
+### 7.6 Smaller things  ·  **DONE**
 
 - **Cash** stays top left and stays small.  ·  **DONE** — it was already there,
   and it is on every page's title line rather than in a panel of its own.
@@ -2812,7 +2949,7 @@ The filter still applies to all of it: *what three other systems does this touch
 
 ---
 
-## Phase 6 — possibility multiplication
+## Phase 6 — possibility multiplication  ·  **6 of 7**  ·  *6.6 is the one left*
 
 Ric's brief, and it is a different *kind* of instruction from everything above.
 Phases 1–5 are lists of things to build. This one is a rule about how the things
@@ -2825,7 +2962,7 @@ already built should relate to each other:
 The rest of this section is that brief, kept close to how it was given, with an
 honest note under each on where Survey actually stands.
 
-### 6.1 NPC ships need simple wants, not complicated AI
+### 6.1 NPC ships need simple wants, not complicated AI  ·  **DONE**
 
 > A trader wants to reach another station with cargo. A pirate wants valuable
 > cargo. An escort wants its client alive. A patrol responds to threats. A damaged
@@ -2845,7 +2982,7 @@ The work: give each role a want that references the world rather than a route.
 A trader wants **that station**. A pirate wants **that cargo**. An escort wants
 **that ship** alive. Then stop writing behaviour and let the wants meet.
 
-### 6.2 The economy should respond to events a little
+### 6.2 The economy should respond to events a little  ·  **DONE**
 
 > A station needs water. Convoys supply it. Pirates destroy several convoys. Water
 > becomes scarce there temporarily. Patrol activity increases. Traders reroute
@@ -2866,7 +3003,7 @@ what it is short of; a convoy destroyed near it deepens that shortage; the
 shortage moves its prices and pulls patrols in. Three systems touching, no new
 interface.
 
-### 6.3 World objects should obey universal rules
+### 6.3 World objects should obey universal rules  ·  **DONE**
 
 > Gravity affects everyone. Cargo can be stolen, abandoned, destroyed or towed by
 > anyone. Weapons can hit things other than their intended target. Ships can run
@@ -2923,7 +3060,7 @@ lives in `surv.wrecked` now, is written into the book, survives the tab, and is
 forgotten when stripped. Sixty of them, oldest dropped — which is also the first
 half of 6.5.
 
-### 6.4 Parts should create verbs rather than percentages
+### 6.4 Parts should create verbs rather than percentages  ·  **DONE**  ·  *fifteen of twenty-nine*
 
 > A **+12% engine** eventually becomes boring. A decoy, grapple, mine layer,
 > emergency jump module, cloak, tractor modification, EMP, cargo ejector or weird
@@ -3043,7 +3180,7 @@ exception being made for it. SILENT RUNNING is exotic, bought and never built.
 *The rule from here is unchanged:* **a new part has to add a verb or it does not
 get made.** Ric's list is empty.
 
-### 6.5 Consequences should persist enough for the player to remember them
+### 6.5 Consequences should persist enough for the player to remember them  ·  **DONE**
 
 > Save a particular captain and maybe you encounter that ship again. Destroy a
 > convoy and later encounter the wreck. A battle creates a memorial. A pirate you
@@ -3093,7 +3230,7 @@ tally would turn both of them into scores.
 They are also askable: stand next to one and press `E`, and 7.8's card tells you
 what you did and what is still owed.
 
-### 6.6 Handcrafted mysteries should sit on top of the simulation
+### 6.6 Handcrafted mysteries should sit on top of the simulation  ·  **OPEN**  ·  *eight on the ladder plus the Leviathan, the brief asks dozens*
 
 > **This is important.** Pure procedural generation eventually shows its seams.
 > Caves of Qud combines handwritten story and worldbuilding with physical,
@@ -3196,8 +3333,13 @@ hour should feel the way it did.
 **The danger curve had to stretch with it.** It topped out at 320,000 — which was
 past the old last landmark, so it never mattered — and leaving it there would have
 put nine tenths of the new sector in one flat band, identically dangerous. Seven
-bands now, running to 1,800,000, with a seventh called **THE LONG DARK** past it.
+bands then, running to 1,800,000, with a seventh called **THE LONG DARK** past it.
 Supermassive wells consequently start around 320,000 rather than 140,000.
+
+*Since superseded:* "Who holds the sky" took the bands out altogether five days
+later, and the bug it names — that stretching `DANGER_FULL` while keeping the band
+*edges* made every near place 5.6x safer — is the reason it was worth doing rather
+than patching. THE LONG DARK survives as a name for the deep void, not as a band.
 
 **The manifest stretched less**, to 9,000–280,000: the jump gate is the main arc,
 a thing you build on the way out, not the last thing you do.
@@ -3230,9 +3372,9 @@ since. Measured rather than remembered:
 | **6.1** NPC wants | **DONE** | Every role has a want and none of them is longer than a few lines. A trader wants a station that is short of what it carries. A pirate wants the *laden* one. An escort wants its client alive. A patrol wants whatever is causing trouble. A scavenger — a new role — wants wreckage, including the wreckage you were going to strip. Put three in one piece of sky and the pirate closes, the escort breaks off, the patrol answers, and you arrive in the middle of something nobody scripted. |
 | **6.2** a reacting economy | **DONE** | A station is short of one or two things, rolled from where it is and then moved by what happens. A convoy through eases it; a convoy destroyed near it deepens it; time drifts it back. A shortage is a price and a price is a reason to fly somewhere — measured, killing an iridium convoy at the door took iridium from 23 to 44, and one getting through brought it back. **Pirates make prices.** |
 | **6.3** universal rules | **DONE** | Rocks break on worlds and part from each other; traffic and sentries go round worlds and round the Leviathan; stations and inhabited worlds deflect; an asteroid is a solid object rather than a damage event; friendly fire destroys other traffic. And now: **gravity is universal in the sky as well as in the code** — traffic carries a drift, steers round wells when it has the attention to spare, gets no dodge while it is being chased, and is swallowed if it loses. **Ships run out of water** when something goes wrong for them, and a drifting hauler is a situation you can spend your own tank on or strip four minutes later. |
-| **6.4** verbs not percentages | **DONE** · fifteen of twenty-eight | Eight were verbs — three weapons, two tractor rigs, reverse thrusters, the ice melter. Seven more are the device layer, each with a cooldown, a rebindable key on its slot and a thumb button on its slot: **cargo ejector, decoy launcher, mine layer, emergency jump**, and now the last three off Ric's own list — **grapple line, silent running, EMP charge**. Every one is a verb by the three-systems test. The ejector moves pirates, the decoy moves sentries and seekers, the mine moves collision, the jump moves the danger curve. The **line** moves *you*: it hooks anything solid in front of the nose and hauls, which is a way out of a well that is not a bigger engine and the fastest way down a Warrens tunnel. The **cloak** is ten seconds of not being there — a sentry loses you, whoever is chasing you *forgets* rather than pausing, and firing ends it, which is what keeps it an escape rather than an ambush. The **burst** stops everything electric inside 1,100 units — sentries, mines, and every engine and gun in reach — **including your own four slots and your scanner**, which is the cost that makes pressing it a decision. |
+| **6.4** verbs not percentages | **DONE** · fifteen of twenty-nine | Eight were verbs — three weapons, two tractor rigs, reverse thrusters, the ice melter. Seven more are the device layer, each with a cooldown, a rebindable key on its slot and a thumb button on its slot: **cargo ejector, decoy launcher, mine layer, emergency jump**, and now the last three off Ric's own list — **grapple line, silent running, EMP charge**. Every one is a verb by the three-systems test. The ejector moves pirates, the decoy moves sentries and seekers, the mine moves collision, the jump moves the danger curve. The **line** moves *you*: it hooks anything solid in front of the nose and hauls, which is a way out of a well that is not a bigger engine and the fastest way down a Warrens tunnel. The **cloak** is ten seconds of not being there — a sentry loses you, whoever is chasing you *forgets* rather than pausing, and firing ends it, which is what keeps it an escape rather than an ambush. The **burst** stops everything electric inside 1,100 units — sentries, mines, and every engine and gun in reach — **including your own four slots and your scanner**, which is the cost that makes pressing it a decision. |
 | **6.5** consequences persist | **DONE** | Battles end and one in three leaves a named memorial. Reputation persists per power. A part you die carrying stays where you fell. Anything that dies in front of you leaves a hull you can come back and strip, written into the book rather than into a chunk. **A ship you saved keeps its name, comes back, and repays you in water once.** **A pirate you hurt and let go is remembered with the damage you did and returns as itself.** All of it readable on WHO KNOWS YOU, and all of it askable with `E`. |
-| **6.6** authored mysteries | **eight places** | Where the brief asks for dozens. Highest ceiling, least code, and 6.7 below is now the concrete plan for it. |
+| **6.6** authored mysteries | **nine places** | Eight dealt a rung of the ladder, plus the Leviathan off it, where the brief asks for dozens. Highest ceiling, least code, and 6.7 below is now the concrete plan for it. |
 | **6.7** the almanac's curve | **DONE** | It was diagnosed here and then fixed in the section above — the ladder runs 13,000 to 3,400,000 (past five and a half million in a wide seed), the danger curve stretched to 1,800,000 with THE LONG DARK past it, the chart gained six zoom steps, and six tests moved from absolute distances to fractions of the curve. Sixteen ten-minute flights to the Leviathan where it used to be less than one. What is left of the entries themselves is tier 5, which is 6.6. |
 
 The honest summary: **6.1 through 6.5 have happened, and 6.7 with them.** 6.4 was
@@ -3241,8 +3383,8 @@ the start of the phase — a grapple, a cloak and an EMP — so the list the fil
 written from is now empty. 6.7 closed after it: the sector is thirty times the size
 it was, which is what the almanac's far end needed.
 
-What is left is **6.6**, the authored mysteries: eight places where the brief
-asks for dozens. It is still the one with the highest ceiling and the least
+What is left is **6.6**, the authored mysteries: nine places — the eight dealt a
+rung of the ladder and the Leviathan off it — where the brief asks for dozens. It is still the one with the highest ceiling and the least
 code, and now that the ladder is long enough it is the only thing left standing
 between the almanac and its twenty hours.
 
@@ -3259,7 +3401,7 @@ until it is a system multiplied.
 
 ---
 
-## Coming back to where you were, and an account to come back on
+## Coming back to where you were, and an account to come back on  ·  **DONE**
 
 Two things, and only the second one needed a server.
 

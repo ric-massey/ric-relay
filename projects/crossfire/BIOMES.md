@@ -4,6 +4,8 @@
 region layer that exists in the code today was built *before* this and does not
 yet obey it; what has been brought into line is recorded at the foot.
 
+*One of Survey's seven documents — `SURVEY-PLAN.md` → "The Survey documents" says how they relate, and its "What is still open" is the one list of what is left.*
+
 > **Partly retired, 17 September 2026.** Ric reversed the naming rule: the top
 > right now names the biome you are in, and scanning inside one puts its borders
 > on the chart. See "Who holds the sky → Seeing it" in SURVEY-PLAN.md. What
@@ -313,6 +315,15 @@ something that is not ordinary space inside 100,000. Inside the abyssal boundary
 a run now meets **eleven to thirteen** of the thirteen kinds rather than six to
 nine.
 
+> *Two words of that have moved on.* There are **fourteen** nature regions now,
+> not thirteen — the figures above were measured before the last one was added,
+> and `test/biomes.js` is what to re-run rather than adjusting them by hand. And
+> "the abyssal boundary" was a danger *band*, which "Who holds the sky" deleted
+> on 17 September; read it as "the deep end of the sector", which is what it was
+> being used to mean. The five *people*-layer kinds — territory, front, frontier,
+> lawless, void — are a separate layer laid over these fourteen, not more of
+> them.
+
 The home bubble is a fixed **30,000 units** of guaranteed ordinary space and is
 no longer a fraction of the cell. The two numbers answer different questions —
 one is "how far does the opening need to be predictable for", the other is "how
@@ -375,11 +386,29 @@ is exactly the question the slots exist to ask.
 
 ## Not built
 
-Everything that changes the *shape* of space rather than its contents: maze, cave,
-city-world, sensor distortion, wormhole-heavy, war-torn. Those need generators
-that build structure rather than scatter objects — the `wall()` primitive the
-Leviathan and the Vault share is the start of that machinery and is why the second
-enterable place cost an afternoon rather than a week.
+**Two of the six on this list have since been built, and this section said
+otherwise until 17 September 2026.**
+
+- ~~**cave**~~ — built, as **THE WARRENS**, which has its own section above. It is
+  the one region that is a rule about the shape of space rather than its
+  contents, and `test/warrens.js` is what holds it: rock that agrees with itself
+  across a chunk line, passages that join up, and nothing ever left inside solid
+  rock.
+- ~~**city-world**~~ — built, as **THE WORKS** (`key: "city"`), one of the two
+  rarest regions at about one crossing in a hundred: seven times the stations,
+  two gates, more than twice the traffic, and the rock roughed up. The directive
+  for it is the "The city-world" section above. Measured at 1.5% of the sky.
+
+Still not built, and all four for the same reason — they need generators that
+build structure rather than scatter objects: **maze**, **sensor distortion**,
+**wormhole-heavy**, **war-torn**. The `wall()` primitive the Leviathan and the
+Vault share is the start of that machinery and is why the second enterable place
+cost an afternoon rather than a week.
+
+*A note on war-torn:* the **front** exists now, but it is a people-layer kind of
+space rather than a biome — it is where two powers meet, not a shape the
+generator builds. The biome version, sky that has been fought over and shows it,
+is still open.
 
 And the thing the Empty exists for: the very small chance of something that can
 occur nowhere else. That is 6.6 — authored, rare, and it must stay rare or the

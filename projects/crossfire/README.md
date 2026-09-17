@@ -40,7 +40,7 @@ stops at the count screen first. Both reach the same modes and the same match.
 | Survival | 1-5 | Co-op asteroid waves, shared lives, optional friendly fire, wrapping arena |
 | Battle Royale | 2-5 | Three lives each, two-hit hulls, stationary gravity hazards, closing wall, no time limit |
 | Campaign | 1-2 | Three scripted missions, sides instead of a free-for-all, an allied fleet flying with you, a shared reserve of lives |
-| Survey | 1 | No edges and no losing. Something to build, six parts to find and a clue for each, endless procedural space, a chart you pin yourself, a thirty-three entry almanac, salvage, a refit and a derelict you fly inside |
+| Survey | 1 | No edges, and survival rather than a fight: hull, water and food, and a death that costs you the hold. Endless procedural space in fourteen kinds of biome, held by three powers whose borders move. A station market, twenty-five hulls, twenty-nine parts and a bench. A chart you fill by flying it and a thirty-five entry almanac. Nine authored places, two of them you fly inside |
 
 Battle Royale shows hull strength only for ships controlled on the current device.
 First hits stay quiet; losing a life adds a short entry to the feed beneath the
@@ -135,10 +135,35 @@ campaign-only; Survival and Battle Royale never build a fleet ledger.
 
 ## Survey
 
-Survey is the mode with nothing shooting at you. It borrows Battle Royale's
-camera-followed view and its gravity wells and drops the wall, the enemies and
-the losing. There is no score, no timer and no result screen. The only thing
-that accumulates is the almanac.
+Survey is the mode with nothing *hunting* you. It borrows Battle Royale's
+camera-followed view and its gravity wells, and drops the wall, the enemies and
+the timer. There is no score and no result screen.
+
+**It is not the mode with no losing, and that description is two phases out of
+date.** You have a hull, a twenty-minute tank of water and forty-five minutes of
+food; running out of any of them kills you, and dying puts you back at the home
+station without your hold. What survives a death is the yard's progress and the
+almanac. Plenty accumulates besides the almanac now: cash, hulls, parts, the
+chart you have flown, your standing with three powers, and the ships that
+remember you.
+
+> **It is the one mode still being built, and this section describes what it
+> does rather than what it is for.** Three other files carry the rest, and which
+> one you want depends on the question:
+>
+> - **What is built, what is left, and why** — `SURVEY-PLAN.md`. Start at its
+>   "Where it stands" and "What is still open"; it is 3,300 lines and those two
+>   sections exist so you do not have to read them.
+> - **What Ric asked for, in his words** — `TODO.md`. One item open.
+> - **Ideas not yet earned a place in the plan** — `BIOMES.md`,
+>   `WORLD-IDEAS.md`, `LIVING-WORLD.md`, `PLAYER-HISTORY.md`. Each says at the
+>   top how much of it is real; `SURVEY-PLAN.md` → "The Survey documents" is the
+>   map of all seven.
+>
+> Where this file and the plan disagree, the split is: **this one is written from
+> the code, so it wins on what the game does**; the plan wins on what the work is
+> for and how far it got. `SURVEY-PLAN.md` → "The Survey documents" says it the
+> same way.
 
 ### It has no edges
 
@@ -290,10 +315,26 @@ Four things were added to have somewhere to go:
   you, and a guard that never leaves its post keeps it.
 - **Stations.** Where salvage becomes a better ship. One is planted at the origin
   so the first refit is not a scavenger hunt.
-- **The Leviathan.** The eighth landmark, 112,000 units out, and the only one
-  with an *inside*. Two flanks of hull discs with the stern quarter left open,
-  a bow cap that makes the corridor a dead end rather than a tunnel, and three
-  caches down the spine — the deepest worth the other two together.
+- **The Leviathan.** The first of two places you fly *inside*, and the only
+  landmark that is **not** on the ladder: it sits at a fixed **40,000 units**
+  rather than being dealt a rung, because the shape of it has to be reachable in
+  the first evening. (It was the eighth rung at 112,000 until 6.7 stretched the
+  ladder to 3.4 million and it came off — the far rung is NODE 01 now.) Two
+  flanks of hull discs with the stern quarter left open, a bow cap that makes the
+  corridor a dead end rather than a tunnel, and three caches down the spine — the
+  deepest worth the other two together.
+- **The Vault.** The second, and deliberately not a second Leviathan: the
+  Leviathan is a *wreck* being picked over, and the Vault is a thing somebody
+  **built to keep people out**. A square shell with one gate, a ring corridor
+  inside it, and four spokes running inward of which three end in a wall — which
+  one is the real way to the core changes with the sector, so nobody can be told
+  the answer. It is on the ladder, out at 1,250,000. Built from the same `wall`
+  primitive as the Leviathan, which is why the second enterable place cost an
+  afternoon rather than a week.
+
+  *Its drawing is the one open item on `TODO.md` (A3)* — the collisions are sound
+  and measured (`test/vault.js`), but it is one filled square and ninety stroked
+  lines where the Leviathan has plating, bays and bulkheads.
 
 ### Two inversions
 
@@ -503,8 +544,10 @@ graph — the one the browser resolved, not the one a test read out of the marku
   almanac, `E` docks at a station you are sitting in, and `Escape` leaves
   whichever page you are on. On the chart, drag or arrow to pan, `±` zooms, `C`
   recentres, `P` cycles the pin kind and a click drops or lifts one — the wheel
-  zooms through nine steps, from 690,000 units across down to 8,300, and the
-  widest fits any world the generator can roll; in the
+  zooms through **fifteen** steps, from about **forty million** units across down
+  to 8,300, and the widest fits any world the generator can roll (it was nine
+  steps topping out at 690,000, which 6.7's five-million-unit ladder outgrew); in
+  the
   almanac the wheel and a drag both scroll, and clicking an entry opens it full
   size — arrows then page through entries without closing it. At a station the
   arrows move and `Enter` buys. On a phone every one of those is a tap or a drag,
