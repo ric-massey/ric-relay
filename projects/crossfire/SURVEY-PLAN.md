@@ -320,6 +320,21 @@ A and C ship to players together; nobody plays a fixed map first.
   angered hunts you at full speed in its own space, at about half elsewhere,
   and hardly at all in the Deep Void or its enemy's space (measured over two
   minutes: 10 hunters in its space, 2 in the Void).
+- **Ships fly together.** Haulers run in convoys (one or two haulers, one or
+  two escorts, more escorts in lawless sky and at the front), patrols fly in
+  wings of two or three, pirates hunt in packs, and independents mostly fly
+  alone. A follower holds a slot off its leader's quarter, the group cruises at
+  its slowest hull's pace, a pirate pack goes for its leader's target, a patrol
+  wing turns on whatever its leader is angry at, and convoy haulers unload when
+  their leader reaches the station. A group only breaks up when its leader
+  dies, runs dry or runs, not when it is just out of range. Measured over three
+  worlds: 295 groups to 851 lone ships, about 11% fewer ships overall.
+- **Pirates keep to the edges.** None three or more cells into a power's
+  territory; 6% odds on its border cells, 1% two cells in. Deep in a territory
+  it is the owner's ships and independents only.
+- **Distress calls were half the sky in a border skirmish.** The role roll was
+  divided by the war's heat (0.45), pushing most rolls past the distress line.
+  It bends by a power curve now: 42 of 845 power ships across three worlds.
 - **Stale charts.** Flying into a cell whose holder changed since you charted it
   says so: "You charted this as HALLOW SPACE. It is CORDON SPACE now."
 - **Saved:** `claims` (only the cells that changed hands), `mapped` and `war`,

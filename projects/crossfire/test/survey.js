@@ -10901,9 +10901,57 @@ const storeOf = (cf, key) => {
     check(void3 >= 0 && void3 < home3,
           "the Void is no refuge: " + void3 + " hunters there against " + home3 +
           " in their own space");
+    /* Company, and where pirates live. Across a few worlds: groups are common
+       and made of one flag, a follower always has a leader in its own chunk, no
+       pirate is ever three cells or more into a power's territory, and deep in
+       a territory it is the owner's ships and independents only. */
+    let groups = 0, solo = 0, mixed = 0, orphan = 0, pirateDeep = 0, pirates = 0;
+    let deepShips = 0, deepForeign = 0, distress = 0, powerShips = 0;
+    for (const seed of [7, 99, 424242]) {
+      const wg = boot("?debug=1&seed=" + seed);
+      wg.cf.start("survey", 1);
+      for (let gx = -30; gx <= 30; gx++) for (let gy = -30; gy <= 30; gy++) {
+        const cx = gx * 9, cy = gy * 9;
+        const sp = wg.cf.spaceAt((cx + 0.5) * 2600, (cy + 0.5) * 2600);
+        const tr = wg.cf.chunk(cx, cy).traffic;
+        tr.forEach((t, ti) => {
+          if (t.leadIdx != null) {
+            const lead = tr[t.leadIdx];
+            if (!lead) orphan++;
+            else if (lead.faction !== t.faction) mixed++;
+          } else if (tr.some(o => o.leadIdx === ti)) groups++;
+          else solo++;
+          if (t.faction === "pirate") {
+            pirates++;
+            if (sp.kind === "territory" && sp.inner >= 3) pirateDeep++;
+          }
+          if (t.faction !== "pirate" && t.faction !== "free") {
+            powerShips++;
+            if (t.role === "distress") distress++;
+          }
+          if (sp.kind === "territory" && sp.inner >= 3) {
+            deepShips++;
+            if (t.faction !== sp.owner && t.faction !== "free") deepForeign++;
+          }
+        });
+      }
+    }
+    check(groups > solo * 0.25, groups + " groups against " + solo + " lone ships — nobody flies together");
+    check(mixed === 0, mixed + " ships fly in a group under another flag");
+    check(orphan === 0, orphan + " followers have no leader in their chunk");
+    check(pirates > 50 && pirateDeep === 0,
+          pirateDeep + " of " + pirates + " pirates are deep inside a power's territory");
+    check(deepShips > 50 && deepForeign === 0,
+          deepForeign + " of " + deepShips + " ships deep in a territory fly another power's flag");
+    check(distress < powerShips * 0.15,
+          distress + " of " + powerShips + " power ships are distress calls");
+
     console.log("  flags      nobody docks at the enemy · no enemy ships inside a " +
                 "power's space (" + inside + " sampled) · hunters in two minutes: " +
-                home3 + " in its space, " + void3 + " in the Void");
+                home3 + " in its space, " + void3 + " in the Void · " + groups +
+                " groups to " + solo + " lone ships · 0 of " + pirates +
+                " pirates deep in territory · " + distress + " of " + powerShips +
+                " power ships in distress");
   }
 
   console.log("  borders    a scan charts " + (mapped > 0 ? "the patch" : "nothing") +

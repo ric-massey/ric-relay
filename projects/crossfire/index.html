@@ -9408,6 +9408,8 @@
         const was = liveTraffic.get(tid);
         if (was) { surv.traffic.push(was); return; }
         const made = Object.assign({}, t, { id: tid, cargo: t.cargo.slice() });
+        // Who it flies with: the leader is the same chunk's ship at `leadIdx`.
+        if (t.leadIdx != null) made.leadId = k + "t" + t.leadIdx;
         // Its own cruising speed, kept so a ship that runs from something can
         // stop running afterwards rather than sprinting for the rest of its life.
         made.baseSpeed = made.speed;
@@ -10779,8 +10781,59 @@
      None of them shoot at you and none of them get in your way, which is the
      point: the sector should feel inhabited without becoming another thing to
      manage. What you can do to them is your business. */
+  /* Where a follower should be. Nothing, if it has no leader any more — the
+     leader died, broke off, or went adrift — in which case the group is over
+     and this ship gets on with its own wants. Otherwise:
+
+       · a pirate goes for whatever its leader is going for;
+       · a patrol wing turns on whatever its leader is angry at;
+       · everything else holds its slot off the leader's quarter, and a hauler
+         in a convoy unloads when its leader reaches the station.
+
+     Escorts are not here: their want is already "keep the client alive", and
+     the client is the convoy's hauler. */
+  function formationFor(t, byId) {
+    if (!t.leadId) return null;
+    const lead = byId.get(t.leadId);
+    /* Out of the loaded list is not dead: a leader that has flown out of range
+       comes back when its chunk does, and its group should still be its group.
+       Only a kill, running dry or running away ends one. */
+    if (!lead) {
+      if (surv.goneTraffic.has(t.leadId)) t.leadId = null;
+      t.leader = null;
+      return null;
+    }
+    if (lead.adrift || lead.kind === "distress" || lead.breakOff > 0) {
+      t.leadId = null;
+      t.leader = null;
+      return null;
+    }
+    t.leader = lead;
+    if (t.role === "escort") return null;
+    if (t.role === "pirate" && lead.mark && lead.markKind === "ship") {
+      t.mark = lead.mark; t.markKind = "ship";
+      return lead.mark;
+    }
+    if (t.role === "patrol" && lead.angryAt) {
+      t.angryAt = lead.angryAt;
+      t.mark = lead.angryAt; t.markKind = "ship";
+      return lead.angryAt;
+    }
+    if (lead.markKind === "station" && lead.mark && t.cargo.length &&
+        Math.hypot(lead.mark.x - t.x, lead.mark.y - t.y) < 900) {
+      for (const key of t.cargo) moveMarket(lead.mark, key, -0.3);
+      t.cargo = [];
+    }
+    const slot = t.slot || { back: 320, side: 0 };
+    const c = Math.cos(lead.a), s2 = Math.sin(lead.a);
+    return { x: lead.x - c * slot.back - s2 * slot.side,
+             y: lead.y - s2 * slot.back + c * slot.side };
+  }
+
   function surveyTraffic(dt) {
     const me = ships[0];
+    const byId = new Map();
+    for (const o of surv.traffic) if (o.id) byId.set(o.id, o);
     for (let i = surv.traffic.length - 1; i >= 0; i--) {
       const t = surv.traffic[i];
 
@@ -11055,6 +11108,14 @@
         if (t.baitFor <= 0) { t.bait = null; t.baitFor = 0; }
       }
       const bait = t.bait && t.baitFor > 0 ? t.bait : null;
+      const formation = formationFor(t, byId);
+      /* A group keeps together: a follower that has fallen behind its slot
+         opens up to catch it, and a leader that is angry takes its guns along. */
+      if (formation && t.leader) {
+        const gap = Math.hypot(formation.x - t.x, formation.y - t.y);
+        if (gap > 500 && t.baseSpeed) t.speed = t.baseSpeed * 1.25;
+        if (t.leader.angry && armed && !unseen) t.angry = true;
+      }
       if (bait && Math.hypot(bait.x - t.x, bait.y - t.y) < 300) takeJetsam(t);
       /* And a decoy, which is a lie about where you are. Only to something that
          is already angry with you: a decoy does not make anybody angry, it makes
@@ -11068,6 +11129,7 @@
                  : fleeing ? { x: t.x + (t.x - me.x), y: t.y + (t.y - me.y) }
                  : tailing ? { x: me.x - Math.cos(t.a) * 700 * U,
                                y: me.y - Math.sin(t.a) * 700 * U }
+                 : formation ? formation
                  : wantOf(t, dt);
       /* Arrival is judged against where it was *going*, not against where the
          wells have pushed the aim — otherwise a station on the far side of a well
@@ -15608,7 +15670,9 @@
     /* How many is the owner's business now, not the distance's: `busy` already
        carries it (see `abund`), so a power's own space is busy, the frontier is
        thin and the Deep Void has almost nobody in it wherever it is. */
-    if (R() > 0.22 * busy * calm) return;
+    /* Lower than a lone ship needs, because most rolls now put up a group — a
+       convoy, a patrol wing, a pack — and the sky should not fill up with them. */
+    if (R() > 0.14 * busy * calm) return;
 
     /* Whose, and what sort. Pirates thicken with distance — the lanes are kept
        near home and nobody is keeping anything out in the deep — and the two
@@ -15632,7 +15696,14 @@
        sky, common where nobody can. Flags come from who holds it — a power's
        own space is mostly its own ships, a front is the two sides of the war,
        and the frontier and lawless space are independents and whoever passes. */
-    if (roll < space.pirates * calm) {
+    /* Pirates live where nobody can reach them. Inside a power's territory only
+       its outer cells see any, and its heartland none at all; a pirate three
+       systems deep into Cordon space is a pirate that has already been caught. */
+    const inner = space.inner || 0;
+    const pirateShare = space.kind === "territory"
+      ? (inner <= 1 ? 0.06 : inner === 2 ? 0.01 : 0)
+      : space.pirates;
+    if (roll < pirateShare * calm) {
       faction = "pirate"; role = "pirate";
     } else {
       const powers = FACTIONS.map(f => f.key);
@@ -15645,7 +15716,9 @@
         const sides = space.owner ? [space.owner, space.enemy]
                     : (w.belligerents.length ? w.belligerents : powers);
         faction = sides[R() < 0.5 ? 0 : 1] || powers[0];
-      } else if (space.owner && pick < free + 0.62) {
+      } else if (space.owner && (pick < free + 0.62 || inner >= 2)) {
+        /* Deep in a power's space it is that power's ships and the independents,
+           and nobody else's. Other flags pass through only near the border. */
         faction = space.owner;
       } else {
         /* Anybody passing through — except the owner's enemies. A power at war
@@ -15657,7 +15730,12 @@
         faction = ok[Math.floor(R() * ok.length)] || powers[0];
       }
 
-      const r2 = R() / Math.min(1.35, heat);
+      /* A hotter war tilts the roll toward the armed roles. It used to divide the
+         roll by the heat, which in a border skirmish (heat 0.45) pushed more
+         than half of every power's ships past 0.95 — into distress calls. A
+         power curve bends the same way and stays inside 0–1: a skirmish is
+         about one distress call in nine, a total war one in thirty. */
+      const r2 = Math.pow(R(), Math.min(1.7, heat));
       if (faction === "free") {
         // The independents are the ones with time to pick over a wreck.
         role = r2 < 0.42 ? "trader" : r2 < 0.72 ? "freight" : "scavenger";
@@ -15669,21 +15747,22 @@
       else if (r2 < 0.95) role = "scavenger";
       else role = "distress";
     }
-    const kind = role;
-    const hulls = TRAFFIC_HULLS[role];
-    const hull = hulls[Math.floor(R() * hulls.length)];
     const x = ox + rnd(300, CHUNK - 300), y = oy + rnd(300, CHUNK - 300);
 
     /* A route rather than a destination: a hauler runs a line and turns round at
        the ends, which is what makes meeting one twice feel like the same ship
        going about its day rather than a spawn. */
     const a = R() * Math.PI * 2;
-    const spec = ROLES[role];
-    const len = spec.armed ? rnd(900, 2600) : rnd(4000, 14000);
+    const len = ROLES[role].armed ? rnd(900, 2600) : rnd(4000, 14000);
     const to = { x: x + Math.cos(a) * len, y: y + Math.sin(a) * len };
 
+    const make = (role, x, y, to) => {
+    const kind = role;
+    const spec = ROLES[role];
+    const hulls = TRAFFIC_HULLS[role];
+    const hull = hulls[Math.floor(R() * hulls.length)];
     const hs = shipSpec(hull);
-    out.traffic.push({
+    return {
       kind, role, faction, hull, x, y, a,
       from: { x, y }, to, leg: 1,
       /* **The hull's own speed**, not a number rolled from its job. A Needle in a
@@ -15716,7 +15795,83 @@
       tank: spec.armed || role === "distress" ? null : rnd(50, 130),
       guards: role === "distress" ? 1 + Math.floor(R() * 2) : 0,
       phase: R() * Math.PI * 2
+    };
+    };
+
+    const lead = make(role, x, y, to);
+    out.traffic.push(lead);
+    const leadIdx = out.traffic.length - 1;
+
+    /* ── company ────────────────────────────────────────────────────────────
+       Almost nothing out here flies alone. Haulers run in convoys with escorts
+       off their shoulders, patrols fly as a wing, pirates hunt in packs — and
+       the independents are the ones you meet on their own. A follower walks the
+       leader's route, holds a slot off its quarter (see `formationFor`), and
+       the whole group cruises at the pace of its slowest hull. */
+    const plan = groupPlan(role, faction, space, R);
+    const group = [lead];
+    plan.forEach((r2, gi) => {
+      const slot = GROUP_SLOTS[gi % GROUP_SLOTS.length];
+      const c = Math.cos(a), s2 = Math.sin(a);
+      const px = x - c * slot.back - s2 * slot.side;
+      const py = y - s2 * slot.back + c * slot.side;
+      const f = make(r2, px, py, { x: to.x + (px - x), y: to.y + (py - y) });
+      f.leadIdx = leadIdx;
+      f.slot = slot;
+      out.traffic.push(f);
+      group.push(f);
     });
+    if (group.length > 1) {
+      const pace = Math.min(...group.map(g => g.speed));
+      for (const g of group) g.speed = pace;
+      lead.groupSize = group.length;
+    }
+  }
+
+  /* Where a follower sits relative to its leader: behind by `back`, off to one
+     side by `side`. Alternating sides, stepping back, so a convoy of four reads
+     as a column and a wing of three as a vee. */
+  const GROUP_SLOTS = [
+    { back: 320, side: -240 }, { back: 320, side: 240 },
+    { back: 640, side: 0 },    { back: 900, side: -300 }, { back: 900, side: 300 }
+  ];
+
+  /* Who flies with this one. Rolled from the chunk's own stream, so the same
+     chunk always makes the same group. */
+  function groupPlan(role, faction, space, R) {
+    const k = space.kind;
+    const out = [];
+    if (faction === "pirate") {
+      const pack = k === "lawless" || k === "void" ? 0.6 : 0.3;
+      if (R() < pack) {
+        out.push("pirate");
+        if (R() < 0.35) out.push("pirate");
+      }
+      return out;
+    }
+    if (faction === "free") {
+      // Independents mostly travel alone. Now and then two haulers together.
+      if ((role === "trader" || role === "freight") && R() < 0.2) out.push(role);
+      return out;
+    }
+    if (role === "trader" || role === "freight") {
+      const convoy = k === "territory" ? 0.55 : k === "lawless" ? 0.5
+                   : k === "front" ? 0.35 : 0.4;
+      if (R() < convoy) {
+        if (R() < 0.4) out.push(role);
+        out.push("escort");
+        // The worse the sky, the more guns come along.
+        if (R() < (k === "lawless" || k === "front" ? 0.65 : 0.3)) out.push("escort");
+      }
+      return out;
+    }
+    if (role === "patrol") {
+      if (R() < (k === "territory" || k === "front" ? 0.65 : 0.35)) {
+        out.push("patrol");
+        if (R() < 0.35) out.push("patrol");
+      }
+    }
+    return out;
   }
 
   /* What one leaves behind, laid out from the battle's own seed so the field of

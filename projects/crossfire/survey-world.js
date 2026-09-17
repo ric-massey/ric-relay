@@ -541,7 +541,23 @@ function spaceOfCell(cx, cy) {
   } else {
     kind = near.length >= 2 ? "lawless" : "frontier";
   }
-  const out = Object.assign({}, SPACES[kind], { kind, owner, enemy, cx, cy });
+  /* How far into its owner's territory a held cell is: 1 on the border, up to 3
+     three cells in, and 4 for anything deeper — the heartland. Pirates and other
+     people's ships belong near the edge of somebody's space, not in the middle
+     of it. */
+  let inner = 0;
+  if (owner) {
+    inner = 4;
+    for (let d = 1; d <= 3 && inner === 4; d++) {
+      for (let j = -d; j <= d && inner === 4; j++) {
+        for (let i = -d; i <= d; i++) {
+          if (Math.max(Math.abs(i), Math.abs(j)) !== d) continue;
+          if (holderOf(cx + i, cy + j) !== owner) { inner = d; break; }
+        }
+      }
+    }
+  }
+  const out = Object.assign({}, SPACES[kind], { kind, owner, enemy, inner, cx, cy });
   if (spaceCache.size > 20000) spaceCache.clear();
   spaceCache.set(key, out);
   return out;
