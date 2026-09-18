@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>History — Training</title>
+  <meta name="description" content="Everything done, newest first — sessions, runs, board nights and days out.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://ricmassey.com/projects/training/history.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fc4c02'/><text y='.85em' font-size='64' x='18'>📖</text></svg>">
+  <link rel="stylesheet" href="../../assets/training-nav.css">
+  <link rel="stylesheet" href="../../assets/training.css">
+</head>
+<body>
+<script src="../../assets/training-nav.js" data-nav="history"></script>
+
+  <div class="wrap">
+    <div class="pagehead">
+      <h1>History</h1>
+      <p>Everything that actually happened, newest first.</p>
+    </div>
+
+    <div class="histsum" id="histsum" hidden></div>
+    <div id="feed"></div>
+    <div class="morewrap"><button type="button" class="morebtn" id="more" hidden>Show more</button></div>
+
+    <div class="owner" id="ownerbar" hidden>
+      <strong>Owner mode.</strong> <span id="ownerstate">checking…</span>
+      <button type="button" class="ownerbtn" id="signout">sign out</button>
+    </div>
+
+    <footer>
+      Ric's personal training log · powered by stubbornness<br>
+      <span class="foot-dim">The plan is generated; ticks and notes are live.</span>
+    </footer>
+  </div>
+
+  <script src="../../assets/owner.js"></script>
+  <script src="../../projects/climbing/climb-host.js?v=1"></script>
+  <script src="../../projects/climbing/climb-media.js?v=4"></script>
+  <script src="../../assets/training-core.js?v=1"></script>
+  <script>
+  /* TRAINING — history
+     ──────────────────────────────────────────────────────────────────────────
+     The plan is what was MEANT to happen; this page is what did. A day earns a
+     place here by evidence, not by being in the past — a week where nothing was
+     ticked, run or climbed is a week that is simply not here, which is the
+     honest thing for it to be. The gap is the information.
+
+     Five kinds of evidence count, and they arrive from four different places:
+     a tick (his, or one Strava placed), a run off the watch, a board night
+     pulled from Kilter or Tension, a day logged on the climbing page, and a
+     note. Any one of them is enough.
+
+     Days are drawn with the same card the home page uses for today, so a day
+     reads identically wherever you meet it — and because the card carries its
+     own tick boxes, a session missed at the time can still be marked off here
+     months later, which is the whole reason for not making this a dead
+     read-only list. */
+  (function () {
+    const $ = s => document.querySelector(s);
+    const T = Training;
+    const PAGE = 30;
+    let shown = PAGE;
+
+    /* Did anything actually happen? Note the `=== true` on the ticks: an
+       untick is stored as `false` rather than removed, so a day he ticked and
+       then cleared would otherwise count as evidence of itself forever. */
+    function happened(iso) {
+      const st = T.stateOf(iso);
+      if (Object.values(st.done || {}).some(v => v === true)) return true;
+      if ((st.notes || []).length) return true;
+      if (T.runsOn(iso).length) return true;
+      if (T.boardOn(iso).length) return true;
+      if (T.climbOn(iso)) return true;
+      return false;
+    }
+
+    const lived = () => T.days()
+      .filter(d => d.date <= T.todayISO())
+      .filter(d => happened(d.date))
+      .sort((a, b) => b.date.localeCompare(a.date));
+
+    /* A band of totals over the days below it. Deliberately counts only what
+       is on this page — miles RUN, sessions DONE — rather than restating the
+       plan's targets, which the home page already carries. */
+    function summary(days) {
+      const metres = days.reduce((m, d) =>
+        m + T.runsOn(d.date).reduce((n, a) => n + (a.distance || 0), 0), 0);
+      const sessions = days.reduce((n, d) =>
+        n + T.doneCountOf(T.stateOf(d.date), d.sessions), 0);
+      const climbs = days.filter(d => T.climbOn(d.date) || T.boardOn(d.date).length).length;
+      const el = $('#histsum');
+      el.hidden = false;
+      el.innerHTML =
+        `<div class="hs"><b>${days.length}</b><span>day${days.length === 1 ? '' : 's'} logged</span></div>` +
+        `<div class="hs"><b>${sessions}</b><span>session${sessions === 1 ? '' : 's'} done</span></div>` +
+        `<div class="hs"><b>${T.miles(metres)}</b><span>miles run</span></div>` +
+        `<div class="hs"><b>${climbs}</b><span>day${climbs === 1 ? '' : 's'} climbing</span></div>`;
+    }
+
+    function render() {
+      if (!T.ready()) return;
+      T.mountOwnerBar();
+      const days = lived();
+
+      if (!days.length) {
+        $('#histsum').hidden = true;
+        $('#feed').innerHTML =
+          '<div class="loadfail">Nothing logged yet. Tick a session, or go for a run ' +
+          'and let the watch do it.</div>';
+        $('#more').hidden = true;
+        return;
+      }
+
+      summary(days);
+      $('#feed').innerHTML = days.slice(0, shown).map(d => T.dayCard(d.date, false)).join('');
+      $('#more').hidden = days.length <= shown;
+      $('#more').textContent = `Show more (${days.length - shown} older)`;
+      T.wire($('#feed'));
+    }
+
+    /* Grows the page rather than replacing it: the cards already on screen keep
+       their open panels and their scroll position, and only the new ones are
+       wired. Re-rendering the lot would collapse everything he had opened. */
+    $('#more').addEventListener('click', () => { shown += PAGE; render(); });
+
+    T.onChange(render);
+    T.load();
+  })();
+  </script>
+  <script src="../../effects.js"></script>
+</body>
+</html>

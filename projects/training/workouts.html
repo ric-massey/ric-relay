@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workouts — Training</title>
+  <meta name="description" content="Every session in the training plan, filterable.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://ricmassey.com/projects/training/workouts.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fc4c02'/><text y='.85em' font-size='64' x='18'>📋</text></svg>">
+  <link rel="stylesheet" href="../../assets/training-nav.css">
+  <link rel="stylesheet" href="../../assets/training.css">
+</head>
+<body>
+<script src="../../assets/training-nav.js" data-nav="workouts"></script>
+
+  <div class="wrap">
+    <div class="pagehead">
+      <h1>Workouts</h1>
+      <p>Every session in the plan. The days are the plan &mdash; this is all of them in one list.</p>
+    </div>
+
+    <!-- Filters, not search. You come here knowing roughly what you want — the
+         key runs, everything in the marathon build, what climbing looks like in
+         February — and those are all filters. A text box would be a worse way
+         to ask any of them. -->
+    <div class="filters" id="filters">
+      <div class="fgroup" role="group" aria-label="When">
+        <button type="button" data-when="soon" class="on">Upcoming</button>
+        <button type="button" data-when="past">Past</button>
+        <button type="button" data-when="all">All</button>
+      </div>
+      <div class="fgroup" role="group" aria-label="Kind">
+        <button type="button" data-kind="" class="on">Everything</button>
+        <button type="button" data-kind="climb">🧗 Climb</button>
+        <button type="button" data-kind="run">🏃 Run</button>
+        <button type="button" data-kind="body">🧘 Body</button>
+      </div>
+      <div class="fgroup" role="group" aria-label="Key sessions">
+        <button type="button" data-key="1">Key only</button>
+      </div>
+      <label class="fphase">Block
+        <select id="fphase"><option value="">all</option></select>
+      </label>
+    </div>
+
+    <div class="fcount" id="fcount"></div>
+    <div id="list"></div>
+
+    <footer>
+      Ric's personal training log · powered by stubbornness<br>
+      <span class="foot-dim">The plan is generated; ticks and notes are live.</span>
+    </footer>
+  </div>
+
+  <script src="../../assets/owner.js"></script>
+  <script src="../../projects/climbing/climb-host.js?v=1"></script>
+  <script src="../../projects/climbing/climb-media.js?v=4"></script>
+  <script src="../../assets/training-core.js?v=1"></script>
+  <script>
+  /* TRAINING — workouts
+     ──────────────────────────────────────────────────────────────────────────
+     A flat index of every session the plan holds, which the calendar cannot be:
+     a month grid answers "what is on Thursday" and this answers "when do I
+     actually run hard" and "what does the marathon build look like".
+
+     Rows LINK to the calendar rather than carrying tick boxes of their own.
+     Ticking is a thing you do on a day you are looking at, and a list of seven
+     hundred checkboxes is a different and much worse page — so each row is a
+     way in, and the day itself is where the work gets marked off.
+
+     Body sessions are in the plan every single day. They are filterable rather
+     than hidden, because "what is the morning practice" is a fair question,
+     but they are NOT what you came for — so Upcoming hides the ones that are
+     only a morning practice, and the Body filter brings them back. */
+  (function () {
+    const $ = s => document.querySelector(s);
+    const T = Training;
+    const F = { when: 'soon', kind: '', key: false, phase: '' };
+
+    /* A day whose only content is the standing morning/night practice is
+       scaffolding on this page, not a workout. */
+    const substantive = s => s.kind !== 'rest' && !(s.kind === 'body' && !s.key);
+
+    function rows() {
+      const today = T.todayISO();
+      const out = [];
+      for (const d of T.days()) {
+        if (F.when === 'soon' && d.date < today) continue;
+        if (F.when === 'past' && d.date >= today) continue;
+        if (F.phase && d.phase !== F.phase) continue;
+        for (const s of d.sessions) {
+          if (F.kind ? s.kind !== F.kind : !substantive(s)) continue;
+          if (F.key && !s.key) continue;
+          out.push([d, s]);
+        }
+      }
+      return F.when === 'past' ? out.reverse() : out;
+    }
+
+    function render() {
+      if (!T.ready()) return;
+      const list = rows();
+      const today = T.todayISO();
+      $('#fcount').textContent = list.length
+        ? `${list.length} session${list.length === 1 ? '' : 's'}`
+        : '';
+
+      let html = '', block = null;
+      for (const [d, s] of list) {
+        /* One heading per block as it changes, so a long scroll always has the
+           phase it is in somewhere above it. */
+        if (d.phase !== block) {
+          block = d.phase;
+          const p = T.phases().find(x => x.name === block);
+          html += `<div class="wblock"><span class="wb-n">${T.esc(block)}</span>` +
+                  (p && p.sub ? `<span class="wb-s">${T.esc(p.sub)}</span>` : '') + `</div>`;
+        }
+        const st = T.stateOf(d.date);
+        const done = T.doneOf(st, s);
+        html += `<a class="wrow${done ? ' is-done' : ''}${d.date === today ? ' is-today' : ''}"
+                    href="calendar.html#d-${T.esc(d.date)}">
+          <span class="w-date"><b>${T.esc(T.pretty(d.date).replace(/^(\w{3})\w*/, '$1'))}</b></span>
+          <span class="w-ico">${T.ICON[s.kind] || ''}</span>
+          <span class="w-txt">
+            <span class="w-t">${T.esc(s.title)}${s.key ? '<span class="keytag">key</span>' : ''}${
+              done ? '<span class="donetag">done</span>' : ''}</span>
+            ${s.meta ? `<span class="w-m">${T.esc(s.meta)}</span>` : ''}
+          </span>
+          <span class="w-slot">${T.esc(s.slot || '')}</span>
+        </a>`;
+      }
+      $('#list').innerHTML = html ||
+        '<div class="loadfail">Nothing matches that. Try a wider filter.</div>';
+    }
+
+    /* The block list comes from the plan rather than being typed here, so a
+       renamed or re-cut phase needs no edit on this page. */
+    function fillPhases() {
+      const sel = $('#fphase');
+      for (const p of T.phases()) {
+        const o = document.createElement('option');
+        o.value = o.textContent = p.name;
+        sel.appendChild(o);
+      }
+    }
+
+    $('#filters').addEventListener('click', e => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.when !== undefined) {
+        F.when = b.dataset.when;
+        b.parentElement.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      } else if (b.dataset.kind !== undefined) {
+        F.kind = b.dataset.kind;
+        b.parentElement.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      } else if (b.dataset.key !== undefined) {
+        F.key = !F.key;
+        b.classList.toggle('on', F.key);
+      }
+      render();
+    });
+    $('#fphase').addEventListener('change', e => { F.phase = e.target.value; render(); });
+
+    T.onChange(render);
+    T.load().then(fillPhases);
+  })();
+  </script>
+  <script src="../../effects.js"></script>
+</body>
+</html>

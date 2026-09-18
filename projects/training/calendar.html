@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendar — Training</title>
+  <meta name="description" content="The training plan, month by month.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://ricmassey.com/projects/training/calendar.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fc4c02'/><text y='.85em' font-size='64' x='18'>📅</text></svg>">
+  <link rel="stylesheet" href="../../assets/training-nav.css">
+  <link rel="stylesheet" href="../../assets/training.css">
+</head>
+<body>
+<script src="../../assets/training-nav.js" data-nav="calendar"></script>
+
+  <div class="wrap">
+    <div class="pagehead">
+      <h1>Calendar</h1>
+      <p>The whole season, month by month. Tap a day for what is on it.</p>
+    </div>
+
+    <div class="calwrap">
+      <div class="calhead">
+        <button type="button" class="calnav" id="calprev" aria-label="Previous month">‹</button>
+        <div class="calmonth" id="calmonth">—</div>
+        <button type="button" class="calnav" id="calnext" aria-label="Next month">›</button>
+      </div>
+      <div class="caldow" aria-hidden="true"></div>
+      <div class="calgrid" id="calgrid" role="grid"></div>
+      <div class="calkey">
+        <span><i class="k-climb"></i> climbing</span>
+        <span><i class="k-run"></i> running</span>
+        <span><i class="k-rest"></i> rest</span>
+        <span><i class="k-done"></i> done</span>
+      </div>
+      <div id="calday"></div>
+    </div>
+
+    <div class="owner" id="ownerbar" hidden>
+      <strong>Owner mode.</strong> <span id="ownerstate">checking…</span>
+      <button type="button" class="ownerbtn" id="signout">sign out</button>
+    </div>
+
+    <footer>
+      Ric's personal training log · powered by stubbornness<br>
+      <span class="foot-dim">The plan is generated; ticks and notes are live.</span>
+    </footer>
+  </div>
+
+  <script src="../../assets/owner.js"></script>
+  <script src="../../projects/climbing/climb-host.js?v=1"></script>
+  <script src="../../projects/climbing/climb-media.js?v=4"></script>
+  <script src="../../assets/training-core.js?v=1"></script>
+  <script>
+  /* TRAINING — calendar
+     ──────────────────────────────────────────────────────────────────────────
+     The month grid and the panel that opens under a day. Lifted out of the old
+     single-page training.html unchanged in behaviour — it now talks to
+     Training (assets/training-core.js) for the plan and the ticks instead of
+     reaching for module-level variables that used to sit beside it.
+
+     ── deep links ──
+     #d-2026-11-08 opens that day and scrolls to it, which is what the home
+     page's "coming up" rows and anything else pointing here rely on. */
+  (function () {
+    const $ = s => document.querySelector(s);
+    const T = Training;
+
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  let CAL_MONTH = null;     // first of the month being shown
+  let CAL_SEL = null;       // the day whose detail panel is open
+
+  /* Which dot to draw. A day is climbing if it has a climbing session, and so
+     on — the morning practice and the wind-down are on every single day and
+     would make every cell look identical, so they do not get a dot. */
+  function dotsFor(d) {
+    const kinds = new Set(d.sessions.map(s => s.kind).filter(k => k === 'climb' || k === 'run'));
+    if (!kinds.size) kinds.add('rest');
+    return [...kinds];
+  }
+
+  function renderCal() {
+    if (!T.ready() || !T.days().length) return;
+    const first = T.days()[0].date, last = T.days()[T.days().length - 1].date;
+    if (!CAL_MONTH) {
+      const t = new Date(T.todayISO() + 'T00:00:00');
+      const inPlan = T.dayOf(T.todayISO());
+      const anchor = inPlan ? t : new Date(first + 'T00:00:00');
+      CAL_MONTH = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+    }
+    const y = CAL_MONTH.getFullYear(), m = CAL_MONTH.getMonth();
+    $('#calmonth').textContent = `${MONTH_NAMES[m]} ${y}`;
+    $('.caldow').innerHTML = ['S','M','T','W','T','F','S'].map(x => `<span>${x}</span>`).join('');
+
+    const start = new Date(y, m, 1).getDay();
+    const days = new Date(y, m + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < start; i++) cells.push('<div class="calcell blank"></div>');
+    for (let n = 1; n <= days; n++) {
+      const iso = T.isoOf(new Date(y, m, n));
+      const d = T.dayOf(iso);
+      if (!d) { cells.push(`<div class="calcell outside"><span class="cd">${n}</span></div>`); continue; }
+      const st = T.stateOf(iso);
+      const doneCount = T.doneCountOf(st, d.sessions);
+      const allDone = doneCount === d.sessions.length && d.sessions.length > 0;
+      const cls = ['calcell'];
+      if (iso === T.todayISO()) cls.push('today');
+      if (iso === CAL_SEL) cls.push('sel');
+      if (allDone) cls.push('isdone');
+      if (d.deload) cls.push('deload');
+      const climbed = T.climbOn(iso) ? '<span class="cevent" title="climbed">🧗</span>' : '';
+      cells.push(`<button type="button" class="${cls.join(' ')}" data-cal="${iso}" role="gridcell"
+          aria-label="${T.esc(T.pretty(iso))}${allDone ? ', done' : ''}">
+        ${allDone ? '<span class="ctick">✓</span>' : ''}${climbed}
+        <span class="cd">${n}</span>
+        <span class="cdots">${dotsFor(d).map(k => `<i class="${k}"></i>`).join('')}</span>
+      </button>`);
+    }
+    $('#calgrid').innerHTML = cells.join('');
+
+    /* Do not offer months the plan does not cover. */
+    const prevEnd = new Date(y, m, 0), nextStart = new Date(y, m + 1, 1);
+    $('#calprev').disabled = T.isoOf(prevEnd) < first;
+    $('#calnext').disabled = T.isoOf(nextStart) > last;
+
+    $('#calday').innerHTML = CAL_SEL ? calDayPanel(CAL_SEL) : '';
+    /* Scoped: #today already carries its listeners and must not be handed a
+       second set every time a month is turned. */
+    if (CAL_SEL) T.wire($('#calday'));
+
+    $('#calprev').onclick = () => { CAL_MONTH = new Date(y, m - 1, 1); CAL_SEL = null; renderCal(); };
+    $('#calnext').onclick = () => { CAL_MONTH = new Date(y, m + 1, 1); CAL_SEL = null; renderCal(); };
+    document.querySelectorAll('[data-cal]').forEach(b => b.onclick = () => {
+      CAL_SEL = (CAL_SEL === b.dataset.cal) ? null : b.dataset.cal;
+      renderCal();
+      if (CAL_SEL) $('#calday').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+  }
+
+  function calDayPanel(iso) {
+    const d = T.dayOf(iso);
+    if (!d) return '';
+    const st = T.stateOf(iso);
+    const wk = T.weeks()[d.week] || {};
+    return `<div class="calday">
+      <h3>${T.esc(T.pretty(iso))}</h3>
+      <div class="sub">${T.esc(d.phase)} · week ${d.week}${d.deload ? ' · deload' : ''} · ${wk.miles ?? '—'} mi that week</div>
+      ${T.runLink(iso)}
+      ${d.sessions.map((s, i) => T.sessionRow(iso, s, i)).join('')}
+      ${Owner.on() && d.sessions.length > 1 ? `<button type="button" class="allbtn" data-all="${T.esc(iso)}">Did all of it</button>` : ''}
+      ${T.notesBlock(iso)}
+      ${T.climbLink(iso)}
+    </div>`;
+  }
+
+  /* Pulled out of render() so the load-failure path can still draw it. */
+
+    /* A link in with a date on it opens that day. Read once, on the first
+       render after the plan lands, and then forgotten — re-reading it on every
+       repaint would fight the taps that come after. */
+    let wantDay = /^#d-\d{4}-\d{2}-\d{2}$/.test(location.hash) ? location.hash.slice(3) : null;
+
+    function render() {
+      if (!T.ready()) return;
+      T.mountOwnerBar();
+      if (wantDay && T.dayOf(wantDay)) { CAL_SEL = wantDay; CAL_MONTH = monthOf(wantDay); }
+      renderCal();
+      if (wantDay) {
+        const el = $('#calday');
+        if (el) el.scrollIntoView({ block: 'nearest' });
+        wantDay = null;
+      }
+    }
+
+    const monthOf = iso => {
+      const d = new Date(iso + 'T00:00:00');
+      return new Date(d.getFullYear(), d.getMonth(), 1);
+    };
+
+    T.onChange(render);
+    T.load();
+  })();
+  </script>
+  <script src="../../effects.js"></script>
+</body>
+</html>

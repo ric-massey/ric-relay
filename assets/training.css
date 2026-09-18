@@ -1,0 +1,653 @@
+/* TRAINING — the section's stylesheet
+   ────────────────────────────────────────────────────────────────────────────
+   Lifted out of training.html when the section became four pages. The home
+   page, the calendar, the workout list and the history all draw the same
+   cards, session rows, tick boxes and run panels, so the rules for them live
+   here once rather than in four <style> blocks drifting apart.
+
+   The section's nav bar is NOT here — that is assets/training-nav.css, for the
+   same reason the climbing bar is split out: the bar has to sit on pages at two
+   different depths and is styled against .traintop / .trainnav so it cannot
+   collide with whatever else a page calls its header. */
+
+:root {
+  /* Strava orange is the room's identity, but as *text* on white it's only
+     3.4:1 and as a *bar* under white text it's 3.4:1 too — both under AA.
+     So: --brand stays the fill color (bars of it, big blocks, borders),
+     --brand-bar is the header, and --brand-ink is orange type on a light
+     card. Use the ink one whenever the orange is carrying words. */
+  --brand: #fc4c02;
+  --brand-bar: #d64000;
+  --brand-ink: #c94000;
+  --brand-dark: #b83a00;
+  --bg: #f7f7fa;
+  --card: #ffffff;
+  --ink: #242428;
+  --soft: #6d6d78;
+  --line: #e6e6ec;
+  --heat: #fc4c02;
+  --good: #2f9e57;
+  /* The same split --brand/--brand-ink already makes, for the same reason.
+     --good is a fill: the legend swatch, the done row's border. As type it
+     is 3.42:1 on the card and 3.18:1 on the #eefaf1 a ticked row turns —
+     under AA both times, on the one word that tells you a session is done.
+     --good-ink is the text version: 4.94:1 and 4.61:1. Don't use --good on
+     anything carrying words. */
+  --good-ink: #248046;
+}
+
+* { box-sizing: border-box; margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  font-size: 15px;
+}
+a { color: var(--brand-ink); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* The room nav that used to live here is gone. These pages carry the section
+   bar from assets/training-nav.css instead — the terminal strip with the way
+   back up, then Home / Calendar / Workouts / History — so the .topbar and
+   .roomnav rules that sat here had nothing left to style. effects.js only
+   injects its room menu where it finds .topbar .roomnav, so it now quietly
+   does nothing on these four pages, which is correct. */
+
+.wrap { max-width: 900px; margin: 0 auto; padding: 1.4rem 1.25rem 4rem; display: grid; grid-template-columns: 1fr; gap: 1.2rem; }
+/* A grid item's automatic minimum size is its CONTENT, not zero — so one row
+   with something unshrinkable in it widens the single column, and every
+   heading, card and the footer stretch to match. That is how the workout index
+   gave the whole page a sideways scroll: a list of rows carrying a nowrap meta
+   line set the column to 596px and dragged the rest of the page out with it.
+   Opting every child out of that is the fix, and it belongs here rather than on
+   the one page that happened to show the symptom first. */
+.wrap > * { min-width: 0; }
+
+/* athlete header */
+.athlete {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 1.2rem 1.4rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+}
+.athlete .avatar {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand), #ff8a4c);
+  display: grid; place-items: center; font-size: 1.6rem; flex-shrink: 0;
+}
+.athlete .who .name { font-weight: 700; font-size: 1.2rem; }
+.athlete .who .sub { color: var(--soft); font-size: 0.9rem; }
+.athlete .welcome { color: var(--soft); font-size: 0.85rem; flex-basis: 100%; margin-top: 0.2rem; }
+
+/* weekly stats */
+.week {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.2rem;
+}
+.week h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--soft); margin-bottom: 0.7rem; }
+.week .stats { display: flex; gap: 1.4rem; flex-wrap: wrap; }
+.week .stat .n { font-size: 1.5rem; font-weight: 700; }
+.week .stat .n small { font-size: 0.8rem; font-weight: 600; color: var(--soft); }
+.week .stat .l { color: var(--soft); font-size: 0.78rem; }
+
+.section-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--soft); margin: 0.4rem 0 -0.3rem; }
+
+/* activity card */
+.activity { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.activity .head { padding: 0.9rem 1.2rem 0.5rem; display: flex; align-items: center; gap: 0.7rem; }
+.activity .icon {
+  width: 38px; height: 38px; border-radius: 50%; background: #fff2ec; color: var(--brand-ink);
+  display: grid; place-items: center; font-size: 1.1rem; flex-shrink: 0; border: 1px solid #ffd9c9;
+}
+.activity .meta .title { font-weight: 700; }
+.activity .meta .when { color: var(--soft); font-size: 0.82rem; }
+.activity .kind {
+  margin-left: auto; font-size: 0.69rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--brand-ink); background: #fff2ec; border: 1px solid #ffd9c9; border-radius: 999px; padding: 0.12rem 0.6rem;
+}
+.activity .body { padding: 0.3rem 1.2rem 1rem; }
+.activity .figures { display: flex; gap: 2rem; flex-wrap: wrap; margin-top: 0.3rem; }
+.activity .fig .n { font-size: 1.25rem; font-weight: 700; }
+.activity .fig .l { color: var(--soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.activity .map {
+  height: 120px; margin: 0.6rem -1.2rem -1rem; background:
+    linear-gradient(90deg, #ffe7dc 1px, transparent 1px) 0 0 / 22px 22px,
+    linear-gradient(#ffe7dc 1px, transparent 1px) 0 0 / 22px 22px,
+    #fff6f1;
+  position: relative;
+}
+.activity .map::after {
+  content: ""; position: absolute; inset: 0;
+  background: no-repeat center/85%
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 90'%3E%3Cpath d='M8 70 C 40 20, 70 80, 100 45 S 160 10, 200 55 S 260 75, 292 30' fill='none' stroke='%23fc4c02' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+.placeholder {
+  background: var(--card); border: 1px dashed #f0b39c; border-radius: 12px;
+  padding: 1.4rem 1.4rem; color: var(--soft);
+}
+.placeholder strong { color: var(--ink); }
+
+/* the two format-preview cards say so on their face, so nobody reads them
+   as real sessions Ric logged */
+.week .week-note { color: var(--soft); font-size: 0.82rem; margin-top: 0.7rem; }
+.activity.is-example { border-style: dashed; }
+.example-tag {
+  display: inline-block; margin-left: 0.45rem; vertical-align: 0.1em;
+  font-size: 0.69rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--brand-dark); background: #ffe8de; border-radius: 999px; padding: 0.1rem 0.5rem;
+}
+
+footer { color: var(--soft); font-size: 0.82rem; text-align: center; margin-top: 0.5rem; }
+.foot-dim { font-size: 0.76rem; opacity: 0.8; }
+
+/* session rows inside an activity card */
+.sess .slot {
+  flex: 0 0 5.6rem; color: var(--soft); font-size: 0.69rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.sess .txt { flex: 1 1 auto; min-width: 0; }
+.sess .t { font-weight: 600; }
+.sess .m { color: var(--soft); font-size: 0.8rem; }
+.ticker.is-done .t { color: var(--good-ink); }
+.ticker.is-done .t::after { content: " ✓"; font-weight: 700; }
+/* Unscoped on purpose. This used to be `.sess .keytag`, which was fine while
+   a key session only ever appeared inside a session row — then the home page's
+   "coming up" list and the workout index started drawing the same tag and got
+   an unstyled one, so a title rendered as "Hard sport / endurancekey". The tag
+   is a label about a session, not about the row it happens to sit in. */
+.keytag {
+  display: inline-block; margin-left: 0.35rem; vertical-align: 0.08em;
+  font-size: 0.69rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--brand-dark); background: #ffe8de; border-radius: 999px; padding: 0.05rem 0.4rem;
+}
+/* A session is a block: the row, then the exercises it hides.
+   Two separate targets on the row, because they do different things and
+   sharing one tap would make both worse — the big one ticks it off, the
+   chevron opens what you are meant to be doing. */
+.sess { display: block; border-top: 1px solid var(--line); padding: 0; }
+.sess:first-child { border-top: 0; }
+.sessrow { display: flex; align-items: center; gap: 0.35rem; }
+.ticker {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 0.6rem;
+  text-align: left; font: inherit; color: inherit;
+  background: none; border: 0; cursor: pointer; padding: 0.6rem 0; min-height: 52px;
+  -webkit-tap-highlight-color: transparent;
+}
+.ticker.static { cursor: default; }
+.ticker:active:not(.static) { background: #fff8f5; }
+.ticker:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; border-radius: 8px; }
+.expander {
+  flex: 0 0 auto; width: 44px; min-height: 44px; font: inherit; font-size: 1rem;
+  cursor: pointer; color: var(--soft); background: none; border: 1px solid transparent;
+  border-radius: 8px; line-height: 1;
+}
+.expander:hover, .expander:focus-visible { color: var(--brand-ink); border-color: var(--line); outline: none; }
+.expander[aria-expanded="true"] { color: var(--brand-ink); transform: rotate(90deg); }
+
+/* A session that carries somewhere to go. Indented to the same 2.1rem as
+   the panel below it rather than to the text column, because the two are
+   the same kind of thing: a second line hanging off the row above. */
+.sesslink {
+  display: inline-block; margin: 0 0 0.6rem 2.1rem;
+  font-size: 0.82rem; font-weight: 600; color: var(--brand-ink);
+  text-decoration: none; border-bottom: 1px solid var(--line);
+}
+.sesslink:hover, .sesslink:focus-visible { border-bottom-color: var(--brand); outline: none; }
+
+/* the exercise panel */
+.sessex { padding: 0 0 0.7rem 2.1rem; }
+.sessex .pblock { margin-top: 0.5rem; }
+.sessex .pname {
+  font-size: 0.69rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--brand-ink);
+}
+.sessex .pspec { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.3rem 0 0.45rem; }
+.sessex .pspec span {
+  font-size: 0.7rem; color: var(--soft);
+  background: #f6f6f9; border: 1px solid var(--line); border-radius: 999px; padding: 0.08rem 0.5rem;
+}
+.sessex .pspec b { color: var(--ink); font-weight: 700; }
+.sessex .exrow { display: flex; gap: 0.6rem; align-items: baseline; padding: 0.3rem 0; border-top: 1px solid #f1f1f5; }
+.sessex .exrow:first-of-type { border-top: 0; }
+.sessex .exn { flex: 1 1 auto; min-width: 0; font-size: 0.88rem; }
+.sessex .exd { flex: 0 0 auto; font-size: 0.78rem; font-weight: 700; color: var(--brand-ink); white-space: nowrap; }
+.sessex .excue { display: block; color: var(--soft); font-size: 0.78rem; margin-top: 0.1rem; }
+.sessex .nodetail { color: var(--soft); font-size: 0.82rem; font-style: italic; }
+@media (max-width: 480px) { .sessex { padding-left: 0.2rem; } }
+.tickbox {
+  flex: 0 0 auto; width: 30px; height: 30px; border: 2px solid var(--line);
+  border-radius: 8px; background: #fff; display: grid; place-items: center;
+  font-size: 1rem; line-height: 1; color: var(--good-ink); font-weight: 700;
+}
+.ticker.is-done .tickbox { border-color: var(--good); background: #eefaf1; }
+
+.allbtn {
+  display: block; width: 100%; margin-top: 0.7rem; min-height: 46px;
+  font: inherit; font-weight: 700; cursor: pointer;
+  color: var(--brand-ink); background: #fff6f2;
+  border: 1px dashed var(--brand); border-radius: 10px;
+}
+.allbtn:active { background: #ffe8de; }
+.allbtn:disabled { opacity: 0.6; cursor: default; }
+
+.activity.all-done { border-color: #bfe6cd; }
+.donetag {
+  display: inline-block; margin-left: 0.45rem; vertical-align: 0.1em;
+  font-size: 0.69rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.09em;
+  color: #1f6b3c; background: #e6f6ec; border-radius: 999px; padding: 0.08rem 0.5rem;
+}
+
+/* the bridge to the climbing room */
+.climblink {
+  display: flex; align-items: center; gap: 0.7rem; margin: 0.5rem 0 0.2rem;
+  padding: 0.6rem 0.75rem; min-height: 52px; text-decoration: none; color: var(--ink);
+  background: #f6f4ff; border: 1px solid #ddd8f5; border-left: 4px solid #6b5bd6; border-radius: 10px;
+}
+.climblink:hover, .climblink:focus-visible { background: #efebff; text-decoration: none; outline: none; border-color: #6b5bd6; }
+.climblink .cl-ico { font-size: 1.15rem; }
+.climblink .cl-txt { flex: 1 1 auto; min-width: 0; }
+.climblink .cl-sub { display: block; color: var(--soft); font-size: 0.76rem; }
+.climblink .cl-go { color: #6b5bd6; font-weight: 700; }
+
+/* the run that came off the watch — same shape as the climbing bridge, in
+   the room's own orange, because it is the same idea: something that
+   happened elsewhere, showing up here on the day it belongs to. */
+.runlink {
+  display: flex; align-items: center; gap: 0.7rem; margin: 0.5rem 0 0.2rem;
+  padding: 0.6rem 0.75rem; min-height: 52px; text-decoration: none; color: var(--ink);
+  background: #fff4ef; border: 1px solid #f7d9cb; border-left: 4px solid var(--brand); border-radius: 10px;
+}
+/* The hover fill stops at #fff1ec rather than going deeper: the sub-line and
+   the arrow are already at 4.6:1 on it, and another shade of orange would
+   put both under AA on hover only — the state nobody screenshots. */
+.runlink:hover, .runlink:focus-visible { background: #fff1ec; text-decoration: none; outline: none; border-color: var(--brand); }
+/* A button now, so it has to be told to look like the rest of the page
+   rather than like a form control. */
+button.runlink { width: 100%; font: inherit; text-align: left; cursor: pointer; }
+/* Open, the card and its panel are one shape: the seam between them closes
+   and the corners square up where they meet. */
+.run.is-open .runlink { margin-bottom: 0; border-radius: 10px 10px 0 0; border-bottom-color: var(--line); }
+.run.is-open .cl-go { transform: rotate(90deg); }
+.runlink .cl-go { display: inline-block; transition: transform 0.12s ease; }
+.runlink .cl-ico { font-size: 1.15rem; }
+.runlink .cl-txt { flex: 1 1 auto; min-width: 0; }
+.runlink .cl-sub { display: block; color: var(--soft); font-size: 0.76rem; }
+.runlink .cl-go { color: var(--brand-ink); font-weight: 700; }
+/* The numbers are the point of a run card, so they get their own line and
+   enough weight to be read at arm's length. */
+.runstats { display: flex; flex-wrap: wrap; gap: 0.15rem 0.85rem; margin-top: 0.15rem; }
+.runstats span { font-size: 0.78rem; color: var(--soft); }
+.runstats b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* A tick nobody made with a thumb. It says so, because a checkbox that
+   filled itself in is a small mystery otherwise. */
+/* ── a run, opened up ──
+   The card is a button now rather than a link straight out to Strava. The
+   numbers are already here; sending someone to another site to read what
+   this page is holding was the wrong default. Strava is one tap further in,
+   named and obvious, for the things only Strava has — the map above all. */
+.run { display: block; }
+.rundet {
+  border: 1px solid var(--line); border-top: none;
+  border-radius: 0 0 10px 10px; padding: 0.75rem 0.85rem 0.85rem;
+  background: #fffaf7;
+}
+.rundet[hidden] { display: none; }
+.rungrid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+  gap: 0.55rem 0.7rem; margin-bottom: 0.2rem;
+}
+.rungrid div { min-width: 0; }
+.rungrid .k {
+  display: block; font-size: 0.69rem; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--soft);
+}
+.rungrid .v { font-size: 0.95rem; font-weight: 700; }
+.rungrid .v small { font-weight: 400; font-size: 0.72rem; color: var(--soft); }
+
+/* 320px wide, which is also the width the tile window is computed at — the
+   two numbers have to agree or the line lands off the streets. */
+/* content-box on purpose: the tiles are placed at absolute pixel offsets
+   computed for a 320px window, so the content box has to BE 320px. With
+   border-box the 1px border stole two of them, the SVG scaled to 318 while
+   the tiles did not, and the route sat a couple of pixels off the streets.
+   On a narrower screen the box crops — tiles and line together, still
+   aligned — rather than scaling one and not the other. */
+/* content-box on purpose, and the size comes from the inline style the
+   renderer wrote: the tiles are placed at absolute pixel offsets computed
+   for exactly that box, so the box has to be exactly that many pixels. With
+   border-box the 1px border stole two of them, the SVG scaled while the
+   tiles did not, and the route sat off the streets. */
+.runmap {
+  position: relative; box-sizing: content-box; margin: 0 auto;
+  overflow: hidden; border-radius: 10px; border: 1px solid var(--line);
+  background: #e8e0d8;                     /* what shows if tiles never load */
+}
+/* The run, sitting inside a session's panel under the workout. Separated by
+   a rule rather than boxed: it is part of that session, not a card parked
+   next to it. */
+.runblock { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
+.sessex > .runblock:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+/* One row per climb: grade first, because on a board the grade is the
+   thing you scan for and the names are nonsense words. */
+.bclimbs { display: grid; gap: 0.1rem; }
+.bclimb { display: flex; align-items: baseline; gap: 0.5rem; font-size: 0.8rem; padding: 0.12rem 0; }
+.bclimb .bg { flex: 0 0 3.6rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bclimb .bn { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bclimb .bbm { margin-left: 0.25rem; color: var(--brand-ink); }
+.bclimb .ba { flex: 0 0 2.2rem; color: var(--soft); text-align: right; font-variant-numeric: tabular-nums; }
+.bclimb .bt { flex: 0 0 4.4rem; color: var(--soft); text-align: right; white-space: nowrap; }
+
+.runhead { margin-bottom: 0.6rem; }
+.runhead strong { font-size: 0.92rem; }
+.runhead .runstats { margin-top: 0.1rem; }
+
+.runmap .tiles { position: absolute; inset: 0; }
+.runmap .tiles img { position: absolute; width: 256px; height: 256px; }
+.runmap .line { position: absolute; left: 0; top: 0; }
+.mapcredit {
+  position: absolute; right: 0; bottom: 0; font-size: 0.69rem; line-height: 1.5;
+  padding: 0 0.28rem; background: rgba(255,255,255,0.82); color: #3b3b3b;
+}
+.mapcredit a { color: #3b3b3b; text-decoration: underline; }
+.mapkey { display: flex; justify-content: center; gap: 1rem; margin: 0.35rem 0 0.9rem; font-size: 0.69rem; color: var(--soft); }
+.mapkey span { display: inline-flex; align-items: center; gap: 0.3rem; }
+.mapkey span::before { content: ""; width: 8px; height: 8px; border-radius: 50%; }
+.mapkey .s::before { background: #1a7f37; }
+.mapkey .e::before { background: var(--brand-dark); }
+
+.splits { margin-top: 0.85rem; }
+.splits h4 {
+  margin: 0 0 0.4rem; font-size: 0.69rem; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--soft);
+}
+/* A row per kilometre: number, bar, pace. The bar is scaled between the
+   slowest and fastest split rather than from zero — from zero every bar on
+   a steady run is the same length and the shape of the run disappears. */
+.split { display: flex; align-items: center; gap: 0.5rem; padding: 0.09rem 0; font-size: 0.78rem; }
+.split .n { flex: 0 0 1.6rem; color: var(--soft); font-variant-numeric: tabular-nums; }
+.split .bar { flex: 1 1 auto; height: 9px; background: #f1e6e0; border-radius: 999px; overflow: hidden; }
+.split .bar i { display: block; height: 100%; background: var(--brand); border-radius: 999px; }
+.split .p { flex: 0 0 auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Wide enough for "138 bpm" on one line — at 3.1rem it wrapped, and a
+   wrapped number doubled the height of every split row. */
+.split .hr { flex: 0 0 4.4rem; text-align: right; color: var(--soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.runout {
+  display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.85rem;
+  min-height: 44px; font-weight: 700; font-size: 0.83rem; color: var(--brand-ink);
+}
+.runnote { margin: 0.6rem 0 0; font-size: 0.72rem; color: var(--soft); }
+
+/* Only ever rendered for the signed-in owner — the public read never
+   carries a hidden run at all — but it is labelled anyway, so the one
+   person who sees it is never unsure which runs are on the internet. */
+/* The plan's number, once the real one has taken its place in the title.
+   Normal weight and muted, so the distance that actually happened is the
+   one the eye lands on. */
+.planned {
+  margin-left: 0.4rem; font-size: 0.69rem; font-weight: 400;
+  color: var(--soft); white-space: nowrap;
+}
+
+.privtag {
+  margin-left: 0.4rem; font-size: 0.69rem; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; color: #5b4636; background: #efe7e1;
+  border-radius: 999px; padding: 0.08rem 0.42rem; vertical-align: middle;
+}
+
+.viastrava[hidden] { display: none; }
+.viastrava {
+  display: inline-block; margin-left: 0.35rem; font-size: 0.69rem; font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase; vertical-align: middle;
+  /* --brand-dark, not --brand-ink: at this size on a tinted pill the ink
+     orange lands at 4.48:1, which is under AA by a whisker. */
+  color: var(--brand-dark); background: #fff0e8; border-radius: 999px; padding: 0.08rem 0.45rem;
+}
+
+/* sign-in */
+.ownerform { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; width: 100%; }
+.ownerlabel { font-weight: 700; font-size: 0.82rem; }
+/* 44px minimum — this is typed on a phone, and 16px on the input is what
+   stops iOS zooming the whole page when it gets focus. */
+.ownerform input {
+  flex: 1 1 9rem; min-width: 0; min-height: 44px; font: inherit; font-size: 16px;
+  padding: 0.4rem 0.6rem; border: 1px solid var(--line); border-radius: 8px;
+}
+/* --brand-dark, not --brand, behind white type. Strava orange is a fill
+   colour: #fff on #fc4c02 is 3.40:1, under AA at any size this button is.
+   That is the whole reason --brand-dark exists — same rule as --brand-ink
+   for orange type on a light ground. The border stays --brand so the button
+   still reads as the brand's shape. */
+.ownerform button {
+  font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; min-height: 44px;
+  padding: 0.4rem 1rem; border: 1px solid var(--brand); border-radius: 8px;
+  background: var(--brand-dark); color: #fff;
+}
+.ownermsg { color: var(--brand-ink); font-size: 0.78rem; flex-basis: 100%; }
+
+.notes { margin-top: 0.5rem; }
+.note {
+  background: #fbfbfd; border: 1px solid var(--line); border-left: 3px solid var(--brand);
+  border-radius: 8px; padding: 0.5rem 0.7rem; margin-top: 0.4rem; font-size: 0.88rem;
+}
+.note .when { color: var(--soft); font-size: 0.72rem; margin-top: 0.2rem; }
+.note.is-private { border-left-color: var(--soft); opacity: 0.85; }
+.note.is-private .when::after { content: " · private"; font-weight: 700; }
+/* The notes are shut behind this. Full width and tall enough to hit with a
+   thumb, because it is now the thing you tap to read them at all. */
+.notesbtn {
+  display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 42px;
+  margin-top: 0.5rem; padding: 0.35rem 0.7rem; font: inherit; font-size: 0.85rem;
+  cursor: pointer; text-align: left;
+  border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--brand-ink);
+}
+.notesbtn:hover { border-color: var(--brand); }
+.notesbtn .nb-txt { flex: 1 1 auto; font-weight: 700; }
+.notesbtn .nb-go { color: var(--soft); font-size: 1.1rem; font-weight: 700; }
+.noteswrap[hidden] { display: none; }
+
+/* What happened outside, and the clip of it. */
+.climbwrap { margin-top: 0.6rem; }
+.climbclip { margin-top: 0.5rem; border-radius: 10px; overflow: hidden; background: #000; }
+.climbclip video, .climbclip img { display: block; width: 100%; max-height: 60vh; object-fit: contain; }
+.climbcap { margin-top: 0.3rem; color: var(--soft); font-size: 0.8rem; }
+
+.noteform { display: flex; gap: 0.4rem; margin-top: 0.5rem; flex-wrap: wrap; }
+.noteform textarea {
+  flex: 1 1 12rem; min-height: 2.4rem; font: inherit; font-size: 0.88rem;
+  padding: 0.4rem 0.5rem; border: 1px solid var(--line); border-radius: 8px; resize: vertical;
+}
+/* Same rule as .ownerform button: white type needs --brand-dark under it. */
+.noteform button, .ownerbtn {
+  font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+  padding: 0.4rem 0.7rem; min-height: 36px;
+  border: 1px solid var(--brand); border-radius: 8px; background: var(--brand-dark); color: #fff;
+}
+.noteform .secondary { background: #fff; color: var(--brand-ink); }
+
+/* `display:flex` from an author stylesheet beats the UA rule behind the
+   hidden attribute, so the owner bar rendered for everybody. It is only a
+   cosmetic leak — the buttons it carries are useless without the token —
+   but a visitor being shown a "sign out" control is a confusing lie. */
+[hidden] { display: none !important; }
+/* At the bottom of the PAGE, not stuck to the bottom of the screen. It was
+   sticky, so it rode along over the content the whole way down — a bar you
+   have to scroll past on every screenful, to do a thing you do once. It
+   sits after the feed now and you meet it when you get there. */
+.owner {
+  margin: 1rem 0 0; padding: 0.7rem 1rem;
+  background: #fff; border: 1px solid var(--line); border-top: 2px solid var(--brand);
+  border-radius: 0 0 12px 12px; font-size: 0.82rem;
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+}
+.owner .ownerbtn { margin-left: auto; background: #fff; color: var(--brand-ink); }
+
+/* ── the calendar ──
+   Seven columns at every width. A month of a training plan is only useful
+   as a shape — which days are heavy, where the rest falls — and that shape
+   only reads when the week is a row. So the cells shrink rather than the
+   grid reflowing, and detail moves into the day panel below. */
+.calwrap { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.9rem 1rem 1rem; }
+.calhead { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
+.calmonth { flex: 1 1 auto; text-align: center; font-weight: 700; }
+.calnav {
+  min-width: 44px; min-height: 44px; font: inherit; font-size: 1.3rem; line-height: 1;
+  cursor: pointer; color: var(--brand-ink); background: #fff;
+  border: 1px solid var(--line); border-radius: 10px;
+}
+.calnav:active { background: #fff2ec; }
+.calnav:disabled { opacity: 0.35; cursor: default; }
+
+.caldow, .calgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.caldow { margin-bottom: 3px; }
+.caldow span {
+  text-align: center; font-size: 0.69rem; font-weight: 700; color: var(--soft);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.calcell {
+  position: relative; min-height: 52px; padding: 0.2rem 0.1rem 0.35rem;
+  font: inherit; cursor: pointer; text-align: center;
+  background: #fcfcfd; border: 1px solid var(--line); border-radius: 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+}
+.calcell.blank { background: transparent; border-color: transparent; cursor: default; }
+.calcell.outside { opacity: 0.4; cursor: default; }
+.calcell .cd { font-size: 0.8rem; font-weight: 700; }
+.calcell .cdots { display: flex; gap: 2px; justify-content: center; min-height: 6px; }
+.calcell .cdots i { width: 6px; height: 6px; border-radius: 50%; display: block; }
+.calcell.today { border-color: var(--brand); border-width: 2px; background: #fff8f5; }
+.calcell.sel { outline: 2px solid var(--brand); outline-offset: 1px; }
+.calcell.isdone { background: #f2fbf5; border-color: #bfe6cd; }
+.calcell.deload::after {
+  content: ""; position: absolute; inset: auto 4px 3px; height: 2px;
+  background: repeating-linear-gradient(90deg, var(--soft) 0 3px, transparent 3px 6px);
+  opacity: 0.5;
+}
+.calcell .ctick { position: absolute; top: 1px; right: 3px; font-size: 0.69rem; color: var(--good-ink); font-weight: 800; }
+.calcell .cevent { position: absolute; top: 1px; left: 3px; font-size: 0.69rem; }
+
+.k-climb, .calcell .cdots i.climb { background: #6b5bd6; }
+.k-run, .calcell .cdots i.run { background: var(--brand); }
+.k-rest, .calcell .cdots i.rest { background: #c9c9d2; }
+.k-done { background: var(--good); }
+.calkey { display: flex; gap: 0.9rem; flex-wrap: wrap; margin-top: 0.7rem; font-size: 0.72rem; color: var(--soft); }
+.calkey i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 0.25rem; }
+
+.calday {
+  margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid var(--line);
+}
+.calday h3 { font-size: 0.95rem; margin-bottom: 0.1rem; }
+.calday .sub { color: var(--soft); font-size: 0.8rem; margin-bottom: 0.4rem; }
+.calday .cs { display: flex; gap: 0.55rem; padding: 0.35rem 0; border-top: 1px solid var(--line); }
+.calday .cs:first-of-type { border-top: 0; }
+.calday .cs .slot { flex: 0 0 5.4rem; color: var(--soft); font-size: 0.69rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 0.15rem; }
+.calday .cs .t { font-weight: 600; font-size: 0.9rem; }
+.calday .cs .m { color: var(--soft); font-size: 0.78rem; }
+
+.emptyday { color: var(--soft); font-style: italic; padding: 0.4rem 0; }
+.loadfail {
+  background: #fff6f1; border: 1px solid #ffd9c9; border-radius: 10px;
+  padding: 0.9rem 1.1rem; color: var(--ink); font-size: 0.88rem;
+}
+
+
+/* ── the phase card (home) ──
+   The block he is in, what it is for, and how far through it he is. The plan
+   has carried a goal per phase since it was written and nothing ever drew it. */
+.phase{background:var(--card);border:1px solid var(--line);border-radius:14px;
+       padding:1rem 1.1rem;margin:0 0 1.4rem}
+.ph-head{display:flex;align-items:baseline;gap:.55rem;flex-wrap:wrap}
+.ph-name{font-weight:800;font-size:1.05rem;letter-spacing:-.01em}
+.ph-sub{color:var(--soft);font-size:.82rem}
+.ph-goal{margin:.45rem 0 .8rem;font-size:.92rem;line-height:1.5}
+/* One pip per week in the block, filled to where he is. A bar would need a
+   scale to read; twelve pips you just count. */
+.ph-bar{display:flex;gap:3px}
+.ph-bar i{flex:1 1 auto;height:5px;border-radius:999px;background:var(--line)}
+.ph-bar i.done{background:var(--brand)}
+.ph-when{margin-top:.4rem;color:var(--soft);font-size:.76rem}
+
+/* ── coming up (home) ── */
+#soon{display:flex;flex-direction:column;gap:.4rem;margin-bottom:1.6rem}
+.soonrow{display:flex;align-items:center;gap:.7rem;padding:.7rem .9rem;text-decoration:none;
+         background:var(--card);border:1px solid var(--line);border-radius:12px;color:inherit;
+         min-height:52px}
+.soonrow:hover{border-color:var(--brand);text-decoration:none}
+.so-ico{flex:0 0 auto;font-size:1.1rem;line-height:1}
+.so-txt{flex:1 1 auto;min-width:0}
+.so-t{display:block;font-weight:600;font-size:.93rem}
+.so-m{display:block;color:var(--soft);font-size:.78rem;margin-top:.1rem}
+.so-go{flex:0 0 auto;color:var(--soft);font-size:1.1rem}
+
+/* ── page headers on the inner pages ──
+   The home page has the athlete block; the other three need something to sit
+   under the bar so the first card is not jammed against it. */
+.pagehead{margin:1.6rem 0 1.2rem}
+.pagehead h1{font-size:1.7rem;letter-spacing:-.02em;margin:0}
+.pagehead p{color:var(--soft);font-size:.9rem;margin:.3rem 0 0}
+
+/* ── filters (workouts) ── */
+/* min-width:0 is load-bearing. .wrap is a grid, and a grid item's automatic
+   minimum size is its CONTENT — so a row of filter pills that could not shrink
+   stretched the whole column to 600px and took the page's headings and every
+   card with it, giving the one page on the site with a sideways scroll. The
+   pills wrap instead. */
+.filters{display:flex;flex-wrap:wrap;gap:.5rem .7rem;align-items:center;margin-bottom:.9rem;min-width:0}
+.fgroup{display:flex;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);
+        border-radius:999px;padding:2px;min-width:0}
+.fgroup button{font:inherit;font-size:.82rem;font-weight:600;color:var(--soft);cursor:pointer;
+               background:none;border:0;border-radius:999px;padding:.4rem .75rem;min-height:36px;
+               white-space:nowrap}
+.fgroup button:hover{color:var(--ink)}
+.fgroup button.on{background:var(--brand);color:#fff}
+.fphase{display:flex;align-items:center;gap:.4rem;font-size:.82rem;font-weight:600;color:var(--soft)}
+.fphase select{font:inherit;font-size:.82rem;padding:.35rem .5rem;min-height:36px;
+               border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.fcount{color:var(--soft);font-size:.78rem;margin-bottom:.6rem}
+@media(max-width:560px){
+  .fgroup button{padding:.4rem .6rem;font-size:.79rem}
+}
+
+/* ── the session index (workouts) ── */
+.wblock{display:flex;align-items:baseline;gap:.5rem;margin:1.4rem 0 .5rem;padding-bottom:.3rem;
+        border-bottom:1px solid var(--line)}
+.wblock:first-child{margin-top:.2rem}
+.wb-n{font-weight:800;font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--brand-ink)}
+.wb-s{color:var(--soft);font-size:.76rem}
+.wrow{display:flex;align-items:center;gap:.7rem;padding:.6rem .8rem;text-decoration:none;color:inherit;min-width:0;
+      border:1px solid var(--line);border-radius:10px;margin-bottom:.35rem;background:var(--card);
+      min-height:52px}
+.wrow:hover{border-color:var(--brand);text-decoration:none}
+.wrow.is-today{border-color:var(--brand);box-shadow:inset 3px 0 0 var(--brand)}
+.wrow.is-done .w-t{color:var(--good-ink)}
+/* Wide enough for "Mon, Sep 21" on one line; it wrapped to two at 5.2rem and
+   made every Monday row taller than the rest of the list. */
+.w-date{flex:0 0 6.1rem;color:var(--soft);font-size:.76rem}
+.w-date b{color:var(--ink);font-weight:700}
+.w-ico{flex:0 0 auto;line-height:1}
+.w-txt{flex:1 1 auto;min-width:0}
+.w-t{display:block;font-weight:600;font-size:.9rem}
+.w-m{display:block;color:var(--soft);font-size:.76rem;margin-top:.1rem;
+     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.w-slot{flex:0 0 auto;color:var(--soft);font-size:.66rem;font-weight:700;text-transform:uppercase;
+        letter-spacing:.05em}
+@media(max-width:560px){
+  .w-slot{display:none}           /* the meta line already says when */
+  .w-date{flex-basis:5.4rem}
+}
+
+/* ── history ── */
+.histsum{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin:0 0 1.3rem}
+.histsum .hs{background:var(--card);border:1px solid var(--line);border-radius:12px;
+             padding:.7rem .5rem;text-align:center}
+.histsum .hs b{display:block;font-size:1.25rem;font-weight:800;letter-spacing:-.02em}
+.histsum .hs span{display:block;color:var(--soft);font-size:.7rem;margin-top:.15rem}
+@media(max-width:560px){
+  .histsum{grid-template-columns:repeat(2,1fr)}
+}
+.morewrap{display:flex;justify-content:center;margin:.4rem 0 1.6rem}
+.morebtn{font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;color:var(--brand-ink);
+         background:var(--card);border:1px solid var(--line);border-radius:999px;
+         padding:.6rem 1.3rem;min-height:44px}
+.morebtn:hover{border-color:var(--brand)}
