@@ -256,6 +256,35 @@ const REGIONS = [
    the arithmetic: the Voronoi jitters and neighbours of a kind merge, so the
    patch you fly across is never exactly the cell. */
 const REGION_CELL = 93000;
+
+/* ── what the Deep Void is made of ────────────────────────────────────────
+   A multiplier on each region's ordinary weight, used only in a void cell —
+   see `regionSite`. Three of the fourteen are struck out outright, and they
+   are the three that *are* people: SETTLED REACH is a settled place, THE
+   LANES is a trade route, and THE WORKS is industry. None of them can exist
+   somewhere nobody goes, and leaving them in at any weight was the thing that
+   made the Void read as ordinary sky with the lights off.
+
+   ORDINARY SPACE survives at a sixteenth, because "almost none" is a better
+   sector than "none": one calm cell in a bad stretch is the thing that makes
+   the rest of the stretch feel chosen rather than painted.
+
+   Everything else leans the other way, hardest towards THE WELLS (the most
+   dangerous terrain there is) and THE LONG EMPTY (the emptiest). The result
+   is an expected `nature` of about 0.58 out here against about 0.33 across the
+   sector as a whole — the most dangerous *terrain* in the game by a wide margin,
+   and dangerous for the opposite reason to a front. A front is dangerous because
+   of who is there. This is dangerous because of what it is, and because there is
+   no station in it to reach. */
+const VOID_BIAS = {
+  reach: 0, lanes: 0, city: 0,   // civilisation; it is not out here
+  normal: 0.06,                  // almost none, rather than none
+  rounds: 0.5, rime: 0.5,        // the mild ones, thinned
+  belt: 0.8, cloud: 0.8,
+  shards: 1.6, bones: 2, warrens: 2, murk: 2.4,
+  maw: 2.6,                      // the wells: the worst of it
+  open: 4                        // and the Long Empty, which is the signature
+};
 const regionCache = new Map();
 
 /* Nearest jittered site among the nine cells around a point. A plain grid would
@@ -316,6 +345,39 @@ function regionSite(cx, cy) {
   const total = pool.reduce((t, r) => t + r.weight, 0);
   let roll = R() * total, pick = pool[0];
   for (const r of pool) { roll -= r.weight; if (roll <= 0) { pick = r; break; } }
+  /* ── and the Deep Void gets a different deck ──────────────────────────────
+     The Void used to be a purely *political* fact — a cell nobody held — laid
+     over whatever terrain the roll above happened to produce. So the deepest,
+     emptiest sky in the sector was as likely to be Settled Reach as anything
+     else, and the only thing that made it read as void was that the generator
+     had been told to put no stations in it. The emptiness was an assertion.
+
+     Now it is a consequence. A void cell re-rolls from `VOID_BIAS`: the
+     settled biomes are struck out entirely — there is no Settled Reach, no
+     Lanes and no Works out here, because those three *are* civilisation — and
+     ordinary space is cut to a sixteenth. What is left is wells, murk, rock
+     and the Long Empty. **That** is why nobody lives there, and the flags, the
+     stations and the traffic follow the terrain rather than standing in for it.
+
+     Rolled on its own stream, salted differently, so that a cell that is not
+     void is untouched down to its jitter: this moves the Void and nothing else.
+
+     Keyed on `voidCell` rather than on `spaceAt().kind`, and that is load
+     bearing. `spaceAt` folds in who holds a cell *now*, and claims change hands
+     while you play — terrain that read off it would rewrite itself mid-save the
+     first time a border moved. `voidCell` is a pure function of the cell and
+     the seed, so this stays as fixed as every other piece of geography. */
+  if (voidCell(cx, cy)) {
+    const VR = seeded(chunkSeed(cx * 31337 + 7, cy * 15485863 + 11) ^
+                      ((sd >>> 0) + 0x7a1d) ^ 0x1e35a7bd);
+    const vp = REGIONS.filter(r => (VOID_BIAS[r.key] || 0) * r.weight > 0);
+    const vt = vp.reduce((t, r) => t + r.weight * VOID_BIAS[r.key], 0);
+    let vroll = VR() * vt;
+    for (const r of vp) {
+      vroll -= r.weight * VOID_BIAS[r.key];
+      if (vroll <= 0) { pick = r; break; }
+    }
+  }
   /* Home is ordinary space, in every sector. The four cells that meet at the
      origin, rather than a radius: a radius cut every biome around home on a
      perfect circle, and sent out in 120 directions from home, 74 of them met
@@ -432,8 +494,27 @@ const SPACES = {
   lawless:   { key: "lawless", name: "LAWLESS SPACE", colour: "#ff5555",
                people: 0.75, traffic: 0.8,  stations: 0.45, pirates: 0.45,
                battles: 0.5,  lived: 0.5 },
+  /* `people` was 0.15, the lowest of the five, and that stays roughly what it
+     is: there genuinely are almost nobody out here, and this dial is the *other*
+     half of danger — the owner's, "traffic, pirates, battles, whose flag is on
+     the dock". Inflating it to make the Void frightening would be lying with the
+     wrong number, and the first attempt at exactly that put the Void level with
+     an open war front, which it should not be.
+
+     0.3 rather than 0.15 is the one honest correction: a third of the few ships
+     out here are raiders (`pirates` below is 0.3, six times a power's own space)
+     and there is no law of any kind. It stays well under lawless space's 0.75
+     and the front's 0.8, because those are dangerous for a reason the Void is
+     not — somebody is *there*.
+
+     **The Void's danger is the terrain's, and that is the point of it.** The
+     bias in `regionSite` takes `nature` from about 0.33 to about 0.58 out here,
+     which roughly doubles `dangerAt` on its own. What makes it frightening on
+     top of that is not in this table at all and does not need to be: `stations`
+     is 0, so there is nowhere to refill, and water is what limits how far you
+     can go. */
   void:      { key: "void", name: "THE DEEP VOID", colour: "#4a5266",
-               people: 0.15, traffic: 0.05, stations: 0,    pirates: 0.3,
+               people: 0.3,  traffic: 0.05, stations: 0,    pirates: 0.3,
                battles: 0,    lived: 0 }
 };
 
@@ -980,7 +1061,7 @@ function caveTint(x, y) {
     chunkSeed, chunkKey, hash2,
     dangerAt, natureAt, peopleAt,
     REGIONS, REGION_CELL, homeCell,
-    regionAt, siteAt, regionSite, regionDepth, regionOf, abund,
+    regionAt, siteAt, regionSite, regionDepth, regionOf, abund, voidCell,
     POWERS, SPACES, baseHold, holderOf, spaceOfCell, spaceAt, territoryChanged,
     /* The Warrens: a region that is made of rock, with tunnels bored through
        it. It lives here because it is terrain of a region and reads the same

@@ -1,19 +1,19 @@
 {
   "note": "Written by test/fingerprint.js --record. A seed makes a sector; these hashes are which sector. Changing them changes every save.",
-  "recorded": "2026-09-17",
+  "recorded": "2026-09-18",
   "seeds": {
     "1": {
-      "hash": "feae0855503c37ff6b036d4ca5a7c4dec20e4492ccf098da8fab4cc0611f1739",
+      "hash": "18a3ffc17713aa48c8f28b78d6ea22c8659f3d1413a24b77e47132079fd05559",
       "rock": 60.811,
       "discs": 3203
     },
     "424242": {
-      "hash": "39610b2dcc506e3e99773696d0304fa50bf6b32073e2b10317c32892115f3f5c",
+      "hash": "052add1d72ade448f4d6b42048aee7cb006267929a25b09b1ae5add3bacf4d86",
       "rock": 51.858,
       "discs": 3171
     },
     "606061": {
-      "hash": "80a7a7e4087fbf15d4b87d19aa2537e29382e21be94ec030c58805a42e81bd04",
+      "hash": "653cc878609f8c40348aaebf001966f012a1869d8231f12a683030c3f39cc7e1",
       "rock": 47.858,
       "discs": 3258
     }

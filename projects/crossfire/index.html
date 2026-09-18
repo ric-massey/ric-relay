@@ -25454,6 +25454,27 @@
         }
         return out;
       },
+      /* The generator's own tables, so a test asserting what the Void is made
+         of reads the numbers the game actually uses rather than a copy of them
+         that goes stale the first time one is tuned. */
+      regions: () => WORLD.REGIONS.map(r => ({ key: r.key, name: r.name,
+                                               danger: r.danger, weight: r.weight })),
+      spaces: () => WORLD.SPACES,
+      /* The same census, split by whether the cell is Deep Void — which is the
+         only way to assert the rule that the Void is made of different terrain.
+         `deep` is `voidCell`, the pure noise test, not `spaceAt().kind`: a void
+         cell a power has since claimed stops being Void space while staying the
+         same hostile terrain, and that is the point. */
+      voidCensus: (n) => {
+        const out = [];
+        for (let j = -n; j <= n; j++) {
+          for (let i = -n; i <= n; i++) {
+            out.push({ key: regionSite(i, j).region.key,
+                       deep: !!WORLD.voidCell(i, j) });
+          }
+        }
+        return out;
+      },
       // Say something, through the real path, so the earshot rule can be tested.
       say: (text, colour, where) => chatter(text, colour, where),
       /* Recompute the ship from its slots. The game does this whenever a part

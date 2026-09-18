@@ -9840,11 +9840,92 @@ const storeOf = (cf, key) => {
   check(pv.terrain && pv.terrain.mapped instanceof Map,
         "the chart is not handed the borders you have mapped");
 
+  /* ── and the Deep Void is made of something else ─────────────────────────
+     The Void used to be a political fact laid over whatever terrain the roll
+     happened to give it, so the emptiest sky in the sector was as likely to be
+     Settled Reach as anything. It is a consequence now: a void cell draws from
+     a different deck, the settled biomes are not in it, and *that* is why
+     nobody lives out there. Three things have to hold, and the third is the
+     one that makes it a reason rather than a decoration. */
+  const vc = cf.voidCensus(22);
+  const vt = {}, ot = {};
+  let nv = 0, no = 0;
+  for (const c of vc) {
+    if (c.deep) { vt[c.key] = (vt[c.key] || 0) + 1; nv++; }
+    else { ot[c.key] = (ot[c.key] || 0) + 1; no++; }
+  }
+  check(nv > 100, "only " + nv + " void cells in 2,025 — too few to say anything");
+
+  // 1 · civilisation is not out there. Three of these cannot occur at all.
+  for (const k of ["reach", "lanes", "city"]) {
+    check(!vt[k], k + " occurs " + vt[k] + " times in the Deep Void — " +
+                  "the settled biomes are struck out of it");
+  }
+  // 2 · and ordinary space is almost gone, rather than merely thinner.
+  const settled = ["normal", "reach", "lanes", "city"]
+    .reduce((t, k) => t + (vt[k] || 0), 0) / nv;
+  const settledOut = ["normal", "reach", "lanes", "city"]
+    .reduce((t, k) => t + (ot[k] || 0), 0) / no;
+  check(settled < 0.05,
+        "settled biomes are " + (settled * 100).toFixed(1) + "% of the Deep Void");
+  check(settledOut > 0.35,
+        "settled biomes are only " + (settledOut * 100).toFixed(1) +
+        "% of ordinary sky — the bias has leaked out of the Void");
+
+  /* 3 · **and it is more dangerous because of it.** This is the whole point:
+     the danger is the terrain's, not a number attached to the political map,
+     so a void cell somebody later claims keeps every bit of it. */
+  const natOf = t => {
+    let sum = 0, n2 = 0;
+    for (const r of cf.regions()) { sum += (t[r.key] || 0) * r.danger; n2 += (t[r.key] || 0); }
+    return n2 ? sum / n2 : 0;
+  };
+  const vNat = natOf(vt), oNat = natOf(ot);
+  check(vNat > oNat * 1.5,
+        "the Deep Void's terrain is " + vNat.toFixed(2) + " against " +
+        oNat.toFixed(2) + " outside — it is not meaningfully worse");
+  /* And the two dials together. The ordering is the claim, and it is strict:
+     a power's own space, then the Void, then lawless space, then an open front.
+     The Void is below the last two on purpose — they are dangerous because
+     somebody is there, and `people` is that dial. What the Void has instead is
+     the worst terrain in the game and nowhere to dock, and an earlier pass of
+     this that inflated `people` to 0.55 put it exactly level with a war front,
+     which is both wrong and a knife edge one seed's terrain could tip. */
+  const dOf = (nature, people) =>
+    Math.max(0, Math.min(1, ((nature + people) / 2 - 0.15) / 0.7));
+  const SP = cf.spaces();
+  const dVoid = dOf(vNat, SP.void.people);
+  const dFront = dOf(oNat, SP.front.people);
+  const dLawless = dOf(oNat, SP.lawless.people);
+  const dTerr = dOf(oNat, SP.territory.people);
+  check(dTerr < dVoid && dVoid < dLawless && dLawless < dFront,
+        "danger is out of order — territory " + dTerr.toFixed(2) + ", void " +
+        dVoid.toFixed(2) + ", lawless " + dLawless.toFixed(2) + ", front " +
+        dFront.toFixed(2));
+  check(dVoid > dTerr * 2,
+        "the Deep Void (" + dVoid.toFixed(2) + ") is not meaningfully worse than " +
+        "a power's own space (" + dTerr.toFixed(2) + ")");
+  /* And the Void's danger is the *terrain's*, not the flag's: hold `people` at a
+     power's own level and the Void is still far worse sky than that power's. This
+     is the assertion that says why nobody lives there. */
+  check(dOf(vNat, SP.territory.people) > dTerr * 1.8,
+        "with people held equal the Void is no worse than settled space — " +
+        "its danger is coming from the political map, not from the terrain");
+  // And nobody lives there: that is the consequence, and it is still asserted.
+  check(SP.void.stations === 0 && SP.void.lived === 0,
+        "somebody has settled the Deep Void");
+
   console.log("  regions    " + kinds + " kinds of space · ordinary is " +
               (share("normal") * 100).toFixed(0) + "% · the Empty " +
               (share("open") * 100).toFixed(1) + "% and the city " +
               (share("city") * 100).toFixed(1) + "% · longest crossing " +
               (longest / 575 / 60).toFixed(1) + " min · named top right");
+  console.log("  the void   " + (nv / vc.length * 100).toFixed(1) + "% of the sky · " +
+              "settled biomes " + (settledOut * 100).toFixed(0) + "% outside it → " +
+              (settled * 100).toFixed(1) + "% in · terrain " + oNat.toFixed(2) +
+              " → " + vNat.toFixed(2) + " · danger " + dTerr.toFixed(2) +
+              " home / " + dVoid.toFixed(2) + " void / " + dFront.toFixed(2) +
+              " front · no stations, nobody ever lived");
 }
 
 /* ── nothing spawns in a wall ─────────────────────────────────────────────────

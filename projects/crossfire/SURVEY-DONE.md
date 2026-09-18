@@ -292,6 +292,75 @@ every seed makes irregular empires with no ring anywhere. Still to tune: empires
 fragment into too many separate pieces, and the void is too rare to feel like
 the space between galaxies.
 
+> ### The Deep Void is made of something else — 18 September 2026
+>
+> **What was wrong.** The Void was a purely *political* fact — a cell nobody
+> held — laid over whatever terrain the region roll happened to produce. So the
+> emptiest, deepest sky in the sector was as likely to be **SETTLED REACH** as
+> anything else, and the only thing making it read as void was that the
+> generator had been told to put no stations in it. The emptiness was an
+> assertion rather than a consequence. Worse, `people` for the Void was **0.15**,
+> the lowest of all five kinds — which made the Deep Void, on `dangerAt`, the
+> **safest sky in the game**.
+>
+> Ric: *"make it so in that region there are almost no normal biomes and its
+> more dangerous and thats why civilization isnt really there."*
+>
+> **What it is now.** A void cell draws its biome from `VOID_BIAS` instead of the
+> ordinary weights. The three biomes that *are* civilisation — SETTLED REACH, THE
+> LANES, THE WORKS — are struck out at zero, because none of them can exist
+> somewhere nobody goes. ORDINARY SPACE survives at a sixteenth: almost none
+> rather than none, so one calm cell in a bad stretch makes the rest of the
+> stretch feel chosen. Everything left leans the other way, hardest towards THE
+> WELLS and THE LONG EMPTY.
+>
+> Measured over six seeds, 12,150 cells:
+>
+> | | outside the Void | in the Void |
+> |---|---|---|
+> | settled biomes (ordinary, reach, lanes, works) | **49%** | **3.0%** |
+> | THE WELLS | 4.6% | **16.6%** |
+> | THE MURK | 5.0% | 13.0% |
+> | THE BONEYARD | 5.2% | 13.9% |
+> | THE WARRENS | 3.8% | 10.9% |
+> | THE LONG EMPTY | 1.7% | 6.4% |
+> | expected `nature` | 0.33 | **0.58** |
+>
+> **And the danger is the terrain's, which is the whole point.** `dangerAt` in
+> the Void goes from 0.16 to **0.41** — two and a half times a power's own space.
+> `people` moved only 0.15 → 0.3, and deliberately no further: that dial means
+> *traffic, pirates, battles, whose flag is on the dock*, and there genuinely is
+> almost nobody out here. A first pass inflated it to 0.55 to make the Void
+> frightening and put it **exactly level with an open war front** — wrong, and a
+> knife edge one seed's terrain could tip. The ordering is asserted strictly now:
+> territory 0.16 < void 0.41 < lawless 0.56 < front 0.59. A front is dangerous
+> because of *who* is there; the Void because of *what it is*, and because
+> `stations` is 0 so there is nowhere to refill the thing that limits how far
+> you can go.
+>
+> **Keyed on `voidCell`, not on `spaceAt().kind`**, and that is load bearing.
+> `spaceAt` folds in who holds a cell *now*, and claims change hands while you
+> play — terrain reading off it would rewrite itself mid-save the first time a
+> border moved. `voidCell` is pure in the cell and the seed. Rolled on its own
+> salted stream too, so every non-void cell is untouched down to its jitter.
+>
+> **Geography changed on purpose, so the fingerprint was re-recorded** —
+> `node test/fingerprint.js --record`, and `test/fingerprint.json` is committed
+> with the change. All three seeds moved and the gate caught it, one day after
+> the gate was built. Rock and disc counts did not move, which is the expected
+> shape of a change confined to void cells.
+>
+> Asserted by `test/survey.js` (the `the void` line): the three settled biomes
+> cannot occur at all, settled biomes are under 5% inside and over 35% outside,
+> the Void's terrain is at least 1.5× the rest, the danger ordering is strict,
+> and — holding `people` equal to a power's own — the Void is still 1.8× worse
+> sky, which is the assertion that says the danger is the terrain's.
+>
+> **This does not make the Void less rare** (still ~10% of cells by the noise
+> test), and the "fragments into too many pieces" note above is still open. What
+> it fixes is the other half of that complaint: the Void now *feels* like the
+> space between galaxies instead of ordinary sky with the lights off.
+
 **Home sits in the Frontier**: nobody's yet, calm biome, one power's territory
 within reach. A nobody starting out where civilisation is only just arriving,
 and the two-minute test stays safe.
