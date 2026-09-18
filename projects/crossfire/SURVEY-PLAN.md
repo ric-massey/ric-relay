@@ -93,7 +93,7 @@ table with a line on each:
 | **Phase 4** company, and the first two minutes | **DONE** |
 | **The pages, on one grid** | **DONE** |
 | **Phase 5** consequence | **DONE** except 5.5 and half of 5.8, both below |
-| **Phase 7** the interface | **DONE** except one brief and four lines of copy, both below |
+| **Phase 7** the interface | **DONE** except one brief and three lines of copy, both below |
 | **Phase 6** possibility multiplication | **6 of 7** — 6.6 is below |
 | **Coming back, and an account** | **DONE** |
 | **Who holds the sky** territory | **A and C built** — B is below |
@@ -332,25 +332,47 @@ one worth doing, because the whole feeling being asked for here is the size.
 
 ---
 
-### 7 · Four lines that assume you were watching  ·  *the last of 7.9*
+### 7 · Three lines that assume you were watching  ·  *the last of 7.9*
 
 Phase 7 asked that every line of `chatter()` make sense to somebody who looked
 away for ten seconds. The example it was written from is fixed; the pass across
 the rest was never done, and the record said it had been.
 
 All 105 call sites were read on 17 September. The large majority pass — they name
-the faction, the system or the object. **Four do not**, and they are the whole of
-what is left:
+the faction, the system or the object. **Three do not.** Ric could not say what
+any of the three were about when they were put to him, which is the test working:
+if the author cannot parse his own line out of context, nobody can.
 
-| the line | what it is about | what is wrong |
-|---|---|---|
-| `"They have what they came for."` | a pirate leaving with your cargo | *they* is never resolved |
-| `"<POWER> sent somebody."` | a hunter on its way | does not say it is after **you** |
-| `"Back on somebody's screen."` | silent running expiring | names the effect, not the cause |
-| `"They were not armed."` | shooting an unarmed ship | assumes you know what you shot |
+**`"They have what they came for."`** — `index.html:13356`, in `takeJetsam`.
+It is the *second half of a beat*. You jettison cargo to shake a pirate; the
+first line, `"They have turned off you and gone for the cargo."`, is clear.
+This one fires when they reach it and scoop it up. In sequence it reads; on its
+own, forty seconds later and off the bottom of the strip, it is nothing. What
+the player actually needs to know at that moment is **the chase is over**, and
+the line does not say so.
 
-Each is one string in `index.html`. It is the smallest item in this file and the
-only one that needs no design decision.
+**`"<POWER> sent somebody."`** — `index.html:15613`. A hunter has just been
+spawned, flagged `angry`, aimed at you, and given a speed bonus scaled by how
+badly you have hurt that power. The line does not say it is coming for **you**,
+and does not say what a hunter is. It is the only warning you get.
+
+**`"Back on somebody's screen."`** — `index.html:17018`. `surv.cloak` has just
+run down to zero. It names the consequence and never the cause, so it reads as
+an event happening *to* you rather than a timer you spent.
+
+Each is one string. The edit is a minute; **the wording is Ric's**, which is why
+this is an item and not a fix.
+
+#### Ruled to stay: `"They were not armed."`
+
+`index.html:11844`, after you kill a ship whose role carries no guns. The audit
+flagged it for assuming you know what you shot. **Ric overruled that on 18
+September and he is right:** the line is an accusation, and an accusation works
+because it is flat. Naming the faction and the hull would turn it into a receipt.
+It fires in exactly one situation, immediately after the kill, and there is
+nothing else it could be about.
+
+**Do not "fix" this line.** It is here so the next pass does not find it again.
 
 ### 8 · The panel minimap draws no borders
 

@@ -50,7 +50,7 @@ below.
 | **Phase 4** company, and the first two minutes | **DONE** | Friendly ships, and an opening that teaches |
 | **The pages, on one grid** | **DONE** | Every station and inventory page on one layout |
 | **Phase 5** consequence | **DONE** but for 5.5 and half of 5.8 | 5.1–5.4, 5.6, 5.7, the mobile pass, the jump gate |
-| **Phase 7** the interface | **DONE** but for one brief and four lines of 7.9's copy | 7.1–7.15 (no 7.7), the cockpit sessions, the devices, the empty room |
+| **Phase 7** the interface | **DONE** but for one brief and three lines of 7.9's copy | 7.1–7.15 (no 7.7), the cockpit sessions, the devices, the empty room |
 | **Phase 6** possibility multiplication | **6 of 7** | 6.1–6.5 and 6.7. 6.6 is the one left |
 | **Coming back, and an account** | **DONE** | The home station, and an optional account that stays optional |
 | **Who holds the sky** territory | **A and C built** | The map, and a war that moves the borders. B is in the plan |
@@ -74,7 +74,7 @@ Five things were wrong, and all five are fixed:
 | **`fingerprint.js` asserted nothing.** It printed three hashes and told you they "must not change" — the comparison was your eyes, and only if you remembered to run it *before* the change. This file claimed a baseline in it that was "re-recorded on purpose"; there was nothing to record to. | The hashes live in `test/fingerprint.json`, a mismatch fails, and `--record` is how you say a change to the sector was deliberate. A baseline that is *missing* a seed fails too, because a half-written one passes while that seed drifts. Both proved by hand: moving `DANGER_FLOOR` by 0.001 moved all three seeds and failed the gate, and deleting one seed from the file failed it naming that seed. |
 | **7.6 quoted a hull that does not exist.** "37 minutes in a Mote, 260 in an Ossuary" — the **Ossuary went in one of the 15 September re-cuts**, and the figures went with it. | Corrected to the measured extremes, KITE 18m to GRANARY 180m, which `test/survey.js` prints on every run. |
 | **Five code comments cited a "Cathedral" hull**, also gone in the re-cuts, as their example of a big ship. | Now the GANTRY (exactly three times a SKIFF), the GRANARY (the biggest pantry, which is what `FOOD_FULL * 4` clamps to) and the TENDER (the biggest hull at 3.5x). |
-| **7.9's wording pass was recorded as closed when it was not.** | Audited properly: all 105 `chatter()` call sites read against the rule, four of them fail it, and those four are now item 7 in [`SURVEY-PLAN.md`](SURVEY-PLAN.md). |
+| **7.9's wording pass was recorded as closed when it was not.** | Audited properly: all 105 `chatter()` call sites read against the rule. Four were flagged; Ric ruled one of them — `"They were not armed."` — correct as written on 18 September, and the reason is recorded so the next pass does not re-open it. The other three are item 7 in [`SURVEY-PLAN.md`](SURVEY-PLAN.md), with what each one actually fires on. |
 
 And the sixth, which is a trap rather than a defect and is written down rather
 than changed:
