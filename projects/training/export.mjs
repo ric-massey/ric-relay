@@ -42,11 +42,23 @@ const CRAG_OUT = join(ROOT, 'assets', 'crag-plan.json');
    sessions are climbing too, so kind alone cannot answer this. */
 const OUTDOOR = ['outboulder', 'outrope', 'ijams', 'ijamssolo'];
 
-/* The engine writes prose for one reader, so the venue lands in different
-   places depending on the day: Obed days name the crag in the meta, between the
-   duration and the conditions, while Ijams days carry it in the title. Resolved
-   here, once, so every page downstream just reads `venue`. */
+/* A gym night is climbing, but it is not a day out. The plan says which is
+   which by naming a venue on every real one and leaving these without: the meta
+   still opens "Gym", and the prose fallback below would read that as a place
+   and file it under the next day at the crag. */
+const isGym = s => !s.venue && /^gym\b/i.test((s.meta || '').trim());
+
+/* The plan names the venue outright now, so that is what is used.
+
+   The prose parsing behind it is for the days written before the field existed,
+   where the venue landed in a different place depending on the day: Obed days
+   name the crag in the meta, between the duration and the conditions, while
+   Ijams days carry it in the title. Those days are in the past and will not be
+   rewritten, so the fallback stays rather than being tidied away.
+
+   Resolved here, once, so every page downstream just reads `venue`. */
 function venueOf(s) {
+  if (s.venue) return s.venue;
   const seg = (s.meta || '').split('·').map(x => x.trim()).find(x =>
     x && !/^[\d.,–—-]+\s*(h|min)\b/.test(x)
       && !/conditions$/i.test(x)
@@ -63,7 +75,7 @@ function venueOf(s) {
    it is named here deliberately rather than riding in on the prose: whatever
    the private app puts in it goes out verbatim. The page follows http and https
    only, so a typo cannot become a `javascript:` URL on a public page. */
-const PUBLIC_FIELDS = ['slot', 'kind', 'title', 'meta', 'key', 'k', 'url', 'urlLabel'];
+const PUBLIC_FIELDS = ['slot', 'kind', 'title', 'meta', 'key', 'k', 'url', 'urlLabel', 'venue'];
 
 /* Protocols are published as a LIBRARY, once, with sessions referencing them by
    key — inlining them per day would repeat the same twenty exercises across 364
@@ -216,7 +228,12 @@ writeFileSync(OUT, JSON.stringify(out));
 const cragDays = [];
 for (const d of days) {
   for (const s of d.sessions) {
-    if (!(s.k || []).some(k => OUTDOOR.includes(k))) continue;
+    /* A day out is one the plan sent somewhere: an outdoor protocol, or a venue
+       named outright. The second half matters — the Looking Glass multipitch
+       carries no protocol at all and is still the most a day out of any of
+       them. The gym nights are climbing and go nowhere, so they are neither. */
+    if (isGym(s)) continue;
+    if (!s.venue && !(s.k || []).some(k => OUTDOOR.includes(k))) continue;
     cragDays.push({ date: d.date, title: s.title, venue: venueOf(s), meta: s.meta || '' });
   }
 }
