@@ -274,9 +274,17 @@ mechanical fact rather than decorating a name.**
 | **the Belt, Shards, Rounds** | rocks are lumpy, sharp or round | three different mining grounds |
 | **Emptiness** | the starfield itself thins out | the one region where even the backdrop has nothing to offer |
 
+**Emptiness is white on the chart**, and the only white thing in the sector —
+the loudest a biome can be, which is the right volume for the one region with
+nothing in it. It was the same slate as THE DEEP VOID, which is a different
+layer entirely (terrain against who holds the sky), and drawing them
+identically is what let them be confused for one another.
+
 And a **tint on the starfield** for six of them — the Rime pale blue, the Cloud
 violet, the Murk grey, the Works gold, the Boneyard cold grey, Emptiness
-dull. A third of the region's colour at the middle of a patch, faded in by
+dull. The tint is its own field and is deliberately *not* the chart colour:
+the backdrop thinning out is the whole point of Emptiness, and a white sky
+would be the opposite of nothing. A third of the region's colour at the middle of a patch, faded in by
 `regionDepth` so it arrives over a few thousand units instead of switching on
 across a line.
 

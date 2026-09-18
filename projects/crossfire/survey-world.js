@@ -211,7 +211,22 @@ const REGIONS = [
   /* See BIOMES.md. Nothing here, for a very long way, with no explanation and
      no label — and it is one of the two rarest things in the galaxy, because
      the whole effect depends on hours of ordinary space first. */
-  { key: "open", danger: 0.5, name: "EMPTINESS", colour: "#4a5266", weight: 0.5,
+  /* **White, and the only white thing in the sector.** Ric's call. The chart
+     draws a biome as a dashed border and a label in this colour, and the top
+     right names it in it, so white is the loudest a biome can be — which is the
+     right volume for the one region that has nothing in it at all.
+
+     It was `#4a5266`, the same slate as THE DEEP VOID, and the two were a
+     different layer from each other: this is terrain, that is who holds the sky.
+     Drawing them identically is what let them be confused for one another, so
+     the duplicate is gone with this.
+
+     The **starfield tint below is deliberately not this.** `sky.tint` is its own
+     field (see `skyOf`) and stays the dull slate, because the backdrop thinning
+     out is the point of the region — a white sky would be the opposite of
+     nothing. The colour is how the *chart* says it; the tint is how the *window*
+     says it. */
+  { key: "open", danger: 0.5, name: "EMPTINESS", colour: "#ffffff", weight: 0.5,
     /* **Nothing.** Not "almost nothing" — the first version of this was a set
        of small multipliers, 0.04 of the rock and a twentieth of the traffic,
        which is a thin scattering of everything rather than an absence. A thin

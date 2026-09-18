@@ -25458,7 +25458,9 @@
          of reads the numbers the game actually uses rather than a copy of them
          that goes stale the first time one is tuned. */
       regions: () => WORLD.REGIONS.map(r => ({ key: r.key, name: r.name,
-                                               danger: r.danger, weight: r.weight })),
+                                               danger: r.danger, weight: r.weight,
+                                               colour: r.colour,
+                                               tint: r.sky && r.sky.tint })),
       spaces: () => WORLD.SPACES,
       /* The same census, split by whether the cell is Deep Void — which is the
          only way to assert the rule that the Void is made of different terrain.

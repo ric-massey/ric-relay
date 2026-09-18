@@ -9840,6 +9840,37 @@ const storeOf = (cf, key) => {
   check(pv.terrain && pv.terrain.mapped instanceof Map,
         "the chart is not handed the borders you have mapped");
 
+  /* ── the palette ──────────────────────────────────────────────────────────
+     A biome is drawn on the chart as a dashed border and a label in its own
+     colour, and the top right names it in that colour too, so two biomes sharing
+     one are two biomes that cannot be told apart. Two pairs did: EMPTINESS was
+     the same slate as THE DEEP VOID (a different layer entirely, which is what
+     let them be confused for each other), and SHARD FIELD and THE RIME are still
+     the same pale blue. Emptiness is white now and the only white thing in the
+     sector — Ric's call, and the right volume for the one region with nothing in
+     it. The duplicate count is printed rather than asserted at zero, because the
+     surviving pair is a known and deliberate hold. */
+  const regs = cf.regions();
+  const nothingReg = regs.find(r => r.key === "open");
+  check(!!nothingReg && nothingReg.name === "EMPTINESS",
+        "the emptiness biome is called " + (nothingReg && nothingReg.name));
+  check(nothingReg && /^#f{3}(f{3})?$/i.test(nothingReg.colour),
+        "EMPTINESS is " + (nothingReg && nothingReg.colour) + ", not white");
+  const whites = regs.filter(r => /^#f{3}(f{3})?$/i.test(r.colour));
+  check(whites.length === 1,
+        "white is not unique to EMPTINESS: " + whites.map(r => r.name).join(", "));
+  /* And the starfield tint is deliberately *not* the chart colour: the backdrop
+     thinning out is the whole point of the region, so a white sky would be the
+     opposite of nothing. */
+  check(nothingReg && nothingReg.tint && nothingReg.tint !== nothingReg.colour,
+        "EMPTINESS's starfield tint is " + (nothingReg && nothingReg.tint) +
+        " — it must not be the chart colour");
+  const byColour = {};
+  for (const r of regs) (byColour[r.colour.toLowerCase()] ||= []).push(r.name);
+  const dupes = Object.entries(byColour).filter(([, v]) => v.length > 1);
+  check(!dupes.some(([, v]) => v.includes("EMPTINESS")),
+        "EMPTINESS still shares a colour with " +
+        (dupes.find(([, v]) => v.includes("EMPTINESS")) || [, []])[1].join(", "));
   /* ── and the Deep Void is made of something else ─────────────────────────
      The Void used to be a political fact laid over whatever terrain the roll
      happened to give it, so the emptiest sky in the sector was as likely to be
@@ -9920,6 +9951,10 @@ const storeOf = (cf, key) => {
               (share("open") * 100).toFixed(1) + "% and the city " +
               (share("city") * 100).toFixed(1) + "% · longest crossing " +
               (longest / 575 / 60).toFixed(1) + " min · named top right");
+  console.log("  palette    " + regs.length + " biomes · EMPTINESS " +
+              nothingReg.colour + ", the only white one · " + dupes.length +
+              " colour" + (dupes.length === 1 ? "" : "s") + " shared" +
+              (dupes.length ? " (" + dupes.map(d => d[1].join(" / ")).join("; ") + ")" : ""));
   console.log("  the void   " + (nv / vc.length * 100).toFixed(1) + "% of the sky · " +
               "settled biomes " + (settledOut * 100).toFixed(0) + "% outside it → " +
               (settled * 100).toFixed(1) + "% in · terrain " + oNat.toFixed(2) +
