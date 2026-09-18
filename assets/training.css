@@ -147,7 +147,14 @@ footer { color: var(--soft); font-size: 0.82rem; text-align: center; margin-top:
 }
 .sess .txt { flex: 1 1 auto; min-width: 0; }
 .sess .t { font-weight: 600; }
-.sess .m { color: var(--soft); font-size: 0.8rem; }
+/* The plan writes this line, and it can carry a bare URL — the marathon flag
+   spells out runsignup.com/Race/TN/Knoxville/KnoxvilleMarathon beside the link.
+   That is one 48-character word with nothing to break on, so it set the
+   min-content width of the whole column and pushed the page to 511px inside a
+   375px phone: every row on the day overflowed sideways, not just this one.
+   `min-width: 0` on .txt above lets the column shrink; this is what lets the
+   word itself give. */
+.sess .m { color: var(--soft); font-size: 0.8rem; overflow-wrap: anywhere; }
 .ticker.is-done .t { color: var(--good-ink); }
 .ticker.is-done .t::after { content: " ✓"; font-weight: 700; }
 /* Unscoped on purpose. This used to be `.sess .keytag`, which was fine while
@@ -543,7 +550,9 @@ button.runlink { width: 100%; font: inherit; text-align: left; cursor: pointer; 
 .calday .cs:first-of-type { border-top: 0; }
 .calday .cs .slot { flex: 0 0 5.4rem; color: var(--soft); font-size: 0.69rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 0.15rem; }
 .calday .cs .t { font-weight: 600; font-size: 0.9rem; }
-.calday .cs .m { color: var(--soft); font-size: 0.78rem; }
+/* Same line, same plan prose, in the calendar — and the calendar renders every
+   day of the week, so it meets a long word sooner than the card does. */
+.calday .cs .m { color: var(--soft); font-size: 0.78rem; overflow-wrap: anywhere; }
 
 .emptyday { color: var(--soft); font-style: italic; padding: 0.4rem 0; }
 .loadfail {
@@ -577,7 +586,11 @@ button.runlink { width: 100%; font: inherit; text-align: left; cursor: pointer; 
 .so-ico{flex:0 0 auto;font-size:1.1rem;line-height:1}
 .so-txt{flex:1 1 auto;min-width:0}
 .so-t{display:block;font-weight:600;font-size:.93rem}
-.so-m{display:block;color:var(--soft);font-size:.78rem;margin-top:.1rem}
+/* Third place the same plan prose lands. The Sep 29 marathon flag is a key
+   body session, so it reaches "coming up" and brings its 48-character URL with
+   it — this row is newer than the fix above and would have reopened the bug on
+   the home page. */
+.so-m{display:block;color:var(--soft);font-size:.78rem;margin-top:.1rem;overflow-wrap:anywhere}
 .so-go{flex:0 0 auto;color:var(--soft);font-size:1.1rem}
 
 /* ── page headers on the inner pages ──
