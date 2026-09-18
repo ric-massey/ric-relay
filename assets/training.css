@@ -497,7 +497,40 @@ button.runlink { width: 100%; font: inherit; text-align: left; cursor: pointer; 
    grid reflowing, and detail moves into the day panel below. */
 .calwrap { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.9rem 1rem 1rem; }
 .calhead { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
-.calmonth { flex: 1 1 auto; text-align: center; font-weight: 700; }
+/* The month is a button now — it opens the month/year picker — but it still has
+   to read as the calendar's heading rather than as a third control competing
+   with the two arrows either side of it. So: no border, no fill, and the only
+   affordance is the caret and what happens on hover. */
+.calmonth {
+  flex: 1 1 auto; text-align: center; font: inherit; font-weight: 700;
+  color: var(--ink); background: none; border: 0; cursor: pointer;
+  padding: 0.35rem 0.4rem; min-height: 40px; border-radius: 8px;
+}
+.calmonth::after { content: " ▾"; color: var(--soft); font-size: 0.8em; }
+.calmonth:hover { background: #fff2ec; }
+.calmonth[aria-expanded="true"] { background: #fff2ec; }
+.calmonth:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+
+/* Sits under the header rather than floating over the grid: the grid is the
+   thing you are navigating and covering it while you choose is disorienting.
+   It pushes the weeks down for as long as it is open, which is fine — it is
+   open for about two seconds. */
+.calpick {
+  display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center;
+  padding: 0.6rem; margin-bottom: 0.6rem;
+  background: #fff8f5; border: 1px solid var(--line); border-radius: 10px;
+}
+.calpick label {
+  display: flex; align-items: center; gap: 0.35rem;
+  font-size: 0.76rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--soft);
+}
+.calpick select {
+  font: inherit; font-size: 0.86rem; font-weight: 600; color: var(--ink);
+  padding: 0.35rem 0.5rem; min-height: 40px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+}
+.calpick select:focus-visible { outline: 2px solid var(--brand); outline-offset: -1px; }
 .calnav {
   min-width: 44px; min-height: 44px; font: inherit; font-size: 1.3rem; line-height: 1;
   cursor: pointer; color: var(--brand-ink); background: #fff;

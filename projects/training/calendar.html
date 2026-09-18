@@ -23,9 +23,19 @@
     <div class="calwrap">
       <div class="calhead">
         <button type="button" class="calnav" id="calprev" aria-label="Previous month">‹</button>
-        <div class="calmonth" id="calmonth">—</div>
+        <!-- The month is the control, not a caption. Stepping from September to
+             next June was eight taps on the arrow; now the label opens and you
+             pick. The arrows stay because one month either way is the common
+             move and a dropdown is the slower way to do it. -->
+        <button type="button" class="calmonth" id="calmonth"
+                aria-expanded="false" aria-controls="calpick"
+                aria-label="Choose month and year">—</button>
         <button type="button" class="caltoday" id="caltoday" hidden>Today</button>
         <button type="button" class="calnav" id="calnext" aria-label="Next month">›</button>
+      </div>
+      <div class="calpick" id="calpick" hidden>
+        <label>Month <select id="pickmonth"></select></label>
+        <label>Year <select id="pickyear"></select></label>
       </div>
       <div class="caldow" aria-hidden="true"></div>
       <div class="calgrid" id="calgrid" role="grid"></div>
@@ -181,6 +191,97 @@
   }
 
   /* Pulled out of render() so the load-failure path can still draw it. */
+
+    /* ── the month picker ──
+       The label opens two selects. They are built from the plan's own first and
+       last day rather than a hard-coded range, so a plan that moves or grows
+       needs no edit here, and a month the plan does not cover cannot be chosen:
+       the year list holds only years it touches, and months outside it are
+       disabled rather than hidden, so the shape of the year stays readable.
+
+       Picking lands on the 1st of that month with no day selected — the same
+       state the arrows leave you in — except where the month contains today, in
+       which case today opens, because that is almost certainly why you came
+       back to it. */
+    function planRange() {
+      const days = T.days();
+      return [days[0].date, days[days.length - 1].date];
+    }
+
+    function fillPicker(y, m) {
+      const [first, last] = planRange();
+      const y0 = +first.slice(0, 4), y1 = +last.slice(0, 4);
+      const ys = $('#pickyear'), ms = $('#pickmonth');
+      ys.innerHTML = '';
+      for (let n = y0; n <= y1; n++) {
+        const o = document.createElement('option');
+        o.value = n; o.textContent = n; o.selected = n === y;
+        ys.appendChild(o);
+      }
+      ms.innerHTML = '';
+      MONTH_NAMES.forEach((name, i) => {
+        const o = document.createElement('option');
+        o.value = i; o.textContent = name; o.selected = i === m;
+        /* A month is reachable if any of it falls inside the plan. */
+        const monthEnd = T.isoOf(new Date(y, i + 1, 0));
+        const monthStart = T.isoOf(new Date(y, i, 1));
+        o.disabled = monthEnd < first || monthStart > last;
+        ms.appendChild(o);
+      });
+    }
+
+    function openPicker(open) {
+      const btn = $('#calmonth'), panel = $('#calpick');
+      panel.hidden = !open;
+      btn.setAttribute('aria-expanded', String(open));
+      if (open) $('#pickmonth').focus();
+    }
+
+    function jumpTo(y, m) {
+      const [first, last] = planRange();
+      const today = T.todayISO();
+      const inThisMonth = +today.slice(0, 4) === y && +today.slice(5, 7) - 1 === m;
+      openPicker(false);
+      if (inThisMonth && T.dayOf(today)) { openDay(today); return; }
+      CAL_MONTH = new Date(y, m, 1);
+      CAL_SEL = null;
+      renderCal();
+    }
+
+    $('#calmonth').addEventListener('click', () => {
+      const open = $('#calpick').hidden;
+      if (open) fillPicker(CAL_MONTH.getFullYear(), CAL_MONTH.getMonth());
+      openPicker(open);
+    });
+    $('#pickmonth').addEventListener('change', e =>
+      jumpTo(+$('#pickyear').value, +e.target.value));
+    $('#pickyear').addEventListener('change', e => {
+      /* Changing the year can leave the chosen month outside the plan — 2027
+         only runs to August — so the options are rebuilt and the month is
+         pulled to the nearest one that exists rather than jumping somewhere
+         the calendar cannot show. */
+      const y = +e.target.value;
+      fillPicker(y, CAL_MONTH.getMonth());
+      const ms = $('#pickmonth');
+      if (ms.selectedOptions[0] && ms.selectedOptions[0].disabled) {
+        const ok = [...ms.options].filter(o => !o.disabled);
+        if (!ok.length) return;
+        const want = CAL_MONTH.getMonth();
+        const near = ok.reduce((a, b) =>
+          Math.abs(+b.value - want) < Math.abs(+a.value - want) ? b : a);
+        near.selected = true;
+      }
+      jumpTo(y, +ms.value);
+    });
+
+    /* Anywhere else closes it, and so does Escape — a panel you can only shut
+       by choosing something is a trap when you opened it to look. */
+    document.addEventListener('click', e => {
+      if (!$('#calpick').hidden && !e.target.closest('#calpick, #calmonth')) openPicker(false);
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && !$('#calpick').hidden) { openPicker(false); $('#calmonth').focus(); }
+    });
 
     /* A link in with a date on it opens that day. Read once, on the first
        render after the plan lands, and then forgotten — re-reading it on every
