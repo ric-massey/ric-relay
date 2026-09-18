@@ -182,7 +182,12 @@
       $("nextout").innerHTML =
         `<div class="next"><span class="in">${esc(when)}</span>` +
         `<span class="where">${esc(venueName(next.venue))}</span>` +
-        (next.title ? `<span class="what">${esc(next.title)}</span>` : "") +
+        /* A day at the home crag publishes as "Rope Day" in both fields now —
+           the plan stopped naming Ijams on 2026-09-18 — so printing both would
+           say it twice. The line is for what is planned when that is something
+           other than the label above it. */
+        (next.title && next.title !== venueName(next.venue)
+          ? `<span class="what">${esc(next.title)}</span>` : "") +
         `<span class="when">${esc(fmt(next.date, true))}</span></div>`;
     }
   } catch (e) { /* No plan file, no card. The page is correct either way. */ }

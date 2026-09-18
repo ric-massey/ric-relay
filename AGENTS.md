@@ -124,8 +124,8 @@ Per-room nav treatments (class on the `<nav>`):
 |---|---|---|
 | orrin | synaptic pill switcher | `nav.cortex` |
 | psyche | psychological case-file tabs | `nav.case-tabs` |
-| climbing | Mountain-Project tab bar (white active pill) | `.topbar .roomnav` |
-| training | Strava underline tabs | `.topbar .roomnav` |
+| climbing | its own section bar — see below | `.climbtop` + `.climbnav` |
+| training | its own section bar — see below | `.traintop` + `.trainnav` |
 | apex | Apex lobby tab strip (scrolls sideways, red underline on the current room) | `nav.lobbytabs` |
 | exploration | star-chart waypoints | `nav.starchart` |
 | gaming | understated top-bar text links | `nav.launcher` |
@@ -133,6 +133,38 @@ Per-room nav treatments (class on the `<nav>`):
 | captures | darkroom film strip | `nav.filmstrip` |
 | log | newspaper section bar | `nav.sections` |
 | index | terminal directory listing + `ls`/`open` commands | `#dir` |
+
+**Two rooms have grown into sections and carry their own bar instead.** Climbing and
+training are no longer one page each: climbing is seven pages under
+`projects/climbing/`, training is five under `projects/training/`. Both replaced the
+room nav with a two-strip bar of their own — a terminal line carrying the way back up
+(`↑ all rooms`), and under it the section's own tabs. Climbing did this first; training
+followed it deliberately on 2026-09-18, because two rooms in one house should not move
+differently when you cross between them.
+
+So the room-nav rules above do **not** apply to those two, and this is the one place the
+"identical label set on every page" line is knowingly broken. What replaces it is the
+`↑ all rooms` link: the way out of the room is still one tap, which is the thing that
+rule exists to protect.
+
+Each bar is built once and each page declares only which tab it is on:
+
+```
+<script src="assets/climbing-nav.js" data-nav="log"></script>
+<script src="assets/training-nav.js" data-nav="calendar"></script>
+```
+
+Both read the site root off their own `src` rather than `location.pathname`, because the
+dev server, a `file://` open and Pages disagree about the path and the script's own URL
+is the one thing right in all three. Styling is `assets/climbing-nav.css` and
+`assets/training-nav.css`; the sections' page styles are `assets/climbing.css` and
+`assets/training.css`. That is a shared stylesheet **within one room**, which is what
+hard rule 3 forbids doing **across** rooms — the two bars look different from each other
+on purpose, and neither resembles any other room.
+
+`effects.js` only injects its mobile room menu where it finds `.topbar .roomnav`, so it
+quietly does nothing on those twelve pages. That is correct: both section bars scroll
+sideways under 820px instead.
 
 **If you add, remove, or rename a room:** edit `ROOMS` in `index.html` (that covers the
 directory, `ls`, `tree`, `find` and completion in one place), then update the `<nav>` on

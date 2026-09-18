@@ -66,10 +66,15 @@
     const T = Training;
     const CRAG_URL = '../../assets/crag-plan.json';
 
-    /* Venues that mean "home crag" or "no plan yet" rather than a journey. */
-    const LOCAL = /^(ijams|gym)/i;
-    const UNDECIDED = /^outside$/i;
-    const isTrip = v => !!v && !LOCAL.test(v) && !UNDECIDED.test(v);
+    /* Venues that mean "home crag" or "no plan yet" rather than a journey.
+
+       Since 2026-09-18 the plan publishes those as "Rope Day" and "Boulder
+       Day" rather than naming Ijams, so those two labels are what most of them
+       arrive as; the older spellings stay recognised because the days written
+       before that change still carry them. A destination worth booking time
+       off for is the one case that still names itself. */
+    const GENERIC = /^(rope day|boulder day|ijams|gym|outside)$/i;
+    const isTrip = v => !!v && !GENERIC.test(v.trim());
 
     /* How far off, in days, from today. Noon on both sides so a DST change
        cannot make a whole day appear or vanish — the same arithmetic the

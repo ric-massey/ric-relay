@@ -48,6 +48,73 @@ const OUTDOOR = ['outboulder', 'outrope', 'ijams', 'ijamssolo'];
    and file it under the next day at the crag. */
 const isGym = s => !s.venue && /^gym\b/i.test((s.meta || '').trim());
 
+/* ── the home crag does not get named ──
+   Ijams is five minutes away and "Outside" is a day with no crag chosen yet.
+   Between them they are most of the year, and naming the first of them turned
+   the published plan into a standing list of a specific place this person will
+   be on a specific date — which README.md flags as the consequence of
+   publishing venues at all. Ric asked for them to read as what they ARE
+   instead, on 2026-09-18.
+
+   The distinction that survives is the one worth keeping: which rack to pack.
+   Named destinations — the Red, Chattanooga, Looking Glass — still publish,
+   because a trip you book time off for is the one case where the place IS the
+   point. */
+const ROPE = ['outrope', 'ijams'];
+const BOULDER = ['outboulder', 'ijamssolo'];
+const GENERIC = /^(ijams|outside)\b/i;
+
+/* True for a session at the home crag or at a day with nowhere chosen, whether
+   the plan names that outright in `venue` or leaves it in the prose the way the
+   days written before that field did. */
+const unnamed = s => GENERIC.test(s.venue || '')
+  || (!s.venue && (/ijams/i.test(s.title || '') || GENERIC.test((s.meta || '').trim())));
+
+/* "Rope Day" / "Boulder Day", or null when the session is somewhere worth
+   naming — the caller falls through to the real venue. */
+function genericVenue(s) {
+  /* Idempotent on purpose. The rewrite below replaces the title, and the title
+     is one of the things `unnamed` reads to recognise a home-crag day — so a
+     second pass over already-rewritten data saw no "Ijams" anywhere, called it
+     a named venue, fell through to the prose parser and came back with
+     nothing. The crag build's placeless guard caught it, which is what that
+     guard is for. Recognising our own output closes the loop. */
+  if (s.title === 'Rope Day' || s.title === 'Boulder Day') return s.title;
+  if (!unnamed(s)) return null;
+  const k = s.k || [];
+  if (k.some(x => ROPE.includes(x))) return 'Rope Day';
+  if (k.some(x => BOULDER.includes(x))) return 'Boulder Day';
+  return null;
+}
+
+/* The crag is in the prose as well as the venue field, so fixing one alone
+   leaves the other saying it: the title "Ijams — route laps" and a meta of
+   "Outside · Ijams" both name the place the venue no longer does. The title
+   becomes the label; the meta keeps whatever it said that was not a place —
+   the light left, the conditions — and loses the segments that were. */
+function publicTitle(s) {
+  return genericVenue(s) || s.title;
+}
+function publicMeta(s) {
+  if (!genericVenue(s)) return s.meta;
+  return (s.meta || '').split('·').map(x => x.trim())
+    .filter(x => x && !GENERIC.test(x))
+    .join(' · ');
+}
+
+/* The protocol library names it too, and that one is worse than a title: the
+   `ijams` spec is a description of a specific crag — how many routes, what the
+   rock is, which way it faces — which identifies the place to anyone local far
+   better than the word does. It opens under every Rope Day.
+
+   The exercises stay. "Working route at limit, 3–4 burns" is generic climbing
+   instruction and is the useful half; only the name and the crag's description
+   are replaced. */
+const RENAME_PROTO = {
+  ijams:     { n: 'Sport crag session', spec: null },
+  ijamssolo: { n: 'Solo — easy highballs', spec: null },
+};
+
 /* The plan names the venue outright now, so that is what is used.
 
    The prose parsing behind it is for the days written before the field existed,
@@ -58,6 +125,8 @@ const isGym = s => !s.venue && /^gym\b/i.test((s.meta || '').trim());
 
    Resolved here, once, so every page downstream just reads `venue`. */
 function venueOf(s) {
+  const generic = genericVenue(s);
+  if (generic) return generic;
   if (s.venue) return s.venue;
   const seg = (s.meta || '').split('·').map(x => x.trim()).find(x =>
     x && !/^[\d.,–—-]+\s*(h|min)\b/.test(x)
@@ -149,6 +218,11 @@ for (const [key, p] of Object.entries(A.PROTO)) {
   const out = {};
   for (const f of PUBLIC_PROTO_FIELDS) if (p[f] !== undefined) out[f] = p[f];
   if (out.spec) out.spec = Object.fromEntries(Object.entries(out.spec).filter(([k]) => !DROP_SPEC.has(k)));
+  const rename = RENAME_PROTO[key];
+  if (rename) {
+    out.n = rename.n;
+    if (rename.spec === null) delete out.spec; else if (rename.spec) out.spec = rename.spec;
+  }
   /* [name, dose, cue] — the cue is looked up here rather than shipped as a
      second map, so the page has nothing to join at runtime. */
   if (p.ex && p.ex.length) {
@@ -169,7 +243,11 @@ for (let w = 1; w <= 52; w++) {
       .map(s => {
         const out = {};
         for (const f of PUBLIC_FIELDS) {
-          const v = f === 'title' ? s.t : f === 'meta' ? s.m : s[f];
+          /* title and meta go through the generic-venue rewrite on the way
+             out, so the home crag is not named in the plan either. */
+          const v = f === 'title' ? publicTitle({ ...s, title: s.t, meta: s.m })
+                  : f === 'meta' ? publicMeta({ ...s, title: s.t, meta: s.m })
+                  : s[f];
           if (v !== undefined && v !== null) out[f] = v;
         }
         /* Point only at protocols that still exist, or the page would carry
@@ -234,7 +312,7 @@ for (const d of days) {
        them. The gym nights are climbing and go nowhere, so they are neither. */
     if (isGym(s)) continue;
     if (!s.venue && !(s.k || []).some(k => OUTDOOR.includes(k))) continue;
-    cragDays.push({ date: d.date, title: s.title, venue: venueOf(s), meta: s.meta || '' });
+    cragDays.push({ date: d.date, title: publicTitle(s), venue: venueOf(s), meta: publicMeta(s) || '' });
   }
 }
 /* A day out with nowhere attached would render as "Next: Saturday, at" — so

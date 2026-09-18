@@ -339,6 +339,36 @@ Obed, and it says so in advance. If that ever stops being the intent, the
 switches are `PRIVATE_SESSION` and `PUBLIC_FIELDS` in `export.mjs`, and the
 `publicView` filter in `server/worker.mjs`.
 
+**That intent narrowed on 2026-09-18, and this is the half that changed.** The home
+crag no longer publishes by name. Ijams is five minutes from the house and turns up
+most weeks; "Outside" is a day with no crag picked yet. Between them that was most of
+the year, and naming the first of them was the part that made the file a standing list
+of a specific place on a specific date. Both now publish as **`Rope Day`** or
+**`Boulder Day`** — what the day IS, so you still know which rack to pack, without
+saying where.
+
+Named destinations still publish: the Red, Chattanooga, Looking Glass, the Obed. A trip
+you book time off for is the one case where the place is the point, and there are four
+of them in the year rather than forty.
+
+The switch is `genericVenue()` in `export.mjs` and the `GENERIC` pattern above it —
+widen that regex to hide another venue, empty it to go back to naming them all. It
+rewrites three things, because naming a crag in one field and not the others fixes
+nothing: the `venue`, the session `title`, and any segment of `meta` that was a place.
+It also renames the `ijams` protocol, whose spec was a description of that crag — how
+many routes, what the rock is, which way it faces — which identifies it to anyone local
+far better than the word did.
+
+`genericVenue()` recognises its own output, and has to: the rewrite replaces the title,
+and the title is one of the things it reads to spot a home-crag day. Without that, a
+second pass over rewritten data finds no "Ijams", decides the venue is a real one, falls
+through to the prose parser and comes back with nothing — which the crag build's
+placeless guard stops, loudly. That is the guard doing its job, not a bug in it.
+
+**The climbing log is a separate decision and still names crags.** `climbs.md` is the
+record of where he actually went, and that is the point of the climbing room. This
+change is about the forward-looking plan only.
+
 Runs from Strava publish **the route** — the actual line, on a map, five minutes
 after the run lands here. Ric chose this on 2026-08-17 knowing what it means: the
 routes he runs most, including the point he starts and finishes at, are readable
