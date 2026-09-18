@@ -57,7 +57,13 @@ function venueOf(s) {
 }
 
 /* ── the allowlist ── */
-const PUBLIC_FIELDS = ['slot', 'kind', 'title', 'meta', 'key', 'k'];
+/* `url` and `urlLabel` hang a link off a session — the entry page on the flag
+   that says the marathon gets more expensive after the 30th. A link is the one
+   published field that sends a reader somewhere this repo does not control, so
+   it is named here deliberately rather than riding in on the prose: whatever
+   the private app puts in it goes out verbatim. The page follows http and https
+   only, so a typo cannot become a `javascript:` URL on a public page. */
+const PUBLIC_FIELDS = ['slot', 'kind', 'title', 'meta', 'key', 'k', 'url', 'urlLabel'];
 
 /* Protocols are published as a LIBRARY, once, with sessions referencing them by
    key — inlining them per day would repeat the same twenty exercises across 364

@@ -223,6 +223,16 @@
     .expander:hover, .expander:focus-visible { color: var(--brand-ink); border-color: var(--line); outline: none; }
     .expander[aria-expanded="true"] { color: var(--brand-ink); transform: rotate(90deg); }
 
+    /* A session that carries somewhere to go. Indented to the same 2.1rem as
+       the panel below it rather than to the text column, because the two are
+       the same kind of thing: a second line hanging off the row above. */
+    .sesslink {
+      display: inline-block; margin: 0 0 0.6rem 2.1rem;
+      font-size: 0.82rem; font-weight: 600; color: var(--brand-ink);
+      text-decoration: none; border-bottom: 1px solid var(--line);
+    }
+    .sesslink:hover, .sesslink:focus-visible { border-bottom-color: var(--brand); outline: none; }
+
     /* the exercise panel */
     .sessex { padding: 0 0 0.7rem 2.1rem; }
     .sessex .pblock { margin-top: 0.5rem; }
@@ -1012,6 +1022,19 @@
              <span class="tickbox" aria-hidden="true">${done ? '✓' : ''}</span>${body}
            </button>`
         : `<div class="ticker static${done ? ' is-done' : ''}">${body}</div>`;
+      /* A flag can carry somewhere to go — the marathon entry closes on a date
+         and the plan says so a fortnight out. It sits OUTSIDE the ticker on
+         purpose: in owner mode the ticker IS a button, and an anchor cannot
+         live inside one — the same reason the chevron is its own control.
+
+         http(s) only. The plan is Ric's own file served from this origin, so
+         this is not a trust boundary so much as a typo guard: one line stops a
+         malformed entry becoming a `javascript:` URL on a public page. */
+      const href = /^https?:\/\//i.test(s.url || '') ? s.url : '';
+      const link = href
+        ? `<a class="sesslink" href="${esc(href)}" target="_blank" rel="noopener noreferrer"
+             >${esc(s.urlLabel || 'Open')} ↗</a>`
+        : '';
       const id = `${iso}:${i}`;
       const open = EXPANDED.has(id);
       return `<div class="sess">
@@ -1020,6 +1043,7 @@
           <button type="button" class="expander" data-ex="${esc(id)}" aria-expanded="${open}"
                   aria-label="Show what to do">${'›'}</button>
         </div>
+        ${link}
         <div class="sessex" ${open ? '' : 'hidden'}>${open ? sessionPanel(iso, s) : ''}</div>
       </div>`;
     }
