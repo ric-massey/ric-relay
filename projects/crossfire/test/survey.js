@@ -9633,7 +9633,7 @@ const storeOf = (cf, key) => {
    that the *rules* really do change from place to place, and that the interface
    never says so.
 
-   And the Empty has to stay rare. At one in eleven a third of the sampled sky
+   And Emptiness has to stay rare. At one in eleven a third of the sampled sky
    came back empty, which is not a frightening place, it is a galaxy that is mostly
    nothing: the whole effect depends on hours of ordinary space first, so that the
    absence reads as wrong rather than as normal. */
@@ -9669,7 +9669,7 @@ const storeOf = (cf, key) => {
         "the two rarest kinds are " + rarest + " — they should be the empty one " +
         "and the city one");
   check(share("open") < 0.04,
-        "the Empty is " + (share("open") * 100).toFixed(1) + "% of the sky — it " +
+        "Emptiness is " + (share("open") * 100).toFixed(1) + "% of the sky — it " +
         "has to be rare enough that crossing one is an event");
   check(share("city") < 0.04,
         "the city is " + (share("city") * 100).toFixed(1) + "% of the sky");
@@ -9785,8 +9785,8 @@ const storeOf = (cf, key) => {
   if (belt && barren) {
     check(belt.rocks > 0.4 && barren.rocks === 0,
           "a belt and an empty have nearly the same amount of rock in them");
-    check(barren.traffic === 0, "the Empty has traffic in it");
-    check(barren.nothing === true, "the Empty is not flagged as empty");
+    check(barren.traffic === 0, "Emptiness has traffic in it");
+    check(barren.nothing === true, "Emptiness is not flagged as empty");
   }
   /* Two of them change a *rule* rather than a quantity, which is the whole point
      — and both deepen toward the middle rather than switching on at a line. A
@@ -9916,7 +9916,7 @@ const storeOf = (cf, key) => {
         "somebody has settled the Deep Void");
 
   console.log("  regions    " + kinds + " kinds of space · ordinary is " +
-              (share("normal") * 100).toFixed(0) + "% · the Empty " +
+              (share("normal") * 100).toFixed(0) + "% · Emptiness " +
               (share("open") * 100).toFixed(1) + "% and the city " +
               (share("city") * 100).toFixed(1) + "% · longest crossing " +
               (longest / 575 / 60).toFixed(1) + " min · named top right");

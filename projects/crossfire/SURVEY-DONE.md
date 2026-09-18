@@ -312,7 +312,7 @@ the space between galaxies.
 > somewhere nobody goes. ORDINARY SPACE survives at a sixteenth: almost none
 > rather than none, so one calm cell in a bad stretch makes the rest of the
 > stretch feel chosen. Everything left leans the other way, hardest towards THE
-> WELLS and THE LONG EMPTY.
+> WELLS and EMPTINESS.
 >
 > Measured over six seeds, 12,150 cells:
 >
@@ -323,7 +323,7 @@ the space between galaxies.
 > | THE MURK | 5.0% | 13.0% |
 > | THE BONEYARD | 5.2% | 13.9% |
 > | THE WARRENS | 3.8% | 10.9% |
-> | THE LONG EMPTY | 1.7% | 6.4% |
+> | EMPTINESS | 1.7% | 6.4% |
 > | expected `nature` | 0.33 | **0.58** |
 >
 > **And the danger is the terrain's, which is the whole point.** `dangerAt` in
@@ -355,6 +355,29 @@ the space between galaxies.
 > the Void's terrain is at least 1.5× the rest, the danger ordering is strict,
 > and — holding `people` equal to a power's own — the Void is still 1.8× worse
 > sky, which is the assertion that says the danger is the terrain's.
+>
+> **And the biome is called EMPTINESS now, not THE LONG EMPTY.** Ric asked what
+> the Deep Void was — *"is that the biom thats emptiness?"* — and that question is
+> the bug report. There were two things a few letters apart, on two different
+> layers, drawn in the same colour `#4a5266`:
+>
+> | | `EMPTINESS` | `THE DEEP VOID` |
+> |---|---|---|
+> | layer | **biome** — terrain, one of 14 | **political** — who holds the sky, one of 5 |
+> | decided by | the region lattice roll | `voidCell()` noise, and nobody holding it |
+> | means | **no objects at all**, `nothing: true` | **nobody's flag** |
+> | how much sky | ~1.9% | ~10% of cells |
+>
+> They are still independent — you can be in Emptiness inside Cordon territory,
+> and most of the Deep Void is THE WELLS, THE BONEYARD and THE MURK rather than
+> Emptiness. Only the *name* changed; the key is still `open`.
+>
+> **Two related things are still open**, and both are cosmetic rather than
+> broken. The shared colour is the worse one: `survey-world.js:214` and `:435`
+> are both `#4a5266`, so the emptiest terrain and the emptiest politics are drawn
+> identically. And the key `open` is a poor name for it, because "open space"
+> everywhere else in this codebase means *not docked at a station* — the shipyard
+> refusal and its test both use it that way.
 >
 > **This does not make the Void less rare** (still ~10% of cells by the noise
 > test), and the "fragments into too many pieces" note above is still open. What

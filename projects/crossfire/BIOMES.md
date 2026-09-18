@@ -136,7 +136,7 @@ background art does this use?
 Survey's gear is about choosing **how you travel**, so these immediately give
 equipment meaning.
 
-A build that is amazing in the Empty might be miserable inside the caves. A
+A build that is amazing in Emptiness might be miserable inside the caves. A
 hyper-fast ship could be incredible across open void and terrifying to control
 inside a maze. A huge cargo vessel might dominate the city regions and physically
 struggle through narrow spaces. A scanner build might be fantastic in dense
@@ -272,10 +272,10 @@ mechanical fact rather than decorating a name.**
 | **the Murk** | static across the interface, heavier the further in you go | the scan is down to a tenth: the instrument is what should look broken |
 | **the Violet Cloud** | nebulae everywhere | it is thick, and you can see about half as far |
 | **the Belt, Shards, Rounds** | rocks are lumpy, sharp or round | three different mining grounds |
-| **the Long Empty** | the starfield itself thins out | the one region where even the backdrop has nothing to offer |
+| **Emptiness** | the starfield itself thins out | the one region where even the backdrop has nothing to offer |
 
 And a **tint on the starfield** for six of them — the Rime pale blue, the Cloud
-violet, the Murk grey, the Works gold, the Boneyard cold grey, the Long Empty
+violet, the Murk grey, the Works gold, the Boneyard cold grey, Emptiness
 dull. A third of the region's colour at the middle of a patch, faded in by
 `regionDepth` so it arrives over a few thousand units instead of switching on
 across a line.
@@ -338,11 +338,11 @@ Measured over twelve thousand sites across six sectors:
 | **ordinary space** | **35%** — and it has to be the commonest, or none of the rest reads as unusual |
 | belt, settled reach, cloud, shards, wells, lanes, boneyard, murk, rime, rounds | 5–10% each |
 | **the city** | **1.8%** |
-| **the Empty** | **1.2%** |
+| **Emptiness** | **1.2%** |
 
 The two rare ones are the two rarest, which is the whole of Ric's instruction.
 
-**And the Empty is empty.** Not "almost" — the first version was a set of small
+**And Emptiness is empty.** Not "almost" — the first version was a set of small
 multipliers, 0.04 of the rock and a twentieth of the traffic, which is a thin
 scattering of everything rather than an absence, and a thin scattering reads as an
 ordinary quiet stretch. `nothing: true` is a hard switch on the region rather than
@@ -410,6 +410,6 @@ space rather than a biome — it is where two powers meet, not a shape the
 generator builds. The biome version, sky that has been fought over and shows it,
 is still open.
 
-And the thing the Empty exists for: the very small chance of something that can
+And the thing Emptiness exists for: the very small chance of something that can
 occur nowhere else. That is 6.6 — authored, rare, and it must stay rare or the
 Empty becomes a treasure biome and the whole effect collapses.

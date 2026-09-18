@@ -9965,7 +9965,7 @@
     }
     /* Thicker further out, thicker again inside a field — and now thicker or
        thinner because of *where you are*. A belt is rock as far as the scan
-       reaches; the Long Empty has almost none, which is the whole of what makes
+       reaches; Emptiness has almost none, which is the whole of what makes
        it worth flying into. */
     const wild = wildAt(me.x, me.y);
     const reg = regionOf(me.x, me.y);
@@ -15642,7 +15642,7 @@
   function buildTraffic(cx, cy, R, rnd, deep, out, space) {
     const ox = cx * CHUNK, oy = cy * CHUNK;
     space = space || spaceAt(ox + CHUNK / 2, oy + CHUNK / 2);
-    /* How busy this piece of sky is. The Works is thick with traffic; the Empty
+    /* How busy this piece of sky is. The Works is thick with traffic; Emptiness
        has essentially none, which is most of what makes it feel wrong.
 
        And **home is quiet**. The falloff is `(1 - deep)²`, which is near its

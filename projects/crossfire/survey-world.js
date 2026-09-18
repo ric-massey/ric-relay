@@ -211,7 +211,7 @@ const REGIONS = [
   /* See BIOMES.md. Nothing here, for a very long way, with no explanation and
      no label — and it is one of the two rarest things in the galaxy, because
      the whole effect depends on hours of ordinary space first. */
-  { key: "open", danger: 0.5, name: "THE LONG EMPTY", colour: "#4a5266", weight: 0.5,
+  { key: "open", danger: 0.5, name: "EMPTINESS", colour: "#4a5266", weight: 0.5,
     /* **Nothing.** Not "almost nothing" — the first version of this was a set
        of small multipliers, 0.04 of the rock and a twentieth of the traffic,
        which is a thin scattering of everything rather than an absence. A thin
@@ -270,7 +270,7 @@ const REGION_CELL = 93000;
    the rest of the stretch feel chosen rather than painted.
 
    Everything else leans the other way, hardest towards THE WELLS (the most
-   dangerous terrain there is) and THE LONG EMPTY (the emptiest). The result
+   dangerous terrain there is) and EMPTINESS (the emptiest). The result
    is an expected `nature` of about 0.58 out here against about 0.33 across the
    sector as a whole — the most dangerous *terrain* in the game by a wide margin,
    and dangerous for the opposite reason to a front. A front is dangerous because
@@ -283,7 +283,7 @@ const VOID_BIAS = {
   belt: 0.8, cloud: 0.8,
   shards: 1.6, bones: 2, warrens: 2, murk: 2.4,
   maw: 2.6,                      // the wells: the worst of it
-  open: 4                        // and the Long Empty, which is the signature
+  open: 4                        // and EMPTINESS, which is the signature
 };
 const regionCache = new Map();
 
@@ -356,7 +356,7 @@ function regionSite(cx, cy) {
      settled biomes are struck out entirely — there is no Settled Reach, no
      Lanes and no Works out here, because those three *are* civilisation — and
      ordinary space is cut to a sixteenth. What is left is wells, murk, rock
-     and the Long Empty. **That** is why nobody lives there, and the flags, the
+     and Emptiness. **That** is why nobody lives there, and the flags, the
      stations and the traffic follow the terrain rather than standing in for it.
 
      Rolled on its own stream, salted differently, so that a cell that is not
