@@ -84,12 +84,43 @@
     /* A band of totals over the days below it. Deliberately counts only what
        is on this page — miles RUN, sessions DONE — rather than restating the
        plan's targets, which the home page already carries. */
+    /* ── what counts as a day climbing ──
+       This tile read 5 across a month that held seventeen climbing days,
+       because it only counted two of the three ways a climbing day shows up:
+       a crag day logged in climbs.md, and a board night pulled from Kilter or
+       Tension. Neither covers the ordinary case — going to the gym and ticking
+       the session off — and climbs.md's newest day predates the plan's first,
+       so in practice it was counting board nights and nothing else.
+
+       The third way is a ticked session, and it needs a filter. `kind` lumps
+       everything that is not a run, a body session or a rest under "climb",
+       which sweeps in the Legs + tendon blocks — a barbell and a rehab band,
+       not a wall. So a session counts unless everything it prescribes is
+       ground work. Naming the ground protocols rather than the climbing ones
+       is deliberate: a new climbing protocol should count on the day it is
+       added, and a new rehab one is the rarer event and can be listed here. */
+    const GROUND = new Set(['lift', 'tendon', 'antagonist', 'wrist', 'wristdaily',
+      'kneestrength', 'lowerleg', 'muscleup', 'mantel', 'calis', 'fingerprehab',
+      'micro', 'mobility', 'meditate', 'night', 'missed', 'pulley']);
+    /* `benchmark` is deliberately NOT in that set. Test day is mostly numbers —
+       a max hang, a heel raise, the heaviest clean five — but two of its six
+       items are climbing, and one of them is sending Kilter benchmarks. He was
+       on a board that day. */
+    const onTheWall = s => s.kind === 'climb'
+      && !((s.k || []).length && (s.k || []).every(k => GROUND.has(k)));
+
+    function climbedOn(d) {
+      if (T.climbOn(d.date) || T.boardOn(d.date).length) return true;
+      const st = T.stateOf(d.date);
+      return d.sessions.some(s => onTheWall(s) && T.doneOf(st, s));
+    }
+
     function summary(days) {
       const metres = days.reduce((m, d) =>
         m + T.runsOn(d.date).reduce((n, a) => n + (a.distance || 0), 0), 0);
       const sessions = days.reduce((n, d) =>
         n + T.doneCountOf(T.stateOf(d.date), d.sessions), 0);
-      const climbs = days.filter(d => T.climbOn(d.date) || T.boardOn(d.date).length).length;
+      const climbs = days.filter(climbedOn).length;
       const el = $('#histsum');
       el.hidden = false;
       el.innerHTML =
