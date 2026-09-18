@@ -50,7 +50,7 @@ below.
 | **Phase 4** company, and the first two minutes | **DONE** | Friendly ships, and an opening that teaches |
 | **The pages, on one grid** | **DONE** | Every station and inventory page on one layout |
 | **Phase 5** consequence | **DONE** but for 5.5 and half of 5.8 | 5.1–5.4, 5.6, 5.7, the mobile pass, the jump gate |
-| **Phase 7** the interface | **DONE** but for one brief and three lines of 7.9's copy | 7.1–7.15 (no 7.7), the cockpit sessions, the devices, the empty room |
+| **Phase 7** the interface | **DONE** | 7.1–7.15 (no 7.7), the cockpit sessions, the devices, the empty room |
 | **Phase 6** possibility multiplication | **6 of 7** | 6.1–6.5 and 6.7. 6.6 is the one left |
 | **Coming back, and an account** | **DONE** | The home station, and an optional account that stays optional |
 | **Who holds the sky** territory | **A and C built** | The map, and a war that moves the borders. B is in the plan |
@@ -2707,7 +2707,8 @@ make sense against each other — moving the strip changed every page, merging t
 pages changed what the others had to link to, and the market could not be a market
 while the shortage from 6.2 had nowhere to show.
 
-**What is left of 7**, and it is small:
+**What is left of 7** — nothing, as of 18 September 2026. It was this, and it
+closed:
 
 - **7.9's other half** — the *wording*. The log exists; the lines in it still
   assume you were watching. "They made it. 260 cash, and their thanks." is the
@@ -2734,6 +2735,32 @@ while the shortage from 6.2 had nowhere to show.
   > An earlier pass of this note said the whole file read the same way. It does
   > not; it reads the same way *almost* everywhere, and those four are the
   > afternoon this item actually asks for.
+
+  > **Closed — 18 September 2026.** Ric ruled on all four, and the outcome is
+  > worth keeping because three of them did not get rewritten. **Two lines were
+  > deleted outright.** The strip is not a narrator, and a line that cannot carry
+  > its own meaning is worth less than the silence it displaces.
+  >
+  > | the line | the ruling |
+  > |---|---|
+  > | `"They have what they came for."` | **Deleted.** It was the second half of a beat whose first half had usually scrolled away, so it resolved nothing on its own — no *they*, no cargo, no chase. The burst of each mote going is the feedback, and the pirates peeling off is the rest. |
+  > | `"They have turned off you and gone for the cargo."` | **Kept, and it names them.** One pirate reads *"A pirate has turned off you and gone for the cargo."*, several read *"N pirates have…"*. This is the line that carries the beat, so it is the one that had to say who. |
+  > | `"<POWER> sent somebody."` | **Rewritten to `"<POWER> put a bounty on you."`** — Ric's wording. "Sent somebody" described the spawn; a bounty describes your standing, which is the thing that actually changed and the thing that will keep being true. |
+  > | `"Back on somebody's screen."` | **Deleted.** It named the consequence and never the cause, so it read as something happening *to* you rather than a timer you spent. The cockpit already shows the cloak running down. |
+  > | `"They were not armed."` | **Ruled correct as written.** See below — it is not to be touched. |
+  >
+  > **`"They were not armed."` stays exactly as it is.** The audit flagged it for
+  > assuming you know what you shot; that was wrong. It is an accusation, and an
+  > accusation works because it is flat — naming the faction and the hull would
+  > turn it into a receipt. It fires in one situation only, `index.html:11844`,
+  > immediately after you kill a ship whose role carries no guns, and there is
+  > nothing else it could be about. **Do not "fix" this line.** It is written down
+  > here so the next pass does not find it again.
+  >
+  > Both deletions left a comment where the line was, saying what was there and
+  > why it went, so the next reader does not helpfully put it back.
+  >
+  > **7.9 is closed, and with it the last of Phase 7's copy.**
 
 Everything else in 7 is done: the pages, the market, the chart's rail, the four
 slots, the scan button, the log, the info card, and the touch control for the

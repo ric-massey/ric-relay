@@ -13334,14 +13334,20 @@
       took++;
     }
     if (took) {
-      chatter(took === 1 ? "They have turned off you and gone for the cargo."
-                         : took + " of them have turned off you and gone for " +
+      chatter(took === 1 ? "A pirate has turned off you and gone for the cargo."
+                         : took + " pirates have turned off you and gone for " +
                            "the cargo.", CASH);
     }
   }
 
-  // And what they do when they get there: they take it, which is the whole of
-  // the transaction. Fourteen units is a hold's worth to a small ship.
+  /* And what they do when they get there: they take it, which is the whole of
+     the transaction. Fourteen units is a hold's worth to a small ship.
+
+     It says nothing while it happens, on purpose. There was a line here — "They
+     have what they came for." — and it was the second half of a beat whose first
+     half, the one above, had usually scrolled away by the time it fired. On its
+     own it resolved nothing: no *they*, no cargo, no chase. The burst of each
+     mote going is the feedback, and the pirates peeling off is the rest. */
   function takeJetsam(t) {
     let got = 0;
     for (let i = surv.motes.length - 1; i >= 0 && got < 14; i--) {
@@ -13353,7 +13359,6 @@
     }
     t.bait = null;
     t.baitFor = 0;
-    if (got) chatter("They have what they came for.", CASH, t);
   }
 
   /* One hard throw down the way you are pointing. Nothing about where you land
@@ -15610,7 +15615,7 @@
       cargo: [], cool: 1.4, doom: 0, guards: 0, space: 0, trades: false,
       phase: Math.random() * 6.28, angry: true
     });
-    chatter(factionOf(worst).short + " sent somebody.", "#ff8f77");
+    chatter(factionOf(worst).short + " put a bounty on you.", "#ff8f77");
   }
 
   /* What one is carrying, and therefore what robbing it pays. A hauler carries
@@ -17013,10 +17018,11 @@
        with a rule attached: firing ends it, and `me.firedAt` is set by the
        trigger rather than read from the key, so a shot from any weapon counts
        and a held trigger cannot outlast it. */
-    if (surv.cloak > 0) {
-      surv.cloak = Math.max(0, surv.cloak - dt);
-      if (!surv.cloak) chatter("Back on somebody's screen.", "#87d8ff");
-    }
+    /* Running out says nothing. The line that was here — "Back on somebody's
+       screen." — named the consequence and never the cause, so it read as
+       something happening to you rather than a timer you spent. The cockpit
+       already shows the cloak running down; it does not need an obituary. */
+    if (surv.cloak > 0) surv.cloak = Math.max(0, surv.cloak - dt);
     surv.empSelf = Math.max(0, surv.empSelf - dt);
     if (surv.empRing) {
       surv.empRing.t += dt;
