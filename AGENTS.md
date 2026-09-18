@@ -136,7 +136,8 @@ Per-room nav treatments (class on the `<nav>`):
 
 **Two rooms have grown into sections and carry their own bar instead.** Climbing and
 training are no longer one page each: climbing is seven pages under
-`projects/climbing/`, training is five under `projects/training/`. Both replaced the
+`projects/climbing/`, training is four — home at the root, then calendar,
+workouts and trips under `projects/training/`. Both replaced the
 room nav with a two-strip bar of their own — a terminal line carrying the way back up
 (`↑ all rooms`), and under it the section's own tabs. Climbing did this first; training
 followed it deliberately on 2026-09-18, because two rooms in one house should not move
@@ -163,7 +164,7 @@ hard rule 3 forbids doing **across** rooms — the two bars look different from 
 on purpose, and neither resembles any other room.
 
 `effects.js` only injects its mobile room menu where it finds `.topbar .roomnav`, so it
-quietly does nothing on those twelve pages. That is correct: both section bars scroll
+quietly does nothing on those eleven pages. That is correct: both section bars scroll
 sideways under 820px instead.
 
 **If you add, remove, or rename a room:** edit `ROOMS` in `index.html` (that covers the

@@ -27,6 +27,16 @@
          the block filter directly below it is the same idea made clickable. -->
     <div class="phase" id="phase" hidden></div>
 
+    <!-- What has actually been done, over the whole plan so far. These were on
+         a History tab, which was the same days a second time with the calendar
+         already doing the job better; the totals were the part worth keeping,
+         so they came here and the page went. They do NOT move with the filters
+         below — same reasoning as the block card above, which always shows
+         today's block: this answers "how is the year going", and a number that
+         changed when you looked at February would be answering something
+         else. -->
+    <div class="totals" id="totals" hidden></div>
+
     <!-- Filters, not search. You come here knowing roughly what you want — the
          key runs, everything in the marathon build, what climbing looks like in
          February — and those are all filters. A text box would be a worse way
@@ -117,6 +127,71 @@
         `</div><div class="ph-when">Week ${nth} of ${span} · week ${d.week} of 52</div>`;
     }
 
+    /* ── what has actually happened ──
+       Note the `=== true` on the ticks: an untick is stored as `false` rather
+       than removed, so a day he ticked and then cleared would otherwise count
+       as evidence of itself forever. */
+    function happened(iso) {
+      const st = T.stateOf(iso);
+      if (Object.values(st.done || {}).some(v => v === true)) return true;
+      if ((st.notes || []).length) return true;
+      if (T.runsOn(iso).length) return true;
+      if (T.boardOn(iso).length) return true;
+      if (T.climbOn(iso)) return true;
+      return false;
+    }
+
+    const lived = () => T.days()
+      .filter(d => d.date <= T.todayISO())
+      .filter(d => happened(d.date));
+
+    /* ── what counts as a day climbing ──
+       Three ways a climbing day shows up: a crag day logged in climbs.md, a
+       board night pulled from Kilter or Tension, and — the ordinary one — a
+       session ticked off.
+
+       That third way needs a filter. `kind` lumps everything that is not a
+       run, a body session or a rest under "climb", which sweeps in the Legs +
+       tendon blocks: a barbell and a rehab band, not a wall. So a session
+       counts unless everything it prescribes is ground work.
+
+       The set names the GROUND protocols rather than the climbing ones on
+       purpose: a new climbing protocol should count from the day it is added,
+       and a new rehab one is the rarer event and can be listed here.
+
+       `benchmark` is deliberately absent. Test day is mostly numbers — a max
+       hang, a heel raise, the heaviest clean five — but two of its six items
+       are climbing and one of them is sending Kilter benchmarks. He was on a
+       board that day. */
+    const GROUND = new Set(['lift', 'tendon', 'antagonist', 'wrist', 'wristdaily',
+      'kneestrength', 'lowerleg', 'muscleup', 'mantel', 'calis', 'fingerprehab',
+      'micro', 'mobility', 'meditate', 'night', 'missed', 'pulley']);
+    const onTheWall = x => x.kind === 'climb'
+      && !((x.k || []).length && (x.k || []).every(k => GROUND.has(k)));
+
+    function climbedOn(d) {
+      if (T.climbOn(d.date) || T.boardOn(d.date).length) return true;
+      const st = T.stateOf(d.date);
+      return d.sessions.some(x => onTheWall(x) && T.doneOf(st, x));
+    }
+
+    function renderTotals() {
+      const days = lived();
+      const el = $('#totals');
+      if (!days.length) { el.hidden = true; return; }
+      const metres = days.reduce((m, d) =>
+        m + T.runsOn(d.date).reduce((n, a) => n + (a.distance || 0), 0), 0);
+      const sessions = days.reduce((n, d) =>
+        n + T.doneCountOf(T.stateOf(d.date), d.sessions), 0);
+      const climbs = days.filter(climbedOn).length;
+      el.hidden = false;
+      el.innerHTML =
+        `<div class="tot"><b>${days.length}</b><span>day${days.length === 1 ? '' : 's'} logged</span></div>` +
+        `<div class="tot"><b>${sessions}</b><span>session${sessions === 1 ? '' : 's'} done</span></div>` +
+        `<div class="tot"><b>${T.miles(metres)}</b><span>miles run</span></div>` +
+        `<div class="tot"><b>${climbs}</b><span>day${climbs === 1 ? '' : 's'} climbing</span></div>`;
+    }
+
     /* A day whose only content is the standing morning/night practice is
        scaffolding on this page, not a workout. */
     const substantive = s => s.kind !== 'rest' && !(s.kind === 'body' && !s.key);
@@ -145,6 +220,7 @@
          February. */
       const nowDay = T.dayOf(T.todayISO());
       if (nowDay) renderPhase(nowDay); else $('#phase').hidden = true;
+      renderTotals();
       const list = rows();
       const today = T.todayISO();
       $('#fcount').textContent = list.length

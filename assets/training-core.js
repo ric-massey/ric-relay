@@ -1,9 +1,9 @@
 /* TRAINING — the shared core
    ────────────────────────────────────────────────────────────────────────────
-   The training room is four pages — home, calendar, workouts, history — and
-   all four need the same things: the plan, the ticks, the runs off the watch,
-   the board nights, and the session row that ties them together. This is where
-   those live, once.
+   The training room is four pages — home, calendar, workouts, trips — and they
+   need the same things: the plan, the ticks, the runs off the watch, the board
+   nights, and the session row that ties them together. This is where those
+   live, once.
 
    The split is by RESPONSIBILITY, not by page. Anything that answers "what is
    the plan, and what happened" is here. Anything that decides "what does THIS

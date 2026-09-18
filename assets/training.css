@@ -667,20 +667,19 @@ button.runlink { width: 100%; font: inherit; text-align: left; cursor: pointer; 
   .w-date{flex-basis:5.4rem}
 }
 
-/* ── history ── */
-.histsum{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin:0 0 1.3rem}
-.histsum .hs{background:var(--card);border:1px solid var(--line);border-radius:12px;
+/* ── the totals (workouts) ──
+   Was .histsum on a History tab. That page was the same days a second time
+   with the calendar already doing the job better, so the totals moved to the
+   workout index and the page went; the class came with them and got a name
+   that is not about where it used to live. */
+.totals{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin:0 0 1.3rem}
+.totals .tot{background:var(--card);border:1px solid var(--line);border-radius:12px;
              padding:.7rem .5rem;text-align:center}
-.histsum .hs b{display:block;font-size:1.25rem;font-weight:800;letter-spacing:-.02em}
-.histsum .hs span{display:block;color:var(--soft);font-size:.7rem;margin-top:.15rem}
+.totals .tot b{display:block;font-size:1.25rem;font-weight:800;letter-spacing:-.02em}
+.totals .tot span{display:block;color:var(--soft);font-size:.7rem;margin-top:.15rem}
 @media(max-width:560px){
-  .histsum{grid-template-columns:repeat(2,1fr)}
+  .totals{grid-template-columns:repeat(2,1fr)}
 }
-.morewrap{display:flex;justify-content:center;margin:.4rem 0 1.6rem}
-.morebtn{font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;color:var(--brand-ink);
-         background:var(--card);border:1px solid var(--line);border-radius:999px;
-         padding:.6rem 1.3rem;min-height:44px}
-.morebtn:hover{border-color:var(--brand)}
 
 /* ── last workout (home) ──
    One card, opened. Not a day card: a day card is a list of everything
