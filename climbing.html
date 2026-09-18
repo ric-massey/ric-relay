@@ -146,17 +146,42 @@
      From the crag plan, and only when there is one. */
   try {
     const plan = await (await fetch("assets/crag-plan.json", { cache: "no-store" })).json();
+    /* Today where he is, not in UTC. toISOString() is UTC, and Knoxville runs
+       four or five hours behind it — so from about 8pm the filter below was
+       already on tomorrow's date and dropped the day out he had not had yet.
+       The card skipped straight past it, every evening. */
+    /* The page already folds every spelling of a crag to one name — ClimbUI.crag
+       is why "PMRP", "PMPR" and "PMRP - Bears Den" are one row in the trip list
+       above. The plan is a second source for the same places and was not going
+       through it, so this card said "Ijams" on a day the rest of the page calls
+       "Ijams Crag", depending only on whether the plan named the venue outright
+       or left it to be read out of the prose.
+
+       A venue naming a CHOICE of two places — "Obed or Lilly", a day out where
+       the crag is not settled — is not a misspelling of either one, and folding
+       it would pick a crag the plan deliberately did not. Those stay as written. */
+    const venueName = v => !v ? "Out" : /\bor\b/i.test(v) ? v : ClimbUI.crag(v);
+
+    const now = new Date();
+    const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}` +
+                     `-${String(now.getDate()).padStart(2, "0")}`;
     const next = (plan.days || []).map(d => d)
-      .filter(d => d.date >= new Date().toISOString().slice(0, 10))
+      .filter(d => d.date >= todayISO)
       .sort((a, b) => a.date.localeCompare(b.date))[0];
     if (next) {
+      /* Noon on BOTH sides. Noon is the usual guard against a DST change
+         stretching or shrinking the day into a different answer, but it only
+         works if both ends carry it: measuring noon from midnight left half a
+         day on every result, and rounding turned that half into a whole one.
+         Today read "Tomorrow", tomorrow read "In 2 days", and a day six out
+         crossed the seven-day cutoff and lost its wording entirely. */
       const days = Math.round(
-        (new Date(next.date + "T12:00") - new Date(new Date().toDateString())) / 864e5);
+        (new Date(next.date + "T12:00") - new Date(todayISO + "T12:00")) / 864e5);
       const when = days <= 0 ? "Today" : days === 1 ? "Tomorrow"
                  : days < 7 ? `In ${days} days` : fmt(next.date, true);
       $("nextout").innerHTML =
         `<div class="next"><span class="in">${esc(when)}</span>` +
-        `<span class="where">${esc(next.venue || "Out")}</span>` +
+        `<span class="where">${esc(venueName(next.venue))}</span>` +
         (next.title ? `<span class="what">${esc(next.title)}</span>` : "") +
         `<span class="when">${esc(fmt(next.date, true))}</span></div>`;
     }
