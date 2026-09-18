@@ -1044,8 +1044,12 @@
     boardOn: iso => BOARD[iso] || [],
     save,
 
-    /* drawing */
+    /* drawing — the whole panel, or the pieces it is made of. The home page's
+       "last workout" card composes its own from the pieces, because it wants
+       what HAPPENED first and the prescription second, where a session row
+       wants the prescription first and the evidence under it. */
     dayCard, sessionRow, sessionPanel, runLink, notesBlock, climbLink,
+    runBlock, boardBlock, exercisePanel,
     mountOwnerBar, wire,
 
     /* odds and ends the pages format with */

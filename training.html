@@ -59,8 +59,14 @@
          answers "why am I doing this" rather than "what is today". -->
     <div class="phase" id="phase" hidden></div>
 
-    <div class="section-label">Today</div>
-    <div id="today"></div>
+    <!-- What you last actually did, with the workout itself open — the run off
+         the watch, or the climbs you logged, and a way through to the place
+         that holds the detail. Today's card used to sit here, but today is on
+         the calendar with every other day and that is where it gets ticked;
+         the thing the home page can say that no other page does is how the
+         last one went. -->
+    <div class="section-label">Last workout</div>
+    <div id="last"></div>
 
     <!-- Far enough ahead to pack a bag for, not so far it becomes the calendar
          again. The calendar tab is one tap away and does that job properly. -->
@@ -153,6 +159,93 @@
       $('#soon').innerHTML = rows || '<div class="loadfail">Nothing further in the plan.</div>';
     }
 
+    /* ── the last workout ──
+       Scanning back from today for the most recent day that carries evidence of
+       real work, and then for the session on it that the evidence belongs to.
+
+       The morning practice is excluded on purpose — it happens every day, and a
+       home page reporting "your last workout was: stretching" would be true and
+       worthless. Rest days are out for the same reason.
+
+       Weighting rather than first-match, because a day can hold more than one
+       candidate: a run that landed off the watch, or climbs logged at a crag,
+       outrank a box someone ticked by hand, because they carry detail to show.
+       A tick alone still counts — it is the only evidence a gym session or a
+       lift ever produces. */
+    function lastWorkout() {
+      const today = T.todayISO();
+      const past = T.days().filter(d => d.date <= today).reverse();
+      for (const d of past) {
+        const st = T.stateOf(d.date);
+        const split = T.runSplit(d.date);
+        const climbed = T.climbOn(d.date);
+        const boards = T.boardOn(d.date);
+        const found = d.sessions
+          .filter(substantive)
+          .map(sn => {
+            const runs = split.bySession[sn.id] || [];
+            const onRock = sn.kind === 'climb' && (climbed || boards.length);
+            const weight = (runs.length ? 3 : 0) + (onRock ? 3 : 0) + (T.doneOf(st, sn) ? 1 : 0);
+            return { d, s: sn, runs, climbed: onRock, weight };
+          })
+          .filter(x => x.weight > 0)
+          .sort((a, b) => b.weight - a.weight);
+        if (found.length) return found[0];
+      }
+      return null;
+    }
+
+    function renderLast() {
+      const w = lastWorkout();
+      if (!w) {
+        $('#last').innerHTML =
+          '<div class="loadfail">Nothing logged yet. Tick a session on the calendar, ' +
+          'or go for a run and let the watch do it.</div>';
+        return;
+      }
+      const { d, s, runs } = w;
+      const when = d.date === T.todayISO() ? 'Today' : T.pretty(d.date);
+
+      /* ── what happened, before what was asked for ──
+         A session row puts the prescription first and folds the evidence in
+         underneath, which is right when you are about to go and do it. This
+         card is the other way round: it is here because the thing is DONE, so
+         the run off the watch and the problems off the board lead, and the
+         exercise list only appears when there is no evidence to lead with —
+         a lift or a gym session leaves nothing behind but a tick, and for
+         those the prescription is the only honest answer to "what did I do". */
+      const board = T.boardOn(d.date).length ? T.boardBlock(d.date) : '';
+      const crag = T.climbLink(d.date);
+      const evidence = runs.map(T.runBlock).join('') + board + crag;
+
+      /* Each kind of evidence has somewhere it came from, and the card is not
+         much use if it dead-ends. The run carries its own Strava link inside
+         its detail panel and a crag day carries its own link to the climbing
+         log, so the only one missing a way out is the board night. */
+      const out = board && !crag
+        ? `<a class="lw-out" href="projects/climbing/board.html">See the boards →</a>` : '';
+
+      /* Open, not a chevron you have to find. This is one card and the whole
+         reason it is here is the detail inside it — the splits, the map, the
+         problems — so hiding that behind a tap would leave the page saying
+         only that a run happened. */
+      $('#last').innerHTML = `<div class="lastw">
+        <div class="lw-head">
+          <span class="lw-ico">${T.ICON[s.kind] || ''}</span>
+          <span class="lw-txt">
+            <span class="lw-t">${T.esc(s.title)}</span>
+            <span class="lw-m">${T.esc(when)} · ${T.esc(d.phase)}${
+              s.meta ? ' · ' + T.esc(s.meta) : ''}</span>
+          </span>
+          <a class="lw-go" href="projects/training/calendar.html#d-${T.esc(d.date)}"
+             aria-label="Open this day on the calendar">›</a>
+        </div>
+        <div class="lw-body">${evidence || T.exercisePanel(s)}${out}</div>
+      </div>`;
+      /* The run panel inside carries its own expanders. */
+      T.wire($('#last'));
+    }
+
     function render() {
       if (!T.ready()) return;
       const iso = T.todayISO();
@@ -161,7 +254,7 @@
 
       if (!d) {
         $('#w-note').textContent = "Outside the plan's 52 weeks.";
-        $('#today').innerHTML = '<div class="loadfail">Nothing scheduled for today.</div>';
+        renderLast();
         renderSoon(iso);
         return;
       }
@@ -192,9 +285,8 @@
           : `${wk.phase || d.phase} · week ${d.week} of 52.`;
 
       renderPhase(d);
-      $('#today').innerHTML = T.dayCard(iso, true);
+      renderLast();
       renderSoon(iso);
-      T.wire();
     }
 
     T.onChange(render);

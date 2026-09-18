@@ -47,6 +47,15 @@
     <div class="fcount" id="fcount"></div>
     <div id="list"></div>
 
+    <!-- The other three pages all carry this and this one did not, so landing
+         here signed out left no way to sign in without going somewhere else
+         first. Nothing on this page needs owner mode, but the box is where the
+         section says it is. -->
+    <div class="owner" id="ownerbar" hidden>
+      <strong>Owner mode.</strong> <span id="ownerstate">checking…</span>
+      <button type="button" class="ownerbtn" id="signout">sign out</button>
+    </div>
+
     <footer>
       Ric's personal training log · powered by stubbornness<br>
       <span class="foot-dim">The plan is generated; ticks and notes are live.</span>
@@ -100,6 +109,7 @@
 
     function render() {
       if (!T.ready()) return;
+      T.mountOwnerBar();
       const list = rows();
       const today = T.todayISO();
       $('#fcount').textContent = list.length

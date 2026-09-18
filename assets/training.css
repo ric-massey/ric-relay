@@ -526,6 +526,12 @@ button.runlink { width: 100%; font: inherit; text-align: left; cursor: pointer; 
 .calcell.today { border-color: var(--brand); border-width: 2px; background: #fff8f5; }
 .calcell.sel { outline: 2px solid var(--brand); outline-offset: 1px; }
 .calcell.isdone { background: #f2fbf5; border-color: #bfe6cd; }
+/* A past day still owing real work. Deliberately quiet — a wash and a bar down
+   the left, not a red badge: on a page where most of the past is caught up,
+   the eye should find the few that are not without the grid looking alarmed.
+   `isdone` wins by coming first in specificity order below. */
+.calcell.owed { background: #fffaf3; border-color: #f0dcc2; box-shadow: inset 3px 0 0 #e8a33d; }
+.calcell.owed .cd { color: #8a5a12; }
 .calcell.deload::after {
   content: ""; position: absolute; inset: auto 4px 3px; height: 2px;
   background: repeating-linear-gradient(90deg, var(--soft) 0 3px, transparent 3px 6px);
@@ -538,6 +544,17 @@ button.runlink { width: 100%; font: inherit; text-align: left; cursor: pointer; 
 .k-run, .calcell .cdots i.run { background: var(--brand); }
 .k-rest, .calcell .cdots i.rest { background: #c9c9d2; }
 .k-done { background: var(--good); }
+.k-owed { background: #e8a33d; }
+/* Sits between the month name and the forward arrow, and hides itself when
+   today is already what you are looking at. */
+.caltoday {
+  font: inherit; font-size: 0.74rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; cursor: pointer; color: var(--brand-ink);
+  background: #ffe8de; border: 0; border-radius: 999px; padding: 0.3rem 0.7rem;
+  min-height: 32px; margin-left: 0.5rem;
+}
+.caltoday:hover { background: var(--brand); color: #fff; }
+
 .calkey { display: flex; gap: 0.9rem; flex-wrap: wrap; margin-top: 0.7rem; font-size: 0.72rem; color: var(--soft); }
 .calkey i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 0.25rem; }
 
@@ -664,3 +681,29 @@ button.runlink { width: 100%; font: inherit; text-align: left; cursor: pointer; 
          background:var(--card);border:1px solid var(--line);border-radius:999px;
          padding:.6rem 1.3rem;min-height:44px}
 .morebtn:hover{border-color:var(--brand)}
+
+/* ── last workout (home) ──
+   One card, opened. Not a day card: a day card is a list of everything
+   scheduled with tick boxes down it, and this is the opposite — the one thing
+   that happened, with its detail already showing. */
+.lastw{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.lw-head{display:flex;align-items:center;gap:.7rem;padding:.8rem .95rem;border-bottom:1px solid var(--line)}
+.lw-ico{flex:0 0 auto;font-size:1.3rem;line-height:1}
+.lw-txt{flex:1 1 auto;min-width:0}
+.lw-t{display:block;font-weight:700;font-size:1rem}
+.lw-m{display:block;color:var(--soft);font-size:.78rem;margin-top:.1rem;overflow-wrap:anywhere}
+.lw-go{flex:0 0 auto;color:var(--soft);font-size:1.3rem;text-decoration:none;
+       min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
+.lw-go:hover{color:var(--brand-ink);text-decoration:none}
+/* The panel inside is the same one the session rows open, so it arrives with
+   its own left padding meant for sitting under a row. Here it is the whole
+   card, so that indent is taken back. */
+.lw-body{padding:.2rem .95rem .9rem}
+.lw-body .pblock:first-child{margin-top:.4rem}
+.lw-body .climbwrap{margin-top:.8rem}
+/* The way out of the card when the evidence does not carry its own — a run
+   links to Strava from inside its detail panel and a crag day links to the
+   climbing log, so this is the board night's. */
+.lw-out{display:inline-block;margin:.7rem 0 .2rem;font-size:.84rem;font-weight:600;
+        color:var(--brand-ink);text-decoration:none;border-bottom:1px solid var(--line)}
+.lw-out:hover{border-bottom-color:var(--brand);text-decoration:none}

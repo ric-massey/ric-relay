@@ -24,6 +24,7 @@
       <div class="calhead">
         <button type="button" class="calnav" id="calprev" aria-label="Previous month">‹</button>
         <div class="calmonth" id="calmonth">—</div>
+        <button type="button" class="caltoday" id="caltoday" hidden>Today</button>
         <button type="button" class="calnav" id="calnext" aria-label="Next month">›</button>
       </div>
       <div class="caldow" aria-hidden="true"></div>
@@ -33,6 +34,7 @@
         <span><i class="k-run"></i> running</span>
         <span><i class="k-rest"></i> rest</span>
         <span><i class="k-done"></i> done</span>
+        <span><i class="k-owed"></i> not ticked</span>
       </div>
       <div id="calday"></div>
     </div>
@@ -80,6 +82,11 @@
     return [...kinds];
   }
 
+  /* The standing morning practice is on every day in the plan, so it can never
+     be what makes a day interesting. Same test the home page and the workout
+     index use. */
+  const substantive = s => s.kind !== 'rest' && !(s.kind === 'body' && !s.key);
+
   function renderCal() {
     if (!T.ready() || !T.days().length) return;
     const first = T.days()[0].date, last = T.days()[T.days().length - 1].date;
@@ -104,14 +111,24 @@
       const st = T.stateOf(iso);
       const doneCount = T.doneCountOf(st, d.sessions);
       const allDone = doneCount === d.sessions.length && d.sessions.length > 0;
+      /* A past day still carrying real work nobody ticked. This is the whole
+         point of the grid for catching up: glance, find the gaps, tap them.
+
+         "Real work" excludes the standing morning practice, because it is on
+         every single day of the year — counting it would paint the entire past
+         as owed and the signal would mean nothing. A rest day cannot be owed
+         either. */
+      const owed = iso < T.todayISO()
+        && d.sessions.filter(substantive).some(x => !T.doneOf(st, x));
       const cls = ['calcell'];
       if (iso === T.todayISO()) cls.push('today');
       if (iso === CAL_SEL) cls.push('sel');
       if (allDone) cls.push('isdone');
+      if (owed) cls.push('owed');
       if (d.deload) cls.push('deload');
       const climbed = T.climbOn(iso) ? '<span class="cevent" title="climbed">🧗</span>' : '';
       cells.push(`<button type="button" class="${cls.join(' ')}" data-cal="${iso}" role="gridcell"
-          aria-label="${T.esc(T.pretty(iso))}${allDone ? ', done' : ''}">
+          aria-label="${T.esc(T.pretty(iso))}${allDone ? ', done' : owed ? ', not ticked' : ''}">
         ${allDone ? '<span class="ctick">✓</span>' : ''}${climbed}
         <span class="cd">${n}</span>
         <span class="cdots">${dotsFor(d).map(k => `<i class="${k}"></i>`).join('')}</span>
@@ -131,10 +148,18 @@
 
     $('#calprev').onclick = () => { CAL_MONTH = new Date(y, m - 1, 1); CAL_SEL = null; renderCal(); };
     $('#calnext').onclick = () => { CAL_MONTH = new Date(y, m + 1, 1); CAL_SEL = null; renderCal(); };
+    /* Three months out and the only way home was tapping ‹ until you got there.
+       Hidden when today is already the open day on screen, so it is never a
+       button that does nothing. */
+    const todayBtn = $('#caltoday');
+    const onToday = CAL_SEL === T.todayISO()
+      && y === new Date().getFullYear() && m === new Date().getMonth();
+    todayBtn.hidden = onToday || !T.dayOf(T.todayISO());
+    todayBtn.onclick = () => openDay(T.todayISO());
     document.querySelectorAll('[data-cal]').forEach(b => b.onclick = () => {
-      CAL_SEL = (CAL_SEL === b.dataset.cal) ? null : b.dataset.cal;
-      renderCal();
-      if (CAL_SEL) $('#calday').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      /* Tapping the open day closes it; tapping any other opens that one. */
+      if (CAL_SEL === b.dataset.cal) { CAL_SEL = null; renderCal(); return; }
+      openDay(b.dataset.cal);
     });
   }
 
@@ -145,7 +170,8 @@
     const wk = T.weeks()[d.week] || {};
     return `<div class="calday">
       <h3>${T.esc(T.pretty(iso))}</h3>
-      <div class="sub">${T.esc(d.phase)} · week ${d.week}${d.deload ? ' · deload' : ''} · ${wk.miles ?? '—'} mi that week</div>
+      <div class="sub">${T.esc(d.phase)} · week ${d.week}${d.deload ? ' · deload' : ''} · ${
+        T.miles(T.weekMetres(d.week))} of ${wk.miles ?? '—'} mi run that week</div>
       ${T.runLink(iso)}
       ${d.sessions.map((s, i) => T.sessionRow(iso, s, i)).join('')}
       ${Owner.on() && d.sessions.length > 1 ? `<button type="button" class="allbtn" data-all="${T.esc(iso)}">Did all of it</button>` : ''}
@@ -160,11 +186,36 @@
        render after the plan lands, and then forgotten — re-reading it on every
        repaint would fight the taps that come after. */
     let wantDay = /^#d-\d{4}-\d{2}-\d{2}$/.test(location.hash) ? location.hash.slice(3) : null;
+    let firstRender = true;
+
+    /* Selecting a day, wherever the request came from — a tap, the Today
+       button, or a #d- link. One function so all three land the same way:
+       the month containing it, the day open, and the panel brought into view.
+       This used to be inlined in the tap handler, which is why the Today
+       button had nothing to call. */
+    function openDay(iso) {
+      if (!T.dayOf(iso)) return;
+      CAL_SEL = iso;
+      CAL_MONTH = monthOf(iso);
+      renderCal();
+      const el = $('#calday');
+      if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
 
     function render() {
       if (!T.ready()) return;
       T.mountOwnerBar();
-      if (wantDay && T.dayOf(wantDay)) { CAL_SEL = wantDay; CAL_MONTH = monthOf(wantDay); }
+      /* Arrive with today already open. The page used to land on a grid of
+         dots with an empty panel under it, so the commonest thing you could
+         want here — tick what I did today — cost a tap before anything was
+         even on screen. A #d- link still wins, and after the first render this
+         steps back and lets the taps decide. */
+      if (firstRender) {
+        const want = (wantDay && T.dayOf(wantDay)) ? wantDay
+                   : T.dayOf(T.todayISO()) ? T.todayISO() : null;
+        if (want) { CAL_SEL = want; CAL_MONTH = monthOf(want); }
+        firstRender = false;
+      }
       renderCal();
       if (wantDay) {
         const el = $('#calday');
