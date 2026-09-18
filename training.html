@@ -35,7 +35,6 @@
         <h1 class="name">Ric Massey</h1>
         <div class="sub">Runner · climber · perpetually in Zone 4</div>
       </div>
-      <div class="welcome">Welcome to the training log — my runs, workouts, and health, all in one place. No app required.</div>
     </div>
 
     <!-- The three tiles show what the plan actually knows. Elevation and moving
@@ -51,13 +50,6 @@
       </div>
       <p class="week-note" id="w-note">Loading the plan…</p>
     </div>
-
-    <!-- The block he is in and what it is FOR. The plan has carried a goal per
-         phase since it was written and the site has never once shown it: you
-         could see Tuesday's session and not the reason for it. It belongs on
-         the home page more than anywhere else — it is the only thing here that
-         answers "why am I doing this" rather than "what is today". -->
-    <div class="phase" id="phase" hidden></div>
 
     <!-- What you last actually did, with the workout itself open — the run off
          the watch, or the climbs you logged, and a way through to the place
@@ -102,29 +94,6 @@
   (function () {
     const $ = s => document.querySelector(s);
     const T = Training;
-
-    /* Which phase covers this week. The phases carry w0/w1 rather than dates,
-       so the week number is the key and there is exactly one match. */
-    function phaseOf(week) {
-      return T.phases().find(p => week >= p.w0 && week <= p.w1) || null;
-    }
-
-    function renderPhase(d) {
-      const p = phaseOf(d.week);
-      const el = $('#phase');
-      if (!p) { el.hidden = true; return; }
-      el.hidden = false;
-      const span = p.w1 - p.w0 + 1;
-      const nth = d.week - p.w0 + 1;
-      el.innerHTML =
-        `<div class="ph-head"><span class="ph-name">${T.esc(p.name)}</span>` +
-        `<span class="ph-sub">${T.esc(p.sub || '')}</span></div>` +
-        `<p class="ph-goal">${T.esc(p.goal || '')}</p>` +
-        `<div class="ph-bar" role="img" aria-label="Week ${nth} of ${span} in this block">` +
-        Array.from({ length: span }, (_, i) =>
-          `<i class="${i < nth ? 'done' : ''}"></i>`).join('') +
-        `</div><div class="ph-when">Week ${nth} of ${span} · week ${d.week} of 52</div>`;
-    }
 
     /* The next few days with something on them worth knowing about.
 
@@ -284,7 +253,6 @@
           ? `${wk.phase || d.phase} · deload week, volume down by design.`
           : `${wk.phase || d.phase} · week ${d.week} of 52.`;
 
-      renderPhase(d);
       renderLast();
       renderSoon(iso);
     }

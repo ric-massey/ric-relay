@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trips &amp; races — Training</title>
+  <meta name="description" content="Upcoming trips and races on the training plan.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://ricmassey.com/projects/training/trips.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fc4c02'/><text y='.85em' font-size='64' x='18'>🚗</text></svg>">
+  <link rel="stylesheet" href="../../assets/training-nav.css">
+  <link rel="stylesheet" href="../../assets/training.css">
+</head>
+<body>
+<script src="../../assets/training-nav.js" data-nav="trips"></script>
+
+  <div class="wrap">
+    <div class="pagehead">
+      <h1>Trips &amp; races</h1>
+      <p>The dates worth booking time off for.</p>
+    </div>
+
+    <div id="next"></div>
+
+    <div class="section-label">Races</div>
+    <div id="races"></div>
+
+    <div class="section-label">Trips</div>
+    <div id="trips"></div>
+
+    <footer>
+      Ric's personal training log · powered by stubbornness<br>
+      <span class="foot-dim">The plan is generated; ticks and notes are live.</span>
+    </footer>
+  </div>
+
+  <script src="../../assets/owner.js"></script>
+  <script src="../../projects/climbing/climb-host.js?v=1"></script>
+  <script src="../../projects/climbing/climb-media.js?v=4"></script>
+  <script src="../../assets/training-core.js?v=1"></script>
+  <script>
+  /* TRAINING — trips and races
+     ──────────────────────────────────────────────────────────────────────────
+     The handful of dates in the year that need something more than turning up:
+     time off, a car, an entry paid for. Everything else in the plan is a
+     Tuesday, and the other four tabs are for Tuesdays.
+
+     ── what counts as a trip ──
+     A day out somewhere that is not the local crag. Ijams is five minutes away
+     and there are eleven of those coming; listing them here would bury the
+     three that actually involve going somewhere. A day whose venue is still
+     "Outside" has not had a place chosen for it yet, so there is nothing to
+     put on a page about where you are going — it shows up once the plan names
+     somewhere.
+
+     ── and consecutive days are one trip ──
+     Oct 18 and Oct 19 at the Red are one weekend, not two events. Grouping
+     them is the difference between "two days out" and "the trip to the Red",
+     and only one of those is a thing you book.
+
+     Races come from the plan itself rather than this list, via the `race` and
+     `marathon` protocols, so a race added to the schedule turns up here with
+     no edit to this page. */
+  (function () {
+    const $ = s => document.querySelector(s);
+    const T = Training;
+    const CRAG_URL = '../../assets/crag-plan.json';
+
+    /* Venues that mean "home crag" or "no plan yet" rather than a journey. */
+    const LOCAL = /^(ijams|gym)/i;
+    const UNDECIDED = /^outside$/i;
+    const isTrip = v => !!v && !LOCAL.test(v) && !UNDECIDED.test(v);
+
+    /* How far off, in days, from today. Noon on both sides so a DST change
+       cannot make a whole day appear or vanish — the same arithmetic the
+       climbing page's "next day out" card uses. */
+    function daysAway(iso) {
+      const t = T.todayISO();
+      return Math.round((new Date(iso + 'T12:00') - new Date(t + 'T12:00')) / 864e5);
+    }
+    const countdown = n => n < 0 ? '' : n === 0 ? 'Today' : n === 1 ? 'Tomorrow'
+      : n < 7 ? `In ${n} days` : n < 14 ? 'Next week'
+      : `${Math.round(n / 7)} weeks away`;
+
+    /* ── races, straight out of the plan ── */
+    function races() {
+      const out = [];
+      for (const d of T.days()) {
+        if (d.date < T.todayISO()) continue;
+        for (const s of d.sessions) {
+          const k = s.k || [];
+          if (k.includes('race') || k.includes('marathon')) out.push({ date: d.date, s, d });
+        }
+      }
+      return out;
+    }
+
+    /* ── trips, from the crag index, consecutive days folded together ── */
+    function trips(cragDays) {
+      const mine = cragDays
+        .filter(c => c.date >= T.todayISO() && isTrip(c.venue))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      const out = [];
+      for (const c of mine) {
+        const last = out[out.length - 1];
+        const dayAfter = last &&
+          new Date(last.end + 'T12:00').getTime() + 864e5 === new Date(c.date + 'T12:00').getTime();
+        if (last && last.venue === c.venue && dayAfter) {
+          last.end = c.date;
+          last.days.push(c);
+        } else {
+          out.push({ venue: c.venue, start: c.date, end: c.date, days: [c] });
+        }
+      }
+      return out;
+    }
+
+    const span = t => t.start === t.end
+      ? T.pretty(t.start)
+      : `${T.pretty(t.start)} – ${T.pretty(t.end).replace(/^\w+,\s*/, '')}`;
+
+    function render(cragDays) {
+      if (!T.ready()) return;
+      const R = races(), P = trips(cragDays);
+
+      /* ── the one next thing ──
+         Whichever of the two comes first. The page is mostly a list you read
+         once a month; this is the line you actually came for. */
+      const soonest = [
+        ...R.map(r => ({ when: r.date, what: r.s.title, where: r.s.meta || '', kind: 'race' })),
+        ...P.map(t => ({ when: t.start, what: t.venue, where: span(t), kind: 'trip' })),
+      ].sort((a, b) => a.when.localeCompare(b.when))[0];
+
+      $('#next').innerHTML = soonest
+        ? `<div class="nextbig ${soonest.kind}">
+             <div class="nb-when">${T.esc(countdown(daysAway(soonest.when)))}</div>
+             <div class="nb-what">${T.esc(soonest.what)}</div>
+             <div class="nb-where">${T.esc(soonest.where)}</div>
+             <a class="nb-go" href="calendar.html#d-${T.esc(soonest.when)}">See the day →</a>
+           </div>`
+        : '';
+
+      $('#races').innerHTML = R.length ? R.map(r => `
+        <a class="tripcard" href="calendar.html#d-${T.esc(r.date)}">
+          <span class="tc-when">
+            <b>${T.esc(T.pretty(r.date).replace(/^\w+,\s*/, ''))}</b>
+            <span>${T.esc(countdown(daysAway(r.date)))}</span>
+          </span>
+          <span class="tc-body">
+            <span class="tc-t">🏁 ${T.esc(r.s.title)}</span>
+            ${r.s.meta ? `<span class="tc-m">${T.esc(r.s.meta)}</span>` : ''}
+            <span class="tc-m">${T.esc(r.d.phase)} · week ${r.d.week}</span>
+          </span>
+          <span class="tc-go">›</span>
+        </a>`).join('')
+        : '<div class="loadfail">No races left on the plan.</div>';
+
+      $('#trips').innerHTML = P.length ? P.map(t => `
+        <a class="tripcard" href="calendar.html#d-${T.esc(t.start)}">
+          <span class="tc-when">
+            <b>${T.esc(span(t).replace(/^\w+,\s*/, ''))}</b>
+            <span>${T.esc(countdown(daysAway(t.start)))}</span>
+          </span>
+          <span class="tc-body">
+            <span class="tc-t">🧗 ${T.esc(t.venue)}</span>
+            <span class="tc-m">${t.days.length === 1 ? 'One day' : t.days.length + ' days'} · ${
+              T.esc([...new Set(t.days.map(d => d.title))].join(' · '))}</span>
+          </span>
+          <span class="tc-go">›</span>
+        </a>`).join('')
+        : '<div class="loadfail">Nothing away from the home crag on the plan yet. ' +
+          'Days marked just &ldquo;Outside&rdquo; appear here once the plan names a place.</div>';
+    }
+
+    /* The crag index is the same small file the climbing page reads for its
+       "next day out" card — the plan is 150 kB and this asks one question of
+       it, so there is a 4 kB answer sitting beside it already. */
+    let CRAG = [];
+    T.onChange(() => render(CRAG));
+    fetch(CRAG_URL, { cache: 'no-cache' })
+      .then(r => r.ok ? r.json() : { days: [] })
+      .catch(() => ({ days: [] }))
+      .then(j => { CRAG = j.days || []; return T.load(); })
+      .then(() => render(CRAG));
+  })();
+  </script>
+  <script src="../../effects.js"></script>
+</body>
+</html>

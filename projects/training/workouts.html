@@ -20,6 +20,13 @@
       <p>Every session in the plan. The days are the plan &mdash; this is all of them in one list.</p>
     </div>
 
+    <!-- The block he is in and what it is FOR. The plan has carried a goal per
+         phase since it was written and nothing ever drew it — you could read
+         Tuesday's session and not the reason for it. It belongs here rather
+         than on the home page: this is the page about the plan's shape, and
+         the block filter directly below it is the same idea made clickable. -->
+    <div class="phase" id="phase" hidden></div>
+
     <!-- Filters, not search. You come here knowing roughly what you want — the
          key runs, everything in the marathon build, what climbing looks like in
          February — and those are all filters. A text box would be a worse way
@@ -87,6 +94,29 @@
     const T = Training;
     const F = { when: 'soon', kind: '', key: false, phase: '' };
 
+    /* Which phase covers this week. The phases carry w0/w1 rather than dates,
+       so the week number is the key and there is exactly one match. */
+    function phaseOf(week) {
+      return T.phases().find(p => week >= p.w0 && week <= p.w1) || null;
+    }
+
+    function renderPhase(d) {
+      const p = phaseOf(d.week);
+      const el = $('#phase');
+      if (!p) { el.hidden = true; return; }
+      el.hidden = false;
+      const span = p.w1 - p.w0 + 1;
+      const nth = d.week - p.w0 + 1;
+      el.innerHTML =
+        `<div class="ph-head"><span class="ph-name">${T.esc(p.name)}</span>` +
+        `<span class="ph-sub">${T.esc(p.sub || '')}</span></div>` +
+        `<p class="ph-goal">${T.esc(p.goal || '')}</p>` +
+        `<div class="ph-bar" role="img" aria-label="Week ${nth} of ${span} in this block">` +
+        Array.from({ length: span }, (_, i) =>
+          `<i class="${i < nth ? 'done' : ''}"></i>`).join('') +
+        `</div><div class="ph-when">Week ${nth} of ${span} · week ${d.week} of 52</div>`;
+    }
+
     /* A day whose only content is the standing morning/night practice is
        scaffolding on this page, not a workout. */
     const substantive = s => s.kind !== 'rest' && !(s.kind === 'body' && !s.key);
@@ -110,6 +140,11 @@
     function render() {
       if (!T.ready()) return;
       T.mountOwnerBar();
+      /* Always today's block, not the one being filtered for — this is "where
+         am I in the year", and it should not move when you go and look at
+         February. */
+      const nowDay = T.dayOf(T.todayISO());
+      if (nowDay) renderPhase(nowDay); else $('#phase').hidden = true;
       const list = rows();
       const today = T.todayISO();
       $('#fcount').textContent = list.length

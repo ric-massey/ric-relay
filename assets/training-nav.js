@@ -28,6 +28,7 @@
     ['home',     'Home',     'training.html'],
     ['calendar', 'Calendar', 'projects/training/calendar.html'],
     ['workouts', 'Workouts', 'projects/training/workouts.html'],
+    ['trips',    'Trips',    'projects/training/trips.html'],
     ['history',  'History',  'projects/training/history.html'],
   ];
 
