@@ -119,7 +119,7 @@
           return `<a class="soonrow" href="projects/training/calendar.html#d-${T.esc(d.date)}">
             <span class="so-ico">${T.ICON[main.kind] || ''}</span>
             <span class="so-txt">
-              <span class="so-t">${T.esc(main.title)}${main.key ? '<span class="keytag">key</span>' : ''}</span>
+              <span class="so-t">${T.esc(T.titleOf(d.date, main))}${main.key ? '<span class="keytag">key</span>' : ''}</span>
               <span class="so-m">${T.esc(T.pretty(d.date))}${main.meta ? ' · ' + T.esc(main.meta) : ''}${
                 rest ? ` · +${rest} more` : ''}</span>
             </span>
@@ -202,7 +202,7 @@
         <div class="lw-head">
           <span class="lw-ico">${T.ICON[s.kind] || ''}</span>
           <span class="lw-txt">
-            <span class="lw-t">${T.esc(s.title)}</span>
+            <span class="lw-t">${T.esc(T.titleOf(d.date, s))}</span>
             <span class="lw-m">${T.esc(when)} · ${T.esc(d.phase)}${
               s.meta ? ' · ' + T.esc(s.meta) : ''}</span>
           </span>

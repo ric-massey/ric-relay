@@ -334,17 +334,43 @@
      Only the distance is touched, and only when a number with `mi` after it
      is actually in the title — "Easy 3 mi + strides" becomes "Easy 6.1 mi +
      strides" and a title with no distance in it is left alone. */
+  /* ── a day that has happened says where it was ──
+     The plan stopped naming the home crag on 2026-09-18, because a
+     forward-looking file that says "Ijams, 2026-10-12" is a standing list of
+     where this person will be on a given date. Those days publish as "Rope
+     Day" or "Boulder Day" instead.
+
+     That reasoning runs out the moment the day is behind us. A day he actually
+     climbed is already published by name on the climbing page — climbs.md is
+     the record of where he went, and being that record is the point of that
+     room. Withholding it here would be the training page pretending not to
+     know something the site says two tabs over.
+
+     The swap needs both halves to be true: the title has to be one we
+     genericised, and the log has to name a crag for that date. A named
+     destination — the Red, the Obed — keeps its own name and never reaches
+     this. A day with no logged climb keeps the generic label, which is
+     correct: nothing says he went anywhere. */
+  const GENERIC_TITLE = /^(rope|boulder) day$/i;
+  function titleOf(iso, s) {
+    if (!GENERIC_TITLE.test(s.title || '')) return s.title;
+    if (iso > todayISO()) return s.title;
+    const c = climbOn(iso);
+    return (c && c.area) ? c.area : s.title;
+  }
+
   function titleFor(iso, s) {
+    const label = titleOf(iso, s);
     const ran = runSplit(iso).bySession[s.id] || [];
     const metres = ran.reduce((n, a) => n + (a.distance || 0), 0);
-    if (!metres) return esc(s.title);
-    const m = String(s.title).match(/(\d+(?:\.\d+)?)\s*mi\b/);
+    if (!metres) return esc(label);
+    const m = String(label).match(/(\d+(?:\.\d+)?)\s*mi\b/);
     const actual = miles(metres);
-    if (!m || m[1] === actual) return esc(s.title);
+    if (!m || m[1] === actual) return esc(label);
     /* Non-breaking space between the number and its unit. On a phone the
        title column is narrow enough that "6.01 mi" broke across two lines,
        leaving a bare "mi" under the distance. */
-    return esc(String(s.title).replace(m[0], actual + ' mi')) +
+    return esc(String(label).replace(m[0], actual + ' mi')) +
       `<span class="planned">${esc(m[1])} mi planned</span>`;
   }
 
@@ -1053,6 +1079,10 @@
     mountOwnerBar, wire,
 
     /* odds and ends the pages format with */
+    /* titleOf is exported because three pages draw a session title without
+       going through sessionRow, and a label that turns into a crag on one page
+       and not the others would be worse than not doing it at all. */
+    titleOf,
     esc, isoOf, todayISO, pretty, miles, ICON, KINDNAME
   };
 })(window);

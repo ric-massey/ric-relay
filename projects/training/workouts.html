@@ -168,7 +168,7 @@
           <span class="w-date"><b>${T.esc(T.pretty(d.date).replace(/^(\w{3})\w*/, '$1'))}</b></span>
           <span class="w-ico">${T.ICON[s.kind] || ''}</span>
           <span class="w-txt">
-            <span class="w-t">${T.esc(s.title)}${s.key ? '<span class="keytag">key</span>' : ''}${
+            <span class="w-t">${T.esc(T.titleOf(d.date, s))}${s.key ? '<span class="keytag">key</span>' : ''}${
               done ? '<span class="donetag">done</span>' : ''}</span>
             ${s.meta ? `<span class="w-m">${T.esc(s.meta)}</span>` : ''}
           </span>
