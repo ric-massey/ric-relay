@@ -28,7 +28,7 @@
   };
   const canvas = document.getElementById("c");
   const ctx = canvas.getContext("2d");
-  const W = 800, H = 1060, dpr = window.devicePixelRatio || 1;
+  const W = 800, H = 1200, dpr = window.devicePixelRatio || 1;
   canvas.width = W * dpr; canvas.height = H * dpr;
   canvas.style.width = W + "px"; canvas.style.height = H + "px";
   ctx.scale(dpr, dpr);
@@ -42,7 +42,8 @@
     cut("  /* ── what it is, at a glance", "  /* Somebody else's ship.") +
     "for (const sh of SHIPS) { Object.assign(sh, HULL_ART[sh.key]);" +
     " const xs = sh.art.map(p => p[0]); sh.noseX = Math.max(...xs); sh.tailX = Math.min(...xs); }\n" +
-    "return { SHIPS, MATERIALS, drawHullArt, podColours, drawRoleMarks };");
+    "const shipSpec = k => SHIPS.find(s => s.key === k);\n" +
+    "return { SHIPS, MATERIALS, drawHullArt, podColours, drawRoleMarks, bossSpec, BOSSES: BOSS_ART };");
   const G = game(ctx);
 
   const label = (s, x, y, c) => { ctx.fillStyle = c || "#9fb0c8"; ctx.fillText(s, x, y); };
@@ -105,6 +106,24 @@
       x += 130;
     }
     y += 95;
+  }
+
+  label("BOSSES: each its own ship, beside the hull it flies like", 20, y, "#e8eef8");
+  y += 60;
+  {
+    const bases = { warlord: ["reprisal", "pirate", "#ff6d6d"], corsair: ["vane", "pirate", "#ff6d6d"],
+                    admiral: ["bastion", "patrol", "#6dc6ff"], warden: ["louvre", "patrol", "#6dc6ff"],
+                    queen: ["ossuary", "scavenger", "#c0c8d8"] };
+    let bx = 55;
+    for (const kind of Object.keys(bases)) {
+      const [hull, role, colour] = bases[kind];
+      const sp = G.bossSpec(kind, hull);
+      draw(sp, bx, y, 40, colour, G.podColours(sp.pods, hold, 0.7), { role, phase: 0 });
+      draw(G.SHIPS.find(q => q.key === hull), bx + 62, y + 30, 12, colour, null);
+      label(kind.toUpperCase(), bx - 30, y + 58, "#ff4dd2");
+      bx += 142;
+    }
+    y += 110;
   }
 
   label("THE SECTOR'S JOBS: the hull each flies, and its markings", 20, y, "#e8eef8");

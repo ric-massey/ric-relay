@@ -3957,7 +3957,7 @@
         if (best !== before) fooled = true;
       }
       if (fooled) bd = 1;
-      for (const d of surv.drones) consider(d.x, d.y);
+      for (const d of surv.drones) if (!d.ally) consider(d.x, d.y);
       for (const t of surv.traffic) consider(t.x, t.y);
     }
     for (const r of rocks) consider(r.x, r.y);
@@ -5861,6 +5861,108 @@
       pods: pairBox([-18, 4, 12, 12], [-4, 4, 12, 12]) }
   };
 
+
+  /* ═══ WHAT A BOSS LOOKS LIKE ═══════════════════════════════════════════════
+     Ric: "the boss ships should look different then normal ships". A boss
+     used to be a roster hull drawn bigger, which read as "a big one of those".
+     Each now has an outline nothing else in the sector has, and it is drawn
+     from what makes it dangerous:
+
+       warlord   a captured warship grown into a pirate fortress: lopsided,
+                 trophy plating bolted down one side, a ram, and the five
+                 barrels of its fan across the bow
+       corsair   all blade: a long forked nose on two huge burner nacelles
+       admiral   a flagship: broad, a command tower, a gun deck down each side
+                 and the emitters of its screen
+       warden    a knight: a small hard core between great diamond wings, a
+                 missile pod at each wingtip
+       queen     a salvage barge: a crescent with her jaws in the bay at the
+                 front and a hold full of pods
+
+     And how it flies is its own too. Ric: "they shouldnt fly like another
+     hull. they should fly similar to those but better. weirder fighting each
+     should feel like a completely different experience". So each has its own
+     numbers in `BOSS_HANDLING`, and its own way of fighting in `bossFight`. */
+  const BOSS_ART = {
+    warlord: {
+      art: [[24, 0], [18, 5], [15, 11], [7, 10], [3, 17], [-6, 15], [-10, 9],
+            [-19, 11], [-17, 3], [-21, -3], [-15, -8], [-9, -13], [1, -10],
+            [5, -15], [12, -8], [19, -4]],
+      guns: [[18, 0, 8], [17, 2.5, 7], [17, -2.5, 7], [15, 5, 6], [15, -5, 6]],
+      fins: [[[24, 0], [31, 3]], [[24, 0], [31, -3]], [[3, 17], [-1, 22]],
+             [[-6, 15], [-11, 21]], [[-9, -13], [-12, -19]], [[-19, 11], [-25, 13]]],
+      ribs: [[[7, 10], [-6, 13]], [[-10, 9], [-10, -10]], [[1, -10], [-9, -11]],
+             [[12, -8], [8, 8]]],
+      pods: [[-8, 6, 9, 6], [-4, -9, 7, 5]],
+      windows: [[10, 0, 1.8]] },
+    corsair: {
+      art: outline([26, 0], [12, 2.5], [6, 8], [11, 14], [-1, 12], [-8, 5],
+                   [-17, 8], [-19, 4], [-15, 0]),
+      fins: pair([[-8, 5], [-8, 9]], [[-17, 8], [-24, 8]], [[20, 0], [2, 0]]),
+      guns: pairPts([9, 12, 7]),
+      windows: [[15, 0, 1.6]] },
+    admiral: {
+      art: outline([26, 0], [21, 6], [9, 8], [5, 14], [-14, 14], [-18, 9],
+                   [-24, 9], [-24, 0]),
+      guns: pairPts([12, 7.5, 6], [3, 13, 6], [-5, 13, 6], [-13, 13, 6]),
+      fins: [[[2, -4], [2, 4]], [[2, 4], [-8, 4]], [[-8, 4], [-8, -4]],
+             [[-8, -4], [2, -4]]].concat(pair([[-18, 9], [-18, 16]], [[-22, 9], [-22, 16]])),
+      ribs: [[[16, 7], [16, -7]], [[-18, 9], [-18, -9]]],
+      pods: pairBox([-14, 8, 16, 4]),
+      windows: [[0, 0, 1.8], [-4, 0, 1.8], [18, 0, 1.5]] },
+    warden: {
+      art: outline([16, 0], [8, 4], [-8, 5], [-12, 0]),
+      fins: pair([[4, 5], [12, 20]], [[12, 20], [-8, 24]], [[-8, 24], [-6, 5]],
+                 [[2, 12], [-4, 18]]),
+      guns: pairPts([10, 3, 7]),
+      pods: pairBox([6, 18, 7, 4]),
+      windows: [[6, 0, 1.8]],
+      muzzles: [[17, 3], [17, -3]] },
+    queen: {
+      art: outline([8, 0], [10, 7], [26, 10], [20, 20], [4, 24], [-14, 22],
+                   [-24, 12], [-26, 0]),
+      fins: pair([[26, 10], [30, 5]], [[20, 20], [24, 26]], [[-2, 24], [-2, 30]],
+                 [[-2, 30], [8, 30]]),
+      ribs: [[[8, 0], [-22, 0]]],
+      pods: pairBox([-20, 3, 8, 7], [-10, 3, 8, 7], [0, 10, 8, 7], [-20, 12, 8, 6],
+                    [-10, 13, 8, 7]),
+      windows: pairPts([-6, 20, 1.6], [2, 20, 1.6], [10, 18, 1.6]) }
+  };
+  /* Each is its base hull pushed to an extreme, in the direction of the way it
+     fights. Speed and turn against the stock hull; drag is grip.
+
+       warlord   fast in a line and slow to turn, with almost no grip: a bull
+                 that slides past you when it misses and has to come about
+       corsair   the fastest thing out there, and glued to where it points
+       admiral   slow and stately. It does not need to chase anybody
+       warden    turns on a coin, so it can always face you while it strafes
+       queen     quicker than a barge has any right to be */
+  const BOSS_HANDLING = {
+    warlord: { speed: 1.55, turn: 0.75, drag: 0.55 },
+    corsair: { speed: 2.7,  turn: 2.3,  drag: 2.6, punch: 7 },
+    admiral: { speed: 0.8,  turn: 0.6,  drag: 3 },
+    warden:  { speed: 1.75, turn: 3.2,  drag: 12 },
+    queen:   { speed: 1.05, turn: 0.95, drag: 2 }
+  };
+  const bossSpecs = {};
+  // A boss's hull: the base hull's numbers, the boss's own drawing.
+  function bossSpec(kind, hull) {
+    if (bossSpecs[kind]) return bossSpecs[kind];
+    const sp = Object.assign({}, shipSpec(hull), BOSS_ART[kind], BOSS_HANDLING[kind]);
+    sp.accel = +(sp.speed * MAX_SPEED * sp.drag / THRUST *
+                 (sp.punch || SHIP_HEADROOM(sp.drag))).toFixed(3);
+    const xs = sp.art.map(p => p[0]);
+    sp.noseX = Math.max(...xs);
+    sp.tailX = Math.min(...xs);
+    const mean = sp.art.reduce((t, pt) => t + Math.hypot(pt[0], pt[1]), 0) / sp.art.length;
+    sp.hitR = +(mean * 0.8).toFixed(2);
+    sp.muzzles = BOSS_ART[kind].muzzles ||
+      (sp.guns ? sp.guns.map(g => [g[0] + (g[2] || 5), g[1]]) : [[sp.noseX, 0]]);
+    return (bossSpecs[kind] = sp);
+  }
+  // The hull a ship out there is drawn and hit as.
+  const specOf = t => (t.boss && BOSS_ART[t.boss]) ? bossSpec(t.boss, t.hull) : shipSpec(t.hull);
+
   /* ── two axes, and the one number that is not written down ────────────────
      Ric flew the roster again and the verdict was that the ships need to be
      *crazy*, with the Jackal as the example: "you go right and it goes right
@@ -6973,6 +7075,22 @@
     }
   };
 
+  // The queen's. Three bugs out of the bay, on your side. See `bugStep`.
+  DEVICES.brood = {
+    key: "brood", name: "BROOD BAY", tag: "BROOD", cool: 8,
+    use(me) {
+      for (let k = 0; k < 3; k++) {
+        const a = me.a + Math.PI + (k - 1) * 0.6;
+        surv.drones.push({ id: null, ally: true, bug: "hunt", hull: null,
+                           x: me.x + Math.cos(a) * 30 * U, y: me.y + Math.sin(a) * 30 * U,
+                           vx: 0, vy: 0, a, home: null, prey: null,
+                           post: { x: me.x, y: me.y }, hp: 1, cool: 99, awake: true,
+                           hit: 0, slot: k, life: 14 });
+      }
+      gameSound("shot", me.x);
+    }
+  };
+
   const deviceSpec = key => DEVICES[key] || null;
 
   /* The four of them, as parts. They are their own category because a verb is a
@@ -7070,15 +7188,15 @@
       note: "two missiles a volley, each after its own target. A seeker rack " +
             "that learned to share",
       eff: { weapon: "swarm" } },
-    { key: "restorer", name: "RESTORER", cat: "odd", rarity: "exotic",
+    { key: "broodbay", name: "BROOD BAY", cat: "device", rarity: "exotic",
       cost: 5000, deep: 0, get: ["boss"],
-      where: "only off a salvage queen. It is why she would not stay broken",
-      note: "a crew of drones that never stop patching: a point of hull back " +
-            "every eight seconds, anywhere",
-      eff: { regen: 1 } }
+      where: "only off a salvage queen. It is where her bugs came from",
+      note: "three of her bugs, yours now. They find whatever is after you " +
+            "and fly into it. Eight seconds between",
+      eff: { device: "brood" } }
   );
   const BOSS_PARTS = { warlord: "warfan", corsair: "corsairburner",
-                       admiral: "flagscreen", warden: "wardenswarm", queen: "restorer" };
+                       admiral: "flagscreen", warden: "wardenswarm", queen: "broodbay" };
 
   const moduleSpec = key => MODULES.find(m => m.key === key) || null;
 
@@ -9580,7 +9698,11 @@
     hazards = [];
     surv.planets = []; surv.wrecks = []; surv.nebulae = []; surv.marks = [];
     surv.gates = []; surv.caches = []; surv.stations = []; surv.hulks = [];
-    surv.drones = []; surv.leviathan = null; surv.vault = null;
+    /* A salvage queen's drones were not born in a chunk, so a rebuild would
+       drop them mid-fight. They stay while she does. */
+    const queensOwn = surv.drones.filter(d => d.ally ||
+      (d.queen && surv.traffic.includes(d.queen)));
+    surv.drones = queensOwn; surv.leviathan = null; surv.vault = null;
     surv.parts = []; surv.fields = [];
     surv.cave = [];
     surv.caveGrid = null;
@@ -11432,7 +11554,8 @@
         }
       }
       /* A freighter that does not like you runs rather than fights. */
-      const fleeing = !armed && me.alive && !unseen && shipHostile(t) &&
+      // A boss does not simply run from you; the queen has her own way.
+      const fleeing = !armed && !t.boss && me.alive && !unseen && shipHostile(t) &&
                       near < 1800 * U;
       /* Shadowing sits off your shoulder rather than closing: near enough that
          you notice, far enough that it is not a threat yet. */
@@ -11577,7 +11700,16 @@
          like from the outside: somebody going round somebody. Which way round
          is the ship's own, so a pack does not all orbit in step. */
       let orbit = null, move = null;
-      if (chase && armed) {
+      /* A boss fights its own way. The queen has no guns, so "fighting" for her
+         starts when somebody hurts her or her escorts turn on you. */
+      const lordFoe = t.boss && !running
+        ? (chase || (t.boss === "queen" && me.alive && !unseen &&
+             (clock - (t.lastHit == null ? -99 : t.lastHit) < 25 ||
+              surv.traffic.some(o => o.leadId === t.id && o.angry)) ? me : null))
+        : null;
+      if (lordFoe) {
+        move = bossFight(t, lordFoe, Math.hypot(lordFoe.x - t.x, lordFoe.y - t.y), dt);
+      } else if (chase && armed) {
         const stand = (360 + 60 * (shipSpec(t.hull).size || 1) * (t.scale || 1)) * U *
                       Math.min(1.1, 0.65 + 0.35 * skill);
         const cd = Math.hypot(chase.x - t.x, chase.y - t.y);
@@ -11605,7 +11737,7 @@
       let steer = move || orbit || carrot || goal;
       /* An ace in a fight does not fly a clean line. It jinks across the line
          to whatever it is fighting, on its own rhythm. */
-      if (chase && armed && skill > 0.35) {
+      if (chase && armed && skill > 0.35 && !t.boss) {
         const across = Math.atan2(chase.y - t.y, chase.x - t.x) + Math.PI / 2;
         const jink = Math.sin(clock * 1.9 + (t.phase || 0) * 3) * 260 * U * (skill - 0.35);
         steer = { x: steer.x + Math.cos(across) * jink, y: steer.y + Math.sin(across) * jink };
@@ -11625,11 +11757,12 @@
       }
       const dx = aim.x - t.x, dy = aim.y - t.y;
       const d = Math.hypot(dx, dy) || 1;
-      const want = Math.atan2(dy, dx);
+      // A strafing boss points one way and flies another.
+      const want = move && move.face != null ? move.face : Math.atan2(dy, dx);
       let diff = want - t.a;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      const hullSpec = shipSpec(t.hull);
+      const hullSpec = specOf(t);
       /* `TURN`, the same constant your own hull turns on — not the 1.4 this
          used to carry. That 1.4 predated hulls having their own turn numbers
          and survived the rewrite that put acceleration and drag on the shared
@@ -11686,8 +11819,11 @@
         t.spun = Math.min(1, (t.spun || 0) + dt / hullSpec.spool);
       } else t.spun = 1;
       const wind = hullSpec.spool > 0 ? t.spun : 1;
-      t.vx += Math.cos(t.a) * THRUST * hullSpec.accel * wind * U * dt;
-      t.vy += Math.sin(t.a) * THRUST * hullSpec.accel * wind * U * dt;
+      // Not for a boss that strafes: its drive is steered, not behind it.
+      if (!(move && move.v)) {
+        t.vx += Math.cos(t.a) * THRUST * hullSpec.accel * wind * U * dt;
+        t.vy += Math.sin(t.a) * THRUST * hullSpec.accel * wind * U * dt;
+      }
       const hullDamp = Math.exp(-hullSpec.drag * dt);
       t.vx *= hullDamp; t.vy *= hullDamp;
       /* ── the throttle ────────────────────────────────────────────────────
@@ -11737,11 +11873,18 @@
         const v = velOf(chase);
         pace = Math.min(cruise, Math.max(Math.hypot(v[0], v[1]), cruise * 0.55));
       } else if (move) {
-        pace = cruise;
+        pace = move.pace != null ? Math.min(cruise, move.pace) : cruise;
       }
       t.pace = pace;
+      /* A strafing boss's drive is not behind it: its velocity goes where the
+         fight wants it, whichever way the hull is pointing. */
+      if (move && move.v) {
+        const k = Math.min(1, 5 * dt);
+        t.vx += (move.v[0] - t.vx) * k;
+        t.vy += (move.v[1] - t.vy) * k;
+      }
       const engineSpeed = Math.hypot(t.vx, t.vy);
-      if (engineSpeed > pace) {
+      if (engineSpeed > pace && !(move && move.v)) {
         const k = Math.min(cap, Math.max(pace, engineSpeed - brake * dt)) / engineSpeed;
         t.vx *= k; t.vy *= k;
       }
@@ -11774,8 +11917,14 @@
                                    me.vy - ((t.vy || 0) + (t.dvy || 0)));
         if (me.invuln <= 0 && closing > 120 * U && !t.bumped) {
           t.bumped = 0.8;
-          damageShip(me, "rock", null);
-          t.hp -= 1;
+          /* The warlord means it. Two points, and it does not feel a thing. */
+          const ram = t.boss === "warlord";
+          damageShip(me, "rock", null, ram ? 2 : 1);
+          if (ram) {
+            chatter(t.name + " rammed you.", BOSS_COLOUR);
+            addShake(8);
+          }
+          if (!ram) t.hp -= 1;
           t.hit = 0.12;
           if (t.hp <= 0) killTraffic(i, true);
         }
@@ -11829,7 +11978,7 @@
           /* Timed from the muzzle, which is where the round starts now, not
              from the middle of the ship. From the middle, every lead came out a
              few per cent long. */
-          const noseR = (shipSpec(t.hull).noseX || 12) * (shipSpec(t.hull).size || 1) *
+          const noseR = (specOf(t).noseX || 12) * (specOf(t).size || 1) *
                         (t.scale || 1) * U;
           const leadOf = (o, ovx, ovy) => {
             const dd = Math.hypot(o.x - t.x, o.y - t.y);
@@ -11918,7 +12067,7 @@
               }
             }
             if (blocked) { t.cool = 0.25; continue; }
-            const guns = shipSpec(t.hull);
+            const guns = specOf(t);
             /* A claw has no reach. The utility hulls do not carry a gun at all —
                they carry a pair of jaws — so in somebody else's hands they do
                not fire one either. A working tug that sniped across a sector
@@ -11932,7 +12081,8 @@
             let off = a - t.a;
             while (off > Math.PI) off -= Math.PI * 2;
             while (off < -Math.PI) off += Math.PI * 2;
-            if (Math.abs(off) > Math.PI / 2) { t.cool = 0.2; continue; }
+            // The admiral's guns are turrets down its flanks: they fire any way.
+            if (Math.abs(off) > Math.PI / 2 && t.boss !== "admiral") { t.cool = 0.2; continue; }
             t.cool = (t.angry ? 0.42 : 0.5) / guns.rate *
                      Math.max(0.7, 1.2 - 0.4 * skill);
             /* Out of a barrel: the one on the side the target is, and the pair
@@ -11953,6 +12103,20 @@
                down it. */
             const fa = Math.atan2(ty - gun.y, tx - gun.x) +
                        (Math.random() - 0.5) * 0.2 * Math.max(0, 1 - skill);
+            /* The admiral fires a broadside: every turret on the side you are
+               on, at once, and then a long reload. */
+            if (t.boss === "admiral") {
+              const mz = guns.muzzles.filter(m => m[1] * side > 0);
+              for (let q = 1; q < mz.length; q++) {
+                const g2 = muzzleAt({ muzzles: [mz[q]] }, t.x, t.y, t.a, drawnR, 0);
+                const a2 = Math.atan2(ty - g2.y, tx - g2.x);
+                surv.shots.push({ x: g2.x, y: g2.y,
+                                  vx: Math.cos(a2) * SHOT_V + (t.vx || 0),
+                                  vy: Math.sin(a2) * SHOT_V + (t.vy || 0),
+                                  life: 2.2, dmg: guns.dmg, friendly: !live, from: t });
+              }
+              t.cool = 1.8;
+            }
             // The warlord's power: five at once, fanned, a spray to fly round.
             if (t.boss === "warlord") {
               for (const fan of [-0.14, -0.07, 0.07, 0.14]) {
@@ -12399,7 +12563,7 @@
   }
 
   function hullR(t) {
-    const sp = shipSpec(t.hull);
+    const sp = specOf(t);
     return (sp.hitR || 9) * U * (sp.size || 1) * (t.scale || 1);
   }
 
@@ -14149,6 +14313,7 @@
     for (let i = surv.drones.length - 1; i >= 0; i--) {
       const d = surv.drones[i];
       d.hit = Math.max(0, d.hit - dt);
+      if (d.bug && !(d.stun > 0)) { bugStep(d, i, dt); continue; }
       /* Stunned by a burst: it drifts, and it is not looking for anybody. It
          still falls into wells and still bounces off rock, because those happen
          *to* it rather than being things it is doing. See `empBurst`. */
@@ -14684,7 +14849,7 @@
        corsair   afterburner dashes on its attack runs      CORSAIR BURNER
        admiral   a shield that soaks hits and comes back    FLAGSHIP SCREEN
        warden    homing missiles, two at a time             WARDEN'S SWARM
-       queen     mends herself and her escorts              RESTORER
+       queen     takes ships and sends them into you         BROOD BAY
 
      Anything that picks up loot will race you for the part.
 
@@ -14756,7 +14921,7 @@
       : B.role === "patrol" ? (sky.owner || sides[0] || FACTIONS[0].key)
       : (sky.owner || "free"));
     const id = "boss-" + (++bossSerial);
-    const spec = shipSpec(B.hull);
+    const spec = bossSpec(kind, B.hull);
     // Never less than 160: a boss in a light hull is still a boss.
     const hp = Math.max(160, Math.round(spec.hull * B.hp));
     const a = Math.random() * Math.PI * 2;
@@ -14865,7 +15030,7 @@
     return best;
   }
 
-  // The two boss parts that run on their own: the screen and the restorer.
+  // The boss part that runs on its own: the screen.
   function surveyBossParts(dt) {
     const me = ships[0];
     const m = mods();
@@ -14877,10 +15042,7 @@
     } else {
       surv.screenUp = false; surv.screenT = 12;
     }
-    if (m.regen && me.alive && me.hull < me.maxHull) {
-      surv.regenT = (surv.regenT || 0) + dt;
-      if (surv.regenT >= 8) { surv.regenT = 0; me.hull = Math.min(me.maxHull, me.hull + 1); }
-    } else surv.regenT = 0;
+
   }
 
   function surveyBosses(dt) {
@@ -14959,6 +15121,277 @@
     }
   }
 
+  /* ── the queen's bugs ─────────────────────────────────────────────────────
+     Galaga, near enough. They sit in rows in front of her, facing you, and
+     twitch. One at a time they peel off: a swoop out to one side, then a dive
+     straight at you, and on contact they go off. One that misses loops round
+     and back into its row. A point of hull each, one hit kills one, and a ship
+     she took is drawn as the ship it was. */
+  function makeBug(q, x, y, hull) {
+    return { id: null, queen: q, bug: "form", hull: hull || null,
+             x, y, vx: 0, vy: 0, a: q.a, home: null, prey: null,
+             post: { x: q.x, y: q.y }, hp: hull ? 2 : 1, cool: 99,
+             awake: true, hit: 0, slot: Math.floor(Math.random() * 1000) };
+  }
+
+  function bugStep(d, i, dt) {
+    const me = ships[0];
+    if (d.ally) return allyBugStep(d, i, dt);
+    const q = d.queen;
+    if (!q || surv.traffic.indexOf(q) < 0) {
+      // Their queen is gone, and so are they, all at once.
+      burst(d.x, d.y, BOSS_COLOUR, 8, 140 * U);
+      surv.drones.splice(i, 1);
+      return;
+    }
+    const toMe = Math.atan2(me.y - q.y, me.x - q.x);
+    let gx, gy, sp = 520 * U, turn = 5;
+    if (d.bug === "form") {
+      // Its slot: rows between her and you, shuffled by the order they joined.
+      const mine = surv.drones.filter(o => o.queen === q && o.bug === "form")
+                              .sort((p2, q2) => p2.slot - q2.slot);
+      const k = Math.max(0, mine.indexOf(d));
+      const row = Math.floor(k / 6), col = (k % 6) - 2.5;
+      const out = hullR(q) + (140 + row * 70) * U;
+      const across = toMe + Math.PI / 2;
+      const wig = Math.sin(clock * 4 + k) * 12 * U;
+      gx = q.x + Math.cos(toMe) * out + Math.cos(across) * (col * 70 * U + wig);
+      gy = q.y + Math.sin(toMe) * out + Math.sin(across) * (col * 70 * U + wig);
+      sp = 420 * U; turn = 8;
+    } else if (d.bug === "swoop") {
+      d.bugT -= dt;
+      const a = toMe + d.side * 1.3;
+      gx = d.x + Math.cos(a) * 400; gy = d.y + Math.sin(a) * 400;
+      if (d.bugT <= 0) { d.bug = "dive"; d.bugT = 5; d.closest = Infinity; }
+    } else if (d.bug === "dive") {
+      d.bugT -= dt;
+      gx = me.x; gy = me.y; sp = 560 * U; turn = 2.6;
+      const dd = Math.hypot(me.x - d.x, me.y - d.y);
+      d.closest = Math.min(d.closest, dd);
+      if (me.alive && dd < shipRadius() + 12 * U) {
+        // Contact.
+        burst(d.x, d.y, BOSS_COLOUR, 22, 260 * U);
+        addShake(5);
+        gameSound("boom", d.x);
+        if (me.invuln <= 0) damageShip(me, "shot", null, 1);
+        surv.drones.splice(i, 1);
+        return;
+      }
+      if ((dd > d.closest + 250 * U && d.closest < 400 * U) || d.bugT <= 0 || !me.alive) {
+        d.bug = "home";
+      }
+    } else {                                  // home: back to its row
+      gx = q.x; gy = q.y; sp = 480 * U; turn = 4;
+      if (Math.hypot(q.x - d.x, q.y - d.y) < hullR(q) + 400 * U) d.bug = "form";
+    }
+    const want = Math.atan2(gy - d.y, gx - d.x);
+    let off = want - d.a;
+    while (off > Math.PI) off -= Math.PI * 2;
+    while (off < -Math.PI) off += Math.PI * 2;
+    d.a += Math.max(-turn * dt, Math.min(turn * dt, off));
+    if (d.bug === "form") {
+      // In its row it points at you, whichever way it is drifting.
+      const dx = gx - d.x, dy = gy - d.y, dd = Math.hypot(dx, dy) || 1;
+      const v = Math.min(sp, dd * 4);
+      d.vx += (dx / dd * v - d.vx) * Math.min(1, 6 * dt);
+      d.vy += (dy / dd * v - d.vy) * Math.min(1, 6 * dt);
+      let o2 = toMe - d.a;
+      while (o2 > Math.PI) o2 -= Math.PI * 2;
+      while (o2 < -Math.PI) o2 += Math.PI * 2;
+      d.a += Math.max(-6 * dt, Math.min(6 * dt, o2));
+    } else {
+      d.vx = Math.cos(d.a) * sp; d.vy = Math.sin(d.a) * sp;
+    }
+    d.x += d.vx * dt; d.y += d.vy * dt;
+  }
+
+  /* Yours, out of a Brood Bay: each finds the nearest thing that is after you
+     (a sentry that is awake, a ship that is angry with you) and flies into it
+     for three points. With nothing to find it keeps station on you, and after
+     fourteen seconds it is spent. */
+  function allyBugStep(d, i, dt) {
+    const me = ships[0];
+    d.life -= dt;
+    if (d.life <= 0 || !me.alive) {
+      burst(d.x, d.y, CASH, 6, 110 * U);
+      surv.drones.splice(i, 1);
+      return;
+    }
+    d.look = (d.look || 0) - dt;
+    if (d.look <= 0 || (d.target && !surv.drones.includes(d.target) &&
+                        !surv.traffic.includes(d.target))) {
+      d.look = 0.5;
+      let best = null, bd = 1800 * U;
+      for (const o of surv.drones) {
+        if (o.ally || !o.awake) continue;
+        const dd = Math.hypot(o.x - d.x, o.y - d.y);
+        if (dd < bd) { bd = dd; best = o; }
+      }
+      for (const o of surv.traffic) {
+        if (!o.angry && !(o.boss && bossHostile(o))) continue;
+        const dd = Math.hypot(o.x - d.x, o.y - d.y);
+        if (dd < bd) { bd = dd; best = o; }
+      }
+      d.target = best;
+    }
+    const tg = d.target;
+    const gx = tg ? tg.x : me.x + Math.cos(clock * 2 + d.slot * 2.1) * 80 * U;
+    const gy = tg ? tg.y : me.y + Math.sin(clock * 2 + d.slot * 2.1) * 80 * U;
+    let off = Math.atan2(gy - d.y, gx - d.x) - d.a;
+    while (off > Math.PI) off -= Math.PI * 2;
+    while (off < -Math.PI) off += Math.PI * 2;
+    d.a += Math.max(-4 * dt, Math.min(4 * dt, off));
+    const sp = (tg ? 600 : 380) * U;
+    d.vx = Math.cos(d.a) * sp; d.vy = Math.sin(d.a) * sp;
+    d.x += d.vx * dt; d.y += d.vy * dt;
+    if (!tg) return;
+    const reach = (tg.hull ? hullR(tg) : 18 * U) + 10 * U;
+    if (Math.hypot(tg.x - d.x, tg.y - d.y) > reach) return;
+    burst(d.x, d.y, CASH, 20, 240 * U);
+    gameSound("boom", d.x);
+    surv.drones.splice(i, 1);
+    const di = surv.drones.indexOf(tg);
+    if (di >= 0) {
+      tg.hp -= 3; tg.hit = 0.12;
+      if (tg.hp <= 0) killDrone(di);
+      return;
+    }
+    const ti = surv.traffic.indexOf(tg);
+    if (ti >= 0) {
+      takeHit(tg, 3);
+      hurtBySomebody(tg, null);
+      if (tg.hp <= 0) killTraffic(ti, true);
+    }
+  }
+
+  /* ── five ways to fight ───────────────────────────────────────────────────
+     Every boss had the one dogfight: runs, breaks, the odd circle. Ric wanted
+     each to "feel like a completely different experience". So each has its own,
+     and each is built so that the thing that beats it is different:
+
+       warlord   THE BULL. It hangs back while its pack goes in, then charges
+                 straight at you with almost no grip, slides past if it
+                 misses, and has to come all the way round. Its ram hurts.
+                 Beat it by sidestepping the charge and shooting its back.
+       corsair   THE PHANTOM. Barely visible, it goes for your tail and only
+                 shows itself to strike. Turn on it and it burns out of your
+                 line. Beat it by never flying straight.
+       admiral   THE FORTRESS. It does not chase. It holds its distance side
+                 on and fires full broadsides from both flanks, and its screen
+                 soaks what you send back. Beat it by closing through the fire
+                 and staying off its flanks.
+       warden    THE DUELIST. It faces you all the time and strafes like a
+                 drone at sword's length, sidesteps the moment your nose is on
+                 it, and sends missiles after you. Beat it by leading it.
+       queen     THE MOTHER. She will not fight you herself. She backs away
+                 facing you and sends bugs: ships she took with her beam, and
+                 ones she builds, in rows that peel off, swoop and dive into
+                 you. Beat her by shooting the divers and getting through to
+                 her while her rows are thin.
+
+     Returns where to steer, and optionally the pace, where to point (`face`)
+     and a velocity (`v`) for the two that strafe. */
+  function bossFight(t, foe, d, dt) {
+    const me = ships[0];
+    const spec = specOf(t);
+    const top = MAX_SPEED * spec.speed * U;
+    const toFoe = Math.atan2(foe.y - t.y, foe.x - t.x);
+    const fv = foe === me ? [me.vx || 0, me.vy || 0] : [foe.vx || 0, foe.vy || 0];
+    const foeA = foe === me ? me.a : Math.atan2(fv[1], fv[0]);
+    // Is the foe's nose on it?
+    let nose = Math.atan2(t.y - foe.y, t.x - foe.x) - foeA;
+    while (nose > Math.PI) nose -= Math.PI * 2;
+    while (nose < -Math.PI) nose += Math.PI * 2;
+    const m = t.fight || (t.fight = { phase: "", left: 0, side: 1 });
+    m.left -= dt;
+    t.fightAt = clock;
+    switch (t.boss) {
+      case "warlord": {
+        const pack = surv.traffic.some(o => o.leadId === t.id);
+        if (!m.phase) { m.phase = pack ? "hang" : "charge"; m.left = 3; }
+        if (m.phase === "hang") {
+          if (m.left <= 0 || !pack) { m.phase = "charge"; m.left = 5; }
+          const b = Math.atan2(t.y - foe.y, t.x - foe.x) + 0.4;
+          return { x: foe.x + Math.cos(b) * 1100 * U, y: foe.y + Math.sin(b) * 1100 * U,
+                   pace: top * 0.55 };
+        }
+        if (m.phase === "charge") {
+          if (d < 140 * U || m.left <= 0) { m.phase = "overshoot"; m.left = 1.1; }
+          return { x: foe.x, y: foe.y, pace: top };
+        }
+        // Past you, still going, before it can come about.
+        if (m.left <= 0) {
+          m.phase = pack && Math.random() < 0.3 ? "hang" : "charge";
+          m.left = m.phase === "hang" ? 2.5 : 5;
+        }
+        return { x: t.x + Math.cos(t.a) * 1200 * U, y: t.y + Math.sin(t.a) * 1200 * U,
+                 pace: top };
+      }
+      case "corsair": {
+        t.shown = false;
+        const exposed = Math.abs(nose) < 0.45 && d < 1500 * U;
+        if (exposed && (t.dashCool || 0) <= 0 && m.phase !== "slip") {
+          m.phase = "slip"; m.left = 0.9; m.side = Math.random() < 0.5 ? 1 : -1;
+          t.dash = 0.8; t.dashCool = 2.5;
+        }
+        if (m.phase === "slip") {
+          if (m.left <= 0) m.phase = "";
+          const a = foeA + m.side * Math.PI / 2;
+          return { x: foe.x + Math.cos(a) * 800 * U, y: foe.y + Math.sin(a) * 800 * U };
+        }
+        // Its six o'clock, a little way back.
+        const six = { x: foe.x - Math.cos(foeA) * 380 * U, y: foe.y - Math.sin(foeA) * 380 * U };
+        const behind = Math.abs(nose) > 2.1;
+        if (behind && d < 700 * U) {
+          t.shown = true;
+          return { x: foe.x + fv[0] * 0.4, y: foe.y + fv[1] * 0.4,
+                   pace: Math.hypot(fv[0], fv[1]) + 80 * U };
+        }
+        if (Math.hypot(six.x - t.x, six.y - t.y) > 900 * U && (t.dashCool || 0) <= 0) {
+          t.dash = 0.7; t.dashCool = 3;
+        }
+        return six;
+      }
+      case "admiral": {
+        // Side on, at its range, and it backs off rather than be closed on.
+        if (d < 600 * U) {
+          return { x: t.x - Math.cos(toFoe) * 900 * U, y: t.y - Math.sin(toFoe) * 900 * U,
+                   pace: top };
+        }
+        if (m.left <= 0) { m.left = 6 + Math.random() * 4; m.side = -m.side || 1; }
+        const b = Math.atan2(t.y - foe.y, t.x - foe.x) + m.side * 0.45;
+        return { x: foe.x + Math.cos(b) * 950 * U, y: foe.y + Math.sin(b) * 950 * U,
+                 pace: top * 0.7 };
+      }
+      case "warden": {
+        // Sidestep: on a rhythm, and at once when your nose finds it.
+        if (m.left <= 0) { m.side = -m.side || 1; m.left = 1.2 + Math.random() * 0.9; }
+        let quick = 1;
+        if (Math.abs(nose) < 0.18 && d < 1400 * U && (m.dodge || 0) <= 0) {
+          m.side = nose >= 0 ? 1 : -1; m.left = 1.1; m.dodge = 1.6; quick = 1.5;
+        }
+        m.dodge = Math.max(0, (m.dodge || 0) - dt);
+        if (m.dodge > 1) quick = 1.5;
+        const across = toFoe + m.side * Math.PI / 2;
+        const inOut = Math.max(-1, Math.min(1, (d - 560 * U) / (400 * U)));
+        let vx = Math.cos(across) + Math.cos(toFoe) * inOut;
+        let vy = Math.sin(across) + Math.sin(toFoe) * inOut;
+        const n = Math.hypot(vx, vy) || 1;
+        const sp = top * 0.75 * quick;
+        return { x: t.x + vx / n * 400, y: t.y + vy / n * 400, face: toFoe,
+                 v: [vx / n * sp + fv[0] * 0.6, vy / n * sp + fv[1] * 0.6] };
+      }
+      case "queen": {
+        // Backing away, facing you, at a walk.
+        const back = toFoe + Math.PI;
+        const sp = d < 900 * U ? top * 0.45 : 0;
+        return { x: t.x + Math.cos(back) * 400, y: t.y + Math.sin(back) * 400,
+                 face: toFoe, v: [Math.cos(back) * sp, Math.sin(back) * sp] };
+      }
+    }
+    return { x: foe.x, y: foe.y };
+  }
+
   /* Each boss's power, every frame. */
   function bossPower(t, dt) {
     const me = ships[0];
@@ -14970,6 +15403,70 @@
       if (t.shield == null) t.shield = t.shieldMax;
       if (rested > 3) t.shield = Math.min(t.shieldMax, t.shield + 12 * dt);
     } else if (t.boss === "queen") {
+      /* Roused (see `bossFight`), she makes bugs. Ric: "queen should feel
+         like your fighting galaga bugs. it just takes ships and has them
+         suicide bomb you." So she takes them: her beam reaches for the nearest
+         unarmed ship that is not hers, holds it for a second and a half, and it
+         comes back one of hers. With nothing to take, she builds them in her
+         bay, three at a time. Never more than twelve. See `bugStep`. */
+      t.towing = false;
+      if (clock - (t.fightAt == null ? -99 : t.fightAt) < 0.5 && me.alive && !cloaked(me)) {
+        const brood = surv.drones.filter(dr => dr.queen === t).length;
+        // The beam, on a ship.
+        if (!t.taking && brood < 12) {
+          let best = null, bd = 1600 * U;
+          for (const o of surv.traffic) {
+            if (o === t || o.boss || o.leadId === t.id) continue;
+            if (ROLES[o.role || o.kind] && ROLES[o.role || o.kind].armed) continue;
+            const dd = Math.hypot(o.x - t.x, o.y - t.y);
+            if (dd < bd) { bd = dd; best = o; }
+          }
+          if (best) { t.taking = best; t.takeT = 1.5; }
+        }
+        if (t.taking) {
+          const o = t.taking;
+          const i = surv.traffic.indexOf(o);
+          if (i < 0 || Math.hypot(o.x - t.x, o.y - t.y) > 1900 * U) t.taking = null;
+          else {
+            o.vx = (o.vx || 0) * 0.9; o.vy = (o.vy || 0) * 0.9;
+            o.stun = Math.max(o.stun || 0, 0.3);
+            t.takeT -= dt;
+            if (t.takeT <= 0) {
+              surv.traffic.splice(i, 1);
+              if (o.id) surv.goneTraffic.add(o.id);
+              surv.drones.push(makeBug(t, o.x, o.y, o.hull));
+              burst(o.x, o.y, BOSS_COLOUR, 14, 200 * U);
+              chatter(t.name + " took a " + shipSpec(o.hull).name.toLowerCase() + ".",
+                      BOSS_COLOUR, t);
+              t.taking = null;
+            }
+          }
+        }
+        // And out of her bay when there is nothing better.
+        t.droneCool = (t.droneCool == null ? 1 : t.droneCool) - dt;
+        if (t.droneCool <= 0 && brood < 12) {
+          t.droneCool = 3;
+          for (let k = 0; k < 4; k++) {
+            const a = t.a + (k - 1.5) * 0.45;
+            surv.drones.push(makeBug(t, t.x + Math.cos(a) * hullR(t),
+                                     t.y + Math.sin(a) * hullR(t), null));
+          }
+        }
+        /* They go one at a time, and now and then as a pair peeling off
+           opposite ways, once there is a row to spare. */
+        t.diveCool = (t.diveCool == null ? 2.5 : t.diveCool) - dt;
+        const ready = surv.drones.filter(dr => dr.queen === t && dr.bug === "form");
+        if (t.diveCool <= 0 && ready.length >= 3) {
+          t.diveCool = 1.6 + Math.random() * 0.9;
+          const n = ready.length >= 6 && Math.random() < 0.35 ? 2 : 1;
+          const side = Math.random() < 0.5 ? 1 : -1;
+          for (let k = 0; k < n; k++) {
+            const dr = ready.splice(Math.floor(Math.random() * ready.length), 1)[0];
+            dr.bug = "swoop"; dr.bugT = 0.9; dr.side = k ? -side : side;
+          }
+        }
+      } else t.taking = null;
+      for (const dr of surv.drones) if (dr.queen === t) dr.post = { x: t.x, y: t.y };
       // Her crews patch her, and her escorts, whenever nobody is shooting.
       if (rested > 3) {
         for (const o of surv.traffic) {
@@ -15455,6 +15952,7 @@
       let spent = false;
       for (let i = surv.drones.length - 1; i >= 0 && !spent; i--) {
         const d = surv.drones[i];
+        if (d.ally) continue;              // your own bugs, out of a Brood Bay
         if (dist2(b.x, b.y, d.x, d.y) > (18 * U) ** 2) continue;
         spent = true;
         d.hp -= (b.dmg || 1);
@@ -18648,7 +19146,7 @@
      distress call gets a ring that beats, because it has a clock on it and the
      whole scene is about noticing in time. */
   function drawTraffic(t) {
-    const spec = shipSpec(t.hull);
+    const spec = specOf(t);
     const r = SHIP_R * U * spec.size * (t.scale || 1);
     if (!onScreen(t.x, t.y, r * 2.5 + 80)) return;
     const colour = trafficColour(t);
@@ -18664,7 +19162,10 @@
     const counts = {};
     for (const k of t.cargo || []) counts[k] = (counts[k] || 0) + 1;
     const load = podColours(spec.pods, counts, (t.cargo || []).length / 30);
-    drawHullArt(spec, hit ? "#fff2bf" : colour, 12 / r, 1, { load });
+    /* The corsair is half there while it moves into position, and only all
+       there when it strikes. */
+    const seen = t.boss === "corsair" && !t.shown ? 0.16 : 1;
+    drawHullArt(spec, hit ? "#fff2bf" : colour, 12 / r, seen, { load });
     drawRoleMarks(t, spec, colour, 12 / r);
     /* A boss wears a second outline, a size out from its own, in the colour
        nothing else in the sector uses. */
@@ -18724,6 +19225,18 @@
         ctx.beginPath(); ctx.arc(t.x, t.y, r * 1.95, 0, Math.PI * 2); ctx.stroke();
       });
     }
+    // The queen's beam, on a ship she is taking.
+    if (t.taking && surv.traffic.indexOf(t.taking) >= 0) {
+      const me = t.taking;
+      glow(BOSS_COLOUR, 1.2, 0.25 + 0.15 * Math.sin(clock * 9), () => {
+        ctx.setLineDash([6, 8]);
+        ctx.beginPath();
+        ctx.moveTo(t.x + Math.cos(t.a) * r, t.y + Math.sin(t.a) * r);
+        ctx.lineTo(me.x, me.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+    }
     // The corsair on its burner.
     if (t.dash > 0) {
       glow("#ff4dd2", 2.4, 0.9, () => {
@@ -18733,8 +19246,8 @@
         ctx.stroke();
       });
     }
-    // Its name, and how much of it is left.
-    if (t.boss) {
+    // Its name, and how much of it is left. Not while the corsair is hiding.
+    if (t.boss && seen === 1) {
       const top = t.y - r * 2 - 22;
       label3(t.name, t.x, top, BOSS_COLOUR, 17);
       const w = Math.max(90, r * 2.4), left = t.x - w / 2, frac = Math.max(0, t.hp / t.maxHp);
@@ -18787,7 +19300,42 @@
     }
   }
 
+  /* A bug: a body and two beating wings, or, if she took it, the ship it was,
+     small and in her colour. */
+  function drawBug(d) {
+    if (!onScreen(d.x, d.y, 60)) return;
+    const c = d.hit > 0 ? "#ffffff" : d.ally ? CASH : BOSS_COLOUR;
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    ctx.rotate(d.a);
+    if (d.hull) {
+      const sp = shipSpec(d.hull);
+      const k = 17 * U / Math.max(sp.noseX || 12, -(sp.tailX || -12));
+      ctx.scale(k, k);
+      drawHullArt(sp, c, 1 / k, 0.95);
+    } else {
+      const flap = 0.55 + 0.45 * Math.sin(clock * 22 + d.slot);
+      const B = 1.7 * U;
+      glow(c, 1.8, 1, () => {
+        ctx.beginPath();
+        ctx.moveTo(10 * B, 0); ctx.lineTo(-6 * B, 3 * B); ctx.lineTo(-6 * B, -3 * B);
+        ctx.closePath();
+        for (const side of [1, -1]) {
+          ctx.moveTo(2 * B, side * 2 * B);
+          ctx.lineTo(-4 * B, side * (4 + 8 * flap) * B);
+          ctx.lineTo(-8 * B, side * 3 * B);
+          // Feelers.
+          ctx.moveTo(8 * B, side * 1 * B);
+          ctx.lineTo(13 * B, side * 4 * B);
+        }
+        ctx.stroke();
+      });
+    }
+    ctx.restore();
+  }
+
   function drawDrone(d) {
+    if (d.bug) return drawBug(d);
     if (!onScreen(d.x, d.y, 60)) return;
     ctx.save();
     ctx.translate(d.x, d.y);

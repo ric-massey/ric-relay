@@ -292,7 +292,24 @@ never sold, built or found in a cache.
 | Corsair | comes in on an afterburner, 2.1× for 0.9 s | CORSAIR BURNER (device, a hard forward shove) |
 | Admiral | a 40-point screen, back after 3 quiet seconds | FLAGSHIP SCREEN (takes the next hit, 12 s to recover) |
 | Warden | two homing missiles every 4 s | WARDEN'S SWARM (two seekers a volley) |
-| Queen | mends herself and her escorts when left alone | RESTORER (a point of hull every 8 s) |
+| Queen | takes ships with her beam and sends them, and her own bugs, to dive into you | BROOD BAY (three bugs of your own that fly into whatever is after you) |
+
+**Each boss is its own ship and its own fight.** Ric: *"the boss ships should
+look different then normal ships"*, *"they shouldnt fly like another hull...
+better. weirder fighting each should feel like a completely different
+experience"*, and of the queen, *"galaga bugs... it just takes ships and has
+them suicide bomb you."* Every boss has its own outline (`BOSS_ART`), its own
+handling (`BOSS_HANDLING`, its base hull pushed to an extreme), and its own way
+of fighting (`bossFight`). `test/hulls.html` shows the five beside the hulls they
+started from.
+
+| Boss | Flies | Fights | How you beat it |
+|---|---|---|---|
+| Warlord | fast in a line, slow to turn, almost no grip | THE BULL: hangs back while its pack goes in, then charges, slides past, comes about. A ram costs 2 hull | sidestep the charge, shoot its back |
+| Corsair | fastest out there, glued to its nose | THE PHANTOM: barely visible, sits on your tail, shows itself only to strike, burns out of your line when you turn on it | never fly straight |
+| Admiral | slow, stately | THE FORTRESS: holds 950 side on, full broadsides from turrets down both flanks, screen soaks the reply | close through the fire, stay off its flanks |
+| Warden | turns on a coin | THE DUELIST: always faces you, strafes like a drone at 560, sidesteps when your nose finds it, missiles | lead it |
+| Queen | quick for a barge | THE MOTHER: backs away facing you; rows of bugs (ships she took with her beam, and ones she builds, up to twelve) peel off, swoop, and dive into you | shoot the divers, reach her while the rows are thin |
 
 Found on the way: an escort or any armed ship you shot did not fight back (only
 patrols did), and nothing ever ran from your cannon, because only the burst

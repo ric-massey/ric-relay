@@ -5027,15 +5027,19 @@ const storeOf = (cf, key) => {
   check(surv.dropped.length === drops + 1, "a warlord dropped no part");
 
   /* A good pilot flies passes, not circles. Ric: "i dont want him to go in a
-     perfect circle". Over twenty seconds a boss after a parked ship should
-     come in close and go back out, again and again. */
+     perfect circle". An ace in a Jackal after a parked ship should come in
+     close and go back out, again and again. */
   surv.traffic.length = 0; surv.shots.length = 0;
-  me.x = 2300; me.y = 2300; me.vx = 0; me.vy = 0;
-  const f = cf.boss("corsair", 900, 0);
-  surv.traffic = surv.traffic.filter(t => t === f);
+  me.x = 2300; me.y = 2300; me.vx = 0; me.vy = 0; me.a = 0;
+  const f = { id: "t-ace", kind: "patrol", role: "patrol", faction: "pirate",
+              hull: "louvre", x: me.x + 900, y: me.y, a: Math.PI,
+              from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, leg: 1, speed: 400,
+              baseSpeed: 400, hp: 999, maxHp: 999, cargo: [], cool: 9, doom: 0,
+              guards: 0, phase: 1, vx: 0, vy: 0, skill: 0.9 };
+  surv.traffic.push(f);
   const range = [];
   for (let i = 0; i < 1200; i++) {
-    f.angry = true; f.hp = f.maxHp; me.hull = me.maxHull;
+    f.angry = true; f.cool = 9; me.hull = me.maxHull;
     tick();
     if (i > 120) range.push(Math.hypot(f.x - me.x, f.y - me.y));
   }
@@ -5044,8 +5048,87 @@ const storeOf = (cf, key) => {
   for (let i = 2; i < range.length; i++) {
     if ((range[i] - range[i - 1]) * (range[i - 1] - range[i - 2]) < 0) turns++;
   }
-  check(hi - lo > 400, "a corsair held a circle: " + Math.round(lo) + "–" + Math.round(hi));
-  check(turns >= 4, "a corsair made " + turns + " passes in twenty seconds");
+  check(hi - lo > 400, "an ace held a circle: " + Math.round(lo) + "–" + Math.round(hi));
+  check(turns >= 4, "an ace made " + turns + " passes in twenty seconds");
+
+  /* And each boss fights its own way. Ric: "each should feel like a
+     completely different experience". Measured against a parked ship, twenty
+     seconds each, by the one thing that makes each one what it is. */
+  const bout = (kind, per) => {
+    surv.traffic.length = 0; surv.shots.length = 0; surv.drones.length = 0;
+    me.x = 2300; me.y = 2300; me.vx = 0; me.vy = 0; me.a = 0; me.hull = me.maxHull;
+    const b = cf.boss(kind, 900, 0);
+    surv.traffic = surv.traffic.filter(t => t === b);
+    const out = [];
+    for (let i = 0; i < 1200; i++) {
+      b.angry = true; b.hp = b.maxHp; me.hull = me.maxHull; me.a = 0;
+      if (kind === "queen") b.lastHit = cf.live().clock;
+      tick();
+      if (i > 120) out.push(per(b));
+    }
+    return out;
+  };
+  const dist = b => Math.hypot(b.x - me.x, b.y - me.y);
+  const nose = b => {
+    let o = Math.atan2(b.y - me.y, b.x - me.x) - me.a;
+    while (o > Math.PI) o -= Math.PI * 2;
+    while (o < -Math.PI) o += Math.PI * 2;
+    return Math.abs(o);
+  };
+  const share = (xs, fn) => xs.filter(fn).length / xs.length;
+
+  // The bull charges right through you and ends up well past.
+  const bull = bout("warlord", dist);
+  check(Math.min(...bull) < 200 && Math.max(...bull) > 700,
+        "a warlord did not charge and overshoot: " + Math.round(Math.min(...bull)) +
+        "–" + Math.round(Math.max(...bull)));
+  // The phantom lives on your tail.
+  const tail = bout("corsair", nose);
+  check(share(tail, o => o > 2.1) > 0.5,
+        "a corsair spent " + Math.round(share(tail, o => o > 2.1) * 100) +
+        "% of the fight behind you");
+  // The fortress keeps its distance.
+  const fort = bout("admiral", dist);
+  check(share(fort, d => d > 600) > 0.8,
+        "an admiral let a parked ship close on it " +
+        Math.round(share(fort, d => d <= 600) * 100) + "% of the time");
+  // The duelist faces you while it moves.
+  const facing = bout("warden", b => {
+    let o = Math.atan2(me.y - b.y, me.x - b.x) - b.a;
+    while (o > Math.PI) o -= Math.PI * 2;
+    while (o < -Math.PI) o += Math.PI * 2;
+    return Math.abs(o);
+  });
+  check(share(facing, o => o < 0.3) > 0.7,
+        "a warden faced you " + Math.round(share(facing, o => o < 0.3) * 100) + "% of the time");
+  /* The mother fights like Galaga. Ric: "queen should feel like your fighting
+     galaga bugs... it just takes ships and has them suicide bomb you." Her
+     bugs sit in rows, peel off, and dive into you. */
+  let rows = 0, dove = 0;
+  bout("queen", () => {
+    const bugs = surv.drones.filter(d => d.queen);
+    rows = Math.max(rows, bugs.filter(d => d.bug === "form").length);
+    if (bugs.some(d => d.bug === "dive" && Math.hypot(d.x - me.x, d.y - me.y) < 80)) dove++;
+    return 0;
+  });
+  check(rows >= 3, "a salvage queen never had a row of bugs out (" + rows + ")");
+  check(dove > 0, "none of a salvage queen's bugs dived into you");
+
+  // And she takes ships: a hauler near her comes back one of hers.
+  surv.traffic.length = 0; surv.drones.length = 0;
+  me.x = 2300; me.y = 2300;
+  const mother = cf.boss("queen", 1400, 0);
+  surv.traffic = surv.traffic.filter(t => t === mother);
+  const prey = { id: "t-prey", kind: "freight", role: "freight", faction: "free",
+                 hull: "drayman", x: mother.x + 600, y: mother.y + 300, a: 0,
+                 from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, leg: 1, speed: 1,
+                 baseSpeed: 1, hp: 26, maxHp: 26, cargo: [], cool: 9, doom: 0,
+                 guards: 0, phase: 0, vx: 0, vy: 0 };
+  surv.traffic.push(prey);
+  for (let i = 0; i < 60 * 4; i++) { mother.lastHit = cf.live().clock; tick(); }
+  check(surv.traffic.indexOf(prey) < 0, "a salvage queen did not take the hauler beside her");
+  check(surv.drones.some(d => d.queen === mother && d.hull === "drayman"),
+        "the hauler she took did not come back as one of her bugs");
 
   /* They live somewhere, and you are told. Find a boss's sky, fly into it,
      and out again. */
@@ -5138,7 +5221,7 @@ const storeOf = (cf, key) => {
   for (let i = 0; i < 60 * 5; i++) tick();
   check(adm.shield > soaked, "an admiral's screen did not come back up");
 
-  // The queen mends when nobody is shooting at her.
+  // She still mends when nobody is shooting at her.
   surv.traffic.length = 0;
   const queen = cf.boss("queen", 1500, 0);
   queen.hp = queen.maxHp * 0.5;
@@ -5183,21 +5266,33 @@ const storeOf = (cf, key) => {
   now += 1000 / 60; cf.step();
   check(me.hull === me.maxHull, "a Flagship Screen did not take the hit");
 
+  // A Brood Bay's bugs fly into whatever is after you.
+  surv.traffic.length = 0; surv.drones.length = 0; surv.shots.length = 0;
   surv.slots[0] = { key: parts.queen, fit: 0 };
   cf.applyParts();
-  me.hull = Math.max(1, me.maxHull - 2);
-  const mended0 = me.hull;
-  for (let i = 0; i < 60 * 9; i++) tick();
-  check(me.hull > mended0, "a Restorer mended nothing in nine seconds");
+  const raider = { id: "t-raider", kind: "pirate", role: "pirate", faction: "pirate",
+                   hull: "needle", x: me.x + 700, y: me.y, a: Math.PI,
+                   from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, leg: 1, speed: 1,
+                   baseSpeed: 1, hp: 8, maxHp: 8, cargo: [], cool: 99, doom: 0,
+                   guards: 0, phase: 0, vx: 0, vy: 0, angry: true };
+  surv.traffic.push(raider);
+  cf.useDevice(0);
+  check(surv.drones.filter(d => d.ally).length === 3, "a Brood Bay put out no bugs");
+  for (let i = 0; i < 60 * 5; i++) { raider.cool = 99; tick(); }
+  check(surv.traffic.indexOf(raider) < 0 || raider.hp < 8,
+        "a Brood Bay's bugs did not find the raider");
   surv.slots[0] = null;
   cf.applyParts();
 
   console.log("  bosses     five kinds, each with a crew \u00b7 the warlord calls its pack " +
-              "and never runs \u00b7 a bounty and a rare part \u00b7 a corsair flies passes " +
-              Math.round(lo) + "–" + Math.round(hi) + " out \u00b7 each lives in its own sky, " +
+              "and never runs \u00b7 a bounty and a rare part \u00b7 an ace flies passes " +
+              Math.round(lo) + "–" + Math.round(hi) + " out \u00b7 bull, phantom, fortress, " +
+              "duelist, mother \u00b7 each lives in its own sky, " +
               "charted, named on the way in and out \u00b7 a power's boss minds your standing");
   console.log("  powers     a warlord's fan, a corsair's burner, an admiral's screen, a " +
-              "warden's swarm, a queen's restorer \u00b7 each drops its own, and it works on you");
+              "warden's swarm, a queen's brood \u00b7 each drops its own, and it works on you");
+  console.log("  queen      rows of bugs that peel off and dive into you \u00b7 she takes a " +
+              "hauler and it comes back one of hers");
 }
 
 // ── the hull says the job ─────────────────────────────────────────────────
