@@ -4863,6 +4863,78 @@ const storeOf = (cf, key) => {
               "parks \u00b7 followers keep their leader's pace \u00b7 haulers ease into a dock");
 }
 
+// \u2500\u2500 the rounds come out of the guns \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+/* Ric: "make sure the bullets come from the guns". Every round, yours and
+   theirs, left one fixed distance straight ahead of the middle of the ship,
+   whatever the hull and wherever its barrels were drawn. */
+{
+  const { cf } = boot("?debug=1&seed=515153");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const tick = () => { me.invuln = 3; now += 1000 / 60; cf.step(); };
+
+  // Yours: a Lance has a gun under each wing, and they take turns.
+  surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
+  surv.cash = 1e6;
+  cf.buyShip("lance");
+  surv.docked = null;
+  me.x = 2300; me.y = 2300; me.vx = 0; me.vy = 0; me.a = 0.4;
+  surv.traffic.length = 0; surv.drones.length = 0;
+  const sides = [];
+  const seen = new Set(cf.live().bullets);
+  cf.hold("Space", true);
+  for (let i = 0; i < 90 && sides.length < 4; i++) {
+    const x0 = me.x, y0 = me.y, a0 = me.a;
+    tick();
+    for (const b of cf.live().bullets) {
+      if (seen.has(b) || b.owner !== me.id) continue;
+      seen.add(b);
+      // Across the nose, measured from where the ship was when it fired.
+      sides.push(-(b.x - x0) * Math.sin(a0) + (b.y - y0) * Math.cos(a0));
+    }
+  }
+  cf.hold("Space", false);
+  const wing = 5.5 * 1.05;               // the barrel, at the Lance's size
+  check(sides.length >= 2, "the Lance never fired");
+  check(sides.every(d => Math.abs(Math.abs(d) - wing) < 1.5),
+        "a Lance's rounds did not come out of its wing guns: " +
+        sides.map(d => d.toFixed(1)).join(", "));
+  check(sides.some(d => d > 0) && sides.some(d => d < 0),
+        "a Lance fired every round out of one gun");
+
+  // Theirs: out of a barrel on the side the target is, and never backwards.
+  surv.shots.length = 0;
+  const put = a => {
+    const t = { id: "t-gun", kind: "patrol", role: "patrol", faction: "free",
+                hull: "bastion", x: me.x + 700, y: me.y, a, from: { x: me.x, y: me.y },
+                to: { x: me.x + 9000, y: me.y }, leg: 1, speed: 1, baseSpeed: 1,
+                hp: 40, maxHp: 40, cargo: [], cool: 0, doom: 0, guards: 0,
+                phase: 1, vx: 0, vy: 0, angry: true };
+    surv.traffic.length = 0; surv.traffic.push(t);
+    return t;
+  };
+  const facing = put(Math.PI);           // nose on to you
+  const fx = facing.x, fy = facing.y;
+  tick();
+  const shot = surv.shots.find(b => b.from === facing);
+  check(!!shot, "a patrol facing you did not fire");
+  if (shot) {
+    const ahead = -(shot.x - fx), across = Math.abs(shot.y - fy);
+    // The Bastion's barrels end thirteen units forward, a sponson either side.
+    check(ahead > 13 * 1.66 * 0.8 && across > 4,
+          "a patrol's round did not come out of a barrel: " + ahead.toFixed(1) +
+          " ahead, " + across.toFixed(1) + " across");
+  }
+  surv.shots.length = 0;
+  const away = put(0);                   // its back to you
+  for (let i = 0; i < 3; i++) { away.a = 0; away.angry = true; tick(); }
+  check(!surv.shots.some(b => b.from === away),
+        "a patrol fired backwards out of forward guns");
+  console.log("  guns       your rounds leave the barrels in turn \u00b7 theirs leave the " +
+              "barrel facing the target \u00b7 nobody fires out of their tail");
+}
+
 // \u2500\u2500 the hull says the job \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 /* Ric: "make sure they look like what they should, so its easy to look at them
    and say what type of ship they are". Each category now has one mark nobody
@@ -10105,7 +10177,8 @@ const storeOf = (cf, key) => {
   surv.shots.length = 0;
   me.x = 180000; me.y = -90000; me.invuln = 9999;
   me.vx = 0; me.vy = 320;                       // crossing its nose at speed
-  const gunner = put({ x: me.x + 900, y: me.y, angry: true, cool: 0 });
+  // Nose on to you: its guns fire forward, and this is about the lead.
+  const gunner = put({ x: me.x + 900, y: me.y, a: Math.PI, angry: true, cool: 0 });
   step(6);
   const shot = surv.shots.find(b => b.from === gunner);
   check(!!shot, "an angry patrol did not fire at all");

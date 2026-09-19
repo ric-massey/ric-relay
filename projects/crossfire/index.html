@@ -3792,6 +3792,20 @@
     return true;
   }
 
+  /* A barrel's end, in the world. `r` is the hull's drawn radius, the
+     same one the drawing scales its twelve-unit outline by. `k` counts shots,
+     so a two-gun hull fires left, right, left, and the stream is the same
+     stream it always was, only coming out of the guns. */
+  function muzzleAt(spec, x, y, a, r, k) {
+    const list = spec && spec.muzzles;
+    if (!list || !list.length) {
+      return { x: x + Math.cos(a) * (r + 2), y: y + Math.sin(a) * (r + 2) };
+    }
+    const m = list[(k || 0) % list.length];
+    const sc = r / 12, c = Math.cos(a), sn = Math.sin(a);
+    return { x: x + (m[0] * c - m[1] * sn) * sc, y: y + (m[0] * sn + m[1] * c) * sc };
+  }
+
   function fire(ship) {
     /* And it ends a cloak. Put here rather than on the trigger, because this is
        where a round actually leaves the ship — a trigger held against a cooldown
@@ -3813,14 +3827,17 @@
     if (mine >= cap) return false;
     const r = SHIP_R * U * (ship.sizeMul || 1);
     const heavy = ship.buffHeavy > 0;
+    const gun = mode.survey && ship.spec
+      ? muzzleAt(ship.spec, ship.x, ship.y, ship.a, r, ship.gunIx = (ship.gunIx || 0) + 1)
+      : muzzleAt(null, ship.x, ship.y, ship.a, r);
     bullets.push({
       owner: ship.id,
       colour: heavy ? "#ffd36b" : ship.colour,
       // Salvaged heavy rounds punch through twice; a hull's own firepower is a
       // multiplier over the top of whatever it is firing.
       dmg: (heavy ? 2 : 1) * (ship.dmgMul || 1),
-      x: ship.x + Math.cos(ship.a) * (r + 2),
-      y: ship.y + Math.sin(ship.a) * (r + 2),
+      x: gun.x,
+      y: gun.y,
       // Inheriting ship velocity is what makes a fast pass dangerous — your
       // shots stay ahead of you, and ahead of anyone flying beside you.
       vx: Math.cos(ship.a) * BULLET_SPD * (ship.shotMul || 1) * U + ship.vx,
@@ -3877,13 +3894,17 @@
         ? (i - (n - 1) / 2) * (spec.spread || 0)
         : 0;
       const a = ship.a + off;
+      // Out of the guns like the cannon's rounds, one barrel after another.
+      const gun = mode.survey && ship.spec
+        ? muzzleAt(ship.spec, ship.x, ship.y, ship.a, r, ship.gunIx = (ship.gunIx || 0) + 1)
+        : muzzleAt(null, ship.x, ship.y, a, r);
       bullets.push({
         owner: ship.id,
         alt: true,
         colour: spec.colour,
         dmg: spec.dmg * (ship.dmgMul || 1),
-        x: ship.x + Math.cos(a) * (r + 2),
-        y: ship.y + Math.sin(a) * (r + 2),
+        x: gun.x,
+        y: gun.y,
         vx: Math.cos(a) * BULLET_SPD * (spec.speed || 1) * (ship.shotMul || 1) * U + ship.vx,
         vy: Math.sin(a) * BULLET_SPD * (spec.speed || 1) * (ship.shotMul || 1) * U + ship.vy,
         life: (spec.life || BULLET_LIFE) * U,
@@ -5795,18 +5816,21 @@
 
     // ── industrial ──────────────────────────────────────────────────────────
     windlass: {
+      muzzles: [[11, 0]],
       windows: pairPts([-13, 10.5, 1.4], [-9, 11, 1.4], [-5, 11.5, 1.4]),
       art: [[14, 4], [14, 10], [6, 14], [-16, 12], [-16, -12], [6, -14],
             [14, -10], [14, -4], [6, -4], [6, 4]],
       fins: [[[6, 0], [11, 0]]].concat(truss(-14, 3, 9)),
       pods: pairBox([-12, 1, 5, 6]) },
     ironmonger: {
+      muzzles: [[13, 0]],
       windows: pairPts([-13, 12, 1.5], [-10, 12.5, 1.5]),
       art: [[18, 5], [18, 10], [10, 15], [-12, 15], [-16, 10], [-16, -10],
             [-12, -15], [10, -15], [18, -10], [18, -5], [8, -5], [8, 5]],
       guns: pairPts([4, 12], [-6, 13]),
       fins: [[[8, 0], [13, 0]]].concat(truss(-13, 5, 10)) },
     cathedral: {
+      muzzles: [[6, 0]],
       windows: pairPts([-17, 16, 1.8], [-13, 16.5, 1.8], [-9, 17, 1.8]),
       art: [[24, 7], [24, 19], [-16, 19], [-22, 12], [-22, -12], [-16, -19],
             [24, -19], [24, -7], [0, -7], [0, 7]],
@@ -5907,6 +5931,13 @@
     const xs = art.map(p => p[0]);
     sh.tailX = Math.min(...xs);
     sh.noseX = Math.max(...xs);
+    /* Where the rounds come out. The end of each drawn barrel; a beam hull's
+       emitter in its bow throat; and a hull with no guns drawn fires from its
+       nose. Rounds used to leave one stock radius ahead of the middle whatever
+       the hull, which on anything bigger than a Skiff was somewhere inside it,
+       nowhere near a gun. */
+    sh.muzzles = sh.muzzles ||
+      (sh.guns ? sh.guns.map(g => [g[0] + (g[2] || 5), g[1]]) : [[sh.noseX, 0]]);
     /* And how big a circle this outline really is. Collision used a flat
        three-quarters of the stock twelve-unit radius, which is about right for
        the stock triangle and nowhere near right for anything drawn larger than
@@ -11660,9 +11691,27 @@
                not fire one either. A working tug that sniped across a sector
                would be the roster saying one thing and the sector another. */
             if (guns.weapon === "claw") { t.cool = 1.4; continue; }
+            /* The guns point forward, so they fire forward. They swing a
+               quarter turn either side of the nose, which covers a ship
+               circling its target at gun range, and nothing behind that: a
+               round coming backwards out of a forward barrel is not a round
+               anybody fired. It waits until it has come round. */
+            let off = a - t.a;
+            while (off > Math.PI) off -= Math.PI * 2;
+            while (off < -Math.PI) off += Math.PI * 2;
+            if (Math.abs(off) > Math.PI / 2) { t.cool = 0.2; continue; }
             t.cool = (t.angry ? 0.42 : 0.5) / guns.rate;
+            /* Out of a barrel: the one on the side the target is, and the pair
+               take turns, so a two-gun hull on a straight run fires left,
+               right, left. */
+            const hullR = SHIP_R * U * (guns.size || 1);
+            const side = off >= 0 ? 1 : -1;
+            const barrels = guns.muzzles.filter(m => m[1] * side >= 0);
+            t.gunIx = (t.gunIx || 0) + 1;
+            const gun = muzzleAt({ muzzles: barrels.length ? barrels : guns.muzzles },
+                                 t.x, t.y, t.a, hullR, t.gunIx);
             surv.shots.push({
-              x: t.x + Math.cos(a) * 20 * U, y: t.y + Math.sin(a) * 20 * U,
+              x: gun.x, y: gun.y,
               /* Carrying the ship's own velocity, the way yours do. A ship
                  now has one — see the traffic step — and a round fired from a
                  hull closing on you should arrive faster than one fired from a
