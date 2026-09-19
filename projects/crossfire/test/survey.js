@@ -5421,6 +5421,38 @@ const storeOf = (cf, key) => {
   check(rail.some(w => /\bACROSS$/.test(w)),
         "the widest zoom cut its own readout: " +
         JSON.stringify(rail.filter(w => /ACR/.test(w))));
+  /* What the rail claims and what the map shows have to be the same number.
+     The readout answered for the whole screen, rail included, so it claimed a
+     third more sky than it was drawing — and disagreed with the scale bar
+     beside it. */
+  cf.screen("chart");
+  hud.chartOpened(cf.surveyView());
+  cf.draw();
+  const vv = hud.chartView();
+  check(vv.view && vv.view.w > 0, "the chart does not report its own rectangle");
+  if (vv.view) {
+    check(Math.abs(hud.chartSpan() - vv.view.w / vv.scale) < 1,
+          "the map says it shows " + Math.round(hud.chartSpan()) +
+          " units across and draws " + Math.round(vv.view.w / vv.scale));
+    check(hud.chartSpan() < cf.live().screenW / vv.scale * 0.95,
+          "the map's span still counts the rail as map");
+  }
+
+  /* And the station's MAP tab is the map: the keys that zoom, pan and
+     recentre the full page were dead there. */
+  const surv2 = cf.survey();
+  surv2.docked = { x: cf.home().x, y: cf.home().y, home: true, name: "HOME" };
+  cf.screen("stationinv");
+  hud.setStationTab("chart");
+  hud.chartOpened(cf.surveyView());
+  cf.draw();
+  const k0 = hud.chartView();
+  cf.key("Equal");
+  check(hud.chartView().scale > k0.scale, "+ did not zoom the station's map");
+  cf.key("ArrowRight");
+  check(hud.chartView().x !== k0.x, "the arrows did not pan the station's map");
+  cf.key("KeyC");
+  check(hud.chartView().follow === true, "C did not recentre the station's map");
   console.log("  mapzoom    the wheel zooms as far as it turns, about the pointer, " +
               "and not sideways \u00b7 two fingers pinch \u00b7 the station's map pans");
 }

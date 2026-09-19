@@ -2479,7 +2479,11 @@
   };
   // How many units the chart is showing across, for anything checking that the
   // map can contain the sector it is a map of.
-  HUD.chartSpan = () => api.SCREEN_W / chart.scale;
+  /* How wide the *map* is, in units. It used to answer for the whole screen,
+     which the map is not: the rail takes a quarter of it. The rail's own
+     readout is drawn from this, so it was claiming a third more sky than it
+     was showing, and disagreeing with the scale bar underneath it. */
+  HUD.chartSpan = () => (chart.view ? chart.view.w : api.SCREEN_W) / chart.scale;
 
   HUD.chartZoomBy = function (dir) { zoomChart(dir); };
   /* By a factor, about a point on the screen: the wheel and a pinch. The
@@ -2506,7 +2510,13 @@
   };
   HUD.chartView = () => ({ x: Math.round(chart.x), y: Math.round(chart.y),
                            scale: chart.scale, follow: chart.follow,
-                           steps: ZOOMS.length });
+                           steps: ZOOMS.length,
+                           // The map's own rectangle, so a harness can ask
+                           // where on the screen a piece of sky is drawn.
+                           view: chart.view ? { ...chart.view } : null });
+  // Arming the pin tool, which the rail's button does by hand.
+  HUD.chartPinArm = on => { chart.pinning = !!on; if (chart.pinning) chart.jump = false; };
+  HUD.chartPinArmed = () => !!chart.pinning;
 
   HUD.chartKey = function (code, st) {
     const step = 260 / chart.scale;
@@ -3017,7 +3027,7 @@
     /* Two facts, so two labels — one from each end of the rail. As one string
        fitted to 170 pixels it came out as "21.6K ACROSS · …", which drops the
        half a reader actually wants: which of the five steps they are on. */
-    fitText(fmtCells(Math.round(SCREEN_W / chart.scale)) + " ACROSS",
+    fitText(fmtCells(Math.round(view.w / chart.scale)) + " ACROSS",
             rail.x, ry + 20, SIZE.cap, VIOLET_DIM, "left", 0.7, rail.w - 46);
     label((step + 1) + "/" + ZOOMS.length, rail.x + rail.w - PAGE.PAD, ry + 20,
           SIZE.cap, VIOLET_DIM, "right", 0.7);

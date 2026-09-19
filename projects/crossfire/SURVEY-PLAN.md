@@ -245,6 +245,23 @@ listeners the way a hand does:
 Also: the rail read "2500.0K ACR." because the number crowded out its own word,
 and the header read "SECTOR 134 , 17".
 
+**Two more, hunted after Ric asked whether any were left:**
+
+- **The rail lied about how much sky it was showing.** "N ACROSS" and
+  `chartSpan` measured the whole screen, and the map is not the whole screen —
+  the rail takes a quarter of it. It claimed 8,333 units where it drew 6,433,
+  and disagreed with the scale bar drawn beside it.
+- **The station's MAP tab ignored the keyboard.** Zoom, pan, recentre and the
+  pin palette all work on the full page and none of them reached the tab: the
+  arrows were routed to a scroll the map does not have and the rest fell
+  through. With the drag fix above, that tab was a picture on a phone *and* on
+  a desktop.
+
+Checked and found sound while looking: a tap lands where you press it to within
+a pixel at every zoom (`tapHit` now carries its coordinates, so a harness can
+ask), the chart clips to its own rectangle, and the fog covers the view at every
+screen shape this layout can take.
+
 **Still open for step 1:** what a ship thinks of *you* (ignoring you, warning
 you off, coming for you) is not drawn yet. The dogfight test is also still
 unflown: can someone watch thirty seconds and narrate it?

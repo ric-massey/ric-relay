@@ -3084,6 +3084,12 @@
       if (code === "Backspace") { state = "refit"; return; }
       // The sub-page's own scrolling, so the arrows do what they do everywhere.
       const sub = surveyHUD && surveyHUD.stationTab && surveyHUD.stationTab();
+      /* The map tab is the map: zoom, pan, recentre and the pin palette, the
+         same keys as the full page. It answered none of them — the arrows went
+         to a scroll the map does not have and the rest fell through — so the
+         station's map was a picture on a desktop and a picture on a phone. */
+      if (sub === "chart" && surveyHUD &&
+          surveyHUD.chartKey(code, surveyState())) return;
       const by = code === "ArrowDown" ? 60 : code === "ArrowUp" ? -60 : 0;
       if (by && surveyHUD) {
         if (sub === "inventory") {
@@ -27333,9 +27339,12 @@
       taps: () => taps.map(t => ({ x: Math.round(t.x), y: Math.round(t.y),
                                    w: Math.round(t.w), h: Math.round(t.h),
                                    live: typeof t.act === "function" })),
+      /* The press, coordinates and all. It used to call `act()` bare, so
+         anything that acts on *where* it was pressed — the map, which turns a
+         press into a place — could not be driven by a harness at all. */
       tapHit: (x, y) => {
         const t = tapAt(x, y);
-        if (t && typeof t.act === "function") { t.act(); return true; }
+        if (t && typeof t.act === "function") { t.act(x, y); return true; }
         return false;
       },
       // The boot-time pull, on demand, so a harness can drive it.
