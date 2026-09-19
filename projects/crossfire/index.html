@@ -12152,6 +12152,68 @@
     }
   }
 
+  /* ── hull against hull, out there ──────────────────────────────────────────
+     Ric: "make it so bots that are friendly with each other can run into each
+     other". Nothing out here could touch anything else: a convoy's escort flew
+     straight through its hauler, a wing sat inside itself, and two ships on
+     the same lane passed through each other like light. You were the only
+     solid ship in the sector.
+
+     So every pair is asked. Overlapping, they are pushed apart by mass (a Kite
+     does not move a Gantry, the same `shoveShare` your own hull uses) and the
+     part of their velocities that was closing is traded off, with a little
+     lost. Friends just bump. Enemies meeting hard, at a closing speed that
+     would hurt you, take a point each; a warlord's ram takes two off whatever
+     it hits and nothing off itself. Only ships within a hull or two of each
+     other are measured, so the cost stays small. */
+  function trafficBumps() {
+    const list = surv.traffic;
+    // Each hull's circle once, not once per pair.
+    const rs = list.map(hullR);
+    for (let i = 0; i < list.length; i++) {
+      const a = list[i];
+      const ra = rs[i];
+      for (let j = i + 1; j < list.length; j++) {
+        const b = list[j];
+        const min = ra + rs[j];
+        const dx = b.x - a.x;
+        if (dx > min || dx < -min) continue;
+        const dy = b.y - a.y;
+        if (dy > min || dy < -min) continue;
+        let d = Math.hypot(dx, dy);
+        if (d >= min) continue;
+        let nx = dx / (d || 1), ny = dy / (d || 1);
+        if (d < 0.001) { nx = 1; ny = 0; d = 0; }
+        const sa = specOf(a), sb = specOf(b);
+        const ma = hullMass(sa) * (a.scale || 1) ** 2, mb = hullMass(sb) * (b.scale || 1) ** 2;
+        const wa = mb / (ma + mb), wb = ma / (ma + mb);
+        const over = min - d;
+        a.x -= nx * over * wa; a.y -= ny * over * wa;
+        b.x += nx * over * wb; b.y += ny * over * wb;
+        const avx = a.vx || 0, avy = a.vy || 0, bvx = b.vx || 0, bvy = b.vy || 0;
+        const closing = (avx - bvx) * nx + (avy - bvy) * ny;
+        if (closing <= 0) continue;
+        // Trade the closing part, by mass, and lose a fifth of it.
+        const j2 = closing * 1.6;
+        a.vx = avx - nx * j2 * wa; a.vy = avy - ny * j2 * wa;
+        b.vx = bvx + nx * j2 * wb; b.vy = bvy + ny * j2 * wb;
+        if (closing < 120 * U) continue;
+        const foes = atWar(a.faction, b.faction) || a.angryAt === b || b.angryAt === a;
+        for (const [hit, by] of [[a, b], [b, a]]) {
+          if (hit.bumped > 0) continue;
+          if (by.boss === "warlord") {
+            hit.bumped = 0.8; takeHit(hit, 2); hurtBySomebody(hit, by);
+          } else if (foes && !hit.boss) {
+            hit.bumped = 0.8; takeHit(hit, 1); hurtBySomebody(hit, by);
+          }
+        }
+      }
+    }
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i].hp <= 0) killTraffic(i, false);
+    }
+  }
+
   /* ── gravity, for everybody ───────────────────────────────────────────────
      "Gravity affects everyone" was true of every object in the game that had a
      velocity — the player, rocks, bullets, salvage, debris — and traffic was the
@@ -14989,7 +15051,21 @@
     };
   }
 
+  /* Asked for nine squares every frame, and each answer asks the territory
+     map, which is not free. Remembered for two seconds: long enough to cost
+     nothing, short enough that a sky that changes hands changes its boss. */
+  const lairMemo = new Map();
   function lairIn(i, j) {
+    const key = surv.seed + ":" + i + "," + j;
+    const hit = lairMemo.get(key);
+    if (hit && hit.at <= clock && clock - hit.at < 2 &&
+        hit.down === surv.bossesDown.size) return hit.v;
+    const v = lairFresh(i, j);
+    if (lairMemo.size > 400) lairMemo.clear();
+    lairMemo.set(key, { at: clock, down: surv.bossesDown.size, v });
+    return v;
+  }
+  function lairFresh(i, j) {
     const R = lairRng(i, j);
     if (R() > 0.45) return null;
     const x = (i + 0.2 + R() * 0.6) * LAIR_CELL, y = (j + 0.2 + R() * 0.6) * LAIR_CELL;
@@ -18638,6 +18714,7 @@
     surveyShots(dt);
     surveyBullets();
     surveyTraffic(dt);
+    trafficBumps();
     surveyMarkets(dt);
     surveyRockSolids();
     surveyFitting(dt);
@@ -21658,7 +21735,7 @@
       } else if (sub === "craft") {
         surveyHUD.craftDragBy(px);
       } else if (sub === "chart") {
-        surveyHUD.chartZoomBy(px > 0 ? -1 : 1);
+        wheelZoom(e, px);
       }
       e.preventDefault();
     } else if (state === "refit" || state === "landed") {
@@ -21667,12 +21744,56 @@
       e.preventDefault();
     } else if (state === "chart") {
       // On a map the wheel is zoom, not pan — that is what every map does.
-      surveyHUD.chartZoomBy(px > 0 ? -1 : 1);
+      wheelZoom(e, px);
       e.preventDefault();
     }
   }, { passive: false });
 
+  /* The map's wheel. As far as it was turned rather than a step an event, and
+     about the pointer. A trackpad pinch arrives as a wheel with ctrl held and
+     much smaller numbers, so it is read more strongly. A sideways scroll is
+     not a zoom at all. See `chartZoomAt`. */
+  function wheelZoom(e, px) {
+    if (!px) return;
+    const p = screenPoint(e.clientX, e.clientY);
+    surveyHUD.chartZoomAt(Math.exp(-px * (e.ctrlKey ? 0.012 : 0.0025)), p.x, p.y);
+  }
+
+  /* ── two fingers on a map ─────────────────────────────────────────────────
+     The map had no pinch. On a phone the only zoom was the two buttons on the
+     rail, a step a press, and two fingers did nothing but start a drag. Now
+     two fingers zoom about the point between them and pan as they move, and
+     the first finger's tap or drag is cancelled the moment the second lands. */
+  const mapPage = () => state === "chart" ||
+    (state === "stationinv" && surveyHUD && surveyHUD.stationTab &&
+     surveyHUD.stationTab() === "chart");
+  const fingers = new Map();
+  let pinch = null;
+  const pinchSpan = () => {
+    const [a, b] = [...fingers.values()];
+    return { d: Math.hypot(a.x - b.x, a.y - b.y), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  };
+  const dropFinger = e => {
+    fingers.delete(e.pointerId);
+    if (fingers.size < 2) pinch = null;
+  };
+  canvas.addEventListener("pointerup", dropFinger);
+  canvas.addEventListener("pointercancel", dropFinger);
+
   canvas.addEventListener("pointermove", e => {
+    if (fingers.has(e.pointerId)) {
+      fingers.set(e.pointerId, screenPoint(e.clientX, e.clientY));
+      if (pinch && fingers.size === 2 && surveyHUD) {
+        const now2 = pinchSpan();
+        if (pinch.d > 0 && now2.d > 0) {
+          surveyHUD.chartDragBy(now2.x - pinch.x, now2.y - pinch.y);
+          surveyHUD.chartZoomAt(now2.d / pinch.d, now2.x, now2.y);
+        }
+        pinch = now2;
+        e.preventDefault();
+        return;
+      }
+    }
     if (!pageDrag || e.pointerId !== pageDrag.id || !surveyHUD) return;
     const p = screenPoint(e.clientX, e.clientY);
     const dx = p.x - pageDrag.x, dy = p.y - pageDrag.y;
@@ -21707,6 +21828,20 @@
                                surveyHUD.marketView || 1);
     }
     else if (state === "chart") surveyHUD.chartDragBy(dx, dy);
+    /* The station page's tabs are the same pages, and dragging did nothing on
+       any of them: the map would not pan and the lists would not scroll,
+       which on a phone meant they could not be used at all. */
+    else if (state === "stationinv") {
+      const sub = surveyHUD.stationTab ? surveyHUD.stationTab() : "ship";
+      if (sub === "chart") surveyHUD.chartDragBy(dx, dy);
+      else if (sub === "inventory") {
+        surveyHUD.cargoScrollBy(-dy, surveyHUD.cargoHeight || 0, surveyHUD.cargoView || 1);
+      } else if (sub === "record") {
+        surveyHUD.recordScrollBy(-dy, surveyHUD.recordHeight || 0, surveyHUD.recordView || 1);
+      } else if (sub === "ship") {
+        surveyHUD.shipScrollBy(-dy, surveyHUD.shipHeight || 0, surveyHUD.shipView || 1);
+      } else if (sub === "craft") surveyHUD.craftDragBy(-dy);
+    }
     pageDrag.x = p.x; pageDrag.y = p.y;
     e.preventDefault();
   });
@@ -21774,6 +21909,18 @@
     if (e.pointerType === "touch") e.preventDefault();
 
     const p = screenPoint(e.clientX, e.clientY);
+
+    // A second finger on a map is a pinch, and the first one's gesture is over.
+    if (!mapPage()) fingers.clear();
+    else if (e.pointerType === "touch") {
+      fingers.set(e.pointerId, p);
+      if (fingers.size === 2) {
+        pinch = pinchSpan();
+        pageDrag = null;
+        e.preventDefault();
+        return;
+      }
+    }
 
     if (state === "controls") {
       const cell = cellAt(p.x, p.y);

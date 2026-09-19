@@ -1138,7 +1138,12 @@
     ctx.restore();
   }
 
-  const fmtCells = n => n >= 10000 ? (n / 1000).toFixed(1) + "K" : String(n);
+  /* A tenth of a thousand is worth reading at 12.4K and is noise at 2500.0K,
+     where it also cost the word it sat next to: the chart's rail read
+     "2500.0K ACR." because the number would not leave room for "ACROSS". */
+  const fmtCells = n => n >= 1000000 ? Math.round(n / 1000000) + "M"
+                      : n >= 100000 ? Math.round(n / 1000) + "K"
+                      : n >= 10000 ? (n / 1000).toFixed(1) + "K" : String(n);
 
   /* Minutes and seconds, and never an hour: a tank is measured in minutes and a
      countdown in seconds, and both want the same shape so the readout does not
@@ -2477,6 +2482,28 @@
   HUD.chartSpan = () => api.SCREEN_W / chart.scale;
 
   HUD.chartZoomBy = function (dir) { zoomChart(dir); };
+  /* By a factor, about a point on the screen: the wheel and a pinch. The
+     buttons and keys step the ladder, which is right for a press; a wheel
+     stepping the ladder once per event was not. A trackpad sends dozens of
+     events in one flick, so one flick went from the widest view to the
+     closest, and a sideways scroll (no vertical movement at all) counted as
+     "in". Now it is as far as you turned it, and the point under the pointer
+     stays under the pointer, which is what every other map does. */
+  HUD.chartZoomAt = function (factor, sx, sy) {
+    if (!(factor > 0) || factor === 1) return;
+    const old = chart.scale;
+    const next = Math.max(ZOOMS[0], Math.min(ZOOMS[ZOOMS.length - 1], old * factor));
+    if (next === old) return;
+    const v = chart.view;
+    if (v && sx != null && sy != null) {
+      const cx = v.x + v.w / 2, cy = v.y + v.h / 2;
+      const wx = chart.x + (sx - cx) / old, wy = chart.y + (sy - cy) / old;
+      chart.x = wx - (sx - cx) / next;
+      chart.y = wy - (sy - cy) / next;
+      if (Math.abs(sx - cx) > 4 || Math.abs(sy - cy) > 4) chart.follow = false;
+    }
+    chart.scale = next;
+  };
   HUD.chartView = () => ({ x: Math.round(chart.x), y: Math.round(chart.y),
                            scale: chart.scale, follow: chart.follow,
                            steps: ZOOMS.length });
@@ -2637,19 +2664,37 @@
        are the mapped cells joined to a neighbour with the same answer, worked
        out again only when the record changes. Territory is named as soon as a
        patch is a few cells big on screen; a biome only once you are close. */
+    /* And a name only where there is room for it. Nothing checked, so zoomed
+       out the names of every small patch landed on top of each other: at one
+       step a single frame wrote THE MURK four times and three other names three
+       times each, most of them over something else. Biggest patch first, and
+       a name that would touch one already written is left off until you zoom
+       in far enough to separate them. */
     const groups = patchesOf(T, st.seed);
+    const taken = [];
+    const fits = (text, x, y) => {
+      const w = String(text).length * SIZE.cap * 0.72 + 10, h = SIZE.cap + 6;
+      const box = { x0: x - w / 2, x1: x + w / 2, y0: y - h, y1: y + 4 };
+      for (const b of taken) {
+        if (box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0) return false;
+      }
+      taken.push(box);
+      return true;
+    };
     ctx.save();
-    for (const g of groups.o) {
+    for (const g of groups.o.slice().sort((a, b) => b.n - a.n)) {
       if (cellPx * Math.sqrt(g.n) < 90) continue;
       const h = T.holder(g.v);
       if (!h || !vis(g.x, g.y)) continue;
+      if (!fits(h.name, mx(g.x), my(g.y))) continue;
       label(h.name, mx(g.x), my(g.y), SIZE.cap, h.colour, "center",
             g.v === "void" ? 0.55 : 0.85, "0.14em");
     }
     if (cellPx >= 60) {
-      for (const g of groups.r) {
+      for (const g of groups.r.slice().sort((a, b) => b.n - a.n)) {
         const b = T.biome(g.v);
         if (!b || !vis(g.x, g.y)) continue;
+        if (!fits(b.name, mx(g.x), my(g.y) + 18)) continue;
         label(b.name, mx(g.x), my(g.y) + 18, SIZE.cap, b.colour, "center", 0.6,
               "0.08em");
       }
@@ -2744,6 +2789,8 @@
                    w: SCREEN_W - PAGE.EDGE * 2 - railW - PAGE.GUTTER,
                    h: SCREEN_H - PAGE.TOP - 26 };
     const rail = { x: view.x + view.w + PAGE.GUTTER, w: railW };
+    // Kept, so a wheel or a pinch can zoom about the point under it.
+    chart.view = view;
     const mx = wx => view.x + view.w / 2 + (wx - chart.x) * chart.scale;
     const my = wy => view.y + view.h / 2 + (wy - chart.y) * chart.scale;
 
@@ -3110,7 +3157,7 @@
     const CHUNK = 2600;
     const cx = Math.round(st.ship.x / CHUNK), cy = Math.round(st.ship.y / CHUNK);
     const home = Math.round(Math.hypot(st.ship.x, st.ship.y));
-    label("SECTOR " + cx + " , " + cy, view.x + view.w - 16, view.y + 24,
+    label("SECTOR " + cx + ", " + cy, view.x + view.w - 16, view.y + 24,
           SIZE.cap, AMBER, "right", 0.9);
     label(fmtCells(home) + " UNITS FROM ORIGIN", view.x + view.w - 16, view.y + 46,
           SIZE.cap, AMBER_DIM, "right", 0.6);

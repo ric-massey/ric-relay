@@ -89,11 +89,16 @@ const HIDDEN_AT_BOOT = new Set(
 );
 
 function stubEl(id) {
+  /* Listeners are kept, per element, so a test can fire a real wheel or a
+     real pointer at the canvas. See `onCanvas`. */
+  const on = {};
   return {
     id: id || "",
+    on,
     style: { setProperty: noop, getPropertyValue: () => "", removeProperty: noop },
     classList: { add: noop, remove: noop, toggle: noop, contains: () => false },
-    addEventListener: noop, removeEventListener: noop, appendChild: noop,
+    addEventListener: (kind, fn) => { (on[kind] = on[kind] || []).push(fn); },
+    removeEventListener: noop, appendChild: noop,
     removeChild: noop, setAttribute: noop, removeAttribute: noop, focus: noop,
     blur: noop, click: noop, getContext: stubCtx,
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 700 }),
@@ -5293,6 +5298,131 @@ const storeOf = (cf, key) => {
               "warden's swarm, a queen's brood \u00b7 each drops its own, and it works on you");
   console.log("  queen      rows of bugs that peel off and dive into you \u00b7 she takes a " +
               "hauler and it comes back one of hers");
+}
+
+// ── hull against hull, out there ──────────────────────────────────────────
+/* Ric: "make it so bots that are friendly with each other can run into each
+   other". Two haulers of one flag, flown head on, bounce and are not hurt; a
+   warlord that runs into a patrol hurts it. */
+{
+  const { cf } = boot("?debug=1&seed=515153");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  me.x = 2300; me.y = 2300; me.vx = me.vy = 0;
+  const hauler = (id, x, a) => ({
+    id, kind: "freight", role: "freight", faction: "free", hull: "drayman",
+    x, y: 5200, a, from: { x, y: 5200 }, to: { x: x + Math.cos(a) * 9000, y: 5200 },
+    leg: 1, speed: 180, baseSpeed: 180, hp: 26, maxHp: 26, cargo: [], cool: 9,
+    doom: 0, guards: 0, phase: 0, vx: Math.cos(a) * 180, vy: 0,
+    mark: { x: x + Math.cos(a) * 9000, y: 5200 }, markKind: "point", think: 1e9 });
+  surv.traffic.length = 0; surv.drones.length = 0;
+  const a = hauler("t-a", 1800, 0), b = hauler("t-b", 2800, Math.PI);
+  surv.traffic.push(a, b);
+  let closest = Infinity;
+  for (let i = 0; i < 60 * 5; i++) {
+    me.invuln = 3; now += 1000 / 60; cf.step();
+    closest = Math.min(closest, Math.hypot(a.x - b.x, a.y - b.y));
+  }
+  const touch = 2 * 10.3 * 1.7;          // two Draymen's circles
+  check(closest > touch * 0.85, "two haulers flew through each other: " +
+        Math.round(closest) + " apart at closest");
+  check(a.hp === 26 && b.hp === 26, "two friendly haulers hurt each other bumping");
+
+  surv.traffic.length = 0;
+  const w = cf.boss("warlord", 0, -900);
+  surv.traffic = surv.traffic.filter(t => t === w);
+  const p = { id: "t-p", kind: "patrol", role: "patrol", faction: "free", hull: "lance",
+              x: w.x + 60, y: w.y, a: Math.PI, from: { x: 0, y: 0 }, to: { x: 1, y: 0 },
+              leg: 1, speed: 1, baseSpeed: 1, hp: 14, maxHp: 14, cargo: [], cool: 9,
+              doom: 0, guards: 0, phase: 0, vx: 0, vy: 0 };
+  surv.traffic.push(p);
+  w.vx = 500; w.vy = 0; w.x = p.x - 40;
+  now += 1000 / 60; cf.step();
+  check(p.hp <= 12, "a warlord ran into a patrol and it did not feel it");
+  console.log("  bumps      two haulers head on bounce " + Math.round(closest) +
+              " apart, unhurt \u00b7 a warlord's ram takes two");
+}
+
+// ── zooming the map ───────────────────────────────────────────────────────
+/* Ric: "look for bugs in zooming in and out for the map". Driven through the
+   canvas's own wheel and pointer listeners, the way a hand drives it. */
+{
+  const { cf } = boot("?debug=1&seed=99");
+  cf.start("survey", 1);
+  const hud = cf.hud();
+  const canvasEl = els.game;
+  const onCanvas = (kind, e) => {
+    for (const fn of (canvasEl.on[kind] || [])) {
+      fn(Object.assign({ preventDefault: noop, pointerId: 1, pointerType: "mouse",
+                         clientX: 400, clientY: 300, deltaMode: 0, deltaX: 0,
+                         deltaY: 0, ctrlKey: false }, e));
+    }
+  };
+  cf.screen("chart");
+  hud.chartOpened(cf.surveyView());
+  cf.draw();
+  const s0 = hud.chartView().scale;
+
+  // A sideways scroll is not a zoom.
+  onCanvas("wheel", { deltaX: 120, deltaY: 0 });
+  check(hud.chartView().scale === s0, "a sideways scroll zoomed the map");
+
+  // A trackpad's flick is many small events, and it should be a small zoom.
+  for (let i = 0; i < 30; i++) onCanvas("wheel", { deltaY: -3 });
+  const flick = hud.chartView().scale / s0;
+  check(flick > 1.05 && flick < 1.6,
+        "thirty small wheel events zoomed the map " + flick.toFixed(2) + "x");
+
+  // The point under the pointer stays under the pointer.
+  hud.chartOpened(cf.surveyView());
+  cf.draw();
+  const v1 = hud.chartView();
+  const W = cf.live().screenW, H = cf.live().screenH;
+  const sx = 200, sy = 180;
+  // Where the world under (sx, sy) is: find it by panning back after.
+  const before = { x: v1.x, y: v1.y, s: v1.scale };
+  onCanvas("wheel", { deltaY: -200, clientX: sx * 1000 / W, clientY: sy * 700 / H });
+  const v2 = hud.chartView();
+  check(v2.scale > before.s, "the wheel did not zoom in");
+  check(v2.x !== before.x || v2.y !== before.y,
+        "zooming at the corner of the map zoomed about the middle instead");
+
+  // Two fingers: a pinch outward zooms in.
+  hud.chartOpened(cf.surveyView());
+  cf.draw();
+  const p0 = hud.chartView().scale;
+  onCanvas("pointerdown", { pointerId: 11, pointerType: "touch", clientX: 300, clientY: 300 });
+  onCanvas("pointerdown", { pointerId: 12, pointerType: "touch", clientX: 400, clientY: 300 });
+  onCanvas("pointermove", { pointerId: 12, pointerType: "touch", clientX: 500, clientY: 300 });
+  onCanvas("pointerup", { pointerId: 12, pointerType: "touch", clientX: 500, clientY: 300 });
+  onCanvas("pointerup", { pointerId: 11, pointerType: "touch", clientX: 300, clientY: 300 });
+  check(hud.chartView().scale > p0 * 1.5, "a pinch outward did not zoom the map in");
+
+  // The station's MAP tab pans when dragged.
+  const surv = cf.survey();
+  surv.docked = { x: cf.home().x, y: cf.home().y, home: true, name: "HOME" };
+  cf.screen("stationinv");
+  hud.setStationTab("chart");
+  cf.draw();
+  const m0 = hud.chartView();
+  onCanvas("pointerdown", { pointerId: 21, clientX: 400, clientY: 400 });
+  onCanvas("pointermove", { pointerId: 21, clientX: 520, clientY: 440 });
+  onCanvas("pointerup", { pointerId: 21, clientX: 520, clientY: 440 });
+  const m1 = hud.chartView();
+  check(m1.x !== m0.x || m1.y !== m0.y, "dragging the station's map did not pan it");
+  /* And the rail says how wide the view is, in full. At the widest step the
+     number was "2500.0K", which left no room beside it and printed "ACR.". */
+  cf.screen("chart");
+  for (let i = 0; i < 40; i++) hud.chartZoomBy(-1);
+  textDrawn();
+  cf.draw();
+  const rail = textDrawn();
+  check(rail.some(w => /\bACROSS$/.test(w)),
+        "the widest zoom cut its own readout: " +
+        JSON.stringify(rail.filter(w => /ACR/.test(w))));
+  console.log("  mapzoom    the wheel zooms as far as it turns, about the pointer, " +
+              "and not sideways \u00b7 two fingers pinch \u00b7 the station's map pans");
 }
 
 // ── the hull says the job ─────────────────────────────────────────────────

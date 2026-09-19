@@ -210,6 +210,41 @@ started, so every ship counted as stuck for its first eight seconds of life.
 Each one threw a random swerve and turned its route round, eight seconds after
 it was born.
 
+### Bumping, and the map's zoom  ·  *19 September 2026*
+
+> *"can you make it so bots that are friendly with each other can run into each
+> other. also look for bugs in zooming in and out for the map please"*
+
+**Hulls are solid to each other now.** Nothing out here could touch anything
+else — an escort flew through its own hauler, a wing sat inside itself — because
+traffic is not in the `ships` array and only your hull was ever asked. Every
+pair is asked now (`trafficBumps`): they are pushed apart by mass, the closing
+part of their velocities is traded with a fifth lost, friends only bump,
+enemies meeting hard take a point each, and a warlord's ram takes two and costs
+it nothing.
+
+**Six bugs in the map's zoom**, all of them found by driving the canvas's own
+listeners the way a hand does:
+
+- **A wheel event was a whole step.** A trackpad sends dozens per flick, so one
+  flick crossed the whole ladder — measured at 5.2× from thirty small events. It
+  is proportional now, and a trackpad pinch (a wheel with ctrl held) is read
+  more strongly.
+- **A sideways scroll zoomed in.** A horizontal-only wheel has `deltaY` 0, which
+  is not "up", and now does nothing.
+- **Zoom ignored the pointer.** It zooms about the point under the pointer, or
+  between two fingers, which is what every other map does.
+- **No pinch.** Two fingers on the map now zoom about the point between them and
+  pan as they move, and the first finger's tap is cancelled when the second lands.
+- **The station's MAP tab could not be panned**, and its other tabs could not be
+  dragged at all — the pointer handler knew every page except that one.
+- **Names piled up.** Nothing checked whether a patch name would land on another:
+  at one step a frame wrote THE MURK four times. Biggest patch first, and a name
+  that would touch one already written waits until you zoom in.
+
+Also: the rail read "2500.0K ACR." because the number crowded out its own word,
+and the header read "SECTOR 134 , 17".
+
 **Still open for step 1:** what a ship thinks of *you* (ignoring you, warning
 you off, coming for you) is not drawn yet. The dogfight test is also still
 unflown: can someone watch thirty seconds and narrate it?
