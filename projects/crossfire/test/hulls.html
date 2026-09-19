@@ -19,7 +19,7 @@
    sector's traffic does, on the hull it flies, with its markings. Open it from
    the site root: /projects/crossfire/test/hulls.html */
 (async () => {
-  const src = await (await fetch("../index.html")).text();
+  const src = await (await fetch("../index.html?" + Date.now(), { cache: "no-store" })).text();
   const cut = (from, to) => {
     const a = src.indexOf(from);
     const b = src.indexOf(to, a);
@@ -65,6 +65,32 @@
     if (t) G.drawRoleMarks(t, sh, colour, 1 / k);
     ctx.restore();
   };
+
+  /* ?windows: the three commuters large, with their windows and without, for
+     deciding whether the windows earn their place. */
+  if (/[?&]windows/.test(location.search)) {
+    label("COMMUTERS: with windows (top) and without (bottom)", 20, 24, "#e8eef8");
+    let cx = 120;
+    for (const key of ["wedge", "harrier", "pannier"]) {
+      const sh = G.SHIPS.find(s => s.key === key);
+      const bare = Object.assign({}, sh, { windows: null });
+      draw(sh, cx, 170, 80, COL, null);
+      draw(bare, cx, 430, 80, COL, null);
+      label(sh.name, cx - 30, 300);
+      cx += 245;
+    }
+    label("at the size you meet them in the sector:", 20, 580, "#e8eef8");
+    cx = 60;
+    for (const key of ["wedge", "harrier", "pannier"]) {
+      const sh = G.SHIPS.find(s => s.key === key);
+      const bare = Object.assign({}, sh, { windows: null });
+      draw(sh, cx, 630, 12 * sh.size * 0.72 * 1.4, COL, null);
+      draw(bare, cx + 60, 630, 12 * sh.size * 0.72 * 1.4, COL, null);
+      cx += 180;
+    }
+    label("with   without", 40, 670);
+    return;
+  }
 
   label("THE TWENTY-FIVE: each drawn empty, then laden", 20, 20, "#e8eef8");
   let y = 70;

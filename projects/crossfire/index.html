@@ -5645,6 +5645,12 @@
        UTILITY     a blunt push bar across the bow, with the jaws in front of it
        EXPLORER    a sensor mast off the nose with a crossbar on it
 
+     And every hull has windows, placed by who is aboard: one cockpit on a
+     fighter, a windscreen on a hauler's cab and nothing down its hold, a
+     wheelhouse row across a tug's bow, crew ports along an industrial's flank
+     clear of the machinery, an observation bridge on an explorer, and rows of
+     them down a commuter, because that one carries people.
+
      The holds are drawn (`pods`), and filled with what the ship is carrying in
      that material's colour. A laden hauler glows and an empty one is a frame,
      which is most of what a pirate needs to know and is now visible from across
@@ -5675,14 +5681,17 @@
   const HULL_ART = {
     // ── explorers ───────────────────────────────────────────────────────────
     skiff: {
+      windows: [[5, 0, 1.3]],
       art: outline([14, 0], [-10, 8], [-6, 0]),
       fins: mast(14, 3, 2),
       pods: pairBox([-5, -2, 6, 4]) },
     carrack: {
+      windows: pairPts([12, 1, 1.1], [9, 1.8, 1.1], [6, 2.4, 1.1]),
       art: outline([17, 0], [11, 3], [2, 4], [-6, 6], [-13, 6], [-16, 3]),
       fins: pair([[-4, 6], [-1, 11]], [[-9, 11], [3, 11]]).concat(mast(17, 4, 3)),
       pods: pairBox([-12, -4, 11, 8]) },
     revenant: {
+      windows: pairPts([17, 1.2, 1.3], [14, 2, 1.3], [11, 2.8, 1.3], [8, 3.4, 1.3]),
       art: outline([22, 0], [16, 4], [4, 5], [-8, 9], [-17, 9], [-20, 5]),
       fins: pair([[-4, 9], [0, 16]], [[-10, 16], [8, 16]]).concat(mast(22, 5, 4)),
       guns: pairPts([8, 16], [-2, 9]),
@@ -5690,25 +5699,31 @@
 
     // ── sport ───────────────────────────────────────────────────────────────
     needle: {
+      windows: pairPts([5, 1.6, 1.1]),
       art: outline([17, 0], [-6, 4], [-11, 2]),
       fins: pair([[-2, 4], [-6, 10]], [[12, 0], [-9, 0]]) },
     vane: {
+      windows: pairPts([7, 1.8, 1.2]),
       art: outline([18, 0], [2, 5], [-9, 7], [-5, 0]),
       fins: pair([[2, 5], [6, 11]], [[14, 0], [-3, 0]]) },
     mote: {
+      windows: pairPts([6, 1.4, 1.1]),
       art: outline([16, 0], [-4, 3], [-9, 6], [-6, 0]),
       fins: pair([[-3, 3], [-8, 9]], [[12, 0], [-4, 0]]) },
 
     // ── couriers ────────────────────────────────────────────────────────────
     kite: {
+      windows: [[10, 0, 1.2], [7, 0, 1.2]],
       art: outline([15, 0], [7, 3], [-3, 3], [-5, 9], [-11, 9], [-11, 0]),
       ribs: [[[-11, 0], [-5, 0]]] },
     runner: {
+      windows: [[11, 0, 1.2], [8, 0, 1.2]],
       art: outline([15, 0], [10, 3], [4, 3], [4, 6], [-6, 6], [-8, 8], [-12, 8],
                    [-12, 0]),
       ribs: [[[-12, 0], [-7, 0]]],
       pods: pairBox([-5, -5, 8, 10]) },
     stride: {
+      windows: [[13, 0, 1.2], [10, 0, 1.2], [7, 0, 1.2]],
       art: outline([18, 0], [10, 3], [0, 4], [-6, 9], [-14, 9], [-14, 0]),
       fins: pair([[4, 3.5], [0, 8]]),
       ribs: [[[-14, 0], [-7, 0]]] },
@@ -5731,6 +5746,7 @@
 
     // ── military ────────────────────────────────────────────────────────────
     lance: {
+      windows: [[10, 0, 1.5]],
       art: outline([18, 0], [4, 3], [-3, 8], [-8, 8], [-6, 0]),
       guns: pairPts([3, 5.5, 7]),
       ribs: [[[4, 3], [4, -3]]] },
@@ -5738,20 +5754,24 @@
        two flat panels, and nothing else. Straight lines only. The silhouette is
        the whole joke and any curve on it would spoil the reference. */
     louvre: {
+      windows: [[3, 0, 1.6]],
       art: [[9, 0], [3, 5], [-7, 5], [-7, -5], [3, -5]],
       guns: pairPts([5, 6], [-1, 9]),
       fins: pair([[1, 5], [1, 15]], [[-6, 15], [8, 15]], [[-6, 15], [-6, -15]],
                  [[8, 15], [8, -15]]) },
     spur: {
+      windows: [[13, 0, 1.5]],
       art: outline([20, 0], [12, 2.5], [10, 8], [6, 8], [4, 3], [-6, 3], [-10, 7],
                    [-10, 0]),
       guns: pairPts([9, 6, 7]) },
     bastion: {
+      windows: [[12, 0, 1.5], [9.5, 0, 1.5]],
       art: outline([17, 0], [11, 3], [8, 3], [6, 11], [-5, 11], [-8, 6], [-13, 6],
                    [-13, 0]),
       guns: pairPts([6, 6.5, 7], [6, 9.5, 7]),
       ribs: [[[-2, 11], [-2, -11]], [[8, 3], [8, -3]]] },
     reprisal: {
+      windows: [[15, 0, 1.6], [12, 0, 1.6]],
       art: outline([20, 0], [12, 3], [12, 14], [4, 14], [-2, 5], [-10, 8], [-14, 4],
                    [-14, 0]),
       guns: pairPts([12, 12, 6], [12, 8, 6]),
@@ -5759,29 +5779,35 @@
 
     // ── cargo ───────────────────────────────────────────────────────────────
     drayman: {
+      windows: pairPts([10, 1.6, 1.2], [7.5, 2.8, 1.2]),
       art: outline([13, 0], [11, 4], [6, 5], [4, 12], [-14, 12], [-14, 0]),
       pods: pairBox([-12, 1, 7, 9], [-3, 1, 6, 9]) },
     coffer: {
+      windows: pairPts([10.5, 1.5, 1.3]),
       art: outline([12, 3], [8, 6], [8, 13], [-15, 13], [-15, 0]),
       ribs: [[[8, 6], [8, -6]]],
       pods: pairBox([-13, 1, 6, 10], [-6, 1, 6, 10], [1, 1, 5, 10]) },
     granary: {
+      windows: pairPts([10, 1.8, 1.4], [7.5, 3, 1.4]),
       art: outline([13, 0], [10, 4], [6, 5], [4, 16], [-18, 16], [-18, 0]),
       pods: pairBox([-16, 6, 6, 8], [-9, 6, 6, 8], [-2, 6, 5, 8])
             .concat([[-16, -4, 6, 8], [-9, -4, 6, 8], [-2, -4, 5, 8]]) },
 
     // ── industrial ──────────────────────────────────────────────────────────
     windlass: {
+      windows: pairPts([-13, 10.5, 1.4], [-9, 11, 1.4], [-5, 11.5, 1.4]),
       art: [[14, 4], [14, 10], [6, 14], [-16, 12], [-16, -12], [6, -14],
             [14, -10], [14, -4], [6, -4], [6, 4]],
       fins: [[[6, 0], [11, 0]]].concat(truss(-14, 3, 9)),
       pods: pairBox([-12, 1, 5, 6]) },
     ironmonger: {
+      windows: pairPts([-13, 12, 1.5], [-10, 12.5, 1.5]),
       art: [[18, 5], [18, 10], [10, 15], [-12, 15], [-16, 10], [-16, -10],
             [-12, -15], [10, -15], [18, -10], [18, -5], [8, -5], [8, 5]],
       guns: pairPts([4, 12], [-6, 13]),
       fins: [[[8, 0], [13, 0]]].concat(truss(-13, 5, 10)) },
     cathedral: {
+      windows: pairPts([-17, 16, 1.8], [-13, 16.5, 1.8], [-9, 17, 1.8]),
       art: [[24, 7], [24, 19], [-16, 19], [-22, 12], [-22, -12], [-16, -19],
             [24, -19], [24, -7], [0, -7], [0, 7]],
       guns: pairPts([-2, 18]),
@@ -5791,10 +5817,12 @@
 
     // ── utility ─────────────────────────────────────────────────────────────
     cradle: {
+      windows: [[8, 0, 1.3]].concat(pairPts([8, 3, 1.3], [7.5, 6, 1.3])),
       art: outline([15, 5], [11, 9], [2, 11], [-6, 11], [-9, 7], [-9, 0]),
       ribs: [[[13, 6], [13, -6]]],
       pods: pairBox([-6, 1, 7, 6]) },
     ossuary: {
+      windows: [[18, 0, 1.9]].concat(pairPts([18, 4, 1.9], [17, 8, 1.9], [15, 12, 1.9])),
       art: outline([26, 8], [20, 16], [8, 23], [-12, 23], [-24, 14], [-24, 0]),
       ribs: [[[23, 9], [23, -9]]],
       pods: pairBox([-18, 4, 12, 12], [-4, 4, 12, 12]) }
@@ -21207,9 +21235,12 @@
     if (spec.windows) {
       glow(colour, 1 * w, alpha * 0.8, () => {
         ctx.beginPath();
+        // The third number is the window's size: a fighter's canopy is bigger
+        // than a porthole.
         for (const p of spec.windows) {
-          ctx.moveTo(p[0] + 0.7, p[1]);
-          ctx.arc(p[0], p[1], 0.7, 0, Math.PI * 2);
+          const wr = p[2] || 0.7;
+          ctx.moveTo(p[0] + wr, p[1]);
+          ctx.arc(p[0], p[1], wr, 0, Math.PI * 2);
         }
         ctx.stroke();
       });
