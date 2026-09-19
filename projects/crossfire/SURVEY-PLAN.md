@@ -275,6 +275,30 @@ does). Every one drops a rare part that pirates and scavengers will race you
 for. Warlord and corsair pay a bounty and warm every power; admiral and warden
 are paid for by their enemy. Killed skies stay empty: `bossesDown` is saved.
 
+**The bar is only for a boss that is after you.** Ric: *"no top bar on ones that
+are friendly or neutral. if they are hostile the bar pops up. dont say
+hostile."* The ENTERING and LEAVING banners are for every boss; the bar fades in
+the moment a boss or its crew would come for you (a pirate's sky at once, a
+queen only once you start something), and says nothing about stance.
+
+**Each boss has a power, and drops it.** Ric: *"besides looks and name they
+should all have something that makes them powerful and when they die they drop
+the thing that make them powerful."* A fourth way to get a part, `get: ["boss"]`:
+never sold, built or found in a cache.
+
+| Boss | Its power | The part |
+|---|---|---|
+| Warlord | five rounds fanned on every volley | WAR FAN (weapon) |
+| Corsair | comes in on an afterburner, 2.1× for 0.9 s | CORSAIR BURNER (device, a hard forward shove) |
+| Admiral | a 40-point screen, back after 3 quiet seconds | FLAGSHIP SCREEN (takes the next hit, 12 s to recover) |
+| Warden | two homing missiles every 4 s | WARDEN'S SWARM (two seekers a volley) |
+| Queen | mends herself and her escorts when left alone | RESTORER (a point of hull every 8 s) |
+
+Found on the way: an escort or any armed ship you shot did not fight back (only
+patrols did), and nothing ever ran from your cannon, because only the burst
+charge told a ship it was being hurt. `takeHit` is now the one place a ship
+takes damage, which is how the admiral's screen works against everything.
+
 ---
 
 ## Who holds the sky  ·  *territory replaces the danger rings*  ·  **A and C built, B open**

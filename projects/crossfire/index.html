@@ -3579,6 +3579,16 @@
        can still get to a star and mend, and the next thing that touches you
        kills you. That single point of grace is what makes it a decision rather
        than an ambush. See SURVEY-PLAN.md phase 2.1. */
+    /* The Flagship Screen takes the hit instead, whatever it was, and is down
+       for twelve seconds. */
+    if (mode.survey && surv && ship === ships[0] && surv.screenUp && mods().screen) {
+      surv.screenUp = false;
+      surv.screenT = 12;
+      ship.invuln = Math.max(ship.invuln, HIT_SHIELD);
+      burst(ship.x, ship.y, "#ff4dd2", 14, 180 * U);
+      gameSound("hit", ship.x);
+      return false;
+    }
     if (mode.survey) {
       // Anything that touches you drops the drive: you cannot run at light with
       // something scraping down the side of the hull.
@@ -4002,8 +4012,7 @@
       const t = surv.traffic[i];
       const d = Math.hypot(t.x - b.x, t.y - b.y);
       if (d > R) continue;
-      t.hp -= b.dmg * share(d);
-      t.hit = 0.12;
+      takeHit(t, b.dmg * share(d));
       if (ROLES[t.role || t.kind] && ROLES[t.role || t.kind].armed) t.angry = true;
       // And it may decide it has had enough of you. See `hurtBySomebody`.
       hurtBySomebody(t, null);
@@ -6949,6 +6958,21 @@
             "#87d8ff");
   }
 
+  /* The corsair's. One hard shove down the way you are pointing, past your
+     own top speed, and it bleeds off the way a slingshot does. */
+  DEVICES.burner = {
+    key: "burner", name: "CORSAIR BURNER", tag: "BURN", cool: 6,
+    use(me) {
+      const k = 1100 * U;
+      me.vx += Math.cos(me.a) * k;
+      me.vy += Math.sin(me.a) * k;
+      me.boost = Math.max(me.boost || 0, k);
+      burst(me.x - Math.cos(me.a) * 20 * U, me.y - Math.sin(me.a) * 20 * U,
+            "#ff4dd2", 16, 220 * U);
+      gameSound("shot", me.x);
+    }
+  };
+
   const deviceSpec = key => DEVICES[key] || null;
 
   /* The four of them, as parts. They are their own category because a verb is a
@@ -7011,6 +7035,50 @@
             "Your own four slots and your scanner go down with them",
       eff: { device: "emp" } }
   );
+
+  /* ── what makes a boss a boss ─────────────────────────────────────────────
+     Ric: "besides looks and name they should all have something that makes them
+     powerful and when they die they drop the thing that make them powerful."
+     So each boss fights with one thing nobody else out here has, and that
+     thing is the part it drops. You watch it used on you first, which is the
+     best description a part can have.
+
+     `get: ["boss"]` is a fourth way in: never sold, never built, never in a
+     cache. Only off the boss that carries it. */
+  MODULES.push(
+    { key: "warfan", name: "WAR FAN", cat: "weapon", rarity: "exotic",
+      cost: 5200, deep: 0, get: ["boss"],
+      where: "only off a warlord. It is what they fight with",
+      note: "five rounds fanned across the nose on every pull of the trigger. " +
+            "What a warlord sprays at you, bolted to your own ship",
+      eff: { weapon: "fan" } },
+    { key: "corsairburner", name: "CORSAIR BURNER", cat: "device",
+      rarity: "exotic", cost: 4800, deep: 0, get: ["boss"],
+      where: "only off a corsair. It is how they are gone before you turn",
+      note: "one hard shove down the way you are pointing, well past your top " +
+            "speed, and it bleeds off like a slingshot. Six seconds between",
+      eff: { device: "burner" } },
+    { key: "flagscreen", name: "FLAGSHIP SCREEN", cat: "armour",
+      rarity: "exotic", cost: 6000, deep: 0, get: ["boss"],
+      where: "only off an admiral. It is why its hull would not go down",
+      note: "a field that takes the next hit for you, whatever it is, then " +
+            "takes twelve seconds to come back up",
+      eff: { screen: 1 } },
+    { key: "wardenswarm", name: "WARDEN'S SWARM", cat: "weapon",
+      rarity: "exotic", cost: 5600, deep: 0, get: ["boss"],
+      where: "only off a Warden. It is what was following you round",
+      note: "two missiles a volley, each after its own target. A seeker rack " +
+            "that learned to share",
+      eff: { weapon: "swarm" } },
+    { key: "restorer", name: "RESTORER", cat: "odd", rarity: "exotic",
+      cost: 5000, deep: 0, get: ["boss"],
+      where: "only off a salvage queen. It is why she would not stay broken",
+      note: "a crew of drones that never stop patching: a point of hull back " +
+            "every eight seconds, anywhere",
+      eff: { regen: 1 } }
+  );
+  const BOSS_PARTS = { warlord: "warfan", corsair: "corsairburner",
+                       admiral: "flagscreen", warden: "wardenswarm", queen: "restorer" };
 
   const moduleSpec = key => MODULES.find(m => m.key === key) || null;
 
@@ -7090,6 +7158,17 @@
       name: "RAIL LANCE", cool: 3.6, dmg: 6, rounds: 1, pierce: 3,
       speed: 1.9, life: 1.1, colour: "#87d8ff",
       note: "one heavy slug, straight through three things"
+    },
+    // Off bosses. See `BOSS_PARTS`.
+    fan: {
+      name: "WAR FAN", cool: 1.1, dmg: 1.5, spread: 0.07, rounds: 5,
+      speed: 1.1, life: 0.9, colour: "#ff4dd2",
+      note: "five rounds, fanned, every time"
+    },
+    swarm: {
+      name: "WARDEN'S SWARM", cool: 2.6, dmg: 2, spread: 0.35, rounds: 2,
+      seek: 3.4, speed: 0.72, life: 3.6, colour: "#ff4dd2",
+      note: "two missiles that each find their own target"
     }
   };
   const weaponSpec = key => WEAPONS[key] || null;
@@ -11064,6 +11143,10 @@
         m.side = Math.random() < 0.5 ? 1 : -1;
       } else {
         m.kind = "run"; m.left = 4;
+        // The corsair's power: it comes in on the burner.
+        if (t.boss === "corsair" && (t.dashCool || 0) <= 0 && d > stand) {
+          t.dash = 0.9; t.dashCool = 3.5;
+        }
       }
     }
     // Too far off to be fighting: whatever it was doing, it comes back in.
@@ -11628,8 +11711,9 @@
          everything at its cruising speed. */
       const pushed = MAX_SPEED * hullSpec.speed * Math.min(1, 0.72 + 0.28 * skill);
       // A ship with no cruising speed is not under way, and is not pushed.
-      const cruise = ((chase || running) && t.speed > 0
+      let cruise = ((chase || running) && t.speed > 0
         ? Math.max(t.speed, pushed) : t.speed) * U;
+      if (t.dash > 0) cruise *= 2.1;
       const cap = follow ? cruise * 1.15 : cruise;
       const brake = THRUST * hullSpec.accel * U * 2;
       let pace = cruise;
@@ -11869,9 +11953,9 @@
                down it. */
             const fa = Math.atan2(ty - gun.y, tx - gun.x) +
                        (Math.random() - 0.5) * 0.2 * Math.max(0, 1 - skill);
-            // A boss fires three at once, fanned, so it is a spray to fly round.
-            if (t.boss) {
-              for (const fan of [-0.07, 0.07]) {
+            // The warlord's power: five at once, fanned, a spray to fly round.
+            if (t.boss === "warlord") {
+              for (const fan of [-0.14, -0.07, 0.07, 0.14]) {
                 surv.shots.push({
                   x: gun.x, y: gun.y,
                   vx: Math.cos(fa + fan) * SHOT_V + (t.vx || 0),
@@ -12299,6 +12383,21 @@
      circle its own outline makes, the same one that stops yours. It was a flat
      22 units a size, which is three times the drawn hull of a Lance, so rounds
      hit empty space beside the small ships and a Needle was a barn door. */
+  /* A round, a blast or a jaw landing on somebody else's ship. One place, so a
+     shield (the Admiral's) is a shield against everything, and a queen knows
+     when she was last touched. Returns what got through. */
+  function takeHit(t, dmg) {
+    if (t.shield > 0) {
+      const soak = Math.min(t.shield, dmg);
+      t.shield -= soak; dmg -= soak;
+      t.shieldFlash = 0.25;
+    }
+    t.hp -= dmg;
+    t.hit = 0.12;
+    t.lastHit = clock;
+    return dmg;
+  }
+
   function hullR(t) {
     const sp = shipSpec(t.hull);
     return (sp.hitR || 9) * U * (sp.size || 1) * (t.scale || 1);
@@ -14175,6 +14274,23 @@
     const R = shipRadius();
     for (let i = surv.shots.length - 1; i >= 0; i--) {
       const b = surv.shots[i];
+      /* A missile turns after its target, and loses it to a cloak or a decoy
+         like any other seeker does. */
+      if (b.seek && b.target) {
+        let aimAt = b.target;
+        if (b.target === me && (!me.alive || cloaked(me))) b.target = aimAt = null;
+        const fake = aimAt === me ? decoyFor(b.x, b.y) : null;
+        if (fake) aimAt = fake;
+        if (aimAt) {
+          const sp = Math.hypot(b.vx, b.vy) || 1;
+          let have = Math.atan2(b.vy, b.vx);
+          let off = Math.atan2(aimAt.y - b.y, aimAt.x - b.x) - have;
+          while (off > Math.PI) off -= Math.PI * 2;
+          while (off < -Math.PI) off += Math.PI * 2;
+          have += Math.max(-b.seek * dt, Math.min(b.seek * dt, off));
+          b.vx = Math.cos(have) * sp; b.vy = Math.sin(have) * sp;
+        }
+      }
       b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
       if (b.life <= 0) { surv.shots.splice(i, 1); continue; }
 
@@ -14240,8 +14356,7 @@
           if (dist2(b.x, b.y, o.x, o.y) > rr * rr) continue;
           spent = true;
           surv.shots.splice(i, 1);
-          o.hp -= b.dmg || 1;
-          o.hit = 0.12;
+          takeHit(o, b.dmg || 1);
           /* And it turns on whoever did it. Rounds between two other ships used
              to take hull off and change nothing else — so a raider being shot
              at by a patrol carried on flying at *you* while it was taken apart,
@@ -14280,11 +14395,14 @@
       for (let k = surv.traffic.length - 1; k >= 0; k--) {
         const o = surv.traffic[k];
         if (o === b.from) continue;
+        /* Not the shooter's own side. Aimed fire goes past a wingmate, the way
+           a ship holds fire when one is in the line: an admiral's escorts were
+           clipping the admiral on every pass and keeping its screen down. */
+        if (b.from && o.faction === b.from.faction) continue;
         const rr = hullR(o);
         if (dist2(b.x, b.y, o.x, o.y) > rr * rr) continue;
         surv.shots.splice(i, 1);
-        o.hp -= b.dmg || 1;
-        o.hit = 0.12;
+        takeHit(o, b.dmg || 1);
         hurtBySomebody(o, b.from);
         burst(b.x, b.y, trafficColour(o), 5, 120 * U);
         if (o.hp <= 0) killTraffic(k, false); else gameSound("hit", o.x);
@@ -14558,10 +14676,17 @@
                  carrying is the pay, and she is the pirate's boss.
 
      A boss is the same ship the sector already flies, made bigger (`scale`)
-     and harder: five times the hull, a pilot better than any hull buys, a
-     three-round burst, and it never breaks off (the queen runs, because she
-     is not a fighter). Every one drops a rare part, and anything that picks
-     up loot will race you for it.
+     and harder: several times the hull, a pilot better than any hull buys,
+     and it never breaks off (the queen runs, because she is not a fighter).
+     And each has one power, which is the part it drops (see `BOSS_PARTS`):
+
+       warlord   a five-round fan on every volley          WAR FAN
+       corsair   afterburner dashes on its attack runs      CORSAIR BURNER
+       admiral   a shield that soaks hits and comes back    FLAGSHIP SCREEN
+       warden    homing missiles, two at a time             WARDEN'S SWARM
+       queen     mends herself and her escorts              RESTORER
+
+     Anything that picks up loot will race you for the part.
 
      **A boss lives somewhere.** Ric: "you should be able to know when your
      entering an area with a boss". So each one has a sky of its own, a disc
@@ -14740,8 +14865,27 @@
     return best;
   }
 
+  // The two boss parts that run on their own: the screen and the restorer.
+  function surveyBossParts(dt) {
+    const me = ships[0];
+    const m = mods();
+    if (m.screen) {
+      if (!surv.screenUp) {
+        surv.screenT = (surv.screenT == null ? 0 : surv.screenT) - dt;
+        if (surv.screenT <= 0) surv.screenUp = true;
+      }
+    } else {
+      surv.screenUp = false; surv.screenT = 12;
+    }
+    if (m.regen && me.alive && me.hull < me.maxHull) {
+      surv.regenT = (surv.regenT || 0) + dt;
+      if (surv.regenT >= 8) { surv.regenT = 0; me.hull = Math.min(me.maxHull, me.hull + 1); }
+    } else surv.regenT = 0;
+  }
+
   function surveyBosses(dt) {
     const me = ships[0];
+    surveyBossParts(dt);
     surv.lairBanner = Math.max(0, (surv.lairBanner || 0) - dt);
     if (!me.alive || surv.death) return;
     const L = lairNear(me.x, me.y, 2500);
@@ -14785,6 +14929,7 @@
       const b = spawnBoss(L.kind, at, L.faction);
       b.lairId = L.id; b.lair = L; b.name = L.name;
     }
+    for (const t of surv.traffic) if (t.boss) bossPower(t, dt);
     const live = surv.traffic.find(t => t.boss);
     if (live) {
       /* The warlord's pack, called in once it is losing. From past the edge of
@@ -14814,6 +14959,49 @@
     }
   }
 
+  /* Each boss's power, every frame. */
+  function bossPower(t, dt) {
+    const me = ships[0];
+    t.shieldFlash = Math.max(0, (t.shieldFlash || 0) - dt);
+    const rested = clock - (t.lastHit == null ? -99 : t.lastHit);
+    if (t.boss === "admiral") {
+      // A screen worth forty points of hull, back up after three quiet seconds.
+      t.shieldMax = 40;
+      if (t.shield == null) t.shield = t.shieldMax;
+      if (rested > 3) t.shield = Math.min(t.shieldMax, t.shield + 12 * dt);
+    } else if (t.boss === "queen") {
+      // Her crews patch her, and her escorts, whenever nobody is shooting.
+      if (rested > 3) {
+        for (const o of surv.traffic) {
+          if (o !== t && o.leadId !== t.id) continue;
+          o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.03 * dt);
+        }
+      }
+    } else if (t.boss === "corsair") {
+      t.dash = Math.max(0, (t.dash || 0) - dt);
+      t.dashCool = Math.max(0, (t.dashCool || 0) - dt);
+    } else if (t.boss === "warden") {
+      /* Two missiles every four seconds at whatever it is fighting. They turn
+         after it, and a cloak or a decoy loses them like any other seeker. */
+      t.swarmCool = (t.swarmCool == null ? 2 : t.swarmCool) - dt;
+      const foe = t.angry && me.alive ? me : t.angryAt;
+      if (foe && t.swarmCool <= 0 && Math.hypot(foe.x - t.x, foe.y - t.y) < 2000 * U) {
+        t.swarmCool = 4;
+        for (const side of [-1, 1]) {
+          const a = t.a + side * 0.6;
+          surv.shots.push({
+            x: t.x + Math.cos(a) * 30 * U, y: t.y + Math.sin(a) * 30 * U,
+            vx: Math.cos(a) * BOT_BULLET_SPD * 0.7 * U + (t.vx || 0),
+            vy: Math.sin(a) * BOT_BULLET_SPD * 0.7 * U + (t.vy || 0),
+            life: 4, dmg: 2, friendly: foe !== me, from: t,
+            seek: 2.6, target: foe, missile: true
+          });
+        }
+        gameSound("shot", t.x);
+      }
+    }
+  }
+
   /* A boss down. Its part, whoever killed it, and its bounty if it was you. */
   function bossDown(t, byYou) {
     const B = BOSSES[t.boss];
@@ -14824,9 +15012,8 @@
     }
     burst(t.x, t.y, BOSS_COLOUR, 60, 700 * U);
     addShake(12);
-    const pool = MODULES.filter(m => findsIt(m) && !sellsIt(m));
-    const rare = pool.filter(m => m.rarity !== "common");
-    const part = pickOne(rare.length ? rare : pool);
+    // What made it powerful, lying where it died.
+    const part = moduleSpec(BOSS_PARTS[t.boss]);
     if (part) {
       const spot = safeDrop(t.x, t.y);
       surv.dropped.push({ key: part.key, name: part.name, x: spot.x, y: spot.y,
@@ -15286,13 +15473,18 @@
         const rr = hullR(t);
         if (dist2(b.x, b.y, t.x, t.y) > rr * rr) continue;
         spent = true;
-        t.hp -= (b.dmg || 1);
-        t.hit = 0.12;
+        takeHit(t, b.dmg || 1);
         /* Shot at, and armed. A patrol that took fire and carried on politely
            shooting at sentries was not a neutral, it was a target — being unable
            to defend itself is not the same thing as not wanting to fight. Anger
-           does not wear off: you started it, and it has a long memory. */
-        if (t.kind === "patrol") t.angry = true;
+           does not wear off: you started it, and it has a long memory.
+
+           Any armed ship, not only a patrol. An escort you shot used to take it
+           and carry on escorting, and so did a hunter's wingman. And your
+           rounds count towards it deciding it has had enough, which only the
+           burst charge's did: nothing ever ran from your cannon. */
+        if (ROLES[t.role || t.kind] && ROLES[t.role || t.kind].armed) t.angry = true;
+        hurtBySomebody(t, null);
         /* Marked as *yours*. If this one gets out of range alive it goes in the
            book with the damage you did to it — see `rememberGrudge`. A name is
            given at the moment it is hurt rather than when it escapes, because it
@@ -18525,6 +18717,22 @@
       });
     }
 
+    // The admiral's screen, as a ring that thins as it soaks.
+    if (t.shield > 0) {
+      const k = t.shield / (t.shieldMax || 40);
+      glow(BOSS_COLOUR, 1.4 + (t.shieldFlash > 0 ? 2 : 0), 0.2 + 0.5 * k, () => {
+        ctx.beginPath(); ctx.arc(t.x, t.y, r * 1.95, 0, Math.PI * 2); ctx.stroke();
+      });
+    }
+    // The corsair on its burner.
+    if (t.dash > 0) {
+      glow("#ff4dd2", 2.4, 0.9, () => {
+        ctx.beginPath();
+        ctx.moveTo(t.x - Math.cos(t.a) * r, t.y - Math.sin(t.a) * r);
+        ctx.lineTo(t.x - Math.cos(t.a) * r * 3.2, t.y - Math.sin(t.a) * r * 3.2);
+        ctx.stroke();
+      });
+    }
     // Its name, and how much of it is left.
     if (t.boss) {
       const top = t.y - r * 2 - 22;
@@ -19580,6 +19788,7 @@
         weight: partWeight(m.key),
         get: m.get.slice(), where: m.where || "",
         buyable: sellsIt(m), craftable: craftsIt(m), findable: findsIt(m),
+        bossable: has(m, "boss"),
         // Whether you have met one. See `markSeen` — it is what puts a part you
         // cannot build onto the workbench page at all.
         seen: surv.seen.has(m.key),
@@ -19998,10 +20207,11 @@
     drawBits();
   }
 
-  /* The boss bar, across the top of the screen for as long as you are in a
-     boss's sky: whose sky it is, the boss's name, its hull, and how far off it
-     is. And for the first seconds after you cross in, a banner in the middle
-     of the screen, because a line in the radio is easy to miss. */
+  /* The boss bar, across the top of the screen while a boss is after you:
+     whose sky it is, the boss's name, its hull, and how far off it is. And for
+     the first seconds after you cross into any boss's sky, friendly or not, a
+     banner in the middle of the screen, because a line in the radio is easy to
+     miss. */
   function drawBossBar() {
     if (!surv.inLair && surv.leftBanner > 0 && surv.lairLeft) {
       const k = Math.min(1, surv.leftBanner / 0.6);
@@ -20013,32 +20223,39 @@
     if (!L) return;
     const me = ships[0];
     const b = surv.traffic.find(t => t.lairId === L.id);
-    const cx = SCREEN_W / 2, top = 26;
-    const w = Math.min(440, SCREEN_W * 0.44);
-    const foe = bossHostile({ faction: L.faction }) || (b && b.angry);
-    text(BOSS_SKY[L.kind] + (L.faction && L.faction !== "free" && L.faction !== "pirate"
-           ? "  \u00b7  " + factionOf(L.faction).short : "") +
-         "  \u00b7  " + (foe ? "HOSTILE" : "WILL NOT FIRE ON YOU"),
-         cx, top, 11, foe ? BOSS_COLOUR : CASH, "center", 0.8);
-    text(L.name, cx, top + 20, 17, BOSS_COLOUR);
-    const frac = b ? Math.max(0, b.hp / b.maxHp) : 1;
-    const y = top + 32;
-    glow(BOSS_COLOUR, 5, 0.22, () => {
-      ctx.beginPath(); ctx.moveTo(cx - w / 2, y); ctx.lineTo(cx + w / 2, y); ctx.stroke();
-    });
-    glow(BOSS_COLOUR, 5, 0.95, () => {
-      ctx.beginPath(); ctx.moveTo(cx - w / 2, y); ctx.lineTo(cx - w / 2 + w * frac, y); ctx.stroke();
-    });
-    if (b) {
-      const far = Math.hypot(b.x - me.x, b.y - me.y);
-      text(far < 1000 ? Math.round(far) + "u" : (far / 1000).toFixed(1) + "k",
-           cx + w / 2 + 10, y + 4, 11, BOSS_COLOUR, "left", 0.8);
-    }
+    const cx = SCREEN_W / 2;
     if (surv.lairBanner > 0) {
       const k = Math.min(1, surv.lairBanner / 0.6, (4 - surv.lairBanner) / 0.3);
       text("ENTERING " + BOSS_SKY[L.kind], cx, SCREEN_H * 0.3, 26, BOSS_COLOUR,
            "center", Math.max(0, k));
     }
+    /* The bar is for a boss that is after you. Ric: "no top bar on ones that
+       are friendly or neutral. if they are hostile the bar pops up." So it
+       appears the moment the boss, or its crew, would come for you (entering a
+       pirate's sky, or starting something with a queen) and not before. It
+       fades in over a third of a second so it reads as an event. */
+    const foe = !!b && (bossHostile(b) || b.angry ||
+      surv.traffic.some(t => t.leadId === b.id && t.angry));
+    surv.barIn = foe ? Math.min(1, (surv.barIn || 0) + 1 / 20) : 0;
+    if (!foe) return;
+    const fade = surv.barIn;
+    const top = 26;
+    const w = Math.min(440, SCREEN_W * 0.44) * (0.6 + 0.4 * fade);
+    text(BOSS_SKY[L.kind] + (L.faction && L.faction !== "free" && L.faction !== "pirate"
+           ? "  \u00b7  " + factionOf(L.faction).short : ""),
+         cx, top, 11, BOSS_COLOUR, "center", 0.8 * fade);
+    text(L.name, cx, top + 20, 17, BOSS_COLOUR, "center", fade);
+    const frac = Math.max(0, b.hp / b.maxHp);
+    const y = top + 32;
+    glow(BOSS_COLOUR, 5, 0.22 * fade, () => {
+      ctx.beginPath(); ctx.moveTo(cx - w / 2, y); ctx.lineTo(cx + w / 2, y); ctx.stroke();
+    });
+    glow(BOSS_COLOUR, 5, 0.95 * fade, () => {
+      ctx.beginPath(); ctx.moveTo(cx - w / 2, y); ctx.lineTo(cx - w / 2 + w * frac, y); ctx.stroke();
+    });
+    const far = Math.hypot(b.x - me.x, b.y - me.y);
+    text(far < 1000 ? Math.round(far) + "u" : (far / 1000).toFixed(1) + "k",
+         cx + w / 2 + 10, y + 4, 11, BOSS_COLOUR, "left", 0.8 * fade);
   }
 
   function drawSurveyPanel(dt) {
@@ -22012,6 +22229,13 @@
         : null;
       drawHullArt(spec, s.colour, 12 / r, alpha,
                   { line: 1.7, clawT: s.clawT, load });
+      // The Flagship Screen, up: a ring the next hit will spend.
+      if (s.human && surv && surv.screenUp) {
+        glow("#ff4dd2", 1.2 * (12 / r), 0.45 * alpha, () => {
+          const ringR = Math.max(spec.noseX || 12, -(spec.tailX || -12)) * 1.3;
+          ctx.beginPath(); ctx.arc(0, 0, ringR, 0, Math.PI * 2); ctx.stroke();
+        });
+      }
     } else {
       glow(s.colour, 1.7 * (12 / r), alpha, () => {
         ctx.beginPath();
@@ -26349,7 +26573,8 @@
       // What a part is worth reaching for, and how you would get one.
       partWays: key => {
         const m = moduleSpec(key);
-        return m ? { buy: sellsIt(m), craft: craftsIt(m), find: findsIt(m) } : null;
+        return m ? { buy: sellsIt(m), craft: craftsIt(m), find: findsIt(m),
+                     boss: has(m, "boss") } : null;
       },
       // The yard and the scan, as the interface sees them.
       objective: () => objective(),
@@ -26520,6 +26745,7 @@
       // The hangar, driven directly: twenty-five hulls is a lot of arithmetic to
       // leave to a look.
       buyShip: key => buyShip(key),
+      bossParts: () => ({ ...BOSS_PARTS }),
       // The boss's sky nearest a point, if one reaches that far.
       lair: (x, y, pad) => lairNear(x, y, pad || 0),
       // A boss, a screen away from you, so a harness can fight one.

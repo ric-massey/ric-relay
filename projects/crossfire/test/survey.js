@@ -5063,10 +5063,28 @@ const storeOf = (cf, key) => {
     check(!!b, "a boss's sky with nobody in it");
     check([...surv.known.values()].some(q => q.k === "boss"),
           "a boss's sky did not go on the chart");
-    const drawnNow = textDrawn(); void drawnNow;
-    cf.draw();
-    check(textDrawn().some(w => w.indexOf(lair.name) >= 0),
-          "the boss bar did not name the boss");
+    /* The bar across the top is only for a boss that is after you. Ric: "no
+       top bar on ones that are friendly or neutral. if they are hostile the
+       bar pops up." Its first line is the sky, and nothing else starts so. */
+    const barUp = () => {
+      textDrawn();
+      for (let i = 0; i < 25; i++) tick();
+      cf.draw();
+      return textDrawn().some(w => /^AN? [A-Z' ]*SKY/.test(w));
+    };
+    const crewOf = () => surv.traffic.filter(t => t === b || t.leadId === (b && b.id));
+    if (lair.faction === "pirate") {
+      check(barUp(), "a pirate boss's sky showed no bar");
+    } else if (b) {
+      if (lair.faction !== "free") { surv.rep = {}; surv.rep[lair.faction] = 120; }
+      for (const t of crewOf()) t.angry = false;
+      check(!barUp(), "a boss that is not after you put a bar up");
+      b.angry = true;
+      cf.draw(); textDrawn();
+      cf.draw();
+      check(textDrawn().some(w => /^AN? [A-Z' ]*SKY/.test(w)),
+            "a boss that turned on you put no bar up");
+    }
     me.x = lair.x + lair.r + 3000;
     tick();
     check(!surv.inLair && surv.leftBanner > 0, "leaving a boss's sky did not say so");
@@ -5086,10 +5104,100 @@ const storeOf = (cf, key) => {
   for (let i = 0; i < 30; i++) tick();
   check(warden.angry, "a Warden let somebody its flag is watching fly past");
 
+  /* ── each boss's power, and the part it drops ─────────────────────────
+     Ric: "they should all have something that makes them powerful and when
+     they die they drop the thing that make them powerful." */
+  const parts = cf.bossParts();
+  const kill = b => {
+    b.hp = 0.5; b.shield = 0;
+    cf.live().bullets.push({ owner: me.id, colour: "#fff", dmg: 5, x: b.x, y: b.y,
+                             vx: 0, vy: 0, life: 1 });
+    tick();
+  };
+  for (const kind of Object.keys(parts)) {
+    surv.traffic.length = 0; surv.shots.length = 0;
+    me.x = 2300; me.y = 2300;
+    const b = cf.boss(kind, 900, 0);
+    const n = surv.dropped.length;
+    kill(b);
+    const got = surv.dropped[surv.dropped.length - 1];
+    check(surv.dropped.length === n + 1 && got && got.key === parts[kind],
+          "a " + kind + " dropped " + (got ? got.key : "nothing") + ", not " + parts[kind]);
+  }
+
+  // The admiral's screen soaks a hit and comes back.
+  surv.traffic.length = 0;
+  const adm = cf.boss("admiral", 900, 0);
+  tick();
+  const hp0 = adm.hp;
+  cf.live().bullets.push({ owner: me.id, colour: "#fff", dmg: 10, x: adm.x, y: adm.y,
+                           vx: 0, vy: 0, life: 1 });
+  tick();
+  check(adm.hp === hp0 && adm.shield < 40, "an admiral's screen did not take the hit");
+  const soaked = adm.shield;
+  for (let i = 0; i < 60 * 5; i++) tick();
+  check(adm.shield > soaked, "an admiral's screen did not come back up");
+
+  // The queen mends when nobody is shooting at her.
+  surv.traffic.length = 0;
+  const queen = cf.boss("queen", 1500, 0);
+  queen.hp = queen.maxHp * 0.5;
+  for (let i = 0; i < 60 * 6; i++) tick();
+  check(queen.hp > queen.maxHp * 0.55, "a salvage queen did not mend");
+
+  // The warden sends missiles that turn after you.
+  surv.traffic.length = 0; surv.shots.length = 0;
+  const ward = cf.boss("warden", 900, 0);
+  surv.traffic = surv.traffic.filter(t => t === ward);
+  let missiles = 0;
+  for (let i = 0; i < 60 * 5; i++) {
+    ward.angry = true; tick();
+    missiles = Math.max(missiles, surv.shots.filter(b => b.missile && b.from === ward).length);
+  }
+  check(missiles >= 2, "a Warden sent no missiles");
+
+  // The corsair comes in on its burner.
+  surv.traffic.length = 0;
+  const cor = cf.boss("corsair", 1400, 0);
+  surv.traffic = surv.traffic.filter(t => t === cor);
+  let dashed = false;
+  for (let i = 0; i < 60 * 12 && !dashed; i++) { cor.angry = true; tick(); dashed = cor.dash > 0; }
+  check(dashed, "a corsair never used its burner");
+
+  // And the parts do on your ship what they did on theirs.
+  surv.traffic.length = 0; surv.shots.length = 0;
+  surv.slots[0] = { key: parts.warlord, fit: 0 };
+  cf.applyParts();
+  const bulletsBefore = new Set(cf.live().bullets);
+  cf.hold("Space", true);
+  for (let i = 0; i < 3; i++) tick();
+  cf.hold("Space", false);
+  const fanned = cf.live().bullets.filter(b => !bulletsBefore.has(b) && b.alt).length;
+  check(fanned === 5, "a War Fan fired " + fanned + " rounds, not five");
+
+  surv.slots[0] = { key: parts.admiral, fit: 0 };
+  cf.applyParts();
+  for (let i = 0; i < 60 * 13; i++) tick();
+  me.invuln = 0; me.hull = me.maxHull;
+  surv.shots.push({ x: me.x, y: me.y, vx: 0, vy: 0, life: 1, dmg: 1, friendly: false, from: null });
+  now += 1000 / 60; cf.step();
+  check(me.hull === me.maxHull, "a Flagship Screen did not take the hit");
+
+  surv.slots[0] = { key: parts.queen, fit: 0 };
+  cf.applyParts();
+  me.hull = Math.max(1, me.maxHull - 2);
+  const mended0 = me.hull;
+  for (let i = 0; i < 60 * 9; i++) tick();
+  check(me.hull > mended0, "a Restorer mended nothing in nine seconds");
+  surv.slots[0] = null;
+  cf.applyParts();
+
   console.log("  bosses     five kinds, each with a crew \u00b7 the warlord calls its pack " +
               "and never runs \u00b7 a bounty and a rare part \u00b7 a corsair flies passes " +
               Math.round(lo) + "–" + Math.round(hi) + " out \u00b7 each lives in its own sky, " +
               "charted, named on the way in and out \u00b7 a power's boss minds your standing");
+  console.log("  powers     a warlord's fan, a corsair's burner, an admiral's screen, a " +
+              "warden's swarm, a queen's restorer \u00b7 each drops its own, and it works on you");
 }
 
 // ── the hull says the job ─────────────────────────────────────────────────
@@ -5880,7 +5988,8 @@ const storeOf = (cf, key) => {
   check(launched.size === 0, "something fired that was not the cannon");
 
   // Every weapon is a part, in the catalogue, in the weapon category.
-  const guns = cf.parts().filter(m => m.cat === "weapon");
+  // The four the sector makes. A boss's weapon is its own thing: see "powers".
+  const guns = cf.parts().filter(m => m.cat === "weapon" && m.get.indexOf("boss") < 0);
   check(guns.length === 4, "there are " + guns.length + " weapons, not 4");
   const rar = new Set(guns.map(g => g.rarity));
   check(rar.size === 4,
@@ -8466,7 +8575,8 @@ const storeOf = (cf, key) => {
   const shelf = new Set(cf.surveyView().market.filter(r => r.kind === "part")
                           .map(r => r.key));
   for (const p of cf.surveyView().parts) {
-    const ways = (p.buyable ? 1 : 0) + (p.craftable ? 1 : 0) + (p.findable ? 1 : 0);
+    const ways = (p.buyable ? 1 : 0) + (p.craftable ? 1 : 0) + (p.findable ? 1 : 0) +
+                 (p.bossable ? 1 : 0);
     check(ways > 0,
           p.name + " can neither be built, bought nor found — it does not exist");
     /* What the page claims and what the shop does have to be the same claim —
@@ -8621,8 +8731,11 @@ const storeOf = (cf, key) => {
      in is content nobody can ever reach, and it is worse than missing content:
      it is on the page, with a price and a description, promising something. */
   const stranded = [];
+  // A fourth way in: off the boss that carries it. See `BOSS_PARTS`.
+  const offBosses = new Set(Object.values(cf.bossParts()));
   for (const p of parts) {
     const ways = [];
+    if (p.get.indexOf("boss") >= 0 && offBosses.has(p.key)) ways.push("boss");
     if (p.get.indexOf("buy") >= 0 && p.deep <= deepestShop) ways.push("buy");
     if (p.get.indexOf("craft") >= 0 && made.has(p.key)) ways.push("craft");
     if (p.get.indexOf("find") >= 0 && p.inCachePool) ways.push("find");
@@ -8677,11 +8790,11 @@ const storeOf = (cf, key) => {
   console.log("  buyonly    " + far.join(" · "));
 
 
-  const byWay = { buy: 0, craft: 0, find: 0 };
+  const byWay = { buy: 0, craft: 0, find: 0, boss: 0 };
   for (const p of parts) for (const w of p.get) if (w in byWay) byWay[w]++;
   console.log("  reachable  all " + parts.length + " parts have a real way in · " +
               byWay.buy + " on a shelf, " + byWay.craft + " at the bench, " +
-              byWay.find + " out there · " + shops + " stations across " +
+              byWay.find + " out there, " + byWay.boss + " off bosses · " + shops + " stations across " +
               chunks + " chunks, deepest at danger " + deepestShop.toFixed(2) +
               " · " + deepest.name + " needs " + deepest.deep.toFixed(2) +
               ", stocked by " + Math.round(reach * 100) + "% of stations");
@@ -9522,7 +9635,8 @@ const storeOf = (cf, key) => {
   for (const p of all) {
     check(typeof p.name === "string" && p.name.length, "a part with no name");
     check(p.note.length > 24, p.name + " does not say what it does");
-    check(p.buyable || p.craftable || p.findable, p.name + " cannot be got at all");
+    check(p.buyable || p.craftable || p.findable || p.bossable,
+          p.name + " cannot be got at all");
   }
 
   /* It draws, and the text stays inside its box. The build line used to advance
@@ -10471,8 +10585,8 @@ const storeOf = (cf, key) => {
         devParts.length);
   for (const p of devParts) {
     const ways = cf.partWays(p.key);
-    check(ways.buy || ways.craft || ways.find,
-          p.name + " cannot be bought, built or found");
+    check(ways.buy || ways.craft || ways.find || ways.boss,
+          p.name + " cannot be bought, built, found or taken off a boss");
     check(p.cat === "device",
           p.name + " is a device and is filed under " + p.cat);
   }
