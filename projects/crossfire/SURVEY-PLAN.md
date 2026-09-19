@@ -149,6 +149,71 @@ sector notices: raiders, shortages and the powers all care where you set up.
 started. Which first is Ric's call when 1–3 are done; the two open questions
 above get answered before their path is built.
 
+### Step 1, first pass  ·  *19 September 2026*
+
+> *"do a redesign of the ships make sure the look like wha tthey should. so its
+> easy to look at them and say what type of ship they are also bots shpould be
+> able to choose to go slower than their controls and they just freeze when too
+> close to the player"*
+
+**The ships.** All twenty-five were redrawn, and the drawings moved out of the
+stat rows into `HULL_ART`. Each category now has one mark nobody else wears:
+
+| Category | The mark |
+|---|---|
+| Cargo | a small cab on a box, and the box is a grid of containers |
+| Commuter | a rounded cabin with a row of windows down each side |
+| Courier | a thin nose on a big split engine block |
+| Sport | a long needle, swept tail fins, a racing stripe |
+| Military | swept wings, gun barrels pointing forward |
+| Industrial | an open throat at the bow where the beam comes out, and a truss |
+| Utility | a blunt push bar across the bow, jaws in front of it |
+| Explorer | a sensor mast off the nose with a crossbar |
+
+Every outline stays inside the box its old one had, so collision barely moved.
+`test/hulls.html` draws the whole roster with the game's own drawing code.
+
+- **Each job flies one family.** Freight flies cargo hulls, traders commuters
+  and couriers, scavengers utility and industrial, the navy military, and
+  pirates sport and courier. Pirates used to fly Jackals and Reprisals, the
+  same shape as the patrols hunting them. This changes which hull each passing
+  ship flies, so `test/fingerprint.js` hashes moved. Rock and disc counts did
+  not, and nothing else in the world changed.
+- **Holds show what is in them.** A hull's holds fill with its cargo in that
+  material's colour, dearest first, so a hauler with iridium aboard glows
+  violet and an empty one is a frame. Yours fill the same way.
+- **Markings for the jobs a hull cannot show.** Pirates wear barbs along their
+  outline and a ram at the nose. Patrols flash red and blue at the wingtips.
+  An escort has a faint dashed line to the ship it is guarding.
+- **One drawing for everybody.** Your ship, the sector's and the hangar's use
+  one `drawHullArt`. Before, the jaws were only ever drawn on yours, and bot
+  exhaust came out of a fixed point that sat inside the bigger hulls.
+
+**The freeze.** A ship within 220 of its goal counted as arriving, and on
+arriving it skipped its whole step: no engine, no guns. For a ship chasing you
+the goal *is* you, so it flew in and stopped dead. The same happened to a
+pirate that caught its hauler and to a ship fleeing you at close range. Only a
+place (a station, a wreck, the end of a route) can be arrived at now. An armed
+ship that catches what it is chasing circles it at gun range, 360 plus 60 per
+size, rather than parking on it.
+
+**The throttle.** Every bot flew flat out at cruise until something stopped it.
+Now each one picks a pace for what it is doing: easing into a dock, keeping a
+leader's or client's pace (steering a little ahead of its slot so it does not
+loop round it), no slower than what it is circling, or cruise otherwise. The
+drive still pushes along the nose, because that is what swings the velocity
+round a turn, and anything over the pace comes off at the rate the drive
+manages in reverse.
+
+**And a bug under it.** The stuck-ship watchdog never recorded where a ship
+started, so every ship counted as stuck for its first eight seconds of life.
+Each one threw a random swerve and turned its route round, eight seconds after
+it was born.
+
+**Still open for step 1:** what a ship thinks of *you* (ignoring you, warning
+you off, coming for you) is not drawn yet. The dogfight test is also still
+unflown: can someone watch thirty seconds and narrate it?
+
 ---
 
 ## Who holds the sky  ·  *territory replaces the danger rings*  ·  **A and C built, B open**

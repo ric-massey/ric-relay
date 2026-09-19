@@ -4765,6 +4765,147 @@ const storeOf = (cf, key) => {
               "a hauler cannot and does not");
 }
 
+// \u2500\u2500 close up, they keep flying \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+/* Ric: bots "just freeze when too close to the player". Any ship within 220 of
+   its goal counted as arriving and skipped its whole step, and for a ship
+   chasing you the goal *is* you. So an angry pirate flew in and stopped dead
+   beside you, engine off and guns silent. Only a place can be arrived at now,
+   and the rest pick a speed for what they are doing. */
+{
+  const { cf } = boot("?debug=1&seed=515153");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const clear = () => {
+    surv.traffic.length = 0; surv.drones.length = 0; surv.shots.length = 0;
+  };
+  const put = (role, hull, x, y, extra) => {
+    const t = Object.assign({
+      id: "t-" + role + "-" + surv.traffic.length, kind: role, role,
+      faction: "free", hull, x, y, a: 0,
+      from: { x, y }, to: { x: x + 9000, y }, leg: 1,
+      speed: 250, baseSpeed: 250, hp: 40, maxHp: 40, cargo: [],
+      cool: 99, doom: 0, guards: 0, phase: 1, vx: 0, vy: 0
+    }, extra || {});
+    surv.traffic.push(t);
+    return t;
+  };
+  const tick = () => { me.invuln = 3; now += 1000 / 60; cf.step(); };
+
+  /* Parked in a corner of the home chunk, clear of the station, and never
+     moved across a chunk line: a restream would rebuild the list and drop the
+     ships put here by hand. */
+  me.x = 2300; me.y = 2300; me.vx = 0; me.vy = 0;
+
+  // A pirate that has caught you circles at gun range. It does not park.
+  clear();
+  const p = put("pirate", "vane", me.x + 150, me.y, { faction: "pirate" });
+  let still = 0, far = Infinity, near = 0;
+  for (let i = 0; i < 360; i++) {
+    const x0 = p.x, y0 = p.y;
+    p.angry = true;
+    tick();
+    if (surv.traffic.indexOf(p) < 0) break;
+    if (Math.hypot(p.x - x0, p.y - y0) < 0.5) still++;
+    if (i > 180) {
+      const d = Math.hypot(p.x - me.x, p.y - me.y);
+      far = Math.min(far, d); near = Math.max(near, d);
+    }
+  }
+  check(surv.traffic.indexOf(p) >= 0, "the pirate rammed you and died instead of fighting");
+  check(still < 5, "an angry pirate beside you stood still for " + still + " frames");
+  check(far > 220 && near < 700,
+        "an angry pirate did not hold gun range: " + Math.round(far) + "\u2013" +
+        Math.round(near) + " from you");
+
+  // A follower keeps its leader's pace instead of flying flat out.
+  clear();
+  const lead = put("freight", "drayman", me.x - 1500, me.y - 1500,
+                   { speed: 140, baseSpeed: 140, a: Math.PI, think: 1e9, markKind: "point" });
+  // Somewhere a long way off, so it is still under way when this is measured.
+  lead.mark = { x: lead.x - 60000, y: lead.y };
+  const wing = put("freight", "coffer", lead.x - 320, lead.y + 240,
+                   { leadId: lead.id, slot: { back: 320, side: -240 } });
+  let gapEnd = 0, paceOk = 0, samples = 0;
+  for (let i = 0; i < 900; i++) {
+    tick();
+    if (i > 600) {
+      const c = Math.cos(lead.a), s2 = Math.sin(lead.a);
+      const sx = lead.x - c * 320 + s2 * 240, sy = lead.y - s2 * 320 - c * 240;
+      gapEnd = Math.max(gapEnd, Math.hypot(wing.x - sx, wing.y - sy));
+      samples++;
+      if (Math.hypot(wing.vx, wing.vy) < 250 * 0.9) paceOk++;
+    }
+  }
+  check(gapEnd < 260, "a convoy follower drifted " + Math.round(gapEnd) +
+        " off its slot");
+  check(paceOk === samples, "a follower flew at its own top speed instead of " +
+        "its leader's pace");
+
+  // A hauler coming in to a station eases off before it gets there.
+  clear();
+  const st = surv.stations[0];
+  const h = put("freight", "drayman", st.x - 900, st.y,
+                { speed: 200, baseSpeed: 200, cargo: ["iron"] });
+  h.vx = 200; h.vy = 0;
+  let slowest = Infinity;
+  for (let i = 0; i < 600 && h.cargo.length; i++) {
+    h.mark = st; h.markKind = "station"; h.think = 99;
+    tick();
+    if (Math.hypot(st.x - h.x, st.y - h.y) < 400) {
+      slowest = Math.min(slowest, Math.hypot(h.vx, h.vy));
+    }
+  }
+  check(!h.cargo.length, "a hauler never reached the station to unload");
+  check(slowest < 200 * 0.6, "a hauler came into the station at " +
+        Math.round(slowest) + " \u2014 it never eased off");
+  console.log("  close up   a pirate that catches you circles at gun range and never " +
+              "parks \u00b7 followers keep their leader's pace \u00b7 haulers ease into a dock");
+}
+
+// \u2500\u2500 the hull says the job \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+/* Ric: "make sure they look like what they should, so its easy to look at them
+   and say what type of ship they are". Each category now has one mark nobody
+   else wears, and that is only worth anything if each job flies one family.
+   Pirates used to fly Jackals and Reprisals, the same shape as the patrol
+   hunting them. */
+{
+  const { cf } = boot("?debug=1&seed=112233");
+  cf.start("survey", 1);
+  const cat = {};
+  for (const sh of cf.surveyView().ships) cat[sh.key] = sh.category;
+  const allowed = {
+    freight: ["CARGO"], trader: ["COMMUTER", "COURIER"],
+    scavenger: ["UTILITY", "INDUSTRIAL"], pirate: ["SPORT", "COURIER"],
+    patrol: ["MILITARY"], escort: ["MILITARY"], hunter: ["MILITARY"],
+    distress: ["CARGO", "COMMUTER"]
+  };
+  const seen = {};
+  let n = 0;
+  for (let i = 0; i < 1500; i++) {
+    const a = i * 2.399963, r = 6 + i * 0.3;
+    const c = cf.chunk(Math.round(Math.cos(a) * r), Math.round(Math.sin(a) * r));
+    for (const t of c.traffic || []) {
+      n++;
+      const role = t.role || t.kind;
+      const k = cat[t.hull];
+      (seen[role] = seen[role] || new Set()).add(k);
+      check(!allowed[role] || allowed[role].indexOf(k) >= 0,
+            "a " + role + " is flying a " + k + " hull (" + t.hull + ")");
+    }
+  }
+  check(n > 100, "only " + n + " ships to look at");
+  for (const role of ["freight", "trader", "pirate", "patrol", "escort"]) {
+    check(seen[role], "no " + role + " anywhere in 1,500 chunks");
+  }
+  for (const navy of ["patrol", "escort", "hunter"]) {
+    const shared = [...(seen.pirate || [])].filter(c => seen[navy] && seen[navy].has(c));
+    check(!shared.length, "pirates and " + navy + "s share a " + shared.join(", ") + " hull");
+  }
+  console.log("  hulls      " + n + " ships over 1,500 chunks \u00b7 each job flies its own " +
+              "family \u00b7 no pirate is the shape of a patrol");
+}
+
 // ── reputation, per flag, in a galaxy already at war ──────────────────────
 /* Phase 5.1, rebuilt. Not one ladder — three powers with their own opinions, a
    war between two of them, pirates who are nobody's and independents who are

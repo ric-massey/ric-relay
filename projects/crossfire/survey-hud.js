@@ -7019,34 +7019,32 @@
   function drawHull(sh, cx, cy, box, colour, alpha) {
     const { ctx } = api;
     let far = 1;
-    for (const p of sh.art) far = Math.max(far, Math.hypot(p[0], p[1]));
-    if (sh.fins) {
-      for (const f of sh.fins) {
-        far = Math.max(far, Math.hypot(f[0][0], f[0][1]), Math.hypot(f[1][0], f[1][1]));
-      }
-    }
+    const reach = (x, y) => { far = Math.max(far, Math.hypot(x, y)); };
+    for (const p of sh.art) reach(p[0], p[1]);
+    for (const f of sh.fins || []) { reach(f[0][0], f[0][1]); reach(f[1][0], f[1][1]); }
+    for (const g of sh.guns || []) reach(g[0] + (g[2] || 5), g[1]);
+    // The jaws hang fifteen units off the nose, open.
+    if (sh.weapon === "claw") reach((sh.noseX || 12) + 12, 13);
     const k = box / far;
     ctx.save();
     ctx.translate(cx, cy);
     ctx.scale(k, k);
-    ctx.globalAlpha = alpha;
-    ctx.strokeStyle = colour;
-    ctx.lineWidth = 1.6 / k;
-    ctx.beginPath();
-    sh.art.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
-    ctx.closePath();
-    ctx.stroke();
-    if (sh.fins) {
-      ctx.globalAlpha = alpha * 0.8;
-      ctx.lineWidth = 1.2 / k;
+    /* The same drawing the world uses, holds and windows and all. The page
+       compares hulls, and a hull drawn with half its detail missing is not the
+       hull you will be flying. */
+    if (api.drawHullArt) {
+      api.drawHullArt(sh, colour, 1 / k, alpha);
+    } else {
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = colour;
+      ctx.lineWidth = 1.6 / k;
       ctx.beginPath();
-      for (const f of sh.fins) {
-        ctx.moveTo(f[0][0], f[0][1]);
-        ctx.lineTo(f[1][0], f[1][1]);
-      }
+      sh.art.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+      ctx.closePath();
       ctx.stroke();
     }
     ctx.restore();
+    ctx.globalAlpha = 1;
   }
 
   HUD.drawHangar = function (st, dt) {

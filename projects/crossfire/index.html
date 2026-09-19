@@ -5477,78 +5477,57 @@
      Drawn rather than described, because a hauler has to be unmistakable from a
      fighter at a glance and a paragraph of stats cannot do that. */
   const SHIPS = [
-    /* ── what is drawn on a hull ────────────────────────────────────────────
-       `guns` are hardpoints: a short barrel at each, so a two-gun hull looks like
-       one from across the screen. `ribs` are lines across the inside of the
-       silhouette — plating, spars, the shape of a hold — which is what makes a big
-       ship read as a *structure* rather than a big arrowhead. Neither changes what
-       a ship does; both are how you tell one from another at the range you
-       actually meet them, which until now was "a triangle, but bigger". */
+    /* The drawings are not in these rows any more. See `HULL_ART` below. */
     // ── explorers: range, useful holds, and no single way to travel ─────────
     { key: "skiff", name: "SKIFF", category: "EXPLORER", best: "TURN", cost: 0,
       hull: 8, dmg: 0.8, rate: 0.75, cargo: 150, speed: 0.9,
       turn: 0.69, drag: 0.55, shot: 0.78, size: 1,
-      note: "the little explorer everybody starts in",
-      art: [[14, 0], [-10, 8], [-6, 0], [-10, -8]] },
+      note: "the little explorer everybody starts in" },
 
     // ── sport: tiny holds, hot drives, and very little forgiveness ──────────
     { key: "needle", name: "NEEDLE", category: "SPORT", best: "SPEED", cost: 900,
       hull: 4, dmg: 2.4, rate: 0.85, cargo: 30, speed: 2.2,
       turn: 1.91, drag: 0.26, punch: 7, burst: 1, shot: 1.05, size: 0.86,
-      note: "quicker than it is sensible",
-      art: [[17, 0], [-6, 4], [-11, 2], [-11, -2], [-6, -4]],
-      fins: [[[-2, 4], [-6, 10]], [[-2, -4], [-6, -10]]] },
+      note: "quicker than it is sensible" },
 
     // ── couriers: acceleration first, because late cargo is worthless ──────
     { key: "kite", name: "KITE", category: "COURIER", best: "ACCEL", cost: 1600,
       hull: 6, dmg: 0.9, rate: 1, cargo: 25, speed: 2.7,
       turn: 1.55, drag: 2.6, spool: 3.4, shot: 0.92, size: 0.94,
-      note: "all engine and urgent paperwork",
-      art: [[15, 0], [0, 9], [-11, 5], [-7, 0], [-11, -5], [0, -9]] },
+      note: "all engine and urgent paperwork" },
 
     { key: "vane", name: "VANE", category: "SPORT", best: "TURN", cost: 2600,
       hull: 6, dmg: 3.6, rate: 1, cargo: 60, speed: 1.95,
       turn: 1.63, drag: 0.22, punch: 7, burst: 1, shot: 0.95, size: 0.9,
-      note: "changes its mind before you do",
-      art: [[18, 0], [2, 5], [-9, 7], [-5, 0], [-9, -7], [2, -5]],
-      fins: [[[2, 5], [6, 11]], [[2, -5], [6, -11]]] },
+      note: "changes its mind before you do" },
 
     { key: "mote", name: "MOTE", category: "SPORT", best: "FIRE RATE", cost: 4200,
       hull: 9, dmg: 2.7, rate: 1.2, cargo: 90, speed: 2.05,
       turn: 1.77, drag: 0.3, punch: 7, burst: 1, shot: 1, size: 0.78,
-      note: "small enough to mistake for a bad idea",
-      art: [[16, 0], [-4, 3], [-9, 6], [-6, 0], [-9, -6], [-4, -3]] },
+      note: "small enough to mistake for a bad idea" },
 
     // ── military: armour and guns, with just enough hold for a mission ──────
     { key: "lance", name: "LANCE", category: "MILITARY", best: "PRICE", cost: 3400,
       hull: 14, dmg: 1.6, rate: 0.95, cargo: 50, speed: 1,
       turn: 1, drag: 4, shot: 1.3, size: 1.05,
-      note: "a pursuit drive with a gun sight",
-      guns: [[6, 5], [6, -5]], ribs: [[[2, 6], [2, -6]]],
-      art: [[18, 0], [-8, 7], [-4, 0], [-8, -7]],
-      fins: [[[6, 3], [4, 9]], [[6, -3], [4, -9]]] },
+      note: "a pursuit drive with a gun sight" },
 
     // ── commuters: quick away from a dock, civil, and easy to live with ─────
     { key: "wedge", name: "HOPPER", category: "COMMUTER", best: "ACCEL", cost: 5200,
       hull: 7, dmg: 0.6, rate: 0.75, cargo: 100, speed: 1.95,
       turn: 0.88, drag: 1.3, spool: 5.5, bite: 0.5, ram: 1, shot: 0.84, size: 1.1,
-      note: "made for the short jump between stations",
-      guns: [[4, 7], [4, -7]], ribs: [[[-2, 8], [-2, -8]]],
-      art: [[16, 0], [-2, 10], [-11, 8], [-7, 0], [-11, -8], [-2, -10]] },
+      note: "made for the short jump between stations" },
 
     { key: "harrier", name: "SWALLOW", category: "COMMUTER", best: "FIRE RATE", cost: 7600,
       hull: 12, dmg: 0.8, rate: 0.95, cargo: 200, speed: 2.15,
       turn: 0.98, drag: 1.45, spool: 5, bite: 0.45, ram: 1, shot: 0.78, size: 1.06,
-      note: "a fast civil hull with teeth",
-      guns: [[8, 4], [8, -4]],
-      art: [[18, 0], [4, 6], [-6, 9], [-10, 4], [-6, 0], [-10, -4], [-6, -9], [4, -6]] },
+      note: "a fast civil hull with teeth" },
 
     // ── utility: manoeuvrable working hulls with room for the job ───────────
     { key: "cradle", name: "CRADLE", category: "UTILITY", best: "TURN", cost: 9800,
       hull: 40, dmg: 1, rate: 0.85, cargo: 600, speed: 0.62,
       turn: 0.4, drag: 0.1, tough: 1, weapon: "claw", shot: 0.8, size: 1.24,
-      note: "gets a work crew into awkward places",
-      art: [[15, 0], [6, 9], [-9, 11], [-5, 0], [-9, -11], [6, -9]] },
+      note: "gets a work crew into awkward places" },
 
     /* The one that reads as a TIE without being one: a slab of a cockpit between
        two flat panels, and nothing else. Straight lines only — the silhouette is
@@ -5562,126 +5541,79 @@
          handling, kept exactly" two re-cuts ago; the comment outlived the
          numbers it described, which is the thing this file keeps doing. */
       turn: 1.2, drag: 12, burst: 4, shot: 2.75, size: 1.14,
-      note: "four guns between two unmistakable louvers",
-      guns: [[5, 6], [5, -6], [-1, 9], [-1, -9]],
-      art: [[9, 0], [3, 5], [-7, 5], [-7, -5], [3, -5]],
-      fins: [[[1, 5], [1, 15]], [[1, -5], [1, -15]],
-             [[-6, 15], [8, 15]], [[-6, -15], [8, -15]],
-             [[-6, 15], [-6, -15]], [[8, 15], [8, -15]]] },
+      note: "four guns between two unmistakable louvers" },
 
     { key: "spur", name: "SPUR", category: "MILITARY", best: "VALUE", cost: 17000,
       hull: 24, dmg: 2.4, rate: 1.1, cargo: 120, speed: 1.06,
       turn: 1.12, drag: 6, shot: 1.34, size: 1.22,
-      note: "a compact strike hull built around the first shot",
-      guns: [[7, 5], [7, -5]],
-      art: [[20, 0], [8, 5], [-4, 8], [-10, 5], [-6, 0], [-10, -5], [-4, -8], [8, -5]],
-      fins: [[[8, 5], [14, 10]], [[8, -5], [14, -10]]] },
+      note: "a compact strike hull built around the first shot" },
 
     { key: "runner", name: "RUNNER", category: "COURIER", best: "CARGO", cost: 6400,
       hull: 10, dmg: 0.7, rate: 0.8, cargo: 44, speed: 2.3,
       turn: 1.35, drag: 2.3, spool: 4.2, shot: 0.8, size: 1.16,
-      note: "a parcel hold with an engine behind it",
-      art: [[15, 0], [8, 6], [-12, 8], [-8, 0], [-12, -8], [8, -6]] },
+      note: "a parcel hold with an engine behind it" },
 
     { key: "pannier", name: "PANNIER", category: "COMMUTER", best: "CARGO", cost: 11000,
       hull: 24, dmg: 0.72, rate: 0.85, cargo: 300, speed: 2.4,
       turn: 1.1, drag: 1.6, spool: 4.5, bite: 0.4, ram: 1, shot: 0.72, size: 1.34,
-      note: "two cabins, two holds, one patient crew",
-      art: [[14, 0], [7, 5], [-13, 6], [-9, 0], [-13, -6], [7, -5]],
-      fins: [[[4, 6], [-10, 12]], [[-10, 12], [-13, 6]],
-             [[4, -6], [-10, -12]], [[-10, -12], [-13, -6]]] },
+      note: "two cabins, two holds, one patient crew" },
 
     { key: "stride", name: "STRIDE", category: "COURIER", best: "DAMAGE", cost: 19500,
       hull: 12, dmg: 1, rate: 0.9, cargo: 35, speed: 2.5,
       turn: 1.45, drag: 2.45, spool: 3.8, shot: 0.86, size: 1.46,
-      note: "the armed dispatch ship for difficult routes",
-      art: [[18, 0], [10, 6], [-14, 9], [-10, 0], [-14, -9], [10, -6]],
-      fins: [[[10, 6], [6, 13]], [[10, -6], [6, -13]]] },
+      note: "the armed dispatch ship for difficult routes" },
 
     { key: "carrack", name: "CARRACK", category: "EXPLORER", best: "CARGO", cost: 31000,
       hull: 18, dmg: 1.2, rate: 0.95, cargo: 600, speed: 1.15,
       turn: 0.69, drag: 0.55, shot: 0.85, size: 1.62,
-      note: "the long survey, done properly",
-      ribs: [[[0, 9], [0, -9]]],
-      art: [[17, 0], [11, 7], [-6, 11], [-16, 8], [-11, 0], [-16, -8], [-6, -11], [11, -7]] },
+      note: "the long survey, done properly" },
 
     // ── cargo: holds first, with enough ship wrapped around them ────────────
     { key: "drayman", name: "DRAYMAN", category: "CARGO", best: "SPEED", cost: 15000,
       hull: 26, dmg: 0.8, rate: 0.7, cargo: 900, speed: 0.86,
       turn: 0.6, drag: 0.5, spool: 0.6, shot: 0.64, size: 1.7,
-      note: "the quick end of moving things for money",
-      ribs: [[[2, 9], [2, -9]], [[-6, 8], [-6, -8]]],
-      art: [[13, 0], [9, 10], [-14, 12], [-10, 0], [-14, -12], [9, -10]] },
+      note: "the quick end of moving things for money" },
 
     { key: "coffer", name: "COFFER", category: "CARGO", best: "DRAG", cost: 26000,
       hull: 40, dmg: 0.9, rate: 0.75, cargo: 1500, speed: 0.76,
       turn: 0.54, drag: 0.48, spool: 0.7, shot: 0.58, size: 1.88,
-      note: "a safe with a drive and a great deal of momentum",
-      ribs: [[[0, 11], [0, -11]], [[-8, 9], [-8, -9]]],
-      art: [[12, 0], [10, 9], [10, 13], [-15, 13], [-15, -13], [10, -13], [10, -9]] },
+      note: "a safe with a drive and a great deal of momentum" },
 
     // ── industrial: armoured working machinery that happens to fly ─────────
     { key: "windlass", name: "WINDLASS", category: "INDUSTRIAL", best: "CARGO", cost: 42000,
       hull: 60, dmg: 1.2, rate: 0.8, cargo: 900, speed: 0.52,
       turn: 0.3, drag: 0.058, tough: 1, weapon: "beam", shot: 0.62, size: 2.05,
-      note: "built round the winch",
-      ribs: [[[3, 10], [3, -10]], [[-7, 10], [-7, -10]]],
-      art: [[14, 0], [8, 8], [8, 14], [-16, 12], [-12, 0], [-16, -12], [8, -14], [8, -8]],
-      fins: [[[-4, 14], [-4, -14]], [[2, 13], [2, -13]]] },
+      note: "built round the winch" },
 
     { key: "granary", name: "GRANARY", category: "CARGO", best: "CARGO", cost: 63000,
       hull: 55, dmg: 1, rate: 0.8, cargo: 2400, speed: 0.66,
       turn: 0.48, drag: 0.46, spool: 0.8, shot: 0.52, size: 2.3,
-      note: "the largest hold on the civilian register",
-      ribs: [[[4, 13], [4, -13]], [[-6, 13], [-6, -13]]],
-      art: [[13, 0], [11, 11], [-4, 16], [-18, 13], [-14, 0], [-18, -13], [-4, -16], [11, -11]] },
+      note: "the largest hold on the civilian register" },
 
     { key: "bastion", name: "BASTION", category: "MILITARY", best: "BURST", cost: 24000,
       hull: 30, dmg: 2.7, rate: 1.15, cargo: 300, speed: 1.1,
       turn: 1.18, drag: 7, burst: 4, shot: 1.38, size: 1.66,
-      note: "armour first and everything else behind it",
-      guns: [[4, 9], [4, -9], [-4, 11], [-4, -11]],
-      ribs: [[[0, 10], [0, -10]], [[-8, 8], [-8, -8]]],
-      art: [[17, 0], [12, 8], [-4, 11], [-13, 7], [-9, 0], [-13, -7], [-4, -11], [12, -8]],
-      fins: [[[12, 8], [17, 13]], [[12, -8], [17, -13]]] },
+      note: "armour first and everything else behind it" },
 
     { key: "reprisal", name: "REPRISAL", category: "MILITARY", best: "HULL", cost: 38000,
       hull: 44, dmg: 3.3, rate: 1.3, cargo: 180, speed: 1.16,
       turn: 1.28, drag: 9.5, shot: 2.5, size: 1.74,
-      note: "the answer to whatever fired first",
-      guns: [[6, 8], [6, -8], [-2, 12], [-2, -12]],
-      ribs: [[[-6, 10], [-6, -10]]],
-      art: [[20, 0], [13, 6], [13, 12], [-6, 14], [-14, 8], [-10, 0],
-            [-14, -8], [-6, -14], [13, -12], [13, -6]] },
+      note: "the answer to whatever fired first" },
 
     { key: "ironmonger", name: "IRONMONGER", category: "INDUSTRIAL", best: "HULL", cost: 58000,
       hull: 80, dmg: 1.4, rate: 0.75, cargo: 750, speed: 0.38,
       turn: 0.24, drag: 0.045, tough: 1, weapon: "beam", shot: 0.5, size: 1.98,
-      note: "a foundry that flies",
-      guns: [[2, 12], [2, -12], [-6, 14], [-6, -14]],
-      ribs: [[[-2, 13], [-2, -13]], [[-10, 10], [-10, -10]]],
-      art: [[18, 0], [14, 10], [0, 15], [-16, 12], [-12, 0], [-16, -12], [0, -15], [14, -10]],
-      fins: [[[14, 10], [20, 8]], [[14, -10], [20, -8]], [[0, 15], [0, -15]]] },
+      note: "a foundry that flies" },
 
     { key: "revenant", name: "LONGVIEW", category: "EXPLORER", best: "SPEED", cost: 86000,
       hull: 20, dmg: 1.5, rate: 1.1, cargo: 900, speed: 1.6,
       turn: 0.69, drag: 0.55, shot: 0.92, size: 2.6,
-      note: "built to make the far edge come closer",
-      guns: [[0, 16], [0, -16], [-10, 18], [-10, -18]],
-      ribs: [[[6, 12], [6, -12]], [[-4, 17], [-4, -17]], [[-14, 14], [-14, -14]]],
-      art: [[22, 0], [16, 9], [2, 14], [-14, 16], [-20, 9], [-16, 0],
-            [-20, -9], [-14, -16], [2, -14], [16, -9]],
-      fins: [[[2, 14], [2, -14]], [[-8, 16], [-8, -16]]] },
+      note: "built to make the far edge come closer" },
 
     { key: "cathedral", name: "GANTRY", category: "INDUSTRIAL", best: "CARGO", cost: 112000,
       hull: 70, dmg: 1.3, rate: 0.78, cargo: 1300, speed: 0.46,
       turn: 0.27, drag: 0.052, tough: 1, weapon: "beam", shot: 0.56, size: 3,
-      note: "a mobile yard with engines under it",
-      guns: [[-2, 18], [-2, -18]],
-      ribs: [[[8, 12], [8, -12]], [[0, 18], [0, -18]], [[-10, 16], [-10, -16]]],
-      art: [[24, 0], [18, 8], [10, 17], [-12, 19], [-22, 10], [-18, 0],
-            [-22, -10], [-12, -19], [10, -17], [18, -8]],
-      fins: [[[10, 17], [10, -17]], [[-2, 19], [-2, -19]], [[18, 8], [18, -8]]] },
+      note: "a mobile yard with engines under it" },
 
     { key: "ossuary", name: "TENDER", category: "UTILITY", best: "CARGO", cost: 168000,
       hull: 55, dmg: 1.2, rate: 0.9, cargo: 900, speed: 0.78,
@@ -5691,13 +5623,182 @@
          shares a category with — which is the military feel. It stops a long way
          short of their speed on purpose; it is still a workshop. */
       turn: 0.62, drag: 2.6, tough: 1, weapon: "claw", shot: 0.7, size: 3.5,
-      note: "a fleet's workshop, stores and spare hands",
-      ribs: [[[6, 14], [6, -14]], [[-2, 18], [-2, -18]], [[-12, 15], [-12, -15]]],
-      art: [[26, 0], [20, 10], [12, 20], [-10, 23], [-24, 14], [-20, 0],
-            [-24, -14], [-10, -23], [12, -20], [20, -10]],
-      fins: [[[12, 20], [12, -20]], [[0, 22], [0, -22]], [[-12, 22], [-12, -22]],
-             [[20, 10], [20, -10]]] }
+      note: "a fleet's workshop, stores and spare hands" }
   ];
+
+  /* ═══ WHAT EACH ONE LOOKS LIKE ═════════════════════════════════════════════
+     Ric: "make sure they look like what they should, so its easy to look at them
+     and say what type of ship they are". The first set of outlines failed that:
+     twenty-five arrowheads of different widths, so a Drayman hauling ore and a
+     Reprisal hunting you were the same triangle at two sizes, and the only thing
+     that told them apart was the colour of the flag.
+
+     So every category has one mark that nobody else wears, and it is the first
+     thing you see:
+
+       CARGO       a small cab on a box, and the box is a grid of containers
+       COMMUTER    a rounded cabin with a row of windows down each side
+       COURIER     a thin nose on a big split engine block
+       SPORT       a long needle, swept tail fins, a racing stripe
+       MILITARY    swept wings and gun barrels pointing forward
+       INDUSTRIAL  an open throat at the bow where the beam comes out, and a truss
+       UTILITY     a blunt push bar across the bow, with the jaws in front of it
+       EXPLORER    a sensor mast off the nose with a crossbar on it
+
+     The holds are drawn (`pods`), and filled with what the ship is carrying in
+     that material's colour. A laden hauler glows and an empty one is a frame,
+     which is most of what a pirate needs to know and is now visible from across
+     the screen.
+
+     All of it is in the same space as before: nose at +x, twelve units to the
+     flank for the stock hull, scaled by `size`. Each outline stays inside the
+     box its old one had, so what a hull collides with barely moves. The outline
+     is still the thing that stops you. Fins, guns, pods and windows only
+     decorate it.
+
+     `outline` takes the starboard side from nose to tail and mirrors it, and
+     `pair` does the same for loose strokes, so nothing here can come out lopsided
+     by a typo. */
+  const flip = p => [p[0], -p[1]];
+  const outline = (...side) =>
+    side.concat(side.slice().reverse().filter(p => p[1] !== 0).map(flip));
+  const pair = (...segs) =>
+    segs.concat(segs.filter(g => g[0][1] || g[1][1]).map(g => [flip(g[0]), flip(g[1])]));
+  const pairPts = (...pts) => pts.concat(pts.filter(p => p[1]).map(p => [p[0], -p[1], p[2]]));
+  // A hold is [x, y, w, h]. One that straddles the keel is not doubled.
+  const pairBox = (...boxes) => boxes.concat(boxes.filter(b => b[1] !== -b[3] / 2)
+                                             .map(b => [b[0], -b[1] - b[3], b[2], b[3]]));
+  // The explorer's mark: a mast off the nose and a crossbar at the end of it.
+  const mast = (x, len, bar) => [[[x, 0], [x + len, 0]], [[x + len, -bar], [x + len, bar]]];
+  // The industrial mark: a truss, one X across the body.
+  const truss = (x0, x1, y) => [[[x0, -y], [x1, y]], [[x0, y], [x1, -y]]];
+  const HULL_ART = {
+    // ── explorers ───────────────────────────────────────────────────────────
+    skiff: {
+      art: outline([14, 0], [-10, 8], [-6, 0]),
+      fins: mast(14, 3, 2),
+      pods: pairBox([-5, -2, 6, 4]) },
+    carrack: {
+      art: outline([17, 0], [11, 3], [2, 4], [-6, 6], [-13, 6], [-16, 3]),
+      fins: pair([[-4, 6], [-1, 11]], [[-9, 11], [3, 11]]).concat(mast(17, 4, 3)),
+      pods: pairBox([-12, -4, 11, 8]) },
+    revenant: {
+      art: outline([22, 0], [16, 4], [4, 5], [-8, 9], [-17, 9], [-20, 5]),
+      fins: pair([[-4, 9], [0, 16]], [[-10, 16], [8, 16]]).concat(mast(22, 5, 4)),
+      guns: pairPts([8, 16], [-2, 9]),
+      pods: pairBox([-17, -6, 8, 12], [-7, -4, 9, 8]) },
+
+    // ── sport ───────────────────────────────────────────────────────────────
+    needle: {
+      art: outline([17, 0], [-6, 4], [-11, 2]),
+      fins: pair([[-2, 4], [-6, 10]], [[12, 0], [-9, 0]]) },
+    vane: {
+      art: outline([18, 0], [2, 5], [-9, 7], [-5, 0]),
+      fins: pair([[2, 5], [6, 11]], [[14, 0], [-3, 0]]) },
+    mote: {
+      art: outline([16, 0], [-4, 3], [-9, 6], [-6, 0]),
+      fins: pair([[-3, 3], [-8, 9]], [[12, 0], [-4, 0]]) },
+
+    // ── couriers ────────────────────────────────────────────────────────────
+    kite: {
+      art: outline([15, 0], [7, 3], [-3, 3], [-5, 9], [-11, 9], [-11, 0]),
+      ribs: [[[-11, 0], [-5, 0]]] },
+    runner: {
+      art: outline([15, 0], [10, 3], [4, 3], [4, 6], [-6, 6], [-8, 8], [-12, 8],
+                   [-12, 0]),
+      ribs: [[[-12, 0], [-7, 0]]],
+      pods: pairBox([-5, -5, 8, 10]) },
+    stride: {
+      art: outline([18, 0], [10, 3], [0, 4], [-6, 9], [-14, 9], [-14, 0]),
+      fins: pair([[4, 3.5], [0, 8]]),
+      ribs: [[[-14, 0], [-7, 0]]] },
+
+    // ── commuters ───────────────────────────────────────────────────────────
+    wedge: {
+      art: outline([16, 0], [14, 4], [9, 7], [-6, 8], [-11, 5], [-11, 0]),
+      guns: pairPts([4, 8]),
+      pods: [[-10, -2.5, 5, 5]],
+      windows: pairPts([-4, 4.5], [0, 4.5], [4, 4.5], [8, 4]) },
+    harrier: {
+      art: outline([18, 0], [14, 4], [6, 6], [-4, 6], [-10, 10], [-7, 3], [-9, 0]),
+      guns: pairPts([8, 5]),
+      pods: [[-6, -2, 6, 4]],
+      windows: pairPts([2, 3.5], [6, 3.5], [10, 3]) },
+    pannier: {
+      art: outline([14, 0], [11, 3], [4, 4], [4, 11], [-10, 11], [-13, 7], [-13, 0]),
+      pods: pairBox([-10, 5, 12, 5]),
+      windows: pairPts([-6, 2], [-2, 2], [2, 2], [7, 2]) },
+
+    // ── military ────────────────────────────────────────────────────────────
+    lance: {
+      art: outline([18, 0], [4, 3], [-3, 8], [-8, 8], [-6, 0]),
+      guns: pairPts([3, 5.5, 7]),
+      ribs: [[[4, 3], [4, -3]]] },
+    /* The one that reads as a TIE without being one: a slab of a cockpit between
+       two flat panels, and nothing else. Straight lines only. The silhouette is
+       the whole joke and any curve on it would spoil the reference. */
+    louvre: {
+      art: [[9, 0], [3, 5], [-7, 5], [-7, -5], [3, -5]],
+      guns: pairPts([5, 6], [-1, 9]),
+      fins: pair([[1, 5], [1, 15]], [[-6, 15], [8, 15]], [[-6, 15], [-6, -15]],
+                 [[8, 15], [8, -15]]) },
+    spur: {
+      art: outline([20, 0], [12, 2.5], [10, 8], [6, 8], [4, 3], [-6, 3], [-10, 7],
+                   [-10, 0]),
+      guns: pairPts([9, 6, 7]) },
+    bastion: {
+      art: outline([17, 0], [11, 3], [8, 3], [6, 11], [-5, 11], [-8, 6], [-13, 6],
+                   [-13, 0]),
+      guns: pairPts([6, 6.5, 7], [6, 9.5, 7]),
+      ribs: [[[-2, 11], [-2, -11]], [[8, 3], [8, -3]]] },
+    reprisal: {
+      art: outline([20, 0], [12, 3], [12, 14], [4, 14], [-2, 5], [-10, 8], [-14, 4],
+                   [-14, 0]),
+      guns: pairPts([12, 12, 6], [12, 8, 6]),
+      ribs: [[[-6, 6], [-6, -6]]] },
+
+    // ── cargo ───────────────────────────────────────────────────────────────
+    drayman: {
+      art: outline([13, 0], [11, 4], [6, 5], [4, 12], [-14, 12], [-14, 0]),
+      pods: pairBox([-12, 1, 7, 9], [-3, 1, 6, 9]) },
+    coffer: {
+      art: outline([12, 3], [8, 6], [8, 13], [-15, 13], [-15, 0]),
+      ribs: [[[8, 6], [8, -6]]],
+      pods: pairBox([-13, 1, 6, 10], [-6, 1, 6, 10], [1, 1, 5, 10]) },
+    granary: {
+      art: outline([13, 0], [10, 4], [6, 5], [4, 16], [-18, 16], [-18, 0]),
+      pods: pairBox([-16, 6, 6, 8], [-9, 6, 6, 8], [-2, 6, 5, 8])
+            .concat([[-16, -4, 6, 8], [-9, -4, 6, 8], [-2, -4, 5, 8]]) },
+
+    // ── industrial ──────────────────────────────────────────────────────────
+    windlass: {
+      art: [[14, 4], [14, 10], [6, 14], [-16, 12], [-16, -12], [6, -14],
+            [14, -10], [14, -4], [6, -4], [6, 4]],
+      fins: [[[6, 0], [11, 0]]].concat(truss(-14, 3, 9)),
+      pods: pairBox([-12, 1, 5, 6]) },
+    ironmonger: {
+      art: [[18, 5], [18, 10], [10, 15], [-12, 15], [-16, 10], [-16, -10],
+            [-12, -15], [10, -15], [18, -10], [18, -5], [8, -5], [8, 5]],
+      guns: pairPts([4, 12], [-6, 13]),
+      fins: [[[8, 0], [13, 0]]].concat(truss(-13, 5, 10)) },
+    cathedral: {
+      art: [[24, 7], [24, 19], [-16, 19], [-22, 12], [-22, -12], [-16, -19],
+            [24, -19], [24, -7], [0, -7], [0, 7]],
+      guns: pairPts([-2, 18]),
+      fins: [[[0, 0], [6, 0]]].concat(truss(-19, -3, 14),
+             pair([[20, 19], [14, 7]], [[12, 19], [6, 7]])),
+      pods: pairBox([6, 10, 14, 6]) },
+
+    // ── utility ─────────────────────────────────────────────────────────────
+    cradle: {
+      art: outline([15, 5], [11, 9], [2, 11], [-6, 11], [-9, 7], [-9, 0]),
+      ribs: [[[13, 6], [13, -6]]],
+      pods: pairBox([-6, 1, 7, 6]) },
+    ossuary: {
+      art: outline([26, 8], [20, 16], [8, 23], [-12, 23], [-24, 14], [-24, 0]),
+      ribs: [[[23, 9], [23, -9]]],
+      pods: pairBox([-18, 4, 12, 12], [-4, 4, 12, 12]) }
+  };
 
   /* ── two axes, and the one number that is not written down ────────────────
      Ric flew the roster again and the verdict was that the ships need to be
@@ -5756,6 +5857,7 @@
     return 1.6 + 2.6 * t;
   };
   for (const sh of SHIPS) {
+    Object.assign(sh, HULL_ART[sh.key]);
     /* `punch` overrides the curve where a hull is meant to feel eager out of
        proportion to its grip. The sport hulls are the reason it exists: Ric
        wants them "easy to get to speed but they should really slide", and those
@@ -11141,10 +11243,36 @@
          arriving anywhere: no deliveries, no salvage taken, no routes walked.
          Asking the positive question is the only form that is safe on a field
          that may not exist. */
-      if (!(t.breakOff > 0) && Math.hypot(goal.x - t.x, goal.y - t.y) < 220) {
+      /* ── what sort of goal it is ──────────────────────────────────────────
+         Somewhere to *get to* is a place: a station, a wreck, the end of a
+         route. Anything else moves. `chase` is a body the ship is going for, and
+         `follow` is one whose pace it keeps while holding a point off it: a
+         leader's slot, a client's shoulder, the spot behind you it is tailing.
+
+         Only a place can be arrived at. This used to ask "am I within 220 of
+         the goal" whatever the goal was, and on arriving the ship skipped its
+         whole step: no engine, no guns. So anything chasing you stopped dead
+         the moment it got close, and so did a pirate that caught its hauler
+         and a ship running from you at close range. Ric: "they just freeze
+         when too close to the player". */
+      const running = !!((t.breakOff > 0 && t.fleeFrom) || fleeing);
+      const isShip = o => !!o && surv.traffic.indexOf(o) >= 0;
+      let chase = null, follow = null;
+      if (!running && !bait) {
+        if (t.angry && me.alive) chase = fake || me;
+        else if (tailing) follow = me;
+        else if (formation) {
+          if (isShip(formation)) chase = formation;
+          else follow = t.leader;
+        } else if (t.markKind === "ship" && t.mark) {
+          if (goal === t.mark) chase = t.mark;
+          else follow = t.client || t.mark;
+        }
+      }
+      const place = !running && !chase && !follow;
+      if (place && Math.hypot(goal.x - t.x, goal.y - t.y) < 220) {
         arrived(t, goal);
-        if (!t.angry && !tailing && !fleeing) t.leg = -t.leg;
-        continue;
+        t.leg = -t.leg;
       }
       /* Three states get no dodge: angry, running from you, and *being hunted by
          somebody else*. The last was missing and it is the one that matters —
@@ -11157,9 +11285,17 @@
          against a wall, against its own arrival radius, against a want it is
          already standing on — and the cheapest correct answer is to make it
          think again rather than to find every way that can happen. */
-      const moved2 = (t.x - (t.wasX === undefined ? t.x : t.wasX)) ** 2 +
-                     (t.y - (t.wasY === undefined ? t.y : t.wasY)) ** 2;
-      if (moved2 > (4 * U) ** 2) { t.wasX = t.x; t.wasY = t.y; t.stuck = 0; }
+      /* Only while it is trying to get somewhere. A ship holding station on
+         its leader, or sitting off your shoulder while you are parked, is
+         standing still on purpose. */
+      /* And a ship it has never looked at starts its count from here. Without
+         that, `wasX` stayed unset, the distance moved read as nought every
+         frame, and every ship in the sector was "stuck" for its first eight
+         seconds of life. So each one threw a random swerve and turned its
+         route round, eight seconds after it was born. */
+      if (t.wasX === undefined) { t.wasX = t.x; t.wasY = t.y; }
+      const moved2 = (t.x - t.wasX) ** 2 + (t.y - t.wasY) ** 2;
+      if (moved2 > (4 * U) ** 2 || !place) { t.wasX = t.x; t.wasY = t.y; t.stuck = 0; }
       else {
         t.stuck = (t.stuck || 0) + dt;
         if (t.stuck > 8) {
@@ -11170,8 +11306,35 @@
         }
       }
 
+      /* An armed ship that has caught what it was chasing circles it at gun
+         range rather than parking on top of it. Its guns fire any way it is
+         facing, so the circle costs it nothing, and it is what a fight looks
+         like from the outside: somebody going round somebody. Which way round
+         is the ship's own, so a pack does not all orbit in step. */
+      let orbit = null;
+      if (chase && armed) {
+        const stand = (360 + 60 * (shipSpec(t.hull).size || 1)) * U;
+        if (Math.hypot(chase.x - t.x, chase.y - t.y) < stand * 1.4) {
+          const bearing = Math.atan2(t.y - chase.y, t.x - chase.x) +
+                          ((t.phase || 0) > Math.PI ? 0.7 : -0.7);
+          orbit = { x: chase.x + Math.cos(bearing) * stand,
+                    y: chase.y + Math.sin(bearing) * stand };
+        }
+      }
+      /* A ship keeping pace with somebody steers for a point a little ahead of
+         its slot, not the slot itself. Aimed at the slot, a hull that turns
+         slower than it closes overshoots, comes about, and spends its life
+         looping round the spot it was meant to be holding. */
+      const velOf = o => o === me ? [me.vx || 0, me.vy || 0]
+        : [(o.vx || 0) + (o.dvx || 0), (o.vy || 0) + (o.dvy || 0)];
+      let carrot = null;
+      if (follow) {
+        const v = velOf(follow);
+        carrot = { x: goal.x + v[0] * 1.2, y: goal.y + v[1] * 1.2 };
+      }
+      const steer = orbit || carrot || goal;
       let aim = (t.angry || fleeing || t.breakOff > 0 || t.hunted > 0)
-                ? goal : dodgeWells(t, goal);
+                ? steer : dodgeWells(t, steer);
       /* And they steer round *you*. Nothing out here made any attempt to avoid
          the player, so a freighter on a route that happens to cross where you are
          parked flew into you and kept flying into you. Anything not actively
@@ -11250,11 +11413,52 @@
       t.vy += Math.sin(t.a) * THRUST * hullSpec.accel * wind * U * dt;
       const hullDamp = Math.exp(-hullSpec.drag * dt);
       t.vx *= hullDamp; t.vy *= hullDamp;
-      const engineSpeed = Math.hypot(t.vx, t.vy);
+      /* ── the throttle ────────────────────────────────────────────────────
+         Every ship out here flew flat out at its cruising speed, all the time,
+         until something stopped it. Ric: bots "should be able to choose to go
+         slower than their controls". So each one picks a speed for what it is
+         doing, and its drive holds it there:
+
+           a place      eases off on the way in, and comes up to a dock slowly
+           following    the pace of whoever it follows, plus enough to close
+                        the gap, so a wing holds formation instead of
+                        overshooting and a tail sits where it means to
+           circling     no slower than what it is circling, or it falls behind
+           otherwise    its cruising speed, as before
+
+         The engine keeps pushing along the nose either way, because that push
+         is what swings the velocity round in a turn. What changes is that
+         anything over the chosen speed is taken off by the same drive running
+         backwards, at the rate that drive can actually manage. */
       const cruise = t.speed * U;
-      if (engineSpeed > cruise) {
-        t.vx *= cruise / engineSpeed;
-        t.vy *= cruise / engineSpeed;
+      const cap = follow ? cruise * 1.15 : cruise;
+      const brake = THRUST * hullSpec.accel * U * 2;
+      let pace = cruise;
+      if (place) {
+        const left = Math.max(0, Math.hypot(goal.x - t.x, goal.y - t.y) - 160);
+        /* A comfortable braking rate rather than everything the drive has:
+           nobody docks at full retro. */
+        const ease = Math.min(brake * 0.25, 90 * U);
+        pace = Math.min(cruise, Math.max(60 * U, Math.sqrt(2 * ease * left)));
+      } else if (follow) {
+        /* Its leader's speed, plus or minus however far it is behind or ahead
+           of its slot *along the way they are going*. Sideways is the
+           steering's job. */
+        const v = velOf(follow), lv = Math.hypot(v[0], v[1]);
+        const gx = goal.x - t.x, gy = goal.y - t.y;
+        const along = lv > 1 ? (gx * v[0] + gy * v[1]) / lv : Math.hypot(gx, gy);
+        // Well out of position, it simply hurries back.
+        pace = Math.hypot(gx, gy) > 260 ? cap
+             : Math.max(lv * 0.5, Math.min(cap, lv + along * 0.6));
+      } else if (orbit) {
+        const v = velOf(chase);
+        pace = Math.min(cruise, Math.max(Math.hypot(v[0], v[1]), cruise * 0.55));
+      }
+      t.pace = pace;
+      const engineSpeed = Math.hypot(t.vx, t.vy);
+      if (engineSpeed > pace) {
+        const k = Math.min(cap, Math.max(pace, engineSpeed - brake * dt)) / engineSpeed;
+        t.vx *= k; t.vy *= k;
       }
       t.x += t.vx * dt;
       t.y += t.vy * dt;
@@ -14802,14 +15006,19 @@
     hunter:   { armed: true,  trades: false, space: 0,   want: "you", hunts: 1 }
   };
 
+  /* Which hulls each job flies, and no two jobs share a family, because the
+     hull is how you tell them apart. A container grid is freight, a row of
+     windows is a trader, jaws or a beam throat is a scavenger, forward guns are
+     the navy, and a needle with barbs on it is a pirate. Pirates flew Jackals
+     and Reprisals too, which made a raider the same shape as the patrol
+     hunting it. They fly what is fast and cheap now. */
   const TRAFFIC_HULLS = {
-    freight:  ["drayman", "coffer", "granary", "windlass", "cathedral"],
-    trader:   ["pannier", "runner", "stride", "carrack", "coffer"],
-    scavenger:["cradle", "ossuary", "windlass", "ironmonger", "carrack"],
+    freight:  ["drayman", "coffer", "granary"],
+    trader:   ["pannier", "wedge", "harrier", "runner"],
+    scavenger:["cradle", "ossuary", "windlass", "ironmonger", "cathedral"],
     escort:   ["lance", "louvre", "spur", "bastion", "reprisal"],
     patrol:   ["lance", "louvre", "spur", "bastion", "reprisal"],
-    pirate:   ["needle", "vane", "mote", "kite", "stride", "louvre", "spur",
-               "reprisal"],
+    pirate:   ["needle", "vane", "mote", "kite", "stride"],
     distress: ["drayman", "coffer", "granary", "pannier", "wedge", "harrier"],
     hunter:   ["lance", "louvre", "spur", "bastion", "reprisal"]
   };
@@ -17541,6 +17750,46 @@
     ctx.restore();
   }
 
+  /* ── what it is, at a glance ─────────────────────────────────────────────
+     The hull says what sort of ship it is. These say what it is *doing*, for the
+     two jobs a hull cannot show on its own:
+
+       pirate   barbs along its whole outline and a ram at the nose. Nobody else
+                in the sector bolts spikes to their ship.
+       patrol   a light bar that flashes red and blue at the wingtips. It is
+                the police, and from any distance it looks like the police.
+
+     An escort's mark is not drawn here. It is the line to the ship it is
+     guarding, drawn in world space by `drawTraffic`. */
+  function drawRoleMarks(t, spec, colour, w) {
+    const role = t.role || t.kind;
+    if (role === "pirate") {
+      glow(colour, 1.2 * w, 0.9, () => {
+        ctx.beginPath();
+        for (const p of spec.art) {
+          const d = Math.hypot(p[0], p[1]);
+          if (d < 5) continue;
+          ctx.moveTo(p[0], p[1]);
+          ctx.lineTo(p[0] + p[0] / d * 4, p[1] + p[1] / d * 4);
+        }
+        const nose = spec.noseX || 12;
+        ctx.moveTo(nose - 2, 2.5); ctx.lineTo(nose + 5, 1.2);
+        ctx.moveTo(nose - 2, -2.5); ctx.lineTo(nose + 5, -1.2);
+        ctx.stroke();
+      });
+    } else if (role === "patrol") {
+      let tip = spec.art[0];
+      for (const p of spec.art) if (p[1] > tip[1]) tip = p;
+      const on = Math.floor(clock * 3 + (t.phase || 0)) % 2;
+      glow(on ? "#ff4d5e" : "#4d8dff", 2.4 * w, 1, () => {
+        ctx.beginPath();
+        const y = on ? tip[1] : -tip[1];
+        ctx.arc(tip[0], y, 1.6, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+    }
+  }
+
   /* Somebody else's ship. Drawn from the same twenty-five outlines you can buy,
      which is most of what makes the roster feel like a world rather than a shop:
      the Drayman that passes you on a route is the Drayman in the hangar.
@@ -17559,43 +17808,15 @@
     ctx.translate(t.x, t.y);
     ctx.rotate(t.a);
     ctx.scale(r / 12, r / 12);
-    glow(hit ? "#fff2bf" : colour, 1.6 * (12 / r), 1, () => {
-      ctx.beginPath();
-      spec.art.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
-      ctx.closePath();
-      ctx.stroke();
-    });
-    if (spec.fins) {
-      glow(colour, 1.2 * (12 / r), 0.75, () => {
-        ctx.beginPath();
-        for (const f of spec.fins) {
-          ctx.moveTo(f[0][0], f[0][1]);
-          ctx.lineTo(f[1][0], f[1][1]);
-        }
-        ctx.stroke();
-      });
-    }
-    // The same hardpoints and plating the player's hull gets. A ship is a ship.
-    if (spec.guns) {
-      glow(colour, 1.1 * (12 / r), 0.85, () => {
-        ctx.beginPath();
-        for (const g of spec.guns) {
-          ctx.moveTo(g[0], g[1]);
-          ctx.lineTo(g[0] + 5, g[1]);
-        }
-        ctx.stroke();
-      });
-    }
-    if (spec.ribs) {
-      glow(colour, 1 * (12 / r), 0.4, () => {
-        ctx.beginPath();
-        for (const b of spec.ribs) {
-          ctx.moveTo(b[0][0], b[0][1]);
-          ctx.lineTo(b[1][0], b[1][1]);
-        }
-        ctx.stroke();
-      });
-    }
+    /* What it is carrying, in its holds. See `podColours`. A convoy's hold is
+       a few dozen units against a hull that could take hundreds, so how full
+       it looks is measured against a working load rather than the hull's
+       capacity. Otherwise every hauler in the sector would look empty. */
+    const counts = {};
+    for (const k of t.cargo || []) counts[k] = (counts[k] || 0) + 1;
+    const load = podColours(spec.pods, counts, (t.cargo || []).length / 30);
+    drawHullArt(spec, hit ? "#fff2bf" : colour, 12 / r, 1, { load });
+    drawRoleMarks(t, spec, colour, 12 / r);
     /* ── what a working engine looks like ───────────────────────────────────
        Your ship trails burning dust and nothing else in the sector did, which is
        most of why other ships read as cut-outs sliding across the screen rather
@@ -17610,13 +17831,28 @@
         for (let k = 0; k < throats; k++) {
           const off = throats === 1 ? 0 : (k - (throats - 1) / 2) * 6.5;
           ctx.beginPath();
-          ctx.moveTo(-9, off);
-          ctx.lineTo(-9 - 4 - burn * 5, off);
+          ctx.moveTo(spec.tailX, off);
+          ctx.lineTo(spec.tailX - 4 - burn * 5, off);
           ctx.stroke();
         }
       });
     }
     ctx.restore();
+
+    /* An escort is the ship on a line to somebody else. Faint, and only while
+       the client is near enough to be the reason it is there, so "those two are
+       guarding that one" is something you can see rather than work out. */
+    if (t.role === "escort" && t.client && surv.traffic.indexOf(t.client) >= 0 &&
+        Math.hypot(t.client.x - t.x, t.client.y - t.y) < 1400 * U) {
+      glow(colour, 1, 0.25, () => {
+        ctx.setLineDash([10, 14]);
+        ctx.beginPath();
+        ctx.moveTo(t.x, t.y);
+        ctx.lineTo(t.client.x, t.client.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+    }
 
     if (t.kind === "distress") {
       const beat = 0.5 + 0.5 * Math.sin(clock * 4 + t.phase);
@@ -18979,7 +19215,8 @@
         ram: !!sh.ram,
         weapon: sh.weapon || null,
         shot: sh.shot, size: sh.size,
-        art: sh.art, fins: sh.fins || null,
+        art: sh.art, fins: sh.fins || null, guns: sh.guns || null,
+        ribs: sh.ribs || null, pods: sh.pods || null, windows: sh.windows || null,
         owned: surv.owned.has(sh.key),
         flying: surv.ship === sh.key,
         afford: surv.cash >= sh.cost
@@ -20873,6 +21110,136 @@
     });
   }
 
+  /* ── one hull, drawn the same way for everybody ───────────────────────────
+     Your ship, somebody else's and the one in the hangar are the same drawing.
+     They were three copies of it, and the copies drifted: the jaws were only
+     ever drawn on yours, so a scavenger's Cradle out there was a Cradle with
+     its jaws missing, and it was the jaws that said what the hull was for.
+
+     Called inside the hull's own space: the caller has translated, rotated and
+     scaled to the twelve-unit outline. `w` undoes that scale for line widths.
+
+       o.load    a colour per hold, filled; a hold with none is an empty frame.
+                 Left out entirely (the hangar), every hold is a frame.
+       o.clawT   how recently the jaws shut, for the one hull that has them
+       o.line    outline weight */
+  function drawHullArt(spec, colour, w, alpha, o) {
+    o = o || {};
+    const segs = list => {
+      ctx.beginPath();
+      for (const f of list) {
+        ctx.moveTo(f[0][0], f[0][1]);
+        ctx.lineTo(f[1][0], f[1][1]);
+      }
+      ctx.stroke();
+    };
+    /* A faint wash inside the outline. A line drawing over a starfield reads as
+       a wire frame; with a little body it reads as a thing, and the holds and
+       windows drawn on it read as being *on* it. */
+    ctx.beginPath();
+    spec.art.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+    ctx.closePath();
+    ctx.globalAlpha = alpha * 0.08;
+    ctx.fillStyle = colour;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // The holds, underneath the outline so the outline reads over them.
+    if (spec.pods) {
+      spec.pods.forEach((b, i) => {
+        const c = o.load && o.load[i];
+        if (c) {
+          ctx.globalAlpha = alpha * 0.34;
+          ctx.fillStyle = c;
+          ctx.fillRect(b[0], b[1], b[2], b[3]);
+          ctx.globalAlpha = 1;
+        }
+        glow(c || colour, (c ? 1.1 : 0.8) * w, alpha * (c ? 0.95 : 0.35), () => {
+          ctx.beginPath();
+          ctx.rect(b[0] + 0.4, b[1] + 0.4, b[2] - 0.8, b[3] - 0.8);
+          ctx.stroke();
+        });
+      });
+    }
+    glow(colour, (o.line || 1.6) * w, alpha, () => {
+      ctx.beginPath();
+      spec.art.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+      ctx.closePath();
+      ctx.stroke();
+    });
+    /* The jaws. Out and open all the time. Ric: "its claw needs to extend out
+       and you should be able to see them until you shoot". So the resting state
+       is the one that reads, and firing is the jaws *closing* on something. They
+       hang off the hull's own nose rather than a fixed distance from the middle. */
+    if (spec.weapon === "claw") {
+      const shut = Math.max(0, (o.clawT || 0) / 0.22);
+      const gape = 13 - shut * 10.5;
+      const base = (spec.noseX || 12) - 3;
+      glow(colour, 1.7 * w, alpha * (0.75 + shut * 0.25), () => {
+        for (const side of [1, -1]) {
+          ctx.beginPath();
+          ctx.moveTo(base - 4, side * 4);
+          ctx.lineTo(base + 7, side * (4 + gape * 0.45));
+          ctx.lineTo(base + 15, side * gape);
+          ctx.stroke();
+          // The inner tooth, so a jaw reads as a jaw and not as a fin.
+          ctx.beginPath();
+          ctx.moveTo(base + 7, side * (4 + gape * 0.45));
+          ctx.lineTo(base + 12, side * (gape * 0.35));
+          ctx.stroke();
+        }
+      });
+    }
+    // Panels, spars, masts, fins: loose strokes over the outline.
+    if (spec.fins) glow(colour, 1.3 * w, alpha * 0.85, () => segs(spec.fins));
+    /* Hardpoints: a barrel pointing forward from each, so a four-gun hull looks
+       like one from across the screen. The third number is a longer barrel. */
+    if (spec.guns) {
+      glow(colour, 1.2 * w, alpha * 0.9, () => {
+        ctx.beginPath();
+        for (const g of spec.guns) {
+          ctx.moveTo(g[0], g[1]);
+          ctx.lineTo(g[0] + (g[2] || 5), g[1]);
+        }
+        ctx.stroke();
+      });
+    }
+    if (spec.ribs) glow(colour, 1 * w, alpha * 0.45, () => segs(spec.ribs));
+    if (spec.windows) {
+      glow(colour, 1 * w, alpha * 0.8, () => {
+        ctx.beginPath();
+        for (const p of spec.windows) {
+          ctx.moveTo(p[0] + 0.7, p[1]);
+          ctx.arc(p[0], p[1], 0.7, 0, Math.PI * 2);
+        }
+        ctx.stroke();
+      });
+    }
+  }
+
+  /* Which holds are full, and of what. `amounts` is material key → how much;
+     `fill` is how full the ship is, nought to one. The holds fill from the
+     front, and the dearest material takes the first of them, so a hauler with
+     a little iridium in it shows violet before anything else. That is the
+     question a pirate is asking. */
+  function podColours(pods, amounts, fill) {
+    if (!pods || !pods.length || fill <= 0) return [];
+    const have = MATERIALS.filter(m => (amounts[m.key] || 0) > 0)
+                          .sort((a, b) => b.value - a.value);
+    const total = have.reduce((t, m) => t + amounts[m.key], 0);
+    if (!total) return [];
+    const n = Math.max(1, Math.round(pods.length * Math.min(1, fill)));
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      let at = (i + 0.5) / n * total, pick = have[have.length - 1];
+      for (const m of have) {
+        at -= amounts[m.key];
+        if (at <= 0) { pick = m; break; }
+      }
+      out.push(pick.colour);
+    }
+    return out;
+  }
+
   function drawShip(s) {
     if (!s.alive) return;
     if (mode.campaign && s.kind !== "fighter") {
@@ -20906,78 +21273,19 @@
     ctx.translate(s.x, s.y);
     ctx.rotate(s.a);
     ctx.scale(r / 12, r / 12);
-    glow(s.colour, 1.7 * (12 / r), alpha, () => {
-      ctx.beginPath();
-      const art = spec ? spec.art : [[14, 0], [-10, 8], [-6, 0], [-10, -8]];
-      art.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
-      ctx.closePath();
-      ctx.stroke();
-    });
-    /* The jaws. Drawn in the hull's own 12-unit space like everything else
-       here, so they scale with the ship rather than needing their own arithmetic
-       — and drawn closed at rest, which is what makes a utility hull readable as
-       a utility hull from across a field before it has swung at anything. They
-       open on the swing and shut again over a fifth of a second. */
-    if (spec && spec.weapon === "claw") {
-      /* Out, and open, all the time — Ric: "its claw needs to extend out and
-         you should be able to see them until you shoot". So the resting state
-         is the one that reads, and firing is the jaws *closing* on something
-         rather than opening. It was the other way round, which meant the thing
-         that names the hull was invisible until the moment you used it.
-
-         Reached off the hull's own nose so it hangs in front of whatever it is
-         bolted to instead of at a fixed distance from the middle. */
-      const shut = Math.max(0, (s.clawT || 0) / 0.22);
-      const gape = 13 - shut * 10.5;
-      const base = (spec.noseX || 12) - 3;
-      glow(s.colour, 1.7 * (12 / r), alpha * (0.75 + shut * 0.25), () => {
-        for (const side of [1, -1]) {
-          ctx.beginPath();
-          ctx.moveTo(base - 4, side * 4);
-          ctx.lineTo(base + 7, side * (4 + gape * 0.45));
-          ctx.lineTo(base + 15, side * gape);
-          ctx.stroke();
-          // The inner tooth, so a jaw reads as a jaw and not as a fin.
-          ctx.beginPath();
-          ctx.moveTo(base + 7, side * (4 + gape * 0.45));
-          ctx.lineTo(base + 12, side * (gape * 0.35));
-          ctx.stroke();
-        }
-      });
-    }
-    // Loose strokes over the outline: panels, spars, the ribs of a hold. This is
-    // what stops eight wide polygons reading as one wide polygon.
-    if (spec && spec.fins) {
-      glow(s.colour, 1.3 * (12 / r), alpha * 0.85, () => {
+    if (spec) {
+      /* Your own holds fill with what you are carrying, the same way a hauler's
+         do out there. */
+      const load = s.human && surv
+        ? podColours(spec.pods, surv.hold, holdUsed() / Math.max(1, holdCap()))
+        : null;
+      drawHullArt(spec, s.colour, 12 / r, alpha,
+                  { line: 1.7, clawT: s.clawT, load });
+    } else {
+      glow(s.colour, 1.7 * (12 / r), alpha, () => {
         ctx.beginPath();
-        for (const f of spec.fins) {
-          ctx.moveTo(f[0][0], f[0][1]);
-          ctx.lineTo(f[1][0], f[1][1]);
-        }
-        ctx.stroke();
-      });
-    }
-    /* Hardpoints and plating. See the roster: a gun is a stub of barrel at a
-       point on the hull and a rib is a line across the inside of it. A two-gun
-       ship should look like a two-gun ship from across the screen, and a capital
-       should read as a structure rather than as a very large arrowhead. */
-    if (spec && spec.guns) {
-      glow(s.colour, 1.1 * (12 / r), alpha * 0.9, () => {
-        ctx.beginPath();
-        for (const g of spec.guns) {
-          ctx.moveTo(g[0], g[1]);
-          ctx.lineTo(g[0] + 5, g[1]);
-        }
-        ctx.stroke();
-      });
-    }
-    if (spec && spec.ribs) {
-      glow(s.colour, 1 * (12 / r), alpha * 0.45, () => {
-        ctx.beginPath();
-        for (const b of spec.ribs) {
-          ctx.moveTo(b[0][0], b[0][1]);
-          ctx.lineTo(b[1][0], b[1][1]);
-        }
+        ctx.moveTo(14, 0); ctx.lineTo(-10, 8); ctx.lineTo(-6, 0); ctx.lineTo(-10, -8);
+        ctx.closePath();
         ctx.stroke();
       });
     }
@@ -25571,7 +25879,7 @@
          laid out for the machine the browser guessed at. */
       get touchOnly() { return thumbInput(); },
       reduceMotion,
-      text, glow, tapButton, shipPip,
+      text, glow, tapButton, shipPip, drawHullArt,
       addTap: rect => pushTap(rect)
     });
   }
