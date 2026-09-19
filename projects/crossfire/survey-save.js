@@ -230,7 +230,7 @@ function freshBook() {
                   hold: freshHold(),
                   opened: [], stripped: [], lifted: [], seen: [],
                   carrying: [], built: [], pins: [], known: [],
-                  slots: [], store: {}, battleAge: {}, memorials: [],
+                  slots: [], store: {}, battleAge: {}, memorials: [], bossesDown: [],
                   dropped: [], coilFired: false,
                   friends: [], grudges: [], claims: [], mapped: [], war: null,
            alert: { water: { taught: 0 }, food: { taught: 0 } } };
@@ -426,6 +426,8 @@ function validateSurveyBook(b) {
         return out;
       })(),
       memorials: strs(b.memorials).slice(0, 400),
+      // Whose skies are empty: a lair id is "L" and its square.
+      bossesDown: strs(b.bossesDown).filter(k => /^L-?\d+,-?\d+$/.test(k)).slice(0, 400),
       /* Territory. `claims` is the cells that have changed hands, as
          ["cx,cy", power-or-""]; `mapped` is what the chart saw, as
          ["cx,cy", { r: biome, o: owner-or-kind }]. Both checked key by key

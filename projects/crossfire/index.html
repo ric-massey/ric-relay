@@ -3768,7 +3768,7 @@
     for (let i = (surv ? surv.traffic.length : 0) - 1; i >= 0; i--) {
       const t = surv.traffic[i];
       const dx = sepX(t.x, ship.x), dy = sepY(t.y, ship.y);
-      const rr = 22 * U * (shipSpec(t.hull).size || 1);
+      const rr = hullR(t);
       if (Math.hypot(dx, dy) > reach + rr) continue;
       let off = Math.atan2(dy, dx) - ship.a;
       while (off > Math.PI) off -= Math.PI * 2;
@@ -7826,6 +7826,7 @@
         // stays remembered.
         battleAge: surv.battleAge,
         memorials: [...surv.memorials],
+        bossesDown: [...surv.bossesDown],
         known: [...surv.known.values()],
         // Who holds the sky where it has moved, and what your chart saw of it.
         claims: [...surv.claims],
@@ -10202,6 +10203,7 @@
       market: {},
       battles: [], battleAge: (carried && book.battleAge) || {},
       memorials: new Set(carried && book.memorials ? book.memorials : []),
+      bossesDown: new Set(carried && book.bossesDown ? book.bossesDown : []),
       /* Who holds the sky, as far as it has moved. The seed lays the map out;
          this is only the cells that have changed hands since, keyed "cx,cy",
          with "" for a cell nobody holds any more. See `WORLD.holderOf`. */
@@ -10921,6 +10923,13 @@
     /* And the borders of where you are, if the chart did not have them. Said
        once, in the place's own words, so a scan in new sky is also the moment
        you learn what the sky is called. */
+    // A boss's sky the pulse reached goes on the chart, and is said.
+    {
+      const L = lairNear(me.x, me.y, reach);
+      if (L && noteKnown("boss", L.x, L.y, L.name, L.r)) {
+        chatter("The scan found " + L.name + "'s sky.", BOSS_COLOUR);
+      }
+    }
     if (scanBorders() > 0) {
       const here = placeAt(me.x, me.y);
       chatter("Charted the edges of " + here.biome.name + " and " +
@@ -10991,6 +11000,113 @@
              y: lead.y - s2 * slot.back + c * slot.side };
   }
 
+  /* ═══ WHO IS FLYING IT ═══════════════════════════════════════════════════
+     Ric: "make it so the ones with better ships are better flyers". A hull
+     costs what it costs because somebody could afford it, and somebody who can
+     afford a Jackal has been doing this a while. So a pilot's skill comes from
+     the price of the hull, on a log scale (a Needle's pilot is green, a Jackal's
+     is an ace), give or take a tenth for the person.
+
+     What skill buys, all of it visible from the cockpit:
+
+       aim         how much of your motion it leads, and how steady its hand is
+       cadence     how quickly it gets the next round off
+       speed       how hard it pushes its hull in a fight or a chase; a novice
+                   flies a fight at cruise
+       range       an ace holds gun range; a novice closes to knife range
+       weave       an ace jinks while it fights, so it is hard to hold a sight on
+       nerve       an ace breaks off while it still has something to save and
+                   comes back later; a novice fights until it is nearly dead
+
+     What skill does not buy is handling. A hull turns and accelerates the same
+     in anybody's hands, yours included, which is `samehull`'s rule; a better
+     pilot makes better choices with the same ship.
+
+     Worked out once per ship from its id rather than rolled, so the sector's
+     generation, and every save's fingerprint, is untouched. */
+  /* ── how a good pilot fights ──────────────────────────────────────────────
+     Ric, on the first boss: "i dont want him to go in a perfect circle i want
+     him to be a good fighter". Circling at gun range is what a novice does, and
+     it is a target you can learn in one lap. A good pilot (skill 0.6 and up,
+     and every boss) flies passes instead:
+
+       run      straight at you, guns on, to close range
+       break    peel off past you and extend, out of your guns, for a second
+                or two, then come round for another run
+       circle   now and then a short turn at gun range instead, so the rhythm
+                is not a rhythm
+       evade    when your nose lines up on it, close enough to matter, it
+                breaks sideways out of your line of fire, then cannot do that
+                again for a couple of seconds
+
+     A novice still circles. That is the difference between the two, and it
+     is visible from the cockpit. */
+  function dogfight(t, foe, d, stand, dt) {
+    const me = ships[0];
+    const m = t.move || (t.move = { kind: "run", left: 3, side: 1 });
+    m.left -= dt;
+    t.evadeCool = Math.max(0, (t.evadeCool || 0) - dt);
+    if (foe === me && me.alive && d < 1400 * U && t.evadeCool <= 0 && m.kind !== "evade") {
+      let off = Math.atan2(t.y - me.y, t.x - me.x) - me.a;
+      while (off > Math.PI) off -= Math.PI * 2;
+      while (off < -Math.PI) off += Math.PI * 2;
+      if (Math.abs(off) < 0.2) {
+        m.kind = "evade"; m.left = 0.5 + Math.random() * 0.5;
+        m.side = off >= 0 ? 1 : -1;
+        t.evadeCool = 2 + Math.random() * 1.5;
+      }
+    }
+    if (m.kind === "run" && d < stand * 0.6) m.left = 0;
+    if (m.left <= 0) {
+      if (m.kind === "run") {
+        m.kind = Math.random() < 0.72 ? "break" : "circle";
+        m.left = m.kind === "break" ? 1.1 + Math.random() * 1.1 : 1.8 + Math.random() * 1.6;
+        m.side = Math.random() < 0.5 ? 1 : -1;
+      } else {
+        m.kind = "run"; m.left = 4;
+      }
+    }
+    // Too far off to be fighting: whatever it was doing, it comes back in.
+    if (d > stand * 2.6 && m.kind !== "run") { m.kind = "run"; m.left = 4; }
+    const toFoe = Math.atan2(foe.y - t.y, foe.x - t.x);
+    const reach = 1000 * U;
+    switch (m.kind) {
+      case "evade": {
+        const a = me.a + m.side * Math.PI / 2;
+        return { x: t.x + Math.cos(a) * reach, y: t.y + Math.sin(a) * reach };
+      }
+      case "break": {
+        const a = toFoe + Math.PI + m.side * 0.6;
+        return { x: t.x + Math.cos(a) * reach, y: t.y + Math.sin(a) * reach };
+      }
+      case "circle": {
+        const b = Math.atan2(t.y - foe.y, t.x - foe.x) + m.side * 0.7;
+        return { x: foe.x + Math.cos(b) * stand, y: foe.y + Math.sin(b) * stand, circle: true };
+      }
+      default: {
+        // At where it is going, so the guns come on as it closes.
+        const fv = foe === me ? [me.vx || 0, me.vy || 0] : [foe.vx || 0, foe.vy || 0];
+        return { x: foe.x + fv[0] * 0.5, y: foe.y + fv[1] * 0.5 };
+      }
+    }
+  }
+
+  const SKILL_LO = Math.log(900), SKILL_HI = Math.log(169000);
+  function pilotSkill(t) {
+    if (t.skill == null) {
+      const cost = shipSpec(t.hull).cost || 0;
+      const base = Math.max(0, Math.min(1,
+        (Math.log(cost + 900) - SKILL_LO) / (SKILL_HI - SKILL_LO)));
+      let h = 7;
+      for (const ch of String(t.id || (Math.round(t.x) + ":" + Math.round(t.y)))) {
+        h = (h * 31 + ch.charCodeAt(0)) | 0;
+      }
+      const person = ((h >>> 0) % 1000) / 1000 * 0.2 - 0.1;
+      t.skill = Math.max(0, Math.min(1, base + person)) + (t.boss ? 0.4 : 0);
+    }
+    return t.skill;
+  }
+
   function surveyTraffic(dt) {
     const me = ships[0];
     const byId = new Map();
@@ -11042,7 +11158,7 @@
       if (t.adrift) {
         t.doom -= dt;
         // Drifting means drifting. Whatever gravity is doing to it still is.
-        solidBounce(t, 22 * U * (shipSpec(t.hull).size || 1));
+        solidBounce(t, hullR(t));
         if (!t.pleaded && me.alive &&
             dist2(t.x, t.y, me.x, me.y) < TRAFFIC_TALK ** 2) {
           t.pleaded = true;
@@ -11069,7 +11185,7 @@
           // Drifting, not flying: it is not going anywhere under its own power.
           t.x += Math.cos(t.a) * 14 * U * dt;
           t.y += Math.sin(t.a) * 14 * U * dt;
-          solidBounce(t, 22 * U * (shipSpec(t.hull).size || 1));
+          solidBounce(t, hullR(t));
           if (!t.called && dist2(me.x, me.y, t.x, t.y) < TRAFFIC_TALK ** 2) {
             t.called = true;
             chatter("Distress call — they are being taken apart out here.",
@@ -11129,6 +11245,7 @@
          It carries its momentum and its gravity, because both are things that
          happen *to* a ship rather than things it does — a hauler EMP'd over a
          well still falls into the well, which is a consequence worth having. */
+      const skill = pilotSkill(t);
       if (t.stun > 0) {
         t.cool = Math.max(t.cool || 0, 0.4);
         /* It coasts on what it had. `|| 0` because a ship can be caught by a
@@ -11137,7 +11254,7 @@
         t.vx = (t.vx || 0) * Math.exp(-0.35 * dt);
         t.vy = (t.vy || 0) * Math.exp(-0.35 * dt);
         t.x += t.vx * dt; t.y += t.vy * dt;
-        if (solidBounce(t, 22 * U * (shipSpec(t.hull).size || 1))) {
+        if (solidBounce(t, hullR(t))) {
           bounceOff(t, 1.1);
         }
         continue;
@@ -11207,13 +11324,19 @@
       if (t.hunted > 0 && !armed) t.speed = t.baseSpeed * 1.3;
       else if (t.baseSpeed) t.speed = t.baseSpeed;
       if (me.alive && !unseen && near < 2600 * U && t.role !== "hunter") {
-        if (armed && shipHostile(t)) t.angry = true;
+        const lord = t.boss ? t : t.leader && t.leader.boss ? t.leader : null;
+        if (armed && (lord ? (t.angry || bossHostile(lord)) : shipHostile(t))) t.angry = true;
         else if (armed && repOf(t.faction) <= -30) t.shadow = true;
 
         /* Personal space. Some of them want room and will say so once before
            they do anything about it — which is the difference between a warning
            and an ambush, and the reason the bubble is worth having at all. */
-        if (t.space && near < t.space * U && !t.angry) {
+        /* Only if it is *you* closing. A convoy that flew past you while you
+           sat still used to warn you off and then open fire, for being where
+           it had chosen to fly. */
+        const closing = ((me.vx - (t.vx || 0)) * (t.x - me.x) +
+                         (me.vy - (t.vy || 0)) * (t.y - me.y)) / Math.max(1, near);
+        if (t.space && near < t.space * U && !t.angry && closing > 40 * U) {
           if (!t.warned) {
             t.warned = 1;
             chatter(factionOf(t.faction).short + " — that is close enough.",
@@ -11370,10 +11493,15 @@
          facing, so the circle costs it nothing, and it is what a fight looks
          like from the outside: somebody going round somebody. Which way round
          is the ship's own, so a pack does not all orbit in step. */
-      let orbit = null;
+      let orbit = null, move = null;
       if (chase && armed) {
-        const stand = (360 + 60 * (shipSpec(t.hull).size || 1)) * U;
-        if (Math.hypot(chase.x - t.x, chase.y - t.y) < stand * 1.4) {
+        const stand = (360 + 60 * (shipSpec(t.hull).size || 1) * (t.scale || 1)) * U *
+                      Math.min(1.1, 0.65 + 0.35 * skill);
+        const cd = Math.hypot(chase.x - t.x, chase.y - t.y);
+        if (skill >= 0.6) {
+          move = dogfight(t, chase, cd, stand, dt);
+          if (move.circle) orbit = move;
+        } else if (cd < stand * 1.4) {
           const bearing = Math.atan2(t.y - chase.y, t.x - chase.x) +
                           ((t.phase || 0) > Math.PI ? 0.7 : -0.7);
           orbit = { x: chase.x + Math.cos(bearing) * stand,
@@ -11391,7 +11519,14 @@
         const v = velOf(follow);
         carrot = { x: goal.x + v[0] * 1.2, y: goal.y + v[1] * 1.2 };
       }
-      const steer = orbit || carrot || goal;
+      let steer = move || orbit || carrot || goal;
+      /* An ace in a fight does not fly a clean line. It jinks across the line
+         to whatever it is fighting, on its own rhythm. */
+      if (chase && armed && skill > 0.35) {
+        const across = Math.atan2(chase.y - t.y, chase.x - t.x) + Math.PI / 2;
+        const jink = Math.sin(clock * 1.9 + (t.phase || 0) * 3) * 260 * U * (skill - 0.35);
+        steer = { x: steer.x + Math.cos(across) * jink, y: steer.y + Math.sin(across) * jink };
+      }
       let aim = (t.angry || fleeing || t.breakOff > 0 || t.hunted > 0)
                 ? steer : dodgeWells(t, steer);
       /* And they steer round *you*. Nothing out here made any attempt to avoid
@@ -11489,7 +11624,12 @@
          is what swings the velocity round in a turn. What changes is that
          anything over the chosen speed is taken off by the same drive running
          backwards, at the rate that drive can actually manage. */
-      const cruise = t.speed * U;
+      /* In a fight or a chase, a good pilot pushes the hull. A novice flies
+         everything at its cruising speed. */
+      const pushed = MAX_SPEED * hullSpec.speed * Math.min(1, 0.72 + 0.28 * skill);
+      // A ship with no cruising speed is not under way, and is not pushed.
+      const cruise = ((chase || running) && t.speed > 0
+        ? Math.max(t.speed, pushed) : t.speed) * U;
       const cap = follow ? cruise * 1.15 : cruise;
       const brake = THRUST * hullSpec.accel * U * 2;
       let pace = cruise;
@@ -11512,6 +11652,8 @@
       } else if (orbit) {
         const v = velOf(chase);
         pace = Math.min(cruise, Math.max(Math.hypot(v[0], v[1]), cruise * 0.55));
+      } else if (move) {
+        pace = cruise;
       }
       t.pace = pace;
       const engineSpeed = Math.hypot(t.vx, t.vy);
@@ -11525,7 +11667,7 @@
          the velocity goes with the push: a ship now *has* one, so without this
          it keeps driving into the surface it was just moved off and grinds
          along it until the eight-second watchdog notices. */
-      if (solidBounce(t, 22 * U * size)) bounceOff(t, 1.3);
+      if (solidBounce(t, hullR(t))) bounceOff(t, 1.3);
 
       /* ── a hull is a hull ───────────────────────────────────────────────
          You could fly straight through every ship in the sector. Ships bounce off
@@ -11537,8 +11679,8 @@
 
          The same shove the arena uses, with the mass on the bigger hull: you
          bounce off a hauler and a hauler barely notices. */
-      if (me.alive && near < (22 * U * (shipSpec(t.hull).size || 1)) + shipRadius()) {
-        const min = (22 * U * (shipSpec(t.hull).size || 1)) + shipRadius();
+      if (me.alive && near < hullR(t) + shipRadius()) {
+        const min = hullR(t) + shipRadius();
         /* And it costs you. Two hulls meeting at a closing speed is the oldest
            hazard in this game and it was the one thing out here that could touch
            you and did not — you could ram a freighter all afternoon. Only a real
@@ -11600,10 +11742,17 @@
              what makes outrunning return fire a real thing a fast ship can do
              — and what stops it working on anything that is actually armed. */
           const SHOT_V = BOT_BULLET_SPD * (shipSpec(t.hull).shot || 1) * U;
+          /* Timed from the muzzle, which is where the round starts now, not
+             from the middle of the ship. From the middle, every lead came out a
+             few per cent long. */
+          const noseR = (shipSpec(t.hull).noseX || 12) * (shipSpec(t.hull).size || 1) *
+                        (t.scale || 1) * U;
           const leadOf = (o, ovx, ovy) => {
             const dd = Math.hypot(o.x - t.x, o.y - t.y);
-            const tt = dd / SHOT_V;
-            return { x: o.x + (ovx || 0) * tt, y: o.y + (ovy || 0) * tt };
+            const tt = Math.max(0, dd - noseR) / SHOT_V;
+            // Relative to the shooter: its rounds carry its own velocity.
+            return { x: o.x + ((ovx || 0) - (t.vx || 0)) * tt,
+                     y: o.y + ((ovy || 0) - (t.vy || 0)) * tt };
           };
           /* A ship's real velocity, not the one implied by its nose. Since a
              hull drifts through a turn, the two disagree for as long as the
@@ -11680,7 +11829,7 @@
               for (const o of surv.traffic) {
                 if (o === t || atWar(t.faction, o.faction)) continue;
                 if (o.faction === "pirate" && t.faction !== "pirate") continue;
-                const rr = 22 * U * (shipSpec(o.hull).size || 1);
+                const rr = hullR(o);
                 if (dist2(px, py, o.x, o.y) < rr * rr) { blocked = true; break; }
               }
             }
@@ -11700,24 +11849,45 @@
             while (off > Math.PI) off -= Math.PI * 2;
             while (off < -Math.PI) off += Math.PI * 2;
             if (Math.abs(off) > Math.PI / 2) { t.cool = 0.2; continue; }
-            t.cool = (t.angry ? 0.42 : 0.5) / guns.rate;
+            t.cool = (t.angry ? 0.42 : 0.5) / guns.rate *
+                     Math.max(0.7, 1.2 - 0.4 * skill);
             /* Out of a barrel: the one on the side the target is, and the pair
                take turns, so a two-gun hull on a straight run fires left,
                right, left. */
-            const hullR = SHIP_R * U * (guns.size || 1);
+            const drawnR = SHIP_R * U * (guns.size || 1) * (t.scale || 1);
             const side = off >= 0 ? 1 : -1;
             const barrels = guns.muzzles.filter(m => m[1] * side >= 0);
             t.gunIx = (t.gunIx || 0) + 1;
             const gun = muzzleAt({ muzzles: barrels.length ? barrels : guns.muzzles },
-                                 t.x, t.y, t.a, hullR, t.gunIx);
+                                 t.x, t.y, t.a, drawnR, t.gunIx);
+            /* Aimed from the barrel, not from the middle of the ship: a wing
+               gun six units out that fires along a line drawn from the middle
+               misses by six units, which on a small hull is all of it.
+
+               Everybody leads; what skill buys is a steady hand. A novice's
+               round goes up to six degrees either side of the line, an ace's
+               down it. */
+            const fa = Math.atan2(ty - gun.y, tx - gun.x) +
+                       (Math.random() - 0.5) * 0.2 * Math.max(0, 1 - skill);
+            // A boss fires three at once, fanned, so it is a spray to fly round.
+            if (t.boss) {
+              for (const fan of [-0.07, 0.07]) {
+                surv.shots.push({
+                  x: gun.x, y: gun.y,
+                  vx: Math.cos(fa + fan) * SHOT_V + (t.vx || 0),
+                  vy: Math.sin(fa + fan) * SHOT_V + (t.vy || 0),
+                  life: 2.2, dmg: guns.dmg, friendly: !live, from: t
+                });
+              }
+            }
             surv.shots.push({
               x: gun.x, y: gun.y,
               /* Carrying the ship's own velocity, the way yours do. A ship
                  now has one — see the traffic step — and a round fired from a
                  hull closing on you should arrive faster than one fired from a
                  hull backing away. */
-              vx: Math.cos(a) * SHOT_V + (t.vx || 0),
-              vy: Math.sin(a) * SHOT_V + (t.vy || 0),
+              vx: Math.cos(fa) * SHOT_V + (t.vx || 0),
+              vy: Math.sin(fa) * SHOT_V + (t.vy || 0),
               // `dmg`, so a rock takes the same point from them it takes from you.
               life: 2.2, dmg: guns.dmg, friendly: !live, from: t,
               /* And a beam in somebody else's hands is a beam. An industrial
@@ -11808,6 +11978,16 @@
     !(st.faction && st.faction !== "free" && atWar(faction, st.faction));
   const ownDock = (st, faction) => !!st.faction && st.faction === faction;
 
+  /* Off its client's shoulder: its own convoy slot if it has one, and
+     otherwise a length behind. */
+  function guardSpot(t) {
+    const c = t.client;
+    const sl = t.slot || { back: 260 * U, side: 0 };
+    const ca = Math.cos(c.a), sa = Math.sin(c.a);
+    return { x: c.x - ca * sl.back - sa * sl.side,
+             y: c.y - sa * sl.back + ca * sl.side };
+  }
+
   function wantOf(t, dt) {
     t.think = (t.think || 0) - dt;
     const spec = ROLES[t.role || t.kind] || ROLES.freight;
@@ -11820,7 +12000,19 @@
                  : true;
       if (!live) { t.mark = null; t.markKind = ""; t.think = 0; }
     }
-    if (t.think > 0 && t.mark) return t.mark;
+    /* An escort's mark is its client, but where it wants to *be* is off the
+       client's shoulder. Handing back the client itself on every frame after
+       the first made the escort chase its own client, and circle it at gun
+       range like something that meant it harm. */
+    /* A boss keeps to its own sky. Whatever it wants, it does not follow it
+       out of the disc. */
+    if (t.lair && Math.hypot(t.x - t.lair.x, t.y - t.lair.y) > t.lair.r * 0.6) {
+      t.mark = null; t.markKind = "";
+      return { x: t.lair.x, y: t.lair.y };
+    }
+    if (t.think > 0 && t.mark) {
+      return t.markKind === "ship" && t.mark === t.client ? guardSpot(t) : t.mark;
+    }
 
     t.think = 1.4 + Math.random() * 1.6;
 
@@ -11832,7 +12024,12 @@
         let best = null, score = -1;
         for (const st of surv.stations) {
           const d = Math.hypot(st.x - t.x, st.y - t.y);
-          if (d < 400 || !dockableBy(st, t.faction)) continue;
+          /* Not the dock it has just left. This was "not anything within 400",
+             which is also every station a hauler is coming in to: at 400 out it
+             lost interest in the station it was docking at, turned away, came
+             back in range, and turned back. Haulers circled stations at 400
+             for good. */
+          if (st === t.lastDock || !dockableBy(st, t.faction)) continue;
           // Its own side's docks first, all else being close.
           let s2 = 1 / (1 + d / 9000) + (ownDock(st, t.faction) ? 0.35 : 0);
           for (const key of t.cargo) s2 += shortageOf(st, key) * 1.6;
@@ -11872,20 +12069,26 @@
         /* Its client: the nearest unarmed ship of its own flag. An escort with
            nobody to escort goes back to walking its line, which is what an escort
            with nobody to escort would do. */
-        let best = null, bd = 6000 * U;
-        for (const o of surv.traffic) {
-          if (o === t || o.faction !== t.faction) continue;
-          const r = ROLES[o.role || o.kind];
-          if (!r || r.armed) continue;
-          const d = Math.hypot(o.x - t.x, o.y - t.y);
-          if (d < bd) { bd = d; best = o; }
+        /* The hauler it came out with, first. Nearest of its own flag only
+           when it has no convoy, or the convoy is gone: an escort that swapped
+           to whichever hauler happened to pass nearer left its own unguarded. */
+        const lead = t.leader && surv.traffic.indexOf(t.leader) >= 0 &&
+                     ROLES[t.leader.role || t.leader.kind] &&
+                     !ROLES[t.leader.role || t.leader.kind].armed ? t.leader : null;
+        let best = lead, bd = 6000 * U;
+        if (!best) {
+          for (const o of surv.traffic) {
+            if (o === t || o.faction !== t.faction) continue;
+            const r = ROLES[o.role || o.kind];
+            if (!r || r.armed) continue;
+            const d = Math.hypot(o.x - t.x, o.y - t.y);
+            if (d < bd) { bd = d; best = o; }
+          }
         }
         if (best) {
           t.mark = best; t.markKind = "ship";
           t.client = best;
-          // Off its shoulder rather than on top of it.
-          return { x: best.x - Math.cos(best.a) * 260 * U,
-                   y: best.y - Math.sin(best.a) * 260 * U };
+          return guardSpot(t);
         }
         break;
       }
@@ -11981,12 +12184,29 @@
      is where the economy hears about any of it. */
   function arrived(t, goal) {
     const spec = ROLES[t.role || t.kind] || ROLES.freight;
+    /* Docked with an empty hold: it loads, and so does its convoy, and the
+       next want is somewhere else. Haulers only ever had what they were born
+       with, so every hauler that had delivered once flew empty from then on,
+       and after a while a sector's lanes were full of ships not worth robbing. */
+    if (spec.want === "deliver" && t.markKind === "station" && !t.cargo.length) {
+      const dock = t.mark;
+      for (const o of surv.traffic) {
+        if (o !== t && o.leadId !== t.id) continue;
+        if (!o.cargo.length && !(ROLES[o.role || o.kind] || {}).armed) {
+          o.cargo = trafficCargo(o.role || o.kind, depthAt(dock.x, dock.y), Math.random);
+        }
+        o.lastDock = dock;
+      }
+      t.think = 0;
+      return;
+    }
     if (spec.want === "deliver" && t.markKind === "station" && t.cargo.length) {
       /* A convoy got through. Whatever it was carrying, this station is that much
          less short of — which is 6.2's good news, and the only way a shortage
          ever eases apart from time. */
       for (const key of t.cargo) moveMarket(t.mark, key, -0.3);
       t.cargo = [];
+      t.lastDock = t.mark;
       t.delivered = (t.delivered || 0) + 1;
       // Written down, not announced: a shortage easing somewhere is a fact about
       // a price, and a price is something you look up rather than something that
@@ -12049,17 +12269,39 @@
   function hurtBySomebody(t, by) {
     if (!t) return;
     const armed = ROLES[t.role || t.kind] && ROLES[t.role || t.kind].armed;
-    if (by && by !== t && surv.traffic.indexOf(by) >= 0 && armed) {
+    /* Only at an enemy. A round from its own side, or from anybody it is not
+       at war with, was a stray, and a stray is not a declaration of war. It
+       used to be: a third of the patrols in a busy sector ended up fighting
+       their own wingmates after one of them clipped another, and the fight
+       spread, because every hit it landed back was a stray the other way.
+       Somebody who is actually coming for it is an enemy whatever its flag. */
+    const foe = by && (atWar(t.faction, by.faction) || by.angryAt === t ||
+                       (by.markKind === "ship" && by.mark === t));
+    if (by && by !== t && surv.traffic.indexOf(by) >= 0 && armed && foe) {
       t.angryAt = by;
       t.mark = by; t.markKind = "ship"; t.think = 3;
       t.angry = false;              // it has a nearer enemy than you now
     }
-    if (t.maxHp && t.hp > 0 && t.hp <= t.maxHp * 0.34) {
+    /* When it has had enough. A novice fights to a fifth of its hull; an ace
+       leaves at close to half, while it still has a ship to come back in. A
+       boss does not leave at all. */
+    const nerve = 0.2 + 0.25 * Math.min(1, pilotSkill(t));
+    if ((!t.boss || t.boss === "queen") && t.maxHp && t.hp > 0 &&
+        t.hp <= t.maxHp * nerve) {
       t.breakOff = BREAK_OFF;
       t.fleeFrom = by && by !== t
         ? { x: by.x, y: by.y }
         : { x: ships[0].x, y: ships[0].y };
     }
+  }
+
+  /* How big a ship out here is, to a round, a rock or another hull: the
+     circle its own outline makes, the same one that stops yours. It was a flat
+     22 units a size, which is three times the drawn hull of a Lance, so rounds
+     hit empty space beside the small ships and a Needle was a barn door. */
+  function hullR(t) {
+    const sp = shipSpec(t.hull);
+    return (sp.hitR || 9) * U * (sp.size || 1) * (t.scale || 1);
   }
 
   function killTraffic(i, byYou, swallowed) {
@@ -12114,6 +12356,7 @@
        event and a single kill is not. */
     if (t.id) surv.goneTraffic.add(t.id);
     surv.traffic.splice(i, 1);
+    if (t.boss) bossDown(t, byYou);
     // Its attackers have nothing left to attack.
     for (const d of surv.drones) if (d.prey === t) d.prey = null;
     if (byYou) {
@@ -13993,7 +14236,7 @@
         for (let k = surv.traffic.length - 1; k >= 0 && !spent; k--) {
           const o = surv.traffic[k];
           if (o === b.from) continue;     // a ship does not shoot itself in the nose
-          const rr = 22 * U * (shipSpec(o.hull).size || 1);
+          const rr = hullR(o);
           if (dist2(b.x, b.y, o.x, o.y) > rr * rr) continue;
           spent = true;
           surv.shots.splice(i, 1);
@@ -14028,7 +14271,27 @@
         break;
       }
       if (ate) continue;
-      if (b.atPrey) continue;      // meant for the freighter, not for you
+      /* And a round aimed at you hits whatever is in the way first. They went
+         through every other ship in the sector, so a patrol's escort was
+         perfect cover for nobody and a hauler parked between you and a pirate
+         was a hauler the pirate could shoot through. */
+      if (b.atPrey) continue;      // meant for the freighter, and its clock does that
+      let struck = false;
+      for (let k = surv.traffic.length - 1; k >= 0; k--) {
+        const o = surv.traffic[k];
+        if (o === b.from) continue;
+        const rr = hullR(o);
+        if (dist2(b.x, b.y, o.x, o.y) > rr * rr) continue;
+        surv.shots.splice(i, 1);
+        o.hp -= b.dmg || 1;
+        o.hit = 0.12;
+        hurtBySomebody(o, b.from);
+        burst(b.x, b.y, trafficColour(o), 5, 120 * U);
+        if (o.hp <= 0) killTraffic(k, false); else gameSound("hit", o.x);
+        struck = true;
+        break;
+      }
+      if (struck) continue;
       if (me.alive && me.invuln <= 0 && dist2(b.x, b.y, me.x, me.y) < R * R) {
         surv.shots.splice(i, 1);
         damageShip(me, "shot", null, b.dmg || 1);
@@ -14275,6 +14538,322 @@
     });
     chatter(g.name + " — the one that got away. It found you.", "#ff8f77");
     gameSound("alarm", me.x);
+    saveSurveyBook();
+  }
+
+
+  /* ═══ BOSSES ═══════════════════════════════════════════════════════════════
+     Ric: "i like the idea of bosses". Three, one for each kind of dangerous
+     sky, and each one is somebody a different way of living out here wants
+     dead or wants robbed:
+
+       WARLORD   lawless sky and the Deep Void. A pirate in a captured Reprisal
+                 with a pack of three, and it calls more in when it is hurt.
+                 Every power pays for it.
+       ADMIRAL   the fronts. A power's flagship, a Bastion, with a wing of
+                 three patrols. Its enemy pays for it, and its own side will
+                 not forgive you.
+       QUEEN     a power's territory. A salvage barge, a Tender loaded with the
+                 rare stuff, with two escorts. Nobody pays for her. What she is
+                 carrying is the pay, and she is the pirate's boss.
+
+     A boss is the same ship the sector already flies, made bigger (`scale`)
+     and harder: five times the hull, a pilot better than any hull buys, a
+     three-round burst, and it never breaks off (the queen runs, because she
+     is not a fighter). Every one drops a rare part, and anything that picks
+     up loot will race you for it.
+
+     **A boss lives somewhere.** Ric: "you should be able to know when your
+     entering an area with a boss". So each one has a sky of its own, a disc
+     seven thousand across, placed from the seed so the same boss is in the
+     same place every time you fly there: roughly one square in two of
+     48,000 on a side has one, and none are near home. What it is depends on
+     the sky it sits in (lawless or void, a front, a power's territory).
+
+     You hear about it before you are in it ("coming up on..."), a banner says
+     when you cross in, the chart marks the whole disc from then on, and while
+     you are inside a bar across the top of the screen names it and shows its
+     hull. A scan that reaches a boss's sky charts it too. Kill one and its sky
+     is empty for good: `bossesDown` is saved. */
+  const BOSSES = {
+    warlord: { role: "pirate", hull: "reprisal", scale: 1.55, hp: 5,
+               crew: ["pirate", "pirate", "pirate"], bounty: 6000,
+               title: n => n + " THE " + pickOne(BOSS_EPITHETS),
+               call: n => "Every channel at once: " + n + " is hunting this sky." },
+    admiral: { role: "patrol", hull: "bastion", scale: 1.6, hp: 5,
+               crew: ["patrol", "patrol", "patrol"], bounty: 4500,
+               title: n => "ADMIRAL " + n,
+               call: n => "A flagship on the line: " + n + " is out here." },
+    queen:   { role: "scavenger", hull: "ossuary", scale: 1.2, hp: 4,
+               crew: ["escort", "escort"], bounty: 0,
+               title: n => n + ", QUEEN OF SCRAP",
+               call: n => n + "'s barge is working this sky, heavy with salvage." },
+    /* A power's own. The Warden keeps the heart of its territory, the way an
+       admiral keeps a front. Both fly for their flag, and whether they come
+       for you is a question about where you stand with it. */
+    warden:  { role: "patrol", hull: "louvre", scale: 1.5, hp: 6,
+               crew: ["patrol", "patrol"], bounty: 3500,
+               title: n => "WARDEN " + n,
+               call: n => "The Warden is up: " + n + " keeps this sky." },
+    // A pirate ace. Fast, alone but for one, and gone before you turn round.
+    corsair: { role: "pirate", hull: "vane", scale: 1.6, hp: 9,
+               crew: ["pirate"], bounty: 3500,
+               title: n => n + " THE CORSAIR",
+               call: n => n + " is raiding this sky." }
+  };
+  const BOSS_EPITHETS = ["RED", "HOLLOW", "UNBURIED", "PATIENT", "LAST", "SALT",
+                         "BLACK", "THIRD", "KIND", "COLD"];
+  const pickOne = list => list[Math.floor(Math.random() * list.length)];
+  const BOSS_COLOUR = "#ff4dd2";
+  let bossSerial = 0;
+
+  function bossName(kind) {
+    const n = (place() + (Math.random() < 0.5 ? "" : place().slice(0, 2))).toUpperCase();
+    return BOSSES[kind].title(n);
+  }
+
+  // What a queen is hauling: forty units of the good stuff.
+  function bossCargo(kind) {
+    if (kind !== "queen") return [];
+    const out = [];
+    for (let i = 0; i < 40; i++) {
+      const r = Math.random();
+      out.push(r < 0.3 ? "alloy" : r < 0.6 ? "iridium" : r < 0.85 ? "electronics" : "core");
+    }
+    return out;
+  }
+
+  function spawnBoss(kind, at, flag) {
+    const B = BOSSES[kind];
+    const sky = spaceAt(at.x, at.y);
+    const sides = warSides();
+    const faction = flag || (B.role === "pirate" ? "pirate"
+      : B.role === "patrol" ? (sky.owner || sides[0] || FACTIONS[0].key)
+      : (sky.owner || "free"));
+    const id = "boss-" + (++bossSerial);
+    const spec = shipSpec(B.hull);
+    // Never less than 160: a boss in a light hull is still a boss.
+    const hp = Math.max(160, Math.round(spec.hull * B.hp));
+    const a = Math.random() * Math.PI * 2;
+    const speed = MAX_SPEED * spec.speed * 0.72;
+    const boss = {
+      id, kind: B.role, role: B.role, faction, hull: B.hull,
+      boss: kind, scale: B.scale, name: bossName(kind),
+      x: at.x, y: at.y, a,
+      from: { x: at.x, y: at.y },
+      to: { x: at.x + Math.cos(a) * 9000, y: at.y + Math.sin(a) * 9000 },
+      leg: 1, speed, baseSpeed: speed, hp, maxHp: hp,
+      cargo: bossCargo(kind), cool: 1, doom: 0, guards: 0, space: 0,
+      trades: false, tank: null, phase: Math.random() * 6.28, vx: 0, vy: 0
+    };
+    surv.traffic.push(boss);
+    B.crew.forEach((role, i) => {
+      const slot = GROUP_SLOTS[i % GROUP_SLOTS.length];
+      const hulls = TRAFFIC_HULLS[role];
+      const hull = hulls[Math.floor(Math.random() * hulls.length)];
+      const cs = shipSpec(hull);
+      const c = Math.cos(a), s2 = Math.sin(a);
+      const x = at.x - c * slot.back - s2 * slot.side;
+      const y = at.y - s2 * slot.back + c * slot.side;
+      surv.traffic.push({
+        id: id + "c" + i, leadId: id, slot, kind: role, role, faction, hull,
+        x, y, a, from: { x, y }, to: boss.to, leg: 1,
+        speed: Math.max(speed, MAX_SPEED * cs.speed * 0.72),
+        baseSpeed: Math.max(speed, MAX_SPEED * cs.speed * 0.72),
+        hp: cs.hull, maxHp: cs.hull, cargo: [], cool: 1.5, doom: 0, guards: 0,
+        space: 0, trades: false, tank: null, phase: Math.random() * 6.28,
+        vx: 0, vy: 0
+      });
+    });
+    return boss;
+  }
+
+  const LAIR_CELL = 48000;      // one chance of a boss's sky per square this size
+  const LAIR_R    = 7000;       // how far a boss's sky reaches from its middle
+  const BOSS_SKY = { warlord: "A WARLORD'S SKY", admiral: "AN ADMIRAL'S SKY",
+                     queen: "A SALVAGE QUEEN'S SKY", warden: "A WARDEN'S SKY",
+                     corsair: "A CORSAIR'S SKY" };
+
+  /* Whether a boss comes for you. Pirates always do. A salvage queen never
+     does unless you start it. A power's boss does when that power is watching
+     you or worse, or when you are in good standing with the power it is at
+     war with, because then you are somebody's side. In good standing, or
+     nobody's, it leaves you be. */
+  function bossHostile(t) {
+    if (t.faction === "pirate") return true;
+    if (!t.faction || t.faction === "free") return false;
+    if (repOf(t.faction) <= -30 || hostileTo(t.faction)) return true;
+    const enemy = warPairs()[t.faction];
+    return !!enemy && repOf(enemy) >= 110;
+  }
+
+  // A small seeded generator, so a lair is a pure function of the seed.
+  function lairRng(i, j, salt) {
+    let a = ((surv ? surv.seed : 1) ^ (salt || 0x5bd1e995)) +
+            Math.imul(i, 374761393) + Math.imul(j, 668265263);
+    return () => {
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function lairIn(i, j) {
+    const R = lairRng(i, j);
+    if (R() > 0.45) return null;
+    const x = (i + 0.2 + R() * 0.6) * LAIR_CELL, y = (j + 0.2 + R() * 0.6) * LAIR_CELL;
+    if (Math.hypot(x, y) < HOME_CALM_R * 3) return null;
+    const sky = spaceAt(x, y);
+    let kind = sky.kind === "lawless" || sky.kind === "void" ? "warlord"
+             : sky.kind === "front" ? "admiral"
+             : sky.kind === "territory" ? ((sky.inner || 0) >= 2 ? "warden" : "queen")
+             : R() < 0.5 ? "corsair" : "queen";
+    if (kind === "admiral" && warSides().length < 2) kind = "warlord";
+    const role = BOSSES[kind].role;
+    const faction = role === "pirate" ? "pirate"
+                  : role === "patrol" ? (sky.owner || warSides()[0] || FACTIONS[0].key)
+                  : (sky.owner || "free");
+    // The name has its own stream, so it survives the sky changing hands.
+    const N = lairRng(i, j, 0x2545f491);
+    const n = SYL_HEAD[Math.floor(N() * SYL_HEAD.length)] +
+              SYL_TAIL[Math.floor(N() * SYL_TAIL.length)];
+    const epi = BOSS_EPITHETS[Math.floor(N() * BOSS_EPITHETS.length)];
+    const name = kind === "warlord" ? n.toUpperCase() + " THE " + epi
+               : BOSSES[kind].title(n.toUpperCase());
+    const id = "L" + i + "," + j;
+    return { id, x, y, r: LAIR_R, kind, faction, name, dead: surv.bossesDown.has(id) };
+  }
+
+  // The boss's sky you are in or coming up on, if there is one still alive.
+  function lairNear(x, y, pad) {
+    const ci = Math.floor(x / LAIR_CELL), cj = Math.floor(y / LAIR_CELL);
+    let best = null, bd = Infinity;
+    for (let i = ci - 1; i <= ci + 1; i++) {
+      for (let j = cj - 1; j <= cj + 1; j++) {
+        const L = lairIn(i, j);
+        if (!L || L.dead) continue;
+        const d = Math.hypot(x - L.x, y - L.y);
+        if (d < L.r + (pad || 0) && d < bd) { bd = d; best = L; }
+      }
+    }
+    return best;
+  }
+
+  function surveyBosses(dt) {
+    const me = ships[0];
+    surv.lairBanner = Math.max(0, (surv.lairBanner || 0) - dt);
+    if (!me.alive || surv.death) return;
+    const L = lairNear(me.x, me.y, 2500);
+    const d = L ? Math.hypot(me.x - L.x, me.y - L.y) : Infinity;
+    const inside = !!L && d < L.r;
+    // Coming up on one: said once, and it goes on the chart.
+    const stance = L2 => L2.faction === "pirate" ? " They will come for you."
+      : L2.faction === "free" || !L2.faction ? " Leave it alone and it leaves you alone."
+      : bossHostile({ faction: L2.faction }) ? " " + factionOf(L2.faction).short +
+          " will come for you."
+      : " " + factionOf(L2.faction).short + " will let you pass.";
+    if (L && !inside && surv.lairWarned !== L.id) {
+      surv.lairWarned = L.id;
+      noteKnown("boss", L.x, L.y, L.name, L.r);
+      chatter("Coming up on " + L.name + "'s sky." + stance(L), BOSS_COLOUR);
+    }
+    const was = surv.inLair ? surv.inLair.id : null;
+    if (inside && was !== L.id) {
+      surv.inLair = L;
+      surv.lairBanner = 4;
+      surv.lairWarned = L.id;
+      noteKnown("boss", L.x, L.y, L.name, L.r);
+      chatter("You are in " + L.name + "'s sky." + stance(L), BOSS_COLOUR);
+      gameSound("alarm", me.x);
+    } else if (!inside && was) {
+      if (!surv.bossesDown.has(was)) {
+        chatter("Out of " + surv.inLair.name + "'s sky.", NEBULA);
+        surv.lairLeft = surv.inLair;
+        surv.leftBanner = 3;
+      }
+      surv.inLair = null;
+    }
+    surv.leftBanner = Math.max(0, (surv.leftBanner || 0) - dt);
+    // The boss itself, once you are in its sky, flying about the middle of it.
+    if (inside && !surv.traffic.some(t => t.lairId === L.id)) {
+      let at = { x: L.x, y: L.y };
+      for (let k = 0; k < 8 && inBuilt(at.x, at.y, 500); k++) {
+        const a = Math.random() * Math.PI * 2;
+        at = { x: L.x + Math.cos(a) * 1500, y: L.y + Math.sin(a) * 1500 };
+      }
+      const b = spawnBoss(L.kind, at, L.faction);
+      b.lairId = L.id; b.lair = L; b.name = L.name;
+    }
+    const live = surv.traffic.find(t => t.boss);
+    if (live) {
+      /* The warlord's pack, called in once it is losing. From past the edge of
+         the screen, towards it, so you see them arrive. */
+      if (live.boss === "warlord" && !live.called && live.hp < live.maxHp * 0.5) {
+        live.called = true;
+        for (let i = 0; i < 2; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const x = live.x + Math.cos(a) * 1800 * U, y = live.y + Math.sin(a) * 1800 * U;
+          const hull = pickOne(TRAFFIC_HULLS.pirate);
+          const cs = shipSpec(hull);
+          surv.traffic.push({
+            id: live.id + "r" + i, leadId: live.id,
+            slot: GROUP_SLOTS[(3 + i) % GROUP_SLOTS.length],
+            kind: "pirate", role: "pirate", faction: "pirate", hull,
+            x, y, a: a + Math.PI, from: { x, y }, to: { x: live.x, y: live.y },
+            leg: 1, speed: MAX_SPEED * cs.speed * 0.8, baseSpeed: MAX_SPEED * cs.speed * 0.8,
+            hp: cs.hull, maxHp: cs.hull, cargo: [], cool: 1, doom: 0, guards: 0,
+            space: 0, trades: false, tank: null, phase: Math.random() * 6.28,
+            vx: 0, vy: 0, angry: true
+          });
+        }
+        chatter(live.name + " is calling the pack in.", BOSS_COLOUR, live);
+        gameSound("alarm", live.x);
+      }
+      return;
+    }
+  }
+
+  /* A boss down. Its part, whoever killed it, and its bounty if it was you. */
+  function bossDown(t, byYou) {
+    const B = BOSSES[t.boss];
+    // Its sky is empty now, for good.
+    if (t.lairId) {
+      surv.bossesDown.add(t.lairId);
+      if (surv.inLair && surv.inLair.id === t.lairId) surv.inLair = null;
+    }
+    burst(t.x, t.y, BOSS_COLOUR, 60, 700 * U);
+    addShake(12);
+    const pool = MODULES.filter(m => findsIt(m) && !sellsIt(m));
+    const rare = pool.filter(m => m.rarity !== "common");
+    const part = pickOne(rare.length ? rare : pool);
+    if (part) {
+      const spot = safeDrop(t.x, t.y);
+      surv.dropped.push({ key: part.key, name: part.name, x: spot.x, y: spot.y,
+                          mod: true, id: dropId() });
+      noteKnown("part", spot.x, spot.y, part.name);
+    }
+    if (!byYou) {
+      saveSurveyBook();
+      chatter(t.name + " is dead, and not by you. " +
+              (part ? part.name + " is out there for whoever gets to it." : ""),
+              BOSS_COLOUR, t);
+      return;
+    }
+    let pay = B.bounty;
+    if (t.boss === "warlord") {
+      for (const f of FACTIONS) addRep(f.key, 40);
+    } else if (t.boss === "corsair") {
+      for (const f of FACTIONS) addRep(f.key, 25);
+    } else if (t.boss === "admiral" || t.boss === "warden") {
+      const enemy = warPairs()[t.faction];
+      if (enemy) addRep(enemy, 80); else pay = 0;
+      weaken(t.faction, 0.12);
+    }
+    if (pay) surv.cash += pay;
+    chatter(t.name + " is dead." + (pay ? " " + money(pay) + " bounty." : "") +
+            (part ? " It dropped " + part.name + "." : ""), BOSS_COLOUR, t);
+    gameSound("win", t.x);
     saveSurveyBook();
   }
 
@@ -14704,7 +15283,7 @@
          harm is scenery with a flight path. */
       for (let i = surv.traffic.length - 1; i >= 0 && !spent; i--) {
         const t = surv.traffic[i];
-        const rr = 22 * U * (shipSpec(t.hull).size || 1);
+        const rr = hullR(t);
         if (dist2(b.x, b.y, t.x, t.y) > rr * rr) continue;
         spent = true;
         t.hp -= (b.dmg || 1);
@@ -17379,6 +17958,7 @@
       surveyBattles(dt);
       surveyHeat(dt);
       grudgeVisit(dt);
+      surveyBosses(dt);
     }
     surveyCaches(dt);
     surveyParts(dt);
@@ -17877,7 +18457,7 @@
      whole scene is about noticing in time. */
   function drawTraffic(t) {
     const spec = shipSpec(t.hull);
-    const r = SHIP_R * U * spec.size;
+    const r = SHIP_R * U * spec.size * (t.scale || 1);
     if (!onScreen(t.x, t.y, r * 2.5 + 80)) return;
     const colour = trafficColour(t);
     const hit = t.hit > 0;
@@ -17894,6 +18474,20 @@
     const load = podColours(spec.pods, counts, (t.cargo || []).length / 30);
     drawHullArt(spec, hit ? "#fff2bf" : colour, 12 / r, 1, { load });
     drawRoleMarks(t, spec, colour, 12 / r);
+    /* A boss wears a second outline, a size out from its own, in the colour
+       nothing else in the sector uses. */
+    if (t.boss) {
+      const beat = 0.55 + 0.45 * Math.sin(clock * 2.6 + (t.phase || 0));
+      glow(BOSS_COLOUR, 1.4 * (12 / r), 0.35 + 0.4 * beat, () => {
+        ctx.save();
+        ctx.scale(1.18, 1.18);
+        ctx.beginPath();
+        spec.art.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+      });
+    }
     /* ── what a working engine looks like ───────────────────────────────────
        Your ship trails burning dust and nothing else in the sector did, which is
        most of why other ships read as cut-outs sliding across the screen rather
@@ -17931,6 +18525,19 @@
       });
     }
 
+    // Its name, and how much of it is left.
+    if (t.boss) {
+      const top = t.y - r * 2 - 22;
+      label3(t.name, t.x, top, BOSS_COLOUR, 17);
+      const w = Math.max(90, r * 2.4), left = t.x - w / 2, frac = Math.max(0, t.hp / t.maxHp);
+      glow(BOSS_COLOUR, 2, 0.25, () => {
+        ctx.beginPath(); ctx.moveTo(left, top + 12); ctx.lineTo(left + w, top + 12); ctx.stroke();
+      });
+      glow(BOSS_COLOUR, 3, 0.95, () => {
+        ctx.beginPath(); ctx.moveTo(left, top + 12); ctx.lineTo(left + w * frac, top + 12); ctx.stroke();
+      });
+    }
+
     if (t.kind === "distress") {
       const beat = 0.5 + 0.5 * Math.sin(clock * 4 + t.phase);
       glow("#ff8f77", 2, 0.3 + beat * 0.5, () => {
@@ -17940,7 +18547,7 @@
       });
       label3("DISTRESS  " + Math.max(0, Math.round(t.doom)) + "s",
              t.x, t.y - r * 2.2 - 14, "#ff8f77", 18);
-    } else if (t.kind === "patrol") {
+    } else if (t.kind === "patrol" && !t.boss) {
       label3(t.angry ? "PATROL — HOSTILE" : t.shadow ? "PATROL — WATCHING" : "PATROL",
              t.x, t.y - r * 2 - 10, colour, 15);
     } else if (t.kind === "hunter") {
@@ -19391,9 +19998,53 @@
     drawBits();
   }
 
+  /* The boss bar, across the top of the screen for as long as you are in a
+     boss's sky: whose sky it is, the boss's name, its hull, and how far off it
+     is. And for the first seconds after you cross in, a banner in the middle
+     of the screen, because a line in the radio is easy to miss. */
+  function drawBossBar() {
+    if (!surv.inLair && surv.leftBanner > 0 && surv.lairLeft) {
+      const k = Math.min(1, surv.leftBanner / 0.6);
+      text("LEAVING " + BOSS_SKY[surv.lairLeft.kind], SCREEN_W / 2, SCREEN_H * 0.3, 22,
+           NEBULA, "center", k);
+      text(surv.lairLeft.name, SCREEN_W / 2, SCREEN_H * 0.3 + 26, 14, NEBULA, "center", k * 0.8);
+    }
+    const L = surv.inLair;
+    if (!L) return;
+    const me = ships[0];
+    const b = surv.traffic.find(t => t.lairId === L.id);
+    const cx = SCREEN_W / 2, top = 26;
+    const w = Math.min(440, SCREEN_W * 0.44);
+    const foe = bossHostile({ faction: L.faction }) || (b && b.angry);
+    text(BOSS_SKY[L.kind] + (L.faction && L.faction !== "free" && L.faction !== "pirate"
+           ? "  \u00b7  " + factionOf(L.faction).short : "") +
+         "  \u00b7  " + (foe ? "HOSTILE" : "WILL NOT FIRE ON YOU"),
+         cx, top, 11, foe ? BOSS_COLOUR : CASH, "center", 0.8);
+    text(L.name, cx, top + 20, 17, BOSS_COLOUR);
+    const frac = b ? Math.max(0, b.hp / b.maxHp) : 1;
+    const y = top + 32;
+    glow(BOSS_COLOUR, 5, 0.22, () => {
+      ctx.beginPath(); ctx.moveTo(cx - w / 2, y); ctx.lineTo(cx + w / 2, y); ctx.stroke();
+    });
+    glow(BOSS_COLOUR, 5, 0.95, () => {
+      ctx.beginPath(); ctx.moveTo(cx - w / 2, y); ctx.lineTo(cx - w / 2 + w * frac, y); ctx.stroke();
+    });
+    if (b) {
+      const far = Math.hypot(b.x - me.x, b.y - me.y);
+      text(far < 1000 ? Math.round(far) + "u" : (far / 1000).toFixed(1) + "k",
+           cx + w / 2 + 10, y + 4, 11, BOSS_COLOUR, "left", 0.8);
+    }
+    if (surv.lairBanner > 0) {
+      const k = Math.min(1, surv.lairBanner / 0.6, (4 - surv.lairBanner) / 0.3);
+      text("ENTERING " + BOSS_SKY[L.kind], cx, SCREEN_H * 0.3, 26, BOSS_COLOUR,
+           "center", Math.max(0, k));
+    }
+  }
+
   function drawSurveyPanel(dt) {
     if (!surv || !surveyHUD) return;
     surveyHUD.drawPanel(surveyState(), dt);
+    drawBossBar();
     /* Radio used to be drawn here, on two lines above the status strip. It is in
        the notification stack now — see `chatter` — so there is nothing left for
        this function to add and the bottom of the screen is the hull bar and
@@ -25869,6 +26520,11 @@
       // The hangar, driven directly: twenty-five hulls is a lot of arithmetic to
       // leave to a look.
       buyShip: key => buyShip(key),
+      // The boss's sky nearest a point, if one reaches that far.
+      lair: (x, y, pad) => lairNear(x, y, pad || 0),
+      // A boss, a screen away from you, so a harness can fight one.
+      boss: (kind, dx, dy) => spawnBoss(kind || "warlord",
+        { x: ships[0].x + (dx == null ? 900 : dx), y: ships[0].y + (dy || 0) }),
       flyShip: key => flyShip(key),
       // The parts catalogue and the two numbers a test has to read off it.
       parts: () => MODULES.map(m => ({ key: m.key, name: m.name, cat: m.cat,

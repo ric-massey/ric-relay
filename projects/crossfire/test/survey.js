@@ -4432,10 +4432,11 @@ const storeOf = (cf, key) => {
     const me = cf.live().ships[0];
     surv.traffic.length = 0;
     surv.motes.length = 0;
+    // Clear of the home station: one within reach of its dock unloads there.
     const hauler = { id: "t-test", kind: "freight", role: "freight",
                      faction: "free", hull: "drayman",
-                     x: me.x + 300, y: me.y, a: 0,
-                     from: { x: me.x + 300, y: me.y }, to: { x: me.x + 4000, y: me.y },
+                     x: me.x - 900, y: me.y, a: Math.PI,
+                     from: { x: me.x - 900, y: me.y }, to: { x: me.x - 4000, y: me.y },
                      leg: 1, speed: 80, hp: 6, maxHp: 6,
                      cargo: ["iridium", "iridium", "ice"], cool: 1, doom: 0,
                      guards: 0, phase: 0 };
@@ -4765,7 +4766,7 @@ const storeOf = (cf, key) => {
               "a hauler cannot and does not");
 }
 
-// \u2500\u2500 close up, they keep flying \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// ── close up, they keep flying ────────────────────────────────────────────
 /* Ric: bots "just freeze when too close to the player". Any ship within 220 of
    its goal counted as arriving and skipped its whole step, and for a ship
    chasing you the goal *is* you. So an angry pirate flew in and stopped dead
@@ -4863,7 +4864,7 @@ const storeOf = (cf, key) => {
               "parks \u00b7 followers keep their leader's pace \u00b7 haulers ease into a dock");
 }
 
-// \u2500\u2500 the rounds come out of the guns \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// ── the rounds come out of the guns ───────────────────────────────────────
 /* Ric: "make sure the bullets come from the guns". Every round, yours and
    theirs, left one fixed distance straight ahead of the middle of the ship,
    whatever the hull and wherever its barrels were drawn. */
@@ -4935,7 +4936,163 @@ const storeOf = (cf, key) => {
               "barrel facing the target \u00b7 nobody fires out of their tail");
 }
 
-// \u2500\u2500 the hull says the job \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// ── a better ship has a better pilot ──────────────────────────────────────
+/* Ric: "make it so the ones with better ships are better flyers". Measured the
+   way it is felt: fly across a gunner's nose and count what lands. */
+{
+  const { cf } = boot("?debug=1&seed=515153");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const accuracy = hull => {
+    let fired = 0, landed = 0;
+    for (let run = 0; run < 6; run++) {
+      surv.traffic.length = 0; surv.shots.length = 0; surv.drones.length = 0;
+      me.x = 2300; me.y = 2300 - 500; me.vx = 0; me.vy = 260;
+      const t = { id: "t-ace-" + hull + run, kind: "patrol", role: "patrol",
+                  faction: "free", hull, x: me.x + 700, y: 2300, a: Math.PI,
+                  from: { x: 0, y: 0 }, to: { x: 1, y: 0 }, leg: 1, speed: 1,
+                  baseSpeed: 1, hp: 99, maxHp: 99, cargo: [], cool: 0, doom: 0,
+                  guards: 0, phase: run, vx: 0, vy: 0 };
+      surv.traffic.push(t);
+      const seen = new Set();
+      for (let i = 0; i < 150; i++) {
+        t.angry = true; t.x = me.x + 700; t.y = me.y; t.a = Math.PI; t.vx = t.vy = 0;
+        me.vx = 0; me.vy = 260; me.drag = 0; me.invuln = 0; me.hull = 999; me.maxHull = 999;
+        const hull0 = me.hull;
+        now += 1000 / 60; cf.step();
+        for (const b of surv.shots) if (b.from === t && !seen.has(b)) { seen.add(b); fired++; }
+        if (me.hull < hull0) landed++;
+      }
+    }
+    return { fired, landed, rate: landed / Math.max(1, fired) };
+  };
+  const green = accuracy("lance"), ace = accuracy("louvre");
+  check(green.fired > 5 && ace.fired > 5, "the gunners did not fire");
+  check(ace.rate > green.rate * 1.3,
+        "an ace in a Jackal hits a crossing ship no more often than a novice in " +
+        "a Lance: " + (ace.rate * 100).toFixed(0) + "% against " +
+        (green.rate * 100).toFixed(0) + "%");
+  console.log("  pilots     crossing a gunner's nose at 260: a Lance's pilot lands " +
+              (green.rate * 100).toFixed(0) + "%, a Jackal's " +
+              (ace.rate * 100).toFixed(0) + "%");
+}
+
+// ── bosses ────────────────────────────────────────────────────────────────
+/* Ric: "i like the idea of bosses". One a kind of sky: a warlord, an admiral,
+   a salvage queen. Each is bigger and harder than anything else out there,
+   comes with a crew, and drops a rare part. */
+{
+  const { cf } = boot("?debug=1&seed=515153");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const tick = () => { me.invuln = 3; now += 1000 / 60; cf.step(); };
+  me.x = 2300; me.y = 2300; me.vx = 0; me.vy = 0;
+
+  const kinds = { warlord: 3, admiral: 3, queen: 2, warden: 2, corsair: 1 };
+  for (const kind of Object.keys(kinds)) {
+    surv.traffic.length = 0; surv.shots.length = 0; surv.drones.length = 0;
+    const b = cf.boss(kind, 1500, 0);
+    const crew = surv.traffic.filter(t => t.leadId === b.id);
+    check(b.boss === kind && b.scale > 1, "a " + kind + " is not a boss");
+    check(crew.length === kinds[kind], "a " + kind + " came with " + crew.length + " crew");
+    check(b.maxHp >= 150, "a " + kind + " has only " + b.maxHp + " hull");
+    check(/[A-Z]/.test(b.name || ""), "a " + kind + " has no name");
+    for (let i = 0; i < 30; i++) tick();
+    check(crew.every(c => surv.traffic.indexOf(c) >= 0), "a " + kind + "'s crew fell apart");
+  }
+
+  // The warlord calls its pack in when it is losing, and never runs.
+  surv.traffic.length = 0; surv.shots.length = 0;
+  const w = cf.boss("warlord", 1500, 0);
+  const before = surv.traffic.length;
+  w.hp = w.maxHp * 0.4;
+  tick();
+  check(surv.traffic.length === before + 2, "a warlord below half did not call its pack");
+  w.hp = 3;
+  surv.shots.push({ x: w.x, y: w.y, vx: 0, vy: 0, life: 1, dmg: 1, friendly: true,
+                    from: surv.traffic.find(t => t !== w && t.faction !== "pirate") || null });
+  tick();
+  check(!(w.breakOff > 0), "a warlord broke off");
+
+  // Killed by you: a bounty, and a rare part on the floor.
+  const cash = surv.cash, drops = surv.dropped.length;
+  w.hp = 1;
+  cf.live().bullets.push({ owner: me.id, colour: "#fff", dmg: 5, x: w.x, y: w.y,
+                           vx: 0, vy: 0, life: 1 });
+  tick();
+  check(surv.traffic.indexOf(w) < 0, "the warlord survived a killing round");
+  check(surv.cash >= cash + 6000, "killing a warlord paid " + (surv.cash - cash));
+  check(surv.dropped.length === drops + 1, "a warlord dropped no part");
+
+  /* A good pilot flies passes, not circles. Ric: "i dont want him to go in a
+     perfect circle". Over twenty seconds a boss after a parked ship should
+     come in close and go back out, again and again. */
+  surv.traffic.length = 0; surv.shots.length = 0;
+  me.x = 2300; me.y = 2300; me.vx = 0; me.vy = 0;
+  const f = cf.boss("corsair", 900, 0);
+  surv.traffic = surv.traffic.filter(t => t === f);
+  const range = [];
+  for (let i = 0; i < 1200; i++) {
+    f.angry = true; f.hp = f.maxHp; me.hull = me.maxHull;
+    tick();
+    if (i > 120) range.push(Math.hypot(f.x - me.x, f.y - me.y));
+  }
+  const lo = Math.min(...range), hi = Math.max(...range);
+  let turns = 0;
+  for (let i = 2; i < range.length; i++) {
+    if ((range[i] - range[i - 1]) * (range[i - 1] - range[i - 2]) < 0) turns++;
+  }
+  check(hi - lo > 400, "a corsair held a circle: " + Math.round(lo) + "–" + Math.round(hi));
+  check(turns >= 4, "a corsair made " + turns + " passes in twenty seconds");
+
+  /* They live somewhere, and you are told. Find a boss's sky, fly into it,
+     and out again. */
+  surv.traffic.length = 0;
+  let lair = null;
+  for (let i = 1; i < 30 && !lair; i++) {
+    for (let j = -8; j <= 8 && !lair; j++) lair = cf.lair(i * 48000, j * 48000, 40000);
+  }
+  check(!!lair, "no boss's sky anywhere in the walk");
+  if (lair) {
+    me.x = lair.x + 800; me.y = lair.y;
+    for (let i = 0; i < 5; i++) tick();
+    check(surv.inLair && surv.inLair.id === lair.id, "flying into a boss's sky did not say so");
+    const b = surv.traffic.find(t => t.lairId === lair.id);
+    check(!!b, "a boss's sky with nobody in it");
+    check([...surv.known.values()].some(q => q.k === "boss"),
+          "a boss's sky did not go on the chart");
+    const drawnNow = textDrawn(); void drawnNow;
+    cf.draw();
+    check(textDrawn().some(w => w.indexOf(lair.name) >= 0),
+          "the boss bar did not name the boss");
+    me.x = lair.x + lair.r + 3000;
+    tick();
+    check(!surv.inLair && surv.leftBanner > 0, "leaving a boss's sky did not say so");
+  }
+
+  // A power's boss leaves you be while you stand well with that power.
+  surv.traffic.length = 0;
+  me.x = 2300; me.y = 2300;
+  const flag = cf.factions()[0].key;
+  surv.rep = {}; surv.rep[flag] = 120;
+  const warden = cf.boss("warden", 700, 0);
+  warden.faction = flag;
+  for (const t of surv.traffic) t.faction = flag;
+  for (let i = 0; i < 90; i++) tick();
+  check(!warden.angry, "a Warden fired on somebody its own flag trusts");
+  surv.rep[flag] = -60;
+  for (let i = 0; i < 30; i++) tick();
+  check(warden.angry, "a Warden let somebody its flag is watching fly past");
+
+  console.log("  bosses     five kinds, each with a crew \u00b7 the warlord calls its pack " +
+              "and never runs \u00b7 a bounty and a rare part \u00b7 a corsair flies passes " +
+              Math.round(lo) + "–" + Math.round(hi) + " out \u00b7 each lives in its own sky, " +
+              "charted, named on the way in and out \u00b7 a power's boss minds your standing");
+}
+
+// ── the hull says the job ─────────────────────────────────────────────────
 /* Ric: "make sure they look like what they should, so its easy to look at them
    and say what type of ship they are". Each category now has one mark nobody
    else wears, and that is only worth anything if each job flies one family.
@@ -5070,11 +5227,14 @@ const storeOf = (cf, key) => {
   surv.traffic.length = 0;
   const nervous = put(bystander, "escort", 40);
   nervous.space = 600;
+  // Flown at, not sat beside: sitting still while it passes is not crowding it.
   nervous.x = me.x + 400; nervous.y = me.y;
+  me.vx = 200; me.vy = 0;
   step(3);
   check(nervous.warned === 1, "flying inside its bubble drew no warning");
   check(!nervous.angry, "it went straight to hostile without a word");
   nervous.x = me.x + 120; nervous.y = me.y;
+  me.vx = 200; me.vy = 0;
   step(3);
   check(nervous.angry === true, "ignoring the warning cost nothing");
 

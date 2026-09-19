@@ -1188,7 +1188,9 @@
     planet:    { name: "WORLD",    colour: "#87d8ff" },
     // Two powers having it out, and where two powers finished having it out.
     battle:    { name: "BATTLE",   colour: "#ff8f77" },
-    memorial:  { name: "MEMORIAL", colour: "#a08cff" }
+    memorial:  { name: "MEMORIAL", colour: "#a08cff" },
+    // A boss's sky, drawn to its size.
+    boss:      { name: "BOSS",     colour: "#ff4dd2" }
   };
 
   function markGlyph(ctx, k, x, y, r) {
@@ -1227,6 +1229,14 @@
         ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r);
         ctx.stroke();
         break;
+      case "boss":
+        // Its sky, and a crown in the middle of it.
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x - 5, y + 3); ctx.lineTo(x - 5, y - 3); ctx.lineTo(x - 2, y);
+        ctx.lineTo(x, y - 4); ctx.lineTo(x + 2, y); ctx.lineTo(x + 5, y - 3);
+        ctx.lineTo(x + 5, y + 3); ctx.closePath(); ctx.stroke();
+        break;
       case "memorial":
         // A stone.
         ctx.beginPath();
@@ -1251,7 +1261,7 @@
      that thing" — the live lists below only ever knew about the five chunks
      either side of the ship, so the map used to forget a station the moment you
      left it behind. */
-  const SIZED = { planet: 1, hole: 1, star: 1 };
+  const SIZED = { planet: 1, hole: 1, star: 1, boss: 1 };
 
   function paintKnown(st, mx, my, big, scale) {
     const { ctx } = api;

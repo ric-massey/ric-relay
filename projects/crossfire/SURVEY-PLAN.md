@@ -214,6 +214,67 @@ it was born.
 you off, coming for you) is not drawn yet. The dogfight test is also still
 unflown: can someone watch thirty seconds and narrate it?
 
+### Bugs, pilots and bosses  ·  *19 September 2026*
+
+> *"look into the bots find bugs. make it so the ones with better ships are
+> better flyers. also i like the idea of bosses."*
+
+**Found by flying the sector headless** (three seeds, the busiest eight chunks
+each, 45 s a place, every ship tracked):
+
+- **Friendly fire started fights.** A stray round from your own side made a
+  ship turn on the shooter; 24 of 64 patrols ended up fighting their own wing.
+  Only an enemy, or somebody actually coming for it, starts a fight now. After:
+  0.
+- **Escorts circled their own client.** The guard's cached want handed back
+  the client itself, not its shoulder, so the escort chased it like prey. It
+  holds its convoy slot now, and prefers the hauler it came out with.
+- **Haulers circled stations at 400 and never reloaded.** Any station within
+  400 was excluded, including the one it was docking at. It is "not the one
+  you just left" now, and an empty hauler that docks loads a fresh hold, with
+  its convoy, so the lanes do not go empty over an afternoon.
+- **Bot hitboxes were a flat 22 units a size**, three times a Lance's drawn
+  hull. `hullR` is the outline's own circle, the same rule your hull has.
+- **Rounds aimed at you passed through every other ship.** They hit whatever
+  is in the way now.
+- **A convoy passing a parked player turned on it** for being in its bubble.
+  Only closing on a ship counts as crowding it.
+
+**Pilots.** Skill comes from the hull's price on a log scale (Needle green,
+Jackal ace) with a tenth either way per pilot, worked out from the ship's id
+so generation is untouched. It buys a steadier hand (everybody leads from the
+muzzle now; a novice's round wanders up to six degrees), faster follow-up
+shots, pushing the hull in a fight, holding gun range, jinking, and breaking
+off earlier. It does not buy handling: a hull turns the same in anyone's
+hands. Measured crossing a gunner's nose at 260: a Lance's pilot lands about a
+fifth, a Jackal's about two thirds. Pilots at 0.6 and up, and every boss, fly
+passes instead of circles: run in, break past and extend, come round, now and
+then a short circle, and a sideways break when your nose lines up on them.
+
+**Bosses.** Ric: *"health bar on top", "know when your entering an area with a
+boss... and when you leave", "not a perfect circle... a good fighter", "different
+bosses. even some for certain teams but if your in good stance they wont
+attack".*
+
+| Boss | Sky | Ship | Who it fights |
+|---|---|---|---|
+| Warlord | lawless, Deep Void | Reprisal ×1.55, pack of 3, calls 2 more at half hull | everybody |
+| Corsair | frontier | Vane ×1.6, one wingman | everybody |
+| Admiral | a front | Bastion ×1.6, wing of 3 | you, if its power watches you or you stand well with its enemy |
+| Warden | deep in a power's territory | Jackal ×1.5, wing of 2 | the same |
+| Salvage queen | a power's territory | Tender ×1.2, 2 escorts, 40 units of rare salvage | nobody, unless attacked; she runs |
+
+Each lives in a sky of its own: a disc 7,000 across, placed from the seed in
+roughly half the 48,000-unit squares, none near home. The radio says when you
+are coming up on one and whether it will come for you. A banner says ENTERING
+and LEAVING. The chart marks the disc. While you are inside, a bar across the
+top of the screen names the boss, its flag, whether it is hostile, its hull and
+its distance. A scan that reaches one charts it. Bosses have at least 160 hull,
+a three-round fan, a pilot past any hull's, and never break off (the queen
+does). Every one drops a rare part that pirates and scavengers will race you
+for. Warlord and corsair pay a bounty and warm every power; admiral and warden
+are paid for by their enemy. Killed skies stay empty: `bossesDown` is saved.
+
 ---
 
 ## Who holds the sky  ·  *territory replaces the danger rings*  ·  **A and C built, B open**
