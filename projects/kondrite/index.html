@@ -2645,6 +2645,45 @@
   let names = [];
   const nameOf = seat => names[seat] || skinOf(seat).label;
 
+  /* Which **account** each seat is, which is a different question from what it
+     is called. Names are what you read on the screen; this is what a board
+     credits, and the two must never be confused — two people can type the same
+     name into a lobby and neither of them is the other.
+
+     It is here so that every client, host and guest alike, knows who it is
+     sitting with: a witnessed score is one client reporting what *another*
+     player got, and it cannot report about somebody it cannot name. Empty for
+     anyone not signed in and for every seat in a local game, and an empty seat
+     is simply not reported — see `matchReport`. */
+  let accounts = [];
+  const myAccount = () => {
+    const who = cloud && cloud.enabled() && cloud.session();
+    return (who && who.userId) || "";
+  };
+
+  /* The match everybody is agreeing about. Made by the host when the match
+     starts, sent out with the world, and the thing every report is filed
+     under — two clients describing the same game have to be describing the
+     same *id* or there is nothing for Postgres to find agreement in. */
+  let matchId = null;
+  const newMatchId = () => {
+    /* A v4 uuid, because that is the column's type. `crypto.randomUUID` is not
+       on older Safari, so this falls back rather than throwing in the one place
+       a throw would stop a match starting. */
+    try {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+    } catch (_) {}
+    const hex = "0123456789abcdef";
+    let out = "";
+    for (let i = 0; i < 36; i++) {
+      out += i === 8 || i === 13 || i === 18 || i === 23 ? "-"
+           : i === 14 ? "4"
+           : i === 19 ? hex[(Math.random() * 4 | 0) + 8]
+           : hex[Math.random() * 16 | 0];
+    }
+    return out;
+  };
+
   /* Who has said they're ready. Seat 0 is the host and never appears here —
      the host doesn't ready up, the host is the start button. Like `skins` and
      `names` this is the host's table, sent out with every seat broadcast. */
@@ -3072,7 +3111,14 @@
         modeHover = -1;
       }
       if (code === "Enter" || code === "Space") playCard(rows[openCard()]);
+      /* The witnessed board, from the page where you pick a game to play with
+         other people — which is the only place it means anything. */
+      if (code === "KeyB") { openBoards(); return; }
       if (code === "KeyC") { state = openSettings("modes"); }
+    } else if (state === "board") {
+      if (code === "Escape" || code === "Backspace" || code === "KeyB") {
+        state = "modes"; return;
+      }
     } else if (state === "levels") {
       if (code === "Escape" || code === "Backspace") { leaveLevels(); return; }
       const d = digit(code);
@@ -3885,6 +3931,10 @@
         returnTo.result = got;
       }
     }
+    /* And what everybody saw, filed under the match the host named. Only ever
+       for an online game, and it never throws into the end of a match: a board
+       is not worth a result screen. */
+    try { matchReport(result); forgetRealBoards(); } catch (_) {}
     outcome = result;
     // The elimination banner would otherwise still be mid-fade and print
     // straight through the result screen.
@@ -21677,6 +21727,11 @@
   function initPacket(seat) {
     return {
       t: "init", seat, skins, names, friendlyFire: mode.friendlyFire,
+      /* Who everybody is, and which match this is. Both are the host's table:
+         a guest cannot know the other guests' accounts any other way, and a
+         match id each client invented for itself would file five reports about
+         five different matches and agree with nothing. */
+      accounts, matchId,
       mode: modeKeyOf(mode), players,
       arena, u: U,
       hazards: hazards.map(h => ({ k: h.kind, x: h.x, y: h.y, kill: h.kill,
@@ -21686,6 +21741,84 @@
   }
 
   const modeKeyOf = m => Object.keys(MODES).find(k => MODES[k] === m);
+
+  /* The host's half of a witnessed match. Called from both places a host starts
+     one — the lobby's start button and the rematch — and called at the same
+     moment the roster is compacted, because it reads the *old* seat numbers.
+     An `accounts` table that was not compacted alongside `names` would go on
+     crediting every score to whoever used to sit there, which is the kind of
+     wrong that looks like it is working. */
+  function hostMatchSeats(seated) {
+    accounts = [myAccount(), ...seated.map(l => accounts[l.seat] || "")];
+    matchId = newMatchId();
+  }
+
+  /* ── what this client saw ─────────────────────────────────────────────────
+     A score is not a claim you make about yourself. Every client posts one row
+     per player it can name, saying what *that* player got, and a score counts
+     only where two different accounts said the same thing about the same
+     player in the same match. The counting is in Postgres; this is only the
+     testimony. See `supabase/schema.sql`.
+
+     Nothing is reported for a local game. A solo board cannot be witnessed —
+     that is the whole reason the boards at a cabinet are made up — so the only
+     matches that reach a real board are the ones somebody else was in. */
+  function matchReport(result) {
+    if (!net.on || !matchId || !cloud || !cloud.enabled() || !cloud.session()) {
+      return [];
+    }
+    const game = modeKeyOf(mode);
+    if (game !== "survival" && game !== "royale" && game !== "campaign") return [];
+
+    /* Two accounts at least, or there is nobody to agree and the rows would sit
+       in the table forever being one person's word. Not an error — a game with
+       one signed-in player in it is a perfectly good game, it is just not a
+       witnessed one. */
+    const seats = [];
+    for (let i = 0; i < Math.min(accounts.length, ships.length); i++) {
+      if (accounts[i] && /^[0-9a-f-]{36}$/i.test(accounts[i])) seats.push(i);
+    }
+    const distinct = new Set(seats.map(i => accounts[i]));
+    if (distinct.size < 2) return [];
+
+    const rows = [];
+    if (game === "survival") {
+      /* Co-op: one wave, everybody reached it. Each player is credited with
+         the wave the team got to, which is what the machine counts. */
+      const got = Math.max(0, Math.round(wave));
+      for (const i of seats) {
+        rows.push({ subject: accounts[i], game, value: got, detail: "" });
+      }
+    } else if (game === "royale") {
+      /* Every ship has its own answer, so every ship is its own row. Time
+         survived rather than whether you won, for the reason the cabinet
+         already counts it that way: a board of winners is empty for most
+         people. The place is carried alongside it, because "third of five"
+         is the thing you actually say afterwards. */
+      const order = ships.map((sh, i) => ({
+        i, t: sh.survivedFor != null ? sh.survivedFor : clock
+      })).sort((a, b) => b.t - a.t);
+      const place = new Map(order.map((o, k) => [o.i, k + 1]));
+      for (const i of seats) {
+        const sh = ships[i];
+        const t = sh && sh.survivedFor != null ? sh.survivedFor : clock;
+        rows.push({ subject: accounts[i], game, value: Math.max(0, Math.round(t)),
+                    detail: place.get(i) + " of " + ships.length });
+      }
+    } else {
+      /* Missions *cleared*, which is one fewer than the mission you died on.
+         The difficulty rides along because three on impossible and three on
+         pilot are not the same three. */
+      const lvl = (result && result.level) || (camp && camp.level) || 1;
+      const cleared = result && result.kind === "victory" ? lvl : Math.max(0, lvl - 1);
+      for (const i of seats) {
+        rows.push({ subject: accounts[i], game, value: cleared,
+                    detail: String(campaignDifficulty || "") });
+      }
+    }
+    cloud.reportMatch(matchId, rows);
+    return rows;
+  }
 
   function snapshot() {
     return {
@@ -21847,6 +21980,12 @@
     net.outInputSeq = 0;
     if (Array.isArray(msg.skins)) skins = msg.skins.slice();
     if (Array.isArray(msg.names)) names = msg.names.map(tidyName);
+    /* Taken from the host, with this client's own seat overwritten from its own
+       session: the host is trusted to say who the *other* people are, and not
+       to say who you are. */
+    accounts = Array.isArray(msg.accounts) ? msg.accounts.map(a => String(a || "")) : [];
+    accounts[msg.seat] = myAccount();
+    matchId = typeof msg.matchId === "string" ? msg.matchId : null;
     mode = MODES[msg.mode];
     if (msg.mode === "survival") mode.friendlyFire = msg.friendlyFire !== false;
     arena = msg.arena;
@@ -25156,6 +25295,138 @@
          SCREEN_W / 2, 648, 12, "#ffcb42");
   }
 
+  /* ── the real board ───────────────────────────────────────────────────────
+     The other kind, and the difference from the one at a cabinet is not
+     decoration. A board in a station is made up, because a score one person
+     made alone has nobody to witness it. This one is **witnessed**: every
+     client in a match reports what it saw, and a row appears only where two
+     accounts agreed. So it is the same board for everybody, and it is the only
+     place in the game where a number means somebody else was there.
+
+     Read once a session and cached — see `cloud.board`. A leaderboard is a
+     number that moves when somebody finishes a game, and a read on every frame
+     would spend the free tier on a row that did not change. */
+  const BOARD_GAMES = [
+    { key: "survival", name: "SURVIVAL",      colour: "#ffe56d",
+      cap: "WAVE", say: n => "WAVE " + n },
+    { key: "royale",   name: "BATTLE ROYALE", colour: "#ff8f77",
+      cap: "SURVIVED", say: n => clockText(n) },
+    { key: "campaign", name: "CAMPAIGN",      colour: "#6dffbf",
+      cap: "MISSIONS", say: n => n + " OF " + CAMPAIGN_ORDER.length }
+  ];
+  const realBoards = { rows: {}, err: "", reading: false, read: false };
+
+  function openBoards() {
+    state = "board";
+    readBoards();
+  }
+
+  /* Asked for once, and never again while the page is open. A failure is kept
+     and said rather than retried in a loop: the most likely reason a board
+     cannot be read is that there is no connection, and hammering a dead
+     network is not a way of fixing one. */
+  /* Asked for on every visit, and throttled one floor down: `cloud.board` keeps
+     what it read for a minute and a half, so opening this page twice in a row
+     costs one request and opening it after a match costs another. Gating it
+     *here* instead — which the first version did — meant the page never changed
+     again for as long as the tab was open, so your own score could never appear
+     on it. The last good rows stay on screen while a new read is in flight. */
+  function readBoards() {
+    if (realBoards.reading) return;
+    if (!cloud || !cloud.enabled() || !cloud.session()) {
+      realBoards.err = "no account service";
+      realBoards.read = true;
+      return;
+    }
+    realBoards.reading = true;
+    Promise.all(BOARD_GAMES.map(g =>
+      cloud.board(g.key, 10).then(rows => { realBoards.rows[g.key] = rows; },
+                                  err => { realBoards.err = err.message; })
+    )).then(() => { realBoards.reading = false; realBoards.read = true; });
+  }
+  /* A match just happened, so whatever is cached is out of date — and the one
+     board somebody wants to look at right now is the one they might have just
+     got onto. */
+  const forgetRealBoards = () => {
+    realBoards.err = "";
+    if (cloud && cloud.forgetBoards) cloud.forgetBoards();
+  };
+
+  function drawBoards() {
+    text("THE BOARD", SCREEN_W / 2, 92, 44, "#87d8ff");
+    /* Said here because it is the whole difference between this page and the
+       one in a station, and a player who does not know it cannot tell why one
+       of them is worth anything. */
+    text("witnessed \u00b7 a score counts when two people who were there agree",
+         SCREEN_W / 2, 126, 15, "#ffcb42");
+    text(todaysChallengeLine(), SCREEN_W / 2, 152, 13, "#ffcb42", "center", 0.9);
+
+    const left = 40, right = SCREEN_W - 40, top = 196;
+    const gap = 16;
+    const w = Math.floor((right - left - gap * 2) / 3);
+
+    BOARD_GAMES.forEach((g, i) => {
+      const x = left + i * (w + gap);
+      const rows = realBoards.rows[g.key];
+      text(g.name, x + w / 2, top, 22, g.colour);
+      text(g.cap, x + w / 2, top + 22, 12, "#ffcb42", "center", 0.6);
+
+      if (!rows) {
+        text(realBoards.reading ? "reading\u2026"
+             : realBoards.err === "no account service"
+               ? "sign in to see it"
+               : realBoards.err ? "could not be read" : "\u2014",
+             x + w / 2, top + 70, 14, "#ffcb42", "center", 0.55);
+        return;
+      }
+      if (!rows.length) {
+        /* Empty is the honest state of a new board and is worth saying out
+           loud, because an empty leaderboard reads as broken otherwise. */
+        text("nobody yet", x + w / 2, top + 66, 14, "#ffcb42", "center", 0.55);
+        text("play one with somebody", x + w / 2, top + 86, 12, "#ffcb42",
+             "center", 0.4);
+        return;
+      }
+      rows.forEach((r, k) => {
+        const y = top + 52 + k * 26;
+        const tone = r.you ? PLAYERS[0].colour : "#ffcb42";
+        const a = r.you ? 1 : 0.8;
+        text(String(k + 1), x + 10, y, 13, tone, "left", r.you ? 0.9 : 0.5);
+        text(r.name, x + 36, y, 14, tone, "left", a);
+        text(g.say(r.value), x + w - 10, y, 14, tone, "right", a);
+      });
+    });
+
+    /* What is still in this client's pocket. A match played on a train is a
+       real result and it is going up; saying nothing about it would look like
+       it had been dropped. */
+    const waiting = cloud && cloud.scoresWaiting ? cloud.scoresWaiting() : 0;
+    if (waiting) {
+      text(waiting + " of your reports are waiting for a connection",
+           SCREEN_W / 2, 600, 12, "#ffcb42", "center", 0.6);
+    }
+    if (realBoards.err && realBoards.err !== "no account service") {
+      text(realBoards.err, SCREEN_W / 2, 620, 12, "#ff9d5c", "center", 0.7);
+    }
+
+    tapButton("BACK", SCREEN_W / 2, 650, 240, 44, "#ffcb42",
+              () => { state = "modes"; });
+  }
+
+  /* ── the competition ──────────────────────────────────────────────────────
+     *"maybe even a comp"* — the smallest honest version, and it costs a
+     function of the date. One machine is the sector's challenge at a time, the
+     same one for everybody, and it turns over on a clock nobody owns: the UTC
+     day. No network, no server, nothing to keep in sync, and it gives a board a
+     reason to be looked at today rather than remembered from last week. */
+  function todaysChallenge() {
+    const day = Math.floor(Date.now() / 86400000);
+    return BOARD_GAMES[((day % BOARD_GAMES.length) + BOARD_GAMES.length) %
+                       BOARD_GAMES.length];
+  }
+  const todaysChallengeLine = () =>
+    "today the sector is playing " + todaysChallenge().name;
+
   function openLane(key) {
     modeLane = key;
     simPick = Math.max(0, LANE_KEYS.indexOf(key));
@@ -25276,10 +25547,22 @@
       x += w + gap;
     });
 
-    tapButton("BACK", SCREEN_W / 2, 600, 240, 40, "#ffcb42",
-              () => { state = "sims"; });
-    text("every key is yours to change — SETTINGS on the front page",
-         SCREEN_W / 2, 648, 12, "#ffcb42", "center", 0.7);
+    /* The witnessed board, offered on the page where you choose a game to play
+       with other people. Not on the solo lane: a solo score has nobody to
+       witness it, so there is nothing of yours that could ever be on it, and a
+       button to a board you cannot reach is a worse thing than no button. */
+    if (modeLane === "multi") {
+      tapButton("BACK", SCREEN_W / 2 - 140, 600, 240, 40, "#ffcb42",
+                () => { state = "sims"; });
+      tapButton("[B]  THE BOARD", SCREEN_W / 2 + 140, 600, 240, 40, "#87d8ff",
+                openBoards);
+      text(todaysChallengeLine(), SCREEN_W / 2, 648, 12, "#ffcb42", "center", 0.7);
+    } else {
+      tapButton("BACK", SCREEN_W / 2, 600, 240, 40, "#ffcb42",
+                () => { state = "sims"; });
+      text("every key is yours to change — SETTINGS on the front page",
+           SCREEN_W / 2, 648, 12, "#ffcb42", "center", 0.7);
+    }
   }
 
   /* What a card actually does. Survey and the lobby go straight in; everything
@@ -26323,6 +26606,8 @@
     const compactNames = [names[0], ...seated.map(l => names[l.seat])];
     const chosen = [skins[0], ...seated.map(l => skins[l.seat])];
     names = compactNames;
+    // Who is in which seat, compacted with the names. See `hostMatchSeats`.
+    hostMatchSeats(seated);
     skins = chosen.concat(PLAYERS.map((_, i) => i).filter(i => !chosen.includes(i)));
     seated.forEach((l, i) => { l.seat = i + 1; l.inputSeq = 0; });
 
@@ -26377,7 +26662,8 @@
        behind it. Not the pause menu or the results, which have a real world of
        their own to sit over. */
     const menu = state === "title" || state === "sims" || state === "count" ||
-                 state === "levels" || state === "controls" || state === "thumb";
+                 state === "levels" || state === "controls" || state === "thumb" ||
+                 state === "board";
     if (menu) drawDrift(dt || 0);
 
     /* ── the world behind a page ───────────────────────────────────────────
@@ -26469,6 +26755,7 @@
     if (state === "title") { drawTitle(dt); return; }
     if (state === "sims") { drawSims(dt); return; }
     if (state === "modes") { drawModes(dt); return; }
+    if (state === "board") { drawBoards(); return; }
     if (state === "levels") { drawLevels(); return; }
     if (state === "count") { drawCount(); return; }
     if (state === "controls") { drawControls(); return; }
@@ -26939,7 +27226,7 @@
       names[net.seat] = myName;
       seatsUI();
       if (N && N.guest.link && N.guest.link.open) {
-        N.guest.send({ t: "me", name: myName }, true);
+        N.guest.send({ t: "me", name: myName, acct: myAccount() }, true);
       }
     }
   });
@@ -27087,6 +27374,12 @@
         }
         else if (msg.t === "me" && link.seat != null) {
           names[link.seat] = tidyName(msg.name);
+          /* An id off the wire, kept only if it is the shape of one. It is
+             never trusted to be *true* — nothing here can check that — but a
+             report filed against something that is not a uuid is a row the
+             database refuses, and this is the cheapest place to not do that. */
+          accounts[link.seat] =
+            /^[0-9a-f-]{36}$/i.test(String(msg.acct || "")) ? String(msg.acct) : "";
           tellSeats();
         }
         else if (msg.t === "ready" && link.seat != null) {
@@ -27100,7 +27393,7 @@
   const guestHandlers = {
     onOpen: () => {
       say("Connected. Telling the host who you are…");
-      window.KondriteNet.guest.send({ t: "me", name: myName }, true);
+      window.KondriteNet.guest.send({ t: "me", name: myName, acct: myAccount() }, true);
     },
     /* The host going away means something different depending on where you are
        standing. Mid-match there is nothing to go back to but the title. In the
@@ -28140,6 +28433,13 @@
     try {
       r = await cloud.setName(pilot);
     } catch (err) { return acctSay(err.message, true); }
+    /* Taken is not a failure to save, it is a different name being needed —
+       one name, one pilot, so that a board is a list of people rather than a
+       list of claims to be somebody. The door stays up and asks again. */
+    if (r.taken) {
+      el("acctPilot").select && el("acctPilot").select();
+      return acctSay(r.reason + " Pick another.", true);
+    }
     paintAccount();
     acctSay(r.saved
       ? "You are " + r.name + "."
@@ -28338,6 +28638,8 @@
     const compactNames = [names[0], ...seated.map(l => names[l.seat])];
     const chosen = [skins[0], ...seated.map(l => skins[l.seat])];
     names = compactNames;
+    // Who is in which seat, compacted with the names. See `hostMatchSeats`.
+    hostMatchSeats(seated);
     skins = chosen.concat(PLAYERS.map((_, i) => i).filter(i => !chosen.includes(i)));
     seated.forEach((l, i) => { l.seat = i + 1; l.inputSeq = 0; });
 
@@ -28459,6 +28761,18 @@
          fly to each of them. */
       board: (gx, gy, owner, game) =>
         WORLD.simBoard(gx, gy, owner, game, CAMPAIGN_ORDER.length),
+      /* The witnessed board's half. A harness cannot open five browsers and
+         play a real game against itself, so it is handed the two things a
+         match tells this client — who was in which seat, and which match it
+         was — and then asks what this client would say about it. */
+      witness: {
+        seats: (a, id) => { accounts = (a || []).slice(); matchId = id || null; },
+        // `net.on` is `role !== null`, so being online is a role, not a flag.
+        online: on => { net.role = on ? "host" : null; },
+        report: r => matchReport(r || { kind: "lost" }),
+        accounts: () => accounts.slice(),
+        matchId: () => matchId
+      },
       chunkSize: () => CHUNK,
       // What a station is short of, for anything watching the economy react.
       market: st => marketOf(st || surv.docked),

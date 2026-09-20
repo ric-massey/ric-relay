@@ -46,7 +46,9 @@ machine in a world that has arcade machines.
 separate job with its own landmines. This file keeps saying KONDRITE because
 that is what it is called today.
 
-**Steps 1 to 4 are built, 19–20 September 2026.** The door: the title is the
+**All five steps are built, 19–20 September 2026** — with one thing outstanding
+that is not code: `supabase/schema.sql` has to be run in the Supabase dashboard
+before the real board has anything to read. See *Step 5, as built*. The door: the title is the
 game plus a SIMULATORS line, the lanes are one floor down, and `survey` is in
 neither of them. The machine: a SIMULATORS tab at every station and every
 inhabited world, a room with three cabinets in it, and the boundary — save
@@ -54,8 +56,9 @@ first, play, come back standing at the same dock. The sign-in: the guest door
 is closed, everybody has a pilot name, and a cached session plays offline with
 no connection at all. The boards: a dozen of the sector's own people on every
 machine, generated from the cabinet and its owner, with you at your rank among
-them. Step 5 (the real board) is not built. See the *as built* sections at the
-foot of this file.
+them. And the real board: witnessed multiplayer scores, where a row appears only
+when two accounts who were in the match agree about it. See the *as built*
+sections at the foot of this file.
 
 `SURVEY-PLAN.md` stays the authority for Survey; when the rest of this is built,
 one section goes there and this file becomes the record of how it was decided.
@@ -351,9 +354,9 @@ station and per planet, your name among them. Offline, seeded, no network. This
 is the step that makes a machine worth a second visit, and it is the whole of
 single player's reward.
 
-**5 · The real board.** Multiplayer scores, with the agreement rule, and the
-three tables. Then the competition — one challenge per cabinet, on a shared
-clock.
+**5 · The real board.** *Built — see* **Step 5, as built**. Multiplayer scores,
+with the agreement rule, and the three tables. Then the competition — one
+challenge per cabinet, on a shared clock.
 
 **Not now:** a simulator you can fit to your own ship. It is a real idea for later
 and it is a *part*, the way everything else in Survey is a part.
@@ -687,4 +690,114 @@ and the room walked by hand at a station — the board follows the machine you a
 standing at, and your row sits in your own colour with the next name up beside a
 score you can see.
 
-**Not done, and next:** step 5 — the real board.
+---
+
+## Step 5, as built
+
+The real board. The plan offered a simpler alternative here — post the host's
+result and trust it — and said it "stops being fine the first time the board is
+worth lying to". The agreement rule is built instead.
+
+### A score is not a claim you make about yourself
+
+That sentence is the whole design. This is a static client with no game server,
+and signing in gives **identity, not authority**: a signed-in player can POST
+anything from the console. What a multiplayer result has that a solo one never
+can is that somebody else was there — so a score is a thing other people
+*report about you*, and it counts only when two of them agree.
+
+The plan's version of the rule is "more than one account posts the same result
+for the same match". That works for survival, where the wave is shared, and
+falls apart on battle royale, where every player's result is different and so
+two honest clients post two different numbers. The general form is one step
+further out, and it is what got built:
+
+> Every client posts **one row per player it saw**, and a row is
+> `(match, subject, reporter)` — who it is about, and who says so. A score
+> counts when two different **reporters** agree on the same value for the same
+> **subject** in the same match.
+
+Co-op and free-for-all both fall out of that. The counting is a `having
+count(distinct reporter) >= 2` in Postgres, not in the client, because a check
+the client performs is not a check.
+
+### What that needed the lobby to learn
+
+Seats carried a *display name* and nothing else, so nothing in a finished match
+could say whose score was whose — two people can type the same name into a
+lobby and neither of them is the other. So seats now carry an **account** as
+well, the host mints a **match id** and sends both out with the world, and a
+guest overwrites its own seat from its own session: the host is trusted to say
+who the other people are, not to say who you are.
+
+The trap was that both places a host starts a match compact the roster — a
+player can leave on the result screen — and an `accounts` table not compacted
+alongside `names` would go on crediting every score to whoever used to sit
+there. That is the kind of wrong that looks like it is working, so the
+compaction is one call, made at the same moment, from both.
+
+**Nothing is reported for a local game**, and nothing for an online one with
+fewer than two accounts in it. Rows nobody can ever witness are rows that sit in
+the table forever being one person's word.
+
+### Three tables, and the one that stays private
+
+`saves` is untouched and every policy on it still names `auth.uid()`, because
+its whole safety property is that nobody reads anyone else's book. A board is
+the exact opposite — everybody reads everybody — and the two postures cannot
+share a table. So:
+
+- **`profiles`** — the public half of an account, and the only public thing
+  about one. The pilot name from step 3 lived in `user_metadata`, which is in
+  the auth schema and readable only by its owner, so a board could never have
+  printed it. Unique on `lower(name)`: one name, one pilot.
+- **`scores`** — the testimony. Insert only as yourself, about anybody; read
+  freely; and **no update and no delete policy exists**, which with RLS on is
+  what makes a score something that cannot be walked back.
+- **`agreed_scores`** and **`board`** — views, `security_invoker` so a view is
+  not a way around row-level security.
+
+No email column exists in any of it. That is asserted in `test/door.js` rather
+than eyeballed.
+
+### A match on a train
+
+The same promise step 3 made about playing: a connection is not required to
+play, so it cannot be required to have played. Reports queue in local storage,
+survive a closed tab, and go up on the next connection — and re-posting is
+safe by construction, because the primary key makes a repeat the same row, so a
+queue that cannot confirm a send may simply try again.
+
+### The competition
+
+*"maybe even a comp"*, in its smallest honest form: one machine is the sector's
+challenge at a time, the same one for everybody, turning over on a clock nobody
+owns — the UTC day. A function of the date, no network, nothing to keep in
+sync, and it gives a board a reason to be looked at today rather than
+remembered from last week.
+
+### What moved
+
+| Where | What happened |
+|---|---|
+| `supabase/schema.sql` | `profiles`, `scores`, and the two views that count witnesses · `saves` untouched |
+| `cloud.js` | `profileUp` publishes the name where a board can read it · `reportMatch` queues testimony and `sendScores` drains it · `board` reads one back, cached · `setName` now publishes too, and reports a name already taken |
+| `index.html` | seats carry accounts, the host mints a match id, and both are compacted with the roster · `matchReport` says what this client saw · the board page, `[B]` from the multiplayer lane · `todaysChallenge` |
+| `test/door.js` | the schema's two postures, read from the file · a local game reports nothing · nor does a match with nobody to agree · you can only ever be the reporter · a report survives the tab and goes up later · a board is read once a session and carries no email |
+| `test/ui.js` | the board page joins the sweep |
+
+### What is not proved, and cannot be here
+
+**The SQL has never been run.** Nothing in this repo can reach a Postgres, so
+what the suite checks is the *shape* of the file — that `saves` stayed private,
+that no update or delete policy exists on `scores`, that the agreement rule is
+in the schema and not in the client. Whether it executes is unknown until
+somebody pastes it into the dashboard. **That is a step for Ric**, in the
+Supabase SQL editor, and until it runs the board reads as "could not be read"
+and reports queue up harmlessly.
+
+The other thing not proved is a real five-player match agreeing with itself,
+which needs five browsers and five accounts. The client's half is tested; the
+join is arithmetic in Postgres.
+
+**Not done:** nothing in this plan. Steps 1 to 5 are built.

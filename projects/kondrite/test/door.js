@@ -140,6 +140,7 @@ function boot(opts) {
        check can say "it played without asking anybody anything". */
     fetch: async (url, init) => {
       calls.push({ url: String(url), method: (init && init.method) || "GET",
+                   headers: (init && init.headers) || {},
                    body: init && init.body ? JSON.parse(init.body) : null });
       if (!o.net) throw new TypeError("Failed to fetch");
       return o.net({ url: String(url), init: init || {},
@@ -265,6 +266,181 @@ const FAKE = { url: "https://example.invalid", anonKey: "sb_publishable_test" };
   console.log("  offline    a cached session plays with every request failing");
 }
 
+// ── 10. the schema keeps the two postures apart ───────────────────
+/* Read rather than run: nothing here can reach a Postgres, so what is checked
+   is the shape of the file Ric pastes into the dashboard. These are the two
+   properties that would be catastrophic to get wrong and invisible until
+   somebody else read your save. */
+{
+  const sql = require("node:fs").readFileSync(
+    require("node:path").join(page.DIR, "supabase/schema.sql"), "utf8");
+
+  /* One policy is one statement, ending at its own semicolon. Split on the
+     keyword alone and a block runs on into whatever table is defined after it
+     — which it did, and made the profiles' `for update` look like one on
+     `scores`. */
+  const policies = [...sql.matchAll(/create policy[\s\S]*?;/g)].map(m => m[0]);
+
+  // `saves` stays private. Every policy on it still names auth.uid().
+  const savesPolicies = policies.filter(p => /on public\.saves/.test(p));
+  check(savesPolicies.length >= 4, "the saves table lost its policies");
+  check(savesPolicies.every(p => /auth\.uid\(\)/.test(p)),
+        "a policy on saves no longer names auth.uid()");
+  check(!/on public\.saves[\s\S]{0,200}using \(true\)/.test(sql),
+        "the saves table has been made readable by everybody");
+
+  // A score cannot be walked back: no update and no delete policy exists.
+  const scorePolicies = policies.filter(p => /on public\.scores/.test(p));
+  check(scorePolicies.length > 0, "the scores table has no policies at all");
+  check(!scorePolicies.some(p => /\bfor update\b|\bfor delete\b/.test(p)),
+        "a score can be changed or deleted after the fact");
+  check(scorePolicies.some(p => /for insert[\s\S]*auth\.uid\(\) = reporter/.test(p)),
+        "anybody can report as anybody");
+  check(scorePolicies.some(p => /for select[\s\S]*using \(true\)/.test(p)),
+        "the board cannot be read by the people on it");
+
+  /* The agreement rule, which is the only thing that makes the board real. It
+     has to be in the database — a check the client performs is not a check. */
+  check(/count\(distinct reporter\) >= 2/.test(sql),
+        "the agreement rule is not in the schema");
+  check(/security_invoker = true/.test(sql),
+        "a view reads with its owner's rights and goes round row-level security");
+
+  // And no email ever reaches anything a stranger can select.
+  check(!/\bemail\b/.test(sql.replace(/--[^\n]*/g, "")),
+        "the schema mentions an email column outside its comments");
+  console.log("  schema     saves stays private \u00b7 a score cannot be edited or " +
+              "deleted \u00b7 you report only as yourself \u00b7 two witnesses, counted " +
+              "in Postgres");
+}
+
+/* 11 and 12 reach the network, and a post lands on a microtask rather than on
+   the line that asked for it — so they are awaited rather than read straight
+   after. */
+async function witnessChecks() {
+  const ME = "11111111-2222-3333-4444-555555555555";
+  const YOU = "22222222-3333-4444-5555-666666666666";
+  const MATCH = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+
+  // ── 11. what this client says it saw ────────────────────────
+  /* A score is not a claim you make about yourself, so what this client posts
+     is a row about *everybody it could name* — and the reporter on every one of
+     them is this account, because the policy on the table refuses anything
+     else. */
+  {
+    const g = boot({ cloud: FAKE, store: { [SESSION_KEY]: cached() },
+                     net: async () => ({ ok: true, status: 201,
+                                         text: async () => "" }) });
+    g.cf.start("survival", 2);
+
+    // A local game is not a witnessed one, whoever is sitting at it.
+    g.cf.witness.online(false);
+    g.cf.witness.seats([ME, YOU], MATCH);
+    check(g.cf.witness.report({ kind: "lost" }).length === 0,
+          "a local game filed a report on the real board");
+
+    /* Nor an online one with nobody else signed in: there is no second account
+       to agree, so the rows could never become a score. */
+    g.cf.witness.online(true);
+    g.cf.witness.seats([ME, ""], MATCH);
+    check(g.cf.witness.report({ kind: "lost" }).length === 0,
+          "a match with one signed-in player filed rows nobody can witness");
+    g.cf.witness.seats([ME, ME], MATCH);
+    check(g.cf.witness.report({ kind: "lost" }).length === 0,
+          "one account in two seats was allowed to witness itself");
+
+    // Two accounts: a row each, and this client is the reporter on both.
+    g.cf.witness.seats([ME, YOU], MATCH);
+    const rows = g.cf.witness.report({ kind: "lost" });
+    check(rows.length === 2, "a two-account match filed " + rows.length + " rows");
+    check(rows.some(r => r.subject === YOU),
+          "this client said nothing about the other player, so nobody can be witnessed");
+
+    await g.cloud.sendScores();
+    const sent = g.calls.filter(c => /\/scores/.test(c.url));
+    check(sent.length >= 1, "the report never reached the scores table");
+    if (sent.length) {
+      const body = sent[0].body;
+      check(Array.isArray(body) && body.length === 2,
+            "the rows were not posted together");
+      check(body.every(r => r.reporter === ME),
+            "a row was posted claiming somebody else reported it");
+      check(body.every(r => r.match_id === MATCH),
+            "the rows are not all about one match");
+      check(body.every(r => typeof r.value === "number" && r.value >= 0),
+            "a row carries something that is not a score");
+      check(!JSON.stringify(body).includes("@"),
+            "an email address reached the scores table");
+      /* Re-posting has to be harmless, because the queue retries whatever it
+         could not confirm — the primary key makes a repeat the same row. */
+      check(/ignore-duplicates/.test(String(sent[0].headers.Prefer || "")),
+            "a retried report would be refused rather than ignored");
+    }
+    console.log("  witness    a local game reports nothing \u00b7 so does a match " +
+                "with nobody to agree \u00b7 two accounts file a row each, and you " +
+                "can only ever be the reporter");
+  }
+
+  // ── 12. a match on a train still reaches the board ──────────────
+  /* The same promise step 3 made about playing: a connection is not required to
+     play, so it cannot be required to *have played*. A report made with no
+     network waits in local storage — through a closed tab — and goes up on the
+     next connection. */
+  {
+    const store = { [SESSION_KEY]: cached() };
+    const g = boot({ cloud: FAKE, store });        // no `net`: everything fails
+    g.cf.start("survival", 2);
+    g.cf.witness.online(true);
+    g.cf.witness.seats([ME, YOU], MATCH);
+    g.cf.witness.report({ kind: "lost" });
+    await g.cloud.sendScores();
+    check(g.cloud.scoresWaiting() === 2,
+          "an unsendable report was dropped rather than kept: " +
+          g.cloud.scoresWaiting() + " waiting");
+    check(!!g.store["kondrite.scores.v1"],
+          "the report is only in memory, so closing the tab would lose it");
+
+    /* And the next tab, with a connection, sends what the last one could not.
+       The queue is read from storage at boot, which is what makes this true. */
+    const g2 = boot({ cloud: FAKE, store: g.store,
+                      net: async () => ({ ok: true, status: 201, text: async () => "" }) });
+    check(g2.cloud.scoresWaiting() === 2,
+          "a new tab did not pick up the waiting reports");
+    const r = await g2.cloud.sendScores();
+    check(r.sent === 2, "the waiting reports did not go up: " + JSON.stringify(r));
+    check(g2.cloud.scoresWaiting() === 0, "they went up and stayed queued as well");
+    check(!g2.store["kondrite.scores.v1"], "an empty queue was left in storage");
+
+    console.log("  queued     a report with no connection waits in storage, " +
+                "survives the tab, and goes up on the next one");
+  }
+
+  // ── 13. a board is read once, not on every frame ───────────────
+  {
+    const rows = [{ name: "RIC", value: 12, witnesses: 2,
+                    user_id: "11111111-2222-3333-4444-555555555555" },
+                  { name: "SPLITTOOTH", value: 9, witnesses: 3, user_id: "x" }];
+    const g = boot({ cloud: FAKE, store: { [SESSION_KEY]: cached() },
+                     net: async () => ({ ok: true, status: 200,
+                                         text: async () => JSON.stringify(rows) }) });
+    const first = await g.cloud.board("survival", 10);
+    const again = await g.cloud.board("survival", 10);
+    const reads = g.calls.filter(c => /\/board/.test(c.url));
+    check(reads.length === 1,
+          "the board was read " + reads.length + " times for two asks");
+    check(first.length === 2 && again.length === 2, "the cached board came back empty");
+    check(first[0].you === true && first[1].you === false,
+          "the board did not know which row is yours");
+    check(!JSON.stringify(first).includes("@"), "an email came back on a board");
+    /* The board is read through a view that carries the name and not the
+       account it belongs to being anything a stranger can act on. */
+    check(reads[0].url.includes("game=eq.survival") && reads[0].url.includes("order=value.desc"),
+          "the board was not asked for in order, per game: " + reads[0].url);
+    console.log("  cached     a board is read once a session, knows your row, " +
+                "and carries no email");
+  }
+}
+
 /* 5 and 6 are the only asynchronous checks here, and they are the pair that
    gives each other meaning: an unreachable service must not sign anybody out,
    and a refused token must. Run together, at the end, where a real `await` is
@@ -353,7 +529,7 @@ async function refreshChecks() {
 
 
 
-refreshChecks().then(() => {
+refreshChecks().then(witnessChecks).then(() => {
   if (problems.length) {
     console.log("KONDRITE door checks FAILED");
     for (const p of problems) console.log("  · " + p);

@@ -75,3 +75,158 @@ create policy "you overwrite your own save" on public.saves
 drop policy if exists "you may wipe your own save" on public.saves;
 create policy "you may wipe your own save" on public.saves
   for delete to authenticated using (auth.uid() = user_id);
+
+
+-- ===========================================================================
+-- THE BOARDS
+-- ===========================================================================
+-- Added for step 5 of SIMULATIONS.md. Safe to re-run, like everything above.
+--
+-- ── why a board cannot live in `saves` ─────────────────────────────────────
+-- The whole safety property of `saves` is that every policy names `auth.uid()`,
+-- so nobody reads anyone else's book. A leaderboard is the exact opposite —
+-- everybody reads everybody — and the two postures cannot share a table. So
+-- these are their own, and the rule about `auth.uid()` still holds on every
+-- write.
+--
+-- ── the problem these tables exist to solve ────────────────────────────────
+-- This is a static client. There is no game server, `net.js` says so in its
+-- first line, and signing in gives **identity, not authority**: a signed-in
+-- player can POST any score they like from the browser console. An account
+-- stops a board being anonymous; it does not stop it being wrong.
+--
+-- What a multiplayer result has that a solo one never can is that **somebody
+-- else was there**. So a score is not a thing you claim about yourself. It is a
+-- thing other people *report about you*, and it only counts when two of them
+-- agree:
+--
+--   · every client posts one row per player it saw, saying what that player got
+--   · a row is (match, subject, reporter): who it is about, and who says so
+--   · a score counts when two different accounts report the same value for the
+--     same subject in the same match
+--
+-- The check is here, in Postgres, and not in the client — a check the client
+-- performs is not a check. This defeats casual forgery outright: faking a score
+-- stops being a line in the console and becomes two real people agreeing to lie
+-- about a game they played, which is a social problem and not one worth
+-- engineering against.
+
+-- ---------------------------------------------------------------------------
+-- Who you are, publicly. The one thing about an account anybody else can see.
+-- ---------------------------------------------------------------------------
+-- The email lives in `auth.users` and never leaves it. A board joins to this.
+create table if not exists public.profiles (
+  user_id    uuid primary key references auth.users on delete cascade,
+
+  -- What the boards print. Three to sixteen characters, letters or digits at
+  -- both ends — the same rule the game's own `PILOT` enforces before it ever
+  -- gets here, repeated because a constraint the client owns is not one.
+  name       text not null
+             constraint name_is_a_pilot_name
+             check (name ~ '^[A-Za-z0-9][A-Za-z0-9 _-]{1,14}[A-Za-z0-9]$'),
+
+  updated_at timestamptz not null default now()
+);
+
+-- One name, one pilot. Case-insensitively, or RIC and ric are two rows that
+-- read as one person on a board.
+create unique index if not exists profiles_name_unique
+  on public.profiles (lower(name));
+
+alter table public.profiles enable row level security;
+
+-- Everybody reads every name: that is what a board is for, and a name is the
+-- only thing in here.
+drop policy if exists "names are public" on public.profiles;
+create policy "names are public" on public.profiles
+  for select to authenticated using (true);
+
+drop policy if exists "you name yourself" on public.profiles;
+create policy "you name yourself" on public.profiles
+  for insert to authenticated with check (auth.uid() = user_id);
+
+drop policy if exists "you rename yourself" on public.profiles;
+create policy "you rename yourself" on public.profiles
+  for update to authenticated using (auth.uid() = user_id)
+                               with check (auth.uid() = user_id);
+
+-- ---------------------------------------------------------------------------
+-- What people say happened.
+-- ---------------------------------------------------------------------------
+create table if not exists public.scores (
+  -- The match everybody is talking about. Made by the host when the match
+  -- starts and sent to every guest, so all the reports land under one id.
+  match_id   uuid not null,
+
+  -- Whose score this is, and who is saying so. They are usually different
+  -- people: the whole point is that your score is something others witnessed.
+  subject    uuid not null references auth.users on delete cascade,
+  reporter   uuid not null references auth.users on delete cascade,
+
+  game       text not null check (game in ('survival', 'royale', 'campaign')),
+
+  -- Survival: the wave reached. Battle royale: seconds survived. Campaign: the
+  -- highest mission cleared. One number, because a board is a ranking.
+  value      bigint not null check (value >= 0 and value < 1000000000),
+
+  -- What the number does not say: the difficulty a campaign ran at, the place
+  -- a royale finished in. Short, and free text from a client, so it is treated
+  -- as such and never as markup.
+  detail     text not null default '' check (length(detail) <= 40),
+
+  created_at timestamptz not null default now(),
+
+  -- One report per person per player per match. Saying it twice is saying it
+  -- once, which stops a single account agreeing with itself.
+  primary key (match_id, subject, reporter)
+);
+
+alter table public.scores enable row level security;
+
+-- Read the board freely. This is the half that `saves` must never have.
+drop policy if exists "scores are public" on public.scores;
+create policy "scores are public" on public.scores
+  for select to authenticated using (true);
+
+-- You may only report *as yourself*. You may report about anybody, because
+-- reporting about other people is exactly what witnessing is.
+drop policy if exists "you report as yourself" on public.scores;
+create policy "you report as yourself" on public.scores
+  for insert to authenticated with check (auth.uid() = reporter);
+
+-- No update and no delete, for anyone. A score cannot be walked back, and the
+-- absence of these policies is what says so: with RLS on, an operation with no
+-- policy is refused.
+
+create index if not exists scores_by_game on public.scores (game, value desc);
+create index if not exists scores_by_match on public.scores (match_id);
+
+-- ---------------------------------------------------------------------------
+-- The agreement rule, which is the only thing that makes any of this real.
+-- ---------------------------------------------------------------------------
+-- A claim counts when two different accounts made it. `security_invoker` so
+-- the reader's own permissions still apply through the view rather than the
+-- view's owner's — a view is not a way around row-level security.
+create or replace view public.agreed_scores
+  with (security_invoker = true) as
+  select match_id, subject, game, value,
+         count(distinct reporter) as witnesses,
+         min(created_at)          as at
+    from public.scores
+   group by match_id, subject, game, value
+  having count(distinct reporter) >= 2;
+
+-- And the board itself: each pilot's best witnessed score per game, with the
+-- only public thing about them attached. No email can reach this — there is
+-- none in either table it is built from.
+create or replace view public.board
+  with (security_invoker = true) as
+  select a.game,
+         a.subject                        as user_id,
+         p.name,
+         max(a.value)                     as value,
+         min(a.at)                        as first_at,
+         sum(a.witnesses)                 as witnesses
+    from public.agreed_scores a
+    join public.profiles p on p.user_id = a.subject
+   group by a.game, a.subject, p.name;

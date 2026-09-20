@@ -86,8 +86,39 @@ empty on a first visit, the bottom rung is always beatable on a first go, and
 there is always somebody just above you.
 
 The page says **nobody is watching**, once, because a made-up board that did not
-admit it would be the one dishonest thing in the game. The real one is
-multiplayer, and it is witnessed.
+admit it would be the one dishonest thing in the game.
+
+### The real one
+
+The other kind is on the multiplayer page, under **[B]**, and it is witnessed.
+
+Signing in gives **identity, not authority**. This is a static client with no
+game server, so a signed-in player can POST any score they like from the
+console; an account stops a board being anonymous, it does not stop it being
+wrong. What a multiplayer result has that a solo one never can is that somebody
+else was there. So:
+
+> A score is not a claim you make about yourself. Every client posts one row per
+> player it saw — who it is about, and who says so — and a score counts only
+> when two different reporters agree on the same value for the same player in
+> the same match.
+
+The counting is a `having count(distinct reporter) >= 2` in Postgres, because a
+check the client performs is not a check. It defeats casual forgery outright:
+faking a score stops being a line in the console and becomes two real people
+agreeing to lie about a game they played, which is a social problem and not one
+worth engineering against.
+
+A local game reports nothing, and neither does an online one with fewer than two
+accounts in it — rows nobody can witness would sit in the table forever being
+one person's word. A report made with no connection waits in local storage,
+survives a closed tab, and goes up on the next one; re-posting is safe by
+construction, because the primary key makes a repeat the same row.
+
+One machine is the sector's challenge at a time, the same for everybody, turning
+over on the UTC day. A function of the date: no network, nothing to keep in
+sync, and a reason to look at a board today rather than remember it from last
+week.
 
 None of them keeps anything, and none of them pays anything back into the
 sector — the score on the cabinet is the whole of what crosses:
@@ -563,8 +594,14 @@ a row, write a row is the whole of it, and 120 KB of CDN script to make four
 fetches would cost the game its two actual properties — no build step and no
 third-party script on the page. `config.js` holds the project URL and the
 publishable key; blank there means no accounts, no door, no request is ever
-made, and everything else works exactly as before. `supabase/schema.sql` is the one table
-and its policies, every one of which names `auth.uid()`.
+made, and everything else works exactly as before. `supabase/schema.sql` is three tables.
+`saves` is private and every policy on it names `auth.uid()`; `profiles` and
+`scores` are the boards' half, where everybody reads everybody — the two
+postures cannot share a table, which is why they do not. `scores` has no update
+and no delete policy at all, and with row-level security on, that absence is
+what makes a score something that cannot be walked back. **The file has to be
+run once in the Supabase SQL editor**; until it is, the real board reads as
+unavailable and reports queue up harmlessly.
 
 The save button is not what keeps a run — autosaving already does that. It is
 for the two things autosaving cannot do: send it to the account *now* rather
@@ -839,7 +876,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `net.js` | WebRTC links and compact session-description encoding |
 | `cloud.js` | The account, and the book kept in it. No SDK, no request until asked |
 | `config.js` | The account service's URL and publishable key. Blank means no accounts |
-| `supabase/schema.sql` | The one save table and its policies. Run once in the SQL editor |
+| `supabase/schema.sql` | Three tables: the private save, and the two the boards are made of. Run once in the SQL editor |
 | `survey-world.js` | Where you are and what that means: chunk identity, the danger curve, the region lattice and the Warrens' rock. Pure functions of a seed and a pair of coordinates |
 | `survey-save.js` | The book: where it is kept, the four pieces a read is made of, and the write |
 | `survey-hud.js` | Survey's interface: the flight panel, the chart page, the illustrated almanac, the station |
@@ -859,7 +896,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `test/save.js` | The book: parse, migrate, validate and the loader that decides what to do when one says no. An old save lands where a new one does, a future one is refused, a corrupt primary falls back to the backup, and a bug in the reader is not a corrupt save |
 | `test/fog.js` | The chart's round trip through storage, on its own and in milliseconds: a refused import may not damage the chart it declined to replace |
 | `test/warrens.js` | The cave region: that its rock agrees with itself across a chunk line, that the passages join up, and that nothing — the ship included — is ever left inside solid rock. Takes a seed |
-| `test/door.js` | The account layer, which every other suite stubs off: that a copy with no account service is a whole game, that the guest door is gone from the markup as well as the logic, that signed out neither the game nor the machines open, that a cached session plays with every request failing, that being unreachable does not sign anybody out while a refusal does, and that an email never becomes the public name |
+| `test/door.js` | The account layer and the boards, which every other suite stubs off: that a copy with no account service is a whole game, that the guest door is gone from the markup as well as the logic, that signed out neither the game nor the machines open, that a cached session plays with every request failing, that being unreachable does not sign anybody out while a refusal does, and that an email never becomes the public name · and for step 5: that `saves` stayed private while `scores` became public, that no policy lets a score be edited or deleted, that a local game reports nothing, that you can only ever be the reporter, and that a report survives a closed tab |
 | `test/browser.js` | The only suite that needs a browser, and it asks only what one can answer: does the page load its own modules, does the canvas draw, does the account panel take typing, does the wheel move a page, does a part drag into a slot, does a run survive a real reload, and does it lay out on a phone. Needs Playwright — see below |
 
 The game intentionally remains self-contained. Do not add a framework, bundler or

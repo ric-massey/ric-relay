@@ -302,6 +302,16 @@
     try {
       await fresh();
       await call("/auth/v1/user", { method: "PUT", body: { data: { name: pilot } } });
+      /* And the public copy, which is the one a board can actually read —
+         `user_metadata` is in the auth schema and only its owner sees it. A
+         name that is already somebody else's is the one failure here worth
+         handing back rather than swallowing: it is the player's to fix, and
+         until they do, nothing of theirs can appear on a board under it. */
+      const pub = await profileUp(pilot);
+      if (pub.taken) {
+        return { saved: false, taken: true, name: pilot,
+                 reason: "Somebody is already flying as " + pilot + "." };
+      }
       return { saved: true, name: pilot };
     } catch (err) {
       return { saved: false, name: pilot, reason: err.message, offline: !!err.offline };
@@ -375,6 +385,161 @@
     return "another device";
   }
 
+  /* ── the boards ───────────────────────────────────────────────────────────
+     Step 5. Three things live here: the public half of an account, the rows a
+     client posts about a match it was in, and reading a board back.
+
+     The rule the whole thing turns on is that **a score is not a claim you make
+     about yourself**. Every client in a match posts one row per player it saw,
+     and Postgres counts a score only where two different accounts reported the
+     same value for the same player in the same match. See `supabase/schema.sql`
+     — the check is there rather than here, because a check the client performs
+     is not a check. */
+
+  /* Your name, where other people can read it. `user_metadata` from step 3 is
+     in the auth schema and only its owner can see it, so a board could never
+     have printed it. This is the public copy, and it is the only public thing
+     about an account. */
+  async function profileUp(name) {
+    if (!sess) throw new Error("Not signed in.");
+    const pilot = PILOT.clean(name);
+    if (!PILOT.ok(pilot)) throw new Error(PILOT.why(pilot));
+    await fresh();
+    try {
+      await call("/rest/v1/profiles", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: { user_id: sess.userId, name: pilot, updated_at: new Date().toISOString() }
+      });
+      return { saved: true, name: pilot };
+    } catch (err) {
+      /* One name, one pilot. 23505 is Postgres saying the unique index refused
+         it, and it is the one failure here a player can actually do something
+         about — so it is its own answer rather than a message about SQL. */
+      if (/23505|duplicate key|already exists/i.test(err.message || "")) {
+        return { saved: false, taken: true, name: pilot };
+      }
+      throw err;
+    }
+  }
+
+  /* Whose name is on a board, when it is not yours. Read once and kept, because
+     a board is a page you open and close and reopen. */
+  async function myProfile() {
+    if (!sess) return null;
+    await fresh();
+    const rows = await call("/rest/v1/profiles?select=name&user_id=eq." + sess.userId);
+    return rows && rows.length ? rows[0] : null;
+  }
+
+  /* ── what you witnessed ───────────────────────────────────────────────────
+     Rows are queued rather than sent, and for the same reason the book is: a
+     match can end on a train. A score made with no connection goes up on the
+     next one, and until it does it sits in local storage, so closing the tab
+     does not lose it either.
+
+     Re-posting is harmless and is relied on: the primary key is (match,
+     subject, reporter), so a row that went up twice is the same row, and a
+     queue that cannot be sure whether it succeeded may simply try again. */
+  const QUEUE_KEY = "kondrite.scores.v1";
+  const QUEUE_MAX = 200;
+
+  let queue = (() => {
+    try {
+      const q = JSON.parse(readLocal(QUEUE_KEY) || "[]");
+      return Array.isArray(q) ? q.slice(0, QUEUE_MAX) : [];
+    } catch (_) { return []; }
+  })();
+  const saveQueue = () => {
+    if (queue.length) writeLocal(QUEUE_KEY, JSON.stringify(queue.slice(0, QUEUE_MAX)));
+    else dropLocal(QUEUE_KEY);
+  };
+
+  /* One match's worth of reports. `rows` is what this client saw: a subject, a
+     game, a number, and a word about it. The reporter is always *this* account
+     and is set here rather than taken from the caller, because the policy on
+     the table will refuse anything else and a client that lied about it would
+     simply be told no in a confusing way. */
+  function reportMatch(matchId, rows) {
+    if (!sess || !enabled() || !matchId || !rows || !rows.length) return 0;
+    const made = [];
+    for (const r of rows) {
+      if (!r || !r.subject || !r.game) continue;
+      const v = Math.max(0, Math.round(Number(r.value) || 0));
+      if (!isFinite(v)) continue;
+      made.push({ match_id: matchId, subject: r.subject, reporter: sess.userId,
+                  game: r.game, value: v,
+                  detail: String(r.detail || "").slice(0, 40) });
+    }
+    if (!made.length) return 0;
+    queue = queue.concat(made).slice(0, QUEUE_MAX);
+    saveQueue();
+    sendScores();
+    return made.length;
+  }
+
+  let sendingScores = false;
+  async function sendScores() {
+    if (sendingScores || !sess || !enabled() || !queue.length) {
+      return { sent: 0, left: queue.length };
+    }
+    sendingScores = true;
+    const batch = queue.slice(0, 50);
+    try {
+      await fresh();
+      await call("/rest/v1/scores", {
+        method: "POST",
+        headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+        body: batch
+      });
+      /* Only the rows that went are dropped. A report made while this was in
+         flight has to survive and go next time. */
+      queue = queue.slice(batch.length);
+      saveQueue();
+      lastError = "";
+      emit();
+      return { sent: batch.length, left: queue.length };
+    } catch (err) {
+      /* Offline keeps the queue. A refusal keeps it too: the rows are still
+         true, and the next attempt is after a refresh that may well work. */
+      lastError = err.message;
+      emit();
+      return { sent: 0, left: queue.length, reason: err.message,
+               offline: !!err.offline };
+    } finally {
+      sendingScores = false;
+    }
+  }
+
+  /* ── reading one back ─────────────────────────────────────────────────────
+     Cached for the session. A board is a number that changes when somebody
+     finishes a game, which is not often, and a read every time a page is drawn
+     would spend the free tier on a row that did not move. */
+  const BOARD_TTL = 90_000;
+  const boards = new Map();
+
+  async function board(game, limit) {
+    const n = Math.max(1, Math.min(50, limit || 20));
+    const key = game + ":" + n;
+    const have = boards.get(key);
+    if (have && Date.now() - have.at < BOARD_TTL) return have.rows;
+    await fresh();
+    const rows = await call("/rest/v1/board?select=name,value,witnesses,user_id" +
+                            "&game=eq." + encodeURIComponent(game) +
+                            "&order=value.desc&limit=" + n);
+    const got = (rows || []).map(r => ({ name: r.name, value: Number(r.value) || 0,
+                                         witnesses: Number(r.witnesses) || 0,
+                                         you: r.user_id === sess.userId }));
+    boards.set(key, { at: Date.now(), rows: got });
+    return got;
+  }
+  // What is cached right now, for a page that must draw before a read returns.
+  const boardNow = (game, limit) => {
+    const have = boards.get(game + ":" + Math.max(1, Math.min(50, limit || 20)));
+    return have ? have.rows : null;
+  };
+  const forgetBoards = () => boards.clear();
+
   /* ── the mirror ───────────────────────────────────────────────────────────
      What `bookStore` hands every write to. Survey saves every fifteen seconds
      and at about thirty events besides, and a row written that often would
@@ -415,6 +580,9 @@
       // Only cleared if it is still the book we sent: a save that happened
       // mid-flight has to survive and go next time.
       if (pending === book) pending = null;
+      /* There is a connection, so anything a match left waiting goes now. Not
+         awaited: a board is never worth holding a save up for. */
+      if (queue.length) sendScores();
       lastPush = Date.now();
       lastError = "";
       emit();
@@ -451,6 +619,10 @@
     signUp, signIn, signOut, resetPassword, setName,
     // The one rule about what a name is, so the panel cannot invent a second.
     pilot: PILOT,
+    /* The boards. `reportMatch` is what a client says it saw; `board` is what
+       two people agreeing about it looks like afterwards. */
+    profileUp, myProfile, reportMatch, sendScores, board, boardNow, forgetBoards,
+    scoresWaiting: () => queue.length,
     pull, put, wipeRow,
     push, flush,
     pendingWrite: () => pending !== null,
