@@ -64,7 +64,7 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | `projects/the-shape-of-harm/` | Psyche | Evidence-informed interactive research framework for comparing psychoactive-substance harms |
 | `projects/siege-conductor/` | Workbench | Star Wars viewing-companion PWA (add-to-home-screen app) |
 | `projects/offramp/` | Gaming | "OFFRAMP" — Interstate 40 as an arcade cabinet. The real corridor, all 2,551 miles Barstow→Wilmington, extracted from OpenStreetMap: true geometry and curves, 1,201 real exits at their real mile markers, real lane counts (85% of I-40 is two lanes each way), and mile posts that reset at each state line the way the real ones do. Only a 20-mile window of road is built at a time and slides as you drive, because the whole thing is 2.9M stations. Built into that window: the 350 surveyed interchanges as they were walked, 234 real rest areas and truck stops, a generated diamond for every other signed exit, a cross road bridged over each one with the ramp meeting it at a signalised junction, and the I-40/I-75 wye west of Knoxville as a two-lane left exit — signed, open, and closed for construction two thirds of the way down. The generated exits are not invented: their depth and their whole lateral profile are drawn from the 349 ramps the survey walked, so an interchange reaches a median 512 px off the freeway rather than the same 268 px every time, and the travel centres that a diamond crowds out are signed on the blue panel under its guide sign, which is where a real one is advertised. Every ramp puts you back on I-40; that rule is the whole design and it is asserted, not assumed. Crashes go through one SI impulse-momentum solver (`src/impact.js`, `test/impact.test.js`, checked against published crash figures); `test/corridor.js` sweeps every window of the route for two roads sharing tarmac. `data/osm/` holds the extractor and the raw OSM; `data/i40.js` is the generated corridor. See `projects/offramp/PLAN.md` and `projects/offramp/CRASH-MODEL.md` |
-| `projects/crossfire/` | Gaming | "CROSSFIRE" — bright vector-space combat for 1–5 ships in three modes: cooperative Survival with optional friendly fire, a no-time-limit Battle Royale with three lives, two-hit hulls, a following camera, minimap, closing wall, stationary suns and black holes and randomized moving asteroids, and a three-mission **Campaign** — escort a convoy, raid a fleeing enemy, break a mothership — fought in sides rather than a free-for-all, with an allied fleet, squad orders, salvage, named aces, three difficulties, and veterans and fleet strength carried between missions. Local keyboard play, bots, synthesized sound, fullscreen, configurable phone controls and peer-to-peer online play. Online needs the room service in `projects/crossfire/server/` — a Cloudflare Worker. See [`projects/crossfire/README.md`](projects/crossfire/README.md) |
+| `projects/kondrite/` | Gaming | "KONDRITE" — bright vector-space combat for 1–5 ships in three modes: cooperative Survival with optional friendly fire, a no-time-limit Battle Royale with three lives, two-hit hulls, a following camera, minimap, closing wall, stationary suns and black holes and randomized moving asteroids, and a three-mission **Campaign** — escort a convoy, raid a fleeing enemy, break a mothership — fought in sides rather than a free-for-all, with an allied fleet, squad orders, salvage, named aces, three difficulties, and veterans and fleet strength carried between missions. Local keyboard play, bots, synthesized sound, fullscreen, configurable phone controls and peer-to-peer online play. Online needs the room service in `projects/kondrite/server/` — a Cloudflare Worker. See [`projects/kondrite/README.md`](projects/kondrite/README.md) |
 | `projects/autism-reflection.html` | Psyche | Long-form personal reflection on the DSM-5 autism criteria |
 | `projects/state-of-mind-line/` | Psyche | Animated bipolar mood-pattern visualization |
 | `projects/climbing/` | Climbing | The climbing data pipeline and the deep log: `climbs.md` → `build-data.py` → `climbs-data.js`, the full ledger at `index.html`, the photo-and-video `gallery.html`, and `add.html` for logging a day from a phone at the crag. See [`projects/climbing/readme.md`](projects/climbing/readme.md) |
@@ -74,9 +74,9 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 These are self-contained and may carry their own assets/fonts — that's fine; the
 "no dependencies" rule applies to the terminal's own room pages, not embedded projects.
 
-### CROSSFIRE
+### KONDRITE
 
-`projects/crossfire/` is a finished, dependency-free canvas game with three modes. Co-op
+`projects/kondrite/` is a finished, dependency-free canvas game with three modes. Co-op
 **Survival** has optional friendly fire and a shared pile of lives. **Battle Royale** runs
 until one ship is left, with three-life two-hit-hull elimination, a following camera,
 minimap, closing wall, randomized colliding asteroids, stationary gravity hazards,
@@ -100,7 +100,7 @@ for the next mission. Survival and Battle Royale never build that ledger.
 
 Online play is host-authoritative WebRTC, and joining is a list of open lobbies rather
 than a code anybody copies. That list needs a room service, so online is the one part of
-the site that is not just static files: `projects/crossfire/server/` holds it, deployed
+the site that is not just static files: `projects/kondrite/server/` holds it, deployed
 as a Cloudflare Worker with a single Durable Object, and the same code runs on a laptop
 with `node server/rooms.js` for local work. With no service configured the panel says so
 instead of offering a list. The host page can run in the background, transient
@@ -109,7 +109,7 @@ changing kill or environmental death statistics.
 
 Gameplay rules, controls, architecture, local setup, room-service configuration and the
 dependency-free verification commands are maintained in
-[`projects/crossfire/README.md`](projects/crossfire/README.md).
+[`projects/kondrite/README.md`](projects/kondrite/README.md).
 
 ## Starfield
 
@@ -310,8 +310,8 @@ python3 -m http.server 8912
 ```
 
 ```bash
-node projects/crossfire/test/smoke.js
-node projects/crossfire/test/campaign.js
+node projects/kondrite/test/smoke.js
+node projects/kondrite/test/campaign.js
 node projects/training/test/rules.js
 node projects/climbing/test/parse-parity.js
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done

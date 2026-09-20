@@ -33,9 +33,9 @@ window.RELAY_LATEST = [
     date: "2026-08-04",
     kind: "interactive",
     room: "workbench",
-    title: "CROSSFIRE",
+    title: "KONDRITE",
     description: "Asteroids, with walls. Share one pile of lives against the rocks, or fight it out on a map sixteen screens wide while the wall closes in around you.",
-    href: "projects/crossfire/index.html",
+    href: "projects/kondrite/index.html",
   },
   {
     date: "2026-07-31",

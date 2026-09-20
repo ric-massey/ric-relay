@@ -179,13 +179,13 @@ everywhere — the navs must agree with each other *and* with the front door.
   `how-speed-affects-time` and `how-big-everything-is` → Exploration;
   `the-shape-of-harm`,
   `autism-reflection.html`, and `state-of-mind-line` → Psyche; `siege-conductor` →
-  Workbench; `farlight`, `offramp`, `crossfire`, and `starfield` → Gaming; `climbing`
+  Workbench; `farlight`, `offramp`, `kondrite`, and `starfield` → Gaming; `climbing`
   → Climbing (including the unlisted `climbing/board.html`); `training` and `apex` are
   room data rather than pages. Each is self-contained and may carry its own assets/fonts;
   the "no dependencies" rule is for the terminal's own room pages, not embedded projects.
   Keep their internal links relative.
 - **The games moved to Gaming and their old cards were left behind.** `workbench.html`
-  still carries FARLIGHT, CROSSFIRE and Interstate 40 as bench items, and
+  still carries FARLIGHT, KONDRITE and Interstate 40 as bench items, and
   `exploration.html` still carries Starfield as MODULE 004 — so four projects are
   advertised from two rooms each, and the Workbench copy for Interstate 40 ("Nothing to
   hit yet, and no way off it — the ramps are the next thing") describes a version of
@@ -339,11 +339,11 @@ more, so an addition is not repeated eight times. The per-room support is still 
 `latest.js` (`data-latest-room` for a room's own wording, `data-latest-skip-linked`
 to pass over an item the page already links to outside its `<nav>`) — if a room
 takes a banner back, use it. Give each entry the `room` it belongs to and **keep that
-value right when a project moves** — CROSSFIRE, FARLIGHT and Starfield are still filed
+value right when a project moves** — KONDRITE, FARLIGHT and Starfield are still filed
 under `workbench`/`exploration` in `latest.js` after moving to Gaming, which is harmless
 only for as long as no room carries a banner again. `latest.js` is also the thing that
 goes stale quietest: its newest entry is still the Training Log from 2026-08-17, so the
-front door announces that as the new thing while the Gaming room, the CROSSFIRE campaign
+front door announces that as the new thing while the Gaming room, the KONDRITE campaign
 and ATLAS have all shipped since. If you ship something family would care about, put it
 at the top of that list. `orrin.html` is self-updating — leave its GitHub data logic
 alone unless fixing a bug. `systems.html` and `updates.html` are legacy redirects, not
@@ -395,8 +395,8 @@ python3 -m http.server 8912
 ```
 
 ```sh
-node projects/crossfire/test/smoke.js      # syntax, transport, room service
-node projects/crossfire/test/campaign.js   # headless play-through of all three missions
+node projects/kondrite/test/smoke.js      # syntax, transport, room service
+node projects/kondrite/test/campaign.js   # headless play-through of all three missions
 node projects/training/test/rules.js       # plan/tick rules
 node projects/climbing/test/parse-parity.js  # build-data.py and climb-parse.js agree
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done
