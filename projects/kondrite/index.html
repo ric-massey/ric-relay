@@ -2545,8 +2545,7 @@
      and the machines; the simulators page offers the two lanes. They were one
      variable while the lanes *were* the front page, and one variable would have
      meant arrowing on the title quietly choosing a lane. */
-  let titlePick = 0;      // 0 the game, 1 the simulators
-  let simPick = 0;        // which lane the simulators page has focus on
+  let titlePick = 0;      // which front-page door has focus; there is one now
   let arcadePick = 0;     // which cabinet the room in a station has focus on
   let modeLane = "solo";  // which lane's cards the mode page is showing
   let modePick = 0;       // keyboard focus among those cards
@@ -3068,8 +3067,11 @@
     };
   }
 
-  // The front page's two doors, in the order they are drawn.
-  const TITLE_DOORS = [() => playSurvey(), () => openSims()];
+  /* The front page's doors. There is one, now that the machines live in the
+     world rather than behind a button here — kept as a list because the digits
+     and the arrows both read it, and a list of one is a smaller change than
+     three special cases. */
+  const TITLE_DOORS = [() => playSurvey()];
 
   function menuKey(code) {
     if (state === "title") {
@@ -3080,26 +3082,15 @@
         titlePick = (titlePick + 1) % TITLE_DOORS.length;
       }
       if (code === "Enter" || code === "Space") TITLE_DOORS[titlePick]();
-      // O still opens the lobby from the front page. It was a shortcut before
-      // the menu was rebuilt and somebody's fingers already know it.
+      /* O still opens the lobby from the front page, and it matters more than
+         it did: it is now the only way to play with somebody without first
+         flying to a station. A shortcut somebody's fingers already know, and
+         the one hole left by taking the door off. */
       if (code === "KeyO") openLobby();
       if (code === "KeyC") { state = openSettings("title"); }
-    } else if (state === "sims") {
-      /* The lanes, one floor down. These are the keys the title used to have,
-         moved with the page they belonged to. */
-      if (code === "Escape" || code === "Backspace") { state = "title"; return; }
-      const d = digit(code);
-      if (d >= 1 && d <= LANE_KEYS.length) { openLane(LANE_KEYS[d - 1]); return; }
-      if (code === "ArrowUp" || code === "ArrowLeft" ||
-          code === "ArrowDown" || code === "ArrowRight") {
-        simPick = (simPick + 1) % LANE_KEYS.length;
-      }
-      if (code === "Enter" || code === "Space") openLane(LANE_KEYS[simPick]);
-      if (code === "KeyO") openLobby();
-      if (code === "KeyC") { state = openSettings("sims"); }
     } else if (state === "modes") {
       const rows = laneRows();
-      if (code === "Escape" || code === "Backspace") { state = "sims"; return; }
+      if (code === "Escape" || code === "Backspace") { leaveModes(); return; }
       const d = digit(code);
       if (d >= 1 && d <= rows.length) { modePick = d - 1; playCard(rows[d - 1]); return; }
       if (code === "ArrowLeft" || code === "ArrowUp") {
@@ -3117,7 +3108,7 @@
       if (code === "KeyC") { state = openSettings("modes"); }
     } else if (state === "board") {
       if (code === "Escape" || code === "Backspace" || code === "KeyB") {
-        state = "modes"; return;
+        state = boardFrom; return;
       }
     } else if (state === "levels") {
       if (code === "Escape" || code === "Backspace") { leaveLevels(); return; }
@@ -3265,6 +3256,10 @@
         arcadePick = (arcadePick + 1) % CABINETS.length;
       }
       if (code === "Enter" || code === "Space") startSim(CABINETS[arcadePick].key);
+      /* The two things that came in here when the front page's SIMULATORS door
+         came off: the people, and the board they are on. */
+      if (code === "KeyP") { openWithPeople(); return; }
+      if (code === "KeyB") { openBoards(); return; }
     } else if (state === "stationinv") {
       /* Out of the station entirely, the way the shop leaves. `Backspace` steps
          back to the counter rather than to the sector, because this room was
@@ -21298,6 +21293,17 @@
         state = "arcade";
       },
       onPlaySim: key => startSim(key),
+      /* The two things that used to be behind the front page's SIMULATORS door.
+         A cabinet is somebody playing alone; the room also has people in it,
+         and a board on the wall that other people are on.
+
+         Top-level, beside the room's other actions, and not inside `arcade`:
+         the page reads them as `st.onPeople`, and `test/survey.js` compares
+         every `st.something` the interface reads against what the game
+         actually sends — which is how a pair of buttons that could never have
+         fired was caught before anybody pressed one. */
+      onPeople: () => openWithPeople(),
+      onBoard: () => openBoards(),
       // A machine that is already coming up ignores the next coin.
       simBooting: !!simBoot,
       onPickSim: i => { arcadePick = Math.max(0, Math.min(CABINETS.length - 1, i)); },
@@ -24093,7 +24099,12 @@
      Kept faint on purpose. Every menu is text over this, and text has to stay
      readable — so it is line art at low alpha over black, and the numbers below
      are chosen to keep it that way rather than to look impressive. */
-  const DRIFT_ALPHA = 0.24;
+  /* What a menu's black actually is. See the fill in `render`. */
+  const MENU_INK = "#12141d";
+  /* And how much of the idling field you can see on it. Raised with the lift:
+     the field is the only thing on the front page that moves, and at 0.24 on a
+     true black it read as a few specks at the edges rather than as space. */
+  const DRIFT_ALPHA = 0.35;
   const DRIFT_ROCKS = 9;
   const DRIFT_EDGE = 90;             // spawn margin, so nothing pops in mid-screen
   const stillness = window.matchMedia
@@ -24849,9 +24860,11 @@
      peers, and it was the last place in the interface still saying the game is
      one of several things in here.
 
-     So the page says the game, loudly, with its own picture — and underneath
-     it, quieter, a door to the machines. The lanes are not gone; they are one
-     floor down where they answer a question about a cabinet. See `drawSims`.
+     So the page says the game, loudly, with its own picture — and nothing else.
+     There was a quieter door to the machines here too; it came off on 20
+     September 2026, because a cabinet is a thing a *station* has and a door to
+     one on the front page made it a second thing the game offers. See
+     `HUD.drawArcade`, which is where the machines and the people now are.
 
      What the button says is the book's own line. `surveyBlurb` already counts
      what you have logged, and a returning player's front page now reads
@@ -24917,20 +24930,22 @@
             0.85, w - 26);
     pushTap({ x, y: top, w, h: gh, act: () => playSurvey() });
 
-    /* ── and the machines ──────────────────────────────────────────────────
-       A line, not a card. It is the other thing you can do here and it must not
-       read as the other half of a pair — the whole point of the page is that
-       one of these is the game. */
-    const sy = gy + gh + 34;
-    const on1 = titlePick === 1;
-    laneAnim[1] += ((on1 ? 1 : 0) - laneAnim[1]) * Math.min(1, (dt || 0) * 9);
-    tapButton("SIMULATORS", SCREEN_W / 2, sy, Math.min(420, w), 42, "#ffe56d",
-              () => openSims(), on1);
-    text("alone or with other people  \u00b7  the machines in the corner",
-         SCREEN_W / 2, sy + 40, 13, "#ffcb42", "center", 0.8);
+    /* ── and nothing else ──────────────────────────────────────────────────
+       There was a SIMULATORS door here, and Ric took it off (20 September
+       2026): *"simulators tab should be inside of the survey game."* A machine
+       is a cabinet in a station, and a door to it on the front page made it a
+       second thing the game offers rather than a thing the world contains. You
+       reach one the way you reach a shop — by flying to a place that has one.
 
-    text(thumbInput() ? "TAP ONE" : "CLICK ONE  \u00b7  OR ARROWS + ENTER",
-         SCREEN_W / 2, sy + 68, 13, "#ffcb42", "center", 0.9);
+       That leaves the front page with exactly one thing it does, which is what
+       the page was always arguing for.
+
+       **Playing with other people went with it**, because SIMULATORS was the
+       only visible way there. It is not gone — it moved into the same room as
+       the machines, where the cabinets are. See `HUD.drawArcade`. */
+    const sy = gy + gh + 34;
+    text("a station has machines in the corner, and people to play them with",
+         SCREEN_W / 2, sy + 6, 13, "#ffcb42", "center", 0.7);
 
     tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
               300, 590, 210, 36, soundEnabled ? "#ffe56d" : "#ffcb42",
@@ -25210,90 +25225,21 @@
      before multiplayer" — and both lanes are through here, so this is the only
      other place that has to ask. A cabinet inside a station does not: you are
      already in a sector, which means you are already through. */
-  function openSims() {
-    const go = () => {
-      simPick = Math.max(0, LANE_KEYS.indexOf(modeLane));
-      state = "sims";
-    };
-    if (needsDoor()) openAccount(go); else go();
-  }
+  /* Backing out of the mode cards. They used to sit under the front page's
+     SIMULATORS door and went back to it; the door is gone, so they go back to
+     wherever they were opened from — the room in a station, if there is a
+     sector loaded and you are standing in one, and otherwise the front page.
 
-  /* ═══ THE SIMULATORS ══════════════════════════════════════════════════════
-     The page the title used to be, with the question it was always really
-     asking. Solo or multiplayer is a real question about a machine — Battle
-     Royale against bots and Battle Royale against your brother are two
-     different propositions — and it was never a question about Survey.
-
-     One floor down, and it keeps its own picture, its own colours and its own
-     keys. What it is *not* yet is a room with cabinets in it; that is step two
-     of archive/SIMULATIONS.md, and it is the step that stops this being a
-     relabel. */
-  function drawSims(dt) {
-    text("SIMULATORS", SCREEN_W / 2, 104, 48, "#ffe56d");
-    text("the other three, as machines you play for a score",
-         SCREEN_W / 2, 142, 15, "#ffcb42");
-
-    const gap = 40, h = 300, y = 196;
-    const w = Math.round(Math.min(440, (SCREEN_W - MENU_INSET * 2 - gap) / 2));
-    const x0 = SCREEN_W / 2 - w - gap / 2;
-
-    LANE_KEYS.forEach((key, i) => {
-      const L = LANES[key];
-      const on = simPick === i;
-      laneAnim[i] += ((on ? 1 : 0) - laneAnim[i]) * Math.min(1, (dt || 0) * 9);
-      const x = x0 + i * (w + gap);
-      const lift = laneAnim[i] * 6;
-
-      const cardTop = y - lift;
-      ctx.save();
-      ctx.fillStyle = L.colour;
-      ctx.globalAlpha = 0.07 + laneAnim[i] * 0.09;
-      ctx.fillRect(x, cardTop, w, h);
-      ctx.globalAlpha = 0.55 + laneAnim[i] * 0.45;
-      ctx.fillRect(x, cardTop, w, 3);
-      ctx.strokeStyle = L.colour;
-      ctx.globalAlpha = 0.45 + laneAnim[i] * 0.55;
-      ctx.lineWidth = on ? 2 : 1;
-      ctx.strokeRect(x, cardTop, w, h);
-      ctx.restore();
-
-      /* Built the same way as the mode cards this page leads to: the picture
-         takes the card, and fades into the words in the lane's own colour. Two
-         pages that are the same shape are one design; two that are nearly the
-         same shape are a page somebody forgot to finish. */
-      const pad = 10, artH = h - pad * 2 - 104, artY = cardTop + pad;
-      if (menuArt) menuArt.preview(L.art, x + pad, artY, w - pad * 2, artH, clock);
-      const fadeH = Math.min(80, artH * 0.4);
-      const fade = ctx.createLinearGradient(0, artY + artH - fadeH, 0, artY + artH);
-      fade.addColorStop(0, tint(L.colour, 0));
-      fade.addColorStop(1, tint(L.colour, 0.2 + laneAnim[i] * 0.12));
-      ctx.save();
-      ctx.fillStyle = fade;
-      ctx.fillRect(x + pad, artY + artH - fadeH, w - pad * 2, fadeH);
-      ctx.restore();
-
-      text(L.name, x + w / 2, artY + artH + 34, 30, L.colour);
-      fitLine(L.line, x + w / 2, artY + artH + 64, 14, "#ffcb42", "center", 0.85,
-              w - 26);
-      text(L.rows.length + " MACHINES", x + w / 2, artY + artH + 96, 13,
-           L.colour, "center", 0.6);
-
-      pushTap({ x, y: y - lift, w, h, act: () => openLane(key) });
-    });
-
-    text(thumbInput() ? "TAP ONE" : "CLICK ONE  \u00b7  OR ARROWS + ENTER",
-         SCREEN_W / 2, 528, 13, "#ffcb42", "center", 0.9);
-    /* Nothing in here pays. A simulator is a machine in a world that has
-       machines, and the sector never hears about it — said once, on the page
-       that opens them, because a player who finds that out afterwards has been
-       misled rather than surprised. */
-    text("a machine pays nothing back into the sector  \u00b7  the score is the point",
-         SCREEN_W / 2, 552, 12, "#ffcb42", "center", 0.65);
-
-    tapButton("BACK", SCREEN_W / 2, 600, 240, 40, "#ffcb42",
-              () => { state = "title"; });
-    text("two at this keyboard · up to five online",
-         SCREEN_W / 2, 648, 12, "#ffcb42");
+     The room is the normal case and the title is the `O` shortcut's case: you
+     can still open a lobby from the front page without a survey, and backing
+     out of that has nowhere to go but the front page. */
+  function leaveModes() {
+    if (mode && mode.survey && surv && (surv.docked || surv.landed)) {
+      state = "arcade";
+      return;
+    }
+    forgetTitleCard();
+    state = "title";
   }
 
   /* ── the real board ───────────────────────────────────────────────────────
@@ -25317,7 +25263,11 @@
   ];
   const realBoards = { rows: {}, err: "", reading: false, read: false };
 
+  /* Two ways in now — the mode cards, and the room in a station — so it has to
+     remember which, or backing out of it lands somewhere you have never been. */
+  let boardFrom = "modes";
   function openBoards() {
+    boardFrom = state === "arcade" ? "arcade" : "modes";
     state = "board";
     readBoards();
   }
@@ -25411,7 +25361,7 @@
     }
 
     tapButton("BACK", SCREEN_W / 2, 650, 240, 44, "#ffcb42",
-              () => { state = "modes"; });
+              () => { state = boardFrom; });
   }
 
   /* ── the competition ──────────────────────────────────────────────────────
@@ -25428,9 +25378,26 @@
   const todaysChallengeLine = () =>
     "today the sector is playing " + todaysChallenge().name;
 
+  /* Playing with other people, from the room where the machines are. It was on
+     the front page behind SIMULATORS and came off with it — so the lane page's
+     *question* is gone (you are standing at a cabinet; the solo answer is the
+     cabinet itself) and what is left is the half that was always the real
+     question: which game, and with whom.
+
+     The sector is saved first, exactly as walking up to a cabinet does, because
+     this leads to a match the same way and by the same path out. */
+  function openWithPeople() {
+    if (mode && mode.survey && surv && !saveSurveyBook()) {
+      gameSound("hit");
+      note("This browser will not let the game save, and a match is not worth " +
+           "your sector.");
+      return;
+    }
+    openLane("multi");
+  }
+
   function openLane(key) {
     modeLane = key;
-    simPick = Math.max(0, LANE_KEYS.indexOf(key));
     modePick = 0;
     modeHover = -1;
     cardAnim = laneRows().map(() => 0);
@@ -25554,13 +25521,13 @@
        button to a board you cannot reach is a worse thing than no button. */
     if (modeLane === "multi") {
       tapButton("BACK", SCREEN_W / 2 - 140, 600, 240, 40, "#ffcb42",
-                () => { state = "sims"; });
+                leaveModes);
       tapButton("[B]  THE BOARD", SCREEN_W / 2 + 140, 600, 240, 40, "#87d8ff",
                 openBoards);
       text(todaysChallengeLine(), SCREEN_W / 2, 648, 12, "#ffcb42", "center", 0.7);
     } else {
       tapButton("BACK", SCREEN_W / 2, 600, 240, 40, "#ffcb42",
-                () => { state = "sims"; });
+                leaveModes);
       text("every key is yours to change — SETTINGS on the front page",
            SCREEN_W / 2, 648, 12, "#ffcb42", "center", 0.7);
     }
@@ -26656,15 +26623,21 @@
     if (surveyHUD && surveyHUD.forgetCarryGeometry) surveyHUD.forgetCarryGeometry();
     ctx.setTransform(viewScale, 0, 0, viewScale, 0, 0);
     ctx.clearRect(0, 0, SCREEN_W, SCREEN_H);
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
 
     /* Every screen you can reach without a match running gets the idling field
        behind it. Not the pause menu or the results, which have a real world of
        their own to sit over. */
-    const menu = state === "title" || state === "sims" || state === "count" ||
+    const menu = state === "title" || state === "count" ||
                  state === "levels" || state === "controls" || state === "thumb" ||
                  state === "board";
+
+    /* A menu sits on a *lifted* black; flying sits on a true one. Out there the
+       dark is the point and nothing should compete with a rock, but a front page
+       filled with #000 is the same colour as the bezel around it and reads as a
+       screen that has not come on yet — which is what it did. The lift is small
+       and cool rather than grey, so the amber stays the warmest thing on it. */
+    ctx.fillStyle = menu ? MENU_INK : "#000";
+    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
     if (menu) drawDrift(dt || 0);
 
     /* ── the world behind a page ───────────────────────────────────────────
@@ -26754,7 +26727,6 @@
     }
 
     if (state === "title") { drawTitle(dt); return; }
-    if (state === "sims") { drawSims(dt); return; }
     if (state === "modes") { drawModes(dt); return; }
     if (state === "board") { drawBoards(); return; }
     if (state === "levels") { drawLevels(); return; }
@@ -27927,7 +27899,7 @@
   /* One door in. You arrive at the list of lobbies and either join one or start
      your own, and only then are you a host — which is why `role` is a default
      here rather than a choice made on the title screen. */
-  /* Online is behind the door too, and by the same argument as `openSims`:
+  /* Online is behind the door too, and by the same argument as `openWithPeople`:
      "before single player and before multiplayer". Gated here rather than on
      the keys that reach it, because there are several of those — the title's
      O, the simulators page's O, and the multiplayer lane's own card — and a

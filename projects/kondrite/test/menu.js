@@ -214,26 +214,36 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(!m.rows.includes("survey"),
         "the multiplayer lane offers Survey, which is one pilot only");
 
-  /* And the way in is one floor down. The front page starts the game; the
-     machines are behind SIMULATORS, and backing out of the lanes lands on the
-     front page rather than on nothing. */
+  /* And the front page has **one** door on it. There was a SIMULATORS line
+     under the game; Ric took it off on 20 September 2026, because a machine is
+     something a station has, and a door to one here made it a second thing the
+     game offers rather than a thing the world contains. So the front page
+     starts the game and does nothing else, and the lane page it used to lead
+     to is gone — standing in a room full of cabinets answers "alone or with
+     other people" by being a place instead of by asking. */
   cf.screen("title");
   cf.draw();
-  cf.key("ArrowRight");                       // off the game, onto SIMULATORS
+  cf.key("ArrowRight");                       // there is nowhere else to go
   cf.key("Enter");
-  check(cf.peek().state === "sims",
-        "SIMULATORS on the front page went to " + cf.peek().state);
-  cf.draw();
-  cf.key("Enter");
-  check(cf.peek().state === "modes", "a lane on the simulators page opened nothing");
-  cf.key("Escape");
-  check(cf.peek().state === "sims", "backing out of the machines skipped a floor");
-  cf.key("Escape");
-  check(cf.peek().state === "title", "backing out of the simulators left the title");
+  check(cf.peek().mode === "SURVEY",
+        "the front page's only door did not start the game: " + cf.peek().state);
 
-  console.log("  lanes      one floor down, under SIMULATORS · solo [" +
-              soloRows.join(" ") + "] · multi [" + m.rows.join(" ") +
-              "] · the game is in neither");
+  /* And the lane page is gone rather than merely unlinked. Asked of the source
+     rather than of the game, because `cf.screen` force-sets any string it is
+     handed — it would put the game in state "banana" just as happily, so a
+     check that forces "sims" and finds it there has learned nothing. What is
+     worth knowing is that no code path *navigates* to it. */
+  {
+    const inline = page.page().inline;
+    check(!/state = "sims"/.test(inline),
+          "something still navigates to the old lane page");
+    check(!/function drawSims|openSims/.test(inline),
+          "the old lane page still has a draw or a door");
+  }
+
+  console.log("  lanes      the front page has one door, and the lane page is " +
+              "gone · solo [" + soloRows.join(" ") + "] · multi [" +
+              m.rows.join(" ") + "] · the game is in neither");
 }
 
 // ── 3. exactly one card is open, and pointing changes which ──────────────
@@ -371,23 +381,25 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   console.log("  solo br    " + bots + " bots brought along, " + st.ships.length + " ships in the arena");
 }
 
-// ── 7. back out, and the escape hatches work ─────────────────────────────
-/* One floor at a time. The cards back out to the simulators page they were
-   opened from, and that backs out to the front page — a key that skipped the
-   middle floor would put a player who wanted a different lane on the title. */
+// ── 7. back out, and the escape hatches work ─────────────────────────
+/* The middle floor went with the lane page, so the cards back out to wherever
+   they were opened from. Outside a survey that is the front page — this is the
+   `O` shortcut's way in and it has nowhere else to go. Inside one it is the
+   room in the station, which `test/survey.js` checks, because that needs a
+   docked sector to be true. */
 {
   const { cf } = boot("?debug=1");
   cf.lane("multi");
   cf.key("Escape");
-  check(cf.peek().state === "sims", "Escape did not return to the simulators");
-  cf.key("Enter");                                    // opens whichever lane has focus
-  check(cf.peek().state === "modes", "ENTER on the simulators page opened nothing");
+  check(cf.peek().state === "title",
+        "Escape out of the cards went to " + cf.peek().state);
+  cf.lane("multi");
+  check(cf.peek().state === "modes", "the lane did not reopen");
   cf.key("Backspace");
-  check(cf.peek().state === "sims", "Backspace did not return to the simulators");
-  cf.key("Backspace");
-  check(cf.peek().state === "title", "Backspace did not return to the front page");
-  console.log("  back       escape and backspace step one floor at a time, " +
-              "cards → simulators → the front page");
+  check(cf.peek().state === "title",
+        "Backspace out of the cards went to " + cf.peek().state);
+  console.log("  back       escape and backspace leave the cards for the front " +
+              "page when no sector is loaded");
 }
 
 // ── 8. every card actually paints a picture ──────────────────────────────

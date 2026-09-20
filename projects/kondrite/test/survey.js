@@ -1850,6 +1850,27 @@ const storeOf = (cf, key) => {
   cf.leave();
   check(cf.peek().mode === "SURVEY", "the second crossing did not come back");
 
+  /* ── the room is the only door now ──────────────────────────
+     The front page had a SIMULATORS line under the game and Ric took it off on
+     20 September 2026 — a machine is something a *station* has. That also took
+     away the only visible way to play with other people and the only way to the
+     witnessed board, because both were behind it. They are in this room now,
+     and if they were not, a player would have no way to either. */
+  check(cf.screenNow() === "arcade", "not standing in the room");
+  view().onPeople();
+  check(cf.screenNow() === "modes",
+        "the room's way to other people went to " + cf.screenNow());
+  cf.key("Escape");
+  check(cf.screenNow() === "arcade",
+        "backing out of the cards left the room for " + cf.screenNow());
+  check(cf.peek().mode === "SURVEY", "the sector did not survive the trip");
+  view().onBoard();
+  check(cf.screenNow() === "board", "the room's way to the board went nowhere");
+  cf.key("Escape");
+  check(cf.screenNow() === "arcade",
+        "backing out of the board left the room for " + cf.screenNow());
+  cf.draw();
+
   /* ── the campaign cabinet, the one that is a menu ────────────────────────
      Two of the three machines snap into a match. The campaign's boots into its
      mission list instead, because three missions in order is what that machine
@@ -1900,7 +1921,8 @@ const storeOf = (cf, key) => {
               "coin, boot, match \u00b7 back at the same dock with the seed, the " +
               "cash, the hold and the manifest \u00b7 the score is all that " +
               "crosses \u00b7 a browser that cannot save cannot play one \u00b7 " +
-              "the campaign's list is a menu you can walk away from");
+              "the campaign's list is a menu you can walk away from \u00b7 " +
+              "the room is the only way to other people and to the real board");
 }
 
 // ── 14c. the boards on the machines ─────────────────────────────

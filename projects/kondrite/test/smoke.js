@@ -262,7 +262,7 @@ function checkSyntax() {
      screens with no world of their own, it keeps its own arrays rather than
      borrowing the match's, and it stays faint enough that menu text over it
      still clears contrast. */
-  assert.match(html, /const menu = state === "title" \|\| state === "sims" \|\|/,
+  assert.match(html, /const menu = state === "title" \|\| state === "count" \|\|/,
     "the idling field must be gated to menu screens");
   assert.match(html, /if \(menu\) drawDrift\(/,
     "the idling field must be drawn behind menus only");
@@ -274,6 +274,20 @@ function checkSyntax() {
   assert.ok(driftAlpha, "the idling field must keep a single named opacity");
   assert.ok(Number(driftAlpha[1]) <= 0.35,
     "the idling field must stay faint enough for menu text to read over it");
+
+  /* A menu's black is lifted off true black so the front page does not read as
+     a screen that has not come on — but only just. It has to stay dark enough
+     that amber is the warmest thing on the page and the text still clears
+     contrast, and it must never reach the *flying* view, where the dark is the
+     point and nothing should compete with a rock. */
+  const menuInk = /const MENU_INK = "#([0-9a-f]{6})";/.exec(html);
+  assert.ok(menuInk, "the menus' background must keep a single named colour");
+  const ink = menuInk[1];
+  const lum = [0, 2, 4].map(i => parseInt(ink.slice(i, i + 2), 16));
+  assert.ok(Math.max(...lum) <= 0x2a,
+    "the menus' background has been lifted past a dark grey (#" + ink + ")");
+  assert.match(html, /ctx\.fillStyle = menu \? MENU_INK : "#000";/,
+    "the lifted background must be gated to menus — flying stays true black");
 
   const roomSource = read(ROOMS);
   assert.match(roomSource, /const TRUST_PROXY = process\.env\.TRUST_PROXY === "1";/,

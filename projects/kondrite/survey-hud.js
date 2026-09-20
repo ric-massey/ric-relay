@@ -7590,7 +7590,10 @@
     const cabsW = full.w - boardW - gapB;
     const gap = api.touchOnly ? 10 : 16;
     const w = Math.floor((cabsW - gap * (list.length - 1)) / Math.max(1, list.length));
-    const h = Math.min(392, Math.max(CAB_MIN, space));
+    /* The cabinets give up the foot of the page to the two doors under them —
+       the people and the board — which arrived when the front page's SIMULATORS
+       door came off and there was nowhere else for them to be. */
+    const h = Math.min(392, Math.max(CAB_MIN, space - 96));
     const boardRows = B ? Math.max(4, Math.min(B.rows.length,
                           Math.floor((h - BOARD_HEAD_H) / BOARD_ROW_H))) : 0;
 
@@ -7710,8 +7713,18 @@
 
     label(api.touchOnly ? "TAP A MACHINE  \u00b7  TAP AGAIN TO PLAY"
                         : "CLICK ONE  \u00b7  OR ARROWS + ENTER  \u00b7  [E] LEAVES",
-          full.x + cabsW / 2, top + h + 34, SIZE.cap, VIOLET_DIM, "center", 0.8,
+          full.x + cabsW / 2, top + h + 30, SIZE.cap, VIOLET_DIM, "center", 0.8,
           "0.14em");
+
+    /* The two things that came in here when the front page's SIMULATORS door
+       came off. A cabinet is somebody playing alone — but a station has people
+       in it, and a board on the wall with other people's names on it, and after
+       the door went there was nowhere else for either of them to be. */
+    const by = top + h + 56, bw = Math.min(280, (cabsW - 16) / 2);
+    tapWide(api.touchOnly ? "WITH OTHER PEOPLE" : "[P]  WITH OTHER PEOPLE",
+            full.x, by, bw, "#87d8ff", st.onPeople);
+    tapWide(api.touchOnly ? "THE REAL BOARD" : "[B]  THE REAL BOARD",
+            full.x + bw + 16, by, bw, "#a08cff", st.onBoard);
 
     if (B) drawBoard(A, B, boardRows, full.x + cabsW + gapB, top, boardW, h);
 
@@ -7729,6 +7742,27 @@
      you**. So it is a window rather than a page of twelve — when there is not
      room for the whole board it keeps you in it, one clear of the top, which is
      where the next name up lives. */
+  /* A plain wide button for the room. The page module has `tap` for rectangles
+     and `label` for words; this is the two of them together, which the room
+     needs twice and nothing else needs at all. */
+  function tapWide(text, x, y, w, colour, act) {
+    if (!act) return;
+    const { ctx } = api;
+    const h = 34;
+    ctx.save();
+    ctx.fillStyle = colour;
+    ctx.globalAlpha = 0.08;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = colour;
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, w, h);
+    ctx.restore();
+    fitText(text, x + w / 2, y + 22, SIZE.cap, colour, "center", 0.95, w - 16,
+            "0.1em");
+    tap({ x, y, w, h, act });
+  }
+
   const BOARD_ROW_H = 21;
   const BOARD_HEAD_H = 26;
   /* What a cabinet needs to draw its own insides without them touching: the

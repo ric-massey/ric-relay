@@ -3700,18 +3700,30 @@ has arcade machines. Ric's line was *"there should only be one game."* The front
 page had been four games behind one menu with Survey as the fourth card, which
 contradicts everything in *What Survey is for*.
 
-So the title is the game plus a quieter SIMULATORS door; the solo/multiplayer
-lanes moved one floor down behind it, and `survey` is in neither of them. That
-question was never about Survey — one pilot, one chart — so asking it before the
-game was asking it about nothing. Asked about a machine, it is a real question.
+So the title is the game and nothing else. There was briefly a quieter
+SIMULATORS door under it, with the solo/multiplayer lanes one floor down behind
+that; **Ric took the door off on 20 September 2026** — *"simulators tab should be
+inside of the survey game"* — because a machine is something a station *has*, and
+a door to one on the front page made it a second thing the game offers rather
+than a thing the world contains.
+
+The lane page went with it, and it is not missed: the question it asked was
+*alone or with other people*, and standing in a room full of cabinets answers
+that by being a place rather than by asking. What the door **did** take with it
+was the only visible way to multiplayer and the only way to the witnessed board
+— so both moved into the room with the machines, which is where they belong
+anyway. The front page keeps `O` as a shortcut to a lobby, for playing with
+somebody without first flying to a station.
 
 ### Where they are, and what crosses back
 
-A **SIMULATORS tab wherever you can trade**: a station's counter and an
-inhabited world's surface, beside SHOP and SHIPS. A cabinet you can only find at
-some stations is a cabinet nobody finds. Three machines on plinths, the menu
-dioramas running on them as attract loops, and your best on that machine printed
-on the front before you press anything.
+A **SIMULATORS tab wherever you can trade**, and it is the *only* way in: a
+station's counter and an inhabited world's surface, beside SHOP and SHIPS. A
+cabinet you can only find at some stations is a cabinet nobody finds. Three
+machines on plinths, the menu dioramas running on them as attract loops, and
+your best on that machine printed on the front before you press anything — with
+the station's made-up board on the wall beside them, and two doors underneath:
+**[P] with other people**, and **[B] the real board**.
 
 **A machine pays nothing back into the sector.** The score on the cabinet is the
 whole of what crosses, and it is said on the page, because a player who finds

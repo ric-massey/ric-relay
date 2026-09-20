@@ -28,22 +28,26 @@ button that throws one away has no business next to the button that resumes it;
 the game already has one place where that happens, the reset in SETTINGS, which
 arms on the first press and wipes on the second.
 
-Under it, quieter, is **SIMULATORS** — the machines. Everything else in here is
-one: an arcade cabinet in a world that has arcade cabinets, played for a score
-that never crosses back into the sector.
+And that is all it does. There was briefly a quieter **SIMULATORS** line under
+it, with a solo/multiplayer lane page behind that; Ric took the door off —
+*"simulators tab should be inside of the survey game"* — because a machine is
+something a **station has**, and a door to one on the front page made it a second
+thing the game offers rather than a thing the world contains. Everything else in
+here is a machine: an arcade cabinet in a world that has arcade cabinets, played
+for a score that never crosses back into the sector, and you find one the way you
+find a shop — by flying somewhere that has one.
 
-That page asks the question the front page used to ask — **solo or multiplayer**
-— and it is a real question about a machine, where it was never a question about
-Survey, which is one pilot and one chart and settled. The modes for that answer
-are the page after it: a row of cards, and pointing at one opens it. The card
-takes the room the others give up, the paragraph fades in, and the picture at the
-top is the mode *moving*. Those pictures are drawn, not filmed — see `menu.js` —
-and the same mode reads differently in each lane, because Battle Royale against
-bots is not the same proposition as Battle Royale against the person next to you.
+The lane page went with the door, and it asked *alone or with other people*.
+Standing in a room full of cabinets answers that by being a place rather than by
+asking, so both answers live in the room now: the cabinets are the solo one, and
+**[P] with other people** is the other. The mode cards are still the page behind
+that — a row of cards, and pointing at one opens it. The card takes the room the
+others give up, the paragraph fades in, and the picture at the top is the mode
+*moving*. Those pictures are drawn, not filmed; see `menu.js`.
 
-Solo flies straight in, since there is only one answer to "how many". Multiplayer
-stops at the count screen first. Escape steps back one floor at a time: cards,
-then the simulators, then the front page.
+Multiplayer stops at the count screen first. Escape steps back to the room you
+came from, or to the front page if you got here by `O` — the one shortcut kept
+on the title, for playing with somebody without first flying to a station.
 
 ## The game, and the simulators
 
@@ -51,11 +55,12 @@ then the simulators, then the front page.
 |---|---:|---|
 | **Survey** — *the game* | 1 | No edges and no losing. A station of your own in six pieces, each with a clue, endless procedural space, a chart you pin yourself, a thirty-five entry almanac, salvage, a refit and a derelict you fly inside |
 
-And the machines. They are in two places: behind SIMULATORS on the front page,
-and **in the corner of every station and every inhabited world** — a SIMULATORS
-tab beside the shop, a room with three cabinets in it, the attract loop running
-on each and your best on that machine printed on the front of it before you
-press anything. Walking up to one is something you do in the middle of a run:
+And the machines. They are in one place: **the corner of every station and every
+inhabited world** — a SIMULATORS tab beside the shop, a room with three cabinets
+in it, the attract loop running on each and your best on that machine printed on
+the front of it before you press anything. Beside them is the station's own
+board, and under them the two doors that used to be on the front page: the people
+to play with, and the real board they are on. Walking up to one is something you do in the middle of a run:
 the game saves first, the cabinet takes a moment to boot, you play, and you come
 back standing at the same dock with the sector where you left it. The sector
 carried on without you while you played, which is correct and is said on the way
@@ -90,7 +95,8 @@ admit it would be the one dishonest thing in the game.
 
 ### The real one
 
-The other kind is on the multiplayer page, under **[B]**, and it is witnessed.
+The other kind is under **[B]** — in the room with the machines, and on the
+multiplayer page — and it is witnessed.
 
 Signing in gives **identity, not authority**. This is a static client with no
 game server, so a signed-in player can POST any score they like from the

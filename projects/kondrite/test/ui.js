@@ -190,7 +190,10 @@ const SHAPES = [
 
 /* Every page the game can be sitting on, and how to get there. Survey's pages
    need a survey running; the menus do not. */
-const MENU_PAGES = ["title", "sims", "modes", "levels", "paused", "controls",
+/* `sims` was the solo/multiplayer lane page. It went when the front page's
+   SIMULATORS door came off — the machines are a room in a station now, and the
+   lanes' question is answered by standing in one. */
+const MENU_PAGES = ["title", "modes", "levels", "paused", "controls",
                     "thumb", "board"];
 const SURVEY_PAGES = ["chart", "inventory", "missions", "almanac", "craft",
                       "lore", "refit", "hangar", "landed", "arcade"];
