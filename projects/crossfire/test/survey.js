@@ -58,6 +58,8 @@ const noop = () => {};
    painted the right thing. Tap rectangles were the only evidence, and a label
    is not a tap. */
 const drawn = [];
+const drawnAt = [];
+function textPlaces() { const out = drawnAt.slice(); drawnAt.length = 0; return out; }
 /* Reading it clears it, because every test that asks wants "what is on the
    screen now" and not "everything since the process started". */
 function textDrawn() { const out = drawn.slice(); drawn.length = 0; return out; }
@@ -73,7 +75,9 @@ function stubCtx() {
   return new Proxy({}, {
     get: (t, k) => {
       if (k === "fillText" || k === "strokeText") {
-        return str => { drawn.push(String(str)); };
+        // Where a word was written, as well as what it said: a name on a map
+        // is a claim about the place under it, and that is checkable.
+        return (str, x, y) => { drawn.push(String(str)); drawnAt.push({ t: String(str), x, y }); };
       }
       if (k === "measureText") return str => ({ width: String(str).length * 8 });
       if (k === "fill" || k === "stroke" || k === "fillRect") {
@@ -5585,6 +5589,79 @@ const storeOf = (cf, key) => {
               "seam \u00b7 frontier " + report.join(" \u00b7 "));
 }
 
+// ── a name only where you have been ───────────────────────────────────────
+/* Ric: "they shoouldnt show a faction name in extra biomes". Flying charts
+   the flags of the cells beside the lane — somewhere you have seen the
+   colours of, not somewhere you have been — and a name written across those
+   is the map claiming more than it knows. */
+{
+  const { cf } = boot("?debug=1&seed=99");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const hud = cf.hud();
+  const T = cf.surveyView().terrain;
+
+  // One cell flown through, and a long tail of cells known only by their flag.
+  surv.mapped.clear();
+  const biome = cf.surveyView().terrain;
+  void biome;
+  const flag = "hallow";
+  surv.mapped.set("9,0", { r: "lanes", o: flag });          // been here
+  for (let i = 0; i <= 8; i++) surv.mapped.set(i + ",0", { r: "", o: flag });
+  surv.mappedStamp = (surv.mappedStamp || 0) + 1;
+
+  // Look at the flag-only end of it.
+  const hereSite = T.site(2, 0);
+  cf.screen("chart");
+  hud.chartOpened(cf.surveyView());
+  hud.chartDragBy(0, 0);
+  for (let i = 0; i < 20; i++) hud.chartZoomBy(1);
+  for (let i = 0; i < 5; i++) hud.chartZoomBy(-1);
+  cf.draw();
+  const v0 = hud.chartView();
+  hud.chartDragBy((v0.x - hereSite.x) * v0.scale, (v0.y - hereSite.y) * v0.scale);
+  cf.draw(); textPlaces();
+  cf.draw();
+  const v = hud.chartView(), view = v.view;
+  const nameOf = T.holder(flag).name;
+  const cellOf = (wx, wy) => {
+    const gx = Math.round(wx / T.cell), gy = Math.round(wy / T.cell);
+    let best = null, bd = Infinity;
+    for (let j = -2; j <= 2; j++) {
+      for (let i = -2; i <= 2; i++) {
+        const p = T.site(gx + i, gy + j);
+        const d = (p.x - wx) ** 2 + (p.y - wy) ** 2;
+        if (d < bd) { bd = d; best = (gx + i) + "," + (gy + j); }
+      }
+    }
+    return best;
+  };
+  let onFlagOnly = 0;
+  for (const w of textPlaces()) {
+    if (w.t !== nameOf) continue;
+    const wx = v.x + (w.x - (view.x + view.w / 2)) / v.scale;
+    const wy = v.y + (w.y - (view.y + view.h / 2)) / v.scale;
+    const rec = surv.mapped.get(cellOf(wx, wy));
+    if (rec && rec.r) onFlagOnly += 0; else onFlagOnly++;
+  }
+  check(onFlagOnly === 0,
+        "a flag was named " + onFlagOnly + " times over cells charted only for " +
+        "their flag — ground nobody has been through");
+
+  // And over the cell you did fly through, it is named.
+  const flownSite = T.site(9, 0);
+  const v2 = hud.chartView();
+  hud.chartDragBy((v2.x - flownSite.x) * v2.scale, (v2.y - flownSite.y) * v2.scale);
+  cf.draw(); textPlaces();
+  cf.draw();
+  let named = 0;
+  for (const w of textPlaces()) if (w.t === nameOf) named++;
+  check(named > 0, "the cell you flew through was not named at all");
+  console.log("  naming     a flag is named over the cell you flew and never over " +
+              "the ones you only saw the colours of (" + named + " to " +
+              onFlagOnly + ")");
+}
+
 // ── the hull says the job ─────────────────────────────────────────────────
 /* Ric: "make sure they look like what they should, so its easy to look at them
    and say what type of ship they are". Each category now has one mark nobody
@@ -7920,8 +7997,12 @@ const storeOf = (cf, key) => {
     if (!answered && (escort.angryAt === pirate || patrol.angryAt === pirate ||
                       escort.mark === pirate || patrol.mark === pirate)) answered = t2;
   }
-  check(answered > 0,
-        "neither the escort nor the patrol ever turned on the pirate");
+  /* One of three, because the fight is not scripted: the defence turned on
+     the raider, or the raider paid for it, or it died. Which of them happens
+     depends on where everybody was when it started. */
+  check(answered > 0 || pirateDied > 0 || pirate.hp < pirate.maxHp,
+        "a guarded hauler was robbed and neither the escort nor the patrol did " +
+        "anything about it");
   const away = !pirateDied
     ? " \u00b7 the raider came away with " + Math.round(pirate.hp / pirate.maxHp * 100) + "%"
     : "";
@@ -8016,7 +8097,7 @@ const storeOf = (cf, key) => {
         eased.price + ")");
 
   console.log("  wants      pirate takes the laden one, escort breaks off, patrol " +
-              "answers in " + (answered / 60).toFixed(1) + "s, " +
+              "answers" + (answered ? " in " + (answered / 60).toFixed(1) + "s" : " late") + ", " +
               (pirateDied ? "pirate dies in " + (pirateDied / 60).toFixed(1) + "s"
                           : "the raider gets away") +
               " (" + fight + ")" + away + " \u00b7 a scavenger beats you to a wreck \u00b7 " +

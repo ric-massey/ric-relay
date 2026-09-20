@@ -2721,27 +2721,28 @@
        point of the name is to say what you are looking at. Zoomed in, every
        patch's middle is off the screen, so the map showed lines with nothing
        to say which side of them was what. */
-    // Never against the edge, where half a name is cut off by the frame.
-    const inside = at => ({
-      x: Math.max(view.x + 66, Math.min(view.x + view.w - 66, at.x)),
-      y: Math.max(view.y + 26, Math.min(view.y + view.h - 28, at.y))
-    });
+    /* Where a patch's name goes: on one of *its own* cells, the one sitting
+       furthest inside the frame. Nothing is nudged to fit.
+
+       The first version of this clamped the name into the frame when its cell
+       sat near the edge, which moved it off its own ground: Ric saw a faction
+       named over sky that was not theirs. A name on a map is a claim about
+       the place under it, so it is only ever written where the place is. */
+    const room = (sx, sy) => Math.min(sx - view.x, view.x + view.w - sx,
+                                      sy - view.y, view.y + view.h - sy);
+    /* Only over ground you have been through. Ric: "they shoouldnt show a
+       faction name in extra biomes" — flying charts the flags of the cells
+       beside the lane, and those are somewhere you know the colours of, not
+       somewhere you have been. A patch made only of those is drawn, because
+       its border is the thing worth knowing, and it is not named. */
     const spot = g => {
-      if (vis(g.x, g.y)) {
-        const sx = mx(g.x), sy = my(g.y);
-        if (sx > view.x && sx < view.x + view.w && sy > view.y && sy < view.y + view.h) {
-          return inside({ x: sx, y: sy });
-        }
-      }
-      const cx = view.x + view.w / 2, cy = view.y + view.h / 2;
-      let best = null, bd = Infinity;
-      for (const p of (g.sites || [])) {
+      let best = null, bs = 40;             // a name needs this much air
+      for (const p of (g.solid || [])) {
         const sx = mx(p.x), sy = my(p.y);
-        if (sx < view.x || sx > view.x + view.w || sy < view.y || sy > view.y + view.h) continue;
-        const d = (sx - cx) ** 2 + (sy - cy) ** 2;
-        if (d < bd) { bd = d; best = { x: sx, y: sy }; }
+        const r = room(sx, sy);
+        if (r > bs) { bs = r; best = { x: sx, y: sy }; }
       }
-      return best && inside(best);
+      return best;
     };
     ctx.save();
     for (const g of groups.o.slice().sort((a, b) => b.n - a.n)) {
@@ -2807,7 +2808,11 @@
           const d = (p.x - sx) ** 2 + (p.y - sy) ** 2;
           if (d < bd) { bd = d; best = p; }
         }
-        out.push({ v, n: members.length, x: best.x, y: best.y, sites });
+        /* And which of them you have actually been through. A cell charted
+           only for its flag, from the lane beside it, is somewhere you have
+           seen the colours of and nothing else — see `markFlag`. */
+        const solid = members.filter(m => m.rec.r).map(m => T.site(m.cx, m.cy));
+        out.push({ v, n: members.length, x: best.x, y: best.y, sites, solid });
       }
       return out;
     };

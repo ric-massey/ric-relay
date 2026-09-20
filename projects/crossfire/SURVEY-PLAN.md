@@ -307,10 +307,16 @@ were looking at unlabelled scratches.
   a lattice of jittered cells, reads as scratches on the glass. A biome edge is
   a thin solid line now, a little brighter; a flag's edge is twice the weight.
   Which is which is the one thing the map has to get across.
-- **Everything on the screen is named.** A patch was named at its middle, and
-  only if that middle was on the screen — so zoomed in, where a patch fills the
-  view, nothing was named at all. The name goes on the nearest cell of the patch
-  that *is* on the screen, clamped inside the frame so it is never half cut off.
+- **Everything on the screen is named — where you have been.** A patch was
+  named at its middle, and only if that middle was on the screen, so zoomed in,
+  where one patch fills the view, nothing was named at all. The name goes on
+  whichever of the patch's own cells sits furthest inside the frame. Two rules
+  keep it honest: it is never nudged to fit (a first version clamped it into
+  the frame, which moved a flag's name onto sky that was not theirs), and it is
+  only written over cells you have actually *been through*. Ric: "they shoouldnt
+  show a faction name in extra biomes" — the flags charted from the lane beside
+  you are somewhere you have seen the colours of, not somewhere you have been,
+  so they are drawn and not named.
 - **A key, in the rail.** Two lines in the colours of the sky you are in: the
   heavy one WHO HOLDS IT, the light one WHAT IT IS.
 
