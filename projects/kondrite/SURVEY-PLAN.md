@@ -12,7 +12,7 @@ enough that half-built systems hide each other's bugs.
 > or *the jump gate* — a second structure off the origin that the six parts were
 > carried to — is history. The six parts repair **your own station** now, one
 > room of it each, and the wormhole is what the station becomes when it is
-> whole. The reasoning and what shipped are in **THE-STATION.md**; this file is
+> whole. The reasoning and what shipped are in **`archive/THE-STATION.md`**; this file is
 > left as it was written, because it is the record of what was decided when.
 
 ---
@@ -3686,6 +3686,123 @@ up, the local copy is the one that matters and the panel is careful never to
 suggest otherwise.
 
 ---
+
+## The simulators, and the two kinds of board  ·  **DONE**
+
+*Decided and built 19–20 September 2026. The argument, the alternatives weighed
+and the four things the build had to settle are in `archive/SIMULATIONS.md`,
+which is the record of how it was decided. This section is what it left behind,
+and this file is the authority.*
+
+**There is one game, and it is this one.** The other three modes — survival,
+battle royale, the campaign — are **simulators**: arcade cabinets in a world that
+has arcade machines. Ric's line was *"there should only be one game."* The front
+page had been four games behind one menu with Survey as the fourth card, which
+contradicts everything in *What Survey is for*.
+
+So the title is the game plus a quieter SIMULATORS door; the solo/multiplayer
+lanes moved one floor down behind it, and `survey` is in neither of them. That
+question was never about Survey — one pilot, one chart — so asking it before the
+game was asking it about nothing. Asked about a machine, it is a real question.
+
+### Where they are, and what crosses back
+
+A **SIMULATORS tab wherever you can trade**: a station's counter and an
+inhabited world's surface, beside SHOP and SHIPS. A cabinet you can only find at
+some stations is a cabinet nobody finds. Three machines on plinths, the menu
+dioramas running on them as attract loops, and your best on that machine printed
+on the front before you press anything.
+
+**A machine pays nothing back into the sector.** The score on the cabinet is the
+whole of what crosses, and it is said on the page, because a player who finds
+that out afterwards has been misled rather than surprised.
+
+**The crossing is save-first.** `startSim` writes the book, takes the coin, and
+the cabinet boots for 0.9s before the match starts. If the book will not write
+— private browsing, a full quota — **the machine refuses to start and says why**.
+There is no version of this where a game of asteroids costs somebody their
+hours, and the suite takes the storage away to prove it. Coming back,
+`startGame("survey", 1, 0)` resumes from the book, the ship is put back where it
+stood, and `surveyStations()` re-docks it by the same rule the tick uses.
+
+What is lost crossing is real and correct: traffic in flight, the rocks where
+they were, any battle in progress. A game takes time and the sector moves on —
+and the return prints one line saying so, or a player who left a fight and came
+back to an empty sky thinks the game broke.
+
+**`returnTo` being set does not mean a return is owed.** The campaign's cabinet
+boots into its *mission list* rather than into a match, so you can pay and walk
+away having played nothing — and the survey is then still loaded, so crossing
+"back" to it would reload it from the book and throw away everything since the
+coin. `owedReturn()` asks whether the survey is still in memory, which is the
+only honest question. Two bugs came from asking the flag instead.
+
+### The door
+
+**You sign in first**, before the game and before the machines. The guest door is
+closed: the boards are the whole reward a simulator has, every board needs a name
+to put on it, and a guest has none. This reverses this file's own earlier *"an
+account, which is optional"* — the *mirror* half of that is still true, and the
+word *optional* is not.
+
+What a required sign-in must never become is a **required connection**. The
+requirement is having signed in *on this device*: the session is in local
+storage, read with no network, and a cached session plays offline indefinitely.
+An unreachable service is not a refusal and must never clear a session — getting
+that backwards would have taken the game away from anybody in a tunnel,
+permanently. And a blank `config.js` means no account service, **no door**, and a
+whole game.
+
+Everybody has a **pilot name** — three to sixteen characters, asked for once just
+after the account exists, and it is the only public thing about an account. An
+email address can never be one, and never reaches a board.
+
+### Two kinds of board, and the difference is not decoration
+
+**In a station: made up, and different everywhere.** A dozen of the sector's own
+people, generated from the cabinet's coordinates and whoever holds the sky over
+it, with you inserted at your rank in your own colour. Pure and seeded off the
+sector — the same trick the chunk generator runs on — so the same machine shows
+the same twelve for as long as that sector exists, the one next door shows twelve
+different ones, and a station that changes hands in the war gets a *different*
+dozen rather than the same twelve wearing new colours.
+
+The faction is the point, and it is a shape rather than a word list: the Cordon
+wear a rank and a lane, the Hallow wear where they are from, Morrow wear what
+they trade as, the unaligned are plain, and pirates are graffiti. Walking into
+somebody else's space and finding somebody else's people on the machine is most
+of what makes a second cabinet worth looking at. The page says **nobody is
+watching**, once.
+
+**Online: real, and witnessed.** Signing in gives identity, not authority — a
+static client with no game server can POST anything from the console. What a
+multiplayer result has that a solo one never can is that somebody else was
+there:
+
+> A score is not a claim you make about yourself. Every client posts one row per
+> player it saw — `(match, subject, reporter)` — and a score counts only when two
+> different reporters agree on the same value for the same subject in the same
+> match.
+
+Counted in Postgres, never in the client. That is also *why* the two kinds
+differ: solo results cannot be witnessed, so their boards are fiction;
+multiplayer results are witnessed, so theirs is real.
+
+`supabase/schema.sql` is three tables. `saves` stays private with every policy
+naming `auth.uid()`; `profiles` and `scores` are the boards' half, where
+everybody reads everybody — the two postures cannot share a table. `scores` has
+no update and no delete policy at all, and with RLS on that absence is what makes
+a score impossible to walk back.
+
+### What is still owed
+
+**`supabase/schema.sql` has never been run.** Nothing in the repo can reach a
+Postgres, so the suite checks the *shape* of that file and not that it executes.
+Until it is pasted into the Supabase SQL editor the real board reads as
+unavailable and reports queue harmlessly. That is Ric's, in the dashboard.
+
+**Not built, and a real idea for later:** a simulator you can fit to your own
+ship. It is a *part*, the way everything else in Survey is a part.
 
 ## Rules for building this
 

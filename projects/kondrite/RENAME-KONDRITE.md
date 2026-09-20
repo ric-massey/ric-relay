@@ -34,7 +34,7 @@ crossfire.devkeys.v1       → kondrite.devkeys.v1
 crossfire.camera.v1        → kondrite.camera.v1
 crossfire.hostkey.v1       → kondrite.hostkey.v1
 crossfire.account.v1       → kondrite.account.v1     the session
-crossfire.account.guest    → (deleted — SIMULATIONS.md closes the guest door)
+crossfire.account.guest    → (deleted — archive/SIMULATIONS.md closed the door)
 ```
 
 **`kondrite.survey.v3`, not `.v1`.** The format is version 3 and there really
@@ -170,7 +170,7 @@ Everything after is ordinary work.
 **1 · The wordmark and the copy.** The title screen draws `CROSSFIRE`
 (index.html:24246). It draws `KONDRITE`. The line under it —
 *"asteroids — open space, a closing wall, or a war to fight"* — is a list of four
-peer modes and is wrong anyway once [SIMULATIONS.md] lands, so the two changes
+peer modes and is wrong anyway once [archive/SIMULATIONS.md] lands, so the two changes
 want the same new line: **Kondrite is a survey of endless space.**
 
 **2 · The globals.** Eight of them, and they move in lockstep or the page does

@@ -3,7 +3,7 @@
 
 /* KONDRITE — THE DOOR
    ─────────────────────────────────────────────────────────────────────────────
-   Step 3 of SIMULATIONS.md: you sign in before you play, the guest door is
+   Step 3 of archive/SIMULATIONS.md: you sign in before you play, the door is
    closed, and everybody has a pilot name because every board needs one.
 
    This suite exists because the door was, until it was written, the one part of
