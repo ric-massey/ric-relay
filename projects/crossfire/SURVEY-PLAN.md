@@ -262,6 +262,47 @@ a pixel at every zoom (`tapHit` now carries its coordinates, so a harness can
 ask), the chart clips to its own rectangle, and the fog covers the view at every
 screen shape this layout can take.
 
+### The map reads as places  ·  *19 September 2026*
+
+> *"overlapping ones shouldnt have borders with each other. also. the biome
+> lines apear from going into it not the faction lines. and there needs to be a
+> fronteir that is better connected... also. speed of ships can you make it so
+> instead of a random number x it says units per sec."*
+
+- **No seam between two cells of the same space.** The wash was filled cell by
+  cell, so every shared edge was painted twice and a power's territory read as
+  a honeycomb of little countries. One path per flag, one fill, no seams.
+- **Flying charts the flags beside the lane.** Measured over a straight
+  800,000-unit flight: fourteen cells charted, and of the twenty-four
+  neighbouring pairs among them twenty-one differed in biome and two in owner —
+  so the dashed biome edges were everywhere and the solid faction ones never
+  appeared. Flying now records the *flag* of the eight cells around the one you
+  are in (`markFlag`, an empty biome), which is what a ship can see across a
+  sector. Faction borders draw along the whole lane; the biome still needs
+  flying through or a scan. Flag records take at most three quarters of the
+  chart's cap, so the cells you actually visit always have room.
+- **A frontier in fewer, bigger patches.** Ric's call, from four options. It was
+  a quarter to a third of the sky in about thirty patches whose *median size
+  was one cell*: one real frontier and dozens of specks. Two tidying passes on
+  the map — a leftover cell ringed by one power is that power's, a one-cell
+  island of a power is not really held, and a cell of nobody's ringed by one
+  other kind of nobody's is that kind. Over three seeds: 31→15, 34→22 and 26→17
+  patches, median 1→9, 2→3, 3→3, and the share unchanged at 24–35%. A claim is
+  never tidied: the war's answer wins, or a cell just taken is handed straight
+  back.
+- **Ships are measured in units.** SPEED, ACCEL and TURN read 792 u/s, 543 u/s²
+  and 126°/s rather than 2.20x, 1.43x and 0.69x. The bars still compare across
+  the roster.
+- **And the scatter is a distance, not an angle.** Six degrees is a hand's width
+  up close and ninety units at nine hundred, a dozen times the width of a
+  Needle, so bots could barely hit each other at range. The cone closes as the
+  range opens.
+
+**The fingerprint moves on purpose.** Tidying the map changes which cells a
+power holds, so stations, traffic and worlds shift with it. Rock percentage and
+disc counts are identical across all three seeds: nothing else about generation
+changed.
+
 **Still open for step 1:** what a ship thinks of *you* (ignoring you, warning
 you off, coming for you) is not drawn yet. The dogfight test is also still
 unflown: can someone watch thirty seconds and narrate it?

@@ -2629,13 +2629,30 @@
     };
 
     ctx.save();
-    // The wash. The Void is a darkening rather than a colour: it is an absence.
+    /* The wash, one fill per flag rather than one per cell. Filled cell by
+       cell, every shared edge was painted twice and the seam between two cells
+       of the *same* space showed as a line: a power's territory read as a
+       honeycomb of little countries. Ric: two of the same touching "shouldnt
+       have borders with each other". One path, one fill, no seams.
+
+       The Void is a darkening rather than a colour: it is an absence. */
+    const byFlag = new Map();
     for (const c of todo) {
-      const h = T.holder(c.rec.o);
-      if (!h) continue;
-      path(c.shape);
-      ctx.globalAlpha = c.rec.o === "void" ? 0.45 : h.power ? 0.13 : 0.08;
-      ctx.fillStyle = c.rec.o === "void" ? "#000000" : h.colour;
+      if (!T.holder(c.rec.o)) continue;
+      const list = byFlag.get(c.rec.o) || [];
+      list.push(c);
+      byFlag.set(c.rec.o, list);
+    }
+    for (const [flag, cells] of byFlag) {
+      const h = T.holder(flag);
+      ctx.beginPath();
+      for (const c of cells) {
+        c.shape.pts.forEach((p, i) => (i ? ctx.lineTo(mx(p[0]), my(p[1]))
+                                         : ctx.moveTo(mx(p[0]), my(p[1]))));
+        ctx.closePath();
+      }
+      ctx.globalAlpha = flag === "void" ? 0.45 : h.power ? 0.13 : 0.08;
+      ctx.fillStyle = flag === "void" ? "#000000" : h.colour;
       ctx.fill();
     }
     // Edges. Each shared edge is drawn once, from the lower key.
@@ -2657,7 +2674,8 @@
           ctx.beginPath(); ctx.moveTo(mx(a[0]), my(a[1])); ctx.lineTo(mx(e[0]), my(e[1]));
           ctx.stroke();
         }
-        if (other.r !== c.rec.r && b && biomeAlpha > 0) {
+        // A cell charted only for its flag has no biome to draw an edge of.
+        if (other.r && c.rec.r && other.r !== c.rec.r && b && biomeAlpha > 0) {
           ctx.setLineDash([6, 5]);
           ctx.globalAlpha = biomeAlpha;
           ctx.lineWidth = 1.2;
@@ -2702,6 +2720,7 @@
     }
     if (cellPx >= 60) {
       for (const g of groups.r.slice().sort((a, b) => b.n - a.n)) {
+        if (!g.v) continue;                 // flag-only cells name no biome
         const b = T.biome(g.v);
         if (!b || !vis(g.x, g.y)) continue;
         if (!fits(b.name, mx(g.x), my(g.y) + 18)) continue;
@@ -7289,9 +7308,13 @@
       ["DAMAGE", sh.dmg / best("dmg"), sh.dmg.toFixed(2) + "x"],
       ["RATE", sh.rate / best("rate"), sh.rate.toFixed(2) + "x"],
       ["CARGO", sh.cargo / best("cargo"), String(sh.cargo)],
-      ["SPEED", sh.speed / best("speed"), sh.speed.toFixed(2) + "x"],
-      ["ACCEL", sh.accel / best("accel"), sh.accel.toFixed(2) + "x"],
-      ["TURN",  sh.turn / best("turn"),   sh.turn.toFixed(2) + "x"],
+      /* In units, not multiples. A hull's speed is how far it covers in a
+         second, its push is how much speed it gains in one, and its turn is
+         how far round it comes. The bars still compare it with the roster;
+         the number is now a fact about the sector you fly in. */
+      ["SPEED", sh.speed / best("speed"), (sh.topSpeed || 0) + " u/s"],
+      ["ACCEL", sh.accel / best("accel"), (sh.push || 0) + " u/s\u00b2"],
+      ["TURN",  sh.turn / best("turn"),   (sh.turnRate || 0) + "\u00b0/s"],
       /* "GRIP", and the bar runs the same way as every other bar on this page.
          It read DRAG with the fill inverted — longest for the *lowest* number —
          which was right while drag was friction and less of it was better. It

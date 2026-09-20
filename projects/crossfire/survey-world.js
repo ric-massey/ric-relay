@@ -486,14 +486,65 @@ function baseHold(cx, cy) {
   return owner;
 }
 
-// Who holds it now: a claim if the war has moved it, the seed if not.
-function holderOf(cx, cy) {
+// Who holds it, before the map is tidied: a claim if the war has moved it,
+// the seed if not.
+function rawHold(cx, cy) {
   const claims = env.claims ? env.claims() : null;
   if (claims) {
     const k = cx + "," + cy;
     if (claims.has(k)) return claims.get(k) || null;
   }
   return baseHold(cx, cy);
+}
+
+/* And who holds it as the sector reads. Ric wanted a frontier that is "better
+   connected" — fewer, bigger patches rather than the same amount in confetti.
+   Measured over three seeds, the frontier was a quarter to a third of the sky
+   in about thirty patches whose *median size was one cell*: one real frontier
+   and dozens of specks, nearly all of them holes inside somebody's territory
+   where a power's wave dipped under the floor for one cell, or two powers came
+   level for one cell.
+
+   So the map is tidied by one pass, the way you would read it: a cell nobody
+   holds that is ringed by one power is that power's, and a single cell of a
+   power with nobody of its own around it is not really held at all. Nothing
+   else changes — the waves, the floor and the lead are untouched — and what
+   is left of the frontier is in one piece. */
+const tidyCache = new Map();
+function holderOf(cx, cy) {
+  const key = cx + "," + cy;
+  /* A claim is the war's answer and it is never tidied. Without this, a cell
+     a power has just taken — which by definition has none of its own around it
+     yet — was read as a one-cell island and handed straight back. */
+  const claims = env.claims ? env.claims() : null;
+  if (claims && claims.has(key)) return claims.get(key) || null;
+  const had = tidyCache.get(key);
+  if (had !== undefined) return had;
+  const own = rawHold(cx, cy);
+  let out = own;
+  const tally = {};
+  let same = 0;
+  for (let j = -1; j <= 1; j++) {
+    for (let i = -1; i <= 1; i++) {
+      if (!i && !j) continue;
+      const o = rawHold(cx + i, cy + j);
+      if (!o) continue;
+      tally[o] = (tally[o] || 0) + 1;
+      if (o === own) same++;
+    }
+  }
+  if (!own) {
+    let best = null, bn = 0;
+    for (const k of Object.keys(tally)) if (tally[k] > bn) { bn = tally[k]; best = k; }
+    // Ringed by one power on six of its eight sides: it is a hole, not a place.
+    if (best && bn >= 6 && !homeCell(cx, cy)) out = best;
+  } else if (same === 0) {
+    // One cell of a power with none of its own touching it: not really held.
+    out = null;
+  }
+  if (tidyCache.size > 20000) tidyCache.clear();
+  tidyCache.set(key, out);
+  return out;
 }
 
 function enemiesOf(power) {
@@ -506,6 +557,50 @@ function enemiesOf(power) {
 /* What kind of space a cell is. Cached until the claims change, because the
    answer reads up to twelve neighbours and it is asked for every mote. */
 const spaceCache = new Map();
+/* Which of the three kinds of nobody's a cell is, before the map is tidied.
+   Owned cells answer with their owner instead, because their kind is not in
+   question. */
+function rawKind(cx, cy) {
+  if (holderOf(cx, cy)) return null;
+  if (homeCell(cx, cy)) return "frontier";
+  if (voidCell(cx, cy) && !claimsHave(cx, cy)) return "void";
+  const near = [];
+  for (let j = -FRONT_REACH; j <= FRONT_REACH; j++) {
+    for (let i = -FRONT_REACH; i <= FRONT_REACH; i++) {
+      if ((i || j) && Math.abs(i) + Math.abs(j) <= FRONT_REACH) {
+        const o = holderOf(cx + i, cy + j);
+        if (o && near.indexOf(o) < 0) near.push(o);
+      }
+    }
+  }
+  if (near.find(o => enemiesOf(o).some(e => near.indexOf(e) >= 0))) return "front";
+  return near.length >= 2 ? "lawless" : "frontier";
+}
+
+/* And the same tidying the owners get, for the kinds. The frontier came out
+   as one real region and thirty specks, most of them a single frontier cell
+   wedged between a lawless seam and the Void. A cell of nobody's that is
+   ringed by one other kind of nobody's is that kind. */
+function tidyKind(cx, cy, kind) {
+  if (kind !== "frontier" && kind !== "lawless" && kind !== "void") return kind;
+  if (homeCell(cx, cy)) return kind;
+  const tally = {};
+  let same = 0;
+  for (let j = -1; j <= 1; j++) {
+    for (let i = -1; i <= 1; i++) {
+      if (!i && !j) continue;
+      const k = rawKind(cx + i, cy + j);
+      if (!k || k === "front") continue;
+      tally[k] = (tally[k] || 0) + 1;
+      if (k === kind) same++;
+    }
+  }
+  if (same >= 3) return kind;
+  let best = kind, bn = 2;
+  for (const k of Object.keys(tally)) if (tally[k] > bn) { bn = tally[k]; best = k; }
+  return best;
+}
+
 function spaceOfCell(cx, cy) {
   const key = cx + "," + cy;
   const had = spaceCache.get(key);
@@ -541,6 +636,7 @@ function spaceOfCell(cx, cy) {
   } else {
     kind = near.length >= 2 ? "lawless" : "frontier";
   }
+  if (!owner) kind = tidyKind(cx, cy, kind);
   /* How far into its owner's territory a held cell is: 1 on the border, up to 3
      three cells in, and 4 for anything deeper — the heartland. Pirates and other
      people's ships belong near the edge of somebody's space, not in the middle
@@ -571,7 +667,7 @@ const spaceAt = (x, y) => {
   return spaceOfCell(st.cx, st.cy);
 };
 // Call after anything changes hands. What a cell *is* depends on its neighbours.
-function territoryChanged() { spaceCache.clear(); }
+function territoryChanged() { spaceCache.clear(); tidyCache.clear(); }
 
 /* ══ THE WARRENS ═══════════════════════════════════════════════════════════
    A region that is *made of rock*, with tunnels bored through it.

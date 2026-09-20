@@ -12107,8 +12107,18 @@
                Everybody leads; what skill buys is a steady hand. A novice's
                round goes up to six degrees either side of the line, an ace's
                down it. */
+            /* Scatter, and it is a *distance* rather than an angle past a
+               certain range. Six degrees is a hand's width at knife range and
+               ninety units at nine hundred, which is a dozen times the width
+               of a Needle — so bots almost never hit each other, and a raider
+               could sit in front of an escort and a patrol for twenty-five
+               seconds without taking a scratch. The cone closes as the range
+               opens: a novice's round lands within about fifty units of the
+               line however far away it is fired. */
+            const range = Math.max(1, Math.hypot(tx - gun.x, ty - gun.y));
+            const spread = Math.min(0.2, 100 * U / range) * Math.max(0, 1 - skill);
             const fa = Math.atan2(ty - gun.y, tx - gun.x) +
-                       (Math.random() - 0.5) * 0.2 * Math.max(0, 1 - skill);
+                       (Math.random() - 0.5) * spread;
             /* The admiral fires a broadside: every turret on the side you are
                on, at once, and then a long reload. */
             if (t.boss === "admiral") {
@@ -18199,6 +18209,30 @@
     const sp = WORLD.spaceOfCell(cx, cy);
     return { r: site.region.key, o: sp.owner || sp.kind };
   }
+  /* The flags of the cells around one you flew through, without their biomes.
+     Ric: "the biome lines apear from going into it not the faction lines."
+     Measured over a straight 800,000-unit flight: fourteen cells charted, and
+     of the twenty-four neighbouring pairs among them twenty-one differed in
+     biome and two in owner. Biomes change from cell to cell, so a one-cell-wide
+     ribbon crosses them constantly and their dashed edges are everywhere; a
+     power's space runs for dozens of cells, so the ribbon almost never has a
+     border inside it and the solid lines never appeared.
+
+     So flying reads the flags either side of the lane as well — a flag is
+     something a ship can see across a sector, which a biome is not. The record
+     carries an empty biome, and flying through the cell itself fills it in. */
+  function markFlag(cx, cy) {
+    const key = cx + "," + cy;
+    if (surv.mapped.has(key)) return false;
+    /* Flags are nine cells a lane, so they would eat the record nine times
+       faster than flying does. The last quarter of it is kept for the cells
+       you actually went through. */
+    if (surv.mapped.size >= MAPPED_CAP * 0.75) return false;
+    surv.mapped.set(key, { r: "", o: cellSeen(cx, cy).o });
+    surv.mappedStamp = (surv.mappedStamp || 0) + 1;
+    return true;
+  }
+
   function markMapped(cx, cy) {
     const key = cx + "," + cy;
     const now = cellSeen(cx, cy);
@@ -18246,6 +18280,9 @@
        it is now. */
     const had = surv.mapped.get(surv.mapCell);
     markMapped(site.cx, site.cy);
+    for (let j = -1; j <= 1; j++) {
+      for (let i = -1; i <= 1; i++) if (i || j) markFlag(site.cx + i, site.cy + j);
+    }
     const now2 = surv.mapped.get(surv.mapCell);
     if (had && now2 && had.o !== now2.o) {
       const T = { holder: o => {
@@ -20725,6 +20762,13 @@
         note: sh.note, cost: sh.cost,
         hull: sh.hull, dmg: sh.dmg, rate: sh.rate, cargo: sh.cargo,
         speed: sh.speed, accel: sh.accel, turn: sh.turn, drag: sh.drag,
+        /* And the same three in the units the sector is measured in, worked
+           out here because the page does no arithmetic of its own. Ric: the
+           multipliers were "a random number x" — a Needle at 2.20x meant
+           nothing next to a scan that reaches 2,100u and a well 3,000 wide. */
+        topSpeed: Math.round(sh.speed * MAX_SPEED),
+        push: Math.round(sh.accel * THRUST),
+        turnRate: Math.round(sh.turn * TURN * 180 / Math.PI),
         // Always a number here, so the page never has to know the default.
         burst: sh.burst || BURST_SIZE,
         // What actually stops this hull, and how far its outline reaches.

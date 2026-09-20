@@ -61,6 +61,11 @@ const drawn = [];
 /* Reading it clears it, because every test that asks wants "what is on the
    screen now" and not "everything since the process started". */
 function textDrawn() { const out = drawn.slice(); drawn.length = 0; return out; }
+/* How many times each canvas call was made since anybody looked. The chart
+   paints its territory wash as one fill per flag rather than one per cell, and
+   the only way to see that from here is to count the fills. */
+const calls = {};
+function callCount(name) { const n = calls[name] || 0; calls[name] = 0; return n; }
 function stubCtx() {
   // Every method a no-op and every property writable — except measureText,
   // which has to return something with a width: the menus size their own tap
@@ -71,6 +76,9 @@ function stubCtx() {
         return str => { drawn.push(String(str)); };
       }
       if (k === "measureText") return str => ({ width: String(str).length * 8 });
+      if (k === "fill" || k === "stroke" || k === "fillRect") {
+        return (...a) => { calls[k] = (calls[k] || 0) + 1; void a; };
+      }
       // Likewise the gradient makers: the menus fade a card's picture into its
       // words with one, and a no-op returning `undefined` turns drawing a card
       // into "cannot read properties of undefined (reading 'addColorStop')".
@@ -5457,6 +5465,126 @@ const storeOf = (cf, key) => {
               "and not sideways \u00b7 two fingers pinch \u00b7 the station's map pans");
 }
 
+// ── the map reads as places, not cells ────────────────────────────────────
+/* Three of Ric's: two of the same touching "shouldnt have borders with each
+   other", "the biome lines apear from going into it not the faction lines",
+   and a frontier that is "better connected" — fewer, bigger patches. */
+{
+  const { cf } = boot("?debug=1&seed=99");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const hud = cf.hud();
+  const me = cf.live().ships[0];
+
+  // Flying charts the flags either side of the lane, so borders show.
+  for (let k = 0; k < 400; k++) {
+    me.x = k * 2000; me.y = 0; me.invuln = 3; now += 1000 / 60 * 6; cf.step();
+  }
+  let ownerEdges = 0, flagOnly = 0, flown = 0;
+  for (const [key, rec] of surv.mapped) {
+    const [cx, cy] = key.split(",").map(Number);
+    if (rec.r) flown++; else flagOnly++;
+    for (const [dx, dy] of [[1, 0], [0, 1]]) {
+      const o = surv.mapped.get((cx + dx) + "," + (cy + dy));
+      if (o && o.o !== rec.o) ownerEdges++;
+    }
+  }
+  check(flagOnly > flown, "flying charted no flags beside the lane");
+  check(ownerEdges >= 6,
+        "a flight across the sector left " + ownerEdges + " faction borders on " +
+        "the chart — they only appear where two charted cells disagree");
+
+  // And a cell charted for its flag gains its biome when you fly through it.
+  const flagCell = [...surv.mapped].find(([, r]) => !r.r);
+  const cell = cf.surveyView().terrain.cell;
+  const [fx, fy] = flagCell[0].split(",").map(Number);
+  const site = { x: (fx + 0.5) * cell, y: (fy + 0.5) * cell };
+  me.x = site.x; me.y = site.y;
+  for (let i = 0; i < 6; i++) { me.invuln = 3; now += 1000 / 60; cf.step(); }
+  check(!!(surv.mapped.get(flagCell[0]) || {}).r,
+        "flying through a cell charted for its flag never filled in its biome");
+
+  /* The wash is one fill per flag, not one per cell: filled cell by cell, the
+     seam between two cells of the same space showed as a line and a power's
+     territory read as a honeycomb. */
+  surv.known.clear();                     // marks fill too; this is about terrain
+  cf.screen("chart");
+  hud.chartOpened(cf.surveyView());
+  for (let i = 0; i < 30; i++) hud.chartZoomBy(-1);
+  for (let i = 0; i < 6; i++) hud.chartZoomBy(1);
+  cf.draw();
+  callCount("fill");
+  cf.draw();
+  const fills1 = callCount("fill");
+  const cells1 = surv.mapped.size;
+  cf.screen("playing");
+  for (let k = 0; k < 500; k++) {
+    me.x = 900000 - k * 2000; me.y = 470000; me.invuln = 3; now += 1000 / 60 * 6; cf.step();
+  }
+  surv.known.clear();                     // again: the flight charted more marks
+  cf.screen("chart");
+  cf.draw();
+  callCount("fill");
+  cf.draw();
+  const fills2 = callCount("fill");
+  const cells2 = surv.mapped.size;
+  const slope = (fills2 - fills1) / Math.max(1, cells2 - cells1);
+  check(cells2 > cells1 + 20, "the second flight charted nothing new");
+  check(slope < 0.5,
+        "the chart paints " + slope.toFixed(2) + " fills a charted cell — it is " +
+        "filling them one at a time, and the seams show");
+
+  /* The frontier, in patches. It was a quarter of the sky in about thirty of
+     them with a median size of one cell: one frontier and a lot of confetti. */
+  const patchesOfKind = (w, R, want) => {
+    const c2 = w.surveyView().terrain.cell;
+    const kinds = new Map();
+    for (let cy = -R; cy <= R; cy++) {
+      for (let cx = -R; cx <= R; cx++) {
+        const sp = w.spaceAt((cx + 0.5) * c2, (cy + 0.5) * c2);
+        kinds.set(cx + "," + cy, sp.owner || sp.kind);
+      }
+    }
+    const seen = new Set(), sizes = [];
+    let held = 0;
+    for (const [k, v] of kinds) {
+      if (v === want) held++;
+      if (seen.has(k) || v !== want) continue;
+      const q = [k]; seen.add(k); let n = 0;
+      while (q.length) {
+        const cur = q.pop(); n++;
+        const [cx, cy] = cur.split(",").map(Number);
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nk = (cx + dx) + "," + (cy + dy);
+          if (seen.has(nk) || kinds.get(nk) !== want) continue;
+          seen.add(nk); q.push(nk);
+        }
+      }
+      sizes.push(n);
+    }
+    sizes.sort((a, b) => b - a);
+    return { sizes, share: held / kinds.size };
+  };
+  const report = [];
+  for (const seed of [99, 112233, 515153]) {
+    const w = boot("?debug=1&seed=" + seed);
+    w.cf.start("survey", 1);
+    const f = patchesOfKind(w.cf, 26, "frontier");
+    const median = f.sizes[Math.floor(f.sizes.length / 2)];
+    report.push(seed + ": " + Math.round(f.share * 100) + "% in " + f.sizes.length +
+                ", median " + median);
+    check(f.share > 0.15,
+          "seed " + seed + " has only " + Math.round(f.share * 100) + "% frontier");
+    check(f.sizes.length <= 24,
+          "seed " + seed + " broke the frontier into " + f.sizes.length + " patches");
+    check(median >= 3,
+          "seed " + seed + "'s median frontier patch is " + median + " cells");
+  }
+  console.log("  places     flying charts the flags beside it, so faction borders " +
+              "show \u00b7 one fill a flag, so touching cells of one space have no " +
+              "seam \u00b7 frontier " + report.join(" \u00b7 "));
+}
+
 // ── the hull says the job ─────────────────────────────────────────────────
 /* Ric: "make sure they look like what they should, so its easy to look at them
    and say what type of ship they are". Each category now has one mark nobody
@@ -7774,17 +7902,29 @@ const storeOf = (cf, key) => {
      things that do not check what is behind the target, and which of the two
      dies first is a coin the defence does not own. It asserted a race.
 
-     What the system actually promises is that the pirate pays for it. That is
-     asserted. The order the two of them die in is measured and printed, because
-     it is worth watching while this part of the sector is still being built —
-     but it is not a promise and it is not a failure. */
-  let pirateDied = 0, haulerDied = 0, t2 = 0;
+     Nor is the kill. Ric: "pirate can survive sometimes thats ok no?" It can,
+     and now more often than it used to: a raider that breaks off runs at what
+     its hull can really do and a Needle outruns a Lance, and an escort holds
+     fire rather than shoot through the client it is guarding — so a pirate
+     tucked against the hauler can come out of the whole thing untouched.
+
+     What the system promises is that the defence *answers*: the escort leaves
+     its station and the patrol comes, both of them with this pirate as the
+     thing they are angry at. That is asserted. What happens next is the
+     fight's, and it is measured and printed. */
+  let pirateDied = 0, haulerDied = 0, t2 = 0, answered = 0;
   for (let i = 0; i < 60 * 25; i++) {
     step(1); t2++;
     if (!pirateDied && !alive(pirate)) pirateDied = t2;
     if (!haulerDied && !alive(hauler)) haulerDied = t2;
+    if (!answered && (escort.angryAt === pirate || patrol.angryAt === pirate ||
+                      escort.mark === pirate || patrol.mark === pirate)) answered = t2;
   }
-  check(pirateDied > 0, "the pirate survived an escort and a patrol both on it");
+  check(answered > 0,
+        "neither the escort nor the patrol ever turned on the pirate");
+  const away = !pirateDied
+    ? " \u00b7 the raider came away with " + Math.round(pirate.hp / pirate.maxHp * 100) + "%"
+    : "";
   const fight = !haulerDied ? "the hauler got away"
               : haulerDied > pirateDied ? "the hauler outlived it"
               : "the hauler went down with it";
@@ -7876,8 +8016,10 @@ const storeOf = (cf, key) => {
         eased.price + ")");
 
   console.log("  wants      pirate takes the laden one, escort breaks off, patrol " +
-              "answers, pirate dies in " + (pirateDied / 60).toFixed(1) + "s (" +
-              fight + ") \u00b7 a scavenger beats you to a wreck \u00b7 " +
+              "answers in " + (answered / 60).toFixed(1) + "s, " +
+              (pirateDied ? "pirate dies in " + (pirateDied / 60).toFixed(1) + "s"
+                          : "the raider gets away") +
+              " (" + fight + ")" + away + " \u00b7 a scavenger beats you to a wreck \u00b7 " +
               "a convoy lost puts iridium " + before.price + " to " + after.price +
               " and one through brings it back to " + eased.price);
 }
@@ -11503,9 +11645,13 @@ const storeOf = (cf, key) => {
   const step = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.step(); } };
   step(5);
 
-  // Flying writes the cell you are in; it does not chart a whole patch.
-  check(surv.mapped.size >= 1 && surv.mapped.size < 4,
+  /* Flying writes the cell you are in and the *flags* of the eight around it
+     — see `markFlag` — and never a whole patch. So sitting still charts nine
+     cells and exactly one of them knows its biome. */
+  check(surv.mapped.size >= 1 && surv.mapped.size <= 9,
         "sitting at home charted " + surv.mapped.size + " cells");
+  check([...surv.mapped.values()].filter(r => r.r).length === 1,
+        "sitting at home charted more than its own cell's biome");
 
   let front = null;
   for (let r = 1; r < 30 && !front; r++) {
