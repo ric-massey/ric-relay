@@ -298,6 +298,22 @@ screen shape this layout can take.
   Needle, so bots could barely hit each other at range. The cone closes as the
   range opens.
 
+**And the lines say what they are.** Ric: *"the dotted lines are weird. and it
+need to be easier to understand."* Three things were wrong with the chart's
+borders, and all three are the same complaint: at any zoom past the widest you
+were looking at unlabelled scratches.
+
+- **The dashes are gone.** A dashed hairline in a biome's own dim colour, along
+  a lattice of jittered cells, reads as scratches on the glass. A biome edge is
+  a thin solid line now, a little brighter; a flag's edge is twice the weight.
+  Which is which is the one thing the map has to get across.
+- **Everything on the screen is named.** A patch was named at its middle, and
+  only if that middle was on the screen — so zoomed in, where a patch fills the
+  view, nothing was named at all. The name goes on the nearest cell of the patch
+  that *is* on the screen, clamped inside the frame so it is never half cut off.
+- **A key, in the rail.** Two lines in the colours of the sky you are in: the
+  heavy one WHO HOLDS IT, the light one WHAT IT IS.
+
 **The fingerprint moves on purpose.** Tidying the map changes which cells a
 power holds, so stations, traffic and worlds shift with it. Rock percentage and
 disc counts are identical across all three seeds: nothing else about generation

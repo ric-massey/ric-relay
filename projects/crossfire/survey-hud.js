@@ -2674,11 +2674,18 @@
           ctx.beginPath(); ctx.moveTo(mx(a[0]), my(a[1])); ctx.lineTo(mx(e[0]), my(e[1]));
           ctx.stroke();
         }
-        // A cell charted only for its flag has no biome to draw an edge of.
+        /* A cell charted only for its flag has no biome to draw an edge of.
+
+           And the edge is a line rather than a dash. Ric: "the dotted lines
+           are weird" — a dashed hairline in a biome's own dim colour, drawn
+           along a lattice of jittered cells, read as scratches on the glass
+           rather than as the edge of anywhere. Thin, solid and a little
+           brighter is a border; the flag's line is twice the weight, so which
+           is which is still obvious. */
         if (other.r && c.rec.r && other.r !== c.rec.r && b && biomeAlpha > 0) {
-          ctx.setLineDash([6, 5]);
-          ctx.globalAlpha = biomeAlpha;
-          ctx.lineWidth = 1.2;
+          ctx.setLineDash([]);
+          ctx.globalAlpha = Math.min(0.75, biomeAlpha + 0.15);
+          ctx.lineWidth = 1;
           ctx.strokeStyle = b.colour;
           ctx.beginPath(); ctx.moveTo(mx(a[0]), my(a[1])); ctx.lineTo(mx(e[0]), my(e[1]));
           ctx.stroke();
@@ -2709,22 +2716,51 @@
       taken.push(box);
       return true;
     };
+    /* Where to write a patch's name. Its middle, if that is on the screen —
+       and if it is not, the nearest of its cells that is, because the whole
+       point of the name is to say what you are looking at. Zoomed in, every
+       patch's middle is off the screen, so the map showed lines with nothing
+       to say which side of them was what. */
+    // Never against the edge, where half a name is cut off by the frame.
+    const inside = at => ({
+      x: Math.max(view.x + 66, Math.min(view.x + view.w - 66, at.x)),
+      y: Math.max(view.y + 26, Math.min(view.y + view.h - 28, at.y))
+    });
+    const spot = g => {
+      if (vis(g.x, g.y)) {
+        const sx = mx(g.x), sy = my(g.y);
+        if (sx > view.x && sx < view.x + view.w && sy > view.y && sy < view.y + view.h) {
+          return inside({ x: sx, y: sy });
+        }
+      }
+      const cx = view.x + view.w / 2, cy = view.y + view.h / 2;
+      let best = null, bd = Infinity;
+      for (const p of (g.sites || [])) {
+        const sx = mx(p.x), sy = my(p.y);
+        if (sx < view.x || sx > view.x + view.w || sy < view.y || sy > view.y + view.h) continue;
+        const d = (sx - cx) ** 2 + (sy - cy) ** 2;
+        if (d < bd) { bd = d; best = { x: sx, y: sy }; }
+      }
+      return best && inside(best);
+    };
     ctx.save();
     for (const g of groups.o.slice().sort((a, b) => b.n - a.n)) {
       if (cellPx * Math.sqrt(g.n) < 90) continue;
       const h = T.holder(g.v);
-      if (!h || !vis(g.x, g.y)) continue;
-      if (!fits(h.name, mx(g.x), my(g.y))) continue;
-      label(h.name, mx(g.x), my(g.y), SIZE.cap, h.colour, "center",
+      if (!h) continue;
+      const at = spot(g);
+      if (!at || !fits(h.name, at.x, at.y)) continue;
+      label(h.name, at.x, at.y, SIZE.cap, h.colour, "center",
             g.v === "void" ? 0.55 : 0.85, "0.14em");
     }
     if (cellPx >= 60) {
       for (const g of groups.r.slice().sort((a, b) => b.n - a.n)) {
         if (!g.v) continue;                 // flag-only cells name no biome
         const b = T.biome(g.v);
-        if (!b || !vis(g.x, g.y)) continue;
-        if (!fits(b.name, mx(g.x), my(g.y) + 18)) continue;
-        label(b.name, mx(g.x), my(g.y) + 18, SIZE.cap, b.colour, "center", 0.6,
+        if (!b) continue;
+        const at = spot(g);
+        if (!at || !fits(b.name, at.x, at.y + 18)) continue;
+        label(b.name, at.x, at.y + 18, SIZE.cap, b.colour, "center", 0.6,
               "0.08em");
       }
     }
@@ -2771,7 +2807,7 @@
           const d = (p.x - sx) ** 2 + (p.y - sy) ** 2;
           if (d < bd) { bd = d; best = p; }
         }
-        out.push({ v, n: members.length, x: best.x, y: best.y });
+        out.push({ v, n: members.length, x: best.x, y: best.y, sites });
       }
       return out;
     };
@@ -3050,6 +3086,31 @@
             rail.x, ry + 20, SIZE.cap, VIOLET_DIM, "left", 0.7, rail.w - 46);
     label((step + 1) + "/" + ZOOMS.length, rail.x + rail.w - PAGE.PAD, ry + 20,
           SIZE.cap, VIOLET_DIM, "right", 0.7);
+    ry += 30;
+
+    /* What the two kinds of line on the map are. Without this the map draws
+       borders in two weights and two colours and never says which is which:
+       one is who holds the sky and the other is what the sky is made of. */
+    {
+      // In the colours of the sky you are actually in, so the key is an
+      // example rather than a diagram.
+      const flagCol = (st.place && st.place.space && st.place.space.colour) || VIOLET;
+      const bioCol = (st.place && st.place.biome && st.place.biome.colour) || VIOLET_DIM;
+      const key = (y, colour, wide, name) => {
+        ctx.save();
+        ctx.strokeStyle = colour;
+        ctx.globalAlpha = 0.9;
+        ctx.lineWidth = wide ? 2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(rail.x, y); ctx.lineTo(rail.x + 26, y);
+        ctx.stroke();
+        ctx.restore();
+        label(name, rail.x + 34, y + 4, SIZE.cap, VIOLET_DIM, "left", 0.7);
+      };
+      key(ry + 8, flagCol, true, "WHO HOLDS IT");
+      key(ry + 26, bioCol, false, "WHAT IT IS");
+      ry += 40;
+    }
 
     pageNav(st, "chart", SHIP_TABS, SHIP_TONE);
     closeButton(st.onClose || (() => {}));
