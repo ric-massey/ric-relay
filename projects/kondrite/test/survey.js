@@ -1720,6 +1720,189 @@ const storeOf = (cf, key) => {
               "one part, one room \u00b7 the mouth is the plate's");
 }
 
+// ── 14b. the machines in the corner ──────────────────────────────────────
+/* A simulator is a cabinet you walk up to in the middle of a run, and the one
+   thing it must never be able to do is cost somebody their sector. `startGame`
+   resets every global the game has, so the crossing is a save, a match, and a
+   resume — and this is the test of that crossing rather than of any of the
+   three games, which have suites of their own.
+
+   What is asserted is the whole of the contract: the room is a place and not a
+   page, the machine boots rather than snapping, the sector comes back with the
+   same seed, the same cash, the same hold and the same manifest, standing at
+   the same dock, and the one thing that crosses back the other way is the score
+   on that cabinet. */
+{
+  const { cf, windowStub } = boot("?debug=1&seed=606061");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const view = () => cf.surveyView();
+  const step = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.step(); } };
+  const draws = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.draw(); } };
+  const me = cf.live().ships[0];
+  const home = cf.home();
+
+  // In open space there is no cabinet. It is a place, not a page.
+  me.x = home.x + 40000; me.y = home.y + 40000; me.vx = me.vy = 0;
+  step(4);
+  view().onArcade();
+  check(cf.screenNow() !== "arcade", "the machines opened in open space");
+  check(view().arcade === null, "open space handed the page a cabinet anyway");
+
+  // Docked, and there are three of them, none of them played.
+  me.x = home.x; me.y = home.y; me.vx = me.vy = 0;
+  step(8);
+  check(!!cf.places().docked, "the ship did not dock at home");
+  view().onArcade();
+  check(cf.screenNow() === "arcade", "docking did not open the machines");
+  const A = view().arcade;
+  check(!!A && A.machines.length === 3,
+        "the room has " + (A ? A.machines.length : "no") + " machines");
+  check(!A.machines.some(m => m.key === "survey"),
+        "the game is one of the machines");
+  check(A.machines.every(m => m.best === "NOT PLAYED"),
+        "a fresh cabinet already has a score on it");
+  check(!!A.where && !!A.owner, "the room does not say where it is or whose");
+  cf.draw();                                   // it must survive being drawn
+
+  /* What the run is worth on the way in. Set before the coin goes in, because
+     `startSim` saves first and the save is what the crossing carries. */
+  surv.cash = 777;
+  surv.hold.iron = 12;
+  surv.built.add("spar");
+  const seed = surv.seed;
+
+  // The coin, then the boot, then the match. A machine that snapped straight
+  // into a game would be a menu.
+  view().onPlaySim("survival");
+  check(cf.screenNow() === "arcade", "the machine started before it booted");
+  check(view().arcade.booting === "survival", "nothing on the cabinet is coming up");
+  draws(70);
+  check(cf.peek().mode === "SURVIVAL",
+        "the machine never started: " + cf.peek().mode);
+
+  // Play it until it is over, however it ends.
+  for (let i = 0; i < 14 && cf.screenNow() !== "over"; i++) {
+    const s = cf.live().ships[0];
+    if (s) { s.invuln = 0; cf.hurt("rock"); }
+    step(8);
+  }
+  check(cf.screenNow() === "over", "the match never ended");
+
+  /* And out, by the path the result screen's button takes. Everything below is
+     the regression that would cost somebody hours. */
+  cf.leave();
+  check(cf.peek().mode === "SURVEY", "leaving the machine did not come back");
+  check(cf.screenNow() === "arcade",
+        "it came back on " + cf.screenNow() + " rather than at the machine");
+  const back = cf.survey();
+  check(back.seed === seed, "a different sector came back: " + back.seed);
+  check(back.cash === 777, "the sector came back with " + back.cash + " cash");
+  check((back.hold.iron | 0) === 12, "the sector lost what was in the hold");
+  check(back.built.has("spar"), "the sector lost the station's fitted parts");
+  check(!!cf.places().docked, "it came back adrift rather than docked");
+  const home2 = cf.live().ships[0];
+  check(Math.hypot(home2.x - home.x, home2.y - home.y) < 300,
+        "it came back " + Math.round(Math.hypot(home2.x - home.x, home2.y - home.y)) +
+        " units from the dock it left");
+
+  // The one thing a machine leaves behind.
+  const played = view().arcade.machines.find(m => m.key === "survival");
+  check(/WAVE/.test(played.best), "the cabinet kept no score: " + played.best);
+  check(view().arcade.machines.filter(m => m.best !== "NOT PLAYED").length === 1,
+        "playing one machine wrote a score onto the others");
+
+  /* And a cabinet somewhere else is a different machine. The score is per
+     machine — that is the whole reason a board at your own station is not a
+     board out in somebody else's space. */
+  /* `back`, not `surv`: the survey that came out of the machine is a new
+     object — `backToSurvey` drops the old one and rebuilds from the book — so
+     the handle this block opened with is pointing at a dead sector. That is
+     worth saying out loud, because writing to the stale one is silent. */
+  const far = back.stations.find(s2 => !s2.home);
+  if (far) {
+    back.docked = far;
+    const other = view().arcade;
+    check(other.machines.every(m => m.best === "NOT PLAYED"),
+          "another station's cabinet already knows your score");
+  }
+
+  /* ── and the one thing that must not regress ─────────────────────────────
+     A machine that started on a browser which will not keep a save would be a
+     machine that eats a sector: the crossing *is* the save, and there is
+     nothing to come back to without it. So the coin is refused and the room
+     says why. Tested by taking the storage away, which is what private
+     browsing and a full quota both look like from in here. */
+  const realSet = windowStub.localStorage.setItem;
+  windowStub.localStorage.setItem = () => { throw new Error("quota"); };
+  const stateBefore = cf.screenNow();
+  view().onPlaySim("survival");
+  draws(70);
+  check(cf.screenNow() === stateBefore && cf.peek().mode === "SURVEY",
+        "a machine started on a browser that cannot save — the sector had " +
+        "nowhere to come back from");
+  windowStub.localStorage.setItem = realSet;
+  // And it still works once the storage does.
+  view().onPlaySim("survival");
+  draws(70);
+  check(cf.peek().mode === "SURVIVAL",
+        "the machine stayed refused after the storage came back");
+  cf.leave();
+  check(cf.peek().mode === "SURVEY", "the second crossing did not come back");
+
+  /* ── the campaign cabinet, the one that is a menu ────────────────────────
+     Two of the three machines snap into a match. The campaign's boots into its
+     mission list instead, because three missions in order is what that machine
+     is — which makes it the only cabinet you can put a coin into and then walk
+     away from without playing anything. Every way back out of that list has to
+     know whether a match actually happened, and there are two ways to get it
+     wrong: strand somebody on the front page with their sector saved but
+     apparently gone, or leave the return set so that the survey can never be
+     quit at all. Both were live. */
+  check(cf.screenNow() === "arcade", "not standing at the machines");
+  view().onPlaySim("campaign");
+  draws(70);
+  check(cf.screenNow() === "levels",
+        "the campaign cabinet opened " + cf.screenNow() + " rather than its missions");
+  check(cf.peek().mode === "SURVEY",
+        "the mission list started a match instead of listing them");
+
+  /* Into a mission's setup and straight back out of it — by the key, because
+     the key and the BACK button beside it disagreed: the button went to the
+     mission list and Escape went to the front page whatever you had come
+     from. */
+  cf.key("Enter");
+  check(cf.screenNow() === "count",
+        "picking a mission opened " + cf.screenNow() + " rather than its setup");
+  cf.key("Escape");
+  check(cf.screenNow() === "levels",
+        "backing out of a mission landed on " + cf.screenNow() +
+        " — the key and the button disagree");
+
+  // And out of the list, having played nothing: a walk across the room.
+  cf.key("Escape");
+  check(cf.screenNow() === "arcade",
+        "backing out of the missions landed on " + cf.screenNow());
+  check(cf.peek().mode === "SURVEY", "the sector did not survive the walk");
+  const walked = cf.survey();
+  check(walked.seed === seed && walked.cash === 777,
+        "walking up to a machine and away again changed the sector");
+
+  /* And the coin that was never spent must not be able to trap it. Quitting
+     from here has to reach the front page: while the unspent return was still
+     set, this reloaded the sector instead and there was no way out of it. */
+  cf.leave();
+  check(cf.screenNow() === "title",
+        "quitting the sector reached " + cf.screenNow() +
+        " — an unspent coin was still diverting the front page");
+
+  console.log("  machines   three cabinets at a dock, none in open space \u00b7 " +
+              "coin, boot, match \u00b7 back at the same dock with the seed, the " +
+              "cash, the hold and the manifest \u00b7 the score is all that " +
+              "crosses \u00b7 a browser that cannot save cannot play one \u00b7 " +
+              "the campaign's list is a menu you can walk away from");
+}
+
 // ── 15. you are always told what you are doing ───────────────────────────
 {
   const { cf } = boot("?debug=1&seed=1357");

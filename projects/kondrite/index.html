@@ -2541,6 +2541,7 @@
      meant arrowing on the title quietly choosing a lane. */
   let titlePick = 0;      // 0 the game, 1 the simulators
   let simPick = 0;        // which lane the simulators page has focus on
+  let arcadePick = 0;     // which cabinet the room in a station has focus on
   let modeLane = "solo";  // which lane's cards the mode page is showing
   let modePick = 0;       // keyboard focus among those cards
   let modeHover = -1;     // pointer focus, which beats the keyboard while set
@@ -3067,7 +3068,7 @@
       if (code === "Enter" || code === "Space") playCard(rows[openCard()]);
       if (code === "KeyC") { state = openSettings("modes"); }
     } else if (state === "levels") {
-      if (code === "Escape" || code === "Backspace") { state = "modes"; return; }
+      if (code === "Escape" || code === "Backspace") { leaveLevels(); return; }
       const d = digit(code);
       if (d >= 1 && d <= CAMPAIGN_ORDER.length) { chooseMode(CAMPAIGN_ORDER[d - 1]); return; }
       if (code === "ArrowUp" || code === "ArrowLeft") {
@@ -3196,6 +3197,22 @@
          past without reading, and this one is the only place the run's numbers
          are ever stated. */
       if (code === "Enter" || code === "Space") { surveyRespawn(); return; }
+    } else if (state === "arcade") {
+      /* The room, and it is a room rather than a page of the ship: `E` closes
+         it the way `E` closes a station, and the digits are the cabinets left
+         to right. */
+      if (code === "Escape" || code === "Backspace" || code === "KeyE") {
+        state = "playing"; return;
+      }
+      const d = digit(code);
+      if (d >= 1 && d <= CABINETS.length) { startSim(CABINETS[d - 1].key); return; }
+      if (code === "ArrowLeft" || code === "ArrowUp") {
+        arcadePick = (arcadePick + CABINETS.length - 1) % CABINETS.length;
+      }
+      if (code === "ArrowRight" || code === "ArrowDown") {
+        arcadePick = (arcadePick + 1) % CABINETS.length;
+      }
+      if (code === "Enter" || code === "Space") startSim(CABINETS[arcadePick].key);
     } else if (state === "stationinv") {
       /* Out of the station entirely, the way the shop leaves. `Backspace` steps
          back to the counter rather than to the sector, because this room was
@@ -3273,7 +3290,7 @@
       // Battle royale needs someone to fight — but a bot counts as someone.
       if (d >= 1 && d <= humanMax()) selectHumanCount(d);
       if (code === "Enter" || code === "Space") startCountChoice();
-      if (code === "Escape" || code === "Backspace") state = "title";
+      if (code === "Escape" || code === "Backspace") state = countBack();
     } else if (state === "over") {
       // On a mission-cleared screen, N flies straight into the next one.
       if (code === "KeyN" && outcome && outcome.kind === "victory") {
@@ -3851,6 +3868,17 @@
   }
 
   function endMatch(result) {
+    /* A machine played from inside a survey records what it made, here, while
+       the match's own `clock` and `wave` still mean something. It is kept on
+       `returnTo` rather than written to the book: the book belongs to a sector
+       that is not loaded right now. See `backToSurvey`. */
+    if (returnTo) {
+      const got = simResult(result);
+      if (got && (!returnTo.result || returnTo.result.value < got.value ||
+                  returnTo.result.key !== got.key)) {
+        returnTo.result = got;
+      }
+    }
     outcome = result;
     // The elimination banner would otherwise still be mid-fade and print
     // straight through the result screen.
@@ -8206,6 +8234,11 @@
         // A battle you watched end stays ended, and one you were remembered to
         // stays remembered.
         battleAge: surv.battleAge,
+        /* The cabinets you have played, and your best on each. It is the one
+           thing a machine leaves behind — nothing else crosses back into the
+           sector — and it is per *machine*, because a score on the box at your
+           own station is not a score on the one out in Morrow space. */
+        sims: surv.sims,
         memorials: [...surv.memorials],
         bossesDown: [...surv.bossesDown],
         known: [...surv.known.values()],
@@ -10588,6 +10621,8 @@
          rebuilt every time you fly away from it. */
       market: {},
       battles: [], battleAge: (carried && book.battleAge) || {},
+      // See `startSim`. Keyed by cabinet, then by machine.
+      sims: (carried && book.sims) || {},
       memorials: new Set(carried && book.memorials ? book.memorials : []),
       bossesDown: new Set(carried && book.bossesDown ? book.bossesDown : []),
       /* Who holds the sky, as far as it has moved. The seed lays the map out;
@@ -21162,6 +21197,43 @@
           surveyHUD.chartOpened(surveyState());
         }
       },
+      /* ── the machines in the corner ────────────────────────────────────
+         Everywhere you can trade, you can play: a station's counter and an
+         inhabited world's surface both have a cabinet, and a machine you can
+         only find at some stations is a machine nobody finds.
+
+         The room does no arithmetic. What it draws is this: which cabinets
+         there are, whose the place is, and your best on this one — worked out
+         here, said in words here, so the page cannot disagree with the book.
+         See `CABINETS` and `SIM_SCORE`. */
+      arcade: (() => {
+        const spot = cabinetHere();
+        if (!spot) return null;
+        return {
+          where: spot.where, owner: spot.owner, colour: spot.colour,
+          pick: arcadePick,
+          /* Which machine is coming up, and how far it has got. The page draws
+             a boot line over that cabinet and nothing else moves. */
+          booting: simBoot ? simBoot.key : null,
+          bootAt: simBoot ? 1 - Math.max(0, simBoot.t) / SIM_BOOT : 0,
+          machines: CABINETS.map(c => {
+            const best = simBest(spot.id, c.key);
+            return { key: c.key, name: c.name, line: c.line, art: c.art,
+                     colour: c.colour,
+                     cap: SIM_SCORE[c.key].cap,
+                     best: best ? SIM_SCORE[c.key].say(best) : "NOT PLAYED" };
+          })
+        };
+      })(),
+      onArcade: () => {
+        if (!surv.docked && !surv.landed) { gameSound("hit"); return; }
+        arcadePick = 0;
+        state = "arcade";
+      },
+      onPlaySim: key => startSim(key),
+      // A machine that is already coming up ignores the next coin.
+      simBooting: !!simBoot,
+      onPickSim: i => { arcadePick = Math.max(0, Math.min(CABINETS.length - 1, i)); },
       onWormhole: () => {
         if (!stationHas("mouth")) { gameSound("hit"); return; }
         if (!surv.docked) { gameSound("hit"); return; }
@@ -21548,7 +21620,7 @@
      clock stops anyway; what they needed was to be *pages* at all. */
   const SURVEY_PAGES = { chart: 1, inventory: 1, missions: 1, almanac: 1,
                          record: 1, ship: 1,
-                         craft: 1, lore: 1, refit: 1, hangar: 1,
+                         craft: 1, lore: 1, refit: 1, hangar: 1, arcade: 1,
                          landed: 1, stationinv: 1, wormhole: 1 };
   const surveyPage = () =>
     !!(mode && mode.survey && surv && !surv.death && SURVEY_PAGES[state]);
@@ -24718,6 +24790,209 @@
          SCREEN_W / 2, 646, 12, "#ffcb42");
   }
 
+  /* ═══ THE MACHINES ════════════════════════════════════════════════════════
+     A simulator is a cabinet in the corner of a station, and playing one is
+     something you do **inside a run**: you are docked, you walk over to it, you
+     play a game of asteroids for a score, and you come back to the same dock
+     with the sector where you left it.
+
+     The problem is that `startGame` resets every global the game has — `ships`,
+     `rocks`, `hazards`, `bounds`, `mode`, `cam`, `lives`, `clock` — so a machine
+     played from inside a survey destroys that survey in memory.
+
+     **The answer is not to preserve it.** Survey already writes everything to
+     the book and already resumes at the position it left, so the crossing uses
+     the path that exists and is tested: save, play, resume. `returnTo` is the
+     whole of the new state — where you were standing, and what the machine
+     scored on the way back.
+
+     What is lost crossing is real and it is correct: the traffic in flight, the
+     rocks where they were, the notification stack, any battle in progress. A
+     game takes time and the sector moves on. It is *said* on the way out, or a
+     player who left a fight and came back to an empty sky thinks the game
+     broke. */
+  let returnTo = null;
+
+  /* The three machines, and they are the solo lane's three. A cabinet is
+     something you walk up to alone in the middle of your own survey; the
+     question of how many people are playing belongs to the front page's
+     SIMULATORS door, not to a box in the corner of a station. */
+  const CABINETS = [
+    { key: "survival", name: "SURVIVAL", art: "survival", colour: "#ffe56d",
+      line: "endless asteroids, and they do not stop coming" },
+    { key: "royale", name: "BATTLE ROYALE", art: "royale", colour: "#ff8f77",
+      line: "five bots and a wall that closes in" },
+    { key: "campaign", name: "CAMPAIGN", art: "campaign", colour: "#6dffbf",
+      line: "three missions, in order, each one worse" }
+  ];
+
+  /* What a machine counts. One table, because the room prints it, the book
+     keeps it and the result screen writes it — and three copies of "what is a
+     score" is how a leaderboard starts disagreeing with itself. */
+  const SIM_SCORE = {
+    survival: { cap: "BEST WAVE", say: n => "WAVE " + n },
+    royale:   { cap: "LONGEST",   say: n => clockText(n) },
+    campaign: { cap: "MISSIONS",  say: n => n + " OF " + CAMPAIGN_ORDER.length }
+  };
+
+  /* What the machine that just ended scored, or null for a machine that does
+     not count this ending. `clock` and `wave` are still the match's own when
+     this is asked; see `endMatch`. */
+  function simResult(result) {
+    if (!mode || mode.survey) return null;
+    if (mode.campaign) {
+      return result && result.kind === "victory"
+        ? { key: "campaign", value: mode.level || 1 } : null;
+    }
+    if (mode.closing) {
+      /* Time survived, won or lost. A cabinet is one pilot against five bots
+         and the thing you are actually playing for is the last minute of it —
+         a board that only counted wins would be empty for most people. */
+      const me = ships[0];
+      const t = me && me.survivedFor != null ? me.survivedFor : clock;
+      return { key: "royale", value: Math.round(t) };
+    }
+    return { key: "survival", value: wave };
+  }
+
+  /* Where the cabinet is and whose it is. A station flies its own flag; a world
+     wears whoever holds the sky over it. The id is the coordinate, rounded the
+     way the gazetteer rounds one — two cabinets a few units apart would be the
+     same machine, which is what it is. */
+  function cabinetHere() {
+    if (!surv) return null;
+    const at = surv.docked || surv.landed;
+    if (!at) return null;
+    const station = at === surv.docked;
+    const f = factionOf(station
+      ? (at.faction || "free")
+      : ((placeAt(at.x, at.y).space.owner) || "free"));
+    return {
+      id: Math.round(at.x / 60) + "," + Math.round(at.y / 60),
+      where: station ? (at.home ? "YOUR STATION" : "A STATION")
+                     : (at.name || "THE SURFACE"),
+      owner: f.short, colour: f.colour
+    };
+  }
+
+  // Your best on this cabinet, per machine. Nothing here ever leaves the book.
+  const simBest = (id, key) =>
+    (surv && surv.sims && surv.sims[id] && surv.sims[id][key]) || 0;
+
+  /* Walking up to one. **Save first**: if the book will not write — private
+     browsing, a full quota, both already handled by the store — the machine
+     does not start and says why. There is no version of this where a game of
+     asteroids costs somebody their hours. */
+  /* How long the cabinet takes to come up. Not a loading screen — there is
+     nothing to load — but the difference between a menu and a machine is
+     partly that a machine takes a moment, makes a noise, and boots. */
+  const SIM_BOOT = 0.9;
+  let simBoot = null;
+
+  function startSim(key) {
+    if (!(mode && mode.survey && surv) || simBoot) return false;
+    const spot = cabinetHere();
+    if (!spot) { gameSound("hit"); return false; }
+    if (!saveSurveyBook()) {
+      gameSound("hit");
+      note("The machine will not start: this browser will not let the game " +
+           "save, and your sector is not going anywhere it cannot come back " +
+           "from.");
+      return false;
+    }
+    const me = ships[0];
+    returnTo = {
+      cabinet: spot,
+      at: { x: me.x, y: me.y, a: me.a },
+      result: null
+    };
+    simBoot = { key, t: SIM_BOOT };
+    gameSound("start");
+    return true;
+  }
+
+  /* The one thing a parked page counts down. Everything else on a page stands
+     still — that is what parked means — but the coin has gone in and the
+     machine is coming up, so this is stepped from the draw that shows it. The
+     campaign's cabinet boots into its mission list rather than into a match,
+     because three missions in order is what that machine is. */
+  function simBootTick(dt) {
+    if (!simBoot) return;
+    simBoot.t -= dt || 0;
+    if (simBoot.t > 0) return;
+    const key = simBoot.key;
+    simBoot = null;
+    if (key === "campaign") { levelPick = 0; state = "levels"; return; }
+    startGame(key, 1, key === "royale" ? 3 : 0);
+  }
+
+  /* And coming back. The book has everything, so this is the resume path with
+     two things bolted on: the score the machine just made, and standing where
+     you were standing — `setupSurvey` puts the ship back, and one call to
+     `surveyStations` is what turns being in the right place into being docked
+     at it. */
+  function backToSurvey() {
+    const back = returnTo;
+    returnTo = null;
+    if (net.on) netReset();
+    localPause = false;
+    banner = null; terminated = null; outcome = null;
+    surv = null;
+    startGame("survey", 1, 0);
+    if (!surv) { state = "title"; return; }
+    if (back && back.at && ships[0]) {
+      const me = ships[0];
+      me.x = back.at.x; me.y = back.at.y; me.a = back.at.a;
+      me.vx = me.vy = 0;
+      cam.x = me.x; cam.y = me.y;
+      streamChunks(true);
+      streamRocks();
+    }
+    // Docked or landed again, by the same rule the tick uses.
+    surveyStations();
+    /* The score, written now that there is a book to write it into. It was
+       made after the save that crossed, so it has to be put back by hand —
+       which is also why it is kept on `returnTo` rather than on `surv`, a
+       thing that did not exist while the machine was running. */
+    const r = back && back.result;
+    if (r && back.cabinet) {
+      const per = surv.sims[back.cabinet.id] || (surv.sims[back.cabinet.id] = {});
+      if ((per[r.key] || 0) < r.value) per[r.key] = r.value;
+      saveSurveyBook();
+    }
+    state = (surv.docked || surv.landed) ? "arcade" : "playing";
+    /* What a game costs, said rather than discovered. The sector ran while you
+       were in the machine: the traffic moved, the rocks are somewhere else, and
+       whatever was being fought over near you was fought over without you. */
+    note("Back at the " + (surv.landed ? "surface" : "station") +
+         ". The sector carried on without you.");
+  }
+
+  /* Whether a machine is actually owed a return. `returnTo` is set when the
+     coin goes in, but the campaign's cabinet boots into its mission list rather
+     than into a match — so you can put a coin in, read the three missions, back
+     out, and never have left the room at all. The survey is still loaded in
+     that case, and the sector `returnTo` describes is the one you are standing
+     in: crossing back to it would reload it from the book and throw away
+     everything you had done since the coin, and quitting to the front page
+     would land you in the sector instead. The only honest question is whether
+     the survey is still in memory. */
+  const owedReturn = () => !!returnTo && !(mode && mode.survey && surv);
+
+  // Walking away from a machine without playing it: the coin is forgotten.
+  function cancelSim() { returnTo = null; simBoot = null; }
+
+  /* Backing out of the mission list, which is two journeys wearing one button.
+     Boot the cabinet and you are still standing in the survey, nothing has been
+     played and backing out is a walk across the room. Reach the same list from
+     a finished mission's MISSIONS button and the survey is gone from memory —
+     that is a real crossing and has to be made. */
+  function leaveLevels() {
+    if (owedReturn()) { backToSurvey(); return; }
+    if (returnTo) { cancelSim(); state = "arcade"; return; }
+    state = "modes";
+  }
+
   /* Survey, with the account question in front of it. It was inside `playCard`
      while the game was a card; it is the front page's own button now, and the
      card path calls this rather than keeping a second copy of the rule. */
@@ -24974,9 +25249,20 @@
       text(m.blurb, SCREEN_W / 2, y + 44, 15, "#ffcb42");
     });
 
-    tapButton("BACK", SCREEN_W / 2, 640, 240, 44, "#ffcb42",
-              () => { state = "modes"; });
+    tapButton(returnTo ? "BACK TO THE MACHINES" : "BACK",
+              SCREEN_W / 2, 640, 300, 44, "#ffcb42",
+              leaveLevels);
   }
+
+  /* Where the count screen goes back to, asked in one place because two things
+     ask it and they had drifted apart: the BACK button went to the mission list
+     when it had come from one, and Escape beside it went to the title whatever
+     you had come from. Backing out of a mission you reached from a cabinet
+     therefore landed you on the front page with your sector saved but
+     apparently gone, which is the one thing the crossing exists to prevent. */
+  const countBack = () =>
+    MODES[pendingMode] && MODES[pendingMode].campaign ? "levels"
+      : returnTo ? "arcade" : "title";
 
   function drawCount() {
     const m = MODES[pendingMode];
@@ -25067,7 +25353,7 @@
          SCREEN_W / 2, controlsY + 46 + most * 32, 13, "#ffcb42");
 
     tapButton("BACK", SCREEN_W / 2, 650, 240, 44, "#ffcb42",
-              () => { state = isCamp ? "levels" : "title"; });
+              () => { state = countBack(); });
     tapButton("SETTINGS", 650, 650, 240, 44, "#ffe56d",
               () => { state = openSettings("count"); });
   }
@@ -25774,7 +26060,8 @@
       tapButton("MISSIONS", SCREEN_W / 2 + 140, y, 240, 46, "#ffcb42",
                 () => { outcome = null; state = "levels"; });
     }
-    tapButton("MAIN MENU", SCREEN_W / 2, y + 60, 260, 44, "#ffcb42", leaveMatch);
+    tapButton(returnTo ? "BACK TO THE DOCK" : "MAIN MENU",
+              SCREEN_W / 2, y + 60, 280, 44, "#ffcb42", leaveMatch);
   }
 
   function drawOver() {
@@ -25832,7 +26119,10 @@
       : replayable ? "PLAY AGAIN" : "NEED ANOTHER PLAYER";
     tapButton(replayLabel, COLS(2, 0), actionY, 260, 44, "#ffe56d",
               playAgain, false, replayable);
-    tapButton("MAIN MENU", COLS(2, 1), actionY, 260, 44, "#ffcb42", leaveMatch);
+    /* From inside a machine this is not a menu and must not say it is: it is
+       the dock you walked away from, with your sector where you left it. */
+    tapButton(returnTo ? "BACK TO THE DOCK" : "MAIN MENU",
+              COLS(2, 1), actionY, 280, 44, "#ffcb42", leaveMatch);
   }
 
   /* Paused is where you end up when something needs sorting out, so it is
@@ -25872,7 +26162,10 @@
       quitY += 78;
     }
 
-    tapText("[Q]  QUIT TO MENU", SCREEN_W / 2, quitY, 22, "#ffcb42", leaveMatch);
+    /* It does not go to a menu from inside a machine — it goes back to the
+       dock you walked away from, and the line has to say which. */
+    tapText(returnTo ? "[Q]  LEAVE THE MACHINE" : "[Q]  QUIT TO MENU",
+            SCREEN_W / 2, quitY, 22, "#ffcb42", leaveMatch);
     if (net.on) {
       text("quitting drops the others too", SCREEN_W / 2, quitY + 28, 13,
            "#ffcb42", "center", 0.75);
@@ -25893,6 +26186,16 @@
      wandered back to the menu is still holding four people in a match. */
   function leaveMatch() {
     if (mode && mode.survey && surv) saveSurveyBook();
+    /* Out of a machine is not out of the game. Every path that used to end at
+       the title checks this first — the result screen, the terminated card, the
+       pause menu and an online disconnect all come through here — and a missed
+       one would drop somebody on the front page with their sector saved but
+       apparently gone, which reads like a crash. */
+    if (owedReturn()) { backToSurvey(); return; }
+    /* A coin that was put in and never spent — the campaign's mission list,
+       backed out of by a route that did not clear it. Nothing is owed, and it
+       must not be allowed to divert the front page. */
+    cancelSim();
     // The front page is about to read the book again, and it has just changed.
     forgetTitleCard();
     if (net.on) netReset();
@@ -25900,6 +26203,24 @@
     banner = null;
     terminated = null;
     outcome = null;
+    state = "title";
+  }
+
+  /* The other way out, and the reason it exists. `leaveMatch` is the match's
+     own exit and every button on a result screen, a terminated card and the
+     pause menu goes through it. Two exits do not belong to the match at all —
+     the host going away while you are still in the game, and closing the lobby
+     by hand — and both of them used to set the title directly. A cabinet is
+     owed a return whoever ends the match, so they ask here instead. Neither is
+     reachable from a machine today, because `startSim` only ever starts a solo
+     game; they are written this way so that the list of exits is exhaustive
+     rather than exhaustive-for-now, which is the difference between this being
+     done and being done until somebody puts a multiplayer cabinet in. */
+  function toTitle() {
+    if (owedReturn()) { backToSurvey(); return; }
+    cancelSim();
+    // The front page caches what the book says; it may have changed in here.
+    forgetTitleCard();
     state = "title";
   }
 
@@ -26051,6 +26372,13 @@
     }
     if (state === "hangar" && surv && surveyHUD) {
       surveyHUD.drawHangar(surveyState(), dt || 0); return;
+    }
+    if (state === "arcade" && surv && surveyHUD) {
+      simBootTick(dt || 0);
+      // The boot may have started the match on this very frame, and the room is
+      // not there to be drawn over it.
+      if (state !== "arcade") return;
+      surveyHUD.drawArcade(surveyState(), dt || 0); return;
     }
     if (state === "missions" && surv && surveyHUD) {
       surveyHUD.drawMissions(surveyState(), dt || 0); return;
@@ -26708,7 +27036,7 @@
        seating plan for a game that no longer exists. */
     onClose: () => {
       netReset();
-      if (lobby.hidden) { say("Disconnected from the host.", true); state = "title"; return; }
+      if (lobby.hidden) { say("Disconnected from the host.", true); toTitle(); return; }
       ready = [];
       guestTaken = [0];
       lobbyRole = "guest";
@@ -27895,7 +28223,7 @@
   el("btnLobbyClose").addEventListener("click", () => {
     netReset();
     closeLobby();
-    state = "title";
+    toTitle();
   });
 
   lobby.addEventListener("keydown", e => {

@@ -51,8 +51,18 @@ then the simulators, then the front page.
 |---|---:|---|
 | **Survey** — *the game* | 1 | No edges and no losing. A station of your own in six pieces, each with a clue, endless procedural space, a chart you pin yourself, a thirty-five entry almanac, salvage, a refit and a derelict you fly inside |
 
-And the machines. None of them keeps anything, and none of them pays anything
-back into the sector:
+And the machines. They are in two places: behind SIMULATORS on the front page,
+and **in the corner of every station and every inhabited world** — a SIMULATORS
+tab beside the shop, a room with three cabinets in it, the attract loop running
+on each and your best on that machine printed on the front of it before you
+press anything. Walking up to one is something you do in the middle of a run:
+the game saves first, the cabinet takes a moment to boot, you play, and you come
+back standing at the same dock with the sector where you left it. The sector
+carried on without you while you played, which is correct and is said on the way
+back in.
+
+None of them keeps anything, and none of them pays anything back into the
+sector — the score on the cabinet is the whole of what crosses:
 
 | Simulator | Players | Rules |
 |---|---:|---|

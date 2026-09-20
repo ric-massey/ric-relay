@@ -161,7 +161,10 @@ function checkSyntax() {
     "the setup screen must use an explicit Play button");
   assert.match(html, /tapButton\(replayLabel[\s\S]*?playAgain/s,
     "results must offer Play Again");
-  assert.match(html, /tapButton\("MAIN MENU"[\s\S]*?leaveMatch/s,
+  /* The way out of a result screen. It says MAIN MENU from the front page and
+     BACK TO THE DOCK from a machine somebody walked up to mid-run — two labels,
+     one button, and `leaveMatch` is what decides which sector it lands in. */
+  assert.match(html, /tapButton\(returnTo \? "BACK TO THE DOCK" : "MAIN MENU"[\s\S]*?leaveMatch/s,
     "results must retain a full session exit");
   assert.match(html, /seated\.forEach\(l => l\.send\(initPacket\(l\.seat\), true\)\);/,
     "online Play Again must initialize every guest");

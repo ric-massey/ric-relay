@@ -193,7 +193,7 @@ const SHAPES = [
 const MENU_PAGES = ["title", "sims", "modes", "levels", "paused", "controls",
                     "thumb"];
 const SURVEY_PAGES = ["chart", "inventory", "missions", "almanac", "craft",
-                      "lore", "refit", "hangar", "landed"];
+                      "lore", "refit", "hangar", "landed", "arcade"];
 
 /* A tap that cannot be pressed, for one of the four reasons a rectangle can be
    unpressable. Returns why, or null. */
@@ -318,6 +318,14 @@ for (const shape of SHAPES) {
         (surv.planets || []).find(pl => pl.inhabited) ||
         { x: 0, y: 0, r: 400, inhabited: true, name: "TEST WORLD",
           air: 1, sells: {} };
+    }
+    /* And the machines need a dock to stand in, the same way. A cabinet room
+       with nowhere to be standing draws its frame and nothing else, which is
+       correct and is also a page this sweep would walk straight past. */
+    if (page === "arcade") {
+      surv.docked = surv.docked ||
+        (surv.stations || [])[0] ||
+        { x: 0, y: 0, r: 132, home: true, faction: "free" };
     }
     cf.screen(page);
     cf.draw();

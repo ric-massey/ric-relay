@@ -613,7 +613,7 @@
      frame and `wormhole` is the mouth's map; both are places you are standing in
      rather than pages about your ship, which is why they belong on this strip
      and not on the amber one. See `HUD.drawStationInv`. */
-  const PLACE_TABS = ["refit", "hangar", "stationinv", "wormhole"];
+  const PLACE_TABS = ["refit", "hangar", "stationinv", "wormhole", "arcade"];
   const SHIP_TABS  = ["ship", "inventory", "record", "craft", "chart"];
   const SHIP_TONE  = { bright: AMBER, dim: AMBER_DIM, low: RULE };
   const PLACE_TONE = { bright: VIOLET, dim: VIOLET_DIM, low: VIOLET_LOW };
@@ -733,6 +733,12 @@
         live: !!(st.docked || st.landed), act: st.onStationInv },
       { key: "wormhole",  name: "WORMHOLE", live: !!(st.wormhole && st.docked),
         act: st.onWormhole },
+      /* The machines in the corner. Live wherever you can trade — a station's
+         counter or an inhabited world's surface — because a cabinet you can
+         only find at some stations is a cabinet nobody finds. It is the one
+         room here that is not about the sector at all. */
+      { key: "arcade",    name: "SIMULATORS",
+        live: !!(st.docked || st.landed), act: st.onArcade },
       /* Two pages, because they are two jobs. The ship is what you are flying
          and what is bolted to it; the cargo is everything that is merely inside
          it. They were one page called INVENTORY that did both and named one. */
@@ -7528,6 +7534,156 @@
            false, !sh.flying && reach);
 
     pageNav(st, "hangar", PLACE_TABS, PLACE_TONE);
+    closeButton(st.onClose || (() => {}));
+  };
+
+  /* ═══ THE MACHINES ════════════════════════════════════════════════════════
+     H6. The cabinets in the corner of a station, and the one page in the mode
+     that is not about the sector at all.
+
+     The thing that stops this being a relabel is that it is drawn as a *room*
+     rather than as four more cards: a frame round each machine in its own
+     colours, its name on it, the attract loop running inside it, and — the part
+     that makes it a machine — **the high score printed on the cabinet before
+     you press anything**.
+
+     The attract loop is the menu's own diorama. `menu.js` draws all five as
+     closed-form functions of the clock, which is what they have always actually
+     been; on a cabinet, that is what a diorama is for. It is reached as a
+     global rather than through `api` because it is a sibling module the page
+     loads either way, and a cabinet without its picture is still a cabinet. */
+  const cabinetArt = () =>
+    (typeof window !== "undefined" && window.KondriteMenu) || null;
+
+  HUD.drawArcade = function (st, dt) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    st = st || {};
+    const A = st.arcade;
+    if (!A) { pageFrame("SIMULATORS", "", "", PLACE_TONE); return; }
+
+    pageFrame("SIMULATORS", A.where + "  \u00b7  " + A.owner, "", PLACE_TONE);
+    /* Said once, on the page that opens them, because a player who finds this
+       out afterwards has been misled rather than surprised. */
+    fitText("nothing in here pays. it is a machine, and the score is the point.",
+            34, 112, SIZE.cap, VIOLET_LOW, "left", 0.7, SCREEN_W - 68);
+
+    const list = A.machines || [];
+    const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
+    const gap = api.touchOnly ? 10 : 16;
+    const w = Math.floor((full.w - gap * (list.length - 1)) / Math.max(1, list.length));
+    const top = PAGE.TOP + 44;
+    const h = Math.min(392, SCREEN_H - top - 96);
+
+    list.forEach((m, i) => {
+      const x = full.x + i * (w + gap);
+      const on = A.pick === i;
+      const booting = A.booting === m.key;
+      /* The cabinet: a box in the machine's own colour, standing on a plinth.
+         The one you are on is brighter and a shade taller, which is the whole
+         of the selection — a row of boxes with one outlined is a menu. */
+      ctx.save();
+      ctx.fillStyle = m.colour;
+      ctx.globalAlpha = booting ? 0.16 : on ? 0.12 : 0.06;
+      ctx.fillRect(x, top, w, h);
+      ctx.globalAlpha = booting ? 1 : on ? 0.9 : 0.5;
+      ctx.fillRect(x, top, w, 4);
+      ctx.strokeStyle = m.colour;
+      ctx.globalAlpha = booting ? 1 : on ? 0.9 : 0.45;
+      ctx.lineWidth = on || booting ? 2 : 1;
+      ctx.strokeRect(x, top, w, h);
+      // The plinth, so it reads as standing in a room rather than laid on a page.
+      ctx.globalAlpha = on ? 0.5 : 0.28;
+      ctx.beginPath();
+      ctx.moveTo(x + 10, top + h + 7);
+      ctx.lineTo(x + w - 10, top + h + 7);
+      ctx.stroke();
+      ctx.restore();
+
+      /* The screen, inset, with the attract loop running in it. A cabinet's
+         screen is not the cabinet, so it keeps its own border and its own
+         black. */
+      const pad = 12;
+      const scr = { x: x + pad, y: top + pad, w: w - pad * 2,
+                    h: Math.round(h * 0.46) };
+      ctx.save();
+      ctx.fillStyle = INK;
+      ctx.globalAlpha = 0.9;
+      ctx.fillRect(scr.x, scr.y, scr.w, scr.h);
+      ctx.restore();
+      const art = cabinetArt();
+      // The attract loop runs off the wall clock: the room is a parked page,
+      // so the match clock this panel usually reads is standing still.
+      if (art) art.preview(m.art, scr.x, scr.y, scr.w, scr.h, clockish());
+      ctx.save();
+      ctx.strokeStyle = m.colour;
+      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(scr.x, scr.y, scr.w, scr.h);
+      ctx.restore();
+
+      let y = scr.y + scr.h + 30;
+      fitText(m.name, x + w / 2, y, SIZE.head, m.colour, "center", 1, w - 20,
+              "0.08em");
+      y += 24;
+      wrapLines(m.line, SIZE.cap, w - 28, "0.02em").slice(0, 2)
+        .forEach((ln, k) => {
+          label(ln, x + w / 2, y + k * 17, SIZE.cap, VIOLET_DIM, "center", 0.75);
+        });
+
+      /* The high score, printed on the machine. It is the whole reason a
+         cabinet is worth a second visit, and it is on it before you press
+         anything — which is what a high score is for. */
+      const scoreY = top + h - 54;
+      label(m.cap, x + w / 2, scoreY, SIZE.cap, VIOLET_LOW, "center", 0.7,
+            "0.18em");
+      fitText(m.best, x + w / 2, scoreY + 24, SIZE.val,
+              m.best === "NOT PLAYED" ? VIOLET_LOW : m.colour, "center",
+              m.best === "NOT PLAYED" ? 0.55 : 1, w - 20, "0.06em");
+
+      /* And the coin going in. The room is a parked page and nothing on it
+         moves, so this bar is the only thing that does: it is the machine
+         coming up, and the match is on the other side of it. */
+      if (booting) {
+        ctx.save();
+        ctx.fillStyle = INK;
+        ctx.globalAlpha = 0.72;
+        ctx.fillRect(x + 1, top + 1, w - 2, h - 2);
+        ctx.restore();
+        label("COIN ACCEPTED", x + w / 2, top + h / 2 - 16, SIZE.cap, m.colour,
+              "center", 1, "0.26em");
+        const bw = w - 60;
+        ctx.save();
+        ctx.strokeStyle = m.colour;
+        ctx.globalAlpha = 0.5;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 30, top + h / 2 + 4, bw, 8);
+        ctx.fillStyle = m.colour;
+        ctx.globalAlpha = 0.9;
+        ctx.fillRect(x + 31, top + h / 2 + 5,
+                     Math.max(0, (bw - 2) * Math.min(1, A.bootAt || 0)), 6);
+        ctx.restore();
+      }
+
+      tap({ x, y: top, w, h,
+            act: () => {
+              if (st.simBooting) return;
+              if (A.pick !== i && api.touchOnly) {
+                // A thumb points first and plays second, the way the mode row
+                // already works: one tap to choose a machine, one to feed it.
+                st.onPickSim && st.onPickSim(i);
+                return;
+              }
+              st.onPickSim && st.onPickSim(i);
+              st.onPlaySim && st.onPlaySim(m.key);
+            } });
+    });
+
+    label(api.touchOnly ? "TAP A MACHINE  \u00b7  TAP AGAIN TO PLAY"
+                        : "CLICK ONE  \u00b7  OR ARROWS + ENTER  \u00b7  [E] LEAVES",
+          SCREEN_W / 2, top + h + 40, SIZE.cap, VIOLET_DIM, "center", 0.8,
+          "0.14em");
+
+    pageNav(st, "arcade", PLACE_TABS);
     closeButton(st.onClose || (() => {}));
   };
 

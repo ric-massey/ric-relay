@@ -46,10 +46,13 @@ machine in a world that has arcade machines.
 separate job with its own landmines. This file keeps saying KONDRITE because
 that is what it is called today.
 
-**Step 1 is built, 19 September 2026.** The door: the title is the game plus a
-SIMULATORS line, the lanes are one floor down, and `survey` is in neither of
-them. After it, there is one game. Steps 2–5 are not built. See *Step 1, as
-built* at the foot of this file.
+**Steps 1 and 2 are built, 19–20 September 2026.** The door: the title is the
+game plus a SIMULATORS line, the lanes are one floor down, and `survey` is in
+neither of them. The machine: a SIMULATORS tab at every station and every
+inhabited world, a room with three cabinets in it, and the boundary — save
+first, play, come back standing at the same dock. Steps 3–5 (the sign-in, the
+made-up boards, the real board) are not built. See *Step 1, as built* and
+*Step 2, as built* at the foot of this file.
 
 `SURVEY-PLAN.md` stays the authority for Survey; when the rest of this is built,
 one section goes there and this file becomes the record of how it was decided.
@@ -429,3 +432,94 @@ change — `leaveMatch`, and the wipe. That is the whole of the new state.
 **Not done, and next:** step 2 — the `sims` tab at a station and on a planet, the
 cabinet room, and the boundary (save first, `returnTo`, come back standing where
 you were). Until that lands, the machines are only reachable from the title.
+
+---
+
+## Step 2, as built
+
+The room, and the crossing. Four things the plan left to the build.
+
+**A cabinet is the solo lane's version, and it does not ask.** You are alone in
+the middle of your own run; *how many of you are there* is a question the front
+page's SIMULATORS door asks, not a box in the corner of a station. So the room
+has three machines — SURVIVAL, BATTLE ROYALE, CAMPAIGN — and one press each.
+Battle Royale brings its three bots the way the solo lane already does, and the
+campaign's cabinet boots into its mission list, because three missions in order
+is what that machine is.
+
+**The coin is a real beat.** `startSim` saves, takes the coin and sets
+`simBoot`; the cabinet draws COIN ACCEPTED and a bar for 0.9s, and the match
+starts on the other side of it. The room is a parked page and nothing on it
+moves, so this is the one thing a parked page counts down — stepped from the
+draw that shows it, which is why `simBootTick` is called there and nowhere else.
+
+**The score is kept per cabinet, in the book.** `sims` is `{ "<rounded x,y>":
+{ survival: n, royale: n, campaign: n } }` — additive, validated key by key in
+`survey-save.js`, and the only thing a simulator ever leaves behind. Survival
+counts the wave, Battle Royale counts time survived won or lost (a board that
+only counted wins would be empty for most people), and the campaign counts the
+highest mission cleared. One table, `SIM_SCORE`, because the room prints it and
+the book keeps it and two copies of *what is a score* is how a leaderboard
+starts disagreeing with itself.
+
+**The result is carried on `returnTo`, not on `surv`.** The book was written
+before the match, so a score made during it has to be put back by hand — and
+`surv` is a sector that is not loaded while a machine is running. `endMatch`
+records it, `backToSurvey` applies it and saves.
+
+**The campaign's cabinet is a menu, and that is what made it hard.** The other
+two snap into a match, so the coin and the match are the same act. The campaign
+boots into its mission list — three missions in order is what that machine *is* —
+so it is the one cabinet you can pay for and walk away from without playing
+anything. That splits every way out of the list in two, and the split is not
+*which button*, it is **whether the survey is still in memory**:
+
+- Backed out having played nothing, the sector was never unloaded. You are
+  standing in it. Crossing "back" to it would reload it from the book and throw
+  away everything since the coin, so the coin is **forgotten** instead —
+  `cancelSim`.
+- Reached from a finished mission's MISSIONS button, the survey is gone and the
+  return is real — `backToSurvey`.
+
+`owedReturn()` is the one question both ask, and it asks the only honest thing:
+`returnTo` is set in both cases, so the flag cannot answer it. **`returnTo` being
+set does not mean a return is owed.** Two bugs came out of assuming it did — the
+mission-setup screen's Escape went to the front page whatever you had come from
+while the BACK button beside it went to the mission list, and an unspent coin
+left the return set so that the survey could not be quit at all: quitting
+reloaded the sector instead, with no way out. Both are in the suite now, and both
+were checked by putting them back.
+
+### The crossing, exactly
+
+1. **In.** `saveSurveyBook()` first. If it will not write, the machine does not
+   start and the room says why — there is no version of this where a game of
+   asteroids costs somebody their hours, and the suite takes the storage away to
+   prove it.
+2. **Out.** Every path that ended at the title asks `returnTo` first:
+   `leaveMatch` (the result screen's button, the campaign's, the pause menu's
+   Q), and `toTitle` for the two the lobby owns. The result screen's button says
+   BACK TO THE DOCK rather than MAIN MENU, and the pause menu says LEAVE THE
+   MACHINE.
+3. **Back.** `startGame("survey", 1, 0)` resumes from the book, the ship is put
+   back where it stood, `surveyStations()` re-docks it by the same rule the tick
+   uses, and the room opens again with the new score on the cabinet.
+4. **Said out loud.** The sector ran on: traffic moved, rocks are elsewhere, a
+   battle you left was fought without you. The return prints one line saying so.
+
+### What moved
+
+| Where | What happened |
+|---|---|
+| `index.html` | `CABINETS`, `SIM_SCORE`, `simResult`, `cabinetHere`, `startSim`, `simBootTick`, `backToSurvey`, `toTitle` and `returnTo` are new · `owedReturn`, `cancelSim`, `leaveLevels` and `countBack` tell a return that is owed from a coin that was never spent, and make the mission list's key agree with the button beside it · `endMatch` records · `leaveMatch` diverts · the book gains `sims` |
+| `survey-hud.js` | `HUD.drawArcade` — the room, drawn as cabinets on plinths with the menu dioramas running as attract loops and the high score printed on the machine · a SIMULATORS tab on `PLACE_TABS`, live wherever you can trade |
+| `survey-save.js` | `sims` validated key by key, capped, and in `freshBook` |
+| `test/survey.js` | §14b: the room is a place and not a page, coin → boot → match, and the sector comes back with the same seed, cash, hold and manifest at the same dock · a browser that cannot save cannot start one · and the campaign's list is a menu you can walk into and back out of without paying for it |
+| `test/ui.js`, `test/smoke.js` | the room joins the four-shape sweep; the result button's two labels |
+
+**Checked:** the whole suite, including `test/browser.js` in a real browser, and
+`test/fingerprint.js` unmoved — nothing here touches generation.
+
+**Not done, and next:** step 3 — the guest door closes, a pilot name is asked
+for at sign-up, and a cached session plays offline. Every board needs a name to
+put on it.

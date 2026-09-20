@@ -230,7 +230,8 @@ function freshBook() {
                   hold: freshHold(),
                   opened: [], stripped: [], lifted: [], seen: [],
                   carrying: [], built: [], pins: [], known: [],
-                  slots: [], store: {}, battleAge: {}, memorials: [], bossesDown: [],
+                  slots: [], store: {}, battleAge: {}, sims: {},
+                  memorials: [], bossesDown: [],
                   dropped: [], coilFired: false,
                   friends: [], grudges: [], claims: [], mapped: [], war: null,
            alert: { water: { taught: 0 }, food: { taught: 0 } } };
@@ -422,6 +423,30 @@ function validateSurveyBook(b) {
         for (const k of Object.keys(src).slice(0, 400)) {
           const v = Number(src[k]);
           if (Number.isFinite(v)) out[k] = Math.max(0, Math.min(9999, v));
+        }
+        return out;
+      })(),
+      /* The cabinets you have played, and your best on each: keyed by the
+         machine's rounded coordinate, then by which machine. It is the one
+         thing a simulator leaves behind in a sector — nothing else crosses back
+         — so it is checked the way everything else in here is, key by key: a
+         hand-edited book can put a number in it, and nothing else. */
+      sims: (() => {
+        const out = {};
+        const src = b.sims && typeof b.sims === "object" ? b.sims : {};
+        for (const k of Object.keys(src).slice(0, 400)) {
+          if (!/^-?\d+,-?\d+$/.test(k)) continue;
+          const per = src[k];
+          if (!per || typeof per !== "object") continue;
+          const kept = {};
+          for (const m of Object.keys(per).slice(0, 12)) {
+            if (!/^[a-z]{3,12}$/.test(m)) continue;
+            const v = Number(per[m]);
+            if (Number.isFinite(v) && v > 0) {
+              kept[m] = Math.max(0, Math.min(999999, Math.floor(v)));
+            }
+          }
+          if (Object.keys(kept).length) out[k] = kept;
         }
         return out;
       })(),
