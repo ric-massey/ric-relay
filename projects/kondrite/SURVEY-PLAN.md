@@ -8,6 +8,13 @@ This file is the whole plan, in the order it gets built. One item at a time,
 each one finished and tested before the next starts — the mode is already large
 enough that half-built systems hide each other's bugs.
 
+> **The yard is gone, 19 September 2026.** Everything below that says *the yard*
+> or *the jump gate* — a second structure off the origin that the six parts were
+> carried to — is history. The six parts repair **your own station** now, one
+> room of it each, and the wormhole is what the station becomes when it is
+> whole. The reasoning and what shipped are in **THE-STATION.md**; this file is
+> left as it was written, because it is the record of what was decided when.
+
 ---
 
 ## The one test that matters

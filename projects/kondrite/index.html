@@ -3175,10 +3175,6 @@
          past without reading, and this one is the only place the run's numbers
          are ever stated. */
       if (code === "Enter" || code === "Space") { surveyRespawn(); return; }
-    } else if (state === "yard") {
-      if (code === "Escape" || code === "Backspace" || code === "KeyE") {
-        state = "playing"; return;
-      }
     } else if (state === "stationinv") {
       /* Out of the station entirely, the way the shop leaves. `Backspace` steps
          back to the counter rather than to the sector, because this room was
@@ -3296,9 +3292,7 @@
         if (code === "KeyE" && surv && surv.docked) {
           state = "refit"; surveyHUD && surveyHUD.refitOpened(); return;
         }
-        if (code === "KeyE" && surv && surv.atYard) { state = "yard"; return; }
-        // Last of the three, because a station does more than a world does and a
-        // yard is the thing you came back for.
+        // Last of the two, because a station does more than a world does.
         if (code === "KeyE" && surv && surv.landed) {
           state = "landed";
           surveyHUD && surveyHUD.shopOpened && surveyHUD.shopOpened();
@@ -3315,8 +3309,8 @@
           giveWater(); return;
         }
         /* Anything else with a name on it. Last of the `E` doors, because a
-           station, the yard and a world you can land on are all things you went
-           there for, and this is a question you ask on the way past.
+           station and a world you can land on are both things you went there
+           for, and this is a question you ask on the way past.
 
            The card is *snapshotted* rather than read live. The world does not
            stop while a page is open, so a live card would rewrite itself as you
@@ -6416,9 +6410,9 @@
     for (const lm of surv.landmarks) {
       if (dist2(x, y, lm.x, lm.y) < (r + lm.r + 300) ** 2) return true;
     }
-    // Nor over the yard, which is the one place you always have to be able to
-    // reach, nor over the origin you start at.
-    if (dist2(x, y, YARD.x, YARD.y) < (r + 1200) ** 2) return true;
+    /* Nor over the origin you start at, which is the circle the home station
+       stands inside — one exclusion instead of two, now that there is one thing
+       off the origin instead of two. */
     if (dist2(x, y, 0, 0) < (r + 1200) ** 2) return true;
     return false;
   }
@@ -6719,7 +6713,7 @@
     { key: "tractormk1", name: "TRACTOR BEAM MK1", cat: "tractor",
       rarity: "common", cost: 180, deep: 0, get: ["find", "craft"],
       where: "out in the dark, on its own \u2014 the first thing worth looking " +
-             "for once the gate is open",
+             "for once the station is whole",
       note: "a grapple field on the nose, at half the reach of the mark two. " +
             "Loose salvage inside " + Math.round(SURVEY_TRACTOR * 0.5) +
             " units comes in on its own",
@@ -7651,11 +7645,12 @@
        which is a different feeling from paying for one, and worth marking. */
     { key: "shipwright", name: "SHIPWRIGHT",
       note: "built a part out of what you found" },
-    { key: "finished", name: "THE JUMP GATE", note: "you built the thing", secret: true }
+    { key: "finished", name: "THE STATION", note: "you put it back together",
+      secret: true }
   ];
   const SURVEY_TOTAL = ALMANAC.length;
 
-  /* ── the yard, and the six things it needs ────────────────────────────────
+  /* ── the station, and the six things it is short of ───────────────────────
      Survey never said what you were doing. It had an almanac, which is a record
      of what you happened to see, and that is not the same as a reason to go —
      you could fly for an hour without the mode ever asking you for anything.
@@ -7690,48 +7685,105 @@
        so the one step of the tutorial that asks you to go *inside* something was
        the one step nobody ever reached. The Leviathan stands at a fixed 40,000
        now, in every sector, and takes no rung with it. */
-    { key: "spar", name: "DRIVE SPAR", dist: 7000,
+    /* `opens` is the half of this that is new, and it is the whole change: a
+       part is not a rung on one long ladder any more, it is the thing that
+       turns one room of the station back on. Six fetches and one payoff was a
+       long way to walk on trust; six fetches and six payoffs is a station
+       coming alive around you.
+
+       Nothing else on these rows moved. The distances, the places and the six
+       clues are exactly what they were — only what arriving with one *does*
+       is different, which is why this is a smaller change than it reads. */
+    { key: "spar", name: "DRIVE SPAR", dist: 7000, opens: "dock",
       clue: "Among the dead. Somewhere a lot of ships stopped at once.",
       where: "a wreck field" },
-    { key: "core", name: "FUSION CORE", dist: 13000,
+    { key: "core", name: "FUSION CORE", dist: 13000, opens: "counter",
       clue: "In the light of two suns, where nothing is ever dark.",
       where: "a binary pair" },
-    { key: "lens", name: "RANGING LENS", dist: 21000,
+    { key: "lens", name: "RANGING LENS", dist: 21000, opens: "market",
       clue: "On a world nobody warms. Look for a planet with no star.",
       where: "a rogue world" },
-    { key: "coil", name: "JUMP COIL", dist: 34000,
+    { key: "coil", name: "JUMP COIL", dist: 34000, opens: "hangar",
       clue: "Wound around a mouth that goes somewhere else.",
       where: "a gate" },
-    { key: "beacon", name: "SIGNAL BEACON", dist: 52000,
+    { key: "beacon", name: "SIGNAL BEACON", dist: 52000, opens: "stock",
       clue: "Still calling, long after anyone stopped listening.",
       where: "a transmitting wreck" },
-    { key: "plate", name: "ABLATIVE PLATE", dist: 0,
+    { key: "plate", name: "ABLATIVE PLATE", dist: 0, opens: "mouth",
       clue: "The big dead one is carrying plenty. You will have to go inside.",
       where: "deep in the Leviathan", inside: "leviathan" }
   ];
-  const YARD_R = 220;          // how close counts as delivered
 
-  /* What the yard is building, and why anyone would finish it. A fetch quest
-     with no stated prize is a chore, and the six clues were asking for a lot of
-     flying on nothing but trust.
+  /* ── what the station does, and what each of it costs ─────────────────────
+     There were two things sitting a few hundred units off the origin, and a new
+     player met both in the first minute: a station that worked perfectly from
+     the first second, and a gate that was a hole and wanted six parts. They
+     have swapped. There is no yard. The six parts come *home*, and what they
+     repair is the place you live.
 
-     It builds a light drive. When it is done you can jump, from the chart, to
-     any station you have already found — which turns a sector you have explored
-     into a place you can move around in, and makes every station you stumble
-     across on the way worth noting. The reward for mapping is that the map
-     starts working for you. */
-  /* What the six parts make. It was called a "light drive", which was simply the
-     wrong name for it: it does not drive you anywhere at speed, it opens a mouth
-     at one end and puts you out of another — it is a wormhole, and one that
-     somebody built. The Wall is a *failed* attempt at exactly this, which is why
-     the jump coil is found wound around a gate, and calling this what it is makes
-     the two of them the same story told twice. A real light drive is a separate
-     thing you build afterwards; see LIGHT_DRIVE below. */
-  const YARD_BUILDS = {
-    name: "MANMADE WORMHOLE",
-    does: "open a mouth to any station you have charted, from the chart",
-    blurb: "Six parts, and none of them are near each other. Somebody tried this " +
-           "before, on a frame a mile across, and it did not open."
+     SUPPLIES has no part against it, and that is the whole reason the first
+     minute still works. A station with no power still has somebody in it, and
+     that somebody has a tank and no metal; you have metal and no water. That
+     trade is what a dead station is — two people scraping by, rather than a
+     shop with its buttons greyed out — and it quietly answers the question the
+     design never answered: *why is the first station free?* It is not. It is
+     broken, and you are the one fixing it.
+
+     Everything else is dark, named, and says what it wants. **A missing tab
+     teaches nothing; a dark one teaches everything** — take the dark rows away
+     and the station is a shop with two items and no reason to leave. */
+  /* `does` is one line on a row with three other columns on it, and the two
+     that matter — the part it wants and where that part is kept — are given
+     their width first. So these are short enough to be read whole rather than
+     ellipsised: the long version of any of them is in this file, not on the
+     player's screen. */
+  const SERVICES = [
+    { key: "supplies", name: "SUPPLIES", part: null,
+      does: "water, food, and it buys" },
+    { key: "dock",    name: "THE DOCK",    part: "spar",
+      does: "hull repairs" },
+    { key: "counter", name: "THE COUNTER", part: "core",
+      does: "parts, over the counter" },
+    { key: "market",  name: "THE MARKET",  part: "lens",
+      does: "what the chart is paying" },
+    { key: "hangar",  name: "THE HANGAR",  part: "coil",
+      does: "the only berth there is" },
+    { key: "stock",   name: "STOCK",       part: "beacon",
+      does: "it can order in" },
+    { key: "mouth",   name: "THE MOUTH",   part: "plate",
+      does: "every charted station" }
+  ];
+  const serviceSpec = k => SERVICES.find(s => s.key === k);
+
+  /* Is this room of the station running? Asked only of home: every other
+     station in the sector is somebody else's, and somebody else's station
+     works — you just cannot jump from it and you cannot change ship there. */
+  const stationHas = k => {
+    const s = serviceSpec(k);
+    return !!s && (!s.part || !!(surv && surv.built.has(s.part)));
+  };
+  // Whole, meaning every one of the six is in.
+  const stationWhole = () => !!surv && surv.built.size >= BUILD.length;
+
+  /* What the six parts are for, said once, at the top of the page that lists
+     them. A fetch quest with no stated prize is a chore, and the six clues were
+     asking for a lot of flying on nothing but trust.
+
+     They used to build a structure of its own — a **manmade wormhole** on a
+     frame off the origin — and the prize was one mouth at the end of six
+     deliveries. It is the station now, and the prize arrives in six pieces:
+     each part is a room of the place you live coming back on, and the mouth is
+     the last of them. What that buys is the same fact the wormhole always
+     traded on — the Wall is a *failed* attempt at exactly this, which is why
+     the jump coil is found wound around a gate — but you are no longer walking
+     five deliveries on a promise. A real light drive is a separate thing you
+     build afterwards; see LIGHT_DRIVE below. */
+  const STATION_BUILD = {
+    name: "YOUR STATION",
+    does: "whole \u2014 and the mouth opens on any station you have charted",
+    blurb: "Six parts, none of them near each other, and each one turns " +
+           "something here back on. Somebody tried the last of it before, on a " +
+           "frame a mile across, and it did not open."
   };
 
   /* ── the light drive ──────────────────────────────────────────────────────
@@ -7836,7 +7888,7 @@
      graveyard eight hours out, and the next one does the opposite.
 
      Two things are deliberately not shuffled. The Leviathan stays on the last
-     rung, because it is the finale and the yard's last part is inside it. And
+     rung, because it is the finale and the station's last part is inside it. And
      the home band stays quiet in every world, because the opening two minutes
      are the same promise whatever the seed. */
   const TRAITS = [
@@ -8333,7 +8385,7 @@
   /* ── wiping a survey ──────────────────────────────────────────────────────
      Everything Survey keeps lives in one key, so a reset is one `removeItem`
      and a fresh seed. What goes: the almanac, the chart and the flown line, the
-     hold, the refit, the yard's manifest, every pin, and which caches and hulks
+     hold, the refit, the station's manifest, every pin, and which caches and hulks
      had been worked over. What stays: the zoom, the keys, the sound — those are
      preferences, not progress.
 
@@ -10655,7 +10707,6 @@
          the page whether or not it is in here. */
       seen: new Set(carried ? book.seen : []),
       docked: null,
-      atYard: false,
       landed: null,        // an inhabited world within reach
       overAir: null,       // an atmosphere to draw water from
       // What a death reads off, and what it is measured against. `death` is the
@@ -13175,7 +13226,7 @@
        lost    the hold, outright. Not spilled where you fell — motes live
                ninety seconds and you respawn at the origin, so "go and get it
                back" would be a mechanic that reads as one and is not.
-       kept    the almanac, the yard's fitted parts, the parts you were carrying,
+       kept    the almanac, the station's fitted parts, the parts you were carrying,
                the chart, your pins, the refit, and the cash. All of those are
                things you *learned* or *built*, and taking them would make dying
                a punishment for playing rather than a reason to be careful.
@@ -13348,7 +13399,6 @@
     surv.hunger = 0;
     surv.runStart = clock;
     surv.docked = null;
-    surv.atYard = false;
     surv.warpCool = 1.2;
     surv.t.inWell = null;
     cam.x = ship.x; cam.y = ship.y;
@@ -13676,6 +13726,19 @@
       if (R() > odds) continue;
       out.parts[m.key] = 1 + Math.floor(R() * (m.rarity === "common" ? 3 : 2));
     }
+    /* Home, with the signal beacon still out there. A counter that exists and a
+       counter worth flying to are two different things: without a beacon it
+       sells whatever washed up — one of each of the common things — and with
+       one it can call in what it has not got. The filter is applied *after* the
+       rolls rather than instead of them, so every draw this function makes is
+       the draw it always made and no other station's shelf moves. */
+    if (st.home && !stationHas("stock")) {
+      for (const key of Object.keys(out.parts)) {
+        const m = MODULES.find(x => x.key === key);
+        if (!m || m.rarity !== "common") delete out.parts[key];
+        else out.parts[key] = 1;
+      }
+    }
     return out;
   }
 
@@ -13721,7 +13784,14 @@
     }
   }
 
-  function stationPrices(st) {
+  /* `quiet` prices a station you are not standing in: the same rule with the
+     shortage left out. A shortage is a live number that belongs to a station
+     somebody has been near, and asking for one by name would write a market
+     entry into the save for every dot on the chart. What the lens sees is the
+     standing price — where it is, and what that sky is worth — and a station
+     that happens to be short of something today pays *more* than the board
+     says, which is the right direction for a board to be wrong in. */
+  function stationPrices(st, quiet) {
     const out = {};
     if (!st) return out;
     const band = 1 + depthAt(st.x, st.y) * 1.1;
@@ -13729,10 +13799,42 @@
       const R = seeded(chunkSeed(Math.round(st.x / 11) + m.key.length * 7919,
                                  Math.round(st.y / 11) - m.key.charCodeAt(0) * 131));
       // What it is short of, it pays more for. That is the whole signal.
-      const want = 1 + shortageOf(st, m.key) * SHORT_MAX;
+      const want = quiet ? 1 : 1 + shortageOf(st, m.key) * SHORT_MAX;
       out[m.key] = Math.max(1, Math.round(m.value * band * want *
                                           (0.78 + R() * 0.64)));
     }
+    return out;
+  }
+
+  /* ── who pays best for what, over the whole chart ─────────────────────────
+     The ranging lens's fold: every mooring in the gazetteer, priced quietly,
+     kept as the best payer per material. It is cached because `surveyState` is
+     built *every frame the HUD draws* and the gazetteer runs to six hundred
+     entries — six hundred stations times six materials, each one seeding a
+     generator, sixty times a second, is exactly the kind of quiet cost that
+     shows up as a frame rate and never as a bug.
+
+     Safe to cache because a quiet price is a pure function of where a station
+     is: nothing but the gazetteer growing can change the answer. */
+  let payBest = null, payBestFor = null, payBestAt = -1;
+  function bestPayers() {
+    if (payBest && payBestFor === surv && payBestAt === surv.known.size) {
+      return payBest;
+    }
+    const out = {};
+    for (const q of surv.known.values()) {
+      if (q.k !== "station") continue;
+      // Your own counter is what the board is compared against, not a
+      // destination on it.
+      if (dist2(q.x, q.y, HOME_STATION.x, HOME_STATION.y) < 400 ** 2) continue;
+      const p = stationPrices(q, true);
+      for (const m of MATERIALS) {
+        if (!out[m.key] || p[m.key] > out[m.key].pays) {
+          out[m.key] = { pays: p[m.key], x: q.x, y: q.y };
+        }
+      }
+    }
+    payBest = out; payBestFor = surv; payBestAt = surv.known.size;
     return out;
   }
 
@@ -14834,11 +14936,9 @@
     const me = ships[0];
     const wasDocked = surv.docked;
     surv.docked = null;
-    surv.atYard = false;
     surv.landed = null;
     surv.overAir = null;
     if (!me.alive) return;
-    if (dist2(me.x, me.y, YARD.x, YARD.y) < (YARD_R * 1.4) ** 2) surv.atYard = true;
     for (const st of surv.stations) {
       if (dist2(me.x, me.y, st.x, st.y) < SURVEY_DOCK * SURVEY_DOCK) {
         surv.docked = st;
@@ -15972,7 +16072,9 @@
     const spec = partSpec(pt.key);
     const lines = [];
     if (spec) {
-      lines.push("One of the six pieces the yard is asking for.");
+      const svc = serviceSpec(spec.opens);
+      lines.push("One of the six your own station is short of." +
+                 (svc ? " It turns " + svc.name + " back on." : ""));
       lines.push("The clue was: “" + spec.clue + "”  And here it is, in " +
                  spec.where + ".");
     }
@@ -15981,8 +16083,9 @@
                  "left it, and it will stay there — it does not drift and it " +
                  "does not expire.");
     }
-    lines.push("Fly into it to pick it up. Then take it to the yard.");
-    return { kind: "A PIECE OF THE DRIVE", name: pt.name, colour: CASH, lines };
+    lines.push("Fly into it to pick it up. Then take it home.");
+    return { kind: "A PIECE OF YOUR STATION", name: pt.name, colour: CASH,
+             lines };
   }
 
   /* A ship with a name on it, which out here means one of exactly two things. */
@@ -16215,16 +16318,17 @@
     }
   }
 
-  /* ═══ THE JUMP GATE ═══════════════════════════════════════════════════════
-     What you are doing out here. Sits just off the origin so it is the first
-     thing you see and the thing you keep coming back to.
+  /* ═══ WHERE THE PARTS GO ══════════════════════════════════════════════════
+     Home. `HOME_STATION`, and there is nothing else to say about the place any
+     more, which is the point of the change.
 
-     It was called THE YARD, which said where it was and not what it was. What
-     the six parts build is a **manmade wormhole** — a mouth you open on any
-     station you have charted, from the chart — and calling the place a yard left
-     the player carrying parts across a sector for a thing with no name. It is
-     the jump gate now, and it says so from the first banner. */
-  const YARD = { x: -280, y: -400 };
+     It was THE YARD, then THE JUMP GATE: a second structure a few hundred units
+     the other side of the origin, which a new player met in the same minute as
+     a station that already worked perfectly. Two landmarks, two questions, and
+     the finished one was the one with nothing to want. So they swapped. The
+     wormhole is not a separate thing you build beside the station — it is what
+     the station *becomes* when it is whole, and the mouth is the last of the
+     six rooms the parts light. See SERVICES. */
 
   const partSpec = key => BUILD.find(b => b.key === key);
 
@@ -16243,7 +16347,7 @@
      built — this is fast travel across ground you have covered, never a way to
      skip covering it. */
   function lightJump(x, y) {
-    if (!yardDone()) return false;
+    if (!stationHas("mouth")) return false;
     const me = ships[0];
     if (!me || !me.alive) return false;
     burst(me.x, me.y, CASH, 30, 320 * U);
@@ -16294,10 +16398,16 @@
       text: "WATER LOW",
       sub: "you are docked — the station sells it",
       colour: "#87d8ff" },
-    { key: "yard",
-      when: () => surv.water >= WATER_FULL * 0.9 && !yardDone(),
-      text: () => "THE JUMP GATE WANTS A " + (nextPart() ? nextPart().name : "PART"),
-      sub: () => nextPart() ? nextPart().clue : "",
+    /* The beat that used to point at a second structure off the origin, and
+       now names the place she is standing in. She has just bought water from a
+       counter, so the one thing worth telling her is that the counter is all
+       there is — every other row on that page is dark and says which part it
+       wants. Where to fly is the objective line's job and always was; this is
+       the line that makes six dark rows mean something. */
+    { key: "dead",
+      when: () => surv.water >= WATER_FULL * 0.9 && !stationWhole(),
+      text: "THIS STATION IS DEAD",
+      sub: "it buys, and it sells water. everything else on it wants a part.",
       colour: NEBULA },
     { key: "material",
       when: () => holdUsed() > 0,
@@ -16359,9 +16469,9 @@
        the gate finishes — the banner is already talking then, and a price you
        cannot pay is not an offer. Half the money is when it becomes one. */
     { key: "berth",
-      when: () => yardDone() && !surv.hasLight &&
+      when: () => stationWhole() && !surv.hasLight &&
                   surv.cash >= LIGHT_DRIVE.cost * 0.5,
-      text: "THE YARD HAS A SECOND BERTH",
+      text: "YOUR STATION HAS A SECOND BERTH",
       sub: () => "a light drive, and you are halfway to the " +
                  LIGHT_DRIVE.cost + " it wants",
       colour: ICE_C },
@@ -16372,7 +16482,7 @@
        every category was something you could only get by accident. The list is
        on the missions page; this is the once that says so. */
     { key: "longlist",
-      when: () => yardDone() && !!surv.docked,
+      when: () => stationWhole() && !!surv.docked,
       text: "SOME PARTS ARE NOT FOR SALE HERE",
       sub: "the best of each kind is sold in worse sky — the missions page lists them",
       colour: "#a08cff" }
@@ -16854,6 +16964,16 @@
   function buyModule(key) {
     const m = moduleSpec(key);
     if (!m || !surv.docked) { gameSound("hit"); return false; }
+    /* The counter, at home, is the fusion core's room. The shop does not list
+       parts while it is dark — see `market` in `surveyState` — and this is the
+       same refusal one floor down, for anything that reaches the till another
+       way. */
+    if (surv.docked.home && !stationHas("counter")) {
+      chatter("No power to the counter. It wants a " +
+              (partSpec("core") || {}).name + ".", "#ff8f77");
+      gameSound("hit");
+      return false;
+    }
     /* Nobody sells a find-only part, and until this line nothing said so: the
        shelf listed them and this took the money — or took nothing, since a part
        with no buyer has no price. */
@@ -17811,9 +17931,14 @@
      decision rather than a preference. */
   const atHomeStation = () =>
     LEV_ONLY || !!(surv && surv.docked && surv.docked.home);
+  /* And whether the berth in it is running. Being home is a place; the hangar
+     is one of the station's six rooms and the jump coil is what lights it —
+     the clamps that hold a second hull are a coil. Until then you are standing
+     in your own station looking at a dark berth, which is the point. */
+  const hangarOpen = () => atHomeStation() && (LEV_ONLY || stationHas("hangar"));
 
   function buyShip(key) {
-    if (!surv || !atHomeStation()) { gameSound("hit"); return false; }
+    if (!surv || !hangarOpen()) { gameSound("hit"); return false; }
     const sh = SHIPS.find(x => x.key === key);
     if (!sh) return false;
     if (!surv.owned.has(key)) {
@@ -17826,7 +17951,7 @@
   }
 
   function flyShip(key) {
-    if (!surv || !surv.owned.has(key) || !atHomeStation()) {
+    if (!surv || !surv.owned.has(key) || !hangarOpen()) {
       gameSound("hit"); return false;
     }
     const was = surv.ship;
@@ -17896,12 +18021,13 @@
     return true;
   }
 
-  /* Bought at the yard rather than fetched, and only once the wormhole is done —
-     the yard has to have finished something before it can start something else,
-     and the wormhole is what teaches you the yard is worth going back to. */
+  /* Bought at the station rather than fetched, and only once the station is
+     whole — the place has to have finished being put back together before it
+     can start something else, and the six deliveries are what teach you the
+     station is worth going back to. */
   function buildLightDrive() {
     if (!surv || surv.hasLight) return false;
-    if (!yardDone()) { gameSound("hit"); return false; }
+    if (!stationWhole()) { gameSound("hit"); return false; }
     if (surv.cash < LIGHT_DRIVE.cost) { gameSound("hit"); return false; }
     surv.cash -= LIGHT_DRIVE.cost;
     surv.hasLight = true;
@@ -17944,7 +18070,11 @@
     }
     return best || left[0];
   };
-  const yardDone = () => surv.built.size >= BUILD.length;
+  /* Two questions that used to be one. **Whole** is every part in, which is
+     what the almanac, the objective line and the second project ask about.
+     **`stationHas`** is one room, which is what everything a player actually
+     presses asks about — and they are different now that each part lights its
+     own service. See SERVICES. */
 
   /* The one line of text that answers "what am I doing". It changes three
      times: go and find this, bring it back, and it is finished. Anything more
@@ -17995,7 +18125,7 @@
        the right shape for "the tutorial is over" and the wrong one for the ten
        hours after: the mode's answer to *now what* was a sector with nothing
        marked in it. One thing stays on the board. */
-    if (yardDone()) {
+    if (stationWhole()) {
       if (mk1Wanted()) {
         return { key: "tractormk1", name: surv.mk1Site.name,
                  x: surv.mk1Site.x, y: surv.mk1Site.y };
@@ -18014,7 +18144,8 @@
                x: lm.x, y: lm.y };
     }
     if (surv.carrying.size) {
-      return { key: "yard", name: "THE JUMP GATE", x: YARD.x, y: YARD.y };
+      return { key: "home", name: "YOUR STATION",
+               x: HOME_STATION.x, y: HOME_STATION.y };
     }
     const n = nextPart();
     if (!n) return null;
@@ -18030,7 +18161,7 @@
     Math.round(((Math.atan2(t.y - me.y, t.x - me.x) * 180) / Math.PI + 450) % 360);
 
   function objective() {
-    if (yardDone()) {
+    if (stationWhole()) {
       if (mk1Wanted()) {
         return { text: "FIND THE " + surv.mk1Site.name,
                  sub: "half the reach of the mark two, and the last thing " +
@@ -18067,7 +18198,7 @@
       const names = [...surv.carrying]
         .map(k => partSpec(k)).filter(Boolean).map(b => b.name).join("  ·  ");
       if (names) {
-        return { text: "CARRYING " + names, sub: "bring it back to the gate",
+        return { text: "CARRYING " + names, sub: "take it home to the station",
                  colour: CASH };
       }
     }
@@ -18242,26 +18373,42 @@
       saveSurveyBook();
     }
 
+    /* Home, and it is the docking ring that counts rather than a delivery
+       circle of its own. There is one landmark off the origin now instead of
+       two, so the radius that means "you have arrived" is the radius that has
+       always meant it. */
     if (!surv.carrying.size) return;
-    if (dist2(me.x, me.y, YARD.x, YARD.y) > YARD_R * YARD_R) return;
+    if (dist2(me.x, me.y, HOME_STATION.x, HOME_STATION.y) >
+        SURVEY_DOCK * SURVEY_DOCK) return;
+
+    /* The shelf is rolled lazily and kept until its restock clock runs out, so
+       a beacon fitted at 11:59 would otherwise light STOCK and leave the same
+       four common parts on the counter for another quarter of an hour. Home's
+       shelf is dropped here and re-read on the next look. */
+    const home = surv.stations.find(s => s.home);
+    if (home) { const m = marketOf(home); if (m) m.shelf = null; }
 
     for (const key of surv.carrying) {
       surv.built.add(key);
-      chatter(partSpec(key).name + " fitted — " + surv.built.size + " of " +
-              BUILD.length, CASH);
+      /* What it *did*, not how many of them there are now. "3 of 6" is a
+         progress bar read out loud; "the dry dock is running" is the reason
+         you flew eleven thousand units with a spar in the hold. */
+      const svc = serviceSpec((partSpec(key) || {}).opens);
+      chatter(partSpec(key).name + " fitted" +
+              (svc ? " \u2014 " + svc.name + " is running" : ""), CASH);
     }
     surv.carrying.clear();
-    burst(YARD.x, YARD.y, CASH, 40, 320 * U);
-    gameSound("win", YARD.x);
+    burst(HOME_STATION.x, HOME_STATION.y, CASH, 40, 320 * U);
+    gameSound("win", HOME_STATION.x);
     addShake(9);
-    if (yardDone()) {
+    if (stationWhole()) {
       surveyFind("finished");
       /* "it was never about the parts" was a curtain line, and it landed on
          the one moment in the run where the sector actually opens up. The
          manifest is the tutorial; this is where the game starts. So the banner
          faces forwards. */
-      banner = { text: "THE JUMP GATE IS OPEN", t: 4.6, colour: CASH,
-                 sub: "now go somewhere you have not been" };
+      banner = { text: "THE STATION IS WHOLE", t: 4.6, colour: CASH,
+                 sub: "the mouth is open \u2014 now go somewhere you have not been" };
     }
     saveSurveyBook();
   }
@@ -18675,59 +18822,6 @@
       }
     }
     ctx.restore();
-  }
-
-  function drawYard() {
-    if (!onScreen(YARD.x, YARD.y, YARD_R + 160)) return;
-    const done = surv.built.size, need = BUILD.length;
-    const frac = done / need;
-    ctx.save();
-    ctx.translate(YARD.x, YARD.y);
-
-    // A hull under construction: the ribs are always there, and the plating
-    // fills in one segment per part, so the thing you are building visibly
-    // becomes a ship as the manifest empties.
-    glow(WRECK, 1.6, 0.75, () => {
-      ctx.beginPath();
-      ctx.arc(0, 0, 120, 0, Math.PI * 2);
-      ctx.stroke();
-      for (let i = 0; i < BUILD.length; i++) {
-        const a = (i / BUILD.length) * Math.PI * 2 - Math.PI / 2;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * 44, Math.sin(a) * 44);
-        ctx.lineTo(Math.cos(a) * 120, Math.sin(a) * 120);
-        ctx.stroke();
-      }
-    });
-    for (let i = 0; i < done; i++) {
-      const a0 = (i / need) * Math.PI * 2 - Math.PI / 2;
-      const a1 = ((i + 1) / need) * Math.PI * 2 - Math.PI / 2;
-      glow(CASH, 3, 0.9, () => {
-        ctx.beginPath();
-        ctx.arc(0, 0, 82, a0 + 0.04, a1 - 0.04);
-        ctx.stroke();
-      });
-    }
-    const beat = 0.4 + 0.6 * Math.sin(clock * (yardDone() ? 1.2 : 2.2));
-    glow(yardDone() ? CASH : NEBULA, 2, 0.3 + beat * 0.4, () => {
-      ctx.beginPath();
-      ctx.arc(0, 0, 30 + (yardDone() ? beat * 12 : 0), 0, Math.PI * 2);
-      ctx.stroke();
-    });
-    ctx.restore();
-
-    label3(yardDone() ? "THE JUMP GATE"
-                      : "THE JUMP GATE  " + done + "/" + need,
-           YARD.x, YARD.y + 152, yardDone() ? CASH : NEBULA);
-
-    // The delivery ring, shown only while you are carrying something to it.
-    if (surv.carrying.size) {
-      glow(CASH, 1.4, 0.3 + 0.25 * Math.sin(clock * 3), () => {
-        ctx.beginPath();
-        ctx.arc(YARD.x, YARD.y, YARD_R, 0, Math.PI * 2);
-        ctx.stroke();
-      });
-    }
   }
 
   // A small world-space caption. The menus have `text`, but that draws in
@@ -19228,6 +19322,45 @@
             spin * 0.72,                  // slower than the ring, so it reads
             Math.max(9, Math.min(15, st.r * 0.1)),
             CASH, st.home ? 0.9 : 0.62, 1);
+
+    /* And what it is still short of, worn on the outside. This is the yard's
+       old ring, moved: bare ribs the whole way round, one segment of plating
+       lit per part delivered, so the place you live visibly comes back
+       together as the manifest empties. It is on the home station rather than
+       beside it because there is one landmark off the origin now, not two.
+
+       It goes when the sixth part goes in. A ring that stays full for the rest
+       of the run is a monument, and the station has a mouth to draw instead. */
+    if (st.home && !stationWhole()) {
+      const done = surv.built.size, need = BUILD.length;
+      ctx.save();
+      ctx.translate(st.x, st.y);
+      glow(WRECK, 1.6, 0.75, () => {
+        ctx.beginPath();
+        ctx.arc(0, 0, st.r * 1.5, 0, Math.PI * 2);
+        ctx.stroke();
+        for (let i = 0; i < need; i++) {
+          const a = (i / need) * Math.PI * 2 - Math.PI / 2;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * st.r * 0.95, Math.sin(a) * st.r * 0.95);
+          ctx.lineTo(Math.cos(a) * st.r * 1.5, Math.sin(a) * st.r * 1.5);
+          ctx.stroke();
+        }
+      });
+      for (let i = 0; i < done; i++) {
+        const a0 = (i / need) * Math.PI * 2 - Math.PI / 2;
+        const a1 = ((i + 1) / need) * Math.PI * 2 - Math.PI / 2;
+        glow(CASH, 3, 0.9, () => {
+          ctx.beginPath();
+          ctx.arc(0, 0, st.r * 1.22, a0 + 0.04, a1 - 0.04);
+          ctx.stroke();
+        });
+      }
+      ctx.restore();
+      label3("SHORT OF " + (need - done) +
+             (need - done === 1 ? " PART" : " PARTS"),
+             st.x, st.y + st.r * 1.5 + 28, NEBULA);
+    }
 
     // The dock ring, drawn only when you are close enough for it to mean
     // something — a permanent one would be a second circle round every station.
@@ -20201,7 +20334,6 @@
     for (const c of surv.caches) drawCache(c);
     for (const d of surv.drones) drawDrone(d);
     for (const m of surv.marks) drawMark(m);
-    drawYard();
     for (const pt of surv.parts) drawPart(pt);
     for (const p of pickups) if (onScreen(p.x, p.y, 30)) drawPickup(p);
     drawDevices();
@@ -20413,7 +20545,11 @@
         // The rest of the shelf is a station's: a world has no yard, no dry
         // dock and no shelf of parts.
         if (!surv.docked) return rows;
-        const fix = repairCost();
+        /* The dry dock, which is the drive spar's room. Away from home every
+           station mends a hull the way it always did; at home it is the first
+           thing you get back, because your hull is the first thing that
+           breaks. */
+        const fix = surv.docked.home && !stationHas("dock") ? null : repairCost();
         if (fix != null) {
           rows.push({ kind: "repair", key: "hull", name: "HULL REPAIR",
                       colour: "#ff8f77", label: "MEND", cost: fix,
@@ -20423,8 +20559,14 @@
         /* Only the ones somebody sells. A part you can only find is not on
            anybody's shelf — that is what "only find" means — and listing it here
            greyed out would be a shop advertising something it will not sell you. */
-        const shelf = shelfOf(surv.docked);
+        /* And the counter, which is the fusion core's. Nothing here is
+           powered without it — so a dead home station sells water and food off
+           a shelf and has no counter to sell a part over. Everywhere else is
+           somebody else's station, working. */
+        const shelf = surv.docked.home && !stationHas("counter")
+                    ? null : shelfOf(surv.docked);
         for (const m of MODULES) {
+          if (!shelf) break;
           if (!sellsIt(m)) continue;
           if (m.deep > stationDepth()) continue;
           // Only what is actually on the shelf this delivery. See `rollShelf`.
@@ -20457,7 +20599,7 @@
           return got;
         }
         if (kind === "ships") {
-          if (!atHomeStation()) return false;
+          if (!hangarOpen()) return false;
           state = "hangar";
           surveyHUD && surveyHUD.hangarOpened && surveyHUD.hangarOpened(surveyState());
           return true;
@@ -20539,10 +20681,11 @@
          which is the right thing for it to say and left a phone with no way into
          the shop at exactly the moment it needed one most. */
       dockAt: surv.docked ? { x: surv.docked.x, y: surv.docked.y } : null,
-      /* Being at the yard is not being docked at a station, and the panel has
-         to be told which — without this the yard button never drew, and a
-         phone, which has no `E`, had no way into the yard page at all. */
-      atYard: !!surv.atYard,
+      /* Standing in the place the parts go. It used to mean the yard, which was
+         somewhere else; it means your own station now, and it is what the panel
+         and the manifest page both read to know whether the list in front of
+         you is a delivery address or a reminder. */
+      atHomeDock: atHomeStation(),
       /* What the ship can actually do right now, read off the four slots. The
          panel and the pages both used to ask the almanac; there is nothing to ask
          any more, and one of these is the difference between salvage that comes
@@ -20683,7 +20826,12 @@
         }
         return out;
       })(),
-      yard: { x: YARD.x, y: YARD.y, built: surv.built.size, needs: BUILD.length },
+      /* Where the parts go, for the chart to mark. It is the home station now,
+         so this is the same point the chart already draws a station at — the
+         mark says what the place still wants rather than where a second place
+         is. */
+      home: { x: HOME_STATION.x, y: HOME_STATION.y,
+              built: surv.built.size, needs: BUILD.length },
       /* Where you are: whose sky, which biome, and how dangerous the two are
          together. The panel draws the first two in words and the third as a
          bar; see `drawSector`. */
@@ -20792,9 +20940,51 @@
         });
       },
       manifest: BUILD.map(b => ({ key: b.key, name: b.name, clue: b.clue,
-                                  where: b.where,
+                                  where: b.where, opens: b.opens,
+                                  service: (serviceSpec(b.opens) || {}).name,
                                   have: surv.built.has(b.key),
                                   carrying: surv.carrying.has(b.key) })),
+      /* ── THE MARKET ───────────────────────────────────────────────────────
+         What the ranging lens is for: a lens is how a station sees past its own
+         dock, and what it sees is what everywhere else is paying. One row a
+         material you are carrying — the board answers *where do I take this*,
+         so a row for something you have not got is a row about nothing — with
+         what home pays, the best standing price on the chart, and how far that
+         is.
+
+         Only at home, and only once the lens is in. Every other station in the
+         sector has its own counter and its own prices and no reason to tell you
+         about anybody else's. */
+      payBoard: stationHas("market") && surv.docked && surv.docked.home ? (() => {
+        const mine = stationPrices(surv.docked);
+        const best = bestPayers();
+        const me = ships[0] || { x: 0, y: 0 };
+        const out = [];
+        for (const m of MATERIALS) {
+          const n = surv.hold[m.key] || 0;
+          if (n <= 0) continue;
+          const b = best[m.key];
+          out.push({ key: m.key, name: m.name, colour: m.colour, n,
+                     here: mine[m.key] || m.value,
+                     best: b ? b.pays : null,
+                     range: b ? rangeBand(Math.hypot(b.x - me.x, b.y - me.y)) : "",
+                     bearing: b ? bearingTo(me, b) : null });
+        }
+        return out;
+      })() : null,
+      /* Every room of your own station, lit or dark, and what a dark one is
+         waiting for. The page decides nothing: it draws what is off, the part
+         that turns it on and where that part is kept. A missing row teaches
+         nothing; a dark one teaches everything. */
+      services: SERVICES.map(s => {
+        const p = s.part ? partSpec(s.part) : null;
+        return { key: s.key, name: s.name, does: s.does,
+                 live: stationHas(s.key),
+                 part: p ? p.name : null,
+                 clue: p ? p.clue : null,
+                 where: p ? p.where : null,
+                 carrying: !!(p && surv.carrying.has(p.key)) };
+      }),
       built: surv.built.size, needs: BUILD.length,
       /* ── the long list ────────────────────────────────────────────────────
          The parts a player cannot meet, which turned out to be most of the good
@@ -20815,7 +21005,7 @@
 
          Only after the gate, because before it the manifest is the list and two
          lists is no list at all. */
-      longList: yardDone()
+      longList: stationWhole()
         ? MODULES.filter(m => !craftsIt(m) && (!sellsIt(m) || m.deep > 0))
             .map(m => ({
               key: m.key, name: m.name, cat: m.cat, rarity: m.rarity,
@@ -20839,9 +21029,11 @@
             }))
         : [],
       onUndock: () => { state = "playing"; },
-      builds: YARD_BUILDS,
-      // The wormhole, which is what the six parts make.
-      wormhole: yardDone(),
+      builds: STATION_BUILD,
+      /* The mouth, which is the sixth part and not the whole six: every
+         service on this station is lit by one delivery, and this is the one
+         the ablative plate lights. */
+      wormhole: stationHas("mouth"),
       onJump: (x, y) => lightJump(x, y),
       /* The light drive. `run` is how far it has wound up, 0 to 1, so the panel
          can show it spooling rather than snapping on. */
@@ -20849,7 +21041,7 @@
         have: !!surv.hasLight,
         cost: LIGHT_DRIVE.cost,
         name: LIGHT_DRIVE.name, does: LIGHT_DRIVE.does, blurb: LIGHT_DRIVE.blurb,
-        buildable: yardDone() && !surv.hasLight,
+        buildable: stationWhole() && !surv.hasLight,
         afford: surv.cash >= LIGHT_DRIVE.cost,
         run: surv.lightRun ? Math.min(1, surv.lightRun / LIGHT_SPOOL) : 0,
         hit: surv.lightHit && { eta: surv.lightHit.eta, name: surv.lightHit.name,
@@ -20902,9 +21094,9 @@
          The hull bar was drawing a bar of width NaN and nothing said a word. */
       shipName: shipSpec(surv.ship).name,
       onBuyShip: buyShip,
-      atHome: atHomeStation(),
+      atHome: hangarOpen(),
       onHangar: () => {
-        if (!atHomeStation()) return;
+        if (!hangarOpen()) return;
         state = "hangar";
         surveyHUD && surveyHUD.hangarOpened && surveyHUD.hangarOpened(surveyState());
       },
@@ -20949,7 +21141,7 @@
         }
       },
       onWormhole: () => {
-        if (!yardDone()) { gameSound("hit"); return; }
+        if (!stationHas("mouth")) { gameSound("hit"); return; }
         if (!surv.docked) { gameSound("hit"); return; }
         state = "wormhole";
       },
@@ -20962,7 +21154,6 @@
         }
       },
       onMissions: () => { state = "missions"; },
-      onYard: () => { if (surv.atYard) state = "yard"; },
       onClose: () => { state = "playing"; }
     };
   }
@@ -21302,17 +21493,17 @@
      clock stops anyway; what they needed was to be *pages* at all. */
   const SURVEY_PAGES = { chart: 1, inventory: 1, missions: 1, almanac: 1,
                          record: 1, ship: 1,
-                         craft: 1, lore: 1, refit: 1, hangar: 1, yard: 1,
+                         craft: 1, lore: 1, refit: 1, hangar: 1,
                          landed: 1, stationinv: 1, wormhole: 1 };
   const surveyPage = () =>
     !!(mode && mode.survey && surv && !surv.death && SURVEY_PAGES[state]);
-  /* Parked: at a station, at your own yard, or sitting on somebody's world. All
-     three are places you have stopped, and the sector waits for you at all three.
+  /* Parked: at a station, or sitting on somebody's world. Both are places you
+     have stopped, and the sector waits for you at both.
      `lore` is the one page that keeps running even parked — it is asked *at*
      something, usually while moving, sometimes while being pulled, and a card that
      stopped time next to a star would be an exploit rather than an answer. */
   const surveyParked = () =>
-    !!(surv && (surv.docked || surv.atYard || surv.landed));
+    !!(surv && (surv.docked || surv.landed));
   const surveyLive = () =>
     surveyPage() && (state === "lore" || !surveyParked());
   const worldRunning = () => state === "playing" || surveyLive() || onlineMenuOpen();
@@ -25674,9 +25865,6 @@
     if (state === "craft" && surv && surveyHUD) {
       surveyHUD.drawCraft(surveyState(), dt || 0); return;
     }
-    if (state === "yard" && surv && surveyHUD) {
-      surveyHUD.drawYardPage(surveyState(), dt || 0); return;
-    }
     if (state === "hangar" && surv && surveyHUD) {
       surveyHUD.drawHangar(surveyState(), dt || 0); return;
     }
@@ -27943,7 +28131,7 @@
                       hit: surv.lightHit }),
       buildLight: () => buildLightDrive(),
       toggleLight: () => toggleLightDrive(),
-      places: () => ({ docked: !!surv.docked, atYard: surv.atYard,
+      places: () => ({ docked: !!surv.docked, home: !!(surv.docked && surv.docked.home),
                        landed: surv.landed && surv.landed.name,
                        overAir: surv.overAir && surv.overAir.name,
                        skimming: surv.skimming > 0 }),

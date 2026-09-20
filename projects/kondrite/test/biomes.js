@@ -343,8 +343,8 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
    `HOME_REACH` currently is, which is the mistake the first version of this made:
    it probed at 40k because the bubble was 68k at the time, so when the bubble
    changed the test failed without anything being wrong. The opening lives in the
-   Home and Open bands — the station, the water, the yard, and the first two yard
-   parts — and those end at 25,000. That is the requirement. */
+   Home and Open bands — the station, the water, and the first two parts the
+   station is short of — and those end at 25,000. That is the requirement. */
 const OPENING_ENDS = 25000;
 for (let ring = 4000; ring <= OPENING_ENDS; ring += 3000) {
   for (let a = 0; a < 24; a++) {

@@ -379,7 +379,7 @@ const storeOf = (cf, key) => {
        and eight hours out in the next. What must still hold is the *shape*: a
        first rung close enough to reach on an early flight, a last rung that is
        an expedition, and the Leviathan always standing on that last rung
-       because it is the finale and the yard's last part is inside it. */
+       because it is the finale and the station's last part is inside it. */
     const byDist = surv.landmarks
       .map(l => ({ key: l.key, d: Math.hypot(l.x, l.y) }))
       .sort((a, b) => a.d - b.d);
@@ -686,6 +686,11 @@ const storeOf = (cf, key) => {
   const surv = cf.survey();
   const foundBefore = surv.found.size;
   const chartedBefore = hud.charted();
+  /* Two rooms of the station, lit before the quit. The six part keys did not
+     move when the parts stopped building a gate and started repairing the
+     station, so a part-built book has to come back part-built — a run three
+     deliveries in that reboots into a dead station is somebody's afternoon. */
+  surv.built.add("spar"); surv.built.add("coil");
   cf.leave();                                     // the real quit path, which saves
   const raw = store[BOOK_KEY];
   check(!!raw, "nothing was written to local storage");
@@ -701,6 +706,13 @@ const storeOf = (cf, key) => {
           again.cf.hud().charted());
     check(again.cf.survey().found.size >= foundBefore,
           "a resumed sector lost catalogue entries");
+    const back = again.cf.survey().built;
+    check(back.has("spar") && back.has("coil") && back.size === 2,
+          "a resumed station lost the parts it had: [" + [...back] + "]");
+    const rooms = (again.cf.surveyView().services || [])
+      .filter(s => s.live).map(s => s.key).sort().join(",");
+    check(rooms === "dock,hangar,supplies",
+          "a resumed station came back with [" + rooms + "] running");
 
     // A different seed is a different sector, and must not inherit the old
     // catalogue — those entries were about somewhere else.
@@ -999,7 +1011,7 @@ const storeOf = (cf, key) => {
 // ── 8c. what a death costs, and what it must not ──────────────────────────
 /* The rule the phase turns on. A death has to hurt enough to make a long haul
    home worth being nervous about, and it must never take anything you *learned*
-   or *built* — an almanac or a yard you can lose is a mode that punishes you for
+   or *built* — an almanac or a station you can lose is a mode that punishes you for
    playing it. Cash stays for the same reason it survived a hull strike before:
    money already banked is not aboard the ship. */
 {
@@ -1088,7 +1100,7 @@ const storeOf = (cf, key) => {
   const book = JSON.parse(store[BOOK_KEY]);
   check(book.deaths === 1, "the book saved " + book.deaths + " deaths");
   console.log("  death      cause, range, run length and cargo all recorded · " +
-              "hold lost · almanac, yard, chart, pins and cash kept · " +
+              "hold lost · almanac, station, chart, pins and cash kept · " +
               "back at the station");
 }
 
@@ -1463,9 +1475,20 @@ const storeOf = (cf, key) => {
     /* And the guard: park on a part with a gate right on top of it and the gate
        must not fire. This is the case the offset does not cover. */
     const me = cf.live().ships[0];
+    const HOME = cf.home();
     // A real manifest key: the objective line looks it up by name, and an
     // invented one would be testing the crash rather than the guard.
     const spare = surv.partSites.find(p => p.key !== "coil") || coil;
+    /* Off the dock first, and only just. The parts are delivered home now, so
+       a part planted under a ship that has not left the station is fitted on
+       the same tick and the pickup this is checking never shows.
+
+       Seven hundred units, not seventy thousand: far enough to be outside the
+       docking ring, near enough to stay in the chunk the ship is already in.
+       A longer jump re-streams the sector, and a re-stream rebuilds
+       `surv.parts` from the chunks — which throws away the part this test
+       plants by hand. */
+    me.x = HOME.x; me.y = HOME.y + 700; me.vx = me.vy = 0;
     const site = { key: spare.key, name: spare.name, x: me.x, y: me.y, r: 40 };
     surv.carrying.delete(spare.key);
     surv.parts.push(site);
@@ -1579,12 +1602,15 @@ const storeOf = (cf, key) => {
               "holds a fractional row");
 }
 
-// ── 14. the yard: what the mode is actually for ──────────────────────────
-/* Survey went a long time without a goal. The yard is it: six parts, each in a
-   kind of place its clue describes, carried home one at a time. The clue is the
-   part that can silently rot — it is prose, and prose does not fail a syntax
-   check — so what is asserted is that every part has one, that every part is
-   actually reachable in the sector, and that the loop closes. */
+// ── 14. the station: what the mode is actually for ───────────────────────
+/* Survey went a long time without a goal. The station is it: six parts, each in
+   a kind of place its clue describes, carried home one at a time, and each one
+   turning a room of the place you live back on. The clue is the part that can
+   silently rot — it is prose, and prose does not fail a syntax check — so what
+   is asserted is that every part has one, that every part is actually reachable
+   in the sector, that the loop closes, and that a dead station really is dead:
+   it buys, it sells water and food, and every other row on it is dark and says
+   which part it wants. */
 {
   const { cf } = boot("?debug=1&seed=2468");
   cf.start("survey", 1);
@@ -1602,32 +1628,96 @@ const storeOf = (cf, key) => {
     Math.floor(s2.x / 2600) + "," + Math.floor(s2.y / 2600)));
   check(chunks.size === sites.length, "two parts share a chunk");
 
-  check(surv.built.size === 0, "a fresh yard started already built");
+  check(surv.built.size === 0, "a fresh station started already repaired");
   check(surv.carrying.size === 0, "a fresh run started holding a part");
 
-  /* The loop, driven for real: fly to a part, pick it up, fly to the yard, and
-     the yard must be one further along. No shortcuts through the internals —
-     the ship is moved and the tick does the rest. */
+  const view = () => cf.surveyView();
   const me = cf.live().ships[0];
+  const home = cf.home();
+  const step = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.step(); } };
+
+  /* ── a dead station does three things ───────────────────────────────────
+     It buys what you are carrying, it sells water and it sells food. That is
+     the whole of the first minute and it is why the opening still works with
+     everything else switched off — so it is asserted on the shop's own rows
+     rather than by eye. A hull is broken first, because the failure this is
+     really watching for is the dry dock quietly still being open. */
+  me.x = home.x; me.y = home.y; me.vx = me.vy = 0;
+  me.invuln = 0;
+  cf.hurt("rock");
+  step(8);
+  check(!!surv.docked && !!surv.docked.home, "sitting on home did not dock");
+  const dead = view().market || [];
+  check(dead.length > 0, "a dead station had nothing at all on its shelf");
+  check(dead.every(r => r.kind === "supply"),
+        "a dead station is selling " +
+        dead.filter(r => r.kind !== "supply").map(r => r.kind).join(", ") +
+        " — it sells water and food and nothing else");
+  check(me.hull < me.maxHull, "the hull did not break, so the dock is untested");
+  check(!dead.some(r => r.kind === "repair"),
+        "the dry dock mended a hull before the drive spar came in");
+
+  /* And the rooms say so. Every service but supplies is dark, and every dark
+     one names the part it wants and where that part is kept — a row that names
+     the part and drops the clue is the failure that looks fine in a
+     screenshot. */
+  const svc = view().services || [];
+  check(svc.length >= 7, "the station has only " + svc.length + " rooms");
+  check(svc.filter(s => s.live).map(s => s.key).join(",") === "supplies",
+        "a dead station has more than supplies running: " +
+        svc.filter(s => s.live).map(s => s.key).join(", "));
+  for (const s of svc.filter(s2 => !s2.live)) {
+    check(!!s.part && !!s.clue && !!s.where,
+          s.key + " is dark and does not say what it wants or where it is");
+  }
+
+  /* The loop, driven for real: fly to a part, pick it up, fly home, and the
+     station must be one room further along. No shortcuts through the internals
+     — the ship is moved and the tick does the rest. */
   const target = sites[0];
   me.x = target.x; me.y = target.y; me.vx = me.vy = 0;
-  for (let i = 0; i < 8; i++) { now += 1000 / 60; cf.step(); }
+  step(8);
   check(surv.carrying.has(target.key),
         "flying onto " + target.key + " did not pick it up");
 
-  me.x = -280; me.y = -400; me.vx = me.vy = 0;      // the yard
-  for (let i = 0; i < 8; i++) { now += 1000 / 60; cf.step(); }
-  check(surv.built.has(target.key), "delivering to the yard did not fit the part");
+  me.x = home.x; me.y = home.y; me.vx = me.vy = 0;   // your own station
+  step(8);
+  check(surv.built.has(target.key), "delivering home did not fit the part");
   check(!surv.carrying.has(target.key), "the part was fitted and still carried");
   check(surv.found.has("salvor"), "carrying the first part home logged nothing");
 
+  /* One part, one room. The manifest says which room each part lights, and
+     delivering one has to light that one and nothing else — six fetches and
+     six payoffs is the whole change, and a part that lit two of them would
+     quietly hand the last two deliveries away. */
+  const opens = (view().manifest.find(m => m.key === target.key) || {}).opens;
+  check(!!opens, target.key + " lights nothing at all");
+  const lit = (view().services || []).filter(s => s.live)
+                .map(s => s.key).sort().join(",");
+  check(lit === ["supplies", opens].sort().join(","),
+        "delivering " + target.key + " lit [" + lit + "] rather than supplies " +
+        "and " + opens);
+
   // A fitted part must not respawn when its chunk streams back in.
   me.x = target.x; me.y = target.y;
-  for (let i = 0; i < 8; i++) { now += 1000 / 60; cf.step(); }
+  step(8);
   check(!surv.parts.some(pt => pt.key === target.key),
         "a part that was already fitted came back");
-  console.log("  yard       " + sites.length + " sites, one per chunk · " +
-              "picked up, carried home and fitted");
+
+  /* The mouth is the ablative plate's room and not a count of six. Five parts
+     in and it is still shut; the plate opens it, which is the only reason the
+     hardest fetch in the game is the last one. */
+  for (const b of view().manifest) if (b.key !== "plate") surv.built.add(b.key);
+  step(2);
+  check(view().wormhole === false || !view().wormhole,
+        "the mouth opened with the ablative plate still out there");
+  surv.built.add("plate");
+  step(2);
+  check(view().wormhole === true, "the plate went in and the mouth stayed shut");
+
+  console.log("  station    " + sites.length + " sites, one per chunk \u00b7 " +
+              "dead: it buys, water and food, nothing else \u00b7 " +
+              "one part, one room \u00b7 the mouth is the plate's");
 }
 
 // ── 15. you are always told what you are doing ───────────────────────────
@@ -2153,7 +2243,7 @@ const storeOf = (cf, key) => {
         "the reset kept the same sector (" + oldSeed + ")");
   check(fresh.found.size === 0, "the almanac survived the reset");
   check(fresh.cash === 0, "the hold survived the reset");
-  check(fresh.built.size === 0, "the yard's manifest survived the reset");
+  check(fresh.built.size === 0, "the station's manifest survived the reset");
   check(fresh.pins.length === 0, "the pins survived the reset");
   check(cf.hud().charted() === 0, "the chart survived the reset");
   check(!store[BOOK_KEY] ||
@@ -2163,7 +2253,7 @@ const storeOf = (cf, key) => {
   // And it drops you into the new sector rather than leaving you in the old one.
   check(cf.peek().state === "playing", "the reset left the game in " + cf.peek().state);
   console.log("  reset      first press arms, second wipes · new seed · " +
-              "chart, almanac, hold, yard and pins all gone");
+              "chart, almanac, hold, station and pins all gone");
 }
 
 // ── 24. a reset beats a seeded link ──────────────────────────────────────
@@ -2346,7 +2436,8 @@ const storeOf = (cf, key) => {
    quietly stopped agreeing nothing failed — the panel read `undefined`, fell
    back to zero, and drew a hold that was empty while the real one filled up
    and stopped taking motes. `atYard` went the same way and took the yard page
-   with it on any device without an `E` key.
+   with it on any device without an `E` key — the yard is gone and the field is
+   `atHomeDock` now, but the failure it stands for has not changed.
 
    Neither is visible from a screenshot and neither breaks a frame, which is
    exactly the shape of bug this file exists for. */
@@ -2363,7 +2454,8 @@ const storeOf = (cf, key) => {
   // And the two that were actually lost, by name, so a rename cannot pass by
   // deleting the reader instead of fixing the writer.
   check(typeof st.cash === "number", "surveyView() must carry `cash`");
-  check(typeof st.atYard === "boolean", "surveyView() must carry `atYard`");
+  check(typeof st.atHomeDock === "boolean",
+        "surveyView() must carry `atHomeDock`");
   console.log("  wiring     " + reads.length +
               " fields read by the panel, all of them sent");
 }
@@ -2993,7 +3085,16 @@ const storeOf = (cf, key) => {
 
   /* The objective is fired on change. Picking a part up changes it — from "find
      the X" to "carrying X" — so that is the event, and it must not also fire on
-     every frame after it. */
+     every frame after it.
+
+     Away from home first. A new survey starts parked on the home station and
+     the parts are delivered there now, so a part put into the hold while the
+     ship is still sitting on the dock is fitted on the next tick and the line
+     never says CARRYING at all. That is the delivery working, not the
+     objective failing. */
+  const away = cf.live().ships[0];
+  away.x = 26000; away.y = -18000; away.vx = away.vy = 0;
+  now += 1000 / 60; cf.step();
   const parts = cf.surveyView().manifest;
   const first = cf.surveyView().objective.text;
   check(/FIND THE/.test(first), "the opening objective is " + JSON.stringify(first));
@@ -4302,7 +4403,14 @@ const storeOf = (cf, key) => {
   surv.docked = { x: 180000, y: -90000 };
   surv.cash = big.cost + 500;
   check(cf.buyShip("ossuary") === false, "bought a ship at an ordinary station");
+  /* Nor is being at home enough on its own any more. The berth is one of the
+     station's six rooms and the jump coil is what lights it — the clamps that
+     hold a second hull are a coil — so until that part comes in you are
+     standing in your own station looking at a dark hangar. */
   surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
+  check(cf.buyShip("ossuary") === false,
+        "bought a ship at a home station whose berth is still dark");
+  surv.built.add("coil");
   surv.cash = big.cost - 1;
   check(cf.buyShip("ossuary") === false, "bought a ship a cash short");
   surv.cash = big.cost + 500;
@@ -4605,13 +4713,23 @@ const storeOf = (cf, key) => {
 
   // The first beat is the one you can act on without moving.
   check(surv.taught.has("thirst"), "nothing pointed at the water");
-  check(!surv.taught.has("yard"), "the yard spoke before the water was dealt with");
+  check(!surv.taught.has("dead"),
+        "the station spoke about itself before the water was dealt with");
 
-  // Deal with it, and the next beat is where to go.
+  /* Deal with it, and the next beat is what the place she is standing in
+     actually is. It used to name a part and a clue and point off the screen at
+     a jump gate; the gate is gone, the parts come here, and what she needs to
+     know while she is still standing at the counter is that the counter is all
+     this station has got. Where to fly is the objective line's job and is
+     checked on its own — see the objective section. */
   surv.cash = 500;
   cf.buySupply("water");
   now += 1000 / 60; cf.step();
-  check(surv.taught.has("yard"), "with a full tank, nothing said where to go");
+  check(surv.taught.has("dead"),
+        "with a full tank, nothing said what the station is");
+  const obj = cf.objective();
+  check(/FIND THE/.test(obj.text) && !!obj.sub,
+        "the objective is not naming a part and its clue: " + obj.text);
 
   // Break something, and it says what it is worth.
   surv.hold.iron = 4;
@@ -4899,8 +5017,10 @@ const storeOf = (cf, key) => {
   const me = cf.live().ships[0];
   const tick = () => { me.invuln = 3; now += 1000 / 60; cf.step(); };
 
-  // Yours: a Lance has a gun under each wing, and they take turns.
+  // Yours: a Lance has a gun under each wing, and they take turns. The berth
+  // is the jump coil's room, so the coil goes in before a hull is bought.
   surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
+  surv.built.add("coil");
   surv.cash = 1e6;
   cf.buyShip("lance");
   surv.docked = null;
@@ -6131,6 +6251,8 @@ const storeOf = (cf, key) => {
   check(view().slots.length === 4,
         "the ship has " + view().slots.length + " slots, not 4");
   const hulls = view().ships || [];
+  // The berth wants the jump coil before it will swap a hull. See SERVICES.
+  surv.built.add("coil");
   for (const h of hulls) {
     surv.owned.add(h.key);
     surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
@@ -7394,6 +7516,8 @@ const storeOf = (cf, key) => {
   const view = () => cf.surveyView();
   const list = view().ships;
   surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
+  // The berth wants the jump coil before it will swap a hull. See SERVICES.
+  surv.built.add("coil");
 
   const pantry = key => { cf.flyShip(key); return view().food.full; };
   const small = list.reduce((a, b) => (b.cargo < a.cargo ? b : a));

@@ -192,7 +192,7 @@ const SHAPES = [
    need a survey running; the menus do not. */
 const MENU_PAGES = ["title", "modes", "levels", "paused", "controls", "thumb"];
 const SURVEY_PAGES = ["chart", "inventory", "missions", "almanac", "craft",
-                      "lore", "refit", "hangar", "yard", "landed"];
+                      "lore", "refit", "hangar", "landed"];
 
 /* A tap that cannot be pressed, for one of the four reasons a rectangle can be
    unpressable. Returns why, or null. */

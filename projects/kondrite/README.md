@@ -167,16 +167,45 @@ Survey shipped without a goal. It had an almanac — a record of what you happen
 to see — and that is not the same as a reason to go anywhere. You could fly for
 an hour without the mode ever asking you for anything.
 
-So there is **the yard**, just off the origin, and it is short of six parts.
+So **your own station is broken**, and it is short of six parts.
 
-| Part | Where its clue sends you |
-|---|---|
-| Drive spar | a wreck field — somewhere a lot of ships stopped at once |
-| Fusion core | a binary pair, where nothing is ever dark |
-| Ranging lens | a rogue world, with no star to warm it |
-| Jump coil | wound around a gate |
-| Signal beacon | a wreck still calling, long after anyone stopped listening |
-| Ablative plate | deep inside the Leviathan, past its sentries |
+There used to be two things sitting a few hundred units off the origin, and a
+new player met both in the first minute: a station that worked perfectly from
+the first second, and a yard — later a jump gate — that was a hole and wanted
+six parts. They have swapped. There is no yard. The parts come home, and what
+they repair is the place you live.
+
+A dead station does three things and never a fourth until you bring it
+something: it **buys what you are carrying**, it **sells water**, and it
+**sells food**. That is the whole of the first minute, and it is why this reads
+as two people scraping by rather than as a shop with its buttons greyed out —
+somebody in there has a tank and no metal, and you have metal and no water. It
+also answers the question the design never answered: *why is the first station
+free?* It is not. It is broken, and you are the one fixing it.
+
+Everything else on it is **visible, named, dark, and says what it wants**:
+
+| Part | Where its clue sends you | What it turns back on |
+|---|---|---|
+| Drive spar | a wreck field — somewhere a lot of ships stopped at once | the dry dock: hull repairs |
+| Fusion core | a binary pair, where nothing is ever dark | the counter: parts over it, at all |
+| Ranging lens | a rogue world, with no star to warm it | the market: what the chart is paying |
+| Jump coil | wound around a gate | the hangar: the only berth there is |
+| Signal beacon | a wreck still calling, long after anyone stopped listening | stock: the counter can call in what it has not got |
+| Ablative plate | deep inside the Leviathan, past its sentries | the mouth: every charted station, one dock away |
+
+Six fetches and one payoff is a long way to walk on trust. Six fetches and six
+payoffs is a station coming alive around you — and the last row is the one to
+keep, because *you cannot open a hole in space beside an unshielded station* is
+a better reason to want a slab of armour than the game had before.
+
+**A missing tab teaches nothing; a dark one teaches everything.** Take the dark
+rows away and the place is a shop with two items and no reason to leave. And
+nothing is actually unavailable: other stations work, and you can fly to one and
+buy the normal things. What you cannot do there is jump, and what you cannot do
+there is change ship. So the argument for fixing your own is **nearest → unique
+→ hub**, in that order, and only the last of the three is a power rather than a
+convenience.
 
 Each part is placed the way a landmark is — its own bearing, its own distance —
 and **brings its own scenery with it**, so the clue is a promise the generator
@@ -202,8 +231,8 @@ Four surfaces went quiet at the same moment, and all four are the same mistake:
 
 - **The objective line said so out loud.** It had answered *what am I doing* for
   the whole manifest and then read "THE JUMP GATE IS OPEN — the sector is yours
-  to wander", which is a curtain line. It never goes blank now: once the gate is
-  built it points at the nearest landmark still missing from the book, with the
+  to wander", which is a curtain line. It never goes blank now: once the station
+  is whole it points at the nearest landmark still missing from the book, with the
   almanac's own note as the clue, and only a complete set of landmarks is
   allowed to say you are finished. The four secret entries keep their redaction
   out here too — the arrow says SOMETHING UNLOGGED and nothing more.
@@ -217,8 +246,8 @@ Four surfaces went quiet at the same moment, and all four are the same mistake:
   now, on the same terms — fires once, hangs on a pressure you are already
   under, names no destination: a dry tank a long way out introduces the ice
   melter, flying into lawless space for the first time says what it means, half the
-  light drive's price mentions the yard's second berth, and docking after the
-  gate says that some parts are not sold anywhere near here.
+  light drive's price mentions your station's second berth, and docking after the
+  last part says that some parts are not sold anywhere near here.
 - **Eleven parts could not be met.** The shop will not advertise what it does not
   stock, the workbench threw out everything it cannot build, and the almanac is a
   record rather than a shop. All three were right, and the result was that
@@ -370,7 +399,7 @@ of illustrated cards.
 ### Starting over
 
 Settings carries **RESET SURVEY**. It wipes the almanac, the chart and the flown
-line, the hold, the refit, the yard's manifest, every pin, and the record of
+line, the hold, the refit, the station's manifest, every pin, and the record of
 which caches and hulks had been worked over — then rolls a new sector and drops
 you into it. Preferences are not progress, so the zoom, the keys and the sound
 all stay.
@@ -851,7 +880,7 @@ hottest thing in the game — a CPU profile of chunk generation put 84% of it
 inside three functions (`caveHash`, `segDist2`, `tunnelNear`). It is worth
 making fast, and it is also the one file where "it still passes" is not enough:
 a saved survey stores a *seed*, so the worlds it names have to still be there.
-Change what a seed generates and every chart, pin, almanac entry and yard site
+Change what a seed generates and every chart, pin, almanac entry and part site
 in every save points at terrain that no longer exists.
 
 So the bar for touching it is not the suite. It is a **fingerprint**, taken

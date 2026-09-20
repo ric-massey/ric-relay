@@ -610,7 +610,7 @@
      arrived — and Kondrite's amber is the chrome, which is yours. Violet is a
      place. Amber is your ship. */
   /* The station's own rooms. `stationinv` is the inventory wearing the shop's
-     frame and `wormhole` is the gate's map; both are places you are standing in
+     frame and `wormhole` is the mouth's map; both are places you are standing in
      rather than pages about your ship, which is why they belong on this strip
      and not on the amber one. See `HUD.drawStationInv`. */
   const PLACE_TABS = ["refit", "hangar", "stationinv", "wormhole"];
@@ -717,15 +717,22 @@
       { key: "refit",     name: "SHOP",     live: !!(st.docked || st.landed),
         act: st.onStation },
       { key: "hangar",    name: "SHIPS",    live: !!st.atHome, act: st.onHangar },
-      /* The station's own copy of the inventory, and the gate's map. Both are
+      /* The station's own copy of the inventory, and the mouth's map. Both are
          live only where you are standing in the place that has them: the
          inventory needs a counter to stand at, and a mouth needs a mooring at
-         both ends. The wormhole tab does not exist at all until the gate is
-         built — a door to a thing you have not made is not navigation. */
+         both ends.
+
+         The mouth's tab used to not exist at all until it was open, on the
+         argument that *a door to a thing you have not made is not navigation*.
+         That was right for one tab on a station that worked. It is wrong now
+         that six of the station's rooms are dark and each one is waiting on a
+         named part, because with six the darkness **is** the objective — take
+         them away and the place is a shop with two items and no reason to
+         leave. It draws dim, like the berth beside it. */
       { key: "stationinv", name: "INVENTORY",
         live: !!(st.docked || st.landed), act: st.onStationInv },
       { key: "wormhole",  name: "WORMHOLE", live: !!(st.wormhole && st.docked),
-        act: st.onWormhole, gone: !st.wormhole },
+        act: st.onWormhole },
       /* Two pages, because they are two jobs. The ship is what you are flying
          and what is bolted to it; the cargo is everything that is merely inside
          it. They were one page called INVENTORY that did both and named one. */
@@ -741,8 +748,10 @@
        things you read on your own ship, not things the counter you are standing
        at hands you — and a place with three doors out of it stops feeling like
        somewhere you went to. */
-    const tabs = (only ? all.filter(t => only.indexOf(t.key) >= 0) : all)
-      .filter(t => !t.gone);
+    /* Nothing hides any more. `gone` was one flag for one tab and it is out
+       with the jump gate — every door the station has is in the strip, in the
+       same place, whether or not it opens yet. */
+    const tabs = only ? all.filter(t => only.indexOf(t.key) >= 0) : all;
     if (!tabs.length) return;
     const gap = api.touchOnly ? 5 : 7;
     const span = SCREEN_W - PAGE.EDGE * 2 - NAV_CLOSE_W - 16;
@@ -1009,7 +1018,7 @@
   }
 
   /* There used to be an objective band across the top of the screen: the part
-     the yard wants, its clue, and a YARD n/6 tally, all drawn every frame
+     the station wants, its clue, and an n/6 tally, all drawn every frame
      forever. It was the busiest thing on the HUD and it was answering a question
      nobody asks twice — "what am I looking for" is a thing you check when it
      changes and then not again for twenty minutes.
@@ -1082,17 +1091,11 @@
           SIZE.cap, VIOLET, "center", 0.95, "0.12em");
     tap({ x: b.x, y: iy, w: b.w, h: 30, act: st.onInventory || (() => {}) });
 
-    if (st.atYard) {
-      ctx.save();
-      ctx.strokeStyle = CASH;
-      ctx.globalAlpha = 0.8;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(b.x, iy + 36, b.w, 30);
-      ctx.restore();
-      label(api.touchOnly ? "JUMP GATE" : "JUMP GATE  [E]", b.x + b.w / 2, iy + 56,
-            SIZE.cap, CASH, "center", 1, "0.12em");
-      tap({ x: b.x, y: iy + 36, w: b.w, h: 30, act: st.onYard || (() => {}) });
-    }
+    /* There was a second button here, for the yard. The yard was a second
+       place; the parts come home to the station now, and the way into a station
+       is the way into a station — `E`, or the DOCKED prompt on a phone. One
+       door, and nothing under the chart that only ever lit up in one spot a few
+       hundred units from the origin. */
   }
 
   /* ── what a scan came back with ───────────────────────────────────────────
@@ -1340,15 +1343,19 @@
 
     // The yard is the one fixed place in the sector and the thing you keep
     // coming back to, so it is always on the chart whether or not it is loaded.
-    if (st.yard && big) {
-      const x = mx(st.yard.x), y = my(st.yard.y);
+    /* Home, and what it is still short of. It sits on top of the station mark
+       the gazetteer already draws rather than beside it, because it is the same
+       place: the tally is what your own station still wants, not a second
+       structure off the origin. */
+    if (st.home && big && st.home.built < st.home.needs) {
+      const x = mx(st.home.x), y = my(st.home.y);
       ctx.save();
-      ctx.strokeStyle = st.yard.built >= st.yard.needs ? CASH : VIOLET;
+      ctx.strokeStyle = VIOLET;
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.stroke();
       ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
-      label("JUMP GATE  " + st.yard.built + "/" + st.yard.needs,
+      label("YOUR STATION  " + st.home.built + "/" + st.home.needs,
             x + 14, y + 5, SIZE.cap, VIOLET, "left", 0.9);
     }
 
@@ -2280,11 +2287,13 @@
     const right = b.x + b.w;
     const wide = NOTE_W();
     // Below the chart, its label and the buttons under it, whichever are there.
-    /* Below the chart, the region readout, the inventory button and the yard
-       button, whichever are there. The 52 is the button's own top — it moved down
-       when the region line took a row above it, and this has to move with it or
-       the first notification's target sits on top of the button's. */
-    let y = b.y + b.h + 52 + 30 + (st && st.atYard ? 36 : 0) + 34;
+    /* Below the chart, the region readout and the inventory button. The 52 is
+       the button's own top — it moved down when the region line took a row above
+       it, and this has to move with it or the first notification's target sits
+       on top of the button's. There was a yard button under it once, and a row
+       of height that came and went with it; there is one door into a station
+       now and the row is gone with the yard. */
+    let y = b.y + b.h + 52 + 30 + 34;
     for (const n of notes) {
       /* An open note is at full strength whatever its clock says — it is not
          fading, it is being read. */
@@ -4184,12 +4193,55 @@
           cat: e.cat
         })));
 
-      panel(full.x, bodyY, full.w, bodyH, CASH, "SELL",
+      /* ── what everywhere else is paying ────────────────────────────────
+         The ranging lens's room, and it only ever draws in one place: your own
+         station, once the lens is in, with something aboard worth pricing. One
+         row a material you are actually carrying — what the counter in front of
+         you pays, the best standing price on the chart, and which way that is.
+
+         It sits above the list rather than inside it because it is not part of
+         the transaction: the rows underneath are what you are selling *here*,
+         and this is the argument for not doing that. */
+      const board = (st.payBoard || []).filter(r => r.best != null);
+      let sellY = bodyY, sellH = bodyH;
+      if (board.length) {
+        const bh = PANEL_H(board.length);
+        panel(full.x, bodyY, full.w, bh, ICE, "THE MARKET",
+              "WHAT THE CHART IS PAYING");
+        board.forEach((r, i) => {
+          const y = ROW(bodyY, i);
+          const up = r.best > r.here;
+          ctx.save();
+          ctx.fillStyle = r.colour;
+          ctx.globalAlpha = 0.85;
+          ctx.fillRect(full.x + PAGE.PAD, y - 9, 9, 9);
+          ctx.restore();
+          fitText(r.name, full.x + PAGE.PAD + 18, y, SIZE.cap, r.colour, "left",
+                  0.9, 150, "0.08em");
+          label(r.n + " ABOARD", full.x + PAGE.PAD + 180, y, SIZE.cap,
+                VIOLET_LOW, "left", 0.7, "0.1em");
+          label("HERE " + money(r.here), full.x + PAGE.PAD + 300, y, SIZE.cap,
+                CASH_DIM, "left", 0.8);
+          /* The number that is the point of the room, and it is only news when
+             it is bigger: a board that shouts about a station paying less than
+             the one you are standing in is a board you stop reading. */
+          label("BEST " + money(r.best), full.x + PAGE.PAD + 430, y, SIZE.cap,
+                up ? CASH : CASH_DIM, "left", up ? 1 : 0.6);
+          fitText(r.bearing == null ? ""
+                  : String(r.bearing).padStart(3, "0") + "\u00b0  \u00b7  " + r.range,
+                  full.x + full.w - PAGE.PAD, y, SIZE.cap,
+                  up ? ICE : VIOLET_LOW, "right", up ? 0.9 : 0.55, 240);
+        });
+        sellY = bodyY + bh + PAGE.STEP;
+        sellH = bodyH - bh - PAGE.STEP;
+      }
+
+      panel(full.x, sellY, full.w, sellH, CASH, "SELL",
             carried ? carried + " UNITS ABOARD" : "NOTHING ABOARD");
 
       if (!list.length) {
         fitText("Nothing aboard to sell.", full.x + PAGE.PAD,
-                bodyY + PAGE.HEAD + 20, SIZE.cap, VIOLET_DIM, "left", 0.6,
+                sellY + PAGE.HEAD + 20, SIZE.cap, VIOLET_DIM, "left", 0.6,
                 full.w - 60);
       }
 
@@ -4217,8 +4269,8 @@
         : sellable;
 
       shown.forEach((r, i) => {
-        const y = bodyY + PAGE.HEAD + 18 + i * 38;
-        if (y > bodyY + bodyH - 74) return;    // the two buttons' room
+        const y = sellY + PAGE.HEAD + 18 + i * 38;
+        if (y > sellY + sellH - 74) return;    // the two buttons' room
 
         if (r.kind === "heading") {
           label("NOT PURCHASING TODAY", x0, y, SIZE.cap, VIOLET_LOW,
@@ -4354,7 +4406,7 @@
          leaves the tanks and the crate alone, because a button that sold the
          spare engine you went four sectors for would be the worst thing on this
          page. Anything beyond the materials goes through the ticks. */
-      const btnY = bodyY + bodyH - 32;
+      const btnY = sellY + sellH - 32;
       button(going.length ? "SELL SELECTED   " + money(takings)
                           : "NOTHING SELECTED",
              full.x + full.w / 2 - 156, btnY, 300, 36,
@@ -4384,18 +4436,68 @@
       return;
     }
 
+    /* ── what this station cannot do yet ──────────────────────────────────
+       Only at home, and only while something is still dark. Every room the
+       station has, named, with the part it is waiting for and the clue to where
+       that part is kept — the same line the manifest carries, moved to the
+       place it unlocks.
+
+       It goes above the shelf rather than below it because it is the reason to
+       leave: the shelf under it is water and food, and this is the list of
+       everything the counter would be if you went and got it. When the sixth
+       part is in, the panel is simply not there, and the shop is a shop. */
+    const dark = st.atHomeDock ? (st.services || []).filter(s => !s.live) : [];
+    let buyY = bodyY, buyH = bodyH;
+    if (dark.length) {
+      const dh = PANEL_H(dark.length);
+      panel(full.x, bodyY, full.w, dh, VIOLET, "DARK",
+            dark.length + (dark.length === 1 ? " ROOM" : " ROOMS") +
+            "  \u00b7  EACH WANTS A PART");
+      /* Four columns, and the order they give way in is the order they matter
+         in. **What it wants and where that is** are the whole row — a row that
+         names the part and drops the place is the failure that looks fine in a
+         screenshot — so those two get their width first, off the right edge.
+         The blurb takes whatever is left and is simply not drawn when what is
+         left is not enough to read: at 800 across it goes, at 1200 it is
+         there, and neither width ever prints half a sentence. */
+      const dx0 = full.x + PAGE.PAD;
+      const drx = full.x + full.w - PAGE.PAD;
+      const WHERE_W = 230, PART_W = 220;
+      const partX = drx - WHERE_W - 14 - PART_W;
+      const doesX = dx0 + 176;
+      const doesW = partX - 14 - doesX;
+      dark.forEach((s, i) => {
+        const y = ROW(bodyY, i);
+        const col = s.carrying ? CASH : VIOLET;
+        label(s.carrying ? "\u25b2" : "\u00b7", dx0, y, SIZE.cap, col, "left", 1);
+        fitText(s.name, dx0 + 22, y, SIZE.cap, col, "left", 1, 146, "0.08em");
+        if (doesW >= 200) {
+          fitText(s.does, doesX, y, SIZE.cap, VIOLET_LOW, "left", 0.75, doesW);
+        }
+        fitText(s.carrying ? "ABOARD \u2014 " + s.part : "NEEDS " + s.part,
+                partX, y, SIZE.cap, s.carrying ? CASH : AMBER, "left", 0.9,
+                PART_W, "0.06em");
+        fitText(s.where || s.clue || "", drx, y, SIZE.cap, AMBER_DIM, "right",
+                0.7, WHERE_W);
+      });
+      buyY = bodyY + dh + PAGE.STEP;
+      buyH = bodyH - dh - PAGE.STEP;
+    }
+
     /* ── and what they will sell you ─────────────────────────────────────────
        Built the same way as the SELL tab, because it is the same act in the
        other direction: tick what is going in the hold, say how much of it, and
        one button at the bottom does the buying. It was a list with a button on
        every row and three rows a tank — QUARTER, HALF and FILL — which was a
        quantity control made out of buttons, next to a page that had a real one. */
-    panel(full.x, bodyY, full.w, bodyH, AMBER, "BUY",
+    panel(full.x, buyY, full.w, buyH, AMBER, "BUY",
           rows.length + (rows.length === 1 ? " THING" : " THINGS"));
 
     if (!rows.length) {
-      fitText("This one has nothing you need.", full.x + PAGE.PAD,
-              bodyY + PAGE.HEAD + 20, SIZE.cap, VIOLET_DIM, "left", 0.6,
+      fitText(dark.length ? "Water and food. Everything else here is dark."
+                          : "This one has nothing you need.",
+              full.x + PAGE.PAD,
+              buyY + PAGE.HEAD + 20, SIZE.cap, VIOLET_DIM, "left", 0.6,
               full.w - 60);
     }
 
@@ -4434,8 +4536,8 @@
       ticketed += c;
     });
 
-    const inner = { x: full.x + 1, y: bodyY + PAGE.HEAD - 8,
-                    w: full.w - 2, h: bodyH - PAGE.HEAD - 46 };
+    const inner = { x: full.x + 1, y: buyY + PAGE.HEAD - 8,
+                    w: full.w - 2, h: buyH - PAGE.HEAD - 46 };
     ctx.save();
     ctx.beginPath();
     ctx.rect(inner.x, inner.y, inner.w, inner.h);
@@ -4602,7 +4704,7 @@
     button(!basket.length ? "NOTHING SELECTED"
              : canPay ? "BUY SELECTED   " + money(bill)
              : "NOT ENOUGH CASH   " + money(bill),
-           full.x + full.w / 2, bodyY + bodyH - 32, 320, 36,
+           full.x + full.w / 2, buyY + buyH - 32, 320, 36,
            !basket.length ? VIOLET_LOW : canPay ? AMBER : WARN,
            canPay ? () => {
              for (const b of basket) {
@@ -4628,7 +4730,7 @@
      H1. The inventory, wearing the shop's frame.
 
      The strip along the top is the station's — SHOP, SHIPS, INVENTORY and, once
-     the gate is open, WORMHOLE — because those are rooms in the place you are
+     the mouth is open, WORMHOLE — because those are rooms in the place you are
      standing in. The row where BUY and SELL sit belongs to your ship, so it is
      amber and it carries the pages the inventory already has. Below that is the
      inventory page itself, unchanged and unforked. See `embedded`.
@@ -4687,7 +4789,7 @@
   };
 
   /* ═══ THE WORMHOLE ════════════════════════════════════════════════════════
-     H3. A map, and only a map for one purpose: the mouths the gate can open.
+     H3. A map, and only a map for one purpose: the mouths the station can open.
 
      It is deliberately not the chart. The chart is where you read the sector —
      it pans, it zooms, it carries pins and hazards and the line you flew, and
@@ -4700,7 +4802,7 @@
      whole set is never more than a few dozen marks.
 
      Free, and any station you have *charted* counts. You still have to be
-     docked somewhere to make the jump: the gate opens a mouth between two
+     docked somewhere to make the jump: the mouth opens between two
      moorings, not between a patch of empty space and a mooring. */
   HUD.drawWormhole = function (st, dt) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
@@ -6326,8 +6428,8 @@
      player checks on every dock under four they read once a trip.
 
      They are one page now and they belong together: who you are to the powers,
-     who knows your name, the book, what has happened, and the gate you are
-     building. None of it is in the hold. */
+     who knows your name, the book, what has happened, and the station you are
+     putting back together. None of it is in the hold. */
   let recPg = { scroll: 0 };
   HUD.recordOpened = function () { recPg.scroll = 0; };
   HUD.recordScrollBy = function (dy, total, view) {
@@ -6603,19 +6705,20 @@
     ctx.restore();
   }
 
-  /* ═══ THE JUMP GATE ═══════════════════════════════════════════════════════
-     Opened by docking at it. Says what is being built, what it will do, and
-     which six things it is still short of — with the clue for each one you have
-     not brought in yet. The clue is the whole navigation system, so this is the
-     page you come back to when you do not know where to go next. */
-  /* One page, two ways in. Docking at the yard opens it because that is where the
-     parts go; the inventory opens it because "what am I looking for" is a
-     question you ask a long way from the yard, and the answer used to be a
-     permanent band across the top of the flight screen. `atYard` is the only
-     difference: the same content, and a footer that names the key you arrived by. */
-  HUD.drawMissions = function (st, dt) { HUD.drawYardPage(st, dt); };
+  /* ═══ WHAT THE STATION IS SHORT OF ════════════════════════════════════════
+     Says what your own station still wants, what each part turns back on, and
+     the clue for each one you have not brought in yet. The clue is the whole
+     navigation system, so this is the page you come back to when you do not
+     know where to go next.
 
-  /* ── the gate, as bands ───────────────────────────────────────────────────
+     One page, two ways in. The station opens it because that is where the parts
+     go; the strip opens it from anywhere because "what am I looking for" is a
+     question you ask a long way from home, and the answer used to be a
+     permanent band across the top of the flight screen. `atHomeDock` is the
+     only difference: the same content, and a title that knows whether you are
+     standing in the place it is about. */
+
+  /* ── the station, as bands ────────────────────────────────────────────────
      Drawn against a `y` you hand it rather than against the top of a page, so
      the same three panels can be the whole of the yard's page and the first
      thing on the record. They were one page and a door to it, which meant the
@@ -6623,7 +6726,7 @@
      that it existed. Returns where it finished. */
   function missionBands(st, full, y0) {
     const { ctx, SCREEN_W } = api;
-    const b = st.builds || { name: "THE JUMP GATE", does: "", blurb: "" };
+    const b = st.builds || { name: "YOUR STATION", does: "", blurb: "" };
     const done = st.built || 0, need = st.needs || 6;
     const finished = done >= need;
 
@@ -6634,7 +6737,7 @@
        row rather than in the middle of the page, so the words lead. */
     const headH = PANEL_H(2);
     panel(full.x, y0, full.w, headH, finished ? CASH : VIOLET,
-          finished ? "BUILT" : "BUILDING", done + " / " + need);
+          finished ? "WHOLE" : "BROKEN", done + " / " + need);
     fitText(b.name, full.x + PAGE.PAD, ROW(y0, 0) + 4, SIZE.head,
             finished ? CASH : VIOLET, "left", 1, full.w - 320, "0.12em");
     fitText(finished ? b.does : b.blurb, full.x + PAGE.PAD, ROW(y0, 1) + 6,
@@ -6664,7 +6767,7 @@
        what lets an eye track a clue back to its name across 900 pixels. */
     const listY = y0 + headH + PAGE.STEP;
     /* Six rows that all say "fitted" is a monument, and the page has somewhere
-       better to spend two hundred pixels once the gate is open — see the long
+       better to spend two hundred pixels once the station is whole — see the long
        list below, which is the thing that answers *what now* and needs the
        room. The manifest collapses to the one line that is still worth reading:
        that it is done. */
@@ -6675,11 +6778,11 @@
        than as a shopping list with a delivery address. */
     panel(full.x, listY, full.w, PANEL_H(man.length + 1), VIOLET, "THE MANIFEST",
           finished ? "ALL SIX PARTS FITTED"
-                   : (need - done) + " PARTS STILL OUT THERE");
+                   : (need - done) + " ROOMS STILL DARK");
     fitText(finished
               ? "every part is in. that was the tutorial."
-              : "six parts, scattered across the sector. find one, fly it home to " +
-                "the yard, and it goes into the gate.",
+              : "six parts, scattered across the sector. find one, fly it home, " +
+                "and a room of your station comes back on.",
             full.x + PAGE.PAD, ROW(listY, 0) + 2, SIZE.cap, VIOLET_DIM, "left",
             0.7, full.w - PAGE.PAD * 2);
     man.forEach((m, i) => {
@@ -6697,13 +6800,22 @@
             full.x + PAGE.PAD, y, SIZE.cap, colour, "left", have ? 0.7 : 1);
       fitText(m.name, full.x + PAGE.PAD + 22, y, SIZE.cap, colour, "left",
               have ? 0.6 : 1, 190, "0.08em");
-      fitText(have ? "fitted" : aboard ? "aboard \u2014 take it to the gate" : m.clue,
+      /* The clue keeps the width. It is the whole navigation system — a
+         manifest row that names a part and cuts the sentence telling you where
+         it is has given away the only thing on the page you cannot work out for
+         yourself. */
+      fitText(have ? "fitted" : aboard ? "aboard \u2014 take it home" : m.clue,
               full.x + 250, y, SIZE.cap,
               have ? CASH_DIM : aboard ? CASH : AMBER_DIM, "left",
-              have ? 0.45 : 0.8, full.w - 420);
-      label(have ? "FITTED" : aboard ? "ABOARD" : "WANTED",
-            full.x + full.w - PAGE.PAD, y, SIZE.cap, colour, "right",
-            have ? 0.45 : 0.8, "0.14em");
+              have ? 0.45 : 0.8, full.w - 444);
+      /* And what it turns on, in the column that used to say WANTED, ABOARD or
+         FITTED. Those three were the row's state said a second time — the mark
+         at the head of it and the colour of the whole line already say it — and
+         the state of a *room* is a better thing to spend the column on than the
+         state of the errand. */
+      fitText(m.service || "", full.x + full.w - PAGE.PAD, y, SIZE.cap,
+              have ? CASH_DIM : aboard ? CASH : AMBER, "right",
+              have ? 0.5 : 0.9, 160, "0.06em");
     });
 
     /* The yard's second project, shown only once the first is finished:
@@ -6784,25 +6896,25 @@
     return tail;
   }
 
-  HUD.drawYardPage = function (st, dt) {
+  HUD.drawMissions = function (st, dt) {
     const { ctx, SCREEN_W } = api;
     st = st || {};
-    const b = st.builds || { name: "THE JUMP GATE", does: "", blurb: "" };
+    const b = st.builds || { name: "YOUR STATION", does: "", blurb: "" };
     const done = st.built || 0, need = st.needs || 6;
     const finished = done >= need;
     const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
 
     /* The subtitle counted parts, which stops being news the moment they are
        all in — "6 OF 6 PARTS FITTED" is a page telling you about yesterday. Once
-       the gate is open it counts the thing that is still counting. */
+       the station is whole it counts the thing that is still counting. */
     const LL = st.longList || [];
-    pageFrame(st.atYard ? "THE JUMP GATE" : "MISSIONS",
+    pageFrame(st.atHomeDock ? "YOUR STATION" : "MISSIONS",
               finished
                 ? (LL.length
                      ? LL.filter(p => p.have).length + " OF " + LL.length +
                        " HARD-TO-FIND PARTS"
-                     : "THE GATE IS OPEN")
-                : done + " OF " + need + " PARTS FITTED",
+                     : "THE STATION IS WHOLE")
+                : done + " OF " + need + " ROOMS RUNNING",
               "", SHIP_TONE);
 
     missionBands(st, full, PAGE.TOP);
@@ -6908,7 +7020,7 @@
     [d.cash + " CASH",
      d.found + " ALMANAC " + (d.found === 1 ? "ENTRY" : "ENTRIES"),
      fmtCells(d.charted) + " CELLS CHARTED",
-     "the gate and everything fitted"
+     "your station and everything fitted"
     ].forEach((k, i) => {
       label("·", R.x + PAGE.PAD, ROW(by, i), SIZE.cap, CASH_DIM, "left", 0.6);
       fitText(k, R.x + PAGE.PAD + 16, ROW(by, i), SIZE.cap, CASH_DIM, "left",
