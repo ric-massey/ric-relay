@@ -28,7 +28,15 @@ button that throws one away has no business next to the button that resumes it;
 the game already has one place where that happens, the reset in SETTINGS, which
 arms on the first press and wipes on the second.
 
-And that is all it does. There was briefly a quieter **SIMULATORS** line under
+And that is nearly all it does — under the button is SETTINGS, and in the corner
+are the two switches nobody came here to press. **Six pieces of text on the whole
+page**, which is the second thing Ric asked for (*"less words … look like a real
+start up page from a professional gaming company"*): the art went full bleed
+behind everything instead of sitting in a bordered box in the middle, and two
+sentences came off — one about what a station has in it, one about how many
+people can play. A front page is not where a game explains itself.
+
+There was briefly a quieter **SIMULATORS** line under
 it, with a solo/multiplayer lane page behind that; Ric took the door off —
 *"simulators tab should be inside of the survey game"* — because a machine is
 something a **station has**, and a door to one on the front page made it a second

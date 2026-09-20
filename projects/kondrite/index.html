@@ -3067,11 +3067,11 @@
     };
   }
 
-  /* The front page's doors. There is one, now that the machines live in the
-     world rather than behind a button here — kept as a list because the digits
-     and the arrows both read it, and a list of one is a smaller change than
-     three special cases. */
-  const TITLE_DOORS = [() => playSurvey()];
+  /* The front page's doors, in the order they are drawn. The game, and the
+     settings — the machines used to be the second of these and are in the
+     world now. The digits and the arrows both read this list. */
+  const TITLE_DOORS = [() => playSurvey(),
+                       () => { state = openSettings("title"); }];
 
   function menuKey(code) {
     if (state === "title") {
@@ -21433,10 +21433,13 @@
     titleCard = {
       started,
       head: started ? "CONTINUE THE SECTOR" : "BEGIN THE SURVEY",
+      /* Short. This sits under the one button on the front page, and the
+         front page is not where the game explains itself — a count is a fact
+         about your sector and earns its line; a sentence about what Survey is
+         does not. */
       sub: started
-        ? (found ? found + " LOGGED  \u00b7  it is where you left it"
-                 : "it is where you left it")
-        : "one pilot, one chart, and nothing shooting at you"
+        ? (found ? found + " LOGGED" : "where you left it")
+        : "one pilot, one chart"
     };
     return titleCard;
   }
@@ -24876,89 +24879,80 @@
      reset in SETTINGS, which arms on the first press and wipes on the second.
      One way to lose a sector, and it is a decision. */
   function drawTitle(dt) {
-    text("KONDRITE", SCREEN_W / 2, 100, 64, "#ffe56d");
-    /* A chondrite is the commonest stony meteorite — the old, undifferentiated
-       stuff a solar system got made out of. The K is the stylisation, and it is
-       a better name for this game than CROSSFIRE was, given what it turned
-       into. */
-    text("a survey of endless space", SCREEN_W / 2, 136, 15, "#ffcb42");
+    /* ── the art is the page ───────────────────────────────────────────────
+       It used to be a 760-wide diorama in a bordered box floating in the
+       middle of the screen, with the idling field drifting across the title
+       over the top of it. That is a menu with a picture on it. A title screen
+       has the picture *behind* it — so the survey scene is full bleed, the
+       drift is covered by it rather than gated off (this draws after it), and
+       everything else sits on a scrim.
 
-    const w = Math.round(Math.min(760, SCREEN_W - MENU_INSET * 2));
-    const x = Math.round(SCREEN_W / 2 - w / 2);
+       Ric, 20 September 2026: *"less words … look like a real start up page
+       from a professional gaming company."* Two sentences came off with the
+       box — one about stations and one about how many people can play —
+       because a front page is not where a game explains itself. */
+    /* Overscanned. The diorama was composed for a card 740 wide and 174 tall;
+       stretched to a whole page its galaxy shrinks into one corner and the
+       scene reads as an empty rectangle rather than as space. Drawn a third
+       larger than the page and pulled back to centre, the galaxy is the size
+       it was meant to be and what falls off the edges is the part that was
+       always padding. */
+    const ov = 0.34;
+    if (menuArt) {
+      menuArt.preview("survey", -SCREEN_W * ov / 2, -SCREEN_H * ov / 2,
+                      SCREEN_W * (1 + ov), SCREEN_H * (1 + ov), clock);
+    }
 
-    /* ── the game ──────────────────────────────────────────────────────────
-       The survey diorama was one card in a row of five. It is the game's own
-       picture now, at the size that says so. */
-    /* The card's own room, and the numbers are load-bearing: the row of
-       buttons along the bottom is fixed at 590, so the card's foot plus the
-       simulators line plus its two captions have to land clear of it. They did
-       not, at first — the hint sat six pixels above SOUND. */
-    const gy = 172, gh = 268;
+    /* The scrim: darkest at the top and bottom, barely there across the
+       middle, so the wordmark and the buttons have something to sit on while
+       the scene still reads through the waist of the page. */
+    const scrim = ctx.createLinearGradient(0, 0, 0, SCREEN_H);
+    scrim.addColorStop(0,    "rgba(10, 11, 16, 0.72)");
+    scrim.addColorStop(0.32, "rgba(10, 11, 16, 0.12)");
+    scrim.addColorStop(0.55, "rgba(10, 11, 16, 0.52)");
+    scrim.addColorStop(1,    "rgba(10, 11, 16, 0.94)");
+    ctx.save();
+    ctx.fillStyle = scrim;
+    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    ctx.restore();
+
+    /* ── the wordmark ──────────────────────────────────────────────────────
+       High, large, and with air around it. A chondrite is the commonest stony
+       meteorite — the old, undifferentiated stuff a solar system got made out
+       of — and the K is the stylisation. */
+    text("KONDRITE", SCREEN_W / 2, 186, 78, "#ffe56d", "center", 1, "0.06em");
+    text("a survey of endless space", SCREEN_W / 2, 224, 15, "#ffcb42",
+         "center", 0.85, "0.22em");
+
+    /* ── one thing to press ────────────────────────────────────────────────
+       The primary action, and under it the only fact worth putting on a front
+       page: how much of your sector is written down. */
+    const card = titleSurvey();
     const on0 = titlePick === 0;
     laneAnim[0] += ((on0 ? 1 : 0) - laneAnim[0]) * Math.min(1, (dt || 0) * 9);
-    const lift = laneAnim[0] * 6;
-    const top = gy - lift;
-    const colour = "#a08cff";
-    ctx.save();
-    ctx.fillStyle = colour;
-    ctx.globalAlpha = 0.07 + laneAnim[0] * 0.09;
-    ctx.fillRect(x, top, w, gh);
-    ctx.globalAlpha = 0.55 + laneAnim[0] * 0.45;
-    ctx.fillRect(x, top, w, 3);
-    ctx.strokeStyle = colour;
-    ctx.globalAlpha = 0.45 + laneAnim[0] * 0.55;
-    ctx.lineWidth = on0 ? 2 : 1;
-    ctx.strokeRect(x, top, w, gh);
-    ctx.restore();
+    const bw = Math.min(360, SCREEN_W - MENU_INSET * 2);
+    /* The count sits *above* the button rather than under it. Under, it was
+       ten pixels off the border and read as part of the button; above, it is
+       the line the button answers. */
+    text(card.sub, SCREEN_W / 2, 396, 12, "#ffcb42", "center", 0.55, "0.24em");
+    tapButton(card.head, SCREEN_W / 2, 428, bw, 52, "#a08cff",
+              () => playSurvey(), on0);
 
-    const pad = 10, artH = gh - pad * 2 - 84, artY = top + pad;
-    if (menuArt) menuArt.preview("survey", x + pad, artY, w - pad * 2, artH, clock);
-    const fadeH = Math.min(80, artH * 0.4);
-    const fade = ctx.createLinearGradient(0, artY + artH - fadeH, 0, artY + artH);
-    fade.addColorStop(0, tint(colour, 0));
-    fade.addColorStop(1, tint(colour, 0.2 + laneAnim[0] * 0.12));
-    ctx.save();
-    ctx.fillStyle = fade;
-    ctx.fillRect(x + pad, artY + artH - fadeH, w - pad * 2, fadeH);
-    ctx.restore();
+    const on1 = titlePick === 1;
+    laneAnim[1] += ((on1 ? 1 : 0) - laneAnim[1]) * Math.min(1, (dt || 0) * 9);
+    tapButton("SETTINGS", SCREEN_W / 2, 492, bw, 38, "#ffcb42",
+              () => { state = openSettings("title"); }, on1);
 
-    /* What the button does, and what you have written down, in that order —
-       the loud half is the verb. See `titleSurvey`. */
-    const card = titleSurvey();
-    text(card.head, x + w / 2, artY + artH + 36, 30, colour);
-    fitLine(card.sub, x + w / 2, artY + artH + 64, 14, "#ffcb42", "center",
-            0.85, w - 26);
-    pushTap({ x, y: top, w, h: gh, act: () => playSurvey() });
-
-    /* ── and nothing else ──────────────────────────────────────────────────
-       There was a SIMULATORS door here, and Ric took it off (20 September
-       2026): *"simulators tab should be inside of the survey game."* A machine
-       is a cabinet in a station, and a door to it on the front page made it a
-       second thing the game offers rather than a thing the world contains. You
-       reach one the way you reach a shop — by flying to a place that has one.
-
-       That leaves the front page with exactly one thing it does, which is what
-       the page was always arguing for.
-
-       **Playing with other people went with it**, because SIMULATORS was the
-       only visible way there. It is not gone — it moved into the same room as
-       the machines, where the cabinets are. See `HUD.drawArcade`. */
-    const sy = gy + gh + 34;
-    text("a station has machines in the corner, and people to play them with",
-         SCREEN_W / 2, sy + 6, 13, "#ffcb42", "center", 0.7);
-
-    tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
-              300, 590, 210, 36, soundEnabled ? "#ffe56d" : "#ffcb42",
-              toggleSound, soundEnabled);
-    tapButton(fullscreenLabel(), COLS(4, 2), 590, 210, 36, "#ffe56d",
-              toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
-    tapButton("SETTINGS", COLS(4, 3), 590, 210, 36, "#ffe56d",
-              () => { state = openSettings("title"); });
-
-    text(thumbInput()
-           ? "one player per phone · up to five online, a screen each"
-           : "two at this keyboard · up to five online · every key is yours to change",
-         SCREEN_W / 2, 646, 12, "#ffcb42");
+    /* ── and the two switches ──────────────────────────────────────────────
+       Sound and fullscreen are not things you came here to do, so they stop
+       being three equal buttons in a row with SETTINGS and become a pair of
+       small ones in the corner, where a title screen keeps its switches. */
+    const cy = SCREEN_H - 46;
+    tapButton(soundEnabled ? "SOUND ON" : "SOUND OFF",
+              SCREEN_W - 248, cy, 130, 30,
+              soundEnabled ? "#ffe56d" : "#ffcb42", toggleSound, false);
+    tapButton(fullscreenLabel(), SCREEN_W - 110, cy, 130, 30, "#ffcb42",
+              toggleFullscreen, false, fullscreenSupported());
   }
 
   /* ═══ THE MACHINES ════════════════════════════════════════════════════════

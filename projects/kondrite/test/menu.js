@@ -223,10 +223,19 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
      other people" by being a place instead of by asking. */
   cf.screen("title");
   cf.draw();
-  cf.key("ArrowRight");                       // there is nowhere else to go
-  cf.key("Enter");
+  cf.key("Enter");                            // the loud one, with nothing pressed
   check(cf.peek().mode === "SURVEY",
-        "the front page's only door did not start the game: " + cf.peek().state);
+        "the front page's first door did not start the game: " + cf.peek().state);
+
+  /* Two things on it, and the second is SETTINGS rather than another way to
+     play. A front page with one button that the arrows cannot leave is a front
+     page where the keyboard does nothing. */
+  cf.screen("title");
+  cf.draw();
+  cf.key("ArrowRight");
+  cf.key("Enter");
+  check(cf.peek().state !== "title",
+        "arrowing off the game and pressing ENTER stayed on the front page");
 
   /* And the lane page is gone rather than merely unlinked. Asked of the source
      rather than of the game, because `cf.screen` force-sets any string it is
