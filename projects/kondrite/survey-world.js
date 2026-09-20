@@ -1059,6 +1059,211 @@ function caveTint(x, y) {
 }
 
 
+  /* ── the boards on the machines ───────────────────────────────────────────
+     A simulator pays nothing back into the sector, so the board is the whole
+     reward, and a solo board cannot be real: there is nobody to witness a score
+     one person made alone. So it is **made up** — and made up in the one way
+     that is honest about it, which is to be *the sector's own people*.
+
+     A dozen names and scores, generated from the machine's coordinates and its
+     owner. It costs one seeded function and it buys four things the plan asks
+     for: it works with no network at all, it is never empty on a first boot,
+     it is stable forever — the same cabinet shows the same twelve names on
+     every visit, for as long as the sector exists — and it is **different at
+     every station and every planet**, so a board is a thing you find rather
+     than a thing the game has.
+
+     It is the same trick the chunk generator runs on, and it is seeded off
+     `hash2`, which means it is off the *sector* seed too: a new survey is a new
+     sector with new people in it, which is right.
+
+     The faction is not decoration. A Cordon board is a duty roster, a Hallow
+     board is a list of people older than the lanes, a Morrow board is a ledger
+     and a pirate board is graffiti. Walking into a station in somebody else's
+     space and finding somebody else's people on the machine is most of what
+     makes a second cabinet worth looking at. */
+
+  /* Mulberry32, from a 32-bit seed. Its own, rather than `seeded`: a board must
+     not move the sector's own roll on, and this is asked for at draw time — on
+     a page that may be redrawn sixty times a second. */
+  const boardRng = s0 => {
+    let t = s0 >>> 0;
+    return () => {
+      t = (t + 0x6D2B79F5) >>> 0;
+      let r = Math.imul(t ^ (t >>> 15), 1 | t);
+      r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+  };
+  const pick = (R, a) => a[Math.floor(R() * a.length) % a.length];
+
+  /* Five ways of being somebody. Each is a shape as much as a word list — the
+     Cordon wear a rank, the Hallow wear where they are from, Morrow wear what
+     they trade as — because a board of five word lists in one shape would read
+     as one list with the nouns swapped. */
+  const PILOTS = {
+    /* Lane-keepers. A duty roster: rank and surname, or a lane and a surname.
+       Correct, and slightly impersonal. */
+    cordon: R => {
+      const sur = pick(R, ["HOLT", "VASS", "ADEYEMI", "OKONKWO", "REYES", "BRANDT",
+                           "SOLIS", "HAKIM", "NOVAK", "IRONS", "MBEKI", "TANAKA",
+                           "ASHFORD", "KOWALSKI", "DUFRESNE", "AMARI", "PEREZ",
+                           "LINDQVIST", "OSEI", "CHAUDHRY"]);
+      const r = R();
+      if (r < 0.42) return pick(R, ["WARDEN", "MARSHAL", "INSPECTOR", "KEEPER",
+                                    "SERGEANT", "LANE OFFICER"]) + " " + sur;
+      if (r < 0.7) return "LANE " + (2 + Math.floor(R() * 40)) + " · " + sur;
+      return pick(R, "ABCDEGHJKLMNPRSTVW".split("")) + ". " + sur;
+    },
+    /* Here before the stations were, and they fly their own roads. Long, formal,
+       and attached to a place rather than a rank. */
+    hallow: R => {
+      const given = pick(R, ["AELWYN", "SAERA", "MERRICK", "THESSALY", "CORVAN",
+                             "ISOLDE", "BRAN", "YSMAY", "ODRAN", "LIRIEL",
+                             "ESKE", "MAEVOR", "TALLIS", "RHEA", "CASWIN",
+                             "ELUNED", "VARNE", "SOREL"]);
+      const r = R();
+      if (r < 0.4) return given + " OF " + pick(R, ["THE THIRD ROAD", "THE OLD LINE",
+                                                    "ASH REACH", "THE LONG ROAD",
+                                                    "THE QUIET MILE", "NINE STARS",
+                                                    "THE FIRST DARK"]);
+      if (r < 0.62) return pick(R, ["OLD", "ELDER", "FIRST"]) + " " + given;
+      return given + " " + pick(R, ["VANTH", "ORRIS", "CALLOW", "MERE", "THANE",
+                                    "ASHE", "VOLK", "SERRIN", "DREY"]);
+    },
+    /* Merchants who armed themselves. Everything is a title about trade, and
+       the house matters more than the person. */
+    morrow: R => {
+      const house = pick(R, ["VEKK", "DELACROIX", "ORR", "SANTOS", "WREN",
+                             "ABERNATHY", "KAUR", "MERCER", "VOSS", "QUILL",
+                             "HARROW", "OKAFOR", "LINDEN", "SABATO", "REN",
+                             "COLQUHOUN", "MADAKI"]);
+      const r = R();
+      if (r < 0.34) return "HOUSE " + house;
+      if (r < 0.72) return pick(R, ["FACTOR", "BROKER", "CONSUL", "AGENT",
+                                    "TALLY-MASTER", "SUPERCARGO"]) + " " + house;
+      return house + " & " + pick(R, ["SONS", "DAUGHTERS", "CO.", "PARTNERS"]);
+    },
+    /* No flag and no side. Haulers and traders getting on with it, so: plain
+       names, and the nicknames people who work together actually use. */
+    free: R => {
+      const sur = pick(R, ["HOLLIS", "PIETERS", "BRANCH", "OYELARAN", "KETTLE",
+                           "DUNN", "ARROWOOD", "FAIRWEATHER", "NAKASHIMA",
+                           "BARRO", "SILVA", "CROW", "HALLIDAY", "OKPARA",
+                           "MENDEZ", "STARK", "BELL"]);
+      const r = R();
+      if (r < 0.34) return pick(R, ["BIG", "LITTLE", "OLD", "YOUNG", "LUCKY",
+                                    "SLOW"]) + " " + pick(R, ["ANNIE", "JEM",
+                                    "MOSS", "GUS", "TIL", "HAP", "WEN", "ROSA"]);
+      if (r < 0.6) return pick(R, ["DOC", "COOK", "SPARKS", "BOSUN", "RIGGER"]) +
+                          " " + sur;
+      return pick(R, ["JEM", "ANNIE", "MOSS", "GUS", "TIL", "HAP", "WEN", "ROSA",
+                      "KIT", "NED", "PIA"]) + " " + sur;
+    },
+    /* Nobody's. A name on a pirate board is a thing shouted at somebody, and
+       half of them are a threat rather than a name at all. */
+    pirate: R => {
+      const r = R();
+      if (r < 0.36) return pick(R, ["SPLITTOOTH", "GRIST", "SCAB", "HALFMAST",
+                                    "RATTLE", "VULTURE", "CINDER", "THE HOLLOW",
+                                    "GALLOWS", "SPITE", "THE WIDOWMAKER",
+                                    "KNUCKLE", "THE LAST WORD"]);
+      if (r < 0.68) return pick(R, ["RED", "BLACK", "MAD", "COLD", "IRON",
+                                    "BLIND"]) + " " + pick(R, ["VARGA", "KOSS",
+                                    "MEG", "TOBIAS", "SUL", "RAINE", "OTT"]);
+      return pick(R, ["NINE-FINGER", "SIX-SHOT", "ONE-EYE", "NO-NAME",
+                      "TWICE-HANGED"]) + " " + pick(R, ["KOSS", "SAL", "PETE",
+                      "VARGA", "OTT", "MEG", "BRUNO"]);
+    }
+  };
+
+  /* What a board of each machine looks like as a set of numbers. `top` is the
+     best score on the cabinet and `fall` is how fast it drops down the twelve —
+     multiplicative, so the rung above you is always close *relative to where you
+     are*, which is what makes a board something to climb rather than a wall with
+     one number at the top. `floor` is where it stops, so the bottom of a board
+     is always a score a first-timer can actually beat on their first go. */
+  const BOARD_SHAPE = {
+    survival: { top: [15, 34],  fall: [0.80, 0.92], floor: 1,  round: 1 },
+    royale:   { top: [220, 640], fall: [0.78, 0.9], floor: 18, round: 1 },
+    /* Three missions is the whole campaign, so this board cannot be a ladder:
+       it is how far a dozen people got, and only one or two of them finished.
+       Clearing all three puts you at the top of the machine, which is true. */
+    campaign: { missions: true }
+  };
+  const BOARD_ROWS = 12;
+  const BOARD_GAMES = ["survival", "royale", "campaign"];
+
+  /* The twelve, for one machine and one game. Pure: the same arguments give the
+     same board every time, which is checked rather than asserted — see
+     `test/survey.js`. `gx`/`gy` are the cabinet's own rounded coordinates, the
+     same pair the book files its score under, so the board and the score on a
+     machine are talking about the same machine. */
+  function simBoard(gx, gy, owner, game, missionsMax) {
+    const g = BOARD_GAMES.indexOf(game);
+    if (g < 0) return [];
+    const who = PILOTS[owner] ? owner : "free";
+    /* The owner is in the seed as well as in the word list, so a station that
+       changes hands in a war gets a different dozen rather than the same twelve
+       people wearing new colours. */
+    const ownerN = (BOARD_GAMES.length + 1) *
+                   (["cordon", "hallow", "morrow", "free", "pirate"].indexOf(who) + 1);
+    const R = boardRng(hash2((gx | 0) * 7919 + g * 1013 + ownerN,
+                             (gy | 0) * 104729 - g * 577 - ownerN));
+
+    const shape = BOARD_SHAPE[game];
+    const rows = [];
+    const taken = new Set();
+    const name = () => {
+      /* A board with the same name twice reads as a bug, and with twelve draws
+         from these pools it happens often enough to matter. Tried a few times
+         and then given a number, which is what a crew does about it anyway. */
+      for (let k = 0; k < 12; k++) {
+        const n = PILOTS[who](R);
+        if (!taken.has(n)) { taken.add(n); return n; }
+      }
+      let n = PILOTS[who](R), i = 2;
+      while (taken.has(n + " " + i)) i++;
+      taken.add(n + " " + i);
+      return n + " " + i;
+    };
+
+    if (shape.missions) {
+      const max = Math.max(1, missionsMax || 3);
+      for (let i = 0; i < BOARD_ROWS; i++) {
+        /* Weighted down: most people bounce off the first mission, a few get
+           through the second, and finishing is rare. A board where nine of
+           twelve had cleared everything would say the machine was easy. */
+        const r = R();
+        const got = r < 0.12 ? max
+                  : r < 0.42 ? Math.max(1, max - 1)
+                  : Math.max(1, Math.min(max, 1 + Math.floor(R() * Math.max(1, max - 1))));
+        rows.push({ name: name(), score: got });
+      }
+      rows.sort((a, b) => b.score - a.score);
+      return rows;
+    }
+
+    let v = shape.top[0] + R() * (shape.top[1] - shape.top[0]);
+    for (let i = 0; i < BOARD_ROWS; i++) {
+      const got = Math.max(shape.floor, Math.round(v / shape.round) * shape.round);
+      rows.push({ name: name(), score: got });
+      v = Math.max(shape.floor, v * (shape.fall[0] + R() * (shape.fall[1] - shape.fall[0])));
+    }
+    /* Strictly descending, fixed up **from the bottom**. The multiplier rounds
+       neighbours onto the same number near the floor, and pushing the lower one
+       down cannot fix that — it is already on the floor, so it stays equal and
+       the bottom of the board comes out as a run of identical scores. Walking
+       up and lifting the row above instead always has somewhere to go. */
+    rows[rows.length - 1].score = Math.max(shape.floor, rows[rows.length - 1].score);
+    for (let i = rows.length - 1; i > 0; i--) {
+      if (rows[i - 1].score <= rows[i].score) {
+        rows[i - 1].score = rows[i].score + shape.round;
+      }
+    }
+    return rows;
+  }
+
   /* A new sector is a new lattice. `setupSurvey` calls this; both caches
      memoise pure functions of a cell and the sector seed, so carrying one
      across a reset would lay the old sector's places over the new one. */
@@ -1082,6 +1287,9 @@ function caveTint(x, y) {
        lattice — `regionOf`, `regionDepth` — that decides where it exists. */
     CAVE_CELL, CAVE_GRID_CELL, caveHash, caveFillAt, caveEdge, caveWarp,
     caveSolidAt, outOfRock, caveSegsIn, caveNear, caveTint,
+    /* The made-up boards. Here rather than in the interface because they are
+       generated from a place, exactly like everything else in this file. */
+    simBoard, BOARD_ROWS, BOARD_GAMES,
     clearCaches
   };
 };

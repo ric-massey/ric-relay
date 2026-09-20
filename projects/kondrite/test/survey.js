@@ -1903,6 +1903,170 @@ const storeOf = (cf, key) => {
               "the campaign's list is a menu you can walk away from");
 }
 
+// ── 14c. the boards on the machines ─────────────────────────────
+/* A solo board cannot be real — there is nobody to witness a score one person
+   made alone — so it is made up, and the whole of its worth is in *how* it is
+   made up. Four things have to be true or it is decoration: it is the same
+   board every time you walk back to that machine, it is a different board at
+   the next one, it is made of that place's own people, and you are in it at
+   your own rank with somebody above you.
+
+   None of it may need a network. The generator is a pure function of the
+   cabinet and the sector seed, which is the same trick the chunks run on, and
+   this suite has the account layer stubbed off entirely — so if a board needed
+   an account to exist, nothing here would produce one. */
+{
+  const { cf } = boot("?debug=1&seed=606061");
+  cf.start("survey", 1);
+  const view = () => cf.surveyView();
+  const step = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.step(); } };
+  const me = cf.live().ships[0];
+  const home = cf.home();
+  const GAMES = ["survival", "royale", "campaign"];
+  const names = b => b.map(r => r.name).join("|");
+
+  /* Pure, and checked the way a chunk is: built twice, identical. This is the
+     one that makes a board a *place's* board rather than a roll — walk away,
+     play for an hour, come back, and the same twelve people are on it. */
+  for (const g of GAMES) {
+    check(JSON.stringify(cf.board(12, -7, "cordon", g)) ===
+          JSON.stringify(cf.board(12, -7, "cordon", g)),
+          g + ": a board generated twice came out different");
+  }
+
+  // And a different machine is a different board, which is the point of it.
+  check(names(cf.board(12, -7, "cordon", "survival")) !==
+        names(cf.board(13, -7, "cordon", "survival")),
+        "the cabinet next door has the same twelve people on it");
+  check(names(cf.board(12, -7, "cordon", "survival")) !==
+        names(cf.board(12, -7, "cordon", "royale")),
+        "two machines at one station share a board");
+  /* A station that changes hands gets different people, rather than the same
+     twelve wearing new colours. */
+  check(names(cf.board(12, -7, "cordon", "survival")) !==
+        names(cf.board(12, -7, "morrow", "survival")),
+        "the same twelve people fly for whoever holds the station");
+
+  /* Whose people they are. A Cordon board is a duty roster and a pirate board
+     is graffiti, and the test of that is that the words do not cross over:
+     nobody on a Cordon board is called SPLITTOOTH and no pirate is a WARDEN. */
+  const board = (o, g) => cf.board(12, -7, o, g || "survival").map(r => r.name).join(" ");
+  /* Word boundaries on every one of them. Without `\b` the Hallow's `OLD `
+     matches the pirates' `COLD SUL`, which is the test being wrong about the
+     generator rather than the generator being wrong — worth keeping as the
+     reason the anchors are there. */
+  const MARKS = {
+    cordon: /\b(WARDEN|MARSHAL|INSPECTOR|KEEPER|SERGEANT|LANE)\b/,
+    hallow: /\b(OF THE|ELDER|FIRST|OLD)\b/,
+    morrow: /\b(HOUSE|FACTOR|BROKER|CONSUL|AGENT|TALLY-MASTER|SUPERCARGO)\b|&/,
+    pirate: /\b(SPLITTOOTH|GRIST|SCAB|HALFMAST|RATTLE|VULTURE|RED|BLACK|MAD|COLD|IRON|BLIND|NINE-FINGER|SIX-SHOT|ONE-EYE|TWICE-HANGED|NO-NAME|GALLOWS|SPITE|KNUCKLE|CINDER)\b/
+  };
+  for (const [who, mark] of Object.entries(MARKS)) {
+    /* Sampled over several cabinets: one board of twelve can miss a shape by
+       chance, and the claim is about the pool rather than about one draw. */
+    let hit = 0, cross = 0;
+    for (let i = 0; i < 12; i++) {
+      const mine = cf.board(i * 31, i * 17, who, "survival").map(r => r.name).join(" ");
+      if (mark.test(mine)) hit++;
+      for (const [other, om] of Object.entries(MARKS)) {
+        if (other !== who && om.test(mine)) cross++;
+      }
+    }
+    check(hit >= 10, who + " boards do not read as " + who + ": " + hit + "/12");
+    check(cross === 0,
+          who + " boards carry another faction's words " + cross + " times");
+  }
+  check(!/\b(WARDEN|HOUSE|SPLITTOOTH)\b/.test(board("free")),
+        "an unaligned board is wearing somebody's colours");
+
+  /* A ranked list with two of the same number in it reads as broken, and the
+     multiplier that spaces the ladder can round two neighbours together near
+     the bottom. Checked over many cabinets, because it is a rounding accident
+     rather than a rule. */
+  for (const g of ["survival", "royale"]) {
+    let flat = 0;
+    for (let i = 0; i < 40; i++) {
+      const b = cf.board(i * 13 + 1, i * 7 - 3, "free", g);
+      for (let k = 1; k < b.length; k++) if (b[k].score >= b[k - 1].score) flat++;
+      if (b[b.length - 1].score < 1) flat++;
+    }
+    check(flat === 0, g + ": " + flat + " rows do not descend, or fell under 1");
+  }
+  /* The bottom of a board has to be beatable on a first go, or a machine is a
+     wall with twelve names on it rather than a ladder. */
+  {
+    let worst = 0;
+    for (let i = 0; i < 40; i++) {
+      worst = Math.max(worst, cf.board(i * 13 + 1, i * 7 - 3, "free", "survival")[11].score);
+    }
+    check(worst <= 8, "the lowest rung on the worst board is wave " + worst);
+  }
+
+  /* And the board as the room hands it over: you in it, at your rank, with the
+     rung above you visible. */
+  me.x = home.x; me.y = home.y; me.vx = me.vy = 0;
+  step(8);
+  view().onArcade();
+  check(cf.screenNow() === "arcade", "the machines did not open");
+  const A0 = view().arcade;
+  check(!!A0.board && A0.board.rows.length === 12,
+        "a fresh cabinet's board has " + (A0.board ? A0.board.rows.length : "no") +
+        " rows on it");
+  check(A0.board.at === -1 && !A0.board.rows.some(r => r.you),
+        "an unplayed machine put you on its board anyway");
+  check(A0.boardOf === "SURVIVAL", "the board is not the machine you are on");
+
+  // Move along the row and the board moves with you: three machines, three boards.
+  view().onPickSim(2);
+  check(view().arcade.boardOf === "CAMPAIGN",
+        "the board did not follow the selection");
+  check(names(view().arcade.board.rows) !== names(A0.board.rows),
+        "every machine in the room shows the same board");
+  view().onPickSim(0);
+
+  /* Now put a score on it. Rank is the whole of what a board says, so the one
+     thing that must be right is *where* the row lands. */
+  const surv2 = cf.survey();
+  const spot = Object.keys(surv2.sims)[0] ||
+               (Math.round(home.x / 60) + "," + Math.round(home.y / 60));
+  const made = cf.board(Math.round(home.x / 60), Math.round(home.y / 60),
+                        "free", "survival");
+  // Beat exactly one of them: last place is rank 12, so you come in at 12.
+  surv2.sims[spot] = { survival: made[11].score + 1 };
+  const B1 = view().arcade.board;
+  check(B1.rows.length === 13, "your row did not join the board");
+  const mine = B1.rows.findIndex(r => r.you);
+  check(mine === 11, "beating one score put you at rank " + (mine + 1) + " of 13");
+  check(B1.rows[mine].score === made[11].score + 1, "your row lost your score");
+  check(mine > 0 && !B1.rows[mine - 1].you,
+        "there is nobody above you on the board");
+  /* A tie goes to the machine's own people. Being told you have *equalled*
+     somebody is a better reason to play again than being handed the rank. */
+  surv2.sims[spot] = { survival: made[5].score };
+  const tied = view().arcade.board.rows.findIndex(r => r.you);
+  check(view().arcade.board.rows[tied - 1].score === made[5].score,
+        "a tie took the rank off the person who was already there");
+  // And beating the lot puts you top, which on the campaign's machine is the
+  // only thing clearing every mission can do.
+  surv2.sims[spot] = { survival: made[0].score + 5 };
+  check(view().arcade.board.rows[0].you, "beating every score did not put you top");
+
+  /* The name on it. This suite has the account layer stubbed off, so this is
+     exactly the copy of the game the plan promised would still work: no
+     service, no session, and a board that still has something to call you
+     rather than a blank row. */
+  check(view().arcade.board.rows[0].name === "YOU",
+        "a game with no account service put " +
+        JSON.stringify(view().arcade.board.rows[0].name) + " on the board");
+
+  cf.draw();                                    // and it survives being drawn
+
+  console.log("  boards     twelve of the sector's own on every machine \u00b7 " +
+              "the same twelve every visit, different at the next cabinet and " +
+              "under a new flag \u00b7 five factions that never borrow each other's " +
+              "words \u00b7 you at your own rank, never without somebody above you");
+}
+
 // ── 15. you are always told what you are doing ───────────────────────────
 {
   const { cf } = boot("?debug=1&seed=1357");

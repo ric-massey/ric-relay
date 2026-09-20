@@ -61,6 +61,34 @@ back standing at the same dock with the sector where you left it. The sector
 carried on without you while you played, which is correct and is said on the way
 back in.
 
+### The board on the wall
+
+Beside the machines is a board, and it is **made up** — which is the honest thing
+for it to be, because a solo score has nobody to witness it. A dozen names and
+scores, generated from the cabinet's own coordinates and whoever holds the sky
+over it, and you inserted at your rank among them in your own colour.
+
+It is the sector's own people, and that is not decoration. A Cordon board is a
+duty roster — *WARDEN HAKIM*, *LANE 36 · REYES*. A Hallow board is a list of
+people older than the lanes — *AELWYN OF THE THIRD ROAD*, *ELDER VARNE*. Morrow
+is a ledger, where the house outsells the person — *HOUSE SABATO*,
+*COLQUHOUN & SONS*. Pirates are graffiti, and half of them are a threat rather
+than a name — *SPLITTOOTH*, *THE LAST WORD*. Walking into a station in somebody
+else's space and finding somebody else's people on the machine is most of what
+makes a second cabinet worth looking at.
+
+Nothing about it touches a network. It is a pure function of the cabinet and the
+sector seed — the same trick the chunks run on — so the same machine shows the
+same twelve people for as long as that sector exists, the one next door shows
+twelve different ones, and a station that changes hands in the war gets a
+different dozen rather than the same twelve wearing new colours. It is never
+empty on a first visit, the bottom rung is always beatable on a first go, and
+there is always somebody just above you.
+
+The page says **nobody is watching**, once, because a made-up board that did not
+admit it would be the one dishonest thing in the game. The real one is
+multiplayer, and it is witnessed.
+
 None of them keeps anything, and none of them pays anything back into the
 sector — the score on the cabinet is the whole of what crosses:
 
@@ -551,7 +579,7 @@ each loaded the way `net.js` is:
 
 | Module | What it is | What it needs from the game |
 |---|---|---|
-| `survey-world.js` | Chunk identity, the danger curve, the region lattice, the Warrens | `seeded`, the chunk size, and calls that read the run's seed and world |
+| `survey-world.js` | Chunk identity, the danger curve, the region lattice, the Warrens, the made-up boards | `seeded`, the chunk size, and calls that read the run's seed and world |
 | `survey-save.js` | The book, and everywhere it is kept | Constants, five content tables, an empty hold |
 | `survey-hud.js` | The interface | The engine's drawing primitives |
 

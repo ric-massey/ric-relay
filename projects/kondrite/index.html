@@ -21221,6 +21221,17 @@
           /* Which machine is coming up, and how far it has got. The page draws
              a boot line over that cabinet and nothing else moves. */
           booting: simBoot ? simBoot.key : null,
+          /* The board of the machine you are standing in front of. It follows
+             the selection rather than belonging to a cabinet, so moving along
+             the row reads the next machine's people — which is what makes the
+             three cabinets a room rather than three buttons. */
+          board: simBoardOf(spot, (CABINETS[arcadePick] || CABINETS[0]).key),
+          boardOf: (CABINETS[arcadePick] || CABINETS[0]).name,
+          /* The board says a score the same way the cabinet above it does, out
+             of the one table, because a board that called it WAVE 9 under a
+             machine that called it 9 would be two machines. */
+          say: SIM_SCORE[(CABINETS[arcadePick] || CABINETS[0]).key].say,
+          youColour: PLAYERS[0].colour,
           bootAt: simBoot ? 1 - Math.max(0, simBoot.t) / SIM_BOOT : 0,
           machines: CABINETS.map(c => {
             const best = simBest(spot.id, c.key);
@@ -24825,7 +24836,7 @@
      SIMULATORS door, not to a box in the corner of a station. */
   const CABINETS = [
     { key: "survival", name: "SURVIVAL", art: "survival", colour: "#ffe56d",
-      line: "endless asteroids, and they do not stop coming" },
+      line: "asteroids, and they never stop coming" },
     { key: "royale", name: "BATTLE ROYALE", art: "royale", colour: "#ff8f77",
       line: "five bots and a wall that closes in" },
     { key: "campaign", name: "CAMPAIGN", art: "campaign", colour: "#6dffbf",
@@ -24873,17 +24884,65 @@
     const f = factionOf(station
       ? (at.faction || "free")
       : ((placeAt(at.x, at.y).space.owner) || "free"));
+    const gx = Math.round(at.x / 60), gy = Math.round(at.y / 60);
     return {
-      id: Math.round(at.x / 60) + "," + Math.round(at.y / 60),
+      id: gx + "," + gy,
+      /* The same pair the id is made of, kept as numbers: the board is
+         generated from them, so the twelve names on a machine and the score
+         the book files under it are talking about the same machine. */
+      gx, gy,
       where: station ? (at.home ? "YOUR STATION" : "A STATION")
                      : (at.name || "THE SURFACE"),
-      owner: f.short, colour: f.colour
+      owner: f.short, colour: f.colour, who: f.key
     };
   }
 
   // Your best on this cabinet, per machine. Nothing here ever leaves the book.
   const simBest = (id, key) =>
     (surv && surv.sims && surv.sims[id] && surv.sims[id][key]) || 0;
+
+  /* ── the board on a machine ───────────────────────────────────────────────
+     The twelve the sector made up, with **you** in your place among them. Your
+     row is not appended and it is not a thirteenth: it is *inserted at its
+     rank*, which is the only arrangement that answers the question a player
+     walks up to a board with, which is "who is just above me".
+
+     Your own colour — seat 0, amber — because on a page of violet furniture and
+     a faction's colour, the one row that is you has to be findable without
+     reading it. That is the one place the sign-in pays off in single player:
+     the name on it is the name you gave the door.
+
+     Unplayed is not rank 13. A machine you have never touched shows the twelve
+     and no row of yours at all, because a zero on a board is a worse thing to
+     be shown than an honest absence. */
+  function simBoardOf(spot, key) {
+    if (!spot || !WORLD.simBoard) return null;
+    const made = WORLD.simBoard(spot.gx, spot.gy, spot.who, key,
+                                CAMPAIGN_ORDER.length);
+    const rows = made.map((r, i) => ({ rank: i + 1, name: r.name,
+                                       score: r.score, you: false }));
+    const mine = simBest(spot.id, key);
+    if (!mine) return { rows, mine: 0, at: -1 };
+    const me = { rank: 0, name: pilotName(), score: mine, you: true };
+    /* Ahead of everyone you have beaten, and behind everyone you have not. A
+       tie goes to the machine's own people: they were here first, and being
+       told you have *equalled* somebody is a better reason to play again than
+       being handed the rank on a technicality. */
+    let at = rows.findIndex(r => r.score < mine);
+    if (at < 0) at = rows.length;
+    rows.splice(at, 0, me);
+    rows.forEach((r, i) => { r.rank = i + 1; });
+    return { rows, mine, at };
+  }
+
+  /* What a board calls you. The pilot name if the door has one — which after
+     step 3 it does, for everybody — and a plain word if this copy of the game
+     has no account service at all, because a board with a blank row on it is
+     worse than a board that calls you YOU. */
+  function pilotName() {
+    const who = cloud && cloud.enabled() && cloud.session();
+    return (who && who.name) || "YOU";
+  }
 
   /* Walking up to one. **Save first**: if the book will not write — private
      browsing, a full quota, both already handled by the store — the machine
@@ -28395,6 +28454,11 @@
       partResale: (key, place) => partResale(moduleSpec(key), place),
       catalogue: () => ALMANAC,
       chunk: (cx, cy) => buildChunk(cx, cy),
+      /* A made-up board, straight from the generator, so a harness can check
+         that it is pure and that two cabinets are two boards without having to
+         fly to each of them. */
+      board: (gx, gy, owner, game) =>
+        WORLD.simBoard(gx, gy, owner, game, CAMPAIGN_ORDER.length),
       chunkSize: () => CHUNK,
       // What a station is short of, for anything watching the economy react.
       market: st => marketOf(st || surv.docked),

@@ -46,15 +46,16 @@ machine in a world that has arcade machines.
 separate job with its own landmines. This file keeps saying KONDRITE because
 that is what it is called today.
 
-**Steps 1, 2 and 3 are built, 19–20 September 2026.** The door: the title is the
+**Steps 1 to 4 are built, 19–20 September 2026.** The door: the title is the
 game plus a SIMULATORS line, the lanes are one floor down, and `survey` is in
 neither of them. The machine: a SIMULATORS tab at every station and every
 inhabited world, a room with three cabinets in it, and the boundary — save
 first, play, come back standing at the same dock. The sign-in: the guest door
 is closed, everybody has a pilot name, and a cached session plays offline with
-no connection at all. Steps 4 and 5 (the made-up boards, the real board) are
-not built. See *Step 1, as built*, *Step 2, as built* and *Step 3, as built* at
-the foot of this file.
+no connection at all. The boards: a dozen of the sector's own people on every
+machine, generated from the cabinet and its owner, with you at your rank among
+them. Step 5 (the real board) is not built. See the *as built* sections at the
+foot of this file.
 
 `SURVEY-PLAN.md` stays the authority for Survey; when the rest of this is built,
 one section goes there and this file becomes the record of how it was decided.
@@ -345,9 +346,10 @@ you were. After this, playing a machine is something you do *inside* a run.
 a pilot name is asked for, and the cached session plays offline. Before any
 board exists, because every board needs a name to put on it.
 
-**4 · The made-up boards.** Generated per station and per planet, your name among
-them. Offline, seeded, no network. This is the step that makes a machine worth a
-second visit, and it is the whole of single player's reward.
+**4 · The made-up boards.** *Built — see* **Step 4, as built**. Generated per
+station and per planet, your name among them. Offline, seeded, no network. This
+is the step that makes a machine worth a second visit, and it is the whole of
+single player's reward.
 
 **5 · The real board.** Multiplayer scores, with the agreement rule, and the
 three tables. Then the competition — one challenge per cabinet, on a shared
@@ -606,4 +608,83 @@ walked by hand — signed out it stands in front of both buttons, an unnamed
 account is asked, and naming yourself while the service rejects the write still
 lets you in and starts the game.
 
-**Not done, and next:** step 4 — the made-up boards.
+---
+
+## Step 4, as built
+
+The boards. Three things the plan left to the build, and one it got wrong about
+the screen.
+
+**The board stands *beside* the machines, not under them.** The plan's room is
+three cabinets; the board had to go somewhere, and under them is where it
+obviously goes. It does not fit. `SCREEN_H` is a **constant 700**, which leaves
+about 420 for this page, and three cabinets tall enough to read plus a dozen
+names is half as much again — built that way the board came out at four rows and
+the cabinets drew over their own text. Sideways the width is there to spend: the
+page is 1000 to 1680 across, so a column on the right holds all thirteen rows at
+full height and the machines keep theirs. It is also simply what the place is: a
+room with machines along one wall and the board on the next.
+
+**The faction is the whole point, and it is a shape and not a word list.** Each
+of the five has its own *construction*, because five word lists poured into one
+mould would read as one list with the nouns swapped. The Cordon wear a rank or a
+lane and a surname — a duty roster. The Hallow wear where they are from:
+*AELWYN OF THE THIRD ROAD*, *ELDER VARNE*. Morrow wear what they trade as, and
+the house outsells the person: *HOUSE SABATO*, *TALLY-MASTER ABERNATHY*,
+*COLQUHOUN & SONS*. The unaligned are plain and warm — *BIG ANNIE*, *DOC SILVA*.
+Pirates are graffiti, and half of them are a threat rather than a name:
+*SPLITTOOTH*, *NO-NAME KOSS*, *THE LAST WORD*. Walking into somebody else's
+space and finding somebody else's people on the machine is most of what makes a
+second cabinet worth looking at, and the suite checks the pools never borrow
+each other's words.
+
+**You are inserted at your rank, not appended.** A board answers one question and
+it is *who is just above me*, so your row goes where your score puts it and the
+window — when the board is taller than the space — is anchored on you with one
+row showing above. A tie goes to the machine's own people: being told you have
+equalled somebody is a better reason to play again than being handed the rank on
+a technicality. An unplayed machine shows the twelve and **no row of yours at
+all**, because a zero on a board is a worse thing to be shown than an honest
+absence.
+
+**And the ladder is fixed up from the bottom.** The scores fall by a multiplier,
+which rounds neighbours onto the same number near the floor — and pushing the
+lower one down cannot fix that, because it is already on the floor. So the pass
+walks *up* and lifts the row above, which always has somewhere to go. The bottom
+rung is checked to be beatable on a first go: a machine whose lowest score is out
+of reach is a wall with twelve names on it, not a ladder.
+
+### What it costs to be made up
+
+Nothing crosses a network and nothing needs an account. `simBoard` is a pure
+function of the cabinet's own rounded coordinates, its owner, the game, and the
+sector seed — the same trick the chunk generator runs on. So the same cabinet
+shows the same twelve people for as long as the sector exists, the cabinet next
+door shows twelve different ones, and a station that changes hands in the war
+gets a *different* dozen rather than the same twelve wearing new colours. The
+suite has the account layer stubbed off entirely, which means it is also the
+proof that a copy of the game with no account service still has boards — they
+just call you YOU.
+
+Said on the page, once: **nobody is watching**. A made-up board that did not
+admit it would be the one dishonest thing in the game.
+
+### What moved
+
+| Where | What happened |
+|---|---|
+| `survey-world.js` | `simBoard`, five faction name-shapes, and the score ladders · its own PRNG, so asking for a board at draw time cannot move the sector's roll on |
+| `index.html` | `cabinetHere` carries the coordinates and the faction key · `simBoardOf` inserts your row at its rank · `pilotName` puts the door's name on it, or YOU with no account service · `cf.board` for the harness |
+| `survey-hud.js` | the board is a panel beside the machines · the cabinets gave up the width and got a floor of their own, so they stop drawing over their own text |
+| `test/survey.js` | §14c: pure, different next door, different under a new flag, five factions that never borrow each other's words, a ladder that always descends and is always beatable at the bottom, and you at your rank with somebody above you |
+
+**Still owed to step 5.** These boards are fiction and say so. The real one is
+multiplayer, witnessed, and needs the three tables — and the pilot name has to
+reach a public `profiles` row before anybody but you can read it.
+
+**Checked:** the whole suite, `test/browser.js`, `test/fingerprint.js` unmoved,
+and the room walked by hand at a station — the board follows the machine you are
+standing at, and your row sits in your own colour with the next name up beside a
+score you can see.
+
+**Not done, and next:** step 5 — the real board.
