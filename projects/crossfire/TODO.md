@@ -145,6 +145,15 @@ Only **A3 (the Vault)** is left.
 - [x] **C2 · Pick your input.** Mouse-and-keyboard or touchscreen, chosen
   rather than sniffed, for people on touchscreen laptops.
 - [x] **C3 · Rebuild the settings page.** Better looking, better organised.
+- [x] **C4 · Overhaul it again, properly.** C3 tidied a stack that was already
+  out of room: the line under INPUT was drawn through the buttons it explained,
+  and the phone had a second copy of the whole page with the live thumbstick on
+  top of RESET SURVEY. It is a **rail of categories and one panel** now — THIS
+  MODE, FLYING, KEYS, THE PAD, THE GAME, with EXIT GAME and BACK at the rail's
+  foot. One page on every machine; the pad's drag screen is a room off it rather
+  than a rival to it, and holds nothing but a title, a line and three buttons.
+  Every control is reachable from the keyboard, which only the key grid used to
+  be. *A new setting is a new row and nothing below it moves.*
 
 ---
 

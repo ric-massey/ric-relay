@@ -419,45 +419,74 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   }
 }
 
-// ── the settings page belongs to one mode at a time ───────────────────────
-/* How far the camera sits back is a question about Survey and nonsense in a
-   Battle Royale; whether the view turns with the ship is answered differently
-   for a duel than for a long haul. So the settings page shows one mode's
-   options, and — this is the part that is easy to break silently — the camera
-   is now four separate answers rather than one flag wearing four hats. */
+// ── the settings page ─────────────────────────────────────────────────────
+/* The page is a rail of categories and one panel. Two things about it are easy
+   to break silently and neither is visible to a syntax check.
+
+   One: the camera is four separate answers rather than one flag wearing four
+   hats. How far the camera sits back is a question about Survey and nonsense
+   in a Battle Royale; whether the view turns with the ship is answered
+   differently for a duel than for a long haul.
+
+   Two: every category has to actually put something on the panel. A rail entry
+   whose panel draws nothing is a dead room, and it looks exactly like a
+   working one from out here.
+
+   Everything below asks for controls by the words on them. The old version of
+   this suite measured y bands, and its own comment admitted the problem —
+   "a window that fails when the thing inside it moves by two pixels is
+   measuring the layout, not the behaviour". It failed on every re-spacing
+   until the page was rebuilt, at which point it failed completely. */
 {
   const { cf } = boot("?debug=1");
   const TABS = ["SURVEY", "BATTLE ROYALE", "CAMPAIGN", "SURVIVAL"];
-  const W = 1000;
-  const tabX = i => W / 2 - (4 * 234 - 10) / 2 + i * 234 + 112;
 
-  const openTab = (i, y) => {
+  // A control, by what it says. `taps` carries the label now.
+  const press = (label, why) => {
     cf.draw();
-    const t = cf.live().taps.find(t => tabX(i) >= t.x && tabX(i) <= t.x + t.w &&
-                                       y >= t.y && y <= t.y + t.h);
-    check(!!t, "no settings tab where " + TABS[i] + " should be");
+    const t = cf.live().taps.find(t => t.label === label);
+    check(!!t, why || ("nothing on the settings page says " + label));
     if (t) t.act();
     cf.draw();
+    return !!t;
   };
-  /* What the band is showing, read off the drawn frame rather than assumed.
-
-     The bounds are inclusive, and that is not fussiness: they used to be
-     exclusive and the option row's top edge landed exactly on the lower one
-     the first time the settings page was re-spaced by two pixels. A window
-     that fails when the thing inside it moves by two pixels is measuring the
-     layout, not the behaviour. */
-  const band = (lo, hi) => cf.live().taps
-    .filter(t => t.y >= lo && t.y <= hi).length;
+  const labels = () => cf.live().taps.map(t => t.label).filter(Boolean);
 
   cf.screen("controls");
-  for (let i = 0; i < TABS.length; i++) openTab(i, 110);
+  cf.setCat("mode");
+  cf.draw();
+
+  /* The rail is the page's table of contents, and every room on it has to be
+     furnished. */
+  const cats = cf.settings().cats;
+  check(cats.length >= 5, "the settings rail is down to " + cats.length + " categories");
+  for (const key of cats) {
+    cf.setCat(key);
+    cf.draw();
+    const s = cf.settings();
+    check(s.items > 0, "the " + key + " category draws a panel with nothing on it");
+    /* And it stays inside the panel it was given. A row drawn against the
+       whole screen looks right at 1000 wide and hangs off the rail at 1680. */
+    for (const t of cf.live().taps) {
+      if (t.y + t.h < s.panel.top) continue;        // the title row
+      if (t.x < s.panel.x - 1 && t.x + t.w > s.panel.x + 1) {
+        check(false, key + ": a control straddles the rail and the panel");
+      }
+    }
+  }
+
+  cf.setCat("mode");
+  cf.draw();
+  for (const name of TABS) press(name, "no settings tab where " + name + " should be");
   check(true, "the four settings tabs are all reachable");
 
-  /* Each page offers different things, or the tabs are decoration. */
+  /* Each page offers different things, or the tabs are decoration. Counted as
+     the rows the panel actually draws rather than as rectangles in a band. */
   const opts = [];
-  for (let i = 0; i < TABS.length; i++) {
-    openTab(i, 110);
-    opts.push(band(130, 185));
+  for (const name of TABS) {
+    press(name);
+    // The four tabs themselves, plus whatever that mode has to set.
+    opts.push(cf.settings().items - TABS.length);
   }
   check(opts[0] === 3, "the survey page offers " + opts[0] + " settings, not 3");
   check(opts[1] === 1 && opts[2] === 1,
@@ -466,12 +495,8 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
   /* And the camera is genuinely per mode: turning it on for Battle Royale must
      leave Survey alone, which the one shared flag could not do. */
-  openTab(1, 110);
-  const camBtn = () => {
-    cf.draw();
-    return cf.live().taps.find(t => t.y >= 130 && t.y <= 185);
-  };
-  camBtn().act();
+  press("BATTLE ROYALE");
+  press("FIXED", "the royale page has no camera button");
   check(cf.live().cameraModes.royale === true,
         "turning the royale camera on did nothing");
   check(cf.live().cameraModes.survey === false,
@@ -487,8 +512,60 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
         again.cf.live().cameraModes.survey === false,
         "a reload came back with the wrong modes' cameras");
 
-  console.log("  settings   one page per mode \u00b7 survey 3, royale 1, campaign 1, " +
-              "survival 1 \u00b7 the camera is four answers, not one");
+  /* ── one page, not two ──────────────────────────────────────────────────
+     Sound, fullscreen and the way out used to be written twice — once on the
+     keyboard's settings page and again on the phone's — and the two drifted.
+     There is one of each now, and the phone screen is only for dragging. */
+  cf.setCat("game");
+  cf.draw();
+  check(labels().some(l => l.startsWith("ON") || l === "ON" || l === "OFF"),
+        "THE GAME has no sound button");
+  check(labels().includes("EXIT GAME"), "no way back to the site from settings");
+  check(labels().includes("BACK"), "no way off the settings page");
+
+  cf.setCat("pad");
+  cf.draw();
+  check(labels().includes("MOVE THEM"), "no door from THE PAD to the drag screen");
+  cf.screen("thumb");
+  cf.draw();
+  const pad = labels();
+  check(pad.includes("DONE"), "the drag screen has no way back");
+  check(!pad.some(l => l === "EXIT GAME" || l.startsWith("SOUND") ||
+                       TABS.includes(l)),
+        "the drag screen is carrying a second copy of the settings page again");
+
+  /* ── the keyboard can reach all of it ───────────────────────────────────
+     It used to reach the key grid and nothing else: SOUND, FULLSCREEN, the
+     zoom and the camera were mouse-only, on the one page whose whole subject
+     is not needing a mouse. */
+  cf.screen("controls");
+  press("FLYING");
+  check(cf.settings().focus.where === "rail",
+        "the settings page opens with the keyboard nowhere");
+  cf.key("ArrowRight");
+  cf.draw();
+  check(cf.settings().focus.where === "panel",
+        "right off the rail did not reach the panel");
+  const before = cf.settings().focus.i;
+  cf.key("ArrowDown");
+  cf.draw();
+  check(cf.settings().focus.i !== before,
+        "down inside the panel went nowhere");
+  cf.key("ArrowLeft");
+  cf.draw();
+  check(cf.settings().focus.where === "rail",
+        "left off the panel's edge did not come back to the rail");
+  /* And onto the category you are actually in. The two lists are different
+     lists, so an index carried across lands wherever it happens to land —
+     which used to be BACK, two below the last category. */
+  check(cf.settings().rail[cf.settings().focus.i] === "FLYING",
+        "coming out of the FLYING panel landed on " +
+        cf.settings().rail[cf.settings().focus.i]);
+
+  console.log("  settings   a rail of " + cats.length + " categories, every one of " +
+              "them furnished · survey 3, royale 1, campaign 1, survival 1 · " +
+              "the camera is four answers · one page, not two · walkable " +
+              "from the keyboard");
 }
 
 // ── the screen is the shape of the device ────────────────────────────────
@@ -559,19 +636,31 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     }
   }
 
-  /* The key grid is the one thing on any menu with its own coordinate system,
-     and it has to stay under the headings above it. */
-  STAGE.w = 2400; STAGE.h = 1080;
-  const wide = cf.resize();
-  cf.screen("controls");
-  cf.draw();
-  const g = cf.keyGrid();
-  const gl = g.x0 - g.cellW / 2;
-  const gr = wide - (g.x0 + (g.cols - 1) * g.colW + g.cellW / 2);
-  check(Math.abs(gl - gr) < 4,
-        "the key grid sits " + Math.round(gl) + " from the left and " +
-        Math.round(gr) + " from the right on a " + wide + "-wide screen");
-  check(gl > 0, "the key grid starts off the left edge");
+  /* The key grid is the one thing on any menu with its own coordinate system.
+     It is centred in the settings panel rather than on the screen now — the
+     rail is to the left of it — and the panel is what it must stay inside, at
+     both ends of the width range. A grid written against `SCREEN_W / 2` looks
+     right at 1000 and is halfway under the rail at 1680. */
+  let wide = 0;
+  for (const w of [1000, 2400]) {
+    STAGE.w = w; STAGE.h = w === 1000 ? 800 : 1080;
+    wide = cf.resize();
+    cf.screen("controls");
+    cf.setCat("keys");
+    cf.draw();
+    const g = cf.keyGrid();
+    const panel = cf.settings().panel;
+    /* The block is the label column and the four columns of cells together,
+       so the margin on the left is measured from the labels — which is why the
+       cells' own left edge is `labelW` further in than the right-hand gap. */
+    const gl = g.x0 - g.cellW / 2 - panel.x - g.labelW;
+    const gr = panel.x + panel.w - (g.x0 + (g.cols - 1) * g.colW + g.cellW / 2);
+    check(gl > 0, "the key grid starts off the left of its panel at " + wide + " wide");
+    check(gr > 0, "the key grid runs off the right of its panel at " + wide + " wide");
+    check(Math.abs(gl - gr) < 6,
+          "the key grid sits " + Math.round(gl) + " from the panel's left and " +
+          Math.round(gr) + " from its right on a " + wide + "-wide screen");
+  }
 
   STAGE.w = 1200; STAGE.h = 800;
   cf.resize();

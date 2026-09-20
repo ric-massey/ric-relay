@@ -1896,7 +1896,8 @@ the floating "Ric's Terminal" pill from it, and a game wants neither that — fi
 bottom-left is exactly where a thumb lives — nor the site's ambient effects layer
 painting over a full-screen canvas. The way back is **EXIT GAME**, on both settings
 screens, armed before it fires like the survey reset: one stray tap should not end
-a run and close the game. It saves the survey book on the way out.
+a run and close the game. It saves the survey book on the way out. It is on the
+rail of the settings page — there is only one settings page now; see below.
 
 ### Settings, per game mode  ·  **DONE**
 
@@ -1907,11 +1908,54 @@ a run and close the game. It saves the survey book on the way out.
 The settings page shows **one mode's options at a time**. Opened from a match it is
 that match's page, with no tabs to wander off into; opened from the front page the
 four tabs are how you reach the others. Survey has zoom, camera and reset; Battle
-Royale and Campaign have a camera; Survival has friendly fire. Both the keyboard
-page and the phone page draw the same band.
+Royale and Campaign have a camera; Survival has friendly fire. That is the THIS
+MODE category of the settings page.
 
 The rotating camera used to be **one flag worn by three modes**. It is now four
 separate answers, so turning it on for a duel does not turn it on for a long haul.
+
+### One settings page, with a rail  ·  **DONE**
+
+> *"the settings page needs an overhaul."*
+
+It was a single stacked page and it had run out of room twice over. The line
+explaining INPUT was being drawn through the two buttons it explained. The phone
+had a **second copy of the whole page** with the live thumbstick sitting on top
+of RESET SURVEY, and its own SOUND, its own FULLSCREEN and its own EXIT — each
+written twice and each drifting. The code's own comment had given up: *"a fourth
+setting here needs the screen rearranged, not another column."*
+
+So: **a rail of categories down the left, one panel to the right of it.**
+
+| | |
+|---|---|
+| **THIS MODE** | the four tabs and that mode's own answers |
+| **FLYING** | what kind of machine this is, and the mouse |
+| **KEYS** | the two seats and Survey's four slots |
+| **THE PAD** | layout, gas, auto-fire, size — and the door to moving them |
+| **THE GAME** | sound, screen, account |
+
+with **EXIT GAME** and **BACK** below a rule at the foot of the rail.
+
+Three things fall out of it:
+
+- **A new setting is a new row.** Nothing below it moves, because nothing below
+  it is sharing the space. A new *kind* of setting is a new entry in the rail.
+- **One page, whatever you are playing on.** `[C]` means the same page on a desk
+  and on a phone. The pad screen still exists, because where a control *sits* is
+  the one question that cannot be a list — you drag the real controls at their
+  real size — but it is a room off the settings page now, not a rival to it, and
+  it holds nothing but a title, a line, and three buttons in the top fifth.
+- **The keyboard can reach all of it.** It used to reach the key grid and
+  nothing else: sound, fullscreen, the zoom and the camera were mouse-only, on
+  the one page whose whole subject is not needing a mouse. Up and down walk a
+  list, right steps from the rail into the panel, left comes back out.
+
+The shell is capped at 1180 and centred rather than stretched to the glass: a
+settings row a thousand pixels wide is a label and a button at opposite ends of
+a desk. The key grid is sized and centred against the **panel** now rather than
+the screen, so how wide a column can be is a question about how wide the panel
+is.
 
 ### The five long-term tracks
 

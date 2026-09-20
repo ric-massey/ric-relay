@@ -415,6 +415,11 @@
     color: var(--phosphor-dim);
     white-space: nowrap;
   }
+  /* Except the four device buttons, which say SLOT 1 on the face while you are
+     arranging them — nothing is fitted, because no match is running. A caption
+     reading SURVEY SLOT 1 under a circle that already says SLOT 1 was three
+     times the width of the circle, so the four of them ran into each other. */
+  body.arranging #pad .ctl.dev::after { content: none; }
 
   /* The way home has no business under a thumb mid-match. */
   body.flying .relay-return, body.arranging .relay-return { display: none; }
@@ -1557,11 +1562,16 @@
     fireEl.classList.remove("down");
   }
 
-  /* Which settings screen [C] means. A keyboard's is the key grid; a phone's
-     is the pad. Once a screen has been touched it is a phone, whatever the
-     media queries said when the page loaded. */
-  // …unless the player has said which kind of machine this is. See `thumbInput`.
-  const settingsScreen = () => (thumbInput() ? "thumb" : "controls");
+  /* [C] means the settings page, whatever you are playing on.
+
+     It used to mean two different pages — a key grid on a keyboard, a separate
+     pad screen on a phone — and the phone's copy had grown its own SOUND, its
+     own FULLSCREEN, its own EXIT and its own mode band, each written twice and
+     each drifting. There is one page now. The pad has a category on it like
+     everything else, and `thumb` is what that category opens: the one screen
+     that genuinely cannot be a list, because on it you are dragging the real
+     controls around at their real size. */
+  const settingsScreen = () => "controls";
 
   /* Opening the settings from inside a match shows that match's page and only
      that page: you are in Survey, so the camera and zoom you are looking at are
@@ -1573,6 +1583,13 @@
     const here = settingsPageFor(mode);
     settingsLocked = !!here && from !== "title" && from !== "modes";
     if (here) settingsPage = here;
+    /* Opened out of a match, the reason is nearly always that match's own
+       settings — the camera is wrong, or the zoom is. Opened from the front
+       page there is no match to be in, so it opens where it was left. */
+    if (settingsLocked) settingsCat = "mode";
+    else if (thumbInput() && settingsCat === "keys") settingsCat = "pad";
+    setFocus.where = "rail";
+    setFocus.i = Math.max(0, settingsCats().findIndex(c => c.key === settingsCat));
     return settingsScreen();
   }
 
@@ -1689,6 +1706,18 @@
     !m ? null : m.survey ? "survey" : m.campaign ? "campaign"
       : m.closing ? "royale" : "survival";
   let settingsPage = "survey";   // which mode's page the settings screen shows
+
+  /* ── where you are on the settings page ──────────────────────────────────
+     The page is a rail of categories down the left and one panel to the right
+     of it; `settingsCat` is which category the panel is showing. `setFocus`
+     is where the keyboard is: on the rail, or on one of the panel's controls.
+
+     Both lists are collected while the page is drawn rather than kept in step
+     with it — the same bargain `taps` makes, for the same reason. What you can
+     move the keyboard onto is exactly what is on the screen. */
+  let settingsCat = "mode";
+  const setFocus = { where: "rail", i: 0 };
+  let setItems = [], setRail = [];
 
   /* The rotating camera, once one flag for every mode with a camera, now one
      answer per mode. Survival is absent because it has no camera to turn — the
@@ -1965,7 +1994,7 @@
     ? "../../" : "../../index.html";
   let exitArm = 0;
   const exitArmed = () => performance.now() < exitArm;
-  const exitLabel = () => exitArmed() ? "SURE? LEAVE THE GAME" : "EXIT GAME";
+  const exitLabel = () => exitArmed() ? "SURE? LEAVE GAME" : "EXIT GAME";
   function exitToSite() {
     if (!exitArmed()) {
       exitArm = performance.now() + 3200;
@@ -2106,9 +2135,16 @@
      drawn through — which is exactly what happened the moment FLYING was added
      above it. The click handler reads the same value, so what you press is
      where it was last drawn. */
-  const GRID = { colW: 150, cellW: 128, cellH: 42, y0: 270, rowH: 60 };
-  const gridX0 = () =>
-    Math.round(SCREEN_W / 2 - (ACTIONS.length - 1) * GRID.colW / 2);
+  /* `x0`, `colW` and `cellW` moved here from a formula for the same reason
+     `y0` did. The grid used to be centred on the screen and sized in constants,
+     which was right while it had the whole width to itself; it lives inside the
+     settings panel now, so how wide a column can be is a question about how
+     wide that panel is. `drawControls` sets all four before anything reads
+     them, and the pointer reads the same values — so what you press is where it
+     was last drawn. */
+  const GRID = { x0: 425, colW: 150, cellW: 128, cellH: 42, y0: 270, rowH: 60,
+                 labelW: 160 };
+  const gridX0 = () => GRID.x0;
 
   /* The device row sits a little below the seats, because it is not one of
      them: the gap is the only thing saying the rule changes there. */
@@ -2120,7 +2156,12 @@
              w: GRID.cellW, h: GRID.cellH };
   }
 
+  /* Only when the grid is actually the thing on the screen. It is one category
+     of the settings page now rather than the whole of it, and boxes left over
+     from the last time it was drawn would otherwise take a press meant for
+     whatever is in that space today. */
   function cellAt(sx, sy) {
+    if (state !== "controls" || settingsCat !== "keys") return null;
     for (let pi = 0; pi < GRID_ROWS(); pi++) {
       for (let ai = 0; ai < ACTIONS.length; ai++) {
         const b = cellBox(pi, ai);
@@ -2163,6 +2204,62 @@
       : who + " is now " + keyLabel(code));
   }
 
+  /* ── driving the settings page from the keyboard ──────────────────────────
+     The old page could be driven from the keyboard only as far as the key grid
+     — arrows walked the cells and nothing else on the page was reachable at
+     all. SOUND, FULLSCREEN, the zoom, the camera: all of them mouse-only, on a
+     page whose whole subject is not needing a mouse.
+
+     The rail fixes that by giving the page a shape a keyboard can walk. Up and
+     down move along whichever of the two lists you are in, right or ENTER goes
+     from the rail into the panel, left at the panel's left edge comes back out.
+     Every control registers itself with a row and a column as it is drawn, so
+     the key grid's four-across and a settings row's one-across are the same
+     kind of move. */
+  function setMove(dr, dc) {
+    if (!setItems.length) return;
+    const cur = setItems[setFocus.i] || setItems[0];
+    const land = it => {
+      setFocus.where = "panel";
+      setFocus.i = setItems.indexOf(it);
+      // The grid draws its highlight off the binder, so the binder follows.
+      if (it.cell) { binder.p = it.cell.p; binder.a = it.cell.a; }
+    };
+    if (dc) {
+      const row = setItems.filter(t => t.row === cur.row);
+      const k = row.indexOf(cur) + dc;
+      // Off the left of the panel is the rail. Off the right is nothing.
+      if (k < 0) { setLeaveToRail(); return; }
+      if (k < row.length) land(row[k]);
+      return;
+    }
+    const rows = [...new Set(setItems.map(t => t.row))].sort((a, b) => a - b);
+    const ri = rows.indexOf(cur.row) + dr;
+    if (ri < 0 || ri >= rows.length) return;
+    const row = setItems.filter(t => t.row === rows[ri]);
+    land(row[Math.min(cur.col, row.length - 1)]);
+  }
+
+  /* Stepping between the two lists lands somewhere meant, in both directions.
+     They are different lists, so an index carried across is nonsense: going in
+     would land THE GAME on whatever is third in a panel of something else, and
+     coming out of the seventh control on a panel used to land on BACK. So
+     going in is always the first control, and coming out is always the
+     category you are in. */
+  function setLeaveToRail() {
+    setFocus.where = "rail";
+    const i = setRail.findIndex(r => r.cat === settingsCat);
+    if (i >= 0) setFocus.i = i;
+  }
+
+  function setEnterPanel() {
+    if (!setItems.length) return;
+    setFocus.where = "panel";
+    setFocus.i = 0;
+    const it = setItems[0];
+    if (it && it.cell) { binder.p = it.cell.p; binder.a = it.cell.a; }
+  }
+
   function controlsKey(code) {
     if (binder.listening) {
       if (code === "Escape") { binder.listening = false; note("left as it was"); }
@@ -2170,27 +2267,42 @@
       return;
     }
     if (code === "Escape" || code === "KeyC") { state = backFrom || "title"; return; }
-    if (code === "Enter" || code === "NumpadEnter" || code === "Space") {
-      binder.listening = true;
+
+    const up = code === "ArrowUp" || code === "KeyW";
+    const down = code === "ArrowDown" || code === "KeyS";
+    const left = code === "ArrowLeft" || code === "KeyA";
+    const right = code === "ArrowRight" || code === "KeyD";
+    const go = code === "Enter" || code === "NumpadEnter" || code === "Space";
+
+    if (setFocus.where === "rail") {
+      const rail = setRail.length || 1;
+      if (up)   { setFocus.i = (setFocus.i + rail - 1) % rail; return; }
+      if (down) { setFocus.i = (setFocus.i + 1) % rail; return; }
+      if (right) { setEnterPanel(); return; }
+      if (go) {
+        const it = setRail[setFocus.i];
+        // A category is walked into; EXIT and BACK are done where they stand.
+        if (it && it.cat) { it.act(); setEnterPanel(); }
+        else if (it) it.act();
+        return;
+      }
       return;
     }
-    if (code === "KeyR") { resetKeys(); note("back to the keys it came with"); return; }
-    if (code === "KeyT") { state = "thumb"; return; }
-    if (code === "KeyV") { toggleModeCamera(); return; }
+
+    if (up || down)    { setMove(up ? -1 : 1, 0); return; }
+    if (left || right) { setMove(0, left ? -1 : 1); return; }
+    if (go) {
+      const it = setItems[setFocus.i];
+      if (it && typeof it.act === "function") it.act();
+      return;
+    }
     if (code === "Backspace" || code === "Delete") {
       // Emptying an action is allowed: two people at one keyboard may want
-      // fewer keys in play, not more.
+      // fewer keys in play, not more. Only where there is a key to empty.
+      if (settingsCat !== "keys") return;
       setCellKeys(binder.p, binder.a, []);
       keysChanged();
       note(cellWho(binder.p, binder.a) + " has no key now");
-      return;
-    }
-    const move = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1],
-                   ArrowRight: [0, 1], KeyW: [-1, 0], KeyS: [1, 0],
-                   KeyA: [0, -1], KeyD: [0, 1] }[code];
-    if (move) {
-      binder.p = (binder.p + move[0] + GRID_ROWS()) % GRID_ROWS();
-      binder.a = (binder.a + move[1] + ACTIONS.length) % ACTIONS.length;
     }
   }
 
@@ -3126,9 +3238,11 @@
     } else if (state === "controls") {
       controlsKey(code);
     } else if (state === "thumb") {
-      if (code === "KeyK" && !thumbInput()) { state = "controls"; return; }
-      if (code === "Escape" || code === "KeyC" || code === "Backspace") {
-        state = backFrom || "title";
+      // One way out, and it is back to the page you came in from. The pad
+      // screen is a room off the settings page now, not a rival to it.
+      if (code === "Escape" || code === "KeyC" || code === "Backspace" ||
+          code === "Enter" || code === "NumpadEnter") {
+        state = "controls";
       }
     } else if (state === "count") {
       if (code === "KeyC") { state = openSettings("count"); return; }
@@ -21661,6 +21775,12 @@
     pointerAt = s;
     if (state === "controls") {
       binder.hover = cellAt(s.x, s.y);
+      /* And the focus follows the pointer, so the page never shows two
+         highlights arguing about which control you are on. Reading off the
+         rectangles the page registered last frame rather than recomputing the
+         layout here: a second copy of that arithmetic is a second copy to get
+         wrong. */
+      settingsHover(s.x, s.y);
     }
     /* Which card the pointer is over. Read off the tap rectangles the row drew
        last frame rather than recomputing the layout here — the widths are
@@ -23890,7 +24010,10 @@
     ctx.restore();
     text(label, x, y + 7, 18, colour, "center", enabled ? 1 : 0.38);
     if (enabled && typeof act === "function") {
-      pushTap({ x: x - w / 2, y: y - h / 2, w, h, act });
+      // The label rides along. A harness that wants SOUND should be able to ask
+      // for SOUND rather than guess at where on the page it was drawn — which
+      // is what made the settings tests break every time the page was re-spaced.
+      pushTap({ x: x - w / 2, y: y - h / 2, w, h, act, label });
     }
   }
 
@@ -24575,177 +24698,264 @@
 
     tapButton("BACK", SCREEN_W / 2, 650, 240, 44, "#ffcb42",
               () => { state = isCamp ? "levels" : "title"; });
-    tapButton(thumbInput() ? "PHONE SETTINGS" : "CONTROL SETTINGS",
-              650, 650, 240, 44, "#ffe56d",
+    tapButton("SETTINGS", 650, 650, 240, 44, "#ffe56d",
               () => { state = openSettings("count"); });
   }
 
-  /* ── the mode's own settings ─────────────────────────────────────────────
-     One mode's page at a time, drawn the same on a keyboard and on a phone.
-     Opened from a match it is that match's page, with no tabs to wander off
-     into; opened from the front page the tabs are how you reach the others.
+  /* ── the settings page ───────────────────────────────────────────────────
+     A rail of categories down the left, and to the right of it one panel
+     holding whatever that category is about.
 
-     `notes` is off on the phone, where the space under a button belongs to the
-     next button. */
-  function modeSettingsBand(tabY, optY, notes) {
-    const page = SETTINGS_PAGES.find(p => p.key === settingsPage) ||
-                 SETTINGS_PAGES[0];
-    if (settingsLocked) {
-      text(page.name + " SETTINGS", SCREEN_W / 2, tabY, 17, page.colour,
-           "center", 0.9);
-    } else {
-      const tw = 224, gap = 10;
-      const x0 = SCREEN_W / 2 - (SETTINGS_PAGES.length * (tw + gap) - gap) / 2;
-      SETTINGS_PAGES.forEach((p, i) => {
-        const cx = x0 + i * (tw + gap) + tw / 2;
-        tapButton(p.name, cx, tabY, tw, 32, p.colour,
-                  () => { settingsPage = p.key; }, p.key === settingsPage);
-      });
-    }
+     What was here before was a single stacked page, and its own comments had
+     given up on it: "a fourth setting here needs the screen rearranged, not
+     another column". It had in fact run out of room twice over. The line
+     explaining INPUT was being drawn through the two buttons it explained. The
+     phone had a second copy of the whole page with the live thumbstick sitting
+     on top of RESET SURVEY, and its own SOUND, its own FULLSCREEN and its own
+     EXIT, each written twice and each drifting from the other.
 
-    /* Whatever this mode has to offer, spread across the band. Modes differ in
-       how many settings they have, so the row is laid out from the list rather
-       than from fixed coordinates. */
-    const opts = [];
-    if (page.key === "survey") {
-      opts.push({ label: "ZOOM: " + surveyZoomName(),
-                  note: "How far back the camera sits.",
-                  colour: page.colour, act: cycleSurveyZoom });
-    }
-    if (page.key in cameraRotates) {
-      const on = cameraRotates[page.key];
-      opts.push({ label: "CAMERA: " + (on ? "ROTATING" : "FIXED"),
-                  note: on ? "Ship stays pointed up." : "Map stays north-up.",
-                  colour: page.colour, act: () => toggleModeCamera(page.key) });
-    }
-    if (page.key === "survival") {
-      opts.push({ label: "FRIENDLY FIRE: " + (survivalFriendlyFire ? "ON" : "OFF"),
-                  note: survivalFriendlyFire
-                    ? "Your shots hurt your side."
-                    : "Only the wave hurts you.",
-                  colour: survivalFriendlyFire ? "#ff8f77" : "#6dffbf",
-                  act: toggleFriendlyFire, on: survivalFriendlyFire });
-    }
-    if (page.key === "survey") {
-      opts.push({ label: surveyResetLabel(),
-                  note: "Wipes the sector for good.",
-                  colour: surveyResetArmed() ? "#ff8f77" : "#a08cff",
-                  act: resetSurveyProgress, on: surveyResetArmed() });
-    }
+     The rail is what stops that happening again. A new setting is a new row in
+     one panel and nothing below it moves, because nothing below it is sharing
+     the space. A new *kind* of setting is a new entry in `SET_CATS`.
 
-    if (!opts.length) {
-      text("Nothing to set here \u2014 this one plays the same either way.",
-           SCREEN_W / 2, optY + 2, 16, "#ffcb42", "center", 0.7);
-      return optY + 24;
-    }
-    /* Three across is the ceiling, and it is a hard one: the keyboard grid on
-       the controls screen starts at a fixed y a little below this band, so a
-       second row would be drawn straight through it, and `tapButton` draws its
-       label at a fixed 18px, so a narrower button does not make SURE? THIS
-       WIPES IT ALL fit inside one. A fourth setting here needs the screen
-       rearranged, not another column — which is why the account lives on the
-       pause screen instead. */
-    const bw = opts.length > 2 ? 300 : 360;
-    const span = opts.length * (bw + 16) - 16;
-    /* A note is wrapped to its own button's width rather than trusted to fit:
-       three across leaves about thirty characters, and text laid out against a
-       guess is text that spills off the side of the page on somebody else's
-       browser. Whatever the wrapping costs in height, the heading below is
-       moved down by — which is what this returns. */
-    let lines = 0;
-    opts.forEach((o, i) => {
-      const cx = SCREEN_W / 2 - span / 2 + i * (bw + 16) + bw / 2;
-      tapButton(o.label, cx, optY, bw, 42, o.colour, o.act, o.on);
-      if (!notes) return;
-      const ls = wrapText(o.note, 14, bw - 12);
-      lines = Math.max(lines, ls.length);
-      ls.forEach((ln, k) =>
-        text(ln, cx, optY + 38 + k * 17, 14, "#ffcb42", "center", 0.75));
-    });
-    return optY + 30 + Math.max(1, lines) * 17;
+     The shell is capped and centred rather than stretched to the glass: a
+     settings row a thousand pixels wide is a label and a button at opposite
+     ends of a desk. Capped, the margins stay even on any screen the game will
+     hand us — 1000 through 1680. */
+  const SET_RAIL_W = 190, SET_RAIL_GAP = 26, SET_SHELL_MAX = 1180;
+  const SET_TOP = 96, SET_BOT = 604;
+  // Rows are pitched for type that is never smaller than 16px — see
+  // `readableTextSize`, which is why the old page's "13px" notes were in fact
+  // sixteen and why they touched everything above them.
+  const SET_PITCH = 64;
+
+  function settingsShell() {
+    const w = Math.min(SCREEN_W - MENU_INSET * 2, SET_SHELL_MAX);
+    const x = Math.round((SCREEN_W - w) / 2);
+    const px = x + SET_RAIL_W + SET_RAIL_GAP;
+    return { x, w, railX: x, railW: SET_RAIL_W, px, pw: x + w - px,
+             top: SET_TOP, bot: SET_BOT };
   }
 
-  /* The controls screen is the settings screen: every key on it is a control
-     you can change, and the grid is the same one `cellBox` hands the pointer. */
-  /* A heading with a rule either side of it. The settings page was one
-     undifferentiated stack of buttons — four sizes of rectangle in six rows,
-     with no way to tell which of them belonged together — and its own note
-     said a fourth mode setting "needs the screen rearranged, not another
-     column". Two more settings arrived, so here is the rearrangement: three
-     named groups, each answering one question.
+  const setRowY = (sh, i) => sh.top + 88 + i * SET_PITCH;
+  // The row along the foot of the panel, for the things that *do* something
+  // rather than being set to something: RESET ALL KEYS, SWAP SIDES.
+  const setActY = sh => sh.bot - 26;
 
-       THIS MODE   what the mode you are about to play does
-       FLYING      how you drive it — the machine, the mouse, and the keys
-       THE GAME    sound, screen, account, and the way out
+  const SET_CATS = [
+    { key: "mode",   name: "THIS MODE", blurb: "what this mode does differently" },
+    { key: "flying", name: "FLYING",    blurb: "what you are driving it with" },
+    { key: "keys",   name: "KEYS",      blurb: "two at this keyboard, and Survey's four slots" },
+    { key: "pad",    name: "THE PAD",   blurb: "the controls that appear when you touch the screen" },
+    { key: "game",   name: "THE GAME",  blurb: "sound, screen, and who you are signed in as" }
+  ];
+  const settingsCats = () => SET_CATS;
+  const settingsCatNow = () =>
+    SET_CATS.find(c => c.key === settingsCat) || SET_CATS[0];
 
-     A rule rather than a box: a box round a group is a second frame inside a
-     framed page, and the page already has one. */
-  function section(label, y, colour) {
-    const c = colour || "#ffcb42";
+  /* ── registering a control ────────────────────────────────────────────────
+     Every control on the panel goes on `setItems` with a row and a column, so
+     `setMove` can walk the page without knowing what any of it is. A key cell
+     carries `cell` as well, because the grid draws its highlight off the
+     binder and the two have to agree. */
+  function setPush(rect, row, col) {
+    rect.row = row; rect.col = col;
+    setItems.push(rect);
+    return setItems.length - 1;
+  }
+
+  function focusRing(x, y, w, h, colour) {
     ctx.save();
-    ctx.font = '14px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
-    const tw = ctx.measureText(label).width + 26;
+    ctx.strokeStyle = colour;
+    ctx.globalAlpha = 0.85;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 4]);
+    ctx.strokeRect(x - 5, y - 5, w + 10, h + 10);
     ctx.restore();
-    const x0 = MENU_INSET + 8, x1 = SCREEN_W - MENU_INSET - 8;
-    const mid = SCREEN_W / 2;
+  }
+
+  function panelButton(label, x, y, w, h, colour, act, row, col, on, enabled) {
+    const live = enabled !== false && typeof act === "function";
+    const i = live ? setPush({ x: x - w / 2, y: y - h / 2, w, h, act }, row, col)
+                   : -1;
+    tapButton(label, x, y, w, h, colour,
+              () => { if (i >= 0) { setFocus.where = "panel"; setFocus.i = i; }
+                      act(); },
+              !!on, enabled !== false);
+    if (i >= 0 && setFocus.where === "panel" && setFocus.i === i) {
+      focusRing(x - w / 2, y - h / 2, w, h, colour);
+    }
+  }
+
+  /* One setting, one row: what it is on the left, what it is set to on the
+     right, and a line underneath for the word that does not explain itself.
+     The note runs the full width of the panel because the button it shares a
+     line with is at the other end of it — which is the whole reason a row is
+     shaped this way rather than being a button with its label inside it. */
+  function setRow(sh, i, o) {
+    const y = setRowY(sh, i);
+    const bw = o.wide ? 320 : 260;
+    text(o.label, sh.px, y + 6, 17, "#ffe56d", "left");
+    /* Clear of the button's bottom edge rather than merely below the label.
+       A note is as wide as it needs to be and the button is at the far end of
+       the same line, so a note set any higher runs underneath it — which is
+       exactly what the line explaining INPUT used to do. */
+    if (o.note) text(o.note, sh.px, y + 40, 13, "#ffcb42", "left", 0.6);
+    panelButton(o.value, sh.px + sh.pw - bw / 2, y, bw, 40,
+                o.colour || "#ffe56d", o.act, i, 0, o.on, o.enabled);
+  }
+
+  // A row of things that happen when you press them, spread across the foot.
+  function setActions(sh, row, list) {
+    const live = list.filter(a => a);
+    if (!live.length) return;
+    const gap = 14;
+    const bw = Math.min(300, (sh.pw - gap * (live.length - 1)) / live.length);
+    const x0 = sh.px + sh.pw / 2 - (live.length * (bw + gap) - gap) / 2;
+    live.forEach((a, i) => {
+      panelButton(a.label, x0 + i * (bw + gap) + bw / 2, setActY(sh), bw, 42,
+                  a.colour || "#ffcb42", a.act, row, i, a.on, a.enabled);
+    });
+  }
+
+  function panelHead(sh, name, blurb, colour) {
+    text(name, sh.px, sh.top + 18, 20, colour || "#ffe56d", "left");
     ctx.save();
-    ctx.strokeStyle = c;
-    ctx.globalAlpha = 0.28;
+    ctx.strokeStyle = colour || "#ffcb42";
+    ctx.globalAlpha = 0.22;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(x0, y); ctx.lineTo(mid - tw / 2, y);
-    ctx.moveTo(mid + tw / 2, y); ctx.lineTo(x1, y);
+    ctx.moveTo(sh.px, sh.top + 32);
+    ctx.lineTo(sh.px + sh.pw, sh.top + 32);
     ctx.stroke();
     ctx.restore();
-    text(label, mid, y + 5, 14, c, "center", 0.75);
+    if (blurb) text(blurb, sh.px, sh.top + 54, 13, "#ffcb42", "left", 0.55);
   }
 
-  function drawControls() {
-    text("SETTINGS", SCREEN_W / 2, 52, 34, "#ffe56d");
+  /* ── settings that belong to a mode ──────────────────────────────────────
+     Most of this page is the game's: the keys, the sound, the screen. These
+     are not. How far the camera sits back is a question about Survey and means
+     nothing in a Battle Royale; whether the view turns with the ship is a
+     question you answer differently for a duel than for a long haul. So each
+     mode keeps its own answers, and one mode's are shown at a time — the one
+     you are in, if you opened this from a match, and otherwise whichever tab
+     you pick. */
+  function modeOptions(key) {
+    const out = [];
+    if (key === "survey") {
+      out.push({ label: "ZOOM", value: surveyZoomName(),
+                 note: "How far back the camera sits.",
+                 act: cycleSurveyZoom });
+    }
+    if (key in cameraRotates) {
+      const on = cameraRotates[key];
+      out.push({ label: "CAMERA", value: on ? "ROTATING" : "FIXED",
+                 note: on ? "The ship stays pointed up."
+                          : "The map stays north-up.",
+                 act: () => toggleModeCamera(key) });
+    }
+    if (key === "survival") {
+      out.push({ label: "FRIENDLY FIRE",
+                 value: survivalFriendlyFire ? "ON" : "OFF",
+                 note: survivalFriendlyFire ? "Your shots hurt your side."
+                                            : "Only the wave hurts you.",
+                 colour: survivalFriendlyFire ? "#ff8f77" : "#6dffbf",
+                 on: survivalFriendlyFire, act: toggleFriendlyFire });
+    }
+    if (key === "survey") {
+      out.push({ label: "THE SECTOR", value: surveyResetLabel(),
+                 note: "Wipes the chart, the almanac and the salvage. Asks twice.",
+                 colour: surveyResetArmed() ? "#ff8f77" : "#a08cff",
+                 on: surveyResetArmed(), wide: true,
+                 act: resetSurveyProgress });
+    }
+    return out;
+  }
 
-    section("THIS MODE", 82);
-    const headY = modeSettingsBand(110, 156, true);
+  function drawModePanel(sh) {
+    const page = SETTINGS_PAGES.find(p => p.key === settingsPage) ||
+                 SETTINGS_PAGES[0];
+    let row = 0;
+    if (settingsLocked) {
+      /* Locked to the match you are in. There are no tabs to wander off into,
+         because the camera you are looking at is this mode's and the other
+         three are not your problem right now. */
+      panelHead(sh, page.name, "the mode you are playing", page.colour);
+    } else {
+      panelHead(sh, "THIS MODE", "each mode keeps its own answers", page.colour);
+      const gap = 10;
+      const tw = Math.min(240, (sh.pw - gap * 3) / 4);
+      const x0 = sh.px + sh.pw / 2 - (4 * (tw + gap) - gap) / 2;
+      SETTINGS_PAGES.forEach((p, i) => {
+        panelButton(p.name, x0 + i * (tw + gap) + tw / 2, sh.top + 84, tw, 34,
+                    p.colour, () => { settingsPage = p.key; }, 0, i,
+                    p.key === settingsPage);
+      });
+      row = 1;
+    }
 
-    /* ── how you drive it ───────────────────────────────────────────────────
-       The machine first, then the pointer, then the keys — narrowing from
-       "what am I playing on" to "which button does what", which is the order
-       somebody sets these up in.
+    const opts = modeOptions(page.key);
+    if (!opts.length) {
+      text("Nothing to set here — this one plays the same either way.",
+           sh.px, setRowY(sh, row) + 6, 16, "#ffcb42", "left", 0.7);
+      return;
+    }
+    opts.forEach((o, i) => setRow(sh, row + i, o));
+  }
 
-       Laid out from `headY` rather than from a constant, so a mode with three
-       settings and a wrapped note pushes this down instead of drawing through
-       it. That collision is what the old comment here was warning about. */
-    const flyY = Math.max(206, headY + 8);
-    section("FLYING", flyY);
+  /* ── how you are driving it ───────────────────────────────────────────────
+     The machine first, then the pointer: narrowing from "what am I playing on"
+     to "what is my hand on", which is the order somebody sets these up in. */
+  function drawFlyingPanel(sh) {
+    panelHead(sh, "FLYING", "the browser's guess is not always right", "#6dc8ff");
+    setRow(sh, 0, {
+      label: "INPUT", value: inputModeName(), colour: "#6dc8ff",
+      note: inputMode === "auto"
+              ? "The browser decides which kind of machine this is."
+              : inputMode === "keys"
+                ? "Treated as a desk, whatever the screen can do."
+                : "Treated as a touchscreen, whatever the browser thinks.",
+      act: cycleInputMode });
+    setRow(sh, 1, {
+      label: "MOUSE FLYING", value: mouseFly ? "ON" : "OFF",
+      colour: mouseFly ? "#6dffbf" : "#ffcb42", on: mouseFly,
+      note: mouseFly ? "The nose comes about toward the pointer. Click fires."
+                     : "The ship is turned with the keys.",
+      act: toggleMouseFly });
+  }
 
-    tapButton("INPUT: " + inputModeName(), COLS(2, 0), flyY + 30, 300, 38,
-              "#6dc8ff", cycleInputMode);
-    tapButton("MOUSE FLYING: " + (mouseFly ? "ON" : "OFF"),
-              COLS(2, 1), flyY + 30, 300, 38,
-              mouseFly ? "#6dffbf" : "#ffcb42", toggleMouseFly, mouseFly);
-    /* One line for both, not one each. The buttons already say what they are
-       set to; what a line underneath is for is the word that does not explain
-       itself, and only AUTOMATIC needs it. */
-    text(inputMode === "auto"
-           ? "Automatic: the browser decides which kind of machine this is."
-           : inputMode === "keys" ? "Treated as a desk, whatever the screen can do."
-           : "Treated as a touchscreen, whatever the browser thinks.",
-         SCREEN_W / 2, flyY + 54, 13, "#ffcb42", "center", 0.6);
+  /* ── the keys ─────────────────────────────────────────────────────────────
+     Every box on it is a control you can change, and it is the same grid
+     `cellBox` hands the pointer.
 
-    /* And now the keys, starting under all of that. Everything below reads
-       `GRID.y0`, so setting it here is what moves the whole grid — the labels,
-       the boxes and the rectangles you click.
+     The grid is sized and placed here rather than by a formula, because how
+     wide a column can be is now a question about how wide the panel is. Four
+     columns, a label column beside them, and the whole block centred in what
+     is left. */
+  function drawKeysPanel(sh) {
+    panelHead(sh, "KEYS",
+              "select a box and press the key you want — ESC cancels", "#ffe56d");
 
-       There is no "click a key box, then press the new key" line up here any
-       more. It said the same thing as the line under the grid, it was the only
-       thing on the page said twice, and at this height it was drawn straight
-       through the column headings. One hint, under the thing it is about. */
-    GRID.y0 = flyY + 100;
+    /* Wide enough for "survey devices", which is the longest thing that goes
+       in this column and is 134px of 16px type — every size below sixteen is
+       sixteen, see `readableTextSize`. It used to be sized for "AMBER" and the
+       device line ran out under the rail. */
+    const labelW = 160;
+    // 150 is the width the grid was designed at and the most it ever takes;
+    // below that it is whatever four columns and the label column can have of
+    // the panel, less a margin either side.
+    GRID.labelW = labelW;
+    GRID.colW = Math.min(150, Math.floor((sh.pw - labelW + 8) / 4));
+    GRID.cellW = GRID.colW - 24;
+    const blockW = labelW + 3 * GRID.colW + GRID.cellW;
+    GRID.x0 = Math.round(sh.px + (sh.pw - blockW) / 2 + labelW + GRID.cellW / 2);
+    GRID.y0 = sh.top + 108;
 
     ACTIONS.forEach((a, ai) => {
-      text(a.name, cellBox(0, ai).cx, GRID.y0 - 22, 15, "#ffcb42", "center", 0.9);
-      // And what the same column means on the bottom row.
+      text(a.name, cellBox(0, ai).cx, GRID.y0 - 24, 15, "#ffcb42", "center", 0.9);
+      // And what the same column means down on the device row.
       text("SLOT " + (ai + 1), cellBox(KEYBOARD_MAX, ai).cx,
-           cellBox(KEYBOARD_MAX, 0).y - 8, 13, "#a08cff", "center", 0.75);
+           cellBox(KEYBOARD_MAX, 0).y - 10, 13, "#a08cff", "center", 0.75);
     });
 
     const now = performance.now();
@@ -24758,12 +24968,17 @@
          own label: the columns above it are TURN LEFT and FIRE, and these four
          are slots whose meaning is whatever you bolted into them. */
       if (isDevRow(pi)) {
-        text("survey devices", home.x - 18, home.cy + 22, 12, colour,
+        text("survey devices", home.x - 18, home.cy + 24, 12, colour,
              "right", 0.7);
       }
 
       ACTIONS.forEach((a, ai) => {
         const b = cellBox(pi, ai);
+        const i = setPush({ x: b.x, y: b.y, w: b.w, h: b.h,
+                            cell: { p: pi, a: ai },
+                            act: () => { binder.p = pi; binder.a = ai;
+                                         binder.listening = true; } },
+                          pi, ai);
         const picked = binder.p === pi && binder.a === ai;
         const live = picked && binder.listening;
         const hot = picked ||
@@ -24780,6 +24995,9 @@
         ctx.strokeRect(b.x, b.y, b.w, b.h);
         ctx.globalAlpha = 1;
         ctx.lineWidth = 1;
+        if (setFocus.where === "panel" && setFocus.i === i) {
+          focusRing(b.x, b.y, b.w, b.h, colour);
+        }
 
         const codes = cellKeys(pi, ai);
         if (live) {
@@ -24788,7 +25006,7 @@
           const on = Math.floor(now / 400) % 2 === 0;
           text("PRESS A KEY", b.cx, b.cy + 5, 13, colour, "center", on ? 1 : 0.3);
         } else {
-          text(codes.length ? keyLabel(codes[0]) : "\u2014", b.cx, b.cy + 6, 16,
+          text(codes.length ? keyLabel(codes[0]) : "—", b.cx, b.cy + 6, 16,
                codes.length ? "#ffe56d" : "#ff8f77");
           // Spares for the same action are a count here and a list below, or
           // four fire keys would need four cells.
@@ -24800,159 +25018,271 @@
       });
     }
 
-    // Under the device row rather than under the seats, which is what moved it
-    // — and everything below it moved with it.
-    /* Everything from here down hangs off the bottom of the grid rather than
-       off a constant, so the page stays assembled whatever pushed the grid
-       down. Four rows of fixed y — 440, 470, 542, 596, 654 — was the old
-       arrangement, and it is what made "a fourth setting needs the screen
-       rearranged" true. */
-    const gridEnd = cellBox(GRID_ROWS() - 1, 0).y + GRID.cellH;
-    const sayY = gridEnd + 18;
-
+    // What the page has to say, under the grid it is about.
+    const sayY = cellBox(GRID_ROWS() - 1, 0).y + GRID.cellH + 30;
     const sel = cellKeys(binder.p, binder.a);
     const fresh = binder.note && now < binder.noteUntil;
     // A refused key has to say so while it is still listening, or pressing
     // ESC looks like the only thing that ever happens.
     if (binder.listening && fresh && binder.bad) {
-      text(binder.note, SCREEN_W / 2, sayY, 15, "#ff8f77");
+      text(binder.note, sh.px + sh.pw / 2, sayY, 15, "#ff8f77");
     } else if (binder.listening) {
       text("Press the new key. Press ESC to cancel.",
-           SCREEN_W / 2, sayY, 15, "#ffe56d");
+           sh.px + sh.pw / 2, sayY, 15, "#ffe56d");
     } else if (fresh) {
-      text(binder.note, SCREEN_W / 2, sayY, 15, binder.bad ? "#ff8f77" : "#6dffbf");
+      text(binder.note, sh.px + sh.pw / 2, sayY, 15,
+           binder.bad ? "#ff8f77" : "#6dffbf");
     } else if (sel.length > 1) {
       text("Also: " + sel.slice(1).map(keyLabel).join(", ") +
-           ". A new key replaces them.", SCREEN_W / 2, sayY, 14, "#ffcb42");
+           ". A new key replaces them.", sh.px + sh.pw / 2, sayY, 14, "#ffcb42");
     } else {
-      text("Select a box to change it.", SCREEN_W / 2, sayY, 14, "#ffcb42");
+      text("More than two at once? Play online — one screen each.",
+           sh.px + sh.pw / 2, sayY, 14, "#ffcb42", "center", 0.7);
     }
 
-    const keysRow = sayY + 28;
-    tapButton("RESET ALL KEYS", COLS(2, 0), keysRow, 280, 42, "#ffe56d", () => {
-      resetKeys(); note("Keys reset.");
-    });
-    tapButton("CLEAR SELECTED KEY", COLS(2, 1), keysRow, 280, 42, "#ffcb42", () => {
-      setCellKeys(binder.p, binder.a, []);
-      keysChanged();
-      note("Selected key cleared.");
-    });
-    /* Three across when there is an account button to fit, two when there is
-       not — the row is laid out from what is actually in it rather than from a
-       constant, because the constant is what put a fourth survey setting half
-       off the screen the first time this was tried. */
-    section("THE GAME", keysRow + 30);
-    const gameRow = keysRow + 60;
-    const gCols = window.CrossfireCloud ? 3 : 2;
-    tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
-              COLS(gCols, 0), gameRow, 280, 42, soundEnabled ? "#ffe56d" : "#ffcb42",
-              toggleSound, soundEnabled);
-    tapButton(fullscreenLabel(), COLS(gCols, 1), gameRow, 280, 42, "#ffe56d",
-              toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
-    /* The way in and the way back out, for somebody who chose guest at the door
-       and has changed their mind — or who wants off this account. It sits with
-       SOUND and FULLSCREEN rather than on a mode's own page because an account
-       is not a setting of Survey, it is a setting of you. */
-    if (window.CrossfireCloud) {
-      const inAlready = !!(cloud && cloud.enabled() && cloud.session());
-      tapButton(inAlready ? "SIGN OUT" : "SIGN IN", COLS(3, 2), gameRow, 280, 42,
-                "#a08cff",
-                inAlready
-                  ? () => signOutNow(m => note(m))
-                  : () => openAccount());
-    }
-    tapButton("PHONE CONTROLS", COLS(2, 0), gameRow + 48, 340, 42, "#ffe56d", () => {
-      binder.listening = false;
-      state = "thumb";
-    });
-    // The way back to the site. Armed before it fires: one stray click should
-    // not close the game.
-    tapButton(exitLabel(), COLS(2, 1), gameRow + 48, 300, 42,
-              exitArmed() ? "#ff8f77" : "#ffcb42", exitToSite, exitArmed());
-    tapButton("BACK", SCREEN_W / 2, gameRow + 98, 320, 42, "#ffcb42", () => {
-      binder.listening = false;
-      state = backFrom || "title";
-    });
+    setActions(sh, GRID_ROWS(), [
+      { label: "RESET ALL KEYS", colour: "#ffe56d",
+        act: () => { resetKeys(); note("Keys reset."); } },
+      { label: "CLEAR SELECTED KEY", colour: "#ffcb42",
+        act: () => {
+          setCellKeys(binder.p, binder.a, []);
+          keysChanged();
+          note("Selected key cleared.");
+        } }
+    ]);
   }
 
-  /* ── the thumb-controls screen ────────────────────────────────────────────
-     The keyboard grid above is no use to a phone, so a phone gets this
-     instead. Everything on it is a choice about the pad, and the pad itself is
-     floating over the top of it the whole time — the controls you are moving
-     are the real ones, at the real size, and you can push the stick and watch
-     the knob follow while you decide where it belongs.
-
-     The canvas is letterboxed inside the window and the pad is fixed to the
-     window, so every word here is kept in the upper half: below that is where
-     thumbs live, and that is where the controls will be sitting. */
-  function drawThumb() {
-    text("PHONE SETTINGS", SCREEN_W / 2, 56, 34, "#ffe56d");
-    text("Drag the controls on this screen to move them.",
-         SCREEN_W / 2, 84, 16, "#ffcb42");
-    tapButton("BACK", LEFT(70), 54, 140, 42, "#ffcb42",
-              () => { state = backFrom || "title"; });
-    if (!thumbInput()) {
-      tapButton("KEYBOARD", RIGHT(70), 54, 140, 42, "#ffe56d",
-                () => { state = "controls"; });
-    }
-
-    const row = (y, label, on, blurb, act) => {
-      tapButton(label + ": " + (on ? "ON" : "OFF"),
-                SCREEN_W / 2, y, 520, 44,
-                on ? "#ffe56d" : "#ffcb42", act);
-      text(blurb, SCREEN_W / 2, y + 36, 16, "#ffcb42");
-    };
-
-    tapButton("CONTROL LAYOUT: " +
-              (padCfg.scheme === "arrows" ? "ARROWS" : "STICK"),
-              SCREEN_W / 2, 132, 560, 46, "#ffe56d", () => {
-      padCfg.scheme = padCfg.scheme === "stick" ? "arrows" : "stick";
-      padRelease(); padApply(); padSave();
-    });
-    text(padCfg.scheme === "arrows"
-           ? "Left, right, and accelerate. Auto-fire is always on."
-           : "Aim with the stick. Choose gas and auto-fire below.",
-         SCREEN_W / 2, 170, 16, "#ffcb42");
-
-    if (padCfg.scheme === "stick") {
-      row(222, "GAS BUTTON", padCfg.gas,
-          padCfg.gas
-            ? "Use a separate gas button."
-            : "Push the stick forward to accelerate.",
-          () => { padCfg.gas = !padCfg.gas; padApply(); padSave(); });
-
-      row(296, "AUTO-FIRE", padCfg.auto,
-          padCfg.auto
-            ? "The ship fires automatically."
-            : "Use the fire button.",
-          () => { padCfg.auto = !padCfg.auto; padApply(); padSave(); });
-    } else {
-      tapButton("AUTO-FIRE: ALWAYS ON", SCREEN_W / 2, 248, 520, 44,
-                "#ffe56d", null);
-    }
-
+  /* ── the pad ──────────────────────────────────────────────────────────────
+     Everything about the controls that appear when a thumb touches the screen.
+     Where they *sit* is the one thing that cannot be a row in a list, because
+     answering it means dragging the real controls around at their real size —
+     so that is its own screen, and this is the door to it. */
+  function drawPadPanel(sh) {
+    const stick = padCfg.scheme === "stick";
+    panelHead(sh, "THE PAD",
+              "a stick and a fire button, the moment you touch the screen",
+              "#6dffbf");
+    setRow(sh, 0, {
+      label: "LAYOUT", value: stick ? "STICK" : "ARROWS", colour: "#6dffbf",
+      note: stick ? "Aim with the stick."
+                  : "Left, right and accelerate. Auto-fire is always on.",
+      act: () => {
+        padCfg.scheme = stick ? "arrows" : "stick";
+        padRelease(); padApply(); padSave();
+      } });
+    setRow(sh, 1, {
+      label: "GAS BUTTON", value: stick ? (padCfg.gas ? "ON" : "OFF") : "—",
+      colour: padCfg.gas ? "#6dffbf" : "#ffcb42", on: stick && padCfg.gas,
+      enabled: stick,
+      note: !stick ? "The arrows have their own accelerate."
+                   : padCfg.gas ? "A separate button for the throttle."
+                                : "Push the stick forward to accelerate.",
+      act: () => { padCfg.gas = !padCfg.gas; padApply(); padSave(); } });
+    setRow(sh, 2, {
+      label: "AUTO-FIRE",
+      value: stick ? (padCfg.auto ? "ON" : "OFF") : "ALWAYS ON",
+      colour: (!stick || padCfg.auto) ? "#6dffbf" : "#ffcb42",
+      on: !stick || padCfg.auto, enabled: stick,
+      note: !stick ? "The arrows fire for you."
+                   : padCfg.auto ? "The ship fires on its own."
+                                 : "Use the fire button.",
+      act: () => { padCfg.auto = !padCfg.auto; padApply(); padSave(); } });
     const z = PAD_SIZES.find(v => v.s === padCfg.size) || PAD_SIZES[1];
-    tapButton("CONTROL SIZE: " + z.name, SCREEN_W / 2, 358, 520, 44,
-              "#ffe56d", () => {
-      const i = PAD_SIZES.indexOf(z);
-      padCfg.size = PAD_SIZES[(i + 1) % PAD_SIZES.length].s;
-      padApply(); padSave();
+    setRow(sh, 3, {
+      label: "SIZE", value: z.name, colour: "#6dffbf",
+      note: "How big the controls are under your thumbs.",
+      act: () => {
+        const i = PAD_SIZES.indexOf(z);
+        padCfg.size = PAD_SIZES[(i + 1) % PAD_SIZES.length].s;
+        padApply(); padSave();
+      } });
+
+    setActions(sh, 4, [
+      { label: "MOVE THEM", colour: "#ffe56d",
+        act: () => { binder.listening = false; state = "thumb"; } },
+      { label: "SWAP SIDES", colour: "#ffe56d", act: padMirror },
+      { label: "RESET THE PAD", colour: "#ffcb42", act: padReset }
+    ]);
+  }
+
+  /* ── the game ─────────────────────────────────────────────────────────────
+     Sound, screen, and who you are. An account is not a setting of Survey; it
+     is a setting of you, which is why it sits here rather than on a mode's
+     own page. */
+  function drawGamePanel(sh) {
+    panelHead(sh, "THE GAME", "everything that is not about flying", "#ffe56d");
+    setRow(sh, 0, {
+      label: "SOUND", value: soundEnabled ? "ON" : "OFF",
+      colour: soundEnabled ? "#ffe56d" : "#ffcb42", on: soundEnabled,
+      note: soundEnabled ? "Guns, engines and the wall."
+                         : "Silent.",
+      act: toggleSound });
+    setRow(sh, 1, {
+      label: "SCREEN", value: fullscreenLabel(),
+      colour: "#ffe56d", on: !!fullscreenElement(),
+      enabled: fullscreenSupported(),
+      note: fullscreenSupported()
+              ? "Fill the glass. The game takes the shape of whatever it gets."
+              : "This browser will not do fullscreen.",
+      act: toggleFullscreen });
+
+    if (!window.CrossfireCloud) return;
+    /* The way in and the way back out, for somebody who chose guest at the
+       door and has changed their mind — or who wants off this account. */
+    const inAlready = !!(cloud && cloud.enabled() && cloud.session());
+    setRow(sh, 2, {
+      label: "ACCOUNT", value: inAlready ? "SIGN OUT" : "SIGN IN",
+      colour: "#a08cff",
+      note: inAlready ? "Your survey follows you between machines."
+                      : "Playing as a guest — this machine only.",
+      act: inAlready ? () => signOutNow(m => note(m)) : () => openAccount() });
+  }
+
+  const SET_PANELS = { mode: drawModePanel, flying: drawFlyingPanel,
+                       keys: drawKeysPanel, pad: drawPadPanel,
+                       game: drawGamePanel };
+
+  /* ── the rail ─────────────────────────────────────────────────────────────
+     Left-aligned and full width, with a bar down the lit edge of whichever one
+     you are in — a tab, not a button. The two at the foot are below a gap and
+     a rule because they are not categories: they leave. */
+  function railRow(it, on, focused) {
+    const c = it.colour || "#ffe56d";
+    ctx.save();
+    ctx.fillStyle = c;
+    ctx.globalAlpha = on ? 0.16 : 0.05;
+    ctx.fillRect(it.x, it.y, it.w, it.h);
+    ctx.globalAlpha = on ? 1 : 0.28;
+    ctx.fillRect(it.x, it.y, 3, it.h);
+    ctx.restore();
+    text(it.label, it.x + 16, it.y + it.h / 2 + 6, 16, c, "left", on ? 1 : 0.72);
+    /* Pressing a rail entry is also moving to it: the keyboard's mark and the
+       pointer's are the same mark, so a click must not leave the dashed ring
+       sitting on whatever was open before. */
+    const i = setRail.indexOf(it);
+    pushTap({ x: it.x, y: it.y, w: it.w, h: it.h, label: it.label,
+              act: () => { setFocus.where = "rail"; setFocus.i = i; it.act(); } });
+    if (focused) focusRing(it.x, it.y, it.w, it.h, c);
+  }
+
+  function settingsHover(x, y) {
+    const inside = r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    for (let i = 0; i < setRail.length; i++) {
+      if (inside(setRail[i])) { setFocus.where = "rail"; setFocus.i = i; return; }
+    }
+    for (let i = 0; i < setItems.length; i++) {
+      const t = setItems[i];
+      if (!inside(t)) continue;
+      setFocus.where = "panel";
+      setFocus.i = i;
+      if (t.cell) { binder.p = t.cell.p; binder.a = t.cell.a; }
+      return;
+    }
+  }
+
+  function drawControls() {
+    const sh = settingsShell();
+    setItems = [];
+    setRail = [];
+
+    /* A ground under the page. The idling asteroid field drifts behind every
+       menu and used to drift straight through this one's type — which on the
+       one screen made entirely of small print is the difference between a page
+       and a transparency. Dark enough to read against, thin enough that the
+       field is still visibly back there. */
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.76)";
+    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    ctx.restore();
+
+    text("SETTINGS", sh.x, 56, 34, "#ffe56d", "left");
+    text(settingsCatNow().blurb, sh.x + sh.w, 56, 14, "#ffcb42", "right", 0.55);
+    ctx.save();
+    ctx.strokeStyle = "#ffcb42";
+    ctx.globalAlpha = 0.25;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(sh.x, 72); ctx.lineTo(sh.x + sh.w, 72);
+    ctx.stroke();
+    // And the rule that separates the two columns, top to bottom.
+    ctx.globalAlpha = 0.14;
+    ctx.beginPath();
+    ctx.moveTo(sh.px - SET_RAIL_GAP / 2, sh.top);
+    ctx.lineTo(sh.px - SET_RAIL_GAP / 2, sh.bot + 30);
+    ctx.stroke();
+    ctx.restore();
+
+    const cats = settingsCats();
+    cats.forEach((c, i) => {
+      setRail.push({ x: sh.railX, y: sh.top + i * 48, w: sh.railW, h: 42,
+                     label: c.name, cat: c.key,
+                     act: () => { settingsCat = c.key; } });
     });
+    // The way out of the game, and the way out of this page. Armed before it
+    // fires: one stray click should not close a run.
+    setRail.push({ x: sh.railX, y: sh.bot - 58, w: sh.railW, h: 42,
+                   label: exitLabel(), colour: exitArmed() ? "#ff8f77" : "#ffcb42",
+                   act: exitToSite });
+    setRail.push({ x: sh.railX, y: sh.bot - 4, w: sh.railW, h: 42,
+                   label: "BACK", colour: "#ffcb42",
+                   act: () => { binder.listening = false;
+                                state = backFrom || "title"; } });
 
-    // Everything above this line is the pad; everything below it belongs to
-    // whichever game you are setting up.
-    modeSettingsBand(410, 458, false);
+    ctx.save();
+    ctx.strokeStyle = "#ffcb42";
+    ctx.globalAlpha = 0.18;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(sh.railX, sh.bot - 76);
+    ctx.lineTo(sh.railX + sh.railW, sh.bot - 76);
+    ctx.stroke();
+    ctx.restore();
 
-    tapButton("SWAP SIDES", COLS(3, 0), 574, 240, 40, "#ffe56d", padMirror);
-    tapButton("RESET PHONE CONTROLS", COLS(3, 1), 574, 280, 40, "#ffcb42", padReset);
-    tapButton(exitLabel(), COLS(3, 2), 574, 280, 40,
-              exitArmed() ? "#ff8f77" : "#ffcb42", exitToSite, exitArmed());
-    tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
-              COLS(2, 0), 516, 280, 40, soundEnabled ? "#ffe56d" : "#ffcb42",
-              toggleSound, soundEnabled);
-    tapButton(fullscreenLabel(), COLS(2, 1), 516, 280, 40, "#ffe56d",
-              toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
+    setRail.forEach((it, i) => railRow(it, it.cat === settingsCat,
+                                       setFocus.where === "rail" &&
+                                       setFocus.i === i));
 
+    (SET_PANELS[settingsCat] || drawModePanel)(sh);
+
+    /* The rail is drawn before the panel and the panel is what rebuilds
+       `setItems`, so the focus can be pointing past the end of a list that has
+       just got shorter — switch from KEYS to FLYING and twelve cells become
+       two rows. Clamped here, once, rather than guessed at in four places. */
+    if (setFocus.where === "panel") {
+      if (!setItems.length) setFocus.where = "rail";
+      else setFocus.i = Math.min(setFocus.i, setItems.length - 1);
+    }
+    if (setFocus.where === "rail") {
+      setFocus.i = Math.max(0, Math.min(setFocus.i, setRail.length - 1));
+    }
+  }
+
+  /* ── moving the pad ───────────────────────────────────────────────────────
+     The one settings question that cannot be a row in a list: where the
+     controls sit. The pad itself is floating over the top of this screen the
+     whole time — the controls you are moving are the real ones, at the real
+     size, and you can push the stick and watch the knob follow while you
+     decide where it belongs.
+
+     Which is why everything this screen has to say is kept in the top fifth of
+     it. Below that is where thumbs live, and where the controls will be
+     sitting. The old version put a mode band, a sound button and an EXIT down
+     there with them, and the live thumbstick was drawn straight over the top
+     of RESET SURVEY. */
+  function drawThumb() {
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.42)";
+    ctx.fillRect(0, 0, SCREEN_W, 150);
+    ctx.restore();
+
+    text("MOVE THE CONTROLS", SCREEN_W / 2, 56, 30, "#ffe56d");
+    text("Drag any of them. They stay where you put them.",
+         SCREEN_W / 2, 84, 16, "#ffcb42");
+
+    tapButton("DONE", COLS(3, 0), 120, 240, 42, "#ffe56d",
+              () => { state = "controls"; });
+    tapButton("SWAP SIDES", COLS(3, 1), 120, 240, 42, "#ffe56d", padMirror);
+    tapButton("RESET THE PAD", COLS(3, 2), 120, 240, 42, "#ffcb42", padReset);
   }
 
 
@@ -27533,7 +27863,23 @@
       // The key grid draws its own boxes rather than registering buttons, so
       // where it sits is not visible in the tap list.
       keyGrid: () => ({ x0: gridX0(), colW: GRID.colW, cellW: GRID.cellW,
-                        cols: ACTIONS.length }),
+                        cols: ACTIONS.length, labelW: GRID.labelW }),
+      /* The settings page, as it is laid out rather than as it is drawn: the
+         panel the grid and every row has to stay inside, which category is
+         open, and where the keyboard is on it. A harness that wants SOUND asks
+         the tap list for SOUND — see the label on a tap rectangle — rather
+         than measuring a y band, which is what made these tests fail every
+         time the page was re-spaced by two pixels. */
+      settings: () => {
+        const sh = settingsShell();
+        return { cat: settingsCat, page: settingsPage, locked: settingsLocked,
+                 cats: settingsCats().map(c => c.key),
+                 panel: { x: sh.px, w: sh.pw, top: sh.top, bot: sh.bot },
+                 rail: setRail.map(r => r.label),
+                 focus: { ...setFocus }, items: setItems.length };
+      },
+      // Open a category the way the rail does, so a harness can walk the page.
+      setCat: key => { settingsCat = key; return settingsCat; },
       // Arriving at a station, without having to fly to one: the same call the
       // docking check makes when a real station comes into range.
       dock: () => stationFinishesFits(),
