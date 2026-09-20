@@ -148,12 +148,25 @@ Only **A3 (the Vault)** is left.
 - [x] **C4 · Overhaul it again, properly.** C3 tidied a stack that was already
   out of room: the line under INPUT was drawn through the buttons it explained,
   and the phone had a second copy of the whole page with the live thumbstick on
-  top of RESET SURVEY. It is a **rail of categories and one panel** now — THIS
-  MODE, FLYING, KEYS, THE PAD, THE GAME, with EXIT GAME and BACK at the rail's
-  foot. One page on every machine; the pad's drag screen is a room off it rather
-  than a rival to it, and holds nothing but a title, a line and three buttons.
-  Every control is reachable from the keyboard, which only the key grid used to
-  be. *A new setting is a new row and nothing below it moves.*
+  top of RESET SURVEY. It is a **rail of categories and one panel** now, with
+  EXIT GAME and BACK at the rail's foot. One page on every machine; the pad's
+  drag screen is a room off it rather than a rival to it, and holds nothing but
+  a title, a line and three buttons. Every control is reachable from the
+  keyboard, which only the key grid used to be. *A new setting is a new row and
+  nothing below it moves.*
+- [x] **C5 · Three rooms, the way games do it.** The usual five — gameplay,
+  controls, video, audio, account — collapse to **CONTROLS · GAME · ACCOUNT** at
+  this size. CONTROLS carries four tabs: **MOUSE, KEYS, CONTROLLER,
+  TOUCHSCREEN**. The per-mode tabs are gone and the camera is one answer for
+  every mode (an old three-answer save collapses into it); the zoom stays
+  Survey's and friendly fire stays Survival's, both on the page wherever you
+  are, with the mode named beside them. `INPUT` became TOUCH CONTROLS on the
+  touchscreen tab, because what it decides is whether the pad turns up. And most
+  rows lost their explanatory line — `SOUND: ON` does not need telling you the
+  sound is on.
+- [ ] **C6 · Read a gamepad.** The CONTROLLER tab says COMING SOON because
+  nothing in the game reads one. Sticks to turn and thrust, a trigger to fire,
+  buttons on the four Survey slots, and the tab naming what is plugged in.
 
 ---
 

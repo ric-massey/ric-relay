@@ -1577,17 +1577,10 @@
      that page: you are in Survey, so the camera and zoom you are looking at are
      Survey's, and Battle Royale's are not your problem right now. From the
      front page there is no match to be in, so all four are offered as tabs. */
-  let settingsLocked = false;
   function openSettings(from) {
     backFrom = from;
-    const here = settingsPageFor(mode);
-    settingsLocked = !!here && from !== "title" && from !== "modes";
-    if (here) settingsPage = here;
-    /* Opened out of a match, the reason is nearly always that match's own
-       settings — the camera is wrong, or the zoom is. Opened from the front
-       page there is no match to be in, so it opens where it was left. */
-    if (settingsLocked) settingsCat = "mode";
-    else if (thumbInput() && settingsCat === "keys") settingsCat = "pad";
+    // It opens where it was left, except that a key grid is no use to a thumb.
+    if (thumbInput() && controlTab === "keys") controlTab = "touch";
     setFocus.where = "rail";
     setFocus.i = Math.max(0, settingsCats().findIndex(c => c.key === settingsCat));
     return settingsScreen();
@@ -1682,30 +1675,26 @@
   const boundKeys = new Set();
 
   const KEY_STORE = "crossfire.keys.v1";
-  const CAMERA_STORE = "crossfire.camera.v2";
+  // v3 is one answer. v2 was three (royale/campaign/survey) and v1 was one
+  // flag worn by the shooters; both are read on the way in and collapsed.
+  const CAMERA_STORE = "crossfire.camera.v3";
   const SOUND_STORE = "crossfire.sound.v1";
 
-  /* ── settings that belong to a mode ──────────────────────────────────────
-     Most of the settings page is the game's: the keys, the sound, the screen.
-     These are not. How far the camera sits back is a question about Survey and
-     means nothing in a Battle Royale; whether the view turns with the ship is a
-     question you answer differently for a duel than for a long haul. So each
-     mode keeps its own answers and the settings page shows you one mode at a
-     time — the one you are in, if you opened it from a match, and otherwise
-     whichever tab you pick.
+  /* ── one answer, not one per mode ────────────────────────────────────────
+     The camera used to be four separate answers behind four tabs, and how far
+     it sat back was Survey's alone. That was built to a brief — *"only the
+     survey settings should pop up"* — and the brief has changed: **the same
+     settings for every mode, unless the mode restricts it.**
 
-     `SETTINGS_PAGES` is that list, and `settingsPageFor` is the one place that
-     decides which page a running mode belongs to. */
-  const SETTINGS_PAGES = [
-    { key: "survey",   name: "SURVEY",        colour: "#a08cff" },
-    { key: "royale",   name: "BATTLE ROYALE", colour: "#ffe56d" },
-    { key: "campaign", name: "CAMPAIGN",      colour: "#5fd0a0" },
-    { key: "survival", name: "SURVIVAL",      colour: "#6dc8ff" }
-  ];
-  const settingsPageFor = m =>
-    !m ? null : m.survey ? "survey" : m.campaign ? "campaign"
-      : m.closing ? "royale" : "survival";
-  let settingsPage = "survey";   // which mode's page the settings screen shows
+     So there is one rotating-camera answer now. A mode that has no camera to
+     turn restricts it, which is `mode.camera` and means Survival, where the
+     whole arena is on the screen at once. The zoom stays Survey's, because the
+     other three arenas are framed for you and a zoom there would be changing
+     the mode rather than the view; the page says so beside the setting rather
+     than hiding it.
+
+     The old per-mode answers are collapsed on the way in — see `CAMERA_STORE`
+     below — so somebody who had it on for a duel still has it on. */
 
   /* ── where you are on the settings page ──────────────────────────────────
      The page is a rail of categories down the left and one panel to the right
@@ -1715,19 +1704,14 @@
      Both lists are collected while the page is drawn rather than kept in step
      with it — the same bargain `taps` makes, for the same reason. What you can
      move the keyboard onto is exactly what is on the screen. */
-  let settingsCat = "mode";
+  let settingsCat = "controls";
   const setFocus = { where: "rail", i: 0 };
   let setItems = [], setRail = [];
 
-  /* The rotating camera, once one flag for every mode with a camera, now one
-     answer per mode. Survival is absent because it has no camera to turn — the
-     whole arena is on the screen. */
-  const cameraRotates = { royale: false, campaign: false, survey: false };
-  /* The camera in play follows the mode being played and nothing else — the
-     settings page can be sitting on another mode's tab while you are paused in
-     this one, and the view behind it must not swing about because of it. */
-  const camRotKey = () => settingsPageFor(mode);
-  const camRotates = () => !!cameraRotates[camRotKey()];
+  /* Whether the view turns with the ship. One answer, and it only means
+     anything in a mode that has a camera to turn. */
+  let cameraRotates = false;
+  const camRotates = () => cameraRotates && !!(mode && mode.camera);
   let soundEnabled = true;
   let audioCtx = null, audioMaster = null, audioNoise = null;
 
@@ -1755,12 +1739,15 @@
   let mouseFly = false;
 
   try {
-    const saved = JSON.parse(localStorage.getItem(CAMERA_STORE) || "null");
-    if (saved && typeof saved === "object") {
-      for (const k of Object.keys(cameraRotates)) cameraRotates[k] = !!saved[k];
-    } else if (localStorage.getItem("crossfire.camera.v1") === "rotating") {
-      // One flag became three; whoever had it on had it on for the shooters.
-      cameraRotates.royale = cameraRotates.campaign = true;
+    /* Three answers became one. Whoever had it on for any mode had it on, so
+       that is what they get — turning it off is one press and being silently
+       switched back to a fixed view is a thing you have to notice first. */
+    const cam3 = localStorage.getItem(CAMERA_STORE);
+    if (cam3 === "rotating" || cam3 === "fixed") cameraRotates = cam3 === "rotating";
+    else {
+      const v2 = JSON.parse(localStorage.getItem("crossfire.camera.v2") || "null");
+      if (v2 && typeof v2 === "object") cameraRotates = Object.keys(v2).some(k => v2[k]);
+      else cameraRotates = localStorage.getItem("crossfire.camera.v1") === "rotating";
     }
     soundEnabled = localStorage.getItem(SOUND_STORE) !== "off";
     const im = localStorage.getItem(INPUT_STORE);
@@ -1781,9 +1768,12 @@
     try { localStorage.setItem(INPUT_STORE, inputMode); } catch (_) {}
     applyInputMode();
   }
-  const inputModeName = () =>
-    inputMode === "keys" ? "MOUSE & KEYBOARD"
-    : inputMode === "touch" ? "TOUCHSCREEN"
+  /* Asked as a question about the pad rather than about the machine: what it
+     actually decides is whether the on-screen controls turn up. "Which kind of
+     machine is this" was the browser's question, not the player's. */
+  const touchModeName = () =>
+    inputMode === "keys" ? "OFF"
+    : inputMode === "touch" ? "ALWAYS ON"
     : "AUTOMATIC";
   function toggleMouseFly() {
     mouseFly = !mouseFly;
@@ -2008,17 +1998,13 @@
     location.href = HOME_URL;
   }
 
-  /* Toggles the camera for one mode — the one you are playing if you are
-     playing one, and otherwise the page you are looking at. */
-  function toggleModeCamera(key) {
-    const k = key || camRotKey();
-    if (!(k in cameraRotates)) return;
-    cameraRotates[k] = !cameraRotates[k];
-    try { localStorage.setItem(CAMERA_STORE, JSON.stringify(cameraRotates)); }
+  function toggleCamera(on) {
+    cameraRotates = on === undefined ? !cameraRotates : !!on;
+    try { localStorage.setItem(CAMERA_STORE, cameraRotates ? "rotating" : "fixed"); }
     catch (_) {}
     // Switching back to the original view should be immediate, including
     // while the match is paused on this screen.
-    if (!cameraRotates[k] && mode && settingsPageFor(mode) === k) cam.rot = 0;
+    if (!cameraRotates) cam.rot = 0;
   }
 
   // What has to be true whenever the table changes, or is first read in.
@@ -2161,7 +2147,8 @@
      from the last time it was drawn would otherwise take a press meant for
      whatever is in that space today. */
   function cellAt(sx, sy) {
-    if (state !== "controls" || settingsCat !== "keys") return null;
+    if (state !== "controls" || settingsCat !== "controls" ||
+        controlTab !== "keys") return null;
     for (let pi = 0; pi < GRID_ROWS(); pi++) {
       for (let ai = 0; ai < ACTIONS.length; ai++) {
         const b = cellBox(pi, ai);
@@ -2299,7 +2286,7 @@
     if (code === "Backspace" || code === "Delete") {
       // Emptying an action is allowed: two people at one keyboard may want
       // fewer keys in play, not more. Only where there is a key to empty.
-      if (settingsCat !== "keys") return;
+      if (settingsCat !== "controls" || controlTab !== "keys") return;
       setCellKeys(binder.p, binder.a, []);
       keysChanged();
       note(cellWho(binder.p, binder.a) + " has no key now");
@@ -24727,7 +24714,7 @@
   // Rows are pitched for type that is never smaller than 16px — see
   // `readableTextSize`, which is why the old page's "13px" notes were in fact
   // sixteen and why they touched everything above them.
-  const SET_PITCH = 64;
+  const SET_PITCH = 58;
 
   function settingsShell() {
     const w = Math.min(SCREEN_W - MENU_INSET * 2, SET_SHELL_MAX);
@@ -24737,18 +24724,32 @@
              top: SET_TOP, bot: SET_BOT };
   }
 
-  const setRowY = (sh, i) => sh.top + 88 + i * SET_PITCH;
+  const setRowY = (sh, i, top) => sh.top + (top || 88) + i * SET_PITCH;
   // The row along the foot of the panel, for the things that *do* something
   // rather than being set to something: RESET ALL KEYS, SWAP SIDES.
   const setActY = sh => sh.bot - 26;
 
+  /* Three, which is where almost every game lands: what you drive it with,
+     what the game does, and who you are. The usual five — gameplay, controls,
+     video, audio, account — collapse to this at Crossfire's size, because
+     gameplay is one toggle, video is two and audio is one. */
   const SET_CATS = [
-    { key: "mode",   name: "THIS MODE", blurb: "what this mode does differently" },
-    { key: "flying", name: "FLYING",    blurb: "what you are driving it with" },
-    { key: "keys",   name: "KEYS",      blurb: "two at this keyboard, and Survey's four slots" },
-    { key: "pad",    name: "THE PAD",   blurb: "the controls that appear when you touch the screen" },
-    { key: "game",   name: "THE GAME",  blurb: "sound, screen, and who you are signed in as" }
+    { key: "controls", name: "CONTROLS", blurb: "what you are driving it with" },
+    { key: "game",     name: "GAME",     blurb: "what the game does, and what it sounds like" },
+    { key: "account",  name: "ACCOUNT",  blurb: "who you are, and what is saved" }
   ];
+
+  /* The four ways to fly it, as a row of tabs along the top of CONTROLS. A tab
+     rather than a rail entry of its own because they answer one question —
+     *this* is the thing in my hands — and only one of them is ever true at a
+     time for the person reading it. */
+  const CONTROL_TABS = [
+    { key: "mouse",  name: "MOUSE",       colour: "#6dc8ff" },
+    { key: "keys",   name: "KEYS",        colour: "#ffe56d" },
+    { key: "pad",    name: "CONTROLLER",  colour: "#a08cff" },
+    { key: "touch",  name: "TOUCHSCREEN", colour: "#6dffbf" }
+  ];
+  let controlTab = "keys";
   const settingsCats = () => SET_CATS;
   const settingsCatNow = () =>
     SET_CATS.find(c => c.key === settingsCat) || SET_CATS[0];
@@ -24787,20 +24788,48 @@
     }
   }
 
-  /* One setting, one row: what it is on the left, what it is set to on the
-     right, and a line underneath for the word that does not explain itself.
-     The note runs the full width of the panel because the button it shares a
-     line with is at the other end of it — which is the whole reason a row is
-     shaped this way rather than being a button with its label inside it. */
-  function setRow(sh, i, o) {
-    const y = setRowY(sh, i);
+  /* One setting, one row: what it is on the left and what it is set to on the
+     right.
+
+     A line underneath is for the word that does not explain itself, and most
+     of them explain themselves. SOUND: ON does not need telling you that the
+     sound is on. CAMERA: ROTATING does, because neither word says what happens
+     to the picture; TOUCH CONTROLS: AUTOMATIC does, because automatic could
+     mean anything; RESET SURVEY does, because it destroys hours of somebody's
+     work. Everything else goes without, and the page is shorter and easier to
+     read down for it.
+
+     Where there is one, it runs the full width of the panel, because the
+     button it shares a line with is at the other end of it. */
+  function setRow(sh, i, o, top) {
+    const y = setRowY(sh, i, top);
     const bw = o.wide ? 320 : 260;
     text(o.label, sh.px, y + 6, 17, "#ffe56d", "left");
+    /* Some of these mean something in one mode and nothing in the other three
+       — the zoom is Survey's, friendly fire is Survival's. They are on the
+       page all the same, set from anywhere, with the mode they belong to
+       beside the name. Hiding a setting until you are already in the mode it
+       belongs to is how you end up with four pages again. */
+    if (o.tag) {
+      ctx.save();
+      ctx.font = '17px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+      const at = sh.px + ctx.measureText(o.label).width + 14;
+      ctx.restore();
+      text(o.tag, at, y + 5, 12, "#a08cff", "left", 0.7);
+    }
     /* Clear of the button's bottom edge rather than merely below the label.
        A note is as wide as it needs to be and the button is at the far end of
        the same line, so a note set any higher runs underneath it — which is
        exactly what the line explaining INPUT used to do. */
-    if (o.note) text(o.note, sh.px, y + 40, 13, "#ffcb42", "left", 0.6);
+    /* Under its own label and hard up against it. Sitting lower, it was 34px
+       below the label it belonged to and 24 above the next one — so it read as
+       a heading for the row underneath. And wrapped to the space beside the
+       button rather than the whole panel, because the button is at the other
+       end of this same line. */
+    if (o.note) {
+      wrapText(o.note, 13, sh.pw - bw - 24).slice(0, 2).forEach((ln, k) =>
+        text(ln, sh.px, y + 26 + k * 18, 13, "#ffcb42", "left", 0.6));
+    }
     panelButton(o.value, sh.px + sh.pw - bw / 2, y, bw, 40,
                 o.colour || "#ffe56d", o.act, i, 0, o.on, o.enabled);
   }
@@ -24832,96 +24861,53 @@
     if (blurb) text(blurb, sh.px, sh.top + 54, 13, "#ffcb42", "left", 0.55);
   }
 
-  /* ── settings that belong to a mode ──────────────────────────────────────
-     Most of this page is the game's: the keys, the sound, the screen. These
-     are not. How far the camera sits back is a question about Survey and means
-     nothing in a Battle Royale; whether the view turns with the ship is a
-     question you answer differently for a duel than for a long haul. So each
-     mode keeps its own answers, and one mode's are shown at a time — the one
-     you are in, if you opened this from a match, and otherwise whichever tab
-     you pick. */
-  function modeOptions(key) {
-    const out = [];
-    if (key === "survey") {
-      out.push({ label: "ZOOM", value: surveyZoomName(),
-                 note: "How far back the camera sits.",
-                 act: cycleSurveyZoom });
-    }
-    if (key in cameraRotates) {
-      const on = cameraRotates[key];
-      out.push({ label: "CAMERA", value: on ? "ROTATING" : "FIXED",
-                 note: on ? "The ship stays pointed up."
-                          : "The map stays north-up.",
-                 act: () => toggleModeCamera(key) });
-    }
-    if (key === "survival") {
-      out.push({ label: "FRIENDLY FIRE",
-                 value: survivalFriendlyFire ? "ON" : "OFF",
-                 note: survivalFriendlyFire ? "Your shots hurt your side."
-                                            : "Only the wave hurts you.",
-                 colour: survivalFriendlyFire ? "#ff8f77" : "#6dffbf",
-                 on: survivalFriendlyFire, act: toggleFriendlyFire });
-    }
-    if (key === "survey") {
-      out.push({ label: "THE SECTOR", value: surveyResetLabel(),
-                 note: "Wipes the chart, the almanac and the salvage. Asks twice.",
-                 colour: surveyResetArmed() ? "#ff8f77" : "#a08cff",
-                 on: surveyResetArmed(), wide: true,
-                 act: resetSurveyProgress });
-    }
-    return out;
+  /* ── CONTROLS ─────────────────────────────────────────────────────────────
+     One category, four tabs: the thing in your hands. Which tab you are on
+     changes nothing about the game — it is four sets of settings, not four
+     modes — so a person at a desk with a phone in their pocket can set both up
+     without going anywhere.
+
+     `TAB_TOP` is where a tab's own content starts. It is below the tab strip
+     rather than below the heading, which is the whole reason the key grid has
+     room: it is measured from here and not from a constant. */
+  const TAB_TOP = 112;
+
+  function drawTabs(sh, list, now, pick) {
+    const gap = 10;
+    const tw = Math.min(240, (sh.pw - gap * (list.length - 1)) / list.length);
+    const x0 = sh.px + sh.pw / 2 - (list.length * (tw + gap) - gap) / 2;
+    list.forEach((t, i) => {
+      panelButton(t.name, x0 + i * (tw + gap) + tw / 2, sh.top + 58, tw, 34,
+                  t.colour, () => pick(t.key), 0, i, t.key === now);
+    });
   }
 
-  function drawModePanel(sh) {
-    const page = SETTINGS_PAGES.find(p => p.key === settingsPage) ||
-                 SETTINGS_PAGES[0];
-    let row = 0;
-    if (settingsLocked) {
-      /* Locked to the match you are in. There are no tabs to wander off into,
-         because the camera you are looking at is this mode's and the other
-         three are not your problem right now. */
-      panelHead(sh, page.name, "the mode you are playing", page.colour);
-    } else {
-      panelHead(sh, "THIS MODE", "each mode keeps its own answers", page.colour);
-      const gap = 10;
-      const tw = Math.min(240, (sh.pw - gap * 3) / 4);
-      const x0 = sh.px + sh.pw / 2 - (4 * (tw + gap) - gap) / 2;
-      SETTINGS_PAGES.forEach((p, i) => {
-        panelButton(p.name, x0 + i * (tw + gap) + tw / 2, sh.top + 84, tw, 34,
-                    p.colour, () => { settingsPage = p.key; }, 0, i,
-                    p.key === settingsPage);
-      });
-      row = 1;
-    }
-
-    const opts = modeOptions(page.key);
-    if (!opts.length) {
-      text("Nothing to set here — this one plays the same either way.",
-           sh.px, setRowY(sh, row) + 6, 16, "#ffcb42", "left", 0.7);
-      return;
-    }
-    opts.forEach((o, i) => setRow(sh, row + i, o));
+  function drawControlsPanel(sh) {
+    const tab = CONTROL_TABS.find(t => t.key === controlTab) || CONTROL_TABS[1];
+    panelHead(sh, "CONTROLS", null, tab.colour);
+    drawTabs(sh, CONTROL_TABS, controlTab, k => { controlTab = k; });
+    ({ mouse: drawMouseTab, keys: drawKeysTab,
+       pad: drawControllerTab, touch: drawTouchTab }[tab.key])(sh);
   }
 
-  /* ── how you are driving it ───────────────────────────────────────────────
-     The machine first, then the pointer: narrowing from "what am I playing on"
-     to "what is my hand on", which is the order somebody sets these up in. */
-  function drawFlyingPanel(sh) {
-    panelHead(sh, "FLYING", "the browser's guess is not always right", "#6dc8ff");
+  function drawMouseTab(sh) {
     setRow(sh, 0, {
-      label: "INPUT", value: inputModeName(), colour: "#6dc8ff",
-      note: inputMode === "auto"
-              ? "The browser decides which kind of machine this is."
-              : inputMode === "keys"
-                ? "Treated as a desk, whatever the screen can do."
-                : "Treated as a touchscreen, whatever the browser thinks.",
-      act: cycleInputMode });
-    setRow(sh, 1, {
       label: "MOUSE FLYING", value: mouseFly ? "ON" : "OFF",
       colour: mouseFly ? "#6dffbf" : "#ffcb42", on: mouseFly,
-      note: mouseFly ? "The nose comes about toward the pointer. Click fires."
-                     : "The ship is turned with the keys.",
-      act: toggleMouseFly });
+      // What it does not do is worth one line; that it is on is not.
+      note: mouseFly ? "It does not snap." : null,
+      act: toggleMouseFly }, TAB_TOP);
+  }
+
+  /* Nothing in the game reads a gamepad yet. A tab that quietly did nothing
+     would be worse than no tab, so it says what it is. */
+  function drawControllerTab(sh) {
+    const mid = sh.px + sh.pw / 2;
+    text("COMING SOON", mid, sh.top + 200, 30, "#a08cff", "center", 0.9);
+    text("Crossfire does not read a controller yet.",
+         mid, sh.top + 236, 16, "#ffcb42", "center", 0.7);
+    text("Keys, mouse and touch all work today.",
+         mid, sh.top + 260, 16, "#ffcb42", "center", 0.7);
   }
 
   /* ── the keys ─────────────────────────────────────────────────────────────
@@ -24932,14 +24918,7 @@
      wide a column can be is now a question about how wide the panel is. Four
      columns, a label column beside them, and the whole block centred in what
      is left. */
-  function drawKeysPanel(sh) {
-    panelHead(sh, "KEYS",
-              "select a box and press the key you want — ESC cancels", "#ffe56d");
-
-    /* Wide enough for "survey devices", which is the longest thing that goes
-       in this column and is 134px of 16px type — every size below sixteen is
-       sixteen, see `readableTextSize`. It used to be sized for "AMBER" and the
-       device line ran out under the rail. */
+  function drawKeysTab(sh) {
     const labelW = 160;
     // 150 is the width the grid was designed at and the most it ever takes;
     // below that it is whatever four columns and the label column can have of
@@ -24949,7 +24928,10 @@
     GRID.cellW = GRID.colW - 24;
     const blockW = labelW + 3 * GRID.colW + GRID.cellW;
     GRID.x0 = Math.round(sh.px + (sh.pw - blockW) / 2 + labelW + GRID.cellW / 2);
-    GRID.y0 = sh.top + 108;
+    GRID.y0 = sh.top + TAB_TOP + 44;
+
+    text("Select a box and press the key you want. ESC cancels.",
+         sh.px, sh.top + TAB_TOP - 8, 14, "#ffcb42", "left", 0.55);
 
     ACTIONS.forEach((a, ai) => {
       text(a.name, cellBox(0, ai).cx, GRID.y0 - 24, 15, "#ffcb42", "center", 0.9);
@@ -24978,7 +24960,7 @@
                             cell: { p: pi, a: ai },
                             act: () => { binder.p = pi; binder.a = ai;
                                          binder.listening = true; } },
-                          pi, ai);
+                          pi + 1, ai);
         const picked = binder.p === pi && binder.a === ai;
         const live = picked && binder.listening;
         const hot = picked ||
@@ -25040,7 +25022,7 @@
            sh.px + sh.pw / 2, sayY, 14, "#ffcb42", "center", 0.7);
     }
 
-    setActions(sh, GRID_ROWS(), [
+    setActions(sh, GRID_ROWS() + 1, [
       { label: "RESET ALL KEYS", colour: "#ffe56d",
         act: () => { resetKeys(); note("Keys reset."); } },
       { label: "CLEAR SELECTED KEY", colour: "#ffcb42",
@@ -25052,52 +25034,57 @@
     ]);
   }
 
-  /* ── the pad ──────────────────────────────────────────────────────────────
+  /* ── the touchscreen ──────────────────────────────────────────────────────
      Everything about the controls that appear when a thumb touches the screen.
      Where they *sit* is the one thing that cannot be a row in a list, because
      answering it means dragging the real controls around at their real size —
-     so that is its own screen, and this is the door to it. */
-  function drawPadPanel(sh) {
+     so that is its own screen, and MOVE THEM is the door to it.
+
+     `TOUCH CONTROLS` used to be a global called INPUT sitting above everything
+     else, phrased as "which kind of machine is this". That was the browser's
+     question, not the player's. What it actually decides is whether the pad
+     turns up, which is a question about the pad — so it is asked here. */
+  function drawTouchTab(sh) {
     const stick = padCfg.scheme === "stick";
-    panelHead(sh, "THE PAD",
-              "a stick and a fire button, the moment you touch the screen",
-              "#6dffbf");
     setRow(sh, 0, {
+      label: "TOUCH CONTROLS", value: touchModeName(), colour: "#6dffbf",
+      on: inputMode === "touch",
+      // Only AUTOMATIC needs a line. ALWAYS ON and OFF say themselves.
+      note: inputMode === "auto"
+              ? "Only if the browser says so."
+              : null,
+      act: cycleInputMode }, TAB_TOP);
+    setRow(sh, 1, {
       label: "LAYOUT", value: stick ? "STICK" : "ARROWS", colour: "#6dffbf",
-      note: stick ? "Aim with the stick."
-                  : "Left, right and accelerate. Auto-fire is always on.",
+      // Neither word is a picture of the thing, so both get a line.
+      note: stick ? "Aim with the stick." : "Auto-fire is always on.",
       act: () => {
         padCfg.scheme = stick ? "arrows" : "stick";
         padRelease(); padApply(); padSave();
-      } });
-    setRow(sh, 1, {
+      } }, TAB_TOP);
+    setRow(sh, 2, {
       label: "GAS BUTTON", value: stick ? (padCfg.gas ? "ON" : "OFF") : "—",
       colour: padCfg.gas ? "#6dffbf" : "#ffcb42", on: stick && padCfg.gas,
       enabled: stick,
-      note: !stick ? "The arrows have their own accelerate."
-                   : padCfg.gas ? "A separate button for the throttle."
-                                : "Push the stick forward to accelerate.",
-      act: () => { padCfg.gas = !padCfg.gas; padApply(); padSave(); } });
-    setRow(sh, 2, {
+      // Only when it is off, because then the throttle is somewhere else.
+      note: stick && !padCfg.gas ? "Push the stick forward." : null,
+      act: () => { padCfg.gas = !padCfg.gas; padApply(); padSave(); } }, TAB_TOP);
+    setRow(sh, 3, {
       label: "AUTO-FIRE",
       value: stick ? (padCfg.auto ? "ON" : "OFF") : "ALWAYS ON",
       colour: (!stick || padCfg.auto) ? "#6dffbf" : "#ffcb42",
       on: !stick || padCfg.auto, enabled: stick,
-      note: !stick ? "The arrows fire for you."
-                   : padCfg.auto ? "The ship fires on its own."
-                                 : "Use the fire button.",
-      act: () => { padCfg.auto = !padCfg.auto; padApply(); padSave(); } });
+      act: () => { padCfg.auto = !padCfg.auto; padApply(); padSave(); } }, TAB_TOP);
     const z = PAD_SIZES.find(v => v.s === padCfg.size) || PAD_SIZES[1];
-    setRow(sh, 3, {
+    setRow(sh, 4, {
       label: "SIZE", value: z.name, colour: "#6dffbf",
-      note: "How big the controls are under your thumbs.",
       act: () => {
         const i = PAD_SIZES.indexOf(z);
         padCfg.size = PAD_SIZES[(i + 1) % PAD_SIZES.length].s;
         padApply(); padSave();
-      } });
+      } }, TAB_TOP);
 
-    setActions(sh, 4, [
+    setActions(sh, 6, [
       { label: "MOVE THEM", colour: "#ffe56d",
         act: () => { binder.listening = false; state = "thumb"; } },
       { label: "SWAP SIDES", colour: "#ffe56d", act: padMirror },
@@ -25106,41 +25093,77 @@
   }
 
   /* ── the game ─────────────────────────────────────────────────────────────
-     Sound, screen, and who you are. An account is not a setting of Survey; it
-     is a setting of you, which is why it sits here rather than on a mode's
-     own page. */
+     What the game does and what it sounds like — gameplay, video and audio in
+     the usual taxonomy, which at this size is five rows rather than three
+     pages.
+
+     Two of them mean something in one mode and nothing in the other three. The
+     zoom is Survey's, because the other arenas are framed for you and a zoom
+     there would be changing the mode rather than the view; friendly fire is
+     Survival's, because everywhere else either everyone is on their own side
+     or nobody is. Both are on the page all the same, set from anywhere, with
+     the mode they belong to beside the name. */
   function drawGamePanel(sh) {
-    panelHead(sh, "THE GAME", "everything that is not about flying", "#ffe56d");
+    panelHead(sh, "GAME", null, "#ffe56d");
     setRow(sh, 0, {
+      label: "CAMERA", value: cameraRotates ? "ROTATING" : "FIXED",
+      colour: "#6dc8ff",
+      note: cameraRotates ? "The ship stays pointed up."
+                          : "The map stays north-up.",
+      act: () => toggleCamera() });
+    setRow(sh, 1, {
+      label: "ZOOM", tag: "survey only", value: surveyZoomName(),
+      colour: "#a08cff", act: cycleSurveyZoom });
+    setRow(sh, 2, {
+      label: "FRIENDLY FIRE", tag: "survival only",
+      value: survivalFriendlyFire ? "ON" : "OFF",
+      colour: survivalFriendlyFire ? "#ff8f77" : "#6dffbf",
+      on: survivalFriendlyFire, act: toggleFriendlyFire });
+    setRow(sh, 3, {
       label: "SOUND", value: soundEnabled ? "ON" : "OFF",
       colour: soundEnabled ? "#ffe56d" : "#ffcb42", on: soundEnabled,
-      note: soundEnabled ? "Guns, engines and the wall."
-                         : "Silent.",
       act: toggleSound });
-    setRow(sh, 1, {
+    setRow(sh, 4, {
       label: "SCREEN", value: fullscreenLabel(),
       colour: "#ffe56d", on: !!fullscreenElement(),
       enabled: fullscreenSupported(),
-      note: fullscreenSupported()
-              ? "Fill the glass. The game takes the shape of whatever it gets."
-              : "This browser will not do fullscreen.",
+      // Only when the button is dead, because then it owes you a reason.
+      note: fullscreenSupported() ? null : "Not supported here.",
       act: toggleFullscreen });
-
-    if (!window.CrossfireCloud) return;
-    /* The way in and the way back out, for somebody who chose guest at the
-       door and has changed their mind — or who wants off this account. */
-    const inAlready = !!(cloud && cloud.enabled() && cloud.session());
-    setRow(sh, 2, {
-      label: "ACCOUNT", value: inAlready ? "SIGN OUT" : "SIGN IN",
-      colour: "#a08cff",
-      note: inAlready ? "Your survey follows you between machines."
-                      : "Playing as a guest — this machine only.",
-      act: inAlready ? () => signOutNow(m => note(m)) : () => openAccount() });
   }
 
-  const SET_PANELS = { mode: drawModePanel, flying: drawFlyingPanel,
-                       keys: drawKeysPanel, pad: drawPadPanel,
-                       game: drawGamePanel };
+  /* ── you ──────────────────────────────────────────────────────────────────
+     Who the game thinks you are and what it is keeping for you. Both answer
+     the same question — what does this remember about me — which is why the
+     one button that destroys hours of somebody's work sits here rather than
+     three rows under a button that resets a keyboard. */
+  function drawAccountPanel(sh) {
+    panelHead(sh, "ACCOUNT", null, "#a08cff");
+    let row = 0;
+    if (window.CrossfireCloud) {
+      /* The way in and the way back out, for somebody who chose guest at the
+         door and has changed their mind — or who wants off this account. */
+      const inAlready = !!(cloud && cloud.enabled() && cloud.session());
+      setRow(sh, row++, {
+        label: "ACCOUNT", value: inAlready ? "SIGN OUT" : "SIGN IN",
+        colour: "#a08cff",
+        // Signed out is the state somebody may not know they are in.
+        note: inAlready ? null : "A guest — this machine only.",
+        act: inAlready ? () => signOutNow(m => note(m)) : () => openAccount() });
+    } else {
+      text("This build has no accounts. Everything is kept on this machine.",
+           sh.px, setRowY(sh, row++) + 6, 16, "#ffcb42", "left", 0.7);
+    }
+    setRow(sh, row, {
+      label: "THE SECTOR", tag: "survey only", value: surveyResetLabel(),
+      colour: surveyResetArmed() ? "#ff8f77" : "#a08cff",
+      on: surveyResetArmed(), wide: true,
+      note: "Wipes it all. Asks twice.",
+      act: resetSurveyProgress });
+  }
+
+  const SET_PANELS = { controls: drawControlsPanel, game: drawGamePanel,
+                       account: drawAccountPanel };
 
   /* ── the rail ─────────────────────────────────────────────────────────────
      Left-aligned and full width, with a bar down the lit edge of whichever one
@@ -25196,7 +25219,11 @@
     ctx.restore();
 
     text("SETTINGS", sh.x, 56, 34, "#ffe56d", "left");
-    text(settingsCatNow().blurb, sh.x + sh.w, 56, 14, "#ffcb42", "right", 0.55);
+    // Not every category has a line up here. THIS MODE does not, because the
+    // panel under it already says the thing and saying it twice is saying it
+    // once badly.
+    const blurb = settingsCatNow().blurb;
+    if (blurb) text(blurb, sh.x + sh.w, 56, 14, "#ffcb42", "right", 0.55);
     ctx.save();
     ctx.strokeStyle = "#ffcb42";
     ctx.globalAlpha = 0.25;
@@ -25242,7 +25269,7 @@
                                        setFocus.where === "rail" &&
                                        setFocus.i === i));
 
-    (SET_PANELS[settingsCat] || drawModePanel)(sh);
+    (SET_PANELS[settingsCat] || drawControlsPanel)(sh);
 
     /* The rail is drawn before the panel and the panel is what rebuilds
        `setItems`, so the focus can be pointing past the end of a list that has
@@ -27510,11 +27537,12 @@
                      shipR: mode.survey ? shipRadius() : SHIP_R * U,
                      pickups, comms, shake,
                      cameraMode: camRotates() ? "rotating" : "fixed",
+                     cameraOn: cameraRotates,
                      /* The screen is as wide as the device now, so anything
                         checking a layout has to be able to ask how wide it
                         actually is rather than assuming a thousand. */
                      screenW: SCREEN_W, screenH: SCREEN_H,
-                     cameraModes: { ...cameraRotates }, settingsPage }),
+                     }),
       step: () => tick(performance.now(), true),
       // Start a match straight from a harness, skipping the menus, read the
       // campaign controller, force a screen, and draw one frame. Behind ?debug=1
@@ -27579,13 +27607,13 @@
       market: st => marketOf(st || surv.docked),
       // What every kind of ship out there is trying to do.
       roles: () => JSON.parse(JSON.stringify(ROLES)),
-      /* Set a mode's camera preference directly, the way the settings page's
-         button does — so a harness can check that switching the view does not
-         break what is drawn over it. */
+      /* Set the camera preference directly, the way the settings page's button
+         does — so a harness can check that switching the view does not break
+         what is drawn over it. It is one answer for every mode now; the `key`
+         argument is ignored and kept so older callers still read. */
       setCamera: (key, on) => {
-        if (!(key in cameraRotates)) return false;
-        if (!!cameraRotates[key] !== !!on) toggleModeCamera(key);
-        return cameraRotates[key];
+        toggleCamera(on === undefined ? key : on);
+        return cameraRotates;
       },
       /* How long the sector is. Anything sampling "near home" against "the deep"
          has to ask rather than assume: these numbers moved by a factor of six
@@ -27872,14 +27900,16 @@
          time the page was re-spaced by two pixels. */
       settings: () => {
         const sh = settingsShell();
-        return { cat: settingsCat, page: settingsPage, locked: settingsLocked,
+        return { cat: settingsCat, tab: controlTab,
                  cats: settingsCats().map(c => c.key),
                  panel: { x: sh.px, w: sh.pw, top: sh.top, bot: sh.bot },
                  rail: setRail.map(r => r.label),
                  focus: { ...setFocus }, items: setItems.length };
       },
-      // Open a category the way the rail does, so a harness can walk the page.
+      // Open a category the way the rail does, and a CONTROLS tab the way the
+      // tab strip does, so a harness can walk the page.
       setCat: key => { settingsCat = key; return settingsCat; },
+      setTab: key => { controlTab = key; return controlTab; },
       // Arriving at a station, without having to fly to one: the same call the
       // docking check makes when a real station comes into range.
       dock: () => stationFinishesFits(),

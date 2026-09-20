@@ -417,9 +417,9 @@ and you have already built something one cleared history will take.
 Three ways through it — **sign in**, **create account**, **play as a guest** —
 and a fourth that goes back to the modes having started nothing. It is asked
 once: sign in and you are signed in, choose guest and that is remembered and the
-door stops appearing. Both are reversible from SETTINGS, under **THE GAME**,
-where SIGN IN and SIGN OUT sit beside SOUND and SCREEN, because an account is a
-setting of *you* rather than of a mode. Signing out puts the question back.
+door stops appearing. Both are reversible from SETTINGS, under **ACCOUNT**, where
+SIGN IN and SIGN OUT sit beside RESET SURVEY — both answer the same question,
+which is what the game remembers about you. Signing out puts the question back.
 
 A guest who later signs up keeps their run: the survey on the device goes up to
 the new account.
@@ -499,10 +499,12 @@ graph — the one the browser resolved, not the one a test read out of the marku
 - `1` / `2` / `3`: in a Campaign, order the allied wing to focus fire, defend, or regroup.
 - `N`: on a cleared-mission screen, fly straight into the next mission.
 - `C`: open Settings from the title or pause menu. It is one page on every
-  machine: a rail of categories — THIS MODE, FLYING, KEYS, THE PAD, THE GAME —
-  with EXIT GAME and BACK at its foot, and one panel to the right of it. Arrows
-  walk a list, right steps from the rail into the panel, left comes back out,
-  `Enter` presses what is under the mark, and `Escape` leaves.
+  machine: a rail of three categories — **CONTROLS** (tabs for MOUSE, KEYS,
+  CONTROLLER and TOUCHSCREEN), **GAME** and **ACCOUNT** — with EXIT GAME and
+  BACK at its foot, and one panel to the right of it. Arrows walk a list, right
+  steps from the rail into the panel, left comes back out, `Enter` presses what
+  is under the mark, and `Escape` leaves. Nothing reads a gamepad yet; the
+  CONTROLLER tab says so.
 - In a Survey: `F` sweeps a scan, `M` opens the sector chart, `L` opens the
   almanac, `E` docks at a station you are sitting in, and `Escape` leaves
   whichever page you are on. On the chart, drag or arrow to pan, `±` zooms, `C`
@@ -520,8 +522,9 @@ graph — the one the browser resolved, not the one a test read out of the marku
 
 Every weapon fires three-round bursts, except the campaign pilot on **Easy**, who
 holds the trigger for a continuous stream; Hard and Impossible put the pilot back
-on the burst. Keyboard bindings live under KEYS and each mode's camera
-preference under THIS MODE, and both are saved in local storage. On a campaign
+on the burst. Keyboard bindings live under CONTROLS · KEYS and the camera under
+GAME, and both are saved in local storage. The camera is **one answer for every
+mode** — an older save holding three is collapsed on the way in. On a campaign
 setup screen `E` / `H` / `I` pick Easy, Hard or Impossible. The mouse operates
 menus only.
 
@@ -540,7 +543,8 @@ Fullscreen API. The whole page enters fullscreen so phone controls remain visibl
 
 Phones support one ship per screen. Players can choose a directional stick or
 left, right and acceleration buttons, resize and move every control, and enable
-automatic fire — all of it under **THE PAD** in Settings. The arrow layout
+automatic fire — all of it under **CONTROLS · TOUCHSCREEN** in Settings. Whether
+they appear at all is TOUCH CONTROLS on that same tab. The arrow layout
 always fires automatically. Moving a control is its own screen, reached from
 MOVE THEM: the pad floats over it live, at the real size, so you drag the
 controls themselves rather than a picture of them, and everything that screen

@@ -96,6 +96,16 @@ function boot(search) {
   return bootKeepingStorage(search);
 }
 
+/* A boot that starts from a storage the test wrote, for checking that an old
+   save is read the way it is meant to be — a settings key whose shape changed,
+   for instance. Clean first, so it is exactly what was asked for and nothing
+   another block left behind. */
+function bootWithStorage(search, seed) {
+  for (const k of Object.keys(store)) delete store[k];
+  for (const k of Object.keys(seed || {})) store[k] = String(seed[k]);
+  return bootKeepingStorage(search);
+}
+
 function bootKeepingStorage(search) {
   now = 0;
   const windowStub = {
@@ -420,26 +430,23 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 }
 
 // ── the settings page ─────────────────────────────────────────────────────
-/* The page is a rail of categories and one panel. Two things about it are easy
-   to break silently and neither is visible to a syntax check.
+/* Three categories, and CONTROLS has four tabs under it. Two things about the
+   page are easy to break silently and neither is visible to a syntax check.
 
-   One: the camera is four separate answers rather than one flag wearing four
-   hats. How far the camera sits back is a question about Survey and nonsense
-   in a Battle Royale; whether the view turns with the ship is answered
-   differently for a duel than for a long haul.
+   One: every room has to be furnished. A rail entry or a tab whose panel draws
+   nothing is a dead end, and from out here it looks exactly like a working one.
 
-   Two: every category has to actually put something on the panel. A rail entry
-   whose panel draws nothing is a dead room, and it looks exactly like a
-   working one from out here.
+   Two: the camera is **one answer for every mode** now. It used to be four,
+   behind four tabs, and the brief changed — the same settings everywhere
+   unless the mode restricts it. What has to keep working is the collapse: an
+   old save with the royale camera on comes back with the camera on.
 
    Everything below asks for controls by the words on them. The old version of
-   this suite measured y bands, and its own comment admitted the problem —
-   "a window that fails when the thing inside it moves by two pixels is
-   measuring the layout, not the behaviour". It failed on every re-spacing
-   until the page was rebuilt, at which point it failed completely. */
+   this suite measured y bands, and its own comment admitted the problem — "a
+   window that fails when the thing inside it moves by two pixels is measuring
+   the layout, not the behaviour". */
 {
   const { cf } = boot("?debug=1");
-  const TABS = ["SURVEY", "BATTLE ROYALE", "CAMPAIGN", "SURVIVAL"];
 
   // A control, by what it says. `taps` carries the label now.
   const press = (label, why) => {
@@ -453,93 +460,106 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const labels = () => cf.live().taps.map(t => t.label).filter(Boolean);
 
   cf.screen("controls");
-  cf.setCat("mode");
   cf.draw();
 
-  /* The rail is the page's table of contents, and every room on it has to be
-     furnished. */
+  /* The rail is the page's table of contents. */
   const cats = cf.settings().cats;
-  check(cats.length >= 5, "the settings rail is down to " + cats.length + " categories");
-  for (const key of cats) {
-    cf.setCat(key);
+  check(cats.join(",") === "controls,game,account",
+        "the settings rail is [" + cats.join(", ") + "]");
+
+  const rooms = [["controls", "mouse"], ["controls", "keys"],
+                 ["controls", "pad"], ["controls", "touch"],
+                 ["game", null], ["account", null]];
+  for (const [cat, tab] of rooms) {
+    cf.setCat(cat);
+    if (tab) cf.setTab(tab);
     cf.draw();
     const s = cf.settings();
-    check(s.items > 0, "the " + key + " category draws a panel with nothing on it");
-    /* And it stays inside the panel it was given. A row drawn against the
-       whole screen looks right at 1000 wide and hangs off the rail at 1680. */
+    const where = cat + (tab ? "/" + tab : "");
+    /* CONTROLLER is the one room with nothing in it, on purpose — nothing in
+       the game reads a gamepad yet and a tab that quietly did nothing would be
+       worse than no tab. It has to say so rather than be empty. */
+    if (tab === "pad") {
+      check(s.items === 4, where + " grew controls before the gamepad exists");
+    } else {
+      check(s.items > 0, where + " draws a panel with nothing on it");
+    }
+    // And whatever it drew stays inside the panel it was given.
     for (const t of cf.live().taps) {
       if (t.y + t.h < s.panel.top) continue;        // the title row
       if (t.x < s.panel.x - 1 && t.x + t.w > s.panel.x + 1) {
-        check(false, key + ": a control straddles the rail and the panel");
+        check(false, where + ": a control straddles the rail and the panel");
       }
     }
   }
 
-  cf.setCat("mode");
+  /* The four tabs are reachable by name, which is the thing a player does. */
+  cf.setCat("controls");
   cf.draw();
-  for (const name of TABS) press(name, "no settings tab where " + name + " should be");
-  check(true, "the four settings tabs are all reachable");
-
-  /* Each page offers different things, or the tabs are decoration. Counted as
-     the rows the panel actually draws rather than as rectangles in a band. */
-  const opts = [];
-  for (const name of TABS) {
-    press(name);
-    // The four tabs themselves, plus whatever that mode has to set.
-    opts.push(cf.settings().items - TABS.length);
+  for (const name of ["MOUSE", "KEYS", "CONTROLLER", "TOUCHSCREEN"]) {
+    press(name, "no CONTROLS tab where " + name + " should be");
   }
-  check(opts[0] === 3, "the survey page offers " + opts[0] + " settings, not 3");
-  check(opts[1] === 1 && opts[2] === 1,
-        "the shooter pages offer " + opts[1] + "/" + opts[2] + " settings, not 1 each");
-  check(opts[3] === 1, "the survival page offers " + opts[3] + " settings, not 1");
 
-  /* And the camera is genuinely per mode: turning it on for Battle Royale must
-     leave Survey alone, which the one shared flag could not do. */
-  press("BATTLE ROYALE");
-  press("FIXED", "the royale page has no camera button");
-  check(cf.live().cameraModes.royale === true,
-        "turning the royale camera on did nothing");
-  check(cf.live().cameraModes.survey === false,
-        "the royale camera setting leaked into Survey");
-  check(!("survival" in cf.live().cameraModes),
-        "survival grew a camera setting it has no camera for");
+  /* ── one camera, not four ───────────────────────────────────────────────── */
+  cf.setCat("game");
+  cf.draw();
+  check(cf.live().cameraOn === false, "the camera started out rotating");
+  press("FIXED", "GAME has no camera button");
+  check(cf.live().cameraOn === true, "turning the camera on did nothing");
+  press("ROTATING", "the camera button did not change what it says");
+  check(cf.live().cameraOn === false, "turning the camera off did nothing");
+  press("FIXED");
 
-  // It survives the tab, one mode at a time.
+  // It survives the tab, as one answer rather than four.
   const again = bootKeepingStorage("?debug=1");
   again.cf.screen("controls");
   again.cf.draw();
-  check(again.cf.live().cameraModes.royale === true &&
-        again.cf.live().cameraModes.survey === false,
-        "a reload came back with the wrong modes' cameras");
+  check(again.cf.live().cameraOn === true,
+        "a reload came back with the camera off");
+
+  /* And an old three-answer save collapses rather than being thrown away:
+     whoever had it on for a duel still has it on. */
+  const old = bootWithStorage("?debug=1", {
+    "crossfire.camera.v2": JSON.stringify({ royale: true, campaign: false,
+                                            survey: false })
+  });
+  check(old.cf.live().cameraOn === true,
+        "a v2 save with the royale camera on came back fixed");
+
+  /* ── the mode-restricted settings are on the page anyway ──────────────────
+     The zoom is Survey's and friendly fire is Survival's, but both are set
+     from anywhere — hiding a setting until you are already in the mode it
+     belongs to is how you end up with four pages again. */
+  cf.setCat("game");
+  cf.draw();
+  const game = labels();
+  check(game.includes("STANDARD"), "the zoom is not on the page");
+  check(game.some(l => l === "ON" || l === "OFF"),
+        "friendly fire and sound are not on the page");
 
   /* ── one page, not two ──────────────────────────────────────────────────
      Sound, fullscreen and the way out used to be written twice — once on the
      keyboard's settings page and again on the phone's — and the two drifted.
      There is one of each now, and the phone screen is only for dragging. */
-  cf.setCat("game");
-  cf.draw();
-  check(labels().some(l => l.startsWith("ON") || l === "ON" || l === "OFF"),
-        "THE GAME has no sound button");
   check(labels().includes("EXIT GAME"), "no way back to the site from settings");
   check(labels().includes("BACK"), "no way off the settings page");
 
-  cf.setCat("pad");
+  cf.setCat("controls"); cf.setTab("touch");
   cf.draw();
-  check(labels().includes("MOVE THEM"), "no door from THE PAD to the drag screen");
+  check(labels().includes("MOVE THEM"), "no door from TOUCHSCREEN to the drag screen");
   cf.screen("thumb");
   cf.draw();
   const pad = labels();
   check(pad.includes("DONE"), "the drag screen has no way back");
-  check(!pad.some(l => l === "EXIT GAME" || l.startsWith("SOUND") ||
-                       TABS.includes(l)),
+  check(!pad.some(l => l === "EXIT GAME" || l.startsWith("SOUND")),
         "the drag screen is carrying a second copy of the settings page again");
 
   /* ── the keyboard can reach all of it ───────────────────────────────────
-     It used to reach the key grid and nothing else: SOUND, FULLSCREEN, the
+     It used to reach the key grid and nothing else: sound, fullscreen, the
      zoom and the camera were mouse-only, on the one page whose whole subject
      is not needing a mouse. */
   cf.screen("controls");
-  press("FLYING");
+  press("GAME");
   check(cf.settings().focus.where === "rail",
         "the settings page opens with the keyboard nowhere");
   cf.key("ArrowRight");
@@ -549,23 +569,20 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const before = cf.settings().focus.i;
   cf.key("ArrowDown");
   cf.draw();
-  check(cf.settings().focus.i !== before,
-        "down inside the panel went nowhere");
+  check(cf.settings().focus.i !== before, "down inside the panel went nowhere");
   cf.key("ArrowLeft");
   cf.draw();
   check(cf.settings().focus.where === "rail",
         "left off the panel's edge did not come back to the rail");
   /* And onto the category you are actually in. The two lists are different
-     lists, so an index carried across lands wherever it happens to land —
-     which used to be BACK, two below the last category. */
-  check(cf.settings().rail[cf.settings().focus.i] === "FLYING",
-        "coming out of the FLYING panel landed on " +
+     lists, so an index carried across lands wherever it happens to land. */
+  check(cf.settings().rail[cf.settings().focus.i] === "GAME",
+        "coming out of the GAME panel landed on " +
         cf.settings().rail[cf.settings().focus.i]);
 
-  console.log("  settings   a rail of " + cats.length + " categories, every one of " +
-              "them furnished · survey 3, royale 1, campaign 1, survival 1 · " +
-              "the camera is four answers · one page, not two · walkable " +
-              "from the keyboard");
+  console.log("  settings   CONTROLS [mouse keys controller touchscreen] · GAME · " +
+              "ACCOUNT · every room furnished · the camera is one answer and " +
+              "an old four-answer save collapses into it · walkable from the keyboard");
 }
 
 // ── the screen is the shape of the device ────────────────────────────────
@@ -646,7 +663,8 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
     STAGE.w = w; STAGE.h = w === 1000 ? 800 : 1080;
     wide = cf.resize();
     cf.screen("controls");
-    cf.setCat("keys");
+    cf.setCat("controls");
+    cf.setTab("keys");
     cf.draw();
     const g = cf.keyGrid();
     const panel = cf.settings().panel;

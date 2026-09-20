@@ -1899,20 +1899,30 @@ screens, armed before it fires like the survey reset: one stray tap should not e
 a run and close the game. It saves the survey book on the way out. It is on the
 rail of the settings page — there is only one settings page now; see below.
 
-### Settings, per game mode  ·  **DONE**
+### Settings, per game mode  ·  **SUPERSEDED**
 
 > *"If you're on survey. Only the survey settings should pop up. If you're on the
 > other game modes only those settings should pop up. Or there should be different
 > pages for each game mode in settings."*
 
-The settings page shows **one mode's options at a time**. Opened from a match it is
-that match's page, with no tabs to wander off into; opened from the front page the
-four tabs are how you reach the others. Survey has zoom, camera and reset; Battle
-Royale and Campaign have a camera; Survival has friendly fire. That is the THIS
-MODE category of the settings page.
+Built as four tabs, one mode's options at a time, with the rotating camera as four
+separate saved answers rather than one flag worn by three modes.
 
-The rotating camera used to be **one flag worn by three modes**. It is now four
-separate answers, so turning it on for a duel does not turn it on for a long haul.
+Reversed later, by the same person:
+
+> *"it probably should be the same settings for all modes. unless the mode
+> restricts it."*
+
+So there is **one answer for everything** now. The camera is one preference; the
+three-answer save is collapsed on the way in, so whoever had it on for a duel
+still has it on. The two settings that genuinely belong to one mode — the zoom is
+Survey's, friendly fire is Survival's — are on the page all the same, set from
+anywhere, with the mode named beside them. Hiding a setting until you are already
+in the mode it belongs to is how you end up with four pages again.
+
+The zoom stays Survey's rather than becoming everyone's because the other three
+arenas are framed for you: a zoom there would be changing the mode rather than
+the view.
 
 ### One settings page, with a rail  ·  **DONE**
 
@@ -1927,15 +1937,32 @@ setting here needs the screen rearranged, not another column."*
 
 So: **a rail of categories down the left, one panel to the right of it.**
 
+Three of them, which is where almost every game lands. The usual five — gameplay,
+controls, video, audio, account — collapse to this at Crossfire's size, because
+gameplay is one toggle, video is two and audio is one.
+
 | | |
 |---|---|
-| **THIS MODE** | the four tabs and that mode's own answers |
-| **FLYING** | what kind of machine this is, and the mouse |
-| **KEYS** | the two seats and Survey's four slots |
-| **THE PAD** | layout, gas, auto-fire, size — and the door to moving them |
-| **THE GAME** | sound, screen, account |
+| **CONTROLS** | four tabs: **MOUSE · KEYS · CONTROLLER · TOUCHSCREEN** |
+| **GAME** | camera, zoom, friendly fire, sound, screen |
+| **ACCOUNT** | sign in / out, and the saved sector |
 
 with **EXIT GAME** and **BACK** below a rule at the foot of the rail.
+
+**CONTROLLER says COMING SOON.** Nothing in the game reads a gamepad. A tab that
+quietly did nothing would be worse than no tab, so it says what it is.
+
+**`INPUT` stopped being a global.** It used to sit above everything as "which kind
+of machine is this", which is the browser's question rather than the player's.
+What it actually decides is whether the on-screen pad turns up — so it is
+**TOUCH CONTROLS: AUTOMATIC / ALWAYS ON / OFF**, on the TOUCHSCREEN tab.
+
+**Most settings lost their explanatory line.** `SOUND: ON` does not need telling
+you the sound is on. A line underneath is for the word that does not explain
+itself — `CAMERA: ROTATING`, `TOUCH CONTROLS: AUTOMATIC`, `RESET SURVEY` — and it
+sits hard under its own label, wrapped to the space beside the button. Set lower
+it was 34px below the label it belonged to and 24 above the next one, so it read
+as a heading for the row underneath.
 
 Three things fall out of it:
 
