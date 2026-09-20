@@ -466,27 +466,57 @@ to: a book written while you were dead, and a book from a different seed.
 
 ### The door
 
-Survey opens on the account question rather than straight into a sector,
+The game opens on the account question rather than straight into a sector,
 because it only has a good answer *beforehand*. Asked after two hours, either
 answer is bad news: sign in and there are two surveys to reconcile, stay a guest
 and you have already built something one cleared history will take.
 
-Three ways through it — **sign in**, **create account**, **play as a guest** —
-and a fourth that goes back to the modes having started nothing. It is asked
-once: sign in and you are signed in, choose guest and that is remembered and the
-door stops appearing. Both are reversible from SETTINGS, under **ACCOUNT**, where
-SIGN IN and SIGN OUT sit beside RESET SURVEY — both answer the same question,
-which is what the game remembers about you. Signing out puts the question back.
+**Two ways through it** — **sign in** and **create account** — and a third that
+goes back to the front page having started nothing. There used to be a way past
+without an account, and it is closed: the simulators keep leaderboards, a board
+needs a name to put on it, and a guest has none. It is asked once, and it stands
+in front of the game *and* the machines, which is every way into a match. It is
+reversible from SETTINGS, under **ACCOUNT**, where SIGN IN and SIGN OUT sit beside
+RESET SURVEY — both answer the same question, which is what the game remembers
+about you. Signing out puts the question back, and leaves a survey already
+running alone: you meet the door on the way into the next thing, not in the
+middle of the sector you are flying.
 
-A guest who later signs up keeps their run: the survey on the device goes up to
-the new account.
+### A pilot name, and never an email
 
-### An account, which is optional
+An account is an email and a password; a **pilot name** is what everybody else
+sees. It is asked for once, just after the account exists, and an account made
+before names existed is asked on its next visit — the question is driven by not
+having a name, not by having just signed up. Three to sixteen characters,
+letters or digits at both ends. An email address can never be one, which is the
+point: the address is how you sign in and it never reaches a board.
 
-Survey saves to this browser whether anybody signs in or not, and that has not
-changed. What an account adds is a *second* copy: the same book in a row of a
-table, so the sector charted on the laptop is the sector that opens on the
-phone, and clearing site data stops meaning an afternoon is gone.
+It is also the name the lobby offers when you go online, so nobody is asked what
+to call themselves twice.
+
+### An account, which is required — but a connection, never
+
+Signing in is required to play. **Being online is not**, and the difference is
+the whole design.
+
+The requirement is having an account and having signed in **on this device**.
+The session lives in local storage, so it is read without a network, and a
+cached session plays offline indefinitely — on a plane, in a tunnel, on a train.
+An expired token that cannot be refreshed because nothing can be reached is
+*not* treated as a refusal: the session stays, and it refreshes when there is a
+network again. Only the service actually saying no signs anybody out. Getting
+that backwards is the one bug that would turn a sign-in wall into a locked game,
+and `test/door.js` holds both halves of it.
+
+And a copy of this game with a blank `config.js` has **no account service, and
+therefore no door**. That file's promise is that blank means no accounts and
+everything still works; a fork of this repo is a whole game, and a sign-in wall
+does not get to revoke that.
+
+Survey saves to this browser either way, and that has not changed. What an
+account adds is a *second* copy: the same book in a row of a table, so the
+sector charted on the laptop is the sector that opens on the phone, and clearing
+site data stops meaning an afternoon is gone.
 
 It is a mirror and never the source. The run reads and writes local storage at
 full speed; the account is told afterwards, and the game never waits for a
@@ -504,8 +534,8 @@ from what — and lets the player pick.
 a row, write a row is the whole of it, and 120 KB of CDN script to make four
 fetches would cost the game its two actual properties — no build step and no
 third-party script on the page. `config.js` holds the project URL and the
-publishable key; blank there means no accounts, no request is ever made, and
-everything else works exactly as before. `supabase/schema.sql` is the one table
+publishable key; blank there means no accounts, no door, no request is ever
+made, and everything else works exactly as before. `supabase/schema.sql` is the one table
 and its policies, every one of which names `auth.uid()`.
 
 The save button is not what keeps a run — autosaving already does that. It is
@@ -801,6 +831,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `test/save.js` | The book: parse, migrate, validate and the loader that decides what to do when one says no. An old save lands where a new one does, a future one is refused, a corrupt primary falls back to the backup, and a bug in the reader is not a corrupt save |
 | `test/fog.js` | The chart's round trip through storage, on its own and in milliseconds: a refused import may not damage the chart it declined to replace |
 | `test/warrens.js` | The cave region: that its rock agrees with itself across a chunk line, that the passages join up, and that nothing — the ship included — is ever left inside solid rock. Takes a seed |
+| `test/door.js` | The account layer, which every other suite stubs off: that a copy with no account service is a whole game, that the guest door is gone from the markup as well as the logic, that signed out neither the game nor the machines open, that a cached session plays with every request failing, that being unreachable does not sign anybody out while a refusal does, and that an email never becomes the public name |
 | `test/browser.js` | The only suite that needs a browser, and it asks only what one can answer: does the page load its own modules, does the canvas draw, does the account panel take typing, does the wheel move a page, does a part drag into a slot, does a run survive a real reload, and does it lay out on a phone. Needs Playwright — see below |
 
 The game intentionally remains self-contained. Do not add a framework, bundler or
@@ -818,7 +849,7 @@ ones that have to run everywhere:
 cd projects/kondrite/test && npm run setup
 ```
 
-It exists because the nine headless suites share one blind spot. They run the
+It exists because the ten headless suites share one blind spot. They run the
 game inside `vm` with a hand-built window and a canvas context whose every
 method is a no-op — which is what makes them fast enough to run on every change,
 and it means the thing that is wrong can be the very thing being stubbed. Three
@@ -850,6 +881,7 @@ node projects/kondrite/test/rocks.js
 node projects/kondrite/test/save.js
 node projects/kondrite/test/fog.js
 node projects/kondrite/test/warrens.js
+node projects/kondrite/test/door.js
 node projects/kondrite/test/browser.js   # needs Playwright; skips without it
 ```
 

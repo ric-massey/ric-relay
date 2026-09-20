@@ -77,13 +77,41 @@
   /* Supabase returns `expires_in` seconds. Kept as an absolute moment, because
      seconds-from-now stops being true the instant it is written down. Sixty
      seconds of margin so a token cannot expire mid-request. */
+  /* What the boards will call you. Kept on the session beside the email and
+     never instead of it: the email is how you sign in and the name is the only
+     thing about an account that is ever public. See `PILOT` and `setName`. */
+  const nameOf = u => String((u && u.user_metadata && u.user_metadata.name) || "");
+
   const fromAuth = (j) => ({
     access: j.access_token,
     refresh: j.refresh_token,
     userId: j.user && j.user.id,
     email: (j.user && j.user.email) || "",
+    name: nameOf(j.user),
     expires: Date.now() + Math.max(0, (Number(j.expires_in) || 3600) - 60) * 1000
   });
+
+  /* ── the pilot name ───────────────────────────────────────────────────────
+     One rule, here, because the box that asks for it and the board that prints
+     it must not disagree about what a name is. Short enough to sit on a
+     cabinet, long enough to be somebody, and nothing in it that could be read
+     as anything but a name. */
+  const PILOT = {
+    min: 3, max: 16,
+    /* Letters, digits, and single spaces, hyphens or underscores between them.
+       No leading or trailing punctuation, so a name cannot be drawn as a blank
+       or padded to the top of a board. */
+    ok: n => /^[A-Za-z0-9][A-Za-z0-9 _-]{1,14}[A-Za-z0-9]$/.test(n),
+    clean: n => String(n || "").trim().replace(/\s+/g, " "),
+    /* Said the way the box should say it, so the message is written once. */
+    why: n => {
+      const c = PILOT.clean(n);
+      if (!c) return "Pick a name for the boards.";
+      if (c.length < PILOT.min) return "A name needs at least " + PILOT.min + " characters.";
+      if (c.length > PILOT.max) return "Keep the name to " + PILOT.max + " characters or fewer.";
+      return "Letters and numbers, with spaces, - or _ between them.";
+    }
+  };
 
   // Anyone who wants to know when the panel should redraw.
   const listeners = new Set();
@@ -110,8 +138,15 @@
     } catch (_) {
       /* A dead network, a paused free project and a blocked request are the
          same thing from here, and the message has to be one a player can act
-         on rather than the word "TypeError". */
-      throw new Error("Could not reach the account service. Your save is still on this device.");
+         on rather than the word "TypeError".
+
+         Tagged, because one caller has to tell this apart from a refusal:
+         `fresh` signs you out when the service says no, and signing somebody
+         out because their train went into a tunnel would take the game with
+         it. Not reaching the service is not the service saying no. */
+      const err = new Error("Could not reach the account service. Your save is still on this device.");
+      err.offline = true;
+      throw err;
     }
 
     if (res.status === 204) return null;
@@ -146,6 +181,12 @@
           });
           setSession(fromAuth(j));
         } catch (err) {
+          /* Offline is not a refusal. The session is still good, the game is
+             playable on it, and it will refresh the moment there is a network
+             again — so it stays. Signing out here is what would turn a flight
+             with no signal into a locked game, which is the one thing a
+             required sign-in must never do. */
+          if (err && err.offline) throw err;
           setSession(null);
           throw new Error("Your sign-in expired. Sign in again to sync — nothing has been lost.");
         } finally {
@@ -168,7 +209,8 @@
       asking = call("/auth/v1/user")
         .then(u => {
           if (sess && u && u.id) {
-            setSession(Object.assign({}, sess, { userId: u.id, email: u.email || "" }));
+            setSession(Object.assign({}, sess, { userId: u.id, email: u.email || "",
+                                                 name: nameOf(u) || sess.name || "" }));
           }
         })
         .catch(() => {})
@@ -230,12 +272,40 @@
      session. When it is, a signup returns a user and no tokens — which is not a
      failure and must not read like one, so it is reported as its own outcome
      and the panel says to go and click the link. */
-  async function signUp(email, password) {
+  /* The name goes in at signup, in `data`, which is where Supabase keeps what
+     an account was created with — so an account has a name from the moment it
+     exists and there is never a row on a board with nothing to print. An
+     account made before names existed has none, and `setName` is how it gets
+     one; see the panel. */
+  async function signUp(email, password, name) {
+    const pilot = PILOT.clean(name);
     const j = await call(withRedirect("/auth/v1/signup"), {
-      method: "POST", auth: false, body: { email, password }
+      method: "POST", auth: false,
+      body: pilot ? { email, password, data: { name: pilot } } : { email, password }
     });
     if (j && j.access_token) { setSession(fromAuth(j)); return { signedIn: true }; }
+    /* Confirmation is on, so there is no session yet and the name went up with
+       the signup. It comes back down with the session when they follow the
+       link and sign in. */
     return { signedIn: false, confirm: true };
+  }
+
+  /* Naming an account that has not got one. Local first and the server after,
+     deliberately: the name is needed to play and the service may be a tunnel
+     away, so a player is never held at the door by a network. A failed write
+     leaves the name on this device and goes up with the next one. */
+  async function setName(name) {
+    if (!sess) throw new Error("Not signed in.");
+    const pilot = PILOT.clean(name);
+    if (!PILOT.ok(pilot)) throw new Error(PILOT.why(pilot));
+    setSession(Object.assign({}, sess, { name: pilot }));
+    try {
+      await fresh();
+      await call("/auth/v1/user", { method: "PUT", body: { data: { name: pilot } } });
+      return { saved: true, name: pilot };
+    } catch (err) {
+      return { saved: false, name: pilot, reason: err.message, offline: !!err.offline };
+    }
   }
 
   async function signIn(email, password) {
@@ -376,8 +446,11 @@
     enabled,
     /* Null when signed out. A copy, so the panel cannot reach in and edit the
        session it is drawing. */
-    session: () => sess ? { email: sess.email, userId: sess.userId } : null,
-    signUp, signIn, signOut, resetPassword,
+    session: () => sess
+      ? { email: sess.email, userId: sess.userId, name: sess.name || "" } : null,
+    signUp, signIn, signOut, resetPassword, setName,
+    // The one rule about what a name is, so the panel cannot invent a second.
+    pilot: PILOT,
     pull, put, wipeRow,
     push, flush,
     pendingWrite: () => pending !== null,

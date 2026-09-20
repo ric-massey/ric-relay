@@ -46,13 +46,15 @@ machine in a world that has arcade machines.
 separate job with its own landmines. This file keeps saying KONDRITE because
 that is what it is called today.
 
-**Steps 1 and 2 are built, 19–20 September 2026.** The door: the title is the
+**Steps 1, 2 and 3 are built, 19–20 September 2026.** The door: the title is the
 game plus a SIMULATORS line, the lanes are one floor down, and `survey` is in
 neither of them. The machine: a SIMULATORS tab at every station and every
 inhabited world, a room with three cabinets in it, and the boundary — save
-first, play, come back standing at the same dock. Steps 3–5 (the sign-in, the
-made-up boards, the real board) are not built. See *Step 1, as built* and
-*Step 2, as built* at the foot of this file.
+first, play, come back standing at the same dock. The sign-in: the guest door
+is closed, everybody has a pilot name, and a cached session plays offline with
+no connection at all. Steps 4 and 5 (the made-up boards, the real board) are
+not built. See *Step 1, as built*, *Step 2, as built* and *Step 3, as built* at
+the foot of this file.
 
 `SURVEY-PLAN.md` stays the authority for Survey; when the rest of this is built,
 one section goes there and this file becomes the record of how it was decided.
@@ -339,9 +341,9 @@ asked for: after it, there is one game.
 room, and the boundary above — save-first, `returnTo`, come back standing where
 you were. After this, playing a machine is something you do *inside* a run.
 
-**3 · The door.** The guest button comes off, a pilot name is asked for at
-sign-up, and the cached session plays offline. Before any board exists, because
-every board needs a name to put on it.
+**3 · The door.** *Built — see* **Step 3, as built**. The guest button comes off,
+a pilot name is asked for, and the cached session plays offline. Before any
+board exists, because every board needs a name to put on it.
 
 **4 · The made-up boards.** Generated per station and per planet, your name among
 them. Offline, seeded, no network. This is the step that makes a machine worth a
@@ -520,6 +522,88 @@ were checked by putting them back.
 **Checked:** the whole suite, including `test/browser.js` in a real browser, and
 `test/fingerprint.js` unmoved — nothing here touches generation.
 
-**Not done, and next:** step 3 — the guest door closes, a pilot name is asked
-for at sign-up, and a cached session plays offline. Every board needs a name to
-put on it.
+**Not done, and next:** step 4 — the made-up boards, generated per station and
+per planet with your name among them. Step 3 landed the name they will print.
+
+---
+
+## Step 3, as built
+
+The door. Four things the plan left to the build, and one bug it did not know
+was there.
+
+**The name is asked *after* the account exists, not on the signup form.** The
+plan says "a name is chosen at sign-up". Built that way it would have had one
+hole and one wasted box: every account that already exists has no name and
+would never be asked for one, and the box would sit on the form during a
+*sign-in*, where it means nothing. So the panel has a third state — signed in,
+not yet named — and it is driven by **not having a name** rather than by having
+just signed up. An account made before this change meets it on its next visit,
+which is the migration path and the signup step in one screen. The name still
+goes up with the signup itself when there is one to send.
+
+**Setting a name is local first.** `setName` puts it on the session and *then*
+tells the service. A player at the door with no connection has to be able to get
+into the game, so a write that fails is reported and not obeyed — the name is
+theirs on this device and goes up with the next successful call. The alternative
+holds somebody at a locked door because of a tunnel, which is the failure this
+whole step is trying not to have.
+
+**The door stands in front of `openSims` and `openLobby`, not in front of the
+keys that reach them.** "Before single player and before multiplayer" is every
+route into a match from the front page, and there are several keys and cards
+that get there. A door with a way round it is a fence, so the two functions ask,
+and every route through them inherits it. A cabinet *inside* a station does not
+ask: you are already in a sector, so you are already through.
+
+**The heading is the game's name.** It said SURVEY, which was right while the
+door was Survey's. It guards the whole game now, so telling half the players
+they were about to start the wrong thing had to stop.
+
+### The bug that had to be fixed first
+
+`fresh()` signed the player out whenever a token refresh failed. That is right
+for a refusal — a rotated or revoked token never becomes valid again by being
+retried — but it was doing the same thing when it could not reach the service
+**at all**. While an account was optional that cost a sync. Behind a required
+sign-in it would have taken the *game* away from anybody whose train went into a
+tunnel, permanently, and turned the plane case in this plan's own risk list into
+a brick.
+
+An unreachable service is not the service saying no. `call()` tags the one it
+cannot reach, `fresh()` rethrows that without touching the session, and both
+halves are in `test/door.js` — the second half deliberately, because a check
+that offline never signs you out would also pass on a `fresh` that never signed
+anybody out at all.
+
+### And the suite that could not see any of this
+
+Every other harness stubs `cloud.js` and `config.js` off (`test/page.js`,
+`OFF_BY_DEFAULT`), so `cloud` is undefined, `needsDoor()` is false, and the
+account layer never runs. Six suites passing said **nothing** about the door.
+`test/door.js` boots the game with a fake account service — a real `cloud.js`, a
+configuration that is not Ric's, and a `fetch` the test owns — and it found a
+live `chooseGuest()` call left behind in `signOutNow` that would have thrown on
+every sign-out.
+
+### What moved
+
+| Where | What happened |
+|---|---|
+| `cloud.js` | an unreachable service no longer signs anybody out · `PILOT` is the one rule for what a name is · `signUp` carries it · `setName` is local-first · `session()` gains `name` |
+| `index.html` | the guest button, its row, its CSS, its handler and `kondrite.account.guest` are gone · `needsDoor` asks the session and the name · `acctName` is the third state · `openSims` and `openLobby` ask · the door is titled KONDRITE · the pilot name seeds the lobby name |
+| `test/door.js` | new, and the first test of the account layer: no service is a whole game · the guest door is gone from the markup as well as the logic · signed out, neither the game nor the machines open · a cached session plays with every request failing · offline keeps the session, a refusal does not · an unnamed account is asked · what a name is · and no email reaches the part of the panel that names you |
+| `README.md` | "An account, which is optional" is "which is required — but a connection, never" · the door is two ways through · a section on the pilot name |
+
+**Still owed to step 5.** The name lives in Supabase's `user_metadata`, which is
+in the auth schema and therefore readable only by its owner. That is enough for
+your own name on a made-up board (step 4). A *real* board is everybody reading
+everybody, so step 5's `profiles` table has to carry a public copy of it — and
+that is also where a name can be made unique, which `user_metadata` cannot do.
+
+**Checked:** the whole suite, `test/browser.js` in a real browser, and the door
+walked by hand — signed out it stands in front of both buttons, an unnamed
+account is asked, and naming yourself while the service rejects the write still
+lets you in and starts the game.
+
+**Not done, and next:** step 4 — the made-up boards.
