@@ -46,10 +46,13 @@ machine in a world that has arcade machines.
 separate job with its own landmines. This file keeps saying KONDRITE because
 that is what it is called today.
 
-Nothing here is built. It is written while another agent is working in
-`index.html`, so it names the regions it would touch rather than touching them.
-`SURVEY-PLAN.md` stays the authority for Survey; when this is built, one section
-goes there and this file becomes the record of how it was decided.
+**Step 1 is built, 19 September 2026.** The door: the title is the game plus a
+SIMULATORS line, the lanes are one floor down, and `survey` is in neither of
+them. After it, there is one game. Steps 2–5 are not built. See *Step 1, as
+built* at the foot of this file.
+
+`SURVEY-PLAN.md` stays the authority for Survey; when the rest of this is built,
+one section goes there and this file becomes the record of how it was decided.
 
 ---
 
@@ -388,3 +391,41 @@ and it is a *part*, the way everything else in Survey is a part.
   already — README.md says the account question only has a good answer
   beforehand — but this is the one change in the plan that can make a first
   impression worse, and it should be watched on a real person.
+
+---
+
+## Step 1, as built
+
+Three things the plan left open, settled in code.
+
+**No "begin a new survey" on the front page.** The mock has one, under CONTINUE
+THE SECTOR. Ric's call: it goes to SETTINGS instead, where the reset already
+lives. A sector is hours, there is no undo, and the button that destroys one has
+no business sitting under the button that resumes it — so the front page has
+exactly one thing it can do to a sector, and the one that ends it is three rows
+into a settings page and asks twice. The title button reads CONTINUE THE SECTOR
+when a book exists and BEGIN THE SURVEY when one does not.
+
+**`started` is the book having a seed, not the blurb having a separator in it.**
+`surveyBlurb()` only counts once the almanac has an entry, so ten minutes of
+flying with nothing logged would have read BEGIN THE SURVEY over a button that
+resumes. The front page asks the book directly: seed, then entry count.
+
+**The book is read once, not sixty times a second.** The title is a render loop
+and the book is up to half a megabyte of JSON with a fog bitfield in it, so the
+answer is cached in `titleCard` and thrown away in exactly the two places it can
+change — `leaveMatch`, and the wipe. That is the whole of the new state.
+
+### What moved
+
+| Where | What happened |
+|---|---|
+| `index.html` | `drawTitle` is the game and a door · `drawSims` is the old title's two lane cards, one floor down, as state `"sims"` · `titlePick` splits into `titlePick` (the game / the machines) and `simPick` (which lane) · `playSurvey` and `titleSurvey` are new |
+| `index.html` | `LANES.solo` drops `survey` — the one removal that is most of the change · cards back out to `"sims"`, the level select backs out to `"modes"`, and the drifting field knows the new page |
+| `test/menu.js` | check 2 asserted `survey` was in the solo lane; it asserts the opposite now, and walks title → sims → modes and back out a floor at a time |
+| `test/ui.js`, `test/smoke.js` | the new page joins the sweep, and the idling-field gate moved with it |
+| `README.md` | "Modes" is "The game, and the simulators", and the table stops being a table of peers |
+
+**Not done, and next:** step 2 — the `sims` tab at a station and on a planet, the
+cabinet room, and the boundary (save first, `returnTo`, come back standing where
+you were). Until that lands, the machines are only reachable from the title.

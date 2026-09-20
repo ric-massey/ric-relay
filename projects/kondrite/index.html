@@ -2535,7 +2535,12 @@
   } catch (_) {}
   let watching = 0;
   let botPick = 0;        // bots to add on the setup screen
-  let titlePick = 0;      // which lane the front page has focus on
+  /* Two picks, because there are two pages now. The front page offers the game
+     and the machines; the simulators page offers the two lanes. They were one
+     variable while the lanes *were* the front page, and one variable would have
+     meant arrowing on the title quietly choosing a lane. */
+  let titlePick = 0;      // 0 the game, 1 the simulators
+  let simPick = 0;        // which lane the simulators page has focus on
   let modeLane = "solo";  // which lane's cards the mode page is showing
   let modePick = 0;       // keyboard focus among those cards
   let modeHover = -1;     // pointer focus, which beats the keyboard while set
@@ -3017,22 +3022,38 @@
     };
   }
 
+  // The front page's two doors, in the order they are drawn.
+  const TITLE_DOORS = [() => playSurvey(), () => openSims()];
+
   function menuKey(code) {
     if (state === "title") {
       const d = digit(code);
-      if (d >= 1 && d <= LANE_KEYS.length) { openLane(LANE_KEYS[d - 1]); return; }
+      if (d >= 1 && d <= TITLE_DOORS.length) { TITLE_DOORS[d - 1](); return; }
       if (code === "ArrowUp" || code === "ArrowLeft" ||
           code === "ArrowDown" || code === "ArrowRight") {
-        titlePick = (titlePick + 1) % LANE_KEYS.length;
+        titlePick = (titlePick + 1) % TITLE_DOORS.length;
       }
-      if (code === "Enter" || code === "Space") openLane(LANE_KEYS[titlePick]);
+      if (code === "Enter" || code === "Space") TITLE_DOORS[titlePick]();
       // O still opens the lobby from the front page. It was a shortcut before
       // the menu was rebuilt and somebody's fingers already know it.
       if (code === "KeyO") openLobby();
       if (code === "KeyC") { state = openSettings("title"); }
+    } else if (state === "sims") {
+      /* The lanes, one floor down. These are the keys the title used to have,
+         moved with the page they belonged to. */
+      if (code === "Escape" || code === "Backspace") { state = "title"; return; }
+      const d = digit(code);
+      if (d >= 1 && d <= LANE_KEYS.length) { openLane(LANE_KEYS[d - 1]); return; }
+      if (code === "ArrowUp" || code === "ArrowLeft" ||
+          code === "ArrowDown" || code === "ArrowRight") {
+        simPick = (simPick + 1) % LANE_KEYS.length;
+      }
+      if (code === "Enter" || code === "Space") openLane(LANE_KEYS[simPick]);
+      if (code === "KeyO") openLobby();
+      if (code === "KeyC") { state = openSettings("sims"); }
     } else if (state === "modes") {
       const rows = laneRows();
-      if (code === "Escape" || code === "Backspace") { state = "title"; return; }
+      if (code === "Escape" || code === "Backspace") { state = "sims"; return; }
       const d = digit(code);
       if (d >= 1 && d <= rows.length) { modePick = d - 1; playCard(rows[d - 1]); return; }
       if (code === "ArrowLeft" || code === "ArrowUp") {
@@ -3046,7 +3067,7 @@
       if (code === "Enter" || code === "Space") playCard(rows[openCard()]);
       if (code === "KeyC") { state = openSettings("modes"); }
     } else if (state === "levels") {
-      if (code === "Escape" || code === "Backspace") { state = "title"; return; }
+      if (code === "Escape" || code === "Backspace") { state = "modes"; return; }
       const d = digit(code);
       if (d >= 1 && d <= CAMPAIGN_ORDER.length) { chooseMode(CAMPAIGN_ORDER[d - 1]); return; }
       if (code === "ArrowUp" || code === "ArrowLeft") {
@@ -8408,6 +8429,7 @@
     }
     surveyResetArm = 0;
     BOOK.wipe();
+    forgetTitleCard();
     nextSurveySeed = (Math.random() * 0xffffffff) >>> 0;
 
     // In the sector already? Then the new one starts now rather than next time.
@@ -21241,6 +21263,39 @@
 
   /* The title row says where you got to, if you have been before. A mode that
      remembers should say so on the way in, not once you are already inside. */
+  /* ── what the front page says about your sector ───────────────────────────
+     The title asks the book one question — is there a sector, and how much of
+     it have you written down — and the title is drawn sixty times a second. The
+     book is up to half a megabyte of JSON and reading it decodes a fog bitfield,
+     so asking per frame would put a parse of the whole save inside the render
+     loop, which is the kind of cost that shows up as a stutter on the one screen
+     a new player judges the game on.
+
+     So it is read once and kept. The answer can only change in two places — a
+     run ending back at the title, and the wipe — and both throw it away. */
+  let titleCard = null;
+  const forgetTitleCard = () => { titleCard = null; };
+
+  function titleSurvey() {
+    if (titleCard) return titleCard;
+    const b = loadSurveyBook();
+    const started = !!(b && b.seed);
+    const found = (b && b.found && b.found.length) || 0;
+    /* `started` is the book having a seed, not the blurb having a separator in
+       it. A sector you have flown for ten minutes without logging anything is
+       still a sector, and a front page that offered to BEGIN one would be
+       lying about what its own button does. */
+    titleCard = {
+      started,
+      head: started ? "CONTINUE THE SECTOR" : "BEGIN THE SURVEY",
+      sub: started
+        ? (found ? found + " LOGGED  \u00b7  it is where you left it"
+                 : "it is where you left it")
+        : "one pilot, one chart, and nothing shooting at you"
+    };
+    return titleCard;
+  }
+
   function surveyBlurb() {
     const b = loadSurveyBook();
     if (!b.seed || !b.found.length) return MODES.survey.blurb.toUpperCase();
@@ -24435,10 +24490,22 @@
      The same mode appears in both lanes where it honestly belongs, and reads
      differently in each — Battle Royale against bots is a different proposition
      from Battle Royale against your brother, and the card says so. */
+  /* ── and the machines are one floor down ──────────────────────────────────
+     These two pages are the same pages they were, and they are not the front
+     of the game any more. **There is one game**, and it is Survey; what is in
+     here is the arcade cabinet in the corner of the station — the other three
+     modes, as simulators you play for a score.
+
+     So `survey` comes out of the solo lane, and that one removal is most of
+     this change: a lane that lists the game beside three machines is exactly
+     the row of peers the whole thing exists to end. The question the lanes ask
+     is a real question about a machine — on your own, or with other people —
+     and it was never a question about Survey, which is one pilot and one chart
+     and settled. Asked before the game, it was being asked about nothing. */
   const LANES = {
     solo: { name: "SOLO", colour: "#ffe56d", art: "survival",
-            line: "one pilot · four ways to fly",
-            rows: ["survival", "royale", "campaign", "survey"] },
+            line: "one pilot · three machines",
+            rows: ["survival", "royale", "campaign"] },
     multi: { name: "MULTIPLAYER", colour: "#87d8ff", art: "online",
              line: "at this keyboard, or across the internet",
              rows: ["survival", "royale", "campaign", "online"] }
@@ -24546,27 +24613,145 @@
     return out;
   }
 
+  /* ═══ THE FRONT PAGE ══════════════════════════════════════════════════════
+     One game, and a machine.
+
+     It used to be a menu *of games*: two lanes, solo and multiplayer, and four
+     modes behind each of them with Survey as one of the four. That is a row of
+     peers, and it was the last place in the interface still saying the game is
+     one of several things in here.
+
+     So the page says the game, loudly, with its own picture — and underneath
+     it, quieter, a door to the machines. The lanes are not gone; they are one
+     floor down where they answer a question about a cabinet. See `drawSims`.
+
+     What the button says is the book's own line. `surveyBlurb` already counts
+     what you have logged, and a returning player's front page now reads
+     "31 LOGGED · CONTINUE THE SECTOR" before they have pressed anything.
+
+     There is deliberately **no** "begin a new survey" on this page. A sector is
+     hours, the button that throws one away has no business next to the button
+     that resumes it, and the game already has one place where that happens: the
+     reset in SETTINGS, which arms on the first press and wipes on the second.
+     One way to lose a sector, and it is a decision. */
   function drawTitle(dt) {
-    text("KONDRITE", SCREEN_W / 2, 118, 64, "#ffe56d");
+    text("KONDRITE", SCREEN_W / 2, 100, 64, "#ffe56d");
     /* A chondrite is the commonest stony meteorite — the old, undifferentiated
        stuff a solar system got made out of. The K is the stylisation, and it is
-       a better name for this game than KONDRITE was, given what it turned into.
+       a better name for this game than CROSSFIRE was, given what it turned
+       into. */
+    text("a survey of endless space", SCREEN_W / 2, 136, 15, "#ffcb42");
 
-       The line under it used to list the modes as four peers. The survey is
-       what this is now and the other three are what else is in it. */
-    text("a survey of endless space",
-         SCREEN_W / 2, 154, 15, "#ffcb42");
+    const w = Math.round(Math.min(760, SCREEN_W - MENU_INSET * 2));
+    const x = Math.round(SCREEN_W / 2 - w / 2);
 
-    /* The cards were 380 wide when the screen was always a thousand. They take
-       their share of whatever it is now, capped so a very wide screen gets two
-       generous cards rather than two billboards. */
-    const gap = 40, h = 300, y = 210;
+    /* ── the game ──────────────────────────────────────────────────────────
+       The survey diorama was one card in a row of five. It is the game's own
+       picture now, at the size that says so. */
+    /* The card's own room, and the numbers are load-bearing: the row of
+       buttons along the bottom is fixed at 590, so the card's foot plus the
+       simulators line plus its two captions have to land clear of it. They did
+       not, at first — the hint sat six pixels above SOUND. */
+    const gy = 172, gh = 268;
+    const on0 = titlePick === 0;
+    laneAnim[0] += ((on0 ? 1 : 0) - laneAnim[0]) * Math.min(1, (dt || 0) * 9);
+    const lift = laneAnim[0] * 6;
+    const top = gy - lift;
+    const colour = "#a08cff";
+    ctx.save();
+    ctx.fillStyle = colour;
+    ctx.globalAlpha = 0.07 + laneAnim[0] * 0.09;
+    ctx.fillRect(x, top, w, gh);
+    ctx.globalAlpha = 0.55 + laneAnim[0] * 0.45;
+    ctx.fillRect(x, top, w, 3);
+    ctx.strokeStyle = colour;
+    ctx.globalAlpha = 0.45 + laneAnim[0] * 0.55;
+    ctx.lineWidth = on0 ? 2 : 1;
+    ctx.strokeRect(x, top, w, gh);
+    ctx.restore();
+
+    const pad = 10, artH = gh - pad * 2 - 84, artY = top + pad;
+    if (menuArt) menuArt.preview("survey", x + pad, artY, w - pad * 2, artH, clock);
+    const fadeH = Math.min(80, artH * 0.4);
+    const fade = ctx.createLinearGradient(0, artY + artH - fadeH, 0, artY + artH);
+    fade.addColorStop(0, tint(colour, 0));
+    fade.addColorStop(1, tint(colour, 0.2 + laneAnim[0] * 0.12));
+    ctx.save();
+    ctx.fillStyle = fade;
+    ctx.fillRect(x + pad, artY + artH - fadeH, w - pad * 2, fadeH);
+    ctx.restore();
+
+    /* What the button does, and what you have written down, in that order —
+       the loud half is the verb. See `titleSurvey`. */
+    const card = titleSurvey();
+    text(card.head, x + w / 2, artY + artH + 36, 30, colour);
+    fitLine(card.sub, x + w / 2, artY + artH + 64, 14, "#ffcb42", "center",
+            0.85, w - 26);
+    pushTap({ x, y: top, w, h: gh, act: () => playSurvey() });
+
+    /* ── and the machines ──────────────────────────────────────────────────
+       A line, not a card. It is the other thing you can do here and it must not
+       read as the other half of a pair — the whole point of the page is that
+       one of these is the game. */
+    const sy = gy + gh + 34;
+    const on1 = titlePick === 1;
+    laneAnim[1] += ((on1 ? 1 : 0) - laneAnim[1]) * Math.min(1, (dt || 0) * 9);
+    tapButton("SIMULATORS", SCREEN_W / 2, sy, Math.min(420, w), 42, "#ffe56d",
+              () => openSims(), on1);
+    text("alone or with other people  \u00b7  the machines in the corner",
+         SCREEN_W / 2, sy + 40, 13, "#ffcb42", "center", 0.8);
+
+    text(thumbInput() ? "TAP ONE" : "CLICK ONE  \u00b7  OR ARROWS + ENTER",
+         SCREEN_W / 2, sy + 68, 13, "#ffcb42", "center", 0.9);
+
+    tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
+              300, 590, 210, 36, soundEnabled ? "#ffe56d" : "#ffcb42",
+              toggleSound, soundEnabled);
+    tapButton(fullscreenLabel(), COLS(4, 2), 590, 210, 36, "#ffe56d",
+              toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
+    tapButton("SETTINGS", COLS(4, 3), 590, 210, 36, "#ffe56d",
+              () => { state = openSettings("title"); });
+
+    text(thumbInput()
+           ? "one player per phone · up to five online, a screen each"
+           : "two at this keyboard · up to five online · every key is yours to change",
+         SCREEN_W / 2, 646, 12, "#ffcb42");
+  }
+
+  /* Survey, with the account question in front of it. It was inside `playCard`
+     while the game was a card; it is the front page's own button now, and the
+     card path calls this rather than keeping a second copy of the rule. */
+  function playSurvey() {
+    const fly = () => startGame("survey", 1, 0);
+    if (needsDoor()) openAccount(fly); else fly();
+  }
+
+  function openSims() {
+    simPick = Math.max(0, LANE_KEYS.indexOf(modeLane));
+    state = "sims";
+  }
+
+  /* ═══ THE SIMULATORS ══════════════════════════════════════════════════════
+     The page the title used to be, with the question it was always really
+     asking. Solo or multiplayer is a real question about a machine — Battle
+     Royale against bots and Battle Royale against your brother are two
+     different propositions — and it was never a question about Survey.
+
+     One floor down, and it keeps its own picture, its own colours and its own
+     keys. What it is *not* yet is a room with cabinets in it; that is step two
+     of SIMULATIONS.md, and it is the step that stops this being a relabel. */
+  function drawSims(dt) {
+    text("SIMULATORS", SCREEN_W / 2, 104, 48, "#ffe56d");
+    text("the other three, as machines you play for a score",
+         SCREEN_W / 2, 142, 15, "#ffcb42");
+
+    const gap = 40, h = 300, y = 196;
     const w = Math.round(Math.min(440, (SCREEN_W - MENU_INSET * 2 - gap) / 2));
     const x0 = SCREEN_W / 2 - w - gap / 2;
 
     LANE_KEYS.forEach((key, i) => {
       const L = LANES[key];
-      const on = titlePick === i;
+      const on = simPick === i;
       laneAnim[i] += ((on ? 1 : 0) - laneAnim[i]) * Math.min(1, (dt || 0) * 9);
       const x = x0 + i * (w + gap);
       const lift = laneAnim[i] * 6;
@@ -24602,32 +24787,30 @@
       text(L.name, x + w / 2, artY + artH + 34, 30, L.colour);
       fitLine(L.line, x + w / 2, artY + artH + 64, 14, "#ffcb42", "center", 0.85,
               w - 26);
-      text(L.rows.length + " MODES", x + w / 2, artY + artH + 96, 13, L.colour,
-           "center", 0.6);
+      text(L.rows.length + " MACHINES", x + w / 2, artY + artH + 96, 13,
+           L.colour, "center", 0.6);
 
       pushTap({ x, y: y - lift, w, h, act: () => openLane(key) });
     });
 
-    text("CLICK ONE  ·  OR ARROWS + ENTER", SCREEN_W / 2, 540, 13, "#ffcb42",
-         "center", 0.9);
+    text(thumbInput() ? "TAP ONE" : "CLICK ONE  \u00b7  OR ARROWS + ENTER",
+         SCREEN_W / 2, 528, 13, "#ffcb42", "center", 0.9);
+    /* Nothing in here pays. A simulator is a machine in a world that has
+       machines, and the sector never hears about it — said once, on the page
+       that opens them, because a player who finds that out afterwards has been
+       misled rather than surprised. */
+    text("a machine pays nothing back into the sector  \u00b7  the score is the point",
+         SCREEN_W / 2, 552, 12, "#ffcb42", "center", 0.65);
 
-    tapButton("SOUND: " + (soundEnabled ? "ON" : "OFF"),
-              300, 590, 210, 36, soundEnabled ? "#ffe56d" : "#ffcb42",
-              toggleSound, soundEnabled);
-    tapButton(fullscreenLabel(), COLS(4, 2), 590, 210, 36, "#ffe56d",
-              toggleFullscreen, !!fullscreenElement(), fullscreenSupported());
-    tapButton("SETTINGS", COLS(4, 3), 590, 210, 36, "#ffe56d",
-              () => { state = openSettings("title"); });
-
-    text(thumbInput()
-           ? "one player per phone · up to five online, a screen each"
-           : "two at this keyboard · up to five online · every key is yours to change",
-         SCREEN_W / 2, 646, 12, "#ffcb42");
+    tapButton("BACK", SCREEN_W / 2, 600, 240, 40, "#ffcb42",
+              () => { state = "title"; });
+    text("two at this keyboard · up to five online",
+         SCREEN_W / 2, 648, 12, "#ffcb42");
   }
 
   function openLane(key) {
     modeLane = key;
-    titlePick = Math.max(0, LANE_KEYS.indexOf(key));
+    simPick = Math.max(0, LANE_KEYS.indexOf(key));
     modePick = 0;
     modeHover = -1;
     cardAnim = laneRows().map(() => 0);
@@ -24746,7 +24929,7 @@
     });
 
     tapButton("BACK", SCREEN_W / 2, 600, 240, 40, "#ffcb42",
-              () => { state = "title"; });
+              () => { state = "sims"; });
     text("every key is yours to change — SETTINGS on the front page",
          SCREEN_W / 2, 648, 12, "#ffcb42", "center", 0.7);
   }
@@ -24760,11 +24943,10 @@
        has a good answer beforehand — see `openAccount` — and this is the one
        moment every player passes through. Nobody else gets asked: an account
        does nothing for the modes that keep no progress. */
-    if (key === "survey") {
-      const fly = () => startGame("survey", 1, 0);
-      if (needsDoor()) openAccount(fly); else fly();
-      return;
-    }
+    /* The game is not a card any more — it is the front page. This stays as
+       the one door either way in has to go through, so nothing can start a
+       survey without passing the account question. See `playSurvey`. */
+    if (key === "survey") { playSurvey(); return; }
     if (key === "campaign") { levelPick = 0; state = "levels"; return; }
     if (modeLane === "solo") {
       // One human. Battle Royale needs opponents to be a match at all, so it
@@ -24793,7 +24975,7 @@
     });
 
     tapButton("BACK", SCREEN_W / 2, 640, 240, 44, "#ffcb42",
-              () => { state = "title"; });
+              () => { state = "modes"; });
   }
 
   function drawCount() {
@@ -25711,6 +25893,8 @@
      wandered back to the menu is still holding four people in a match. */
   function leaveMatch() {
     if (mode && mode.survey && surv) saveSurveyBook();
+    // The front page is about to read the book again, and it has just changed.
+    forgetTitleCard();
     if (net.on) netReset();
     localPause = false;
     banner = null;
@@ -25798,8 +25982,8 @@
     /* Every screen you can reach without a match running gets the idling field
        behind it. Not the pause menu or the results, which have a real world of
        their own to sit over. */
-    const menu = state === "title" || state === "count" || state === "levels" ||
-                 state === "controls" || state === "thumb";
+    const menu = state === "title" || state === "sims" || state === "count" ||
+                 state === "levels" || state === "controls" || state === "thumb";
     if (menu) drawDrift(dt || 0);
 
     /* ── the world behind a page ───────────────────────────────────────────
@@ -25882,6 +26066,7 @@
     }
 
     if (state === "title") { drawTitle(dt); return; }
+    if (state === "sims") { drawSims(dt); return; }
     if (state === "modes") { drawModes(dt); return; }
     if (state === "levels") { drawLevels(); return; }
     if (state === "count") { drawCount(); return; }

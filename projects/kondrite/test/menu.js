@@ -187,18 +187,25 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   console.log("  front      two lanes · solo, multiplayer · draws clean");
 }
 
-// ── 2. both lanes open, and offer only what they can honestly start ───────
-/* Survey is one pilot and one chart, so it has no business in the multiplayer
-   lane; the lobby has no business in the solo one. A lane that lists a mode it
-   cannot deliver is the menu lying, which is worse than the menu being long. */
+// ── 2. both lanes open, and neither of them is the game ──────────────────
+/* The lanes are the simulators now — the machines in the corner of a station —
+   and **there is one game**. A lane that lists Survey beside three machines is
+   the row of peers the front page was rebuilt to end, so the check that used to
+   insist Survey was in the solo lane now insists it is in neither.
+
+   The rest of the rule is unchanged and is still the menu's job: a lane that
+   lists a mode it cannot deliver is the menu lying. The lobby has no business
+   in the solo lane. */
 {
   const { cf } = boot("?debug=1");
 
   cf.lane("solo");
   let m = cf.menu();
   check(m.lane === "solo", "opening the solo lane did not select it");
-  check(m.rows.includes("survey"), "the solo lane does not offer Survey");
+  check(!m.rows.includes("survey"),
+        "the solo lane still lists Survey beside the machines");
   check(!m.rows.includes("online"), "the solo lane offers the online lobby");
+  check(m.rows.length >= 3, "the solo lane is down to " + m.rows.length + " machines");
   const soloRows = m.rows.slice();
 
   cf.lane("multi");
@@ -206,8 +213,27 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   check(m.rows.includes("online"), "the multiplayer lane does not offer Online");
   check(!m.rows.includes("survey"),
         "the multiplayer lane offers Survey, which is one pilot only");
-  console.log("  lanes      solo [" + soloRows.join(" ") + "] · multi [" +
-              m.rows.join(" ") + "]");
+
+  /* And the way in is one floor down. The front page starts the game; the
+     machines are behind SIMULATORS, and backing out of the lanes lands on the
+     front page rather than on nothing. */
+  cf.screen("title");
+  cf.draw();
+  cf.key("ArrowRight");                       // off the game, onto SIMULATORS
+  cf.key("Enter");
+  check(cf.peek().state === "sims",
+        "SIMULATORS on the front page went to " + cf.peek().state);
+  cf.draw();
+  cf.key("Enter");
+  check(cf.peek().state === "modes", "a lane on the simulators page opened nothing");
+  cf.key("Escape");
+  check(cf.peek().state === "sims", "backing out of the machines skipped a floor");
+  cf.key("Escape");
+  check(cf.peek().state === "title", "backing out of the simulators left the title");
+
+  console.log("  lanes      one floor down, under SIMULATORS · solo [" +
+              soloRows.join(" ") + "] · multi [" + m.rows.join(" ") +
+              "] · the game is in neither");
 }
 
 // ── 3. exactly one card is open, and pointing changes which ──────────────
@@ -346,16 +372,22 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 }
 
 // ── 7. back out, and the escape hatches work ─────────────────────────────
+/* One floor at a time. The cards back out to the simulators page they were
+   opened from, and that backs out to the front page — a key that skipped the
+   middle floor would put a player who wanted a different lane on the title. */
 {
   const { cf } = boot("?debug=1");
   cf.lane("multi");
   cf.key("Escape");
-  check(cf.peek().state === "title", "Escape did not return to the front page");
+  check(cf.peek().state === "sims", "Escape did not return to the simulators");
   cf.key("Enter");                                    // opens whichever lane has focus
-  check(cf.peek().state === "modes", "ENTER on the front page opened nothing");
+  check(cf.peek().state === "modes", "ENTER on the simulators page opened nothing");
+  cf.key("Backspace");
+  check(cf.peek().state === "sims", "Backspace did not return to the simulators");
   cf.key("Backspace");
   check(cf.peek().state === "title", "Backspace did not return to the front page");
-  console.log("  back       escape and backspace both return to the front page");
+  console.log("  back       escape and backspace step one floor at a time, " +
+              "cards → simulators → the front page");
 }
 
 // ── 8. every card actually paints a picture ──────────────────────────────

@@ -19,28 +19,46 @@ Open `http://127.0.0.1:8000/projects/kondrite/`.
 
 ## The menu
 
-The front page asks one question — **solo or multiplayer** — and the modes for
-that answer are the next page. It used to be five rows with a line of small print
-under each, all competing for one glance, and it got a row longer every time the
-game grew.
+**There is one game, and it is Survey.** The front page says so: the survey's own
+picture, and one button under it that reads CONTINUE THE SECTOR — with how much
+you have logged — or BEGIN THE SURVEY on a first run.
 
-The second page is a row of cards. Point at one and it opens: the card takes the
-room the others give up, the paragraph fades in, and the picture at the top is
-the mode *moving*. Those pictures are drawn, not filmed — see `menu.js` for why —
+There is deliberately no *start a new one* beside it. A sector is hours, and the
+button that throws one away has no business next to the button that resumes it;
+the game already has one place where that happens, the reset in SETTINGS, which
+arms on the first press and wipes on the second.
+
+Under it, quieter, is **SIMULATORS** — the machines. Everything else in here is
+one: an arcade cabinet in a world that has arcade cabinets, played for a score
+that never crosses back into the sector.
+
+That page asks the question the front page used to ask — **solo or multiplayer**
+— and it is a real question about a machine, where it was never a question about
+Survey, which is one pilot and one chart and settled. The modes for that answer
+are the page after it: a row of cards, and pointing at one opens it. The card
+takes the room the others give up, the paragraph fades in, and the picture at the
+top is the mode *moving*. Those pictures are drawn, not filmed — see `menu.js` —
 and the same mode reads differently in each lane, because Battle Royale against
 bots is not the same proposition as Battle Royale against the person next to you.
 
 Solo flies straight in, since there is only one answer to "how many". Multiplayer
-stops at the count screen first. Both reach the same modes and the same match.
+stops at the count screen first. Escape steps back one floor at a time: cards,
+then the simulators, then the front page.
 
-## Modes
+## The game, and the simulators
 
-| Mode | Players | Rules |
+| | Players | Rules |
+|---|---:|---|
+| **Survey** — *the game* | 1 | No edges and no losing. A station of your own in six pieces, each with a clue, endless procedural space, a chart you pin yourself, a thirty-five entry almanac, salvage, a refit and a derelict you fly inside |
+
+And the machines. None of them keeps anything, and none of them pays anything
+back into the sector:
+
+| Simulator | Players | Rules |
 |---|---:|---|
 | Survival | 1-5 | Co-op asteroid waves, shared lives, optional friendly fire, wrapping arena |
 | Battle Royale | 2-5 | Three lives each, two-hit hulls, stationary gravity hazards, closing wall, no time limit |
 | Campaign | 1-2 | Three scripted missions, sides instead of a free-for-all, an allied fleet flying with you, a shared reserve of lives |
-| Survey | 1 | No edges and no losing. Something to build, six parts to find and a clue for each, endless procedural space, a chart you pin yourself, a thirty-three entry almanac, salvage, a refit and a derelict you fly inside |
 
 Battle Royale shows hull strength only for ships controlled on the current device.
 First hits stay quiet; losing a life adds a short entry to the feed beneath the

@@ -190,7 +190,8 @@ const SHAPES = [
 
 /* Every page the game can be sitting on, and how to get there. Survey's pages
    need a survey running; the menus do not. */
-const MENU_PAGES = ["title", "modes", "levels", "paused", "controls", "thumb"];
+const MENU_PAGES = ["title", "sims", "modes", "levels", "paused", "controls",
+                    "thumb"];
 const SURVEY_PAGES = ["chart", "inventory", "missions", "almanac", "craft",
                       "lore", "refit", "hangar", "landed"];
 

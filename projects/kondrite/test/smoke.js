@@ -259,7 +259,7 @@ function checkSyntax() {
      screens with no world of their own, it keeps its own arrays rather than
      borrowing the match's, and it stays faint enough that menu text over it
      still clears contrast. */
-  assert.match(html, /const menu = state === "title" \|\| state === "count" \|\|/,
+  assert.match(html, /const menu = state === "title" \|\| state === "sims" \|\|/,
     "the idling field must be gated to menu screens");
   assert.match(html, /if \(menu\) drawDrift\(/,
     "the idling field must be drawn behind menus only");
