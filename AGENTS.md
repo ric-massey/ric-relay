@@ -342,20 +342,58 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   Several were deliberately left as typed because the right film was not guessable —
   don't "fix" `Curtis`, `Moments`, `The Sound`, `Greater good`, `RIP`, `Code 3`,
   `Mercy` or `Obsession` without asking him which ones they are.
-- **Poster art is pulled once and committed — never hotlinked.**
-  `projects/entertainment/pull-tmdb.py` resolves each title against TMDB, writes the
-  facts into `entertainment-data.js` and downloads the images into `assets/posters/`
-  (and `assets/backdrops/` for starred titles). The pages then read files out of this
-  repo, so the live room still makes **no external request** and still works opened off
-  disk. That is the line, and it is hard rule 4's actual line: a CDN `<img src>` is a
+- **The room's data is pulled in two stages, and they are separate on purpose.**
+  `projects/entertainment/pull-entertainment.py`:
+  - **Stage 1, facts — no key, nothing to sign up for.** Wikipedia finds the article,
+    Wikidata answers: year, runtime, director, genre, IMDb id and **the TMDB id**.
+    Wikidata is CC0; the one-line synopsis is the Wikipedia extract (CC BY-SA).
+  - **Stage 2, art — needs the free TMDB key** in the Keychain (`tmdb`, account
+    `ricmassey`), never in the repo, same rule as `apex-als`. It never *searches*
+    TMDB: stage 1 already handed it the exact id, so there is no fuzzy matching and
+    no chance of a stranger's poster.
+- **Poster art is downloaded and committed — never hotlinked.** Images land in
+  `assets/posters/` (and `assets/backdrops/` for starred titles) and the pages read
+  files out of this repo, so the live room still makes **no external request** and still
+  works opened off disk. That is hard rule 4's actual line: a CDN `<img src>` is a
   dependency and is out; a file in `assets/` is not. Ric asked for the pictures
-  (2026-09-21), which is the "unless asked" clause — but it bought art, not a CDN.
-- **The key lives in the Keychain** (`tmdb`, account `ricmassey`), never in the repo —
-  same rule as `apex-als`. The script is skip-by-default: a row that already has facts
-  is left alone unless `--refresh` says otherwise.
-- **A hand-set `tmdb:` id is never overwritten.** That is how the ambiguous titles get
-  settled, and a re-run must not undo the settling. The script reports what it could not
-  match rather than guessing — `Greater` is three films and a wrong poster is a lie.
+  (2026-09-21) — the "unless asked" clause — but that bought art, not a CDN.
+- **Identity comes from an id, never from a title.** Titles on this list are short and
+  collide brutally: `Greater`, `Moments`, `Obsession`, `Mercy`, `RIP` are all real films
+  *and* real other things. The matcher requires the article title to equal the row title
+  once Wikipedia's "(2016 film)" is stripped — nothing looser. An earlier, looser rule
+  matched `Moments` to *Defining Moments*, which is exactly the failure this guards.
+  Titles it cannot settle are **reported, not guessed**; exact matches on a name
+  Wikipedia considers ambiguous are matched but flagged for Ric's eye.
+- **A hand-set `wd:` or `tmdb:` id is never overwritten.** That is how an ambiguous
+  title gets settled once and stays settled through every re-run.
+- **The page asks Ric which film it is, at the moment he adds it.** Adding a title from
+  the owner panel opens a chooser: it searches Wikipedia, shows the candidates with
+  their thumbnails, years and first lines, and he picks. "Keep it as I typed" is always
+  an option — an obscure film that is on nobody's list is still on his — and backing out
+  cancels the add rather than saving a half-answered row. Any row already on the list can
+  be corrected the same way from its detail sheet ("Not the right film?"), which clears
+  the old facts before writing the new ones so 1969's runtime never ends up on 2003's
+  film. This is the right place for the question: he is the only one who knows which
+  *Moments* he watched, and he knows it then, not six months later.
+- **The chooser's fetch does not break hard rule 4.** Nothing runs on load, no visitor
+  can trigger it, and the page opens off disk and renders all 363 titles with the network
+  unplugged. It fires when the signed-in owner clicks a button — the same category as a
+  "Watch on Hulu" link, and a weaker claim than the `/movies` read the room already does
+  on load.
+- **Never commit the chooser's thumbnails.** They come from Wikipedia and are non-free
+  fair-use files; they are shown in the owner's own panel for the seconds it takes to
+  tell two films apart, and are never saved, never committed and never served to a
+  visitor. The poster that lands on the site comes from TMDB, whose terms allow it.
+- **The script writes as it goes** (every ten rows) and skips rows already filled in, so
+  stopping it halfway costs nothing and a re-run is cheap.
+- **`urllib` needs its certificates pointed at.** A python.org install ships `certifi`
+  but only wires it up if someone runs *Install Certificates.command*, which nobody
+  does — so `urllib` gets `CERTIFICATE_VERIFY_FAILED` while `curl` in the same shell is
+  fine. The script builds its own SSL context from `certifi` when it can. Any new script
+  here that talks https should do the same rather than "fixing" the Python install.
+- **The credit line in the footer is not decoration.** Wikipedia extracts are CC BY-SA
+  and TMDB's terms ask to be named. It is hidden until there is actually borrowed data
+  on the page; don't delete it once there is.
 - **No poster file yet? Then no `<img>` at all.** The tile falls back to a typographic
   plate, tinted by a hash of the id. This is a designed state, not a broken one: the
   page has to be right on the day it ships, not only after a script gets run. Never
@@ -373,7 +411,7 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   pages keep telling the same truth. Don't fork it.
 - **Shelves are ordered by fact, never by mood.** Starred, recently watched, queued,
   on-a-service, franchise, genre, decade. No "cosy Sunday" rows.
-- **`FIELDS` appears twice on purpose and must match** — in `pull-tmdb.py` and in
+- **`FIELDS` appears twice on purpose and must match** — in `pull-entertainment.py` and in
   `entertainment-room.js`'s export. The script and the Export button both rewrite the
   data file; if the two lists disagree, every export fights the last pull.
 - **The order of the watched block IS the order he watched them** — oldest at the top,

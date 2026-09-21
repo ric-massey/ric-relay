@@ -45,7 +45,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `projects/` | — | Self-contained sub-projects, each linked from a room (see below) |
 | `photos/` | — | Web-optimized images (originals stay out of git in `_photo-originals/`) |
 | `captures-data.js` | — | Generated `[filename, date]` pairs for the 1,300+ photos `captures.html` draws |
-| `entertainment-data.js` | — | The committed list both entertainment pages read — 363 titles, each with a status, where to find the queued ones, and whatever `pull-tmdb.py` has filled in (year, runtime, genre, director, synopsis, poster) |
+| `entertainment-data.js` | — | The committed list both entertainment pages read — 363 titles, each with a status, where to find the queued ones, and whatever `pull-entertainment.py` has filled in (year, runtime, genre, director, synopsis, poster) |
 | `assets/` | — | Everything that isn't a photograph: Mochi's 82 sprite frames, the game covers and clips in `assets/games/`, the generated `training-plan.json`, and `owner.js` |
 | `notes.js` | — | Homepage "transmissions" — the one file you edit by hand to post a note |
 | `latest.js` | — | Curated newest additions shown in the homepage's NOTIFICATION banner |
@@ -64,7 +64,7 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | `projects/how-speed-affects-time/` | Exploration | "How Speed Affects Time" — two clocks and a real-sky special-relativity exhibit |
 | `projects/how-big-everything-is/` | Exploration | "How Big Everything Is" — a 45-decade scale ladder you zoom out through, from an electron to the observable universe |
 | `projects/apex/` | Apex (room data) | Not a page — the sync tooling and generated `apex-data.js` that `apex.html` reads |
-| `projects/entertainment/` | Entertainment (room data) | Not a page — `pull-tmdb.py`, which fills `entertainment-data.js` with years, runtimes, genres, directors and synopses and downloads the poster art into `assets/posters/` |
+| `projects/entertainment/` | Entertainment (room data) | Not a page — `pull-entertainment.py`, which fills `entertainment-data.js` with years, runtimes, genres, directors and synopses from Wikidata (no key needed), then downloads the poster art from TMDB into `assets/posters/` |
 | `projects/the-shape-of-harm/` | Psyche | Evidence-informed interactive research framework for comparing psychoactive-substance harms |
 | `projects/siege-conductor/` | Workbench | Star Wars viewing-companion PWA (add-to-home-screen app) |
 | `projects/offramp/` | Gaming | "OFFRAMP" — Interstate 40 as an arcade cabinet. The real corridor, all 2,551 miles Barstow→Wilmington, extracted from OpenStreetMap: true geometry and curves, 1,201 real exits at their real mile markers, real lane counts (85% of I-40 is two lanes each way), and mile posts that reset at each state line the way the real ones do. Only a 20-mile window of road is built at a time and slides as you drive, because the whole thing is 2.9M stations. Built into that window: the 350 surveyed interchanges as they were walked, 234 real rest areas and truck stops, a generated diamond for every other signed exit, a cross road bridged over each one with the ramp meeting it at a signalised junction, and the I-40/I-75 wye west of Knoxville as a two-lane left exit — signed, open, and closed for construction two thirds of the way down. The generated exits are not invented: their depth and their whole lateral profile are drawn from the 349 ramps the survey walked, so an interchange reaches a median 512 px off the freeway rather than the same 268 px every time, and the travel centres that a diamond crowds out are signed on the blue panel under its guide sign, which is where a real one is advertised. Every ramp puts you back on I-40; that rule is the whole design and it is asserted, not assumed. Crashes go through one SI impulse-momentum solver (`src/impact.js`, `test/impact.test.js`, checked against published crash figures); `test/corridor.js` sweeps every window of the route for two roads sharing tarmac. `data/osm/` holds the extractor and the raw OSM; `data/i40.js` is the generated corridor. See `projects/offramp/PLAN.md` and `projects/offramp/CRASH-MODEL.md` |
@@ -319,24 +319,43 @@ belong here.
   **Export** button prints a replacement `entertainment-data.js` with them folded in.
   Paste it over the file, commit, and the "not committed" chips clear themselves.
 
-  **The poster art is pulled, not hotlinked.** `projects/entertainment/pull-tmdb.py`
-  asks TMDB about each title, writes the facts into `entertainment-data.js` and
-  downloads the images into `assets/posters/`. The pages read files out of this repo —
-  the live room makes no external request and works opened straight off disk, which is
-  what hard rule 4 actually asks for. To run it:
+  **The facts and the art are pulled in two stages**, by
+  `projects/entertainment/pull-entertainment.py`, and only the second one needs anything
+  from you.
+
+  ```
+  python3 projects/entertainment/pull-entertainment.py --facts   # no key needed
+  ```
+
+  Stage 1 asks Wikipedia for the article and Wikidata for the answers: year, runtime,
+  director, genre, IMDb id — and the TMDB id, which is the part that matters. Wikidata
+  is CC0, so there is nothing to sign up for and nothing to be careful about.
 
   ```
   # free key, 2 minutes, no card: https://www.themoviedb.org/settings/api
   security add-generic-password -s tmdb -a ricmassey -U -w
-  python3 projects/entertainment/pull-tmdb.py --dry-run   # see what it would match
-  python3 projects/entertainment/pull-tmdb.py             # fill in the gaps
+  python3 projects/entertainment/pull-entertainment.py --art
   ```
 
-  It skips anything already filled in, so a re-run is cheap. Anything it is not sure
-  about is **left alone and reported** rather than guessed at; pick the right film on
-  themoviedb.org, put its id on the row as `tmdb: 27205`, and run it again — a hand-set
-  id is never overwritten. Until it has run, tiles fall back to a typographic plate and
-  the genre and decade filters stay empty; that is a designed state, not a broken one.
+  Stage 2 fetches the posters. Because stage 1 already found the exact TMDB id, it never
+  searches by title — so it cannot put the wrong film's poster on a row. Images are
+  **downloaded into `assets/posters/`**, not hotlinked: the live room makes no external
+  request and works opened straight off disk, which is what hard rule 4 actually asks
+  for.
+
+  **Adding a title asks you which film you mean.** Type the name in the owner panel and
+  the page searches Wikipedia, shows you the candidates with their posters, years and
+  first lines, and lets you pick — or keep the name exactly as you typed it. Picking
+  fills in the id, so the poster that arrives later is the right film's. Anything already
+  on the list can be corrected the same way: open it and use **Not the right film?**.
+  That is the fix for the handful the script had to guess at — *The Italian Job* resolved
+  to the 1969 one, for instance.
+
+  Both stages skip what is already filled in and write as they go, so a re-run is cheap
+  and stopping one halfway costs nothing. A title it cannot settle is **left alone and
+  reported** rather than guessed at — put the right `wd: "Q42047"` on the row and re-run;
+  a hand-set id is never overwritten. Until stage 2 has run, tiles fall back to a
+  typographic plate; that is a designed state, not a broken one.
 
   Titles are Ric's list, lightly corrected for spelling and casing. A few were left
   exactly as typed because correcting them would have been a guess — `Curtis`,

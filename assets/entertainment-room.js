@@ -171,7 +171,7 @@
   }
 
   /* ── the art ──
-     No <img> until pull-tmdb.py has actually put a file there. A poster that
+     No <img> until pull-entertainment.py has actually put a file there. A poster that
      might not exist is 363 404s and a page full of broken-image frames; the
      plate is a designed state, so there is nothing to apologise for. */
 
@@ -202,7 +202,25 @@
     return '';
   }
 
+  /* The one fact worth reading off a wall of tiles without opening anything. */
+  function serviceTag(e) {
+    const first = (e.streams || [])[0] ||
+                  places(e).find(w => !/^buy$/i.test(w)) || '';
+    if (!first) return '';
+    const c = tintOf(first);
+    return '<span class="svc" style="--face:' + c + ';--tint:' + rgba(c, 0.9) + '">' +
+      esc(first) + '</span>';
+  }
+
   const hhmm = m => Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+
+  /* Flex `gap` only separates flex ITEMS, and a run of concatenated text is one
+     anonymous item however many facts went into it — which is how a meta line
+     ends up reading "19871h 42mAction". Each fact gets its own element, with a
+     real separator between them. */
+  const metaLine = bits => bits.filter(Boolean)
+    .map(b => '<span>' + b + '</span>')
+    .join('<span class="sep" aria-hidden="true">·</span>');
 
   function subline(e) {
     const bits = [];
@@ -219,7 +237,7 @@
        caption under it would print the same words twice. Captions belong to
        poster tiles, where the art cannot say the name. */
     const inner =
-      '<span class="art">' + artHtml(e) + badge(e) + '</span>' +
+      '<span class="art">' + artHtml(e) + badge(e) + serviceTag(e) + '</span>' +
       (e.poster
         ? '<span class="tile-name">' + esc(e.title) + '</span>' +
           '<span class="tile-sub">' + esc(subline(e)) + '</span>'
@@ -231,6 +249,71 @@
 
   const PLAY = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" ' +
     'aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+
+  /* ── where to watch ──
+     The point of the room. Opening a title should ANSWER "where is this", not
+     offer to go and ask somewhere else — so what pull-entertainment.py --where
+     found is printed right here, as buttons that go straight into that app.
+
+     With the date it was true. A static page cannot re-check on load (that
+     would mean shipping the API key), so the honest thing is to say when it was
+     last looked at and let the reader judge. The live lookup stays as the last
+     row, for when the date has gone stale or the answer is "nowhere". */
+  function whereBlock(e) {
+    const streams = e.streams || [];
+    const rents = e.rents || [];
+    /* His own note wins: if he wrote "Plex" on the row, that is his copy on his
+       own box and no provider list knows about it. */
+    const mine = places(e).filter(w => !/^buy$/i.test(w) && !streams.includes(w));
+    const live = anywhere(plainTitle(e.title));
+
+    const chip = (name, kind) => {
+      const hit = SERVICES[name.toLowerCase()];
+      const url = hit ? hit[1](encodeURIComponent(plainTitle(e.title))) : live;
+      const c = tintOf(name);
+      return '<a class="wchip ' + kind + '" href="' + esc(url) + '" target="_blank" ' +
+        'rel="noopener noreferrer" style="--face:' + c + ';--tint:' + rgba(c, 0.22) + '">' +
+        (kind === 'on' ? PLAY : '') + esc(name) + '</a>';
+    };
+
+    const rows = [];
+    if (mine.length)
+      rows.push('<div class="wrow"><span>Ric has it on</span><div>' +
+        mine.map(n => chip(n, 'on')).join('') + '</div></div>');
+    if (streams.length)
+      rows.push('<div class="wrow"><span>Streaming</span><div>' +
+        streams.map(n => chip(n, 'on')).join('') + '</div></div>');
+    if (rents.length)
+      rows.push('<div class="wrow"><span>Rent or buy</span><div>' +
+        rents.map(n => chip(n, 'rent')).join('') + '</div></div>');
+
+    if (!rows.length) {
+      rows.push('<div class="wrow"><span>' +
+        (e.checked ? 'Not streaming anywhere' : 'Not looked up yet') +
+        '</span><div>' + chip('Search everywhere', 'rent') + '</div></div>');
+    }
+
+    const stamp = e.checked
+      ? 'checked ' + esc(niceDate(e.checked))
+      : 'availability has not been pulled yet — run <code>--where</code>';
+
+    return '<section class="where">' +
+      '<h4>Where to watch <span class="stamp">' + stamp + '</span></h4>' +
+      rows.join('') +
+      '<a class="wlive" href="' + esc(live) + '" target="_blank" rel="noopener noreferrer">' +
+        'Check it live on JustWatch →</a>' +
+    '</section>';
+  }
+
+  function niceDate(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    if (isNaN(d)) return iso;
+    const days = Math.round((Date.now() - d.getTime()) / 86400000);
+    if (days <= 0) return 'today';
+    if (days === 1) return 'yesterday';
+    if (days < 30) return days + ' days ago';
+    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  }
 
   /* ── the detail sheet ── what a title is, when the name is not enough ── */
   const el = id => document.getElementById(id);
@@ -257,6 +340,8 @@
             ? '<button type="button" data-act="watched" data-id="' + esc(e.id) + '">Mark watched</button>'
             : '<button type="button" data-act="watchlist" data-id="' + esc(e.id) + '">Back to queue</button>') +
           '<button type="button" data-act="pick" data-id="' + esc(e.id) + '">' + (e.pick ? 'Unstar' : 'Star it') + '</button>' +
+          '<button type="button" data-act="identify" data-id="' + esc(e.id) + '">' +
+            (e.wd ? 'Not the right film?' : 'Which film is this?') + '</button>' +
           '<button type="button" class="danger" data-act="remove" data-id="' + esc(e.id) + '">Remove</button>' +
         '</div>'
       : '';
@@ -265,19 +350,205 @@
       '<div class="sheet-art">' + artHtml(e) + '</div>' +
       '<div class="sheet-body">' +
         '<h3>' + esc(e.title) + '</h3>' +
-        '<p class="sheet-meta">' + meta.join('') + '</p>' +
+        '<p class="sheet-meta">' + metaLine(meta) + '</p>' +
+        /* Where to watch comes FIRST, above the synopsis. Opening a title is
+           almost always "can I put this on tonight", and the answer to that
+           should not sit below three paragraphs about the plot. */
+        whereBlock(e) +
         (e.overview
           ? '<p class="blurb">' + esc(e.overview) + '</p>'
-          : '<p class="thin">No synopsis yet — run <code>projects/entertainment/pull-tmdb.py</code> ' +
-            'and this fills in with the year, the runtime, who directed it and what it is about.</p>') +
+          : '<p class="thin">No synopsis yet — run ' +
+            '<code>projects/entertainment/pull-entertainment.py --facts</code>.</p>') +
         (e.note ? '<p class="thin">' + esc(e.note) + '</p>' : '') +
         (e.local ? '<p class="thin">This edit is saved in this browser only — not committed yet.</p>' : '') +
-        '<div class="sheet-acts">' +
-          links.map((l, i) => '<a class="btn ' + (i === 0 ? 'btn-gold' : '') + '" href="' + esc(l.url) +
-            '" target="_blank" rel="noopener noreferrer">' + (i === 0 ? PLAY : '') + esc(l.label) + '</a>').join('') +
-        '</div>' + own +
+        own +
       '</div>';
     if (!sheet.open) sheet.showModal();
+  }
+
+
+  /* ── the chooser ──
+     "Moments" is nine films and "The Italian Job" is two, and the only person
+     who knows which one Ric watched is Ric. So the question gets asked at the
+     moment he adds it, while he still remembers — not later, by a script
+     guessing from a string.
+
+     On hard rule 4: this is a fetch, but it is not a dependency. Nothing here
+     runs on load, nothing a visitor does can trigger it, and the page opens off
+     disk and renders all 363 titles with the network unplugged. It fires when
+     the signed-in owner clicks a button, same category as "Watch on Hulu". The
+     room already talks to the Worker on load, which is a stronger claim than
+     this one.
+
+     Wikipedia's thumbnails are non-free, fair-use files. They are shown HERE,
+     in the owner's own panel, for the seconds it takes to tell two films apart
+     — and never saved, never committed, never served to a visitor. The poster
+     that ends up on the site comes from TMDB, whose terms allow it. Do not be
+     tempted to write these into the repo. */
+  const WIKI_API = 'https://en.wikipedia.org/w/api.php';
+  const WIKI_REST = 'https://en.wikipedia.org/api/rest_v1/page/summary/';
+  const WD_DATA = 'https://www.wikidata.org/wiki/Special:EntityData/';
+
+  const asJson = r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status));
+
+  async function candidates(query) {
+    const url = WIKI_API + '?' + new URLSearchParams({
+      action: 'query', list: 'search', srsearch: query + ' film',
+      srlimit: '6', format: 'json', origin: '*'
+    });
+    const hits = ((await fetch(url).then(asJson)).query || {}).search || [];
+    /* Ask about all six at once — six round trips one after another is four
+       seconds of staring at a spinner. */
+    const pages = await Promise.all(hits.map(h =>
+      fetch(WIKI_REST + encodeURIComponent(h.title.replace(/ /g, '_')))
+        .then(asJson).catch(() => null)));
+    /* Wikipedia's search is happy to offer the soundtrack album and the tie-in
+       video game. The short description says what a thing is ("1969 British
+       film", "2001 video game"), which sorts them for free — no second request.
+       An article with no description at all is kept: better an extra row than a
+       missing one, since the whole point is that he recognises it on sight. */
+    const notFilm = /\b(album|soundtrack|video game|song|novel|book|band|magazine|comic)\b/i;
+    const isFilm = /\b(film|movie|series|miniseries|television|anime|documentary)\b/i;
+    return pages.filter(p => p && p.wikibase_item && p.type !== 'disambiguation')
+      .filter(p => {
+        const d = p.description || '';
+        return !d || (!notFilm.test(d) || isFilm.test(d));
+      })
+      .map(p => ({
+        name: p.title,
+        qid: p.wikibase_item,
+        extract: p.extract || '',
+        thumb: (p.thumbnail || {}).source || '',
+        /* The article's own first sentence dates it more reliably than
+           anything else we can get without a second request. */
+        year: (p.description || '').match(/\b(19|20)\d{2}\b/)?.[0] ||
+              (p.extract || '').match(/\b(19|20)\d{2}\b/)?.[0] || '',
+        desc: p.description || ''
+      }));
+  }
+
+  function claimsOf(ent, prop) {
+    const out = [];
+    for (const st of ((ent.claims || {})[prop] || [])) {
+      const dv = (st.mainsnak || {}).datavalue;
+      if (!dv) continue;
+      const v = dv.value;
+      out.push(v && typeof v === 'object' ? (v.id || v.time || v.amount) : v);
+    }
+    return out;
+  }
+
+  /* Identity plus the cheap facts. Genres are deliberately NOT worked out here:
+     the naming rules live in pull-entertainment.py and having two copies of
+     them is how the two quietly stop agreeing. A row saved from this panel gets
+     its `wd`, and the next --facts run fills in the rest from that id — which it
+     trusts, because a hand-set id is never overwritten. */
+  async function factsFor(qid) {
+    const d = await fetch(WD_DATA + qid + '.json').then(asJson);
+    const ent = (d.entities || {})[qid];
+    /* `wdok` says a person chose this, not a script. pull-entertainment.py
+       re-guesses its own matches on --refresh and never touches these. */
+    if (!ent) return { wd: qid, wdok: true };
+    const out = { wd: qid, wdok: true };
+    const years = claimsOf(ent, 'P577')
+      .map(t => parseInt(String(t).slice(1, 5), 10))
+      .filter(n => n > 1800).sort();
+    if (years.length) out.year = years[0];
+    const mins = claimsOf(ent, 'P2047');
+    if (mins.length) out.runtime = Math.round(parseFloat(String(mins[0]).replace('+', '')));
+    const imdb = claimsOf(ent, 'P345');
+    if (imdb.length) out.imdb = imdb[0];
+    const tm = claimsOf(ent, 'P4947');
+    if (tm.length && /^\d+$/.test(String(tm[0]))) out.tmdb = parseInt(tm[0], 10);
+    const dirs = claimsOf(ent, 'P57').filter(q => typeof q === 'string');
+    if (dirs.length) {
+      try {
+        const u = 'https://www.wikidata.org/w/api.php?' + new URLSearchParams({
+          action: 'wbgetentities', ids: dirs.slice(0, 2).join('|'),
+          props: 'labels', languages: 'en', format: 'json', origin: '*'
+        });
+        const got = (await fetch(u).then(asJson)).entities || {};
+        const names = dirs.slice(0, 2)
+          .map(q => ((got[q] || {}).labels || {}).en || {})
+          .map(l => l.value).filter(Boolean);
+        if (names.length) out.director = names.join(', ');
+      } catch (e) { /* a missing director is not worth failing the save over */ }
+    }
+    return out;
+  }
+
+  /* Opens the dialog and resolves to a patch, or to null if he backs out.
+     `typed` is what he actually wrote, and it is always offered as an answer —
+     an obscure film that is on no one's list is still on his. */
+  function chooseFilm(typed) {
+    const dlg = el('finder');
+    if (!dlg) return Promise.resolve({});         // page has no chooser; save as typed
+    const body = el('finder-in');
+    return new Promise(resolve => {
+      let done = false;
+      const finish = v => { if (!done) { done = true; dlg.close(); resolve(v); } };
+
+      const draw = (state, list) => {
+        body.innerHTML =
+          '<h3>Which one?</h3>' +
+          '<p class="finder-q">Searching for <b>' + esc(typed) + '</b> — pick the film you mean, ' +
+            'or keep the name exactly as you typed it.</p>' +
+          '<div class="finder-search">' +
+            '<input id="finder-q" value="' + esc(typed) + '" aria-label="Search again">' +
+            '<button class="btn" type="button" id="finder-go">Search again</button>' +
+          '</div>' +
+          (state === 'loading' ? '<p class="finder-note">Looking…</p>' : '') +
+          (state === 'error' ? '<p class="finder-note">Could not reach Wikipedia. ' +
+             'Keep the name as typed and the id can be filled in later.</p>' : '') +
+          (state === 'none' ? '<p class="finder-note">Nothing came back for that. ' +
+             'Try different words, or keep it as typed.</p>' : '') +
+          (list && list.length ? '<ul class="finder-list">' + list.map((c, i) =>
+            '<li><button type="button" data-pick="' + i + '">' +
+              (c.thumb ? '<img src="' + esc(c.thumb) + '" alt="" loading="lazy">'
+                       : '<span class="noart">?</span>') +
+              '<span class="finder-who"><b>' + esc(c.name) + '</b>' +
+                (c.desc ? '<span>' + esc(c.desc) + '</span>' : '') +
+                (c.extract ? '<em>' + esc(c.extract.slice(0, 96)) + '…</em>' : '') +
+              '</span></button></li>').join('') + '</ul>' : '') +
+          '<div class="finder-acts">' +
+            '<button class="btn" type="button" id="finder-mine">Keep “' + esc(typed) + '” as I typed it</button>' +
+            '<button class="btn" type="button" id="finder-cancel">Cancel</button>' +
+          '</div>';
+
+        el('finder-mine').addEventListener('click', () => finish({}));
+        el('finder-cancel').addEventListener('click', () => finish(null));
+        el('finder-go').addEventListener('click', () => run(el('finder-q').value.trim()));
+        el('finder-q').addEventListener('keydown', ev => {
+          if (ev.key === 'Enter') { ev.preventDefault(); run(el('finder-q').value.trim()); }
+        });
+        for (const b of body.querySelectorAll('[data-pick]')) {
+          b.addEventListener('click', async () => {
+            const c = list[Number(b.dataset.pick)];
+            b.disabled = true;
+            b.insertAdjacentHTML('beforeend', '<span class="finder-wait">…</span>');
+            let facts = { wd: c.qid, wdok: true };
+            try { facts = await factsFor(c.qid); } catch (e) { /* id alone is enough */ }
+            /* The Wikipedia article title is the film's name, not Ric's — his
+               stays. The id is what was missing, not the wording. */
+            finish(facts);
+          });
+        }
+      };
+
+      const run = async q => {
+        draw('loading', null);
+        try {
+          const list = await candidates(q);
+          draw(list.length ? 'ok' : 'none', list);
+        } catch (e) {
+          draw('error', null);
+        }
+      };
+
+      dlg.addEventListener('close', () => finish(null), { once: true });
+      dlg.showModal();
+      run(typed);
+    });
   }
 
   /* ── writing ──
@@ -322,6 +593,19 @@
           await save(id, { status: 'watched', where: '', pick: false, seen: today() });
         if (act.dataset.act === 'watchlist') await save(id, { status: 'watchlist', seen: '' });
         if (act.dataset.act === 'pick')      await save(id, { pick: !cur.pick });
+        if (act.dataset.act === 'identify') {
+          const chosen = await chooseFilm(cur.title);
+          if (chosen === null) { openSheet(id); return; }
+          /* Re-identifying means the old answer was wrong, so the facts that
+             came with it go too — otherwise 1969's runtime sits on 2003's film.
+             The poster file is left alone; --art overwrites it by id. */
+          await save(id, Object.assign(
+            { wd: '', wdok: false, tmdb: '', imdb: '', year: '', runtime: '',
+              genres: [], director: '', overview: '', rating: '',
+              poster: false, backdrop: false,
+              streams: [], rents: [], checked: '' },
+            chosen));
+        }
         if (act.dataset.act === 'remove') {
           if (!confirm('Remove “' + cur.title + '” from the list?')) return;
           await save(id, { removed: true });
@@ -410,6 +694,13 @@
       /* Added straight to the watched list means he just saw it — the only
          honest watch date this page will ever get for free. */
       if (status === 'watched') patch.seen = today();
+
+      /* Ask which film this is while he still has it in mind. Backing out of
+         the chooser cancels the add rather than saving a half-answered row. */
+      const chosen = await chooseFilm(title);
+      if (chosen === null) return;
+      Object.assign(patch, chosen);
+
       await save(id, patch);
       ev.target.reset();
       tools.querySelector('#a-title').focus();
@@ -434,18 +725,19 @@
      The header is read back off the real file rather than kept as a second copy
      in here. Two copies of a comment is how a comment starts lying.
 
-     FIELDS has to stay in step with FIELDS in pull-tmdb.py, in the same order:
+     FIELDS has to stay in step with FIELDS in pull-entertainment.py, in the same order:
      the script rewrites this file too, and if the two disagree then every export
      fights the last pull. `ord` is not in it — that is read-time index, not
      data. */
-  const FIELDS = ['count', 'series', 'where', 'pick', 'note', 'seen', 'tmdb',
+  const FIELDS = ['count', 'series', 'where', 'pick', 'note', 'seen',
+                  'wd', 'wdok', 'tmdb', 'imdb',
                   'year', 'runtime', 'genres', 'director', 'overview', 'rating',
-                  'poster', 'backdrop'];
+                  'poster', 'backdrop', 'streams', 'rents', 'checked'];
 
   const FALLBACK_HEAD =
     '/* The Entertainment room\'s list — committed truth; the pages layer edits on top.\n' +
     '   Fields: id · title · status ("watched" | "watchlist") · count · series ·\n' +
-    '   where · pick · note · seen, plus whatever pull-tmdb.py has filled in.\n' +
+    '   where · pick · note · seen, plus whatever pull-entertainment.py has filled in.\n' +
     '   See README for the full rules. */';
 
   async function readHeader() {
@@ -493,6 +785,10 @@
     onRender = (opts && opts.render) || onRender;
     sheet = el('sheet');
     wireClicks();
+    /* Credit what was borrowed, and only once something has been. Before
+       pull-entertainment.py runs, every word on the page is Ric's. */
+    const credit = el('credit');
+    if (credit) credit.hidden = !all().some(e => e.wd || e.tmdb || e.overview);
     onRender();
 
     (async () => {
@@ -531,6 +827,7 @@
     tile: tile, artHtml: artHtml, badge: badge, subline: subline, hue: hue,
     openSheet: openSheet, watchLinks: watchLinks, places: places,
     tintOf: tintOf, rgba: rgba, hhmm: hhmm,
-    esc: esc, slug: slug, exportFile: exportFile, PLAY: PLAY
+    esc: esc, slug: slug, exportFile: exportFile, PLAY: PLAY, metaLine: metaLine,
+    chooseFilm: chooseFilm
   };
 })();

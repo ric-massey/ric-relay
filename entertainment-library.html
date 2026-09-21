@@ -495,6 +495,7 @@
       color: var(--dim);
     }
     .sheet-meta .score { color: var(--gold); }
+    .sheet-meta .sep { color: #6b6b6b; }
     .sheet-body p.blurb { margin: 0 0 16px; color: #d6d6d6; }
     .sheet-body p.thin {
       margin: 0 0 16px;
@@ -544,6 +545,187 @@
       .sheet-in { flex-direction: column; }
       .sheet-art { flex: none; width: 128px; }
     }
+
+
+
+    /* ── where to watch ── the answer, in the sheet, not a link to the answer ── */
+    .where {
+      margin: 0 0 18px;
+      padding: 14px 0 16px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .where h4 {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 8px;
+      margin: 0 0 12px;
+      font: 800 0.72rem/1 var(--mono);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+    .where .stamp {
+      font: 600 0.7rem/1 var(--mono);
+      letter-spacing: 0.04em;
+      text-transform: none;
+      color: #8a8a8a;
+    }
+    .where .stamp code { font-size: 0.95em; color: #aeaeae; }
+    .wrow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 10px;
+      margin: 0 0 9px;
+    }
+    .wrow > span {
+      flex: 0 0 96px;
+      font: 600 0.73rem/1.3 var(--mono);
+      color: var(--dim);
+    }
+    .wrow > div { display: flex; flex-wrap: wrap; gap: 7px; }
+    .wchip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 7px;
+      border: 1px solid var(--line-hi);
+      background: var(--raised);
+      color: var(--ink);
+      font: 700 0.82rem/1 var(--sans);
+      text-decoration: none;
+      transition: transform 0.12s var(--ease), border-color 0.12s var(--ease);
+    }
+    .wchip:hover { transform: translateY(-1px); border-color: var(--face, var(--gold)); }
+    /* Streaming is the answer you wanted; renting is the consolation prize. */
+    .wchip.on {
+      background: linear-gradient(150deg, var(--tint, #262626), #1a1a1a 80%);
+      border-color: #3f3f3f;
+      color: var(--face, var(--ink));
+    }
+    .wchip.on svg { opacity: 0.9; }
+    .wchip.rent { color: var(--dim); }
+    .wlive {
+      display: inline-block;
+      margin-top: 4px;
+      font: 700 0.76rem/1 var(--sans);
+      color: var(--dim);
+      text-decoration: none;
+    }
+    .wlive:hover { color: var(--gold); text-decoration: underline; }
+
+    /* the service, readable off a wall of tiles without opening anything */
+    .svc {
+      position: absolute;
+      left: 6px; right: 6px; bottom: 8px;
+      padding: 4px 6px;
+      border-radius: 4px;
+      background: rgba(12,12,12,0.82);
+      color: var(--face, var(--ink));
+      font: 800 0.7rem/1.1 var(--mono);
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── the chooser ── asked at the moment he adds a title, because "Moments"
+       is nine films and only he knows which one he watched ── */
+    dialog.finder { width: min(560px, calc(100vw - 32px)); }
+    .finder-in { padding: 20px; }
+    .finder-in h3 {
+      margin: 0 0 6px;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .finder-q { margin: 0 0 14px; color: var(--dim); font-size: 0.88rem; }
+    .finder-q b { color: var(--ink); }
+    .finder-search { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+    .finder-search input {
+      flex: 1 1 200px;
+      min-width: 0;
+      padding: 9px 11px;
+      border: 1px solid var(--line-hi);
+      border-radius: 7px;
+      background: var(--raised);
+      color: var(--ink);
+      font: 500 0.9rem/1.2 var(--sans);
+    }
+    .finder-note {
+      margin: 0 0 14px;
+      padding: 10px 12px;
+      border-left: 2px solid var(--line-hi);
+      color: var(--dim);
+      font-size: 0.85rem;
+    }
+    .finder-list {
+      margin: 0 0 16px;
+      padding: 0;
+      list-style: none;
+      max-height: 46vh;
+      overflow-y: auto;
+    }
+    .finder-list button {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+      padding: 9px;
+      margin-bottom: 6px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--raised);
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+    }
+    .finder-list button:hover { border-color: var(--gold); background: #242424; }
+    .finder-list button[disabled] { opacity: 0.6; cursor: progress; }
+    /* Wikipedia's thumbnail, shown only to tell two films apart, only in this
+       panel, only to Ric. It is never saved and never served to a visitor. */
+    .finder-list img {
+      flex: none;
+      width: 46px;
+      height: 69px;
+      object-fit: cover;
+      border-radius: 4px;
+      background: var(--panel);
+    }
+    .finder-list .noart {
+      flex: none;
+      width: 46px;
+      height: 69px;
+      display: grid;
+      place-items: center;
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--dim);
+      font-weight: 800;
+    }
+    .finder-who { min-width: 0; }
+    .finder-who b { display: block; font-size: 0.92rem; font-weight: 700; }
+    .finder-who span {
+      display: block;
+      margin-top: 1px;
+      font: 600 0.72rem/1.3 var(--mono);
+      color: var(--gold-dk);
+    }
+    .finder-who em {
+      margin-top: 4px;
+      font-style: normal;
+      font-size: 0.8rem;
+      color: var(--dim);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .finder-wait { margin-left: auto; color: var(--gold); }
+    .finder-acts { display: flex; flex-wrap: wrap; gap: 8px; }
 
     /* ── owner panel ── */
     .owner {
@@ -633,6 +815,12 @@
     footer.foot a { color: var(--dim); }
     footer.foot a:hover { color: var(--gold); }
     footer.foot #src-note { margin-left: auto; }
+    /* Wikipedia's extracts are CC BY-SA and TMDB's terms ask to be named, so
+       the credit is not decoration — it is the price of the data. It stays
+       hidden until there is actually something borrowed on the page. */
+    footer.foot .credit { flex: 1 1 100%; color: #8f8f8f; font-size: 0.76rem; }
+    footer.foot .credit a { color: #8f8f8f; text-decoration: underline; }
+    footer.foot .credit a:hover { color: var(--gold); }
 
     @media (max-width: 760px) {
       :root { --tile: 112px; }
@@ -722,7 +910,12 @@
     <a href="entertainment.html">← what's on tonight</a>
     <a href="index.html">back to the terminal</a>
     <span id="src-note"></span>
+    <span class="credit" id="credit" hidden>Facts from <a href="https://www.wikidata.org" target="_blank" rel="noopener noreferrer">Wikidata</a> and <a href="https://en.wikipedia.org" target="_blank" rel="noopener noreferrer">Wikipedia</a> (CC BY-SA); posters and ratings from <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer">TMDB</a>, which did not endorse this page.</span>
   </footer>
+
+  <dialog class="sheet finder" id="finder" aria-label="Which film is this?">
+    <div class="finder-in" id="finder-in"></div>
+  </dialog>
 
   <dialog class="sheet" id="sheet" aria-label="Title details">
     <button class="sheet-x" type="button" id="sheet-x" aria-label="Close">✕</button>
@@ -753,7 +946,7 @@
   }
 
   /* Only offer a filter the data can actually answer. Genre and decade are
-     TMDB's to fill, so until pull-tmdb.py has run those two selects hold
+     TMDB's to fill, so until pull-entertainment.py has run those two selects hold
      nothing — and a select with one option in it is disabled rather than left
      there looking broken. */
   function fillFilters() {
