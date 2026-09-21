@@ -3070,6 +3070,20 @@
   /* The front page's doors, in the order they are drawn. The game, and the
      settings — the machines used to be the second of these and are in the
      world now. The digits and the arrows both read this list. */
+  /* ── the clock a menu runs on ─────────────────────────────────────────────
+     Not `clock`. The match clock is advanced by `update`, and `update` is only
+     called while `state === "playing"` — so on the front page and on the mode
+     cards it is **frozen**, and every diorama drawn from it has been a still
+     frame since the day they were written. Nobody noticed, because a card 174
+     pixels tall showing a motionless ship reads as a small picture. Full bleed
+     across a title screen it reads as exactly what it is, which is what Ric
+     said: *"why not make it move … just have it continue moving."*
+
+     The wall clock, then, the same one `survey-hud.js` reaches for when it has
+     to animate something on a parked page. It never stops and it does not care
+     whether a match is running. */
+  const menuClock = () => Date.now() / 1000;
+
   const TITLE_DOORS = [() => playSurvey(),
                        () => { state = openSettings("title"); }];
 
@@ -24905,16 +24919,19 @@
        larger than the page and pulled back to centre, the galaxy is the size
        it was meant to be and what falls off the edges is the part that was
        always padding. */
-    if (menuArt) menuArt.preview("title", 0, 0, SCREEN_W, SCREEN_H, clock);
+    if (menuArt) menuArt.preview("title", 0, 0, SCREEN_W, SCREEN_H, menuClock());
 
     /* The scrim: darkest at the top and bottom, barely there across the
        middle, so the wordmark and the buttons have something to sit on while
        the scene still reads through the waist of the page. */
+    /* Light. *"you cant even see the backround"* — so the scrim's job shrank
+       to the two bands where text actually sits, and even there it is a tint
+       rather than a curtain. The scene is meant to be looked at. */
     const scrim = ctx.createLinearGradient(0, 0, 0, SCREEN_H);
-    scrim.addColorStop(0,    "rgba(10, 11, 16, 0.72)");
-    scrim.addColorStop(0.32, "rgba(10, 11, 16, 0.12)");
-    scrim.addColorStop(0.55, "rgba(10, 11, 16, 0.52)");
-    scrim.addColorStop(1,    "rgba(10, 11, 16, 0.94)");
+    scrim.addColorStop(0,    "rgba(10, 11, 16, 0.42)");
+    scrim.addColorStop(0.30, "rgba(10, 11, 16, 0.04)");
+    scrim.addColorStop(0.58, "rgba(10, 11, 16, 0.26)");
+    scrim.addColorStop(1,    "rgba(10, 11, 16, 0.70)");
     ctx.save();
     ctx.fillStyle = scrim;
     ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
@@ -24922,9 +24939,9 @@
        sit on something rather than on whatever the scene happens to be doing
        behind them this second. */
     const pool = ctx.createRadialGradient(
-      SCREEN_W / 2, SCREEN_H * 0.5, 40,
-      SCREEN_W / 2, SCREEN_H * 0.5, Math.max(SCREEN_W, SCREEN_H) * 0.46);
-    pool.addColorStop(0, "rgba(10, 11, 16, 0.62)");
+      SCREEN_W / 2, SCREEN_H * 0.5, 30,
+      SCREEN_W / 2, SCREEN_H * 0.5, Math.max(SCREEN_W, SCREEN_H) * 0.36);
+    pool.addColorStop(0, "rgba(10, 11, 16, 0.40)");
     pool.addColorStop(1, "rgba(10, 11, 16, 0)");
     ctx.fillStyle = pool;
     ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
@@ -25478,7 +25495,8 @@
       const textH = 92 + a * 58;
       const artH = h - pad * 2 - textH;
       const artY = top + pad;
-      if (menuArt) menuArt.preview(c.art, x + pad, artY, w - pad * 2, artH, clock);
+      if (menuArt) menuArt.preview(c.art, x + pad, artY, w - pad * 2, artH,
+                                   menuClock());
 
       /* The picture fades out into the card in the mode's own colour instead of
          stopping at a ruled line, so the art and the words under it are one
