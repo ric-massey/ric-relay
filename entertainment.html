@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Entertainment — watched and queued</title>
+  <meta name="description" content="Everything Ric has watched and everything lined up next — a few hundred films and shows, searchable, with the queue sorted by where you'd actually find them.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0f0f0f">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Entertainment">
+  <meta property="og:title" content="Entertainment — watched and queued">
+  <meta property="og:description" content="What's been watched, and what's next.">
+  <meta property="og:url" content="https://ricmassey.com/entertainment.html">
+  <link rel="canonical" href="https://ricmassey.com/entertainment.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f0f0f'/><rect x='18' y='26' width='64' height='48' rx='6' fill='none' stroke='%23f5c518' stroke-width='6'/><path d='M18 40h64M18 60h64' stroke='%23f5c518' stroke-width='4'/><path d='M44 44v12l11-6z' fill='%23f5c518'/></svg>">
+
+  <style>
+    /* ENTERTAINMENT
+       ────────────────────────────────────────────────────────────────────────
+       The room is a marquee, not a storefront. Every other list-shaped site
+       leans on poster art, and there is none here and no way to get any —
+       hard rule 4 keeps external requests out, and a few hundred posters would
+       be a few hundred fetches at somebody else's server. So the design is
+       typographic on purpose: the title IS the artwork, set large, and the
+       chips underneath carry what you actually need (where to find it, how
+       many films are in it, whether he starred it).
+
+       Two states the eye has to separate at a glance, because the whole page
+       is one long list of them:
+         watched  — gold rule, gold check, settled
+         queued   — cold blue, unfinished, and the one that carries a "where"
+
+       Palette is IMDb's charcoal-and-amber by way of a cinema marquee, but the
+       contrast is ours: --dim clears 7:1 on --bg and nothing sets type under
+       11px. The gold is used for marks and rules; where it carries WORDS it is
+       on charcoal, which it clears easily. */
+    :root {
+      --bg:      #0f0f0f;
+      --panel:   #171717;
+      --raised:  #1e1e1e;
+      --line:    #2e2e2e;
+      --line-hi: #3d3d3d;
+      --ink:     #f2f2f2;
+      /* 7.4:1 on --bg. Read the note above before darkening this. */
+      --dim:     #a8a8a8;
+      --gold:    #f5c518;
+      --gold-dk: #c9a013;
+      --queue:   #7dd3fc;
+      --ease:    cubic-bezier(0.22, 0.61, 0.36, 1);
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.5;
+      /* the page is one long scroll; never let a card push it sideways */
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; }
+
+    .wrap { width: min(1180px, 100% - 2rem); margin-inline: auto; }
+
+    /* ── the strip ── the one line that says how big the list is */
+    .strip {
+      background: var(--gold);
+      color: #0f0f0f;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-align: center;
+      padding: 0.5rem 1rem;
+    }
+
+    /* ── the bar ── */
+    .barwrap {
+      position: sticky; top: 0; z-index: 40;
+      background: rgba(15, 15, 15, 0.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+    }
+    .bar {
+      display: flex; align-items: center; gap: 1.2rem;
+      padding: 0.75rem 0;
+      width: min(1180px, 100% - 2rem); margin-inline: auto;
+    }
+    .mark {
+      font-weight: 800;
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+      text-decoration: none;
+      color: #0f0f0f;
+      background: var(--gold);
+      padding: 0.3rem 0.6rem;
+      border-radius: 5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* cinema marquee tab strip — bulbs under the room you're in */
+    nav.marquee {
+      display: flex; align-items: center;
+      gap: 1.15rem;
+      margin-left: auto;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    nav.marquee::-webkit-scrollbar { display: none; }
+    nav.marquee a, nav.marquee .here {
+      position: relative;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      color: var(--dim);
+      padding: 0.35rem 0;
+      white-space: nowrap;
+      transition: color 0.18s var(--ease);
+    }
+    nav.marquee a:hover, nav.marquee a:focus-visible { color: var(--ink); }
+    nav.marquee .here { color: var(--gold); font-weight: 600; }
+    nav.marquee .here::after {
+      content: "";
+      position: absolute; left: 0; right: 0; bottom: -0.1rem;
+      height: 3px;
+      background-image: radial-gradient(circle, var(--gold) 38%, transparent 42%);
+      background-size: 7px 3px;
+      background-repeat: repeat-x;
+    }
+
+    /* ── hero ── */
+    .hero { padding: 3.2rem 0 2rem; }
+    .kicker {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin: 0 0 0.9rem;
+    }
+    .hero h1 {
+      margin: 0 0 0.9rem;
+      font-size: clamp(2.1rem, 7vw, 3.6rem);
+      line-height: 1.04;
+      letter-spacing: -0.02em;
+      font-weight: 800;
+    }
+    .hero p {
+      margin: 0;
+      max-width: 54ch;
+      color: var(--dim);
+      font-size: 1rem;
+    }
+
+    .tally {
+      display: flex; flex-wrap: wrap; gap: 0.6rem 2.4rem;
+      margin: 1.9rem 0 0;
+      padding: 1.1rem 0 0;
+      border-top: 1px solid var(--line);
+    }
+    .tally div { display: flex; flex-direction: column; gap: 0.15rem; }
+    .tally b {
+      font-size: 1.65rem; font-weight: 800; line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .tally span {
+      /* 0.7rem = 11.2px — the 11px floor is the reason, don't shrink it */
+      font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase;
+      color: var(--dim);
+    }
+    .tally .t-watched b { color: var(--gold); }
+    .tally .t-queue b   { color: var(--queue); }
+
+    /* ── controls ── */
+    .controls {
+      position: sticky; top: 53px; z-index: 30;
+      background: var(--bg);
+      padding: 1rem 0 0.9rem;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 1.6rem;
+    }
+    .controls-row { display: flex; flex-wrap: wrap; gap: 0.7rem; align-items: center; }
+
+    .tabs { display: flex; gap: 0.3rem; background: var(--panel); padding: 0.22rem; border-radius: 8px; }
+    .tabs button {
+      min-height: 38px;
+      padding: 0 0.95rem;
+      border: 0; border-radius: 6px;
+      background: transparent;
+      color: var(--dim);
+      font: inherit; font-size: 0.8rem; font-weight: 600;
+      cursor: pointer;
+      transition: background 0.18s var(--ease), color 0.18s var(--ease);
+    }
+    .tabs button:hover { color: var(--ink); }
+    .tabs button[aria-selected="true"] { background: var(--gold); color: #0f0f0f; }
+
+    .search {
+      flex: 1 1 14rem; min-width: 0;
+      display: flex; align-items: center; gap: 0.55rem;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 0.8rem;
+      min-height: 40px;
+      transition: border-color 0.18s var(--ease);
+    }
+    .search:focus-within { border-color: var(--gold); }
+    .search svg { flex-shrink: 0; color: var(--dim); }
+    .search input {
+      flex: 1; min-width: 0;
+      background: none; border: 0; outline: none;
+      color: var(--ink); font: inherit; font-size: 0.88rem;
+      padding: 0.45rem 0;
+    }
+    .search input::placeholder { color: var(--dim); }
+
+    select.sort {
+      min-height: 40px;
+      background: var(--panel);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 0.7rem;
+      font: inherit; font-size: 0.82rem;
+      cursor: pointer;
+    }
+
+    .btn {
+      min-height: 40px;
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      padding: 0 0.95rem;
+      border: 1px solid var(--line-hi);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      font: inherit; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+    }
+    .btn:hover { border-color: var(--gold); }
+    .btn-gold { background: var(--gold); color: #0f0f0f; border-color: var(--gold); }
+    .btn-gold:hover { background: #ffd83a; }
+
+    .count {
+      font-size: 0.75rem; color: var(--dim);
+      font-variant-numeric: tabular-nums;
+      margin: 0 0 1rem;
+    }
+
+    /* ── the list ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+      gap: 0.75rem;
+      padding: 0 0 3rem;
+      list-style: none; margin: 0;
+    }
+
+    .card {
+      position: relative;
+      display: flex; flex-direction: column; gap: 0.55rem;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--line-hi);
+      border-radius: 8px;
+      padding: 0.85rem 0.9rem;
+      transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+    }
+    .card:hover { background: var(--raised); border-color: var(--line-hi); }
+    .card.is-watched { border-left-color: var(--gold-dk); }
+    .card.is-queue   { border-left-color: var(--queue); }
+    .card.is-pick    { border-left-color: var(--gold); }
+
+    .card h3 {
+      margin: 0;
+      font-size: 0.97rem;
+      font-weight: 600;
+      line-height: 1.3;
+      letter-spacing: -0.005em;
+      /* long franchise titles must not stretch the column */
+      overflow-wrap: anywhere;
+    }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: auto; }
+    .chip {
+      /* 11.2px. The floor is 11px; this is the smallest step that clears it. */
+      font-size: 0.7rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 600;
+      padding: 0.2rem 0.45rem;
+      border-radius: 4px;
+      border: 1px solid var(--line-hi);
+      color: var(--dim);
+      white-space: nowrap;
+    }
+    .chip-where { color: var(--queue); border-color: rgba(125, 211, 252, 0.4); }
+    .chip-buy   { color: var(--dim); }
+    .chip-count { color: var(--gold); border-color: rgba(245, 197, 24, 0.4); }
+    .chip-pick  { color: #0f0f0f; background: var(--gold); border-color: var(--gold); }
+    .chip-seen  { color: var(--gold); border-color: rgba(245, 197, 24, 0.4); }
+    .chip-local { color: var(--queue); border-color: rgba(125, 211, 252, 0.4); border-style: dashed; }
+
+    .card-note { margin: 0; font-size: 0.74rem; color: var(--dim); }
+
+    /* owner controls, only drawn when signed in */
+    .acts { display: flex; flex-wrap: wrap; gap: 0.35rem; padding-top: 0.15rem; }
+    .acts button {
+      min-height: 34px;
+      padding: 0 0.6rem;
+      border-radius: 6px;
+      border: 1px solid var(--line-hi);
+      background: transparent;
+      color: var(--dim);
+      font: inherit; font-size: 0.72rem; font-weight: 600;
+      cursor: pointer;
+      transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+    }
+    .acts button:hover { color: var(--ink); border-color: var(--gold); }
+    .acts button.danger:hover { color: #fca5a5; border-color: #fca5a5; }
+
+    .empty {
+      grid-column: 1 / -1;
+      padding: 3rem 1rem;
+      text-align: center;
+      color: var(--dim);
+      border: 1px dashed var(--line-hi);
+      border-radius: 10px;
+    }
+
+    /* ── the picker ── */
+    .picked {
+      margin: 0 0 1.4rem;
+      padding: 1.1rem 1.2rem;
+      border: 1px solid var(--gold);
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(245, 197, 24, 0.09), transparent);
+    }
+    .picked p { margin: 0 0 0.3rem; font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); }
+    .picked strong { font-size: 1.3rem; font-weight: 800; display: block; line-height: 1.2; }
+    .picked span { font-size: 0.8rem; color: var(--dim); }
+
+    /* ── owner panel ── */
+    .owner {
+      border-top: 1px solid var(--line);
+      padding: 2.2rem 0 3rem;
+    }
+    .owner h2 {
+      margin: 0 0 0.35rem;
+      font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--dim); font-weight: 600;
+    }
+    .owner > p { margin: 0 0 1.1rem; font-size: 0.85rem; color: var(--dim); max-width: 62ch; }
+
+    .ownerform { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .ownerlabel { font-size: 0.8rem; color: var(--dim); width: 100%; }
+    .ownerform input {
+      min-height: 40px;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+      color: var(--ink); font: inherit; font-size: 0.88rem; padding: 0 0.7rem;
+      min-width: 0; flex: 1 1 12rem;
+    }
+    .ownerform input:focus { outline: none; border-color: var(--gold); }
+    .ownerform button {
+      min-height: 40px; padding: 0 1rem;
+      border: 1px solid var(--gold); border-radius: 8px;
+      background: var(--gold); color: #0f0f0f;
+      font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+    }
+    .ownermsg { font-size: 0.8rem; color: var(--dim); width: 100%; min-height: 1.2em; }
+
+    .addbox {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.6rem;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .addbox label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
+    .addbox input, .addbox select {
+      min-height: 42px;
+      background: var(--raised); border: 1px solid var(--line); border-radius: 7px;
+      color: var(--ink); font-family: var(--sans); font-size: 0.9rem; padding: 0 0.6rem;
+      text-transform: none; letter-spacing: normal;
+    }
+    .addbox input:focus, .addbox select:focus { outline: none; border-color: var(--gold); }
+    .addbox .wide { grid-column: 1 / -1; }
+    .addbox .check { flex-direction: row; align-items: center; gap: 0.5rem; text-transform: none; letter-spacing: normal; font-size: 0.85rem; }
+    .addbox .check input { min-height: 0; width: 18px; height: 18px; accent-color: var(--gold); }
+
+    .ownerstate {
+      display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;
+      font-size: 0.8rem; color: var(--dim);
+      margin-bottom: 1rem;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+    .dot.off { background: var(--line-hi); }
+
+    .export {
+      width: 100%;
+      min-height: 180px;
+      margin-top: 0.8rem;
+      background: #0a0a0a;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--dim);
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.5;
+      padding: 0.8rem;
+      resize: vertical;
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 1.6rem 0 3rem;
+      font-size: 0.78rem;
+      color: var(--dim);
+      display: flex; flex-wrap: wrap; gap: 0.5rem 1.2rem;
+    }
+    footer a { color: var(--gold); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── the shared room switcher ──
+       effects.js injects the button and tags the nav; the room supplies the
+       look and picks the breakpoint. */
+    .roomnav-toggle { display: none; }
+    @media (max-width: 860px) {
+      .roomnav-toggle {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        margin-left: auto;
+        min-height: 44px; padding: 0 0.9rem;
+        border: 1px solid var(--line-hi); border-radius: 8px;
+        background: var(--panel); color: var(--ink);
+        font: inherit; font-size: 0.72rem; font-weight: 600;
+        letter-spacing: 0.12em; text-transform: uppercase;
+        cursor: pointer;
+      }
+      .roomnav-toggle[aria-expanded="true"] { border-color: var(--gold); }
+      .roomnav-toggle-bars {
+        position: relative; width: 15px; height: 10px;
+        border-top: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+      }
+      .roomnav-toggle-bars::after {
+        content: ""; position: absolute; inset: calc(50% - 0.75px) 0 auto;
+        border-top: 1.5px solid currentColor;
+      }
+      nav.marquee[data-roomnav] { display: none; }
+      nav.marquee[data-roomnav].roomnav-open {
+        display: flex; order: 3; flex-basis: 100%;
+        flex-direction: column; align-items: stretch;
+        gap: 0; margin-top: 0.7rem; padding-top: 0.4rem;
+        border-top: 1px solid var(--line);
+        overflow: visible;
+      }
+      /* 44px tap targets in the open menu */
+      nav.marquee[data-roomnav].roomnav-open a,
+      nav.marquee[data-roomnav].roomnav-open .here {
+        padding: 0.85rem 0.2rem;
+        font-size: 0.9rem;
+        border-bottom: 1px solid var(--line);
+      }
+      nav.marquee[data-roomnav].roomnav-open .here::after { display: none; }
+      .bar { flex-wrap: wrap; gap: 0.7rem; }
+      .controls { top: 0; position: static; }
+    }
+
+    @media (max-width: 520px) {
+      .hero { padding: 2.2rem 0 1.4rem; }
+      .tally { gap: 0.9rem 1.6rem; }
+      .tally b { font-size: 1.35rem; }
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="strip" id="strip">The list</div>
+
+  <div class="barwrap">
+    <header class="bar">
+      <a class="mark" href="index.html" aria-label="Ric's Terminal">Entertainment</a>
+      <nav class="marquee" aria-label="Terminal rooms">
+        <a href="index.html">terminal</a>
+        <a href="orrin.html">orrin</a>
+        <a href="psyche.html">psyche</a>
+        <a href="climbing.html">climbing</a>
+        <a href="training.html">training</a>
+        <a href="exploration.html">exploration</a>
+        <a href="gaming.html">gaming</a>
+        <a href="workbench.html">workbench</a>
+        <a href="captures.html">captures</a>
+        <span class="here" aria-current="page">entertainment</span>
+      </nav>
+    </header>
+  </div>
+
+  <main class="wrap">
+    <section class="hero">
+      <p class="kicker">Watched &amp; queued</p>
+      <h1>Everything seen,<br>and everything next.</h1>
+      <p>A running list — what's been watched, and what's lined up. The queue says where
+         to find each one, because the hard part was never picking, it was remembering
+         which app it was on.</p>
+
+      <div class="tally">
+        <div class="t-watched"><b id="n-watched">0</b><span>Watched</span></div>
+        <div class="t-queue"><b id="n-queue">0</b><span>In the queue</span></div>
+        <div><b id="n-pick">0</b><span>Starred</span></div>
+        <div><b id="n-total">0</b><span>Titles in all</span></div>
+      </div>
+    </section>
+
+    <div class="controls">
+      <div class="controls-row">
+        <div class="tabs" role="tablist" aria-label="Which list">
+          <button role="tab" id="tab-watchlist" aria-selected="true"  data-view="watchlist">Queue</button>
+          <button role="tab" id="tab-watched"   aria-selected="false" data-view="watched">Watched</button>
+          <button role="tab" id="tab-all"       aria-selected="false" data-view="all">All</button>
+        </div>
+
+        <label class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+          </svg>
+          <input type="search" id="q" placeholder="Search titles…" aria-label="Search titles">
+        </label>
+
+        <select class="sort" id="sort" aria-label="Sort order">
+          <option value="az">A–Z</option>
+          <option value="za">Z–A</option>
+          <option value="pick">Starred first</option>
+          <option value="where">By where it is</option>
+        </select>
+
+        <button class="btn btn-gold" id="surprise" type="button">Pick one for me</button>
+      </div>
+    </div>
+
+    <div id="picked" hidden></div>
+    <p class="count" id="count"></p>
+    <ul class="grid" id="grid"></ul>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         EDITING — the bit Ric actually asked for.
+
+         Signed out this whole section is a password box and nothing else, so a
+         visitor never sees a control that would only 401 at them.
+
+         Signed in: add a title, move one between the two lists, drop one. Where
+         those edits GO is decided at write time, in this order —
+
+           1. the Worker's /movies, if it answers. Then the edit is real: it
+              follows him to any device and visitors see it.
+           2. this browser's localStorage, if it does not. The edit shows up
+              here immediately and stays put; Export writes it out as a
+              replacement entertainment-data.js to commit.
+
+         Nothing is ever lost between the two: owner.js queues a write made with
+         no signal and replays it, and a local edit is kept until the committed
+         file catches up with it.
+         ══════════════════════════════════════════════════════════════════════ -->
+    <section class="owner" id="owner">
+      <h2>Keeping the list</h2>
+      <p id="owner-blurb">Ric's end of the page. Everyone else just gets the list.</p>
+      <div id="owner-box"></div>
+      <div id="owner-tools" hidden></div>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <span>Ric's own internet.</span>
+    <a href="index.html">← back to the terminal</a>
+    <span id="src-note"></span>
+  </footer>
+
+  <script src="entertainment-data.js"></script>
+  <script src="assets/owner.js"></script>
+  <script>
+  /* ── where the service lives ──
+     Same lesson climb-host.js learned and wrote down: on localhost a Worker may
+     be running locally, so try the origin first — but a plain static dev server
+     answers /movies with a 404, and taking that as "no data" silently is how a
+     page ends up looking finished and being months stale. So localhost is a
+     preference, not a rule, and the live Worker is the fallback. */
+  const LIVE = 'https://training-log.rmbuster82.workers.dev';
+  const LOCALHOST = location.origin.includes('localhost') || location.origin.includes('127.0.0.1');
+  let HOST = LOCALHOST ? location.origin : LIVE;
+
+  async function hostFetch(path, init) {
+    if (!LOCALHOST) return fetch(LIVE + path, init);
+    try {
+      const r = await fetch(location.origin + path, init);
+      if (r.ok) { HOST = location.origin; return r; }
+    } catch (e) { /* nothing listening locally */ }
+    HOST = LIVE;
+    return fetch(LIVE + path, init);
+  }
+
+  /* HOST is only a guess until something has actually asked, and owner.js takes
+     its host by value at init(). Sign in before the probe settles and every
+     write goes at the dev server instead of the Worker — the same trap
+     ClimbHost.resolved() exists for. Off localhost there is nothing to probe
+     and this costs no round trip. */
+  let probing = null;
+  function resolvedHost() {
+    if (!LOCALHOST) return Promise.resolve(LIVE);
+    if (!probing) probing = hostFetch('/movies', { cache: 'no-store' })
+      .then(() => HOST, () => HOST);
+    return probing;
+  }
+
+  /* ── the three layers ──
+     BASE is the committed file and never changes in the browser. REMOTE is what
+     the Worker knows. LOCAL is what this browser has been told and could not
+     send anywhere. They are merged in that order at read time, so the committed
+     list always renders on its own and every layer above it only ever adds.  */
+  const BASE = (window.ENTERTAINMENT_DATA || []).map(e => Object.freeze({ ...e }));
+  const LKEY = 'entertainmentEdits';
+  let REMOTE = {};
+  let LOCAL = readLocal();
+
+  function readLocal() { try { return JSON.parse(localStorage.getItem(LKEY) || '{}'); } catch (e) { return {}; } }
+  function writeLocal(v) {
+    try {
+      Object.keys(v).length ? localStorage.setItem(LKEY, JSON.stringify(v)) : localStorage.removeItem(LKEY);
+    } catch (e) { /* private mode — the edit still shows this session */ }
+  }
+
+  const slug = t => t.normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 120);
+
+  /* One list, every layer folded in. Deleting is a tombstone rather than a
+     removal, because the committed file underneath would otherwise put the row
+     straight back on the next load. */
+  function merged() {
+    const by = new Map();
+    for (const e of BASE) by.set(e.id, { ...e });
+    for (const src of [REMOTE, LOCAL]) {
+      for (const [id, patch] of Object.entries(src || {})) {
+        if (!patch) continue;
+        if (patch.removed) { by.delete(id); continue; }
+        const prev = by.get(id) || { id };
+        by.set(id, { ...prev, ...patch, local: src === LOCAL || prev.local });
+      }
+    }
+    return [...by.values()];
+  }
+
+  /* ── rendering ── */
+  const el = id => document.getElementById(id);
+  const state = { view: 'watchlist', q: '', sort: 'az' };
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function chips(e) {
+    const out = [];
+    if (e.pick)   out.push('<span class="chip chip-pick">starred</span>');
+    if (e.count)  out.push(`<span class="chip chip-count">${e.count} films</span>`);
+    if (e.series) out.push('<span class="chip chip-count">the lot</span>');
+    if (e.status === 'watchlist' && e.where) {
+      const buy = e.where === 'Buy';
+      out.push(`<span class="chip ${buy ? 'chip-buy' : 'chip-where'}">${esc(buy ? 'have to buy' : e.where)}</span>`);
+    }
+    /* Only in the mixed view. On the Watched tab the chip is on all 238 cards
+       and the tab above already said it — that is noise, not information. */
+    if (e.status === 'watched' && state.view === 'all')
+      out.push('<span class="chip chip-seen">✓ seen</span>');
+    if (e.local) out.push('<span class="chip chip-local">not committed</span>');
+    return out.join('');
+  }
+
+  function card(e) {
+    const cls = ['card', e.status === 'watched' ? 'is-watched' : 'is-queue'];
+    if (e.pick && e.status === 'watchlist') cls.push('is-pick');
+    const acts = Owner.on() ? `
+      <div class="acts">
+        ${e.status === 'watchlist'
+          ? `<button type="button" data-act="watched" data-id="${esc(e.id)}">Mark watched</button>`
+          : `<button type="button" data-act="watchlist" data-id="${esc(e.id)}">Back to queue</button>`}
+        <button type="button" data-act="pick" data-id="${esc(e.id)}">${e.pick ? 'Unstar' : 'Star'}</button>
+        <button type="button" class="danger" data-act="remove" data-id="${esc(e.id)}">Remove</button>
+      </div>` : '';
+    return `<li class="${cls.join(' ')}">
+      <h3>${esc(e.title)}</h3>
+      ${e.note ? `<p class="card-note">${esc(e.note)}</p>` : ''}
+      <div class="chips">${chips(e)}</div>
+      ${acts}
+    </li>`;
+  }
+
+  function visible() {
+    let list = merged();
+    if (state.view !== 'all') list = list.filter(e => e.status === state.view);
+    if (state.q) {
+      const q = state.q.toLowerCase();
+      list = list.filter(e => e.title.toLowerCase().includes(q) ||
+                              (e.where || '').toLowerCase().includes(q));
+    }
+    const az = (a, b) => a.title.localeCompare(b.title, 'en', { sensitivity: 'base' });
+    const sorts = {
+      az,
+      za: (a, b) => az(b, a),
+      pick: (a, b) => (b.pick ? 1 : 0) - (a.pick ? 1 : 0) || az(a, b),
+      where: (a, b) => (a.where || '~').localeCompare(b.where || '~') || az(a, b)
+    };
+    return list.sort(sorts[state.sort] || az);
+  }
+
+  function render() {
+    const all = merged();
+    const watched = all.filter(e => e.status === 'watched').length;
+    const queue = all.filter(e => e.status === 'watchlist').length;
+    el('n-watched').textContent = watched;
+    el('n-queue').textContent = queue;
+    el('n-pick').textContent = all.filter(e => e.pick && e.status === 'watchlist').length;
+    el('n-total').textContent = all.length;
+    el('strip').textContent =
+      `${all.length} titles · ${watched} watched · ${queue} waiting`;
+
+    const list = visible();
+    el('count').textContent = list.length === all.length
+      ? `${list.length} titles`
+      : `${list.length} of ${all.length} titles`;
+    /* A search that comes back empty inside one tab is the page's easiest lie:
+       there ARE seven Jurassic films, they are just all on the other list. So
+       when the current tab has nothing, say what the other one has. */
+    if (list.length) {
+      el('grid').innerHTML = list.map(card).join('');
+    } else {
+      const other = state.q
+        ? all.filter(e => e.status !== state.view &&
+            (e.title.toLowerCase().includes(state.q.toLowerCase()) ||
+             (e.where || '').toLowerCase().includes(state.q.toLowerCase())))
+        : [];
+      const where = state.view === 'watchlist' ? 'the queue' : 'the watched list';
+      el('grid').innerHTML = `<li class="empty">
+        <p>Nothing on ${where} matches “${esc(state.q)}”.</p>
+        ${other.length ? `<p><button class="btn" type="button" id="lookall">
+           ${other.length} match${other.length === 1 ? '' : 'es'} on the other list — show all</button></p>` : ''}
+      </li>`;
+      const b = document.getElementById('lookall');
+      if (b) b.addEventListener('click', () => {
+        state.view = 'all';
+        for (const o of document.querySelectorAll('.tabs button'))
+          o.setAttribute('aria-selected', String(o.dataset.view === 'all'));
+        render();
+      });
+    }
+
+    const pending = Object.keys(LOCAL).length;
+    el('src-note').textContent = pending
+      ? `${pending} edit${pending === 1 ? '' : 's'} not committed yet`
+      : '';
+  }
+
+  /* ── writing ──
+     Try the Worker; fall back to this browser. Either way the UI has already
+     been told what happened by the time render() runs, so a tap never sits
+     there looking like it did nothing. */
+  async function save(id, patch) {
+    const body = { id, ...patch };
+    if (Owner.on()) {
+      const out = await Owner.post('/movies/' + id, body, { queue: true });
+      if (out && !out.queued) {                 // the Worker took it
+        REMOTE[id] = { ...(REMOTE[id] || {}), ...patch };
+        delete LOCAL[id];
+        writeLocal(LOCAL);
+        render();
+        return;
+      }
+      /* queued (no signal) or refused (no endpoint yet) — keep it here, and
+         keep it visibly uncommitted rather than pretending it landed. */
+    }
+    LOCAL[id] = { ...(LOCAL[id] || {}), ...patch };
+    writeLocal(LOCAL);
+    render();
+  }
+
+  el('grid').addEventListener('click', async ev => {
+    const b = ev.target.closest('button[data-act]');
+    if (!b) return;
+    const { act, id } = b.dataset;
+    const cur = merged().find(e => e.id === id);
+    if (!cur) return;
+    if (act === 'watched')   await save(id, { status: 'watched', where: '', pick: false });
+    if (act === 'watchlist') await save(id, { status: 'watchlist' });
+    if (act === 'pick')      await save(id, { pick: !cur.pick });
+    if (act === 'remove') {
+      if (!confirm(`Remove “${cur.title}” from the list?`)) return;
+      await save(id, { removed: true });
+    }
+  });
+
+  /* ── controls ── */
+  for (const b of document.querySelectorAll('.tabs button')) {
+    b.addEventListener('click', () => {
+      state.view = b.dataset.view;
+      for (const o of document.querySelectorAll('.tabs button'))
+        o.setAttribute('aria-selected', String(o === b));
+      render();
+    });
+  }
+  let qt;
+  el('q').addEventListener('input', e => {
+    clearTimeout(qt);
+    qt = setTimeout(() => { state.q = e.target.value.trim(); render(); }, 90);
+  });
+  el('sort').addEventListener('change', e => { state.sort = e.target.value; render(); });
+
+  /* The queue is 100-odd long, which is its own kind of useless on a Tuesday
+     night. This answers the only question anyone actually has of it. */
+  el('surprise').addEventListener('click', () => {
+    const pool = merged().filter(e => e.status === 'watchlist');
+    if (!pool.length) return;
+    const p = pool[Math.floor(Math.random() * pool.length)];
+    const box = el('picked');
+    box.className = 'picked';
+    box.hidden = false;
+    box.innerHTML = `<p>Tonight, then</p><strong>${esc(p.title)}</strong>` +
+      `<span>${p.where ? esc(p.where === 'Buy' ? 'you have to buy this one' : 'on ' + p.where) : 'no idea where — good luck'}</span>`;
+  });
+
+  /* ── the owner panel ── */
+  function paintOwner() {
+    const box = el('owner-box'), tools = el('owner-tools');
+    if (!Owner.on()) {
+      tools.hidden = true;
+      box.hidden = false;
+      Owner.mountBox(box, { title: 'Sign in to keep the list' });
+      el('owner-blurb').textContent = "Ric's end of the page. Everyone else just gets the list.";
+      render();
+      return;
+    }
+    box.hidden = true;
+    tools.hidden = false;
+    const pending = Object.keys(LOCAL).length;
+    el('owner-blurb').textContent =
+      'Add a title below, or use the buttons on any card to move it between the two lists.';
+    tools.innerHTML = `
+      <div class="ownerstate">
+        <span class="dot ${pending ? '' : 'off'}"></span>
+        <span id="state-line">${pending
+          ? `${pending} edit${pending === 1 ? '' : 's'} saved in this browser only — export below to commit them.`
+          : 'Everything here is either committed or saved to the service.'}</span>
+        <button class="btn" type="button" id="signout">Sign out</button>
+      </div>
+
+      <form class="addbox" id="addform">
+        <label class="wide">Title
+          <input id="a-title" required placeholder="e.g. The Departed" autocomplete="off">
+        </label>
+        <label>List
+          <select id="a-status">
+            <option value="watchlist">Queue it</option>
+            <option value="watched">Already watched</option>
+          </select>
+        </label>
+        <label>Where is it
+          <input id="a-where" placeholder="Netflix, Prime, Buy…" autocomplete="off" list="wherelist">
+          <datalist id="wherelist"></datalist>
+        </label>
+        <label class="check"><input type="checkbox" id="a-pick"> Star it</label>
+        <div class="wide"><button class="btn btn-gold" type="submit">Add to the list</button></div>
+      </form>
+
+      <button class="btn" type="button" id="doexport">Export a new entertainment-data.js</button>
+      <textarea class="export" id="exportbox" hidden readonly spellcheck="false"></textarea>`;
+
+    /* the services already in the list, so a second spelling of "Prime Video"
+       never gets typed in */
+    const seen = [...new Set(merged().map(e => e.where).filter(Boolean))].sort();
+    tools.querySelector('#wherelist').innerHTML =
+      seen.map(w => `<option value="${esc(w)}"></option>`).join('');
+
+    tools.querySelector('#signout').addEventListener('click', () => Owner.signOut());
+
+    tools.querySelector('#addform').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const title = tools.querySelector('#a-title').value.trim();
+      if (!title) return;
+      const id = slug(title);
+      if (!id) return;
+      const dup = merged().find(e => e.id === id);
+      if (dup && !confirm(`“${dup.title}” is already on the ${dup.status === 'watched' ? 'watched list' : 'queue'}. Update it?`)) return;
+      await save(id, {
+        title,
+        status: tools.querySelector('#a-status').value,
+        where: tools.querySelector('#a-where').value.trim(),
+        pick: tools.querySelector('#a-pick').checked
+      });
+      ev.target.reset();
+      tools.querySelector('#a-title').focus();
+    });
+
+    tools.querySelector('#doexport').addEventListener('click', async ev => {
+      const box = tools.querySelector('#exportbox');
+      box.hidden = false;
+      box.value = 'building…';
+      box.value = await exportFile();
+      box.focus();
+      box.select();
+    });
+
+    render();
+  }
+
+  /* Writes the committed file back out with every layer folded in, in exactly
+     the shape the generator produces — so it can be pasted straight over
+     entertainment-data.js and the "not committed" chips all go out at once.
+
+     The header is read back off the real file rather than kept as a second copy
+     in here. Two copies of a comment is how a comment starts lying: export once
+     with a stale duplicate and the rules at the top of the data file are quietly
+     replaced by whatever this page remembered of them. */
+  const FALLBACK_HEAD =
+    '/* The Entertainment room\'s list — committed truth; the page layers edits on top.\n' +
+    '   Fields: id · title · status ("watched" | "watchlist") · count · series ·\n' +
+    '   where · pick · note. See README for the full rules. */';
+
+  async function readHeader() {
+    try {
+      const r = await fetch('entertainment-data.js', { cache: 'no-store' });
+      if (!r.ok) return FALLBACK_HEAD;
+      const txt = await r.text();
+      const cut = txt.indexOf('window.ENTERTAINMENT_DATA');
+      const head = cut > 0 ? txt.slice(0, cut).trim() : '';
+      return head || FALLBACK_HEAD;
+    } catch (e) { return FALLBACK_HEAD; }
+  }
+
+  async function exportFile() {
+    const head = await readHeader();
+    const rows = merged()
+      .sort((a, b) => (a.status === b.status ? 0 : a.status === 'watched' ? -1 : 1) ||
+                       a.title.localeCompare(b.title))
+      .map(e => {
+        const parts = [`id: ${JSON.stringify(e.id)}`, `title: ${JSON.stringify(e.title)}`,
+                       `status: ${JSON.stringify(e.status)}`];
+        for (const k of ['count', 'series', 'where', 'pick', 'note'])
+          if (e[k]) parts.push(`${k}: ${JSON.stringify(e[k])}`);
+        return '  { ' + parts.join(', ') + ' },';
+      });
+    return `${head}\nwindow.ENTERTAINMENT_DATA = [\n${rows.join('\n')}\n];\n`;
+  }
+
+  /* The committed list goes up first, with no network asked and nothing waited
+     on. The owner panel follows once the host is settled — a visitor never
+     needed it, and Ric's sign-in box arriving a beat after the list is the
+     right order anyway. */
+  render();
+
+  (async () => {
+    const host = await resolvedHost();
+    Owner.init({ host, onChange: paintOwner });
+    paintOwner();
+    try {
+      const r = await hostFetch('/movies', { cache: 'no-store', headers: Owner.headers() });
+      if (!r.ok) return;                       // not deployed yet — committed file stands
+      const items = (await r.json()).items || {};
+      REMOTE = items;
+      /* A local edit the service has now caught up with is no longer pending. */
+      let changed = false;
+      for (const [id, patch] of Object.entries(LOCAL)) {
+        const got = items[id];
+        if (got && Object.entries(patch).every(([k, v]) => JSON.stringify(got[k]) === JSON.stringify(v))) {
+          delete LOCAL[id]; changed = true;
+        }
+      }
+      if (changed) writeLocal(LOCAL);
+      render();
+    } catch (e) {
+      /* No signal. A list with only the committed file on it is the right page;
+         an error is not. */
+    }
+  })();
+  </script>
+  <script src="effects.js"></script>
+</body>
+</html>

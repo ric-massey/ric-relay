@@ -53,7 +53,7 @@ There is intentionally **no shared nav component**. Each page has its own `<nav>
 labels** so navigation stays predictable:
 
 ```
-terminal · orrin · psyche · climbing · training · exploration · gaming · workbench · captures
+terminal · orrin · psyche · climbing · training · exploration · gaming · workbench · captures · entertainment
 ```
 
 **This set matches the home page's `#dir` listing on purpose.** The room navs used to
@@ -131,6 +131,7 @@ Per-room nav treatments (class on the `<nav>`):
 | gaming | understated top-bar text links | `nav.launcher` |
 | workbench | blueprint sheet-index chips | `nav.sheets` |
 | captures | darkroom film strip | `nav.filmstrip` |
+| entertainment | cinema marquee tab strip (bulbs under the current room) | `nav.marquee` |
 | log | newspaper section bar | `nav.sections` |
 | index | terminal directory listing + `ls`/`open` commands | `#dir` |
 
@@ -315,6 +316,36 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   pulled properly onto the climbing page — a watch ticking climbing too would
   double-count the site's one real source.
 
+**Entertainment is written from the page, and falls back to this browser.**
+`entertainment.html` reads `entertainment-data.js` — 363 titles, each `watched` or
+`watchlist`. Rules for it:
+
+- **The committed file is the archive and always renders on its own.** Everything else
+  is a layer on top of it, merged at read time: the Worker's `/movies` first, then this
+  browser's `localStorage`. Same shape as the climbing pages, for the same reason — a
+  page showing the real list is right, and an error page is not. If the service is
+  unreachable the page must still come up complete.
+- **`/movies` is written and tested but not deployed.** Until it is, every edit lands in
+  `localStorage` and the card says **not committed**. Don't "fix" that by deleting the
+  local layer — it is the only thing holding those edits. The owner panel's Export
+  button prints a replacement data file with them folded in; that is how they get
+  committed.
+- **A removal is a tombstone, not a delete** (`{ removed: true }`), in the Worker and in
+  the local layer both. This is the one place `/movies` differs from `/todo`, which it
+  is otherwise a copy of, and the reason is the committed file underneath: a real delete
+  is undone by the next page load.
+- **The export must keep the data file's header.** It reads it back off the real file
+  rather than keeping a second copy, because two copies of a comment is how a comment
+  starts lying — export once with a stale duplicate and the rules at the top of the data
+  file are quietly replaced.
+- **The titles are his, not IMDb's.** They were corrected for spelling and casing only.
+  Several were deliberately left as typed because the right film was not guessable —
+  don't "fix" `Curtis`, `Moments`, `The Sound`, `Greater good`, `RIP`, `Code 3`,
+  `Mercy` or `Obsession` without asking him which ones they are.
+- **There is no poster art and that is deliberate.** A few hundred posters is a few
+  hundred requests at someone else's server, which hard rule 4 rules out. The room is
+  typographic on purpose; don't "improve" it with a CDN.
+
 **Apex is pulled, not written.** `apex.html` reads `projects/apex/apex-data.js`, which
 `projects/apex/pull-apex.py` generates from the Apex Legends Status API. Rules:
 
@@ -397,7 +428,7 @@ python3 -m http.server 8912
 ```sh
 node projects/kondrite/test/smoke.js      # syntax, transport, room service
 node projects/kondrite/test/campaign.js   # headless play-through of all three missions
-node projects/training/test/rules.js       # plan/tick rules
+node projects/training/server/test.mjs     # worker rules: auth, strava, media, todo, movies
 node projects/climbing/test/parse-parity.js  # build-data.py and climb-parse.js agree
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done
 for t in atlas/test/*.test.mjs; do node "$t" || break; done

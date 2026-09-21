@@ -33,6 +33,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `exploration.html` | Exploration | Space deck — experiments dock here |
 | `workbench.html` | Workbench | Blueprint board of random / half-finished projects |
 | `captures.html` | Captures | Darkroom contact sheet for photos |
+| `entertainment.html` | Entertainment | Marquee list of films and shows — what has been watched, what is queued, and where to find each one. Ric can add a title or move one between the lists from the page itself |
 | `log.html` | Log | Long-form write-ups, trip reports, Apex VOD reviews · *unlisted on the home directory* |
 | `updates.html` | — | Legacy redirect to the homepage's latest-signal banner |
 | `systems.html` | — | Legacy redirect from the former Orrin URL to `orrin.html` |
@@ -43,6 +44,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `projects/` | — | Self-contained sub-projects, each linked from a room (see below) |
 | `photos/` | — | Web-optimized images (originals stay out of git in `_photo-originals/`) |
 | `captures-data.js` | — | Generated `[filename, date]` pairs for the 1,300+ photos `captures.html` draws |
+| `entertainment-data.js` | — | The committed list `entertainment.html` reads — 363 titles, each with a status, and where to find the queued ones |
 | `assets/` | — | Everything that isn't a photograph: Mochi's 82 sprite frames, the game covers and clips in `assets/games/`, the generated `training-plan.json`, and `owner.js` |
 | `notes.js` | — | Homepage "transmissions" — the one file you edit by hand to post a note |
 | `latest.js` | — | Curated newest additions shown in the homepage's NOTIFICATION banner |
@@ -251,6 +253,9 @@ file — copy the example block, edit, done.
 - **Add a climb:** don't hand-edit the climbing pages. Edit `projects/climbing/climbs.md`
   and run `python3 projects/climbing/build-data.py`. See
   [`projects/climbing/readme.md`](projects/climbing/readme.md).
+- **Add a film or move one to watched:** you don't have to edit anything. Sign in at the
+  foot of `entertainment.html` and use the form and the buttons on the cards. Editing
+  `entertainment-data.js` by hand still works and is what a bulk change should do.
 - **Change the clickable newest-item banner:** edit `latest.js`. Only the homepage
   shows it now — the rooms no longer carry one — so a new addition is announced once.
   Still give each entry a `room`: it is what a room banner would use to pick its own
@@ -296,6 +301,27 @@ belong here.
   Keychain, never in this repo. `board-sync.plist` polls hourly and `board-tick.mjs`
   posts the dates to the Worker so a board night ticks its climbing session. Board grades
   stay on their own scale and never merge into the outdoor ledger.
+- **Entertainment** (`entertainment.html`) is live and works with nothing deployed.
+  `entertainment-data.js` is the committed list and renders on its own; edits made on the
+  page are layered on top of it at read time, from whichever of two places answers:
+
+  1. the Worker's `/movies`, if it is deployed. Then an edit is real — it follows Ric
+     between phone and laptop, and visitors see it.
+  2. this browser's `localStorage`, if it is not. The edit shows up immediately, is
+     marked **not committed** on the card, and stays in that browser.
+
+  The endpoint is written and tested (`projects/training/server/worker.mjs`, and the
+  `/movies` rules in `projects/training/server/test.mjs`) but **has not been deployed** —
+  until someone runs the deploy from the Mac, every edit takes route 2. That is not a
+  broken state: the page says which edits are uncommitted, and the owner panel's
+  **Export** button prints a replacement `entertainment-data.js` with them folded in.
+  Paste it over the file, commit, and the "not committed" chips clear themselves.
+
+  Titles are Ric's list, lightly corrected for spelling and casing. A few were left
+  exactly as typed because correcting them would have been a guess — `Curtis`,
+  `Moments`, `The Sound`, `Greater good`, `RIP`, `Code 3`, `Mercy` and `Obsession` are
+  all ambiguous enough that the wrong film could end up on the page. Fix them when he
+  says which ones they are.
 - **ATLAS** (`atlas/`) talks to Supabase. The publishable key in `atlas/config.js` is
   public by design; the **service_role** key must never be in this repo — it bypasses
   every row-level-security policy.
@@ -312,7 +338,7 @@ python3 -m http.server 8912
 ```bash
 node projects/kondrite/test/smoke.js
 node projects/kondrite/test/campaign.js
-node projects/training/test/rules.js
+node projects/training/server/test.mjs
 node projects/climbing/test/parse-parity.js
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done
 for t in atlas/test/*.test.mjs; do node "$t" || break; done

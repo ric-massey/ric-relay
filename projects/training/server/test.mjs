@@ -905,5 +905,85 @@ console.log('\nRULE  a Worker with no bucket still serves every page');
   ok(up.status === 503, 'an upload says the storage is not there rather than pretending it worked');
 }
 
+
+/* ── /movies ──
+   The Entertainment room's list. It has a committed file underneath it that
+   /todo does not, and that one difference is what most of these assert: a
+   removal has to survive as a tombstone, or the file puts the row straight
+   back on the next load. */
+console.log('\nRULE  anyone can read the list, only the owner can change it');
+{
+  const m = fresh();
+  const hit = async (...a) => { const r = await m.fetch(req(...a)); return { status: r.status, body: await r.json() }; };
+
+  ok((await hit('GET', '/movies')).status === 200, 'the list reads without a token');
+  ok((await hit('POST', '/movies/heat', { title: 'Heat', status: 'watched' })).status === 401,
+     'a stranger cannot add a title');
+  ok((await hit('POST', '/movies/heat', { title: 'Heat' }, 'wrong')).status === 401,
+     'nor with the wrong token');
+  ok(Object.keys((await hit('GET', '/movies')).body.items).length === 0, 'and nothing was written');
+
+  const w = await hit('POST', '/movies/heat', { title: 'Heat', status: 'watchlist', where: 'Buy' }, TOKEN);
+  ok(w.status === 200, 'the owner can');
+  const got = (await hit('GET', '/movies')).body.items.heat;
+  ok(got.title === 'Heat' && got.status === 'watchlist' && got.where === 'Buy', 'and it reads back whole');
+}
+
+console.log('\nRULE  moving a title to watched is an edit, not a second row');
+{
+  const m = fresh();
+  const hit = async (...a) => { const r = await m.fetch(req(...a)); return { status: r.status, body: await r.json() }; };
+
+  await hit('POST', '/movies/the-departed', { title: 'The Departed', status: 'watchlist', where: 'Buy' }, TOKEN);
+  const added = (await hit('GET', '/movies')).body.items['the-departed'].added;
+  await hit('POST', '/movies/the-departed', { title: 'The Departed', status: 'watched' }, TOKEN);
+  const items = (await hit('GET', '/movies')).body.items;
+  ok(Object.keys(items).length === 1, 'still one row');
+  ok(items['the-departed'].status === 'watched', 'now watched');
+  ok(items['the-departed'].added === added, 'and the date it was added did not move');
+}
+
+console.log('\nRULE  a removal is a tombstone, because a file underneath would undo a delete');
+{
+  const m = fresh();
+  const hit = async (...a) => { const r = await m.fetch(req(...a)); return { status: r.status, body: await r.json() }; };
+
+  await hit('POST', '/movies/anaconda', { title: 'Anaconda', status: 'watchlist' }, TOKEN);
+  ok((await hit('POST', '/movies/anaconda', { removed: true })).status === 401, 'a stranger cannot remove');
+  await hit('POST', '/movies/anaconda', { removed: true }, TOKEN);
+  const row = (await hit('GET', '/movies')).body.items.anaconda;
+  ok(row && row.removed === true, 'the row is still there, marked removed');
+}
+
+console.log('\nRULE  a title is required, and the slug is derived the way the page derives it');
+{
+  const m = fresh();
+  const hit = async (...a) => { const r = await m.fetch(req(...a)); return { status: r.status, body: await r.json() }; };
+
+  ok((await hit('POST', '/movies', { status: 'watched' }, TOKEN)).status === 400, 'no title is refused');
+  ok((await hit('POST', '/movies', { title: '   ' }, TOKEN)).status === 400, 'and so is a blank one');
+
+  const w = await hit('POST', '/movies', { title: 'Kiss Kiss Bang Bang', status: 'watchlist' }, TOKEN);
+  ok(w.body.item.id === 'kiss-kiss-bang-bang', 'a posted title slugs itself');
+
+  const acc = await hit('POST', '/movies', { title: 'Amélie' }, TOKEN);
+  ok(acc.body.item.id === 'amelie', 'accents are folded, not dropped into an empty slug');
+
+  const junk = await hit('POST', '/movies/x', { title: 'X', status: 'nonsense', count: 'lots', pick: 'yes' }, TOKEN);
+  ok(junk.body.item.status === 'watchlist', 'an unknown status falls back to the queue');
+  ok(junk.body.item.count === null, 'a non-numeric count is dropped rather than stored');
+  ok(junk.body.item.pick === false, 'pick is a boolean or it is false');
+}
+
+console.log('\nRULE  the list is reachable from outside and unknown paths are not');
+{
+  const m = fresh();
+  const env = { LOG: { idFromName: () => 'training', get: () => m } };
+  const pub = await worker.fetch(new Request('https://x/movies'), env, null);
+  ok(pub.status === 200, '/movies is on the public path list');
+  const no = await worker.fetch(new Request('https://x/movie'), env, null);
+  ok(no.status === 404, 'a near miss still 404s');
+}
+
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WORKER RULES PASS'));
 process.exit(failures ? 1 : 0);
