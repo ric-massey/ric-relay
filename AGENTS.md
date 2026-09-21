@@ -376,11 +376,16 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
 - **`FIELDS` appears twice on purpose and must match** — in `pull-tmdb.py` and in
   `entertainment-room.js`'s export. The script and the Export button both rewrite the
   data file; if the two lists disagree, every export fights the last pull.
-- **There are no watch dates for the original 238.** They came off a piece of paper, not
-  a log. "Recently watched" reads `seen` (stamped whenever a title is marked watched
-  from the page) and falls back to position in the committed file, latest last. Don't
-  invent dates for the backlog — the shelf says so in its own subtitle until real ones
-  land.
+- **The order of the watched block IS the order he watched them** — oldest at the top,
+  most recent at the bottom (Ric, 2026-09-21). There are no watch *dates* for the
+  original 238 (they came off a piece of paper, not a log), but `ord` is real data, not
+  a guess. Two consequences, both load-bearing:
+  - **Never alphabetise the watched block.** The export sorts by status then `ord`, and
+    the title only breaks ties. Sort that block by name — as an earlier version of the
+    export did — and the only record of what he watched when is gone and unrecoverable.
+  - A title marked watched from the page gets a real `seen` date and sorts above the
+    whole paper backlog, which is correct: it happened today. On export it lands at the
+    bottom of the watched block, which is where the most recent thing belongs.
 
 **Apex is pulled, not written.** `apex.html` reads `projects/apex/apex-data.js`, which
 `projects/apex/pull-apex.py` generates from the Apex Legends Status API. Rules:

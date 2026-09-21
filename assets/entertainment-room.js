@@ -459,6 +459,11 @@
     } catch (e) { return FALLBACK_HEAD; }
   }
 
+  /* The sort here is not cosmetic. Watched rows are in the order Ric watched
+     them (oldest first, confirmed 2026-09-21), so `ord` carries the only record
+     of when anything happened. Sort this block by title and that record is gone
+     for good — keep status first, then `ord`, and let the title only break a
+     tie between two rows that never had an order to begin with. */
   async function exportFile() {
     const head = await readHeader();
     const rows = all()

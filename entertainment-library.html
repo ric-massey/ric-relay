@@ -692,6 +692,7 @@
       <select class="pick" id="sort" aria-label="Sort order">
         <option value="az">A–Z</option>
         <option value="za">Z–A</option>
+        <option value="recent">Recently watched</option>
         <option value="year">Newest first</option>
         <option value="yearup">Oldest first</option>
         <option value="where">By where it is</option>
@@ -794,9 +795,17 @@
     });
 
     const az = (a, b) => a.title.localeCompare(b.title, 'en', { sensitivity: 'base' });
+    /* Watched rows sit in the committed file in the order Ric watched them,
+       oldest at the top (confirmed 2026-09-21), and a `seen` date beats any of
+       them because it was stamped here and now. Queued rows have no watch order
+       at all, so they sort after everything that does. */
+    const recency = e => e.seen ? Date.parse(e.seen)
+      : e.status === 'watched' ? -1e12 + (e.ord || 0)
+      : -1e13;
     const sorts = {
       az: az,
       za: (a, b) => az(b, a),
+      recent: (a, b) => recency(b) - recency(a) || az(a, b),
       /* An undated title sorts last either way round — it is unknown, not old
          and not new, and putting it at the top of "newest" would be a claim. */
       year: (a, b) => (b.year || -Infinity) - (a.year || -Infinity) || az(a, b),

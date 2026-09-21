@@ -894,14 +894,20 @@
      Fact, not mood. Starred first because those are the twelve he actually
      wants; then what he saw last; then the queue.
 
-     There are no watch dates in the list — 238 titles came off a piece of
-     paper, not a log. So "recently watched" reads two things, in order:
+     There are no watch DATES in the list — 238 titles came off a piece of
+     paper, not a log — but there is an order, and Ric confirmed it (2026-09-21):
+     he wrote them down in the order he watched them, oldest at the top. So the
+     bottom of the committed file is the most recent thing he has seen, and
+     `ord` is real information, not a fallback.
+
+     "Recently watched" therefore reads two things, in order:
        1. `seen`, an ISO date the room stamps the moment a title is marked
-          watched. Real, and true from here on.
-       2. failing that, position in the committed file, latest last — the order
-          the list was written down in, and the only proxy that exists.
-     Nothing is invented: a title with no date sorts below every title with one,
-     and the shelf says so in its own subtitle until the first date lands. */
+          watched here. Newer than anything off the paper list, by definition.
+       2. position in the committed file, latest last.
+
+     This is why the export sorts the watched block by `ord` and not by title.
+     Alphabetising that block would destroy the only record of what he watched
+     when — it is not a cosmetic ordering, and it cannot be recovered. */
   function recency(e) {
     return e.seen ? Date.parse(e.seen) : -1e12 + (e.ord || 0);
   }
@@ -925,7 +931,7 @@
 
     out.push({
       label: 'Recently watched',
-      note: seen.some(e => e.seen) ? 'newest first' : 'list order — nothing dated yet',
+      note: 'newest first — the order he watched them',
       items: seen.slice().sort((a, b) => recency(b) - recency(a)).slice(0, 40),
       all: 'entertainment-library.html#watched'
     });
