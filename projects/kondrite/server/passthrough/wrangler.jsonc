@@ -1,0 +1,35 @@
+{
+  // CROSSFIRE room service — the old name, now a pass-through to the new one.
+  // Deploy from THIS directory, not the one above it:
+  //     npx wrangler@latest deploy
+  //
+  // Everything here is deliberately identical to ../wrangler.jsonc except the
+  // name and the entry point. The binding and the migration tag match what the
+  // old worker was deployed with (`v1`, `new_sqlite_classes`), so deploying
+  // this replaces the code and leaves the namespace alone. Change either and
+  // Cloudflare will ask for a migration this shim has no business performing.
+  //
+  // Retiring it: when the logs go quiet (`npx wrangler@latest tail
+  // crossfire-rooms`), delete the worker in the dashboard and delete this
+  // directory. Nothing else refers to it.
+  "name": "crossfire-rooms",
+
+  // Explicit, because the original deploy of this worker predates this file and
+  // the subdomain route is the only thing an old client can reach.
+  "workers_dev": true,
+  "main": "worker.mjs",
+  "compatibility_date": "2026-08-01",
+
+  // The new service, reached inside the runtime rather than over the network.
+  // See the note at the top of worker.mjs: fetching its workers.dev hostname
+  // from in here does not route.
+  "services": [{ "binding": "NEW", "service": "kondrite-rooms" }],
+
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "RoomList" }]
+  },
+
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RoomList"] }],
+
+  "observability": { "enabled": true }
+}

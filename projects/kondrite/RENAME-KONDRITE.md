@@ -81,10 +81,12 @@ everything lives in memory and expires, and `ROOM_TTL` is **25 seconds**
 (rooms-core.mjs:41). Renaming it costs whoever is mid-lobby in that exact second,
 and they re-host. It is very nearly free.
 
-**The URL is the real problem, and it is silent.** `ROOM_HOST` is hardcoded:
+**The URL is the real problem, and it is silent.** `ROOM_HOST` is hardcoded —
+it now reads `kondrite-rooms`, and the four steps below are why it was safe to
+move it:
 
 ```
-index.html:26343   https://crossfire-rooms.rmbuster82.workers.dev
+index.html:27482   https://kondrite-rooms.rmbuster82.workers.dev
 ```
 
 A renamed worker is a *new URL*. A client still on the old one reaches a
@@ -100,11 +102,25 @@ So, in this order:
 3. *Then* ship the client pointing at the new URL. Never before step 2.
 4. Retire the old worker when the logs go quiet.
 
-**And fix it permanently while you are in there:** put the service on a **custom
-route** — `rooms.ricmassey.com/*` — so the worker's name never appears in a URL
-again. The domain is already his and already on Cloudflare. After that, the
-worker can be renamed at any time for free, and this section never needs to
-exist again.
+**And a permanent fix that was considered and dropped:** putting the service on
+a **custom route** — `rooms.ricmassey.com/*` — so the worker's name never
+appears in a URL again.
+
+This file used to say "the domain is already his and already on Cloudflare".
+**It is not.** Measured 20 September 2026:
+
+```
+ricmassey.com NS → dns1/dns2.registrar-servers.com   (Namecheap)
+ricmassey.com A  → 185.199.108-111.153               (GitHub Pages)
+Cloudflare zones on the account → none
+```
+
+A custom route needs the zone on Cloudflare, which means moving the
+nameservers, which moves the *whole site's* DNS — GitHub Pages and all — for
+the sake of one worker's hostname. The only thing it buys is making a *future*
+rename free, and Ric's call on 20 September was that there will not be another
+rename. So: workers.dev, indefinitely, and this paragraph stays as the record
+of why.
 
 ### 3 · The folder — the stub *is* the switch-over
 
@@ -243,18 +259,52 @@ comes back under `kondrite.*` with the book intact; the old path redirects with
 `test/save.js` for the two-tab race, a second run, and a storage that refuses
 the copy. The sign-in check is Ric's — it needs a real account.
 
-### Still open, and all of it Ric's
+### Where the room service got to  ·  *20 September 2026*
 
-1. **`kondrite-rooms`.** `server/wrangler.jsonc` and the DO name are renamed and
-   ready, but nothing is deployed and **`ROOM_HOST` is deliberately still on
-   `crossfire-rooms`** — see the comment on it. Deploy the new worker, put the
-   pass-through on the old one, *then* move the string. Never in the other
-   order.
-2. **The custom route**, `rooms.ricmassey.com/*`, so this section never needs to
-   exist again.
-3. **`projects/training/server/`** names `crossfire-rooms` three times, in prose
-   comparing the two Durable Objects. Those are accurate *today* — that is what
-   the worker is still called. They change when the worker does, not before.
+**Done, in the order this file insists on.**
+
+1. **`kondrite-rooms` is deployed.** Version `503890f3`. Health, ice, rooms and
+   the origin allowlist all answer; `iceServers` is empty, which matches what
+   the old worker served — neither has ever had a TURN key, so nothing was
+   lost in the move.
+2. **The old worker is a pass-through**, `server/passthrough/`, and both URLs
+   feed one list. *Measured rather than assumed:* a room hosted against
+   `crossfire-rooms` is listed by `kondrite-rooms`, and one hosted against
+   `kondrite-rooms` is listed by `crossfire-rooms`.
+3. **`ROOM_HOST` moved**, and only then.
+
+**Two things this cost, and both are worth writing down.**
+
+**A pass-through cannot be a `fetch`.** The obvious shim —
+`fetch("https://kondrite-rooms.…")` — deploys cleanly, runs, and returns
+Cloudflare's own *"There is nothing here yet"* page to every caller, because a
+Worker calling another Worker's workers.dev hostname does not route. It is a
+nasty failure because the worker is working perfectly: it is faithfully handing
+back the 404 it was given, and from outside it is indistinguishable from the
+old worker having been deleted. The fix is a **service binding**
+(`services: [{ binding: "NEW", service: "kondrite-rooms" }]`), which never
+leaves the runtime.
+
+**The rate limiter survives the hop.** `rooms-core.mjs` buckets per
+`cf-connecting-ip` at 120 tokens and 4/s, and a proxy that lost the caller's
+address would put every old client in one bucket. It does not: a burst of 160
+through the shim left the *direct* path throttled for the same machine — 23 of
+30 refused — against 28 of 30 in an all-direct control. Proxied traffic is
+charged to the player's own address.
+
+**Retiring the shim:** `npx wrangler@latest tail crossfire-rooms`, and when it
+goes quiet, delete the worker and delete `server/passthrough/`. Nothing else
+refers to it.
+
+### Still open
+
+1. **The custom route is dropped, not pending** — see §2. The domain is not on
+   Cloudflare and is not being moved there.
+2. **`projects/training/server/`** names `crossfire-rooms` four times (not
+   three: `worker.mjs:20`, `:21`, `:1005`, `wrangler.jsonc:6`), in prose
+   comparing the two Durable Objects. Those are accurate *today* — that is
+   still what the deployed worker is called. They change when the shim is
+   retired, not before.
 
 ## What this does not touch
 
@@ -271,16 +321,30 @@ that is the single most useful assertion in this whole job.
 grep -ri crossfire projects/kondrite --exclude-dir=node_modules
 ```
 
-Four things are allowed to survive that grep, and **every one of them is
+Some things are allowed to survive that grep, and **every one of them is
 deliberate rather than missed**:
 
 - `migrate.js`'s table of old key names, and the `SURVEY_LEGACY` line beside it
-- the `crossfire` command-palette alias
-- the redirect stub at the old path
+- `test/save.js`, which is the test *for* that table and has to name the old
+  keys to assert they move
+- `server/passthrough/`, the shim — its whole job is to be the old name, so it
+  is called `crossfire-rooms` on purpose and goes away with the worker
+- the comment on `ROOM_HOST` in `index.html`, which names the old host to say
+  why moving the string was safe. It goes when the shim does
 - prose in the docs that is about the old name on purpose — this file, and the
   history in `SURVEY-PLAN.md`
 
 Anything else that grep finds is a miss.
+
+**Two things this list used to name are not in that path at all**, so looking
+for them there finds nothing and proves nothing: the `crossfire`
+command-palette alias is at the site root (`index.html:568`), and the redirect
+stub is `projects/crossfire/index.html` — which does not contain the word
+anyway, only lives at it. Check those two by hand:
+
+```sh
+grep -n crossfire index.html && cat projects/crossfire/index.html
+```
 
 Then the suites, all of which touch the globals or the page's load order:
 

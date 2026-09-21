@@ -27469,13 +27469,17 @@
      see each other, with no error anywhere. A split room list is worse than an
      outage, because nothing announces it.
 
-     So this stays on the old host until `kondrite-rooms` is deployed **and**
-     the old worker has been replaced with a pass-through to it. Both URLs feed
-     one list at that point, and only then is it safe to move this string. See
-     RENAME-KONDRITE.md §2 — which also says to put the service on a custom
-     route, `rooms.ricmassey.com/*`, so the worker's name never appears in a URL
-     again and this paragraph never has to exist twice. */
-  const ROOM_HOST = "https://crossfire-rooms.rmbuster82.workers.dev";
+     So this waited until `kondrite-rooms` was deployed **and** the old worker
+     had been replaced with a pass-through to it. Both of those are done, and
+     both URLs now feed one list — measured: a room hosted on the old address
+     appears on the new one and the other way round. An old client still asking
+     `crossfire-rooms` is therefore looking at exactly this list, and is only
+     paying one extra hop inside the runtime for it.
+
+     The old worker is `server/passthrough/`, and it is deleted when its logs
+     go quiet. Until then, never point this at anything the shim does not also
+     reach. See RENAME-KONDRITE.md §2. */
+  const ROOM_HOST = "https://kondrite-rooms.rmbuster82.workers.dev";
 
   const ROOM_SERVICE =
     (new URLSearchParams(location.search).get("rooms") || ROOM_HOST)
