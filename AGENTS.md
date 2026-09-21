@@ -342,9 +342,45 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   Several were deliberately left as typed because the right film was not guessable —
   don't "fix" `Curtis`, `Moments`, `The Sound`, `Greater good`, `RIP`, `Code 3`,
   `Mercy` or `Obsession` without asking him which ones they are.
-- **There is no poster art and that is deliberate.** A few hundred posters is a few
-  hundred requests at someone else's server, which hard rule 4 rules out. The room is
-  typographic on purpose; don't "improve" it with a CDN.
+- **Poster art is pulled once and committed — never hotlinked.**
+  `projects/entertainment/pull-tmdb.py` resolves each title against TMDB, writes the
+  facts into `entertainment-data.js` and downloads the images into `assets/posters/`
+  (and `assets/backdrops/` for starred titles). The pages then read files out of this
+  repo, so the live room still makes **no external request** and still works opened off
+  disk. That is the line, and it is hard rule 4's actual line: a CDN `<img src>` is a
+  dependency and is out; a file in `assets/` is not. Ric asked for the pictures
+  (2026-09-21), which is the "unless asked" clause — but it bought art, not a CDN.
+- **The key lives in the Keychain** (`tmdb`, account `ricmassey`), never in the repo —
+  same rule as `apex-als`. The script is skip-by-default: a row that already has facts
+  is left alone unless `--refresh` says otherwise.
+- **A hand-set `tmdb:` id is never overwritten.** That is how the ambiguous titles get
+  settled, and a re-run must not undo the settling. The script reports what it could not
+  match rather than guessing — `Greater` is three films and a wrong poster is a lie.
+- **No poster file yet? Then no `<img>` at all.** The tile falls back to a typographic
+  plate, tinted by a hash of the id. This is a designed state, not a broken one: the
+  page has to be right on the day it ships, not only after a script gets run. Never
+  emit an `<img>` that might 404 — 363 broken frames is worse than no pictures.
+- **Links out are not dependencies.** Every tile offers "Watch on <service>" (a title
+  *search* URL, never a per-title deep link — those rot) plus a JustWatch fallback.
+  Nothing loads until it is clicked, so the page still opens off disk with no network.
+  Availability itself is never stored: things leave Hulu monthly, and a confidently
+  stale answer is worse than resolving it at click time.
+- **Two pages, one core.** `entertainment.html` is the app (billboard, service row,
+  shelves); `entertainment-library.html` is the catalog (every title, filters, posters
+  or dense list). Both load `assets/entertainment-room.js`, which owns the merge rules,
+  the write path, the detail sheet, the owner panel and the export. Hard rule 3 is about
+  not flattening the *site* into one template — inside one room, one core is how the two
+  pages keep telling the same truth. Don't fork it.
+- **Shelves are ordered by fact, never by mood.** Starred, recently watched, queued,
+  on-a-service, franchise, genre, decade. No "cosy Sunday" rows.
+- **`FIELDS` appears twice on purpose and must match** — in `pull-tmdb.py` and in
+  `entertainment-room.js`'s export. The script and the Export button both rewrite the
+  data file; if the two lists disagree, every export fights the last pull.
+- **There are no watch dates for the original 238.** They came off a piece of paper, not
+  a log. "Recently watched" reads `seen` (stamped whenever a title is marked watched
+  from the page) and falls back to position in the committed file, latest last. Don't
+  invent dates for the backlog — the shelf says so in its own subtitle until real ones
+  land.
 
 **Apex is pulled, not written.** `apex.html` reads `projects/apex/apex-data.js`, which
 `projects/apex/pull-apex.py` generates from the Apex Legends Status API. Rules:

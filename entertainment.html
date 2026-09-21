@@ -3,38 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Entertainment — watched and queued</title>
-  <meta name="description" content="Everything Ric has watched and everything lined up next — a few hundred films and shows, searchable, with the queue sorted by where you'd actually find them.">
+  <title>Entertainment — what's on tonight</title>
+  <meta name="description" content="Ric's films and shows as something you can actually watch from: starred first, then what he saw last, then the queue — with a way in to whichever app it's on.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0f0f0f">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Entertainment">
-  <meta property="og:title" content="Entertainment — watched and queued">
-  <meta property="og:description" content="What's been watched, and what's next.">
+  <meta property="og:title" content="Entertainment — what's on tonight">
+  <meta property="og:description" content="Starred first, then what he saw last, then the queue.">
   <meta property="og:url" content="https://ricmassey.com/entertainment.html">
   <link rel="canonical" href="https://ricmassey.com/entertainment.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f0f0f'/><rect x='18' y='26' width='64' height='48' rx='6' fill='none' stroke='%23f5c518' stroke-width='6'/><path d='M18 40h64M18 60h64' stroke='%23f5c518' stroke-width='4'/><path d='M44 44v12l11-6z' fill='%23f5c518'/></svg>">
 
   <style>
-    /* ENTERTAINMENT
+    /* ENTERTAINMENT — the app
        ────────────────────────────────────────────────────────────────────────
-       The room is a marquee, not a storefront. Every other list-shaped site
-       leans on poster art, and there is none here and no way to get any —
-       hard rule 4 keeps external requests out, and a few hundred posters would
-       be a few hundred fetches at somebody else's server. So the design is
-       typographic on purpose: the title IS the artwork, set large, and the
-       chips underneath carry what you actually need (where to find it, how
-       many films are in it, whether he starred it).
+       This room is built the way the streaming apps are built, because the job
+       is theirs: get from "hm" to "playing" without reading 363 titles. What
+       they all do, and what this does —
 
-       Two states the eye has to separate at a glance, because the whole page
-       is one long list of them:
-         watched  — gold rule, gold check, settled
-         queued   — cold blue, unfinished, and the one that carries a "where"
+         · the catalog is NOT the front page. Shelves are, a dozen tiles at a
+           time. The whole list lives next door in entertainment-library.html.
+         · one billboard at the top with one thing on it, big.
+         · every tile has exactly one verb. Here that verb can't be Play — the
+           films are on somebody else's service — so it is "Watch on Hulu",
+           which is the same thing one hop out.
+         · shelves are ordered by FACT, never by mood. Starred, last seen,
+           queued, franchise, genre, decade. No "cosy Sunday" here.
 
-       Palette is IMDb's charcoal-and-amber by way of a cinema marquee, but the
-       contrast is ours: --dim clears 7:1 on --bg and nothing sets type under
-       11px. The gold is used for marks and rules; where it carries WORDS it is
-       on charcoal, which it clears easily. */
+       The art: posters are pulled once by projects/entertainment/pull-tmdb.py
+       and committed into assets/posters/. They are files in this repo, so the
+       page still makes no external request and still works opened off disk —
+       hard rule 4 is about what the page DEPENDS on, and it depends on nothing.
+       Until that script has run there are no <img> tags at all (a missing
+       poster must not become 363 404s), and the typographic tile below is what
+       shows. It is a designed state, not a broken one.
+
+       Two states the eye separates at a glance:
+         watched  — gold, settled
+         queued   — cold blue, unfinished, carries a "where"
+
+       Contrast rules carried over: --dim clears 7:1 on --bg, nothing sets type
+       under 11px. Gold carries words only on charcoal. */
     :root {
       --bg:      #0f0f0f;
       --panel:   #171717;
@@ -50,10 +60,11 @@
       --ease:    cubic-bezier(0.22, 0.61, 0.36, 1);
       --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --tile: 152px;          /* poster width; the shelf math follows from it */
+      --gut: 14px;
     }
 
     * { box-sizing: border-box; }
-
     html { -webkit-text-size-adjust: 100%; }
 
     body {
@@ -63,431 +74,686 @@
       font-family: var(--sans);
       font-size: 16px;
       line-height: 1.5;
-      /* the page is one long scroll; never let a card push it sideways */
       overflow-x: hidden;
     }
 
     a { color: inherit; }
 
-    .wrap { width: min(1180px, 100% - 2rem); margin-inline: auto; }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    }
 
     /* ── the strip ── the one line that says how big the list is */
     .strip {
       background: var(--gold);
       color: #0f0f0f;
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.12em;
+      font: 700 0.72rem/1 var(--mono);
+      letter-spacing: 0.1em;
       text-transform: uppercase;
       text-align: center;
-      padding: 0.5rem 1rem;
+      padding: 8px 12px;
     }
 
     /* ── the bar ── */
-    .barwrap {
-      position: sticky; top: 0; z-index: 40;
-      background: rgba(15, 15, 15, 0.94);
-      backdrop-filter: blur(10px);
+    .barwrap { position: sticky; top: 0; z-index: 40; }
+    .bar {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 10px 20px;
+      background: rgba(15, 15, 15, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--line);
     }
-    .bar {
-      display: flex; align-items: center; gap: 1.2rem;
-      padding: 0.75rem 0;
-      width: min(1180px, 100% - 2rem); margin-inline: auto;
-    }
     .mark {
-      font-weight: 800;
-      font-size: 0.95rem;
-      letter-spacing: 0.02em;
-      text-decoration: none;
-      color: #0f0f0f;
+      font: 800 0.95rem/1 var(--sans);
+      letter-spacing: -0.01em;
       background: var(--gold);
-      padding: 0.3rem 0.6rem;
-      border-radius: 5px;
+      color: #0f0f0f;
+      padding: 7px 11px;
+      border-radius: 6px;
+      text-decoration: none;
       white-space: nowrap;
-      flex-shrink: 0;
     }
 
     /* cinema marquee tab strip — bulbs under the room you're in */
-    nav.marquee {
-      display: flex; align-items: center;
-      gap: 1.15rem;
+    .marquee {
+      display: flex;
+      gap: 2px;
       margin-left: auto;
       overflow-x: auto;
       scrollbar-width: none;
+      -ms-overflow-style: none;
     }
-    nav.marquee::-webkit-scrollbar { display: none; }
-    nav.marquee a, nav.marquee .here {
+    .marquee::-webkit-scrollbar { display: none; }
+    .marquee a, .marquee .here {
       position: relative;
-      font-size: 0.78rem;
-      letter-spacing: 0.04em;
-      text-decoration: none;
+      padding: 8px 10px 12px;
+      font: 600 0.8rem/1 var(--sans);
       color: var(--dim);
-      padding: 0.35rem 0;
+      text-decoration: none;
       white-space: nowrap;
-      transition: color 0.18s var(--ease);
+      transition: color 0.15s var(--ease);
     }
-    nav.marquee a:hover, nav.marquee a:focus-visible { color: var(--ink); }
-    nav.marquee .here { color: var(--gold); font-weight: 600; }
-    nav.marquee .here::after {
+    .marquee a:hover { color: var(--ink); }
+    .marquee .here { color: var(--gold); }
+    .marquee .here::after {
       content: "";
-      position: absolute; left: 0; right: 0; bottom: -0.1rem;
+      position: absolute;
+      left: 8px; right: 8px; bottom: 5px;
       height: 3px;
-      background-image: radial-gradient(circle, var(--gold) 38%, transparent 42%);
+      border-radius: 3px;
+      background-image: radial-gradient(circle, var(--gold) 45%, transparent 47%);
       background-size: 7px 3px;
       background-repeat: repeat-x;
     }
 
-    /* ── hero ── */
-    .hero { padding: 3.2rem 0 2rem; }
-    .kicker {
-      font-family: var(--mono);
-      font-size: 0.7rem;
-      letter-spacing: 0.3em;
+    /* ── the billboard ──
+       One title, big, the way every app opens. It is always a starred one:
+       twelve things he actually wants is the best first frame this data has. */
+    .board {
+      position: relative;
+      min-height: 62vh;
+      transition: min-height 0.2s var(--ease);
+      display: flex;
+      align-items: flex-end;
+      padding: 40px 20px 34px;
+      border-bottom: 1px solid var(--line);
+      overflow: hidden;
+    }
+    .board-art {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center 22%;
+    }
+    /* No backdrop pulled yet? Then the billboard is lit by the title's own
+       colour — the same hue its tile gets — rather than sitting there black.
+       A shorter board too: 62vh of nothing is not a hero, it is a hole. */
+    .board.noart { min-height: 38vh; }
+    .board.noart .board-art {
+      background:
+        radial-gradient(120% 90% at 12% 108%, var(--lit, #242424) 0%, transparent 62%),
+        linear-gradient(120deg, #1b1b1b, #101010 58%, #16130d);
+    }
+    .board.noart .board-art::after { background: none; }
+    /* the scrim is what keeps 7:1 over a picture we have never seen */
+    .board-art::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(to top, var(--bg) 4%, rgba(15,15,15,0.86) 34%, rgba(15,15,15,0.40) 66%, rgba(15,15,15,0.62)),
+        linear-gradient(to right, rgba(15,15,15,0.92) 0%, rgba(15,15,15,0.5) 46%, rgba(15,15,15,0.15) 100%);
+    }
+    .board-in { position: relative; max-width: 620px; }
+    .board .kicker {
+      margin: 0 0 10px;
+      font: 700 0.7rem/1 var(--mono);      /* 11.2px — the 11px floor is why */
+      letter-spacing: 0.18em;
       text-transform: uppercase;
       color: var(--gold);
-      margin: 0 0 0.9rem;
     }
-    .hero h1 {
-      margin: 0 0 0.9rem;
-      font-size: clamp(2.1rem, 7vw, 3.6rem);
-      line-height: 1.04;
+    .board h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2.1rem, 7vw, 3.9rem);
+      line-height: 1.02;
+      letter-spacing: -0.03em;
+      font-weight: 800;
+      text-wrap: balance;
+    }
+    .board-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+      margin: 0 0 14px;
+      font: 600 0.8rem/1.3 var(--sans);
+      color: var(--dim);
+    }
+    .board-meta .score { color: var(--gold); }
+    .board-blurb {
+      margin: 0 0 20px;
+      color: #d6d6d6;
+      max-width: 54ch;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .board-acts { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    /* ── buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border: 1px solid var(--line-hi);
+      border-radius: 7px;
+      background: var(--raised);
+      color: var(--ink);
+      font: 700 0.85rem/1 var(--sans);
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.12s var(--ease), background 0.15s var(--ease), border-color 0.15s var(--ease);
+    }
+    .btn:hover { background: #262626; border-color: #4a4a4a; }
+    .btn:active { transform: translateY(1px); }
+    .btn-gold {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #0f0f0f;
+    }
+    .btn-gold:hover { background: #ffd230; border-color: #ffd230; }
+    .btn svg { flex: none; }
+    :where(button, a, input, select):focus-visible {
+      outline: 2px solid var(--gold);
+      outline-offset: 2px;
+    }
+
+    /* ── shelves ── */
+    .shelves { padding: 26px 0 60px; }
+    .shelf { margin: 0 0 32px; }
+    .shelf-head {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding: 0 20px 10px;
+    }
+    .shelf-head h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+    .shelf-head .n {
+      font: 600 0.72rem/1 var(--mono);     /* 11.5px */
+      color: var(--dim);
+      letter-spacing: 0.06em;
+    }
+    .shelf-head .all {
+      margin-left: auto;
+      font: 700 0.75rem/1 var(--sans);
+      color: var(--dim);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .shelf-head .all:hover { color: var(--gold); }
+
+    .rail-wrap { position: relative; }
+    .rail {
+      display: flex;
+      gap: var(--gut);
+      padding: 4px 20px 6px;
+      overflow-x: auto;
+      scroll-snap-type: x proximity;
+      /* without this the snap eats the gutter and the first tile — numeral and
+         all — sits flush against the left edge of the window */
+      scroll-padding-inline: 20px;
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .rail::-webkit-scrollbar { display: none; }
+
+    /* the arrows are the app tell; they hide on touch, where you just swipe */
+    .nudge {
+      position: absolute;
+      top: 0; bottom: 14px;
+      width: 46px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      cursor: pointer;
+      color: var(--ink);
+      background: linear-gradient(to right, rgba(15,15,15,0.95), rgba(15,15,15,0));
+      opacity: 0;
+      transition: opacity 0.18s var(--ease);
+      z-index: 2;
+    }
+    .nudge.right {
+      right: 0;
+      background: linear-gradient(to left, rgba(15,15,15,0.95), rgba(15,15,15,0));
+    }
+    .nudge.left { left: 0; }
+    .rail-wrap:hover .nudge, .nudge:focus-visible { opacity: 1; }
+    .nudge[hidden] { display: none; }
+    @media (hover: none) { .nudge { display: none; } }
+
+    /* ── a tile ── */
+    .tile {
+      flex: 0 0 var(--tile);
+      width: var(--tile);
+      scroll-snap-align: start;
+      border: 0;
+      padding: 0;
+      background: none;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+      display: block;
+    }
+    .art {
+      position: relative;
+      display: block;
+      aspect-ratio: 2 / 3;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      transition: transform 0.16s var(--ease), border-color 0.16s var(--ease), box-shadow 0.16s var(--ease);
+    }
+    .tile:hover .art, .tile:focus-visible .art {
+      transform: translateY(-4px) scale(1.03);
+      border-color: var(--line-hi);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.55);
+    }
+    .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    /* the state rule: gold along the foot of anything seen, blue for queued */
+    .art::after {
+      content: "";
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 3px;
+      background: var(--queue);
+    }
+    .is-watched .art::after { background: var(--gold); }
+
+    /* the typographic tile — what shows before the posters are pulled, and
+       for anything TMDB could not settle. Designed, not empty. */
+    .plate {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 12px 11px 14px;
+      background:
+        linear-gradient(160deg, rgba(255,255,255,0.05), rgba(0,0,0,0.25)),
+        var(--plate-bg, #1a1a1a);
+    }
+    /* the badge is drawn over the plate, so the plate makes room for it */
+    .art:has(.badge) .plate { padding-top: 36px; }
+    .plate b {
+      font-size: 1.02rem;
+      line-height: 1.16;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      overflow-wrap: anywhere;
+      display: -webkit-box;
+      -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .plate span {
+      font: 600 0.7rem/1.3 var(--mono);    /* 11.2px */
+      color: var(--dim);
+      letter-spacing: 0.04em;
+    }
+
+    .badge {
+      position: absolute;
+      top: 8px; left: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 7px;
+      border-radius: 5px;
+      font: 800 0.7rem/1 var(--mono);      /* 11.2px */
+      background: var(--gold);
+      color: #0f0f0f;
+    }
+    .badge.seen { background: rgba(15,15,15,0.82); color: var(--gold); }
+
+    .tile-name {
+      display: block;
+      margin: 8px 2px 0;
+      font-size: 0.82rem;
+      font-weight: 600;
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .tile-sub {
+      display: block;
+      margin: 2px 2px 0;
+      font: 600 0.7rem/1.3 var(--mono);
+      color: var(--dim);
+    }
+
+    /* ── the ranked shelf ──
+       Disney+ and Netflix both count their top row out loud, and a numeral is
+       the cheapest hierarchy there is: it says "this one first" with no art at
+       all. Twelve starred titles is exactly what that row is for. */
+    .tile.ranked {
+      display: grid;
+      grid-template-columns: auto var(--tile);
+      flex-basis: auto;
+      width: auto;
+      column-gap: 2px;
+    }
+    .ranked .rank {
+      grid-column: 1; grid-row: 1;
+      align-self: end;                    /* baseline on the poster's foot */
+      font: 800 clamp(3.4rem, 8vw, 5.2rem)/0.74 var(--sans);
+      letter-spacing: -0.07em;
+      color: var(--bg);
+      -webkit-text-stroke: 2px var(--line-hi);
+      user-select: none;
+      transition: -webkit-text-stroke-color 0.16s var(--ease);
+    }
+    .ranked .art { grid-column: 2; grid-row: 1; }
+    .ranked .tile-name { grid-column: 2; grid-row: 2; }
+    .ranked .tile-sub { grid-column: 2; grid-row: 3; }
+    .ranked:hover .rank, .ranked:focus-visible .rank { -webkit-text-stroke-color: var(--gold); }
+
+    /* ── the brand row ──
+       Disney+ puts Pixar, Marvel and Star Wars in a row of blocks under the
+       billboard. The equivalent fact here is the service a thing is ON, which
+       is also the one question this list exists to answer. Built from the data,
+       so a service Ric never uses never appears and a new one shows up the day
+       he types it. No logos — somebody else's trademark, and a fetch besides.
+       The name, set large, in the colour people know it by. */
+    .brands {
+      display: flex;
+      gap: 10px;
+      padding: 24px 20px 2px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .brands::-webkit-scrollbar { display: none; }
+    .brand {
+      flex: 0 0 auto;
+      min-width: 134px;
+      padding: 15px 16px 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: linear-gradient(150deg, var(--tint, #202020), #141414 78%);
+      color: var(--ink);
+      cursor: pointer;
+      text-align: left;
+      font: inherit;
+      transition: transform 0.14s var(--ease), border-color 0.14s var(--ease);
+    }
+    .brand:hover { transform: translateY(-2px); border-color: var(--line-hi); }
+    .brand b {
+      display: block;
+      font-size: 0.98rem;
+      font-weight: 800;
+      letter-spacing: -0.015em;
+      color: var(--face, var(--ink));
+    }
+    .brand span {
+      display: block;
+      margin-top: 3px;
+      font: 600 0.7rem/1 var(--mono);      /* 11.2px */
+      color: var(--dim);
+      letter-spacing: 0.04em;
+    }
+    .brand[aria-pressed="true"] { border-color: var(--gold); }
+
+    .filterbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 16px;
+    }
+    .clearfilter {
+      padding: 5px 11px;
+      border: 1px solid var(--line-hi);
+      border-radius: 20px;
+      background: var(--raised);
+      color: var(--dim);
+      font: 700 0.72rem/1.4 var(--sans);
+      cursor: pointer;
+    }
+    .clearfilter:hover { color: var(--ink); }
+
+    /* ── the detail sheet ── the "names aren't enough" answer ── */
+    dialog.sheet {
+      width: min(760px, calc(100vw - 32px));
+      padding: 0;
+      border: 1px solid var(--line-hi);
+      border-radius: 14px;
+      background: var(--panel);
+      color: var(--ink);
+      overflow: hidden;
+    }
+    dialog.sheet::backdrop { background: rgba(0,0,0,0.72); backdrop-filter: blur(3px); }
+    .sheet-in { display: flex; gap: 20px; padding: 20px; }
+    .sheet-art {
+      flex: 0 0 170px;
+      aspect-ratio: 2 / 3;
+      border-radius: 9px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      position: relative;
+      background: var(--raised);
+    }
+    .sheet-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .sheet-body { min-width: 0; flex: 1; }
+    .sheet-body h3 {
+      margin: 0 0 6px;
+      font-size: 1.5rem;
+      line-height: 1.12;
       letter-spacing: -0.02em;
       font-weight: 800;
     }
-    .hero p {
-      margin: 0;
-      max-width: 54ch;
+    .sheet-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      margin: 0 0 12px;
+      font: 600 0.78rem/1.3 var(--sans);
       color: var(--dim);
-      font-size: 1rem;
     }
-
-    .tally {
-      display: flex; flex-wrap: wrap; gap: 0.6rem 2.4rem;
-      margin: 1.9rem 0 0;
-      padding: 1.1rem 0 0;
+    .sheet-meta .score { color: var(--gold); }
+    .sheet-body p.blurb { margin: 0 0 16px; color: #d6d6d6; }
+    .sheet-body p.thin {
+      margin: 0 0 16px;
+      color: var(--dim);
+      font-size: 0.85rem;
+      border-left: 2px solid var(--line-hi);
+      padding-left: 10px;
+    }
+    .sheet-body p.thin code { font-family: var(--mono); font-size: 0.95em; color: #cfcfcf; }
+    .sheet-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+    .sheet-own {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 14px 0 0;
+      padding: 14px 0 0;
       border-top: 1px solid var(--line);
     }
-    .tally div { display: flex; flex-direction: column; gap: 0.15rem; }
-    .tally b {
-      font-size: 1.65rem; font-weight: 800; line-height: 1;
-      font-variant-numeric: tabular-nums;
-    }
-    .tally span {
-      /* 0.7rem = 11.2px — the 11px floor is the reason, don't shrink it */
-      font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase;
-      color: var(--dim);
-    }
-    .tally .t-watched b { color: var(--gold); }
-    .tally .t-queue b   { color: var(--queue); }
-
-    /* ── controls ── */
-    .controls {
-      position: sticky; top: 53px; z-index: 30;
-      background: var(--bg);
-      padding: 1rem 0 0.9rem;
-      border-bottom: 1px solid var(--line);
-      margin-bottom: 1.6rem;
-    }
-    .controls-row { display: flex; flex-wrap: wrap; gap: 0.7rem; align-items: center; }
-
-    .tabs { display: flex; gap: 0.3rem; background: var(--panel); padding: 0.22rem; border-radius: 8px; }
-    .tabs button {
-      min-height: 38px;
-      padding: 0 0.95rem;
-      border: 0; border-radius: 6px;
-      background: transparent;
-      color: var(--dim);
-      font: inherit; font-size: 0.8rem; font-weight: 600;
-      cursor: pointer;
-      transition: background 0.18s var(--ease), color 0.18s var(--ease);
-    }
-    .tabs button:hover { color: var(--ink); }
-    .tabs button[aria-selected="true"] { background: var(--gold); color: #0f0f0f; }
-
-    .search {
-      flex: 1 1 14rem; min-width: 0;
-      display: flex; align-items: center; gap: 0.55rem;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 0 0.8rem;
-      min-height: 40px;
-      transition: border-color 0.18s var(--ease);
-    }
-    .search:focus-within { border-color: var(--gold); }
-    .search svg { flex-shrink: 0; color: var(--dim); }
-    .search input {
-      flex: 1; min-width: 0;
-      background: none; border: 0; outline: none;
-      color: var(--ink); font: inherit; font-size: 0.88rem;
-      padding: 0.45rem 0;
-    }
-    .search input::placeholder { color: var(--dim); }
-
-    select.sort {
-      min-height: 40px;
-      background: var(--panel);
-      color: var(--ink);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 0 0.7rem;
-      font: inherit; font-size: 0.82rem;
-      cursor: pointer;
-    }
-
-    .btn {
-      min-height: 40px;
-      display: inline-flex; align-items: center; gap: 0.45rem;
-      padding: 0 0.95rem;
-      border: 1px solid var(--line-hi);
-      border-radius: 8px;
-      background: var(--panel);
-      color: var(--ink);
-      font: inherit; font-size: 0.82rem; font-weight: 600;
-      cursor: pointer;
-      transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
-    }
-    .btn:hover { border-color: var(--gold); }
-    .btn-gold { background: var(--gold); color: #0f0f0f; border-color: var(--gold); }
-    .btn-gold:hover { background: #ffd83a; }
-
-    .count {
-      font-size: 0.75rem; color: var(--dim);
-      font-variant-numeric: tabular-nums;
-      margin: 0 0 1rem;
-    }
-
-    /* ── the list ── */
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
-      gap: 0.75rem;
-      padding: 0 0 3rem;
-      list-style: none; margin: 0;
-    }
-
-    .card {
-      position: relative;
-      display: flex; flex-direction: column; gap: 0.55rem;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-left: 3px solid var(--line-hi);
-      border-radius: 8px;
-      padding: 0.85rem 0.9rem;
-      transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
-    }
-    .card:hover { background: var(--raised); border-color: var(--line-hi); }
-    .card.is-watched { border-left-color: var(--gold-dk); }
-    .card.is-queue   { border-left-color: var(--queue); }
-    .card.is-pick    { border-left-color: var(--gold); }
-
-    .card h3 {
-      margin: 0;
-      font-size: 0.97rem;
-      font-weight: 600;
-      line-height: 1.3;
-      letter-spacing: -0.005em;
-      /* long franchise titles must not stretch the column */
-      overflow-wrap: anywhere;
-    }
-
-    .chips { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: auto; }
-    .chip {
-      /* 11.2px. The floor is 11px; this is the smallest step that clears it. */
-      font-size: 0.7rem;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      font-weight: 600;
-      padding: 0.2rem 0.45rem;
-      border-radius: 4px;
-      border: 1px solid var(--line-hi);
-      color: var(--dim);
-      white-space: nowrap;
-    }
-    .chip-where { color: var(--queue); border-color: rgba(125, 211, 252, 0.4); }
-    .chip-buy   { color: var(--dim); }
-    .chip-count { color: var(--gold); border-color: rgba(245, 197, 24, 0.4); }
-    .chip-pick  { color: #0f0f0f; background: var(--gold); border-color: var(--gold); }
-    .chip-seen  { color: var(--gold); border-color: rgba(245, 197, 24, 0.4); }
-    .chip-local { color: var(--queue); border-color: rgba(125, 211, 252, 0.4); border-style: dashed; }
-
-    .card-note { margin: 0; font-size: 0.74rem; color: var(--dim); }
-
-    /* owner controls, only drawn when signed in */
-    .acts { display: flex; flex-wrap: wrap; gap: 0.35rem; padding-top: 0.15rem; }
-    .acts button {
-      min-height: 34px;
-      padding: 0 0.6rem;
+    .sheet-own button {
+      padding: 7px 11px;
+      font-size: 0.78rem;
       border-radius: 6px;
       border: 1px solid var(--line-hi);
-      background: transparent;
+      background: var(--raised);
       color: var(--dim);
-      font: inherit; font-size: 0.72rem; font-weight: 600;
       cursor: pointer;
-      transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+      font-weight: 700;
     }
-    .acts button:hover { color: var(--ink); border-color: var(--gold); }
-    .acts button.danger:hover { color: #fca5a5; border-color: #fca5a5; }
+    .sheet-own button:hover { color: var(--ink); border-color: #4a4a4a; }
+    .sheet-own button.danger:hover { color: #ff8f8f; border-color: #6d3535; }
+    .sheet-x {
+      position: absolute;
+      top: 12px; right: 12px;
+      width: 30px; height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 1px solid var(--line-hi);
+      background: rgba(15,15,15,0.7);
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      z-index: 2;
+    }
+    @media (max-width: 640px) {
+      .sheet-in { flex-direction: column; }
+      .sheet-art { flex: none; width: 128px; }
+    }
+
+    /* ── the search box — the only way in that is faster than a shelf ── */
+    .find {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex: 0 1 280px;
+      padding: 8px 12px;
+      border: 1px solid var(--line-hi);
+      border-radius: 8px;
+      background: var(--raised);
+      color: var(--dim);
+    }
+    .find input {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      background: none;
+      color: var(--ink);
+      font: 500 0.85rem/1.2 var(--sans);
+      outline: none;
+    }
+    .find input::placeholder { color: #8c8c8c; }
+    @media (max-width: 720px) { .find { display: none; } }
+
+    .results { padding: 22px 20px 0; }
+    .results .count {
+      margin: 0 0 14px;
+      font: 600 0.72rem/1 var(--mono);
+      color: var(--dim);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(var(--tile), 1fr));
+      gap: 22px var(--gut);
+      margin: 0;
+      padding: 0 0 40px;
+      list-style: none;
+    }
+    .grid .tile { flex: none; width: auto; }
 
     .empty {
       grid-column: 1 / -1;
-      padding: 3rem 1rem;
-      text-align: center;
+      padding: 30px 0;
       color: var(--dim);
-      border: 1px dashed var(--line-hi);
-      border-radius: 10px;
     }
-
-    /* ── the picker ── */
-    .picked {
-      margin: 0 0 1.4rem;
-      padding: 1.1rem 1.2rem;
-      border: 1px solid var(--gold);
-      border-radius: 10px;
-      background: linear-gradient(180deg, rgba(245, 197, 24, 0.09), transparent);
-    }
-    .picked p { margin: 0 0 0.3rem; font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); }
-    .picked strong { font-size: 1.3rem; font-weight: 800; display: block; line-height: 1.2; }
-    .picked span { font-size: 0.8rem; color: var(--dim); }
 
     /* ── owner panel ── */
     .owner {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 26px 20px 40px;
       border-top: 1px solid var(--line);
-      padding: 2.2rem 0 3rem;
     }
-    .owner h2 {
-      margin: 0 0 0.35rem;
-      font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase;
-      color: var(--dim); font-weight: 600;
+    .owner h2 { margin: 0 0 6px; font-size: 1.05rem; }
+    .owner > p { margin: 0 0 16px; color: var(--dim); font-size: 0.9rem; }
+    .ownerstate {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 11px 13px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--panel);
+      font-size: 0.85rem;
+      color: var(--dim);
+      margin-bottom: 14px;
     }
-    .owner > p { margin: 0 0 1.1rem; font-size: 0.85rem; color: var(--dim); max-width: 62ch; }
-
-    .ownerform { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
-    .ownerlabel { font-size: 0.8rem; color: var(--dim); width: 100%; }
-    .ownerform input {
-      min-height: 40px;
-      background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
-      color: var(--ink); font: inherit; font-size: 0.88rem; padding: 0 0.7rem;
-      min-width: 0; flex: 1 1 12rem;
+    .ownerstate .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+      flex: none;
     }
-    .ownerform input:focus { outline: none; border-color: var(--gold); }
-    .ownerform button {
-      min-height: 40px; padding: 0 1rem;
-      border: 1px solid var(--gold); border-radius: 8px;
-      background: var(--gold); color: #0f0f0f;
-      font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer;
-    }
-    .ownermsg { font-size: 0.8rem; color: var(--dim); width: 100%; min-height: 1.2em; }
-
+    .ownerstate .dot.off { background: #3f6f42; }
+    .ownerstate button { margin-left: auto; }
     .addbox {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 0.6rem;
-      background: var(--panel);
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 11px;
+      padding: 15px;
       border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 1rem;
-      margin-bottom: 1rem;
+      border-radius: 9px;
+      background: var(--panel);
+      margin-bottom: 14px;
     }
-    .addbox label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
+    .addbox label {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font: 700 0.72rem/1 var(--mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+    .addbox label.wide { grid-column: 1 / -1; }
+    .addbox label.check {
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 0.8rem;
+    }
     .addbox input, .addbox select {
-      min-height: 42px;
-      background: var(--raised); border: 1px solid var(--line); border-radius: 7px;
-      color: var(--ink); font-family: var(--sans); font-size: 0.9rem; padding: 0 0.6rem;
-      text-transform: none; letter-spacing: normal;
+      padding: 9px 10px;
+      border: 1px solid var(--line-hi);
+      border-radius: 7px;
+      background: var(--raised);
+      color: var(--ink);
+      font: 500 0.9rem/1.2 var(--sans);
     }
-    .addbox input:focus, .addbox select:focus { outline: none; border-color: var(--gold); }
-    .addbox .wide { grid-column: 1 / -1; }
-    .addbox .check { flex-direction: row; align-items: center; gap: 0.5rem; text-transform: none; letter-spacing: normal; font-size: 0.85rem; }
-    .addbox .check input { min-height: 0; width: 18px; height: 18px; accent-color: var(--gold); }
-
-    .ownerstate {
-      display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;
-      font-size: 0.8rem; color: var(--dim);
-      margin-bottom: 1rem;
-    }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
-    .dot.off { background: var(--line-hi); }
-
+    .addbox input[type="checkbox"] { padding: 0; width: 16px; height: 16px; accent-color: var(--gold); }
     .export {
       width: 100%;
-      min-height: 180px;
-      margin-top: 0.8rem;
-      background: #0a0a0a;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      color: var(--dim);
-      font-family: var(--mono);
-      font-size: 11px;
-      line-height: 1.5;
-      padding: 0.8rem;
+      min-height: 190px;
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid var(--line-hi);
+      border-radius: 9px;
+      background: #0b0b0b;
+      color: #cfcfcf;
+      font: 500 0.75rem/1.5 var(--mono);
       resize: vertical;
     }
 
-    footer {
+    footer.foot {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      align-items: center;
+      padding: 20px;
       border-top: 1px solid var(--line);
-      padding: 1.6rem 0 3rem;
-      font-size: 0.78rem;
       color: var(--dim);
-      display: flex; flex-wrap: wrap; gap: 0.5rem 1.2rem;
+      font-size: 0.82rem;
     }
-    footer a { color: var(--gold); text-decoration: none; }
-    footer a:hover { text-decoration: underline; }
+    footer.foot a { color: var(--dim); }
+    footer.foot a:hover { color: var(--gold); }
+    footer.foot #src-note { margin-left: auto; }
 
-    /* ── the shared room switcher ──
-       effects.js injects the button and tags the nav; the room supplies the
-       look and picks the breakpoint. */
-    .roomnav-toggle { display: none; }
-    @media (max-width: 860px) {
-      .roomnav-toggle {
-        display: inline-flex; align-items: center; gap: 0.5rem;
-        margin-left: auto;
-        min-height: 44px; padding: 0 0.9rem;
-        border: 1px solid var(--line-hi); border-radius: 8px;
-        background: var(--panel); color: var(--ink);
-        font: inherit; font-size: 0.72rem; font-weight: 600;
-        letter-spacing: 0.12em; text-transform: uppercase;
-        cursor: pointer;
-      }
-      .roomnav-toggle[aria-expanded="true"] { border-color: var(--gold); }
-      .roomnav-toggle-bars {
-        position: relative; width: 15px; height: 10px;
-        border-top: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
-      }
-      .roomnav-toggle-bars::after {
-        content: ""; position: absolute; inset: calc(50% - 0.75px) 0 auto;
-        border-top: 1.5px solid currentColor;
-      }
-      nav.marquee[data-roomnav] { display: none; }
-      nav.marquee[data-roomnav].roomnav-open {
-        display: flex; order: 3; flex-basis: 100%;
-        flex-direction: column; align-items: stretch;
-        gap: 0; margin-top: 0.7rem; padding-top: 0.4rem;
-        border-top: 1px solid var(--line);
-        overflow: visible;
-      }
-      /* 44px tap targets in the open menu */
-      nav.marquee[data-roomnav].roomnav-open a,
-      nav.marquee[data-roomnav].roomnav-open .here {
-        padding: 0.85rem 0.2rem;
-        font-size: 0.9rem;
-        border-bottom: 1px solid var(--line);
-      }
-      nav.marquee[data-roomnav].roomnav-open .here::after { display: none; }
-      .bar { flex-wrap: wrap; gap: 0.7rem; }
-      .controls { top: 0; position: static; }
-    }
-
-    @media (max-width: 520px) {
-      .hero { padding: 2.2rem 0 1.4rem; }
-      .tally { gap: 0.9rem 1.6rem; }
-      .tally b { font-size: 1.35rem; }
-      .grid { grid-template-columns: 1fr; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      * { transition: none !important; animation: none !important; }
+    @media (max-width: 760px) {
+      .board { min-height: 54vh; }
+      :root { --tile: 124px; }
+      /* three things on one line is a three-line wrap at this width */
+      .shelf-head { flex-wrap: wrap; row-gap: 2px; }
+      .shelf-head h2 { flex: 1 1 100%; }
+      .shelf-head .all { margin-left: auto; }
     }
   </style>
 </head>
@@ -497,6 +763,12 @@
   <div class="barwrap">
     <header class="bar">
       <a class="mark" href="index.html" aria-label="Ric's Terminal">Entertainment</a>
+      <label class="find">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+        </svg>
+        <input type="search" id="q" placeholder="Search the list…" aria-label="Search titles">
+      </label>
       <nav class="marquee" aria-label="Terminal rooms">
         <a href="index.html">terminal</a>
         <a href="orrin.html">orrin</a>
@@ -512,54 +784,29 @@
     </header>
   </div>
 
-  <main class="wrap">
-    <section class="hero">
-      <p class="kicker">Watched &amp; queued</p>
-      <h1>Everything seen,<br>and everything next.</h1>
-      <p>A running list — what's been watched, and what's lined up. The queue says where
-         to find each one, because the hard part was never picking, it was remembering
-         which app it was on.</p>
+  <section class="board" id="board" hidden>
+    <div class="board-art" id="board-art"></div>
+    <div class="board-in">
+      <p class="kicker" id="board-kicker">Starred — top of the list</p>
+      <h1 id="board-title">—</h1>
+      <p class="board-meta" id="board-meta"></p>
+      <p class="board-blurb" id="board-blurb"></p>
+      <div class="board-acts" id="board-acts"></div>
+    </div>
+  </section>
 
-      <div class="tally">
-        <div class="t-watched"><b id="n-watched">0</b><span>Watched</span></div>
-        <div class="t-queue"><b id="n-queue">0</b><span>In the queue</span></div>
-        <div><b id="n-pick">0</b><span>Starred</span></div>
-        <div><b id="n-total">0</b><span>Titles in all</span></div>
-      </div>
-    </section>
+  <main>
+    <div class="brands" id="brands"></div>
 
-    <div class="controls">
-      <div class="controls-row">
-        <div class="tabs" role="tablist" aria-label="Which list">
-          <button role="tab" id="tab-watchlist" aria-selected="true"  data-view="watchlist">Queue</button>
-          <button role="tab" id="tab-watched"   aria-selected="false" data-view="watched">Watched</button>
-          <button role="tab" id="tab-all"       aria-selected="false" data-view="all">All</button>
-        </div>
-
-        <label class="search">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
-            <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
-          </svg>
-          <input type="search" id="q" placeholder="Search titles…" aria-label="Search titles">
-        </label>
-
-        <select class="sort" id="sort" aria-label="Sort order">
-          <option value="az">A–Z</option>
-          <option value="za">Z–A</option>
-          <option value="pick">Starred first</option>
-          <option value="where">By where it is</option>
-        </select>
-
-        <button class="btn btn-gold" id="surprise" type="button">Pick one for me</button>
-      </div>
+    <div class="results" id="results" hidden>
+      <p class="count" id="count"></p>
+      <ul class="grid" id="found"></ul>
     </div>
 
-    <div id="picked" hidden></div>
-    <p class="count" id="count"></p>
-    <ul class="grid" id="grid"></ul>
+    <div class="shelves" id="shelves"></div>
 
     <!-- ══════════════════════════════════════════════════════════════════════
-         EDITING — the bit Ric actually asked for.
+         EDITING — unchanged in kind from the first build of this room.
 
          Signed out this whole section is a password box and nothing else, so a
          visitor never sees a control that would only 401 at them.
@@ -585,415 +832,298 @@
     </section>
   </main>
 
-  <footer class="wrap">
+  <footer class="foot">
     <span>Ric's own internet.</span>
+    <a href="entertainment-library.html">the whole library →</a>
     <a href="index.html">← back to the terminal</a>
     <span id="src-note"></span>
   </footer>
 
+  <dialog class="sheet" id="sheet" aria-label="Title details">
+    <button class="sheet-x" type="button" id="sheet-x" aria-label="Close">✕</button>
+    <div class="sheet-in" id="sheet-in"></div>
+  </dialog>
+
   <script src="entertainment-data.js"></script>
   <script src="assets/owner.js"></script>
+  <script src="assets/entertainment-room.js"></script>
   <script>
-  /* ── where the service lives ──
-     Same lesson climb-host.js learned and wrote down: on localhost a Worker may
-     be running locally, so try the origin first — but a plain static dev server
-     answers /movies with a 404, and taking that as "no data" silently is how a
-     page ends up looking finished and being months stale. So localhost is a
-     preference, not a rule, and the live Worker is the fallback. */
-  const LIVE = 'https://training-log.rmbuster82.workers.dev';
-  const LOCALHOST = location.origin.includes('localhost') || location.origin.includes('127.0.0.1');
-  let HOST = LOCALHOST ? location.origin : LIVE;
-
-  async function hostFetch(path, init) {
-    if (!LOCALHOST) return fetch(LIVE + path, init);
-    try {
-      const r = await fetch(location.origin + path, init);
-      if (r.ok) { HOST = location.origin; return r; }
-    } catch (e) { /* nothing listening locally */ }
-    HOST = LIVE;
-    return fetch(LIVE + path, init);
-  }
-
-  /* HOST is only a guess until something has actually asked, and owner.js takes
-     its host by value at init(). Sign in before the probe settles and every
-     write goes at the dev server instead of the Worker — the same trap
-     ClimbHost.resolved() exists for. Off localhost there is nothing to probe
-     and this costs no round trip. */
-  let probing = null;
-  function resolvedHost() {
-    if (!LOCALHOST) return Promise.resolve(LIVE);
-    if (!probing) probing = hostFetch('/movies', { cache: 'no-store' })
-      .then(() => HOST, () => HOST);
-    return probing;
-  }
-
-  /* ── the three layers ──
-     BASE is the committed file and never changes in the browser. REMOTE is what
-     the Worker knows. LOCAL is what this browser has been told and could not
-     send anywhere. They are merged in that order at read time, so the committed
-     list always renders on its own and every layer above it only ever adds.  */
-  const BASE = (window.ENTERTAINMENT_DATA || []).map(e => Object.freeze({ ...e }));
-  const LKEY = 'entertainmentEdits';
-  let REMOTE = {};
-  let LOCAL = readLocal();
-
-  function readLocal() { try { return JSON.parse(localStorage.getItem(LKEY) || '{}'); } catch (e) { return {}; } }
-  function writeLocal(v) {
-    try {
-      Object.keys(v).length ? localStorage.setItem(LKEY, JSON.stringify(v)) : localStorage.removeItem(LKEY);
-    } catch (e) { /* private mode — the edit still shows this session */ }
-  }
-
-  const slug = t => t.normalize('NFKD').replace(/[̀-ͯ]/g, '')
-    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 120);
-
-  /* One list, every layer folded in. Deleting is a tombstone rather than a
-     removal, because the committed file underneath would otherwise put the row
-     straight back on the next load. */
-  function merged() {
-    const by = new Map();
-    for (const e of BASE) by.set(e.id, { ...e });
-    for (const src of [REMOTE, LOCAL]) {
-      for (const [id, patch] of Object.entries(src || {})) {
-        if (!patch) continue;
-        if (patch.removed) { by.delete(id); continue; }
-        const prev = by.get(id) || { id };
-        by.set(id, { ...prev, ...patch, local: src === LOCAL || prev.local });
-      }
-    }
-    return [...by.values()];
-  }
-
-  /* ── rendering ── */
+  /* The app page. Everything about the LIST — merging, writing, the detail
+     sheet, the owner panel, the export — lives in entertainment-room.js and is
+     shared with the library. What is here is only how this page arranges it:
+     a billboard, a row of services, and shelves. */
   const el = id => document.getElementById(id);
-  const state = { view: 'watchlist', q: '', sort: 'az' };
+  const esc = Room.esc;
 
-  function esc(s) {
-    return String(s).replace(/[&<>"']/g, c =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  /* What the page is showing besides the shelves: a typed query, a service
+     picked off the brand row, or neither. Either one swaps the shelves for a
+     grid; both together narrow it further. */
+  const state = { q: '', service: '' };
+
+  /* ── the brand row ──
+     Disney+ puts Pixar, Marvel and Star Wars in a row of blocks under the
+     billboard. The equivalent fact here is the service a thing is ON, which is
+     also the one question this list exists to answer. Built from the data, so a
+     service Ric never uses never appears and a new one shows up the day he
+     types it. No logos — somebody else's trademark, and a fetch besides. */
+  function renderBrands() {
+    const counts = new Map();
+    for (const e of Room.all())
+      for (const name of Room.places(e)) counts.set(name, (counts.get(name) || 0) + 1);
+
+    const rows = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    el('brands').innerHTML = rows.map(([name, n]) => {
+      const c = Room.tintOf(name);
+      const label = /^buy$/i.test(name) ? 'Have to buy' : name;
+      return '<button class="brand" type="button" data-where="' + esc(name) + '"' +
+        ' aria-pressed="' + (state.service === name) + '"' +
+        ' style="--tint:' + Room.rgba(c, 0.26) + ';--face:' + c + '">' +
+        '<b>' + esc(label) + '</b><span>' + n + ' title' + (n === 1 ? '' : 's') + '</span></button>';
+    }).join('');
   }
 
-  function chips(e) {
-    const out = [];
-    if (e.pick)   out.push('<span class="chip chip-pick">starred</span>');
-    if (e.count)  out.push(`<span class="chip chip-count">${e.count} films</span>`);
-    if (e.series) out.push('<span class="chip chip-count">the lot</span>');
-    if (e.status === 'watchlist' && e.where) {
-      const buy = e.where === 'Buy';
-      out.push(`<span class="chip ${buy ? 'chip-buy' : 'chip-where'}">${esc(buy ? 'have to buy' : e.where)}</span>`);
-    }
-    /* Only in the mixed view. On the Watched tab the chip is on all 238 cards
-       and the tab above already said it — that is noise, not information. */
-    if (e.status === 'watched' && state.view === 'all')
-      out.push('<span class="chip chip-seen">✓ seen</span>');
-    if (e.local) out.push('<span class="chip chip-local">not committed</span>');
-    return out.join('');
+  el('brands').addEventListener('click', ev => {
+    const b = ev.target.closest('button[data-where]');
+    if (!b) return;
+    state.service = state.service === b.dataset.where ? '' : b.dataset.where;
+    renderBrands();
+    renderResults();
+  });
+
+  /* ── the shelves ──
+     Fact, not mood. Starred first because those are the twelve he actually
+     wants; then what he saw last; then the queue.
+
+     There are no watch dates in the list — 238 titles came off a piece of
+     paper, not a log. So "recently watched" reads two things, in order:
+       1. `seen`, an ISO date the room stamps the moment a title is marked
+          watched. Real, and true from here on.
+       2. failing that, position in the committed file, latest last — the order
+          the list was written down in, and the only proxy that exists.
+     Nothing is invented: a title with no date sorts below every title with one,
+     and the shelf says so in its own subtitle until the first date lands. */
+  function recency(e) {
+    return e.seen ? Date.parse(e.seen) : -1e12 + (e.ord || 0);
   }
 
-  function card(e) {
-    const cls = ['card', e.status === 'watched' ? 'is-watched' : 'is-queue'];
-    if (e.pick && e.status === 'watchlist') cls.push('is-pick');
-    const acts = Owner.on() ? `
-      <div class="acts">
-        ${e.status === 'watchlist'
-          ? `<button type="button" data-act="watched" data-id="${esc(e.id)}">Mark watched</button>`
-          : `<button type="button" data-act="watchlist" data-id="${esc(e.id)}">Back to queue</button>`}
-        <button type="button" data-act="pick" data-id="${esc(e.id)}">${e.pick ? 'Unstar' : 'Star'}</button>
-        <button type="button" class="danger" data-act="remove" data-id="${esc(e.id)}">Remove</button>
-      </div>` : '';
-    return `<li class="${cls.join(' ')}">
-      <h3>${esc(e.title)}</h3>
-      ${e.note ? `<p class="card-note">${esc(e.note)}</p>` : ''}
-      <div class="chips">${chips(e)}</div>
-      ${acts}
-    </li>`;
-  }
+  const DECADES = [[2020, 'The 2020s'], [2010, 'The 2010s'], [2000, 'The 2000s'],
+                   [1990, 'The 90s'], [1980, 'The 80s'], [1900, 'Older than that']];
 
-  function visible() {
-    let list = merged();
-    if (state.view !== 'all') list = list.filter(e => e.status === state.view);
-    if (state.q) {
-      const q = state.q.toLowerCase();
-      list = list.filter(e => e.title.toLowerCase().includes(q) ||
-                              (e.where || '').toLowerCase().includes(q));
-    }
+  function shelves(all) {
+    const queue = all.filter(e => e.status === 'watchlist');
+    const seen = all.filter(e => e.status === 'watched');
     const az = (a, b) => a.title.localeCompare(b.title, 'en', { sensitivity: 'base' });
-    const sorts = {
-      az,
-      za: (a, b) => az(b, a),
-      pick: (a, b) => (b.pick ? 1 : 0) - (a.pick ? 1 : 0) || az(a, b),
-      where: (a, b) => (a.where || '~').localeCompare(b.where || '~') || az(a, b)
-    };
-    return list.sort(sorts[state.sort] || az);
-  }
+    const out = [];
 
-  function render() {
-    const all = merged();
-    const watched = all.filter(e => e.status === 'watched').length;
-    const queue = all.filter(e => e.status === 'watchlist').length;
-    el('n-watched').textContent = watched;
-    el('n-queue').textContent = queue;
-    el('n-pick').textContent = all.filter(e => e.pick && e.status === 'watchlist').length;
-    el('n-total').textContent = all.length;
-    el('strip').textContent =
-      `${all.length} titles · ${watched} watched · ${queue} waiting`;
+    out.push({
+      label: 'Starred — start here',
+      note: 'the ones he actually wants',
+      ranked: true,
+      items: all.filter(e => e.pick).sort(az),
+      all: 'entertainment-library.html#starred'
+    });
 
-    const list = visible();
-    el('count').textContent = list.length === all.length
-      ? `${list.length} titles`
-      : `${list.length} of ${all.length} titles`;
-    /* A search that comes back empty inside one tab is the page's easiest lie:
-       there ARE seven Jurassic films, they are just all on the other list. So
-       when the current tab has nothing, say what the other one has. */
-    if (list.length) {
-      el('grid').innerHTML = list.map(card).join('');
-    } else {
-      const other = state.q
-        ? all.filter(e => e.status !== state.view &&
-            (e.title.toLowerCase().includes(state.q.toLowerCase()) ||
-             (e.where || '').toLowerCase().includes(state.q.toLowerCase())))
-        : [];
-      const where = state.view === 'watchlist' ? 'the queue' : 'the watched list';
-      el('grid').innerHTML = `<li class="empty">
-        <p>Nothing on ${where} matches “${esc(state.q)}”.</p>
-        ${other.length ? `<p><button class="btn" type="button" id="lookall">
-           ${other.length} match${other.length === 1 ? '' : 'es'} on the other list — show all</button></p>` : ''}
-      </li>`;
-      const b = document.getElementById('lookall');
-      if (b) b.addEventListener('click', () => {
-        state.view = 'all';
-        for (const o of document.querySelectorAll('.tabs button'))
-          o.setAttribute('aria-selected', String(o.dataset.view === 'all'));
-        render();
+    out.push({
+      label: 'Recently watched',
+      note: seen.some(e => e.seen) ? 'newest first' : 'list order — nothing dated yet',
+      items: seen.slice().sort((a, b) => recency(b) - recency(a)).slice(0, 40),
+      all: 'entertainment-library.html#watched'
+    });
+
+    out.push({
+      label: 'In the queue',
+      note: queue.length + ' waiting',
+      items: queue.slice().sort((a, b) => (b.pick ? 1 : 0) - (a.pick ? 1 : 0) || az(a, b)),
+      all: 'entertainment-library.html#queue'
+    });
+
+    /* A "where" that names a real service answers the only question anyone has
+       on a Tuesday: what can I put on right now without paying for it again. */
+    const onSomething = queue.filter(e => e.where && !/^buy$/i.test(e.where));
+    if (onSomething.length) out.push({
+      label: 'On something already',
+      note: 'no rental needed',
+      items: onSomething.slice().sort((a, b) => (a.where || '').localeCompare(b.where || '') || az(a, b))
+    });
+
+    const boxes = all.filter(e => e.count || e.series);
+    if (boxes.length) out.push({
+      label: 'Whole franchises',
+      note: 'more than one sitting',
+      items: boxes.slice().sort((a, b) => (b.count || 99) - (a.count || 99) || az(a, b))
+    });
+
+    /* Genre and decade shelves are TMDB's to fill. Until pull-tmdb.py has run
+       they are empty, and an empty shelf is not drawn — the page has to be right
+       on the day it ships, not only after a script gets run. */
+    const genres = new Map();
+    for (const e of all) for (const g of e.genres || []) {
+      if (!genres.has(g)) genres.set(g, []);
+      genres.get(g).push(e);
+    }
+    for (const [g, items] of [...genres].sort((a, b) => b[1].length - a[1].length).slice(0, 6)) {
+      if (items.length < 6) continue;
+      out.push({ label: g, note: items.length + ' titles', items: items.sort(az),
+                 all: 'entertainment-library.html#genre=' + encodeURIComponent(g) });
+    }
+
+    for (const [from, label] of DECADES) {
+      const span = from === 2020 ? 999 : 10;
+      const items = all.filter(e => e.year && e.year >= from && e.year < from + span);
+      if (items.length >= 8) out.push({
+        label: label, note: items.length + ' titles',
+        items: items.sort((a, b) => (b.year || 0) - (a.year || 0) || az(a, b))
       });
     }
 
-    const pending = Object.keys(LOCAL).length;
-    el('src-note').textContent = pending
-      ? `${pending} edit${pending === 1 ? '' : 's'} not committed yet`
-      : '';
-  }
-
-  /* ── writing ──
-     Try the Worker; fall back to this browser. Either way the UI has already
-     been told what happened by the time render() runs, so a tap never sits
-     there looking like it did nothing. */
-  async function save(id, patch) {
-    const body = { id, ...patch };
-    if (Owner.on()) {
-      const out = await Owner.post('/movies/' + id, body, { queue: true });
-      if (out && !out.queued) {                 // the Worker took it
-        REMOTE[id] = { ...(REMOTE[id] || {}), ...patch };
-        delete LOCAL[id];
-        writeLocal(LOCAL);
-        render();
-        return;
-      }
-      /* queued (no signal) or refused (no endpoint yet) — keep it here, and
-         keep it visibly uncommitted rather than pretending it landed. */
-    }
-    LOCAL[id] = { ...(LOCAL[id] || {}), ...patch };
-    writeLocal(LOCAL);
-    render();
-  }
-
-  el('grid').addEventListener('click', async ev => {
-    const b = ev.target.closest('button[data-act]');
-    if (!b) return;
-    const { act, id } = b.dataset;
-    const cur = merged().find(e => e.id === id);
-    if (!cur) return;
-    if (act === 'watched')   await save(id, { status: 'watched', where: '', pick: false });
-    if (act === 'watchlist') await save(id, { status: 'watchlist' });
-    if (act === 'pick')      await save(id, { pick: !cur.pick });
-    if (act === 'remove') {
-      if (!confirm(`Remove “${cur.title}” from the list?`)) return;
-      await save(id, { removed: true });
-    }
-  });
-
-  /* ── controls ── */
-  for (const b of document.querySelectorAll('.tabs button')) {
-    b.addEventListener('click', () => {
-      state.view = b.dataset.view;
-      for (const o of document.querySelectorAll('.tabs button'))
-        o.setAttribute('aria-selected', String(o === b));
-      render();
+    out.push({
+      label: 'Everything he has seen',
+      note: seen.length + ' titles',
+      items: seen.slice().sort(az).slice(0, 40),
+      all: 'entertainment-library.html#watched'
     });
+
+    return out.filter(s => s.items.length);
   }
-  let qt;
-  el('q').addEventListener('input', e => {
-    clearTimeout(qt);
-    qt = setTimeout(() => { state.q = e.target.value.trim(); render(); }, 90);
-  });
-  el('sort').addEventListener('change', e => { state.sort = e.target.value; render(); });
 
-  /* The queue is 100-odd long, which is its own kind of useless on a Tuesday
-     night. This answers the only question anyone actually has of it. */
-  el('surprise').addEventListener('click', () => {
-    const pool = merged().filter(e => e.status === 'watchlist');
-    if (!pool.length) return;
-    const p = pool[Math.floor(Math.random() * pool.length)];
-    const box = el('picked');
-    box.className = 'picked';
-    box.hidden = false;
-    box.innerHTML = `<p>Tonight, then</p><strong>${esc(p.title)}</strong>` +
-      `<span>${p.where ? esc(p.where === 'Buy' ? 'you have to buy this one' : 'on ' + p.where) : 'no idea where — good luck'}</span>`;
-  });
+  const ARROW = d => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" ' +
+    'stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="' + d + '"/></svg>';
 
-  /* ── the owner panel ── */
-  function paintOwner() {
-    const box = el('owner-box'), tools = el('owner-tools');
-    if (!Owner.on()) {
-      tools.hidden = true;
-      box.hidden = false;
-      Owner.mountBox(box, { title: 'Sign in to keep the list' });
-      el('owner-blurb').textContent = "Ric's end of the page. Everyone else just gets the list.";
-      render();
+  function renderShelves() {
+    el('shelves').innerHTML = shelves(Room.all()).map(s =>
+      '<section class="shelf">' +
+        '<div class="shelf-head">' +
+          '<h2>' + esc(s.label) + '</h2>' +
+          (s.note ? '<span class="n">' + esc(s.note) + '</span>' : '') +
+          '<a class="all" href="' + esc(s.all || 'entertainment-library.html') + '">see all →</a>' +
+        '</div>' +
+        '<div class="rail-wrap">' +
+          '<button class="nudge left" type="button" data-dir="-1" aria-label="Scroll left" hidden>' + ARROW('m15 5-7 7 7 7') + '</button>' +
+          '<div class="rail">' + s.items.map((e, i) => Room.tile(e, s.ranked ? i + 1 : 0)).join('') + '</div>' +
+          '<button class="nudge right" type="button" data-dir="1" aria-label="Scroll right">' + ARROW('m9 5 7 7-7 7') + '</button>' +
+        '</div>' +
+      '</section>').join('');
+
+    for (const wrap of document.querySelectorAll('.rail-wrap')) {
+      const rail = wrap.querySelector('.rail');
+      const left = wrap.querySelector('.nudge.left');
+      const right = wrap.querySelector('.nudge.right');
+      const mark = () => {
+        left.hidden = rail.scrollLeft < 8;
+        right.hidden = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 8;
+      };
+      rail.addEventListener('scroll', mark, { passive: true });
+      for (const b of [left, right]) b.addEventListener('click', () => {
+        rail.scrollBy({ left: Number(b.dataset.dir) * (rail.clientWidth * 0.86), behavior: 'smooth' });
+      });
+      mark();
+    }
+  }
+
+  /* ── the billboard ──
+     One title, big, the way every app opens, and always a starred one: twelve
+     things he actually wants is the best first frame this data has. */
+  let boardId = null;
+  function renderBoard(pick) {
+    const pool = Room.all().filter(e => e.pick);
+    if (!pool.length) { el('board').hidden = true; return; }
+    const e = pick || pool[Math.floor(Math.random() * pool.length)];
+    boardId = e.id;
+    el('board').hidden = false;
+    el('board').classList.toggle('noart', !e.backdrop);
+    el('board').style.setProperty('--lit', Room.hue(e, 22));
+    el('board-art').style.backgroundImage =
+      e.backdrop ? 'url("assets/backdrops/' + e.id + '.jpg")' : '';
+    el('board-kicker').textContent = e.status === 'watched'
+      ? 'Starred — and already seen' : 'Starred — top of the list';
+    el('board-title').textContent = e.title;
+
+    const meta = [];
+    if (e.year) meta.push(esc(e.year));
+    if (e.rating) meta.push('<span class="score">★ ' + esc(e.rating) + '</span>');
+    if (e.runtime) meta.push(Room.hhmm(e.runtime));
+    if (e.genres && e.genres.length) meta.push(esc(e.genres.join(' · ')));
+    if (e.director) meta.push(esc(e.director));
+    if (e.where) meta.push(esc(/^buy$/i.test(e.where) ? 'have to buy' : 'on ' + e.where));
+    if (e.count) meta.push(esc(e.count + ' films'));
+    el('board-meta').innerHTML = meta.join('');
+    el('board-blurb').textContent = e.overview || '';
+
+    const links = Room.watchLinks(e);
+    el('board-acts').innerHTML =
+      '<a class="btn btn-gold" href="' + esc(links[0].url) + '" target="_blank" rel="noopener noreferrer">' +
+        Room.PLAY + esc(links[0].label) + '</a>' +
+      '<button class="btn" type="button" data-more="' + esc(e.id) + '">More about it</button>' +
+      '<button class="btn" type="button" id="reroll">Something else</button>';
+    el('reroll').addEventListener('click', () => renderBoard());
+  }
+
+  /* ── results ── search and the brand row land in the same grid ── */
+  function renderResults() {
+    const all = Room.all();
+    if (!state.q && !state.service) {
+      el('results').hidden = true;
+      el('shelves').hidden = false;
+      el('board').hidden = !all.some(e => e.pick);
       return;
     }
-    box.hidden = true;
-    tools.hidden = false;
-    const pending = Object.keys(LOCAL).length;
-    el('owner-blurb').textContent =
-      'Add a title below, or use the buttons on any card to move it between the two lists.';
-    tools.innerHTML = `
-      <div class="ownerstate">
-        <span class="dot ${pending ? '' : 'off'}"></span>
-        <span id="state-line">${pending
-          ? `${pending} edit${pending === 1 ? '' : 's'} saved in this browser only — export below to commit them.`
-          : 'Everything here is either committed or saved to the service.'}</span>
-        <button class="btn" type="button" id="signout">Sign out</button>
-      </div>
+    const needle = state.q.toLowerCase();
+    const hits = all.filter(e =>
+      (!state.service || Room.places(e).includes(state.service)) && (!needle ||
+        e.title.toLowerCase().includes(needle) ||
+        (e.where || '').toLowerCase().includes(needle) ||
+        (e.director || '').toLowerCase().includes(needle) ||
+        (e.genres || []).some(g => g.toLowerCase().includes(needle))))
+      .sort((a, b) => (b.pick ? 1 : 0) - (a.pick ? 1 : 0) ||
+                      a.title.localeCompare(b.title, 'en', { sensitivity: 'base' }));
 
-      <form class="addbox" id="addform">
-        <label class="wide">Title
-          <input id="a-title" required placeholder="e.g. The Departed" autocomplete="off">
-        </label>
-        <label>List
-          <select id="a-status">
-            <option value="watchlist">Queue it</option>
-            <option value="watched">Already watched</option>
-          </select>
-        </label>
-        <label>Where is it
-          <input id="a-where" placeholder="Netflix, Prime, Buy…" autocomplete="off" list="wherelist">
-          <datalist id="wherelist"></datalist>
-        </label>
-        <label class="check"><input type="checkbox" id="a-pick"> Star it</label>
-        <div class="wide"><button class="btn btn-gold" type="submit">Add to the list</button></div>
-      </form>
+    el('results').hidden = false;
+    el('shelves').hidden = true;
+    el('board').hidden = true;
 
-      <button class="btn" type="button" id="doexport">Export a new entertainment-data.js</button>
-      <textarea class="export" id="exportbox" hidden readonly spellcheck="false"></textarea>`;
-
-    /* the services already in the list, so a second spelling of "Prime Video"
-       never gets typed in */
-    const seen = [...new Set(merged().map(e => e.where).filter(Boolean))].sort();
-    tools.querySelector('#wherelist').innerHTML =
-      seen.map(w => `<option value="${esc(w)}"></option>`).join('');
-
-    tools.querySelector('#signout').addEventListener('click', () => Owner.signOut());
-
-    tools.querySelector('#addform').addEventListener('submit', async ev => {
-      ev.preventDefault();
-      const title = tools.querySelector('#a-title').value.trim();
-      if (!title) return;
-      const id = slug(title);
-      if (!id) return;
-      const dup = merged().find(e => e.id === id);
-      if (dup && !confirm(`“${dup.title}” is already on the ${dup.status === 'watched' ? 'watched list' : 'queue'}. Update it?`)) return;
-      await save(id, {
-        title,
-        status: tools.querySelector('#a-status').value,
-        where: tools.querySelector('#a-where').value.trim(),
-        pick: tools.querySelector('#a-pick').checked
-      });
-      ev.target.reset();
-      tools.querySelector('#a-title').focus();
+    const said = [];
+    if (state.service) said.push(/^buy$/i.test(state.service) ? 'to buy' : 'on ' + state.service);
+    if (state.q) said.push('matching “' + state.q + '”');
+    el('count').innerHTML =
+      '<span class="filterbar">' +
+        '<span>' + hits.length + ' of ' + all.length + ' titles ' + esc(said.join(' · ')) + '</span>' +
+        '<button class="clearfilter" type="button" id="clearf">clear ✕</button>' +
+      '</span>';
+    el('clearf').addEventListener('click', () => {
+      state.q = ''; state.service = '';
+      el('q').value = '';
+      renderBrands();
+      renderResults();
     });
 
-    tools.querySelector('#doexport').addEventListener('click', async ev => {
-      const box = tools.querySelector('#exportbox');
-      box.hidden = false;
-      box.value = 'building…';
-      box.value = await exportFile();
-      box.focus();
-      box.select();
-    });
-
-    render();
+    el('found').innerHTML = hits.length
+      ? hits.map(e => Room.tile(e)).join('')
+      : '<li class="empty">Nothing here yet. ' +
+        '<a href="entertainment-library.html">Try the library →</a></li>';
   }
 
-  /* Writes the committed file back out with every layer folded in, in exactly
-     the shape the generator produces — so it can be pasted straight over
-     entertainment-data.js and the "not committed" chips all go out at once.
+  let qt;
+  el('q').addEventListener('input', ev => {
+    clearTimeout(qt);
+    const v = ev.target.value.trim();
+    qt = setTimeout(() => { state.q = v; renderResults(); }, 90);
+  });
 
-     The header is read back off the real file rather than kept as a second copy
-     in here. Two copies of a comment is how a comment starts lying: export once
-     with a stale duplicate and the rules at the top of the data file are quietly
-     replaced by whatever this page remembered of them. */
-  const FALLBACK_HEAD =
-    '/* The Entertainment room\'s list — committed truth; the page layers edits on top.\n' +
-    '   Fields: id · title · status ("watched" | "watchlist") · count · series ·\n' +
-    '   where · pick · note. See README for the full rules. */';
-
-  async function readHeader() {
-    try {
-      const r = await fetch('entertainment-data.js', { cache: 'no-store' });
-      if (!r.ok) return FALLBACK_HEAD;
-      const txt = await r.text();
-      const cut = txt.indexOf('window.ENTERTAINMENT_DATA');
-      const head = cut > 0 ? txt.slice(0, cut).trim() : '';
-      return head || FALLBACK_HEAD;
-    } catch (e) { return FALLBACK_HEAD; }
+  function render() {
+    const all = Room.all();
+    const watched = all.filter(e => e.status === 'watched').length;
+    const queue = all.filter(e => e.status === 'watchlist').length;
+    el('strip').textContent = all.length + ' titles · ' + watched + ' watched · ' + queue + ' waiting';
+    el('q').placeholder = 'Search ' + all.length + ' titles…';
+    renderShelves();
+    renderBoard(all.find(e => e.id === boardId && e.pick) || null);
+    const n = Room.pending();
+    el('src-note').textContent = n ? n + ' edit' + (n === 1 ? '' : 's') + ' not committed yet' : '';
+    renderBrands();
+    renderResults();
   }
 
-  async function exportFile() {
-    const head = await readHeader();
-    const rows = merged()
-      .sort((a, b) => (a.status === b.status ? 0 : a.status === 'watched' ? -1 : 1) ||
-                       a.title.localeCompare(b.title))
-      .map(e => {
-        const parts = [`id: ${JSON.stringify(e.id)}`, `title: ${JSON.stringify(e.title)}`,
-                       `status: ${JSON.stringify(e.status)}`];
-        for (const k of ['count', 'series', 'where', 'pick', 'note'])
-          if (e[k]) parts.push(`${k}: ${JSON.stringify(e[k])}`);
-        return '  { ' + parts.join(', ') + ' },';
-      });
-    return `${head}\nwindow.ENTERTAINMENT_DATA = [\n${rows.join('\n')}\n];\n`;
-  }
-
-  /* The committed list goes up first, with no network asked and nothing waited
-     on. The owner panel follows once the host is settled — a visitor never
-     needed it, and Ric's sign-in box arriving a beat after the list is the
-     right order anyway. */
-  render();
-
-  (async () => {
-    const host = await resolvedHost();
-    Owner.init({ host, onChange: paintOwner });
-    paintOwner();
-    try {
-      const r = await hostFetch('/movies', { cache: 'no-store', headers: Owner.headers() });
-      if (!r.ok) return;                       // not deployed yet — committed file stands
-      const items = (await r.json()).items || {};
-      REMOTE = items;
-      /* A local edit the service has now caught up with is no longer pending. */
-      let changed = false;
-      for (const [id, patch] of Object.entries(LOCAL)) {
-        const got = items[id];
-        if (got && Object.entries(patch).every(([k, v]) => JSON.stringify(got[k]) === JSON.stringify(v))) {
-          delete LOCAL[id]; changed = true;
-        }
-      }
-      if (changed) writeLocal(LOCAL);
-      render();
-    } catch (e) {
-      /* No signal. A list with only the committed file on it is the right page;
-         an error is not. */
-    }
-  })();
+  Room.boot({ render: render });
   </script>
   <script src="effects.js"></script>
 </body>
