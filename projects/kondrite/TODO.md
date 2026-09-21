@@ -7,9 +7,13 @@ it gets a tick and a commit hash, so the list is also the record.
 **Status key** — `[ ]` not started · `[~]` in progress · `[x]` done · `[?]` needs
 an answer before it can be built.
 
-Batch of 2026-09-13. 27 items. **26 done** — B1–B8, S1 · C1–C3 · S2, A1, A2, A5 ·
-P2, P3, P1, P4 · H2, H4 · A4 · T1 · H1, H3.
-Only **A3 (the Vault)** is left.
+Batch of 2026-09-13, which has been added to since: **30 items, 28 done.**
+Counted from the boxes rather than kept by hand — the line that used to live
+here said 27 items and 26 done and named A3 as the only one left, which had
+stopped being true twice over: C4 and C5 were added to SETTINGS after it was
+written, and C6 was added open.
+
+**Left: A3 (the Vault) and C6 (read a gamepad).**
 
 ---
 

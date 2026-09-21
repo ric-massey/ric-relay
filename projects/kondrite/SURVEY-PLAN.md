@@ -3153,13 +3153,17 @@ reverse thrusters.
    silent running and the EMP charge — on a device layer with a cooldown, a
    rebindable key per slot and a thumb button per slot. See *What 6.4 landed*.
    Nothing left on the list.
-3. **6.5 — consequences that persist.** Three kinds of memory so far. The cheap
-   wins are named: a ship you saved keeps its name and comes back, a pirate that
-   escaped is respawned rather than re-rolled, a convoy you destroyed leaves a
-   wreck field.
-4. **6.3's last gap** — NPCs cannot run out of anything and a well does not kill
-   them. A hauler dragged into a star in front of you is the accident that rule
-   exists for.
+3. ~~**6.5 — consequences that persist.**~~ **Done.** The three cheap wins named
+   here were built: a ship you saved keeps its name and comes back, a pirate
+   that escaped is respawned as itself with the damage you did, and anything
+   that dies in front of you leaves a hull to strip. See *Where Phase 6 actually
+   stands*.
+4. ~~**6.3's last gap**~~ **Done.** NPCs run out of water, and a well kills
+   them — traffic carries a drift, loses its dodge while chased, and is
+   swallowed if it loses. The hauler dragged into a star is in the game.
+
+So of the four things this list queued, **only 6.6 is still open.** It was
+written when 6.3 and 6.5 were, and they closed underneath it.
 
 The filter still applies to all of it: *what three other systems does this touch?*
 

@@ -320,7 +320,7 @@ hours.
 | `index.html` | `drawTitle` (24100–24500) becomes the game and a door · `LANES` (24132) loses `survey` from the solo lane and is reached from SIMULATORS · `MODES` (1095) gains `sim: true` · `leaveMatch` (27142) and every `state = "title"` out of a match learn `returnTo` · the result screen posts a score |
 | `survey-hud.js` | a `sims` entry on `PLACE_TABS` (616), the cabinet room, and the board on each machine |
 | `survey-save.js` | the book gains a `sims` block — your best per game per machine, and scores waiting to go up |
-| `supabase/schema.sql` | one table becomes three: `scores`, `matches`, and a profile carrying the pilot name. Writes name `auth.uid()`; boards read freely; no update, no delete |
+| `supabase/schema.sql` | one table becomes three: `scores`, `profiles`, and `saves` as it was. Writes name `auth.uid()`; boards read freely; no update, no delete. *(This row planned a `matches` table. It was not built: the witness count is two views over `scores` — `agreed_scores` and `board` — rather than a table to keep in step. The as-built row below is the one to trust.)* |
 | `index.html` (the door) | `btnAcctGuest` (956) comes off the panel, and `kondrite.account.guest` (27060) stops being written |
 | `survey-world.js` | the made-up boards: a function of the machine's coordinates and its owner, alongside everything else generated from a chunk |
 | `menu.js` | all five dioramas survive · `survey`'s moves to the title as the game's own picture · the others become attract loops inside a cabinet frame |
@@ -793,8 +793,30 @@ what the suite checks is the *shape* of the file — that `saves` stayed private
 that no update or delete policy exists on `scores`, that the agreement rule is
 in the schema and not in the client. Whether it executes is unknown until
 somebody pastes it into the dashboard. **That is a step for Ric**, in the
-Supabase SQL editor, and until it runs the board reads as "could not be read"
-and reports queue up harmlessly.
+Supabase SQL editor.
+
+*Measured 21 September 2026, against the live project:* `saves` answers 200 and
+`profiles`, `scores`, `board` and `agreed_scores` all answer 404. So an older
+version of this file was run once, for cloud saves, and the half this plan adds
+never was. The consequences are smaller than they look and one of them was
+worse:
+
+- **Nobody is held at the door.** `setName` writes the pilot name to the device
+  before it tries the public copy and swallows the failure, so sign-in works.
+- **But no name is public**, because `profiles` is the only public copy — so
+  there is nothing a board could print even if a board could be read.
+- **And the board page used to print Postgres at the player.** `readBoards`
+  catches the failure into `realBoards.err` and draws the string, which was
+  *"Could not find the table 'public.board' in the schema cache"*, in orange, on
+  screen. `call` in `cloud.js` now recognises PGRST205 and 42P01 and says **"The
+  boards are not set up yet."** instead. That is a better sentence, not a fix:
+  the fix is running the file.
+
+Why it is still Ric's and not something that could be done from here: the
+Supabase CLI holds its access token in the login Keychain and has no
+arbitrary-SQL command, so there is no path to executing DDL that does not go
+through prising a personal credential out of the Keychain. Not worth doing for
+a job that is one paste.
 
 The other thing not proved is a real five-player match agreeing with itself,
 which needs five browsers and five accounts. The client's half is tested; the

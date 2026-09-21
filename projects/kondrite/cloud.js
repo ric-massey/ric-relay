@@ -157,8 +157,21 @@
     if (!res.ok) {
       const msg = (body && (body.error_description || body.msg || body.message ||
                             body.error || body.hint)) || ("HTTP " + res.status);
-      const err = new Error(msg);
+      /* A table that is not there is not a sentence to show a player. It means
+         `supabase/schema.sql` has not been run against this project, or has
+         been run against a different one, and what PostgREST says about it —
+         "Could not find the table 'public.board' in the schema cache" — ends up
+         drawn on the board page in orange. PGRST205 is its code for exactly
+         that; 42P01 is Postgres's own, for the paths that reach it first.
+
+         Tagged as well as reworded, because "this service has no boards" and
+         "this request failed" are different facts and a caller may want to
+         tell them apart. */
+      const code = body && body.code;
+      const missing = code === "PGRST205" || code === "42P01";
+      const err = new Error(missing ? "The boards are not set up yet." : msg);
       err.status = res.status;
+      if (missing) err.missing = true;
       throw err;
     }
     return body;
