@@ -31,7 +31,15 @@
      survey    quiet, a nebula, a chart filling in         — nothing is hunting you
      online    five ships abreast, a link pulsing          — other people
 
-   Nothing here uses shadowBlur, for the same reason `glow()` doesn't.        */
+   Nothing here uses shadowBlur, for the same reason `glow()` doesn't.
+
+   ── and what is not here ────────────────────────────────────────────────────
+   The front page used to be a sixth scene in this list, and it should never
+   have been. Ric asked the title for things that are *events* — a rock that
+   breaks, a slingshot that lets go, a fight that gets joined — and none of them
+   can be a sine. It kept growing state until it had a position, a heading and a
+   throttle, which is the exact contract this file is built to refuse. It lives
+   in attract.js now, under the opposite promise: it simulates.               */
 
 (function () {
   "use strict";
@@ -47,12 +55,6 @@
   const WRECK   = "#7d8596";
 
   let api = null;
-
-  /* The attract loop's own state. The front page is not a picture of a game, it
-     is a game being played — so there is a run in progress, and it has a
-     position, a heading, a throttle, and everywhere it has already been. */
-  MENU.flight = { x: 0, y: 0, a: -0.5, thr: 1, last: 0 };
-
 
   MENU.init = function (deps) { api = deps; return MENU; };
 
@@ -258,166 +260,6 @@
       ship(x + w * 0.3 + Math.cos(t * 0.35) * w * 0.1,
            y + h * 0.44 + Math.sin(t * 0.5) * h * 0.12,
            a, 1, VIOLET, 1, 0.3);
-    },
-
-    /* ── the front page: an attract loop ───────────────────────────
-       Ric, twice, and both notes were right. First: *"make it look like someone
-       is playong the gzme not just random shit floating"* — so this is one
-       flight, not a set of unrelated drifts. A ship is being flown: it steers,
-       it eases the throttle, it banks, and everything else moves because the
-       ship is moving.
-
-       Then: *"go look at the actual game … the backround initially before you
-       changed stuff looked better."* Which was the real correction. The version
-       in between was violet, with a lattice of charted squares — and the game
-       is **amber**. Its space is sparse: a scatter of faint motes, rock drawn
-       as outline and never filled, and a sun that is the one thing on screen
-       with a fill in it. Nothing in the game looks like a grid of purple
-       tiles. So this is the game's own palette and the game's own sun, drawn
-       the way `drawHazard` draws one, and the chart lattice is gone.
-
-       `flight` is the run in progress, which is what makes this a loop rather
-       than a function of `t`. */
-    title(x, y, w, h, t) {
-      const { ctx, glow } = api;
-      const k = Math.min(w, h) / 700;
-      /* Low and left: the middle of the page is the wordmark and the buttons,
-         and a ship flying under them competes with the only two things anybody
-         came here to read. */
-      const cx = x + w * 0.22, cy = y + h * 0.70;
-      const F = MENU.flight;
-
-      /* ── flying it ───────────────────────────────────────────────────────
-         A hand on the stick rather than a spline: the heading chases a
-         wandering target at a real turn rate, so the ship leans into a turn and
-         comes out of it late. `dt` is clamped because this is a wall clock and
-         a backgrounded tab hands back whole minutes at once. */
-      const dt = Math.min(0.05, Math.max(0, t - F.last));
-      F.last = t;
-      if (dt > 0) {
-        const want = Math.sin(t * 0.11) * 1.7 + Math.sin(t * 0.043 + 1.2) * 1.3;
-        let d = want - F.a;
-        while (d > Math.PI) d -= Math.PI * 2;
-        while (d < -Math.PI) d += Math.PI * 2;
-        F.a += Math.max(-1.5 * dt, Math.min(1.5 * dt, d));
-        F.thr += (((0.45 + 0.55 * Math.sin(t * 0.27)) > 0.5 ? 1 : 0.3) - F.thr) * dt * 2;
-        const sp = 45 + F.thr * 175;
-        F.x += Math.cos(F.a) * sp * dt;
-        F.y += Math.sin(F.a) * sp * dt;
-      }
-      const sx = wx => cx + (wx - F.x), sy = wy => cy + (wy - F.y);
-      // How much a thing may shout, given the text column down the middle.
-      const clear = px => 1 - 0.62 * (1 - Math.min(1, Math.abs(px - (x + w / 2)) / (w * 0.3)));
-
-      /* ── the sky ─────────────────────────────────────────────────────────
-         Sparse, small and amber, the way the sector's own motes are — and at
-         three depths, which is the parallax that says the ship is travelling
-         rather than the field drifting. */
-      const layer = (frac, n, colour, size, lo) => {
-        const span = 1400;
-        ctx.save();
-        ctx.fillStyle = colour;
-        for (let i = 0; i < n; i++) {
-          const ox = (i * 733.7) % span, oy = (i * 941.3) % span;
-          let px = (ox - F.x * frac) % span; if (px < 0) px += span;
-          let py = (oy - F.y * frac) % span; if (py < 0) py += span;
-          px += x - (span - w) / 2; py += y - (span - h) / 2;
-          if (px < x || px > x + w || py < y || py > y + h) continue;
-          ctx.globalAlpha = (lo + 0.34 * Math.abs(Math.sin(i * 2.1))) * clear(px);
-          ctx.fillRect(px, py, size, size);
-        }
-        ctx.restore();
-      };
-      layer(0.05, 120, "#7a6a3a", 1.2, 0.10);
-      layer(0.20, 60, AMBER_D, 1.4, 0.14);
-      layer(0.52, 22, AMBER, 1.8, 0.22);
-
-      /* ── what it is flying through ───────────────────────────────────────
-         Rock, in outline, on a jittered lattice in world space — so it arrives,
-         passes and is gone, and the field never runs out and never repeats in a
-         way you can catch. This is the thing the front page had at the start
-         and it is the thing that looked right. */
-      const GRID = 200;
-      const gi = Math.floor((F.x - w * 0.7) / GRID), gj = Math.floor((F.y - h * 0.7) / GRID);
-      for (let j = gj - 1; j <= gj + Math.ceil(h / GRID) + 2; j++) {
-        for (let i = gi - 1; i <= gi + Math.ceil(w / GRID) + 2; i++) {
-          const n = ((i * 73.13 + j * 149.7) % 1 + 1) % 1;
-          if (n > 0.5) continue;
-          const jx = ((i * 311.7 + j * 97.3) % 1 + 1) % 1;
-          const jy = ((i * 59.1 + j * 421.9) % 1 + 1) % 1;
-          const px = sx(i * GRID + jx * GRID), py = sy(j * GRID + jy * GRID);
-          if (px < x - 70 || px > x + w + 70 || py < y - 70 || py > y + h + 70) continue;
-          rock(px, py, (7 + n * 36) * k, t * (0.1 + n) * (n > 0.25 ? 1 : -1),
-               (0.22 + n * 0.5) * clear(px), AMBER_D);
-        }
-      }
-
-      /* ── a sun ───────────────────────────────────────────────────────────
-         Drawn the way the sector draws one — see `drawHazard`: a filled disc at
-         seven tenths, a ring at the edge, another inside it, and a corona of
-         twelve spokes of two lengths, turning. It is the only thing in this
-         game with a fill in it and it should stay that way. */
-      const sun = (wx, wy, r, fill) => {
-        const px = sx(wx), py = sy(wy);
-        if (px < x - r * 2 || px > x + w + r * 2 ||
-            py < y - r * 2 || py > y + h + r * 2) return;
-        const a = clear(px);
-        ctx.save();
-        ctx.globalAlpha = a;
-        ctx.fillStyle = fill;
-        ctx.beginPath(); ctx.arc(px, py, r * 0.7, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-        glow(fill, 1.6, a, () => {
-          ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.stroke();
-        });
-        glow(fill, 1.2, 0.55 * a, () => {
-          ctx.beginPath(); ctx.arc(px, py, r * 0.6, 0, Math.PI * 2); ctx.stroke();
-        });
-        glow(fill, 1.3, 0.7 * a, () => {
-          ctx.beginPath();
-          for (let i = 0; i < 12; i++) {
-            const ang = t * 0.25 + (i / 12) * Math.PI * 2;
-            const len = r * (i % 2 ? 1.5 : 1.28);
-            ctx.moveTo(px + Math.cos(ang) * r * 1.08, py + Math.sin(ang) * r * 1.08);
-            ctx.lineTo(px + Math.cos(ang) * len, py + Math.sin(ang) * len);
-          }
-          ctx.stroke();
-        });
-      };
-      sun(1250, -520, 58 * k, "#ffe56d");
-      sun(-1750, 900, 40 * k, "#ffd76d");
-
-      /* A black hole, out there somewhere. Solid black, because a hole that is
-         not solid is not a hole — the sector's own rule. You meet it when the
-         flight takes you past it, which is what makes it a place. */
-      {
-        const hx = sx(-600), hy = sy(-1650), r = 34 * k;
-        if (hx > x - 200 && hx < x + w + 200 && hy > y - 200 && hy < y + h + 200) {
-          const a = clear(hx);
-          for (let i = 0; i < 3; i++) {
-            glow(i ? "#ff8f77" : AMBER, 2, (0.5 - i * 0.13) * a, () => {
-              ctx.beginPath();
-              ctx.ellipse(hx, hy, r * (2.5 + i * 0.7), r * (0.5 + i * 0.16),
-                          0.34 + Math.sin(t * 0.25) * 0.06, 0, Math.PI * 2);
-              ctx.stroke();
-            });
-          }
-          ctx.save();
-          ctx.fillStyle = "#000";
-          ctx.beginPath(); ctx.arc(hx, hy, r, 0, Math.PI * 2); ctx.fill();
-          ctx.restore();
-          glow(AMBER, 2.6, 0.85 * a, () => {
-            ctx.beginPath(); ctx.arc(hx, hy, r * 1.04, 0, Math.PI * 2); ctx.stroke();
-          });
-        }
-      }
-
-      /* ── and the pilot ───────────────────────────────────────────────────
-         Amber, like every ship you have ever flown in this game, banking into
-         its turns with the thrust on when the throttle is. The only thing on
-         the page that does not move relative to the page, which is exactly
-         what flying one feels like. */
-      ship(cx, cy, F.a, 2.2 * k, AMBER, 1, F.thr > 0.6 ? 0.5 + F.thr * 0.5 : 0);
     },
 
     online(x, y, w, h, t) {

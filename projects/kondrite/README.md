@@ -36,16 +36,50 @@ behind everything instead of sitting in a bordered box in the middle, and two
 sentences came off — one about what a station has in it, one about how many
 people can play. A front page is not where a game explains itself.
 
-The art is its own scene rather than a mode card blown up. The five card
-dioramas were composed for a box 740 by 174 and two of their three elements are
-a **fixed pixel size**, so stretched to a whole page the chart cells become a
-postage stamp in one corner and the ship a speck in another — a luminance sweep
-of the page came back blank across the entire middle band. `title` in `menu.js`
-is composed for the space it is drawn in: three layers of stars at three
-speeds, the nebula large and off-centre, and the chart lattice spanning the page
-with its cells lighting in a slow diagonal sweep. It quiets towards the middle,
-because a charted cell directly behind a letter is the one thing that makes a
-chart read as a loading screen.
+### The front page is a run
+
+The art behind the wordmark is not a picture of the game. It is the game, being
+played, by a pilot who wants things — `attract.js`, and it is the only piece of
+art in the project that simulates rather than draws. Ric asked for *"the
+starting ship flying around shooting astroids with the ocasional star slingshot
+or black hole slingshot … maybe passing a station and a few other ships …
+maybe getting into the fight"*, and every noun in that is an **event**. A rock
+you shoot has to break. A slingshot is a trajectory bent by a mass, and there is
+no faking the moment it lets go. A fight has two sides that both decide
+something. None of it can be a sine, which is exactly what `menu.js` is for and
+why this lives somewhere else: a card diorama is a closed-form function of one
+clock with no state to get wrong, and the front page is the opposite promise.
+
+Every constant in it is copied from the game rather than invented. `TURN` is 3.2
+because a Kondrite ship turns at 3.2; gravity is `mass / (d² + soft²)` with the
+star's own mass and softening; the speed cap, the thrown-boost allowance and its
+slow bleed at `COAST_DRAG` are the survey rules verbatim — which is what makes
+the slingshot read. You come out of a black hole at better than twice the speed
+you went in at and spend the next ten seconds coasting it off, and that is not a
+flourish, that is `THROWN_CEILING`. The hulls are the roster's own, drawn by the
+same `drawHullArt` that draws yours: the ship on the front page *is* a Skiff.
+
+What stops a simulation being a screensaver is a director. Set pieces come out
+of a shuffled bag — a star to whip round, a black hole to whip round, a station
+to call at, a fight to join — with rock-breaking in between and traffic crossing
+throughout, so every element Ric asked for is guaranteed inside about two
+minutes rather than left to dice that might never roll it.
+
+And because none of that is visible in a screenshot, `test/attract.js` flies it
+for an hour and asks the questions a person watching would: how long before each
+thing turns up, what is the longest the page goes with nothing happening on it,
+does a slingshot actually leave faster than it arrived, does the pilot point at
+the thing shooting at it, does anybody change sides, does anything leak. Most of
+the tuning in that file came out of those numbers rather than out of looking at
+it — the pilot used to fly *into* stars, the gun used to fire eight rounds a
+second because a recovery was missing, and the page once went twelve seconds
+quiet in the middle of a three-ship dogfight.
+
+It flies at **four fifths** of the sector's own speed. Ric: *"if you could slow
+it all down like 20%"* — a page read at a glance, with nobody's hands on it,
+comes across as frantic at the pace the same ship is flown at in a match. Only
+the moving is slowed: the director still deals a set piece on the same wall
+clock, so the page is calmer without being emptier.
 
 There was briefly a quieter **SIMULATORS** line under
 it, with a solo/multiplayer lane page behind that; Ric took the door off —
@@ -906,6 +940,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `survey-save.js` | The book: where it is kept, the four pieces a read is made of, and the write |
 | `survey-hud.js` | Survey's interface: the flight panel, the chart page, the illustrated almanac, the station |
 | `menu.js` | The mode cards' moving pictures — five dioramas, drawn rather than filmed |
+| `attract.js` | The front page: a run being flown, on the game's own flight model and gravity |
 | `server/rooms-core.mjs` | The room service: every rule, no plumbing |
 | `server/worker.mjs` | Runs it on Cloudflare, in one Durable Object |
 | `server/rooms.js` | Runs it on a laptop, with nothing installed |
@@ -915,6 +950,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `test/campaign.js` | Headless play-through of all three missions to a verdict |
 | `test/survey.js` | Headless survey: chunk purity, endless space, almanac reachability, chart persistence, solidity, the economy, the Leviathan's corridor |
 | `test/menu.js` | The two lanes, the card row's arithmetic, and that every card starts what it advertises |
+| `test/attract.js` | An hour of the front page: what turns up and when, how long it goes quiet, whether a slingshot throws |
 | `test/ui.js` | Every control on every page, at four shapes of glass, on a desk and on a phone: on the screen, big enough to press, and not buried under something drawn later |
 | `test/biomes.js` | The geography of a sector, measured: how many patches are in reach, how big one is, and what a line out of home crosses. Takes a seed |
 | `test/rocks.js` | Which rocks might be touching: the real broad-phase finder lifted out of the game and run against all-pairs on the same fields. Counts, never milliseconds |
@@ -965,6 +1001,7 @@ node projects/kondrite/test/smoke.js
 node projects/kondrite/test/campaign.js
 node projects/kondrite/test/survey.js
 node projects/kondrite/test/menu.js
+node projects/kondrite/test/attract.js
 node projects/kondrite/test/ui.js
 node projects/kondrite/test/biomes.js
 node projects/kondrite/test/rocks.js
