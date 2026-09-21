@@ -364,6 +364,23 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   matched `Moments` to *Defining Moments*, which is exactly the failure this guards.
   Titles it cannot settle are **reported, not guessed**; exact matches on a name
   Wikipedia considers ambiguous are matched but flagged for Ric's eye.
+- **`--audit` is the check that scales.** Finding wrong matches by noticing that
+  *13 Hours* is a war film and not a Scorsese comedy does not work at 363 titles. The
+  audit asks TMDB — a different catalogue with its own idea of which film a name means —
+  and flags two things: a stored film whose own title is not what Ric wrote (catches
+  redirects and near-misses), and a far better-known film with exactly that name
+  (catches remakes: 2025's *Junior* over 1994's, 1932's *Scarface* over 1983's).
+  `--fix` takes the suggestion and clears the old film's facts and poster with it.
+  Rows Ric confirmed himself are never questioned. Run it after any bulk `--facts`.
+- **Wikipedia redirects are a trap for a title matcher.** "13 Hours" is a *redirect* to
+  "After Hours (film)", so the article NAME matched while the entity behind it was a
+  different film entirely. Always compare against what the page resolved to — the entity
+  label and the post-redirect title — never the search term. And never carry a summary
+  between loop iterations; that turned one candidate's name into another's identity.
+- **Every list field must be in the reader's regex.** It named `genres` alone, so
+  `cast`, `streams` and `rents` were invisible to `read_rows` — and a field the reader
+  cannot see is one the next `write_rows` silently DELETES. It cost a whole pass of
+  availability data. The reader now takes any `key: [...]`; keep it that way.
 - **A hand-set `wd:` or `tmdb:` id is never overwritten.** That is how an ambiguous
   title gets settled once and stays settled through every re-run.
 - **The page asks Ric which film it is, at the moment he adds it.** Adding a title from

@@ -330,6 +330,10 @@
     if (e.director) meta.push(esc(e.director));
     if (e.count) meta.push(esc(e.count + ' films'));
     meta.push(e.status === 'watched' ? '✓ seen' : 'in the queue');
+    /* Who is in it is how a person actually recognises a film — Ric caught a
+       wrong match by remembering one had "the guy from the office" in it. */
+    const cast = (e.cast || []).length
+      ? '<p class="sheet-cast">' + esc(e.cast.join(' · ')) + '</p>' : '';
     if (e.seen) meta.push('watched ' + esc(new Date(e.seen).toLocaleDateString('en-US',
       { month: 'short', day: 'numeric', year: 'numeric' })));
 
@@ -350,7 +354,7 @@
       '<div class="sheet-art">' + artHtml(e) + '</div>' +
       '<div class="sheet-body">' +
         '<h3>' + esc(e.title) + '</h3>' +
-        '<p class="sheet-meta">' + metaLine(meta) + '</p>' +
+        '<p class="sheet-meta">' + metaLine(meta) + '</p>' + cast +
         /* Where to watch comes FIRST, above the synopsis. Opening a title is
            almost always "can I put this on tonight", and the answer to that
            should not sit below three paragraphs about the plot. */
@@ -391,9 +395,10 @@
 
   const asJson = r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status));
 
-  async function candidates(query) {
+  async function candidates(query, year) {
     const url = WIKI_API + '?' + new URLSearchParams({
-      action: 'query', list: 'search', srsearch: query + ' film',
+      action: 'query', list: 'search',
+      srsearch: query + (year ? ' ' + year : '') + ' film',
       srlimit: '6', format: 'json', origin: '*'
     });
     const hits = ((await fetch(url).then(asJson)).query || {}).search || [];
@@ -480,7 +485,7 @@
   /* Opens the dialog and resolves to a patch, or to null if he backs out.
      `typed` is what he actually wrote, and it is always offered as an answer —
      an obscure film that is on no one's list is still on his. */
-  function chooseFilm(typed) {
+  function chooseFilm(typed, year) {
     const dlg = el('finder');
     if (!dlg) return Promise.resolve({});         // page has no chooser; save as typed
     const body = el('finder-in');
@@ -538,7 +543,13 @@
       const run = async q => {
         draw('loading', null);
         try {
-          const list = await candidates(q);
+          let list = await candidates(q, year);
+          /* A year he gave is an answer, not a hint: anything from that year
+             goes to the top, so the right one is the first thing he reads. */
+          if (/^\d{4}$/.test(year || '')) {
+            list = list.slice().sort((a, b) =>
+              (b.year === year ? 1 : 0) - (a.year === year ? 1 : 0));
+          }
           draw(list.length ? 'ok' : 'none', list);
         } catch (e) {
           draw('error', null);
@@ -594,7 +605,7 @@
         if (act.dataset.act === 'watchlist') await save(id, { status: 'watchlist', seen: '' });
         if (act.dataset.act === 'pick')      await save(id, { pick: !cur.pick });
         if (act.dataset.act === 'identify') {
-          const chosen = await chooseFilm(cur.title);
+          const chosen = await chooseFilm(cur.title, cur.year ? String(cur.year) : '');
           if (chosen === null) { openSheet(id); return; }
           /* Re-identifying means the old answer was wrong, so the facts that
              came with it go too — otherwise 1969's runtime sits on 2003's film.
@@ -659,6 +670,8 @@
           '<option value="watchlist">Queue it</option>' +
           '<option value="watched">Already watched</option>' +
         '</select></label>' +
+        '<label>Year<input id="a-year" inputmode="numeric" maxlength="4" ' +
+          'placeholder="2016" autocomplete="off"></label>' +
         '<label>Where is it<input id="a-where" placeholder="Netflix, Prime, Buy…" autocomplete="off" list="wherelist">' +
           '<datalist id="wherelist"></datalist></label>' +
         '<label class="check"><input type="checkbox" id="a-pick"> Star it</label>' +
@@ -696,8 +709,12 @@
       if (status === 'watched') patch.seen = today();
 
       /* Ask which film this is while he still has it in mind. Backing out of
-         the chooser cancels the add rather than saving a half-answered row. */
-      const chosen = await chooseFilm(title);
+         the chooser cancels the add rather than saving a half-answered row.
+         The year is the single most useful thing he can add: "Total Recall"
+         is two films and "1990" settles it in one keystroke. */
+      const year = (tools.querySelector('#a-year').value || '').trim();
+      if (/^\d{4}$/.test(year)) patch.year = Number(year);
+      const chosen = await chooseFilm(title, year);
       if (chosen === null) return;
       Object.assign(patch, chosen);
 
@@ -732,7 +749,7 @@
   const FIELDS = ['count', 'series', 'where', 'pick', 'note', 'seen',
                   'wd', 'wdok', 'tmdb', 'imdb',
                   'year', 'runtime', 'genres', 'director', 'overview', 'rating',
-                  'poster', 'backdrop', 'streams', 'rents', 'checked'];
+                  'cast', 'poster', 'backdrop', 'streams', 'rents', 'checked'];
 
   const FALLBACK_HEAD =
     '/* The Entertainment room\'s list — committed truth; the pages layer edits on top.\n' +

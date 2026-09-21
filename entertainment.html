@@ -557,6 +557,11 @@
     }
     .sheet-meta .score { color: var(--gold); }
     .sheet-body p.blurb { margin: 0 0 16px; color: #d6d6d6; }
+    .sheet-cast {
+      margin: -6px 0 14px;
+      font-size: 0.84rem;
+      color: #c4c4c4;
+    }
     .sheet-body p.thin {
       margin: 0 0 16px;
       color: var(--dim);
@@ -1272,6 +1277,7 @@
         e.title.toLowerCase().includes(needle) ||
         (e.where || '').toLowerCase().includes(needle) ||
         (e.director || '').toLowerCase().includes(needle) ||
+        (e.cast || []).some(a => a.toLowerCase().includes(needle)) ||
         (e.genres || []).some(g => g.toLowerCase().includes(needle))))
       .sort((a, b) => (b.pick ? 1 : 0) - (a.pick ? 1 : 0) ||
                       a.title.localeCompare(b.title, 'en', { sensitivity: 'base' }));

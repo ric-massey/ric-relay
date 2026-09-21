@@ -154,8 +154,11 @@ SSL = ssl_context()
 
 # ── the wire ───────────────────────────────────────────────────────────────
 
-def get_json(url: str, tries: int = 3) -> dict:
-    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/json"})
+def get_json(url: str, tries: int = 3, headers: dict | None = None) -> dict:
+    head = {"User-Agent": UA, "Accept": "application/json"}
+    if headers:
+        head.update(headers)
+    req = urllib.request.Request(url, headers=head)
     for attempt in range(tries):
         try:
             with urllib.request.urlopen(req, timeout=25, context=SSL) as r:
@@ -166,6 +169,13 @@ def get_json(url: str, tries: int = 3) -> dict:
             if e.code in (429, 503) and attempt < tries - 1:
                 time.sleep(2 * (attempt + 1))
                 continue
+            if e.code == 401:
+                raise Failed(
+                    "TMDB refused the credential (401). The Keychain entry is there but\n"
+                    "it is not being accepted — check it was copied whole, with no\n"
+                    "leading or trailing characters:\n"
+                    f"    security add-generic-password -s {KEYCHAIN_SERVICE} "
+                    f"-a {KEYCHAIN_ACCOUNT} -U -w") from None
             raise Failed(f"HTTP {e.code} for {url.split('?')[0]}") from None
         except urllib.error.URLError as e:
             if attempt < tries - 1:
@@ -205,13 +215,16 @@ def download(url: str, dest: Path) -> bool:
 
 ROW = re.compile(r"\{[^{}]*\}", re.S)
 FIELD = re.compile(r"(\w+)\s*:\s*(\"(?:[^\"\\]|\\.)*\"|true|false|-?\d+(?:\.\d+)?)")
-GENRES = re.compile(r"genres\s*:\s*(\[[^\]]*\])")
+# Every list-valued field, not just genres. This used to name `genres` alone,
+# which meant `cast`, `streams` and `rents` were invisible to the reader — and a
+# field this file cannot read is a field the next write DELETES.
+LISTS = re.compile(r"(\w+)\s*:\s*(\[[^\]]*\])")
 
 # Order matters: this is the order fields are written back out in, and it has to
 # match FIELDS in assets/entertainment-room.js.
 FIELDS = ["id", "title", "status", "count", "series", "where", "pick", "note",
           "seen", "wd", "wdok", "tmdb", "imdb", "year", "runtime", "genres", "director",
-          "overview", "rating", "poster", "backdrop",
+          "overview", "rating", "cast", "poster", "backdrop",
           "streams", "rents", "checked"]
 
 
@@ -223,9 +236,8 @@ def read_rows() -> tuple[str, list[dict]]:
     for m in ROW.finditer(text[cut:]):
         chunk = m.group(0)
         row = {k: json.loads(v) for k, v in FIELD.findall(chunk)}
-        g = GENRES.search(chunk)
-        if g:
-            row["genres"] = json.loads(g.group(1))
+        for k, v in LISTS.findall(chunk):
+            row[k] = json.loads(v)
         if row.get("id"):
             rows.append(row)
     if not rows:
@@ -405,7 +417,11 @@ def identify(row: dict, refresh: bool = False) -> tuple[dict | None, str, list[s
 
     for name in candidates[:6]:
         tried.append(name)
-        s = summary(name) if name != want or not s.get("wikibase_item") else s
+        # Always ask fresh. Reusing the summary from the previous turn of this
+        # loop was how "13 Hours" ended up as After Hours: Wikipedia REDIRECTS
+        # "13 Hours" to "After Hours (film)", and a stale `s` meant the name of
+        # one candidate got checked against the entity of another.
+        s = summary(name)
         qid = s.get("wikibase_item")
         if not qid:
             continue
@@ -420,10 +436,17 @@ def identify(row: dict, refresh: bool = False) -> tuple[dict | None, str, list[s
         # Moments" is not "Moments" and "The Greater Good" is not "Greater".
         # Anything looser than equality and a one-word title on this list — and
         # there are a lot of them — quietly collects somebody else's film.
-        label = (ent.get("labels", {}).get("en") or {}).get("value", name)
-        if not any(bare(x) == exact(want) for x in (label, name)):
+        #
+        # Checked against what the page RESOLVED to, never the name we searched
+        # for. A redirect means those two can be different things, and trusting
+        # the search term is how a wrong film passes a title check: "13 Hours"
+        # is a redirect to After Hours, so the name matched while the entity
+        # behind it did not.
+        label = (ent.get("labels", {}).get("en") or {}).get("value", "")
+        resolved = s.get("title") or ""
+        if not any(bare(x) == exact(want) for x in (label, resolved) if x):
             continue
-        ent["_article"] = name
+        ent["_article"] = resolved or name
         ent["_extract"] = s.get("extract") or ""
         # Which disambiguator Wikipedia used says how risky the match is, and
         # the difference matters: "(film)" only separates the film from a novel
@@ -432,7 +455,7 @@ def identify(row: dict, refresh: bool = False) -> tuple[dict | None, str, list[s
         # Flagging the first kind too — as this did at first — buries the real
         # cases under a hundred correct ones, and a list nobody reads is worse
         # than no list.
-        ent["_ambiguous"] = bool(YEAR_DISAMBIG.search(name))
+        ent["_ambiguous"] = bool(YEAR_DISAMBIG.search(resolved or name))
         return ent, name, tried
     return None, "", tried
 
@@ -466,9 +489,34 @@ def facts_from(ent: dict) -> tuple[dict, list[str]]:
 
 
 def stage_facts(rows: list[dict], head: str, args) -> int:
+    # Three reasons to look a row up: it has no id yet; it has an id somebody
+    # just typed on it but none of the facts that id unlocks; or --refresh is
+    # asking the script to re-guess its OWN matches (never a human's).
+    DERIVED = ("tmdb", "imdb", "year", "runtime", "genres", "director",
+               "overview", "rating")
+
+    def wants(r):
+        # A human handed it a TMDB id directly (a film with no Wikipedia article
+        # at all, like Valley Uprising). There is nothing here left to find.
+        if r.get("wdok") and not r.get("wd"):
+            return False
+        if not r.get("wd"):
+            return True
+        if not (r.get("year") or r.get("tmdb")):
+            return True
+        return args.refresh and not r.get("wdok")
+
     todo = [r for r in rows
-            if (args.only is None or r["id"] in args.only)
-            and (not r.get("wd") or (args.refresh and not r.get("wdok")))]
+            if (args.only is None or r["id"] in args.only) and wants(r)]
+
+    # Changing which film a row IS must throw away what the old one said, or a
+    # row ends up with 2015's id and 2011's director. The page's chooser already
+    # does this; an id typed straight onto a row has to as well, and the tell is
+    # a Wikidata id that no longer agrees with the stored TMDB id.
+    for r in todo:
+        if r.get("wd") and any(r.get(k) for k in DERIVED):
+            for k in DERIVED:
+                r.pop(k, None)
     if args.limit:
         todo = todo[:args.limit]
     print(f"STAGE 1 · facts — {len(todo)} of {len(rows)} titles to look up"
@@ -548,6 +596,11 @@ def api_key() -> str:
             capture_output=True, text=True, check=False)
     except FileNotFoundError:
         raise Failed("no `security` command — stage 2 wants macOS.") from None
+    if found.returncode == 0 and found.stdout.strip():
+        got = found.stdout.strip()
+        kind = "v4 read token" if got.startswith("eyJ") else "v3 api key"
+        print(f"    (using the {kind} from the Keychain)")
+        return got
     if found.returncode != 0 or not found.stdout.strip():
         raise Failed(
             "no TMDB key in the Keychain, so there is no art to fetch.\n"
@@ -555,6 +608,21 @@ def api_key() -> str:
             "posters need a free key:\n"
             "    https://www.themoviedb.org/settings/api\n" + add)
     return found.stdout.strip()
+
+
+# TMDB hands out two credentials and does not say they are used differently:
+# the v3 "API Key" is 32 hex characters and rides in ?api_key=, while the v4
+# "Read Access Token" is a ~200-character JWT that must go in an Authorization
+# header. Both work against these same v3 endpoints. Rather than make anyone
+# care which one they copied, look at the shape and send it the right way.
+def tmdb_get(path: str, key: str, **params) -> dict:
+    if key.startswith("eyJ"):                  # v4 token — header auth
+        url = f"{TMDB_API}{path}"
+        if params:
+            url += "?" + urllib.parse.urlencode(params)
+        return get_json(url, headers={"Authorization": "Bearer " + key})
+    params["api_key"] = key                    # v3 key — query auth
+    return get_json(f"{TMDB_API}{path}?{urllib.parse.urlencode(params)}")
 
 
 def stage_art(rows: list[dict], head: str, args) -> int:
@@ -566,7 +634,8 @@ def stage_art(rows: list[dict], head: str, args) -> int:
 
     todo = [r for r in rows
             if (args.only is None or r["id"] in args.only)
-            and r.get("tmdb") and (args.refresh or not r.get("poster"))]
+            and r.get("tmdb")
+            and (args.refresh or not r.get("poster") or not r.get("cast"))]
     if args.limit:
         todo = todo[:args.limit]
     print(f"\nSTAGE 2 · art — {len(todo)} posters to fetch"
@@ -576,7 +645,7 @@ def stage_art(rows: list[dict], head: str, args) -> int:
     for i, row in enumerate(todo, 1):
         line = f"[{i:>3}/{len(todo)}] {row['title']}"
         try:
-            m = get_json(f"{TMDB_API}/movie/{row['tmdb']}?api_key={key}")
+            m = tmdb_get(f"/movie/{row['tmdb']}", key, append_to_response="credits")
         except Failed as e:
             print(f"{line}\n      ! {str(e).replace(key, '‹key›')}")
             continue
@@ -591,10 +660,36 @@ def stage_art(rows: list[dict], head: str, args) -> int:
         if download(f"{TMDB_IMG}/{POSTER_SIZE}{m['poster_path']}", POSTERS / f"{row['id']}.jpg"):
             print(f"{line}\n      ✓ poster")
         row["poster"] = True
+
+        # TMDB as the fallback source of facts, not just art. A row that came
+        # through --audit --fix has nothing but an id — Wikipedia could not find
+        # it, which is often WHY it was wrong — so the facts have to come from
+        # here or that row stays blank forever. Anything Wikidata already
+        # answered is left alone; this only fills gaps.
         if not row.get("overview") and m.get("overview"):
             row["overview"] = m["overview"].strip()
         if m.get("vote_average"):
             row["rating"] = round(m["vote_average"], 1)
+        date = m.get("release_date") or ""
+        if not row.get("year") and date[:4].isdigit():
+            row["year"] = int(date[:4])
+        if not row.get("runtime") and m.get("runtime"):
+            row["runtime"] = m["runtime"]
+        if not row.get("genres") and m.get("genres"):
+            row["genres"] = rank_genres([g["name"] for g in m["genres"]])
+        credits = m.get("credits") or {}
+        if not row.get("director"):
+            directors = [c["name"] for c in credits.get("crew") or []
+                         if c.get("job") == "Director"]
+            if directors:
+                row["director"] = ", ".join(directors[:2])
+        # Who is in it. Ric spotted a wrong match by remembering the film had
+        # "the guy from the office" in it — a cast list makes that check
+        # something you can do at a glance instead of from memory.
+        if not row.get("cast"):
+            actors = [c["name"] for c in (credits.get("cast") or [])[:3]]
+            if actors:
+                row["cast"] = actors
         # The billboard only ever shows starred titles, so that is the only
         # place a 780px-wide image earns its bytes.
         if row.get("pick") and m.get("backdrop_path"):
@@ -624,44 +719,80 @@ def stage_art(rows: list[dict], head: str, args) -> int:
 # key. So the answer is written down WITH THE DATE IT WAS TRUE, the page shows
 # that date, and a stale answer is visibly stale instead of quietly wrong.
 
-# TMDB's provider names are the legal ones, not the ones anybody says out loud.
+# TMDB's provider names are the contractual ones, not the ones anybody says out
+# loud: "Paramount Plus Essential", "Lionsgate+ Amazon Channels", "Netflix
+# Standard with Advertisements". Left alone they turn a row of buttons into a
+# row of legal entities, and the same service shows up three times.
 PROVIDER_NAMES = {
     "amazon prime video": "Prime Video",
-    "amazon video": "Buy",
     "apple tv plus": "Apple TV+",
-    "apple tv": "Buy",
     "disney plus": "Disney+",
     "hbo max": "Max",
     "paramount plus": "Paramount+",
-    "paramount plus premium": "Paramount+",
-    "peacock premium": "Peacock",
-    "peacock premium plus": "Peacock",
+    "peacock": "Peacock",
     "pluto tv": "Pluto TV",
     "tubi tv": "Tubi",
-    "starz": "Starz",
-    "netflix standard with advertisements": "Netflix",
-    "hulu": "Hulu",
-    "plex": "Plex",
+    "fubotv": "Fubo",
+    "hoopla": "Hoopla",
+    "kanopy": "Kanopy",
     "plex channel": "Plex",
-    "youtube": "Buy",
-    "google play movies": "Buy",
-    "fandango at home": "Buy",
-    "microsoft store": "Buy",
+    "plex player": "Plex",
+    "amazon prime video with ads": "Prime Video",
+    "amazon prime video free": "Prime Video",
+    "youtube free": "YouTube",
+    "youtube tv": "YouTube TV",
+    "the cw": "The CW",
 }
 
+# Storefronts, not subscriptions. They all mean the same thing to a person
+# standing in front of the telly: you do not have this, you can pay for it.
+STOREFRONTS = {
+    "amazon video", "apple tv", "apple tv store", "youtube", "google play movies",
+    "fandango at home", "vudu", "microsoft store", "spectrum on demand",
+    "redbox", "rakuten tv", "buy", "alamo on demand",
+}
 
-def provider_name(raw: str) -> str:
+# JustWatch's own house channels are an artefact of the data, not a place to
+# watch anything.
+JUNK = {"justwatch tv", "justwatchtv"}
+
+
+def provider_name(raw: str) -> str | None:
+    """One service's everyday name, or None if it is not worth printing."""
     key = raw.strip().lower()
+    # "Max Amazon Channel", "Starz Apple TV Channels" — a reseller of the same
+    # thing. Say the thing.
+    key = re.sub(r"\s+(amazon|apple tv|roku)\s+(premium\s+)?channels?$", "", key)
+    # Tier names are not services: Essential, Premium, Basic, with Ads.
+    key = re.sub(r"\s+(essential|premium|standard|basic|plus)?\s*with ads?$", "", key)
+    key = re.sub(r"\s+(essential|premium|basic|showtime)$", "", key)
+    key = key.strip()
+
+    if key in JUNK or not key:
+        return None
+    if key in STOREFRONTS:
+        return "Buy"
     if key in PROVIDER_NAMES:
         return PROVIDER_NAMES[key]
-    # "Max Amazon Channel", "Starz Apple TV Channel" — a reseller of the same
-    # thing. Say the thing.
-    base = re.sub(r"\s+(amazon|apple tv|roku)\s+channel$", "", key)
-    if base in PROVIDER_NAMES:
-        return PROVIDER_NAMES[base]
-    out = re.sub(r"\s+plus$", "+", base)
-    out = re.sub(r"\s+(premium|with ads|standard).*$", "", out)
-    return out.title().replace("Tv", "TV").replace("Hbo", "HBO")
+    out = re.sub(r"\s+plus$", "+", key)
+    out = out.title()
+    # Title-casing turns TNT into "Tnt" and truTV into "Tru TV". Acronyms and
+    # trade names are not words. Substituted per WORD, not per whole string, or
+    # "Youtube" gets fixed and "Youtube TV" does not.
+    for wrong, right in FIXUPS:
+        out = re.sub(r"\b" + re.escape(wrong) + r"\b", right, out)
+    return out.strip()
+
+
+# Applied to the title-cased name, word by word.
+FIXUPS = [
+    ("Tv", "TV"), ("Youtube", "YouTube"), ("Tnt", "TNT"), ("Tbs", "TBS"),
+    ("Tru TV", "truTV"), ("Mgm", "MGM"), ("Amc", "AMC"), ("Hbo", "HBO"),
+    ("Fubotv", "Fubo"), ("Fxnow", "FXNow"), ("Fx", "FX"), ("Usa", "USA"),
+    ("Mtv", "MTV"), ("Pbs", "PBS"), ("Bet", "BET"), ("Cw", "CW"),
+    ("Amazon Prime Video Free", "Prime Video"), ("Amazon Prime Video", "Prime Video"),
+    ("Youtube Free", "YouTube"), ("Pluto", "Pluto"),
+]
 
 
 def stage_where(rows: list[dict], head: str, args) -> int:
@@ -684,25 +815,27 @@ def stage_where(rows: list[dict], head: str, args) -> int:
     for i, row in enumerate(todo, 1):
         line = f"[{i:>3}/{len(todo)}] {row['title']}"
         try:
-            d = get_json(f"{TMDB_API}/movie/{row['tmdb']}/watch/providers?api_key={key}")
+            d = tmdb_get(f"/movie/{row['tmdb']}/watch/providers", key)
         except Failed as e:
             print(f"{line}\n      ! {str(e).replace(key, '‹key›')}")
             continue
         us = (d.get("results") or {}).get("US") or {}
 
-        def names(bucket):
+        def names(*buckets):
             seen, out = set(), []
-            for p in us.get(bucket) or []:
-                n = provider_name(p.get("provider_name", ""))
-                if n and n not in seen:
-                    seen.add(n)
-                    out.append(n)
+            for bucket in buckets:
+                for p in us.get(bucket) or []:
+                    n = provider_name(p.get("provider_name", ""))
+                    if n and n not in seen:
+                        seen.add(n)
+                        out.append(n)
             return out
 
-        flat = names("flatrate") + names("free") + names("ads")
-        paid = names("rent") + names("buy")
-        # Dedupe across the two: if it streams, renting it is not news.
-        paid = [p for p in paid if p not in flat]
+        flat = names("flatrate", "free", "ads")
+        # Renting is only news if it does not stream, and every storefront
+        # collapses to one "Buy" — three ways to pay for the same film is not
+        # three answers.
+        paid = [p for p in names("rent", "buy") if p not in flat]
 
         if args.dry_run:
             print(f"{line}\n      ✓ {', '.join(flat) or '—'}"
@@ -725,6 +858,163 @@ def stage_where(rows: list[dict], head: str, args) -> int:
     return got
 
 
+# ── the audit ──────────────────────────────────────────────────────────────
+#
+# Checking 363 films by hand is not a plan, and spotting the wrong ones by
+# noticing that 13 Hours is a war film and not a Scorsese comedy is a plan that
+# depends on Ric remembering every title he has ever watched.
+#
+# So: a second opinion, from a different corpus. Wikidata found these by name
+# through Wikipedia's search; TMDB has its own catalogue and its own idea of
+# which film people mean by a given name. Where the two disagree, something is
+# worth a look. Two tests, and they catch different things:
+#
+#   1. Does the stored film's OWN title match what Ric wrote? "13 Hours" that
+#      resolves to a film called "After Hours" is wrong no matter how confident
+#      anything was. This is the test that catches redirects and near-misses.
+#   2. Is there a film of exactly that name that far more people have rated?
+#      This is the test that catches the remakes: 2025's "Running Man" against
+#      1987's, 2012's "Total Recall" against 1990's, 1932's "Scarface" against
+#      1983's. Fame is not truth, but a hundredfold difference in ratings is a
+#      strong hint about which one a person means.
+#
+# Nothing is changed without --fix, and a row Ric confirmed himself is never
+# questioned — that is what `wdok` is for.
+
+def audit_row(row: dict, key: str) -> dict | None:
+    """One row's second opinion, or None if it looks fine."""
+    stored = tmdb_get(f"/movie/{row['tmdb']}", key)
+    if not stored:
+        return None
+    want = exact(plain(row["title"]))
+    stored_title = exact(stored.get("title") or "")
+    stored_votes = stored.get("vote_count") or 0
+
+    hits = (tmdb_get("/search/movie", key, query=plain(row["title"]))
+            .get("results") or [])
+    same = [h for h in hits if exact(h.get("title") or "") == want]
+    if not same:
+        # People write down the short name. "13 Hours" is filed as "13 Hours:
+        # The Secret Soldiers of Benghazi", and Wikipedia has no article at that
+        # short name — only a redirect to something else entirely. A title that
+        # starts with what he wrote and then carries a subtitle is almost
+        # certainly the film he means.
+        same = [h for h in hits
+                if exact(h.get("title") or "").startswith(want + " ")
+                and len(want) >= 4]
+    best = max(same, key=lambda h: h.get("vote_count") or 0, default=None)
+
+    def close_enough(a: str, b: str) -> bool:
+        """Two names for the same film, written down differently.
+
+        People write the short name: "Kill Bill" for "Kill Bill: Vol. 1",
+        "Talladega Nights" for the one with the ballad, "School of Rock" for
+        "The School of Rock". A subtitle or a leading article is not a wrong
+        film, and flagging those buries the real ones.
+        """
+        if a == b:
+            return True
+        x, y = (a, b) if len(a) <= len(b) else (b, a)
+        if y.startswith(x + " ") or y.startswith(x + ":"):
+            return True
+        return ARTICLES.sub("", x) == ARTICLES.sub("", y)
+
+    why = None
+    if not close_enough(stored_title, want):
+        why = "stored film is called something else"
+    elif best and best["id"] != row["tmdb"]:
+        bv, sv = best.get("vote_count") or 0, stored_votes
+        # A tenfold gap is not a close call. Below that, leave it alone — a
+        # flag nobody can adjudicate is just noise.
+        if bv > max(sv * 10, 200):
+            why = "a much better-known film has this exact name"
+    # A "suggestion" that is the film already stored is not a suggestion.
+    if best and best["id"] == row["tmdb"]:
+        return None
+    if not why:
+        return None
+
+    return {
+        "row": row, "why": why,
+        "stored": (stored.get("title"), (stored.get("release_date") or "????")[:4],
+                   stored_votes, row["tmdb"]),
+        "better": (best.get("title"), (best.get("release_date") or "????")[:4],
+                   best.get("vote_count") or 0, best["id"]) if best else None,
+    }
+
+
+def stage_audit(rows: list[dict], head: str, args) -> int:
+    try:
+        key = api_key()
+    except Failed as e:
+        print(f"AUDIT — skipped.\n\n{e}")
+        return 0
+
+    todo = [r for r in rows
+            if (args.only is None or r["id"] in args.only)
+            and r.get("tmdb") and not r.get("wdok")]
+    if args.limit:
+        todo = todo[:args.limit]
+    confirmed = sum(1 for r in rows if r.get("wdok"))
+    print(f"AUDIT — second-opinion check on {len(todo)} titles"
+          f"{f' ({confirmed} you already confirmed are left alone)' if confirmed else ''}\n")
+
+    found = []
+    for i, row in enumerate(todo, 1):
+        if i % 25 == 0:
+            print(f"    …{i}/{len(todo)}")
+        try:
+            hit = audit_row(row, key)
+        except Failed as e:
+            print(f"    ! {row['title']}: {str(e).replace(key, '‹key›')}")
+            continue
+        if hit:
+            found.append(hit)
+
+    if not found:
+        print("\nNothing looks wrong.")
+        return 0
+
+    print(f"\n{len(found)} worth checking:\n")
+    for h in found:
+        st, sy, sv, sid = h["stored"]
+        print(f"  “{h['row']['title']}”  — {h['why']}")
+        print(f"      has: {st} ({sy})  {sv} ratings")
+        if h["better"]:
+            bt, by, bv, bid = h["better"]
+            print(f"      try: {bt} ({by})  {bv} ratings   tmdb={bid}")
+        print()
+
+    if not args.fix:
+        print("  Nothing was changed. Re-run with --fix to take every 'try' above,\n"
+              "  or fix them on the page with \"Not the right film?\", which marks them\n"
+              "  confirmed so this never asks again.")
+        return len(found)
+
+    # --fix takes the suggestion, and takes it WHOLE: the old facts came from
+    # the old film and every one of them is now wrong.
+    DERIVED = ("wd", "imdb", "year", "runtime", "genres", "director",
+               "overview", "rating", "poster", "backdrop",
+               "streams", "rents", "checked", "cast")
+    changed = 0
+    for h in found:
+        if not h["better"]:
+            continue
+        row = h["row"]
+        for k in DERIVED:
+            row.pop(k, None)
+        row["tmdb"] = h["better"][3]
+        old_poster = POSTERS / f"{row['id']}.jpg"
+        if old_poster.exists():
+            old_poster.unlink()                # it is the wrong film's face
+        changed += 1
+    if changed:
+        write_rows(head, rows)
+    print(f"  {changed} switched. Now re-run with --art --where to fetch the right\n"
+          f"  posters and availability for them.")
+    return changed
+
+
 # ── the run ────────────────────────────────────────────────────────────────
 
 def main() -> int:
@@ -738,6 +1028,10 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="say what would change, write nothing")
     ap.add_argument("--only", metavar="ID", action="append", help="just this row id (repeatable)")
     ap.add_argument("--limit", type=int, help="stop after this many (for a first look)")
+    ap.add_argument("--audit", action="store_true",
+                    help="second-opinion check of every match against TMDB")
+    ap.add_argument("--fix", action="store_true",
+                    help="with --audit, switch to the suggested film")
     ap.add_argument("--tidy-genres", action="store_true",
                     help="re-apply the genre naming rule to rows already filled in, offline")
     args = ap.parse_args()
@@ -745,6 +1039,9 @@ def main() -> int:
     head, rows = read_rows()
     if args.tidy_genres:
         tidy_existing(rows, head, args.dry_run)
+        return 0
+    if args.audit:
+        stage_audit(rows, head, args)
         return 0
     every = not (args.facts or args.art or args.where)
 

@@ -351,6 +351,19 @@ belong here.
   That is the fix for the handful the script had to guess at — *The Italian Job* resolved
   to the 1969 one, for instance.
 
+  **Check the matches with `--audit`.** It asks TMDB for a second opinion on every
+  title and prints the ones worth a look — a film whose real name is not what you wrote,
+  or a much better-known film of the same name (which is how remakes sneak in). Add
+  `--fix` to take its suggestions:
+
+  ```
+  python3 projects/entertainment/pull-entertainment.py --audit
+  python3 projects/entertainment/pull-entertainment.py --audit --fix
+  python3 projects/entertainment/pull-entertainment.py --art --where
+  ```
+
+  Anything you have confirmed yourself on the page is never questioned by it.
+
   Both stages skip what is already filled in and write as they go, so a re-run is cheap
   and stopping one halfway costs nothing. A title it cannot settle is **left alone and
   reported** rather than guessed at — put the right `wd: "Q42047"` on the row and re-run;
