@@ -83,6 +83,14 @@ UA = "RicsWebsite-entertainment/1.0 (https://ricmassey.com; rmbuster82@gmail.com
 
 PAUSE = 0.12          # polite with Wikimedia; TMDB allows far more
 
+# Below this many TMDB ratings, a match is worth eyeballing even when nothing
+# else looks wrong with it. Every mismatch found so far has been an obscure film
+# wearing a famous film's name.
+OBSCURE = 60
+
+# How many ratings a film needs before a fallback guess is worth writing down.
+CONFIDENT_VOTES = 50
+
 # What counts as "yes, that article is the thing on Ric's list". Anything else
 # — a song, a person, a disambiguation page — is a miss, not a match.
 FILMISH = {
@@ -223,7 +231,7 @@ LISTS = re.compile(r"(\w+)\s*:\s*(\[[^\]]*\])")
 # Order matters: this is the order fields are written back out in, and it has to
 # match FIELDS in assets/entertainment-room.js.
 FIELDS = ["id", "title", "status", "count", "series", "where", "pick", "note",
-          "seen", "wd", "wdok", "tmdb", "imdb", "year", "runtime", "genres", "director",
+          "seen", "wd", "wdok", "tmdb", "kind", "imdb", "year", "runtime", "genres", "director",
           "overview", "rating", "cast", "poster", "backdrop",
           "streams", "rents", "checked"]
 
@@ -460,6 +468,32 @@ def identify(row: dict, refresh: bool = False) -> tuple[dict | None, str, list[s
     return None, "", tried
 
 
+def first_film_of(ent: dict) -> dict | None:
+    """A franchise is not a film and has no face.
+
+    "Mad Max", "X-Men", "Halloween" and "The Dark Knight Trilogy" all resolve to
+    a series or a franchise — correctly, that IS what Ric wrote down — but a
+    series carries no TMDB movie id and no poster, so those rows came out blank.
+    Wikidata lists a series' films in P527 (has part). Take the earliest one:
+    it is the film the whole run is named after and the image anyone recognises
+    it by, which is the same policy already used for Saw and Star Wars.
+    """
+    parts = [q for q in claims(ent, "P527") if isinstance(q, str) and q.startswith("Q")]
+    best, best_year = None, 9999
+    for qid in parts[:12]:
+        sub = entity(qid)
+        if not sub or not any(k in FILMISH for k in claims(sub, "P31")):
+            continue
+        if not claims(sub, "P4947"):           # no TMDB id, no use to us
+            continue
+        years = sorted(int(str(d)[1:5]) for d in claims(sub, "P577")
+                       if isinstance(d, str) and str(d)[1:5].isdigit())
+        y = years[0] if years else 9998
+        if y < best_year:
+            best, best_year = sub, y
+    return best
+
+
 def facts_from(ent: dict) -> tuple[dict, list[str]]:
     """The handful of fields the pages can show, plus ids to resolve later."""
     out: dict = {"wd": ent["id"]}
@@ -476,9 +510,16 @@ def facts_from(ent: dict) -> tuple[dict, list[str]]:
     imdb = claims(ent, "P345")
     if imdb:
         out["imdb"] = imdb[0]
-    tm = claims(ent, "P4947")
+    tm = claims(ent, "P4947")                  # TMDB *movie* id
+    tv = claims(ent, "P4983")                  # TMDB *TV series* id — different
     if tm:
         out["tmdb"] = int(tm[0]) if str(tm[0]).isdigit() else tm[0]
+    elif tv:
+        # A show is not a film and TMDB keeps them in separate catalogues with
+        # separate id spaces. Saying which this is, is the whole fix: without
+        # it, /movie/<a tv id> is a 404 and the row silently has no poster.
+        out["tmdb"] = int(tv[0]) if str(tv[0]).isdigit() else tv[0]
+        out["kind"] = "tv"
     extract = (ent.get("_extract") or "").strip()
     if extract:
         # One or two sentences is a tile's worth; the rest is an essay.
@@ -538,6 +579,15 @@ def stage_facts(rows: list[dict], head: str, args) -> int:
             unsure.append((row, tried))
             continue
 
+        # A series that cannot be filmed: follow it to its first film.
+        if not claims(ent, "P4947") and not claims(ent, "P4983"):
+            sub = first_film_of(ent)
+            if sub:
+                sub["_extract"] = ent.get("_extract", "")
+                sub["_article"] = ent.get("_article", article)
+                article = f"{article} → {(sub.get('labels', {}).get('en') or {}).get('value', '?')}"
+                ent = sub
+
         got, qids = facts_from(ent)
         names = labels(qids)
         directors = [names[q] for q in claims(ent, "P57") if q in names]
@@ -556,6 +606,53 @@ def stage_facts(rows: list[dict], head: str, args) -> int:
             row.update(got)
             done += 1
             if done % 10 == 0:                 # write as we go; stopping loses nothing
+                write_rows(head, rows)
+
+    # Last resort: Wikidata simply does not carry a TMDB id for everything
+    # (Mad Max's 1979 film, the Alien vs. Predator franchise), and without one
+    # a row gets no poster and no availability however well it was identified.
+    # TMDB's own catalogue is the fallback — exact title only, best-known first,
+    # same rules the audit uses.
+    if not args.dry_run:
+        try:
+            key = api_key()
+        except Failed:
+            key = None
+        if key:
+            gap = [r for r in todo if r.get("wd") and not r.get("tmdb")]
+            for row in gap:
+                want = exact(plain(row["title"]))
+                hits = (tmdb_get("/search/movie", key, query=plain(row["title"]))
+                        .get("results") or [])
+                votes = lambda h: h.get("vote_count") or 0
+                exact_hits = [h for h in hits if exact(h.get("title") or "") == want]
+                best = max(exact_hits, key=votes, default=None)
+
+                # An exact title match wins — but only if anyone has heard of
+                # it. "Alien vs Predator" is exactly the name of a 2-rating
+                # short, while the film Ric means is filed as "AVP: Alien vs.
+                # Predator" and has five thousand. So when the exact match is
+                # too obscure to trust, widen to any title carrying his words
+                # as a whole phrase and let the ratings choose.
+                if not best or votes(best) < CONFIDENT_VOTES:
+                    phrase = [h for h in hits if want in exact(h.get("title") or "")]
+                    wider = max(phrase, key=votes, default=None)
+                    if wider and votes(wider) > votes(best or {}):
+                        best = wider
+
+                # A handful of ratings is not a confirmation. Leave it for the
+                # chooser rather than writing a guess into the file.
+                if not best or votes(best) < CONFIDENT_VOTES:
+                    continue
+                row["tmdb"] = best["id"]
+                if not row.get("year"):
+                    d = (best.get("release_date") or "")[:4]
+                    if d.isdigit():
+                        row["year"] = int(d)
+                print(f"      + {row['title']}: TMDB knows it as "
+                      f"{best.get('title')} ({(best.get('release_date') or '????')[:4]}), "
+                      f"tmdb={best['id']}")
+            if gap:
                 write_rows(head, rows)
 
     if not args.dry_run and done:
@@ -625,6 +722,35 @@ def tmdb_get(path: str, key: str, **params) -> dict:
     return get_json(f"{TMDB_API}{path}?{urllib.parse.urlencode(params)}")
 
 
+def kind_of(row: dict) -> str:
+    """"movie" or "tv" — which half of TMDB this row lives in."""
+    return "tv" if row.get("kind") == "tv" else "movie"
+
+
+def normalise_tmdb(d: dict, kind: str) -> dict:
+    """One shape for both catalogues.
+
+    TMDB calls the same things by different names either side of the film/TV
+    line: title/name, release_date/first_air_date, runtime/episode_run_time,
+    a Director in the crew vs a created_by list. Papering over that here keeps
+    every caller from having to care.
+    """
+    if kind == "movie":
+        return d
+    runs = d.get("episode_run_time") or []
+    return {
+        **d,
+        "title": d.get("name") or d.get("title"),
+        "release_date": d.get("first_air_date") or "",
+        "runtime": runs[0] if runs else None,
+        "credits": {
+            "cast": (d.get("credits") or {}).get("cast") or [],
+            "crew": [{"job": "Director", "name": c.get("name")}
+                     for c in (d.get("created_by") or [])],
+        },
+    }
+
+
 def stage_art(rows: list[dict], head: str, args) -> int:
     try:
         key = api_key()
@@ -645,7 +771,10 @@ def stage_art(rows: list[dict], head: str, args) -> int:
     for i, row in enumerate(todo, 1):
         line = f"[{i:>3}/{len(todo)}] {row['title']}"
         try:
-            m = tmdb_get(f"/movie/{row['tmdb']}", key, append_to_response="credits")
+            kind = kind_of(row)
+            m = normalise_tmdb(
+                tmdb_get(f"/{kind}/{row['tmdb']}", key, append_to_response="credits"),
+                kind)
         except Failed as e:
             print(f"{line}\n      ! {str(e).replace(key, '‹key›')}")
             continue
@@ -815,7 +944,7 @@ def stage_where(rows: list[dict], head: str, args) -> int:
     for i, row in enumerate(todo, 1):
         line = f"[{i:>3}/{len(todo)}] {row['title']}"
         try:
-            d = tmdb_get(f"/movie/{row['tmdb']}/watch/providers", key)
+            d = tmdb_get(f"/{kind_of(row)}/{row['tmdb']}/watch/providers", key)
         except Failed as e:
             print(f"{line}\n      ! {str(e).replace(key, '‹key›')}")
             continue
@@ -883,15 +1012,32 @@ def stage_where(rows: list[dict], head: str, args) -> int:
 
 def audit_row(row: dict, key: str) -> dict | None:
     """One row's second opinion, or None if it looks fine."""
-    stored = tmdb_get(f"/movie/{row['tmdb']}", key)
+    kind = kind_of(row)
+    stored = normalise_tmdb(tmdb_get(f"/{kind}/{row['tmdb']}", key), kind)
     if not stored:
-        return None
+        # A dead id. This used to `return None` — silently passing over the one
+        # row most obviously broken, because it has no film to compare against
+        # and no poster either. Unstoppable sat like this and the audit said
+        # nothing at all.
+        hits = [normalise_tmdb(h, kind) for h in
+                (tmdb_get(f"/search/{kind}", key, query=plain(row["title"]))
+                 .get("results") or [])]
+        want_t = exact(plain(row["title"]))
+        same_t = [h for h in hits if exact(h.get("title") or "") == want_t]
+        pick = max(same_t, key=lambda h: h.get("vote_count") or 0, default=None)
+        return {
+            "row": row, "why": "TMDB has no film with this id",
+            "stored": (f"id {row['tmdb']}", "????", 0, row["tmdb"]),
+            "better": (pick.get("title"), (pick.get("release_date") or "????")[:4],
+                       pick.get("vote_count") or 0, pick["id"]) if pick else None,
+        }
     want = exact(plain(row["title"]))
     stored_title = exact(stored.get("title") or "")
     stored_votes = stored.get("vote_count") or 0
 
-    hits = (tmdb_get("/search/movie", key, query=plain(row["title"]))
-            .get("results") or [])
+    hits = [normalise_tmdb(h, kind) for h in
+            (tmdb_get(f"/search/{kind}", key, query=plain(row["title"]))
+             .get("results") or [])]
     same = [h for h in hits if exact(h.get("title") or "") == want]
     if not same:
         # People write down the short name. "13 Hours" is filed as "13 Hours:
@@ -917,6 +1063,11 @@ def audit_row(row: dict, key: str) -> dict | None:
         x, y = (a, b) if len(a) <= len(b) else (b, a)
         if y.startswith(x + " ") or y.startswith(x + ":"):
             return True
+        # ...and the extra words come before the name as often as after it:
+        # the film is filed as "AVP: Alien vs. Predator", not "Alien vs.
+        # Predator: AVP". A whole-phrase containment covers both ends.
+        if x and (" " + x) in (" " + y):
+            return True
         return ARTICLES.sub("", x) == ARTICLES.sub("", y)
 
     why = None
@@ -928,9 +1079,23 @@ def audit_row(row: dict, key: str) -> dict | None:
         # flag nobody can adjudicate is just noise.
         if bv > max(sv * 10, 200):
             why = "a much better-known film has this exact name"
+    if not why and stored_votes < OBSCURE:
+        why = f"almost nobody has rated this ({stored_votes} ratings)"
+        # ...but only offer an alternative that is genuinely better known.
+        # Swapping an 8-rating film for a 10-rating one is not a fix, and
+        # --fix would happily take it.
+        if best and (best.get("vote_count") or 0) < max(stored_votes * 10, 200):
+            best = None
     # A "suggestion" that is the film already stored is not a suggestion.
     if best and best["id"] == row["tmdb"]:
         return None
+    # Nor is one that fewer people have heard of. --fix takes these without
+    # asking, and it once traded a 5,139-rating AVP for a 2-rating short film
+    # of the same name. A swap has to be an improvement to be offered at all.
+    if best and (best.get("vote_count") or 0) <= max(stored_votes, CONFIDENT_VOTES):
+        best = None
+        if why == "stored film is called something else":
+            why = None
     if not why:
         return None
 
