@@ -24883,25 +24883,29 @@
        It used to be a 760-wide diorama in a bordered box floating in the
        middle of the screen, with the idling field drifting across the title
        over the top of it. That is a menu with a picture on it. A title screen
-       has the picture *behind* it — so the survey scene is full bleed, the
-       drift is covered by it rather than gated off (this draws after it), and
+       has the picture *behind* it — so the scene is full bleed, the drift is
+       covered by it rather than gated off (this draws after it), and
        everything else sits on a scrim.
 
        Ric, 20 September 2026: *"less words … look like a real start up page
        from a professional gaming company."* Two sentences came off with the
        box — one about stations and one about how many people can play —
-       because a front page is not where a game explains itself. */
+       because a front page is not where a game explains itself.
+
+       The scene is **`title`, not `survey`**, and that is the second half of
+       the same note. The card dioramas were composed for a box 740 by 174 and
+       two of their three elements are a fixed pixel size, so stretched to a
+       page they leave it measurably empty — a luminance sweep of the result
+       came back blank across the whole middle band. `title` is composed for a
+       whole page: everything scales, the chart lattice spans it, and the sky
+       is a sky. See `menu.js`. */
     /* Overscanned. The diorama was composed for a card 740 wide and 174 tall;
        stretched to a whole page its galaxy shrinks into one corner and the
        scene reads as an empty rectangle rather than as space. Drawn a third
        larger than the page and pulled back to centre, the galaxy is the size
        it was meant to be and what falls off the edges is the part that was
        always padding. */
-    const ov = 0.34;
-    if (menuArt) {
-      menuArt.preview("survey", -SCREEN_W * ov / 2, -SCREEN_H * ov / 2,
-                      SCREEN_W * (1 + ov), SCREEN_H * (1 + ov), clock);
-    }
+    if (menuArt) menuArt.preview("title", 0, 0, SCREEN_W, SCREEN_H, clock);
 
     /* The scrim: darkest at the top and bottom, barely there across the
        middle, so the wordmark and the buttons have something to sit on while
@@ -24913,6 +24917,16 @@
     scrim.addColorStop(1,    "rgba(10, 11, 16, 0.94)");
     ctx.save();
     ctx.fillStyle = scrim;
+    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    /* And a soft pool under the middle column, so the wordmark and the buttons
+       sit on something rather than on whatever the scene happens to be doing
+       behind them this second. */
+    const pool = ctx.createRadialGradient(
+      SCREEN_W / 2, SCREEN_H * 0.5, 40,
+      SCREEN_W / 2, SCREEN_H * 0.5, Math.max(SCREEN_W, SCREEN_H) * 0.46);
+    pool.addColorStop(0, "rgba(10, 11, 16, 0.62)");
+    pool.addColorStop(1, "rgba(10, 11, 16, 0)");
+    ctx.fillStyle = pool;
     ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
     ctx.restore();
 

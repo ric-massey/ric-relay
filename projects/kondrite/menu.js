@@ -254,6 +254,88 @@
            a, 1, VIOLET, 1, 0.3);
     },
 
+    /* ── the front page ───────────────────────────────────────────────────
+       Its own scene, and the reason it is not just `survey` drawn bigger:
+       these dioramas were composed for a card 740 by 174, and two of their
+       three elements are a **fixed pixel size** — the chart cells are 11px and
+       the ship is scale 1. On a card that is most of the picture; blown up to
+       a whole page they are a postage stamp in one corner and a speck in
+       another, and the page measures ~85% empty. Which is what it looked like.
+
+       So this one is composed for the space it is actually drawn in. Everything
+       scales off `w` and `h`, the chart lattice spans the page rather than
+       sitting in a corner, and there are enough stars to be a sky rather than a
+       sprinkle. The subject is the same as the card's and should be: space
+       becomes known because somebody went there. */
+    title(x, y, w, h, t) {
+      const { ctx, glow } = api;
+      const k = Math.min(w, h) / 700;        // one scale for the whole scene
+
+      /* Three layers of stars at three speeds. Depth is what stops a starfield
+         reading as noise, and it costs two more calls. */
+      stars(x, y, w, h, t * 0.04, 90, "#6f5cc4");
+      stars(x, y, w, h, t * 0.10, 46, VIOLET);
+      stars(x, y, w, h, t * 0.19, 18, "#cfc4ff");
+
+      // The nebula, large and off-centre, so the page has a subject.
+      const nx = x + w * 0.70, ny = y + h * 0.40;
+      for (let i = 0; i < 6; i++) {
+        const f = 0.30 + i * 0.13 + Math.sin(t * 0.22 + i) * 0.02;
+        glow(i % 2 ? VIOLET : "#6f5cc4", 1.8, 0.26 - i * 0.032, () => {
+          ctx.beginPath();
+          ctx.ellipse(nx, ny, w * 0.30 * f, h * 0.34 * f, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        });
+      }
+
+      /* The chart filling in, across the whole page instead of in a corner.
+         Cells light in a slow diagonal sweep — a wave rather than a raster,
+         because a page-wide grid ticking left to right reads as a progress bar
+         and this is meant to read as ground being covered. */
+      const cell = Math.max(14, Math.round(26 * k));
+      const gap = Math.max(3, Math.round(5 * k));
+      const step = cell + gap;
+      const cols = Math.ceil(w / step) + 1, rows = Math.ceil(h / step) + 1;
+      ctx.save();
+      ctx.fillStyle = VIOLET;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          /* A deterministic scatter decides which cells are ever charted, so
+             the lattice is a survey and not a chessboard. */
+          const seed = (c * 73.13 + r * 149.7) % 1;
+          if (seed > 0.42) continue;
+          const phase = (c + r * 0.6) * 0.30 - t * 0.5;
+          const lit = 0.5 + 0.5 * Math.sin(phase);
+          /* Quieter towards the middle of the page. The lattice is texture and
+             the words are the subject, and a charted cell directly behind a
+             letter is the one place this reads as a loading screen rather than
+             as a chart. */
+          const dx = (x + c * step + cell / 2 - (x + w / 2)) / (w / 2);
+          const clear = Math.min(1, Math.abs(dx) * 1.7);
+          ctx.globalAlpha = (0.025 + lit * lit * 0.12) * (0.25 + clear * 0.75);
+          ctx.fillRect(x + c * step, y + r * step, cell, cell);
+        }
+      }
+      ctx.restore();
+
+      /* One ship, crossing slowly, at a size you can see. It is the only thing
+         on the page that is a *thing* rather than a texture, so it is drawn
+         last and it is the brightest. */
+      const px = x + w * (0.08 + ((t * 0.014) % 1) * 0.94);
+      /* High on the page rather than level with the buttons: down there it was
+         the brightest thing on the same line as the thing you came to press,
+         and the two competed. */
+      const py = y + h * 0.29 + Math.sin(t * 0.18) * h * 0.07;
+      const a = Math.sin(t * 0.18 + 1.57) * 0.14;
+      glow(VIOLET, 1.4, 0.13, () => {
+        ctx.beginPath();
+        ctx.moveTo(px - 170 * k, py - Math.sin(t * 0.18) * 8 * k);
+        ctx.lineTo(px - 16 * k, py);
+        ctx.stroke();
+      });
+      ship(px, py, a, 1.7 * k, "#cfc4ff", 0.8, 0.35);
+    },
+
     online(x, y, w, h, t) {
       const { ctx, glow } = api;
       stars(x, y, w, h, t * 0.25, 10, "#87d8ff");

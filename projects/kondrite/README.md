@@ -36,6 +36,17 @@ behind everything instead of sitting in a bordered box in the middle, and two
 sentences came off — one about what a station has in it, one about how many
 people can play. A front page is not where a game explains itself.
 
+The art is its own scene rather than a mode card blown up. The five card
+dioramas were composed for a box 740 by 174 and two of their three elements are
+a **fixed pixel size**, so stretched to a whole page the chart cells become a
+postage stamp in one corner and the ship a speck in another — a luminance sweep
+of the page came back blank across the entire middle band. `title` in `menu.js`
+is composed for the space it is drawn in: three layers of stars at three
+speeds, the nebula large and off-centre, and the chart lattice spanning the page
+with its cells lighting in a slow diagonal sweep. It quiets towards the middle,
+because a charted cell directly behind a letter is the one thing that makes a
+chart read as a loading screen.
+
 There was briefly a quieter **SIMULATORS** line under
 it, with a solo/multiplayer lane page behind that; Ric took the door off —
 *"simulators tab should be inside of the survey game"* — because a machine is
