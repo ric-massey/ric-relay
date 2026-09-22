@@ -57,3 +57,6 @@ projects/training/server/.wrangler/
 # webhook verify token live in the macOS Keychain, and the refresh token lives
 # in Cloudflare. None of the three are ever in this repo.
 projects/training/server/strava-account.json
+
+# Python bytecode from the entertainment puller
+projects/entertainment/__pycache__/
