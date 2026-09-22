@@ -742,7 +742,11 @@
 }
 .case.stacked {
   display: block;
-  width: 100%;
+  /* It is the same case, turned a quarter anticlockwise and set down. So its
+     length here is its HEIGHT standing up — 190mm — not whatever the column
+     happens to be wide, and its depth is still its thickness. Stretching it to
+     fill the column would be a different object. */
+  width: calc(var(--case-h) + var(--dh, 0px));
   height: calc(var(--t, 16px) + 2px);
   margin: 0;
 }
@@ -765,7 +769,19 @@
               var(--tint, #1d1d1d);
   justify-content: flex-start;
 }
-.stacked .spine-art { background-position: 50% 42%; opacity: 0.42; }
+/* The artwork turns with the case. Sized as it would be standing — narrow and
+   tall — then rotated a quarter turn, so it is the same slice of the poster
+   you saw on the shelf rather than a different, wider crop of it. */
+.stacked .spine-art {
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--t, 16px) + 2px);
+  height: calc(var(--case-h) + var(--dh, 0px));
+  transform: translate(-50%, -50%) rotate(-90deg);
+  background-position: 50% 40%;
+  opacity: 0.42;
+}
 .stacked .spine::after {
   background:
     linear-gradient(180deg, rgba(255,255,255,0.20) 0 1px, transparent 2px),
@@ -776,9 +792,10 @@
   writing-mode: horizontal-tb;
   transform: none;
   max-height: none;
-  max-width: calc(100% - 150px);
-  margin-left: 16px;
+  max-width: calc(100% - 34px);
+  margin-left: 15px;
   font: 800 0.72rem/1 var(--sans);
+  transition: max-width 0.32s var(--ease);
 }
 /* the distributor's band moves to the end of the case */
 .stacked .spine-foot {
@@ -792,16 +809,28 @@
               inset -1px 0 0 rgba(0,0,0,0.5);
 }
 /* year and runtime sit on the same line, since there is room for them */
+/* A real spine has room for the title and a logo, nothing else — so the facts
+   stay out of the way until the case is pulled from the pile. */
 .stack-sub {
   position: absolute;
-  right: 20px;
+  right: 18px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 2;
-  font: 600 0.7rem/1 var(--mono);
-  color: rgba(255,255,255,0.62);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+  font: 600 0.68rem/1 var(--mono);
+  color: rgba(255,255,255,0.72);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.95);
   white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.28s var(--ease);
+}
+.case.stacked.out .stack-sub,
+.case.stacked:focus-visible .stack-sub { opacity: 1; }
+.case.stacked.out .spine-txt,
+.case.stacked:focus-visible .spine-txt { max-width: calc(100% - 132px); }
+@media (hover: hover) {
+  .case.stacked:hover .stack-sub { opacity: 1; }
+  .case.stacked:hover .spine-txt { max-width: calc(100% - 132px); }
 }
 .stacked .together {
   top: 50%;
@@ -839,7 +868,9 @@
    a six-thousand-pixel scroll, and nobody stacks them that high anyway. */
 .piles {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  /* a case on its side is ~218px long, plus the pile's own edges */
+  grid-template-columns: repeat(auto-fill, minmax(240px, 240px));
+  justify-content: center;
   gap: 34px 26px;
   margin: 0;
   padding: 26px 20px 60px;
@@ -870,6 +901,5 @@
     0 12px 20px rgba(0,0,0,0.6);
 }
 @media (max-width: 560px) {
-  .piles { grid-template-columns: 1fr; padding: 20px 16px 50px; }
-  .stacked .spine-txt { max-width: calc(100% - 120px); }
+  .piles { grid-template-columns: 240px; padding: 20px 8px 50px; }
 }
