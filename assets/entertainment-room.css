@@ -152,11 +152,12 @@
   scroll-padding-inline: 20px;
 }
 .rack::-webkit-scrollbar { display: none; }
-
 .case {
   flex: 0 0 auto;
-  width: var(--case-w);
-  height: var(--case-h);
+  /* each case its own thickness, seeded off the film — a shelf where every
+     box is identical is the tell that it is not a shelf */
+  width: var(--t, var(--case-w));
+  height: calc(var(--case-h) + var(--dh, 0px));
   position: relative;
   border: 0;
   padding: 0;
@@ -171,79 +172,85 @@
   inset: 0;
   transform-style: preserve-3d;
   transform-origin: right center;
-  transition: transform 0.5s cubic-bezier(0.2, 0.75, 0.2, 1);
+  transform: rotate(var(--lean, 0deg));   /* a used shelf leans */
+  transition: transform 0.55s cubic-bezier(0.22, 0.8, 0.2, 1);
 }
 .face {
   position: absolute;
   top: 0;
   left: 0;
   height: 100%;
-  border-radius: 2px 3px 3px 2px;
   overflow: hidden;
   backface-visibility: hidden;
 }
 
-/* ── the spine ── */
+/* ── the spine: what faces you on a full shelf ── */
 .spine {
-  width: var(--case-w);
-  background: linear-gradient(90deg, #000 0%, rgba(0,0,0,0.25) 16%,
-              rgba(255,255,255,0.10) 46%, rgba(0,0,0,0.30) 88%, #000 100%),
+  width: 100%;
+  border-radius: 1px 2px 2px 1px;
+  background: linear-gradient(90deg,
+              rgba(0,0,0,0.92) 0 1px,
+              rgba(0,0,0,0.35) 2px 12%,
+              rgba(255,255,255,0.07) 44%,
+              rgba(0,0,0,0.34) 86%,
+              rgba(0,0,0,0.9) 100%),
               var(--tint, #1d1d1d);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07),
-              inset -2px 0 4px rgba(0,0,0,0.55);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
   display: flex;
   align-items: center;
   justify-content: center;
 }
-/* a slice of the artwork, which is what gives a spine its colour */
 .spine-art {
   position: absolute;
   inset: 0;
   background-size: cover;
   background-position: 50% 40%;
-  opacity: 0.55;
-  filter: saturate(1.25) contrast(1.1);
+  opacity: 0.5;
+  filter: saturate(1.3) contrast(1.15);
 }
-.spine::after {                       /* the plastic catching the light */
+/* the clear sheath: one hard specular line at the hinge, one soft wash */
+.spine::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(255,255,255,0.16) 0 2px,
-              transparent 3px 60%, rgba(255,255,255,0.07) 78%, transparent);
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.22) 0 1.5px, transparent 2.5px),
+    linear-gradient(90deg, transparent 52%, rgba(255,255,255,0.09) 72%, transparent 88%);
   pointer-events: none;
 }
 .spine-txt {
   position: relative;
   z-index: 2;
   writing-mode: vertical-rl;
-  transform: rotate(180deg);          /* read bottom-to-top, as they sit */
-  max-height: calc(var(--case-h) - 34px);
+  transform: rotate(180deg);
+  max-height: calc(100% - 34px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font: 800 0.72rem/1 var(--sans);    /* 11.5px — clears the floor */
+  font: 800 0.72rem/1 var(--sans);
   letter-spacing: 0.02em;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.7);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8);
   color: #fff;
 }
-/* the coloured band every distributor puts at the foot of a spine */
 .spine-foot {
   position: absolute;
   left: 0; right: 0; bottom: 0;
-  height: 12px;
+  height: 11px;
   background: var(--tint, #333);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.24),
+              inset 0 -1px 0 rgba(0,0,0,0.5);
   z-index: 2;
 }
 
-/* ── the front cover, hinged on the spine's right edge ── */
+/* ── the printed front, hinged on the spine's right edge ── */
 .front {
   width: var(--front-w);
   left: 100%;
   transform-origin: left center;
   transform: rotateY(90deg);
-  background: #161616;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset;
+  background: #141414;
+  /* the hinge edge is square, the opening edge is moulded round */
+  border-radius: 1px 5px 5px 1px;
 }
 .front img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .front .noart {
@@ -255,49 +262,147 @@
   font: 800 1rem/1.15 var(--sans);
   background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(0,0,0,0.3)), var(--tint, #1a1a1a);
 }
-.front-tag {
+/* where the wrap folds round the hinge — a real case creases there */
+.crease {
   position: absolute;
-  left: 0; right: 0; bottom: 0;
-  padding: 18px 8px 7px;
-  background: linear-gradient(transparent, rgba(0,0,0,0.9));
-  font: 700 0.72rem/1.25 var(--sans);
-  text-align: center;
+  top: 0; bottom: 0; left: 0;
+  width: 9px;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(90deg,
+              rgba(0,0,0,0.55) 0, rgba(0,0,0,0.16) 55%,
+              rgba(255,255,255,0.05) 85%, transparent);
 }
-.front-tag b { display: block; font-size: 0.78rem; }
-.front-tag span { color: var(--dim); font: 600 0.68rem/1.3 var(--mono); }
+/* the sheen on the plastic over the cover, seen only once it is turned */
+.gloss {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.55s var(--ease);
+  background: linear-gradient(103deg,
+              transparent 34%, rgba(255,255,255,0.14) 45%,
+              rgba(255,255,255,0.05) 52%, transparent 62%);
+}
 
-/* the mark for a film his partner put on the list */
+/* ── the reverse of the wrap ──
+   Without a back face you see straight through the case as it turns. */
+.back {
+  width: var(--front-w);
+  left: 0;
+  transform-origin: left center;
+  transform: rotateY(90deg);
+  background: #0c0c0c;
+}
+.back-art {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: 50% 40%;
+  opacity: 0.16;
+  filter: grayscale(0.5) blur(1px);
+  transform: scaleX(-1);
+}
+
+/* ── the opening side: the plastic opposite the spine ── */
+.edge {
+  width: 100%;
+  transform: translateZ(calc(var(--front-w) * -1)) rotateY(180deg);
+  background: linear-gradient(90deg, #0a0a0a, #1c1c1c 40%, #070707);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+}
+
+/* ── the top edge ──
+   You look slightly down at a shelf, so this sliver is always in view, and it
+   is the surface that makes the thing a box rather than a picture of one. */
+.top {
+  width: 100%;
+  height: var(--front-w);
+  transform-origin: top center;
+  transform: rotateX(-90deg);
+  border-radius: 1px 1px 4px 4px;
+  /* Across the thickness: the sheath's lit lip, then the black plastic, and
+     at the far side the cut edge of the printed wrap — the pale line you can
+     always see along the top of a case on a shelf. */
+  background: linear-gradient(90deg,
+              rgba(255,255,255,0.13) 0 1px,
+              #1b1b1b 2px,
+              #0d0d0d 46%,
+              #070707 84%,
+              rgba(214,206,190,0.55) 96%,
+              rgba(160,152,138,0.35) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16);
+}
+
+/* ── the mark for a film his partner put on the list ──
+   Absolutely placed at the head of the spine: the spine centres its contents,
+   so an unpositioned badge lands in the middle of the title. */
 .together {
   position: absolute;
-  top: 6px; left: 6px;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 3;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 3px 5px;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
   border-radius: 4px;
   background: var(--gold);
   color: #0f0f0f;
-  font: 800 0.66rem/1 var(--mono);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.6);
 }
-.spine .together { top: 5px; left: 50%; transform: translateX(-50%); padding: 3px; }
+.together svg { width: 11px; height: 11px; }
+/* on the cover there is room for it to sit in the corner */
+.front .together {
+  top: 7px;
+  left: 7px;
+  transform: none;
+  width: auto;
+  height: auto;
+  padding: 4px 6px;
+}
+
+/* where the case meets the plank */
+.under {
+  position: absolute;
+  left: -3px; right: -3px; bottom: -4px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(50% 100% at 50% 0, rgba(0,0,0,0.85), transparent 75%);
+  transition: opacity 0.4s var(--ease), transform 0.4s var(--ease);
+}
 
 /* ── pulling one off the shelf ── */
+.case.out, .case:focus-visible { z-index: 6; }
+.case.out .box,
+.case:focus-visible .box {
+  transform: translate3d(-16px, -34px, 96px) rotateY(-70deg) rotateX(2.5deg) rotate(0deg);
+}
+.case.out .gloss, .case:focus-visible .gloss { opacity: 1; }
+.case.out .front, .case:focus-visible .front {
+  box-shadow: 0 30px 48px rgba(0,0,0,0.7),
+              0 3px 10px rgba(0,0,0,0.5),
+              inset 0 0 0 1px rgba(255,255,255,0.09);
+}
+.case.out .under, .case:focus-visible .under {
+  opacity: 0.35;
+  transform: translateY(10px) scaleX(1.5);
+}
 @media (hover: hover) {
   .case:hover { z-index: 6; }
   .case:hover .box {
-    transform: translate3d(-14px, -30px, 90px) rotateY(-72deg) rotateX(2deg);
+    transform: translate3d(-16px, -34px, 96px) rotateY(-70deg) rotateX(2.5deg) rotate(0deg);
   }
-  .case:hover .front { box-shadow: 0 24px 40px rgba(0,0,0,0.65); }
-}
-.case.out { z-index: 6; }
-.case.out .box {
-  transform: translate3d(-14px, -30px, 90px) rotateY(-72deg) rotateX(2deg);
-}
-.case.out .front { box-shadow: 0 24px 40px rgba(0,0,0,0.65); }
-.case:focus-visible { outline: none; }
-.case:focus-visible .box {
-  transform: translate3d(-14px, -30px, 90px) rotateY(-72deg) rotateX(2deg);
+  .case:hover .gloss { opacity: 1; }
+  .case:hover .front {
+    box-shadow: 0 30px 48px rgba(0,0,0,0.7),
+                0 3px 10px rgba(0,0,0,0.5),
+                inset 0 0 0 1px rgba(255,255,255,0.09);
+  }
+  .case:hover .under { opacity: 0.35; transform: translateY(10px) scaleX(1.5); }
 }
 
 /* ── the shelf itself ──

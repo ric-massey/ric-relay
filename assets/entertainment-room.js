@@ -290,17 +290,49 @@
 
   /* One DVD case: a spine you read side-on and a cover hinged to its right
      edge, folded back out of sight until the case is pulled off the shelf. */
+  /* A real Amaray case, built as a box rather than two pictures that swap.
+     Six surfaces matter, and leaving any of them out is what makes a case
+     read as a card:
+
+       spine   what faces you on a full shelf
+       front   the printed cover, hinged on the spine's right edge
+       back    the reverse, hinged on the spine's LEFT edge — without it you
+               see straight through the case as it turns
+       edge    the opening side, 14mm of black plastic opposite the spine
+       top     the sliver you see because you are looking slightly down at a
+               shelf. This one does most of the work: it is the surface that
+               says "box" rather than "picture of a box"
+       under   the contact shadow where it meets the plank
+
+     Nothing on a real shelf is identical either, so thickness, height and
+     lean all vary a little, seeded off the id so a film is the same object
+     every visit. */
+  function caseVary(id) {
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (h * 33 + id.charCodeAt(i)) & 0xffff;
+    return {
+      /* 26–35px: a single disc is thinner than a box set */
+      t: 26 + (h % 10),
+      /* a couple of px of height difference is plenty to break the ruler line */
+      dh: (h >> 4) % 7,
+      /* leaning cases are what a used shelf looks like */
+      lean: (((h >> 8) % 9) - 4) * 0.22
+    };
+  }
+
   function dvdCase(e) {
     const art = e.poster ? 'assets/posters/' + e.id + '.jpg' : '';
     const sub = [e.year, e.runtime ? hhmm(e.runtime) : ''].filter(Boolean).join(' · ');
-    const mark = e.pick
-      ? '<span class="together">' + PERSON + '</span>' : '';
+    const mark = e.pick ? '<span class="together">' + PERSON + '</span>' : '';
+    const v = caseVary(e.id);
+    const bg = art ? 'background-image:url(&quot;' + esc(art) + '&quot;)' : '';
     return '<button class="case" type="button" data-id="' + esc(e.id) + '"' +
-        ' style="--tint:' + hue(e, 26) + '"' +
+        ' style="--tint:' + hue(e, 26) + ';--t:' + v.t + 'px;--dh:' + v.dh +
+        'px;--lean:' + v.lean.toFixed(2) + 'deg"' +
         ' aria-label="' + esc(e.title) + (sub ? ', ' + esc(sub) : '') + '">' +
       '<span class="box">' +
         '<span class="face spine">' +
-          (art ? '<span class="spine-art" style="background-image:url(&quot;' + esc(art) + '&quot;)"></span>' : '') +
+          (art ? '<span class="spine-art" style="' + bg + '"></span>' : '') +
           '<span class="spine-txt">' + esc(e.title) + '</span>' +
           '<span class="spine-foot"></span>' + mark +
         '</span>' +
@@ -308,10 +340,21 @@
           (art
             ? '<img src="' + esc(art) + '" alt="" loading="lazy" decoding="async" width="342" height="513">'
             : '<span class="noart">' + esc(e.title) + '</span>') +
+          '<span class="crease" aria-hidden="true"></span>' +
+          '<span class="gloss" aria-hidden="true"></span>' +
           '<span class="front-tag"><b>' + esc(e.title) + '</b>' +
             (sub ? '<span>' + esc(sub) + '</span>' : '') + '</span>' +
         '</span>' +
-      '</span></button>';
+        /* the reverse of the wrap: same art, dimmed and flipped, the way the
+           back of a printed sleeve actually looks */
+        '<span class="face back">' +
+          (art ? '<span class="back-art" style="' + bg + '"></span>' : '') +
+        '</span>' +
+        '<span class="face edge" aria-hidden="true"></span>' +
+        '<span class="face top" aria-hidden="true"></span>' +
+      '</span>' +
+      '<span class="under" aria-hidden="true"></span>' +
+      '</button>';
   }
 
   /* ── where to watch ──
