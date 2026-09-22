@@ -510,6 +510,22 @@
         '</section>'
       : '';
 
+    /* Everything that is not a franchise gets the other version of the same
+       question: not "what else is in this run" but "what else is like it". */
+    const like = (!(e.parts || []).length && (e.like || []).length)
+      ? '<section class="run">' +
+          '<h4>More like this</h4>' +
+          '<ol class="run-list">' + e.like.map(f =>
+            '<li><span class="run-art">' +
+              '<img src="assets/posters/p' + f.id + '.jpg" alt="" loading="lazy" ' +
+                'decoding="async" onerror="this.remove()">' +
+            '</span>' +
+            '<b>' + esc(f.t) + '</b>' +
+            (f.y ? '<span>' + f.y + '</span>' : '') + '</li>').join('') +
+          '</ol>' +
+        '</section>'
+      : '';
+
     const links = watchLinks(e);
     const ownBlock = own
       ? '<div class="sheet-own">' +
@@ -532,7 +548,7 @@
         /* Where to watch comes FIRST, above the synopsis. Opening a title is
            almost always "can I put this on tonight", and the answer to that
            should not sit below three paragraphs about the plot. */
-        whereBlock(e) + parts +
+        whereBlock(e) + parts + like +
         (e.overview
           ? '<p class="blurb">' + esc(e.overview) + '</p>'
           : '<p class="thin">No synopsis yet — run ' +

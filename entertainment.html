@@ -538,12 +538,18 @@
     /* ── the detail sheet ── the "names aren't enough" answer ── */
     dialog.sheet {
       width: min(760px, calc(100vw - 32px));
+      /* It has to be able to scroll. `overflow: hidden` was here to keep the
+         corners round, and it also meant a sheet taller than the window simply
+         could not be read past its bottom edge — which is most of them now
+         that a franchise lists its run and every film lists what it is like. */
+      max-height: min(86vh, 900px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
       padding: 0;
       border: 1px solid var(--line-hi);
       border-radius: 14px;
       background: var(--panel);
       color: var(--ink);
-      overflow: hidden;
     }
     dialog.sheet::backdrop { background: rgba(0,0,0,0.72); backdrop-filter: blur(3px); }
     .sheet-in { display: flex; gap: 20px; padding: 20px; }
@@ -633,8 +639,10 @@
     .sheet-own button:hover { color: var(--ink); border-color: #4a4a4a; }
     .sheet-own button.danger:hover { color: #ff8f8f; border-color: #6d3535; }
     .sheet-x {
-      position: absolute;
-      top: 12px; right: 12px;
+      position: sticky;
+      float: right;
+      top: 12px;
+      margin: 12px 12px -42px 0;
       width: 30px; height: 30px;
       display: grid;
       place-items: center;

@@ -221,7 +221,13 @@ def download(url: str, dest: Path) -> bool:
 # format the page's own Export button produces. Those two have to agree or every
 # run fights the last export.
 
-ROW = re.compile(r"\{[^{}]*\}", re.S)
+# A row is a brace pair that may contain ONE level of nested braces, because
+# `parts` and `like` hold lists of little objects. The old pattern forbade any
+# nesting at all — so the moment a row grew a `parts` list it stopped being a
+# row, the reader silently skipped it, and the next write deleted it. That cost
+# 23 rows including Star Wars before it was caught. If a field ever nests two
+# deep, this has to grow again or the same thing happens.
+ROW = re.compile(r"\{(?:[^{}]|\{[^{}]*\})*\}", re.S)
 FIELD = re.compile(r"(\w+)\s*:\s*(\"(?:[^\"\\]|\\.)*\"|true|false|-?\d+(?:\.\d+)?)")
 # Every list-valued field, not just genres. This used to name `genres` alone,
 # which meant `cast`, `streams` and `rents` were invisible to the reader — and a
@@ -236,7 +242,7 @@ LISTS = re.compile(r"(\w+)\s*:\s*(\[.*?\])\s*(?=,\s*\w+\s*:|,?\s*\})", re.S)
 # match FIELDS in assets/entertainment-room.js.
 FIELDS = ["id", "title", "status", "count", "series", "where", "pick", "note",
           "seen", "wd", "wdok", "tmdb", "kind", "imdb", "year", "runtime", "genres", "director",
-          "overview", "rating", "cast", "parts", "poster", "backdrop",
+          "overview", "rating", "cast", "parts", "like", "poster", "backdrop",
           "streams", "rents", "checked"]
 
 
@@ -247,8 +253,16 @@ def read_rows() -> tuple[str, list[dict]]:
     rows = []
     for m in ROW.finditer(text[cut:]):
         chunk = m.group(0)
-        row = {k: json.loads(v) for k, v in FIELD.findall(chunk)}
+        # Lists come out FIRST and are then cut out of the text, because the
+        # objects inside `parts` and `like` carry their own `id`, `t` and `y`.
+        # Scanning the whole chunk for scalars picks those up as if they were
+        # the row's own fields — which silently replaced a row's id with the
+        # id of the last film recommended to it.
+        row = {}
         for k, v in LISTS.findall(chunk):
+            row[k] = json.loads(v)
+            chunk = chunk.replace(v, "", 1)
+        for k, v in FIELD.findall(chunk):
             row[k] = json.loads(v)
         if row.get("id"):
             rows.append(row)
@@ -852,6 +866,34 @@ def stage_art(rows: list[dict], head: str, args) -> int:
                 if parts:
                     row["parts"] = parts
                     print(f"      ✓ {len(parts)} in the {series.get('name', 'collection')}")
+
+        # ── what else is like it ──
+        # A franchise row already answers "what else is there" with its own run,
+        # so this is for everything else: the four TMDB reckons sit closest to
+        # it. Four rather than ten because this is a hint, not a catalogue —
+        # and because each one is a poster to fetch and keep.
+        if not row.get("parts") and not row.get("like"):
+            near = (tmdb_get(f"/{kind}/{row['tmdb']}/recommendations", key)
+                    .get("results") or [])
+            like = []
+            for f in near[:4]:
+                title = f.get("title") or f.get("name") or ""
+                date = f.get("release_date") or f.get("first_air_date") or ""
+                if not title:
+                    continue
+                like.append({
+                    "id": f["id"],
+                    "t": title,
+                    "y": int(date[:4]) if date[:4].isdigit() else 0,
+                })
+                if f.get("poster_path"):
+                    # w154: these are thumbnails behind a click, not artwork on
+                    # a shelf, and four of them per film across 340 films adds
+                    # up fast at any larger size.
+                    download(f"{TMDB_IMG}/w154{f['poster_path']}",
+                             POSTERS / f"p{f['id']}.jpg")
+            if like:
+                row["like"] = like
         # The billboard only ever shows starred titles, so that is the only
         # place a 780px-wide image earns its bytes.
         if row.get("pick") and m.get("backdrop_path"):
