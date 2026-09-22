@@ -848,6 +848,13 @@
       if (!HOVERS && t.classList.contains('case') && !t.classList.contains('out')) {
         for (const o of document.querySelectorAll('.case.out')) o.classList.remove('out');
         t.classList.add('out');
+        /* Opening one makes it taller, which in normal flow can only push the
+           cases BELOW it down — nothing can move what is above. Holding the
+           opened case in the middle of the screen is what makes the stack read
+           as parting around it: the ones above ride up, the ones below go
+           down, and the one you touched stays where your thumb left it. */
+        requestAnimationFrame(() =>
+          t.scrollIntoView({ block: 'center', behavior: 'smooth' }));
         return;
       }
       openSheet(t.dataset.more || t.dataset.id);

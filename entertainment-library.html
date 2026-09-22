@@ -1239,11 +1239,11 @@
     const piles = [];
     for (let i = 0; i < list.length; i += PILE) piles.push(list.slice(i, i + PILE));
     out.innerHTML = piles.map(p =>
+      /* No plank. A pile is not standing on anything — it is a pile. */
       '<li class="pile">' +
         '<div class="rack stacked">' +
           p.map(e => Room.dvdCase(e, 'stacked')).join('') +
         '</div>' +
-        '<div class="pile-base"></div>' +
       '</li>').join('');
   }
 
