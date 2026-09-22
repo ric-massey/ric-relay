@@ -920,7 +920,7 @@
       </select>
 
       <div class="seg" role="group" aria-label="How to show it">
-        <button type="button" data-mode="shelf" aria-pressed="true">Shelf</button>
+        <button type="button" data-mode="shelf" aria-pressed="true">Store</button>
         <button type="button" data-mode="grid" aria-pressed="false">Posters</button>
         <button type="button" data-mode="list" aria-pressed="false">List</button>
       </div>
@@ -1098,7 +1098,7 @@
 
     const out = el('out');
     out.className = state.mode === 'list' ? 'rows'
-      : state.mode === 'shelf' ? 'shelves' : 'grid';
+      : state.mode === 'shelf' ? 'piles' : 'grid';   /* renderShelves may swap this */
 
     if (!list.length) {
       out.innerHTML = '<li class="empty">Nothing matches that. ' +
@@ -1136,36 +1136,70 @@
 
      Cases are rendered once and moved between rows on a re-cut — rebuilding
      363 3D boxes on every resize tick is how a page melts a phone. */
+  /* How tall a pile before it starts a new one. Thirty is about what you can
+     take in at a glance and about as high as anyone actually stacks them. */
+  const PILE = 30;
+
+  /* ── stacked, until you narrow it ──
+     The whole catalogue at rest is a pile: nobody stands 363 cases up to look
+     at all of them, they sit in stacks. The moment you ask a QUESTION of the
+     list — search it, pick a service, a genre, a decade, one of the lists —
+     the answer is small enough to stand up, so it goes onto shelves where you
+     can see the artwork down the spines.
+
+     Re-SORTING is not a question. A-Z or newest-first is the same pile in a
+     different order, so it stays a pile. */
+  function narrowed() {
+    return state.view !== 'all' || !!state.q || !!state.where ||
+           !!state.genre || !!state.decade;
+  }
+
   function perRow() {
-    const box = el('out');
-    const w = box.clientWidth - 40;            // the rack's own padding
+    const w = el('out').clientWidth - 44;       // the bay's padding and uprights
     const one = parseFloat(getComputedStyle(document.documentElement)
-      .getPropertyValue('--case-w')) + 3;      // spine plus the gap beside it
+      .getPropertyValue('--case-w')) + 3;
     return Math.max(4, Math.floor(w / one));
   }
 
-  function renderShelves(list, out) {
+  /* Standing on shelves: rows cut in JavaScript, because a flex-wrapped row
+     has nothing to stand on — the plank has to know where the row ends. */
+  function renderStanding(list, out) {
     const n = perRow();
     const rows = [];
     for (let i = 0; i < list.length; i += n) rows.push(list.slice(i, i + n));
     out.innerHTML = rows.map(r =>
       '<li class="shelf-row">' +
-        /* map passes the INDEX as the second argument, which dvdCase reads as
-           `faced` — so every case after the first came out cover-out. */
         '<div class="rack">' + r.map(e => Room.dvdCase(e)).join('') + '</div>' +
         '<div class="shelf-board"></div>' +
       '</li>').join('');
   }
 
-  /* Re-cut only when the number that fits actually changes. */
   let lastPerRow = 0;
   addEventListener('resize', () => {
-    if (state.mode !== 'shelf') return;
+    if (state.mode !== 'shelf' || !narrowed()) return;
     const n = perRow();
     if (n === lastPerRow) return;
     lastPerRow = n;
     render();
   });
+
+  function renderShelves(list, out) {
+    if (narrowed()) {
+      out.className = 'shelves';
+      renderStanding(list, out);
+      return;
+    }
+    out.className = 'piles';
+    const piles = [];
+    for (let i = 0; i < list.length; i += PILE) piles.push(list.slice(i, i + PILE));
+    out.innerHTML = piles.map(p =>
+      '<li class="pile">' +
+        '<div class="rack stacked">' +
+          p.map(e => Room.dvdCase(e, 'stacked')).join('') +
+        '</div>' +
+        '<div class="pile-base"></div>' +
+      '</li>').join('');
+  }
 
   /* ── controls ── */
   for (const b of document.querySelectorAll('.seg button[data-view]')) {

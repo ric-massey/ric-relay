@@ -722,3 +722,154 @@
   .case.faced { width: var(--faced-w, 116px); height: calc(var(--faced-w, 116px) * 1.41); }
   .rack.faced { gap: 10px; }
 }
+
+/* ── STACKED ──────────────────────────────────────────────────────────────
+   Cases lying flat in a pile, which is the other way a video store stores
+   them and the better one for reading a catalogue: laid on its side, a case
+   shows its spine as a horizontal bar and the title runs left to right
+   instead of sideways. Thickness becomes the bar's height, so a thin single
+   disc is a thin stripe and a double is a fat one — the pile has texture for
+   the same reason a real one does.
+
+   Pulling one out slides it clear of the pile, the way you do with the
+   actual thing. */
+.rack.stacked {
+  display: block;
+  padding: 0;
+  perspective: 1600px;
+  perspective-origin: 50% 40%;
+  overflow: visible;
+}
+.case.stacked {
+  display: block;
+  width: 100%;
+  height: calc(var(--t, 16px) + 2px);
+  margin: 0;
+}
+.stacked .box {
+  transform-origin: left center;
+  transform: none;
+  transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.stacked .spine {
+  width: 100%;
+  height: 100%;
+  border-radius: 2px;
+  /* lit along the top edge, shaded into the case below it */
+  background: linear-gradient(180deg,
+              rgba(255,255,255,0.16) 0 1px,
+              rgba(0,0,0,0.20) 2px 22%,
+              rgba(255,255,255,0.05) 52%,
+              rgba(0,0,0,0.42) 88%,
+              rgba(0,0,0,0.85) 100%),
+              var(--tint, #1d1d1d);
+  justify-content: flex-start;
+}
+.stacked .spine-art { background-position: 50% 42%; opacity: 0.42; }
+.stacked .spine::after {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.20) 0 1px, transparent 2px),
+    linear-gradient(100deg, transparent 60%, rgba(255,255,255,0.07) 76%, transparent 92%);
+}
+/* the title now reads the way a title should */
+.stacked .spine-txt {
+  writing-mode: horizontal-tb;
+  transform: none;
+  max-height: none;
+  max-width: calc(100% - 150px);
+  margin-left: 16px;
+  font: 800 0.72rem/1 var(--sans);
+}
+/* the distributor's band moves to the end of the case */
+.stacked .spine-foot {
+  left: auto;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  height: auto;
+  box-shadow: inset 1px 0 0 rgba(255,255,255,0.22),
+              inset -1px 0 0 rgba(0,0,0,0.5);
+}
+/* year and runtime sit on the same line, since there is room for them */
+.stack-sub {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  font: 600 0.7rem/1 var(--mono);
+  color: rgba(255,255,255,0.62);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+  white-space: nowrap;
+}
+.stacked .together {
+  top: 50%;
+  left: 5px;
+  transform: translateY(-50%);
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+}
+.stacked .together svg { width: 8px; height: 8px; }
+/* the rest of the box is inside the pile and never in view */
+.stacked .front, .stacked .back, .stacked .edge, .stacked .top { display: none; }
+.stacked .under { display: none; }
+
+/* sliding one out of the pile */
+.case.stacked.out, .case.stacked:focus-visible { z-index: 6; }
+.case.stacked.out .box,
+.case.stacked:focus-visible .box {
+  transform: translateX(26px);
+  filter: drop-shadow(-8px 4px 10px rgba(0,0,0,0.7));
+}
+.case.stacked.out .spine-txt,
+.case.stacked:focus-visible .spine-txt { color: #fff; }
+@media (hover: hover) {
+  .case.stacked:hover { z-index: 6; }
+  .case.stacked:hover .box {
+    transform: translateX(26px);
+    filter: drop-shadow(-8px 4px 10px rgba(0,0,0,0.7));
+  }
+  .case.stacked:hover .spine-txt { color: #fff; }
+}
+
+/* ── a pile ──
+   Several piles across rather than one tower: 363 cases in a single column is
+   a six-thousand-pixel scroll, and nobody stacks them that high anyway. */
+.piles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 34px 26px;
+  margin: 0;
+  padding: 26px 20px 60px;
+  list-style: none;
+}
+.pile {
+  position: relative;
+  padding: 10px 10px 0;
+  border-radius: 5px 5px 0 0;
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgba(255,226,160,0.07), transparent 60%),
+    linear-gradient(#241a12, #170f08);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+/* the surface the pile rests on */
+.pile-base {
+  position: relative;
+  height: 13px;
+  margin: 0 -10px;
+  border-radius: 0 0 4px 4px;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(0,0,0,0.22) 0 1px, transparent 1px 7px),
+    linear-gradient(#6a4a2e 0 2px, #4b331c 3px, #2d1d0f);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.3),
+    0 3px 0 #17100a,
+    0 12px 20px rgba(0,0,0,0.6);
+}
+@media (max-width: 560px) {
+  .piles { grid-template-columns: 1fr; padding: 20px 16px 50px; }
+  .stacked .spine-txt { max-width: calc(100% - 120px); }
+}

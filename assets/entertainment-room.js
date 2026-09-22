@@ -327,7 +327,11 @@
      Blockbuster had both and used them for different jobs: new releases faced
      out on angled racks where the art does the selling, and the back-wall
      catalogue spine-out because that is how you fit thousands of them. */
-  function dvdCase(e, faced) {
+  function dvdCase(e, mode) {
+    /* mode: 'stacked' lays the case flat in a pile, anything else truthy
+       faces it out on a rack, nothing stands it spine-out on a shelf. */
+    const stacked = mode === 'stacked';
+    const faced = !stacked && !!mode;
     const art = e.poster ? 'assets/posters/' + e.id + '.jpg' : '';
     const sub = [e.year, e.runtime ? hhmm(e.runtime) : ''].filter(Boolean).join(' · ');
     /* The mark goes on whichever face you are actually looking at: the spine
@@ -337,7 +341,8 @@
     const frontMark = faced ? mark : '';
     const v = caseVary(e.id);
     const bg = art ? 'background-image:url(&quot;' + esc(art) + '&quot;)' : '';
-    return '<button class="case' + (faced ? ' faced' : '') + '" type="button" data-id="' + esc(e.id) + '"' +
+    return '<button class="case' + (faced ? ' faced' : stacked ? ' stacked' : '') +
+        '" type="button" data-id="' + esc(e.id) + '"' +
         ' style="--tint:' + hue(e, 26) + ';--t:' + v.t + 'px;--dh:' + v.dh +
         'px;--lean:' + v.lean.toFixed(2) + 'deg"' +
         ' aria-label="' + esc(e.title) + (sub ? ', ' + esc(sub) : '') + '">' +
@@ -346,6 +351,7 @@
           (art ? '<span class="spine-art" style="' + bg + '"></span>' : '') +
           '<span class="spine-txt">' + esc(e.title) + '</span>' +
           '<span class="spine-foot"></span>' + spineMark +
+          (stacked && sub ? '<span class="stack-sub">' + esc(sub) + '</span>' : '') +
         '</span>' +
         '<span class="face front">' +
           (art
